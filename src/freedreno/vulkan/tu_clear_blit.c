@@ -561,7 +561,10 @@ r3d_src_common(struct tu_cmd_buffer *cmd,
    VkResult result = tu_cs_alloc(&cmd->sub_cs,
                                  2, /* allocate space for a sampler too */
                                  A6XX_TEX_CONST_DWORDS, &texture);
-   assert(result == VK_SUCCESS);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
 
    memcpy(texture.map, tex_const, A6XX_TEX_CONST_DWORDS * 4);
 

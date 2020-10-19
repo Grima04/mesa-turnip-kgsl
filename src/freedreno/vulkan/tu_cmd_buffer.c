@@ -1010,7 +1010,10 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
    struct tu_cs_memory texture;
    VkResult result = tu_cs_alloc(&cmd->sub_cs, subpass->input_count * 2,
                                  A6XX_TEX_CONST_DWORDS, &texture);
-   assert(result == VK_SUCCESS);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return (struct tu_draw_state) {};
+   }
 
    for (unsigned i = 0; i < subpass->input_count * 2; i++) {
       uint32_t a = subpass->input_attachments[i / 2].attachment;
@@ -1722,7 +1725,10 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       struct tu_cs_memory dynamic_desc_set;
       VkResult result = tu_cs_alloc(&cmd->sub_cs, layout->dynamic_offset_count,
                                     A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
-      assert(result == VK_SUCCESS);
+      if (result != VK_SUCCESS) {
+         cmd->record_result = result;
+         return;
+      }
 
       memcpy(dynamic_desc_set.map, descriptors_state->dynamic_descriptors,
              layout->dynamic_offset_count * A6XX_TEX_CONST_DWORDS * 4);
@@ -1778,7 +1784,10 @@ void tu_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
    VkResult result = tu_cs_alloc(&cmd->sub_cs,
                                  DIV_ROUND_UP(layout->size, A6XX_TEX_CONST_DWORDS * 4),
                                  A6XX_TEX_CONST_DWORDS, &set_mem);
-   assert(result == VK_SUCCESS);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
 
    /* preserve previous content if the layout is the same: */
    if (set->layout == layout)
@@ -1814,7 +1823,10 @@ void tu_CmdPushDescriptorSetWithTemplateKHR(
    VkResult result = tu_cs_alloc(&cmd->sub_cs,
                                  DIV_ROUND_UP(layout->size, A6XX_TEX_CONST_DWORDS * 4),
                                  A6XX_TEX_CONST_DWORDS, &set_mem);
-   assert(result == VK_SUCCESS);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
 
    /* preserve previous content if the layout is the same: */
    if (set->layout == layout)
