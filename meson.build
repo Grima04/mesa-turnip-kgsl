@@ -350,7 +350,9 @@ endif
 
 with_glx = get_option('glx')
 if with_glx == 'auto'
-  if with_dri
+  if with_platform_android
+    with_glx = 'disabled'
+  elif with_dri
     with_glx = 'dri'
   elif with_platform_haiku
     with_glx = 'disabled'
