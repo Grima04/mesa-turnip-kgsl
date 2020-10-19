@@ -284,6 +284,9 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       sysval_options.has_base_global_invocation_id = true;
       NIR_PASS_V(nir, nir_lower_compute_system_values, &sysval_options);
 
+      // constant fold before lowering mem constants
+      NIR_PASS_V(nir, nir_opt_constant_folding);
+
       NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_mem_constant, NULL);
       NIR_PASS_V(nir, nir_lower_mem_constant_vars,
                  glsl_get_cl_type_size_align);
