@@ -5263,8 +5263,7 @@ void visit_discard(isel_context* ctx, nir_intrinsic_instr *instr)
    bool divergent = ctx->cf_info.parent_if.is_divergent ||
                     ctx->cf_info.parent_loop.has_divergent_continue;
 
-   if (ctx->block->loop_nest_depth &&
-       ((nir_instr_is_last(&instr->instr) && !divergent) || divergent)) {
+   if (ctx->block->loop_nest_depth && (nir_instr_is_last(&instr->instr) && !divergent)) {
       /* we handle discards the same way as jump instructions */
       append_logical_end(ctx->block);
 
@@ -5272,39 +5271,12 @@ void visit_discard(isel_context* ctx, nir_intrinsic_instr *instr)
       Block *linear_target = ctx->cf_info.parent_loop.exit;
       ctx->block->kind |= block_kind_discard;
 
-      if (!divergent) {
-         /* uniform discard - loop ends here */
-         assert(nir_instr_is_last(&instr->instr));
-         ctx->block->kind |= block_kind_uniform;
-         ctx->cf_info.has_branch = true;
-         bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
-         add_linear_edge(ctx->block->index, linear_target);
-         return;
-      }
-
-      /* we add a break right behind the discard() instructions */
-      ctx->block->kind |= block_kind_break;
-      unsigned idx = ctx->block->index;
-
-      ctx->cf_info.parent_loop.has_divergent_branch = true;
-      ctx->cf_info.nir_to_aco[instr->instr.block->index] = idx;
-
-      /* remove critical edges from linear CFG */
+      /* uniform discard - loop ends here */
+      assert(nir_instr_is_last(&instr->instr));
+      ctx->block->kind |= block_kind_uniform;
+      ctx->cf_info.has_branch = true;
       bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
-      Block* break_block = ctx->program->create_and_insert_block();
-      break_block->loop_nest_depth = ctx->cf_info.loop_nest_depth;
-      break_block->kind |= block_kind_uniform;
-      add_linear_edge(idx, break_block);
-      add_linear_edge(break_block->index, linear_target);
-      bld.reset(break_block);
-      bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
-
-      Block* continue_block = ctx->program->create_and_insert_block();
-      continue_block->loop_nest_depth = ctx->cf_info.loop_nest_depth;
-      add_linear_edge(idx, continue_block);
-      append_logical_start(continue_block);
-      ctx->block = continue_block;
-
+      add_linear_edge(ctx->block->index, linear_target);
       return;
    }
 
