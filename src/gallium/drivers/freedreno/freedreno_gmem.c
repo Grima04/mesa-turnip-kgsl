@@ -160,15 +160,6 @@ dump_gmem_state(const struct fd_gmem_stateobj *gmem)
 			gmem->screen->gmemsize_bytes);
 }
 
-static uint32_t bin_width(struct fd_screen *screen)
-{
-	if (is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen))
-		return 1024;
-	if (is_a3xx(screen))
-		return 992;
-	return 512;
-}
-
 static unsigned
 div_align(unsigned num, unsigned denom, unsigned al)
 {
@@ -189,6 +180,12 @@ layout_gmem(struct gmem_key *key, uint32_t nbins_x, uint32_t nbins_y,
 	uint32_t bin_w, bin_h;
 	bin_w = div_align(key->width, nbins_x, screen->tile_alignw);
 	bin_h = div_align(key->height, nbins_y, screen->tile_alignh);
+
+	if (bin_w > screen->tile_maxw)
+		return false;
+
+	if (bin_h > screen->tile_maxh)
+		return false;
 
 	gmem->bin_w = bin_w;
 	gmem->bin_h = bin_h;
@@ -224,7 +221,8 @@ calc_nbins(struct gmem_key *key, struct fd_gmem_stateobj *gmem)
 {
 	struct fd_screen *screen = gmem->screen;
 	uint32_t nbins_x = 1, nbins_y = 1;
-	uint32_t max_width = bin_width(screen);
+	uint32_t max_width = screen->tile_maxw;
+	uint32_t max_height = screen->tile_maxh;
 
 	if (fd_mesa_debug & FD_DBG_MSGS) {
 		debug_printf("binning input: cbuf cpp:");
@@ -234,11 +232,15 @@ calc_nbins(struct gmem_key *key, struct fd_gmem_stateobj *gmem)
 				key->zsbuf_cpp[0], key->width, key->height);
 	}
 
-	/* first, find a bin width that satisfies the maximum width
-	 * restrictions:
+	/* first, find a bin size that satisfies the maximum width/
+	 * height restrictions:
 	 */
 	while (div_align(key->width, nbins_x, screen->tile_alignw) > max_width) {
 		nbins_x++;
+	}
+
+	while (div_align(key->height, nbins_y, screen->tile_alignh) > max_height) {
+		nbins_y++;
 	}
 
 	/* then find a bin width/height that satisfies the memory
@@ -266,7 +268,6 @@ calc_nbins(struct gmem_key *key, struct fd_gmem_stateobj *gmem)
 	}
 
 	layout_gmem(key, nbins_x, nbins_y, gmem);
-
 }
 
 static struct fd_gmem_stateobj *
@@ -779,6 +780,12 @@ fd_gmem_needs_restore(struct fd_batch *batch, const struct fd_tile *tile,
 	return true;
 }
 
+static inline unsigned
+max_bitfield_val(unsigned high, unsigned low, unsigned shift)
+{
+	return BITFIELD_MASK(high - low) << shift;
+}
+
 void
 fd_gmem_init_limits(struct pipe_screen *pscreen)
 {
@@ -790,26 +797,40 @@ fd_gmem_init_limits(struct pipe_screen *pscreen)
 		screen->gmem_alignh = 4;
 		screen->tile_alignw = is_a650(screen) ? 96 : 32;
 		screen->tile_alignh = 32;
+		/* based on GRAS_BIN_CONTROL: */
+		screen->tile_maxw   = 1024;  /* max_bitfield_val(5, 0, 5) */
+		screen->tile_maxh   = max_bitfield_val(14, 8, 4);
 		screen->num_vsc_pipes = 32;
 		break;
 	case 500 ... 599:
 		screen->gmem_alignw = screen->tile_alignw = 64;
 		screen->gmem_alignh = screen->tile_alignh = 32;
+		/* based on VSC_BIN_SIZE: */
+		screen->tile_maxw   = 1024;  /* max_bitfield_val(7, 0, 5) */
+		screen->tile_maxh   = max_bitfield_val(16, 9, 5);
 		screen->num_vsc_pipes = 16;
 		break;
 	case 400 ... 499:
 		screen->gmem_alignw = screen->tile_alignw = 32;
 		screen->gmem_alignh = screen->tile_alignh = 32;
+		/* based on VSC_BIN_SIZE: */
+		screen->tile_maxw   = 1024;  /* max_bitfield_val(4, 0, 5) */
+		screen->tile_maxh   = max_bitfield_val(9, 5, 5);
 		screen->num_vsc_pipes = 8;
 		break;
 	case 300 ... 399:
 		screen->gmem_alignw = screen->tile_alignw = 32;
 		screen->gmem_alignh = screen->tile_alignh = 32;
+		/* based on VSC_BIN_SIZE: */
+		screen->tile_maxw   = 992;  /* max_bitfield_val(4, 0, 5) */
+		screen->tile_maxh   = max_bitfield_val(9, 5, 5);
 		screen->num_vsc_pipes = 8;
 		break;
 	case 200 ... 299:
 		screen->gmem_alignw = screen->tile_alignw = 32;
 		screen->gmem_alignh = screen->tile_alignh = 32;
+		screen->tile_maxw   = 512;
+		screen->tile_maxh   = ~0; // TODO
 		screen->num_vsc_pipes = 8;
 		break;
 	default:

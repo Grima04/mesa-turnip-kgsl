@@ -33,6 +33,7 @@ static bool bin_debug = false;
  * in a single bin) are commented out, but retained for posterity.
  */
 static const struct gmem_key keys[] = {
+	{ .minx=0, .miny=0, .width=1536, .height=2048, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {1,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
 	/* manhattan: */
 	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
 	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
@@ -177,6 +178,8 @@ main(int argc, char **argv)
 
 		assert((gmem->bin_w * gmem->nbins_x) >= key.width);
 		assert((gmem->bin_h * gmem->nbins_y) >= key.height);
+		assert(gmem->bin_w < screen.tile_maxw);
+		assert(gmem->bin_h < screen.tile_maxh);
 
 		ralloc_free(gmem);
 	}
