@@ -805,6 +805,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    screen->compiler->supports_pull_constants = false;
    screen->compiler->supports_shader_constants = true;
    screen->compiler->compact_params = false;
+   screen->compiler->indirect_ubos_use_sampler = screen->devinfo.gen < 12;
 
    screen->l3_config_3d = iris_get_default_l3_config(&screen->devinfo, false);
    screen->l3_config_cs = iris_get_default_l3_config(&screen->devinfo, true);

@@ -513,7 +513,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
       device->info.gen < 8 || !device->has_context_isolation;
    device->compiler->supports_shader_constants = true;
    device->compiler->compact_params = false;
-   device->compiler->indirect_ubos_use_sampler = true;
+   device->compiler->indirect_ubos_use_sampler = device->info.gen < 12;
 
    /* Broadwell PRM says:
     *
