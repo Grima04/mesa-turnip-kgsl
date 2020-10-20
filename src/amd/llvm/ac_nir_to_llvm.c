@@ -4254,9 +4254,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       result = build_tex_intrinsic(ctx, instr, &txf_args);
 
       result = LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, "");
-      result = LLVMBuildSExt(ctx->ac.builder,
-                             emit_int_cmp(&ctx->ac, LLVMIntEQ, result, ctx->ac.i32_0),
-                             ctx->ac.i32, "");
+      result = emit_int_cmp(&ctx->ac, LLVMIntEQ, result, ctx->ac.i32_0);
       goto write_result;
    }
 
