@@ -253,12 +253,7 @@ alloc_prim_store(int prim_count)
    struct vbo_save_primitive_store *store =
       CALLOC_STRUCT(vbo_save_primitive_store);
    store->size = MAX2(prim_count, VBO_SAVE_PRIM_SIZE);
-   if (store->prims) {
-      assert(store->refcount == 0);
-   }
-   store->prims = realloc(store->prims,
-                          store->size * sizeof(struct _mesa_prim));
-   memset(store->prims, 0, store->size * sizeof(struct _mesa_prim));
+   store->prims = calloc(store->size, sizeof(struct _mesa_prim));
    store->used = 0;
    store->refcount = 1;
    return store;
@@ -504,7 +499,10 @@ realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
    }
 
    if (prim_count >= 0) {
-      save->prim_store->refcount--;
+      if (--save->prim_store->refcount == 0) {
+         free(save->prim_store->prims);
+         free(save->prim_store);
+      }
       save->prim_store = alloc_prim_store(prim_count);
    }
 }
@@ -1462,6 +1460,23 @@ _save_OBE_Rectsv(const GLshort *v1, const GLshort *v2)
    _save_OBE_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
+static void
+_ensure_draws_fits_in_storage(struct gl_context *ctx, int primcount, int vertcount)
+{
+   struct vbo_save_context *save = &vbo_context(ctx)->save;
+
+   bool realloc_prim = save->prim_count + primcount > save->prim_max;
+   bool realloc_vert = save->vertex_size && (save->vert_count + vertcount >= save->max_vert);
+
+   if (realloc_prim || realloc_vert) {
+      if (save->vert_count || save->prim_count)
+         compile_vertex_list(ctx);
+      realloc_storage(ctx, realloc_prim ? primcount : -1, realloc_vert ? vertcount : -1);
+      reset_counters(ctx);
+      assert(save->prim_max);
+   }
+}
+
 
 static void GLAPIENTRY
 _save_OBE_DrawArrays(GLenum mode, GLint start, GLsizei count)
@@ -1482,6 +1497,8 @@ _save_OBE_DrawArrays(GLenum mode, GLint start, GLsizei count)
 
    if (save->out_of_memory)
       return;
+
+   _ensure_draws_fits_in_storage(ctx, 1, count);
 
    /* Make sure to process any VBO binding changes */
    _mesa_update_state(ctx);
@@ -1516,13 +1533,17 @@ _save_OBE_MultiDrawArrays(GLenum mode, const GLint *first,
       return;
    }
 
+   unsigned vertcount = 0;
    for (i = 0; i < primcount; i++) {
       if (count[i] < 0) {
          _mesa_compile_error(ctx, GL_INVALID_VALUE,
                              "glMultiDrawArrays(count[i]<0)");
          return;
       }
+      vertcount += count[i];
    }
+
+   _ensure_draws_fits_in_storage(ctx, primcount, vertcount);
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
@@ -1585,6 +1606,8 @@ _save_OBE_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
 
    if (save->out_of_memory)
       return;
+
+   _ensure_draws_fits_in_storage(ctx, 1, count);
 
    /* Make sure to process any VBO binding changes */
    _mesa_update_state(ctx);
@@ -1672,6 +1695,12 @@ _save_OBE_MultiDrawElements(GLenum mode, const GLsizei *count, GLenum type,
    struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
    GLsizei i;
 
+   int vertcount = 0;
+   for (i = 0; i < primcount; i++) {
+      vertcount += count[i];
+   }
+   _ensure_draws_fits_in_storage(ctx, primcount, vertcount);
+
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
 	 CALL_DrawElements(dispatch, (mode, count[i], type, indices[i]));
@@ -1690,6 +1719,12 @@ _save_OBE_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    GET_CURRENT_CONTEXT(ctx);
    struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
    GLsizei i;
+
+   int vertcount = 0;
+   for (i = 0; i < primcount; i++) {
+      vertcount += count[i];
+   }
+   _ensure_draws_fits_in_storage(ctx, primcount, vertcount);
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
