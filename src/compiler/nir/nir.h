@@ -3070,6 +3070,7 @@ typedef enum {
    nir_divergence_single_patch_per_tcs_subgroup = (1 << 1),
    nir_divergence_single_patch_per_tes_subgroup = (1 << 2),
    nir_divergence_view_index_uniform = (1 << 3),
+   nir_divergence_single_frag_shading_rate_per_subgroup = (1 << 4),
 } nir_divergence_options;
 
 typedef struct nir_shader_compiler_options {

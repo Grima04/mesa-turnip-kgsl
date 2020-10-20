@@ -943,6 +943,15 @@ store("global", [1], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, offset }.
 store("scratch", [1], [ALIGN_MUL, ALIGN_OFFSET, WRITE_MASK])
 
+# A bit field to implement SPIRV FragmentShadingRateKHR
+# bit | name              | description
+#   0 | Vertical2Pixels   | Fragment invocation covers 2 pixels vertically
+#   1 | Vertical4Pixels   | Fragment invocation covers 4 pixels vertically
+#   2 | Horizontal2Pixels | Fragment invocation covers 2 pixels horizontally
+#   3 | Horizontal4Pixels | Fragment invocation covers 4 pixels horizontally
+intrinsic("load_frag_shading_rate", dest_comp=1, bit_sizes=[32],
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # IR3-specific version of most SSBO intrinsics. The only different
 # compare to the originals is that they add an extra source to hold
 # the dword-offset, which is needed by the backend code apart from

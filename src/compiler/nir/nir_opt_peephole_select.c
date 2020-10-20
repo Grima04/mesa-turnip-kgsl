@@ -113,6 +113,7 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
          case nir_intrinsic_load_subgroup_id:
          case nir_intrinsic_load_subgroup_invocation:
          case nir_intrinsic_load_num_subgroups:
+         case nir_intrinsic_load_frag_shading_rate:
             if (!alu_ok)
                return false;
             break;
