@@ -2547,8 +2547,18 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          assert(image->vk_format == VK_FORMAT_D32_SFLOAT ||
                 image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
                 image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32);
+         if (image->tiling != VK_IMAGE_TILING_LINEAR) {
             src_format = image->vk_format;
-            dst_format = src_format;
+         } else {
+            src_format = VK_FORMAT_R8G8B8A8_UINT;
+            aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+            if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+               cmask = VK_COLOR_COMPONENT_R_BIT |
+                       VK_COLOR_COMPONENT_G_BIT |
+                       VK_COLOR_COMPONENT_B_BIT;
+            }
+         }
+         dst_format = src_format;
          break;
       case VK_IMAGE_ASPECT_STENCIL_BIT:
          /* Since we don't support separate stencil this is always a stencil
@@ -2571,8 +2581,8 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       };
       break;
    case 2:
-      src_format = (aspect == VK_IMAGE_ASPECT_COLOR_BIT) ?
-         VK_FORMAT_R16_UINT : image->vk_format;
+      aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+      src_format = VK_FORMAT_R16_UINT;
       dst_format = src_format;
       break;
    case 1:
