@@ -918,17 +918,15 @@ void init_context(isel_context *ctx, nir_shader *shader)
             }
             case nir_instr_type_tex: {
                nir_tex_instr* tex = nir_instr_as_tex(instr);
-               unsigned size = tex->dest.ssa.num_components;
+               RegType type = nir_dest_is_divergent(tex->dest) ? RegType::vgpr : RegType::sgpr;
 
-               if (tex->dest.ssa.bit_size == 64)
-                  size *= 2;
                if (tex->op == nir_texop_texture_samples) {
                   assert(!tex->dest.ssa.divergent);
                }
-               if (nir_dest_is_divergent(tex->dest))
-                  allocated[tex->dest.ssa.index] = Temp(0, RegClass(RegType::vgpr, size));
-               else
-                  allocated[tex->dest.ssa.index] = Temp(0, RegClass(RegType::sgpr, size));
+
+               RegClass rc = get_reg_class(ctx, type, tex->dest.ssa.num_components,
+                                           tex->dest.ssa.bit_size);
+               allocated[tex->dest.ssa.index] = Temp(0, rc);
                break;
             }
             case nir_instr_type_parallel_copy: {

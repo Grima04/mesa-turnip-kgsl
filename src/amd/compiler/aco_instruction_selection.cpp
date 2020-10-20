@@ -9049,13 +9049,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       ctx->block->instructions.emplace_back(std::move(tex));
 
       if (instr->op == nir_texop_samples_identical) {
-         assert(dmask == 1 && dst.regClass() == v1);
+         assert(dmask == 1 && dst.regClass() == bld.lm);
          assert(dst.id() != tmp_dst.id());
 
-         Temp tmp = bld.tmp(bld.lm);
-         bld.vopc(aco_opcode::v_cmp_eq_u32, Definition(tmp), Operand(0u), tmp_dst).def(0).setHint(vcc);
-         bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(dst), Operand(0u), Operand((uint32_t)-1), tmp);
-
+         bld.vopc(aco_opcode::v_cmp_eq_u32, Definition(dst), Operand(0u), tmp_dst).def(0).setHint(vcc);
       } else {
          expand_vector(ctx, tmp_dst, dst, instr->dest.ssa.num_components, dmask);
       }
