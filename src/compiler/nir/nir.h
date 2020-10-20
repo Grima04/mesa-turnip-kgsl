@@ -4063,7 +4063,6 @@ static inline bool should_print_nir(nir_shader *shader) { return false; }
       break;                                                         \
    }                                                                 \
    do_pass                                                           \
-   nir_validate_shader(nir, "after " #pass);                         \
    if (should_clone_nir()) {                                         \
       nir_shader *clone = nir_shader_clone(ralloc_parent(nir), nir); \
       nir_shader_replace(nir, clone);                                \
@@ -4078,6 +4077,7 @@ static inline bool should_print_nir(nir_shader *shader) { return false; }
    if (should_print_nir(nir))                                           \
       printf("%s\n", #pass);                                         \
    if (pass(nir, ##__VA_ARGS__)) {                                   \
+      nir_validate_shader(nir, "after " #pass);                      \
       progress = true;                                               \
       if (should_print_nir(nir))                                        \
          nir_print_shader(nir, stdout);                              \
@@ -4089,6 +4089,7 @@ static inline bool should_print_nir(nir_shader *shader) { return false; }
    if (should_print_nir(nir))                                           \
       printf("%s\n", #pass);                                         \
    pass(nir, ##__VA_ARGS__);                                         \
+   nir_validate_shader(nir, "after " #pass);                         \
    if (should_print_nir(nir))                                           \
       nir_print_shader(nir, stdout);                                 \
 )
