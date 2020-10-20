@@ -529,7 +529,7 @@ compile_vertex_list(struct gl_context *ctx)
     * being compiled.
     */
    node = (struct vbo_save_vertex_list *)
-      _mesa_dlist_alloc_aligned(ctx, save->opcode_vertex_list, sizeof(*node));
+      _mesa_dlist_alloc_vertex_list(ctx);
 
    if (!node)
       return;
@@ -1923,57 +1923,6 @@ vbo_save_EndCallList(struct gl_context *ctx)
 
 
 /**
- * Called by display list code when a display list is being deleted.
- */
-static void
-vbo_destroy_vertex_list(struct gl_context *ctx, void *data)
-{
-   struct vbo_save_vertex_list *node = (struct vbo_save_vertex_list *) data;
-
-   for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm)
-      _mesa_reference_vao(ctx, &node->VAO[vpm], NULL);
-
-   if (--node->prim_store->refcount == 0) {
-      free(node->prim_store->prims);
-      free(node->prim_store);
-   }
-
-   free(node->merged.prims);
-
-   _mesa_reference_buffer_object(ctx, &node->merged.ib.obj, NULL);
-   free(node->current_data);
-   node->current_data = NULL;
-}
-
-
-static void
-vbo_print_vertex_list(struct gl_context *ctx, void *data, FILE *f)
-{
-   struct vbo_save_vertex_list *node = (struct vbo_save_vertex_list *) data;
-   GLuint i;
-   struct gl_buffer_object *buffer = node->VAO[0]->BufferBinding[0].BufferObj;
-   const GLuint vertex_size = _vbo_save_get_stride(node)/sizeof(GLfloat);
-   (void) ctx;
-
-   fprintf(f, "VBO-VERTEX-LIST, %u vertices, %d primitives, %d vertsize, "
-           "buffer %p\n",
-           node->vertex_count, node->prim_count, vertex_size,
-           buffer);
-
-   for (i = 0; i < node->prim_count; i++) {
-      struct _mesa_prim *prim = &node->prims[i];
-      fprintf(f, "   prim %d: %s %d..%d %s %s\n",
-             i,
-             _mesa_lookup_prim_by_nr(prim->mode),
-             prim->start,
-             prim->start + prim->count,
-             (prim->begin) ? "BEGIN" : "(wrap)",
-             (prim->end) ? "END" : "(wrap)");
-   }
-}
-
-
-/**
  * Called during context creation/init.
  */
 static void
@@ -2005,13 +1954,6 @@ void
 vbo_save_api_init(struct vbo_save_context *save)
 {
    struct gl_context *ctx = gl_context_from_vbo_save(save);
-
-   save->opcode_vertex_list =
-      _mesa_dlist_alloc_opcode(ctx,
-                               sizeof(struct vbo_save_vertex_list),
-                               vbo_save_playback_vertex_list,
-                               vbo_destroy_vertex_list,
-                               vbo_print_vertex_list);
 
    vtxfmt_init(ctx);
    current_init(ctx);

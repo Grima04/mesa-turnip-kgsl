@@ -189,8 +189,6 @@ struct vbo_save_context {
    GLuint max_vert;
    GLboolean dangling_attr_ref;
 
-   GLuint opcode_vertex_list;
-
    struct vbo_save_copied_vtx copied;
 
    fi_type *current[VBO_ATTRIB_MAX]; /* points into ctx->ListState */

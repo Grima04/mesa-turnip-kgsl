@@ -1381,9 +1381,6 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
    /* Shared context state (display lists, textures, etc) */
    _mesa_reference_shared_state(ctx, &ctx->Shared, NULL);
 
-   /* needs to be after freeing shared state */
-   _mesa_free_display_list_data(ctx);
-
    if (destroy_debug_output)
       _mesa_destroy_debug_output(ctx);
 
