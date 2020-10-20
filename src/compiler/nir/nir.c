@@ -371,6 +371,7 @@ nir_function_impl_create_bare(nir_shader *shader)
    exec_list_make_empty(&impl->locals);
    impl->reg_alloc = 0;
    impl->ssa_alloc = 0;
+   impl->num_blocks = 0;
    impl->valid_metadata = nir_metadata_none;
    impl->structured = true;
 

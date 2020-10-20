@@ -1517,6 +1517,7 @@ validate_function_impl(nir_function_impl *impl, validate_state *state)
                                     sizeof(BITSET_WORD));
 
    _mesa_set_clear(state->blocks, NULL);
+   _mesa_set_resize(state->blocks, impl->num_blocks);
    collect_blocks(&impl->body, state);
    _mesa_set_add(state->blocks, impl->end_block);
    validate_assert(state, !exec_list_is_empty(&impl->body));
