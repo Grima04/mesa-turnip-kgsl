@@ -221,6 +221,9 @@
    DRI_CONF_OPT_S(glx_extension_override, def, \
                   "Allow enabling/disabling a list of GLX extensions")
 
+#define DRI_CONF_INDIRECT_GL_EXTENSION_OVERRIDE(def) \
+   DRI_CONF_OPT_S(indirect_gl_extension_override, def, \
+                  "Allow enabling/disabling a list of indirect-GL extensions")
 
 
 /**

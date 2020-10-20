@@ -1367,6 +1367,12 @@ dri2CreateScreen(int screen, struct glx_display * priv)
                                     &tmp) == 0)
       __glXParseExtensionOverride(&psc->base, tmp);
 
+   if (psc->config->base.version > 1 &&
+          psc->config->configQuerys(psc->driScreen,
+                                    "indirect_gl_extension_override",
+                                    &tmp) == 0)
+      __IndirectGlParseExtensionOverride(&psc->base, tmp);
+
    /* DRI2 supports SubBuffer through DRI2CopyRegion, so it's always
     * available.*/
    psp->copySubBuffer = dri2CopySubBuffer;
