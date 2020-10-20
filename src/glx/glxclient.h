@@ -549,6 +549,9 @@ struct glx_screen
 
    unsigned char glx_force_enabled[__GLX_EXT_BYTES];
    unsigned char glx_force_disabled[__GLX_EXT_BYTES];
+
+   unsigned char gl_force_enabled[__GL_EXT_BYTES];
+   unsigned char gl_force_disabled[__GL_EXT_BYTES];
    /*@} */
 
 };

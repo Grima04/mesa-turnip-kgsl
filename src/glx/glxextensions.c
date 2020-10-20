@@ -523,6 +523,25 @@ __glXParseExtensionOverride(struct glx_screen *psc, const char *override)
                              psc->glx_force_disabled, override);
 }
 
+/**
+ * \brief Parse the list of GL extensions that the user wants to
+ * force-enable/disable by using \c override, and write the results to the
+ * screen's context.
+ *
+ * \param psc        Pointer to GLX per-screen record.
+ * \param override   A space-separated list of extensions to enable or disable.
+ * The list is processed thus:
+ *    - Enable recognized extension names that are prefixed with '+'.
+ *    - Disable recognized extension names that are prefixed with '-'.
+ *    - Enable recognized extension names that are not prefixed.
+ */
+void
+__IndirectGlParseExtensionOverride(struct glx_screen *psc, const char *override)
+{
+    __ParseExtensionOverride(psc, known_gl_extensions, psc->gl_force_enabled,
+                             psc->gl_force_disabled, override);
+}
+
 
 /**
  * Initialize global extension support tables.
@@ -603,6 +622,10 @@ __glXExtensionsCtrScreen(struct glx_screen * psc)
                     sizeof(psc->glx_force_enabled));
       (void) memset(psc->glx_force_disabled, 0,
                     sizeof(psc->glx_force_disabled));
+      (void) memset(psc->gl_force_enabled, 0,
+                    sizeof(psc->gl_force_enabled));
+      (void) memset(psc->gl_force_disabled, 0,
+                    sizeof(psc->gl_force_disabled));
    }
 }
 
@@ -829,6 +852,7 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
                                  const char *server_string,
                                  int major_version, int minor_version)
 {
+   struct glx_screen *psc = gc->psc;
    unsigned char server_support[__GL_EXT_BYTES];
    unsigned char usable[__GL_EXT_BYTES];
    unsigned i;
@@ -862,8 +886,9 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
     */
 
    for (i = 0; i < __GL_EXT_BYTES; i++) {
-      usable[i] = (client_gl_support[i] & client_gl_only[i])
-         | (client_gl_support[i] & server_support[i]);
+      usable[i] = ((client_gl_support[i] & client_gl_only[i])
+         | (client_gl_support[i] & server_support[i])
+         | psc->gl_force_enabled[i]) & ~psc->gl_force_disabled[i];
    }
 
    gc->extensions = (unsigned char *)
