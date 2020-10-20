@@ -324,9 +324,9 @@ static const struct extension_info known_gl_extensions[] = {
 
 
 /* global bit-fields of available extensions and their characteristics */
-static unsigned char client_glx_support[8];
-static unsigned char client_glx_only[8];
-static unsigned char direct_glx_only[8];
+static unsigned char client_glx_support[__GLX_EXT_BYTES];
+static unsigned char client_glx_only[__GLX_EXT_BYTES];
+static unsigned char direct_glx_only[__GLX_EXT_BYTES];
 static unsigned char client_gl_support[__GL_EXT_BYTES];
 static unsigned char client_gl_only[__GL_EXT_BYTES];
 
@@ -334,7 +334,7 @@ static unsigned char client_gl_only[__GL_EXT_BYTES];
  * Bits representing the set of extensions that are enabled by default in all
  * direct rendering drivers.
  */
-static unsigned char direct_glx_support[8];
+static unsigned char direct_glx_support[__GLX_EXT_BYTES];
 
 /**
  * Highest core GL version that can be supported for indirect rendering.
@@ -648,8 +648,8 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
                                GLboolean display_is_direct_capable,
                                int minor_version)
 {
-   unsigned char server_support[8];
-   unsigned char usable[8];
+   unsigned char server_support[__GLX_EXT_BYTES];
+   unsigned char usable[__GLX_EXT_BYTES];
    unsigned i;
 
    __glXExtensionsCtr();
@@ -694,7 +694,7 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
     */
 
    if (display_is_direct_capable) {
-      for (i = 0; i < 8; i++) {
+      for (i = 0; i < __GLX_EXT_BYTES; i++) {
          usable[i] = (client_glx_support[i] & client_glx_only[i])
             | (client_glx_support[i] & psc->direct_support[i] &
                server_support[i])
@@ -703,7 +703,7 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
       }
    }
    else {
-      for (i = 0; i < 8; i++) {
+      for (i = 0; i < __GLX_EXT_BYTES; i++) {
          usable[i] = (client_glx_support[i] & client_glx_only[i])
             | (client_glx_support[i] & server_support[i]);
       }
