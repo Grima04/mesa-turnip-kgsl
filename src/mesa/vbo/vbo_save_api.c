@@ -133,11 +133,13 @@ copy_vertices(struct gl_context *ctx,
 
 
 static struct vbo_save_vertex_store *
-alloc_vertex_store(struct gl_context *ctx)
+alloc_vertex_store(struct gl_context *ctx, int vertex_count)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
    struct vbo_save_vertex_store *vertex_store =
       CALLOC_STRUCT(vbo_save_vertex_store);
+
+   int size = MAX2(vertex_count * save->vertex_size, VBO_SAVE_BUFFER_SIZE);
 
    /* obj->Name needs to be non-zero, but won't ever be examined more
     * closely than that.  In particular these buffers won't be entered
@@ -150,7 +152,7 @@ alloc_vertex_store(struct gl_context *ctx)
       save->out_of_memory =
          !ctx->Driver.BufferData(ctx,
                                  GL_ARRAY_BUFFER_ARB,
-                                 VBO_SAVE_BUFFER_SIZE * sizeof(GLfloat),
+                                 size * sizeof(GLfloat),
                                  NULL, GL_STATIC_DRAW_ARB,
                                  GL_MAP_WRITE_BIT |
                                  GL_DYNAMIC_STORAGE_BIT,
@@ -246,10 +248,17 @@ vbo_save_unmap_vertex_store(struct gl_context *ctx,
 
 
 static struct vbo_save_primitive_store *
-alloc_prim_store(void)
+alloc_prim_store(int prim_count)
 {
    struct vbo_save_primitive_store *store =
       CALLOC_STRUCT(vbo_save_primitive_store);
+   store->size = MAX2(prim_count, VBO_SAVE_PRIM_SIZE);
+   if (store->prims) {
+      assert(store->refcount == 0);
+   }
+   store->prims = realloc(store->prims,
+                          store->size * sizeof(struct _mesa_prim));
+   memset(store->prims, 0, store->size * sizeof(struct _mesa_prim));
    store->used = 0;
    store->refcount = 1;
    return store;
@@ -267,14 +276,14 @@ reset_counters(struct gl_context *ctx)
    assert(save->buffer_map == save->buffer_ptr);
 
    if (save->vertex_size)
-      save->max_vert = (VBO_SAVE_BUFFER_SIZE - save->vertex_store->used) /
+      save->max_vert = (save->vertex_store->bufferobj->Size / sizeof(float) - save->vertex_store->used) /
                         save->vertex_size;
    else
       save->max_vert = 0;
 
    save->vert_count = 0;
    save->prim_count = 0;
-   save->prim_max = VBO_SAVE_PRIM_SIZE - save->prim_store->used;
+   save->prim_max = save->prim_store->size - save->prim_store->used;
    save->dangling_attr_ref = GL_FALSE;
 }
 
@@ -467,6 +476,37 @@ update_vao(struct gl_context *ctx,
 
    /* Finalize and freeze the VAO */
    _mesa_set_vao_immutable(ctx, *vao);
+}
+
+
+static void
+realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
+{
+   struct vbo_save_context *save = &vbo_context(ctx)->save;
+   if (vertex_count >= 0) {
+      /* Unmap old store:
+       */
+      vbo_save_unmap_vertex_store(ctx, save->vertex_store);
+
+      /* Release old reference:
+       */
+      free_vertex_store(ctx, save->vertex_store);
+      save->vertex_store = NULL;
+      /* When we have a new vbo, we will for sure need a new vao */
+      for (gl_vertex_processing_mode vpm = 0; vpm < VP_MODE_MAX; ++vpm)
+         _mesa_reference_vao(ctx, &save->VAO[vpm], NULL);
+
+      /* Allocate and map new store:
+       */
+      save->vertex_store = alloc_vertex_store(ctx, vertex_count);
+      save->buffer_ptr = vbo_save_map_vertex_store(ctx, save->vertex_store);
+      save->out_of_memory = save->buffer_ptr == NULL;
+   }
+
+   if (prim_count >= 0) {
+      save->prim_store->refcount--;
+      save->prim_store = alloc_prim_store(prim_count);
+   }
 }
 
 
@@ -752,25 +792,8 @@ compile_vertex_list(struct gl_context *ctx)
     * the next vertex lists as well.
     */
    if (save->vertex_store->used >
-       VBO_SAVE_BUFFER_SIZE - 16 * (save->vertex_size + 4)) {
-
-      /* Unmap old store:
-       */
-      vbo_save_unmap_vertex_store(ctx, save->vertex_store);
-
-      /* Release old reference:
-       */
-      free_vertex_store(ctx, save->vertex_store);
-      save->vertex_store = NULL;
-      /* When we have a new vbo, we will for sure need a new vao */
-      for (gl_vertex_processing_mode vpm = 0; vpm < VP_MODE_MAX; ++vpm)
-         _mesa_reference_vao(ctx, &save->VAO[vpm], NULL);
-
-      /* Allocate and map new store:
-       */
-      save->vertex_store = alloc_vertex_store(ctx);
-      save->buffer_ptr = vbo_save_map_vertex_store(ctx, save->vertex_store);
-      save->out_of_memory = save->buffer_ptr == NULL;
+       save->vertex_store->bufferobj->Size / sizeof(float) - 16 * (save->vertex_size + 4)) {
+      realloc_storage(ctx, -1, 0);
    }
    else {
       /* update buffer_ptr for next vertex */
@@ -778,10 +801,8 @@ compile_vertex_list(struct gl_context *ctx)
          + save->vertex_store->used;
    }
 
-   if (save->prim_store->used > VBO_SAVE_PRIM_SIZE - 6) {
-      save->prim_store->refcount--;
-      assert(save->prim_store->refcount != 0);
-      save->prim_store = alloc_prim_store();
+   if (save->prim_store->used > save->prim_store->size - 6) {
+      realloc_storage(ctx, 0, -1);
    }
 
    /* Reset our structures for the next run of vertices:
@@ -936,7 +957,8 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
    save->enabled |= BITFIELD64_BIT(attr);
 
    save->vertex_size += newsz - oldsz;
-   save->max_vert = ((VBO_SAVE_BUFFER_SIZE - save->vertex_store->used) /
+   save->max_vert = ((save->vertex_store->bufferobj->Size / sizeof(float) -
+                      save->vertex_store->used) /
                      save->vertex_size);
    save->vert_count = 0;
 
@@ -1755,10 +1777,10 @@ vbo_save_NewList(struct gl_context *ctx, GLuint list, GLenum mode)
    (void) mode;
 
    if (!save->prim_store)
-      save->prim_store = alloc_prim_store();
+      save->prim_store = alloc_prim_store(0);
 
    if (!save->vertex_store)
-      save->vertex_store = alloc_vertex_store(ctx);
+      save->vertex_store = alloc_vertex_store(ctx, 0);
 
    save->buffer_ptr = vbo_save_map_vertex_store(ctx, save->vertex_store);
 
@@ -1842,8 +1864,10 @@ vbo_destroy_vertex_list(struct gl_context *ctx, void *data)
    for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm)
       _mesa_reference_vao(ctx, &node->VAO[vpm], NULL);
 
-   if (--node->prim_store->refcount == 0)
+   if (--node->prim_store->refcount == 0) {
+      free(node->prim_store->prims);
       free(node->prim_store);
+   }
 
    _mesa_reference_buffer_object(ctx, &node->ib.obj, NULL);
    free(node->current_data);
