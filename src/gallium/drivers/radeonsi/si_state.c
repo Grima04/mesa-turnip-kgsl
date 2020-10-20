@@ -5358,7 +5358,9 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
    if (sctx->chip_class >= GFX10_3) {
       si_pm4_set_reg(pm4, R_028750_SX_PS_DOWNCONVERT_CONTROL, 0xff);
-      si_pm4_set_reg(pm4, 0x28848, 1 << 9); /* This fixes sample shading. */
+      /* This allows sample shading. */
+      si_pm4_set_reg(pm4, R_028848_PA_CL_VRS_CNTL,
+                     S_028848_SAMPLE_ITER_COMBINER_MODE(1));
    }
 
    sctx->cs_preamble_state = pm4;
