@@ -4456,6 +4456,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(image_atomic_int64, cap);
          break;
 
+      case SpvCapabilityFragmentShadingRateKHR:
+         spv_check_supported(fragment_shading_rate, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);

@@ -1107,6 +1107,19 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = SYSTEM_VALUE_RAY_GEOMETRY_INDEX;
       set_mode_system_value(b, mode);
       break;
+   case SpvBuiltInShadingRateKHR:
+      *location = SYSTEM_VALUE_FRAG_SHADING_RATE;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInPrimitiveShadingRateKHR:
+      if (b->shader->info.stage == MESA_SHADER_VERTEX ||
+          b->shader->info.stage == MESA_SHADER_GEOMETRY) {
+         *location = VARYING_SLOT_PRIMITIVE_SHADING_RATE;
+         *mode = nir_var_shader_out;
+      } else {
+         vtn_fail("invalid stage for SpvBuiltInPrimitiveShadingRateKHR");
+      }
+      break;
    default:
       vtn_fail("Unsupported builtin: %s (%u)",
                spirv_builtin_to_string(builtin), builtin);
