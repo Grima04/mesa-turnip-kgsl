@@ -227,7 +227,9 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
     * If it's not present, it will be disabled by
     * si_get_opaque_metadata later.
     */
-   if (!is_imported && (sscreen->debug_flags & DBG(NO_DCC)))
+   if (!is_imported &&
+       (sscreen->debug_flags & DBG(NO_DCC) ||
+	(ptex->bind & PIPE_BIND_SCANOUT && sscreen->debug_flags & DBG(NO_DISPLAY_DCC))))
       flags |= RADEON_SURF_DISABLE_DCC;
 
    if (is_scanout) {
@@ -1160,7 +1162,8 @@ static enum radeon_surf_mode si_choose_tiling(struct si_screen *sscreen,
     * Compressed textures and DB surfaces must always be tiled.
     */
    if (!force_tiling && !is_depth_stencil && !util_format_is_compressed(templ->format)) {
-      if (sscreen->debug_flags & DBG(NO_TILING))
+      if (sscreen->debug_flags & DBG(NO_TILING) ||
+	  (templ->bind & PIPE_BIND_SCANOUT && sscreen->debug_flags & DBG(NO_DISPLAY_TILING)))
          return RADEON_SURF_MODE_LINEAR_ALIGNED;
 
       /* Tiling doesn't work with the 422 (SUBSAMPLED) formats. */
