@@ -1984,7 +1984,7 @@ iris_transfer_flush_region(struct pipe_context *ctx,
          history_flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
 
       if (map->dest_had_defined_contents)
-         history_flush |= iris_flush_bits_for_history(res);
+         history_flush |= iris_flush_bits_for_history(ice, res);
 
       util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
    }
@@ -2132,13 +2132,18 @@ iris_dirty_for_history(struct iris_context *ice,
  * resource becomes visible, and any stale read cache data is invalidated.
  */
 uint32_t
-iris_flush_bits_for_history(struct iris_resource *res)
+iris_flush_bits_for_history(struct iris_context *ice,
+                            struct iris_resource *res)
 {
+   struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
+
    uint32_t flush = PIPE_CONTROL_CS_STALL;
 
    if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
-      flush |= PIPE_CONTROL_CONST_CACHE_INVALIDATE |
-               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
+      flush |= PIPE_CONTROL_CONST_CACHE_INVALIDATE;
+      flush |= screen->compiler->indirect_ubos_use_sampler ?
+               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE :
+               PIPE_CONTROL_DATA_CACHE_FLUSH;
    }
 
    if (res->bind_history & PIPE_BIND_SAMPLER_VIEW)
@@ -2163,7 +2168,7 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
    if (res->base.target != PIPE_BUFFER)
       return;
 
-   uint32_t flush = iris_flush_bits_for_history(res) | extra_flags;
+   uint32_t flush = iris_flush_bits_for_history(ice, res) | extra_flags;
 
    iris_emit_pipe_control_flush(batch, reason, flush);
 

@@ -171,12 +171,14 @@ iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
    struct iris_bo *surf_bo = iris_resource_bo(surf_state->res);
    surf_state->offset += iris_bo_offset_from_base_address(surf_bo);
 
+   const bool dataport = ssbo || !screen->compiler->indirect_ubos_use_sampler;
+
    isl_buffer_fill_state(&screen->isl_dev, map,
                          .address = res->bo->gtt_offset + res->offset +
                                     buf->buffer_offset,
                          .size_B = buf->buffer_size - res->offset,
-                         .format = ssbo ? ISL_FORMAT_RAW
-                                        : ISL_FORMAT_R32G32B32A32_FLOAT,
+                         .format = dataport ? ISL_FORMAT_RAW
+                                            : ISL_FORMAT_R32G32B32A32_FLOAT,
                          .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = 1,
                          .mocs = iris_mocs(res->bo, &screen->isl_dev, usage));
