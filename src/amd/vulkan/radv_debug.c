@@ -638,6 +638,38 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		abort();
 	}
 
+	/* Dump pipeline state. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "pipeline.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_queue_state(queue, f);
+		fclose(f);
+	}
+
+	/* Dump UMR ring. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_ring.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_umr_ring(queue, f);
+		fclose(f);
+	}
+
+	/* Dump UMR waves. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_waves.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_umr_waves(queue, f);
+		fclose(f);
+	}
+
+	/* Dump debug registers. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "registers.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_debug_registers(device, f);
+		fclose(f);
+	}
+
 	/* Dump VM fault info. */
 	if (vm_fault_occurred) {
 		snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "vm_fault.log");
@@ -671,38 +703,6 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 	f = fopen(dump_path, "w+");
 	if (f) {
 		radv_dump_dmesg(f);
-		fclose(f);
-	}
-
-	/* Dump UMR ring. */
-	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_ring.log");
-	f = fopen(dump_path, "w+");
-	if (f) {
-		radv_dump_umr_ring(queue, f);
-		fclose(f);
-	}
-
-	/* Dump UMR waves. */
-	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_waves.log");
-	f = fopen(dump_path, "w+");
-	if (f) {
-		radv_dump_umr_waves(queue, f);
-		fclose(f);
-	}
-
-	/* Dump debug registers. */
-	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "registers.log");
-	f = fopen(dump_path, "w+");
-	if (f) {
-		radv_dump_debug_registers(device, f);
-		fclose(f);
-	}
-
-	/* Dump pipeline state. */
-	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "pipeline.log");
-	f = fopen(dump_path, "w+");
-	if (f) {
-		radv_dump_queue_state(queue, f);
 		fclose(f);
 	}
 
