@@ -78,6 +78,7 @@ EXTENSIONS = [
     Extension('VK_KHR_external_semaphore',                1, 'device->rad_info.has_syncobj'),
     Extension('VK_KHR_external_semaphore_capabilities',   1, True),
     Extension('VK_KHR_external_semaphore_fd',             1, 'device->rad_info.has_syncobj'),
+    Extension('VK_KHR_fragment_shading_rate',             1, False),
     Extension('VK_KHR_get_display_properties2',           1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_KHR_get_memory_requirements2',          1, True),
     Extension('VK_KHR_get_physical_device_properties2',   1, True),
