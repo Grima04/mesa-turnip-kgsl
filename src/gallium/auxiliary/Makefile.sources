@@ -105,8 +105,6 @@ C_SOURCES := \
 	indices/u_indices_priv.h \
 	indices/u_primconvert.c \
 	indices/u_primconvert.h \
-	nir/nir_to_tgsi.c \
-	nir/nir_to_tgsi.h \
 	os/os_mman.h \
 	os/os_process.c \
 	os/os_process.h \
@@ -318,6 +316,7 @@ NIR_SOURCES := \
 	nir/tgsi_to_nir.c \
 	nir/tgsi_to_nir.h \
 	nir/nir_to_tgsi.c \
+	nir/nir_to_tgsi.h \
 	nir/nir_draw_helpers.c \
 	nir/nir_draw_helpers.h
 
