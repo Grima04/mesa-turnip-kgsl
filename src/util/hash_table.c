@@ -244,6 +244,9 @@ void
 _mesa_hash_table_clear(struct hash_table *ht,
                        void (*delete_function)(struct hash_entry *entry))
 {
+   if (!ht)
+      return;
+
    struct hash_entry *entry;
 
    for (entry = ht->table; entry != ht->table + ht->size; entry++) {
