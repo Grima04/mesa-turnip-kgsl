@@ -990,8 +990,7 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
        */
       lds_per_wave = conf->lds_size * lds_increment + align(num_inputs * 48, lds_increment);
       break;
-   case MESA_SHADER_COMPUTE:
-      if (shader->selector) {
+   case MESA_SHADER_COMPUTE: {
          unsigned max_workgroup_size = si_get_max_workgroup_size(shader);
          lds_per_wave = (conf->lds_size * lds_increment) /
                         DIV_ROUND_UP(max_workgroup_size, sscreen->compute_wave_size);
