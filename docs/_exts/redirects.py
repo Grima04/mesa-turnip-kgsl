@@ -1,4 +1,5 @@
 import os
+import pathlib
 from urllib.parse import urlparse
 
 redirects = [
@@ -20,6 +21,7 @@ def create_redirects(app, docname):
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
         if urlparse(dst).scheme == "":
+            dst = pathlib.posixpath.relpath(dst, start=os.path.dirname(src))
             if not os.path.isfile(os.path.join(os.path.dirname(path), dst)):
                 raise Exception('{0} does not exitst'.format(dst))
 
