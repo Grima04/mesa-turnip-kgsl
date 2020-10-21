@@ -908,7 +908,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       }
 
       case NIR_INTRINSIC_DEST_TYPE: {
-         fprintf(fp, " src_type=");
+         fprintf(fp, " dest_type=");
          print_alu_type(nir_intrinsic_dest_type(instr), state);
          break;
       }
