@@ -993,6 +993,8 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
               256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config));
       fprintf(f, "    max_compressed_frags = %u\n",
               1 << G_0098F8_MAX_COMPRESSED_FRAGS(info->gb_addr_config));
+      if (info->chip_class >= GFX10_3)
+         fprintf(f, "    num_pkrs = %u\n", 1 << G_0098F8_NUM_PKRS(info->gb_addr_config));
    } else if (info->chip_class == GFX9) {
       fprintf(f, "    num_pipes = %u\n", 1 << G_0098F8_NUM_PIPES(info->gb_addr_config));
       fprintf(f, "    pipe_interleave_size = %u\n",
