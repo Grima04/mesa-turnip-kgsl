@@ -96,6 +96,7 @@ struct panfrost_device {
         int fd;
 
         /* Properties of the GPU in use */
+        unsigned arch;
         unsigned gpu_id;
         unsigned core_count;
         unsigned thread_tls_alloc;
