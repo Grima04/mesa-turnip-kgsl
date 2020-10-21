@@ -425,12 +425,15 @@ panfrost_new_texture_bifrost(
                 slices);
 
         bool srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
+        bool swap_rb = desc->swizzle[0] == 2 && desc->swizzle[2] == 0;
 
         pan_pack(out, BIFROST_TEXTURE, cfg) {
                 cfg.dimension = dim;
                 cfg.format = (mali_format << 12) | (srgb << 20);
                 if (dev->quirks & HAS_SWIZZLES)
 	                cfg.format |= panfrost_get_default_swizzle(desc->nr_channels);
+                else if (swap_rb)
+                        cfg.format |= MALI_RGB_COMPONENT_ORDER_BGRA;
 
                 cfg.width = u_minify(width, first_level);
                 cfg.height = u_minify(height, first_level);
