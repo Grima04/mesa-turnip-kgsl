@@ -82,7 +82,7 @@ pan_resource(struct pipe_resource *p)
         return (struct panfrost_resource *)p;
 }
 
-struct panfrost_gtransfer {
+struct panfrost_transfer {
         struct pipe_transfer base;
         void *map;
         struct {
@@ -91,10 +91,10 @@ struct panfrost_gtransfer {
         } staging;
 };
 
-static inline struct panfrost_gtransfer *
+static inline struct panfrost_transfer *
 pan_transfer(struct pipe_transfer *p)
 {
-        return (struct panfrost_gtransfer *)p;
+        return (struct panfrost_transfer *)p;
 }
 
 mali_ptr

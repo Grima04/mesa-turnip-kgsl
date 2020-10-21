@@ -729,7 +729,7 @@ pan_alloc_staging(struct panfrost_context *ctx, struct panfrost_resource *rsc,
 }
 
 static void
-pan_blit_from_staging(struct pipe_context *pctx, struct panfrost_gtransfer *trans)
+pan_blit_from_staging(struct pipe_context *pctx, struct panfrost_transfer *trans)
 {
         struct pipe_resource *dst = trans->base.resource;
         struct pipe_blit_info blit = {0};
@@ -749,7 +749,7 @@ pan_blit_from_staging(struct pipe_context *pctx, struct panfrost_gtransfer *tran
 }
 
 static void
-pan_blit_to_staging(struct pipe_context *pctx, struct panfrost_gtransfer *trans)
+pan_blit_to_staging(struct pipe_context *pctx, struct panfrost_transfer *trans)
 {
         struct pipe_resource *src = trans->base.resource;
         struct pipe_blit_info blit = {0};
@@ -786,7 +786,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
         if ((usage & PIPE_MAP_DIRECTLY) && rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
                 return NULL;
 
-        struct panfrost_gtransfer *transfer = rzalloc(pctx, struct panfrost_gtransfer);
+        struct panfrost_transfer *transfer = rzalloc(pctx, struct panfrost_transfer);
         transfer->base.level = level;
         transfer->base.usage = usage;
         transfer->base.box = *box;
@@ -984,7 +984,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
 {
         /* Gallium expects writeback here, so we tile */
 
-        struct panfrost_gtransfer *trans = pan_transfer(transfer);
+        struct panfrost_transfer *trans = pan_transfer(transfer);
         struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
         struct panfrost_device *dev = pan_device(pctx->screen);
 
