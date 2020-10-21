@@ -77,11 +77,12 @@ main(int argc, char *argv[])
       fprintf(stdout, "   PCI id: 0x%x\n", devinfo.chipset_id);
       fprintf(stdout, "   revision: %u\n", devinfo.revision);
 
+      const char *subslice_name = devinfo.ver >= 12 ? "dualsubslice" : "subslice";
       uint32_t n_s = 0, n_ss = 0, n_eus = 0;
       for (unsigned s = 0; s < devinfo.num_slices; s++) {
          n_s += (devinfo.slice_masks & (1u << s)) ? 1 : 0;
          for (unsigned ss = 0; ss < devinfo.num_subslices[s]; ss++) {
-            fprintf(stdout, "   slice%u.subslice%u: ", s, ss);
+            fprintf(stdout, "   slice%u.%s%u: ", s, subslice_name, ss);
             if (intel_device_info_subslice_available(&devinfo, s, ss)) {
                n_ss++;
                for (unsigned eu = 0; eu < devinfo.num_eu_per_subslice; eu++) {
@@ -95,7 +96,8 @@ main(int argc, char *argv[])
          }
       }
       fprintf(stdout, "   slices: %u\n", n_s);
-      fprintf(stdout, "   subslices: %u\n", n_ss);
+      fprintf(stdout, "   %s: %u\n", subslice_name, n_ss);
+      fprintf(stdout, "   EU per %s: %u\n", subslice_name, devinfo.num_eu_per_subslice);
       fprintf(stdout, "   EUs: %u\n", n_eus);
       fprintf(stdout, "   EU threads: %u\n", n_eus * devinfo.num_thread_per_eu);
 
