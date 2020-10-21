@@ -47,6 +47,7 @@
 #include "common/gen_decoder.h"
 #include "common/gen_gem.h"
 #include "common/gen_l3_config.h"
+#include "common/intel_measure.h"
 #include "dev/gen_device_info.h"
 #include "blorp/blorp.h"
 #include "compiler/brw_compiler.h"
@@ -1060,6 +1061,9 @@ struct anv_physical_device {
     int                                         local_fd;
     int                                         master_fd;
     struct drm_i915_query_engine_info *         engine_info;
+
+    void (*cmd_emit_timestamp)(struct anv_batch *, struct anv_bo *, uint32_t );
+    struct intel_measure_device                 measure_device;
 };
 
 struct anv_app_info {
@@ -2942,6 +2946,8 @@ enum anv_cmd_buffer_exec_mode {
    ANV_CMD_BUFFER_EXEC_MODE_CALL_AND_RETURN,
 };
 
+struct anv_measure_batch;
+
 struct anv_cmd_buffer {
    struct vk_object_base                        base;
 
@@ -2996,6 +3002,8 @@ struct anv_cmd_buffer {
 
    /* Set by SetPerformanceMarkerINTEL, written into queries by CmdBeginQuery */
    uint64_t                                     intel_perf_marker;
+
+   struct anv_measure_batch *measure;
 };
 
 VkResult anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer);

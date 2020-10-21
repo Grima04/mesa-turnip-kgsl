@@ -114,6 +114,8 @@ libanv_files = files(
   'anv_genX.h',
   'anv_image.c',
   'anv_intel.c',
+  'anv_measure.c',
+  'anv_measure.h',
   'anv_nir.h',
   'anv_nir_add_base_work_group_id.c',
   'anv_nir_apply_pipeline_layout.c',
