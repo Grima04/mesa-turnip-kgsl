@@ -76,6 +76,7 @@
    dispatch
    gallium/index
    android
+   Linux Kernel Drivers <https://www.kernel.org/doc/html/latest/gpu/>
 
 .. toctree::
    :maxdepth: 1
