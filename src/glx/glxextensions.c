@@ -695,17 +695,33 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
 
    if (display_is_direct_capable) {
       for (i = 0; i < __GLX_EXT_BYTES; i++) {
-         usable[i] = (client_glx_support[i] & client_glx_only[i])
-            | (client_glx_support[i] & psc->direct_support[i] &
-               server_support[i])
-            | (client_glx_support[i] & psc->direct_support[i] &
-               direct_glx_only[i]);
+         /* Enable extensions that the client supports that only have a client-side
+          * component.
+          */
+         unsigned char u = client_glx_support[i] & client_glx_only[i];
+
+         /* Enable extensions that the client supports, are supported for direct
+          * rendering, and either are supported by the server or only have a
+          * direct-rendering component.
+          */
+         u |= client_glx_support[i] & psc->direct_support[i] &
+                 (server_support[i] | direct_glx_only[i]);
+
+         usable[i] = u;
+
       }
    }
    else {
       for (i = 0; i < __GLX_EXT_BYTES; i++) {
-         usable[i] = (client_glx_support[i] & client_glx_only[i])
-            | (client_glx_support[i] & server_support[i]);
+         /* Enable extensions that the client supports that only have a
+          * client-side component.
+          */
+         unsigned char u = client_glx_support[i] & client_glx_only[i];
+
+         /* Enable extensions that the client and server both support */
+         u |= client_glx_support[i] & server_support[i];
+
+         usable[i] = u;
       }
    }
 
