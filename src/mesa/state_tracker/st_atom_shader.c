@@ -125,7 +125,7 @@ st_update_fp( struct st_context *st )
                             st->ctx->Light.ShadeModel == GL_FLAT;
 
       /* _NEW_COLOR */
-      key.lower_alpha_func = COMPARE_FUNC_NEVER;
+      key.lower_alpha_func = COMPARE_FUNC_ALWAYS;
       if (st->lower_alpha_test && _mesa_is_alpha_test_enabled(st->ctx))
          key.lower_alpha_func = st->ctx->Color.AlphaFunc;
 

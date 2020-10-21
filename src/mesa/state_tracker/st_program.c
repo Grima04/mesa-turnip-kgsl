@@ -1247,7 +1247,7 @@ st_create_fp_variant(struct st_context *st,
          finalize = true;
       }
 
-      if (key->lower_alpha_func != COMPARE_FUNC_NEVER) {
+      if (key->lower_alpha_func != COMPARE_FUNC_ALWAYS) {
          _mesa_add_state_reference(params, alpha_ref_state);
          NIR_PASS_V(state.ir.nir, nir_lower_alpha_test, key->lower_alpha_func,
                     false, alpha_ref_state);
@@ -1943,6 +1943,7 @@ st_precompile_shader_variant(struct st_context *st,
       memset(&key, 0, sizeof(key));
 
       key.st = st->has_shareable_shaders ? NULL : st;
+      key.lower_alpha_func = COMPARE_FUNC_ALWAYS;
       st_get_fp_variant(st, p, &key);
       break;
    }

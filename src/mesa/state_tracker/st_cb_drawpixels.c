@@ -1148,6 +1148,7 @@ get_color_fp_variant(struct st_context *st)
    key.pixelMaps = ctx->Pixel.MapColorFlag;
    key.clamp_color = st->clamp_frag_color_in_shader &&
                      ctx->Color._ClampFragmentColor;
+   key.lower_alpha_func = COMPARE_FUNC_ALWAYS;
 
    fpv = st_get_fp_variant(st, st->fp, &key);
 
@@ -1177,6 +1178,7 @@ get_color_index_fp_variant(struct st_context *st)
    key.pixelMaps = 0;
    key.clamp_color = st->clamp_frag_color_in_shader &&
                      ctx->Color._ClampFragmentColor;
+   key.lower_alpha_func = COMPARE_FUNC_ALWAYS;
 
    fpv = st_get_fp_variant(st, st->fp, &key);
 
