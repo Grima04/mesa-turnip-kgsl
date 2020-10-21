@@ -763,6 +763,17 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
 
       switch (info->output_semantic[i]) {
       case VARYING_SLOT_POS:
+         /* If we are going to cull everything (rasterizer_discard), discard
+          * the position. This is useful for analyzing maximum theoretical
+          * performance without VS input loads.
+          */
+         if (shader->key.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE &&
+             shader->key.opt.ngg_culling & SI_NGG_CULL_BACK_FACE) {
+            for (unsigned j = 0; j < 4; j++)
+               LLVMBuildStore(builder, LLVMGetUndef(ctx->ac.f32), addrs[4 * i + j]);
+            break;
+         }
+
          pos_index = i;
          for (unsigned j = 0; j < 4; j++) {
             position[j] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
