@@ -1115,6 +1115,12 @@ decode_pipelined_pointers(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
    decode_cc_state(ctx, p[6]);
 }
 
+static void
+decode_cps_pointers(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
+{
+   decode_dynamic_state_pointers(ctx, "CPS_STATE", p, 1);
+}
+
 struct custom_decoder {
    const char *cmd_name;
    void (*decode)(struct intel_batch_decode_ctx *ctx, const uint32_t *p);
@@ -1159,7 +1165,8 @@ struct custom_decoder {
    { "3DSTATE_SCISSOR_STATE_POINTERS", decode_3dstate_scissor_state_pointers },
    { "3DSTATE_SLICE_TABLE_STATE_POINTERS", decode_3dstate_slice_table_state_pointers },
    { "MI_LOAD_REGISTER_IMM", decode_load_register_imm },
-   { "3DSTATE_PIPELINED_POINTERS", decode_pipelined_pointers }
+   { "3DSTATE_PIPELINED_POINTERS", decode_pipelined_pointers },
+   { "3DSTATE_CPS_POINTERS", decode_cps_pointers },
 };
 
 void
