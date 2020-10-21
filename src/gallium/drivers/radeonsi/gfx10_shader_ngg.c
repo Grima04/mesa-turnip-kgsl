@@ -1941,7 +1941,10 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    unsigned max_esverts_base = 128;
 
    if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
-      max_gsprims_base = 128 / 3;
+      /* Exactly 1 wave32 executes culling in primitive threads (there is no
+       * divergence), other waves are idle.
+       */
+      max_gsprims_base = 32;
       max_esverts_base = max_gsprims_base * 3;
    } else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
       max_gsprims_base = 126;
