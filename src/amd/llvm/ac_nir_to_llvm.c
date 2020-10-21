@@ -2525,13 +2525,6 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
    enum glsl_sampler_dim dim;
    bool is_array;
    if (bindless) {
-      if (instr->intrinsic == nir_intrinsic_bindless_image_atomic_imin ||
-          instr->intrinsic == nir_intrinsic_bindless_image_atomic_umin ||
-          instr->intrinsic == nir_intrinsic_bindless_image_atomic_imax ||
-          instr->intrinsic == nir_intrinsic_bindless_image_atomic_umax) {
-         ASSERTED const GLenum format = nir_intrinsic_format(instr);
-         assert(format == GL_R32UI || format == GL_R32I);
-      }
       dim = nir_intrinsic_image_dim(instr);
       is_array = nir_intrinsic_image_array(instr);
    } else {
