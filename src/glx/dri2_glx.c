@@ -1232,7 +1232,6 @@ dri2CreateScreen(int screen, struct glx_display * priv)
    char *driverName = NULL, *loader_driverName, *deviceName, *tmp;
    drm_magic_t magic;
    int i;
-   unsigned char disable;
 
    psc = calloc(1, sizeof *psc);
    if (psc == NULL)
@@ -1351,16 +1350,11 @@ dri2CreateScreen(int screen, struct glx_display * priv)
       psp->waitForSBC = dri2WaitForSBC;
       psp->setSwapInterval = dri2SetSwapInterval;
       psp->getSwapInterval = dri2GetSwapInterval;
-      if (psc->config->configQueryb(psc->driScreen,
-                                    "glx_disable_oml_sync_control",
-                                    &disable) || !disable)
-         __glXEnableDirectExtension(&psc->base, "GLX_OML_sync_control");
+
+      __glXEnableDirectExtension(&psc->base, "GLX_OML_sync_control");
    }
 
-   if (psc->config->configQueryb(psc->driScreen,
-                                 "glx_disable_sgi_video_sync",
-                                 &disable) || !disable)
-      __glXEnableDirectExtension(&psc->base, "GLX_SGI_video_sync");
+   __glXEnableDirectExtension(&psc->base, "GLX_SGI_video_sync");
 
    if (psc->config->base.version > 1 &&
           psc->config->configQuerys(psc->driScreen, "glx_extension_override",

@@ -311,19 +311,6 @@
    DRI_CONF_OPT_B(mesa_no_error, def, \
                   "Disable GL driver error checking")
 
-#define DRI_CONF_DISABLE_EXT_BUFFER_AGE(def) \
-   DRI_CONF_OPT_B(glx_disable_ext_buffer_age, def, \
-                  "Disable the GLX_EXT_buffer_age extension")
-
-#define DRI_CONF_DISABLE_OML_SYNC_CONTROL(def) \
-   DRI_CONF_OPT_B(glx_disable_oml_sync_control, def, \
-                  "Disable the GLX_OML_sync_control extension")
-
-#define DRI_CONF_DISABLE_SGI_VIDEO_SYNC(def) \
-   DRI_CONF_OPT_B(glx_disable_sgi_video_sync, def, \
-                  "Disable the GLX_SGI_video_sync extension")
-
-
 
 /**
  * \brief Miscellaneous configuration options
