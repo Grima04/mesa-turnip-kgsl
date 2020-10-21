@@ -27,7 +27,6 @@
 
    lists
    bugs
-   Mesa/DRI Wiki <https://dri.freedesktop.org/>
 
 .. toctree::
    :maxdepth: 1
