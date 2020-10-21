@@ -93,7 +93,6 @@
 
    OpenGL Website <https://www.opengl.org>
    DRI Website <https://dri.freedesktop.org>
-   freedesktop.org <https://www.freedesktop.org>
    Developer Blogs <https://planet.freedesktop.org>
 
 .. toctree::
@@ -101,4 +100,4 @@
    :caption: Hosted by:
    :hidden:
 
-   freedesktop.org <https://planet.freedesktop.org>
+   freedesktop.org <https://www.freedesktop.org>
