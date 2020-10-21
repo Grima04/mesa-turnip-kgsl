@@ -182,9 +182,11 @@
 
   <enum name="RGB Component Order">
     <value name="RGBA" value="0"/>
-    <value name="BRGA" value="2"/>
+    <value name="GRBA" value="2"/>
     <value name="BGRA" value="4"/>
     <value name="ARGB" value="8"/>
+    <value name="AGRB" value="10"/>
+    <value name="ABGR" value="12"/>
     <value name="RGB1" value="16"/>
     <value name="GRB1" value="18"/>
     <value name="BGR1" value="20"/>
