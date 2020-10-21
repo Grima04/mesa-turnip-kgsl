@@ -127,6 +127,7 @@ public:
    bool run_tes();
    bool run_gs();
    bool run_cs(bool allow_spilling);
+   bool run_bs(bool allow_spilling);
    void optimize();
    void allocate_registers(bool allow_spilling);
    void setup_fs_payload_gen4();
@@ -249,6 +250,8 @@ public:
    void nir_emit_fs_intrinsic(const brw::fs_builder &bld,
                               nir_intrinsic_instr *instr);
    void nir_emit_cs_intrinsic(const brw::fs_builder &bld,
+                              nir_intrinsic_instr *instr);
+   void nir_emit_bs_intrinsic(const brw::fs_builder &bld,
                               nir_intrinsic_instr *instr);
    fs_reg get_nir_image_intrinsic_image(const brw::fs_builder &bld,
                                         nir_intrinsic_instr *instr);

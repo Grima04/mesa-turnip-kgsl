@@ -152,6 +152,13 @@ struct brw_compiler {
  */
 #define BRW_SUBGROUP_SIZE 32
 
+static inline bool
+brw_shader_stage_is_bindless(gl_shader_stage stage)
+{
+   return stage >= MESA_SHADER_RAYGEN &&
+          stage <= MESA_SHADER_CALLABLE;
+}
+
 /**
  * Program key structures.
  *
@@ -481,6 +488,10 @@ struct brw_cs_prog_key {
    struct brw_base_prog_key base;
 };
 
+struct brw_bs_prog_key {
+   struct brw_base_prog_key base;
+};
+
 /* brw_any_prog_key is any of the keys that map to an API stage */
 union brw_any_prog_key {
    struct brw_base_prog_key base;
@@ -490,6 +501,7 @@ union brw_any_prog_key {
    struct brw_gs_prog_key gs;
    struct brw_wm_prog_key wm;
    struct brw_cs_prog_key cs;
+   struct brw_bs_prog_key bs;
 };
 
 /*
@@ -986,6 +998,7 @@ struct brw_cs_prog_data {
 
    bool uses_barrier;
    bool uses_num_work_groups;
+   bool uses_btd_stack_ids;
 
    struct {
       struct brw_push_const_block cross_thread;
@@ -1012,6 +1025,12 @@ brw_cs_prog_data_prog_offset(const struct brw_cs_prog_data *prog_data,
    assert(prog_data->prog_mask & (1 << index));
    return prog_data->prog_offset[index];
 }
+
+struct brw_bs_prog_data {
+   struct brw_stage_prog_data base;
+   uint8_t simd_size;
+   uint32_t stack_size;
+};
 
 /**
  * Enum representing the i965-specific vertex results that don't correspond
@@ -1340,6 +1359,7 @@ union brw_any_prog_data {
    struct brw_gs_prog_data gs;
    struct brw_wm_prog_data wm;
    struct brw_cs_prog_data cs;
+   struct brw_bs_prog_data bs;
 };
 
 #define DEFINE_PROG_DATA_DOWNCAST(STAGE, CHECK)                            \
@@ -1364,6 +1384,7 @@ DEFINE_PROG_DATA_DOWNCAST(tes, prog_data->stage == MESA_SHADER_TESS_EVAL)
 DEFINE_PROG_DATA_DOWNCAST(gs,  prog_data->stage == MESA_SHADER_GEOMETRY)
 DEFINE_PROG_DATA_DOWNCAST(wm,  prog_data->stage == MESA_SHADER_FRAGMENT)
 DEFINE_PROG_DATA_DOWNCAST(cs,  prog_data->stage == MESA_SHADER_COMPUTE)
+DEFINE_PROG_DATA_DOWNCAST(bs,  brw_shader_stage_is_bindless(prog_data->stage))
 
 DEFINE_PROG_DATA_DOWNCAST(vue, prog_data->stage == MESA_SHADER_VERTEX ||
                                prog_data->stage == MESA_SHADER_TESS_CTRL ||
@@ -1538,6 +1559,20 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                struct brw_cs_prog_data *prog_data,
                const nir_shader *nir,
                int shader_time_index,
+               struct brw_compile_stats *stats,
+               char **error_str);
+
+/**
+ * Compile a Ray Tracing shader.
+ *
+ * Returns the final assembly and the program's size.
+ */
+const unsigned *
+brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
+               void *mem_ctx,
+               const struct brw_bs_prog_key *key,
+               struct brw_bs_prog_data *prog_data,
+               struct nir_shader *shader,
                struct brw_compile_stats *stats,
                char **error_str);
 

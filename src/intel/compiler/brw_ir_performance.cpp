@@ -355,6 +355,7 @@ namespace {
       case TCS_OPCODE_SRC0_010_IS_ZERO:
       case TCS_OPCODE_GET_PRIMITIVE_ID:
       case TES_OPCODE_GET_PRIMITIVE_ID:
+      case SHADER_OPCODE_GET_DSS_ID:
          if (devinfo->gen >= 11) {
             return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                   0, 10, 6 /* XXX */, 14, 0, 0);
@@ -1086,6 +1087,11 @@ namespace {
             } else {
                abort();
             }
+
+         case GEN_RT_SFID_BINDLESS_THREAD_DISPATCH:
+            return calculate_desc(info, unit_spawner, 2, 0, 0, 0 /* XXX */, 0,
+                                  10 /* XXX */, 0, 0, 0, 0, 0);
+
          default:
             abort();
          }

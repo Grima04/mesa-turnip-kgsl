@@ -6033,6 +6033,76 @@ lower_math_logical_send(const fs_builder &bld, fs_inst *inst)
    }
 }
 
+static void
+lower_btd_logical_send(const fs_builder &bld, fs_inst *inst)
+{
+   const gen_device_info *devinfo = bld.shader->devinfo;
+   fs_reg global_addr = inst->src[0];
+   const fs_reg &btd_record = inst->src[1];
+
+   const unsigned mlen = 2;
+   const fs_builder ubld = bld.exec_all().group(8, 0);
+   fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
+
+   ubld.MOV(header, brw_imm_ud(0));
+   switch (inst->opcode) {
+   case SHADER_OPCODE_BTD_SPAWN_LOGICAL:
+      assert(type_sz(global_addr.type) == 8 && global_addr.stride == 0);
+      global_addr.type = BRW_REGISTER_TYPE_UD;
+      global_addr.stride = 1;
+      ubld.group(2, 0).MOV(header, global_addr);
+      break;
+
+   case SHADER_OPCODE_BTD_RETIRE_LOGICAL:
+      /* The bottom bit is the Stack ID release bit */
+      ubld.group(1, 0).MOV(header, brw_imm_ud(1));
+      break;
+
+   default:
+      unreachable("Invalid BTD message");
+   }
+
+   /* Stack IDs are always in R1 regardless of whether we're coming from a
+    * bindless shader or a regular compute shader.
+    */
+   fs_reg stack_ids =
+      retype(byte_offset(header, REG_SIZE), BRW_REGISTER_TYPE_UW);
+   bld.MOV(stack_ids, retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW));
+
+   unsigned ex_mlen = 0;
+   fs_reg payload;
+   if (inst->opcode == SHADER_OPCODE_BTD_SPAWN_LOGICAL) {
+      ex_mlen = 2 * (inst->exec_size / 8);
+      payload = bld.move_to_vgrf(btd_record, 1);
+   } else {
+      assert(inst->opcode == SHADER_OPCODE_BTD_RETIRE_LOGICAL);
+      /* All these messages take a BTD and things complain if we don't provide
+       * one for RETIRE.  However, it shouldn't ever actually get used so fill
+       * it with zero.
+       */
+      ex_mlen = 2 * (inst->exec_size / 8);
+      payload = bld.move_to_vgrf(brw_imm_uq(0), 1);
+   }
+
+   /* Update the original instruction. */
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->mlen = mlen;
+   inst->ex_mlen = ex_mlen;
+   inst->header_size = 0; /* HW docs require has_header = false */
+   inst->send_has_side_effects = true;
+   inst->send_is_volatile = false;
+
+   /* Set up SFID and descriptors */
+   inst->sfid = GEN_RT_SFID_BINDLESS_THREAD_DISPATCH;
+   inst->desc = brw_btd_spawn_desc(devinfo, inst->exec_size,
+                                   GEN_RT_BTD_MESSAGE_SPAWN);
+   inst->resize_sources(4);
+   inst->src[0] = brw_imm_ud(0); /* desc */
+   inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   inst->src[2] = header;
+   inst->src[3] = payload;
+}
+
 bool
 fs_visitor::lower_logical_sends()
 {
@@ -6176,6 +6246,11 @@ fs_visitor::lower_logical_sends()
          } else {
             continue;
          }
+
+      case SHADER_OPCODE_BTD_SPAWN_LOGICAL:
+      case SHADER_OPCODE_BTD_RETIRE_LOGICAL:
+         lower_btd_logical_send(ibld, inst);
+         break;
 
       default:
          continue;
@@ -7546,7 +7621,8 @@ void
 fs_visitor::setup_cs_payload()
 {
    assert(devinfo->gen >= 7);
-   payload.num_regs = 1;
+   /* TODO: Fill out uses_btd_stack_ids automatically */
+   payload.num_regs = 1 + brw_cs_prog_data(prog_data)->uses_btd_stack_ids;
 }
 
 brw::register_pressure::register_pressure(const fs_visitor *v)
@@ -8454,6 +8530,43 @@ fs_visitor::run_cs(bool allow_spilling)
    if (failed)
       return false;
 
+   emit_cs_terminate();
+
+   if (shader_time_index >= 0)
+      emit_shader_time_end();
+
+   calculate_cfg();
+
+   optimize();
+
+   assign_curb_setup();
+
+   fixup_3src_null_dest();
+   allocate_registers(allow_spilling);
+
+   if (failed)
+      return false;
+
+   return !failed;
+}
+
+bool
+fs_visitor::run_bs(bool allow_spilling)
+{
+   assert(stage >= MESA_SHADER_RAYGEN && stage <= MESA_SHADER_CALLABLE);
+
+   /* R0: thread header, R1: stack IDs, R2: argument addresses */
+   payload.num_regs = 3;
+
+   if (shader_time_index >= 0)
+      emit_shader_time_begin();
+
+   emit_nir_code();
+
+   if (failed)
+      return false;
+
+   /* TODO(RT): Perhaps rename this? */
    emit_cs_terminate();
 
    if (shader_time_index >= 0)
@@ -9421,6 +9534,103 @@ brw_cs_simd_size_for_group_size(const struct gen_device_info *devinfo,
    assert(mask & simd32);
    assert(group_size <= 32 * max_threads);
    return 32;
+}
+
+const unsigned *
+brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
+               void *mem_ctx,
+               const struct brw_bs_prog_key *key,
+               struct brw_bs_prog_data *prog_data,
+               nir_shader *shader,
+               struct brw_compile_stats *stats,
+               char **error_str)
+{
+   prog_data->base.stage = shader->info.stage;
+   prog_data->stack_size = shader->scratch_size;
+
+   const unsigned max_dispatch_width = 16;
+   brw_nir_apply_key(shader, compiler, &key->base, max_dispatch_width, true);
+   brw_postprocess_nir(shader, compiler, true);
+
+   fs_visitor *v = NULL, *v8 = NULL, *v16 = NULL;
+   bool has_spilled = false;
+
+   if (likely(!(INTEL_DEBUG & DEBUG_NO8))) {
+      v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+                          &prog_data->base, shader,
+                          8, -1 /* shader time */);
+      const bool allow_spilling = true;
+      if (!v8->run_bs(allow_spilling)) {
+         if (error_str)
+            *error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
+         delete v8;
+         return NULL;
+      } else {
+         v = v8;
+         prog_data->simd_size = 8;
+         if (v8->spilled_any_registers)
+            has_spilled = true;
+      }
+   }
+
+   if (!has_spilled && likely(!(INTEL_DEBUG & DEBUG_NO16))) {
+      v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+                           &prog_data->base, shader,
+                           16, -1 /* shader time */);
+      const bool allow_spilling = (v == NULL);
+      if (!v16->run_bs(allow_spilling)) {
+         compiler->shader_perf_log(log_data,
+                                   "SIMD16 shader failed to compile: %s",
+                                   v16->fail_msg);
+         if (v == NULL) {
+            assert(v8 == NULL);
+            if (error_str) {
+               *error_str = ralloc_asprintf(
+                  mem_ctx, "SIMD8 disabled and couldn't generate SIMD16: %s",
+                  v16->fail_msg);
+            }
+            delete v16;
+            return NULL;
+         }
+      } else {
+         v = v16;
+         prog_data->simd_size = 16;
+         if (v16->spilled_any_registers)
+            has_spilled = true;
+      }
+   }
+
+   if (unlikely(v == NULL)) {
+      assert(INTEL_DEBUG & (DEBUG_NO8 | DEBUG_NO16));
+      if (error_str) {
+         *error_str = ralloc_strdup(mem_ctx,
+            "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
+      }
+      return NULL;
+   }
+
+   assert(v);
+
+   fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
+                  v->runtime_check_aads_emit, shader->info.stage);
+   if (INTEL_DEBUG & DEBUG_RT) {
+      char *name = ralloc_asprintf(mem_ctx, "%s %s shader %s",
+                                   shader->info.label ?
+                                      shader->info.label : "unnamed",
+                                   gl_shader_stage_name(shader->info.stage),
+                                   shader->info.name);
+      g.enable_debug(name);
+   }
+
+   g.generate_code(v->cfg, prog_data->simd_size, v->shader_stats,
+                   v->performance_analysis.require(), stats);
+
+   delete v8;
+   delete v16;
+
+   g.add_const_data(shader->constant_data, shader->constant_data_size);
+
+   return g.get_assembly();
 }
 
 /**

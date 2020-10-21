@@ -1081,3 +1081,12 @@ store("ssbo_block_intel", [-1, 1], [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, offset }.
 store("shared_block_intel", [1], [BASE, WRMASK, ALIGN_MUL, ALIGN_OFFSET])
 
+# Intrinsics for Intel bindless thread dispatch
+system_value("btd_dss_id_intel", 1)
+system_value("btd_stack_id_intel", 1)
+system_value("btd_global_arg_addr_intel", 1, bit_sizes=[64])
+system_value("btd_local_arg_addr_intel", 1, bit_sizes=[64])
+# src[] = { global_arg_addr, btd_record }
+intrinsic("btd_spawn_intel", src_comp=[1, 1])
+# src[] = { }
+intrinsic("btd_retire_intel")

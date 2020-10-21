@@ -524,6 +524,15 @@ schedule_node::set_latency_gen7(bool is_haswell)
          }
          break;
 
+      case GEN_RT_SFID_BINDLESS_THREAD_DISPATCH:
+         /* TODO.
+          *
+          * We'll assume for the moment that this is pretty quick as it
+          * doesn't actually return any data.
+          */
+         latency = 200;
+         break;
+
       default:
          unreachable("Unknown SFID");
       }

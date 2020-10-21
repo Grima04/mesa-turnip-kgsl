@@ -497,6 +497,14 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
       case MESA_SHADER_KERNEL:
          nir_emit_cs_intrinsic(abld, nir_instr_as_intrinsic(instr));
          break;
+      case MESA_SHADER_RAYGEN:
+      case MESA_SHADER_ANY_HIT:
+      case MESA_SHADER_CLOSEST_HIT:
+      case MESA_SHADER_MISS:
+      case MESA_SHADER_INTERSECTION:
+      case MESA_SHADER_CALLABLE:
+         nir_emit_bs_intrinsic(abld, nir_instr_as_intrinsic(instr));
+         break;
       default:
          unreachable("unsupported shader stage");
       }
@@ -3871,6 +3879,31 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
    }
 }
 
+void
+fs_visitor::nir_emit_bs_intrinsic(const fs_builder &bld,
+                                  nir_intrinsic_instr *instr)
+{
+   assert(brw_shader_stage_is_bindless(stage));
+
+   fs_reg dest;
+   if (nir_intrinsic_infos[instr->intrinsic].has_dest)
+      dest = get_nir_dest(instr->dest);
+
+   switch (instr->intrinsic) {
+   case nir_intrinsic_load_btd_global_arg_addr_intel:
+      bld.MOV(dest, retype(brw_vec1_grf(2, 0), dest.type));
+      break;
+
+   case nir_intrinsic_load_btd_local_arg_addr_intel:
+      bld.MOV(dest, retype(brw_vec1_grf(2, 2), dest.type));
+      break;
+
+   default:
+      nir_emit_intrinsic(bld, instr);
+      break;
+   }
+}
+
 static fs_reg
 brw_nir_reduction_op_identity(const fs_builder &bld,
                               nir_op op, brw_reg_type type)
@@ -5435,6 +5468,44 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       assert(written == total);
       break;
    }
+
+   case nir_intrinsic_load_btd_dss_id_intel:
+      bld.emit(SHADER_OPCODE_GET_DSS_ID,
+               retype(dest, BRW_REGISTER_TYPE_UD));
+      break;
+
+   case nir_intrinsic_load_btd_stack_id_intel:
+      if (stage == MESA_SHADER_COMPUTE) {
+         assert(brw_cs_prog_data(prog_data)->uses_btd_stack_ids);
+      } else {
+         assert(brw_shader_stage_is_bindless(stage));
+      }
+      /* Stack IDs are always in R1 regardless of whether we're coming from a
+       * bindless shader or a regular compute shader.
+       */
+      bld.MOV(retype(dest, BRW_REGISTER_TYPE_UD),
+              retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW));
+      break;
+
+   case nir_intrinsic_btd_spawn_intel:
+      if (stage == MESA_SHADER_COMPUTE) {
+         assert(brw_cs_prog_data(prog_data)->uses_btd_stack_ids);
+      } else {
+         assert(brw_shader_stage_is_bindless(stage));
+      }
+      bld.emit(SHADER_OPCODE_BTD_SPAWN_LOGICAL, bld.null_reg_ud(),
+               bld.emit_uniformize(get_nir_src(instr->src[0])),
+               get_nir_src(instr->src[1]));
+      break;
+
+   case nir_intrinsic_btd_retire_intel:
+      if (stage == MESA_SHADER_COMPUTE) {
+         assert(brw_cs_prog_data(prog_data)->uses_btd_stack_ids);
+      } else {
+         assert(brw_shader_stage_is_bindless(stage));
+      }
+      bld.emit(SHADER_OPCODE_BTD_RETIRE_LOGICAL);
+      break;
 
    default:
       unreachable("unknown intrinsic");

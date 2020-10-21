@@ -2593,6 +2593,35 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          brw_float_controls_mode(p, src[0].d, src[1].d);
          break;
 
+      case SHADER_OPCODE_GET_DSS_ID:
+         /* The Slice, Dual-SubSlice, SubSlice, EU, and Thread IDs are all
+          * stored in sr0.0.  Normally, for reading from HW regs, we'd just do
+          * this in the IR and let the back-end generate some code but these
+          * live in the state register which tends to have special rules.
+          *
+          * For convenience, we combine Slice ID and Dual-SubSlice ID into a
+          * single ID.
+          */
+         if (devinfo->gen == 12) {
+            /* There is a SWSB restriction that requires that any time sr0 is
+             * accessed both the instruction doing the access and the next one
+             * have SWSB set to RegDist(1).
+             */
+            if (brw_get_default_swsb(p).mode != TGL_SBID_NULL)
+               brw_SYNC(p, TGL_SYNC_NOP);
+            brw_set_default_swsb(p, tgl_swsb_regdist(1));
+            brw_SHR(p, dst, brw_sr0_reg(0), brw_imm_ud(9));
+            brw_set_default_swsb(p, tgl_swsb_regdist(1));
+            brw_AND(p, dst, dst, brw_imm_ud(0x1f));
+         } else {
+            /* These move around basically every hardware generation, so don't
+             * do any >= checks and fail if the platform hasn't explicitly
+             * been enabled here.
+             */
+            unreachable("Unsupported platform");
+         }
+         break;
+
       default:
          unreachable("Unsupported opcode");
 

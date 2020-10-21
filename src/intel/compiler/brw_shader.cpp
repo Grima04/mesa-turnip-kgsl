@@ -547,6 +547,12 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "rnd_mode";
    case SHADER_OPCODE_FLOAT_CONTROL_MODE:
       return "float_control_mode";
+   case SHADER_OPCODE_GET_DSS_ID:
+      return "get_dss_id";
+   case SHADER_OPCODE_BTD_SPAWN_LOGICAL:
+      return "btd_spawn_logical";
+   case SHADER_OPCODE_BTD_RETIRE_LOGICAL:
+      return "btd_retire_logical";
    }
 
    unreachable("not reached");
@@ -1104,6 +1110,8 @@ backend_instruction::has_side_effects() const
    case FS_OPCODE_SCHEDULING_FENCE:
    case SHADER_OPCODE_OWORD_BLOCK_WRITE_LOGICAL:
    case SHADER_OPCODE_A64_OWORD_BLOCK_WRITE_LOGICAL:
+   case SHADER_OPCODE_BTD_SPAWN_LOGICAL:
+   case SHADER_OPCODE_BTD_RETIRE_LOGICAL:
       return true;
    default:
       return eot;
