@@ -135,6 +135,12 @@ html_extra_path = [
   'README.WIN32',
 ]
 
+html_redirects = [
+  ('llvmpipe', 'gallium/drivers/llvmpipe.html'),
+  ('postprocess', 'gallium/postprocess.html'),
+  ('webmaster', 'https://www.mesa3d.org/website/'),
+]
+
 
 # -- Options for HTMLHelp output ------------------------------------------
 

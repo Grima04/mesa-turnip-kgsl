@@ -2,12 +2,6 @@ import os
 import pathlib
 from urllib.parse import urlparse
 
-redirects = [
-    ('llvmpipe', 'gallium/drivers/llvmpipe.html'),
-    ('postprocess', 'gallium/postprocess.html'),
-    ('webmaster', 'https://www.mesa3d.org/website/')
-]
-
 def create_redirect(dst):
     tpl = '<html><head><meta http-equiv="refresh" content="0; url={0}"><script>window.location.replace("{0}")</script></head></html>'
     return tpl.format(dst)
@@ -15,7 +9,7 @@ def create_redirect(dst):
 def create_redirects(app, docname):
     if not app.builder.name == 'html':
         return
-    for src, dst in redirects:
+    for src, dst in app.config.html_redirects:
         path = os.path.join(app.outdir, '{0}.html'.format(src))
 
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -29,4 +23,5 @@ def create_redirects(app, docname):
             f.write(create_redirect(dst))
 
 def setup(app):
+    app.add_config_value('html_redirects', [], '')
     app.connect('build-finished', create_redirects)
