@@ -8609,9 +8609,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          has_bias = true;
          break;
       case nir_tex_src_lod: {
-         nir_const_value *val = nir_src_as_const_value(instr->src[i].src);
-
-         if (val && val->f32 <= 0.0) {
+         if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0) {
             level_zero = true;
          } else {
             lod = get_ssa_temp(ctx, instr->src[i].src.ssa);
