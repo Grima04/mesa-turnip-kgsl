@@ -60,13 +60,13 @@ panfrost_query_raw(
         return get_param.value;
 }
 
-unsigned
+static unsigned
 panfrost_query_gpu_version(int fd)
 {
         return panfrost_query_raw(fd, DRM_PANFROST_PARAM_GPU_PROD_ID, true, 0);
 }
 
-unsigned
+static unsigned
 panfrost_query_core_count(int fd)
 {
         /* On older kernels, worst-case to 16 cores */
@@ -77,7 +77,7 @@ panfrost_query_core_count(int fd)
         return util_bitcount(mask);
 }
 
-unsigned
+static unsigned
 panfrost_query_thread_tls_alloc(int fd)
 {
         /* On older kernels, we worst-case to 256 threads, the architectural
