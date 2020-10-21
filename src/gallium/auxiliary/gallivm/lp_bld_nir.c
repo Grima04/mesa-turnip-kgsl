@@ -585,6 +585,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    case nir_op_flog2:
       result = lp_build_log2_safe(&bld_base->base, src[0]);
       break;
+   case nir_op_flt:
    case nir_op_flt32:
       result = fcmp32(bld_base, PIPE_FUNC_LESS, src_bit_size[0], src);
       break;
