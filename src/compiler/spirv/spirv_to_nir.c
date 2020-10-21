@@ -36,9 +36,6 @@
 #include "util/u_math.h"
 
 #include <stdio.h>
-#if UTIL_ARCH_BIG_ENDIAN
-#include <byteswap.h>
-#endif
 
 void
 vtn_log(struct vtn_builder *b, enum nir_spirv_debug_level level,
@@ -415,7 +412,7 @@ vtn_string_literal(struct vtn_builder *b, const uint32_t *words,
    {
       uint32_t *copy = ralloc_array(b, uint32_t, word_count);
       for (unsigned i = 0; i < word_count; i++)
-         copy[i] = bswap_32(words[i]);
+         copy[i] = util_bswap32(words[i]);
       words = copy;
    }
 #endif
