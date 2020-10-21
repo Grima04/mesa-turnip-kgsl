@@ -15,6 +15,7 @@ def create_redirects(app, docname):
         return
     for src, dst in redirects:
         path = os.path.join(app.outdir, '{0}.html'.format(src))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as f:
             f.write(create_redirect(dst))
 
