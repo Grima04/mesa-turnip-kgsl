@@ -2037,8 +2037,12 @@ retry_select_mode:
             max_esverts =
                MIN2(max_esverts, (max_lds_size - max_gsprims * gsprim_lds_size) / esvert_lds_size);
          max_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
+
          /* Hardware restriction: minimum value of max_esverts */
-         max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+         if (gs_sel->screen->info.chip_class == GFX10)
+            max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+         else
+            max_esverts = MAX2(max_esverts, min_esverts);
 
          max_gsprims = align(max_gsprims, wavesize);
          max_gsprims = MIN2(max_gsprims, max_gsprims_base);
@@ -2056,10 +2060,16 @@ retry_select_mode:
       } while (orig_max_esverts != max_esverts || orig_max_gsprims != max_gsprims);
 
       /* Verify the restriction. */
-      assert(max_esverts >= min_esverts - 1 + max_verts_per_prim);
+      if (gs_sel->screen->info.chip_class == GFX10)
+         assert(max_esverts >= min_esverts - 1 + max_verts_per_prim);
+      else
+         assert(max_esverts >= min_esverts);
    } else {
       /* Hardware restriction: minimum value of max_esverts */
-      max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+      if (gs_sel->screen->info.chip_class == GFX10)
+         max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+      else
+         max_esverts = MAX2(max_esverts, min_esverts);
    }
 
    unsigned max_out_vertices =
@@ -2077,12 +2087,16 @@ retry_select_mode:
       prim_amp_factor = gs_sel->info.base.gs.vertices_out;
    }
 
-   /* The GE only checks against the maximum number of ES verts after
+   /* On gfx10, the GE only checks against the maximum number of ES verts after
     * allocating a full GS primitive. So we need to ensure that whenever
     * this check passes, there is enough space for a full primitive without
     * vertex reuse.
     */
-   shader->ngg.hw_max_esverts = max_esverts - max_verts_per_prim + 1;
+   if (gs_sel->screen->info.chip_class == GFX10)
+      shader->ngg.hw_max_esverts = max_esverts - max_verts_per_prim + 1;
+   else
+      shader->ngg.hw_max_esverts = max_esverts;
+
    shader->ngg.max_gsprims = max_gsprims;
    shader->ngg.max_out_verts = max_out_vertices;
    shader->ngg.prim_amp_factor = prim_amp_factor;
