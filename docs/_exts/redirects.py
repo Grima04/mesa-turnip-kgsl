@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 
 redirects = [
     ('llvmpipe', 'gallium/drivers/llvmpipe.html'),
@@ -15,7 +16,13 @@ def create_redirects(app, docname):
         return
     for src, dst in redirects:
         path = os.path.join(app.outdir, '{0}.html'.format(src))
+
         os.makedirs(os.path.dirname(path), exist_ok=True)
+
+        if urlparse(dst).scheme == "":
+            if not os.path.isfile(os.path.join(os.path.dirname(path), dst)):
+                raise Exception('{0} does not exitst'.format(dst))
+
         with open(path, 'w') as f:
             f.write(create_redirect(dst))
 
