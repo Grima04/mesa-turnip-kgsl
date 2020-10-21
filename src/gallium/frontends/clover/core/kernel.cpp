@@ -395,12 +395,10 @@ kernel::argument::create(const module::argument &marg) {
    case module::argument::constant:
       return std::unique_ptr<kernel::argument>(new constant_argument);
 
-   case module::argument::image2d_rd:
-   case module::argument::image3d_rd:
+   case module::argument::image_rd:
       return std::unique_ptr<kernel::argument>(new image_rd_argument);
 
-   case module::argument::image2d_wr:
-   case module::argument::image3d_wr:
+   case module::argument::image_wr:
       return std::unique_ptr<kernel::argument>(new image_wr_argument);
 
    case module::argument::sampler:
