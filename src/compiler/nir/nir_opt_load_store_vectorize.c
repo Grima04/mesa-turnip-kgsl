@@ -593,6 +593,9 @@ create_entry(struct vectorize_ctx *ctx,
    else if (entry->key->var)
       entry->access = entry->key->var->data.access;
 
+   if (nir_intrinsic_can_reorder(intrin))
+      entry->access |= ACCESS_CAN_REORDER;
+
    uint32_t restrict_modes = nir_var_shader_in | nir_var_shader_out;
    restrict_modes |= nir_var_shader_temp | nir_var_function_temp;
    restrict_modes |= nir_var_uniform | nir_var_mem_push_const;
@@ -919,6 +922,9 @@ may_alias(struct entry *a, struct entry *b)
 {
    assert(mode_to_index(get_variable_mode(a)) ==
           mode_to_index(get_variable_mode(b)));
+
+   if ((a->access | b->access) & ACCESS_CAN_REORDER)
+      return false;
 
    /* if the resources/variables are definitively different and both have
     * ACCESS_RESTRICT, we can assume they do not alias. */
