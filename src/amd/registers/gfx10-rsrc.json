@@ -174,7 +174,7 @@
     {"name": "SQ_EXP_PARAM", "value": 32}
    ]
   },
-  "SQ_IMG_RSRC_WORD4__BC_SWIZZLE": {
+  "SQ_IMG_RSRC_WORD3__BC_SWIZZLE": {
    "entries": [
     {"name": "BC_SWIZZLE_XYZW", "value": 0},
     {"name": "BC_SWIZZLE_XWYZ", "value": 1},
@@ -335,8 +335,8 @@
   },
   "SQ_IMG_RSRC_WORD2": {
    "fields": [
-    {"bits": [0, 13], "name": "WIDTH_HI"},
-    {"bits": [14, 29], "name": "HEIGHT"},
+    {"bits": [0, 11], "name": "WIDTH_HI"},
+    {"bits": [14, 27], "name": "HEIGHT"},
     {"bits": [31, 31], "comment": "must be 1", "name": "RESOURCE_LEVEL"}
    ]
   },
@@ -349,14 +349,14 @@
     {"bits": [12, 15], "name": "BASE_LEVEL"},
     {"bits": [16, 19], "name": "LAST_LEVEL"},
     {"bits": [20, 24], "name": "SW_MODE"},
-    {"bits": [25, 27], "enum_ref": "SQ_IMG_RSRC_WORD4__BC_SWIZZLE", "name": "BC_SWIZZLE"},
+    {"bits": [25, 27], "enum_ref": "SQ_IMG_RSRC_WORD3__BC_SWIZZLE", "name": "BC_SWIZZLE"},
     {"bits": [28, 31], "name": "TYPE"}
    ]
   },
   "SQ_IMG_RSRC_WORD4": {
    "fields": [
-    {"bits": [0, 15], "name": "DEPTH"},
-    {"bits": [16, 31], "name": "BASE_ARRAY"}
+    {"bits": [0, 12], "name": "DEPTH"},
+    {"bits": [16, 28], "name": "BASE_ARRAY"}
    ]
   },
   "SQ_IMG_RSRC_WORD5": {
