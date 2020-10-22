@@ -466,6 +466,7 @@ ir3_screen_finalize_nir(struct pipe_screen *pscreen, void *nir, bool optimize)
 {
    struct fd_screen *screen = fd_screen(pscreen);
 
+   ir3_nir_lower_io_to_temporaries(nir);
    ir3_finalize_nir(screen->compiler, nir);
 }
 

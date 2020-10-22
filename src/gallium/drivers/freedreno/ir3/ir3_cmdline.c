@@ -403,6 +403,7 @@ main(int argc, char **argv)
       return -1;
    }
 
+   ir3_nir_lower_io_to_temporaries(nir);
    ir3_finalize_nir(compiler, nir);
    ir3_nir_post_finalize(compiler, nir);
 

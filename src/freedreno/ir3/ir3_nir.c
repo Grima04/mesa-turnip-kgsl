@@ -53,7 +53,6 @@ static const nir_shader_compiler_options options = {
 		.vertex_id_zero_based = true,
 		.lower_extract_byte = true,
 		.lower_extract_word = true,
-		.lower_all_io_to_elements = true,
 		.lower_helper_invocation = true,
 		.lower_bitfield_insert_to_shifts = true,
 		.lower_bitfield_extract_to_shifts = true,
@@ -107,7 +106,6 @@ static const nir_shader_compiler_options options_a6xx = {
 		.vertex_id_zero_based = false,
 		.lower_extract_byte = true,
 		.lower_extract_word = true,
-		.lower_all_io_to_elements = true,
 		.lower_helper_invocation = true,
 		.lower_bitfield_insert_to_shifts = true,
 		.lower_bitfield_extract_to_shifts = true,
@@ -279,6 +277,44 @@ should_split_wrmask(const nir_instr *instr, const void *data)
 }
 
 void
+ir3_nir_lower_io_to_temporaries(nir_shader *s)
+{
+	/* Outputs consumed by the VPC, VS inputs, and FS outputs are all handled
+	 * by the hardware pre-loading registers at the beginning and then reading
+	 * them at the end, so we can't access them indirectly except through
+	 * normal register-indirect accesses, and therefore ir3 doesn't support
+	 * indirect accesses on those. Other i/o is lowered in ir3_nir_lower_tess,
+	 * and indirects work just fine for those. GS outputs may be consumed by
+	 * VPC, but have their own lowering in ir3_nir_lower_gs() which does
+	 * something similar to nir_lower_io_to_temporaries so we shouldn't need
+	 * to lower them.
+	 *
+	 * Note: this might be a little inefficient for VS or TES outputs which are
+	 * when the next stage isn't an FS, but it probably don't make sense to
+	 * depend on the next stage before variant creation.
+	 *
+	 * TODO: for gallium, mesa/st also does some redundant lowering, including
+	 * running this pass for GS inputs/outputs which we don't want but not
+	 * including TES outputs or FS inputs which we do need. We should probably
+	 * stop doing that once we're sure all drivers are doing their own
+	 * indirect i/o lowering.
+	 */
+	bool lower_input = s->info.stage == MESA_SHADER_VERTEX || s->info.stage == MESA_SHADER_FRAGMENT;
+	bool lower_output = s->info.stage != MESA_SHADER_TESS_CTRL && s->info.stage != MESA_SHADER_GEOMETRY;
+	if (lower_input || lower_output) {
+		NIR_PASS_V(s, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(s),
+				  lower_output, lower_input);
+
+		/* nir_lower_io_to_temporaries() creates global variables and copy
+		 * instructions which need to be cleaned up.
+		 */
+		NIR_PASS_V(s, nir_split_var_copies);
+		NIR_PASS_V(s, nir_lower_var_copies);
+		NIR_PASS_V(s, nir_lower_global_vars_to_local);
+	}
+}
+
+void
 ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 {
 	struct nir_lower_tex_options tex_options = {
@@ -302,8 +338,6 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 
 	if (s->info.stage == MESA_SHADER_GEOMETRY)
 		NIR_PASS_V(s, ir3_nir_lower_gs);
-
-	NIR_PASS_V(s, nir_lower_io_arrays_to_elements_no_indirects, false);
 
 	NIR_PASS_V(s, nir_lower_amul, ir3_glsl_type_size);
 
