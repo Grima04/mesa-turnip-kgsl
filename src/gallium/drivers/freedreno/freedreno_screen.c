@@ -613,15 +613,6 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
       return 1;
    case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
    case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
-      /* Technically this should be the same as for TEMP/CONST, since
-       * everything is just normal registers.  This is just temporary
-       * hack until load_input/store_output handle arrays in a similar
-       * way as load_var/store_var..
-       *
-       * For tessellation stages, inputs are loaded using ldlw or ldg, both
-       * of which support indirection.
-       */
-      return shader == PIPE_SHADER_TESS_CTRL || shader == PIPE_SHADER_TESS_EVAL;
    case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
    case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
       /* a2xx compiler doesn't handle indirect: */
