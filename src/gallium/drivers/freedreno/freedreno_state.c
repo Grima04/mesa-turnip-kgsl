@@ -220,12 +220,19 @@ fd_set_framebuffer_state(struct pipe_context *pctx,
 		framebuffer->width, framebuffer->height,
 		framebuffer->layers, framebuffer->samples);
 
-	fd_context_switch_from(ctx);
-
 	cso = &ctx->framebuffer;
 
 	if (util_framebuffer_state_equal(cso, framebuffer))
 		return;
+
+	/* Do this *after* checking that the framebuffer state is actually
+	 * changing.  In the fd_blitter_clear() path, we get a pfb update
+	 * to restore the current pfb state, which should not trigger us
+	 * to flush (as that can cause the batch to be freed at a point
+	 * before fd_clear() returns, but after the point where it expects
+	 * flushes to potentially happen.
+	 */
+	fd_context_switch_from(ctx);
 
 	util_copy_framebuffer_state(cso, framebuffer);
 
