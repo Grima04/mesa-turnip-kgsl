@@ -401,7 +401,8 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
 
         bool f16 = bundle.fma->dest_type == nir_type_float16;
         bool f32 = bundle.fma->dest_type == nir_type_float32;
-        bool u32 = bundle.fma->dest_type == nir_type_uint32;
+        bool u32 = bundle.fma->dest_type == nir_type_uint32 ||
+                bundle.fma->dest_type == nir_type_bool32;
         bool u16 = bundle.fma->dest_type == nir_type_uint16;
         ASSERTED bool u8 = bundle.fma->dest_type == nir_type_uint8;
         bool s32 = bundle.fma->dest_type == nir_type_int32;
@@ -664,7 +665,8 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
 
         bool f16 = bundle.add->dest_type == nir_type_float16;
         bool f32 = bundle.add->dest_type == nir_type_float32;
-        bool u32 = bundle.add->dest_type == nir_type_uint32;
+        bool u32 = bundle.add->dest_type == nir_type_uint32 ||
+                bundle.add->dest_type == nir_type_bool32;
         bool u16 = bundle.add->dest_type == nir_type_uint16;
         bool s32 = bundle.add->dest_type == nir_type_int32;
         bool s16 = bundle.add->dest_type == nir_type_int16;
