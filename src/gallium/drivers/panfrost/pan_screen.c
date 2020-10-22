@@ -436,6 +436,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                               unsigned bind)
 {
         struct panfrost_device *dev = pan_device(screen);
+        bool is_bifrost = (dev->quirks & IS_BIFROST);
         const struct util_format_description *format_desc;
 
         assert(target == PIPE_BUFFER ||
@@ -461,6 +462,10 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return false;
 
         if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
+                return false;
+
+        /* Don't advertise multisampling on Bifrost yet */
+        if (is_bifrost && sample_count > 1)
                 return false;
 
         /* Don't confuse poorly written apps (workaround dEQP bug) that expect
