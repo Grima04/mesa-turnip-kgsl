@@ -6076,7 +6076,9 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 			fce_eliminate = true;
 		}
 
-		if (radv_image_has_fmask(image)) {
+		if (radv_image_has_fmask(image) &&
+		    (image->usage & (VK_IMAGE_USAGE_STORAGE_BIT |
+				     VK_IMAGE_USAGE_TRANSFER_DST_BIT))) {
 			if (src_layout != VK_IMAGE_LAYOUT_GENERAL &&
 			    dst_layout == VK_IMAGE_LAYOUT_GENERAL) {
 				/* A FMASK decompress is required before doing
