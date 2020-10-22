@@ -525,7 +525,7 @@ check mr:
   script:
     - ci-fairy check-merge-request --require-allow-collaboration --junit-xml=check-merge-request.xml
 
-check commits:
+.check commits:
   extends: .sanity-check
   rules:
     - if: *is-pre-merge
