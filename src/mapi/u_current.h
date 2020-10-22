@@ -73,14 +73,4 @@ u_current_get_table(void)
 #endif
 }
 
-static inline const void *
-u_current_get_context(void)
-{
-#ifdef USE_ELF_TLS
-   return u_current_context;
-#else
-   return likely(u_current_context) ? u_current_context : u_current_get_context_internal();
-#endif
-}
-
 #endif /* _U_CURRENT_H_ */
