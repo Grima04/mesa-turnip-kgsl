@@ -54,7 +54,7 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 	// TODO we want to lookup batch if it exists, but not create one if not.
 	struct fd_batch *batch = fd_context_batch(ctx);
 
-	DBG("%p: flush: flags=%x\n", ctx->batch, flags);
+	DBG("%p: flush: flags=%x", ctx->batch, flags);
 
 	/* In some sequence of events, we can end up with a last_fence that is
 	 * not an "fd" fence, which results in eglDupNativeFenceFDANDROID()
