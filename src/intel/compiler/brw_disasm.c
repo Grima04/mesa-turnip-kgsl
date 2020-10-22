@@ -1972,6 +1972,9 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                   string(file, " Hi");
                if (brw_fb_write_desc_last_render_target(devinfo, imm_desc))
                   string(file, " LastRT");
+               if (devinfo->ver >= 10 &&
+                   brw_fb_write_desc_coarse_write(devinfo, imm_desc))
+                  string(file, " CoarseWrite");
                if (devinfo->ver < 7 &&
                    brw_fb_write_desc_write_commit(devinfo, imm_desc))
                   string(file, " WriteCommit");

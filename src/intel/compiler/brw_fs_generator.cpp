@@ -1760,11 +1760,14 @@ fs_generator::generate_pixel_interpolator_query(fs_inst *inst,
    assert(msg_data.type == BRW_REGISTER_TYPE_UD);
    assert(inst->size_written % REG_SIZE == 0);
 
+   struct brw_wm_prog_data *prog_data = brw_wm_prog_data(this->prog_data);
+
    brw_pixel_interpolator_query(p,
          retype(dst, BRW_REGISTER_TYPE_UW),
          /* If we don't have a payload, what we send doesn't matter */
          has_payload ? src : brw_vec8_grf(0, 0),
          inst->pi_noperspective,
+         prog_data->per_coarse_pixel_dispatch,
          msg_type,
          msg_data,
          has_payload ? 2 * inst->exec_size / 8 : 1,
