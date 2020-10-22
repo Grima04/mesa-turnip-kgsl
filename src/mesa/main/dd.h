@@ -74,6 +74,9 @@ struct _mesa_index_buffer;
 /* Mapping a buffer is allowed from any thread. */
 #define MESA_MAP_THREAD_SAFE_BIT  0x8000
 
+/* This buffer will only be mapped/unmapped once */
+#define MESA_MAP_ONCE            0x10000
+
 
 /**
  * Device driver function table.

@@ -193,7 +193,8 @@ vbo_save_map_vertex_store(struct gl_context *ctx,
    const GLbitfield access = (GL_MAP_WRITE_BIT |
                               GL_MAP_INVALIDATE_RANGE_BIT |
                               GL_MAP_UNSYNCHRONIZED_BIT |
-                              GL_MAP_FLUSH_EXPLICIT_BIT);
+                              GL_MAP_FLUSH_EXPLICIT_BIT |
+                              MESA_MAP_ONCE);
 
    assert(vertex_store->bufferobj);
    assert(!vertex_store->buffer_map);  /* the buffer should not be mapped */

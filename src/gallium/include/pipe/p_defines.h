@@ -363,6 +363,11 @@ enum pipe_map_flags
    PIPE_MAP_STENCIL_ONLY = 1 << 17,
 
    /**
+    * Mapping will be used only once (never remapped).
+    */
+   PIPE_MAP_ONCE = 1 << 18,
+
+   /**
     * This and higher bits are reserved for private use by drivers. Drivers
     * should use this as (PIPE_MAP_DRV_PRV << i).
     */

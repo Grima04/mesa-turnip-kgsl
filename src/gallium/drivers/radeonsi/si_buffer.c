@@ -388,6 +388,8 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
     */
    if (buf->b.is_user_ptr)
       usage |= PIPE_MAP_PERSISTENT;
+   if (usage & PIPE_MAP_ONCE)
+      usage |= RADEON_MAP_TEMPORARY;
 
    /* See if the buffer range being mapped has never been initialized,
     * in which case it can be mapped unsynchronized. */
@@ -593,6 +595,10 @@ static void si_buffer_transfer_unmap(struct pipe_context *ctx, struct pipe_trans
 
    if (transfer->usage & PIPE_MAP_WRITE && !(transfer->usage & PIPE_MAP_FLUSH_EXPLICIT))
       si_buffer_do_flush_region(ctx, transfer, &transfer->box);
+
+   if (transfer->usage & (PIPE_MAP_ONCE | RADEON_MAP_TEMPORARY) &&
+       !stransfer->staging)
+      sctx->ws->buffer_unmap(si_resource(stransfer->b.b.resource)->buf);
 
    si_resource_reference(&stransfer->staging, NULL);
    assert(stransfer->b.staging == NULL); /* for threaded context only */
