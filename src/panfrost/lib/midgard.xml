@@ -5,6 +5,12 @@
     <value name="1D POT Divisor" value="2"/>
     <value name="1D Modulus" value="3"/>
     <value name="1D NPOT Divisor" value="4"/>
+    <value name="3D Linear" value="5"/>
+    <value name="3D Interleaved" value="6"/>
+    <value name="1D Primitive Index Buffer" value="7"/>
+    <value name="1D POT Divisor Write Reduction" value="10"/>
+    <value name="1D Modulus Write Reduction" value="11"/>
+    <value name="1D NPOT Divisor Write Reduction" value="12"/>
     <value name="Continuation" value="32"/>
   </enum>
 
@@ -477,6 +483,15 @@
     <field name="Type" size="6" start="0:0" type="Attribute Type" default="Continuation"/>
     <field name="Divisor Numerator" size="32" start="1:0" type="uint"/>
     <field name="Divisor" size="32" start="3:0" type="uint"/>
+  </struct>
+
+  <struct name="Attribute Buffer Continuation 3D" size="4">
+    <field name="Type" size="6" start="0:0" type="Attribute Type" default="Continuation"/>
+    <field name="S dimension" size="16" start="0:16" type="uint" modifier="minus(1)"/>
+    <field name="T dimension" size="16" start="1:0" type="uint" modifier="minus(1)"/>
+    <field name="R dimension" size="16" start="1:16" type="uint" modifier="minus(1)"/>
+    <field name="Row Stride" size="32" start="2:0" type="uint"/>
+    <field name="Slice Stride" size="32" start="3:0" type="uint"/>
   </struct>
 
   <enum name="Blend Operand A">
