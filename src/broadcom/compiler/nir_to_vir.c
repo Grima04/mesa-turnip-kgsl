@@ -1595,6 +1595,10 @@ ntq_setup_vs_inputs(struct v3d_compile *c)
          * components and unused ones DCEed.  The vertex fetcher will load
          * from the start of the attribute to the number of components we
          * declare we need in c->vattr_sizes[].
+         *
+         * BGRA vertex attributes are a bit special: since we implement these
+         * as RGBA swapping R/B components we always need at least 3 components
+         * if component 0 is read.
          */
         nir_foreach_shader_in_variable(var, c->s) {
                 /* No VS attribute array support. */
@@ -1606,6 +1610,16 @@ ntq_setup_vs_inputs(struct v3d_compile *c)
 
                 c->vattr_sizes[loc] = MAX2(c->vattr_sizes[loc],
                                            start_component + num_components);
+
+                /* Handle BGRA user inputs */
+                if (start_component == 0 &&
+                    var->data.location >= VERT_ATTRIB_GENERIC0) {
+                        int32_t idx = var->data.location - VERT_ATTRIB_GENERIC0;
+                        if (c->vs_key->va_swap_rb_mask & (1 << idx)) {
+                                c->vattr_sizes[loc] =
+                                        MAX2(3, c->vattr_sizes[loc]);
+                        }
+                }
         }
 
         unsigned num_components = 0;
