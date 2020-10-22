@@ -1154,10 +1154,10 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
    key->alpha_test = false;
    key->alpha_test_func = COMPARE_FUNC_NEVER;
 
-   /* FIXME: placeholder. Final value for swap_color_rb depends on the format
-    * of the surface to be used.
+   /* This is intended for V3D versions before 4.1, otherwise we just use the
+    * tile buffer load/store swap R/B bit.
     */
-   key->swap_color_rb = false;
+   key->swap_color_rb = 0;
 
    const struct v3dv_render_pass *pass =
       v3dv_render_pass_from_handle(pCreateInfo->renderPass);
