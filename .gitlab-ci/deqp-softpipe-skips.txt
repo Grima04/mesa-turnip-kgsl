@@ -23,3 +23,5 @@ dEQP-GLES31.functional.primitive_bounding_box.wide_points.global_state.vertex_ge
 
 # This one is really slow and can time out (~56 seconds locally)
 KHR-GL33.texture_swizzle.smoke
+# Another slow one post NIR transition
+KHR-GL33.texture_swizzle.functional
