@@ -658,7 +658,6 @@ v3dv_CreateImageView(VkDevice _device,
    iview->vk_format = format;
    iview->format = v3dv_get_format(format);
    assert(iview->format && iview->format->supported);
-   iview->swap_rb = iview->format->swizzle[0] == PIPE_SWIZZLE_Z;
 
    if (vk_format_is_depth_or_stencil(iview->vk_format)) {
       iview->internal_type = v3dv_get_internal_depth_type(iview->vk_format);
@@ -671,6 +670,7 @@ v3dv_CreateImageView(VkDevice _device,
    const uint8_t *format_swizzle = v3dv_get_format_swizzle(format);
    util_format_compose_swizzles(format_swizzle, image_view_swizzle,
                                 iview->swizzle);
+   iview->swap_rb = iview->swizzle[0] == PIPE_SWIZZLE_Z;
 
    pack_texture_shader_state(device, iview);
 
