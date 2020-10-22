@@ -25,6 +25,7 @@
  *
  */
 
+#include "brw_eu.h"
 #include "brw_fs.h"
 #include "brw_fs_live_variables.h"
 #include "brw_vec4.h"
@@ -66,6 +67,7 @@ public:
    void set_latency_gfx4();
    void set_latency_gfx7(bool is_haswell);
 
+   const struct intel_device_info *devinfo;
    backend_instruction *inst;
    schedule_node **children;
    int *child_latency;
@@ -398,7 +400,7 @@ schedule_node::set_latency_gfx7(bool is_haswell)
       }
 
       case GFX6_SFID_DATAPORT_RENDER_CACHE:
-         switch ((inst->desc >> 14) & 0x1f) {
+         switch (brw_fb_desc_msg_type(devinfo, inst->desc)) {
          case GFX7_DATAPORT_RC_TYPED_SURFACE_WRITE:
          case GFX7_DATAPORT_RC_TYPED_SURFACE_READ:
             /* See also SHADER_OPCODE_TYPED_SURFACE_READ */
@@ -918,6 +920,7 @@ schedule_node::schedule_node(backend_instruction *inst,
 {
    const struct intel_device_info *devinfo = sched->bs->devinfo;
 
+   this->devinfo = devinfo;
    this->inst = inst;
    this->child_array_size = 0;
    this->children = NULL;
