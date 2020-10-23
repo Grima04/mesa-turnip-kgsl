@@ -236,6 +236,13 @@ typedef enum {
 	OPC_STIB            = _OPC(6, 29),
 	OPC_LDC             = _OPC(6, 30),
 	OPC_LDLV            = _OPC(6, 31),
+	OPC_PIPR            = _OPC(6, 32), /* ??? */
+	OPC_PIPC            = _OPC(6, 33), /* ??? */
+	OPC_EMIT2           = _OPC(6, 34), /* ??? */
+	OPC_ENDLS           = _OPC(6, 35), /* ??? */
+	OPC_GETSPID         = _OPC(6, 36), /* SP ID */
+	OPC_GETWID          = _OPC(6, 37), /* wavefront ID */
+
 
 	/* category 7: */
 	OPC_BAR             = _OPC(7, 0),

@@ -1476,6 +1476,12 @@ static const struct opc_info {
 	OPC(6, OPC_STIB,         stib),
 	OPC(6, OPC_LDC,          ldc),
 	OPC(6, OPC_LDLV,         ldlv),
+	OPC(6, OPC_PIPR,         pipr),
+	OPC(6, OPC_PIPC,         pipc),
+	OPC(6, OPC_EMIT2,        emit),
+	OPC(6, OPC_ENDLS,        endls),
+	OPC(6, OPC_GETSPID,      getspid),
+	OPC(6, OPC_GETWID,       getwid),
 
 	OPC(7, OPC_BAR,          bar),
 	OPC(7, OPC_FENCE,        fence),
