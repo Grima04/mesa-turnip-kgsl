@@ -504,9 +504,18 @@ do_quantize_to_f16(struct lp_build_nir_context *bld_base,
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef result;
+   LLVMValueRef result, cond, cond2, temp;
+
    result = LLVMBuildFPTrunc(builder, src, LLVMVectorType(LLVMHalfTypeInContext(gallivm->context), bld_base->base.type.length), "");
    result = LLVMBuildFPExt(builder, result, bld_base->base.vec_type, "");
+
+   temp = lp_build_abs(get_flt_bld(bld_base, 32), result);
+   cond = LLVMBuildFCmp(builder, LLVMRealOGT,
+                        LLVMBuildBitCast(builder, lp_build_const_int_vec(gallivm, bld_base->uint_bld.type, 0x38800000), bld_base->base.vec_type, ""),
+                        temp, "");
+   cond2 = LLVMBuildFCmp(builder, LLVMRealONE, temp, bld_base->base.zero, "");
+   cond = LLVMBuildAnd(builder, cond, cond2, "");
+   result = LLVMBuildSelect(builder, cond, bld_base->base.zero, result, "");
    return result;
 }
 
