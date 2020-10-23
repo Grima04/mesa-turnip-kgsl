@@ -124,6 +124,85 @@ lower_discard_if(nir_shader *shader)
    return progress;
 }
 
+static bool
+lower_64bit_vertex_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_deref)
+      return false;
+   nir_deref_instr *deref = nir_instr_as_deref(instr);
+   if (deref->deref_type != nir_deref_type_var)
+      return false;
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   if (var->data.mode != nir_var_shader_in)
+      return false;
+   if (!glsl_type_is_64bit(var->type) || !glsl_type_is_vector(var->type) || glsl_get_vector_elements(var->type) < 3)
+      return false;
+
+   /* create second variable for the split */
+   nir_variable *var2 = nir_variable_clone(var, b->shader);
+   /* split new variable into second slot */
+   var2->data.driver_location++;
+   nir_shader_add_variable(b->shader, var2);
+
+   unsigned total_num_components = glsl_get_vector_elements(var->type);
+   /* new variable is the second half of the dvec */
+   var2->type = glsl_vector_type(glsl_get_base_type(var->type), glsl_get_vector_elements(var->type) - 2);
+   /* clamp original variable to a dvec2 */
+   deref->type = var->type = glsl_vector_type(glsl_get_base_type(var->type), 2);
+
+   /* create deref instr for new variable */
+   b->cursor = nir_after_instr(instr);
+   nir_deref_instr *deref2 = nir_build_deref_var(b, var2);
+
+   nir_foreach_use_safe(use_src, &deref->dest.ssa) {
+      nir_instr *use_instr = use_src->parent_instr;
+      assert(use_instr->type == nir_instr_type_intrinsic &&
+             nir_instr_as_intrinsic(use_instr)->intrinsic == nir_intrinsic_load_deref);
+
+      /* this is a load instruction for the deref, and we need to split it into two instructions that we can
+       * then zip back into a single ssa def */
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(use_instr);
+      /* clamp the first load to 2 64bit components */
+      intr->num_components = intr->dest.ssa.num_components = 2;
+      b->cursor = nir_after_instr(use_instr);
+      /* this is the second load instruction for the second half of the dvec3/4 components */
+      nir_intrinsic_instr *intr2 = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_deref);
+      intr2->src[0] = nir_src_for_ssa(&deref2->dest.ssa);
+      intr2->num_components = total_num_components - 2;
+      nir_ssa_dest_init(&intr2->instr, &intr2->dest, intr2->num_components, 64, NULL);
+      nir_builder_instr_insert(b, &intr2->instr);
+
+      nir_ssa_def *def[4];
+      /* create a new dvec3/4 comprised of all the loaded components from both variables */
+      def[0] = nir_vector_extract(b, &intr->dest.ssa, nir_imm_int(b, 0));
+      def[1] = nir_vector_extract(b, &intr->dest.ssa, nir_imm_int(b, 1));
+      def[2] = nir_vector_extract(b, &intr2->dest.ssa, nir_imm_int(b, 0));
+      if (total_num_components == 4)
+         def[3] = nir_vector_extract(b, &intr2->dest.ssa, nir_imm_int(b, 1));
+      nir_ssa_def *new_vec = nir_vec(b, def, total_num_components);
+      /* use the assembled dvec3/4 for all other uses of the load */
+      nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, nir_src_for_ssa(new_vec), new_vec->parent_instr);
+   }
+
+   return true;
+}
+
+/* "64-bit three- and four-component vectors consume two consecutive locations."
+ *  - 14.1.4. Location Assignment
+ *
+ * this pass splits dvec3 and dvec4 vertex inputs into a dvec2 and a double/dvec2 which
+ * are assigned to consecutive locations, loaded separately, and then assembled back into a
+ * composite value that's used in place of the original loaded ssa src
+ */
+static bool
+lower_64bit_vertex_attribs(nir_shader *shader)
+{
+   if (shader->info.stage != MESA_SHADER_VERTEX)
+      return false;
+
+   return nir_shader_instructions_pass(shader, lower_64bit_vertex_attribs_instr, nir_metadata_dominance, NULL);
+}
+
 static const struct nir_shader_compiler_options nir_options = {
    .lower_all_io_to_temps = true,
    .lower_ffma16 = true,
@@ -298,6 +377,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, lower_discard_if);
    NIR_PASS_V(nir, nir_lower_fragcolor);
+   NIR_PASS_V(nir, lower_64bit_vertex_attribs);
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    if (zink_debug & ZINK_DEBUG_NIR) {
