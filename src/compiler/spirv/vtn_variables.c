@@ -2185,7 +2185,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
       nir_memcpy_deref_with_access(&b->nb,
                                    vtn_pointer_to_deref(b, dest),
-                                   vtn_pointer_to_deref(b, dest),
+                                   vtn_pointer_to_deref(b, src),
                                    size,
                                    spv_access_to_gl_access(dest_access),
                                    spv_access_to_gl_access(src_access));
