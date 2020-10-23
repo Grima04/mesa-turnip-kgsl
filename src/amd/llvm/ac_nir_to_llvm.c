@@ -2095,26 +2095,11 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
    LLVMValueRef rsrc = rsrc_base;
    LLVMValueRef offset = get_src(ctx, instr->src[1]);
    int num_components = instr->num_components;
-   unsigned desc_set = 0, binding = 0;
-   bool valid_binding = false;
 
-   /* Look for vulkan_resource_index to get the desc_set/binding values which
-    * are used to determine if it's an inline uniform UBO block.
-    */
-   if (instr->src[0].ssa->parent_instr->type == nir_instr_type_alu) {
-      nir_alu_instr *mov_instr = nir_instr_as_alu(instr->src[0].ssa->parent_instr);
-      if (mov_instr->src[0].src.ssa->parent_instr->type == nir_instr_type_intrinsic) {
-         nir_intrinsic_instr *idx_instr = nir_instr_as_intrinsic(mov_instr->src[0].src.ssa->parent_instr);
-         if (idx_instr->intrinsic == nir_intrinsic_vulkan_resource_index) {
-            desc_set = nir_intrinsic_desc_set(idx_instr);
-            binding = nir_intrinsic_binding(idx_instr);
-            valid_binding = true;
-         }
-      }
+   if (ctx->abi->load_ubo) {
+      nir_binding binding = nir_chase_binding(instr->src[0]);
+      rsrc = ctx->abi->load_ubo(ctx->abi, binding.desc_set, binding.binding, binding.success, rsrc);
    }
-
-   if (ctx->abi->load_ubo)
-      rsrc = ctx->abi->load_ubo(ctx->abi, desc_set, binding, valid_binding, rsrc);
 
    if (instr->dest.ssa.bit_size == 64)
       num_components *= 2;
