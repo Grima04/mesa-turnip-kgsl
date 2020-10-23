@@ -505,8 +505,10 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
 
 static void
 handle_image_descriptor(struct zink_screen *screen, struct zink_resource *res, enum zink_descriptor_type type, VkDescriptorType vktype, VkWriteDescriptorSet *wd,
-                        VkImageLayout layout, unsigned *num_image_info, VkDescriptorImageInfo *image_info, struct zink_sampler_state *sampler,
-                        VkBufferView *null_view, VkImageView imageview, bool do_set)
+                        VkImageLayout layout, unsigned *num_image_info, VkDescriptorImageInfo *image_info,
+                        unsigned *num_buffer_info, VkBufferView *buffer_info,
+                        struct zink_sampler_state *sampler,
+                        VkImageView imageview, VkBufferView bufferview, bool do_set)
 {
     if (!res) {
         /* if we're hitting this assert often, we can probably just throw a junk buffer in since
@@ -517,7 +519,10 @@ handle_image_descriptor(struct zink_screen *screen, struct zink_resource *res, e
         switch (vktype) {
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-           wd->pTexelBufferView = null_view;
+           *buffer_info = VK_NULL_HANDLE;
+           if (do_set)
+              wd->pTexelBufferView = buffer_info;
+           ++(*num_buffer_info);
            break;
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -539,6 +544,11 @@ handle_image_descriptor(struct zink_screen *screen, struct zink_resource *res, e
         if (do_set)
            wd->pImageInfo = image_info;
         ++(*num_image_info);
+     } else {
+        if (do_set)
+           wd->pTexelBufferView = buffer_info;
+        *buffer_info = bufferview;
+        ++(*num_buffer_info);
      }
 }
 
@@ -552,9 +562,10 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
    VkDescriptorImageInfo image_infos[num_bindings];
-   VkBufferView buffer_view[] = {VK_NULL_HANDLE};
+   VkBufferView buffer_views[num_bindings];
    unsigned num_wds = 0;
    unsigned num_image_info = 0;
+   unsigned num_buffer_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
    struct set *ht = NULL;
@@ -582,6 +593,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
 
          for (unsigned k = 0; k < shader->bindings[zds->pool->type][j].size; k++) {
             VkImageView imageview = VK_NULL_HANDLE;
+            VkBufferView bufferview = VK_NULL_HANDLE;
             struct zink_resource *res = NULL;
             VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
             struct zink_sampler_state *sampler = NULL;
@@ -590,7 +602,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
             struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
             res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
             if (res && res->base.target == PIPE_BUFFER) {
-               wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
+               bufferview = sampler_view->buffer_view;
             } else if (res) {
                imageview = sampler_view->image_view;
                layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -605,7 +617,8 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
             assert(num_image_info < num_bindings);
             handle_image_descriptor(screen, res, zds->pool->type, shader->bindings[zds->pool->type][j].type,
                                     &wds[num_wds], layout, &num_image_info, &image_infos[num_image_info],
-                                    sampler, &buffer_view[0], imageview, !k);
+                                    &num_buffer_info, &buffer_views[num_buffer_info],
+                                    sampler, imageview, bufferview, !k);
 
             struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
             if (sampler_view)
@@ -630,9 +643,10 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
    VkDescriptorImageInfo image_infos[num_bindings];
-   VkBufferView buffer_view[] = {VK_NULL_HANDLE};
+   VkBufferView buffer_views[num_bindings];
    unsigned num_wds = 0;
    unsigned num_image_info = 0;
+   unsigned num_buffer_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
    struct set *ht = NULL;
@@ -660,6 +674,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
 
          for (unsigned k = 0; k < shader->bindings[zds->pool->type][j].size; k++) {
             VkImageView imageview = VK_NULL_HANDLE;
+            VkBufferView bufferview = VK_NULL_HANDLE;
             struct zink_resource *res = NULL;
             VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
             struct zink_image_view *image_view = &ctx->image_views[stage][index + k];
@@ -667,7 +682,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
             res = zink_resource(image_view->base.resource);
 
             if (res && image_view->base.resource->target == PIPE_BUFFER) {
-               wds[num_wds].pTexelBufferView = &image_view->buffer_view;
+               bufferview = image_view->buffer_view;
             } else if (res) {
                imageview = image_view->surface->image_view;
                layout = VK_IMAGE_LAYOUT_GENERAL;
@@ -687,7 +702,8 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
             assert(num_image_info < num_bindings);
             handle_image_descriptor(screen, res, zds->pool->type, shader->bindings[zds->pool->type][j].type,
                                     &wds[num_wds], layout, &num_image_info, &image_infos[num_image_info],
-                                    NULL, &buffer_view[0], imageview, !k);
+                                    &num_buffer_info, &buffer_views[num_buffer_info],
+                                    NULL, imageview, bufferview, !k);
 
             struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
             if (image_view->surface)
