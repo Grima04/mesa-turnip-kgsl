@@ -380,8 +380,13 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       switch (shader) {
       case PIPE_SHADER_FRAGMENT:
       case PIPE_SHADER_VERTEX:
-      case PIPE_SHADER_GEOMETRY:
          return INT_MAX;
+
+      case PIPE_SHADER_GEOMETRY:
+         if (screen->info.feats.features.geometryShader)
+            return INT_MAX;
+         break;
+
       default:
          break;
       }
