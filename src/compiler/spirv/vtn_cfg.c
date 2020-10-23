@@ -220,6 +220,12 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpFunctionEnd:
       b->func->end = w;
+      if (b->func->start_block == NULL) {
+         /* In this case, the function didn't have any actual blocks.  It's
+          * just a prototype so delete the function_impl.
+          */
+         b->func->nir_func->impl = NULL;
+      }
       b->func = NULL;
       break;
 
