@@ -29,6 +29,54 @@
  */
 
 static bool
+opt_intrinsics_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
+                      const struct nir_shader_compiler_options *options)
+{
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_sample_mask_in: {
+      /* Transform:
+       *   gl_SampleMaskIn == 0 ---> gl_HelperInvocation
+       *   gl_SampleMaskIn != 0 ---> !gl_HelperInvocation
+       */
+      if (!options->optimize_sample_mask_in)
+         return false;
+
+      bool progress = false;
+      nir_foreach_use_safe(use_src, &intrin->dest.ssa) {
+         if (use_src->parent_instr->type == nir_instr_type_alu) {
+            nir_alu_instr *alu = nir_instr_as_alu(use_src->parent_instr);
+
+            if (alu->op == nir_op_ieq ||
+                alu->op == nir_op_ine) {
+               /* Check for 0 in either operand. */
+               nir_const_value *const_val =
+                   nir_src_as_const_value(alu->src[0].src);
+               if (!const_val)
+                  const_val = nir_src_as_const_value(alu->src[1].src);
+               if (!const_val || const_val->i32 != 0)
+                  continue;
+
+               nir_ssa_def *new_expr = nir_load_helper_invocation(b, 1);
+
+               if (alu->op == nir_op_ine)
+                  new_expr = nir_inot(b, new_expr);
+
+               nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa,
+                                        nir_src_for_ssa(new_expr));
+               nir_instr_remove(&alu->instr);
+               progress = true;
+            }
+         }
+      }
+      return progress;
+   }
+
+   default:
+      return false;
+   }
+}
+
+static bool
 opt_intrinsics_impl(nir_function_impl *impl,
                     const struct nir_shader_compiler_options *options)
 {
@@ -38,49 +86,15 @@ opt_intrinsics_impl(nir_function_impl *impl,
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          b.cursor = nir_before_instr(instr);
 
-         switch (intrin->intrinsic) {
-         case nir_intrinsic_load_sample_mask_in:
-            /* Transform:
-             *   gl_SampleMaskIn == 0 ---> gl_HelperInvocation
-             *   gl_SampleMaskIn != 0 ---> !gl_HelperInvocation
-             */
-            if (!options->optimize_sample_mask_in)
-               continue;
+         switch (instr->type) {
+         case nir_instr_type_intrinsic:
+            if (opt_intrinsics_intrin(&b, nir_instr_as_intrinsic(instr),
+                                      options))
+               progress = true;
+            break;
 
-            nir_foreach_use_safe(use_src, &intrin->dest.ssa) {
-               if (use_src->parent_instr->type == nir_instr_type_alu) {
-                  nir_alu_instr *alu = nir_instr_as_alu(use_src->parent_instr);
-
-                  if (alu->op == nir_op_ieq ||
-                      alu->op == nir_op_ine) {
-                     /* Check for 0 in either operand. */
-                     nir_const_value *const_val =
-                         nir_src_as_const_value(alu->src[0].src);
-                     if (!const_val)
-                        const_val = nir_src_as_const_value(alu->src[1].src);
-                     if (!const_val || const_val->i32 != 0)
-                        continue;
-
-                     nir_ssa_def *new_expr = nir_load_helper_invocation(&b, 1);
-
-                     if (alu->op == nir_op_ine)
-                        new_expr = nir_inot(&b, new_expr);
-
-                     nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa,
-                                              nir_src_for_ssa(new_expr));
-                     nir_instr_remove(&alu->instr);
-                     progress = true;
-                     continue;
-                  }
-               }
-            }
-            continue;
          default:
             break;
          }
