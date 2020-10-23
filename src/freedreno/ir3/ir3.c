@@ -599,23 +599,23 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 	case OPC_ATOMIC_OR:
 	case OPC_ATOMIC_XOR:
 		cat6->pad1 = 0x1;
-		cat6->pad3 = 0xc;
+		cat6->pad3 = 0x6;
 		cat6->pad5 = 0x3;
 		break;
 	case OPC_STIB:
 		cat6->pad1 = 0x0;
-		cat6->pad3 = 0xc;
+		cat6->pad3 = 0x6;
 		cat6->pad5 = 0x2;
 		break;
 	case OPC_LDIB:
 	case OPC_RESINFO:
 		cat6->pad1 = 0x1;
-		cat6->pad3 = 0xc;
+		cat6->pad3 = 0x6;
 		cat6->pad5 = 0x2;
 		break;
 	case OPC_LDC:
 		cat6->pad1 = 0x0;
-		cat6->pad3 = 0x8;
+		cat6->pad3 = 0x4;
 		cat6->pad5 = 0x2;
 		break;
 	default:

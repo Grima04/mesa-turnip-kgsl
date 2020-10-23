@@ -888,23 +888,23 @@ typedef enum {
 /**
  * For atomic ops (which return a value):
  *
- *    pad1=1, pad3=c, pad5=3
+ *    pad1=1, pad3=6, pad5=3
  *    src1    - vecN offset/coords
  *    src2.x  - is actually dest register
  *    src2.y  - is 'data' except for cmpxchg where src2.y is 'compare'
  *              and src2.z is 'data'
  *
  * For stib (which does not return a value):
- *    pad1=0, pad3=c, pad5=2
+ *    pad1=0, pad3=6, pad5=2
  *    src1    - vecN offset/coords
  *    src2    - value to store
  *
  * For ldib:
- *    pad1=1, pad3=c, pad5=2
+ *    pad1=1, pad3=6, pad5=2
  *    src1    - vecN offset/coords
  *
  * for ldc (load from UBO using descriptor):
- *    pad1=0, pad3=8, pad5=2
+ *    pad1=0, pad3=4, pad5=2
  *
  * pad2 and pad5 are only observed to be 0.
  */
@@ -917,8 +917,8 @@ typedef struct PACKED {
 	uint32_t d        : 2;
 	uint32_t typed    : 1;
 	uint32_t type_size : 2;
-	uint32_t opc      : 5;
-	uint32_t pad3     : 5;
+	uint32_t opc      : 6;
+	uint32_t pad3     : 4;
 	uint32_t src1     : 8;  /* coordinate/offset */
 
 	/* dword1: */
@@ -1011,7 +1011,7 @@ static inline bool is_cat6_legacy(instr_t *instr, unsigned gpu_id)
 	 * cmdstream traces I have indicates that the pad bit is zero
 	 * in all cases.  So we can use this to detect new encoding:
 	 */
-	if ((cat6->pad3 & 0x8) && (cat6->pad5 & 0x2)) {
+	if ((cat6->pad3 & 0x4) && (cat6->pad5 & 0x2)) {
 		ir3_assert(gpu_id >= 600);
 		ir3_assert(instr->cat6.opc == 0);
 		return false;
