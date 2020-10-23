@@ -311,20 +311,13 @@ fd_bc_invalidate_resource(struct fd_resource *rsc, bool destroy)
 	fd_screen_unlock(screen);
 }
 
-struct fd_batch *
-fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx, bool nondraw)
+static struct fd_batch *
+alloc_batch_locked(struct fd_batch_cache *cache, struct fd_context *ctx, bool nondraw)
 {
 	struct fd_batch *batch;
 	uint32_t idx;
 
-	/* For normal draw batches, pctx->set_framebuffer_state() handles
-	 * this, but for nondraw batches, this is a nice central location
-	 * to handle them all.
-	 */
-	if (nondraw)
-		fd_context_switch_from(ctx);
-
-	fd_screen_lock(ctx->screen);
+	fd_screen_assert_locked(ctx->screen);
 
 	while ((idx = ffs(~cache->batch_mask)) == 0) {
 #if 0
@@ -380,7 +373,7 @@ fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx, bool non
 
 	batch = fd_batch_create(ctx, nondraw);
 	if (!batch)
-		goto out;
+		return NULL;
 
 	batch->seqno = cache->cnt++;
 	batch->idx = idx;
@@ -389,11 +382,27 @@ fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx, bool non
 	debug_assert(cache->batches[idx] == NULL);
 	cache->batches[idx] = batch;
 
-	if (nondraw)
-		fd_context_switch_to(ctx, batch);
+	return batch;
+}
 
-out:
+struct fd_batch *
+fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx, bool nondraw)
+{
+	struct fd_batch *batch;
+
+	/* For normal draw batches, pctx->set_framebuffer_state() handles
+	 * this, but for nondraw batches, this is a nice central location
+	 * to handle them all.
+	 */
+	if (nondraw)
+		fd_context_switch_from(ctx);
+
+	fd_screen_lock(ctx->screen);
+	batch = alloc_batch_locked(cache, ctx, nondraw);
 	fd_screen_unlock(ctx->screen);
+
+	if (batch && nondraw)
+		fd_context_switch_to(ctx, batch);
 
 	return batch;
 }
@@ -413,7 +422,7 @@ batch_from_key(struct fd_batch_cache *cache, struct key *key,
 		return batch;
 	}
 
-	batch = fd_bc_alloc_batch(cache, ctx, false);
+	batch = alloc_batch_locked(cache, ctx, false);
 #ifdef DEBUG
 	DBG("%p: hash=0x%08x, %ux%u, %u layers, %u samples", batch, hash,
 			key->width, key->height, key->layers, key->samples);
@@ -436,8 +445,6 @@ batch_from_key(struct fd_batch_cache *cache, struct key *key,
 	batch->max_scissor.maxx = 0;
 	batch->max_scissor.maxy = 0;
 
-	fd_screen_lock(ctx->screen);
-
 	_mesa_hash_table_insert_pre_hashed(cache->ht, hash, key, batch);
 	batch->key = key;
 	batch->hash = hash;
@@ -446,8 +453,6 @@ batch_from_key(struct fd_batch_cache *cache, struct key *key,
 		struct fd_resource *rsc = fd_resource(key->surf[idx].texture);
 		rsc->bc_batch_mask = (1 << batch->idx);
 	}
-
-	fd_screen_unlock(ctx->screen);
 
 	return batch;
 }
@@ -484,5 +489,9 @@ fd_batch_from_fb(struct fd_batch_cache *cache, struct fd_context *ctx,
 
 	key->num_surfs = idx;
 
-	return batch_from_key(cache, key, ctx);
+	fd_screen_lock(ctx->screen);
+	struct fd_batch *batch = batch_from_key(cache, key, ctx);
+	fd_screen_unlock(ctx->screen);
+
+	return batch;
 }
