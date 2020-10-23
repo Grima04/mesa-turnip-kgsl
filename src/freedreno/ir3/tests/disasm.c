@@ -192,6 +192,10 @@ static const struct test {
 	INSTR_6XX(a0c81f07_0100000b, "sam.s2en (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode0 (f32)(xyzw)r1.w, r1.y, hr2.x */
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.dynamically_uniform.fragment.sampler2d */
 	INSTR_6XX(a0c81f07_8100000b, "sam.s2en.uniform (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode4 (f32)(xyzw)r1.w, r1.y, hr2.x */
+
+	/* Custom test since we've never seen the blob emit these. */
+	INSTR_6XX(c0260004_00490000, "getspid.u32 r1.x"),
+	INSTR_6XX(c0260005_00494000, "getwid.u32 r1.y"),
 };
 
 static void

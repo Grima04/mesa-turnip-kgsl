@@ -439,6 +439,8 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_STIB
 %token <tok> T_OP_LDC
 %token <tok> T_OP_LDLV
+%token <tok> T_OP_GETSPID
+%token <tok> T_OP_GETWID
 
 /* type qualifiers: */
 %token <tok> T_TYPE_F16
@@ -811,6 +813,12 @@ cat6_atomic:       T_OP_ATOMIC_ADD     { new_instr(OPC_ATOMIC_ADD); }    cat6_at
 |                  T_OP_ATOMIC_OR      { new_instr(OPC_ATOMIC_OR); }     cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
 |                  T_OP_ATOMIC_XOR     { new_instr(OPC_ATOMIC_XOR); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
 
+cat6_id_opc:
+                   T_OP_GETSPID { new_instr(OPC_GETSPID); }
+|                  T_OP_GETWID  { new_instr(OPC_GETWID); }
+
+cat6_id:           cat6_id_opc cat6_type dst_reg
+
 cat6_todo:         T_OP_G2L                 { new_instr(OPC_G2L); }
 |                  T_OP_L2G                 { new_instr(OPC_L2G); }
 |                  T_OP_RESFMT              { new_instr(OPC_RESFMT); }
@@ -824,6 +832,7 @@ cat6_instr:        cat6_load
 |                  cat6_storeib
 |                  cat6_prefetch
 |                  cat6_atomic
+|                  cat6_id
 |                  cat6_todo
 
 reg:               T_REGISTER     { $$ = new_reg($1, 0); }

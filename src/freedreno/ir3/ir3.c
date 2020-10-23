@@ -537,53 +537,57 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 		struct ir3_info *info)
 {
-	struct ir3_register *ssbo;
 	instr_cat6_a6xx_t *cat6 = ptr;
 
-	ssbo = instr->regs[1];
-
 	cat6->type      = instr->cat6.type;
-	cat6->d         = instr->cat6.d - (instr->opc == OPC_LDC ? 0 : 1);
-	cat6->typed     = instr->cat6.typed;
-	cat6->type_size = instr->cat6.iim_val - 1;
 	cat6->opc       = instr->opc;
 	cat6->jmp_tgt   = !!(instr->flags & IR3_INSTR_JP);
 	cat6->sync      = !!(instr->flags & IR3_INSTR_SY);
 	cat6->opc_cat   = 6;
 
-	cat6->ssbo = reg(ssbo, info, instr->repeat, IR3_REG_IMMED);
-
-	/* For unused sources in an opcode, initialize contents with the ir3 dest
-	 * reg
-	 */
-	switch (instr->opc) {
-	case OPC_RESINFO:
-		cat6->src1 = reg(instr->regs[0], info, instr->repeat, 0);
+	if (instr->opc == OPC_GETWID || instr->opc == OPC_GETSPID) {
 		cat6->src2 = reg(instr->regs[0], info, instr->repeat, 0);
-		break;
-	case OPC_LDC:
-	case OPC_LDIB:
-		cat6->src1 = reg(instr->regs[2], info, instr->repeat, 0);
-		cat6->src2 = reg(instr->regs[0], info, instr->repeat, 0);
-		break;
-	default:
-		cat6->src1 = reg(instr->regs[2], info, instr->repeat, 0);
-		cat6->src2 = reg(instr->regs[3], info, instr->repeat, 0);
-		break;
-	}
-
-	if (instr->flags & IR3_INSTR_B) {
-		if (ssbo->flags & IR3_REG_IMMED) {
-			cat6->desc_mode = CAT6_BINDLESS_IMM;
-		} else {
-			cat6->desc_mode = CAT6_BINDLESS_UNIFORM;
-		}
-		cat6->base = instr->cat6.base;
+		cat6->src1 = cat6->ssbo = 0;
+		cat6->d = cat6->typed = cat6->type_size = 0;
 	} else {
-		if (ssbo->flags & IR3_REG_IMMED)
-			cat6->desc_mode = CAT6_IMM;
-		else
-			cat6->desc_mode = CAT6_UNIFORM;
+		struct ir3_register *ssbo = instr->regs[1];
+		cat6->d         = instr->cat6.d - (instr->opc == OPC_LDC ? 0 : 1);
+		cat6->typed     = instr->cat6.typed;
+		cat6->type_size = instr->cat6.iim_val - 1;
+		cat6->ssbo = reg(ssbo, info, instr->repeat, IR3_REG_IMMED);
+
+		/* For unused sources in an opcode, initialize contents with the ir3
+		 * dest reg
+		 */
+		switch (instr->opc) {
+		case OPC_RESINFO:
+			cat6->src1 = reg(instr->regs[0], info, instr->repeat, 0);
+			cat6->src2 = reg(instr->regs[0], info, instr->repeat, 0);
+			break;
+		case OPC_LDC:
+		case OPC_LDIB:
+			cat6->src1 = reg(instr->regs[2], info, instr->repeat, 0);
+			cat6->src2 = reg(instr->regs[0], info, instr->repeat, 0);
+			break;
+		default:
+			cat6->src1 = reg(instr->regs[2], info, instr->repeat, 0);
+			cat6->src2 = reg(instr->regs[3], info, instr->repeat, 0);
+			break;
+		}
+
+		if (instr->flags & IR3_INSTR_B) {
+			if (ssbo->flags & IR3_REG_IMMED) {
+				cat6->desc_mode = CAT6_BINDLESS_IMM;
+			} else {
+				cat6->desc_mode = CAT6_BINDLESS_UNIFORM;
+			}
+			cat6->base = instr->cat6.base;
+		} else {
+			if (ssbo->flags & IR3_REG_IMMED)
+				cat6->desc_mode = CAT6_IMM;
+			else
+				cat6->desc_mode = CAT6_UNIFORM;
+		}
 	}
 
 	switch (instr->opc) {
@@ -614,6 +618,8 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 		cat6->pad5 = 0x2;
 		break;
 	case OPC_LDC:
+	case OPC_GETWID:
+	case OPC_GETSPID:
 		cat6->pad1 = 0x0;
 		cat6->pad3 = 0x4;
 		cat6->pad5 = 0x2;
@@ -658,6 +664,8 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 		case OPC_LDIB:
 		case OPC_LDC:
 		case OPC_RESINFO:
+		case OPC_GETSPID:
+		case OPC_GETWID:
 			return emit_cat6_a6xx(instr, ptr, info);
 		default:
 			break;
