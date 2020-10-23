@@ -53,6 +53,41 @@ required to be exposed and fully supported:
 * `VK_EXT_transform_feedback`_
 * `VK_EXT_conditional_rendering`_
 
+
+OpenGL 3.1
+^^^^^^^^^^
+
+For OpenGL 3.1 support, the following additional ``VkPhysicalDeviceLimits``
+are required:
+
+* ``maxPerStageDescriptorSamplers`` ≥ 16
+
+OpenGL 3.2
+^^^^^^^^^^
+
+For OpenGL 3.2 support, the following additional ``VkPhysicalDeviceFeatures``
+are required to be supported, although some of these might not actually get
+verified:
+
+* ``depthClamp``
+* ``geometryShader``
+* ``shaderTessellationAndGeometryPointSize``
+
+OpenGL 3.3
+^^^^^^^^^^
+
+For OpenGL 3.3 support, the following additional ``VkPhysicalDeviceFeatures``
+are required to be supported, although some of these might not actually get
+verified:
+
+* ``VkPhysicalDeviceFeatures``
+
+  * ``occlusionQueryPrecise``
+
+* Device extensions:
+
+  * ``VK_EXT_vertex_attribute_divisor``
+
 Debugging
 ---------
 
