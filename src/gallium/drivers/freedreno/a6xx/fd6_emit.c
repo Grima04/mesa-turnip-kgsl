@@ -519,6 +519,8 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 
 			fd6_emit_add_group(emit, tex->stateobj, s[type].state_id,
 					s[type].enable_mask);
+
+			fd6_texture_state_reference(&tex, NULL);
 		}
 	} else {
 		/* In the slow-path, create a one-shot texture state object
