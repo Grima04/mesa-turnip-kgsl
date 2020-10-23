@@ -5215,13 +5215,11 @@ void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Builder bld(ctx->program, ctx->block);
 
-   nir_alu_instr* mov_instr = nir_instr_as_alu(instr->src[0].ssa->parent_instr);
-   nir_intrinsic_instr* idx_instr = nir_instr_as_intrinsic(mov_instr->src[0].src.ssa->parent_instr);
-   unsigned desc_set = nir_intrinsic_desc_set(idx_instr);
-   unsigned binding = nir_intrinsic_binding(idx_instr);
-   radv_descriptor_set_layout *layout = ctx->options->layout->set[desc_set].layout;
+   nir_binding binding = nir_chase_binding(instr->src[0]);
+   assert(binding.success);
+   radv_descriptor_set_layout *layout = ctx->options->layout->set[binding.desc_set].layout;
 
-   if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+   if (layout->binding[binding.binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
       uint32_t desc_type = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
                            S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                            S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
