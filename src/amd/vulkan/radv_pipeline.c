@@ -3035,8 +3035,16 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned bit_s
    case nir_intrinsic_store_ssbo:
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_ubo:
-   case nir_intrinsic_load_push_constant:
-      return align % (bit_size == 8 ? 2 : 4) == 0;
+   case nir_intrinsic_load_push_constant: {
+      unsigned max_components;
+      if (align % 4 == 0)
+         max_components = NIR_MAX_VEC_COMPONENTS;
+      else if (align % 2 == 0)
+         max_components = 16u / bit_size;
+      else
+         max_components = 8u / bit_size;
+      return (align % (bit_size / 8u)) == 0 && num_components <= max_components;
+   }
    case nir_intrinsic_load_deref:
    case nir_intrinsic_store_deref:
       assert(nir_deref_mode_is(nir_src_as_deref(low->src[0]), nir_var_mem_shared));
