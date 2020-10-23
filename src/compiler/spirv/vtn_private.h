@@ -268,7 +268,7 @@ struct vtn_function {
    bool referenced;
    bool emitted;
 
-   nir_function_impl *impl;
+   nir_function *nir_func;
    struct vtn_block *start_block;
 
    struct list_head body;

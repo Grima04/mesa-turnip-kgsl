@@ -5766,7 +5766,7 @@ static nir_function *
 vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
                                     nir_function *entry_point)
 {
-   vtn_assert(entry_point == b->entry_point->func->impl->function);
+   vtn_assert(entry_point == b->entry_point->func->nir_func);
    vtn_fail_if(!entry_point->name, "entry points are required to have a name");
    const char *func_name =
       ralloc_asprintf(b->shader, "__wrapped_%s", entry_point->name);
@@ -5959,7 +5959,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
 
    if (!options->create_library) {
       vtn_assert(b->entry_point->value_type == vtn_value_type_function);
-      nir_function *entry_point = b->entry_point->func->impl->function;
+      nir_function *entry_point = b->entry_point->func->nir_func;
       vtn_assert(entry_point);
 
       /* post process entry_points with input params */
