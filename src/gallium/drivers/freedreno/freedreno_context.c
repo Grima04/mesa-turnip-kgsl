@@ -507,6 +507,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	list_inithead(&ctx->log_chunks);
 
 	fd_screen_lock(ctx->screen);
+	ctx->seqno = ++screen->ctx_seqno;
 	list_add(&ctx->node, &ctx->screen->context_list);
 	fd_screen_unlock(ctx->screen);
 

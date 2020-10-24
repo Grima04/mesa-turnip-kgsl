@@ -77,9 +77,12 @@
  */
 
 struct key {
-	uint32_t width, height, layers;
-	uint16_t samples, num_surfs;
-	struct fd_context *ctx;
+	uint32_t width;
+	uint32_t height;
+	uint16_t layers;
+	uint16_t samples;
+	uint16_t num_surfs;
+	uint16_t ctx_seqno;
 	struct {
 		struct pipe_resource *texture;
 		union pipe_surface_desc u;
@@ -478,7 +481,7 @@ fd_batch_from_fb(struct fd_batch_cache *cache, struct fd_context *ctx,
 	key->height = pfb->height;
 	key->layers = pfb->layers;
 	key->samples = util_framebuffer_get_num_samples(pfb);
-	key->ctx = ctx;
+	key->ctx_seqno = ctx->seqno;
 
 	if (pfb->zsbuf)
 		key_surf(key, idx++, 0, pfb->zsbuf);

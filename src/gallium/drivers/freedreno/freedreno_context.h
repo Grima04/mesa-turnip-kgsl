@@ -305,6 +305,9 @@ struct fd_context {
 	 */
 	uint32_t context_reset_count, global_reset_count;
 
+	/* Context sequence #, used for batch-cache key: */
+	uint16_t seqno;
+
 	/* Are we in process of shadowing a resource? Used to detect recursion
 	 * in transfer_map, and skip unneeded synchronization.
 	 */
