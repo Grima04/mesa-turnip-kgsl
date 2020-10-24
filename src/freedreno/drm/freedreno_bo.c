@@ -251,7 +251,7 @@ void fd_bo_del(struct fd_bo *bo)
 {
 	struct fd_device *dev = bo->dev;
 
-	if (!atomic_dec_and_test(&bo->refcnt))
+	if (!p_atomic_dec_zero(&bo->refcnt))
 		return;
 
 	simple_mtx_lock(&table_lock);

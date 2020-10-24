@@ -51,8 +51,6 @@
 #include "freedreno_drmif.h"
 #include "freedreno_ringbuffer.h"
 
-#define atomic_dec_and_test(x) (__sync_add_and_fetch (x, -1) == 0)
-
 struct fd_device_funcs {
 	int (*bo_new_handle)(struct fd_device *dev, uint32_t size,
 			uint32_t flags, uint32_t *handle);
