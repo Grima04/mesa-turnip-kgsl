@@ -601,6 +601,7 @@ surface_from_external_memory(VADriverContextP ctx, vlVaSurface *surface,
    memset(&whandle, 0, sizeof(struct winsys_handle));
    whandle.type = WINSYS_HANDLE_TYPE_FD;
    whandle.handle = memory_attribute->buffers[index];
+   whandle.modifier = DRM_FORMAT_MOD_INVALID;
 
    // Create a resource for each plane.
    memset(resources, 0, sizeof resources);
