@@ -28,6 +28,8 @@
 #ifndef VID_DEC_AV1_H
 #define VID_DEC_AV1_H
 
+#include "os/os_thread.h"
+
 enum av1_obu_type {
    AV1_OBU_SEQUENCE_HEADER = 1,
    AV1_OBU_TEMPORAL_DELIMITER,
@@ -418,6 +420,21 @@ struct av1_uncompressed_header_obu
    struct film_grain_params fgp;
 };
 
+struct dec_av1_task {
+   struct list_head list;
+
+   struct pipe_video_buffer *buf;
+   bool no_show_frame;
+   unsigned buf_ref_count;
+   struct pipe_video_buffer **buf_ref;
+   bool is_sef_task;
+};
+
+struct input_buf_private {
+   struct list_head tasks;
+   struct list_head inps;
+};
+
 struct dec_av1 {
    struct av1_obu_extension_header_obu ext;
    struct av1_sequence_header_obu seq;
@@ -430,6 +447,13 @@ struct dec_av1 {
    uint8_t bs_obu_seq_buf[128];
    unsigned bs_obu_seq_sz;
    struct pipe_video_buffer *frame_refs[AV1_NUM_REF_FRAMES];
+   struct list_head free_tasks;
+   struct list_head started_tasks;
+   struct list_head finished_tasks;
+   struct list_head decode_tasks;
+   unsigned que_num;
+   bool stacked_frame;
+   mtx_t mutex;
 };
 
 #endif

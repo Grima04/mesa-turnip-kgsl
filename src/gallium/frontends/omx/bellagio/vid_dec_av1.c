@@ -25,7 +25,14 @@
  *
  **************************************************************************/
 
+#include "pipe/p_video_codec.h"
+#include "util/u_memory.h"
+#include "util/u_video.h"
+#include "vl/vl_video_buffer.h"
+
+#include "entrypoint.h"
 #include "vid_dec.h"
+#include "vid_dec_av1.h"
 
 static unsigned av1_f(struct vl_vlc *vlc, unsigned n)
 {
@@ -1896,4 +1903,568 @@ static void parse_tile_hdr(vid_dec_PrivateType *priv, struct vl_vlc *vlc,
       priv->picture.av1.slice_parameter.slice_data_offset[i] = offset[i];
       priv->picture.av1.slice_parameter.slice_data_size[i] = size[i];
    }
+}
+
+static struct dec_av1_task *dec_av1_NeedTask(vid_dec_PrivateType *priv)
+{
+   struct pipe_video_buffer templat = {};
+   struct dec_av1_task *task;
+   struct vl_screen *omx_screen;
+   struct pipe_screen *pscreen;
+
+   omx_screen = priv->screen;
+   assert(omx_screen);
+
+   pscreen = omx_screen->pscreen;
+   assert(pscreen);
+
+   if (!list_is_empty(&priv->codec_data.av1.free_tasks)) {
+      task = LIST_ENTRY(struct dec_av1_task,
+            priv->codec_data.av1.free_tasks.next, list);
+      task->buf_ref_count = 1;
+      list_del(&task->list);
+      return task;
+   }
+
+   task = CALLOC_STRUCT(dec_av1_task);
+   if (!task)
+      return NULL;
+
+   memset(&templat, 0, sizeof(templat));
+   templat.width = priv->codec->width;
+   templat.height = priv->codec->height;
+   templat.buffer_format = pscreen->get_video_param(
+         pscreen,
+         PIPE_VIDEO_PROFILE_UNKNOWN,
+         PIPE_VIDEO_ENTRYPOINT_BITSTREAM,
+         PIPE_VIDEO_CAP_PREFERED_FORMAT
+   );
+   templat.interlaced = false;
+
+   task->buf = priv->pipe->create_video_buffer(priv->pipe, &templat);
+   if (!task->buf) {
+      FREE(task);
+      return NULL;
+   }
+   task->buf_ref_count = 1;
+   task->is_sef_task = false;
+
+   return task;
+}
+
+static void dec_av1_ReleaseTask(vid_dec_PrivateType *priv,
+      struct list_head *head)
+{
+   if (!head || !head->next)
+      return;
+
+   list_for_each_entry_safe(struct dec_av1_task, task, head, list) {
+      task->buf->destroy(task->buf);
+      FREE(task);
+   }
+}
+
+static void dec_av1_MoveTask(struct list_head *from,
+      struct list_head *to)
+{
+   to->prev->next = from->next;
+   from->next->prev = to->prev;
+   from->prev->next = to;
+   to->prev = from->prev;
+   list_inithead(from);
+}
+
+static void dec_av1_SortTask(vid_dec_PrivateType *priv)
+{
+   int i;
+
+   list_for_each_entry_safe(struct dec_av1_task, t,
+         &priv->codec_data.av1.finished_tasks, list) {
+      bool found = false;
+      for (i = 0; i < 8; ++i) {
+         if (t->buf == priv->picture.av1.ref[i]) {
+            found = true;
+            break;
+         }
+      }
+      if (!found && t->buf_ref_count == 0) {
+         list_del(&t->list);
+         list_addtail(&t->list, &priv->codec_data.av1.free_tasks);
+      }
+   }
+}
+
+static struct dec_av1_task *dec_av1_SearchTask(vid_dec_PrivateType *priv,
+      struct list_head *tasks)
+{
+   unsigned idx =
+      priv->codec_data.av1.uncompressed_header.frame_to_show_map_idx;
+
+   list_for_each_entry_safe(struct dec_av1_task, t, tasks, list) {
+      if (t->buf == priv->picture.av1.ref[idx])
+         return t;
+   }
+
+   return NULL;
+}
+
+static bool dec_av1_GetStartedTask(vid_dec_PrivateType *priv,
+      struct dec_av1_task *task, struct list_head *tasks)
+{
+   struct dec_av1_task *started_task;
+
+   ++priv->codec_data.av1.que_num;
+   list_addtail(&task->list, &priv->codec_data.av1.started_tasks);
+   if (priv->codec_data.av1.que_num <= 16)
+      return false;
+
+   started_task = LIST_ENTRY(struct dec_av1_task,
+      priv->codec_data.av1.started_tasks.next, list);
+   list_del(&started_task->list);
+   list_addtail(&started_task->list, tasks);
+   --priv->codec_data.av1.que_num;
+
+   return true;
+}
+
+static void dec_av1_ShowExistingframe(vid_dec_PrivateType *priv)
+{
+   struct input_buf_private *inp = priv->in_buffers[0]->pInputPortPrivate;
+   struct dec_av1_task *task, *existing_task;
+   bool fnd;
+
+   task = CALLOC_STRUCT(dec_av1_task);
+   if (!task)
+      return;
+
+   task->is_sef_task = true;
+
+   mtx_lock(&priv->codec_data.av1.mutex);
+   dec_av1_MoveTask(&inp->tasks, &priv->codec_data.av1.finished_tasks);
+   dec_av1_SortTask(priv);
+   existing_task = dec_av1_SearchTask(priv, &priv->codec_data.av1.started_tasks);
+   if (existing_task) {
+      ++existing_task->buf_ref_count;
+      task->buf = existing_task->buf;
+      task->buf_ref = &existing_task->buf;
+      task->buf_ref_count = 0;
+   } else {
+      existing_task = dec_av1_SearchTask(priv, &priv->codec_data.av1.finished_tasks);
+      if (existing_task) {
+         struct vl_screen *omx_screen;
+         struct pipe_screen *pscreen;
+         struct pipe_video_buffer templat = {};
+         struct pipe_video_buffer *buf;
+         struct pipe_box box={};
+
+         omx_screen = priv->screen;
+         assert(omx_screen);
+
+         pscreen = omx_screen->pscreen;
+         assert(pscreen);
+
+         memset(&templat, 0, sizeof(templat));
+         templat.width = priv->codec->width;
+         templat.height = priv->codec->height;
+         templat.buffer_format = pscreen->get_video_param(
+            pscreen,
+            PIPE_VIDEO_PROFILE_UNKNOWN,
+            PIPE_VIDEO_ENTRYPOINT_BITSTREAM,
+            PIPE_VIDEO_CAP_PREFERED_FORMAT
+         );
+         templat.interlaced = false;
+         buf = priv->pipe->create_video_buffer(priv->pipe, &templat);
+         if (!buf) {
+            FREE(task);
+            mtx_unlock(&priv->codec_data.av1.mutex);
+            return;
+         }
+
+         box.width = priv->codec->width;
+         box.height = priv->codec->height;
+         box.depth = 1;
+         priv->pipe->resource_copy_region(priv->pipe,
+               ((struct vl_video_buffer *)buf)->resources[0],
+               0, 0, 0, 0,
+               ((struct vl_video_buffer *)(existing_task->buf))->resources[0],
+               0, &box);
+         box.width /= 2;
+         box.height/= 2;
+         priv->pipe->resource_copy_region(priv->pipe,
+               ((struct vl_video_buffer *)buf)->resources[1],
+               0, 0, 0, 0,
+               ((struct vl_video_buffer *)(existing_task->buf))->resources[1],
+               0, &box);
+         priv->pipe->flush(priv->pipe, NULL, 0);
+         existing_task->buf_ref_count = 0;
+         task->buf = buf;
+         task->buf_ref_count = 1;
+      } else {
+         FREE(task);
+         mtx_unlock(&priv->codec_data.av1.mutex);
+         return;
+      }
+   }
+   dec_av1_SortTask(priv);
+
+   fnd = dec_av1_GetStartedTask(priv, task, &inp->tasks);
+   mtx_unlock(&priv->codec_data.av1.mutex);
+   if (fnd)
+      priv->frame_finished = 1;
+}
+
+static struct dec_av1_task *dec_av1_BeginFrame(vid_dec_PrivateType *priv)
+{
+   struct input_buf_private *inp = priv->in_buffers[0]->pInputPortPrivate;
+   struct dec_av1_task *task;
+
+   if (priv->frame_started)
+      return NULL;
+
+   if (!priv->codec) {
+      struct vl_screen *omx_screen;
+      struct pipe_screen *pscreen;
+      struct pipe_video_codec templat = {};
+      bool supported;
+
+      omx_screen = priv->screen;
+      assert(omx_screen);
+
+      pscreen = omx_screen->pscreen;
+      assert(pscreen);
+
+      supported = pscreen->get_video_param(pscreen, priv->profile,
+            PIPE_VIDEO_ENTRYPOINT_BITSTREAM, PIPE_VIDEO_CAP_SUPPORTED);
+      assert(supported && "AV1 is not supported");
+
+      templat.profile = priv->profile;
+      templat.entrypoint = PIPE_VIDEO_ENTRYPOINT_BITSTREAM;
+      templat.chroma_format = PIPE_VIDEO_CHROMA_FORMAT_420;
+      templat.max_references = AV1_NUM_REF_FRAMES;
+      templat.expect_chunked_decode = true;
+      omx_base_video_PortType *port;
+      port = (omx_base_video_PortType *)priv->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+      templat.width = port->sPortParam.format.video.nFrameWidth;
+      templat.height = port->sPortParam.format.video.nFrameHeight;
+
+      priv->codec = priv->pipe->create_video_codec(priv->pipe, &templat);
+   }
+
+   mtx_lock(&priv->codec_data.av1.mutex);
+   dec_av1_MoveTask(&inp->tasks, &priv->codec_data.av1.finished_tasks);
+   dec_av1_SortTask(priv);
+   mtx_unlock(&priv->codec_data.av1.mutex);
+
+   task = dec_av1_NeedTask(priv);
+   if (!task)
+      return NULL;
+
+   priv->codec->begin_frame(priv->codec, task->buf, &priv->picture.base);
+   priv->frame_started = true;
+
+   return task;
+}
+
+static void dec_av1_EndFrame(vid_dec_PrivateType *priv, struct dec_av1_task *task)
+{
+   struct input_buf_private *inp = priv->in_buffers[0]->pInputPortPrivate;
+   unsigned refresh_frame_flags;
+   bool fnd;
+   unsigned i;
+
+   if (!priv->frame_started || ! task)
+      return;
+
+   priv->codec->end_frame(priv->codec, task->buf, &priv->picture.base);
+   priv->frame_started = false;
+
+   refresh_frame_flags = priv->codec_data.av1.uncompressed_header.refresh_frame_flags;
+   for (i = 0; i < AV1_NUM_REF_FRAMES; ++i) {
+      if (refresh_frame_flags & (1 << i)) {
+         memcpy(&priv->codec_data.av1.refs[i], &priv->codec_data.av1.uncompressed_header,
+            sizeof(struct av1_uncompressed_header_obu));
+         priv->picture.av1.ref[i] = task->buf;
+         priv->codec_data.av1.RefFrames[i].RefFrameType =
+            priv->codec_data.av1.uncompressed_header.frame_type;
+         priv->codec_data.av1.RefFrames[i].RefFrameId =
+            priv->codec_data.av1.uncompressed_header.current_frame_id;
+         priv->codec_data.av1.RefFrames[i].RefUpscaledWidth =
+            priv->codec_data.av1.uncompressed_header.UpscaledWidth;
+         priv->codec_data.av1.RefFrames[i].RefFrameWidth =
+            priv->codec_data.av1.uncompressed_header.FrameWidth;
+         priv->codec_data.av1.RefFrames[i].RefFrameHeight =
+            priv->codec_data.av1.uncompressed_header.FrameHeight;
+         priv->codec_data.av1.RefFrames[i].RefRenderWidth =
+            priv->codec_data.av1.uncompressed_header.RenderWidth;
+         priv->codec_data.av1.RefFrames[i].RefRenderHeight =
+            priv->codec_data.av1.uncompressed_header.RenderHeight;
+      }
+   }
+   if (!priv->picture.av1.picture_parameter.pic_info_fields.show_frame)
+       task->no_show_frame = true;
+
+   mtx_lock(&priv->codec_data.av1.mutex);
+   fnd = dec_av1_GetStartedTask(priv, task, &priv->codec_data.av1.decode_tasks);
+   if (!fnd) {
+      mtx_unlock(&priv->codec_data.av1.mutex);
+      return;
+   }
+   if (!priv->codec_data.av1.stacked_frame)
+      dec_av1_MoveTask(&priv->codec_data.av1.decode_tasks, &inp->tasks);
+   mtx_unlock(&priv->codec_data.av1.mutex);
+   priv->frame_finished = 1;
+}
+
+static void dec_av1_Decode(vid_dec_PrivateType *priv, struct vl_vlc *vlc,
+                           unsigned min_bits_left)
+{
+   unsigned start_bits_pos = vl_vlc_bits_left(vlc);
+   unsigned start_bits = vl_vlc_valid_bits(vlc);
+   unsigned start_bytes = start_bits / 8;
+   const void *obu_data = vlc->data;
+   uint8_t start_buf[8];
+   unsigned num_buffers = 0;
+   void * const * buffers[4];
+   unsigned sizes[4];
+   unsigned obu_size = 0;
+   unsigned total_obu_len;
+   enum av1_obu_type type;
+   bool obu_extension_flag;
+   bool obu_has_size_field;
+   unsigned i;
+
+   for (i = 0; i < start_bytes; ++i)
+      start_buf[i] =
+         vl_vlc_peekbits(vlc, start_bits) >> ((start_bytes - i - 1) * 8);
+
+   /* obu header */
+   av1_f(vlc, 1); /* obu_forbidden_bit */
+   type = av1_f(vlc, 4);
+   obu_extension_flag = av1_f(vlc, 1);
+   obu_has_size_field = av1_f(vlc, 1);
+   av1_f(vlc, 1); /* obu_reserved_1bit */
+   if (obu_extension_flag) {
+      priv->codec_data.av1.ext.temporal_id = av1_f(vlc, 3);
+      priv->codec_data.av1.ext.spatial_id = av1_f(vlc, 2);
+      av1_f(vlc, 3); /* extension_header_reserved_3bits */
+   }
+
+   obu_size = (obu_has_size_field) ? av1_uleb128(vlc) :
+              (priv->sizes[0] - (unsigned)obu_extension_flag - 1);
+   total_obu_len = (start_bits_pos - vl_vlc_bits_left(vlc)) / 8 + obu_size;
+
+   switch (type) {
+   case AV1_OBU_SEQUENCE_HEADER: {
+      sequence_header_obu(priv, vlc);
+      av1_byte_alignment(vlc);
+      priv->codec_data.av1.bs_obu_seq_sz = total_obu_len;
+      memcpy(priv->codec_data.av1.bs_obu_seq_buf, start_buf, start_bytes);
+      memcpy(priv->codec_data.av1.bs_obu_seq_buf + start_bytes, obu_data,
+             total_obu_len - start_bytes);
+      break;
+   }
+   case AV1_OBU_TEMPORAL_DELIMITER:
+      av1_byte_alignment(vlc);
+      priv->codec_data.av1.bs_obu_td_sz = total_obu_len;
+      memcpy(priv->codec_data.av1.bs_obu_td_buf, start_buf, total_obu_len);
+      break;
+   case AV1_OBU_FRAME_HEADER:
+      frame_header_obu(priv, vlc);
+      if (priv->codec_data.av1.uncompressed_header.show_existing_frame)
+         dec_av1_ShowExistingframe(priv);
+      av1_byte_alignment(vlc);
+      break;
+   case AV1_OBU_FRAME: {
+      struct dec_av1_task *task;
+
+      frame_header_obu(priv, vlc);
+      av1_byte_alignment(vlc);
+
+      parse_tile_hdr(priv, vlc, start_bits_pos, total_obu_len);
+      av1_byte_alignment(vlc);
+
+      task = dec_av1_BeginFrame(priv);
+      if (!task)
+         return;
+
+      if (priv->codec_data.av1.bs_obu_td_sz) {
+         buffers[num_buffers] = (void *)priv->codec_data.av1.bs_obu_td_buf;
+         sizes[num_buffers++] = priv->codec_data.av1.bs_obu_td_sz;
+         priv->codec_data.av1.bs_obu_td_sz = 0;
+      }
+      if (priv->codec_data.av1.bs_obu_seq_sz) {
+         buffers[num_buffers] = (void *)priv->codec_data.av1.bs_obu_seq_buf;
+         sizes[num_buffers++] = priv->codec_data.av1.bs_obu_seq_sz;
+         priv->codec_data.av1.bs_obu_seq_sz = 0;
+      }
+      buffers[num_buffers] = (void *)start_buf;
+      sizes[num_buffers++] = start_bytes;
+      buffers[num_buffers] = (void *)obu_data;
+      sizes[num_buffers++] = total_obu_len - start_bytes;
+
+      priv->codec->decode_bitstream(priv->codec, priv->target,
+         &priv->picture.base, num_buffers, (const void * const*)buffers, sizes);
+
+      priv->codec_data.av1.stacked_frame =
+            (vl_vlc_bits_left(vlc) > min_bits_left) ? true : false;
+
+      dec_av1_EndFrame(priv, task);
+      break;
+   }
+   default:
+      av1_byte_alignment(vlc);
+      break;
+   }
+
+   return;
+}
+
+OMX_ERRORTYPE vid_dec_av1_AllocateInBuffer(omx_base_PortType *port,
+             OMX_INOUT OMX_BUFFERHEADERTYPE **buf, OMX_IN OMX_U32 idx,
+             OMX_IN OMX_PTR private, OMX_IN OMX_U32 size)
+{
+   struct input_buf_private *inp;
+   OMX_ERRORTYPE r;
+
+   r = base_port_AllocateBuffer(port, buf, idx, private, size);
+   if (r)
+      return r;
+
+   inp = (*buf)->pInputPortPrivate = CALLOC_STRUCT(input_buf_private);
+   if (!inp) {
+      base_port_FreeBuffer(port, idx, *buf);
+      return OMX_ErrorInsufficientResources;
+   }
+
+   list_inithead(&inp->tasks);
+
+   return OMX_ErrorNone;
+}
+
+OMX_ERRORTYPE vid_dec_av1_UseInBuffer(omx_base_PortType *port,
+             OMX_BUFFERHEADERTYPE **buf, OMX_U32 idx,
+             OMX_PTR private, OMX_U32 size, OMX_U8 *mem)
+{
+   struct input_buf_private *inp;
+   OMX_ERRORTYPE r;
+
+   r = base_port_UseBuffer(port, buf, idx, private, size, mem);
+   if (r)
+      return r;
+
+   inp = (*buf)->pInputPortPrivate = CALLOC_STRUCT(input_buf_private);
+   if (!inp) {
+      base_port_FreeBuffer(port, idx, *buf);
+      return OMX_ErrorInsufficientResources;
+   }
+
+   list_inithead(&inp->tasks);
+
+   return OMX_ErrorNone;
+}
+
+void vid_dec_av1_FreeInputPortPrivate(vid_dec_PrivateType *priv,
+                                      OMX_BUFFERHEADERTYPE *buf)
+{
+   struct input_buf_private *inp = buf->pInputPortPrivate;
+
+   if (!inp || !inp->tasks.next)
+      return;
+
+   list_for_each_entry_safe(struct dec_av1_task, task, &inp->tasks, list) {
+      task->buf->destroy(task->buf);
+      FREE(task);
+   }
+}
+
+void vid_dec_av1_ReleaseTasks(vid_dec_PrivateType *priv)
+{
+   dec_av1_ReleaseTask(priv, &priv->codec_data.av1.free_tasks);
+   dec_av1_ReleaseTask(priv, &priv->codec_data.av1.started_tasks);
+   dec_av1_ReleaseTask(priv, &priv->codec_data.av1.decode_tasks);
+   dec_av1_ReleaseTask(priv, &priv->codec_data.av1.finished_tasks);
+   mtx_destroy(&priv->codec_data.av1.mutex);
+}
+
+void vid_dec_av1_FrameDecoded(OMX_COMPONENTTYPE *comp,
+                              OMX_BUFFERHEADERTYPE* input,
+                              OMX_BUFFERHEADERTYPE* output)
+{
+   vid_dec_PrivateType *priv = comp->pComponentPrivate;
+   bool eos = !!(input->nFlags & OMX_BUFFERFLAG_EOS);
+   struct input_buf_private *inp = input->pInputPortPrivate;
+   struct dec_av1_task *task;
+   bool stacked = false;
+
+   mtx_lock(&priv->codec_data.av1.mutex);
+   if (list_length(&inp->tasks) > 1)
+      stacked = true;
+
+   if (list_is_empty(&inp->tasks)) {
+      task = LIST_ENTRY(struct dec_av1_task,
+            priv->codec_data.av1.started_tasks.next, list);
+      list_del(&task->list);
+      list_addtail(&task->list, &inp->tasks);
+      --priv->codec_data.av1.que_num;
+   }
+
+   task = LIST_ENTRY(struct dec_av1_task, inp->tasks.next, list);
+
+   if (!task->no_show_frame) {
+      vid_dec_FillOutput(priv, task->buf, output);
+      output->nFilledLen = output->nAllocLen;
+      output->nTimeStamp = input->nTimeStamp;
+   } else {
+      task->no_show_frame = false;
+      output->nFilledLen = 0;
+   }
+
+   if (task->is_sef_task) {
+      if (task->buf_ref_count == 0) {
+         struct dec_av1_task *t;
+         t = container_of(task->buf_ref, t, buf);
+         list_del(&task->list);
+         t->buf_ref_count--;
+         list_del(&t->list);
+         list_addtail(&t->list, &priv->codec_data.av1.finished_tasks);
+      } else if (task->buf_ref_count == 1) {
+         list_del(&task->list);
+         task->buf->destroy(task->buf);
+         task->buf_ref_count--;
+      }
+      FREE(task);
+   } else {
+      if (task->buf_ref_count == 1) {
+         list_del(&task->list);
+         list_addtail(&task->list, &priv->codec_data.av1.finished_tasks);
+         task->buf_ref_count--;
+      } else if (task->buf_ref_count == 2) {
+         list_del(&task->list);
+         task->buf_ref_count--;
+         list_addtail(&task->list, &priv->codec_data.av1.finished_tasks);
+      }
+   }
+
+   if (eos && input->pInputPortPrivate) {
+      if (!priv->codec_data.av1.que_num)
+         input->nFilledLen = 0;
+      else
+         vid_dec_av1_FreeInputPortPrivate(priv, input);
+   }
+   else {
+      if (!stacked)
+         input->nFilledLen = 0;
+   }
+   mtx_unlock(&priv->codec_data.av1.mutex);
+}
+
+void vid_dec_av1_Init(vid_dec_PrivateType *priv)
+{
+   priv->picture.base.profile = PIPE_VIDEO_PROFILE_AV1_MAIN;
+   priv->Decode = dec_av1_Decode;
+   list_inithead(&priv->codec_data.av1.free_tasks);
+   list_inithead(&priv->codec_data.av1.started_tasks);
+   list_inithead(&priv->codec_data.av1.decode_tasks);
+   list_inithead(&priv->codec_data.av1.finished_tasks);
+   (void)mtx_init(&priv->codec_data.av1.mutex, mtx_plain);
 }

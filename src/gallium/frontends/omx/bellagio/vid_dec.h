@@ -67,4 +67,22 @@ void vid_dec_h264_Init(vid_dec_PrivateType *priv);
 /* vid_dec_h265.c */
 void vid_dec_h265_Init(vid_dec_PrivateType *priv);
 
+/* vid_dec_av1.c */
+void vid_dec_av1_Init(vid_dec_PrivateType *priv);
+
+OMX_ERRORTYPE vid_dec_av1_AllocateInBuffer(omx_base_PortType *port,
+                                           OMX_INOUT OMX_BUFFERHEADERTYPE **buf,
+                                           OMX_IN OMX_U32 idx, OMX_IN OMX_PTR private,
+                                           OMX_IN OMX_U32 size);
+
+OMX_ERRORTYPE vid_dec_av1_UseInBuffer(omx_base_PortType *port, OMX_BUFFERHEADERTYPE **buf,
+                                      OMX_U32 idx, OMX_PTR private, OMX_U32 size, OMX_U8 *mem);
+
+void vid_dec_av1_FrameDecoded(OMX_COMPONENTTYPE *comp, OMX_BUFFERHEADERTYPE* input,
+                              OMX_BUFFERHEADERTYPE* output);
+
+void vid_dec_av1_ReleaseTasks(vid_dec_PrivateType *priv);
+
+void vid_dec_av1_FreeInputPortPrivate(vid_dec_PrivateType *priv, OMX_BUFFERHEADERTYPE *buf);
+
 #endif
