@@ -454,6 +454,14 @@ clGetImageInfo(cl_mem d_mem, cl_image_info param,
       buf.as_scalar<size_t>() = img.depth();
       break;
 
+   case CL_IMAGE_NUM_MIP_LEVELS:
+      buf.as_scalar<cl_uint>() = 0;
+      break;
+
+   case CL_IMAGE_NUM_SAMPLES:
+      buf.as_scalar<cl_uint>() = 0;
+      break;
+
    default:
       throw error(CL_INVALID_VALUE);
    }
