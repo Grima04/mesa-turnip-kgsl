@@ -838,6 +838,14 @@ fd_resource_get_handle(struct pipe_screen *pscreen,
 
 	handle->modifier = fd_resource_modifier(rsc);
 
+	DBG("%p: target=%d, format=%s, %ux%ux%u, array_size=%u, last_level=%u, "
+			"nr_samples=%u, usage=%u, bind=%x, flags=%x, modifier=%"PRIx64,
+			prsc, prsc->target, util_format_name(prsc->format),
+			prsc->width0, prsc->height0, prsc->depth0,
+			prsc->array_size, prsc->last_level, prsc->nr_samples,
+			prsc->usage, prsc->bind, prsc->flags,
+			handle->modifier);
+
 	return fd_screen_bo_get_handle(pscreen, rsc->bo, rsc->scanout,
 			fd_resource_pitch(rsc, 0), handle);
 }
@@ -1071,12 +1079,13 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	struct fdl_slice *slice = fd_resource_slice(rsc, 0);
 	struct pipe_resource *prsc = &rsc->base;
 
-	DBG("target=%d, format=%s, %ux%ux%u, array_size=%u, last_level=%u, "
-			"nr_samples=%u, usage=%u, bind=%x, flags=%x",
-			tmpl->target, util_format_name(tmpl->format),
+	DBG("%p: target=%d, format=%s, %ux%ux%u, array_size=%u, last_level=%u, "
+			"nr_samples=%u, usage=%u, bind=%x, flags=%x, modifier=%"PRIx64,
+			prsc, tmpl->target, util_format_name(tmpl->format),
 			tmpl->width0, tmpl->height0, tmpl->depth0,
 			tmpl->array_size, tmpl->last_level, tmpl->nr_samples,
-			tmpl->usage, tmpl->bind, tmpl->flags);
+			tmpl->usage, tmpl->bind, tmpl->flags,
+			handle->modifier);
 
 	*prsc = *tmpl;
 	fd_resource_layout_init(prsc);
