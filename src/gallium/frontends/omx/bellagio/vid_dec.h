@@ -54,6 +54,9 @@
 #define OMX_VID_DEC_HEVC_NAME "OMX.mesa.video_decoder.hevc"
 #define OMX_VID_DEC_HEVC_ROLE "video_decoder.hevc"
 
+#define OMX_VID_DEC_AV1_NAME "OMX.mesa.video_decoder.av1"
+#define OMX_VID_DEC_AV1_ROLE "video_decoder.av1"
+
 #define OMX_VID_DEC_TIMESTAMP_INVALID ((OMX_TICKS) -1)
 
 OMX_ERRORTYPE vid_dec_LoaderComponent(stLoaderComponentType *comp);
