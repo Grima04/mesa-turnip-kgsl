@@ -424,7 +424,6 @@ radv_patch_image_from_extra_info(struct radv_device *device,
 
 		if (radv_surface_has_scanout(device, create_info)) {
 			image->planes[plane].surface.flags |= RADEON_SURF_SCANOUT;
-			image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC;
 
 			image->info.surf_index = NULL;
 		}

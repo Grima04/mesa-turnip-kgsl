@@ -57,10 +57,6 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
 		return false;
 	}
 
-	/* temporary */
-	ws->info.use_display_dcc_unaligned = false;
-	ws->info.use_display_dcc_with_retile_blit = false;
-
 	ws->addrlib = ac_addrlib_create(&ws->info, &ws->info.max_alignment);
 	if (!ws->addrlib) {
 		fprintf(stderr, "amdgpu: Cannot create addrlib.\n");
