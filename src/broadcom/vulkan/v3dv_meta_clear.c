@@ -130,8 +130,8 @@ static nir_shader *
 get_clear_rect_vs()
 {
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, options);
-   b.shader->info.name = ralloc_strdup(b.shader, "meta clear vs");
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, options,
+                                                  "meta clear vs");
 
    const struct glsl_type *vec4 = glsl_vec4_type();
    nir_variable *vs_out_pos =
@@ -148,8 +148,8 @@ static nir_shader *
 get_color_clear_rect_fs(uint32_t rt_idx, VkFormat format)
 {
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options);
-   b.shader->info.name = ralloc_strdup(b.shader, "meta clear fs");
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options,
+                                                  "meta clear fs");
 
    enum pipe_format pformat = vk_format_to_pipe_format(format);
    const struct glsl_type *fs_out_type =
@@ -177,8 +177,8 @@ static nir_shader *
 get_depth_clear_rect_fs()
 {
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options);
-   b.shader->info.name = ralloc_strdup(b.shader, "meta depth clear fs");
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options,
+                                                  "meta depth clear fs");
 
    nir_variable *fs_out_depth =
       nir_variable_create(b.shader, nir_var_shader_out, glsl_float_type(),

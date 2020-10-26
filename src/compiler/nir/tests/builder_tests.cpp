@@ -75,7 +75,7 @@ nir_builder_test::nir_builder_test()
    glsl_type_singleton_init_or_ref();
 
    static const nir_shader_compiler_options options = { };
-   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options);
+   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "builder test");
    b = &_b;
 }
 

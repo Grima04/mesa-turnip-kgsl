@@ -1476,7 +1476,7 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
                                const struct brw_tcs_prog_key *key)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_TESS_CTRL,
-                                                  options);
+                                                  options, "passthrough TCS");
    ralloc_adopt(mem_ctx, b.shader);
    nir_shader *nir = b.shader;
    nir_variable *var;
@@ -1489,7 +1489,6 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
       ~(VARYING_BIT_TESS_LEVEL_INNER | VARYING_BIT_TESS_LEVEL_OUTER);
    nir->info.outputs_written = key->outputs_written;
    nir->info.tess.tcs_vertices_out = key->input_vertices;
-   nir->info.name = ralloc_strdup(nir, "passthrough");
    nir->num_uniforms = 8 * sizeof(uint32_t);
 
    var = nir_variable_create(nir, nir_var_uniform, glsl_vec4_type(), "hdr_0");

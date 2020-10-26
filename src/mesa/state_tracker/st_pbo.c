@@ -296,7 +296,8 @@ st_pbo_create_vs(struct st_context *st)
    const nir_shader_compiler_options *options =
       st_get_nir_compiler_options(st, MESA_SHADER_VERTEX);
 
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, options);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, options,
+                                                  "st/pbo VS");
 
    nir_variable *in_pos = nir_variable_create(b.shader, nir_var_shader_in,
                                               vec4, "in_pos");
@@ -332,7 +333,7 @@ st_pbo_create_vs(struct st_context *st)
       }
    }
 
-   return st_nir_finish_builtin_shader(st, b.shader, "st/pbo VS");
+   return st_nir_finish_builtin_shader(st, b.shader);
 }
 
 void *
@@ -410,7 +411,10 @@ create_fs(struct st_context *st, bool download,
    bool pos_is_sysval =
       screen->get_param(screen, PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL);
 
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options,
+                                                  download ?
+                                                  "st/pbo download FS" :
+                                                  "st/pbo upload FS");
 
    nir_ssa_def *zero = nir_imm_int(&b, 0);
 
@@ -539,9 +543,7 @@ create_fs(struct st_context *st, bool download,
       nir_store_var(&b, color, result, TGSI_WRITEMASK_XYZW);
    }
 
-   return st_nir_finish_builtin_shader(st, b.shader, download ?
-                                       "st/pbo download FS" :
-                                       "st/pbo upload FS");
+   return st_nir_finish_builtin_shader(st, b.shader);
 }
 
 static enum st_pbo_conversion

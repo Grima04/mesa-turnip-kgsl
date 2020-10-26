@@ -53,14 +53,23 @@ nir_builder_init(nir_builder *build, nir_function_impl *impl)
    build->shader = impl->function->shader;
 }
 
-static inline nir_builder MUST_CHECK
+static inline nir_builder MUST_CHECK PRINTFLIKE(3, 4)
 nir_builder_init_simple_shader(gl_shader_stage stage,
-                               const nir_shader_compiler_options *options)
+                               const nir_shader_compiler_options *options,
+                               const char *name, ...)
 {
    nir_builder b;
 
    memset(&b, 0, sizeof(b));
    b.shader = nir_shader_create(NULL, stage, options, NULL);
+
+   if (name) {
+      va_list args;
+      va_start(args, name);
+      b.shader->info.name = ralloc_vasprintf(b.shader, name, args);
+      va_end(args);
+   }
+
    nir_function *func = nir_function_create(b.shader, "main");
    func->is_entrypoint = true;
    b.exact = false;

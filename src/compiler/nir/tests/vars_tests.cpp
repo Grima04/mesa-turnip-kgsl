@@ -102,7 +102,8 @@ nir_vars_test::nir_vars_test()
    glsl_type_singleton_init_or_ref();
 
    static const nir_shader_compiler_options options = { };
-   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options);
+   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options,
+                                       "vars test");
    b = &_b;
    lin_ctx = linear_alloc_parent(b->shader, 0);
 }

@@ -2300,7 +2300,7 @@ ttn_compile_init(const void *tgsi_tokens,
    }
 
    c->build = nir_builder_init_simple_shader(tgsi_processor_to_shader_stage(scan.processor),
-                                             options);
+                                             options, "TTN");
 
    s = c->build.shader;
 

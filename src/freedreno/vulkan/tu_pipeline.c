@@ -2059,8 +2059,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
          const nir_shader_compiler_options *nir_options =
             ir3_get_compiler_options(builder->device->compiler);
          nir_builder fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
-                                                           nir_options);
-         fs_b.shader->info.name = ralloc_strdup(fs_b.shader, "noop_fs");
+                                                           nir_options,
+                                                           "noop_fs");
          nir[MESA_SHADER_FRAGMENT] = fs_b.shader;
    }
 

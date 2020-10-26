@@ -29,10 +29,8 @@ blorp_nir_init_shader(nir_builder *b,
                       gl_shader_stage stage,
                       const char *name)
 {
-   *b = nir_builder_init_simple_shader(stage, NULL);
+   *b = nir_builder_init_simple_shader(stage, NULL, "%s", name ? name : "");
    ralloc_adopt(mem_ctx, b->shader);
-   if (name != NULL)
-      b->shader->info.name = ralloc_strdup(b->shader, name);
    if (stage == MESA_SHADER_FRAGMENT)
       b->shader->info.fs.origin_upper_left = true;
 }

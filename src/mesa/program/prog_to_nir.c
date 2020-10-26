@@ -969,7 +969,8 @@ prog_to_nir(const struct gl_program *prog,
       return NULL;
    c->prog = prog;
 
-   c->build = nir_builder_init_simple_shader(stage, options);
+   c->build = nir_builder_init_simple_shader(stage, options,
+                                             "ARB%d", prog->Id);
 
    /* Copy the shader_info from the gl_program */
    c->build.shader->info = prog->info;
@@ -997,7 +998,6 @@ prog_to_nir(const struct gl_program *prog,
 
    ptn_add_output_stores(c);
 
-   s->info.name = ralloc_asprintf(s, "ARB%d", prog->Id);
    s->info.num_textures = util_last_bit(prog->SamplersUsed);
    s->info.num_ubos = 0;
    s->info.num_abos = 0;
