@@ -1362,7 +1362,7 @@ bi_emit_tex_offset_ms_index(bi_context *ctx, nir_tex_instr *instr)
         /* TODO: offsets */
         assert(nir_tex_instr_src_index(instr, nir_tex_src_offset) < 0);
 
-        unsigned ms_idx = nir_tex_instr_src_index(instr, nir_tex_src_ms_index);
+        int ms_idx = nir_tex_instr_src_index(instr, nir_tex_src_ms_index);
         if (ms_idx >= 0 &&
             (!nir_src_is_const(instr->src[ms_idx].src) ||
              nir_src_as_uint(instr->src[ms_idx].src) != 0)) {
