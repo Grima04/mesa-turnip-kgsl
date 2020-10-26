@@ -319,12 +319,6 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
       cmd_buffer_destroy_private_obj(cmd_buffer, pobj);
    }
 
-   if (cmd_buffer->meta.blit.dspool) {
-      v3dv_DestroyDescriptorPool(v3dv_device_to_handle(cmd_buffer->device),
-                                 cmd_buffer->meta.blit.dspool,
-                                 &cmd_buffer->device->alloc);
-   }
-
    if (cmd_buffer->state.meta.attachments) {
          assert(cmd_buffer->state.meta.attachment_alloc_count > 0);
          vk_free(&cmd_buffer->device->alloc, cmd_buffer->state.meta.attachments);

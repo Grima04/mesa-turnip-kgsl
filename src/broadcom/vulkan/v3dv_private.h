@@ -1142,6 +1142,7 @@ struct v3dv_cmd_buffer {
    /* Per-command buffer resources for meta operations. */
    struct {
       struct {
+         /* The current descriptor pool for blit sources */
          VkDescriptorPool dspool;
       } blit;
    } meta;
