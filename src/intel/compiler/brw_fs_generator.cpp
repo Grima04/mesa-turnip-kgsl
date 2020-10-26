@@ -2459,11 +2459,25 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
       case SHADER_OPCODE_SEL_EXEC:
          assert(inst->force_writemask_all);
-         brw_set_default_mask_control(p, BRW_MASK_DISABLE);
-         brw_MOV(p, dst, src[1]);
-         brw_set_default_mask_control(p, BRW_MASK_ENABLE);
-         brw_set_default_swsb(p, tgl_swsb_null());
-         brw_MOV(p, dst, src[0]);
+         if (type_sz(dst.type) > 4 && !devinfo->has_64bit_float) {
+            brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+            brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_UD, 0),
+                       subscript(src[1], BRW_REGISTER_TYPE_UD, 0));
+            brw_set_default_swsb(p, tgl_swsb_null());
+            brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_UD, 1),
+                       subscript(src[1], BRW_REGISTER_TYPE_UD, 1));
+            brw_set_default_mask_control(p, BRW_MASK_ENABLE);
+            brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_UD, 0),
+                       subscript(src[0], BRW_REGISTER_TYPE_UD, 0));
+            brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_UD, 1),
+                       subscript(src[0], BRW_REGISTER_TYPE_UD, 1));
+         } else {
+            brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+            brw_MOV(p, dst, src[1]);
+            brw_set_default_mask_control(p, BRW_MASK_ENABLE);
+            brw_set_default_swsb(p, tgl_swsb_null());
+            brw_MOV(p, dst, src[0]);
+         }
          break;
 
       case SHADER_OPCODE_QUAD_SWIZZLE:
