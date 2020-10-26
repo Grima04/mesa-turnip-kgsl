@@ -128,7 +128,6 @@ st_nir_make_passthrough_shader(struct st_context *st,
          snprintf(var_name, sizeof(var_name), "sys_%u", input_locations[i]);
          in = nir_variable_create(b.shader, nir_var_system_value,
                                   glsl_int_type(), var_name);
-         in->data.interpolation = INTERP_MODE_FLAT;
       } else {
          snprintf(var_name, sizeof(var_name), "in_%u", input_locations[i]);
          in = nir_variable_create(b.shader, nir_var_shader_in, vec4, var_name);
