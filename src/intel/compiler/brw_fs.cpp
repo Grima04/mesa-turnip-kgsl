@@ -2715,17 +2715,10 @@ fs_visitor::opt_algebraic()
             assert(!inst->src[0].negate);
             const brw::fs_builder ibld(this, block, inst);
 
-            if (inst->src[0].file == IMM) {
-               ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
-                        brw_imm_ud(inst->src[0].u64 >> 32));
-               ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
-                        brw_imm_ud(inst->src[0].u64));
-            } else {
-               ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
-                        subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 1));
-               ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
-                        subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 0));
-            }
+            ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
+                     subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 1));
+            ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
+                     subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 0));
 
             inst->remove(block);
             progress = true;

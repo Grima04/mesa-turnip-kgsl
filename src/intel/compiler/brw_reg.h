@@ -1022,11 +1022,17 @@ spread(struct brw_reg reg, unsigned s)
 static inline struct brw_reg
 subscript(struct brw_reg reg, enum brw_reg_type type, unsigned i)
 {
-   if (reg.file == IMM)
-      return reg;
-
    unsigned scale = type_sz(reg.type) / type_sz(type);
    assert(scale >= 1 && i < scale);
+
+   if (reg.file == IMM) {
+      unsigned bit_size = type_sz(type) * 8;
+      reg.u64 >>= i * bit_size;
+      reg.u64 &= BITFIELD64_MASK(bit_size);
+      if (bit_size <= 16)
+         reg.u64 |= reg.u64 << 16;
+      return retype(reg, type);
+   }
 
    return suboffset(retype(spread(reg, scale), type), i);
 }
