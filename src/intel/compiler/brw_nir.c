@@ -1475,8 +1475,9 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
                                const nir_shader_compiler_options *options,
                                const struct brw_tcs_prog_key *key)
 {
-   nir_builder b = nir_builder_init_simple_shader(mem_ctx, MESA_SHADER_TESS_CTRL,
+   nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_TESS_CTRL,
                                                   options);
+   ralloc_adopt(mem_ctx, b.shader);
    nir_shader *nir = b.shader;
    nir_variable *var;
    nir_intrinsic_instr *load;
