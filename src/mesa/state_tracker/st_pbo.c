@@ -292,13 +292,48 @@ st_pbo_draw(struct st_context *st, const struct st_pbo_addresses *addr,
 void *
 st_pbo_create_vs(struct st_context *st)
 {
-   unsigned inputs[] =  {  VERT_ATTRIB_POS, SYSTEM_VALUE_INSTANCE_ID, };
-   unsigned outputs[] = { VARYING_SLOT_POS,       VARYING_SLOT_LAYER  };
+   const struct glsl_type *vec4 = glsl_vec4_type();
+   const nir_shader_compiler_options *options =
+      st_get_nir_compiler_options(st, MESA_SHADER_VERTEX);
 
-   return st_nir_make_passthrough_shader(st, "st/pbo VS",
-                                         MESA_SHADER_VERTEX,
-                                         st->pbo.layers ? 2 : 1,
-                                         inputs, outputs, NULL, (1 << 1));
+   nir_builder b;
+   nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_VERTEX, options);
+
+   nir_variable *in_pos = nir_variable_create(b.shader, nir_var_shader_in,
+                                              vec4, "in_pos");
+   in_pos->data.location = VERT_ATTRIB_POS;
+
+   nir_variable *out_pos = nir_variable_create(b.shader, nir_var_shader_out,
+                                               vec4, "out_pos");
+   out_pos->data.location = VARYING_SLOT_POS;
+   out_pos->data.interpolation = INTERP_MODE_NONE;
+
+   nir_copy_var(&b, out_pos, in_pos);
+
+   if (st->pbo.layers) {
+      nir_variable *instance_id = nir_variable_create(b.shader,
+                                                      nir_var_system_value,
+                                                      glsl_int_type(),
+                                                      "instance_id");
+      instance_id->data.location = SYSTEM_VALUE_INSTANCE_ID;
+
+      if (st->pbo.use_gs) {
+         unsigned swiz_x[4] = {0, 0, 0, 0};
+         nir_store_var(&b, out_pos,
+                       nir_swizzle(&b, nir_i2f32(&b, nir_load_var(&b, instance_id)), swiz_x, 4),
+                       (1 << 2));
+      } else {
+         nir_variable *out_layer = nir_variable_create(b.shader,
+                                                     nir_var_shader_out,
+                                                     glsl_int_type(),
+                                                     "out_layer");
+         out_layer->data.location = VARYING_SLOT_LAYER;
+         out_layer->data.interpolation = INTERP_MODE_NONE;
+         nir_copy_var(&b, out_layer, instance_id);
+      }
+   }
+
+   return st_nir_finish_builtin_shader(st, b.shader, "st/pbo VS");
 }
 
 void *
