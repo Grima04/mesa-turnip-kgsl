@@ -393,6 +393,7 @@ void process_block(vn_ctx& ctx, Block& block)
           !instr->definitions[0].isFixed() && instr->operands[0].isTemp() && instr->operands[0].regClass() == instr->definitions[0].regClass() &&
           !instr->isDPP() && !((int)instr->format & (int)Format::SDWA)) {
          ctx.renames[instr->definitions[0].tempId()] = instr->operands[0].getTemp();
+         continue;
       }
 
       instr->pass_flags = ctx.exec_id;
