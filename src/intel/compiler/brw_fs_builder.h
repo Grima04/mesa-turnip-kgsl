@@ -445,7 +445,61 @@ namespace brw {
          dst_reg left, right;
          left = horiz_stride(horiz_offset(tmp, left_offset), left_stride);
          right = horiz_stride(horiz_offset(tmp, right_offset), right_stride);
-         set_condmod(mod, emit(opcode, right, left, right));
+         if ((tmp.type == BRW_REGISTER_TYPE_Q ||
+              tmp.type == BRW_REGISTER_TYPE_UQ) &&
+             !shader->devinfo->has_64bit_int) {
+            switch (opcode) {
+            case BRW_OPCODE_MUL:
+               /* This will get lowered by integer MUL lowering */
+               set_condmod(mod, emit(opcode, right, left, right));
+               break;
+
+            case BRW_OPCODE_SEL: {
+               /* In order for the comparisons to work out right, we need our
+                * comparisons to be strict.
+                */
+               assert(mod == BRW_CONDITIONAL_L || mod == BRW_CONDITIONAL_GE);
+               if (mod == BRW_CONDITIONAL_GE)
+                  mod = BRW_CONDITIONAL_G;
+
+               /* We treat the bottom 32 bits as unsigned regardless of
+                * whether or not the integer as a whole is signed.
+                */
+               dst_reg right_low = subscript(right, BRW_REGISTER_TYPE_UD, 0);
+               dst_reg left_low = subscript(left, BRW_REGISTER_TYPE_UD, 0);
+
+               /* The upper bits get the same sign as the 64-bit type */
+               brw_reg_type type32 = brw_reg_type_from_bit_size(32, tmp.type);
+               dst_reg right_high = subscript(right, type32, 1);
+               dst_reg left_high = subscript(left, type32, 1);
+
+               /* Build up our comparison:
+                *
+                *   l_hi < r_hi || (l_hi == r_hi && l_low < r_low)
+                */
+               CMP(null_reg_ud(), retype(left_low, BRW_REGISTER_TYPE_UD),
+                                  retype(right_low, BRW_REGISTER_TYPE_UD), mod);
+               set_predicate(BRW_PREDICATE_NORMAL,
+                             CMP(null_reg_ud(), left_high, right_high,
+                                 BRW_CONDITIONAL_EQ));
+               set_predicate_inv(BRW_PREDICATE_NORMAL, true,
+                                 CMP(null_reg_ud(), left_high, right_high, mod));
+
+               /* We could use selects here or we could use predicated MOVs
+                * because the destination and second source (if it were a SEL)
+                * are the same.
+                */
+               set_predicate(BRW_PREDICATE_NORMAL, MOV(right_low, left_low));
+               set_predicate(BRW_PREDICATE_NORMAL, MOV(right_high, left_high));
+               break;
+            }
+
+            default:
+               unreachable("Unsupported 64-bit scan op");
+            }
+         } else {
+            set_condmod(mod, emit(opcode, right, left, right));
+         }
       }
 
       void
