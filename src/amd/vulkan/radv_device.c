@@ -6725,12 +6725,42 @@ static uint32_t radv_surface_max_layer_count(struct radv_image_view *iview)
 	return iview->type == VK_IMAGE_VIEW_TYPE_3D ? iview->extent.depth : (iview->base_layer + iview->layer_count);
 }
 
+static unsigned
+get_dcc_max_uncompressed_block_size(const struct radv_device *device,
+                                    const struct radv_image_view *iview)
+{
+	if (device->physical_device->rad_info.chip_class < GFX10 &&
+	    iview->image->info.samples > 1) {
+		if (iview->image->planes[0].surface.bpe == 1)
+			return V_028C78_MAX_BLOCK_SIZE_64B;
+		else if (iview->image->planes[0].surface.bpe == 2)
+			return V_028C78_MAX_BLOCK_SIZE_128B;
+	}
+
+	return V_028C78_MAX_BLOCK_SIZE_256B;
+}
+
+static unsigned
+get_dcc_min_compressed_block_size(const struct radv_device *device)
+{
+	if (!device->physical_device->rad_info.has_dedicated_vram) {
+		/* amdvlk: [min-compressed-block-size] should be set to 32 for
+		 * dGPU and 64 for APU because all of our APUs to date use
+		 * DIMMs which have a request granularity size of 64B while all
+		 * other chips have a 32B request size.
+		 */
+		return V_028C78_MIN_BLOCK_SIZE_64B;
+	}
+
+	return V_028C78_MIN_BLOCK_SIZE_32B;
+}
+
 static uint32_t
 radv_init_dcc_control_reg(struct radv_device *device,
 			  struct radv_image_view *iview)
 {
-	unsigned max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
-	unsigned min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_32B;
+	unsigned max_uncompressed_block_size = get_dcc_max_uncompressed_block_size(device, iview);
+	unsigned min_compressed_block_size = get_dcc_min_compressed_block_size(device);
 	unsigned max_compressed_block_size;
 	unsigned independent_128b_blocks;
 	unsigned independent_64b_blocks;
@@ -6738,32 +6768,18 @@ radv_init_dcc_control_reg(struct radv_device *device,
 	if (!radv_dcc_enabled(iview->image, iview->base_mip))
 		return 0;
 
-	if (!device->physical_device->rad_info.has_dedicated_vram) {
-		/* amdvlk: [min-compressed-block-size] should be set to 32 for
-		 * dGPU and 64 for APU because all of our APUs to date use
-		 * DIMMs which have a request granularity size of 64B while all
-		 * other chips have a 32B request size.
-		 */
-		min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_64B;
-	}
-
-	if (device->physical_device->rad_info.chip_class >= GFX10) {
-		max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
-		independent_64b_blocks = 0;
-		independent_128b_blocks = 1;
+	/* For GFX9+ ac_surface computes values for us (except min_compressed
+	 * and max_uncompressed) */
+	if (device->physical_device->rad_info.chip_class >= GFX9) {
+		max_compressed_block_size = iview->image->planes[0].surface.u.gfx9.dcc.max_compressed_block_size;
+		independent_128b_blocks = iview->image->planes[0].surface.u.gfx9.dcc.independent_128B_blocks;
+		independent_64b_blocks = iview->image->planes[0].surface.u.gfx9.dcc.independent_64B_blocks;
 	} else {
 		independent_128b_blocks = 0;
 
-		if (iview->image->info.samples > 1) {
-			if (iview->image->planes[0].surface.bpe == 1)
-				max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
-			else if (iview->image->planes[0].surface.bpe == 2)
-				max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
-		}
-
 		if (iview->image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
-					   VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-					   VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+		                           VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+		                           VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
 			/* If this DCC image is potentially going to be used in texture
 			 * fetches, we need some special settings.
 			 */
