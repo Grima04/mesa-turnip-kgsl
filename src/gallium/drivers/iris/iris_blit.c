@@ -487,15 +487,28 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    else
       main_mask = PIPE_MASK_RGBA;
 
+   float src_z_step = (float)info->src.box.depth / (float)info->dst.box.depth;
+
+   /* There is no interpolation to the pixel center during rendering, so
+    * add the 0.5 offset ourselves here.
+    */
+   float depth_center_offset = 0;
+   if (src_res->surf.dim == ISL_SURF_DIM_3D)
+      depth_center_offset = 0.5 / info->dst.box.depth * info->src.box.depth;
+
    if (info->mask & main_mask) {
       for (int slice = 0; slice < info->dst.box.depth; slice++) {
+         unsigned dst_z = info->dst.box.z + slice;
+         float src_z = info->src.box.z + slice * src_z_step +
+                       depth_center_offset;
+
          iris_batch_maybe_flush(batch, 1500);
          iris_batch_sync_region_start(batch);
 
          blorp_blit(&blorp_batch,
-                    &src_surf, info->src.level, info->src.box.z + slice,
+                    &src_surf, info->src.level, src_z,
                     src_fmt.fmt, src_fmt.swizzle,
-                    &dst_surf, info->dst.level, info->dst.box.z + slice,
+                    &dst_surf, info->dst.level, dst_z,
                     dst_fmt.fmt, dst_fmt.swizzle,
                     src_x0, src_y0, src_x1, src_y1,
                     dst_x0, dst_y0, dst_x1, dst_y1,
