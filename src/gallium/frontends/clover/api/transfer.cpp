@@ -121,13 +121,13 @@ namespace {
 
       switch (img.type()) {
       case CL_MEM_OBJECT_IMAGE2D: {
-         const size_t max = 1 << dev.max_image_levels_2d();
+         const size_t max = dev.max_image_size();
          if (img.width() > max || img.height() > max)
             throw error(CL_INVALID_IMAGE_SIZE);
          break;
       }
       case CL_MEM_OBJECT_IMAGE3D: {
-         const size_t max = 1 << dev.max_image_levels_3d();
+         const size_t max = dev.max_image_size_3d();
          if (img.width() > max || img.height() > max || img.depth() > max)
             throw error(CL_INVALID_IMAGE_SIZE);
          break;

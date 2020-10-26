@@ -219,7 +219,7 @@ clCreateImageWithProperties(cl_context d_ctx,
          throw error(CL_INVALID_IMAGE_SIZE);
 
       if (all_of([=](const device &dev) {
-               const size_t max = 1 << dev.max_image_levels_2d();
+               const size_t max = dev.max_image_size();
                return (desc->image_width > max ||
                        desc->image_height > max);
             }, ctx.devices()))
@@ -234,7 +234,7 @@ clCreateImageWithProperties(cl_context d_ctx,
          throw error(CL_INVALID_IMAGE_SIZE);
 
       if (all_of([=](const device &dev) {
-               const size_t max = 1 << dev.max_image_levels_3d();
+               const size_t max = dev.max_image_size_3d();
                return (desc->image_width > max ||
                        desc->image_height > max ||
                        desc->image_depth > max);
