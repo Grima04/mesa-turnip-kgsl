@@ -86,7 +86,7 @@ verified:
 
 * Device extensions:
 
-  * ``VK_EXT_vertex_attribute_divisor``
+  * `VK_EXT_vertex_attribute_divisor`_
 
 Debugging
 ---------
@@ -131,3 +131,4 @@ questions, don't hesitate to visit `#zink on FreeNode
 .. _VK_KHR_external_memory: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_external_memory.html
 .. _VK_EXT_transform_feedback: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_transform_feedback.html
 .. _VK_EXT_conditional_rendering: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_conditional_rendering.html
+.. _VK_EXT_vertex_attribute_divisor: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_vertex_attribute_divisor.html
