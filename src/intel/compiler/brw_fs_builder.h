@@ -437,6 +437,18 @@ namespace brw {
       }
 
       void
+      emit_scan_step(enum opcode opcode, brw_conditional_mod mod,
+                     const dst_reg &tmp,
+                     unsigned left_offset, unsigned left_stride,
+                     unsigned right_offset, unsigned right_stride) const
+      {
+         dst_reg left, right;
+         left = horiz_stride(horiz_offset(tmp, left_offset), left_stride);
+         right = horiz_stride(horiz_offset(tmp, right_offset), right_stride);
+         set_condmod(mod, emit(opcode, right, left, right));
+      }
+
+      void
       emit_scan(enum opcode opcode, const dst_reg &tmp,
                 unsigned cluster_size, brw_conditional_mod mod) const
       {
@@ -453,30 +465,23 @@ namespace brw {
             ubld.emit_scan(opcode, left, cluster_size, mod);
             ubld.emit_scan(opcode, right, cluster_size, mod);
             if (cluster_size > half_width) {
-               src_reg left_comp = component(left, half_width - 1);
-               set_condmod(mod, ubld.emit(opcode, right, left_comp, right));
+               ubld.emit_scan_step(opcode, mod, tmp,
+                                   half_width - 1, 0, half_width, 1);
             }
             return;
          }
 
          if (cluster_size > 1) {
             const fs_builder ubld = exec_all().group(dispatch_width() / 2, 0);
-            const dst_reg left = horiz_stride(tmp, 2);
-            const dst_reg right = horiz_stride(horiz_offset(tmp, 1), 2);
-            set_condmod(mod, ubld.emit(opcode, right, left, right));
+            ubld.emit_scan_step(opcode, mod, tmp, 0, 2, 1, 2);
          }
 
          if (cluster_size > 2) {
             if (type_sz(tmp.type) <= 4) {
                const fs_builder ubld =
                   exec_all().group(dispatch_width() / 4, 0);
-               src_reg left = horiz_stride(horiz_offset(tmp, 1), 4);
-
-               dst_reg right = horiz_stride(horiz_offset(tmp, 2), 4);
-               set_condmod(mod, ubld.emit(opcode, right, left, right));
-
-               right = horiz_stride(horiz_offset(tmp, 3), 4);
-               set_condmod(mod, ubld.emit(opcode, right, left, right));
+               ubld.emit_scan_step(opcode, mod, tmp, 1, 4, 2, 4);
+               ubld.emit_scan_step(opcode, mod, tmp, 1, 4, 3, 4);
             } else {
                /* For 64-bit types, we have to do things differently because
                 * the code above would land us with destination strides that
@@ -485,12 +490,8 @@ namespace brw {
                 * instructions.
                 */
                const fs_builder ubld = exec_all().group(2, 0);
-
-               for (unsigned i = 0; i < dispatch_width(); i += 4) {
-                  src_reg left = component(tmp, i + 1);
-                  dst_reg right = horiz_offset(tmp, i + 2);
-                  set_condmod(mod, ubld.emit(opcode, right, left, right));
-               }
+               for (unsigned i = 0; i < dispatch_width(); i += 4)
+                  ubld.emit_scan_step(opcode, mod, tmp, i + 1, 0, i + 2, 1);
             }
          }
 
@@ -498,24 +499,14 @@ namespace brw {
               i < MIN2(cluster_size, dispatch_width());
               i *= 2) {
             const fs_builder ubld = exec_all().group(i, 0);
-            src_reg left = component(tmp, i - 1);
-            dst_reg right = horiz_offset(tmp, i);
-            set_condmod(mod, ubld.emit(opcode, right, left, right));
+            ubld.emit_scan_step(opcode, mod, tmp, i - 1, 0, i, 1);
 
-            if (dispatch_width() > i * 2) {
-               left = component(tmp, i * 3 - 1);
-               right = horiz_offset(tmp, i * 3);
-               set_condmod(mod, ubld.emit(opcode, right, left, right));
-            }
+            if (dispatch_width() > i * 2)
+               ubld.emit_scan_step(opcode, mod, tmp, i * 3 - 1, 0, i * 3, 1);
 
             if (dispatch_width() > i * 4) {
-               left = component(tmp, i * 5 - 1);
-               right = horiz_offset(tmp, i * 5);
-               set_condmod(mod, ubld.emit(opcode, right, left, right));
-
-               left = component(tmp, i * 7 - 1);
-               right = horiz_offset(tmp, i * 7);
-               set_condmod(mod, ubld.emit(opcode, right, left, right));
+               ubld.emit_scan_step(opcode, mod, tmp, i * 5 - 1, 0, i * 5, 1);
+               ubld.emit_scan_step(opcode, mod, tmp, i * 7 - 1, 0, i * 7, 1);
             }
          }
       }
