@@ -953,12 +953,12 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
         unsigned single_size = util_next_power_of_two(MAX2(ss->shared_size,
                                                            128));
 
-        unsigned log2_instances =
-                util_logbase2_ceil(info->grid[0]) +
-                util_logbase2_ceil(info->grid[1]) +
-                util_logbase2_ceil(info->grid[2]);
+        unsigned instances =
+                util_next_power_of_two(info->grid[0]) *
+                util_next_power_of_two(info->grid[1]) *
+                util_next_power_of_two(info->grid[2]);
 
-        unsigned shared_size = single_size * (1 << log2_instances) * dev->core_count;
+        unsigned shared_size = single_size * instances * dev->core_count;
         struct panfrost_bo *bo = panfrost_batch_get_shared_memory(batch,
                                                                   shared_size,
                                                                   1);
@@ -969,7 +969,7 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
 
         pan_pack(t.cpu, LOCAL_STORAGE, ls) {
                 ls.wls_base_pointer = bo->ptr.gpu;
-                ls.wls_instances = log2_instances;
+                ls.wls_instances = instances;
                 ls.wls_size_scale = util_logbase2(single_size) + 1;
         };
 
