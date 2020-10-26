@@ -502,6 +502,8 @@ __ParseExtensionOverride(struct glx_screen *psc,
                  enable ? "enable" : "disable", field);
       }
    }
+
+   free(env);
 }
 
 /**
