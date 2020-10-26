@@ -76,7 +76,7 @@ build_resolve_compute_shader(struct radv_device *dev, bool is_integer, bool is_s
 							   false,
 							   GLSL_TYPE_FLOAT);
 	snprintf(name, 64, "meta_resolve_cs-%d-%s", samples, is_integer ? "int" : (is_srgb ? "srgb" : "float"));
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, name);
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;
@@ -177,7 +177,7 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
 		 index == DEPTH_RESOLVE ? "depth" : "stencil",
 		 get_resolve_mode_str(resolve_mode), samples);
 
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, name);
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;

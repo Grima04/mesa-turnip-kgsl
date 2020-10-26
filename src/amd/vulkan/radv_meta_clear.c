@@ -40,8 +40,8 @@ build_color_shaders(struct nir_shader **out_vs,
                     struct nir_shader **out_fs,
                     uint32_t frag_output)
 {
-	nir_builder vs_b = nir_builder_init_simple_shader(NULL, MESA_SHADER_VERTEX, NULL);
-	nir_builder fs_b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
+	nir_builder vs_b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL);
+	nir_builder fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL);
 
 	vs_b.shader->info.name = ralloc_strdup(vs_b.shader, "meta_clear_color_vs");
 	fs_b.shader->info.name = ralloc_strdup(fs_b.shader, "meta_clear_color_fs");
@@ -504,8 +504,8 @@ build_depthstencil_shader(struct nir_shader **out_vs,
 			  struct nir_shader **out_fs,
 			  bool unrestricted)
 {
-	nir_builder vs_b = nir_builder_init_simple_shader(NULL, MESA_SHADER_VERTEX, NULL);
-	nir_builder fs_b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
+	nir_builder vs_b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL);
+	nir_builder fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL);
 
 	vs_b.shader->info.name = ralloc_strdup(vs_b.shader,
 					       unrestricted ? "meta_clear_depthstencil_unrestricted_vs"
@@ -1161,7 +1161,7 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 static nir_shader *
 build_clear_htile_mask_shader()
 {
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "meta_clear_htile_mask");
 	b.shader->info.cs.local_size[0] = 64;
 	b.shader->info.cs.local_size[1] = 1;

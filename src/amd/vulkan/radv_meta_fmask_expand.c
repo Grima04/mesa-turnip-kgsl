@@ -39,7 +39,7 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
 
 	snprintf(name, 64, "meta_fmask_expand_cs-%d", samples);
 
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, name);
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;

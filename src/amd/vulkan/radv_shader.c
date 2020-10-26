@@ -1403,7 +1403,7 @@ radv_create_trap_handler_shader(struct radv_device *device)
 	struct radv_shader_binary *binary = NULL;
 	struct radv_shader_info info = {0};
 
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "meta_trap_handler");
 
 	options.explicit_scratch_args = true;

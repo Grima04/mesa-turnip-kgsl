@@ -57,7 +57,7 @@ protected:
       glsl_type_singleton_init_or_ref();
 
       static const nir_shader_compiler_options options = { };
-      bld = nir_builder_init_simple_shader(NULL, MESA_SHADER_VERTEX, &options);
+      bld = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, &options);
       memset(c1, 0, sizeof(c1));
       memset(c2, 0, sizeof(c2));
    }

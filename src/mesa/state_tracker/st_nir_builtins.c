@@ -117,7 +117,7 @@ st_nir_make_passthrough_shader(struct st_context *st,
    const nir_shader_compiler_options *options =
       st_get_nir_compiler_options(st, stage);
 
-   nir_builder b = nir_builder_init_simple_shader(NULL, stage, options);
+   nir_builder b = nir_builder_init_simple_shader(stage, options);
 
    char var_name[15];
 

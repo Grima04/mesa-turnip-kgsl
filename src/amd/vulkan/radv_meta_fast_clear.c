@@ -40,7 +40,7 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
 							   false,
 							   GLSL_TYPE_FLOAT);
 
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "dcc_decompress_compute");
 
 	/* We need at least 16/16/1 to cover an entire DCC block in a single workgroup. */

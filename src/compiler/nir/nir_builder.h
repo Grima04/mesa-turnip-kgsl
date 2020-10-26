@@ -54,14 +54,13 @@ nir_builder_init(nir_builder *build, nir_function_impl *impl)
 }
 
 static inline nir_builder MUST_CHECK
-nir_builder_init_simple_shader(void *mem_ctx,
-                               gl_shader_stage stage,
+nir_builder_init_simple_shader(gl_shader_stage stage,
                                const nir_shader_compiler_options *options)
 {
    nir_builder b;
 
    memset(&b, 0, sizeof(b));
-   b.shader = nir_shader_create(mem_ctx, stage, options, NULL);
+   b.shader = nir_shader_create(NULL, stage, options, NULL);
    nir_function *func = nir_function_create(b.shader, "main");
    func->is_entrypoint = true;
    b.exact = false;

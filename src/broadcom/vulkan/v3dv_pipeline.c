@@ -1995,7 +1995,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
    /* Add a no-op fragment shader if needed */
    if (!pipeline->fs) {
-      nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT,
+      nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
                                                      &v3dv_nir_options);
       b.shader->info.name = ralloc_strdup(b.shader, "noop_fs");
 

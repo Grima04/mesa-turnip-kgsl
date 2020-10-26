@@ -89,7 +89,7 @@ nir_load_store_vectorize_test::nir_load_store_vectorize_test()
    glsl_type_singleton_init_or_ref();
 
    static const nir_shader_compiler_options options = { };
-   _b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, &options);
+   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options);
    b = &_b;
 }
 

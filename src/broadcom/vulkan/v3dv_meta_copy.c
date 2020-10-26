@@ -3493,7 +3493,7 @@ static nir_shader *
 get_blit_vs()
 {
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
-   nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_VERTEX, options);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, options);
    b.shader->info.name = ralloc_strdup(b.shader, "meta blit vs");
 
    const struct glsl_type *vec4 = glsl_vec4_type();
@@ -3538,7 +3538,7 @@ get_color_blit_fs(struct v3dv_device *device,
                   enum glsl_sampler_dim sampler_dim)
 {
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
-   nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, options);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options);
    b.shader->info.name = ralloc_strdup(b.shader, "meta blit fs");
 
    const struct glsl_type *vec4 = glsl_vec4_type();

@@ -3073,7 +3073,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 	}
 
 	if (!modules[MESA_SHADER_FRAGMENT] && !modules[MESA_SHADER_COMPUTE]) {
-		nir_builder fs_b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
+		nir_builder fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL);
 		fs_b.shader->info.name = ralloc_strdup(fs_b.shader, "noop_fs");
 		fs_m.nir = fs_b.shader;
 		modules[MESA_SHADER_FRAGMENT] = &fs_m;

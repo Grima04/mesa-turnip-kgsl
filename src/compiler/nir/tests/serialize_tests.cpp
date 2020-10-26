@@ -48,7 +48,7 @@ nir_serialize_test::nir_serialize_test()
 {
    glsl_type_singleton_init_or_ref();
 
-   _b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, &options);
+   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options);
    b = &_b;
 }
 

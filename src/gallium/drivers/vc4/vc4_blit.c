@@ -199,7 +199,7 @@ static void *vc4_get_yuv_vs(struct pipe_context *pctx)
                                          PIPE_SHADER_IR_NIR,
                                          PIPE_SHADER_VERTEX);
 
-   nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_VERTEX, options);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, options);
    b.shader->info.name = ralloc_strdup(b.shader, "linear_blit_vs");
 
    const struct glsl_type *vec4 = glsl_vec4_type();
@@ -245,7 +245,7 @@ static void *vc4_get_yuv_fs(struct pipe_context *pctx, int cpp)
                                          PIPE_SHADER_IR_NIR,
                                          PIPE_SHADER_FRAGMENT);
 
-   nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT,
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
                                                   options);
    b.shader->info.name = ralloc_strdup(b.shader, name);
 

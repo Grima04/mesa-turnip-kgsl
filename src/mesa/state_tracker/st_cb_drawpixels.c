@@ -151,7 +151,7 @@ make_drawpix_z_stencil_program_nir(struct st_context *st,
    const nir_shader_compiler_options *options =
       st_get_nir_compiler_options(st, MESA_SHADER_FRAGMENT);
 
-   nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, options);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options);
 
    nir_variable *texcoord =
       nir_variable_create(b.shader, nir_var_shader_in, glsl_vec_type(2),
@@ -204,7 +204,7 @@ make_drawpix_zs_to_color_program_nir(struct st_context *st,
    const nir_shader_compiler_options *options =
       st_get_nir_compiler_options(st, MESA_SHADER_FRAGMENT);
 
-   nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, options);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options);
 
    nir_variable *texcoord =
       nir_variable_create(b.shader, nir_var_shader_in, glsl_vec_type(2),

@@ -43,7 +43,7 @@ build_nir_itob_compute_shader(struct radv_device *dev, bool is_3d)
 	const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_BUF,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, is_3d ? "meta_itob_cs_3d" : "meta_itob_cs");
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;
@@ -271,7 +271,7 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
 	const struct glsl_type *img_type = glsl_image_type(dim,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, is_3d ? "meta_btoi_cs_3d" : "meta_btoi_cs");
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;
@@ -492,7 +492,7 @@ build_nir_btoi_r32g32b32_compute_shader(struct radv_device *dev)
 	const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_BUF,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "meta_btoi_r32g32b32_cs");
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;
@@ -699,7 +699,7 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d)
 	const struct glsl_type *img_type = glsl_image_type(dim,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, is_3d ? "meta_itoi_cs_3d" : "meta_itoi_cs");
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;
@@ -915,7 +915,7 @@ build_nir_itoi_r32g32b32_compute_shader(struct radv_device *dev)
 	const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_BUF,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "meta_itoi_r32g32b32_cs");
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;
@@ -1125,7 +1125,7 @@ build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d)
 	const struct glsl_type *img_type = glsl_image_type(dim,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, is_3d ? "meta_cleari_cs_3d" : "meta_cleari_cs");
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;
@@ -1316,7 +1316,7 @@ build_nir_cleari_r32g32b32_compute_shader(struct radv_device *dev)
 	const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_BUF,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "meta_cleari_r32g32b32_cs");
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;
