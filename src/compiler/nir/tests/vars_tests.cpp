@@ -92,21 +92,19 @@ protected:
 
    nir_deref_instr *get_deref(nir_deref_type deref_type,
                               unsigned index);
-   void *mem_ctx;
    void *lin_ctx;
 
-   nir_builder *b;
+   nir_builder *b, _b;
 };
 
 nir_vars_test::nir_vars_test()
 {
    glsl_type_singleton_init_or_ref();
 
-   mem_ctx = ralloc_context(NULL);
-   lin_ctx = linear_alloc_parent(mem_ctx, 0);
    static const nir_shader_compiler_options options = { };
-   b = rzalloc(mem_ctx, nir_builder);
-   *b = nir_builder_init_simple_shader(mem_ctx, MESA_SHADER_COMPUTE, &options);
+   _b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, &options);
+   b = &_b;
+   lin_ctx = linear_alloc_parent(b->shader, 0);
 }
 
 nir_vars_test::~nir_vars_test()
@@ -116,7 +114,7 @@ nir_vars_test::~nir_vars_test()
       nir_print_shader(b->shader, stdout);
    }
 
-   ralloc_free(mem_ctx);
+   ralloc_free(b->shader);
 
    glsl_type_singleton_decref();
 }
@@ -1840,7 +1838,7 @@ TEST_F(nir_split_vars_test, simple_no_split_array_struct)
    struct glsl_struct_field field;
 
    field.type = glsl_float_type();
-   field.name = ralloc_asprintf(b, "field1");
+   field.name = ralloc_asprintf(b->shader, "field1");
    field.location = -1;
    field.offset = 0;
 
