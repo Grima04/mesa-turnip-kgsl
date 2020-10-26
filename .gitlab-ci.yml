@@ -472,6 +472,8 @@ git_archive:
       when: always
     - if: *is-pre-merge
       when: on_success
+    - changes: *all_paths
+      when: on_success
     - if: *is-forked-branch
       when: manual
     # Other cases default to never
