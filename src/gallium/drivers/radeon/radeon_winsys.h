@@ -29,14 +29,14 @@
 /* The public winsys interface header for the radeon driver. */
 
 /* Skip command submission. Same as RADEON_NOOP=1. */
-#define RADEON_FLUSH_NOOP                  (1u << 30)
-
-/* Whether the next IB can start immediately and not wait for draws and
- * dispatches from the current IB to finish. */
-#define RADEON_FLUSH_START_NEXT_GFX_IB_NOW (1u << 31)
+#define RADEON_FLUSH_NOOP                     (1u << 29)
 
 /* Toggle the secure submission boolean after the flush */
 #define RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION (1u << 30)
+
+/* Whether the next IB can start immediately and not wait for draws and
+ * dispatches from the current IB to finish. */
+#define RADEON_FLUSH_START_NEXT_GFX_IB_NOW    (1u << 31)
 
 #define RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW                                                   \
    (PIPE_FLUSH_ASYNC | RADEON_FLUSH_START_NEXT_GFX_IB_NOW)
