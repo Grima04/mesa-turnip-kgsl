@@ -29,7 +29,6 @@
 static nir_shader *
 build_fmask_expand_compute_shader(struct radv_device *device, int samples)
 {
-	nir_builder b;
 	char name[64];
 	const struct glsl_type *type =
 		glsl_sampler_type(GLSL_SAMPLER_DIM_MS, false, false,
@@ -40,7 +39,7 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
 
 	snprintf(name, 64, "meta_fmask_expand_cs-%d", samples);
 
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, name);
 	b.shader->info.cs.local_size[0] = 16;
 	b.shader->info.cs.local_size[1] = 16;

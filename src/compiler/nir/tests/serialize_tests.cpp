@@ -52,7 +52,7 @@ nir_serialize_test::nir_serialize_test()
    mem_ctx = ralloc_context(NULL);
 
    b = rzalloc(mem_ctx, nir_builder);
-   nir_builder_init_simple_shader(b, mem_ctx, MESA_SHADER_COMPUTE, &options);
+   *b = nir_builder_init_simple_shader(mem_ctx, MESA_SHADER_COMPUTE, &options);
 }
 
 nir_serialize_test::~nir_serialize_test()

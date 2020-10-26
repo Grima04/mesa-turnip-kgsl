@@ -29,7 +29,7 @@ blorp_nir_init_shader(nir_builder *b,
                       gl_shader_stage stage,
                       const char *name)
 {
-   nir_builder_init_simple_shader(b, mem_ctx, stage, NULL);
+   *b = nir_builder_init_simple_shader(mem_ctx, stage, NULL);
    if (name != NULL)
       b->shader->info.name = ralloc_strdup(b->shader, name);
    if (stage == MESA_SHADER_FRAGMENT)

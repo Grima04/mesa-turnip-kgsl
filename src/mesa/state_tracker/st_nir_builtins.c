@@ -113,12 +113,11 @@ st_nir_make_passthrough_shader(struct st_context *st,
                                unsigned *interpolation_modes,
                                unsigned sysval_mask)
 {
-   struct nir_builder b;
    const struct glsl_type *vec4 = glsl_vec4_type();
    const nir_shader_compiler_options *options =
       st_get_nir_compiler_options(st, stage);
 
-   nir_builder_init_simple_shader(&b, NULL, stage, options);
+   nir_builder b = nir_builder_init_simple_shader(NULL, stage, options);
 
    char var_name[15];
 

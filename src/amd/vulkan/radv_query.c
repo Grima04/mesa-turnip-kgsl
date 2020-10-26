@@ -153,8 +153,7 @@ build_occlusion_query_shader(struct radv_device *device) {
 	 * 	}
 	 * }
 	 */
-	nir_builder b;
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "occlusion_query");
 	b.shader->info.cs.local_size[0] = 64;
 	b.shader->info.cs.local_size[1] = 1;
@@ -321,8 +320,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device) {
 	 * 	}
 	 * }
 	 */
-	nir_builder b;
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "pipeline_statistics_query");
 	b.shader->info.cs.local_size[0] = 64;
 	b.shader->info.cs.local_size[1] = 1;
@@ -516,8 +514,7 @@ build_tfb_query_shader(struct radv_device *device)
 	 * 	}
 	 * }
 	 */
-	nir_builder b;
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "tfb_query");
 	b.shader->info.cs.local_size[0] = 64;
 	b.shader->info.cs.local_size[1] = 1;
@@ -695,8 +692,7 @@ build_timestamp_query_shader(struct radv_device *device)
 	 * 	}
 	 * }
 	 */
-	nir_builder b;
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_COMPUTE, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "timestamp_query");
 	b.shader->info.cs.local_size[0] = 64;
 	b.shader->info.cs.local_size[1] = 1;

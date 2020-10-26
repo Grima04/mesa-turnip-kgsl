@@ -32,7 +32,6 @@
 static nir_shader *
 build_dcc_decompress_compute_shader(struct radv_device *dev)
 {
-	nir_builder b;
 	const struct glsl_type *buf_type = glsl_sampler_type(GLSL_SAMPLER_DIM_2D,
 							     false,
 							     false,
@@ -40,7 +39,8 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
 	const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_2D,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_COMPUTE, NULL);
+
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_COMPUTE, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "dcc_decompress_compute");
 
 	/* We need at least 16/16/1 to cover an entire DCC block in a single workgroup. */

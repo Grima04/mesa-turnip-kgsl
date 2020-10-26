@@ -53,18 +53,22 @@ nir_builder_init(nir_builder *build, nir_function_impl *impl)
    build->shader = impl->function->shader;
 }
 
-static inline void
-nir_builder_init_simple_shader(nir_builder *build, void *mem_ctx,
+static inline nir_builder MUST_CHECK
+nir_builder_init_simple_shader(void *mem_ctx,
                                gl_shader_stage stage,
                                const nir_shader_compiler_options *options)
 {
-   memset(build, 0, sizeof(*build));
-   build->shader = nir_shader_create(mem_ctx, stage, options, NULL);
-   nir_function *func = nir_function_create(build->shader, "main");
+   nir_builder b;
+
+   memset(&b, 0, sizeof(b));
+   b.shader = nir_shader_create(mem_ctx, stage, options, NULL);
+   nir_function *func = nir_function_create(b.shader, "main");
    func->is_entrypoint = true;
-   build->exact = false;
-   build->impl = nir_function_impl_create(func);
-   build->cursor = nir_after_cf_list(&build->impl->body);
+   b.exact = false;
+   b.impl = nir_function_impl_create(func);
+   b.cursor = nir_after_cf_list(&b.impl->body);
+
+   return b;
 }
 
 typedef bool (*nir_instr_pass_cb)(struct nir_builder *, nir_instr *, void *);

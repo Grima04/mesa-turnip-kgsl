@@ -52,8 +52,7 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
 {
         bool is_colour = loc >= FRAG_RESULT_DATA0;
 
-        nir_builder _b;
-        nir_builder_init_simple_shader(&_b, NULL, MESA_SHADER_FRAGMENT, &midgard_nir_options);
+        nir_builder _b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, &midgard_nir_options);
         nir_builder *b = &_b;
         nir_shader *shader = b->shader;
 

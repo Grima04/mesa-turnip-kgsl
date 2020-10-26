@@ -2299,9 +2299,9 @@ ttn_compile_init(const void *tgsi_tokens,
          screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR, scan.processor);
    }
 
-   nir_builder_init_simple_shader(&c->build, NULL,
-                                  tgsi_processor_to_shader_stage(scan.processor),
-                                  options);
+   c->build = nir_builder_init_simple_shader(NULL,
+                                             tgsi_processor_to_shader_stage(scan.processor),
+                                             options);
 
    s = c->build.shader;
 

@@ -81,7 +81,7 @@ nir_builder_test::nir_builder_test()
    lin_ctx = linear_alloc_parent(mem_ctx, 0);
    static const nir_shader_compiler_options options = { };
    b = rzalloc(mem_ctx, nir_builder);
-   nir_builder_init_simple_shader(b, mem_ctx, MESA_SHADER_COMPUTE, &options);
+   *b = nir_builder_init_simple_shader(mem_ctx, MESA_SHADER_COMPUTE, &options);
 }
 
 nir_builder_test::~nir_builder_test()

@@ -42,9 +42,7 @@ static nir_shader *
 build_nir_vertex_shader(void)
 {
 	const struct glsl_type *vec4 = glsl_vec4_type();
-	nir_builder b;
-
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_VERTEX, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_VERTEX, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "meta_blit_vs");
 
 	nir_variable *pos_out = nir_variable_create(b.shader, nir_var_shader_out,
@@ -111,9 +109,7 @@ build_nir_copy_fragment_shader(enum glsl_sampler_dim tex_dim)
 {
 	char shader_name[64];
 	const struct glsl_type *vec4 = glsl_vec4_type();
-	nir_builder b;
-
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
 
 	sprintf(shader_name, "meta_blit_fs.%d", tex_dim);
 	b.shader->info.name = ralloc_strdup(b.shader, shader_name);
@@ -169,9 +165,7 @@ build_nir_copy_fragment_shader_depth(enum glsl_sampler_dim tex_dim)
 {
 	char shader_name[64];
 	const struct glsl_type *vec4 = glsl_vec4_type();
-	nir_builder b;
-
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
 
 	sprintf(shader_name, "meta_blit_depth_fs.%d", tex_dim);
 	b.shader->info.name = ralloc_strdup(b.shader, shader_name);
@@ -227,9 +221,7 @@ build_nir_copy_fragment_shader_stencil(enum glsl_sampler_dim tex_dim)
 {
 	char shader_name[64];
 	const struct glsl_type *vec4 = glsl_vec4_type();
-	nir_builder b;
-
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
 
 	sprintf(shader_name, "meta_blit_stencil_fs.%d", tex_dim);
 	b.shader->info.name = ralloc_strdup(b.shader, shader_name);

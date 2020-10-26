@@ -428,9 +428,7 @@ build_nir_vertex_shader(void)
 {
 	const struct glsl_type *vec4 = glsl_vec4_type();
 	const struct glsl_type *vec2 = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
-	nir_builder b;
-
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_VERTEX, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_VERTEX, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, "meta_blit2d_vs");
 
 	nir_variable *pos_out = nir_variable_create(b.shader, nir_var_shader_out,
@@ -603,9 +601,7 @@ build_nir_copy_fragment_shader(struct radv_device *device,
 {
 	const struct glsl_type *vec4 = glsl_vec4_type();
 	const struct glsl_type *vec2 = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
-	nir_builder b;
-
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, name);
 
 	nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in,
@@ -632,9 +628,7 @@ build_nir_copy_fragment_shader_depth(struct radv_device *device,
 {
 	const struct glsl_type *vec4 = glsl_vec4_type();
 	const struct glsl_type *vec2 = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
-	nir_builder b;
-
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, name);
 
 	nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in,
@@ -661,9 +655,7 @@ build_nir_copy_fragment_shader_stencil(struct radv_device *device,
 {
 	const struct glsl_type *vec4 = glsl_vec4_type();
 	const struct glsl_type *vec2 = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
-	nir_builder b;
-
-	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, NULL);
+	nir_builder b = nir_builder_init_simple_shader(NULL, MESA_SHADER_FRAGMENT, NULL);
 	b.shader->info.name = ralloc_strdup(b.shader, name);
 
 	nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in,

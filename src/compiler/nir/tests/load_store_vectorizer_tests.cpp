@@ -93,7 +93,7 @@ nir_load_store_vectorize_test::nir_load_store_vectorize_test()
    mem_ctx = ralloc_context(NULL);
    static const nir_shader_compiler_options options = { };
    b = rzalloc(mem_ctx, nir_builder);
-   nir_builder_init_simple_shader(b, mem_ctx, MESA_SHADER_COMPUTE, &options);
+   *b = nir_builder_init_simple_shader(mem_ctx, MESA_SHADER_COMPUTE, &options);
 }
 
 nir_load_store_vectorize_test::~nir_load_store_vectorize_test()
