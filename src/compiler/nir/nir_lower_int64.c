@@ -874,10 +874,8 @@ nir_lower_int64_op_to_options_mask(nir_op opcode)
 }
 
 static nir_ssa_def *
-lower_int64_alu_instr(nir_builder *b, nir_instr *instr, void *_state)
+lower_int64_alu_instr(nir_builder *b, nir_alu_instr *alu)
 {
-   nir_alu_instr *alu = nir_instr_as_alu(instr);
-
    nir_ssa_def *src[4];
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++)
       src[i] = nir_ssa_for_alu_src(b, alu, i);
@@ -995,16 +993,9 @@ lower_int64_alu_instr(nir_builder *b, nir_instr *instr, void *_state)
 }
 
 static bool
-should_lower_int64_alu_instr(const nir_instr *instr, const void *_data)
+should_lower_int64_alu_instr(const nir_alu_instr *alu,
+                             const nir_shader_compiler_options *options)
 {
-   const nir_shader_compiler_options *options =
-      (const nir_shader_compiler_options *)_data;
-
-   if (instr->type != nir_instr_type_alu)
-      return false;
-
-   const nir_alu_instr *alu = nir_instr_as_alu(instr);
-
    switch (alu->op) {
    case nir_op_i2b1:
    case nir_op_i2i8:
@@ -1075,11 +1066,32 @@ should_lower_int64_alu_instr(const nir_instr *instr, const void *_data)
    return (options->lower_int64_options & mask) != 0;
 }
 
+static bool
+should_lower_int64_instr(const nir_instr *instr, const void *_options)
+{
+   switch (instr->type) {
+   case nir_instr_type_alu:
+      return should_lower_int64_alu_instr(nir_instr_as_alu(instr), _options);
+   default:
+      return false;
+   }
+}
+
+static nir_ssa_def *
+lower_int64_instr(nir_builder *b, nir_instr *instr, void *_options)
+{
+   switch (instr->type) {
+   case nir_instr_type_alu:
+      return lower_int64_alu_instr(b, nir_instr_as_alu(instr));
+   default:
+      return NULL;
+   }
+}
+
 bool
 nir_lower_int64(nir_shader *shader)
 {
-   return nir_shader_lower_instructions(shader,
-                                        should_lower_int64_alu_instr,
-                                        lower_int64_alu_instr,
+   return nir_shader_lower_instructions(shader, should_lower_int64_instr,
+                                        lower_int64_instr,
                                         (void *)shader->options);
 }
