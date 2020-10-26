@@ -732,7 +732,7 @@ meson-android:
     UNWIND: "disabled"
     DRI_LOADERS: >
       -D glx=dri
-      -D gbm=disabled
+      -D gbm=enabled
       -D egl=enabled
       -D platforms=x11
       -D osmesa=false
