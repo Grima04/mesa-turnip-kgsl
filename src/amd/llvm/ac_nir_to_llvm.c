@@ -1072,6 +1072,15 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = emit_ddxy(ctx, instr->op, src[0]);
       break;
 
+   case nir_op_unpack_64_4x16: {
+      result = LLVMBuildBitCast(ctx->ac.builder, src[0], ctx->ac.v4i16, "");
+      break;
+   }
+   case nir_op_pack_64_4x16: {
+      result = LLVMBuildBitCast(ctx->ac.builder, src[0], ctx->ac.i64, "");
+      break;
+   }
+
    case nir_op_unpack_64_2x32: {
       result = LLVMBuildBitCast(ctx->ac.builder, src[0],
             ctx->ac.v2i32, "");
