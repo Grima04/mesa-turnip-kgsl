@@ -579,8 +579,28 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = LLVMBuildFPExt(builder, src[0],
                               bld_base->dbl_bld.vec_type, "");
       break;
+   case nir_op_f2i8:
+      result = LLVMBuildFPToSI(builder,
+                               src[0],
+                               bld_base->uint8_bld.vec_type, "");
+      break;
+   case nir_op_f2i16:
+      result = LLVMBuildFPToSI(builder,
+                               src[0],
+                               bld_base->uint16_bld.vec_type, "");
+      break;
    case nir_op_f2i32:
       result = LLVMBuildFPToSI(builder, src[0], bld_base->base.int_vec_type, "");
+      break;
+   case nir_op_f2u8:
+      result = LLVMBuildFPToUI(builder,
+                               src[0],
+                               bld_base->uint8_bld.vec_type, "");
+      break;
+   case nir_op_f2u16:
+      result = LLVMBuildFPToUI(builder,
+                               src[0],
+                               bld_base->uint16_bld.vec_type, "");
       break;
    case nir_op_f2u32:
       result = LLVMBuildFPToUI(builder,
