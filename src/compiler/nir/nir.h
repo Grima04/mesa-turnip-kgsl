@@ -3071,6 +3071,7 @@ typedef enum {
    nir_lower_bit_count64 = (1 << 15),
    nir_lower_subgroup_shuffle64 = (1 << 16),
    nir_lower_scan_reduce_bitwise64 = (1 << 17),
+   nir_lower_scan_reduce_iadd64 = (1 << 18),
 } nir_lower_int64_options;
 
 typedef enum {
