@@ -138,7 +138,7 @@ bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx, bool deferred)
 	struct fd_batch *batch;
 	unsigned n = 0;
 
-	fd_context_lock(ctx);
+	fd_screen_lock(ctx->screen);
 
 	foreach_batch(batch, cache, cache->batch_mask) {
 		if (batch->ctx == ctx) {
@@ -156,9 +156,9 @@ bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx, bool deferred)
 			}
 		}
 
-		fd_context_unlock(ctx);
+		fd_screen_unlock(ctx->screen);
 	} else {
-		fd_context_unlock(ctx);
+		fd_screen_unlock(ctx->screen);
 
 		for (unsigned i = 0; i < n; i++) {
 			fd_batch_flush(batches[i]);
@@ -261,7 +261,7 @@ fd_bc_invalidate_batch(struct fd_batch *batch, bool remove)
 	struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
 	struct key *key = (struct key *)batch->key;
 
-	fd_context_assert_locked(batch->ctx);
+	fd_screen_assert_locked(batch->ctx->screen);
 
 	if (remove) {
 		cache->batches[batch->idx] = NULL;

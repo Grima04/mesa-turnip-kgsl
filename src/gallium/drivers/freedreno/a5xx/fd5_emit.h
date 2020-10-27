@@ -29,6 +29,7 @@
 
 #include "pipe/p_context.h"
 
+#include "freedreno_batch.h"
 #include "freedreno_context.h"
 #include "fd5_context.h"
 #include "fd5_format.h"

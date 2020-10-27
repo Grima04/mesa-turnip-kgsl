@@ -276,7 +276,7 @@ __fd_batch_destroy(struct fd_batch *batch)
 
 	DBG("%p", batch);
 
-	fd_context_assert_locked(batch->ctx);
+	fd_screen_assert_locked(batch->ctx->screen);
 
 	if (BATCH_DEBUG) {
 		_mesa_set_remove_key(ctx->screen->live_batches, batch);
@@ -288,14 +288,14 @@ __fd_batch_destroy(struct fd_batch *batch)
 	debug_assert(batch->resources->entries == 0);
 	_mesa_set_destroy(batch->resources, NULL);
 
-	fd_context_unlock(ctx);
+	fd_screen_unlock(ctx->screen);
 	batch_flush_reset_dependencies(batch, false);
 	debug_assert(batch->dependents_mask == 0);
 
 	util_copy_framebuffer_state(&batch->framebuffer, NULL);
 	batch_fini(batch);
 	free(batch);
-	fd_context_lock(ctx);
+	fd_screen_lock(ctx->screen);
 }
 
 void

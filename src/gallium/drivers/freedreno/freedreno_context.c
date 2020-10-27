@@ -203,6 +203,49 @@ fd_emit_string_marker(struct pipe_context *pctx, const char *string, int len)
 	}
 }
 
+/**
+ * If we have a pending fence_server_sync() (GPU side sync), flush now.
+ * The alternative to try to track this with batch dependencies gets
+ * hairy quickly.
+ *
+ * Call this before switching to a different batch, to handle this case.
+ */
+void
+fd_context_switch_from(struct fd_context *ctx)
+{
+	if (ctx->batch && (ctx->batch->in_fence_fd != -1))
+		fd_batch_flush(ctx->batch);
+}
+
+/**
+ * If there is a pending fence-fd that we need to sync on, this will
+ * transfer the reference to the next batch we are going to render
+ * to.
+ */
+void
+fd_context_switch_to(struct fd_context *ctx, struct fd_batch *batch)
+{
+	if (ctx->in_fence_fd != -1) {
+		sync_accumulate("freedreno", &batch->in_fence_fd, ctx->in_fence_fd);
+		close(ctx->in_fence_fd);
+		ctx->in_fence_fd = -1;
+	}
+}
+
+struct fd_batch *
+fd_context_batch(struct fd_context *ctx)
+{
+	if (unlikely(!ctx->batch)) {
+		struct fd_batch *batch =
+			fd_batch_from_fb(&ctx->screen->batch_cache, ctx, &ctx->framebuffer);
+		util_copy_framebuffer_state(&batch->framebuffer, &ctx->framebuffer);
+		ctx->batch = batch;
+		fd_context_all_dirty(ctx);
+	}
+	fd_context_switch_to(ctx, ctx->batch);
+	return ctx->batch;
+}
+
 void
 fd_context_destroy(struct pipe_context *pctx)
 {
