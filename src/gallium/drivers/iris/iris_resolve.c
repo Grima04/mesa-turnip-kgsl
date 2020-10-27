@@ -436,6 +436,8 @@ iris_mcs_partial_resolve(struct iris_context *ice,
 
    assert(isl_aux_usage_has_mcs(res->aux.usage));
 
+   iris_batch_maybe_flush(batch, 1500);
+
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
                                 &res->base, res->aux.usage, 0, true);
@@ -513,6 +515,8 @@ iris_hiz_exec(struct iris_context *ice,
    assert(op != ISL_AUX_OP_NONE);
    UNUSED const char *name = NULL;
 
+   iris_batch_maybe_flush(batch, 1500);
+
    switch (op) {
    case ISL_AUX_OP_FULL_RESOLVE:
       name = "depth resolve";
@@ -551,8 +555,6 @@ iris_hiz_exec(struct iris_context *ice,
                                 PIPE_CONTROL_CS_STALL);
 
    assert(isl_aux_usage_has_hiz(res->aux.usage) && res->aux.bo);
-
-   iris_batch_maybe_flush(batch, 1500);
 
    iris_batch_sync_region_start(batch);
 

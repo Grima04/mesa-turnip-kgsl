@@ -6691,6 +6691,8 @@ iris_upload_render_state(struct iris_context *ice,
       _iris_emit_lri(batch, _3DPRIM_INSTANCE_COUNT, draw->instance_count);
    }
 
+   iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_DRAW, draw, indirect, sc);
+
    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
       prim.PredicateEnable = use_predicate;
@@ -6931,6 +6933,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
       iris_load_indirect_location(ice, batch, grid);
 
    const uint32_t right_mask = brw_cs_right_mask(group_size, simd_size);
+
+   iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_COMPUTE, NULL, NULL, NULL);
 
    iris_emit_cmd(batch, GENX(GPGPU_WALKER), ggw) {
       ggw.IndirectParameterEnable    = grid->indirect != NULL;

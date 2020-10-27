@@ -248,6 +248,10 @@ iris_fence_flush(struct pipe_context *ctx,
          iris_batch_flush(&ice->batches[i]);
    }
 
+   if (flags & PIPE_FLUSH_END_OF_FRAME) {
+      iris_measure_frame_end(ice);
+   }
+
    if (!out_fence)
       return;
 

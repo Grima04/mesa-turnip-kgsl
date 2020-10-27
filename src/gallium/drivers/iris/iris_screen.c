@@ -613,6 +613,7 @@ iris_get_timestamp(struct pipe_screen *pscreen)
 void
 iris_screen_destroy(struct iris_screen *screen)
 {
+   iris_destroy_screen_measure(screen);
    glsl_type_singleton_decref();
    iris_bo_unreference(screen->workaround_bo);
    u_transfer_helper_destroy(screen->base.transfer_helper);
@@ -850,6 +851,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    iris_init_screen_fence_functions(pscreen);
    iris_init_screen_resource_functions(pscreen);
+   iris_init_screen_measure(screen);
 
    pscreen->destroy = iris_screen_unref;
    pscreen->get_name = iris_get_name;

@@ -379,7 +379,16 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
 
 static void
 blorp_measure_start(struct blorp_batch *blorp_batch,
-                    const struct blorp_params *params) { }
+                    const struct blorp_params *params)
+{
+   struct iris_context *ice = blorp_batch->blorp->driver_ctx;
+   struct iris_batch *batch = blorp_batch->driver_batch;
+
+   if (batch->measure == NULL)
+      return;
+
+   iris_measure_snapshot(ice, batch, params->snapshot_type, NULL, NULL, NULL);
+}
 
 void
 genX(init_blorp)(struct iris_context *ice)
