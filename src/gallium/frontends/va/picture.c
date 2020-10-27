@@ -702,6 +702,15 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
       }
    }
 
+   if ((surf->templat.bind & PIPE_BIND_PROTECTED) != context->desc.base.protected_playback) {
+      if (context->desc.base.protected_playback) {
+         surf->templat.bind |= PIPE_BIND_PROTECTED;
+      }
+      else
+         surf->templat.bind &= ~PIPE_BIND_PROTECTED;
+      realloc = true;
+   }
+
    if (realloc) {
       struct pipe_video_buffer *old_buf = surf->buffer;
 
