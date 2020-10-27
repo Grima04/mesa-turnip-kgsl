@@ -4122,7 +4122,14 @@ fs_visitor::lower_mul_qword_inst(fs_inst *inst, bblock_t *block)
    ibld.ADD(subscript(bd, BRW_REGISTER_TYPE_UD, 1),
             subscript(bd, BRW_REGISTER_TYPE_UD, 1), ad);
 
-   ibld.MOV(inst->dst, bd);
+   if (devinfo->has_64bit_int) {
+      ibld.MOV(inst->dst, bd);
+   } else {
+      ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
+               subscript(bd, BRW_REGISTER_TYPE_UD, 0));
+      ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
+               subscript(bd, BRW_REGISTER_TYPE_UD, 1));
+   }
 }
 
 void
@@ -7924,7 +7931,13 @@ fs_visitor::optimize()
    }
 
    OPT(opt_combine_constants);
-   OPT(lower_integer_multiplication);
+   if (OPT(lower_integer_multiplication)) {
+      /* If lower_integer_multiplication made progress, it may have produced
+       * some 32x32-bit MULs in the process of lowering 64-bit MULs.  Run it
+       * one more time to clean those up if they exist.
+       */
+      OPT(lower_integer_multiplication);
+   }
    OPT(lower_sub_sat);
 
    if (devinfo->gen <= 5 && OPT(lower_minmax)) {
