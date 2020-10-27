@@ -33,6 +33,7 @@
 #ifndef __ADDR_INTERFACE_H__
 #define __ADDR_INTERFACE_H__
 
+// Includes should be before extern "C"
 #include "addrtypes.h"
 
 #if defined(__cplusplus)
@@ -2724,6 +2725,7 @@ typedef struct _ADDR2_META_MIP_INFO
             UINT_32    depth;
         };
 
+        // GFX10
         struct
         {
             UINT_32    offset;      ///< Metadata offset within one slice,
@@ -2756,6 +2758,7 @@ typedef struct _ADDR2_COMPUTE_HTILE_INFO_INPUT
     UINT_32             firstMipIdInTail;   ///  Id of the first mip in tail,
                                             ///  if no mip is in tail, it should be set to
                                             ///  number of mip levels
+                                            ///  Only for GFX10
 } ADDR2_COMPUTE_HTILE_INFO_INPUT;
 
 /**
@@ -2935,6 +2938,7 @@ typedef struct _ADDR2_COMPUTE_CMASKINFO_INPUT
     UINT_32             size;               ///< Size of this structure in bytes
 
     ADDR2_META_FLAGS    cMaskFlags;         ///< CMASK flags
+    ADDR2_SURFACE_FLAGS colorFlags;         ///< Color surface flags
     AddrResourceType    resourceType;       ///< Color surface type
     AddrSwizzleMode     swizzleMode;        ///< FMask surface swizzle mode
     UINT_32             unalignedWidth;     ///< Color surface original width
@@ -2943,6 +2947,7 @@ typedef struct _ADDR2_COMPUTE_CMASKINFO_INPUT
     UINT_32             numMipLevels;       ///< Number of mip levels
     UINT_32             firstMipIdInTail;   ///< The id of first mip in tail, if no mip is in tail,
                                             ///  it should be number of mip levels
+                                            ///  Only for GFX10
 } ADDR2_COMPUTE_CMASK_INFO_INPUT;
 
 /**
@@ -3007,6 +3012,7 @@ typedef struct _ADDR2_COMPUTE_CMASK_ADDRFROMCOORD_INPUT
     UINT_32             slice;               ///< Index of slices
 
     ADDR2_META_FLAGS    cMaskFlags;          ///< CMASK flags
+    ADDR2_SURFACE_FLAGS colorFlags;          ///< Color surface flags
     AddrResourceType    resourceType;        ///< Color surface type
     AddrSwizzleMode     swizzleMode;         ///< FMask surface swizzle mode
 
@@ -3067,6 +3073,7 @@ typedef struct _ADDR2_COMPUTE_CMASK_COORDFROMADDR_INPUT
     UINT_32             bitPosition;         ///< Bit position within addr, 0 or 4
 
     ADDR2_META_FLAGS    cMaskFlags;          ///< CMASK flags
+    ADDR2_SURFACE_FLAGS colorFlags;          ///< Color surface flags
     AddrResourceType    resourceType;        ///< Color surface type
     AddrSwizzleMode     swizzleMode;         ///< FMask surface swizzle mode
 
@@ -3332,6 +3339,7 @@ typedef struct _ADDR2_COMPUTE_DCCINFO_INPUT
     UINT_32             size;               ///< Size of this structure in bytes
 
     ADDR2_META_FLAGS    dccKeyFlags;        ///< DCC key flags
+    ADDR2_SURFACE_FLAGS colorFlags;         ///< Color surface flags
     AddrResourceType    resourceType;       ///< Color surface type
     AddrSwizzleMode     swizzleMode;        ///< Color surface swizzle mode
     UINT_32             bpp;                ///< bits per pixel
@@ -3344,6 +3352,7 @@ typedef struct _ADDR2_COMPUTE_DCCINFO_INPUT
                                             ///< useful in meta linear case
     UINT_32             firstMipIdInTail;   ///< The id of first mip in tail, if no mip is in tail,
                                             ///  it should be number of mip levels
+                                            ///  Only for GFX10
 } ADDR2_COMPUTE_DCCINFO_INPUT;
 
 /**
@@ -3381,6 +3390,7 @@ typedef struct _ADDR2_COMPUTE_DCCINFO_OUTPUT
         UINT_32 dccRamSliceSize;        ///< DCC ram size per slice. For mipmap, it's
                                         ///  the slize size of a mip chain, the thickness of a
                                         ///  a slice is meta block depth
+                                        ///  Only for GFX10
     };
 
     ADDR2_META_MIP_INFO* pMipInfo;      ///< DCC mip information
@@ -3421,9 +3431,12 @@ typedef struct _ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT
     UINT_32             mipId;               ///< mipmap level id
 
     ADDR2_META_FLAGS    dccKeyFlags;         ///< DCC flags
+    ADDR2_SURFACE_FLAGS colorFlags;          ///< Color surface flags
     AddrResourceType    resourceType;        ///< Color surface type
     AddrSwizzleMode     swizzleMode;         ///< Color surface swizzle mode
     UINT_32             bpp;                 ///< Color surface bits per pixel
+    UINT_32             unalignedWidth;      ///< Color surface original width (of mip0)
+    UINT_32             unalignedHeight;     ///< Color surface original height (of mip0)
     UINT_32             numSlices;           ///< Color surface original slices (of mip0)
     UINT_32             numMipLevels;        ///< Color surface mipmap levels
     UINT_32             numFrags;            ///< Color surface fragment number

@@ -87,7 +87,7 @@ typedef int            INT;
 #endif
 
 #ifndef ADDR_FASTCALL
-    #if defined(__GNUC__)
+    #if defined(__GNUC__) || defined(BRAHMA_ARM)
         // We don't care about the performance of call instructions in addrlib
         #define ADDR_FASTCALL
     #else

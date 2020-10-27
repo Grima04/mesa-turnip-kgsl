@@ -764,6 +764,7 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlComputeCmaskAddrFromCoord(
     ADDR2_COMPUTE_CMASK_INFO_INPUT input = {0};
     input.size            = sizeof(input);
     input.cMaskFlags      = pIn->cMaskFlags;
+    input.colorFlags      = pIn->colorFlags;
     input.unalignedWidth  = Max(pIn->unalignedWidth, 1u);
     input.unalignedHeight = Max(pIn->unalignedHeight, 1u);
     input.numSlices       = Max(pIn->numSlices, 1u);
@@ -796,8 +797,8 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlComputeCmaskAddrFromCoord(
         UINT_32 sliceSizeInBlock = (output.height / output.metaBlkHeight) * pitchInBlock;
         UINT_32 blockIndex       = zb * sliceSizeInBlock + yb * pitchInBlock + xb;
 
-        UINT_32 coords[] = { pIn->x, pIn->y, pIn->slice, 0, blockIndex };
-        UINT_64 address = pMetaEq->solve(coords);
+        UINT_32 coords[] = {pIn->x, pIn->y, pIn->slice, 0, blockIndex};
+        UINT_64 address  = pMetaEq->solve(coords);
 
         pOut->addr = address >> 1;
         pOut->bitPosition = static_cast<UINT_32>((address & 1) << 2);
@@ -873,8 +874,8 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlComputeHtileAddrFromCoord(
             UINT_32 sliceSizeInBlock = (output.height / output.metaBlkHeight) * pitchInBlock;
             UINT_32 blockIndex       = zb * sliceSizeInBlock + yb * pitchInBlock + xb;
 
-            UINT_32 coords[] = { pIn->x, pIn->y, pIn->slice, 0, blockIndex };
-            UINT_64 address = pMetaEq->solve(coords);
+            UINT_32 coords[] = {pIn->x, pIn->y, pIn->slice, 0, blockIndex};
+            UINT_64 address  = pMetaEq->solve(coords);
 
             pOut->addr = address >> 1;
 
@@ -964,65 +965,90 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlComputeHtileCoordFromAddr(
 
 /**
 ************************************************************************************************************************
+*   Gfx9Lib::HwlSupportComputeDccAddrFromCoord
+*
+*   @brief
+*       Check whether HwlComputeDccAddrFromCoord() can be done for the input parameter
+*
+*   @return
+*       ADDR_E_RETURNCODE
+************************************************************************************************************************
+*/
+ADDR_E_RETURNCODE Gfx9Lib::HwlSupportComputeDccAddrFromCoord(
+    const ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT* pIn)
+{
+    ADDR_E_RETURNCODE returnCode = ADDR_OK;
+
+    if ((pIn->numMipLevels > 1) || (pIn->mipId > 1) || pIn->dccKeyFlags.linear)
+    {
+        returnCode = ADDR_NOTSUPPORTED;
+    }
+    else if ((pIn->pitch == 0)             ||
+             (pIn->height == 0)            ||
+             (pIn->compressBlkWidth == 0)  ||
+             (pIn->compressBlkHeight == 0) ||
+             (pIn->compressBlkDepth == 0)  ||
+             (pIn->metaBlkWidth == 0)      ||
+             (pIn->metaBlkHeight == 0)     ||
+             (pIn->metaBlkDepth == 0)      ||
+             (pIn->slice > 0 && pIn->dccRamSliceSize == 0))
+    {
+        returnCode = ADDR_NOTSUPPORTED;
+    }
+
+    return returnCode;
+}
+
+/**
+************************************************************************************************************************
 *   Gfx9Lib::HwlComputeDccAddrFromCoord
 *
 *   @brief
 *       Interface function stub of AddrComputeDccAddrFromCoord
 *
 *   @return
-*       ADDR_E_RETURNCODE
+*       N/A
 ************************************************************************************************************************
 */
-ADDR_E_RETURNCODE Gfx9Lib::HwlComputeDccAddrFromCoord(
+VOID Gfx9Lib::HwlComputeDccAddrFromCoord(
     const ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT*  pIn,
     ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT* pOut)
 {
-    ADDR_E_RETURNCODE returnCode = ADDR_OK;
+    UINT_32 elementBytesLog2  = Log2(pIn->bpp >> 3);
+    UINT_32 numSamplesLog2    = Log2(pIn->numFrags);
+    UINT_32 metaBlkWidthLog2  = Log2(pIn->metaBlkWidth);
+    UINT_32 metaBlkHeightLog2 = Log2(pIn->metaBlkHeight);
+    UINT_32 metaBlkDepthLog2  = Log2(pIn->metaBlkDepth);
+    UINT_32 compBlkWidthLog2  = Log2(pIn->compressBlkWidth);
+    UINT_32 compBlkHeightLog2 = Log2(pIn->compressBlkHeight);
+    UINT_32 compBlkDepthLog2  = Log2(pIn->compressBlkDepth);
 
-    if ((pIn->numMipLevels > 1) || (pIn->mipId > 1) || pIn->dccKeyFlags.linear)
-    {
-        returnCode = ADDR_NOTIMPLEMENTED;
-    }
-    else
-    {
-        UINT_32 elementBytesLog2  = Log2(pIn->bpp >> 3);
-        UINT_32 numSamplesLog2    = Log2(pIn->numFrags);
-        UINT_32 metaBlkWidthLog2  = Log2(pIn->metaBlkWidth);
-        UINT_32 metaBlkHeightLog2 = Log2(pIn->metaBlkHeight);
-        UINT_32 metaBlkDepthLog2  = Log2(pIn->metaBlkDepth);
-        UINT_32 compBlkWidthLog2  = Log2(pIn->compressBlkWidth);
-        UINT_32 compBlkHeightLog2 = Log2(pIn->compressBlkHeight);
-        UINT_32 compBlkDepthLog2  = Log2(pIn->compressBlkDepth);
+    MetaEqParams metaEqParams = {pIn->mipId, elementBytesLog2, numSamplesLog2, pIn->dccKeyFlags,
+                                 Gfx9DataColor, pIn->swizzleMode, pIn->resourceType,
+                                 metaBlkWidthLog2, metaBlkHeightLog2, metaBlkDepthLog2,
+                                 compBlkWidthLog2, compBlkHeightLog2, compBlkDepthLog2};
 
-        MetaEqParams metaEqParams = {pIn->mipId, elementBytesLog2, numSamplesLog2, pIn->dccKeyFlags,
-                                     Gfx9DataColor, pIn->swizzleMode, pIn->resourceType,
-                                     metaBlkWidthLog2, metaBlkHeightLog2, metaBlkDepthLog2,
-                                     compBlkWidthLog2, compBlkHeightLog2, compBlkDepthLog2};
+    const CoordEq* pMetaEq = GetMetaEquation(metaEqParams);
 
-        const CoordEq* pMetaEq = GetMetaEquation(metaEqParams);
+    UINT_32 xb = pIn->x / pIn->metaBlkWidth;
+    UINT_32 yb = pIn->y / pIn->metaBlkHeight;
+    UINT_32 zb = pIn->slice / pIn->metaBlkDepth;
 
-        UINT_32 xb = pIn->x / pIn->metaBlkWidth;
-        UINT_32 yb = pIn->y / pIn->metaBlkHeight;
-        UINT_32 zb = pIn->slice / pIn->metaBlkDepth;
+    UINT_32 pitchInBlock     = pIn->pitch / pIn->metaBlkWidth;
+    UINT_32 sliceSizeInBlock = (pIn->height / pIn->metaBlkHeight) * pitchInBlock;
+    UINT_32 blockIndex       = zb * sliceSizeInBlock + yb * pitchInBlock + xb;
 
-        UINT_32 pitchInBlock     = pIn->pitch / pIn->metaBlkWidth;
-        UINT_32 sliceSizeInBlock = (pIn->height / pIn->metaBlkHeight) * pitchInBlock;
-        UINT_32 blockIndex       = zb * sliceSizeInBlock + yb * pitchInBlock + xb;
+    UINT_32 coords[] = {pIn->x, pIn->y, pIn->slice, pIn->sample, blockIndex};
+    UINT_64 address  = pMetaEq->solve(coords);
 
-        UINT_32 coords[] = { pIn->x, pIn->y, pIn->slice, pIn->sample, blockIndex };
-        UINT_64 address = pMetaEq->solve(coords);
+    pOut->addr = address >> 1;
 
-        pOut->addr = address >> 1;
+    UINT_32 numPipeBits = GetPipeLog2ForMetaAddressing(pIn->dccKeyFlags.pipeAligned,
+                                                       pIn->swizzleMode);
 
-        UINT_32 numPipeBits = GetPipeLog2ForMetaAddressing(pIn->dccKeyFlags.pipeAligned,
-                                                           pIn->swizzleMode);
+    UINT_64 pipeXor = static_cast<UINT_64>(pIn->pipeXor & ((1 << numPipeBits) - 1));
 
-        UINT_64 pipeXor = static_cast<UINT_64>(pIn->pipeXor & ((1 << numPipeBits) - 1));
-
-        pOut->addr ^= (pipeXor << m_pipeInterleaveLog2);
-    }
-
-    return returnCode;
+    pOut->addr ^= (pipeXor << m_pipeInterleaveLog2);
 }
 
 /**
@@ -1976,7 +2002,7 @@ VOID Gfx9Lib::GenMetaEquation(
             }
         }
 
-         bool rbAppendedWithPipeBits[1 << (MaxSeLog2 + MaxRbPerSeLog2)] = {0};
+         bool rbAppendedWithPipeBits[1 << (MaxSeLog2 + MaxRbPerSeLog2)] = {};
 
         // Loop through each bit of the channel, get the smallest coordinate,
         // and remove it from the metaaddr, and rb_equation
@@ -2303,8 +2329,8 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlComputeBlock256Equation(
     ADDR_CHANNEL_SETTING* pixelBit = &pEquation->addr[elementBytesLog2];
 
     const UINT_32 maxBitsUsed = 4;
-    ADDR_CHANNEL_SETTING x[maxBitsUsed] = {0};
-    ADDR_CHANNEL_SETTING y[maxBitsUsed] = {0};
+    ADDR_CHANNEL_SETTING x[maxBitsUsed] = {};
+    ADDR_CHANNEL_SETTING y[maxBitsUsed] = {};
 
     for (i = 0; i < maxBitsUsed; i++)
     {
@@ -2513,12 +2539,12 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlComputeThinEquation(
 
     const UINT_32 maxBitsUsed = 14;
     ADDR_ASSERT((2 * maxBitsUsed) >= maxXorBits);
-    ADDR_CHANNEL_SETTING x[maxBitsUsed] = {0};
-    ADDR_CHANNEL_SETTING y[maxBitsUsed] = {0};
+    ADDR_CHANNEL_SETTING x[maxBitsUsed] = {};
+    ADDR_CHANNEL_SETTING y[maxBitsUsed] = {};
 
     const UINT_32 extraXorBits = 16;
     ADDR_ASSERT(extraXorBits >= maxXorBits - blockSizeLog2);
-    ADDR_CHANNEL_SETTING xorExtra[extraXorBits] = {0};
+    ADDR_CHANNEL_SETTING xorExtra[extraXorBits] = {};
 
     for (UINT_32 i = 0; i < maxBitsUsed; i++)
     {
@@ -2672,13 +2698,13 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlComputeThickEquation(
 
     const UINT_32 maxBitsUsed = 12;
     ADDR_ASSERT((3 * maxBitsUsed) >= maxXorBits);
-    ADDR_CHANNEL_SETTING x[maxBitsUsed] = {0};
-    ADDR_CHANNEL_SETTING y[maxBitsUsed] = {0};
-    ADDR_CHANNEL_SETTING z[maxBitsUsed] = {0};
+    ADDR_CHANNEL_SETTING x[maxBitsUsed] = {};
+    ADDR_CHANNEL_SETTING y[maxBitsUsed] = {};
+    ADDR_CHANNEL_SETTING z[maxBitsUsed] = {};
 
     const UINT_32 extraXorBits = 24;
     ADDR_ASSERT(extraXorBits >= maxXorBits - blockSizeLog2);
-    ADDR_CHANNEL_SETTING xorExtra[extraXorBits] = {0};
+    ADDR_CHANNEL_SETTING xorExtra[extraXorBits] = {};
 
     for (UINT_32 i = 0; i < maxBitsUsed; i++)
     {
@@ -3379,7 +3405,7 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlGetPreferredSurfaceSetting(
     const BOOL_32 displayRsrc  = pIn->flags.display || pIn->flags.rotated;
 
     // Pre sanity check on non swizzle mode parameters
-    ADDR2_COMPUTE_SURFACE_INFO_INPUT localIn = {0};
+    ADDR2_COMPUTE_SURFACE_INFO_INPUT localIn = {};
     localIn.flags        = pIn->flags;
     localIn.resourceType = pOut->resourceType;
     localIn.format       = pIn->format;
@@ -3394,7 +3420,7 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlGetPreferredSurfaceSetting(
     if (ValidateNonSwModeParams(&localIn))
     {
         // Forbid swizzle mode(s) by client setting
-        ADDR2_SWMODE_SET allowedSwModeSet = {0};
+        ADDR2_SWMODE_SET allowedSwModeSet = {};
         allowedSwModeSet.value |= pIn->forbiddenBlock.linear ? 0 : Gfx9LinearSwModeMask;
         allowedSwModeSet.value |= pIn->forbiddenBlock.micro  ? 0 : Gfx9Blk256BSwModeMask;
         allowedSwModeSet.value |=
@@ -3623,7 +3649,7 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlGetPreferredSurfaceSetting(
                 // Determine block size if there are 2 or more block type candidates
                 if (IsPow2(allowedBlockSet.value) == FALSE)
                 {
-                    AddrSwizzleMode swMode[AddrBlockMaxTiledType] = {ADDR_SW_LINEAR};
+                    AddrSwizzleMode swMode[AddrBlockMaxTiledType] = {};
 
                     swMode[AddrBlockMicro]    = ADDR_SW_256B_D;
                     swMode[AddrBlockThin4KB]  = ADDR_SW_4KB_D;
@@ -3635,9 +3661,9 @@ ADDR_E_RETURNCODE Gfx9Lib::HwlGetPreferredSurfaceSetting(
                         swMode[AddrBlockThick64KB] = ADDR_SW_64KB_S;
                     }
 
-                    Dim3d   blkDim[AddrBlockMaxTiledType]  = {0};
-                    Dim3d   padDim[AddrBlockMaxTiledType]  = {0};
-                    UINT_64 padSize[AddrBlockMaxTiledType] = {0};
+                    Dim3d   blkDim[AddrBlockMaxTiledType]  = {};
+                    Dim3d   padDim[AddrBlockMaxTiledType]  = {};
+                    UINT_64 padSize[AddrBlockMaxTiledType] = {};
 
                     const UINT_32 ratioLow           = pIn->flags.minimizeAlign ? 1 : (pIn->flags.opt4space ? 3 : 2);
                     const UINT_32 ratioHi            = pIn->flags.minimizeAlign ? 1 : (pIn->flags.opt4space ? 2 : 1);

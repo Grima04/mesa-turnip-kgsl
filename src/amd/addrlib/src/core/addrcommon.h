@@ -36,26 +36,18 @@
 
 #include "addrinterface.h"
 
-// ADDR_LNX_KERNEL_BUILD is for internal build
-// Moved from addrinterface.h so __KERNEL__ is not needed any more
-#if ADDR_LNX_KERNEL_BUILD // || (defined(__GNUC__) && defined(__KERNEL__))
-    #include <string.h>
-#elif !defined(__APPLE__) || defined(HAVE_TSERVER)
+
+#if !defined(__APPLE__) || defined(HAVE_TSERVER)
     #include <stdlib.h>
     #include <string.h>
 #endif
 
-#include <assert.h>
+#if defined(__GNUC__)
+    #include <assert.h>
+#endif
+
 #include "util/macros.h"
 #include "util/u_endian.h"
-
-#if !defined(DEBUG)
-#ifdef NDEBUG
-#define DEBUG 0
-#else
-#define DEBUG 1
-#endif
-#endif
 
 #if UTIL_ARCH_LITTLE_ENDIAN
 #define LITTLEENDIAN_CPU
@@ -67,9 +59,17 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Platform specific debug break defines
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#if !defined(DEBUG)
+    #ifdef NDEBUG
+        #define DEBUG 0
+    #else
+        #define DEBUG 1
+    #endif
+#endif
+
 #if DEBUG
     #if defined(__GNUC__)
-        #define ADDR_DBG_BREAK()    assert(false)
+        #define ADDR_DBG_BREAK()    { assert(false); }
     #elif defined(__APPLE__)
         #define ADDR_DBG_BREAK()    { IOPanic("");}
     #else
