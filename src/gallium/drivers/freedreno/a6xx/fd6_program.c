@@ -430,7 +430,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	 * emitted if frag-prog is dirty vs if vert-prog is dirty..
 	 */
 
-	OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A833, 1);
+	OUT_PKT4(ring, REG_A6XX_SP_HS_OBJ_FIRST_EXEC_OFFSET, 1);
 	OUT_RING(ring, 0x0);
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_PREFETCH_CNTL, 1 + fs->num_sampler_prefetch);
@@ -723,8 +723,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			A6XX_SP_FS_CTRL_REG0_BRANCHSTACK(fs->branchstack) |
 			COND(fs->need_pixlod, A6XX_SP_FS_CTRL_REG0_PIXLODENABLE));
 
-	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A982, 1);
-	OUT_RING(ring, 0);        /* XXX */
+	OUT_PKT4(ring, REG_A6XX_SP_FS_OBJ_FIRST_EXEC_OFFSET, 1);
+	OUT_RING(ring, 0);
 
 	OUT_PKT4(ring, REG_A6XX_VPC_VS_LAYER_CNTL, 1);
 	OUT_RING(ring, 0x0000ffff);        /* XXX */
