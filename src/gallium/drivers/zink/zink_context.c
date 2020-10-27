@@ -557,7 +557,7 @@ static struct zink_buffer_view *
 get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_format format, uint32_t offset, uint32_t range)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   struct zink_buffer_view *buffer_view;
+   struct zink_buffer_view *buffer_view = NULL;
    VkBufferViewCreateInfo bvci = {};
    bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
    bvci.buffer = res->obj->buffer;
@@ -567,17 +567,28 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_f
    bvci.range = range;
 
    uint32_t hash = hash_bufferview(&bvci);
-   VkBufferView view;
-   if (vkCreateBufferView(screen->dev, &bvci, NULL, &view) != VK_SUCCESS)
-      return NULL;
-   buffer_view = CALLOC_STRUCT(zink_buffer_view);
-   if (!buffer_view) {
-      vkDestroyBufferView(screen->dev, view, NULL);
-      return NULL;
+   simple_mtx_lock(&screen->bufferview_mtx);
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->bufferview_cache, hash, &bvci);
+   if (he) {
+      buffer_view = he->data;
+      p_atomic_inc(&buffer_view->reference.count);
+   } else {
+      VkBufferView view;
+      if (vkCreateBufferView(screen->dev, &bvci, NULL, &view) != VK_SUCCESS)
+         goto out;
+      buffer_view = CALLOC_STRUCT(zink_buffer_view);
+      if (!buffer_view) {
+         vkDestroyBufferView(screen->dev, view, NULL);
+         goto out;
+      }
+      pipe_reference_init(&buffer_view->reference, 1);
+      buffer_view->bvci = bvci;
+      buffer_view->buffer_view = view;
+      buffer_view->hash = hash;
+      _mesa_hash_table_insert_pre_hashed(&screen->bufferview_cache, hash, &buffer_view->bvci, buffer_view);
    }
-   pipe_reference_init(&buffer_view->reference, 1);
-   buffer_view->buffer_view = view;
-   buffer_view->hash = hash;
+out:
+   simple_mtx_unlock(&screen->bufferview_mtx);
    return buffer_view;
 }
 
@@ -646,9 +657,14 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
 }
 
 void
-zink_destroy_buffer_view(struct zink_context *ctx, struct zink_buffer_view *buffer_view)
+zink_destroy_buffer_view(struct zink_screen *screen, struct zink_buffer_view *buffer_view)
 {
-   vkDestroyBufferView(zink_screen(ctx->base.screen)->dev, buffer_view->buffer_view, NULL);
+   simple_mtx_lock(&screen->bufferview_mtx);
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->bufferview_cache, buffer_view->hash, &buffer_view->bvci);
+   assert(he);
+   _mesa_hash_table_remove(&screen->bufferview_cache, he);
+   simple_mtx_unlock(&screen->bufferview_mtx);
+   vkDestroyBufferView(screen->dev, buffer_view->buffer_view, NULL);
    FREE(buffer_view);
 }
 
@@ -659,7 +675,7 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
    struct zink_sampler_view *view = zink_sampler_view(pview);
    zink_descriptor_set_refs_clear(&view->desc_set_refs, view);
    if (pview->texture->target == PIPE_BUFFER)
-      zink_buffer_view_reference(zink_context(pctx), &view->buffer_view, NULL);
+      zink_buffer_view_reference(zink_screen(pctx->screen), &view->buffer_view, NULL);
    else {
       struct pipe_surface *psurf = &view->image_view->base;
       pipe_surface_reference(&psurf, NULL);
@@ -883,7 +899,7 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
 
    zink_descriptor_set_refs_clear(&image_view->desc_set_refs, image_view);
    if (image_view->base.resource->target == PIPE_BUFFER)
-      zink_buffer_view_reference(ctx, &image_view->buffer_view, NULL);
+      zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
    else
       pipe_surface_reference((struct pipe_surface**)&image_view->surface, NULL);
    pipe_resource_reference(&image_view->base.resource, NULL);

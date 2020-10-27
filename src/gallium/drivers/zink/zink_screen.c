@@ -89,6 +89,12 @@ equals_ivci(const void *a, const void *b)
    return memcmp(a, b, sizeof(VkImageViewCreateInfo)) == 0;
 }
 
+static bool
+equals_bvci(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(VkBufferViewCreateInfo)) == 0;
+}
+
 static VkDeviceSize
 get_video_mem(struct zink_screen *screen)
 {
@@ -858,7 +864,13 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       pipe_surface_reference(&psurf, NULL);
    }
 
+   hash_table_foreach(&screen->bufferview_cache, entry) {
+      struct zink_buffer_view *bv = (struct zink_buffer_view*)entry->data;
+      zink_buffer_view_reference(screen, &bv, NULL);
+   }
+
    simple_mtx_destroy(&screen->surface_mtx);
+   simple_mtx_destroy(&screen->bufferview_mtx);
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
    zink_screen_update_pipeline_cache(screen);
@@ -1387,8 +1399,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->total_mem = get_video_mem(screen);
 
    simple_mtx_init(&screen->surface_mtx, mtx_plain);
+   simple_mtx_init(&screen->bufferview_mtx, mtx_plain);
 
    _mesa_hash_table_init(&screen->surface_cache, screen, NULL, equals_ivci);
+   _mesa_hash_table_init(&screen->bufferview_cache, screen, NULL, equals_bvci);
 
    return screen;
 

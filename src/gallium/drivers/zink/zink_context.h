@@ -76,6 +76,7 @@ struct zink_sampler_state {
 
 struct zink_buffer_view {
    struct pipe_reference reference;
+   VkBufferViewCreateInfo bvci;
    VkBufferView buffer_view;
    uint32_t hash;
    uint32_t batch_uses;
@@ -342,21 +343,21 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_batch *batch, struc
                        unsigned src_level, const struct pipe_box *src_box, enum pipe_map_flags map_flags);
 
 void
-zink_destroy_buffer_view(struct zink_context *ctx, struct zink_buffer_view *buffer_view);
+zink_destroy_buffer_view(struct zink_screen *screen, struct zink_buffer_view *buffer_view);
 
 void
 debug_describe_zink_buffer_view(char *buf, const struct zink_buffer_view *ptr);
 
 static inline void
-zink_buffer_view_reference(struct zink_context *ctx,
-                             struct zink_buffer_view **dst,
-                             struct zink_buffer_view *src)
+zink_buffer_view_reference(struct zink_screen *screen,
+                           struct zink_buffer_view **dst,
+                           struct zink_buffer_view *src)
 {
    struct zink_buffer_view *old_dst = dst ? *dst : NULL;
 
    if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
                                 (debug_reference_descriptor)debug_describe_zink_buffer_view))
-      zink_destroy_buffer_view(ctx, old_dst);
+      zink_destroy_buffer_view(screen, old_dst);
    if (dst) *dst = src;
 }
 
