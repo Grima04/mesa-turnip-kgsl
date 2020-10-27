@@ -456,6 +456,7 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
    default:
       break;
    }
+   bytes_written = bytes_written > 4 ? align(bytes_written, 4) : bytes_written;
    bytes_written = MAX2(bytes_written, instr_info.definition_size[(int)instr->opcode] / 8u);
 
    if (can_use_SDWA(chip, instr)) {
