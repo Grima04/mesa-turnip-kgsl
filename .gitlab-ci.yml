@@ -1043,7 +1043,7 @@ piglit-cl:
     LP_NUM_THREADS: 1
     PIGLIT_PROFILES: cl
     PIGLIT_OPTIONS: >
-      -x bswap -x phatk
+      -x bswap -x phatk -x clz-optimizations
   script:
     - install/piglit/run_cl.sh
 

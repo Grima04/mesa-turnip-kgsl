@@ -97,7 +97,7 @@ program/execute/vstore/vstore-half-private: skip
 summary:
        name:  results
        ----  --------
-       pass:     3774
+       pass:     3764
        fail:       14
       crash:        5
        skip:       73
@@ -109,4 +109,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     3870
+      total:     3860
