@@ -273,7 +273,7 @@ subpass_get_granularity(struct v3dv_render_pass *pass,
    /* Our tile size depends on the number of color attachments and the maximum
     * bpp across them.
     */
-   assert(subpass_idx >= 0 && subpass_idx < pass->subpass_count);
+   assert(subpass_idx < pass->subpass_count);
    struct v3dv_subpass *subpass = &pass->subpasses[subpass_idx];
    const uint32_t color_attachment_count = subpass->color_count;
 
@@ -354,7 +354,7 @@ v3dv_subpass_area_is_tile_aligned(const VkRect2D *area,
                                   struct v3dv_render_pass *pass,
                                   uint32_t subpass_idx)
 {
-   assert(subpass_idx >= 0 && subpass_idx < pass->subpass_count);
+   assert(subpass_idx < pass->subpass_count);
 
    VkExtent2D granularity;
    subpass_get_granularity(pass, subpass_idx, &granularity);
