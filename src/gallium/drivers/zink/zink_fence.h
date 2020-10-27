@@ -65,6 +65,9 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
                   uint64_t timeout_ns);
 
 void
+zink_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *pfence);
+
+void
 zink_screen_fence_init(struct pipe_screen *pscreen);
 
 #endif

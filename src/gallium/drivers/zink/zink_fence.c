@@ -159,6 +159,22 @@ fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
 }
 
 void
+zink_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *pfence)
+{
+   struct zink_fence *fence = zink_fence(pfence);
+
+   if (pctx && fence->deferred_ctx == pctx)
+      return;
+
+   if (fence->deferred_ctx) {
+      zink_curr_batch(zink_context(pctx))->has_work = true;
+      /* this must be the current batch */
+      pctx->flush(pctx, NULL, 0);
+   }
+   zink_fence_finish(zink_screen(pctx->screen), pctx, fence, PIPE_TIMEOUT_INFINITE);
+}
+
+void
 zink_screen_fence_init(struct pipe_screen *pscreen)
 {
    pscreen->fence_reference = fence_reference;
