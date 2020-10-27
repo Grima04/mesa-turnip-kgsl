@@ -626,7 +626,17 @@ fs_generator::generate_shuffle(fs_inst *inst,
           * but asserting would be mean.
           */
          const unsigned i = idx.file == BRW_IMMEDIATE_VALUE ? idx.ud : 0;
-         brw_MOV(p, suboffset(dst, group), stride(suboffset(src, i), 0, 1, 0));
+         struct brw_reg group_src = stride(suboffset(src, i), 0, 1, 0);
+         struct brw_reg group_dst = suboffset(dst, group);
+         if (type_sz(src.type) > 4 && !devinfo->has_64bit_float) {
+            brw_MOV(p, subscript(group_dst, BRW_REGISTER_TYPE_UD, 0),
+                       subscript(group_src, BRW_REGISTER_TYPE_UD, 0));
+            brw_set_default_swsb(p, tgl_swsb_null());
+            brw_MOV(p, subscript(group_dst, BRW_REGISTER_TYPE_UD, 1),
+                       subscript(group_src, BRW_REGISTER_TYPE_UD, 1));
+         } else {
+            brw_MOV(p, group_dst, group_src);
+         }
       } else {
          /* We use VxH indirect addressing, clobbering a0.0 through a0.7. */
          struct brw_reg addr = vec8(brw_address_reg(0));
@@ -701,7 +711,8 @@ fs_generator::generate_shuffle(fs_inst *inst,
 
          if (type_sz(src.type) > 4 &&
              ((devinfo->gen == 7 && !devinfo->is_haswell) ||
-              devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
+              devinfo->is_cherryview || gen_device_info_is_9lp(devinfo) ||
+              !devinfo->has_64bit_float)) {
             /* IVB has an issue (which we found empirically) where it reads
              * two address register components per channel for indirectly
              * addressed 64-bit sources.
