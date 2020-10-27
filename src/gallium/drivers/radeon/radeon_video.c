@@ -67,6 +67,18 @@ bool si_vid_create_buffer(struct pipe_screen *screen, struct rvid_buffer *buffer
    return buffer->res != NULL;
 }
 
+/* create a tmz buffer in the winsys */
+bool si_vid_create_tmz_buffer(struct pipe_screen *screen, struct rvid_buffer *buffer, unsigned size,
+                              unsigned usage)
+{
+   memset(buffer, 0, sizeof(*buffer));
+   buffer->usage = usage;
+   buffer->res = si_resource(pipe_buffer_create(screen, PIPE_BIND_SHARED | PIPE_BIND_PROTECTED,
+                                                usage, size));
+   return buffer->res != NULL;
+}
+
+
 /* destroy a buffer */
 void si_vid_destroy_buffer(struct rvid_buffer *buffer)
 {
