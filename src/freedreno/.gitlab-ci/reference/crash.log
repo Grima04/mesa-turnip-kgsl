@@ -3447,7 +3447,7 @@ shader-blocks:
 	:5:0012:0026[a923bf8bx_81f95908x] (jp)samb.3d.a.p (u32)(xyzw)r34.w, hr33.x, hr43.x, s#15, t#64
 	:1:0013:0027[3dda8123x_a0d91ccdx] (sy)(jp)(rpt1)cov.u8u16 (even)(pos_infinity)hr<a0.x + 35>, 0xa0d91ccd
 
-../src/freedreno/ir3/instr-a3xx.h:1016: is_cat6_legacy: Assertion `instr->cat6.opc == 0' failed.
+Assertion `instr->cat6.opc == 0' failed.
 	-----------------------------------------------
 	8192 (0x2000) bytes
 	000000: a018c54a 0600e824 11fa09c3 edc6145b	|J...$.......[...|
@@ -4126,7 +4126,7 @@ shader-blocks:
 	:2:0000:0000[40846422x_d81251c5x] (sat)(ul)sign.f r8.z, (neg)hc113.y
 	:4:0001:0001[938a16e2x_520c369ax] (sy)(ss)(sat)(rpt2)unknown(4,28) hr56.z, -358
 	:1:0002:0004[200a00c1x_094864d2x] cov.u16f16 hr<a0.x + 193>, 
-../src/freedreno/ir3/disasm-a3xx.c:184: regmask_get: Assertion `num < MAX_REG' failed.
+Assertion `num < MAX_REG' failed.
 	-----------------------------------------------
 	8192 (0x2000) bytes
 	000000: d81251c5 40846422 520c369a 938a16e2	|.Q.."d.@.6.R....|
