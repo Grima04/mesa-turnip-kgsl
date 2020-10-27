@@ -174,7 +174,7 @@ virgl_drm_winsys_resource_create_blob(struct virgl_winsys *qws,
    if (flags & (VIRGL_RESOURCE_FLAG_MAP_PERSISTENT |
                 VIRGL_RESOURCE_FLAG_MAP_COHERENT)) {
       width = ALIGN(width, getpagesize());
-      size = ALIGN(width, getpagesize());
+      size = ALIGN(size, getpagesize());
    }
 
    blob_id = p_atomic_inc_return(&qdws->blob_id);
