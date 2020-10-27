@@ -685,7 +685,7 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .depthBounds = false, /* Only available since V3D 4.3.16.2 */
       .wideLines = true,
       .largePoints = true,
-      .alphaToOne = false,
+      .alphaToOne = true,
       .multiViewport = false,
       .samplerAnisotropy = true,
       .textureCompressionETC2 = true,
