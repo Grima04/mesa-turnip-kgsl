@@ -57,6 +57,30 @@ panfrost_mfbd_size(struct panfrost_batch *batch)
                (rt_count * MALI_RENDER_TARGET_LENGTH);
 }
 
+static enum mali_mfbd_color_format
+panfrost_mfbd_raw_format(unsigned bits)
+{
+        switch (bits) {
+        case    8: return MALI_MFBD_COLOR_FORMAT_RAW8;
+        case   16: return MALI_MFBD_COLOR_FORMAT_RAW16;
+        case   24: return MALI_MFBD_COLOR_FORMAT_RAW24;
+        case   32: return MALI_MFBD_COLOR_FORMAT_RAW32;
+        case   48: return MALI_MFBD_COLOR_FORMAT_RAW48;
+        case   64: return MALI_MFBD_COLOR_FORMAT_RAW64;
+        case   96: return MALI_MFBD_COLOR_FORMAT_RAW96;
+        case  128: return MALI_MFBD_COLOR_FORMAT_RAW128;
+        case  192: return MALI_MFBD_COLOR_FORMAT_RAW192;
+        case  256: return MALI_MFBD_COLOR_FORMAT_RAW256;
+        case  384: return MALI_MFBD_COLOR_FORMAT_RAW384;
+        case  512: return MALI_MFBD_COLOR_FORMAT_RAW512;
+        case  768: return MALI_MFBD_COLOR_FORMAT_RAW768;
+        case 1024: return MALI_MFBD_COLOR_FORMAT_RAW1024;
+        case 1536: return MALI_MFBD_COLOR_FORMAT_RAW1536;
+        case 2048: return MALI_MFBD_COLOR_FORMAT_RAW2048;
+        default: unreachable("invalid raw bpp");
+        }
+}
+
 static void
 panfrost_mfbd_rt_init_format(struct pipe_surface *surf,
                              struct MALI_RENDER_TARGET *rt)
@@ -78,122 +102,24 @@ panfrost_mfbd_rt_init_format(struct pipe_surface *surf,
         if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
                 rt->srgb = true;
 
-        /* sRGB handled as a dedicated flag */
-        enum pipe_format linearized = util_format_linear(surf->format);
+        struct pan_blendable_format fmt = panfrost_blend_format(surf->format);
 
-        if (util_format_is_unorm8(desc)) {
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8;
-                switch (desc->nr_channels) {
-                case 1:
-                        rt->writeback_format = MALI_MFBD_COLOR_FORMAT_R8;
-                        break;
-                case 2:
-                        rt->writeback_format = MALI_MFBD_COLOR_FORMAT_R8G8;
-                        break;
-                case 3:
-                        rt->writeback_format = MALI_MFBD_COLOR_FORMAT_R8G8B8;
-                        break;
-                case 4:
-                        rt->writeback_format = MALI_MFBD_COLOR_FORMAT_R8G8B8A8;
-                        break;
-                default:
-                        unreachable("Invalid number of channels");
-                }
+        if (fmt.internal) {
+                rt->internal_format = fmt.internal;
+                rt->writeback_format = fmt.writeback;
+        } else {
+                /* Construct RAW internal/writeback, where internal is
+                 * specified logarithmically (round to next power-of-two).
+                 * Offset specified from RAW8, where 8 = 2^3 */
 
-                /* If RGB, we're good to go */
-                return;
-        }
+                unsigned bits = desc->block.bits;
+                unsigned offset = util_logbase2_ceil(bits) - 3;
+                assert(offset <= 4);
 
-        /* Set flags for alternative formats */
+                rt->internal_format =
+                        MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW8 + offset;
 
-        switch (linearized) {
-        case PIPE_FORMAT_B5G6R5_UNORM:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G6B5A0;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_R5G6B5;
-                break;
-
-        case PIPE_FORMAT_A4B4G4R4_UNORM:
-        case PIPE_FORMAT_B4G4R4A4_UNORM:
-        case PIPE_FORMAT_R4G4B4A4_UNORM:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R4G4B4A4;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_R4G4B4A4;
-                break;
-
-        case PIPE_FORMAT_R10G10B10A2_UNORM:
-        case PIPE_FORMAT_B10G10R10A2_UNORM:
-        case PIPE_FORMAT_R10G10B10X2_UNORM:
-        case PIPE_FORMAT_B10G10R10X2_UNORM:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R10G10B10A2;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_R10G10B10A2;
-                break;
-
-        case PIPE_FORMAT_B5G5R5A1_UNORM:
-        case PIPE_FORMAT_R5G5B5A1_UNORM:
-        case PIPE_FORMAT_B5G5R5X1_UNORM:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G5B5A1;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_R5G5B5A1;
-                break;
-
-        /* Generic 8-bit */
-        case PIPE_FORMAT_R8_UINT:
-        case PIPE_FORMAT_R8_SINT:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW8;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_RAW8;
-                break;
-
-        /* Generic 32-bit */
-        case PIPE_FORMAT_R11G11B10_FLOAT:
-        case PIPE_FORMAT_R8G8B8A8_UINT:
-        case PIPE_FORMAT_R8G8B8A8_SINT:
-        case PIPE_FORMAT_R16G16_FLOAT:
-        case PIPE_FORMAT_R16G16_UINT:
-        case PIPE_FORMAT_R16G16_SINT:
-        case PIPE_FORMAT_R32_FLOAT:
-        case PIPE_FORMAT_R32_UINT:
-        case PIPE_FORMAT_R32_SINT:
-        case PIPE_FORMAT_R10G10B10A2_UINT:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW32;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_RAW32;
-                break;
-
-        /* Generic 16-bit */
-        case PIPE_FORMAT_R8G8_UINT:
-        case PIPE_FORMAT_R8G8_SINT:
-        case PIPE_FORMAT_R16_FLOAT:
-        case PIPE_FORMAT_R16_UINT:
-        case PIPE_FORMAT_R16_SINT:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW16;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_RAW16;
-                break;
-
-        /* Generic 64-bit */
-        case PIPE_FORMAT_R32G32_FLOAT:
-        case PIPE_FORMAT_R32G32_SINT:
-        case PIPE_FORMAT_R32G32_UINT:
-        case PIPE_FORMAT_R16G16B16A16_FLOAT:
-        case PIPE_FORMAT_R16G16B16A16_SINT:
-        case PIPE_FORMAT_R16G16B16A16_UINT:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW64;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_RAW64;
-                break;
-
-        case PIPE_FORMAT_R16G16B16_FLOAT:
-        case PIPE_FORMAT_R16G16B16_SINT:
-        case PIPE_FORMAT_R16G16B16_UINT:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW64;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_RAW48;
-                break;
-
-        /* Generic 128-bit */
-        case PIPE_FORMAT_R32G32B32A32_FLOAT:
-        case PIPE_FORMAT_R32G32B32A32_SINT:
-        case PIPE_FORMAT_R32G32B32A32_UINT:
-                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW128;
-                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_RAW128;
-                break;
-
-        default:
-                unreachable("Invalid format rendering");
+                rt->writeback_format = panfrost_mfbd_raw_format(bits);
         }
 }
 
@@ -444,21 +370,21 @@ panfrost_mfbd_emit_zs_crc_ext(struct panfrost_batch *batch, void *extp)
         }
 }
 
-/* Determines the # of bytes per pixel we need to reserve for a given format in
- * the tilebuffer (compared to 128-bit budget, etc). Usually the same as the
- * bytes per pixel of the format itself, but there are some special cases I
- * don't understand. */
+/* Measure format as it appears in the tile buffer */
 
 static unsigned
 pan_bytes_per_pixel_tib(enum pipe_format format)
 {
-        const struct util_format_description *desc =
-                util_format_description(format);
-
-        if (util_format_is_unorm8(desc) || format == PIPE_FORMAT_B5G6R5_UNORM)
+        if (panfrost_blend_format(format).internal) {
+                /* Blendable formats are always 32-bits in the tile buffer,
+                 * extra bits are used as padding or to dither */
                 return 4;
-
-        return desc->block.bits / 8;
+        } else {
+                /* Non-blendable formats are raw, rounded up to the nearest
+                 * power-of-two size */
+                unsigned bytes = util_format_get_blocksize(format);
+                return util_next_power_of_two(bytes);
+        }
 }
 
 /* Calculates the internal color buffer size and tile size based on the number
