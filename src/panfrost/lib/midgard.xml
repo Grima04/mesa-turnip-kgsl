@@ -193,11 +193,12 @@
     <value name="1RGB" value="24"/>
     <value name="1GRB" value="26"/>
     <value name="1BGR" value="28"/>
-    <value name="Intensity" value="226"/>
-    <value name="Luma" value="227"/>
-    <value name="Luma Alpha" value="228"/>
-    <value name="Alpha" value="229"/>
-    <value name="Zero" value="231"/>
+    <value name="RRRR" value="226"/>
+    <value name="RRR1" value="227"/>
+    <value name="RRRA" value="228"/>
+    <value name="000A" value="229"/>
+    <value name="0001" value="230"/>
+    <value name="0000" value="231"/>
     <value name="Snap4 v9" value="232"/>
     <value name="Snap4 v10" value="233"/>
     <value name="Snap4 v11" value="234"/>
