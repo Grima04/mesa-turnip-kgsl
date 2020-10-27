@@ -25,7 +25,7 @@ desc_set_res_add(struct zink_descriptor_set *zds, struct zink_resource *res, uns
     * hash table on every resource with the associated descriptor sets that then needs to be iterated through
     * whenever a resource is destroyed
     */
-   assert(!cache_hit || zds->resources[i] == res);
+   assert(!cache_hit || zds->res_objs[i] == (res ? res->obj : NULL));
    if (!cache_hit)
       zink_resource_desc_set_add(res, zds, i);
 }

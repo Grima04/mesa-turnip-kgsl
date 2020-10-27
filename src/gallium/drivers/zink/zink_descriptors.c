@@ -220,8 +220,8 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
    struct zink_descriptor_set *alloc = ralloc_array(pool, struct zink_descriptor_set, bucket_size);
    assert(alloc);
    unsigned num_resources = pool->num_resources;
-   struct zink_resource **resources = rzalloc_array(pool, struct zink_resource*, num_resources * bucket_size);
-   assert(resources);
+   struct zink_resource_object **res_objs = rzalloc_array(pool, struct zink_resource_object*, num_resources * bucket_size);
+   assert(res_objs);
    void **samplers = NULL;
    if (type == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW) {
       samplers = rzalloc_array(pool, void*, num_resources * bucket_size);
@@ -246,10 +246,10 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       zds->num_resources = num_resources;
 #endif
       if (type == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW) {
-         zds->sampler_views = (struct zink_sampler_view**)&resources[i * pool->key.num_descriptors];
+         zds->sampler_views = (struct zink_sampler_view**)&res_objs[i * pool->key.num_descriptors];
          zds->sampler_states = (struct zink_sampler_state**)&samplers[i * pool->key.num_descriptors];
       } else
-         zds->resources = (struct zink_resource**)&resources[i * pool->key.num_descriptors];
+         zds->res_objs = (struct zink_resource_object**)&res_objs[i * pool->key.num_descriptors];
       zds->desc_set = desc_set[i];
       if (i > 0)
          util_dynarray_append(&pool->alloc_desc_sets, struct zink_descriptor_set *, zds);
@@ -448,7 +448,7 @@ zink_sampler_view_desc_set_add(struct zink_sampler_view *sampler_view, struct zi
 void
 zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx)
 {
-   desc_set_ref_add(zds, &res->desc_set_refs, (void**)&zds->resources[idx], res);
+   desc_set_ref_add(zds, res ? &res->obj->desc_set_refs : NULL, (void**)&zds->res_objs[idx], res ? res->obj : NULL);
 }
 
 void

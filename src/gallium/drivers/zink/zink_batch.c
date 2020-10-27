@@ -28,8 +28,8 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    /* unref all used resources */
    set_foreach(batch->resources, entry) {
-      struct pipe_resource *pres = (struct pipe_resource *)entry->key;
-      pipe_resource_reference(&pres, NULL);
+      struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
+      zink_resource_object_reference(screen, &obj, NULL);
       _mesa_set_remove(batch->resources, entry);
    }
 
@@ -199,12 +199,12 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    uint32_t check_mask = (ZINK_RESOURCE_ACCESS_READ | ZINK_RESOURCE_ACCESS_WRITE) << batch->batch_id;
    if (!(uses_check & check_mask)) {
       bool found = false;
-      _mesa_set_search_and_add(batch->resources, res, &found);
+      _mesa_set_search_and_add(batch->resources, res->obj, &found);
       if (!found) {
-         pipe_reference(NULL, &res->base.reference);
+         pipe_reference(NULL, &res->obj->reference);
          batch->resource_size += res->obj->size;
          if (stencil) {
-            pipe_reference(NULL, &stencil->base.reference);
+            pipe_reference(NULL, &stencil->obj->reference);
             batch->resource_size += stencil->obj->size;
          }
       }
@@ -215,10 +215,10 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    /* the batch_uses value for this batch is guaranteed to not be in use now because
     * zink_reset_batch() waits on the fence and removes access before resetting
     */
-   res->batch_uses[batch->batch_id] |= mask;
+   res->obj->batch_uses[batch->batch_id] |= mask;
 
    if (stencil)
-      stencil->batch_uses[batch->batch_id] |= mask;
+      stencil->obj->batch_uses[batch->batch_id] |= mask;
 
    batch->has_work = true;
    return batch_to_flush;

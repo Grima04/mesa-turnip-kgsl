@@ -57,6 +57,10 @@ struct zink_resource_object {
    VkDeviceSize offset, size;
 
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
+   struct zink_descriptor_refs desc_set_refs;
+
+   /* this has to be atomic for fence access, so we can't use a bitmask and make everything neat */
+   uint8_t batch_uses[5]; //ZINK_NUM_BATCHES
    bool is_buffer;
    bool host_visible;
 };
@@ -82,11 +86,6 @@ struct zink_resource {
 
    struct sw_displaytarget *dt;
    unsigned dt_stride;
-
-   struct zink_descriptor_refs desc_set_refs;
-
-   /* this has to be atomic for fence access, so we can't use a bitmask and make everything neat */
-   uint8_t batch_uses[5]; //ZINK_NUM_BATCHES
 };
 
 struct zink_transfer {
@@ -122,4 +121,25 @@ zink_get_resource_usage(struct zink_resource *res);
 
 void
 zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx);
+
+
+void
+zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_object *resource_object);
+
+void
+debug_describe_zink_resource_object(char *buf, const struct zink_resource_object *ptr);
+
+static inline void
+zink_resource_object_reference(struct zink_screen *screen,
+                             struct zink_resource_object **dst,
+                             struct zink_resource_object *src)
+{
+   struct zink_resource_object *old_dst = dst ? *dst : NULL;
+
+   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
+                                (debug_reference_descriptor)debug_describe_zink_resource_object))
+      zink_destroy_resource_object(screen, old_dst);
+   if (dst) *dst = src;
+}
+
 #endif

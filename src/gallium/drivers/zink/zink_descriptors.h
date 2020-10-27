@@ -101,7 +101,7 @@ struct zink_descriptor_set {
    unsigned num_resources;
 #endif
    union {
-      struct zink_resource **resources;
+      struct zink_resource_object **res_objs;
       struct zink_image_view **image_views;
       struct {
          struct zink_sampler_view **sampler_views;

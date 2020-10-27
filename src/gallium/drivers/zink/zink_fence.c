@@ -81,9 +81,9 @@ zink_fence_init(struct zink_fence *fence, struct zink_batch *batch)
       /* the fence needs its own reference to ensure it can safely access lifetime-dependent
        * resource members
        */
-      struct pipe_resource *r = NULL, *pres = (struct pipe_resource *)entry->key;
-      pipe_resource_reference(&r, pres);
-      util_dynarray_append(&fence->resources, struct pipe_resource*, pres);
+      struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
+      pipe_reference(NULL, &obj->reference);
+      util_dynarray_append(&fence->resources, struct zink_resource_object*, obj);
    }
    fence->deferred_ctx = NULL;
    fence->submitted = true;
@@ -110,9 +110,9 @@ fence_reference(struct pipe_screen *pscreen,
 }
 
 static inline void
-fence_remove_resource_access(struct zink_fence *fence, struct zink_resource *res)
+fence_remove_resource_access(struct zink_fence *fence, struct zink_resource_object *obj)
 {
-   p_atomic_set(&res->batch_uses[fence->batch_id], 0);
+   p_atomic_set(&obj->batch_uses[fence->batch_id], 0);
 }
 
 bool
@@ -139,15 +139,10 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
          zink_prune_queries(screen, fence);
 
       /* unref all used resources */
-      util_dynarray_foreach(&fence->resources, struct pipe_resource*, pres) {
-         struct zink_resource *stencil, *res = zink_resource(*pres);
-         fence_remove_resource_access(fence, res);
+      util_dynarray_foreach(&fence->resources, struct zink_resource_object*, obj) {
+         fence_remove_resource_access(fence, *obj);
 
-         /* we still hold a ref, so this doesn't need to be atomic */
-         zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
-         if (stencil)
-            fence_remove_resource_access(fence, stencil);
-         pipe_resource_reference(pres, NULL);
+         zink_resource_object_reference(screen, obj, NULL);
       }
       util_dynarray_clear(&fence->resources);
       fence->submitted = false;
