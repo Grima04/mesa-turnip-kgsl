@@ -1015,9 +1015,6 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 panfrost_translate_texture_dimension(so->base.target);
 
         if (device->quirks & IS_BIFROST) {
-                unsigned char composed_swizzle[4];
-                util_format_compose_swizzles(desc->swizzle, user_swizzle, composed_swizzle);
-
                 unsigned size = panfrost_estimate_texture_payload_size(
                                 so->base.u.tex.first_level,
                                 so->base.u.tex.last_level,
@@ -1041,7 +1038,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->base.u.tex.last_layer,
                                 texture->nr_samples,
                                 prsrc->cubemap_stride,
-                                panfrost_translate_swizzle_4(composed_swizzle),
+                                panfrost_translate_swizzle_4(user_swizzle),
                                 prsrc->bo->ptr.gpu,
                                 prsrc->slices, &so->bo->ptr);
         } else {
