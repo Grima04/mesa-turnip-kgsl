@@ -332,10 +332,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
       mesa_logw("Ivy Bridge Vulkan support is incomplete");
    } else if (devinfo.gen == 7 && devinfo.is_baytrail) {
       mesa_logw("Bay Trail Vulkan support is incomplete");
-   } else if (devinfo.gen >= 8 && devinfo.gen <= 11) {
-      /* Gen8-11 fully supported */
-   } else if (devinfo.gen == 12) {
-      mesa_logw("Vulkan is not yet fully supported on gen12");
+   } else if (devinfo.gen >= 8 && devinfo.gen <= 12) {
+      /* Gen8-12 fully supported */
    } else {
       result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
                           "Vulkan not yet supported on %s", device_name);
