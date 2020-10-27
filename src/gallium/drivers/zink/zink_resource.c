@@ -666,6 +666,14 @@ zink_transfer_map(struct pipe_context *pctx,
    void *ptr;
    if (pres->target == PIPE_BUFFER) {
       if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+         if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
+            /* Replace the backing storage with a fresh buffer for non-async maps */
+            //if (!(usage & TC_TRANSFER_MAP_NO_INVALIDATE))
+            zink_resource_invalidate(pctx, pres);
+
+            /* If we can discard the whole resource, we can discard the range. */
+            usage |= PIPE_MAP_DISCARD_RANGE;
+         }
          if (util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
             /* special case compute reads since they aren't handled by zink_fence_wait() */
             if (usage & PIPE_MAP_WRITE && (batch_uses & (ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID)))
@@ -683,8 +691,6 @@ zink_transfer_map(struct pipe_context *pctx,
                res = zink_resource(trans->staging_res);
             }
          }
-         if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)
-            util_range_set_empty(&res->valid_buffer_range);
       }
 
 
