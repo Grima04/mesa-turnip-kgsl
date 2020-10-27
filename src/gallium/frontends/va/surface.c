@@ -680,6 +680,7 @@ vlVaCreateSurfaces2(VADriverContextP ctx, unsigned int format,
    int expected_fourcc;
    VAStatus vaStatus;
    vlVaSurface *surf;
+   bool protected;
 
    if (!ctx)
       return VA_STATUS_ERROR_INVALID_CONTEXT;
@@ -734,6 +735,9 @@ vlVaCreateSurfaces2(VADriverContextP ctx, unsigned int format,
       }
    }
 
+   protected = format & VA_RT_FORMAT_PROTECTED;
+   format &= ~VA_RT_FORMAT_PROTECTED;
+
    if (VA_RT_FORMAT_YUV420 != format &&
        VA_RT_FORMAT_YUV422 != format &&
        VA_RT_FORMAT_YUV444 != format &&
@@ -781,6 +785,8 @@ vlVaCreateSurfaces2(VADriverContextP ctx, unsigned int format,
 
    templat.width = width;
    templat.height = height;
+   if (protected)
+      templat.bind |= PIPE_BIND_PROTECTED;
 
    memset(surfaces, VA_INVALID_ID, num_surfaces * sizeof(VASurfaceID));
 
