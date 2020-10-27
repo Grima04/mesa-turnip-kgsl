@@ -550,7 +550,7 @@ create_buffer_view(struct zink_screen *screen, struct zink_resource *res, enum p
    VkBufferView view = VK_NULL_HANDLE;
    VkBufferViewCreateInfo bvci = {};
    bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-   bvci.buffer = res->buffer;
+   bvci.buffer = res->obj->buffer;
    bvci.format = zink_get_format(screen, format);
    assert(bvci.format);
    bvci.offset = offset;
@@ -579,7 +579,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    if (state->target != PIPE_BUFFER) {
       VkImageViewCreateInfo ivci = {};
       ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-      ivci.image = res->image;
+      ivci.image = res->obj->image;
       ivci.viewType = image_view_type(state->target);
 
       ivci.components.r = component_mapping(state->swizzle_r);
@@ -771,7 +771,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
       }
       struct zink_resource *res = zink_resource(ctx->ubos[shader][index].buffer);
       update |= (index && ctx->ubos[shader][index].buffer_offset != offset) ||
-                !!res != !!buffer || (res && res->buffer != zink_resource(buffer)->buffer) ||
+                !!res != !!buffer || (res && res->obj->buffer != zink_resource(buffer)->obj->buffer) ||
                 ctx->ubos[shader][index].buffer_size != cb->buffer_size;
 
       if (take_ownership) {
@@ -818,7 +818,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          struct zink_resource *res = zink_resource(buffers[i].buffer);
          pipe_resource_reference(&ssbo->buffer, &res->base);
          ssbo->buffer_offset = buffers[i].buffer_offset;
-         ssbo->buffer_size = MIN2(buffers[i].buffer_size, res->size - ssbo->buffer_offset);
+         ssbo->buffer_size = MIN2(buffers[i].buffer_size, res->obj->size - ssbo->buffer_offset);
          util_range_add(&res->base, &res->valid_buffer_range, ssbo->buffer_offset,
                         ssbo->buffer_offset + ssbo->buffer_size);
          update = true;
@@ -1452,7 +1452,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_batch *batch, 
       new_layout,
       VK_QUEUE_FAMILY_IGNORED,
       VK_QUEUE_FAMILY_IGNORED,
-      res->image,
+      res->obj->image,
       isr
    };
    vkCmdPipelineBarrier(
@@ -1541,8 +1541,8 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch,
       flags,
       VK_QUEUE_FAMILY_IGNORED,
       VK_QUEUE_FAMILY_IGNORED,
-      res->buffer,
-      res->offset,
+      res->obj->buffer,
+      res->obj->offset,
       res->base.width0
    };
 
@@ -1841,7 +1841,7 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink
    util_range_add(&dst->base, &dst->valid_buffer_range, dst_offset, dst_offset + size);
    zink_resource_buffer_barrier(ctx, batch, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
    zink_resource_buffer_barrier(ctx, batch, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
-   vkCmdCopyBuffer(batch->cmdbuf, src->buffer, dst->buffer, 1, &region);
+   vkCmdCopyBuffer(batch->cmdbuf, src->obj->buffer, dst->obj->buffer, 1, &region);
 }
 
 void
@@ -1916,9 +1916,9 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_batch *batch, struc
        * - vkCmdCopyBufferToImage spec
        */
       if (buf2img)
-         vkCmdCopyBufferToImage(batch->cmdbuf, buf->buffer, img->image, img->layout, 1, &region);
+         vkCmdCopyBufferToImage(batch->cmdbuf, buf->obj->buffer, img->obj->image, img->layout, 1, &region);
       else
-         vkCmdCopyImageToBuffer(batch->cmdbuf, img->image, img->layout, buf->buffer, 1, &region);
+         vkCmdCopyImageToBuffer(batch->cmdbuf, img->obj->image, img->layout, buf->obj->buffer, 1, &region);
    }
 }
 
@@ -1985,8 +1985,8 @@ zink_resource_copy_region(struct pipe_context *pctx,
       zink_batch_reference_resource_rw(batch, dst, true);
 
       zink_resource_setup_transfer_layouts(ctx, src, dst);
-      vkCmdCopyImage(batch->cmdbuf, src->image, src->layout,
-                     dst->image, dst->layout,
+      vkCmdCopyImage(batch->cmdbuf, src->obj->image, src->layout,
+                     dst->obj->image, dst->layout,
                      1, &region);
    } else if (dst->base.target == PIPE_BUFFER &&
               src->base.target == PIPE_BUFFER) {

@@ -464,7 +464,7 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
    zink_batch_reference_resource_rw(batch, res, true);
    zink_resource_buffer_barrier(ctx, batch, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
    util_range_add(&res->base, &res->valid_buffer_range, offset, offset + result_size);
-   vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query_id, num_results, res->buffer,
+   vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query_id, num_results, res->obj->buffer,
                              offset, 0, flags);
    /* this is required for compute batch sync and will be removed later */
    if (is_cs_query(query))
@@ -747,7 +747,7 @@ zink_render_condition(struct pipe_context *pctx,
       begin_flags = VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
    VkConditionalRenderingBeginInfoEXT begin_info = {};
    begin_info.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
-   begin_info.buffer = res->buffer;
+   begin_info.buffer = res->obj->buffer;
    begin_info.flags = begin_flags;
    screen->vk_CmdBeginConditionalRenderingEXT(batch->cmdbuf, &begin_info);
    ctx->render_condition_active = true;

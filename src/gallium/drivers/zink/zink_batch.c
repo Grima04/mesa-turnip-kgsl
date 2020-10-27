@@ -123,12 +123,12 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    util_dynarray_foreach(&batch->persistent_resources, struct zink_resource*, res) {
        struct zink_screen *screen = zink_screen(ctx->base.screen);
-       assert(!(*res)->offset);
+       assert(!(*res)->obj->offset);
        VkMappedMemoryRange range = {
           VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
           NULL,
-          (*res)->mem,
-          (*res)->offset,
+          (*res)->obj->mem,
+          (*res)->obj->offset,
           VK_WHOLE_SIZE,
        };
        vkFlushMappedMemoryRanges(screen->dev, 1, &range);
@@ -150,7 +150,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    };
 
    if (batch->flush_res) {
-      mem_signal.memory = batch->flush_res->mem;
+      mem_signal.memory = batch->flush_res->obj->mem;
       si.pNext = &mem_signal;
    }
 
@@ -202,10 +202,10 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
       _mesa_set_search_and_add(batch->resources, res, &found);
       if (!found) {
          pipe_reference(NULL, &res->base.reference);
-         batch->resource_size += res->size;
+         batch->resource_size += res->obj->size;
          if (stencil) {
             pipe_reference(NULL, &stencil->base.reference);
-            batch->resource_size += stencil->size;
+            batch->resource_size += stencil->obj->size;
          }
       }
    }

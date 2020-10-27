@@ -45,6 +45,20 @@ struct mem_key {
    VkMemoryPropertyFlags flags;
 };
 
+struct zink_resource_object {
+   struct pipe_reference reference;
+   union {
+      VkBuffer buffer;
+      VkImage image;
+   };
+   VkDeviceMemory mem;
+   uint32_t mem_hash;
+   struct mem_key mkey;
+   VkDeviceSize offset, size;
+
+   bool host_visible;
+};
+
 struct zink_resource {
    struct pipe_resource base;
 
@@ -52,24 +66,17 @@ struct zink_resource {
 
    VkPipelineStageFlagBits access_stage;
    VkAccessFlags access;
+
+   struct zink_resource_object *obj;
    union {
-      struct {
-         VkBuffer buffer;
-         struct util_range valid_buffer_range;
-      };
+      struct util_range valid_buffer_range;
       struct {
          VkFormat format;
-         VkImage image;
          VkImageLayout layout;
          VkImageAspectFlags aspect;
          bool optimal_tiling;
-         bool host_visible;
       };
    };
-   VkDeviceMemory mem;
-   uint32_t mem_hash;
-   struct mem_key mkey;
-   VkDeviceSize offset, size;
 
    struct sw_displaytarget *dt;
    unsigned dt_stride;

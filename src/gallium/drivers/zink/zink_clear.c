@@ -139,7 +139,7 @@ clear_color_no_rp(struct zink_context *ctx, struct zink_resource *res, const uni
        zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
       zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    zink_batch_reference_resource_rw(batch, res, true);
-   vkCmdClearColorImage(batch->cmdbuf, res->image, res->layout, &color, 1, &range);
+   vkCmdClearColorImage(batch->cmdbuf, res->obj->image, res->layout, &color, 1, &range);
 }
 
 static void
@@ -159,7 +159,7 @@ clear_zs_no_rp(struct zink_context *ctx, struct zink_resource *res, VkImageAspec
        zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
       zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    zink_batch_reference_resource_rw(batch, res, true);
-   vkCmdClearDepthStencilImage(batch->cmdbuf, res->image, res->layout, &zs_value, 1, &range);
+   vkCmdClearDepthStencilImage(batch->cmdbuf, res->obj->image, res->layout, &zs_value, 1, &range);
 }
 
 
