@@ -1222,8 +1222,8 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
                                    nir_intrinsic_image_array(instr));
 
    struct ureg_src resource =
-      resource = ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
-                                       instr->src[0]);
+      ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
+                            instr->src[0]);
 
    struct ureg_dst dst;
    if (instr->intrinsic == nir_intrinsic_image_store) {
