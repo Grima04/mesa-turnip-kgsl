@@ -776,7 +776,7 @@ lower_f2(nir_builder *b, nir_ssa_def *x, bool dst_is_signed)
    nir_ssa_def *res = nir_pack_64_2x32_split(b, res_lo, res_hi);
 
    if (dst_is_signed)
-      res = nir_bcsel(b, nir_flt(b, x_sign, nir_imm_float(b, 0)),
+      res = nir_bcsel(b, nir_flt(b, x_sign, nir_imm_floatN_t(b, 0, x->bit_size)),
                       nir_ineg(b, res), res);
 
    return res;
