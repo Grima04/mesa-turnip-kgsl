@@ -1217,17 +1217,17 @@ void do_pack_2x16(lower_context *ctx, Builder& bld, Definition def, Operand lo, 
       /* either lo or hi can be placed with just a v_mov */
       assert(lo.physReg().byte() == 0 || hi.physReg().byte() == 2);
       Operand& op = lo.physReg().byte() == 0 ? lo : hi;
-      Definition def = Definition(def.physReg().advance(op.physReg().byte()), v2b);
-      bld.vop1(aco_opcode::v_mov_b32, def, op);
-      op.setFixed(def.physReg());
+      PhysReg reg = def.physReg().advance(op.physReg().byte());
+      bld.vop1(aco_opcode::v_mov_b32, Definition(reg, v2b), op);
+      op.setFixed(reg);
    }
 
    if (ctx->program->chip_class >= GFX8) {
       /* either hi or lo are already placed correctly */
       if (lo.physReg().reg() == def.physReg().reg())
-         bld.copy(Definition(def.physReg(), v2b), Operand(hi.physReg(), v2b));
+         bld.copy(def_hi, hi);
       else
-         bld.copy(Definition(def.physReg(), v2b), Operand(lo.physReg(), v2b));
+         bld.copy(def_lo, lo);
       return;
    }
 
