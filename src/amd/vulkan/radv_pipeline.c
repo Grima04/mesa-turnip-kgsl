@@ -2308,9 +2308,6 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 			}
 		}
 	}
-
-	for (int i = 0; i < shader_count; ++i)
-		radv_optimize_nir(ordered_shaders[i], optimize_conservatively, false);
 }
 
 static void
@@ -3081,12 +3078,24 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		merge_tess_info(&nir[MESA_SHADER_TESS_EVAL]->info, &nir[MESA_SHADER_TESS_CTRL]->info);
 	}
 
-	radv_link_shaders(pipeline, nir, flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT);
+	bool optimize_conservatively = flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
+
+	radv_link_shaders(pipeline, nir, optimize_conservatively);
+
+	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
+		if (nir[i]) {
+			radv_start_feedback(stage_feedbacks[i]);
+			radv_optimize_nir(nir[i], optimize_conservatively, false);
+			radv_stop_feedback(stage_feedbacks[i], false);
+		}
+	}
 
 	radv_set_driver_locations(pipeline, nir, infos);
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (nir[i]) {
+			radv_start_feedback(stage_feedbacks[i]);
+
 			/* do this again since information such as outputs_read can be out-of-date */
 			nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
 
@@ -3174,6 +3183,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				nir_move_comparisons | nir_move_copies);
 			nir_opt_sink(nir[i], move_opts);
 			nir_opt_move(nir[i], move_opts);
+
+			radv_stop_feedback(stage_feedbacks[i], false);
 		}
 	}
 
