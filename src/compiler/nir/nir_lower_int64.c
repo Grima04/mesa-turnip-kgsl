@@ -1111,6 +1111,25 @@ split_64bit_subgroup_op(nir_builder *b, const nir_intrinsic_instr *intrin)
 }
 
 static nir_ssa_def *
+build_vote_ieq(nir_builder *b, nir_ssa_def *x)
+{
+   nir_intrinsic_instr *vote =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_vote_ieq);
+   vote->src[0] = nir_src_for_ssa(x);
+   vote->num_components = x->num_components;
+   nir_ssa_dest_init(&vote->instr, &vote->dest, 1, 1, NULL);
+   nir_builder_instr_insert(b, &vote->instr);
+   return &vote->dest.ssa;
+}
+
+static nir_ssa_def *
+lower_vote_ieq(nir_builder *b, nir_ssa_def *x)
+{
+   return nir_iand(b, build_vote_ieq(b, nir_unpack_64_2x32_split_x(b, x)),
+                      build_vote_ieq(b, nir_unpack_64_2x32_split_y(b, x)));
+}
+
+static nir_ssa_def *
 build_scan_intrinsic(nir_builder *b, nir_intrinsic_op scan_op,
                      nir_op reduction_op, unsigned cluster_size,
                      nir_ssa_def *val)
@@ -1187,6 +1206,11 @@ should_lower_int64_intrinsic(const nir_intrinsic_instr *intrin,
       return intrin->dest.ssa.bit_size == 64 &&
              (options->lower_int64_options & nir_lower_subgroup_shuffle64);
 
+   case nir_intrinsic_vote_ieq:
+      assert(intrin->src[0].is_ssa);
+      return intrin->src[0].ssa->bit_size == 64 &&
+             (options->lower_int64_options & nir_lower_vote_ieq64);
+
    case nir_intrinsic_reduce:
    case nir_intrinsic_inclusive_scan:
    case nir_intrinsic_exclusive_scan:
@@ -1226,6 +1250,10 @@ lower_int64_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
    case nir_intrinsic_quad_swap_vertical:
    case nir_intrinsic_quad_swap_diagonal:
       return split_64bit_subgroup_op(b, intrin);
+
+   case nir_intrinsic_vote_ieq:
+      assert(intrin->src[0].is_ssa);
+      return lower_vote_ieq(b, intrin->src[0].ssa);
 
    case nir_intrinsic_reduce:
    case nir_intrinsic_inclusive_scan:
