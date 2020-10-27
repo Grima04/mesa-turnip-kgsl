@@ -30,6 +30,59 @@
 
 /* Convenience */
 
+#define BFMT2(pipe, internal, writeback) \
+        [PIPE_FORMAT_##pipe] = { \
+                MALI_COLOR_BUFFER_INTERNAL_FORMAT_## internal, \
+                MALI_MFBD_COLOR_FORMAT_## writeback \
+        }
+
+#define BFMT(pipe, internal_and_writeback) \
+        BFMT2(pipe, internal_and_writeback, internal_and_writeback)
+
+static const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_COUNT] = {
+        BFMT2(L8_UNORM, R8G8B8A8, R8),
+        BFMT2(L8A8_UNORM, R8G8B8A8, R8G8),
+        BFMT2(I8_UNORM, R8G8B8A8, R8),
+        BFMT2(A8_UNORM, R8G8B8A8, R8),
+        BFMT2(R8_UNORM, R8G8B8A8, R8),
+        BFMT2(R8G8_UNORM, R8G8B8A8, R8G8),
+        BFMT2(R8G8B8_UNORM, R8G8B8A8, R8G8B8),
+
+        BFMT(B8G8R8A8_UNORM, R8G8B8A8),
+        BFMT(B8G8R8X8_UNORM, R8G8B8A8),
+        BFMT(A8R8G8B8_UNORM, R8G8B8A8),
+        BFMT(X8R8G8B8_UNORM, R8G8B8A8),
+        BFMT(A8B8G8R8_UNORM, R8G8B8A8),
+        BFMT(X8B8G8R8_UNORM, R8G8B8A8),
+        BFMT(R8G8B8X8_UNORM, R8G8B8A8),
+        BFMT(R8G8B8A8_UNORM, R8G8B8A8),
+
+        BFMT2(B5G6R5_UNORM, R5G6B5A0, R5G6B5),
+
+        BFMT(A4B4G4R4_UNORM, R4G4B4A4),
+        BFMT(B4G4R4A4_UNORM, R4G4B4A4),
+        BFMT(R4G4B4A4_UNORM, R4G4B4A4),
+
+        BFMT(R10G10B10A2_UNORM, R10G10B10A2),
+        BFMT(B10G10R10A2_UNORM, R10G10B10A2),
+        BFMT(R10G10B10X2_UNORM, R10G10B10A2),
+        BFMT(B10G10R10X2_UNORM, R10G10B10A2),
+
+        BFMT(B5G5R5A1_UNORM, R5G5B5A1),
+        BFMT(R5G5B5A1_UNORM, R5G5B5A1),
+        BFMT(B5G5R5X1_UNORM, R5G5B5A1),
+};
+
+/* Accessor that is generic over linear/sRGB */
+
+struct pan_blendable_format
+panfrost_blend_format(enum pipe_format format)
+{
+        return panfrost_blendable_formats[util_format_linear(format)];
+}
+
+/* Convenience */
+
 #define _V PIPE_BIND_VERTEX_BUFFER
 #define _T PIPE_BIND_SAMPLER_VIEW
 #define _R PIPE_BIND_RENDER_TARGET

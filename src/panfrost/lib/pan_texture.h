@@ -143,6 +143,14 @@ struct panfrost_format {
         unsigned bind;
 };
 
+struct pan_blendable_format {
+        enum mali_color_buffer_internal_format internal;
+        enum mali_mfbd_color_format writeback;
+};
+
+struct pan_blendable_format
+panfrost_blend_format(enum pipe_format format);
+
 extern struct panfrost_format panfrost_pipe_format_table[PIPE_FORMAT_COUNT];
 
 bool
