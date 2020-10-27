@@ -2517,7 +2517,8 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          struct brw_reg strided = stride(suboffset(src[0], component),
                                          vstride, width, 0);
          if (type_sz(src[0].type) > 4 &&
-             (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
+             (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo) ||
+              !devinfo->has_64bit_float)) {
             /* IVB has an issue (which we found empirically) where it reads
              * two address register components per channel for indirectly
              * addressed 64-bit sources.
