@@ -4005,18 +4005,16 @@ fs_visitor::get_nir_ssbo_intrinsic_index(const brw::fs_builder &bld,
    /* SSBO stores are weird in that their index is in src[1] */
    const unsigned src = instr->intrinsic == nir_intrinsic_store_ssbo ? 1 : 0;
 
-   fs_reg surf_index;
    if (nir_src_is_const(instr->src[src])) {
       unsigned index = stage_prog_data->binding_table.ssbo_start +
                        nir_src_as_uint(instr->src[src]);
-      surf_index = brw_imm_ud(index);
+      return brw_imm_ud(index);
    } else {
-      surf_index = vgrf(glsl_type::uint_type);
+      fs_reg surf_index = vgrf(glsl_type::uint_type);
       bld.ADD(surf_index, get_nir_src(instr->src[src]),
               brw_imm_ud(stage_prog_data->binding_table.ssbo_start));
+      return bld.emit_uniformize(surf_index);
    }
-
-   return bld.emit_uniformize(surf_index);
 }
 
 /**
