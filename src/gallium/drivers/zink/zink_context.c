@@ -54,10 +54,29 @@
 #define XXH_INLINE_ALL
 #include "util/xxhash.h"
 
+static struct zink_resource *
+get_resource_for_descriptor(struct zink_context *ctx, enum zink_descriptor_type type, enum pipe_shader_type shader, int idx)
+{
+   switch (type) {
+   case ZINK_DESCRIPTOR_TYPE_UBO:
+      return zink_resource(ctx->ubos[shader][idx].buffer);
+   case ZINK_DESCRIPTOR_TYPE_SSBO:
+      return zink_resource(ctx->ssbos[shader][idx].buffer);
+   case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
+      return zink_resource(ctx->sampler_views[shader][idx]->texture);
+   case ZINK_DESCRIPTOR_TYPE_IMAGE:
+      return zink_resource(ctx->image_views[shader][idx].base.resource);
+   default:
+      break;
+   }
+   unreachable("unknown descriptor type!");
+   return NULL;
+}
+
 static uint32_t
 calc_descriptor_state_hash_ubo(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
 {
-   struct zink_resource *res = zink_resource(ctx->ubos[shader][idx].buffer);
+   struct zink_resource *res = get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, shader, idx);
    struct zink_resource_object *obj = res ? res->obj : NULL;
    hash = XXH32(&obj, sizeof(void*), hash);
    void *hash_data = &ctx->ubos[shader][idx].buffer_size;
@@ -71,7 +90,7 @@ calc_descriptor_state_hash_ubo(struct zink_context *ctx, struct zink_shader *zs,
 static uint32_t
 calc_descriptor_state_hash_ssbo(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
 {
-   struct zink_resource *res = zink_resource(ctx->ssbos[shader][idx].buffer);
+   struct zink_resource *res = get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_SSBO, shader, idx);
    struct zink_resource_object *obj = res ? res->obj : NULL;
    hash = XXH32(&obj, sizeof(void*), hash);
    if (obj) {
@@ -121,7 +140,7 @@ calc_descriptor_state_hash_image(struct zink_context *ctx, struct zink_shader *z
    size_t data_size;
 
    for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_IMAGE][i].size; k++) {
-      if (!ctx->image_views[shader][idx + k].base.resource) {
+      if (!get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_IMAGE, shader, idx + k)) {
          VkDescriptorImageInfo null_info = {0};
          hash_data = &null_info;
          data_size = sizeof(VkDescriptorImageInfo);
