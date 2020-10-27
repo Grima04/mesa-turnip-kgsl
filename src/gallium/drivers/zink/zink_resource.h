@@ -56,6 +56,8 @@ struct zink_resource_object {
    struct mem_key mkey;
    VkDeviceSize offset, size;
 
+   unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
+   bool is_buffer;
    bool host_visible;
 };
 
@@ -80,7 +82,6 @@ struct zink_resource {
 
    struct sw_displaytarget *dt;
    unsigned dt_stride;
-   unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
 
    struct zink_descriptor_refs desc_set_refs;
 

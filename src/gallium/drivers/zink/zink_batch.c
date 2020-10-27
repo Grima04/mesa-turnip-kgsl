@@ -210,7 +210,7 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
       }
    }
    /* multiple array entries are fine */
-   if (res->persistent_maps)
+   if (res->obj->persistent_maps)
       util_dynarray_append(&batch->persistent_resources, struct zink_resource*, res);
    /* the batch_uses value for this batch is guaranteed to not be in use now because
     * zink_reset_batch() waits on the fence and removes access before resetting
