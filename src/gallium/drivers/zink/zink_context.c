@@ -961,6 +961,13 @@ zink_set_shader_images(struct pipe_context *pctx,
 }
 
 static void
+sampler_view_buffer_clear(struct zink_context *ctx, struct zink_sampler_view *sampler_view)
+{
+   zink_descriptor_set_refs_clear(&sampler_view->desc_set_refs, sampler_view);
+   zink_buffer_view_reference(zink_screen(ctx->base.screen), &sampler_view->buffer_view, NULL);
+}
+
+static void
 zink_set_sampler_views(struct pipe_context *pctx,
                        enum pipe_shader_type shader_type,
                        unsigned start_slot,
@@ -978,6 +985,20 @@ zink_set_sampler_views(struct pipe_context *pctx,
       struct zink_sampler_view *b = zink_sampler_view(pview);
       if (b && b->base.texture) {
          struct zink_resource *res = zink_resource(b->base.texture);
+         if (res->base.target == PIPE_BUFFER &&
+             res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
+            /* if this resource has been rebound while it wasn't set here,
+             * its backing resource will have changed and thus we need to update
+             * the bufferview
+             */
+            struct zink_buffer_view *buffer_view = get_buffer_view(ctx, res, b->base.format, b->base.u.buf.offset, b->base.u.buf.size);
+            if (buffer_view == b->buffer_view)
+               p_atomic_dec(&buffer_view->reference.count);
+            else {
+               sampler_view_buffer_clear(ctx, b);
+               b->buffer_view = buffer_view;
+            }
+         }
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
          res->bind_stages |= 1 << shader_type;
       }
@@ -2145,6 +2166,60 @@ zink_set_stream_output_targets(struct pipe_context *pctx,
 
       /* TODO: possibly avoid rebinding on resume if resuming from same buffers? */
       ctx->dirty_so_targets = true;
+   }
+}
+
+void
+zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
+{
+   assert(res->base.target == PIPE_BUFFER);
+
+   for (unsigned shader = 0; shader < PIPE_SHADER_TYPES; shader++) {
+      if (!(res->bind_stages & (1 << shader)))
+         continue;
+      for (enum zink_descriptor_type type = 0; type < ZINK_DESCRIPTOR_TYPES; type++) {
+         if (!(res->bind_history & BITFIELD64_BIT(type)))
+            continue;
+
+         uint32_t usage = zink_program_get_descriptor_usage(ctx, shader, type);
+         while (usage) {
+            const int i = u_bit_scan(&usage);
+            struct zink_resource *cres = get_resource_for_descriptor(ctx, type, shader, i);
+            if (res != cres)
+               continue;
+
+            switch (type) {
+            case ZINK_DESCRIPTOR_TYPE_SSBO: {
+               struct pipe_shader_buffer *ssbo = &ctx->ssbos[shader][i];
+               util_range_add(&res->base, &res->valid_buffer_range, ssbo->buffer_offset,
+                              ssbo->buffer_offset + ssbo->buffer_size);
+               break;
+            }
+            case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW: {
+               struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[shader][i]);
+               sampler_view_buffer_clear(ctx, sampler_view);
+               sampler_view->buffer_view = get_buffer_view(ctx, res, sampler_view->base.format,
+                                                           sampler_view->base.u.buf.offset, sampler_view->base.u.buf.size);
+               break;
+            }
+            case ZINK_DESCRIPTOR_TYPE_IMAGE: {
+               struct zink_image_view *image_view = &ctx->image_views[shader][i];
+               zink_descriptor_set_refs_clear(&image_view->desc_set_refs, image_view);
+               zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
+               image_view->buffer_view = get_buffer_view(ctx, res, image_view->base.format,
+                                                         image_view->base.u.buf.offset, image_view->base.u.buf.size);
+               assert(image_view->buffer_view);
+               util_range_add(&res->base, &res->valid_buffer_range, image_view->base.u.buf.offset,
+                              image_view->base.u.buf.offset + image_view->base.u.buf.size);
+               break;
+            }
+            default:
+               break;
+            }
+
+            invalidate_descriptor_state(ctx, shader, type);
+         }
+      }
    }
 }
 

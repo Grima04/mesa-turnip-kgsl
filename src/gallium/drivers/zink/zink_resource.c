@@ -574,6 +574,37 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
 }
 
 static void
+zink_resource_invalidate(struct pipe_context *pctx, struct pipe_resource *pres)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_resource *res = zink_resource(pres);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+
+   if (pres->target != PIPE_BUFFER)
+      return;
+
+   if (res->valid_buffer_range.start > res->valid_buffer_range.end)
+      return;
+
+   util_range_set_empty(&res->valid_buffer_range);
+   if (!zink_get_resource_usage(res))
+      return;
+
+   struct zink_resource_object *old_obj = res->obj;
+   struct zink_resource_object *new_obj = resource_object_create(screen, pres, NULL, NULL);
+   if (!new_obj) {
+      debug_printf("new backing resource alloc failed!");
+      return;
+   }
+   res->obj = new_obj;
+   res->access_stage = 0;
+   res->access = 0;
+   zink_resource_rebind(ctx, res);
+   zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
+   zink_resource_object_reference(screen, &old_obj, NULL);
+}
+
+static void
 zink_transfer_copy_bufimage(struct zink_context *ctx,
                             struct zink_resource *dst,
                             struct zink_resource *src,
@@ -946,4 +977,5 @@ zink_context_resource_init(struct pipe_context *pctx)
    pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
    pctx->buffer_subdata = u_default_buffer_subdata;
    pctx->texture_subdata = u_default_texture_subdata;
+   pctx->invalidate_resource = zink_resource_invalidate;
 }
