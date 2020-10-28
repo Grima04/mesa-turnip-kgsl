@@ -44,50 +44,13 @@ panfrost_sfbd_format(struct pipe_surface *surf,
 
         fb->swizzle = panfrost_translate_swizzle_4(swizzle);
 
-        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
-                fb->srgb = true;
+        struct pan_blendable_format fmt = panfrost_blend_format(surf->format);
 
-        if (util_format_is_unorm8(desc)) {
-                fb->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8;
-                switch (desc->nr_channels) {
-                case 1:
-                        fb->color_writeback_format = MALI_SFBD_COLOR_FORMAT_R8;
-                        break;
-                case 2:
-                        fb->color_writeback_format = MALI_SFBD_COLOR_FORMAT_R8G8;
-                        break;
-                case 3:
-                        fb->color_writeback_format = MALI_SFBD_COLOR_FORMAT_R8G8B8;
-                        break;
-                case 4:
-                        fb->color_writeback_format = MALI_SFBD_COLOR_FORMAT_R8G8B8A8;
-                        break;
-                default:
-                        unreachable("Invalid number of components");
-                }
-
-                /* If 8b RGB variant, we're good to go */
-                return;
-        }
-
-        /* sRGB handled as a dedicated flag */
-        enum pipe_format linearized = util_format_linear(surf->format);
-
-        switch (linearized) {
-        case PIPE_FORMAT_B5G6R5_UNORM:
-                fb->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G6B5A0;
-                fb->color_writeback_format = MALI_SFBD_COLOR_FORMAT_R5G6B5;
-                break;
-
-        case PIPE_FORMAT_A4B4G4R4_UNORM:
-        case PIPE_FORMAT_B4G4R4A4_UNORM:
-        case PIPE_FORMAT_R4G4B4A4_UNORM:
-                fb->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R4G4B4A4;
-                fb->color_writeback_format = MALI_SFBD_COLOR_FORMAT_R4G4B4A4;
-                break;
-
-        default:
-                unreachable("Invalid format rendering");
+        if (fmt.internal) {
+                fb->internal_format = fmt.internal;
+                fb->color_writeback_format = fmt.writeback;
+        } else {
+                unreachable("raw formats not finished for SFBD");
         }
 }
 
