@@ -126,8 +126,11 @@
     <value name="RG32 FIXED" value="82"/>
     <value name="RGB32 FIXED" value="83"/>
     <value name="RGBA32 FIXED" value="84"/>
+    <value name="Tilebuffer Native" value="85"/>
     <value name="R11F G11F B10F" value="89"/>
+    <value name="B10F G11F R11F" value="90"/>
     <value name="R9F G9F B9F E5F" value="91"/>
+    <value name="E5F B9F G9F R9F" value="92"/>
     <value name="VARYING POS" value="94"/>
     <value name="VARYING DISCARD" value="95"/>
     <value name="R8 SNORM" value="99"/>
