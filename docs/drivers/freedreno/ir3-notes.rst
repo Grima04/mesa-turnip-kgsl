@@ -3,7 +3,7 @@ IR3 NOTES
 
 Some notes about ir3, the compiler and machine-specific IR for the shader ISA introduced with adreno a3xx.  The same shader ISA is present, with some small differences, in adreno a4xx.
 
-Compared to the previous generation a2xx ISA (ir2), the a3xx ISA is a "simple" scalar instruction set.  However, the compiler is responsible, in most cases, to schedule the instructions.  The hardware does not try to hide the shader core pipeline stages.  For a common example, a common (cat2) ALU instruction takes four cycles, so a subsequent cat2 instruction which uses the result must have three intervening instructions (or nops).  When operating on vec4's, typically the corresponding scalar instructions for operating on the remaining three components could typically fit.  Although that results in a lot of edge cases where things fall over, like:
+Compared to the previous generation a2xx ISA (ir2), the a3xx ISA is a "simple" scalar instruction set.  However, the compiler is responsible, in most cases, to schedule the instructions.  The hardware does not try to hide the shader core pipeline stages.  For a common example, a common (cat2) ALU instruction takes four cycles, so a subsequent cat2 instruction which uses the result must have three intervening instructions (or NOPs).  When operating on vec4's, typically the corresponding scalar instructions for operating on the remaining three components could typically fit.  Although that results in a lot of edge cases where things fall over, like:
 
 ::
 
