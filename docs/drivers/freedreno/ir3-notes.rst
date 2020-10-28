@@ -26,7 +26,7 @@ External Structure
     which are generated on demand based on the shader key.
 
 ``ir3_shader_key``
-    The configuration key that identifies a shader variant.  Ie. based
+    The configuration key that identifies a shader variant.  I.e. based
     on other GL state (two-sided-color, render-to-alpha, etc) or render
     stages (binning-pass vertex shader) different shader variants are
     generated.
@@ -260,7 +260,7 @@ Most instructions support addressing indirectly (relative to address register) i
     Note that cat5 (texture sample) instructions are the notable exception, not
     supporting relative addressing of src or dst.
 
-Relative addressing of the const file (for example, a uniform array) is relatively simple.  We don't do register assignment of the const file, so all that is required is to schedule things properly.  Ie. the instruction that writes the address register must be scheduled first, and we cannot have two different address register values live at one time.
+Relative addressing of the const file (for example, a uniform array) is relatively simple.  We don't do register assignment of the const file, so all that is required is to schedule things properly.  I.e. the instruction that writes the address register must be scheduled first, and we cannot have two different address register values live at one time.
 
 But relative addressing of gpr file (which can be as src or dst) has additional restrictions on register assignment (i.e. the array elements must be assigned to consecutive scalar registers).  And in the case of relative dst, subsequent instructions now depend on both the relative write, as well as the previous instruction which wrote that register, since we do not know at compile time which actual register was written.
 
