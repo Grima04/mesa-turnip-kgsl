@@ -740,7 +740,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 
    bool found = false;
    PhysRegInterval reg_win = { bounds.lo(), size };
-   while (!found && reg_win.hi() <= bounds.hi()) {
+   while (reg_win.hi() <= bounds.hi()) {
       if (reg_file[reg_win.lo()] != 0) {
          reg_win += stride;
          continue;
@@ -1046,7 +1046,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       unsigned last_var = 0;
       bool found = true;
       bool aligned = rc == RegClass::v4 && reg_win.lo() % 4 == 0;
-      for (unsigned j = reg_win.lo(); found && j < reg_win.hi(); j++) {
+      for (unsigned j = reg_win.lo(); j < reg_win.hi(); j++) {
          /* dead operands effectively reduce the number of estimated moves */
          if (is_killed_operand[j & 0xFF]) {
             if (remaining_op_moves) {
@@ -1176,7 +1176,7 @@ bool get_reg_specified(ra_ctx& ctx,
    uint32_t reg_lo = reg.reg();
    uint32_t reg_hi = reg + (size - 1);
 
-   if (reg_lo < lb || reg_hi >= ub || reg_lo > reg_hi)
+   if (reg_lo < lb || reg_hi >= ub)
       return false;
 
    if (rc.is_subdword()) {
