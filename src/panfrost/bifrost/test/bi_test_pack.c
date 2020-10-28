@@ -295,7 +295,7 @@ static void
 bit_special_helper(struct panfrost_device *dev,
                 unsigned size, uint32_t *input, enum bit_debug debug)
 {
-        bi_instruction ins = bit_ins(BI_SPECIAL, 2, nir_type_float, size);
+        bi_instruction ins = bit_ins(BI_SPECIAL_ADD, 2, nir_type_float, size);
         uint32_t exp_input[4];
 
         for (enum bi_special_op op = BI_SPECIAL_FRCP; op <= BI_SPECIAL_EXP2_LOW; ++op) {

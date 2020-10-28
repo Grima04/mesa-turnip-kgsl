@@ -836,7 +836,7 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_frcp:
         case nir_op_frsq:
         case nir_op_iabs:
-                return BI_SPECIAL;
+                return BI_SPECIAL_ADD;
 
         default:
                 unreachable("Unknown ALU op");
@@ -984,7 +984,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         };
 
         /* TODO: Implement lowering of special functions for older Bifrost */
-        assert((alu.type != BI_SPECIAL) || !(ctx->quirks & BIFROST_NO_FAST_OP));
+        assert(alu.type != BI_SPECIAL_ADD || !(ctx->quirks & BIFROST_NO_FAST_OP));
 
         unsigned comps = nir_dest_num_components(instr->dest.dest);
         bool vector = comps > MAX2(1, 32 / nir_dest_bit_size(instr->dest.dest));

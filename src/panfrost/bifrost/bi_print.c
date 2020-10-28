@@ -68,7 +68,8 @@ bi_class_name(enum bi_class cl)
         case BI_SELECT: return "select";
         case BI_STORE: return "store";
         case BI_STORE_VAR: return "store_var";
-        case BI_SPECIAL: return "special";
+        case BI_SPECIAL_ADD: return "special";
+        case BI_SPECIAL_FMA: return "special";
         case BI_TABLE: return "table";
         case BI_TEXS: return "texs";
         case BI_TEXC: return "texc";
@@ -256,7 +257,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_bitwise_op_name(ins->op.bitwise));
         else if (ins->type == BI_IMATH)
                 fprintf(fp, "%s", bi_imath_op_name(ins->op.imath));
-        else if (ins->type == BI_SPECIAL)
+        else if (ins->type == BI_SPECIAL_ADD || ins->type == BI_SPECIAL_FMA)
                 fprintf(fp, "%s", bi_special_op_name(ins->op.special));
         else if (ins->type == BI_TABLE)
                 fprintf(fp, "%s", bi_table_op_name(ins->op.table));

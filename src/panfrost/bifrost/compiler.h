@@ -73,7 +73,8 @@ enum bi_class {
         BI_SELECT,
         BI_STORE,
         BI_STORE_VAR,
-        BI_SPECIAL, /* _FAST on supported GPUs */
+        BI_SPECIAL_ADD, /* _FAST on supported GPUs */
+        BI_SPECIAL_FMA, /* _FAST on supported GPUs */
         BI_TABLE,
         BI_TEXS,
         BI_TEXC,

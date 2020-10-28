@@ -872,7 +872,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
                 }
         case BI_STORE_VAR:
                 return pan_pack_add_st_cvt(clause, bundle.add, regs);
-        case BI_SPECIAL:
+        case BI_SPECIAL_ADD:
                 return bi_pack_add_special(clause, bundle.add, regs);
         case BI_TABLE:
                 assert(bundle.add->dest_type == nir_type_float32);
