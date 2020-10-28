@@ -55,8 +55,11 @@ debug_describe_zink_resource_object(char *buf, const struct zink_resource_object
 
 
 static void
-resource_sync_writes_from_batch_usage(struct zink_context *ctx, uint32_t batch_uses)
+resource_sync_writes_from_batch_usage(struct zink_context *ctx, struct zink_resource *res)
 {
+   uint32_t batch_uses = zink_get_resource_usage(res);
+   batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
+
    uint32_t write_mask = 0;
    for (int i = 0; i < ZINK_NUM_GFX_BATCHES + ZINK_COMPUTE_BATCH_COUNT; i++)
       write_mask |= ZINK_RESOURCE_ACCESS_WRITE << i;
@@ -680,7 +683,7 @@ zink_transfer_map(struct pipe_context *pctx,
                zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
             batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
             if (usage & PIPE_MAP_READ && batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
-               resource_sync_writes_from_batch_usage(ctx, batch_uses);
+               resource_sync_writes_from_batch_usage(ctx, res);
             else if (usage & PIPE_MAP_WRITE && batch_uses) {
                /* need to wait for all rendering to finish
                 * TODO: optimize/fix this to be much less obtrusive
@@ -782,7 +785,7 @@ zink_transfer_map(struct pipe_context *pctx,
          batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
          if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE) {
             if (usage & PIPE_MAP_READ)
-               resource_sync_writes_from_batch_usage(ctx, batch_uses);
+               resource_sync_writes_from_batch_usage(ctx, res);
             else
                zink_fence_wait(pctx);
          }
