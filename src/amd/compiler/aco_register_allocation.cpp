@@ -92,6 +92,39 @@ struct ra_ctx {
    }
 };
 
+/* Iterator type for making PhysRegInterval compatible with range-based for */
+struct PhysRegIterator {
+   using difference_type = int;
+   using value_type = unsigned;
+   using reference = const unsigned&;
+   using pointer = const unsigned*;
+   using iterator_category = std::bidirectional_iterator_tag;
+
+   unsigned reg;
+
+   unsigned operator*() const {
+      return reg;
+   }
+
+   PhysRegIterator& operator++() {
+      reg++;
+      return *this;
+   }
+
+   PhysRegIterator& operator--() {
+      reg--;
+      return *this;
+   }
+
+   bool operator==(PhysRegIterator oth) const {
+      return reg == oth.reg;
+   }
+
+   bool operator!=(PhysRegIterator oth) const {
+      return reg != oth.reg;
+   }
+};
+
 /* Half-open register interval used in "sliding window"-style for-loops */
 struct PhysRegInterval {
    unsigned lo_;
@@ -119,6 +152,14 @@ struct PhysRegInterval {
    /* Construct a half-open interval, excluding the end register */
    static PhysRegInterval from_until(unsigned first, unsigned end) {
       return { first, end - first };
+   }
+
+   PhysRegIterator begin() const {
+      return { lo_ };
+   }
+
+   PhysRegIterator end() const {
+      return { lo_ + size };
    }
 };
 
@@ -686,7 +727,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
       PhysRegInterval best_gap { 0xFFFF, 0xFFFF };
       unsigned last_pos = 0xFFFF;
 
-      for (unsigned current_reg = bounds.lo(); current_reg < bounds.hi(); current_reg++) {
+      for (const unsigned current_reg : bounds) {
          if (reg_file[current_reg] == 0 && !ctx.war_hint[current_reg]) {
             if (last_pos == 0xFFFF)
                last_pos = current_reg;
@@ -906,7 +947,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
          unsigned n = 0;
          unsigned last_var = 0;
          bool found = true;
-         for (unsigned j = reg_win.lo(); found && j < reg_win.hi(); j++) {
+         for (const unsigned j : reg_win) {
             if (reg_file[j] == 0 || reg_file[j] == last_var)
                continue;
 
@@ -1046,7 +1087,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       unsigned last_var = 0;
       bool found = true;
       bool aligned = rc == RegClass::v4 && reg_win.lo() % 4 == 0;
-      for (unsigned j = reg_win.lo(); j < reg_win.hi(); j++) {
+      for (const unsigned j : reg_win) {
          /* dead operands effectively reduce the number of estimated moves */
          if (is_killed_operand[j & 0xFF]) {
             if (remaining_op_moves) {
@@ -1359,7 +1400,11 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
       /* count variables to be moved and check war_hint */
       bool war_hint = false;
       bool linear_vgpr = false;
-      for (unsigned j = reg_win.lo(); j < reg_win.hi() && !linear_vgpr; j++) {
+      for (unsigned j : reg_win) {
+         if (linear_vgpr) {
+            break;
+         }
+
          if (reg_file[j] != 0) {
             if (reg_file[j] == 0xF0000000) {
                PhysReg reg;
