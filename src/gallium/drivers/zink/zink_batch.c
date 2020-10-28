@@ -50,9 +50,16 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    }
 
    set_foreach(batch->surfaces, entry) {
-      struct pipe_surface *surf = (struct pipe_surface *)entry->key;
-      pipe_surface_reference(&surf, NULL);
+      struct zink_surface *surf = (struct zink_surface *)entry->key;
+      surf->batch_uses &= ~BITFIELD64_BIT(batch->batch_id);
+      pipe_surface_reference((struct pipe_surface**)&surf, NULL);
       _mesa_set_remove(batch->surfaces, entry);
+   }
+   set_foreach(batch->bufferviews, entry) {
+      struct zink_buffer_view *buffer_view = (struct zink_buffer_view *)entry->key;
+      buffer_view->batch_uses &= ~BITFIELD64_BIT(batch->batch_id);
+      zink_buffer_view_reference(ctx, &buffer_view, NULL);
+      _mesa_set_remove(batch->bufferviews, entry);
    }
 
    util_dynarray_foreach(&batch->zombie_samplers, VkSampler, samp) {
@@ -286,13 +293,25 @@ zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zd
 }
 
 void
-zink_batch_reference_surface(struct zink_batch *batch,
-                             struct zink_surface *surface)
+zink_batch_reference_image_view(struct zink_batch *batch,
+                                struct zink_image_view *image_view)
 {
-   struct pipe_surface *surf = &surface->base;
    bool found = false;
-   _mesa_set_search_and_add(batch->surfaces, surf, &found);
-   if (!found)
-      pipe_reference(NULL, &surf->reference);
+   uint32_t bit = BITFIELD64_BIT(batch->batch_id);
+   if (image_view->base.resource->target == PIPE_BUFFER) {
+      if (image_view->buffer_view->batch_uses & bit)
+         return;
+      _mesa_set_search_and_add(batch->bufferviews, image_view->buffer_view, &found);
+      assert(!found);
+      image_view->buffer_view->batch_uses |= bit;
+      pipe_reference(NULL, &image_view->buffer_view->reference);
+   } else {
+      if (image_view->surface->batch_uses & bit)
+         return;
+      _mesa_set_search_and_add(batch->surfaces, image_view->surface, &found);
+      assert(!found);
+      image_view->surface->batch_uses |= bit;
+      pipe_reference(NULL, &image_view->surface->base.reference);
+   }
    batch->has_work = true;
 }

@@ -35,6 +35,7 @@ struct zink_surface {
    VkImageViewCreateInfo ivci;
    VkImageView image_view;
    uint32_t hash;
+   uint32_t batch_uses;
 };
 
 static inline struct zink_surface *

@@ -713,8 +713,8 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
                                     NULL, imageview, bufferview, !k);
 
             struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
-            if (image_view->surface)
-               zink_batch_reference_surface(batch, image_view->surface);
+            if (res)
+               zink_batch_reference_image_view(batch, image_view);
          }
          assert(num_wds < num_descriptors);
 

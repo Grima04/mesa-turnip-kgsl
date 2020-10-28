@@ -2123,11 +2123,12 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
    batch->resources = _mesa_pointer_set_create(NULL);
    batch->sampler_views = _mesa_pointer_set_create(NULL);
    batch->surfaces = _mesa_pointer_set_create(NULL);
+   batch->bufferviews = _mesa_pointer_set_create(NULL);
    batch->programs = _mesa_pointer_set_create(NULL);
    batch->desc_sets = _mesa_pointer_set_create(ctx);
 
    if (!batch->resources || !batch->sampler_views || !batch->desc_sets ||
-       !batch->programs || !batch->surfaces)
+       !batch->programs || !batch->surfaces || !batch->bufferviews)
       return false;
 
    util_dynarray_init(&batch->zombie_samplers, NULL);
