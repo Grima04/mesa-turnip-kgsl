@@ -86,19 +86,27 @@ ${item.token_name}_${prop}(const struct gen_device_info *devinfo)
    case 9: return ${item.get_prop(prop, 9)};
    case 8: return ${item.get_prop(prop, 8)};
    case 7:
+%if item.get_prop(prop, 7.5) == item.get_prop(prop, 7):
+      return ${item.get_prop(prop, 7)};
+%else:
       if (devinfo->is_haswell) {
          return ${item.get_prop(prop, 7.5)};
       } else {
          return ${item.get_prop(prop, 7)};
       }
+%endif
    case 6: return ${item.get_prop(prop, 6)};
    case 5: return ${item.get_prop(prop, 5)};
    case 4:
+%if item.get_prop(prop, 4.5) == item.get_prop(prop, 4):
+      return ${item.get_prop(prop, 4)};
+%else:
       if (devinfo->is_g4x) {
          return ${item.get_prop(prop, 4.5)};
       } else {
          return ${item.get_prop(prop, 4)};
       }
+%endif
    default:
       unreachable("Invalid hardware generation");
    }
