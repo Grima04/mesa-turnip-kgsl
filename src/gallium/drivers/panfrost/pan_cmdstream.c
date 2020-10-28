@@ -936,7 +936,8 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 }
         }
 
-        *push_constants = transfer.gpu;
+        if (ss->uniform_count)
+                *push_constants = transfer.gpu;
 
         buf->dirty_mask = 0;
         return ubos.gpu;
