@@ -1239,7 +1239,7 @@ Bug Fixes:
 
 -  fbiRev and tmuRev were unitialized when using Glide3
 -  fixed a few color index mode conformance failures; all pass now
--  now appling antialiasing coverage to alpha after texturing
+-  now applying antialiasing coverage to alpha after texturing
 -  colors weren't getting clamped to [0,1] before color table lookup
 -  fixed RISC alignment errors caused by COPY_4UBV macro
 -  drawing wide, flat-shaded lines could cause a segfault
