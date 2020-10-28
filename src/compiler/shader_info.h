@@ -93,6 +93,7 @@ struct spirv_supported_capabilities {
    bool variable_pointers;
    bool vk_memory_model;
    bool vk_memory_model_device_scope;
+   bool workgroup_memory_explicit_layout;
    bool float16;
    bool amd_fragment_mask;
    bool amd_gcn_shader;
@@ -384,6 +385,12 @@ typedef struct shader_info {
           * Uses subgroup intrinsics which can communicate across a quad.
           */
          bool uses_wide_subgroup_intrinsics;
+
+         /**
+          * Shared memory types have explicit layout set.  Used for
+          * SPV_KHR_workgroup_storage_explicit_layout.
+          */
+         bool shared_memory_explicit_layout;
       } cs;
 
       /* Applies to both TCS and TES. */
