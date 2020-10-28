@@ -425,7 +425,7 @@ struct v3dv_image {
    uint32_t array_size;
    uint32_t samples;
    VkImageUsageFlags usage;
-   VkImageCreateFlags create_flags;
+   VkImageCreateFlags flags;
    VkImageTiling tiling;
 
    VkFormat vk_format;

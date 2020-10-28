@@ -327,7 +327,7 @@ v3dv_CreateImage(VkDevice _device,
    image->array_size = pCreateInfo->arrayLayers;
    image->samples = pCreateInfo->samples;
    image->usage = pCreateInfo->usage;
-   image->create_flags = pCreateInfo->flags;
+   image->flags = pCreateInfo->flags;
 
    image->drm_format_mod = modifier;
    image->tiling = tiling;
@@ -596,6 +596,13 @@ v3dv_CreateImageView(VkDevice _device,
    case VK_IMAGE_TYPE_3D:
       assert(range->baseArrayLayer + v3dv_layer_count(image, range) - 1
              <= u_minify(image->extent.depth, range->baseMipLevel));
+      /* VK_KHR_maintenance1 */
+      assert(pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_2D ||
+             ((image->flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT) &&
+              range->levelCount == 1 && range->layerCount == 1));
+      assert(pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_2D_ARRAY ||
+             ((image->flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT) &&
+              range->levelCount == 1));
       break;
    default:
       unreachable("bad VkImageType");
