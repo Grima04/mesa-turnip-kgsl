@@ -99,6 +99,9 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
       }
 
       swapchain1.As(&framebuffer->swapchain);
+
+      screen->factory->MakeWindowAssociation(framebuffer->window,
+                                             DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
    }
    else {
       struct pipe_fence_handle *fence = NULL;
