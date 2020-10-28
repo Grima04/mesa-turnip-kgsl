@@ -233,6 +233,12 @@ enum bi_special_op {
          * the second, it takes x itself. */
         BI_SPECIAL_EXP2_LOW,
         BI_SPECIAL_IABS,
+
+        /* cubemap coordinates extraction helpers */
+        BI_SPECIAL_CUBEFACE1,
+        BI_SPECIAL_CUBEFACE2,
+        BI_SPECIAL_CUBE_SSEL,
+        BI_SPECIAL_CUBE_TSEL,
 };
 
 struct bi_bitwise {

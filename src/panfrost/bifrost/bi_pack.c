@@ -394,6 +394,17 @@ bi_pack_registers(bi_registers regs)
 }
 
 static unsigned
+bi_pack_fma_special(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
+{
+        switch (ins->op.special) {
+        case BI_SPECIAL_CUBEFACE1:
+                return pan_pack_fma_cubeface1(clause, ins, regs);
+        default:
+                unreachable("Unknown special op");
+        }
+}
+
+static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
 {
         if (!bundle.fma)
@@ -575,6 +586,8 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
                 return pan_pack_fma_fadd_lscale_f32(clause, bundle.fma, regs);
         case BI_IMUL:
                 return pan_pack_fma_imul_i32(clause, bundle.fma, regs);
+        case BI_SPECIAL_FMA:
+                return bi_pack_fma_special(clause, bundle.fma, regs);
         default:
                 unreachable("Cannot encode class as FMA");
         }
@@ -675,6 +688,12 @@ bi_pack_add_special(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
         case BI_SPECIAL_IABS:
                 assert(ins->src_types[0] == nir_type_int32);
                 return pan_pack_add_iabs_s32(clause, ins, regs);
+        case BI_SPECIAL_CUBEFACE2:
+                return pan_pack_add_cubeface2(clause, ins, regs);
+        case BI_SPECIAL_CUBE_SSEL:
+                return pan_pack_add_cube_ssel(clause, ins, regs);
+        case BI_SPECIAL_CUBE_TSEL:
+                return pan_pack_add_cube_tsel(clause, ins, regs);
         default:
                 unreachable("Unknown special op");
         }
