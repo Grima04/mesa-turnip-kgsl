@@ -39,8 +39,11 @@ struct zink_context;
 
 #include <vulkan/vulkan.h>
 
-#define ZINK_RESOURCE_ACCESS_READ 1
-#define ZINK_RESOURCE_ACCESS_WRITE 32
+enum zink_resource_access {
+   ZINK_RESOURCE_ACCESS_READ = 1,
+   ZINK_RESOURCE_ACCESS_WRITE = 32,
+   ZINK_RESOURCE_ACCESS_RW = ZINK_RESOURCE_ACCESS_READ | ZINK_RESOURCE_ACCESS_WRITE,
+};
 
 struct mem_key {
    VkMemoryRequirements reqs;
