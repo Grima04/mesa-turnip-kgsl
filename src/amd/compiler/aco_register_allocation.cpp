@@ -928,9 +928,9 @@ bool get_regs_for_copies(ra_ctx& ctx,
       unsigned num_vars = 0;
 
       /* we use a sliding window to find potential positions */
-      PhysRegInterval reg_win { bounds.lo(), size };
       unsigned stride = var.rc.is_subdword() ? 1 : info.stride;
-      for (; reg_win.hi() <= bounds.hi(); reg_win += stride) {
+      for (PhysRegInterval reg_win { bounds.lo(), size };
+           reg_win.hi() <= bounds.hi(); reg_win += stride) {
          if (!is_dead_operand && ((reg_win.lo() >= def_reg.lo() && reg_win.lo() < def_reg.hi()) ||
                                   (reg_win.hi() > def_reg.lo() && reg_win.hi() <= def_reg.hi())))
             continue;
@@ -991,7 +991,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
       if (num_moves == 0xFF)
          return false;
 
-      reg_win = { best_pos, size };
+      PhysRegInterval reg_win { best_pos, size };
 
       /* collect variables and block reg file */
       std::set<std::pair<unsigned, unsigned>> new_vars = collect_vars(ctx, reg_file, PhysReg{reg_win.lo()}, size);
@@ -1192,11 +1192,10 @@ bool get_reg_specified(ra_ctx& ctx,
 
    uint32_t size = rc.size();
    uint32_t stride = 1;
-   uint32_t lb, ub;
+   PhysRegInterval bounds;
 
    if (rc.type() == RegType::vgpr) {
-      lb = 256;
-      ub = 256 + ctx.program->max_reg_demand.vgpr;
+      bounds = {256, (unsigned)ctx.program->max_reg_demand.vgpr };
    } else {
       if (size == 2)
          stride = 2;
@@ -1204,14 +1203,11 @@ bool get_reg_specified(ra_ctx& ctx,
          stride = 4;
       if (reg % stride != 0)
          return false;
-      lb = 0;
-      ub = ctx.program->max_reg_demand.sgpr;
+      bounds = { 0, (unsigned)ctx.program->max_reg_demand.sgpr };
    }
 
-   uint32_t reg_lo = reg.reg();
-   uint32_t reg_hi = reg + (size - 1);
-
-   if (reg_lo < lb || reg_hi >= ub)
+   PhysRegInterval reg_win = { reg.reg(), size };
+   if (reg_win.lo() < bounds.lo() || reg_win.hi() > bounds.hi())
       return false;
 
    if (rc.is_subdword()) {
@@ -1224,7 +1220,7 @@ bool get_reg_specified(ra_ctx& ctx,
          return false;
    }
 
-   adjust_max_used_regs(ctx, rc, reg_lo);
+   adjust_max_used_regs(ctx, rc, reg_win.lo());
    return true;
 }
 
