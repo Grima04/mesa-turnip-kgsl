@@ -64,6 +64,12 @@
 #define NUM_VC1_REFS   5
 #define NUM_VP9_REFS   8
 
+static unsigned calc_dpb_size(struct radeon_decoder *dec);
+static unsigned calc_ctx_size_h264_perf(struct radeon_decoder *dec);
+static unsigned calc_ctx_size_h265_main(struct radeon_decoder *dec);
+static unsigned calc_ctx_size_h265_main10(struct radeon_decoder *dec,
+                                          struct pipe_h265_picture_desc *pic);
+
 static rvcn_dec_message_avc_t get_h264_msg(struct radeon_decoder *dec,
                                            struct pipe_h264_picture_desc *pic)
 {
@@ -832,6 +838,81 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    decode->height_in_samples = dec->base.height;
 
    decode->bsd_size = align(dec->bs_size, 128);
+
+   if (!dec->dpb.res) {
+      unsigned dpb_size = calc_dpb_size(dec);
+      bool r;
+      if (dpb_size) {
+         r = si_vid_create_buffer(dec->screen, &dec->dpb, dpb_size, PIPE_USAGE_DEFAULT);
+         if (!r) {
+            RVID_ERR("Can't allocated dpb.\n");
+            return NULL;
+         }
+         si_vid_clear_buffer(dec->base.context, &dec->dpb);
+      }
+   }
+
+   if (!dec->ctx.res) {
+      enum pipe_video_format fmt = u_reduce_video_profile(picture->profile);
+      if (dec->stream_type == RDECODE_CODEC_H264_PERF) {
+         unsigned ctx_size = calc_ctx_size_h264_perf(dec);
+         bool r;
+         r = si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+
+         if (!r) {
+            RVID_ERR("Can't allocated context buffer.\n");
+            return NULL;
+         }
+         si_vid_clear_buffer(dec->base.context, &dec->ctx);
+      } else if (fmt == PIPE_VIDEO_FORMAT_VP9) {
+         unsigned ctx_size;
+         uint8_t *ptr;
+         bool r;
+
+         /* default probability + probability data */
+         ctx_size = 2304 * 5;
+
+         if (((struct si_screen *)dec->screen)->info.family >= CHIP_RENOIR) {
+            /* SRE collocated context data */
+            ctx_size += 32 * 2 * 128 * 68;
+            /* SMP collocated context data */
+            ctx_size += 9 * 64 * 2 * 128 * 68;
+            /* SDB left tile pixel */
+            ctx_size += 8 * 2 * 2 * 8192;
+         } else {
+            ctx_size += 32 * 2 * 64 * 64;
+            ctx_size += 9 * 64 * 2 * 64 * 64;
+            ctx_size += 8 * 2 * 4096;
+         }
+
+         if (dec->base.profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
+            ctx_size += 8 * 2 * 4096;
+
+         r = si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         if (!r) {
+            RVID_ERR("Can't allocated context buffer.\n");
+            return NULL;
+         }
+         si_vid_clear_buffer(dec->base.context, &dec->ctx);
+
+         /* ctx needs probs table */
+         ptr = dec->ws->buffer_map(dec->ctx.res->buf, dec->cs,
+                                   PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
+         fill_probs_table(ptr);
+         dec->ws->buffer_unmap(dec->ctx.res->buf);
+         dec->bs_ptr = NULL;
+      } else if (fmt == PIPE_VIDEO_FORMAT_HEVC) {
+         unsigned ctx_size;
+         if (dec->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
+            ctx_size = calc_ctx_size_h265_main10(dec, (struct pipe_h265_picture_desc *)picture);
+         else
+            ctx_size = calc_ctx_size_h265_main(dec);
+         if (!si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT))
+            RVID_ERR("Can't allocated context buffer.\n");
+         si_vid_clear_buffer(dec->base.context, &dec->ctx);
+      }
+   }
+
    decode->dpb_size = dec->dpb.res->buf->size;
    decode->dt_size = si_resource(((struct vl_video_buffer *)target)->resources[0])->buf->size +
                      si_resource(((struct vl_video_buffer *)target)->resources[1])->buf->size;
@@ -885,16 +966,6 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 
       memcpy(codec, (void *)&hevc, sizeof(rvcn_dec_message_hevc_t));
       index->message_id = RDECODE_MESSAGE_HEVC;
-      if (dec->ctx.res == NULL) {
-         unsigned ctx_size;
-         if (dec->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
-            ctx_size = calc_ctx_size_h265_main10(dec, (struct pipe_h265_picture_desc *)picture);
-         else
-            ctx_size = calc_ctx_size_h265_main(dec);
-         if (!si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT))
-            RVID_ERR("Can't allocated context buffer.\n");
-         si_vid_clear_buffer(dec->base.context, &dec->ctx);
-      }
       break;
    }
    case PIPE_VIDEO_FORMAT_VC1: {
@@ -931,41 +1002,6 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 
       memcpy(codec, (void *)&vp9, sizeof(rvcn_dec_message_vp9_t));
       index->message_id = RDECODE_MESSAGE_VP9;
-
-      if (dec->ctx.res == NULL) {
-         unsigned ctx_size;
-         uint8_t *ptr;
-
-         /* default probability + probability data */
-         ctx_size = 2304 * 5;
-
-         if (((struct si_screen *)dec->screen)->info.family >= CHIP_RENOIR) {
-            /* SRE collocated context data */
-            ctx_size += 32 * 2 * 128 * 68;
-            /* SMP collocated context data */
-            ctx_size += 9 * 64 * 2 * 128 * 68;
-            /* SDB left tile pixel */
-            ctx_size += 8 * 2 * 2 * 8192;
-         } else {
-            ctx_size += 32 * 2 * 64 * 64;
-            ctx_size += 9 * 64 * 2 * 64 * 64;
-            ctx_size += 8 * 2 * 4096;
-         }
-
-         if (dec->base.profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
-            ctx_size += 8 * 2 * 4096;
-
-         if (!si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT))
-            RVID_ERR("Can't allocated context buffer.\n");
-         si_vid_clear_buffer(dec->base.context, &dec->ctx);
-
-         /* ctx needs probs table */
-         ptr = dec->ws->buffer_map(dec->ctx.res->buf, dec->cs,
-                                   PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
-         fill_probs_table(ptr);
-         dec->ws->buffer_unmap(dec->ctx.res->buf);
-         dec->bs_ptr = NULL;
-      }
       break;
    }
    default:
@@ -1463,7 +1499,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    struct si_context *sctx = (struct si_context *)context;
    struct radeon_winsys *ws = sctx->ws;
    unsigned width = templ->width, height = templ->height;
-   unsigned dpb_size, bs_buf_size, stream_type = 0, ring = RING_VCN_DEC;
+   unsigned bs_buf_size, stream_type = 0, ring = RING_VCN_DEC;
    struct radeon_decoder *dec;
    int r, i;
 
@@ -1565,24 +1601,6 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
          dec->ws->buffer_unmap(buf->res->buf);
          dec->bs_ptr = NULL;
       }
-   }
-
-   dpb_size = calc_dpb_size(dec);
-   if (dpb_size) {
-      if (!si_vid_create_buffer(dec->screen, &dec->dpb, dpb_size, PIPE_USAGE_DEFAULT)) {
-         RVID_ERR("Can't allocated dpb.\n");
-         goto error;
-      }
-      si_vid_clear_buffer(context, &dec->dpb);
-   }
-
-   if (dec->stream_type == RDECODE_CODEC_H264_PERF) {
-      unsigned ctx_size = calc_ctx_size_h264_perf(dec);
-      if (!si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT)) {
-         RVID_ERR("Can't allocated context buffer.\n");
-         goto error;
-      }
-      si_vid_clear_buffer(context, &dec->ctx);
    }
 
    if (!si_vid_create_buffer(dec->screen, &dec->sessionctx, RDECODE_SESSION_CONTEXT_SIZE,
