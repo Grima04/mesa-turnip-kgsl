@@ -2,7 +2,7 @@ Android
 =======
 
 Mesa hardware drivers can be built for Android one of two ways: built
-into the Android OS using the Android.mk build sytem on older versions
+into the Android OS using the Android.mk build system on older versions
 of Android, or out-of-tree using the Meson build system and the
 Android NDK.
 
