@@ -42,6 +42,12 @@ struct zink_resource;
 struct zink_sampler_view;
 struct zink_surface;
 
+enum zink_queue {
+   ZINK_QUEUE_GFX,
+   ZINK_QUEUE_COMPUTE,
+   ZINK_QUEUE_ANY,
+};
+
 struct zink_batch {
    unsigned batch_id : 3;
    VkCommandPool cmdpool;
