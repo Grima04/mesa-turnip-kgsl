@@ -38,6 +38,13 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
       struct pipe_sampler_view *pres = (struct pipe_sampler_view *)entry->key;
       struct zink_sampler_view *sampler_view = zink_sampler_view(pres);
       sampler_view->batch_uses &= ~BITFIELD_BIT(batch->batch_id);
+      if (sampler_view->base.target == PIPE_BUFFER) {
+         struct zink_buffer_view *buffer_view = sampler_view->buffer_view;
+         zink_buffer_view_reference(ctx, &buffer_view, NULL);
+      } else {
+         struct zink_surface *surface = sampler_view->image_view;
+         pipe_surface_reference((struct pipe_surface**)&surface, NULL);
+      }
       pipe_sampler_view_reference(&pres, NULL);
       _mesa_set_remove(batch->sampler_views, entry);
    }
@@ -236,6 +243,10 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
    assert(!found);
    sv->batch_uses |= bit;
    pipe_reference(NULL, &sv->base.reference);
+   if (sv->base.target == PIPE_BUFFER)
+      pipe_reference(NULL, &sv->buffer_view->reference);
+   else
+      pipe_reference(NULL, &sv->image_view->base.reference);
    batch->has_work = true;
 }
 
