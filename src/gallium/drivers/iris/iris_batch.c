@@ -180,6 +180,7 @@ iris_init_batch(struct iris_context *ice,
    batch->reset = &ice->reset;
    batch->state_sizes = ice->state.sizes;
    batch->name = name;
+   batch->ice = ice;
 
    batch->fine_fences.uploader =
       u_upload_create(&ice->ctx, 4096, PIPE_BIND_CUSTOM,

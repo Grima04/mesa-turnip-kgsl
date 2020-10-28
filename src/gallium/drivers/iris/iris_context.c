@@ -78,17 +78,11 @@ iris_lost_context_state(struct iris_batch *batch)
     * we do need to inform the context of batch catastrophe.  We know the
     * batch is one of our context's, so hackily claw our way back.
     */
-   struct iris_context *ice = NULL;
+   struct iris_context *ice = batch->ice;
 
    if (batch->name == IRIS_BATCH_RENDER) {
-      ice = container_of(batch, struct iris_context, batches[IRIS_BATCH_RENDER]);
-      assert(&ice->batches[IRIS_BATCH_RENDER] == batch);
-
       batch->screen->vtbl.init_render_context(batch);
    } else if (batch->name == IRIS_BATCH_COMPUTE) {
-      ice = container_of(batch, struct iris_context, batches[IRIS_BATCH_COMPUTE]);
-      assert(&ice->batches[IRIS_BATCH_COMPUTE] == batch);
-
       batch->screen->vtbl.init_compute_context(batch);
    } else {
       unreachable("unhandled batch reset");
