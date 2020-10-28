@@ -870,7 +870,6 @@ fs_visitor::emit_barrier()
    case 8:
       barrier_id_mask = 0x0f000000u; break;
    case 9:
-   case 10:
       barrier_id_mask = 0x8f000000u; break;
    case 11:
    case 12:

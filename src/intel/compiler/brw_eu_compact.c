@@ -2230,7 +2230,6 @@ compaction_state_init(struct compaction_state *c,
       c->src0_index_table = gen8_src_index_table;
       c->src1_index_table = gen8_src_index_table;
       break;
-   case 10:
    case 9:
    case 8:
       c->control_index_table = gen8_control_index_table;

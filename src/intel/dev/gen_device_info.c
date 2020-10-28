@@ -1238,7 +1238,6 @@ gen_get_device_info_from_pci_id(int pci_id,
 
    switch(devinfo->gen) {
    case 9:
-   case 10:
       devinfo->max_wm_threads = 64 /* threads-per-PSD */
                               * devinfo->num_slices
                               * 4; /* effective subslices per slice */
