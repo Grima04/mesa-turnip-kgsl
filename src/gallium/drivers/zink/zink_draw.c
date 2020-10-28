@@ -345,7 +345,8 @@ write_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, uns
    struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(zds->desc_set);
-   unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
+   enum zink_queue check_flush_id = is_compute ? ZINK_QUEUE_GFX : ZINK_QUEUE_COMPUTE;
+
    if (!cache_hit && num_wds)
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
 
