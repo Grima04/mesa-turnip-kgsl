@@ -35,22 +35,7 @@
 bool
 panfrost_can_fixed_blend(enum pipe_format format)
 {
-        /* Fixed-function can handle sRGB */
-        format = util_format_linear(format);
-
-        switch (panfrost_pipe_format_table[format].hw) {
-        case MALI_RGB565:
-        case MALI_RGB5_A1_UNORM:
-        case MALI_RGB10_A2_UNORM:
-        case MALI_RGBA4_UNORM:
-        case MALI_R8_UNORM:
-        case MALI_RG8_UNORM:
-        case MALI_RGB8_UNORM:
-        case MALI_RGBA8_UNORM:
-                return true;
-        default:
-                return false;
-        }
+        return panfrost_blend_format(format).internal != 0;
 }
 
 /* Helper to find the uncomplemented Gallium blend factor corresponding to a
