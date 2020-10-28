@@ -4739,10 +4739,16 @@ typedef struct nir_lower_tex_options {
 
    /* A swizzle for each texture.  Values 0-3 represent x, y, z, or w swizzles
     * while 4 and 5 represent 0 and 1 respectively.
+    *
+    * Indexed by texture-id.
     */
    uint8_t swizzles[32][4];
 
-   /* Can be used to scale sampled values in range required by the format. */
+   /* Can be used to scale sampled values in range required by the
+    * format.
+    *
+    * Indexed by texture-id.
+    */
    float scale_factors[32];
 
    /**
@@ -4828,6 +4834,11 @@ typedef struct nir_lower_tex_options {
     */
    bool lower_tg4_offsets;
 
+   /**
+    * To lower packed sampler return formats.
+    *
+    * Indexed by sampler-id.
+    */
    enum nir_lower_tex_packing lower_tex_packing[32];
 } nir_lower_tex_options;
 
