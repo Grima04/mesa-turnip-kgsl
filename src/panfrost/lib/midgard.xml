@@ -119,6 +119,9 @@
     <value name="RGB332 UNORM" value="75"/>
     <value name="RGB233 UNORM" value="76"/>
     <value name="Z24X8 UNORM" value="77"/>
+    <value name="X8Z24" value="78"/>
+    <value name="X32 S8X24" value="79"/>
+    <value name="X24S8 X32" value="80"/>
     <value name="R32 FIXED" value="81"/>
     <value name="RG32 FIXED" value="82"/>
     <value name="RGB32 FIXED" value="83"/>
