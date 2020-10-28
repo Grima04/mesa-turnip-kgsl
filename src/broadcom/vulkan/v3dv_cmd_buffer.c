@@ -957,6 +957,17 @@ v3dv_DestroyCommandPool(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
+void
+v3dv_TrimCommandPool(VkDevice device,
+                     VkCommandPool commandPool,
+                     VkCommandPoolTrimFlags flags)
+{
+   /* We don't need to do anything here, our command pools never hold on to
+    * any resources from command buffers that are freed or reset.
+    */
+}
+
+
 static void
 cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
 {
