@@ -600,6 +600,9 @@ fs_generator::generate_shuffle(fs_inst *inst,
                                struct brw_reg src,
                                struct brw_reg idx)
 {
+   assert(src.file == BRW_GENERAL_REGISTER_FILE);
+   assert(!src.abs && !src.negate);
+
    /* Ivy bridge has some strange behavior that makes this a real pain to
     * implement for 64-bit values so we just don't bother.
     */
