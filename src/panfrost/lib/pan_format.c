@@ -445,21 +445,35 @@ panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
 }
 
 enum mali_format
-panfrost_format_to_bifrost_blend(const struct util_format_description *desc)
+panfrost_format_to_bifrost_blend(const struct util_format_description *desc, bool dither)
 {
-        enum mali_format format = panfrost_pipe_format_table[desc->format].hw;
-        assert(format);
+        struct pan_blendable_format fmt = panfrost_blend_format(desc->format);
 
-        switch (format) {
-        case MALI_RGBA4_UNORM:
-                return MALI_RGBA4;
-        case MALI_RGBA8_UNORM:
-        case MALI_RGB8_UNORM:
-                return MALI_RGBA8_2;
-        case MALI_RGB10_A2_UNORM:
-                return MALI_RGB10_A2_2;
+        /* Formats requiring blend shaders are stored raw in the tilebuffer */
+        if (!fmt.internal)
+                return desc->format;
+
+        /* Else, pick the pixel format matching the tilebuffer format */
+        switch (fmt.internal) {
+        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8:
+                return MALI_RGBA8_TB;
+
+        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R10G10B10A2:
+                return MALI_RGB10_A2_TB;
+
+        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A2:
+                return dither ? MALI_RGB8_A2_AU : MALI_RGB8_A2_PU;
+
+        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R4G4B4A4:
+                return dither ? MALI_RGBA4_AU : MALI_RGBA4_PU;
+
+        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G6B5A0:
+                return dither ? MALI_R5G6B5_AU : MALI_R5G6B5_PU;
+
+        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G5B5A1:
+                return dither ? MALI_RGB5_A1_AU : MALI_RGB5_A1_PU;
         default:
-                return format;
+                unreachable("invalid internal blendable");
         }
 }
 

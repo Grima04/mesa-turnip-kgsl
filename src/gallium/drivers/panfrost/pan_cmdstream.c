@@ -298,7 +298,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
 
                                 cfg.bifrost.internal.fixed_function.num_comps = format_desc->nr_channels;
                                 cfg.bifrost.internal.fixed_function.conversion.memory_format.format =
-                                        panfrost_format_to_bifrost_blend(format_desc);
+                                        panfrost_format_to_bifrost_blend(format_desc, true);
                                 if (dev->quirks & HAS_SWIZZLES) {
                                         cfg.bifrost.internal.fixed_function.conversion.memory_format.swizzle =
                                                 panfrost_get_default_swizzle(4);

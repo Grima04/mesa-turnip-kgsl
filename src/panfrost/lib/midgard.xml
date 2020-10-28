@@ -173,11 +173,22 @@
     <value name="RGBA16I" value="220"/>
     <value name="RGBA32I" value="221"/>
     <value name="RGBA16F" value="223"/>
-    <value name="RGB5 A1" value="224"/>
-    <value name="R5G6B5" value="226"/>
-    <value name="RGBA4" value="232"/>
-    <value name="RGBA8 2" value="237"/>
-    <value name="RGB10 A2 2" value="238"/>
+    <value name="RGB5 A1 AU" value="224"/>
+    <value name="RGB5 A1 PU" value="225"/>
+    <value name="R5G6B5 AU" value="226"/>
+    <value name="R5G6B5 PU" value="227"/>
+    <value name="Snap4 V" value="230"/>
+    <value name="R32F RTZ" value="231"/>
+    <value name="RGBA4 AU" value="232"/>
+    <value name="RGBA4 PU" value="233"/>
+    <value name="RGBA8 TB" value="237"/>
+    <value name="RGB10 A2 TB" value="238"/>
+    <value name="RG32F RTZ" value="239"/>
+    <value name="Tess Vertex Pack" value="240"/>
+    <value name="RGB8 A2 AU" value="241"/>
+    <value name="RGB8 A2 PU" value="242"/>
+    <value name="RGB32F RTZ" value="247"/>
+    <value name="RGBA32F RTZ" value="255"/>
   </enum>
 
   <enum name="RGB Component Order">

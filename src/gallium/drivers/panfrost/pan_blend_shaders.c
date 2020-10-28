@@ -261,35 +261,8 @@ bifrost_get_blend_desc(enum pipe_format fmt, unsigned rt)
                 cfg.fixed_function.conversion.memory_format.srgb =
                         desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB;
 
-                if (util_format_is_unorm8(desc)) {
-                        cfg.fixed_function.conversion.memory_format.format = MALI_RGBA8_2;
-                        continue;
-                }
-
-                enum pipe_format linearized = util_format_linear(fmt);
-                switch (linearized) {
-                case PIPE_FORMAT_B5G6R5_UNORM:
-                        cfg.fixed_function.conversion.memory_format.format = MALI_R5G6B5;
-                        break;
-                case PIPE_FORMAT_A4B4G4R4_UNORM:
-                case PIPE_FORMAT_B4G4R4A4_UNORM:
-                case PIPE_FORMAT_R4G4B4A4_UNORM:
-                        cfg.fixed_function.conversion.memory_format.format = MALI_RGBA4;
-                        break;
-                case PIPE_FORMAT_R10G10B10A2_UNORM:
-                case PIPE_FORMAT_B10G10R10A2_UNORM:
-                case PIPE_FORMAT_R10G10B10X2_UNORM:
-                case PIPE_FORMAT_B10G10R10X2_UNORM:
-                        cfg.fixed_function.conversion.memory_format.format = MALI_RGB10_A2_2;
-                        break;
-                case PIPE_FORMAT_B5G5R5A1_UNORM:
-                case PIPE_FORMAT_R5G5B5A1_UNORM:
-                case PIPE_FORMAT_B5G5R5X1_UNORM:
-                        cfg.fixed_function.conversion.memory_format.format = MALI_RGB5_A1;
-                        break;
-                default:
-                        unreachable("Invalid format");
-                }
+                cfg.fixed_function.conversion.memory_format.format =
+                         panfrost_format_to_bifrost_blend(desc, true);
         }
 
         return res;
