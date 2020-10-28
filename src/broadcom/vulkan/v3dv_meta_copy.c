@@ -610,7 +610,7 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
                                         struct framebuffer_data *framebuffer,
                                         struct v3dv_buffer *buffer,
                                         struct v3dv_image *image,
-                                        uint32_t layer,
+                                        uint32_t layer_offset,
                                         const VkBufferImageCopy *region)
 {
    struct v3dv_cl *cl = &job->indirect;
@@ -621,13 +621,19 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
-   const VkImageSubresourceLayers *imgrsc = &region->imageSubresource;
-   assert((image->type != VK_IMAGE_TYPE_3D && layer < imgrsc->layerCount) ||
-          layer < image->extent.depth);
-
    /* Load image to TLB */
-   emit_image_load(cl, framebuffer, image, imgrsc->aspectMask,
-                   imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
+   assert((image->type != VK_IMAGE_TYPE_3D &&
+           layer_offset < region->imageSubresource.layerCount) ||
+          layer_offset < image->extent.depth);
+
+   const uint32_t image_layer = image->type != VK_IMAGE_TYPE_3D ?
+      region->imageSubresource.baseArrayLayer + layer_offset :
+      region->imageOffset.z + layer_offset;
+
+   emit_image_load(cl, framebuffer, image,
+                   region->imageSubresource.aspectMask,
+                   image_layer,
+                   region->imageSubresource.mipLevel,
                    true, false);
 
    cl_emit(cl, END_OF_LOADS, end);
@@ -654,13 +660,15 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
     * Vulkan spec states that the output buffer must have packed stencil
     * values, where each stencil value is 1 byte.
     */
-   uint32_t cpp = imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ?
-                  1 : image->cpp;
+   uint32_t cpp =
+      region->imageSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ?
+         1 : image->cpp;
    uint32_t buffer_stride = width * cpp;
-   uint32_t buffer_offset =
-      buffer->mem_offset + region->bufferOffset + height * buffer_stride * layer;
+   uint32_t buffer_offset = buffer->mem_offset + region->bufferOffset +
+                            height * buffer_stride * layer_offset;
 
-   uint32_t format = choose_tlb_format(framebuffer, imgrsc->aspectMask,
+   uint32_t format = choose_tlb_format(framebuffer,
+                                       region->imageSubresource.aspectMask,
                                        true, true, false);
    bool msaa = image->samples > VK_SAMPLE_COUNT_1_BIT;
 
@@ -1177,7 +1185,7 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
                                     struct framebuffer_data *framebuffer,
                                     struct v3dv_image *dst,
                                     struct v3dv_image *src,
-                                    uint32_t layer,
+                                    uint32_t layer_offset,
                                     const VkImageCopy *region)
 {
    struct v3dv_cl *cl = &job->indirect;
@@ -1188,24 +1196,36 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
-   const VkImageSubresourceLayers *srcrsc = &region->srcSubresource;
-   assert((src->type != VK_IMAGE_TYPE_3D && layer < srcrsc->layerCount) ||
-          layer < src->extent.depth);
+   assert((src->type != VK_IMAGE_TYPE_3D &&
+           layer_offset < region->srcSubresource.layerCount) ||
+          layer_offset < src->extent.depth);
 
-   emit_image_load(cl, framebuffer, src, srcrsc->aspectMask,
-                   srcrsc->baseArrayLayer + layer, srcrsc->mipLevel,
+   const uint32_t src_layer = src->type != VK_IMAGE_TYPE_3D ?
+      region->srcSubresource.baseArrayLayer + layer_offset :
+      region->srcOffset.z + layer_offset;
+
+   emit_image_load(cl, framebuffer, src,
+                   region->srcSubresource.aspectMask,
+                   src_layer,
+                   region->srcSubresource.mipLevel,
                    false, false);
 
    cl_emit(cl, END_OF_LOADS, end);
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   const VkImageSubresourceLayers *dstrsc = &region->dstSubresource;
-   assert((dst->type != VK_IMAGE_TYPE_3D && layer < dstrsc->layerCount) ||
-          layer < dst->extent.depth);
+   assert((dst->type != VK_IMAGE_TYPE_3D &&
+           layer_offset < region->dstSubresource.layerCount) ||
+          layer_offset < dst->extent.depth);
 
-   emit_image_store(cl, framebuffer, dst, dstrsc->aspectMask,
-                    dstrsc->baseArrayLayer + layer, dstrsc->mipLevel,
+   const uint32_t dst_layer = dst->type != VK_IMAGE_TYPE_3D ?
+      region->dstSubresource.baseArrayLayer + layer_offset :
+      region->dstOffset.z + layer_offset;
+
+   emit_image_store(cl, framebuffer, dst,
+                    region->dstSubresource.aspectMask,
+                    dst_layer,
+                    region->dstSubresource.mipLevel,
                     false, false, false);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
@@ -4457,7 +4477,7 @@ emit_resolve_image_layer_per_tile_list(struct v3dv_job *job,
                                        struct framebuffer_data *framebuffer,
                                        struct v3dv_image *dst,
                                        struct v3dv_image *src,
-                                       uint32_t layer,
+                                       uint32_t layer_offset,
                                        const VkImageResolve *region)
 {
    struct v3dv_cl *cl = &job->indirect;
@@ -4468,24 +4488,36 @@ emit_resolve_image_layer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
-   const VkImageSubresourceLayers *srcrsc = &region->srcSubresource;
-   assert((src->type != VK_IMAGE_TYPE_3D && layer < srcrsc->layerCount) ||
-          layer < src->extent.depth);
+   assert((src->type != VK_IMAGE_TYPE_3D &&
+           layer_offset < region->srcSubresource.layerCount) ||
+          layer_offset < src->extent.depth);
 
-   emit_image_load(cl, framebuffer, src, srcrsc->aspectMask,
-                   srcrsc->baseArrayLayer + layer, srcrsc->mipLevel,
+   const uint32_t src_layer = src->type != VK_IMAGE_TYPE_3D ?
+      region->srcSubresource.baseArrayLayer + layer_offset :
+      region->srcOffset.z + layer_offset;
+
+   emit_image_load(cl, framebuffer, src,
+                   region->srcSubresource.aspectMask,
+                   src_layer,
+                   region->srcSubresource.mipLevel,
                    false, false);
 
    cl_emit(cl, END_OF_LOADS, end);
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   const VkImageSubresourceLayers *dstrsc = &region->dstSubresource;
-   assert((dst->type != VK_IMAGE_TYPE_3D && layer < dstrsc->layerCount) ||
-          layer < dst->extent.depth);
+   assert((dst->type != VK_IMAGE_TYPE_3D &&
+           layer_offset < region->dstSubresource.layerCount) ||
+          layer_offset < dst->extent.depth);
 
-   emit_image_store(cl, framebuffer, dst, dstrsc->aspectMask,
-                    dstrsc->baseArrayLayer + layer, dstrsc->mipLevel,
+   const uint32_t dst_layer = dst->type != VK_IMAGE_TYPE_3D ?
+      region->dstSubresource.baseArrayLayer + layer_offset :
+      region->dstOffset.z + layer_offset;
+
+   emit_image_store(cl, framebuffer, dst,
+                    region->dstSubresource.aspectMask,
+                    dst_layer,
+                    region->dstSubresource.mipLevel,
                     false, false, true);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
