@@ -123,6 +123,10 @@ struct PhysRegIterator {
    bool operator!=(PhysRegIterator oth) const {
       return reg != oth.reg;
    }
+
+   bool operator<(PhysRegIterator oth) const {
+      return reg < oth.reg;
+   }
 };
 
 /* Half-open register interval used in "sliding window"-style for-loops */
@@ -725,42 +729,40 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
    if (stride == 1) {
       /* best fit algorithm: find the smallest gap to fit in the variable */
       PhysRegInterval best_gap { 0xFFFF, 0xFFFF };
-      unsigned last_pos = 0xFFFF;
+      const unsigned max_gpr = (rc.type() == RegType::vgpr) ? (256 + ctx.max_used_vgpr) : ctx.max_used_sgpr;
 
-      for (const unsigned current_reg : bounds) {
-         if (reg_file[current_reg] == 0 && !ctx.war_hint[current_reg]) {
-            if (last_pos == 0xFFFF)
-               last_pos = current_reg;
+      PhysRegIterator reg_it = bounds.begin();
+      const PhysRegIterator end_it = std::min(bounds.end(), std::max(PhysRegIterator { max_gpr + 1 }, reg_it));
 
-            /* stop searching after max_used_gpr */
-            if (current_reg == ctx.max_used_sgpr + 1 || current_reg == 256 + ctx.max_used_vgpr + 1)
-               break;
-            else
-               continue;
+      auto is_free = [&](unsigned reg_index) { return reg_file[reg_index] == 0 && !ctx.war_hint[reg_index]; };
+      while (reg_it != bounds.end()) {
+         /* Find the next chunk of available register slots */
+         reg_it = std::find_if(reg_it, end_it, is_free);
+         auto next_nonfree_it = std::find_if_not(reg_it, end_it, is_free);
+         if (reg_it == bounds.end()) {
+            break;
          }
 
-         if (last_pos == 0xFFFF)
-            continue;
+         if (next_nonfree_it == end_it) {
+            /* All registers past max_used_gpr are free */
+            next_nonfree_it = bounds.end();
+         }
 
-         /* Below this line, "current_reg" indicates the first non-free register after last_pos */
+         PhysRegInterval gap = PhysRegInterval::from_until(*reg_it, *next_nonfree_it);
 
-         PhysRegInterval gap = PhysRegInterval::from_until(last_pos, current_reg);
          /* early return on exact matches */
          if (size == gap.size) {
-            adjust_max_used_regs(ctx, rc, last_pos);
-            return {PhysReg{last_pos}, true};
+            adjust_max_used_regs(ctx, rc, gap.lo());
+            return {PhysReg{gap.lo()}, true};
          }
 
          /* check if it fits and the gap size is smaller */
          if (size < gap.size && gap.size < best_gap.size) {
             best_gap = gap;
          }
-         last_pos = 0xFFFF;
-      }
 
-      /* final check */
-       if (last_pos + size <= bounds.hi() && bounds.hi() - last_pos < best_gap.size) {
-         best_gap = { last_pos, bounds.hi() - last_pos };
+         /* Move past the processed chunk */
+         reg_it = next_nonfree_it;
       }
 
       if (best_gap.lo() == 0xFFFF)
