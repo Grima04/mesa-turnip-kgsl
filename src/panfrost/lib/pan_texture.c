@@ -118,12 +118,11 @@ panfrost_astc_stretch(unsigned dim)
 
 static unsigned
 panfrost_compression_tag(
-                const struct util_format_description *desc,
-                enum mali_format format, uint64_t modifier)
+                const struct util_format_description *desc, uint64_t modifier)
 {
         if (drm_is_afbc(modifier))
                 return (modifier & AFBC_FORMAT_MOD_YTR) ? 1 : 0;
-        else if (format == MALI_ASTC_2D_LDR || format == MALI_ASTC_2D_HDR)
+        else if (desc->layout == UTIL_FORMAT_LAYOUT_ASTC)
                 return (panfrost_astc_stretch(desc->block.height) << 3) |
                         panfrost_astc_stretch(desc->block.width);
         else
@@ -256,7 +255,6 @@ static void
 panfrost_emit_texture_payload(
         mali_ptr *payload,
         const struct util_format_description *desc,
-        enum mali_format mali_format,
         enum mali_texture_dimension dim,
         uint64_t modifier,
         unsigned width, unsigned height,
@@ -268,7 +266,7 @@ panfrost_emit_texture_payload(
         mali_ptr base,
         struct panfrost_slice *slices)
 {
-        base |= panfrost_compression_tag(desc, mali_format, modifier);
+        base |= panfrost_compression_tag(desc, modifier);
 
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
@@ -372,7 +370,6 @@ panfrost_new_texture(
         panfrost_emit_texture_payload(
                 (mali_ptr *) (out + MALI_MIDGARD_TEXTURE_LENGTH),
                 desc,
-                mali_format,
                 dim,
                 modifier,
                 width, height,
@@ -412,7 +409,6 @@ panfrost_new_texture_bifrost(
         panfrost_emit_texture_payload(
                 payload->cpu,
                 desc,
-                mali_format,
                 dim,
                 modifier,
                 width, height,
