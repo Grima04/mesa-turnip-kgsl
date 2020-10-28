@@ -159,6 +159,8 @@ bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx, bool deferred)
 			}
 		}
 
+		fd_batch_reference_locked(&current_batch, NULL);
+
 		fd_screen_unlock(ctx->screen);
 	} else {
 		fd_screen_unlock(ctx->screen);

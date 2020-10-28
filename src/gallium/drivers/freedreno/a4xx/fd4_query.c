@@ -119,6 +119,7 @@ time_elapsed_enable(struct fd_context *ctx, struct fd_ringbuffer *ring)
 	fd_wfi(batch, ring);
 	OUT_PKT0(ring, REG_A4XX_CP_PERFCTR_CP_SEL_0, 1);
 	OUT_RING(ring, CP_ALWAYS_COUNT);
+	fd_batch_reference(&batch, NULL);
 }
 
 static struct fd_hw_sample *

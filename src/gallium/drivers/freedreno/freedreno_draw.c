@@ -259,8 +259,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		}
 	}
 
-	struct fd_batch *batch = NULL;
-	fd_batch_reference(&batch, fd_context_batch(ctx));
+	struct fd_batch *batch = fd_context_batch(ctx);
 
 	if (ctx->in_discard_blit) {
 		fd_batch_reset(batch);
@@ -274,7 +273,8 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		 * so start anew.  We know this won't happen a second time
 		 * since we are dealing with a fresh batch:
 		 */
-		fd_batch_reference(&batch, fd_context_batch(ctx));
+		fd_batch_reference(&batch, NULL);
+		batch = fd_context_batch(ctx);
 		batch_draw_tracking(batch, info);
 		assert(ctx->batch == batch);
 	}
@@ -397,8 +397,7 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 	if (!fd_render_condition_check(pctx))
 		return;
 
-	struct fd_batch *batch = NULL;
-	fd_batch_reference(&batch, fd_context_batch(ctx));
+	struct fd_batch *batch = fd_context_batch(ctx);
 
 	if (ctx->in_discard_blit) {
 		fd_batch_reset(batch);
@@ -412,7 +411,8 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 		 * so start anew.  We know this won't happen a second time
 		 * since we are dealing with a fresh batch:
 		 */
-		fd_batch_reference(&batch, fd_context_batch(ctx));
+		fd_batch_reference(&batch, NULL);
+		batch = fd_context_batch(ctx);
 		batch_clear_tracking(batch, buffers);
 		assert(ctx->batch == batch);
 	}

@@ -51,10 +51,14 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_fence_handle *fence = NULL;
-	// TODO we want to lookup batch if it exists, but not create one if not.
-	struct fd_batch *batch = fd_context_batch(ctx);
+	struct fd_batch *batch = NULL;
 
-	DBG("%p: flush: flags=%x", ctx->batch, flags);
+	/* We want to lookup current batch if it exists, but not create a new
+	 * one if not (unless we need a fence)
+	 */
+	fd_batch_reference(&batch, ctx->batch);
+
+	DBG("%p: flush: flags=%x", batch, flags);
 
 	/* In some sequence of events, we can end up with a last_fence that is
 	 * not an "fd" fence, which results in eglDupNativeFenceFDANDROID()
@@ -73,7 +77,9 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 		goto out;
 	}
 
-	if (!batch) {
+	if (fencep && !batch) {
+		batch = fd_context_batch(ctx);
+	} else if (!batch) {
 		fd_bc_dump(ctx->screen, "%p: NULL batch, remaining:\n", ctx);
 		return;
 	}
@@ -104,6 +110,8 @@ out:
 	fd_fence_ref(&ctx->last_fence, fence);
 
 	fd_fence_ref(&fence, NULL);
+
+	fd_batch_reference(&batch, NULL);
 
 	if (flags & PIPE_FLUSH_END_OF_FRAME)
 		fd_log_eof(ctx);
@@ -232,18 +240,26 @@ fd_context_switch_to(struct fd_context *ctx, struct fd_batch *batch)
 	}
 }
 
+/**
+ * Return a reference to the current batch, caller must unref.
+ */
 struct fd_batch *
 fd_context_batch(struct fd_context *ctx)
 {
-	if (unlikely(!ctx->batch)) {
-		struct fd_batch *batch =
-			fd_batch_from_fb(&ctx->screen->batch_cache, ctx, &ctx->framebuffer);
+	struct fd_batch *batch = NULL;
+
+	fd_batch_reference(&batch, ctx->batch);
+
+	if (unlikely(!batch)) {
+		batch = fd_batch_from_fb(&ctx->screen->batch_cache, ctx, &ctx->framebuffer);
 		util_copy_framebuffer_state(&batch->framebuffer, &ctx->framebuffer);
-		ctx->batch = batch;
+		fd_batch_reference(&ctx->batch, batch);
 		fd_context_all_dirty(ctx);
 	}
-	fd_context_switch_to(ctx, ctx->batch);
-	return ctx->batch;
+
+	fd_context_switch_to(ctx, batch);
+
+	return batch;
 }
 
 void
