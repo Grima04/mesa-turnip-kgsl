@@ -81,6 +81,9 @@
     <value name="ETC2 R11 UNORM" value="2"/>
     <value name="ETC2 RGBA8" value="3"/>
     <value name="ETC2 RG11 UNORM" value="4"/>
+    <!--- Formats 5-6 new in v7 *-->
+    <value name="R4A4 UNORM" value="5"/>
+    <value name="A4R4 UNORM" value="6"/>
     <value name="BC1 UNORM" value="7"/>
     <value name="BC2 UNORM" value="8"/>
     <value name="BC3 UNORM" value="9"/>
@@ -98,6 +101,14 @@
     <value name="ASTC 3D HDR" value="21"/>
     <value name="ASTC 2D LDR" value="22"/>
     <value name="ASTC 2D HDR" value="23"/>
+    <!--- Formats 24-31 new in v7 * *-->
+    <value name="R8A8 UNORM" value="24"/>
+    <value name="A8R8 UNORM" value="25"/>
+    <value name="A8 UNORM" value="26"/>
+    <value name="RAW10" value="28"/>
+    <value name="RAW12" value="29"/>
+    <value name="R8G8B8G8" value="30"/>
+    <value name="G8R8G8B8" value="31"/>
     <value name="RGB565" value="64"/>
     <value name="RGB5 X1 UNORM" value="65"/>
     <value name="RGB5 A1 UNORM" value="66"/>
