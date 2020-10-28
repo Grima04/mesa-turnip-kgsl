@@ -127,6 +127,8 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
 	batch->ctx = ctx;
 	batch->nondraw = nondraw;
 
+	simple_mtx_init(&batch->submit_lock, mtx_plain);
+
 	batch->resources = _mesa_set_create(NULL, _mesa_hash_pointer,
 			_mesa_key_pointer_equal);
 
@@ -294,6 +296,9 @@ __fd_batch_destroy(struct fd_batch *batch)
 
 	util_copy_framebuffer_state(&batch->framebuffer, NULL);
 	batch_fini(batch);
+
+	simple_mtx_destroy(&batch->submit_lock);
+
 	free(batch);
 	fd_screen_lock(ctx->screen);
 }
@@ -319,7 +324,7 @@ batch_flush(struct fd_batch *batch)
 {
 	DBG("%p: needs_flush=%d", batch, batch->needs_flush);
 
-	if (batch->flushed)
+	if (!fd_batch_lock_submit(batch))
 		return;
 
 	batch->needs_flush = false;
@@ -332,6 +337,8 @@ batch_flush(struct fd_batch *batch)
 	batch_flush_reset_dependencies(batch, true);
 
 	batch->flushed = true;
+	if (batch == batch->ctx->batch)
+		fd_batch_reference(&batch->ctx->batch, NULL);
 
 	fd_fence_ref(&batch->ctx->last_fence, batch->fence);
 
@@ -341,8 +348,14 @@ batch_flush(struct fd_batch *batch)
 	debug_assert(batch->reference.count > 0);
 
 	fd_screen_lock(batch->ctx->screen);
+	/* NOTE: remove=false removes the patch from the hashtable, so future
+	 * lookups won't cache-hit a flushed batch, but leaves the weak reference
+	 * to the batch to avoid having multiple batches with same batch->idx, as
+	 * that causes all sorts of hilarity.
+	 */
 	fd_bc_invalidate_batch(batch, false);
 	fd_screen_unlock(batch->ctx->screen);
+	fd_batch_unlock_submit(batch);
 }
 
 /* NOTE: could drop the last ref to batch
@@ -357,13 +370,7 @@ fd_batch_flush(struct fd_batch *batch)
 	 * up used_resources
 	 */
 	fd_batch_reference(&tmp, batch);
-
 	batch_flush(tmp);
-
-	if (batch == batch->ctx->batch) {
-		fd_batch_reference(&batch->ctx->batch, NULL);
-	}
-
 	fd_batch_reference(&tmp, NULL);
 }
 

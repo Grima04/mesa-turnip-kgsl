@@ -30,6 +30,7 @@
 #include "util/u_inlines.h"
 #include "util/u_queue.h"
 #include "util/list.h"
+#include "util/simple_mtx.h"
 
 #include "freedreno_context.h"
 #include "freedreno_util.h"
@@ -56,6 +57,11 @@ struct fd_batch {
 	struct pipe_fence_handle *fence;
 
 	struct fd_context *ctx;
+
+	/* emit_lock serializes cmdstream emission and flush.  Acquire before
+	 * screen->lock.
+	 */
+	simple_mtx_t submit_lock;
 
 	/* do we need to mem2gmem before rendering.  We don't, if for example,
 	 * there was a glClear() that invalidated the entire previous buffer
@@ -295,6 +301,26 @@ fd_batch_reference(struct fd_batch **ptr, struct fd_batch *batch)
 
 	if (ctx)
 		fd_screen_unlock(ctx->screen);
+}
+
+static inline void
+fd_batch_unlock_submit(struct fd_batch *batch)
+{
+	simple_mtx_unlock(&batch->submit_lock);
+}
+
+/**
+ * Returns true if emit-lock was aquired, false if failed to aquire lock,
+ * ie. batch already flushed.
+ */
+static inline bool MUST_CHECK
+fd_batch_lock_submit(struct fd_batch *batch)
+{
+	simple_mtx_lock(&batch->submit_lock);
+	bool ret = !batch->flushed;
+	if (!ret)
+		fd_batch_unlock_submit(batch);
+	return ret;
 }
 
 static inline void

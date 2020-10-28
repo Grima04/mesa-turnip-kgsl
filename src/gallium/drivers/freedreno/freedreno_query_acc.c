@@ -113,8 +113,9 @@ fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q)
 	 * need to just emit the capture at this moment.
 	 */
 	if (skip_begin_query(q->type)) {
-		struct fd_batch *batch = fd_context_batch(ctx);
+		struct fd_batch *batch = fd_context_batch_locked(ctx);
 		fd_acc_query_resume(aq, batch);
+		fd_batch_unlock_submit(batch);
 		fd_batch_reference(&batch, NULL);
 	}
 }

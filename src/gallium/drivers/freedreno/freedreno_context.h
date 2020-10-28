@@ -504,6 +504,7 @@ fd_supported_prim(struct fd_context *ctx, unsigned prim)
 void fd_context_switch_from(struct fd_context *ctx);
 void fd_context_switch_to(struct fd_context *ctx, struct fd_batch *batch);
 struct fd_batch * fd_context_batch(struct fd_context *ctx);
+struct fd_batch * fd_context_batch_locked(struct fd_context *ctx);
 
 void fd_context_setup_common_vbos(struct fd_context *ctx);
 void fd_context_cleanup_common_vbos(struct fd_context *ctx);

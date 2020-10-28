@@ -808,6 +808,9 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	fd_screen_unlock(ctx->screen);
 
+	bool ret = fd_batch_lock_submit(batch);
+	assert(ret);
+
 	/* Clearing last_fence must come after the batch dependency tracking
 	 * (resource_read()/resource_write()), as that can trigger a flush,
 	 * re-populating last_fence
@@ -840,6 +843,8 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_DEPTH_TS, true);
 	fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
 	fd6_cache_inv(batch, batch->draw);
+
+	fd_batch_unlock_submit(batch);
 
 	fd_resource(info->dst.resource)->valid = true;
 	batch->needs_flush = true;

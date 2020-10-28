@@ -268,7 +268,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 
 	batch_draw_tracking(batch, info);
 
-	if (unlikely(ctx->batch != batch)) {
+	while (unlikely(!fd_batch_lock_submit(batch))) {
 		/* The current batch was flushed in batch_draw_tracking()
 		 * so start anew.  We know this won't happen a second time
 		 * since we are dealing with a fresh batch:
@@ -330,6 +330,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		fd_context_all_dirty(ctx);
 
 	fd_batch_check_size(batch);
+	fd_batch_unlock_submit(batch);
 	fd_batch_reference(&batch, NULL);
 
 	if (info == &new_info)
@@ -406,7 +407,7 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 
 	batch_clear_tracking(batch, buffers);
 
-	if (unlikely(ctx->batch != batch)) {
+	while (unlikely(!fd_batch_lock_submit(batch))) {
 		/* The current batch was flushed in batch_clear_tracking()
 		 * so start anew.  We know this won't happen a second time
 		 * since we are dealing with a fresh batch:
@@ -445,11 +446,13 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 		}
 	}
 
+	fd_batch_check_size(batch);
+	fd_batch_unlock_submit(batch);
+
 	if (fallback) {
 		fd_blitter_clear(pctx, buffers, color, depth, stencil);
 	}
 
-	fd_batch_check_size(batch);
 	fd_batch_reference(&batch, NULL);
 }
 

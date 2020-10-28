@@ -135,7 +135,7 @@ fd_hw_destroy_query(struct fd_context *ctx, struct fd_query *q)
 static void
 fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
 {
-	struct fd_batch *batch = fd_context_batch(ctx);
+	struct fd_batch *batch = fd_context_batch_locked(ctx);
 	struct fd_hw_query *hq = fd_hw_query(q);
 
 	DBG("%p", q);
@@ -150,13 +150,14 @@ fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
 	assert(list_is_empty(&hq->list));
 	list_addtail(&hq->list, &ctx->hw_active_queries);
 
+	fd_batch_unlock_submit(batch);
 	fd_batch_reference(&batch, NULL);
 }
 
 static void
 fd_hw_end_query(struct fd_context *ctx, struct fd_query *q)
 {
-	struct fd_batch *batch = fd_context_batch(ctx);
+	struct fd_batch *batch = fd_context_batch_locked(ctx);
 	struct fd_hw_query *hq = fd_hw_query(q);
 
 	DBG("%p", q);
@@ -167,6 +168,7 @@ fd_hw_end_query(struct fd_context *ctx, struct fd_query *q)
 	/* remove from active list: */
 	list_delinit(&hq->list);
 
+	fd_batch_unlock_submit(batch);
 	fd_batch_reference(&batch, NULL);
 }
 
