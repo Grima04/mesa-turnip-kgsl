@@ -92,6 +92,36 @@ struct ra_ctx {
    }
 };
 
+/* Half-open register interval used in "sliding window"-style for-loops */
+struct PhysRegInterval {
+   unsigned lo_;
+   unsigned size;
+
+   /* Inclusive lower bound */
+   unsigned lo() const {
+      return lo_;
+   }
+
+   /* Exclusive upper bound */
+   unsigned hi() const {
+      return lo() + size;
+   }
+
+   PhysRegInterval& operator+=(uint32_t stride) {
+      lo_ += stride;
+      return *this;
+   }
+
+   bool operator!=(const PhysRegInterval& oth) const {
+      return lo_ != oth.lo_ || size != oth.size;
+   }
+
+   /* Construct a half-open interval, excluding the end register */
+   static PhysRegInterval from_until(unsigned first, unsigned end) {
+      return { first, end - first };
+   }
+};
+
 struct DefInfo {
    uint16_t lb;
    uint16_t ub;
