@@ -144,7 +144,7 @@ ARC++, but it should also be possible to build using the NDK as
 described above.  There are currently rough edges with this, for
 example the build will require that you have your arc-libdrm build
 available to the NDK, assuming you're building anything but the
-freedreno vulkan driver for KGSL.  You can mostly put things in place
+freedreno Vulkan driver for KGSL.  You can mostly put things in place
 with:
 
 .. code-block:: console
