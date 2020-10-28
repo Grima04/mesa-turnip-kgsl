@@ -726,6 +726,8 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
          return res;
    }
 
+   auto is_free = [&](unsigned reg_index) { return reg_file[reg_index] == 0 && !ctx.war_hint[reg_index]; };
+
    if (stride == 1) {
       /* best fit algorithm: find the smallest gap to fit in the variable */
       PhysRegInterval best_gap { 0xFFFF, 0xFFFF };
@@ -733,8 +735,6 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 
       PhysRegIterator reg_it = bounds.begin();
       const PhysRegIterator end_it = std::min(bounds.end(), std::max(PhysRegIterator { max_gpr + 1 }, reg_it));
-
-      auto is_free = [&](unsigned reg_index) { return reg_file[reg_index] == 0 && !ctx.war_hint[reg_index]; };
       while (reg_it != bounds.end()) {
          /* Find the next chunk of available register slots */
          reg_it = std::find_if(reg_it, end_it, is_free);
@@ -781,24 +781,16 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
       return {PhysReg{best_gap.lo()}, true};
    }
 
-   bool found = false;
-   PhysRegInterval reg_win = { bounds.lo(), size };
-   while (reg_win.hi() <= bounds.hi()) {
+   for (PhysRegInterval reg_win = { bounds.lo(), size }; reg_win.hi() <= bounds.hi(); reg_win += stride) {
       if (reg_file[reg_win.lo()] != 0) {
-         reg_win += stride;
          continue;
       }
-      found = true;
-      for (unsigned reg = reg_win.lo() + 1; found && reg < reg_win.hi(); reg++) {
-         if (reg_file[reg] != 0 || ctx.war_hint[reg])
-            found = false;
-      }
-      if (found) {
+
+      bool is_valid = std::all_of(std::next(reg_win.begin()), reg_win.end(), is_free);
+      if (is_valid) {
          adjust_max_used_regs(ctx, rc, reg_win.lo());
          return {PhysReg{reg_win.lo()}, true};
       }
-
-      reg_win += stride;
    }
 
    /* do this late because using the upper bytes of a register can require
