@@ -658,6 +658,29 @@ bi_pack_add_branch(bi_instruction *ins, bi_registers *regs)
 }
 
 static unsigned
+bi_pack_add_special(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
+{
+        bool f16 = ins->dest_type == nir_type_float16;
+
+        switch (ins->op.special) {
+        case BI_SPECIAL_FRCP:
+                return f16 ? pan_pack_add_frcp_f16(clause, ins, regs) :
+                             pan_pack_add_frcp_f32(clause, ins, regs);
+        case BI_SPECIAL_FRSQ:
+                return f16 ? pan_pack_add_frsq_f16(clause, ins, regs) :
+                             pan_pack_add_frsq_f32(clause, ins, regs);
+        case BI_SPECIAL_EXP2_LOW:
+                assert(!f16);
+                return pan_pack_add_fexp_f32(clause, ins, regs);
+        case BI_SPECIAL_IABS:
+                assert(ins->src_types[0] == nir_type_int32);
+                return pan_pack_add_iabs_s32(clause, ins, regs);
+        default:
+                unreachable("Unknown special op");
+        }
+}
+
+static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_stage stage)
 {
         if (!bundle.add)
@@ -850,21 +873,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
         case BI_STORE_VAR:
                 return pan_pack_add_st_cvt(clause, bundle.add, regs);
         case BI_SPECIAL:
-                if (bundle.add->op.special == BI_SPECIAL_FRCP) {
-                        return f16 ? pan_pack_add_frcp_f16(clause, bundle.add, regs) :
-                                pan_pack_add_frcp_f32(clause, bundle.add, regs);
-                } else if (bundle.add->op.special == BI_SPECIAL_FRSQ) {
-                        return f16 ? pan_pack_add_frsq_f16(clause, bundle.add, regs) :
-                                pan_pack_add_frsq_f32(clause, bundle.add, regs);
-                } else if (bundle.add->op.special == BI_SPECIAL_EXP2_LOW) {
-                        assert(!f16);
-                        return pan_pack_add_fexp_f32(clause, bundle.add, regs);
-                } else if (bundle.add->op.special == BI_SPECIAL_IABS) {
-                        assert(bundle.add->src_types[0] == nir_type_int32);
-                        return pan_pack_add_iabs_s32(clause, bundle.add, regs);
-                }
-
-                unreachable("Unknown special op");
+                return bi_pack_add_special(clause, bundle.add, regs);
         case BI_TABLE:
                 assert(bundle.add->dest_type == nir_type_float32);
                 return pan_pack_add_flogd_f32(clause, bundle.add, regs);
