@@ -454,10 +454,7 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
    if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
       result_size += base_result_size;
    if (is_cs_query(query)) {
-      uint32_t batch_uses = zink_get_resource_usage(res);
-      batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
-      batch_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID);
-      if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
+      if (zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_WRITE, ZINK_QUEUE_GFX))
          ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
    }
    /* if it's a single query that doesn't need special handling, we can copy it and be done */

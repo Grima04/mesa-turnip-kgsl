@@ -180,22 +180,18 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
 
    zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
 
-   uint32_t cur_uses = zink_get_resource_usage(res);
-   uint32_t uses_check = cur_uses;
-   cur_uses &= ~(ZINK_RESOURCE_ACCESS_READ << batch->batch_id);
-   cur_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << batch->batch_id);
    if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
-      if (cur_uses >= ZINK_RESOURCE_ACCESS_WRITE || (write && cur_uses))
+      if ((write && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW, ZINK_QUEUE_GFX)) ||
+          (!write && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_WRITE, ZINK_QUEUE_GFX)))
          batch_to_flush = 0;
    } else {
-      if (cur_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID) ||
-          (write && cur_uses & (ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID)))
+      if ((write && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_READ, ZINK_QUEUE_COMPUTE)) ||
+          zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_WRITE, ZINK_QUEUE_COMPUTE))
          batch_to_flush = ZINK_COMPUTE_BATCH_ID;
    }
 
    /* if the resource already has usage of any sort set for this batch, we can skip hashing */
-   uint32_t check_mask = (ZINK_RESOURCE_ACCESS_READ | ZINK_RESOURCE_ACCESS_WRITE) << batch->batch_id;
-   if (!(uses_check & check_mask)) {
+   if (!zink_resource_has_usage_for_id(res, batch->batch_id)) {
       bool found = false;
       _mesa_set_search_and_add(batch->resources, res->obj, &found);
       if (!found) {

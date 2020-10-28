@@ -124,8 +124,11 @@ zink_resource_setup_transfer_layouts(struct zink_context *ctx, struct zink_resou
 int
 zink_get_resource_latest_batch_usage(struct zink_context *ctx, uint32_t batch_uses);
 
-uint32_t
-zink_get_resource_usage(struct zink_resource *res);
+bool
+zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usage, enum zink_queue queue);
+
+bool
+zink_resource_has_usage_for_id(struct zink_resource *res, uint32_t id);
 
 void
 zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx);
