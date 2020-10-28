@@ -1941,7 +1941,8 @@ iris_bufmgr_get_for_fd(struct gen_device_info *devinfo, int fd, bool bo_reuse)
    }
 
    bufmgr = iris_bufmgr_create(devinfo, fd, bo_reuse);
-   list_addtail(&bufmgr->link, &global_bufmgr_list);
+   if (bufmgr)
+      list_addtail(&bufmgr->link, &global_bufmgr_list);
 
  unlock:
    mtx_unlock(&global_bufmgr_list_mutex);
