@@ -388,20 +388,6 @@ struct panfrost_format panfrost_pipe_format_table[PIPE_FORMAT_COUNT] = {
 #undef _T
 #undef _R
 
-/* Is a format encoded like Z24S8 and therefore compatible for render? */
-
-bool
-panfrost_is_z24s8_variant(enum pipe_format fmt)
-{
-        switch (fmt) {
-                case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-                case PIPE_FORMAT_Z24X8_UNORM:
-                        return true;
-                default:
-                        return false;
-        }
-}
-
 /* Translate a PIPE swizzle quad to a 12-bit Mali swizzle code. PIPE
  * swizzles line up with Mali swizzles for the XYZW01, but PIPE swizzles have
  * an additional "NONE" field that we have to mask out to zero. Additionally,
