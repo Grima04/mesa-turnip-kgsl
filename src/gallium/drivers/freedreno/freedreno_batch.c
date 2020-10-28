@@ -304,6 +304,16 @@ __fd_batch_describe(char* buf, const struct fd_batch *batch)
 	sprintf(buf, "fd_batch<%u>", batch->seqno);
 }
 
+/* Get per-batch prologue */
+struct fd_ringbuffer *
+fd_batch_get_prologue(struct fd_batch *batch)
+{
+	if (!batch->prologue)
+		batch->prologue = alloc_ring(batch, 0x1000, 0);
+	return batch->prologue;
+}
+
+/* Only called from fd_batch_flush() */
 static void
 batch_flush(struct fd_batch *batch)
 {
@@ -335,22 +345,7 @@ batch_flush(struct fd_batch *batch)
 	fd_screen_unlock(batch->ctx->screen);
 }
 
-/* Get per-batch prologue */
-struct fd_ringbuffer *
-fd_batch_get_prologue(struct fd_batch *batch)
-{
-	if (!batch->prologue)
-		batch->prologue = alloc_ring(batch, 0x1000, 0);
-	return batch->prologue;
-}
-
 /* NOTE: could drop the last ref to batch
- *
- * @sync: synchronize with flush_queue, ensures batch is *actually* flushed
- *   to kernel before this returns, as opposed to just being queued to be
- *   flushed
- * @force: force a flush even if no rendering, mostly useful if you need
- *   a fence to sync on
  */
 void
 fd_batch_flush(struct fd_batch *batch)
