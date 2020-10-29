@@ -2215,8 +2215,8 @@ bool lp_build_nir_llvm(
 
    nir_foreach_register(reg, &func->impl->registers) {
       LLVMTypeRef type = get_register_type(bld_base, reg);
-      LLVMValueRef reg_alloc = lp_build_alloca_undef(bld_base->base.gallivm,
-                                                     type, "reg");
+      LLVMValueRef reg_alloc = lp_build_alloca(bld_base->base.gallivm,
+                                               type, "reg");
       _mesa_hash_table_insert(bld_base->regs, reg, reg_alloc);
    }
    nir_index_ssa_defs(func->impl);
