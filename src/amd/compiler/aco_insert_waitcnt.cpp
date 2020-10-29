@@ -313,7 +313,7 @@ struct wait_ctx {
       pending_flat_vm |= other->pending_flat_vm;
       pending_s_buffer_store |= other->pending_s_buffer_store;
 
-      for (const std::pair<PhysReg,wait_entry>& entry : other->gpr_map)
+      for (const auto& entry : other->gpr_map)
       {
          if (entry.second.logical != logical)
             continue;
@@ -335,7 +335,7 @@ struct wait_ctx {
 
       /* these are used for statistics, so don't update "changed" */
       for (unsigned i = 0; i < num_counters; i++) {
-         for (const std::pair<Instruction *, unsigned>& instr : other->unwaited_instrs[i]) {
+         for (const auto& instr : other->unwaited_instrs[i]) {
             using iterator = std::map<Instruction *, unsigned>::iterator;
             const std::pair<iterator, bool> insert_pair = unwaited_instrs[i].insert(instr);
             if (!insert_pair.second) {
@@ -343,8 +343,11 @@ struct wait_ctx {
                pos->second = std::min(pos->second, instr.second);
             }
          }
-         for (const std::pair<PhysReg,std::set<Instruction *>>& instr : other->reg_instrs[i])
-            reg_instrs[i][instr.first].insert(instr.second.begin(), instr.second.end());
+         for (const auto& instr_pair : other->reg_instrs[i]) {
+            const PhysReg reg = instr_pair.first;
+            const std::set<Instruction *>& instrs = instr_pair.second;
+            reg_instrs[i][reg].insert(instrs.begin(), instrs.end());
+         }
       }
 
       return changed;
