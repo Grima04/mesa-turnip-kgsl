@@ -208,6 +208,7 @@ public:
    fs_reg *emit_samplepos_setup();
    fs_reg *emit_sampleid_setup();
    fs_reg *emit_samplemaskin_setup();
+   fs_reg *emit_shading_rate_setup();
    void emit_interpolation_setup_gfx4();
    void emit_interpolation_setup_gfx6();
    void compute_sample_position(fs_reg dst, fs_reg int_sample_pos);

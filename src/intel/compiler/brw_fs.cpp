@@ -1545,6 +1545,47 @@ fs_visitor::emit_samplemaskin_setup()
    return reg;
 }
 
+fs_reg *
+fs_visitor::emit_shading_rate_setup()
+{
+   assert(devinfo->ver >= 11);
+
+   const fs_builder abld = bld.annotate("compute fragment shading rate");
+
+   fs_reg *reg = new(this->mem_ctx) fs_reg(bld.vgrf(BRW_REGISTER_TYPE_UD));
+
+   struct brw_wm_prog_data *wm_prog_data =
+      brw_wm_prog_data(bld.shader->stage_prog_data);
+
+   /* Coarse pixel shading size fields overlap with other fields of not in
+    * coarse pixel dispatch mode, so report 0 when that's not the case.
+    */
+   if (wm_prog_data->per_coarse_pixel_dispatch) {
+      /* The shading rates provided in the shader are the actual 2D shading
+       * rate while the SPIR-V built-in is the enum value that has the shading
+       * rate encoded as a bitfield.  Fortunately, the bitfield value is just
+       * the shading rate divided by two and shifted.
+       */
+
+      /* r1.0 - 0:7 ActualCoarsePixelShadingSize.X */
+      fs_reg actual_x = fs_reg(retype(brw_vec1_grf(1, 0), BRW_REGISTER_TYPE_UB));
+      /* r1.0 - 15:8 ActualCoarsePixelShadingSize.Y */
+      fs_reg actual_y = byte_offset(actual_x, 1);
+
+      fs_reg int_rate_x = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      fs_reg int_rate_y = bld.vgrf(BRW_REGISTER_TYPE_UD);
+
+      abld.SHR(int_rate_y, actual_y, brw_imm_ud(1));
+      abld.SHR(int_rate_x, actual_x, brw_imm_ud(1));
+      abld.SHL(int_rate_x, int_rate_x, brw_imm_ud(2));
+      abld.OR(*reg, int_rate_x, int_rate_y);
+   } else {
+      abld.MOV(*reg, brw_imm_ud(0));
+   }
+
+   return reg;
+}
+
 fs_reg
 fs_visitor::resolve_source_modifiers(const fs_reg &src)
 {
