@@ -5105,7 +5105,7 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
    nir_intrinsic_instr *intrin;
 
    switch (opcode) {
-   case SpvOpTraceRayKHR: {
+   case SpvOpTraceNV: {
       intrin = nir_intrinsic_instr_create(b->nb.shader,
                                           nir_intrinsic_trace_ray);
 
@@ -5130,19 +5130,19 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpIgnoreIntersectionKHR:
+   case SpvOpIgnoreIntersectionNV:
       intrin = nir_intrinsic_instr_create(b->nb.shader,
                                           nir_intrinsic_ignore_ray_intersection);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
       break;
 
-   case SpvOpTerminateRayKHR:
+   case SpvOpTerminateRayNV:
       intrin = nir_intrinsic_instr_create(b->nb.shader,
                                           nir_intrinsic_terminate_ray);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
       break;
 
-   case SpvOpExecuteCallableKHR: {
+   case SpvOpExecuteCallableNV: {
       intrin = nir_intrinsic_instr_create(b->nb.shader,
                                           nir_intrinsic_execute_callable);
       intrin->src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[1])->def);
@@ -5566,11 +5566,11 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpTraceRayKHR:
+   case SpvOpTraceNV:
    case SpvOpReportIntersectionKHR:
-   case SpvOpIgnoreIntersectionKHR:
-   case SpvOpTerminateRayKHR:
-   case SpvOpExecuteCallableKHR:
+   case SpvOpIgnoreIntersectionNV:
+   case SpvOpTerminateRayNV:
+   case SpvOpExecuteCallableNV:
       vtn_handle_ray_intrinsic(b, opcode, w, count);
       break;
 
