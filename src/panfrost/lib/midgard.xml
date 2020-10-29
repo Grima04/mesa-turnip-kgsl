@@ -140,62 +140,133 @@
     <!--- RGBA32F + snap to 2^-8, used for vertex writes -->
     <value name="Snap 4" value="94"/>
     <value name="Constant" value="95"/>
+    <value name="R1 SNORM" value="96"/>
+    <value name="R2 SNORM" value="97"/>
+    <value name="R4 SNORM" value="98"/>
     <value name="R8 SNORM" value="99"/>
     <value name="R16 SNORM" value="100"/>
     <value name="R32 SNORM" value="101"/>
+    <value name="R64 SNORM" value="102"/>
+    <!--- 103 reserved -->
+    <value name="RG1 SNORM" value="104"/>
+    <value name="RG2 SNORM" value="105"/>
+    <value name="RG4 SNORM" value="106"/>
     <value name="RG8 SNORM" value="107"/>
     <value name="RG16 SNORM" value="108"/>
     <value name="RG32 SNORM" value="109"/>
+    <value name="RG64 SNORM" value="110"/>
+    <!-- 111 reserved -->
+    <value name="RGB1 SNORM" value="112"/>
+    <value name="RGB2 SNORM" value="113"/>
+    <value name="RGB4 SNORM" value="114"/>
     <value name="RGB8 SNORM" value="115"/>
     <value name="RGB16 SNORM" value="116"/>
     <value name="RGB32 SNORM" value="117"/>
+    <value name="RGB64 SNORM" value="118"/>
+    <!-- 119 reserved -->
+    <value name="RGBA1 SNORM" value="120"/>
+    <value name="RGBA2 SNORM" value="121"/>
+    <value name="RGBA4 SNORM" value="122"/>
     <value name="RGBA8 SNORM" value="123"/>
     <value name="RGBA16 SNORM" value="124"/>
     <value name="RGBA32 SNORM" value="125"/>
+    <value name="RGBA64 SNORM" value="126"/>
+    <!-- 127 reserved -->
+    <value name="R1UI" value="128"/>
+    <value name="R2UI" value="129"/>
+    <value name="R4UI" value="130"/>
     <value name="R8UI" value="131"/>
     <value name="R16UI" value="132"/>
     <value name="R32UI" value="133"/>
+    <value name="R64UI" value="134"/>
+    <value name="R64F" value="135"/>
+    <value name="RG1UI" value="136"/>
+    <value name="RG2UI" value="137"/>
+    <value name="RG4UI" value="138"/>
     <value name="RG8UI" value="139"/>
     <value name="RG16UI" value="140"/>
     <value name="RG32UI" value="141"/>
+    <value name="RG64UI" value="142"/>
+    <value name="RG64F" value="143"/>
+    <value name="RGB1UI" value="144"/>
+    <value name="RGB2UI" value="145"/>
+    <value name="RGB4UI" value="146"/>
     <value name="RGB8UI" value="147"/>
     <value name="RGB16UI" value="148"/>
     <value name="RGB32UI" value="149"/>
+    <value name="RGB64UI" value="150"/>
+    <value name="RGB64F" value="151"/>
+    <value name="RGBA1UI" value="152"/>
+    <value name="RGBA2UI" value="153"/>
+    <value name="RGBA4UI" value="154"/>
     <value name="RGBA8UI" value="155"/>
     <value name="RGBA16UI" value="156"/>
     <value name="RGBA32UI" value="157"/>
+    <value name="RGBA64UI" value="158"/>
+    <value name="RGBA64F" value="159"/>
+    <value name="R1 UNORM" value="160"/>
+    <value name="R2 UNORM" value="161"/>
+    <value name="R4 UNORM" value="162"/>
     <value name="R8 UNORM" value="163"/>
     <value name="R16 UNORM" value="164"/>
     <value name="R32 UNORM" value="165"/>
+    <value name="R64 UNORM" value="166"/>
     <value name="R32F" value="167"/>
+    <value name="RG1 UNORM" value="168"/>
+    <value name="RG2 UNORM" value="169"/>
+    <value name="RG4 UNORM" value="170"/>
     <value name="RG8 UNORM" value="171"/>
     <value name="RG16 UNORM" value="172"/>
     <value name="RG32 UNORM" value="173"/>
+    <value name="RG64 UNORM" value="174"/>
     <value name="RG32F" value="175"/>
+    <value name="RGB1 UNORM" value="176"/>
+    <value name="RGB2 UNORM" value="177"/>
+    <value name="RGB4 UNORM" value="178"/>
     <value name="RGB8 UNORM" value="179"/>
     <value name="RGB16 UNORM" value="180"/>
     <value name="RGB32 UNORM" value="181"/>
+    <value name="RGB64 UNORM" value="182"/>
     <value name="RGB32F" value="183"/>
+    <value name="RGBA1 UNORM" value="184"/>
+    <value name="RGBA2 UNORM" value="185"/>
     <value name="RGBA4 UNORM" value="186"/>
     <value name="RGBA8 UNORM" value="187"/>
     <value name="RGBA16 UNORM" value="188"/>
     <value name="RGBA32 UNORM" value="189"/>
+    <value name="RGBA64 UNORM" value="190"/>
     <value name="RGBA32F" value="191"/>
+    <value name="R1I" value="192"/>
+    <value name="R2I" value="193"/>
+    <value name="R4I" value="194"/>
     <value name="R8I" value="195"/>
     <value name="R16I" value="196"/>
     <value name="R32I" value="197"/>
+    <value name="R64I" value="198"/>
     <value name="R16F" value="199"/>
+    <value name="RG1I" value="200"/>
+    <value name="RG2I" value="201"/>
+    <value name="RG4I" value="202"/>
     <value name="RG8I" value="203"/>
     <value name="RG16I" value="204"/>
     <value name="RG32I" value="205"/>
+    <value name="RG64I" value="206"/>
     <value name="RG16F" value="207"/>
+    <value name="RGB1I" value="208"/>
+    <value name="RGB2I" value="209"/>
+    <value name="RGB4I" value="210"/>
     <value name="RGB8I" value="211"/>
     <value name="RGB16I" value="212"/>
     <value name="RGB32I" value="213"/>
+    <value name="RGB64I" value="214"/>
     <value name="RGB16F" value="215"/>
+    <value name="RGBA1I" value="216"/>
+    <value name="RGBA2I" value="217"/>
+    <value name="RGBA4I" value="218"/>
     <value name="RGBA8I" value="219"/>
     <value name="RGBA16I" value="220"/>
     <value name="RGBA32I" value="221"/>
+    <value name="RGBA64I" value="222"/>
     <value name="RGBA16F" value="223"/>
     <value name="RGB5 A1 AU" value="224"/>
     <value name="RGB5 A1 PU" value="225"/>
