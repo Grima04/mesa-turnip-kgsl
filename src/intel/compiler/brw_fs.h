@@ -343,12 +343,9 @@ public:
 
    const struct brw_vue_map *input_vue_map;
 
-   BRW_ANALYSIS(live_analysis, brw::fs_live_variables,
-                backend_shader *) live_analysis;
-   BRW_ANALYSIS(regpressure_analysis, brw::register_pressure,
-                fs_visitor *) regpressure_analysis;
-   BRW_ANALYSIS(performance_analysis, brw::performance,
-                fs_visitor *) performance_analysis;
+   brw_analysis<brw::fs_live_variables, backend_shader> live_analysis;
+   brw_analysis<brw::register_pressure, fs_visitor> regpressure_analysis;
+   brw_analysis<brw::performance, fs_visitor> performance_analysis;
 
    /** Number of uniform variable components visited. */
    unsigned uniforms;

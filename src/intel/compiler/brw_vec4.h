@@ -107,10 +107,8 @@ public:
 
    int first_non_payload_grf;
    unsigned int max_grf;
-   BRW_ANALYSIS(live_analysis, brw::vec4_live_variables,
-                backend_shader *) live_analysis;
-   BRW_ANALYSIS(performance_analysis, brw::performance,
-                vec4_visitor *) performance_analysis;
+   brw_analysis<brw::vec4_live_variables, backend_shader> live_analysis;
+   brw_analysis<brw::performance, vec4_visitor> performance_analysis;
 
    bool need_all_constants_in_pull_buffer;
 
