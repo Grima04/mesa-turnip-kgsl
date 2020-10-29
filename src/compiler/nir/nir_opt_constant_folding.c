@@ -183,35 +183,37 @@ static bool
 try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                    struct constant_fold_state *state)
 {
-   bool progress = false;
-
-   if ((instr->intrinsic == nir_intrinsic_demote_if ||
-        instr->intrinsic == nir_intrinsic_discard_if ||
-        instr->intrinsic == nir_intrinsic_terminate_if) &&
-       nir_src_is_const(instr->src[0])) {
-      if (nir_src_as_bool(instr->src[0])) {
-         b->cursor = nir_before_instr(&instr->instr);
-         nir_intrinsic_op op;
-         switch (instr->intrinsic) {
-         case nir_intrinsic_discard_if:
-            op = nir_intrinsic_discard;
-            break;
-         case nir_intrinsic_demote_if:
-            op = nir_intrinsic_demote;
-            break;
-         case nir_intrinsic_terminate_if:
-            op = nir_intrinsic_terminate;
-            break;
-         default:
-            unreachable("invalid intrinsic");
+   switch (instr->intrinsic) {
+   case nir_intrinsic_demote_if:
+   case nir_intrinsic_discard_if:
+   case nir_intrinsic_terminate_if:
+      if (nir_src_is_const(instr->src[0])) {
+         if (nir_src_as_bool(instr->src[0])) {
+            b->cursor = nir_before_instr(&instr->instr);
+            nir_intrinsic_op op;
+            switch (instr->intrinsic) {
+            case nir_intrinsic_discard_if:
+               op = nir_intrinsic_discard;
+               break;
+            case nir_intrinsic_demote_if:
+               op = nir_intrinsic_demote;
+               break;
+            case nir_intrinsic_terminate_if:
+               op = nir_intrinsic_terminate;
+               break;
+            default:
+               unreachable("invalid intrinsic");
+            }
+            nir_intrinsic_instr *new_instr =
+               nir_intrinsic_instr_create(b->shader, op);
+            nir_builder_instr_insert(b, &new_instr->instr);
          }
-         nir_intrinsic_instr *new_instr =
-            nir_intrinsic_instr_create(b->shader, op);
-         nir_builder_instr_insert(b, &new_instr->instr);
+         nir_instr_remove(&instr->instr);
+         return true;
       }
-      nir_instr_remove(&instr->instr);
-      progress = true;
-   } else if (instr->intrinsic == nir_intrinsic_load_deref) {
+      return false;
+
+   case nir_intrinsic_load_deref: {
       nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
       nir_const_value *v = const_value_for_deref(deref);
       if (v) {
@@ -220,14 +222,17 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                                              instr->dest.ssa.bit_size, v);
          nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(val));
          nir_instr_remove(&instr->instr);
-         progress = true;
+         return true;
       }
-   } else if (instr->intrinsic == nir_intrinsic_load_constant) {
+      return false;
+   }
+
+   case nir_intrinsic_load_constant: {
       state->has_load_constant = true;
 
       if (!nir_src_is_const(instr->src[0])) {
          state->has_indirect_load_const = true;
-         return progress;
+         return false;
       }
 
       unsigned offset = nir_src_as_uint(instr->src[0]);
@@ -256,10 +261,12 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
       }
       nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(val));
       nir_instr_remove(&instr->instr);
-      progress = true;
+      return true;
    }
 
-   return progress;
+   default:
+      return false;
+   }
 }
 
 static bool
