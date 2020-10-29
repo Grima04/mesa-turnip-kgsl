@@ -256,6 +256,8 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpSwitch:
    case SpvOpKill:
    case SpvOpTerminateInvocation:
+   case SpvOpIgnoreIntersectionKHR:
+   case SpvOpTerminateRayKHR:
    case SpvOpReturn:
    case SpvOpReturnValue:
    case SpvOpUnreachable:
@@ -693,7 +695,17 @@ vtn_process_block(struct vtn_builder *b,
 
    case SpvOpTerminateInvocation:
       b->has_early_terminate = true;
-      block->branch_type = vtn_branch_type_terminate;
+      block->branch_type = vtn_branch_type_terminate_invocation;
+      return NULL;
+
+   case SpvOpIgnoreIntersectionKHR:
+      b->has_early_terminate = true;
+      block->branch_type = vtn_branch_type_ignore_intersection;
+      return NULL;
+
+   case SpvOpTerminateRayKHR:
+      b->has_early_terminate = true;
+      block->branch_type = vtn_branch_type_terminate_ray;
       return NULL;
 
    case SpvOpBranchConditional: {
@@ -957,9 +969,22 @@ vtn_emit_branch(struct vtn_builder *b, enum vtn_branch_type branch_type,
       nir_builder_instr_insert(&b->nb, &discard->instr);
       break;
    }
-   case vtn_branch_type_terminate: {
+   case vtn_branch_type_terminate_invocation: {
       nir_intrinsic_instr *terminate =
          nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_terminate);
+      nir_builder_instr_insert(&b->nb, &terminate->instr);
+      break;
+   }
+   case vtn_branch_type_ignore_intersection: {
+      nir_intrinsic_instr *ignore =
+         nir_intrinsic_instr_create(b->nb.shader,
+                                    nir_intrinsic_ignore_ray_intersection);
+      nir_builder_instr_insert(&b->nb, &ignore->instr);
+      break;
+   }
+   case vtn_branch_type_terminate_ray: {
+      nir_intrinsic_instr *terminate =
+         nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_terminate_ray);
       nir_builder_instr_insert(&b->nb, &terminate->instr);
       break;
    }
