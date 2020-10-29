@@ -42,20 +42,9 @@ opt_intrinsics_impl(nir_function_impl *impl,
             continue;
 
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         nir_ssa_def *replacement = NULL;
          b.cursor = nir_before_instr(instr);
 
          switch (intrin->intrinsic) {
-         case nir_intrinsic_vote_any:
-         case nir_intrinsic_vote_all:
-            if (nir_src_is_const(intrin->src[0]))
-               replacement = nir_ssa_for_src(&b, intrin->src[0], 1);
-            break;
-         case nir_intrinsic_vote_feq:
-         case nir_intrinsic_vote_ieq:
-            if (nir_src_is_const(intrin->src[0]))
-               replacement = nir_imm_true(&b);
-            break;
          case nir_intrinsic_load_sample_mask_in:
             /* Transform:
              *   gl_SampleMaskIn == 0 ---> gl_HelperInvocation
@@ -95,14 +84,6 @@ opt_intrinsics_impl(nir_function_impl *impl,
          default:
             break;
          }
-
-         if (!replacement)
-            continue;
-
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                  nir_src_for_ssa(replacement));
-         nir_instr_remove(instr);
-         progress = true;
       }
    }
 

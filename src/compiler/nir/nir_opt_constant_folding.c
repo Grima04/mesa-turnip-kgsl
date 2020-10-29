@@ -264,6 +264,27 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       return true;
    }
 
+   case nir_intrinsic_vote_any:
+   case nir_intrinsic_vote_all:
+      if (nir_src_is_const(intrin->src[0])) {
+         nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+                                  nir_src_for_ssa(intrin->src[0].ssa));
+         nir_instr_remove(&intrin->instr);
+         return true;
+      }
+      return false;
+
+   case nir_intrinsic_vote_feq:
+   case nir_intrinsic_vote_ieq:
+      if (nir_src_is_const(intrin->src[0])) {
+         b->cursor = nir_before_instr(&intrin->instr);
+         nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+                                  nir_src_for_ssa(nir_imm_true(b)));
+         nir_instr_remove(&intrin->instr);
+         return true;
+      }
+      return false;
+
    default:
       return false;
    }
