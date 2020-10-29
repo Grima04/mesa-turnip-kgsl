@@ -118,7 +118,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_QUERY_TIME_ELAPSED:
-      return 1;
+      return screen->timestamp_valid_bits > 0;
 
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
    case PIPE_CAP_SAMPLE_SHADING:
@@ -186,7 +186,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.props.limits.minUniformBufferOffsetAlignment;
 
    case PIPE_CAP_QUERY_TIMESTAMP:
-      return screen->info.have_EXT_calibrated_timestamps;
+      return screen->info.have_EXT_calibrated_timestamps &&
+             screen->timestamp_valid_bits > 0;
 
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return screen->info.props.limits.minMemoryMapAlignment;
@@ -708,7 +709,6 @@ update_queue_props(struct zink_screen *screen)
       if (props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
          screen->gfx_queue = i;
          screen->timestamp_valid_bits = props[i].timestampValidBits;
-         assert(screen->timestamp_valid_bits);
          break;
       }
    }
