@@ -54,7 +54,7 @@ enum ConversionType
 //////////////////////////////////////////////////////////////////////////
 struct FetchJit : public BuilderGfxMem
 {
-    FetchJit(JitManager* pJitMgr) : BuilderGfxMem(pJitMgr) {}
+    FetchJit(JitManager* pJitMgr) : BuilderGfxMem(pJitMgr), mpFetchInfo(NULL) {}
 
     Function* Create(const FETCH_COMPILE_STATE& fetchState);
 
