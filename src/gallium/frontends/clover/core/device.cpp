@@ -204,6 +204,11 @@ device::max_compute_units() const {
                                       PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS)[0];
 }
 
+cl_uint
+device::max_printf_buffer_size() const {
+   return 1024 * 1024;
+}
+
 bool
 device::image_support() const {
    return get_compute_param<uint32_t>(pipe, ir_format(),

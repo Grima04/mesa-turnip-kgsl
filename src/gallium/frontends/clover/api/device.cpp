@@ -369,9 +369,7 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       break;
 
    case CL_DEVICE_PRINTF_BUFFER_SIZE:
-      // Per the spec, the minimum value for the FULL profile is 1 MB.
-      // However, clover is not ready yet to support it
-      buf.as_scalar<size_t>() = 0 /* 1024 */;
+      buf.as_scalar<size_t>() = dev.max_printf_buffer_size();
       break;
 
    case CL_DEVICE_PREFERRED_INTEROP_USER_SYNC:

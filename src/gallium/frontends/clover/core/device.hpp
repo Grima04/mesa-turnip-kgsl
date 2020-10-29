@@ -70,6 +70,7 @@ namespace clover {
       cl_ulong max_mem_alloc_size() const;
       cl_uint max_clock_frequency() const;
       cl_uint max_compute_units() const;
+      cl_uint max_printf_buffer_size() const;
       bool image_support() const;
       bool has_doubles() const;
       bool has_halves() const;
