@@ -576,6 +576,7 @@ TEST_F(glX_send_client_info_test, gl_versions_and_profiles_are_sane)
 
    const uint32_t all_valid_bits = GLX_CONTEXT_CORE_PROFILE_BIT_ARB
       | GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+   const uint32_t es_bit = GLX_CONTEXT_ES2_PROFILE_BIT_EXT;
 
    unsigned versions_below_3_0 = 0;
 
@@ -588,14 +589,24 @@ TEST_F(glX_send_client_info_test, gl_versions_and_profiles_are_sane)
        */
       switch (gl_versions[i * 3]) {
       case 1:
-	 EXPECT_GE(5u, gl_versions[i * 3 + 1]);
-	 EXPECT_EQ(0u, gl_versions[i * 3 + 2]);
-	 versions_below_3_0++;
+         if (gl_versions[i * 3 + 2] & es_bit) {
+            EXPECT_GE(1u, gl_versions[i * 3 + 1]);
+            EXPECT_EQ(es_bit, gl_versions[i * 3 + 2]);
+         } else {
+            EXPECT_GE(5u, gl_versions[i * 3 + 1]);
+            EXPECT_EQ(0u, gl_versions[i * 3 + 2]);
+            versions_below_3_0++;
+         }
 	 break;
       case 2:
-	 EXPECT_GE(1u, gl_versions[i * 3 + 1]);
-	 EXPECT_EQ(0u, gl_versions[i * 3 + 2]);
-	 versions_below_3_0++;
+         if (gl_versions[i * 3 + 2] & es_bit) {
+            EXPECT_EQ(0u, gl_versions[i * 3 + 1]);
+            EXPECT_EQ(es_bit, gl_versions[i * 3 + 2]);
+         } else {
+            EXPECT_GE(1u, gl_versions[i * 3 + 1]);
+            EXPECT_EQ(0u, gl_versions[i * 3 + 2]);
+            versions_below_3_0++;
+         }
 	 break;
       case 3:
 	 EXPECT_GE(3u, gl_versions[i * 3 + 1]);
@@ -603,14 +614,16 @@ TEST_F(glX_send_client_info_test, gl_versions_and_profiles_are_sane)
 	 /* Profiles were not introduced until OpenGL 3.2.
 	  */
 	 if (gl_versions[i * 3 + 1] < 2) {
-	    EXPECT_EQ(0u, gl_versions[i * 3 + 2]);
+	    EXPECT_EQ(0u, gl_versions[i * 3 + 2] & ~(es_bit));
+	 } else if (gl_versions[i * 3 + 1] == 2) {
+	    EXPECT_EQ(0u, gl_versions[i * 3 + 2] & ~(all_valid_bits | es_bit));
 	 } else {
-	    EXPECT_EQ(0u, gl_versions[i * 3 + 2] & ~all_valid_bits);
-	 }
+	    EXPECT_EQ(0u, gl_versions[i * 3 + 2] & ~(all_valid_bits));
+         }
 	 break;
       case 4:
-	 EXPECT_GE(2u, gl_versions[i * 3 + 1]);
-	 EXPECT_EQ(0u, gl_versions[i * 3 + 2] & ~all_valid_bits);
+	 EXPECT_GE(6u, gl_versions[i * 3 + 1]);
+	 EXPECT_EQ(0u, gl_versions[i * 3 + 2] & ~(all_valid_bits));
 	 break;
       }
    }
