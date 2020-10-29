@@ -6797,26 +6797,16 @@ void visit_load_sample_mask_in(isel_context *ctx, nir_intrinsic_instr *instr) {
       log2_ps_iter_samples = ctx->options->key.fs.log2_ps_iter_samples;
    }
 
-   /* The bit pattern matches that used by fixed function fragment
-    * processing. */
-   static const unsigned ps_iter_masks[] = {
-      0xffff, /* not used */
-      0x5555,
-      0x1111,
-      0x0101,
-      0x0001,
-   };
-   assert(log2_ps_iter_samples < ARRAY_SIZE(ps_iter_masks));
-
    Builder bld(ctx->program, ctx->block);
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
    if (log2_ps_iter_samples) {
+      /* gl_SampleMaskIn[0] = (SampleCoverage & (1 << gl_SampleID)). */
       Temp sample_id = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
                                 get_arg(ctx, ctx->args->ac.ancillary), Operand(8u), Operand(4u));
-      Temp ps_iter_mask = bld.copy(bld.def(v1), Operand(ps_iter_masks[log2_ps_iter_samples]));
-      Temp mask = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), sample_id, ps_iter_mask);
+      Temp mask = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), sample_id,
+                           bld.copy(bld.def(v1), Operand(1u)));
       bld.vop2(aco_opcode::v_and_b32, Definition(dst), mask, get_arg(ctx, ctx->args->ac.sample_coverage));
    } else {
       bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.sample_coverage));
