@@ -167,6 +167,22 @@ struct PhysRegInterval {
    }
 };
 
+/* Gets the stride for full (non-subdword) registers */
+uint32_t get_stride(RegClass rc) {
+    if (rc.type() == RegType::vgpr) {
+        return 1;
+    } else {
+        uint32_t size = rc.size();
+        if (size == 2) {
+            return 2;
+        } else if (size >= 4) {
+            return 4;
+        } else {
+            return 1;
+        }
+    }
+}
+
 struct DefInfo {
    PhysRegInterval bounds;
    uint8_t size;
@@ -175,16 +191,12 @@ struct DefInfo {
 
    DefInfo(ra_ctx& ctx, aco_ptr<Instruction>& instr, RegClass rc_, int operand) : rc(rc_) {
       size = rc.size();
-      stride = 1;
+      stride = get_stride(rc);
 
       if (rc.type() == RegType::vgpr) {
          bounds = { 256, (unsigned)ctx.program->max_reg_demand.vgpr };
       } else {
          bounds = { 0, (unsigned)ctx.program->max_reg_demand.sgpr };
-         if (size == 2)
-            stride = 2;
-         else if (size >= 4)
-            stride = 4;
       }
 
       if (rc.is_subdword() && operand >= 0) {
@@ -1190,23 +1202,18 @@ bool get_reg_specified(ra_ctx& ctx,
    if (!rc.is_subdword() && reg.byte())
       return false;
 
-   uint32_t size = rc.size();
-   uint32_t stride = 1;
+   const uint32_t stride = get_stride(rc);
    PhysRegInterval bounds;
 
    if (rc.type() == RegType::vgpr) {
       bounds = {256, (unsigned)ctx.program->max_reg_demand.vgpr };
    } else {
-      if (size == 2)
-         stride = 2;
-      else if (size >= 4)
-         stride = 4;
+      bounds = { 0, (unsigned)ctx.program->max_reg_demand.sgpr };
       if (reg % stride != 0)
          return false;
-      bounds = { 0, (unsigned)ctx.program->max_reg_demand.sgpr };
    }
 
-   PhysRegInterval reg_win = { reg.reg(), size };
+   PhysRegInterval reg_win = { reg.reg(), rc.size() };
    if (reg_win.lo() < bounds.lo() || reg_win.hi() > bounds.hi())
       return false;
 
@@ -1341,16 +1348,12 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    /* create_vector instructions have different costs w.r.t. register coalescing */
    uint32_t size = rc.size();
    uint32_t bytes = rc.bytes();
-   uint32_t stride = 1;
+   uint32_t stride = get_stride(rc);
    PhysRegInterval bounds;
    if (rc.type() == RegType::vgpr) {
       bounds = { 256, (unsigned)ctx.program->max_reg_demand.vgpr };
    } else {
       bounds = { 0, (unsigned)ctx.program->max_reg_demand.sgpr };
-      if (size == 2)
-         stride = 2;
-      else if (size >= 4)
-         stride = 4;
    }
 
    //TODO: improve p_create_vector for sub-dword vectors
