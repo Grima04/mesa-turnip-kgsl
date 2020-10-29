@@ -143,19 +143,10 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
 }
 
 static void
-batch_fini(struct fd_batch *batch)
+cleanup_submit(struct fd_batch *batch)
 {
-	DBG("%p", batch);
-
-	pipe_resource_reference(&batch->query_buf, NULL);
-
-	if (batch->in_fence_fd != -1)
-		close(batch->in_fence_fd);
-
-	/* in case batch wasn't flushed but fence was created: */
-	fd_fence_populate(batch->fence, 0, -1);
-
-	fd_fence_ref(&batch->fence, NULL);
+	if (!batch->submit)
+		return;
 
 	fd_ringbuffer_del(batch->draw);
 	fd_ringbuffer_del(batch->gmem);
@@ -192,6 +183,25 @@ batch_fini(struct fd_batch *batch)
 	}
 
 	fd_submit_del(batch->submit);
+	batch->submit = NULL;
+}
+
+static void
+batch_fini(struct fd_batch *batch)
+{
+	DBG("%p", batch);
+
+	pipe_resource_reference(&batch->query_buf, NULL);
+
+	if (batch->in_fence_fd != -1)
+		close(batch->in_fence_fd);
+
+	/* in case batch wasn't flushed but fence was created: */
+	fd_fence_populate(batch->fence, 0, -1);
+
+	fd_fence_ref(&batch->fence, NULL);
+
+	cleanup_submit(batch);
 
 	util_dynarray_fini(&batch->draw_patches);
 	util_dynarray_fini(&batch->fb_read_patches);
@@ -355,6 +365,7 @@ batch_flush(struct fd_batch *batch)
 	 */
 	fd_bc_invalidate_batch(batch, false);
 	fd_screen_unlock(batch->ctx->screen);
+	cleanup_submit(batch);
 	fd_batch_unlock_submit(batch);
 }
 
