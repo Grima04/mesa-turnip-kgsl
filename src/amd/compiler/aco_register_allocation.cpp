@@ -828,15 +828,14 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
             continue;
 
          for (unsigned i = 0; i < 4; i+= info.stride) {
-            if (entry.second[i] != 0)
-               continue;
+            /* check if there's a block of free bytes large enough to hold the register */
+            bool reg_found = std::all_of(&entry.second[i], &entry.second[std::min(4u, i + rc.bytes())],
+                                         [](unsigned v) { return v == 0; });
 
-            bool reg_found = true;
-            for (unsigned j = 1; reg_found && i + j < 4 && j < rc.bytes(); j++)
-               reg_found &= entry.second[i + j] == 0;
+            /* check if also the neighboring reg is free if needed */
+            if (reg_found && i + rc.bytes() > 4)
+                reg_found = (reg_file[entry.first + 1] == 0);
 
-            /* check neighboring reg if needed */
-            reg_found &= ((int)i <= 4 - (int)rc.bytes() || reg_file[entry.first + 1] == 0);
             if (reg_found) {
                PhysReg res{entry.first};
                res.reg_b += i;
