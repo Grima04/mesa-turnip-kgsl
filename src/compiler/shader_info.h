@@ -187,10 +187,9 @@ typedef struct shader_info {
     */
    bool uses_fddx_fddy:1;
 
-   /**
-    * True if this shader uses 64-bit ALU operations
-    */
-   bool uses_64bit:1;
+   /* Bitmask of bit-sizes used with ALU instructions. */
+   uint8_t bit_sizes_float;
+   uint8_t bit_sizes_int;
 
    /* Whether the first UBO is the default uniform buffer, i.e. uniforms. */
    bool first_ubo_is_default_ubo:1;
