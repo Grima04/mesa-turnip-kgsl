@@ -280,7 +280,9 @@ static void radeon_enc_begin_frame(struct pipe_video_codec *encoder,
    if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC) {
       struct pipe_h264_enc_picture_desc *pic = (struct pipe_h264_enc_picture_desc *)picture;
       need_rate_control =
-         enc->enc_pic.rc_layer_init.target_bit_rate != pic->rate_ctrl.target_bitrate;
+         (enc->enc_pic.rc_layer_init.target_bit_rate != pic->rate_ctrl.target_bitrate) ||
+         (enc->enc_pic.rc_layer_init.frame_rate_num != pic->rate_ctrl.frame_rate_num) ||
+         (enc->enc_pic.rc_layer_init.frame_rate_den != pic->rate_ctrl.frame_rate_den);
    } else if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_HEVC) {
       struct pipe_h265_enc_picture_desc *pic = (struct pipe_h265_enc_picture_desc *)picture;
       need_rate_control = enc->enc_pic.rc_layer_init.target_bit_rate != pic->rc.target_bitrate;
