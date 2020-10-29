@@ -814,6 +814,11 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    const VkSampleCountFlags supported_sample_counts =
       VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
 
+   struct timespec clock_res;
+   clock_getres(CLOCK_MONOTONIC, &clock_res);
+   const float timestamp_period =
+      clock_res.tv_sec * 1000000000.0f + clock_res.tv_nsec;
+
    /* FIXME: this will probably require an in-depth review */
    VkPhysicalDeviceLimits limits = {
       .maxImageDimension1D                      = 4096,
@@ -923,8 +928,8 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .sampledImageStencilSampleCounts          = supported_sample_counts,
       .storageImageSampleCounts                 = VK_SAMPLE_COUNT_1_BIT,
       .maxSampleMaskWords                       = 1,
-      .timestampComputeAndGraphics              = false,
-      .timestampPeriod                          = 0.0f,
+      .timestampComputeAndGraphics              = true,
+      .timestampPeriod                          = timestamp_period,
       .maxClipDistances                         = 8,
       .maxCullDistances                         = 0,
       .maxCombinedClipAndCullDistances          = 8,
@@ -990,7 +995,7 @@ v3dv_queue_family_properties = {
                  VK_QUEUE_COMPUTE_BIT |
                  VK_QUEUE_TRANSFER_BIT,
    .queueCount = 1,
-   .timestampValidBits = 0, /* FIXME */
+   .timestampValidBits = 64,
    .minImageTransferGranularity = { 1, 1, 1 },
 };
 

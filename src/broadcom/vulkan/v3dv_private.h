@@ -744,6 +744,7 @@ enum v3dv_job_type {
    V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS,
    V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE,
    V3DV_JOB_TYPE_CPU_CSD_INDIRECT,
+   V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY,
 };
 
 struct v3dv_reset_query_cpu_job_info {
@@ -808,6 +809,11 @@ struct v3dv_csd_indirect_cpu_job_info {
    uint32_t wg_size;
    uint32_t *wg_uniform_offsets[3];
    bool needs_wg_uniform_rewrite;
+};
+
+struct v3dv_timestamp_query_cpu_job_info {
+   struct v3dv_query_pool *pool;
+   uint32_t query;
 };
 
 struct v3dv_job {
@@ -881,6 +887,7 @@ struct v3dv_job {
       struct v3dv_clear_attachments_cpu_job_info    clear_attachments;
       struct v3dv_copy_buffer_to_image_cpu_job_info copy_buffer_to_image;
       struct v3dv_csd_indirect_cpu_job_info         csd_indirect;
+      struct v3dv_timestamp_query_cpu_job_info      query_timestamp;
    } cpu;
 
    /* Job specs for TFU jobs */
@@ -1084,10 +1091,14 @@ struct v3dv_resource {
 
 struct v3dv_query {
    bool maybe_available;
-   struct v3dv_bo *bo;
+   union {
+      struct v3dv_bo *bo; /* Used by GPU queries (occlusion) */
+      uint64_t value; /* Used by CPU queries (timestamp) */
+   };
 };
 
 struct v3dv_query_pool {
+   VkQueryType query_type;
    uint32_t query_count;
    struct v3dv_query *queries;
 };

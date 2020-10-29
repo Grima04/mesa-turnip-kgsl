@@ -5021,7 +5021,30 @@ v3dv_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
                        VkQueryPool queryPool,
                        uint32_t query)
 {
-   unreachable("Timestamp queries are not supported.");
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_query_pool, query_pool, queryPool);
+
+   /* If this is called inside a render pass we need to finish the current
+    * job here...
+    */
+   if (cmd_buffer->state.pass)
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                     V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY,
+                                     cmd_buffer, -1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
+   job->cpu.query_timestamp.pool = query_pool;
+   job->cpu.query_timestamp.query = query;
+
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
+   cmd_buffer->state.job = NULL;
+
+   /* ...and resume the subpass after the timestamp */
+   if (cmd_buffer->state.pass)
+      v3dv_cmd_buffer_subpass_resume(cmd_buffer, cmd_buffer->state.subpass_idx);
 }
 
 static void

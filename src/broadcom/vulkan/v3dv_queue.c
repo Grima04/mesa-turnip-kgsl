@@ -154,22 +154,37 @@ static VkResult
 handle_reset_query_cpu_job(struct v3dv_job *job)
 {
    /* We are about to reset query counters so we need to make sure that
-    * The GPU is not using them.
+    * The GPU is not using them. The exception is timestamp queries, since
+    * we handle those in the CPU.
     *
     * FIXME: we could avoid blocking the main thread for this if we use
     *        submission thread.
     */
-   VkResult result = gpu_queue_wait_idle(&job->device->queue);
-   if (result != VK_SUCCESS)
-      return result;
-
    struct v3dv_reset_query_cpu_job_info *info = &job->cpu.query_reset;
+   assert(info->pool);
+
+   if (info->pool->query_type == VK_QUERY_TYPE_OCCLUSION) {
+      VkResult result = gpu_queue_wait_idle(&job->device->queue);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
    for (uint32_t i = info->first; i < info->first + info->count; i++) {
       assert(i < info->pool->query_count);
       struct v3dv_query *query = &info->pool->queries[i];
       query->maybe_available = false;
-      uint32_t *counter = (uint32_t *) query->bo->map;
-      *counter = 0;
+      switch (info->pool->query_type) {
+      case VK_QUERY_TYPE_OCCLUSION: {
+         uint32_t *counter = (uint32_t *) query->bo->map;
+         *counter = 0;
+         break;
+      }
+      case VK_QUERY_TYPE_TIMESTAMP:
+         query->value = 0;
+         break;
+      default:
+         unreachable("Unsupported query type");
+      }
    }
 
    return VK_SUCCESS;
@@ -415,6 +430,26 @@ handle_copy_buffer_to_image_cpu_job(struct v3dv_job *job)
          src_ptr + src_offset, info->buffer_stride,
          slice->tiling, info->image->cpp, slice->padded_height, &box);
    }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+handle_timestamp_query_cpu_job(struct v3dv_job *job)
+{
+   assert(job->type == V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY);
+   struct v3dv_timestamp_query_cpu_job_info *info = &job->cpu.query_timestamp;
+
+   /* Wait for completion of all work queued before the timestamp query */
+   v3dv_QueueWaitIdle(v3dv_queue_to_handle(&job->device->queue));
+
+   /* Compute timestamp */
+   struct timespec t;
+   clock_gettime(CLOCK_MONOTONIC, &t);
+   assert(info->query < info->pool->query_count);
+   struct v3dv_query *query = &info->pool->queries[info->query];
+   query->maybe_available = true;
+   query->value = t.tv_sec * 1000000000ull + t.tv_nsec;
 
    return VK_SUCCESS;
 }
@@ -705,6 +740,8 @@ queue_submit_job(struct v3dv_queue *queue,
       return handle_copy_buffer_to_image_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
       return handle_csd_indirect_cpu_job(queue, job, do_sem_wait);
+   case V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY:
+      return handle_timestamp_query_cpu_job(job);
    default:
       unreachable("Unhandled job type");
    }
