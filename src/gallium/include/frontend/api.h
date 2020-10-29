@@ -231,7 +231,6 @@ struct st_config_options
    bool vs_position_always_invariant;
    bool force_glsl_abs_sqrt;
    bool allow_glsl_cross_stage_interpolation_mismatch;
-   bool allow_glsl_layout_qualifier_on_function_parameters;
    bool allow_draw_out_of_order;
    bool force_integer_tex_nearest;
    bool force_gl_names_reuse;

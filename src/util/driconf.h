@@ -199,10 +199,6 @@
    DRI_CONF_OPT_B(allow_glsl_cross_stage_interpolation_mismatch, def,   \
                   "Allow interpolation qualifier mismatch across shader stages")
 
-#define DRI_CONF_ALLOW_GLSL_LAYOUT_QUALIFIER_ON_FUNCTION_PARAMETERS(def) \
-   DRI_CONF_OPT_B(allow_glsl_layout_qualifier_on_function_parameters, def, \
-                  "Allow layout qualifiers on function parameters.")
-
 #define DRI_CONF_ALLOW_DRAW_OUT_OF_ORDER(def) \
    DRI_CONF_OPT_B(allow_draw_out_of_order, def, \
                   "Allow out-of-order draw optimizations. Set when Z fighting doesn't have to be accurate.")

@@ -3871,11 +3871,6 @@ struct gl_constants
    GLboolean AllowHigherCompatVersion;
 
    /**
-    * Allow layout qualifiers on function parameters.
-    */
-   GLboolean AllowLayoutQualifiersOnFunctionParameters;
-
-   /**
     * Allow extra tokens at end of preprocessor directives. The CTS now tests
     * to make sure these are not allowed. However, previously drivers would
     * allow them to exist and just issue a warning so some old applications
