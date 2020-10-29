@@ -1021,7 +1021,7 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 		struct winsys_handle handle;
 
 		/* note: alignment is wrong for a6xx */
-		scanout_templat.width0 = align(tmpl->width0, screen->gmem_alignw);
+		scanout_templat.width0 = align(tmpl->width0, screen->info.gmem_align_w);
 
 		scanout = renderonly_scanout_for_resource(&scanout_templat,
 												  screen->ro, &handle);
@@ -1113,14 +1113,14 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	slice->offset = handle->offset;
 	slice->size0 = handle->stride * prsc->height0;
 
-	/* use a pitchalign of gmem_alignw pixels, because GMEM resolve for
+	/* use a pitchalign of gmem_align_w pixels, because GMEM resolve for
 	 * lower alignments is not implemented (but possible for a6xx at least)
 	 *
 	 * for UBWC-enabled resources, layout_resource_for_modifier will further
 	 * validate the pitch and set the right pitchalign
 	 */
 	rsc->layout.pitchalign =
-		fdl_cpp_shift(&rsc->layout) + util_logbase2(screen->gmem_alignw);
+		fdl_cpp_shift(&rsc->layout) + util_logbase2(screen->info.gmem_align_w);
 
 	/* apply the minimum pitchalign (note: actually 4 for a3xx but doesn't matter) */
 	if (is_a6xx(screen) || is_a5xx(screen))

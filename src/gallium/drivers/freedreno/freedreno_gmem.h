@@ -93,7 +93,6 @@ bool fd_gmem_needs_restore(struct fd_batch *batch, const struct fd_tile *tile,
 		uint32_t buffers);
 
 struct pipe_screen;
-void fd_gmem_init_limits(struct pipe_screen *pscreen);
 void fd_gmem_screen_init(struct pipe_screen *pscreen);
 void fd_gmem_screen_fini(struct pipe_screen *pscreen);
 

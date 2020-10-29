@@ -178,13 +178,13 @@ layout_gmem(struct gmem_key *key, uint32_t nbins_x, uint32_t nbins_y,
 		return false;
 
 	uint32_t bin_w, bin_h;
-	bin_w = div_align(key->width, nbins_x, screen->tile_alignw);
-	bin_h = div_align(key->height, nbins_y, screen->tile_alignh);
+	bin_w = div_align(key->width, nbins_x, screen->info.tile_align_w);
+	bin_h = div_align(key->height, nbins_y, screen->info.tile_align_h);
 
-	if (bin_w > screen->tile_maxw)
+	if (bin_w > screen->info.tile_max_w)
 		return false;
 
-	if (bin_h > screen->tile_maxh)
+	if (bin_h > screen->info.tile_max_h)
 		return false;
 
 	gmem->bin_w = bin_w;
@@ -221,8 +221,8 @@ calc_nbins(struct gmem_key *key, struct fd_gmem_stateobj *gmem)
 {
 	struct fd_screen *screen = gmem->screen;
 	uint32_t nbins_x = 1, nbins_y = 1;
-	uint32_t max_width = screen->tile_maxw;
-	uint32_t max_height = screen->tile_maxh;
+	uint32_t max_width = screen->info.tile_max_w;
+	uint32_t max_height = screen->info.tile_max_h;
 
 	if (fd_mesa_debug & FD_DBG_MSGS) {
 		debug_printf("binning input: cbuf cpp:");
@@ -235,11 +235,11 @@ calc_nbins(struct gmem_key *key, struct fd_gmem_stateobj *gmem)
 	/* first, find a bin size that satisfies the maximum width/
 	 * height restrictions:
 	 */
-	while (div_align(key->width, nbins_x, screen->tile_alignw) > max_width) {
+	while (div_align(key->width, nbins_x, screen->info.tile_align_w) > max_width) {
 		nbins_x++;
 	}
 
-	while (div_align(key->height, nbins_y, screen->tile_alignh) > max_height) {
+	while (div_align(key->height, nbins_y, screen->info.tile_align_h) > max_height) {
 		nbins_y++;
 	}
 
@@ -280,7 +280,7 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	gmem->key = key;
 	list_inithead(&gmem->node);
 
-	const unsigned npipes = screen->num_vsc_pipes;
+	const unsigned npipes = screen->info.num_vsc_pipes;
 	uint32_t i, j, t, xoff, yoff;
 	uint32_t tpp_x, tpp_y;
 	int tile_n[npipes];
@@ -500,8 +500,8 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
 		}
 
 		/* round down to multiple of alignment: */
-		key->minx = scissor->minx & ~(screen->gmem_alignw - 1);
-		key->miny = scissor->miny & ~(screen->gmem_alignh - 1);
+		key->minx = scissor->minx & ~(screen->info.gmem_align_w - 1);
+		key->miny = scissor->miny & ~(screen->info.gmem_align_h - 1);
 		key->width = scissor->maxx - key->minx;
 		key->height = scissor->maxy - key->miny;
 	}
@@ -784,58 +784,6 @@ static inline unsigned
 max_bitfield_val(unsigned high, unsigned low, unsigned shift)
 {
 	return BITFIELD_MASK(high - low) << shift;
-}
-
-void
-fd_gmem_init_limits(struct pipe_screen *pscreen)
-{
-	struct fd_screen *screen = fd_screen(pscreen);
-
-	switch (screen->gpu_id) {
-	case 600 ... 699:
-		screen->gmem_alignw = 16;
-		screen->gmem_alignh = 4;
-		screen->tile_alignw = is_a650(screen) ? 96 : 32;
-		screen->tile_alignh = 32;
-		/* based on GRAS_BIN_CONTROL: */
-		screen->tile_maxw   = 1024;  /* max_bitfield_val(5, 0, 5) */
-		screen->tile_maxh   = max_bitfield_val(14, 8, 4);
-		screen->num_vsc_pipes = 32;
-		break;
-	case 500 ... 599:
-		screen->gmem_alignw = screen->tile_alignw = 64;
-		screen->gmem_alignh = screen->tile_alignh = 32;
-		/* based on VSC_BIN_SIZE: */
-		screen->tile_maxw   = 1024;  /* max_bitfield_val(7, 0, 5) */
-		screen->tile_maxh   = max_bitfield_val(16, 9, 5);
-		screen->num_vsc_pipes = 16;
-		break;
-	case 400 ... 499:
-		screen->gmem_alignw = screen->tile_alignw = 32;
-		screen->gmem_alignh = screen->tile_alignh = 32;
-		/* based on VSC_BIN_SIZE: */
-		screen->tile_maxw   = 1024;  /* max_bitfield_val(4, 0, 5) */
-		screen->tile_maxh   = max_bitfield_val(9, 5, 5);
-		screen->num_vsc_pipes = 8;
-		break;
-	case 300 ... 399:
-		screen->gmem_alignw = screen->tile_alignw = 32;
-		screen->gmem_alignh = screen->tile_alignh = 32;
-		/* based on VSC_BIN_SIZE: */
-		screen->tile_maxw   = 992;  /* max_bitfield_val(4, 0, 5) */
-		screen->tile_maxh   = max_bitfield_val(9, 5, 5);
-		screen->num_vsc_pipes = 8;
-		break;
-	case 200 ... 299:
-		screen->gmem_alignw = screen->tile_alignw = 32;
-		screen->gmem_alignh = screen->tile_alignh = 32;
-		screen->tile_maxw   = 512;
-		screen->tile_maxh   = ~0; // TODO
-		screen->num_vsc_pipes = 8;
-		break;
-	default:
-		unreachable("unsupported GPU");
-	}
 }
 
 void

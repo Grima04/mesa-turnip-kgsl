@@ -992,7 +992,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 		goto fail;
 	}
 
-	fd_gmem_init_limits(pscreen);
+	freedreno_dev_info_init(&screen->info, screen->gpu_id);
 
 	if (fd_mesa_debug & FD_DBG_PERFC) {
 		screen->perfcntr_groups = fd_perfcntrs(screen->gpu_id,
