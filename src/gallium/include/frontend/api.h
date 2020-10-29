@@ -220,6 +220,7 @@ struct st_config_options
    bool disable_arb_gpu_shader5;
    bool force_glsl_extensions_warn;
    unsigned force_glsl_version;
+   bool allow_extra_pp_tokens;
    bool allow_glsl_extension_directive_midshader;
    bool allow_glsl_120_subset_in_110;
    bool allow_glsl_builtin_const_expression;

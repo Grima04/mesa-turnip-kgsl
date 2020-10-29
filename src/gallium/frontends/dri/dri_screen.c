@@ -72,6 +72,8 @@ dri_fill_st_options(struct dri_screen *screen)
       driQueryOptionb(optionCache, "force_glsl_extensions_warn");
    options->force_glsl_version =
       driQueryOptioni(optionCache, "force_glsl_version");
+   options->allow_extra_pp_tokens =
+      driQueryOptionb(optionCache, "allow_extra_pp_tokens");
    options->allow_glsl_extension_directive_midshader =
       driQueryOptionb(optionCache, "allow_glsl_extension_directive_midshader");
    options->allow_glsl_120_subset_in_110 =

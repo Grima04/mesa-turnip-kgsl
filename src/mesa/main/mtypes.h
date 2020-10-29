@@ -3876,6 +3876,14 @@ struct gl_constants
    GLboolean AllowLayoutQualifiersOnFunctionParameters;
 
    /**
+    * Allow extra tokens at end of preprocessor directives. The CTS now tests
+    * to make sure these are not allowed. However, previously drivers would
+    * allow them to exist and just issue a warning so some old applications
+    * depend on this.
+    */
+   GLboolean AllowExtraPPTokens;
+
+   /**
     * Force computing the absolute value for sqrt() and inversesqrt() to follow
     * D3D9 when apps rely on this behaviour.
     */
