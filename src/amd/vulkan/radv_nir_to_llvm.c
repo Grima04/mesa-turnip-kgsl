@@ -758,10 +758,15 @@ static LLVMValueRef load_sample_mask_in(struct ac_shader_abi *abi)
 	uint32_t ps_iter_mask = ps_iter_masks[log2_ps_iter_samples];
 
 	LLVMValueRef result, sample_id;
-	sample_id = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.ancillary), 8, 4);
-	sample_id = LLVMBuildShl(ctx->ac.builder, LLVMConstInt(ctx->ac.i32, ps_iter_mask, false), sample_id, "");
-	result = LLVMBuildAnd(ctx->ac.builder, sample_id,
-			      ac_get_arg(&ctx->ac, ctx->args->ac.sample_coverage), "");
+	if (log2_ps_iter_samples) {
+		sample_id = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.ancillary), 8, 4);
+		sample_id = LLVMBuildShl(ctx->ac.builder, LLVMConstInt(ctx->ac.i32, ps_iter_mask, false), sample_id, "");
+		result = LLVMBuildAnd(ctx->ac.builder, sample_id,
+				      ac_get_arg(&ctx->ac, ctx->args->ac.sample_coverage), "");
+	} else {
+		result = ac_get_arg(&ctx->ac, ctx->args->ac.sample_coverage);
+	}
+
 	return result;
 }
 
