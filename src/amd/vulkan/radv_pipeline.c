@@ -3101,9 +3101,6 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		if (nir[i]) {
 			radv_start_feedback(stage_feedbacks[i]);
 
-			/* do this again since information such as outputs_read can be out-of-date */
-			nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
-
 			if (!radv_use_llvm_for_stage(device, i)) {
 				NIR_PASS_V(nir[i], nir_lower_non_uniform_access,
 				           nir_lower_non_uniform_ubo_access |
@@ -3112,8 +3109,6 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				           nir_lower_non_uniform_image_access);
 			}
 			NIR_PASS_V(nir[i], nir_lower_memory_model);
-
-			radv_lower_io(device, nir[i]);
 
 			bool lower_to_scalar = false;
 			bool lower_pack = false;
@@ -3134,6 +3129,11 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				lower_to_scalar = true;
 				lower_pack = true;
 			}
+
+			/* do this again since information such as outputs_read can be out-of-date */
+			nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
+
+			radv_lower_io(device, nir[i]);
 
 			lower_to_scalar |= nir_opt_shrink_vectors(nir[i]);
 
