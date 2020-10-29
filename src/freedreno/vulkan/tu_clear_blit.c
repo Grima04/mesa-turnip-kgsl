@@ -2418,6 +2418,7 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          uint32_t a,
                          uint32_t gmem_a)
 {
+   struct tu_physical_device *phys_dev = cmd->device->physical_device;
    const VkRect2D *render_area = &cmd->state.render_area;
    struct tu_render_pass_attachment *dst = &cmd->state.pass->attachments[a];
    struct tu_image_view *iview = cmd->state.framebuffer->attachments[a].attachment;
@@ -2439,8 +2440,9 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       y2 != iview->extent.height || iview->need_y2_align;
 
    bool unaligned =
-      x1 % GMEM_ALIGN_W || (x2 % GMEM_ALIGN_W && x2 != iview->extent.width) ||
-      y1 % GMEM_ALIGN_H || (y2 % GMEM_ALIGN_H && need_y2_align);
+      x1 % phys_dev->info.gmem_align_w ||
+      (x2 % phys_dev->info.gmem_align_w && x2 != iview->extent.width) ||
+      y1 % phys_dev->info.gmem_align_h || (y2 % phys_dev->info.gmem_align_h && need_y2_align);
 
    /* use fast path when render area is aligned, except for unsupported resolve cases */
    if (!unaligned && (a == gmem_a || blit_can_resolve(dst->format))) {

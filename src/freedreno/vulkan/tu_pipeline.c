@@ -1482,7 +1482,7 @@ tu6_emit_program(struct tu_cs *cs,
    tu_cs_emit(cs, multiview_cntl);
 
    if (multiview_cntl &&
-       builder->device->physical_device->supports_multiview_mask) {
+       builder->device->physical_device->info.a6xx.supports_multiview_mask) {
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_MASK, 1);
       tu_cs_emit(cs, builder->multiview_mask);
    }

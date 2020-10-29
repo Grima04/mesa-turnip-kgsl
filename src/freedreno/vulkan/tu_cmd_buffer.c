@@ -160,8 +160,8 @@ tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
       tu_cs_emit_regs(cs,
                       A6XX_RB_CCU_CNTL(.offset =
                                           ccu_state == TU_CMD_CCU_GMEM ?
-                                          phys_dev->ccu_offset_gmem :
-                                          phys_dev->ccu_offset_bypass,
+                                          phys_dev->info.a6xx.ccu_offset_gmem :
+                                          phys_dev->info.a6xx.ccu_offset_bypass,
                                        .gmem = ccu_state == TU_CMD_CCU_GMEM));
       cmd_buffer->state.ccu_state = ccu_state;
    }
@@ -369,7 +369,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
 static void
 tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool align)
 {
-
+   struct tu_physical_device *phys_dev = cmd->device->physical_device;
    const VkRect2D *render_area = &cmd->state.render_area;
 
    /* Avoid assertion fails with an empty render area at (0, 0) where the
@@ -388,10 +388,10 @@ tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool align)
    uint32_t y2 = y1 + render_area->extent.height - 1;
 
    if (align) {
-      x1 = x1 & ~(GMEM_ALIGN_W - 1);
-      y1 = y1 & ~(GMEM_ALIGN_H - 1);
-      x2 = ALIGN_POT(x2 + 1, GMEM_ALIGN_W) - 1;
-      y2 = ALIGN_POT(y2 + 1, GMEM_ALIGN_H) - 1;
+      x1 = x1 & ~(phys_dev->info.gmem_align_w - 1);
+      y1 = y1 & ~(phys_dev->info.gmem_align_h - 1);
+      x2 = ALIGN_POT(x2 + 1, phys_dev->info.gmem_align_w) - 1;
+      y2 = ALIGN_POT(y2 + 1, phys_dev->info.gmem_align_h) - 1;
    }
 
    tu_cs_emit_regs(cs,
@@ -729,7 +729,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       ~(TU_CMD_FLAG_WAIT_FOR_IDLE | TU_CMD_FLAG_CACHE_INVALIDATE);
 
    tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
+                   A6XX_RB_CCU_CNTL(.offset = phys_dev->info.a6xx.ccu_offset_bypass));
    cmd->state.ccu_state = TU_CMD_CCU_SYSMEM;
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E04, 0x00100000);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE04, 0x8);
@@ -939,10 +939,10 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    update_vsc_pipe(cmd, cs);
 
    tu_cs_emit_regs(cs,
-                   A6XX_PC_UNKNOWN_9805(.unknown = phys_dev->magic.PC_UNKNOWN_9805));
+                   A6XX_PC_UNKNOWN_9805(.unknown = phys_dev->info.a6xx.magic.PC_UNKNOWN_9805));
 
    tu_cs_emit_regs(cs,
-                   A6XX_SP_UNKNOWN_A0F8(.unknown = phys_dev->magic.SP_UNKNOWN_A0F8));
+                   A6XX_SP_UNKNOWN_A0F8(.unknown = phys_dev->info.a6xx.magic.SP_UNKNOWN_A0F8));
 
    tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
    tu_cs_emit(cs, UNK_2C);
@@ -1226,9 +1226,9 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit_regs(cs,
                       A6XX_VFD_MODE_CNTL(0));
 
-      tu_cs_emit_regs(cs, A6XX_PC_UNKNOWN_9805(.unknown = phys_dev->magic.PC_UNKNOWN_9805));
+      tu_cs_emit_regs(cs, A6XX_PC_UNKNOWN_9805(.unknown = phys_dev->info.a6xx.magic.PC_UNKNOWN_9805));
 
-      tu_cs_emit_regs(cs, A6XX_SP_UNKNOWN_A0F8(.unknown = phys_dev->magic.SP_UNKNOWN_A0F8));
+      tu_cs_emit_regs(cs, A6XX_SP_UNKNOWN_A0F8(.unknown = phys_dev->info.a6xx.magic.SP_UNKNOWN_A0F8));
 
       tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
       tu_cs_emit(cs, 0x1);

@@ -63,6 +63,7 @@
 #include "adreno_pm4.xml.h"
 #include "a6xx.xml.h"
 #include "fdl/freedreno_layout.h"
+#include "common/freedreno_dev_info.h"
 
 #include "tu_descriptor_set.h"
 #include "tu_extensions.h"
@@ -196,20 +197,8 @@ struct tu_physical_device
    unsigned gpu_id;
    uint32_t gmem_size;
    uint64_t gmem_base;
-   uint32_t ccu_offset_gmem;
-   uint32_t ccu_offset_bypass;
-   /* alignment for size of tiles */
-   uint32_t tile_align_w;
-#define TILE_ALIGN_H 16
-   /* gmem store/load granularity */
-#define GMEM_ALIGN_W 16
-#define GMEM_ALIGN_H 4
-   bool supports_multiview_mask;
 
-   struct {
-      uint32_t PC_UNKNOWN_9805;
-      uint32_t SP_UNKNOWN_A0F8;
-   } magic;
+   struct freedreno_dev_info info;
 
    int msm_major_version;
    int msm_minor_version;

@@ -80,29 +80,10 @@ tu_physical_device_init(struct tu_physical_device *device,
    switch (device->gpu_id) {
    case 615:
    case 618:
-      device->ccu_offset_gmem = 0x7c000; /* 0x7e000 in some cases? */
-      device->ccu_offset_bypass = 0x10000;
-      device->tile_align_w = 32;
-      device->magic.PC_UNKNOWN_9805 = 0x0;
-      device->magic.SP_UNKNOWN_A0F8 = 0x0;
-      device->supports_multiview_mask = false; /* TODO */
-      break;
    case 630:
    case 640:
-      device->ccu_offset_gmem = 0xf8000;
-      device->ccu_offset_bypass = 0x20000;
-      device->tile_align_w = 32;
-      device->magic.PC_UNKNOWN_9805 = 0x1;
-      device->magic.SP_UNKNOWN_A0F8 = 0x1;
-      device->supports_multiview_mask = device->gpu_id != 630;
-      break;
    case 650:
-      device->ccu_offset_gmem = 0x114000;
-      device->ccu_offset_bypass = 0x30000;
-      device->tile_align_w = 96;
-      device->magic.PC_UNKNOWN_9805 = 0x2;
-      device->magic.SP_UNKNOWN_A0F8 = 0x2;
-      device->supports_multiview_mask = true;
+      freedreno_dev_info_init(&device->info, device->gpu_id);
       break;
    default:
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,

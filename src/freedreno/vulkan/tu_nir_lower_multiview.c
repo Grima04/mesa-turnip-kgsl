@@ -78,7 +78,7 @@ tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, bool *multi_pos_output,
 
    bool progress = false;
 
-   if (!dev->physical_device->supports_multiview_mask)
+   if (!dev->physical_device->info.a6xx.supports_multiview_mask)
       NIR_PASS(progress, nir, lower_multiview_mask, &mask);
 
    unsigned num_views = util_logbase2(mask) + 1;
