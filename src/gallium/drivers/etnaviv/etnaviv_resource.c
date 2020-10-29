@@ -307,14 +307,12 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
    uint32_t flags = DRM_ETNA_GEM_CACHE_WC;
    if (templat->bind & PIPE_BIND_VERTEX_BUFFER)
       flags |= DRM_ETNA_GEM_FORCE_MMU;
-   struct etna_bo *bo = etna_bo_new(screen->dev, size, flags);
-   if (unlikely(bo == NULL)) {
+
+   rsc->bo = etna_bo_new(screen->dev, size, flags);
+   if (unlikely(!rsc->bo)) {
       BUG("Problem allocating video memory for resource");
       goto free_rsc;
    }
-
-   rsc->bo = bo;
-   rsc->ts_bo = 0; /* TS is only created when first bound to surface */
 
    if (DBG_ENABLED(ETNA_DBG_ZERO)) {
       void *map = etna_bo_map(bo);
