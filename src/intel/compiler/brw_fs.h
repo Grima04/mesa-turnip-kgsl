@@ -397,6 +397,7 @@ public:
       uint8_t dest_depth_reg[2];
       uint8_t sample_pos_reg[2];
       uint8_t sample_mask_in_reg[2];
+      uint8_t depth_w_coef_reg[2];
       uint8_t barycentric_coord_reg[BRW_BARYCENTRIC_MODE_COUNT][2];
       uint8_t local_invocation_id_reg[2];
 
@@ -409,6 +410,7 @@ public:
 
    fs_reg pixel_x;
    fs_reg pixel_y;
+   fs_reg pixel_z;
    fs_reg wpos_w;
    fs_reg pixel_w;
    fs_reg delta_xy[BRW_BARYCENTRIC_MODE_COUNT];

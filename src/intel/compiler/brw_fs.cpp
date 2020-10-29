@@ -754,8 +754,11 @@ fs_inst::components_read(unsigned i) const
 
    case FS_OPCODE_PIXEL_X:
    case FS_OPCODE_PIXEL_Y:
-      assert(i == 0);
-      return 2;
+      assert(i < 2);
+      if (i == 0)
+         return 2;
+      else
+         return 1;
 
    case FS_OPCODE_FB_WRITE_LOGICAL:
       assert(src[FB_WRITE_LOGICAL_SRC_COMPONENTS].file == IMM);
@@ -1241,7 +1244,7 @@ fs_visitor::emit_fragcoord_interpolation(fs_reg wpos)
 
    /* gl_FragCoord.z */
    if (devinfo->ver >= 6) {
-      bld.MOV(wpos, fetch_payload_reg(bld, payload.source_depth_reg));
+      bld.MOV(wpos, this->pixel_z);
    } else {
       bld.emit(FS_OPCODE_LINTERP, wpos,
                this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL],
@@ -7829,6 +7832,12 @@ fs_visitor::setup_fs_payload_gfx6()
          payload.sample_mask_in_reg[j] = payload.num_regs;
          payload.num_regs += payload_width / 8;
       }
+
+      /* R66: Source Depth and/or W Attribute Vertex Deltas */
+      if (prog_data->uses_depth_w_coefficients) {
+         payload.depth_w_coef_reg[j] = payload.num_regs;
+         payload.num_regs++;
+      }
    }
 
    if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
@@ -9099,9 +9108,6 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
                               const struct brw_wm_prog_key *key,
                               struct brw_wm_prog_data *prog_data)
 {
-   prog_data->uses_src_depth = prog_data->uses_src_w =
-      BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD);
-
    /* key->alpha_test_func means simulating alpha testing via discards,
     * so the shader definitely kills pixels.
     */
@@ -9153,6 +9159,15 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
       !prog_data->uses_sample_mask &&
       (prog_data->computed_depth_mode == BRW_PSCDEPTH_OFF) &&
       !prog_data->computed_stencil;
+
+   prog_data->uses_src_w =
+      BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD);
+   prog_data->uses_src_depth =
+      BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) &&
+      !prog_data->per_coarse_pixel_dispatch;
+   prog_data->uses_depth_w_coefficients =
+      BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) &&
+      prog_data->per_coarse_pixel_dispatch;
 
    calculate_urb_setup(devinfo, key, prog_data, shader);
    brw_compute_flat_inputs(prog_data, shader);

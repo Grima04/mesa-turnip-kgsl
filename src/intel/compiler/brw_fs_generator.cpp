@@ -2289,13 +2289,27 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 	 break;
       case FS_OPCODE_PIXEL_X:
          assert(src[0].type == BRW_REGISTER_TYPE_UW);
+         assert(src[1].type == BRW_REGISTER_TYPE_UW);
          src[0].subnr = 0 * type_sz(src[0].type);
-         brw_MOV(p, dst, stride(src[0], 8, 4, 1));
+         if (src[1].file == BRW_IMMEDIATE_VALUE) {
+            assert(src[1].ud == 0);
+            brw_MOV(p, dst, stride(src[0], 8, 4, 1));
+         } else {
+            /* Coarse pixel case */
+            brw_ADD(p, dst, stride(src[0], 8, 4, 1), src[1]);
+         }
          break;
       case FS_OPCODE_PIXEL_Y:
          assert(src[0].type == BRW_REGISTER_TYPE_UW);
+         assert(src[1].type == BRW_REGISTER_TYPE_UW);
          src[0].subnr = 4 * type_sz(src[0].type);
-         brw_MOV(p, dst, stride(src[0], 8, 4, 1));
+         if (src[1].file == BRW_IMMEDIATE_VALUE) {
+            assert(src[1].ud == 0);
+            brw_MOV(p, dst, stride(src[0], 8, 4, 1));
+         } else {
+            /* Coarse pixel case */
+            brw_ADD(p, dst, stride(src[0], 8, 4, 1), src[1]);
+         }
          break;
 
       case SHADER_OPCODE_SEND:

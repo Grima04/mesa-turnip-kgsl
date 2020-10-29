@@ -845,6 +845,7 @@ struct brw_wm_prog_data {
    bool uses_kill;
    bool uses_src_depth;
    bool uses_src_w;
+   bool uses_depth_w_coefficients;
    bool uses_sample_mask;
    bool has_render_target_reads;
    bool has_side_effects;
