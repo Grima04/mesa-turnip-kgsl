@@ -440,11 +440,12 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
          .gfx_bindless = 0x1f,
          .cs_bindless = 0x1f));
 
-   tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, &vs, global_iova(cmd, shaders[GLOBAL_SH_VS]));
-   tu6_emit_xs_config(cs, MESA_SHADER_TESS_CTRL, NULL, 0);
-   tu6_emit_xs_config(cs, MESA_SHADER_TESS_EVAL, NULL, 0);
-   tu6_emit_xs_config(cs, MESA_SHADER_GEOMETRY, NULL, 0);
-   tu6_emit_xs_config(cs, MESA_SHADER_FRAGMENT, &fs,
+   struct tu_pvtmem_config pvtmem = {};
+   tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, &vs, &pvtmem, global_iova(cmd, shaders[GLOBAL_SH_VS]));
+   tu6_emit_xs_config(cs, MESA_SHADER_TESS_CTRL, NULL, &pvtmem, 0);
+   tu6_emit_xs_config(cs, MESA_SHADER_TESS_EVAL, NULL, &pvtmem, 0);
+   tu6_emit_xs_config(cs, MESA_SHADER_GEOMETRY, NULL, &pvtmem, 0);
+   tu6_emit_xs_config(cs, MESA_SHADER_FRAGMENT, &fs, &pvtmem,
          global_iova(cmd, shaders[blit ? GLOBAL_SH_FS_BLIT : (GLOBAL_SH_FS_CLEAR0 + num_rts)]));
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());

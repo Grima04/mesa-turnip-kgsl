@@ -1156,10 +1156,18 @@ void tu6_emit_window_scissor(struct tu_cs *cs, uint32_t x1, uint32_t y1, uint32_
 
 void tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1);
 
+struct tu_pvtmem_config {
+   uint64_t iova;
+   uint32_t per_fiber_size;
+   uint32_t per_sp_size;
+   bool per_wave;
+};
+
 void
 tu6_emit_xs_config(struct tu_cs *cs,
                    gl_shader_stage stage,
                    const struct ir3_shader_variant *xs,
+                   const struct tu_pvtmem_config *pvtmem,
                    uint64_t binary_iova);
 
 void
