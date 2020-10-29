@@ -5266,7 +5266,8 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		}
 
 		if (mem->image && mem->image->plane_count == 1 &&
-		    !vk_format_is_depth_or_stencil(mem->image->vk_format)) {
+		    !vk_format_is_depth_or_stencil(mem->image->vk_format) &&
+		    mem->image->info.samples == 1) {
 			struct radeon_bo_metadata metadata;
 			device->ws->buffer_get_metadata(mem->bo, &metadata);
 

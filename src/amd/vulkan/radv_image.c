@@ -854,49 +854,51 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 	}
 
 	/* Initialize the sampler view for FMASK. */
-	if (radv_image_has_fmask(image)) {
-		uint64_t gpu_address = radv_buffer_get_va(image->bo);
-		uint32_t format;
-		uint64_t va;
+	if (fmask_state) {
+		if (radv_image_has_fmask(image)) {
+			uint64_t gpu_address = radv_buffer_get_va(image->bo);
+			uint32_t format;
+			uint64_t va;
 
-		assert(image->plane_count == 1);
+			assert(image->plane_count == 1);
 
-		va = gpu_address + image->offset + image->planes[0].surface.fmask_offset;
+			va = gpu_address + image->offset + image->planes[0].surface.fmask_offset;
 
-		switch (image->info.samples) {
-		case 2:
-			format = V_008F0C_IMG_FORMAT_FMASK8_S2_F2;
-			break;
-		case 4:
-			format = V_008F0C_IMG_FORMAT_FMASK8_S4_F4;
-			break;
-		case 8:
-			format = V_008F0C_IMG_FORMAT_FMASK32_S8_F8;
-			break;
-		default:
-			unreachable("invalid nr_samples");
-		}
+			switch (image->info.samples) {
+			case 2:
+				format = V_008F0C_IMG_FORMAT_FMASK8_S2_F2;
+				break;
+			case 4:
+				format = V_008F0C_IMG_FORMAT_FMASK8_S4_F4;
+				break;
+			case 8:
+				format = V_008F0C_IMG_FORMAT_FMASK32_S8_F8;
+				break;
+			default:
+				unreachable("invalid nr_samples");
+			}
 
-		fmask_state[0] = (va >> 8) | image->planes[0].surface.fmask_tile_swizzle;
-		fmask_state[1] = S_00A004_BASE_ADDRESS_HI(va >> 40) |
-				 S_00A004_FORMAT(format) |
-				 S_00A004_WIDTH_LO(width - 1);
-		fmask_state[2] = S_00A008_WIDTH_HI((width - 1) >> 2) |
-				 S_00A008_HEIGHT(height - 1) |
-				 S_00A008_RESOURCE_LEVEL(1);
-		fmask_state[3] = S_00A00C_DST_SEL_X(V_008F1C_SQ_SEL_X) |
-				 S_00A00C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
-				 S_00A00C_DST_SEL_Z(V_008F1C_SQ_SEL_X) |
-				 S_00A00C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
-				 S_00A00C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode) |
-				 S_00A00C_TYPE(radv_tex_dim(image->type, view_type, image->info.array_size, 0, false, false));
-		fmask_state[4] = S_00A010_DEPTH(last_layer) |
-				 S_00A010_BASE_ARRAY(first_layer);
-		fmask_state[5] = 0;
-		fmask_state[6] = S_00A018_META_PIPE_ALIGNED(1);
-		fmask_state[7] = 0;
-	} else if (fmask_state)
-		memset(fmask_state, 0, 8 * 4);
+			fmask_state[0] = (va >> 8) | image->planes[0].surface.fmask_tile_swizzle;
+			fmask_state[1] = S_00A004_BASE_ADDRESS_HI(va >> 40) |
+					S_00A004_FORMAT(format) |
+					S_00A004_WIDTH_LO(width - 1);
+			fmask_state[2] = S_00A008_WIDTH_HI((width - 1) >> 2) |
+					S_00A008_HEIGHT(height - 1) |
+					S_00A008_RESOURCE_LEVEL(1);
+			fmask_state[3] = S_00A00C_DST_SEL_X(V_008F1C_SQ_SEL_X) |
+					S_00A00C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
+					S_00A00C_DST_SEL_Z(V_008F1C_SQ_SEL_X) |
+					S_00A00C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
+					S_00A00C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode) |
+					S_00A00C_TYPE(radv_tex_dim(image->type, view_type, image->info.array_size, 0, false, false));
+			fmask_state[4] = S_00A010_DEPTH(last_layer) |
+					S_00A010_BASE_ARRAY(first_layer);
+			fmask_state[5] = 0;
+			fmask_state[6] = S_00A018_META_PIPE_ALIGNED(1);
+			fmask_state[7] = 0;
+		} else
+			memset(fmask_state, 0, 8 * 4);
+	}
 }
 
 /**
@@ -1018,94 +1020,96 @@ si_make_texture_descriptor(struct radv_device *device,
 	}
 
 	/* Initialize the sampler view for FMASK. */
-	if (radv_image_has_fmask(image)) {
-		uint32_t fmask_format, num_format;
-		uint64_t gpu_address = radv_buffer_get_va(image->bo);
-		uint64_t va;
+	if (fmask_state) {
+		if (radv_image_has_fmask(image)) {
+			uint32_t fmask_format, num_format;
+			uint64_t gpu_address = radv_buffer_get_va(image->bo);
+			uint64_t va;
 
-		assert(image->plane_count == 1);
+			assert(image->plane_count == 1);
 
-		va = gpu_address + image->offset + image->planes[0].surface.fmask_offset;
+			va = gpu_address + image->offset + image->planes[0].surface.fmask_offset;
 
-		if (device->physical_device->rad_info.chip_class == GFX9) {
-			fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK;
-			switch (image->info.samples) {
-			case 2:
-				num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_2_2;
-				break;
-			case 4:
-				num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_4_4;
-				break;
-			case 8:
-				num_format = V_008F14_IMG_NUM_FORMAT_FMASK_32_8_8;
-				break;
-			default:
-				unreachable("invalid nr_samples");
+			if (device->physical_device->rad_info.chip_class == GFX9) {
+				fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK;
+				switch (image->info.samples) {
+				case 2:
+					num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_2_2;
+					break;
+				case 4:
+					num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_4_4;
+					break;
+				case 8:
+					num_format = V_008F14_IMG_NUM_FORMAT_FMASK_32_8_8;
+					break;
+				default:
+					unreachable("invalid nr_samples");
+				}
+			} else {
+				switch (image->info.samples) {
+				case 2:
+					fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK8_S2_F2;
+					break;
+				case 4:
+					fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK8_S4_F4;
+					break;
+				case 8:
+					fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK32_S8_F8;
+					break;
+				default:
+					assert(0);
+					fmask_format = V_008F14_IMG_DATA_FORMAT_INVALID;
+				}
+				num_format = V_008F14_IMG_NUM_FORMAT_UINT;
 			}
-		} else {
-			switch (image->info.samples) {
-			case 2:
-				fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK8_S2_F2;
-				break;
-			case 4:
-				fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK8_S4_F4;
-				break;
-			case 8:
-				fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK32_S8_F8;
-				break;
-			default:
-				assert(0);
-				fmask_format = V_008F14_IMG_DATA_FORMAT_INVALID;
+
+			fmask_state[0] = va >> 8;
+			fmask_state[0] |= image->planes[0].surface.fmask_tile_swizzle;
+			fmask_state[1] = S_008F14_BASE_ADDRESS_HI(va >> 40) |
+				S_008F14_DATA_FORMAT(fmask_format) |
+				S_008F14_NUM_FORMAT(num_format);
+			fmask_state[2] = S_008F18_WIDTH(width - 1) |
+				S_008F18_HEIGHT(height - 1);
+			fmask_state[3] = S_008F1C_DST_SEL_X(V_008F1C_SQ_SEL_X) |
+				S_008F1C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
+				S_008F1C_DST_SEL_Z(V_008F1C_SQ_SEL_X) |
+				S_008F1C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
+				S_008F1C_TYPE(radv_tex_dim(image->type, view_type, image->info.array_size, 0, false, false));
+			fmask_state[4] = 0;
+			fmask_state[5] = S_008F24_BASE_ARRAY(first_layer);
+			fmask_state[6] = 0;
+			fmask_state[7] = 0;
+
+			if (device->physical_device->rad_info.chip_class == GFX9) {
+				fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode);
+				fmask_state[4] |= S_008F20_DEPTH(last_layer) |
+						S_008F20_PITCH(image->planes[0].surface.u.gfx9.fmask.epitch);
+				fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(1) |
+						S_008F24_META_RB_ALIGNED(1);
+
+				if (radv_image_is_tc_compat_cmask(image)) {
+					va = gpu_address + image->offset + image->planes[0].surface.cmask_offset;
+
+					fmask_state[5] |= S_008F24_META_DATA_ADDRESS(va >> 40);
+					fmask_state[6] |= S_008F28_COMPRESSION_EN(1);
+					fmask_state[7] |= va >> 8;
+				}
+			} else {
+				fmask_state[3] |= S_008F1C_TILING_INDEX(image->planes[0].surface.u.legacy.fmask.tiling_index);
+				fmask_state[4] |= S_008F20_DEPTH(depth - 1) |
+					S_008F20_PITCH(image->planes[0].surface.u.legacy.fmask.pitch_in_pixels - 1);
+				fmask_state[5] |= S_008F24_LAST_ARRAY(last_layer);
+
+				if (radv_image_is_tc_compat_cmask(image)) {
+					va = gpu_address + image->offset + image->planes[0].surface.cmask_offset;
+
+					fmask_state[6] |= S_008F28_COMPRESSION_EN(1);
+					fmask_state[7] |= va >> 8;
+				}
 			}
-			num_format = V_008F14_IMG_NUM_FORMAT_UINT;
-		}
-
-		fmask_state[0] = va >> 8;
-		fmask_state[0] |= image->planes[0].surface.fmask_tile_swizzle;
-		fmask_state[1] = S_008F14_BASE_ADDRESS_HI(va >> 40) |
-			S_008F14_DATA_FORMAT(fmask_format) |
-			S_008F14_NUM_FORMAT(num_format);
-		fmask_state[2] = S_008F18_WIDTH(width - 1) |
-			S_008F18_HEIGHT(height - 1);
-		fmask_state[3] = S_008F1C_DST_SEL_X(V_008F1C_SQ_SEL_X) |
-			S_008F1C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
-			S_008F1C_DST_SEL_Z(V_008F1C_SQ_SEL_X) |
-			S_008F1C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
-			S_008F1C_TYPE(radv_tex_dim(image->type, view_type, image->info.array_size, 0, false, false));
-		fmask_state[4] = 0;
-		fmask_state[5] = S_008F24_BASE_ARRAY(first_layer);
-		fmask_state[6] = 0;
-		fmask_state[7] = 0;
-
-		if (device->physical_device->rad_info.chip_class == GFX9) {
-			fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode);
-			fmask_state[4] |= S_008F20_DEPTH(last_layer) |
-					  S_008F20_PITCH(image->planes[0].surface.u.gfx9.fmask.epitch);
-			fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(1) |
-					  S_008F24_META_RB_ALIGNED(1);
-
-			if (radv_image_is_tc_compat_cmask(image)) {
-				va = gpu_address + image->offset + image->planes[0].surface.cmask_offset;
-
-				fmask_state[5] |= S_008F24_META_DATA_ADDRESS(va >> 40);
-				fmask_state[6] |= S_008F28_COMPRESSION_EN(1);
-				fmask_state[7] |= va >> 8;
-			}
-		} else {
-			fmask_state[3] |= S_008F1C_TILING_INDEX(image->planes[0].surface.u.legacy.fmask.tiling_index);
-			fmask_state[4] |= S_008F20_DEPTH(depth - 1) |
-				S_008F20_PITCH(image->planes[0].surface.u.legacy.fmask.pitch_in_pixels - 1);
-			fmask_state[5] |= S_008F24_LAST_ARRAY(last_layer);
-
-			if (radv_image_is_tc_compat_cmask(image)) {
-				va = gpu_address + image->offset + image->planes[0].surface.cmask_offset;
-
-				fmask_state[6] |= S_008F28_COMPRESSION_EN(1);
-				fmask_state[7] |= va >> 8;
-			}
-		}
-	} else if (fmask_state)
-		memset(fmask_state, 0, 8 * 4);
+		} else
+			memset(fmask_state, 0, 8 * 4);
+	}
 }
 
 static void
