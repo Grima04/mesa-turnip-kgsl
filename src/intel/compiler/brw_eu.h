@@ -782,6 +782,26 @@ brw_dp_dword_scattered_rw_desc(const struct gen_device_info *devinfo,
 }
 
 static inline uint32_t
+brw_dp_oword_block_rw_desc(const struct gen_device_info *devinfo,
+                           bool align_16B,
+                           unsigned num_dwords,
+                           bool write)
+{
+   /* Writes can only have addresses aligned by OWORDs (16 Bytes). */
+   assert(!write || align_16B);
+
+   const unsigned msg_type =
+      write ?     GEN7_DATAPORT_DC_OWORD_BLOCK_WRITE :
+      align_16B ? GEN7_DATAPORT_DC_OWORD_BLOCK_READ :
+                  GEN7_DATAPORT_DC_UNALIGNED_OWORD_BLOCK_READ;
+
+   const unsigned msg_control =
+      SET_BITS(BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_dwords), 2, 0);
+
+   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
+static inline uint32_t
 brw_dp_a64_untyped_surface_rw_desc(const struct gen_device_info *devinfo,
                                    unsigned exec_size, /**< 0 for SIMD4x2 */
                                    unsigned num_channels,

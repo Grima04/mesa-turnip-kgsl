@@ -839,6 +839,21 @@ fs_inst::components_read(unsigned i) const
          return 1;
       }
 
+   case SHADER_OPCODE_OWORD_BLOCK_READ_LOGICAL:
+   case SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
+      assert(src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
+      return 1;
+
+   case SHADER_OPCODE_OWORD_BLOCK_WRITE_LOGICAL:
+      assert(src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
+      if (i == SURFACE_LOGICAL_SRC_DATA) {
+         const unsigned comps = src[SURFACE_LOGICAL_SRC_IMM_ARG].ud / exec_size;
+         assert(comps > 0);
+         return comps;
+      } else {
+         return 1;
+      }
+
    case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:
       assert(src[2].file == IMM);
       return i == 1 ? src[2].ud : 1;
@@ -5368,6 +5383,39 @@ emit_predicate_on_sample_mask(const fs_builder &bld, fs_inst *inst)
 }
 
 static void
+setup_surface_descriptors(const fs_builder &bld, fs_inst *inst, uint32_t desc,
+                          const fs_reg &surface, const fs_reg &surface_handle)
+{
+   const gen_device_info *devinfo = bld.shader->devinfo;
+
+   /* We must have exactly one of surface and surface_handle */
+   assert((surface.file == BAD_FILE) != (surface_handle.file == BAD_FILE));
+
+   if (surface.file == IMM) {
+      inst->desc = desc | (surface.ud & 0xff);
+      inst->src[0] = brw_imm_ud(0);
+      inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   } else if (surface_handle.file != BAD_FILE) {
+      /* Bindless surface */
+      assert(devinfo->gen >= 9);
+      inst->desc = desc | GEN9_BTI_BINDLESS;
+      inst->src[0] = brw_imm_ud(0);
+
+      /* We assume that the driver provided the handle in the top 20 bits so
+       * we can use the surface handle directly as the extended descriptor.
+       */
+      inst->src[1] = retype(surface_handle, BRW_REGISTER_TYPE_UD);
+   } else {
+      inst->desc = desc;
+      const fs_builder ubld = bld.exec_all().group(1, 0);
+      fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+      ubld.AND(tmp, surface, brw_imm_ud(0xff));
+      inst->src[0] = component(tmp, 0);
+      inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   }
+}
+
+static void
 lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const gen_device_info *devinfo = bld.shader->devinfo;
@@ -5383,9 +5431,6 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       inst->src[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK];
    assert(arg.file == IMM);
    assert(allow_sample_mask.file == IMM);
-
-   /* We must have exactly one of surface and surface_handle */
-   assert((surface.file == BAD_FILE) != (surface_handle.file == BAD_FILE));
 
    /* Calculate the total number of components of the payload. */
    const unsigned addr_sz = inst->components_read(SURFACE_LOGICAL_SRC_ADDRESS);
@@ -5608,32 +5653,80 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 
    /* Set up SFID and descriptors */
    inst->sfid = sfid;
-   inst->desc = desc;
-   if (surface.file == IMM) {
-      inst->desc |= surface.ud & 0xff;
-      inst->src[0] = brw_imm_ud(0);
-      inst->src[1] = brw_imm_ud(0); /* ex_desc */
-   } else if (surface_handle.file != BAD_FILE) {
-      /* Bindless surface */
-      assert(devinfo->gen >= 9);
-      inst->desc |= GEN9_BTI_BINDLESS;
-      inst->src[0] = brw_imm_ud(0);
-
-      /* We assume that the driver provided the handle in the top 20 bits so
-       * we can use the surface handle directly as the extended descriptor.
-       */
-      inst->src[1] = retype(surface_handle, BRW_REGISTER_TYPE_UD);
-   } else {
-      const fs_builder ubld = bld.exec_all().group(1, 0);
-      fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-      ubld.AND(tmp, surface, brw_imm_ud(0xff));
-      inst->src[0] = component(tmp, 0);
-      inst->src[1] = brw_imm_ud(0); /* ex_desc */
-   }
+   setup_surface_descriptors(bld, inst, desc, surface, surface_handle);
 
    /* Finally, the payload */
    inst->src[2] = payload;
    inst->src[3] = payload2;
+
+   inst->resize_sources(4);
+}
+
+static void
+lower_surface_block_logical_send(const fs_builder &bld, fs_inst *inst)
+{
+   const gen_device_info *devinfo = bld.shader->devinfo;
+   assert(devinfo->gen >= 9);
+
+   /* Get the logical send arguments. */
+   const fs_reg &addr = inst->src[SURFACE_LOGICAL_SRC_ADDRESS];
+   const fs_reg &src = inst->src[SURFACE_LOGICAL_SRC_DATA];
+   const fs_reg &surface = inst->src[SURFACE_LOGICAL_SRC_SURFACE];
+   const fs_reg &surface_handle = inst->src[SURFACE_LOGICAL_SRC_SURFACE_HANDLE];
+   const fs_reg &arg = inst->src[SURFACE_LOGICAL_SRC_IMM_ARG];
+   assert(arg.file == IMM);
+   assert(inst->src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == BAD_FILE);
+   assert(inst->src[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK].file == BAD_FILE);
+
+   const bool is_stateless =
+      surface.file == IMM && (surface.ud == BRW_BTI_STATELESS ||
+                              surface.ud == GEN8_BTI_STATELESS_NON_COHERENT);
+
+   const bool has_side_effects = inst->has_side_effects();
+
+   const bool align_16B =
+      inst->opcode != SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL;
+
+   const bool write = inst->opcode == SHADER_OPCODE_OWORD_BLOCK_WRITE_LOGICAL;
+
+   /* The address is stored in the header.  See MH_A32_GO and MH_BTS_GO. */
+   fs_builder ubld = bld.exec_all().group(8, 0);
+   fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+
+   if (is_stateless)
+      ubld.emit(SHADER_OPCODE_SCRATCH_HEADER, header);
+   else
+      ubld.MOV(header, brw_imm_d(0));
+
+   /* Address in OWord units when aligned to OWords. */
+   if (align_16B)
+      ubld.group(1, 0).SHR(component(header, 2), addr, brw_imm_ud(4));
+   else
+      ubld.group(1, 0).MOV(component(header, 2), addr);
+
+   fs_reg data;
+   unsigned ex_mlen = 0;
+   if (write) {
+      const unsigned src_sz = inst->components_read(SURFACE_LOGICAL_SRC_DATA);
+      data = retype(bld.move_to_vgrf(src, src_sz), BRW_REGISTER_TYPE_UD);
+      ex_mlen = src_sz * type_sz(src.type) * inst->exec_size / REG_SIZE;
+   }
+
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->mlen = 1;
+   inst->ex_mlen = ex_mlen;
+   inst->header_size = 1;
+   inst->send_has_side_effects = has_side_effects;
+   inst->send_is_volatile = !has_side_effects;
+
+   inst->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+
+   const uint32_t desc = brw_dp_oword_block_rw_desc(devinfo, align_16B,
+                                                    arg.ud, write);
+   setup_surface_descriptors(bld, inst, desc, surface, surface_handle);
+
+   inst->src[2] = header;
+   inst->src[3] = data;
 
    inst->resize_sources(4);
 }
@@ -6017,6 +6110,12 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL:
       case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL:
          lower_surface_logical_send(ibld, inst);
+         break;
+
+      case SHADER_OPCODE_OWORD_BLOCK_READ_LOGICAL:
+      case SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
+      case SHADER_OPCODE_OWORD_BLOCK_WRITE_LOGICAL:
+         lower_surface_block_logical_send(ibld, inst);
          break;
 
       case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:

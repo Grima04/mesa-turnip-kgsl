@@ -301,6 +301,12 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "untyped_surface_write";
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
       return "untyped_surface_write_logical";
+   case SHADER_OPCODE_OWORD_BLOCK_READ_LOGICAL:
+      return "oword_block_read_logical";
+   case SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
+      return "unaligned_oword_block_read_logical";
+   case SHADER_OPCODE_OWORD_BLOCK_WRITE_LOGICAL:
+      return "oword_block_write_logical";
    case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
       return "a64_untyped_read_logical";
    case SHADER_OPCODE_A64_OWORD_BLOCK_READ_LOGICAL:
@@ -1094,6 +1100,7 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_RND_MODE:
    case SHADER_OPCODE_FLOAT_CONTROL_MODE:
    case FS_OPCODE_SCHEDULING_FENCE:
+   case SHADER_OPCODE_OWORD_BLOCK_WRITE_LOGICAL:
    case SHADER_OPCODE_A64_OWORD_BLOCK_WRITE_LOGICAL:
       return true;
    default:
