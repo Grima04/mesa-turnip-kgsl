@@ -266,6 +266,22 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
    case nir_intrinsic_vote_any:
    case nir_intrinsic_vote_all:
+   case nir_intrinsic_read_invocation:
+   case nir_intrinsic_read_first_invocation:
+   case nir_intrinsic_shuffle:
+   case nir_intrinsic_shuffle_xor:
+   case nir_intrinsic_shuffle_up:
+   case nir_intrinsic_shuffle_down:
+   case nir_intrinsic_quad_broadcast:
+   case nir_intrinsic_quad_swap_horizontal:
+   case nir_intrinsic_quad_swap_vertical:
+   case nir_intrinsic_quad_swap_diagonal:
+   case nir_intrinsic_quad_swizzle_amd:
+   case nir_intrinsic_masked_swizzle_amd:
+      /* All of these have the data payload in the first source.  They may
+       * have a second source with a shuffle index but that doesn't matter if
+       * the data is constant.
+       */
       if (nir_src_is_const(intrin->src[0])) {
          nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
                                   nir_src_for_ssa(intrin->src[0].ssa));
