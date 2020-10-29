@@ -554,6 +554,11 @@ struct ir3_shader_variant {
 	 */
 	unsigned constlen;
 
+	/* The private memory size in bytes */
+	unsigned pvtmem_size;
+	/* Whether we should use the new per-wave layout rather than per-fiber. */
+	bool pvtmem_per_wave;
+
 	/* About Linkage:
 	 *   + Let the frag shader determine the position/compmask for the
 	 *     varyings, since it is the place where we know if the varying

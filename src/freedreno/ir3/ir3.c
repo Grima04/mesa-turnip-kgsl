@@ -729,6 +729,11 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 		src2 = (instr->regs_count >= 3) ? instr->regs[2] : NULL;
 	}
 
+	if ((instr->opc == OPC_STP || instr->opc == OPC_LDP) &&
+		src2->iim_val * type_size(instr->cat6.type) > 32) {
+		info->multi_dword_ldp_stp = true;
+	}
+
 	/* TODO we need a more comprehensive list about which instructions
 	 * can be encoded which way.  Or possibly use IR3_INSTR_0 flag to
 	 * indicate to use the src_off encoding even if offset is zero
@@ -938,6 +943,7 @@ void * ir3_assemble(struct ir3_shader_variant *v)
 	info->max_reg       = -1;
 	info->max_half_reg  = -1;
 	info->max_const     = -1;
+	info->multi_dword_ldp_stp = false;
 
 	uint32_t instr_count = 0;
 	foreach_block (block, &shader->block_list) {
@@ -1462,6 +1468,12 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 				return false;
 
 			if ((instr->opc == OPC_STL) && (n != 2))
+				return false;
+
+			if ((instr->opc == OPC_LDP) && (n == 0))
+				return false;
+
+			if ((instr->opc == OPC_STP) && (n != 2))
 				return false;
 
 			if (instr->opc == OPC_STLW && n == 0)

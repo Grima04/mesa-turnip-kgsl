@@ -261,6 +261,7 @@ should_split_wrmask(const nir_instr *instr, const void *data)
 	case nir_intrinsic_store_ssbo:
 	case nir_intrinsic_store_shared:
 	case nir_intrinsic_store_global:
+	case nir_intrinsic_store_scratch:
 		return true;
 	default:
 		return false;
