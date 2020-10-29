@@ -580,6 +580,7 @@ static const struct nir_shader_compiler_options gallivm_nir_options = {
    .lower_to_scalar = true,
    .lower_cs_local_index_from_id = true,
    .lower_uniforms_to_ubo = true,
+   .lower_vector_cmp = true,
 };
 
 static void
