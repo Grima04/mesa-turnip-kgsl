@@ -1476,7 +1476,7 @@ static void
 pan_emit_vary_only(struct mali_attribute_packed *out,
                 unsigned present, unsigned quirks)
 {
-        pan_emit_vary(out, present, 0, quirks, MALI_VARYING_DISCARD, 0);
+        pan_emit_vary(out, present, 0, quirks, MALI_CONSTANT, 0);
 }
 
 /* Special records */

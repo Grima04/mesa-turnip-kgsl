@@ -138,7 +138,7 @@
     <!--- Format 93 avaible v7+. On Midgard, acts as a RG16F + snap -->
     <value name="S8" value="93"/>
     <value name="VARYING POS" value="94"/>
-    <value name="VARYING DISCARD" value="95"/>
+    <value name="Constant" value="95"/>
     <value name="R8 SNORM" value="99"/>
     <value name="R16 SNORM" value="100"/>
     <value name="R32 SNORM" value="101"/>
