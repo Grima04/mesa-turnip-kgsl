@@ -137,7 +137,8 @@
     <value name="E5F B9F G9F R9F" value="92"/>
     <!--- Format 93 avaible v7+. On Midgard, acts as a RG16F + snap -->
     <value name="S8" value="93"/>
-    <value name="VARYING POS" value="94"/>
+    <!--- RGBA32F + snap to 2^-8, used for vertex writes -->
+    <value name="Snap 4" value="94"/>
     <value name="Constant" value="95"/>
     <value name="R8 SNORM" value="99"/>
     <value name="R16 SNORM" value="100"/>

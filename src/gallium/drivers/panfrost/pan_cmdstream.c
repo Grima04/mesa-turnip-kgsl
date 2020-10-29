@@ -1482,7 +1482,7 @@ pan_emit_vary_only(struct mali_attribute_packed *out,
 /* Special records */
 
 static const enum mali_format pan_varying_formats[PAN_VARY_MAX] = {
-        [PAN_VARY_POSITION]     = MALI_VARYING_POS,
+        [PAN_VARY_POSITION]     = MALI_SNAP_4,
         [PAN_VARY_PSIZ]         = MALI_R16F,
         [PAN_VARY_PNTCOORD]     = MALI_R16F,
         [PAN_VARY_FACE]         = MALI_R32I,
