@@ -241,6 +241,8 @@ iris_fence_flush(struct pipe_context *ctx,
       }
    }
 
+   iris_flush_dirty_dmabufs(ice);
+
    if (!deferred) {
       for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++)
          iris_batch_flush(&ice->batches[i]);

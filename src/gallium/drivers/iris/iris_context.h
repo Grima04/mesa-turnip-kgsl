@@ -25,6 +25,7 @@
 
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
+#include "util/set.h"
 #include "util/slab.h"
 #include "util/u_debug.h"
 #include "intel/blorp/blorp.h"
@@ -545,6 +546,9 @@ struct iris_context {
    /** A device reset status callback for notifying that the GPU is hosed. */
    struct pipe_device_reset_callback reset;
 
+   /** A set of dmabuf resources dirtied beyond their default aux-states. */
+   struct set *dirty_dmabufs;
+
    /** Slab allocator for iris_transfer_map objects. */
    struct slab_child_pool transfer_pool;
 
@@ -783,6 +787,10 @@ struct pipe_context *
 iris_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 
 void iris_lost_context_state(struct iris_batch *batch);
+
+void iris_mark_dirty_dmabuf(struct iris_context *ice,
+                            struct pipe_resource *res);
+void iris_flush_dirty_dmabufs(struct iris_context *ice);
 
 void iris_init_blit_functions(struct pipe_context *ctx);
 void iris_init_clear_functions(struct pipe_context *ctx);

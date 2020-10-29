@@ -107,10 +107,6 @@ can_fast_clear_color(struct iris_context *ice,
       return false;
    }
 
-   /* XXX: if (irb->mt->supports_fast_clear)
-    * see intel_miptree_create_for_dri_image()
-    */
-
    if (!iris_is_color_fast_clear_compatible(ice, res->surf.format, color))
       return false;
 

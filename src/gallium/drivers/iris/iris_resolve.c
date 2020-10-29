@@ -797,6 +797,15 @@ iris_resource_set_aux_state(struct iris_context *ice,
          ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
       }
    }
+
+   if (res->mod_info && !res->mod_info->supports_clear_color) {
+      assert(res->mod_info->aux_usage != ISL_AUX_USAGE_NONE);
+      if (aux_state == ISL_AUX_STATE_CLEAR ||
+          aux_state == ISL_AUX_STATE_COMPRESSED_CLEAR ||
+          aux_state == ISL_AUX_STATE_PARTIAL_CLEAR) {
+         iris_mark_dirty_dmabuf(ice, &res->base);
+      }
+   }
 }
 
 enum isl_aux_usage

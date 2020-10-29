@@ -185,6 +185,49 @@ iris_get_sample_position(struct pipe_context *ctx,
    out_value[1] = u.a.y[sample_index];
 }
 
+static bool
+create_dirty_dmabuf_set(struct iris_context *ice)
+{
+   assert(ice->dirty_dmabufs == NULL);
+
+   ice->dirty_dmabufs = _mesa_pointer_set_create(ice);
+   return ice->dirty_dmabufs != NULL;
+}
+
+void
+iris_mark_dirty_dmabuf(struct iris_context *ice,
+                       struct pipe_resource *res)
+{
+   if (!_mesa_set_search(ice->dirty_dmabufs, res)) {
+      _mesa_set_add(ice->dirty_dmabufs, res);
+      pipe_reference(NULL, &res->reference);
+   }
+}
+
+static void
+clear_dirty_dmabuf_set(struct iris_context *ice)
+{
+   set_foreach(ice->dirty_dmabufs, entry) {
+      struct pipe_resource *res = (struct pipe_resource *)entry->key;
+      if (pipe_reference(&res->reference, NULL))
+         res->screen->resource_destroy(res->screen, res);
+   }
+
+   _mesa_set_clear(ice->dirty_dmabufs, NULL);
+}
+
+void
+iris_flush_dirty_dmabufs(struct iris_context *ice)
+{
+   set_foreach(ice->dirty_dmabufs, entry) {
+      struct pipe_resource *res = (struct pipe_resource *)entry->key;
+      ice->ctx.flush_resource(&ice->ctx, res);
+   }
+
+   clear_dirty_dmabuf_set(ice);
+}
+
+
 /**
  * Destroy a context, freeing any associated memory.
  */
@@ -196,6 +239,8 @@ iris_destroy_context(struct pipe_context *ctx)
 
    if (ctx->stream_uploader)
       u_upload_destroy(ctx->stream_uploader);
+
+   clear_dirty_dmabuf_set(ice);
 
    screen->vtbl.destroy_state(ice);
    iris_destroy_program_cache(ice);
@@ -257,6 +302,11 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
       return NULL;
    }
    ctx->const_uploader = ctx->stream_uploader;
+
+   if (!create_dirty_dmabuf_set(ice)) {
+      ralloc_free(ice);
+      return NULL;
+   }
 
    ctx->destroy = iris_destroy_context;
    ctx->set_debug_callback = iris_set_debug_callback;
