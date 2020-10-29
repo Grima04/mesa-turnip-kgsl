@@ -520,7 +520,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    util_range_init(&rsc->valid_buffer_range);
    prsc->screen = pscreen;
 
-   rsc->bo = etna_screen_bo_from_handle(pscreen, handle, &level->stride);
+   rsc->bo = etna_screen_bo_from_handle(pscreen, handle);
    if (!rsc->bo)
       goto fail;
 
@@ -531,6 +531,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    level->width = tmpl->width0;
    level->height = tmpl->height0;
    level->depth = tmpl->depth0;
+   level->stride = handle->stride;
    level->offset = handle->offset;
 
    /* Determine padding of the imported resource. */

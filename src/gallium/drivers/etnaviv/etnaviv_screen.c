@@ -853,7 +853,7 @@ fail:
 
 struct etna_bo *
 etna_screen_bo_from_handle(struct pipe_screen *pscreen,
-                           struct winsys_handle *whandle, unsigned *out_stride)
+                           struct winsys_handle *whandle)
 {
    struct etna_screen *screen = etna_screen(pscreen);
    struct etna_bo *bo;
@@ -871,8 +871,6 @@ etna_screen_bo_from_handle(struct pipe_screen *pscreen,
       DBG("ref name 0x%08x failed", whandle->handle);
       return NULL;
    }
-
-   *out_stride = whandle->stride;
 
    return bo;
 }
