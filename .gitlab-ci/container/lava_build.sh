@@ -17,6 +17,9 @@ check_minio "${CI_PROJECT_PATH}"
 
 . .gitlab-ci/container/container_pre_build.sh
 
+# Install rust, which we'll be using for deqp-runner.  It will be cleaned up at the end.
+. .gitlab-ci/build-rust.sh
+
 if [[ "$DEBIAN_ARCH" = "arm64" ]]; then
     GCC_ARCH="aarch64-linux-gnu"
     KERNEL_ARCH="arm64"
@@ -42,6 +45,14 @@ fi
 if [[ -e /cross_file-$DEBIAN_ARCH.txt ]]; then
     EXTRA_MESON_ARGS="--cross-file /cross_file-$DEBIAN_ARCH.txt"
     EXTRA_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=/toolchain-$DEBIAN_ARCH.cmake"
+
+    if [ $DEBIAN_ARCH = arm64 ]; then
+        RUST_TARGET="aarch64-unknown-linux-gnu"
+    elif [ $DEBIAN_ARCH = armhf ]; then
+        RUST_TARGET="armv7-unknown-linux-gnueabihf"
+    fi
+    rustup target add $RUST_TARGET
+    export EXTRA_CARGO_ARGS="--target $RUST_TARGET"
 
     export ARCH=${KERNEL_ARCH}
     export CROSS_COMPILE="${GCC_ARCH}-"
@@ -87,7 +98,8 @@ if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
 fi
 
 ############### Build dEQP runner
-. .gitlab-ci/build-cts-runner.sh
+
+. .gitlab-ci/build-deqp-runner.sh
 mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin
 mv /usr/local/bin/deqp-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
 
@@ -130,6 +142,9 @@ rm -rf /libdrm
 mkdir -p kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
 pushd kernel
+
+############### Delete rust, since the tests won't be compiling anything.
+rm -rf /root/.rustup /root/.cargo
 
 # The kernel doesn't like the gold linker (or the old lld in our debians).
 # Sneak in some override symlinks during kernel build until we can update

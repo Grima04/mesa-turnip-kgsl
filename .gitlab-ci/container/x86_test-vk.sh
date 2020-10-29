@@ -107,16 +107,16 @@ wine \
 
 . .gitlab-ci/container/container_pre_build.sh
 
-############### Build dEQP runner
-
-. .gitlab-ci/build-cts-runner.sh
+############### Build dEQP runner (and install rust temporarily for it)
+. .gitlab-ci/build-rust.sh
+. .gitlab-ci/build-deqp-runner.sh
+rm -rf /root/.rustup /root/.cargo
 
 ############### Build Fossilize
 
 . .gitlab-ci/build-fossilize.sh
 
 ############### Build dEQP VK
-
 . .gitlab-ci/build-deqp.sh
 
 ############### Build gfxreconstruct

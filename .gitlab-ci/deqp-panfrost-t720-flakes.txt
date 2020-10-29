@@ -1,0 +1,15 @@
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.4
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.11
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.18
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.39
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.40
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.56
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.80
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.81
+dEQP-GLES2.functional.fragment_ops.random.17
+dEQP-GLES2.functional.fragment_ops.random.24
+dEQP-GLES2.functional.fragment_ops.random.54
+dEQP-GLES2.functional.fragment_ops.random.59
+dEQP-GLES2.functional.fragment_ops.random.71
+dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.*
+dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.*

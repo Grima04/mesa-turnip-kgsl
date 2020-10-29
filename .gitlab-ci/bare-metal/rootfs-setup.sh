@@ -35,7 +35,7 @@ for var in \
     DEQP_NO_SAVE_RESULTS \
     DEQP_FLAKES \
     DEQP_PARALLEL \
-    DEQP_RUN_SUFFIX \
+    DEQP_RESULTS_DIR \
     DEQP_SKIPS \
     DEQP_VARIANT \
     DEQP_VER \

@@ -352,13 +352,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-11-05-deqp-runner"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-11-05-deqp-runner"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
@@ -414,7 +414,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-09-28-deqp-surfaceless-fix"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-11-03-deqp-runner"
 
 .use-arm64_test:
   variables:
@@ -1122,6 +1122,7 @@ softpipe-gles2:
   variables:
     DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
     DEQP_SKIPS: deqp-softpipe-skips.txt
+    DEQP_FLAKES: deqp-softpipe-flakes.txt
     GALLIUM_DRIVER: "softpipe"
     DEQP_EXPECTED_RENDERER: softpipe
 

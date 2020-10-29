@@ -66,9 +66,10 @@ apt-get install -y --no-remove \
 
 INCLUDE_OPENCL_TESTS=1 . .gitlab-ci/build-piglit.sh
 
-############### Build dEQP runner
-
-. .gitlab-ci/build-cts-runner.sh
+############### Build dEQP runner (and install rust temporarily for it)
+. .gitlab-ci/build-rust.sh
+. .gitlab-ci/build-deqp-runner.sh
+rm -rf /root/.rustup /root/.cargo
 
 ############### Build dEQP GL
 

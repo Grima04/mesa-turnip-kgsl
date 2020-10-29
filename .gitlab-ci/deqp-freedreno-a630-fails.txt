@@ -1,26 +1,26 @@
-# Possibly https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2035 related
-dEQP-GLES2.functional.clipping.triangle_vertex.clip_three.clip_neg_x_neg_z_and_pos_x_pos_z_and_neg_x_neg_y_pos_z
+# Possibly https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2035 related,Fail
+dEQP-GLES2.functional.clipping.triangle_vertex.clip_three.clip_neg_x_neg_z_and_pos_x_pos_z_and_neg_x_neg_y_pos_z,Fail
 
-dEQP-VK.api.image_clearing.core.clear_color_attachment.single_layer.a8b8g8r8_srgb_pack32_1x33
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.single_layer.b8g8r8a8_srgb_33x128
-dEQP-VK.compute.indirect_dispatch.upload_buffer.multi_dispatch
-dEQP-VK.draw.output_location.array.r8g8-uint-mediump-output-uint
-dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_local.image.guard_nonlocal.workgroup.comp
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_negative_inf_geom
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_positive_round_up_or_round_down_geom
+dEQP-VK.api.image_clearing.core.clear_color_attachment.single_layer.a8b8g8r8_srgb_pack32_1x33,Fail
+dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.single_layer.b8g8r8a8_srgb_33x128,Fail
+dEQP-VK.compute.indirect_dispatch.upload_buffer.multi_dispatch,Fail
+dEQP-VK.draw.output_location.array.r8g8-uint-mediump-output-uint,Fail
+dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_local.image.guard_nonlocal.workgroup.comp,Fail
+dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_negative_inf_geom,Fail
+dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_positive_round_up_or_round_down_geom,Fail
 
-# not sure what's wrong here
-dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_even_spacing_ccw_point_mode
-dEQP-VK.tessellation.invariance.outer_edge_symmetry.triangles_fractional_odd_spacing_cw_point_mode
+# not sure what's wrong here,Fail
+dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_even_spacing_ccw_point_mode,Fail
+dEQP-VK.tessellation.invariance.outer_edge_symmetry.triangles_fractional_odd_spacing_cw_point_mode,Fail
 
-KHR-GL30.transform_feedback.api_errors_test
-KHR-GL30.transform_feedback.capture_vertex_interleaved_test
-KHR-GL30.transform_feedback.capture_vertex_separate_test
-KHR-GL30.transform_feedback.discard_vertex_test
-KHR-GL30.transform_feedback.draw_xfb_feedbackk_test
-KHR-GL30.transform_feedback.draw_xfb_instanced_test
-KHR-GL30.transform_feedback.draw_xfb_stream_instanced_test
-KHR-GL30.transform_feedback.draw_xfb_test
-KHR-GL30.transform_feedback.get_xfb_varying
-KHR-GL30.transform_feedback.query_vertex_interleaved_test
-KHR-GL30.transform_feedback.query_vertex_separate_test
+KHR-GL30.transform_feedback.api_errors_test,Fail
+KHR-GL30.transform_feedback.capture_vertex_interleaved_test,Fail
+KHR-GL30.transform_feedback.capture_vertex_separate_test,Fail
+KHR-GL30.transform_feedback.discard_vertex_test,Fail
+KHR-GL30.transform_feedback.draw_xfb_feedbackk_test,Crash
+KHR-GL30.transform_feedback.draw_xfb_instanced_test,Crash
+KHR-GL30.transform_feedback.draw_xfb_stream_instanced_test,Crash
+KHR-GL30.transform_feedback.draw_xfb_test,Crash
+KHR-GL30.transform_feedback.get_xfb_varying,Fail
+KHR-GL30.transform_feedback.query_vertex_interleaved_test,Fail
+KHR-GL30.transform_feedback.query_vertex_separate_test,Fail
