@@ -352,7 +352,7 @@ etna_resource_create(struct pipe_screen *pscreen,
     * and a texture-compatible base buffer in other cases
     *
     */
-   if (templat->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL)) {
+   if (templat->bind & PIPE_BIND_DEPTH_STENCIL) {
       if (screen->specs.pixel_pipes > 1 && !screen->specs.single_buffer)
          layout |= ETNA_LAYOUT_BIT_MULTI;
       if (screen->specs.can_supertile)
@@ -362,7 +362,8 @@ etna_resource_create(struct pipe_screen *pscreen,
       layout |= ETNA_LAYOUT_BIT_SUPER;
    }
 
-   if ((templat->bind & PIPE_BIND_LINEAR) || /* linear base requested */
+   if (/* linear base or scanout without modifier requested */
+       (templat->bind & (PIPE_BIND_LINEAR | PIPE_BIND_SCANOUT)) ||
        templat->target == PIPE_BUFFER || /* buffer always linear */
        /* compressed textures don't use tiling, they have their own "tiles" */
        util_format_is_compressed(templat->format)) {
