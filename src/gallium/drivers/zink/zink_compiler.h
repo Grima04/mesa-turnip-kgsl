@@ -104,4 +104,11 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader);
 struct zink_shader *
 zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs);
 
+static inline bool
+zink_shader_descriptor_is_buffer(struct zink_shader *zs, enum zink_descriptor_type type, unsigned i)
+{
+   return zs->bindings[type][i].type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER ||
+          zs->bindings[type][i].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+}
+
 #endif
