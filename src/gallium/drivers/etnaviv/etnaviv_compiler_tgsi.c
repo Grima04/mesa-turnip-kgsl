@@ -57,6 +57,7 @@
 #include "etnaviv_uniforms.h"
 #include "etnaviv_util.h"
 
+#include "nir/tgsi_to_nir.h"
 #include "pipe/p_shader_tokens.h"
 #include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_iterate.h"
@@ -2108,6 +2109,11 @@ permute_ps_inputs(struct etna_compile *c)
       c->next_free_native = native_idx;
 }
 
+static inline int sem2slot(const struct tgsi_declaration_semantic *semantic)
+{
+   return tgsi_varying_semantic_to_slot(semantic->Name, semantic->Index);
+}
+
 /* fill in ps inputs into shader object */
 static void
 fill_in_ps_inputs(struct etna_shader_variant *sobj, struct etna_compile *c)
@@ -2122,7 +2128,7 @@ fill_in_ps_inputs(struct etna_shader_variant *sobj, struct etna_compile *c)
       if (reg->native.id > 0) {
          assert(sf->num_reg < ETNA_NUM_INPUTS);
          sf->reg[sf->num_reg].reg = reg->native.id;
-         sf->reg[sf->num_reg].semantic = reg->semantic;
+         sf->reg[sf->num_reg].slot = sem2slot(&reg->semantic);
          /* convert usage mask to number of components (*=wildcard)
           *   .r    (0..1)  -> 1 component
           *   .*g   (2..3)  -> 2 component
@@ -2176,36 +2182,12 @@ fill_in_vs_inputs(struct etna_shader_variant *sobj, struct etna_compile *c)
 
       /* XXX exclude inputs with special semantics such as gl_frontFacing */
       sf->reg[sf->num_reg].reg = reg->native.id;
-      sf->reg[sf->num_reg].semantic = reg->semantic;
+      sf->reg[sf->num_reg].slot = sem2slot(&reg->semantic);
       sf->reg[sf->num_reg].num_components = util_last_bit(reg->usage_mask);
       sf->num_reg++;
    }
 
    sobj->input_count_unk8 = (sf->num_reg + 19) / 16; /* XXX what is this */
-}
-
-/* build two-level output index [Semantic][Index] for fast linking */
-static void
-build_output_index(struct etna_shader_variant *sobj)
-{
-   int total = 0;
-   int offset = 0;
-
-   for (int name = 0; name < TGSI_SEMANTIC_COUNT; ++name)
-      total += sobj->output_count_per_semantic[name];
-
-   sobj->output_per_semantic_list = CALLOC(total, sizeof(struct etna_shader_inout *));
-
-   for (int name = 0; name < TGSI_SEMANTIC_COUNT; ++name) {
-      sobj->output_per_semantic[name] = &sobj->output_per_semantic_list[offset];
-      offset += sobj->output_count_per_semantic[name];
-   }
-
-   for (int idx = 0; idx < sobj->outfile.num_reg; ++idx) {
-      sobj->output_per_semantic[sobj->outfile.reg[idx].semantic.Name]
-                               [sobj->outfile.reg[idx].semantic.Index] =
-         &sobj->outfile.reg[idx];
-   }
 }
 
 /* fill in outputs for vs into shader object */
@@ -2228,17 +2210,11 @@ fill_in_vs_outputs(struct etna_shader_variant *sobj, struct etna_compile *c)
          break;
       default:
          sf->reg[sf->num_reg].reg = reg->native.id;
-         sf->reg[sf->num_reg].semantic = reg->semantic;
+         sf->reg[sf->num_reg].slot = sem2slot(&reg->semantic);
          sf->reg[sf->num_reg].num_components = 4; // XXX reg->num_components;
          sf->num_reg++;
-         sobj->output_count_per_semantic[reg->semantic.Name] =
-            MAX2(reg->semantic.Index + 1,
-                 sobj->output_count_per_semantic[reg->semantic.Name]);
       }
    }
-
-   /* build two-level index for linking */
-   build_output_index(sobj);
 
    /* fill in "mystery meat" load balancing value. This value determines how
     * work is scheduled between VS and PS
@@ -2551,16 +2527,18 @@ etna_dump_shader(const struct etna_shader_variant *shader)
    }
    printf("inputs:\n");
    for (int idx = 0; idx < shader->infile.num_reg; ++idx) {
-      printf(" [%i] name=%s index=%i comps=%i\n", shader->infile.reg[idx].reg,
-               tgsi_semantic_names[shader->infile.reg[idx].semantic.Name],
-               shader->infile.reg[idx].semantic.Index,
+      printf(" [%i] name=%s comps=%i\n", shader->infile.reg[idx].reg,
+               (shader->stage == MESA_SHADER_VERTEX) ?
+               gl_vert_attrib_name(shader->infile.reg[idx].slot) :
+               gl_varying_slot_name(shader->infile.reg[idx].slot),
                shader->infile.reg[idx].num_components);
    }
    printf("outputs:\n");
    for (int idx = 0; idx < shader->outfile.num_reg; ++idx) {
-      printf(" [%i] name=%s index=%i comps=%i\n", shader->outfile.reg[idx].reg,
-               tgsi_semantic_names[shader->outfile.reg[idx].semantic.Name],
-               shader->outfile.reg[idx].semantic.Index,
+      printf(" [%i] name=%s comps=%i\n", shader->outfile.reg[idx].reg,
+               (shader->stage == MESA_SHADER_VERTEX) ?
+               gl_varying_slot_name(shader->outfile.reg[idx].slot) :
+               gl_frag_result_name(shader->outfile.reg[idx].slot),
                shader->outfile.reg[idx].num_components);
    }
    printf("special:\n");
@@ -2583,7 +2561,6 @@ etna_destroy_shader(struct etna_shader_variant *shader)
    FREE(shader->code);
    FREE(shader->uniforms.imm_data);
    FREE(shader->uniforms.imm_contents);
-   FREE(shader->output_per_semantic_list);
    FREE(shader);
 }
 
@@ -2591,8 +2568,9 @@ static const struct etna_shader_inout *
 etna_shader_vs_lookup(const struct etna_shader_variant *sobj,
                       const struct etna_shader_inout *in)
 {
-   if (in->semantic.Index < sobj->output_count_per_semantic[in->semantic.Name])
-      return sobj->output_per_semantic[in->semantic.Name][in->semantic.Index];
+   for (int i = 0; i < sobj->outfile.num_reg; i++)
+      if (sobj->outfile.reg[i].slot == in->slot)
+         return &sobj->outfile.reg[i];
 
    return NULL;
 }
@@ -2614,7 +2592,8 @@ etna_link_shader(struct etna_shader_link_info *info,
       const struct etna_shader_inout *fsio = &fs->infile.reg[idx];
       const struct etna_shader_inout *vsio = etna_shader_vs_lookup(vs, fsio);
       struct etna_varying *varying;
-      bool interpolate_always = fsio->semantic.Name != TGSI_SEMANTIC_COLOR;
+      bool interpolate_always = ((fsio->slot != VARYING_SLOT_COL0) &&
+                                 (fsio->slot != VARYING_SLOT_COL1));
 
       assert(fsio->reg > 0 && fsio->reg <= ARRAY_SIZE(info->varyings));
 
@@ -2637,14 +2616,14 @@ etna_link_shader(struct etna_shader_link_info *info,
       /* point coord is an input to the PS without matching VS output,
        * so it gets a varying slot without being assigned a VS register.
        */
-      if (fsio->semantic.Name == TGSI_SEMANTIC_PCOORD) {
+      if (fsio->slot == VARYING_SLOT_PNTC) {
          varying->use[0] = VARYING_COMPONENT_USE_POINTCOORD_X;
          varying->use[1] = VARYING_COMPONENT_USE_POINTCOORD_Y;
 
          info->pcoord_varying_comp_ofs = comp_ofs;
       } else {
          if (vsio == NULL) { /* not found -- link error */
-            BUG("Semantic %d value %d not found in vertex shader outputs\n", fsio->semantic.Name, fsio->semantic.Index);
+            BUG("Semantic value not found in vertex shader outputs\n");
             return true;
          }
 
