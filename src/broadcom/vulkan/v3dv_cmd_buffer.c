@@ -820,6 +820,12 @@ v3dv_job_init(struct v3dv_job *job,
        */
       cmd_buffer->state.dirty = ~0;
 
+      /* Honor inheritance of occlussion queries in secondaries if requested */
+      if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+          cmd_buffer->state.inheritance.occlusion_query_enable) {
+         cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+      }
+
       /* Keep track of the first subpass that we are recording in this new job.
        * We will use this when we emit the RCL to decide how to emit our loads
        * and stores.
@@ -1069,10 +1075,15 @@ cmd_buffer_begin_render_pass_secondary(
    cmd_buffer->state.framebuffer =
       v3dv_framebuffer_from_handle(inheritance_info->framebuffer);
 
+   assert(inheritance_info->subpass < cmd_buffer->state.pass->subpass_count);
+   cmd_buffer->state.subpass_idx = inheritance_info->subpass;
+
+   cmd_buffer->state.inheritance.occlusion_query_enable =
+      inheritance_info->occlusionQueryEnable;
+
    /* Secondaries that execute inside a render pass won't start subpasses
     * so we want to create a job for them here.
     */
-   assert(inheritance_info->subpass < cmd_buffer->state.pass->subpass_count);
    struct v3dv_job *job =
       v3dv_cmd_buffer_start_job(cmd_buffer, inheritance_info->subpass,
                                 V3DV_JOB_TYPE_GPU_CL_SECONDARY);
@@ -1080,8 +1091,6 @@ cmd_buffer_begin_render_pass_secondary(
       v3dv_flag_oom(cmd_buffer, NULL);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
-
-   cmd_buffer->state.subpass_idx = inheritance_info->subpass;
 
    /* Secondary command buffers don't know about the render area, but our
     * scissor setup accounts for it, so let's make sure we make it large
@@ -1131,12 +1140,6 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          if (result != VK_SUCCESS)
             return result;
       }
-
-      /* If the primary may have an active occlusion query we need to honor
-       * that in the secondary.
-       */
-      if (pBeginInfo->pInheritanceInfo->occlusionQueryEnable)
-         cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_OCCLUSION_QUERY;
    }
 
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_RECORDING;
@@ -2543,7 +2546,12 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
 {
    assert(primary->state.job);
 
-   if (primary->state.dirty & V3DV_CMD_DIRTY_OCCLUSION_QUERY)
+   /* Emit occlusion query state if needed so the draw calls inside our
+    * secondaries update the counters.
+    */
+   bool has_occlusion_query =
+      primary->state.dirty & V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+   if (has_occlusion_query)
       emit_occlusion_query(primary);
 
    /* FIXME: if our primary job tiling doesn't enable MSSA but any of the
@@ -2592,6 +2600,12 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
                   cmd_buffer_subpass_split_for_barrier(primary,
                                                        needs_bcl_barrier);
                v3dv_return_if_oom(primary, NULL);
+
+               /* Since we have created a new primary we need to re-emit
+                * occlusion query state.
+                */
+               if (has_occlusion_query)
+                  emit_occlusion_query(primary);
             }
 
             /* Make sure our primary job has all required BO references */

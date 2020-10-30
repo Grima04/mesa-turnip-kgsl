@@ -983,6 +983,11 @@ struct v3dv_cmd_buffer_state {
    bool has_barrier;
    bool has_bcl_barrier;
 
+   /* Secondary command buffer state */
+   struct {
+      bool occlusion_query_enable;
+   } inheritance;
+
    /* Command buffer state saved during a meta operation */
    struct {
       uint32_t subpass_idx;
