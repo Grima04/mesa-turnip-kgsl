@@ -27,6 +27,8 @@
 #include "zink_context.h"
 #include "zink_screen.h"
 
+#include "vulkan/wsi/wsi_common.h"
+
 #include "util/slab.h"
 #include "util/u_debug.h"
 #include "util/format/u_format.h"
@@ -225,6 +227,15 @@ resource_create(struct pipe_screen *pscreen,
       ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
       res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
+      struct wsi_image_create_info image_wsi_info = {
+         VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
+         NULL,
+         .scanout = true,
+      };
+
+      if (templ->bind & PIPE_BIND_SCANOUT)
+         ici.pNext = &image_wsi_info;
+
       VkResult result = vkCreateImage(screen->dev, &ici, NULL, &res->image);
       if (result != VK_SUCCESS) {
          FREE(res);
@@ -250,6 +261,8 @@ resource_create(struct pipe_screen *pscreen,
    if (templ->bind & PIPE_BIND_SHARED) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
       emai.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+      emai.pNext = mai.pNext;
       mai.pNext = &emai;
    }
 
@@ -263,7 +276,20 @@ resource_create(struct pipe_screen *pscreen,
       imfi.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
       imfi.fd = whandle->handle;
 
-      emai.pNext = &imfi;
+      imfi.pNext = mai.pNext;
+      mai.pNext = &imfi;
+   }
+
+   struct wsi_memory_allocate_info memory_wsi_info = {
+      VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA,
+      NULL,
+   };
+
+   if (templ->bind & PIPE_BIND_SCANOUT) {
+      memory_wsi_info.implicit_sync = true;
+
+      memory_wsi_info.pNext = mai.pNext;
+      mai.pNext = &memory_wsi_info;
    }
 
    if (vkAllocateMemory(screen->dev, &mai, NULL, &res->mem) != VK_SUCCESS)
