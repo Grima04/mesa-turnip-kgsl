@@ -30,6 +30,21 @@
  * the original bit-size.
  */
 
+static nir_ssa_def *convert_to_bit_size(nir_builder *bld, nir_ssa_def *src,
+                                        nir_alu_type type, unsigned bit_size)
+{
+   /* create b2i32(a) instead of i2i32(b2i8(a))/i2i32(b2i16(a)) */
+   nir_alu_instr *alu = nir_src_as_alu_instr(nir_src_for_ssa(src));
+   if ((type & (nir_type_uint | nir_type_int)) && bit_size == 32 &&
+       alu && (alu->op == nir_op_b2i8 || alu->op == nir_op_b2i16)) {
+      nir_alu_instr *instr = nir_alu_instr_create(bld->shader, nir_op_b2i32);
+      nir_alu_src_copy(&instr->src[0], &alu->src[0], instr);
+      return nir_builder_alu_instr_finish_and_insert(bld, instr);
+   }
+
+   return nir_convert_to_bit_size(bld, src, type, bit_size);
+}
+
 static void
 lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
 {
@@ -45,7 +60,7 @@ lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
 
       nir_alu_type type = nir_op_infos[op].input_types[i];
       if (nir_alu_type_get_type_size(type) == 0)
-         src = nir_convert_to_bit_size(bld, src, type, bit_size);
+         src = convert_to_bit_size(bld, src, type, bit_size);
 
       if (i == 1 && (op == nir_op_ishl || op == nir_op_ishr || op == nir_op_ushr)) {
          assert(util_is_power_of_two_nonzero(dst_bit_size));
