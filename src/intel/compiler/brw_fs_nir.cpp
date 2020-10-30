@@ -5424,13 +5424,17 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
+   case nir_intrinsic_load_shared_block_intel:
    case nir_intrinsic_load_ssbo_block_intel: {
       assert(nir_dest_bit_size(instr->dest) == 32);
 
-      fs_reg address = bld.emit_uniformize(get_nir_src(instr->src[1]));
+      const bool is_ssbo =
+         instr->intrinsic == nir_intrinsic_load_ssbo_block_intel;
+      fs_reg address = bld.emit_uniformize(get_nir_src(instr->src[is_ssbo ? 1 : 0]));
 
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-      srcs[SURFACE_LOGICAL_SRC_SURFACE] = get_nir_ssbo_intrinsic_index(bld, instr);
+      srcs[SURFACE_LOGICAL_SRC_SURFACE] = is_ssbo ?
+         get_nir_ssbo_intrinsic_index(bld, instr) : fs_reg(brw_imm_ud(GEN7_BTI_SLM));
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = address;
 
       const fs_builder ubld1 = bld.exec_all().group(1, 0);
@@ -5460,14 +5464,19 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
+   case nir_intrinsic_store_shared_block_intel:
    case nir_intrinsic_store_ssbo_block_intel: {
       assert(nir_src_bit_size(instr->src[0]) == 32);
 
-      fs_reg address = bld.emit_uniformize(get_nir_src(instr->src[2]));
+      const bool is_ssbo =
+         instr->intrinsic == nir_intrinsic_store_ssbo_block_intel;
+
+      fs_reg address = bld.emit_uniformize(get_nir_src(instr->src[is_ssbo ? 2 : 1]));
       fs_reg src = get_nir_src(instr->src[0]);
 
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-      srcs[SURFACE_LOGICAL_SRC_SURFACE] = get_nir_ssbo_intrinsic_index(bld, instr);
+      srcs[SURFACE_LOGICAL_SRC_SURFACE] = is_ssbo ?
+         get_nir_ssbo_intrinsic_index(bld, instr) : fs_reg(brw_imm_ud(GEN7_BTI_SLM));
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = address;
 
       const fs_builder ubld1 = bld.exec_all().group(1, 0);
