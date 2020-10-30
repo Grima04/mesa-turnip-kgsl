@@ -1148,6 +1148,29 @@ brwCreateContext(gl_api api,
    _mesa_override_extensions(ctx);
    _mesa_compute_version(ctx);
 
+#ifndef NDEBUG
+   /* Enforce that the version of the context that was created is at least as
+    * high as the version that was advertised via GLX / EGL / whatever window
+    * system.
+    */
+   const __DRIscreen *const dri_screen = brw->screen->driScrnPriv;
+
+   switch (api) {
+   case API_OPENGL_COMPAT:
+      assert(ctx->Version >= dri_screen->max_gl_compat_version);
+      break;
+   case API_OPENGLES:
+      assert(ctx->Version >= dri_screen->max_gl_es1_version);
+      break;
+   case API_OPENGLES2:
+      assert(ctx->Version >= dri_screen->max_gl_es2_version);
+      break;
+   case API_OPENGL_CORE:
+      assert(ctx->Version >= dri_screen->max_gl_core_version);
+      break;
+   }
+#endif
+
    /* GL_ARB_gl_spirv */
    if (ctx->Extensions.ARB_gl_spirv) {
       brw_initialize_spirv_supported_capabilities(brw);
