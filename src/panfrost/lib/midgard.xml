@@ -110,8 +110,8 @@
     <value name="R8G8B8G8" value="30"/>
     <value name="G8R8G8B8" value="31"/>
     <value name="RGB565" value="64"/>
-    <value name="RGB5 X1 UNORM" value="65"/>
-    <value name="RGB5 A1 UNORM" value="66"/>
+    <value name="RGB5 A1 UNORM" value="65"/>
+    <value name="A1 BGR5 UNORM" value="66"/>
     <value name="RGB10 A2 UNORM" value="67"/>
     <value name="RGB10 A2 SNORM" value="69"/>
     <value name="RGB10 A2UI" value="71"/>
