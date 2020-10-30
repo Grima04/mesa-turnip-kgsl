@@ -587,10 +587,9 @@ opt_find_array_copies_block(nir_builder *b, nir_block *block,
       /* The source must be either local or something that's guaranteed to be
        * read-only.
        */
-      const nir_variable_mode read_only_modes =
-         nir_var_shader_in | nir_var_uniform | nir_var_system_value;
       if (src_deref &&
-          !(src_deref->mode & (nir_var_function_temp | read_only_modes))) {
+          !(src_deref->mode & (nir_var_function_temp |
+                               nir_var_read_only_modes))) {
          src_deref = NULL;
       }
 
