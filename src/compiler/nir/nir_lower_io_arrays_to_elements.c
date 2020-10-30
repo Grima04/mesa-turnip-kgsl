@@ -250,7 +250,7 @@ create_indirects_mask(nir_shader *shader,
                   continue;
 
                nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
-               if (deref->mode != mode)
+               if (!nir_deref_mode_is(deref, mode))
                   continue;
 
                nir_variable *var = nir_deref_instr_get_variable(deref);
@@ -296,7 +296,7 @@ lower_io_arrays_to_elements(nir_shader *shader, nir_variable_mode mask,
                   continue;
 
                nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
-               if (!(deref->mode & mask))
+               if (!nir_deref_mode_is_one_of(deref, mask))
                   continue;
 
                nir_variable *var = nir_deref_instr_get_variable(deref);

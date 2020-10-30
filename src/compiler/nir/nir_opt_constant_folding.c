@@ -114,7 +114,7 @@ try_fold_alu(nir_builder *b, nir_alu_instr *instr)
 static nir_const_value *
 const_value_for_deref(nir_deref_instr *deref)
 {
-   if (deref->mode != nir_var_mem_constant)
+   if (!nir_deref_mode_is(deref, nir_var_mem_constant))
       return NULL;
 
    nir_deref_path path;

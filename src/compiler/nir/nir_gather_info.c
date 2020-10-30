@@ -300,15 +300,8 @@ try_mask_partial_io(nir_shader *shader, nir_variable *var,
 static void
 update_memory_written_for_deref(nir_shader *shader, nir_deref_instr *deref)
 {
-   switch (deref->mode) {
-   case nir_var_mem_ssbo:
-   case nir_var_mem_global:
+   if (nir_deref_mode_may_be(deref, (nir_var_mem_ssbo | nir_var_mem_global)))
       shader->info.writes_memory = true;
-      break;
-   default:
-      /* Nothing to do. */
-      break;
-   }
 }
 
 static void
@@ -350,8 +343,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_load_deref:
    case nir_intrinsic_store_deref:{
       nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
-      if (deref->mode == nir_var_shader_in ||
-          deref->mode == nir_var_shader_out) {
+      if (nir_deref_mode_is_one_of(deref, nir_var_shader_in |
+                                          nir_var_shader_out)) {
          nir_variable *var = nir_deref_instr_get_variable(deref);
          bool is_output_read = false;
          if (var->data.mode == nir_var_shader_out &&

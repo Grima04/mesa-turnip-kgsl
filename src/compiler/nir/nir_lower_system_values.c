@@ -110,7 +110,7 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
 
    case nir_intrinsic_load_deref: {
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-      if (deref->mode != nir_var_system_value)
+      if (!nir_deref_mode_is(deref, nir_var_system_value))
          return NULL;
 
       if (deref->deref_type != nir_deref_type_var) {

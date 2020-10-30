@@ -2054,8 +2054,8 @@ static void visit_jump(struct lp_build_nir_context *bld_base,
 static void visit_deref(struct lp_build_nir_context *bld_base,
                         nir_deref_instr *instr)
 {
-   if (instr->mode != nir_var_mem_shared &&
-       instr->mode != nir_var_mem_global)
+   if (!nir_deref_mode_is_one_of(instr, nir_var_mem_shared |
+                                        nir_var_mem_global))
       return;
    LLVMValueRef result = NULL;
    switch(instr->deref_type) {

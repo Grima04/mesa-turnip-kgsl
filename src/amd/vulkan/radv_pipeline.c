@@ -2932,7 +2932,8 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
 		return align % (bit_size == 8 ? 2 : 4) == 0;
 	case nir_intrinsic_load_deref:
 	case nir_intrinsic_store_deref:
-		assert(nir_src_as_deref(low->src[0])->mode == nir_var_mem_shared);
+		assert(nir_deref_mode_is(nir_src_as_deref(low->src[0]),
+		                         nir_var_mem_shared));
 		/* fallthrough */
 	case nir_intrinsic_load_shared:
 	case nir_intrinsic_store_shared:

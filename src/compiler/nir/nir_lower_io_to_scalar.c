@@ -314,7 +314,7 @@ nir_lower_io_to_scalar_early_instr(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
-   if (!(deref->mode & state->mask))
+   if (!nir_deref_mode_is_one_of(deref, state->mask))
       return false;
 
    nir_variable *var = nir_deref_instr_get_variable(deref);

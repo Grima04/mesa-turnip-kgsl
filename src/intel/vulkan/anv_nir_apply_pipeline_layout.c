@@ -262,7 +262,7 @@ try_lower_direct_buffer_intrinsic(nir_intrinsic_instr *intrin, bool is_atomic,
    nir_builder *b = &state->builder;
 
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-   if (deref->mode != nir_var_mem_ssbo)
+   if (!nir_deref_mode_is(deref, nir_var_mem_ssbo))
       return false;
 
    /* 64-bit atomics only support A64 messages so we can't lower them to the

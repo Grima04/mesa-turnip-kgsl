@@ -1676,7 +1676,7 @@ lower_explicit_io_array_length(nir_builder *b, nir_intrinsic_instr *intrin,
 
    assert(glsl_type_is_array(deref->type));
    assert(glsl_get_length(deref->type) == 0);
-   assert(deref->mode == nir_var_mem_ssbo);
+   assert(nir_deref_mode_is(deref, nir_var_mem_ssbo));
    unsigned stride = glsl_get_explicit_stride(deref->type);
    assert(stride > 0);
 

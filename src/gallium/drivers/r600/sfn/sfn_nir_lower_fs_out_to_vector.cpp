@@ -421,7 +421,7 @@ bool NirLowerFSOutToVector::instr_can_rewrite_type(nir_intrinsic_instr *intr) co
       return false;
 
    nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
-   if (deref->mode != nir_var_shader_out)
+   if (!nir_deref_mode_is(deref, nir_var_shader_out))
       return false;
 
    return var_can_rewrite(nir_deref_instr_get_variable(deref));

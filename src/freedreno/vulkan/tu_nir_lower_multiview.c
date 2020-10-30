@@ -40,7 +40,7 @@ lower_multiview_mask(nir_shader *nir, uint32_t *mask)
             continue;
 
          nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-         if (deref->mode != nir_var_shader_out)
+         if (!nir_deref_mode_is(deref, nir_var_shader_out))
             continue;
 
          nir_variable *var = nir_deref_instr_get_variable(deref);

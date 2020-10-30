@@ -431,10 +431,10 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
          case nir_intrinsic_interp_deref_at_offset:
          case nir_intrinsic_interp_deref_at_vertex: {
             nir_deref_instr *old_deref = nir_src_as_deref(intrin->src[0]);
-            if (!(old_deref->mode & modes))
+            if (!nir_deref_mode_is_one_of(old_deref, modes))
                break;
 
-            if (old_deref->mode == nir_var_shader_out)
+            if (nir_deref_mode_is(old_deref, nir_var_shader_out))
                assert(b.shader->info.stage == MESA_SHADER_TESS_CTRL ||
                       b.shader->info.stage == MESA_SHADER_FRAGMENT);
 
@@ -490,7 +490,7 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
 
          case nir_intrinsic_store_deref: {
             nir_deref_instr *old_deref = nir_src_as_deref(intrin->src[0]);
-            if (old_deref->mode != nir_var_shader_out)
+            if (!nir_deref_mode_is(old_deref, nir_var_shader_out))
                break;
 
             nir_variable *old_var = nir_deref_instr_get_variable(old_deref);

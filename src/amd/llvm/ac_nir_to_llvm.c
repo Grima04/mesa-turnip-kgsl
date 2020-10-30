@@ -4502,7 +4502,7 @@ static LLVMTypeRef glsl_to_llvm_type(struct ac_llvm_context *ac, const struct gl
 
 static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
 {
-   if (instr->mode != nir_var_mem_shared && instr->mode != nir_var_mem_global)
+   if (!nir_deref_mode_is_one_of(instr, nir_var_mem_shared | nir_var_mem_global))
       return;
 
    LLVMValueRef result = NULL;
@@ -4513,7 +4513,7 @@ static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
       break;
    }
    case nir_deref_type_struct:
-      if (instr->mode == nir_var_mem_global) {
+      if (nir_deref_mode_is(instr, nir_var_mem_global)) {
          nir_deref_instr *parent = nir_deref_instr_parent(instr);
          uint64_t offset = glsl_get_struct_field_offset(parent->type, instr->strct.index);
          result = ac_build_gep_ptr(&ctx->ac, get_src(ctx, instr->parent),
@@ -4524,7 +4524,7 @@ static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
       }
       break;
    case nir_deref_type_array:
-      if (instr->mode == nir_var_mem_global) {
+      if (nir_deref_mode_is(instr, nir_var_mem_global)) {
          nir_deref_instr *parent = nir_deref_instr_parent(instr);
          unsigned stride = glsl_get_explicit_stride(parent->type);
 
@@ -4547,7 +4547,7 @@ static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
       }
       break;
    case nir_deref_type_ptr_as_array:
-      if (instr->mode == nir_var_mem_global) {
+      if (nir_deref_mode_is(instr, nir_var_mem_global)) {
          unsigned stride = nir_deref_instr_array_stride(instr);
 
          LLVMValueRef index = get_src(ctx, instr->arr.index);
@@ -4569,7 +4569,7 @@ static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
       /* We can't use the structs from LLVM because the shader
        * specifies its own offsets. */
       LLVMTypeRef pointee_type = ctx->ac.i8;
-      if (instr->mode == nir_var_mem_shared)
+      if (nir_deref_mode_is(instr, nir_var_mem_shared))
          pointee_type = glsl_to_llvm_type(&ctx->ac, instr->type);
 
       unsigned address_space;

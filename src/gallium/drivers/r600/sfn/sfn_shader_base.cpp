@@ -299,7 +299,7 @@ void ShaderFromNirProcessor::add_array_deref(nir_deref_instr *instr)
 {
    nir_variable *var = nir_deref_instr_get_variable(instr);
 
-   assert(instr->mode == nir_var_function_temp);
+   assert(nir_deref_mode_is(instr, nir_var_function_temp));
    assert(glsl_type_is_array(var->type));
 
    // add an alias for the index to the register(s);

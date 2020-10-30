@@ -525,7 +525,7 @@ static void si_nir_lower_color(nir_shader *nir)
             continue;
 
          nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-         if (deref->mode != nir_var_shader_in)
+         if (!nir_deref_mode_is(deref, nir_var_shader_in))
             continue;
 
          b.cursor = nir_before_instr(instr);
