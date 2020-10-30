@@ -591,8 +591,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       /* Also allow 32-bit boolean store operations */
       if (glsl_type_is_boolean(dst->type))
          src_bit_sizes[1] |= 32;
-      validate_assert(state, (dst->mode & (nir_var_shader_in |
-                                           nir_var_uniform)) == 0);
+      validate_assert(state, (dst->mode & nir_var_read_only_modes) == 0);
       validate_assert(state, (nir_intrinsic_write_mask(instr) & ~((1 << instr->num_components) - 1)) == 0);
       break;
    }
@@ -602,8 +601,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       nir_deref_instr *src = nir_src_as_deref(instr->src[1]);
       validate_assert(state, glsl_get_bare_type(dst->type) ==
                              glsl_get_bare_type(src->type));
-      validate_assert(state, (dst->mode & (nir_var_shader_in |
-                                           nir_var_uniform)) == 0);
+      validate_assert(state, (dst->mode & nir_var_read_only_modes) == 0);
       break;
    }
 
