@@ -111,15 +111,15 @@ struct rendering_state {
 
    uint8_t push_constants[128 * 4];
 
-   struct lvp_render_pass *pass;
+   const struct lvp_render_pass *pass;
    uint32_t subpass;
-   struct lvp_framebuffer *vk_framebuffer;
+   const struct lvp_framebuffer *vk_framebuffer;
    VkRect2D render_area;
 
    uint32_t sample_mask;
    unsigned min_samples;
 
-   struct lvp_attachment_state *attachments;
+   const struct lvp_attachment_state *attachments;
    VkImageAspectFlags *pending_clear_aspects;
    int num_pending_aspects;
 };
@@ -1091,7 +1091,7 @@ static bool
 subpass_needs_clear(struct rendering_state *state)
 {
    uint32_t a;
-   struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       a = subpass->color_attachments[i].attachment;
       if (attachment_needs_clear(state, a))
@@ -1107,7 +1107,7 @@ subpass_needs_clear(struct rendering_state *state)
 
 static void render_subpass_clear(struct rendering_state *state)
 {
-   struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
 
    if (!subpass_needs_clear(state))
       return;
@@ -1181,7 +1181,7 @@ static void render_subpass_clear(struct rendering_state *state)
 
 static void render_pass_resolve(struct rendering_state *state)
 {
-   struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
    if (!subpass->has_color_resolve)
       return;
    for (uint32_t i = 0; i < subpass->color_count; i++) {
@@ -1224,7 +1224,7 @@ static void begin_render_subpass(struct rendering_state *state,
 
    state->framebuffer.nr_cbufs = 0;
 
-   struct lvp_subpass *subpass = &state->pass->subpasses[subpass_idx];
+   const struct lvp_subpass *subpass = &state->pass->subpasses[subpass_idx];
    for (unsigned i = 0; i < subpass->color_count; i++) {
       struct lvp_subpass_attachment *color_att = &subpass->color_attachments[i];
       if (color_att->attachment != VK_ATTACHMENT_UNUSED) {
@@ -2187,7 +2187,7 @@ static void handle_clear_attachments(struct lvp_cmd_buffer_entry *cmd,
 {
    for (uint32_t a = 0; a < cmd->u.clear_attachments.attachment_count; a++) {
       VkClearAttachment *att = &cmd->u.clear_attachments.attachments[a];
-      struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+      const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
       struct lvp_image_view *imgv;
 
       if (att->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
