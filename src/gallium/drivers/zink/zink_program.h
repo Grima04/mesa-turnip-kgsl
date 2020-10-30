@@ -137,6 +137,9 @@ zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descrip
 unsigned
 zink_program_num_bindings(const struct zink_program *pg, bool is_compute);
 
+bool
+zink_program_descriptor_is_buffer(struct zink_context *ctx, enum pipe_shader_type stage, enum zink_descriptor_type type, unsigned i);
+
 void
 zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog);
 

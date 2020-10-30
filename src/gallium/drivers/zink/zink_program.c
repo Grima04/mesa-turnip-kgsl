@@ -709,6 +709,30 @@ zink_program_get_descriptor_usage(struct zink_context *ctx, enum pipe_shader_typ
    return 0;
 }
 
+bool
+zink_program_descriptor_is_buffer(struct zink_context *ctx, enum pipe_shader_type stage, enum zink_descriptor_type type, unsigned i)
+{
+   struct zink_shader *zs = NULL;
+   switch (stage) {
+   case PIPE_SHADER_VERTEX:
+   case PIPE_SHADER_TESS_CTRL:
+   case PIPE_SHADER_TESS_EVAL:
+   case PIPE_SHADER_GEOMETRY:
+   case PIPE_SHADER_FRAGMENT:
+      zs = ctx->gfx_stages[stage];
+      break;
+   case PIPE_SHADER_COMPUTE: {
+      zs = ctx->compute_stage;
+      break;
+   }
+   default:
+      unreachable("unknown shader type");
+   }
+   if (!zs)
+      return false;
+   return zink_shader_descriptor_is_buffer(zs, type, i);
+}
+
 static unsigned
 get_num_bindings(struct zink_shader *zs, enum zink_descriptor_type type)
 {
