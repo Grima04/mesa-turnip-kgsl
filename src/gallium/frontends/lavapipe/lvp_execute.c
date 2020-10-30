@@ -120,6 +120,8 @@ struct rendering_state {
    unsigned min_samples;
 
    struct lvp_attachment_state *attachments;
+   VkImageAspectFlags *pending_clear_aspects;
+   int num_pending_aspects;
 };
 
 static void emit_compute_state(struct rendering_state *state)
@@ -1082,7 +1084,7 @@ attachment_needs_clear(struct rendering_state *state,
                        uint32_t a)
 {
    return (a != VK_ATTACHMENT_UNUSED &&
-           state->attachments[a].pending_clear_aspects);
+           state->pending_clear_aspects[a]);
 }
 
 static bool
@@ -1134,7 +1136,7 @@ static void render_subpass_clear(struct rendering_state *state)
                                        state->render_area.extent.width, state->render_area.extent.height,
                                        false);
 
-      state->attachments[a].pending_clear_aspects = 0;
+      state->pending_clear_aspects[a] = 0;
    }
 
    if (subpass->depth_stencil_attachment) {
@@ -1171,7 +1173,7 @@ static void render_subpass_clear(struct rendering_state *state)
                                              state->render_area.offset.x, state->render_area.offset.y,
                                              state->render_area.extent.width, state->render_area.extent.height,
                                              false);
-         state->attachments[ds].pending_clear_aspects = 0;
+         state->pending_clear_aspects[ds] = 0;
       }
    }
 
@@ -1262,6 +1264,14 @@ static void handle_begin_render_pass(struct lvp_cmd_buffer_entry *cmd,
    state->framebuffer.height = state->vk_framebuffer->height;
    state->framebuffer.layers = state->vk_framebuffer->layers;
 
+   if (state->num_pending_aspects < state->pass->attachment_count) {
+      state->pending_clear_aspects = realloc(state->pending_clear_aspects, sizeof(VkImageAspectFlags) * state->pass->attachment_count);
+      state->num_pending_aspects = state->pass->attachment_count;
+   }
+
+   for (unsigned a = 0; a < state->pass->attachment_count; a++) {
+      state->pending_clear_aspects[a] = state->attachments[a].pending_clear_aspects;
+   }
    begin_render_subpass(state, 0);
 }
 
@@ -2473,5 +2483,6 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
       state.pctx->set_shader_images(state.pctx, s, 0, device->physical_device->max_images, NULL);
    }
 
+   free(state.pending_clear_aspects);
    return VK_SUCCESS;
 }
