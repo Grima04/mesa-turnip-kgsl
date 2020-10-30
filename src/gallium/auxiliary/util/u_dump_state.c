@@ -941,7 +941,6 @@ util_dump_draw_info(FILE *stream, const struct pipe_draw_info *state)
       else
          util_dump_member(stream, ptr, state, index.resource);
    }
-   util_dump_member(stream, ptr, state, count_from_stream_output);
 
    if (!state->indirect) {
       util_dump_member(stream, ptr, state, indirect);
@@ -952,6 +951,7 @@ util_dump_draw_info(FILE *stream, const struct pipe_draw_info *state)
       util_dump_member(stream, uint, state, indirect->indirect_draw_count_offset);
       util_dump_member(stream, ptr, state, indirect->buffer);
       util_dump_member(stream, ptr, state, indirect->indirect_draw_count);
+      util_dump_member(stream, ptr, state, indirect->count_from_stream_output);
    }
 
    util_dump_struct_end(stream);

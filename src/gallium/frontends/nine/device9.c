@@ -3174,7 +3174,6 @@ NineDevice9_ProcessVertices( struct NineDevice9 *This,
     draw.start_instance = 0;
     draw.primitive_restart = FALSE;
     draw.restart_index = 0;
-    draw.count_from_stream_output = NULL;
     draw.indirect = NULL;
     draw.instance_count = 1;
     draw.index_size = 0;

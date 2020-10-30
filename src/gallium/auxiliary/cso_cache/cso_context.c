@@ -1727,10 +1727,14 @@ cso_draw_vbo(struct cso_context *cso,
    struct u_vbuf *vbuf = cso->vbuf_current;
 
    /* We can't have both indirect drawing and SO-vertex-count drawing */
-   assert(info->indirect == NULL || info->count_from_stream_output == NULL);
+   assert(!info->indirect ||
+          info->indirect->buffer == NULL ||
+          info->indirect->count_from_stream_output == NULL);
 
    /* We can't have SO-vertex-count drawing with an index buffer */
-   assert(info->count_from_stream_output == NULL || info->index_size == 0);
+   assert(info->index_size == 0 ||
+          !info->indirect ||
+          info->indirect->count_from_stream_output == NULL);
 
    if (vbuf) {
       u_vbuf_draw_vbo(vbuf, info);

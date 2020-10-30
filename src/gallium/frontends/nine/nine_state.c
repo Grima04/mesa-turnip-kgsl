@@ -2318,7 +2318,6 @@ init_draw_info(struct pipe_draw_info *info,
     info->primitive_restart = FALSE;
     info->has_user_indices = FALSE;
     info->restart_index = 0;
-    info->count_from_stream_output = NULL;
     info->indirect = NULL;
 }
 

@@ -231,7 +231,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    uint32_t draw_mode;
    unsigned i;
 
-   if (!info->count_from_stream_output && !info->indirect &&
+   if (!info->indirect &&
        !info->primitive_restart &&
        !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
       return;

@@ -52,10 +52,10 @@ tegra_draw_vbo(struct pipe_context *pcontext,
    struct pipe_draw_indirect_info indirect;
    struct pipe_draw_info info;
 
-   if (pinfo && (pinfo->indirect || pinfo->index_size)) {
+   if (pinfo && ((pinfo->indirect && pinfo->indirect->buffer) || pinfo->index_size)) {
       memcpy(&info, pinfo, sizeof(info));
 
-      if (pinfo->indirect) {
+      if (pinfo->indirect && pinfo->indirect->buffer) {
          memcpy(&indirect, pinfo->indirect, sizeof(indirect));
          indirect.buffer = tegra_resource_unwrap(info.indirect->buffer);
          info.indirect = &indirect;

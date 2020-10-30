@@ -195,7 +195,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	if (emit.key.gs)
 		emit.key.key.has_gs = true;
 
-	if (!(emit.key.hs || emit.key.ds || emit.key.gs || info->indirect))
+	if (!(emit.key.hs || emit.key.ds || emit.key.gs || (info->indirect && info->indirect->buffer)))
 		fd6_vsc_update_sizes(ctx->batch, info);
 
 	fixup_shader_state(ctx, &emit.key.key);
@@ -315,7 +315,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	 */
 	emit_marker6(ring, 7);
 
-	if (info->indirect) {
+	if (info->indirect && info->indirect->buffer) {
 		draw_emit_indirect(ring, &draw0, info, index_offset);
 	} else {
 		draw_emit(ring, &draw0, info, index_offset);

@@ -793,7 +793,6 @@ void trace_dump_draw_info(const struct pipe_draw_info *state)
    trace_dump_member(uint, state, restart_index);
 
    trace_dump_member(ptr, state, index.resource);
-   trace_dump_member(ptr, state, count_from_stream_output);
 
    if (!state->indirect) {
       trace_dump_member(ptr, state, indirect);
@@ -804,6 +803,7 @@ void trace_dump_draw_info(const struct pipe_draw_info *state)
       trace_dump_member(uint, state, indirect->indirect_draw_count_offset);
       trace_dump_member(ptr, state, indirect->buffer);
       trace_dump_member(ptr, state, indirect->indirect_draw_count);
+      trace_dump_member(ptr, state, indirect->count_from_stream_output);
    }
 
    trace_dump_struct_end();

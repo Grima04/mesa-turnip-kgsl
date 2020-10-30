@@ -69,7 +69,7 @@ softpipe_draw_vbo(struct pipe_context *pipe,
    if (!softpipe_check_render_cond(sp))
       return;
 
-   if (info->indirect) {
+   if (info->indirect && info->indirect->buffer) {
       util_draw_indirect(pipe, info);
       return;
    }

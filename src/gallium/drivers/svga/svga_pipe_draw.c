@@ -83,7 +83,7 @@ retry_draw_auto(struct svga_context *svga,
                 const struct pipe_draw_info *info)
 {
    assert(svga_have_sm5(svga));
-   assert(info->count_from_stream_output);
+   assert(info->indirect->count_from_stream_output);
    assert(info->instance_count == 1);
    /* SO drawing implies core profile and none of these prim types */
    assert(info->mode != PIPE_PRIM_QUADS &&
@@ -117,7 +117,7 @@ retry_draw_auto(struct svga_context *svga,
                   0,    /* start instance */
                   1,    /* only 1 instance supported */
                   NULL, /* indirect drawing info */
-                  info->count_from_stream_output));
+                  info->indirect->count_from_stream_output));
 
       return PIPE_OK;
    }
@@ -132,7 +132,7 @@ retry_draw_indirect(struct svga_context *svga,
                     const struct pipe_draw_info *info)
 {
    assert(svga_have_sm5(svga));
-   assert(info->indirect);
+   assert(info->indirect && info->indirect->buffer);
    /* indirect drawing implies core profile and none of these prim types */
    assert(info->mode != PIPE_PRIM_QUADS &&
           info->mode != PIPE_PRIM_QUAD_STRIP &&
@@ -273,8 +273,7 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
       goto done;
    }
 
-   if (!info->indirect && !info->count_from_stream_output &&
-       !u_trim_pipe_prim(info->mode, &count))
+   if (!info->indirect && !u_trim_pipe_prim(info->mode, &count))
       goto done;
 
    needed_swtnl = svga->state.sw.need_swtnl;
@@ -318,7 +317,7 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
                                svga_is_using_flat_shading(svga),
                                svga->curr.rast->templ.flatshade_first);
 
-      if (info->count_from_stream_output) {
+      if (info->indirect && info->indirect->count_from_stream_output) {
          unsigned stream = 0;
          assert(count == 0);
 
@@ -332,7 +331,7 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
 
          /* Check the stream index of the specified stream output target */
          for (unsigned i = 0; i < ARRAY_SIZE(svga->so_targets); i++) {
-            if (svga->vcount_so_targets[i] == info->count_from_stream_output) {
+            if (svga->vcount_so_targets[i] == info->indirect->count_from_stream_output) {
                stream = (svga->vcount_buffer_stream >> (i * 4)) & 0xf;
                break;
             }
@@ -342,10 +341,10 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
          }
       }
 
-      if (info->count_from_stream_output && count == 0) {
+      if (info->indirect && info->indirect->count_from_stream_output && count == 0) {
          ret = retry_draw_auto(svga, info);
       }
-      else if (info->indirect) {
+      else if (info->indirect && info->indirect->buffer) {
          ret = retry_draw_indirect(svga, info);
       }
       else if (info->index_size) {

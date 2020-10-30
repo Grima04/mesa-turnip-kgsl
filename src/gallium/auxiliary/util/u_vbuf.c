@@ -1306,7 +1306,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info)
    new_info = *info;
 
    /* Handle indirect (multi)draws. */
-   if (new_info.indirect) {
+   if (new_info.indirect && new_info.indirect->buffer) {
       const struct pipe_draw_indirect_info *indirect = new_info.indirect;
       unsigned draw_count = 0;
 

@@ -712,6 +712,8 @@ struct pipe_draw_indirect_info
     *     uint32_t start;
     *     uint32_t start_instance;
     *  };
+    *
+    * If NULL, count_from_stream_output != NULL.
     */
    struct pipe_resource *buffer;
 
@@ -719,6 +721,22 @@ struct pipe_draw_indirect_info
     * is to be used as the real draw_count.
     */
    struct pipe_resource *indirect_draw_count;
+
+   /**
+    * Stream output target. If not NULL, it's used to provide the 'count'
+    * parameter based on the number vertices captured by the stream output
+    * stage. (or generally, based on the number of bytes captured)
+    *
+    * Only 'mode', 'start_instance', and 'instance_count' are taken into
+    * account, all the other variables from pipe_draw_info are ignored.
+    *
+    * 'start' is implicitly 0 and 'count' is set as discussed above.
+    * The draw command is non-indexed.
+    *
+    * Note that this only provides the count. The vertex buffers must
+    * be set via set_vertex_buffers manually.
+    */
+   struct pipe_stream_output_target *count_from_stream_output;
 };
 
 struct pipe_draw_start_count {
@@ -777,22 +795,6 @@ struct pipe_draw_info
    } index;
 
    struct pipe_draw_indirect_info *indirect; /**< Indirect draw. */
-
-   /**
-    * Stream output target. If not NULL, it's used to provide the 'count'
-    * parameter based on the number vertices captured by the stream output
-    * stage. (or generally, based on the number of bytes captured)
-    *
-    * Only 'mode', 'start_instance', and 'instance_count' are taken into
-    * account, all the other variables from pipe_draw_info are ignored.
-    *
-    * 'start' is implicitly 0 and 'count' is set as discussed above.
-    * The draw command is non-indexed.
-    *
-    * Note that this only provides the count. The vertex buffers must
-    * be set via set_vertex_buffers manually.
-    */
-   struct pipe_stream_output_target *count_from_stream_output;
 };
 
 

@@ -596,10 +596,10 @@ nvc0_push_vbo(struct nvc0_context *nvc0, const struct pipe_draw_info *info)
       nvc0_push_map_idxbuf(&ctx, nvc0, info);
       index_size = info->index_size;
    } else {
-      if (unlikely(info->count_from_stream_output)) {
+      if (unlikely(info->indirect && info->indirect->count_from_stream_output)) {
          struct pipe_context *pipe = &nvc0->base.pipe;
          struct nvc0_so_target *targ;
-         targ = nvc0_so_target(info->count_from_stream_output);
+         targ = nvc0_so_target(info->indirect->count_from_stream_output);
          pipe->get_query_result(pipe, targ->pq, true, (void *)&vert_count);
          vert_count /= targ->stride;
       }

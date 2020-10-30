@@ -6417,7 +6417,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
-                         const struct pipe_draw_info *draw)
+                         const struct pipe_draw_info *draw,
+                         const struct pipe_draw_indirect_info *indirect)
 {
    bool use_predicate = ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
 
@@ -6492,14 +6493,14 @@ iris_upload_render_state(struct iris_context *ice,
 #define _3DPRIM_START_INSTANCE      0x243C
 #define _3DPRIM_BASE_VERTEX         0x2440
 
-   if (draw->indirect) {
-      if (draw->indirect->indirect_draw_count) {
+   if (indirect && !indirect->count_from_stream_output) {
+      if (indirect->indirect_draw_count) {
          use_predicate = true;
 
          struct iris_bo *draw_count_bo =
-            iris_resource_bo(draw->indirect->indirect_draw_count);
+            iris_resource_bo(indirect->indirect_draw_count);
          unsigned draw_count_offset =
-            draw->indirect->indirect_draw_count_offset;
+            indirect->indirect_draw_count_offset;
 
          iris_emit_pipe_control_flush(batch,
                                       "ensure indirect draw buffer is flushed",
@@ -6551,43 +6552,43 @@ iris_upload_render_state(struct iris_context *ice,
             iris_batch_emit(batch, &mi_predicate, sizeof(uint32_t));
          }
       }
-      struct iris_bo *bo = iris_resource_bo(draw->indirect->buffer);
+      struct iris_bo *bo = iris_resource_bo(indirect->buffer);
       assert(bo);
 
       iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
          lrm.RegisterAddress = _3DPRIM_VERTEX_COUNT;
-         lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 0);
+         lrm.MemoryAddress = ro_bo(bo, indirect->offset + 0);
       }
       iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
          lrm.RegisterAddress = _3DPRIM_INSTANCE_COUNT;
-         lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 4);
+         lrm.MemoryAddress = ro_bo(bo, indirect->offset + 4);
       }
       iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
          lrm.RegisterAddress = _3DPRIM_START_VERTEX;
-         lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 8);
+         lrm.MemoryAddress = ro_bo(bo, indirect->offset + 8);
       }
       if (draw->index_size) {
          iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
             lrm.RegisterAddress = _3DPRIM_BASE_VERTEX;
-            lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 12);
+            lrm.MemoryAddress = ro_bo(bo, indirect->offset + 12);
          }
          iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
             lrm.RegisterAddress = _3DPRIM_START_INSTANCE;
-            lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 16);
+            lrm.MemoryAddress = ro_bo(bo, indirect->offset + 16);
          }
       } else {
          iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
             lrm.RegisterAddress = _3DPRIM_START_INSTANCE;
-            lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 12);
+            lrm.MemoryAddress = ro_bo(bo, indirect->offset + 12);
          }
          iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
             lri.RegisterOffset = _3DPRIM_BASE_VERTEX;
             lri.DataDWord = 0;
          }
       }
-   } else if (draw->count_from_stream_output) {
+   } else if (indirect && indirect->count_from_stream_output) {
       struct iris_stream_output_target *so =
-         (void *) draw->count_from_stream_output;
+         (void *) indirect->count_from_stream_output;
 
       /* XXX: Replace with actual cache tracking */
       iris_emit_pipe_control_flush(batch,
@@ -6615,7 +6616,7 @@ iris_upload_render_state(struct iris_context *ice,
       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
       prim.PredicateEnable = use_predicate;
 
-      if (draw->indirect || draw->count_from_stream_output) {
+      if (indirect) {
          prim.IndirectParameterEnable = true;
       } else {
          prim.StartInstanceLocation = draw->start_instance;

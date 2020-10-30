@@ -445,9 +445,9 @@ resolve_draw_info(const struct pipe_draw_info *raw_info,
 {
    memcpy(info, raw_info, sizeof(struct pipe_draw_info));
 
-   if (raw_info->count_from_stream_output) {
+   if (raw_info->indirect && raw_info->indirect->count_from_stream_output) {
       struct draw_so_target *target =
-         (struct draw_so_target *)info->count_from_stream_output;
+         (struct draw_so_target *)info->indirect->count_from_stream_output;
       assert(vertex_buffer != NULL);
       info->count = vertex_buffer->stride == 0 ? 0 :
                        target->internal_offset / vertex_buffer->stride;
@@ -455,6 +455,7 @@ resolve_draw_info(const struct pipe_draw_info *raw_info,
       /* Stream output draw can not be indexed */
       debug_assert(!info->index_size);
       info->max_index = info->count - 1;
+      info->indirect = NULL;
    }
 }
 

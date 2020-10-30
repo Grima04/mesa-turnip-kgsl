@@ -855,7 +855,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
    struct virgl_indexbuf ib = {};
    struct pipe_draw_info info = *dinfo;
 
-   if (!dinfo->count_from_stream_output && !dinfo->indirect &&
+   if (!dinfo->indirect &&
        !dinfo->primitive_restart &&
        !u_trim_pipe_prim(dinfo->mode, (unsigned*)&dinfo->count))
       return;

@@ -477,6 +477,22 @@ static bool si_is_line_stipple_enabled(struct si_context *sctx)
           (rs->polygon_mode_is_lines || util_prim_is_lines(sctx->current_rast_prim));
 }
 
+static bool num_instanced_prims_less_than(const struct pipe_draw_info *info,
+                                          const struct pipe_draw_indirect_info *indirect,
+                                          enum pipe_prim_type prim,
+                                          unsigned min_vertex_count,
+                                          unsigned instance_count,
+                                          unsigned num_prims)
+{
+   if (indirect) {
+      return indirect->buffer ||
+             (instance_count > 1 && indirect->count_from_stream_output);
+   } else {
+      return instance_count > 1 &&
+             si_num_prims_for_vertices(prim, min_vertex_count, info->vertices_per_patch) < num_prims;
+   }
+}
+
 ALWAYS_INLINE
 static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
                                           const struct pipe_draw_info *info,
@@ -484,6 +500,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
                                           unsigned instance_count, bool primitive_restart,
                                           unsigned min_vertex_count)
 {
+   const struct pipe_draw_indirect_info *indirect = info->indirect;
    union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
    unsigned primgroup_size;
    unsigned ia_multi_vgt_param;
@@ -497,14 +514,11 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
    }
 
    key.u.prim = prim;
-   key.u.uses_instancing = info->indirect || instance_count > 1;
+   key.u.uses_instancing = (indirect && indirect->buffer) || instance_count > 1;
    key.u.multi_instances_smaller_than_primgroup =
-      info->indirect ||
-      (instance_count > 1 &&
-       (info->count_from_stream_output ||
-        si_num_prims_for_vertices(prim, min_vertex_count, info->vertices_per_patch) < primgroup_size));
+      num_instanced_prims_less_than(info, indirect, prim, min_vertex_count, instance_count, primgroup_size);
    key.u.primitive_restart = primitive_restart;
-   key.u.count_from_stream_output = info->count_from_stream_output != NULL;
+   key.u.count_from_stream_output = indirect && indirect->count_from_stream_output;
    key.u.line_stipple_enabled = si_is_line_stipple_enabled(sctx);
 
    ia_multi_vgt_param =
@@ -521,11 +535,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
        * only applies it to Hawaii. Do what Vulkan does.
        */
       if (sctx->family == CHIP_HAWAII && G_028AA8_SWITCH_ON_EOI(ia_multi_vgt_param) &&
-          (info->indirect ||
-           (instance_count > 1 &&
-            (info->count_from_stream_output ||
-             si_num_prims_for_vertices(prim, min_vertex_count, info->vertices_per_patch) <= 1))))
-
+          num_instanced_prims_less_than(info, indirect, prim, min_vertex_count, instance_count, 2))
          sctx->flags |= SI_CONTEXT_VGT_FLUSH;
    }
 
@@ -771,15 +781,18 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    unsigned sh_base_reg = sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX];
    bool render_cond_bit = sctx->render_cond && !sctx->render_cond_force_off;
    uint32_t index_max_size = 0;
+   uint32_t use_opaque = 0;
    uint64_t index_va = 0;
 
-   if (info->count_from_stream_output) {
-      struct si_streamout_target *t = (struct si_streamout_target *)info->count_from_stream_output;
+   if (indirect && indirect->count_from_stream_output) {
+      struct si_streamout_target *t = (struct si_streamout_target *)indirect->count_from_stream_output;
 
       radeon_set_context_reg(cs, R_028B30_VGT_STRMOUT_DRAW_OPAQUE_VERTEX_STRIDE, t->stride_in_dw);
       si_cp_copy_data(sctx, sctx->gfx_cs, COPY_DATA_REG, NULL,
                       R_028B2C_VGT_STRMOUT_DRAW_OPAQUE_BUFFER_FILLED_SIZE >> 2, COPY_DATA_SRC_MEM,
                       t->buf_filled_size, t->buf_filled_size_offset);
+      use_opaque = S_0287F0_USE_OPAQUE(1);
+      indirect = NULL;
    }
 
    /* draw packet */
@@ -975,8 +988,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
             radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
             radeon_emit(cs, draws[i].count);
-            radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX |
-                            S_0287F0_USE_OPAQUE(!!info->count_from_stream_output));
+            radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX | use_opaque);
          }
          if (num_draws > 1 && !sctx->num_vs_blit_sgprs)
             sctx->last_base_vertex = draws[num_draws - 1].start;
@@ -1563,7 +1575,7 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
 {
    struct pipe_draw_indirect_info *indirect = info->indirect;
 
-   if (indirect) {
+   if (indirect && !indirect->count_from_stream_output) {
       unsigned indirect_count;
       struct pipe_transfer *transfer;
       unsigned begin, end;
@@ -1761,11 +1773,12 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+   struct pipe_draw_indirect_info *indirect = info->indirect;
    struct pipe_resource *indexbuf = info->index.resource;
    unsigned dirty_tex_counter, dirty_buf_counter;
    enum pipe_prim_type rast_prim, prim = info->mode;
    unsigned index_size = info->index_size;
-   unsigned index_offset = info->indirect ? draws[0].start * index_size : 0;
+   unsigned index_offset = indirect && indirect->buffer ? draws[0].start * index_size : 0;
    unsigned instance_count = info->instance_count;
    bool primitive_restart =
       info->primitive_restart &&
@@ -1776,7 +1789,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
     * no workaround for indirect draws, but we can at least skip
     * direct draws.
     */
-   if (unlikely(!info->indirect && !instance_count))
+   if (unlikely(!indirect && !instance_count))
       return;
 
    struct si_shader_selector *vs = sctx->vs_shader.cso;
@@ -1892,7 +1905,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
       } else if (info->has_user_indices) {
          unsigned start_offset;
 
-         assert(!info->indirect);
+         assert(!indirect);
          assert(num_draws == 1);
          start_offset = draws[0].start * index_size;
 
@@ -1920,15 +1933,14 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
    unsigned min_direct_count = 0;
    unsigned total_direct_count = 0;
 
-   if (info->indirect) {
-      struct pipe_draw_indirect_info *indirect = info->indirect;
-
+   if (indirect) {
       /* Add the buffer size for memory checking in need_cs_space. */
-      si_context_add_resource_size(sctx, indirect->buffer);
+      if (indirect->buffer)
+         si_context_add_resource_size(sctx, indirect->buffer);
 
       /* Indirect buffers use TC L2 on GFX9, but not older hw. */
       if (sctx->chip_class <= GFX8) {
-         if (si_resource(indirect->buffer)->TC_L2_dirty) {
+         if (indirect->buffer && si_resource(indirect->buffer)->TC_L2_dirty) {
             sctx->flags |= SI_CONTEXT_WB_L2;
             si_resource(indirect->buffer)->TC_L2_dirty = false;
          }
@@ -1956,7 +1968,6 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
            : /* Add, then return true. */
            (sctx->compute_num_verts_ineligible += total_direct_count,
             false)) && /* Add, then return false. */
-       (!info->count_from_stream_output || pd_msg("draw_opaque")) &&
        (primitive_restart ?
                           /* Supported prim types with primitive restart: */
            (prim == PIPE_PRIM_TRIANGLE_STRIP || pd_msg("bad prim type with primitive restart")) &&
@@ -2126,7 +2137,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
       masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
       gfx9_scissor_bug = true;
 
-      if (info->count_from_stream_output ||
+      if ((indirect && indirect->count_from_stream_output) ||
           sctx->dirty_atoms & si_atoms_that_always_roll_context() ||
           sctx->dirty_states & si_states_that_always_roll_context())
          sctx->context_roll = true;

@@ -214,7 +214,9 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_rasterizer_state *rast_state = ctx->rast_state;
    struct zink_depth_stencil_alpha_state *dsa_state = ctx->dsa_state;
-   struct zink_so_target *so_target = zink_so_target(dinfo->count_from_stream_output);
+   struct zink_so_target *so_target =
+      dinfo->indirect && dinfo->indirect->count_from_stream_output ?
+         zink_so_target(dinfo->indirect->count_from_stream_output) : NULL;
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
    bool need_index_buffer_unref = false;
@@ -514,7 +516,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       struct zink_resource *res = zink_resource(index_buffer);
       vkCmdBindIndexBuffer(batch->cmdbuf, res->buffer, index_offset, index_type);
       zink_batch_reference_resource_rw(batch, res, false);
-      if (dinfo->indirect) {
+      if (dinfo->indirect && dinfo->indirect->buffer) {
          struct zink_resource *indirect = zink_resource(dinfo->indirect->buffer);
          zink_batch_reference_resource_rw(batch, indirect, false);
          vkCmdDrawIndexedIndirect(batch->cmdbuf, indirect->buffer, dinfo->indirect->offset, dinfo->indirect->draw_count, dinfo->indirect->stride);
@@ -528,7 +530,7 @@ zink_draw_vbo(struct pipe_context *pctx,
          screen->vk_CmdDrawIndirectByteCountEXT(batch->cmdbuf, dinfo->instance_count, dinfo->start_instance,
                                        zink_resource(so_target->counter_buffer)->buffer, so_target->counter_buffer_offset, 0,
                                        MIN2(so_target->stride, screen->info.tf_props.maxTransformFeedbackBufferDataStride));
-      } else if (dinfo->indirect) {
+      } else if (dinfo->indirect && dinfo->indirect->buffer) {
          struct zink_resource *indirect = zink_resource(dinfo->indirect->buffer);
          zink_batch_reference_resource_rw(batch, indirect, false);
          vkCmdDrawIndirect(batch->cmdbuf, indirect->buffer, dinfo->indirect->offset, dinfo->indirect->draw_count, dinfo->indirect->stride);

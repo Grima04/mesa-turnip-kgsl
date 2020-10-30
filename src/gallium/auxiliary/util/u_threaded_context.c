@@ -126,7 +126,6 @@ tc_batch_execute(void *job, UNUSED int thread_index)
          if (next != last && next->call_id == TC_CALL_draw_vbo &&
              first_info->draw.drawid == 0 &&
              !first_info->draw.indirect &&
-             !first_info->draw.count_from_stream_output &&
              is_next_call_a_mergeable_draw(first_info, next, &next_info)) {
             /* Merge up to 256 draw calls. */
             struct pipe_draw_start_count multi[256];
@@ -2199,12 +2198,12 @@ tc_call_draw_vbo(struct pipe_context *pipe, union tc_payload *payload)
    struct tc_full_draw_info *info = (struct tc_full_draw_info*)payload;
 
    pipe->draw_vbo(pipe, &info->draw);
-   pipe_so_target_reference(&info->draw.count_from_stream_output, NULL);
    if (info->draw.index_size)
       pipe_resource_reference(&info->draw.index.resource, NULL);
    if (info->draw.indirect) {
       pipe_resource_reference(&info->indirect.buffer, NULL);
       pipe_resource_reference(&info->indirect.indirect_draw_count, NULL);
+      pipe_so_target_reference(&info->indirect.count_from_stream_output, NULL);
    }
 }
 
@@ -2243,9 +2242,6 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info)
          return;
 
       struct tc_full_draw_info *p = tc_add_draw_vbo(_pipe, false);
-      p->draw.count_from_stream_output = NULL;
-      pipe_so_target_reference(&p->draw.count_from_stream_output,
-                               info->count_from_stream_output);
       memcpy(&p->draw, info, sizeof(*info));
       p->draw.has_user_indices = false;
       p->draw.index.resource = buffer;
@@ -2253,9 +2249,6 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info)
    } else {
       /* Non-indexed call or indexed with a real index buffer. */
       struct tc_full_draw_info *p = tc_add_draw_vbo(_pipe, indirect != NULL);
-      p->draw.count_from_stream_output = NULL;
-      pipe_so_target_reference(&p->draw.count_from_stream_output,
-                               info->count_from_stream_output);
       if (index_size) {
          tc_set_resource_reference(&p->draw.index.resource,
                                    info->index.resource);
@@ -2266,6 +2259,9 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info)
          tc_set_resource_reference(&p->draw.indirect->buffer, indirect->buffer);
          tc_set_resource_reference(&p->indirect.indirect_draw_count,
                                    indirect->indirect_draw_count);
+         p->indirect.count_from_stream_output = NULL;
+         pipe_so_target_reference(&p->indirect.count_from_stream_output,
+                                  indirect->count_from_stream_output);
          memcpy(&p->indirect, indirect, sizeof(*indirect));
          p->draw.indirect = &p->indirect;
       }

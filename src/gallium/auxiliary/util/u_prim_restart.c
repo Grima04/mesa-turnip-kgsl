@@ -114,7 +114,7 @@ util_translate_prim_restart_ib(struct pipe_context *context,
    dst_index_size = MAX2(2, info->index_size);
    assert(dst_index_size == 2 || dst_index_size == 4);
 
-   if (info->indirect) {
+   if (info->indirect && info->indirect->buffer) {
       indirect = read_indirect_elements(context, info->indirect);
       count = indirect.count;
       start = indirect.firstIndex;
@@ -235,7 +235,7 @@ util_draw_vbo_without_prim_restart(struct pipe_context *context,
    assert(info->index_size);
    assert(info->primitive_restart);
 
-   if (info->indirect) {
+   if (info->indirect && info->indirect->buffer) {
       indirect = read_indirect_elements(context, info->indirect);
       info_count = indirect.count;
       info_start = indirect.firstIndex;

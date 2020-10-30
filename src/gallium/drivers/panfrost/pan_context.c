@@ -363,8 +363,8 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                         cfg.base_vertex_offset = info->index_bias - ctx->offset_start;
                         cfg.index_count = info->count;
                 } else {
-                        cfg.index_count = info->count_from_stream_output ?
-                                          pan_so_target(info->count_from_stream_output)->offset :
+                        cfg.index_count = info->indirect && info->indirect->count_from_stream_output ?
+                                          pan_so_target(info->indirect->count_from_stream_output)->offset :
                                           ctx->vertex_count;
                 }
         }

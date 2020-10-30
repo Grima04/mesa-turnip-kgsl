@@ -356,13 +356,14 @@ dd_dump_draw_vbo(struct dd_draw_state *dstate, struct pipe_draw_info *info, FILE
    int sh, i;
 
    DUMP(draw_info, info);
-   if (info->count_from_stream_output)
-      DUMP_M(stream_output_target, info,
-             count_from_stream_output);
    if (info->indirect) {
-      DUMP_M(resource, info, indirect->buffer);
+      if (info->indirect->buffer)
+         DUMP_M(resource, info, indirect->buffer);
       if (info->indirect->indirect_draw_count)
          DUMP_M(resource, info, indirect->indirect_draw_count);
+      if (info->indirect->count_from_stream_output)
+         DUMP_M(stream_output_target, info,
+                indirect->count_from_stream_output);
    }
 
    fprintf(f, "\n");
@@ -705,7 +706,7 @@ dd_unreference_copy_of_call(struct dd_call *dst)
    case CALL_FLUSH:
       break;
    case CALL_DRAW_VBO:
-      pipe_so_target_reference(&dst->info.draw_vbo.draw.count_from_stream_output, NULL);
+      pipe_so_target_reference(&dst->info.draw_vbo.indirect.count_from_stream_output, NULL);
       pipe_resource_reference(&dst->info.draw_vbo.indirect.buffer, NULL);
       pipe_resource_reference(&dst->info.draw_vbo.indirect.indirect_draw_count, NULL);
       if (dst->info.draw_vbo.draw.index_size &&
@@ -1305,9 +1306,6 @@ dd_context_draw_vbo(struct pipe_context *_pipe,
 
    record->call.type = CALL_DRAW_VBO;
    record->call.info.draw_vbo.draw = *info;
-   record->call.info.draw_vbo.draw.count_from_stream_output = NULL;
-   pipe_so_target_reference(&record->call.info.draw_vbo.draw.count_from_stream_output,
-                            info->count_from_stream_output);
    if (info->index_size && !info->has_user_indices) {
       record->call.info.draw_vbo.draw.index.resource = NULL;
       pipe_resource_reference(&record->call.info.draw_vbo.draw.index.resource,
@@ -1324,6 +1322,9 @@ dd_context_draw_vbo(struct pipe_context *_pipe,
       record->call.info.draw_vbo.indirect.indirect_draw_count = NULL;
       pipe_resource_reference(&record->call.info.draw_vbo.indirect.indirect_draw_count,
                               info->indirect->indirect_draw_count);
+      record->call.info.draw_vbo.indirect.count_from_stream_output = NULL;
+      pipe_so_target_reference(&record->call.info.draw_vbo.indirect.count_from_stream_output,
+                               info->indirect->count_from_stream_output);
    } else {
       memset(&record->call.info.draw_vbo.indirect, 0, sizeof(*info->indirect));
    }

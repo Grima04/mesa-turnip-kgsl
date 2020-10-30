@@ -60,7 +60,8 @@ struct iris_vtable {
    void (*init_compute_context)(struct iris_batch *batch);
    void (*upload_render_state)(struct iris_context *ice,
                                struct iris_batch *batch,
-                               const struct pipe_draw_info *draw);
+                               const struct pipe_draw_info *draw,
+                               const struct pipe_draw_indirect_info *indirect);
    void (*update_surface_base_address)(struct iris_batch *batch,
                                        struct iris_binder *binder);
    void (*upload_compute_state)(struct iris_context *ice,

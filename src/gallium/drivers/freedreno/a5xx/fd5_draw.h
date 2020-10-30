@@ -91,7 +91,7 @@ fd5_draw_emit(struct fd_batch *batch, struct fd_ringbuffer *ring,
 	enum pc_di_src_sel src_sel;
 	uint32_t max_indices, idx_offset;
 
-	if (info->indirect) {
+	if (info->indirect && info->indirect->buffer) {
 		struct fd_resource *ind = fd_resource(info->indirect->buffer);
 
 		emit_marker5(ring, 7);

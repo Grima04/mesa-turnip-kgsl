@@ -702,7 +702,7 @@ nva0_draw_stream_output(struct nv50_context *nv50,
                         const struct pipe_draw_info *info)
 {
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
-   struct nv50_so_target *so = nv50_so_target(info->count_from_stream_output);
+   struct nv50_so_target *so = nv50_so_target(info->indirect->count_from_stream_output);
    struct nv04_resource *res = nv04_resource(so->pipe.buffer);
    unsigned num_instances = info->instance_count;
    unsigned mode = nv50_prim_gl(info->mode);
@@ -874,7 +874,7 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
                          info->mode, info->start, info->count,
                          info->instance_count, info->index_bias, info->index_size);
    } else
-   if (unlikely(info->count_from_stream_output)) {
+   if (unlikely(info->indirect && info->indirect->count_from_stream_output)) {
       nva0_draw_stream_output(nv50, info);
    } else {
       nv50_draw_arrays(nv50,

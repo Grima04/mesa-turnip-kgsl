@@ -139,7 +139,7 @@ util_draw_indirect(struct pipe_context *pipe,
    unsigned num_params = info_in->index_size ? 5 : 4;
 
    assert(info_in->indirect);
-   assert(!info_in->count_from_stream_output);
+   assert(!info_in->indirect->count_from_stream_output);
 
    memcpy(&info, info_in, sizeof(info));
 

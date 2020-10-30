@@ -291,7 +291,7 @@ vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
         struct vc4_context *vc4 = vc4_context(pctx);
         struct pipe_draw_info local_info;
 
-	if (!info->count_from_stream_output && !info->indirect &&
+	if (!info->indirect &&
 	    !info->primitive_restart &&
 	    !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
 		return;

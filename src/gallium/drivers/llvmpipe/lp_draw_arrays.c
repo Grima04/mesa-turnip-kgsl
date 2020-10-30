@@ -61,7 +61,7 @@ llvmpipe_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
    if (!llvmpipe_check_render_cond(lp))
       return;
 
-   if (info->indirect) {
+   if (info->indirect && info->indirect->buffer) {
       util_draw_indirect(pipe, info);
       return;
    }

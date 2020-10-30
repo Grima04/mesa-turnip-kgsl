@@ -769,7 +769,7 @@ nvc0_draw_stream_output(struct nvc0_context *nvc0,
                         const struct pipe_draw_info *info)
 {
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
-   struct nvc0_so_target *so = nvc0_so_target(info->count_from_stream_output);
+   struct nvc0_so_target *so = nvc0_so_target(info->indirect->count_from_stream_output);
    struct nv04_resource *res = nv04_resource(so->pipe.buffer);
    unsigned mode = nvc0_prim_gl(info->mode);
    unsigned num_instances = info->instance_count;
@@ -938,7 +938,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
     * if index count is larger and we expect repeated vertices, suggest upload.
     */
    nvc0->vbo_push_hint =
-      !info->indirect && info->index_size &&
+      (!info->indirect || info->indirect->count_from_stream_output) && info->index_size &&
       (nvc0->vb_elt_limit >= (info->count * 2));
 
    /* Check whether we want to switch vertex-submission mode. */
@@ -1005,7 +1005,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
 
    nvc0_state_validate_3d(nvc0, ~0);
 
-   if (nvc0->vertprog->vp.need_draw_parameters && !info->indirect) {
+   if (nvc0->vertprog->vp.need_draw_parameters && (!info->indirect || info->indirect->count_from_stream_output)) {
       PUSH_SPACE(push, 9);
       BEGIN_NVC0(push, NVC0_3D(CB_SIZE), 3);
       PUSH_DATA (push, NVC0_CB_AUX_SIZE);
@@ -1057,7 +1057,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
    }
 
    if (nvc0->state.vbo_mode) {
-      if (info->indirect)
+      if (info->indirect && info->indirect->buffer)
          nvc0_push_vbo_indirect(nvc0, info);
       else
          nvc0_push_vbo(nvc0, info);
@@ -1088,10 +1088,10 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
       nvc0->base.vbo_dirty = false;
    }
 
-   if (unlikely(info->indirect)) {
+   if (unlikely(info->indirect && info->indirect->buffer)) {
       nvc0_draw_indirect(nvc0, info);
    } else
-   if (unlikely(info->count_from_stream_output)) {
+   if (unlikely(info->indirect && info->indirect->count_from_stream_output)) {
       nvc0_draw_stream_output(nvc0, info);
    } else
    if (info->index_size) {

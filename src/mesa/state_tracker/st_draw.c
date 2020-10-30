@@ -177,7 +177,6 @@ st_draw_vbo(struct gl_context *ctx,
    info.primitive_restart = false;
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.indirect = NULL;
-   info.count_from_stream_output = NULL;
    info.restart_index = 0;
    info.start_instance = base_instance;
    info.instance_count = num_instances;
@@ -330,15 +329,18 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
 {
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;
+   struct pipe_draw_indirect_info indirect;
 
    prepare_draw(st, ctx);
 
+   memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
    info.start = 0; /* index offset / index size */
    info.max_index = ~0u; /* so that u_vbuf can tell that it's unknown */
    info.mode = translate_prim(ctx, mode);
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.instance_count = num_instances;
+   info.indirect = &indirect;
 
    if (ST_DEBUG & DEBUG_DRAW) {
       debug_printf("st/draw transform feedback: mode %s\n",
@@ -347,7 +349,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
 
    /* Transform feedback drawing is always non-indexed. */
    /* Set info.count_from_stream_output. */
-   if (!st_transform_feedback_draw_init(tfb_vertcount, stream, &info))
+   if (!st_transform_feedback_draw_init(tfb_vertcount, stream, &indirect))
       return;
 
    cso_draw_vbo(st->cso_context, &info);

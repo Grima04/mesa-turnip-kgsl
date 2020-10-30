@@ -712,7 +712,7 @@ int virgl_encoder_draw_vbo(struct virgl_context *ctx,
    uint32_t length = VIRGL_DRAW_VBO_SIZE;
    if (info->mode == PIPE_PRIM_PATCHES)
       length = VIRGL_DRAW_VBO_SIZE_TESS;
-   if (info->indirect)
+   if (info->indirect && info->indirect->buffer)
       length = VIRGL_DRAW_VBO_SIZE_INDIRECT;
    virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_DRAW_VBO, 0, length));
    virgl_encoder_write_dword(ctx->cbuf, info->start);
@@ -726,8 +726,8 @@ int virgl_encoder_draw_vbo(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, info->restart_index);
    virgl_encoder_write_dword(ctx->cbuf, info->min_index);
    virgl_encoder_write_dword(ctx->cbuf, info->max_index);
-   if (info->count_from_stream_output)
-      virgl_encoder_write_dword(ctx->cbuf, info->count_from_stream_output->buffer_size);
+   if (info->indirect && info->indirect->count_from_stream_output)
+      virgl_encoder_write_dword(ctx->cbuf, info->indirect->count_from_stream_output->buffer_size);
    else
       virgl_encoder_write_dword(ctx->cbuf, 0);
    if (length >= VIRGL_DRAW_VBO_SIZE_TESS) {

@@ -175,7 +175,7 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info)
 		resource_read(batch, info->index.resource);
 
 	/* Mark indirect draw buffer as being read */
-	if (info->indirect)
+	if (info->indirect && info->indirect->buffer)
 		resource_read(batch, info->indirect->buffer);
 
 	/* Mark textures as being read */
@@ -218,13 +218,13 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 	 * to be able to emulate it, to determine if game is feeding us
 	 * bogus data:
 	 */
-	if (info->indirect && (fd_mesa_debug & FD_DBG_NOINDR)) {
+	if (info->indirect && info->indirect->buffer && (fd_mesa_debug & FD_DBG_NOINDR)) {
 		util_draw_indirect(pctx, info);
 		return;
 	}
 
 	if (info->mode != PIPE_PRIM_MAX &&
-	    !info->count_from_stream_output && !info->indirect &&
+	    !info->indirect &&
 	    !info->primitive_restart &&
 	    !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
 		return;

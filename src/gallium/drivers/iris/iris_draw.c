@@ -118,7 +118,7 @@ iris_update_draw_parameters(struct iris_context *ice,
    if (ice->state.vs_uses_draw_params) {
       struct iris_state_ref *draw_params = &ice->draw.draw_params;
 
-      if (info->indirect) {
+      if (info->indirect && info->indirect->buffer) {
          pipe_resource_reference(&draw_params->res, info->indirect->buffer);
          draw_params->offset =
             info->indirect->offset + (info->index_size ? 12 : 8);
@@ -192,7 +192,7 @@ iris_indirect_draw_vbo(struct iris_context *ice,
 
       iris_update_draw_parameters(ice, &info);
 
-      batch->screen->vtbl.upload_render_state(ice, batch, &info);
+      batch->screen->vtbl.upload_render_state(ice, batch, &info, info.indirect);
 
       ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_RENDER;
       ice->state.stage_dirty &= ~IRIS_ALL_STAGE_DIRTY_FOR_RENDER;
@@ -221,7 +221,7 @@ iris_simple_draw_vbo(struct iris_context *ice,
 
    iris_update_draw_parameters(ice, draw);
 
-   batch->screen->vtbl.upload_render_state(ice, batch, draw);
+   batch->screen->vtbl.upload_render_state(ice, batch, draw, draw->indirect);
 }
 
 /**
@@ -234,6 +234,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    struct iris_screen *screen = (struct iris_screen*)ice->ctx.screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct pipe_draw_indirect_info *indirect = info->indirect;
 
    if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
       return;
@@ -269,7 +270,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    iris_handle_always_flush_cache(batch);
 
-   if (info->indirect)
+   if (indirect && indirect->buffer)
       iris_indirect_draw_vbo(ice, info);
    else
       iris_simple_draw_vbo(ice, info);
