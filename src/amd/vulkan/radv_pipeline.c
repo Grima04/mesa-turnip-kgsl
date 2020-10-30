@@ -3147,9 +3147,6 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			if (!radv_use_llvm_for_stage(device, i))
 				nir_lower_int64(nir[i]);
 
-			if (nir_lower_bit_size(nir[i], lower_bit_size_callback, NULL))
-				nir_copy_prop(nir[i]); /* allow nir_opt_idiv_const() to optimize lowered divisions */
-
 			/* TODO: Implement nir_op_uadd_sat with LLVM. */
 			if (!radv_use_llvm_for_stage(device, i))
 				nir_opt_idiv_const(nir[i], 32);
@@ -3179,6 +3176,12 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				NIR_PASS_V(nir[i], nir_copy_prop);
 				NIR_PASS_V(nir[i], nir_opt_dce);
 				NIR_PASS_V(nir[i], nir_opt_cse);
+			}
+
+			if (nir_lower_bit_size(nir[i], lower_bit_size_callback, NULL)) {
+				nir_lower_idiv(nir[i], nir_lower_idiv_precise);
+				nir_opt_constant_folding(nir[i]);
+				nir_opt_dce(nir[i]);
 			}
 
 			/* cleanup passes */
