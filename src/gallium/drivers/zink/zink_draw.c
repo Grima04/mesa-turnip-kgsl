@@ -40,12 +40,8 @@ desc_set_sampler_add(struct zink_context *ctx, struct zink_descriptor_set *zds, 
     * whenever a resource is destroyed
     */
 #ifndef NDEBUG
-   uint32_t null_hash = is_buffer ? zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view :
-                                    zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view;
-   uint32_t cur_hash = get_sampler_view_hash(zds->sampler_views[i]) ? get_sampler_view_hash(zds->sampler_views[i]) :
-                       null_hash;
-   uint32_t new_hash = get_sampler_view_hash(sv) ? get_sampler_view_hash(sv) :
-                       null_hash;
+   uint32_t cur_hash = zink_get_sampler_view_hash(ctx, zds->sampler_views[i], is_buffer);
+   uint32_t new_hash = zink_get_sampler_view_hash(ctx, sv, is_buffer);
 #endif
    assert(!cache_hit || cur_hash == new_hash);
    assert(!cache_hit || zds->sampler_states[i] == state);
@@ -65,12 +61,8 @@ desc_set_image_add(struct zink_context *ctx, struct zink_descriptor_set *zds, st
     * whenever a resource is destroyed
     */
 #ifndef NDEBUG
-   uint32_t null_hash = is_buffer ? zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view :
-                                    zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view;
-   uint32_t cur_hash = get_image_view_hash(zds->image_views[i]) ? get_image_view_hash(zds->image_views[i]) :
-                       null_hash;
-   uint32_t new_hash = get_image_view_hash(image_view) ? get_image_view_hash(image_view) :
-                       null_hash;
+   uint32_t cur_hash = zink_get_image_view_hash(ctx, zds->image_views[i], is_buffer);
+   uint32_t new_hash = zink_get_image_view_hash(ctx, image_view, is_buffer);
 #endif
    assert(!cache_hit || cur_hash == new_hash);
    if (!cache_hit)

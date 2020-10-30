@@ -366,21 +366,9 @@ zink_buffer_view_reference(struct zink_screen *screen,
 void
 zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute);
 
-static inline uint32_t
-get_sampler_view_hash(const struct zink_sampler_view *sampler_view)
-{
-   if (!sampler_view)
-      return 0;
-   return sampler_view->base.target == PIPE_BUFFER ?
-          sampler_view->buffer_view->hash : sampler_view->image_view->hash;
-}
+uint32_t
+zink_get_sampler_view_hash(struct zink_context *ctx, struct zink_sampler_view *sampler_view, bool is_buffer);
+uint32_t
+zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image_view, bool is_buffer);
 
-static inline uint32_t
-get_image_view_hash(const struct zink_image_view *image_view)
-{
-   if (!image_view || !image_view->base.resource)
-      return 0;
-   return image_view->base.resource->target == PIPE_BUFFER ?
-          image_view->buffer_view->hash : image_view->surface->hash;
-}
 #endif
