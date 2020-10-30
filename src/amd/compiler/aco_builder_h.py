@@ -380,7 +380,7 @@ public:
       } else if (bits24) {
         return vop2(aco_opcode::v_mul_u32_u24, dst, Operand(imm), tmp);
       } else {
-        Temp imm_tmp = copy(def(v1), Operand(imm));
+        Temp imm_tmp = copy(def(s1), Operand(imm));
         return vop3(aco_opcode::v_mul_lo_u32, dst, imm_tmp, tmp);
       }
    }
