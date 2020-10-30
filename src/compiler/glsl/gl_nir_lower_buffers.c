@@ -209,7 +209,7 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                break;
             }
 
-            nir_deref_instr *cast = nir_build_deref_cast(&b, ptr, deref->mode,
+            nir_deref_instr *cast = nir_build_deref_cast(&b, ptr, deref->modes,
                                                          deref->type, 0);
             /* Set the alignment on the cast so that we get good alignment out
              * of nir_lower_explicit_io.  Our offset to the start of the UBO

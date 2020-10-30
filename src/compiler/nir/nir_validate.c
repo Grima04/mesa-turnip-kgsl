@@ -407,9 +407,11 @@ validate_var_use(nir_variable *var, validate_state *state)
 static void
 validate_deref_instr(nir_deref_instr *instr, validate_state *state)
 {
+   validate_assert(state, util_bitcount(instr->modes) == 1);
+
    if (instr->deref_type == nir_deref_type_var) {
       /* Variable dereferences are stupid simple. */
-      validate_assert(state, instr->mode == instr->var->data.mode);
+      validate_assert(state, instr->modes == instr->var->data.mode);
       validate_assert(state, instr->type == instr->var->type);
       validate_var_use(instr->var, state);
    } else if (instr->deref_type == nir_deref_type_cast) {
@@ -419,7 +421,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
       validate_src(&instr->parent, state, 0, 0);
 
       /* We just validate that the type and mode are there */
-      validate_assert(state, instr->mode);
+      validate_assert(state, instr->modes);
       validate_assert(state, instr->type);
       if (instr->cast.align_mul > 0) {
          validate_assert(state, util_is_power_of_two_nonzero(instr->cast.align_mul));
@@ -444,7 +446,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
 
       nir_deref_instr *parent = nir_instr_as_deref(parent_instr);
 
-      validate_assert(state, instr->mode == parent->mode);
+      validate_assert(state, instr->modes == parent->modes);
 
       switch (instr->deref_type) {
       case nir_deref_type_struct:
@@ -457,11 +459,9 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
 
       case nir_deref_type_array:
       case nir_deref_type_array_wildcard:
-         if (instr->mode == nir_var_mem_ubo ||
-             instr->mode == nir_var_mem_ssbo ||
-             instr->mode == nir_var_mem_shared ||
-             instr->mode == nir_var_mem_global ||
-             instr->mode == nir_var_mem_push_const) {
+         if (instr->modes & (nir_var_mem_ubo | nir_var_mem_ssbo |
+                             nir_var_mem_shared | nir_var_mem_global |
+                             nir_var_mem_push_const)) {
             /* Shared variables and UBO/SSBOs have a bit more relaxed rules
              * because we need to be able to handle array derefs on vectors.
              * Fortunately, nir_lower_io handles these just fine.
@@ -518,10 +518,10 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
     */
    nir_foreach_use(use, &instr->dest.ssa) {
       if (use->parent_instr->type == nir_instr_type_phi) {
-         validate_assert(state, instr->mode != nir_var_shader_in &&
-                                instr->mode != nir_var_shader_out &&
-                                instr->mode != nir_var_shader_out &&
-                                instr->mode != nir_var_uniform);
+         validate_assert(state, !(instr->modes & (nir_var_shader_in |
+                                                  nir_var_shader_out |
+                                                  nir_var_shader_out |
+                                                  nir_var_uniform)));
       }
    }
 }
@@ -570,7 +570,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       nir_deref_instr *src = nir_src_as_deref(instr->src[0]);
       assert(src);
       validate_assert(state, glsl_type_is_vector_or_scalar(src->type) ||
-                      (src->mode == nir_var_uniform &&
+                      (src->modes == nir_var_uniform &&
                        glsl_get_base_type(src->type) == GLSL_TYPE_SUBROUTINE));
       validate_assert(state, instr->num_components ==
                              glsl_get_vector_elements(src->type));

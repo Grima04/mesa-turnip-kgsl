@@ -724,7 +724,7 @@ print_deref_instr(nir_deref_instr *instr, print_state *state)
    print_deref_link(instr, false, state);
 
    fprintf(fp, " (%s %s) ",
-           get_variable_mode_str(instr->mode, true),
+           get_variable_mode_str(instr->modes, true),
            glsl_get_type_name(instr->type));
 
    if (instr->deref_type != nir_deref_type_var &&

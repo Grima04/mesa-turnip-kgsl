@@ -250,7 +250,7 @@ convert_loop_exit_for_ssa(nir_ssa_def *def, void *void_state)
          nir_deref_instr_create(state->shader, nir_deref_type_cast);
 
       nir_deref_instr *instr = nir_instr_as_deref(def->parent_instr);
-      cast->mode = instr->mode;
+      cast->modes = instr->modes;
       cast->type = instr->type;
       cast->parent = nir_src_for_ssa(&phi->dest.ssa);
       cast->cast.ptr_stride = nir_deref_instr_array_stride(instr);

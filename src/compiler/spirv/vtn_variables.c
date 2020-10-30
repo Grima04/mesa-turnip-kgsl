@@ -430,7 +430,7 @@ vtn_pointer_dereference(struct vtn_builder *b,
       /* We start with a deref cast to get the stride.  Hopefully, we'll be
        * able to delete that cast eventually.
        */
-      tail = nir_build_deref_cast(&b->nb, &tail->dest.ssa, tail->mode,
+      tail = nir_build_deref_cast(&b->nb, &tail->dest.ssa, tail->modes,
                                   tail->type, base->ptr_type->stride);
 
       nir_ssa_def *index = vtn_access_link_as_ssa(b, deref_chain->link[0], 1,

@@ -120,10 +120,10 @@ lower_memcpy_impl(nir_function_impl *impl)
                   copy_type_for_byte_size(copy_size);
 
                nir_deref_instr *copy_dst =
-                  nir_build_deref_cast(&b, &dst->dest.ssa, dst->mode,
+                  nir_build_deref_cast(&b, &dst->dest.ssa, dst->modes,
                                        copy_type, copy_size);
                nir_deref_instr *copy_src =
-                  nir_build_deref_cast(&b, &src->dest.ssa, src->mode,
+                  nir_build_deref_cast(&b, &src->dest.ssa, src->modes,
                                        copy_type, copy_size);
 
                uint64_t index = offset / copy_size;
@@ -141,10 +141,10 @@ lower_memcpy_impl(nir_function_impl *impl)
              * emit a loop which copies one byte at a time.
              */
             nir_deref_instr *copy_dst =
-               nir_build_deref_cast(&b, &dst->dest.ssa, dst->mode,
+               nir_build_deref_cast(&b, &dst->dest.ssa, dst->modes,
                                     glsl_uint8_t_type(), 1);
             nir_deref_instr *copy_src =
-               nir_build_deref_cast(&b, &src->dest.ssa, src->mode,
+               nir_build_deref_cast(&b, &src->dest.ssa, src->modes,
                                     glsl_uint8_t_type(), 1);
 
             nir_variable *i = nir_local_variable_create(impl,

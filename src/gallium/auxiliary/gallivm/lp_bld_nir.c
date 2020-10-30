@@ -1129,7 +1129,8 @@ static void visit_load_var(struct lp_build_nir_context *bld_base,
 {
    nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
    nir_variable *var = nir_deref_instr_get_variable(deref);
-   nir_variable_mode mode = deref->mode;
+   assert(util_bitcount(deref->modes) == 1);
+   nir_variable_mode mode = deref->modes;
    unsigned const_index;
    LLVMValueRef indir_index;
    LLVMValueRef indir_vertex_index = NULL;
@@ -1162,7 +1163,8 @@ visit_store_var(struct lp_build_nir_context *bld_base,
 {
    nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
    nir_variable *var = nir_deref_instr_get_variable(deref);
-   nir_variable_mode mode = deref->mode;
+   assert(util_bitcount(deref->modes) == 1);
+   nir_variable_mode mode = deref->modes;
    int writemask = instr->const_index[0];
    unsigned bit_size = nir_src_bit_size(instr->src[1]);
    LLVMValueRef src = get_src(bld_base, instr->src[1]);

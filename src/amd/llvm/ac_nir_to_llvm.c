@@ -4574,7 +4574,7 @@ static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
 
       unsigned address_space;
 
-      switch (instr->mode) {
+      switch (instr->modes) {
       case nir_var_mem_shared:
          address_space = AC_ADDR_SPACE_LDS;
          break;

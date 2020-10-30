@@ -1097,7 +1097,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
                        unsigned num_components)
 {
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-   nir_variable_mode mode = deref->mode;
+   nir_variable_mode mode = deref->modes;
 
    nir_intrinsic_op op;
    switch (mode) {
@@ -1241,7 +1241,7 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
                         uint32_t align_mul, uint32_t align_offset,
                         nir_ssa_def *value, nir_component_mask_t write_mask)
 {
-   nir_variable_mode mode = nir_src_as_deref(intrin->src[0])->mode;
+   nir_variable_mode mode = nir_src_as_deref(intrin->src[0])->modes;
 
    nir_intrinsic_op op;
    switch (mode) {
@@ -1329,7 +1329,7 @@ static nir_ssa_def *
 build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
                          nir_ssa_def *addr, nir_address_format addr_format)
 {
-   nir_variable_mode mode = nir_src_as_deref(intrin->src[0])->mode;
+   nir_variable_mode mode = nir_src_as_deref(intrin->src[0])->modes;
    const unsigned num_data_srcs =
       nir_intrinsic_infos[intrin->intrinsic].num_srcs - 1;
 

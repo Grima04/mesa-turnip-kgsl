@@ -311,7 +311,8 @@ void ShaderFromNirProcessor::set_var_address(nir_deref_instr *instr)
 {
    auto& dest = instr->dest;
    unsigned index = dest.is_ssa ? dest.ssa.index : dest.reg.reg->index;
-   m_var_mode[instr->var] = instr->mode;
+   assert(util_bitcount(instr->modes) == 1);
+   m_var_mode[instr->var] = instr->modes;
    m_var_derefs[index] = instr->var;
 
    sfn_log << SfnLog::io << "Add var deref:" << index

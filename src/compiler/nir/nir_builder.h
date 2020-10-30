@@ -1084,7 +1084,7 @@ nir_build_deref_var(nir_builder *build, nir_variable *var)
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_var);
 
-   deref->mode = (nir_variable_mode)var->data.mode;
+   deref->modes = (nir_variable_mode)var->data.mode;
    deref->type = var->type;
    deref->var = var;
 
@@ -1109,7 +1109,7 @@ nir_build_deref_array(nir_builder *build, nir_deref_instr *parent,
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_array);
 
-   deref->mode = parent->mode;
+   deref->modes = parent->modes;
    deref->type = glsl_get_array_element(parent->type);
    deref->parent = nir_src_for_ssa(&parent->dest.ssa);
    deref->arr.index = nir_src_for_ssa(index);
@@ -1147,7 +1147,7 @@ nir_build_deref_ptr_as_array(nir_builder *build, nir_deref_instr *parent,
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_ptr_as_array);
 
-   deref->mode = parent->mode;
+   deref->modes = parent->modes;
    deref->type = parent->type;
    deref->parent = nir_src_for_ssa(&parent->dest.ssa);
    deref->arr.index = nir_src_for_ssa(index);
@@ -1170,7 +1170,7 @@ nir_build_deref_array_wildcard(nir_builder *build, nir_deref_instr *parent)
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_array_wildcard);
 
-   deref->mode = parent->mode;
+   deref->modes = parent->modes;
    deref->type = glsl_get_array_element(parent->type);
    deref->parent = nir_src_for_ssa(&parent->dest.ssa);
 
@@ -1192,7 +1192,7 @@ nir_build_deref_struct(nir_builder *build, nir_deref_instr *parent,
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_struct);
 
-   deref->mode = parent->mode;
+   deref->modes = parent->modes;
    deref->type = glsl_get_struct_field(parent->type, index);
    deref->parent = nir_src_for_ssa(&parent->dest.ssa);
    deref->strct.index = index;
@@ -1208,13 +1208,13 @@ nir_build_deref_struct(nir_builder *build, nir_deref_instr *parent,
 
 static inline nir_deref_instr *
 nir_build_deref_cast(nir_builder *build, nir_ssa_def *parent,
-                     nir_variable_mode mode, const struct glsl_type *type,
+                     nir_variable_mode modes, const struct glsl_type *type,
                      unsigned ptr_stride)
 {
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_cast);
 
-   deref->mode = mode;
+   deref->modes = modes;
    deref->type = type;
    deref->parent = nir_src_for_ssa(parent);
    deref->cast.ptr_stride = ptr_stride;
@@ -1234,7 +1234,7 @@ nir_alignment_deref_cast(nir_builder *build, nir_deref_instr *parent,
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_cast);
 
-   deref->mode = parent->mode;
+   deref->modes = parent->modes;
    deref->type = parent->type;
    deref->parent = nir_src_for_ssa(&parent->dest.ssa);
    deref->cast.ptr_stride = nir_deref_instr_array_stride(deref);
