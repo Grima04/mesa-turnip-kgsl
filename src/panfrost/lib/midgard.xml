@@ -117,7 +117,7 @@
     <value name="RGB10 A2UI" value="71"/>
     <value name="RGB10 A2I" value="73"/>
     <value name="RGB332 UNORM" value="75"/>
-    <value name="RGB233 UNORM" value="76"/>
+    <value name="BGR233 UNORM" value="76"/>
     <value name="Z24X8 UNORM" value="77"/>
     <value name="X8Z24" value="78"/>
     <value name="X32 S8X24" value="79"/>
