@@ -109,8 +109,8 @@ class SerialBuffer:
                     line = line.decode(errors="replace")
 
                     time = datetime.now().strftime('%y-%m-%d %H:%M:%S')
-                    print("{time} {prefix}{line}".format(
-                        time=time, prefix=self.prefix, line=line), flush=True, end='')
+                    print("{time} {prefix}{line}{endc}".format(
+                        time=time, prefix=self.prefix, line=line, endc='\033[0m'), flush=True, end='')
 
                     self.line_queue.put(line)
                     line = bytearray()
