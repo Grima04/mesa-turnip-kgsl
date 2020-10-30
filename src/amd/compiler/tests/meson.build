@@ -23,6 +23,7 @@ aco_tests_files = files(
   'helpers.h',
   'main.cpp',
   'test_assembler.cpp',
+  'test_builder.cpp',
   'test_isel.cpp',
   'test_optimizer.cpp',
   'test_to_hw_instr.cpp',
