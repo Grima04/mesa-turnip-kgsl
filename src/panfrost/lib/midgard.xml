@@ -113,9 +113,13 @@
     <value name="RGB5 A1 UNORM" value="65"/>
     <value name="A1 BGR5 UNORM" value="66"/>
     <value name="RGB10 A2 UNORM" value="67"/>
+    <value name="A2 BGR10 UNORM" value="68"/>
     <value name="RGB10 A2 SNORM" value="69"/>
+    <value name="A2 BGR10 SNORM" value="70"/>
     <value name="RGB10 A2UI" value="71"/>
+    <value name="A2 BGR10UI" value="72"/>
     <value name="RGB10 A2I" value="73"/>
+    <value name="A2 BGR10I" value="74"/>
     <value name="RGB332 UNORM" value="75"/>
     <value name="BGR233 UNORM" value="76"/>
     <value name="Z24X8 UNORM" value="77"/>
