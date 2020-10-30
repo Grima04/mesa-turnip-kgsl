@@ -372,7 +372,7 @@ public:
    {
       assert(tmp.type() == RegType::vgpr);
       if (imm == 0) {
-         return vop1(aco_opcode::v_mov_b32, dst, Operand(0u));
+         return copy(dst, Operand(0u));
       } else if (imm == 1) {
          return copy(dst, Operand(tmp));
       } else if (util_is_power_of_two_or_zero(imm)) {
