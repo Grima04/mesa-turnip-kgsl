@@ -254,13 +254,11 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
                 (temp_prim.count == sub_prim->count)) {
                ctx->Driver.Draw(ctx, &temp_prim, 1, ib, GL_TRUE,
                                 sub_prim->min_index, sub_prim->max_index,
-                                num_instances, base_instance,
-                                NULL, 0);
+                                num_instances, base_instance);
             } else {
                ctx->Driver.Draw(ctx, &temp_prim, 1, ib,
                                 GL_FALSE, -1, -1,
-                                num_instances, base_instance,
-                                NULL, 0);
+                                num_instances, base_instance);
             }
          }
          if (sub_end_index >= end_index) {

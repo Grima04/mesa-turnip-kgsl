@@ -52,9 +52,7 @@ void brw_draw_prims(struct gl_context *ctx,
 		     GLuint min_index,
 		     GLuint max_index,
                      GLuint num_instances,
-                     GLuint base_instance,
-		     struct gl_transform_feedback_object *unused_tfb_object,
-                     unsigned stream);
+                     GLuint base_instance);
 
 void brw_init_draw_functions(struct dd_function_table *functions);
 void brw_draw_init( struct brw_context *brw );

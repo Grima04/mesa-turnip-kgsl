@@ -631,9 +631,7 @@ _tnl_draw(struct gl_context *ctx,
           const struct _mesa_prim *prim, GLuint nr_prims,
           const struct _mesa_index_buffer *ib,
           GLboolean index_bounds_valid, GLuint min_index, GLuint max_index,
-          GLuint num_instances, GLuint base_instance,
-          UNUSED struct gl_transform_feedback_object *tfb_vertcount,
-          UNUSED unsigned stream)
+          GLuint num_instances, GLuint base_instance)
 {
    /* Update TNLcontext::draw_arrays and return that pointer.
     */

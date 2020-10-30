@@ -164,9 +164,7 @@ st_draw_vbo(struct gl_context *ctx,
             GLuint min_index,
             GLuint max_index,
             GLuint num_instances,
-            GLuint base_instance,
-            struct gl_transform_feedback_object *tfb_vertcount,
-            unsigned stream)
+            GLuint base_instance)
 {
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;
@@ -221,13 +219,6 @@ st_draw_vbo(struct gl_context *ctx,
    else {
       info.index_size = 0;
       info.has_user_indices = false;
-
-      /* Transform feedback drawing is always non-indexed. */
-      /* Set info.count_from_stream_output. */
-      if (tfb_vertcount) {
-         if (!st_transform_feedback_draw_init(tfb_vertcount, stream, &info))
-            return;
-      }
    }
 
    /* do actual drawing */
@@ -235,7 +226,7 @@ st_draw_vbo(struct gl_context *ctx,
       info.count = prims[i].count;
 
       /* Skip no-op draw calls. */
-      if (!info.count && !tfb_vertcount)
+      if (!info.count)
          continue;
 
       info.mode = translate_prim(ctx, prims[i].mode);
@@ -332,12 +323,42 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    }
 }
 
+static void
+st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
+                           unsigned num_instances, unsigned stream,
+                           struct gl_transform_feedback_object *tfb_vertcount)
+{
+   struct st_context *st = st_context(ctx);
+   struct pipe_draw_info info;
+
+   prepare_draw(st, ctx);
+
+   util_draw_init_info(&info);
+   info.start = 0; /* index offset / index size */
+   info.max_index = ~0u; /* so that u_vbuf can tell that it's unknown */
+   info.mode = translate_prim(ctx, mode);
+   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
+   info.instance_count = num_instances;
+
+   if (ST_DEBUG & DEBUG_DRAW) {
+      debug_printf("st/draw transform feedback: mode %s\n",
+                   u_prim_name(info.mode));
+   }
+
+   /* Transform feedback drawing is always non-indexed. */
+   /* Set info.count_from_stream_output. */
+   if (!st_transform_feedback_draw_init(tfb_vertcount, stream, &info))
+      return;
+
+   cso_draw_vbo(st->cso_context, &info);
+}
 
 void
 st_init_draw_functions(struct dd_function_table *functions)
 {
    functions->Draw = st_draw_vbo;
    functions->DrawIndirect = st_indirect_draw_vbo;
+   functions->DrawTransformFeedback = st_draw_transform_feedback;
 }
 
 

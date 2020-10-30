@@ -163,7 +163,7 @@ brw_handle_primitive_restart(struct gl_context *ctx,
        */
       brw->prim_restart.enable_cut_index = true;
       brw_draw_prims(ctx, prims, nr_prims, ib, GL_FALSE, -1, -1,
-                     num_instances, base_instance, NULL, 0);
+                     num_instances, base_instance);
       brw->prim_restart.enable_cut_index = false;
    } else {
       /* Not all the primitive draw modes are supported by the cut index,

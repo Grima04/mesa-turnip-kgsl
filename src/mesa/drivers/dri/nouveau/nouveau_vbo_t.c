@@ -546,9 +546,7 @@ TAG(vbo_draw)(struct gl_context *ctx,
 	      const struct _mesa_index_buffer *ib,
 	      GLboolean index_bounds_valid,
 	      GLuint min_index, GLuint max_index,
-              GLuint num_instances, GLuint base_instance,
-	      UNUSED struct gl_transform_feedback_object *tfb_vertcount,
-	      UNUSED unsigned stream)
+              GLuint num_instances, GLuint base_instance)
 {
 	/* Borrow and update the inputs list from the tnl context */
 	const struct tnl_vertex_array* arrays = _tnl_bind_inputs(ctx);

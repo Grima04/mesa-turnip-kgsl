@@ -1140,15 +1140,11 @@ brw_draw_prims(struct gl_context *ctx,
                GLuint min_index,
                GLuint max_index,
                GLuint num_instances,
-               GLuint base_instance,
-               struct gl_transform_feedback_object *gl_xfb_obj,
-               unsigned stream)
+               GLuint base_instance)
 {
    unsigned i;
    struct brw_context *brw = brw_context(ctx);
    int predicate_state = brw->predicate.state;
-   struct brw_transform_feedback_object *xfb_obj =
-      (struct brw_transform_feedback_object *) gl_xfb_obj;
 
    if (!brw_check_conditional_render(brw))
       return;
@@ -1169,7 +1165,7 @@ brw_draw_prims(struct gl_context *ctx,
       _swsetup_Wakeup(ctx);
       _tnl_wakeup(ctx);
       _tnl_draw(ctx, prims, nr_prims, ib, index_bounds_valid, min_index,
-                max_index, num_instances, base_instance, NULL, 0);
+                max_index, num_instances, base_instance);
       return;
    }
 
@@ -1222,13 +1218,52 @@ brw_draw_prims(struct gl_context *ctx,
       }
 
       brw_draw_single_prim(ctx, &prims[i], i, ib != NULL, num_instances,
-                           base_instance, xfb_obj, stream,
+                           base_instance, NULL, 0,
                            brw->draw.draw_indirect_offset +
                            brw->draw.draw_indirect_stride * i);
    }
 
    brw_finish_drawing(ctx);
    brw->predicate.state = predicate_state;
+}
+
+static void
+brw_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
+                            unsigned num_instances, unsigned stream,
+                            struct gl_transform_feedback_object *gl_xfb_obj)
+{
+   struct brw_context *brw = brw_context(ctx);
+   struct brw_transform_feedback_object *xfb_obj =
+      (struct brw_transform_feedback_object *) gl_xfb_obj;
+
+   if (!brw_check_conditional_render(brw))
+      return;
+
+   /* Do GL_SELECT and GL_FEEDBACK rendering using swrast, even though it
+    * won't support all the extensions we support.
+    */
+   if (ctx->RenderMode != GL_RENDER) {
+      perf_debug("%s render mode not supported in hardware\n",
+                 _mesa_enum_to_string(ctx->RenderMode));
+      /* swrast doesn't support DrawTransformFeedback. Nothing to do. */
+      return;
+   }
+
+   brw_prepare_drawing(ctx, NULL, false, 0, ~0);
+
+   struct _mesa_prim prim;
+   memset(&prim, 0, sizeof(prim));
+   prim.begin = 1;
+   prim.end = 1;
+   prim.mode = mode;
+
+   /* Try drawing with the hardware, but don't do anything else if we can't
+    * manage it.  swrast doesn't support our featureset, so we can't fall back
+    * to it.
+    */
+   brw_draw_single_prim(ctx, &prim, 0, false, num_instances, 0, xfb_obj,
+                        stream, 0);
+   brw_finish_drawing(ctx);
 }
 
 void
@@ -1274,7 +1309,7 @@ brw_draw_indirect_prims(struct gl_context *ctx,
 
    brw->draw.draw_indirect_data = indirect_data;
 
-   brw_draw_prims(ctx, prim, draw_count, ib, false, 0, ~0, 0, 0, NULL, 0);
+   brw_draw_prims(ctx, prim, draw_count, ib, false, 0, ~0, 0, 0);
 
    brw->draw.draw_indirect_data = NULL;
    free(prim);
@@ -1286,6 +1321,7 @@ brw_init_draw_functions(struct dd_function_table *functions)
    /* Register our drawing function:
     */
    functions->Draw = brw_draw_prims;
+   functions->DrawTransformFeedback = brw_draw_transform_feedback;
    functions->DrawIndirect = brw_draw_indirect_prims;
 }
 
