@@ -74,7 +74,8 @@ fd6_delete_compute_state(struct pipe_context *pctx, void *hwcso)
 
 /* maybe move to fd6_program? */
 static void
-cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v)
+cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
+				struct ir3_shader_variant *v)
 {
 	const struct ir3_info *i = &v->info;
 	enum a3xx_threadsize thrsz = FOUR_QUADS;
@@ -128,7 +129,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v)
 	OUT_RELOC(ring, v->bo, 0, 0, 0);   /* SP_CS_OBJ_START_LO/HI */
 
 	if (v->instrlen > 0)
-		fd6_emit_shader(ring, v);
+		fd6_emit_shader(ctx, ring, v);
 }
 
 static void
@@ -145,7 +146,7 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 		return;
 
 	if (ctx->dirty_shader[PIPE_SHADER_COMPUTE] & FD_DIRTY_SHADER_PROG)
-		cs_program_emit(ring, v);
+		cs_program_emit(ctx, ring, v);
 
 	fd6_emit_cs_state(ctx, ring, v);
 	fd6_emit_cs_consts(v, ring, ctx, info);

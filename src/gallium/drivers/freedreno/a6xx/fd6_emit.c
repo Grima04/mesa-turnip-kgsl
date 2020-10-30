@@ -1217,8 +1217,6 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 	WRITE(REG_A6XX_PC_MULTIVIEW_CNTL, 0);
 
-	WRITE(REG_A6XX_SP_VS_OBJ_FIRST_EXEC_OFFSET, 0);
-
 	WRITE(REG_A6XX_SP_UNKNOWN_B183, 0);
 
 	WRITE(REG_A6XX_GRAS_UNKNOWN_8099, 0);

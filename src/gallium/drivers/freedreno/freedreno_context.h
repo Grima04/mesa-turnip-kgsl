@@ -370,6 +370,27 @@ struct fd_context {
 	bool cond_cond; /* inverted rendering condition */
 	uint cond_mode;
 
+	/* Private memory is a memory space where each fiber gets its own piece of
+	 * memory, in addition to registers. It is backed by a buffer which needs
+	 * to be large enough to hold the contents of every possible wavefront in
+	 * every core of the GPU. Because it allocates space via the internal
+	 * wavefront ID which is shared between all currently executing shaders,
+	 * the same buffer can be reused by all shaders, as long as all shaders
+	 * sharing the same buffer use the exact same configuration. There are two
+	 * inputs to the configuration, the amount of per-fiber space and whether
+	 * to use the newer per-wave or older per-fiber layout. We only ever
+	 * increase the size, and shaders with a smaller size requirement simply
+	 * use the larger existing buffer, so that we only need to keep track of
+	 * one buffer and its size, but we still need to keep track of per-fiber
+	 * and per-wave buffers separately so that we never use the same buffer
+	 * for different layouts. pvtmem[0] is for per-fiber, and pvtmem[1] is for
+	 * per-wave.
+	 */
+	struct {
+		struct fd_bo *bo;
+		uint32_t per_fiber_size;
+	} pvtmem[2];
+
 	struct pipe_debug_callback debug;
 
 	/* Called on rebind_resource() for any per-gen cleanup required: */

@@ -307,6 +307,11 @@ fd_context_destroy(struct pipe_context *pctx)
 	if (ctx->in_fence_fd != -1)
 		close(ctx->in_fence_fd);
 
+	for (i = 0; i < ARRAY_SIZE(ctx->pvtmem); i++) {
+		if (ctx->pvtmem[i].bo)
+			fd_bo_del(ctx->pvtmem[i].bo);
+	}
+
 	util_copy_framebuffer_state(&ctx->framebuffer, NULL);
 	fd_batch_reference(&ctx->batch, NULL);  /* unref current batch */
 	fd_bc_invalidate_context(ctx);
