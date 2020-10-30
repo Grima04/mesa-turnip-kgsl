@@ -714,7 +714,7 @@ fs_visitor::limit_dispatch_width(unsigned n, const char *msg)
    if (dispatch_width > n) {
       fail("%s", msg);
    } else {
-      max_dispatch_width = n;
+      max_dispatch_width = MIN2(max_dispatch_width, n);
       compiler->shader_perf_log(log_data,
                                 "Shader dispatch width limited to SIMD%d: %s",
                                 n, msg);
