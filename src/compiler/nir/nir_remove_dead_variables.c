@@ -70,8 +70,9 @@ add_var_use_deref(nir_deref_instr *deref, struct set *live)
    /* If it's not a local that never escapes the shader, then any access at
     * all means we need to keep it alive.
     */
-   assert(deref->mode == deref->var->data.mode);
-   if (!(deref->mode & (nir_var_function_temp | nir_var_shader_temp | nir_var_mem_shared)) ||
+   if (!(deref->var->data.mode & (nir_var_function_temp |
+                                  nir_var_shader_temp |
+                                  nir_var_mem_shared)) ||
        deref_used_for_not_store(deref))
       _mesa_set_add(live, deref->var);
 }

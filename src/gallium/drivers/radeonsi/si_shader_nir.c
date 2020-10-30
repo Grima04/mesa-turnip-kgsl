@@ -189,7 +189,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       nir_variable *var = deref ? nir_deref_instr_get_variable(deref) : NULL;
 
       if (var) {
-         if (deref->mode != nir_var_uniform || var->data.bindless)
+         if (var->data.mode != nir_var_uniform || var->data.bindless)
             info->uses_bindless_samplers = true;
       }
    } else if (instr->type == nir_instr_type_intrinsic) {

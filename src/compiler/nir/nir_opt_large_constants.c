@@ -208,7 +208,7 @@ nir_opt_large_constants(nir_shader *shader,
              */
             nir_deref_instr *deref = nir_instr_as_deref(instr);
             if (deref->deref_type == nir_deref_type_var &&
-                deref->mode == nir_var_function_temp &&
+                deref->var->data.mode == nir_var_function_temp &&
                 nir_deref_instr_has_complex_use(deref))
                var_infos[deref->var->index].is_constant = false;
             continue;

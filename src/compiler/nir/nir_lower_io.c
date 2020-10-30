@@ -634,8 +634,8 @@ nir_lower_io_block(nir_block *block,
       nir_ssa_def *offset;
       nir_ssa_def *vertex_index = NULL;
       unsigned component_offset = var->data.location_frac;
-      bool bindless_type_size = mode == nir_var_shader_in ||
-                                mode == nir_var_shader_out ||
+      bool bindless_type_size = var->data.mode == nir_var_shader_in ||
+                                var->data.mode == nir_var_shader_out ||
                                 var->data.bindless;
 
      if (nir_deref_instr_is_known_out_of_bounds(deref)) {
