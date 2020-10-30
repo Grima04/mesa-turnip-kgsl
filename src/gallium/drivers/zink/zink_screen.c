@@ -637,8 +637,53 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 }
 
 static VkInstance
-create_instance()
+create_instance(struct zink_screen *screen)
 {
+   const char *layers[4] = { 0 };
+   uint32_t num_layers = 0;
+   const char *extensions[4] = { 0 };
+   uint32_t num_extensions = 0;
+
+   {
+      // Build up the extensions from the reported ones but only for the unnamed layer
+      uint32_t extension_count = 0;
+      VkResult err = vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL);
+      if (err == VK_SUCCESS) {
+         VkExtensionProperties *extension_props = malloc(extension_count * sizeof(VkExtensionProperties));
+         if (extension_props) {
+            err = vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props);
+            if (err == VK_SUCCESS) {
+               for (uint32_t i = 0; i < extension_count; i++) {
+                  if (!strcmp(extension_props[i].extensionName, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
+                     extensions[num_extensions++] = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
+                  }
+                  if (!strcmp(extension_props[i].extensionName, VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME)) {
+                     extensions[num_extensions++] = VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME;
+                  }
+               }
+            }
+            free(extension_props);
+         }
+      }
+   }
+
+   {
+      // Build up the layers from the reported ones
+      uint32_t layer_count = 0;
+      VkResult err = vkEnumerateInstanceLayerProperties(&layer_count, NULL);
+      if (err == VK_SUCCESS) {
+         VkLayerProperties *layer_props = malloc(layer_count * sizeof(VkLayerProperties));
+         if (layer_props) {
+            err = vkEnumerateInstanceLayerProperties(&layer_count, layer_props);
+            if (err == VK_SUCCESS) {
+               for (uint32_t i = 0; i < layer_count; i++) {
+               }
+            }
+            free(layer_props);
+         }
+      }
+   }
+
    VkApplicationInfo ai = {};
    ai.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 
@@ -651,16 +696,13 @@ create_instance()
    ai.pEngineName = "mesa zink";
    ai.apiVersion = VK_API_VERSION_1_0;
 
-   const char *extensions[] = {
-      VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-      VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
-   };
-
    VkInstanceCreateInfo ici = {};
    ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
    ici.pApplicationInfo = &ai;
    ici.ppEnabledExtensionNames = extensions;
-   ici.enabledExtensionCount = ARRAY_SIZE(extensions);
+   ici.enabledExtensionCount = num_extensions;
+   ici.ppEnabledLayerNames = layers;
+   ici.enabledLayerCount = num_layers;
 
    VkInstance instance = VK_NULL_HANDLE;
    VkResult err = vkCreateInstance(&ici, NULL, &instance);
@@ -834,7 +876,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
 
    zink_debug = debug_get_option_zink_debug();
 
-   screen->instance = create_instance();
+   screen->instance = create_instance(screen);
    screen->pdev = choose_pdev(screen->instance);
    update_queue_props(screen);
 
