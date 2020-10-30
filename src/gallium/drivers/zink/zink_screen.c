@@ -644,6 +644,11 @@ create_instance(struct zink_screen *screen)
    const char *extensions[4] = { 0 };
    uint32_t num_extensions = 0;
 
+#if defined(MVK_VERSION)
+   bool have_moltenvk_layer = false;
+   bool have_moltenvk_layer_ext = false;
+#endif
+
    {
       // Build up the extensions from the reported ones but only for the unnamed layer
       uint32_t extension_count = 0;
@@ -660,6 +665,12 @@ create_instance(struct zink_screen *screen)
                   if (!strcmp(extension_props[i].extensionName, VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME)) {
                      extensions[num_extensions++] = VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME;
                   }
+#if defined(MVK_VERSION)
+                  if (!strcmp(extension_props[i].extensionName, VK_MVK_MOLTENVK_EXTENSION_NAME)) {
+                     have_moltenvk_layer_ext = true;
+                     extensions[num_extensions++] = VK_MVK_MOLTENVK_EXTENSION_NAME;
+                  }
+#endif
                }
             }
             free(extension_props);
@@ -677,12 +688,24 @@ create_instance(struct zink_screen *screen)
             err = vkEnumerateInstanceLayerProperties(&layer_count, layer_props);
             if (err == VK_SUCCESS) {
                for (uint32_t i = 0; i < layer_count; i++) {
+#if defined(MVK_VERSION)
+                  if (!strcmp(layer_props[i].layerName, "MoltenVK")) {
+                     have_moltenvk_layer = true;
+                     layers[num_layers++] = "MoltenVK";
+                  }
+#endif
                }
             }
             free(layer_props);
          }
       }
    }
+
+#if defined(MVK_VERSION)
+   if (have_moltenvk_layer_ext && have_moltenvk_layer) {
+      screen->have_moltenvk = true;
+   }
+#endif
 
    VkApplicationInfo ai = {};
    ai.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -801,9 +824,6 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
       winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
 }
 
-static bool
-load_device_extensions(struct zink_screen *screen)
-{
 #define GET_PROC_ADDR(x) do {                                               \
       screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x); \
       if (!screen->vk_##x) {                                                \
@@ -819,6 +839,10 @@ load_device_extensions(struct zink_screen *screen)
          return false;                                                      \
       } \
    } while (0)
+
+static bool
+load_device_extensions(struct zink_screen *screen)
+{
    if (screen->info.have_EXT_transform_feedback) {
       GET_PROC_ADDR(CmdBindTransformFeedbackBuffersEXT);
       GET_PROC_ADDR(CmdBeginTransformFeedbackEXT);
@@ -862,10 +886,49 @@ load_device_extensions(struct zink_screen *screen)
       GET_PROC_ADDR(CmdSetScissorWithCountEXT);
    }
 
-#undef GET_PROC_ADDR
+   return true;
+}
+
+#if defined(MVK_VERSION)
+static bool
+zink_internal_setup_moltenvk(struct zink_screen *screen)
+{
+   if (!screen->have_moltenvk)
+      return true;
+
+   GET_PROC_ADDR_INSTANCE(GetMoltenVKConfigurationMVK);
+   GET_PROC_ADDR_INSTANCE(SetMoltenVKConfigurationMVK);
+
+   GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceMetalFeaturesMVK);
+   GET_PROC_ADDR_INSTANCE(GetVersionStringsMVK);
+   GET_PROC_ADDR_INSTANCE(UseIOSurfaceMVK);
+   GET_PROC_ADDR_INSTANCE(GetIOSurfaceMVK);
+
+   if (screen->vk_GetVersionStringsMVK) {
+      char molten_version[64] = {0};
+      char vulkan_version[64] = {0};
+
+      (*screen->vk_GetVersionStringsMVK)(molten_version, sizeof(molten_version) - 1, vulkan_version, sizeof(vulkan_version) - 1);
+
+      printf("zink: MoltenVK %s Vulkan %s \n", molten_version, vulkan_version);
+   }
+
+   if (screen->vk_GetMoltenVKConfigurationMVK && screen->vk_SetMoltenVKConfigurationMVK) {
+      MVKConfiguration molten_config = {0};
+      size_t molten_config_size = sizeof(molten_config);
+
+      VkResult res = (*screen->vk_GetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
+      if (res == VK_SUCCESS || res == VK_INCOMPLETE) {
+         // Needed to allow MoltenVK to accept VkImageView swizzles.
+         // Encounted when using VK_FORMAT_R8G8_UNORM
+         molten_config.fullImageViewSwizzle = VK_TRUE;
+         (*screen->vk_SetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
+      }
+   }
 
    return true;
 }
+#endif // MVK_VERSION
 
 static struct pipe_screen *
 zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_screen_config *config)
@@ -889,6 +952,10 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
       debug_printf("ZINK: failed to detect features\n");
       goto fail;
    }
+
+#if defined(MVK_VERSION)
+   zink_internal_setup_moltenvk(screen);
+#endif
 
    if (fd >= 0 && !screen->info.have_KHR_external_memory_fd) {
       debug_printf("ZINK: KHR_external_memory_fd required!\n");

@@ -31,6 +31,11 @@
 
 #include <vulkan/vulkan.h>
 
+#if defined(__APPLE__)
+// Source of MVK_VERSION
+#include "MoltenVK/vk_mvk_moltenvk.h"
+#endif
+
 extern uint32_t zink_debug;
 
 #define ZINK_DEBUG_NIR 0x1
@@ -56,6 +61,10 @@ struct zink_screen {
    uint32_t timestamp_valid_bits;
    VkDevice dev;
 
+#if defined(MVK_VERSION)
+   bool have_moltenvk;
+#endif
+
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
    PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;
    PFN_vkCmdEndConditionalRenderingEXT vk_CmdEndConditionalRenderingEXT;
@@ -72,6 +81,16 @@ struct zink_screen {
 
    PFN_vkCmdSetViewportWithCountEXT vk_CmdSetViewportWithCountEXT;
    PFN_vkCmdSetScissorWithCountEXT vk_CmdSetScissorWithCountEXT;
+
+#if defined(MVK_VERSION)
+   PFN_vkGetMoltenVKConfigurationMVK vk_GetMoltenVKConfigurationMVK;
+   PFN_vkSetMoltenVKConfigurationMVK vk_SetMoltenVKConfigurationMVK;
+
+   PFN_vkGetPhysicalDeviceMetalFeaturesMVK vk_GetPhysicalDeviceMetalFeaturesMVK;
+   PFN_vkGetVersionStringsMVK vk_GetVersionStringsMVK;
+   PFN_vkUseIOSurfaceMVK vk_UseIOSurfaceMVK;
+   PFN_vkGetIOSurfaceMVK vk_GetIOSurfaceMVK;
+#endif
 };
 
 static inline struct zink_screen *
