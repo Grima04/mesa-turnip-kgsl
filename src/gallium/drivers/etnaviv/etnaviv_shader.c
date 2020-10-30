@@ -296,6 +296,17 @@ etna_shader_link(struct etna_context *ctx)
    return etna_link_shaders(ctx, &ctx->shader_state, ctx->shader.vs, ctx->shader.fs);
 }
 
+void
+etna_destroy_shader(struct etna_shader_variant *shader)
+{
+   assert(shader);
+
+   FREE(shader->code);
+   FREE(shader->uniforms.imm_data);
+   FREE(shader->uniforms.imm_contents);
+   FREE(shader);
+}
+
 static bool
 etna_shader_update_vs_inputs(struct compiled_shader_state *cs,
                              const struct etna_shader_variant *vs,
@@ -490,10 +501,7 @@ etna_delete_shader_state(struct pipe_context *pctx, void *ss)
       if (t->bo)
          etna_bo_del(t->bo);
 
-      if (DBG_ENABLED(ETNA_DBG_NIR))
-         etna_destroy_shader_nir(t);
-      else
-         etna_destroy_shader(t);
+      etna_destroy_shader(t);
    }
 
    tgsi_free_tokens(shader->tokens);

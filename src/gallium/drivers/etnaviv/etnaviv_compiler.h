@@ -172,7 +172,4 @@ etna_link_shader_nir(struct etna_shader_link_info *info,
                      const struct etna_shader_variant *vs,
                      const struct etna_shader_variant *fs);
 
-void
-etna_destroy_shader_nir(struct etna_shader_variant *shader);
-
 #endif

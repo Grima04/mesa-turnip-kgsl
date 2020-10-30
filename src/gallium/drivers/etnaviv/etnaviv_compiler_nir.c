@@ -1185,17 +1185,6 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    return result;
 }
 
-void
-etna_destroy_shader_nir(struct etna_shader_variant *shader)
-{
-   assert(shader);
-
-   FREE(shader->code);
-   FREE(shader->uniforms.imm_data);
-   FREE(shader->uniforms.imm_contents);
-   FREE(shader);
-}
-
 static const struct etna_shader_inout *
 etna_shader_vs_lookup(const struct etna_shader_variant *sobj,
                       const struct etna_shader_inout *in)
