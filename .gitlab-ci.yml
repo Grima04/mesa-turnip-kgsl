@@ -352,7 +352,7 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-10-09-spvtools-1"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-10-30-python3-modules-1"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:

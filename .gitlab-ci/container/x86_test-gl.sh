@@ -42,6 +42,8 @@ apt-get install -y --no-remove \
       libclang-cpp10 \
       libxcb-shm0 \
       ocl-icd-libopencl1 \
+      python3-lxml \
+      python3-simplejson \
       $STABLE_EPHEMERAL
 
 
