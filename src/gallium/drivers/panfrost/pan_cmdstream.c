@@ -1720,6 +1720,11 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
         struct pipe_stream_output_info *so = &vs->stream_output;
         uint16_t point_coord_mask = ctx->rasterizer->base.sprite_coord_enable;
+
+        /* TODO: point sprites need lowering on Bifrost */
+        if (dev->quirks & IS_BIFROST)
+                point_coord_mask =  0;
+
         unsigned present = pan_varying_present(vs, fs, dev->quirks, point_coord_mask);
 
         /* Check if this varying is linked by us. This is the case for
