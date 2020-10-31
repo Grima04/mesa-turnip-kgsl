@@ -250,6 +250,12 @@ struct pipe_screen {
     * the resource into a format compatible for sharing. The use case is
     * OpenGL-OpenCL interop. The context parameter is allowed to be NULL.
     *
+    * NOTE: for multi-planar resources (which may or may not have the planes
+    * chained through the pipe_resource next pointer) the frontend will
+    * always call this function with the first resource of the chain. It is
+    * the pipe drivers responsibility to walk the resources as needed when
+    * called with handle->plane != 0.
+    *
     * NOTE: in the case of WINSYS_HANDLE_TYPE_FD handles, the caller
     * takes ownership of the FD.  (This is consistent with
     * EGL_MESA_image_dma_buf_export)
