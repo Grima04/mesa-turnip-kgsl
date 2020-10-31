@@ -86,14 +86,9 @@ static
 void radv_destroy_semaphore_part(struct radv_device *device,
                                  struct radv_semaphore_part *part);
 
-static VkResult
-radv_create_pthread_cond(pthread_cond_t *cond);
-
 uint64_t radv_get_current_time(void)
 {
-	struct timespec tv;
-	clock_gettime(CLOCK_MONOTONIC, &tv);
-	return tv.tv_nsec + tv.tv_sec*1000000000ull;
+	return os_time_get_nano();
 }
 
 static uint64_t radv_get_absolute_timeout(uint64_t timeout)
@@ -2363,9 +2358,10 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
 	pthread_mutex_init(&queue->pending_mutex, NULL);
 
 	pthread_mutex_init(&queue->thread_mutex, NULL);
-	result = radv_create_pthread_cond(&queue->thread_cond);
-	if (result != VK_SUCCESS)
+	if (u_cnd_monotonic_init(&queue->thread_cond)) {
+		result = VK_ERROR_INITIALIZATION_FAILED;
 		return vk_error(device->instance, result);
+	}
 	queue->cond_created = true;
 
 	return VK_SUCCESS;
@@ -2378,11 +2374,11 @@ radv_queue_finish(struct radv_queue *queue)
 		if (queue->cond_created) {
 			if (queue->thread_running) {
 				p_atomic_set(&queue->thread_exit, true);
-				pthread_cond_broadcast(&queue->thread_cond);
+				u_cnd_monotonic_broadcast(&queue->thread_cond);
 				pthread_join(queue->submission_thread, NULL);
 			}
 
-			pthread_cond_destroy(&queue->thread_cond);
+			u_cnd_monotonic_destroy(&queue->thread_cond);
 		}
 
 		pthread_mutex_destroy(&queue->pending_mutex);
@@ -2558,26 +2554,6 @@ radv_device_init_dispatch(struct radv_device *device)
 				radv_device_dispatch_table.entrypoints[i];
 		}
 	}
-}
-
-static VkResult
-radv_create_pthread_cond(pthread_cond_t *cond)
-{
-	pthread_condattr_t condattr;
-	if (pthread_condattr_init(&condattr)) {
-		return VK_ERROR_INITIALIZATION_FAILED;
-	}
-
-	if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC)) {
-		pthread_condattr_destroy(&condattr);
-		return VK_ERROR_INITIALIZATION_FAILED;
-	}
-	if (pthread_cond_init(cond, &condattr)) {
-		pthread_condattr_destroy(&condattr);
-		return VK_ERROR_INITIALIZATION_FAILED;
-	}
-	pthread_condattr_destroy(&condattr);
-	return VK_SUCCESS;
 }
 
 static VkResult
@@ -2943,9 +2919,10 @@ VkResult radv_CreateDevice(
 
 	device->mem_cache = radv_pipeline_cache_from_handle(pc);
 
-	result = radv_create_pthread_cond(&device->timeline_cond);
-	if (result != VK_SUCCESS)
+	if (u_cnd_monotonic_init(&device->timeline_cond)) {
+		result = VK_ERROR_INITIALIZATION_FAILED;
 		goto fail_mem_cache;
+	}
 
 	device->force_aniso =
 		MIN2(16, radv_get_int_debug_option("RADV_TEX_ANISO", -1));
@@ -3022,7 +2999,7 @@ void radv_DestroyDevice(
 
 	radv_destroy_shader_slabs(device);
 
-	pthread_cond_destroy(&device->timeline_cond);
+	u_cnd_monotonic_destroy(&device->timeline_cond);
 	radv_bo_list_finish(&device->bo_list);
 
 	free(device->thread_trace_trigger_file);
@@ -4503,7 +4480,7 @@ radv_queue_submission_update_queue(struct radv_deferred_queue_submission *submis
 	}
 	pthread_mutex_unlock(&submission->queue->pending_mutex);
 
-	pthread_cond_broadcast(&submission->queue->device->timeline_cond);
+	u_cnd_monotonic_broadcast(&submission->queue->device->timeline_cond);
 }
 
 static VkResult
@@ -4745,7 +4722,7 @@ static void* radv_queue_submission_thread_run(void *q)
 		struct list_head processing_list;
 		VkResult result = VK_SUCCESS;
 		if (!submission) {
-			pthread_cond_wait(&queue->thread_cond, &queue->thread_mutex);
+			u_cnd_monotonic_wait(&queue->thread_cond, &queue->thread_mutex);
 			continue;
 		}
 		pthread_mutex_unlock(&queue->thread_mutex);
@@ -4813,7 +4790,7 @@ radv_queue_trigger_submission(struct radv_deferred_queue_submission *submission,
 	queue->thread_submission = submission;
 	pthread_mutex_unlock(&queue->thread_mutex);
 
-	pthread_cond_signal(&queue->thread_cond);
+	u_cnd_monotonic_signal(&queue->thread_cond);
 	return VK_SUCCESS;
 }
 
@@ -4965,7 +4942,7 @@ VkResult radv_QueueWaitIdle(
 
 	pthread_mutex_lock(&queue->pending_mutex);
 	while (!list_is_empty(&queue->pending_submissions)) {
-		pthread_cond_wait(&queue->device->timeline_cond, &queue->pending_mutex);
+		u_cnd_monotonic_wait(&queue->device->timeline_cond, &queue->pending_mutex);
 	}
 	pthread_mutex_unlock(&queue->pending_mutex);
 
@@ -6136,7 +6113,7 @@ radv_timeline_wait(struct radv_device *device,
 		struct timespec abstime;
 		timespec_from_nsec(&abstime, abs_timeout);
 
-		pthread_cond_timedwait(&device->timeline_cond, &timeline->mutex, &abstime);
+		u_cnd_monotonic_timedwait(&device->timeline_cond, &timeline->mutex, &abstime);
 
 		if (radv_get_current_time() >= abs_timeout && timeline->highest_submitted < value) {
 			pthread_mutex_unlock(&timeline->mutex);
@@ -6417,7 +6394,7 @@ radv_SignalSemaphore(VkDevice _device,
 		 * processed before we wake the application. This way we
 		 * ensure that any binary semaphores that are now unblocked
 		 * are usable by the application. */
-		pthread_cond_broadcast(&device->timeline_cond);
+		u_cnd_monotonic_broadcast(&device->timeline_cond);
 
 		return result;
 	}

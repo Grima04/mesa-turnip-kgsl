@@ -46,6 +46,7 @@
 #include "c11/threads.h"
 #include <amdgpu.h>
 #include "compiler/shader_enums.h"
+#include "util/cnd_monotonic.h"
 #include "util/macros.h"
 #include "util/list.h"
 #include "util/rwlock.h"
@@ -730,7 +731,7 @@ struct radv_queue {
 	pthread_mutex_t pending_mutex;
 
 	pthread_mutex_t thread_mutex;
-	pthread_cond_t thread_cond;
+	struct u_cnd_monotonic thread_cond;
 	struct radv_deferred_queue_submission *thread_submission;
 	pthread_t submission_thread;
 	bool thread_exit;
@@ -837,7 +838,7 @@ struct radv_device {
 
 	/* Condition variable for legacy timelines, to notify waiters when a
 	 * new point gets submitted. */
-	pthread_cond_t timeline_cond;
+	struct u_cnd_monotonic timeline_cond;
 
 	/* Thread trace. */
 	struct radeon_cmdbuf *thread_trace_start_cs[2];
