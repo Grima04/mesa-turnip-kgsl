@@ -279,8 +279,8 @@ check_array_data(struct gl_context *ctx, struct gl_vertex_array_object *vao,
 }
 
 
-static inline void
-get_index_size(GLenum type, struct _mesa_index_buffer *ib)
+static inline unsigned
+get_index_size_shift(GLenum type)
 {
    /* The type is already validated, so use a fast conversion.
     *
@@ -290,7 +290,7 @@ get_index_size(GLenum type, struct _mesa_index_buffer *ib)
     *
     * Divide by 2 to get 0,1,2.
     */
-   ib->index_size_shift = (type - GL_UNSIGNED_BYTE) >> 1;
+   return (type - GL_UNSIGNED_BYTE) >> 1;
 }
 
 /**
@@ -1005,29 +1005,46 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
                                   GLint basevertex, GLuint numInstances,
                                   GLuint baseInstance)
 {
-   struct _mesa_index_buffer ib;
-   struct _mesa_prim prim;
+   if (skip_draw_elements(ctx, count, indices))
+      return;
 
    if (!index_bounds_valid) {
       assert(start == 0u);
       assert(end == ~0u);
    }
 
-   if (skip_draw_elements(ctx, count, indices))
-      return;
+   struct pipe_draw_info info;
+   struct pipe_draw_start_count draw;
+   unsigned index_size_shift = get_index_size_shift(type);
+   struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
 
-   ib.count = count;
-   ib.obj = ctx->Array.VAO->IndexBufferObj;
-   ib.ptr = indices;
-   get_index_size(type, &ib);
+   info.mode = mode;
+   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
+   info.index_size = 1 << index_size_shift;
+   /* Packed section begin. */
+   info.primitive_restart = ctx->Array._PrimitiveRestart[index_size_shift];
+   info.has_user_indices = index_bo == NULL;
+   info.index_bounds_valid = index_bounds_valid;
+   info.increment_draw_id = false;
+   info._pad = 0;
+   /* Packed section end. */
+   info.start_instance = baseInstance;
+   info.instance_count = numInstances;
+   info.drawid = 0;
+   info.index_bias = basevertex;
+   info.restart_index = ctx->Array._RestartIndex[index_size_shift];
 
-   prim.begin = 1;
-   prim.end = 1;
-   prim.mode = mode;
-   prim.start = 0;
-   prim.count = count;
-   prim.basevertex = basevertex;
-   prim.draw_id = 0;
+   if (info.has_user_indices) {
+      info.index.user = indices;
+      draw.start = 0;
+   } else {
+      info.index.gl_bo = index_bo;
+      draw.start = (uintptr_t)indices >> index_size_shift;
+   }
+
+   info.min_index = start;
+   info.max_index = end;
+   draw.count = count;
 
    /* Need to give special consideration to rendering a range of
     * indices starting somewhere above zero.  Typically the
@@ -1060,12 +1077,7 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
     * for the latter case elsewhere.
     */
 
-   ctx->Driver.Draw(ctx, &prim, 1, &ib,
-                    index_bounds_valid,
-                    ctx->Array._PrimitiveRestart[ib.index_size_shift],
-                    ctx->Array._RestartIndex[ib.index_size_shift],
-                    start, end,
-                    numInstances, baseInstance);
+   ctx->Driver.DrawGallium(ctx, &info, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -1424,7 +1436,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
    if (primcount == 0)
       return;
 
-   get_index_size(type, &ib);
+   ib.index_size_shift = get_index_size_shift(type);
 
    min_index_ptr = (uintptr_t) indices[0];
    max_index_ptr = 0;
@@ -1742,7 +1754,7 @@ _mesa_validated_multidrawelementsindirect(struct gl_context *ctx,
    ib.count = 0;                /* unknown */
    ib.obj = ctx->Array.VAO->IndexBufferObj;
    ib.ptr = NULL;
-   get_index_size(type, &ib);
+   ib.index_size_shift = get_index_size_shift(type);
 
    ctx->Driver.DrawIndirect(ctx, mode, ctx->DrawIndirectBuffer, indirect,
                             drawcount, stride, drawcount_buffer,
