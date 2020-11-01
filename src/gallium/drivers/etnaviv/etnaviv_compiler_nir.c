@@ -1058,6 +1058,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    const struct etna_specs *specs = c->specs;
 
    v->stage = s->info.stage;
+   v->uses_discard = s->info.fs.uses_discard;
    v->num_loops = 0; /* TODO */
    v->vs_id_in_reg = -1;
    v->vs_pos_out_reg = -1;

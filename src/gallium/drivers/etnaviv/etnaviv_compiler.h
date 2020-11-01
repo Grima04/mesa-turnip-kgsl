@@ -127,6 +127,9 @@ struct etna_shader_variant {
 
    /* shader is larger than GPU instruction limit, thus needs icache */
    bool needs_icache;
+
+   /* shader uses pixel kill/discard */
+   bool uses_discard;
 };
 
 struct etna_varying {

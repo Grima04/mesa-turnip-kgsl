@@ -2471,6 +2471,7 @@ etna_compile_shader(struct etna_shader_variant *v)
 
    /* fill in output structure */
    v->stage = c->info.processor == PIPE_SHADER_FRAGMENT ? MESA_SHADER_FRAGMENT : MESA_SHADER_VERTEX;
+   v->uses_discard = c->info.uses_kill;
    v->code_size = c->inst_ptr * 4;
    v->code = mem_dup(c->code, c->inst_ptr * 16);
    v->num_loops = c->num_loops;
