@@ -212,7 +212,9 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 
 static void
 fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
-            const struct pipe_draw_indirect_info *indirect)
+            const struct pipe_draw_indirect_info *indirect,
+            const struct pipe_draw_start_count *draws,
+            unsigned num_draws)
 {
 	struct fd_context *ctx = fd_context(pctx);
 
@@ -228,7 +230,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	if (info->mode != PIPE_PRIM_MAX &&
 	    !indirect &&
 	    !info->primitive_restart &&
-	    !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
+	    !u_trim_pipe_prim(info->mode, (unsigned*)&draws[0].count))
 		return;
 
 	/* TODO: push down the region versions into the tiles */
@@ -240,7 +242,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 		if (ctx->streamout.num_targets > 0)
 			mesa_loge("stream-out with emulated prims");
 		util_primconvert_save_rasterizer_state(ctx->primconvert, ctx->rasterizer);
-		util_primconvert_draw_vbo(ctx->primconvert, info);
+		util_primconvert_draw_vbo(ctx->primconvert, info, &draws[0]);
 		return;
 	}
 
@@ -250,7 +252,8 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	struct pipe_draw_info new_info;
 	if (info->index_size) {
 		if (info->has_user_indices) {
-			if (!util_upload_index_buffer(pctx, info, &indexbuf, &index_offset, 4))
+			if (!util_upload_index_buffer(pctx, info, &draws[0],
+                                                      &indexbuf, &index_offset, 4))
 				return;
 			new_info = *info;
 			new_info.index.resource = indexbuf;
@@ -292,7 +295,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	unsigned prims;
 	if ((info->mode != PIPE_PRIM_PATCHES) &&
 			(info->mode != PIPE_PRIM_MAX))
-		prims = u_reduced_prims_for_vertices(info->mode, info->count);
+		prims = u_reduced_prims_for_vertices(info->mode, draws[0].count);
 	else
 		prims = 0;
 
@@ -320,13 +323,13 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 		util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
 		util_format_short_name(pipe_surface_format(pfb->zsbuf)));
 
-	if (ctx->draw_vbo(ctx, info, indirect, index_offset))
+	if (ctx->draw_vbo(ctx, info, indirect, &draws[0], index_offset))
 		batch->needs_flush = true;
 
-	batch->num_vertices += info->count * info->instance_count;
+	batch->num_vertices += draws[0].count * info->instance_count;
 
 	for (unsigned i = 0; i < ctx->streamout.num_targets; i++)
-		ctx->streamout.offsets[i] += info->count;
+		ctx->streamout.offsets[i] += draws[0].count;
 
 	if (fd_mesa_debug & FD_DBG_DDRAW)
 		fd_context_all_dirty(ctx);

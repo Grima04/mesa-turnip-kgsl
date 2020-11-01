@@ -1158,7 +1158,8 @@ swr_get_last_fe(const struct swr_context *ctx)
 
 void
 swr_update_derived(struct pipe_context *pipe,
-                   const struct pipe_draw_info *p_draw_info)
+                   const struct pipe_draw_info *p_draw_info,
+                   const struct pipe_draw_start_count *draw)
 {
    struct swr_context *ctx = swr_context(pipe);
    struct swr_screen *screen = swr_screen(pipe->screen);
@@ -1496,7 +1497,7 @@ swr_update_derived(struct pipe_context *pipe,
              * revalidate on each draw */
             post_update_dirty_flags |= SWR_NEW_VERTEX;
 
-            size = info.count * pitch;
+            size = draw->count * pitch;
 
             size = AlignUp(size, 4);
             /* If size of client memory copy is too large, don't copy. The

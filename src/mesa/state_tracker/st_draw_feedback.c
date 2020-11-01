@@ -425,21 +425,24 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
    /* draw here */
    for (i = 0; i < nr_prims; i++) {
-      info.count = prims[i].count;
+      struct pipe_draw_start_count d;
 
-      if (!info.count)
+      d.count = prims[i].count;
+
+      if (!d.count)
          continue;
 
+      d.start = start + prims[i].start;
+
       info.mode = prims[i].mode;
-      info.start = start + prims[i].start;
       info.index_bias = prims[i].basevertex;
       info.drawid = prims[i].draw_id;
       if (!ib) {
-         info.min_index = info.start;
-         info.max_index = info.start + info.count - 1;
+         info.min_index = d.start;
+         info.max_index = d.start + d.count - 1;
       }
 
-      draw_vbo(draw, &info, NULL);
+      draw_vbo(draw, &info, NULL, &d, 1);
    }
 
    /* unmap images */

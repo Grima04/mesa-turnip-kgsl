@@ -775,11 +775,7 @@ void trace_dump_draw_info(const struct pipe_draw_info *state)
 
    trace_dump_member(uint, state, index_size);
    trace_dump_member(uint, state, has_user_indices);
-
    trace_dump_member(uint, state, mode);
-   trace_dump_member(uint, state, start);
-   trace_dump_member(uint, state, count);
-
    trace_dump_member(uint, state, start_instance);
    trace_dump_member(uint, state, instance_count);
 
@@ -793,6 +789,17 @@ void trace_dump_draw_info(const struct pipe_draw_info *state)
    trace_dump_member(uint, state, restart_index);
 
    trace_dump_member(ptr, state, index.resource);
+   trace_dump_struct_end();
+}
+
+void trace_dump_draw_start_count(const struct pipe_draw_start_count *state)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   trace_dump_struct_begin("pipe_draw_start_count");
+   trace_dump_member(uint, state, start);
+   trace_dump_member(uint, state, count);
    trace_dump_struct_end();
 }
 

@@ -515,7 +515,8 @@ static inline void
 ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
                           struct fd_ringbuffer *ring, struct fd_context *ctx,
                           const struct pipe_draw_info *info,
-                          const struct pipe_draw_indirect_info *indirect)
+                          const struct pipe_draw_indirect_info *indirect,
+                          const struct pipe_draw_start_count *draw)
 {
 	debug_assert(ir3_needs_vs_driver_params(v));
 
@@ -524,7 +525,7 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 	uint32_t vertex_params[IR3_DP_VS_COUNT] = {
 			[IR3_DP_DRAWID]      = 0,  /* filled by hw (CP_DRAW_INDIRECT_MULTI) */
 			[IR3_DP_VTXID_BASE]  = info->index_size ?
-					info->index_bias : info->start,
+					info->index_bias : draw->start,
 			[IR3_DP_INSTID_BASE] = info->start_instance,
 			[IR3_DP_VTXCNT_MAX]  = max_tf_vtx(ctx, v),
 	};
@@ -597,7 +598,8 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 static inline void
 ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
                    struct fd_context *ctx, const struct pipe_draw_info *info,
-                   const struct pipe_draw_indirect_info *indirect)
+                   const struct pipe_draw_indirect_info *indirect,
+                   const struct pipe_draw_start_count *draw)
 {
 	debug_assert(v->type == MESA_SHADER_VERTEX);
 
@@ -606,7 +608,7 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	/* emit driver params every time: */
 	if (info && ir3_needs_vs_driver_params(v)) {
 		ring_wfi(ctx->batch, ring);
-		ir3_emit_vs_driver_params(v, ring, ctx, info, indirect);
+		ir3_emit_vs_driver_params(v, ring, ctx, info, indirect, draw);
 	}
 }
 

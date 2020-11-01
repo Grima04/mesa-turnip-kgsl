@@ -391,6 +391,7 @@ struct fd_context {
 	/* draw: */
 	bool (*draw_vbo)(struct fd_context *ctx, const struct pipe_draw_info *info,
                          const struct pipe_draw_indirect_info *indirect,
+                         const struct pipe_draw_start_count *draw,
 			unsigned index_offset);
 	bool (*clear)(struct fd_context *ctx, unsigned buffers,
 			const union pipe_color_union *color, double depth, unsigned stencil);

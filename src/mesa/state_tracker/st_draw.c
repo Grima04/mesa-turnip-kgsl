@@ -223,31 +223,34 @@ st_draw_vbo(struct gl_context *ctx,
 
    /* do actual drawing */
    for (i = 0; i < nr_prims; i++) {
-      info.count = prims[i].count;
+      struct pipe_draw_start_count draw;
+
+      draw.count = prims[i].count;
 
       /* Skip no-op draw calls. */
-      if (!info.count)
+      if (!draw.count)
          continue;
 
+      draw.start = start + prims[i].start;
+
       info.mode = translate_prim(ctx, prims[i].mode);
-      info.start = start + prims[i].start;
       info.index_bias = prims[i].basevertex;
       info.drawid = prims[i].draw_id;
       if (!ib) {
-         info.min_index = info.start;
-         info.max_index = info.start + info.count - 1;
+         info.min_index = draw.start;
+         info.max_index = draw.start + draw.count - 1;
       }
 
       if (ST_DEBUG & DEBUG_DRAW) {
          debug_printf("st/draw: mode %s  start %u  count %u  index_size %d\n",
                       u_prim_name(info.mode),
-                      info.start,
-                      info.count,
+                      draw.start,
+                      draw.count,
                       info.index_size);
       }
 
       /* Don't call u_trim_pipe_prim. Drivers should do it if they need it. */
-      cso_draw_vbo(st->cso_context, &info, NULL);
+      cso_draw_vbo(st->cso_context, &info, NULL, draw);
    }
 }
 
@@ -265,13 +268,13 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;
    struct pipe_draw_indirect_info indirect;
+   struct pipe_draw_start_count draw = {0};
 
    assert(stride);
    prepare_draw(st, ctx);
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
-   info.start = 0; /* index offset / index size */
    info.max_index = ~0u; /* so that u_vbuf can tell that it's unknown */
 
    if (ib) {
@@ -282,7 +285,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
 
       info.index_size = 1 << ib->index_size_shift;
       info.index.resource = st_buffer_object(bufobj)->buffer;
-      info.start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
+      draw.start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
 
       /* Primitive restart is not handled by the VBO module in this case. */
       setup_primitive_restart(ctx, &info);
@@ -307,7 +310,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       indirect.draw_count = 1;
       for (i = 0; i < draw_count; i++) {
          info.drawid = i;
-         cso_draw_vbo(st->cso_context, &info, &indirect);
+         cso_draw_vbo(st->cso_context, &info, &indirect, draw);
          indirect.offset += stride;
       }
    } else {
@@ -318,7 +321,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
             st_buffer_object(indirect_draw_count)->buffer;
          indirect.indirect_draw_count_offset = indirect_draw_count_offset;
       }
-      cso_draw_vbo(st->cso_context, &info, &indirect);
+      cso_draw_vbo(st->cso_context, &info, &indirect, draw);
    }
 }
 
@@ -330,12 +333,12 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;
    struct pipe_draw_indirect_info indirect;
+   struct pipe_draw_start_count draw = {0};
 
    prepare_draw(st, ctx);
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
-   info.start = 0; /* index offset / index size */
    info.max_index = ~0u; /* so that u_vbuf can tell that it's unknown */
    info.mode = translate_prim(ctx, mode);
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
@@ -351,7 +354,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    if (!st_transform_feedback_draw_init(tfb_vertcount, stream, &indirect))
       return;
 
-   cso_draw_vbo(st->cso_context, &info, &indirect);
+   cso_draw_vbo(st->cso_context, &info, &indirect, draw);
 }
 
 void

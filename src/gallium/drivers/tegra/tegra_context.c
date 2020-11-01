@@ -47,7 +47,9 @@ tegra_destroy(struct pipe_context *pcontext)
 static void
 tegra_draw_vbo(struct pipe_context *pcontext,
                const struct pipe_draw_info *pinfo,
-               const struct pipe_draw_indirect_info *pindirect)
+               const struct pipe_draw_indirect_info *pindirect,
+               const struct pipe_draw_start_count *draws,
+               unsigned num_draws)
 {
    struct tegra_context *context = to_tegra_context(pcontext);
    struct pipe_draw_indirect_info indirect;
@@ -68,7 +70,7 @@ tegra_draw_vbo(struct pipe_context *pcontext,
       pindirect = &indirect;
    }
 
-   context->gpu->draw_vbo(context->gpu, pinfo, pindirect);
+   context->gpu->draw_vbo(context->gpu, pinfo, pindirect, draws, num_draws);
 }
 
 static void

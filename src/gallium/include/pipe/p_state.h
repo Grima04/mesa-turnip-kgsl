@@ -749,14 +749,6 @@ struct pipe_draw_start_count {
  */
 struct pipe_draw_info
 {
-   /**
-    * Direct draws: start is the index of the first vertex
-    * Non-indexed indirect draws: not used
-    * Indexed indirect draws: start is added to the indirect start.
-    */
-   unsigned start;
-   unsigned count;  /**< number of vertices */
-
    enum pipe_prim_type mode:8;  /**< the mode of the primitive */
    ubyte vertices_per_patch; /**< the number of vertices per patch */
    ubyte index_size;  /**< if 0, the draw is not indexed. */

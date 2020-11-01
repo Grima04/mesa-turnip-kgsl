@@ -47,6 +47,7 @@ struct fd3_emit {
 	const struct fd_program_stateobj *prog;
 	const struct pipe_draw_info *info;
         const struct pipe_draw_indirect_info *indirect;
+        const struct pipe_draw_start_count *draw;
 	bool binning_pass;
 	struct ir3_shader_key key;
 	enum fd_dirty_3d_state dirty;

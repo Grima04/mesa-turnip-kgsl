@@ -1000,7 +1000,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
          for (unsigned i = 0; i < num_draws; i++) {
             if (count && count + draws[i].count > vert_count_per_subdraw) {
                /* Submit previous draws.  */
-               sctx->b.multi_draw(&sctx->b, info, NULL, draws + first_draw, num_draws_split);
+               sctx->b.draw_vbo(&sctx->b, info, NULL, draws + first_draw, num_draws_split);
                count = 0;
                first_draw = i;
                num_draws_split = 0;
@@ -1008,7 +1008,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
 
             if (draws[i].count > vert_count_per_subdraw) {
                /* Submit just 1 draw. It will be split. */
-               sctx->b.multi_draw(&sctx->b, info, NULL, draws + i, 1);
+               sctx->b.draw_vbo(&sctx->b, info, NULL, draws + i, 1);
                assert(count == 0);
                assert(first_draw == i);
                assert(num_draws_split == 0);
@@ -1036,7 +1036,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
             split_draw_range.start = base_start + start;
             split_draw_range.count = MIN2(count - start, vert_count_per_subdraw);
 
-            sctx->b.multi_draw(&sctx->b, &split_draw, NULL, &split_draw_range, 1);
+            sctx->b.draw_vbo(&sctx->b, &split_draw, NULL, &split_draw_range, 1);
          }
       } else if (prim == PIPE_PRIM_TRIANGLE_STRIP) {
          /* No primitive pair can be split, because strips reverse orientation
@@ -1047,7 +1047,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
             split_draw_range.start = base_start + start;
             split_draw_range.count = MIN2(count - start, vert_count_per_subdraw + 2);
 
-            sctx->b.multi_draw(&sctx->b, &split_draw, NULL, &split_draw_range, 1);
+            sctx->b.draw_vbo(&sctx->b, &split_draw, NULL, &split_draw_range, 1);
 
             if (start == 0 && primitive_restart &&
                 sctx->cs_prim_discard_state.current->key.opt.cs_need_correct_orientation)

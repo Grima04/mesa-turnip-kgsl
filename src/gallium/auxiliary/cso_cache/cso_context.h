@@ -218,7 +218,8 @@ cso_set_vertex_buffers_and_elements(struct cso_context *ctx,
 void
 cso_draw_vbo(struct cso_context *cso,
              const struct pipe_draw_info *info,
-             const struct pipe_draw_indirect_info *indirect);
+             const struct pipe_draw_indirect_info *indirect,
+             const struct pipe_draw_start_count draw);
 
 void
 cso_draw_arrays_instanced(struct cso_context *cso, uint mode,

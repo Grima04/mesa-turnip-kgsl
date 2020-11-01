@@ -707,7 +707,7 @@ fd5_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				A5XX_SP_FS_OUTPUT_CNTL_SAMPLEMASK_REGID(regid(63, 0)));
 	}
 
-	ir3_emit_vs_consts(vp, ring, ctx, emit->info, emit->indirect);
+	ir3_emit_vs_consts(vp, ring, ctx, emit->info, emit->indirect, emit->draw);
 	if (!emit->binning_pass)
 		ir3_emit_fs_consts(fp, ring, ctx);
 

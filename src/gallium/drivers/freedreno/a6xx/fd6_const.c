@@ -359,7 +359,7 @@ fd6_emit_consts(struct fd6_emit *emit)
 	if (ir3_needs_vs_driver_params(vs)) {
 		struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
 				ctx->batch->submit, IR3_DP_VS_COUNT * 4, FD_RINGBUFFER_STREAMING);
-		ir3_emit_vs_driver_params(vs, dpconstobj, ctx, emit->info, emit->indirect);
+		ir3_emit_vs_driver_params(vs, dpconstobj, ctx, emit->info, emit->indirect, emit->draw);
 		fd6_emit_take_group(emit, dpconstobj, FD6_GROUP_VS_DRIVER_PARAMS, ENABLE_ALL);
 		fd6_ctx->has_dp_state = true;
 	} else if (fd6_ctx->has_dp_state) {

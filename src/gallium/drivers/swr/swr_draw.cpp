@@ -38,13 +38,15 @@
  */
 static void
 swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
-             const struct pipe_draw_indirect_info *indirect)
+             const struct pipe_draw_indirect_info *indirect,
+             const struct pipe_draw_start_count *draws,
+             unsigned num_draws)
 {
    struct swr_context *ctx = swr_context(pipe);
 
    if (!indirect &&
        !info->primitive_restart &&
-       !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
+       !u_trim_pipe_prim(info->mode, (unsigned*)&draws[0].count))
       return;
 
    if (!swr_check_render_cond(pipe))
@@ -66,14 +68,17 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    swr_update_draw_context(ctx);
 
    struct pipe_draw_info resolved_info;
+   struct pipe_draw_start_count resolved_draw;
    /* DrawTransformFeedback */
    if (indirect && indirect->count_from_stream_output) {
       // trick copied from softpipe to modify const struct *info
       memcpy(&resolved_info, (void*)info, sizeof(struct pipe_draw_info));
-      resolved_info.count = ctx->so_primCounter * resolved_info.vertices_per_patch;
-      resolved_info.max_index = resolved_info.count - 1;
+      resolved_draw.start = draws[0].start;
+      resolved_draw.count = ctx->so_primCounter * resolved_info.vertices_per_patch;
+      resolved_info.max_index = resolved_draw.count - 1;
       info = &resolved_info;
       indirect = NULL;
+      draws = &resolved_draw;
    }
 
    if (ctx->vs->pipe.stream_output.num_outputs) {
@@ -232,17 +237,17 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    if (info->index_size)
       ctx->api.pfnSwrDrawIndexedInstanced(ctx->swrContext,
                                           swr_convert_prim_topology(info->mode, info->vertices_per_patch),
-                                          info->count,
+                                          draws[0].count,
                                           info->instance_count,
-                                          info->start,
+                                          draws[0].start,
                                           info->index_bias,
                                           info->start_instance);
    else
       ctx->api.pfnSwrDrawInstanced(ctx->swrContext,
                                    swr_convert_prim_topology(info->mode, info->vertices_per_patch),
-                                   info->count,
+                                   draws[0].count,
                                    info->instance_count,
-                                   info->start,
+                                   draws[0].start,
                                    info->start_instance);
 
    /* On client-buffer draw, we used client buffer directly, without

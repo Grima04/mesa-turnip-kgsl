@@ -917,8 +917,6 @@ util_dump_draw_info(FILE *stream, const struct pipe_draw_info *state)
    util_dump_member(stream, uint, state, has_user_indices);
 
    util_dump_member(stream, enum_prim_mode, state, mode);
-   util_dump_member(stream, uint, state, start);
-   util_dump_member(stream, uint, state, count);
 
    util_dump_member(stream, uint, state, start_instance);
    util_dump_member(stream, uint, state, instance_count);
@@ -941,6 +939,15 @@ util_dump_draw_info(FILE *stream, const struct pipe_draw_info *state)
       else
          util_dump_member(stream, ptr, state, index.resource);
    }
+   util_dump_struct_end(stream);
+}
+
+void
+util_dump_draw_start_count(FILE *stream, const struct pipe_draw_start_count *state)
+{
+   util_dump_struct_begin(stream, "pipe_draw_start_count");
+   util_dump_member(stream, uint, state, start);
+   util_dump_member(stream, uint, state, count);
    util_dump_struct_end(stream);
 }
 

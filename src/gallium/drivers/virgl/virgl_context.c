@@ -849,7 +849,9 @@ static void virgl_clear_texture(struct pipe_context *ctx,
 
 static void virgl_draw_vbo(struct pipe_context *ctx,
                            const struct pipe_draw_info *dinfo,
-                           const struct pipe_draw_indirect_info *indirect)
+                           const struct pipe_draw_indirect_info *indirect,
+                           const struct pipe_draw_start_count *draws,
+                           unsigned num_draws)
 {
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
@@ -858,22 +860,22 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
 
    if (!indirect &&
        !dinfo->primitive_restart &&
-       !u_trim_pipe_prim(dinfo->mode, (unsigned*)&dinfo->count))
+       !u_trim_pipe_prim(dinfo->mode, (unsigned*)&draws[0].count))
       return;
 
    if (!(rs->caps.caps.v1.prim_mask & (1 << dinfo->mode))) {
       util_primconvert_save_rasterizer_state(vctx->primconvert, &vctx->rs_state.rs);
-      util_primconvert_draw_vbo(vctx->primconvert, dinfo);
+      util_primconvert_draw_vbo(vctx->primconvert, dinfo, &draws[0]);
       return;
    }
    if (info.index_size) {
            pipe_resource_reference(&ib.buffer, info.has_user_indices ? NULL : info.index.resource);
            ib.user_buffer = info.has_user_indices ? info.index.user : NULL;
            ib.index_size = dinfo->index_size;
-           ib.offset = info.start * ib.index_size;
+           ib.offset = draws[0].start * ib.index_size;
 
            if (ib.user_buffer) {
-                   u_upload_data(vctx->uploader, 0, info.count * ib.index_size, 4,
+                   u_upload_data(vctx->uploader, 0, draws[0].count * ib.index_size, 4,
                                  ib.user_buffer, &ib.offset, &ib.buffer);
                    ib.user_buffer = NULL;
            }
@@ -887,7 +889,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
    if (info.index_size)
       virgl_hw_set_index_buffer(vctx, &ib);
 
-   virgl_encoder_draw_vbo(vctx, &info, indirect);
+   virgl_encoder_draw_vbo(vctx, &info, indirect, &draws[0]);
 
    pipe_resource_reference(&ib.buffer, NULL);
 

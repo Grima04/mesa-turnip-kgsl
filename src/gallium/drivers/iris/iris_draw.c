@@ -112,7 +112,8 @@ iris_update_draw_info(struct iris_context *ice,
 static void
 iris_update_draw_parameters(struct iris_context *ice,
                             const struct pipe_draw_info *info,
-                            const struct pipe_draw_indirect_info *indirect)
+                            const struct pipe_draw_indirect_info *indirect,
+                            const struct pipe_draw_start_count *draw)
 {
    bool changed = false;
 
@@ -127,7 +128,7 @@ iris_update_draw_parameters(struct iris_context *ice,
          changed = true;
          ice->draw.params_valid = false;
       } else {
-         int firstvertex = info->index_size ? info->index_bias : info->start;
+         int firstvertex = info->index_size ? info->index_bias : draw->start;
 
          if (!ice->draw.params_valid ||
              ice->draw.params.firstvertex != firstvertex ||
@@ -173,7 +174,8 @@ iris_update_draw_parameters(struct iris_context *ice,
 static void
 iris_indirect_draw_vbo(struct iris_context *ice,
                        const struct pipe_draw_info *dinfo,
-                       const struct pipe_draw_indirect_info *dindirect)
+                       const struct pipe_draw_indirect_info *dindirect,
+                       const struct pipe_draw_start_count *draw)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    struct pipe_draw_info info = *dinfo;
@@ -193,9 +195,9 @@ iris_indirect_draw_vbo(struct iris_context *ice,
 
       iris_batch_maybe_flush(batch, 1500);
 
-      iris_update_draw_parameters(ice, &info, &indirect);
+      iris_update_draw_parameters(ice, &info, &indirect, draw);
 
-      batch->screen->vtbl.upload_render_state(ice, batch, &info, &indirect);
+      batch->screen->vtbl.upload_render_state(ice, batch, &info, &indirect, draw);
 
       ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_RENDER;
       ice->state.stage_dirty &= ~IRIS_ALL_STAGE_DIRTY_FOR_RENDER;
@@ -217,15 +219,16 @@ iris_indirect_draw_vbo(struct iris_context *ice,
 static void
 iris_simple_draw_vbo(struct iris_context *ice,
                      const struct pipe_draw_info *draw,
-                     const struct pipe_draw_indirect_info *indirect)
+                     const struct pipe_draw_indirect_info *indirect,
+                     const struct pipe_draw_start_count *sc)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    iris_batch_maybe_flush(batch, 1500);
 
-   iris_update_draw_parameters(ice, draw, indirect);
+   iris_update_draw_parameters(ice, draw, indirect, sc);
 
-   batch->screen->vtbl.upload_render_state(ice, batch, draw, indirect);
+   batch->screen->vtbl.upload_render_state(ice, batch, draw, indirect, sc);
 }
 
 /**
@@ -233,7 +236,9 @@ iris_simple_draw_vbo(struct iris_context *ice,
  */
 void
 iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
-              const struct pipe_draw_indirect_info *indirect)
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count *draws,
+              unsigned num_draws)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen*)ice->ctx.screen;
@@ -275,9 +280,9 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
    iris_handle_always_flush_cache(batch);
 
    if (indirect && indirect->buffer)
-      iris_indirect_draw_vbo(ice, info, indirect);
+      iris_indirect_draw_vbo(ice, info, indirect, &draws[0]);
    else
-      iris_simple_draw_vbo(ice, info, indirect);
+      iris_simple_draw_vbo(ice, info, indirect, &draws[0]);
 
    iris_handle_always_flush_cache(batch);
 

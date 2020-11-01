@@ -923,7 +923,9 @@ nvc0_update_prim_restart(struct nvc0_context *nvc0, bool en, uint32_t index)
 
 void
 nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
-              const struct pipe_draw_indirect_info *indirect)
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count *draws,
+              unsigned num_draws)
 {
    struct nvc0_context *nvc0 = nvc0_context(pipe);
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
@@ -942,7 +944,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
     */
    nvc0->vbo_push_hint =
       (!indirect || indirect->count_from_stream_output) && info->index_size &&
-      (nvc0->vb_elt_limit >= (info->count * 2));
+      (nvc0->vb_elt_limit >= (draws[0].count * 2));
 
    /* Check whether we want to switch vertex-submission mode. */
    if (nvc0->vbo_user && !(nvc0->dirty_3d & (NVC0_NEW_3D_ARRAYS | NVC0_NEW_3D_VERTEX))) {
@@ -1061,9 +1063,9 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
    if (nvc0->state.vbo_mode) {
       if (indirect && indirect->buffer)
-         nvc0_push_vbo_indirect(nvc0, info, indirect);
+         nvc0_push_vbo_indirect(nvc0, info, indirect, &draws[0]);
       else
-         nvc0_push_vbo(nvc0, info, indirect);
+         nvc0_push_vbo(nvc0, info, indirect, &draws[0]);
       goto cleanup;
    }
 
@@ -1104,11 +1106,11 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
          shorten = false;
 
       nvc0_draw_elements(nvc0, shorten, info,
-                         info->mode, info->start, info->count,
+                         info->mode, draws[0].start, draws[0].count,
                          info->instance_count, info->index_bias, info->index_size);
    } else {
       nvc0_draw_arrays(nvc0,
-                       info->mode, info->start, info->count,
+                       info->mode, draws[0].start, draws[0].count,
                        info->instance_count);
    }
 

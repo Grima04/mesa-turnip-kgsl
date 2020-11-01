@@ -61,11 +61,12 @@ panfrost_bo_access_for_stage(enum pipe_shader_type stage)
 mali_ptr
 panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
                                   const struct pipe_draw_info *info,
+                                  const struct pipe_draw_start_count *draw,
                                   unsigned *min_index, unsigned *max_index)
 {
         struct panfrost_resource *rsrc = pan_resource(info->index.resource);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        off_t offset = info->start * info->index_size;
+        off_t offset = draw->start * info->index_size;
         bool needs_indices = true;
         mali_ptr out = 0;
 
@@ -85,8 +86,8 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
 
                 /* Check the cache */
                 needs_indices = !panfrost_minmax_cache_get(rsrc->index_cache,
-                                                           info->start,
-                                                           info->count,
+                                                           draw->start,
+                                                           draw->count,
                                                            min_index,
                                                            max_index);
         } else {
@@ -94,20 +95,20 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
                 const uint8_t *ibuf8 = (const uint8_t *) info->index.user;
                 struct panfrost_ptr T =
                         panfrost_pool_alloc_aligned(&batch->pool,
-                                info->count * info->index_size,
+                                draw->count * info->index_size,
                                 info->index_size);
 
-                memcpy(T.cpu, ibuf8 + offset, info->count * info->index_size);
+                memcpy(T.cpu, ibuf8 + offset, draw->count * info->index_size);
                 out = T.gpu;
         }
 
         if (needs_indices) {
                 /* Fallback */
-                u_vbuf_get_minmax_index(&ctx->base, info, min_index, max_index);
+                u_vbuf_get_minmax_index(&ctx->base, info, draw, min_index, max_index);
 
                 if (!info->has_user_indices)
                         panfrost_minmax_cache_add(rsrc->index_cache,
-                                                  info->start, info->count,
+                                                  draw->start, draw->count,
                                                   *min_index, *max_index);
         }
 

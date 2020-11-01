@@ -188,6 +188,8 @@ zink_blit(struct pipe_context *pctx,
 void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
-              const struct pipe_draw_indirect_info *indirect);
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count *draws,
+              unsigned num_draws);
 
 #endif

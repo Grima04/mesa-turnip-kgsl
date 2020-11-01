@@ -708,7 +708,8 @@ int virgl_encoder_set_index_buffer(struct virgl_context *ctx,
 
 int virgl_encoder_draw_vbo(struct virgl_context *ctx,
                            const struct pipe_draw_info *info,
-                           const struct pipe_draw_indirect_info *indirect)
+                           const struct pipe_draw_indirect_info *indirect,
+                           const struct pipe_draw_start_count *draw)
 {
    uint32_t length = VIRGL_DRAW_VBO_SIZE;
    if (info->mode == PIPE_PRIM_PATCHES)
@@ -716,8 +717,8 @@ int virgl_encoder_draw_vbo(struct virgl_context *ctx,
    if (indirect && indirect->buffer)
       length = VIRGL_DRAW_VBO_SIZE_INDIRECT;
    virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_DRAW_VBO, 0, length));
-   virgl_encoder_write_dword(ctx->cbuf, info->start);
-   virgl_encoder_write_dword(ctx->cbuf, info->count);
+   virgl_encoder_write_dword(ctx->cbuf, draw->start);
+   virgl_encoder_write_dword(ctx->cbuf, draw->count);
    virgl_encoder_write_dword(ctx->cbuf, info->mode);
    virgl_encoder_write_dword(ctx->cbuf, !!info->index_size);
    virgl_encoder_write_dword(ctx->cbuf, info->instance_count);

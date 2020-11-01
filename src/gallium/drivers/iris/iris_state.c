@@ -6418,7 +6418,8 @@ static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw,
-                         const struct pipe_draw_indirect_info *indirect)
+                         const struct pipe_draw_indirect_info *indirect,
+                         const struct pipe_draw_start_count *sc)
 {
    bool use_predicate = ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
 
@@ -6444,7 +6445,7 @@ iris_upload_render_state(struct iris_context *ice,
 
       if (draw->has_user_indices) {
          u_upload_data(ice->ctx.stream_uploader, 0,
-                       draw->count * draw->index_size, 4, draw->index.user,
+                       sc->count * draw->index_size, 4, draw->index.user,
                        &offset, &ice->state.last_res.index_buffer);
       } else {
          struct iris_resource *res = (void *) draw->index.resource;
@@ -6621,9 +6622,9 @@ iris_upload_render_state(struct iris_context *ice,
       } else {
          prim.StartInstanceLocation = draw->start_instance;
          prim.InstanceCount = draw->instance_count;
-         prim.VertexCountPerInstance = draw->count;
+         prim.VertexCountPerInstance = sc->count;
 
-         prim.StartVertexLocation = draw->start;
+         prim.StartVertexLocation = sc->start;
 
          if (draw->index_size) {
             prim.BaseVertexLocation += draw->index_bias;

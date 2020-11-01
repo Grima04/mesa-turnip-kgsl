@@ -176,14 +176,16 @@ util_draw_indirect(struct pipe_context *pipe,
    }
 
    for (unsigned i = 0; i < draw_count; i++) {
-      info.count = params[0];
+      struct pipe_draw_start_count draw;
+
+      draw.count = params[0];
       info.instance_count = params[1];
-      info.start = params[2];
+      draw.start = params[2];
       info.index_bias = info_in->index_size ? params[3] : 0;
       info.start_instance = info_in->index_size ? params[4] : params[3];
       info.drawid = i;
 
-      pipe->draw_vbo(pipe, &info, NULL);
+      pipe->draw_vbo(pipe, &info, NULL, &draw, 1);
 
       params += indirect->stride / 4;
    }

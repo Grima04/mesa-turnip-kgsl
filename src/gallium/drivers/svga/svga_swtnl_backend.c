@@ -332,8 +332,10 @@ svga_vbuf_render_draw_elements(struct vbuf_render *render,
       .index_bias = bias,
       .min_index = svga_render->min_index,
       .max_index = svga_render->max_index,
+   };
+   const struct pipe_draw_start_count draw = {
       .start = 0,
-      .count = nr_indices
+      .count = nr_indices,
    };
 
    assert((svga_render->vbuf_offset - svga_render->vdecl_offset)
@@ -350,6 +352,7 @@ svga_vbuf_render_draw_elements(struct vbuf_render *render,
     */
    svga_update_state_retry(svga, SVGA_STATE_HW_DRAW);
    SVGA_RETRY_CHECK(svga, svga_hwtnl_draw_range_elements(svga->hwtnl, &info,
+                                                         &draw,
                                                          nr_indices), retried);
    if (retried) {
       svga->swtnl.new_vbuf = TRUE;

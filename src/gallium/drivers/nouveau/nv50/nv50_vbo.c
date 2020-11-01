@@ -755,7 +755,9 @@ nv50_draw_vbo_kick_notify(struct nouveau_pushbuf *chan)
 
 void
 nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
-              const struct pipe_draw_indirect_info *indirect)
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count *draws,
+              unsigned num_draws)
 {
    struct nv50_context *nv50 = nv50_context(pipe);
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
@@ -775,7 +777,7 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
     * if index count is larger and we expect repeated vertices, suggest upload.
     */
    nv50->vbo_push_hint = /* the 64 is heuristic */
-      !(info->index_size && ((nv50->vb_elt_limit + 64) < info->count));
+      !(info->index_size && ((nv50->vb_elt_limit + 64) < draws[0].count));
 
    if (nv50->vbo_user && !(nv50->dirty_3d & (NV50_NEW_3D_ARRAYS | NV50_NEW_3D_VERTEX))) {
       if (!!nv50->vbo_fifo != nv50->vbo_push_hint)
@@ -828,7 +830,7 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    }
 
    if (nv50->vbo_fifo) {
-      nv50_push_vbo(nv50, info, indirect);
+      nv50_push_vbo(nv50, info, indirect, &draws[0]);
       goto cleanup;
    }
 
@@ -873,14 +875,14 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       }
 
       nv50_draw_elements(nv50, shorten, info,
-                         info->mode, info->start, info->count,
+                         info->mode, draws[0].start, draws[0].count,
                          info->instance_count, info->index_bias, info->index_size);
    } else
    if (unlikely(indirect && indirect->count_from_stream_output)) {
       nva0_draw_stream_output(nv50, info, indirect);
    } else {
       nv50_draw_arrays(nv50,
-                       info->mode, info->start, info->count,
+                       info->mode, draws[0].start, draws[0].count,
                        info->instance_count);
    }
 

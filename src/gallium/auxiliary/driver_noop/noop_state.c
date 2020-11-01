@@ -31,7 +31,9 @@
 #include "util/u_transfer.h"
 
 static void noop_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
-                          const struct pipe_draw_indirect_info *indirect)
+                          const struct pipe_draw_indirect_info *indirect,
+                          const struct pipe_draw_start_count *draws,
+                          unsigned num_draws)
 {
 }
 

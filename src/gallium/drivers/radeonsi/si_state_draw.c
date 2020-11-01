@@ -1768,11 +1768,11 @@ static ALWAYS_INLINE bool pd_msg(const char *s)
    return false;
 }
 
-static void si_multi_draw_vbo(struct pipe_context *ctx,
-                              const struct pipe_draw_info *info,
-                              const struct pipe_draw_indirect_info *indirect,
-                              const struct pipe_draw_start_count *draws,
-                              unsigned num_draws)
+static void si_draw_vbo(struct pipe_context *ctx,
+                        const struct pipe_draw_info *info,
+                        const struct pipe_draw_indirect_info *indirect,
+                        const struct pipe_draw_start_count *draws,
+                        unsigned num_draws)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
@@ -2247,15 +2247,6 @@ return_cleanup:
       pipe_resource_reference(&indexbuf, NULL);
 }
 
-static void si_draw_vbo(struct pipe_context *ctx,
-                        const struct pipe_draw_info *info,
-                        const struct pipe_draw_indirect_info *indirect)
-{
-   struct pipe_draw_start_count draw = {info->start, info->count};
-
-   si_multi_draw_vbo(ctx, info, indirect, &draw, 1);
-}
-
 static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elements_cso,
                               blitter_get_vs_func get_vs, int x1, int y1, int x2, int y2,
                               float depth, unsigned num_instances, enum blitter_attrib_type type,
@@ -2283,16 +2274,20 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    pipe->bind_vs_state(pipe, si_get_blitter_vs(sctx, type, num_instances));
 
    struct pipe_draw_info info = {};
+   struct pipe_draw_start_count draw;
+
    info.mode = SI_PRIM_RECTANGLE_LIST;
-   info.count = 3;
    info.instance_count = num_instances;
+
+   draw.start = 0;
+   draw.count = 3;
 
    /* Don't set per-stage shader pointers for VS. */
    sctx->shader_pointers_dirty &= ~SI_DESCS_SHADER_MASK(VERTEX);
    sctx->vertex_buffer_pointer_dirty = false;
    sctx->vertex_buffer_user_sgprs_dirty = false;
 
-   si_draw_vbo(pipe, &info, NULL);
+   si_draw_vbo(pipe, &info, NULL, &draw, 1);
 }
 
 void si_trace_emit(struct si_context *sctx)
@@ -2312,8 +2307,6 @@ void si_trace_emit(struct si_context *sctx)
 void si_init_draw_functions(struct si_context *sctx)
 {
    sctx->b.draw_vbo = si_draw_vbo;
-   sctx->b.multi_draw = si_multi_draw_vbo;
-
    sctx->blitter->draw_rectangle = si_draw_rectangle;
 
    si_init_ia_multi_vgt_param_table(sctx);

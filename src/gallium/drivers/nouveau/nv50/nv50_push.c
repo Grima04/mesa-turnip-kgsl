@@ -239,12 +239,13 @@ nv50_prim_gl(unsigned prim)
 
 void
 nv50_push_vbo(struct nv50_context *nv50, const struct pipe_draw_info *info,
-              const struct pipe_draw_indirect_info *indirect)
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count *draw)
 {
    struct push_context ctx;
    unsigned i, index_size;
    unsigned inst_count = info->instance_count;
-   unsigned vert_count = info->count;
+   unsigned vert_count = draw->count;
    bool apply_bias = info->index_size && info->index_bias;
 
    ctx.push = nv50->base.pushbuf;
@@ -329,16 +330,16 @@ nv50_push_vbo(struct nv50_context *nv50, const struct pipe_draw_info *info,
       PUSH_DATA (ctx.push, ctx.prim);
       switch (index_size) {
       case 0:
-         emit_vertices_seq(&ctx, info->start, vert_count);
+         emit_vertices_seq(&ctx, draw->start, vert_count);
          break;
       case 1:
-         emit_vertices_i08(&ctx, info->start, vert_count);
+         emit_vertices_i08(&ctx, draw->start, vert_count);
          break;
       case 2:
-         emit_vertices_i16(&ctx, info->start, vert_count);
+         emit_vertices_i16(&ctx, draw->start, vert_count);
          break;
       case 4:
-         emit_vertices_i32(&ctx, info->start, vert_count);
+         emit_vertices_i32(&ctx, draw->start, vert_count);
          break;
       default:
          assert(0);

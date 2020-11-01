@@ -234,11 +234,13 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 
 	struct pipe_draw_info info = {
 		.mode = PIPE_PRIM_MAX,    /* maps to DI_PT_RECTLIST */
-		.count = 2,
 		.max_index = 1,
 		.instance_count = 1,
 	};
-	pctx->draw_vbo(pctx, &info, NULL);
+        struct pipe_draw_start_count draw = {
+                .count = 2,
+        };
+	pctx->draw_vbo(pctx, &info, NULL, &draw, 1);
 
 	/* We expect that this should not have triggered a change in pfb: */
 	assert(util_framebuffer_state_equal(pfb, &ctx->framebuffer));
