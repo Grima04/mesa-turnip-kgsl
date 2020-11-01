@@ -431,8 +431,7 @@ etna_emit_state(struct etna_context *ctx)
    }
    if (unlikely(dirty & (ETNA_DIRTY_ZSA | ETNA_DIRTY_FRAMEBUFFER | ETNA_DIRTY_SHADER))) {
       /*01400*/ EMIT_STATE(PE_DEPTH_CONFIG, (etna_zsa_state(ctx->zsa)->PE_DEPTH_CONFIG |
-                                             ctx->framebuffer.PE_DEPTH_CONFIG) &
-                                            ctx->shader_state.PE_DEPTH_CONFIG);
+                                             ctx->framebuffer.PE_DEPTH_CONFIG));
    }
    if (unlikely(dirty & (ETNA_DIRTY_VIEWPORT))) {
       /*01404*/ EMIT_STATE(PE_DEPTH_NEAR, ctx->viewport.PE_DEPTH_NEAR);
