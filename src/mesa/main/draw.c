@@ -1428,7 +1428,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
                                   const GLvoid * const *indices,
                                   GLsizei primcount, const GLint *basevertex)
 {
-   struct _mesa_index_buffer ib;
    uintptr_t min_index_ptr, max_index_ptr;
    bool fallback = false;
    int i;
@@ -1436,14 +1435,14 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
    if (primcount == 0)
       return;
 
-   ib.index_size_shift = get_index_size_shift(type);
+   unsigned index_size_shift = get_index_size_shift(type);
 
    min_index_ptr = (uintptr_t) indices[0];
    max_index_ptr = 0;
    for (i = 0; i < primcount; i++) {
       min_index_ptr = MIN2(min_index_ptr, (uintptr_t) indices[i]);
       max_index_ptr = MAX2(max_index_ptr, (uintptr_t) indices[i] +
-                           (count[i] << ib.index_size_shift));
+                           (count[i] << index_size_shift));
    }
 
    /* Check if we can handle this thing as a bunch of index offsets from the
@@ -1452,87 +1451,105 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
     * Check that the difference between each prim's indexes is a multiple of
     * the index/element size.
     */
-   if (ib.index_size_shift) {
+   if (index_size_shift) {
       for (i = 0; i < primcount; i++) {
          if ((((uintptr_t) indices[i] - min_index_ptr) &
-              ((1 << ib.index_size_shift) - 1)) != 0) {
+              ((1 << index_size_shift) - 1)) != 0) {
             fallback = true;
             break;
          }
       }
    }
 
-   if (ctx->Const.MultiDrawWithUserIndices) {
-      /* "max_index_ptr - min_index_ptr >> index_size_shift" is stored
-       * in prims[i].start. The driver will multiply it later by index_size
-       * so make sure the final value won't overflow.
-       */
-      if (max_index_ptr - min_index_ptr > UINT32_MAX)
-         fallback = true;
-   } else {
-      /* If the index buffer isn't in a VBO, then treating the application's
-       * subranges of the index buffer as one large index buffer may lead to
-       * us reading unmapped memory.
-       */
-      if (!ctx->Array.VAO->IndexBufferObj)
-         fallback = true;
+   /* See if BaseVertex is constant across all draws. */
+   bool basevertex_is_constant = true;
+   if (basevertex) {
+      for (int i = 1; i < primcount; i++) {
+         if (basevertex[i] != basevertex[0]) {
+            basevertex_is_constant = false;
+            break;
+         }
+      }
    }
 
-   if (!fallback) {
-      struct _mesa_prim *prim;
+   struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
+   struct pipe_draw_info info;
 
-      ALLOC_PRIMS(prim, primcount, "glMultiDrawElements");
+   info.mode = mode;
+   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
+   info.index_size = 1 << index_size_shift;
+   /* Packed section begin. */
+   info.primitive_restart = ctx->Array._PrimitiveRestart[index_size_shift];
+   info.has_user_indices = index_bo == NULL;
+   info.index_bounds_valid = false;
+   info.increment_draw_id = primcount > 1;
+   info._pad = 0;
+   /* Packed section end. */
+   info.start_instance = 0;
+   info.instance_count = 1;
+   info.drawid = 0;
+   info.restart_index = ctx->Array._RestartIndex[index_size_shift];
 
-      ib.count = (max_index_ptr - min_index_ptr) >> ib.index_size_shift;
-      ib.obj = ctx->Array.VAO->IndexBufferObj;
-      ib.ptr = (void *) min_index_ptr;
+   if (info.has_user_indices)
+      info.index.user = (void*)min_index_ptr;
+   else
+      info.index.gl_bo = index_bo;
 
-      for (i = 0; i < primcount; i++) {
-         prim[i].begin = 1;
-         prim[i].end = 1;
-         prim[i].mode = mode;
-         prim[i].start =
-            ((uintptr_t) indices[i] - min_index_ptr) >> ib.index_size_shift;
-         prim[i].count = count[i];
-         prim[i].draw_id = i;
-         if (basevertex != NULL)
-            prim[i].basevertex = basevertex[i];
-         else
-            prim[i].basevertex = 0;
+   if (!fallback &&
+       (!info.has_user_indices ||
+        /* "max_index_ptr - min_index_ptr >> index_size_shift" is stored
+         * in draw[i].start. The driver will multiply it later by index_size
+         * so make sure the final value won't overflow.
+         *
+         * For real index buffers, gallium doesn't support index buffer offsets
+         * greater than UINT32_MAX bytes.
+         */
+        max_index_ptr - min_index_ptr <= UINT32_MAX)) {
+      struct pipe_draw_start_count *draw;
+
+      ALLOC_PRIMS(draw, primcount, "glMultiDrawElements");
+
+      if (info.has_user_indices) {
+         for (int i = 0; i < primcount; i++) {
+            draw[i].start =
+               ((uintptr_t)indices[i] - min_index_ptr) >> index_size_shift;
+            draw[i].count = count[i];
+         }
+      } else {
+         for (int i = 0; i < primcount; i++) {
+            draw[i].start = (uintptr_t)indices[i] >> index_size_shift;
+            draw[i].count = count[i];
+         }
       }
 
-      ctx->Driver.Draw(ctx, prim, primcount, &ib, false,
-                       ctx->Array._PrimitiveRestart[ib.index_size_shift],
-                       ctx->Array._RestartIndex[ib.index_size_shift],
-                       0, ~0, 1, 0);
-      FREE_PRIMS(prim, primcount);
-   }
-   else {
-      /* render one prim at a time */
-      for (i = 0; i < primcount; i++) {
-         if (count[i] == 0)
+      if (basevertex_is_constant) {
+         info.index_bias = basevertex ? basevertex[0] : 0;
+         ctx->Driver.DrawGallium(ctx, &info, draw, primcount);
+      } else {
+         ctx->Driver.DrawGalliumComplex(ctx, &info, draw, NULL, basevertex,
+                                        primcount);
+      }
+      FREE_PRIMS(draw, primcount);
+   } else {
+      /* draw[i].start would overflow. Draw one at a time. */
+      assert(info.has_user_indices);
+      info.increment_draw_id = false;
+
+      for (int i = 0; i < primcount; i++) {
+         struct pipe_draw_start_count draw;
+
+         if (!count[i])
             continue;
 
-         ib.count = count[i];
-         ib.obj = ctx->Array.VAO->IndexBufferObj;
-         ib.ptr = indices[i];
+         /* Reset these, because the callee can change them. */
+         info.index_bounds_valid = false;
+         info.index_bias = basevertex ? basevertex[i] : 0;
+         info.drawid = i;
+         info.index.user = indices[i];
+         draw.start = 0;
+         draw.count = count[i];
 
-         struct _mesa_prim prim;
-         prim.begin = 1;
-         prim.end = 1;
-         prim.mode = mode;
-         prim.start = 0;
-         prim.count = count[i];
-         prim.draw_id = i;
-         if (basevertex != NULL)
-            prim.basevertex = basevertex[i];
-         else
-            prim.basevertex = 0;
-
-         ctx->Driver.Draw(ctx, &prim, 1, &ib, false,
-                          ctx->Array._PrimitiveRestart[ib.index_size_shift],
-                          ctx->Array._RestartIndex[ib.index_size_shift],
-                          0, ~0, 1, 0);
+         ctx->Driver.DrawGallium(ctx, &info, &draw, 1);
       }
    }
 
