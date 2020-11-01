@@ -97,6 +97,9 @@ simplify_draw_info(struct pipe_draw_info *info)
    info->min_index = 0;
    info->max_index = ~0;
 
+   /* This shouldn't be set when merging single draws. */
+   info->increment_draw_id = false;
+
    if (info->index_size) {
       if (!info->primitive_restart)
          info->restart_index = 0;
