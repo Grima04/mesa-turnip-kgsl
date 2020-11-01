@@ -1137,6 +1137,8 @@ brw_draw_prims(struct gl_context *ctx,
                unsigned nr_prims,
                const struct _mesa_index_buffer *ib,
                bool index_bounds_valid,
+               bool primitive_restart,
+               unsigned restart_index,
                unsigned min_index,
                unsigned max_index,
                unsigned num_instances,
@@ -1151,7 +1153,8 @@ brw_draw_prims(struct gl_context *ctx,
 
    /* Handle primitive restart if needed */
    if (brw_handle_primitive_restart(ctx, prims, nr_prims, ib, num_instances,
-                                    base_instance)) {
+                                    base_instance, primitive_restart,
+                                    restart_index)) {
       /* The draw was handled, so we can exit now */
       return;
    }
@@ -1164,7 +1167,8 @@ brw_draw_prims(struct gl_context *ctx,
                  _mesa_enum_to_string(ctx->RenderMode));
       _swsetup_Wakeup(ctx);
       _tnl_wakeup(ctx);
-      _tnl_draw(ctx, prims, nr_prims, ib, index_bounds_valid, min_index,
+      _tnl_draw(ctx, prims, nr_prims, ib, index_bounds_valid,
+                primitive_restart, restart_index, min_index,
                 max_index, num_instances, base_instance);
       return;
    }
@@ -1176,7 +1180,8 @@ brw_draw_prims(struct gl_context *ctx,
    if (!index_bounds_valid && _mesa_draw_user_array_bits(ctx) != 0) {
       perf_debug("Scanning index buffer to compute index buffer bounds.  "
                  "Use glDrawRangeElements() to avoid this.\n");
-      vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index, nr_prims);
+      vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index, nr_prims,
+                             primitive_restart, restart_index);
       index_bounds_valid = true;
    }
 
@@ -1275,7 +1280,9 @@ brw_draw_indirect_prims(struct gl_context *ctx,
                         unsigned stride,
                         struct gl_buffer_object *indirect_params,
                         GLsizeiptr indirect_params_offset,
-                        const struct _mesa_index_buffer *ib)
+                        const struct _mesa_index_buffer *ib,
+                        bool primitive_restart,
+                        unsigned restart_index)
 {
    struct brw_context *brw = brw_context(ctx);
    struct _mesa_prim *prim;
@@ -1309,7 +1316,8 @@ brw_draw_indirect_prims(struct gl_context *ctx,
 
    brw->draw.draw_indirect_data = indirect_data;
 
-   brw_draw_prims(ctx, prim, draw_count, ib, false, 0, ~0, 0, 0);
+   brw_draw_prims(ctx, prim, draw_count, ib, false, primitive_restart,
+                  restart_index, 0, ~0, 0, 0);
 
    brw->draw.draw_indirect_data = NULL;
    free(prim);

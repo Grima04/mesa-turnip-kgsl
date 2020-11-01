@@ -49,7 +49,9 @@ void brw_draw_prims(struct gl_context *ctx,
 		     unsigned nr_prims,
 		     const struct _mesa_index_buffer *ib,
 		     bool index_bounds_valid,
-		     unsigned min_index,
+                     bool primitive_restart,
+                     unsigned restart_index,
+                     unsigned min_index,
 		     unsigned max_index,
                      unsigned num_instances,
                      unsigned base_instance);
@@ -66,7 +68,9 @@ brw_handle_primitive_restart(struct gl_context *ctx,
                              const struct _mesa_prim *prims,
                              GLuint nr_prims,
                              const struct _mesa_index_buffer *ib,
-                             GLuint num_instances, GLuint base_instance);
+                             GLuint num_instances, GLuint base_instance,
+                             bool primitive_restart,
+                             unsigned restart_index);
 
 void
 brw_draw_indirect_prims(struct gl_context *ctx,
@@ -77,5 +81,7 @@ brw_draw_indirect_prims(struct gl_context *ctx,
                         unsigned stride,
                         struct gl_buffer_object *indirect_params,
                         GLsizeiptr indirect_params_offset,
-                        const struct _mesa_index_buffer *ib);
+                        const struct _mesa_index_buffer *ib,
+                        bool primitive_restart,
+                        unsigned restart_index);
 #endif

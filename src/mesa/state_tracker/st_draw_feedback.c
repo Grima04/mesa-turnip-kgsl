@@ -98,6 +98,8 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                      unsigned nr_prims,
                      const struct _mesa_index_buffer *ib,
 		     bool index_bounds_valid,
+                     bool primitive_restart,
+                     unsigned restart_index,
                      unsigned min_index,
                      unsigned max_index,
                      unsigned num_instances,
@@ -131,7 +133,8 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    st_validate_state(st, ST_PIPELINE_RENDER);
 
    if (ib && !index_bounds_valid) {
-      vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index, nr_prims);
+      vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index, nr_prims,
+                             primitive_restart, restart_index);
       index_bounds_valid = true;
    }
 
@@ -213,8 +216,8 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                        (ubyte *) mapped_indices,
                        index_size, ~0);
 
-      info.primitive_restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
-      info.restart_index = ctx->Array._RestartIndex[ib->index_size_shift];
+      info.primitive_restart = primitive_restart;
+      info.restart_index = restart_index;
    } else {
       info.index_size = 0;
       info.has_user_indices = false;

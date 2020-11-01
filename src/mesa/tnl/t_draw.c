@@ -438,7 +438,8 @@ void _tnl_draw_prims(struct gl_context *ctx,
    GLuint i;
 
    if (!index_bounds_valid)
-      vbo_get_minmax_indices(ctx, prim, ib, &min_index, &max_index, nr_prims);
+      vbo_get_minmax_indices(ctx, prim, ib, &min_index, &max_index, nr_prims,
+                             false, 0);
 
    /* Mesa core state should have been validated already */
    assert(ctx->NewState == 0x0);
@@ -630,7 +631,8 @@ void
 _tnl_draw(struct gl_context *ctx,
           const struct _mesa_prim *prim, unsigned nr_prims,
           const struct _mesa_index_buffer *ib,
-          bool index_bounds_valid, unsigned min_index, unsigned max_index,
+          bool index_bounds_valid, bool primitive_restart,
+          unsigned restart_index, unsigned min_index, unsigned max_index,
           unsigned num_instances, unsigned base_instance)
 {
    /* Update TNLcontext::draw_arrays and return that pointer.

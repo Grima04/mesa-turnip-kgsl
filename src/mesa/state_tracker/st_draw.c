@@ -139,6 +139,8 @@ st_draw_vbo(struct gl_context *ctx,
             unsigned nr_prims,
             const struct _mesa_index_buffer *ib,
 	    bool index_bounds_valid,
+            bool primitive_restart,
+            unsigned restart_index,
             unsigned min_index,
             unsigned max_index,
             unsigned num_instances,
@@ -165,7 +167,7 @@ st_draw_vbo(struct gl_context *ctx,
       /* Get index bounds for user buffers. */
       if (!index_bounds_valid && st->draw_needs_minmax_index) {
          vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index,
-                                nr_prims);
+                                nr_prims, primitive_restart, restart_index);
          index_bounds_valid = true;
       }
 
@@ -192,8 +194,8 @@ st_draw_vbo(struct gl_context *ctx,
          info.index.user = ib->ptr;
       }
 
-      info.restart_index = ctx->Array._RestartIndex[ib->index_size_shift];
-      info.primitive_restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
+      info.restart_index = restart_index;
+      info.primitive_restart = primitive_restart;
    }
    else {
       info.index_size = 0;
@@ -242,7 +244,9 @@ st_indirect_draw_vbo(struct gl_context *ctx,
                      unsigned stride,
                      struct gl_buffer_object *indirect_draw_count,
                      GLsizeiptr indirect_draw_count_offset,
-                     const struct _mesa_index_buffer *ib)
+                     const struct _mesa_index_buffer *ib,
+                     bool primitive_restart,
+                     unsigned restart_index)
 {
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;
@@ -266,8 +270,8 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       info.index.resource = st_buffer_object(bufobj)->buffer;
       draw.start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
 
-      info.restart_index = ctx->Array._RestartIndex[ib->index_size_shift];
-      info.primitive_restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
+      info.restart_index = restart_index;
+      info.primitive_restart = primitive_restart;
    }
 
    info.mode = translate_prim(ctx, mode);

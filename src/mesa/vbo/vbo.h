@@ -228,7 +228,9 @@ vbo_get_minmax_index_mapped(unsigned count, unsigned index_size,
 void
 vbo_get_minmax_indices(struct gl_context *ctx, const struct _mesa_prim *prim,
                        const struct _mesa_index_buffer *ib,
-                       GLuint *min_index, GLuint *max_index, GLuint nr_prims);
+                       GLuint *min_index, GLuint *max_index, GLuint nr_prims,
+                       bool primitive_restart,
+                       unsigned restart_index);
 
 void
 vbo_sw_primitive_restart(struct gl_context *ctx,
@@ -237,7 +239,9 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
                          const struct _mesa_index_buffer *ib,
                          GLuint num_instances, GLuint base_instance,
                          struct gl_buffer_object *indirect,
-                         GLsizeiptr indirect_offset);
+                         GLsizeiptr indirect_offset,
+                         bool primitive_restart,
+                         unsigned restart_index);
 
 
 const struct gl_array_attributes*

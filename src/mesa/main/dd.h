@@ -549,6 +549,8 @@ struct dd_function_table {
                 const struct _mesa_prim *prims, unsigned nr_prims,
                 const struct _mesa_index_buffer *ib,
                 bool index_bounds_valid,
+                bool primitive_restart,
+                unsigned restart_index,
                 unsigned min_index, unsigned max_index,
                 unsigned num_instances, unsigned base_instance);
 
@@ -576,7 +578,9 @@ struct dd_function_table {
                         unsigned stride,
                         struct gl_buffer_object *indirect_draw_count_buffer,
                         GLsizeiptr indirect_draw_count_offset,
-                        const struct _mesa_index_buffer *ib);
+                        const struct _mesa_index_buffer *ib,
+                        bool primitive_restart,
+                        unsigned restart_index);
 
    /**
     * Driver implementation of glDrawTransformFeedback.

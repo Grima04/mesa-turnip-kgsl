@@ -364,7 +364,7 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    };
 
    ctx->Driver.Draw(ctx, &prim, 1, NULL,
-                    true, start, start + count - 1,
+                    true, false, 0, start, start + count - 1,
                     numInstances, baseInstance);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
@@ -728,7 +728,7 @@ _mesa_exec_MultiDrawArrays(GLenum mode, const GLint *first,
       prim[i].basevertex = 0;
    }
 
-   ctx->Driver.Draw(ctx, prim, primcount, NULL, false, 0, 0, 1, 0);
+   ctx->Driver.Draw(ctx, prim, primcount, NULL, false, false, 0, 0, 0, 1, 0);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -887,7 +887,10 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
     */
 
    ctx->Driver.Draw(ctx, &prim, 1, &ib,
-                    index_bounds_valid, start, end,
+                    index_bounds_valid,
+                    ctx->Array._PrimitiveRestart[ib.index_size_shift],
+                    ctx->Array._RestartIndex[ib.index_size_shift],
+                    start, end,
                     numInstances, baseInstance);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
@@ -1309,8 +1312,10 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
             prim[i].basevertex = 0;
       }
 
-      ctx->Driver.Draw(ctx, prim, primcount, &ib,
-                       false, 0, ~0, 1, 0);
+      ctx->Driver.Draw(ctx, prim, primcount, &ib, false,
+                       ctx->Array._PrimitiveRestart[ib.index_size_shift],
+                       ctx->Array._RestartIndex[ib.index_size_shift],
+                       0, ~0, 1, 0);
       FREE_PRIMS(prim, primcount);
    }
    else {
@@ -1335,7 +1340,10 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          else
             prim.basevertex = 0;
 
-         ctx->Driver.Draw(ctx, &prim, 1, &ib, false, 0, ~0, 1, 0);
+         ctx->Driver.Draw(ctx, &prim, 1, &ib, false,
+                          ctx->Array._PrimitiveRestart[ib.index_size_shift],
+                          ctx->Array._RestartIndex[ib.index_size_shift],
+                          0, ~0, 1, 0);
       }
    }
 
@@ -1533,7 +1541,7 @@ _mesa_validated_multidrawarraysindirect(struct gl_context *ctx, GLenum mode,
 
    ctx->Driver.DrawIndirect(ctx, mode, ctx->DrawIndirectBuffer, indirect,
                             drawcount, stride, drawcount_buffer,
-                            drawcount_offset, NULL);
+                            drawcount_offset, NULL, false, 0);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -1561,7 +1569,9 @@ _mesa_validated_multidrawelementsindirect(struct gl_context *ctx,
 
    ctx->Driver.DrawIndirect(ctx, mode, ctx->DrawIndirectBuffer, indirect,
                             drawcount, stride, drawcount_buffer,
-                            drawcount_offset, &ib);
+                            drawcount_offset, &ib,
+                            ctx->Array._PrimitiveRestart[ib.index_size_shift],
+                            ctx->Array._RestartIndex[ib.index_size_shift]);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);

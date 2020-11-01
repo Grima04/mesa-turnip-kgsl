@@ -900,12 +900,10 @@ static const struct brw_tracked_state genX(index_buffer) = {
 static void
 genX(upload_cut_index)(struct brw_context *brw)
 {
-   const struct gl_context *ctx = &brw->ctx;
-
    brw_batch_emit(brw, GENX(3DSTATE_VF), vf) {
-      if (ctx->Array._PrimitiveRestart[brw->ib.ib->index_size_shift] && brw->ib.ib) {
+      if (brw->prim_restart.enable_cut_index && brw->ib.ib) {
          vf.IndexedDrawCutIndexEnable = true;
-         vf.CutIndex = ctx->Array._RestartIndex[brw->ib.ib->index_size_shift];
+         vf.CutIndex = brw->prim_restart.restart_index;
       }
    }
 }

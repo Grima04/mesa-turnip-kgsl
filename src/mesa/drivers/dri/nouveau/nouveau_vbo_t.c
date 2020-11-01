@@ -493,7 +493,7 @@ TAG(vbo_render_prims)(struct gl_context *ctx,
 
 	if (!index_bounds_valid)
 		vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index,
-				       nr_prims);
+				       nr_prims, 0, false);
 
 	vbo_choose_render_mode(ctx, arrays);
 	vbo_choose_attrs(ctx, arrays);
@@ -545,7 +545,9 @@ TAG(vbo_draw)(struct gl_context *ctx,
 	      const struct _mesa_prim *prims, unsigned nr_prims,
 	      const struct _mesa_index_buffer *ib,
 	      bool index_bounds_valid,
-	      unsigned min_index, unsigned max_index,
+              bool primitive_restart,
+              unsigned restart_index,
+              unsigned min_index, unsigned max_index,
               unsigned num_instances, unsigned base_instance)
 {
 	/* Borrow and update the inputs list from the tnl context */

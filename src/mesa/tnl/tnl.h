@@ -114,7 +114,8 @@ void
 _tnl_draw(struct gl_context *ctx,
           const struct _mesa_prim *prim, unsigned nr_prims,
           const struct _mesa_index_buffer *ib,
-          bool index_bounds_valid, unsigned min_index, unsigned max_index,
+          bool index_bounds_valid, bool primitive_restart,
+          unsigned restart_index, unsigned min_index, unsigned max_index,
           unsigned num_instances, unsigned base_instance);
 
 extern void
