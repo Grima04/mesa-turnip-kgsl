@@ -64,7 +64,6 @@ static const struct debug_named_value debug_options[] = {
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
         {"fp16",     PAN_DBG_FP16,     "Enable 16-bit support"},
         {"nofp16",     PAN_DBG_NOFP16,     "Disable 16-bit support"},
-        {"bifrost",   PAN_DBG_BIFROST, "Enable experimental Mali G31 and G52 support"},
         {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},
         {"noafbc",    PAN_DBG_NO_AFBC,  "Disable AFBC support"},
         DEBUG_NAMED_VALUE_END
@@ -730,14 +729,10 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         case 0x750: /* T760 */
         case 0x820: /* T820 */
         case 0x860: /* T860 */
-                break;
         case 0x6221: /* G72 */
         case 0x7093: /* G31 */
         case 0x7212: /* G52 */
-                if (dev->debug & PAN_DBG_BIFROST)
-                        break;
-
-                /* fallthrough */
+                break;
         default:
                 /* Fail to load against untested models */
                 debug_printf("panfrost: Unsupported model %X", dev->gpu_id);
