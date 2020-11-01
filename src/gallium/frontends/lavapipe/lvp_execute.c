@@ -1840,6 +1840,7 @@ static void handle_update_buffer(struct lvp_cmd_buffer_entry *cmd,
 static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
                                 struct rendering_state *state)
 {
+   state->info.index_bounds_valid = false;
    state->info.min_index = 0;
    state->info.max_index = ~0;
    state->info.index_size = state->index_size;
@@ -1864,6 +1865,7 @@ static void handle_draw_indirect(struct lvp_cmd_buffer_entry *cmd,
                                  struct rendering_state *state, bool indexed)
 {
    if (indexed) {
+      state->info.index_bounds_valid = false;
       state->info.index_size = state->index_size;
       state->info.index.resource = state->index_buffer;
       state->info.max_index = ~0;

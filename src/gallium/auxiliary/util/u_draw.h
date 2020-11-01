@@ -104,6 +104,7 @@ util_draw_arrays_instanced(struct pipe_context *pipe,
    info.count = count;
    info.start_instance = start_instance;
    info.instance_count = instance_count;
+   info.index_bounds_valid = true;
    info.min_index = start;
    info.max_index = start + count - 1;
 

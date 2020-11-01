@@ -130,8 +130,10 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
    st_validate_state(st, ST_PIPELINE_RENDER);
 
-   if (ib && !index_bounds_valid)
+   if (ib && !index_bounds_valid) {
       vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index, nr_prims);
+      index_bounds_valid = true;
+   }
 
    /* must get these after state validation! */
    struct st_common_variant_key key;
@@ -201,6 +203,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       }
 
       info.index_size = index_size;
+      info.index_bounds_valid = index_bounds_valid;
       info.min_index = min_index;
       info.max_index = max_index;
       info.has_user_indices = true;

@@ -1373,6 +1373,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
           * These values determine the user buffer bounds to upload.
           */
          new_info.index_bias = index_bias0;
+         new_info.index_bounds_valid = true;
          new_info.min_index = ~0u;
          new_info.max_index = 0;
          new_info.start_instance = ~0u;
@@ -1469,7 +1470,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
       if (u_vbuf_need_minmax_index(mgr)) {
          unsigned max_index;
 
-         if (new_info.max_index != ~0u) {
+         if (new_info.index_bounds_valid) {
             min_index = new_info.min_index;
             max_index = new_info.max_index;
          } else {

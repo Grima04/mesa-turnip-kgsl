@@ -108,6 +108,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    unsigned ib_offset;
 
    util_draw_init_info(&new_info);
+   new_info.index_bounds_valid = info->index_bounds_valid;
    new_info.min_index = info->min_index;
    new_info.max_index = info->max_index;
    new_info.index_bias = info->index_bias;

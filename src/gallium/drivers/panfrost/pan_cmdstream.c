@@ -69,7 +69,7 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
         bool needs_indices = true;
         mali_ptr out = 0;
 
-        if (info->max_index != ~0u) {
+        if (info->index_bounds_valid) {
                 *min_index = info->min_index;
                 *max_index = info->max_index;
                 needs_indices = false;

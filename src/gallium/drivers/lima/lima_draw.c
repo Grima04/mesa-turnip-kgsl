@@ -1061,7 +1061,7 @@ lima_draw_vbo_indexed(struct pipe_context *pctx,
 
    /* Mali Utgard GPU always need min/max index info for index draw,
     * compute it if upper layer does not do for us */
-   if (info->max_index != ~0u) {
+   if (info->index_bounds_valid) {
       ctx->min_index = info->min_index;
       ctx->max_index = info->max_index;
       needs_indices = false;

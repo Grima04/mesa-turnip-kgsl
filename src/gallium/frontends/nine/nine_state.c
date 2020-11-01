@@ -2358,6 +2358,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive,
     info.index_size = context->index_size;
     info.start = context->index_offset / context->index_size + StartIndex;
     info.index_bias = BaseVertexIndex;
+    info.index_bounds_valid = true;
     /* These don't include index bias: */
     info.min_index = MinVertexIndex;
     info.max_index = MinVertexIndex + NumVertices - 1;
@@ -2409,6 +2410,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf,
     info.index_size = index_size;
     info.start = index_offset / info.index_size;
     info.index_bias = 0;
+    info.index_bounds_valid = true;
     info.min_index = MinVertexIndex;
     info.max_index = MinVertexIndex + NumVertices - 1;
     info.has_user_indices = ibuf == NULL;

@@ -761,8 +761,10 @@ struct pipe_draw_info
    ubyte vertices_per_patch; /**< the number of vertices per patch */
    ubyte index_size;  /**< if 0, the draw is not indexed. */
    bool primitive_restart:1;
-   bool has_user_indices:1; /**< if true, use index.user_buffer */
-   char _pad:6;             /**< padding for memcmp */
+   bool has_user_indices:1;   /**< if true, use index.user_buffer */
+   bool index_bounds_valid:1; /**< whether min_index and max_index are valid;
+                                   they're always invalid if index_size == 0 */
+   char _pad:5;               /**< padding for memcmp */
 
    unsigned start_instance; /**< first instance id */
    unsigned instance_count; /**< number of instances */
