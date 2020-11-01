@@ -14,7 +14,7 @@ The rules-ng-ng source files this header was generated from are:
 - state_hi.xml  (  34803 bytes, from 2020-10-28 12:56:03)
 - copyright.xml (   1597 bytes, from 2020-10-28 12:56:03)
 - state_2d.xml  (  51552 bytes, from 2020-10-28 12:56:03)
-- state_3d.xml  (  83826 bytes, from 2020-10-28 15:24:27)
+- state_3d.xml  (  84002 bytes, from 2020-11-01 11:28:08)
 - state_blt.xml (  14252 bytes, from 2020-10-28 12:56:03)
 - state_vg.xml  (   5975 bytes, from 2020-10-28 12:56:03)
 
@@ -561,6 +561,9 @@ DEALINGS IN THE SOFTWARE.
 #define VIVS_RA_MULTISAMPLE_UNK00E04				0x00000e04
 
 #define VIVS_RA_EARLY_DEPTH					0x00000e08
+#define VIVS_RA_EARLY_DEPTH_TEST_ENABLE				0x00000001
+#define VIVS_RA_EARLY_DEPTH_HDEPTH_DISABLE			0x01000000
+#define VIVS_RA_EARLY_DEPTH_WRITE_DISABLE			0x10000000
 
 #define VIVS_RA_UNK00E0C					0x00000e0c
 
