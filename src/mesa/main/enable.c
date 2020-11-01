@@ -137,7 +137,6 @@ client_state(struct gl_context *ctx, struct gl_vertex_array_object* vao,
          if (ctx->Array.PrimitiveRestart == state)
             return;
 
-         FLUSH_VERTICES(ctx, 0);
          ctx->Array.PrimitiveRestart = state;
          _mesa_update_derived_primitive_restart_state(ctx);
          return;
@@ -1238,7 +1237,6 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          }
          if (ctx->Array.PrimitiveRestart != state) {
-            FLUSH_VERTICES(ctx, 0);
             ctx->Array.PrimitiveRestart = state;
             _mesa_update_derived_primitive_restart_state(ctx);
          }
@@ -1248,7 +1246,6 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          if (!_mesa_is_gles3(ctx) && !_mesa_has_ARB_ES3_compatibility(ctx))
             goto invalid_enum_error;
          if (ctx->Array.PrimitiveRestartFixedIndex != state) {
-            FLUSH_VERTICES(ctx, 0);
             ctx->Array.PrimitiveRestartFixedIndex = state;
             _mesa_update_derived_primitive_restart_state(ctx);
          }
