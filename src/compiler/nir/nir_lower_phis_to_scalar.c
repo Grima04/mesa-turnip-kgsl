@@ -91,8 +91,8 @@ is_phi_src_scalarizable(nir_phi_src *src,
           * might turn into one of the things we can't scalarize.
           */
          nir_deref_instr *deref = nir_src_as_deref(src_intrin->src[0]);
-         return !(deref->mode & (nir_var_function_temp |
-                                 nir_var_shader_temp));
+         return !nir_deref_mode_may_be(deref, nir_var_function_temp |
+                                              nir_var_shader_temp);
       }
 
       case nir_intrinsic_interp_deref_at_centroid:
