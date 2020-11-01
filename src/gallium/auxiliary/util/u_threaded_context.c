@@ -64,7 +64,6 @@ enum tc_call_id {
  * not needed. */
 struct tc_draw_single {
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
 };
 
 typedef void (*tc_execute)(struct pipe_context *pipe, union tc_payload *payload);
@@ -95,8 +94,6 @@ simplify_draw_info(struct pipe_draw_info *info)
     */
    info->index_bounds_valid = false;
    info->_pad = 0;
-   info->min_index = 0;
-   info->max_index = ~0;
 
    /* This shouldn't be set when merging single draws. */
    info->increment_draw_id = false;
@@ -124,10 +121,16 @@ is_next_call_a_mergeable_draw(struct tc_draw_single *first_info,
    *next_info = (struct tc_draw_single*)&next->payload;
    simplify_draw_info(&(*next_info)->info);
 
+   STATIC_ASSERT(offsetof(struct pipe_draw_info, min_index) ==
+                 sizeof(struct pipe_draw_info) - 8);
+   STATIC_ASSERT(offsetof(struct pipe_draw_info, max_index) ==
+                 sizeof(struct pipe_draw_info) - 4);
+
    /* All fields must be the same except start and count. */
+   /* u_threaded_context stores start/count in min/max_index for single draws. */
    return memcmp((uint32_t*)&first_info->info,
                  (uint32_t*)&(*next_info)->info,
-                 sizeof(struct pipe_draw_info)) == 0;
+                 sizeof(struct pipe_draw_info) - 8) == 0;
 }
 
 static void
@@ -162,10 +165,11 @@ tc_batch_execute(void *job, UNUSED int thread_index)
             struct pipe_draw_start_count multi[256];
             unsigned num_draws = 2;
 
-            multi[0].start = first_info->draw.start;
-            multi[0].count = first_info->draw.count;
-            multi[1].start = next_info->draw.start;
-            multi[1].count = next_info->draw.count;
+            /* u_threaded_context stores start/count in min/max_index for single draws. */
+            multi[0].start = first_info->info.min_index;
+            multi[0].count = first_info->info.max_index;
+            multi[1].start = next_info->info.min_index;
+            multi[1].count = next_info->info.max_index;
 
             if (next_info->info.index_size)
                pipe_resource_reference(&next_info->info.index.resource, NULL);
@@ -175,8 +179,9 @@ tc_batch_execute(void *job, UNUSED int thread_index)
             for (; next != last && num_draws < ARRAY_SIZE(multi) &&
                  is_next_call_a_mergeable_draw(first_info, next, &next_info);
                  next += next->num_call_slots, num_draws++) {
-               multi[num_draws].start = next_info->draw.start;
-               multi[num_draws].count = next_info->draw.count;
+               /* u_threaded_context stores start/count in min/max_index for single draws. */
+               multi[num_draws].start = next_info->info.min_index;
+               multi[num_draws].count = next_info->info.max_index;
 
                if (next_info->info.index_size)
                   pipe_resource_reference(&next_info->info.index.resource, NULL);
@@ -2230,8 +2235,15 @@ static void
 tc_call_draw_single(struct pipe_context *pipe, union tc_payload *payload)
 {
    struct tc_draw_single *info = (struct tc_draw_single*)payload;
+   struct pipe_draw_start_count draw;
 
-   pipe->draw_vbo(pipe, &info->info, NULL, &info->draw, 1);
+   /* u_threaded_context stores start/count in min/max_index for single draws. */
+   /* Drivers using u_threaded_context shouldn't use min/max_index. */
+   draw.start = info->info.min_index;
+   draw.count = info->info.max_index;
+   info->info.index_bounds_valid = false;
+
+   pipe->draw_vbo(pipe, &info->info, NULL, &draw, 1);
    if (info->info.index_size)
       pipe_resource_reference(&info->info.index.resource, NULL);
 }
@@ -2311,8 +2323,9 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
       memcpy(&p->info, info, sizeof(*info));
       p->info.has_user_indices = false;
       p->info.index.resource = buffer;
-      p->draw.start = offset >> util_logbase2(index_size);
-      p->draw.count = draws[0].count;
+      /* u_threaded_context stores start/count in min/max_index for single draws. */
+      p->info.min_index = offset >> util_logbase2(index_size);
+      p->info.max_index = draws[0].count;
    } else {
       /* Non-indexed call or indexed with a real index buffer. */
       struct tc_draw_single *p =
@@ -2322,7 +2335,9 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
                                    info->index.resource);
       }
       memcpy(&p->info, info, sizeof(*info));
-      p->draw = draws[0];
+      /* u_threaded_context stores start/count in min/max_index for single draws. */
+      p->info.min_index = draws[0].start;
+      p->info.max_index = draws[0].count;
    }
 }
 

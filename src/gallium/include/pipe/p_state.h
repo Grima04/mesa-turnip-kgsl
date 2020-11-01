@@ -768,15 +768,15 @@ struct pipe_draw_info
     * For indexed drawing, these fields apply after index lookup.
     */
    int index_bias; /**< a bias to be added to each index */
-   unsigned min_index; /**< the min index */
-   unsigned max_index; /**< the max index */
 
    /**
     * Primitive restart enable/index (only applies to indexed drawing)
     */
    unsigned restart_index;
 
-   /* Pointers must be at the end for an optimal structure layout on 64-bit. */
+   /* Pointers must be placed appropriately for optimal structure packing on
+    * 64-bit CPUs.
+    */
 
    /**
     * An index buffer.  When an index buffer is bound, all indices to vertices
@@ -788,6 +788,10 @@ struct pipe_draw_info
       struct pipe_resource *resource;  /**< real buffer */
       const void *user;  /**< pointer to a user buffer */
    } index;
+
+   /* These must be last for better packing in u_threaded_context. */
+   unsigned min_index; /**< the min index */
+   unsigned max_index; /**< the max index */
 };
 
 
