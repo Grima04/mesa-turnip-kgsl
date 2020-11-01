@@ -1631,7 +1631,7 @@ struct gl_array_attrib
    /*@{*/
    GLboolean PrimitiveRestart;
    GLboolean PrimitiveRestartFixedIndex;
-   GLboolean _PrimitiveRestart;
+   GLboolean _PrimitiveRestart[3]; /**< Enable indexed by index_size_shift. */
    GLuint RestartIndex;
    GLuint _RestartIndex[4]; /**< Restart indices for index_size - 1. */
    /*@}*/

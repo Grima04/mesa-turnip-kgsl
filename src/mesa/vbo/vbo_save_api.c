@@ -1376,7 +1376,7 @@ _save_OBE_MultiDrawArrays(GLenum mode, const GLint *first,
 
 static void
 array_element(struct gl_context *ctx,
-              GLint basevertex, GLuint elt, unsigned index_size)
+              GLint basevertex, GLuint elt, unsigned index_size_shift)
 {
    /* Section 10.3.5 Primitive Restart:
     * [...]
@@ -1387,8 +1387,8 @@ array_element(struct gl_context *ctx,
    /* If PrimitiveRestart is enabled and the index is the RestartIndex
     * then we call PrimitiveRestartNV and return.
     */
-   if (ctx->Array._PrimitiveRestart &&
-       elt == ctx->Array._RestartIndex[index_size - 1]) {
+   if (ctx->Array._PrimitiveRestart[index_size_shift] &&
+       elt == ctx->Array._RestartIndex[(1 << index_size_shift) - 1]) {
       CALL_PrimitiveRestartNV(ctx->CurrentServerDispatch, ());
       return;
    }
@@ -1442,15 +1442,15 @@ _save_OBE_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
    switch (type) {
    case GL_UNSIGNED_BYTE:
       for (i = 0; i < count; i++)
-         array_element(ctx, basevertex, ((GLubyte *) indices)[i], 1);
+         array_element(ctx, basevertex, ((GLubyte *) indices)[i], 0);
       break;
    case GL_UNSIGNED_SHORT:
       for (i = 0; i < count; i++)
-         array_element(ctx, basevertex, ((GLushort *) indices)[i], 2);
+         array_element(ctx, basevertex, ((GLushort *) indices)[i], 1);
       break;
    case GL_UNSIGNED_INT:
       for (i = 0; i < count; i++)
-         array_element(ctx, basevertex, ((GLuint *) indices)[i], 4);
+         array_element(ctx, basevertex, ((GLuint *) indices)[i], 2);
       break;
    default:
       _mesa_error(ctx, GL_INVALID_ENUM, "glDrawElements(type)");

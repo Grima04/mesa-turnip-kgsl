@@ -149,7 +149,7 @@ brw_handle_primitive_restart(struct gl_context *ctx,
    /* If PrimitiveRestart is not enabled, then we aren't concerned about
     * handling this draw.
     */
-   if (!(ctx->Array._PrimitiveRestart)) {
+   if (!ctx->Array._PrimitiveRestart[ib->index_size_shift]) {
       return GL_FALSE;
    }
 

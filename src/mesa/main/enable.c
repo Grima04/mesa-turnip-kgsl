@@ -47,11 +47,31 @@
 void
 _mesa_update_derived_primitive_restart_state(struct gl_context *ctx)
 {
-   ctx->Array._PrimitiveRestart = ctx->Array.PrimitiveRestart ||
-                                  ctx->Array.PrimitiveRestartFixedIndex;
-   ctx->Array._RestartIndex[0] = _mesa_primitive_restart_index(ctx, 1);
-   ctx->Array._RestartIndex[1] = _mesa_primitive_restart_index(ctx, 2);
-   ctx->Array._RestartIndex[3] = _mesa_primitive_restart_index(ctx, 4);
+   if (ctx->Array.PrimitiveRestart ||
+       ctx->Array.PrimitiveRestartFixedIndex) {
+      unsigned restart_index[3] = {
+         _mesa_primitive_restart_index(ctx, 1),
+         _mesa_primitive_restart_index(ctx, 2),
+         _mesa_primitive_restart_index(ctx, 4),
+      };
+
+      ctx->Array._RestartIndex[0] = restart_index[0];
+      ctx->Array._RestartIndex[1] = restart_index[1];
+      ctx->Array._RestartIndex[3] = restart_index[2];
+
+      /* Enable primitive restart only when the restart index can have an
+       * effect. This is required for correctness in AMD GFX8 support.
+       * Other hardware may also benefit from taking a faster, non-restart path
+       * when possible.
+       */
+      ctx->Array._PrimitiveRestart[0] = true && restart_index[0] <= UINT8_MAX;
+      ctx->Array._PrimitiveRestart[1] = true && restart_index[1] <= UINT16_MAX;
+      ctx->Array._PrimitiveRestart[2] = true;
+   } else {
+      ctx->Array._PrimitiveRestart[0] = false;
+      ctx->Array._PrimitiveRestart[1] = false;
+      ctx->Array._PrimitiveRestart[2] = false;
+   }
 }
 
 

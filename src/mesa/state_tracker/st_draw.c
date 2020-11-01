@@ -70,28 +70,6 @@
 
 
 /**
- * Set the restart index.
- */
-static void
-setup_primitive_restart(struct gl_context *ctx, struct pipe_draw_info *info)
-{
-   if (ctx->Array._PrimitiveRestart) {
-      unsigned index_size = info->index_size;
-
-      info->restart_index = ctx->Array._RestartIndex[index_size - 1];
-
-      /* Enable primitive restart only when the restart index can have an
-       * effect. This is required for correctness in radeonsi GFX8 support.
-       * Other hardware may also benefit from taking a faster, non-restart path
-       * when possible.
-       */
-      if (index_size == 4 || info->restart_index < (1 << (index_size * 8)))
-         info->primitive_restart = true;
-   }
-}
-
-
-/**
  * Translate OpenGL primtive type (GL_POINTS, GL_TRIANGLE_STRIP, etc) to
  * the corresponding Gallium type.
  */
@@ -214,7 +192,8 @@ st_draw_vbo(struct gl_context *ctx,
          info.index.user = ib->ptr;
       }
 
-      setup_primitive_restart(ctx, &info);
+      info.restart_index = ctx->Array._RestartIndex[info.index_size - 1];
+      info.primitive_restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
    }
    else {
       info.index_size = 0;
@@ -287,8 +266,8 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       info.index.resource = st_buffer_object(bufobj)->buffer;
       draw.start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
 
-      /* Primitive restart is not handled by the VBO module in this case. */
-      setup_primitive_restart(ctx, &info);
+      info.restart_index = ctx->Array._RestartIndex[info.index_size - 1];
+      info.primitive_restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
    }
 
    info.mode = translate_prim(ctx, mode);

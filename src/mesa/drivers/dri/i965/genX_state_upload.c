@@ -903,7 +903,7 @@ genX(upload_cut_index)(struct brw_context *brw)
    const struct gl_context *ctx = &brw->ctx;
 
    brw_batch_emit(brw, GENX(3DSTATE_VF), vf) {
-      if (ctx->Array._PrimitiveRestart && brw->ib.ib) {
+      if (ctx->Array._PrimitiveRestart[brw->ib.ib->index_size_shift] && brw->ib.ib) {
          vf.IndexedDrawCutIndexEnable = true;
          vf.CutIndex = ctx->Array._RestartIndex[brw->ib.index_size - 1];
       }
