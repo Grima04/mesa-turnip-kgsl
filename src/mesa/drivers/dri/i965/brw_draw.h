@@ -46,13 +46,13 @@ brw_emit_vertex_buffer_state(struct brw_context *brw,
 
 void brw_draw_prims(struct gl_context *ctx,
 		     const struct _mesa_prim *prims,
-		     GLuint nr_prims,
+		     unsigned nr_prims,
 		     const struct _mesa_index_buffer *ib,
-		     GLboolean index_bounds_valid,
-		     GLuint min_index,
-		     GLuint max_index,
-                     GLuint num_instances,
-                     GLuint base_instance);
+		     bool index_bounds_valid,
+		     unsigned min_index,
+		     unsigned max_index,
+                     unsigned num_instances,
+                     unsigned base_instance);
 
 void brw_init_draw_functions(struct dd_function_table *functions);
 void brw_draw_init( struct brw_context *brw );

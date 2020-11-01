@@ -546,11 +546,11 @@ struct dd_function_table {
     * \param base_instance  base instance from ARB_base_instance
     */
    void (*Draw)(struct gl_context *ctx,
-                const struct _mesa_prim *prims, GLuint nr_prims,
+                const struct _mesa_prim *prims, unsigned nr_prims,
                 const struct _mesa_index_buffer *ib,
-                GLboolean index_bounds_valid,
-                GLuint min_index, GLuint max_index,
-                GLuint num_instances, GLuint base_instance);
+                bool index_bounds_valid,
+                unsigned min_index, unsigned max_index,
+                unsigned num_instances, unsigned base_instance);
 
 
    /**

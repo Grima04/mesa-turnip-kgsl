@@ -365,7 +365,7 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    };
 
    ctx->Driver.Draw(ctx, &prim, 1, NULL,
-                    GL_TRUE, start, start + count - 1,
+                    true, start, start + count - 1,
                     numInstances, baseInstance);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {

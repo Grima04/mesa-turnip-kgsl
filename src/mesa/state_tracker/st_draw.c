@@ -158,13 +158,13 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
 static void
 st_draw_vbo(struct gl_context *ctx,
             const struct _mesa_prim *prims,
-            GLuint nr_prims,
+            unsigned nr_prims,
             const struct _mesa_index_buffer *ib,
-	    GLboolean index_bounds_valid,
-            GLuint min_index,
-            GLuint max_index,
-            GLuint num_instances,
-            GLuint base_instance)
+	    bool index_bounds_valid,
+            unsigned min_index,
+            unsigned max_index,
+            unsigned num_instances,
+            unsigned base_instance)
 {
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;

@@ -325,7 +325,7 @@ vbo_exec_vtx_flush(struct vbo_exec_context *exec)
                    exec->vtx.vert_count);
 
          ctx->Driver.Draw(ctx, exec->vtx.prim, exec->vtx.prim_count,
-                          NULL, GL_TRUE, 0, exec->vtx.vert_count - 1, 1, 0);
+                          NULL, true, 0, exec->vtx.vert_count - 1, 1, 0);
 
          /* Get new storage -- unless asked not to. */
          if (!persistent_mapping)

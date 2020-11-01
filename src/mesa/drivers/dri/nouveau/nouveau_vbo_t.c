@@ -542,11 +542,11 @@ TAG(vbo_check_render_prims)(struct gl_context *ctx,
 
 static void
 TAG(vbo_draw)(struct gl_context *ctx,
-	      const struct _mesa_prim *prims, GLuint nr_prims,
+	      const struct _mesa_prim *prims, unsigned nr_prims,
 	      const struct _mesa_index_buffer *ib,
-	      GLboolean index_bounds_valid,
-	      GLuint min_index, GLuint max_index,
-              GLuint num_instances, GLuint base_instance)
+	      bool index_bounds_valid,
+	      unsigned min_index, unsigned max_index,
+              unsigned num_instances, unsigned base_instance)
 {
 	/* Borrow and update the inputs list from the tnl context */
 	const struct tnl_vertex_array* arrays = _tnl_bind_inputs(ctx);
