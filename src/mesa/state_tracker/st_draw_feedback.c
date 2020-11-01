@@ -214,7 +214,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                        index_size, ~0);
 
       info.primitive_restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
-      info.restart_index = ctx->Array._RestartIndex[index_size - 1];
+      info.restart_index = ctx->Array._RestartIndex[ib->index_size_shift];
    } else {
       info.index_size = 0;
       info.has_user_indices = false;

@@ -328,7 +328,7 @@ vbo_get_minmax_index(struct gl_context *ctx,
 {
    const GLboolean restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
    const GLuint restartIndex =
-      ctx->Array._RestartIndex[(1 << ib->index_size_shift) - 1];
+      ctx->Array._RestartIndex[ib->index_size_shift];
    const char *indices;
    GLintptr offset = 0;
 

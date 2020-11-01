@@ -192,7 +192,7 @@ st_draw_vbo(struct gl_context *ctx,
          info.index.user = ib->ptr;
       }
 
-      info.restart_index = ctx->Array._RestartIndex[info.index_size - 1];
+      info.restart_index = ctx->Array._RestartIndex[ib->index_size_shift];
       info.primitive_restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
    }
    else {
@@ -266,7 +266,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       info.index.resource = st_buffer_object(bufobj)->buffer;
       draw.start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
 
-      info.restart_index = ctx->Array._RestartIndex[info.index_size - 1];
+      info.restart_index = ctx->Array._RestartIndex[ib->index_size_shift];
       info.primitive_restart = ctx->Array._PrimitiveRestart[ib->index_size_shift];
    }
 

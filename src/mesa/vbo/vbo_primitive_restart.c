@@ -177,7 +177,7 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
    GLuint sub_prim_num;
    GLuint end_index;
    GLuint sub_end_index;
-   GLuint restart_index = ctx->Array._RestartIndex[(1 << ib->index_size_shift) - 1];
+   GLuint restart_index = ctx->Array._RestartIndex[ib->index_size_shift];
    struct _mesa_prim temp_prim;
    GLboolean map_ib = ib->obj && !ib->obj->Mappings[MAP_INTERNAL].Pointer;
    const void *ptr;

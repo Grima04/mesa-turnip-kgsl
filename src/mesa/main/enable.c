@@ -57,7 +57,7 @@ _mesa_update_derived_primitive_restart_state(struct gl_context *ctx)
 
       ctx->Array._RestartIndex[0] = restart_index[0];
       ctx->Array._RestartIndex[1] = restart_index[1];
-      ctx->Array._RestartIndex[3] = restart_index[2];
+      ctx->Array._RestartIndex[2] = restart_index[2];
 
       /* Enable primitive restart only when the restart index can have an
        * effect. This is required for correctness in AMD GFX8 support.

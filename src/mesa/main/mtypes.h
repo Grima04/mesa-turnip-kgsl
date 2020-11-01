@@ -1633,7 +1633,7 @@ struct gl_array_attrib
    GLboolean PrimitiveRestartFixedIndex;
    GLboolean _PrimitiveRestart[3]; /**< Enable indexed by index_size_shift. */
    GLuint RestartIndex;
-   GLuint _RestartIndex[4]; /**< Restart indices for index_size - 1. */
+   GLuint _RestartIndex[3]; /**< Restart indices indexed by index_size_shift. */
    /*@}*/
 
    /* GL_ARB_vertex_buffer_object */

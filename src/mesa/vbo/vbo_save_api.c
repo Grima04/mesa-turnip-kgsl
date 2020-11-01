@@ -1388,7 +1388,7 @@ array_element(struct gl_context *ctx,
     * then we call PrimitiveRestartNV and return.
     */
    if (ctx->Array._PrimitiveRestart[index_size_shift] &&
-       elt == ctx->Array._RestartIndex[(1 << index_size_shift) - 1]) {
+       elt == ctx->Array._RestartIndex[index_size_shift]) {
       CALL_PrimitiveRestartNV(ctx->CurrentServerDispatch, ());
       return;
    }
