@@ -346,8 +346,7 @@ enabled_filter(const struct gl_context *ctx)
  */
 static void
 _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
-                  GLsizei count, GLuint numInstances, GLuint baseInstance,
-                  GLuint drawID)
+                  GLsizei count, GLuint numInstances, GLuint baseInstance)
 {
    if (skip_validated_draw(ctx))
       return;
@@ -359,7 +358,7 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
       .begin = 1,
       .end = 1,
       .mode = mode,
-      .draw_id = drawID,
+      .draw_id = 0,
       .start = start,
       .count = count,
    };
@@ -580,7 +579,7 @@ _mesa_DrawArrays(GLenum mode, GLint start, GLsizei count)
    if (0)
       check_draw_arrays_data(ctx, start, count);
 
-   _mesa_draw_arrays(ctx, mode, start, count, 1, 0, 0);
+   _mesa_draw_arrays(ctx, mode, start, count, 1, 0);
 
    if (0)
       print_draw_arrays(ctx, mode, start, count);
@@ -617,7 +616,7 @@ _mesa_DrawArraysInstancedARB(GLenum mode, GLint start, GLsizei count,
    if (0)
       check_draw_arrays_data(ctx, start, count);
 
-   _mesa_draw_arrays(ctx, mode, start, count, numInstances, 0, 0);
+   _mesa_draw_arrays(ctx, mode, start, count, numInstances, 0);
 
    if (0)
       print_draw_arrays(ctx, mode, start, count);
@@ -656,7 +655,7 @@ _mesa_DrawArraysInstancedBaseInstance(GLenum mode, GLint first,
    if (0)
       check_draw_arrays_data(ctx, first, count);
 
-   _mesa_draw_arrays(ctx, mode, first, count, numInstances, baseInstance, 0);
+   _mesa_draw_arrays(ctx, mode, first, count, numInstances, baseInstance);
 
    if (0)
       print_draw_arrays(ctx, mode, first, count);
@@ -1430,7 +1429,7 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
         !_mesa_all_varyings_in_vbos(ctx->Array.VAO))) {
       GLsizei n =
          ctx->Driver.GetTransformFeedbackVertexCount(ctx, obj, stream);
-      _mesa_draw_arrays(ctx, mode, 0, n, numInstances, 0, 0);
+      _mesa_draw_arrays(ctx, mode, 0, n, numInstances, 0);
       return;
    }
 
