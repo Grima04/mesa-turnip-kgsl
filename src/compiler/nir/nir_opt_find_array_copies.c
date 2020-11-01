@@ -553,8 +553,18 @@ opt_find_array_copies_block(nir_builder *b, nir_block *block,
        * continue on because it won't affect local stores or read-only
        * variables.
        */
-      if (dst_deref->mode != nir_var_function_temp)
+      if (!nir_deref_mode_may_be(dst_deref, nir_var_function_temp))
          continue;
+
+      if (!nir_deref_mode_must_be(dst_deref, nir_var_function_temp)) {
+         /* This only happens if we have something that might be a local store
+          * but we don't know.  In this case, clear everything.
+          */
+         nir_deref_path dst_path;
+         nir_deref_path_init(&dst_path, dst_deref, state->dead_ctx);
+         foreach_aliasing_node(&dst_path, clobber, state);
+         continue;
+      }
 
       /* If there are any known out-of-bounds writes, then we can just skip
        * this write as it's undefined and won't contribute to building up an
@@ -588,8 +598,8 @@ opt_find_array_copies_block(nir_builder *b, nir_block *block,
        * read-only.
        */
       if (src_deref &&
-          !(src_deref->mode & (nir_var_function_temp |
-                               nir_var_read_only_modes))) {
+          !nir_deref_mode_must_be(src_deref, nir_var_function_temp |
+                                             nir_var_read_only_modes)) {
          src_deref = NULL;
       }
 
