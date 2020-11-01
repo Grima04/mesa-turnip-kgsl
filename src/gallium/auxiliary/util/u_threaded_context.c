@@ -86,15 +86,42 @@ tc_debug_check(struct threaded_context *tc)
    }
 }
 
+static void
+simplify_draw_info(struct pipe_draw_info *info)
+{
+   /* Clear these fields to facilitate draw merging.
+    * Drivers shouldn't use them.
+    */
+   info->index_bounds_valid = false;
+   info->_pad = 0;
+   info->min_index = 0;
+   info->max_index = ~0;
+
+   if (info->index_size) {
+      if (!info->primitive_restart)
+         info->restart_index = 0;
+   } else {
+      assert(!info->primitive_restart);
+      info->index_bias = 0;
+      info->primitive_restart = false;
+      info->restart_index = 0;
+      info->index.resource = NULL;
+   }
+}
+
 static bool
 is_next_call_a_mergeable_draw(struct tc_draw_single *first_info,
                               struct tc_call *next,
                               struct tc_draw_single **next_info)
 {
-   return next->call_id == TC_CALL_draw_single &&
-          (*next_info = (struct tc_draw_single*)&next->payload) &&
-          /* All fields must be the same except start and count. */
-          memcmp((uint32_t*)&first_info->info + 2,
+   if (next->call_id != TC_CALL_draw_single)
+      return false;
+
+   *next_info = (struct tc_draw_single*)&next->payload;
+   simplify_draw_info(&(*next_info)->info);
+
+   /* All fields must be the same except start and count. */
+   return memcmp((uint32_t*)&first_info->info + 2,
                  (uint32_t*)&(*next_info)->info + 2,
                  sizeof(struct pipe_draw_info) - 8) == 0;
 }
@@ -120,6 +147,8 @@ tc_batch_execute(void *job, UNUSED int thread_index)
          struct tc_draw_single *first_info =
             (struct tc_draw_single*)&first->payload;
          struct tc_draw_single *next_info;
+
+         simplify_draw_info(&first_info->info);
 
          /* If at least 2 consecutive draw calls can be merged... */
          if (next != last && next->call_id == TC_CALL_draw_single &&
