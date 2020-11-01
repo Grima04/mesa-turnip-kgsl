@@ -324,6 +324,8 @@ void
 st_init_draw_functions(struct dd_function_table *functions)
 {
    functions->Draw = st_draw_vbo;
+   functions->DrawGallium = _mesa_draw_gallium_fallback;
+   functions->DrawGalliumComplex = _mesa_draw_gallium_complex_fallback;
    functions->DrawIndirect = st_indirect_draw_vbo;
    functions->DrawTransformFeedback = st_draw_transform_feedback;
 }

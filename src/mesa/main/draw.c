@@ -40,6 +40,7 @@
 #include "enums.h"
 #include "macros.h"
 #include "transformfeedback.h"
+#include "pipe/p_state.h"
 
 typedef struct {
    GLuint count;
@@ -55,6 +56,180 @@ typedef struct {
    GLint  baseVertex;
    GLuint baseInstance;
 } DrawElementsIndirectCommand;
+
+
+#define MAX_ALLOCA_PRIMS (50000 / sizeof(*prim))
+
+/* Use calloc for large allocations and alloca for small allocations. */
+/* We have to use a macro because alloca is local within the function. */
+#define ALLOC_PRIMS(prim, primcount, func) do { \
+   if (unlikely(primcount > MAX_ALLOCA_PRIMS)) { \
+      prim = calloc(primcount, sizeof(*prim)); \
+      if (!prim) { \
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, func); \
+         return; \
+      } \
+   } else { \
+      prim = alloca(primcount * sizeof(*prim)); \
+   } \
+} while (0)
+
+#define FREE_PRIMS(prim, primcount) do { \
+   if (primcount > MAX_ALLOCA_PRIMS) \
+      free(prim); \
+} while (0)
+
+
+/**
+ * Called via Driver.DrawGallium. This is a fallback invoking Driver.Draw.
+ */
+void
+_mesa_draw_gallium_fallback(struct gl_context *ctx,
+                            struct pipe_draw_info *info,
+                            const struct pipe_draw_start_count *draws,
+                            unsigned num_draws)
+{
+   struct _mesa_index_buffer ib;
+   unsigned index_size = info->index_size;
+   unsigned min_index = info->index_bounds_valid ? info->min_index : 0;
+   unsigned max_index = info->index_bounds_valid ? info->max_index : ~0;
+
+   ib.index_size_shift = util_logbase2(index_size);
+
+   /* Single draw or a fallback for user indices. */
+   if (num_draws == 1 ||
+       (info->index_size && info->has_user_indices &&
+        !ctx->Const.MultiDrawWithUserIndices)) {
+      for (unsigned i = 0; i < num_draws; i++) {
+         if (index_size) {
+            ib.count = draws[i].count;
+
+            if (info->has_user_indices) {
+               ib.obj = NULL;
+               /* User indices require start to be added here if
+                * Const.MultiDrawWithUserIndices is false.
+                */
+               ib.ptr = (const char*)info->index.user +
+                        draws[i].start * index_size;
+            } else {
+               ib.obj = info->index.gl_bo;
+               ib.ptr = NULL;
+            }
+         }
+
+         struct _mesa_prim prim;
+         prim.mode = info->mode;
+         prim.begin = 1;
+         prim.end = 1;
+         prim.start = index_size && info->has_user_indices ? 0 : draws[i].start;
+         prim.count = draws[i].count;
+         prim.basevertex = index_size ? info->index_bias : 0;
+         prim.draw_id = info->drawid + (info->increment_draw_id ? i : 0);
+
+         ctx->Driver.Draw(ctx, &prim, 1, index_size ? &ib : NULL,
+                          info->index_bounds_valid, info->primitive_restart,
+                          info->restart_index, min_index, max_index,
+                          info->instance_count, info->start_instance);
+      }
+      return;
+   }
+
+   struct _mesa_prim *prim;
+   unsigned max_count = 0;
+
+   ALLOC_PRIMS(prim, num_draws, "DrawGallium");
+
+   for (unsigned i = 0; i < num_draws; i++) {
+      prim[i].mode = info->mode;
+      prim[i].begin = 1;
+      prim[i].end = 1;
+      prim[i].start = draws[i].start;
+      prim[i].count = draws[i].count;
+      prim[i].basevertex = info->index_size ? info->index_bias : 0;
+      prim[i].draw_id = info->drawid + (info->increment_draw_id ? i : 0);
+
+      max_count = MAX2(max_count, prim[i].count);
+   }
+
+   if (info->index_size) {
+      ib.count = max_count;
+      ib.index_size_shift = util_logbase2(index_size);
+
+      if (info->has_user_indices) {
+         ib.obj = NULL;
+         ib.ptr = (const char*)info->index.user;
+      } else {
+         ib.obj = info->index.gl_bo;
+         ib.ptr = NULL;
+      }
+   }
+
+   ctx->Driver.Draw(ctx, prim, num_draws, index_size ? &ib : NULL,
+                    info->index_bounds_valid, info->primitive_restart,
+                    info->restart_index, min_index, max_index,
+                    info->instance_count, info->start_instance);
+   FREE_PRIMS(prim, num_draws);
+}
+
+
+/**
+ * Called via Driver.DrawGallium. This is a fallback invoking Driver.Draw.
+ */
+void
+_mesa_draw_gallium_complex_fallback(struct gl_context *ctx,
+                                    struct pipe_draw_info *info,
+                                    const struct pipe_draw_start_count *draws,
+                                    const unsigned char *mode,
+                                    const int *base_vertex,
+                                    unsigned num_draws)
+{
+   enum {
+      MODE = 1,
+      BASE_VERTEX = 2,
+   };
+   unsigned mask = (mode ? MODE : 0) | (base_vertex ? BASE_VERTEX : 0);
+   unsigned i, first;
+
+   /* Find consecutive draws where mode and base_vertex don't vary. */
+   switch (mask) {
+   case MODE:
+      for (i = 0, first = 0; i <= num_draws; i++) {
+         if (i == num_draws || mode[i] != mode[first]) {
+            info->mode = mode[first];
+            ctx->Driver.DrawGallium(ctx, info, &draws[first], i - first);
+            first = i;
+         }
+      }
+      break;
+
+   case BASE_VERTEX:
+      for (i = 0, first = 0; i <= num_draws; i++) {
+         if (i == num_draws || base_vertex[i] != base_vertex[first]) {
+            info->index_bias = base_vertex[first];
+            ctx->Driver.DrawGallium(ctx, info, &draws[first], i - first);
+            first = i;
+         }
+      }
+      break;
+
+   case MODE | BASE_VERTEX:
+      for (i = 0, first = 0; i <= num_draws; i++) {
+         if (i == num_draws ||
+             mode[i] != mode[first] ||
+             base_vertex[i] != base_vertex[first]) {
+            info->mode = mode[first];
+            info->index_bias = base_vertex[first];
+            ctx->Driver.DrawGallium(ctx, info, &draws[first], i - first);
+            first = i;
+         }
+      }
+      break;
+
+   default:
+      assert(!"invalid parameters in DrawGalliumComplex");
+      break;
+   }
+}
 
 
 /**
@@ -660,28 +835,6 @@ _mesa_DrawArraysInstancedBaseInstance(GLenum mode, GLint first,
    if (0)
       print_draw_arrays(ctx, mode, first, count);
 }
-
-
-#define MAX_ALLOCA_PRIMS (50000 / sizeof(*prim))
-
-/* Use calloc for large allocations and alloca for small allocations. */
-/* We have to use a macro because alloca is local within the function. */
-#define ALLOC_PRIMS(prim, primcount, func) do { \
-   if (unlikely(primcount > MAX_ALLOCA_PRIMS)) { \
-      prim = calloc(primcount, sizeof(*prim)); \
-      if (!prim) { \
-         _mesa_error(ctx, GL_OUT_OF_MEMORY, func); \
-         return; \
-      } \
-   } else { \
-      prim = alloca(primcount * sizeof(*prim)); \
-   } \
-} while (0)
-
-#define FREE_PRIMS(prim, primcount) do { \
-   if (primcount > MAX_ALLOCA_PRIMS) \
-      free(prim); \
-} while (0)
 
 
 /**
