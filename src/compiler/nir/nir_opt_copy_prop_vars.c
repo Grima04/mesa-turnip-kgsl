@@ -401,8 +401,8 @@ apply_barrier_for_modes(struct util_dynarray *copies,
                         nir_variable_mode modes)
 {
    util_dynarray_foreach_reverse(copies, struct copy_entry, iter) {
-      if ((iter->dst->mode & modes) ||
-          (!iter->src.is_ssa && (iter->src.deref->mode & modes)))
+      if (nir_deref_mode_may_be(iter->dst, modes) ||
+          (!iter->src.is_ssa && nir_deref_mode_may_be(iter->src.deref, modes)))
          copy_entry_remove(copies, iter);
    }
 }
@@ -704,7 +704,7 @@ invalidate_copies_for_cf_node(struct copy_prop_var_state *state,
    struct vars_written *written = ht_entry->data;
    if (written->modes) {
       util_dynarray_foreach_reverse(copies, struct copy_entry, entry) {
-         if (entry->dst->mode & written->modes)
+         if (nir_deref_mode_may_be(entry->dst, written->modes))
             copy_entry_remove(copies, entry);
       }
    }

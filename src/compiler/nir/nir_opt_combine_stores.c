@@ -174,7 +174,7 @@ static void
 combine_stores_with_deref(struct combine_stores_state *state,
                               nir_deref_instr *deref)
 {
-   if ((state->modes & deref->mode) == 0)
+   if (!nir_deref_mode_may_be(deref, state->modes))
       return;
 
    list_for_each_entry_safe(struct combined_store, combo, &state->pending, link) {
@@ -193,7 +193,7 @@ combine_stores_with_modes(struct combine_stores_state *state,
       return;
 
    list_for_each_entry_safe(struct combined_store, combo, &state->pending, link) {
-      if (combo->dst->mode & modes) {
+      if (nir_deref_mode_may_be(combo->dst, modes)) {
          combine_stores(state, combo);
          free_combined_store(state, combo);
       }
@@ -216,7 +216,7 @@ update_combined_store(struct combine_stores_state *state,
                       nir_intrinsic_instr *intrin)
 {
    nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);
-   if ((dst->mode & state->modes) == 0)
+   if (!nir_deref_mode_may_be(dst, state->modes))
       return;
 
    unsigned vec_mask;
