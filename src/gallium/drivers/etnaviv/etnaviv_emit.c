@@ -233,6 +233,8 @@ etna_emit_state(struct etna_context *ctx)
    uint32_t to_flush = 0;
    if (unlikely(dirty & (ETNA_DIRTY_BLEND)))
       to_flush |= VIVS_GL_FLUSH_CACHE_COLOR;
+   if (unlikely(dirty & ETNA_DIRTY_ZSA))
+      to_flush |= VIVS_GL_FLUSH_CACHE_DEPTH;
    if (unlikely(dirty & (ETNA_DIRTY_TEXTURE_CACHES)))
       to_flush |= VIVS_GL_FLUSH_CACHE_TEXTURE;
    if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER))) /* Framebuffer config changed? */
