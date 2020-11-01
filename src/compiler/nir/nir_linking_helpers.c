@@ -475,7 +475,11 @@ cmp_varying_component(const void *comp1_v, const void *comp2_v)
       return comp1->interp_loc - comp2->interp_loc;
 
    /* If everything else matches just use the original location to sort */
-   return comp1->var->data.location - comp2->var->data.location;
+   const struct nir_variable_data *const data1 = &comp1->var->data;
+   const struct nir_variable_data *const data2 = &comp2->var->data;
+   if (data1->location != data2->location)
+      return data1->location - data2->location;
+   return (int)data1->location_frac - (int)data2->location_frac;
 }
 
 static void
