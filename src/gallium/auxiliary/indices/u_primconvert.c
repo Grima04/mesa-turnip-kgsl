@@ -172,7 +172,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    u_upload_unmap(pc->pipe->stream_uploader);
 
    /* to the translated draw: */
-   pc->pipe->draw_vbo(pc->pipe, &new_info);
+   pc->pipe->draw_vbo(pc->pipe, &new_info, NULL);
 
    pipe_resource_reference(&new_info.index.resource, NULL);
 }

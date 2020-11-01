@@ -46,28 +46,29 @@ tegra_destroy(struct pipe_context *pcontext)
 
 static void
 tegra_draw_vbo(struct pipe_context *pcontext,
-               const struct pipe_draw_info *pinfo)
+               const struct pipe_draw_info *pinfo,
+               const struct pipe_draw_indirect_info *pindirect)
 {
    struct tegra_context *context = to_tegra_context(pcontext);
    struct pipe_draw_indirect_info indirect;
    struct pipe_draw_info info;
 
-   if (pinfo && ((pinfo->indirect && pinfo->indirect->buffer) || pinfo->index_size)) {
+   if (pinfo && ((pindirect && pindirect->buffer) || pinfo->index_size)) {
       memcpy(&info, pinfo, sizeof(info));
 
-      if (pinfo->indirect && pinfo->indirect->buffer) {
-         memcpy(&indirect, pinfo->indirect, sizeof(indirect));
-         indirect.buffer = tegra_resource_unwrap(info.indirect->buffer);
-         info.indirect = &indirect;
+      if (pindirect && pindirect->buffer) {
+         memcpy(&indirect, pindirect, sizeof(indirect));
+         indirect.buffer = tegra_resource_unwrap(pindirect->buffer);
       }
 
       if (pinfo->index_size && !pinfo->has_user_indices)
          info.index.resource = tegra_resource_unwrap(info.index.resource);
 
       pinfo = &info;
+      pindirect = &indirect;
    }
 
-   context->gpu->draw_vbo(context->gpu, pinfo);
+   context->gpu->draw_vbo(context->gpu, pinfo, pindirect);
 }
 
 static void

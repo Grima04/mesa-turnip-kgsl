@@ -440,14 +440,15 @@ draw_pt_arrays_restart(struct draw_context *draw,
  */
 static void
 resolve_draw_info(const struct pipe_draw_info *raw_info,
+                  const struct pipe_draw_indirect_info *indirect,
                   struct pipe_draw_info *info,
                   struct pipe_vertex_buffer *vertex_buffer)
 {
    memcpy(info, raw_info, sizeof(struct pipe_draw_info));
 
-   if (raw_info->indirect && raw_info->indirect->count_from_stream_output) {
+   if (indirect && indirect->count_from_stream_output) {
       struct draw_so_target *target =
-         (struct draw_so_target *)info->indirect->count_from_stream_output;
+         (struct draw_so_target *)indirect->count_from_stream_output;
       assert(vertex_buffer != NULL);
       info->count = vertex_buffer->stride == 0 ? 0 :
                        target->internal_offset / vertex_buffer->stride;
@@ -455,7 +456,6 @@ resolve_draw_info(const struct pipe_draw_info *raw_info,
       /* Stream output draw can not be indexed */
       debug_assert(!info->index_size);
       info->max_index = info->count - 1;
-      info->indirect = NULL;
    }
 }
 
@@ -467,7 +467,8 @@ resolve_draw_info(const struct pipe_draw_info *raw_info,
  */
 void
 draw_vbo(struct draw_context *draw,
-         const struct pipe_draw_info *info)
+         const struct pipe_draw_info *info,
+         const struct pipe_draw_indirect_info *indirect)
 {
    unsigned instance;
    unsigned index_limit;
@@ -483,7 +484,7 @@ draw_vbo(struct draw_context *draw,
     */
    util_fpstate_set_denorms_to_zero(fpstate);
 
-   resolve_draw_info(info, &resolved_info, &(draw->pt.vertex_buffer[0]));
+   resolve_draw_info(info, indirect, &resolved_info, &(draw->pt.vertex_buffer[0]));
    info = &resolved_info;
 
    if (info->index_size)

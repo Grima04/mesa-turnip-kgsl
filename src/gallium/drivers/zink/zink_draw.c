@@ -208,22 +208,23 @@ restart_supported(enum pipe_prim_type mode)
 
 void
 zink_draw_vbo(struct pipe_context *pctx,
-              const struct pipe_draw_info *dinfo)
+              const struct pipe_draw_info *dinfo,
+              const struct pipe_draw_indirect_info *dindirect)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_rasterizer_state *rast_state = ctx->rast_state;
    struct zink_depth_stencil_alpha_state *dsa_state = ctx->dsa_state;
    struct zink_so_target *so_target =
-      dinfo->indirect && dinfo->indirect->count_from_stream_output ?
-         zink_so_target(dinfo->indirect->count_from_stream_output) : NULL;
+      dindirect && dindirect->count_from_stream_output ?
+         zink_so_target(dindirect->count_from_stream_output) : NULL;
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
    bool need_index_buffer_unref = false;
 
 
    if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
-       util_draw_vbo_without_prim_restart(pctx, dinfo);
+       util_draw_vbo_without_prim_restart(pctx, dinfo, dindirect);
        return;
    }
    if (dinfo->mode == PIPE_PRIM_QUADS ||
@@ -277,7 +278,7 @@ zink_draw_vbo(struct pipe_context *pctx,
        uint32_t restart_index = util_prim_restart_index_from_size(dinfo->index_size);
        if ((dinfo->primitive_restart && (dinfo->restart_index != restart_index)) ||
            (!screen->info.have_EXT_index_type_uint8 && dinfo->index_size == 8)) {
-          util_translate_prim_restart_ib(pctx, dinfo, &index_buffer);
+          util_translate_prim_restart_ib(pctx, dinfo, dindirect, &index_buffer);
           need_index_buffer_unref = true;
        } else {
           if (dinfo->has_user_indices) {
@@ -516,10 +517,10 @@ zink_draw_vbo(struct pipe_context *pctx,
       struct zink_resource *res = zink_resource(index_buffer);
       vkCmdBindIndexBuffer(batch->cmdbuf, res->buffer, index_offset, index_type);
       zink_batch_reference_resource_rw(batch, res, false);
-      if (dinfo->indirect && dinfo->indirect->buffer) {
-         struct zink_resource *indirect = zink_resource(dinfo->indirect->buffer);
+      if (dindirect && dindirect->buffer) {
+         struct zink_resource *indirect = zink_resource(dindirect->buffer);
          zink_batch_reference_resource_rw(batch, indirect, false);
-         vkCmdDrawIndexedIndirect(batch->cmdbuf, indirect->buffer, dinfo->indirect->offset, dinfo->indirect->draw_count, dinfo->indirect->stride);
+         vkCmdDrawIndexedIndirect(batch->cmdbuf, indirect->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
       } else
          vkCmdDrawIndexed(batch->cmdbuf,
             dinfo->count, dinfo->instance_count,
@@ -530,10 +531,10 @@ zink_draw_vbo(struct pipe_context *pctx,
          screen->vk_CmdDrawIndirectByteCountEXT(batch->cmdbuf, dinfo->instance_count, dinfo->start_instance,
                                        zink_resource(so_target->counter_buffer)->buffer, so_target->counter_buffer_offset, 0,
                                        MIN2(so_target->stride, screen->info.tf_props.maxTransformFeedbackBufferDataStride));
-      } else if (dinfo->indirect && dinfo->indirect->buffer) {
-         struct zink_resource *indirect = zink_resource(dinfo->indirect->buffer);
+      } else if (dindirect && dindirect->buffer) {
+         struct zink_resource *indirect = zink_resource(dindirect->buffer);
          zink_batch_reference_resource_rw(batch, indirect, false);
-         vkCmdDrawIndirect(batch->cmdbuf, indirect->buffer, dinfo->indirect->offset, dinfo->indirect->draw_count, dinfo->indirect->stride);
+         vkCmdDrawIndirect(batch->cmdbuf, indirect->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
       } else
          vkCmdDraw(batch->cmdbuf, dinfo->count, dinfo->instance_count, dinfo->start, dinfo->start_instance);
    }

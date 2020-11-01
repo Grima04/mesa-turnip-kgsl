@@ -123,7 +123,6 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    /* Initialize pipe_draw_info. */
    info.primitive_restart = false;
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
-   info.indirect = NULL;
    info.restart_index = 0;
 
    st_flush_bitmap_cache(st);
@@ -437,7 +436,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
          info.max_index = info.start + info.count - 1;
       }
 
-      draw_vbo(draw, &info);
+      draw_vbo(draw, &info, NULL);
    }
 
    /* unmap images */

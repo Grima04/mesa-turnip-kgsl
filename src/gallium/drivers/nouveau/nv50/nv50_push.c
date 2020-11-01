@@ -238,7 +238,8 @@ nv50_prim_gl(unsigned prim)
 }
 
 void
-nv50_push_vbo(struct nv50_context *nv50, const struct pipe_draw_info *info)
+nv50_push_vbo(struct nv50_context *nv50, const struct pipe_draw_info *info,
+              const struct pipe_draw_indirect_info *indirect)
 {
    struct push_context ctx;
    unsigned i, index_size;
@@ -292,10 +293,10 @@ nv50_push_vbo(struct nv50_context *nv50, const struct pipe_draw_info *info)
       ctx.primitive_restart = info->primitive_restart;
       ctx.restart_index = info->restart_index;
    } else {
-      if (unlikely(info->indirect && info->indirect->count_from_stream_output)) {
+      if (unlikely(indirect && indirect->count_from_stream_output)) {
          struct pipe_context *pipe = &nv50->base.pipe;
          struct nv50_so_target *targ;
-         targ = nv50_so_target(info->indirect->count_from_stream_output);
+         targ = nv50_so_target(indirect->count_from_stream_output);
          if (!targ->pq) {
             NOUVEAU_ERR("draw_stream_output not supported on pre-NVA0 cards\n");
             return;

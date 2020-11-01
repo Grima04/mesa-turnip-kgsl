@@ -49,6 +49,7 @@ struct pipe_debug_callback;
 struct pipe_depth_stencil_alpha_state;
 struct pipe_device_reset_callback;
 struct pipe_draw_info;
+struct pipe_draw_indirect_info;
 struct pipe_draw_start_count;
 struct pipe_grid_info;
 struct pipe_fence_handle;
@@ -107,8 +108,9 @@ struct pipe_context {
     * VBO drawing
     */
    /*@{*/
-   void (*draw_vbo)( struct pipe_context *pipe,
-                     const struct pipe_draw_info *info );
+   void (*draw_vbo)(struct pipe_context *pipe,
+                    const struct pipe_draw_info *info,
+                    const struct pipe_draw_indirect_info *indirect);
 
    /**
     * Direct multi draw specifying "start" and "count" for each draw.
@@ -142,6 +144,7 @@ struct pipe_context {
     */
    void (*multi_draw)(struct pipe_context *pipe,
                       const struct pipe_draw_info *info,
+                      const struct pipe_draw_indirect_info *indirect,
                       const struct pipe_draw_start_count *draws,
                       unsigned num_draws);
    /*@}*/

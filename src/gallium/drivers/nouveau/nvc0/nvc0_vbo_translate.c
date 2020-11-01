@@ -490,7 +490,8 @@ typedef struct {
 } DrawElementsIndirectCommand;
 
 void
-nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *info)
+nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
+                       const struct pipe_draw_indirect_info *indirect)
 {
    /* The strategy here is to just read the commands from the indirect buffer
     * and do the draws. This is suboptimal, but will only happen in the case
@@ -498,23 +499,22 @@ nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *i
     */
    struct nvc0_screen *screen = nvc0->screen;
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
-   struct nv04_resource *buf = nv04_resource(info->indirect->buffer);
-   struct nv04_resource *buf_count = nv04_resource(info->indirect->indirect_draw_count);
+   struct nv04_resource *buf = nv04_resource(indirect->buffer);
+   struct nv04_resource *buf_count = nv04_resource(indirect->indirect_draw_count);
    unsigned i;
 
-   unsigned draw_count = info->indirect->draw_count;
+   unsigned draw_count = indirect->draw_count;
    if (buf_count) {
       uint32_t *count = nouveau_resource_map_offset(
-            &nvc0->base, buf_count, info->indirect->indirect_draw_count_offset,
+            &nvc0->base, buf_count, indirect->indirect_draw_count_offset,
             NOUVEAU_BO_RD);
       draw_count = *count;
    }
 
    uint8_t *buf_data = nouveau_resource_map_offset(
-            &nvc0->base, buf, info->indirect->offset, NOUVEAU_BO_RD);
+            &nvc0->base, buf, indirect->offset, NOUVEAU_BO_RD);
    struct pipe_draw_info single = *info;
-   single.indirect = NULL;
-   for (i = 0; i < draw_count; i++, buf_data += info->indirect->stride) {
+   for (i = 0; i < draw_count; i++, buf_data += indirect->stride) {
       if (info->index_size) {
          DrawElementsIndirectCommand *cmd = (void *)buf_data;
          single.start = info->start + cmd->firstIndex;
@@ -543,7 +543,7 @@ nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *i
          PUSH_DATA (push, single.drawid + i);
       }
 
-      nvc0_push_vbo(nvc0, &single);
+      nvc0_push_vbo(nvc0, &single, NULL);
    }
 
    nouveau_resource_unmap(buf);
@@ -552,7 +552,8 @@ nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *i
 }
 
 void
-nvc0_push_vbo(struct nvc0_context *nvc0, const struct pipe_draw_info *info)
+nvc0_push_vbo(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
+              const struct pipe_draw_indirect_info *indirect)
 {
    struct push_context ctx;
    unsigned i, index_size;
@@ -596,10 +597,10 @@ nvc0_push_vbo(struct nvc0_context *nvc0, const struct pipe_draw_info *info)
       nvc0_push_map_idxbuf(&ctx, nvc0, info);
       index_size = info->index_size;
    } else {
-      if (unlikely(info->indirect && info->indirect->count_from_stream_output)) {
+      if (unlikely(indirect && indirect->count_from_stream_output)) {
          struct pipe_context *pipe = &nvc0->base.pipe;
          struct nvc0_so_target *targ;
-         targ = nvc0_so_target(info->indirect->count_from_stream_output);
+         targ = nvc0_so_target(indirect->count_from_stream_output);
          pipe->get_query_result(pipe, targ->pq, true, (void *)&vert_count);
          vert_count /= targ->stride;
       }

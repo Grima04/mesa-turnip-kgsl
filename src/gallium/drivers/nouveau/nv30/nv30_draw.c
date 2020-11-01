@@ -443,7 +443,7 @@ nv30_render_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
       draw_set_indexes(draw, NULL, 0, 0);
    }
 
-   draw_vbo(draw, info);
+   draw_vbo(draw, info, NULL);
    draw_flush(draw);
 
    if (info->index_size && transferi)

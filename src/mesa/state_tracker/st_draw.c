@@ -176,7 +176,6 @@ st_draw_vbo(struct gl_context *ctx,
    /* Initialize pipe_draw_info. */
    info.primitive_restart = false;
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
-   info.indirect = NULL;
    info.restart_index = 0;
    info.start_instance = base_instance;
    info.instance_count = num_instances;
@@ -246,7 +245,7 @@ st_draw_vbo(struct gl_context *ctx,
       }
 
       /* Don't call u_trim_pipe_prim. Drivers should do it if they need it. */
-      cso_draw_vbo(st->cso_context, &info);
+      cso_draw_vbo(st->cso_context, &info, NULL);
    }
 }
 
@@ -289,7 +288,6 @@ st_indirect_draw_vbo(struct gl_context *ctx,
 
    info.mode = translate_prim(ctx, mode);
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
-   info.indirect = &indirect;
    indirect.buffer = st_buffer_object(indirect_data)->buffer;
    indirect.offset = indirect_offset;
 
@@ -307,7 +305,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       indirect.draw_count = 1;
       for (i = 0; i < draw_count; i++) {
          info.drawid = i;
-         cso_draw_vbo(st->cso_context, &info);
+         cso_draw_vbo(st->cso_context, &info, &indirect);
          indirect.offset += stride;
       }
    } else {
@@ -318,7 +316,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
             st_buffer_object(indirect_draw_count)->buffer;
          indirect.indirect_draw_count_offset = indirect_draw_count_offset;
       }
-      cso_draw_vbo(st->cso_context, &info);
+      cso_draw_vbo(st->cso_context, &info, &indirect);
    }
 }
 
@@ -340,7 +338,6 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    info.mode = translate_prim(ctx, mode);
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.instance_count = num_instances;
-   info.indirect = &indirect;
 
    if (ST_DEBUG & DEBUG_DRAW) {
       debug_printf("st/draw transform feedback: mode %s\n",
@@ -352,7 +349,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    if (!st_transform_feedback_draw_init(tfb_vertcount, stream, &indirect))
       return;
 
-   cso_draw_vbo(st->cso_context, &info);
+   cso_draw_vbo(st->cso_context, &info, &indirect);
 }
 
 void

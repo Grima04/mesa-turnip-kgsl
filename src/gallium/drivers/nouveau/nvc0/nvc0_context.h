@@ -413,7 +413,8 @@ nvc0_cb_bo_push(struct nouveau_context *,
                 unsigned offset, unsigned words, const uint32_t *data);
 
 /* nvc0_vbo.c */
-void nvc0_draw_vbo(struct pipe_context *, const struct pipe_draw_info *);
+void nvc0_draw_vbo(struct pipe_context *, const struct pipe_draw_info *,
+                   const struct pipe_draw_indirect_info *indirect);
 
 void *
 nvc0_vertex_state_create(struct pipe_context *pipe,
@@ -436,8 +437,10 @@ nvc0_video_buffer_create(struct pipe_context *pipe,
                          const struct pipe_video_buffer *templat);
 
 /* nvc0_push.c */
-void nvc0_push_vbo(struct nvc0_context *, const struct pipe_draw_info *);
-void nvc0_push_vbo_indirect(struct nvc0_context *, const struct pipe_draw_info *);
+void nvc0_push_vbo(struct nvc0_context *, const struct pipe_draw_info *,
+                   const struct pipe_draw_indirect_info *indirect);
+void nvc0_push_vbo_indirect(struct nvc0_context *, const struct pipe_draw_info *,
+                            const struct pipe_draw_indirect_info *indirect);
 
 /* nve4_compute.c */
 void nve4_launch_grid(struct pipe_context *, const struct pipe_grid_info *);

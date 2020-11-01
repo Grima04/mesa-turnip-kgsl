@@ -135,7 +135,8 @@ int virgl_encoder_set_viewport_states(struct virgl_context *ctx,
                                       const struct pipe_viewport_state *states);
 
 int virgl_encoder_draw_vbo(struct virgl_context *ctx,
-                          const struct pipe_draw_info *info);
+                           const struct pipe_draw_info *info,
+                           const struct pipe_draw_indirect_info *indirect);
 
 
 int virgl_encoder_create_surface(struct virgl_context *ctx,

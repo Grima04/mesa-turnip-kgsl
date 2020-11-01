@@ -47,9 +47,10 @@ static void
 draw_emit_indirect(struct fd_ringbuffer *ring,
 				   struct CP_DRAW_INDX_OFFSET_0 *draw0,
 				   const struct pipe_draw_info *info,
+                   const struct pipe_draw_indirect_info *indirect,
 				   unsigned index_offset)
 {
-	struct fd_resource *ind = fd_resource(info->indirect->buffer);
+	struct fd_resource *ind = fd_resource(indirect->buffer);
 
 	if (info->index_size) {
 		struct pipe_resource *idx = info->index.resource;
@@ -61,13 +62,13 @@ draw_emit_indirect(struct fd_ringbuffer *ring,
 						fd_resource(idx)->bo, index_offset),
 				A5XX_CP_DRAW_INDX_INDIRECT_3(.max_indices = max_indices),
 				A5XX_CP_DRAW_INDX_INDIRECT_INDIRECT(
-						ind->bo, info->indirect->offset)
+						ind->bo, indirect->offset)
 			);
 	} else {
 		OUT_PKT(ring, CP_DRAW_INDIRECT,
 				pack_CP_DRAW_INDX_OFFSET_0(*draw0),
 				A5XX_CP_DRAW_INDIRECT_INDIRECT(
-						ind->bo, info->indirect->offset)
+						ind->bo, indirect->offset)
 			);
 	}
 }
@@ -140,6 +141,7 @@ fixup_draw_state(struct fd_context *ctx, struct fd6_emit *emit)
 
 static bool
 fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
+             const struct pipe_draw_indirect_info *indirect,
              unsigned index_offset)
 {
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
@@ -148,6 +150,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.ctx = ctx,
 		.vtx  = &ctx->vtx,
 		.info = info,
+                .indirect = indirect,
 		.key = {
 			.vs = ctx->prog.vs,
 			.gs = ctx->prog.gs,
@@ -195,7 +198,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	if (emit.key.gs)
 		emit.key.key.has_gs = true;
 
-	if (!(emit.key.hs || emit.key.ds || emit.key.gs || (info->indirect && info->indirect->buffer)))
+	if (!(emit.key.hs || emit.key.ds || emit.key.gs || (indirect && indirect->buffer)))
 		fd6_vsc_update_sizes(ctx->batch, info);
 
 	fixup_shader_state(ctx, &emit.key.key);
@@ -315,8 +318,8 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	 */
 	emit_marker6(ring, 7);
 
-	if (info->indirect && info->indirect->buffer) {
-		draw_emit_indirect(ring, &draw0, info, index_offset);
+	if (indirect && indirect->buffer) {
+		draw_emit_indirect(ring, &draw0, info, indirect, index_offset);
 	} else {
 		draw_emit(ring, &draw0, info, index_offset);
 	}

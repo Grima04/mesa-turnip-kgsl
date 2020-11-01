@@ -2052,7 +2052,8 @@ static inline void r600_emit_rasterizer_prim_state(struct r600_context *rctx)
 	rctx->last_rast_prim = rast_prim;
 }
 
-static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
+static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
+                          const struct pipe_draw_indirect_info *indirect)
 {
 	struct r600_context *rctx = (struct r600_context *)ctx;
 	struct pipe_resource *indexbuf = info->has_user_indices ? NULL : info->index.resource;
@@ -2065,7 +2066,6 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
 	int index_bias;
 	struct r600_shader_atomic combined_atomics[8];
 	uint8_t atomic_used_mask = 0;
-	struct pipe_draw_indirect_info *indirect = info->indirect;
 	struct pipe_stream_output_target *count_from_so = NULL;
 
 	if (indirect && indirect->count_from_stream_output) {

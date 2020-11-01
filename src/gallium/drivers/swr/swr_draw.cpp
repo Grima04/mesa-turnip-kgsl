@@ -37,11 +37,12 @@
  * Draw vertex arrays, with optional indexing, optional instancing.
  */
 static void
-swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
+swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
+             const struct pipe_draw_indirect_info *indirect)
 {
    struct swr_context *ctx = swr_context(pipe);
 
-   if (!info->indirect &&
+   if (!indirect &&
        !info->primitive_restart &&
        !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
       return;
@@ -49,8 +50,8 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
    if (!swr_check_render_cond(pipe))
       return;
 
-   if (info->indirect && info->indirect->buffer) {
-      util_draw_indirect(pipe, info);
+   if (indirect && indirect->buffer) {
+      util_draw_indirect(pipe, info, indirect);
       return;
    }
 
@@ -66,13 +67,13 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
 
    struct pipe_draw_info resolved_info;
    /* DrawTransformFeedback */
-   if (info->indirect && info->indirect->count_from_stream_output) {
+   if (indirect && indirect->count_from_stream_output) {
       // trick copied from softpipe to modify const struct *info
       memcpy(&resolved_info, (void*)info, sizeof(struct pipe_draw_info));
       resolved_info.count = ctx->so_primCounter * resolved_info.vertices_per_patch;
       resolved_info.max_index = resolved_info.count - 1;
-      resolved_info.indirect = NULL;
       info = &resolved_info;
+      indirect = NULL;
    }
 
    if (ctx->vs->pipe.stream_output.num_outputs) {

@@ -286,12 +286,13 @@ vc4_hw_2116_workaround(struct pipe_context *pctx, int vert_count)
 }
 
 static void
-vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
+vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
+             const struct pipe_draw_indirect_info *indirect)
 {
         struct vc4_context *vc4 = vc4_context(pctx);
         struct pipe_draw_info local_info;
 
-	if (!info->indirect &&
+	if (!indirect &&
 	    !info->primitive_restart &&
 	    !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
 		return;

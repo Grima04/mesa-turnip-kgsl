@@ -2318,7 +2318,6 @@ init_draw_info(struct pipe_draw_info *info,
     info->primitive_restart = FALSE;
     info->has_user_indices = FALSE;
     info->restart_index = 0;
-    info->indirect = NULL;
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_draw_primitive,
@@ -2339,7 +2338,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_primitive,
     info.max_index = info.count - 1;
     info.index.resource = NULL;
 
-    context->pipe->draw_vbo(context->pipe, &info);
+    context->pipe->draw_vbo(context->pipe, &info, NULL);
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive,
@@ -2364,7 +2363,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive,
     info.max_index = MinVertexIndex + NumVertices - 1;
     info.index.resource = context->idxbuf;
 
-    context->pipe->draw_vbo(context->pipe, &info);
+    context->pipe->draw_vbo(context->pipe, &info, NULL);
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_draw_primitive_from_vtxbuf,
@@ -2387,7 +2386,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_primitive_from_vtxbuf,
 
     context->pipe->set_vertex_buffers(context->pipe, 0, 1, vtxbuf);
 
-    context->pipe->draw_vbo(context->pipe, &info);
+    context->pipe->draw_vbo(context->pipe, &info, NULL);
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf,
@@ -2420,7 +2419,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf,
 
     context->pipe->set_vertex_buffers(context->pipe, 0, 1, vbuf);
 
-    context->pipe->draw_vbo(context->pipe, &info);
+    context->pipe->draw_vbo(context->pipe, &info, NULL);
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_resource_copy_region,

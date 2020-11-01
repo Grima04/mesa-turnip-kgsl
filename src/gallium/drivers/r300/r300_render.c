@@ -780,7 +780,8 @@ static unsigned r300_max_vertex_count(struct r300_context *r300)
 
 
 static void r300_draw_vbo(struct pipe_context* pipe,
-                          const struct pipe_draw_info *dinfo)
+                          const struct pipe_draw_info *dinfo,
+                          const struct pipe_draw_indirect_info *indirect)
 {
     struct r300_context* r300 = r300_context(pipe);
     struct pipe_draw_info info = *dinfo;
@@ -838,7 +839,8 @@ static void r300_draw_vbo(struct pipe_context* pipe,
 
 /* SW TCL elements, using Draw. */
 static void r300_swtcl_draw_vbo(struct pipe_context* pipe,
-                                const struct pipe_draw_info *info)
+                                const struct pipe_draw_info *info,
+                                const struct pipe_draw_indirect_info *indirect)
 {
     struct r300_context* r300 = r300_context(pipe);
 
@@ -859,7 +861,7 @@ static void r300_swtcl_draw_vbo(struct pipe_context* pipe,
 
     r300_update_derived_state(r300);
 
-    draw_vbo(r300->draw, info);
+    draw_vbo(r300->draw, info, NULL);
     draw_flush(r300->draw);
 }
 

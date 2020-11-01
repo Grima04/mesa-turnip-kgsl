@@ -51,7 +51,8 @@ DEBUG_GET_ONCE_BOOL_OPTION(i915_no_vbuf, "I915_NO_VBUF", FALSE)
 
 
 static void
-i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
+i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
+              const struct pipe_draw_indirect_info *indirect)
 {
    struct i915_context *i915 = i915_context(pipe);
    struct draw_context *draw = i915->draw;
@@ -109,7 +110,7 @@ i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
    /*
     * Do the drawing
     */
-   draw_vbo(i915->draw, info);
+   draw_vbo(i915->draw, info, NULL);
 
    /*
     * unmap vertex/index buffers

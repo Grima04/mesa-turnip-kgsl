@@ -1121,7 +1121,8 @@ lima_draw_vbo_count(struct pipe_context *pctx,
 
 static void
 lima_draw_vbo(struct pipe_context *pctx,
-              const struct pipe_draw_info *info)
+              const struct pipe_draw_info *info,
+              const struct pipe_draw_indirect_info *indirect)
 {
    /* check if draw mode and vertex/index count match,
     * otherwise gp will hang */

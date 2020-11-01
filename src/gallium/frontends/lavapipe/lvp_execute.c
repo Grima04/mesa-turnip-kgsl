@@ -1301,13 +1301,12 @@ static void handle_draw(struct lvp_cmd_buffer_entry *cmd,
                         struct rendering_state *state)
 {
    state->info.index_size = 0;
-   state->info.indirect = NULL;
    state->info.index.resource = NULL;
    state->info.start = cmd->u.draw.first_vertex;
    state->info.count = cmd->u.draw.vertex_count;
    state->info.start_instance = cmd->u.draw.first_instance;
    state->info.instance_count = cmd->u.draw.instance_count;
-   state->pctx->draw_vbo(state->pctx, &state->info);
+   state->pctx->draw_vbo(state->pctx, &state->info, NULL);
 }
 
 static void handle_set_viewport(struct lvp_cmd_buffer_entry *cmd,
@@ -1841,7 +1840,6 @@ static void handle_update_buffer(struct lvp_cmd_buffer_entry *cmd,
 static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
                                 struct rendering_state *state)
 {
-   state->info.indirect = NULL;
    state->info.min_index = 0;
    state->info.max_index = ~0;
    state->info.index_size = state->index_size;
@@ -1859,7 +1857,7 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
          state->info.restart_index = 0xffff;
    }
 
-   state->pctx->draw_vbo(state->pctx, &state->info);
+   state->pctx->draw_vbo(state->pctx, &state->info, NULL);
 }
 
 static void handle_draw_indirect(struct lvp_cmd_buffer_entry *cmd,
@@ -1875,8 +1873,7 @@ static void handle_draw_indirect(struct lvp_cmd_buffer_entry *cmd,
    state->indirect_info.stride = cmd->u.draw_indirect.stride;
    state->indirect_info.draw_count = cmd->u.draw_indirect.draw_count;
    state->indirect_info.buffer = cmd->u.draw_indirect.buffer->bo;
-   state->info.indirect = &state->indirect_info;
-   state->pctx->draw_vbo(state->pctx, &state->info);
+   state->pctx->draw_vbo(state->pctx, &state->info, &state->indirect_info);
 }
 
 static void handle_index_buffer(struct lvp_cmd_buffer_entry *cmd,

@@ -1722,25 +1722,26 @@ cso_restore_state(struct cso_context *cso)
 
 void
 cso_draw_vbo(struct cso_context *cso,
-             const struct pipe_draw_info *info)
+             const struct pipe_draw_info *info,
+             const struct pipe_draw_indirect_info *indirect)
 {
    struct u_vbuf *vbuf = cso->vbuf_current;
 
    /* We can't have both indirect drawing and SO-vertex-count drawing */
-   assert(!info->indirect ||
-          info->indirect->buffer == NULL ||
-          info->indirect->count_from_stream_output == NULL);
+   assert(!indirect ||
+          indirect->buffer == NULL ||
+          indirect->count_from_stream_output == NULL);
 
    /* We can't have SO-vertex-count drawing with an index buffer */
    assert(info->index_size == 0 ||
-          !info->indirect ||
-          info->indirect->count_from_stream_output == NULL);
+          !indirect ||
+          indirect->count_from_stream_output == NULL);
 
    if (vbuf) {
-      u_vbuf_draw_vbo(vbuf, info);
+      u_vbuf_draw_vbo(vbuf, info, indirect);
    } else {
       struct pipe_context *pipe = cso->pipe;
-      pipe->draw_vbo(pipe, info);
+      pipe->draw_vbo(pipe, info, indirect);
    }
 }
 
@@ -1757,7 +1758,7 @@ cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count)
    info.min_index = start;
    info.max_index = start + count - 1;
 
-   cso_draw_vbo(cso, &info);
+   cso_draw_vbo(cso, &info, NULL);
 }
 
 void
@@ -1777,5 +1778,5 @@ cso_draw_arrays_instanced(struct cso_context *cso, uint mode,
    info.start_instance = start_instance;
    info.instance_count = instance_count;
 
-   cso_draw_vbo(cso, &info);
+   cso_draw_vbo(cso, &info, NULL);
 }

@@ -330,6 +330,7 @@ panfrost_emit_primitive_size(struct panfrost_context *ctx,
 static void
 panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                          const struct pipe_draw_info *info,
+                         const struct pipe_draw_indirect_info *indirect,
                          void *invocation_template,
                          mali_ptr shared_mem, mali_ptr indices,
                          mali_ptr fs_vary, mali_ptr varyings,
@@ -363,8 +364,8 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                         cfg.base_vertex_offset = info->index_bias - ctx->offset_start;
                         cfg.index_count = info->count;
                 } else {
-                        cfg.index_count = info->indirect && info->indirect->count_from_stream_output ?
-                                          pan_so_target(info->indirect->count_from_stream_output)->offset :
+                        cfg.index_count = indirect && indirect->count_from_stream_output ?
+                                          pan_so_target(indirect->count_from_stream_output)->offset :
                                           ctx->vertex_count;
                 }
         }
@@ -422,7 +423,8 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 static void
 panfrost_draw_vbo(
         struct pipe_context *pipe,
-        const struct pipe_draw_info *info)
+        const struct pipe_draw_info *info,
+      const struct pipe_draw_indirect_info *indirect)
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *device = pan_device(ctx->base.screen);
@@ -441,7 +443,7 @@ panfrost_draw_vbo(
 
         if (info->primitive_restart && info->index_size
             && info->restart_index != primitive_index) {
-                util_draw_vbo_without_prim_restart(pipe, info);
+                util_draw_vbo_without_prim_restart(pipe, info, indirect);
                 return;
         }
 
@@ -527,7 +529,7 @@ panfrost_draw_vbo(
         /* Fire off the draw itself */
         panfrost_draw_emit_vertex(batch, info, &invocation, shared_mem,
                                   vs_vary, varyings, vertex.cpu);
-        panfrost_draw_emit_tiler(batch, info, &invocation, shared_mem, indices,
+        panfrost_draw_emit_tiler(batch, info, indirect, &invocation, shared_mem, indices,
                                  fs_vary, varyings, pos, psiz, tiler.cpu);
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
 

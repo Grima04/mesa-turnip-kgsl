@@ -35,7 +35,8 @@
 
 struct r300_stencilref_context {
     void (*draw_vbo)(struct pipe_context *pipe,
-                     const struct pipe_draw_info *info);
+                     const struct pipe_draw_info *info,
+                     const struct pipe_draw_indirect_info *indirect);
 
     uint32_t rs_cull_mode;
     uint32_t zb_stencilrefmask;
@@ -101,18 +102,19 @@ static void r300_stencilref_end(struct r300_context *r300)
 }
 
 static void r300_stencilref_draw_vbo(struct pipe_context *pipe,
-                                     const struct pipe_draw_info *info)
+                                     const struct pipe_draw_info *info,
+                                     const struct pipe_draw_indirect_info *indirect)
 {
     struct r300_context *r300 = r300_context(pipe);
     struct r300_stencilref_context *sr = r300->stencilref_fallback;
 
     if (!r300_stencilref_needed(r300)) {
-        sr->draw_vbo(pipe, info);
+        sr->draw_vbo(pipe, info, NULL);
     } else {
         r300_stencilref_begin(r300);
-        sr->draw_vbo(pipe, info);
+        sr->draw_vbo(pipe, info, NULL);
         r300_stencilref_switch_side(r300);
-        sr->draw_vbo(pipe, info);
+        sr->draw_vbo(pipe, info, NULL);
         r300_stencilref_end(r300);
     }
 }

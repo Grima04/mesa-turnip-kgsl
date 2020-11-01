@@ -351,19 +351,19 @@ dd_dump_flush(struct dd_draw_state *dstate, struct call_flush *info, FILE *f)
 }
 
 static void
-dd_dump_draw_vbo(struct dd_draw_state *dstate, struct pipe_draw_info *info, FILE *f)
+dd_dump_draw_vbo(struct dd_draw_state *dstate, struct pipe_draw_info *info,
+                 const struct pipe_draw_indirect_info *indirect, FILE *f)
 {
    int sh, i;
 
    DUMP(draw_info, info);
-   if (info->indirect) {
-      if (info->indirect->buffer)
-         DUMP_M(resource, info, indirect->buffer);
-      if (info->indirect->indirect_draw_count)
-         DUMP_M(resource, info, indirect->indirect_draw_count);
-      if (info->indirect->count_from_stream_output)
-         DUMP_M(stream_output_target, info,
-                indirect->count_from_stream_output);
+   if (indirect) {
+      if (indirect->buffer)
+         DUMP_M(resource, indirect, buffer);
+      if (indirect->indirect_draw_count)
+         DUMP_M(resource, indirect, indirect_draw_count);
+      if (indirect->count_from_stream_output)
+         DUMP_M(stream_output_target, indirect, count_from_stream_output);
    }
 
    fprintf(f, "\n");
@@ -633,7 +633,8 @@ dd_dump_call(FILE *f, struct dd_draw_state *state, struct dd_call *call)
       dd_dump_flush(state, &call->info.flush, f);
       break;
    case CALL_DRAW_VBO:
-      dd_dump_draw_vbo(state, &call->info.draw_vbo.draw, f);
+      dd_dump_draw_vbo(state, &call->info.draw_vbo.draw,
+                       &call->info.draw_vbo.indirect, f);
       break;
    case CALL_LAUNCH_GRID:
       dd_dump_launch_grid(state, &call->info.launch_grid, f);
@@ -1298,7 +1299,8 @@ dd_context_flush(struct pipe_context *_pipe,
 
 static void
 dd_context_draw_vbo(struct pipe_context *_pipe,
-                    const struct pipe_draw_info *info)
+                    const struct pipe_draw_info *info,
+                    const struct pipe_draw_indirect_info *indirect)
 {
    struct dd_context *dctx = dd_context(_pipe);
    struct pipe_context *pipe = dctx->pipe;
@@ -1312,25 +1314,23 @@ dd_context_draw_vbo(struct pipe_context *_pipe,
                               info->index.resource);
    }
 
-   if (info->indirect) {
-      record->call.info.draw_vbo.indirect = *info->indirect;
-      record->call.info.draw_vbo.draw.indirect = &record->call.info.draw_vbo.indirect;
-
+   if (indirect) {
+      record->call.info.draw_vbo.indirect = *indirect;
       record->call.info.draw_vbo.indirect.buffer = NULL;
       pipe_resource_reference(&record->call.info.draw_vbo.indirect.buffer,
-                              info->indirect->buffer);
+                              indirect->buffer);
       record->call.info.draw_vbo.indirect.indirect_draw_count = NULL;
       pipe_resource_reference(&record->call.info.draw_vbo.indirect.indirect_draw_count,
-                              info->indirect->indirect_draw_count);
+                              indirect->indirect_draw_count);
       record->call.info.draw_vbo.indirect.count_from_stream_output = NULL;
       pipe_so_target_reference(&record->call.info.draw_vbo.indirect.count_from_stream_output,
-                               info->indirect->count_from_stream_output);
+                               indirect->count_from_stream_output);
    } else {
-      memset(&record->call.info.draw_vbo.indirect, 0, sizeof(*info->indirect));
+      memset(&record->call.info.draw_vbo.indirect, 0, sizeof(*indirect));
    }
 
    dd_before_draw(dctx, record);
-   pipe->draw_vbo(pipe, info);
+   pipe->draw_vbo(pipe, info, indirect);
    dd_after_draw(dctx, record);
 }
 

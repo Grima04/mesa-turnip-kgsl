@@ -38,7 +38,7 @@ typedef struct {
 } DrawElementsIndirectCommand;
 
 static DrawElementsIndirectCommand
-read_indirect_elements(struct pipe_context *context, struct pipe_draw_indirect_info *indirect)
+read_indirect_elements(struct pipe_context *context, const struct pipe_draw_indirect_info *indirect)
 {
    DrawElementsIndirectCommand ret;
    struct pipe_transfer *transfer = NULL;
@@ -99,6 +99,7 @@ util_translate_prim_restart_data(unsigned index_size,
 enum pipe_error
 util_translate_prim_restart_ib(struct pipe_context *context,
                                const struct pipe_draw_info *info,
+                               const struct pipe_draw_indirect_info *indirect_info,
                                struct pipe_resource **dst_buffer)
 {
    struct pipe_screen *screen = context->screen;
@@ -114,8 +115,8 @@ util_translate_prim_restart_ib(struct pipe_context *context,
    dst_index_size = MAX2(2, info->index_size);
    assert(dst_index_size == 2 || dst_index_size == 4);
 
-   if (info->indirect && info->indirect->buffer) {
-      indirect = read_indirect_elements(context, info->indirect);
+   if (indirect_info && indirect_info->buffer) {
+      indirect = read_indirect_elements(context, indirect_info);
       count = indirect.count;
       start = indirect.firstIndex;
    }
@@ -220,7 +221,8 @@ add_range(struct range_info *info, unsigned start, unsigned count)
  */
 enum pipe_error
 util_draw_vbo_without_prim_restart(struct pipe_context *context,
-                                   const struct pipe_draw_info *info)
+                                   const struct pipe_draw_info *info,
+                                   const struct pipe_draw_indirect_info *indirect_info)
 {
    const void *src_map;
    struct range_info ranges = {0};
@@ -235,8 +237,8 @@ util_draw_vbo_without_prim_restart(struct pipe_context *context,
    assert(info->index_size);
    assert(info->primitive_restart);
 
-   if (info->indirect && info->indirect->buffer) {
-      indirect = read_indirect_elements(context, info->indirect);
+   if (indirect_info && indirect_info->buffer) {
+      indirect = read_indirect_elements(context, indirect_info);
       info_count = indirect.count;
       info_start = indirect.firstIndex;
       info_instance_count = indirect.primCount;
@@ -307,13 +309,12 @@ util_draw_vbo_without_prim_restart(struct pipe_context *context,
    /* draw ranges between the restart indexes */
    new_info = *info;
    /* we've effectively remapped this to a direct draw */
-   new_info.indirect = NULL;
    new_info.instance_count = info_instance_count;
    new_info.primitive_restart = FALSE;
    for (i = 0; i < ranges.count; i++) {
       new_info.start = ranges.ranges[i].start;
       new_info.count = ranges.ranges[i].count;
-      context->draw_vbo(context, &new_info);
+      context->draw_vbo(context, &new_info, NULL);
    }
 
    FREE(ranges.ranges);

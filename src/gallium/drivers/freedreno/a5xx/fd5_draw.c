@@ -63,7 +63,7 @@ draw_impl(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	fd5_emit_render_cntl(ctx, false, emit->binning_pass);
 	fd5_draw_emit(ctx->batch, ring, primtype,
 			emit->binning_pass ? IGNORE_VISIBILITY : USE_VISIBILITY,
-			info, index_offset);
+			info, emit->indirect, index_offset);
 }
 
 /* fixup dirty shader state in case some "unrelated" (from the state-
@@ -93,6 +93,7 @@ fixup_shader_state(struct fd_context *ctx, struct ir3_shader_key *key)
 
 static bool
 fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
+             const struct pipe_draw_indirect_info *indirect,
              unsigned index_offset)
 {
 	struct fd5_context *fd5_ctx = fd5_context(ctx);
@@ -101,6 +102,7 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.vtx  = &ctx->vtx,
 		.prog = &ctx->prog,
 		.info = info,
+                .indirect = indirect,
 		.key = {
 			.color_two_side = ctx->rasterizer->light_twoside,
 			.vclamp_color = ctx->rasterizer->clamp_vertex_color,

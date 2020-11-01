@@ -848,14 +848,15 @@ static void virgl_clear_texture(struct pipe_context *ctx,
 }
 
 static void virgl_draw_vbo(struct pipe_context *ctx,
-                                   const struct pipe_draw_info *dinfo)
+                           const struct pipe_draw_info *dinfo,
+                           const struct pipe_draw_indirect_info *indirect)
 {
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
    struct virgl_indexbuf ib = {};
    struct pipe_draw_info info = *dinfo;
 
-   if (!dinfo->indirect &&
+   if (!indirect &&
        !dinfo->primitive_restart &&
        !u_trim_pipe_prim(dinfo->mode, (unsigned*)&dinfo->count))
       return;
@@ -886,7 +887,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
    if (info.index_size)
       virgl_hw_set_index_buffer(vctx, &ib);
 
-   virgl_encoder_draw_vbo(vctx, &info);
+   virgl_encoder_draw_vbo(vctx, &info, indirect);
 
    pipe_resource_reference(&ib.buffer, NULL);
 

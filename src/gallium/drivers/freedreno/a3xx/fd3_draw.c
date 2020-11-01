@@ -114,6 +114,7 @@ fixup_shader_state(struct fd_context *ctx, struct ir3_shader_key *key)
 
 static bool
 fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
+             const struct pipe_draw_indirect_info *indirect,
              unsigned index_offset)
 {
 	struct fd3_context *fd3_ctx = fd3_context(ctx);
@@ -122,6 +123,7 @@ fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.vtx  = &ctx->vtx,
 		.prog = &ctx->prog,
 		.info = info,
+                .indirect = indirect,
 		.key = {
 			.color_two_side = ctx->rasterizer->light_twoside,
 			.vclamp_color = ctx->rasterizer->clamp_vertex_color,

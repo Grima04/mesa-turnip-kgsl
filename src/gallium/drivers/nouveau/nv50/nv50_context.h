@@ -291,7 +291,8 @@ nv50_cb_push(struct nouveau_context *nv,
              unsigned offset, unsigned words, const uint32_t *data);
 
 /* nv50_vbo.c */
-void nv50_draw_vbo(struct pipe_context *, const struct pipe_draw_info *);
+void nv50_draw_vbo(struct pipe_context *, const struct pipe_draw_info *,
+                   const struct pipe_draw_indirect_info *indirect);
 
 void *
 nv50_vertex_state_create(struct pipe_context *pipe,
@@ -303,7 +304,8 @@ nv50_vertex_state_delete(struct pipe_context *pipe, void *hwcso);
 void nv50_vertex_arrays_validate(struct nv50_context *nv50);
 
 /* nv50_push.c */
-void nv50_push_vbo(struct nv50_context *, const struct pipe_draw_info *);
+void nv50_push_vbo(struct nv50_context *, const struct pipe_draw_info *,
+                   const struct pipe_draw_indirect_info *indirect);
 
 /* nv84_video.c */
 struct pipe_video_codec *

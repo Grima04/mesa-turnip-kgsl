@@ -223,7 +223,8 @@ etna_get_fs(struct etna_context *ctx, struct etna_shader_key key)
 }
 
 static void
-etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
+etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
+              const struct pipe_draw_indirect_info *indirect)
 {
    struct etna_context *ctx = etna_context(pctx);
    struct etna_screen *screen = ctx->screen;
@@ -231,7 +232,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    uint32_t draw_mode;
    unsigned i;
 
-   if (!info->indirect &&
+   if (!indirect &&
        !info->primitive_restart &&
        !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
       return;

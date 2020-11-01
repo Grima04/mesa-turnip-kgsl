@@ -496,11 +496,11 @@ static bool num_instanced_prims_less_than(const struct pipe_draw_info *info,
 ALWAYS_INLINE
 static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
                                           const struct pipe_draw_info *info,
+                                          const struct pipe_draw_indirect_info *indirect,
                                           enum pipe_prim_type prim, unsigned num_patches,
                                           unsigned instance_count, bool primitive_restart,
                                           unsigned min_vertex_count)
 {
-   const struct pipe_draw_indirect_info *indirect = info->indirect;
    union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
    unsigned primgroup_size;
    unsigned ia_multi_vgt_param;
@@ -657,6 +657,7 @@ static bool si_prim_restart_index_changed(struct si_context *sctx, bool primitiv
 
 ALWAYS_INLINE
 static void si_emit_ia_multi_vgt_param(struct si_context *sctx, const struct pipe_draw_info *info,
+                                       const struct pipe_draw_indirect_info *indirect,
                                        enum pipe_prim_type prim, unsigned num_patches,
                                        unsigned instance_count, bool primitive_restart,
                                        unsigned min_vertex_count)
@@ -665,8 +666,8 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx, const struct pip
    unsigned ia_multi_vgt_param;
 
    ia_multi_vgt_param =
-      si_get_ia_multi_vgt_param(sctx, info, prim, num_patches, instance_count, primitive_restart,
-                                min_vertex_count);
+      si_get_ia_multi_vgt_param(sctx, info, indirect, prim, num_patches, instance_count,
+                                primitive_restart, min_vertex_count);
 
    /* Draw state. */
    if (ia_multi_vgt_param != sctx->last_multi_vgt_param) {
@@ -729,6 +730,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 
 ALWAYS_INLINE
 static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_draw_info *info,
+                                   const struct pipe_draw_indirect_info *indirect,
                                    enum pipe_prim_type prim, unsigned num_patches,
                                    unsigned instance_count, bool primitive_restart,
                                    unsigned min_vertex_count)
@@ -739,8 +741,8 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
    if (sctx->chip_class >= GFX10)
       gfx10_emit_ge_cntl(sctx, num_patches);
    else
-      si_emit_ia_multi_vgt_param(sctx, info, prim, num_patches, instance_count, primitive_restart,
-                                 min_vertex_count);
+      si_emit_ia_multi_vgt_param(sctx, info, indirect, prim, num_patches, instance_count,
+                                 primitive_restart, min_vertex_count);
 
    if (vgt_prim != sctx->last_prim) {
       if (sctx->chip_class >= GFX10)
@@ -770,13 +772,13 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
 }
 
 static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw_info *info,
+                                 const struct pipe_draw_indirect_info *indirect,
                                  const struct pipe_draw_start_count *draws,
                                  unsigned num_draws,
                                  struct pipe_resource *indexbuf, unsigned index_size,
                                  unsigned index_offset, unsigned instance_count,
                                  bool dispatch_prim_discard_cs, unsigned original_index_size)
 {
-   struct pipe_draw_indirect_info *indirect = info->indirect;
    struct radeon_cmdbuf *cs = sctx->gfx_cs;
    unsigned sh_base_reg = sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX];
    bool render_cond_bit = sctx->render_cond && !sctx->render_cond_force_off;
@@ -1570,11 +1572,10 @@ static bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 }
 
 static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_draw_info *info,
+                                    const struct pipe_draw_indirect_info *indirect,
                                     const struct pipe_draw_start_count *draws,
                                     unsigned num_draws, unsigned *start, unsigned *count)
 {
-   struct pipe_draw_indirect_info *indirect = info->indirect;
-
    if (indirect && !indirect->count_from_stream_output) {
       unsigned indirect_count;
       struct pipe_transfer *transfer;
@@ -1641,6 +1642,7 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
 }
 
 static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_info *info,
+                               const struct pipe_draw_indirect_info *indirect,
                                enum pipe_prim_type prim, unsigned instance_count,
                                unsigned min_vertex_count, bool primitive_restart,
                                unsigned skip_atom_mask)
@@ -1674,8 +1676,8 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 
    /* Emit draw states. */
    si_emit_vs_state(sctx, info);
-   si_emit_draw_registers(sctx, info, prim, num_patches, instance_count, primitive_restart,
-                          min_vertex_count);
+   si_emit_draw_registers(sctx, info, indirect, prim, num_patches, instance_count,
+                          primitive_restart, min_vertex_count);
 }
 
 static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_resource *indexbuf)
@@ -1768,12 +1770,12 @@ static ALWAYS_INLINE bool pd_msg(const char *s)
 
 static void si_multi_draw_vbo(struct pipe_context *ctx,
                               const struct pipe_draw_info *info,
+                              const struct pipe_draw_indirect_info *indirect,
                               const struct pipe_draw_start_count *draws,
                               unsigned num_draws)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-   struct pipe_draw_indirect_info *indirect = info->indirect;
    struct pipe_resource *indexbuf = info->index.resource;
    unsigned dirty_tex_counter, dirty_buf_counter;
    enum pipe_prim_type rast_prim, prim = info->mode;
@@ -1887,7 +1889,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
          unsigned start, count, start_offset, size, offset;
          void *ptr;
 
-         si_get_draw_start_count(sctx, info, draws, num_draws, &start, &count);
+         si_get_draw_start_count(sctx, info, indirect, draws, num_draws, &start, &count);
          start_offset = start * 2;
          size = count * 2;
 
@@ -2155,7 +2157,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
          masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
 
       /* Emit all states except possibly render condition. */
-      si_emit_all_states(sctx, info, prim, instance_count, min_direct_count,
+      si_emit_all_states(sctx, info, indirect, prim, instance_count, min_direct_count,
                          primitive_restart, masked_atoms);
       sctx->emit_cache_flush(sctx);
       /* <-- CUs are idle here. */
@@ -2172,7 +2174,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets(sctx, info, draws, num_draws,
+      si_emit_draw_packets(sctx, info, indirect, draws, num_draws,
                            indexbuf, index_size, index_offset, instance_count,
                            dispatch_prim_discard_cs, original_index_size);
       /* <-- CUs are busy here. */
@@ -2193,7 +2195,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
       if (sctx->chip_class >= GFX7 && sctx->prefetch_L2_mask)
          cik_emit_prefetch_L2(sctx, true);
 
-      si_emit_all_states(sctx, info, prim, instance_count, min_direct_count,
+      si_emit_all_states(sctx, info, indirect, prim, instance_count, min_direct_count,
                          primitive_restart, masked_atoms);
 
       if (gfx9_scissor_bug &&
@@ -2203,7 +2205,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets(sctx, info, draws, num_draws,
+      si_emit_draw_packets(sctx, info, indirect, draws, num_draws,
                            indexbuf, index_size, index_offset, instance_count,
                            dispatch_prim_discard_cs, original_index_size);
 
@@ -2246,11 +2248,12 @@ return_cleanup:
 }
 
 static void si_draw_vbo(struct pipe_context *ctx,
-                        const struct pipe_draw_info *info)
+                        const struct pipe_draw_info *info,
+                        const struct pipe_draw_indirect_info *indirect)
 {
    struct pipe_draw_start_count draw = {info->start, info->count};
 
-   si_multi_draw_vbo(ctx, info, &draw, 1);
+   si_multi_draw_vbo(ctx, info, indirect, &draw, 1);
 }
 
 static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elements_cso,
@@ -2289,7 +2292,7 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    sctx->vertex_buffer_pointer_dirty = false;
    sctx->vertex_buffer_user_sgprs_dirty = false;
 
-   si_draw_vbo(pipe, &info);
+   si_draw_vbo(pipe, &info, NULL);
 }
 
 void si_trace_emit(struct si_context *sctx)

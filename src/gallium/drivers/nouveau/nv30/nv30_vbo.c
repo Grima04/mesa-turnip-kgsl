@@ -544,7 +544,8 @@ nv30_draw_elements(struct nv30_context *nv30, bool shorten,
 }
 
 static void
-nv30_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
+nv30_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
+              const struct pipe_draw_indirect_info *indirect)
 {
    struct nv30_context *nv30 = nv30_context(pipe);
    struct nouveau_pushbuf *push = nv30->base.pushbuf;

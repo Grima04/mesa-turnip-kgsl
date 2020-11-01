@@ -3174,7 +3174,6 @@ NineDevice9_ProcessVertices( struct NineDevice9 *This,
     draw.start_instance = 0;
     draw.primitive_restart = FALSE;
     draw.restart_index = 0;
-    draw.indirect = NULL;
     draw.instance_count = 1;
     draw.index_size = 0;
     draw.start = 0;
@@ -3185,7 +3184,7 @@ NineDevice9_ProcessVertices( struct NineDevice9 *This,
 
     pipe_sw->set_stream_output_targets(pipe_sw, 1, &target, offsets);
 
-    pipe_sw->draw_vbo(pipe_sw, &draw);
+    pipe_sw->draw_vbo(pipe_sw, &draw, NULL);
 
     pipe_sw->set_stream_output_targets(pipe_sw, 0, NULL, 0);
     pipe_sw->stream_output_target_destroy(pipe_sw, target);

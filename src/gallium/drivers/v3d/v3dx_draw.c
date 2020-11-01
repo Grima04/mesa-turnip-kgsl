@@ -1084,11 +1084,12 @@ v3d_check_compiled_shaders(struct v3d_context *v3d)
 }
 
 static void
-v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
+v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
+             const struct pipe_draw_indirect_info *indirect)
 {
         struct v3d_context *v3d = v3d_context(pctx);
 
-        if (!info->indirect &&
+        if (!indirect &&
             !info->primitive_restart &&
             !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
                 return;
@@ -1108,7 +1109,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 }
 
                 if (info->restart_index != mask) {
-                        util_draw_vbo_without_prim_restart(pctx, info);
+                        util_draw_vbo_without_prim_restart(pctx, info, indirect);
                         return;
                 }
         }
@@ -1127,8 +1128,8 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
         for (int s = 0; s < PIPE_SHADER_COMPUTE; s++)
                 v3d_predraw_check_stage_inputs(pctx, s);
 
-        if (info->indirect && info->indirect->buffer) {
-                v3d_flush_jobs_writing_resource(v3d, info->indirect->buffer,
+        if (indirect && indirect->buffer) {
+                v3d_flush_jobs_writing_resource(v3d, indirect->buffer,
                                                 V3D_FLUSH_DEFAULT, false);
         }
 
@@ -1155,7 +1156,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
          * on the last submitted render, rather than tracking the last
          * rendering to each texture's BO.
          */
-        if (v3d->tex[PIPE_SHADER_VERTEX].num_textures || (info->indirect && info->indirect->buffer)) {
+        if (v3d->tex[PIPE_SHADER_VERTEX].num_textures || (indirect && indirect->buffer)) {
                 perf_debug("Blocking binner on last render "
                            "due to vertex texturing or indirect drawing.\n");
                 job->submit.in_sync_bcl = v3d->out_sync;
@@ -1284,7 +1285,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 }
 #endif
 
-                if (info->indirect && info->indirect->buffer) {
+                if (indirect && indirect->buffer) {
                         cl_emit(&job->bcl, INDIRECT_INDEXED_INSTANCED_PRIM_LIST, prim) {
                                 prim.index_type = ffs(info->index_size) - 1;
 #if V3D_VERSION < 40
@@ -1294,11 +1295,11 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                                 prim.mode = hw_prim_type | prim_tf_enable;
                                 prim.enable_primitive_restarts = info->primitive_restart;
 
-                                prim.number_of_draw_indirect_indexed_records = info->indirect->draw_count;
+                                prim.number_of_draw_indirect_indexed_records = indirect->draw_count;
 
-                                prim.stride_in_multiples_of_4_bytes = info->indirect->stride >> 2;
-                                prim.address = cl_address(v3d_resource(info->indirect->buffer)->bo,
-                                                          info->indirect->offset);
+                                prim.stride_in_multiples_of_4_bytes = indirect->stride >> 2;
+                                prim.address = cl_address(v3d_resource(indirect->buffer)->bo,
+                                                          indirect->offset);
                         }
                 } else if (info->instance_count > 1) {
                         cl_emit(&job->bcl, INDEXED_INSTANCED_PRIM_LIST, prim) {
@@ -1335,19 +1336,19 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 if (info->has_user_indices)
                         pipe_resource_reference(&prsc, NULL);
         } else {
-                if (info->indirect && info->indirect->buffer) {
+                if (indirect && indirect->buffer) {
                         cl_emit(&job->bcl, INDIRECT_VERTEX_ARRAY_INSTANCED_PRIMS, prim) {
                                 prim.mode = hw_prim_type | prim_tf_enable;
-                                prim.number_of_draw_indirect_array_records = info->indirect->draw_count;
+                                prim.number_of_draw_indirect_array_records = indirect->draw_count;
 
-                                prim.stride_in_multiples_of_4_bytes = info->indirect->stride >> 2;
-                                prim.address = cl_address(v3d_resource(info->indirect->buffer)->bo,
-                                                          info->indirect->offset);
+                                prim.stride_in_multiples_of_4_bytes = indirect->stride >> 2;
+                                prim.address = cl_address(v3d_resource(indirect->buffer)->bo,
+                                                          indirect->offset);
                         }
                 } else if (info->instance_count > 1) {
                         struct pipe_stream_output_target *so =
-                                info->indirect && info->indirect->count_from_stream_output ?
-                                        info->indirect->count_from_stream_output : NULL;
+                                indirect && indirect->count_from_stream_output ?
+                                        indirect->count_from_stream_output : NULL;
                         uint32_t vert_count = so ?
                                 v3d_stream_output_target_get_vertex_count(so) :
                                 info->count;
@@ -1359,8 +1360,8 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                         }
                 } else {
                         struct pipe_stream_output_target *so =
-                                info->indirect && info->indirect->count_from_stream_output ?
-                                        info->indirect->count_from_stream_output : NULL;
+                                indirect && indirect->count_from_stream_output ?
+                                        indirect->count_from_stream_output : NULL;
                         uint32_t vert_count = so ?
                                 v3d_stream_output_target_get_vertex_count(so) :
                                 info->count;

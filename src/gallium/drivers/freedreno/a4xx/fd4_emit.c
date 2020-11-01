@@ -700,7 +700,7 @@ fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	}
 
 	if (emit->prog == &ctx->prog) { /* evil hack to deal sanely with clear path */
-		ir3_emit_vs_consts(vp, ring, ctx, emit->info);
+		ir3_emit_vs_consts(vp, ring, ctx, emit->info, emit->indirect);
 		if (!emit->binning_pass)
 			ir3_emit_fs_consts(fp, ring, ctx);
 	}

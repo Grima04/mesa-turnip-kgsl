@@ -59,7 +59,8 @@ resource_written(struct fd_batch *batch, struct pipe_resource *prsc)
 }
 
 static void
-batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info)
+batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
+                    const struct pipe_draw_indirect_info *indirect)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -175,8 +176,8 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info)
 		resource_read(batch, info->index.resource);
 
 	/* Mark indirect draw buffer as being read */
-	if (info->indirect && info->indirect->buffer)
-		resource_read(batch, info->indirect->buffer);
+	if (indirect && indirect->buffer)
+		resource_read(batch, indirect->buffer);
 
 	/* Mark textures as being read */
 	if (ctx->dirty_shader[PIPE_SHADER_VERTEX] & FD_DIRTY_SHADER_TEX) {
@@ -210,7 +211,8 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info)
 }
 
 static void
-fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
+fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
+            const struct pipe_draw_indirect_info *indirect)
 {
 	struct fd_context *ctx = fd_context(pctx);
 
@@ -218,13 +220,13 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 	 * to be able to emulate it, to determine if game is feeding us
 	 * bogus data:
 	 */
-	if (info->indirect && info->indirect->buffer && (fd_mesa_debug & FD_DBG_NOINDR)) {
-		util_draw_indirect(pctx, info);
+	if (indirect && indirect->buffer && (fd_mesa_debug & FD_DBG_NOINDR)) {
+		util_draw_indirect(pctx, info, indirect);
 		return;
 	}
 
 	if (info->mode != PIPE_PRIM_MAX &&
-	    !info->indirect &&
+	    !indirect &&
 	    !info->primitive_restart &&
 	    !u_trim_pipe_prim(info->mode, (unsigned*)&info->count))
 		return;
@@ -266,7 +268,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		fd_context_all_dirty(ctx);
 	}
 
-	batch_draw_tracking(batch, info);
+	batch_draw_tracking(batch, info, indirect);
 
 	while (unlikely(!fd_batch_lock_submit(batch))) {
 		/* The current batch was flushed in batch_draw_tracking()
@@ -275,7 +277,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		 */
 		fd_batch_reference(&batch, NULL);
 		batch = fd_context_batch(ctx);
-		batch_draw_tracking(batch, info);
+		batch_draw_tracking(batch, info, indirect);
 		assert(ctx->batch == batch);
 	}
 
@@ -318,7 +320,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
 		util_format_short_name(pipe_surface_format(pfb->zsbuf)));
 
-	if (ctx->draw_vbo(ctx, info, index_offset))
+	if (ctx->draw_vbo(ctx, info, indirect, index_offset))
 		batch->needs_flush = true;
 
 	batch->num_vertices += info->count * info->instance_count;

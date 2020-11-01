@@ -793,8 +793,6 @@ struct pipe_draw_info
       struct pipe_resource *resource;  /**< real buffer */
       const void *user;  /**< pointer to a user buffer */
    } index;
-
-   struct pipe_draw_indirect_info *indirect; /**< Indirect draw. */
 };
 
 

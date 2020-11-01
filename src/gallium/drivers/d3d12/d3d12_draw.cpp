@@ -357,7 +357,7 @@ twoface_emulation(struct d3d12_context *ctx,
 {
    /* draw backfaces */
    ctx->base.bind_rasterizer_state(&ctx->base, rast->twoface_back);
-   d3d12_draw_vbo(&ctx->base, dinfo);
+   d3d12_draw_vbo(&ctx->base, dinfo, NULL);
 
    /* restore real state */
    ctx->base.bind_rasterizer_state(&ctx->base, rast);
@@ -416,7 +416,8 @@ d3d12_last_vertex_stage(struct d3d12_context *ctx)
 
 void
 d3d12_draw_vbo(struct pipe_context *pctx,
-               const struct pipe_draw_info *dinfo)
+               const struct pipe_draw_info *dinfo,
+               const struct pipe_draw_indirect_info *indirect)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
    struct d3d12_batch *batch;

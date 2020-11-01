@@ -513,8 +513,9 @@ ir3_needs_vs_driver_params(const struct ir3_shader_variant *v)
 
 static inline void
 ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
-		struct fd_ringbuffer *ring, struct fd_context *ctx,
-		const struct pipe_draw_info *info)
+                          struct fd_ringbuffer *ring, struct fd_context *ctx,
+                          const struct pipe_draw_info *info,
+                          const struct pipe_draw_indirect_info *indirect)
 {
 	debug_assert(ir3_needs_vs_driver_params(v));
 
@@ -555,13 +556,12 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 	 * and means we can't easily emit these consts in cmd
 	 * stream so need to copy them to bo.
 	 */
-	if (info->indirect && needs_vtxid_base) {
-		struct pipe_draw_indirect_info *indirect = info->indirect;
+	if (indirect && needs_vtxid_base) {
 		struct pipe_resource *vertex_params_rsc =
 				pipe_buffer_create(&ctx->screen->base,
 						PIPE_BIND_CONSTANT_BUFFER, PIPE_USAGE_STREAM,
 						vertex_params_size * 4);
-		unsigned src_off = info->indirect->offset;;
+		unsigned src_off = indirect->offset;;
 		void *ptr;
 
 		ptr = fd_bo_map(fd_resource(vertex_params_rsc)->bo);
@@ -596,7 +596,8 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 
 static inline void
 ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
-		struct fd_context *ctx, const struct pipe_draw_info *info)
+                   struct fd_context *ctx, const struct pipe_draw_info *info,
+                   const struct pipe_draw_indirect_info *indirect)
 {
 	debug_assert(v->type == MESA_SHADER_VERTEX);
 
@@ -605,7 +606,7 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	/* emit driver params every time: */
 	if (info && ir3_needs_vs_driver_params(v)) {
 		ring_wfi(ctx->batch, ring);
-		ir3_emit_vs_driver_params(v, ring, ctx, info);
+		ir3_emit_vs_driver_params(v, ring, ctx, info, indirect);
 	}
 }
 
@@ -621,7 +622,7 @@ ir3_emit_fs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 /* emit compute-shader consts: */
 static inline void
 ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
-		struct fd_context *ctx, const struct pipe_grid_info *info)
+                   struct fd_context *ctx, const struct pipe_grid_info *info)
 {
 	debug_assert(gl_shader_stage_is_compute(v->type));
 

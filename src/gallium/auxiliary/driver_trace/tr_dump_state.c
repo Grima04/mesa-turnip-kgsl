@@ -793,19 +793,27 @@ void trace_dump_draw_info(const struct pipe_draw_info *state)
    trace_dump_member(uint, state, restart_index);
 
    trace_dump_member(ptr, state, index.resource);
+   trace_dump_struct_end();
+}
 
-   if (!state->indirect) {
-      trace_dump_member(ptr, state, indirect);
-   } else {
-      trace_dump_member(uint, state, indirect->offset);
-      trace_dump_member(uint, state, indirect->stride);
-      trace_dump_member(uint, state, indirect->draw_count);
-      trace_dump_member(uint, state, indirect->indirect_draw_count_offset);
-      trace_dump_member(ptr, state, indirect->buffer);
-      trace_dump_member(ptr, state, indirect->indirect_draw_count);
-      trace_dump_member(ptr, state, indirect->count_from_stream_output);
+void trace_dump_draw_indirect_info(const struct pipe_draw_indirect_info *state)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   if (!state) {
+      trace_dump_null();
+      return;
    }
 
+   trace_dump_struct_begin("pipe_draw_indirect_info");
+   trace_dump_member(uint, state, offset);
+   trace_dump_member(uint, state, stride);
+   trace_dump_member(uint, state, draw_count);
+   trace_dump_member(uint, state, indirect_draw_count_offset);
+   trace_dump_member(ptr, state, buffer);
+   trace_dump_member(ptr, state, indirect_draw_count);
+   trace_dump_member(ptr, state, count_from_stream_output);
    trace_dump_struct_end();
 }
 

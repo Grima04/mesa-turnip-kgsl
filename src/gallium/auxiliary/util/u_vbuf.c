@@ -1257,7 +1257,6 @@ u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
                                unsigned draw_count)
 {
    assert(info->index_size);
-   info->indirect = NULL;
 
    for (unsigned i = 0; i < draw_count; i++) {
       unsigned offset = i * stride / 4;
@@ -1272,11 +1271,12 @@ u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
       info->index_bias = indirect_data[offset + 3];
       info->start_instance = indirect_data[offset + 4];
 
-      u_vbuf_draw_vbo(mgr, info);
+      u_vbuf_draw_vbo(mgr, info, NULL);
    }
 }
 
-void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info)
+void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
+                     const struct pipe_draw_indirect_info *indirect)
 {
    struct pipe_context *pipe = mgr->pipe;
    int start_vertex;
@@ -1299,15 +1299,14 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info)
          u_vbuf_set_driver_vertex_buffers(mgr);
       }
 
-      pipe->draw_vbo(pipe, info);
+      pipe->draw_vbo(pipe, info, indirect);
       return;
    }
 
    new_info = *info;
 
    /* Handle indirect (multi)draws. */
-   if (new_info.indirect && new_info.indirect->buffer) {
-      const struct pipe_draw_indirect_info *indirect = new_info.indirect;
+   if (indirect && indirect->buffer) {
       unsigned draw_count = 0;
 
       /* Get the number of draws. */
@@ -1487,7 +1486,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info)
           * We would have to break this drawing operation into several ones. */
          /* Use some heuristic to see if unrolling indices improves
           * performance. */
-         if (!info->indirect &&
+         if (!indirect &&
              !new_info.primitive_restart &&
              util_is_vbo_upload_ratio_too_large(new_info.count, num_vertices) &&
              !u_vbuf_mapping_vertex_buffer_blocks(mgr)) {
@@ -1565,7 +1564,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info)
    u_upload_unmap(pipe->stream_uploader);
    u_vbuf_set_driver_vertex_buffers(mgr);
 
-   pipe->draw_vbo(pipe, &new_info);
+   pipe->draw_vbo(pipe, &new_info, indirect);
 
    if (mgr->using_translate) {
       u_vbuf_translate_end(mgr);

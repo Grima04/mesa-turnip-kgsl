@@ -63,7 +63,7 @@ util_draw_arrays(struct pipe_context *pipe,
    info.min_index = start;
    info.max_index = start + count - 1;
 
-   pipe->draw_vbo(pipe, &info);
+   pipe->draw_vbo(pipe, &info, NULL);
 }
 
 static inline void
@@ -85,7 +85,7 @@ util_draw_elements(struct pipe_context *pipe,
    info.count = count;
    info.index_bias = index_bias;
 
-   pipe->draw_vbo(pipe, &info);
+   pipe->draw_vbo(pipe, &info, NULL);
 }
 
 static inline void
@@ -107,7 +107,7 @@ util_draw_arrays_instanced(struct pipe_context *pipe,
    info.min_index = start;
    info.max_index = start + count - 1;
 
-   pipe->draw_vbo(pipe, &info);
+   pipe->draw_vbo(pipe, &info, NULL);
 }
 
 static inline void
@@ -134,7 +134,7 @@ util_draw_elements_instanced(struct pipe_context *pipe,
    info.start_instance = start_instance;
    info.instance_count = instance_count;
 
-   pipe->draw_vbo(pipe, &info);
+   pipe->draw_vbo(pipe, &info, NULL);
 }
 
 
@@ -143,7 +143,8 @@ util_draw_elements_instanced(struct pipe_context *pipe,
  */
 void
 util_draw_indirect(struct pipe_context *pipe,
-                   const struct pipe_draw_info *info);
+                   const struct pipe_draw_info *info,
+                   const struct pipe_draw_indirect_info *indirect);
 
 
 unsigned
