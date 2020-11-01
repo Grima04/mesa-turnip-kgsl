@@ -62,9 +62,8 @@ enum tc_call_id {
 
 /* This is actually variable-sized, because indirect isn't allocated if it's
  * not needed. */
-struct tc_full_draw_info {
-   struct pipe_draw_info draw;
-   struct pipe_draw_indirect_info indirect;
+struct tc_draw_single {
+   struct pipe_draw_info info;
 };
 
 typedef void (*tc_execute)(struct pipe_context *pipe, union tc_payload *payload);
@@ -88,15 +87,15 @@ tc_debug_check(struct threaded_context *tc)
 }
 
 static bool
-is_next_call_a_mergeable_draw(struct tc_full_draw_info *first_info,
+is_next_call_a_mergeable_draw(struct tc_draw_single *first_info,
                               struct tc_call *next,
-                              struct tc_full_draw_info **next_info)
+                              struct tc_draw_single **next_info)
 {
-   return next->call_id == TC_CALL_draw_vbo &&
-          (*next_info = (struct tc_full_draw_info*)&next->payload) &&
+   return next->call_id == TC_CALL_draw_single &&
+          (*next_info = (struct tc_draw_single*)&next->payload) &&
           /* All fields must be the same except start and count. */
-          memcmp((uint32_t*)&first_info->draw + 2,
-                 (uint32_t*)&(*next_info)->draw + 2,
+          memcmp((uint32_t*)&first_info->info + 2,
+                 (uint32_t*)&(*next_info)->info + 2,
                  sizeof(struct pipe_draw_info) - 8) == 0;
 }
 
@@ -115,44 +114,44 @@ tc_batch_execute(void *job, UNUSED int thread_index)
       tc_assert(iter->sentinel == TC_SENTINEL);
 
       /* Draw call merging. */
-      if (iter->call_id == TC_CALL_draw_vbo) {
+      if (iter->call_id == TC_CALL_draw_single) {
          struct tc_call *first = iter;
          struct tc_call *next = first + first->num_call_slots;
-         struct tc_full_draw_info *first_info =
-            (struct tc_full_draw_info*)&first->payload;
-         struct tc_full_draw_info *next_info;
+         struct tc_draw_single *first_info =
+            (struct tc_draw_single*)&first->payload;
+         struct tc_draw_single *next_info;
 
          /* If at least 2 consecutive draw calls can be merged... */
-         if (next != last && next->call_id == TC_CALL_draw_vbo &&
-             first_info->draw.drawid == 0 &&
+         if (next != last && next->call_id == TC_CALL_draw_single &&
+             first_info->info.drawid == 0 &&
              is_next_call_a_mergeable_draw(first_info, next, &next_info)) {
             /* Merge up to 256 draw calls. */
             struct pipe_draw_start_count multi[256];
             unsigned num_draws = 2;
 
-            multi[0].start = first_info->draw.start;
-            multi[0].count = first_info->draw.count;
-            multi[1].start = next_info->draw.start;
-            multi[1].count = next_info->draw.count;
+            multi[0].start = first_info->info.start;
+            multi[0].count = first_info->info.count;
+            multi[1].start = next_info->info.start;
+            multi[1].count = next_info->info.count;
 
-            if (next_info->draw.index_size)
-               pipe_resource_reference(&next_info->draw.index.resource, NULL);
+            if (next_info->info.index_size)
+               pipe_resource_reference(&next_info->info.index.resource, NULL);
 
             /* Find how many other draws can be merged. */
             next = next + next->num_call_slots;
             for (; next != last && num_draws < ARRAY_SIZE(multi) &&
                  is_next_call_a_mergeable_draw(first_info, next, &next_info);
                  next += next->num_call_slots, num_draws++) {
-               multi[num_draws].start = next_info->draw.start;
-               multi[num_draws].count = next_info->draw.count;
+               multi[num_draws].start = next_info->info.start;
+               multi[num_draws].count = next_info->info.count;
 
-               if (next_info->draw.index_size)
-                  pipe_resource_reference(&next_info->draw.index.resource, NULL);
+               if (next_info->info.index_size)
+                  pipe_resource_reference(&next_info->info.index.resource, NULL);
             }
 
-            pipe->multi_draw(pipe, &first_info->draw, NULL, multi, num_draws);
-            if (first_info->draw.index_size)
-               pipe_resource_reference(&first_info->draw.index.resource, NULL);
+            pipe->multi_draw(pipe, &first_info->info, NULL, multi, num_draws);
+            if (first_info->info.index_size)
+               pipe_resource_reference(&first_info->info.index.resource, NULL);
             iter = next;
             continue;
          }
@@ -2195,41 +2194,32 @@ out_of_memory:
 }
 
 static void
-tc_call_draw_vbo(struct pipe_context *pipe, union tc_payload *payload)
+tc_call_draw_single(struct pipe_context *pipe, union tc_payload *payload)
 {
-   struct tc_full_draw_info *info = (struct tc_full_draw_info*)payload;
+   struct tc_draw_single *info = (struct tc_draw_single*)payload;
 
-   pipe->draw_vbo(pipe, &info->draw, NULL);
-   if (info->draw.index_size)
-      pipe_resource_reference(&info->draw.index.resource, NULL);
+   pipe->draw_vbo(pipe, &info->info, NULL);
+   if (info->info.index_size)
+      pipe_resource_reference(&info->info.index.resource, NULL);
 }
+
+struct tc_draw_indirect {
+   struct pipe_draw_info info;
+   struct pipe_draw_indirect_info indirect;
+};
 
 static void
 tc_call_draw_indirect(struct pipe_context *pipe, union tc_payload *payload)
 {
-   struct tc_full_draw_info *info = (struct tc_full_draw_info*)payload;
+   struct tc_draw_indirect *info = (struct tc_draw_indirect*)payload;
 
-   pipe->draw_vbo(pipe, &info->draw, &info->indirect);
-   if (info->draw.index_size)
-      pipe_resource_reference(&info->draw.index.resource, NULL);
+   pipe->draw_vbo(pipe, &info->info, &info->indirect);
+   if (info->info.index_size)
+      pipe_resource_reference(&info->info.index.resource, NULL);
 
    pipe_resource_reference(&info->indirect.buffer, NULL);
    pipe_resource_reference(&info->indirect.indirect_draw_count, NULL);
    pipe_so_target_reference(&info->indirect.count_from_stream_output, NULL);
-}
-
-static struct tc_full_draw_info *
-tc_add_draw_vbo(struct pipe_context *_pipe, bool indirect)
-{
-   if (indirect) {
-      return (struct tc_full_draw_info*)
-             tc_add_sized_call(threaded_context(_pipe), TC_CALL_draw_indirect,
-                               tc_payload_size_to_call_slots(sizeof(struct tc_full_draw_info)));
-   } else {
-      return (struct tc_full_draw_info*)
-             tc_add_sized_call(threaded_context(_pipe), TC_CALL_draw_vbo,
-                               tc_payload_size_to_call_slots(sizeof(struct pipe_draw_info)));
-   }
 }
 
 static void
@@ -2243,12 +2233,13 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
    if (unlikely(indirect)) {
       assert(!has_user_indices);
 
-      struct tc_full_draw_info *p = tc_add_draw_vbo(_pipe, true);
+      struct tc_draw_indirect *p =
+         tc_add_struct_typed_call(tc, TC_CALL_draw_indirect, tc_draw_indirect);
       if (index_size) {
-         tc_set_resource_reference(&p->draw.index.resource,
+         tc_set_resource_reference(&p->info.index.resource,
                                    info->index.resource);
       }
-      memcpy(&p->draw, info, sizeof(*info));
+      memcpy(&p->info, info, sizeof(*info));
 
       tc_set_resource_reference(&p->indirect.buffer, indirect->buffer);
       tc_set_resource_reference(&p->indirect.indirect_draw_count,
@@ -2272,19 +2263,21 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
       if (unlikely(!buffer))
          return;
 
-      struct tc_full_draw_info *p = tc_add_draw_vbo(_pipe, false);
-      memcpy(&p->draw, info, sizeof(*info));
-      p->draw.has_user_indices = false;
-      p->draw.index.resource = buffer;
-      p->draw.start = offset >> util_logbase2(index_size);
+      struct tc_draw_single *p =
+         tc_add_struct_typed_call(tc, TC_CALL_draw_single, tc_draw_single);
+      memcpy(&p->info, info, sizeof(*info));
+      p->info.has_user_indices = false;
+      p->info.index.resource = buffer;
+      p->info.start = offset >> util_logbase2(index_size);
    } else {
       /* Non-indexed call or indexed with a real index buffer. */
-      struct tc_full_draw_info *p = tc_add_draw_vbo(_pipe, false);
+      struct tc_draw_single *p =
+         tc_add_struct_typed_call(tc, TC_CALL_draw_single, tc_draw_single);
       if (index_size) {
-         tc_set_resource_reference(&p->draw.index.resource,
+         tc_set_resource_reference(&p->info.index.resource,
                                    info->index.resource);
       }
-      memcpy(&p->draw, info, sizeof(*info));
+      memcpy(&p->info, info, sizeof(*info));
    }
 }
 
