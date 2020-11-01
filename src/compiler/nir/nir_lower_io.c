@@ -619,10 +619,7 @@ nir_lower_io_block(nir_block *block,
       }
 
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-
-      nir_variable_mode mode = deref->mode;
-      assert(util_is_power_of_two_nonzero(mode));
-      if ((state->modes & mode) == 0)
+      if (!nir_deref_mode_is_one_of(deref, state->modes))
          continue;
 
       nir_variable *var = nir_deref_instr_get_variable(deref);
@@ -1716,7 +1713,7 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
          switch (instr->type) {
          case nir_instr_type_deref: {
             nir_deref_instr *deref = nir_instr_as_deref(instr);
-            if (deref->mode & modes) {
+            if (nir_deref_mode_is_in_set(deref, modes)) {
                lower_explicit_io_deref(&b, deref, addr_format);
                progress = true;
             }
@@ -1743,7 +1740,7 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
             case nir_intrinsic_deref_atomic_fmax:
             case nir_intrinsic_deref_atomic_fcomp_swap: {
                nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-               if (deref->mode & modes) {
+               if (nir_deref_mode_is_in_set(deref, modes)) {
                   lower_explicit_io_access(&b, intrin, addr_format);
                   progress = true;
                }
@@ -1752,7 +1749,7 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
 
             case nir_intrinsic_deref_buffer_array_length: {
                nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-               if (deref->mode & modes) {
+               if (nir_deref_mode_is_in_set(deref, modes)) {
                   lower_explicit_io_array_length(&b, intrin, addr_format);
                   progress = true;
                }
@@ -1802,6 +1799,9 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
  * The one exception to the simple algorithm described above is for handling
  * row-major matrices in which case we may look down one additional level of
  * the deref chain.
+ *
+ * If nir_lower_explicit_io is called on any shader that contains generic
+ * pointers, it must either be used on all of the generic modes or none.
  */
 bool
 nir_lower_explicit_io(nir_shader *shader, nir_variable_mode modes,
@@ -1831,7 +1831,7 @@ nir_lower_vars_to_explicit_types_impl(nir_function_impl *impl,
             continue;
 
          nir_deref_instr *deref = nir_instr_as_deref(instr);
-         if (!(deref->mode & modes))
+         if (!nir_deref_mode_is_in_set(deref, modes))
             continue;
 
          unsigned size, alignment;
@@ -1927,6 +1927,10 @@ lower_vars_to_explicit(nir_shader *shader,
    return progress;
 }
 
+/* If nir_lower_vars_to_explicit_types is called on any shader that contains
+ * generic pointers, it must either be used on all of the generic modes or
+ * none.
+ */
 bool
 nir_lower_vars_to_explicit_types(nir_shader *shader,
                                  nir_variable_mode modes,
