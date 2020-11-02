@@ -930,10 +930,6 @@ disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,
    int fd = -1;
    bool mapped = false;
 
-   cache->path = ralloc_strdup(cache, path);
-   if (cache->path == NULL)
-      goto path_fail;
-
    path = ralloc_asprintf(mem_ctx, "%s/index", cache->path);
    if (path == NULL)
       goto path_fail;

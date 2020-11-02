@@ -107,6 +107,10 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    if (!path)
       goto path_fail;
 
+   cache->path = ralloc_strdup(cache, path);
+   if (cache->path == NULL)
+      goto path_fail;
+
    if (!disk_cache_mmap_cache_index(local, cache, path))
       goto path_fail;
 
