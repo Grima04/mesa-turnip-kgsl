@@ -1391,6 +1391,173 @@ bi_emit_tex_offset_ms_index(bi_context *ctx, nir_tex_instr *instr)
         return dest;
 }
 
+static void
+bi_lower_cube_coord(bi_context *ctx, unsigned coord,
+                    unsigned *face, unsigned *s, unsigned *t)
+{
+        /* Compute max { |x|, |y|, |z| } */
+        bi_instruction cubeface1 = {
+                .type = BI_SPECIAL_FMA,
+                .op.special = BI_SPECIAL_CUBEFACE1,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .src = { coord, coord, coord },
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
+                .swizzle = { {0}, {1}, {2} }
+        };
+
+        /* Calculate packed exponent / face / infinity. In reality this reads
+         * the destination from cubeface1 but that's handled by lowering */
+        bi_instruction cubeface2 = {
+                .type = BI_SPECIAL_ADD,
+                .op.special = BI_SPECIAL_CUBEFACE2,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_uint32,
+                .src = { coord, coord, coord },
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
+                .swizzle = { {0}, {1}, {2} }
+        };
+
+        /* Select S coordinate */
+        bi_instruction cube_ssel = {
+                .type = BI_SPECIAL_ADD,
+                .op.special = BI_SPECIAL_CUBE_SSEL,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .src = { coord, coord, cubeface2.dest },
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_uint32 },
+                .swizzle = { {2}, {0} }
+        };
+
+        /* Select T coordinate */
+        bi_instruction cube_tsel = {
+                .type = BI_SPECIAL_ADD,
+                .op.special = BI_SPECIAL_CUBE_TSEL,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .src = { coord, coord, cubeface2.dest },
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_uint32 },
+                .swizzle = { {1}, {2} }
+        };
+
+        /* The OpenGL ES specification requires us to transform an input vector
+         * (x, y, z) to the coordinate, given the selected S/T:
+         *
+         * (1/2 ((s / max{x,y,z}) + 1), 1/2 ((t / max{x, y, z}) + 1))
+         *
+         * We implement (s shown, t similar) in a form friendlier to FMA
+         * instructions, and clamp coordinates at the end for correct
+         * NaN/infinity handling:
+         *
+         * fsat(s * (0.5 * (1 / max{x, y, z})) + 0.5)
+         *
+         * Take the reciprocal of max{x, y, z}
+         */
+
+        bi_instruction frcp = {
+                .type = BI_SPECIAL_ADD,
+                .op.special = BI_SPECIAL_FRCP,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .src = { cubeface1.dest },
+                .src_types = { nir_type_float32 },
+        };
+
+        /* Calculate 0.5 * (1.0 / max{x, y, z}) */
+        bi_instruction fma1 = {
+                .type = BI_FMA,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .src = { frcp.dest, BIR_INDEX_CONSTANT | 0, BIR_INDEX_ZERO },
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
+                .constant.u64 = 0x3f000000, /* 0.5f */
+        };
+
+        /* Transform the s coordinate */
+        bi_instruction fma2 = {
+                .type = BI_FMA,
+                .outmod = BIFROST_SAT,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .src = { fma1.dest, cube_ssel.dest, BIR_INDEX_CONSTANT | 0 },
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
+                .constant.u64 = 0x3f000000, /* 0.5f */
+        };
+
+        /* Transform the t coordinate */
+        bi_instruction fma3 = {
+                .type = BI_FMA,
+                .outmod = BIFROST_SAT,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .src = { fma1.dest, cube_tsel.dest, BIR_INDEX_CONSTANT | 0 },
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
+                .constant.u64 = 0x3f000000, /* 0.5f */
+        };
+
+        bi_emit(ctx, cubeface1);
+        bi_emit(ctx, cubeface2);
+        bi_emit(ctx, cube_ssel);
+        bi_emit(ctx, cube_tsel);
+        bi_emit(ctx, frcp);
+        bi_emit(ctx, fma1);
+        bi_emit(ctx, fma2);
+        bi_emit(ctx, fma3);
+
+        /* Cube face is stored in bit[29:31], we don't apply the shift here
+         * because the TEXS_CUBE and TEXC instructions expect the face index to
+         * be at this position.
+         */
+        *face = cubeface2.dest;
+        *s = fma2.dest;
+        *t = fma3.dest;
+}
+
+static void
+texc_pack_cube_coord(bi_context *ctx, unsigned coord,
+                     unsigned *face_s, unsigned *t)
+{
+        unsigned face, s;
+
+        bi_lower_cube_coord(ctx, coord, &face, &s, t);
+
+        bi_instruction and1 = {
+                .type = BI_BITWISE,
+                .op.bitwise = BI_BITWISE_AND,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_uint32,
+                .src = { face, BIR_INDEX_CONSTANT | 0, BIR_INDEX_ZERO },
+                .src_types = { nir_type_uint32, nir_type_uint32, nir_type_uint8 },
+                .constant.u64 = 0xe0000000,
+        };
+
+        bi_instruction and2 = {
+                .type = BI_BITWISE,
+                .op.bitwise = BI_BITWISE_AND,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_uint32,
+                .src = { s, BIR_INDEX_CONSTANT | 0, BIR_INDEX_ZERO },
+                .src_types = { nir_type_uint32, nir_type_uint32, nir_type_uint8 },
+                .constant.u64 = 0x1fffffff,
+        };
+
+        bi_instruction or = {
+                .type = BI_BITWISE,
+                .op.bitwise = BI_BITWISE_OR,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_uint32,
+                .src = { and1.dest, and2.dest, BIR_INDEX_ZERO },
+                .src_types = { nir_type_uint32, nir_type_uint32, nir_type_uint8 },
+        };
+
+        bi_emit(ctx, and1);
+        bi_emit(ctx, and2);
+        bi_emit(ctx, or);
+
+        /* packed cube-face + s */
+        *face_s = or.dest;
+}
+
 /* Map to the main texture op used. Some of these (txd in particular) will
  * lower to multiple texture ops with different opcodes (GRDESC_DER + TEX in
  * sequence). We assume that lowering is handled elsewhere.
@@ -1507,11 +1674,15 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
 
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord:
-                        /* TODO: cube map descriptor */
-                        tex.src[1] = index;
-                        tex.src[2] = index;
-                        tex.swizzle[1][0] = 0;
-                        tex.swizzle[2][0] = 1;
+                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+                                texc_pack_cube_coord(ctx, index,
+                                                     &tex.src[1], &tex.src[2]);
+			} else {
+                                tex.src[1] = index;
+                                tex.src[2] = index;
+                                tex.swizzle[1][0] = 0;
+                                tex.swizzle[2][0] = 1;
+                        }
                         break;
 
                 case nir_tex_src_lod:
