@@ -67,6 +67,10 @@ extern aco::Builder bld;
 extern aco::Temp exec_input;
 extern aco::Temp inputs[16];
 
+namespace aco {
+struct ra_test_policy;
+}
+
 void create_program(enum chip_class chip_class, aco::Stage stage,
                     unsigned wave_size=64, enum radeon_family family=CHIP_UNKNOWN);
 bool setup_cs(const char *input_spec, enum chip_class chip_class,
@@ -76,6 +80,7 @@ bool setup_cs(const char *input_spec, enum chip_class chip_class,
 void finish_program(aco::Program *program);
 void finish_validator_test();
 void finish_opt_test();
+void finish_ra_test(aco::ra_test_policy);
 void finish_to_hw_instr_test();
 void finish_assembler_test();
 

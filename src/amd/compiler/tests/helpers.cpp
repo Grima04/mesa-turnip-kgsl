@@ -165,6 +165,25 @@ void finish_opt_test()
    aco_print_program(program.get(), output);
 }
 
+void finish_ra_test(ra_test_policy policy)
+{
+   finish_program(program.get());
+   if (!aco::validate_ir(program.get())) {
+      fail_test("Validation before register allocation failed");
+      return;
+   }
+
+   program->workgroup_size = program->wave_size;
+   aco::live live_vars = aco::live_var_analysis(program.get());
+   aco::register_allocation(program.get(), live_vars.live_out, policy);
+
+   if (aco::validate_ra(program.get())) {
+      fail_test("Validation after register allocation failed");
+      return;
+   }
+   aco_print_program(program.get(), output);
+}
+
 void finish_to_hw_instr_test()
 {
    finish_program(program.get());
