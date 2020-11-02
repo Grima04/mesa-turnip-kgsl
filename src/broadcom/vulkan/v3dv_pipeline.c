@@ -1145,11 +1145,6 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
       }
    }
 
-   const VkPipelineDepthStencilStateCreateInfo *ds_info =
-      pCreateInfo->pDepthStencilState;
-
-   key->depth_enabled = (ds_info == NULL ? false : ds_info->depthTestEnable);
-
    /* Vulkan doesn't support alpha test */
    key->alpha_test = false;
    key->alpha_test_func = COMPARE_FUNC_NEVER;

@@ -360,7 +360,6 @@ struct v3d_key {
 
 struct v3d_fs_key {
         struct v3d_key base;
-        bool depth_enabled;
         bool is_points;
         bool is_lines;
         bool line_smoothing;

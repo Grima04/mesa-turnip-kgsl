@@ -559,8 +559,6 @@ v3d_update_compiled_fs(struct v3d_context *v3d, uint8_t prim_mode)
                 key->sample_alpha_to_one = v3d->blend->base.alpha_to_one;
         }
 
-        key->depth_enabled = (v3d->zsa->base.depth.enabled ||
-                              v3d->zsa->base.stencil[0].enabled);
         if (v3d->zsa->base.alpha.enabled) {
                 key->alpha_test = true;
                 key->alpha_test_func = v3d->zsa->base.alpha.func;
