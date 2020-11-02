@@ -365,3 +365,24 @@ cl_version
 device::device_version() const {
    return version;
 }
+
+cl_version
+device::device_clc_version() const {
+   return clc_version;
+}
+
+std::vector<cl_name_version>
+device::opencl_c_all_versions() const {
+   std::vector<cl_name_version> vec;
+   vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "OpenCL C" } );
+   vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 1, 0), "OpenCL C" } );
+
+   if (CL_VERSION_MAJOR(clc_version) == 1 &&
+       CL_VERSION_MINOR(clc_version) == 2)
+      vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 2, 0), "OpenCL C" } );
+   if (CL_VERSION_MAJOR(clc_version) == 3) {
+      vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 2, 0), "OpenCL C" } );
+      vec.push_back( (cl_name_version){ CL_MAKE_VERSION(3, 0, 0), "OpenCL C" } );
+   }
+   return vec;
+}

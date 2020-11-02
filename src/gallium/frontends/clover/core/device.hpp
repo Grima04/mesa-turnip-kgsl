@@ -92,6 +92,8 @@ namespace clover {
       bool supports_ir(enum pipe_shader_ir ir) const;
       std::string supported_extensions_as_string() const;
       cl_version device_version() const;
+      cl_version device_clc_version() const;
+      std::vector<cl_name_version> opencl_c_all_versions() const;
 
       friend class command_queue;
       friend class root_resource;
