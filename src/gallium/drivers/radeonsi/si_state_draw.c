@@ -945,8 +945,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                  info->drawid != sctx->last_drawid || sh_base_reg != sctx->last_sh_base_reg) {
          radeon_set_sh_reg_seq(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 3);
          radeon_emit(cs, base_vertex);
-         radeon_emit(cs, info->start_instance);
          radeon_emit(cs, info->drawid);
+         radeon_emit(cs, info->start_instance);
 
          sctx->last_base_vertex = base_vertex;
          sctx->last_start_instance = info->start_instance;
