@@ -969,6 +969,13 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          for (unsigned i = 0; i < num_draws; i++) {
             uint64_t va = index_va + draws[i].start * index_size;
 
+            if (i > 0 && info->increment_draw_id) {
+               unsigned draw_id = info->drawid + i;
+
+               radeon_set_sh_reg(cs, sh_base_reg + SI_SGPR_DRAWID * 4, draw_id);
+               sctx->last_drawid = draw_id;
+            }
+
             radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
             radeon_emit(cs, index_max_size);
             radeon_emit(cs, va);
@@ -980,13 +987,25 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                          * NOT_EOP doesn't work on gfx9 and older.
                          */
                         S_0287F0_NOT_EOP(sctx->chip_class >= GFX10 &&
+                                         !info->increment_draw_id &&
                                          i < num_draws - 1 &&
                                          !(sctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)));
          }
       } else {
          for (unsigned i = 0; i < num_draws; i++) {
-            if (i > 0)
-               radeon_set_sh_reg(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, draws[i].start);
+            if (i > 0) {
+               if (info->increment_draw_id) {
+                  unsigned draw_id = info->drawid + i;
+
+                  radeon_set_sh_reg_seq(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 2);
+                  radeon_emit(cs, draws[i].start);
+                  radeon_emit(cs, draw_id);
+
+                  sctx->last_drawid = draw_id;
+               } else {
+                  radeon_set_sh_reg(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, draws[i].start);
+               }
+            }
 
             radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
             radeon_emit(cs, draws[i].count);
@@ -1985,7 +2004,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
               (instance_count == 1 ||
                (instance_count <= USHRT_MAX && index_size && index_size <= 2) ||
                pd_msg("instance_count too large or index_size == 4 or DrawArraysInstanced"))) &&
-       (info->drawid == 0 || !sctx->vs_shader.cso->info.uses_drawid || pd_msg("draw_id > 0")) &&
+       ((info->drawid == 0 && (num_draws == 1 || !info->increment_draw_id)) ||
+        !sctx->vs_shader.cso->info.uses_drawid || pd_msg("draw_id > 0")) &&
        (!sctx->render_cond || pd_msg("render condition")) &&
        /* Forced enablement ignores pipeline statistics queries. */
        (sctx->screen->debug_flags & (DBG(PD) | DBG(ALWAYS_PD)) ||
