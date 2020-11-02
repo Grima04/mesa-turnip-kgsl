@@ -131,6 +131,7 @@ libanv_files = files(
 anv_deps = [
   dep_libdrm,
   dep_valgrind,
+  idep_genxml,
   idep_nir_headers,
   idep_vulkan_util_headers,
 ]
