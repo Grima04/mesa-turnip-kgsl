@@ -101,6 +101,10 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (vkQueueSubmit(ctx->queue, 1, &si, batch->fence->fence) != VK_SUCCESS) {
       debug_printf("ZINK: vkQueueSubmit() failed\n");
       ctx->is_device_lost = true;
+
+      if (ctx->reset.reset) {
+         ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+      }
    }
 }
 
