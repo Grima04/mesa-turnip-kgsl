@@ -949,6 +949,25 @@ validate_phi_srcs(nir_block *block, nir_block *succ, validate_state *state)
 static void
 collect_blocks(struct exec_list *cf_list, validate_state *state)
 {
+   /* We walk the blocks manually here rather than using nir_foreach_block for
+    * a few reasons:
+    *
+    *  1. nir_foreach_block() doesn't work properly for unstructured NIR and
+    *     we need to be able to handle all forms of NIR here.
+    *
+    *  2. We want to call exec_list_validate() on every linked list in the IR
+    *     which means we need to touch every linked and just walking blocks
+    *     with nir_foreach_block() would make that difficult.  In particular,
+    *     we want to validate each list before the first time we walk it so
+    *     that we catch broken lists in exec_list_validate() instead of
+    *     getting stuck in a hard-to-debug infinite loop in the validator.
+    *
+    *  3. nir_foreach_block() depends on several invariants of the CF node
+    *     hierarchy which nir_validate_shader() is responsible for verifying.
+    *     If we used nir_foreach_block() in nir_validate_shader(), we could
+    *     end up blowing up on a bad list walk instead of throwing the much
+    *     easier to debug validation error.
+    */
    exec_list_validate(cf_list);
    foreach_list_typed(nir_cf_node, node, node, cf_list) {
       switch (node->type) {
