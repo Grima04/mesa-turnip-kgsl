@@ -27,6 +27,7 @@
 
 #include "util/u_rect.h"
 #include "util/u_surface.h"
+#include "util/u_memset.h"
 #include "lp_context.h"
 #include "lp_flush.h"
 #include "lp_limits.h"
@@ -442,6 +443,41 @@ llvmpipe_clear_texture(struct pipe_context *pipe,
    }
 }
 
+static void
+llvmpipe_clear_buffer(struct pipe_context *pipe,
+                      struct pipe_resource *res,
+                      unsigned offset,
+                      unsigned size,
+                      const void *clear_value,
+                      int clear_value_size)
+{
+   struct pipe_transfer *dst_t;
+   struct pipe_box box;
+   char *dst;
+   u_box_1d(offset, size, &box);
+
+   dst = pipe->transfer_map(pipe,
+                            res,
+                            0,
+                            PIPE_MAP_WRITE,
+                            &box,
+                            &dst_t);
+
+   switch (clear_value_size) {
+   case 1:
+      memset(dst, *(uint8_t *)clear_value, size);
+      break;
+   case 4:
+      util_memset32(dst, *(uint32_t *)clear_value, size / 4);
+      break;
+   default:
+      for (unsigned i = 0; i < size; i += clear_value_size)
+         memcpy(&dst[i], clear_value, clear_value_size);
+      break;
+   }
+   pipe->transfer_unmap(pipe, dst_t);
+}
+
 void
 llvmpipe_init_surface_functions(struct llvmpipe_context *lp)
 {
@@ -451,6 +487,7 @@ llvmpipe_init_surface_functions(struct llvmpipe_context *lp)
    lp->pipe.surface_destroy = llvmpipe_surface_destroy;
    /* These are not actually functions dealing with surfaces */
    lp->pipe.clear_texture = llvmpipe_clear_texture;
+   lp->pipe.clear_buffer = llvmpipe_clear_buffer;
    lp->pipe.resource_copy_region = lp_resource_copy;
    lp->pipe.blit = lp_blit;
    lp->pipe.flush_resource = lp_flush_resource;
