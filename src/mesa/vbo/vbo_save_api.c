@@ -298,7 +298,13 @@ merge_prims(struct gl_context *ctx, struct _mesa_prim *prim_list,
 
       vbo_try_prim_conversion(&this_prim->mode, &this_prim->count);
 
-      if (vbo_merge_draws(ctx, true, prev_prim, this_prim)) {
+      if (vbo_merge_draws(ctx, true,
+                          prev_prim->mode, this_prim->mode,
+                          prev_prim->start, this_prim->start,
+                          &prev_prim->count, this_prim->count,
+                          prev_prim->basevertex, this_prim->basevertex,
+                          &prev_prim->end,
+                          this_prim->begin, this_prim->end)) {
          /* We've found a prim that just extend the previous one.  Tack it
           * onto the previous one, and let this primitive struct get dropped.
           */
