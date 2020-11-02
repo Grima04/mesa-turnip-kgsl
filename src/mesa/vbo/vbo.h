@@ -37,6 +37,7 @@
 #include "main/draw.h"
 #include "main/macros.h"
 #include "vbo_attrib.h"
+#include "gallium/include/pipe/p_state.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,19 +81,41 @@ struct vbo_exec_copied_vtx {
    GLuint nr;
 };
 
+struct vbo_markers
+{
+   /**
+    * If false and the primitive is a line loop, the first vertex is
+    * the beginning of the line loop and it won't be drawn.
+    * Instead, it will be moved to the end.
+    *
+    * Drivers shouldn't reset the line stipple pattern walker if begin is
+    * false and mode is a line strip.
+    */
+   bool begin;
+
+   /**
+    * If true and the primitive is a line loop, it will be closed.
+    */
+   bool end;
+};
+
 struct vbo_exec_context
 {
    GLvertexformat vtxfmt;
    GLvertexformat vtxfmt_noop;
 
    struct {
+      /* Multi draw where the mode can vary between draws. */
+      struct pipe_draw_info info;
+      struct pipe_draw_start_count draw[VBO_MAX_PRIM];
+      GLubyte mode[VBO_MAX_PRIM];            /**< primitive modes per draw */
+      struct vbo_markers markers[VBO_MAX_PRIM];
+      unsigned prim_count;
+
       struct gl_buffer_object *bufferobj;
 
       GLuint vertex_size;       /* in dwords */
       GLuint vertex_size_no_pos;
-
-      struct _mesa_prim prim[VBO_MAX_PRIM];
-      GLuint prim_count;
 
       fi_type *buffer_map;
       fi_type *buffer_ptr;              /* cursor, points into buffer */
