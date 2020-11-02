@@ -868,7 +868,7 @@ try_vbo_merge(struct vbo_exec_context *exec)
 
    assert(exec->vtx.prim_count >= 1);
 
-   vbo_try_prim_conversion(cur);
+   vbo_try_prim_conversion(&cur->mode, &cur->count);
 
    if (exec->vtx.prim_count >= 2) {
       struct gl_context *ctx = gl_context_from_vbo_exec(exec);

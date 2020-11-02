@@ -146,16 +146,15 @@ void vbo_exec_destroy( struct gl_context *ctx )
  * This function converts 2-vertex line strips/loops into GL_LINES, etc.
  */
 void
-vbo_try_prim_conversion(struct _mesa_prim *p)
+vbo_try_prim_conversion(GLubyte *mode, unsigned *count)
 {
-   if (p->mode == GL_LINE_STRIP && p->count == 2) {
+   if (*mode == GL_LINE_STRIP && *count == 2) {
       /* convert 2-vertex line strip to a separate line */
-      p->mode = GL_LINES;
-   }
-   else if ((p->mode == GL_TRIANGLE_STRIP || p->mode == GL_TRIANGLE_FAN)
-       && p->count == 3) {
+      *mode = GL_LINES;
+   } else if ((*mode == GL_TRIANGLE_STRIP || *mode == GL_TRIANGLE_FAN) &&
+              *count == 3) {
       /* convert 3-vertex tri strip or fan to a separate triangle */
-      p->mode = GL_TRIANGLES;
+      *mode = GL_TRIANGLES;
    }
 
    /* Note: we can't convert a 4-vertex quad strip to a separate quad

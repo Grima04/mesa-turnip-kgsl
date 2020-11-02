@@ -186,7 +186,7 @@ vbo_compute_max_verts(const struct vbo_exec_context *exec)
 
 
 void
-vbo_try_prim_conversion(struct _mesa_prim *p);
+vbo_try_prim_conversion(GLubyte *mode, unsigned *count);
 
 bool
 vbo_merge_draws(struct gl_context *ctx, bool in_dlist,

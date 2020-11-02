@@ -296,7 +296,7 @@ merge_prims(struct gl_context *ctx, struct _mesa_prim *prim_list,
    for (i = 1; i < *prim_count; i++) {
       struct _mesa_prim *this_prim = prim_list + i;
 
-      vbo_try_prim_conversion(this_prim);
+      vbo_try_prim_conversion(&this_prim->mode, &this_prim->count);
 
       if (vbo_merge_draws(ctx, true, prev_prim, this_prim)) {
          /* We've found a prim that just extend the previous one.  Tack it
