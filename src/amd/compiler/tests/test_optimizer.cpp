@@ -156,3 +156,45 @@ BEGIN_TEST(optimize.add_lshl)
       finish_opt_test();
    }
 END_TEST
+
+Temp create_mad_u32_u16(Operand a, Operand b, Operand c, bool is16bit = true)
+{
+   a.set16bit(is16bit);
+   b.set16bit(is16bit);
+
+   return bld.vop3(aco_opcode::v_mad_u32_u16, bld.def(v1), a, b, c);
+}
+
+BEGIN_TEST(optimize.mad_u32_u16)
+   for (unsigned i = GFX9; i <= GFX10; i++) {
+      //>> v1: %a, v1: %b, s1: %c, s2: %_:exec = p_startpgm
+      if (!setup_cs("v1 v1 s1", (chip_class)i))
+         continue;
+
+      //! v1: %res0 = v_mul_u32_u24 (is16bit)%a, (is16bit)%b
+      //! p_unit_test 0, %res0
+      writeout(0, create_mad_u32_u16(Operand(inputs[0]), Operand(inputs[1]), Operand(0u)));
+
+      //! v1: %res1 = v_mul_u32_u24 42, (is16bit)%a
+      //! p_unit_test 1, %res1
+      writeout(1, create_mad_u32_u16(Operand(42u), Operand(inputs[0]), Operand(0u)));
+
+      //! v1: %res2 = v_mul_u32_u24 42, (is16bit)%a
+      //! p_unit_test 2, %res2
+      writeout(2, create_mad_u32_u16(Operand(inputs[0]), Operand(42u), Operand(0u)));
+
+      //! v1: %res3 = v_mul_u32_u24 (is16bit)%c, (is16bit)%a
+      //! p_unit_test 3, %res3
+      writeout(3, create_mad_u32_u16(Operand(inputs[2]), Operand(inputs[0]), Operand(0u)));
+
+      //! v1: %res4 = v_mad_u32_u16 42, (is16bit)%c, 0
+      //! p_unit_test 4, %res4
+      writeout(4, create_mad_u32_u16(Operand(42u), Operand(inputs[2]), Operand(0u)));
+
+      //! v1: %res5 = v_mad_u32_u16 42, %a, 0
+      //! p_unit_test 5, %res5
+      writeout(5, create_mad_u32_u16(Operand(42u), Operand(inputs[0]), Operand(0u), false));
+
+      finish_opt_test();
+   }
+END_TEST
