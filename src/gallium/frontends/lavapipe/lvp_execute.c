@@ -1732,18 +1732,22 @@ static void handle_blit_image(struct lvp_cmd_buffer_entry *cmd,
    info.mask = util_format_is_depth_or_stencil(info.src.format) ? PIPE_MASK_ZS : PIPE_MASK_RGBA;
    info.filter = blitcmd->filter == VK_FILTER_NEAREST ? PIPE_TEX_FILTER_NEAREST : PIPE_TEX_FILTER_LINEAR;
    for (i = 0; i < blitcmd->region_count; i++) {
-      int srcX0, srcX1, srcY0, srcY1;
-      unsigned dstX0, dstX1, dstY0, dstY1;
+      int srcX0, srcX1, srcY0, srcY1, srcZ0, srcZ1;
+      unsigned dstX0, dstX1, dstY0, dstY1, dstZ0, dstZ1;
 
       srcX0 = blitcmd->regions[i].srcOffsets[0].x;
       srcX1 = blitcmd->regions[i].srcOffsets[1].x;
       srcY0 = blitcmd->regions[i].srcOffsets[0].y;
       srcY1 = blitcmd->regions[i].srcOffsets[1].y;
+      srcZ0 = blitcmd->regions[i].srcOffsets[0].z;
+      srcZ1 = blitcmd->regions[i].srcOffsets[1].z;
 
       dstX0 = blitcmd->regions[i].dstOffsets[0].x;
       dstX1 = blitcmd->regions[i].dstOffsets[1].x;
       dstY0 = blitcmd->regions[i].dstOffsets[0].y;
       dstY1 = blitcmd->regions[i].dstOffsets[1].y;
+      dstZ0 = blitcmd->regions[i].dstOffsets[0].z;
+      dstZ1 = blitcmd->regions[i].dstOffsets[1].z;
 
       if (dstX0 < dstX1) {
          info.dst.box.x = dstX0;
@@ -1768,19 +1772,28 @@ static void handle_blit_image(struct lvp_cmd_buffer_entry *cmd,
          info.dst.box.height = dstY0 - dstY1;
          info.src.box.height = srcY0 - srcY1;
       }
-      info.src.level = blitcmd->regions[i].srcSubresource.mipLevel;
-      info.src.box.z = blitcmd->regions[i].srcOffsets[0].z + blitcmd->regions[i].srcSubresource.baseArrayLayer;
-      if (blitcmd->src->bo->target == PIPE_TEXTURE_3D)
-         info.src.box.depth = blitcmd->regions[i].srcOffsets[1].z - blitcmd->regions[i].srcOffsets[0].z;
-      else
-         info.src.box.depth = blitcmd->regions[i].srcSubresource.layerCount;
 
-      info.dst.level = blitcmd->regions[i].dstSubresource.mipLevel;
-      info.dst.box.z = blitcmd->regions[i].dstOffsets[0].z + blitcmd->regions[i].dstSubresource.baseArrayLayer;
-      if (blitcmd->dst->bo->target == PIPE_TEXTURE_3D)
-         info.dst.box.depth = blitcmd->regions[i].dstOffsets[1].z - blitcmd->regions[i].dstOffsets[0].z;
-      else
+      if (blitcmd->src->bo->target == PIPE_TEXTURE_3D) {
+         if (dstZ0 < dstZ1) {
+            info.dst.box.z = dstZ0;
+            info.src.box.z = srcZ0;
+            info.dst.box.depth = dstZ1 - dstZ0;
+            info.src.box.depth = srcZ1 - srcZ0;
+         } else {
+            info.dst.box.z = dstZ1;
+            info.src.box.z = srcZ1;
+            info.dst.box.depth = dstZ0 - dstZ1;
+            info.src.box.depth = srcZ0 - srcZ1;
+         }
+      } else {
+         info.src.box.z = blitcmd->regions[i].srcSubresource.baseArrayLayer;
+         info.dst.box.z = blitcmd->regions[i].dstSubresource.baseArrayLayer;
+         info.src.box.depth = blitcmd->regions[i].srcSubresource.layerCount;
          info.dst.box.depth = blitcmd->regions[i].dstSubresource.layerCount;
+      }
+
+      info.src.level = blitcmd->regions[i].srcSubresource.mipLevel;
+      info.dst.level = blitcmd->regions[i].dstSubresource.mipLevel;
       state->pctx->blit(state->pctx, &info);
    }
 }
