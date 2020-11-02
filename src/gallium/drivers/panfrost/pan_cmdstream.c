@@ -1097,13 +1097,15 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           mali_ptr *buffers)
 {
         struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+        bool is_bifrost = !!(dev->quirks & IS_BIFROST);
         struct panfrost_vertex_state *so = ctx->vertex;
         struct panfrost_shader_state *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
 
         /* Worst case: everything is NPOT, which is only possible if instancing
          * is enabled. Otherwise single record is gauranteed */
         struct panfrost_ptr S = panfrost_pool_alloc_aligned(&batch->pool,
-                        MALI_ATTRIBUTE_BUFFER_LENGTH * vs->attribute_count *
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * (vs->attribute_count + 1) *
                         (ctx->instance_count > 1 ? 2 : 1),
                         MALI_ATTRIBUTE_BUFFER_LENGTH * 2);
 
@@ -1113,6 +1115,10 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
         struct mali_attribute_buffer_packed *bufs =
                 (struct mali_attribute_buffer_packed *) S.cpu;
+
+        /* Determine (n + 1)'th index to suppress prefetch on Bifrost */
+        unsigned last = vs->attribute_count * ((ctx->instance_count > 1) ? 2 : 1);
+        memset(bufs + last, 0, sizeof(*bufs));
 
         struct mali_attribute_packed *out =
                 (struct mali_attribute_packed *) T.cpu;
@@ -1231,6 +1237,10 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         cfg.format = so->formats[PAN_INSTANCE_ID];
                 }
         }
+
+        /* We need an empty attrib buf to stop the prefetching on Bifrost */
+        if (is_bifrost)
+                pan_pack(&bufs[k], ATTRIBUTE_BUFFER, cfg);
 
         /* Attribute addresses require 64-byte alignment, so let:
          *
@@ -1753,10 +1763,13 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
         unsigned xfb_base = pan_xfb_base(present);
         struct panfrost_ptr T = panfrost_pool_alloc_aligned(&batch->pool,
-                        MALI_ATTRIBUTE_BUFFER_LENGTH * (xfb_base + ctx->streamout.num_targets),
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * (xfb_base + ctx->streamout.num_targets + 1),
                         MALI_ATTRIBUTE_BUFFER_LENGTH * 2);
         struct mali_attribute_buffer_packed *varyings =
                 (struct mali_attribute_buffer_packed *) T.cpu;
+
+        /* Suppress prefetch on Bifrost */
+        memset(varyings + (xfb_base * ctx->streamout.num_targets), 0, sizeof(*varyings));
 
         /* Emit the stream out buffers */
 
