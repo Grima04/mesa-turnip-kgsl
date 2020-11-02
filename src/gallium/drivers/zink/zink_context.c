@@ -1370,11 +1370,10 @@ zink_flush_compute(struct zink_context *ctx)
    flush_batch(ctx, ZINK_QUEUE_COMPUTE);
 }
 
-struct zink_batch *
-zink_flush_batch(struct zink_context *ctx, struct zink_batch *batch)
+void
+zink_flush_queue(struct zink_context *ctx, enum zink_queue queue)
 {
-   flush_batch(ctx, batch->queue);
-   return batch;
+   flush_batch(ctx, queue);
 }
 
 static void

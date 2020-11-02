@@ -263,8 +263,8 @@ zink_wait_on_batch(struct zink_context *ctx, enum zink_queue queue, uint32_t bat
 void
 zink_flush_compute(struct zink_context *ctx);
 
-struct zink_batch *
-zink_flush_batch(struct zink_context *ctx, struct zink_batch *batch);
+void
+zink_flush_queue(struct zink_context *ctx, enum zink_queue queue);
 
 void
 zink_maybe_flush_or_stall(struct zink_context *ctx, enum zink_queue queue);
