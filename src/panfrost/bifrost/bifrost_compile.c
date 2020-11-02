@@ -2137,7 +2137,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
         bi_optimize_nir(nir);
 
-        if (bifrost_debug & BIFROST_DBG_SHADERS) {
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal) {
                 nir_print_shader(nir, stdout);
         }
 
@@ -2178,11 +2178,11 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 }
         } while(progress);
 
-        if (bifrost_debug & BIFROST_DBG_SHADERS)
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal)
                 bi_print_shader(ctx, stdout);
         bi_schedule(ctx);
         bi_register_allocate(ctx);
-        if (bifrost_debug & BIFROST_DBG_SHADERS)
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal)
                 bi_print_shader(ctx, stdout);
 
         util_dynarray_init(&program->compiled, NULL);
@@ -2190,7 +2190,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
         memcpy(program->blend_ret_offsets, ctx->blend_ret_offsets, sizeof(program->blend_ret_offsets));
 
-        if (bifrost_debug & BIFROST_DBG_SHADERS)
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal)
                 disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
 
         program->tls_size = ctx->tls_size;
