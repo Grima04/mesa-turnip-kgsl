@@ -801,7 +801,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
    else {
       /* flush compute batch */
-      zink_flush_compute(ctx);
+      zink_flush_queue(ctx, ZINK_QUEUE_COMPUTE);
    }
 }
 

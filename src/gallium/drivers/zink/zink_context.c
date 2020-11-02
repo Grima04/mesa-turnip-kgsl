@@ -1365,12 +1365,6 @@ zink_batch_no_rp(struct zink_context *ctx)
 }
 
 void
-zink_flush_compute(struct zink_context *ctx)
-{
-   flush_batch(ctx, ZINK_QUEUE_COMPUTE);
-}
-
-void
 zink_flush_queue(struct zink_context *ctx, enum zink_queue queue)
 {
    flush_batch(ctx, queue);
@@ -1888,7 +1882,7 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
    struct zink_context *ctx = zink_context(pctx);
    if (zink_batch_g(ctx)->has_work)
       pctx->flush(pctx, NULL, 0);
-   zink_flush_compute(ctx);
+   zink_flush_queue(ctx, ZINK_QUEUE_COMPUTE);
 }
 
 static void

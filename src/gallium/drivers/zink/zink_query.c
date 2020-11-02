@@ -409,7 +409,7 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, e
    if (zink_batch_usage_matches(&query->batch_id, ZINK_QUEUE_GFX, zink_batch_g(ctx)->state->fence.batch_id))
       pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
    else if (is_cs_query(query))
-      zink_flush_compute(ctx);
+      zink_flush_queue(ctx, ZINK_QUEUE_COMPUTE);
 
    bool success = get_query_result(pctx, pquery, wait, &result);
    if (!success) {
@@ -460,7 +460,7 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
                              offset, 0, flags);
    /* this is required for compute batch sync and will be removed later */
    if (is_cs_query(query))
-      zink_flush_compute(ctx);
+      zink_flush_queue(ctx, ZINK_QUEUE_COMPUTE);
    else
       ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
 
@@ -617,7 +617,7 @@ zink_get_query_result(struct pipe_context *pctx,
          uint32_t batch_id = p_atomic_read(&query->batch_id.usage[ZINK_QUEUE_COMPUTE]);
          zink_wait_on_batch(ctx, ZINK_QUEUE_COMPUTE, batch_id);
       } else {
-         zink_flush_compute(ctx);
+         zink_flush_queue(ctx, ZINK_QUEUE_COMPUTE);
       }
    } else {
       if (wait) {
