@@ -99,7 +99,7 @@ struct ttn_compile {
 #define ttn_channel(b, src, swiz) \
    nir_channel(b, src, TGSI_SWIZZLE_##swiz)
 
-static gl_varying_slot
+gl_varying_slot
 tgsi_varying_semantic_to_slot(unsigned semantic, unsigned index)
 {
    switch (semantic) {
