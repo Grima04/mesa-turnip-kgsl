@@ -34,11 +34,12 @@ st_nir_finish_builtin_shader(struct st_context *st,
 {
    struct pipe_context *pipe = st->pipe;
    struct pipe_screen *screen = pipe->screen;
-   enum pipe_shader_type sh = pipe_shader_type_from_mesa(nir->info.stage);
+   gl_shader_stage stage = nir->info.stage;
+   enum pipe_shader_type sh = pipe_shader_type_from_mesa(stage);
 
    nir->info.name = ralloc_strdup(nir, name);
    nir->info.separate_shader = true;
-   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+   if (stage == MESA_SHADER_FRAGMENT)
       nir->info.fs.untyped_color_outputs = true;
 
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
@@ -49,8 +50,8 @@ st_nir_finish_builtin_shader(struct st_context *st,
 
    if (nir->options->lower_to_scalar) {
       nir_variable_mode mask =
-         (nir->info.stage > MESA_SHADER_VERTEX ? nir_var_shader_in : 0) |
-         (nir->info.stage < MESA_SHADER_FRAGMENT ? nir_var_shader_out : 0);
+          (stage > MESA_SHADER_VERTEX ? nir_var_shader_in : 0) |
+          (stage < MESA_SHADER_FRAGMENT ? nir_var_shader_out : 0);
 
       NIR_PASS_V(nir, nir_lower_io_to_scalar_early, mask);
    }
@@ -82,7 +83,7 @@ st_nir_finish_builtin_shader(struct st_context *st,
       ralloc_free(nir);
    }
 
-   switch (nir->info.stage) {
+   switch (stage) {
    case MESA_SHADER_VERTEX:
       return pipe->create_vs_state(pipe, &state);
    case MESA_SHADER_TESS_CTRL:
