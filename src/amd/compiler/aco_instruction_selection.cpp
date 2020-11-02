@@ -11730,6 +11730,8 @@ void select_program(Program *program,
          ctx.inputs = ctx.outputs;
          ctx.outputs = shader_io_state();
       }
+
+      cleanup_context(&ctx);
    }
 
    program->config->float_mode = program->blocks[0].fp_mode.val;

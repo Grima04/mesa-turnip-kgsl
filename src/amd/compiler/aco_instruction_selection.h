@@ -84,6 +84,10 @@ struct isel_context {
       std::unique_ptr<unsigned[]> nir_to_aco; /* NIR block index to ACO block index */
    } cf_info;
 
+   /* NIR range analysis. */
+   struct hash_table *range_ht;
+   nir_unsigned_upper_bound_config ub_config;
+
    uint32_t resource_flag_offsets[MAX_SETS];
    std::vector<uint8_t> buffer_resource_flags;
 
@@ -211,6 +215,7 @@ inline bool can_subdword_ssbo_store_use_smem(nir_intrinsic_instr *intrin)
 }
 
 void init_context(isel_context *ctx, nir_shader *shader);
+void cleanup_context(isel_context *ctx);
 
 isel_context
 setup_isel_context(Program* program,

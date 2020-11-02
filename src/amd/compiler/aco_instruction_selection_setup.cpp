@@ -249,8 +249,7 @@ void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
    }
 }
 
-void apply_nuw_to_ssa(nir_shader *shader, struct hash_table *range_ht, nir_ssa_def *ssa,
-                      const nir_unsigned_upper_bound_config *config)
+void apply_nuw_to_ssa(isel_context *ctx, nir_ssa_def *ssa)
 {
    nir_ssa_scalar scalar;
    scalar.def = ssa;
@@ -273,69 +272,15 @@ void apply_nuw_to_ssa(nir_shader *shader, struct hash_table *range_ht, nir_ssa_d
       src1 = tmp;
    }
 
-   uint32_t src1_ub = nir_unsigned_upper_bound(shader, range_ht, src1, config);
-   add->no_unsigned_wrap = !nir_addition_might_overflow(shader, range_ht, src0, src1_ub, config);
+   uint32_t src1_ub = nir_unsigned_upper_bound(ctx->shader, ctx->range_ht,
+                                               src1, &ctx->ub_config);
+   add->no_unsigned_wrap =
+      !nir_addition_might_overflow(ctx->shader, ctx->range_ht, src0, src1_ub,
+                                   &ctx->ub_config);
 }
 
 void apply_nuw_to_offsets(isel_context *ctx, nir_function_impl *impl)
 {
-   nir_unsigned_upper_bound_config config;
-   config.min_subgroup_size = 64;
-   config.max_subgroup_size = 64;
-   if (ctx->shader->info.stage == MESA_SHADER_COMPUTE && ctx->options->key.cs.subgroup_size) {
-      config.min_subgroup_size = ctx->options->key.cs.subgroup_size;
-      config.max_subgroup_size = ctx->options->key.cs.subgroup_size;
-   }
-   config.max_work_group_invocations = 2048;
-   config.max_work_group_count[0] = 65535;
-   config.max_work_group_count[1] = 65535;
-   config.max_work_group_count[2] = 65535;
-   config.max_work_group_size[0] = 2048;
-   config.max_work_group_size[1] = 2048;
-   config.max_work_group_size[2] = 2048;
-   for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
-      unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[i];
-      unsigned dfmt = attrib_format & 0xf;
-      unsigned nfmt = (attrib_format >> 4) & 0x7;
-
-      uint32_t max = UINT32_MAX;
-      if (nfmt == V_008F0C_BUF_NUM_FORMAT_UNORM) {
-         max = 0x3f800000u;
-      } else if (nfmt == V_008F0C_BUF_NUM_FORMAT_UINT ||
-                 nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED) {
-         bool uscaled = nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED;
-         switch (dfmt) {
-         case V_008F0C_BUF_DATA_FORMAT_8:
-         case V_008F0C_BUF_DATA_FORMAT_8_8:
-         case V_008F0C_BUF_DATA_FORMAT_8_8_8_8:
-            max = uscaled ? 0x437f0000u : UINT8_MAX;
-            break;
-         case V_008F0C_BUF_DATA_FORMAT_10_10_10_2:
-         case V_008F0C_BUF_DATA_FORMAT_2_10_10_10:
-            max = uscaled ? 0x447fc000u : 1023;
-            break;
-         case V_008F0C_BUF_DATA_FORMAT_10_11_11:
-         case V_008F0C_BUF_DATA_FORMAT_11_11_10:
-            max = uscaled ? 0x44ffe000u : 2047;
-            break;
-         case V_008F0C_BUF_DATA_FORMAT_16:
-         case V_008F0C_BUF_DATA_FORMAT_16_16:
-         case V_008F0C_BUF_DATA_FORMAT_16_16_16_16:
-            max = uscaled ? 0x477fff00u : UINT16_MAX;
-            break;
-         case V_008F0C_BUF_DATA_FORMAT_32:
-         case V_008F0C_BUF_DATA_FORMAT_32_32:
-         case V_008F0C_BUF_DATA_FORMAT_32_32_32:
-         case V_008F0C_BUF_DATA_FORMAT_32_32_32_32:
-            max = uscaled ? 0x4f800000u : UINT32_MAX;
-            break;
-         }
-      }
-      config.vertex_attrib_max[i] = max;
-   }
-
-   struct hash_table *range_ht = _mesa_pointer_hash_table_create(NULL);
-
    nir_metadata_require(impl, nir_metadata_dominance);
 
    nir_foreach_block(block, impl) {
@@ -349,24 +294,22 @@ void apply_nuw_to_offsets(isel_context *ctx, nir_function_impl *impl)
          case nir_intrinsic_load_uniform:
          case nir_intrinsic_load_push_constant:
             if (!nir_src_is_divergent(intrin->src[0]))
-               apply_nuw_to_ssa(ctx->shader, range_ht, intrin->src[0].ssa, &config);
+               apply_nuw_to_ssa(ctx, intrin->src[0].ssa);
             break;
          case nir_intrinsic_load_ubo:
          case nir_intrinsic_load_ssbo:
             if (!nir_src_is_divergent(intrin->src[1]))
-               apply_nuw_to_ssa(ctx->shader, range_ht, intrin->src[1].ssa, &config);
+               apply_nuw_to_ssa(ctx, intrin->src[1].ssa);
             break;
          case nir_intrinsic_store_ssbo:
             if (!nir_src_is_divergent(intrin->src[2]))
-               apply_nuw_to_ssa(ctx->shader, range_ht, intrin->src[2].ssa, &config);
+               apply_nuw_to_ssa(ctx, intrin->src[2].ssa);
             break;
          default:
             break;
          }
       }
    }
-
-   _mesa_hash_table_destroy(range_ht, NULL);
 }
 
 RegClass get_reg_class(isel_context *ctx, RegType type, unsigned components, unsigned bitsize)
@@ -634,6 +577,63 @@ void init_context(isel_context *ctx, nir_shader *shader)
    unsigned lane_mask_size = ctx->program->lane_mask.size();
 
    ctx->shader = shader;
+
+   /* Init NIR range analysis. */
+   ctx->range_ht =_mesa_pointer_hash_table_create(NULL);
+   ctx->ub_config.min_subgroup_size = 64;
+   ctx->ub_config.max_subgroup_size = 64;
+   if (ctx->shader->info.stage == MESA_SHADER_COMPUTE && ctx->options->key.cs.subgroup_size) {
+      ctx->ub_config.min_subgroup_size = ctx->options->key.cs.subgroup_size;
+      ctx->ub_config.max_subgroup_size = ctx->options->key.cs.subgroup_size;
+   }
+   ctx->ub_config.max_work_group_invocations = 2048;
+   ctx->ub_config.max_work_group_count[0] = 65535;
+   ctx->ub_config.max_work_group_count[1] = 65535;
+   ctx->ub_config.max_work_group_count[2] = 65535;
+   ctx->ub_config.max_work_group_size[0] = 2048;
+   ctx->ub_config.max_work_group_size[1] = 2048;
+   ctx->ub_config.max_work_group_size[2] = 2048;
+   for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
+      unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[i];
+      unsigned dfmt = attrib_format & 0xf;
+      unsigned nfmt = (attrib_format >> 4) & 0x7;
+
+      uint32_t max = UINT32_MAX;
+      if (nfmt == V_008F0C_BUF_NUM_FORMAT_UNORM) {
+         max = 0x3f800000u;
+      } else if (nfmt == V_008F0C_BUF_NUM_FORMAT_UINT ||
+                 nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED) {
+         bool uscaled = nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED;
+         switch (dfmt) {
+         case V_008F0C_BUF_DATA_FORMAT_8:
+         case V_008F0C_BUF_DATA_FORMAT_8_8:
+         case V_008F0C_BUF_DATA_FORMAT_8_8_8_8:
+            max = uscaled ? 0x437f0000u : UINT8_MAX;
+            break;
+         case V_008F0C_BUF_DATA_FORMAT_10_10_10_2:
+         case V_008F0C_BUF_DATA_FORMAT_2_10_10_10:
+            max = uscaled ? 0x447fc000u : 1023;
+            break;
+         case V_008F0C_BUF_DATA_FORMAT_10_11_11:
+         case V_008F0C_BUF_DATA_FORMAT_11_11_10:
+            max = uscaled ? 0x44ffe000u : 2047;
+            break;
+         case V_008F0C_BUF_DATA_FORMAT_16:
+         case V_008F0C_BUF_DATA_FORMAT_16_16:
+         case V_008F0C_BUF_DATA_FORMAT_16_16_16_16:
+            max = uscaled ? 0x477fff00u : UINT16_MAX;
+            break;
+         case V_008F0C_BUF_DATA_FORMAT_32:
+         case V_008F0C_BUF_DATA_FORMAT_32_32:
+         case V_008F0C_BUF_DATA_FORMAT_32_32_32:
+         case V_008F0C_BUF_DATA_FORMAT_32_32_32_32:
+            max = uscaled ? 0x4f800000u : UINT32_MAX;
+            break;
+         }
+      }
+      ctx->ub_config.vertex_attrib_max[i] = max;
+   }
+
    nir_divergence_analysis(shader);
    nir_opt_uniform_atomics(shader);
 
@@ -1013,6 +1013,11 @@ void init_context(isel_context *ctx, nir_shader *shader)
    ctx->program->constant_data.insert(ctx->program->constant_data.end(),
                                       (uint8_t*)shader->constant_data,
                                       (uint8_t*)shader->constant_data + shader->constant_data_size);
+}
+
+void cleanup_context(isel_context *ctx)
+{
+   _mesa_hash_table_destroy(ctx->range_ht, NULL);
 }
 
 isel_context
