@@ -936,6 +936,47 @@ bi_flip_slots(bi_registers *regs)
 
 }
 
+/* Lower CUBEFACE2 to a CUBEFACE1/CUBEFACE2. This is a hack so the scheduler
+ * doesn't have to worry about this while we're just packing singletons */
+
+static void
+bi_lower_cubeface2(bi_context *ctx, bi_bundle *bundle)
+{
+        /* Filter for +CUBEFACE2 */
+        if (!bundle->add || bundle->add->type != BI_SPECIAL_ADD
+                         || bundle->add->op.special != BI_SPECIAL_CUBEFACE2) {
+                return;
+        }
+
+        /* This won't be used once we emit non-singletons, for now this is just
+         * a fact of our scheduler and allows us to clobber FMA */
+        assert(!bundle->fma);
+
+        /* Construct an FMA op */
+        bi_instruction cubeface1 = {
+                .type = BI_SPECIAL_FMA,
+                .op.special = BI_SPECIAL_CUBEFACE1,
+                /* no dest, just to a temporary */
+                .dest_type = nir_type_float32,
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
+        };
+
+        /* Copy over the register allocated sources (coordinates). */
+        memcpy(&cubeface1.src, bundle->add->src, sizeof(cubeface1.src));
+
+        /* Zeroed by RA since this is all 32-bit */
+        for (unsigned i = 0; i < 3; ++i)
+                assert(bundle->add->swizzle[i][0] == 0);
+
+        /* Emit the instruction */
+        bundle->fma = bi_emit_before(ctx, bundle->add, cubeface1);
+
+        /* Now replace the sources of the CUBEFACE2 with a single passthrough
+         * from the CUBEFACE1 (and a side-channel) */
+        bundle->add->src[0] = BIR_INDEX_PASS | BIFROST_SRC_STAGE;
+        bundle->add->src[1] = bundle->add->src[2] = 0;
+}
+
 static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle, gl_shader_stage stage)
 {
@@ -1041,6 +1082,9 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 struct util_dynarray *emission, gl_shader_stage stage,
                 bool tdd)
 {
+        /* After the deadline lowering */
+        bi_lower_cubeface2(ctx, &clause->bundles[0]);
+
         struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true, stage);
         assert(clause->bundle_count == 1);
 
