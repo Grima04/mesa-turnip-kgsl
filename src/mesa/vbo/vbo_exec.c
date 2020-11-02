@@ -260,13 +260,13 @@ vbo_merge_draws(struct gl_context *ctx, bool in_dlist,
 unsigned
 vbo_copy_vertices(struct gl_context *ctx,
                   GLenum mode,
-                  struct _mesa_prim *last_prim,
+                  unsigned start, unsigned *pcount, bool begin,
                   unsigned vertex_size,
                   bool in_dlist,
                   fi_type *dst,
                   const fi_type *src)
 {
-   const unsigned count = last_prim->count;
+   const unsigned count = *pcount;
    unsigned copy = 0;
 
    switch (mode) {
@@ -310,7 +310,7 @@ vbo_copy_vertices(struct gl_context *ctx,
       }
       break;
    case GL_LINE_LOOP:
-      if (!in_dlist && last_prim->begin == 0) {
+      if (!in_dlist && begin == 0) {
          /* We're dealing with the second or later section of a split/wrapped
           * GL_LINE_LOOP.  Since we're converting line loops to line strips,
           * we've already incremented the last_prim->start counter by one to
@@ -318,7 +318,7 @@ vbo_copy_vertices(struct gl_context *ctx,
           * subtract one from last_prim->start) so that we copy the 0th vertex
           * to the next vertex buffer.
           */
-         assert(last_prim->start > 0);
+         assert(start > 0);
          src -= vertex_size;
       }
       FALLTHROUGH;
@@ -337,7 +337,7 @@ vbo_copy_vertices(struct gl_context *ctx,
       }
    case GL_TRIANGLE_STRIP:
       /* Draw an even number of triangles to keep front/back facing the same. */
-      last_prim->count -= count % 2;
+      *pcount -= count % 2;
       FALLTHROUGH;
    case GL_QUAD_STRIP:
       if (count <= 1)

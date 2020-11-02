@@ -75,7 +75,8 @@ vbo_exec_copy_vertices(struct vbo_exec_context *exec)
    const fi_type *src = exec->vtx.buffer_map + last_prim->start * sz;
 
    return vbo_copy_vertices(ctx, ctx->Driver.CurrentExecPrimitive,
-                            last_prim, sz, false, dst, src);
+                            last_prim->start, &last_prim->count,
+                            last_prim->begin, sz, false, dst, src);
 }
 
 

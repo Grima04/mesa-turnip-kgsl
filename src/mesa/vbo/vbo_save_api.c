@@ -128,7 +128,8 @@ copy_vertices(struct gl_context *ctx,
    if (prim->end)
       return 0;
 
-   return vbo_copy_vertices(ctx, prim->mode, prim, sz, true, dst, src);
+   return vbo_copy_vertices(ctx, prim->mode, prim->start, &prim->count,
+                            prim->begin, sz, true, dst, src);
 }
 
 

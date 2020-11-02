@@ -199,7 +199,7 @@ vbo_merge_draws(struct gl_context *ctx, bool in_dlist,
 unsigned
 vbo_copy_vertices(struct gl_context *ctx,
                   GLenum mode,
-                  struct _mesa_prim *last_prim,
+                  unsigned start, unsigned *count, bool begin,
                   unsigned vertex_size,
                   bool in_dlist,
                   fi_type *dst,
