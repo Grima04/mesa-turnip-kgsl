@@ -84,13 +84,13 @@ vbo_exec_wrap_buffers(struct vbo_exec_context *exec)
       struct gl_context *ctx = gl_context_from_vbo_exec(exec);
       struct _mesa_prim *last_prim = &exec->vtx.prim[exec->vtx.prim_count - 1];
       const GLuint last_begin = last_prim->begin;
-      GLuint last_count;
+      GLuint last_count = 0;
 
       if (_mesa_inside_begin_end(ctx)) {
          last_prim->count = exec->vtx.vert_count - last_prim->start;
+         last_count = last_prim->count;
+         last_prim->end = 0;
       }
-
-      last_count = last_prim->count;
 
       /* Special handling for wrapping GL_LINE_LOOP */
       if (last_prim->mode == GL_LINE_LOOP &&
@@ -124,9 +124,7 @@ vbo_exec_wrap_buffers(struct vbo_exec_context *exec)
       if (_mesa_inside_begin_end(ctx)) {
          exec->vtx.prim[0].mode = ctx->Driver.CurrentExecPrimitive;
          exec->vtx.prim[0].begin = 0;
-         exec->vtx.prim[0].end = 0;
          exec->vtx.prim[0].start = 0;
-         exec->vtx.prim[0].count = 0;
          exec->vtx.prim_count++;
 
          if (exec->vtx.copied.nr == last_count)
@@ -840,9 +838,7 @@ vbo_exec_Begin(GLenum mode)
    i = exec->vtx.prim_count++;
    exec->vtx.prim[i].mode = mode;
    exec->vtx.prim[i].begin = 1;
-   exec->vtx.prim[i].end = 0;
    exec->vtx.prim[i].start = exec->vtx.vert_count;
-   exec->vtx.prim[i].count = 0;
 
    ctx->Driver.CurrentExecPrimitive = mode;
 
