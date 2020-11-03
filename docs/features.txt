@@ -468,7 +468,7 @@ Vulkan 1.2 -- all DONE: anv
   VK_EXT_host_query_reset                               DONE (anv, radv)
   VK_EXT_sampler_filter_minmax                          DONE (anv/gen9+, radv)
   VK_EXT_scalar_block_layout                            DONE (anv, radv/gfx7+)
-  VK_EXT_separate_stencil_usage                         DONE (anv, radv)
+  VK_EXT_separate_stencil_usage                         DONE (anv)
   VK_EXT_shader_viewport_index_layer                    DONE (anv, radv)
 
 Khronos extensions that are not part of any Vulkan version:
