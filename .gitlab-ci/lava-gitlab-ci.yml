@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-10-08-new-kernel"
+  DISTRIBUTION_TAG: "2020-11-05-new-kernel"
 
 .kernel+rootfs:
   stage: container-2
@@ -7,7 +7,7 @@ variables:
     - .ci-run-policy
   variables:
     GIT_STRATEGY: fetch
-    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.9-rc5-for-mesa-ci/linux-v5.9-rc5-for-mesa-ci.tar.gz"
+    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
     UPLOAD_FOR_LAVA: 1
   script:
     - .gitlab-ci/container/lava_build.sh
