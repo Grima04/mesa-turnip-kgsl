@@ -1748,7 +1748,7 @@ ir_dereference::is_lvalue(const struct _mesa_glsl_parse_state *state) const
 {
    ir_variable *var = this->variable_referenced();
 
-   /* Every l-value derference chain eventually ends in a variable.
+   /* Every l-value dereference chain eventually ends in a variable.
     */
    if ((var == NULL) || var->data.read_only)
       return false;
