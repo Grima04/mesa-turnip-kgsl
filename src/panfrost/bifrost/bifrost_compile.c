@@ -1826,8 +1826,8 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
         bi_emit(ctx, tex);
 }
 
-/* Simple textures ops correspond to NIR tex or txl with LOD = 0. Anything else
- * needs a complete texture op. */
+/* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D (or cube
+ * map, TODO) textures. Anything else needs a complete texture op. */
 
 static bool
 bi_is_normal_tex(gl_shader_stage stage, nir_tex_instr *instr)
@@ -1858,7 +1858,7 @@ emit_tex(bi_context *ctx, nir_tex_instr *instr)
                 instr->sampler_dim == GLSL_SAMPLER_DIM_EXTERNAL;
         bool is_f = base == nir_type_float && (sz == 16 || sz == 32);
 
-        if (is_normal && is_2d && is_f && !instr->is_shadow)
+        if (is_normal && is_2d && is_f && !instr->is_shadow && !instr->is_array)
                 emit_texs(ctx, instr);
         else
                 emit_texc(ctx, instr);
