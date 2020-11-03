@@ -2324,7 +2324,8 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
 }
 
 static void
-write_constant(void *dst, const nir_constant *c, const struct glsl_type *type)
+write_constant(void *dst, size_t dst_size,
+               const nir_constant *c, const struct glsl_type *type)
 {
    if (glsl_type_is_vector_or_scalar(type)) {
       const unsigned num_components = glsl_get_vector_elements(type);
@@ -2334,6 +2335,7 @@ write_constant(void *dst, const nir_constant *c, const struct glsl_type *type)
           *
           * TODO: Make the native bool bit_size an option.
           */
+         assert(num_components * 4 <= dst_size);
          for (unsigned i = 0; i < num_components; i++) {
             int32_t b32 = -(int)c->values[i].b;
             memcpy((char *)dst + i * 4, &b32, 4);
@@ -2341,6 +2343,7 @@ write_constant(void *dst, const nir_constant *c, const struct glsl_type *type)
       } else {
          assert(bit_size >= 8 && bit_size % 8 == 0);
          const unsigned byte_size = bit_size / 8;
+         assert(num_components * byte_size <= dst_size);
          for (unsigned i = 0; i < num_components; i++) {
             /* Annoyingly, thanks to packed structs, we can't make any
              * assumptions about the alignment of dst.  To avoid any strange
@@ -2354,16 +2357,21 @@ write_constant(void *dst, const nir_constant *c, const struct glsl_type *type)
       const unsigned stride = glsl_get_explicit_stride(type);
       assert(stride > 0);
       const struct glsl_type *elem_type = glsl_get_array_element(type);
-      for (unsigned i = 0; i < array_len; i++)
-         write_constant((char *)dst + i * stride, c->elements[i], elem_type);
+      for (unsigned i = 0; i < array_len; i++) {
+         unsigned elem_offset = i * stride;
+         assert(elem_offset < dst_size);
+         write_constant((char *)dst + elem_offset, dst_size - elem_offset,
+                        c->elements[i], elem_type);
+      }
    } else {
       assert(glsl_type_is_struct_or_ifc(type));
       const unsigned num_fields = glsl_get_length(type);
       for (unsigned i = 0; i < num_fields; i++) {
          const int field_offset = glsl_get_struct_field_offset(type, i);
-         assert(field_offset >= 0);
+         assert(field_offset >= 0 && field_offset < dst_size);
          const struct glsl_type *field_type = glsl_get_struct_field(type, i);
-         write_constant((char *)dst + field_offset, c->elements[i], field_type);
+         write_constant((char *)dst + field_offset, dst_size - field_offset,
+                        c->elements[i], field_type);
       }
    }
 }
@@ -2383,7 +2391,10 @@ nir_lower_mem_constant_vars(nir_shader *shader,
                                              shader->constant_data_size);
 
       nir_foreach_variable_with_modes(var, shader, nir_var_mem_constant) {
+         assert(var->data.driver_location < shader->constant_data_size);
          write_constant((char *)shader->constant_data +
+                           var->data.driver_location,
+                        shader->constant_data_size -
                            var->data.driver_location,
                         var->constant_initializer, var->type);
       }
