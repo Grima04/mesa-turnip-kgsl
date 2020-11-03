@@ -67,6 +67,8 @@ struct zink_resource_object {
 
    struct zink_batch_usage reads;
    struct zink_batch_usage writes;
+   unsigned map_count;
+   void *map;
    bool is_buffer;
    bool host_visible;
 };
