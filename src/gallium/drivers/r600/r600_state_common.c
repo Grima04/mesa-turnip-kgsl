@@ -2064,7 +2064,7 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
 	unsigned index_size = info->index_size;
 	int index_bias;
 	struct r600_shader_atomic combined_atomics[8];
-	uint8_t atomic_used_mask;
+	uint8_t atomic_used_mask = 0;
 
 	if (!info->indirect && !info->count && (index_size || !info->count_from_stream_output)) {
 		return;
