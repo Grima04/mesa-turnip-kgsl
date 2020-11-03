@@ -1679,7 +1679,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 .op = bi_tex_op(instr->op),
                 .offset_or_bias_disable = false, /* TODO */
                 .shadow_or_clamp_disable = instr->is_shadow,
-                .array = false, /* TODO */
+                .array = instr->is_array,
                 .dimension = bifrost_tex_format(instr->sampler_dim),
                 .format = bi_texture_format(instr->dest_type, BIFROST_NONE), /* TODO */
                 .mask = (1 << tex.vector_channels) - 1
@@ -1705,6 +1705,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 unsigned index = pan_src_index(&instr->src[i].src);
                 unsigned sz = nir_src_bit_size(instr->src[i].src);
                 ASSERTED nir_alu_type base = nir_tex_instr_src_type(instr, i);
+                nir_alu_type T = base | sz;
 
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord:
@@ -1716,6 +1717,22 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                                 tex.src[2] = index;
                                 tex.swizzle[1][0] = 0;
                                 tex.swizzle[2][0] = 1;
+
+                                unsigned components = nir_src_num_components(instr->src[i].src);
+                                assert(components == 2 || components == 3);
+
+                                if (components == 2) {
+                                        /* nothing to do */
+                                } else if (desc.array) {
+                                        /* 2D array */
+                                        dregs[BIFROST_TEX_DREG_ARRAY] =
+                                                bi_emit_array_index(ctx, index, T,
+                                                        &dregs_swiz[BIFROST_TEX_DREG_ARRAY]);
+                                } else {
+                                        /* 3D */
+                                        dregs[BIFROST_TEX_DREG_Z_COORD] = index;
+                                        dregs_swiz[BIFROST_TEX_DREG_Z_COORD] = 2;
+                                }
                         }
                         break;
 
