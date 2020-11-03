@@ -1802,25 +1802,19 @@ static void handle_fill_buffer(struct lvp_cmd_buffer_entry *cmd,
                                struct rendering_state *state)
 {
    struct lvp_cmd_fill_buffer *fillcmd = &cmd->u.fill_buffer;
-   uint32_t *dst;
-   struct pipe_transfer *dst_t;
-   struct pipe_box box;
    uint32_t size = fillcmd->fill_size;
 
-   if (fillcmd->fill_size == VK_WHOLE_SIZE)
+   if (fillcmd->fill_size == VK_WHOLE_SIZE) {
       size = fillcmd->buffer->bo->width0 - fillcmd->offset;
+      size = ROUND_DOWN_TO(size, 4);
+   }
 
-   u_box_1d(fillcmd->offset, size, &box);
-   dst = state->pctx->transfer_map(state->pctx,
-                                   fillcmd->buffer->bo,
-                                   0,
-                                   PIPE_MAP_WRITE,
-                                   &box,
-                                   &dst_t);
-
-   for (unsigned i = 0; i < size / 4; i++)
-      dst[i] = fillcmd->data;
-   state->pctx->transfer_unmap(state->pctx, dst_t);
+   state->pctx->clear_buffer(state->pctx,
+                             fillcmd->buffer->bo,
+                             fillcmd->offset,
+                             size,
+                             &fillcmd->data,
+                             4);
 }
 
 static void handle_update_buffer(struct lvp_cmd_buffer_entry *cmd,
