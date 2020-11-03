@@ -1255,6 +1255,39 @@ bi_texture_format(nir_alu_type T, enum bifrost_outmod outmod)
         }
 }
 
+/* Array indices are specified as 32-bit uints, need to convert. In .z component from NIR */
+static unsigned
+bi_emit_array_index(bi_context *ctx, unsigned idx, nir_alu_type T, unsigned *c)
+{
+        /* For (u)int we can just passthrough */
+        nir_alu_type base = nir_alu_type_get_base_type(T);
+        if (base == nir_type_int || base == nir_type_uint) {
+                *c = 2;
+                return idx;
+        }
+
+        /* Otherwise we convert */
+        assert(T == nir_type_float16 || T == nir_type_float32);
+
+        /* OpenGL ES 3.2 specification section 8.14.2 ("Coordinate Wrapping and
+         * Texel Selection") defines the layer to be taken from clamp(RNE(r),
+         * 0, dt - 1). So we use roundmode RTE, clamping is handled at the data
+         * structure level */
+        bi_instruction f2i = {
+                .type = BI_CONVERT,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_uint32,
+                .src = { idx },
+                .src_types = { T },
+                .swizzle = { { 2 } },
+                .roundmode = BIFROST_RTE
+        };
+
+        *c = 0;
+        bi_emit(ctx, f2i);
+        return f2i.dest;
+}
+
 /* TEXC's explicit and bias LOD modes requires the LOD to be transformed to a
  * 16-bit 8:8 fixed-point format. We lower as:
  *
