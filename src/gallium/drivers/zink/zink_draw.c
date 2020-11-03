@@ -649,7 +649,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
                zink_batch_reference_sampler_view(batch, sampler_view);
             if (sampler)
                /* this only tracks the most recent usage for now */
-               zink_batch_usage_set(&sampler->batch_uses, batch->queue, batch->state->batch_id);
+               zink_batch_usage_set(&sampler->batch_uses, batch->queue, batch->state->fence.batch_id);
          }
          assert(num_wds < num_descriptors);
 

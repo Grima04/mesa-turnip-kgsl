@@ -28,8 +28,8 @@ zink_batch_state_clear_resources(struct zink_screen *screen, struct zink_batch_s
    /* unref all used resources */
    set_foreach(bs->resources, entry) {
       struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
-      batch_usage_unset(&obj->reads, !!bs->is_compute, bs->batch_id);
-      batch_usage_unset(&obj->writes, !!bs->is_compute, bs->batch_id);
+      batch_usage_unset(&obj->reads, !!bs->fence.is_compute, bs->fence.batch_id);
+      batch_usage_unset(&obj->writes, !!bs->fence.is_compute, bs->fence.batch_id);
       zink_resource_object_reference(screen, &obj, NULL);
       _mesa_set_remove(bs->resources, entry);
    }
@@ -50,13 +50,13 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    set_foreach(bs->surfaces, entry) {
       struct zink_surface *surf = (struct zink_surface *)entry->key;
-      batch_usage_unset(&surf->batch_uses, !!bs->is_compute, bs->batch_id);
+      batch_usage_unset(&surf->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
       zink_surface_reference(screen, &surf, NULL);
       _mesa_set_remove(bs->surfaces, entry);
    }
    set_foreach(bs->bufferviews, entry) {
       struct zink_buffer_view *buffer_view = (struct zink_buffer_view *)entry->key;
-      batch_usage_unset(&buffer_view->batch_uses, !!bs->is_compute, bs->batch_id);
+      batch_usage_unset(&buffer_view->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
       zink_buffer_view_reference(screen, &buffer_view, NULL);
       _mesa_set_remove(bs->bufferviews, entry);
    }
@@ -69,7 +69,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    set_foreach(bs->desc_sets, entry) {
       struct zink_descriptor_set *zds = (void*)entry->key;
-      batch_usage_unset(&zds->batch_uses, !!bs->is_compute, bs->batch_id);
+      batch_usage_unset(&zds->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
       /* reset descriptor pools when no bs is using this program to avoid
        * having some inactive program hogging a billion descriptors
        */
@@ -79,7 +79,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    }
 
    set_foreach(bs->programs, entry) {
-      if (bs->is_compute) {
+      if (bs->fence.is_compute) {
          struct zink_compute_program *comp = (struct zink_compute_program*)entry->key;
          bool in_use = comp == ctx->curr_compute;
          if (zink_compute_program_reference(screen, &comp, NULL) && in_use)
@@ -102,7 +102,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    bs->flush_res = NULL;
 
    bs->descs_used = 0;
-   ctx->resource_size[bs->is_compute] -= bs->resource_size;
+   ctx->resource_size[bs->fence.is_compute] -= bs->resource_size;
    bs->resource_size = 0;
 }
 
@@ -179,7 +179,7 @@ create_batch_state(struct zink_context *ctx, enum zink_queue queue)
       /* this destroys the batch state on failure */
       return NULL;
 
-   bs->is_compute = queue == ZINK_QUEUE_COMPUTE;
+   bs->fence.is_compute = queue == ZINK_QUEUE_COMPUTE;
 
    return bs;
 fail:
@@ -251,10 +251,10 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (vkBeginCommandBuffer(batch->state->cmdbuf, &cbbi) != VK_SUCCESS)
       debug_printf("vkBeginCommandBuffer failed\n");
 
-   batch->state->batch_id = ctx->curr_batch;
+   batch->state->fence.batch_id = ctx->curr_batch;
    if (ctx->last_fence[batch->queue]) {
       struct zink_batch_state *last_state = zink_batch_state(ctx->last_fence[batch->queue]);
-      batch->last_batch_id = last_state->batch_id;
+      batch->last_batch_id = last_state->fence.batch_id;
    }
    if (!ctx->queries_disabled)
       zink_resume_queries(ctx, batch);
@@ -316,7 +316,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    }
 
    ctx->last_fence[batch->queue] = &batch->state->fence;
-   _mesa_hash_table_insert_pre_hashed(&ctx->batch_states[batch->queue], batch->state->batch_id, (void*)(uintptr_t)batch->state->batch_id, batch->state);
+   _mesa_hash_table_insert_pre_hashed(&ctx->batch_states[batch->queue], batch->state->fence.batch_id, (void*)(uintptr_t)batch->state->fence.batch_id, batch->state);
    ctx->resource_size[batch->queue] += batch->state->resource_size;
 }
 
@@ -346,8 +346,8 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    }
 
    /* if the resource already has usage of any sort set for this batch, we can skip hashing */
-   if (!zink_batch_usage_matches(&res->obj->reads, batch->queue, batch->state->batch_id) &&
-       !zink_batch_usage_matches(&res->obj->writes, batch->queue, batch->state->batch_id)) {
+   if (!zink_batch_usage_matches(&res->obj->reads, batch->queue, batch->state->fence.batch_id) &&
+       !zink_batch_usage_matches(&res->obj->writes, batch->queue, batch->state->fence.batch_id)) {
       bool found = false;
       _mesa_set_search_and_add(batch->state->resources, res->obj, &found);
       if (!found) {
@@ -366,12 +366,12 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
        }
    if (write) {
       if (stencil)
-         zink_batch_usage_set(&stencil->obj->writes, batch->queue, batch->state->batch_id);
-      zink_batch_usage_set(&res->obj->writes, batch->queue, batch->state->batch_id);
+         zink_batch_usage_set(&stencil->obj->writes, batch->queue, batch->state->fence.batch_id);
+      zink_batch_usage_set(&res->obj->writes, batch->queue, batch->state->fence.batch_id);
    } else {
       if (stencil)
-         zink_batch_usage_set(&stencil->obj->reads, batch->queue, batch->state->batch_id);
-      zink_batch_usage_set(&res->obj->reads, batch->queue, batch->state->batch_id);
+         zink_batch_usage_set(&stencil->obj->reads, batch->queue, batch->state->fence.batch_id);
+      zink_batch_usage_set(&res->obj->reads, batch->queue, batch->state->fence.batch_id);
    }
    /* multiple array entries are fine */
    if (res->obj->persistent_maps)
@@ -385,11 +385,11 @@ static bool
 ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage *u)
 {
    bool found = false;
-   if (zink_batch_usage_matches(u, batch->queue, batch->state->batch_id))
+   if (zink_batch_usage_matches(u, batch->queue, batch->state->fence.batch_id))
       return false;
    _mesa_set_search_and_add(s, ptr, &found);
    assert(!found);
-   zink_batch_usage_set(u, batch->queue, batch->state->batch_id);
+   zink_batch_usage_set(u, batch->queue, batch->state->fence.batch_id);
    return true;
 }
 

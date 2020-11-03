@@ -406,7 +406,7 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, e
    unsigned result_size = result_type <= PIPE_QUERY_TYPE_U32 ? sizeof(uint32_t) : sizeof(uint64_t);
    struct zink_query *query = (struct zink_query*)pquery;
    union pipe_query_result result;
-   if (zink_batch_usage_matches(&query->batch_id, ZINK_QUEUE_GFX, zink_batch_g(ctx)->state->batch_id))
+   if (zink_batch_usage_matches(&query->batch_id, ZINK_QUEUE_GFX, zink_batch_g(ctx)->state->fence.batch_id))
       pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
    else if (is_cs_query(query))
       zink_flush_compute(ctx);
@@ -535,7 +535,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (needs_stats_list(q))
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    p_atomic_inc(&q->fences);
-   zink_batch_usage_set(&q->batch_id, batch->queue, batch->state->batch_id);
+   zink_batch_usage_set(&q->batch_id, batch->queue, batch->state->fence.batch_id);
    _mesa_set_add(batch->state->active_queries, q);
 }
 
@@ -565,7 +565,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    if (is_time_query(q)) {
       vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           q->query_pool, q->curr_query);
-      zink_batch_usage_set(&q->batch_id, batch->queue, batch->state->batch_id);
+      zink_batch_usage_set(&q->batch_id, batch->queue, batch->state->fence.batch_id);
    } else if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
             q->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
             q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE)

@@ -1823,20 +1823,20 @@ zink_wait_on_batch(struct zink_context *ctx, enum zink_queue queue, uint32_t bat
 {
    struct zink_batch_state *bs = zink_batch_queue(ctx, queue)->state;
    assert(bs);
-   if (!batch_id || bs->batch_id == batch_id)
+   if (!batch_id || bs->fence.batch_id == batch_id)
       /* not submitted yet */
       flush_batch(ctx, queue);
 
    struct zink_fence *fence;
 
    assert(batch_id || ctx->last_fence[queue]);
-   if (ctx->last_fence[queue] && (!batch_id || batch_id == zink_batch_state(ctx->last_fence[queue])->batch_id))
+   if (ctx->last_fence[queue] && (!batch_id || batch_id == zink_batch_state(ctx->last_fence[queue])->fence.batch_id))
       fence = ctx->last_fence[queue];
    else {
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->batch_states[queue], batch_id, (void*)(uintptr_t)batch_id);
       if (!he) {
         util_dynarray_foreach(&ctx->free_batch_states[queue], struct zink_batch_state*, bs) {
-           if ((*bs)->batch_id == batch_id)
+           if ((*bs)->fence.batch_id == batch_id)
               return;
         }
         unreachable("should've found batch state");

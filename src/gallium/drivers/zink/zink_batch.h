@@ -78,9 +78,6 @@ struct zink_batch_state {
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
 
    VkDeviceSize resource_size;
-
-   uint32_t batch_id;
-   bool is_compute;
 };
 
 struct zink_batch {

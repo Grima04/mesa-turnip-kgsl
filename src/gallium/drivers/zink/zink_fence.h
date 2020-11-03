@@ -39,7 +39,9 @@ struct zink_fence {
    struct pipe_reference reference;
    VkFence fence;
    struct pipe_context *deferred_ctx;
+   uint32_t batch_id;
    bool submitted;
+   bool is_compute;
 };
 
 static inline struct zink_fence *
