@@ -43,6 +43,8 @@ extern "C" {
 #endif
 
 struct gl_context;
+struct pipe_draw_info;
+struct pipe_draw_start_count;
 
 /**
  * Max number of primitives (number of glBegin/End pairs) per VBO.
@@ -228,6 +230,12 @@ vbo_get_minmax_indices(struct gl_context *ctx, const struct _mesa_prim *prim,
                        GLuint *min_index, GLuint *max_index, GLuint nr_prims,
                        bool primitive_restart,
                        unsigned restart_index);
+
+void
+vbo_get_minmax_indices_gallium(struct gl_context *ctx,
+                               struct pipe_draw_info *info,
+                               const struct pipe_draw_start_count *draws,
+                               unsigned num_draws);
 
 void
 vbo_sw_primitive_restart(struct gl_context *ctx,

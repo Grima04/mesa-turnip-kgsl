@@ -34,6 +34,7 @@
 #include "x86/common_x86_asm.h"
 #include "util/hash_table.h"
 #include "util/u_memory.h"
+#include "pipe/p_state.h"
 
 
 struct minmax_cache_key {
@@ -391,5 +392,40 @@ vbo_get_minmax_indices(struct gl_context *ctx,
                            &tmp_min, &tmp_max);
       *min_index = MIN2(*min_index, tmp_min);
       *max_index = MAX2(*max_index, tmp_max);
+   }
+}
+
+/**
+ * Same as vbo_get_minmax_index, but using gallium draw structures.
+ */
+void
+vbo_get_minmax_indices_gallium(struct gl_context *ctx,
+                               struct pipe_draw_info *info,
+                               const struct pipe_draw_start_count *draws,
+                               unsigned num_draws)
+{
+   info->min_index = ~0;
+   info->max_index = 0;
+
+   for (unsigned i = 0; i < num_draws; i++) {
+      struct pipe_draw_start_count draw = draws[i];
+
+      /* Do combination if possible to reduce map/unmap count */
+      while ((i + 1 < num_draws) &&
+             (draws[i].start + draws[i].count == draws[i+1].start)) {
+         draw.count += draws[i+1].count;
+         i++;
+      }
+
+      unsigned tmp_min, tmp_max;
+      vbo_get_minmax_index(ctx, info->has_user_indices ?
+                              NULL : info->index.gl_bo,
+                           info->index.user,
+                           (GLintptr)draw.start * info->index_size,
+                           draw.count, info->index_size,
+                           info->primitive_restart, info->restart_index,
+                           &tmp_min, &tmp_max);
+      info->min_index = MIN2(info->min_index, tmp_min);
+      info->max_index = MAX2(info->max_index, tmp_max);
    }
 }
