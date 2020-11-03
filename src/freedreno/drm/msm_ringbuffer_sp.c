@@ -126,9 +126,7 @@ msm_submit_append_bo(struct msm_submit_sp *submit, struct fd_bo *bo)
 			/* found */
 			idx = (uint32_t)(uintptr_t)entry->data;
 		} else {
-			idx = APPEND(submit, bos);
-
-			submit->bos[idx] = fd_bo_ref(bo);
+			idx = APPEND(submit, bos, fd_bo_ref(bo));
 
 			_mesa_hash_table_insert_pre_hashed(submit->bo_table, hash, bo,
 					(void *)(uintptr_t)idx);
@@ -272,7 +270,7 @@ msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
 		submit_bos[i].handle   = msm_submit->bos[i]->handle;
 		submit_bos[i].presumed = 0;
 	}
-	req.bos = VOID2U64(&submit_bos),
+	req.bos = VOID2U64(submit_bos),
 	req.nr_bos = msm_submit->nr_bos;
 	req.cmds = VOID2U64(cmds),
 	req.nr_cmds = primary->u.nr_cmds;
@@ -366,10 +364,10 @@ finalize_current_cmd(struct fd_ringbuffer *ring)
 	debug_assert(!(ring->flags & _FD_RINGBUFFER_OBJECT));
 
 	struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
-	unsigned idx = APPEND(&msm_ring->u, cmds);
-
-	msm_ring->u.cmds[idx].ring_bo = fd_bo_ref(msm_ring->ring_bo);
-	msm_ring->u.cmds[idx].size = offset_bytes(ring->cur, ring->start);
+	APPEND(&msm_ring->u, cmds, (struct msm_cmd_sp){
+		.ring_bo = fd_bo_ref(msm_ring->ring_bo),
+		.size = offset_bytes(ring->cur, ring->start),
+	});
 }
 
 static void
@@ -413,8 +411,7 @@ msm_ringbuffer_sp_emit_reloc(struct fd_ringbuffer *ring,
 			}
 		}
 		if (!found) {
-			unsigned idx = APPEND(&msm_ring->u, reloc_bos);
-			msm_ring->u.reloc_bos[idx] = fd_bo_ref(reloc->bo);
+			APPEND(&msm_ring->u, reloc_bos, fd_bo_ref(reloc->bo));
 		}
 
 		pipe = msm_ring->u.pipe;
@@ -474,10 +471,7 @@ msm_ringbuffer_sp_emit_reloc_ring(struct fd_ringbuffer *ring,
 
 	if (ring->flags & _FD_RINGBUFFER_OBJECT) {
 		for (unsigned i = 0; i < msm_target->u.nr_reloc_bos; i++) {
-			unsigned idx = APPEND(&msm_ring->u, reloc_bos);
-
-			msm_ring->u.reloc_bos[idx] =
-				fd_bo_ref(msm_target->u.reloc_bos[i]);
+			APPEND(&msm_ring->u, reloc_bos, fd_bo_ref(msm_target->u.reloc_bos[i]));
 		}
 	} else {
 		// TODO it would be nice to know whether we have already
