@@ -1685,6 +1685,30 @@ cso_draw_vbo(struct cso_context *cso,
    }
 }
 
+/* info->draw_id can be changed by the callee if increment_draw_id is true. */
+void
+cso_multi_draw(struct cso_context *cso,
+               struct pipe_draw_info *info,
+               const struct pipe_draw_start_count *draws,
+               unsigned num_draws)
+{
+   struct u_vbuf *vbuf = cso->vbuf_current;
+
+   if (vbuf) {
+      for (unsigned i = 0; i < num_draws; i++) {
+         if (draws[i].count)
+            u_vbuf_draw_vbo(vbuf, info, NULL, draws[i]);
+
+         if (info->increment_draw_id)
+            info->drawid++;
+      }
+   } else {
+      struct pipe_context *pipe = cso->pipe;
+
+      pipe->draw_vbo(pipe, info, NULL, draws, num_draws);
+   }
+}
+
 void
 cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count)
 {

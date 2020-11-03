@@ -227,6 +227,115 @@ st_draw_vbo(struct gl_context *ctx,
    }
 }
 
+static bool ALWAYS_INLINE
+prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
+                     struct st_context *st,
+                     struct gl_context *ctx,
+                     struct pipe_draw_info *info,
+                     const struct pipe_draw_start_count *draws,
+                     unsigned num_draws)
+{
+   if (info->index_size) {
+      /* Get index bounds for user buffers. */
+      if (!info->index_bounds_valid &&
+          st->draw_needs_minmax_index) {
+         vbo_get_minmax_indices_gallium(ctx, info, draws, num_draws);
+         info->index_bounds_valid = true;
+      }
+
+      if (!info->has_user_indices) {
+         info->index.resource = st_buffer_object(info->index.gl_bo)->buffer;
+
+         /* Return if the bound element array buffer doesn't have any backing
+          * storage. (nothing to do)
+          */
+         if (unlikely(!info->index.resource))
+            return false;
+      }
+   }
+   return true;
+}
+
+static void
+st_draw_gallium(struct gl_context *ctx,
+                struct pipe_draw_info *info,
+                const struct pipe_draw_start_count *draws,
+                unsigned num_draws)
+{
+   struct st_context *st = st_context(ctx);
+
+   prepare_draw(st, ctx);
+
+   if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
+      return;
+
+   cso_multi_draw(st->cso_context, info, draws, num_draws);
+}
+
+static void
+st_draw_gallium_complex(struct gl_context *ctx,
+                        struct pipe_draw_info *info,
+                        const struct pipe_draw_start_count *draws,
+                        const unsigned char *mode,
+                        const int *base_vertex,
+                        unsigned num_draws)
+{
+   struct st_context *st = st_context(ctx);
+
+   prepare_draw(st, ctx);
+
+   if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
+      return;
+
+   enum {
+      MODE = 1,
+      BASE_VERTEX = 2,
+   };
+   unsigned mask = (mode ? MODE : 0) | (base_vertex ? BASE_VERTEX : 0);
+   unsigned i, first;
+   struct cso_context *cso = st->cso_context;
+
+   /* Find consecutive draws where mode and base_vertex don't vary. */
+   switch (mask) {
+   case MODE:
+      for (i = 0, first = 0; i <= num_draws; i++) {
+         if (i == num_draws || mode[i] != mode[first]) {
+            info->mode = mode[first];
+            cso_multi_draw(cso, info, &draws[first], i - first);
+            first = i;
+         }
+      }
+      break;
+
+   case BASE_VERTEX:
+      for (i = 0, first = 0; i <= num_draws; i++) {
+         if (i == num_draws || base_vertex[i] != base_vertex[first]) {
+            info->index_bias = base_vertex[first];
+            cso_multi_draw(cso, info, &draws[first], i - first);
+            first = i;
+         }
+      }
+      break;
+
+   case MODE | BASE_VERTEX:
+      for (i = 0, first = 0; i <= num_draws; i++) {
+         if (i == num_draws ||
+             mode[i] != mode[first] ||
+             base_vertex[i] != base_vertex[first]) {
+            info->mode = mode[first];
+            info->index_bias = base_vertex[first];
+            cso_multi_draw(cso, info, &draws[first], i - first);
+            first = i;
+         }
+      }
+      break;
+
+   default:
+      assert(!"invalid parameters in DrawGalliumComplex");
+      break;
+   }
+}
+
 static void
 st_indirect_draw_vbo(struct gl_context *ctx,
                      GLuint mode,
@@ -324,8 +433,8 @@ void
 st_init_draw_functions(struct dd_function_table *functions)
 {
    functions->Draw = st_draw_vbo;
-   functions->DrawGallium = _mesa_draw_gallium_fallback;
-   functions->DrawGalliumComplex = _mesa_draw_gallium_complex_fallback;
+   functions->DrawGallium = st_draw_gallium;
+   functions->DrawGalliumComplex = st_draw_gallium_complex;
    functions->DrawIndirect = st_indirect_draw_vbo;
    functions->DrawTransformFeedback = st_draw_transform_feedback;
 }

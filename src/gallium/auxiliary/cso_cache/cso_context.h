@@ -217,6 +217,13 @@ cso_draw_vbo(struct cso_context *cso,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count draw);
 
+/* info->draw_id can be changed by the callee if increment_draw_id is true. */
+void
+cso_multi_draw(struct cso_context *cso,
+               struct pipe_draw_info *info,
+               const struct pipe_draw_start_count *draws,
+               unsigned num_draws);
+
 void
 cso_draw_arrays_instanced(struct cso_context *cso, uint mode,
                           uint start, uint count,
