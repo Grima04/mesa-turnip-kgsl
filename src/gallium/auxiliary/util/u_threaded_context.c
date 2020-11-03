@@ -194,11 +194,9 @@ tc_batch_flush(struct threaded_context *tc)
  */
 static union tc_payload *
 tc_add_sized_call(struct threaded_context *tc, enum tc_call_id id,
-                  unsigned payload_size)
+                  unsigned num_call_slots)
 {
    struct tc_batch *next = &tc->batch_slots[tc->next];
-   unsigned total_size = offsetof(struct tc_call, payload) + payload_size;
-   unsigned num_call_slots = DIV_ROUND_UP(total_size, sizeof(struct tc_call));
 
    tc_debug_check(tc);
 
@@ -221,19 +219,23 @@ tc_add_sized_call(struct threaded_context *tc, enum tc_call_id id,
    return &call->payload;
 }
 
+#define tc_payload_size_to_call_slots(size) \
+   DIV_ROUND_UP(offsetof(struct tc_call, payload) + (size), sizeof(struct tc_call))
+
 #define tc_add_struct_typed_call(tc, execute, type) \
-   ((struct type*)tc_add_sized_call(tc, execute, sizeof(struct type)))
+   ((struct type*)tc_add_sized_call(tc, execute, \
+                                    tc_payload_size_to_call_slots(sizeof(struct type))))
 
 #define tc_add_slot_based_call(tc, execute, type, num_slots) \
-   ((struct type*)tc_add_sized_call(tc, execute, \
+   ((struct type*)tc_add_sized_call(tc, execute, tc_payload_size_to_call_slots( \
                                     sizeof(struct type) + \
                                     sizeof(((struct type*)NULL)->slot[0]) * \
-                                    (num_slots)))
+                                    (num_slots))))
 
 static union tc_payload *
 tc_add_small_call(struct threaded_context *tc, enum tc_call_id id)
 {
-   return tc_add_sized_call(tc, id, 0);
+   return tc_add_sized_call(tc, id, tc_payload_size_to_call_slots(0));
 }
 
 static bool
@@ -373,7 +375,8 @@ threaded_context_unwrap_sync(struct pipe_context *pipe)
    tc_##func(struct pipe_context *_pipe, qualifier type deref param) \
    { \
       struct threaded_context *tc = threaded_context(_pipe); \
-      type *p = (type*)tc_add_sized_call(tc, TC_CALL_##func, sizeof(type)); \
+      type *p = (type*)tc_add_sized_call(tc, TC_CALL_##func, \
+                                         tc_payload_size_to_call_slots(sizeof(type))); \
       *p = deref(param); \
    }
 
@@ -705,7 +708,7 @@ tc_set_tess_state(struct pipe_context *_pipe,
 {
    struct threaded_context *tc = threaded_context(_pipe);
    float *p = (float*)tc_add_sized_call(tc, TC_CALL_set_tess_state,
-                                        sizeof(float) * 6);
+                                        tc_payload_size_to_call_slots(sizeof(float) * 6));
 
    memcpy(p, default_outer_level, 4 * sizeof(float));
    memcpy(p + 4, default_inner_level, 2 * sizeof(float));
@@ -2221,11 +2224,11 @@ tc_add_draw_vbo(struct pipe_context *_pipe, bool indirect)
    if (indirect) {
       return (struct tc_full_draw_info*)
              tc_add_sized_call(threaded_context(_pipe), TC_CALL_draw_indirect,
-                               sizeof(struct tc_full_draw_info));
+                               tc_payload_size_to_call_slots(sizeof(struct tc_full_draw_info)));
    } else {
       return (struct tc_full_draw_info*)
              tc_add_sized_call(threaded_context(_pipe), TC_CALL_draw_vbo,
-                               sizeof(struct pipe_draw_info));
+                               tc_payload_size_to_call_slots(sizeof(struct pipe_draw_info)));
    }
 }
 
