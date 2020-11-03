@@ -58,12 +58,12 @@ typedef struct {
 } DrawElementsIndirectCommand;
 
 
-#define MAX_ALLOCA_PRIMS (50000 / sizeof(*prim))
+#define MAX_ALLOCA_PRIMS(prim) (50000 / sizeof(*prim))
 
 /* Use calloc for large allocations and alloca for small allocations. */
 /* We have to use a macro because alloca is local within the function. */
 #define ALLOC_PRIMS(prim, primcount, func) do { \
-   if (unlikely(primcount > MAX_ALLOCA_PRIMS)) { \
+   if (unlikely(primcount > MAX_ALLOCA_PRIMS(prim))) { \
       prim = calloc(primcount, sizeof(*prim)); \
       if (!prim) { \
          _mesa_error(ctx, GL_OUT_OF_MEMORY, func); \
@@ -75,7 +75,7 @@ typedef struct {
 } while (0)
 
 #define FREE_PRIMS(prim, primcount) do { \
-   if (primcount > MAX_ALLOCA_PRIMS) \
+   if (primcount > MAX_ALLOCA_PRIMS(prim)) \
       free(prim); \
 } while (0)
 
@@ -529,18 +529,29 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    /* OpenGL 4.5 says that primitive restart is ignored with non-indexed
     * draws.
     */
-   struct _mesa_prim prim = {
-      .begin = 1,
-      .end = 1,
-      .mode = mode,
-      .draw_id = 0,
-      .start = start,
-      .count = count,
-   };
+   struct pipe_draw_info info;
+   struct pipe_draw_start_count draw;
 
-   ctx->Driver.Draw(ctx, &prim, 1, NULL,
-                    true, false, 0, start, start + count - 1,
-                    numInstances, baseInstance);
+   info.mode = mode;
+   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
+   info.index_size = 0;
+   /* Packed section begin. */
+   info.primitive_restart = false;
+   info.has_user_indices = false;
+   info.index_bounds_valid = true;
+   info.increment_draw_id = false;
+   info._pad = 0;
+   /* Packed section end. */
+   info.start_instance = baseInstance;
+   info.instance_count = numInstances;
+   info.drawid = 0;
+   info.min_index = start;
+   info.max_index = start + count - 1;
+
+   draw.start = start;
+   draw.count = count;
+
+   ctx->Driver.DrawGallium(ctx, &info, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -867,26 +878,36 @@ _mesa_exec_MultiDrawArrays(GLenum mode, const GLint *first,
    if (skip_validated_draw(ctx))
       return;
 
-   struct _mesa_prim *prim;
+   struct pipe_draw_info info;
+   struct pipe_draw_start_count *draw;
 
-   ALLOC_PRIMS(prim, primcount, "glMultiDrawElements");
+   ALLOC_PRIMS(draw, primcount, "glMultiDrawElements");
+
+   info.mode = mode;
+   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
+   info.index_size = 0;
+   /* Packed section begin. */
+   info.primitive_restart = false;
+   info.has_user_indices = false;
+   info.index_bounds_valid = false;
+   info.increment_draw_id = primcount > 1;
+   info._pad = 0;
+   /* Packed section end. */
+   info.start_instance = 0;
+   info.instance_count = 1;
+   info.drawid = 0;
 
    for (i = 0; i < primcount; i++) {
-      prim[i].begin = 1;
-      prim[i].end = 1;
-      prim[i].mode = mode;
-      prim[i].draw_id = i;
-      prim[i].start = first[i];
-      prim[i].count = count[i];
-      prim[i].basevertex = 0;
+      draw[i].start = first[i];
+      draw[i].count = count[i];
    }
 
-   ctx->Driver.Draw(ctx, prim, primcount, NULL, false, false, 0, 0, 0, 1, 0);
+   ctx->Driver.DrawGallium(ctx, &info, draw, primcount);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
 
-   FREE_PRIMS(prim, primcount);
+   FREE_PRIMS(draw, primcount);
 }
 
 
