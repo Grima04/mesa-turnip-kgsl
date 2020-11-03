@@ -219,6 +219,8 @@ static uint32_t get_hash_flags(const struct radv_device *device)
 		hash_flags |= RADV_HASH_SHADER_GE_WAVE32;
 	if (device->physical_device->use_llvm)
 		hash_flags |= RADV_HASH_SHADER_LLVM;
+	if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
+		hash_flags |= RADV_HASH_SHADER_DISCARD_TO_DEMOTE;
 	return hash_flags;
 }
 
