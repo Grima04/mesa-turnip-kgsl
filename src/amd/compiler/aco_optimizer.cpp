@@ -378,10 +378,10 @@ struct ssa_info {
       return label & label_undefined;
    }
 
-   void set_vcc(Temp vcc)
+   void set_vcc(Temp vcc_val)
    {
       add_label(label_vcc);
-      temp = vcc;
+      temp = vcc_val;
    }
 
    bool is_vcc()
@@ -389,10 +389,10 @@ struct ssa_info {
       return label & label_vcc;
    }
 
-   void set_b2f(Temp val)
+   void set_b2f(Temp b2f_val)
    {
       add_label(label_b2f);
-      temp = val;
+      temp = b2f_val;
    }
 
    bool is_b2f()
@@ -496,10 +496,10 @@ struct ssa_info {
       return label & label_vcc_hint;
    }
 
-   void set_b2i(Temp val)
+   void set_b2i(Temp b2i_val)
    {
       add_label(label_b2i);
-      temp = val;
+      temp = b2i_val;
    }
 
    bool is_b2i()
@@ -1128,7 +1128,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          }
          Instruction* vec = ctx.info[op.tempId()].instr;
          bool is_subdword = std::any_of(vec->operands.begin(), vec->operands.end(),
-                               [&] (const Operand& op) { return op.bytes() % 4; } );
+                               [&] (const Operand& op2) { return op2.bytes() % 4; } );
 
          if (accept_subdword || !is_subdword) {
             for (const Operand& vec_op : vec->operands) {
@@ -3374,10 +3374,10 @@ void optimize(Program* program)
    }
 
    /* 3. Top-Down DAG pass (backward) to select instructions (includes DCE) */
-   for (std::vector<Block>::reverse_iterator it = program->blocks.rbegin(); it != program->blocks.rend(); ++it) {
-      Block* block = &(*it);
-      for (std::vector<aco_ptr<Instruction>>::reverse_iterator it = block->instructions.rbegin(); it != block->instructions.rend(); ++it)
-         select_instruction(ctx, *it);
+   for (auto block_rit = program->blocks.rbegin(); block_rit != program->blocks.rend(); ++block_rit) {
+      Block* block = &(*block_rit);
+      for (auto instr_rit = block->instructions.rbegin(); instr_rit != block->instructions.rend(); ++instr_rit)
+         select_instruction(ctx, *instr_rit);
    }
 
    /* 4. Add literals to instructions */

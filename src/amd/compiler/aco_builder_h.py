@@ -117,7 +117,7 @@ public:
    struct Result {
       Instruction *instr;
 
-      Result(Instruction *instr) : instr(instr) {}
+      Result(Instruction *instr_) : instr(instr_) {}
 
       operator Instruction *() const {
          return instr;

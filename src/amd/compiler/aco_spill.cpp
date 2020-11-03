@@ -63,10 +63,10 @@ struct spill_ctx {
    std::map<Instruction *, bool> remat_used;
    unsigned wave_size;
 
-   spill_ctx(const RegisterDemand target_pressure, Program* program,
-             std::vector<std::vector<RegisterDemand>> register_demand)
-      : target_pressure(target_pressure), program(program),
-        register_demand(std::move(register_demand)), renames(program->blocks.size()),
+   spill_ctx(const RegisterDemand target_pressure_, Program* program_,
+             std::vector<std::vector<RegisterDemand>> register_demand_)
+      : target_pressure(target_pressure_), program(program_),
+        register_demand(std::move(register_demand_)), renames(program->blocks.size()),
         spills_entry(program->blocks.size()), spills_exit(program->blocks.size()),
         processed(program->blocks.size(), false), wave_size(program->wave_size) {}
 
@@ -733,10 +733,11 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       assert(ctx.register_demand[block_idx].size() == block->instructions.size());
       std::vector<RegisterDemand> reg_demand;
       unsigned insert_idx = 0;
-      unsigned pred_idx = block->linear_preds[0];
       RegisterDemand demand_before = get_demand_before(ctx, block_idx, 0);
 
       for (std::pair<Temp, std::pair<uint32_t, uint32_t>> live : ctx.next_use_distances_start[block_idx]) {
+         const unsigned pred_idx = block->linear_preds[0];
+
          if (!live.first.is_linear())
             continue;
          /* still spilled */
@@ -1221,11 +1222,9 @@ void spill_block(spill_ctx& ctx, unsigned block_idx)
                   !ctx.renames[block_idx].empty() ||
                   ctx.remat_used.size();
 
-   std::map<Temp, uint32_t>::iterator it = current_spills.begin();
-   while (!process && it != current_spills.end()) {
+   for (auto it = current_spills.begin(); !process && it != current_spills.end(); ++it) {
       if (ctx.next_use_distances_start[block_idx][it->first].first == block_idx)
          process = true;
-      ++it;
    }
 
    if (process)
@@ -1284,14 +1283,12 @@ void spill_block(spill_ctx& ctx, unsigned block_idx)
             instr_it++;
          }
 
-         std::map<Temp, std::pair<uint32_t, uint32_t>>::iterator it = ctx.next_use_distances_start[idx].find(rename.first);
-
          /* variable is not live at beginning of this block */
-         if (it == ctx.next_use_distances_start[idx].end())
+         if (ctx.next_use_distances_start[idx].count(rename.first) == 0)
             continue;
 
          /* if the variable is live at the block's exit, add rename */
-         if (ctx.next_use_distances_end[idx].find(rename.first) != ctx.next_use_distances_end[idx].end())
+         if (ctx.next_use_distances_end[idx].count(rename.first) != 0)
             ctx.renames[idx].insert(rename);
 
          /* rename all uses in this block */
@@ -1620,8 +1617,8 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                   } else {
                      assert(last_top_level_block_idx < block.index);
                      /* insert before the branch at last top level block */
-                     std::vector<aco_ptr<Instruction>>& instructions = ctx.program->blocks[last_top_level_block_idx].instructions;
-                     instructions.insert(std::next(instructions.begin(), instructions.size() - 1), std::move(create));
+                     std::vector<aco_ptr<Instruction>>& block_instrs = ctx.program->blocks[last_top_level_block_idx].instructions;
+                     block_instrs.insert(std::prev(block_instrs.end()), std::move(create));
                   }
                }
 
@@ -1689,8 +1686,8 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                   } else {
                      assert(last_top_level_block_idx < block.index);
                      /* insert before the branch at last top level block */
-                     std::vector<aco_ptr<Instruction>>& instructions = ctx.program->blocks[last_top_level_block_idx].instructions;
-                     instructions.insert(std::next(instructions.begin(), instructions.size() - 1), std::move(create));
+                     std::vector<aco_ptr<Instruction>>& block_instrs = ctx.program->blocks[last_top_level_block_idx].instructions;
+                     block_instrs.insert(std::prev(block_instrs.end()), std::move(create));
                   }
                }
 

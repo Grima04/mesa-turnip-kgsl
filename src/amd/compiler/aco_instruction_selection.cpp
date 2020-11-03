@@ -1579,15 +1579,15 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
                   src0, src1);
          bld.sop2(aco_opcode::s_cselect_b32, Definition(dst), Operand((uint32_t) -1), tmp, bld.scc(carry));
       } else if (dst.regClass() == v2b) {
-         Instruction *instr;
+         Instruction *add_instr;
          if (ctx->program->chip_class >= GFX10) {
-            instr = bld.vop3(aco_opcode::v_add_u16_e64, Definition(dst), src0, src1).instr;
+            add_instr = bld.vop3(aco_opcode::v_add_u16_e64, Definition(dst), src0, src1).instr;
          } else {
             if (src1.type() == RegType::sgpr)
                std::swap(src0, src1);
-            instr = bld.vop2_e64(aco_opcode::v_add_u16, Definition(dst), src0, as_vgpr(ctx, src1)).instr;
+            add_instr = bld.vop2_e64(aco_opcode::v_add_u16, Definition(dst), src0, as_vgpr(ctx, src1)).instr;
          }
-         static_cast<VOP3A_instruction*>(instr)->clamp = 1;
+         static_cast<VOP3A_instruction*>(add_instr)->clamp = 1;
       } else if (dst.regClass() == v1) {
          if (ctx->options->chip_class >= GFX9) {
             aco_ptr<VOP3A_instruction> add{create_instruction<VOP3A_instruction>(aco_opcode::v_add_u32, asVOP3(Format::VOP2), 2, 1)};
@@ -3190,21 +3190,21 @@ void emit_load(isel_context *ctx, Builder &bld, const LoadEmitInfo &info,
 
       /* shift result right if needed */
       if (params.byte_align_loads && info.component_size < 4) {
-         Operand align((uint32_t)byte_align);
+         Operand byte_align_off((uint32_t)byte_align);
          if (byte_align == -1) {
             if (offset.isConstant())
-               align = Operand(offset.constantValue() % 4u);
+               byte_align_off = Operand(offset.constantValue() % 4u);
             else if (offset.size() == 2)
-               align = Operand(emit_extract_vector(ctx, offset.getTemp(), 0, RegClass(offset.getTemp().type(), 1)));
+               byte_align_off = Operand(emit_extract_vector(ctx, offset.getTemp(), 0, RegClass(offset.getTemp().type(), 1)));
             else
-               align = offset;
+               byte_align_off = offset;
          }
 
          assert(val.bytes() >= load_size && "unimplemented");
          if (val.type() == RegType::sgpr)
-            byte_align_scalar(ctx, val, align, info.dst);
+            byte_align_scalar(ctx, val, byte_align_off, info.dst);
          else
-            byte_align_vector(ctx, val, align, info.dst, component_size);
+            byte_align_vector(ctx, val, byte_align_off, info.dst, component_size);
          return;
       }
 
@@ -3239,8 +3239,8 @@ void emit_load(isel_context *ctx, Builder &bld, const LoadEmitInfo &info,
       if (num_tmps > 1) {
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
             aco_opcode::p_create_vector, Format::PSEUDO, num_tmps, 1)};
-         for (unsigned i = 0; i < num_tmps; i++)
-            vec->operands[i] = Operand(tmp[i]);
+         for (unsigned j = 0; j < num_tmps; j++)
+            vec->operands[j] = Operand(tmp[j]);
          tmp[0] = bld.tmp(RegClass::get(reg_type, tmp_size));
          vec->definitions[0] = Definition(tmp[0]);
          bld.insert(std::move(vec));
@@ -3263,10 +3263,10 @@ void emit_load(isel_context *ctx, Builder &bld, const LoadEmitInfo &info,
          assert(tmp_size % elem_rc.bytes() == 0);
          aco_ptr<Pseudo_instruction> split{create_instruction<Pseudo_instruction>(
             aco_opcode::p_split_vector, Format::PSEUDO, 1, tmp_size / elem_rc.bytes())};
-         for (unsigned i = 0; i < split->definitions.size(); i++) {
+         for (auto& def : split->definitions) {
             Temp component = bld.tmp(elem_rc);
             allocated_vec[components_split++] = component;
-            split->definitions[i] = Definition(component);
+            def = Definition(component);
          }
          split->operands[0] = Operand(tmp[0]);
          bld.insert(std::move(split));
@@ -3496,31 +3496,31 @@ Temp global_load_callback(Builder& bld, const LoadEmitInfo &info,
                           Temp dst_hint)
 {
    unsigned bytes_size = 0;
-   bool mubuf = bld.program->chip_class == GFX6;
+   bool use_mubuf = bld.program->chip_class == GFX6;
    bool global = bld.program->chip_class >= GFX9;
    aco_opcode op;
    if (bytes_needed == 1) {
       bytes_size = 1;
-      op = mubuf ? aco_opcode::buffer_load_ubyte : global ? aco_opcode::global_load_ubyte : aco_opcode::flat_load_ubyte;
+      op = use_mubuf ? aco_opcode::buffer_load_ubyte : global ? aco_opcode::global_load_ubyte : aco_opcode::flat_load_ubyte;
    } else if (bytes_needed == 2) {
       bytes_size = 2;
-      op = mubuf ? aco_opcode::buffer_load_ushort : global ? aco_opcode::global_load_ushort : aco_opcode::flat_load_ushort;
+      op = use_mubuf ? aco_opcode::buffer_load_ushort : global ? aco_opcode::global_load_ushort : aco_opcode::flat_load_ushort;
    } else if (bytes_needed <= 4) {
       bytes_size = 4;
-      op = mubuf ? aco_opcode::buffer_load_dword : global ? aco_opcode::global_load_dword : aco_opcode::flat_load_dword;
+      op = use_mubuf ? aco_opcode::buffer_load_dword : global ? aco_opcode::global_load_dword : aco_opcode::flat_load_dword;
    } else if (bytes_needed <= 8) {
       bytes_size = 8;
-      op = mubuf ? aco_opcode::buffer_load_dwordx2 : global ? aco_opcode::global_load_dwordx2 : aco_opcode::flat_load_dwordx2;
-   } else if (bytes_needed <= 12 && !mubuf) {
+      op = use_mubuf ? aco_opcode::buffer_load_dwordx2 : global ? aco_opcode::global_load_dwordx2 : aco_opcode::flat_load_dwordx2;
+   } else if (bytes_needed <= 12 && !use_mubuf) {
       bytes_size = 12;
       op = global ? aco_opcode::global_load_dwordx3 : aco_opcode::flat_load_dwordx3;
    } else {
       bytes_size = 16;
-      op = mubuf ? aco_opcode::buffer_load_dwordx4 : global ? aco_opcode::global_load_dwordx4 : aco_opcode::flat_load_dwordx4;
+      op = use_mubuf ? aco_opcode::buffer_load_dwordx4 : global ? aco_opcode::global_load_dwordx4 : aco_opcode::flat_load_dwordx4;
    }
    RegClass rc = RegClass::get(RegType::vgpr, align(bytes_size, 4));
    Temp val = dst_hint.id() && rc == dst_hint.regClass() ? dst_hint : bld.tmp(rc);
-   if (mubuf) {
+   if (use_mubuf) {
       aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
       mubuf->operands[0] = Operand(get_gfx6_global_rsrc(bld, offset));
       mubuf->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
@@ -3753,13 +3753,13 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
       if (op == aco_opcode::num_opcodes)
          continue;
 
-      Temp data = write_datas[i];
+      Temp split_data = write_datas[i];
 
       unsigned second = write_count;
       if (usable_write2 && (op == aco_opcode::ds_write_b32 || op == aco_opcode::ds_write_b64)) {
          for (second = i + 1; second < write_count; second++) {
-            if (opcodes[second] == op && (offsets[second] - offsets[i]) % data.bytes() == 0) {
-               op = data.bytes() == 4 ? aco_opcode::ds_write2_b32 : aco_opcode::ds_write2_b64;
+            if (opcodes[second] == op && (offsets[second] - offsets[i]) % split_data.bytes() == 0) {
+               op = split_data.bytes() == 4 ? aco_opcode::ds_write2_b32 : aco_opcode::ds_write2_b64;
                opcodes[second] = aco_opcode::num_opcodes;
                break;
             }
@@ -3767,10 +3767,10 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
       }
 
       bool write2 = op == aco_opcode::ds_write2_b32 || op == aco_opcode::ds_write2_b64;
-      unsigned write2_off = (offsets[second] - offsets[i]) / data.bytes();
+      unsigned write2_off = (offsets[second] - offsets[i]) / split_data.bytes();
 
       unsigned inline_offset = base_offset + offsets[i];
-      unsigned max_offset = write2 ? (255 - write2_off) * data.bytes() : 65535;
+      unsigned max_offset = write2 ? (255 - write2_off) * split_data.bytes() : 65535;
       Temp address_offset = address;
       if (inline_offset > max_offset) {
          address_offset = bld.vadd32(bld.def(v1), Operand(base_offset), address_offset);
@@ -3781,10 +3781,10 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
       Instruction *instr;
       if (write2) {
          Temp second_data = write_datas[second];
-         inline_offset /= data.bytes();
-         instr = bld.ds(op, address_offset, data, second_data, m, inline_offset, inline_offset + write2_off);
+         inline_offset /= split_data.bytes();
+         instr = bld.ds(op, address_offset, split_data, second_data, m, inline_offset, inline_offset + write2_off);
       } else {
-         instr = bld.ds(op, address_offset, data, m, inline_offset);
+         instr = bld.ds(op, address_offset, split_data, m, inline_offset);
       }
       static_cast<DS_instruction *>(instr)->sync =
          memory_sync_info(storage_shared);
@@ -6863,8 +6863,8 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
 
    for (unsigned i = 0; i < write_count; i++) {
       aco_opcode op = get_buffer_store_op(write_datas[i].bytes());
-      Instruction *instr = bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true, true);
-      static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_scratch, semantic_private);
+      Instruction *mubuf = bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true, true);
+      static_cast<MUBUF_instruction *>(mubuf)->sync = memory_sync_info(storage_scratch, semantic_private);
    }
 }
 
@@ -8647,8 +8647,8 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord: {
          Temp coord = get_ssa_temp(ctx, instr->src[i].src.ssa);
-         for (unsigned i = 0; i < coord.size(); i++)
-            coords.emplace_back(emit_extract_vector(ctx, coord, i, v1));
+         for (unsigned j = 0; j < coord.size(); j++)
+            coords.emplace_back(emit_extract_vector(ctx, coord, j, v1));
          break;
       }
       case nir_tex_src_bias:
@@ -10671,13 +10671,13 @@ static void emit_stream_output(isel_context *ctx,
    if (!num_comps || num_comps > 4)
       return;
 
-   unsigned start = ffs(output->component_mask) - 1;
+   unsigned first_comp = ffs(output->component_mask) - 1;
 
    Temp out[4];
    bool all_undef = true;
    assert(ctx->stage.hw == HWStage::VS);
    for (unsigned i = 0; i < num_comps; i++) {
-      out[i] = ctx->outputs.temps[loc * 4 + start + i];
+      out[i] = ctx->outputs.temps[loc * 4 + first_comp + i];
       all_undef = all_undef && !out[i].id();
    }
    if (all_undef)
@@ -11075,9 +11075,9 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt = Temp(), Tem
    /* Execute the following code only on the first wave (wave id 0),
     * use the SCC def to tell if the wave id is zero or not.
     */
-   Temp cond = wave_id_in_tg.def(1).getTemp();
+   Temp waveid_as_cond = wave_id_in_tg.def(1).getTemp();
    if_context ic;
-   begin_uniform_if_then(ctx, &ic, cond);
+   begin_uniform_if_then(ctx, &ic, waveid_as_cond);
    begin_uniform_if_else(ctx, &ic);
    bld.reset(ctx->block);
 
@@ -11442,8 +11442,6 @@ void ngg_gs_write_shader_query(isel_context *ctx, nir_intrinsic_instr *instr)
    begin_uniform_if_then(ctx, &ic_shader_query, shader_query);
    bld.reset(ctx->block);
 
-   Temp gs_vtx_cnt = get_ssa_temp(ctx, instr->src[0].ssa);
-   Temp gs_prm_cnt = get_ssa_temp(ctx, instr->src[1].ssa);
    Temp sg_prm_cnt;
 
    /* Calculate the "real" number of emitted primitives from the emitted GS vertices and primitives.
@@ -11457,9 +11455,10 @@ void ngg_gs_write_shader_query(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp thread_cnt = bld.sop1(Builder::s_bcnt1_i32, bld.def(s1), bld.def(s1, scc), Operand(exec, bld.lm));
       sg_prm_cnt = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), prm_cnt, thread_cnt);
    } else {
-      Temp prm_cnt = gs_vtx_cnt;
+      Temp gs_vtx_cnt = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp prm_cnt = get_ssa_temp(ctx, instr->src[1].ssa);
       if (total_vtx_per_prim > 1)
-         prm_cnt = bld.vop3(aco_opcode::v_mad_i32_i24, bld.def(v1), gs_prm_cnt, Operand(-1u * (total_vtx_per_prim - 1)), gs_vtx_cnt);
+         prm_cnt = bld.vop3(aco_opcode::v_mad_i32_i24, bld.def(v1), prm_cnt, Operand(-1u * (total_vtx_per_prim - 1)), gs_vtx_cnt);
       else
          prm_cnt = as_vgpr(ctx, prm_cnt);
 

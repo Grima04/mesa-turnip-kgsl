@@ -1322,12 +1322,10 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
    Builder bld(ctx->program, &ctx->instructions);
    unsigned num_instructions_before = ctx->instructions.size();
    aco_ptr<Instruction> mov;
-   std::map<PhysReg, copy_operation>::iterator it = copy_map.begin();
-   std::map<PhysReg, copy_operation>::iterator target;
    bool writes_scc = false;
 
    /* count the number of uses for each dst reg */
-   while (it != copy_map.end()) {
+   for (auto it = copy_map.begin(); it != copy_map.end();) {
 
       if (it->second.def.physReg() == scc)
          writes_scc = true;
@@ -1394,8 +1392,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
    /* first, handle paths in the location transfer graph */
    bool preserve_scc = pi->tmp_in_scc && !writes_scc;
    bool skip_partial_copies = true;
-   it = copy_map.begin();
-   while (true) {
+   for (auto it = copy_map.begin();;) {
       if (copy_map.empty()) {
          ctx->program->statistics[statistic_copies] += ctx->instructions.size() - num_instructions_before;
          return;
@@ -1426,13 +1423,13 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
                copy_map.erase(it);
                copy_map.erase(other);
 
-               for (std::pair<const PhysReg, copy_operation>& other : copy_map) {
-                  for (uint16_t i = 0; i < other.second.bytes; i++) {
+               for (std::pair<const PhysReg, copy_operation>& other2 : copy_map) {
+                  for (uint16_t i = 0; i < other2.second.bytes; i++) {
                      /* distance might underflow */
-                     unsigned distance_lo = other.first.reg_b + i - lo.physReg().reg_b;
-                     unsigned distance_hi = other.first.reg_b + i - hi.physReg().reg_b;
+                     unsigned distance_lo = other2.first.reg_b + i - lo.physReg().reg_b;
+                     unsigned distance_hi = other2.first.reg_b + i - hi.physReg().reg_b;
                      if (distance_lo < 2 || distance_hi < 2)
-                        other.second.uses[i] -= 1;
+                        other2.second.uses[i] -= 1;
                   }
                }
                it = copy_map.begin();
@@ -1550,10 +1547,10 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
             Operand op;
             split_copy(offset, &def, &op, original, false, 8);
 
-            copy_operation copy = {op, def, def.bytes()};
-            for (unsigned i = 0; i < copy.bytes; i++)
-               copy.uses[i] = original.uses[i + offset];
-            copy_map[def.physReg()] = copy;
+            copy_operation new_copy = {op, def, def.bytes()};
+            for (unsigned i = 0; i < new_copy.bytes; i++)
+               new_copy.uses[i] = original.uses[i + offset];
+            copy_map[def.physReg()] = new_copy;
 
             offset += def.bytes();
          }
@@ -1653,9 +1650,8 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
       copy_map.erase(it);
 
       /* change the operand reg of the target's uses and split uses if needed */
-      target = copy_map.begin();
       uint32_t bytes_left = u_bit_consecutive(0, swap.bytes);
-      for (; target != copy_map.end(); ++target) {
+      for (auto target = copy_map.begin(); target != copy_map.end(); ++target) {
          if (target->second.op.physReg() == swap.def.physReg() && swap.bytes == target->second.bytes) {
             target->second.op.setFixed(swap.op.physReg());
             break;
@@ -1733,38 +1729,43 @@ void emit_set_mode(Builder& bld, float_mode new_mode, bool set_round, bool set_d
    }
 }
 
+void emit_set_mode_from_block(Builder& bld, Program& program, Block* block, bool always_set)
+{
+   float_mode config_mode;
+   config_mode.val = program.config->float_mode;
+
+   bool set_round = always_set && block->fp_mode.round != config_mode.round;
+   bool set_denorm = always_set && block->fp_mode.denorm != config_mode.denorm;
+   if (block->kind & block_kind_top_level) {
+      for (unsigned pred : block->linear_preds) {
+         if (program.blocks[pred].fp_mode.round != block->fp_mode.round)
+            set_round = true;
+         if (program.blocks[pred].fp_mode.denorm != block->fp_mode.denorm)
+            set_denorm = true;
+      }
+   }
+   /* only allow changing modes at top-level blocks so this doesn't break
+    * the "jump over empty blocks" optimization */
+   assert((!set_round && !set_denorm) || (block->kind & block_kind_top_level));
+   emit_set_mode(bld, block->fp_mode, set_round, set_denorm);
+}
+
 void lower_to_hw_instr(Program* program)
 {
    Block *discard_block = NULL;
 
-   for (size_t i = 0; i < program->blocks.size(); i++)
+   for (size_t block_idx = 0; block_idx < program->blocks.size(); block_idx++)
    {
-      Block *block = &program->blocks[i];
+      Block *block = &program->blocks[block_idx];
       lower_context ctx;
       ctx.program = program;
       ctx.block = block;
       Builder bld(program, &ctx.instructions);
 
-      float_mode config_mode;
-      config_mode.val = program->config->float_mode;
+      emit_set_mode_from_block(bld, *program, block, (block_idx == 0));
 
-      bool set_round = i == 0 && block->fp_mode.round != config_mode.round;
-      bool set_denorm = i == 0 && block->fp_mode.denorm != config_mode.denorm;
-      if (block->kind & block_kind_top_level) {
-         for (unsigned pred : block->linear_preds) {
-            if (program->blocks[pred].fp_mode.round != block->fp_mode.round)
-               set_round = true;
-            if (program->blocks[pred].fp_mode.denorm != block->fp_mode.denorm)
-               set_denorm = true;
-         }
-      }
-      /* only allow changing modes at top-level blocks so this doesn't break
-       * the "jump over empty blocks" optimization */
-      assert((!set_round && !set_denorm) || (block->kind & block_kind_top_level));
-      emit_set_mode(bld, block->fp_mode, set_round, set_denorm);
-
-      for (size_t j = 0; j < block->instructions.size(); j++) {
-         aco_ptr<Instruction>& instr = block->instructions[j];
+      for (size_t instr_idx = 0; instr_idx < block->instructions.size(); instr_idx++) {
+         aco_ptr<Instruction>& instr = block->instructions[instr_idx];
          aco_ptr<Instruction> mov;
          if (instr->format == Format::PSEUDO && instr->opcode != aco_opcode::p_unit_test) {
             Pseudo_instruction *pi = (Pseudo_instruction*)instr.get();
@@ -1833,9 +1834,9 @@ void lower_to_hw_instr(Program* program)
             case aco_opcode::p_wqm:
             {
                std::map<PhysReg, copy_operation> copy_operations;
-               for (unsigned i = 0; i < instr->operands.size(); i++) {
-                  assert(instr->definitions[i].bytes() == instr->operands[i].bytes());
-                  copy_operations[instr->definitions[i].physReg()] = {instr->operands[i], instr->definitions[i], instr->operands[i].bytes()};
+               for (unsigned j = 0; j < instr->operands.size(); j++) {
+                  assert(instr->definitions[j].bytes() == instr->operands[j].bytes());
+                  copy_operations[instr->definitions[j].physReg()] = {instr->operands[j], instr->definitions[j], instr->operands[j].bytes()};
                }
                handle_operands(copy_operations, &ctx, program->chip_class, pi);
                break;
@@ -1843,22 +1844,22 @@ void lower_to_hw_instr(Program* program)
             case aco_opcode::p_exit_early_if:
             {
                /* don't bother with an early exit near the end of the program */
-               if ((block->instructions.size() - 1 - j) <= 4 &&
+               if ((block->instructions.size() - 1 - instr_idx) <= 4 &&
                     block->instructions.back()->opcode == aco_opcode::s_endpgm) {
                   unsigned null_exp_dest = (ctx.program->stage.hw == HWStage::FS) ? 9 /* NULL */ : V_008DFC_SQ_EXP_POS;
                   bool ignore_early_exit = true;
 
-                  for (unsigned k = j + 1; k < block->instructions.size(); ++k) {
-                     const aco_ptr<Instruction> &instr = block->instructions[k];
-                     if (instr->opcode == aco_opcode::s_endpgm ||
-                         instr->opcode == aco_opcode::p_logical_end)
+                  for (unsigned k = instr_idx + 1; k < block->instructions.size(); ++k) {
+                     const aco_ptr<Instruction> &instr2 = block->instructions[k];
+                     if (instr2->opcode == aco_opcode::s_endpgm ||
+                         instr2->opcode == aco_opcode::p_logical_end)
                         continue;
-                     else if (instr->opcode == aco_opcode::exp &&
-                              static_cast<Export_instruction *>(instr.get())->dest == null_exp_dest)
+                     else if (instr2->opcode == aco_opcode::exp &&
+                              static_cast<Export_instruction *>(instr2.get())->dest == null_exp_dest)
                         continue;
-                     else if (instr->opcode == aco_opcode::p_parallelcopy &&
-                         instr->definitions[0].isFixed() &&
-                         instr->definitions[0].physReg() == exec)
+                     else if (instr2->opcode == aco_opcode::p_parallelcopy &&
+                         instr2->definitions[0].isFixed() &&
+                         instr2->definitions[0].physReg() == exec)
                         continue;
 
                      ignore_early_exit = false;
@@ -1870,7 +1871,7 @@ void lower_to_hw_instr(Program* program)
 
                if (!discard_block) {
                   discard_block = program->create_and_insert_block();
-                  block = &program->blocks[i];
+                  block = &program->blocks[block_idx];
 
                   bld.reset(discard_block);
                   bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1),

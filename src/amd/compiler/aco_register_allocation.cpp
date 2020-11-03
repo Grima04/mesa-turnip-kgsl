@@ -50,7 +50,7 @@ struct assignment {
    RegClass rc;
    uint8_t assigned = 0;
    assignment() = default;
-   assignment(PhysReg reg, RegClass rc) : reg(reg), rc(rc), assigned(-1) {}
+   assignment(PhysReg reg_, RegClass rc_) : reg(reg_), rc(rc_), assigned(-1) {}
 };
 
 struct phi_info {
@@ -77,12 +77,12 @@ struct ra_ctx {
    unsigned max_used_vgpr = 0;
    std::bitset<64> defs_done; /* see MAX_ARGS in aco_instruction_selection_setup.cpp */
 
-   ra_ctx(Program* program) : program(program),
-                              assignments(program->peekAllocationId()),
-                              renames(program->blocks.size()),
-                              incomplete_phis(program->blocks.size()),
-                              filled(program->blocks.size()),
-                              sealed(program->blocks.size())
+   ra_ctx(Program* program_) : program(program_),
+                               assignments(program->peekAllocationId()),
+                               renames(program->blocks.size()),
+                               incomplete_phis(program->blocks.size()),
+                               filled(program->blocks.size()),
+                               sealed(program->blocks.size())
    {
       pseudo_dummy.reset(create_instruction<Instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, 0, 0));
    }
@@ -614,10 +614,10 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 
    if (stride == 1) {
       info.rc = RegClass(rc.type(), size);
-      for (unsigned stride = 8; stride > 1; stride /= 2) {
-         if (size % stride)
+      for (unsigned new_stride = 8; new_stride > 1; new_stride /= 2) {
+         if (size % new_stride)
             continue;
-         info.stride = stride;
+         info.stride = new_stride;
          std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
          if (res.second)
             return res;
@@ -1365,12 +1365,12 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
          continue;
 
       /* count operands in wrong positions */
-      for (unsigned j = 0, offset = 0; j < instr->operands.size(); offset += instr->operands[j].bytes(), j++) {
+      for (unsigned j = 0, offset2 = 0; j < instr->operands.size(); offset2 += instr->operands[j].bytes(), j++) {
          if (j == i ||
              !instr->operands[j].isTemp() ||
              instr->operands[j].getTemp().type() != rc.type())
             continue;
-         if (instr->operands[j].physReg().reg_b != reg_lo * 4 + offset)
+         if (instr->operands[j].physReg().reg_b != reg_lo * 4 + offset2)
             k += instr->operands[j].bytes();
       }
       bool aligned = rc == RegClass::v4 && reg_lo % 4 == 0;
@@ -1704,8 +1704,8 @@ void try_remove_trivial_phi(ra_ctx& ctx, Temp temp)
    auto it = ctx.orig_names.find(same.id());
    unsigned orig_var = it != ctx.orig_names.end() ? it->second.id() : same.id();
    for (unsigned i = 0; i < ctx.program->blocks.size(); i++) {
-      auto it = ctx.renames[i].find(orig_var);
-      if (it != ctx.renames[i].end() && it->second == def.getTemp())
+      auto rename_it = ctx.renames[i].find(orig_var);
+      if (rename_it != ctx.renames[i].end() && rename_it->second == def.getTemp())
          ctx.renames[i][orig_var] = same;
    }
 
@@ -1726,8 +1726,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
    std::vector<std::vector<Temp>> phi_ressources;
    std::unordered_map<unsigned, unsigned> temp_to_phi_ressources;
 
-   for (std::vector<Block>::reverse_iterator it = program->blocks.rbegin(); it != program->blocks.rend(); it++) {
-      Block& block = *it;
+   for (auto block_rit = program->blocks.rbegin(); block_rit != program->blocks.rend(); block_rit++) {
+      Block& block = *block_rit;
 
       /* first, compute the death points of all live vars within the block */
       IDSet& live = live_out_per_block[block.index];
@@ -1827,14 +1827,14 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
       }
 
       std::vector<aco_ptr<Instruction>> instructions;
-      std::vector<aco_ptr<Instruction>>::iterator it;
+      std::vector<aco_ptr<Instruction>>::iterator instr_it;
 
       /* this is a slight adjustment from the paper as we already have phi nodes:
        * We consider them incomplete phis and only handle the definition. */
 
       /* handle fixed phi definitions */
-      for (it = block.instructions.begin(); it != block.instructions.end(); ++it) {
-         aco_ptr<Instruction>& phi = *it;
+      for (instr_it = block.instructions.begin(); instr_it != block.instructions.end(); ++instr_it) {
+         aco_ptr<Instruction>& phi = *instr_it;
          if (!is_phi(phi))
             break;
          Definition& definition = phi->definitions[0];
@@ -1863,8 +1863,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
       }
 
       /* look up the affinities */
-      for (it = block.instructions.begin(); it != block.instructions.end(); ++it) {
-         aco_ptr<Instruction>& phi = *it;
+      for (instr_it = block.instructions.begin(); instr_it != block.instructions.end(); ++instr_it) {
+         aco_ptr<Instruction>& phi = *instr_it;
          if (!is_phi(phi))
             break;
          Definition& definition = phi->definitions[0];
@@ -1897,8 +1897,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
       }
 
       /* find registers for phis without affinity or where the register was blocked */
-      for (it = block.instructions.begin();it != block.instructions.end(); ++it) {
-         aco_ptr<Instruction>& phi = *it;
+      for (instr_it = block.instructions.begin();instr_it != block.instructions.end(); ++instr_it) {
+         aco_ptr<Instruction>& phi = *instr_it;
          if (!is_phi(phi))
             break;
 
@@ -1935,7 +1935,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                   if ((*phi_it)->definitions[0].tempId() == pc.first.tempId())
                      prev_phi = phi_it->get();
                }
-               phi_it = it;
+               phi_it = instr_it;
                while (!prev_phi && is_phi(*++phi_it)) {
                   if ((*phi_it)->definitions[0].tempId() == pc.first.tempId())
                      prev_phi = phi_it->get();
@@ -1980,7 +1980,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                ctx.affinities[op.tempId()] = definition.tempId();
          }
 
-         instructions.emplace_back(std::move(*it));
+         instructions.emplace_back(std::move(*instr_it));
       }
 
       /* fill in sgpr_live_in */
@@ -1989,8 +1989,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
       sgpr_live_in[block.index][127] = register_file[scc.reg()];
 
       /* Handle all other instructions of the block */
-      for (; it != block.instructions.end(); ++it) {
-         aco_ptr<Instruction>& instr = *it;
+      for (; instr_it != block.instructions.end(); ++instr_it) {
+         aco_ptr<Instruction>& instr = *instr_it;
 
          /* parallelcopies from p_phi are inserted here which means
           * live ranges of killed operands end here as well */
@@ -2390,7 +2390,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             update_phi_map(ctx, tmp.get(), instr.get());
          }
 
-         instructions.emplace_back(std::move(*it));
+         instructions.emplace_back(std::move(*instr_it));
 
       } /* end for Instr */
 

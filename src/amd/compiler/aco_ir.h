@@ -158,8 +158,8 @@ enum sync_scope : uint8_t {
 
 struct memory_sync_info {
    memory_sync_info() : storage(storage_none), semantics(semantic_none), scope(scope_invocation) {}
-   memory_sync_info(int storage, int semantics=0, sync_scope scope=scope_invocation)
-      : storage((storage_class)storage), semantics((memory_semantics)semantics), scope(scope) {}
+   memory_sync_info(int storage_, int semantics_=0, sync_scope scope_=scope_invocation)
+      : storage((storage_class)storage_), semantics((memory_semantics)semantics_), scope(scope_) {}
 
    storage_class storage:8;
    memory_semantics semantics:8;
@@ -281,8 +281,8 @@ struct RegClass {
    };
 
    RegClass() = default;
-   constexpr RegClass(RC rc)
-      : rc(rc) {}
+   constexpr RegClass(RC rc_)
+      : rc(rc_) {}
    constexpr RegClass(RegType type, unsigned size)
       : rc((RC) ((type == RegType::vgpr ? 1 << 5 : 0) | size)) {}
 
