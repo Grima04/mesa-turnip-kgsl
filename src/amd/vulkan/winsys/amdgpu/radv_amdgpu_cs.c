@@ -637,7 +637,7 @@ static void radv_amdgpu_cs_add_virtual_buffer(struct radeon_cmdbuf *_cs,
 			MAX2(2, cs->max_num_virtual_buffers * 2);
 		struct radeon_winsys_bo **virtual_buffers =
 			realloc(cs->virtual_buffers,
-				sizeof(struct radv_amdgpu_virtual_virtual_buffer*) * max_num_virtual_buffers);
+				sizeof(struct radeon_winsys_bo*) * max_num_virtual_buffers);
 		if (!virtual_buffers) {
 			cs->status = VK_ERROR_OUT_OF_HOST_MEMORY;
 			return;
