@@ -2298,7 +2298,7 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
     * - interface types
     */
    ASSERTED nir_variable_mode supported =
-      nir_var_mem_shared | nir_var_mem_global |
+      nir_var_mem_shared | nir_var_mem_global | nir_var_mem_constant |
       nir_var_shader_temp | nir_var_function_temp | nir_var_uniform;
    assert(!(modes & ~supported) && "unsupported");
 
@@ -2310,6 +2310,8 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
       progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_shared, type_info);
    if (modes & nir_var_shader_temp)
       progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_shader_temp, type_info);
+   if (modes & nir_var_mem_constant)
+      progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_constant, type_info);
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
@@ -2393,38 +2395,6 @@ nir_gather_explicit_io_initializers(nir_shader *shader,
                      dst_size - var->data.driver_location,
                      var->constant_initializer, var->type);
    }
-}
-
-bool
-nir_lower_mem_constant_vars(nir_shader *shader,
-                            glsl_type_size_align_func type_info)
-{
-   bool progress = false;
-
-   unsigned old_constant_data_size = shader->constant_data_size;
-   if (lower_vars_to_explicit(shader, &shader->variables,
-                              nir_var_mem_constant, type_info)) {
-      assert(shader->constant_data_size > old_constant_data_size);
-      shader->constant_data = rerzalloc_size(shader, shader->constant_data,
-                                             old_constant_data_size,
-                                             shader->constant_data_size);
-      nir_gather_explicit_io_initializers(shader, shader->constant_data,
-                                          shader->constant_data_size,
-                                          nir_var_mem_constant);
-      progress = true;
-   }
-
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      if (nir_lower_vars_to_explicit_types_impl(function->impl,
-                                                nir_var_mem_constant,
-                                                type_info))
-         progress = true;
-   }
-
-   return progress;
 }
 
 /**
