@@ -1401,6 +1401,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    case aco_opcode::v_add_co_u32_e64:
    case aco_opcode::s_add_i32:
    case aco_opcode::s_add_u32:
+   case aco_opcode::v_subbrev_co_u32:
       ctx.info[instr->definitions[0].tempId()].set_add_sub(instr.get());
       break;
    case aco_opcode::s_not_b32:
@@ -2267,7 +2268,7 @@ bool combine_add_sub_b2i(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode n
          new_instr->operands[1] = instr->operands[!i];
          new_instr->operands[2] = Operand(ctx.info[instr->operands[i].tempId()].temp);
          instr = std::move(new_instr);
-         ctx.info[instr->definitions[0].tempId()].label = 0;
+         ctx.info[instr->definitions[0].tempId()].set_add_sub(instr.get());
          return true;
       }
    }
@@ -2556,6 +2557,47 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    return true;
 }
 
+/* v_and(a, v_subbrev_co(0, 0, vcc)) -> v_cndmask(0, a, vcc) */
+bool combine_and_subbrev(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   if (instr->usesModifiers())
+      return false;
+
+   for (unsigned i = 0; i < 2; i++) {
+      Instruction *op_instr = follow_operand(ctx, instr->operands[i], true);
+      if (op_instr &&
+          op_instr->opcode == aco_opcode::v_subbrev_co_u32 &&
+          op_instr->operands[0].constantEquals(0) &&
+          op_instr->operands[1].constantEquals(0) &&
+          !op_instr->usesModifiers()) {
+
+         aco_ptr<Instruction> new_instr;
+         if (instr->operands[!i].isTemp() && instr->operands[!i].getTemp().type() == RegType::vgpr) {
+            new_instr.reset(create_instruction<VOP2_instruction>(aco_opcode::v_cndmask_b32, Format::VOP2, 3, 1));
+         } else if (ctx.program->chip_class >= GFX10 ||
+                    (instr->operands[!i].isConstant() && !instr->operands[!i].isLiteral())) {
+            new_instr.reset(create_instruction<VOP3A_instruction>(aco_opcode::v_cndmask_b32, asVOP3(Format::VOP2), 3, 1));
+         } else {
+            return false;
+         }
+
+         ctx.uses[instr->operands[i].tempId()]--;
+         if (ctx.uses[instr->operands[i].tempId()])
+            ctx.uses[op_instr->operands[2].tempId()]++;
+
+         new_instr->operands[0] = Operand(0u);
+         new_instr->operands[1] = instr->operands[!i];
+         new_instr->operands[2] = Operand(op_instr->operands[2]);
+         new_instr->definitions[0] = instr->definitions[0];
+         instr = std::move(new_instr);
+         ctx.info[instr->definitions[0].tempId()].label = 0;
+         return true;
+      }
+   }
+
+   return false;
+}
+
 // TODO: we could possibly move the whole label_instruction pass to combine_instruction:
 // this would mean that we'd have to fix the instruction uses while value propagation
 
@@ -2814,6 +2856,8 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
       else if (combine_comparison_ordering(ctx, instr)) ;
       else if (combine_constant_comparison_ordering(ctx, instr)) ;
       else combine_salu_n2(ctx, instr);
+   } else if (instr->opcode == aco_opcode::v_and_b32) {
+      combine_and_subbrev(ctx, instr);
    } else {
       aco_opcode min, max, min3, max3, med3;
       bool some_gfx9_only;
