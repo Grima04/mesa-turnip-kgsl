@@ -364,19 +364,6 @@ panfrost_emit_texture_payload_v7(mali_ptr *payload,
         }
 }
 
-#define MALI_SWIZZLE_R001 \
-        (MALI_CHANNEL_R << 0) | \
-        (MALI_CHANNEL_0 << 3) | \
-        (MALI_CHANNEL_0 << 6) | \
-        (MALI_CHANNEL_1 << 9)
-
-#define MALI_SWIZZLE_A001 \
-        (MALI_CHANNEL_A << 0) | \
-        (MALI_CHANNEL_0 << 3) | \
-        (MALI_CHANNEL_0 << 6) | \
-        (MALI_CHANNEL_1 << 9)
-
-
 void
 panfrost_new_texture(
         void *out,
