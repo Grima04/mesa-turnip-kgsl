@@ -1699,6 +1699,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
 
         /* 32-bit indices to be allocated as consecutive data registers. */
         unsigned dregs[BIFROST_TEX_DREG_COUNT] = { 0 };
+        unsigned dregs_swiz[BIFROST_TEX_DREG_COUNT] = { 0 };
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 unsigned index = pan_src_index(&instr->src[i].src);
@@ -1781,8 +1782,10 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
         for (unsigned i = 0; i < ARRAY_SIZE(dregs); ++i) {
                 assert(dreg_index < 4);
 
-                if (dregs[i])
+                if (dregs[i]) {
+                        combine.swizzle[dreg_index][0] = dregs_swiz[i];
                         combine.src[dreg_index++] = dregs[i];
+                }
         }
 
         if (dreg_index > 1) {
@@ -1794,6 +1797,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                         tex.swizzle[0][i] = i;
         } else if (dreg_index == 1) {
                 tex.src[0] = combine.src[0];
+                tex.swizzle[0][0] = combine.swizzle[0][0];
         } else {
                 tex.src[0] = tex.dest;
         }
