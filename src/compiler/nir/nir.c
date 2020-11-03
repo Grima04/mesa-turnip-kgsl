@@ -332,6 +332,20 @@ nir_alu_dest_copy(nir_alu_dest *dest, const nir_alu_dest *src,
    dest->saturate = src->saturate;
 }
 
+bool
+nir_alu_src_is_trivial_ssa(const nir_alu_instr *alu, unsigned srcn)
+{
+   static uint8_t trivial_swizzle[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+   STATIC_ASSERT(ARRAY_SIZE(trivial_swizzle) == NIR_MAX_VEC_COMPONENTS);
+
+   const nir_alu_src *src = &alu->src[srcn];
+   unsigned num_components = nir_ssa_alu_instr_src_components(alu, srcn);
+
+   return src->src.is_ssa && (src->src.ssa->num_components == num_components) &&
+          !src->abs && !src->negate &&
+          (memcmp(src->swizzle, trivial_swizzle, num_components) == 0);
+}
+
 
 static void
 cf_init(nir_cf_node *node, nir_cf_node_type type)

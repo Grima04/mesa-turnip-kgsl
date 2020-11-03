@@ -1432,6 +1432,8 @@ bool nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
                                  const nir_alu_instr *alu2,
                                  unsigned src1, unsigned src2);
 
+bool nir_alu_src_is_trivial_ssa(const nir_alu_instr *alu, unsigned srcn);
+
 typedef enum {
    nir_deref_type_var,
    nir_deref_type_array,
