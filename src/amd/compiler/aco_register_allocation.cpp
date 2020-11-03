@@ -1350,7 +1350,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
                PhysReg reg;
                reg.reg_b = j * 4;
                unsigned bytes_left = bytes - (j - reg_lo) * 4;
-               for (unsigned k = 0; k < MIN2(bytes_left, 4); k++, reg.reg_b++)
+               for (unsigned byte_idx = 0; byte_idx < MIN2(bytes_left, 4); byte_idx++, reg.reg_b++)
                   k += reg_file.test(reg, 1);
             } else {
                k += 4;
