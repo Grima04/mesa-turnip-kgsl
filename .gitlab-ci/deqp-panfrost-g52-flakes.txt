@@ -1,0 +1,7 @@
+dEQP-GLES2.functional.clipping.triangle_vertex.clip_three.clip_neg_x_neg_z_and_pos_x_pos_z_and_neg_x_neg_y_pos_z
+dEQP-GLES2.functional.texture.vertex.cube.filtering.nearest_mipmap_linear_linear_clamp
+dEQP-GLES2.functional.texture.vertex.cube.filtering.nearest_mipmap_linear_linear_mirror
+dEQP-GLES2.functional.texture.vertex.cube.filtering.nearest_mipmap_linear_linear_repeat
+dEQP-GLES2.functional.texture.vertex.cube.filtering.nearest_mipmap_nearest_linear_clamp
+dEQP-GLES2.functional.texture.vertex.cube.filtering.nearest_mipmap_nearest_linear_mirror
+dEQP-GLES2.functional.texture.vertex.cube.filtering.nearest_mipmap_nearest_linear_repeat
