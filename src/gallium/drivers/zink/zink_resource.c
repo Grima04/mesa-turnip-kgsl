@@ -38,7 +38,13 @@
 
 #include "frontend/sw_winsys.h"
 
+#ifndef _WIN32
+#define ZINK_USE_DMABUF
+#endif
+
+#ifdef ZINK_USE_DMABUF
 #include "drm-uapi/drm_fourcc.h"
+#endif
 
 static void
 zink_resource_destroy(struct pipe_screen *pscreen,
@@ -360,6 +366,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
    }
 
    if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
+#ifdef ZINK_USE_DMABUF
       fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
       fd_info.memory = res->mem;
       fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
@@ -368,6 +375,9 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
          return false;
       whandle->handle = fd;
       whandle->modifier = DRM_FORMAT_MOD_INVALID;
+#else
+      return false;
+#endif
    }
    return true;
 }
@@ -378,10 +388,14 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
                  struct winsys_handle *whandle,
                  unsigned usage)
 {
+#ifdef ZINK_USE_DMABUF
    if (whandle->modifier != DRM_FORMAT_MOD_INVALID)
       return NULL;
 
    return resource_create(pscreen, templ, whandle, usage);
+#else
+   return NULL;
+#endif
 }
 
 static bool
