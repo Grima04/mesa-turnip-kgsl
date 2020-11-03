@@ -4424,6 +4424,10 @@ bool
 nir_lower_vars_to_explicit_types(nir_shader *shader,
                                  nir_variable_mode modes,
                                  glsl_type_size_align_func type_info);
+void
+nir_gather_explicit_io_initializers(nir_shader *shader,
+                                    void *dst, size_t dst_size,
+                                    nir_variable_mode mode);
 
 bool nir_lower_mem_constant_vars(nir_shader *shader,
                                  glsl_type_size_align_func type_info);

@@ -2376,6 +2376,25 @@ write_constant(void *dst, size_t dst_size,
    }
 }
 
+void
+nir_gather_explicit_io_initializers(nir_shader *shader,
+                                    void *dst, size_t dst_size,
+                                    nir_variable_mode mode)
+{
+   /* It doesn't really make sense to gather initializers for more than one
+    * mode at a time.  If this ever becomes well-defined, we can drop the
+    * assert then.
+    */
+   assert(util_bitcount(mode) == 1);
+
+   nir_foreach_variable_with_modes(var, shader, mode) {
+      assert(var->data.driver_location < dst_size);
+      write_constant((char *)dst + var->data.driver_location,
+                     dst_size - var->data.driver_location,
+                     var->constant_initializer, var->type);
+   }
+}
+
 bool
 nir_lower_mem_constant_vars(nir_shader *shader,
                             glsl_type_size_align_func type_info)
@@ -2389,15 +2408,9 @@ nir_lower_mem_constant_vars(nir_shader *shader,
       shader->constant_data = rerzalloc_size(shader, shader->constant_data,
                                              old_constant_data_size,
                                              shader->constant_data_size);
-
-      nir_foreach_variable_with_modes(var, shader, nir_var_mem_constant) {
-         assert(var->data.driver_location < shader->constant_data_size);
-         write_constant((char *)shader->constant_data +
-                           var->data.driver_location,
-                        shader->constant_data_size -
-                           var->data.driver_location,
-                        var->constant_initializer, var->type);
-      }
+      nir_gather_explicit_io_initializers(shader, shader->constant_data,
+                                          shader->constant_data_size,
+                                          nir_var_mem_constant);
       progress = true;
    }
 
