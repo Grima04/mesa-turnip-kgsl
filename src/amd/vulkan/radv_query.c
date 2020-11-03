@@ -371,7 +371,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device) {
 	nir_push_if(&b, nir_i2b(&b, available32));
 
 	nir_store_var(&b, output_offset, output_base, 0x1);
-	for (int i = 0; i < 11; ++i) {
+	for (int i = 0; i < ARRAY_SIZE(pipeline_statistics_indices); ++i) {
 		nir_push_if(&b, nir_test_flag(&b, stats_mask, 1u << i));
 
 		load = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_ssbo);
@@ -1318,7 +1318,7 @@ VkResult radv_GetQueryPoolResults(
 			if (flags & VK_QUERY_RESULT_64_BIT) {
 				uint64_t *dst = (uint64_t*)dest;
 				dest += util_bitcount(pool->pipeline_stats_mask) * 8;
-				for(int i = 0; i < 11; ++i) {
+				for(int i = 0; i < ARRAY_SIZE(pipeline_statistics_indices); ++i) {
 					if(pool->pipeline_stats_mask & (1u << i)) {
 						if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
 							*dst = stop[pipeline_statistics_indices[i]] -
@@ -1330,7 +1330,7 @@ VkResult radv_GetQueryPoolResults(
 			} else {
 				uint32_t *dst = (uint32_t*)dest;
 				dest += util_bitcount(pool->pipeline_stats_mask) * 4;
-				for(int i = 0; i < 11; ++i) {
+				for(int i = 0; i < ARRAY_SIZE(pipeline_statistics_indices); ++i) {
 					if(pool->pipeline_stats_mask & (1u << i)) {
 						if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
 							*dst = stop[pipeline_statistics_indices[i]] -
