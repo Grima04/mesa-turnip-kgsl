@@ -114,7 +114,7 @@ libradv_files = files(
 )
 
 radv_deps = []
-radv_flags = []
+radv_flags = cc.get_supported_arguments(['-Wshadow'])
 
 if with_platform_x11
   radv_deps += dep_xcb_dri3
