@@ -474,6 +474,7 @@ panfrost_new_texture_bifrost(
                 cfg.swizzle = swizzle;
                 cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
                 cfg.levels = last_level - first_level;
+                cfg.array_size = array_size;
                 cfg.surfaces = payload->gpu;
 
                 /* We specify API-level LOD clamps in the sampler descriptor
