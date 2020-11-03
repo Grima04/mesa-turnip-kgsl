@@ -1390,7 +1390,6 @@ si_llvm_init_export_args(struct radv_shader_context *ctx,
 		unsigned col_format = (ctx->args->options->key.fs.col_format >> (4 * index)) & 0xf;
 		bool is_int8 = (ctx->args->options->key.fs.is_int8 >> index) & 1;
 		bool is_int10 = (ctx->args->options->key.fs.is_int10 >> index) & 1;
-		unsigned chan;
 
 		LLVMValueRef (*packf)(struct ac_llvm_context *ctx, LLVMValueRef args[2]) = NULL;
 		LLVMValueRef (*packi)(struct ac_llvm_context *ctx, LLVMValueRef args[2],
@@ -1485,13 +1484,13 @@ si_llvm_init_export_args(struct radv_shader_context *ctx,
 		     col_format == V_028714_SPI_SHADER_32_ABGR ||
 		     col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
 			for (unsigned i = 0; i < 4; i++) {
-				LLVMValueRef args[2] = {
+				LLVMValueRef class_args[2] = {
 					values[i],
 					LLVMConstInt(ctx->ac.i32, S_NAN | Q_NAN, false)
 				};
 				LLVMValueRef isnan =
 					ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.class.f32", ctx->ac.i1,
-		                                           args, 2, AC_FUNC_ATTR_READNONE);
+		                                           class_args, 2, AC_FUNC_ATTR_READNONE);
 				values[i] = LLVMBuildSelect(ctx->ac.builder, isnan,
 							    ctx->ac.f32_0,
 							    values[i], "");
@@ -1500,7 +1499,7 @@ si_llvm_init_export_args(struct radv_shader_context *ctx,
 
 		/* Pack f16 or norm_i16/u16. */
 		if (packf) {
-			for (chan = 0; chan < 2; chan++) {
+			for (unsigned chan = 0; chan < 2; chan++) {
 				LLVMValueRef pack_args[2] = {
 					values[2 * chan],
 					values[2 * chan + 1]
@@ -1515,7 +1514,7 @@ si_llvm_init_export_args(struct radv_shader_context *ctx,
 
 		/* Pack i16/u16. */
 		if (packi) {
-			for (chan = 0; chan < 2; chan++) {
+			for (unsigned chan = 0; chan < 2; chan++) {
 				LLVMValueRef pack_args[2] = {
 					ac_to_integer(&ctx->ac, values[2 * chan]),
 					ac_to_integer(&ctx->ac, values[2 * chan + 1])
@@ -3897,12 +3896,12 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		}
 	}
 
-	for(int i = 0; i < shader_count; ++i) {
-		ctx.stage = shaders[i]->info.stage;
-		ctx.shader = shaders[i];
+	for(int shader_idx = 0; shader_idx < shader_count; ++shader_idx) {
+		ctx.stage = shaders[shader_idx]->info.stage;
+		ctx.shader = shaders[shader_idx];
 		ctx.output_mask = 0;
 
-		if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY) {
+		if (shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY) {
 			for (int i = 0; i < 4; i++) {
 				ctx.gs_next_vertex[i] =
 					ac_build_alloca(&ctx.ac, ctx.ac.i32, "");
@@ -3934,7 +3933,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 			ctx.abi.load_inputs = load_gs_input;
 			ctx.abi.emit_primitive = visit_end_primitive;
-		} else if (shaders[i]->info.stage == MESA_SHADER_TESS_CTRL) {
+		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_CTRL) {
 			ctx.abi.load_tess_varyings = load_tcs_varyings;
 			ctx.abi.load_patch_vertices_in = load_patch_vertices_in;
 			ctx.abi.store_tcs_outputs = store_tcs_output;
@@ -3951,19 +3950,19 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 					ctx.args->options->tess_offchip_block_dw_size,
 					ctx.args->options->chip_class,
 					ctx.args->options->family);
-		} else if (shaders[i]->info.stage == MESA_SHADER_TESS_EVAL) {
+		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_EVAL) {
 			ctx.abi.load_tess_varyings = load_tes_input;
 			ctx.abi.load_tess_coord = load_tess_coord;
 			ctx.abi.load_patch_vertices_in = load_patch_vertices_in;
 			ctx.tcs_num_patches = args->options->key.tes.num_patches;
-		} else if (shaders[i]->info.stage == MESA_SHADER_VERTEX) {
+		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX) {
 			ctx.abi.load_base_vertex = radv_load_base_vertex;
-		} else if (shaders[i]->info.stage == MESA_SHADER_FRAGMENT) {
+		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_FRAGMENT) {
 			ctx.abi.load_sample_position = load_sample_position;
 			ctx.abi.load_sample_mask_in = load_sample_mask_in;
 		}
 
-		if (shaders[i]->info.stage == MESA_SHADER_VERTEX &&
+		if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX &&
 		    args->options->key.vs_common_out.as_ngg &&
 		    args->options->key.vs_common_out.export_prim_id) {
 			declare_esgs_ring(&ctx);
@@ -3971,8 +3970,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 		bool nested_barrier = false;
 
-		if (i) {
-			if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY &&
+		if (shader_idx) {
+			if (shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY &&
 			    args->options->key.vs_common_out.as_ngg) {
 				gfx10_ngg_gs_emit_prologue(&ctx);
 				nested_barrier = false;
@@ -4002,8 +4001,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			ac_emit_barrier(&ctx.ac, ctx.stage);
 		}
 
-		nir_foreach_shader_out_variable(variable, shaders[i])
-			scan_shader_output_decl(&ctx, variable, shaders[i], shaders[i]->info.stage);
+		nir_foreach_shader_out_variable(variable, shaders[shader_idx])
+			scan_shader_output_decl(&ctx, variable, shaders[shader_idx], shaders[shader_idx]->info.stage);
 
 		ac_setup_rings(&ctx);
 
@@ -4016,7 +4015,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			LLVMValueRef count =
 				ac_unpack_param(&ctx.ac,
 						ac_get_arg(&ctx.ac, args->merged_wave_info),
-						8 * i, 8);
+						8 * shader_idx, 8);
 			LLVMValueRef thread_id = ac_get_thread_id(&ctx.ac);
 			LLVMValueRef cond = LLVMBuildICmp(ctx.ac.builder, LLVMIntULT,
 			                                  thread_id, count, "");
@@ -4025,14 +4024,14 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			LLVMPositionBuilderAtEnd(ctx.ac.builder, then_block);
 		}
 
-		if (shaders[i]->info.stage == MESA_SHADER_FRAGMENT)
-			prepare_interp_optimize(&ctx, shaders[i]);
-		else if(shaders[i]->info.stage == MESA_SHADER_VERTEX)
-			handle_vs_inputs(&ctx, shaders[i]);
-		else if(shaders[i]->info.stage == MESA_SHADER_GEOMETRY)
+		if (shaders[shader_idx]->info.stage == MESA_SHADER_FRAGMENT)
+			prepare_interp_optimize(&ctx, shaders[shader_idx]);
+		else if(shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX)
+			handle_vs_inputs(&ctx, shaders[shader_idx]);
+		else if(shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY)
 			prepare_gs_input_vgprs(&ctx, shader_count >= 2);
 
-		ac_nir_translate(&ctx.ac, &ctx.abi, &args->ac, shaders[i]);
+		ac_nir_translate(&ctx.ac, &ctx.abi, &args->ac, shaders[shader_idx]);
 
 		if (shader_count >= 2 || is_ngg) {
 			LLVMBuildBr(ctx.ac.builder, merge_block);
@@ -4041,16 +4040,16 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 		/* This needs to be outside the if wrapping the shader body, as sometimes
 		 * the HW generates waves with 0 es/vs threads. */
-		if (is_pre_gs_stage(shaders[i]->info.stage) &&
+		if (is_pre_gs_stage(shaders[shader_idx]->info.stage) &&
 		    args->options->key.vs_common_out.as_ngg &&
-		    i == shader_count - 1) {
+		    shader_idx == shader_count - 1) {
 			handle_ngg_outputs_post_2(&ctx);
-		} else if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY &&
+		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY &&
 			   args->options->key.vs_common_out.as_ngg) {
 			gfx10_ngg_gs_emit_epilogue_2(&ctx);
 		}
 
-		if (shaders[i]->info.stage == MESA_SHADER_TESS_CTRL) {
+		if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_CTRL) {
 			unsigned tcs_num_outputs = ctx.args->shader_info->tcs.num_linked_outputs;
 			unsigned tcs_num_patch_outputs = ctx.args->shader_info->tcs.num_linked_patch_outputs;
 			args->shader_info->tcs.num_patches = ctx.tcs_num_patches;

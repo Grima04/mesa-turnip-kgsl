@@ -1044,7 +1044,7 @@ si_make_texture_descriptor(struct radv_device *device,
 	/* Initialize the sampler view for FMASK. */
 	if (fmask_state) {
 		if (radv_image_has_fmask(image)) {
-			uint32_t fmask_format, num_format;
+			uint32_t fmask_format;
 			uint64_t gpu_address = radv_buffer_get_va(image->bo);
 			uint64_t va;
 

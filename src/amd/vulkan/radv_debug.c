@@ -793,8 +793,12 @@ radv_get_faulty_shader(struct radv_device *device, uint64_t faulty_pc)
 	struct radv_shader_variant *shader = NULL;
 
 	mtx_lock(&device->shader_slab_mutex);
+
 	list_for_each_entry(struct radv_shader_slab, slab, &device->shader_slabs, slabs) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 		list_for_each_entry(struct radv_shader_variant, s, &slab->shaders, slab_list) {
+#pragma GCC diagnostic pop
 			uint64_t offset = align_u64(s->bo_offset + s->code_size, 256);
 			uint64_t va = radv_buffer_get_va(s->bo);
 

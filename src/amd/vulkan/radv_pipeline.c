@@ -3051,7 +3051,7 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
 VkResult radv_create_shaders(struct radv_pipeline *pipeline,
                              struct radv_device *device,
                              struct radv_pipeline_cache *cache,
-                             const struct radv_pipeline_key *key,
+                             const struct radv_pipeline_key *pipeline_key,
                              const VkPipelineShaderStageCreateInfo **pStages,
                              const VkPipelineCreateFlags flags,
                              VkPipelineCreationFeedbackEXT *pipeline_feedback,
@@ -3084,7 +3084,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		}
 	}
 
-	radv_hash_shaders(hash, pStages, pipeline->layout, key, get_hash_flags(device));
+	radv_hash_shaders(hash, pStages, pipeline->layout, pipeline_key, get_hash_flags(device));
 	memcpy(gs_copy_hash, hash, 20);
 	gs_copy_hash[0] ^= 1;
 
@@ -3124,13 +3124,13 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 		radv_start_feedback(stage_feedbacks[i]);
 
-		if (key->compute_subgroup_size) {
+		if (pipeline_key->compute_subgroup_size) {
 			/* Only compute shaders currently support requiring a
 			 * specific subgroup size.
                          */
 			assert(i == MESA_SHADER_COMPUTE);
-			subgroup_size = key->compute_subgroup_size;
-			ballot_bit_size = key->compute_subgroup_size;
+			subgroup_size = pipeline_key->compute_subgroup_size;
+			ballot_bit_size = pipeline_key->compute_subgroup_size;
 		}
 
 		nir[i] = radv_shader_compile_to_nir(device, modules[i],
@@ -3282,7 +3282,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			nir_print_shader(nir[i], stderr);
 	}
 
-	radv_fill_shader_keys(device, keys, key, nir);
+	radv_fill_shader_keys(device, keys, pipeline_key, nir);
 
 	radv_fill_shader_info(pipeline, pStages, keys, infos, nir);
 
@@ -3299,12 +3299,12 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		else
 			ngg_info = &infos[MESA_SHADER_VERTEX].ngg_info;
 
-		gfx10_get_ngg_info(key, pipeline, nir, infos, ngg_info);
+		gfx10_get_ngg_info(pipeline_key, pipeline, nir, infos, ngg_info);
 	} else if (nir[MESA_SHADER_GEOMETRY]) {
 		struct gfx9_gs_info *gs_info =
 			&infos[MESA_SHADER_GEOMETRY].gs_ring_info;
 
-		gfx9_get_gs_info(key, pipeline, nir, infos, gs_info);
+		gfx9_get_gs_info(pipeline_key, pipeline, nir, infos, gs_info);
 	}
 
 	if(modules[MESA_SHADER_GEOMETRY]) {
@@ -3331,16 +3331,16 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		}
 
 		if (!keep_executable_info && !keep_statistic_info && pipeline->gs_copy_shader) {
-			struct radv_shader_binary *binaries[MESA_SHADER_STAGES] = {NULL};
-			struct radv_shader_variant *variants[MESA_SHADER_STAGES] = {0};
+			struct radv_shader_binary *gs_binaries[MESA_SHADER_STAGES] = {NULL};
+			struct radv_shader_variant *gs_variants[MESA_SHADER_STAGES] = {0};
 
-			binaries[MESA_SHADER_GEOMETRY] = gs_copy_binary;
-			variants[MESA_SHADER_GEOMETRY] = pipeline->gs_copy_shader;
+			gs_binaries[MESA_SHADER_GEOMETRY] = gs_copy_binary;
+			gs_variants[MESA_SHADER_GEOMETRY] = pipeline->gs_copy_shader;
 
 			radv_pipeline_cache_insert_shaders(device, cache,
 							   gs_copy_hash,
-							   variants,
-							   binaries);
+							   gs_variants,
+							   gs_binaries);
 		}
 		free(gs_copy_binary);
 	}

@@ -5641,7 +5641,6 @@ static bool radv_sparse_bind_has_effects(const VkBindSparseInfo *info)
 	VkFence                                     fence)
 {
 	RADV_FROM_HANDLE(radv_queue, queue, _queue);
-	VkResult result;
 	uint32_t fence_idx = 0;
 
 	if (radv_device_is_lost(queue->device))
@@ -5682,7 +5681,7 @@ static bool radv_sparse_bind_has_effects(const VkBindSparseInfo *info)
 	}
 
 	if (fence != VK_NULL_HANDLE && !bindInfoCount) {
-		result = radv_signal_fence(queue, fence);
+		VkResult result = radv_signal_fence(queue, fence);
 		if (result != VK_SUCCESS)
 			return result;
 	}

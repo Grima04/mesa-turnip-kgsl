@@ -1592,7 +1592,6 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 	bool extra_value = false;
 	bool has_color = false;
 	bool has_alpha = false;
-	int i;
 	*can_avoid_fast_clear_elim = false;
 
 	*reset_value = RADV_DCC_CLEAR_REG;
@@ -1610,7 +1609,7 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 	} else
 		return;
 
-	for (i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		int index = desc->swizzle[i] - VK_SWIZZLE_X;
 		if (desc->swizzle[i] < VK_SWIZZLE_X ||
 		    desc->swizzle[i] > VK_SWIZZLE_W)

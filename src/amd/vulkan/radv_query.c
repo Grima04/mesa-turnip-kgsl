@@ -1232,9 +1232,9 @@ VkResult radv_GetQueryPoolResults(
 	if (radv_device_is_lost(device))
 		return VK_ERROR_DEVICE_LOST;
 
-	for(unsigned i = 0; i < queryCount; ++i, data += stride) {
+	for(unsigned query_idx = 0; query_idx < queryCount; ++query_idx, data += stride) {
 		char *dest = data;
-		unsigned query = firstQuery + i;
+		unsigned query = firstQuery + query_idx;
 		char *src = pool->ptr + query * pool->stride;
 		uint32_t available;
 
@@ -1852,9 +1852,6 @@ void radv_CmdEndQueryIndexedEXT(
 	 * query returns 0.
 	 */
 	if (cmd_buffer->state.subpass && cmd_buffer->state.subpass->view_mask) {
-		uint64_t avail_va = va + pool->availability_offset + 4 * query;
-
-
 		for (unsigned i = 1; i < util_bitcount(cmd_buffer->state.subpass->view_mask); i++) {
 			va += pool->stride;
 			avail_va += 4;

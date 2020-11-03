@@ -761,7 +761,11 @@ radv_alloc_shader_memory(struct radv_device *device,
 	mtx_lock(&device->shader_slab_mutex);
 	list_for_each_entry(struct radv_shader_slab, slab, &device->shader_slabs, slabs) {
 		uint64_t offset = 0;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 		list_for_each_entry(struct radv_shader_variant, s, &slab->shaders, slab_list) {
+#pragma GCC diagnostic pop
 			if (s->bo_offset - offset >= shader->code_size) {
 				shader->bo = slab->bo;
 				shader->bo_offset = offset;
@@ -1671,17 +1675,16 @@ radv_dump_shader_stats(struct radv_device *device,
 	if (result != VK_SUCCESS)
 		goto fail;
 
-	for (unsigned i = 0; i < prop_count; i++) {
-		if (!(props[i].stages & mesa_to_vk_shader_stage(stage)))
+	for (unsigned exec_idx = 0; exec_idx < prop_count; exec_idx++) {
+		if (!(props[exec_idx].stages & mesa_to_vk_shader_stage(stage)))
 			continue;
 
 		VkPipelineExecutableStatisticKHR *stats = NULL;
 		uint32_t stat_count = 0;
-		VkResult result;
 
 		VkPipelineExecutableInfoKHR exec_info = {0};
 		exec_info.pipeline = radv_pipeline_to_handle(pipeline);
-		exec_info.executableIndex = i;
+		exec_info.executableIndex = exec_idx;
 
 		result = radv_GetPipelineExecutableStatisticsKHR(radv_device_to_handle(device),
 								 &exec_info,
