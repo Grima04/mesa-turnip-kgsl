@@ -1030,6 +1030,11 @@ generate_fs_loop(struct gallivm_state *gallivm,
       assert(smaski >= 0);
       output_smask = LLVMBuildLoad(builder, outputs[smaski][0], "smask");
       output_smask = LLVMBuildBitCast(builder, output_smask, smask_bld.vec_type, "");
+      if (!key->multisample && key->no_ms_sample_mask_out) {
+         output_smask = lp_build_and(&smask_bld, output_smask, smask_bld.one);
+         output_smask = lp_build_cmp(&smask_bld, PIPE_FUNC_NOTEQUAL, output_smask, smask_bld.zero);
+         lp_build_mask_update(&mask, output_smask);
+      }
 
       if (key->min_samples > 1) {
          /* only the bit corresponding to this sample is to be used. */
@@ -3989,6 +3994,7 @@ make_variant_key(struct llvmpipe_context *lp,
 
    key->flatshade = lp->rasterizer->flatshade;
    key->multisample = lp->rasterizer->multisample;
+   key->no_ms_sample_mask_out = lp->rasterizer->no_ms_sample_mask_out;
    if (lp->active_occlusion_queries && !lp->queries_disabled) {
       key->occlusion_count = TRUE;
    }
