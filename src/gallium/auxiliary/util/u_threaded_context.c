@@ -1566,7 +1566,8 @@ tc_transfer_map(struct pipe_context *_pipe,
 
          u_upload_alloc(tc->base.stream_uploader, 0,
                         box->width + (box->x % tc->map_buffer_alignment),
-                        64, &ttrans->offset, &ttrans->staging, (void**)&map);
+                        tc->map_buffer_alignment, &ttrans->offset,
+                        &ttrans->staging, (void**)&map);
          if (!map) {
             slab_free(&tc->pool_transfers, ttrans);
             return NULL;
