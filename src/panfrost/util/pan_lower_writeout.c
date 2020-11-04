@@ -117,6 +117,7 @@ pan_nir_lower_zs_store(nir_shader *nir)
                                 combined_store->num_components = intr->src[0].ssa->num_components;
 
                                 nir_intrinsic_set_base(combined_store, nir_intrinsic_base(intr));
+                                nir_intrinsic_set_src_type(combined_store, nir_intrinsic_src_type(intr));
 
                                 unsigned writeout = PAN_WRITEOUT_C;
                                 if (z_store)
@@ -173,6 +174,7 @@ pan_nir_lower_zs_store(nir_shader *nir)
                         else
                                 base = nir_intrinsic_base(s_store);
                         nir_intrinsic_set_base(combined_store, base);
+                        nir_intrinsic_set_src_type(combined_store, nir_type_float32);
 
                         unsigned writeout = 0;
                         if (z_store)
