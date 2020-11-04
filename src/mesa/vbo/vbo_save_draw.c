@@ -211,7 +211,8 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
       assert(ctx->NewState == 0);
 
       if (node->vertex_count > 0) {
-         bool draw_using_merged_prim = ctx->_PrimitiveIDIsUnused &&
+         bool draw_using_merged_prim = (ctx->Const.AllowIncorrectPrimitiveId ||
+                                        ctx->_PrimitiveIDIsUnused) &&
                                        node->merged.prims;
          if (!draw_using_merged_prim) {
             ctx->Driver.Draw(ctx, node->prims, node->prim_count,

@@ -1770,6 +1770,7 @@ void st_init_extensions(struct pipe_screen *screen,
    }
 
    consts->AllowDrawOutOfOrder = options->allow_draw_out_of_order;
+   consts->AllowIncorrectPrimitiveId = options->allow_incorrect_primitive_id;
 
    bool prefer_nir = PIPE_SHADER_IR_NIR ==
          screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_PREFERRED_IR);

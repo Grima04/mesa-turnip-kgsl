@@ -151,7 +151,7 @@ void
 _mesa_update_primitive_id_is_unused(struct gl_context *ctx)
 {
    /* Only the compatibility profile with display lists needs this. */
-   if (ctx->API != API_OPENGL_COMPAT)
+   if (ctx->API != API_OPENGL_COMPAT || ctx->Const.AllowIncorrectPrimitiveId)
       return;
 
    /* If all of these are NULL, GLSL is disabled. */
