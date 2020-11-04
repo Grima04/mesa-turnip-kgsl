@@ -273,6 +273,15 @@ bi_emit_blend(bi_context *ctx, unsigned rgba, nir_alu_type T, unsigned rt)
 static void
 bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 {
+        bool combined = instr->intrinsic ==
+                nir_intrinsic_store_combined_output_pan;
+
+        unsigned writeout = combined ? nir_intrinsic_component(instr) :
+                PAN_WRITEOUT_C;
+
+        bool emit_blend = writeout & (PAN_WRITEOUT_C);
+        bool emit_zs = writeout & (PAN_WRITEOUT_Z | PAN_WRITEOUT_S);
+
         if (!ctx->emitted_atest && !ctx->is_blend) {
                 bi_emit_atest(ctx,
                         pan_src_index(&instr->src[0]),
@@ -281,10 +290,16 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 ctx->emitted_atest = true;
         }
 
-        bi_emit_blend(ctx,
-                        pan_src_index(&instr->src[0]),
-                        nir_intrinsic_src_type(instr),
-                        nir_intrinsic_base(instr));
+        if (emit_zs) {
+                unreachable("stub");
+        }
+
+        if (emit_blend) {
+                bi_emit_blend(ctx,
+                                pan_src_index(&instr->src[0]),
+                                nir_intrinsic_src_type(instr),
+                                nir_intrinsic_base(instr));
+        }
 
         if (ctx->is_blend) {
                 /* Jump back to the fragment shader, return address is stored
@@ -649,6 +664,11 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                         bi_emit_st_vary(ctx, instr);
                 else
                         unreachable("Unsupported shader stage");
+                break;
+
+        case nir_intrinsic_store_combined_output_pan:
+                assert(ctx->stage == MESA_SHADER_FRAGMENT);
+                bi_emit_frag_out(ctx, instr);
                 break;
 
         case nir_intrinsic_load_uniform:
