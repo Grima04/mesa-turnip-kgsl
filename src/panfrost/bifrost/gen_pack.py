@@ -277,6 +277,10 @@ modifier_map = {
         "divzero": lambda a,b,c,d: '0',
         "sem": lambda a,b,c,d: '0', # IEEE 754 compliant NaN rules
 
+        # For +ZS_EMIT, infer modifiers from specified sources
+        "z": lambda a,b,c,d: '(ins->src[0] != 0)',
+        "stencil": lambda a,b,c,d: '(ins->src[1] != 0)',
+
         # We don't support these in the IR yet (TODO)
         "saturate": lambda a,b,c,d: '0', # clamp to min/max int
         "mask": lambda a,b,c,d: '0', # clz(~0) = ~0
@@ -302,8 +306,6 @@ modifier_map = {
         "subgroup": lambda a,b,c,d: '1', # CLPER subgroup4
         "inactive_result": lambda a,b,c,d: '0', # CLPER zero
         "threads": lambda a,b,c,d: '0', # IMULD odd
-        "stencil": lambda a,b,c,d: '1', # ZS_EMIT stencil
-        "z": lambda a,b,c,d: '1', # ZS_EMIT z
         "combine": lambda a,b,c,d: '0', # BRANCHC any
         "format": lambda a,b,c,d: '1', # LEA_TEX_IMM u32
         "test_mode": lambda a,b,c,d: '0', # JUMP_EX z
