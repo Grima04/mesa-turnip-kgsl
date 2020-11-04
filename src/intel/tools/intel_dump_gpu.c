@@ -446,15 +446,15 @@ maybe_init(int fd)
             verbose = 2;
          }
       } else if (!strcmp(key, "device")) {
-         fail_if(device != 0, "Device/Platform override specified multiple times.");
+         fail_if(device != 0, "Device/Platform override specified multiple times.\n");
          fail_if(sscanf(value, "%i", &device) != 1,
-                 "failed to parse device id '%s'",
+                 "failed to parse device id '%s'\n",
                  value);
          device_override = true;
       } else if (!strcmp(key, "platform")) {
-         fail_if(device != 0, "Device/Platform override specified multiple times.");
+         fail_if(device != 0, "Device/Platform override specified multiple times.\n");
          device = gen_device_name_to_pci_device_id(value);
-         fail_if(device == -1, "Unknown platform '%s'", value);
+         fail_if(device == -1, "Unknown platform '%s'\n", value);
          device_override = true;
       } else if (!strcmp(key, "file")) {
          output_filename = strdup(value);
