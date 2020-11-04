@@ -2055,7 +2055,8 @@ void anv_GetPhysicalDeviceProperties2(
          STATIC_ASSERT(8 <= BRW_SUBGROUP_SIZE && BRW_SUBGROUP_SIZE <= 32);
          props->minSubgroupSize = 8;
          props->maxSubgroupSize = 32;
-         props->maxComputeWorkgroupSubgroups = pdevice->info.max_cs_threads;
+         /* Limit max_threads to 64 for the GPGPU_WALKER command. */
+         props->maxComputeWorkgroupSubgroups = MIN2(64, pdevice->info.max_cs_threads);
          props->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT;
          break;
       }
