@@ -1277,8 +1277,11 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
    }
 
    if (ctx->Const.MultiDrawWithUserIndices) {
-      /* Check whether prim[i].start would overflow. */
-      if (((max_index_ptr - min_index_ptr) >> ib.index_size_shift) > UINT_MAX)
+      /* "max_index_ptr - min_index_ptr >> index_size_shift" is stored
+       * in prims[i].start. The driver will multiply it later by index_size
+       * so make sure the final value won't overflow.
+       */
+      if (max_index_ptr - min_index_ptr > UINT32_MAX)
          fallback = true;
    } else {
       /* If the index buffer isn't in a VBO, then treating the application's
