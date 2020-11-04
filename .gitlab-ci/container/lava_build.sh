@@ -141,15 +141,22 @@ for i in /usr/bin/*-ld /usr/bin/ld; do
 done
 export PATH=`pwd`/ld-links:$PATH
 
+# Disable all modules in defconfig, so we only build the ones we want
+sed -i 's/=m/=n/g' ${DEFCONFIG}
+
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ../.gitlab-ci/${KERNEL_ARCH}.config
 make ${KERNEL_IMAGE_NAME}
 for image in ${KERNEL_IMAGE_NAME}; do
     cp arch/${KERNEL_ARCH}/boot/${image} /lava-files/.
 done
+
 if [[ -n ${DEVICE_TREES} ]]; then
     make dtbs
     cp ${DEVICE_TREES} /lava-files/.
 fi
+
+make modules
+INSTALL_MOD_PATH=/lava-files/rootfs-${DEBIAN_ARCH}/ make modules_install
 
 if [[ ${DEBIAN_ARCH} = "arm64" ]] && which mkimage > /dev/null; then
     make Image.lzma

@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-11-05-new-kernel"
+  DISTRIBUTION_TAG: "2020-11-05-new-kernel-2"
 
 .kernel+rootfs:
   stage: container-2

@@ -34,6 +34,7 @@ apt-get install -y --no-remove \
         g++-mingw-w64-x86-64 \
         gcc \
         git \
+        kmod \
         libclang-9-dev \
         libclang-10-dev \
         libclc-dev \

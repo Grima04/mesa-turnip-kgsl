@@ -21,6 +21,7 @@ apt-get -y install \
 	flex \
 	g++ \
 	git \
+	kmod \
 	lavacli \
 	libdrm-dev \
 	libelf-dev \

@@ -243,7 +243,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-11-05-kmod"
 
 .use-x86_build-base:
   extends:
@@ -261,7 +261,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-10-09-spvtools-1"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-11-05-kmod"
 
 .use-x86_build:
   variables:
@@ -276,7 +276,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &i386_build "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-11-05-kmod"
 
 .use-i386_build:
   variables:
@@ -291,7 +291,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-11-05-kmod"
 
 .use-ppc64el_build:
   variables:
@@ -306,7 +306,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &s390x_build "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &s390x_build "2020-11-05-kmod"
 
 .use-s390x_build:
   variables:
@@ -321,7 +321,7 @@ android_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &android_build "2020-10-05-shrink"
+    FDO_DISTRIBUTION_TAG: &android_build "2020-11-05-kmod"
 
 .use-android_build:
   variables:
@@ -335,7 +335,7 @@ android_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-11-05-kmod"
 
 .use-x86_test-base:
   extends:
@@ -352,19 +352,19 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-10-30-python3-modules-1"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-11-05-kmod"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-11-05-kmod"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-08-13-gold"
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-11-05-kmod"
     FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:
@@ -381,7 +381,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-09-10-libdrm"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-11-05-kmod"
 
 .use-arm_build:
   variables:
