@@ -41,6 +41,7 @@ extern uint32_t zink_debug;
 #define ZINK_DEBUG_NIR 0x1
 #define ZINK_DEBUG_SPIRV 0x2
 #define ZINK_DEBUG_TGSI 0x4
+#define ZINK_DEBUG_VALIDATION 0x8
 
 struct zink_screen {
    struct pipe_screen base;
@@ -60,7 +61,9 @@ struct zink_screen {
    uint32_t gfx_queue;
    uint32_t timestamp_valid_bits;
    VkDevice dev;
+   VkDebugUtilsMessengerEXT debugUtilsCallbackHandle;
 
+   bool have_debug_utils_ext;
 #if defined(MVK_VERSION)
    bool have_moltenvk;
 #endif
@@ -81,6 +84,9 @@ struct zink_screen {
 
    PFN_vkCmdSetViewportWithCountEXT vk_CmdSetViewportWithCountEXT;
    PFN_vkCmdSetScissorWithCountEXT vk_CmdSetScissorWithCountEXT;
+
+   PFN_vkCreateDebugUtilsMessengerEXT vk_CreateDebugUtilsMessengerEXT;
+   PFN_vkDestroyDebugUtilsMessengerEXT vk_DestroyDebugUtilsMessengerEXT;
 
 #if defined(MVK_VERSION)
    PFN_vkGetMoltenVKConfigurationMVK vk_GetMoltenVKConfigurationMVK;

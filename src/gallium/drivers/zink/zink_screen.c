@@ -45,6 +45,7 @@ debug_options[] = {
    { "nir", ZINK_DEBUG_NIR, "Dump NIR during program compile" },
    { "spirv", ZINK_DEBUG_SPIRV, "Dump SPIR-V during program compile" },
    { "tgsi", ZINK_DEBUG_TGSI, "Dump TGSI during program compile" },
+   { "validation", ZINK_DEBUG_VALIDATION, "Dump Validation layer output" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -632,6 +633,11 @@ static void
 zink_destroy_screen(struct pipe_screen *pscreen)
 {
    struct zink_screen *screen = zink_screen(pscreen);
+
+   if (VK_NULL_HANDLE != screen->debugUtilsCallbackHandle) {
+      screen->vk_DestroyDebugUtilsMessengerEXT(screen->instance, screen->debugUtilsCallbackHandle, NULL);
+   }
+
    slab_destroy_parent(&screen->transfer_pool);
    FREE(screen);
 }
@@ -644,6 +650,7 @@ create_instance(struct zink_screen *screen)
    const char *extensions[4] = { 0 };
    uint32_t num_extensions = 0;
 
+   bool have_debug_utils_ext = false;
 #if defined(MVK_VERSION)
    bool have_moltenvk_layer = false;
    bool have_moltenvk_layer_ext = false;
@@ -659,6 +666,9 @@ create_instance(struct zink_screen *screen)
             err = vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props);
             if (err == VK_SUCCESS) {
                for (uint32_t i = 0; i < extension_count; i++) {
+                  if (!strcmp(extension_props[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+                     have_debug_utils_ext = true;
+                  }
                   if (!strcmp(extension_props[i].extensionName, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
                      extensions[num_extensions++] = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
                   }
@@ -678,9 +688,18 @@ create_instance(struct zink_screen *screen)
       }
    }
 
+   // Clear have_debug_utils_ext if we do not want debug info
+   if (!(zink_debug & ZINK_DEBUG_VALIDATION)) {
+      have_debug_utils_ext = false;
+   }
+
    {
       // Build up the layers from the reported ones
       uint32_t layer_count = 0;
+      // Init has_validation_layer so if we have debug_util allow a validation layer to be added.
+      // Once a validation layer has been found, do not add any more.
+      bool has_validation_layer = !have_debug_utils_ext;
+
       VkResult err = vkEnumerateInstanceLayerProperties(&layer_count, NULL);
       if (err == VK_SUCCESS) {
          VkLayerProperties *layer_props = malloc(layer_count * sizeof(VkLayerProperties));
@@ -688,6 +707,14 @@ create_instance(struct zink_screen *screen)
             err = vkEnumerateInstanceLayerProperties(&layer_count, layer_props);
             if (err == VK_SUCCESS) {
                for (uint32_t i = 0; i < layer_count; i++) {
+                  if (!strcmp(layer_props[i].layerName, "VK_LAYER_KHRONOS_validation") && !has_validation_layer) {
+                     layers[num_layers++] = "VK_LAYER_KHRONOS_validation";
+                     has_validation_layer = true;
+                  }
+                  if (!strcmp(layer_props[i].layerName, "VK_LAYER_LUNARG_standard_validation") && !has_validation_layer) {
+                     layers[num_layers++] = "VK_LAYER_LUNARG_standard_validation";
+                     has_validation_layer = true;
+                  }
 #if defined(MVK_VERSION)
                   if (!strcmp(layer_props[i].layerName, "MoltenVK")) {
                      have_moltenvk_layer = true;
@@ -699,6 +726,11 @@ create_instance(struct zink_screen *screen)
             free(layer_props);
          }
       }
+   }
+
+   if (have_debug_utils_ext) {
+      extensions[num_extensions++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+      screen->have_debug_utils_ext = have_debug_utils_ext;
    }
 
 #if defined(MVK_VERSION)
@@ -889,6 +921,67 @@ load_device_extensions(struct zink_screen *screen)
    return true;
 }
 
+static VkBool32 VKAPI_CALL
+zink_debug_util_callback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT           messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT                  messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT      *pCallbackData,
+    void                                            *pUserData)
+{
+   const char *severity = "MSG";
+
+   // Pick message prefix and color to use.
+   // Only MacOS and Linux have been tested for color support
+   if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+      severity = "ERR";
+   } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+      severity = "WRN";
+   } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+      severity = "NFO";
+   }
+
+   fprintf(stderr, "zink DEBUG: %s: '%s'\n", severity, pCallbackData->pMessage);
+   return VK_FALSE;
+}
+
+static bool
+create_debug(struct zink_screen *screen)
+{
+   GET_PROC_ADDR_INSTANCE(CreateDebugUtilsMessengerEXT);
+   GET_PROC_ADDR_INSTANCE(DestroyDebugUtilsMessengerEXT);
+
+   if (!screen->vk_CreateDebugUtilsMessengerEXT || !screen->vk_DestroyDebugUtilsMessengerEXT)
+      return false;
+
+   VkDebugUtilsMessengerCreateInfoEXT vkDebugUtilsMessengerCreateInfoEXT = {
+       VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+       NULL,
+       0,  // flags
+       VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+       VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+       VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+       VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+       VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+       VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+       zink_debug_util_callback,
+       NULL
+   };
+
+   VkDebugUtilsMessengerEXT vkDebugUtilsCallbackEXT = VK_NULL_HANDLE;
+
+   screen->vk_CreateDebugUtilsMessengerEXT(
+       screen->instance,
+       &vkDebugUtilsMessengerCreateInfoEXT,
+       NULL,
+       &vkDebugUtilsCallbackEXT
+   );
+
+   screen->debugUtilsCallbackHandle = vkDebugUtilsCallbackEXT;
+
+   return true;
+}
+
 #if defined(MVK_VERSION)
 static bool
 zink_internal_setup_moltenvk(struct zink_screen *screen)
@@ -942,6 +1035,9 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
    screen->instance = create_instance(screen);
    if(!screen->instance)
       goto fail;
+
+   if (screen->have_debug_utils_ext && !create_debug(screen))
+      debug_printf("ZINK: failed to setup debug utils\n");
 
    screen->pdev = choose_pdev(screen->instance);
    update_queue_props(screen);
