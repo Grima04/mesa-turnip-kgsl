@@ -233,4 +233,13 @@ void pan_print_alu_type(nir_alu_type t, FILE *fp);
 bool pan_has_source_mod(nir_alu_src *src, nir_op op);
 bool pan_has_dest_mod(nir_dest **dest, nir_op op);
 
+/* NIR passes to do some backend-specific lowering */
+
+#define PAN_WRITEOUT_C 1
+#define PAN_WRITEOUT_Z 2
+#define PAN_WRITEOUT_S 4
+
+bool pan_nir_reorder_writeout(nir_shader *nir);
+bool pan_nir_lower_zs_store(nir_shader *nir);
+
 #endif
