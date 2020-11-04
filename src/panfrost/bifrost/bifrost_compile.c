@@ -219,25 +219,17 @@ bi_emit_atest(bi_context *ctx, unsigned rgba, nir_alu_type T)
 }
 
 static void
-bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
+bi_emit_blend(bi_context *ctx, unsigned rgba, nir_alu_type T, unsigned rt)
 {
-        if (!ctx->emitted_atest && !ctx->is_blend) {
-                bi_emit_atest(ctx,
-                        pan_src_index(&instr->src[0]),
-                        nir_intrinsic_src_type(instr));
-
-                ctx->emitted_atest = true;
-        }
-
         bi_instruction blend = {
                 .type = BI_BLEND,
-                .blend_location = nir_intrinsic_base(instr),
+                .blend_location = rt,
                 .src = {
-                        pan_src_index(&instr->src[0]),
-                        BIR_INDEX_REGISTER | 60 /* Can this be arbitrary? */,
+                        rgba,
+                        BIR_INDEX_REGISTER | 60 /* TODO: RA */
                 },
                 .src_types = {
-                        nir_intrinsic_src_type(instr),
+                        T,
                         nir_type_uint32,
                         nir_type_uint32,
                         nir_type_uint32,
@@ -276,6 +268,23 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
         ctx->blend_types[blend.blend_location] = blend.src_types[0];
 
         bi_emit(ctx, blend);
+}
+
+static void
+bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        if (!ctx->emitted_atest && !ctx->is_blend) {
+                bi_emit_atest(ctx,
+                        pan_src_index(&instr->src[0]),
+                        nir_intrinsic_src_type(instr));
+
+                ctx->emitted_atest = true;
+        }
+
+        bi_emit_blend(ctx,
+                        pan_src_index(&instr->src[0]),
+                        nir_intrinsic_src_type(instr),
+                        nir_intrinsic_base(instr));
 
         if (ctx->is_blend) {
                 /* Jump back to the fragment shader, return address is stored
