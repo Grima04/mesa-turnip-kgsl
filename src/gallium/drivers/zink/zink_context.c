@@ -1129,7 +1129,7 @@ get_render_pass(struct zink_context *ctx)
          state.rts[i].format = zink_get_format(screen, surf->format);
          state.rts[i].samples = surf->texture->nr_samples > 0 ? surf->texture->nr_samples :
                                                        VK_SAMPLE_COUNT_1_BIT;
-         state.rts[i].clear_color = ctx->fb_clears[i].enabled && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
+         state.rts[i].clear_color = zink_fb_clear_enabled(ctx, i) && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
          clears |= !!state.rts[i].clear_color ? BITFIELD_BIT(i) : 0;
       } else {
          state.rts[i].format = VK_FORMAT_R8_UINT;
@@ -1144,10 +1144,10 @@ get_render_pass(struct zink_context *ctx)
       struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
       state.rts[fb->nr_cbufs].format = zsbuf->format;
       state.rts[fb->nr_cbufs].samples = zsbuf->base.nr_samples > 0 ? zsbuf->base.nr_samples : VK_SAMPLE_COUNT_1_BIT;
-      state.rts[fb->nr_cbufs].clear_color = fb_clear->enabled &&
+      state.rts[fb->nr_cbufs].clear_color = zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS) &&
                                             !zink_fb_clear_first_needs_explicit(fb_clear) &&
                                             (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_DEPTH);
-      state.rts[fb->nr_cbufs].clear_stencil = fb_clear->enabled &&
+      state.rts[fb->nr_cbufs].clear_stencil = zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS) &&
                                               !zink_fb_clear_first_needs_explicit(fb_clear) &&
                                               (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL);
       clears |= state.rts[fb->nr_cbufs].clear_color || state.rts[fb->nr_cbufs].clear_stencil ? BITFIELD_BIT(fb->nr_cbufs) : 0;;
@@ -1269,7 +1269,7 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    uint32_t clear_validate = 0;
    for (int i = 0; i < fb_state->nr_cbufs; i++) {
       /* these are no-ops */
-      if (!fb_state->cbufs[i] || !ctx->fb_clears[i].enabled)
+      if (!fb_state->cbufs[i] || !zink_fb_clear_enabled(ctx, i))
          continue;
       /* these need actual clear calls inside the rp */
       struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(&ctx->fb_clears[i], 0);
@@ -1285,7 +1285,7 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
       clear_validate |= BITFIELD_BIT(i);
       assert(ctx->framebuffer->rp->state.clears);
    }
-   if (fb_state->zsbuf && ctx->fb_clears[PIPE_MAX_COLOR_BUFS].enabled) {
+   if (fb_state->zsbuf && zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS)) {
       struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
       struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
       if (!zink_fb_clear_element_needs_explicit(clear)) {
