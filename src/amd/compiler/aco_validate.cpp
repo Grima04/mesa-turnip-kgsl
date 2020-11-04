@@ -88,7 +88,7 @@ bool validate_ir(Program* program)
          aco_print_instr(instr, memf);
          u_memstream_close(&mem);
 
-         aco_err(program, out);
+         aco_err(program, "%s", out);
          free(out);
 
          is_valid = false;
@@ -555,7 +555,7 @@ bool ra_fail(Program *program, Location loc, Location loc2, const char *fmt, ...
    fprintf(memf, "\n\n");
    u_memstream_close(&mem);
 
-   aco_err(program, out);
+   aco_err(program, "%s", out);
    free(out);
 
    return true;
