@@ -271,6 +271,29 @@ bi_emit_blend(bi_context *ctx, unsigned rgba, nir_alu_type T, unsigned rt)
 }
 
 static void
+bi_emit_zs_emit(bi_context *ctx, unsigned z, unsigned stencil)
+{
+        bi_instruction ins = {
+                .type = BI_ZS_EMIT,
+                .src = {
+                        z,
+                        stencil,
+                        BIR_INDEX_REGISTER | 60 /* TODO: RA */,
+                },
+                .src_types = {
+                        nir_type_float32,
+                        nir_type_uint8,
+                        nir_type_uint32,
+                },
+                .swizzle = { { 0 }, { 0 }, { 0 } },
+                .dest = BIR_INDEX_REGISTER | 60 /* TODO: RA */,
+                .dest_type = nir_type_uint32,
+        };
+
+        bi_emit(ctx, ins);
+}
+
+static void
 bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bool combined = instr->intrinsic ==
@@ -291,7 +314,12 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
         }
 
         if (emit_zs) {
-                unreachable("stub");
+                unsigned z = writeout & PAN_WRITEOUT_Z ?
+                        pan_src_index(&instr->src[2]) : 0;
+                unsigned s = writeout & PAN_WRITEOUT_S ?
+                        pan_src_index(&instr->src[3]) : 0;
+
+                bi_emit_zs_emit(ctx, z, s);
         }
 
         if (emit_blend) {
