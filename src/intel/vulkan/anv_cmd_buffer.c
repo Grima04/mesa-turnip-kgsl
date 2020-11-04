@@ -270,14 +270,7 @@ static VkResult anv_create_cmd_buffer(
 
    anv_cmd_state_init(cmd_buffer);
 
-   if (pool) {
-      list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-   } else {
-      /* Init the pool_link so we can safefly call list_del when we destroy
-       * the command buffer
-       */
-      list_inithead(&cmd_buffer->pool_link);
-   }
+   list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
 
    *pCommandBuffer = anv_cmd_buffer_to_handle(cmd_buffer);
 
