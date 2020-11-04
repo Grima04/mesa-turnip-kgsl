@@ -612,19 +612,14 @@ zink_get_query_result(struct pipe_context *pctx,
 {
    struct zink_query *query = (void*)q;
    struct zink_context *ctx = zink_context(pctx);
-   if (is_cs_query(query)) {
-      if (wait) {
-         uint32_t batch_id = p_atomic_read(&query->batch_id.usage[ZINK_QUEUE_COMPUTE]);
-         zink_wait_on_batch(ctx, ZINK_QUEUE_COMPUTE, batch_id);
-      } else {
-         zink_flush_queue(ctx, ZINK_QUEUE_COMPUTE);
-      }
-   } else {
-      if (wait) {
-         zink_fence_wait(pctx);
-      } else
-         pctx->flush(pctx, NULL, 0);
-   }
+   enum zink_queue queue = is_cs_query(query) ? ZINK_QUEUE_COMPUTE : ZINK_QUEUE_GFX;
+   uint32_t batch_id = p_atomic_read(&query->batch_id.usage[queue]);
+
+   if (wait)
+      zink_wait_on_batch(ctx, queue, batch_id);
+   else if (batch_id == ctx->curr_batch)
+      zink_flush_queue(ctx, queue);
+
    return get_query_result(pctx, q, wait, result);
 }
 
