@@ -672,6 +672,7 @@ create_instance(struct zink_screen *screen)
                   }
                   if (!strcmp(extension_props[i].extensionName, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
                      extensions[num_extensions++] = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
+                     screen->have_physical_device_prop2_ext = true;
                   }
                   if (!strcmp(extension_props[i].extensionName, VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME)) {
                      extensions[num_extensions++] = VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME;
@@ -873,6 +874,42 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
       } \
    } while (0)
 
+#define GET_PROC_ADDR_INSTANCE_LOCAL(instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
+
+static bool
+load_instance_extensions(struct zink_screen *screen)
+{
+   screen->loader_version = VK_API_VERSION_1_0;
+   {
+      // Get the Loader version
+      GET_PROC_ADDR_INSTANCE_LOCAL(NULL, EnumerateInstanceVersion);
+      if (vk_EnumerateInstanceVersion) {
+         uint32_t loader_version_temp = VK_API_VERSION_1_0;
+         if (VK_SUCCESS == (*vk_EnumerateInstanceVersion)( &loader_version_temp)) {
+            screen->loader_version = loader_version_temp;
+         }
+      }
+   }
+   if (zink_debug & ZINK_DEBUG_VALIDATION) {
+      printf("zink: Loader %d.%d.%d \n", VK_VERSION_MAJOR(screen->loader_version), VK_VERSION_MINOR(screen->loader_version), VK_VERSION_PATCH(screen->loader_version));
+   }
+
+   if (VK_MAKE_VERSION(1,1,0) <= screen->loader_version) {
+      // Get Vk 1.1+ Instance functions
+      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceFeatures2);
+      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceProperties2);
+   } else
+   if (screen->have_physical_device_prop2_ext) {
+      // Not Vk 1.1+ so if VK_KHR_get_physical_device_properties2 the use it
+      GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceFeatures2KHR);
+      GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceProperties2KHR);
+      screen->vk_GetPhysicalDeviceFeatures2 = vk_GetPhysicalDeviceFeatures2KHR;
+      screen->vk_GetPhysicalDeviceProperties2 = vk_GetPhysicalDeviceProperties2KHR;
+   }
+
+   return true;
+}
+
 static bool
 load_device_extensions(struct zink_screen *screen)
 {
@@ -1041,7 +1078,10 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
    zink_debug = debug_get_option_zink_debug();
 
    screen->instance = create_instance(screen);
-   if(!screen->instance)
+   if (!screen->instance)
+      goto fail;
+
+   if (!load_instance_extensions(screen))
       goto fail;
 
    if (screen->have_debug_utils_ext && !create_debug(screen))
@@ -1088,7 +1128,11 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
    /* extensions don't have bool members in pEnabledFeatures.
     * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
     */
-   dci.pNext = &screen->info.feats;
+   if (screen->info.feats.sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2) {
+      dci.pNext = &screen->info.feats;
+   } else {
+      dci.pEnabledFeatures = &screen->info.feats.features;
+   }
 
    dci.ppEnabledExtensionNames = screen->info.extensions;
    dci.enabledExtensionCount = screen->info.num_extensions;

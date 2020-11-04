@@ -170,53 +170,69 @@ zink_get_physical_device_info(struct zink_screen *screen)
       }
    }
 
-   // check for device extension features
-   info->feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+   if (screen->vk_GetPhysicalDeviceFeatures2) {
+      // check for device extension features
+      info->feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
 %for ext in extensions:
 %if ext.feature_field is not None or ext.has_features:
-   ${ext.guard_start()}
-   if (support_${ext.name_with_vendor()}) {
-      info->${ext.field("feats")}.sType = ${ext.stype("FEATURES")};
-      info->${ext.field("feats")}.pNext = info->feats.pNext;
-      info->feats.pNext = &info->${ext.field("feats")};
-   }
-   ${ext.guard_end()}
+      ${ext.guard_start()}
+      if (support_${ext.name_with_vendor()}) {
+         info->${ext.field("feats")}.sType = ${ext.stype("FEATURES")};
+         info->${ext.field("feats")}.pNext = info->feats.pNext;
+         info->feats.pNext = &info->${ext.field("feats")};
+      }
+      ${ext.guard_end()}
 %endif
 %endfor
 
-   vkGetPhysicalDeviceFeatures2(screen->pdev, &info->feats);
+      screen->vk_GetPhysicalDeviceFeatures2(screen->pdev, &info->feats);
 
 %for ext in extensions:
-   ${ext.guard_start()}
+      ${ext.guard_start()}
 %if ext.feature_field is None:
-   info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
+      info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
 %else:
-   if (support_${ext.name_with_vendor()} && info->${ext.field("feats")}.${ext.feature_field}) {
-      info->have_${ext.name_with_vendor()} = true;
-   }
+      if (support_${ext.name_with_vendor()} && info->${ext.field("feats")}.${ext.feature_field}) {
+         info->have_${ext.name_with_vendor()} = true;
+      }
 %endif
-   ${ext.guard_end()}
+      ${ext.guard_end()}
 %endfor
+   } else {
+      vkGetPhysicalDeviceFeatures(screen->pdev, &info->feats.features);
+
+%for ext in extensions:
+      ${ext.guard_start()}
+%if ext.feature_field is None:
+      info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
+%endif
+      ${ext.guard_end()}
+%endfor
+   }
 
    // check for device properties
-   VkPhysicalDeviceProperties2 props = {};
-   props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+   if (screen->vk_GetPhysicalDeviceProperties2) {
+      VkPhysicalDeviceProperties2 props = {};
+      props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 
 %for ext in extensions:
 %if ext.has_properties:
-   ${ext.guard_start()}
-   if (info->have_${ext.name_with_vendor()}) {
-      info->${ext.field("props")}.sType = ${ext.stype("PROPERTIES")};
-      info->${ext.field("props")}.pNext = props.pNext;
-      props.pNext = &info->${ext.field("props")};
-   }
-   ${ext.guard_end()}
+      ${ext.guard_start()}
+      if (info->have_${ext.name_with_vendor()}) {
+         info->${ext.field("props")}.sType = ${ext.stype("PROPERTIES")};
+         info->${ext.field("props")}.pNext = props.pNext;
+         props.pNext = &info->${ext.field("props")};
+      }
+      ${ext.guard_end()}
 %endif
 %endfor
 
-   vkGetPhysicalDeviceProperties2(screen->pdev, &props);
-   memcpy(&info->props, &props.properties, sizeof(info->props));
+      screen->vk_GetPhysicalDeviceProperties2(screen->pdev, &props);
+      memcpy(&info->props, &props.properties, sizeof(info->props));
+   } else {
+      vkGetPhysicalDeviceProperties(screen->pdev, &info->props);
+   }
 
    // generate extension list
    num_extensions = 0;

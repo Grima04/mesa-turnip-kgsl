@@ -64,10 +64,15 @@ struct zink_screen {
    VkDevice dev;
    VkDebugUtilsMessengerEXT debugUtilsCallbackHandle;
 
+   uint32_t loader_version;
+   bool have_physical_device_prop2_ext;
    bool have_debug_utils_ext;
 #if defined(MVK_VERSION)
    bool have_moltenvk;
 #endif
+
+   PFN_vkGetPhysicalDeviceFeatures2 vk_GetPhysicalDeviceFeatures2;
+   PFN_vkGetPhysicalDeviceProperties2 vk_GetPhysicalDeviceProperties2;
 
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
    PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;
