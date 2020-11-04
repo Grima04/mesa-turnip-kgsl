@@ -81,6 +81,7 @@ enum bi_class {
         BI_TEXC_DUAL,
         BI_ROUND,
         BI_IMUL,
+        BI_ZS_EMIT,
         BI_NUM_CLASSES
 };
 

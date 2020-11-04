@@ -76,6 +76,7 @@ bi_class_name(enum bi_class cl)
         case BI_TEXC_DUAL: return "texc_dual";
         case BI_ROUND: return "round";
         case BI_IMUL: return "imul";
+        case BI_ZS_EMIT: return "zs_emit";
         default: return "unknown_class";
         }
 }

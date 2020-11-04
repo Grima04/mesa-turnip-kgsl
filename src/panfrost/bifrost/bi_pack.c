@@ -912,6 +912,8 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
                         return pan_pack_add_texs_2d_f32(clause, bundle.add, regs);
 case BI_ROUND:
                 unreachable("Packing todo");
+        case BI_ZS_EMIT:
+                return pan_pack_add_zs_emit(clause, bundle.add, regs);
         default:
                 unreachable("Cannot encode class as ADD");
         }

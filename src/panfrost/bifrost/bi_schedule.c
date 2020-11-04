@@ -83,6 +83,9 @@ bi_message_type_for_ins(bi_instruction *ins)
         case BI_ATEST:
                 return BIFROST_MESSAGE_ATEST;
 
+        case BI_ZS_EMIT:
+                return BIFROST_MESSAGE_Z_STENCIL;
+
         default:
                 unreachable("Invalid high-latency class");
         }
