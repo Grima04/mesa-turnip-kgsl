@@ -446,7 +446,12 @@ maybe_init(int fd)
 
    initialized = true;
 
-   config = fopen(getenv("INTEL_DUMP_GPU_CONFIG"), "r");
+   const char *config_path = getenv("INTEL_DUMP_GPU_CONFIG");
+   fail_if(config_path == NULL, "INTEL_DUMP_GPU_CONFIG is not set\n");
+
+   config = fopen(config_path, "r");
+   fail_if(config == NULL, "failed to open file %s\n", config_path);
+
    while (fscanf(config, "%m[^=]=%m[^\n]\n", &key, &value) != EOF) {
       if (!strcmp(key, "verbose")) {
          if (!strcmp(value, "1")) {
