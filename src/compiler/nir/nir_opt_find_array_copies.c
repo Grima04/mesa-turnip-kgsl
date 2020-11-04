@@ -196,8 +196,10 @@ _foreach_child(match_cb cb, struct match_node *node, struct match_state *state)
    if (node->num_children == 0) {
       cb(node, state);
    } else {
-      for (unsigned i = 0; i < node->num_children; i++)
-         _foreach_child(cb, node->children[i], state);
+      for (unsigned i = 0; i < node->num_children; i++) {
+         if (node->children[i])
+            _foreach_child(cb, node->children[i], state);
+      }
    }
 }
 
