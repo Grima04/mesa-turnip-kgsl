@@ -446,7 +446,8 @@ init_uuids(struct v3dv_physical_device *device)
 static VkResult
 physical_device_init(struct v3dv_physical_device *device,
                      struct v3dv_instance *instance,
-                     drmDevicePtr drm_device)
+                     drmDevicePtr drm_render_device,
+                     drmDevicePtr drm_primary_device)
 {
    VkResult result = VK_SUCCESS;
    int32_t display_fd = -1;
@@ -454,7 +455,7 @@ physical_device_init(struct v3dv_physical_device *device,
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = instance;
 
-   const char *path = drm_device->nodes[DRM_NODE_RENDER];
+   const char *path = drm_render_device->nodes[DRM_NODE_RENDER];
    int32_t render_fd = open(path, O_RDWR | O_CLOEXEC);
    if (render_fd < 0)
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
@@ -463,22 +464,36 @@ physical_device_init(struct v3dv_physical_device *device,
     * device so we can allocate winsys BOs for the v3d core to render into.
     */
 #if !using_v3d_simulator
+   if (instance->enabled_extensions.KHR_display) {
+      /* Open the primary node on the vc4 display device */
+      assert(drm_primary_device);
+      const char *primary_path = drm_primary_device->nodes[DRM_NODE_PRIMARY];
+      display_fd = open(primary_path, O_RDWR | O_CLOEXEC);
+   }
+
 #ifdef VK_USE_PLATFORM_XCB_KHR
-   display_fd = create_display_fd_xcb();
+   if (display_fd == -1)
+      display_fd = create_display_fd_xcb();
 #endif
 
    if (display_fd == -1) {
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
       goto fail;
    }
+#else
+   /* using_v3d_simulator */
+   if (instance->enabled_extensions.KHR_display) {
+      /* There is only one device with primary and render nodes.
+       * Open its primary node.
+       */
+      const char *primary_path = drm_render_device->nodes[DRM_NODE_PRIMARY];
+      display_fd = open(primary_path, O_RDWR | O_CLOEXEC);
+   }
+   device->sim_file = v3d_simulator_init(render_fd);
 #endif
 
    device->render_fd = render_fd;       /* The v3d render node  */
    device->display_fd = display_fd;    /* The vc4 primary node */
-
-#if using_v3d_simulator
-   device->sim_file = v3d_simulator_init(device->render_fd);
-#endif
 
    if (!v3d_get_device_info(device->render_fd, &device->devinfo, &v3dv_ioctl)) {
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
@@ -565,11 +580,12 @@ enumerate_devices(struct v3dv_instance *instance)
    for (unsigned i = 0; i < (unsigned)max_devices; i++) {
 #if using_v3d_simulator
       /* In the simulator, we look for an Intel render node */
-      if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
-          devices[i]->bustype == DRM_BUS_PCI &&
-          devices[i]->deviceinfo.pci->vendor_id == 0x8086) {
+      const int required_nodes = (1 << DRM_NODE_RENDER) | (1 << DRM_NODE_PRIMARY);
+      if ((devices[i]->available_nodes & required_nodes) == required_nodes &&
+           devices[i]->bustype == DRM_BUS_PCI &&
+           devices[i]->deviceinfo.pci->vendor_id == 0x8086) {
          result = physical_device_init(&instance->physicalDevice, instance,
-                                       devices[i]);
+                                       devices[i], NULL);
          if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
             break;
       }
@@ -614,7 +630,7 @@ enumerate_devices(struct v3dv_instance *instance)
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
    else
       result = physical_device_init(&instance->physicalDevice, instance,
-                                    devices[v3d_idx]);
+                                    devices[v3d_idx], devices[vc4_idx]);
 #endif
 
    drmFreeDevices(devices, max_devices);
