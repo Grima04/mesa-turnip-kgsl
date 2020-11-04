@@ -936,7 +936,8 @@ nir_algebraic_impl(nir_function_impl *impl,
     */
    nir_foreach_block_reverse(block, impl) {
       nir_foreach_instr_reverse(instr, block) {
-         nir_instr_worklist_push_tail(worklist, instr);
+         if (instr->type == nir_instr_type_alu)
+            nir_instr_worklist_push_tail(worklist, instr);
       }
    }
 
