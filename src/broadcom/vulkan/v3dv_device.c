@@ -1562,13 +1562,7 @@ device_import_bo(struct v3dv_device *device,
    }
    assert(get_offset.offset != 0);
 
-   (*bo)->handle = handle;
-   (*bo)->size = size;
-   (*bo)->offset = get_offset.offset;
-   (*bo)->map = NULL;
-   (*bo)->map_size = 0;
-   (*bo)->private = false;
-   (*bo)->dumb_handle = -1;
+   v3dv_bo_init(*bo, handle, size, get_offset.offset, "import", false);
 
    return VK_SUCCESS;
 

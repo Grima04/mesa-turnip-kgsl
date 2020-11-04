@@ -175,6 +175,25 @@ bo_cache_free_all(struct v3dv_device *device,
 
 }
 
+void
+v3dv_bo_init(struct v3dv_bo *bo,
+             uint32_t handle,
+             uint32_t size,
+             uint32_t offset,
+             const char *name,
+             bool private)
+{
+   bo->handle = handle;
+   bo->size = size;
+   bo->offset = offset;
+   bo->map = NULL;
+   bo->map_size = 0;
+   bo->name = name;
+   bo->private = private;
+   bo->dumb_handle = -1;
+   list_inithead(&bo->list_link);
+}
+
 struct v3dv_bo *
 v3dv_bo_alloc(struct v3dv_device *device,
               uint32_t size,
@@ -231,15 +250,7 @@ v3dv_bo_alloc(struct v3dv_device *device,
    assert(create.offset % page_align == 0);
    assert((create.offset & 0xffffffff) == create.offset);
 
-   bo->handle = create.handle;
-   bo->size = size;
-   bo->offset = create.offset;
-   bo->map = NULL;
-   bo->map_size = 0;
-   bo->name = name;
-   bo->private = private;
-   bo->dumb_handle = -1;
-   list_inithead(&bo->list_link);
+   v3dv_bo_init(bo, create.handle, size, create.offset, name, private);
 
    device->bo_count++;
    device->bo_size += bo->size;
