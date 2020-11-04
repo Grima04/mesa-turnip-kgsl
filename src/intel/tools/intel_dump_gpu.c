@@ -92,21 +92,7 @@ static struct bo *bos;
 #define IS_USERPTR(p) ((uintptr_t) (p) & USERPTR_FLAG)
 #define GET_PTR(p) ( (void *) ((uintptr_t) p & ~(uintptr_t) 1) )
 
-static void __attribute__ ((format(__printf__, 2, 3)))
-fail_if(int cond, const char *format, ...)
-{
-   va_list args;
-
-   if (!cond)
-      return;
-
-   va_start(args, format);
-   fprintf(stderr, "intel_dump_gpu: ");
-   vfprintf(stderr, format, args);
-   va_end(args);
-
-   raise(SIGTRAP);
-}
+#define fail_if(cond, ...) _fail_if(cond, "intel_dump_gpu", __VA_ARGS__)
 
 static struct bo *
 get_bo(unsigned fd, uint32_t handle)
