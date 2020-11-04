@@ -198,28 +198,34 @@ bi_emit_ld_blend_input(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_atest(bi_context *ctx, unsigned rgba, nir_alu_type T)
+{
+        bi_instruction ins = {
+                .type = BI_ATEST,
+                .src = {
+                        BIR_INDEX_REGISTER | 60 /* TODO: RA */,
+                        rgba,
+                },
+                .src_types = { nir_type_uint32, T },
+                .swizzle = {
+                        { 0 },
+                        { 3, 0 } /* swizzle out the alpha */
+                },
+                .dest = BIR_INDEX_REGISTER | 60 /* TODO: RA */,
+                .dest_type = nir_type_uint32,
+        };
+
+        bi_emit(ctx, ins);
+}
+
+static void
 bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         if (!ctx->emitted_atest && !ctx->is_blend) {
-                bi_instruction ins = {
-                        .type = BI_ATEST,
-                        .src = {
-                                BIR_INDEX_REGISTER | 60 /* TODO: RA */,
-                                pan_src_index(&instr->src[0])
-                        },
-                        .src_types = {
-                                nir_type_uint32,
-                                nir_intrinsic_src_type(instr)
-                        },
-                        .swizzle = {
-                                { 0 },
-                                { 3, 0 } /* swizzle out the alpha */
-                        },
-                        .dest = BIR_INDEX_REGISTER | 60 /* TODO: RA */,
-                        .dest_type = nir_type_uint32,
-                };
+                bi_emit_atest(ctx,
+                        pan_src_index(&instr->src[0]),
+                        nir_intrinsic_src_type(instr));
 
-                bi_emit(ctx, ins);
                 ctx->emitted_atest = true;
         }
 
