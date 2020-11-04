@@ -1783,6 +1783,11 @@ zink_flush(struct pipe_context *pctx,
    struct zink_batch *batch = zink_batch_g(ctx);
    struct zink_fence *fence = &batch->state->fence;
 
+   if (!deferred && ctx->clears_enabled) {
+      /* start rp to do all the clears */
+      zink_begin_render_pass(ctx, batch);
+   }
+
    if (deferred)
       batch->state->fence.deferred_ctx = pctx;
    else if (batch->has_work) {
