@@ -442,6 +442,11 @@ image_format_features(VkFormat vk_format,
       flags |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
       if (desc->nr_channels == 1 && vk_format_is_int(vk_format))
          flags |= VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT;
+   } else if (vk_format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ||
+              vk_format == VK_FORMAT_A2B10G10R10_UINT_PACK32 ||
+              vk_format == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
+      /* To comply with shaderStorageImageExtendedFormats */
+      flags |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
    }
 
    if (flags) {
@@ -482,10 +487,12 @@ buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format
       }
    } else if (vk_format == VK_FORMAT_A2B10G10R10_UNORM_PACK32) {
       flags |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT |
-               VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+               VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT |
+               VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
    } else if (vk_format == VK_FORMAT_A2B10G10R10_UINT_PACK32 ||
               vk_format == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
-      flags |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+      flags |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT |
+               VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
    }
 
    if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
