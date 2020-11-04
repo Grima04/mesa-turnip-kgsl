@@ -1518,6 +1518,12 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 
       SpvStorageClass storage_class = w[2];
 
+      vtn_fail_if(opcode == SpvOpTypeForwardPointer &&
+                  b->shader->info.stage != MESA_SHADER_KERNEL &&
+                  storage_class != SpvStorageClassPhysicalStorageBuffer,
+                  "OpTypeForwardPointer is only allowed in Vulkan with "
+                  "the PhysicalStorageBuffer storage class");
+
       if (val->value_type == vtn_value_type_invalid) {
          val->value_type = vtn_value_type_type;
          val->type = rzalloc(b, struct vtn_type);
