@@ -1108,6 +1108,20 @@ get_const_def(struct spirv_builder *b, SpvOp op, SpvId type,
    return ((struct spirv_const *)entry->data)->result;
 }
 
+static SpvId
+emit_constant_32(struct spirv_builder *b, SpvId type, uint32_t val)
+{
+   uint32_t args[] = { val };
+   return get_const_def(b, SpvOpConstant, type, args, ARRAY_SIZE(args));
+}
+
+static SpvId
+emit_constant_64(struct spirv_builder *b, SpvId type, uint64_t val)
+{
+   uint32_t args[] = { val & UINT32_MAX, val >> 32 };
+   return get_const_def(b, SpvOpConstant, type, args, ARRAY_SIZE(args));
+}
+
 SpvId
 spirv_builder_const_bool(struct spirv_builder *b, bool val)
 {
@@ -1116,30 +1130,36 @@ spirv_builder_const_bool(struct spirv_builder *b, bool val)
 }
 
 SpvId
-spirv_builder_const_int(struct spirv_builder *b, int width, int32_t val)
+spirv_builder_const_int(struct spirv_builder *b, int width, int64_t val)
 {
-   assert(width <= 32);
-   uint32_t args[] = { val };
-   return get_const_def(b, SpvOpConstant, spirv_builder_type_int(b, width),
-                        args, ARRAY_SIZE(args));
+   assert(width >= 32);
+   SpvId type = spirv_builder_type_int(b, width);
+   if (width <= 32)
+      return emit_constant_32(b, type, val);
+   else
+      return emit_constant_64(b, type, val);
 }
 
 SpvId
-spirv_builder_const_uint(struct spirv_builder *b, int width, uint32_t val)
+spirv_builder_const_uint(struct spirv_builder *b, int width, uint64_t val)
 {
-   assert(width <= 32);
-   uint32_t args[] = { val };
-   return get_const_def(b, SpvOpConstant, spirv_builder_type_uint(b, width),
-                        args, ARRAY_SIZE(args));
+   assert(width >= 32);
+   SpvId type = spirv_builder_type_uint(b, width);
+   if (width <= 32)
+      return emit_constant_32(b, type, val);
+   else
+      return emit_constant_64(b, type, val);
 }
 
 SpvId
-spirv_builder_const_float(struct spirv_builder *b, int width, float val)
+spirv_builder_const_float(struct spirv_builder *b, int width, double val)
 {
-   assert(width <= 32);
-   uint32_t args[] = { u_bitcast_f2u(val) };
-   return get_const_def(b, SpvOpConstant, spirv_builder_type_float(b, width),
-                        args, ARRAY_SIZE(args));
+   assert(width >= 32);
+   SpvId type = spirv_builder_type_float(b, width);
+   if (width <= 32)
+      return emit_constant_32(b, type, u_bitcast_f2u(val));
+   else
+      return emit_constant_64(b, type, u_bitcast_d2u(val));
 }
 
 SpvId

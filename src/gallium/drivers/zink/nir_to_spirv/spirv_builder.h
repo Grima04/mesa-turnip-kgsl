@@ -334,13 +334,13 @@ SpvId
 spirv_builder_const_bool(struct spirv_builder *b, bool val);
 
 SpvId
-spirv_builder_const_int(struct spirv_builder *b, int width, int32_t val);
+spirv_builder_const_int(struct spirv_builder *b, int width, int64_t val);
 
 SpvId
-spirv_builder_const_uint(struct spirv_builder *b, int width, uint32_t val);
+spirv_builder_const_uint(struct spirv_builder *b, int width, uint64_t val);
 
 SpvId
-spirv_builder_const_float(struct spirv_builder *b, int width, float val);
+spirv_builder_const_float(struct spirv_builder *b, int width, double val);
 
 SpvId
 spirv_builder_const_composite(struct spirv_builder *b, SpvId result_type,
