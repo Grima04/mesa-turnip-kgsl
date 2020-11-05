@@ -102,6 +102,22 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    batch->resource_size = 0;
 }
 
+void
+zink_batch_destroy(struct zink_context* ctx, struct zink_batch *batch)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+
+   vkFreeCommandBuffers(screen->dev, batch->cmdpool, 1, &batch->cmdbuf);
+   vkDestroyCommandPool(screen->dev, batch->cmdpool, NULL);
+   zink_fence_reference(screen, &batch->fence, NULL);
+   _mesa_set_destroy(batch->fbs, NULL);
+   _mesa_set_destroy(batch->resources, NULL);
+   util_dynarray_fini(&batch->zombie_samplers);
+   _mesa_set_destroy(batch->surfaces, NULL);
+   _mesa_set_destroy(batch->programs, NULL);
+   _mesa_set_destroy(batch->active_queries, NULL);
+}
+
 static void
 init_batch(struct zink_context *ctx, struct zink_batch *batch)
 {

@@ -276,23 +276,6 @@ debug_describe_zink_buffer_view(char *buf, const struct zink_buffer_view *ptr)
 }
 
 static void
-destroy_batch(struct zink_context* ctx, struct zink_batch* batch)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-
-   zink_reset_batch(ctx, batch);
-   vkFreeCommandBuffers(screen->dev, batch->cmdpool, 1, &batch->cmdbuf);
-   vkDestroyCommandPool(screen->dev, batch->cmdpool, NULL);
-   zink_fence_reference(screen, &batch->fence, NULL);
-   _mesa_set_destroy(batch->fbs, NULL);
-   _mesa_set_destroy(batch->resources, NULL);
-   util_dynarray_fini(&batch->zombie_samplers);
-   _mesa_set_destroy(batch->surfaces, NULL);
-   _mesa_set_destroy(batch->programs, NULL);
-   _mesa_set_destroy(batch->active_queries, NULL);
-}
-
-static void
 zink_context_destroy(struct pipe_context *pctx)
 {
    struct zink_context *ctx = zink_context(pctx);
@@ -310,9 +293,9 @@ zink_context_destroy(struct pipe_context *pctx)
       pipe_resource_reference(&ctx->null_buffers[i], NULL);
 
    for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
-      destroy_batch(ctx, &ctx->batches[i]);
+      zink_batch_destroy(ctx, &ctx->batches[i]);
    if (ctx->compute_batch.cmdpool)
-      destroy_batch(ctx, &ctx->compute_batch);
+      zink_batch_destroy(ctx, &ctx->compute_batch);
 
    hash_table_foreach(ctx->render_pass_cache, he)
       zink_destroy_render_pass(screen, he->data);
