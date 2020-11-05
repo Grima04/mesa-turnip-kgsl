@@ -17,6 +17,17 @@
 #include "wsi_common.h"
 
 void
+zink_batch_clear_resources(struct zink_screen *screen, struct zink_batch *batch)
+{
+   /* unref all used resources */
+   set_foreach(batch->resources, entry) {
+      struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
+      zink_resource_object_reference(screen, &obj, NULL);
+      _mesa_set_remove(batch->resources, entry);
+   }
+}
+
+void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -26,12 +37,7 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (batch->submitted)
       zink_fence_finish(screen, &ctx->base, batch->fence, PIPE_TIMEOUT_INFINITE);
 
-   /* unref all used resources */
-   set_foreach(batch->resources, entry) {
-      struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
-      zink_resource_object_reference(screen, &obj, NULL);
-      _mesa_set_remove(batch->resources, entry);
-   }
+   zink_batch_clear_resources(screen, batch);
 
    set_foreach(batch->surfaces, entry) {
       struct zink_surface *surf = (struct zink_surface *)entry->key;
