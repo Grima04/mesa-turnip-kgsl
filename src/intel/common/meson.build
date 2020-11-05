@@ -36,6 +36,7 @@ files_libintel_common = files(
   'gen_l3_config.c',
   'gen_l3_config.h',
   'gen_urb_config.c',
+  'gen_sample_positions.c',
   'gen_sample_positions.h',
   'gen_uuid.c',
   'gen_uuid.h',
