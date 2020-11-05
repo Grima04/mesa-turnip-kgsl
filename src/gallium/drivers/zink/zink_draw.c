@@ -38,7 +38,7 @@ desc_set_sampler_add(struct zink_descriptor_set *zds, struct zink_sampler_view *
     * hash table on every resource with the associated descriptor sets that then needs to be iterated through
     * whenever a resource is destroyed
     */
-   assert(!cache_hit || zds->sampler_views[i] == sv);
+   assert(!cache_hit || get_sampler_view_hash(zds->sampler_views[i]) == get_sampler_view_hash(sv));
    assert(!cache_hit || zds->sampler_states[i] == state);
    if (!cache_hit) {
       zink_sampler_view_desc_set_add(sv, zds, i);
@@ -54,7 +54,7 @@ desc_set_image_add(struct zink_descriptor_set *zds, struct zink_image_view *imag
     * hash table on every resource with the associated descriptor sets that then needs to be iterated through
     * whenever a resource is destroyed
     */
-   assert(!cache_hit || zds->image_views[i] == image_view);
+   assert(!cache_hit || get_image_view_hash(zds->image_views[i]) == get_image_view_hash(image_view));
    if (!cache_hit)
       zink_image_view_desc_set_add(image_view, zds, i);
 }

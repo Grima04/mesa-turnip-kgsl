@@ -87,7 +87,6 @@ struct zink_sampler_view {
       struct zink_surface *image_view;
       struct zink_buffer_view *buffer_view;
    };
-   uint32_t hash;
    uint32_t batch_uses;
 };
 
@@ -363,4 +362,21 @@ zink_buffer_view_reference(struct zink_context *ctx,
 void
 zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute);
 
+static inline uint32_t
+get_sampler_view_hash(const struct zink_sampler_view *sampler_view)
+{
+   if (!sampler_view)
+      return 0;
+   return sampler_view->base.target == PIPE_BUFFER ?
+          sampler_view->buffer_view->hash : sampler_view->image_view->hash;
+}
+
+static inline uint32_t
+get_image_view_hash(const struct zink_image_view *image_view)
+{
+   if (!image_view || !image_view->base.resource)
+      return 0;
+   return image_view->base.resource->target == PIPE_BUFFER ?
+          image_view->buffer_view->hash : image_view->surface->hash;
+}
 #endif
