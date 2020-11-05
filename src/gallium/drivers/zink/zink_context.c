@@ -117,7 +117,7 @@ calc_descriptor_state_hash_sampler(struct zink_context *ctx, struct zink_shader 
    for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i].size; k++) {
       struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[shader][idx + k]);
       if (!sampler_view) {
-         hash = XXH32(&screen->null_descriptor_hashes.sampler_view, sizeof(uint32_t), hash);
+         hash = XXH32(&screen->null_descriptor_hashes.image_view, sizeof(uint32_t), hash);
          continue;
       }
       uint32_t sv_hash = get_sampler_view_hash(sampler_view);

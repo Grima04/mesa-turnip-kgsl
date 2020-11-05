@@ -1284,8 +1284,10 @@ zink_create_logical_device(struct zink_screen *screen)
 static void
 pre_hash_descriptor_states(struct zink_screen *screen)
 {
-   VkDescriptorImageInfo null_info = {};
-   screen->null_descriptor_hashes.sampler_view = _mesa_hash_data(&null_info, sizeof(VkDescriptorImageInfo));
+   VkImageViewCreateInfo null_info = {.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+   VkBufferViewCreateInfo null_binfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
+   screen->null_descriptor_hashes.image_view = _mesa_hash_data(&null_info, sizeof(VkImageViewCreateInfo));
+   screen->null_descriptor_hashes.buffer_view = _mesa_hash_data(&null_binfo, sizeof(VkBufferViewCreateInfo));
 }
 
 static struct zink_screen *
