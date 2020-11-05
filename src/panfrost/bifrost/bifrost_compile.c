@@ -148,7 +148,7 @@ static void
 bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bi_instruction ins = bi_load(BI_LOAD_VAR, instr);
-        ins.load_vary.interp_mode = BIFROST_INTERP_DEFAULT; /* TODO */
+        ins.load_vary.interp_mode = BIFROST_INTERP_CENTER; /* TODO */
         ins.load_vary.reuse = false; /* TODO */
         ins.load_vary.flat = instr->intrinsic != nir_intrinsic_load_interpolated_input;
         ins.dest_type = nir_type_float | nir_dest_bit_size(instr->dest);
@@ -500,7 +500,7 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                 bi_instruction load = {
                         .type = BI_LOAD_VAR,
                         .load_vary = {
-                                .interp_mode = BIFROST_INTERP_DEFAULT,
+                                .interp_mode = BIFROST_INTERP_CENTER,
                                 .reuse = false,
                                 .flat = true
                         },

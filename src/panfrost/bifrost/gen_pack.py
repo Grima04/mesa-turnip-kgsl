@@ -281,6 +281,9 @@ modifier_map = {
         "z": lambda a,b,c,d: '(ins->src[0] != 0)',
         "stencil": lambda a,b,c,d: '(ins->src[1] != 0)',
 
+        # For +LD_VAR, infer sample from load_vary.interp_mode
+        "sample": lambda a,b,c,d: 'ins->load_vary.interp_mode',
+
         # We don't support these in the IR yet (TODO)
         "saturate": lambda a,b,c,d: '0', # clamp to min/max int
         "mask": lambda a,b,c,d: '0', # clz(~0) = ~0
@@ -296,7 +299,6 @@ modifier_map = {
         "func": lambda a,b,c,d: '0', # pow special case thing
         "h": lambda a,b,c,d: '0', # VN_ASST1.f16
         "l": lambda a,b,c,d: '0', # VN_ASST1.f16
-        "sample": lambda a,b,c,d: '0', # LD_VAR center
         "function": lambda a,b,c,d: '3', # LD_VAR_FLAT none
         "preserve_null": lambda a,b,c,d: '0', # SEG_ADD none
         "bytes2": lambda a,b,c,d: '0', # NIR shifts are in bits
