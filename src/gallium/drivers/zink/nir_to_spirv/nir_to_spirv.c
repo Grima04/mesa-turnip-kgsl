@@ -1591,11 +1591,15 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    ASSERTED nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
    assert(const_block_index); // no dynamic indexing for now
 
+   unsigned bit_size = nir_dest_bit_size(intr->dest);
    SpvId uint_type = get_uvec_type(ctx, 32, 1);
    SpvId one = emit_uint_const(ctx, 32, 1);
 
    /* number of components being loaded */
    unsigned num_components = nir_dest_num_components(intr->dest);
+   /* we need to grab 2x32 to fill the 64bit value */
+   if (bit_size == 64)
+      num_components *= 2;
    SpvId constituents[num_components];
    SpvId result;
 
@@ -1653,8 +1657,24 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       constituents[i] = spirv_builder_emit_load(&ctx->builder, uint_type, ptr);
       /* increment to the next vec4 member index for the next load */
       vec_member_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_member_offset, one);
+      if (i == 3 && num_components > 4) {
+         vec_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_offset, one);
+         vec_member_offset = emit_uint_const(ctx, 32, 0);
+      }
    }
 
+   /* if we're loading a 64bit value, we have to reassemble all the u32 values we've loaded into u64 values
+    * by creating uvec2 composites and bitcasting them to u64 values
+    */
+   if (bit_size == 64) {
+      num_components /= 2;
+      type = get_uvec_type(ctx, 64, num_components);
+      SpvId u64_type = get_uvec_type(ctx, 64, 1);
+      for (unsigned i = 0; i < num_components; i++) {
+         constituents[i] = spirv_builder_emit_composite_construct(&ctx->builder, get_uvec_type(ctx, 32, 2), constituents + i * 2, 2);
+         constituents[i] = emit_bitcast(ctx, u64_type, constituents[i]);
+      }
+   }
    /* if loading more than 1 value, reassemble the results into the desired type,
     * otherwise just use the loaded result
     */
