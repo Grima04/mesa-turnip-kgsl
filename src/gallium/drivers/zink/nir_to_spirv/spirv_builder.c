@@ -445,6 +445,22 @@ spirv_builder_emit_triop(struct spirv_builder *b, SpvOp op, SpvId result_type,
 }
 
 SpvId
+spirv_builder_emit_quadop(struct spirv_builder *b, SpvOp op, SpvId result_type,
+                         SpvId operand0, SpvId operand1, SpvId operand2, SpvId operand3)
+{
+   SpvId result = spirv_builder_new_id(b);
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 7);
+   spirv_buffer_emit_word(&b->instructions, op | (7 << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   spirv_buffer_emit_word(&b->instructions, operand0);
+   spirv_buffer_emit_word(&b->instructions, operand1);
+   spirv_buffer_emit_word(&b->instructions, operand2);
+   spirv_buffer_emit_word(&b->instructions, operand3);
+   return result;
+}
+
+SpvId
 spirv_builder_emit_composite_extract(struct spirv_builder *b, SpvId result_type,
                                      SpvId composite, const uint32_t indexes[],
                                      size_t num_indexes)

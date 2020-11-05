@@ -185,6 +185,10 @@ spirv_builder_emit_triop(struct spirv_builder *b, SpvOp op, SpvId result_type,
                          SpvId operand0, SpvId operand1, SpvId operand2);
 
 SpvId
+spirv_builder_emit_quadop(struct spirv_builder *b, SpvOp op, SpvId result_type,
+                         SpvId operand0, SpvId operand1, SpvId operand2, SpvId operand3);
+
+SpvId
 spirv_builder_emit_composite_extract(struct spirv_builder *b, SpvId result_type,
                                      SpvId composite, const uint32_t indexes[],
                                      size_t num_indexes);
