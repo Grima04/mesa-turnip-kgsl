@@ -87,6 +87,7 @@ nir_options = {
    .lower_extract_word = true,
    .lower_extract_byte = true,
    .lower_all_io_to_elements = true,
+   .lower_all_io_to_temps = true,
    .lower_hadd = true,
    .lower_add_sat = true,
    .lower_uadd_carry = true,

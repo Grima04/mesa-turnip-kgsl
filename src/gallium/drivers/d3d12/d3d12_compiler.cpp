@@ -153,6 +153,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    NIR_PASS_V(nir, d3d12_lower_load_first_vertex);
    NIR_PASS_V(nir, d3d12_lower_state_vars, shader);
    NIR_PASS_V(nir, d3d12_lower_bool_input);
+   NIR_PASS_V(nir, d3d12_fixup_clipdist_writes);
 
    struct nir_to_dxil_options opts = {};
    opts.interpolate_at_vertex = screen->have_load_at_vertex;
