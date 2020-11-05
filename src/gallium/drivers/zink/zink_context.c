@@ -2249,45 +2249,9 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 static bool
 init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkCommandPoolCreateInfo cpci = {};
-   cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-   cpci.queueFamilyIndex = screen->gfx_queue;
-   cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-   if (vkCreateCommandPool(screen->dev, &cpci, NULL, &batch->cmdpool) != VK_SUCCESS)
-      return false;
-
-   VkCommandBufferAllocateInfo cbai = {};
-   cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-   cbai.commandPool = batch->cmdpool;
-   cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-   cbai.commandBufferCount = 1;
-
-   if (vkAllocateCommandBuffers(screen->dev, &cbai, &batch->cmdbuf) != VK_SUCCESS)
-      return false;
-
-   batch->fbs = _mesa_pointer_set_create(NULL);
-   batch->active_queries = _mesa_pointer_set_create(NULL);
-   batch->resources = _mesa_pointer_set_create(NULL);
-   batch->surfaces = _mesa_pointer_set_create(NULL);
-   batch->bufferviews = _mesa_pointer_set_create(NULL);
-   batch->programs = _mesa_pointer_set_create(NULL);
-   batch->desc_sets = _mesa_pointer_set_create(ctx);
-
-   if (!batch->resources || !batch->desc_sets ||
-       !batch->programs || !batch->surfaces || !batch->bufferviews)
-      return false;
-
-   util_dynarray_init(&batch->zombie_samplers, NULL);
-   util_dynarray_init(&batch->persistent_resources, NULL);
-
    batch->batch_id = idx;
-
-   batch->fence = zink_create_fence(ctx->base.screen, batch);
-   if (!batch->fence)
-      return false;
-
-   return true;
+   zink_start_batch(ctx, batch);
+   return !!batch->fence;
 }
 
 struct pipe_context *
@@ -2389,7 +2353,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    if (!init_batch(ctx, &ctx->compute_batch, ZINK_COMPUTE_BATCH_ID))
       goto fail;
-   zink_start_batch(ctx, &ctx->compute_batch);
 
    vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->queue);
 
@@ -2417,9 +2380,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    if (!zink_descriptor_pool_init(ctx))
       goto fail;
-
-   /* start the first batch */
-   zink_start_batch(ctx, zink_curr_batch(ctx));
 
    return &ctx->base;
 

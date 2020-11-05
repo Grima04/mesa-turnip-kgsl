@@ -102,9 +102,49 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    batch->resource_size = 0;
 }
 
+static void
+init_batch(struct zink_context *ctx, struct zink_batch *batch)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   VkCommandPoolCreateInfo cpci = {};
+   cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+   cpci.queueFamilyIndex = screen->gfx_queue;
+   cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+   if (vkCreateCommandPool(screen->dev, &cpci, NULL, &batch->cmdpool) != VK_SUCCESS)
+      return;
+
+   VkCommandBufferAllocateInfo cbai = {};
+   cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+   cbai.commandPool = batch->cmdpool;
+   cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+   cbai.commandBufferCount = 1;
+
+   if (vkAllocateCommandBuffers(screen->dev, &cbai, &batch->cmdbuf) != VK_SUCCESS)
+      return;
+
+   batch->fbs = _mesa_pointer_set_create(NULL);
+   batch->active_queries = _mesa_pointer_set_create(NULL);
+   batch->resources = _mesa_pointer_set_create(NULL);
+   batch->surfaces = _mesa_pointer_set_create(NULL);
+   batch->bufferviews = _mesa_pointer_set_create(NULL);
+   batch->programs = _mesa_pointer_set_create(NULL);
+   batch->desc_sets = _mesa_pointer_set_create(ctx);
+   util_dynarray_init(&batch->zombie_samplers, NULL);
+   util_dynarray_init(&batch->persistent_resources, NULL);
+
+   if (!batch->resources || !batch->desc_sets ||
+       !batch->programs || !batch->surfaces || !batch->bufferviews ||
+       !batch->active_queries)
+      return;
+
+   batch->fence = zink_create_fence(ctx->base.screen, batch);
+}
+
 void
 zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
+   if (!batch->fence)
+      init_batch(ctx, batch);
    zink_reset_batch(ctx, batch);
 
    VkCommandBufferBeginInfo cbbi = {};
