@@ -77,12 +77,16 @@ struct ra_ctx {
    unsigned max_used_vgpr = 0;
    std::bitset<64> defs_done; /* see MAX_ARGS in aco_instruction_selection_setup.cpp */
 
-   ra_ctx(Program* program_) : program(program_),
-                               assignments(program->peekAllocationId()),
-                               renames(program->blocks.size()),
-                               incomplete_phis(program->blocks.size()),
-                               filled(program->blocks.size()),
-                               sealed(program->blocks.size())
+   ra_test_policy policy;
+
+   ra_ctx(Program* program_, ra_test_policy policy_)
+      : program(program_),
+        assignments(program->peekAllocationId()),
+        renames(program->blocks.size()),
+        incomplete_phis(program->blocks.size()),
+        filled(program->blocks.size()),
+        sealed(program->blocks.size()),
+        policy(policy_)
    {
       pseudo_dummy.reset(create_instruction<Instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, 0, 0));
    }
@@ -1231,11 +1235,15 @@ PhysReg get_reg(ra_ctx& ctx,
 
    DefInfo info(ctx, instr, temp.regClass(), operand_index);
 
-   /* try to find space without live-range splits */
-   std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
+   std::pair<PhysReg, bool> res;
 
-   if (res.second)
-      return res.first;
+   if (!ctx.policy.skip_optimistic_path) {
+      /* try to find space without live-range splits */
+      res = get_reg_simple(ctx, reg_file, info);
+
+      if (res.second)
+         return res.first;
+   }
 
    /* try to find space with live-range splits */
    res = get_reg_impl(ctx, reg_file, parallelcopies, info, instr);
@@ -1703,9 +1711,9 @@ void try_remove_trivial_phi(ra_ctx& ctx, Temp temp)
 } /* end namespace */
 
 
-void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block)
+void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block, ra_test_policy policy)
 {
-   ra_ctx ctx(program);
+   ra_ctx ctx(program, policy);
    std::vector<std::vector<Temp>> phi_ressources;
    std::unordered_map<unsigned, unsigned> temp_to_phi_ressources;
 

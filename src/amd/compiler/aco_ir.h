@@ -1789,6 +1789,11 @@ struct live {
    std::vector<std::vector<RegisterDemand>> register_demand;
 };
 
+struct ra_test_policy {
+   /* Force RA to always use its pessimistic fallback algorithm */
+   bool skip_optimistic_path = false;
+};
+
 void init();
 
 void init_program(Program *program, Stage stage, struct radv_shader_info *info,
@@ -1818,7 +1823,8 @@ void value_numbering(Program* program);
 void optimize(Program* program);
 void setup_reduce_temp(Program* program);
 void lower_to_cssa(Program* program, live& live_vars);
-void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block);
+void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block,
+                         ra_test_policy = {});
 void ssa_elimination(Program* program);
 void lower_to_hw_instr(Program* program);
 void schedule_program(Program* program, live& live_vars);
