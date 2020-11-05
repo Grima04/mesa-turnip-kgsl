@@ -606,7 +606,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
             struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
             res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
             if (res && res->base.target == PIPE_BUFFER) {
-               bufferview = sampler_view->buffer_view;
+               bufferview = sampler_view->buffer_view->buffer_view;
             } else if (res) {
                imageview = sampler_view->image_view;
                layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -689,7 +689,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
             res = zink_resource(image_view->base.resource);
 
             if (res && image_view->base.resource->target == PIPE_BUFFER) {
-               bufferview = image_view->buffer_view;
+               bufferview = image_view->buffer_view->buffer_view;
             } else if (res) {
                imageview = image_view->surface->image_view;
                layout = VK_IMAGE_LAYOUT_GENERAL;

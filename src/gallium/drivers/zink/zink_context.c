@@ -262,6 +262,12 @@ invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shad
    ctx->descriptor_states[shader == PIPE_SHADER_COMPUTE].state[type] = 0;
 }
 
+void
+debug_describe_zink_buffer_view(char *buf, const struct zink_buffer_view *ptr)
+{
+   sprintf(buf, "zink_buffer_view");
+}
+
 static void
 destroy_batch(struct zink_context* ctx, struct zink_batch* batch)
 {
@@ -552,10 +558,11 @@ sampler_aspect_from_format(enum pipe_format fmt)
      return VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
-static VkBufferView
-create_buffer_view(struct zink_screen *screen, struct zink_resource *res, enum pipe_format format, uint32_t offset, uint32_t range)
+static struct zink_buffer_view *
+get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_format format, uint32_t offset, uint32_t range)
 {
-   VkBufferView view = VK_NULL_HANDLE;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_buffer_view *buffer_view;
    VkBufferViewCreateInfo bvci = {};
    bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
    bvci.buffer = res->obj->buffer;
@@ -564,9 +571,17 @@ create_buffer_view(struct zink_screen *screen, struct zink_resource *res, enum p
    bvci.offset = offset;
    bvci.range = range;
 
-   if (vkCreateBufferView(screen->dev, &bvci, NULL, &view) == VK_SUCCESS)
-      return view;
-   return VK_NULL_HANDLE;
+   VkBufferView view;
+   if (vkCreateBufferView(screen->dev, &bvci, NULL, &view) != VK_SUCCESS)
+      return NULL;
+   buffer_view = CALLOC_STRUCT(zink_buffer_view);
+   if (!buffer_view) {
+      vkDestroyBufferView(screen->dev, view, NULL);
+      return NULL;
+   }
+   pipe_reference_init(&buffer_view->reference, 1);
+   buffer_view->buffer_view = view;
+   return buffer_view;
 }
 
 static struct pipe_sampler_view *
@@ -576,7 +591,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(pres);
    struct zink_sampler_view *sampler_view = CALLOC_STRUCT(zink_sampler_view);
-   VkResult err;
+   bool err;
 
    sampler_view->base = *state;
    sampler_view->base.texture = NULL;
@@ -604,22 +619,35 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       assert(ivci.format);
 
       ivci.subresourceRange.baseMipLevel = state->u.tex.first_level;
+      ivci.subresourceRange.levelCount = 1;
       ivci.subresourceRange.baseArrayLayer = state->u.tex.first_layer;
       ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
       ivci.subresourceRange.layerCount = state->u.tex.last_layer - state->u.tex.first_layer + 1;
+      if (pres->target == PIPE_TEXTURE_CUBE ||
+          pres->target == PIPE_TEXTURE_CUBE_ARRAY) {
+         if (ivci.subresourceRange.layerCount != 6)
+            ivci.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+      }
 
-      err = vkCreateImageView(screen->dev, &ivci, NULL, &sampler_view->image_view);
+      err = vkCreateImageView(screen->dev, &ivci, NULL, &sampler_view->image_view) != VK_SUCCESS;
    } else {
-      sampler_view->buffer_view = create_buffer_view(screen, res, state->format, state->u.buf.offset, state->u.buf.size);
+      sampler_view->buffer_view = get_buffer_view(zink_context(pctx), res, state->format, state->u.buf.offset, state->u.buf.size);
       err = !sampler_view->buffer_view;
    }
-   if (err != VK_SUCCESS) {
+   if (err) {
       FREE(sampler_view);
       return NULL;
    }
    util_dynarray_init(&sampler_view->desc_set_refs.refs, NULL);
    calc_descriptor_hash_sampler_view(zink_context(pctx), sampler_view);
    return &sampler_view->base;
+}
+
+void
+zink_destroy_buffer_view(struct zink_context *ctx, struct zink_buffer_view *buffer_view)
+{
+   vkDestroyBufferView(zink_screen(ctx->base.screen)->dev, buffer_view->buffer_view, NULL);
+   FREE(buffer_view);
 }
 
 static void
@@ -629,7 +657,7 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
    struct zink_sampler_view *view = zink_sampler_view(pview);
    zink_descriptor_set_refs_clear(&view->desc_set_refs, view);
    if (pview->texture->target == PIPE_BUFFER)
-      vkDestroyBufferView(zink_screen(pctx->screen)->dev, view->buffer_view, NULL);
+      zink_buffer_view_reference(zink_context(pctx), &view->buffer_view, NULL);
    else
       vkDestroyImageView(zink_screen(pctx->screen)->dev, view->image_view, NULL);
    pipe_resource_reference(&pview->texture, NULL);
@@ -851,7 +879,7 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
 
    zink_descriptor_set_refs_clear(&image_view->desc_set_refs, image_view);
    if (image_view->base.resource->target == PIPE_BUFFER)
-      vkDestroyBufferView(zink_screen(ctx->base.screen)->dev, image_view->buffer_view, NULL);
+      zink_buffer_view_reference(ctx, &image_view->buffer_view, NULL);
    else
       pipe_surface_reference((struct pipe_surface**)&image_view->surface, NULL);
    pipe_resource_reference(&image_view->base.resource, NULL);
@@ -875,7 +903,7 @@ zink_set_shader_images(struct pipe_context *pctx,
          struct zink_resource *res = zink_resource(images[i].resource);
          util_copy_image_view(&image_view->base, images + i);
          if (images[i].resource->target == PIPE_BUFFER) {
-            image_view->buffer_view = create_buffer_view(zink_screen(pctx->screen), res, images[i].format, images[i].u.buf.offset, images[i].u.buf.size);
+            image_view->buffer_view = get_buffer_view(ctx, res, images[i].format, images[i].u.buf.offset, images[i].u.buf.size);
             assert(image_view->buffer_view);
             util_range_add(&res->base, &res->valid_buffer_range, images[i].u.buf.offset,
                            images[i].u.buf.offset + images[i].u.buf.size);
