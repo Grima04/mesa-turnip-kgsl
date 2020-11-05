@@ -77,6 +77,7 @@ struct zink_sampler_state {
 struct zink_buffer_view {
    struct pipe_reference reference;
    VkBufferView buffer_view;
+   uint32_t hash;
 };
 
 struct zink_sampler_view {

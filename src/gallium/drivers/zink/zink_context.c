@@ -558,6 +558,13 @@ sampler_aspect_from_format(enum pipe_format fmt)
      return VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
+static uint32_t
+hash_bufferview(void *bvci)
+{
+   size_t offset = offsetof(VkBufferViewCreateInfo, flags);
+   return _mesa_hash_data((char*)bvci + offset, sizeof(VkBufferViewCreateInfo) - offset);
+}
+
 static struct zink_buffer_view *
 get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_format format, uint32_t offset, uint32_t range)
 {
@@ -571,6 +578,7 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_f
    bvci.offset = offset;
    bvci.range = range;
 
+   uint32_t hash = hash_bufferview(&bvci);
    VkBufferView view;
    if (vkCreateBufferView(screen->dev, &bvci, NULL, &view) != VK_SUCCESS)
       return NULL;
@@ -581,6 +589,7 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_f
    }
    pipe_reference_init(&buffer_view->reference, 1);
    buffer_view->buffer_view = view;
+   buffer_view->hash = hash;
    return buffer_view;
 }
 
