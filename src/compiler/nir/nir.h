@@ -139,7 +139,8 @@ typedef enum {
    /** Ray hit attributes */
    nir_var_ray_hit_attrib  = (1 << 13),
    nir_var_read_only_modes = nir_var_shader_in | nir_var_uniform |
-                             nir_var_system_value | nir_var_mem_constant,
+                             nir_var_system_value | nir_var_mem_constant |
+                             nir_var_mem_ubo,
    nir_num_variable_modes  = 14,
    nir_var_all             = (1 << nir_num_variable_modes) - 1,
 } nir_variable_mode;
