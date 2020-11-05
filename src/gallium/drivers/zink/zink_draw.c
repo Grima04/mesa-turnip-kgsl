@@ -608,7 +608,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
             if (res && res->base.target == PIPE_BUFFER) {
                bufferview = sampler_view->buffer_view->buffer_view;
             } else if (res) {
-               imageview = sampler_view->image_view;
+               imageview = sampler_view->image_view->image_view;
                layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                sampler = ctx->sampler_states[stage][index + k];
             }

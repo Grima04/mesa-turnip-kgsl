@@ -629,7 +629,13 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
             ivci.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
       }
 
-      err = vkCreateImageView(screen->dev, &ivci, NULL, &sampler_view->image_view) != VK_SUCCESS;
+      struct pipe_surface templ = {};
+      templ.u.tex.level = state->u.tex.first_level;
+      templ.format = state->format;
+      templ.u.tex.first_layer = state->u.tex.first_layer;
+      templ.u.tex.last_layer = state->u.tex.last_layer;
+      sampler_view->image_view = (struct zink_surface*)zink_get_surface(zink_context(pctx), pres, &templ, &ivci);
+      err = !sampler_view->image_view;
    } else {
       sampler_view->buffer_view = get_buffer_view(zink_context(pctx), res, state->format, state->u.buf.offset, state->u.buf.size);
       err = !sampler_view->buffer_view;
@@ -658,8 +664,10 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
    zink_descriptor_set_refs_clear(&view->desc_set_refs, view);
    if (pview->texture->target == PIPE_BUFFER)
       zink_buffer_view_reference(zink_context(pctx), &view->buffer_view, NULL);
-   else
-      vkDestroyImageView(zink_screen(pctx->screen)->dev, view->image_view, NULL);
+   else {
+      struct pipe_surface *psurf = &view->image_view->base;
+      pipe_surface_reference(&psurf, NULL);
+   }
    pipe_resource_reference(&pview->texture, NULL);
    FREE(view);
 }
