@@ -655,6 +655,70 @@ zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usa
 }
 
 static void *
+buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigned usage,
+                    const struct pipe_box *box, struct zink_transfer *trans)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   void *ptr;
+
+   if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+      if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
+         /* Replace the backing storage with a fresh buffer for non-async maps */
+         //if (!(usage & TC_TRANSFER_MAP_NO_INVALIDATE))
+            zink_resource_invalidate(&ctx->base, &res->base);
+
+         /* If we can discard the whole resource, we can discard the range. */
+         usage |= PIPE_MAP_DISCARD_RANGE;
+      }
+      if (util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
+         /* special case compute reads since they aren't handled by zink_fence_wait() */
+         if (usage & PIPE_MAP_WRITE && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_READ, ZINK_QUEUE_COMPUTE))
+            resource_sync_reads_from_compute(ctx, res);
+         if (usage & PIPE_MAP_READ && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_WRITE, ZINK_QUEUE_ANY))
+            resource_sync_writes_from_batch_usage(ctx, res);
+         else if (usage & PIPE_MAP_WRITE && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW, ZINK_QUEUE_ANY)) {
+            /* need to wait for all rendering to finish
+             * TODO: optimize/fix this to be much less obtrusive
+             * mesa/mesa#2966
+             */
+
+            trans->staging_res = pipe_buffer_create(&screen->base, 0, PIPE_USAGE_STAGING, res->base.width0);
+            res = zink_resource(trans->staging_res);
+         }
+      }
+   }
+
+
+   VkResult result = vkMapMemory(screen->dev, res->obj->mem, res->obj->offset, res->obj->size, 0, &ptr);
+   if (result != VK_SUCCESS)
+      return NULL;
+
+#if defined(__APPLE__)
+      if (!(usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)) {
+         // Work around for MoltenVk limitation
+         // MoltenVk returns blank memory ranges when there should be data present
+         // This is a known limitation of MoltenVK.
+         // See https://github.com/KhronosGroup/MoltenVK/blob/master/Docs/MoltenVK_Runtime_UserGuide.md#known-moltenvk-limitations
+         VkMappedMemoryRange range = {
+            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            NULL,
+            res->mem,
+            res->offset,
+            res->size
+         };
+         result = vkFlushMappedMemoryRanges(screen->dev, 1, &range);
+         if (result != VK_SUCCESS)
+            return NULL;
+      }
+#endif
+
+   ptr = ((uint8_t *)ptr) + box->x;
+   if (usage & PIPE_MAP_WRITE)
+      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
+   return ptr;
+}
+
+static void *
 zink_transfer_map(struct pipe_context *pctx,
                   struct pipe_resource *pres,
                   unsigned level,
@@ -680,62 +744,7 @@ zink_transfer_map(struct pipe_context *pctx,
 
    void *ptr;
    if (pres->target == PIPE_BUFFER) {
-      if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
-         if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
-            /* Replace the backing storage with a fresh buffer for non-async maps */
-            //if (!(usage & TC_TRANSFER_MAP_NO_INVALIDATE))
-            zink_resource_invalidate(pctx, pres);
-
-            /* If we can discard the whole resource, we can discard the range. */
-            usage |= PIPE_MAP_DISCARD_RANGE;
-         }
-         if (util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
-            /* special case compute reads since they aren't handled by zink_fence_wait() */
-            if (usage & PIPE_MAP_WRITE && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_READ, ZINK_QUEUE_COMPUTE))
-               resource_sync_reads_from_compute(ctx, res);
-            if (usage & PIPE_MAP_READ && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_WRITE, ZINK_QUEUE_ANY))
-               resource_sync_writes_from_batch_usage(ctx, res);
-            else if (usage & PIPE_MAP_WRITE && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW, ZINK_QUEUE_ANY)) {
-               /* need to wait for all rendering to finish
-                * TODO: optimize/fix this to be much less obtrusive
-                * mesa/mesa#2966
-                */
-
-               trans->staging_res = pipe_buffer_create(pctx->screen, 0, PIPE_USAGE_STAGING, pres->width0);
-               res = zink_resource(trans->staging_res);
-            }
-         }
-      }
-
-
-      VkResult result = vkMapMemory(screen->dev, res->obj->mem, res->obj->offset, res->obj->size, 0, &ptr);
-      if (result != VK_SUCCESS)
-         return NULL;
-
-#if defined(__APPLE__)
-      if (!(usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)) {
-         // Work around for MoltenVk limitation
-         // MoltenVk returns blank memory ranges when there should be data present
-         // This is a known limitation of MoltenVK.
-         // See https://github.com/KhronosGroup/MoltenVK/blob/master/Docs/MoltenVK_Runtime_UserGuide.md#known-moltenvk-limitations
-         VkMappedMemoryRange range = {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            NULL,
-            res->mem,
-            res->offset,
-            res->size
-         };
-         result = vkFlushMappedMemoryRanges(screen->dev, 1, &range);
-         if (result != VK_SUCCESS)
-            return NULL;
-      }
-#endif
-
-      trans->base.stride = 0;
-      trans->base.layer_stride = 0;
-      ptr = ((uint8_t *)ptr) + box->x;
-      if (usage & PIPE_MAP_WRITE)
-         util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
+      ptr = buffer_transfer_map(ctx, res, usage, box, trans);
    } else {
       if (usage & PIPE_MAP_WRITE && !(usage & PIPE_MAP_READ))
          /* this is like a blit, so we can potentially dump some clears or maybe we have to  */
