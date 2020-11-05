@@ -559,6 +559,7 @@ zink_create_gfx_program(struct zink_context *ctx,
          zink_gfx_program_reference(screen, NULL, prog);
       }
    }
+   p_atomic_dec(&prog->base.reference.count);
 
    if (!zink_descriptor_program_init(ctx, stages, (struct zink_program*)prog))
       goto fail;
@@ -653,7 +654,6 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
                                              equals_compute_pipeline_state);
 
    _mesa_set_add(shader->programs, comp);
-   zink_compute_program_reference(screen, NULL, comp);
    comp->shader = shader;
 
    struct zink_shader *stages[ZINK_SHADER_COUNT] = {};
