@@ -945,7 +945,7 @@ opt_remove_cast_cast(nir_deref_instr *cast)
 static bool
 opt_restrict_deref_modes(nir_deref_instr *deref)
 {
-   if (deref->type == nir_deref_type_var) {
+   if (deref->deref_type == nir_deref_type_var) {
       assert(deref->modes == deref->var->data.mode);
       return false;
    }
