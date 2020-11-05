@@ -977,7 +977,7 @@ bi_cond_for_nir(nir_op op, bool soft)
 
 static void
 bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
-                unsigned *constants_left, unsigned *constant_shift, unsigned comps)
+            unsigned *constants_left, unsigned *constant_shift)
 {
         unsigned bits = nir_src_bit_size(instr->src[i].src);
         unsigned dest_bits = nir_dest_bit_size(instr->dest.dest);
@@ -1011,8 +1011,9 @@ bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
          * to fill undersized */
 
         unsigned vec = alu->type == BI_COMBINE ? 1 :
-                MAX2(1, 32 / dest_bits);
+                MAX2(1, 32 / bits);
 
+        unsigned comps = nir_ssa_alu_instr_src_components(instr, i);
         for (unsigned j = 0; j < vec; ++j)
                 alu->swizzle[to][j] = instr->src[i].swizzle[MIN2(j, comps - 1)];
 }
@@ -1054,8 +1055,8 @@ bi_fuse_cond(bi_instruction *csel, nir_alu_src cond,
 
         /* We found one, let's fuse it in */
         csel->cond = bcond;
-        bi_copy_src(csel, alu, 0, 0, constants_left, constant_shift, comps);
-        bi_copy_src(csel, alu, 1, 1, constants_left, constant_shift, comps);
+        bi_copy_src(csel, alu, 0, 0, constants_left, constant_shift);
+        bi_copy_src(csel, alu, 1, 1, constants_left, constant_shift);
 }
 
 static void
@@ -1115,7 +1116,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 if (i && alu.type == BI_CSEL)
                         f++;
 
-                bi_copy_src(&alu, instr, i, i + f, &constants_left, &constant_shift, comps);
+                bi_copy_src(&alu, instr, i, i + f, &constants_left, &constant_shift);
         }
 
         /* Op-specific fixup */
