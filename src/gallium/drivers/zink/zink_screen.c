@@ -107,6 +107,11 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
       return screen->info.have_EXT_vertex_attribute_divisor;
 
+   case PIPE_CAP_INT64:
+   case PIPE_CAP_INT64_DIVMOD:
+   case PIPE_CAP_DOUBLES:
+      return 1;
+
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
       if (!screen->info.feats.features.dualSrcBlend)
          return 0;
