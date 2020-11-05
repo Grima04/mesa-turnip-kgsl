@@ -6055,12 +6055,19 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_SCISSOR_RECT) {
+      /* GEN:BUG:1409725701:
+       *    "The viewport-specific state used by the SF unit (SCISSOR_RECT) is
+       *    stored as an array of up to 16 elements. The location of first
+       *    element of the array, as specified by Pointer to SCISSOR_RECT,
+       *    should be aligned to a 64-byte boundary.
+       */
+      uint32_t alignment = 64;
       uint32_t scissor_offset =
          emit_state(batch, ice->state.dynamic_uploader,
                     &ice->state.last_res.scissor,
                     ice->state.scissors,
                     sizeof(struct pipe_scissor_state) *
-                    ice->state.num_viewports, 32);
+                    ice->state.num_viewports, alignment);
 
       iris_emit_cmd(batch, GENX(3DSTATE_SCISSOR_STATE_POINTERS), ptr) {
          ptr.ScissorRectPointer = scissor_offset;

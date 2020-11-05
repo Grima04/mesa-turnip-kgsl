@@ -2365,10 +2365,16 @@ genX(upload_scissor_state)(struct brw_context *brw)
 
    /* BRW_NEW_VIEWPORT_COUNT */
    const unsigned viewport_count = brw->clip.viewport_count;
-
+   /* GEN:BUG:1409725701:
+    *    "The viewport-specific state used by the SF unit (SCISSOR_RECT) is
+    *    stored as an array of up to 16 elements. The location of first
+    *    element of the array, as specified by Pointer to SCISSOR_RECT, should
+    *    be aligned to a 64-byte boundary.
+    */
+   const unsigned alignment = 64;
    scissor_map = brw_state_batch(
       brw, GENX(SCISSOR_RECT_length) * sizeof(uint32_t) * viewport_count,
-      32, &scissor_state_offset);
+      alignment, &scissor_state_offset);
 
    /* _NEW_SCISSOR | _NEW_BUFFERS | _NEW_VIEWPORT */
 

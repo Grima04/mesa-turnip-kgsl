@@ -51,8 +51,16 @@ gen7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
    struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
    uint32_t count = cmd_buffer->state.gfx.dynamic.scissor.count;
    const VkRect2D *scissors = cmd_buffer->state.gfx.dynamic.scissor.scissors;
+
+   /* GEN:BUG:1409725701:
+    *    "The viewport-specific state used by the SF unit (SCISSOR_RECT) is
+    *    stored as an array of up to 16 elements. The location of first
+    *    element of the array, as specified by Pointer to SCISSOR_RECT, should
+    *    be aligned to a 64-byte boundary.
+    */
+   uint32_t alignment = 64;
    struct anv_state scissor_state =
-      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 8, 32);
+      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 8, alignment);
 
    for (uint32_t i = 0; i < count; i++) {
       const VkRect2D *s = &scissors[i];
