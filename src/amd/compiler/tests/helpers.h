@@ -66,12 +66,12 @@ extern std::unique_ptr<aco::Program> program;
 extern aco::Builder bld;
 extern aco::Temp exec_input;
 extern aco::Temp inputs[16];
-extern const char *subvariant;
 
 void create_program(enum chip_class chip_class, aco::Stage stage,
                     unsigned wave_size=64, enum radeon_family family=CHIP_UNKNOWN);
 bool setup_cs(const char *input_spec, enum chip_class chip_class,
-              enum radeon_family family=CHIP_UNKNOWN, unsigned wave_size=64);
+              enum radeon_family family=CHIP_UNKNOWN, const char* subvariant = "",
+              unsigned wave_size=64);
 
 void finish_program(aco::Program *program);
 void finish_validator_test();

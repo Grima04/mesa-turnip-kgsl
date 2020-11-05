@@ -521,9 +521,7 @@ static const clamp_config clamp_configs[] = {
 
 BEGIN_TEST(optimize.clamp)
    for (clamp_config cfg : clamp_configs) {
-      subvariant = cfg.name;
-
-      if (!setup_cs("v1 v1 v1", GFX9))
+      if (!setup_cs("v1 v1 v1", GFX9, CHIP_UNKNOWN, cfg.name))
          continue;
 
       //! cfg: @match_func(min max med3 lb ub)

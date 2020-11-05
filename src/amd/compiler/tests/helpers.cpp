@@ -43,7 +43,6 @@ std::unique_ptr<Program> program;
 Builder bld(NULL);
 Temp inputs[16];
 Temp exec_input;
-const char *subvariant = "";
 
 static VkInstance instance_cache[CHIP_LAST] = {VK_NULL_HANDLE};
 static VkDevice device_cache[CHIP_LAST] = {VK_NULL_HANDLE};
@@ -94,11 +93,10 @@ void create_program(enum chip_class chip_class, Stage stage, unsigned wave_size,
 }
 
 bool setup_cs(const char *input_spec, enum chip_class chip_class,
-              enum radeon_family family, unsigned wave_size)
+              enum radeon_family family, const char* subvariant,
+              unsigned wave_size)
 {
-   const char *old_subvariant = subvariant;
-   subvariant = "";
-   if (!set_variant(chip_class, old_subvariant))
+   if (!set_variant(chip_class, subvariant))
       return false;
 
    memset(&info, 0, sizeof(info));
