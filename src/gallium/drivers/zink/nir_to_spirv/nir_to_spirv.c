@@ -1562,7 +1562,7 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
       } else {
          for (int i = 0; i < num_components; i++)
             components[i] = emit_uint_const(ctx, bit_size,
-                                            load_const->value[i].u32);
+                                            bit_size == 64 ? load_const->value[i].u64 : load_const->value[i].u32);
 
       }
       constant = spirv_builder_const_composite(&ctx->builder, type,
@@ -1572,8 +1572,12 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
       if (bit_size == 1)
          constant = spirv_builder_const_bool(&ctx->builder,
                                              load_const->value[0].b);
-      else
+      else if (bit_size == 32)
          constant = emit_uint_const(ctx, bit_size, load_const->value[0].u32);
+      else if (bit_size == 64)
+         constant = emit_uint_const(ctx, bit_size, load_const->value[0].u64);
+      else
+         unreachable("unhandled constant bit size!");
    }
 
    store_ssa_def(ctx, &load_const->def, constant);
