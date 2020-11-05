@@ -225,6 +225,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (dinfo->mode == PIPE_PRIM_QUADS ||
        dinfo->mode == PIPE_PRIM_QUAD_STRIP ||
        dinfo->mode == PIPE_PRIM_POLYGON ||
+       (dinfo->mode == PIPE_PRIM_TRIANGLE_FAN && !screen->have_triangle_fans) ||
        dinfo->mode == PIPE_PRIM_LINE_LOOP) {
       if (!u_trim_pipe_prim(dinfo->mode, (unsigned *)&dinfo->count))
          return;

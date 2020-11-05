@@ -1251,8 +1251,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                         1 << PIPE_PRIM_LINES |
                         1 << PIPE_PRIM_LINE_STRIP |
                         1 << PIPE_PRIM_TRIANGLES |
-                        1 << PIPE_PRIM_TRIANGLE_STRIP |
-                        1 << PIPE_PRIM_TRIANGLE_FAN;
+                        1 << PIPE_PRIM_TRIANGLE_STRIP;
+   if (screen->have_triangle_fans)
+      prim_hwsupport |= 1 << PIPE_PRIM_TRIANGLE_FAN;
 
    ctx->primconvert = util_primconvert_create(&ctx->base, prim_hwsupport);
    if (!ctx->primconvert)

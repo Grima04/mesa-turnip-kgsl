@@ -72,6 +72,7 @@ def EXTENSIONS():
         Extension("VK_EXT_extended_dynamic_state",   alias="dynamic_state", have_feature="extendedDynamicState"),
         Extension("VK_EXT_pipeline_creation_cache_control",   alias="pipeline_cache_control", have_feature="pipelineCreationCacheControl"),
         Extension("VK_EXT_shader_stencil_export",    alias="stencil_export"),
+        Extension("VK_EXTX_portability_subset",      alias="portability_subset_extx", properties=True, features=True, guard=True),
     ]
 
 # There exists some inconsistencies regarding the enum constants, fix them.
@@ -89,6 +90,12 @@ header_code = """
 #include "util/u_memory.h"
 
 #include <vulkan/vulkan.h>
+
+#if defined(__APPLE__)
+// Source of MVK_VERSION
+// Source of VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME
+#include "MoltenVK/vk_mvk_moltenvk.h"
+#endif
 
 struct zink_screen;
 

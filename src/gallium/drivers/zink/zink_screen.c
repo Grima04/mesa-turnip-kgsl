@@ -918,6 +918,13 @@ load_device_extensions(struct zink_screen *screen)
       GET_PROC_ADDR(CmdSetScissorWithCountEXT);
    }
 
+   screen->have_triangle_fans = true;
+#if defined(VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME)
+   if (screen->info.have_EXTX_portability_subset) {
+      screen->have_triangle_fans = (VK_TRUE == screen->info.portability_subset_extx_feats.triangleFans);
+   }
+#endif // VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME
+
    return true;
 }
 
