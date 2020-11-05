@@ -29,18 +29,18 @@
 #include "util/list.h"
 #include "util/u_dynarray.h"
 
+#include "zink_fence.h"
+
 struct pipe_reference;
 
 struct zink_context;
 struct zink_descriptor_set;
-struct zink_fence;
 struct zink_framebuffer;
 struct zink_image_view;
 struct zink_program;
 struct zink_render_pass;
 struct zink_resource;
 struct zink_sampler_view;
-struct zink_screen;
 struct zink_surface;
 
 enum zink_queue {
@@ -49,15 +49,19 @@ enum zink_queue {
    ZINK_QUEUE_ANY,
 };
 
+struct zink_batch_usage {
+   /* this has to be atomic for fence access, so we can't use a bitmask and make everything neat */
+   uint32_t usage[2]; //gfx, compute
+};
+
 struct zink_batch_state {
-   unsigned batch_id : 3;
+   struct zink_fence fence;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
 
    struct zink_resource *flush_res;
 
    unsigned short descs_used; //number of descriptors currently allocated
-   struct zink_fence *fence;
 
    struct set *fbs;
    struct set *programs;
@@ -74,21 +78,32 @@ struct zink_batch_state {
 
    VkDeviceSize resource_size;
 
+   uint32_t batch_id;
    bool is_compute;
 };
 
 struct zink_batch {
-   unsigned batch_id : 3;
    struct zink_batch_state *state;
    enum zink_queue queue;
+
+   uint32_t last_batch_id;
 
    bool has_work;
    bool in_rp; //renderpass is currently active
 };
 
 
+static inline struct zink_batch_state *
+zink_batch_state(struct zink_fence *fence)
+{
+   return (struct zink_batch_state *)fence;
+}
+
 void
 zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs);
+
+void
+zink_batch_reset_all(struct zink_context *ctx, enum zink_queue queue);
 
 void
 zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs);
@@ -127,4 +142,10 @@ zink_batch_reference_image_view(struct zink_batch *batch,
 bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds);
 
+void
+zink_batch_usage_set(struct zink_batch_usage *u, enum zink_queue queue, uint32_t batch_id);
+bool
+zink_batch_usage_matches(struct zink_batch_usage *u, enum zink_queue queue, uint32_t batch_id);
+bool
+zink_batch_usage_exists(struct zink_batch_usage *u);
 #endif

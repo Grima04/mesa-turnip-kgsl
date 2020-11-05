@@ -54,52 +54,48 @@ debug_describe_zink_resource_object(char *buf, const struct zink_resource_object
 }
 
 static uint32_t
-get_resource_usage(struct zink_resource *res)
+get_resource_usage(struct zink_resource *res, enum zink_queue queue)
+{
+   assert(queue < 2);
+   uint32_t reads = p_atomic_read(&res->obj->reads.usage[queue]);
+   uint32_t writes = p_atomic_read(&res->obj->writes.usage[queue]);
+   uint32_t batch_uses = 0;
+   if (reads)
+      batch_uses |= ZINK_RESOURCE_ACCESS_READ << queue;
+   if (writes)
+      batch_uses |= ZINK_RESOURCE_ACCESS_WRITE << queue;
+   return batch_uses;
+}
+
+static uint32_t
+get_all_resource_usage(struct zink_resource *res)
 {
    uint32_t batch_uses = 0;
-   for (unsigned i = 0; i < ARRAY_SIZE(res->obj->batch_uses); i++)
-      batch_uses |= p_atomic_read(&res->obj->batch_uses[i]) << i;
+   for (unsigned i = 0; i < ZINK_QUEUE_ANY; i++)
+      batch_uses |= get_resource_usage(res, i);
    return batch_uses;
+}
+
+static void
+resource_sync_reads_from_compute(struct zink_context *ctx, struct zink_resource *res)
+{
+   uint32_t reads = p_atomic_read(&res->obj->reads.usage[ZINK_QUEUE_COMPUTE]);
+   assert(reads);
+   zink_wait_on_batch(ctx, ZINK_QUEUE_COMPUTE, reads);
 }
 
 static void
 resource_sync_writes_from_batch_usage(struct zink_context *ctx, struct zink_resource *res)
 {
-   uint32_t batch_uses = get_resource_usage(res);
-   batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
+   uint32_t writes[2];
+   for (int i = 0; i < ZINK_QUEUE_ANY; i++)
+      writes[i] = p_atomic_read(&res->obj->writes.usage[i]);
 
-   uint32_t write_mask = 0;
-   for (int i = 0; i < ZINK_NUM_GFX_BATCHES + ZINK_COMPUTE_BATCH_COUNT; i++)
-      write_mask |= ZINK_RESOURCE_ACCESS_WRITE << i;
-   while (batch_uses & write_mask) {
-      int batch_id = zink_get_resource_latest_batch_usage(ctx, batch_uses);
-      if (batch_id == -1)
-         break;
-      zink_wait_on_batch(ctx, batch_id);
-      batch_uses &= ~((ZINK_RESOURCE_ACCESS_RW) << batch_id);
-   }
-}
-
-int
-zink_get_resource_latest_batch_usage(struct zink_context *ctx, uint32_t batch_uses)
-{
-   unsigned cur_batch = zink_curr_batch(ctx)->batch_id;
-
-   if (batch_uses & ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID)
-      return ZINK_COMPUTE_BATCH_ID;
-   batch_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID);
-   if (!batch_uses)
-      return -1;
-   for (unsigned i = 0; i < ZINK_NUM_BATCHES + 1; i++) {
-      /* loop backwards and sync with highest batch id that has writes */
-      if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << cur_batch)) {
-          return cur_batch;
-      }
-      cur_batch--;
-      if (cur_batch > ZINK_COMPUTE_BATCH_ID - 1) // underflowed past max batch id
-         cur_batch = ZINK_COMPUTE_BATCH_ID - 1;
-   }
-   return -1;
+   enum zink_queue queue = writes[0] < writes[1] ? ZINK_QUEUE_COMPUTE : ZINK_QUEUE_GFX;
+   /* sync lower id first */
+   if (writes[!queue])
+      zink_wait_on_batch(ctx, !queue, writes[!queue]);
+   zink_wait_on_batch(ctx, queue, writes[queue]);
 }
 
 static uint32_t
@@ -603,7 +599,7 @@ zink_resource_invalidate(struct pipe_context *pctx, struct pipe_resource *pres)
    res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
 
    util_range_set_empty(&res->valid_buffer_range);
-   if (!get_resource_usage(res))
+   if (!get_all_resource_usage(res))
       return;
 
    struct zink_resource_object *old_obj = res->obj;
@@ -640,32 +636,22 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
                            box.y, box.z, trans->base.level, &box, trans->base.usage);
 }
 
-#define ALL_GFX_USAGE(batch_uses, usage) (batch_uses & ((usage << ZINK_NUM_GFX_BATCHES) - ((usage & ZINK_RESOURCE_ACCESS_RW))))
-#define ALL_COMPUTE_USAGE(batch_uses, usage) (batch_uses & (usage << ZINK_COMPUTE_BATCH_ID))
-
 bool
 zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usage, enum zink_queue queue)
 {
-   uint32_t batch_uses = get_resource_usage(res);
+   uint32_t batch_uses = get_all_resource_usage(res);
    switch (queue) {
    case ZINK_QUEUE_COMPUTE:
-      return ALL_COMPUTE_USAGE(batch_uses, usage);
+      return batch_uses & (usage << ZINK_QUEUE_COMPUTE);
    case ZINK_QUEUE_GFX:
-      return ALL_GFX_USAGE(batch_uses, usage);
+      return batch_uses & (usage << ZINK_QUEUE_GFX);
    case ZINK_QUEUE_ANY:
-      return ALL_GFX_USAGE(batch_uses, usage) || ALL_COMPUTE_USAGE(batch_uses, usage);
+      return batch_uses & ((usage << ZINK_QUEUE_GFX) | (usage << ZINK_QUEUE_COMPUTE));
    default:
       break;
    }
    unreachable("unknown queue type");
    return false;
-}
-
-bool
-zink_resource_has_usage_for_id(struct zink_resource *res, uint32_t id)
-{
-   uint32_t batch_uses = get_resource_usage(res);
-   return batch_uses & (ZINK_RESOURCE_ACCESS_RW) << id;
 }
 
 static void *
@@ -706,7 +692,7 @@ zink_transfer_map(struct pipe_context *pctx,
          if (util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
             /* special case compute reads since they aren't handled by zink_fence_wait() */
             if (usage & PIPE_MAP_WRITE && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_READ, ZINK_QUEUE_COMPUTE))
-               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+               resource_sync_reads_from_compute(ctx, res);
             if (usage & PIPE_MAP_READ && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_WRITE, ZINK_QUEUE_ANY))
                resource_sync_writes_from_batch_usage(ctx, res);
             else if (usage & PIPE_MAP_WRITE && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW, ZINK_QUEUE_ANY)) {
@@ -806,7 +792,7 @@ zink_transfer_map(struct pipe_context *pctx,
          assert(!res->optimal_tiling);
          /* special case compute reads since they aren't handled by zink_fence_wait() */
          if (zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_READ, ZINK_QUEUE_COMPUTE))
-            zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+            resource_sync_reads_from_compute(ctx, res);
          if (zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW, ZINK_QUEUE_ANY)) {
             if (usage & PIPE_MAP_READ)
                resource_sync_writes_from_batch_usage(ctx, res);

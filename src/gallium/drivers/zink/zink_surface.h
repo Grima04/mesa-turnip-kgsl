@@ -25,7 +25,7 @@
  #define ZINK_SURFACE_H
 
 #include "pipe/p_state.h"
-
+#include "zink_batch.h"
 #include <vulkan/vulkan.h>
 
 struct pipe_context;
@@ -35,7 +35,7 @@ struct zink_surface {
    VkImageViewCreateInfo ivci;
    VkImageView image_view;
    uint32_t hash;
-   uint32_t batch_uses;
+   struct zink_batch_usage batch_uses;
 };
 
 static inline struct zink_surface *

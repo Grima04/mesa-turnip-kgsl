@@ -25,10 +25,6 @@
 #define ZINK_CONTEXT_H
 
 #define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
-#define ZINK_NUM_GFX_BATCHES 4
-#define ZINK_COMPUTE_BATCH_ID ZINK_NUM_GFX_BATCHES
-#define ZINK_COMPUTE_BATCH_COUNT 1
-#define ZINK_NUM_BATCHES (ZINK_NUM_GFX_BATCHES + 1)
 
 #define ZINK_DEFAULT_MAX_DESCS 5000
 
@@ -45,6 +41,7 @@
 
 #include "util/slab.h"
 #include "util/list.h"
+#include "util/u_dynarray.h"
 
 #include <vulkan/vulkan.h>
 
@@ -70,7 +67,7 @@ struct zink_sampler_state {
    VkSampler sampler;
    uint32_t hash;
    struct zink_descriptor_refs desc_set_refs;
-   uint32_t batch_uses;
+   struct zink_batch_usage batch_uses;
    bool custom_border_color;
 };
 
@@ -79,7 +76,7 @@ struct zink_buffer_view {
    VkBufferViewCreateInfo bvci;
    VkBufferView buffer_view;
    uint32_t hash;
-   uint32_t batch_uses;
+   struct zink_batch_usage batch_uses;
 };
 
 struct zink_sampler_view {
@@ -140,13 +137,15 @@ struct zink_context {
 
    struct pipe_device_reset_callback reset;
 
-   struct zink_batch batches[ZINK_NUM_GFX_BATCHES];
    bool is_device_lost;
-   unsigned curr_batch;
 
+   uint32_t curr_batch; //the current batch id
+   struct zink_batch batches[2]; //gfx, compute
+   struct zink_fence *last_fence[2]; //gfx, compute; the last command buffer submitted
    VkQueue queue;
-
-   struct zink_batch compute_batch;
+   struct hash_table batch_states[2]; //gfx, compute; submitted batch states
+   struct util_dynarray free_batch_states[2]; //gfx, compute; unused batch states
+   VkDeviceSize resource_size[2]; //gfx, compute; the accumulated size of resources in submitted buffers
 
    struct pipe_constant_buffer ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_shader_buffer ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
@@ -231,22 +230,22 @@ zink_context(struct pipe_context *context)
 }
 
 static inline struct zink_batch *
-zink_curr_batch(struct zink_context *ctx)
+zink_batch_queue(struct zink_context *ctx, enum zink_queue queue_type)
 {
-   assert(ctx->curr_batch < ARRAY_SIZE(ctx->batches));
-   return ctx->batches + ctx->curr_batch;
+   assert(queue_type < ARRAY_SIZE(ctx->batches));
+   return &ctx->batches[queue_type];
 }
 
 static inline struct zink_batch *
-zink_prev_batch(struct zink_context *ctx)
+zink_batch_g(struct zink_context *ctx)
 {
-   unsigned curr_batch = ctx->curr_batch;
-   if (!curr_batch)
-      curr_batch = ZINK_NUM_GFX_BATCHES - 1;
-   else
-      curr_batch--;
-   assert(curr_batch < ARRAY_SIZE(ctx->batches));
-   return ctx->batches + curr_batch;
+   return &ctx->batches[ZINK_QUEUE_GFX];
+}
+
+static inline struct zink_batch *
+zink_batch_c(struct zink_context *ctx)
+{
+   return &ctx->batches[ZINK_QUEUE_COMPUTE];
 }
 
 struct zink_batch *
@@ -259,13 +258,16 @@ void
 zink_fence_wait(struct pipe_context *ctx);
 
 void
-zink_wait_on_batch(struct zink_context *ctx, int batch_id);
+zink_wait_on_batch(struct zink_context *ctx, enum zink_queue queue, uint32_t batch_id);
 
 void
 zink_flush_compute(struct zink_context *ctx);
 
 struct zink_batch *
 zink_flush_batch(struct zink_context *ctx, struct zink_batch *batch);
+
+void
+zink_maybe_flush_or_stall(struct zink_context *ctx, enum zink_queue queue);
 
 bool
 zink_resource_access_is_write(VkAccessFlags flags);

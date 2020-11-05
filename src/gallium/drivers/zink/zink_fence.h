@@ -25,27 +25,25 @@
 #define ZINK_FENCE_H
 
 #include "util/u_inlines.h"
-#include "util/u_dynarray.h"
 
 #include <vulkan/vulkan.h>
 
 struct pipe_context;
 struct pipe_screen;
+struct zink_batch;
 struct zink_batch_state;
 struct zink_context;
 struct zink_screen;
 
 struct zink_fence {
    struct pipe_reference reference;
-   unsigned batch_id : 3;
    VkFence fence;
-   struct util_dynarray resources;
    struct pipe_context *deferred_ctx;
    bool submitted;
 };
 
 static inline struct zink_fence *
-zink_fence(struct pipe_fence_handle *pfence)
+zink_fence(void *pfence)
 {
    return (struct zink_fence *)pfence;
 }

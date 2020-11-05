@@ -118,7 +118,7 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
-   struct zink_batch *batch = zink_curr_batch(ctx);
+   struct zink_batch *batch = zink_batch_g(ctx);
    VkBuffer buffers[PIPE_MAX_SO_OUTPUTS] = {};
    VkDeviceSize buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
    VkDeviceSize buffer_sizes[PIPE_MAX_SO_OUTPUTS] = {};
@@ -342,7 +342,7 @@ write_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, uns
                  bool is_compute, bool cache_hit, bool need_resource_refs)
 {
    bool need_flush = false;
-   struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+   struct zink_batch *batch = is_compute ? zink_batch_c(ctx) : zink_batch_g(ctx);
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(zds->desc_set);
    enum zink_queue check_flush_id = is_compute ? ZINK_QUEUE_GFX : ZINK_QUEUE_COMPUTE;
@@ -644,12 +644,12 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
             desc_set_sampler_add(ctx, zds, sampler_view, sampler, num_resources++,
                                  zink_shader_descriptor_is_buffer(shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j),
                                  cache_hit);
-            struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+            struct zink_batch *batch = is_compute ? zink_batch_c(ctx) : zink_batch_g(ctx);
             if (sampler_view)
                zink_batch_reference_sampler_view(batch, sampler_view);
             if (sampler)
                /* this only tracks the most recent usage for now */
-               sampler->batch_uses = BITFIELD_BIT(batch->state->batch_id);
+               zink_batch_usage_set(&sampler->batch_uses, batch->queue, batch->state->batch_id);
          }
          assert(num_wds < num_descriptors);
 
@@ -734,7 +734,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
                                     &num_buffer_info, &buffer_views[num_buffer_info],
                                     NULL, imageview, bufferview, !k);
 
-            struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+            struct zink_batch *batch = is_compute ? zink_batch_c(ctx) : zink_batch_g(ctx);
             if (res)
                zink_batch_reference_image_view(batch, image_view);
          }
@@ -762,7 +762,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       else
          zds[h] = NULL;
    }
-   struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+   struct zink_batch *batch = is_compute ? zink_batch_c(ctx) : zink_batch_g(ctx);
    zink_batch_reference_program(batch, pg);
 
    uint32_t dynamic_offsets[PIPE_MAX_CONSTANT_BUFFERS];
@@ -863,11 +863,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
    bool need_index_buffer_unref = false;
 
-   /* flush anytime our total batch memory usage is potentially >= 1/10 of total gpu memory
-    * this should also eventually trigger a stall if the app is going nuts with gpu memory
-    */
-   if (zink_curr_batch(ctx)->state->resource_size >= screen->total_mem / 10 / ZINK_NUM_BATCHES)
-      ctx->base.flush(&ctx->base, NULL, 0);
+   /* check memory usage and flush/stall as needed to avoid oom */
+   zink_maybe_flush_or_stall(ctx, ZINK_QUEUE_GFX);
 
    if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
        util_draw_vbo_without_prim_restart(pctx, dinfo, dindirect, &draws[0]);
@@ -1178,13 +1175,10 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
-   struct zink_batch *batch = &ctx->compute_batch;
+   struct zink_batch *batch = zink_batch_c(ctx);
 
-   /* flush anytime our total batch memory usage is potentially >= 1/10 of total gpu memory
-    * this should also eventually trigger a stall if the app is going nuts with gpu memory
-    */
-   if (batch->state->resource_size >= screen->total_mem / 10 / ZINK_NUM_BATCHES)
-      zink_flush_compute(ctx);
+   /* check memory usage and flush/stall as needed to avoid oom */
+   zink_maybe_flush_or_stall(ctx, ZINK_QUEUE_COMPUTE);
 
    struct zink_compute_program *comp_program = get_compute_program(ctx);
    if (!comp_program)

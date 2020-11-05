@@ -232,7 +232,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       pipe_reference_init(&zds->reference, 1);
       zds->pool = pool;
       zds->hash = 0;
-      zds->batch_uses = 0;
+      zds->batch_uses.usage[0] = zds->batch_uses.usage[1] = 0;
       zds->invalid = true;
       zds->punted = zds->recycled = false;
       if (num_resources) {
@@ -296,7 +296,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
    struct zink_descriptor_set *zds;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
-   struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+   struct zink_batch *batch = is_compute ? zink_batch_c(ctx) : zink_batch_g(ctx);
    struct zink_descriptor_pool *pool = pg->pool[type];
    unsigned descs_used = 1;
    assert(type < ZINK_DESCRIPTOR_TYPES);
@@ -315,7 +315,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
             zds->recycled = false;
          }
          if (zds->invalid) {
-             if (zds->batch_uses)
+             if (zink_batch_usage_exists(&zds->batch_uses))
                 punt_invalid_set(zds, NULL);
              else
                 /* this set is guaranteed to be in pool->alloc_desc_sets */
@@ -332,7 +332,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
       bool recycled = false, punted = false;
       if (he) {
           zds = (void*)he->data;
-          if (zds->invalid && zds->batch_uses) {
+          if (zds->invalid && zink_batch_usage_exists(&zds->batch_uses)) {
              punt_invalid_set(zds, he);
              zds = NULL;
              punted = true;
@@ -375,7 +375,7 @@ skip_hash_tables:
       }
 
       if (pool->num_sets_allocated + pool->key.num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
-         batch = zink_flush_batch(ctx, batch);
+         zink_fence_wait(&ctx->base);
          zink_batch_reference_program(batch, pg);
          return zink_descriptor_set_get(ctx, type, is_compute, cache_hit, need_resource_refs);
       }
