@@ -217,6 +217,30 @@ static const struct nir_shader_compiler_options nir_options = {
    .lower_mul_high = true,
    .lower_rotate = true,
    .lower_uadd_carry = true,
+   .lower_pack_64_2x32_split = true,
+   .lower_unpack_64_2x32_split = true,
+   .lower_int64_options = ~0,
+   .lower_doubles_options = ~nir_lower_fp64_full_software,
+};
+
+static const struct nir_shader_compiler_options softfp_nir_options = {
+   .lower_all_io_to_temps = true,
+   .lower_ffma16 = true,
+   .lower_ffma32 = true,
+   .lower_ffma64 = true,
+   .lower_fdph = true,
+   .lower_flrp32 = true,
+   .lower_fpow = true,
+   .lower_fsat = true,
+   .lower_extract_byte = true,
+   .lower_extract_word = true,
+   .lower_mul_high = true,
+   .lower_rotate = true,
+   .lower_uadd_carry = true,
+   .lower_pack_64_2x32_split = true,
+   .lower_unpack_64_2x32_split = true,
+   .lower_int64_options = ~0,
+   .lower_doubles_options = ~0,
 };
 
 const void *
@@ -225,6 +249,10 @@ zink_get_compiler_options(struct pipe_screen *screen,
                           enum pipe_shader_type shader)
 {
    assert(ir == PIPE_SHADER_IR_NIR);
+   struct zink_screen *zscreen = zink_screen(screen);
+   /* do we actually want this? fails a lot and not just from bugs I've added */
+   if (!zscreen->info.feats.features.shaderFloat64)
+      return &softfp_nir_options;
    return &nir_options;
 }
 
