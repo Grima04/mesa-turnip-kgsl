@@ -744,10 +744,10 @@ tu_GetImageSubresourceLayout(VkDevice _device,
 
    pLayout->offset =
       fdl_surface_offset(layout, pSubresource->mipLevel, pSubresource->arrayLayer);
-   pLayout->size = slice->size0;
    pLayout->rowPitch = fdl_pitch(layout, pSubresource->mipLevel);
    pLayout->arrayPitch = fdl_layer_stride(layout, pSubresource->mipLevel);
    pLayout->depthPitch = slice->size0;
+   pLayout->size = pLayout->depthPitch * layout->depth0;
 
    if (fdl_ubwc_enabled(layout, pSubresource->mipLevel)) {
       /* UBWC starts at offset 0 */
