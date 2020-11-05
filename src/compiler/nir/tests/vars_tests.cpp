@@ -218,7 +218,7 @@ TEST_F(nir_redundant_load_vars_test, duplicated_load)
 {
    /* Load a variable twice in the same block.  One should be removed. */
 
-   nir_variable *in = create_int(nir_var_shader_in, "in");
+   nir_variable *in = create_int(nir_var_mem_ssbo, "in");
    nir_variable **out = create_many_int(nir_var_shader_out, "out", 2);
 
    nir_store_var(b, out[0], nir_load_var(b, in), 1);
@@ -240,7 +240,7 @@ TEST_F(nir_redundant_load_vars_test, duplicated_load_volatile)
 {
    /* Load a variable twice in the same block.  One should be removed. */
 
-   nir_variable *in = create_int(nir_var_shader_in, "in");
+   nir_variable *in = create_int(nir_var_mem_ssbo, "in");
    nir_variable **out = create_many_int(nir_var_shader_out, "out", 3);
 
    /* Volatile prevents us from eliminating a load by combining it with
@@ -275,7 +275,7 @@ TEST_F(nir_redundant_load_vars_test, duplicated_load_in_two_blocks)
 {
    /* Load a variable twice in different blocks.  One should be removed. */
 
-   nir_variable *in = create_int(nir_var_shader_in, "in");
+   nir_variable *in = create_int(nir_var_mem_ssbo, "in");
    nir_variable **out = create_many_int(nir_var_shader_out, "out", 2);
 
    nir_store_var(b, out[0], nir_load_var(b, in), 1);

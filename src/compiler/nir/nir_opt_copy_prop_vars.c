@@ -905,6 +905,13 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
          nir_deref_instr *src = nir_src_as_deref(intrin->src[0]);
 
+         /* If this is a load from a read-only mode, then all this pass would
+          * do is combine redundant loads and CSE should be more efficient for
+          * that.
+          */
+         if (nir_deref_mode_must_be(src, nir_var_read_only_modes & ~nir_var_vec_indexable_modes))
+            break;
+
          /* Direct array_derefs of vectors operate on the vectors (the parent
           * deref).  Indirects will be handled like other derefs.
           */
