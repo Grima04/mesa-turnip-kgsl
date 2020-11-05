@@ -2267,6 +2267,7 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
       return false;
 
    batch->fbs = _mesa_pointer_set_create(NULL);
+   batch->active_queries = _mesa_pointer_set_create(NULL);
    batch->resources = _mesa_pointer_set_create(NULL);
    batch->surfaces = _mesa_pointer_set_create(NULL);
    batch->bufferviews = _mesa_pointer_set_create(NULL);

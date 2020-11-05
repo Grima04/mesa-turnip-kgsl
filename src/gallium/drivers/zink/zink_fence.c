@@ -25,7 +25,6 @@
 #include "zink_context.h"
 #include "zink_fence.h"
 
-#include "zink_query.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
 
@@ -73,10 +72,6 @@ fail:
 void
 zink_fence_init(struct zink_fence *fence, struct zink_batch *batch)
 {
-   assert(!fence->active_queries);
-   fence->active_queries = batch->active_queries;
-   batch->active_queries = NULL;
-
    set_foreach(batch->resources, entry) {
       /* the fence needs its own reference to ensure it can safely access lifetime-dependent
        * resource members
@@ -135,9 +130,6 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
       success = vkGetFenceStatus(screen->dev, fence->fence) == VK_SUCCESS;
 
    if (success) {
-      if (fence->active_queries)
-         zink_prune_queries(screen, fence);
-
       /* unref all used resources */
       util_dynarray_foreach(&fence->resources, struct zink_resource_object*, obj) {
          fence_remove_resource_access(fence, *obj);

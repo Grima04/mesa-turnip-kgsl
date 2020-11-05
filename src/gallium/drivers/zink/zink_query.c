@@ -241,17 +241,12 @@ zink_destroy_query(struct pipe_context *pctx,
 }
 
 void
-zink_prune_queries(struct zink_screen *screen, struct zink_fence *fence)
+zink_prune_query(struct zink_screen *screen, struct zink_query *query)
 {
-   set_foreach(fence->active_queries, entry) {
-      struct zink_query *query = (void*)entry->key;
-      if (!p_atomic_dec_return(&query->fences)) {
-         if (p_atomic_read(&query->dead))
-            destroy_query(screen, query);
-      }
+   if (!p_atomic_dec_return(&query->fences)) {
+      if (p_atomic_read(&query->dead))
+         destroy_query(screen, query);
    }
-   _mesa_set_destroy(fence->active_queries, NULL);
-   fence->active_queries = NULL;
 }
 
 static void

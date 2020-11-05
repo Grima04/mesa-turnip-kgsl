@@ -39,6 +39,12 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    zink_batch_clear_resources(screen, batch);
 
+   set_foreach(batch->active_queries, entry) {
+      struct zink_query *query = (void*)entry->key;
+      zink_prune_query(screen, query);
+      _mesa_set_remove(batch->active_queries, entry);
+   }
+
    set_foreach(batch->surfaces, entry) {
       struct zink_surface *surf = (struct zink_surface *)entry->key;
       surf->batch_uses &= ~BITFIELD64_BIT(batch->batch_id);
