@@ -85,7 +85,8 @@ lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
 
 
    /* Convert result back to the original bit-size */
-   if (dst_bit_size != bit_size) {
+   if (nir_alu_type_get_type_size(nir_op_infos[op].output_type) == 0 &&
+       dst_bit_size != bit_size) {
       nir_alu_type type = nir_op_infos[op].output_type;
       nir_ssa_def *dst = nir_convert_to_bit_size(bld, lowered_dst, type, dst_bit_size);
       nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(dst));
