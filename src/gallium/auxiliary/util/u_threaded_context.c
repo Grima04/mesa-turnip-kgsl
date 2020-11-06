@@ -744,7 +744,7 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
     * set_constant_buffer to the driver if it was done afterwards.
     */
    if (cb && cb->user_buffer) {
-      u_upload_data(tc->base.const_uploader, 0, cb->buffer_size, 64,
+      u_upload_data(tc->base.const_uploader, 0, cb->buffer_size, tc->ubo_alignment,
                     cb->user_buffer, &offset, &buffer);
       u_upload_unmap(tc->base.const_uploader);
    }
@@ -2745,6 +2745,8 @@ threaded_context_create(struct pipe_context *pipe,
    tc->create_fence = create_fence;
    tc->map_buffer_alignment =
       pipe->screen->get_param(pipe->screen, PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT);
+   tc->ubo_alignment =
+      MAX2(pipe->screen->get_param(pipe->screen, PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT), 64);
    tc->base.priv = pipe; /* priv points to the wrapped driver context */
    tc->base.screen = pipe->screen;
    tc->base.destroy = tc_destroy;
