@@ -1068,6 +1068,16 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
 }
 #endif // MVK_VERSION
 
+static void
+check_device_needs_mesa_wsi(struct zink_screen *screen)
+{
+   /* Raspberry Pi 4 V3DV driver */
+   if (screen->info.props.vendorID == 0x14E4 &&
+       screen->info.props.deviceID == 42) {
+      screen->needs_mesa_wsi = true;
+   }
+}
+
 static struct pipe_screen *
 zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_screen_config *config)
 {
@@ -1099,6 +1109,11 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
       debug_printf("ZINK: failed to detect features\n");
       goto fail;
    }
+
+   /* Some Vulkan implementations have special requirements for WSI
+    * allocations.
+    */
+   check_device_needs_mesa_wsi(screen);
 
 #if defined(MVK_VERSION)
    zink_internal_setup_moltenvk(screen);

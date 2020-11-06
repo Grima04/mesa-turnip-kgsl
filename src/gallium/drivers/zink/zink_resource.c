@@ -233,7 +233,7 @@ resource_create(struct pipe_screen *pscreen,
          .scanout = true,
       };
 
-      if (templ->bind & PIPE_BIND_SCANOUT)
+      if (screen->needs_mesa_wsi && (templ->bind & PIPE_BIND_SCANOUT))
          ici.pNext = &image_wsi_info;
 
       VkResult result = vkCreateImage(screen->dev, &ici, NULL, &res->image);
@@ -285,7 +285,7 @@ resource_create(struct pipe_screen *pscreen,
       NULL,
    };
 
-   if (templ->bind & PIPE_BIND_SCANOUT) {
+   if (screen->needs_mesa_wsi && (templ->bind & PIPE_BIND_SCANOUT)) {
       memory_wsi_info.implicit_sync = true;
 
       memory_wsi_info.pNext = mai.pNext;
