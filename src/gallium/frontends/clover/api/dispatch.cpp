@@ -172,6 +172,6 @@ namespace clover {
       NULL, // clSetProgramSpecializationConstant
       NULL, // clCreateBufferWithProperties
       NULL, // clCreateImageWithProperties
-      NULL, // clSetContextDestructorCallback
+      clSetContextDestructorCallback
    };
 }
