@@ -1401,7 +1401,7 @@ static unsigned calc_dpb_size(struct radeon_decoder *dec)
                     : (4096 * 3000 * 3 / 2) * max_references;
 
       if (dec->base.profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
-         dpb_size *= (3 / 2);
+         dpb_size = dpb_size * 3 / 2;
       break;
 
    case PIPE_VIDEO_FORMAT_JPEG:
