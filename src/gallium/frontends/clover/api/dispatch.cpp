@@ -170,8 +170,8 @@ namespace clover {
       NULL, // clSetDefaultDeviceCommandQueue
       NULL, // clSetProgramReleaseCallback
       NULL, // clSetProgramSpecializationConstant
-      NULL, // clCreateBufferWithProperties
-      NULL, // clCreateImageWithProperties
+      clCreateBufferWithProperties,
+      clCreateImageWithProperties,
       clSetContextDestructorCallback
    };
 }

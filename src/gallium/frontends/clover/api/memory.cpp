@@ -82,13 +82,33 @@ namespace {
          return d_flags | (d_flags & dev_access_flags ? 0 : CL_MEM_READ_WRITE);
       }
    }
+
+   std::vector<cl_mem_properties>
+   fill_properties(const cl_mem_properties *d_properties) {
+      std::vector<cl_mem_properties> properties;
+      if (d_properties) {
+         while (*d_properties) {
+            if (*d_properties != 0)
+               throw error(CL_INVALID_PROPERTY);
+
+            properties.push_back(*d_properties);
+            d_properties++;
+         };
+         properties.push_back(0);
+      }
+      return properties;
+   }
 }
 
 CLOVER_API cl_mem
-clCreateBuffer(cl_context d_ctx, cl_mem_flags d_flags, size_t size,
-               void *host_ptr, cl_int *r_errcode) try {
-   const cl_mem_flags flags = validate_flags(NULL, d_flags, false);
+clCreateBufferWithProperties(cl_context d_ctx,
+                             const cl_mem_properties *d_properties,
+                             cl_mem_flags d_flags, size_t size,
+                             void *host_ptr, cl_int *r_errcode) try {
+
    auto &ctx = obj(d_ctx);
+   const cl_mem_flags flags = validate_flags(NULL, d_flags, false);
+   std::vector<cl_mem_properties> properties = fill_properties(d_properties);
 
    if (bool(host_ptr) != bool(flags & (CL_MEM_USE_HOST_PTR |
                                        CL_MEM_COPY_HOST_PTR)))
@@ -101,11 +121,18 @@ clCreateBuffer(cl_context d_ctx, cl_mem_flags d_flags, size_t size,
       throw error(CL_INVALID_BUFFER_SIZE);
 
    ret_error(r_errcode, CL_SUCCESS);
-   return new root_buffer(ctx, flags, size, host_ptr);
-
+   return new root_buffer(ctx, properties, flags, size, host_ptr);
 } catch (error &e) {
    ret_error(r_errcode, e);
    return NULL;
+}
+
+
+CLOVER_API cl_mem
+clCreateBuffer(cl_context d_ctx, cl_mem_flags d_flags, size_t size,
+               void *host_ptr, cl_int *r_errcode) {
+   return clCreateBufferWithProperties(d_ctx, NULL, d_flags, size,
+                                       host_ptr, r_errcode);
 }
 
 CLOVER_API cl_mem
@@ -139,10 +166,12 @@ clCreateSubBuffer(cl_mem d_mem, cl_mem_flags d_flags,
 }
 
 CLOVER_API cl_mem
-clCreateImage(cl_context d_ctx, cl_mem_flags d_flags,
-              const cl_image_format *format,
-              const cl_image_desc *desc,
-              void *host_ptr, cl_int *r_errcode) try {
+clCreateImageWithProperties(cl_context d_ctx,
+                            const cl_mem_properties *d_properties,
+                            cl_mem_flags d_flags,
+                            const cl_image_format *format,
+                            const cl_image_desc *desc,
+                            void *host_ptr, cl_int *r_errcode) try {
    auto &ctx = obj(d_ctx);
 
    if (!any_of(std::mem_fn(&device::image_support), ctx.devices()))
@@ -178,6 +207,7 @@ clCreateImage(cl_context d_ctx, cl_mem_flags d_flags,
    if (!supported_formats(ctx, desc->image_type).count(*format))
       throw error(CL_IMAGE_FORMAT_NOT_SUPPORTED);
 
+   std::vector<cl_mem_properties> properties = fill_properties(d_properties);
    ret_error(r_errcode, CL_SUCCESS);
 
    const size_t row_pitch = desc->image_row_pitch ? desc->image_row_pitch :
@@ -195,7 +225,7 @@ clCreateImage(cl_context d_ctx, cl_mem_flags d_flags,
             }, ctx.devices()))
          throw error(CL_INVALID_IMAGE_SIZE);
 
-      return new image2d(ctx, flags, format,
+      return new image2d(ctx, properties, flags, format,
                          desc->image_width, desc->image_height,
                          row_pitch, host_ptr);
 
@@ -214,7 +244,7 @@ clCreateImage(cl_context d_ctx, cl_mem_flags d_flags,
       const size_t slice_pitch = desc->image_slice_pitch ?
          desc->image_slice_pitch : row_pitch * desc->image_height;
 
-      return new image3d(ctx, flags, format,
+      return new image3d(ctx, properties, flags, format,
                          desc->image_width, desc->image_height,
                          desc->image_depth, row_pitch,
                          slice_pitch, host_ptr);
@@ -237,6 +267,16 @@ clCreateImage(cl_context d_ctx, cl_mem_flags d_flags,
 }
 
 CLOVER_API cl_mem
+clCreateImage(cl_context d_ctx,
+              cl_mem_flags d_flags,
+              const cl_image_format *format,
+              const cl_image_desc *desc,
+              void *host_ptr, cl_int *r_errcode) {
+   return clCreateImageWithProperties(d_ctx, NULL, d_flags, format, desc, host_ptr, r_errcode);
+}
+
+
+CLOVER_API cl_mem
 clCreateImage2D(cl_context d_ctx, cl_mem_flags d_flags,
                 const cl_image_format *format,
                 size_t width, size_t height, size_t row_pitch,
@@ -244,7 +284,7 @@ clCreateImage2D(cl_context d_ctx, cl_mem_flags d_flags,
    const cl_image_desc desc = { CL_MEM_OBJECT_IMAGE2D, width, height, 0, 0,
                                 row_pitch, 0, 0, 0, NULL };
 
-   return clCreateImage(d_ctx, d_flags, format, &desc, host_ptr, r_errcode);
+   return clCreateImageWithProperties(d_ctx, NULL, d_flags, format, &desc, host_ptr, r_errcode);
 }
 
 CLOVER_API cl_mem
@@ -256,7 +296,7 @@ clCreateImage3D(cl_context d_ctx, cl_mem_flags d_flags,
    const cl_image_desc desc = { CL_MEM_OBJECT_IMAGE3D, width, height, depth, 0,
                                 row_pitch, slice_pitch, 0, 0, NULL };
 
-   return clCreateImage(d_ctx, d_flags, format, &desc, host_ptr, r_errcode);
+   return clCreateImageWithProperties(d_ctx, NULL, d_flags, format, &desc, host_ptr, r_errcode);
 }
 
 CLOVER_API cl_int
@@ -340,6 +380,9 @@ clGetMemObjectInfo(cl_mem d_mem, cl_mem_info param,
       buf.as_scalar<cl_bool>() = mem.host_ptr() && system_svm;
       break;
    }
+   case CL_MEM_PROPERTIES:
+      buf.as_vector<cl_mem_properties>() = mem.properties();
+      break;
    default:
       throw error(CL_INVALID_VALUE);
    }
