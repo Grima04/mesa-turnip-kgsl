@@ -409,6 +409,10 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       buf.as_scalar<cl_device_svm_capabilities>() = dev.svm_support();
       break;
 
+   case CL_DEVICE_NUMERIC_VERSION:
+      buf.as_scalar<cl_version>() = dev.device_version();
+      break;
+
    default:
       throw error(CL_INVALID_VALUE);
    }

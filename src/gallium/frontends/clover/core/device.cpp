@@ -360,3 +360,8 @@ const void *
 device::get_compiler_options(enum pipe_shader_ir ir) const {
    return pipe->get_compiler_options(pipe, ir, PIPE_SHADER_COMPUTE);
 }
+
+cl_version
+device::device_version() const {
+   return version;
+}
