@@ -262,6 +262,13 @@ option(
   description : 'Enable GLVND support.'
 )
 option(
+  'microsoft-clc',
+  type : 'combo',
+  value : 'auto',
+  choices : ['auto', 'true', 'false'],
+  description : 'Build support for the Microsoft CLC to DXIL compiler'
+)
+option(
    'glx-read-only-text',
    type : 'boolean',
    value : false,

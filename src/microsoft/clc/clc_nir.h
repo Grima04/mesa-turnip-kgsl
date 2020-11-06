@@ -21,29 +21,20 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef DXIL_NIR_H
-#define DXIL_NIR_H
+#ifndef CLC_NIR_H
+#define CLC_NIR_H
 
 #include <stdbool.h>
 #include "nir.h"
-#include "nir_builder.h"
 
-bool dxil_nir_lower_8bit_conv(nir_shader *shader);
-bool dxil_nir_lower_16bit_conv(nir_shader *shader);
-bool dxil_nir_lower_x2b(nir_shader *shader);
-bool dxil_nir_lower_inot(nir_shader *shader);
-bool dxil_nir_lower_ubo_to_temp(nir_shader *shader);
-bool dxil_nir_lower_loads_stores_to_dxil(nir_shader *shader);
-bool dxil_nir_lower_atomics_to_dxil(nir_shader *shader);
-bool dxil_nir_lower_deref_ssbo(nir_shader *shader);
-bool dxil_nir_opt_alu_deref_srcs(nir_shader *shader);
-bool dxil_nir_lower_memcpy_deref(nir_shader *shader);
-bool dxil_nir_lower_upcast_phis(nir_shader *shader, unsigned min_bit_size);
-bool dxil_nir_lower_fp16_casts(nir_shader *shader);
+bool
+clc_nir_lower_system_values(nir_shader *nir, nir_variable *var);
+bool dxil_nir_lower_kernel_input_loads(nir_shader *nir, nir_variable *var);
 
-nir_ssa_def *
-build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,
-                    nir_ssa_def *offset, unsigned num_components,
-                    unsigned bit_size);
+bool
+clc_nir_lower_printf(nir_shader *nir, unsigned uav_id);
 
-#endif /* DXIL_NIR_H */
+bool
+clc_nir_dedupe_const_samplers(nir_shader *nir);
+
+#endif

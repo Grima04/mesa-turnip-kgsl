@@ -91,7 +91,7 @@ endif
 if with_any_intel
   subdir('intel')
 endif
-if with_gallium_d3d12
+if with_microsoft_clc or with_gallium_d3d12
   subdir('microsoft')
 endif
 subdir('mesa')
