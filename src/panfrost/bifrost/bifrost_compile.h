@@ -70,10 +70,12 @@ static const nir_shader_compiler_options bifrost_nir_options = {
 
         .lower_bitfield_extract_to_shifts = true,
         .vectorize_io = true,
-	.fuse_ffma16 = true,
-	.fuse_ffma32 = true,
-	.fuse_ffma64 = true,
-        .use_interpolated_input_intrinsics = true
+        .fuse_ffma16 = true,
+        .fuse_ffma32 = true,
+        .fuse_ffma64 = true,
+        .use_interpolated_input_intrinsics = true,
+
+        .lower_uniforms_to_ubo = true,
 };
 
 #endif
