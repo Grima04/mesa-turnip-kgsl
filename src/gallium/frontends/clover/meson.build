@@ -100,6 +100,7 @@ clover_files = files(
   'api/dispatch.hpp',
   'api/event.cpp',
   'api/interop.cpp',
+  'api/invalid.cpp',
   'api/kernel.cpp',
   'api/memory.cpp',
   'api/platform.cpp',
