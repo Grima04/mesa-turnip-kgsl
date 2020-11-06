@@ -439,6 +439,68 @@ bi_emit_ld_uniform(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_ld_ubo(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        /* nir_lower_uniforms_to_ubo() should have been called, reserving
+         * UBO #0 for uniforms even if the shaders doesn't have uniforms.
+         */
+        assert(ctx->nir->info.first_ubo_is_default_ubo);
+
+        bool offset_is_const = nir_src_is_const(instr->src[1]);
+        unsigned dyn_offset = pan_src_index(&instr->src[1]);
+        uint32_t const_offset = 0;
+
+        if (nir_src_is_const(instr->src[1]))
+                const_offset = nir_src_as_uint(instr->src[1]);
+
+        if (nir_src_is_const(instr->src[0]) &&
+            nir_src_as_uint(instr->src[0]) == 0 &&
+            ctx->sysvals.sysval_count) {
+                if (offset_is_const) {
+                        const_offset += 16 * ctx->sysvals.sysval_count;
+                } else {
+                        bi_instruction add = {
+                                .type = BI_IMATH,
+                                .op.imath = BI_IMATH_ADD,
+                                .dest = bi_make_temp(ctx),
+                                .dest_type = nir_type_uint32,
+                                .src = { dyn_offset, BIR_INDEX_CONSTANT | 0, BIR_INDEX_ZERO },
+                                .src_types = { nir_type_uint32, nir_type_uint32, nir_type_uint32 },
+                                .constant.u64 = 16 * ctx->sysvals.sysval_count,
+                        };
+
+                        bi_emit(ctx, add);
+                        dyn_offset = add.dest;
+                }
+        }
+
+        bi_instruction ld = {
+                .type = BI_LOAD_UNIFORM,
+                .segment = BI_SEGMENT_UBO,
+                .vector_channels = instr->num_components,
+                .src_types = { nir_type_uint32, nir_type_uint32 },
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = nir_type_uint | nir_dest_bit_size(instr->dest),
+        };
+
+        if (offset_is_const) {
+                ld.src[0] = BIR_INDEX_CONSTANT | 0;
+                ld.constant.u64 |= const_offset;
+        } else {
+                ld.src[0] = dyn_offset;
+        }
+
+        if (nir_src_is_const(instr->src[0])) {
+                ld.src[1] = BIR_INDEX_CONSTANT | 32;
+                ld.constant.u64 |= nir_src_as_uint(instr->src[0]) << 32;
+        } else {
+                ld.src[1] = pan_src_index(&instr->src[0]);
+        }
+
+        bi_emit(ctx, ld);
+}
+
+static void
 bi_emit_sysval(bi_context *ctx, nir_instr *instr,
                 unsigned nr_components, unsigned offset)
 {
@@ -736,6 +798,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_uniform:
                 bi_emit_ld_uniform(ctx, instr);
+                break;
+
+        case nir_intrinsic_load_ubo:
+                bi_emit_ld_ubo(ctx, instr);
                 break;
 
         case nir_intrinsic_load_frag_coord:
