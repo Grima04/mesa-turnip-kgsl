@@ -124,19 +124,19 @@ bool setup_cs(const char *input_spec, enum chip_class chip_class,
    return true;
 }
 
-void finish_program(Program *program)
+void finish_program(Program *prog)
 {
-   for (Block& BB : program->blocks) {
+   for (Block& BB : prog->blocks) {
       for (unsigned idx : BB.linear_preds)
-         program->blocks[idx].linear_succs.emplace_back(BB.index);
+         prog->blocks[idx].linear_succs.emplace_back(BB.index);
       for (unsigned idx : BB.logical_preds)
-         program->blocks[idx].logical_succs.emplace_back(BB.index);
+         prog->blocks[idx].logical_succs.emplace_back(BB.index);
    }
 
-   for (Block& block : program->blocks) {
+   for (Block& block : prog->blocks) {
       if (block.linear_succs.size() == 0) {
          block.kind |= block_kind_uniform;
-         Builder(program, &block).sopp(aco_opcode::s_endpgm);
+         Builder(prog, &block).sopp(aco_opcode::s_endpgm);
       }
    }
 }
@@ -335,17 +335,17 @@ void print_pipeline_ir(VkDevice device, VkPipeline pipeline, VkShaderStageFlagBi
    }
 }
 
-VkShaderModule __qoCreateShaderModule(VkDevice dev, const QoShaderModuleCreateInfo *info)
+VkShaderModule __qoCreateShaderModule(VkDevice dev, const QoShaderModuleCreateInfo *module_info)
 {
-    VkShaderModuleCreateInfo module_info;
-    module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    module_info.pNext = NULL;
-    module_info.flags = 0;
-    module_info.codeSize = info->spirvSize;
-    module_info.pCode = (const uint32_t*)info->pSpirv;
+    VkShaderModuleCreateInfo vk_module_info;
+    vk_module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    vk_module_info.pNext = NULL;
+    vk_module_info.flags = 0;
+    vk_module_info.codeSize = module_info->spirvSize;
+    vk_module_info.pCode = (const uint32_t*)module_info->pSpirv;
 
     VkShaderModule module;
-    VkResult result = CreateShaderModule(dev, &module_info, NULL, &module);
+    VkResult result = CreateShaderModule(dev, &vk_module_info, NULL, &module);
     assert(result == VK_SUCCESS);
 
     return module;
@@ -764,9 +764,9 @@ void PipelineBuilder::create_pipeline() {
       create_graphics_pipeline();
 }
 
-void PipelineBuilder::print_ir(VkShaderStageFlagBits stages, const char *name, bool remove_encoding)
+void PipelineBuilder::print_ir(VkShaderStageFlagBits stage_flags, const char *name, bool remove_encoding)
 {
    if (!pipeline)
       create_pipeline();
-   print_pipeline_ir(device, pipeline, stages, name, remove_encoding);
+   print_pipeline_ir(device, pipeline, stage_flags, name, remove_encoding);
 }

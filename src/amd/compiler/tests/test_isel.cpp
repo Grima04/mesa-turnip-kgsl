@@ -51,9 +51,9 @@ BEGIN_TEST(isel.interp.simple)
       }
    );
 
-   PipelineBuilder bld(get_vk_device(GFX9));
-   bld.add_vsfs(vs, fs);
-   bld.print_ir(VK_SHADER_STAGE_FRAGMENT_BIT, "ACO IR");
+   PipelineBuilder pbld(get_vk_device(GFX9));
+   pbld.add_vsfs(vs, fs);
+   pbld.print_ir(VK_SHADER_STAGE_FRAGMENT_BIT, "ACO IR");
 END_TEST
 
 BEGIN_TEST(isel.compute.simple)
@@ -73,8 +73,8 @@ BEGIN_TEST(isel.compute.simple)
          }
       );
 
-      PipelineBuilder bld(get_vk_device((chip_class)i));
-      bld.add_cs(cs);
-      bld.print_ir(VK_SHADER_STAGE_COMPUTE_BIT, "ACO IR", true);
+      PipelineBuilder pbld(get_vk_device((chip_class)i));
+      pbld.add_cs(cs);
+      pbld.print_ir(VK_SHADER_STAGE_COMPUTE_BIT, "ACO IR", true);
    }
 END_TEST
