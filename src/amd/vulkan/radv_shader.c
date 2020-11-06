@@ -493,6 +493,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 				.vk_memory_model = true,
 				.vk_memory_model_device_scope = true,
 				.fragment_shading_rate = device->physical_device->rad_info.chip_class >= GFX10_3,
+				.workgroup_memory_explicit_layout = true,
 			},
 			.ubo_addr_format = nir_address_format_32bit_index_offset,
 			.ssbo_addr_format = nir_address_format_32bit_index_offset,
@@ -679,8 +680,10 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 	/* Lower deref operations for compute shared memory. */
 	if (nir->info.stage == MESA_SHADER_COMPUTE) {
-		NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
-			   nir_var_mem_shared, shared_var_info);
+		if (!nir->info.cs.shared_memory_explicit_layout) {
+			NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+			           nir_var_mem_shared, shared_var_info);
+		}
 		NIR_PASS_V(nir, nir_lower_explicit_io,
 			   nir_var_mem_shared, nir_address_format_32bit_offset);
 	}

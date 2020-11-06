@@ -13,4 +13,4 @@ Panfrost g31/g52/g72 exposes ES 3.0
 Panfrost t760+ exposes GL 3.1 (including on Bifrost)
 Sparse memory support on RADV
 Rapid packed math (16bit-vectorization) on RADV
-VK_KHR_workgroup_memory_explicit_layout on Intel
+VK_KHR_workgroup_memory_explicit_layout on Intel, RADV
