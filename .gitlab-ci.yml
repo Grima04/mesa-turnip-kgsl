@@ -1257,26 +1257,6 @@ arm64_a630_gles3:
   variables:
     DEQP_VER: gles3
 
-# We almost always manage to lower UBOs back to constant uploads in
-# the test suite, so get a little testing for it here.
-arm64_a630_noubo:
-  extends: arm64_a630_gles31
-  variables:
-    DEQP_VER: gles31
-    IR3_SHADER_DEBUG: nouboopt
-    DEQP_CASELIST_FILTER: "functional.*ubo"
-
-# The driver does some guessing as to whether to render using gmem
-# or bypass, and some GLES3.1 features interact with either one.
-# Do a little testing with gmem and bypass forced.
-arm64_a630_bypass:
-  extends: arm64_a630_gles31
-  variables:
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 5
-    FD_MESA_DEBUG: nogmem
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-bypass-fails.txt
-
 arm64_a630_traces:
   extends:
     - arm64_a630_gles2
@@ -1294,50 +1274,15 @@ arm64_a630_traces:
     reports:
       junit: results/junit.xml
 
-# Along with checking gmem path, check that we don't get obvious nir
-# validation failures (though it's too expensive to have it on for the
-# full CTS)
-arm64_a630_gmem:
-  extends: arm64_a630_gles31
-  variables:
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 5
-    FD_MESA_DEBUG: nobypass
-
 arm64_a630_gl:
   extends: arm64_a630_gles2
   variables:
     DEQP_VER: gl30
 
-# disabled pending https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/1859
-.arm64_a630_gles3_multisample:
-  extends: arm64_a630_gles3
+arm64_a630_gles_others:
+  extends: arm64_a630_gles2
   variables:
-    DEQP_CONFIG: rgba8888d24s8ms4
-    DEQP_VARIANT: multisample
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-multisample-fails.txt
-
-# disabled pending https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/1859
-.arm64_a630_gles31_multisample:
-  extends: arm64_a630_gles31
-  variables:
-    DEQP_CONFIG: rgba8888d24s8ms4
-    DEQP_VARIANT: multisample
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-multisample-fails.txt
-
-arm64_a630_gles3_565nozs:
-  extends: arm64_a630_gles3
-  variables:
-    DEQP_CONFIG: rgb565d0s0ms0
-    DEQP_VARIANT: 565-no-depth-no-stencil
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-565nozs-fails.txt
-
-arm64_a630_gles31_565nozs:
-  extends: arm64_a630_gles31
-  variables:
-    DEQP_CONFIG: rgb565d0s0ms0
-    DEQP_VARIANT: 565-no-depth-no-stencil
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-565nozs-fails.txt
+    BARE_METAL_TEST_SCRIPT: "/install/bare-metal/arm64_a630_gles_others.sh"
 
 arm64_a630_vk:
   extends: arm64_a630_gles2
