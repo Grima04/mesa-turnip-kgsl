@@ -672,6 +672,36 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
       break;
    }
 
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_reduce:
+      case nir_intrinsic_inclusive_scan:
+      case nir_intrinsic_exclusive_scan:
+         /* There are a couple of register region issues that make things
+          * complicated for 8-bit types:
+          *
+          *    1. Only raw moves are allowed to write to a packed 8-bit
+          *       destination.
+          *    2. If we use a strided destination, the efficient way to do
+          *       scan operations ends up using strides that are too big to
+          *       encode in an instruction.
+          *
+          * To get around these issues, we just do all 8-bit scan operations
+          * in 16 bits.  It's actually fewer instructions than what we'd have
+          * to do if we were trying to do it in native 8-bit types and the
+          * results are the same once we truncate to 8 bits at the end.
+          */
+         if (intrin->dest.ssa.bit_size == 8)
+            return 16;
+         return 0;
+
+      default:
+         return 0;
+      }
+      break;
+   }
+
    default:
       return 0;
    }
