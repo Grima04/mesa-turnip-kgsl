@@ -635,37 +635,43 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
 static unsigned
 lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_alu)
-      return 0;
-
-   nir_alu_instr *alu = nir_instr_as_alu(instr);
-   assert(alu->dest.dest.is_ssa);
-   if (alu->dest.dest.ssa.bit_size >= 32)
-      return 0;
-
    const struct brw_compiler *compiler = (const struct brw_compiler *) data;
+   const struct gen_device_info *devinfo = compiler->devinfo;
 
-   switch (alu->op) {
-   case nir_op_idiv:
-   case nir_op_imod:
-   case nir_op_irem:
-   case nir_op_udiv:
-   case nir_op_umod:
-   case nir_op_fceil:
-   case nir_op_ffloor:
-   case nir_op_ffract:
-   case nir_op_fround_even:
-   case nir_op_ftrunc:
-      return 32;
-   case nir_op_frcp:
-   case nir_op_frsq:
-   case nir_op_fsqrt:
-   case nir_op_fpow:
-   case nir_op_fexp2:
-   case nir_op_flog2:
-   case nir_op_fsin:
-   case nir_op_fcos:
-      return compiler->devinfo->gen < 9 ? 32 : 0;
+   switch (instr->type) {
+   case nir_instr_type_alu: {
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+      assert(alu->dest.dest.is_ssa);
+      if (alu->dest.dest.ssa.bit_size >= 32)
+         return 0;
+
+      switch (alu->op) {
+      case nir_op_idiv:
+      case nir_op_imod:
+      case nir_op_irem:
+      case nir_op_udiv:
+      case nir_op_umod:
+      case nir_op_fceil:
+      case nir_op_ffloor:
+      case nir_op_ffract:
+      case nir_op_fround_even:
+      case nir_op_ftrunc:
+         return 32;
+      case nir_op_frcp:
+      case nir_op_frsq:
+      case nir_op_fsqrt:
+      case nir_op_fpow:
+      case nir_op_fexp2:
+      case nir_op_flog2:
+      case nir_op_fsin:
+      case nir_op_fcos:
+         return devinfo->gen < 9 ? 32 : 0;
+      default:
+         return 0;
+      }
+      break;
+   }
+
    default:
       return 0;
    }
