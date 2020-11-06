@@ -421,24 +421,6 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
-bi_emit_ld_uniform(bi_context *ctx, nir_intrinsic_instr *instr)
-{
-        bi_instruction ld = bi_load(BI_LOAD_UNIFORM, instr);
-        ld.src[1] = BIR_INDEX_ZERO; /* TODO: UBO index */
-        ld.segment = BI_SEGMENT_UBO;
-
-        /* TODO: Indirect access, since we need to multiply by the element
-         * size. I believe we can get this lowering automatically via
-         * nir_lower_io (as mul instructions) with the proper options, but this
-         * is TODO */
-        assert(ld.src[0] & BIR_INDEX_CONSTANT);
-        ld.constant.u64 += ctx->sysvals.sysval_count;
-        ld.constant.u64 *= 16;
-
-        bi_emit(ctx, ld);
-}
-
-static void
 bi_emit_ld_ubo(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         /* nir_lower_uniforms_to_ubo() should have been called, reserving
@@ -794,10 +776,6 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_store_combined_output_pan:
                 assert(ctx->stage == MESA_SHADER_FRAGMENT);
                 bi_emit_frag_out(ctx, instr);
-                break;
-
-        case nir_intrinsic_load_uniform:
-                bi_emit_ld_uniform(ctx, instr);
                 break;
 
         case nir_intrinsic_load_ubo:
