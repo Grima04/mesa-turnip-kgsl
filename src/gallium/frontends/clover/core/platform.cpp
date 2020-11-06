@@ -57,3 +57,8 @@ platform::platform_version_as_string() const {
       std::to_string(CL_VERSION_MINOR(version));
    return version_string;
 }
+
+cl_version
+platform::platform_version() const {
+   return version;
+}

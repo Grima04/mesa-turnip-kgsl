@@ -43,6 +43,8 @@ namespace clover {
       std::string supported_extensions_as_string() const;
 
       std::string platform_version_as_string() const;
+      cl_version platform_version() const;
+
    protected:
       cl_version version;
       std::vector<intrusive_ref<device>> devs;

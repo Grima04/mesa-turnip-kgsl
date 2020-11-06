@@ -81,6 +81,11 @@ clover::GetPlatformInfo(cl_platform_id d_platform, cl_platform_info param,
       buf.as_string() = "MESA";
       break;
 
+   case CL_PLATFORM_NUMERIC_VERSION: {
+      buf.as_scalar<cl_version>() = platform.platform_version();
+      break;
+   }
+
    default:
       throw error(CL_INVALID_VALUE);
    }
