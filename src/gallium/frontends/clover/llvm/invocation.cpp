@@ -83,6 +83,7 @@ namespace {
       { "2.0", 200},
       { "2.1", 210},
       { "2.2", 220},
+      { "3.0", 300},
    };
 
     struct clc_version_lang_std {
@@ -95,6 +96,9 @@ namespace {
        { 110, clang::LangStandard::lang_opencl11},
        { 120, clang::LangStandard::lang_opencl12},
        { 200, clang::LangStandard::lang_opencl20},
+#if LLVM_VERSION_MAJOR >= 12
+       { 300, clang::LangStandard::lang_opencl30},
+#endif
     };
 
    void
