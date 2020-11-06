@@ -1288,8 +1288,7 @@ arm64_a630_vk:
   extends: arm64_a630_gles2
   variables:
     DEQP_VER: vk
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 50
+    DEQP_FRACTION: 50
     VK_DRIVER: freedreno
     # Force binning in the main run, which makes sure we render at
     # least 2 bins.  This is the path that impacts the most different
@@ -1304,8 +1303,7 @@ arm64_a630_vk_sysmem:
   extends:
     - arm64_a630_vk
   variables:
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 10
+    DEQP_FRACTION: 10
     DEQP_CASELIST_FILTER: "dEQP-VK.renderpass.*"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-bypass-fails.txt
     TU_DEBUG: sysmem
@@ -1359,8 +1357,7 @@ arm64_a306_gles3:
   variables:
     DEQP_VER: gles3
     DEQP_PARALLEL: 1
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 25
+    DEQP_FRACTION: 25
 
 # Fractional runs with debug options.  Note that since we're not
 # hitting the iommu faults, we can run in parallel (derive from gles2, not gles3).
@@ -1398,16 +1395,14 @@ arm64_a530_gles3:
   variables:
     DEQP_VER: gles3
     DEQP_PARALLEL: 1
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 40
+    DEQP_FRACTION: 40
 
 arm64_a530_gles31:
   extends:
     - arm64_a530_gles3
   variables:
     DEQP_VER: gles31
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 10
+    DEQP_FRACTION: 10
 
 # RADV CI
 .test-radv:

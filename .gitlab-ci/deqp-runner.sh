@@ -57,8 +57,15 @@ else
    SUITE=KHR
 fi
 
-# If the job is parallel, take the corresponding fraction of the caselist.
-# Note: N~M is a gnu sed extension to match every nth line (first line is #1).
+# If the caselist is too long to run in a reasonable amount of time, let the job
+# specify what fraction (1/n) of the caselist we should run.  Note: N~M is a gnu
+# sed extension to match every nth line (first line is #1).
+if [ -n "$DEQP_FRACTION" ]; then
+   sed -ni 1~$DEQP_FRACTION"p" /tmp/case-list.txt
+fi
+
+# If the job is parallel at the gitab job level, take the corresponding fraction
+# of the caselist.
 if [ -n "$CI_NODE_INDEX" ]; then
    sed -ni $CI_NODE_INDEX~$CI_NODE_TOTAL"p" /tmp/case-list.txt
 fi

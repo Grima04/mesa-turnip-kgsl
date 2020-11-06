@@ -11,8 +11,7 @@ EXIT=0
 if ! env \
   DEQP_RESULTS_DIR=results/gmem \
   DEQP_VER=gles31 \
-  CI_NODE_INDEX=1 \
-  CI_NODE_TOTAL=5 \
+  DEQP_FRACTION=5 \
   FD_MESA_DEBUG=nobypass \
   /install/deqp-runner.sh; then
     EXIT=1
@@ -22,8 +21,7 @@ fi
 if ! env \
   DEQP_RESULTS_DIR=results/bypass \
   DEQP_VER=gles31 \
-  CI_NODE_INDEX=1 \
-  CI_NODE_TOTAL=5 \
+  DEQP_FRACTION=5 \
   FD_MESA_DEBUG=nogmem \
   DEQP_EXPECTED_FAILS=deqp-freedreno-a630-bypass-fails.txt \
   /install/deqp-runner.sh; then
