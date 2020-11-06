@@ -352,6 +352,12 @@ public:
    }
 
 % endfor
+
+   Operand set16bit(Operand op) {
+       op.set16bit(true);
+       return op;
+   }
+
    /* hand-written helpers */
    Temp as_uniform(Op op)
    {

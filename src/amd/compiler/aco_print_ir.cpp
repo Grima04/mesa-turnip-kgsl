@@ -168,6 +168,8 @@ static void print_operand(const Operand *operand, FILE *output)
    } else {
       if (operand->isLateKill())
          fprintf(output, "(latekill)");
+      if (operand->is16bit())
+         fprintf(output, "(is16bit)");
 
       fprintf(output, "%%%d", operand->tempId());
 
