@@ -261,6 +261,16 @@ nir_clz_u(nir_builder *b, nir_ssa_def *a)
    return nir_u2u(b, val, a->bit_size);
 }
 
+static inline nir_ssa_def *
+nir_ctz_u(nir_builder *b, nir_ssa_def *a)
+{
+   nir_ssa_def *cond = nir_ieq(b, a, nir_imm_intN_t(b, 0, a->bit_size));
+
+   return nir_bcsel(b, cond,
+                    nir_imm_intN_t(b, a->bit_size, a->bit_size),
+                    nir_u2u(b, nir_find_lsb(b, a), a->bit_size));
+}
+
 #ifdef __cplusplus
 }
 #endif
