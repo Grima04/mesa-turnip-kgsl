@@ -277,7 +277,7 @@ resource_create(struct pipe_screen *pscreen,
       imfi.fd = whandle->handle;
 
       imfi.pNext = mai.pNext;
-      mai.pNext = &imfi;
+      emai.pNext = &imfi;
    }
 
    struct wsi_memory_allocate_info memory_wsi_info = {
