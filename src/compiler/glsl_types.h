@@ -1057,11 +1057,11 @@ public:
          return 0;
 
       unsigned size = length;
-      const glsl_type *base_type = fields.array;
+      const glsl_type *array_base_type = fields.array;
 
-      while (base_type->is_array()) {
-         size = size * base_type->length;
-         base_type = base_type->fields.array;
+      while (array_base_type->is_array()) {
+         size = size * array_base_type->length;
+         array_base_type = array_base_type->fields.array;
       }
       return size;
    }
