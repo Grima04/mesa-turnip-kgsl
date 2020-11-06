@@ -742,6 +742,20 @@ bi_emit_point_coord(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_vertex_id(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        bi_instruction mov = {
+                .type = BI_MOV,
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = nir_type_int32,
+                .src = { BIR_INDEX_REGISTER | 61 },
+                .src_types = { nir_type_int32 },
+        };
+
+        bi_emit(ctx, mov);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -830,6 +844,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_point_coord:
                 bi_emit_point_coord(ctx, instr);
+                break;
+
+        case nir_intrinsic_load_vertex_id:
+                bi_emit_vertex_id(ctx, instr);
                 break;
 
         default:
