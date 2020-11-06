@@ -652,7 +652,10 @@ namespace {
 
    spv_target_env
    convert_opencl_str_to_target_env(const std::string &opencl_version) {
-      if (opencl_version == "2.2") {
+      // Pick 1.2 for 3.0 for now
+      if (opencl_version == "3.0") {
+         return SPV_ENV_OPENCL_1_2;
+      } else if (opencl_version == "2.2") {
          return SPV_ENV_OPENCL_2_2;
       } else if (opencl_version == "2.1") {
          return SPV_ENV_OPENCL_2_1;
