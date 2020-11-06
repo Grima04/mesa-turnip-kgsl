@@ -2161,11 +2161,14 @@ void nir_rewrite_image_intrinsic(nir_intrinsic_instr *instr,
 static inline bool
 nir_intrinsic_can_reorder(nir_intrinsic_instr *instr)
 {
-   if (instr->intrinsic == nir_intrinsic_load_deref ||
-       instr->intrinsic == nir_intrinsic_load_ssbo ||
-       instr->intrinsic == nir_intrinsic_bindless_image_load ||
-       instr->intrinsic == nir_intrinsic_image_deref_load ||
-       instr->intrinsic == nir_intrinsic_image_load) {
+   if (instr->intrinsic == nir_intrinsic_load_deref) {
+      nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
+      return nir_deref_mode_is_in_set(deref, nir_var_read_only_modes) ||
+             (nir_intrinsic_access(instr) & ACCESS_CAN_REORDER);
+   } else if (instr->intrinsic == nir_intrinsic_load_ssbo ||
+              instr->intrinsic == nir_intrinsic_bindless_image_load ||
+              instr->intrinsic == nir_intrinsic_image_deref_load ||
+              instr->intrinsic == nir_intrinsic_image_load) {
       return nir_intrinsic_access(instr) & ACCESS_CAN_REORDER;
    } else {
       const nir_intrinsic_info *info =
