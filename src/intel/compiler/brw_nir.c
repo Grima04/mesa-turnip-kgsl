@@ -667,6 +667,15 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
       case nir_op_fcos:
          return devinfo->gen < 9 ? 32 : 0;
       default:
+         if (devinfo->gen >= 11) {
+            if (nir_op_infos[alu->op].num_inputs >= 2 &&
+                alu->dest.dest.ssa.bit_size == 8)
+               return 16;
+
+            if (nir_alu_instr_is_comparison(alu) &&
+                alu->src[0].src.ssa->bit_size == 8)
+               return 16;
+         }
          return 0;
       }
       break;
@@ -675,6 +684,22 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       switch (intrin->intrinsic) {
+      case nir_intrinsic_read_invocation:
+      case nir_intrinsic_read_first_invocation:
+      case nir_intrinsic_vote_feq:
+      case nir_intrinsic_vote_ieq:
+      case nir_intrinsic_shuffle:
+      case nir_intrinsic_shuffle_xor:
+      case nir_intrinsic_shuffle_up:
+      case nir_intrinsic_shuffle_down:
+      case nir_intrinsic_quad_broadcast:
+      case nir_intrinsic_quad_swap_horizontal:
+      case nir_intrinsic_quad_swap_vertical:
+      case nir_intrinsic_quad_swap_diagonal:
+         if (intrin->src[0].ssa->bit_size == 8 && devinfo->gen >= 11)
+            return 16;
+         return 0;
+
       case nir_intrinsic_reduce:
       case nir_intrinsic_inclusive_scan:
       case nir_intrinsic_exclusive_scan:
