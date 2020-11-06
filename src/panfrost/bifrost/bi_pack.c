@@ -404,6 +404,50 @@ bi_pack_fma_special(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
         }
 }
 
+#define BI_PACK_SHIFT(name)                                                      \
+static unsigned                                                                  \
+bi_pack_fma_ ## name(bi_clause *clause, bi_instruction *ins, bi_registers *regs) \
+{                                                                                \
+        switch (nir_alu_type_get_type_size(ins->dest_type)) {                    \
+        case 32:                                                                 \
+                return pan_pack_fma_ ## name ## _i32(clause, ins, regs);         \
+        case 16:                                                                 \
+                return pan_pack_fma_ ## name ## _v2i16(clause, ins, regs);       \
+        case 8:                                                                  \
+                return pan_pack_fma_ ## name ## _v4i8(clause, ins, regs);        \
+        default:                                                                 \
+                unreachable("Invalid dest size");                                \
+        }                                                                        \
+}
+
+BI_PACK_SHIFT(rshift_and)
+BI_PACK_SHIFT(lshift_and)
+BI_PACK_SHIFT(rshift_or)
+BI_PACK_SHIFT(lshift_or)
+BI_PACK_SHIFT(rshift_xor)
+BI_PACK_SHIFT(lshift_xor)
+
+static unsigned
+bi_pack_fma_bitwise(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
+{
+        switch (ins->op.bitwise) {
+        case BI_BITWISE_AND:
+                return ins->bitwise.rshift ?
+                       bi_pack_fma_rshift_and(clause, ins, regs) :
+                       bi_pack_fma_lshift_and(clause, ins, regs);
+        case BI_BITWISE_OR:
+                return ins->bitwise.rshift ?
+                       bi_pack_fma_rshift_or(clause, ins, regs) :
+                       bi_pack_fma_lshift_or(clause, ins, regs);
+        case BI_BITWISE_XOR:
+                return ins->bitwise.rshift ?
+                       bi_pack_fma_rshift_xor(clause, ins, regs) :
+                       bi_pack_fma_lshift_xor(clause, ins, regs);
+        default:
+                unreachable("Invalid bitwise op");
+        }
+}
+
 static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
 {
@@ -415,10 +459,8 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
         bool u32 = bundle.fma->dest_type == nir_type_uint32 ||
                 bundle.fma->dest_type == nir_type_bool32;
         bool u16 = bundle.fma->dest_type == nir_type_uint16;
-        ASSERTED bool u8 = bundle.fma->dest_type == nir_type_uint8;
         bool s32 = bundle.fma->dest_type == nir_type_int32;
         bool s16 = bundle.fma->dest_type == nir_type_int16;
-        ASSERTED bool s8 = bundle.fma->dest_type == nir_type_int8;
 
         bool src0_f16 = bundle.fma->src_types[0] == nir_type_float16;
         bool src0_f32 = bundle.fma->src_types[0] == nir_type_float32;
@@ -446,55 +488,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
                 else
                         return pan_pack_fma_fcmp_v2f16(clause, bundle.fma, regs);
         case BI_BITWISE:
-                if (bundle.fma->op.bitwise == BI_BITWISE_AND) {
-                        if (u32 || s32) {
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_and_i32(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_and_i32(clause, bundle.fma, regs);
-                        } else if (u16 || s16) {
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_and_v2i16(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_and_v2i16(clause, bundle.fma, regs);
-                        } else {
-                                assert(u8 || s8);
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_and_v4i8(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_and_v4i8(clause, bundle.fma, regs);
-                        }
-
-                } else if (bundle.fma->op.bitwise == BI_BITWISE_OR) {
-                        if (u32 || s32) {
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_or_i32(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_or_i32(clause, bundle.fma, regs);
-                        } else if (u16 || s16) {
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_or_v2i16(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_or_v2i16(clause, bundle.fma, regs);
-                        } else {
-                                assert(u8 || s8);
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_or_v4i8(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_or_v4i8(clause, bundle.fma, regs);
-                        }
-                } else {
-                        assert(bundle.fma->op.bitwise == BI_BITWISE_XOR);
-
-                        if (u32 || s32) {
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_xor_i32(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_xor_i32(clause, bundle.fma, regs);
-                        } else if (u16 || s16) {
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_xor_v2i16(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_xor_v2i16(clause, bundle.fma, regs);
-                        } else {
-                                assert(u8 || s8);
-                                return bundle.fma->bitwise.rshift ?
-                                        pan_pack_fma_rshift_xor_v4i8(clause, bundle.fma, regs) :
-                                        pan_pack_fma_lshift_xor_v4i8(clause, bundle.fma, regs);
-                        }
-                }
+                return bi_pack_fma_bitwise(clause, bundle.fma, regs);
         case BI_CONVERT:
                 if (src0_s8) {
                         assert(s32);
