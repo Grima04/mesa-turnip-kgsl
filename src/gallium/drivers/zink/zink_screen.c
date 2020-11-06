@@ -940,6 +940,9 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
    zink_debug = debug_get_option_zink_debug();
 
    screen->instance = create_instance(screen);
+   if(!screen->instance)
+      goto fail;
+
    screen->pdev = choose_pdev(screen->instance);
    update_queue_props(screen);
 
