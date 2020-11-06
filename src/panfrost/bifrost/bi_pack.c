@@ -426,6 +426,7 @@ BI_PACK_SHIFT(rshift_or)
 BI_PACK_SHIFT(lshift_or)
 BI_PACK_SHIFT(rshift_xor)
 BI_PACK_SHIFT(lshift_xor)
+BI_PACK_SHIFT(arshift)
 
 static unsigned
 bi_pack_fma_bitwise(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
@@ -443,6 +444,9 @@ bi_pack_fma_bitwise(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
                 return ins->bitwise.rshift ?
                        bi_pack_fma_rshift_xor(clause, ins, regs) :
                        bi_pack_fma_lshift_xor(clause, ins, regs);
+        case BI_BITWISE_ARSHIFT:
+                assert(ins->bitwise.rshift);
+                return bi_pack_fma_arshift(clause, ins, regs);
         default:
                 unreachable("Invalid bitwise op");
         }

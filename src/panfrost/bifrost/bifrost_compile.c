@@ -896,6 +896,7 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_ixor:
         case nir_op_inot:
         case nir_op_ishl:
+        case nir_op_ishr:
                 return BI_BITWISE;
 
         BI_CASE_CMP(nir_op_flt)
@@ -1206,6 +1207,14 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         case nir_op_ishl:
                 alu.op.bitwise = BI_BITWISE_OR;
                 /* move src1 to src2 and replace with zero. underlying op is (src0 << src2) | src1 */
+                alu.src[2] = alu.src[1];
+                alu.src_types[2] = nir_type_uint8;
+                alu.src[1] = BIR_INDEX_ZERO;
+                break;
+        case nir_op_ishr:
+                alu.op.bitwise = BI_BITWISE_ARSHIFT;
+                alu.bitwise.rshift = true;
+                /* move src1 to src2 and replace with zero. underlying op is (src0 >> src2) */
                 alu.src[2] = alu.src[1];
                 alu.src_types[2] = nir_type_uint8;
                 alu.src[1] = BIR_INDEX_ZERO;

@@ -193,7 +193,8 @@ enum bi_minmax_op {
 enum bi_bitwise_op {
         BI_BITWISE_AND,
         BI_BITWISE_OR,
-        BI_BITWISE_XOR
+        BI_BITWISE_XOR,
+        BI_BITWISE_ARSHIFT,
 };
 
 enum bi_imath_op {
