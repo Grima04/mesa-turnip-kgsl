@@ -2948,10 +2948,14 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
 }
 
 static unsigned
-lower_bit_size_callback(const nir_alu_instr *alu, void *_)
+lower_bit_size_callback(const nir_instr *instr, void *_)
 {
 	struct radv_device *device = _;
 	enum chip_class chip = device->physical_device->rad_info.chip_class;
+
+	if (instr->type != nir_instr_type_alu)
+		return 0;
+	nir_alu_instr *alu = nir_instr_as_alu(instr);
 
 	if (alu->dest.dest.ssa.bit_size & (8 | 16)) {
 		unsigned bit_size = alu->dest.dest.ssa.bit_size;

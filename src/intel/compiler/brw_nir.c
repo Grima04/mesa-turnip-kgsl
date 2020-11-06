@@ -633,8 +633,12 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
 }
 
 static unsigned
-lower_bit_size_callback(const nir_alu_instr *alu, UNUSED void *data)
+lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
 {
+   if (instr->type != nir_instr_type_alu)
+      return 0;
+
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
    assert(alu->dest.dest.is_ssa);
    if (alu->dest.dest.ssa.bit_size >= 32)
       return 0;

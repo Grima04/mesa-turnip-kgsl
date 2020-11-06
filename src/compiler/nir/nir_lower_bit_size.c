@@ -46,7 +46,7 @@ static nir_ssa_def *convert_to_bit_size(nir_builder *bld, nir_ssa_def *src,
 }
 
 static void
-lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
+lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
 {
    const nir_op op = alu->op;
    unsigned dst_bit_size = alu->dest.dest.ssa.bit_size;
@@ -109,14 +109,11 @@ lower_impl(nir_function_impl *impl,
          if (instr->type != nir_instr_type_alu)
             continue;
 
-         nir_alu_instr *alu = nir_instr_as_alu(instr);
-         assert(alu->dest.dest.is_ssa);
-
-         unsigned lower_bit_size = callback(alu, callback_data);
+         unsigned lower_bit_size = callback(instr, callback_data);
          if (lower_bit_size == 0)
             continue;
 
-         lower_instr(&b, alu, lower_bit_size);
+         lower_alu_instr(&b, nir_instr_as_alu(instr), lower_bit_size);
          progress = true;
       }
    }
