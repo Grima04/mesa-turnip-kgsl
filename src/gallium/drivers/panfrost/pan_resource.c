@@ -427,7 +427,7 @@ panfrost_can_linear(struct panfrost_device *dev, const struct panfrost_resource 
 {
         /* XXX: We should be able to do linear Z/S with the right bits.. */
         return !((pres->base.bind & PIPE_BIND_DEPTH_STENCIL) &&
-                (dev->quirks & (MIDGARD_SFBD | IS_BIFROST)));
+                (dev->quirks & MIDGARD_SFBD));
 }
 
 static bool
