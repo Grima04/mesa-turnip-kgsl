@@ -143,9 +143,6 @@ mkdir -p kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
 pushd kernel
 
-############### Delete rust, since the tests won't be compiling anything.
-rm -rf /root/.rustup /root/.cargo
-
 # The kernel doesn't like the gold linker (or the old lld in our debians).
 # Sneak in some override symlinks during kernel build until we can update
 # debian (they'll get blown away by the rm of the kernel dir at the end).
@@ -187,6 +184,9 @@ fi
 
 popd
 rm -rf kernel
+
+############### Delete rust, since the tests won't be compiling anything.
+rm -rf /root/.rustup /root/.cargo
 
 ############### Create rootfs
 set +e
