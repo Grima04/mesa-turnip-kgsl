@@ -35,13 +35,13 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <pthread.h>
 #include <stdio.h>
 
 #include <xf86drm.h>
 
 #include "util/hash_table.h"
 #include "util/list.h"
+#include "util/simple_mtx.h"
 #include "util/u_debug.h"
 #include "util/u_atomic.h"
 #include "util/u_math.h"

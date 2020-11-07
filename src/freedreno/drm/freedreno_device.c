@@ -33,7 +33,7 @@
 #include "freedreno_drmif.h"
 #include "freedreno_priv.h"
 
-static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
+static simple_mtx_t table_lock = _SIMPLE_MTX_INITIALIZER_NP;
 
 struct fd_device * kgsl_device_new(int fd);
 struct fd_device * msm_device_new(int fd);
@@ -130,9 +130,9 @@ void fd_device_del(struct fd_device *dev)
 {
 	if (!atomic_dec_and_test(&dev->refcnt))
 		return;
-	pthread_mutex_lock(&table_lock);
+	simple_mtx_lock(&table_lock);
 	fd_device_del_impl(dev);
-	pthread_mutex_unlock(&table_lock);
+	simple_mtx_unlock(&table_lock);
 }
 
 int fd_device_fd(struct fd_device *dev)
