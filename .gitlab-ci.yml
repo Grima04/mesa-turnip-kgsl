@@ -414,7 +414,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-11-09-deqp-version"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-11-09-db410c-net"
 
 .use-arm64_test:
   variables:
