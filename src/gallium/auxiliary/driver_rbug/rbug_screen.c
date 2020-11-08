@@ -77,6 +77,16 @@ rbug_screen_get_device_vendor(struct pipe_screen *_screen)
    return screen->get_device_vendor(screen);
 }
 
+static const void *
+rbug_screen_get_compiler_options(struct pipe_screen *_screen,
+                                 enum pipe_shader_ir ir,
+                                 enum pipe_shader_type shader)
+{
+   struct pipe_screen *screen = rbug_screen(_screen)->screen;
+
+   return screen->get_compiler_options(screen, ir, shader);
+}
+
 static struct disk_cache *
 rbug_screen_get_disk_shader_cache(struct pipe_screen *_screen)
 {
@@ -409,6 +419,7 @@ rbug_screen_create(struct pipe_screen *screen)
    rb_screen->base.destroy = rbug_screen_destroy;
    rb_screen->base.get_name = rbug_screen_get_name;
    rb_screen->base.get_vendor = rbug_screen_get_vendor;
+   SCR_INIT(get_compiler_options);
    SCR_INIT(get_disk_shader_cache);
    rb_screen->base.get_device_vendor = rbug_screen_get_device_vendor;
    rb_screen->base.get_param = rbug_screen_get_param;
