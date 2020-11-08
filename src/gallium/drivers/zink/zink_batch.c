@@ -88,6 +88,12 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 }
 
 void
+zink_clear_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
+{
+   zink_reset_batch_state(ctx, bs);
+}
+
+void
 zink_batch_reset_all(struct zink_context *ctx, enum zink_queue queue)
 {
    hash_table_foreach(&ctx->batch_states[queue], entry) {
