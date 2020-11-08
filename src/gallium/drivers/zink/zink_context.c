@@ -302,16 +302,16 @@ zink_context_destroy(struct pipe_context *pctx)
 
    for (unsigned i = 0; i < ZINK_QUEUE_ANY; i++) {
       struct zink_fence *fence = zink_fence(&ctx->batches[i].state);
-      zink_reset_batch_state(ctx, ctx->batches[i].state);
+      zink_clear_batch_state(ctx, ctx->batches[i].state);
       zink_fence_reference(zink_screen(pctx->screen), &fence, NULL);
       hash_table_foreach(&ctx->batch_states[i], entry) {
          fence = entry->data;
-         zink_reset_batch_state(ctx, entry->data);
+         zink_clear_batch_state(ctx, entry->data);
          zink_fence_reference(zink_screen(pctx->screen), &fence, NULL);
       }
       util_dynarray_foreach(&ctx->free_batch_states[i], struct zink_batch_state*, bs) {
          fence = zink_fence(*bs);
-         zink_reset_batch_state(ctx, *bs);
+         zink_clear_batch_state(ctx, *bs);
          zink_fence_reference(zink_screen(pctx->screen), &fence, NULL);
       }
    }
