@@ -496,7 +496,7 @@ fd_screen_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
 	case PIPE_CAPF_CONSERVATIVE_RASTER_DILATE_GRANULARITY:
 		return 0.0f;
 	}
-	debug_printf("unknown paramf %d\n", param);
+	mesa_loge("unknown paramf %d", param);
 	return 0;
 }
 
@@ -523,7 +523,7 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 			break;
 		return 0;
 	default:
-		DBG("unknown shader type %d", shader);
+		mesa_loge("unknown shader type %d", shader);
 		return 0;
 	}
 
@@ -636,7 +636,7 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 		}
 		return 0;
 	}
-	debug_printf("unknown shader param %d\n", param);
+	mesa_loge("unknown shader param %d", param);
 	return 0;
 }
 
@@ -988,7 +988,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 		fd6_screen_init(pscreen);
 		break;
 	default:
-		debug_printf("unsupported GPU: a%03d\n", screen->gpu_id);
+		mesa_loge("unsupported GPU: a%03d", screen->gpu_id);
 		goto fail;
 	}
 

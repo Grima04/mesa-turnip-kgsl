@@ -28,6 +28,7 @@
 #define IR3_COMPILER_H_
 
 #include "util/disk_cache.h"
+#include "util/log.h"
 
 #include "ir3.h"
 

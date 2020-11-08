@@ -32,6 +32,7 @@
 
 #include "pipe/p_format.h"
 #include "pipe/p_state.h"
+#include "util/log.h"
 #include "util/u_debug.h"
 #include "util/u_math.h"
 #include "util/half_float.h"
@@ -96,7 +97,7 @@ extern bool fd_binning_enabled;
 
 #define DBG(fmt, ...) \
 		do { if (fd_mesa_debug & FD_DBG_MSGS) \
-			debug_printf("%s:%d: "fmt "\n", \
+			mesa_logd("%s:%d: "fmt, \
 				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
 /* for conditionally setting boolean flag(s): */

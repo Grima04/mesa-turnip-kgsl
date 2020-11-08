@@ -236,7 +236,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 	/* emulate unsupported primitives: */
 	if (!fd_supported_prim(ctx, info->mode)) {
 		if (ctx->streamout.num_targets > 0)
-			debug_error("stream-out with emulated prims");
+			mesa_loge("stream-out with emulated prims");
 		util_primconvert_save_rasterizer_state(ctx->primconvert, ctx->rasterizer);
 		util_primconvert_draw_vbo(ctx->primconvert, info);
 		return;

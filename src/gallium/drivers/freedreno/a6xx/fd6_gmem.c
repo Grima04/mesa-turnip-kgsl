@@ -334,7 +334,7 @@ update_vsc_pipe(struct fd_batch *batch)
 		 * frame:
 		 */
 		fd6_ctx->vsc_draw_strm_pitch = align(batch->draw_strm_bits/8, 0x4000);
-		debug_printf("pre-resize VSC_DRAW_STRM_PITCH to: 0x%x\n",
+		mesa_logd("pre-resize VSC_DRAW_STRM_PITCH to: 0x%x",
 				fd6_ctx->vsc_draw_strm_pitch);
 	}
 
@@ -343,7 +343,7 @@ update_vsc_pipe(struct fd_batch *batch)
 			fd_bo_del(fd6_ctx->vsc_prim_strm);
 		fd6_ctx->vsc_prim_strm = NULL;
 		fd6_ctx->vsc_prim_strm_pitch = align(batch->prim_strm_bits/8, 0x4000);
-		debug_printf("pre-resize VSC_PRIM_STRM_PITCH to: 0x%x\n",
+		mesa_logd("pre-resize VSC_PRIM_STRM_PITCH to: 0x%x",
 				fd6_ctx->vsc_prim_strm_pitch);
 	}
 
@@ -464,7 +464,7 @@ check_vsc_overflow(struct fd_context *ctx)
 		fd6_ctx->vsc_draw_strm = NULL;
 		fd6_ctx->vsc_draw_strm_pitch *= 2;
 
-		debug_printf("resized VSC_DRAW_STRM_PITCH to: 0x%x\n",
+		mesa_logd("resized VSC_DRAW_STRM_PITCH to: 0x%x",
 				fd6_ctx->vsc_draw_strm_pitch);
 
 	} else if (buffer == 0x3) {
@@ -479,7 +479,7 @@ check_vsc_overflow(struct fd_context *ctx)
 		fd6_ctx->vsc_prim_strm = NULL;
 		fd6_ctx->vsc_prim_strm_pitch *= 2;
 
-		debug_printf("resized VSC_PRIM_STRM_PITCH to: 0x%x\n",
+		mesa_logd("resized VSC_PRIM_STRM_PITCH to: 0x%x",
 				fd6_ctx->vsc_prim_strm_pitch);
 
 	} else {
@@ -489,7 +489,7 @@ check_vsc_overflow(struct fd_context *ctx)
 		 * but maybe we should pre-emptively realloc vsc_data/vsc_data2
 		 * and hope for different memory placement?
 		 */
-		DBG("invalid vsc_overflow value: 0x%08x", vsc_overflow);
+		mesa_loge("invalid vsc_overflow value: 0x%08x", vsc_overflow);
 	}
 }
 
