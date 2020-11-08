@@ -75,6 +75,19 @@ def EXTENSIONS():
         Extension("VK_EXTX_portability_subset",      alias="portability_subset_extx", properties=True, features=True, guard=True),
     ]
 
+# constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))
+# The attributes:
+#  - device_version: Vulkan version, as tuple, to use with VK_MAKE_VERSION(version_major, version_minor, version_patch)
+#
+#  - struct_version: Vulkan version, as tuple, to use with structures and macros
+def VERSIONS():
+    return [
+        # VkPhysicalDeviceVulkan11Properties and VkPhysicalDeviceVulkan11Features is new from Vk 1.2, not Vk 1.1
+        # https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#_new_structures
+        Version((1,2,0), (1,1)),
+        Version((1,2,0), (1,2)),
+    ]
+
 # There exists some inconsistencies regarding the enum constants, fix them.
 # This is basically generated_code.replace(key, value).
 def REPLACEMENTS():
@@ -100,14 +113,27 @@ header_code = """
 struct zink_screen;
 
 struct zink_device_info {
+   uint32_t device_version;
+
 %for ext in extensions:
    ${ext.guard_start()}
    bool have_${ext.name_with_vendor()};
    ${ext.guard_end()}
 %endfor
+%for version in versions:
+   bool have_vulkan${version.struct()};
+%endfor
 
    VkPhysicalDeviceFeatures2 feats;
+%for version in versions:
+   VkPhysicalDeviceVulkan${version.struct()}Features feats${version.struct()};
+%endfor
+
    VkPhysicalDeviceProperties props;
+%for version in versions:
+   VkPhysicalDeviceVulkan${version.struct()}Properties props${version.struct()};
+%endfor
+
    VkPhysicalDeviceMemoryProperties mem_props;
 
 %for ext in extensions:
@@ -147,6 +173,11 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %endfor
    uint32_t num_extensions = 0;
 
+   // get device API support
+   vkGetPhysicalDeviceProperties(screen->pdev, &info->props);
+   info->device_version = info->props.apiVersion;
+
+   // get device memory properties
    vkGetPhysicalDeviceMemoryProperties(screen->pdev, &info->mem_props);
 
    // enumerate device supported extensions
@@ -170,9 +201,19 @@ zink_get_physical_device_info(struct zink_screen *screen)
       }
    }
 
-   if (screen->vk_GetPhysicalDeviceFeatures2) {
+   // get device features
+   if (VK_MAKE_VERSION(1, 1, 0) <= info->device_version && screen->vk_GetPhysicalDeviceFeatures2) {
       // check for device extension features
       info->feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+%for version in versions:
+      if (${version.version()} <= info->device_version) {
+         info->feats${version.struct()}.sType = ${version.stype("FEATURES")};
+         info->feats${version.struct()}.pNext = info->feats.pNext;
+         info->feats.pNext = &info->feats${version.struct()};
+         info->have_vulkan${version.struct()} = true;
+      }
+%endfor
 
 %for ext in extensions:
 %if ext.feature_field is not None or ext.has_features:
@@ -190,9 +231,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
 
 %for ext in extensions:
       ${ext.guard_start()}
-%if ext.feature_field is None:
-      info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
-%else:
+%if ext.feature_field is not None:
       if (support_${ext.name_with_vendor()} && info->${ext.field("feats")}.${ext.feature_field}) {
          info->have_${ext.name_with_vendor()} = true;
       }
@@ -201,20 +240,28 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %endfor
    } else {
       vkGetPhysicalDeviceFeatures(screen->pdev, &info->feats.features);
-
-%for ext in extensions:
-      ${ext.guard_start()}
-%if ext.feature_field is None:
-      info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
-%endif
-      ${ext.guard_end()}
-%endfor
    }
 
+%for ext in extensions:
+   ${ext.guard_start()}
+%if ext.feature_field is None:
+   info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
+%endif
+   ${ext.guard_end()}
+%endfor
+
    // check for device properties
-   if (screen->vk_GetPhysicalDeviceProperties2) {
+   if (VK_MAKE_VERSION(1, 1, 0) <= info->device_version && screen->vk_GetPhysicalDeviceProperties2) {
       VkPhysicalDeviceProperties2 props = {};
       props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+
+%for version in versions:
+      if (${version.version()} <= info->device_version) {
+         info->props${version.struct()}.sType = ${version.stype("PROPERTIES")};
+         info->props${version.struct()}.pNext = props.pNext;
+         props.pNext = &info->props${version.struct()};
+      }
+%endfor
 
 %for ext in extensions:
 %if ext.has_properties:
@@ -228,10 +275,8 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %endif
 %endfor
 
+      // note: setting up local VkPhysicalDeviceProperties2.
       screen->vk_GetPhysicalDeviceProperties2(screen->pdev, &props);
-      memcpy(&info->props, &props.properties, sizeof(info->props));
-   } else {
-      vkGetPhysicalDeviceProperties(screen->pdev, &info->props);
    }
 
    // generate extension list
@@ -258,6 +303,36 @@ fail:
    return false;
 }
 """
+
+class Version:
+    driver_version  : (1,0,0)
+    struct_version  : (1,0)
+
+    def __init__(self, version, struct):
+        self.device_version = version
+        self.struct_version = struct
+
+    # e.g. "VM_MAKE_VERSION(1,2,0)"
+    def version(self):
+        return ("VK_MAKE_VERSION("
+               + str(self.device_version[0])
+               + ","
+               + str(self.device_version[1])
+               + ","
+               + str(self.device_version[2])
+               + ")")
+
+    # e.g. "10"
+    def struct(self):
+        return (str(self.struct_version[0])+str(self.struct_version[1]))
+
+    # the sType of the extension's struct
+    # e.g. VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT
+    # for VK_EXT_transform_feedback and struct="FEATURES"
+    def stype(self, struct: str):
+        return ("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_"
+                + str(self.struct_version[0]) + "_" + str(self.struct_version[1])
+                + '_' + struct)
 
 class Extension:
     name           : str  = None
@@ -357,14 +432,15 @@ if __name__ == "__main__":
         exit(1)
 
     extensions = EXTENSIONS()
+    versions = VERSIONS()
     replacement = REPLACEMENTS()
 
     with open(header_path, "w") as header_file:
-        header = Template(header_code).render(extensions=extensions).strip()
+        header = Template(header_code).render(extensions=extensions, versions=versions).strip()
         header = replace_code(header, replacement)
         print(header, file=header_file)
 
     with open(impl_path, "w") as impl_file:
-        impl = Template(impl_code).render(extensions=extensions).strip()
+        impl = Template(impl_code).render(extensions=extensions, versions=versions).strip()
         impl = replace_code(impl, replacement)
         print(impl, file=impl_file)
