@@ -557,10 +557,13 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 panfrost_mfbd_emit_rt(batch, rt, surf, rt_offset, cb);
 
                 if (surf) {
-                        if (MAX2(surf->nr_samples, surf->texture->nr_samples) > 1)
+                        unsigned samples = MAX2(surf->nr_samples, surf->texture->nr_samples);
+
+                        if (samples > 1)
                                 batch->requirements |= PAN_REQ_MSAA;
 
-                        rt_offset += pan_bytes_per_pixel_tib(surf->format) * tib_size;
+                        rt_offset += pan_bytes_per_pixel_tib(surf->format) * tib_size *
+                                MAX2(samples, 1);
                 }
         }
 
