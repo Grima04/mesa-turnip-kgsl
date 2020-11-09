@@ -1156,6 +1156,9 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
         struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
         struct panfrost_device *dev = pan_device(pctx->screen);
 
+        if (transfer->usage & PIPE_MAP_WRITE)
+                prsrc->layout.slices[transfer->level].checksum_valid = false;
+
         /* AFBC will use a staging resource. `initialized` will be set when the
          * fragment job is created; this is deferred to prevent useless surface
          * reloads that can cascade into DATA_INVALID_FAULTs due to reading

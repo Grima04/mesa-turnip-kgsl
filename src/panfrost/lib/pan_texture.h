@@ -72,6 +72,9 @@ struct panfrost_slice {
 
         /* Has anything been written to this slice? */
         bool initialized;
+
+        /* Is the checksum for this slice valid? */
+        bool checksum_valid;
 };
 
 struct pan_image_layout {

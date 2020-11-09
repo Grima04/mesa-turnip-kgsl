@@ -257,7 +257,8 @@ get_z_internal_format(struct panfrost_batch *batch)
 
 static void
 panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
-                                  struct MALI_ZS_CRC_EXTENSION *ext)
+                                  struct MALI_ZS_CRC_EXTENSION *ext,
+                                  struct panfrost_slice **checksum_slice)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
         bool is_bifrost = dev->quirks & IS_BIFROST;
@@ -271,6 +272,8 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 if (rsrc->checksummed) {
                         unsigned level = c_surf->u.tex.level;
                         struct panfrost_slice *slice = &rsrc->layout.slices[level];
+
+                        *checksum_slice = slice;
 
                         ext->crc_row_stride = slice->crc.stride;
                         if (rsrc->checksum_bo)
@@ -397,11 +400,12 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 }
 
 static void
-panfrost_mfbd_emit_zs_crc_ext(struct panfrost_batch *batch, void *extp)
+panfrost_mfbd_emit_zs_crc_ext(struct panfrost_batch *batch, void *extp,
+                              struct panfrost_slice **checksum_slice)
 {
         pan_pack(extp, ZS_CRC_EXTENSION, ext) {
                 ext.zs_clean_pixel_write_enable = true;
-                panfrost_mfbd_zs_crc_ext_set_bufs(batch, &ext);
+                panfrost_mfbd_zs_crc_ext_set_bufs(batch, &ext, checksum_slice);
         }
 }
 
@@ -564,12 +568,14 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         if (panfrost_batch_is_scanout(batch))
                 batch->requirements &= ~PAN_REQ_DEPTH_WRITE;
 
+        struct panfrost_slice *checksum_slice = NULL;
+
         if (zs_crc_ext) {
                 if (batch->key.zsbuf &&
                     MAX2(batch->key.zsbuf->nr_samples, batch->key.zsbuf->nr_samples) > 1)
                         batch->requirements |= PAN_REQ_MSAA;
 
-                panfrost_mfbd_emit_zs_crc_ext(batch, zs_crc_ext);
+                panfrost_mfbd_emit_zs_crc_ext(batch, zs_crc_ext, &checksum_slice);
         }
 
         /* We always upload at least one dummy GL_NONE render target */
@@ -598,6 +604,10 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 
                         rt_offset += pan_bytes_per_pixel_tib(surf->format) * tib_size *
                                 MAX2(samples, 1);
+
+                        struct panfrost_resource *prsrc = pan_resource(surf->texture);
+                        if (!checksum_slice)
+                                prsrc->layout.slices[surf->u.tex.level].checksum_valid = false;
                 }
         }
 
@@ -637,6 +647,22 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 }
 
                 params.has_zs_crc_extension = !!zs_crc_ext;
+
+                if (checksum_slice) {
+                        bool valid = checksum_slice->checksum_valid;
+                        bool full = !batch->minx && !batch->miny &&
+                                batch->maxx == batch->key.width &&
+                                batch->maxy == batch->key.height;
+
+                        params.crc_read_enable = valid;
+
+                        /* If the data is currently invalid, still write CRC
+                         * data if we are doing a full write, so that it is
+                         * valid for next time. */
+                        params.crc_write_enable = valid || full;
+
+                        checksum_slice->checksum_valid |= full;
+                }
         }
 
         if (dev->quirks & IS_BIFROST)
