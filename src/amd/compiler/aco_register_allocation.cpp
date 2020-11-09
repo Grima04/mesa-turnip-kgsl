@@ -851,10 +851,10 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 
 /* collect variables from a register area and clear reg_file */
 std::set<std::pair<unsigned, unsigned>> collect_vars(ra_ctx& ctx, RegisterFile& reg_file,
-                                                     PhysReg reg, unsigned size)
+                                                     const PhysRegInterval reg_interval)
 {
    std::set<std::pair<unsigned, unsigned>> vars;
-   for (PhysReg j : PhysRegInterval { reg, size }) {
+   for (PhysReg j : reg_interval) {
       if (reg_file.is_blocked(j))
          continue;
       if (reg_file[j] == 0xF0000000) {
@@ -1017,7 +1017,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
       PhysRegInterval reg_win { best_pos, size };
 
       /* collect variables and block reg file */
-      std::set<std::pair<unsigned, unsigned>> new_vars = collect_vars(ctx, reg_file, reg_win.lo(), size);
+      std::set<std::pair<unsigned, unsigned>> new_vars = collect_vars(ctx, reg_file, reg_win);
 
       /* mark the area as blocked */
       reg_file.block(reg_win.lo(), var.rc);
@@ -1157,7 +1157,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
 
    /* now, we figured the placement for our definition */
    RegisterFile tmp_file(reg_file);
-   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, tmp_file, PhysReg{best_win.lo()}, size);
+   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, tmp_file, best_win);
 
    if (instr->opcode == aco_opcode::p_create_vector) {
       /* move killed operands which aren't yet at the correct position (GFX9+)
@@ -1457,7 +1457,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    }
 
    /* collect variables to be moved */
-   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, tmp_file, best_pos, size);
+   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, tmp_file, PhysRegInterval { best_pos, size });
 
    for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
       if (!instr->operands[i].isTemp() || !instr->operands[i].isFirstKillBeforeDef() ||
@@ -2215,8 +2215,10 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             adjust_max_used_regs(ctx, definition.regClass(), definition.physReg());
             /* check if the target register is blocked */
             if (register_file.test(definition.physReg(), definition.bytes())) {
+               const PhysRegInterval def_regs { definition.physReg(), definition.size() };
+
                /* create parallelcopy pair to move blocking vars */
-               std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, register_file, definition.physReg(), definition.size());
+               std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, register_file, def_regs);
 
                RegisterFile tmp_file(register_file);
                /* re-enable the killed operands, so that we don't move the blocking vars there */
@@ -2229,7 +2231,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                DefInfo info(ctx, instr, definition.regClass(), -1);
                success = get_regs_for_copies(ctx, tmp_file, parallelcopy,
                                              vars, info.bounds, instr,
-                                             PhysRegInterval { definition.physReg(), definition.size() });
+                                             def_regs);
                assert(success);
 
                update_renames(ctx, register_file, parallelcopy, instr, false);
