@@ -92,7 +92,10 @@ buffer_usage_warning(struct gl_context *ctx, GLuint *id, const char *fmt, ...)
  * Used as a placeholder for buffer objects between glGenBuffers() and
  * glBindBuffer() so that glIsBuffer() can work correctly.
  */
-static struct gl_buffer_object DummyBufferObject;
+static struct gl_buffer_object DummyBufferObject = {
+   .MinMaxCacheMutex = _SIMPLE_MTX_INITIALIZER_NP,
+   .RefCount = 1000*1000*1000,  /* never delete */
+};
 
 
 /**
@@ -873,10 +876,6 @@ void
 _mesa_init_buffer_objects( struct gl_context *ctx )
 {
    GLuint i;
-
-   memset(&DummyBufferObject, 0, sizeof(DummyBufferObject));
-   simple_mtx_init(&DummyBufferObject.MinMaxCacheMutex, mtx_plain);
-   DummyBufferObject.RefCount = 1000*1000*1000; /* never delete */
 
    for (i = 0; i < MAX_COMBINED_UNIFORM_BUFFERS; i++) {
       _mesa_reference_buffer_object(ctx,
