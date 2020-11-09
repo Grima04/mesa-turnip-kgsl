@@ -981,6 +981,11 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          id_props->deviceLUIDValid = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
+         /* Do nothing, not even logging. This is a non-PCI device, so we will
+          * never provide this extension.
+          */
+         break;
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
