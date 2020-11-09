@@ -2299,8 +2299,8 @@ vtn_mem_semantics_to_nir_mem_semantics(struct vtn_builder *b,
 }
 
 static nir_variable_mode
-vtn_mem_sematics_to_nir_var_modes(struct vtn_builder *b,
-                                  SpvMemorySemanticsMask semantics)
+vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
+                                   SpvMemorySemanticsMask semantics)
 {
    /* Vulkan Environment for SPIR-V says "SubgroupMemory, CrossWorkgroupMemory,
     * and AtomicCounterMemory are ignored".
@@ -2381,7 +2381,7 @@ vtn_emit_scoped_control_barrier(struct vtn_builder *b, SpvScope exec_scope,
 {
    nir_memory_semantics nir_semantics =
       vtn_mem_semantics_to_nir_mem_semantics(b, semantics);
-   nir_variable_mode modes = vtn_mem_sematics_to_nir_var_modes(b, semantics);
+   nir_variable_mode modes = vtn_mem_semantics_to_nir_var_modes(b, semantics);
    nir_scope nir_exec_scope = vtn_scope_to_nir_scope(b, exec_scope);
 
    /* Memory semantics is optional for OpControlBarrier. */
@@ -2398,7 +2398,7 @@ static void
 vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
                                SpvMemorySemanticsMask semantics)
 {
-   nir_variable_mode modes = vtn_mem_sematics_to_nir_var_modes(b, semantics);
+   nir_variable_mode modes = vtn_mem_semantics_to_nir_var_modes(b, semantics);
    nir_memory_semantics nir_semantics =
       vtn_mem_semantics_to_nir_mem_semantics(b, semantics);
 
