@@ -350,7 +350,7 @@ try_setup_point( struct lp_setup_context *setup,
     * slightly different rounding.
     */
    int adj = (setup->bottom_edge_rule != 0) ? 1 : 0;
-
+   float pixel_offset = setup->multisample ? 0.0 : setup->pixel_offset;
    struct lp_scene *scene = setup->scene;
    struct lp_rast_triangle *point;
    unsigned bytes;
@@ -385,8 +385,8 @@ try_setup_point( struct lp_setup_context *setup,
        */
       fixed_width = MAX2(FIXED_ONE, subpixel_snap(size));
 
-      x0 = subpixel_snap(v0[0][0] - setup->pixel_offset) - fixed_width/2;
-      y0 = subpixel_snap(v0[0][1] - setup->pixel_offset) - fixed_width/2;
+      x0 = subpixel_snap(v0[0][0] - pixel_offset) - fixed_width/2;
+      y0 = subpixel_snap(v0[0][1] - pixel_offset) - fixed_width/2;
 
       bbox.x0 = (x0 + (FIXED_ONE-1)) >> FIXED_ORDER;
       bbox.x1 = (x0 + fixed_width + (FIXED_ONE-1)) >> FIXED_ORDER;
