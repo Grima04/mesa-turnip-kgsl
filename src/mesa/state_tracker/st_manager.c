@@ -990,6 +990,10 @@ st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
    st->iface.pipe = st->pipe;
    st->iface.state_manager = smapi;
 
+   if (st->ctx->IntelBlackholeRender &&
+       st->pipe->screen->get_param(st->pipe->screen, PIPE_CAP_FRONTEND_NOOP))
+      st->pipe->set_frontend_noop(st->pipe, st->ctx->IntelBlackholeRender);
+
    *error = ST_CONTEXT_SUCCESS;
    return &st->iface;
 }
