@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-12-14-cts"
+  DISTRIBUTION_TAG: "2020-12-16-cmake"
 
 .kernel+rootfs:
   stage: container-2

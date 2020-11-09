@@ -23,11 +23,10 @@ cp doc/testlog-stylesheet/testlog.{css,xsl} /deqp
 popd
 
 pushd /deqp
-cmake -G Ninja \
+cmake -S /VK-GL-CTS -B . -G Ninja \
       -DDEQP_TARGET=${DEQP_TARGET:-x11_glx} \
       -DCMAKE_BUILD_TYPE=Release \
-      $EXTRA_CMAKE_ARGS \
-      /VK-GL-CTS
+      $EXTRA_CMAKE_ARGS
 ninja
 
 # Copy out the mustpass lists we want.
