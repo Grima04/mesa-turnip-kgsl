@@ -491,6 +491,13 @@ panfrost_setup_layout(struct panfrost_device *dev,
                 *bo_size = ALIGN_POT(pres->layout.array_stride * res->array_size, 4096);
 }
 
+static inline bool
+panfrost_is_2d(const struct panfrost_resource *pres)
+{
+        return (pres->base.target == PIPE_TEXTURE_2D)
+                || (pres->base.target == PIPE_TEXTURE_RECT);
+}
+
 /* Based on the usage, determine if it makes sense to use u-inteleaved tiling.
  * We only have routines to tile 2D textures of sane bpps. On the hardware
  * level, not all usages are valid for tiling. Finally, if the app is hinting
@@ -585,10 +592,9 @@ panfrost_should_tile(struct panfrost_device *dev, const struct panfrost_resource
                 bpp == 8 || bpp == 16 || bpp == 24 || bpp == 32 ||
                 bpp == 64 || bpp == 128;
 
-        bool is_2d = (pres->base.target == PIPE_TEXTURE_2D)
-                || (pres->base.target == PIPE_TEXTURE_RECT);
-
-        bool can_tile = is_2d && is_sane_bpp && ((pres->base.bind & ~valid_binding) == 0);
+        bool can_tile = panfrost_is_2d(pres)
+                && is_sane_bpp
+                && ((pres->base.bind & ~valid_binding) == 0);
 
         return can_tile && (pres->base.usage != PIPE_USAGE_STREAM);
 }
