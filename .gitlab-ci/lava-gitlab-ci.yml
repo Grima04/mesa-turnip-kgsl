@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-11-05-deqp-runner"
+  DISTRIBUTION_TAG: "2020-11-09-kmod-fix"
 
 .kernel+rootfs:
   stage: container-2
@@ -9,6 +9,7 @@ variables:
     GIT_STRATEGY: fetch
     KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
     UPLOAD_FOR_LAVA: 1
+    INSTALL_KERNEL_MODULES: 1
   script:
     - .gitlab-ci/container/lava_build.sh
 
