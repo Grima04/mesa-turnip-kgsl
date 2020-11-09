@@ -3032,7 +3032,7 @@ bool si_update_ngg(struct si_context *sctx)
        * VGT_FLUSH is also emitted at the beginning of IBs when legacy GS ring
        * pointers are set.
        */
-      if (sctx->chip_class == GFX10 && !new_ngg)
+      if ((sctx->chip_class == GFX10 || sctx->family == CHIP_SIENNA_CICHLID) && !new_ngg)
          sctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
       sctx->ngg = new_ngg;
