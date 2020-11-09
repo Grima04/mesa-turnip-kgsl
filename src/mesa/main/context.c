@@ -885,6 +885,7 @@ init_attrib_groups(struct gl_context *ctx)
    ctx->ErrorValue = GL_NO_ERROR;
    ctx->ShareGroupReset = false;
    ctx->varying_vp_inputs = VERT_BIT_ALL;
+   ctx->IntelBlackholeRender = env_var_as_boolean("INTEL_BLACKHOLE_DEFAULT", false);
 
    return GL_TRUE;
 }

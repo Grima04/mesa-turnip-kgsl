@@ -351,6 +351,11 @@ i945/i965 driver environment variables (non-Gallium)
    The success of assembly override would be signified by "Successfully
    overrode shader with sha1 <sha1>" in stderr replacing the original
    assembly.
+``INTEL_BLACKHOLE_DEFAULT``
+   if set to 1, true or yes, then the OpenGL implementation will
+   default ``GL_BLACKHOLE_RENDER_INTEL`` to true, thus disabling any
+   rendering.
+
 
 Radeon driver environment variables (radeon, r200, and r300g)
 -------------------------------------------------------------
