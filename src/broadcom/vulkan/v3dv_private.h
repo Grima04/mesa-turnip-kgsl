@@ -1769,8 +1769,12 @@ VkResult __vk_errorf(struct v3dv_instance *instance, VkResult error,
 #define vk_error(instance, error) __vk_errorf(instance, error, __FILE__, __LINE__, NULL);
 #define vk_errorf(instance, error, format, ...) __vk_errorf(instance, error, __FILE__, __LINE__, format, ## __VA_ARGS__);
 
+#ifdef DEBUG
 #define v3dv_debug_ignored_stype(sType) \
    fprintf(stderr, "%s: ignored VkStructureType %u:%s\n\n", __func__, (sType), vk_StructureType_to_str(sType))
+#else
+#define v3dv_debug_ignored_stype(sType)
+#endif
 
 const struct v3dv_format *v3dv_get_format(VkFormat);
 const uint8_t *v3dv_get_format_swizzle(VkFormat f);
