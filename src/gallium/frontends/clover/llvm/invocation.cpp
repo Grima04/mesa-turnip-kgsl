@@ -209,7 +209,7 @@ namespace {
          map(std::mem_fn(&std::string::c_str), opts);
 
       const target &target = ir_target;
-      const std::string &device_clc_version = dev.device_clc_version();
+      const std::string &device_clc_version = dev.device_clc_version_as_string();
 
       if (!compat::create_compiler_invocation_from_args(
              c->getInvocation(), copts, diag))
@@ -274,7 +274,7 @@ namespace {
       // Add definition for the OpenCL version
       c.getPreprocessorOpts().addMacroDef("__OPENCL_VERSION__=" +
               std::to_string(get_cl_version(
-                                  dev.device_version()).version_number));
+                                  dev.device_version_as_string()).version_number));
 
       // clc.h requires that this macro be defined:
       c.getPreprocessorOpts().addMacroDef("cl_clang_storage_class_specifiers");
@@ -488,7 +488,7 @@ clover::llvm::compile_to_spirv(const std::string &source,
    }
 
    if (has_flag(debug::spirv))
-      debug::log(".spvasm", spirv::print_module(binary, dev.device_version()));
+      debug::log(".spvasm", spirv::print_module(binary, dev.device_version_as_string()));
 
    return spirv::compile_program(binary, dev, r_log);
 }

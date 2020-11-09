@@ -312,14 +312,14 @@ device::endianness() const {
 }
 
 std::string
-device::device_version() const {
+device::device_version_as_string() const {
    static const std::string device_version =
          debug_get_option("CLOVER_DEVICE_VERSION_OVERRIDE", "1.1");
    return device_version;
 }
 
 std::string
-device::device_clc_version() const {
+device::device_clc_version_as_string() const {
    static const std::string device_clc_version =
          debug_get_option("CLOVER_DEVICE_CLC_VERSION_OVERRIDE", "1.1");
    return device_clc_version;
@@ -332,7 +332,7 @@ device::supports_ir(enum pipe_shader_ir ir) const {
 }
 
 std::string
-device::supported_extensions() const {
+device::supported_extensions_as_string() const {
    return
       "cl_khr_byte_addressable_store"
       " cl_khr_global_int32_base_atomics"

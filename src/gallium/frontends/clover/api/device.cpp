@@ -321,11 +321,11 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       break;
 
    case CL_DEVICE_VERSION:
-      buf.as_string() = "OpenCL " + dev.device_version() + " Mesa " PACKAGE_VERSION MESA_GIT_SHA1;
+      buf.as_string() = "OpenCL " + dev.device_version_as_string() + " Mesa " PACKAGE_VERSION MESA_GIT_SHA1;
       break;
 
    case CL_DEVICE_EXTENSIONS:
-      buf.as_string() = dev.supported_extensions();
+      buf.as_string() = dev.supported_extensions_as_string();
       break;
 
    case CL_DEVICE_PLATFORM:
@@ -365,7 +365,7 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       break;
 
    case CL_DEVICE_OPENCL_C_VERSION:
-      buf.as_string() = "OpenCL C " + dev.device_clc_version() + " ";
+      buf.as_string() = "OpenCL C " + dev.device_clc_version_as_string() + " ";
       break;
 
    case CL_DEVICE_PRINTF_BUFFER_SIZE:

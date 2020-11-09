@@ -41,6 +41,6 @@ platform::platform() : adaptor_range(evals(), devs) {
 }
 
 std::string
-platform::supported_extensions() const {
+platform::supported_extensions_as_string() const {
    return "cl_khr_icd";
 }

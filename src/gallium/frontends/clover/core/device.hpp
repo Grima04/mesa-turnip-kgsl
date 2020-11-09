@@ -84,13 +84,13 @@ namespace clover {
       cl_uint address_bits() const;
       std::string device_name() const;
       std::string vendor_name() const;
-      std::string device_version() const;
-      std::string device_clc_version() const;
+      std::string device_version_as_string() const;
+      std::string device_clc_version_as_string() const;
       enum pipe_shader_ir ir_format() const;
       std::string ir_target() const;
       enum pipe_endian endianness() const;
       bool supports_ir(enum pipe_shader_ir ir) const;
-      std::string supported_extensions() const;
+      std::string supported_extensions_as_string() const;
 
       friend class command_queue;
       friend class root_resource;

@@ -681,7 +681,7 @@ clover::spirv::compile_program(const std::vector<char> &binary,
                                bool validate) {
    std::vector<char> source = spirv_to_cpu(binary);
 
-   if (validate && !is_valid_spirv(source, dev.device_version(), r_log))
+   if (validate && !is_valid_spirv(source, dev.device_version_as_string(), r_log))
       throw build_error();
 
    if (!check_capabilities(dev, source, r_log))
@@ -751,7 +751,7 @@ clover::spirv::link_program(const std::vector<module> &modules,
 
    std::vector<uint32_t> linked_binary;
 
-   const std::string opencl_version = dev.device_version();
+   const std::string opencl_version = dev.device_version_as_string();
    const spv_target_env target_env =
       convert_opencl_str_to_target_env(opencl_version);
 
@@ -771,7 +771,7 @@ clover::spirv::link_program(const std::vector<module> &modules,
       throw error(CL_LINK_PROGRAM_FAILURE);
 
    if (has_flag(llvm::debug::spirv))
-      llvm::debug::log(".spvasm", spirv::print_module(final_binary, dev.device_version()));
+      llvm::debug::log(".spvasm", spirv::print_module(final_binary, dev.device_version_as_string()));
 
    for (const auto &mod : modules)
       m.syms.insert(m.syms.end(), mod.syms.begin(), mod.syms.end());
