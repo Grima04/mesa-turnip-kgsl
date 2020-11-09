@@ -1588,21 +1588,47 @@ bi_emit_tex_offset_ms_index(bi_context *ctx, nir_tex_instr *instr)
 {
         unsigned dest = 0;
 
-        /* TODO: offsets */
-        assert(nir_tex_instr_src_index(instr, nir_tex_src_offset) < 0);
+        int offs_idx = nir_tex_instr_src_index(instr, nir_tex_src_offset);
+        if (offs_idx >= 0 &&
+            (!nir_src_is_const(instr->src[offs_idx].src) ||
+             nir_src_as_uint(instr->src[offs_idx].src) != 0)) {
+                bi_instruction mkvec = {
+                        .type = BI_SELECT,
+                        .dest = bi_make_temp(ctx),
+                        .dest_type = nir_type_uint32,
+                        .src = {
+                                BIR_INDEX_ZERO, BIR_INDEX_ZERO,
+                                BIR_INDEX_ZERO, BIR_INDEX_ZERO
+                        },
+                        .src_types = {
+                                nir_type_uint8, nir_type_uint8,
+                                nir_type_uint8, nir_type_uint8
+                        }
+                };
+
+                unsigned ncomps = nir_src_num_components(instr->src[offs_idx].src);
+                unsigned src = pan_src_index(&instr->src[offs_idx].src);
+                for (unsigned i = 0; i < ncomps; i++) {
+                        mkvec.src[i] = src;
+                        mkvec.swizzle[i][0] = i * 4;
+                }
+
+                bi_emit(ctx, mkvec);
+                dest = mkvec.dest;
+        }
 
         int ms_idx = nir_tex_instr_src_index(instr, nir_tex_src_ms_index);
         if (ms_idx >= 0 &&
             (!nir_src_is_const(instr->src[ms_idx].src) ||
              nir_src_as_uint(instr->src[ms_idx].src) != 0)) {
-                bi_instruction shl = {
+                bi_instruction or = {
                         .type = BI_BITWISE,
                         .op.bitwise = BI_BITWISE_OR,
                         .dest = bi_make_temp(ctx),
                         .dest_type = nir_type_uint32,
                         .src = {
                                 pan_src_index(&instr->src[ms_idx].src),
-                                BIR_INDEX_ZERO,
+                                dest ? dest : BIR_INDEX_ZERO,
                                 BIR_INDEX_CONSTANT | 0,
                         },
                         .src_types = {
@@ -1613,8 +1639,8 @@ bi_emit_tex_offset_ms_index(bi_context *ctx, nir_tex_instr *instr)
                         .constant.u8[0] = 24,
                 };
 
-                bi_emit(ctx, shl);
-                dest = shl.dest;
+                bi_emit(ctx, or);
+                dest = or.dest;
         }
 
         return dest;
