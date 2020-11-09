@@ -220,10 +220,10 @@ void
 d3d12_batch_reference_resource(struct d3d12_batch *batch,
                                struct d3d12_resource *res)
 {
-   if (!d3d12_batch_has_references(batch, res->bo)) {
-      _mesa_set_add(batch->bos, res->bo);
+   bool found = false;
+   _mesa_set_search_and_add(batch->bos, res->bo, &found);
+   if (!found)
       d3d12_bo_reference(res->bo);
-   }
 }
 
 void
