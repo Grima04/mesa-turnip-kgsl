@@ -248,10 +248,10 @@ public:
       return regs[index];
    }
 
-   unsigned count_zero(PhysReg start, unsigned size) {
+   unsigned count_zero(PhysRegInterval reg_interval) {
       unsigned res = 0;
-      for (unsigned i = 0; i < size; i++)
-         res += !regs[start + i];
+      for (PhysReg reg : reg_interval)
+         res += !regs[reg];
       return res;
    }
 
@@ -1050,7 +1050,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    RegClass rc = info.rc;
 
    /* check how many free regs we have */
-   unsigned regs_free = reg_file.count_zero(bounds.lo(), bounds.size);
+   unsigned regs_free = reg_file.count_zero(bounds);
 
    /* mark and count killed operands */
    unsigned killed_ops = 0;
@@ -1339,7 +1339,7 @@ PhysReg get_reg(ra_ctx& ctx,
 
    /* We should only fail here because keeping under the limit would require
     * too many moves. */
-   assert(reg_file.count_zero(info.bounds.lo(), info.bounds.size) >= info.size);
+   assert(reg_file.count_zero(info.bounds) >= info.size);
 
    //FIXME: if nothing helps, shift-rotate the registers to make space
 
