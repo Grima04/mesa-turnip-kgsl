@@ -923,6 +923,48 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
       input_vgprs[5] =
          LLVMBuildAdd(ctx->ac.builder, input_vgprs[5], thread_id_in_tg, ""); /* VertexID */
       input_vgprs[8] = input_vgprs[6];                                       /* InstanceID */
+
+      if (key->vs_prolog.gs_fast_launch_index_size_packed) {
+         LLVMTypeRef index_type = ctx->ac.voidt;
+
+         switch (key->vs_prolog.gs_fast_launch_index_size_packed) {
+         case 1:
+            index_type = ctx->ac.i8;
+            break;
+         case 2:
+            index_type = ctx->ac.i16;
+            break;
+         case 3:
+            index_type = ctx->ac.i32;
+            break;
+         default:
+            unreachable("invalid gs_fast_launch_index_size_packed");
+         }
+
+         LLVMValueRef sgprs[2] = {
+            ac_get_arg(&ctx->ac, input_sgpr_param[0]),
+            ac_get_arg(&ctx->ac, input_sgpr_param[1]),
+         };
+         LLVMValueRef indices = ac_build_gather_values(&ctx->ac, sgprs, 2);
+         indices = LLVMBuildBitCast(ctx->ac.builder, indices, ctx->ac.i64, "");
+         indices = LLVMBuildIntToPtr(ctx->ac.builder, indices,
+                                     LLVMPointerType(index_type, AC_ADDR_SPACE_CONST), "");
+
+         LLVMValueRef vertex_id = ac_build_alloca_init(&ctx->ac, input_vgprs[5], "");
+
+         /* if (is ES thread...) */
+         ac_build_ifcc(&ctx->ac,
+                       LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, ac_get_thread_id(&ctx->ac),
+                                     si_unpack_param(ctx, merged_wave_info, 0, 8), ""), 0);
+         /* VertexID = indexBufferLoad(VertexID); */
+         LLVMValueRef index = LLVMBuildGEP(ctx->ac.builder, indices, &input_vgprs[5], 1, "");
+         index = LLVMBuildLoad(ctx->ac.builder, index, "");
+         index = LLVMBuildZExt(ctx->ac.builder, index, ctx->ac.i32, "");
+         LLVMBuildStore(ctx->ac.builder, index, vertex_id);
+         ac_build_endif(&ctx->ac, 0);
+
+         input_vgprs[5] = LLVMBuildLoad(ctx->ac.builder, vertex_id, "");
+      }
    }
 
    unsigned vertex_id_vgpr = first_vs_vgpr;

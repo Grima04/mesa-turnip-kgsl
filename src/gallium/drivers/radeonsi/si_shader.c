@@ -1582,6 +1582,8 @@ static void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num
          !!(shader_out->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST);
       key->vs_prolog.gs_fast_launch_tri_strip =
          !!(shader_out->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP);
+      key->vs_prolog.gs_fast_launch_index_size_packed =
+         SI_GET_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(shader_out->key.opt.ngg_culling);
    }
 
    if (shader_out->selector->info.stage == MESA_SHADER_TESS_CTRL) {
@@ -2056,7 +2058,8 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
       shader.key.as_ngg = key->vs_prolog.as_ngg;
       shader.key.opt.ngg_culling =
          (key->vs_prolog.gs_fast_launch_tri_list ? SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST : 0) |
-         (key->vs_prolog.gs_fast_launch_tri_strip ? SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP : 0);
+         (key->vs_prolog.gs_fast_launch_tri_strip ? SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP : 0) |
+         SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(key->vs_prolog.gs_fast_launch_index_size_packed);
       shader.key.opt.vs_as_prim_discard_cs = key->vs_prolog.as_prim_discard_cs;
       break;
    case MESA_SHADER_TESS_CTRL:
