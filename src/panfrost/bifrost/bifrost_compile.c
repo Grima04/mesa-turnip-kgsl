@@ -1970,6 +1970,10 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                                 desc.offset_or_bias_disable = true;
                         break;
 
+                case nir_tex_src_comparator:
+                        dregs[BIFROST_TEX_DREG_SHADOW] = index;
+                        break;
+
                 default:
                         unreachable("Unhandled src type in texc emit");
                 }
