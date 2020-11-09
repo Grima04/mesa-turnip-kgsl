@@ -103,6 +103,7 @@ EXTENSIONS = [
     Extension('VK_KHR_uniform_buffer_standard_layout',    1, False),
     Extension('VK_KHR_variable_pointers',                 1, False),
     Extension('VK_KHR_wayland_surface',                   6, 'VK_USE_PLATFORM_WAYLAND_KHR'),
+    Extension('VK_KHR_win32_surface',                     6, 'VK_USE_PLATFORM_WIN32_KHR'),
     Extension('VK_KHR_xcb_surface',                       6, 'VK_USE_PLATFORM_XCB_KHR'),
     Extension('VK_KHR_xlib_surface',                      6, 'VK_USE_PLATFORM_XLIB_KHR'),
     Extension('VK_EXT_acquire_xlib_display',              1, 'VK_USE_PLATFORM_XLIB_XRANDR_EXT'),

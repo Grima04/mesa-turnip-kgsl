@@ -55,6 +55,11 @@ if with_platform_wayland
   liblvp_files += files('lvp_wsi_wayland.c')
 endif
 
+if with_platform_windows
+  lvp_flags += '-DVK_USE_PLATFORM_WIN32_KHR'
+  liblvp_files += files('lvp_wsi_win32.c')
+endif
+
 liblavapipe_st = static_library(
   'lavapipe_st',
   [liblvp_files, lvp_entrypoints, lvp_extensions_c, sha1_h],

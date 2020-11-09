@@ -153,7 +153,8 @@ extern const struct vk_device_extension_table vk_android_allowed_device_extensio
 #   define ANDROID_API_LEVEL 0
 #endif
 
-#define ${driver.upper()}_HAS_SURFACE (VK_USE_PLATFORM_WAYLAND_KHR || \\
+#define ${driver.upper()}_HAS_SURFACE (VK_USE_PLATFORM_WIN32_KHR || \\
+                                       VK_USE_PLATFORM_WAYLAND_KHR || \\
                                        VK_USE_PLATFORM_XCB_KHR || \\
                                        VK_USE_PLATFORM_XLIB_KHR || \\
                                        VK_USE_PLATFORM_DISPLAY_KHR)
