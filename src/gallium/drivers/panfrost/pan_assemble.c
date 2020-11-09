@@ -79,7 +79,13 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
         case MESA_SHADER_FRAGMENT:
                 pan_prepare(&state->properties, RENDERER_PROPERTIES);
                 /* Early-Z set at draw-time */
-                state->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
+                if (state->writes_depth || state->writes_stencil) {
+                        state->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_FORCE_LATE;
+                        state->properties.bifrost.pixel_kill_operation = MALI_PIXEL_KILL_FORCE_LATE;
+                } else {
+                        state->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
+                        state->properties.bifrost.pixel_kill_operation = MALI_PIXEL_KILL_FORCE_EARLY;
+                }
                 state->properties.uniform_buffer_count = state->ubo_count;
                 state->properties.bifrost.shader_modifies_coverage = state->can_discard;
 

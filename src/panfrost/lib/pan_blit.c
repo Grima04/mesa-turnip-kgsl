@@ -597,7 +597,17 @@ bifrost_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
 
         pan_pack(t.cpu, RENDERER_STATE, cfg) {
                 panfrost_load_prepare_rsd(pool, &cfg, image, loc);
-                cfg.properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
+                if (loc >= FRAG_RESULT_DATA0) {
+                        cfg.properties.bifrost.zs_update_operation =
+                                MALI_PIXEL_KILL_STRONG_EARLY;
+                        cfg.properties.bifrost.pixel_kill_operation =
+                                MALI_PIXEL_KILL_FORCE_EARLY;
+                } else {
+                        cfg.properties.bifrost.zs_update_operation =
+                                MALI_PIXEL_KILL_FORCE_LATE;
+                        cfg.properties.bifrost.pixel_kill_operation =
+                                MALI_PIXEL_KILL_FORCE_LATE;
+                }
                 cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
                 cfg.preload.fragment.coverage = true;
         }
