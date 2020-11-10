@@ -28,6 +28,10 @@
 #include "nir.h"
 #include "util/string_buffer.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* struct taken from DXILContainer
  * Enums values were replaced by uint32_t since the must occupy 32 bit
  */
@@ -130,10 +134,6 @@ struct dxil_psv_runtime_info_1 {
 
 struct dxil_mdnode;
 struct dxil_module;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 const struct dxil_mdnode *
 get_signatures(struct dxil_module *mod, nir_shader *s);
