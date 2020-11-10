@@ -54,6 +54,24 @@ DEBUG_GET_ONCE_FLAGS_OPTION(zink_debug, "ZINK_DEBUG", debug_options, 0)
 uint32_t
 zink_debug;
 
+#define GET_PROC_ADDR(x) do {                                               \
+      screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x); \
+      if (!screen->vk_##x) {                                                \
+         debug_printf("vkGetDeviceProcAddr failed: vk"#x"\n");              \
+         return false;                                                      \
+      } \
+   } while (0)
+
+#define GET_PROC_ADDR_INSTANCE(x) do {                                          \
+      screen->vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(screen->instance, "vk"#x); \
+      if (!screen->vk_##x) {                                                \
+         debug_printf("GetInstanceProcAddr failed: vk"#x"\n");        \
+         return false;                                                      \
+      } \
+   } while (0)
+
+#define GET_PROC_ADDR_INSTANCE_LOCAL(instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
+
 static const char *
 zink_get_vendor(struct pipe_screen *pscreen)
 {
@@ -657,6 +675,18 @@ create_instance(struct zink_screen *screen)
    bool have_moltenvk_layer_ext = false;
 #endif
 
+   screen->loader_version = VK_API_VERSION_1_0;
+   {
+      // Get the Loader version
+      GET_PROC_ADDR_INSTANCE_LOCAL(NULL, EnumerateInstanceVersion);
+      if (vk_EnumerateInstanceVersion) {
+         uint32_t loader_version_temp = VK_API_VERSION_1_0;
+         if (VK_SUCCESS == (*vk_EnumerateInstanceVersion)( &loader_version_temp)) {
+            screen->loader_version = loader_version_temp;
+         }
+      }
+   }
+
    {
       // Build up the extensions from the reported ones but only for the unnamed layer
       uint32_t extension_count = 0;
@@ -751,7 +781,7 @@ create_instance(struct zink_screen *screen)
       ai.pApplicationName = "unknown";
 
    ai.pEngineName = "mesa zink";
-   ai.apiVersion = VK_API_VERSION_1_0;
+   ai.apiVersion = screen->loader_version;
 
    VkInstanceCreateInfo ici = {};
    ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -858,38 +888,9 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
       winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
 }
 
-#define GET_PROC_ADDR(x) do {                                               \
-      screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x); \
-      if (!screen->vk_##x) {                                                \
-         debug_printf("vkGetDeviceProcAddr failed: vk"#x"\n");              \
-         return false;                                                      \
-      } \
-   } while (0)
-
-#define GET_PROC_ADDR_INSTANCE(x) do {                                          \
-      screen->vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(screen->instance, "vk"#x); \
-      if (!screen->vk_##x) {                                                \
-         debug_printf("GetInstanceProcAddr failed: vk"#x"\n");        \
-         return false;                                                      \
-      } \
-   } while (0)
-
-#define GET_PROC_ADDR_INSTANCE_LOCAL(instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
-
 static bool
 load_instance_extensions(struct zink_screen *screen)
 {
-   screen->loader_version = VK_API_VERSION_1_0;
-   {
-      // Get the Loader version
-      GET_PROC_ADDR_INSTANCE_LOCAL(NULL, EnumerateInstanceVersion);
-      if (vk_EnumerateInstanceVersion) {
-         uint32_t loader_version_temp = VK_API_VERSION_1_0;
-         if (VK_SUCCESS == (*vk_EnumerateInstanceVersion)( &loader_version_temp)) {
-            screen->loader_version = loader_version_temp;
-         }
-      }
-   }
    if (zink_debug & ZINK_DEBUG_VALIDATION) {
       printf("zink: Loader %d.%d.%d \n", VK_VERSION_MAJOR(screen->loader_version), VK_VERSION_MINOR(screen->loader_version), VK_VERSION_PATCH(screen->loader_version));
    }
