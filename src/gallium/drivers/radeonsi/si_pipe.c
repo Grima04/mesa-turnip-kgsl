@@ -108,7 +108,6 @@ static const struct debug_named_value debug_options[] = {
    {"dpbb", DBG(DPBB), "Enable DPBB."},
    {"dfsm", DBG(DFSM), "Enable DFSM."},
    {"nohyperz", DBG(NO_HYPERZ), "Disable Hyper-Z"},
-   {"norbplus", DBG(NO_RB_PLUS), "Disable RB+."},
    {"no2d", DBG(NO_2D_TILING), "Disable 2D tiling"},
    {"notiling", DBG(NO_TILING), "Disable tiling"},
    {"nodcc", DBG(NO_DCC), "Disable DCC."},
