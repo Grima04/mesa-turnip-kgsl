@@ -243,6 +243,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 					samgp->flags |= IR3_INSTR_SY;
 			}
 		} else {
+			list_delinit(&n->node);
 			list_addtail(&n->node, &block->instr_list);
 		}
 
