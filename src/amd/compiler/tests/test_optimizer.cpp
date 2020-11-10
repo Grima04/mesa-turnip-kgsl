@@ -128,3 +128,31 @@ BEGIN_TEST(optimize.cndmask)
       finish_opt_test();
    }
 END_TEST
+
+BEGIN_TEST(optimize.add_lshl)
+   for (unsigned i = GFX9; i <= GFX10; i++) {
+      //>> s1: %a, v1: %b, s2: %_:exec = p_startpgm
+      if (!setup_cs("s1 v1", (chip_class)i))
+         continue;
+
+      Temp shift;
+
+      //! s1: %res0, s1: %_:scc = s_lshl3_add_u32 %a, 4
+      //! p_unit_test 0, %res0
+      shift = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
+                       Operand(inputs[0]), Operand(3u));
+      writeout(0, bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), shift, Operand(4u)));
+
+      //! s1: %lshl, s1: %_:scc = s_lshl_b32 %a, 3
+      //! v1: %add = v_add_u32 %lshl, %b
+      //! v1: %res1 = v_add3_u32 %add, %lshl, 4
+      //! p_unit_test 1, %res1
+      shift = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
+                       Operand(inputs[0]), Operand(3u));
+      Temp sadd = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), shift, Operand(4u));
+      Temp vadd = bld.vadd32(bld.def(v1), shift, Operand(inputs[1]));
+      writeout(1, bld.vadd32(bld.def(v1), sadd, vadd));
+
+      finish_opt_test();
+   }
+END_TEST
