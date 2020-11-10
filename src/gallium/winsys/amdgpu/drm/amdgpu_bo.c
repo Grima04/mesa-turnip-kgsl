@@ -230,8 +230,8 @@ static void amdgpu_bo_destroy_or_cache(struct pb_buffer *_buf)
 
    assert(bo->bo); /* slab buffers have a separate vtbl */
 
-   if (bo->u.real.use_reusable_pool)
-      pb_cache_add_buffer(&bo->u.real.cache_entry);
+   if (bo->use_reusable_pool)
+      pb_cache_add_buffer(bo->cache_entry);
    else
       amdgpu_bo_destroy(_buf);
 }
@@ -476,6 +476,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    struct amdgpu_winsys_bo *bo;
    amdgpu_va_handle va_handle = NULL;
    int r;
+   bool init_pb_cache;
 
    /* VRAM or GTT must be specified, but not both at the same time. */
    assert(util_bitcount(initial_domain & (RADEON_DOMAIN_VRAM_GTT |
@@ -484,13 +485,17 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
 
    alignment = amdgpu_get_optimal_alignment(ws, size, alignment);
 
-   bo = CALLOC_STRUCT(amdgpu_winsys_bo);
+   init_pb_cache = heap >= 0 && (flags & RADEON_FLAG_NO_INTERPROCESS_SHARING);
+
+   bo = CALLOC(1, sizeof(struct amdgpu_winsys_bo) +
+                  init_pb_cache * sizeof(struct pb_cache_entry));
    if (!bo) {
       return NULL;
    }
 
-   if (heap >= 0) {
-      pb_cache_init_entry(&ws->bo_cache, &bo->u.real.cache_entry, &bo->base,
+   if (init_pb_cache) {
+      bo->use_reusable_pool = true;
+      pb_cache_init_entry(&ws->bo_cache, bo->cache_entry, &bo->base,
                           heap);
    }
    request.alloc_size = size;
@@ -1378,7 +1383,6 @@ no_slab:
          return NULL;
    }
 
-   bo->u.real.use_reusable_pool = use_reusable_pool;
    return &bo->base;
 }
 
@@ -1533,7 +1537,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
    if (!bo->bo)
       return false;
 
-   bo->u.real.use_reusable_pool = false;
+   bo->use_reusable_pool = false;
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_SHARED:
