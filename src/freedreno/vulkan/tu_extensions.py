@@ -116,6 +116,7 @@ EXTENSIONS = [
     Extension('VK_EXT_scalar_block_layout',               1, True),
     Extension('VK_KHR_spirv_1_4',                         1, True),
     Extension('VK_KHR_relaxed_block_layout',              1, True),
+    Extension('VK_EXT_robustness2',                       1, True),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)
