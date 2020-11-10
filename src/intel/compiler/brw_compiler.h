@@ -703,6 +703,8 @@ struct brw_stage_prog_data {
    GLuint nr_params;       /**< number of float params/constants */
    GLuint nr_pull_params;
 
+   gl_shader_stage stage;
+
    /* zero_push_reg is a bitfield which indicates what push registers (if any)
     * should be zeroed by SW at the start of the shader.  The corresponding
     * push_reg_mask_param specifies the param index (in 32-bit units) where
@@ -1340,27 +1342,38 @@ union brw_any_prog_data {
    struct brw_cs_prog_data cs;
 };
 
-#define DEFINE_PROG_DATA_DOWNCAST(stage)                                   \
-static inline struct brw_##stage##_prog_data *                             \
-brw_##stage##_prog_data(struct brw_stage_prog_data *prog_data)             \
+#define DEFINE_PROG_DATA_DOWNCAST(STAGE, CHECK)                            \
+static inline struct brw_##STAGE##_prog_data *                             \
+brw_##STAGE##_prog_data(struct brw_stage_prog_data *prog_data)             \
 {                                                                          \
-   return (struct brw_##stage##_prog_data *) prog_data;                    \
+   if (prog_data)                                                          \
+      assert(CHECK);                                                       \
+   return (struct brw_##STAGE##_prog_data *) prog_data;                    \
 }                                                                          \
-static inline const struct brw_##stage##_prog_data *                       \
-brw_##stage##_prog_data_const(const struct brw_stage_prog_data *prog_data) \
+static inline const struct brw_##STAGE##_prog_data *                       \
+brw_##STAGE##_prog_data_const(const struct brw_stage_prog_data *prog_data) \
 {                                                                          \
-   return (const struct brw_##stage##_prog_data *) prog_data;              \
+   if (prog_data)                                                          \
+      assert(CHECK);                                                       \
+   return (const struct brw_##STAGE##_prog_data *) prog_data;              \
 }
-DEFINE_PROG_DATA_DOWNCAST(vue)
-DEFINE_PROG_DATA_DOWNCAST(vs)
-DEFINE_PROG_DATA_DOWNCAST(tcs)
-DEFINE_PROG_DATA_DOWNCAST(tes)
-DEFINE_PROG_DATA_DOWNCAST(gs)
-DEFINE_PROG_DATA_DOWNCAST(wm)
-DEFINE_PROG_DATA_DOWNCAST(cs)
-DEFINE_PROG_DATA_DOWNCAST(ff_gs)
-DEFINE_PROG_DATA_DOWNCAST(clip)
-DEFINE_PROG_DATA_DOWNCAST(sf)
+
+DEFINE_PROG_DATA_DOWNCAST(vs,  prog_data->stage == MESA_SHADER_VERTEX)
+DEFINE_PROG_DATA_DOWNCAST(tcs, prog_data->stage == MESA_SHADER_TESS_CTRL)
+DEFINE_PROG_DATA_DOWNCAST(tes, prog_data->stage == MESA_SHADER_TESS_EVAL)
+DEFINE_PROG_DATA_DOWNCAST(gs,  prog_data->stage == MESA_SHADER_GEOMETRY)
+DEFINE_PROG_DATA_DOWNCAST(wm,  prog_data->stage == MESA_SHADER_FRAGMENT)
+DEFINE_PROG_DATA_DOWNCAST(cs,  prog_data->stage == MESA_SHADER_COMPUTE)
+
+DEFINE_PROG_DATA_DOWNCAST(vue, prog_data->stage == MESA_SHADER_VERTEX ||
+                               prog_data->stage == MESA_SHADER_TESS_CTRL ||
+                               prog_data->stage == MESA_SHADER_TESS_EVAL ||
+                               prog_data->stage == MESA_SHADER_GEOMETRY)
+
+/* These are not really brw_stage_prog_data. */
+DEFINE_PROG_DATA_DOWNCAST(ff_gs, true)
+DEFINE_PROG_DATA_DOWNCAST(clip,  true)
+DEFINE_PROG_DATA_DOWNCAST(sf,    true)
 #undef DEFINE_PROG_DATA_DOWNCAST
 
 struct brw_compile_stats {

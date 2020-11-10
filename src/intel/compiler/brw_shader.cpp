@@ -1283,6 +1283,8 @@ brw_compile_tes(const struct brw_compiler *compiler,
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_EVAL];
    const unsigned *assembly;
 
+   prog_data->base.base.stage = MESA_SHADER_TESS_EVAL;
+
    nir->info.inputs_read = key->inputs_read;
    nir->info.patch_inputs_read = key->patch_inputs_read;
 

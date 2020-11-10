@@ -8769,6 +8769,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                struct brw_compile_stats *stats,
                char **error_str)
 {
+   prog_data->base.stage = MESA_SHADER_FRAGMENT;
+
    const struct gen_device_info *devinfo = compiler->devinfo;
    const unsigned max_subgroup_size = compiler->devinfo->gen >= 6 ? 32 : 16;
 
@@ -9133,6 +9135,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                struct brw_compile_stats *stats,
                char **error_str)
 {
+   prog_data->base.stage = MESA_SHADER_COMPUTE;
    prog_data->base.total_shared = nir->info.cs.shared_size;
 
    /* Generate code for all the possible SIMD variants. */
