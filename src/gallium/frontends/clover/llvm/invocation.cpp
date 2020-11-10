@@ -503,7 +503,7 @@ clover::llvm::compile_to_spirv(const std::string &source,
    }
 
    if (has_flag(debug::spirv))
-      debug::log(".spvasm", spirv::print_module(binary, dev.device_version_as_string()));
+      debug::log(".spvasm", spirv::print_module(binary, dev.device_version()));
 
    return spirv::compile_program(binary, dev, r_log);
 }
