@@ -409,3 +409,14 @@ device::opencl_c_all_versions() const {
    }
    return vec;
 }
+
+std::vector<cl_name_version>
+device::opencl_c_features() const {
+   std::vector<cl_name_version> vec;
+
+   vec.push_back( (cl_name_version) {CL_MAKE_VERSION(3, 0, 0), "__opencl_c_int64" });
+   if (has_doubles())
+      vec.push_back( (cl_name_version) {CL_MAKE_VERSION(3, 0, 0), "__opencl_c_fp64" });
+
+   return vec;
+}

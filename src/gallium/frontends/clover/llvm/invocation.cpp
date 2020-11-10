@@ -291,6 +291,12 @@ namespace {
                                           std::to_string(CL_VERSION_MAJOR_KHR(dev_version)) +
                                           std::to_string(CL_VERSION_MINOR_KHR(dev_version)) + "0");
 
+      if (CL_VERSION_MAJOR(dev.version) >= 3) {
+         const auto features = dev.opencl_c_features();
+         for (const auto &feature : features)
+            c.getPreprocessorOpts().addMacroDef(feature.name);
+      }
+
       // clc.h requires that this macro be defined:
       c.getPreprocessorOpts().addMacroDef("cl_clang_storage_class_specifiers");
       c.getPreprocessorOpts().addRemappedFile(
