@@ -1517,7 +1517,14 @@ struct v3dv_sampler {
    uint8_t sampler_state[cl_packet_length(SAMPLER_STATE)];
 };
 
-#define V3DV_NO_SAMPLER_IDX 666
+/* We keep a special value for the sampler idx that represents exactly when a
+ * sampler is not needed/provided. The main use is that even if we don't have
+ * sampler, we still need to do the output unpacking (through
+ * nir_lower_tex). The easier way to do this is to add this special "no
+ * sampler" in the sampler_map, and then use a default unpacking for that
+ * case.
+ */
+#define V3DV_NO_SAMPLER_IDX 0
 
 /*
  * Following two methods are using on the combined to/from texture/sampler
@@ -1605,21 +1612,6 @@ struct v3dv_pipeline {
 
    struct v3dv_descriptor_map sampler_map;
    struct v3dv_descriptor_map texture_map;
-
-   /*
-    * Vulkan has separate texture and sampler objects. Previous sampler and
-    * texture map uses a sampler and texture index respectively, that can be
-    * different. But OpenGL combine both (or in other words, they are the
-    * same). The v3d compiler and all the nir lowerings that they use were
-    * written under that assumption. In order to not update all those, we
-    * combine the indexes, and we use the following maps to get one or the
-    * other. In general the driver side uses the tex/sampler indexes to gather
-    * resources, and the compiler side uses the combined index (so the v3d key
-    * texture info will be indexed using the combined index).
-    */
-   struct hash_table *combined_index_map;
-   uint32_t combined_index_to_key_map[32];
-   uint32_t next_combined_index;
 
    /* FIXME: this bo is another candidate to data to be uploaded using a
     * resource manager, instead of a individual bo

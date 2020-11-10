@@ -177,9 +177,6 @@ v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
       pipeline->default_attribute_values = NULL;
    }
 
-   if (pipeline->combined_index_map)
-      _mesa_hash_table_destroy(pipeline->combined_index_map, NULL);
-
    if (pipeline->default_attribute_values)
       v3dv_bo_free(device, pipeline->default_attribute_values);
 
@@ -634,42 +631,6 @@ lower_vulkan_resource_index(nir_builder *b,
    nir_instr_remove(&instr->instr);
 }
 
-static struct hash_table *
-pipeline_ensure_combined_index_map(struct v3dv_pipeline *pipeline)
-{
-   if (pipeline->combined_index_map == NULL) {
-      pipeline->combined_index_map =
-         _mesa_hash_table_create(NULL, _mesa_hash_u32, _mesa_key_u32_equal);
-      pipeline->next_combined_index = 0;
-   }
-
-   assert(pipeline->combined_index_map);
-
-   return pipeline->combined_index_map;
-}
-
-static uint32_t
-get_combined_index(struct v3dv_pipeline *pipeline,
-                   uint32_t texture_index,
-                   uint32_t sampler_index)
-{
-   struct hash_table *ht = pipeline_ensure_combined_index_map(pipeline);
-   uint32_t key = v3dv_pipeline_combined_index_key_create(texture_index, sampler_index);
-   struct hash_entry *entry = _mesa_hash_table_search(ht, &key);
-
-   if (entry)
-      return (uint32_t)(uintptr_t) (entry->data);
-
-   uint32_t new_index = pipeline->next_combined_index;
-   pipeline->next_combined_index++;
-
-   pipeline->combined_index_to_key_map[new_index] = key;
-   _mesa_hash_table_insert(ht, &pipeline->combined_index_to_key_map[new_index],
-                           (void *)(uintptr_t) (new_index));
-
-   return new_index;
-}
-
 static void
 lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
                         struct v3dv_pipeline *pipeline,
@@ -775,13 +736,8 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
    if (texture_idx < 0 && sampler_idx < 0)
       return false;
 
-   int combined_index =
-      get_combined_index(pipeline,
-                         instr->texture_index,
-                         sampler_idx < 0 ? V3DV_NO_SAMPLER_IDX : instr->sampler_index);
-
-   instr->texture_index = combined_index;
-   instr->sampler_index = combined_index;
+   instr->sampler_index = sampler_idx < 0 ?
+      V3DV_NO_SAMPLER_IDX : instr->sampler_index;
 
    return true;
 }
@@ -847,13 +803,7 @@ lower_image_deref(nir_builder *b,
                          binding_layout->array_size,
                          false /* is_shadow: Doesn't really matter in this case */);
 
-   /* We still need to get a combined_index, as we are integrating images with
-    * the rest of the texture/sampler support
-    */
-   int combined_index =
-      get_combined_index(pipeline, desc_index, V3DV_NO_SAMPLER_IDX);
-
-   index = nir_imm_int(b, combined_index);
+   index = nir_imm_int(b, desc_index);
 
    nir_rewrite_image_intrinsic(instr, index, false);
 }
@@ -1012,31 +962,32 @@ pipeline_populate_v3d_key(struct v3d_key *key,
                           bool robust_buffer_access)
 {
    /* The following values are default values used at pipeline create. We use
-    * there 16 bit as default return size.
+    * there 32 bit as default return size.
     */
+   struct v3dv_descriptor_map *sampler_map = &p_stage->pipeline->sampler_map;
+   struct v3dv_descriptor_map *texture_map = &p_stage->pipeline->texture_map;
 
-   /* We don't use the nir shader info.num_textures because that doesn't take
-    * into account input attachments, even after calling
-    * nir_lower_input_attachments. As a general rule that makes sense, but on
-    * our case we are handling them mostly as textures. We iterate through the
-    * combined_index_map that was filled with the textures sused on th sader.
-    */
-   uint32_t tex_idx = 0;
-   if (p_stage->pipeline->combined_index_map) {
-      hash_table_foreach(p_stage->pipeline->combined_index_map, entry) {
-         key->tex[tex_idx].swizzle[0] = PIPE_SWIZZLE_X;
-         key->tex[tex_idx].swizzle[1] = PIPE_SWIZZLE_Y;
-         key->tex[tex_idx].swizzle[2] = PIPE_SWIZZLE_Z;
-         key->tex[tex_idx].swizzle[3] = PIPE_SWIZZLE_W;
-
-         key->sampler[tex_idx].return_size = 16;
-         key->sampler[tex_idx].return_channels = 2;
-
-         tex_idx++;
-      }
-   }
-   key->num_tex_used = tex_idx;
+   key->num_tex_used = texture_map->num_desc;
    assert(key->num_tex_used <= V3D_MAX_TEXTURE_SAMPLERS);
+   for (uint32_t tex_idx = 0; tex_idx < texture_map->num_desc; tex_idx++) {
+      key->tex[tex_idx].swizzle[0] = PIPE_SWIZZLE_X;
+      key->tex[tex_idx].swizzle[1] = PIPE_SWIZZLE_Y;
+      key->tex[tex_idx].swizzle[2] = PIPE_SWIZZLE_Z;
+      key->tex[tex_idx].swizzle[3] = PIPE_SWIZZLE_W;
+   }
+
+   key->num_samplers_used = sampler_map->num_desc;
+   assert(key->num_samplers_used <= V3D_MAX_TEXTURE_SAMPLERS);
+   for (uint32_t sampler_idx = 0; sampler_idx < sampler_map->num_desc;
+        sampler_idx++) {
+      /* FIXME: use RelaxedPrecision here */
+      key->sampler[sampler_idx].return_size =
+         sampler_map->is_shadow[sampler_idx] ? 16 : 32;
+      key->sampler[sampler_idx].return_channels =
+         key->sampler[sampler_idx].return_size == 32 ? 4 : 2;
+   }
+
+
 
    /* default value. Would be override on the vs/gs populate methods when GS
     * gets supported
@@ -1722,6 +1673,15 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
                    struct v3dv_pipeline_layout *layout)
 {
    nir_shader_gather_info(p_stage->nir, nir_shader_get_entrypoint(p_stage->nir));
+
+   /* We add this because we need a valid sampler for nir_lower_tex to do
+    * unpacking of the texture operation result, even for the case where there
+    * is no sampler state.
+    */
+   unsigned index =
+      descriptor_map_add(&pipeline->sampler_map,
+                         -1, -1, -1, 0, false);
+   assert(index == V3DV_NO_SAMPLER_IDX);
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    NIR_PASS_V(p_stage->nir, lower_pipeline_layout_info, pipeline, layout);
