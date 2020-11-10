@@ -347,7 +347,8 @@ static struct copy_entry *
 lookup_entry_for_deref(struct copy_prop_var_state *state,
                        struct util_dynarray *copies,
                        nir_deref_and_path *deref,
-                       nir_deref_compare_result allowed_comparisons)
+                       nir_deref_compare_result allowed_comparisons,
+                       bool *equal)
 {
    struct copy_entry *entry = NULL;
    util_dynarray_foreach(copies, struct copy_entry, iter) {
@@ -355,8 +356,11 @@ lookup_entry_for_deref(struct copy_prop_var_state *state,
          nir_compare_derefs_and_paths(state->mem_ctx, &iter->dst, deref);
       if (result & allowed_comparisons) {
          entry = iter;
-         if (result & nir_derefs_equal_bit)
+         if (result & nir_derefs_equal_bit) {
+            if (equal != NULL)
+               *equal = true;
             break;
+         }
          /* Keep looking in case we have an equal match later in the array. */
       }
    }
@@ -941,8 +945,10 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
             }
          }
 
+         bool src_entry_equal = false;
          struct copy_entry *src_entry =
-            lookup_entry_for_deref(state, copies, &src, nir_derefs_a_contains_b_bit);
+            lookup_entry_for_deref(state, copies, &src,
+                                   nir_derefs_a_contains_b_bit, &src_entry_equal);
          struct value value = {0};
          if (try_load_from_entry(state, src_entry, b, intrin, &src, &value)) {
             if (value.is_ssa) {
@@ -983,9 +989,16 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
           * have the right value next time we come looking for it.  In order
           * to do this, we need an exact match, not just something that
           * contains what we're looking for.
+          *
+          * We avoid doing another lookup if src.instr == vec_src.instr.
           */
-         struct copy_entry *entry =
-            lookup_entry_for_deref(state, copies, &vec_src, nir_derefs_equal_bit);
+         struct copy_entry *entry = src_entry;
+         if (src.instr != vec_src.instr)
+            entry = lookup_entry_for_deref(state, copies, &vec_src,
+                                           nir_derefs_equal_bit, NULL);
+         else if (!src_entry_equal)
+            entry = NULL;
+
          if (!entry)
             entry = copy_entry_create(copies, &vec_src);
 
@@ -1029,7 +1042,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          }
 
          struct copy_entry *entry =
-            lookup_entry_for_deref(state, copies, &dst, nir_derefs_equal_bit);
+            lookup_entry_for_deref(state, copies, &dst, nir_derefs_equal_bit, NULL);
          if (entry && value_equals_store_src(&entry->src, intrin)) {
             /* If we are storing the value from a load of the same var the
              * store is redundant so remove it.
@@ -1086,7 +1099,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          }
 
          struct copy_entry *src_entry =
-            lookup_entry_for_deref(state, copies, &src, nir_derefs_a_contains_b_bit);
+            lookup_entry_for_deref(state, copies, &src, nir_derefs_a_contains_b_bit, NULL);
          struct value value;
          if (try_load_from_entry(state, src_entry, b, intrin, &src, &value)) {
             /* If load works, intrin (the copy_deref) is removed. */
