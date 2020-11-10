@@ -348,6 +348,18 @@ static const struct glx_context_vtable indirect_context_vtable = {
    .get_proc_address    = NULL,
 };
 
+_X_HIDDEN struct glx_context *
+indirect_create_context(struct glx_screen *psc,
+			struct glx_config *mode,
+			struct glx_context *shareList, int renderType)
+{
+   unsigned error = 0;
+   const uint32_t attribs[] = { GLX_RENDER_TYPE, renderType };
+
+   return indirect_create_context_attribs(psc, mode, shareList,
+                                          1, attribs, &error);
+}
+
 /**
  * \todo Eliminate \c __glXInitVertexArrayState.  Replace it with a new
  * function called \c __glXAllocateClientState that allocates the memory and
@@ -358,18 +370,29 @@ static const struct glx_context_vtable indirect_context_vtable = {
  * parameters.  It is just the allocator for the \c glx_context.
  */
 _X_HIDDEN struct glx_context *
-indirect_create_context(struct glx_screen *psc,
-			struct glx_config *mode,
-			struct glx_context *shareList, int renderType)
+indirect_create_context_attribs(struct glx_screen *psc,
+				struct glx_config *mode,
+				struct glx_context *shareList,
+				unsigned num_attribs,
+				const uint32_t *attribs,
+				unsigned *error)
 {
    struct glx_context *gc;
    int bufSize;
    CARD8 opcode;
    __GLXattribute *state;
+   int i, renderType = GLX_RGBA_TYPE;
 
    opcode = __glXSetupForCommand(psc->dpy);
    if (!opcode) {
       return NULL;
+   }
+
+   for (i = 0; i < num_attribs; i++) {
+      uint32_t attr = attribs[i*2], val = attribs[i*2 + 1];
+
+      if (attr == GLX_RENDER_TYPE)
+         renderType = val;
    }
 
    /* Allocate our context record */
@@ -447,34 +470,6 @@ indirect_create_context(struct glx_screen *psc,
    
 
    return gc;
-}
-
-_X_HIDDEN struct glx_context *
-indirect_create_context_attribs(struct glx_screen *base,
-				struct glx_config *config_base,
-				struct glx_context *shareList,
-				unsigned num_attribs,
-				const uint32_t *attribs,
-				unsigned *error)
-{
-   int renderType = GLX_RGBA_TYPE;
-   unsigned i;
-
-   /* The error parameter is only used on the server so that correct GLX
-    * protocol errors can be generated.  On the client, it can be ignored.
-    */
-   (void) error;
-
-   /* All of the attribute validation for indirect contexts is handled on the
-    * server, so there's not much to do here. Still, we need to parse the
-    * attributes to correctly set renderType.
-    */
-   for (i = 0; i < num_attribs; i++) {
-      if (attribs[i * 2] == GLX_RENDER_TYPE)
-         renderType = attribs[i * 2 + 1];
-   }
-
-   return indirect_create_context(base, config_base, shareList, renderType);
 }
 
 static const struct glx_screen_vtable indirect_screen_vtable = {

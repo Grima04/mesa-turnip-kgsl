@@ -343,18 +343,6 @@ error_exit:
    return NULL;
 }
 
-static struct glx_context *
-dri3_create_context(struct glx_screen *base,
-                    struct glx_config *config_base,
-                    struct glx_context *shareList, int renderType)
-{
-   unsigned int error;
-   uint32_t attribs[2] = { GLX_RENDER_TYPE, renderType };
-
-   return dri3_create_context_attribs(base, config_base, shareList,
-                                      1, attribs, &error);
-}
-
 static void
 dri3_destroy_drawable(__GLXDRIdrawable *base)
 {
@@ -822,7 +810,7 @@ dri3_get_driver_name(struct glx_screen *glx_screen)
 }
 
 static const struct glx_screen_vtable dri3_screen_vtable = {
-   .create_context         = dri3_create_context,
+   .create_context         = dri_common_create_context,
    .create_context_attribs = dri3_create_context_attribs,
    .query_renderer_integer = dri3_query_renderer_integer,
    .query_renderer_string  = dri3_query_renderer_string,
