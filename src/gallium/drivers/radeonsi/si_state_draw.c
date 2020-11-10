@@ -1973,6 +1973,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
          }
       }
    } else {
+      min_direct_count = num_draws ? UINT_MAX : 0;
       for (unsigned i = 0; i < num_draws; i++) {
          unsigned count = draws[i].count;
 
