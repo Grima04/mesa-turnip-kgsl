@@ -21,12 +21,17 @@
 //
 
 #include "core/platform.hpp"
+#include "util/u_debug.h"
 
 using namespace clover;
 
 platform::platform() : adaptor_range(evals(), devs) {
    int n = pipe_loader_probe(NULL, 0);
    std::vector<pipe_loader_device *> ldevs(n);
+
+   unsigned major = 1, minor = 1;
+   debug_get_version_option("CLOVER_PLATFORM_VERSION_OVERRIDE", &major, &minor);
+   version = CL_MAKE_VERSION(major, minor, 0);
 
    pipe_loader_probe(&ldevs.front(), n);
 
@@ -43,4 +48,12 @@ platform::platform() : adaptor_range(evals(), devs) {
 std::string
 platform::supported_extensions_as_string() const {
    return "cl_khr_icd";
+}
+
+std::string
+platform::platform_version_as_string() const {
+   static const std::string version_string =
+      std::to_string(CL_VERSION_MAJOR(version)) + "." +
+      std::to_string(CL_VERSION_MINOR(version));
+   return version_string;
 }

@@ -62,10 +62,7 @@ clover::GetPlatformInfo(cl_platform_id d_platform, cl_platform_info param,
       break;
 
    case CL_PLATFORM_VERSION: {
-      static const std::string version_string =
-            debug_get_option("CLOVER_PLATFORM_VERSION_OVERRIDE", "1.1");
-
-      buf.as_string() = "OpenCL " + version_string + " Mesa " PACKAGE_VERSION MESA_GIT_SHA1;
+      buf.as_string() = "OpenCL " + platform.platform_version_as_string() + " Mesa " PACKAGE_VERSION MESA_GIT_SHA1;
       break;
    }
    case CL_PLATFORM_NAME:
