@@ -1401,6 +1401,7 @@ optimizations.extend([
 
    # (src0 & src1) | (~src0 & src2). Constant fold if src2 is 0.
    (('bitfield_select', a, b, 0), ('iand', a, b)),
+   (('bitfield_select', a, ('iand', a, b), c), ('bitfield_select', a, b, c)),
 
    # Note that these opcodes are defined to only use the five least significant bits of 'offset' and 'bits'
    (('ubfe', 'value', 'offset', ('iand', 31, 'bits')), ('ubfe', 'value', 'offset', 'bits')),
