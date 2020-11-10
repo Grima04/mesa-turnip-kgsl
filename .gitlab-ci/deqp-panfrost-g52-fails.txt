@@ -15,7 +15,6 @@ dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.rgb_half_float_
 dEQP-GLES2.functional.fbo.completeness.size.distinct,Fail
 dEQP-GLES2.functional.negative_api.shader.uniform_matrixfv_invalid_transpose,Fail
 dEQP-GLES2.functional.negative_api.texture.generatemipmap_zero_level_array_compressed,Fail
-dEQP-GLES2.functional.shaders.builtin_variable.fragcoord_xyz,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.88,Fail
 dEQP-GLES2.functional.shaders.texture_functions.vertex.texturecubelod,Fail
 dEQP-GLES2.functional.texture.mipmap.cube.basic.linear_linear,Fail
