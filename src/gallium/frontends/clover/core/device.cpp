@@ -49,6 +49,14 @@ namespace {
 
 device::device(clover::platform &platform, pipe_loader_device *ldev) :
    platform(platform), clc_cache(NULL), ldev(ldev) {
+   unsigned major = 1, minor = 1;
+   debug_get_version_option("CLOVER_DEVICE_VERSION_OVERRIDE", &major, &minor);
+   version = CL_MAKE_VERSION(major, minor, 0);
+
+   major = 1, minor = 1;
+   debug_get_version_option("CLOVER_DEVICE_CLC_VERSION_OVERRIDE", &major, &minor);
+   clc_version = CL_MAKE_VERSION(major, minor, 0);
+
    pipe = pipe_loader_create_screen(ldev);
    if (pipe && pipe->get_param(pipe, PIPE_CAP_COMPUTE)) {
       if (supports_ir(PIPE_SHADER_IR_NATIVE))
@@ -313,16 +321,18 @@ device::endianness() const {
 
 std::string
 device::device_version_as_string() const {
-   static const std::string device_version =
-         debug_get_option("CLOVER_DEVICE_VERSION_OVERRIDE", "1.1");
-   return device_version;
+   static const std::string version_string =
+      std::to_string(CL_VERSION_MAJOR(version)) + "." +
+      std::to_string(CL_VERSION_MINOR(version));
+   return version_string;
 }
 
 std::string
 device::device_clc_version_as_string() const {
-   static const std::string device_clc_version =
-         debug_get_option("CLOVER_DEVICE_CLC_VERSION_OVERRIDE", "1.1");
-   return device_clc_version;
+   static const std::string version_string =
+      std::to_string(CL_VERSION_MAJOR(clc_version)) + "." +
+      std::to_string(CL_VERSION_MINOR(clc_version));
+   return version_string;
 }
 
 bool

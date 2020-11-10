@@ -108,6 +108,8 @@ namespace clover {
 
       lazy<std::shared_ptr<nir_shader>> clc_nir;
       disk_cache *clc_cache;
+      cl_version version;
+      cl_version clc_version;
    private:
       pipe_screen *pipe;
       pipe_loader_device *ldev;
