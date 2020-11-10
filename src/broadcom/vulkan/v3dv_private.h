@@ -1499,10 +1499,10 @@ struct v3dv_descriptor_map {
    int array_index[64];
    int array_size[64];
 
-   /* The following makes sense for textures, but this is the easier place to
-    * put it
+   /* NOTE: the following is only for sampler, but this is the easier place to
+    * put it.
     */
-   bool is_shadow[64];
+   uint8_t return_size[64];
 };
 
 struct v3dv_sampler {
@@ -1517,14 +1517,19 @@ struct v3dv_sampler {
    uint8_t sampler_state[cl_packet_length(SAMPLER_STATE)];
 };
 
-/* We keep a special value for the sampler idx that represents exactly when a
+/* We keep two special values for the sampler idx that represents exactly when a
  * sampler is not needed/provided. The main use is that even if we don't have
  * sampler, we still need to do the output unpacking (through
- * nir_lower_tex). The easier way to do this is to add this special "no
- * sampler" in the sampler_map, and then use a default unpacking for that
+ * nir_lower_tex). The easier way to do this is to add those special "no
+ * sampler" in the sampler_map, and then use the proper unpacking for that
  * case.
+ *
+ * We have one when we want a 16bit output size, and other when we want a
+ * 32bit output size. We use the info coming from the RelaxedPrecision
+ * decoration to decide between one and the other.
  */
-#define V3DV_NO_SAMPLER_IDX 0
+#define V3DV_NO_SAMPLER_16BIT_IDX 0
+#define V3DV_NO_SAMPLER_32BIT_IDX 1
 
 /*
  * Following two methods are using on the combined to/from texture/sampler

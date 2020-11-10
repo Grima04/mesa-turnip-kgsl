@@ -532,15 +532,19 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
    return glsl_count_attribute_slots(type, false);
 }
 
+/* FIXME: the number of parameters for this method is somewhat big. Perhaps
+ * rethink.
+ */
 static unsigned
 descriptor_map_add(struct v3dv_descriptor_map *map,
                    int set,
                    int binding,
                    int array_index,
                    int array_size,
-                   bool is_shadow)
+                   uint8_t return_size)
 {
    assert(array_index < array_size);
+   assert(return_size == 16 || return_size == 32);
 
    unsigned index = 0;
    for (unsigned i = 0; i < map->num_desc; i++) {
@@ -548,6 +552,14 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
           binding == map->binding[i] &&
           array_index == map->array_index[i]) {
          assert(array_size == map->array_size[i]);
+         if (return_size != map->return_size[index]) {
+            /* It the return_size is different it means that the same sampler
+             * was used for operations with different precision
+             * requirement. In this case we need to ensure that we use the
+             * larger one.
+             */
+            map->return_size[index] = 32;
+         }
          return index;
       }
       index++;
@@ -559,7 +571,7 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
    map->binding[map->num_desc] = binding;
    map->array_index[map->num_desc] = array_index;
    map->array_size[map->num_desc] = array_size;
-   map->is_shadow[map->num_desc] = is_shadow;
+   map->return_size[map->num_desc] = return_size;
    map->num_desc++;
 
    return index;
@@ -606,7 +618,7 @@ lower_vulkan_resource_index(nir_builder *b,
       index = descriptor_map_add(descriptor_map, set, binding,
                                  const_val->u32,
                                  binding_layout->array_size,
-                                 false /* is_shadow: Doesn't really matter in this case */);
+                                 32 /* return_size: doesn't really apply for this case */);
 
       if (nir_intrinsic_desc_type(instr) == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
          /* skip index 0 which is used for push constants */
@@ -631,7 +643,10 @@ lower_vulkan_resource_index(nir_builder *b,
    nir_instr_remove(&instr->instr);
 }
 
-static void
+/* Returns return_size, so it could be used for the case of not having a
+ * sampler object
+ */
+static uint8_t
 lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
                         struct v3dv_pipeline *pipeline,
                         const struct v3dv_pipeline_layout *layout)
@@ -690,6 +705,13 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
 
    uint32_t set = deref->var->data.descriptor_set;
    uint32_t binding = deref->var->data.binding;
+   /* FIXME: this is a really simplified check for the precision to be used
+    * for the sampling. Right now we are ony checking for the variables used
+    * on the operation itself, but there are other cases that we could use to
+    * infer the precision requirement.
+    */
+   bool relaxed_precision = deref->var->data.precision == GLSL_PRECISION_MEDIUM ||
+                            deref->var->data.precision == GLSL_PRECISION_LOW;
    struct v3dv_descriptor_set_layout *set_layout = layout->set[set].layout;
    struct v3dv_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
@@ -701,6 +723,8 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
       deref->var->data.index + base_index :
       base_index;
 
+   uint8_t return_size = relaxed_precision || instr->is_shadow ? 16 : 32;
+
    int desc_index =
       descriptor_map_add(is_sampler ?
                          &pipeline->sampler_map : &pipeline->texture_map,
@@ -708,12 +732,14 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
                          deref->var->data.binding,
                          array_index,
                          binding_layout->array_size,
-                         instr->is_shadow);
+                         return_size);
 
    if (is_sampler)
       instr->sampler_index = desc_index;
    else
       instr->texture_index = desc_index;
+
+   return return_size;
 }
 
 static bool
@@ -721,11 +747,13 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
               struct v3dv_pipeline *pipeline,
               const struct v3dv_pipeline_layout *layout)
 {
+   uint8_t return_size;
+
    int texture_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);
 
    if (texture_idx >= 0)
-      lower_tex_src_to_offset(b, instr, texture_idx, pipeline, layout);
+      return_size = lower_tex_src_to_offset(b, instr, texture_idx, pipeline, layout);
 
    int sampler_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
@@ -736,8 +764,13 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
    if (texture_idx < 0 && sampler_idx < 0)
       return false;
 
-   instr->sampler_index = sampler_idx < 0 ?
-      V3DV_NO_SAMPLER_IDX : instr->sampler_index;
+   /* If we don't have a sampler, we assign it the idx we reserve for this
+    * case, and we ensure that it is using the correct return size.
+    */
+   if (sampler_idx < 0) {
+      instr->sampler_index = return_size == 16 ?
+         V3DV_NO_SAMPLER_16BIT_IDX : V3DV_NO_SAMPLER_32BIT_IDX;
+   }
 
    return true;
 }
@@ -801,7 +834,13 @@ lower_image_deref(nir_builder *b,
                          deref->var->data.binding,
                          array_index,
                          binding_layout->array_size,
-                         false /* is_shadow: Doesn't really matter in this case */);
+                         32 /* return_size: doesn't apply for textures */);
+
+   /* Note: we don't need to do anything here in relation to the precision and
+    * the output size because for images we can infer that info from the image
+    * intrinsic, that includes the image format (see
+    * NIR_INTRINSIC_FORMAT). That is done by the v3d compiler.
+    */
 
    index = nir_imm_int(b, desc_index);
 
@@ -980,9 +1019,9 @@ pipeline_populate_v3d_key(struct v3d_key *key,
    assert(key->num_samplers_used <= V3D_MAX_TEXTURE_SAMPLERS);
    for (uint32_t sampler_idx = 0; sampler_idx < sampler_map->num_desc;
         sampler_idx++) {
-      /* FIXME: use RelaxedPrecision here */
       key->sampler[sampler_idx].return_size =
-         sampler_map->is_shadow[sampler_idx] ? 16 : 32;
+         sampler_map->return_size[sampler_idx];
+
       key->sampler[sampler_idx].return_channels =
          key->sampler[sampler_idx].return_size == 32 ? 4 : 2;
    }
@@ -1677,11 +1716,19 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
    /* We add this because we need a valid sampler for nir_lower_tex to do
     * unpacking of the texture operation result, even for the case where there
     * is no sampler state.
+    *
+    * We add two of those, one for the case we need a 16bit return_size, and
+    * another for the case we need a 32bit return size.
     */
    unsigned index =
       descriptor_map_add(&pipeline->sampler_map,
-                         -1, -1, -1, 0, false);
-   assert(index == V3DV_NO_SAMPLER_IDX);
+                         -1, -1, -1, 0, 16);
+   assert(index == V3DV_NO_SAMPLER_16BIT_IDX);
+
+   index =
+      descriptor_map_add(&pipeline->sampler_map,
+                         -2, -2, -2, 0, 32);
+   assert(index == V3DV_NO_SAMPLER_32BIT_IDX);
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    NIR_PASS_V(p_stage->nir, lower_pipeline_layout_info, pipeline, layout);

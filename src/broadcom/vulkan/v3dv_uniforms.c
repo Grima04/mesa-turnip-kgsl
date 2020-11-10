@@ -125,7 +125,8 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_descriptor_state *descriptor_state =
       &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
 
-   assert(sampler_idx != V3DV_NO_SAMPLER_IDX);
+   assert(sampler_idx != V3DV_NO_SAMPLER_16BIT_IDX &&
+          sampler_idx != V3DV_NO_SAMPLER_32BIT_IDX);
 
    struct v3dv_cl_reloc sampler_state_reloc =
       v3dv_descriptor_map_get_sampler_state(descriptor_state, &pipeline->sampler_map,
