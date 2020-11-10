@@ -30,53 +30,6 @@
 
 #include <stddef.h>
 
-/**
- * The query buffer is written to by ESGS NGG shaders with statistics about
- * generated and (streamout-)emitted primitives.
- *
- * The context maintains a ring of these query buffers, and queries simply
- * point into the ring, allowing an arbitrary number of queries to be active
- * without additional GPU cost.
- */
-struct gfx10_sh_query_buffer {
-   struct list_head list;
-   struct si_resource *buf;
-   unsigned refcount;
-
-   /* Offset into the buffer in bytes; points at the first un-emitted entry. */
-   unsigned head;
-};
-
-/* Memory layout of the query buffer. Must be kept in sync with shaders
- * (including QBO shaders) and should be aligned to cachelines.
- *
- * The somewhat awkward memory layout is for compatibility with the
- * SET_PREDICATION packet, which also means that we're setting the high bit
- * of all those values unconditionally.
- */
-struct gfx10_sh_query_buffer_mem {
-   struct {
-      uint64_t generated_primitives_start_dummy;
-      uint64_t emitted_primitives_start_dummy;
-      uint64_t generated_primitives;
-      uint64_t emitted_primitives;
-   } stream[4];
-   uint32_t fence; /* bottom-of-pipe fence: set to ~0 when draws have finished */
-   uint32_t pad[31];
-};
-
-/* Shader-based queries. */
-struct gfx10_sh_query {
-   struct si_query b;
-
-   struct gfx10_sh_query_buffer *first;
-   struct gfx10_sh_query_buffer *last;
-   unsigned first_begin;
-   unsigned last_end;
-
-   unsigned stream;
-};
-
 static void emit_shader_query(struct si_context *sctx)
 {
    assert(!list_is_empty(&sctx->shader_query_buffers));

@@ -1008,85 +1008,132 @@ static void emit_set_predicate(struct si_context *ctx, struct si_resource *buf, 
 
 static void si_emit_query_predication(struct si_context *ctx)
 {
-   struct si_query_hw *query = (struct si_query_hw *)ctx->render_cond;
-   struct si_query_buffer *qbuf;
    uint32_t op;
    bool flag_wait, invert;
 
+   struct si_query_hw *query = (struct si_query_hw *)ctx->render_cond;
    if (!query)
       return;
-
-   if (ctx->screen->use_ngg_streamout && (query->b.type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
-                                          query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)) {
-      assert(!"not implemented");
-   }
 
    invert = ctx->render_cond_invert;
    flag_wait = ctx->render_cond_mode == PIPE_RENDER_COND_WAIT ||
                ctx->render_cond_mode == PIPE_RENDER_COND_BY_REGION_WAIT;
 
-   if (query->workaround_buf) {
-      op = PRED_OP(PREDICATION_OP_BOOL64);
-   } else {
-      switch (query->b.type) {
-      case PIPE_QUERY_OCCLUSION_COUNTER:
-      case PIPE_QUERY_OCCLUSION_PREDICATE:
-      case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-         op = PRED_OP(PREDICATION_OP_ZPASS);
-         break;
-      case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
-      case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
-         op = PRED_OP(PREDICATION_OP_PRIMCOUNT);
-         invert = !invert;
-         break;
-      default:
-         assert(0);
-         return;
-      }
-   }
+   if (ctx->screen->use_ngg_streamout && (query->b.type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+                                          query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)) {
+      struct gfx10_sh_query *gfx10_query = (struct gfx10_sh_query *)query;
+      struct gfx10_sh_query_buffer *qbuf, *first, *last;
 
-   /* if true then invert, see GL_ARB_conditional_render_inverted */
-   if (invert)
-      op |= PREDICATION_DRAW_NOT_VISIBLE; /* Draw if not visible or overflow */
-   else
-      op |= PREDICATION_DRAW_VISIBLE; /* Draw if visible or no overflow */
+      op = PRED_OP(PREDICATION_OP_PRIMCOUNT);
 
-   /* Use the value written by compute shader as a workaround. Note that
-    * the wait flag does not apply in this predication mode.
-    *
-    * The shader outputs the result value to L2. Workarounds only affect GFX8
-    * and later, where the CP reads data from L2, so we don't need an
-    * additional flush.
-    */
-   if (query->workaround_buf) {
-      uint64_t va = query->workaround_buf->gpu_address + query->workaround_offset;
-      emit_set_predicate(ctx, query->workaround_buf, va, op);
-      return;
-   }
+      /* if true then invert, see GL_ARB_conditional_render_inverted */
+      if (!invert)
+         op |= PREDICATION_DRAW_NOT_VISIBLE; /* Draw if not visible or overflow */
+      else
+         op |= PREDICATION_DRAW_VISIBLE; /* Draw if visible or no overflow */
 
-   op |= flag_wait ? PREDICATION_HINT_WAIT : PREDICATION_HINT_NOWAIT_DRAW;
+      op |= flag_wait ? PREDICATION_HINT_WAIT : PREDICATION_HINT_NOWAIT_DRAW;
 
-   /* emit predicate packets for all data blocks */
-   for (qbuf = &query->buffer; qbuf; qbuf = qbuf->previous) {
-      unsigned results_base = 0;
-      uint64_t va_base = qbuf->buf->gpu_address;
+      first = gfx10_query->first;
+      last = gfx10_query->last;
 
-      while (results_base < qbuf->results_end) {
+      while (first) {
+         qbuf = first;
+         if (first != last)
+            first = LIST_ENTRY(struct gfx10_sh_query_buffer, qbuf->list.next, list);
+         else
+            first = NULL;
+
+         unsigned results_base = gfx10_query->first_begin;
+         uint64_t va_base = qbuf->buf->gpu_address;
          uint64_t va = va_base + results_base;
 
-         if (query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
-            for (unsigned stream = 0; stream < SI_MAX_STREAMS; ++stream) {
-               emit_set_predicate(ctx, qbuf->buf, va + 32 * stream, op);
+         unsigned begin = qbuf == gfx10_query->first ? gfx10_query->first_begin : 0;
+         unsigned end = qbuf == gfx10_query->last ? gfx10_query->last_end : qbuf->buf->b.b.width0;
 
-               /* set CONTINUE bit for all packets except the first */
+         unsigned count = (end - begin) / sizeof(struct gfx10_sh_query_buffer_mem);
+         do {
+            if (gfx10_query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
+               for (unsigned stream = 0; stream < SI_MAX_STREAMS; ++stream) {
+                  emit_set_predicate(ctx, qbuf->buf, va + 4 * sizeof(uint64_t) * stream, op);
+
+                  /* set CONTINUE bit for all packets except the first */
+                  op |= PREDICATION_CONTINUE;
+               }
+            } else {
+               emit_set_predicate(ctx, qbuf->buf, va + 4 * sizeof(uint64_t) * gfx10_query->stream, op);
                op |= PREDICATION_CONTINUE;
             }
-         } else {
-            emit_set_predicate(ctx, qbuf->buf, va, op);
-            op |= PREDICATION_CONTINUE;
-         }
 
-         results_base += query->result_size;
+            results_base += sizeof(struct gfx10_sh_query_buffer_mem);
+         } while (count--);
+      }
+   } else {
+      struct si_query_buffer *qbuf;
+
+      if (query->workaround_buf) {
+         op = PRED_OP(PREDICATION_OP_BOOL64);
+      } else {
+         switch (query->b.type) {
+         case PIPE_QUERY_OCCLUSION_COUNTER:
+         case PIPE_QUERY_OCCLUSION_PREDICATE:
+         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+            op = PRED_OP(PREDICATION_OP_ZPASS);
+            break;
+         case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+         case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+            op = PRED_OP(PREDICATION_OP_PRIMCOUNT);
+            invert = !invert;
+            break;
+         default:
+            assert(0);
+            return;
+         }
+      }
+
+      /* if true then invert, see GL_ARB_conditional_render_inverted */
+      if (invert)
+         op |= PREDICATION_DRAW_NOT_VISIBLE; /* Draw if not visible or overflow */
+      else
+         op |= PREDICATION_DRAW_VISIBLE; /* Draw if visible or no overflow */
+
+      /* Use the value written by compute shader as a workaround. Note that
+       * the wait flag does not apply in this predication mode.
+       *
+       * The shader outputs the result value to L2. Workarounds only affect GFX8
+       * and later, where the CP reads data from L2, so we don't need an
+       * additional flush.
+       */
+      if (query->workaround_buf) {
+         uint64_t va = query->workaround_buf->gpu_address + query->workaround_offset;
+         emit_set_predicate(ctx, query->workaround_buf, va, op);
+         return;
+      }
+
+      op |= flag_wait ? PREDICATION_HINT_WAIT : PREDICATION_HINT_NOWAIT_DRAW;
+
+      /* emit predicate packets for all data blocks */
+      for (qbuf = &query->buffer; qbuf; qbuf = qbuf->previous) {
+         unsigned results_base = 0;
+         uint64_t va_base = qbuf->buf->gpu_address;
+
+         while (results_base < qbuf->results_end) {
+            uint64_t va = va_base + results_base;
+
+            if (query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
+               for (unsigned stream = 0; stream < SI_MAX_STREAMS; ++stream) {
+                  emit_set_predicate(ctx, qbuf->buf, va + 32 * stream, op);
+
+                  /* set CONTINUE bit for all packets except the first */
+                  op |= PREDICATION_CONTINUE;
+               }
+            } else {
+               emit_set_predicate(ctx, qbuf->buf, va, op);
+               op |= PREDICATION_CONTINUE;
+            }
+
+            results_base += query->result_size;
+         }
       }
    }
 }
