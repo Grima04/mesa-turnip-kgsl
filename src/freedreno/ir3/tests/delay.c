@@ -181,7 +181,7 @@ main(int argc, char **argv)
 	struct ir3_compiler *c;
 	int result = 0;
 
-	c = ir3_compiler_create(NULL, 630);
+	c = ir3_compiler_create(NULL, 630, false);
 
 	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
 		const struct test *test = &tests[i];

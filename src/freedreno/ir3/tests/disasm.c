@@ -393,7 +393,7 @@ main(int argc, char **argv)
 
 		unsigned gen = test->gpu_id / 100;
 		if (!compilers[gen]) {
-			compilers[gen] = ir3_compiler_create(NULL, test->gpu_id);
+			compilers[gen] = ir3_compiler_create(NULL, test->gpu_id, false);
 		}
 
 		FILE *fasm = fmemopen((void *)test->expected, strlen(test->expected), "r");

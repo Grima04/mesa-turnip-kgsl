@@ -1078,6 +1078,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    struct tu_device *device;
    bool custom_border_colors = false;
    bool perf_query_pools = false;
+   bool robust_buffer_access2 = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -1108,6 +1109,11 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
          const VkPhysicalDevicePerformanceQueryFeaturesKHR *feature =
             (VkPhysicalDevicePerformanceQueryFeaturesKHR *)ext;
          perf_query_pools = feature->performanceCounterQueryPools;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
+         VkPhysicalDeviceRobustness2FeaturesEXT *features = (void *)ext;
+         robust_buffer_access2 = features->robustBufferAccess2;
          break;
       }
       default:
@@ -1166,7 +1172,8 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       }
    }
 
-   device->compiler = ir3_compiler_create(NULL, physical_device->gpu_id);
+   device->compiler = ir3_compiler_create(NULL, physical_device->gpu_id,
+                                          robust_buffer_access2);
    if (!device->compiler) {
       result = vk_startup_errorf(physical_device->instance,
                                  VK_ERROR_INITIALIZATION_FAILED,

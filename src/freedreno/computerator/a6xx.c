@@ -490,7 +490,7 @@ a6xx_init(struct fd_device *dev, uint32_t gpu_id)
 		.read_perfcntrs = a6xx_read_perfcntrs,
 	};
 
-	a6xx_backend->compiler = ir3_compiler_create(dev, gpu_id);
+	a6xx_backend->compiler = ir3_compiler_create(dev, gpu_id, false);
 	a6xx_backend->dev = dev;
 
 	a6xx_backend->control_mem = fd_bo_new(dev, 0x1000,

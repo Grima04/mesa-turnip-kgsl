@@ -515,7 +515,7 @@ ir3_screen_init(struct pipe_screen *pscreen)
 {
    struct fd_screen *screen = fd_screen(pscreen);
 
-   screen->compiler = ir3_compiler_create(screen->dev, screen->gpu_id);
+   screen->compiler = ir3_compiler_create(screen->dev, screen->gpu_id, false);
 
    /* TODO do we want to limit things to # of fast cores, or just limit
     * based on total # of both big and little cores.  The little cores

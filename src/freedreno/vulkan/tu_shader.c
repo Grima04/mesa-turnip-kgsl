@@ -192,7 +192,7 @@ tu_spirv_to_nir(struct tu_device *dev,
 
    NIR_PASS_V(nir, nir_lower_frexp);
 
-   ir3_optimize_loop(nir);
+   ir3_optimize_loop(dev->compiler, nir);
 
    return nir;
 }
