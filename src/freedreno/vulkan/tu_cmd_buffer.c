@@ -1593,10 +1593,15 @@ tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
    cmd->state.vertex_buffers.iova = tu_cs_draw_state(&cmd->sub_cs, &cs, 4 * MAX_VBS).iova;
 
    for (uint32_t i = 0; i < bindingCount; i++) {
-      struct tu_buffer *buf = tu_buffer_from_handle(pBuffers[i]);
+      if (pBuffers[i] == VK_NULL_HANDLE) {
+         cmd->state.vb[firstBinding + i].base = 0;
+         cmd->state.vb[firstBinding + i].size = 0;
+      } else {
+         struct tu_buffer *buf = tu_buffer_from_handle(pBuffers[i]);
+         cmd->state.vb[firstBinding + i].base = tu_buffer_iova(buf) + pOffsets[i];
+         cmd->state.vb[firstBinding + i].size = pSizes ? pSizes[i] : (buf->size - pOffsets[i]);
+      }
 
-      cmd->state.vb[firstBinding + i].base = tu_buffer_iova(buf) + pOffsets[i];
-      cmd->state.vb[firstBinding + i].size = pSizes ? pSizes[i] : (buf->size - pOffsets[i]);
       if (pStrides)
          cmd->state.vb[firstBinding + i].stride = pStrides[i];
    }

@@ -690,9 +690,13 @@ tu_FreeDescriptorSets(VkDevice _device,
 static void
 write_texel_buffer_descriptor(uint32_t *dst, const VkBufferView buffer_view)
 {
-   TU_FROM_HANDLE(tu_buffer_view, view, buffer_view);
+   if (buffer_view == VK_NULL_HANDLE) {
+      memset(dst, 0, A6XX_TEX_CONST_DWORDS * sizeof(uint32_t));
+   } else {
+      TU_FROM_HANDLE(tu_buffer_view, view, buffer_view);
 
-   memcpy(dst, view->descriptor, sizeof(view->descriptor));
+      memcpy(dst, view->descriptor, sizeof(view->descriptor));
+   }
 }
 
 static uint32_t get_range(struct tu_buffer *buf, VkDeviceSize offset,
@@ -710,6 +714,11 @@ write_buffer_descriptor(const struct tu_device *device,
                         uint32_t *dst,
                         const VkDescriptorBufferInfo *buffer_info)
 {
+   if (buffer_info->buffer == VK_NULL_HANDLE) {
+      memset(dst, 0, A6XX_TEX_CONST_DWORDS * sizeof(uint32_t));
+      return;
+   }
+
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
 
    assert((buffer_info->offset & 63) == 0); /* minStorageBufferOffsetAlignment */
@@ -735,12 +744,18 @@ write_buffer_descriptor(const struct tu_device *device,
 static void
 write_ubo_descriptor(uint32_t *dst, const VkDescriptorBufferInfo *buffer_info)
 {
+   if (buffer_info->buffer == VK_NULL_HANDLE) {
+      dst[0] = dst[1] = 0;
+      return;
+   }
+
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
 
    uint32_t range = get_range(buffer, buffer_info->offset, buffer_info->range);
    /* The HW range is in vec4 units */
    range = ALIGN_POT(range, 16) / 16;
    uint64_t va = tu_buffer_iova(buffer) + buffer_info->offset;
+
    dst[0] = A6XX_UBO_0_BASE_LO(va);
    dst[1] = A6XX_UBO_1_BASE_HI(va >> 32) | A6XX_UBO_1_SIZE(range);
 }
@@ -750,6 +765,11 @@ write_image_descriptor(uint32_t *dst,
                        VkDescriptorType descriptor_type,
                        const VkDescriptorImageInfo *image_info)
 {
+   if (image_info->imageView == VK_NULL_HANDLE) {
+      memset(dst, 0, A6XX_TEX_CONST_DWORDS * sizeof(uint32_t));
+      return;
+   }
+
    TU_FROM_HANDLE(tu_image_view, iview, image_info->imageView);
 
    if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
