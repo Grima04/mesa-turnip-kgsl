@@ -1029,8 +1029,8 @@ pipeline_populate_v3d_key(struct v3d_key *key,
          key->tex[tex_idx].swizzle[2] = PIPE_SWIZZLE_Z;
          key->tex[tex_idx].swizzle[3] = PIPE_SWIZZLE_W;
 
-         key->tex[tex_idx].return_size = 16;
-         key->tex[tex_idx].return_channels = 2;
+         key->sampler[tex_idx].return_size = 16;
+         key->sampler[tex_idx].return_channels = 2;
 
          tex_idx++;
       }
