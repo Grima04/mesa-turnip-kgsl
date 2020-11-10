@@ -4877,9 +4877,8 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
       setup_shared(&ctx, nir);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT && nir->info.fs.uses_demote) {
-      ctx.ac.postponed_kill = ac_build_alloca_undef(&ctx.ac, ac->i1, "");
       /* true = don't kill. */
-      LLVMBuildStore(ctx.ac.builder, ctx.ac.i1true, ctx.ac.postponed_kill);
+      ctx.ac.postponed_kill = ac_build_alloca_init(&ctx.ac, ctx.ac.i1true, "");
    }
 
    visit_cf_list(&ctx, &func->impl->body);

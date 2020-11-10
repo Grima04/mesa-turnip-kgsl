@@ -3222,6 +3222,13 @@ LLVMValueRef ac_build_alloca(struct ac_llvm_context *ac, LLVMTypeRef type, const
    return ptr;
 }
 
+LLVMValueRef ac_build_alloca_init(struct ac_llvm_context *ac, LLVMValueRef val, const char *name)
+{
+   LLVMValueRef ptr = ac_build_alloca_undef(ac, LLVMTypeOf(val), name);
+   LLVMBuildStore(ac->builder, val, ptr);
+   return ptr;
+}
+
 LLVMValueRef ac_cast_ptr(struct ac_llvm_context *ctx, LLVMValueRef ptr, LLVMTypeRef type)
 {
    int addr_space = LLVMGetPointerAddressSpace(LLVMTypeOf(ptr));

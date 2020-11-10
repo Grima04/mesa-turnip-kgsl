@@ -495,10 +495,9 @@ static void si_vertex_color_clamping(struct si_shader_context *ctx,
           outputs[i].semantic != VARYING_SLOT_BFC1)
          continue;
 
-      for (unsigned j = 0; j < 4; j++) {
-         addr[i][j] = ac_build_alloca_undef(&ctx->ac, ctx->ac.f32, "");
-         LLVMBuildStore(ctx->ac.builder, outputs[i].values[j], addr[i][j]);
-      }
+      for (unsigned j = 0; j < 4; j++)
+         addr[i][j] = ac_build_alloca_init(&ctx->ac, outputs[i].values[j], "");
+
       has_colors = true;
    }
 

@@ -1055,13 +1055,13 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
    update_thread_counts(ctx, &new_num_es_threads, &new_gs_tg_info, 9, 12, &new_merged_wave_info, 8,
                         0);
 
-   /* Update vertex indices in VGPR0 (same format as NGG passthrough). */
-   LLVMValueRef new_vgpr0 = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
-
-   /* Set the null flag at the beginning (culled), and then
+   /* Update vertex indices in VGPR0 (same format as NGG passthrough).
+    *
+    * Set the null flag at the beginning (culled), and then
     * overwrite it for accepted primitives.
     */
-   LLVMBuildStore(builder, LLVMConstInt(ctx->ac.i32, 1u << 31, 0), new_vgpr0);
+   LLVMValueRef new_vgpr0 =
+      ac_build_alloca_init(&ctx->ac, LLVMConstInt(ctx->ac.i32, 1u << 31, 0), "");
 
    /* Get vertex indices after vertex compaction. */
    ac_build_ifcc(&ctx->ac, LLVMBuildTrunc(builder, gs_accepted, ctx->ac.i1, ""), 16011);
@@ -1315,8 +1315,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LL
          tmp = LLVMBuildLoad(builder, tmp, "");
          tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 
-         user_edgeflags[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i1, "");
-         LLVMBuildStore(builder, tmp, user_edgeflags[i]);
+         user_edgeflags[i] = ac_build_alloca_init(&ctx->ac, tmp, "");
       }
       ac_build_endif(&ctx->ac, 5400);
    }
