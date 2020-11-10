@@ -128,22 +128,6 @@ struct dxil_psv_runtime_info_1 {
    uint8_t sig_output_vectors[4];
 };
 
-struct dxil_pipe_state_validation {
-   unsigned val_major, val_minor;
-   uint32_t version;
-   uint32_t resource_count;
-   uint8_t  shader_stage;
-   struct _mesa_string_buffer *string_table;
-   struct dxil_psv_sem_index_table semantic_index_table;
-   uint8_t uses_view_id;
-   uint8_t sig_input_elements;
-   uint8_t sig_output_elements;
-   uint8_t sig_patch_const_or_prim_elements;
-   uint8_t sig_input_vectors;
-   uint8_t sig_patch_const_or_prim_vectors;
-   uint8_t sig_output_vectors[4];
-};
-
 struct dxil_mdnode;
 struct dxil_module;
 
