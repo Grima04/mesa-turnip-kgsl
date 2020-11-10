@@ -101,6 +101,15 @@ xcb_glx_create_context_attribs_arb_checked(xcb_connection_t *c,
    return cookie;
 }
 
+extern "C" xcb_void_cookie_t
+xcb_glx_destroy_context(xcb_connection_t *c, xcb_glx_context_t context)
+{
+   xcb_void_cookie_t cookie;
+   cookie.sequence = 0xbadc0de;
+
+   return cookie;
+}
+
 extern "C" xcb_generic_error_t *
 xcb_request_check(xcb_connection_t *c, xcb_void_cookie_t cookie)
 {

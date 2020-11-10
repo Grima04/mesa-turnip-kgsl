@@ -382,6 +382,9 @@ indirect_create_context_attribs(struct glx_screen *psc,
    CARD8 opcode;
    __GLXattribute *state;
    int i, renderType = GLX_RGBA_TYPE;
+   uint32_t mask = GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+   uint32_t major = 1;
+   uint32_t minor = 0;
 
    opcode = __glXSetupForCommand(psc->dpy);
    if (!opcode) {
@@ -393,6 +396,21 @@ indirect_create_context_attribs(struct glx_screen *psc,
 
       if (attr == GLX_RENDER_TYPE)
          renderType = val;
+      if (attr == GLX_CONTEXT_PROFILE_MASK_ARB)
+         mask = val;
+      if (attr == GLX_CONTEXT_MAJOR_VERSION_ARB)
+         major = val;
+      if (attr == GLX_CONTEXT_MINOR_VERSION_ARB)
+         minor = val;
+   }
+
+   /* We have no indirect support for core or ES contexts, and our compat
+    * context support is limited to GL 1.4.
+    */
+   if (mask != GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB ||
+       major != 1 ||
+       minor > 4) {
+      return NULL;
    }
 
    /* Allocate our context record */
