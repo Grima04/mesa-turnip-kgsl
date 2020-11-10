@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 /* struct taken from DXILContainer
- * Enums values were replaced by uint32_t since the must occupy 32 bit
+ * Enums values were replaced by uint32_t since they must occupy 32 bit
  */
 
 struct dxil_signature_element {
