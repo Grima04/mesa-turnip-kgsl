@@ -2207,7 +2207,7 @@ bool combine_salu_lshl_add(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       return false;
 
    for (unsigned i = 0; i < 2; i++) {
-      Instruction *op2_instr = follow_operand(ctx, instr->operands[i]);
+      Instruction *op2_instr = follow_operand(ctx, instr->operands[i], true);
       if (!op2_instr || op2_instr->opcode != aco_opcode::s_lshl_b32 ||
           ctx.uses[op2_instr->definitions[1].tempId()])
          continue;

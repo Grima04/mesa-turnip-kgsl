@@ -143,9 +143,9 @@ BEGIN_TEST(optimize.add_lshl)
                        Operand(inputs[0]), Operand(3u));
       writeout(0, bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), shift, Operand(4u)));
 
-      //! s1: %lshl, s1: %_:scc = s_lshl_b32 %a, 3
-      //! v1: %add = v_add_u32 %lshl, %b
-      //! v1: %res1 = v_add3_u32 %add, %lshl, 4
+      //! s1: %lshl1, s1: %_:scc = s_lshl3_add_u32 %a, 4
+      //! v1: %lshl_add = v_lshl_add_u32 %a, 3, %b
+      //! v1: %res1 = v_add_u32 %lshl1, %lshl_add
       //! p_unit_test 1, %res1
       shift = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
                        Operand(inputs[0]), Operand(3u));
