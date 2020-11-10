@@ -79,34 +79,29 @@ struct dxil_psv_signature_element {
    uint8_t reserved;
 };
 
-struct dxil_vs_info {
-   char output_position_present;
-};
-
-struct dxil_gs_info {
-   uint32_t input_primitive;
-   uint32_t output_toplology;
-   uint32_t output_stream_mask;
-   char output_position_present;
-};
-
-struct dxil_ps_info {
-   char depth_output;
-   char sample_frequency;
-};
-
-/* Maximum sized defining the union size (MSInfo)*/
-struct dxil_max_sized_info {
-   uint32_t dummy1[3];
-   uint16_t dummy2[2];
-};
-
 struct dxil_psv_runtime_info_0 {
    union {
-      struct dxil_vs_info vs;
-      struct dxil_gs_info gs;
-      struct dxil_ps_info ps;
-      struct dxil_max_sized_info dummy;
+      struct {
+         char output_position_present;
+      } vs;
+
+      struct {
+         uint32_t input_primitive;
+         uint32_t output_toplology;
+         uint32_t output_stream_mask;
+         char output_position_present;
+      } gs;
+
+      struct {
+         char depth_output;
+         char sample_frequency;
+      } ps;
+
+      /* Maximum sized defining the union size (MSInfo)*/
+      struct {
+         uint32_t dummy1[3];
+         uint16_t dummy2[2];
+      } dummy;
    };
    uint32_t min_expected_wave_lane_count;  // minimum lane count required, 0 if unused
    uint32_t max_expected_wave_lane_count;  // maximum lane count required, 0xffffffff if unused
