@@ -68,7 +68,7 @@ tu6_load_state_size(struct tu_pipeline *pipeline, bool compute)
    const unsigned load_state_size = 4;
    unsigned size = 0;
    for (unsigned i = 0; i < pipeline->layout->num_sets; i++) {
-      if (pipeline && !(pipeline->active_desc_sets & (1u << i)))
+      if (!(pipeline->active_desc_sets & (1u << i)))
          continue;
 
       struct tu_descriptor_set_layout *set_layout = pipeline->layout->set[i].layout;
