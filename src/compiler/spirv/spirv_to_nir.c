@@ -160,7 +160,7 @@ _vtn_fail(struct vtn_builder *b, const char *file, unsigned line,
    if (dump_path)
       vtn_dump_shader(b, dump_path, "fail");
 
-   longjmp(b->fail_jump, 1);
+   vtn_longjmp(b->fail_jump, 1);
 }
 
 static struct vtn_ssa_value *
@@ -5744,7 +5744,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
       return NULL;
 
    /* See also _vtn_fail() */
-   if (setjmp(b->fail_jump)) {
+   if (vtn_setjmp(b->fail_jump)) {
       ralloc_free(b);
       return NULL;
    }
