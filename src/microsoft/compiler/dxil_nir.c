@@ -48,12 +48,13 @@ extract_comps_from_vec32(nir_builder *b, nir_ssa_def *vec32,
          dst_comps[i] = nir_channel(b, vec32, i);
          break;
       case 16:
-      case 8:
+      case 8: {
          unsigned dst_offs = i * comps_per32b;
 
          tmp = nir_unpack_bits(b, nir_channel(b, vec32, i), dst_bit_size);
          for (unsigned j = 0; j < comps_per32b && dst_offs + j < num_dst_comps; j++)
             dst_comps[dst_offs + j] = nir_channel(b, tmp, j);
+         }
 
          break;
       }
