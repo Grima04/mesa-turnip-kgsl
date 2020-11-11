@@ -101,6 +101,13 @@ struct osmesa_context
 
    struct osmesa_buffer *current_buffer;
 
+   /* Storage for depth/stencil, if the user has requested access.  The backing
+    * driver always has its own storage for the actual depth/stencil, which we
+    * have to transfer in and out.
+    */
+   void *zs;
+   unsigned zs_stride;
+
    enum pipe_format depth_stencil_format, accum_format;
 
    GLenum format;         /*< User-specified context format */
@@ -174,6 +181,43 @@ get_st_manager(void)
    call_once(&create_once_flag, create_st_manager);
 
    return stmgr;
+}
+
+/* Reads the color or depth buffer from the backing context to either the user storage
+ * (color buffer) or our temporary (z/s)
+ */
+static void
+osmesa_read_buffer(OSMesaContext osmesa, struct pipe_resource *res, void *dst,
+                   int dst_stride, bool y_up)
+{
+   struct pipe_context *pipe = osmesa->stctx->pipe;
+
+   struct pipe_box box;
+   u_box_2d(0, 0, res->width0, res->height0, &box);
+
+   struct pipe_transfer *transfer = NULL;
+   ubyte *src = pipe->transfer_map(pipe, res, 0, PIPE_MAP_READ, &box,
+                                   &transfer);
+
+   /*
+    * Copy the color buffer from the resource to the user's buffer.
+    */
+
+   if (y_up) {
+      /* need to flip image upside down */
+      dst = (ubyte *)dst + (res->height0 - 1) * dst_stride;
+      dst_stride = -dst_stride;
+   }
+
+   unsigned bpp = util_format_get_blocksize(res->format);
+   for (unsigned y = 0; y < res->height0; y++)
+   {
+      memcpy(dst, src, bpp * res->width0);
+      dst = (ubyte *)dst + dst_stride;
+      src += transfer->stride;
+   }
+
+   pipe->transfer_unmap(pipe, transfer);
 }
 
 
@@ -316,13 +360,8 @@ osmesa_st_framebuffer_flush_front(struct st_context_iface *stctx,
 {
    OSMesaContext osmesa = OSMesaGetCurrentContext();
    struct osmesa_buffer *osbuffer = stfbi_to_osbuffer(stfbi);
-   struct pipe_context *pipe = stctx->pipe;
    struct pipe_resource *res = osbuffer->textures[statt];
-   struct pipe_transfer *transfer = NULL;
-   struct pipe_box box;
-   void *map;
-   ubyte *src, *dst;
-   unsigned y, bytes, bpp;
+   unsigned bpp;
    int dst_stride;
 
    if (osmesa->pp) {
@@ -347,36 +386,20 @@ osmesa_st_framebuffer_flush_front(struct st_context_iface *stctx,
       pp_run(osmesa->pp, res, res, zsbuf);
    }
 
-   u_box_2d(0, 0, res->width0, res->height0, &box);
-
-   map = pipe->transfer_map(pipe, res, 0, PIPE_MAP_READ, &box,
-                            &transfer);
-
-   /*
-    * Copy the color buffer from the resource to the user's buffer.
-    */
+   /* Snapshot the color buffer to the user's buffer. */
    bpp = util_format_get_blocksize(osbuffer->visual.color_format);
-   src = map;
-   dst = osbuffer->map;
    if (osmesa->user_row_length)
       dst_stride = bpp * osmesa->user_row_length;
    else
       dst_stride = bpp * osbuffer->width;
-   bytes = bpp * res->width0;
 
-   if (osmesa->y_up) {
-      /* need to flip image upside down */
-      dst = dst + (res->height0 - 1) * dst_stride;
-      dst_stride = -dst_stride;
+   osmesa_read_buffer(osmesa, res, osbuffer->map, dst_stride, osmesa->y_up);
+
+   /* If the user has requested the Z/S buffer, then snapshot that one too. */
+   if (osmesa->zs) {
+      osmesa_read_buffer(osmesa, osbuffer->textures[ST_ATTACHMENT_DEPTH_STENCIL],
+                         osmesa->zs, osmesa->zs_stride, true);
    }
-
-   for (y = 0; y < res->height0; y++) {
-      memcpy(dst, src, bytes);
-      dst += dst_stride;
-      src += transfer->stride;
-   }
-
-   pipe->transfer_unmap(pipe, transfer);
 
    return true;
 }
@@ -730,6 +753,7 @@ OSMesaDestroyContext(OSMesaContext osmesa)
    if (osmesa) {
       pp_free(osmesa->pp);
       osmesa->stctx->destroy(osmesa->stctx);
+      free(osmesa->zs);
       FREE(osmesa);
    }
 }
@@ -914,33 +938,22 @@ OSMesaGetDepthBuffer(OSMesaContext c, GLint *width, GLint *height,
                      GLint *bytesPerValue, void **buffer)
 {
    struct osmesa_buffer *osbuffer = c->current_buffer;
-   struct pipe_context *pipe = c->stctx->pipe;
    struct pipe_resource *res = osbuffer->textures[ST_ATTACHMENT_DEPTH_STENCIL];
-   struct pipe_transfer *transfer = NULL;
-   struct pipe_box box;
-
-   /*
-    * Note: we can't really implement this function with gallium as
-    * we did for swrast.  We can't just map the resource and leave it
-    * mapped (and there's no OSMesaUnmapDepthBuffer() function) so
-    * we unmap the buffer here and return a 'stale' pointer.  This should
-    * actually be OK in most cases where the caller of this function
-    * immediately uses the pointer.
-    */
-
-   u_box_2d(0, 0, res->width0, res->height0, &box);
-
-   *buffer = pipe->transfer_map(pipe, res, 0, PIPE_MAP_READ, &box,
-                                &transfer);
-   if (!*buffer) {
-      return GL_FALSE;
-   }
 
    *width = res->width0;
    *height = res->height0;
    *bytesPerValue = util_format_get_blocksize(res->format);
 
-   pipe->transfer_unmap(pipe, transfer);
+   if (!c->zs) {
+      c->zs_stride = *width * *bytesPerValue;
+      c->zs = calloc(c->zs_stride, *height);
+      if (!c->zs)
+         return GL_FALSE;
+
+      osmesa_read_buffer(c, res, c->zs, c->zs_stride, true);
+   }
+
+   *buffer = c->zs;
 
    return GL_TRUE;
 }

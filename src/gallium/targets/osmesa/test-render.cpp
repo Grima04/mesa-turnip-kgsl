@@ -162,3 +162,56 @@ INSTANTIATE_TEST_CASE_P(
    ),
    name_params
 );
+
+TEST(OSMesaRenderTest, depth)
+{
+   std::unique_ptr<osmesa_context, decltype(&OSMesaDestroyContext)> ctx{
+      OSMesaCreateContextExt(OSMESA_RGB_565, 24, 8, 0, NULL), &OSMesaDestroyContext};
+   ASSERT_TRUE(ctx);
+
+   int w = 3, h = 2;
+   uint8_t pixels[4096 * h * 2] = {0}; /* different cpp from our depth! */
+   auto ret = OSMesaMakeCurrent(ctx.get(), &pixels, GL_UNSIGNED_SHORT_5_6_5, w, h);
+   ASSERT_EQ(ret, GL_TRUE);
+
+   /* Expand the row length for the color buffer so we can see that it doesn't affect depth. */
+   OSMesaPixelStore(OSMESA_ROW_LENGTH, 4096);
+
+   uint32_t *depth;
+   GLint dw, dh, depth_cpp;
+   ASSERT_EQ(true, OSMesaGetDepthBuffer(ctx.get(), &dw, &dh, &depth_cpp, (void **)&depth));
+
+   ASSERT_EQ(dw, w);
+   ASSERT_EQ(dh, h);
+   ASSERT_EQ(depth_cpp, 4);
+
+   glClearDepth(1.0);
+   glClear(GL_DEPTH_BUFFER_BIT);
+   glFinish();
+   EXPECT_EQ(depth[w * 0 + 0], 0x00ffffff);
+   EXPECT_EQ(depth[w * 0 + 1], 0x00ffffff);
+   EXPECT_EQ(depth[w * 1 + 0], 0x00ffffff);
+   EXPECT_EQ(depth[w * 1 + 1], 0x00ffffff);
+
+   /* Scissor to the top half and clear */
+   glEnable(GL_SCISSOR_TEST);
+   glScissor(0, 1, 2, 1);
+   glClearDepth(0.0);
+   glClear(GL_DEPTH_BUFFER_BIT);
+   glFinish();
+   EXPECT_EQ(depth[w * 0 + 0], 0x00ffffff);
+   EXPECT_EQ(depth[w * 0 + 1], 0x00ffffff);
+   EXPECT_EQ(depth[w * 1 + 0], 0x00000000);
+   EXPECT_EQ(depth[w * 1 + 1], 0x00000000);
+
+   /* Y_UP didn't affect depth buffer orientation in classic osmesa. */
+   OSMesaPixelStore(OSMESA_Y_UP, false);
+   glScissor(0, 1, 1, 1);
+   glClearDepth(1.0);
+   glClear(GL_DEPTH_BUFFER_BIT);
+   glFinish();
+   EXPECT_EQ(depth[w * 0 + 0], 0x00ffffff);
+   EXPECT_EQ(depth[w * 0 + 1], 0x00ffffff);
+   EXPECT_EQ(depth[w * 1 + 0], 0x00ffffff);
+   EXPECT_EQ(depth[w * 1 + 1], 0x00000000);
+}
