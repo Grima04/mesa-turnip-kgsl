@@ -542,6 +542,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    if (info->family == CHIP_KAVERI)
       info->num_render_backends = 2;
 
+   /* Guess the number of enabled SEs because the kernel doesn't tell us. */
+   if (info->chip_class >= GFX10_3 && info->max_se > 1) {
+      unsigned num_rbs_per_se = info->num_render_backends / info->max_se;
+      info->num_se = util_bitcount(amdinfo->enabled_rb_pipes_mask) / num_rbs_per_se;
+   } else {
+      info->num_se = info->max_se;
+   }
+
    info->clock_crystal_freq = amdinfo->gpu_counter_freq;
    if (!info->clock_crystal_freq) {
       fprintf(stderr, "amdgpu: clock crystal frequency is 0, timestamps will be wrong\n");
@@ -672,10 +680,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    unsigned cu_group = info->chip_class >= GFX10 ? 2 : 1;
    info->max_good_cu_per_sa =
-      DIV_ROUND_UP(info->num_good_compute_units, (info->max_se * info->max_sh_per_se * cu_group)) *
+      DIV_ROUND_UP(info->num_good_compute_units, (info->num_se * info->max_sh_per_se * cu_group)) *
       cu_group;
    info->min_good_cu_per_sa =
-      (info->num_good_compute_units / (info->max_se * info->max_sh_per_se * cu_group)) * cu_group;
+      (info->num_good_compute_units / (info->num_se * info->max_sh_per_se * cu_group)) * cu_group;
 
    memcpy(info->si_tile_mode_array, amdinfo->gb_tile_mode, sizeof(amdinfo->gb_tile_mode));
    info->enabled_rb_mask = amdinfo->enabled_rb_pipes_mask;
@@ -964,6 +972,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    max_good_cu_per_sa = %i\n", info->max_good_cu_per_sa);
    fprintf(f, "    min_good_cu_per_sa = %i\n", info->min_good_cu_per_sa);
    fprintf(f, "    max_se = %i\n", info->max_se);
+   fprintf(f, "    num_se = %i\n", info->num_se);
    fprintf(f, "    max_sh_per_se = %i\n", info->max_sh_per_se);
    fprintf(f, "    max_wave64_per_simd = %i\n", info->max_wave64_per_simd);
    fprintf(f, "    num_physical_sgprs_per_simd = %i\n", info->num_physical_sgprs_per_simd);
@@ -1257,7 +1266,7 @@ unsigned ac_get_compute_resource_limits(struct radeon_info *info, unsigned waves
    unsigned compute_resource_limits = S_00B854_SIMD_DEST_CNTL(waves_per_threadgroup % 4 == 0);
 
    if (info->chip_class >= GFX7) {
-      unsigned num_cu_per_se = info->num_good_compute_units / info->max_se;
+      unsigned num_cu_per_se = info->num_good_compute_units / info->num_se;
 
       /* Force even distribution on all SIMDs in CU if the workgroup
        * size is 64. This has shown some good improvements if # of CUs
