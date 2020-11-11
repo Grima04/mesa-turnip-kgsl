@@ -29,6 +29,7 @@
 #include "nir_builder.h"
 
 bool dxil_nir_lower_8bit_conv(nir_shader *shader);
+bool dxil_nir_lower_16bit_conv(nir_shader *shader);
 bool dxil_nir_lower_x2b(nir_shader *shader);
 bool dxil_nir_lower_inot(nir_shader *shader);
 
