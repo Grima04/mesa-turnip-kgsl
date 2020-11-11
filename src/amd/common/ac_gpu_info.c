@@ -501,7 +501,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->max_memory_clock = amdinfo->max_memory_clk / 1000;
    info->num_tcc_blocks = device_info.num_tcc_blocks;
    info->max_se = amdinfo->num_shader_engines;
-   info->max_sh_per_se = amdinfo->num_shader_arrays_per_engine;
+   info->max_sa_per_se = amdinfo->num_shader_arrays_per_engine;
    info->has_hw_decode = (uvd.available_rings != 0) || (vcn_dec.available_rings != 0) ||
                          (vcn_jpeg.available_rings != 0);
    info->uvd_fw_version = uvd.available_rings ? uvd_version : 0;
@@ -657,7 +657,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    /* Get the number of good compute units. */
    info->num_good_compute_units = 0;
    for (i = 0; i < info->max_se; i++) {
-      for (j = 0; j < info->max_sh_per_se; j++) {
+      for (j = 0; j < info->max_sa_per_se; j++) {
          /*
           * The cu bitmap in amd gpu info structure is
           * 4x4 size array, and it's usually suitable for Vega
@@ -680,10 +680,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    unsigned cu_group = info->chip_class >= GFX10 ? 2 : 1;
    info->max_good_cu_per_sa =
-      DIV_ROUND_UP(info->num_good_compute_units, (info->num_se * info->max_sh_per_se * cu_group)) *
+      DIV_ROUND_UP(info->num_good_compute_units, (info->num_se * info->max_sa_per_se * cu_group)) *
       cu_group;
    info->min_good_cu_per_sa =
-      (info->num_good_compute_units / (info->num_se * info->max_sh_per_se * cu_group)) * cu_group;
+      (info->num_good_compute_units / (info->num_se * info->max_sa_per_se * cu_group)) * cu_group;
 
    memcpy(info->si_tile_mode_array, amdinfo->gb_tile_mode, sizeof(amdinfo->gb_tile_mode));
    info->enabled_rb_mask = amdinfo->enabled_rb_pipes_mask;
@@ -973,7 +973,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    min_good_cu_per_sa = %i\n", info->min_good_cu_per_sa);
    fprintf(f, "    max_se = %i\n", info->max_se);
    fprintf(f, "    num_se = %i\n", info->num_se);
-   fprintf(f, "    max_sh_per_se = %i\n", info->max_sh_per_se);
+   fprintf(f, "    max_sa_per_se = %i\n", info->max_sa_per_se);
    fprintf(f, "    max_wave64_per_simd = %i\n", info->max_wave64_per_simd);
    fprintf(f, "    num_physical_sgprs_per_simd = %i\n", info->num_physical_sgprs_per_simd);
    fprintf(f, "    num_physical_wave64_vgprs_per_simd = %i\n",
@@ -1165,7 +1165,7 @@ void ac_get_raster_config(struct radeon_info *info, uint32_t *raster_config_p,
 void ac_get_harvested_configs(struct radeon_info *info, unsigned raster_config,
                               unsigned *cik_raster_config_1_p, unsigned *raster_config_se)
 {
-   unsigned sh_per_se = MAX2(info->max_sh_per_se, 1);
+   unsigned sh_per_se = MAX2(info->max_sa_per_se, 1);
    unsigned num_se = MAX2(info->max_se, 1);
    unsigned rb_mask = info->enabled_rb_mask;
    unsigned num_rb = MIN2(info->max_render_backends, 16);

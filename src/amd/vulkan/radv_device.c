@@ -1879,7 +1879,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->shaderEngineCount =
 				pdevice->rad_info.max_se;
 			properties->shaderArraysPerEngineCount =
-				pdevice->rad_info.max_sh_per_se;
+				pdevice->rad_info.max_sa_per_se;
 			properties->computeUnitsPerShaderArray =
 				pdevice->rad_info.min_good_cu_per_sa;
 			properties->simdPerComputeUnit =

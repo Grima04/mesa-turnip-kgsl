@@ -1344,7 +1344,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		printf("max_shader_clock = %i\n", rscreen->info.max_shader_clock);
 		printf("num_good_compute_units = %i\n", rscreen->info.num_good_compute_units);
 		printf("max_se = %i\n", rscreen->info.max_se);
-		printf("max_sh_per_se = %i\n", rscreen->info.max_sh_per_se);
+		printf("max_sh_per_se = %i\n", rscreen->info.max_sa_per_se);
 
 		printf("r600_gb_backend_map = %i\n", rscreen->info.r600_gb_backend_map);
 		printf("r600_gb_backend_map_valid = %i\n", rscreen->info.r600_gb_backend_map_valid);
