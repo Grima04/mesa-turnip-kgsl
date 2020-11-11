@@ -97,15 +97,19 @@ if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
                        qtbase5-dev:armhf
 fi
 
-############### Build dEQP runner
 
+############### Building
+STRIP_CMD="${GCC_ARCH}-strip"
+mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}
+
+
+############### Build dEQP runner
 . .gitlab-ci/build-deqp-runner.sh
 mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin
 mv /usr/local/bin/deqp-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
 
 
 ############### Build dEQP
-STRIP_CMD="${GCC_ARCH}-strip"
 DEQP_TARGET=surfaceless . .gitlab-ci/build-deqp.sh
 
 mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.

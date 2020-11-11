@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-12-17-fdo-upstream-repo"
+  DISTRIBUTION_TAG: "2020-12-18-lava"
 
 .kernel+rootfs:
   stage: container-2

@@ -408,7 +408,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &arm64_test "2020-12-17-fdo-upstream-repo"
+    MESA_IMAGE_TAG: &arm64_test "2020-12-18-lava"
 
 .use-arm64_test:
   variables:
@@ -422,7 +422,7 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &armhf_test "2020-12-17-fdo-upstream-repo"
+    MESA_IMAGE_TAG: &armhf_test "2020-12-18-lava"
 
 .use-armhf_test:
   variables:
