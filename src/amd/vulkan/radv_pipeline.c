@@ -2073,8 +2073,12 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 						   (max_lds_size - max_gsprims * gsprim_lds_size) /
 						   esvert_lds_size);
 			max_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
+
 			/* Hardware restriction: minimum value of max_esverts */
-			max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+			if (pipeline->device->physical_device->rad_info.chip_class == GFX10)
+				max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+			else
+				max_esverts = MAX2(max_esverts, min_esverts);
 
 			max_gsprims = align(max_gsprims, wavesize);
 			max_gsprims = MIN2(max_gsprims, max_gsprims_base);
@@ -2095,10 +2099,16 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 		} while (orig_max_esverts != max_esverts || orig_max_gsprims != max_gsprims);
 
 		/* Verify the restriction. */
-		assert(max_esverts >= min_esverts - 1 + max_verts_per_prim);
+		if (pipeline->device->physical_device->rad_info.chip_class == GFX10)
+			assert(max_esverts >= min_esverts - 1 + max_verts_per_prim);
+		else
+			assert(max_esverts >= min_esverts);
 	} else {
 		/* Hardware restriction: minimum value of max_esverts */
-		max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+		if (pipeline->device->physical_device->rad_info.chip_class == GFX10)
+			max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+		else
+			max_esverts = MAX2(max_esverts, min_esverts);
 	}
 
 	unsigned max_out_vertices =
@@ -2115,12 +2125,16 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 		prim_amp_factor = gs_info->gs.vertices_out;
 	}
 
-	/* The GE only checks against the maximum number of ES verts after
-	 * allocating a full GS primitive. So we need to ensure that whenever
-	 * this check passes, there is enough space for a full primitive without
-	 * vertex reuse.
+	/* On Gfx10, the GE only checks against the maximum number of ES verts
+	 * after allocating a full GS primitive. So we need to ensure that
+	 * whenever this check passes, there is enough space for a full
+	 * primitive without vertex reuse.
 	 */
-	ngg->hw_max_esverts = max_esverts - max_verts_per_prim + 1;
+	if (pipeline->device->physical_device->rad_info.chip_class == GFX10)
+		ngg->hw_max_esverts = max_esverts - max_verts_per_prim + 1;
+	else
+		ngg->hw_max_esverts = max_esverts;
+
 	ngg->max_gsprims = max_gsprims;
 	ngg->max_out_verts = max_out_vertices;
 	ngg->prim_amp_factor = prim_amp_factor;
