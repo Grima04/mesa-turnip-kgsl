@@ -2073,6 +2073,8 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 						   (max_lds_size - max_gsprims * gsprim_lds_size) /
 						   esvert_lds_size);
 			max_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
+			/* Hardware restriction: minimum value of max_esverts */
+			max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
 
 			max_gsprims = align(max_gsprims, wavesize);
 			max_gsprims = MIN2(max_gsprims, max_gsprims_base);
@@ -2084,10 +2086,13 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 						 min_verts_per_prim, uses_adjacency);
 			assert(max_esverts >= max_verts_per_prim && max_gsprims >= 1);
 		} while (orig_max_esverts != max_esverts || orig_max_gsprims != max_gsprims);
-	}
 
-	/* Hardware restriction: minimum value of max_esverts */
-	max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+		/* Verify the restriction. */
+		assert(max_esverts >= min_esverts - 1 + max_verts_per_prim);
+	} else {
+		/* Hardware restriction: minimum value of max_esverts */
+		max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
+	}
 
 	unsigned max_out_vertices =
 		max_vert_out_per_gs_instance ? gs_info->gs.vertices_out :
