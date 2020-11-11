@@ -93,12 +93,6 @@ dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide,Fail
-dEQP-GLES3.functional.rasterizer_discard.basic.write_depth_points,Fail
-dEQP-GLES3.functional.rasterizer_discard.basic.write_stencil_points,Fail
-dEQP-GLES3.functional.rasterizer_discard.fbo.write_depth_points,Fail
-dEQP-GLES3.functional.rasterizer_discard.fbo.write_stencil_points,Fail
-dEQP-GLES3.functional.rasterizer_discard.scissor.write_depth_points,Fail
-dEQP-GLES3.functional.rasterizer_discard.scissor.write_stencil_points,Fail
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.float_highp,Fail
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.float_mediump,Fail
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.vec2_highp,Fail
@@ -848,7 +842,6 @@ KHR-GL33.transform_feedback.capture_geometry_interleaved_test,Fail
 KHR-GL33.transform_feedback.capture_geometry_separate_test,Fail
 KHR-GL33.transform_feedback.capture_vertex_interleaved_test,Fail
 KHR-GL33.transform_feedback.capture_vertex_separate_test,Fail
-KHR-GL33.transform_feedback.discard_geometry_test,Fail
 KHR-GL33.transform_feedback.discard_vertex_test,Fail
 KHR-GL33.transform_feedback.draw_xfb_instanced_test,Crash
 KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test,Crash
