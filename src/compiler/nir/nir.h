@@ -2615,6 +2615,18 @@ typedef struct {
    nir_dest dest;
 } nir_phi_instr;
 
+static inline nir_phi_src *
+nir_phi_get_src_from_block(nir_phi_instr *phi, struct nir_block *block)
+{
+   nir_foreach_phi_src(src, phi) {
+      if (src->pred == block)
+         return src;
+   }
+
+   assert(!"Block is not a predecessor of phi.");
+   return NULL;
+}
+
 typedef struct {
    struct exec_node node;
    nir_src src;
