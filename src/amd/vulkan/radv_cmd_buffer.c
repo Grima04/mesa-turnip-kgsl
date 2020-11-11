@@ -440,7 +440,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 
 	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9 &&
 	    cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL) {
-		unsigned num_db = cmd_buffer->device->physical_device->rad_info.num_render_backends;
+		unsigned num_db = cmd_buffer->device->physical_device->rad_info.max_render_backends;
 		unsigned fence_offset, eop_bug_offset;
 		void *fence_ptr;
 

@@ -3715,7 +3715,7 @@ radv_gfx9_compute_bin_size(const struct radv_pipeline *pipeline, const VkGraphic
 	VkExtent2D extent = {512, 512};
 
 	unsigned log_num_rb_per_se =
-	    util_logbase2_ceil(pipeline->device->physical_device->rad_info.num_render_backends /
+	    util_logbase2_ceil(pipeline->device->physical_device->rad_info.max_render_backends /
 	                       pipeline->device->physical_device->rad_info.max_se);
 	unsigned log_num_se = util_logbase2_ceil(pipeline->device->physical_device->rad_info.max_se);
 
@@ -3783,7 +3783,7 @@ radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline, const VkGraphi
 	const unsigned fmask_tag_size = 256;
 	const unsigned fmask_tag_count = 44;
 
-	const unsigned rb_count = pipeline->device->physical_device->rad_info.num_render_backends;
+	const unsigned rb_count = pipeline->device->physical_device->rad_info.max_render_backends;
 	const unsigned pipe_count = MAX2(rb_count, pipeline->device->physical_device->rad_info.num_sdp_interfaces);
 
 	const unsigned db_tag_part = (db_tag_count * rb_count / pipe_count) * db_tag_size * pipe_count;
@@ -3910,7 +3910,7 @@ radv_get_binning_settings(const struct radv_physical_device *pdev)
 {
 	struct radv_binning_settings settings;
 	if (pdev->rad_info.has_dedicated_vram) {
-		if (pdev->rad_info.num_render_backends > 4) {
+		if (pdev->rad_info.max_render_backends > 4) {
 			settings.context_states_per_bin = 1;
 			settings.persistent_states_per_bin = 1;
 		} else {

@@ -44,7 +44,7 @@ static struct uvec2 si_find_bin_size(struct si_screen *sscreen, const si_bin_siz
                                      unsigned sum)
 {
    unsigned log_num_rb_per_se =
-      util_logbase2_ceil(sscreen->info.num_render_backends / sscreen->info.max_se);
+      util_logbase2_ceil(sscreen->info.max_render_backends / sscreen->info.max_se);
    unsigned log_num_se = util_logbase2_ceil(sscreen->info.max_se);
    unsigned i;
 
@@ -309,7 +309,7 @@ static void gfx10_get_bin_sizes(struct si_context *sctx, unsigned cb_target_enab
    const unsigned FcTagSize = 256;
    const unsigned FcReadTags = 44;
 
-   const unsigned num_rbs = sctx->screen->info.num_render_backends;
+   const unsigned num_rbs = sctx->screen->info.max_render_backends;
    const unsigned num_pipes = MAX2(num_rbs, sctx->screen->info.num_sdp_interfaces);
 
    const unsigned depthBinSizeTagPart =
@@ -470,7 +470,7 @@ void si_emit_dpbb_state(struct si_context *sctx)
                                     G_02880C_DEPTH_BEFORE_SHADER(db_shader_control);
 
    /* Disable DPBB when it's believed to be inefficient. */
-   if (sscreen->info.num_render_backends > 4 && ps_can_kill && db_can_reject_z_trivially &&
+   if (sscreen->info.max_render_backends > 4 && ps_can_kill && db_can_reject_z_trivially &&
        sctx->framebuffer.state.zsbuf && dsa->db_can_write) {
       si_emit_dpbb_disable(sctx);
       return;

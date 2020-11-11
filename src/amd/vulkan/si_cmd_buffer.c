@@ -154,7 +154,7 @@ static void
 si_set_raster_config(struct radv_physical_device *physical_device,
 		     struct radeon_cmdbuf *cs)
 {
-	unsigned num_rb = MIN2(physical_device->rad_info.num_render_backends, 16);
+	unsigned num_rb = MIN2(physical_device->rad_info.max_render_backends, 16);
 	unsigned rb_mask = physical_device->rad_info.enabled_rb_mask;
 	unsigned raster_config, raster_config_1;
 
@@ -426,7 +426,7 @@ si_emit_graphics(struct radv_device *device,
 		unsigned meta_write_policy, meta_read_policy;
 
 		/* TODO: investigate whether LRU improves performance on other chips too */
-		if (physical_device->rad_info.num_render_backends <= 4) {
+		if (physical_device->rad_info.max_render_backends <= 4) {
 			meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
 			meta_read_policy =  V_02807C_CACHE_LRU_RD; /* cache reads */
 		} else {

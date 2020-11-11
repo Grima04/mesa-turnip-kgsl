@@ -477,11 +477,11 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    if (sctx->chip_class == GFX7 || sctx->chip_class == GFX8 || sctx->chip_class == GFX9) {
       sctx->eop_bug_scratch = si_aligned_buffer_create(
          &sscreen->b, SI_RESOURCE_FLAG_DRIVER_INTERNAL,
-         PIPE_USAGE_DEFAULT, 16 * sscreen->info.num_render_backends, 256);
+         PIPE_USAGE_DEFAULT, 16 * sscreen->info.max_render_backends, 256);
       if (sctx->screen->info.has_tmz_support)
          sctx->eop_bug_scratch_tmz = si_aligned_buffer_create(
             &sscreen->b, PIPE_RESOURCE_FLAG_ENCRYPTED | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
-            PIPE_USAGE_DEFAULT, 16 * sscreen->info.num_render_backends, 256);
+            PIPE_USAGE_DEFAULT, 16 * sscreen->info.max_render_backends, 256);
       if (!sctx->eop_bug_scratch)
          goto fail;
    }
@@ -1235,7 +1235,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    if (sscreen->dpbb_allowed) {
       if (sscreen->info.has_dedicated_vram) {
-         if (sscreen->info.num_render_backends > 4) {
+         if (sscreen->info.max_render_backends > 4) {
             sscreen->pbb_context_states_per_bin = 1;
             sscreen->pbb_persistent_states_per_bin = 1;
          } else {

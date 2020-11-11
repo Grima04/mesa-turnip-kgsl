@@ -90,7 +90,7 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs, unsigne
          struct si_resource *scratch = unlikely(ctx->ws->cs_is_secure(ctx->gfx_cs)) ?
             ctx->eop_bug_scratch_tmz : ctx->eop_bug_scratch;
 
-         assert(16 * ctx->screen->info.num_render_backends <= scratch->b.b.width0);
+         assert(16 * ctx->screen->info.max_render_backends <= scratch->b.b.width0);
          radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
          radeon_emit(cs, EVENT_TYPE(EVENT_TYPE_ZPASS_DONE) | EVENT_INDEX(1));
          radeon_emit(cs, scratch->gpu_address);

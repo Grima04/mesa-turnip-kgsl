@@ -404,7 +404,7 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
 
       if (!radeon_get_drm_value(ws->fd, RADEON_INFO_NUM_BACKENDS,
                                 "num backends",
-                                &ws->info.num_render_backends))
+                                &ws->info.max_render_backends))
          return false;
 
       /* get the GPU counter frequency, failure is not fatal */
@@ -444,7 +444,7 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
          ws->info.r600_gb_backend_map_valid = true;
 
       /* Default value. */
-      ws->info.enabled_rb_mask = u_bit_consecutive(0, ws->info.num_render_backends);
+      ws->info.enabled_rb_mask = u_bit_consecutive(0, ws->info.max_render_backends);
       /*
        * This fails (silently) on non-GCN or older kernels, overwriting the
        * default enabled_rb_mask with the result of the last query.

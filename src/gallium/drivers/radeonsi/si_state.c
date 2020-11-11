@@ -2152,7 +2152,7 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
       /* Chips with 1 RB don't increment occlusion queries at 16x MSAA sample rate,
        * so don't expose 16 samples there.
        */
-      const unsigned max_eqaa_samples = sscreen->info.num_render_backends == 1 ? 8 : 16;
+      const unsigned max_eqaa_samples = sscreen->info.max_render_backends == 1 ? 8 : 16;
       const unsigned max_samples = 8;
 
       /* MSAA support without framebuffer attachments. */
@@ -5067,7 +5067,7 @@ static void si_write_harvested_raster_configs(struct si_context *sctx, struct si
 static void si_set_raster_config(struct si_context *sctx, struct si_pm4_state *pm4)
 {
    struct si_screen *sscreen = sctx->screen;
-   unsigned num_rb = MIN2(sscreen->info.num_render_backends, 16);
+   unsigned num_rb = MIN2(sscreen->info.max_render_backends, 16);
    unsigned rb_mask = sscreen->info.enabled_rb_mask;
    unsigned raster_config = sscreen->pa_sc_raster_config;
    unsigned raster_config_1 = sscreen->pa_sc_raster_config_1;
@@ -5326,7 +5326,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
       /* Enable CMASK/FMASK/HTILE/DCC caching in L2 for small chips. */
       unsigned meta_write_policy, meta_read_policy;
-      if (sscreen->info.num_render_backends <= 4) {
+      if (sscreen->info.max_render_backends <= 4) {
          meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
          meta_read_policy = V_02807C_CACHE_LRU_RD;  /* cache reads */
       } else {

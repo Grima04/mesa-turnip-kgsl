@@ -529,7 +529,7 @@ static bool si_query_sw_get_result(struct si_context *sctx, struct si_query *squ
       result->u32 = sctx->screen->info.num_good_compute_units;
       return true;
    case SI_QUERY_GPIN_NUM_RB:
-      result->u32 = sctx->screen->info.num_render_backends;
+      result->u32 = sctx->screen->info.max_render_backends;
       return true;
    case SI_QUERY_GPIN_NUM_SPI:
       result->u32 = 1; /* all supported chips have one SPI per SE */
@@ -678,7 +678,7 @@ static bool si_query_hw_prepare_buffer(struct si_context *sctx, struct si_query_
    if (query->b.type == PIPE_QUERY_OCCLUSION_COUNTER ||
        query->b.type == PIPE_QUERY_OCCLUSION_PREDICATE ||
        query->b.type == PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE) {
-      unsigned max_rbs = screen->info.num_render_backends;
+      unsigned max_rbs = screen->info.max_render_backends;
       unsigned enabled_rb_mask = screen->info.enabled_rb_mask;
       unsigned num_results;
       unsigned i, j;
@@ -735,7 +735,7 @@ static struct pipe_query *si_query_hw_create(struct si_screen *sscreen, unsigned
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-      query->result_size = 16 * sscreen->info.num_render_backends;
+      query->result_size = 16 * sscreen->info.max_render_backends;
       query->result_size += 16; /* for the fence + alignment */
       query->b.num_cs_dw_suspend = 6 + si_cp_write_fence_dwords(sscreen);
       break;
@@ -912,7 +912,7 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
 
-      fence_va = va + sctx->screen->info.num_render_backends * 16 - 8;
+      fence_va = va + sctx->screen->info.max_render_backends * 16 - 8;
       break;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
@@ -1180,7 +1180,7 @@ bool si_query_hw_end(struct si_context *sctx, struct si_query *squery)
 static void si_get_hw_query_params(struct si_context *sctx, struct si_query_hw *squery, int index,
                                    struct si_hw_query_params *params)
 {
-   unsigned max_rbs = sctx->screen->info.num_render_backends;
+   unsigned max_rbs = sctx->screen->info.max_render_backends;
 
    params->pair_stride = 0;
    params->pair_count = 1;
@@ -1264,7 +1264,7 @@ static unsigned si_query_read_result(void *map, unsigned start_index, unsigned e
 static void si_query_hw_add_result(struct si_screen *sscreen, struct si_query_hw *query,
                                    void *buffer, union pipe_query_result *result)
 {
-   unsigned max_rbs = sscreen->info.num_render_backends;
+   unsigned max_rbs = sscreen->info.max_render_backends;
 
    switch (query->b.type) {
    case PIPE_QUERY_OCCLUSION_COUNTER: {

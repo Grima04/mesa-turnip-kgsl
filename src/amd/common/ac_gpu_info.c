@@ -537,14 +537,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 	info->has_tmz_support = has_tmz_support(dev, info, amdinfo);
 
    info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
-   info->num_render_backends = amdinfo->rb_pipes;
+   info->max_render_backends = amdinfo->rb_pipes;
    /* The value returned by the kernel driver was wrong. */
    if (info->family == CHIP_KAVERI)
-      info->num_render_backends = 2;
+      info->max_render_backends = 2;
 
    /* Guess the number of enabled SEs because the kernel doesn't tell us. */
    if (info->chip_class >= GFX10_3 && info->max_se > 1) {
-      unsigned num_rbs_per_se = info->num_render_backends / info->max_se;
+      unsigned num_rbs_per_se = info->max_render_backends / info->max_se;
       info->num_se = util_bitcount(amdinfo->enabled_rb_pipes_mask) / num_rbs_per_se;
    } else {
       info->num_se = info->max_se;
@@ -730,7 +730,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
                                   info->family == CHIP_RENOIR)) ||
        (info->drm_minor >= 34 && (info->family == CHIP_NAVI12 || info->family == CHIP_NAVI14)) ||
        info->chip_class >= GFX10_3) {
-      if (info->num_render_backends == 1)
+      if (info->max_render_backends == 1)
          info->use_display_dcc_unaligned = true;
       else
          info->use_display_dcc_with_retile_blit = true;
@@ -796,7 +796,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->min_sgpr_alloc = 128;
       info->sgpr_alloc_granularity = 128;
       /* Don't use late alloc on small chips. */
-      info->use_late_alloc = info->num_render_backends > 4;
+      info->use_late_alloc = info->max_render_backends > 4;
    } else if (info->chip_class >= GFX8) {
       info->num_physical_sgprs_per_simd = 800;
       info->min_sgpr_alloc = 16;
@@ -988,7 +988,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
 
    fprintf(f, "Render backend info:\n");
    fprintf(f, "    pa_sc_tile_steering_override = 0x%x\n", info->pa_sc_tile_steering_override);
-   fprintf(f, "    num_render_backends = %i\n", info->num_render_backends);
+   fprintf(f, "    max_render_backends = %i\n", info->max_render_backends);
    fprintf(f, "    num_tile_pipes = %i\n", info->num_tile_pipes);
    fprintf(f, "    pipe_interleave_bytes = %i\n", info->pipe_interleave_bytes);
    fprintf(f, "    enabled_rb_mask = 0x%x\n", info->enabled_rb_mask);
@@ -1168,7 +1168,7 @@ void ac_get_harvested_configs(struct radeon_info *info, unsigned raster_config,
    unsigned sh_per_se = MAX2(info->max_sh_per_se, 1);
    unsigned num_se = MAX2(info->max_se, 1);
    unsigned rb_mask = info->enabled_rb_mask;
-   unsigned num_rb = MIN2(info->num_render_backends, 16);
+   unsigned num_rb = MIN2(info->max_render_backends, 16);
    unsigned rb_per_pkr = MIN2(num_rb / num_se / sh_per_se, 2);
    unsigned rb_per_se = num_rb / num_se;
    unsigned se_mask[4];

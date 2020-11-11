@@ -521,7 +521,7 @@ int main()
 
       testcases[i].init(&info);
 
-      info.num_render_backends = 1u << (testcases[i].se +
+      info.max_render_backends = 1u << (testcases[i].se +
                                         testcases[i].rb_per_se);
       switch(info.chip_class) {
       case GFX10:

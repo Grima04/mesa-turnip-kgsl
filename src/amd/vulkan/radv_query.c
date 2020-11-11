@@ -164,7 +164,7 @@ build_occlusion_query_shader(struct radv_device *device) {
 	nir_variable *end = nir_local_variable_create(b.impl, glsl_uint64_t_type(), "end");
 	nir_variable *available = nir_local_variable_create(b.impl, glsl_bool_type(), "available");
 	unsigned enabled_rb_mask = device->physical_device->rad_info.enabled_rb_mask;
-	unsigned db_count = device->physical_device->rad_info.num_render_backends;
+	unsigned db_count = device->physical_device->rad_info.max_render_backends;
 
 	nir_ssa_def *flags = radv_load_push_int(&b, 0, "flags");
 
@@ -1160,7 +1160,7 @@ VkResult radv_CreateQueryPool(
 
 	switch(pCreateInfo->queryType) {
 	case VK_QUERY_TYPE_OCCLUSION:
-		pool->stride = 16 * device->physical_device->rad_info.num_render_backends;
+		pool->stride = 16 * device->physical_device->rad_info.max_render_backends;
 		break;
 	case VK_QUERY_TYPE_PIPELINE_STATISTICS:
 		pool->stride = pipelinestat_block_size * 2;
@@ -1266,7 +1266,7 @@ VkResult radv_GetQueryPoolResults(
 		}
 		case VK_QUERY_TYPE_OCCLUSION: {
 			uint64_t const *src64 = (uint64_t const *)src;
-			uint32_t db_count = device->physical_device->rad_info.num_render_backends;
+			uint32_t db_count = device->physical_device->rad_info.max_render_backends;
 			uint32_t enabled_rb_mask = device->physical_device->rad_info.enabled_rb_mask;
 			uint64_t sample_count = 0;
 			available = 1;

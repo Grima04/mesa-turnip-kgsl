@@ -464,7 +464,7 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
               AMD_FMT_MOD_SET(PIPE, pipes))
 
       if (util_format_get_blocksize(format) == 4) {
-         if (info->num_render_backends == 1) {
+         if (info->max_render_backends == 1) {
             ADD_MOD(AMD_FMT_MOD |
                     AMD_FMT_MOD_SET(TILE, AMD_FMT_MOD_TILE_GFX9_64K_S_X) |
                     AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX9) |
@@ -526,7 +526,7 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
       if (info->family == CHIP_NAVI12 || info->family == CHIP_NAVI14 || info->chip_class >= GFX10_3) {
          bool independent_128b = info->chip_class >= GFX10_3;
 
-         if (info->num_render_backends == 1) {
+         if (info->max_render_backends == 1) {
             ADD_MOD(AMD_FMT_MOD | common_dcc |
                     AMD_FMT_MOD_SET(DCC_PIPE_ALIGN, 1) |
                     AMD_FMT_MOD_SET(DCC_INDEPENDENT_64B, 1) |

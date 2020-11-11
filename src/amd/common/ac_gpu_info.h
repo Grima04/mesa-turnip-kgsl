@@ -189,7 +189,7 @@ struct radeon_info {
    uint32_t r600_num_banks;
    uint32_t gb_addr_config;
    uint32_t pa_sc_tile_steering_override; /* CLEAR_STATE also sets this */
-   uint32_t num_render_backends;
+   uint32_t max_render_backends;  /* number of render backends incl. disabled ones */
    uint32_t num_tile_pipes; /* pipe count from PIPE_CONFIG */
    uint32_t pipe_interleave_bytes;
    uint32_t enabled_rb_mask; /* GCN harvest config */
