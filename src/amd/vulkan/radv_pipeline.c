@@ -2078,10 +2078,17 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 
 			max_gsprims = align(max_gsprims, wavesize);
 			max_gsprims = MIN2(max_gsprims, max_gsprims_base);
-			if (gsprim_lds_size)
-				max_gsprims = MIN2(max_gsprims,
-						   (max_lds_size - max_esverts * esvert_lds_size) /
-						   gsprim_lds_size);
+			if (gsprim_lds_size) {
+				/* Don't count unusable vertices to the LDS
+				 * size. Those are vertices above the maximum
+				 * number of vertices that can occur in the
+				 * workgroup, which is e.g. max_gsprims * 3
+				 * for triangles.
+				 */
+				unsigned usable_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
+				max_gsprims =
+					MIN2(max_gsprims, (max_lds_size - usable_esverts * esvert_lds_size) / gsprim_lds_size);
+			}
 			clamp_gsprims_to_esverts(&max_gsprims, max_esverts,
 						 min_verts_per_prim, uses_adjacency);
 			assert(max_esverts >= max_verts_per_prim && max_gsprims >= 1);
@@ -2119,7 +2126,10 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 	ngg->prim_amp_factor = prim_amp_factor;
 	ngg->max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
 	ngg->ngg_emit_size = max_gsprims * gsprim_lds_size;
-	ngg->esgs_ring_size = 4 * max_esverts * esvert_lds_size;
+
+	/* Don't count unusable vertices. */
+	ngg->esgs_ring_size =
+		MIN2(max_esverts, max_gsprims * max_verts_per_prim) * esvert_lds_size * 4;
 
 	if (gs_type == MESA_SHADER_GEOMETRY) {
 		ngg->vgt_esgs_ring_itemsize = es_info->esgs_itemsize / 4;
