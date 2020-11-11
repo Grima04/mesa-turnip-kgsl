@@ -685,16 +685,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
 
    res->aux.usage = util_last_bit(res->aux.possible_usages) - 1;
 
-   res->aux.sampler_usages = res->aux.possible_usages;
-
-   /* We don't always support sampling with hiz. But when we do, it must be
-    * single sampled.
-    */
-   if (!devinfo->has_sample_with_hiz || res->surf.samples > 1)
-      res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ);
-
-   /* ISL_AUX_USAGE_HIZ_CCS doesn't support sampling at all */
-   res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ_CCS);
+   if (!has_hiz || iris_sample_with_depth_aux(devinfo, res))
+      res->aux.sampler_usages = res->aux.possible_usages;
 
    enum isl_aux_state initial_state;
    assert(!res->aux.bo);
