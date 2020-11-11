@@ -151,7 +151,7 @@ static void print_constant(uint8_t reg, FILE *output)
    }
 }
 
-static void print_operand(const Operand *operand, FILE *output)
+void aco_print_operand(const Operand *operand, FILE *output)
 {
    if (operand->isLiteral() || (operand->isConstant() && operand->bytes() == 1)) {
       if (operand->bytes() == 1)
@@ -730,7 +730,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
             fprintf(output, "hi(");
          else if (sel[i] & sdwa_sext)
             fprintf(output, "sext(");
-         print_operand(&instr->operands[i], output);
+         aco_print_operand(&instr->operands[i], output);
          if (opsel[i] || (sel[i] & sdwa_sext))
             fprintf(output, ")");
          if (!(sel[i] & sdwa_isra)) {

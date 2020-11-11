@@ -265,39 +265,119 @@ BEGIN_TEST(optimize.bcnt)
    }
 END_TEST
 
+struct clamp_config {
+   const char *name;
+   aco_opcode min, max, med3;
+   Operand lb, ub;
+};
+
+static const clamp_config clamp_configs[] = {
+   /* 0.0, 4.0 */
+   {"_0,4f32", aco_opcode::v_min_f32, aco_opcode::v_max_f32, aco_opcode::v_med3_f32,
+    Operand(0u), Operand(0x40800000u)},
+   {"_0,4f16", aco_opcode::v_min_f16, aco_opcode::v_max_f16, aco_opcode::v_med3_f16,
+    Operand((uint16_t)0u), Operand((uint16_t)0x4400)},
+   /* -1.0, 0.0 */
+   {"_-1,0f32", aco_opcode::v_min_f32, aco_opcode::v_max_f32, aco_opcode::v_med3_f32,
+    Operand(0xbf800000u), Operand(0u)},
+   {"_-1,0f16", aco_opcode::v_min_f16, aco_opcode::v_max_f16, aco_opcode::v_med3_f16,
+    Operand((uint16_t)0xBC00), Operand((uint16_t)0u)},
+   /* 0, 3 */
+   {"_0,3u32", aco_opcode::v_min_u32, aco_opcode::v_max_u32, aco_opcode::v_med3_u32,
+    Operand(0u), Operand(3u)},
+   {"_0,3u16", aco_opcode::v_min_u16, aco_opcode::v_max_u16, aco_opcode::v_med3_u16,
+    Operand((uint16_t)0u), Operand((uint16_t)3u)},
+   {"_0,3i32", aco_opcode::v_min_i32, aco_opcode::v_max_i32, aco_opcode::v_med3_i32,
+    Operand(0u), Operand(3u)},
+   {"_0,3i16", aco_opcode::v_min_i16, aco_opcode::v_max_i16, aco_opcode::v_med3_i16,
+    Operand((uint16_t)0u), Operand((uint16_t)3u)},
+   /* -5, 0 */
+   {"_-5,0i32", aco_opcode::v_min_i32, aco_opcode::v_max_i32, aco_opcode::v_med3_i32,
+    Operand(0xfffffffbu), Operand(0u)},
+   {"_-5,0i16", aco_opcode::v_min_i16, aco_opcode::v_max_i16, aco_opcode::v_med3_i16,
+    Operand((uint16_t)0xfffbu), Operand((uint16_t)0u)},
+};
+
 BEGIN_TEST(optimize.clamp)
-   //>> v1: %a, v1: %b, v1: %c, s2: %_:exec = p_startpgm
-   if (!setup_cs("v1 v1 v1", GFX9))
-      return;
+   for (clamp_config cfg : clamp_configs) {
+      subvariant = cfg.name;
 
-   //! v1: %res0 = v_med3_f32 4.0, 0, %a
-   //! p_unit_test 0, %res0
-   writeout(0, bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0x40800000u),
-                        bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), inputs[0])));
+      if (!setup_cs("v1 v1 v1", GFX9))
+         continue;
 
-   //! v1: %res1 = v_med3_f32 0, 4.0, %a
-   //! p_unit_test 1, %res1
-   writeout(1, bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u),
-                        bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0x40800000u), inputs[0])));
+      //! cfg: @match_func(min max med3 lb ub)
+      fprintf(output, "cfg: %s ", instr_info.name[(int)cfg.min]);
+      fprintf(output, "%s ", instr_info.name[(int)cfg.max]);
+      fprintf(output, "%s ", instr_info.name[(int)cfg.med3]);
+      aco_print_operand(&cfg.lb, output);
+      fprintf(output, " ");
+      aco_print_operand(&cfg.ub, output);
+      fprintf(output, "\n");
 
-   /* correct NaN behaviour with precise */
+      //>> v1: %a, v1: %b, v1: %c, s2: %_:exec = p_startpgm
 
-   //! v1: %res2 = v_med3_f32 4.0, 0, %a
-   //! p_unit_test 2, %res2
-   Builder::Result max = bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), inputs[0]);
-   max.def(0).setPrecise(true);
-   Builder::Result min = bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0x40800000u), max);
-   max.def(0).setPrecise(true);
-   writeout(2, min);
+      //! v1: %res0 = @med3 @ub, @lb, %a
+      //! p_unit_test 0, %res0
+      writeout(0, bld.vop2(cfg.min, bld.def(v1), cfg.ub,
+                           bld.vop2(cfg.max, bld.def(v1), cfg.lb, inputs[0])));
 
-   //! v1: (precise)%res3_tmp = v_min_f32 4.0, %a
-   //! v1: %res3 = v_max_f32 0, %res3_tmp
-   //! p_unit_test 3, %res3
-   min = bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0x40800000u), inputs[0]);
-   min.def(0).setPrecise(true);
-   writeout(3, bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), min));
+      //! v1: %res1 = @med3 @lb, @ub, %a
+      //! p_unit_test 1, %res1
+      writeout(1, bld.vop2(cfg.max, bld.def(v1), cfg.lb,
+                           bld.vop2(cfg.min, bld.def(v1), cfg.ub, inputs[0])));
 
-   finish_opt_test();
+      /* min constant must be greater than max constant */
+      //! v1: %res2_tmp = @min @lb, %a
+      //! v1: %res2 = @max @ub, %res2_tmp
+      //! p_unit_test 2, %res2
+      writeout(2, bld.vop2(cfg.max, bld.def(v1), cfg.ub,
+                           bld.vop2(cfg.min, bld.def(v1), cfg.lb, inputs[0])));
+
+      //! v1: %res3_tmp = @max @ub, %a
+      //! v1: %res3 = @min @lb, %res3_tmp
+      //! p_unit_test 3, %res3
+      writeout(3, bld.vop2(cfg.min, bld.def(v1), cfg.lb,
+                           bld.vop2(cfg.max, bld.def(v1), cfg.ub, inputs[0])));
+
+      /* needs two constants */
+
+      //! v1: %res4_tmp = @max @lb, %a
+      //! v1: %res4 = @min %b, %res4_tmp
+      //! p_unit_test 4, %res4
+      writeout(4, bld.vop2(cfg.min, bld.def(v1), inputs[1],
+                           bld.vop2(cfg.max, bld.def(v1), cfg.lb, inputs[0])));
+
+      //! v1: %res5_tmp = @max %b, %a
+      //! v1: %res5 = @min @ub, %res5_tmp
+      //! p_unit_test 5, %res5
+      writeout(5, bld.vop2(cfg.min, bld.def(v1), cfg.ub,
+                           bld.vop2(cfg.max, bld.def(v1), inputs[1], inputs[0])));
+
+      //! v1: %res6_tmp = @max %c, %a
+      //! v1: %res6 = @min %b, %res6_tmp
+      //! p_unit_test 6, %res6
+      writeout(6, bld.vop2(cfg.min, bld.def(v1), inputs[1],
+                           bld.vop2(cfg.max, bld.def(v1), inputs[2], inputs[0])));
+
+      /* correct NaN behaviour with precise */
+
+      //! v1: %res7 = @med3 @ub, @lb, %a
+      //! p_unit_test 7, %res7
+      Builder::Result max = bld.vop2(cfg.max, bld.def(v1), cfg.lb, inputs[0]);
+      max.def(0).setPrecise(true);
+      Builder::Result min = bld.vop2(cfg.min, bld.def(v1), cfg.ub, max);
+      max.def(0).setPrecise(true);
+      writeout(7, min);
+
+      //! v1: (precise)%res8_tmp = @min @ub, %a
+      //! v1: %res8 = @max @lb, %res8_tmp
+      //! p_unit_test 8, %res8
+      min = bld.vop2(cfg.min, bld.def(v1), cfg.ub, inputs[0]);
+      min.def(0).setPrecise(true);
+      writeout(8, bld.vop2(cfg.max, bld.def(v1), cfg.lb, min));
+
+      finish_opt_test();
+   }
 END_TEST
 
 BEGIN_TEST(optimize.const_comparison_ordering)
