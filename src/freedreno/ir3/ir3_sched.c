@@ -99,6 +99,14 @@ struct ir3_sched_ctx {
 
 	int sfu_delay;
 	int tex_delay;
+
+	/* We order the scheduled tex/SFU instructions, and keep track of the
+	 * index of the last waited on instruction, so we can know which
+	 * instructions are still outstanding (and therefore would require us to
+	 * wait for all outstanding instructions before scheduling a use).
+	 */
+	int tex_index, first_outstanding_tex_index;
+	int sfu_index, first_outstanding_sfu_index;
 };
 
 struct ir3_sched_node {
@@ -107,6 +115,9 @@ struct ir3_sched_node {
 
 	unsigned delay;
 	unsigned max_delay;
+
+	unsigned tex_index;
+	unsigned sfu_index;
 
 	/* For instructions that are a meta:collect src, once we schedule
 	 * the first src of the collect, the entire vecN is live (at least
@@ -151,6 +162,50 @@ static void sched_node_add_dep(struct ir3_instruction *instr, struct ir3_instruc
 static bool is_scheduled(struct ir3_instruction *instr)
 {
 	return !!(instr->flags & IR3_INSTR_MARK);
+}
+
+/* check_src_cond() passing a ir3_sched_ctx. */
+static bool
+sched_check_src_cond(struct ir3_instruction *instr,
+					 bool (*cond)(struct ir3_instruction *, struct ir3_sched_ctx *),
+					 struct ir3_sched_ctx *ctx)
+{
+	foreach_ssa_src (src, instr) {
+		/* meta:split/collect aren't real instructions, the thing that
+		 * we actually care about is *their* srcs
+		 */
+		if ((src->opc == OPC_META_SPLIT) || (src->opc == OPC_META_COLLECT)) {
+			if (sched_check_src_cond(src, cond, ctx))
+				return true;
+		} else {
+			if (cond(src, ctx))
+				return true;
+		}
+	}
+
+	return false;
+}
+
+/* Is this a prefetch or tex that hasn't been waited on yet? */
+
+static bool
+is_outstanding_tex_or_prefetch(struct ir3_instruction *instr, struct ir3_sched_ctx *ctx)
+{
+	if (!is_tex_or_prefetch(instr))
+		return false;
+
+	struct ir3_sched_node *n = instr->data;
+	return n->tex_index >= ctx->first_outstanding_tex_index;
+}
+
+static bool
+is_outstanding_sfu(struct ir3_instruction *instr, struct ir3_sched_ctx *ctx)
+{
+	if (!is_sfu(instr))
+		return false;
+
+	struct ir3_sched_node *n = instr->data;
+	return n->sfu_index >= ctx->first_outstanding_sfu_index;
 }
 
 static void
@@ -210,8 +265,10 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 
 	if (is_sfu(instr)) {
 		ctx->sfu_delay = 8;
-	} else if (check_src_cond(instr, is_sfu)) {
+		n->sfu_index = ctx->sfu_index++;
+	} else if (sched_check_src_cond(instr, is_outstanding_sfu, ctx)) {
 		ctx->sfu_delay = 0;
+		ctx->first_outstanding_sfu_index = ctx->sfu_index;
 	} else if (ctx->sfu_delay > 0) {
 		ctx->sfu_delay--;
 	}
@@ -225,8 +282,10 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 		ctx->tex_delay = 10;
 		assert(ctx->remaining_tex > 0);
 		ctx->remaining_tex--;
-	} else if (check_src_cond(instr, is_tex_or_prefetch)) {
+		n->tex_index = ctx->tex_index++;
+	} else if (sched_check_src_cond(instr, is_outstanding_tex_or_prefetch, ctx)) {
 		ctx->tex_delay = 0;
+		ctx->first_outstanding_tex_index = ctx->tex_index;
 	} else if (ctx->tex_delay > 0) {
 		ctx->tex_delay--;
 	}
@@ -443,7 +502,7 @@ static bool
 would_sync(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 {
 	if (ctx->sfu_delay) {
-		if (check_src_cond(instr, is_sfu))
+		if (sched_check_src_cond(instr, is_outstanding_sfu, ctx))
 			return true;
 	}
 
@@ -453,7 +512,7 @@ would_sync(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	 * fetches
 	 */
 	if (ctx->tex_delay && ctx->remaining_tex) {
-		if (check_src_cond(instr, is_tex_or_prefetch))
+		if (sched_check_src_cond(instr, is_outstanding_tex_or_prefetch, ctx))
 			return true;
 	}
 
@@ -986,6 +1045,8 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	ctx->pred = NULL;
 	ctx->tex_delay = 0;
 	ctx->sfu_delay = 0;
+	ctx->tex_index = ctx->first_outstanding_tex_index = 0;
+	ctx->sfu_index = ctx->first_outstanding_sfu_index = 0;
 
 	/* move all instructions to the unscheduled list, and
 	 * empty the block's instruction list (to which we will
