@@ -114,10 +114,11 @@ enum Label {
    label_scc_needed = 1 << 26,
    label_b2i = 1 << 27,
    label_constant_16bit = 1 << 29,
+   label_usedef = 1 << 30, /* generic label */
 };
 
 static constexpr uint64_t instr_usedef_labels = label_vec | label_mul | label_mad | label_add_sub |
-                                                label_bitwise | label_uniform_bitwise | label_minmax | label_vopc;
+                                                label_bitwise | label_uniform_bitwise | label_minmax | label_vopc | label_usedef;
 static constexpr uint64_t instr_mod_labels = label_omod2 | label_omod4 | label_omod5 | label_clamp;
 
 static constexpr uint64_t instr_labels = instr_usedef_labels | instr_mod_labels;
@@ -506,6 +507,16 @@ struct ssa_info {
       return label & label_b2i;
    }
 
+   void set_usedef(Instruction *label_instr)
+   {
+      add_label(label_usedef);
+      instr = label_instr;
+   }
+
+   bool is_usedef()
+   {
+      return label & label_usedef;
+   }
 };
 
 struct opt_ctx {
