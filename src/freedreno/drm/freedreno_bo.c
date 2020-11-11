@@ -61,6 +61,8 @@ static struct fd_bo * bo_from_handle(struct fd_device *dev,
 {
 	struct fd_bo *bo;
 
+	simple_mtx_assert_locked(&table_lock);
+
 	bo = dev->funcs->bo_from_handle(dev, size, handle);
 	if (!bo) {
 		struct drm_gem_close req = {
@@ -271,6 +273,8 @@ out:
 void bo_del(struct fd_bo *bo)
 {
 	VG_BO_FREE(bo);
+
+	simple_mtx_assert_locked(&table_lock);
 
 	if (bo->map)
 		os_munmap(bo->map, bo->size);

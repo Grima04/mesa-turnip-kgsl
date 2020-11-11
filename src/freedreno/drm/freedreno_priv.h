@@ -51,6 +51,8 @@
 #include "freedreno_drmif.h"
 #include "freedreno_ringbuffer.h"
 
+extern simple_mtx_t table_lock;
+
 struct fd_device_funcs {
 	int (*bo_new_handle)(struct fd_device *dev, uint32_t size,
 			uint32_t flags, uint32_t *handle);
