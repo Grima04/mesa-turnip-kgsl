@@ -222,3 +222,45 @@ BEGIN_TEST(optimize.mad_u32_u16)
       finish_opt_test();
    }
 END_TEST
+
+BEGIN_TEST(optimize.bcnt)
+   for (unsigned i = GFX8; i <= GFX10; i++) {
+      //>> v1: %a, s1: %b, s2: %_:exec = p_startpgm
+      if (!setup_cs("v1 s1", (chip_class)i))
+         continue;
+
+      Temp bcnt;
+
+      //! v1: %res0 = v_bcnt_u32_b32 %a, %a
+      //! p_unit_test 0, %res0
+      bcnt = bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), Operand(inputs[0]), Operand(0u));
+      writeout(0, bld.vadd32(bld.def(v1), bcnt, Operand(inputs[0])));
+
+      //! v1: %res1 = v_bcnt_u32_b32 %a, %b
+      //! p_unit_test 1, %res1
+      bcnt = bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), Operand(inputs[0]), Operand(0u));
+      writeout(1, bld.vadd32(bld.def(v1), bcnt, Operand(inputs[1])));
+
+      //! v1: %res2 = v_bcnt_u32_b32 %a, 42
+      //! p_unit_test 2, %res2
+      bcnt = bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), Operand(inputs[0]), Operand(0u));
+      writeout(2, bld.vadd32(bld.def(v1), bcnt, Operand(42u)));
+
+      //! v1: %bnct3 = v_bcnt_u32_b32 %b, 0
+      //~gfx8! v1: %res3, s2: %_ = v_add_co_u32 %bcnt3, %a
+      //~gfx(9|10)! v1: %res3 = v_add_u32 %bcnt3, %a
+      //! p_unit_test 3, %res3
+      bcnt = bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), Operand(inputs[1]), Operand(0u));
+      writeout(3, bld.vadd32(bld.def(v1), bcnt, Operand(inputs[0])));
+
+      //! v1: %bnct4 = v_bcnt_u32_b32 %a, 0
+      //~gfx(8|9)! v1: %add4, s2: %carry = v_add_co_u32 %bcnt4, %a
+      //~gfx10! v1: %add4, s2: %carry = v_add_co_u32_e64 %bcnt4, %a
+      //! p_unit_test 4, %carry
+      bcnt = bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), Operand(inputs[0]), Operand(0u));
+      Temp carry = bld.vadd32(bld.def(v1), bcnt, Operand(inputs[0]), true).def(1).getTemp();
+      writeout(4, carry);
+
+      finish_opt_test();
+   }
+END_TEST
