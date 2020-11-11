@@ -66,6 +66,8 @@
 #define NUM_H264_REFS  17
 #define NUM_VC1_REFS   5
 #define NUM_VP9_REFS   8
+#define NUM_AV1_REFS   8
+#define NUM_AV1_REFS_PER_FRAME 7
 
 static unsigned calc_dpb_size(struct radeon_decoder *dec);
 static unsigned calc_ctx_size_h264_perf(struct radeon_decoder *dec);
@@ -592,6 +594,354 @@ static void set_drm_keys(rvcn_dec_message_drm_t *drm, DECRYPT_PARAMETERS *decryp
          memcpy(drm->drm_counter, decrypted->encrypted_iv, 16);
       drm->drm_offset = 0;
    }
+}
+
+static rvcn_dec_message_av1_t get_av1_msg(struct radeon_decoder *dec,
+                                          struct pipe_video_buffer *target,
+                                          struct pipe_av1_picture_desc *pic)
+{
+   rvcn_dec_message_av1_t result;
+   unsigned i, j;
+
+   memset(&result, 0, sizeof(result));
+
+   result.frame_header_flags = (pic->picture_parameter.pic_info_fields.show_frame
+                                << RDECODE_FRAME_HDR_INFO_AV1_SHOW_FRAME_SHIFT) &
+                                RDECODE_FRAME_HDR_INFO_AV1_SHOW_FRAME_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.pic_info_fields.disable_cdf_update
+                                 << RDECODE_FRAME_HDR_INFO_AV1_DISABLE_CDF_UPDATE_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_DISABLE_CDF_UPDATE_MASK;
+
+   result.frame_header_flags |= ((!pic->picture_parameter.pic_info_fields.disable_frame_end_update_cdf)
+                                 << RDECODE_FRAME_HDR_INFO_AV1_REFRESH_FRAME_CONTEXT_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_REFRESH_FRAME_CONTEXT_MASK;
+
+   result.frame_header_flags |= ((pic->picture_parameter.pic_info_fields.frame_type ==
+                                 2 /* INTRA_ONLY_FRAME */) << RDECODE_FRAME_HDR_INFO_AV1_INTRA_ONLY_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_INTRA_ONLY_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.pic_info_fields.allow_intrabc
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ALLOW_INTRABC_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ALLOW_INTRABC_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.pic_info_fields.allow_high_precision_mv
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ALLOW_HIGH_PRECISION_MV_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ALLOW_HIGH_PRECISION_MV_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seq_info_fields.mono_chrome
+                                 << RDECODE_FRAME_HDR_INFO_AV1_MONOCHROME_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_MONOCHROME_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.mode_control_fields.skip_mode_present
+                                 << RDECODE_FRAME_HDR_INFO_AV1_SKIP_MODE_FLAG_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_SKIP_MODE_FLAG_MASK;
+
+   result.frame_header_flags |= (((pic->picture_parameter.qmatrix_fields.qm_y == 0xf) ? 0 : 1)
+                                 << RDECODE_FRAME_HDR_INFO_AV1_USING_QMATRIX_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_USING_QMATRIX_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seq_info_fields.enable_filter_intra
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ENABLE_FILTER_INTRA_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ENABLE_FILTER_INTRA_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seq_info_fields.enable_intra_edge_filter
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ENABLE_INTRA_EDGE_FILTER_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ENABLE_INTRA_EDGE_FILTER_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seq_info_fields.enable_interintra_compound
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ENABLE_INTERINTRA_COMPOUND_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ENABLE_INTERINTRA_COMPOUND_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seq_info_fields.enable_masked_compound
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ENABLE_MASKED_COMPOUND_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ENABLE_MASKED_COMPOUND_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.pic_info_fields.allow_warped_motion
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ALLOW_WARPED_MOTION_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ALLOW_WARPED_MOTION_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seq_info_fields.enable_dual_filter
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ENABLE_DUAL_FILTER_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ENABLE_DUAL_FILTER_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seq_info_fields.enable_order_hint
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ENABLE_ORDER_HINT_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ENABLE_ORDER_HINT_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seq_info_fields.enable_jnt_comp
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ENABLE_JNT_COMP_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ENABLE_JNT_COMP_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.pic_info_fields.use_ref_frame_mvs
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ALLOW_REF_FRAME_MVS_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ALLOW_REF_FRAME_MVS_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.pic_info_fields.allow_screen_content_tools
+                                 << RDECODE_FRAME_HDR_INFO_AV1_ALLOW_SCREEN_CONTENT_TOOLS_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_ALLOW_SCREEN_CONTENT_TOOLS_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.pic_info_fields.force_integer_mv
+                                 << RDECODE_FRAME_HDR_INFO_AV1_CUR_FRAME_FORCE_INTEGER_MV_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_CUR_FRAME_FORCE_INTEGER_MV_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.loop_filter_info_fields.mode_ref_delta_enabled
+                                 << RDECODE_FRAME_HDR_INFO_AV1_MODE_REF_DELTA_ENABLED_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_MODE_REF_DELTA_ENABLED_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.loop_filter_info_fields.mode_ref_delta_update
+                                 << RDECODE_FRAME_HDR_INFO_AV1_MODE_REF_DELTA_UPDATE_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_MODE_REF_DELTA_UPDATE_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.mode_control_fields.delta_q_present_flag
+                                 << RDECODE_FRAME_HDR_INFO_AV1_DELTA_Q_PRESENT_FLAG_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_DELTA_Q_PRESENT_FLAG_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.mode_control_fields.delta_lf_present_flag
+                                 << RDECODE_FRAME_HDR_INFO_AV1_DELTA_LF_PRESENT_FLAG_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_DELTA_LF_PRESENT_FLAG_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.mode_control_fields.reduced_tx_set_used
+                                 << RDECODE_FRAME_HDR_INFO_AV1_REDUCED_TX_SET_USED_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_REDUCED_TX_SET_USED_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seg_info.segment_info_fields.enabled
+                                 << RDECODE_FRAME_HDR_INFO_AV1_SEGMENTATION_ENABLED_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_SEGMENTATION_ENABLED_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seg_info.segment_info_fields.update_map
+                                 << RDECODE_FRAME_HDR_INFO_AV1_SEGMENTATION_UPDATE_MAP_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_SEGMENTATION_UPDATE_MAP_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.seg_info.segment_info_fields.temporal_update
+                                 << RDECODE_FRAME_HDR_INFO_AV1_SEGMENTATION_TEMPORAL_UPDATE_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_SEGMENTATION_TEMPORAL_UPDATE_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.mode_control_fields.delta_lf_multi
+                                 << RDECODE_FRAME_HDR_INFO_AV1_DELTA_LF_MULTI_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_DELTA_LF_MULTI_MASK;
+
+   result.frame_header_flags |= (pic->picture_parameter.pic_info_fields.is_motion_mode_switchable
+                                 << RDECODE_FRAME_HDR_INFO_AV1_SWITCHABLE_SKIP_MODE_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_SWITCHABLE_SKIP_MODE_MASK;
+
+   result.frame_header_flags |= ((!pic->picture_parameter.refresh_frame_flags)
+                                 << RDECODE_FRAME_HDR_INFO_AV1_SKIP_REFERENCE_UPDATE_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_SKIP_REFERENCE_UPDATE_MASK;
+
+   result.frame_header_flags |= ((!pic->picture_parameter.seq_info_fields.ref_frame_mvs)
+                                 << RDECODE_FRAME_HDR_INFO_AV1_DISABLE_REF_FRAME_MVS_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_AV1_DISABLE_REF_FRAME_MVS_MASK;
+
+   result.current_frame_id = pic->picture_parameter.current_frame_id;
+   result.frame_offset = pic->picture_parameter.order_hint;
+
+   result.profile = pic->picture_parameter.profile;
+   result.is_annexb = 0;
+   result.frame_type = pic->picture_parameter.pic_info_fields.frame_type;
+   result.primary_ref_frame = pic->picture_parameter.primary_ref_frame;
+   for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); ++i) {
+      if (dec->render_pic_list[i] && dec->render_pic_list[i] == target) {
+         result.curr_pic_idx = (uintptr_t)vl_video_buffer_get_associated_data(target, &dec->base);
+         break;
+      } else if (!dec->render_pic_list[i]) {
+         dec->render_pic_list[i] = target;
+         result.curr_pic_idx = dec->ref_idx;
+         vl_video_buffer_set_associated_data(target, &dec->base, (void *)(uintptr_t)dec->ref_idx++,
+                                             &radeon_dec_destroy_associated_data);
+         break;
+      }
+   }
+
+   result.sb_size = pic->picture_parameter.seq_info_fields.use_128x128_superblock;
+   result.interp_filter = pic->picture_parameter.interp_filter;
+   for (i = 0; i < 2; ++i)
+      result.filter_level[i] = pic->picture_parameter.filter_level[i];
+   result.filter_level_u = pic->picture_parameter.filter_level_u;
+   result.filter_level_v = pic->picture_parameter.filter_level_v;
+   result.sharpness_level = pic->picture_parameter.loop_filter_info_fields.sharpness_level;
+   for (i = 0; i < 8; ++i)
+      result.ref_deltas[i] = pic->picture_parameter.ref_deltas[i];
+   for (i = 0; i < 2; ++i)
+      result.mode_deltas[i] = pic->picture_parameter.mode_deltas[i];
+   result.base_qindex = pic->picture_parameter.base_qindex;
+   result.y_dc_delta_q = pic->picture_parameter.y_dc_delta_q;
+   result.u_dc_delta_q = pic->picture_parameter.u_dc_delta_q;
+   result.v_dc_delta_q = pic->picture_parameter.v_dc_delta_q;
+   result.u_ac_delta_q = pic->picture_parameter.u_ac_delta_q;
+   result.v_ac_delta_q = pic->picture_parameter.v_ac_delta_q;
+   result.qm_y = pic->picture_parameter.qmatrix_fields.qm_y | 0xf0;
+   result.qm_u = pic->picture_parameter.qmatrix_fields.qm_u | 0xf0;
+   result.qm_v = pic->picture_parameter.qmatrix_fields.qm_v | 0xf0;
+   result.delta_q_res = 1 << pic->picture_parameter.mode_control_fields.log2_delta_q_res;
+   result.delta_lf_res = 1 << pic->picture_parameter.mode_control_fields.log2_delta_lf_res;
+
+   result.tile_cols = pic->picture_parameter.tile_cols;
+   result.tile_rows = pic->picture_parameter.tile_rows;
+   result.tx_mode = pic->picture_parameter.mode_control_fields.tx_mode;
+   result.reference_mode = (pic->picture_parameter.mode_control_fields.reference_select == 1) ? 2 : 0;
+   result.chroma_format = pic->picture_parameter.seq_info_fields.mono_chrome ? 0 : 1;
+   result.tile_size_bytes = 0xff;
+   result.context_update_tile_id = pic->picture_parameter.context_update_tile_id;
+   for (i = 0; i < 65; ++i) {
+      result.tile_col_start_sb[i] = pic->picture_parameter.tile_col_start_sb[i];
+      result.tile_row_start_sb[i] = pic->picture_parameter.tile_row_start_sb[i];
+   }
+   result.max_width = pic->picture_parameter.max_width;
+   result.max_height = pic->picture_parameter.max_height;
+   if (pic->picture_parameter.pic_info_fields.use_superres) {
+      result.width = (pic->picture_parameter.frame_width * 8 + pic->picture_parameter.superres_scale_denominator / 2) /
+         pic->picture_parameter.superres_scale_denominator;
+      result.superres_scale_denominator = pic->picture_parameter.superres_scale_denominator;
+   } else {
+      result.width = pic->picture_parameter.frame_width;
+      result.superres_scale_denominator = pic->picture_parameter.superres_scale_denominator;
+   }
+   result.height = pic->picture_parameter.frame_height;
+   result.superres_upscaled_width = pic->picture_parameter.frame_width;
+   result.order_hint_bits = pic->picture_parameter.order_hint_bits_minus_1 + 1;
+
+   for (i = 0; i < NUM_AV1_REFS; ++i) {
+      result.ref_frame_map[i] =
+         (pic->ref[i]) ? (uintptr_t)vl_video_buffer_get_associated_data(pic->ref[i], &dec->base)
+                       : 0x7f;
+   }
+   for (i = 0; i < NUM_AV1_REFS_PER_FRAME; ++i)
+       result.frame_refs[i] = result.ref_frame_map[pic->picture_parameter.ref_frame_idx[i]];
+
+   result.bit_depth_luma_minus8 = result.bit_depth_chroma_minus8 = pic->picture_parameter.bit_depth_idx << 1;
+
+   for (i = 0; i < 8; ++i) {
+      for (j = 0; j < 8; ++j)
+         result.feature_data[i][j] = pic->picture_parameter.seg_info.feature_data[i][j];
+      result.feature_mask[i] = pic->picture_parameter.seg_info.feature_mask[i];
+   }
+
+   result.cdef_damping = pic->picture_parameter.cdef_damping_minus_3 + 3;
+   result.cdef_bits = pic->picture_parameter.cdef_bits;
+   for (i = 0; i < 8; ++i) {
+      result.cdef_strengths[i] = pic->picture_parameter.cdef_y_strengths[i];
+      result.cdef_uv_strengths[i] = pic->picture_parameter.cdef_uv_strengths[i];
+   }
+   result.frame_restoration_type[0] = pic->picture_parameter.loop_restoration_fields.yframe_restoration_type;
+   result.frame_restoration_type[1] = pic->picture_parameter.loop_restoration_fields.cbframe_restoration_type;
+   result.frame_restoration_type[2] = pic->picture_parameter.loop_restoration_fields.crframe_restoration_type;
+   for (i = 0; i < 3; ++i) {
+      int log2_num = 0;
+      int unit_size = pic->picture_parameter.lr_unit_size[i];
+      if (unit_size) {
+         while (unit_size >>= 1)
+            log2_num++;
+         result.log2_restoration_unit_size_minus5[i] = log2_num - 5;
+      } else {
+         result.log2_restoration_unit_size_minus5[i] = 0;
+      }
+   }
+
+   result.p010_mode = 0;
+   result.msb_mode = 0;
+   if (!pic->picture_parameter.bit_depth_idx) {
+      result.luma_10to8 = 0;
+      result.chroma_10to8 = 0;
+   } else {
+      result.luma_10to8 = 1;
+      result.chroma_10to8 = 1;
+   }
+
+   result.preskip_segid = 0;
+   result.last_active_segid = 0;
+   for (i = 0; i < 8; i++) {
+      for (j = 0; j < 8; j++) {
+         if (pic->picture_parameter.seg_info.feature_mask[i] & (1 << j)) {
+            result.last_active_segid = i;
+            if (j >= 5)
+               result.preskip_segid = 1;
+         }
+      }
+   }
+
+   result.seg_lossless_flag = 0;
+   for (i = 0; i < 8; ++i) {
+      int av1_get_qindex, qindex;
+      int segfeature_active = pic->picture_parameter.seg_info.feature_mask[i] & (1 << 0);
+      if (segfeature_active) {
+         int seg_qindex = pic->picture_parameter.base_qindex +
+                          pic->picture_parameter.seg_info.feature_data[i][0];
+         av1_get_qindex = seg_qindex < 0 ? 0 : (seg_qindex > 255 ? 255 : seg_qindex);
+      } else {
+         av1_get_qindex = pic->picture_parameter.base_qindex;
+      }
+      qindex = pic->picture_parameter.seg_info.segment_info_fields.enabled ?
+               av1_get_qindex :
+               pic->picture_parameter.base_qindex;
+      result.seg_lossless_flag |= (((qindex == 0) && result.y_dc_delta_q == 0 &&
+                                    result.u_dc_delta_q == 0 && result.v_dc_delta_q == 0 &&
+                                    result.u_ac_delta_q == 0 && result.v_ac_delta_q == 0) << i);
+   }
+
+   rvcn_dec_film_grain_params_t* fg_params = &result.film_grain;
+   fg_params->apply_grain = pic->picture_parameter.film_grain_info.film_grain_info_fields.apply_grain;
+   if (fg_params->apply_grain) {
+      fg_params->random_seed = pic->picture_parameter.film_grain_info.grain_seed;
+      fg_params->grain_scale_shift =
+         pic->picture_parameter.film_grain_info.film_grain_info_fields.grain_scale_shift;
+      fg_params->scaling_shift =
+         pic->picture_parameter.film_grain_info.film_grain_info_fields.grain_scaling_minus_8 + 8;
+      fg_params->chroma_scaling_from_luma =
+         pic->picture_parameter.film_grain_info.film_grain_info_fields.chroma_scaling_from_luma;
+      fg_params->num_y_points = pic->picture_parameter.film_grain_info.num_y_points;
+      fg_params->num_cb_points = pic->picture_parameter.film_grain_info.num_cb_points;
+      fg_params->num_cr_points = pic->picture_parameter.film_grain_info.num_cr_points;
+      fg_params->cb_mult = pic->picture_parameter.film_grain_info.cb_mult;
+      fg_params->cb_luma_mult = pic->picture_parameter.film_grain_info.cb_luma_mult;
+      fg_params->cb_offset = pic->picture_parameter.film_grain_info.cb_offset;
+      fg_params->cr_mult = pic->picture_parameter.film_grain_info.cr_mult;
+      fg_params->cr_luma_mult = pic->picture_parameter.film_grain_info.cr_luma_mult;
+      fg_params->cr_offset = pic->picture_parameter.film_grain_info.cr_offset;
+      fg_params->bit_depth_minus_8 = pic->picture_parameter.bit_depth_idx << 1;
+
+      for (i = 0; i < fg_params->num_y_points; ++i) {
+         fg_params->scaling_points_y[i][0] = pic->picture_parameter.film_grain_info.point_y_value[i];
+         fg_params->scaling_points_y[i][1] = pic->picture_parameter.film_grain_info.point_y_scaling[i];
+      }
+      for (i = 0; i < fg_params->num_cb_points; ++i) {
+         fg_params->scaling_points_cb[i][0] = pic->picture_parameter.film_grain_info.point_cb_value[i];
+         fg_params->scaling_points_cb[i][1] = pic->picture_parameter.film_grain_info.point_cb_scaling[i];
+      }
+      for (i = 0; i < fg_params->num_cr_points; ++i) {
+         fg_params->scaling_points_cr[i][0] = pic->picture_parameter.film_grain_info.point_cr_value[i];
+         fg_params->scaling_points_cr[i][1] = pic->picture_parameter.film_grain_info.point_cr_scaling[i];
+      }
+
+      fg_params->ar_coeff_lag = pic->picture_parameter.film_grain_info.film_grain_info_fields.ar_coeff_lag;
+      fg_params->ar_coeff_shift =
+         pic->picture_parameter.film_grain_info.film_grain_info_fields.ar_coeff_shift_minus_6 + 6;
+
+      for (i = 0; i < 24; ++i)
+         fg_params->ar_coeffs_y[i] = pic->picture_parameter.film_grain_info.ar_coeffs_y[i];
+
+      for (i = 0; i < 25; ++i) {
+         fg_params->ar_coeffs_cb[i] = pic->picture_parameter.film_grain_info.ar_coeffs_cb[i];
+         fg_params->ar_coeffs_cr[i] = pic->picture_parameter.film_grain_info.ar_coeffs_cr[i];
+      }
+
+      fg_params->overlap_flag = pic->picture_parameter.film_grain_info.film_grain_info_fields.overlap_flag;
+      fg_params->clip_to_restricted_range =
+         pic->picture_parameter.film_grain_info.film_grain_info_fields.clip_to_restricted_range;
+   }
+
+   result.uncompressed_header_size = 0;
+   for (i = 0; i < 7; ++i) {
+      result.global_motion[i + 1].wmtype = (rvcn_dec_transformation_type_e)pic->picture_parameter.wm[i].wmtype;
+      for (j = 0; j < 6; ++j)
+         result.global_motion[i + 1].wmmat[j] = pic->picture_parameter.wm[i].wmmat[j];
+   }
+   for (i = 0; i < 256; ++i) {
+      result.tile_info[i].offset = pic->slice_parameter.slice_data_offset[i];
+      result.tile_info[i].size = pic->slice_parameter.slice_data_size[i];
+   }
+
+   return result;
 }
 
 static void rvcn_init_mode_probs(void *prob)
@@ -1144,7 +1494,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
                          ? align(dec->base.width, 64)
                          : align(dec->base.width, 32);
    if (((struct si_screen*)dec->screen)->info.family >= CHIP_SIENNA_CICHLID &&
-       dec->stream_type == RDECODE_CODEC_VP9)
+       (dec->stream_type == RDECODE_CODEC_VP9 || dec->stream_type == RDECODE_CODEC_AV1))
       decode->db_aligned_height = align(dec->base.height, 64);
 
    decode->db_surf_tile_config = 0;
@@ -1170,6 +1520,8 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       decode->dt_luma_bottom_offset = decode->dt_luma_top_offset;
       decode->dt_chroma_bottom_offset = decode->dt_chroma_top_offset;
    }
+   if (dec->stream_type == RDECODE_CODEC_AV1)
+      decode->db_pitch_uv = decode->db_pitch /  2;
 
    if (encrypted) {
       assert(sscreen->info.has_tmz_support);
@@ -1228,6 +1580,12 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       break;
    }
    case PIPE_VIDEO_FORMAT_AV1: {
+      rvcn_dec_message_av1_t av1 =
+         get_av1_msg(dec, target, (struct pipe_av1_picture_desc *)picture);
+
+      memcpy(codec, (void *)&av1, sizeof(rvcn_dec_message_av1_t));
+      index->message_id = RDECODE_MESSAGE_AV1;
+
       if (dec->ctx.res == NULL) {
          unsigned ctx_size = (9 + 4) * align(sizeof(rvcn_av1_hw_frame_context_t), 2048) +
                              9 * 64 * 34 * 512 + 9 * 64 * 34 * 256 * 5;
@@ -1629,7 +1987,7 @@ static void radeon_dec_begin_frame(struct pipe_video_codec *decoder,
    assert(decoder);
 
    frame = ++dec->frame_number;
-   if (dec->stream_type != RDECODE_CODEC_VP9)
+   if (dec->stream_type != RDECODE_CODEC_VP9 && dec->stream_type != RDECODE_CODEC_AV1)
       vl_video_buffer_set_associated_data(target, decoder, (void *)frame,
                                           &radeon_dec_destroy_associated_data);
 
