@@ -60,11 +60,10 @@ fi
 
 apt-get update
 apt-get install -y automake \
-                   git \
                    bc \
                    cmake \
-                   wget \
                    debootstrap \
+                   git \
                    libboost-dev \
                    libegl1-mesa-dev \
                    libgbm-dev \
@@ -80,21 +79,22 @@ apt-get install -y automake \
                    python3-serial \
                    qt5-default \
                    qt5-qmake \
-                   qtbase5-dev
+                   qtbase5-dev \
+                   wget
 
 
 if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
-	apt-get install -y libboost-dev:armhf \
-		libegl1-mesa-dev:armhf \
-		libelf-dev:armhf \
-		libgbm-dev:armhf \
-		libgles2-mesa-dev:armhf \
-		libpcre3-dev:armhf \
-		libpng-dev:armhf \
-		libpython3-dev:armhf \
-		libvulkan-dev:armhf \
-		libxcb-keysyms1-dev:armhf \
-               qtbase5-dev:armhf
+    apt-get install -y libegl1-mesa-dev:armhf \
+                       libelf-dev:armhf \
+                       libgbm-dev:armhf \
+                       libgles2-mesa-dev:armhf \
+                       libpcre3-dev:armhf \
+                       libpng-dev:armhf \
+                       libpython3-dev:armhf \
+                       libvulkan-dev:armhf \
+                       libxcb-keysyms1-dev:armhf \
+                       libboost-dev:armhf \
+                       qtbase5-dev:armhf
 fi
 
 ############### Build dEQP runner

@@ -30,11 +30,11 @@ STABLE_EPHEMERAL=" \
 # Unfortunately, gfxreconstruct needs the -dev packages:
 # https://github.com/LunarG/gfxreconstruct/issues/402
 apt-get install -y --no-remove \
+      $STABLE_EPHEMERAL \
       libwayland-dev \
       libx11-xcb-dev \
       libxcb-keysyms1-dev \
-      libxcb1-dev \
-      $STABLE_EPHEMERAL
+      libxcb1-dev
 
 # We need multiarch for Wine
 dpkg --add-architecture i386

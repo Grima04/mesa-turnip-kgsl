@@ -37,14 +37,14 @@ STABLE_EPHEMERAL=" \
       "
 
 apt-get install -y --no-remove \
+      $STABLE_EPHEMERAL \
       clinfo \
       libclang-common-10-dev \
       libclang-cpp10 \
       libxcb-shm0 \
       ocl-icd-libopencl1 \
       python3-lxml \
-      python3-simplejson \
-      $STABLE_EPHEMERAL
+      python3-simplejson
 
 
 . .gitlab-ci/container/container_pre_build.sh

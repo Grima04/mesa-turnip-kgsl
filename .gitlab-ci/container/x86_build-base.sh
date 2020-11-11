@@ -35,8 +35,8 @@ apt-get install -y --no-remove \
         gcc \
         git \
         kmod \
-        libclang-9-dev \
         libclang-10-dev \
+        libclang-9-dev \
         libclc-dev \
         libelf-dev \
         libepoxy-dev \
@@ -59,8 +59,8 @@ apt-get install -y --no-remove \
         libxvmc-dev \
         libxxf86vm-dev \
         libz-mingw-w64-dev \
-        llvm-9-dev \
         llvm-10-dev \
+        llvm-9-dev \
         pkg-config \
         python-mako \
         python3-mako \
