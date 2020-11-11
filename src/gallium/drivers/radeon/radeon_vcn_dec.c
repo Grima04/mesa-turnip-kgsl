@@ -39,6 +39,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "radeon_vcn_av1_default.h"
+
 #define FB_BUFFER_OFFSET             0x1000
 #define FB_BUFFER_SIZE               2048
 #define IT_SCALING_TABLE_SIZE        992
@@ -1103,6 +1105,35 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 
       memcpy(codec, (void *)&vp9, sizeof(rvcn_dec_message_vp9_t));
       index->message_id = RDECODE_MESSAGE_VP9;
+      break;
+   }
+   case PIPE_VIDEO_FORMAT_AV1: {
+      if (dec->ctx.res == NULL) {
+         unsigned ctx_size = (9 + 4) * align(sizeof(rvcn_av1_hw_frame_context_t), 2048) +
+                             9 * 64 * 34 * 512 + 9 * 64 * 34 * 256 * 5;
+         int num_64x64_CTB_8k = 68;
+         int num_128x128_CTB_8k = 34;
+         int sdb_pitch_64x64 = align(32 * num_64x64_CTB_8k, 256);
+         int sdb_pitch_128x128 = align(32 * num_128x128_CTB_8k, 256);
+         int sdb_lf_size_ctb_64x64 = sdb_pitch_64x64 * (1728 / 32);
+         int sdb_lf_size_ctb_128x128 = sdb_pitch_128x128 * (3008 / 32);
+         int sdb_superres_size_ctb_64x64 = sdb_pitch_64x64 * (3232 / 32);
+         int sdb_superres_size_ctb_128x128 = sdb_pitch_128x128 * (6208 / 32);
+         int sdb_output_size_ctb_64x64 = sdb_pitch_64x64 * (1312 / 32);
+         int sdb_output_size_ctb_128x128 = sdb_pitch_128x128 * (2336 / 32);
+         int sdb_fg_avg_luma_size_ctb_64x64 = sdb_pitch_64x64 * (384 / 32);
+         int sdb_fg_avg_luma_size_ctb_128x128 = sdb_pitch_128x128 * (640 / 32);
+
+         ctx_size += (MAX2(sdb_lf_size_ctb_64x64, sdb_lf_size_ctb_128x128) +
+                      MAX2(sdb_superres_size_ctb_64x64, sdb_superres_size_ctb_128x128) +
+                      MAX2(sdb_output_size_ctb_64x64, sdb_output_size_ctb_128x128) +
+                      MAX2(sdb_fg_avg_luma_size_ctb_64x64, sdb_fg_avg_luma_size_ctb_128x128)) * 2  + 68 * 512;
+
+         if (!si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT))
+            RVID_ERR("Can't allocated context buffer.\n");
+         si_vid_clear_buffer(dec->base.context, &dec->ctx);
+      }
+
       break;
    }
    default:
