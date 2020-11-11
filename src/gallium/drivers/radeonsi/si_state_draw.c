@@ -2129,7 +2129,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
        * This is the setting that is used by the draw.
        */
       uint8_t ngg_culling = si_get_vs(sctx)->current->key.opt.ngg_culling;
-      if (!(old_ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL) &&
+      if (sctx->chip_class == GFX10 &&
+          !(old_ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL) &&
           ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)
          sctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
