@@ -59,7 +59,7 @@ static void emit_const_prsc(struct fd_ringbuffer *ring,
 
 static void emit_const_ptrs(struct fd_ringbuffer *ring,
 		const struct ir3_shader_variant *v, uint32_t dst_offset,
-		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets);
+		uint32_t num, struct fd_bo **bos, uint32_t *offsets);
 
 static void
 emit_const_asserts(struct fd_ringbuffer *ring,
@@ -173,7 +173,7 @@ ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 	if (v->constlen > offset) {
 		uint32_t params = const_state->num_ubos;
 		uint32_t offsets[params];
-		struct pipe_resource *prscs[params];
+		struct fd_bo *bos[params];
 
 		for (uint32_t i = 0; i < params; i++) {
 			struct pipe_constant_buffer *cb = &constbuf->cb[i];
@@ -194,16 +194,16 @@ ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 
 			if ((constbuf->enabled_mask & (1 << i)) && cb->buffer) {
 				offsets[i] = cb->buffer_offset;
-				prscs[i] = cb->buffer;
+				bos[i] = fd_resource(cb->buffer)->bo;
 			} else {
 				offsets[i] = 0;
-				prscs[i] = NULL;
+				bos[i] = NULL;
 			}
 		}
 
 		assert(offset * 4 + params <= v->constlen * 4);
 
-		emit_const_ptrs(ring, v, offset * 4, params, prscs, offsets);
+		emit_const_ptrs(ring, v, offset * 4, params, bos, offsets);
 	}
 }
 
@@ -336,7 +336,7 @@ emit_tfbos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct ir3_stream_output_info *info = &v->shader->stream_output;
 		uint32_t params = 4;
 		uint32_t offsets[params];
-		struct pipe_resource *prscs[params];
+		struct fd_bo *bos[params];
 
 		for (uint32_t i = 0; i < params; i++) {
 			struct pipe_stream_output_target *target = so->targets[i];
@@ -344,16 +344,16 @@ emit_tfbos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 			if (target) {
 				offsets[i] = (so->offsets[i] * info->stride[i] * 4) +
 						target->buffer_offset;
-				prscs[i] = target->buffer;
+				bos[i] = fd_resource(target->buffer)->bo;
 			} else {
 				offsets[i] = 0;
-				prscs[i] = NULL;
+				bos[i] = NULL;
 			}
 		}
 
 		assert(offset * 4 + params <= v->constlen * 4);
 
-		emit_const_ptrs(ring, v, offset * 4, params, prscs, offsets);
+		emit_const_ptrs(ring, v, offset * 4, params, bos, offsets);
 	}
 }
 

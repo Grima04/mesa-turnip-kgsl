@@ -95,7 +95,7 @@ fd5_emit_const_bo(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v
 
 static void
 fd5_emit_const_ptrs(struct fd_ringbuffer *ring, gl_shader_stage type,
-		uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
+		uint32_t regid, uint32_t num, struct fd_bo **bos, uint32_t *offsets)
 {
 	uint32_t anum = align(num, 2);
 	uint32_t i;
@@ -112,8 +112,8 @@ fd5_emit_const_ptrs(struct fd_ringbuffer *ring, gl_shader_stage type,
 	OUT_RING(ring, CP_LOAD_STATE4_2_EXT_SRC_ADDR_HI(0));
 
 	for (i = 0; i < num; i++) {
-		if (prscs[i]) {
-			OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
+		if (bos[i]) {
+			OUT_RELOC(ring, bos[i], offsets[i], 0, 0);
 		} else {
 			OUT_RING(ring, 0xbad00000 | (i << 16));
 			OUT_RING(ring, 0xbad00000 | (i << 16));
@@ -135,11 +135,11 @@ is_stateobj(struct fd_ringbuffer *ring)
 static void
 emit_const_ptrs(struct fd_ringbuffer *ring,
 		const struct ir3_shader_variant *v, uint32_t dst_offset,
-		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
+		uint32_t num, struct fd_bo **bos, uint32_t *offsets)
 {
 	/* TODO inline this */
 	assert(dst_offset + num <= v->constlen * 4);
-	fd5_emit_const_ptrs(ring, v->type, dst_offset, num, prscs, offsets);
+	fd5_emit_const_ptrs(ring, v->type, dst_offset, num, bos, offsets);
 }
 
 void
