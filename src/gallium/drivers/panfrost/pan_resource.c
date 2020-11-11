@@ -417,18 +417,7 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
  * level, not all usages are valid for tiling. Finally, if the app is hinting
  * that the contents frequently change, tiling will be a loss.
  *
- * Due to incomplete information on some platforms, we may need to force tiling
- * in some cases.
- *
  * On platforms where it is supported, AFBC is even better. */
-
-static bool
-panfrost_can_linear(struct panfrost_device *dev, const struct panfrost_resource *pres)
-{
-        /* XXX: We should be able to do linear Z/S with the right bits.. */
-        return !((pres->base.bind & PIPE_BIND_DEPTH_STENCIL) &&
-                (dev->quirks & MIDGARD_SFBD));
-}
 
 static bool
 panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource *pres)
@@ -500,11 +489,6 @@ panfrost_should_tile(struct panfrost_device *dev, const struct panfrost_resource
 
         bool can_tile = is_2d && is_sane_bpp && ((pres->base.bind & ~valid_binding) == 0);
 
-        if (!panfrost_can_linear(dev, pres)) {
-                assert(can_tile);
-                return true;
-        }
-
         return can_tile && (pres->base.usage != PIPE_USAGE_STREAM);
 }
 
@@ -536,11 +520,9 @@ panfrost_resource_setup(struct panfrost_device *dev, struct panfrost_resource *p
         pres->checksummed = (pres->base.bind & PIPE_BIND_RENDER_TARGET);
 
         /* We can only switch tiled->linear if the resource isn't already
-         * linear, and if we control the modifier, and if the resource can be
-         * linear. */
+         * linear and if we control the modifier */
         pres->modifier_constant = !((pres->modifier != DRM_FORMAT_MOD_LINEAR)
-                        && (modifier == DRM_FORMAT_MOD_INVALID)
-                        && panfrost_can_linear(dev, pres));
+                        && (modifier == DRM_FORMAT_MOD_INVALID));
 
         panfrost_setup_slices(pres, bo_size);
 }
