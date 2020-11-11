@@ -107,7 +107,7 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
                         GLenum tes_primitive_mode)
 {
    const bool is_passthrough_tcs = b->shader->info.name &&
-      strcmp(b->shader->info.name, "passthrough") == 0;
+      strcmp(b->shader->info.name, "passthrough TCS") == 0;
 
    nir_foreach_instr_safe(instr, block) {
       if (instr->type != nir_instr_type_intrinsic)
