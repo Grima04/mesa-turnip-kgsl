@@ -12,5 +12,6 @@ OPT_BOOL(no_infinite_interp, false, "Kill PS with infinite interp coeff")
 OPT_BOOL(clamp_div_by_zero, false, "Clamp div by zero (x / 0 becomes FLT_MAX instead of NaN)")
 OPT_BOOL(no_trunc_coord, false, "Always set TRUNC_COORD=0")
 OPT_BOOL(shader_culling, false, "Cull primitives in shaders when benefical (without tess and GS)")
+OPT_BOOL(vrs2x2, false, "Enable 2x2 coarse shading for non-GUI elements")
 
 #undef OPT_BOOL

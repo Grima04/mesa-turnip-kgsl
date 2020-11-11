@@ -89,6 +89,12 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
       shader_variant_flags |= 1 << 8;
    if (sel->screen->debug_flags & DBG(GISEL))
       shader_variant_flags |= 1 << 9;
+   if ((sel->info.stage == MESA_SHADER_VERTEX ||
+        sel->info.stage == MESA_SHADER_TESS_EVAL ||
+        sel->info.stage == MESA_SHADER_GEOMETRY) &&
+       !es &&
+       sel->screen->options.vrs2x2)
+      shader_variant_flags |= 1 << 10;
 
    struct mesa_sha1 ctx;
    _mesa_sha1_init(&ctx);
@@ -1056,9 +1062,11 @@ static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel,
       writes_psize &= !shader->key.opt.kill_pointsize;
 
    bool misc_vec_ena = writes_psize || (sel->info.writes_edgeflag && !ngg) ||
+                       sel->screen->options.vrs2x2 ||
                        sel->info.writes_layer || sel->info.writes_viewport_index;
    return S_02881C_USE_VTX_POINT_SIZE(writes_psize) |
           S_02881C_USE_VTX_EDGE_FLAG(sel->info.writes_edgeflag && !ngg) |
+          S_02881C_USE_VTX_VRS_RATE(sel->screen->options.vrs2x2) |
           S_02881C_USE_VTX_RENDER_TARGET_INDX(sel->info.writes_layer) |
           S_02881C_USE_VTX_VIEWPORT_INDX(sel->info.writes_viewport_index) |
           S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |

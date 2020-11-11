@@ -605,12 +605,13 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
 
    bool writes_psize = shader->selector->info.writes_psize && !shader->key.opt.kill_pointsize;
    bool pos_writes_edgeflag = shader->selector->info.writes_edgeflag && !shader->key.as_ngg;
+   bool writes_vrs = ctx->screen->options.vrs2x2;
 
    /* Write the misc vector (point size, edgeflag, layer, viewport). */
-   if (writes_psize || pos_writes_edgeflag ||
+   if (writes_psize || pos_writes_edgeflag || writes_vrs ||
        shader->selector->info.writes_viewport_index || shader->selector->info.writes_layer) {
       pos_args[1].enabled_channels = writes_psize |
-                                     (pos_writes_edgeflag << 1) |
+                                     ((pos_writes_edgeflag | writes_vrs) << 1) |
                                      (shader->selector->info.writes_layer << 2);
 
       pos_args[1].valid_mask = 0; /* EXEC mask */
@@ -633,6 +634,32 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
 
          /* The LLVM intrinsic expects a float. */
          pos_args[1].out[1] = ac_to_float(&ctx->ac, edgeflag_value);
+      }
+
+      if (writes_vrs) {
+         /* Bits [2:3] = VRS rate X
+          * Bits [4:5] = VRS rate Y
+          *
+          * The range is [-2, 1]. Values:
+          *   1: 2x coarser shading rate in that direction.
+          *   0: normal shading rate
+          *  -1: 2x finer shading rate (sample shading, not directional)
+          *  -2: 4x finer shading rate (sample shading, not directional)
+          *
+          * Sample shading can't go above 8 samples, so both numbers can't be -2
+          * at the same time.
+          */
+         LLVMValueRef rates = LLVMConstInt(ctx->ac.i32, (1 << 2) | (1 << 4), 0);
+
+         /* If Pos.W != 1 (typical for non-GUI elements), use 2x2 coarse shading. */
+         rates = LLVMBuildSelect(ctx->ac.builder,
+                                 LLVMBuildFCmp(ctx->ac.builder, LLVMRealUNE,
+                                               pos_args[0].out[3], ctx->ac.f32_1, ""),
+                                 rates, ctx->ac.i32_0, "");
+
+         LLVMValueRef v = ac_to_integer(&ctx->ac, pos_args[1].out[1]);
+         v = LLVMBuildOr(ctx->ac.builder, v, rates, "");
+         pos_args[1].out[1] = ac_to_float(&ctx->ac, v);
       }
 
       if (ctx->screen->info.chip_class >= GFX9) {

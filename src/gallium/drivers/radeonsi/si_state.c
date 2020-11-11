@@ -751,7 +751,8 @@ static void si_emit_clip_regs(struct si_context *sctx)
    unsigned initial_cdw = sctx->gfx_cs->current.cdw;
    unsigned pa_cl_cntl = S_02881C_VS_OUT_CCDIST0_VEC_ENA((vs_out_mask & 0x0F) != 0) |
                          S_02881C_VS_OUT_CCDIST1_VEC_ENA((vs_out_mask & 0xF0) != 0) |
-                         S_02881C_BYPASS_VTX_RATE_COMBINER(sctx->chip_class >= GFX10_3) |
+                         S_02881C_BYPASS_VTX_RATE_COMBINER(sctx->chip_class >= GFX10_3 &&
+                                                           !sctx->screen->options.vrs2x2) |
                          S_02881C_BYPASS_PRIM_RATE_COMBINER(sctx->chip_class >= GFX10_3) |
                          clipdist_mask | (culldist_mask << 8);
 
@@ -1406,6 +1407,21 @@ static void si_emit_db_render_state(struct si_context *sctx)
 
    radeon_opt_set_context_reg(sctx, R_02880C_DB_SHADER_CONTROL, SI_TRACKED_DB_SHADER_CONTROL,
                               db_shader_control);
+
+   if (sctx->screen->options.vrs2x2) {
+      /* If the shader is using discard, turn off coarse shading because
+       * discard at 2x2 pixel granularity degrades quality too much.
+       *
+       * MIN allows sample shading but not coarse shading.
+       */
+      unsigned mode = G_02880C_KILL_ENABLE(db_shader_control) ? V_028064_VRS_COMB_MODE_MIN
+                                                              : V_028064_VRS_COMB_MODE_PASSTHRU;
+      radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
+                                 SI_TRACKED_DB_VRS_OVERRIDE_CNTL,
+                                 S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
+                                 S_028064_VRS_OVERRIDE_RATE_X(0) |
+                                 S_028064_VRS_OVERRIDE_RATE_Y(0));
+   }
 
    if (initial_cdw != sctx->gfx_cs->current.cdw)
       sctx->context_roll = true;
@@ -5366,9 +5382,18 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
    if (sctx->chip_class >= GFX10_3) {
       si_pm4_set_reg(pm4, R_028750_SX_PS_DOWNCONVERT_CONTROL, 0xff);
-      /* This allows sample shading. */
+      /* The rate combiners have no effect if they are disabled like this:
+       *   VERTEX_RATE:    BYPASS_VTX_RATE_COMBINER = 1
+       *   PRIMITIVE_RATE: BYPASS_PRIM_RATE_COMBINER = 1
+       *   HTILE_RATE:     VRS_HTILE_ENCODING = 0
+       *   SAMPLE_ITER:    PS_ITER_SAMPLE = 0
+       *
+       * Use OVERRIDE, which will ignore results from previous combiners.
+       * (e.g. enabled sample shading overrides the vertex rate)
+       */
       si_pm4_set_reg(pm4, R_028848_PA_CL_VRS_CNTL,
-                     S_028848_SAMPLE_ITER_COMBINER_MODE(1));
+                     S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE) |
+                     S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE));
    }
 
    sctx->cs_preamble_state = pm4;

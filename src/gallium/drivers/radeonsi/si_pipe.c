@@ -1080,6 +1080,9 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 #include "si_debug_options.h"
    }
 
+   if (sscreen->info.chip_class < GFX10_3)
+      sscreen->options.vrs2x2 = false;
+
    si_disk_cache_create(sscreen);
 
    /* Determine the number of shader compiler threads. */
