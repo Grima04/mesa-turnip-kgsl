@@ -1404,6 +1404,11 @@ static unsigned calc_dpb_size(struct radeon_decoder *dec)
          dpb_size = dpb_size * 3 / 2;
       break;
 
+   case PIPE_VIDEO_FORMAT_AV1:
+      max_references = MAX2(max_references, 9);
+      dpb_size = 8192 * 4320 * 3 / 2 * max_references * 3 / 2;
+      break;
+
    case PIPE_VIDEO_FORMAT_JPEG:
       dpb_size = 0;
       break;
