@@ -115,12 +115,19 @@ panfrost_sfbd_set_zsbuf(
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        if (rsrc->modifier != DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)
-                unreachable("Invalid render modifier.");
-
-        fb->zs_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
         fb->zs_writeback.base = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
-        fb->zs_writeback.row_stride = rsrc->slices[level].stride * 16;
+        fb->zs_writeback.row_stride = rsrc->slices[level].stride;
+
+        if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR)
+                fb->zs_block_format = MALI_BLOCK_FORMAT_LINEAR;
+        else if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
+                fb->zs_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
+                fb->zs_writeback.row_stride *= 16;
+        } else {
+                fprintf(stderr, "Invalid render modifier\n");
+                assert(0);
+        }
+
         switch (surf->format) {
         case PIPE_FORMAT_Z16_UNORM:
                 fb->zs_format = MALI_ZS_FORMAT_D16;
