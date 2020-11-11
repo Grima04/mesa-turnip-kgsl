@@ -496,10 +496,11 @@ live_effect(struct ir3_instruction *instr)
 /* Determine if this is an instruction that we'd prefer not to schedule
  * yet, in order to avoid an (ss)/(sy) sync.  This is limited by the
  * sfu_delay/tex_delay counters, ie. the more cycles it has been since
- * the last SFU/tex, the less costly a sync would be.
+ * the last SFU/tex, the less costly a sync would be, and the number of
+ * outstanding SFU/tex instructions to prevent a blowup in register pressure.
  */
 static bool
-would_sync(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
+should_defer(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 {
 	if (ctx->sfu_delay) {
 		if (sched_check_src_cond(instr, is_outstanding_sfu, ctx))
@@ -516,12 +517,24 @@ would_sync(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 			return true;
 	}
 
+	/* Avoid scheduling too many outstanding texture or sfu instructions at
+	 * once by deferring further tex/SFU instructions. This both prevents
+	 * stalls when the queue of texture/sfu instructions becomes too large,
+	 * and prevents unacceptably large increases in register pressure from too
+	 * many outstanding texture instructions.
+	 */
+	if (ctx->tex_index - ctx->first_outstanding_tex_index >= 8 && is_tex(instr))
+		return true;
+
+	if (ctx->sfu_index - ctx->first_outstanding_sfu_index >= 8 && is_sfu(instr))
+		return true;
+
 	return false;
 }
 
 static struct ir3_sched_node *
 choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
-		bool avoid_sync, bool avoid_output);
+		bool defer, bool avoid_output);
 
 /**
  * Chooses an instruction to schedule using the Goodman/Hsu (1988) CSR (Code
@@ -532,14 +545,14 @@ choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
  */
 static struct ir3_sched_node *
 choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
-		bool avoid_sync)
+		bool defer)
 {
-	const char *mode = avoid_sync ? "-as" : "";
+	const char *mode = defer ? "-d" : "";
 	struct ir3_sched_node *chosen = NULL;
 
 	/* Find a ready inst with regs freed and pick the one with max cost. */
 	foreach_sched_node (n, &ctx->dag->heads) {
-		if (avoid_sync && would_sync(ctx, n->instr))
+		if (defer && should_defer(ctx, n->instr))
 			continue;
 
 		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
@@ -565,7 +578,7 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 
 	/* Find a leader with regs freed and pick the one with max cost. */
 	foreach_sched_node (n, &ctx->dag->heads) {
-		if (avoid_sync && would_sync(ctx, n->instr))
+		if (defer && should_defer(ctx, n->instr))
 			continue;
 
 		if (live_effect(n->instr) > -1)
@@ -592,7 +605,7 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 	 * XXX: Should this prioritize ready?
 	 */
 	foreach_sched_node (n, &ctx->dag->heads) {
-		if (avoid_sync && would_sync(ctx, n->instr))
+		if (defer && should_defer(ctx, n->instr))
 			continue;
 
 		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
@@ -616,7 +629,7 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 	}
 
 	foreach_sched_node (n, &ctx->dag->heads) {
-		if (avoid_sync && would_sync(ctx, n->instr))
+		if (defer && should_defer(ctx, n->instr))
 			continue;
 
 		if (live_effect(n->instr) > 0)
@@ -634,7 +647,7 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		return chosen;
 	}
 
-	return choose_instr_inc(ctx, notes, avoid_sync, true);
+	return choose_instr_inc(ctx, notes, defer, true);
 }
 
 /**
@@ -643,9 +656,9 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
  */
 static struct ir3_sched_node *
 choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
-		bool avoid_sync, bool avoid_output)
+		bool defer, bool avoid_output)
 {
-	const char *mode = avoid_sync ? "-as" : "";
+	const char *mode = defer ? "-d" : "";
 	struct ir3_sched_node *chosen = NULL;
 
 	/*
@@ -660,7 +673,7 @@ choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (avoid_output && n->output)
 			continue;
 
-		if (avoid_sync && would_sync(ctx, n->instr))
+		if (defer && should_defer(ctx, n->instr))
 			continue;
 
 		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
@@ -689,7 +702,7 @@ choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (avoid_output && n->output)
 			continue;
 
-		if (avoid_sync && would_sync(ctx, n->instr))
+		if (defer && should_defer(ctx, n->instr))
 			continue;
 
 		if (!check_instr(ctx, notes, n->instr))
