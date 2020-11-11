@@ -446,7 +446,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 state->shader = fs->shader;
         }
 
-        if (dev->quirks & MIDGARD_SFBD) {
+        if (dev->quirks & MIDGARD_SFBD && ctx->pipe_framebuffer.nr_cbufs > 0) {
                 state->multisample_misc.sfbd_load_destination = blend[0].load_dest;
                 state->multisample_misc.sfbd_blend_shader = blend[0].is_shader;
                 state->stencil_mask_misc.sfbd_write_enable = !blend[0].no_colour;
@@ -460,6 +460,16 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                         state->sfbd_blend_equation = blend[0].equation.equation;
                         state->sfbd_blend_constant = blend[0].equation.constant;
                 }
+        } else if (dev->quirks & MIDGARD_SFBD) {
+                /* If there is no colour buffer, leaving fields default is
+                 * fine, except for blending which is nonnullable */
+                state->sfbd_blend_equation.color_mask = 0xf;
+                state->sfbd_blend_equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                state->sfbd_blend_equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                state->sfbd_blend_equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                state->sfbd_blend_equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                state->sfbd_blend_equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                state->sfbd_blend_equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
         } else {
                 /* Bug where MRT-capable hw apparently reads the last blend
                  * shader from here instead of the usual location? */
