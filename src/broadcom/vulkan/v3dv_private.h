@@ -138,10 +138,13 @@ struct v3dv_physical_device {
    char *name;
    int32_t render_fd;
    int32_t display_fd;
+   int32_t master_fd;
 
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
    uint8_t device_uuid[VK_UUID_SIZE];
    uint8_t driver_uuid[VK_UUID_SIZE];
+
+   mtx_t mutex;
 
    struct wsi_device wsi_device;
 
@@ -158,6 +161,9 @@ struct v3dv_physical_device {
       bool merge_jobs;
    } options;
 };
+
+VkResult v3dv_physical_device_acquire_display(struct v3dv_instance *instance,
+                                              struct v3dv_physical_device *pdevice);
 
 VkResult v3dv_wsi_init(struct v3dv_physical_device *physical_device);
 void v3dv_wsi_finish(struct v3dv_physical_device *physical_device);
@@ -286,12 +292,11 @@ struct v3dv_device {
    VkAllocationCallbacks alloc;
 
    struct v3dv_instance *instance;
+   struct v3dv_physical_device *pdevice;
 
    struct v3dv_device_extension_table enabled_extensions;
    struct v3dv_device_dispatch_table dispatch;
 
-   int32_t render_fd;
-   int32_t display_fd;
    struct v3d_device_info devinfo;
    struct v3dv_queue queue;
 

@@ -268,12 +268,16 @@ physical_device_finish(struct v3dv_physical_device *device)
    close(device->render_fd);
    if (device->display_fd >= 0)
       close(device->display_fd);
+   if (device->master_fd >= 0)
+      close(device->master_fd);
 
    free(device->name);
 
 #if using_v3d_simulator
    v3d_simulator_destroy(device->sim_file);
 #endif
+
+   mtx_destroy(&device->mutex);
 }
 
 void
@@ -369,6 +373,69 @@ finish:
 #endif
 #endif
 
+/* Attempts to get an authenticated display fd from the display server that
+ * we can use to allocate BOs for presentable images.
+ */
+VkResult
+v3dv_physical_device_acquire_display(struct v3dv_instance *instance,
+                                     struct v3dv_physical_device *pdevice)
+{
+   VkResult result = VK_SUCCESS;
+   mtx_lock(&pdevice->mutex);
+
+   if (pdevice->display_fd != -1)
+      goto done;
+
+   /* When running on the simulator we do everything on a single render node so
+    * we don't need to get an authenticated display fd from the display server.
+    */
+
+#if !using_v3d_simulator
+   /* Mesa will set both of VK_USE_PLATFORM_{XCB,XLIB} when building with
+    * platform X11, so only check for XCB and rely on XCB to get an
+    * authenticated device also for Xlib.
+    */
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   if (instance->enabled_extensions.KHR_xcb_surface ||
+       instance->enabled_extensions.KHR_xlib_surface) {
+      pdevice->display_fd = create_display_fd_xcb();
+   }
+#endif
+
+   /* If we are not running under a compositor and we are doing
+    * direct display we want to make our display_fd be the
+    * master_fd, which shoud be authenticated.
+    */
+   if (pdevice->display_fd == -1 &&
+       instance->enabled_extensions.KHR_display) {
+      assert(pdevice->master_fd >= 0);
+      pdevice->display_fd = dup(pdevice->master_fd);
+   }
+
+   /* Fallback cases.
+    *
+    * Some applications seem to try and create a swapchain without
+    * the instance extension enables, so if we have not managed to
+    * create a display_fd above, try again without the extension checks
+    * as a last resort.
+    */
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   if (pdevice->display_fd == -1)
+      pdevice->display_fd = create_display_fd_xcb();
+#endif
+
+   if (pdevice->display_fd == -1 && pdevice->master_fd >= 0)
+      pdevice->display_fd = dup(pdevice->master_fd);
+
+   if (pdevice->display_fd == -1)
+      result = VK_ERROR_INITIALIZATION_FAILED;
+#endif
+
+done:
+   mtx_unlock(&pdevice->mutex);
+   return result;
+}
+
 static bool
 v3d_has_feature(struct v3dv_physical_device *device, enum drm_v3d_param feature)
 {
@@ -450,50 +517,44 @@ physical_device_init(struct v3dv_physical_device *device,
                      drmDevicePtr drm_primary_device)
 {
    VkResult result = VK_SUCCESS;
-   int32_t display_fd = -1;
+   int32_t master_fd = -1;
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = instance;
 
+   assert(drm_render_device);
    const char *path = drm_render_device->nodes[DRM_NODE_RENDER];
    int32_t render_fd = open(path, O_RDWR | O_CLOEXEC);
    if (render_fd < 0)
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 
-   /* If we are running on real hardware we need to open the vc4 display
-    * device so we can allocate winsys BOs for the v3d core to render into.
+   /* If we are running on VK_KHR_display we need to acquire the master
+    * display device now for the v3dv_wsi_init() call below. For anything else
+    * we postpone that until a swapchain is created.
     */
-#if !using_v3d_simulator
+
    if (instance->enabled_extensions.KHR_display) {
+#if !using_v3d_simulator
       /* Open the primary node on the vc4 display device */
       assert(drm_primary_device);
       const char *primary_path = drm_primary_device->nodes[DRM_NODE_PRIMARY];
-      display_fd = open(primary_path, O_RDWR | O_CLOEXEC);
-   }
-
-#ifdef VK_USE_PLATFORM_XCB_KHR
-   if (display_fd == -1)
-      display_fd = create_display_fd_xcb();
-#endif
-
-   if (display_fd == -1) {
-      result = VK_ERROR_INCOMPATIBLE_DRIVER;
-      goto fail;
-   }
+      master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
 #else
-   /* using_v3d_simulator */
-   if (instance->enabled_extensions.KHR_display) {
       /* There is only one device with primary and render nodes.
        * Open its primary node.
        */
       const char *primary_path = drm_render_device->nodes[DRM_NODE_PRIMARY];
-      display_fd = open(primary_path, O_RDWR | O_CLOEXEC);
+      master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
+#endif
    }
+
+#if using_v3d_simulator
    device->sim_file = v3d_simulator_init(render_fd);
 #endif
 
-   device->render_fd = render_fd;       /* The v3d render node  */
-   device->display_fd = display_fd;    /* The vc4 primary node */
+   device->render_fd = render_fd;    /* The v3d render node  */
+   device->display_fd = -1;          /* Authenticated vc4 primary node */
+   device->master_fd = master_fd;    /* Master vc4 primary node */
 
    if (!v3d_get_device_info(device->render_fd, &device->devinfo, &v3dv_ioctl)) {
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
@@ -545,6 +606,8 @@ physical_device_init(struct v3dv_physical_device *device,
    v3dv_physical_device_get_supported_extensions(device,
                                                  &device->supported_extensions);
 
+   pthread_mutex_init(&device->mutex, NULL);
+
    fprintf(stderr, "WARNING: v3dv is neither a complete nor a conformant "
                    "Vulkan implementation. Testing use only.\n");
 
@@ -553,8 +616,8 @@ physical_device_init(struct v3dv_physical_device *device,
 fail:
    if (render_fd >= 0)
       close(render_fd);
-   if (display_fd >= 0)
-      close(display_fd);
+   if (master_fd >= 0)
+      close(master_fd);
 
    return result;
 }
@@ -1336,27 +1399,12 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = instance;
+   device->pdevice = physical_device;
 
    if (pAllocator)
       device->alloc = *pAllocator;
    else
       device->alloc = physical_device->instance->alloc;
-
-   device->render_fd = physical_device->render_fd;
-   if (device->render_fd == -1) {
-      result = VK_ERROR_INITIALIZATION_FAILED;
-      goto fail;
-   }
-
-   if (physical_device->display_fd != -1) {
-      device->display_fd = physical_device->display_fd;
-      if (device->display_fd == -1) {
-         result = VK_ERROR_INITIALIZATION_FAILED;
-         goto fail;
-      }
-   } else {
-      device->display_fd = -1;
-   }
 
    pthread_mutex_init(&device->mutex, NULL);
 
@@ -1372,7 +1420,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
              sizeof(device->features));
    }
 
-   int ret = drmSyncobjCreate(device->render_fd,
+   int ret = drmSyncobjCreate(physical_device->render_fd,
                               DRM_SYNCOBJ_CREATE_SIGNALED,
                               &device->last_job_sync);
    if (ret) {
@@ -1405,7 +1453,7 @@ v3dv_DestroyDevice(VkDevice _device,
    v3dv_DeviceWaitIdle(_device);
    queue_finish(&device->queue);
    pthread_mutex_destroy(&device->mutex);
-   drmSyncobjDestroy(device->render_fd, device->last_job_sync);
+   drmSyncobjDestroy(device->pdevice->render_fd, device->last_job_sync);
    destroy_device_meta(device);
    v3dv_pipeline_cache_finish(&device->default_pipeline_cache);
 
@@ -1565,9 +1613,12 @@ device_import_bo(struct v3dv_device *device,
       goto fail;
    }
 
+   int render_fd = device->pdevice->render_fd;
+   assert(render_fd >= 0);
+
    int ret;
    uint32_t handle;
-   ret = drmPrimeFDToHandle(device->render_fd, fd, &handle);
+   ret = drmPrimeFDToHandle(render_fd, fd, &handle);
    if (ret) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
@@ -1576,7 +1627,7 @@ device_import_bo(struct v3dv_device *device,
    struct drm_v3d_get_bo_offset get_offset = {
       .handle = handle,
    };
-   ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_GET_BO_OFFSET, &get_offset);
+   ret = v3dv_ioctl(render_fd, DRM_IOCTL_V3D_GET_BO_OFFSET, &get_offset);
    if (ret) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
@@ -1609,10 +1660,24 @@ device_alloc_for_wsi(struct v3dv_device *device,
 #if using_v3d_simulator
       return device_alloc(device, mem, size);
 #else
+   /* If we are allocating for WSI we should have a swapchain and thus,
+    * we should've initialized the display device. However, Zink doesn't
+    * use swapchains, so in that case we can get here without acquiring the
+    * display device and we need to do it now.
+    */
+   VkResult result;
+   struct v3dv_instance *instance = device->instance;
+   struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
+   if (unlikely(pdevice->display_fd < 0)) {
+      result = v3dv_physical_device_acquire_display(instance, pdevice);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+   assert(pdevice->display_fd != -1);
+
    mem->is_for_wsi = true;
 
-   assert(device->display_fd != -1);
-   int display_fd = device->instance->physicalDevice.display_fd;
+   int display_fd = pdevice->display_fd;
    struct drm_mode_create_dumb create_dumb = {
       .width = 1024, /* one page */
       .height = align(size, 4096) / 4096,
@@ -1630,7 +1695,7 @@ device_alloc_for_wsi(struct v3dv_device *device,
    if (err < 0)
       goto fail_export;
 
-   VkResult result = device_import_bo(device, pAllocator, fd, size, &mem->bo);
+   result = device_import_bo(device, pAllocator, fd, size, &mem->bo);
    close(fd);
    if (result != VK_SUCCESS)
       goto fail_import;
@@ -2059,8 +2124,9 @@ v3dv_GetMemoryFdKHR(VkDevice _device,
           pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
    int fd, ret;
-   ret =
-      drmPrimeHandleToFD(device->render_fd, mem->bo->handle, DRM_CLOEXEC, &fd);
+   ret = drmPrimeHandleToFD(device->pdevice->render_fd,
+                            mem->bo->handle,
+                            DRM_CLOEXEC, &fd);
    if (ret)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
