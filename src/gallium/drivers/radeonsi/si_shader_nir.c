@@ -139,18 +139,16 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
             info->output_readmask[loc] |= mask;
          } else if (mask) {
             /* Output stores. */
-            if (info->stage == MESA_SHADER_GEOMETRY) {
-               unsigned gs_streams = (uint32_t)nir_intrinsic_io_semantics(intr).gs_streams <<
-                                     (nir_intrinsic_component(intr) * 2);
-               unsigned new_mask = mask & ~info->output_usagemask[loc];
+            unsigned gs_streams = (uint32_t)nir_intrinsic_io_semantics(intr).gs_streams <<
+                                  (nir_intrinsic_component(intr) * 2);
+            unsigned new_mask = mask & ~info->output_usagemask[loc];
 
-               for (unsigned i = 0; i < 4; i++) {
-                  unsigned stream = (gs_streams >> (i * 2)) & 0x3;
+            for (unsigned i = 0; i < 4; i++) {
+               unsigned stream = (gs_streams >> (i * 2)) & 0x3;
 
-                  if (new_mask & (1 << i)) {
-                     info->output_streams[loc] |= stream << (i * 2);
-                     info->num_stream_output_components[stream]++;
-                  }
+               if (new_mask & (1 << i)) {
+                  info->output_streams[loc] |= stream << (i * 2);
+                  info->num_stream_output_components[stream]++;
                }
             }
 
