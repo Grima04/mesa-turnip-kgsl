@@ -165,7 +165,7 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         ins.load_vary.interp_mode = BIFROST_INTERP_CENTER; /* TODO */
         ins.load_vary.reuse = false; /* TODO */
         ins.load_vary.flat = instr->intrinsic != nir_intrinsic_load_interpolated_input;
-        ins.dest_type = nir_type_float | nir_dest_bit_size(instr->dest);
+        ins.dest_type = nir_dest_bit_size(instr->dest);
         ins.format = ins.dest_type;
 
         if (instr->intrinsic == nir_intrinsic_load_interpolated_input) {
