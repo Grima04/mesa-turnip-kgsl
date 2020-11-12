@@ -1320,6 +1320,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.src_types[2] = nir_type_uint8;
                 break;
         case nir_op_f2i32:
+        case nir_op_f2u32:
                 alu.roundmode = BIFROST_RTZ;
                 break;
 
