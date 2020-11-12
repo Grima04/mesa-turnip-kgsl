@@ -706,6 +706,7 @@ pan_next_block(pan_block *block)
 
 void bi_emit_fexp2(bi_context *ctx, nir_alu_instr *instr);
 void bi_emit_flog2(bi_context *ctx, nir_alu_instr *instr);
+void bi_emit_deriv(bi_context *ctx, nir_alu_instr *instr);
 
 /* BIR manipulation */
 
