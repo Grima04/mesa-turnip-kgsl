@@ -837,6 +837,18 @@ clover::spirv::supported_versions() {
    return { make_spirv_version(1u, 0u) };
 }
 
+cl_version
+clover::spirv::to_opencl_version_encoding(uint32_t version) {
+      return CL_MAKE_VERSION((version >> 16u) & 0xff,
+                             (version >> 8u) & 0xff, 0u);
+}
+
+uint32_t
+clover::spirv::to_spirv_version_encoding(cl_version version) {
+   return ((CL_VERSION_MAJOR(version) & 0xff) << 16u) |
+          ((CL_VERSION_MINOR(version) & 0xff) << 8u);
+}
+
 #else
 bool
 clover::spirv::is_valid_spirv(const std::vector<char> &/*binary*/,
@@ -875,5 +887,15 @@ clover::spirv::supported_extensions() {
 std::vector<uint32_t>
 clover::spirv::supported_versions() {
    return {};
+}
+
+cl_version
+clover::spirv::to_opencl_version_encoding(uint32_t version) {
+   return CL_MAKE_VERSION(0u, 0u, 0u);
+}
+
+uint32_t
+clover::spirv::to_spirv_version_encoding(cl_version version) {
+   return 0u;
 }
 #endif
