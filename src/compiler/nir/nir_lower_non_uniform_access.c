@@ -74,6 +74,8 @@ nu_handle_rewrite(nir_builder *b, struct nu_handle *h)
       nir_deref_instr *deref =
          nir_build_deref_array(b, h->parent_deref, h->first);
       *(h->src) = nir_src_for_ssa(&deref->dest.ssa);
+   } else {
+      *(h->src) = nir_src_for_ssa(h->first);
    }
 }
 
