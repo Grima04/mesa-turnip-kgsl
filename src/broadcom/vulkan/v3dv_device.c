@@ -816,6 +816,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
    vk_foreach_struct(ext, pFeatures->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+         VkPhysicalDevicePrivateDataFeaturesEXT *features =
+            (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
+         features->privateData = true;
+         break;
+      }
+
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
@@ -2406,4 +2413,56 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     */
    *pSupportedVersion = MIN2(*pSupportedVersion, 3u);
    return VK_SUCCESS;
+}
+
+VkResult
+v3dv_CreatePrivateDataSlotEXT(VkDevice _device,
+                            const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
+                            const VkAllocationCallbacks* pAllocator,
+                            VkPrivateDataSlotEXT* pPrivateDataSlot)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   return vk_private_data_slot_create(&device->vk,
+                                      pCreateInfo,
+                                      pAllocator,
+                                      pPrivateDataSlot);
+}
+
+void
+v3dv_DestroyPrivateDataSlotEXT(VkDevice _device,
+                             VkPrivateDataSlotEXT privateDataSlot,
+                             const VkAllocationCallbacks* pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   vk_private_data_slot_destroy(&device->vk, privateDataSlot, pAllocator);
+}
+
+VkResult
+v3dv_SetPrivateDataEXT(VkDevice _device,
+                     VkObjectType objectType,
+                     uint64_t objectHandle,
+                     VkPrivateDataSlotEXT privateDataSlot,
+                     uint64_t data)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   return vk_object_base_set_private_data(&device->vk,
+                                          objectType,
+                                          objectHandle,
+                                          privateDataSlot,
+                                          data);
+}
+
+void
+v3dv_GetPrivateDataEXT(VkDevice _device,
+                     VkObjectType objectType,
+                     uint64_t objectHandle,
+                     VkPrivateDataSlotEXT privateDataSlot,
+                     uint64_t* pData)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   vk_object_base_get_private_data(&device->vk,
+                                   objectType,
+                                   objectHandle,
+                                   privateDataSlot,
+                                   pData);
 }
