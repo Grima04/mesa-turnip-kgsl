@@ -479,6 +479,13 @@ void PipelineBuilder::add_stage(VkShaderStageFlagBits stage, VkShaderModule modu
    owned_stages |= stage;
 }
 
+void PipelineBuilder::add_stage(VkShaderStageFlagBits stage, QoShaderModuleCreateInfo module, const char *name)
+{
+   add_stage(stage, __qoCreateShaderModule(device, &module), name);
+   add_resource_decls(&module);
+   add_io_decls(&module);
+}
+
 void PipelineBuilder::add_vsfs(VkShaderModule vs, VkShaderModule fs)
 {
    add_stage(VK_SHADER_STAGE_VERTEX_BIT, vs);
@@ -487,11 +494,8 @@ void PipelineBuilder::add_vsfs(VkShaderModule vs, VkShaderModule fs)
 
 void PipelineBuilder::add_vsfs(QoShaderModuleCreateInfo vs, QoShaderModuleCreateInfo fs)
 {
-   add_vsfs(__qoCreateShaderModule(device, &vs), __qoCreateShaderModule(device, &fs));
-   add_resource_decls(&vs);
-   add_io_decls(&vs);
-   add_resource_decls(&fs);
-   add_io_decls(&fs);
+   add_stage(VK_SHADER_STAGE_VERTEX_BIT, vs);
+   add_stage(VK_SHADER_STAGE_FRAGMENT_BIT, fs);
 }
 
 void PipelineBuilder::add_cs(VkShaderModule cs)
@@ -501,8 +505,7 @@ void PipelineBuilder::add_cs(VkShaderModule cs)
 
 void PipelineBuilder::add_cs(QoShaderModuleCreateInfo cs)
 {
-   add_cs(__qoCreateShaderModule(device, &cs));
-   add_resource_decls(&cs);
+   add_stage(VK_SHADER_STAGE_COMPUTE_BIT, cs);
 }
 
 bool PipelineBuilder::is_compute() {

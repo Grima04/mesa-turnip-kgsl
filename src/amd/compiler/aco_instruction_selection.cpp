@@ -7020,7 +7020,7 @@ void ngg_gs_write_shader_query(isel_context *ctx, nir_intrinsic_instr *instr);
 void ngg_visit_set_vertex_and_primitive_count(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    unsigned stream = nir_intrinsic_stream_id(instr);
-   if (!ctx->args->shader_info->gs.num_stream_output_components[stream])
+   if (stream > 0 && !ctx->args->shader_info->gs.num_stream_output_components[stream])
       return;
 
    ctx->ngg_gs_known_vtxcnt[stream] = true;
@@ -7048,7 +7048,6 @@ void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *inst
 
    unsigned num_components =
       ctx->program->info->gs.num_stream_output_components[stream];
-   assert(num_components);
 
    unsigned stride = 4u * num_components * ctx->shader->info.gs.vertices_out;
    unsigned stream_offset = 0;

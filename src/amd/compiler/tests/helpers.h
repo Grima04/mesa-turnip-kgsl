@@ -135,6 +135,7 @@ public:
    void add_io_decls(QoShaderModuleCreateInfo *module);
 
    void add_stage(VkShaderStageFlagBits stage, VkShaderModule module, const char *name="main");
+   void add_stage(VkShaderStageFlagBits stage, QoShaderModuleCreateInfo module, const char *name="main");
    void add_vsfs(VkShaderModule vs, VkShaderModule fs);
    void add_vsfs(QoShaderModuleCreateInfo vs, QoShaderModuleCreateInfo fs);
    void add_cs(VkShaderModule cs);
