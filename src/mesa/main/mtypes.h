@@ -5195,7 +5195,7 @@ struct gl_context
    /** \name State attribute stack (for glPush/PopAttrib) */
    /*@{*/
    GLuint AttribStackDepth;
-   struct gl_attrib_node AttribStack[MAX_ATTRIB_STACK_DEPTH];
+   struct gl_attrib_node *AttribStack[MAX_ATTRIB_STACK_DEPTH];
    /*@}*/
 
    /** \name Renderer attribute groups

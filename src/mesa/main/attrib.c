@@ -78,7 +78,15 @@ _mesa_PushAttrib(GLbitfield mask)
       return;
    }
 
-   head = &ctx->AttribStack[ctx->AttribStackDepth];
+   head = ctx->AttribStack[ctx->AttribStackDepth];
+   if (unlikely(!head)) {
+      head = CALLOC_STRUCT(gl_attrib_node);
+      if (unlikely(!head)) {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "glPushAttrib");
+         return;
+      }
+      ctx->AttribStack[ctx->AttribStackDepth] = head;
+   }
    head->Mask = mask;
 
    if (mask & GL_ACCUM_BUFFER_BIT)
@@ -650,7 +658,7 @@ _mesa_PopAttrib(void)
    }
 
    ctx->AttribStackDepth--;
-   attr = &ctx->AttribStack[ctx->AttribStackDepth];
+   attr = ctx->AttribStack[ctx->AttribStackDepth];
 
    unsigned mask = attr->Mask;
 
@@ -1471,11 +1479,14 @@ _mesa_free_attrib_data(struct gl_context *ctx)
       struct gl_attrib_node *attr;
 
       ctx->AttribStackDepth--;
-      attr = &ctx->AttribStack[ctx->AttribStackDepth];
+      attr = ctx->AttribStack[ctx->AttribStackDepth];
 
       if (attr->Mask & GL_TEXTURE_BIT)
          _mesa_reference_shared_state(ctx, &attr->Texture.SharedRef, NULL);
    }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->AttribStack); i++)
+      free(ctx->AttribStack[i]);
 }
 
 
