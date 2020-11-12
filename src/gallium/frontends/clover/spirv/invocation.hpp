@@ -68,7 +68,7 @@ namespace clover {
 
       // Returns a vector (sorted in increasing order) of supported SPIR-V
       // versions.
-      std::vector<uint32_t> supported_versions();
+      std::vector<cl_name_version> supported_versions();
 
       // Converts a version number from SPIR-V's encoding to OpenCL's one.
       cl_version to_opencl_version_encoding(uint32_t version);
