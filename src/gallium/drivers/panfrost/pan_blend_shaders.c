@@ -219,7 +219,8 @@ panfrost_create_blend_shader(struct panfrost_context *ctx,
 }
 
 static uint64_t
-bifrost_get_blend_desc(enum pipe_format fmt, unsigned rt)
+bifrost_get_blend_desc(const struct panfrost_device *dev,
+                       enum pipe_format fmt, unsigned rt)
 {
         const struct util_format_description *desc = util_format_description(fmt);
         uint64_t res;
@@ -263,7 +264,7 @@ bifrost_get_blend_desc(enum pipe_format fmt, unsigned rt)
                         desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB;
 
                 cfg.fixed_function.conversion.memory_format.format =
-                         panfrost_format_to_bifrost_blend(desc, true);
+                         panfrost_format_to_bifrost_blend(dev, desc, true);
         }
 
         return res;
@@ -299,7 +300,7 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
 
         if (dev->quirks & IS_BIFROST) {
                 inputs.blend.bifrost_blend_desc =
-                        bifrost_get_blend_desc(shader->key.format, shader->key.rt);
+                        bifrost_get_blend_desc(dev, shader->key.format, shader->key.rt);
                 program = bifrost_compile_shader_nir(NULL, shader->nir, &inputs);
 	} else {
                 program = midgard_compile_shader_nir(NULL, shader->nir, &inputs);

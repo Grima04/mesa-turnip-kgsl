@@ -673,13 +673,14 @@ panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
 }
 
 enum mali_format
-panfrost_format_to_bifrost_blend(const struct util_format_description *desc, bool dither)
+panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
+                                 const struct util_format_description *desc, bool dither)
 {
         struct pan_blendable_format fmt = panfrost_blend_format(desc->format);
 
         /* Formats requiring blend shaders are stored raw in the tilebuffer */
         if (!fmt.internal)
-                return desc->format;
+                return MALI_EXTRACT_INDEX(dev->formats[desc->format].hw);
 
         /* Else, pick the pixel format matching the tilebuffer format */
         switch (fmt.internal) {

@@ -191,7 +191,9 @@ panfrost_bifrost_swizzle(unsigned components)
 }
 
 enum mali_format
-panfrost_format_to_bifrost_blend(const struct util_format_description *desc, bool dither);
+panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
+                                 const struct util_format_description *desc,
+                                 bool dither);
 
 struct pan_pool;
 struct pan_scoreboard;

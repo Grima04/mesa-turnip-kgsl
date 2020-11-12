@@ -570,7 +570,7 @@ bifrost_load_emit_blend_rt(struct pan_pool *pool, void *out,
                         cfg.bifrost.equation.color_mask = 0xf;
                         cfg.bifrost.internal.fixed_function.num_comps = 4;
                         cfg.bifrost.internal.fixed_function.conversion.memory_format.format =
-                                panfrost_format_to_bifrost_blend(format_desc, true);
+                                panfrost_format_to_bifrost_blend(pool->dev, format_desc, true);
                         cfg.bifrost.internal.fixed_function.conversion.register_format =
                                 blit_type_to_reg_fmt(T);
 
