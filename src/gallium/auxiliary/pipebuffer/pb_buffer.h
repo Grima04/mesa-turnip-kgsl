@@ -120,6 +120,12 @@ struct pb_buffer
    unsigned               usage;
 
    /**
+    * For internal driver use. It's here so as not to waste space due to
+    * type alignment. (pahole)
+    */
+   unsigned               placement;
+
+   /**
     * Pointer to the virtual function table.
     *
     * Avoid accessing this table directly. Use the inline functions below

@@ -505,9 +505,9 @@ amdgpu_lookup_or_add_real_buffer(struct amdgpu_cs *acs, struct amdgpu_winsys_bo 
    hash = bo->unique_id & (ARRAY_SIZE(cs->buffer_indices_hashlist)-1);
    cs->buffer_indices_hashlist[hash] = idx;
 
-   if (bo->initial_domain & RADEON_DOMAIN_VRAM)
+   if (bo->base.placement & RADEON_DOMAIN_VRAM)
       acs->main.base.used_vram += bo->base.size;
-   else if (bo->initial_domain & RADEON_DOMAIN_GTT)
+   else if (bo->base.placement & RADEON_DOMAIN_GTT)
       acs->main.base.used_gart += bo->base.size;
 
    return idx;
@@ -608,9 +608,9 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_cs *acs,
    simple_mtx_lock(&bo->lock);
 
    list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->u.sparse.backing, list) {
-      if (bo->initial_domain & RADEON_DOMAIN_VRAM)
+      if (bo->base.placement & RADEON_DOMAIN_VRAM)
          acs->main.base.used_vram += backing->bo->base.size;
-      else if (bo->initial_domain & RADEON_DOMAIN_GTT)
+      else if (bo->base.placement & RADEON_DOMAIN_GTT)
          acs->main.base.used_gart += backing->bo->base.size;
    }
 
