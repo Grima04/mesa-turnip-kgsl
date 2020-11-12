@@ -99,6 +99,18 @@ bi_print_dest_index(FILE *fp, bi_instruction *ins, unsigned index)
         return true;
 }
 
+static const char *
+bir_fau_name(unsigned fau_idx)
+{
+        const char *names[] = {
+                "zero", "lane-id", "wrap-id", "core-id",
+                "fb-extent", "atest-param", "sample-pos"
+        };
+
+        assert(fau_idx < ARRAY_SIZE(names));
+        return names[fau_idx];
+}
+
 static void
 bi_print_index(FILE *fp, bi_instruction *ins, unsigned index, unsigned s)
 {
@@ -114,6 +126,9 @@ bi_print_index(FILE *fp, bi_instruction *ins, unsigned index, unsigned s)
         else if (index & BIR_INDEX_BLEND)
                 fprintf(fp, "blend_descriptor_%u.%c", ins->blend_location,
                         (index & ~BIR_INDEX_BLEND) == BIFROST_SRC_FAU_HI ? 'y' : 'x');
+        else if (index & BIR_INDEX_FAU)
+                fprintf(fp, "%s.%c", bir_fau_name(index & BIR_FAU_TYPE_MASK),
+                        (index & BIR_FAU_HI) ? 'y' : 'x');
         else
                 fprintf(fp, "#err");
 }
@@ -327,7 +342,9 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         bi_foreach_src(ins, s) {
                 bi_print_src(fp, ins, s);
 
-                if (ins->src[s] && !(ins->src[s] & (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO))) {
+                if (ins->src[s] &&
+                    !(ins->src[s] &
+                      (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO | BIR_INDEX_FAU))) {
                         pan_print_alu_type(ins->src_types[s], fp);
                         bi_print_swizzle(ins, s, fp);
                 }

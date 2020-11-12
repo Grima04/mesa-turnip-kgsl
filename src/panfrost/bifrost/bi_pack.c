@@ -179,6 +179,15 @@ bi_assign_fau_idx_single(bi_registers *regs,
 
                         regs->fau_idx = 8 | rt;
                         assigned = true;
+                } else if (ins->src[s] & BIR_INDEX_FAU) {
+                        unsigned index = ins->src[s] & BIR_FAU_TYPE_MASK;
+                        bool hi = !!(ins->src[s] & BIR_FAU_HI);
+
+                        assert(!assigned || regs->fau_idx == index);
+                        regs->fau_idx = index;
+                        ins->src[s] = BIR_INDEX_PASS |
+                                      (hi ? BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
+                        assigned = true;
                 } else if (s & BIR_INDEX_UNIFORM) {
                         unreachable("Push uniforms not implemented yet");
                 }
