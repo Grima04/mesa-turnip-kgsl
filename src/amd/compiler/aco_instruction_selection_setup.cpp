@@ -416,7 +416,8 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       ctx->program->config->lds_size = (total_lds_bytes + ctx->program->lds_alloc_granule - 1) / ctx->program->lds_alloc_granule;
 
       /* Make sure we have enough room for emitted GS vertices */
-      assert((ngg_emit_bytes % (ctx->ngg_gs_emit_vtx_bytes * nir->info.gs.vertices_out)) == 0);
+      if (nir->info.gs.vertices_out)
+         assert((ngg_emit_bytes % (ctx->ngg_gs_emit_vtx_bytes * nir->info.gs.vertices_out)) == 0);
 
       /* See if the number of vertices and primitives are compile-time known */
       nir_gs_count_vertices_and_primitives(nir, ctx->ngg_gs_const_vtxcnt, ctx->ngg_gs_const_prmcnt, 4u);

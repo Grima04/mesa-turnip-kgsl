@@ -107,3 +107,29 @@ BEGIN_TEST(isel.gs.no_outputs)
       fprintf(output, "success\n");
    }
 END_TEST
+
+BEGIN_TEST(isel.gs.no_verts)
+   for (unsigned i = GFX8; i <= GFX10; i++) {
+      if (!set_variant((chip_class)i))
+         continue;
+
+      QoShaderModuleCreateInfo vs = qoShaderModuleCreateInfoGLSL(VERTEX,
+         void main() {}
+      );
+
+      QoShaderModuleCreateInfo gs = qoShaderModuleCreateInfoGLSL(GEOMETRY,
+         layout(points) in;
+         layout(points, max_vertices = 0) out;
+
+         void main() {}
+      );
+
+      PipelineBuilder pbld(get_vk_device((chip_class)i));
+      pbld.add_stage(VK_SHADER_STAGE_VERTEX_BIT, vs);
+      pbld.add_stage(VK_SHADER_STAGE_GEOMETRY_BIT, gs);
+      pbld.create_pipeline();
+
+      //! success
+      fprintf(output, "success\n");
+   }
+END_TEST
