@@ -413,6 +413,10 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       buf.as_scalar<cl_version>() = dev.device_version();
       break;
 
+   case CL_DEVICE_OPENCL_C_NUMERIC_VERSION_KHR:
+      buf.as_scalar<cl_version>() = dev.device_clc_version();
+      break;
+
    case CL_DEVICE_OPENCL_C_ALL_VERSIONS:
       buf.as_vector<cl_name_version>() = dev.opencl_c_all_versions();
       break;
