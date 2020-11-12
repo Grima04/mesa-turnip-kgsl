@@ -174,6 +174,9 @@ void v3dv_meta_clear_finish(struct v3dv_device *device);
 void v3dv_meta_blit_init(struct v3dv_device *device);
 void v3dv_meta_blit_finish(struct v3dv_device *device);
 
+void v3dv_meta_texel_buffer_copy_init(struct v3dv_device *device);
+void v3dv_meta_texel_buffer_copy_finish(struct v3dv_device *device);
+
 struct v3dv_app_info {
    const char *app_name;
    uint32_t app_version;
@@ -246,7 +249,8 @@ struct v3dv_queue {
    struct v3dv_job *noop_job;
 };
 
-#define V3DV_META_BLIT_CACHE_KEY_SIZE (4 * sizeof(uint32_t))
+#define V3DV_META_BLIT_CACHE_KEY_SIZE              (4 * sizeof(uint32_t))
+#define V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE (1 * sizeof(uint32_t))
 
 struct v3dv_meta_color_clear_pipeline {
    VkPipeline pipeline;
@@ -265,6 +269,13 @@ struct v3dv_meta_blit_pipeline {
    VkRenderPass pass;
    VkRenderPass pass_no_load;
    uint8_t key[V3DV_META_BLIT_CACHE_KEY_SIZE];
+};
+
+struct v3dv_meta_texel_buffer_copy_pipeline {
+   VkPipeline pipeline;
+   VkRenderPass pass;
+   VkRenderPass pass_no_load;
+   uint8_t key[V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE];
 };
 
 struct v3dv_pipeline_cache_stats {
@@ -322,6 +333,11 @@ struct v3dv_device {
          VkPipelineLayout playout;
          struct hash_table *cache[3]; /* v3dv_meta_blit_pipeline for 1d, 2d, 3d */
       } blit;
+      struct {
+         VkDescriptorSetLayout dslayout;
+         VkPipelineLayout playout;
+         struct hash_table *cache[3]; /* v3dv_meta_texel_buffer_copy_pipeline for 1d, 2d, 3d */
+      } texel_buffer_copy;
    } meta;
 
    struct v3dv_bo_cache {
@@ -1166,6 +1182,10 @@ struct v3dv_cmd_buffer {
          /* The current descriptor pool for blit sources */
          VkDescriptorPool dspool;
       } blit;
+      struct {
+         /* The current descriptor pool for texel buffer copy sources */
+         VkDescriptorPool dspool;
+      } texel_buffer_copy;
    } meta;
 
    /* List of jobs in the command buffer. For primary command buffers it
@@ -1784,6 +1804,8 @@ void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *typ
 uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, bool compare_enable);
 bool v3dv_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
                                   uint32_t tex_format);
+bool v3dv_buffer_format_supports_features(VkFormat vk_format,
+                                          VkFormatFeatureFlags features);
 bool v3dv_format_supports_tlb_resolve(const struct v3dv_format *format);
 
 uint32_t v3d_utile_width(int cpp);

@@ -1327,6 +1327,7 @@ init_device_meta(struct v3dv_device *device)
    mtx_init(&device->meta.mtx, mtx_plain);
    v3dv_meta_clear_init(device);
    v3dv_meta_blit_init(device);
+   v3dv_meta_texel_buffer_copy_init(device);
 }
 
 static void
@@ -1335,6 +1336,7 @@ destroy_device_meta(struct v3dv_device *device)
    mtx_destroy(&device->meta.mtx);
    v3dv_meta_clear_finish(device);
    v3dv_meta_blit_finish(device);
+   v3dv_meta_texel_buffer_copy_finish(device);
 }
 
 VkResult

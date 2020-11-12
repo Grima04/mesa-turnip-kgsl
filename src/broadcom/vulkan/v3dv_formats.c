@@ -505,6 +505,16 @@ buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format
    return flags;
 }
 
+bool
+v3dv_buffer_format_supports_features(VkFormat vk_format,
+                                     VkFormatFeatureFlags features)
+{
+   const struct v3dv_format *v3dv_format = v3dv_get_format(vk_format);
+   const VkFormatFeatureFlags supported =
+      buffer_format_features(vk_format, v3dv_format);
+   return (supported & features) == features;
+}
+
 void
 v3dv_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
                                        VkFormat format,
