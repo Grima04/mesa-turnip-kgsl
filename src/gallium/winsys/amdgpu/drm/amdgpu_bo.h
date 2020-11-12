@@ -93,6 +93,7 @@ struct amdgpu_winsys_bo {
    bool is_user_ptr;
    uint32_t unique_id;
    uint64_t va;
+   simple_mtx_t lock;
 
    /* how many command streams is this bo referenced in? */
    int num_cs_references;
@@ -110,8 +111,6 @@ struct amdgpu_winsys_bo {
    unsigned num_fences;
    unsigned max_fences;
    struct pipe_fence_handle **fences;
-
-   simple_mtx_t lock;
 };
 
 struct amdgpu_slab {
