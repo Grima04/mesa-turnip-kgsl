@@ -420,7 +420,7 @@ int amdgpu_lookup_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *
    if (bo->bo) {
       buffers = cs->real_buffers;
       num_buffers = cs->num_real_buffers;
-   } else if (!(bo->flags & RADEON_FLAG_SPARSE)) {
+   } else if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
       buffers = cs->slab_buffers;
       num_buffers = cs->num_slab_buffers;
    } else {
@@ -643,7 +643,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
        (1u << priority) & cs->last_added_bo_priority_usage)
       return cs->last_added_bo_index;
 
-   if (!(bo->flags & RADEON_FLAG_SPARSE)) {
+   if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
       if (!bo->bo) {
          index = amdgpu_lookup_or_add_slab_buffer(acs, bo);
          if (index < 0)

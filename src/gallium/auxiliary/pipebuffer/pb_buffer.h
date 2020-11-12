@@ -113,7 +113,11 @@ struct pb_buffer
    struct pipe_reference  reference;
    unsigned               alignment;
    pb_size                size;
-   enum pb_usage_flags    usage;
+
+   /**
+    * Used with pb_usage_flags or driver-specific flags, depending on drivers.
+    */
+   unsigned               usage;
 
    /**
     * Pointer to the virtual function table.
