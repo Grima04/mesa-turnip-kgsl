@@ -430,9 +430,12 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       break;
 
    case CL_DEVICE_ILS_WITH_VERSION:
-   case CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION:
       if (r_size)
          *r_size = 0;
+      break;
+
+   case CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION:
+      buf.as_vector<cl_name_version>() = std::vector<cl_name_version>{};
       break;
 
    case CL_DEVICE_MAX_READ_WRITE_IMAGE_ARGS:
