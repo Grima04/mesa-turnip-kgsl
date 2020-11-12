@@ -566,6 +566,10 @@ if with_gallium_zink
   dep_vulkan = dependency('vulkan')
 endif
 
+if with_gallium_d3d12 and not cpp.check_header('d3d12.h')
+  error('The D3D12 driver requires d3d12.h from the Windows SDK')
+endif
+
 if with_vulkan_overlay_layer or with_aco_tests
   prog_glslang = find_program('glslangValidator')
 endif
