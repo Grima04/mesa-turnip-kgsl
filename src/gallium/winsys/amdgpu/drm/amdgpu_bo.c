@@ -892,7 +892,7 @@ sparse_backing_alloc(struct amdgpu_winsys_bo *bo, uint32_t *pstart_page, uint32_
 
       buf = amdgpu_bo_create(bo->ws, size, RADEON_SPARSE_PAGE_SIZE,
                              bo->initial_domain,
-                             bo->u.sparse.flags | RADEON_FLAG_NO_SUBALLOC);
+                             (bo->flags & ~RADEON_FLAG_SPARSE) | RADEON_FLAG_NO_SUBALLOC);
       if (!buf) {
          FREE(best_backing->chunks);
          FREE(best_backing);
@@ -1072,7 +1072,7 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    bo->initial_domain = domain;
    bo->unique_id =  __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
    bo->sparse = true;
-   bo->u.sparse.flags = flags & ~RADEON_FLAG_SPARSE;
+   bo->flags = flags;
 
    bo->u.sparse.num_va_pages = DIV_ROUND_UP(size, RADEON_SPARSE_PAGE_SIZE);
    bo->u.sparse.commitments = CALLOC(bo->u.sparse.num_va_pages,

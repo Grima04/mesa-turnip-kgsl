@@ -75,7 +75,6 @@ struct amdgpu_winsys_bo {
       } slab;
       struct {
          amdgpu_va_handle va_handle;
-         enum radeon_bo_flag flags;
 
          uint32_t num_va_pages;
          uint32_t num_backing_pages;
