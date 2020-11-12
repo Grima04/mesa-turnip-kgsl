@@ -284,6 +284,13 @@ modifier_map = {
         # For +LD_VAR, infer sample from load_vary.interp_mode
         "sample": lambda a,b,c,d: 'ins->load_vary.interp_mode',
 
+        # +CLPER
+        "lane_op": lambda a,b,c,d: 'ins->special.clper.lane_op_mod',
+        "inactive_result": lambda a,b,c,d: 'ins->special.clper.inactive_res',
+
+        # +CLPER and +WMASK
+        "subgroup": lambda a,b,c,d: 'ins->special.subgroup_sz',
+
         # We don't support these in the IR yet (TODO)
         "saturate": lambda a,b,c,d: '0', # clamp to min/max int
         "mask": lambda a,b,c,d: '0', # clz(~0) = ~0
@@ -304,9 +311,6 @@ modifier_map = {
         "bytes2": lambda a,b,c,d: '0', # NIR shifts are in bits
         "result_word": lambda a,b,c,d: '0', # 32-bit only shifts for now (TODO)
         "source": lambda a,b,c,d: '7', # cycle_counter for LD_GCLK
-        "lane_op": lambda a,b,c,d: '0', # CLPER none
-        "subgroup": lambda a,b,c,d: '1', # CLPER subgroup4
-        "inactive_result": lambda a,b,c,d: '0', # CLPER zero
         "threads": lambda a,b,c,d: '0', # IMULD odd
         "combine": lambda a,b,c,d: '0', # BRANCHC any
         "format": lambda a,b,c,d: '1', # LEA_TEX_IMM u32

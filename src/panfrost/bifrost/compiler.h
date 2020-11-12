@@ -241,6 +241,10 @@ enum bi_special_op {
         BI_SPECIAL_CUBEFACE2,
         BI_SPECIAL_CUBE_SSEL,
         BI_SPECIAL_CUBE_TSEL,
+
+        /* Cross-lane permute, used to implement dFd{x,y} */
+        BI_SPECIAL_CLPER_V6,
+        BI_SPECIAL_CLPER_V7,
 };
 
 struct bi_bitwise {
@@ -257,6 +261,46 @@ struct bi_texture {
         /* Should the LOD be computed based on neighboring pixels? Only valid
          * in fragment shaders. */
         bool compute_lod;
+};
+
+enum bi_clper_lane_op_mod {
+        BI_CLPER_LANE_OP_MOD_NONE,
+        BI_CLPER_LANE_OP_MOD_XOR,
+        BI_CLPER_LANE_OP_MOD_ACCUMULATE,
+        BI_CLPER_LANE_OP_MOD_SHIFT,
+};
+
+enum bi_subgroup_sz {
+        BI_CLPER_SUBGROUP_SZ_2,
+        BI_CLPER_SUBGROUP_SZ_4,
+        BI_CLPER_SUBGROUP_SZ_8,
+};
+
+enum bi_clper_inactive_res {
+        BI_CLPER_INACTIVE_RES_ZERO,
+        BI_CLPER_INACTIVE_RES_UMAX,
+        BI_CLPER_INACTIVE_RES_I1,
+        BI_CLPER_INACTIVE_RES_V2I1,
+        BI_CLPER_INACTIVE_RES_SMIN,
+        BI_CLPER_INACTIVE_RES_SMAX,
+        BI_CLPER_INACTIVE_RES_V2SMIN,
+        BI_CLPER_INACTIVE_RES_V2SMAX,
+        BI_CLPER_INACTIVE_RES_V4SMIN,
+        BI_CLPER_INACTIVE_RES_V4SMAX,
+        BI_CLPER_INACTIVE_RES_F1,
+        BI_CLPER_INACTIVE_RES_V2F1,
+        BI_CLPER_INACTIVE_RES_INFN,
+        BI_CLPER_INACTIVE_RES_INF,
+        BI_CLPER_INACTIVE_RES_V2INFN,
+        BI_CLPER_INACTIVE_RES_V2INF,
+};
+
+struct bi_special {
+        struct {
+                enum bi_clper_lane_op_mod lane_op_mod;
+                enum bi_clper_inactive_res inactive_res;
+        } clper;
+        enum bi_subgroup_sz subgroup_sz;
 };
 
 typedef struct {
@@ -355,6 +399,7 @@ typedef struct {
 
                 struct bi_bitwise bitwise;
                 struct bi_texture texture;
+                struct bi_special special;
         };
 } bi_instruction;
 

@@ -701,6 +701,10 @@ bi_pack_add_special(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
                 return pan_pack_add_cube_ssel(clause, ins, regs);
         case BI_SPECIAL_CUBE_TSEL:
                 return pan_pack_add_cube_tsel(clause, ins, regs);
+        case BI_SPECIAL_CLPER_V6:
+                return pan_pack_add_clper_v6_i32(clause, ins, regs);
+        case BI_SPECIAL_CLPER_V7:
+                return pan_pack_add_clper_v7_i32(clause, ins, regs);
         default:
                 unreachable("Unknown special op");
         }
