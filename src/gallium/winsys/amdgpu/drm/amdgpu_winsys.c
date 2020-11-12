@@ -112,7 +112,6 @@ static bool do_winsys_init(struct amdgpu_winsys *ws,
    ws->reserve_vmid = strstr(debug_get_option("R600_DEBUG", ""), "reserve_vmid") != NULL ||
                       strstr(debug_get_option("AMD_DEBUG", ""), "reserve_vmid") != NULL;
    ws->zero_all_vram_allocs = strstr(debug_get_option("R600_DEBUG", ""), "zerovram") != NULL ||
-                              strstr(debug_get_option("AMD_DEBUG", ""), "zerovram") != NULL ||
                               driQueryOptionb(config->options, "radeonsi_zerovram");
 
    return true;

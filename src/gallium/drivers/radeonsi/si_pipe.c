@@ -89,7 +89,6 @@ static const struct debug_named_value debug_options[] = {
    {"nowc", DBG(NO_WC), "Disable GTT write combining"},
    {"check_vm", DBG(CHECK_VM), "Check VM faults and dump debug info."},
    {"reserve_vmid", DBG(RESERVE_VMID), "Force VMID reservation per context."},
-   {"zerovram", DBG(ZERO_VRAM), "Clear VRAM allocations."},
    {"shadowregs", DBG(SHADOW_REGS), "Enable CP register shadowing."},
 
    /* 3D engine options: */

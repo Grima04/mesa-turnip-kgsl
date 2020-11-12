@@ -183,7 +183,6 @@ enum
    DBG_NO_WC,
    DBG_CHECK_VM,
    DBG_RESERVE_VMID,
-   DBG_ZERO_VRAM,
    DBG_SHADOW_REGS,
 
    /* 3D engine options: */

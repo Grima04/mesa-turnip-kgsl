@@ -659,8 +659,6 @@ radeonsi driver environment variables
    Disable SDMA clears
 ``nodmacopyimage``
    Disable SDMA image copies
-``zerovram``
-   Clear VRAM allocations.
 ``nodcc``
    Disable DCC.
 ``nodccclear``
