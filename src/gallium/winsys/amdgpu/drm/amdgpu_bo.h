@@ -90,7 +90,6 @@ struct amdgpu_winsys_bo {
    void *cpu_ptr; /* for user_ptr and permanent maps */
 
    amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
-   bool sparse;
    bool is_user_ptr;
    uint32_t unique_id;
    uint64_t va;

@@ -247,7 +247,7 @@ static void amdgpu_clean_up_buffer_managers(struct amdgpu_winsys *ws)
 
 static bool amdgpu_bo_do_map(struct amdgpu_winsys_bo *bo, void **cpu)
 {
-   assert(!bo->sparse && bo->bo && !bo->is_user_ptr);
+   assert(!(bo->flags & RADEON_FLAG_SPARSE) && bo->bo && !bo->is_user_ptr);
    int r = amdgpu_bo_cpu_map(bo->bo, cpu);
    if (r) {
       /* Clean up buffer managers and try again. */
@@ -276,7 +276,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
    struct amdgpu_winsys_bo *real;
    struct amdgpu_cs *cs = (struct amdgpu_cs*)rcs;
 
-   assert(!bo->sparse);
+   assert(!(bo->flags & RADEON_FLAG_SPARSE));
 
    /* If it's not unsynchronized bo_map, flush CS if needed and then wait. */
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
@@ -403,7 +403,7 @@ void amdgpu_bo_unmap(struct pb_buffer *buf)
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_winsys_bo *real;
 
-   assert(!bo->sparse);
+   assert(!(bo->flags & RADEON_FLAG_SPARSE));
 
    if (bo->is_user_ptr)
       return;
@@ -1015,7 +1015,7 @@ static void amdgpu_bo_sparse_destroy(struct pb_buffer *_buf)
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
    int r;
 
-   assert(!bo->bo && bo->sparse);
+   assert(!bo->bo && bo->flags & RADEON_FLAG_SPARSE);
 
    r = amdgpu_bo_va_op_raw(bo->ws->dev, NULL, 0,
                            (uint64_t)bo->u.sparse.num_va_pages * RADEON_SPARSE_PAGE_SIZE,
@@ -1071,7 +1071,6 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    bo->ws = ws;
    bo->initial_domain = domain;
    bo->unique_id =  __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
-   bo->sparse = true;
    bo->flags = flags;
 
    bo->u.sparse.num_va_pages = DIV_ROUND_UP(size, RADEON_SPARSE_PAGE_SIZE);
@@ -1119,7 +1118,7 @@ amdgpu_bo_sparse_commit(struct pb_buffer *buf, uint64_t offset, uint64_t size,
    bool ok = true;
    int r;
 
-   assert(bo->sparse);
+   assert(bo->flags & RADEON_FLAG_SPARSE);
    assert(offset % RADEON_SPARSE_PAGE_SIZE == 0);
    assert(offset <= bo->base.size);
    assert(size <= bo->base.size - offset);
@@ -1664,7 +1663,7 @@ static bool amdgpu_bo_is_suballocated(struct pb_buffer *buf)
 {
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
 
-   return !bo->bo && !bo->sparse;
+   return !bo->bo && !(bo->flags & RADEON_FLAG_SPARSE);
 }
 
 static uint64_t amdgpu_bo_get_va(struct pb_buffer *buf)
