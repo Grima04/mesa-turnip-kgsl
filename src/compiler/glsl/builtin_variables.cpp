@@ -194,10 +194,10 @@ static const struct gl_builtin_uniform_element gl_CurrentAttribFragMESA_elements
 
 #define MATRIX(name, statevar)				\
    static const struct gl_builtin_uniform_element name ## _elements[] = { \
-      { NULL, { statevar, 0, 0, 0, 0}, SWIZZLE_XYZW },		\
-      { NULL, { statevar, 0, 1, 1, 0}, SWIZZLE_XYZW },		\
-      { NULL, { statevar, 0, 2, 2, 0}, SWIZZLE_XYZW },		\
-      { NULL, { statevar, 0, 3, 3, 0}, SWIZZLE_XYZW },		\
+      { NULL, { statevar, 0, 0, 0}, SWIZZLE_XYZW },		\
+      { NULL, { statevar, 0, 1, 1}, SWIZZLE_XYZW },		\
+      { NULL, { statevar, 0, 2, 2}, SWIZZLE_XYZW },		\
+      { NULL, { statevar, 0, 3, 3}, SWIZZLE_XYZW },		\
    }
 
 MATRIX(gl_ModelViewMatrix, STATE_MODELVIEW_MATRIX_TRANSPOSE);
@@ -221,11 +221,11 @@ MATRIX(gl_TextureMatrixTranspose, STATE_TEXTURE_MATRIX);
 MATRIX(gl_TextureMatrixInverseTranspose, STATE_TEXTURE_MATRIX_INVERSE);
 
 static const struct gl_builtin_uniform_element gl_NormalMatrix_elements[] = {
-   { NULL, { STATE_MODELVIEW_MATRIX_INVERSE, 0, 0, 0, 0},
+   { NULL, { STATE_MODELVIEW_MATRIX_INVERSE, 0, 0, 0},
      MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_Z) },
-   { NULL, { STATE_MODELVIEW_MATRIX_INVERSE, 0, 1, 1, 0},
+   { NULL, { STATE_MODELVIEW_MATRIX_INVERSE, 0, 1, 1},
      MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_Z) },
-   { NULL, { STATE_MODELVIEW_MATRIX_INVERSE, 0, 2, 2, 0},
+   { NULL, { STATE_MODELVIEW_MATRIX_INVERSE, 0, 2, 2},
      MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_Z) },
 };
 

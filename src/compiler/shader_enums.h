@@ -86,7 +86,7 @@ gl_shader_stage_is_callable(gl_shader_stage stage)
  * Number of STATE_* values we need to address any GL state.
  * Used to dimension arrays.
  */
-#define STATE_LENGTH 5
+#define STATE_LENGTH 4
 
 typedef short gl_state_index16; /* see enum gl_state_index */
 

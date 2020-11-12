@@ -408,12 +408,11 @@ static void release_temps( struct tnl_program *p )
 }
 
 
-static struct ureg register_param5(struct tnl_program *p,
+static struct ureg register_param4(struct tnl_program *p,
 				   GLint s0,
 				   GLint s1,
 				   GLint s2,
-				   GLint s3,
-                                   GLint s4)
+				   GLint s3)
 {
    gl_state_index16 tokens[STATE_LENGTH];
    GLint idx;
@@ -421,16 +420,14 @@ static struct ureg register_param5(struct tnl_program *p,
    tokens[1] = s1;
    tokens[2] = s2;
    tokens[3] = s3;
-   tokens[4] = s4;
    idx = _mesa_add_state_reference(p->state_params, tokens);
    return make_ureg(PROGRAM_STATE_VAR, idx);
 }
 
 
-#define register_param1(p,s0)          register_param5(p,s0,0,0,0,0)
-#define register_param2(p,s0,s1)       register_param5(p,s0,s1,0,0,0)
-#define register_param3(p,s0,s1,s2)    register_param5(p,s0,s1,s2,0,0)
-#define register_param4(p,s0,s1,s2,s3) register_param5(p,s0,s1,s2,s3,0)
+#define register_param1(p,s0)          register_param4(p,s0,0,0,0)
+#define register_param2(p,s0,s1)       register_param4(p,s0,s1,0,0)
+#define register_param3(p,s0,s1,s2)    register_param4(p,s0,s1,s2,0)
 
 
 
@@ -504,7 +501,6 @@ static void register_matrix_param5( struct tnl_program *p,
 				    GLint s1, /* texture matrix number */
 				    GLint s2, /* first row */
 				    GLint s3, /* last row */
-				    GLint s4, /* inverse, transpose, etc */
 				    struct ureg *matrix )
 {
    GLint i;
@@ -513,7 +509,7 @@ static void register_matrix_param5( struct tnl_program *p,
     * matrix out in one go:
     */
    for (i = 0; i <= s3 - s2; i++)
-      matrix[i] = register_param5( p, s0, s1, i, i, s4 );
+      matrix[i] = register_param4(p, s0, s1, i, i);
 }
 
 
@@ -718,13 +714,13 @@ static struct ureg get_eye_position( struct tnl_program *p )
 
       if (p->mvp_with_dp4) {
 	 register_matrix_param5( p, STATE_MODELVIEW_MATRIX, 0, 0, 3,
-                                 0, modelview );
+                                 modelview );
 
 	 emit_matrix_transform_vec4(p, p->eye_position, modelview, pos);
       }
       else {
 	 register_matrix_param5( p, STATE_MODELVIEW_MATRIX_TRANSPOSE, 0, 0, 3,
-				 0, modelview );
+				 modelview );
 
 	 emit_transpose_matrix_transform_vec4(p, p->eye_position, modelview, pos);
       }
@@ -746,7 +742,7 @@ static struct ureg get_eye_position_z( struct tnl_program *p )
       p->eye_position_z = reserve_temp(p);
 
       register_matrix_param5( p, STATE_MODELVIEW_MATRIX, 0, 0, 3,
-                              0, modelview );
+                              modelview );
 
       emit_op2(p, OPCODE_DP4, p->eye_position_z, 0, pos, modelview[2]);
    }
@@ -784,7 +780,7 @@ static struct ureg get_transformed_normal( struct tnl_program *p )
 
       if (p->state->need_eye_coords) {
          register_matrix_param5( p, STATE_MODELVIEW_MATRIX_INVTRANS, 0, 0, 2,
-                                 0, mvinv );
+                                 mvinv );
 
          /* Transform to eye space:
           */
@@ -824,12 +820,12 @@ static void build_hpos( struct tnl_program *p )
 
    if (p->mvp_with_dp4) {
       register_matrix_param5( p, STATE_MVP_MATRIX, 0, 0, 3,
-			      0, mvp );
+			      mvp );
       emit_matrix_transform_vec4( p, hpos, mvp, pos );
    }
    else {
       register_matrix_param5( p, STATE_MVP_MATRIX_TRANSPOSE, 0, 0, 3,
-			      0, mvp );
+			      mvp );
       emit_transpose_matrix_transform_vec4( p, hpos, mvp, pos );
    }
 }
@@ -1500,12 +1496,12 @@ static void build_texture_transform( struct tnl_program *p )
 			      register_input(p, VERT_ATTRIB_TEX0+i));
 	    if (p->mvp_with_dp4) {
 	       register_matrix_param5( p, STATE_TEXTURE_MATRIX, i, 0, 3,
-				       0, texmat );
+				       texmat );
 	       emit_matrix_transform_vec4( p, out, texmat, in );
 	    }
 	    else {
 	       register_matrix_param5( p, STATE_TEXTURE_MATRIX_TRANSPOSE, i, 0, 3,
-				       0, texmat );
+				       texmat );
 	       emit_transpose_matrix_transform_vec4( p, out, texmat, in );
 	    }
 	 }

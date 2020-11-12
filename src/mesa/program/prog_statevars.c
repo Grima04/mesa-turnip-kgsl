@@ -1159,7 +1159,6 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
          /* state[1] = which texture matrix or program matrix */
          /* state[2] = first row to fetch */
          /* state[3] = last row to fetch */
-         /* state[4] = transpose, inverse or invtrans */
          const gl_state_index mat = state[0];
          const GLuint index = (GLuint) state[1];
          const GLuint firstRow = (GLuint) state[2];

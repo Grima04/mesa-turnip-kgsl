@@ -663,7 +663,7 @@ nir_visitor::visit(ir_variable *ir)
 
       ir_state_slot *state_slots = ir->get_state_slots();
       for (unsigned i = 0; i < var->num_state_slots; i++) {
-         for (unsigned j = 0; j < 5; j++)
+         for (unsigned j = 0; j < 4; j++)
             var->state_slots[i].tokens[j] = state_slots[i].tokens[j];
          var->state_slots[i].swizzle = state_slots[i].swizzle;
       }
