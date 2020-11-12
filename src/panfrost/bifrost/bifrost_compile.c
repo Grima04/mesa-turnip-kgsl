@@ -2078,6 +2078,22 @@ bi_is_normal_tex(gl_shader_stage stage, nir_tex_instr *instr)
 static void
 emit_tex(bi_context *ctx, nir_tex_instr *instr)
 {
+        switch (instr->op) {
+        case nir_texop_txs:
+                bi_emit_sysval(ctx, &instr->instr, 4, 0);
+                return;
+
+        case nir_texop_tex:
+        case nir_texop_txl:
+        case nir_texop_txb:
+        case nir_texop_txf:
+        case nir_texop_txf_ms:
+                break;
+
+        default:
+                unreachable("Invalid texture operation");
+        }
+
         nir_alu_type base = nir_alu_type_get_base_type(instr->dest_type);
         unsigned sz =  nir_dest_bit_size(instr->dest);
         instr->dest_type = base | sz;
