@@ -78,13 +78,13 @@ d3d12_make_passthrough_gs(struct d3d12_context *ctx, struct d3d12_gs_variant_key
 {
    struct d3d12_shader_selector *gs;
    uint64_t varyings = key->varyings.mask;
-   nir_builder b;
    nir_shader *nir;
    nir_intrinsic_instr *instr;
    struct pipe_shader_state templ;
 
-   nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_GEOMETRY,
-                                  dxil_get_nir_compiler_options());
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
+                                                  dxil_get_nir_compiler_options(),
+                                                  "passthrough");
 
    nir = b.shader;
    nir->info.inputs_read = varyings;
@@ -95,7 +95,6 @@ d3d12_make_passthrough_gs(struct d3d12_context *ctx, struct d3d12_gs_variant_key
    nir->info.gs.vertices_out = 1;
    nir->info.gs.invocations = 1;
    nir->info.gs.active_stream_mask = 1;
-   nir->info.name = ralloc_strdup(nir, "passthrough");
 
    /* Copy inputs to outputs. */
    while (varyings) {
@@ -173,8 +172,9 @@ d3d12_begin_emit_primitives_gs(struct emit_primitives_context *emit_ctx,
 
    emit_ctx->ctx = ctx;
 
-   nir_builder_init_simple_shader(b, NULL, MESA_SHADER_GEOMETRY,
-                                  dxil_get_nir_compiler_options());
+   emit_ctx->b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
+                                                dxil_get_nir_compiler_options(),
+                                                "edgeflags");
 
    nir_shader *nir = b->shader;
    nir->info.inputs_read = varyings;
@@ -185,7 +185,6 @@ d3d12_begin_emit_primitives_gs(struct emit_primitives_context *emit_ctx,
    nir->info.gs.vertices_out = vertices_out;
    nir->info.gs.invocations = 1;
    nir->info.gs.active_stream_mask = 1;
-   nir->info.name = ralloc_strdup(nir, "edgeflags");
 
    while (varyings) {
       char tmp[100];

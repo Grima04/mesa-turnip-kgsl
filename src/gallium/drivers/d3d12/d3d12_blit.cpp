@@ -612,10 +612,9 @@ get_stencil_resolve_vs(struct d3d12_context *ctx)
    if (ctx->stencil_resolve_vs)
       return ctx->stencil_resolve_vs;
 
-   nir_builder b;
-   nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_VERTEX,
-                                  dxil_get_nir_compiler_options());
-   b.shader->info.name = ralloc_strdup(b.shader, "linear_blit_vs");
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX,
+                                                  dxil_get_nir_compiler_options(),
+                                                  "linear_blit_vs");
 
    const struct glsl_type *vec4 = glsl_vec4_type();
    nir_variable *pos_in = nir_variable_create(b.shader, nir_var_shader_in,
@@ -641,9 +640,9 @@ get_stencil_resolve_fs(struct d3d12_context *ctx)
    if (ctx->stencil_resolve_fs)
       return ctx->stencil_resolve_fs;
 
-   nir_builder b;
-   nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT,
-                                  dxil_get_nir_compiler_options());
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
+                                                  dxil_get_nir_compiler_options(),
+                                                  "stencil_resolve_fs");
 
    nir_variable *stencil_out = nir_variable_create(b.shader,
                                                    nir_var_shader_out,
