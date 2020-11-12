@@ -181,8 +181,14 @@ def pack_register_format(mod, opts, body, pack_exprs):
     body.append('unsigned {}_temp = 0;'.format(mod))
 
     first = True
+    auto = None
     for i, op in enumerate(opts):
         if op is None or op == 'reserved':
+            continue
+
+        if op == 'auto':
+            assert(auto == None)
+            auto = i
             continue
 
         t_else = 'else ' if not first else ''
@@ -193,7 +199,10 @@ def pack_register_format(mod, opts, body, pack_exprs):
             body.append('{}if (ins->format == {}) {}_temp = {};'.format(t_else, nir_type, mod, i))
 
     assert not first
-    body.append('else unreachable("Could not pattern match register format");')
+    if auto is None:
+        body.append('else unreachable("Could not pattern match register format");')
+    else:
+        body.append('else {}_temp = {};'.format(mod, auto))
     return mod + '_temp'
 
 def pack_seg(mod, opts, body, pack_exprs):
