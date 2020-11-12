@@ -96,6 +96,7 @@ namespace clover {
       cl_version device_clc_version() const;
       std::vector<cl_name_version> opencl_c_all_versions() const;
       std::vector<cl_name_version> supported_extensions() const;
+      std::vector<cl_name_version> supported_il_versions() const;
 
       std::vector<cl_name_version> opencl_c_features() const;
 

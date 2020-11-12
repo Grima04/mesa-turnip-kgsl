@@ -25,6 +25,7 @@
 #include "core/platform.hpp"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
+#include "spirv/invocation.hpp"
 #include "util/bitscan.h"
 #include "util/u_debug.h"
 #include "spirv/invocation.hpp"
@@ -383,6 +384,11 @@ device::supported_extensions_as_string() const {
       extensions_string += extension.name;
    }
    return extensions_string;
+}
+
+std::vector<cl_name_version>
+device::supported_il_versions() const {
+   return clover::spirv::supported_versions();
 }
 
 const void *
