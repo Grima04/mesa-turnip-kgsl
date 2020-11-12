@@ -82,12 +82,17 @@ bi_allocate_registers(bi_context *ctx, bool *success)
         bi_foreach_instr_global(ctx, ins) {
                 unsigned dest = ins->dest;
 
+                /* Blend shaders expect the src colour to be in r0-r3 */
+                if (ins->type == BI_BLEND && !ctx->is_blend)
+                        l->solutions[ins->src[0]] = 0;
+
                 if (!dest || (dest >= node_count))
                         continue;
 
                 l->class[dest] = BI_REG_CLASS_WORK;
                 lcra_set_alignment(l, dest, 2, 16); /* 2^2 = 4 */
                 lcra_restrict_range(l, dest, 4);
+
         }
 
         bi_compute_interference(ctx, l);
