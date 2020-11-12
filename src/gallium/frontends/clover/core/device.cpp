@@ -370,6 +370,7 @@ device::supported_extensions() const {
    if (!clover::spirv::supported_versions().empty() &&
        supports_ir(PIPE_SHADER_IR_NIR_SERIALIZED))
       vec.push_back( cl_name_version{ CL_MAKE_VERSION(1, 0, 0), "cl_khr_il_program" } );
+   vec.push_back( cl_name_version{ CL_MAKE_VERSION(1, 0, 0), "cl_khr_extended_versioning" } );
    return vec;
 }
 
