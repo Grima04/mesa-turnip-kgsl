@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include "midgard_pack.h"
 #include "pan_texture.h"
+#include "panfrost-quirks.h"
 
 /* Convenience */
 
@@ -672,7 +673,7 @@ panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
         }
 }
 
-enum mali_format
+unsigned
 panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
                                  const struct util_format_description *desc, bool dither)
 {
@@ -680,27 +681,36 @@ panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
 
         /* Formats requiring blend shaders are stored raw in the tilebuffer */
         if (!fmt.internal)
-                return MALI_EXTRACT_INDEX(dev->formats[desc->format].hw);
+                return dev->formats[desc->format].hw;
+
+        unsigned extra = 0;
+
+        if (dev->quirks & HAS_SWIZZLES)
+                extra |= panfrost_get_default_swizzle(4);
+
+        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
+                extra |= 1 << 20;
 
         /* Else, pick the pixel format matching the tilebuffer format */
         switch (fmt.internal) {
-        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8:
-                return MALI_RGBA8_TB;
+#define TB_FORMAT(in, out) \
+        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_ ## in: \
+                return (MALI_ ## out << 12) | extra
 
-        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R10G10B10A2:
-                return MALI_RGB10_A2_TB;
+#define TB_FORMAT_DITHER(in, out) \
+        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_ ## in: \
+                return ((dither ? MALI_ ## out ## _AU : MALI_ ## out ## _PU) << 12) | extra
 
-        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A2:
-                return dither ? MALI_RGB8_A2_AU : MALI_RGB8_A2_PU;
+        TB_FORMAT(R8G8B8A8, RGBA8_TB);
+        TB_FORMAT(R10G10B10A2, RGB10_A2_TB);
+        TB_FORMAT_DITHER(R8G8B8A2, RGB8_A2);
+        TB_FORMAT_DITHER(R4G4B4A4, RGBA4);
+        TB_FORMAT_DITHER(R5G6B5A0, R5G6B5);
+        TB_FORMAT_DITHER(R5G5B5A1, RGB5_A1);
 
-        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R4G4B4A4:
-                return dither ? MALI_RGBA4_AU : MALI_RGBA4_PU;
+#undef TB_FORMAT_DITHER
+#undef TB_FORMAT
 
-        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G6B5A0:
-                return dither ? MALI_R5G6B5_AU : MALI_R5G6B5_PU;
-
-        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G5B5A1:
-                return dither ? MALI_RGB5_A1_AU : MALI_RGB5_A1_PU;
         default:
                 unreachable("invalid internal blendable");
         }

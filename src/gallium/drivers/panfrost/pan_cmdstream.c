@@ -300,12 +300,8 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                  * num_comps must be set to 4
                                  */
                                 cfg.bifrost.internal.fixed_function.num_comps = 4;
-                                cfg.bifrost.internal.fixed_function.conversion.memory_format.format =
+                                cfg.bifrost.internal.fixed_function.conversion.memory_format =
                                         panfrost_format_to_bifrost_blend(dev, format_desc, true);
-                                if (dev->quirks & HAS_SWIZZLES) {
-                                        cfg.bifrost.internal.fixed_function.conversion.memory_format.swizzle =
-                                                panfrost_get_default_swizzle(4);
-                                }
                                 cfg.bifrost.internal.fixed_function.conversion.register_format =
                                         fs->blend_types[i];
                         }

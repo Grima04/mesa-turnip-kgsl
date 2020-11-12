@@ -260,10 +260,7 @@ bifrost_get_blend_desc(const struct panfrost_device *dev,
                         unreachable("Invalid format");
                 }
 
-                cfg.fixed_function.conversion.memory_format.srgb =
-                        desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB;
-
-                cfg.fixed_function.conversion.memory_format.format =
+                cfg.fixed_function.conversion.memory_format =
                          panfrost_format_to_bifrost_blend(dev, desc, true);
         }
 

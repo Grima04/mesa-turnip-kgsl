@@ -357,17 +357,6 @@
     <value name="Force Late" value="3"/>
   </enum>
 
-  <struct name="Pixel Format" no-direct-packing="true">
-    <field name="RGB Component Order" size="8" start="0" type="RGB Component Order"/>
-    <field name="YUV Component Order" size="3" start="0" type="YUV Swizzle"/>
-    <field name="YUV Component Swap" size="1" start="3" type="bool"/>
-    <field name="YUV Cr Siting" size="3" start="0" type="YUV Cr Siting"/>
-    <field name="Swizzle" size="12" start="0" type="uint"/>
-    <field name="Format" size="8" start="12" type="Format"/>
-    <field name="sRGB" size="1" start="20" type="bool"/>
-    <field name="Big Endian" size="1" start="21" type="bool"/>
-  </struct>
-
   <enum name="Block Format">
     <!--- 16x16 block u-interleaved -->
     <value name="Tiled U-Interleaved" value="0"/>
@@ -551,7 +540,7 @@
   </struct>
 
   <struct name="Bifrost Internal Conversion" size="1">
-    <field name="Memory Format" size="22" start="0" type="Pixel Format"/>
+    <field name="Memory Format" size="22" start="0" type="uint"/>
     <field name="Raw" size="1" start="22" type="bool"/>
     <field name="Register Format" size="3" start="24" type="Bifrost Register File Format"/>
   </struct>

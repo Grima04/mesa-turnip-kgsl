@@ -569,16 +569,12 @@ bifrost_load_emit_blend_rt(struct pan_pool *pool, void *out,
                         cfg.bifrost.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
                         cfg.bifrost.equation.color_mask = 0xf;
                         cfg.bifrost.internal.fixed_function.num_comps = 4;
-                        cfg.bifrost.internal.fixed_function.conversion.memory_format.format =
+                        cfg.bifrost.internal.fixed_function.conversion.memory_format =
                                 panfrost_format_to_bifrost_blend(pool->dev, format_desc, true);
                         cfg.bifrost.internal.fixed_function.conversion.register_format =
                                 blit_type_to_reg_fmt(T);
 
                         cfg.bifrost.internal.fixed_function.rt = rt;
-                        if (pool->dev->quirks & HAS_SWIZZLES) {
-                                cfg.bifrost.internal.fixed_function.conversion.memory_format.swizzle =
-                                        panfrost_get_default_swizzle(4);
-                        }
                 }
         }
 }
