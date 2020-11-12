@@ -63,7 +63,7 @@ create_color_clear_pipeline_layout(struct v3dv_device *device,
    };
 
    return v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
-                                    &info, &device->alloc, pipeline_layout);
+                                    &info, &device->vk.alloc, pipeline_layout);
 }
 
 static VkResult
@@ -79,7 +79,7 @@ create_depth_clear_pipeline_layout(struct v3dv_device *device,
    };
 
    return v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
-                                    &info, &device->alloc, pipeline_layout);
+                                    &info, &device->vk.alloc, pipeline_layout);
 }
 
 void
@@ -105,24 +105,24 @@ v3dv_meta_clear_finish(struct v3dv_device *device)
 
    hash_table_foreach(device->meta.color_clear.cache, entry) {
       struct v3dv_meta_color_clear_pipeline *item = entry->data;
-      destroy_color_clear_pipeline(_device, (uintptr_t)item, &device->alloc);
+      destroy_color_clear_pipeline(_device, (uintptr_t)item, &device->vk.alloc);
    }
    _mesa_hash_table_destroy(device->meta.color_clear.cache, NULL);
 
    if (device->meta.color_clear.p_layout) {
       v3dv_DestroyPipelineLayout(_device, device->meta.color_clear.p_layout,
-                                 &device->alloc);
+                                 &device->vk.alloc);
    }
 
    hash_table_foreach(device->meta.depth_clear.cache, entry) {
       struct v3dv_meta_depth_clear_pipeline *item = entry->data;
-      destroy_depth_clear_pipeline(_device, item, &device->alloc);
+      destroy_depth_clear_pipeline(_device, item, &device->vk.alloc);
    }
    _mesa_hash_table_destroy(device->meta.depth_clear.cache, NULL);
 
    if (device->meta.depth_clear.p_layout) {
       v3dv_DestroyPipelineLayout(_device, device->meta.depth_clear.p_layout,
-                                 &device->alloc);
+                                 &device->vk.alloc);
    }
 }
 
@@ -344,7 +344,7 @@ create_pipeline(struct v3dv_device *device,
       v3dv_CreateGraphicsPipelines(v3dv_device_to_handle(device),
                                    VK_NULL_HANDLE,
                                    1, &info,
-                                   &device->alloc,
+                                   &device->vk.alloc,
                                    pipeline);
 
    ralloc_free(vs_nir);
@@ -511,7 +511,7 @@ create_color_clear_render_pass(struct v3dv_device *device,
    };
 
    return v3dv_CreateRenderPass(v3dv_device_to_handle(device),
-                                &info, &device->alloc, pass);
+                                &info, &device->vk.alloc, pass);
 }
 
 static inline uint64_t
@@ -611,7 +611,7 @@ get_color_clear_pipeline(struct v3dv_device *device,
       }
    }
 
-   *pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(**pipeline), 8,
+   *pipeline = vk_zalloc2(&device->vk.alloc, NULL, sizeof(**pipeline), 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
    if (*pipeline == NULL) {
@@ -663,10 +663,10 @@ fail:
    VkDevice _device = v3dv_device_to_handle(device);
    if (*pipeline) {
       if ((*pipeline)->cached)
-         v3dv_DestroyRenderPass(_device, (*pipeline)->pass, &device->alloc);
+         v3dv_DestroyRenderPass(_device, (*pipeline)->pass, &device->vk.alloc);
       if ((*pipeline)->pipeline)
-         v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->alloc);
-      vk_free(&device->alloc, *pipeline);
+         v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->vk.alloc);
+      vk_free(&device->vk.alloc, *pipeline);
       *pipeline = NULL;
    }
 
@@ -702,7 +702,7 @@ get_depth_clear_pipeline(struct v3dv_device *device,
       return VK_SUCCESS;
    }
 
-   *pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(**pipeline), 8,
+   *pipeline = vk_zalloc2(&device->vk.alloc, NULL, sizeof(**pipeline), 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
    if (*pipeline == NULL) {
@@ -733,8 +733,8 @@ fail:
    VkDevice _device = v3dv_device_to_handle(device);
    if (*pipeline) {
       if ((*pipeline)->pipeline)
-         v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->alloc);
-      vk_free(&device->alloc, *pipeline);
+         v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->vk.alloc);
+      vk_free(&device->vk.alloc, *pipeline);
       *pipeline = NULL;
    }
 
@@ -856,7 +856,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
       VkImageView fb_attachment;
       result = v3dv_CreateImageView(v3dv_device_to_handle(device),
                                     &fb_layer_view_info,
-                                    &device->alloc, &fb_attachment);
+                                    &device->vk.alloc, &fb_attachment);
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -876,7 +876,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
 
       VkFramebuffer fb;
       result = v3dv_CreateFramebuffer(device_handle, &fb_info,
-                                      &cmd_buffer->device->alloc, &fb);
+                                      &cmd_buffer->device->vk.alloc, &fb);
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -1605,7 +1605,7 @@ handle_deferred_clear_attachments(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    job->cpu.clear_attachments.rects =
-      vk_alloc(&cmd_buffer->device->alloc,
+      vk_alloc(&cmd_buffer->device->vk.alloc,
                sizeof(VkClearRect) * rectCount, 8,
                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!job->cpu.clear_attachments.rects) {

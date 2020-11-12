@@ -137,7 +137,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   instance->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(NULL, &instance->base, VK_OBJECT_TYPE_INSTANCE);
 
    if (pAllocator)
       instance->alloc = *pAllocator;
@@ -216,6 +216,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
    if (result != VK_SUCCESS) {
+      vk_object_base_finish(&instance->base);
       vk_free2(&default_alloc, pAllocator, instance);
       return vk_error(NULL, result);
    }
@@ -277,6 +278,7 @@ physical_device_finish(struct v3dv_physical_device *device)
    v3d_simulator_destroy(device->sim_file);
 #endif
 
+   vk_object_base_finish(&device->base);
    mtx_destroy(&device->mutex);
 }
 
@@ -304,6 +306,7 @@ v3dv_DestroyInstance(VkInstance _instance,
 
    glsl_type_singleton_decref();
 
+   vk_object_base_finish(&instance->base);
    vk_free(&instance->alloc, instance);
 }
 
@@ -519,7 +522,7 @@ physical_device_init(struct v3dv_physical_device *device,
    VkResult result = VK_SUCCESS;
    int32_t master_fd = -1;
 
-   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
    device->instance = instance;
 
    assert(drm_render_device);
@@ -1285,7 +1288,7 @@ v3dv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
 static VkResult
 queue_init(struct v3dv_device *device, struct v3dv_queue *queue)
 {
-   queue->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(&device->vk, &queue->base, VK_OBJECT_TYPE_QUEUE);
    queue->device = device;
    queue->flags = 0;
    queue->noop_job = NULL;
@@ -1297,6 +1300,7 @@ queue_init(struct v3dv_device *device, struct v3dv_queue *queue)
 static void
 queue_finish(struct v3dv_queue *queue)
 {
+   vk_object_base_finish(&queue->base);
    assert(list_is_empty(&queue->submit_wait_list));
    if (queue->noop_job)
       v3dv_job_destroy(queue->noop_job);
@@ -1399,14 +1403,16 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    if (!device)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_device_init(&device->vk, pCreateInfo,
+                  &physical_device->instance->alloc, pAllocator);
+
    device->instance = instance;
    device->pdevice = physical_device;
 
    if (pAllocator)
-      device->alloc = *pAllocator;
+      device->vk.alloc = *pAllocator;
    else
-      device->alloc = physical_device->instance->alloc;
+      device->vk.alloc = physical_device->instance->alloc;
 
    pthread_mutex_init(&device->mutex, NULL);
 
@@ -1441,7 +1447,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    return VK_SUCCESS;
 
 fail:
-   vk_free(&device->alloc, device);
+   vk_free(&device->vk.alloc, device);
 
    return result;
 }
@@ -1554,7 +1560,7 @@ device_free(struct v3dv_device *device, struct v3dv_device_memory *mem)
    if (mem->has_bo_ownership)
       v3dv_bo_free(device, mem->bo);
    else if (mem->bo)
-      vk_free(&device->alloc, mem->bo);
+      vk_free(&device->vk.alloc, mem->bo);
 }
 
 static void
@@ -1601,7 +1607,7 @@ device_import_bo(struct v3dv_device *device,
 {
    VkResult result;
 
-   *bo = vk_alloc2(&device->alloc, pAllocator, sizeof(struct v3dv_bo), 8,
+   *bo = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(struct v3dv_bo), 8,
                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (*bo == NULL) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -1642,7 +1648,7 @@ device_import_bo(struct v3dv_device *device,
 
 fail:
    if (*bo) {
-      vk_free2(&device->alloc, pAllocator, *bo);
+      vk_free2(&device->vk.alloc, pAllocator, *bo);
       *bo = NULL;
    }
    return result;
@@ -1729,8 +1735,8 @@ v3dv_AllocateMemory(VkDevice _device,
    /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
    assert(pAllocateInfo->allocationSize > 0);
 
-   mem = vk_alloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   mem = vk_object_zalloc(&device->vk, pAllocator, sizeof(*mem),
+                          VK_OBJECT_TYPE_DEVICE_MEMORY);
    if (mem == NULL)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -1773,7 +1779,7 @@ v3dv_AllocateMemory(VkDevice _device,
    }
 
    if (result != VK_SUCCESS) {
-      vk_free2(&device->alloc, pAllocator, mem);
+      vk_object_free(&device->vk, pAllocator, mem);
       return vk_error(device->instance, result);
    }
 
@@ -1797,7 +1803,7 @@ v3dv_FreeMemory(VkDevice _device,
 
    device_free(device, mem);
 
-   vk_free2(&device->alloc, pAllocator, mem);
+   vk_object_free(&device->vk, pAllocator, mem);
 }
 
 VkResult
@@ -1950,8 +1956,8 @@ v3dv_CreateBuffer(VkDevice  _device,
    /* We don't support any flags for now */
    assert(pCreateInfo->flags == 0);
 
-   buffer = vk_alloc2(&device->alloc, pAllocator, sizeof(*buffer), 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   buffer = vk_object_zalloc(&device->vk, pAllocator, sizeof(*buffer),
+                             VK_OBJECT_TYPE_BUFFER);
    if (buffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -1980,7 +1986,7 @@ v3dv_DestroyBuffer(VkDevice _device,
    if (!buffer)
       return;
 
-   vk_free2(&device->alloc, pAllocator, buffer);
+   vk_object_free(&device->vk, pAllocator, buffer);
 }
 
 /**
@@ -2056,8 +2062,8 @@ v3dv_CreateFramebuffer(VkDevice _device,
 
    size_t size = sizeof(*framebuffer) +
                  sizeof(struct v3dv_image_view *) * pCreateInfo->attachmentCount;
-   framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   framebuffer = vk_object_zalloc(&device->vk, pAllocator, size,
+                                  VK_OBJECT_TYPE_FRAMEBUFFER);
    if (framebuffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2091,7 +2097,7 @@ v3dv_DestroyFramebuffer(VkDevice _device,
    if (!fb)
       return;
 
-   vk_free2(&device->alloc, pAllocator, fb);
+   vk_object_free(&device->vk, pAllocator, fb);
 }
 
 VkResult
@@ -2145,8 +2151,8 @@ v3dv_CreateEvent(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    struct v3dv_event *event =
-      vk_alloc2(&device->alloc, pAllocator, sizeof(*event), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      vk_object_zalloc(&device->vk, pAllocator, sizeof(*event),
+                       VK_OBJECT_TYPE_EVENT);
    if (!event)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2168,7 +2174,7 @@ v3dv_DestroyEvent(VkDevice _device,
    if (!event)
       return;
 
-   vk_free2(&device->alloc, pAllocator, event);
+   vk_object_free(&device->vk, pAllocator, event);
 }
 
 VkResult
@@ -2299,8 +2305,8 @@ v3dv_CreateSampler(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
-   sampler = vk_zalloc2(&device->alloc, pAllocator, sizeof(*sampler), 8,
-                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   sampler = vk_object_zalloc(&device->vk, pAllocator, sizeof(*sampler),
+                              VK_OBJECT_TYPE_SAMPLER);
    if (!sampler)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2324,7 +2330,7 @@ v3dv_DestroySampler(VkDevice _device,
    if (!sampler)
       return;
 
-   vk_free2(&device->alloc, pAllocator, sampler);
+   vk_object_free(&device->vk, pAllocator, sampler);
 }
 
 void

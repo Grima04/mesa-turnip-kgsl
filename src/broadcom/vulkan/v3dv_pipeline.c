@@ -69,9 +69,9 @@ v3dv_CreateShaderModule(VkDevice _device,
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
    assert(pCreateInfo->flags == 0);
 
-   module = vk_alloc2(&device->alloc, pAllocator,
-                      sizeof(*module) + pCreateInfo->codeSize, 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   module = vk_object_zalloc(&device->vk, pAllocator,
+                             sizeof(*module) + pCreateInfo->codeSize,
+                             VK_OBJECT_TYPE_SHADER_MODULE);
    if (module == NULL)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -124,7 +124,7 @@ v3dv_DestroyShaderModule(VkDevice _device,
     */
    assert(module->nir == NULL);
 
-   vk_free2(&device->alloc, pAllocator, module);
+   vk_object_free(&device->vk, pAllocator, module);
 }
 
 void
@@ -134,7 +134,7 @@ v3dv_shader_variant_destroy(struct v3dv_device *device,
    if (variant->assembly_bo)
       v3dv_bo_free(device, variant->assembly_bo);
    ralloc_free(variant->prog_data.base);
-   vk_free(&device->alloc, variant);
+   vk_free(&device->vk.alloc, variant);
 }
 
 static void
@@ -148,7 +148,7 @@ destroy_pipeline_stage(struct v3dv_device *device,
    ralloc_free(p_stage->nir);
    if (p_stage->current_variant)
       v3dv_shader_variant_unref(device, p_stage->current_variant);
-   vk_free2(&device->alloc, pAllocator, p_stage);
+   vk_free2(&device->vk.alloc, pAllocator, p_stage);
 }
 
 static void
@@ -180,7 +180,7 @@ v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
    if (pipeline->default_attribute_values)
       v3dv_bo_free(device, pipeline->default_attribute_values);
 
-   vk_free2(&device->alloc, pAllocator, pipeline);
+   vk_object_free(&device->vk, pAllocator, pipeline);
 }
 
 void
@@ -1271,7 +1271,7 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
    struct v3dv_device *device = src->pipeline->device;
 
    struct v3dv_pipeline_stage *p_stage =
-      vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
+      vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*p_stage), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (p_stage == NULL)
@@ -1429,7 +1429,7 @@ v3dv_shader_variant_create(struct v3dv_device *device,
                            VkResult *out_vk_result)
 {
    struct v3dv_shader_variant *variant =
-      vk_zalloc(&device->alloc, sizeof(*variant), 8,
+      vk_zalloc(&device->vk.alloc, sizeof(*variant), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (variant == NULL) {
@@ -1450,7 +1450,7 @@ v3dv_shader_variant_create(struct v3dv_device *device,
       if (!upload_assembly(device, variant, stage, is_coord,
                            qpu_insts, qpu_insts_size)) {
          ralloc_free(variant->prog_data.base);
-         vk_free(&device->alloc, variant);
+         vk_free(&device->vk.alloc, variant);
 
          *out_vk_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
          return NULL;
@@ -1923,7 +1923,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
       struct v3dv_pipeline_stage *p_stage =
-         vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
+         vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*p_stage), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       if (p_stage == NULL)
@@ -1976,7 +1976,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
                                                      "noop_fs");
 
       struct v3dv_pipeline_stage *p_stage =
-         vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
+         vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*p_stage), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       if (p_stage == NULL)
@@ -2961,8 +2961,9 @@ graphics_pipeline_create(VkDevice _device,
    if (cache == NULL && device->instance->default_pipeline_cache_enabled)
        cache = &device->default_pipeline_cache;
 
-   pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   pipeline = vk_object_zalloc(&device->vk, pAllocator, sizeof(*pipeline),
+                               VK_OBJECT_TYPE_PIPELINE);
+
    if (pipeline == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -3043,7 +3044,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
    struct v3dv_pipeline_stage *p_stage =
-      vk_zalloc2(&device->alloc, alloc, sizeof(*p_stage), 8,
+      vk_zalloc2(&device->vk.alloc, alloc, sizeof(*p_stage), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!p_stage)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -3116,8 +3117,8 @@ compute_pipeline_create(VkDevice _device,
    if (cache == NULL && device->instance->default_pipeline_cache_enabled)
        cache = &device->default_pipeline_cache;
 
-   pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   pipeline = vk_object_zalloc(&device->vk, pAllocator, sizeof(*pipeline),
+                               VK_OBJECT_TYPE_PIPELINE);
    if (pipeline == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
