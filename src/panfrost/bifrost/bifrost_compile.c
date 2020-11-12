@@ -2058,11 +2058,14 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
 static bool
 bi_is_normal_tex(gl_shader_stage stage, nir_tex_instr *instr)
 {
-        if (instr->op == nir_texop_tex)
-                return true;
-
-        if (instr->op != nir_texop_txl)
+        if (instr->op != nir_texop_tex && instr->op != nir_texop_txl)
                 return false;
+
+        for (unsigned i = 0; i < instr->num_srcs; ++i) {
+                if (instr->src[i].src_type != nir_tex_src_lod &&
+                    instr->src[i].src_type != nir_tex_src_coord)
+                        return false;
+        }
 
         int lod_idx = nir_tex_instr_src_index(instr, nir_tex_src_lod);
         if (lod_idx < 0)
