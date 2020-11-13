@@ -2338,7 +2338,7 @@ emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
          return false;
    }
 
-   nir_alu_type in_type = nir_intrinsic_type(intr);
+   nir_alu_type in_type = nir_intrinsic_src_type(intr);
    enum overload_type overload = get_overload(in_type, 32);
 
    assert(nir_src_bit_size(intr->src[3]) == 32);
