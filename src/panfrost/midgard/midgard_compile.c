@@ -63,7 +63,8 @@ static const struct debug_named_value debug_options[] = {
 
 DEBUG_GET_ONCE_FLAGS_OPTION(midgard_debug, "MIDGARD_MESA_DEBUG", debug_options, 0)
 
-unsigned SHADER_DB_COUNT = 0;
+/* TODO: This is not thread safe!! */
+static unsigned SHADER_DB_COUNT = 0;
 
 int midgard_debug = 0;
 
