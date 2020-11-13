@@ -29,10 +29,10 @@ static bool
 src_is_invocation_id(const nir_src *src)
 {
    assert(src->is_ssa);
-   if (src->parent_instr->type != nir_instr_type_intrinsic)
+   if (src->ssa->parent_instr->type != nir_instr_type_intrinsic)
       return false;
 
-   return nir_instr_as_intrinsic(src->parent_instr)->intrinsic ==
+   return nir_instr_as_intrinsic(src->ssa->parent_instr)->intrinsic ==
              nir_intrinsic_load_invocation_id;
 }
 
