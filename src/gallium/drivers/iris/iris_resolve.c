@@ -469,19 +469,12 @@ iris_sample_with_depth_aux(const struct gen_device_info *devinfo,
       return false;
    }
 
-   /* It seems the hardware won't fallback to the depth buffer if some of the
-    * mipmap levels aren't available in the HiZ buffer. So we need all levels
-    * of the texture to be HiZ enabled.
-    */
    for (unsigned level = 0; level < res->surf.levels; ++level) {
       if (!iris_resource_level_has_hiz(res, level))
          return false;
    }
 
-   /* If compressed multisampling is enabled, then we use it for the auxiliary
-    * buffer instead.
-    *
-    * From the BDW PRM (Volume 2d: Command Reference: Structures
+   /* From the BDW PRM (Volume 2d: Command Reference: Structures
     *                   RENDER_SURFACE_STATE.AuxiliarySurfaceMode):
     *
     *  "If this field is set to AUX_HIZ, Number of Multisamples must be

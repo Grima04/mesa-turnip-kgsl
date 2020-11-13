@@ -1636,19 +1636,12 @@ intel_miptree_sample_with_hiz(struct brw_context *brw,
       return false;
    }
 
-   /* It seems the hardware won't fallback to the depth buffer if some of the
-    * mipmap levels aren't available in the HiZ buffer. So we need all levels
-    * of the texture to be HiZ enabled.
-    */
    for (unsigned level = 0; level < mt->surf.levels; ++level) {
       if (!intel_miptree_level_has_hiz(mt, level))
          return false;
    }
 
-   /* If compressed multisampling is enabled, then we use it for the auxiliary
-    * buffer instead.
-    *
-    * From the BDW PRM (Volume 2d: Command Reference: Structures
+   /* From the BDW PRM (Volume 2d: Command Reference: Structures
     *                   RENDER_SURFACE_STATE.AuxiliarySurfaceMode):
     *
     *  "If this field is set to AUX_HIZ, Number of Multisamples must be
