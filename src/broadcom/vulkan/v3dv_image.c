@@ -717,7 +717,7 @@ pack_texture_shader_state_from_buffer_view(struct v3dv_device *device,
        * we are providing a 28 bit field for size, but split on the usual
        * 14bit height/width).
        */
-      tex.image_width = buffer_view->size;
+      tex.image_width = buffer_view->num_elements;
       tex.image_height = tex.image_width >> 14;
       tex.image_width &= (1 << 14) - 1;
       tex.image_height &= (1 << 14) - 1;
