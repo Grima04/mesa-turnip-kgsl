@@ -483,7 +483,6 @@ iris_sample_with_depth_aux(const struct gen_device_info *devinfo,
     * There is no such blurb for 1D textures, but there is sufficient evidence
     * that this is broken on SKL+.
     */
-   // XXX: i965 disables this for arrays too, is that reasonable?
    return res->surf.samples == 1 && res->surf.dim == ISL_SURF_DIM_2D;
 }
 
