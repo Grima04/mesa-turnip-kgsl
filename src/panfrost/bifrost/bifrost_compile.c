@@ -424,8 +424,14 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         address.dest_type = nir_type_uint32;
         address.vector_channels = 3;
 
-        unsigned nr = nir_intrinsic_src_components(instr, 0);
-        assert(nir_intrinsic_write_mask(instr) == ((1 << nr) - 1));
+        /* Only look at the total components needed. In effect, we fill in all
+         * the intermediate "holes" in the write mask, since we can't mask off
+         * stores. Since nir_lower_io_to_temporaries ensures each varying is
+         * written at most once, anything that's masked out is undefined, so it
+         * doesn't matter what we write there. So we may as well do the
+         * simplest thing possible. */
+        unsigned nr = util_last_bit(nir_intrinsic_write_mask(instr));
+        assert(nr > 0 && nr <= nir_intrinsic_src_components(instr, 0));
 
         bi_instruction st = {
                 .type = BI_STORE_VAR,
