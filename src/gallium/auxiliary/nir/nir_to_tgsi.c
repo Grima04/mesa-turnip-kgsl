@@ -2155,12 +2155,6 @@ ntt_emit_cf_list(struct ntt_compile *c, struct exec_list *list)
 static void
 ntt_emit_impl(struct ntt_compile *c, nir_function_impl *impl)
 {
-   /* reindex values so the numbers are reasonably small despite
-    * optimization having deleted most of them.
-    */
-   nir_index_ssa_defs(impl);
-   nir_index_local_regs(impl);
-
    c->impl = impl;
    c->liveness = nir_live_ssa_defs_per_instr(impl);
 
