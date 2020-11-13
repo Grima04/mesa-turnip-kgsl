@@ -848,6 +848,13 @@ intrinsic("load_sample_pos_from_id", src_comp=[1], dest_comp=2,
 # Loads what I believe is the primitive size, for scaling ij to pixel size:
 intrinsic("load_size_ir3", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Load texture scaling values:
+#
+# Takes a sampler # and returns 1/size values for multiplying to normalize
+# texture coordinates.  Used for lowering rect textures.
+intrinsic("load_texture_rect_scaling", src_comp=[1], dest_comp=2,
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # Fragment shader input interpolation delta intrinsic.
 #
 # For hw where fragment shader input interpolation is handled in shader, the
