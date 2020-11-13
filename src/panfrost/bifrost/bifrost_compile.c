@@ -40,10 +40,14 @@
 static const struct debug_named_value debug_options[] = {
         {"msgs",      BIFROST_DBG_MSGS,		"Print debug messages"},
         {"shaders",   BIFROST_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
+        {"shaderdb",  BIFROST_DBG_SHADERDB,	"Print statistics"},
         DEBUG_NAMED_VALUE_END
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(bifrost_debug, "BIFROST_MESA_DEBUG", debug_options, 0)
+
+/* TODO: This is not thread safe!! */
+static unsigned SHADER_DB_COUNT = 0;
 
 int bifrost_debug = 0;
 
@@ -2356,6 +2360,54 @@ emit_cf_list(bi_context *ctx, struct exec_list *list)
         return start_block;
 }
 
+/* shader-db stuff */
+
+static void
+bi_print_stats(bi_context *ctx, FILE *fp)
+{
+        unsigned nr_clauses = 0, nr_tuples = 0, nr_ins = 0;
+
+        /* Count instructions, clauses, and tuples */
+        bi_foreach_block(ctx, _block) {
+                bi_block *block = (bi_block *) _block;
+
+                bi_foreach_clause_in_block(block, clause) {
+                        nr_clauses++;
+                        nr_tuples += clause->bundle_count;
+
+                        for (unsigned i = 0; i < clause->bundle_count; ++i) {
+                                if (clause->bundles[i].fma)
+                                        nr_ins++;
+
+                                if (clause->bundles[i].add)
+                                        nr_ins++;
+                        }
+                }
+        }
+
+        /* tuples = ((# of instructions) + (# of nops)) / 2 */
+        unsigned nr_nops = (2 * nr_tuples) - nr_ins;
+
+        /* In the future, we'll calculate thread count for v7. For now we
+         * always use fewer threads than we should (v6 style) due to missing
+         * piping, TODO: fix that for a nice perf win */
+        unsigned nr_threads = 1;
+
+        /* Dump stats */
+
+        fprintf(stderr, "shader%d - %s shader: "
+                        "%u inst, %u nops, %u clauses, "
+                        "%u threads, %u loops, "
+                        "%u:%u spills:fills\n",
+                        SHADER_DB_COUNT++,
+                        ctx->is_blend ? "PAN_SHADER_BLEND" :
+                        gl_shader_stage_name(ctx->stage),
+                        nr_ins, nr_nops, nr_clauses,
+                        nr_threads,
+                        ctx->loop_count,
+                        ctx->spills, ctx->fills);
+}
+
 static int
 glsl_type_size(const struct glsl_type *type, bool bindless)
 {
@@ -2538,6 +2590,11 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
 
         program->tls_size = ctx->tls_size;
+
+        if ((bifrost_debug & BIFROST_DBG_SHADERDB || inputs->shaderdb) &&
+            !nir->info.internal) {
+                bi_print_stats(ctx, stderr);
+        }
 
         ralloc_free(ctx);
 
