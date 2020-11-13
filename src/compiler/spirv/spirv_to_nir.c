@@ -4828,6 +4828,15 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       }
 
       b->shader->info.float_controls_execution_mode |= execution_mode;
+
+      for (unsigned bit_size = 16; bit_size <= 64; bit_size *= 2) {
+         vtn_fail_if(nir_is_denorm_flush_to_zero(b->shader->info.float_controls_execution_mode, bit_size) &&
+                     nir_is_denorm_preserve(b->shader->info.float_controls_execution_mode, bit_size),
+                     "Cannot flush to zero and preserve denorms for the same bit size.");
+         vtn_fail_if(nir_is_rounding_mode_rtne(b->shader->info.float_controls_execution_mode, bit_size) &&
+                     nir_is_rounding_mode_rtz(b->shader->info.float_controls_execution_mode, bit_size),
+                     "Cannot set rounding mode to RTNE and RTZ for the same bit size.");
+      }
       break;
    }
 
@@ -5744,6 +5753,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    words+= 5;
 
    b->shader = nir_shader_create(b, stage, nir_options, NULL);
+   b->shader->info.float_controls_execution_mode = options->float_controls_execution_mode;
 
    /* Handle all the preamble instructions */
    words = vtn_foreach_instruction(b, words, word_end,
