@@ -47,6 +47,10 @@ radv_choose_tiling(struct radv_device *device,
 		return RADEON_SURF_MODE_LINEAR_ALIGNED;
 	}
 
+	/* MSAA resources must be 2D tiled. */
+	if (pCreateInfo->samples > 1)
+		return RADEON_SURF_MODE_2D;
+
 	if (!vk_format_is_compressed(format) &&
 	    !vk_format_is_depth_or_stencil(format)
 	    && device->physical_device->rad_info.chip_class <= GFX8) {
@@ -58,10 +62,6 @@ radv_choose_tiling(struct radv_device *device,
 		    (pCreateInfo->extent.width > 8 && pCreateInfo->extent.height <= 2))
 			return RADEON_SURF_MODE_LINEAR_ALIGNED;
 	}
-
-	/* MSAA resources must be 2D tiled. */
-	if (pCreateInfo->samples > 1)
-		return RADEON_SURF_MODE_2D;
 
 	return RADEON_SURF_MODE_2D;
 }
