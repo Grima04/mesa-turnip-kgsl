@@ -1430,6 +1430,7 @@ static void amdgpu_cs_submit_ib(void *job, int thread_index)
    bool use_bo_list_create = ws->info.drm_minor < 27;
    struct drm_amdgpu_bo_list_in bo_list_in;
 
+#if DEBUG
    /* Prepare the buffer list. */
    if (ws->debug_all_bos) {
       /* The buffer list contains all buffers. This is a slow path that
@@ -1453,7 +1454,9 @@ static void amdgpu_cs_submit_ib(void *job, int thread_index)
          fprintf(stderr, "amdgpu: buffer list creation failed (%d)\n", r);
          goto cleanup;
       }
-   } else {
+   } else
+#endif
+   {
       if (!amdgpu_add_sparse_backing_buffers(cs)) {
          fprintf(stderr, "amdgpu: amdgpu_add_sparse_backing_buffers failed\n");
          r = -ENOMEM;

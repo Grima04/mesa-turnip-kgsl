@@ -64,9 +64,9 @@ struct amdgpu_winsys_bo {
          amdgpu_va_handle va_handle;
          int map_count;
          bool use_reusable_pool;
-
+#if DEBUG
          struct list_head global_list_item;
-
+#endif
          uint32_t kms_handle;
       } real;
       struct {

@@ -176,12 +176,14 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
    }
    assert(bo->is_user_ptr || bo->u.real.map_count == 0);
 
+#if DEBUG
    if (ws->debug_all_bos) {
       simple_mtx_lock(&ws->global_bo_list_lock);
       list_del(&bo->u.real.global_list_item);
       ws->num_buffers--;
       simple_mtx_unlock(&ws->global_bo_list_lock);
    }
+#endif
 
    /* Close all KMS handles retrieved for other DRM file descriptions */
    simple_mtx_lock(&ws->sws_list_lock);
@@ -431,6 +433,7 @@ static const struct pb_vtbl amdgpu_winsys_bo_vtbl = {
 
 static void amdgpu_add_buffer_to_global_list(struct amdgpu_winsys_bo *bo)
 {
+#if DEBUG
    struct amdgpu_winsys *ws = bo->ws;
 
    assert(bo->bo);
@@ -441,6 +444,7 @@ static void amdgpu_add_buffer_to_global_list(struct amdgpu_winsys_bo *bo)
       ws->num_buffers++;
       simple_mtx_unlock(&ws->global_bo_list_lock);
    }
+#endif
 }
 
 static unsigned amdgpu_get_optimal_alignment(struct amdgpu_winsys *ws,
