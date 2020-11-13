@@ -735,6 +735,7 @@ struct radv_queue {
 	pthread_t submission_thread;
 	bool thread_exit;
 	bool thread_running;
+	bool cond_created;
 };
 
 struct radv_bo_list {

@@ -2353,7 +2353,6 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
 	queue->queue_idx = idx;
 	queue->priority = radv_get_queue_global_priority(global_priority);
 	queue->flags = flags;
-	queue->hw_ctx = NULL;
 
 	VkResult result = device->ws->ctx_create(device->ws, queue->priority, &queue->hw_ctx);
 	if (result != VK_SUCCESS)
@@ -2363,11 +2362,10 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
 	pthread_mutex_init(&queue->pending_mutex, NULL);
 
 	pthread_mutex_init(&queue->thread_mutex, NULL);
-	queue->thread_submission = NULL;
-	queue->thread_running = queue->thread_exit = false;
 	result = radv_create_pthread_cond(&queue->thread_cond);
 	if (result != VK_SUCCESS)
 		return vk_error(device->instance, result);
+	queue->cond_created = true;
 
 	return VK_SUCCESS;
 }
@@ -2375,17 +2373,22 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
 static void
 radv_queue_finish(struct radv_queue *queue)
 {
-	if (queue->thread_running) {
-		p_atomic_set(&queue->thread_exit, true);
-		pthread_cond_broadcast(&queue->thread_cond);
-		pthread_join(queue->submission_thread, NULL);
-	}
-	pthread_cond_destroy(&queue->thread_cond);
-	pthread_mutex_destroy(&queue->pending_mutex);
-	pthread_mutex_destroy(&queue->thread_mutex);
+	if (queue->hw_ctx) {
+		if (queue->cond_created) {
+			if (queue->thread_running) {
+				p_atomic_set(&queue->thread_exit, true);
+				pthread_cond_broadcast(&queue->thread_cond);
+				pthread_join(queue->submission_thread, NULL);
+			}
 
-	if (queue->hw_ctx)
+			pthread_cond_destroy(&queue->thread_cond);
+		}
+
+		pthread_mutex_destroy(&queue->pending_mutex);
+		pthread_mutex_destroy(&queue->thread_mutex);
+
 		queue->device->ws->ctx_destroy(queue->hw_ctx);
+	}
 
 	if (queue->initial_full_flush_preamble_cs)
 		queue->device->ws->cs_destroy(queue->initial_full_flush_preamble_cs);
