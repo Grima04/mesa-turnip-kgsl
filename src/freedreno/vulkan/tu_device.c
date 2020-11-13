@@ -951,6 +951,7 @@ tu_queue_init(struct tu_device *device,
 static void
 tu_queue_finish(struct tu_queue *queue)
 {
+   vk_object_base_finish(&queue->base);
    if (queue->fence >= 0)
       close(queue->fence);
    tu_drm_submitqueue_close(queue->device, queue->msm_queue_id);
@@ -1144,7 +1145,7 @@ fail_queues:
       for (unsigned q = 0; q < device->queue_count[i]; q++)
          tu_queue_finish(&device->queues[i][q]);
       if (device->queue_count[i])
-         vk_object_free(&device->vk, NULL, device->queues[i]);
+         vk_free(&device->vk.alloc, device->queues[i]);
    }
 
    vk_free(&device->vk.alloc, device);
@@ -1163,7 +1164,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       for (unsigned q = 0; q < device->queue_count[i]; q++)
          tu_queue_finish(&device->queues[i][q]);
       if (device->queue_count[i])
-         vk_object_free(&device->vk, NULL, device->queues[i]);
+         vk_free(&device->vk.alloc, device->queues[i]);
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++) {
