@@ -117,25 +117,25 @@ struct si_shader_context {
    /* API TCS & TES */
    /* Layout of TCS outputs in the offchip buffer
     * # 6 bits
-    *   [0:5] = the number of patches per threadgroup, max = NUM_PATCHES (40)
-    * # 6 bits
-    *   [6:11] = the number of output vertices per patch, max = 32
-    * # 20 bits
-    *   [12:31] = the offset of per patch attributes in the buffer in bytes.
-    *             max = NUM_PATCHES*32*32*16
+    *   [0:5] = the number of patches per threadgroup - 1, max = 63
+    * # 5 bits
+    *   [6:10] = the number of output vertices per patch - 1, max = 31
+    * # 21 bits
+    *   [11:31] = the offset of per patch attributes in the buffer in bytes.
+    *             max = NUM_PATCHES*32*32*16 = 1M
     */
    struct ac_arg tcs_offchip_layout;
 
    /* API TCS */
    /* Offsets where TCS outputs and TCS patch outputs live in LDS:
-    *   [0:15] = TCS output patch0 offset / 16, max = NUM_PATCHES * 32 * 32
+    *   [0:15] = TCS output patch0 offset / 16, max = NUM_PATCHES * 32 * 32 = 64K (TODO: not enough bits)
     *   [16:31] = TCS output patch0 offset for per-patch / 16
-    *             max = (NUM_PATCHES + 1) * 32*32
+    *             max = (NUM_PATCHES + 1) * 32*32 = 66624 (TODO: not enough bits)
     */
    struct ac_arg tcs_out_lds_offsets;
    /* Layout of TCS outputs / TES inputs:
     *   [0:12] = stride between output patches in DW, num_outputs * num_vertices * 4
-    *            max = 32*32*4 + 32*4
+    *            max = 32*32*4 + 32*4 = 4224
     *   [13:18] = gl_PatchVerticesIn, max = 32
     *   [19:31] = high 13 bits of the 32-bit address of tessellation ring buffers
     */

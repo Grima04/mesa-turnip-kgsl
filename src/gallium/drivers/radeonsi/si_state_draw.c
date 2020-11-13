@@ -161,7 +161,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
     * The hardware can do more, but the radeonsi shader constant is
     * limited to 6 bits.
     */
-   *num_patches = MIN2(*num_patches, 63); /* triangles: 3 full waves except 3 lanes */
+   *num_patches = MIN2(*num_patches, 64); /* triangles: 3 full waves */
 
    /* When distributed tessellation is unsupported, switch between SEs
     * at a higher frequency to compensate for it.
@@ -214,6 +214,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    assert(((perpatch_output_offset / 16) & ~0xffff) == 0);
    assert(num_tcs_input_cp <= 32);
    assert(num_tcs_output_cp <= 32);
+   assert(*num_patches <= 64);
+   assert(((pervertex_output_patch_size * *num_patches) & ~0x1fffff) == 0);
 
    uint64_t ring_va = (unlikely(sctx->ws->cs_is_secure(sctx->gfx_cs)) ?
       si_resource(sctx->tess_rings_tmz) : si_resource(sctx->tess_rings))->gpu_address;
@@ -224,7 +226,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    tcs_out_layout = (output_patch_size / 4) | (num_tcs_input_cp << 13) | ring_va;
    tcs_out_offsets = (output_patch0_offset / 16) | ((perpatch_output_offset / 16) << 16);
    offchip_layout =
-      *num_patches | (num_tcs_output_cp << 6) | (pervertex_output_patch_size * *num_patches << 12);
+      (*num_patches - 1) | ((num_tcs_output_cp - 1) << 6) |
+      ((pervertex_output_patch_size * *num_patches) << 11);
 
    /* Compute the LDS size. */
    lds_size = output_patch0_offset + output_patch_size * *num_patches;

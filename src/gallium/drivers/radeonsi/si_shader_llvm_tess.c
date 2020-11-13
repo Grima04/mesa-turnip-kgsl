@@ -145,7 +145,8 @@ static LLVMValueRef get_num_tcs_out_vertices(struct si_shader_context *ctx)
    if (ctx->stage == MESA_SHADER_TESS_CTRL && tcs_out_vertices)
       return LLVMConstInt(ctx->ac.i32, tcs_out_vertices, 0);
 
-   return si_unpack_param(ctx, ctx->tcs_offchip_layout, 6, 6);
+   return LLVMBuildAdd(ctx->ac.builder,
+                       si_unpack_param(ctx, ctx->tcs_offchip_layout, 6, 5), ctx->ac.i32_1, "");
 }
 
 static LLVMValueRef get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx)
@@ -220,6 +221,7 @@ static LLVMValueRef get_tcs_tes_buffer_address(struct si_shader_context *ctx,
 
    vertices_per_patch = get_num_tcs_out_vertices(ctx);
    num_patches = si_unpack_param(ctx, ctx->tcs_offchip_layout, 0, 6);
+   num_patches = LLVMBuildAdd(ctx->ac.builder, num_patches, ctx->ac.i32_1, "");
    total_vertices = LLVMBuildMul(ctx->ac.builder, vertices_per_patch, num_patches, "");
 
    constant16 = LLVMConstInt(ctx->ac.i32, 16, 0);
@@ -235,7 +237,7 @@ static LLVMValueRef get_tcs_tes_buffer_address(struct si_shader_context *ctx,
    base_addr = LLVMBuildMul(ctx->ac.builder, base_addr, constant16, "");
 
    if (!vertex_index) {
-      LLVMValueRef patch_data_offset = si_unpack_param(ctx, ctx->tcs_offchip_layout, 12, 20);
+      LLVMValueRef patch_data_offset = si_unpack_param(ctx, ctx->tcs_offchip_layout, 11, 21);
 
       base_addr = LLVMBuildAdd(ctx->ac.builder, base_addr, patch_data_offset, "");
    }
