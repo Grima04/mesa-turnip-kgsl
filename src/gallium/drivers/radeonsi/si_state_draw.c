@@ -83,7 +83,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    unsigned num_tcs_patch_outputs;
    unsigned input_vertex_size, output_vertex_size, pervertex_output_patch_size;
    unsigned input_patch_size, output_patch_size, output_patch0_offset;
-   unsigned perpatch_output_offset, lds_size;
+   unsigned perpatch_output_offset, lds_per_patch, lds_size;
    unsigned tcs_in_layout, tcs_out_layout, tcs_out_offsets;
    unsigned offchip_layout, hardware_lds_size, ls_hs_config;
 
@@ -136,6 +136,20 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    pervertex_output_patch_size = num_tcs_output_cp * output_vertex_size;
    output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
 
+   /* Compute the LDS size per patch.
+    *
+    * LDS is used to store TCS outputs if they are read, and to store tess
+    * factors if they are not defined in all invocations.
+    */
+   if (tcs->info.base.outputs_read ||
+       tcs->info.base.patch_outputs_read ||
+       !tcs->info.tessfactors_are_def_in_all_invocs) {
+      lds_per_patch = input_patch_size + output_patch_size;
+   } else {
+      /* LDS will only store TCS inputs. The offchip buffer will only store TCS outputs. */
+      lds_per_patch = MAX2(input_patch_size, output_patch_size);
+   }
+
    /* Ensure that we only need one wave per SIMD so we don't need to check
     * resource usage. Also ensures that the number of tcs in and out
     * vertices per threadgroup are at most 256.
@@ -151,7 +165,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
     * uses 32K at most on all GCN chips.
     */
    hardware_lds_size = 32768;
-   *num_patches = MIN2(*num_patches, hardware_lds_size / (input_patch_size + output_patch_size));
+   *num_patches = MIN2(*num_patches, hardware_lds_size / lds_per_patch);
 
    /* Make sure the output data fits in the offchip buffer */
    *num_patches =
@@ -231,7 +245,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
       ((pervertex_output_patch_size * *num_patches) << 11);
 
    /* Compute the LDS size. */
-   lds_size = output_patch0_offset + output_patch_size * *num_patches;
+   lds_size = lds_per_patch * *num_patches;
 
    if (sctx->chip_class >= GFX7) {
       assert(lds_size <= 65536);
