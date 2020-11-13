@@ -81,6 +81,176 @@ BEGIN_TEST(optimize.neg)
    }
 END_TEST
 
+BEGIN_TEST(optimize.output_modifiers)
+   //>> v1: %a, v1: %b, s2: %_:exec = p_startpgm
+   if (!setup_cs("v1 v1", GFX9))
+      return;
+
+   program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
+
+   /* 32-bit modifiers */
+
+   //! v1: %res0 = v_add_f32 %a, %b *0.5
+   //! p_unit_test 0, %res0
+   Temp tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(0, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x3f000000u), tmp));
+
+   //! v1: %res1 = v_add_f32 %a, %b *2
+   //! p_unit_test 1, %res1
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(1, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40000000u), tmp));
+
+   //! v1: %res2 = v_add_f32 %a, %b *4
+   //! p_unit_test 2, %res2
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(2, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40800000u), tmp));
+
+   //! v1: %res3 = v_add_f32 %a, %b clamp
+   //! p_unit_test 3, %res3
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(3, bld.vop3(aco_opcode::v_med3_f32, bld.def(v1), Operand(0u), Operand(0x3f800000u), tmp));
+
+   //! v1: %res4 = v_add_f32 %a, %b *2 clamp
+   //! p_unit_test 4, %res4
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   tmp = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40000000u), tmp);
+   writeout(4, bld.vop3(aco_opcode::v_med3_f32, bld.def(v1), Operand(0u), Operand(0x3f800000u), tmp));
+
+   /* 16-bit modifiers */
+
+   //! v2b: %res5 = v_add_f16 %a, %b *0.5
+   //! p_unit_test 5, %res5
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   writeout(5, bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand((uint16_t)0x3800u), tmp));
+
+   //! v2b: %res6 = v_add_f16 %a, %b *2
+   //! p_unit_test 6, %res6
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   writeout(6, bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand((uint16_t)0x4000u), tmp));
+
+   //! v2b: %res7 = v_add_f16 %a, %b *4
+   //! p_unit_test 7, %res7
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   writeout(7, bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand((uint16_t)0x4400u), tmp));
+
+   //! v2b: %res8 = v_add_f16 %a, %b clamp
+   //! p_unit_test 8, %res8
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   writeout(8, bld.vop3(aco_opcode::v_med3_f16, bld.def(v2b), Operand((uint16_t)0u), Operand((uint16_t)0x3c00u), tmp));
+
+   //! v2b: %res9 = v_add_f16 %a, %b *2 clamp
+   //! p_unit_test 9, %res9
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   tmp = bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand((uint16_t)0x4000), tmp);
+   writeout(9, bld.vop3(aco_opcode::v_med3_f16, bld.def(v2b), Operand((uint16_t)0u), Operand((uint16_t)0x3c00u), tmp));
+
+   /* clamping is done after omod */
+
+   //! v1: %res10_tmp = v_add_f32 %a, %b clamp
+   //! v1: %res10 = v_mul_f32 2.0, %res10_tmp
+   //! p_unit_test 10, %res10
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   tmp = bld.vop3(aco_opcode::v_med3_f32, bld.def(v1), Operand(0u), Operand(0x3f800000u), tmp);
+   writeout(10, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40000000u), tmp));
+
+   /* unsupported instructions */
+
+   //! v1: %res11_tmp = v_xor_b32 %a, %b
+   //! v1: %res11 = v_mul_f32 2.0, %res11_tmp
+   //! p_unit_test 11, %res11
+   tmp = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(11, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40000000u), tmp));
+
+   /* several users */
+
+   //! v1: %res12_tmp = v_add_f32 %a, %b
+   //! p_unit_test %res12_tmp
+   //! v1: %res12 = v_mul_f32 2.0, %res12_tmp
+   //! p_unit_test 12, %res12
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   bld.pseudo(aco_opcode::p_unit_test, tmp);
+   writeout(12, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40000000u), tmp));
+
+   //! v1: %res13 = v_add_f32 %a, %b
+   //! p_unit_test 13, %res13
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40000000u), tmp);
+   writeout(13, tmp);
+
+   /* omod has no effect if denormals are enabled but clamp is fine */
+
+   //>> BB1
+   //! /* logical preds: / linear preds: / kind: uniform, */
+   program->next_fp_mode.denorm32 = fp_denorm_keep;
+   program->next_fp_mode.denorm16_64 = fp_denorm_flush;
+   bld.reset(program->create_and_insert_block());
+
+   //! v1: %res14_tmp = v_add_f32 %a, %b
+   //! v1: %res14 = v_mul_f32 2.0, %res13_tmp
+   //! p_unit_test 14, %res14
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(14, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40000000u), tmp));
+
+   //! v1: %res15 = v_add_f32 %a, %b clamp
+   //! p_unit_test 15, %res15
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(15, bld.vop3(aco_opcode::v_med3_f32, bld.def(v1), Operand(0u), Operand(0x3f800000u), tmp));
+
+   //>> BB2
+   //! /* logical preds: / linear preds: / kind: uniform, */
+   program->next_fp_mode.denorm32 = fp_denorm_flush;
+   program->next_fp_mode.denorm16_64 = fp_denorm_keep;
+   bld.reset(program->create_and_insert_block());
+
+   //! v2b: %res16_tmp = v_add_f16 %a, %b
+   //! v2b: %res16 = v_mul_f16 2.0, %res15_tmp
+   //! p_unit_test 16, %res16
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   writeout(16, bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand((uint16_t)0x4000u), tmp));
+
+   //! v2b: %res17 = v_add_f16 %a, %b clamp
+   //! p_unit_test 17, %res17
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   writeout(17, bld.vop3(aco_opcode::v_med3_f16, bld.def(v2b), Operand((uint16_t)0u), Operand((uint16_t)0x3c00u), tmp));
+
+   /* omod flushes -0.0 to +0.0 */
+
+   //>> BB3
+   //! /* logical preds: / linear preds: / kind: uniform, */
+   program->next_fp_mode.denorm32 = fp_denorm_keep;
+   program->next_fp_mode.denorm16_64 = fp_denorm_keep;
+   program->next_fp_mode.preserve_signed_zero_inf_nan32 = true;
+   program->next_fp_mode.preserve_signed_zero_inf_nan16_64 = false;
+   bld.reset(program->create_and_insert_block());
+
+   //! v1: %res18_tmp = v_add_f32 %a, %b
+   //! v1: %res18 = v_mul_f32 2.0, %res18_tmp
+   //! p_unit_test 18, %res18
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(18, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x40000000u), tmp));
+   //! v1: %res19 = v_add_f32 %a, %b clamp
+   //! p_unit_test 19, %res19
+   tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), inputs[0], inputs[1]);
+   writeout(19, bld.vop3(aco_opcode::v_med3_f32, bld.def(v1), Operand(0u), Operand(0x3f800000u), tmp));
+
+   //>> BB4
+   //! /* logical preds: / linear preds: / kind: uniform, */
+   program->next_fp_mode.preserve_signed_zero_inf_nan32 = false;
+   program->next_fp_mode.preserve_signed_zero_inf_nan16_64 = true;
+   bld.reset(program->create_and_insert_block());
+   //! v2b: %res20_tmp = v_add_f16 %a, %b
+   //! v2b: %res20 = v_mul_f16 2.0, %res20_tmp
+   //! p_unit_test 20, %res20
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   writeout(20, bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand((uint16_t)0x4000u), tmp));
+   //! v2b: %res21 = v_add_f16 %a, %b clamp
+   //! p_unit_test 21, %res21
+   tmp = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), inputs[0], inputs[1]);
+   writeout(21, bld.vop3(aco_opcode::v_med3_f16, bld.def(v2b), Operand((uint16_t)0u), Operand((uint16_t)0x3c00u), tmp));
+
+   finish_opt_test();
+END_TEST
+
 Temp create_subbrev_co(Operand op0, Operand op1, Operand op2)
 {
    return bld.vop2_e64(aco_opcode::v_subbrev_co_u32, bld.def(v1), bld.hint_vcc(bld.def(bld.lm)), op0, op1, op2);
