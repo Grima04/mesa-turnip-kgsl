@@ -165,8 +165,8 @@ bi_print_swizzle(bi_instruction *ins, unsigned src, FILE *fp)
         fprintf(fp, ".");
 
         for (unsigned u = 0; u < bi_get_component_count(ins, src); ++u) {
-                assert(ins->swizzle[src][u] < 4);
-                fputc("xyzw"[ins->swizzle[src][u]], fp);
+                assert(ins->swizzle[src][u] < 16);
+                fputc("xyzwefghijklmnop"[ins->swizzle[src][u]], fp);
         }
 }
 
