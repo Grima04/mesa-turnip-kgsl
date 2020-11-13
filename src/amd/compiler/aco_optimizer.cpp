@@ -2606,9 +2606,14 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    if (!instr->isSDWA() && !can_vop3)
       return false;
 
-   /* omod has no effect if denormals are enabled */
-   bool can_use_omod = (instr->definitions[0].bytes() == 4 ? block.fp_mode.denorm32 : block.fp_mode.denorm16_64) == 0;
-   can_use_omod = can_use_omod && (can_vop3 || ctx.program->chip_class >= GFX9); /* SDWA omod is GFX9+ */
+   /* omod flushes -0 to +0 and has no effect if denormals are enabled */
+   bool can_use_omod = (can_vop3 || ctx.program->chip_class >= GFX9); /* SDWA omod is GFX9+ */
+   if (instr->definitions[0].bytes() == 4)
+      can_use_omod = can_use_omod && block.fp_mode.denorm32 == 0 &&
+                     !block.fp_mode.preserve_signed_zero_inf_nan32;
+   else
+      can_use_omod = can_use_omod && block.fp_mode.denorm16_64 == 0 &&
+                     !block.fp_mode.preserve_signed_zero_inf_nan16_64;
 
    ssa_info& def_info = ctx.info[instr->definitions[0].tempId()];
 
