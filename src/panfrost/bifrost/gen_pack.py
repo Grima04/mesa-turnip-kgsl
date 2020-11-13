@@ -76,7 +76,7 @@ def pack_widen(mod, opts, body, pack_exprs):
             sz = 16 if op[0] == 'h' else 8
 
             # Condition on the swizzle
-            conds = ['ins->swizzle[{}][{}] == {}'.format(marg, idx, lane) for idx, lane in enumerate(op[1:])]
+            conds = ['(ins->swizzle[{}][{}] % 4) == {}'.format(marg, idx, lane) for idx, lane in enumerate(op[1:])]
             cond = " && ".join(conds)
 
             body.append('{}if ({}_sz == {} && {}) {}_temp = {};'.format(t_else, mod, sz, cond, mod, i))
