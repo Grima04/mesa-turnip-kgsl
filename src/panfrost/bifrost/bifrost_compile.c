@@ -1965,15 +1965,22 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                                 texc_pack_cube_coord(ctx, index,
                                                      &tex.src[1], &tex.src[2]);
 			} else {
+                                unsigned components = nir_src_num_components(instr->src[i].src);
+
                                 tex.src[1] = index;
                                 tex.src[2] = index;
                                 tex.swizzle[1][0] = 0;
-                                tex.swizzle[2][0] = 1;
 
-                                unsigned components = nir_src_num_components(instr->src[i].src);
-                                assert(components == 2 || components == 3);
+                                if (components >= 2) {
+                                        tex.swizzle[2][0] = 1;
+                                } else {
+                                        /* Dummy for reg alloc to be happy */
+                                        tex.swizzle[2][0] = 0;
+                                }
 
-                                if (components == 2) {
+                                assert(components >= 1 && components <= 3);
+
+                                if (components < 3) {
                                         /* nothing to do */
                                 } else if (desc.array) {
                                         /* 2D array */
