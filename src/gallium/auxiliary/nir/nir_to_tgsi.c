@@ -2161,8 +2161,6 @@ ntt_emit_impl(struct ntt_compile *c, nir_function_impl *impl)
    nir_index_ssa_defs(impl);
    nir_index_local_regs(impl);
 
-   nir_index_instrs(impl);
-
    c->impl = impl;
    c->liveness = nir_live_ssa_defs_per_instr(impl);
 
