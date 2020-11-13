@@ -176,7 +176,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    unsigned temp_verts_per_tg = *num_patches * max_verts_per_patch;
    unsigned wave_size = sctx->screen->ge_wave_size;
 
-   if (temp_verts_per_tg > wave_size && temp_verts_per_tg % wave_size < wave_size * 3 / 4)
+   if (temp_verts_per_tg > wave_size &&
+       (wave_size - temp_verts_per_tg % wave_size >= MAX2(max_verts_per_patch, 8)))
       *num_patches = (temp_verts_per_tg & ~(wave_size - 1)) / max_verts_per_patch;
 
    if (sctx->chip_class == GFX6) {
