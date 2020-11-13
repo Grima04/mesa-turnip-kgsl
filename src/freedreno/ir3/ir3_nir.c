@@ -511,6 +511,13 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 	if (progress)
 		ir3_optimize_loop(s);
 
+	/* Fixup indirect load_uniform's which end up with a const base offset
+	 * which is too large to encode.  Do this late(ish) so we actually
+	 * can differentiate indirect vs non-indirect.
+	 */
+	if (OPT(s, ir3_nir_fixup_load_uniform))
+		ir3_optimize_loop(s);
+
 	/* Do late algebraic optimization to turn add(a, neg(b)) back into
 	* subs, then the mandatory cleanup after algebraic.  Note that it may
 	* produce fnegs, and if so then we need to keep running to squash
