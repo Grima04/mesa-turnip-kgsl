@@ -319,7 +319,7 @@ void lvp_GetPhysicalDeviceFeatures(
       .textureCompressionASTC_LDR               = false,
       .textureCompressionBC                     = true,
       .occlusionQueryPrecise                    = true,
-      .pipelineStatisticsQuery                  = false,
+      .pipelineStatisticsQuery                  = true,
       .vertexPipelineStoresAndAtomics           = (pdevice->pscreen->get_shader_param(pdevice->pscreen, PIPE_SHADER_VERTEX, PIPE_SHADER_CAP_MAX_SHADER_BUFFERS) != 0),
       .fragmentStoresAndAtomics                 = (pdevice->pscreen->get_shader_param(pdevice->pscreen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_MAX_SHADER_BUFFERS) != 0),
       .shaderTessellationAndGeometryPointSize   = true,

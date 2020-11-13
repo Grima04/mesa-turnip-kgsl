@@ -562,6 +562,7 @@ struct lvp_query_pool {
    struct vk_object_base base;
    VkQueryType type;
    uint32_t count;
+   VkQueryPipelineStatisticFlags pipeline_stats;
    enum pipe_query_type base_type;
    struct pipe_query *queries[0];
 };
