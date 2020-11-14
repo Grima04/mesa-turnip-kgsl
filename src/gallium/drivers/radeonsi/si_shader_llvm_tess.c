@@ -381,7 +381,8 @@ void si_llvm_preload_tes_rings(struct si_shader_context *ctx)
 static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMTypeRef type,
                                              LLVMValueRef vertex_index, LLVMValueRef param_index,
                                              unsigned driver_location, unsigned component,
-                                             unsigned num_components, bool load_input)
+                                             unsigned num_components, bool load_input,
+                                             bool vertex_index_is_invoc_id)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;
@@ -426,7 +427,7 @@ static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef
                                           LLVMValueRef vertex_index, LLVMValueRef param_index,
                                           unsigned driver_location, unsigned component,
                                           unsigned num_components,
-                                          bool load_input)
+                                          bool load_input, bool vertex_index_is_invoc_id)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;

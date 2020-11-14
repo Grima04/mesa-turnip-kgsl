@@ -3212,10 +3212,17 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
 
    if (ctx->stage == MESA_SHADER_TESS_CTRL ||
        (ctx->stage == MESA_SHADER_TESS_EVAL && !is_output)) {
+      bool vertex_index_is_invoc_id =
+         vertex_index_src &&
+         vertex_index_src->ssa->parent_instr->type == nir_instr_type_intrinsic &&
+         nir_instr_as_intrinsic(vertex_index_src->ssa->parent_instr)->intrinsic ==
+         nir_intrinsic_load_invocation_id;
+
       LLVMValueRef result = ctx->abi->load_tess_varyings(ctx->abi, component_type,
                                                          vertex_index, indir_index,
                                                          base, component,
-                                                         count, !is_output);
+                                                         count, !is_output,
+                                                         vertex_index_is_invoc_id);
       if (instr->dest.ssa.bit_size == 16) {
          result = ac_to_integer(&ctx->ac, result);
          result = LLVMBuildTrunc(ctx->ac.builder, result, dest_type, "");

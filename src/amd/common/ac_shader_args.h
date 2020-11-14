@@ -51,7 +51,7 @@ struct ac_arg {
    bool used;
 };
 
-#define AC_MAX_ARGS 128
+#define AC_MAX_ARGS 384 /* including all VS->TCS IO */
 
 struct ac_shader_args {
    /* Info on how to declare arguments */

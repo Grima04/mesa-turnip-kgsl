@@ -509,7 +509,8 @@ load_tcs_varyings(struct ac_shader_abi *abi,
 		  unsigned driver_location,
 		  unsigned component,
 		  unsigned num_components,
-		  bool load_input)
+		  bool load_input,
+                  bool vertex_index_is_invoc_id)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	LLVMValueRef dw_addr, stride;
@@ -619,7 +620,8 @@ load_tes_input(struct ac_shader_abi *abi,
 	       unsigned driver_location,
 	       unsigned component,
 	       unsigned num_components,
-	       bool load_input)
+	       bool load_input,
+               bool vertex_index_is_invoc_id)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	LLVMValueRef buf_addr;
