@@ -732,9 +732,6 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
    if (ctx->stage == MESA_SHADER_TESS_CTRL && si_is_multi_part_shader(ctx->shader))
       ac_build_endif(&ctx->ac, 6507);
 
-   /* Return the value from the last part. */
-   if (LLVMGetTypeKind(LLVMTypeOf(ret)) == LLVMVoidTypeKind)
-      LLVMBuildRetVoid(builder);
-   else
-      LLVMBuildRet(builder, ret);
+   assert(LLVMGetTypeKind(LLVMTypeOf(ret)) == LLVMVoidTypeKind);
+   LLVMBuildRetVoid(builder);
 }
