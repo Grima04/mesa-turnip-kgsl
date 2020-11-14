@@ -777,19 +777,17 @@ static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef re
    tf_base = ac_get_arg(&ctx->ac, ctx->tcs_factor_offset);
    byteoffset =
       LLVMBuildMul(ctx->ac.builder, rel_patch_id, LLVMConstInt(ctx->ac.i32, 4 * stride, 0), "");
-
-   ac_build_ifcc(&ctx->ac,
-                 LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, rel_patch_id, ctx->ac.i32_0, ""), 6504);
+   offset = 0;
 
    /* Store the dynamic HS control word. */
-   offset = 0;
    if (ctx->screen->info.chip_class <= GFX8) {
+      ac_build_ifcc(&ctx->ac,
+                    LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, rel_patch_id, ctx->ac.i32_0, ""), 6504);
       ac_build_buffer_store_dword(&ctx->ac, buffer, LLVMConstInt(ctx->ac.i32, 0x80000000, 0), 1,
                                   ctx->ac.i32_0, tf_base, offset, ac_glc);
+      ac_build_endif(&ctx->ac, 6504);
       offset += 4;
    }
-
-   ac_build_endif(&ctx->ac, 6504);
 
    /* Store the tessellation factors. */
    ac_build_buffer_store_dword(&ctx->ac, buffer, vec0, MIN2(stride, 4), byteoffset, tf_base, offset,
