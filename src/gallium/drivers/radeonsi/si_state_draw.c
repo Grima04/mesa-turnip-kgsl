@@ -1890,21 +1890,34 @@ static void si_draw_vbo(struct pipe_context *ctx,
       sctx->do_update_shaders = true;
    }
 
-   if (sctx->tes_shader.cso && sctx->screen->info.has_ls_vgpr_init_bug) {
-      /* Determine whether the LS VGPR fix should be applied.
-       *
-       * It is only required when num input CPs > num output CPs,
-       * which cannot happen with the fixed function TCS. We should
-       * also update this bit when switching from TCS to fixed
-       * function TCS.
-       */
+   if (sctx->tes_shader.cso) {
       struct si_shader_selector *tcs = sctx->tcs_shader.cso;
-      bool ls_vgpr_fix =
-         tcs && info->vertices_per_patch > tcs->info.base.tess.tcs_vertices_out;
 
-      if (ls_vgpr_fix != sctx->ls_vgpr_fix) {
-         sctx->ls_vgpr_fix = ls_vgpr_fix;
+      /* The rarely occuring tcs == NULL case is not optimized. */
+      bool same_patch_vertices =
+         sctx->chip_class >= GFX9 &&
+         tcs && info->vertices_per_patch == tcs->info.base.tess.tcs_vertices_out;
+
+      if (sctx->same_patch_vertices != same_patch_vertices) {
+         sctx->same_patch_vertices = same_patch_vertices;
          sctx->do_update_shaders = true;
+      }
+
+      if (sctx->screen->info.has_ls_vgpr_init_bug) {
+         /* Determine whether the LS VGPR fix should be applied.
+          *
+          * It is only required when num input CPs > num output CPs,
+          * which cannot happen with the fixed function TCS. We should
+          * also update this bit when switching from TCS to fixed
+          * function TCS.
+          */
+         bool ls_vgpr_fix =
+            tcs && info->vertices_per_patch > tcs->info.base.tess.tcs_vertices_out;
+
+         if (ls_vgpr_fix != sctx->ls_vgpr_fix) {
+            sctx->ls_vgpr_fix = ls_vgpr_fix;
+            sctx->do_update_shaders = true;
+         }
       }
    }
 

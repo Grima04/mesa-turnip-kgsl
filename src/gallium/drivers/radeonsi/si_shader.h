@@ -673,6 +673,10 @@ struct si_shader_key {
       unsigned cs_cull_back : 1;
       unsigned cs_cull_z : 1;
       unsigned cs_halfz_clip_space : 1;
+
+      /* VS and TCS have the same number of patch vertices. */
+      unsigned same_patch_vertices:1;
+
       unsigned inline_uniforms:1;
 
       uint32_t inlined_uniform_values[MAX_INLINABLE_UNIFORMS];

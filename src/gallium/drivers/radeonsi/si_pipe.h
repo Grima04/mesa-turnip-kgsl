@@ -1111,6 +1111,7 @@ struct si_context {
    bool ls_vgpr_fix : 1;
    bool prim_discard_cs_instancing : 1;
    bool ngg : 1;
+   bool same_patch_vertices : 1;
    uint8_t ngg_culling;
    int last_index_size;
    int last_base_vertex;

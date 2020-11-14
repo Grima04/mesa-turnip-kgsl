@@ -1884,6 +1884,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
           * The LS VGPR fix prefers this too.
           */
          key->opt.prefer_mono = 1;
+         key->opt.same_patch_vertices = sctx->same_patch_vertices;
       }
 
       key->part.tcs.epilog.prim_mode =

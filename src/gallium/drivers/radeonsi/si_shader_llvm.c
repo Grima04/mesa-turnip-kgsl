@@ -456,7 +456,7 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
  */
 void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *parts,
                                unsigned num_parts, unsigned main_part,
-                               unsigned next_shader_first_part)
+                               unsigned next_shader_first_part, bool same_thread_count)
 {
    LLVMBuilderRef builder = ctx->ac.builder;
    /* PS epilog has one arg per color component; gfx9 merged shader
@@ -559,7 +559,7 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
    si_llvm_create_func(ctx, "wrapper", returns, num_returns,
                        si_get_max_workgroup_size(ctx->shader));
 
-   if (si_is_merged_shader(ctx->shader))
+   if (si_is_merged_shader(ctx->shader) && !same_thread_count)
       ac_init_exec_full_mask(&ctx->ac);
 
    /* Record the arguments of the function as if they were an output of
@@ -618,11 +618,19 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
       /* Merged shaders are executed conditionally depending
        * on the number of enabled threads passed in the input SGPRs. */
       if (si_is_multi_part_shader(ctx->shader) && part == 0) {
-         LLVMValueRef ena, count = initial[3];
+         if (same_thread_count) {
+            struct ac_arg arg;
+            arg.arg_index = 3;
+            arg.used = true;
 
-         count = LLVMBuildAnd(builder, count, LLVMConstInt(ctx->ac.i32, 0x7f, 0), "");
-         ena = LLVMBuildICmp(builder, LLVMIntULT, ac_get_thread_id(&ctx->ac), count, "");
-         ac_build_ifcc(&ctx->ac, ena, 6506);
+            si_init_exec_from_input(ctx, arg, 0);
+         } else {
+            LLVMValueRef ena, count = initial[3];
+
+            count = LLVMBuildAnd(builder, count, LLVMConstInt(ctx->ac.i32, 0x7f, 0), "");
+            ena = LLVMBuildICmp(builder, LLVMIntULT, ac_get_thread_id(&ctx->ac), count, "");
+            ac_build_ifcc(&ctx->ac, ena, 6506);
+         }
       }
 
       /* Derive arguments for the next part from outputs of the
@@ -675,7 +683,8 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
 
       ret = ac_build_call(&ctx->ac, parts[part], in, num_params);
 
-      if (si_is_multi_part_shader(ctx->shader) && part + 1 == next_shader_first_part) {
+      if (!same_thread_count &&
+          si_is_multi_part_shader(ctx->shader) && part + 1 == next_shader_first_part) {
          ac_build_endif(&ctx->ac, 6506);
 
          /* The second half of the merged shader should use
@@ -729,7 +738,8 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
    }
 
    /* Close the conditional wrapping the second shader. */
-   if (ctx->stage == MESA_SHADER_TESS_CTRL && si_is_multi_part_shader(ctx->shader))
+   if (ctx->stage == MESA_SHADER_TESS_CTRL &&
+       !same_thread_count && si_is_multi_part_shader(ctx->shader))
       ac_build_endif(&ctx->ac, 6507);
 
    assert(LLVMGetTypeKind(LLVMTypeOf(ret)) == LLVMVoidTypeKind);

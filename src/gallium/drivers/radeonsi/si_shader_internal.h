@@ -252,7 +252,7 @@ void si_llvm_declare_compute_memory(struct si_shader_context *ctx);
 bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir);
 void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *parts,
                                unsigned num_parts, unsigned main_part,
-                               unsigned next_shader_first_part);
+                               unsigned next_shader_first_part, bool same_thread_count);
 
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
