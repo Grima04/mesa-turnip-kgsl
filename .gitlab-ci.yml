@@ -1132,6 +1132,24 @@ virgl-traces:
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"
 
+arm64-a630-traces:
+  extends:
+    - .piglit-traces-test
+    - .arm64-a630-test
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
+    EGL_PLATFORM: "surfaceless"
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-freedreno.yml"
+    PIGLIT_REPLAY_DEVICE_NAME: "freedreno-a630"
+    PIGLIT_RESULTS: "freedreno-a630-replay"
+    # This lets us run several more traces which don't use any features we're
+    # missing.
+    MESA_GLSL_VERSION_OVERRIDE: "460"
+    MESA_GL_VERSION_OVERRIDE: "4.6"
+  artifacts:
+    reports:
+      junit: results/junit.xml
+
 radv-polaris10-traces:
   extends:
     - .piglit-traces-test
@@ -1338,24 +1356,6 @@ arm64_a630_gles3:
     - .arm64-a630-test
   variables:
     DEQP_VER: gles3
-
-arm64_a630_traces:
-  extends:
-    - .arm64-deqp-test
-    - .arm64-a630-test
-  variables:
-    BARE_METAL_TEST_SCRIPT: "/install/tracie-runner-gl.sh"
-    DEVICE_NAME: "freedreno-a630"
-    DRIVER_NAME: "freedreno"
-    TRACIE_NO_UNIT_TESTS: 1
-    TRACIE_UPLOAD_TO_MINIO: 1
-    # This lets us run several more traces which don't use any features we're
-    # missing.
-    MESA_GLSL_VERSION_OVERRIDE: "460"
-    MESA_GL_VERSION_OVERRIDE: "4.6"
-  artifacts:
-    reports:
-      junit: results/junit.xml
 
 arm64_a630_gl:
   extends:
