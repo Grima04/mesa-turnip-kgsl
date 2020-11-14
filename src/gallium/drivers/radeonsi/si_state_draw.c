@@ -131,7 +131,12 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    input_vertex_size = ls->lshs_vertex_stride;
    output_vertex_size = num_tcs_outputs * 16;
 
-   input_patch_size = num_tcs_input_cp * input_vertex_size;
+   /* Allocate LDS for TCS inputs only if it's used. */
+   if (!ls_current->key.opt.same_patch_vertices ||
+       tcs->info.base.inputs_read & ~tcs->tcs_vgpr_only_inputs)
+      input_patch_size = num_tcs_input_cp * input_vertex_size;
+   else
+      input_patch_size = 0;
 
    pervertex_output_patch_size = num_tcs_output_cp * output_vertex_size;
    output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
