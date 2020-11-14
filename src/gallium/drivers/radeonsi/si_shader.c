@@ -1450,7 +1450,7 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
          si_init_exec_from_input(ctx, ctx->merged_wave_info, 0);
       } else if (ctx->stage == MESA_SHADER_TESS_CTRL || ctx->stage == MESA_SHADER_GEOMETRY ||
                  (shader->key.as_ngg && !shader->key.as_es)) {
-         LLVMValueRef thread_enabled;
+         LLVMValueRef thread_enabled = NULL;
          bool nested_barrier;
 
          if (!shader->is_monolithic || (ctx->stage == MESA_SHADER_TESS_EVAL && shader->key.as_ngg &&
@@ -1468,8 +1468,16 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
                gfx10_ngg_build_export_prim(ctx, NULL, NULL);
          }
 
-         if (ctx->stage == MESA_SHADER_TESS_CTRL || ctx->stage == MESA_SHADER_GEOMETRY) {
-            if (ctx->stage == MESA_SHADER_GEOMETRY && shader->key.as_ngg) {
+         if (ctx->stage == MESA_SHADER_TESS_CTRL) {
+            nested_barrier = true;
+            /* The wrapper inserts the conditional for monolithic shaders,
+             * and if this is a monolithic shader, we are already inside
+             * the conditional, so don't insert it.
+             */
+            if (!shader->is_monolithic)
+               thread_enabled = si_is_gs_thread(ctx); /* 2nd shader thread really */
+         } else if (ctx->stage == MESA_SHADER_GEOMETRY) {
+            if (shader->key.as_ngg) {
                gfx10_ngg_gs_emit_prologue(ctx);
                nested_barrier = false;
             } else {
@@ -1482,9 +1490,11 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
             nested_barrier = false;
          }
 
-         ctx->merged_wrap_if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
-         ctx->merged_wrap_if_label = 11500;
-         ac_build_ifcc(&ctx->ac, thread_enabled, ctx->merged_wrap_if_label);
+         if (thread_enabled) {
+            ctx->merged_wrap_if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
+            ctx->merged_wrap_if_label = 11500;
+            ac_build_ifcc(&ctx->ac, thread_enabled, ctx->merged_wrap_if_label);
+         }
 
          if (nested_barrier) {
             /* Execute a barrier before the second shader in

@@ -846,7 +846,7 @@ static void si_llvm_emit_tcs_epilogue(struct ac_shader_abi *abi, unsigned max_ou
    invocation_id = si_unpack_param(ctx, ctx->args.tcs_rel_ids, 8, 5);
    tf_lds_offset = get_tcs_out_current_patch_data_offset(ctx);
 
-   if (ctx->screen->info.chip_class >= GFX9) {
+   if (ctx->screen->info.chip_class >= GFX9 && !ctx->shader->is_monolithic) {
       LLVMBasicBlockRef blocks[2] = {LLVMGetInsertBlock(builder), ctx->merged_wrap_if_entry_block};
       LLVMValueRef values[2];
 

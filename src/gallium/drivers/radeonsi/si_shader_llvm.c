@@ -689,6 +689,18 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
          memcpy(out, initial, sizeof(initial));
          num_out = initial_num_out;
          num_out_sgpr = initial_num_out_sgpr;
+
+         /* Execute the second shader conditionally based on the number of
+          * enabled threads there.
+          */
+         if (ctx->stage == MESA_SHADER_TESS_CTRL) {
+            LLVMValueRef ena, count = initial[3];
+
+            count = LLVMBuildLShr(builder, count, LLVMConstInt(ctx->ac.i32, 8, 0), "");
+            count = LLVMBuildAnd(builder, count, LLVMConstInt(ctx->ac.i32, 0x7f, 0), "");
+            ena = LLVMBuildICmp(builder, LLVMIntULT, ac_get_thread_id(&ctx->ac), count, "");
+            ac_build_ifcc(&ctx->ac, ena, 6507);
+         }
          continue;
       }
 
@@ -715,6 +727,10 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
          }
       }
    }
+
+   /* Close the conditional wrapping the second shader. */
+   if (ctx->stage == MESA_SHADER_TESS_CTRL && si_is_multi_part_shader(ctx->shader))
+      ac_build_endif(&ctx->ac, 6507);
 
    /* Return the value from the last part. */
    if (LLVMGetTypeKind(LLVMTypeOf(ret)) == LLVMVoidTypeKind)
