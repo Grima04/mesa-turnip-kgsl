@@ -1486,7 +1486,12 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
          }
 
          if (ctx->stage == MESA_SHADER_TESS_CTRL) {
-            nested_barrier = true;
+            /* We need the barrier only if TCS inputs are read from LDS. */
+            nested_barrier =
+               !shader->key.opt.same_patch_vertices ||
+               shader->selector->info.base.inputs_read &
+               ~shader->selector->tcs_vgpr_only_inputs;
+
             /* The wrapper inserts the conditional for monolithic shaders,
              * and if this is a monolithic shader, we are already inside
              * the conditional, so don't insert it.
