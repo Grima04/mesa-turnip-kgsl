@@ -1303,34 +1303,46 @@ virgl-gles31-on-gles:
     - virgl-gles31-on-gl
     - .test-manual
 
-arm64_a630_gles2:
+.arm64-a630-test:
   extends:
-    - arm64_a306_gles2
+    - .freedreno-test
   variables:
     BM_KERNEL: /lava-files/cheza-kernel
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     GPU_VERSION: freedreno-a630
+    BM_DTB: /lava-files/db820c.dtb
     GIT_STRATEGY: none
     DEQP_EXPECTED_RENDERER: FD630
-    VK_DRIVER: freedreno
   tags:
     - google-freedreno-cheza
   script:
     - ./install/bare-metal/cros-servo.sh
 
+arm64_a630_gles2:
+  extends:
+    - .baremetal-deqp-test
+    - .arm64-a630-test
+  variables:
+    DEQP_VER: gles2
+
 arm64_a630_gles31:
-  extends: arm64_a630_gles2
+  extends:
+    - .baremetal-deqp-test
+    - .arm64-a630-test
   variables:
     DEQP_VER: gles31
 
 arm64_a630_gles3:
-  extends: arm64_a630_gles2
+  extends:
+    - .baremetal-deqp-test
+    - .arm64-a630-test
   variables:
     DEQP_VER: gles3
 
 arm64_a630_traces:
   extends:
-    - arm64_a630_gles2
+    - .arm64-deqp-test
+    - .arm64-a630-test
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/tracie-runner-gl.sh"
     DEVICE_NAME: "freedreno-a630"
@@ -1346,20 +1358,25 @@ arm64_a630_traces:
       junit: results/junit.xml
 
 arm64_a630_gl:
-  extends: arm64_a630_gles2
+  extends:
+    - .baremetal-deqp-test
+    - .arm64-a630-test
   variables:
     DEQP_VER: gl30
 
 arm64_a630_gles_others:
-  extends: arm64_a630_gles2
+  extends:
+    - .baremetal-deqp-test
+    - .arm64-a630-test
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/bare-metal/arm64_a630_gles_others.sh"
 
 arm64_a630_vk:
-  extends: arm64_a630_gles2
+  extends:
+    - .baremetal-deqp-test-freedreno-vk
+    - .arm64-a630-test
   parallel: 2
   variables:
-    DEQP_VER: vk
     DEQP_FRACTION: 10
     # Force binning in the main run, which makes sure we render at
     # least 2 bins.  This is the path that impacts the most different
@@ -1372,9 +1389,9 @@ arm64_a630_vk:
 # to click play on in their branches.
 arm64_a630_vk_sysmem:
   extends:
-    - arm64_a630_gles2
+    - .baremetal-deqp-test-freedreno-vk
+    - .arm64-a630-test
   variables:
-    DEQP_VER: vk
     DEQP_FRACTION: 15
     DEQP_CASELIST_FILTER: "dEQP-VK.renderpass.*"
     GPU_VERSION: freedreno-a630-bypass
@@ -1394,22 +1411,14 @@ arm64_a630_vk_sysmem:
       - results/
       - serial*.txt
 
-arm64_a306_gles2:
+.freedreno-test:
   extends:
     - .baremetal-test
     - .use-arm64_test
     - .freedreno-rules
   variables:
-    BM_KERNEL: /lava-files/Image.gz
-    BM_DTB: /lava-files/apq8016-sbc.dtb
     BM_ROOTFS: /lava-files/rootfs-arm64
-    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
     FLAKES_CHANNEL: "#freedreno-ci"
-    BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
-    GPU_VERSION: freedreno-a307
-    DEQP_PARALLEL: 0 # Default to number of CPUs
-    DEQP_VER: gles2
-    DEQP_EXPECTED_RENDERER: FD307
   script:
     - ./install/bare-metal/fastboot.sh
   needs:
@@ -1418,10 +1427,41 @@ arm64_a306_gles2:
   tags:
     - google-freedreno-db410c
 
+.baremetal-deqp-test:
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
+    DEQP_SKIPS: deqp-default-skips.txt
+    DEQP_PARALLEL: 0 # Default to number of CPUs
+
+.baremetal-deqp-test-freedreno-vk:
+  extends:
+    - .baremetal-deqp-test
+  variables:
+    DEQP_VER: vk
+    VK_DRIVER: freedreno
+
+.arm64-a306-test:
+  extends:
+    - .freedreno-test
+  variables:
+    BM_KERNEL: /lava-files/Image.gz
+    BM_DTB: /lava-files/apq8016-sbc.dtb
+    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
+    GPU_VERSION: freedreno-a307
+    DEQP_EXPECTED_RENDERER: FD307
+
+arm64_a306_gles2:
+  extends:
+    - .baremetal-deqp-test
+    - .arm64-a306-test
+  variables:
+    DEQP_VER: gles2
+
 # Fractional run, single threaded, due to flaky results
 arm64_a306_gles3:
   extends:
-    - arm64_a306_gles2
+    - .baremetal-deqp-test
+    - .arm64-a306-test
   variables:
     DEQP_VER: gles3
     DEQP_PARALLEL: 1
@@ -1430,16 +1470,18 @@ arm64_a306_gles3:
 # Fractional runs with debug options.  Note that since we're not
 # hitting the iommu faults, we can run in parallel (derive from gles2, not gles3).
 arm64_a306_gles3_options:
-  extends: arm64_a306_gles2
+  extends:
+    - .baremetal-deqp-test
+    - .arm64-a306-test
   variables:
     DEQP_VER: gles3
   script:
     # Check that the non-constbuf UBO case works.
     - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" ./install/bare-metal/fastboot.sh
 
-.arm64_a530_deqp:
+.arm64-a530-test:
   extends:
-    - arm64_a306_gles2
+    - .freedreno-test
   variables:
     BM_KERNEL: /lava-files/db820c-kernel
     BM_DTB: /lava-files/db820c.dtb
@@ -1453,12 +1495,16 @@ arm64_a306_gles3_options:
 
 arm64_a530_gles2:
   extends:
-    - .arm64_a530_deqp
+    - .baremetal-deqp-test
+    - .arm64-a530-test
+  variables:
+    DEQP_VER: gles2
   parallel: 2
 
 arm64_a530_gles3:
   extends:
-    - .arm64_a530_deqp
+    - .baremetal-deqp-test
+    - .arm64-a530-test
   variables:
     DEQP_VER: gles3
     DEQP_PARALLEL: 1
