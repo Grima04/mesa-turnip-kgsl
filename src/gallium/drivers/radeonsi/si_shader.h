@@ -461,6 +461,7 @@ struct si_shader_selector {
    uint32_t patch_outputs_written;     /* "get_unique_index_patch" bits */
 
    uint64_t inputs_read; /* "get_unique_index" bits */
+   uint64_t tcs_vgpr_only_inputs; /* TCS inputs that are only in VGPRs, not LDS. */
 
    /* bitmasks of used descriptor slots */
    uint64_t active_const_and_shader_buffers;

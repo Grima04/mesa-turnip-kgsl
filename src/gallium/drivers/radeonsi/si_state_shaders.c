@@ -2756,6 +2756,10 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
       assert(((sel->esgs_itemsize / 4) & C_028AAC_ITEMSIZE) == 0);
 
+      sel->tcs_vgpr_only_inputs = ~sel->info.base.tess.tcs_cross_invocation_inputs_read &
+                                  ~sel->info.base.inputs_read_indirectly &
+                                  sel->info.base.inputs_read;
+
       /* Only for TES: */
       if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
          if (sel->info.base.tess.point_mode)

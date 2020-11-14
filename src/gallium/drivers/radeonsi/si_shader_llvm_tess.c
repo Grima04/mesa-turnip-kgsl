@@ -395,6 +395,21 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
       semantic = info->output_semantic[driver_location];
    }
 
+   /* Load the TCS input from a VGPR if possible. */
+   if (ctx->shader->key.opt.same_patch_vertices &&
+       load_input && vertex_index_is_invoc_id && !param_index) {
+      unsigned func_param = ctx->args.tcs_rel_ids.arg_index + 1 +
+                            si_shader_io_get_unique_index(semantic, false) * 4;
+      LLVMValueRef value[4];
+
+      for (unsigned i = component; i < component + num_components; i++) {
+         value[i] = LLVMGetParam(ctx->main_fn, func_param + i);
+         value[i] = LLVMBuildBitCast(ctx->ac.builder, value[i], type, "");
+      }
+
+      return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
+   }
+
    bool is_patch = vertex_index == NULL;
    assert((semantic >= VARYING_SLOT_PATCH0 ||
            semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
@@ -944,6 +959,7 @@ void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, L
    LLVMValueRef vertex_id = ac_get_arg(&ctx->ac, ctx->rel_auto_id);
    LLVMValueRef vertex_dw_stride = get_tcs_in_vertex_dw_stride(ctx);
    LLVMValueRef base_dw_addr = LLVMBuildMul(ctx->ac.builder, vertex_id, vertex_dw_stride, "");
+   unsigned ret_offset = 8 + GFX9_TCS_NUM_USER_SGPR + 2;
 
    /* Write outputs to LDS. The next shader (TCS aka HS) will read
     * its inputs from it. */
@@ -976,8 +992,16 @@ void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, L
          if (!(info->output_usagemask[i] & (1 << chan)))
             continue;
 
-         lshs_lds_store(ctx, chan, dw_addr,
-                        LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], ""));
+         LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
+
+         if (!shader->key.opt.same_patch_vertices ||
+             !(ctx->next_shader_sel->tcs_vgpr_only_inputs & (1ull << semantic)))
+            lshs_lds_store(ctx, chan, dw_addr, value);
+
+         if (shader->key.opt.same_patch_vertices) {
+            ctx->return_value = LLVMBuildInsertValue(ctx->ac.builder, ctx->return_value,
+                                                     value, ret_offset + param * 4 + chan, "");
+         }
       }
    }
 

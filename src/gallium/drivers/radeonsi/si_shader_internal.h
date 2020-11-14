@@ -46,6 +46,7 @@ struct si_shader_output_values {
 struct si_shader_context {
    struct ac_llvm_context ac;
    struct si_shader *shader;
+   struct si_shader_selector *next_shader_sel;
    struct si_screen *screen;
 
    gl_shader_stage stage;

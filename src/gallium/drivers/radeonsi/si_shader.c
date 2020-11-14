@@ -479,7 +479,21 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
             returns[num_returns++] = ctx->ac.i32; /* SGPRs */
          for (i = 0; i < 2; i++)
             returns[num_returns++] = ctx->ac.f32; /* VGPRs */
+
+         /* VS outputs passed via VGPRs to TCS. */
+         if (shader->key.opt.same_patch_vertices) {
+            unsigned num_outputs = util_last_bit64(shader->selector->outputs_written);
+            for (i = 0; i < num_outputs * 4; i++)
+               returns[num_returns++] = ctx->ac.f32; /* VGPRs */
+         }
       } else {
+         /* TCS inputs are passed via VGPRs from VS. */
+         if (shader->key.opt.same_patch_vertices) {
+            unsigned num_inputs = util_last_bit64(shader->previous_stage_sel->outputs_written);
+            for (i = 0; i < num_inputs * 4; i++)
+               ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
+         }
+
          /* TCS return values are inputs to the TCS epilog.
           *
           * param_tcs_offchip_offset, param_tcs_factor_offset,
@@ -1765,6 +1779,7 @@ static bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_com
          parts[3] = ctx.main_fn;
 
          /* VS as LS main part */
+         ctx.next_shader_sel = ctx.shader->selector;
          nir = get_nir_shader(ls, NULL, &free_nir);
          struct si_shader shader_ls = {};
          shader_ls.selector = ls;
