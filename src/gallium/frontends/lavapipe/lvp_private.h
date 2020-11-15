@@ -272,8 +272,6 @@ struct lvp_pipeline_cache {
 struct lvp_device {
    struct vk_device vk;
 
-   VkAllocationCallbacks                       alloc;
-
    struct lvp_queue queue;
    struct lvp_instance *                       instance;
    struct lvp_physical_device *physical_device;

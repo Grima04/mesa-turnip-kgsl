@@ -46,7 +46,7 @@ VkResult lvp_CreateQueryPool(
    struct lvp_query_pool *pool;
    uint32_t pool_size = sizeof(*pool) + pCreateInfo->queryCount * sizeof(struct pipe_query *);
 
-   pool = vk_zalloc2(&device->alloc, pAllocator,
+   pool = vk_zalloc2(&device->vk.alloc, pAllocator,
                     pool_size, 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pool)
@@ -77,7 +77,7 @@ void lvp_DestroyQueryPool(
       if (pool->queries[i])
          device->queue.ctx->destroy_query(device->queue.ctx, pool->queries[i]);
    vk_object_base_finish(&pool->base);
-   vk_free2(&device->alloc, pAllocator, pool);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
 VkResult lvp_GetQueryPoolResults(

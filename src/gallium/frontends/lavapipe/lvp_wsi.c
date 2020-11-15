@@ -145,7 +145,7 @@ VkResult lvp_CreateSwapchainKHR(
    if (pAllocator)
       alloc = pAllocator;
    else
-      alloc = &device->alloc;
+      alloc = &device->vk.alloc;
 
    return wsi_common_create_swapchain(&device->physical_device->wsi_device,
                                       lvp_device_to_handle(device),
@@ -165,7 +165,7 @@ void lvp_DestroySwapchainKHR(
    if (pAllocator)
       alloc = pAllocator;
    else
-      alloc = &device->alloc;
+      alloc = &device->vk.alloc;
 
    wsi_common_destroy_swapchain(_device, swapchain, alloc);
 }
