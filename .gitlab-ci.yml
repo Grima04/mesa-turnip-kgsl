@@ -28,6 +28,7 @@ stages:
   - amd
   - arm
   - freedreno
+  - raspberrypi
   - software-renderer
   - layered-backends
   - success
@@ -383,7 +384,7 @@ arm_test-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-12-03-expect"
 
 .use-arm_test-base:
   extends:
@@ -401,7 +402,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-11-09-db410c-net"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-12-03-expect"
 
 .use-arm64_test:
   variables:
@@ -409,6 +410,20 @@ arm64_test:
   image: "$CI_REGISTRY_IMAGE/debian/arm64_test:$TAG"
   needs:
     - arm64_test
+
+# x86 image with armhf rootfs for baremetal testing
+armhf_test:
+  extends:
+    - .use-arm_test-base
+  variables:
+    FDO_DISTRIBUTION_TAG: &armhf_test "2020-12-03-expect"
+
+.use-armhf_test:
+  variables:
+    TAG: *armhf_test
+  image: "$CI_REGISTRY_IMAGE/debian/armhf_test:$TAG"
+  needs:
+    - armhf_test
 
 # Native Windows docker builds
 #
@@ -1379,6 +1394,31 @@ arm64_a530_gles31:
   variables:
     DEQP_VER: gles31
     DEQP_FRACTION: 10
+
+vc4-rpi3-gles2:armhf:
+  extends:
+    - .baremetal-test
+    - .use-armhf_test
+    - .vc4-rules
+  parallel: 4
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
+    BM_BOOTFS: /boot/armhf
+    BM_KERNEL_MODULES: vc4
+    BM_ROOTFS: /lava-files/rootfs-armhf
+    BM_ROOTFS_EXTRA: /modules/armhf
+    DEQP_EXPECTED_FAILS: deqp-vc4-rpi3-fails.txt
+    DEQP_EXPECTED_RENDERER: VC4
+    DEQP_FLAKES: deqp-vc4-rpi3-flakes.txt
+    DEQP_SKIPS: deqp-vc4-rpi3-skips.txt
+    DEQP_VER: gles2
+  script:
+    - ./install/bare-metal/poe-powered.sh
+  needs:
+    - armhf_test
+    - meson-armhf
+  tags:
+    - igalia-rpi3
 
 # RADV CI
 .test-radv:
