@@ -447,6 +447,10 @@ try_setup_point( struct lp_setup_context *setup,
                    bbox.x1, bbox.y1);
    }
 
+   if (lp_context->active_statistics_queries) {
+      lp_context->pipeline_statistics.c_primitives++;
+   }
+
    if (!u_rect_test_intersection(&setup->draw_regions[viewport_index], &bbox)) {
       if (0) debug_printf("offscreen\n");
       LP_COUNT(nr_culled_tris);
@@ -468,10 +472,6 @@ try_setup_point( struct lp_setup_context *setup,
 #endif
 
    LP_COUNT(nr_tris);
-
-   if (lp_context->active_statistics_queries) {
-      lp_context->pipeline_statistics.c_primitives++;
-   }
 
    if (draw_will_inject_frontface(lp_context->draw) &&
        setup->face_slot > 0) {
