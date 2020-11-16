@@ -40,6 +40,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include "util/debug.h"
 #include "util/os_misc.h"
 #include "util/detect_os.h"
 #include "util/macros.h"
@@ -407,52 +408,28 @@ debug_get_flags_option(const char *name,
 static const char * \
 debug_get_option_ ## suffix (void) \
 { \
-   static bool first = true; \
-   static const char * value; \
-   if (first) { \
-      first = false; \
-      value = debug_get_option(name, dfault); \
-   } \
-   return value; \
+   return get_once_nolock(debug_get_option(name, dfault)); \
 }
 
 #define DEBUG_GET_ONCE_BOOL_OPTION(sufix, name, dfault) \
 static bool \
 debug_get_option_ ## sufix (void) \
 { \
-   static bool first = true; \
-   static bool value; \
-   if (first) { \
-      first = false; \
-      value = debug_get_bool_option(name, dfault); \
-   } \
-   return value; \
+   return get_once_nolock(debug_get_bool_option(name, dfault)); \
 }
 
 #define DEBUG_GET_ONCE_NUM_OPTION(sufix, name, dfault) \
 static long \
 debug_get_option_ ## sufix (void) \
 { \
-   static bool first = true; \
-   static long value; \
-   if (first) { \
-      first = false; \
-      value = debug_get_num_option(name, dfault); \
-   } \
-   return value; \
+   return get_once_nolock(debug_get_num_option(name, dfault)); \
 }
 
 #define DEBUG_GET_ONCE_FLAGS_OPTION(sufix, name, flags, dfault) \
 static unsigned long \
 debug_get_option_ ## sufix (void) \
 { \
-   static bool first = true; \
-   static unsigned long value; \
-   if (first) { \
-      first = false; \
-      value = debug_get_flags_option(name, flags, dfault); \
-   } \
-   return value; \
+   return get_once_nolock(debug_get_flags_option(name, flags, dfault)); \
 }
 
 
