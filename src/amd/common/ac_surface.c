@@ -2974,6 +2974,22 @@ uint64_t ac_surface_get_plane_stride(enum chip_class chip_class,
    }
 }
 
+uint64_t ac_surface_get_plane_size(const struct radeon_surf *surf,
+                                   unsigned plane)
+{
+   switch (plane) {
+   case 0:
+      return surf->surf_size;
+   case 1:
+      return surf->display_dcc_offset ?
+             surf->u.gfx9.display_dcc_size : surf->dcc_size;
+   case 2:
+      return surf->dcc_size;
+   default:
+      unreachable("Invalid plane index");
+   }
+}
+
 void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                            const struct radeon_surf *surf)
 {
