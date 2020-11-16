@@ -182,7 +182,9 @@ VkResult v3dv_CreateSwapchainKHR(
    struct v3dv_physical_device *pdevice = &instance->physicalDevice;
    struct wsi_device *wsi_device = &pdevice->wsi_device;
 
-   VkResult result = v3dv_physical_device_acquire_display(instance, pdevice);
+   ICD_FROM_HANDLE(VkIcdSurfaceBase, surface, pCreateInfo->surface);
+   VkResult result =
+      v3dv_physical_device_acquire_display(instance, pdevice, surface);
    if (result != VK_SUCCESS)
       return result;
 

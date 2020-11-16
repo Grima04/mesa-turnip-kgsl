@@ -49,6 +49,7 @@
 #ifdef VK_USE_PLATFORM_XCB_KHR
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
+#include <X11/Xlib-xcb.h>
 #endif
 
 #ifdef USE_V3D_SIMULATOR
@@ -335,17 +336,23 @@ compute_heap_size()
    return available_ram;
 }
 
-/* When running on the simulator we do everything on a single render node so
- * we don't need to get an authenticated display fd from the display server.
- */
 #if !using_v3d_simulator
 #ifdef VK_USE_PLATFORM_XCB_KHR
 static int
-create_display_fd_xcb()
+create_display_fd_xcb(VkIcdSurfaceBase *surface)
 {
    int fd = -1;
 
-   xcb_connection_t *conn = xcb_connect(NULL, NULL);
+   xcb_connection_t *conn;
+   if (surface) {
+      if (surface->platform == VK_ICD_WSI_PLATFORM_XLIB)
+         conn = XGetXCBConnection(((VkIcdSurfaceXlib *)surface)->dpy);
+      else
+         conn = ((VkIcdSurfaceXcb *)surface)->connection;
+   } else {
+      conn = xcb_connect(NULL, NULL);
+   }
+
    if (xcb_connection_has_error(conn))
       goto finish;
 
@@ -367,21 +374,72 @@ create_display_fd_xcb()
    fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
 
 finish:
-   xcb_disconnect(conn);
+   if (!surface)
+      xcb_disconnect(conn);
    if (reply)
       free(reply);
 
    return fd;
 }
 #endif
+
+/* Acquire an authenticated display fd without a surface reference. This is the
+ * case where the application is making WSI allocations outside the Vulkan
+ * swapchain context (only Zink, for now). Since we lack information about the
+ * underlying surface we just try our best to figure out the correct display
+ * and platform to use. It should work in most cases.
+ */
+static void
+acquire_display_device_no_surface(struct v3dv_instance *instance,
+                                  struct v3dv_physical_device *pdevice)
+{
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   pdevice->display_fd = create_display_fd_xcb(NULL);
 #endif
+
+#ifdef VK_USE_PLATFORM_DISPLAY_KHR
+   if (pdevice->display_fd == - 1 && pdevice->master_fd >= 0)
+      pdevice->display_fd = dup(pdevice->master_fd);
+#endif
+}
+
+/* Acquire an authenticated display fd from the surface. This is the regular
+ * case where the application is using swapchains to create WSI allocations.
+ * In this case we use the surface information to figure out the correct
+ * display and platform combination.
+ */
+static void
+acquire_display_device_surface(struct v3dv_instance *instance,
+                               struct v3dv_physical_device *pdevice,
+                               VkIcdSurfaceBase *surface)
+{
+   /* Mesa will set both of VK_USE_PLATFORM_{XCB,XLIB} when building with
+    * platform X11, so only check for XCB and rely on XCB to get an
+    * authenticated device also for Xlib.
+    */
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   if (surface->platform == VK_ICD_WSI_PLATFORM_XCB ||
+       surface->platform == VK_ICD_WSI_PLATFORM_XLIB) {
+      pdevice->display_fd = create_display_fd_xcb(surface);
+   }
+#endif
+
+#ifdef VK_USE_PLATFORM_DISPLAY_KHR
+   if (surface->platform == VK_ICD_WSI_PLATFORM_DISPLAY &&
+       pdevice->master_fd >= 0) {
+      pdevice->display_fd = dup(pdevice->master_fd);
+   }
+#endif
+}
+#endif /* !using_v3d_simulator */
 
 /* Attempts to get an authenticated display fd from the display server that
  * we can use to allocate BOs for presentable images.
  */
 VkResult
 v3dv_physical_device_acquire_display(struct v3dv_instance *instance,
-                                     struct v3dv_physical_device *pdevice)
+                                     struct v3dv_physical_device *pdevice,
+                                     VkIcdSurfaceBase *surface)
 {
    VkResult result = VK_SUCCESS;
    mtx_lock(&pdevice->mutex);
@@ -392,43 +450,11 @@ v3dv_physical_device_acquire_display(struct v3dv_instance *instance,
    /* When running on the simulator we do everything on a single render node so
     * we don't need to get an authenticated display fd from the display server.
     */
-
 #if !using_v3d_simulator
-   /* Mesa will set both of VK_USE_PLATFORM_{XCB,XLIB} when building with
-    * platform X11, so only check for XCB and rely on XCB to get an
-    * authenticated device also for Xlib.
-    */
-#ifdef VK_USE_PLATFORM_XCB_KHR
-   if (instance->enabled_extensions.KHR_xcb_surface ||
-       instance->enabled_extensions.KHR_xlib_surface) {
-      pdevice->display_fd = create_display_fd_xcb();
-   }
-#endif
-
-   /* If we are not running under a compositor and we are doing
-    * direct display we want to make our display_fd be the
-    * master_fd, which shoud be authenticated.
-    */
-   if (pdevice->display_fd == -1 &&
-       instance->enabled_extensions.KHR_display) {
-      assert(pdevice->master_fd >= 0);
-      pdevice->display_fd = dup(pdevice->master_fd);
-   }
-
-   /* Fallback cases.
-    *
-    * Some applications seem to try and create a swapchain without
-    * the instance extension enables, so if we have not managed to
-    * create a display_fd above, try again without the extension checks
-    * as a last resort.
-    */
-#ifdef VK_USE_PLATFORM_XCB_KHR
-   if (pdevice->display_fd == -1)
-      pdevice->display_fd = create_display_fd_xcb();
-#endif
-
-   if (pdevice->display_fd == -1 && pdevice->master_fd >= 0)
-      pdevice->display_fd = dup(pdevice->master_fd);
+   if (surface)
+      acquire_display_device_surface(instance, pdevice, surface);
+   else
+      acquire_display_device_no_surface(instance, pdevice);
 
    if (pdevice->display_fd == -1)
       result = VK_ERROR_INITIALIZATION_FAILED;
@@ -1684,7 +1710,7 @@ device_alloc_for_wsi(struct v3dv_device *device,
    struct v3dv_instance *instance = device->instance;
    struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
    if (unlikely(pdevice->display_fd < 0)) {
-      result = v3dv_physical_device_acquire_display(instance, pdevice);
+      result = v3dv_physical_device_acquire_display(instance, pdevice, NULL);
       if (result != VK_SUCCESS)
          return result;
    }

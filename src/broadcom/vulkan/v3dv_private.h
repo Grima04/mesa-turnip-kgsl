@@ -165,7 +165,8 @@ struct v3dv_physical_device {
 };
 
 VkResult v3dv_physical_device_acquire_display(struct v3dv_instance *instance,
-                                              struct v3dv_physical_device *pdevice);
+                                              struct v3dv_physical_device *pdevice,
+                                              VkIcdSurfaceBase *surface);
 
 VkResult v3dv_wsi_init(struct v3dv_physical_device *physical_device);
 void v3dv_wsi_finish(struct v3dv_physical_device *physical_device);
