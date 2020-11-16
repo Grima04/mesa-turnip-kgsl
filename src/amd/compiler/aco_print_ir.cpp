@@ -170,6 +170,8 @@ void aco_print_operand(const Operand *operand, FILE *output)
          fprintf(output, "(latekill)");
       if (operand->is16bit())
          fprintf(output, "(is16bit)");
+      if (operand->is24bit())
+         fprintf(output, "(is24bit)");
 
       fprintf(output, "%%%d", operand->tempId());
 

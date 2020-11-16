@@ -358,6 +358,11 @@ public:
        return op;
    }
 
+   Operand set24bit(Operand op) {
+       op.set24bit(true);
+       return op;
+   }
+
    /* hand-written helpers */
    Temp as_uniform(Op op)
    {

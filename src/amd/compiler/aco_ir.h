@@ -420,7 +420,7 @@ public:
    constexpr Operand()
       : reg_(PhysReg{128}), isTemp_(false), isFixed_(true), isConstant_(false),
         isKill_(false), isUndef_(true), isFirstKill_(false), constSize(0),
-        isLateKill_(false), is16bit_(false) {}
+        isLateKill_(false), is16bit_(false), is24bit_(false) {}
 
    explicit Operand(Temp r) noexcept
    {
@@ -757,6 +757,16 @@ public:
       return is16bit_;
    }
 
+   constexpr void set24bit(bool flag) noexcept
+   {
+      is24bit_ = flag;
+   }
+
+   constexpr bool is24bit() const noexcept
+   {
+      return is24bit_;
+   }
+
 private:
    union {
       uint32_t i;
@@ -775,6 +785,7 @@ private:
          uint8_t constSize:2;
          uint8_t isLateKill_:1;
          uint8_t is16bit_:1;
+         uint8_t is24bit_:1;
       };
       /* can't initialize bit-fields in c++11, so work around using a union */
       uint16_t control_ = 0;
