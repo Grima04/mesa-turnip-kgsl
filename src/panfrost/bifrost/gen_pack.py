@@ -215,15 +215,6 @@ def pack_seg(mod, opts, body, pack_exprs):
     else:
         assert(False)
 
-# TODO: Update modes (perf / slow) For now just force store, except for special
-# varyings for which we force clobber
-def pack_update(mod, opts, body, pack_exprs):
-    if opts == ['store', 'retrieve', 'conditional', 'clobber']:
-        return '(ins->constant.u64 >= 20) ? 3 : 0'
-    else:
-        assert(opts[0] == 'store')
-        return '0'
-
 # Processes modifiers. If used directly, emits a pack. Otherwise, just
 # processes the value (grabbing it from the IR). This must sync with the IR.
 
@@ -273,7 +264,7 @@ modifier_map = {
         "not_result": pack_not_result,
         "register_format": pack_register_format,
         "seg": pack_seg,
-        "update": pack_update,
+        "update": lambda a,b,c,d: 'ins->load_vary.update_mode',
 
         # Just a minus one modifier
         "vecsize": lambda a,b,c,d: 'ins->vector_channels - 1',

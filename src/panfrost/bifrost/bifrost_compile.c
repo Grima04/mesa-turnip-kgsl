@@ -567,6 +567,7 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                         .type = BI_LOAD_VAR,
                         .load_vary = {
                                 .interp_mode = BIFROST_INTERP_CENTER,
+                                .update_mode = BIFROST_UPDATE_CLOBBER,
                                 .reuse = false,
                                 .flat = true
                         },
@@ -724,6 +725,9 @@ bi_emit_point_coord(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bi_instruction ins = {
                 .type = BI_LOAD_VAR,
+                .load_vary = {
+                        .update_mode = BIFROST_UPDATE_CLOBBER,
+                },
                 .vector_channels = 2,
                 .dest = pan_dest_index(&instr->dest),
                 .dest_type = nir_type_float32,

@@ -245,6 +245,14 @@ bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
 
         if (load->flat)
                 fprintf(fp, ".flat");
+
+        switch (load->update_mode) {
+        case BIFROST_UPDATE_STORE: fprintf(fp, ".store"); break;
+        case BIFROST_UPDATE_RETRIEVE: fprintf(fp, ".retrieve"); break;
+        case BIFROST_UPDATE_CONDITIONAL: fprintf(fp, ".conditional"); break;
+        case BIFROST_UPDATE_CLOBBER: fprintf(fp, ".conditional"); break;
+        default: unreachable("Invalid update mode");
+        }
 }
 
 const char *

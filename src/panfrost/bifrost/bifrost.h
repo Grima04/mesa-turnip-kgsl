@@ -228,6 +228,13 @@ enum bifrost_interp_mode {
         BIFROST_INTERP_NONE = 0x4,
 };
 
+enum bifrost_update_mode {
+        BIFROST_UPDATE_STORE,
+        BIFROST_UPDATE_RETRIEVE,
+        BIFROST_UPDATE_CONDITIONAL,
+        BIFROST_UPDATE_CLOBBER,
+};
+
 /* Fixed location for gl_FragCoord.zw */
 #define BIFROST_FRAGZ (23)
 #define BIFROST_FRAGW (22)
