@@ -161,7 +161,7 @@ kernel+rootfs_armhf:
     - .lava-test:arm64
     - .lava-traces-base
 
-panfrost-t720-gles2:arm64:
+.panfrost-t720-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
@@ -215,14 +215,14 @@ panfrost-t720-gles2:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-t860-gles2:arm64:
+.panfrost-t860-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
   variables:
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-panfrost-t860-gles3:arm64:
+.panfrost-t860-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -231,14 +231,14 @@ panfrost-t860-gles3:arm64:
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-panfrost-t860-traces:arm64:
+.panfrost-t860-traces:arm64:
   extends:
     - .lava-traces:arm64
     - .lava-rk3399-gru-kevin
   variables:
     ENV_VARS: "PAN_MESA_DEBUG=deqp MESA_GLES_VERSION_OVERRIDE=3.1 MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330"
 
-panfrost-g52-gles2:arm64:
+.panfrost-g52-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
@@ -288,7 +288,7 @@ panfrost-g52-gles2:arm64:
   tags:
     - mesa-ci-aarch64-lava-baylibre
 
-radeonsi-stoney-gles2:amd64:
+.radeonsi-stoney-gles2:amd64:
   extends:
     - .lava-test:amd64
     - .radeonsi-rules
@@ -302,9 +302,9 @@ radeonsi-stoney-gles2:amd64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-radeonsi-stoney-gles3:amd64:
+.radeonsi-stoney-gles3:amd64:
   extends:
-    - radeonsi-stoney-gles2:amd64
+    - .radeonsi-stoney-gles2:amd64
   variables:
     DEQP_VERSION: gles3
     CI_NODE_INDEX: 1
@@ -312,9 +312,9 @@ radeonsi-stoney-gles3:amd64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-radeonsi-stoney-gles31:amd64:
+.radeonsi-stoney-gles31:amd64:
   extends:
-    - radeonsi-stoney-gles2:amd64
+    - .radeonsi-stoney-gles2:amd64
   variables:
     DEQP_VERSION: gles31
     CI_NODE_INDEX: 1
@@ -322,7 +322,7 @@ radeonsi-stoney-gles31:amd64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-radeonsi-stoney-traces:amd64:
+.radeonsi-stoney-traces:amd64:
   extends:
     - .lava-traces:amd64
     - .radeonsi-rules
