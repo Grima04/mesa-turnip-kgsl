@@ -2183,6 +2183,11 @@ VkResult radv_image_create(VkDevice _device,
 			   const VkAllocationCallbacks* alloc,
 			   VkImage *pImage);
 
+bool
+radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev,
+                                const void *pNext, VkFormat format,
+                                VkImageCreateFlags flags);
+
 bool vi_alpha_is_on_msb(struct radv_device *device, VkFormat format);
 
 VkResult

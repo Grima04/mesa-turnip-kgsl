@@ -150,15 +150,49 @@ radv_image_use_fast_clear_for_image(const struct radv_device *device,
 	       (image->exclusive || image->queue_family_mask == 1);
 }
 
+bool
+radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev,
+                                const void *pNext, VkFormat format,
+                                VkImageCreateFlags flags)
+{
+	bool blendable;
+
+	if (!radv_is_colorbuffer_format_supported(pdev,
+	                                          format, &blendable))
+		return false;
+
+	if (flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
+		const struct VkImageFormatListCreateInfo *format_list =
+			(const struct  VkImageFormatListCreateInfo *)
+				vk_find_struct_const(pNext,
+						     IMAGE_FORMAT_LIST_CREATE_INFO);
+
+		/* We have to ignore the existence of the list if viewFormatCount = 0 */
+		if (format_list && format_list->viewFormatCount) {
+			/* compatibility is transitive, so we only need to check
+			 * one format with everything else. */
+			for (unsigned i = 0; i < format_list->viewFormatCount; ++i) {
+				if (format_list->pViewFormats[i] == VK_FORMAT_UNDEFINED)
+					continue;
+
+				if (!radv_dcc_formats_compatible(format,
+				                                 format_list->pViewFormats[i]))
+					return false;
+			}
+		} else {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static bool
 radv_use_dcc_for_image(struct radv_device *device,
 		       const struct radv_image *image,
 		       const VkImageCreateInfo *pCreateInfo,
 		       VkFormat format)
 {
-	bool dcc_compatible_formats;
-	bool blendable;
-
 	/* DCC (Delta Color Compression) is only available for GFX8+. */
 	if (device->physical_device->rad_info.chip_class < GFX8)
 		return false;
@@ -204,38 +238,9 @@ radv_use_dcc_for_image(struct radv_device *device,
 	     device->physical_device->rad_info.chip_class < GFX10)
 		return false;
 
-	/* Determine if the formats are DCC compatible. */
-	dcc_compatible_formats =
-		radv_is_colorbuffer_format_supported(device->physical_device,
-						     format, &blendable);
-
-	if (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
-		const struct VkImageFormatListCreateInfo *format_list =
-			(const struct  VkImageFormatListCreateInfo *)
-				vk_find_struct_const(pCreateInfo->pNext,
-						     IMAGE_FORMAT_LIST_CREATE_INFO);
-
-		/* We have to ignore the existence of the list if viewFormatCount = 0 */
-		if (format_list && format_list->viewFormatCount) {
-			/* compatibility is transitive, so we only need to check
-			 * one format with everything else. */
-			for (unsigned i = 0; i < format_list->viewFormatCount; ++i) {
-				if (format_list->pViewFormats[i] == VK_FORMAT_UNDEFINED)
-					continue;
-
-				if (!radv_dcc_formats_compatible(format,
-				                                 format_list->pViewFormats[i]))
-					dcc_compatible_formats = false;
-			}
-		} else {
-			dcc_compatible_formats = false;
-		}
-	}
-
-	if (!dcc_compatible_formats)
-		return false;
-
-	return true;
+	return radv_are_formats_dcc_compatible(device->physical_device,
+	                                       pCreateInfo->pNext, format,
+	                                       pCreateInfo->flags);
 }
 
 static inline bool
