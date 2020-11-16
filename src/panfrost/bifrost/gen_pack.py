@@ -392,7 +392,7 @@ def pack_derived(pos, exprs, imm_map, body, pack_exprs):
 
 IMMEDIATE_TABLE = {
         'attribute_index': 'bi_get_immediate(ins, 0)',
-        'varying_index': 'bi_get_immediate(ins, 0)',
+        'varying_index': 'ins->texture.varying_index',
         'index': 'ins->load_vary.index',
         'texture_index': 'ins->texture.texture_index',
         'sampler_index': 'ins->texture.sampler_index',
@@ -452,7 +452,7 @@ def pack_variant(opname, states):
     if staging in ["r", "rw"]:
         offset += 1
 
-    offset += len(set(["attribute_index", "varying_index"]) & set([x[0] for x in states[0][1].get("immediates", [])]))
+    offset += len(set(["attribute_index"]) & set([x[0] for x in states[0][1].get("immediates", [])]))
 
     pack_sources(states[0][1].get("srcs", []), common_body, pack_exprs, offset)
 
