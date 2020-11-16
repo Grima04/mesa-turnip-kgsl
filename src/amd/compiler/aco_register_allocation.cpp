@@ -2117,31 +2117,22 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                /* create parallelcopy pair to move blocking vars */
                std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, register_file, definition.physReg(), definition.size());
 
+               RegisterFile tmp_file(register_file);
                /* re-enable the killed operands, so that we don't move the blocking vars there */
                for (const Operand& op : instr->operands) {
                   if (op.isTemp() && op.isFirstKillBeforeDef())
-                     register_file.fill(op);
+                     tmp_file.fill(op);
                }
 
                ASSERTED bool success = false;
                DefInfo info(ctx, instr, definition.regClass(), -1);
-               success = get_regs_for_copies(ctx, register_file, parallelcopy,
+               success = get_regs_for_copies(ctx, tmp_file, parallelcopy,
                                              vars, info.lb, info.ub, instr,
                                              definition.physReg(),
                                              definition.physReg() + definition.size() - 1);
                assert(success);
 
                update_renames(ctx, register_file, parallelcopy, instr, false);
-
-               /* once again, disable killed operands */
-               for (const Operand& op : instr->operands) {
-                  if (op.isTemp() && op.isFirstKillBeforeDef())
-                     register_file.clear(op);
-               }
-               for (unsigned k = 0; k < i; k++) {
-                  if (instr->definitions[k].isTemp() && ctx.defs_done.test(k) && !instr->definitions[k].isKill())
-                     register_file.fill(instr->definitions[k]);
-               }
             }
             ctx.defs_done.set(i);
 
