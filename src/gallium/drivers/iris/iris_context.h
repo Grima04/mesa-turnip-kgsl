@@ -265,6 +265,17 @@ struct iris_cs_prog_key {
    struct iris_base_prog_key base;
 };
 
+union iris_any_prog_key {
+   struct iris_base_prog_key base;
+   struct iris_vue_prog_key vue;
+   struct iris_vs_prog_key vs;
+   struct iris_tcs_prog_key tcs;
+   struct iris_tes_prog_key tes;
+   struct iris_gs_prog_key gs;
+   struct iris_fs_prog_key fs;
+   struct iris_cs_prog_key cs;
+};
+
 /** @} */
 
 struct iris_depth_stencil_alpha_state;
@@ -389,6 +400,12 @@ struct iris_uncompiled_shader {
 
    /** Size (in bytes) of the local (shared) data passed as kernel inputs */
    unsigned kernel_shared_size;
+
+   /** List of iris_compiled_shader variants */
+   struct list_head variants;
+
+   /** Lock for the variants list */
+   simple_mtx_t lock;
 };
 
 enum iris_surface_group {
@@ -430,6 +447,12 @@ struct iris_binding_table {
  */
 struct iris_compiled_shader {
    struct pipe_reference ref;
+
+   /** Link in the iris_uncompiled_shader::variants list */
+   struct list_head link;
+
+   /** Key for this variant (but not for BLORP programs) */
+   union iris_any_prog_key key;
 
    /** Reference to the uploaded assembly. */
    struct iris_state_ref assembly;
@@ -881,7 +904,7 @@ void iris_disk_cache_store(struct disk_cache *cache,
                            uint32_t prog_key_size);
 struct iris_compiled_shader *
 iris_disk_cache_retrieve(struct iris_context *ice,
-                         const struct iris_uncompiled_shader *ish,
+                         struct iris_uncompiled_shader *ish,
                          const void *prog_key,
                          uint32_t prog_key_size);
 
@@ -894,6 +917,7 @@ struct iris_compiled_shader *iris_find_cached_shader(struct iris_context *ice,
                                                      uint32_t key_size,
                                                      const void *key);
 struct iris_compiled_shader *iris_upload_shader(struct iris_context *ice,
+                                                struct iris_uncompiled_shader *,
                                                 enum iris_program_cache_id,
                                                 uint32_t key_size,
                                                 const void *key,
@@ -905,9 +929,6 @@ struct iris_compiled_shader *iris_upload_shader(struct iris_context *ice,
                                                 unsigned kernel_input_size,
                                                 unsigned num_cbufs,
                                                 const struct iris_binding_table *bt);
-const void *iris_find_previous_compile(const struct iris_context *ice,
-                                       enum iris_program_cache_id cache_id,
-                                       unsigned program_string_id);
 void iris_delete_shader_variant(struct iris_compiled_shader *shader);
 
 static inline void

@@ -1025,13 +1025,9 @@ iris_debug_recompile(struct iris_context *ice,
                      struct iris_uncompiled_shader *ish,
                      const struct brw_base_prog_key *key)
 {
-   if (!ish)
+   if (!ish || list_is_empty(&ish->variants)
+            || list_is_singular(&ish->variants))
       return;
-
-   if (!ish->compiled_once) {
-      ish->compiled_once = true;
-      return;
-   }
 
    struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
@@ -1043,8 +1039,9 @@ iris_debug_recompile(struct iris_context *ice,
                       info->name ? info->name : "(no identifier)",
                       info->label ? info->label : "");
 
-   const void *old_iris_key =
-      iris_find_previous_compile(ice, info->stage, key->program_string_id);
+   struct iris_compiled_shader *shader =
+      list_first_entry(&ish->variants, struct iris_compiled_shader, link);
+   const void *old_iris_key = &shader->key;
 
    union brw_any_prog_key old_key;
 
@@ -1108,6 +1105,49 @@ last_vue_stage(struct iris_context *ice)
       return MESA_SHADER_TESS_EVAL;
 
    return MESA_SHADER_VERTEX;
+}
+
+static inline struct iris_compiled_shader *
+find_variant(const struct iris_screen *screen,
+             struct iris_uncompiled_shader *ish,
+             const void *key, unsigned key_size)
+{
+   struct list_head *start = ish->variants.next;
+
+   if (screen->precompile) {
+      /* Check the first list entry.  There will always be at least one
+       * variant in the list (most likely the precompile variant), and
+       * other contexts only append new variants, so we can safely check
+       * it without locking, saving that cost in the common case.
+       */
+      struct iris_compiled_shader *first =
+         list_first_entry(&ish->variants, struct iris_compiled_shader, link);
+
+      if (memcmp(&first->key, key, key_size) == 0)
+         return first;
+
+      /* Skip this one in the loop below */
+      start = first->link.next;
+   }
+
+   struct iris_compiled_shader *variant = NULL;
+
+   /* If it doesn't match, we have to walk the list; other contexts may be
+    * concurrently appending shaders to it, so we need to lock here.
+    */
+   simple_mtx_lock(&ish->lock);
+
+   list_for_each_entry_from(struct iris_compiled_shader, v, start,
+                            &ish->variants, link) {
+      if (memcmp(&v->key, key, key_size) == 0) {
+         variant = v;
+         break;
+      }
+   }
+
+   simple_mtx_unlock(&ish->lock);
+
+   return variant;
 }
 
 /**
@@ -1176,7 +1216,7 @@ iris_compile_vs(struct iris_context *ice,
                                     &vue_prog_data->vue_map);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_VS, sizeof(*key), key, program,
+      iris_upload_shader(ice, ish, IRIS_CACHE_VS, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1204,7 +1244,7 @@ iris_update_compiled_vs(struct iris_context *ice)
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_VS];
    struct iris_compiled_shader *shader =
-      iris_find_cached_shader(ice, IRIS_CACHE_VS, sizeof(key), &key);
+      find_variant(screen, ish, &key, sizeof(key));
 
    if (!shader)
       shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
@@ -1360,7 +1400,7 @@ iris_compile_tcs(struct iris_context *ice,
    iris_debug_recompile(ice, ish, &brw_key.base);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_TCS, sizeof(*key), key, program,
+      iris_upload_shader(ice, ish, IRIS_CACHE_TCS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1403,6 +1443,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_TCS];
    struct iris_compiled_shader *shader =
+      tcs ? find_variant(screen, tcs, &key, sizeof(key)) :
       iris_find_cached_shader(ice, IRIS_CACHE_TCS, sizeof(key), &key);
 
    if (tcs && !shader)
@@ -1489,7 +1530,7 @@ iris_compile_tes(struct iris_context *ice,
 
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_TES, sizeof(*key), key, program,
+      iris_upload_shader(ice, ish, IRIS_CACHE_TES, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1518,7 +1559,7 @@ iris_update_compiled_tes(struct iris_context *ice)
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_TES];
    struct iris_compiled_shader *shader =
-      iris_find_cached_shader(ice, IRIS_CACHE_TES, sizeof(key), &key);
+      find_variant(screen, ish, &key, sizeof(key));
 
    if (!shader)
       shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
@@ -1610,7 +1651,7 @@ iris_compile_gs(struct iris_context *ice,
                                     &vue_prog_data->vue_map);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_GS, sizeof(*key), key, program,
+      iris_upload_shader(ice, ish, IRIS_CACHE_GS, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1639,8 +1680,7 @@ iris_update_compiled_gs(struct iris_context *ice)
       struct iris_gs_prog_key key = { KEY_ID(vue.base) };
       screen->vtbl.populate_gs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
-      shader =
-         iris_find_cached_shader(ice, IRIS_CACHE_GS, sizeof(key), &key);
+      shader = find_variant(screen, ish, &key, sizeof(key));
 
       if (!shader)
          shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
@@ -1726,7 +1766,7 @@ iris_compile_fs(struct iris_context *ice,
    iris_debug_recompile(ice, ish, &brw_key.base);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_FS, sizeof(*key), key, program,
+      iris_upload_shader(ice, ish, IRIS_CACHE_FS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1756,7 +1796,7 @@ iris_update_compiled_fs(struct iris_context *ice)
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_FS];
    struct iris_compiled_shader *shader =
-      iris_find_cached_shader(ice, IRIS_CACHE_FS, sizeof(key), &key);
+      find_variant(screen, ish, &key, sizeof(key));
 
    if (!shader)
       shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
@@ -1978,7 +2018,7 @@ iris_compile_cs(struct iris_context *ice,
    iris_debug_recompile(ice, ish, &brw_key.base);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_CS, sizeof(*key), key, program,
+      iris_upload_shader(ice, ish, IRIS_CACHE_CS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values,
                          ish->kernel_input_size, num_cbufs, &bt);
 
@@ -2001,7 +2041,7 @@ iris_update_compiled_cs(struct iris_context *ice)
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_CS];
    struct iris_compiled_shader *shader =
-      iris_find_cached_shader(ice, IRIS_CACHE_CS, sizeof(key), &key);
+      find_variant(screen, ish, &key, sizeof(key));
 
    if (!shader)
       shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
@@ -2141,6 +2181,9 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
       calloc(1, sizeof(struct iris_uncompiled_shader));
    if (!ish)
       return NULL;
+
+   list_inithead(&ish->variants);
+   simple_mtx_init(&ish->lock, mtx_plain);
 
    NIR_PASS(ish->needs_edge_flag, nir, iris_fix_edge_flags);
 
@@ -2414,6 +2457,16 @@ iris_delete_shader_state(struct pipe_context *ctx, void *state, gl_shader_stage 
       ice->shaders.uncompiled[stage] = NULL;
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_UNCOMPILED_VS << stage;
    }
+
+   /* No need to take ish->lock; we hold the last reference to ish */
+   list_for_each_entry_safe(struct iris_compiled_shader, shader,
+                            &ish->variants, link) {
+      list_del(&shader->link);
+
+      iris_shader_variant_reference(&shader, NULL);
+   }
+
+   simple_mtx_destroy(&ish->lock);
 
    ralloc_free(ish->nir);
    free(ish);

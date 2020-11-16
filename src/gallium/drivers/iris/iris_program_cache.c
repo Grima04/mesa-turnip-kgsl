@@ -99,23 +99,6 @@ iris_find_cached_shader(struct iris_context *ice,
    return entry ? entry->data : NULL;
 }
 
-const void *
-iris_find_previous_compile(const struct iris_context *ice,
-                           enum iris_program_cache_id cache_id,
-                           unsigned program_string_id)
-{
-   hash_table_foreach(ice->shaders.cache, entry) {
-      const struct keybox *keybox = entry->key;
-      const struct brw_base_prog_key *key = (const void *)keybox->data;
-      if (keybox->cache_id == cache_id &&
-          key->program_string_id == program_string_id) {
-         return keybox->data;
-      }
-   }
-
-   return NULL;
-}
-
 void
 iris_delete_shader_variant(struct iris_compiled_shader *shader)
 {
@@ -125,6 +108,7 @@ iris_delete_shader_variant(struct iris_compiled_shader *shader)
 
 struct iris_compiled_shader *
 iris_upload_shader(struct iris_context *ice,
+                   struct iris_uncompiled_shader *ish,
                    enum iris_program_cache_id cache_id,
                    uint32_t key_size,
                    const void *key,
@@ -138,9 +122,10 @@ iris_upload_shader(struct iris_context *ice,
                    const struct iris_binding_table *bt)
 {
    struct hash_table *cache = ice->shaders.cache;
+   void *mem_ctx = ish ? NULL : (void *) cache;
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    struct iris_compiled_shader *shader =
-      rzalloc_size(cache, sizeof(struct iris_compiled_shader) +
+      rzalloc_size(mem_ctx, sizeof(struct iris_compiled_shader) +
                    screen->vtbl.derived_program_state_size(cache_id));
 
    pipe_reference_init(&shader->ref, 1);
@@ -187,8 +172,33 @@ iris_upload_shader(struct iris_context *ice,
    /* Store the 3DSTATE shader packets and other derived state. */
    screen->vtbl.store_derived_program_state(ice, cache_id, shader);
 
-   struct keybox *keybox = make_keybox(shader, cache_id, key, key_size);
-   _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);
+   if (ish) {
+      assert(key_size <= sizeof(union iris_any_prog_key));
+      memcpy(&shader->key, key, key_size);
+
+      simple_mtx_lock(&ish->lock);
+
+      /* While unlikely, it's possible that another thread concurrently
+       * compiled the same variant.  Make sure no one beat us to it; if
+       * they did, return the existing one and discard our new one.
+       */
+      list_for_each_entry(struct iris_compiled_shader, existing,
+                          &ish->variants, link) {
+         if (memcmp(&existing->key, key, key_size) == 0) {
+            iris_delete_shader_variant(shader);
+            simple_mtx_unlock(&ish->lock);
+            return existing;
+         }
+      }
+
+      /* Append our new variant to the shader's variant list. */
+      list_addtail(&shader->link, &ish->variants);
+
+      simple_mtx_unlock(&ish->lock);
+   } else {
+      struct keybox *keybox = make_keybox(shader, cache_id, key, key_size);
+      _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);
+   }
 
    return shader;
 }
@@ -236,7 +246,7 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch, uint32_t stage,
    memset(&bt, 0, sizeof(bt));
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_BLORP, key_size, key, kernel,
+      iris_upload_shader(ice, NULL, IRIS_CACHE_BLORP, key_size, key, kernel,
                          prog_data, NULL, NULL, 0, 0, 0, &bt);
 
    struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
