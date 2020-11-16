@@ -2682,6 +2682,42 @@ bool combine_and_subbrev(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    return false;
 }
 
+/* v_add_co(c, s_lshl(a, b)) -> v_mad_u32_u24(a, 1<<b, c) */
+bool combine_add_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   if (instr->usesModifiers())
+      return false;
+
+   for (unsigned i = 0; i < 2; i++) {
+      Instruction *op_instr = follow_operand(ctx, instr->operands[i]);
+      if (!op_instr)
+         continue;
+
+      if (op_instr->opcode != aco_opcode::s_lshl_b32)
+         continue;
+
+      if (op_instr->operands[1].isConstant() &&
+          op_instr->operands[1].constantValue() <= 6 && /* no literals */
+          (op_instr->operands[0].is24bit() ||
+           op_instr->operands[0].is16bit())) {
+         uint32_t multiplier = 1 << op_instr->operands[1].constantValue();
+
+         ctx.uses[instr->operands[i].tempId()]--;
+
+         aco_ptr<VOP3A_instruction> new_instr{create_instruction<VOP3A_instruction>(aco_opcode::v_mad_u32_u24, Format::VOP3A, 3, 1)};
+         new_instr->operands[0] = op_instr->operands[0];
+         new_instr->operands[1] = Operand(multiplier);
+         new_instr->operands[2] = instr->operands[!i];
+         new_instr->definitions[0] = instr->definitions[0];
+         instr = std::move(new_instr);
+         ctx.info[instr->definitions[0].tempId()].label = 0;
+         return true;
+      }
+   }
+
+   return false;
+}
+
 // TODO: we could possibly move the whole label_instruction pass to combine_instruction:
 // this would mean that we'd have to fix the instruction uses while value propagation
 
@@ -2925,7 +2961,8 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
       bool carry_out = ctx.uses[instr->definitions[1].tempId()] > 0;
       if (combine_add_sub_b2i(ctx, instr, aco_opcode::v_addc_co_u32, 1 | 2)) ;
       else if (!carry_out && combine_add_bcnt(ctx, instr)) ;
-      else if (!carry_out) combine_three_valu_op(ctx, instr, aco_opcode::v_mul_u32_u24, aco_opcode::v_mad_u32_u24, "120", 1 | 2);
+      else if (!carry_out && combine_three_valu_op(ctx, instr, aco_opcode::v_mul_u32_u24, aco_opcode::v_mad_u32_u24, "120", 1 | 2)) ;
+      else if (!carry_out) combine_add_lshl(ctx, instr);
    } else if (instr->opcode == aco_opcode::v_sub_u32 ||
               instr->opcode == aco_opcode::v_sub_co_u32 ||
               instr->opcode == aco_opcode::v_sub_co_u32_e64) {

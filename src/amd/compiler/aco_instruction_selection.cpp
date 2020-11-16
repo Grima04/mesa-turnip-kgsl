@@ -1475,7 +1475,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       } else if (dst.regClass() == v2) {
          emit_vop3a_instruction(ctx, instr, aco_opcode::v_lshl_b64, dst);
       } else if (dst.regClass() == s1) {
-         emit_sop2_instruction(ctx, instr, aco_opcode::s_lshl_b32, dst, true);
+         emit_sop2_instruction(ctx, instr, aco_opcode::s_lshl_b32, dst, true, 1);
       } else if (dst.regClass() == s2) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_lshl_b64, dst, true);
       } else {
