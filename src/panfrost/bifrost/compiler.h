@@ -308,6 +308,11 @@ struct bi_special {
         enum bi_subgroup_sz subgroup_sz;
 };
 
+struct bi_attribute {
+        unsigned index;
+        bool immediate;
+};
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
@@ -405,6 +410,7 @@ typedef struct {
                 struct bi_bitwise bitwise;
                 struct bi_texture texture;
                 struct bi_special special;
+                struct bi_attribute attribute;
         };
 } bi_instruction;
 

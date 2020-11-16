@@ -76,14 +76,11 @@ emit_jump(bi_context *ctx, nir_jump_instr *instr)
 }
 
 static bi_instruction
-bi_load(enum bi_class T, nir_intrinsic_instr *instr)
+bi_load(enum bi_class T, nir_intrinsic_instr *instr, unsigned offset_idx)
 {
         bi_instruction load = {
                 .type = T,
                 .vector_channels = instr->num_components,
-                .src = { BIR_INDEX_CONSTANT },
-                .src_types = { nir_type_uint32 },
-                .constant = { .u64 = nir_intrinsic_base(instr) },
         };
 
         const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];
@@ -96,10 +93,14 @@ bi_load(enum bi_class T, nir_intrinsic_instr *instr)
 
         nir_src *offset = nir_get_io_offset_src(instr);
 
-        if (nir_src_is_const(*offset))
-                load.constant.u64 += nir_src_as_uint(*offset);
-        else
-                load.src[0] = pan_src_index(offset);
+        load.src_types[offset_idx] = nir_type_uint32;
+        if (nir_src_is_const(*offset)) {
+                load.src[offset_idx] = BIR_INDEX_CONSTANT | 0;
+                load.constant.u64 = nir_src_as_uint(*offset) +
+                                    nir_intrinsic_base(instr);
+        } else {
+                load.src[offset_idx] = pan_src_index(offset);
+        }
 
         return load;
 }
@@ -397,14 +398,21 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 static bi_instruction
 bi_load_with_r61(enum bi_class T, nir_intrinsic_instr *instr)
 {
-        bi_instruction ld = bi_load(T, instr);
-        ld.src[1] = BIR_INDEX_REGISTER | 61; /* TODO: RA */
-        ld.src[2] = BIR_INDEX_REGISTER | 62;
+        bi_instruction ld = bi_load(T, instr, 2);
+        ld.src[0] = BIR_INDEX_REGISTER | 61; /* TODO: RA */
+        ld.src[1] = BIR_INDEX_REGISTER | 62;
+        ld.src_types[0] = nir_type_uint32;
         ld.src_types[1] = nir_type_uint32;
-        ld.src_types[2] = nir_type_uint32;
         ld.format = instr->intrinsic == nir_intrinsic_store_output ?
-                nir_intrinsic_src_type(instr) :
-                nir_intrinsic_dest_type(instr);
+                    nir_intrinsic_src_type(instr) :
+                    nir_intrinsic_dest_type(instr);
+
+        /* Promote to immediate instruction if we can */
+        if (ld.src[0] & BIR_INDEX_CONSTANT && ld.constant.u64 < 16) {
+                ld.attribute.immediate = true;
+                ld.attribute.index = ld.constant.u64;
+        }
+
         return ld;
 }
 

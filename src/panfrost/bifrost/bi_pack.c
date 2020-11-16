@@ -863,7 +863,9 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
                                 pan_pack_add_isub_s32(clause, bundle.add, regs);
                 }
         case BI_LOAD_ATTR:
-                return pan_pack_add_ld_attr_imm(clause, bundle.add, regs);
+                return bundle.add->attribute.immediate ?
+                       pan_pack_add_ld_attr_imm(clause, bundle.add, regs) :
+                       pan_pack_add_ld_attr(clause, bundle.add, regs);
         case BI_LOAD:
         case BI_LOAD_UNIFORM:
                 assert(u32 || s32 || f32);
@@ -877,7 +879,9 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
         case BI_LOAD_VAR:
                 return bi_pack_add_ld_var(clause, bundle.add, regs);
         case BI_LOAD_VAR_ADDRESS:
-                return pan_pack_add_lea_attr_imm(clause, bundle.add, regs);
+                return bundle.add->attribute.immediate ?
+                       pan_pack_add_lea_attr_imm(clause, bundle.add, regs) :
+                       pan_pack_add_lea_attr(clause, bundle.add, regs);
         case BI_LOAD_TILE:
                 return pan_pack_add_ld_tile(clause, bundle.add, regs);
         case BI_MINMAX:
