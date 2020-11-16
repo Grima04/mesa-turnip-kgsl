@@ -213,19 +213,12 @@ VkResult lvp_AcquireNextImage2KHR(
                                                     _device,
                                                     pAcquireInfo,
                                                     pImageIndex);
-#if 0
+
    LVP_FROM_HANDLE(lvp_fence, fence, pAcquireInfo->fence);
 
    if (fence && (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)) {
-      if (fence->fence)
-         device->ws->signal_fence(fence->fence);
-      if (fence->temp_syncobj) {
-         device->ws->signal_syncobj(device->ws, fence->temp_syncobj);
-      } else if (fence->syncobj) {
-         device->ws->signal_syncobj(device->ws, fence->syncobj);
-      }
+      fence->signaled = true;
    }
-#endif
    return result;
 }
 
