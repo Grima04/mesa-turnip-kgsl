@@ -718,7 +718,8 @@ Temp convert_pointer_to_64_bit(isel_context *ctx, Temp ptr)
                      ptr, Operand((unsigned)ctx->options->address32_hi));
 }
 
-void emit_sop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode op, Temp dst, bool writes_scc)
+void emit_sop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode op,
+                           Temp dst, bool writes_scc, uint8_t uses_ub = 0)
 {
    aco_ptr<SOP2_instruction> sop2{create_instruction<SOP2_instruction>(op, Format::SOP2, 2, writes_scc ? 2 : 1)};
    sop2->operands[0] = Operand(get_alu_src(ctx, instr->src[0]));
@@ -728,12 +729,24 @@ void emit_sop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
       sop2->definitions[0].setNUW(true);
    if (writes_scc)
       sop2->definitions[1] = Definition(ctx->program->allocateId(s1), scc, s1);
+
+   for (int i = 0; i < 2; i++) {
+      if (uses_ub & (1 << i)) {
+         uint32_t src_ub = get_alu_src_ub(ctx, instr, i);
+         if (src_ub <= 0xffff)
+            sop2->operands[i].set16bit(true);
+         else if (src_ub <= 0xffffff)
+            sop2->operands[i].set24bit(true);
+      }
+   }
+
    ctx->block->instructions.emplace_back(std::move(sop2));
 }
 
 void emit_vop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode op, Temp dst,
                            bool commutative, bool swap_srcs=false,
-                           bool flush_denorms = false, bool nuw = false)
+                           bool flush_denorms = false, bool nuw = false,
+                           uint8_t uses_ub = 0)
 {
    Builder bld(ctx->program, ctx->block);
    bld.is_precise = instr->exact;
@@ -750,15 +763,28 @@ void emit_vop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
       }
    }
 
+   Operand op0(src0);
+   Operand op1(src1);
+
+   for (int i = 0; i < 2; i++) {
+      uint32_t src_ub = get_alu_src_ub(ctx, instr, swap_srcs ? !i : i);
+      if (uses_ub & (1 << i)) {
+         if (src_ub <= 0xffff)
+            bld.set16bit(i ? op1 : op0);
+         else if (src_ub <= 0xffffff)
+            bld.set24bit(i ? op1 : op0);
+      }
+   }
+
    if (flush_denorms && ctx->program->chip_class < GFX9) {
       assert(dst.size() == 1);
-      Temp tmp = bld.vop2(op, bld.def(v1), src0, src1);
+      Temp tmp = bld.vop2(op, bld.def(v1), op0, op1);
       bld.vop2(aco_opcode::v_mul_f32, Definition(dst), Operand(0x3f800000u), tmp);
    } else {
       if (nuw) {
-         bld.nuw().vop2(op, Definition(dst), src0, src1);
+         bld.nuw().vop2(op, Definition(dst), op0, op1);
       } else {
-         bld.vop2(op, Definition(dst), src0, src1);
+         bld.vop2(op, Definition(dst), op0, op1);
       }
    }
 }
