@@ -568,6 +568,10 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                         .load_vary = {
                                 .interp_mode = BIFROST_INTERP_CENTER,
                                 .update_mode = BIFROST_UPDATE_CLOBBER,
+                                .var_id = (i == 0) ?
+                                          BIFROST_SPECIAL_VAR_FRAGZ :
+                                          BIFROST_SPECIAL_VAR_FRAGW,
+                                .special = true,
                                 .reuse = false,
                                 .flat = true
                         },
@@ -575,14 +579,8 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                         .dest_type = nir_type_float32,
                         .format = nir_type_float32,
                         .dest = bi_make_temp(ctx),
-                        .src = {
-                                BIR_INDEX_CONSTANT,
-                                BIR_INDEX_PASS | BIFROST_SRC_FAU_LO
-                        },
-                        .src_types = { nir_type_uint32, nir_type_uint32 },
-                        .constant = {
-                                .u32 = (i == 0) ? BIFROST_FRAGZ : BIFROST_FRAGW
-                        }
+                        .src[0] = BIR_INDEX_PASS | BIFROST_SRC_FAU_LO,
+                        .src_types[0] = nir_type_uint32,
                 };
 
                 bi_emit(ctx, load);
@@ -727,19 +725,15 @@ bi_emit_point_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                 .type = BI_LOAD_VAR,
                 .load_vary = {
                         .update_mode = BIFROST_UPDATE_CLOBBER,
+                        .var_id = BIFROST_SPECIAL_VAR_POINT,
+                        .special = true,
                 },
                 .vector_channels = 2,
                 .dest = pan_dest_index(&instr->dest),
                 .dest_type = nir_type_float32,
                 .format = nir_type_float32,
-                .src = {
-                        BIR_INDEX_CONSTANT,
-                        BIR_INDEX_ZERO,
-                },
-                .src_types = {
-                        nir_type_uint32,
-                },
-                .constant.u64 = 20,
+                .src[0] = BIR_INDEX_ZERO,
+                .src_types[0] = nir_type_uint32,
         };
 
         bi_emit(ctx, ins);

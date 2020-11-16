@@ -153,12 +153,6 @@ def pack_extend(mod, opts, body, pack_exprs):
         body.append('assert({}_small);'.format(mod))
         return '{}_signed ? 1 : 0'.format(mod)
 
-# Packs special varying loads. Our BIFROST_FRAGZ etc defines match the hw in
-# the bottom two bits (TODO drop upper bits)
-def pack_varying_name(mod, opts, body, pack_exprs):
-    assert(opts[0] == 'point' and opts[2] == 'frag_w' and opts[3] == 'frag_z')
-    return 'ins->constant.u64 & 0x3'
-
 def pack_not_src1(mod, opts, body, pack_exprs):
     return 'ins->bitwise.src1_invert ? {} : {}'.format(opts.index('not'), opts.index('none'))
 
@@ -259,7 +253,7 @@ modifier_map = {
         "clamp": pack_clamp,
         "round": pack_round,
         "cmpf": pack_cmpf,
-        "varying_name": pack_varying_name,
+        "varying_name": lambda a,b,c,d: 'ins->load_vary.var_id',
         "not1": pack_not_src1,
         "not_result": pack_not_result,
         "register_format": pack_register_format,
@@ -459,9 +453,6 @@ def pack_variant(opname, states):
         offset += 1
 
     offset += len(set(["attribute_index", "varying_index", "index"]) & set([x[0] for x in states[0][1].get("immediates", [])]))
-
-    if opname == '+LD_VAR_SPECIAL':
-        offset += 1
 
     pack_sources(states[0][1].get("srcs", []), common_body, pack_exprs, offset)
 
