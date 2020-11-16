@@ -383,8 +383,10 @@ typedef void (*util_format_fetch_rgba_func_ptr)(void *dst, const uint8_t *src,
                                                 unsigned i, unsigned j);
 
 /* Silence warnings triggered by sharing function/struct names */
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
+#endif
 const struct util_format_description *
 util_format_description(enum pipe_format format) ATTRIBUTE_CONST;
 
@@ -393,7 +395,9 @@ util_format_pack_description(enum pipe_format format) ATTRIBUTE_CONST;
 
 const struct util_format_unpack_description *
 util_format_unpack_description(enum pipe_format format) ATTRIBUTE_CONST;
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 
 /**
  * Returns a function to fetch a single pixel (i, j) from a block.
