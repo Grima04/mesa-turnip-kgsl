@@ -2311,15 +2311,16 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                   }
                }
                /* disable definitions and re-enable operands */
+               RegisterFile tmp_file(register_file);
                for (const Definition& def : instr->definitions)
-                  register_file.clear(def);
+                  tmp_file.clear(def);
                for (const Operand& op : instr->operands) {
                   if (op.isTemp() && op.isFirstKill())
-                     register_file.block(op.physReg(), op.regClass());
+                     tmp_file.block(op.physReg(), op.regClass());
                }
                Temp tmp = program->allocateTmp(can_sgpr ? s1 : v1);
                ctx.assignments.emplace_back();
-               PhysReg reg = get_reg(ctx, register_file, tmp, parallelcopy, instr);
+               PhysReg reg = get_reg(ctx, tmp_file, tmp, parallelcopy, instr);
                update_renames(ctx, register_file, parallelcopy, instr, true);
 
                aco_ptr<Instruction> mov;
@@ -2333,16 +2334,9 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
 
                instr->operands[0] = Operand(tmp);
                instr->operands[0].setFixed(reg);
+               instr->operands[0].setFirstKill(true);
+
                instructions.emplace_back(std::move(mov));
-               /* re-enable live vars */
-               for (const Operand& op : instr->operands) {
-                  if (op.isTemp() && op.isFirstKill())
-                     register_file.clear(op);
-               }
-               for (const Definition& def : instr->definitions) {
-                  if (def.isTemp() && !def.isKill())
-                     register_file.fill(def);
-               }
             }
 
             /* change the instruction to VOP3 to enable an arbitrary register pair as dst */
