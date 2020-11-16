@@ -246,7 +246,7 @@ VkDevice get_vk_device(enum radeon_family family)
    VkInstanceCreateInfo instance_create_info = {};
    instance_create_info.pApplicationInfo = &app_info;
    instance_create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-   VkResult result = ((PFN_vkCreateInstance)vk_icdGetInstanceProcAddr(NULL, "vkCreateInstance"))(&instance_create_info, NULL, &instance_cache[family]);
+   ASSERTED VkResult result = ((PFN_vkCreateInstance)vk_icdGetInstanceProcAddr(NULL, "vkCreateInstance"))(&instance_create_info, NULL, &instance_cache[family]);
    assert(result == VK_SUCCESS);
 
    #define ITEM(n) n = (PFN_vk##n)vk_icdGetInstanceProcAddr(instance_cache[family], "vk" #n);
@@ -289,7 +289,7 @@ void print_pipeline_ir(VkDevice device, VkPipeline pipeline, VkShaderStageFlagBi
    pipeline_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INFO_KHR;
    pipeline_info.pNext = NULL;
    pipeline_info.pipeline = pipeline;
-   VkResult result = GetPipelineExecutablePropertiesKHR(device, &pipeline_info, &executable_count, executables);
+   ASSERTED VkResult result = GetPipelineExecutablePropertiesKHR(device, &pipeline_info, &executable_count, executables);
    assert(result == VK_SUCCESS);
 
    uint32_t executable = 0;
@@ -345,7 +345,7 @@ VkShaderModule __qoCreateShaderModule(VkDevice dev, const QoShaderModuleCreateIn
     vk_module_info.pCode = (const uint32_t*)module_info->pSpirv;
 
     VkShaderModule module;
-    VkResult result = CreateShaderModule(dev, &vk_module_info, NULL, &module);
+    ASSERTED VkResult result = CreateShaderModule(dev, &vk_module_info, NULL, &module);
     assert(result == VK_SUCCESS);
 
     return module;
@@ -519,7 +519,7 @@ void PipelineBuilder::create_compute_pipeline() {
    create_info.basePipelineHandle = VK_NULL_HANDLE;
    create_info.basePipelineIndex = 0;
 
-   VkResult result = CreateComputePipelines(device, VK_NULL_HANDLE, 1, &create_info, NULL, &pipeline);
+   ASSERTED VkResult result = CreateComputePipelines(device, VK_NULL_HANDLE, 1, &create_info, NULL, &pipeline);
    assert(result == VK_SUCCESS);
 }
 
@@ -715,7 +715,7 @@ void PipelineBuilder::create_graphics_pipeline() {
    renderpass_info.dependencyCount = 0;
    renderpass_info.pDependencies = NULL;
 
-   VkResult result = CreateRenderPass(device, &renderpass_info, NULL, &render_pass);
+   ASSERTED VkResult result = CreateRenderPass(device, &renderpass_info, NULL, &render_pass);
    assert(result == VK_SUCCESS);
 
    gfx_pipeline_info.layout = pipeline_layout;
@@ -741,7 +741,7 @@ void PipelineBuilder::create_pipeline() {
       desc_layout_info.bindingCount = num_desc_bindings[i];
       desc_layout_info.pBindings = desc_bindings[i];
 
-      VkResult result = CreateDescriptorSetLayout(device, &desc_layout_info, NULL, &desc_layouts[num_desc_layouts]);
+      ASSERTED VkResult result = CreateDescriptorSetLayout(device, &desc_layout_info, NULL, &desc_layouts[num_desc_layouts]);
       assert(result == VK_SUCCESS);
       num_desc_layouts++;
    }
@@ -755,7 +755,7 @@ void PipelineBuilder::create_pipeline() {
    pipeline_layout_info.setLayoutCount = num_desc_layouts;
    pipeline_layout_info.pSetLayouts = desc_layouts;
 
-   VkResult result = CreatePipelineLayout(device, &pipeline_layout_info, NULL, &pipeline_layout);
+   ASSERTED VkResult result = CreatePipelineLayout(device, &pipeline_layout_info, NULL, &pipeline_layout);
    assert(result == VK_SUCCESS);
 
    if (is_compute())
