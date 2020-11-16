@@ -255,6 +255,9 @@ bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
         if (load->flat)
                 fprintf(fp, ".flat");
 
+        if (load->immediate)
+                fprintf(fp, ".imm(%d)", load->index);
+
         switch (load->update_mode) {
         case BIFROST_UPDATE_STORE: fprintf(fp, ".store"); break;
         case BIFROST_UPDATE_RETRIEVE: fprintf(fp, ".retrieve"); break;

@@ -161,12 +161,19 @@ bi_interp_for_intrinsic(nir_intrinsic_op op)
 static void
 bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
-        bi_instruction ins = bi_load(BI_LOAD_VAR, instr);
-        ins.load_vary.interp_mode = BIFROST_INTERP_CENTER; /* TODO */
-        ins.load_vary.reuse = false; /* TODO */
-        ins.load_vary.flat = instr->intrinsic != nir_intrinsic_load_interpolated_input;
-        ins.dest_type = nir_dest_bit_size(instr->dest);
-        ins.format = ins.dest_type;
+        bi_instruction ins = {
+                .type = BI_LOAD_VAR,
+                .load_vary = {
+                        .interp_mode = BIFROST_INTERP_CENTER,
+                        .update_mode = BIFROST_UPDATE_STORE,
+                        .reuse = false,
+                        .flat = instr->intrinsic != nir_intrinsic_load_interpolated_input,
+                },
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = nir_dest_bit_size(instr->dest),
+                .src_types = { nir_type_uint32, nir_type_uint32, nir_type_uint32 },
+                .vector_channels = instr->num_components,
+        };
 
         if (instr->intrinsic == nir_intrinsic_load_interpolated_input) {
                 nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
@@ -176,12 +183,28 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                 }
         }
 
-        if (nir_src_is_const(*nir_get_io_offset_src(instr))) {
-                /* Zero it out for direct */
-                ins.src[1] = BIR_INDEX_ZERO;
+        if (ins.load_vary.interp_mode == BIFROST_INTERP_CENTER) {
+                /* Zero it out for center interpolation */
+                ins.src[0] = BIR_INDEX_ZERO;
         } else {
                 /* R61 contains sample mask stuff, TODO RA XXX */
-                ins.src[1] = BIR_INDEX_REGISTER | 61;
+                ins.src[0] = BIR_INDEX_REGISTER | 61;
+        }
+
+        nir_src *offset = nir_get_io_offset_src(instr);
+        if (nir_src_is_const(*offset)) {
+                unsigned offset_val = nir_intrinsic_base(instr) +
+                                      nir_src_as_uint(*offset);
+
+                if (offset_val < 20) {
+                        ins.load_vary.immediate = true;
+                        ins.load_vary.index = offset_val;
+                } else {
+                        ins.src[1] = BIR_INDEX_CONSTANT | 0;
+                        ins.constant.u64 = offset_val;
+                }
+        } else {
+                ins.src[1] = pan_src_index(offset);
         }
 
         bi_emit(ctx, ins);

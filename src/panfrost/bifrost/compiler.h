@@ -136,6 +136,8 @@ struct bi_load_vary {
         enum bifrost_interp_mode interp_mode;
         enum bifrost_update_mode update_mode;
         enum bifrost_special_var_id var_id;
+        unsigned index;
+        bool immediate;
         bool special;
         bool reuse;
         bool flat;
