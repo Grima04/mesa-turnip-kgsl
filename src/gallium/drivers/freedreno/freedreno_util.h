@@ -272,16 +272,25 @@ __OUT_IB5(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
 // rework..
 #define HW_QUERY_BASE_REG REG_AXXX_CP_SCRATCH_REG4
 
+#ifdef DEBUG
+#  define __EMIT_MARKER 1
+#else
+#  define __EMIT_MARKER 0
+#endif
+
 static inline void
 emit_marker(struct fd_ringbuffer *ring, int scratch_idx)
 {
-	extern unsigned marker_cnt;
+	extern int32_t marker_cnt;
 	unsigned reg = REG_AXXX_CP_SCRATCH_REG0 + scratch_idx;
 	assert(reg != HW_QUERY_BASE_REG);
 	if (reg == HW_QUERY_BASE_REG)
 		return;
-	OUT_PKT0(ring, reg, 1);
-	OUT_RING(ring, ++marker_cnt);
+	if (__EMIT_MARKER) {
+		OUT_WFI5(ring);
+		OUT_PKT0(ring, reg, 1);
+		OUT_RING(ring, p_atomic_inc_return(&marker_cnt));
+	}
 }
 
 static inline uint32_t
