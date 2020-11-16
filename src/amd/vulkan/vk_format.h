@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <vulkan/vulkan.h>
 #include <util/macros.h>
+#include <vulkan/util/vk_format.h>
 
 enum vk_format_layout {
 	/**
@@ -434,6 +435,24 @@ vk_format_is_int(VkFormat format)
 	int channel =  vk_format_get_first_non_void_channel(format);
 
 	return channel >= 0 && desc->channel[channel].pure_integer;
+}
+
+static inline bool
+vk_format_is_uint(VkFormat format)
+{
+	return util_format_is_pure_uint(vk_format_to_pipe_format(format));
+}
+
+static inline bool
+vk_format_is_sint(VkFormat format)
+{
+	return util_format_is_pure_sint(vk_format_to_pipe_format(format));
+}
+
+static inline bool
+vk_format_is_unorm(VkFormat format)
+{
+	return util_format_is_unorm(vk_format_to_pipe_format(format));
 }
 
 static inline bool
