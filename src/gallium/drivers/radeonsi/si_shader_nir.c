@@ -229,6 +229,8 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_intrinsic_bindless_image_atomic_xor:
       case nir_intrinsic_bindless_image_atomic_exchange:
       case nir_intrinsic_bindless_image_atomic_comp_swap:
+      case nir_intrinsic_bindless_image_atomic_inc_wrap:
+      case nir_intrinsic_bindless_image_atomic_dec_wrap:
          info->uses_bindless_images = true;
          info->num_memory_stores++;
          break;
