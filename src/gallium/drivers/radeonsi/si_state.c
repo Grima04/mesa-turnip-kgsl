@@ -2213,7 +2213,7 @@ static void si_choose_spi_color_formats(struct si_surface *surf, unsigned format
 {
    struct ac_spi_color_formats formats = {};
 
-   ac_choose_spi_color_formats(format, swap, ntype, is_depth, &formats);
+   ac_choose_spi_color_formats(format, swap, ntype, is_depth, true, &formats);
 
    surf->spi_shader_col_format = formats.normal;
    surf->spi_shader_col_format_alpha = formats.alpha;

@@ -327,7 +327,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer,
 	switch (src_iview->aspect_mask) {
 	case VK_IMAGE_ASPECT_COLOR_BIT: {
 		unsigned dst_layout = radv_meta_dst_layout_from_layout(dest_image_layout);
-		fs_key = radv_format_meta_fs_key(dest_image->vk_format);
+		fs_key = radv_format_meta_fs_key(device, dest_image->vk_format);
 
 		radv_cmd_buffer_begin_render_pass(cmd_buffer,
 						  &(VkRenderPassBeginInfo) {
@@ -964,7 +964,7 @@ radv_device_init_meta_blit_color(struct radv_device *device, bool on_demand)
 	VkResult result;
 
 	for (unsigned i = 0; i < NUM_META_FS_KEYS; ++i) {
-		unsigned key = radv_format_meta_fs_key(radv_fs_key_format_exemplars[i]);
+		unsigned key = radv_format_meta_fs_key(device, radv_fs_key_format_exemplars[i]);
 		for(unsigned j = 0; j < RADV_META_DST_LAYOUT_COUNT; ++j) {
 			VkImageLayout layout = radv_meta_dst_layout_to_layout(j);
 			result = radv_CreateRenderPass(radv_device_to_handle(device),

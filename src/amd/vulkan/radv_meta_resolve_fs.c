@@ -152,7 +152,7 @@ create_resolve_pipeline(struct radv_device *device,
 {
 	mtx_lock(&device->meta_state.mtx);
 
-	unsigned fs_key = radv_format_meta_fs_key(format);
+	unsigned fs_key = radv_format_meta_fs_key(device, format);
 	VkPipeline *pipeline = &device->meta_state.resolve_fragment.rc[samples_log2].pipeline[fs_key];
 	if (*pipeline) {
 		mtx_unlock(&device->meta_state.mtx);
@@ -818,7 +818,7 @@ radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer,
 			  struct radv_image_view *dst_iview)
 {
 	struct radv_device *device = cmd_buffer->device;
-	unsigned fs_key = radv_format_meta_fs_key(dst_iview->vk_format);
+	unsigned fs_key = radv_format_meta_fs_key(cmd_buffer->device, dst_iview->vk_format);
 	const uint32_t samples = src_iview->image->info.samples;
 	const uint32_t samples_log2 = ffs(samples) - 1;
 	VkPipeline *pipeline;
@@ -1022,7 +1022,7 @@ void radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_meta_saved_state saved_state;
 	const uint32_t samples = src_image->info.samples;
 	const uint32_t samples_log2 = ffs(samples) - 1;
-	unsigned fs_key = radv_format_meta_fs_key(dest_image->vk_format);
+	unsigned fs_key = radv_format_meta_fs_key(cmd_buffer->device, dest_image->vk_format);
 	unsigned dst_layout = radv_meta_dst_layout_from_layout(dest_image_layout);
 	VkRenderPass rp;
 

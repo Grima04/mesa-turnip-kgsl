@@ -288,7 +288,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
 			    aspect_mask == VK_IMAGE_ASPECT_PLANE_0_BIT ||
 			    aspect_mask == VK_IMAGE_ASPECT_PLANE_1_BIT ||
 			    aspect_mask == VK_IMAGE_ASPECT_PLANE_2_BIT) {
-				unsigned fs_key = radv_format_meta_fs_key(dst_temps.iview.vk_format);
+				unsigned fs_key = radv_format_meta_fs_key(device, dst_temps.iview.vk_format);
 				unsigned dst_layout = radv_meta_dst_layout_from_layout(dst->current_layout);
 
 				if (device->meta_state.blit2d[log2_samples].pipelines[src_type][fs_key] == VK_NULL_HANDLE) {
@@ -723,7 +723,7 @@ blit2d_init_color_pipeline(struct radv_device *device,
 			   uint32_t log2_samples)
 {
 	VkResult result;
-	unsigned fs_key = radv_format_meta_fs_key(format);
+	unsigned fs_key = radv_format_meta_fs_key(device, format);
 	const char *name;
 
 	mtx_lock(&device->meta_state.mtx);

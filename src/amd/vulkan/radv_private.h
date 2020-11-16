@@ -1680,7 +1680,7 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
 	     __tmp &= ~(1 << (stage)))
 
 extern const VkFormat radv_fs_key_format_exemplars[NUM_META_FS_KEYS];
-unsigned radv_format_meta_fs_key(VkFormat format);
+unsigned radv_format_meta_fs_key(struct radv_device *device, VkFormat format);
 
 struct radv_multisample_state {
 	uint32_t db_eqaa;

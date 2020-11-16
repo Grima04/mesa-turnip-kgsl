@@ -418,7 +418,7 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	samples_log2 = ffs(samples) - 1;
-	fs_key = radv_format_meta_fs_key(format);
+	fs_key = radv_format_meta_fs_key(device, format);
 
 	if (fs_key == -1) {
 		radv_finishme("color clears incomplete");
@@ -1346,7 +1346,7 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
 		uint32_t samples = 1 << i;
 		for (uint32_t j = 0; j < NUM_META_FS_KEYS; ++j) {
 			VkFormat format = radv_fs_key_format_exemplars[j];
-			unsigned fs_key = radv_format_meta_fs_key(format);
+			unsigned fs_key = radv_format_meta_fs_key(device, format);
 			assert(!state->clear[i].color_pipelines[fs_key]);
 
 			res = create_color_renderpass(device, format, samples,
