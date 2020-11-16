@@ -1399,15 +1399,16 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
       return get_reg(ctx, reg_file, temp, parallelcopies, instr);
 
    /* re-enable killed operands which are in the wrong position */
+   RegisterFile tmp_file(reg_file);
    for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
       if (instr->operands[i].isTemp() &&
           instr->operands[i].isFirstKillBeforeDef() &&
           instr->operands[i].physReg().reg_b != best_pos * 4 + offset)
-         reg_file.fill(instr->operands[i]);
+         tmp_file.fill(instr->operands[i]);
    }
 
    /* collect variables to be moved */
-   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
+   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, tmp_file, PhysReg{best_pos}, size);
 
    for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
       if (!instr->operands[i].isTemp() || !instr->operands[i].isFirstKillBeforeDef() ||
@@ -1420,27 +1421,17 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
        */
       if (ctx.program->chip_class >= GFX9 && !correct_pos) {
          vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
-         reg_file.clear(instr->operands[i]);
+         tmp_file.clear(instr->operands[i]);
       /* fill operands which are in the correct position to avoid overwriting */
       } else if (correct_pos) {
-         reg_file.fill(instr->operands[i]);
+         tmp_file.fill(instr->operands[i]);
       }
    }
    ASSERTED bool success = false;
-   success = get_regs_for_copies(ctx, reg_file, parallelcopies, vars, lb, ub, instr, best_pos, best_pos + size - 1);
+   success = get_regs_for_copies(ctx, tmp_file, parallelcopies, vars, lb, ub, instr, best_pos, best_pos + size - 1);
    assert(success);
 
-   update_renames(ctx, reg_file, parallelcopies, instr, false);
    adjust_max_used_regs(ctx, rc, best_pos);
-
-   /* remove killed operands from reg_file once again */
-   for (unsigned i = 0; i < instr->operands.size(); i++) {
-      if (!instr->operands[i].isTemp() || !instr->operands[i].isFixed())
-         continue;
-      assert(!instr->operands[i].isUndefined());
-      if (instr->operands[i].isFirstKillBeforeDef())
-         reg_file.clear(instr->operands[i]);
-   }
 
    return PhysReg{best_pos};
 }
@@ -2232,6 +2223,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             } else if (instr->opcode == aco_opcode::p_create_vector) {
                PhysReg reg = get_reg_create_vector(ctx, register_file, definition->getTemp(),
                                                    parallelcopy, instr);
+               update_renames(ctx, register_file, parallelcopy, instr, false);
                definition->setFixed(reg);
             }
 
