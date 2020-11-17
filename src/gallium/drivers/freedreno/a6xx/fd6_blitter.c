@@ -808,7 +808,7 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	fd_screen_unlock(ctx->screen);
 
-	bool ret = fd_batch_lock_submit(batch);
+	ASSERTED bool ret = fd_batch_lock_submit(batch);
 	assert(ret);
 
 	/* Clearing last_fence must come after the batch dependency tracking

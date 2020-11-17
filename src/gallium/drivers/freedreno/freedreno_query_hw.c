@@ -97,7 +97,7 @@ static void
 pause_query(struct fd_batch *batch, struct fd_hw_query *hq,
 		struct fd_ringbuffer *ring)
 {
-	int idx = pidx(hq->provider->query_type);
+	ASSERTED int idx = pidx(hq->provider->query_type);
 	DBG("%p", hq);
 	assert(idx >= 0);   /* query never would have been created otherwise */
 	assert(hq->period && !hq->period->end);
@@ -231,7 +231,7 @@ fd_hw_get_query_result(struct fd_context *ctx, struct fd_query *q,
 	/* sum the result across all sample periods: */
 	LIST_FOR_EACH_ENTRY(period, &hq->periods, list) {
 		struct fd_hw_sample *start = period->start;
-		struct fd_hw_sample *end = period->end;
+		ASSERTED struct fd_hw_sample *end = period->end;
 		unsigned i;
 
 		/* start and end samples should be from same batch: */

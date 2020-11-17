@@ -588,7 +588,7 @@ static void
 emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
 {
 	struct ir2_instr *instr;
-	nir_const_value *const_offset;
+	ASSERTED nir_const_value *const_offset;
 	unsigned idx;
 
 	switch (intr->intrinsic) {
@@ -602,7 +602,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
 		const_offset = nir_src_as_const_value(intr->src[0]);
 		assert(const_offset); /* TODO can be false in ES2? */
 		idx = nir_intrinsic_base(intr);
-		idx += (uint32_t) nir_src_as_const_value(intr->src[0])[0].f32;
+		idx += (uint32_t)const_offset[0].f32;
 		instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->dest);
 		instr->src[0] = ir2_src(idx, 0, IR2_SRC_CONST);
 		break;
@@ -749,7 +749,7 @@ static void
 setup_input(struct ir2_context *ctx, nir_variable * in)
 {
 	struct fd2_shader_stateobj *so = ctx->so;
-	unsigned array_len = MAX2(glsl_get_length(in->type), 1);
+	ASSERTED unsigned array_len = MAX2(glsl_get_length(in->type), 1);
 	unsigned n = in->data.driver_location;
 	unsigned slot = in->data.location;
 
