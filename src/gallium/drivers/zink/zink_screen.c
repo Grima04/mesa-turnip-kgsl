@@ -627,6 +627,10 @@ zink_is_format_supported(struct pipe_screen *pscreen,
              !(screen->info.props.limits.sampledImageColorSampleCounts & sample_mask))
             return false;
       }
+      if (bind & PIPE_BIND_SHADER_IMAGE) {
+          if (!screen->info.feats.features.shaderStorageImageMultisample)
+             return false;
+      }
    }
 
    VkFormatProperties props;
