@@ -1850,7 +1850,6 @@ bool radv_device_supports_etc(struct radv_physical_device *physical_device);
 struct radv_image_plane {
 	VkFormat format;
 	struct radeon_surf surface;
-	uint64_t offset;
 };
 
 struct radv_image {

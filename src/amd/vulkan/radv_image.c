@@ -636,7 +636,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 {
 	struct radv_image_plane *plane = &image->planes[plane_id];
 	uint64_t gpu_address = image->bo ? radv_buffer_get_va(image->bo) + image->offset : 0;
-	uint64_t va = gpu_address + plane->offset;
+	uint64_t va = gpu_address;
 	enum chip_class chip_class = device->physical_device->rad_info.chip_class;
 	uint64_t meta_va = 0;
 	if (chip_class >= GFX9) {
@@ -1364,6 +1364,7 @@ radv_image_create_layout(struct radv_device *device,
 
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
 		struct ac_surf_info info = image_info;
+		uint64_t offset;
 
 		if (plane) {
 			const struct vk_format_description *desc = vk_format_description(image->vk_format);
@@ -1385,8 +1386,14 @@ radv_image_create_layout(struct radv_device *device,
 		if (!create_info.no_metadata_planes && image->plane_count == 1)
 			radv_image_alloc_single_sample_cmask(device, image, &image->planes[plane].surface);
 
-		image->planes[plane].offset = align(image->size, image->planes[plane].surface.alignment);
-		image->size = image->planes[plane].offset + image->planes[plane].surface.total_size;
+		offset = align(image->size, image->planes[plane].surface.alignment);
+		ac_surface_override_offset_stride(&device->physical_device->rad_info,
+		                                  &image->planes[plane].surface,
+		                                  image->info.levels,
+		                                  offset,
+		                                  0);
+
+		image->size = MAX2(image->size, offset + image->planes[plane].surface.total_size);
 		image->alignment = MAX2(image->alignment, image->planes[plane].surface.alignment);
 
 		image->planes[plane].format = vk_format_get_plane_format(image->vk_format, plane);
@@ -1432,10 +1439,12 @@ radv_image_print_info(struct radv_device *device, struct radv_image *image)
 		const struct radeon_surf *surf = &plane->surface;
 		const struct vk_format_description *desc =
 			vk_format_description(plane->format);
+		uint64_t offset = ac_surface_get_plane_offset(device->physical_device->rad_info.chip_class,
+		                                              &plane->surface, 0, 0);
 
 		fprintf(stderr,
 			"  Plane[%u]: vkformat=%s, offset=%" PRIu64 "\n",
-			i, desc->name, plane->offset);
+			i, desc->name, offset);
 
 		ac_surface_print_info(stderr,
 				      &device->physical_device->rad_info,
@@ -1987,7 +1996,8 @@ void radv_GetImageSubresourceLayout(
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
 		uint64_t level_offset = surface->is_linear ? surface->u.gfx9.offset[level] : 0;
 
-		pLayout->offset = plane->offset + level_offset + surface->u.gfx9.surf_slice_size * layer;
+		pLayout->offset = ac_surface_get_plane_offset(device->physical_device->rad_info.chip_class,
+		                                              &plane->surface, 0, layer) + level_offset;
 		if (image->vk_format == VK_FORMAT_R32G32B32_UINT ||
 		    image->vk_format == VK_FORMAT_R32G32B32_SINT ||
 		    image->vk_format == VK_FORMAT_R32G32B32_SFLOAT) {
@@ -2009,7 +2019,7 @@ void radv_GetImageSubresourceLayout(
 		if (image->type == VK_IMAGE_TYPE_3D)
 			pLayout->size *= u_minify(image->info.depth, level);
 	} else {
-		pLayout->offset = plane->offset + surface->u.legacy.level[level].offset + (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4 * layer;
+		pLayout->offset = surface->u.legacy.level[level].offset + (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4 * layer;
 		pLayout->rowPitch = surface->u.legacy.level[level].nblk_x * surface->bpe;
 		pLayout->arrayPitch = (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4;
 		pLayout->depthPitch = (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4;
