@@ -91,6 +91,7 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 		img->width  = sz & MASK(15);
 		img->height = sz >> 15;
 		img->depth  = 0;
+		img->level = 0;
 	} else {
 		img->buffer = false;
 
@@ -155,6 +156,7 @@ static void translate_buf(struct fd6_image *img, const struct pipe_shader_buffer
 	img->offset = pimg->buffer_offset;
 	img->pitch  = 0;
 	img->array_pitch = 0;
+	img->level = 0;
 
 	/* size is encoded with low 15b in WIDTH and high bits in HEIGHT,
 	 * in units of elements:
