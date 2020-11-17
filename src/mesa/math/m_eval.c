@@ -36,6 +36,7 @@
  * Thanks guys!
  */
 
+#include "util/debug.h"
 
 #include "main/glheader.h"
 #include "main/config.h"
@@ -456,6 +457,7 @@ _math_init_eval(void)
 
    /* KW: precompute 1/x for useful x.
     */
-   for (i = 1; i < MAX_EVAL_ORDER; i++)
-      inv_tab[i] = 1.0F / i;
+   do_once
+      for (i = 1; i < MAX_EVAL_ORDER; i++)
+         inv_tab[i] = 1.0F / i;
 }
