@@ -4802,6 +4802,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             bool dst_is_padded_image)
 {
    bool handled = true;
+   VkResult result;
 
    /* We don't support rendering to linear depth/stencil, this should have
     * been rewritten to a compatible color blit by the caller.
@@ -4959,7 +4960,6 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       0.0f
    };
 
-
    /* For blits from 3D images we also need to compute the slice coordinate to
     * sample from, which will change for each layer in the destination.
     * Compute the step we should increase for each iteration.
@@ -4981,17 +4981,64 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_device *device = cmd_buffer->device;
    assert(device->meta.blit.dslayout);
 
-   /* Push command buffer state before starting meta operation */
-   v3dv_cmd_buffer_meta_state_push(cmd_buffer, true);
-
-   /* Setup framebuffer */
    VkDevice _device = v3dv_device_to_handle(device);
    VkCommandBuffer _cmd_buffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
 
-   VkResult result;
+   /* Create sampler for blit source image */
+   VkSamplerCreateInfo sampler_info = {
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .magFilter = filter,
+      .minFilter = filter,
+      .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+   };
+   VkSampler sampler;
+   result = v3dv_CreateSampler(_device, &sampler_info, &device->alloc,
+                               &sampler);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   v3dv_cmd_buffer_add_private_obj(
+      cmd_buffer, (uintptr_t)sampler,
+      (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroySampler);
+
+   /* Push command buffer state before starting meta operation */
+   v3dv_cmd_buffer_meta_state_push(cmd_buffer, true);
+
+   /* Push state that is common for all layers */
+   v3dv_CmdBindPipeline(_cmd_buffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->pipeline);
+
+   const VkViewport viewport = {
+      .x = dst_x,
+      .y = dst_y,
+      .width = dst_w,
+      .height = dst_h,
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f
+   };
+   v3dv_CmdSetViewport(_cmd_buffer, 0, 1, &viewport);
+
+   const VkRect2D scissor = {
+      .offset = { dst_x, dst_y },
+      .extent = { dst_w, dst_h }
+   };
+   v3dv_CmdSetScissor(_cmd_buffer, 0, 1, &scissor);
+
+   bool can_skip_tlb_load;
+   const VkRect2D render_area = {
+      .offset = { dst_x, dst_y },
+      .extent = { dst_w, dst_h },
+   };
+
+   /* Record per-layer commands */
    uint32_t dirty_dynamic_state = 0;
    VkImageAspectFlags aspects = region.dstSubresource.aspectMask;
    for (uint32_t i = 0; i < layer_count; i++) {
+      /* Setup framebuffer */
       VkImageViewCreateInfo dst_image_view_info = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
          .image = v3dv_image_to_handle(dst),
@@ -5050,25 +5097,6 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       if (result != VK_SUCCESS)
          goto fail;
 
-      VkSamplerCreateInfo sampler_info = {
-         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-         .magFilter = filter,
-         .minFilter = filter,
-         .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-         .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-         .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-         .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
-      };
-      VkSampler sampler;
-      result = v3dv_CreateSampler(_device, &sampler_info, &device->alloc,
-                                  &sampler);
-      if (result != VK_SUCCESS)
-         goto fail;
-
-      v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (uintptr_t)sampler,
-         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroySampler);
-
       VkImageViewCreateInfo src_image_view_info = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
          .image = v3dv_image_to_handle(src),
@@ -5110,22 +5138,29 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       };
       v3dv_UpdateDescriptorSets(_device, 1, &write, 0, NULL);
 
+      v3dv_CmdBindDescriptorSets(_cmd_buffer,
+                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                 device->meta.blit.playout,
+                                 0, 1, &set,
+                                 0, NULL);
+
       /* If the region we are about to blit is tile-aligned, then we can
        * use the render pass version that won't pre-load the tile buffer
        * with the dst image contents before the blit. The exception is when we
        * don't have a full color mask, since in that case we need to preserve
        * the original value of some of the color components.
+       *
+       * Since all layers have the same area, we only need to compute this for
+       * the first.
        */
-      const VkRect2D render_area = {
-         .offset = { dst_x, dst_y },
-         .extent = { dst_w, dst_h },
-      };
-      struct v3dv_render_pass *pipeline_pass =
-         v3dv_render_pass_from_handle(pipeline->pass);
-      bool can_skip_tlb_load =
-         cmask == full_cmask &&
-         v3dv_subpass_area_is_tile_aligned(&render_area, framebuffer,
-                                           pipeline_pass, 0);
+      if (i == 0) {
+         struct v3dv_render_pass *pipeline_pass =
+            v3dv_render_pass_from_handle(pipeline->pass);
+         can_skip_tlb_load =
+            cmask == full_cmask &&
+            v3dv_subpass_area_is_tile_aligned(&render_area, framebuffer,
+                                              pipeline_pass, 0);
+      }
 
       /* Record blit */
       VkRenderPassBeginInfo rp_info = {
@@ -5158,31 +5193,6 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                             device->meta.blit.playout,
                             VK_SHADER_STAGE_VERTEX_BIT, 0, 20,
                             &tex_coords);
-
-      v3dv_CmdBindPipeline(_cmd_buffer,
-                           VK_PIPELINE_BIND_POINT_GRAPHICS,
-                           pipeline->pipeline);
-
-      v3dv_CmdBindDescriptorSets(_cmd_buffer,
-                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                 device->meta.blit.playout,
-                                 0, 1, &set,
-                                 0, NULL);
-
-      const VkViewport viewport = {
-         .x = dst_x,
-         .y = dst_y,
-         .width = dst_w,
-         .height = dst_h,
-         .minDepth = 0.0f,
-         .maxDepth = 1.0f
-      };
-      v3dv_CmdSetViewport(_cmd_buffer, 0, 1, &viewport);
-      const VkRect2D scissor = {
-         .offset = { dst_x, dst_y },
-         .extent = { dst_w, dst_h }
-      };
-      v3dv_CmdSetScissor(_cmd_buffer, 0, 1, &scissor);
 
       v3dv_CmdDraw(_cmd_buffer, 4, 1, 0, 0);
 
