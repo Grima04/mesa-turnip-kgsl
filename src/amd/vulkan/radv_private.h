@@ -2175,6 +2175,7 @@ struct radv_image_create_info {
 VkResult
 radv_image_create_layout(struct radv_device *device,
                          struct radv_image_create_info create_info,
+                         const struct VkImageDrmFormatModifierExplicitCreateInfoEXT *mod_info,
                          struct radv_image *image);
 
 VkResult radv_image_create(VkDevice _device,

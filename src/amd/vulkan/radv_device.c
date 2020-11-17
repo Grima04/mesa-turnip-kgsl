@@ -5323,7 +5323,8 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 			/* This gives a basic ability to import radeonsi images
 			 * that don't have DCC. This is not guaranteed by any
 			 * spec and can be removed after we support modifiers. */
-			result = radv_image_create_layout(device, create_info, mem->image);
+			result = radv_image_create_layout(device, create_info, NULL,
+			                                  mem->image);
 			if (result != VK_SUCCESS) {
 				device->ws->buffer_destroy(mem->bo);
 				goto fail;
