@@ -476,6 +476,8 @@ panfrost_new_texture_bifrost(
                 cfg.height = u_minify(height, first_level);
                 if (dim == MALI_TEXTURE_DIMENSION_3D)
                         cfg.depth = u_minify(depth, first_level);
+                else
+                        cfg.sample_count = MAX2(nr_samples, 1);
                 cfg.swizzle = swizzle;
                 cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
                 cfg.levels = last_level - first_level;
