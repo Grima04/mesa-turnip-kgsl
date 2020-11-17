@@ -610,6 +610,44 @@ zink_set_shader_buffers(struct pipe_context *pctx,
 }
 
 static void
+zink_set_shader_images(struct pipe_context *pctx,
+                       enum pipe_shader_type p_stage,
+                       unsigned start_slot, unsigned count,
+                       const struct pipe_image_view *images)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   for (unsigned i = 0; i < count; i++) {
+      struct zink_image_view *image_view = &ctx->image_views[p_stage][start_slot + i];
+      if (images && images[i].resource) {
+         struct zink_resource *res = zink_resource(images[i].resource);
+         util_copy_image_view(&image_view->base, images + i);
+         if (images[i].resource->target == PIPE_BUFFER) {
+            image_view->buffer_view = create_buffer_view(zink_screen(pctx->screen), res, images[i].format, images[i].u.buf.offset, images[i].u.buf.size);
+            assert(image_view->buffer_view);
+         } else {
+            struct pipe_surface tmpl = {};
+            tmpl.format = images[i].format;
+            tmpl.nr_samples = 1;
+            tmpl.u.tex.level = images[i].u.tex.level;
+            tmpl.u.tex.first_layer = images[i].u.tex.first_layer;
+            tmpl.u.tex.last_layer = images[i].u.tex.last_layer;
+            image_view->surface = zink_surface(pctx->create_surface(pctx, &res->base, &tmpl));
+            assert(image_view->surface);
+         }
+      } else if (image_view->base.resource) {
+         if (image_view->base.resource->target == PIPE_BUFFER)
+            vkDestroyBufferView(zink_screen(pctx->screen)->dev, image_view->buffer_view, NULL);
+         else
+            pipe_surface_reference((struct pipe_surface**)&image_view->surface, NULL);
+         pipe_resource_reference(&image_view->base.resource, NULL);
+         image_view->base.resource = NULL;
+         image_view->surface = NULL;
+      }
+   }
+}
+
+static void
 zink_set_sampler_views(struct pipe_context *pctx,
                        enum pipe_shader_type shader_type,
                        unsigned start_slot,
@@ -1414,6 +1452,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_scissor_states = zink_set_scissor_states;
    ctx->base.set_constant_buffer = zink_set_constant_buffer;
    ctx->base.set_shader_buffers = zink_set_shader_buffers;
+   ctx->base.set_shader_images = zink_set_shader_images;
    ctx->base.set_framebuffer_state = zink_set_framebuffer_state;
    ctx->base.set_stencil_ref = zink_set_stencil_ref;
    ctx->base.set_clip_state = zink_set_clip_state;
