@@ -684,9 +684,8 @@ zink_resource_setup_transfer_layouts(struct zink_batch *batch, struct zink_resou
        * VK_IMAGE_LAYOUT_GENERAL. And since this isn't a present-related
        * operation, VK_IMAGE_LAYOUT_GENERAL seems most appropriate.
        */
-      if (src->layout != VK_IMAGE_LAYOUT_GENERAL)
-         zink_resource_barrier(batch->cmdbuf, src, src->aspect,
-                               VK_IMAGE_LAYOUT_GENERAL);
+      zink_resource_barrier(batch->cmdbuf, src, src->aspect,
+                            VK_IMAGE_LAYOUT_GENERAL);
    } else {
       if (src->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
          zink_resource_barrier(batch->cmdbuf, src, src->aspect,

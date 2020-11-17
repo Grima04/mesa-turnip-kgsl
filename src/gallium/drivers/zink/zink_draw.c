@@ -351,8 +351,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             else {
                VkImageLayout layout = res->layout;
                if (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL &&
-                   layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
-                   layout != VK_IMAGE_LAYOUT_GENERAL) {
+                   layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
                   transitions[num_transitions++] = res;
                   layout = VK_IMAGE_LAYOUT_GENERAL;
                }
