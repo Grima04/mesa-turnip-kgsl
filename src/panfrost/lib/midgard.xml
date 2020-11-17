@@ -402,13 +402,6 @@
     <value name="Counter" value="3"/>
   </enum>
 
-  <enum name="Sample Count">
-    <value name="Samples 1x" value="0"/>
-    <value name="Samples 4x" value="2"/>
-    <value name="Samples 8x" value="3"/>
-    <value name="Samples 16x" value="4"/>
-  </enum>
-
   <enum name="Stencil Op">
     <value name="Keep" value="0"/>
     <value name="Replace" value="1"/>
@@ -733,7 +726,7 @@
     <field name="Levels" size="5" start="2:16" type="uint"/>
     <field name="Minimum level" size="5" start="2:24" type="uint"/>
     <field name="Minimum LOD" size="13" start="3:0" type="uint" default="0"/>
-    <field name="Multisample count" size="3" start="3:13" type="Sample Count" default="Samples 1x"/>
+    <field name="Sample count" size="3" start="3:13" type="uint" default="1" modifier="log2"/>
     <field name="Maximum LOD" size="13" start="3:16" type="uint" default="0"/>
     <field name="Surfaces" size="64" start="4:0" type="address"/>
     <field name="Array size" size="16" start="6:0" type="uint" modifier="minus(1)" default="1"/>
