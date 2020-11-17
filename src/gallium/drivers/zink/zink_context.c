@@ -771,8 +771,10 @@ access_src_flags(VkImageLayout layout)
 {
    switch (layout) {
    case VK_IMAGE_LAYOUT_UNDEFINED:
-   case VK_IMAGE_LAYOUT_GENERAL:
       return 0;
+
+   case VK_IMAGE_LAYOUT_GENERAL:
+      return VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
 
    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
       return VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
@@ -801,8 +803,10 @@ access_dst_flags(VkImageLayout layout)
 {
    switch (layout) {
    case VK_IMAGE_LAYOUT_UNDEFINED:
-   case VK_IMAGE_LAYOUT_GENERAL:
       return 0;
+
+   case VK_IMAGE_LAYOUT_GENERAL:
+      return VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
 
    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
       return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -834,6 +838,9 @@ pipeline_dst_stage(VkImageLayout layout)
    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
       return VK_PIPELINE_STAGE_TRANSFER_BIT;
 
+   case VK_IMAGE_LAYOUT_GENERAL:
+      return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
    default:
       return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
    }
@@ -852,6 +859,9 @@ pipeline_src_stage(VkImageLayout layout)
       return VK_PIPELINE_STAGE_TRANSFER_BIT;
    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
       return VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+   case VK_IMAGE_LAYOUT_GENERAL:
+      return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
    default:
       return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
