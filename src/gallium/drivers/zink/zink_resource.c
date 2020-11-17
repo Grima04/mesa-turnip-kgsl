@@ -351,8 +351,6 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
 {
    struct zink_resource *res = zink_resource(tex);
    struct zink_screen *screen = zink_screen(pscreen);
-   VkMemoryGetFdInfoKHR fd_info = {};
-   int fd;
 
    if (res->base.target != PIPE_BUFFER) {
       VkImageSubresource sub_res = {};
@@ -367,6 +365,8 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
 
    if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
 #ifdef ZINK_USE_DMABUF
+      VkMemoryGetFdInfoKHR fd_info = {};
+      int fd;
       fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
       fd_info.memory = res->mem;
       fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
