@@ -237,6 +237,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_VIEWPORTS:
       return screen->info.props.limits.maxViewports;
 
+   case PIPE_CAP_IMAGE_LOAD_FORMATTED:
+      return screen->info.feats.features.shaderStorageImageExtendedFormats;
+
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
       return 1;
 
@@ -534,12 +537,13 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
 
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-#if 0 /* TODO: needs compiler support */
-      return MIN2(screen->info.props.limits.maxPerStageDescriptorStorageImages,
-                  PIPE_MAX_SHADER_IMAGES);
-#else
+      if (screen->info.have_KHR_vulkan_memory_model &&
+          (screen->info.feats.features.shaderStorageImageExtendedFormats ||
+          (screen->info.feats.features.shaderStorageImageWriteWithoutFormat &&
+           screen->info.feats.features.shaderStorageImageReadWithoutFormat)))
+         return MIN2(screen->info.props.limits.maxPerStageDescriptorStorageImages,
+                     PIPE_MAX_SHADER_IMAGES);
       return 0;
-#endif
 
    case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
    case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
