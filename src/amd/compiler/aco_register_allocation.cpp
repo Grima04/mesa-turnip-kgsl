@@ -192,6 +192,8 @@ public:
    }
 
    bool is_empty_or_blocked(PhysReg start) {
+      /* Empty is 0, blocked is 0xFFFFFFFF, so to check both we compare the
+       * incremented value to 1 */
       if (regs[start] == 0xF0000000) {
          return subdword_regs[start][start.byte()] + 1 <= 1;
       }
@@ -994,7 +996,9 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    unsigned reg_lo = lb;
    unsigned reg_hi = lb + size - 1;
    for (reg_lo = lb, reg_hi = lb + size - 1; reg_hi < ub; reg_lo += stride, reg_hi += stride) {
-      /* first check the edges: this is what we have to fix to allow for num_moves > size */
+      /* first check if the register window starts in the middle of an
+       * allocated variable: this is what we have to fix to allow for
+       * num_moves > size */
       if (reg_lo > lb && !tmp_file.is_empty_or_blocked(PhysReg(reg_lo)) &&
           tmp_file.get_id(PhysReg(reg_lo)) == tmp_file.get_id(PhysReg(reg_lo).advance(-1)))
          continue;
