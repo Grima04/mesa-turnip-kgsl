@@ -2714,19 +2714,46 @@ emit_deref_array(struct ntv_context *ctx, nir_deref_instr *deref)
    nir_variable *var = nir_deref_instr_get_variable(deref);
 
    SpvStorageClass storage_class = get_storage_class(var);
+   SpvId base, type;
+   switch (var->data.mode) {
+   case nir_var_shader_in:
+   case nir_var_shader_out:
+      base = get_src(ctx, &deref->parent);
+      type = get_glsl_type(ctx, deref->type);
+      break;
+
+   case nir_var_uniform: {
+      assert(glsl_type_is_image(glsl_without_array(var->type)));
+      struct hash_entry *he = _mesa_hash_table_search(ctx->vars, var);
+      assert(he);
+      base = (SpvId)(intptr_t)he->data;
+      type = ctx->image_types[var->data.binding];
+      break;
+   }
+
+   default:
+      unreachable("Unsupported nir_variable_mode\n");
+   }
 
    SpvId index = get_src(ctx, &deref->arr.index);
 
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                storage_class,
-                                               get_glsl_type(ctx, deref->type));
+                                               type);
 
    SpvId result = spirv_builder_emit_access_chain(&ctx->builder,
                                                   ptr_type,
-                                                  get_src(ctx, &deref->parent),
+                                                  base,
                                                   &index, 1);
    /* uint is a bit of a lie here, it's really just an opaque type */
    store_dest(ctx, &deref->dest, result, nir_type_uint);
+
+   /* image ops always need to be able to get the variable to check out sampler types and such */
+   if (glsl_type_is_image(glsl_without_array(var->type))) {
+      uint32_t *key = ralloc_size(ctx->mem_ctx, sizeof(uint32_t));
+      *key = result;
+      _mesa_hash_table_insert(ctx->image_vars, key, var);
+   }
 }
 
 static void
