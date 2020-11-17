@@ -115,7 +115,7 @@ struct pipe_context {
     * is used instead.
     *
     * Caps:
-    * - PIPE_CAP_MULTI_DRAW: Direct multi draws
+    * - Always supported: Direct multi draws
     * - PIPE_CAP_MULTI_DRAW_INDIRECT: Indirect multi draws
     * - PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS: Indirect draw count
     *

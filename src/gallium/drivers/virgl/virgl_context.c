@@ -853,6 +853,17 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
                            const struct pipe_draw_start_count *draws,
                            unsigned num_draws)
 {
+   if (num_draws > 1) {
+      struct pipe_draw_info tmp_info = *dinfo;
+
+      for (unsigned i = 0; i < num_draws; i++) {
+         virgl_draw_vbo(ctx, &tmp_info, indirect, &draws[i], 1);
+         if (tmp_info.increment_draw_id)
+            tmp_info.drawid++;
+      }
+      return;
+   }
+
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
    struct virgl_indexbuf ib = {};

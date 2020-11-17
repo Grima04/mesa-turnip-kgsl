@@ -2057,6 +2057,17 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
                           const struct pipe_draw_start_count *draws,
                           unsigned num_draws)
 {
+	if (num_draws > 1) {
+           struct pipe_draw_info tmp_info = *info;
+
+           for (unsigned i = 0; i < num_draws; i++) {
+              r600_draw_vbo(ctx, &tmp_info, indirect, &draws[i], 1);
+              if (tmp_info.increment_draw_id)
+                 tmp_info.drawid++;
+           }
+           return;
+	}
+
 	struct r600_context *rctx = (struct r600_context *)ctx;
 	struct pipe_resource *indexbuf = info->has_user_indices ? NULL : info->index.resource;
 	struct radeon_cmdbuf *cs = &rctx->b.gfx.cs;

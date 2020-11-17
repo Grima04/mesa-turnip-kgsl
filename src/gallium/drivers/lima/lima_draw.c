@@ -1133,6 +1133,17 @@ lima_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_start_count *draws,
               unsigned num_draws)
 {
+   if (num_draws > 1) {
+      struct pipe_draw_info tmp_info = *info;
+
+      for (unsigned i = 0; i < num_draws; i++) {
+         lima_draw_vbo(pctx, &tmp_info, indirect, &draws[i], 1);
+         if (tmp_info.increment_draw_id)
+            tmp_info.drawid++;
+      }
+      return;
+   }
+
    /* check if draw mode and vertex/index count match,
     * otherwise gp will hang */
    if (!u_trim_pipe_prim(info->mode, (unsigned*)&draws[0].count)) {

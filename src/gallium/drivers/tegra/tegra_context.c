@@ -51,6 +51,17 @@ tegra_draw_vbo(struct pipe_context *pcontext,
                const struct pipe_draw_start_count *draws,
                unsigned num_draws)
 {
+   if (num_draws > 1) {
+      struct pipe_draw_info tmp_info = *pinfo;
+
+      for (unsigned i = 0; i < num_draws; i++) {
+         tegra_draw_vbo(pcontext, &tmp_info, pindirect, &draws[i], 1);
+         if (tmp_info.increment_draw_id)
+            tmp_info.drawid++;
+      }
+      return;
+   }
+
    struct tegra_context *context = to_tegra_context(pcontext);
    struct pipe_draw_indirect_info indirect;
    struct pipe_draw_info info;

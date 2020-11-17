@@ -232,7 +232,6 @@ The integer capabilities:
 * ``PIPE_CAP_DRAW_INDIRECT``: Whether the driver supports taking draw arguments
   { count, instance_count, start, index_bias } from a PIPE_BUFFER resource.
   See pipe_draw_info.
-* ``PIPE_CAP_MULTI_DRAW``: Whether the driver supports direct multi draws.
 * ``PIPE_CAP_MULTI_DRAW_INDIRECT``: Whether the driver supports
   pipe_draw_info::indirect_stride and ::indirect_count
 * ``PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS``: Whether the driver supports

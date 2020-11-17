@@ -240,6 +240,17 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
               const struct pipe_draw_start_count *draws,
               unsigned num_draws)
 {
+   if (num_draws > 1) {
+      struct pipe_draw_info tmp_info = *info;
+
+      for (unsigned i = 0; i < num_draws; i++) {
+         iris_draw_vbo(ctx, &tmp_info, indirect, &draws[i], 1);
+         if (tmp_info.increment_draw_id)
+            tmp_info.drawid++;
+      }
+      return;
+   }
+
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen*)ice->ctx.screen;
    const struct gen_device_info *devinfo = &screen->devinfo;

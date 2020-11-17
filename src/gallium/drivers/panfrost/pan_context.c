@@ -457,6 +457,17 @@ panfrost_draw_vbo(
       const struct pipe_draw_start_count *draws,
       unsigned num_draws)
 {
+	if (num_draws > 1) {
+           struct pipe_draw_info tmp_info = *info;
+
+           for (unsigned i = 0; i < num_draws; i++) {
+              panfrost_draw_vbo(pipe, &tmp_info, indirect, &draws[i], 1);
+              if (tmp_info.increment_draw_id)
+                 tmp_info.drawid++;
+           }
+           return;
+	}
+
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *device = pan_device(ctx->base.screen);
 

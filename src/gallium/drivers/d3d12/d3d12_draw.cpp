@@ -426,6 +426,17 @@ d3d12_draw_vbo(struct pipe_context *pctx,
                const struct pipe_draw_start_count *draws,
                unsigned num_draws)
 {
+   if (num_draws > 1) {
+      struct pipe_draw_info tmp_info = *dinfo;
+
+      for (unsigned i = 0; i < num_draws; i++) {
+         d3d12_draw_vbo(pctx, &tmp_info, indirect, &draws[i], 1);
+         if (tmp_info.increment_draw_id)
+            tmp_info.drawid++;
+      }
+      return;
+   }
+
    struct d3d12_context *ctx = d3d12_context(pctx);
    struct d3d12_batch *batch;
    struct pipe_resource *index_buffer = NULL;

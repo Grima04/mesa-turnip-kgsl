@@ -222,6 +222,17 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
               const struct pipe_draw_start_count *draws,
               unsigned num_draws)
 {
+   if (num_draws > 1) {
+      struct pipe_draw_info tmp_info = *info;
+
+      for (unsigned i = 0; i < num_draws; i++) {
+         svga_draw_vbo(pipe, &tmp_info, indirect, &draws[i], 1);
+         if (tmp_info.increment_draw_id)
+            tmp_info.drawid++;
+      }
+      return;
+   }
+
    struct svga_context *svga = svga_context(pipe);
    enum pipe_prim_type reduced_prim = u_reduced_prim(info->mode);
    unsigned count = draws[0].count;
