@@ -730,6 +730,7 @@
     <field name="Maximum LOD" size="13" start="3:16" type="uint" default="0"/>
     <field name="Surfaces" size="64" start="4:0" type="address"/>
     <field name="Array size" size="16" start="6:0" type="uint" modifier="minus(1)" default="1"/>
+    <field name="Depth" size="16" start="7:0" type="uint" modifier="minus(1)" default="1"/>
   </struct>
 
   <enum name="FP Mode">
