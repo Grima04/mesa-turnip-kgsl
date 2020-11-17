@@ -269,6 +269,31 @@ spirv_builder_emit_image(struct spirv_builder *b, SpvId result_type,
                          SpvId sampled_image);
 
 SpvId
+spirv_builder_emit_image_texel_pointer(struct spirv_builder *b,
+                                       SpvId result_type,
+                                       SpvId image,
+                                       SpvId coordinate,
+                                       SpvId sample);
+
+SpvId
+spirv_builder_emit_image_read(struct spirv_builder *b,
+                              SpvId result_type,
+                              SpvId image,
+                              SpvId coordinate,
+                              SpvId lod,
+                              SpvId sample,
+                              SpvId offset);
+
+void
+spirv_builder_emit_image_write(struct spirv_builder *b,
+                               SpvId image,
+                               SpvId coordinate,
+                               SpvId texel,
+                               SpvId lod,
+                               SpvId sample,
+                               SpvId offset);
+
+SpvId
 spirv_builder_emit_image_fetch(struct spirv_builder *b,
                                SpvId result_type,
                                SpvId image,

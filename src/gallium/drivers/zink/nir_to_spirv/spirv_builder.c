@@ -761,6 +761,101 @@ spirv_builder_emit_image(struct spirv_builder *b, SpvId result_type,
 }
 
 SpvId
+spirv_builder_emit_image_texel_pointer(struct spirv_builder *b,
+                                       SpvId result_type,
+                                       SpvId image,
+                                       SpvId coordinate,
+                                       SpvId sample)
+{
+   SpvId pointer_type = spirv_builder_type_pointer(b,
+                                                   SpvStorageClassImage,
+                                                   result_type);
+   return spirv_builder_emit_triop(b, SpvOpImageTexelPointer, pointer_type, image, coordinate, sample);
+}
+
+SpvId
+spirv_builder_emit_image_read(struct spirv_builder *b,
+                              SpvId result_type,
+                              SpvId image,
+                              SpvId coordinate,
+                              SpvId lod,
+                              SpvId sample,
+                              SpvId offset)
+{
+   SpvId result = spirv_builder_new_id(b);
+
+   SpvImageOperandsMask operand_mask = SpvImageOperandsMakeTexelVisibleMask | SpvImageOperandsNonPrivateTexelMask;
+   SpvId extra_operands[5];
+   int num_extra_operands = 1;
+   extra_operands[1] = spirv_builder_const_uint(b, 32, SpvScopeWorkgroup);
+   if (lod) {
+      extra_operands[++num_extra_operands] = lod;
+      operand_mask |= SpvImageOperandsLodMask;
+   }
+   if (sample) {
+      extra_operands[++num_extra_operands] = sample;
+      operand_mask |= SpvImageOperandsSampleMask;
+   }
+   if (offset) {
+      extra_operands[++num_extra_operands] = offset;
+      operand_mask |= SpvImageOperandsOffsetMask;
+   }
+   /* finalize num_extra_operands / extra_operands */
+   extra_operands[0] = operand_mask;
+   num_extra_operands++;
+
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 5 + num_extra_operands);
+   spirv_buffer_emit_word(&b->instructions, SpvOpImageRead |
+                          ((5 + num_extra_operands) << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   spirv_buffer_emit_word(&b->instructions, image);
+   spirv_buffer_emit_word(&b->instructions, coordinate);
+   for (int i = 0; i < num_extra_operands; ++i)
+      spirv_buffer_emit_word(&b->instructions, extra_operands[i]);
+   return result;
+}
+
+void
+spirv_builder_emit_image_write(struct spirv_builder *b,
+                               SpvId image,
+                               SpvId coordinate,
+                               SpvId texel,
+                               SpvId lod,
+                               SpvId sample,
+                               SpvId offset)
+{
+   SpvImageOperandsMask operand_mask = SpvImageOperandsMakeTexelAvailableMask | SpvImageOperandsNonPrivateTexelMask;
+   SpvId extra_operands[5];
+   int num_extra_operands = 1;
+   extra_operands[1] = spirv_builder_const_uint(b, 32, SpvScopeWorkgroup);
+   if (lod) {
+      extra_operands[++num_extra_operands] = lod;
+      operand_mask |= SpvImageOperandsLodMask;
+   }
+   if (sample) {
+      extra_operands[++num_extra_operands] = sample;
+      operand_mask |= SpvImageOperandsSampleMask;
+   }
+   if (offset) {
+      extra_operands[++num_extra_operands] = offset;
+      operand_mask |= SpvImageOperandsOffsetMask;
+   }
+   /* finalize num_extra_operands / extra_operands */
+   extra_operands[0] = operand_mask;
+   num_extra_operands++;
+
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 4 + num_extra_operands);
+   spirv_buffer_emit_word(&b->instructions, SpvOpImageWrite |
+                          ((4 + num_extra_operands) << 16));
+   spirv_buffer_emit_word(&b->instructions, image);
+   spirv_buffer_emit_word(&b->instructions, coordinate);
+   spirv_buffer_emit_word(&b->instructions, texel);
+   for (int i = 0; i < num_extra_operands; ++i)
+      spirv_buffer_emit_word(&b->instructions, extra_operands[i]);
+}
+
+SpvId
 spirv_builder_emit_image_gather(struct spirv_builder *b,
                                SpvId result_type,
                                SpvId image,
