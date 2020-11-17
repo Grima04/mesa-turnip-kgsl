@@ -748,6 +748,12 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
 
    bool is_ms;
    bool is_sampler = glsl_type_is_sampler(type);
+
+   if (!is_sampler && !var->data.image.format) {
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityStorageImageWriteWithoutFormat);
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityStorageImageReadWithoutFormat);
+   }
+
    SpvDim dimension = type_to_dim(glsl_get_sampler_dim(type), &is_ms);
 
    SpvId result_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
@@ -3172,11 +3178,16 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    // TODO: only enable when needed
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampled1D);
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityDerivativeControl);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleRateShading);
    }
+   if (s->info.stage == MESA_SHADER_FRAGMENT || s->info.num_images) {
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampled1D);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImage1D);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityStorageImageExtendedFormats);
+   }
+
    if (s->info.bit_sizes_int & 64)
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityInt64);
    if (s->info.bit_sizes_float & 64)
@@ -3189,7 +3200,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
    spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageGLSL, 450);
 
-   if (s->info.stage == MESA_SHADER_TESS_CTRL) {
+   if (s->info.stage == MESA_SHADER_TESS_CTRL || s->info.num_images) {
       /* this is required for correct barrier and io semantics */
       spirv_builder_emit_extension(&ctx.builder, "SPV_KHR_vulkan_memory_model");
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModel);
