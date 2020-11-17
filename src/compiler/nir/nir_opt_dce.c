@@ -106,14 +106,14 @@ struct loop_state {
    nir_block *preheader;
 };
 
-static void
-mark_block(nir_block *block, BITSET_WORD *defs_live, struct loop_state *loop)
+static bool
+dce_block(nir_block *block, BITSET_WORD *defs_live, struct loop_state *loop)
 {
+   bool progress = false;
    bool phis_changed = false;
-   nir_foreach_instr_reverse(instr, block) {
-      if (is_live(defs_live, instr)) {
-         instr->pass_flags = 1;
-
+   nir_foreach_instr_reverse_safe(instr, block) {
+      bool live = is_live(defs_live, instr);
+      if (live) {
          if (instr->type == nir_instr_type_phi) {
             nir_foreach_phi_src(src, nir_instr_as_phi(instr)) {
                phis_changed |= mark_src_live(&src->src, defs_live) &&
@@ -122,8 +122,16 @@ mark_block(nir_block *block, BITSET_WORD *defs_live, struct loop_state *loop)
          } else {
             nir_foreach_src(instr, mark_live_cb, defs_live);
          }
-      } else {
-         instr->pass_flags = 0;
+      }
+
+      /* If we're not in a loop, remove it now if it's dead. If we are in a
+       * loop, leave instructions to be removed later if they're still dead.
+       */
+      if (loop->preheader) {
+         instr->pass_flags = live;
+      } else if (!live) {
+         nir_instr_remove(instr);
+         progress = true;
       }
    }
 
@@ -132,28 +140,39 @@ mark_block(nir_block *block, BITSET_WORD *defs_live, struct loop_state *loop)
     * setting header_phis_changed.
     */
    loop->header_phis_changed = phis_changed;
+
+   return progress;
 }
 
-static void
-mark_cf_list(struct exec_list *cf_list, BITSET_WORD *defs_live,
-             struct loop_state *parent_loop)
+static bool
+dce_cf_list(struct exec_list *cf_list, BITSET_WORD *defs_live,
+            struct loop_state *parent_loop)
 {
+   bool progress = false;
    foreach_list_typed_reverse(nir_cf_node, cf_node, node, cf_list) {
       switch (cf_node->type) {
       case nir_cf_node_block: {
          nir_block *block = nir_cf_node_as_block(cf_node);
-         mark_block(block, defs_live, parent_loop);
+         progress |= dce_block(block, defs_live, parent_loop);
          break;
       }
       case nir_cf_node_if: {
          nir_if *nif = nir_cf_node_as_if(cf_node);
-         mark_cf_list(&nif->else_list, defs_live, parent_loop);
-         mark_cf_list(&nif->then_list, defs_live, parent_loop);
+         progress |= dce_cf_list(&nif->else_list, defs_live, parent_loop);
+         progress |= dce_cf_list(&nif->then_list, defs_live, parent_loop);
          mark_src_live(&nif->condition, defs_live);
          break;
       }
       case nir_cf_node_loop: {
          nir_loop *loop = nir_cf_node_as_loop(cf_node);
+
+         /* Fast path if the loop has no continues: we can remove instructions
+          * as we mark the others live.
+          */
+         if (nir_loop_first_block(loop)->predecessors->entries == 1) {
+            progress |= dce_cf_list(&loop->body, defs_live, parent_loop);
+            break;
+         }
 
          /* Mark instructions as live until there is no more progress. */
          struct loop_state inner_state;
@@ -163,14 +182,33 @@ mark_cf_list(struct exec_list *cf_list, BITSET_WORD *defs_live,
             /* dce_cf_list() resets inner_state.header_phis_changed itself, so
              * it doesn't have to be done here.
              */
-            mark_cf_list(&loop->body, defs_live, &inner_state);
+            dce_cf_list(&loop->body, defs_live, &inner_state);
          } while (inner_state.header_phis_changed);
+
+         /* We don't know how many times mark_cf_list() will repeat, so
+          * remove instructions separately.
+          *
+          * By checking parent_loop->preheader, we ensure that we only do this
+          * walk for the outer-most loops so it only happens once.
+          */
+         if (!parent_loop->preheader) {
+            nir_foreach_block_in_cf_node(block, cf_node) {
+               nir_foreach_instr_safe(instr, block) {
+                  if (!instr->pass_flags) {
+                     nir_instr_remove(instr);
+                     progress = true;
+                  }
+               }
+            }
+         }
          break;
       }
       case nir_cf_node_function:
          unreachable("Invalid cf type");
       }
    }
+
+   return progress;
 }
 
 static bool
@@ -183,18 +221,7 @@ nir_opt_dce_impl(nir_function_impl *impl)
 
    struct loop_state loop;
    loop.preheader = NULL;
-   mark_cf_list(&impl->body, defs_live, &loop);
-
-   bool progress = false;
-
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (!instr->pass_flags) {
-            nir_instr_remove(instr);
-            progress = true;
-         }
-      }
-   }
+   bool progress = dce_cf_list(&impl->body, defs_live, &loop);
 
    ralloc_free(defs_live);
 
