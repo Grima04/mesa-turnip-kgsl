@@ -2456,6 +2456,7 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
       switch (instr->op) {
       case nir_texop_txs:
       case nir_texop_txf:
+      case nir_texop_txf_ms:
          return nir_type_int;
 
       default:
