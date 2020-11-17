@@ -46,6 +46,7 @@ struct ntv_context {
 
    SpvId ssbos[PIPE_MAX_SHADER_BUFFERS];
    SpvId image_types[PIPE_MAX_SAMPLERS];
+   SpvId sampler_types[PIPE_MAX_SAMPLERS];
    SpvId samplers[PIPE_MAX_SAMPLERS];
    unsigned char sampler_array_sizes[PIPE_MAX_SAMPLERS];
    unsigned samplers_used : PIPE_MAX_SAMPLERS;
@@ -652,7 +653,7 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-   ctx->image_types[index] = image_type;
+   ctx->sampler_types[index] = image_type;
    ctx->samplers[index] = var_id;
    ctx->samplers_used |= 1 << index;
 
@@ -2405,7 +2406,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          }
       }
    }
-   SpvId image_type = ctx->image_types[texture_index];
+   SpvId image_type = ctx->sampler_types[texture_index];
    assert(image_type);
    SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
                                                          image_type);
