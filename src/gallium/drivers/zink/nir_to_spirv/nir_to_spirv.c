@@ -2268,6 +2268,54 @@ emit_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    handle_atomic_op(ctx, intr, ptr, param, 0);
 }
 
+static inline nir_variable *
+get_var_from_image(struct ntv_context *ctx, SpvId var_id)
+{
+   struct hash_entry *he = _mesa_hash_table_search(ctx->image_vars, &var_id);
+   assert(he);
+   return he->data;
+}
+
+static SpvId
+get_image_coords(struct ntv_context *ctx, const struct glsl_type *type, nir_src *src)
+{
+   uint32_t num_coords = glsl_get_sampler_coordinate_components(type);
+   uint32_t src_components = nir_src_num_components(*src);
+
+   SpvId spv = get_src(ctx, src);
+   if (num_coords == src_components)
+      return spv;
+
+   /* need to extract the coord dimensions that the image can use */
+   SpvId vec_type = get_uvec_type(ctx, 32, num_coords);
+   if (num_coords == 1)
+      return spirv_builder_emit_vector_extract(&ctx->builder, vec_type, spv, 0);
+   uint32_t constituents[4];
+   SpvId zero = emit_uint_const(ctx, nir_src_bit_size(*src), 0);
+   assert(num_coords < ARRAY_SIZE(constituents));
+   for (unsigned i = 0; i < num_coords; i++)
+      constituents[i] = i < src_components ? i : zero;
+   return spirv_builder_emit_vector_shuffle(&ctx->builder, vec_type, spv, spv, constituents, num_coords);
+}
+
+static void
+emit_image_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   SpvId img_var = get_src(ctx, &intr->src[0]);
+   SpvId sample = get_src(ctx, &intr->src[2]);
+   SpvId param = get_src(ctx, &intr->src[3]);
+   nir_variable *var = get_var_from_image(ctx, img_var);
+   const struct glsl_type *type = glsl_without_array(var->type);
+   SpvId coord = get_image_coords(ctx, type, &intr->src[1]);
+   SpvId base_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
+   SpvId texel = spirv_builder_emit_image_texel_pointer(&ctx->builder, base_type, img_var, coord, sample);
+   SpvId param2 = 0;
+
+   if (intr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap)
+      param2 = get_src(ctx, &intr->src[4]);
+   handle_atomic_op(ctx, intr, texel, param, param2);
+}
+
 static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
@@ -2383,6 +2431,60 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_ssbo_atomic_add:
       emit_atomic_intrinsic(ctx, intr);
+      break;
+
+   case nir_intrinsic_image_deref_store: {
+      SpvId img_var = get_src(ctx, &intr->src[0]);
+      nir_variable *var = get_var_from_image(ctx, img_var);
+      SpvId img_type = ctx->image_types[var->data.binding];
+      const struct glsl_type *type = glsl_without_array(var->type);
+      SpvId base_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
+      SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
+      SpvId coord = get_image_coords(ctx, type, &intr->src[1]);
+      SpvId texel = get_src(ctx, &intr->src[3]);
+      assert(nir_src_bit_size(intr->src[3]) == glsl_base_type_bit_size(glsl_get_sampler_result_type(type)));
+      /* texel type must match image type */
+      texel = emit_bitcast(ctx,
+                           spirv_builder_type_vector(&ctx->builder, base_type, 4),
+                           texel);
+      spirv_builder_emit_image_write(&ctx->builder, img, coord, texel, 0, 0, 0);
+      break;
+   }
+   case nir_intrinsic_image_deref_load: {
+      SpvId img_var = get_src(ctx, &intr->src[0]);
+      nir_variable *var = get_var_from_image(ctx, img_var);
+      SpvId img_type = ctx->image_types[var->data.binding];
+      const struct glsl_type *type = glsl_without_array(var->type);
+      SpvId base_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
+      SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
+      SpvId coord = get_image_coords(ctx, type, &intr->src[1]);
+      SpvId result = spirv_builder_emit_image_read(&ctx->builder,
+                                    spirv_builder_type_vector(&ctx->builder, base_type, nir_dest_num_components(intr->dest)),
+                                    img, coord, 0, 0, 0);
+      store_dest(ctx, &intr->dest, result, nir_type_float);
+      break;
+   }
+   case nir_intrinsic_image_deref_size: {
+      SpvId img_var = get_src(ctx, &intr->src[0]);
+      nir_variable *var = get_var_from_image(ctx, img_var);
+      SpvId img_type = ctx->image_types[var->data.binding];
+      const struct glsl_type *type = glsl_without_array(var->type);
+      SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
+      SpvId result = spirv_builder_emit_image_query_size(&ctx->builder, get_uvec_type(ctx, 32, glsl_get_sampler_coordinate_components(type)), img, 0);
+      store_dest(ctx, &intr->dest, result, nir_type_uint);
+      break;
+   }
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+      emit_image_intrinsic(ctx, intr);
       break;
 
    default:
