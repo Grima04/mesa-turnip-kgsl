@@ -1075,9 +1075,12 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0047" name="MH_MMU_MPU_END"/>
 
 	<reg32 offset="0x0394" name="NQWAIT_UNTIL"/>
-	<reg32 offset="0x0395" name="RBBM_PERFCOUNTER1_SELECT"/>
-	<reg32 offset="0x0397" name="RBBM_PERFCOUNTER1_LO"/>
-	<reg32 offset="0x0398" name="RBBM_PERFCOUNTER1_HI"/>
+	<reg32 offset="0x0395" name="RBBM_PERFCOUNTER0_SELECT"/>
+	<reg32 offset="0x0396" name="RBBM_PERFCOUNTER1_SELECT"/>
+	<reg32 offset="0x0397" name="RBBM_PERFCOUNTER0_LO"/>
+	<reg32 offset="0x0398" name="RBBM_PERFCOUNTER0_HI"/>
+	<reg32 offset="0x0399" name="RBBM_PERFCOUNTER1_LO"/>
+	<reg32 offset="0x039a" name="RBBM_PERFCOUNTER1_HI"/>
 	<reg32 offset="0x039b" name="RBBM_DEBUG"/>
 	<reg32 offset="0x039c" name="RBBM_PM_OVERRIDE1">
 		<bitfield name="RBBM_AHBCLK_PM_OVERRIDE" pos="0" type="boolean"/>

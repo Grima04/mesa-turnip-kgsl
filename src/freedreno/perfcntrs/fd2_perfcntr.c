@@ -947,6 +947,7 @@ static const struct fd_perfcntr_counter mh_counters[] = {
 };
 
 static const struct fd_perfcntr_counter rbbm_counters[] = {
+	COUNTER(RBBM_PERFCOUNTER0_SELECT, RBBM_PERFCOUNTER0_LO, RBBM_PERFCOUNTER0_HI),
 	COUNTER(RBBM_PERFCOUNTER1_SELECT, RBBM_PERFCOUNTER1_LO, RBBM_PERFCOUNTER1_HI),
 };
 
