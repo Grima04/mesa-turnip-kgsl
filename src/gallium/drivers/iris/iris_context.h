@@ -886,7 +886,6 @@ iris_disk_cache_retrieve(struct iris_context *ice,
 
 void iris_init_program_cache(struct iris_context *ice);
 void iris_destroy_program_cache(struct iris_context *ice);
-void iris_print_program_cache(struct iris_context *ice);
 struct iris_compiled_shader *iris_find_cached_shader(struct iris_context *ice,
                                                      enum iris_program_cache_id,
                                                      uint32_t key_size,

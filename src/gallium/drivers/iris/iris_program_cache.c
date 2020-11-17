@@ -330,26 +330,3 @@ iris_destroy_program_cache(struct iris_context *ice)
 
    ralloc_free(ice->shaders.cache);
 }
-
-static const char *
-cache_name(enum iris_program_cache_id cache_id)
-{
-   if (cache_id == IRIS_CACHE_BLORP)
-      return "BLORP";
-
-   return _mesa_shader_stage_to_string(cache_id);
-}
-
-void
-iris_print_program_cache(struct iris_context *ice)
-{
-   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
-
-   hash_table_foreach(ice->shaders.cache, entry) {
-      const struct keybox *keybox = entry->key;
-      struct iris_compiled_shader *shader = entry->data;
-      fprintf(stderr, "%s:\n", cache_name(keybox->cache_id));
-      gen_disassemble(devinfo, shader->map, 0, stderr);
-   }
-}
