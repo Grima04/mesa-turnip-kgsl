@@ -229,8 +229,18 @@ resource_create(struct pipe_screen *pscreen,
                   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                   VK_IMAGE_USAGE_SAMPLED_BIT;
 
-      if (templ->bind & PIPE_BIND_SHADER_IMAGE)
-         ici.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+      if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
+          (templ->bind & PIPE_BIND_SHADER_IMAGE ||
+          (templ->bind & PIPE_BIND_SAMPLER_VIEW && templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY))) {
+         VkFormatProperties props;
+         vkGetPhysicalDeviceFormatProperties(screen->pdev, res->format, &props);
+         /* gallium doesn't provide any way to actually know whether this will be used as a shader image,
+          * so we have to just assume and set the bit if it's available
+          */
+         if ((ici.tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
+             (ici.tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
+            ici.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+      }
 
       if (templ->bind & PIPE_BIND_RENDER_TARGET)
          ici.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
