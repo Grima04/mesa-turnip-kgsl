@@ -50,14 +50,52 @@ destroy_depth_clear_pipeline(VkDevice _device,
    vk_free(alloc, p);
 }
 
+static VkResult
+create_color_clear_pipeline_layout(struct v3dv_device *device,
+                                   VkPipelineLayout *pipeline_layout)
+{
+   VkPipelineLayoutCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 0,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges =
+         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16 },
+   };
+
+   return v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
+                                    &info, &device->alloc, pipeline_layout);
+}
+
+static VkResult
+create_depth_clear_pipeline_layout(struct v3dv_device *device,
+                                   VkPipelineLayout *pipeline_layout)
+{
+   VkPipelineLayoutCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 0,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges =
+         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4 },
+   };
+
+   return v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
+                                    &info, &device->alloc, pipeline_layout);
+}
+
 void
 v3dv_meta_clear_init(struct v3dv_device *device)
 {
    device->meta.color_clear.cache =
       _mesa_hash_table_create(NULL, u64_hash, u64_compare);
 
+   create_color_clear_pipeline_layout(device,
+                                      &device->meta.color_clear.playout);
+
    device->meta.depth_clear.cache =
       _mesa_hash_table_create(NULL, u64_hash, u64_compare);
+
+   create_depth_clear_pipeline_layout(device,
+                                      &device->meta.depth_clear.playout);
 }
 
 void
@@ -198,38 +236,6 @@ get_depth_clear_rect_fs()
    nir_store_var(&b, fs_out_depth, &depth_load->dest.ssa, 0x1);
 
    return b.shader;
-}
-
-static VkResult
-create_color_clear_pipeline_layout(struct v3dv_device *device,
-                                   VkPipelineLayout *pipeline_layout)
-{
-   VkPipelineLayoutCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 0,
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges =
-         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16 },
-   };
-
-   return v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
-                                    &info, &device->alloc, pipeline_layout);
-}
-
-static VkResult
-create_depth_clear_pipeline_layout(struct v3dv_device *device,
-                                   VkPipelineLayout *pipeline_layout)
-{
-   VkPipelineLayoutCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 0,
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges =
-         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4 },
-   };
-
-   return v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
-                                    &info, &device->alloc, pipeline_layout);
 }
 
 static VkResult
@@ -576,16 +582,6 @@ get_color_clear_pipeline(struct v3dv_device *device,
 
    VkResult result = VK_SUCCESS;
 
-   mtx_lock(&device->meta.mtx);
-   if (!device->meta.color_clear.playout) {
-      result =
-         create_color_clear_pipeline_layout(device,
-                                            &device->meta.color_clear.playout);
-   }
-   mtx_unlock(&device->meta.mtx);
-   if (result != VK_SUCCESS)
-      return result;
-
    /* If pass != NULL it means that we are emitting the clear as a draw call
     * in the current pass bound by the application. In that case, we can't
     * cache the pipeline, since it will be referencing that pass and the
@@ -690,16 +686,6 @@ get_depth_clear_pipeline(struct v3dv_device *device,
    assert(attachment_idx < pass->attachment_count);
 
    VkResult result = VK_SUCCESS;
-
-   mtx_lock(&device->meta.mtx);
-   if (!device->meta.depth_clear.playout) {
-      result =
-         create_depth_clear_pipeline_layout(device,
-                                            &device->meta.depth_clear.playout);
-   }
-   mtx_unlock(&device->meta.mtx);
-   if (result != VK_SUCCESS)
-      return result;
 
    const uint32_t samples = pass->attachments[attachment_idx].desc.samples;
    const VkFormat format = pass->attachments[attachment_idx].desc.format;

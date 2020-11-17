@@ -40,6 +40,52 @@ meta_blit_key_compare(const void *key1, const void *key2)
    return memcmp(key1, key2, V3DV_META_BLIT_CACHE_KEY_SIZE) == 0;
 }
 
+static bool
+create_blit_pipeline_layout(struct v3dv_device *device,
+                            VkDescriptorSetLayout *descriptor_set_layout,
+                            VkPipelineLayout *pipeline_layout)
+{
+   VkResult result;
+
+   if (*descriptor_set_layout == 0) {
+      VkDescriptorSetLayoutBinding descriptor_set_layout_binding = {
+         .binding = 0,
+         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+         .descriptorCount = 1,
+         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      };
+      VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {
+         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+         .bindingCount = 1,
+         .pBindings = &descriptor_set_layout_binding,
+      };
+      result =
+         v3dv_CreateDescriptorSetLayout(v3dv_device_to_handle(device),
+                                        &descriptor_set_layout_info,
+                                        &device->alloc,
+                                        descriptor_set_layout);
+      if (result != VK_SUCCESS)
+         return false;
+   }
+
+   assert(*pipeline_layout == 0);
+   VkPipelineLayoutCreateInfo pipeline_layout_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 1,
+      .pSetLayouts = descriptor_set_layout,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges =
+         &(VkPushConstantRange) { VK_SHADER_STAGE_VERTEX_BIT, 0, 20 },
+   };
+
+   result =
+      v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
+                                &pipeline_layout_info,
+                                &device->alloc,
+                                pipeline_layout);
+   return result == VK_SUCCESS;
+}
+
 void
 v3dv_meta_blit_init(struct v3dv_device *device)
 {
@@ -49,6 +95,10 @@ v3dv_meta_blit_init(struct v3dv_device *device)
                                  meta_blit_key_hash,
                                  meta_blit_key_compare);
    }
+
+   create_blit_pipeline_layout(device,
+                               &device->meta.blit.dslayout,
+                               &device->meta.blit.playout);
 }
 
 void
@@ -90,6 +140,52 @@ meta_texel_buffer_copy_key_compare(const void *key1, const void *key2)
    return memcmp(key1, key2, V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE) == 0;
 }
 
+static bool
+create_texel_buffer_copy_pipeline_layout(struct v3dv_device *device,
+                                         VkDescriptorSetLayout *ds_layout,
+                                         VkPipelineLayout *p_layout)
+{
+   VkResult result;
+
+   if (*ds_layout == 0) {
+      VkDescriptorSetLayoutBinding ds_layout_binding = {
+         .binding = 0,
+         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+         .descriptorCount = 1,
+         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      };
+      VkDescriptorSetLayoutCreateInfo ds_layout_info = {
+         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+         .bindingCount = 1,
+         .pBindings = &ds_layout_binding,
+      };
+      result =
+         v3dv_CreateDescriptorSetLayout(v3dv_device_to_handle(device),
+                                        &ds_layout_info,
+                                        &device->alloc,
+                                        ds_layout);
+      if (result != VK_SUCCESS)
+         return false;
+   }
+
+   assert(*p_layout == 0);
+   VkPipelineLayoutCreateInfo p_layout_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 1,
+      .pSetLayouts = ds_layout,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges =
+         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20 },
+   };
+
+   result =
+      v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
+                                &p_layout_info,
+                                &device->alloc,
+                                p_layout);
+   return result == VK_SUCCESS;
+}
+
 void
 v3dv_meta_texel_buffer_copy_init(struct v3dv_device *device)
 {
@@ -99,6 +195,11 @@ v3dv_meta_texel_buffer_copy_init(struct v3dv_device *device)
                                  meta_texel_buffer_copy_key_hash,
                                  meta_texel_buffer_copy_key_compare);
    }
+
+   create_texel_buffer_copy_pipeline_layout(
+      device,
+      &device->meta.texel_buffer_copy.dslayout,
+      &device->meta.texel_buffer_copy.playout);
 }
 
 void
@@ -2572,52 +2673,6 @@ create_tiled_image_from_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    return false;
 }
 
-static bool
-create_texel_buffer_copy_pipeline_layout(struct v3dv_device *device,
-                                         VkDescriptorSetLayout *ds_layout,
-                                         VkPipelineLayout *p_layout)
-{
-   VkResult result;
-
-   if (*ds_layout == 0) {
-      VkDescriptorSetLayoutBinding ds_layout_binding = {
-         .binding = 0,
-         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-         .descriptorCount = 1,
-         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      };
-      VkDescriptorSetLayoutCreateInfo ds_layout_info = {
-         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-         .bindingCount = 1,
-         .pBindings = &ds_layout_binding,
-      };
-      result =
-         v3dv_CreateDescriptorSetLayout(v3dv_device_to_handle(device),
-                                        &ds_layout_info,
-                                        &device->alloc,
-                                        ds_layout);
-      if (result != VK_SUCCESS)
-         return false;
-   }
-
-   assert(*p_layout == 0);
-   VkPipelineLayoutCreateInfo p_layout_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = ds_layout,
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges =
-         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20 },
-   };
-
-   result =
-      v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
-                                &p_layout_info,
-                                &device->alloc,
-                                p_layout);
-   return result == VK_SUCCESS;
-}
-
 static VkResult
 create_texel_buffer_copy_descriptor_pool(struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -2938,19 +2993,9 @@ get_copy_texel_buffer_pipeline(
 {
    bool ok = true;
 
-   mtx_lock(&device->meta.mtx);
-   if (!device->meta.texel_buffer_copy.playout) {
-      ok = create_texel_buffer_copy_pipeline_layout(
-               device,
-               &device->meta.texel_buffer_copy.dslayout,
-               &device->meta.texel_buffer_copy.playout);
-   }
-   mtx_unlock(&device->meta.mtx);
-   if (!ok)
-      return false;
-
    uint8_t key[V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE];
    get_texel_buffer_copy_pipeline_cache_key(format, key);
+
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
       _mesa_hash_table_search(device->meta.texel_buffer_copy.cache[image_type],
@@ -3913,52 +3958,6 @@ get_blit_pipeline_cache_key(VkFormat dst_format,
 }
 
 static bool
-create_blit_pipeline_layout(struct v3dv_device *device,
-                            VkDescriptorSetLayout *descriptor_set_layout,
-                            VkPipelineLayout *pipeline_layout)
-{
-   VkResult result;
-
-   if (*descriptor_set_layout == 0) {
-      VkDescriptorSetLayoutBinding descriptor_set_layout_binding = {
-         .binding = 0,
-         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-         .descriptorCount = 1,
-         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      };
-      VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {
-         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-         .bindingCount = 1,
-         .pBindings = &descriptor_set_layout_binding,
-      };
-      result =
-         v3dv_CreateDescriptorSetLayout(v3dv_device_to_handle(device),
-                                        &descriptor_set_layout_info,
-                                        &device->alloc,
-                                        descriptor_set_layout);
-      if (result != VK_SUCCESS)
-         return false;
-   }
-
-   assert(*pipeline_layout == 0);
-   VkPipelineLayoutCreateInfo pipeline_layout_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = descriptor_set_layout,
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges =
-         &(VkPushConstantRange) { VK_SHADER_STAGE_VERTEX_BIT, 0, 20 },
-   };
-
-   result =
-      v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
-                                &pipeline_layout_info,
-                                &device->alloc,
-                                pipeline_layout);
-   return result == VK_SUCCESS;
-}
-
-static bool
 create_blit_render_pass(struct v3dv_device *device,
                         VkFormat dst_format,
                         VkFormat src_format,
@@ -4595,16 +4594,6 @@ get_blit_pipeline(struct v3dv_device *device,
                   struct v3dv_meta_blit_pipeline **pipeline)
 {
    bool ok = true;
-
-   mtx_lock(&device->meta.mtx);
-   if (!device->meta.blit.playout) {
-      ok = create_blit_pipeline_layout(device,
-                                       &device->meta.blit.dslayout,
-                                       &device->meta.blit.playout);
-   }
-   mtx_unlock(&device->meta.mtx);
-   if (!ok)
-      return false;
 
    uint8_t key[V3DV_META_BLIT_CACHE_KEY_SIZE];
    get_blit_pipeline_cache_key(dst_format, src_format, cmask,
