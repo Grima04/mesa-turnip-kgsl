@@ -1196,6 +1196,20 @@ bool get_reg_specified(ra_ctx& ctx,
    return true;
 }
 
+void increase_register_file(ra_ctx& ctx, RegType type) {
+   uint16_t max_addressible_sgpr = ctx.program->sgpr_limit;
+   uint16_t max_addressible_vgpr = ctx.program->vgpr_limit;
+   if (type == RegType::vgpr && ctx.program->max_reg_demand.vgpr < max_addressible_vgpr) {
+      update_vgpr_sgpr_demand(ctx.program, RegisterDemand(ctx.program->max_reg_demand.vgpr + 1, ctx.program->max_reg_demand.sgpr));
+   } else if (type == RegType::sgpr && ctx.program->max_reg_demand.sgpr < max_addressible_sgpr) {
+      update_vgpr_sgpr_demand(ctx.program,  RegisterDemand(ctx.program->max_reg_demand.vgpr, ctx.program->max_reg_demand.sgpr + 1));
+   } else {
+      //FIXME: if nothing helps, shift-rotate the registers to make space
+      aco_err(ctx.program, "Failed to allocate registers during shader compilation.");
+      abort();
+   }
+}
+
 PhysReg get_reg(ra_ctx& ctx,
                 RegisterFile& reg_file,
                 Temp temp,
@@ -1279,20 +1293,10 @@ PhysReg get_reg(ra_ctx& ctx,
     * too many moves. */
    assert(reg_file.count_zero(PhysReg{info.lb}, info.ub-info.lb) >= info.size);
 
-   uint16_t max_addressible_sgpr = ctx.program->sgpr_limit;
-   uint16_t max_addressible_vgpr = ctx.program->vgpr_limit;
-   if (info.rc.type() == RegType::vgpr && ctx.program->max_reg_demand.vgpr < max_addressible_vgpr) {
-      update_vgpr_sgpr_demand(ctx.program, RegisterDemand(ctx.program->max_reg_demand.vgpr + 1, ctx.program->max_reg_demand.sgpr));
-      return get_reg(ctx, reg_file, temp, parallelcopies, instr, operand_index);
-   } else if (info.rc.type() == RegType::sgpr && ctx.program->max_reg_demand.sgpr < max_addressible_sgpr) {
-      update_vgpr_sgpr_demand(ctx.program,  RegisterDemand(ctx.program->max_reg_demand.vgpr, ctx.program->max_reg_demand.sgpr + 1));
-      return get_reg(ctx, reg_file, temp, parallelcopies, instr, operand_index);
-   }
-
    //FIXME: if nothing helps, shift-rotate the registers to make space
 
-   aco_err(ctx.program, "Failed to allocate registers during shader compilation.");
-   abort();
+   increase_register_file(ctx, info.rc.type());
+   return get_reg(ctx, reg_file, temp, parallelcopies, instr, operand_index);
 }
 
 PhysReg get_reg_create_vector(ra_ctx& ctx,
@@ -1427,10 +1431,16 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
          tmp_file.fill(instr->operands[i]);
       }
    }
-   ASSERTED bool success = false;
-   success = get_regs_for_copies(ctx, tmp_file, parallelcopies, vars, lb, ub, instr, best_pos, best_pos + size - 1);
-   assert(success);
+   bool success = false;
+   std::vector<std::pair<Operand, Definition>> pc;
+   success = get_regs_for_copies(ctx, tmp_file, pc, vars, lb, ub, instr, best_pos, best_pos + size - 1);
 
+   if (!success) {
+      increase_register_file(ctx, temp.type());
+      return get_reg_create_vector(ctx, reg_file, temp, parallelcopies, instr);
+   }
+
+   parallelcopies.insert(parallelcopies.end(), pc.begin(), pc.end());
    adjust_max_used_regs(ctx, rc, best_pos);
 
    return PhysReg{best_pos};
