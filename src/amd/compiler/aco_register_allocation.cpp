@@ -552,6 +552,14 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
                     std::vector<std::pair<Operand, Definition>>& parallelcopies,
                     aco_ptr<Instruction>& instr, bool rename_not_killed_ops)
 {
+   /* clear operands */
+   for (std::pair<Operand, Definition>& copy : parallelcopies) {
+      /* the definitions with id are not from this function and already handled */
+      if (copy.second.isTemp())
+         continue;
+      reg_file.clear(copy.first);
+   }
+
    /* allocate id's and rename operands: this is done transparently here */
    for (std::pair<Operand, Definition>& copy : parallelcopies) {
       /* the definitions with id are not from this function and already handled */
@@ -1555,7 +1563,6 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
          /* find free reg */
          PhysReg reg = get_reg(ctx, register_file, pc_op.getTemp(), parallelcopy, ctx.pseudo_dummy);
          Definition pc_def = Definition(PhysReg{reg}, pc_op.regClass());
-         register_file.clear(pc_op);
          parallelcopy.emplace_back(pc_op, pc_def);
       }
       dst = operand.physReg();
@@ -1567,7 +1574,6 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
    Operand pc_op = operand;
    pc_op.setFixed(ctx.assignments[operand.tempId()].reg);
    Definition pc_def = Definition(dst, pc_op.regClass());
-   register_file.clear(pc_op);
    parallelcopy.emplace_back(pc_op, pc_def);
    update_renames(ctx, register_file, parallelcopy, instr, true);
 }
