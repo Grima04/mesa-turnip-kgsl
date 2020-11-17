@@ -95,6 +95,8 @@ dEQP-VK.pipeline.extended_dynamic_state.after_pipelines.depth_compare_greater,Fa
 dEQP-VK.pipeline.extended_dynamic_state.between_pipelines.depth_compare_always_greater,Fail
 dEQP-VK.pipeline.framebuffer_attachment.2d_array_19x27_32x32_4_ms,Fail
 dEQP-VK.pipeline.render_to_image.core.2d.huge.height.r8g8b8a8_unorm_d16_unorm,Crash
+dEQP-VK.pipeline.push_descriptor.compute.binding1_numcalls2_storage_image,Crash
+dEQP-VK.pipeline.push_descriptor.compute.binding3_numcalls2_uniform_buffer,Crash
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.positive_round_up_or_round_down_vert,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_negative_inf_vert,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_carry_bit_vert,Fail
