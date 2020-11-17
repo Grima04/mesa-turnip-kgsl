@@ -652,6 +652,8 @@ meson-clover-testing:
       -D opencl-spirv=true
     GALLIUM_DRIVERS: "swrast"
     BUILDTYPE: "debugoptimized"
+    EXTRA_OPTION: >
+      -D werror=true
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -887,6 +889,8 @@ meson-clover:
       -D gallium-xa=disabled
       -D gallium-nine=false
       -D gallium-opencl=icd
+    EXTRA_OPTION: >
+      -D werror=true
   script:
     - LLVM_VERSION=8 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=9 .gitlab-ci/meson-build.sh
