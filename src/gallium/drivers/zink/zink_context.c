@@ -320,6 +320,23 @@ sampler_aspect_from_format(enum pipe_format fmt)
      return VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
+static VkBufferView
+create_buffer_view(struct zink_screen *screen, struct zink_resource *res, enum pipe_format format, uint32_t offset, uint32_t range)
+{
+   VkBufferView view = VK_NULL_HANDLE;
+   VkBufferViewCreateInfo bvci = {};
+   bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+   bvci.buffer = res->buffer;
+   bvci.format = zink_get_format(screen, format);
+   assert(bvci.format);
+   bvci.offset = offset;
+   bvci.range = range;
+
+   if (vkCreateBufferView(screen->dev, &bvci, NULL, &view) == VK_SUCCESS)
+      return view;
+   return VK_NULL_HANDLE;
+}
+
 static struct pipe_sampler_view *
 zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
                          const struct pipe_sampler_view *state)
@@ -361,15 +378,8 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
 
       err = vkCreateImageView(screen->dev, &ivci, NULL, &sampler_view->image_view);
    } else {
-      VkBufferViewCreateInfo bvci = {};
-      bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-      bvci.buffer = res->buffer;
-      bvci.format = zink_get_format(screen, state->format);
-      assert(bvci.format);
-      bvci.offset = state->u.buf.offset;
-      bvci.range = state->u.buf.size;
-
-      err = vkCreateBufferView(screen->dev, &bvci, NULL, &sampler_view->buffer_view);
+      sampler_view->buffer_view = create_buffer_view(screen, res, state->format, state->u.buf.offset, state->u.buf.size);
+      err = !sampler_view->buffer_view;
    }
    if (err != VK_SUCCESS) {
       FREE(sampler_view);
