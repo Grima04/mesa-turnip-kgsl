@@ -440,23 +440,6 @@ can_fast_clear_depth(struct iris_context *ice,
                                     box->y + box->height);
 }
 
-static float
-convert_depth_value(enum pipe_format format, double depth)
-{
-   /* Quantize the clear value to what can be stored in the actual depth
-    * buffer. This makes checking for changes more accurate because the actual
-    * depth bits are compared. It also prevents us from getting a too-accurate
-    * depth value during depth testing or when sampling with HiZ enabled.
-    */
-   if (format == PIPE_FORMAT_Z32_FLOAT) {
-      return depth;
-   } else {
-      const unsigned nbits = format == PIPE_FORMAT_Z16_UNORM ? 16 : 24;
-      const uint32_t depth_max = (1 << nbits) - 1;
-      return (unsigned)(depth * depth_max) / (float)depth_max;
-   }
-}
-
 static void
 fast_clear_depth(struct iris_context *ice,
                  struct iris_resource *res,
@@ -687,7 +670,7 @@ iris_clear(struct pipe_context *ctx,
       clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box, true,
                           buffers & PIPE_CLEAR_DEPTH,
                           buffers & PIPE_CLEAR_STENCIL,
-                          convert_depth_value(psurf->format, depth), stencil);
+                          depth, stencil);
    }
 
    if (buffers & PIPE_CLEAR_COLOR) {
@@ -834,7 +817,7 @@ iris_clear_depth_stencil(struct pipe_context *ctx,
    clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box,
                        render_condition_enabled,
                        flags & PIPE_CLEAR_DEPTH, flags & PIPE_CLEAR_STENCIL,
-                       convert_depth_value(psurf->format, depth), stencil);
+                       depth, stencil);
 }
 
 void
