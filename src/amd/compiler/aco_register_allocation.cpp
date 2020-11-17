@@ -955,6 +955,8 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    uint32_t stride = info.stride;
    RegClass rc = info.rc;
 
+   RegisterFile tmp_file(reg_file);
+
    /* check how many free regs we have */
    unsigned regs_free = reg_file.count_zero(PhysReg{lb}, ub-lb);
 
@@ -967,7 +969,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
           instr->operands[j].physReg() < ub &&
           !reg_file.test(instr->operands[j].physReg(), instr->operands[j].bytes())) {
          assert(instr->operands[j].isFixed());
-         reg_file.block(instr->operands[j].physReg(), instr->operands[j].regClass());
+         tmp_file.block(instr->operands[j].physReg(), instr->operands[j].regClass());
          killed_ops += instr->operands[j].getTemp().size();
       }
    }
@@ -989,11 +991,11 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    unsigned reg_hi = lb + size - 1;
    for (reg_lo = lb, reg_hi = lb + size - 1; reg_hi < ub; reg_lo += stride, reg_hi += stride) {
       /* first check the edges: this is what we have to fix to allow for num_moves > size */
-      if (reg_lo > lb && !reg_file.is_empty_or_blocked(PhysReg(reg_lo)) &&
-          reg_file.get_id(PhysReg(reg_lo)) == reg_file.get_id(PhysReg(reg_lo).advance(-1)))
+      if (reg_lo > lb && !tmp_file.is_empty_or_blocked(PhysReg(reg_lo)) &&
+          tmp_file.get_id(PhysReg(reg_lo)) == tmp_file.get_id(PhysReg(reg_lo).advance(-1)))
          continue;
-      if (reg_hi < ub - 1 && !reg_file.is_empty_or_blocked(PhysReg(reg_hi).advance(3)) &&
-          reg_file.get_id(PhysReg(reg_hi).advance(3)) == reg_file.get_id(PhysReg(reg_hi).advance(4)))
+      if (reg_hi < ub - 1 && !tmp_file.is_empty_or_blocked(PhysReg(reg_hi).advance(3)) &&
+          tmp_file.get_id(PhysReg(reg_hi).advance(3)) == tmp_file.get_id(PhysReg(reg_hi).advance(4)))
          continue;
 
       /* second, check that we have at most k=num_moves elements in the window
@@ -1005,11 +1007,11 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       bool found = true;
       bool aligned = rc == RegClass::v4 && reg_lo % 4 == 0;
       for (unsigned j = reg_lo; found && j <= reg_hi; j++) {
-         if (reg_file[j] == 0 || reg_file[j] == last_var)
+         if (tmp_file[j] == 0 || tmp_file[j] == last_var)
             continue;
 
          /* dead operands effectively reduce the number of estimated moves */
-         if (reg_file.is_blocked(PhysReg{j})) {
+         if (tmp_file.is_blocked(PhysReg{j})) {
             if (remaining_op_moves) {
                k--;
                remaining_op_moves--;
@@ -1017,26 +1019,26 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
             continue;
          }
 
-         if (reg_file[j] == 0xF0000000) {
+         if (tmp_file[j] == 0xF0000000) {
             k += 1;
             n++;
             continue;
          }
 
-         if (ctx.assignments[reg_file[j]].rc.size() >= size) {
+         if (ctx.assignments[tmp_file[j]].rc.size() >= size) {
             found = false;
             break;
          }
 
          /* we cannot split live ranges of linear vgprs */
-         if (ctx.assignments[reg_file[j]].rc & (1 << 6)) {
+         if (ctx.assignments[tmp_file[j]].rc & (1 << 6)) {
             found = false;
             break;
          }
 
-         k += ctx.assignments[reg_file[j]].rc.size();
+         k += ctx.assignments[tmp_file[j]].rc.size();
          n++;
-         last_var = reg_file[j];
+         last_var = tmp_file[j];
       }
 
       if (!found || k > num_moves)
@@ -1053,24 +1055,11 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       }
    }
 
-   if (num_moves == 0xFF) {
-      /* remove killed operands from reg_file once again */
-      for (unsigned i = 0; !is_phi(instr) && i < instr->operands.size(); i++) {
-         if (instr->operands[i].isTemp() && instr->operands[i].isFirstKillBeforeDef())
-            reg_file.clear(instr->operands[i]);
-      }
-      for (unsigned i = 0; i < instr->definitions.size(); i++) {
-         Definition def = instr->definitions[i];
-         if (def.isTemp() && def.isFixed() && ctx.defs_done.test(i))
-            reg_file.fill(def);
-      }
+   if (num_moves == 0xFF)
       return {{}, false};
-   }
-
-   RegisterFile register_file = reg_file;
 
    /* now, we figured the placement for our definition */
-   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
+   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, tmp_file, PhysReg{best_pos}, size);
 
    if (instr->opcode == aco_opcode::p_create_vector) {
       /* move killed operands which aren't yet at the correct position (GFX9+)
@@ -1084,9 +1073,9 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
                  (op.physReg().advance(op.bytes()) > PhysReg{best_pos} &&
                   op.physReg() < PhysReg{best_pos + size}))) {
                vars.emplace(op.bytes(), op.tempId());
-               reg_file.clear(op);
+               tmp_file.clear(op);
             } else {
-               reg_file.fill(op);
+               tmp_file.fill(op);
             }
          }
          reg.reg_b += op.bytes();
@@ -1095,48 +1084,15 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       /* re-enable killed operands */
       for (Operand& op : instr->operands) {
          if (op.isTemp() && op.isFirstKillBeforeDef())
-            reg_file.fill(op);
+            tmp_file.fill(op);
       }
    }
 
    std::vector<std::pair<Operand, Definition>> pc;
-   if (!get_regs_for_copies(ctx, reg_file, pc, vars, lb, ub, instr, best_pos, best_pos + size - 1)) {
-      reg_file = std::move(register_file);
-      /* remove killed operands from reg_file once again */
-      if (!is_phi(instr)) {
-         for (const Operand& op : instr->operands) {
-            if (op.isTemp() && op.isFirstKillBeforeDef())
-               reg_file.clear(op);
-         }
-      }
-      for (unsigned i = 0; i < instr->definitions.size(); i++) {
-         Definition& def = instr->definitions[i];
-         if (def.isTemp() && def.isFixed() && ctx.defs_done.test(i))
-            reg_file.fill(def);
-      }
+   if (!get_regs_for_copies(ctx, tmp_file, pc, vars, lb, ub, instr, best_pos, best_pos + size - 1))
       return {{}, false};
-   }
 
    parallelcopies.insert(parallelcopies.end(), pc.begin(), pc.end());
-
-   /* we set the definition regs == 0. the actual caller is responsible for correct setting */
-   reg_file.clear(PhysReg{best_pos}, rc);
-
-   update_renames(ctx, reg_file, parallelcopies, instr, instr->opcode != aco_opcode::p_create_vector);
-
-   /* remove killed operands from reg_file once again */
-   for (unsigned i = 0; !is_phi(instr) && i < instr->operands.size(); i++) {
-      if (!instr->operands[i].isTemp() || !instr->operands[i].isFixed())
-         continue;
-      assert(!instr->operands[i].isUndefined());
-      if (instr->operands[i].isFirstKillBeforeDef())
-         reg_file.clear(instr->operands[i]);
-   }
-   for (unsigned i = 0; i < instr->definitions.size(); i++) {
-      Definition def = instr->definitions[i];
-      if (def.isTemp() && def.isFixed() && ctx.defs_done.test(i))
-         reg_file.fill(def);
-   }
 
    adjust_max_used_regs(ctx, rc, best_pos);
    return {PhysReg{best_pos}, true};
@@ -1284,8 +1240,10 @@ PhysReg get_reg(ra_ctx& ctx,
    /* try to find space with live-range splits */
    res = get_reg_impl(ctx, reg_file, parallelcopies, info, instr);
 
-   if (res.second)
+   if (res.second) {
+      update_renames(ctx, reg_file, parallelcopies, instr, instr->opcode != aco_opcode::p_create_vector);
       return res.first;
+   }
 
    /* try using more registers */
 
