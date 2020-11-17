@@ -97,8 +97,8 @@ v3dv_meta_blit_init(struct v3dv_device *device)
    }
 
    create_blit_pipeline_layout(device,
-                               &device->meta.blit.dslayout,
-                               &device->meta.blit.playout);
+                               &device->meta.blit.ds_layout,
+                               &device->meta.blit.p_layout);
 }
 
 void
@@ -117,13 +117,13 @@ v3dv_meta_blit_finish(struct v3dv_device *device)
       _mesa_hash_table_destroy(device->meta.blit.cache[i], NULL);
    }
 
-   if (device->meta.blit.playout) {
-      v3dv_DestroyPipelineLayout(_device, device->meta.blit.playout,
+   if (device->meta.blit.p_layout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.blit.p_layout,
                                  &device->alloc);
    }
 
-   if (device->meta.blit.dslayout) {
-      v3dv_DestroyDescriptorSetLayout(_device, device->meta.blit.dslayout,
+   if (device->meta.blit.ds_layout) {
+      v3dv_DestroyDescriptorSetLayout(_device, device->meta.blit.ds_layout,
                                       &device->alloc);
    }
 }
@@ -198,8 +198,8 @@ v3dv_meta_texel_buffer_copy_init(struct v3dv_device *device)
 
    create_texel_buffer_copy_pipeline_layout(
       device,
-      &device->meta.texel_buffer_copy.dslayout,
-      &device->meta.texel_buffer_copy.playout);
+      &device->meta.texel_buffer_copy.ds_layout,
+      &device->meta.texel_buffer_copy.p_layout);
 }
 
 void
@@ -218,13 +218,13 @@ v3dv_meta_texel_buffer_copy_finish(struct v3dv_device *device)
       _mesa_hash_table_destroy(device->meta.texel_buffer_copy.cache[i], NULL);
    }
 
-   if (device->meta.texel_buffer_copy.playout) {
-      v3dv_DestroyPipelineLayout(_device, device->meta.texel_buffer_copy.playout,
+   if (device->meta.texel_buffer_copy.p_layout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.texel_buffer_copy.p_layout,
                                  &device->alloc);
    }
 
-   if (device->meta.texel_buffer_copy.dslayout) {
-      v3dv_DestroyDescriptorSetLayout(_device, device->meta.texel_buffer_copy.dslayout,
+   if (device->meta.texel_buffer_copy.ds_layout) {
+      v3dv_DestroyDescriptorSetLayout(_device, device->meta.texel_buffer_copy.ds_layout,
                                       &device->alloc);
    }
 }
@@ -2735,7 +2735,7 @@ allocate_texel_buffer_copy_descriptor_set(struct v3dv_cmd_buffer *cmd_buffer,
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool = cmd_buffer->meta.texel_buffer_copy.dspool,
       .descriptorSetCount = 1,
-      .pSetLayouts = &device->meta.texel_buffer_copy.dslayout,
+      .pSetLayouts = &device->meta.texel_buffer_copy.ds_layout,
    };
    result = v3dv_AllocateDescriptorSets(_device, &info, set);
 
@@ -3023,7 +3023,7 @@ get_copy_texel_buffer_pipeline(
       create_texel_buffer_copy_pipeline(device,
                                         format,
                                         (*pipeline)->pass,
-                                        device->meta.texel_buffer_copy.playout,
+                                        device->meta.texel_buffer_copy.p_layout,
                                         &(*pipeline)->pipeline);
    if (!ok)
       goto fail;
@@ -3178,7 +3178,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
 
    v3dv_CmdBindDescriptorSets(_cmd_buffer,
                               VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              cmd_buffer->device->meta.texel_buffer_copy.playout,
+                              cmd_buffer->device->meta.texel_buffer_copy.p_layout,
                               0, 1, &set,
                               0, NULL);
 
@@ -3298,7 +3298,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
       };
 
       v3dv_CmdPushConstants(_cmd_buffer,
-                            cmd_buffer->device->meta.texel_buffer_copy.playout,
+                            cmd_buffer->device->meta.texel_buffer_copy.p_layout,
                             VK_SHADER_STAGE_FRAGMENT_BIT,
                             0, sizeof(push_data), &push_data);
 
@@ -4630,7 +4630,7 @@ get_blit_pipeline(struct v3dv_device *device,
                              dst_samples,
                              src_samples,
                              (*pipeline)->pass,
-                             device->meta.blit.playout,
+                             device->meta.blit.p_layout,
                              &(*pipeline)->pipeline);
    if (!ok)
       goto fail;
@@ -4764,7 +4764,7 @@ allocate_blit_source_descriptor_set(struct v3dv_cmd_buffer *cmd_buffer,
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool = cmd_buffer->meta.blit.dspool,
       .descriptorSetCount = 1,
-      .pSetLayouts = &device->meta.blit.dslayout,
+      .pSetLayouts = &device->meta.blit.ds_layout,
    };
    result = v3dv_AllocateDescriptorSets(_device, &info, set);
 
@@ -4979,7 +4979,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
           pipeline->pass && pipeline->pass_no_load);
 
    struct v3dv_device *device = cmd_buffer->device;
-   assert(device->meta.blit.dslayout);
+   assert(device->meta.blit.ds_layout);
 
    VkDevice _device = v3dv_device_to_handle(device);
    VkCommandBuffer _cmd_buffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
@@ -5140,7 +5140,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
       v3dv_CmdBindDescriptorSets(_cmd_buffer,
                                  VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                 device->meta.blit.playout,
+                                 device->meta.blit.p_layout,
                                  0, 1, &set,
                                  0, NULL);
 
@@ -5190,7 +5190,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       }
 
       v3dv_CmdPushConstants(_cmd_buffer,
-                            device->meta.blit.playout,
+                            device->meta.blit.p_layout,
                             VK_SHADER_STAGE_VERTEX_BIT, 0, 20,
                             &tex_coords);
 

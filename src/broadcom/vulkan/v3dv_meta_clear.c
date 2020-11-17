@@ -89,13 +89,13 @@ v3dv_meta_clear_init(struct v3dv_device *device)
       _mesa_hash_table_create(NULL, u64_hash, u64_compare);
 
    create_color_clear_pipeline_layout(device,
-                                      &device->meta.color_clear.playout);
+                                      &device->meta.color_clear.p_layout);
 
    device->meta.depth_clear.cache =
       _mesa_hash_table_create(NULL, u64_hash, u64_compare);
 
    create_depth_clear_pipeline_layout(device,
-                                      &device->meta.depth_clear.playout);
+                                      &device->meta.depth_clear.p_layout);
 }
 
 void
@@ -109,8 +109,8 @@ v3dv_meta_clear_finish(struct v3dv_device *device)
    }
    _mesa_hash_table_destroy(device->meta.color_clear.cache, NULL);
 
-   if (device->meta.color_clear.playout) {
-      v3dv_DestroyPipelineLayout(_device, device->meta.color_clear.playout,
+   if (device->meta.color_clear.p_layout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.color_clear.p_layout,
                                  &device->alloc);
    }
 
@@ -120,8 +120,8 @@ v3dv_meta_clear_finish(struct v3dv_device *device)
    }
    _mesa_hash_table_destroy(device->meta.depth_clear.cache, NULL);
 
-   if (device->meta.depth_clear.playout) {
-      v3dv_DestroyPipelineLayout(_device, device->meta.depth_clear.playout,
+   if (device->meta.depth_clear.p_layout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.depth_clear.p_layout,
                                  &device->alloc);
    }
 }
@@ -640,7 +640,7 @@ get_color_clear_pipeline(struct v3dv_device *device,
                                         format,
                                         samples,
                                         components,
-                                        device->meta.color_clear.playout,
+                                        device->meta.color_clear.p_layout,
                                         &(*pipeline)->pipeline);
    if (result != VK_SUCCESS)
       goto fail;
@@ -715,7 +715,7 @@ get_depth_clear_pipeline(struct v3dv_device *device,
                                         pass,
                                         subpass_idx,
                                         samples,
-                                        device->meta.depth_clear.playout,
+                                        device->meta.depth_clear.p_layout,
                                         &(*pipeline)->pipeline);
    if (result != VK_SUCCESS)
       goto fail;
@@ -903,7 +903,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
       job->is_subpass_continue = true;
 
       v3dv_CmdPushConstants(cmd_buffer_handle,
-                            device->meta.color_clear.playout,
+                            device->meta.color_clear.p_layout,
                             VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16,
                             &clear_color);
 
@@ -1048,7 +1048,7 @@ emit_subpass_color_clear_rects(struct v3dv_cmd_buffer *cmd_buffer,
 
    VkCommandBuffer cmd_buffer_handle = v3dv_cmd_buffer_to_handle(cmd_buffer);
    v3dv_CmdPushConstants(cmd_buffer_handle,
-                         cmd_buffer->device->meta.depth_clear.playout,
+                         cmd_buffer->device->meta.depth_clear.p_layout,
                          VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16,
                          clear_color->float32);
 
@@ -1126,7 +1126,7 @@ emit_subpass_ds_clear_rects(struct v3dv_cmd_buffer *cmd_buffer,
 
    VkCommandBuffer cmd_buffer_handle = v3dv_cmd_buffer_to_handle(cmd_buffer);
    v3dv_CmdPushConstants(cmd_buffer_handle,
-                         cmd_buffer->device->meta.depth_clear.playout,
+                         cmd_buffer->device->meta.depth_clear.p_layout,
                          VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4,
                          &clear_ds->depth);
 

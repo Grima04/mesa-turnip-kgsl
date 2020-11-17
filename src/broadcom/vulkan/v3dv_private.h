@@ -321,21 +321,21 @@ struct v3dv_device {
    struct {
       mtx_t mtx;
       struct {
-         VkPipelineLayout playout;
+         VkPipelineLayout p_layout;
          struct hash_table *cache; /* v3dv_meta_color_clear_pipeline */
       } color_clear;
       struct {
-         VkPipelineLayout playout;
+         VkPipelineLayout p_layout;
          struct hash_table *cache; /* v3dv_meta_depth_clear_pipeline */
       } depth_clear;
       struct {
-         VkDescriptorSetLayout dslayout;
-         VkPipelineLayout playout;
+         VkDescriptorSetLayout ds_layout;
+         VkPipelineLayout p_layout;
          struct hash_table *cache[3]; /* v3dv_meta_blit_pipeline for 1d, 2d, 3d */
       } blit;
       struct {
-         VkDescriptorSetLayout dslayout;
-         VkPipelineLayout playout;
+         VkDescriptorSetLayout ds_layout;
+         VkPipelineLayout p_layout;
          struct hash_table *cache[3]; /* v3dv_meta_texel_buffer_copy_pipeline for 1d, 2d, 3d */
       } texel_buffer_copy;
    } meta;
