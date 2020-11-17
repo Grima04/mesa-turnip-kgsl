@@ -586,7 +586,8 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
    } else {
       uint32_t stage_offset = (uint32_t)stage * (PIPE_MAX_CONSTANT_BUFFERS +
                                                  PIPE_MAX_SAMPLERS +
-                                                 PIPE_MAX_SHADER_BUFFERS);
+                                                 PIPE_MAX_SHADER_BUFFERS +
+                                                 PIPE_MAX_SHADER_IMAGES);
 
       switch (type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -601,6 +602,11 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          assert(index < PIPE_MAX_SHADER_BUFFERS);
          return stage_offset + PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_SAMPLER_VIEWS + index;
+
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         assert(index < PIPE_MAX_SHADER_IMAGES);
+         return stage_offset + PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_SAMPLER_VIEWS + PIPE_MAX_SHADER_IMAGES + index;
 
       default:
          unreachable("unexpected type");
