@@ -679,7 +679,8 @@
   <struct name="Midgard Texture" size="8">
     <field name="Width" size="16" start="0:0" type="uint" modifier="minus(1)"/>
     <field name="Height" size="16" start="0:16" type="uint" modifier="minus(1)"/>
-    <field name="Depth" size="16" start="1:0" type="uint" modifier="minus(1)"/>
+    <field name="Depth" size="16" start="1:0" type="uint" modifier="minus(1)" default="1"/>
+    <field name="Sample count" size="16" start="1:0" type="uint" modifier="minus(1)" default="1"/>
     <field name="Array size" size="16" start="1:16" type="uint" modifier="minus(1)"/>
     <field name="Format" size="22" start="2:0" type="uint"/>
     <field name="Dimension" size="2" start="2:22" type="Texture Dimension"/>

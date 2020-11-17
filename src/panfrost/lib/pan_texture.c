@@ -392,7 +392,10 @@ panfrost_new_texture(
         pan_pack(out, MIDGARD_TEXTURE, cfg) {
                 cfg.width = u_minify(width, first_level);
                 cfg.height = u_minify(height, first_level);
-                cfg.depth = u_minify(depth, first_level);
+                if (dim == MALI_TEXTURE_DIMENSION_3D)
+                        cfg.depth = u_minify(depth, first_level);
+                else
+                        cfg.sample_count = MAX2(1, nr_samples);
                 cfg.array_size = array_size;
                 cfg.format = panfrost_pipe_format_v6[format].hw;
                 cfg.dimension = dim;

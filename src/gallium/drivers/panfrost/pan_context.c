@@ -994,15 +994,9 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         }
 
         /* MSAA only supported for 2D textures (and 2D texture arrays via an
-         * extension currently unimplemented */
+         * extension currently unimplemented) */
 
-        if (so->base.target == PIPE_TEXTURE_2D) {
-                assert(depth == 1);
-                depth = texture->nr_samples;
-        } else {
-                /* MSAA only supported for 2D textures */
-                assert(texture->nr_samples <= 1);
-        }
+        assert(texture->nr_samples <= 1 || so->base.target == PIPE_TEXTURE_2D);
 
         enum mali_texture_dimension type =
                 panfrost_translate_texture_dimension(so->base.target);
