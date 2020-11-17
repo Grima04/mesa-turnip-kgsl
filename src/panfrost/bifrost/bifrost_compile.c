@@ -2074,16 +2074,13 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 }
         }
 
-        if (dreg_index > 1) {
+        if (dreg_index >= 1) {
                 /* Pass combined data registers together */
                 tex.src[0] = combine.dest;
                 bi_emit(ctx, combine);
 
                 for (unsigned i = 0; i < dreg_index; ++i)
                         tex.swizzle[0][i] = i;
-        } else if (dreg_index == 1) {
-                tex.src[0] = combine.src[0];
-                tex.swizzle[0][0] = combine.swizzle[0][0];
         } else {
                 tex.src[0] = tex.dest;
         }
