@@ -618,4 +618,5 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
       screen->vk_CmdEndTransformFeedbackEXT(batch->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
+   batch->has_draw = true;
 }
