@@ -121,6 +121,41 @@ block_label(struct ntv_context *ctx, nir_block *block)
    return ctx->block_ids[block->index];
 }
 
+static void
+emit_access_decorations(struct ntv_context *ctx, nir_variable *var, SpvId var_id)
+{
+    enum gl_access_qualifier access = var->data.access;
+    while (access) {
+       unsigned bit = u_bit_scan(&access);
+       switch (1 << bit) {
+       case ACCESS_COHERENT:
+          /* SpvDecorationCoherent can't be used with vulkan memory model */
+          break;
+       case ACCESS_RESTRICT:
+          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationRestrict);
+          break;
+       case ACCESS_VOLATILE:
+          /* SpvDecorationVolatile can't be used with vulkan memory model */
+          break;
+       case ACCESS_NON_READABLE:
+          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationNonReadable);
+          break;
+       case ACCESS_NON_WRITEABLE:
+          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationNonWritable);
+          break;
+       case ACCESS_NON_UNIFORM:
+          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationNonUniform);
+          break;
+       case ACCESS_CAN_REORDER:
+       case ACCESS_STREAM_CACHE_POLICY:
+          /* no equivalent */
+          break;
+       default:
+          unreachable("unknown access bit");
+       }
+    }
+}
+
 static SpvId
 emit_float_const(struct ntv_context *ctx, int bit_size, double value)
 {
