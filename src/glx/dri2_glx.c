@@ -272,6 +272,13 @@ dri2_create_context_attribs(struct glx_screen *base,
        goto error_exit;
 
    if (shareList) {
+      /* If the shareList context is not a DRI2 context, we cannot possibly
+       * create a DRI2 context that shares it.
+       */
+      if (shareList->vtable->destroy != dri2_destroy_context) {
+	 return NULL;
+      }
+
       pcp_shared = (struct dri2_context *) shareList;
       shared = pcp_shared->driContext;
    }

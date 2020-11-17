@@ -587,6 +587,13 @@ drisw_create_context_attribs(struct glx_screen *base,
       return NULL;
 
    if (shareList) {
+      /* If the shareList context is not a DRISW context, we cannot possibly
+       * create a DRISW context that shares it.
+       */
+      if (shareList->vtable->destroy != drisw_destroy_context) {
+	 return NULL;
+      }
+
       pcp_shared = (struct drisw_context *) shareList;
       shared = pcp_shared->driContext;
    }
