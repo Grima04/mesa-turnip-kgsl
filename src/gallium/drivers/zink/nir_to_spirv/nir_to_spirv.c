@@ -46,6 +46,7 @@ struct ntv_context {
 
    SpvId ssbos[PIPE_MAX_SHADER_BUFFERS];
    SpvId image_types[PIPE_MAX_SAMPLERS];
+   SpvId images[PIPE_MAX_SAMPLERS];
    SpvId sampler_types[PIPE_MAX_SAMPLERS];
    SpvId samplers[PIPE_MAX_SAMPLERS];
    unsigned char sampler_array_sizes[PIPE_MAX_SAMPLERS];
@@ -60,6 +61,7 @@ struct ntv_context {
    size_t num_regs;
 
    struct hash_table *vars; /* nir_variable -> SpvId */
+   struct hash_table *image_vars; /* SpvId -> nir_variable */
    struct hash_table *so_outputs; /* pipe_stream_output -> SpvId */
    unsigned outputs[VARYING_SLOT_MAX * 4];
    const struct glsl_type *so_output_gl_types[VARYING_SLOT_MAX * 4];
@@ -615,37 +617,131 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
    }
 }
 
+static inline SpvImageFormat
+get_image_format(enum pipe_format format)
+{
+   switch (format) {
+   case PIPE_FORMAT_NONE:
+      return SpvImageFormatUnknown;
+   case PIPE_FORMAT_R32G32B32A32_FLOAT:
+      return SpvImageFormatRgba32f;
+   case PIPE_FORMAT_R16G16B16A16_FLOAT:
+      return SpvImageFormatRgba16f;
+   case PIPE_FORMAT_R32_FLOAT:
+      return SpvImageFormatR32f;
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+      return SpvImageFormatRgba8;
+   case PIPE_FORMAT_R8G8B8A8_SNORM:
+      return SpvImageFormatRgba8Snorm;
+   case PIPE_FORMAT_R32G32_FLOAT:
+      return SpvImageFormatRg32f;
+   case PIPE_FORMAT_R16G16_FLOAT:
+      return SpvImageFormatRg16f;
+   case PIPE_FORMAT_R11G11B10_FLOAT:
+      return SpvImageFormatR11fG11fB10f;
+   case PIPE_FORMAT_R16_FLOAT:
+      return SpvImageFormatR16f;
+   case PIPE_FORMAT_R16G16B16A16_UNORM:
+      return SpvImageFormatRgba16;
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+      return SpvImageFormatRgb10A2;
+   case PIPE_FORMAT_R16G16_UNORM:
+      return SpvImageFormatRg16;
+   case PIPE_FORMAT_R8G8_UNORM:
+      return SpvImageFormatRg8;
+   case PIPE_FORMAT_R16_UNORM:
+      return SpvImageFormatR16;
+   case PIPE_FORMAT_R8_UNORM:
+      return SpvImageFormatR8;
+   case PIPE_FORMAT_R16G16B16A16_SNORM:
+      return SpvImageFormatRgba16Snorm;
+   case PIPE_FORMAT_R16G16_SNORM:
+      return SpvImageFormatRg16Snorm;
+   case PIPE_FORMAT_R8G8_SNORM:
+      return SpvImageFormatRg8Snorm;
+   case PIPE_FORMAT_R16_SNORM:
+      return SpvImageFormatR16Snorm;
+   case PIPE_FORMAT_R8_SNORM:
+      return SpvImageFormatR8Snorm;
+   case PIPE_FORMAT_R32G32B32A32_SINT:
+      return SpvImageFormatRgba32i;
+   case PIPE_FORMAT_R16G16B16A16_SINT:
+      return SpvImageFormatRgba16i;
+   case PIPE_FORMAT_R8G8B8A8_SINT:
+      return SpvImageFormatRgba8i;
+   case PIPE_FORMAT_R32_SINT:
+      return SpvImageFormatR32i;
+   case PIPE_FORMAT_R32G32_SINT:
+      return SpvImageFormatRg32i;
+   case PIPE_FORMAT_R16G16_SINT:
+      return SpvImageFormatRg16i;
+   case PIPE_FORMAT_R8G8_SINT:
+      return SpvImageFormatRg8i;
+   case PIPE_FORMAT_R16_SINT:
+      return SpvImageFormatR16i;
+   case PIPE_FORMAT_R8_SINT:
+      return SpvImageFormatR8i;
+   case PIPE_FORMAT_R32G32B32A32_UINT:
+      return SpvImageFormatRgba32ui;
+   case PIPE_FORMAT_R16G16B16A16_UINT:
+      return SpvImageFormatRgba16ui;
+   case PIPE_FORMAT_R8G8B8A8_UINT:
+      return SpvImageFormatRgba8ui;
+   case PIPE_FORMAT_R32_UINT:
+      return SpvImageFormatR32ui;
+   case PIPE_FORMAT_R10G10B10A2_UINT:
+      return SpvImageFormatRgb10a2ui;
+   case PIPE_FORMAT_R32G32_UINT:
+      return SpvImageFormatRg32ui;
+   case PIPE_FORMAT_R16G16_UINT:
+      return SpvImageFormatRg16ui;
+   case PIPE_FORMAT_R8G8_UINT:
+      return SpvImageFormatRg8ui;
+   case PIPE_FORMAT_R16_UINT:
+      return SpvImageFormatR16ui;
+   case PIPE_FORMAT_R8_UINT:
+      return SpvImageFormatR8ui;
+   default:
+      break;
+   }
+   unreachable("unknown format");
+   return SpvImageFormatUnknown;
+}
+
 static void
-emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
+emit_image(struct ntv_context *ctx, struct nir_variable *var)
 {
    const struct glsl_type *type = glsl_without_array(var->type);
 
    bool is_ms;
+   bool is_sampler = glsl_type_is_sampler(type);
    SpvDim dimension = type_to_dim(glsl_get_sampler_dim(type), &is_ms);
 
    SpvId result_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
    SpvId image_type = spirv_builder_type_image(&ctx->builder, result_type,
                                                dimension, false,
                                                glsl_sampler_type_is_array(type),
-                                               is_ms, 1,
-                                               SpvImageFormatUnknown);
+                                               is_ms, is_sampler ? 1 : 2,
+                                               get_image_format(var->data.image.format));
 
    SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
                                                          image_type);
+   SpvId var_type = is_sampler ? sampled_type : image_type;
 
    int index = var->data.binding;
-   assert(!(ctx->samplers_used & (1 << index)));
-   assert(!ctx->image_types[index]);
+   assert(!is_sampler || (!(ctx->samplers_used & (1 << index))));
+   assert(!is_sampler || !ctx->sampler_types[index]);
+   assert(is_sampler || !ctx->image_types[index]);
 
    if (glsl_type_is_array(var->type)) {
-      sampled_type = spirv_builder_type_array(&ctx->builder, sampled_type,
+      var_type = spirv_builder_type_array(&ctx->builder, var_type,
                                               emit_uint_const(ctx, 32, glsl_get_aoa_size(var->type)));
-      spirv_builder_emit_array_stride(&ctx->builder, sampled_type, sizeof(void*));
+      spirv_builder_emit_array_stride(&ctx->builder, var_type, sizeof(void*));
       ctx->sampler_array_sizes[index] = glsl_get_aoa_size(var->type);
    }
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassUniformConstant,
-                                                   sampled_type);
+                                                   var_type);
 
    SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
                                          SpvStorageClassUniformConstant);
@@ -653,13 +749,23 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-   ctx->sampler_types[index] = image_type;
-   ctx->samplers[index] = var_id;
-   ctx->samplers_used |= 1 << index;
+   if (is_sampler) {
+      ctx->sampler_types[index] = image_type;
+      ctx->samplers[index] = var_id;
+      ctx->samplers_used |= 1 << index;
+   } else {
+      ctx->image_types[index] = image_type;
+      ctx->images[index] = var_id;
+      _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
+      uint32_t *key = ralloc_size(ctx->mem_ctx, sizeof(uint32_t));
+      *key = var_id;
+      _mesa_hash_table_insert(ctx->image_vars, key, var);
+      emit_access_decorations(ctx, var, var_id);
+   }
 
    spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
    int binding = zink_binding(ctx->stage,
-                              zink_sampler_type(type),
+                              is_sampler ? zink_sampler_type(type) : zink_image_type(type),
                               var->data.binding);
    spirv_builder_emit_binding(&ctx->builder, var_id, binding);
 }
@@ -774,8 +880,9 @@ emit_uniform(struct ntv_context *ctx, struct nir_variable *var)
       emit_ssbo(ctx, var);
    else {
       assert(var->data.mode == nir_var_uniform);
-      if (glsl_type_is_sampler(glsl_without_array(var->type)))
-         emit_sampler(ctx, var);
+      const struct glsl_type *type = glsl_without_array(var->type);
+      if (glsl_type_is_sampler(type) || glsl_type_is_image(type))
+         emit_image(ctx, var);
    }
 }
 
@@ -2961,6 +3068,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    ctx.vars = _mesa_hash_table_create(ctx.mem_ctx, _mesa_hash_pointer,
                                       _mesa_key_pointer_equal);
+
+   ctx.image_vars = _mesa_hash_table_create(ctx.mem_ctx, _mesa_hash_u32,
+                                      _mesa_key_u32_equal);
 
    ctx.so_outputs = _mesa_hash_table_create(ctx.mem_ctx, _mesa_hash_u32,
                                             _mesa_key_u32_equal);
