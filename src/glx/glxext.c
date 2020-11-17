@@ -261,10 +261,6 @@ glx_display_free(struct glx_display *priv)
    priv->driswDisplay = NULL;
 
 #if defined (GLX_USE_DRM)
-   if (priv->driDisplay)
-      (*priv->driDisplay->destroyDisplay) (priv->driDisplay);
-   priv->driDisplay = NULL;
-
    if (priv->dri2Display)
       (*priv->dri2Display->destroyDisplay) (priv->dri2Display);
    priv->dri2Display = NULL;
@@ -819,8 +815,6 @@ AllocAndFetchScreenConfigs(Display * dpy, struct glx_display * priv)
 #endif /* HAVE_DRI3 */
       if (psc == NULL && priv->dri2Display)
 	 psc = (*priv->dri2Display->createScreen) (i, priv);
-      if (psc == NULL && priv->driDisplay)
-	 psc = (*priv->driDisplay->createScreen) (i, priv);
 #endif /* GLX_USE_DRM */
 
 #ifdef GLX_USE_WINDOWSGL
@@ -928,7 +922,6 @@ __glXInitialize(Display * dpy)
 #endif /* HAVE_DRI3 */
       if (!env_var_as_boolean("LIBGL_DRI2_DISABLE", false))
          dpyPriv->dri2Display = dri2CreateDisplay(dpy);
-      dpyPriv->driDisplay = driCreateDisplay(dpy);
    }
 #endif /* GLX_USE_DRM */
    if (glx_direct)

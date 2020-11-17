@@ -1742,7 +1742,6 @@ endif
 
 dep_x11 = null_dep
 dep_xext = null_dep
-dep_xdamage = null_dep
 dep_xfixes = null_dep
 dep_x11_xcb = null_dep
 dep_xcb = null_dep
@@ -1768,7 +1767,6 @@ if with_platform_x11
   elif with_glx == 'dri'
     dep_x11 = dependency('x11')
     dep_xext = dependency('xext')
-    dep_xdamage = dependency('xdamage', version : '>= 1.1')
     dep_xfixes = dependency('xfixes', version : '>= 2.0')
     dep_xcb_glx = dependency('xcb-glx', version : '>= 1.8.1')
     dep_xcb_shm = dependency('xcb-shm')
@@ -1870,7 +1868,7 @@ if with_glx == 'xlib' or with_glx == 'gallium-xlib'
   gl_priv_reqs += ['x11', 'xext', 'xcb']
 elif with_glx == 'dri'
   gl_priv_reqs += [
-    'x11', 'xext', 'xdamage >= 1.1', 'xfixes', 'x11-xcb', 'xcb',
+    'x11', 'xext', 'xfixes', 'x11-xcb', 'xcb',
     'xcb-glx >= 1.8.1']
   if with_dri_platform == 'drm'
     gl_priv_reqs += 'xcb-dri2 >= 1.8'

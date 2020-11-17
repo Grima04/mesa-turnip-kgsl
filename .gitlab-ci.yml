@@ -237,7 +237,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-12-01-no-more-dri1"
 
 .use-x86_build-base:
   extends:
@@ -255,7 +255,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-12-01-no-more-dri1"
 
 .use-x86_build:
   variables:
@@ -269,7 +269,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &i386_build "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-12-01-no-more-dri1"
 
 .use-i386_build:
   variables:
@@ -283,7 +283,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-12-01-no-more-dri1"
 
 .use-ppc64el_build:
   variables:
@@ -297,7 +297,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &s390x_build "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &s390x_build "2020-12-01-no-more-dri1"
 
 .use-s390x_build:
   variables:
@@ -311,7 +311,7 @@ android_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &android_build "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &android_build "2020-12-01-no-more-dri1"
 
 .use-android_build:
   variables:
@@ -324,7 +324,7 @@ android_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-12-01-no-more-dri1"
 
 .use-x86_test-base:
   extends:
@@ -353,7 +353,7 @@ x86_test-vk:
 x86_build_old:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-12-01-no-more-dri1"
     FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:
@@ -369,7 +369,7 @@ arm_build:
     - .fdo.container-build@debian@aarch64
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-11-05-kmod"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-12-01-no-more-dri1"
 
 .use-arm_build:
   variables:
