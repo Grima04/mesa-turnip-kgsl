@@ -743,10 +743,10 @@ pandecode_texture_payload(mali_ptr payload,
                 if (manual_stride && (i & 1)) {
                         /* signed 32-bit snuck in as a 64-bit pointer */
                         uint64_t stride_set = pointers_and_strides[i];
-                        uint32_t clamped_stride = stride_set;
-                        int32_t stride = clamped_stride;
-                        assert(stride_set == clamped_stride);
-                        pandecode_log("(mali_ptr) %d /* stride */, \n", stride);
+                        int32_t line_stride = stride_set;
+                        int32_t surface_stride = stride_set >> 32;
+                        pandecode_log("(mali_ptr) %d /* surface stride */ %d /* line stride */, \n",
+                                      surface_stride, line_stride);
                 } else {
                         char *a = pointer_as_memory_reference(pointers_and_strides[i]);
                         pandecode_log("%s, \n", a);
