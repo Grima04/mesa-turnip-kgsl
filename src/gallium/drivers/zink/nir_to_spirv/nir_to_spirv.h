@@ -64,6 +64,18 @@ zink_sampler_type(const struct glsl_type *type)
    return 0;
 }
 
+static inline VkDescriptorType
+zink_image_type(const struct glsl_type *type)
+{
+   assert(glsl_type_is_image(type));
+   if (glsl_get_sampler_dim(type) < GLSL_SAMPLER_DIM_BUF || glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS)
+      return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+   if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF)
+      return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+   unreachable("unimplemented");
+   return 0;
+}
+
 struct nir_shader;
 
 bool
