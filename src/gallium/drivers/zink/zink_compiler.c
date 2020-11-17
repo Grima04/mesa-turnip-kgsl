@@ -500,8 +500,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          } else {
             assert(var->data.mode == nir_var_uniform);
             const struct glsl_type *type = glsl_without_array(var->type);
-            if (glsl_type_is_sampler(type)) {
-               VkDescriptorType vktype = zink_sampler_type(type);
+            if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {
+               VkDescriptorType vktype = glsl_type_is_image(type) ? zink_image_type(type) : zink_sampler_type(type);
                int binding = zink_binding(nir->info.stage,
                                           vktype,
                                           var->data.binding);
