@@ -2006,7 +2006,9 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                         break;
 
                 case nir_tex_src_lod:
-                        if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0) {
+                        if (desc.op == BIFROST_TEX_OP_TEX &&
+                            nir_src_is_const(instr->src[i].src) &&
+                            nir_src_as_uint(instr->src[i].src) == 0) {
                                 desc.lod_or_fetch = BIFROST_LOD_MODE_ZERO;
                         } else if (desc.op == BIFROST_TEX_OP_TEX) {
                                 assert(base == nir_type_float);
