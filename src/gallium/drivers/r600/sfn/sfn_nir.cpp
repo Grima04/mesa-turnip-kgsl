@@ -48,8 +48,10 @@ namespace r600 {
 using std::vector;
 
 ShaderFromNir::ShaderFromNir():sh(nullptr),
+   chip_class(CLASS_UNKNOWN),
    m_current_if_id(0),
-   m_current_loop_id(0)
+   m_current_loop_id(0),
+   scratch_size(0)
 {
 }
 
