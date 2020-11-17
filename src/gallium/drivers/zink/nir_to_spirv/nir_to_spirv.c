@@ -159,6 +159,37 @@ emit_access_decorations(struct ntv_context *ctx, nir_variable *var, SpvId var_id
     }
 }
 
+static SpvOp
+get_atomic_op(nir_intrinsic_op op)
+{
+   switch (op) {
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_image_deref_atomic_add:
+      return SpvOpAtomicIAdd;
+   case nir_intrinsic_image_deref_atomic_umin:
+      return SpvOpAtomicUMin;
+   case nir_intrinsic_image_deref_atomic_imin:
+      return SpvOpAtomicSMin;
+   case nir_intrinsic_image_deref_atomic_umax:
+      return SpvOpAtomicUMax;
+   case nir_intrinsic_image_deref_atomic_imax:
+      return SpvOpAtomicSMax;
+   case nir_intrinsic_image_deref_atomic_and:
+      return SpvOpAtomicAnd;
+   case nir_intrinsic_image_deref_atomic_or:
+      return SpvOpAtomicOr;
+   case nir_intrinsic_image_deref_atomic_xor:
+      return SpvOpAtomicXor;
+   case nir_intrinsic_image_deref_atomic_exchange:
+      return SpvOpAtomicExchange;
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+      return SpvOpAtomicCompareExchange;
+   default:
+      unreachable("unhandled atomic op");
+   }
+   return 0;
+}
+
 static SpvId
 emit_float_const(struct ntv_context *ctx, int bit_size, double value)
 {
@@ -1261,22 +1292,20 @@ emit_so_outputs(struct ntv_context *ctx,
 }
 
 static SpvId
-emit_atomic(struct ntv_context *ctx, SpvId op, SpvId type, SpvId src0, SpvId src1)
+emit_atomic(struct ntv_context *ctx, SpvId op, SpvId type, SpvId src0, SpvId src1, SpvId src2)
 {
-   if (!type) //AtomicStore
-      return spirv_builder_emit_triop(&ctx->builder, op, src0,
-                                      emit_uint_const(ctx, 32, SpvScopeWorkgroup),
-                                      emit_uint_const(ctx, 32, SpvMemorySemanticsUniformMemoryMask | SpvMemorySemanticsReleaseMask),
-                                      src1);
-   if (src1)
-      return spirv_builder_emit_quadop(&ctx->builder, op, type, src0,
-                                       emit_uint_const(ctx, 32, SpvScopeWorkgroup),
-                                       emit_uint_const(ctx, 32, SpvMemorySemanticsUniformMemoryMask | SpvMemorySemanticsReleaseMask),
-                                       src1);
-   //AtomicLoad
-   return spirv_builder_emit_triop(&ctx->builder, op, type, src0,
-                                   emit_uint_const(ctx, 32, SpvScopeWorkgroup),
-                                   emit_uint_const(ctx, 32, SpvMemorySemanticsUniformMemoryMask | SpvMemorySemanticsAcquireMask));
+   if (op == SpvOpAtomicLoad)
+      return spirv_builder_emit_triop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+                                       emit_uint_const(ctx, 32, 0));
+   if (op == SpvOpAtomicCompareExchange)
+      return spirv_builder_emit_hexop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+                                       emit_uint_const(ctx, 32, 0),
+                                       emit_uint_const(ctx, 32, 0),
+                                       /* these params are intentionally swapped */
+                                       src2, src1);
+
+   return spirv_builder_emit_quadop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+                                    emit_uint_const(ctx, 32, 0), src1);
 }
 
 static SpvId
@@ -1882,7 +1911,7 @@ emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                   ARRAY_SIZE(indices));
       /* load a single value into the constituents array */
       if (ssbo)
-         constituents[i] = emit_atomic(ctx, SpvOpAtomicLoad, uint_type, ptr, 0);
+         constituents[i] = emit_atomic(ctx, SpvOpAtomicLoad, uint_type, ptr, 0, 0);
       else
          constituents[i] = spirv_builder_emit_load(&ctx->builder, uint_type, ptr);
       /* increment to the next vec4 member index for the next load */
@@ -2196,9 +2225,17 @@ emit_interpolate(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+handle_atomic_op(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId ptr, SpvId param, SpvId param2)
+{
+   SpvId dest_type = get_dest_type(ctx, &intr->dest, nir_type_uint32);
+   SpvId result = emit_atomic(ctx, get_atomic_op(intr->intrinsic), dest_type, ptr, param, param2);
+   assert(result);
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
+}
+
+static void
 emit_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   SpvId result = 0;
    SpvId ssbo;
    SpvId param;
    SpvId dest_type = get_dest_type(ctx, &intr->dest, nir_type_uint32);
@@ -2226,17 +2263,7 @@ emit_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
                                                ssbo, indices,
                                                ARRAY_SIZE(indices));
-   switch (intr->intrinsic) {
-   case nir_intrinsic_ssbo_atomic_add:
-      result = emit_atomic(ctx, SpvOpAtomicIAdd, dest_type, ptr, param);
-      break;
-   default:
-      fprintf(stderr, "emit_atomic_intrinsic: not implemented (%s)\n",
-              nir_intrinsic_infos[intr->intrinsic].name);
-      unreachable("unsupported intrinsic");
-   }
-   assert(result);
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   handle_atomic_op(ctx, intr, ptr, param, 0);
 }
 
 static void
