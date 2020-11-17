@@ -2032,10 +2032,9 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                   if (phi->operands[idx].isTemp() &&
                       phi->operands[idx].getTemp().type() == RegType::sgpr &&
                       phi->operands[idx].isFirstKillBeforeDef()) {
-                     Temp phi_op = read_variable(ctx, phi->operands[idx].getTemp(), block.index);
-                     PhysReg reg = ctx.assignments[phi_op.id()].reg;
-                     assert(register_file[reg] == phi_op.id());
-                     register_file[reg] = 0;
+                     Definition phi_op(read_variable(ctx, phi->operands[idx].getTemp(), block.index));
+                     phi_op.setFixed(ctx.assignments[phi_op.tempId()].reg);
+                     register_file.clear(phi_op);
                   }
                } else if (phi->opcode != aco_opcode::p_linear_phi) {
                   break;
