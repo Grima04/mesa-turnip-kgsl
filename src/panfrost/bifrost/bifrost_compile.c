@@ -1608,7 +1608,7 @@ bi_emit_lod_cube(bi_context *ctx, unsigned lod)
                 .type = BI_SELECT,
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_int16,
-                .src = { lod, BIR_INDEX_ZERO },
+                .src = { lod ? : BIR_INDEX_ZERO, BIR_INDEX_ZERO },
                 .src_types = { nir_type_int16, nir_type_int16 },
         };
 
@@ -2057,6 +2057,9 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                         unreachable("Unhandled src type in texc emit");
                 }
         }
+
+        if (desc.op == BIFROST_TEX_OP_FETCH && !dregs[BIFROST_TEX_DREG_LOD])
+                dregs[BIFROST_TEX_DREG_LOD] = bi_emit_lod_cube(ctx, 0);
 
         /* Allocate data registers contiguously. Index must not be marked SSA
          * due to a quirk of RA for tied operands, could be fixed eventually */
