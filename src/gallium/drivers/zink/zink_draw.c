@@ -425,7 +425,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->xfb_barrier)
       zink_emit_xfb_counter_barrier(ctx);
 
-   if (ctx->dirty_so_targets)
+   if (ctx->dirty_so_targets && ctx->num_so_targets)
       zink_emit_stream_output_targets(pctx);
 
    if (so_target && zink_resource(so_target->base.buffer)->needs_xfb_barrier)
