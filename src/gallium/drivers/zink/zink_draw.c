@@ -354,13 +354,9 @@ zink_draw_vbo(struct pipe_context *pctx,
             } else if (res->base.target == PIPE_BUFFER)
                wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
             else {
-               VkImageLayout layout = res->layout;
-               if (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL &&
-                   layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+               if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                   transitions[num_transitions++] = res;
-                  layout = VK_IMAGE_LAYOUT_GENERAL;
-               }
-               image_infos[num_image_info].imageLayout = layout;
+               image_infos[num_image_info].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                image_infos[num_image_info].imageView = sampler_view->image_view;
                image_infos[num_image_info].sampler = ctx->samplers[i][index];
                wds[num_wds].pImageInfo = image_infos + num_image_info;
@@ -385,7 +381,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       for (int i = 0; i < num_transitions; ++i)
          zink_resource_barrier(batch->cmdbuf, transitions[i],
                                transitions[i]->aspect,
-                               VK_IMAGE_LAYOUT_GENERAL);
+                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
    }
 
    if (ctx->xfb_barrier)
