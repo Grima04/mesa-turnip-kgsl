@@ -46,8 +46,8 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 {
 	enum a6xx_state_block sb = fd6_stage2shadersb(so->type);
 
-	uint32_t obj_start;
-	uint32_t instrlen;
+	uint32_t obj_start = 0;
+	uint32_t instrlen = 0;
 
 	switch (so->type) {
 	case MESA_SHADER_VERTEX:
