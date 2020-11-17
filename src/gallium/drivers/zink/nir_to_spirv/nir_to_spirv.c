@@ -3265,6 +3265,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
       if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                       SpvExecutionModeDepthReplacing);
+      if (s->info.fs.early_fragment_tests)
+         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeEarlyFragmentTests);
       break;
    case MESA_SHADER_TESS_CTRL:
       spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point, SpvExecutionModeOutputVertices, s->info.tess.tcs_vertices_out);
