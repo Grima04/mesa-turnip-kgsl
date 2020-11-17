@@ -1603,18 +1603,26 @@ bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
 static unsigned
 bi_emit_lod_cube(bi_context *ctx, unsigned lod)
 {
-        /* MKVEC.v2i16 out, lod.h0, #0 */
-        bi_instruction mkvec = {
-                .type = BI_SELECT,
+        bi_instruction or = {
+                .type = BI_BITWISE,
+                .op.bitwise = BI_BITWISE_OR,
                 .dest = bi_make_temp(ctx),
-                .dest_type = nir_type_int16,
-                .src = { lod ? : BIR_INDEX_ZERO, BIR_INDEX_ZERO },
-                .src_types = { nir_type_int16, nir_type_int16 },
+                .dest_type = nir_type_uint32,
+                .src = {
+                        lod ? : BIR_INDEX_ZERO,
+                        BIR_INDEX_ZERO,
+                        BIR_INDEX_CONSTANT | 0,
+                },
+                .src_types = {
+                       nir_type_uint32,
+                       nir_type_uint32,
+                       nir_type_uint8,
+                },
+                .constant.u8[0] = 8,
         };
 
-        bi_emit(ctx, mkvec);
-
-        return mkvec.dest;
+        bi_emit(ctx, or);
+        return or.dest;
 }
 
 /* The hardware specifies texel offsets and multisample indices together as a
