@@ -268,7 +268,7 @@ bool ShaderFromNir::process_declaration()
    // scan declarations
    nir_foreach_shader_in_variable(variable, sh) {
       if (!impl->process_inputs(variable)) {
-         fprintf(stderr, "R600: error parsing input varible %s\n", variable->name);
+         fprintf(stderr, "R600: error parsing input variable %s\n", variable->name);
          return false;
       }
    }
@@ -276,7 +276,7 @@ bool ShaderFromNir::process_declaration()
    // scan declarations
    nir_foreach_shader_out_variable(variable, sh) {
       if (!impl->process_outputs(variable)) {
-         fprintf(stderr, "R600: error parsing outputs varible %s\n", variable->name);
+         fprintf(stderr, "R600: error parsing outputs variable %s\n", variable->name);
          return false;
       }
    }
@@ -286,7 +286,7 @@ bool ShaderFromNir::process_declaration()
                                                  nir_var_mem_ubo |
                                                  nir_var_mem_ssbo) {
       if (!impl->process_uniforms(variable)) {
-         fprintf(stderr, "R600: error parsing outputs varible %s\n", variable->name);
+         fprintf(stderr, "R600: error parsing outputs variable %s\n", variable->name);
          return false;
       }
    }
