@@ -1094,6 +1094,129 @@ zink_fence_wait(struct pipe_context *pctx)
 }
 
 static void
+zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   VkAccessFlags sflags = 0;
+   VkAccessFlags dflags = 0;
+   VkPipelineStageFlags src = 0;
+   VkPipelineStageFlags dst = 0;
+
+   VkPipelineStageFlags all_flags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                                    VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+                                    VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+                                    VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
+                                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+   if (flags == PIPE_BARRIER_ALL) {
+      sflags = dflags = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+      src = dst = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+   } else {
+      while (flags) {
+         unsigned flag = u_bit_scan(&flags);
+         
+         switch (1 << flag) {
+         case PIPE_BARRIER_MAPPED_BUFFER:
+            sflags |= VK_ACCESS_SHADER_WRITE_BIT;
+            dflags |= VK_ACCESS_TRANSFER_READ_BIT;
+            break;
+         case PIPE_BARRIER_SHADER_BUFFER:
+            sflags |= VK_ACCESS_SHADER_WRITE_BIT;
+            dflags |= VK_ACCESS_SHADER_READ_BIT;
+            src |= all_flags;
+            dst |= all_flags;
+            break;
+         case PIPE_BARRIER_QUERY_BUFFER:
+            sflags |= VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+            dflags |= VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+                      VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+            break;
+         case PIPE_BARRIER_VERTEX_BUFFER:
+            sflags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+            dflags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+            src |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+            dst |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+            break;
+         case PIPE_BARRIER_INDEX_BUFFER:
+            sflags |= VK_ACCESS_INDEX_READ_BIT;
+            dflags |= VK_ACCESS_INDEX_READ_BIT;
+            src |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+            dst |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+            break;
+         case PIPE_BARRIER_CONSTANT_BUFFER:
+            sflags |= VK_ACCESS_UNIFORM_READ_BIT;
+            dflags |= VK_ACCESS_UNIFORM_READ_BIT;
+            src |= all_flags;
+            dst |= all_flags;
+            break;
+         case PIPE_BARRIER_INDIRECT_BUFFER:
+            sflags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+            dflags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+            src |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+            dst |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+            break;
+         case PIPE_BARRIER_TEXTURE:
+            sflags |= VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+            dflags |= VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+            src |= all_flags;
+            dst |= all_flags;
+            break;
+         case PIPE_BARRIER_IMAGE:
+            sflags |= VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+            dflags |= VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
+            src |= all_flags;
+            dst |= all_flags;
+            break;
+         case PIPE_BARRIER_FRAMEBUFFER:
+            sflags |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            dflags |= VK_ACCESS_INPUT_ATTACHMENT_READ_BIT |
+                      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            src |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            dst |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            break;
+         case PIPE_BARRIER_STREAMOUT_BUFFER:
+            sflags |= VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
+            dflags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+            src |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+            dst |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+            break;
+         case PIPE_BARRIER_GLOBAL_BUFFER:
+            debug_printf("zink: unhandled barrier flag %u\n", flag);
+            break;
+         case PIPE_BARRIER_UPDATE_BUFFER:
+            sflags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+            dflags |= VK_ACCESS_TRANSFER_READ_BIT;
+            src |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+            dst |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+            break;
+         case PIPE_BARRIER_UPDATE_TEXTURE:
+            sflags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+            dflags |= VK_ACCESS_TRANSFER_READ_BIT;
+            src |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+            dst |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+            break;
+         }
+      }
+   }
+   VkMemoryBarrier b = {};
+   b.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   /* TODO: these are all probably wrong */
+   b.srcAccessMask = sflags;
+   b.dstAccessMask = dflags;
+
+   struct zink_batch *batch = zink_curr_batch(ctx);
+   if (batch->has_draw) {
+      zink_end_render_pass(ctx, batch);
+
+      /* this should be the only call needed */
+      vkCmdPipelineBarrier(batch->cmdbuf, src, dst, 0, 0, &b, 0, NULL, 0, NULL);
+      flush_batch(ctx);
+   }
+}
+
+static void
 zink_flush_resource(struct pipe_context *pipe,
                     struct pipe_resource *resource)
 {
@@ -1294,6 +1417,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.draw_vbo = zink_draw_vbo;
    ctx->base.flush = zink_flush;
+   ctx->base.memory_barrier = zink_memory_barrier;
 
    ctx->base.resource_copy_region = zink_resource_copy_region;
    ctx->base.blit = zink_blit;
