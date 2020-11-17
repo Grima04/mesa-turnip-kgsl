@@ -48,7 +48,7 @@ libintel_common = static_library(
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   link_with : [libisl],
-  dependencies : [dep_expat, dep_libdrm, dep_thread, idep_genxml],
+  dependencies : [dep_expat, dep_libdrm, dep_thread, idep_genxml, idep_mesautil],
 )
 
 libintel_extra_dependencies = []

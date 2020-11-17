@@ -240,7 +240,12 @@ libfreedreno = static_library(
   c_args : [freedreno_c_args],
   cpp_args : [freedreno_cpp_args],
   gnu_symbol_visibility : 'hidden',
-  dependencies : [dep_libdrm, idep_nir_headers, idep_libfreedreno_common],
+  dependencies : [
+    dep_libdrm,
+    idep_mesautil,
+    idep_nir_headers,
+    idep_libfreedreno_common
+  ],
 )
 
 driver_freedreno = declare_dependency(

@@ -145,7 +145,7 @@ libintel_compiler = static_library(
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
-  dependencies : idep_nir_headers,
+  dependencies : [idep_nir_headers, idep_mesautil],
   build_by_default : false,
 )
 

@@ -60,6 +60,7 @@ libglcpp_standalone = static_library(
   'glcpp_standalone',
   'pp_standalone_scaffolding.c',
   link_with : libglcpp,
+  dependencies : idep_mesautil,
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   c_args : [no_override_init_args, c_msvc_compat_args, _extra_args],
   cpp_args : [cpp_msvc_compat_args, _extra_args],

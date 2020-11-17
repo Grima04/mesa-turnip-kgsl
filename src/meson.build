@@ -35,6 +35,7 @@ libglsl_util = static_library(
     'mesa/program/dummy_errors.c',
   ),
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+  dependencies : dep_valgrind,
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
 )

@@ -107,7 +107,7 @@ test(
     include_directories : [
       inc_amd, inc_gallium, inc_include, inc_src,
     ],
-    dependencies: [idep_amdgfxregs_h, dep_libdrm_amdgpu],
+    dependencies: [idep_amdgfxregs_h, dep_libdrm_amdgpu, idep_mesautil],
   ),
   suite: ['amd']
 )

@@ -62,6 +62,7 @@ foreach g : [['40', isl_gen4_files], ['50', []], ['60', isl_gen6_files],
     'isl_gen@0@'.format(_gen),
     [g[1], isl_gen_files, gen_xml_pack],
     include_directories : [inc_include, inc_src, inc_gallium, inc_intel],
+    dependencies : idep_mesautil,
     c_args : [
       no_override_init_args,
       '-DGEN_VERSIONx10=@0@'.format(_gen)
@@ -91,6 +92,7 @@ isl_tiled_memcpy = static_library(
   include_directories : [
     inc_include, inc_src, inc_mesa, inc_gallium, inc_intel,
   ],
+  dependencies : idep_mesautil,
   c_args : [no_override_init_args, '-msse2'],
   gnu_symbol_visibility : 'hidden',
   extra_files : ['isl_tiled_memcpy.c']
@@ -103,6 +105,7 @@ if with_sse41
     include_directories : [
       inc_include, inc_src, inc_mesa, inc_gallium, inc_intel,
     ],
+    dependencies : idep_mesautil,
     link_args : ['-Wl,--exclude-libs=ALL'],
     c_args : [no_override_init_args, '-msse2', sse41_args],
     gnu_symbol_visibility : 'hidden',
@@ -128,6 +131,7 @@ libisl = static_library(
   [libisl_files, isl_format_layout_c, genX_bits_h],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel],
   link_with : [isl_gen_libs, isl_tiled_memcpy, isl_tiled_memcpy_sse41],
+  dependencies : idep_mesautil,
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
 )
