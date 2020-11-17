@@ -155,7 +155,7 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
         unsigned total_size = (FRAG_RESULT_DATA7 * PAN_BLIT_NUM_TYPES) * (8 * 16) * 2;
 
         if (is_bifrost)
-                total_size *= 2;
+                total_size *= 4;
 
         dev->blit_shaders.bo = panfrost_bo_create(dev, total_size, PAN_BO_EXECUTE);
 
