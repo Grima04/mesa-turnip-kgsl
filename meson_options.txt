@@ -290,6 +290,12 @@ option(
   description : 'Build support for the Microsoft CLC to DXIL compiler'
 )
 option(
+  'glvnd-vendor-name',
+  type : 'string',
+  value : 'mesa',
+  description : 'Vendor name string to use for glvnd libraries'
+)
+option(
    'glx-read-only-text',
    type : 'boolean',
    value : false,

@@ -478,6 +478,7 @@ if with_glx != 'disabled'
 endif
 
 with_glvnd = get_option('glvnd')
+glvnd_vendor_name = get_option('glvnd-vendor-name')
 if with_glvnd
   if with_platform_windows
     error('glvnd cannot be used on Windows')
