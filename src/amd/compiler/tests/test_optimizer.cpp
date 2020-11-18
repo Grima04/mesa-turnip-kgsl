@@ -300,22 +300,28 @@ BEGIN_TEST(optimize.cndmask)
 END_TEST
 
 BEGIN_TEST(optimize.add_lshl)
-   for (unsigned i = GFX9; i <= GFX10; i++) {
+   for (unsigned i = GFX8; i <= GFX10; i++) {
       //>> s1: %a, v1: %b, s2: %_:exec = p_startpgm
       if (!setup_cs("s1 v1", (chip_class)i))
          continue;
 
       Temp shift;
 
-      //! s1: %res0, s1: %_:scc = s_lshl3_add_u32 %a, 4
+      //~gfx8! s1: %lshl0, s1: %_:scc = s_lshl_b32 %a, 3
+      //~gfx8! s1: %res0, s1: %_:scc = s_add_u32 %lshl0, 4
+      //~gfx(9|10)! s1: %res0, s1: %_:scc = s_lshl3_add_u32 %a, 4
       //! p_unit_test 0, %res0
       shift = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
                        Operand(inputs[0]), Operand(3u));
       writeout(0, bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), shift, Operand(4u)));
 
-      //! s1: %lshl1, s1: %_:scc = s_lshl3_add_u32 %a, 4
-      //! v1: %lshl_add = v_lshl_add_u32 %a, 3, %b
-      //! v1: %res1 = v_add_u32 %lshl1, %lshl_add
+      //~gfx8! s1: %lshl1, s1: %_:scc = s_lshl_b32 %a, 3
+      //~gfx8! s1: %add1, s1: %_:scc = s_add_u32 %lshl1, 4
+      //~gfx8! v1: %add_co1, s2: %_ = v_add_co_u32 %lshl1, %b
+      //~gfx8! v1: %res1, s2: %_ = v_add_co_u32 %add1, %add_co1
+      //~gfx(9|10)! s1: %lshl1, s1: %_:scc = s_lshl3_add_u32 %a, 4
+      //~gfx(9|10)! v1: %lshl_add = v_lshl_add_u32 %a, 3, %b
+      //~gfx(9|10)! v1: %res1 = v_add_u32 %lshl1, %lshl_add
       //! p_unit_test 1, %res1
       shift = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
                        Operand(inputs[0]), Operand(3u));
