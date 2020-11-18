@@ -401,7 +401,7 @@ panfrost_new_texture(
                 cfg.dimension = dim;
                 cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
                 cfg.manual_stride = manual_stride;
-                cfg.levels = last_level - first_level;
+                cfg.levels = last_level - first_level + 1;
                 cfg.swizzle = swizzle;
         };
 
@@ -480,14 +480,14 @@ panfrost_new_texture_bifrost(
                         cfg.sample_count = MAX2(nr_samples, 1);
                 cfg.swizzle = swizzle;
                 cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
-                cfg.levels = last_level - first_level;
+                cfg.levels = last_level - first_level + 1;
                 cfg.array_size = array_size;
                 cfg.surfaces = payload->gpu;
 
                 /* We specify API-level LOD clamps in the sampler descriptor
                  * and use these clamps simply for bounds checking */
                 cfg.minimum_lod = FIXED_16(0, false);
-                cfg.maximum_lod = FIXED_16(cfg.levels, false);
+                cfg.maximum_lod = FIXED_16(cfg.levels - 1, false);
         }
 }
 

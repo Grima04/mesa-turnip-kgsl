@@ -719,7 +719,7 @@ pandecode_texture_payload(mali_ptr payload,
          * properties, but dump extra
          * possibilities to futureproof */
 
-        int bitmap_count = levels + 1;
+        int bitmap_count = levels;
 
         /* Miptree for each face */
         if (dim == MALI_TEXTURE_DIMENSION_CUBE)

@@ -680,7 +680,7 @@
     <field name="Texel ordering" size="4" start="2:24" type="Texture Layout"/>
     <field name="Unknown" size="1" start="2:28" type="bool" default="true"/>
     <field name="Manual stride" size="1" start="2:29" type="bool" default="false"/>
-    <field name="Levels" size="8" start="3:24" type="uint"/>
+    <field name="Levels" size="8" start="3:24" type="uint" modifier="minus(1)" default="1"/>
     <field name="Swizzle" size="12" start="4:0" type="uint"/>
   </struct>
 
@@ -723,7 +723,7 @@
     <field name="Height" size="16" start="1:16" type="uint" modifier="minus(1)"/>
     <field name="Swizzle" size="12" start="2:0" type="uint"/>
     <field name="Texel ordering" size="4" start="2:12" type="Texture Layout"/>
-    <field name="Levels" size="5" start="2:16" type="uint"/>
+    <field name="Levels" size="5" start="2:16" type="uint" default="1" modifier="minus(1)"/>
     <field name="Minimum level" size="5" start="2:24" type="uint"/>
     <field name="Minimum LOD" size="13" start="3:0" type="uint" default="0"/>
     <field name="Sample count" size="3" start="3:13" type="uint" default="1" modifier="log2"/>
