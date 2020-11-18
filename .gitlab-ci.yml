@@ -479,28 +479,10 @@ make git archive:
 
 
 # Sanity checks of MR settings and commit logs
-.sanity-check:
+sanity:
   extends:
     - .fdo.ci-fairy
   stage: sanity
-  artifacts:
-    when: on_failure
-    reports:
-      junit: check-*.xml
-
-check mr:
-  extends: .sanity-check
-  rules:
-    - if: *is-pre-merge
-      when: on_success
-    # Other cases default to never
-  variables:
-    GIT_STRATEGY: none
-  script:
-    - ci-fairy check-merge-request --require-allow-collaboration --junit-xml=check-merge-request.xml
-
-.check commits:
-  extends: .sanity-check
   rules:
     - if: *is-pre-merge
       when: on_success
@@ -509,6 +491,13 @@ check mr:
     # Other cases default to never
   script:
     - ci-fairy check-commits --junit-xml=check-commits.xml
+    # ci-fairy check-merge-request only works in pre-merge pipelines for MRs
+    - if test "x$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" != "x$CI_COMMIT_REF_NAME"; then exit 0; fi
+    - ci-fairy check-merge-request --require-allow-collaboration --junit-xml=check-merge-request.xml
+  artifacts:
+    when: on_failure
+    reports:
+      junit: check-*.xml
 
 
 # BUILD
