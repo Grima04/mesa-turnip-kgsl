@@ -1657,8 +1657,6 @@ else
   asan_c_args = ['-DBUILT_WITH_ASAN=0']
 endif
 
-# pthread stubs. Lets not and say we didn't
-
 if host_machine.system() == 'windows'
   # Prefer the winflexbison versions, they're much easier to install and have
   # better windows support.
