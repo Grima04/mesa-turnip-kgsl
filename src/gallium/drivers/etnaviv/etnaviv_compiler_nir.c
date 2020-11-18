@@ -183,13 +183,13 @@ copy_uniform_state_to_shader(struct etna_shader_variant *sobj, uint64_t *consts,
 {
    struct etna_shader_uniform_info *uinfo = &sobj->uniforms;
 
-   uinfo->imm_count = count * 4;
-   uinfo->imm_data = MALLOC(uinfo->imm_count * sizeof(*uinfo->imm_data));
-   uinfo->imm_contents = MALLOC(uinfo->imm_count * sizeof(*uinfo->imm_contents));
+   uinfo->count = count * 4;
+   uinfo->data = MALLOC(uinfo->count * sizeof(*uinfo->data));
+   uinfo->contents = MALLOC(uinfo->count * sizeof(*uinfo->contents));
 
-   for (unsigned i = 0; i < uinfo->imm_count; i++) {
-      uinfo->imm_data[i] = consts[i];
-      uinfo->imm_contents[i] = consts[i] >> 32;
+   for (unsigned i = 0; i < uinfo->count; i++) {
+      uinfo->data[i] = consts[i];
+      uinfo->contents[i] = consts[i] >> 32;
    }
 
    etna_set_shader_uniforms_dirty_flags(sobj);
@@ -992,9 +992,9 @@ etna_compile_check_limits(struct etna_shader_variant *v)
       return false;
    }
 
-   if (v->uniforms.imm_count / 4 > max_uniforms) {
+   if (v->uniforms.count / 4 > max_uniforms) {
       DBG("Number of uniforms (%d) exceeds maximum %d",
-          v->uniforms.imm_count / 4, max_uniforms);
+          v->uniforms.count / 4, max_uniforms);
       return false;
    }
 

@@ -2290,17 +2290,17 @@ copy_uniform_state_to_shader(struct etna_compile *c, struct etna_shader_variant 
    uint32_t count = c->imm_base + c->imm_size;
    struct etna_shader_uniform_info *uinfo = &sobj->uniforms;
 
-   uinfo->imm_count = count;
+   uinfo->count = count;
 
-   uinfo->imm_data = malloc(count * sizeof(*c->imm_data));
+   uinfo->data = malloc(count * sizeof(*c->imm_data));
    for (unsigned i = 0; i < c->imm_base; i++)
-      uinfo->imm_data[i] = i;
-   memcpy(&uinfo->imm_data[c->imm_base], c->imm_data, c->imm_size * sizeof(*c->imm_data));
+      uinfo->data[i] = i;
+   memcpy(&uinfo->data[c->imm_base], c->imm_data, c->imm_size * sizeof(*c->imm_data));
 
-   uinfo->imm_contents = malloc(count * sizeof(*c->imm_contents));
+   uinfo->contents = malloc(count * sizeof(*c->imm_contents));
    for (unsigned i = 0; i < c->imm_base; i++)
-      uinfo->imm_contents[i] = ETNA_UNIFORM_UNIFORM;
-   memcpy(&uinfo->imm_contents[c->imm_base], c->imm_contents, c->imm_size * sizeof(*c->imm_contents));
+      uinfo->contents[i] = ETNA_UNIFORM_UNIFORM;
+   memcpy(&uinfo->contents[c->imm_base], c->imm_contents, c->imm_size * sizeof(*c->imm_contents));
 
    etna_set_shader_uniforms_dirty_flags(sobj);
 }

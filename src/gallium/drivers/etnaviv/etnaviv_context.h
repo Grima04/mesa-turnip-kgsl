@@ -101,9 +101,9 @@ enum etna_uniform_contents {
 };
 
 struct etna_shader_uniform_info {
-   enum etna_uniform_contents *imm_contents;
-   uint32_t *imm_data;
-   uint32_t imm_count;
+   enum etna_uniform_contents *contents;
+   uint32_t *data;
+   uint32_t count;
 };
 
 struct etna_context {
