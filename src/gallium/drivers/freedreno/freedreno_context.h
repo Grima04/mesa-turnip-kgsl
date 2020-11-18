@@ -199,7 +199,7 @@ struct fd_context {
 	 * case, with batch reordering where a ctxB batch triggers flushing
 	 * a ctxA batch
 	 */
-	mtx_t gmem_lock;
+	simple_mtx_t gmem_lock;
 
 	struct fd_device *dev;
 	struct fd_screen *screen;

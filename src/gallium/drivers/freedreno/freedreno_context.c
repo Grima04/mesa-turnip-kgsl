@@ -342,7 +342,7 @@ fd_context_destroy(struct pipe_context *pctx)
 	fd_device_del(ctx->dev);
 	fd_pipe_del(ctx->pipe);
 
-	mtx_destroy(&ctx->gmem_lock);
+	simple_mtx_destroy(&ctx->gmem_lock);
 
 	if (fd_mesa_debug & (FD_DBG_BSTAT | FD_DBG_MSGS)) {
 		printf("batch_total=%u, batch_sysmem=%u, batch_gmem=%u, batch_nondraw=%u, batch_restore=%u\n",
@@ -506,7 +506,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 		if (primtypes[i])
 			ctx->primtype_mask |= (1 << i);
 
-	(void) mtx_init(&ctx->gmem_lock, mtx_plain);
+	simple_mtx_init(&ctx->gmem_lock, mtx_plain);
 
 	/* need some sane default in case gallium frontends don't
 	 * set some state:

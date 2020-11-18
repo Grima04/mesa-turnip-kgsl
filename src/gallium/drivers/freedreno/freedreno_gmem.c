@@ -577,7 +577,7 @@ render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 	struct fd_context *ctx = batch->ctx;
 	int i;
 
-	mtx_lock(&ctx->gmem_lock);
+	simple_mtx_lock(&ctx->gmem_lock);
 
 	ctx->emit_tile_init(batch);
 
@@ -619,7 +619,7 @@ render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 	if (ctx->emit_tile_fini)
 		ctx->emit_tile_fini(batch);
 
-	mtx_unlock(&ctx->gmem_lock);
+	simple_mtx_unlock(&ctx->gmem_lock);
 }
 
 static void
