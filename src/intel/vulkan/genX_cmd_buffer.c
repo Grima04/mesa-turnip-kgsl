@@ -5087,16 +5087,15 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       info.hiz_usage = cmd_buffer->state.attachments[ds].aux_usage;
       if (info.hiz_usage != ISL_AUX_USAGE_NONE) {
          assert(isl_aux_usage_has_hiz(info.hiz_usage));
-
-         struct anv_address hiz_addr =
-            anv_image_get_aux_addr(device, image, depth_plane);
-
          info.hiz_surf = &image->planes[depth_plane].aux_surface.isl;
+
          info.hiz_address =
             anv_batch_emit_reloc(&cmd_buffer->batch,
                                  dw + device->isl_dev.ds.hiz_offset / 4,
-                                 hiz_addr.bo,
-                                 hiz_addr.offset);
+                                 image->planes[depth_plane].address.bo,
+                                 image->planes[depth_plane].address.offset +
+                                 image->planes[depth_plane].aux_surface.offset);
+
          info.depth_clear_value = ANV_HZ_FC_VAL;
       }
    }
