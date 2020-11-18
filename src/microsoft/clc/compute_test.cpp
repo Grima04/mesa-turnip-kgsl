@@ -557,8 +557,8 @@ ComputeTest::run_shader_with_raw_args(Shader shader,
       }
    }
 
-   if (dxil->metadata.printf_uav_id > 0)
-      add_uav_resource(resources, 0, dxil->metadata.printf_uav_id, NULL, 1024 * 1024 / 4, 4);
+   if (dxil->metadata.printf.uav_id > 0)
+      add_uav_resource(resources, 0, dxil->metadata.printf.uav_id, NULL, 1024 * 1024 / 4, 4);
 
    for (unsigned i = 0; i < dxil->metadata.num_consts; ++i)
       add_uav_resource(resources, 0, dxil->metadata.consts[i].uav_id,
