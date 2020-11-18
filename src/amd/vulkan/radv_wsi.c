@@ -63,6 +63,7 @@ radv_init_wsi(struct radv_physical_device *physical_device)
 	if (result != VK_SUCCESS)
 		return result;
 
+	physical_device->wsi_device.supports_modifiers = physical_device->rad_info.chip_class >= GFX9;
 	physical_device->wsi_device.set_memory_ownership = radv_wsi_set_memory_ownership;
 	return VK_SUCCESS;
 }
