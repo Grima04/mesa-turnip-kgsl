@@ -3235,7 +3235,9 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    /* Mark SCC needed, so the uniform boolean transformation won't swap the definitions when it isn't beneficial */
    if (instr->format == Format::PSEUDO_BRANCH &&
        instr->operands.size() &&
-       instr->operands[0].isTemp()) {
+       instr->operands[0].isTemp() &&
+       instr->operands[0].isFixed() &&
+       instr->operands[0].physReg() == scc) {
       ctx.info[instr->operands[0].tempId()].set_scc_needed();
       return;
    } else if ((instr->opcode == aco_opcode::s_cselect_b64 ||
