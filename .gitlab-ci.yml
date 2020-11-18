@@ -7,7 +7,7 @@ variables:
 
 include:
   - project: 'freedesktop/ci-templates'
-    ref: 52dd4a94044449c8481d18dcdc221a3c636366d2
+    ref: 43ac932d5b8ebf43040d302de3c6e734df178384
     file:
       - '/templates/debian.yml'
       - '/templates/alpine.yml'
@@ -377,7 +377,7 @@ x86_build_old:
 # Debian 10 based ARM build image
 arm_build:
   extends:
-    - .fdo.container-build@debian@arm64v8
+    - .fdo.container-build@debian@aarch64
     - .container
   variables:
     FDO_DISTRIBUTION_TAG: &arm_build "2020-11-05-kmod"
