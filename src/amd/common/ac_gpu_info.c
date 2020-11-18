@@ -468,9 +468,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->family_id = amdinfo->family_id;
    info->chip_external_rev = amdinfo->chip_external_rev;
    info->marketing_name = amdgpu_get_marketing_name(dev);
-   info->is_pro_graphics = info->marketing_name && (!strstr(info->marketing_name, "Pro") ||
-                                                    !strstr(info->marketing_name, "PRO") ||
-                                                    !strstr(info->marketing_name, "Frontier"));
+   info->is_pro_graphics = info->marketing_name && (strstr(info->marketing_name, "Pro") ||
+                                                    strstr(info->marketing_name, "PRO") ||
+                                                    strstr(info->marketing_name, "Frontier"));
 
    /* Set which chips have dedicated VRAM. */
    info->has_dedicated_vram = !(amdinfo->ids_flags & AMDGPU_IDS_FLAGS_FUSION);
