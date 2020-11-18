@@ -15,9 +15,9 @@ include:
   - local: '.gitlab-ci/test-source-dep.yml'
 
 stages:
+  - sanity
   - container
   - container-2
-  - sanity
   - git-archive
   - deploy
   - meson-x86_64
@@ -269,7 +269,6 @@ x86_build:
   image: "$CI_REGISTRY_IMAGE/debian/x86_build:$TAG"
   needs:
     - x86_build
-    - check mr
 
 # Debian 10 based i386 cross-build image
 i386_build:
@@ -284,7 +283,6 @@ i386_build:
   image: "$CI_REGISTRY_IMAGE/debian/i386_build:$TAG"
   needs:
     - i386_build
-    - check mr
 
 # Debian 10 based ppc64el cross-build image
 ppc64el_build:
@@ -299,7 +297,6 @@ ppc64el_build:
   image: "$CI_REGISTRY_IMAGE/debian/ppc64el_build:$TAG"
   needs:
     - ppc64el_build
-    - check mr
 
 # Debian 10 based s390x cross-build image
 s390x_build:
@@ -314,7 +311,6 @@ s390x_build:
   image: "$CI_REGISTRY_IMAGE/debian/s390x_build:$TAG"
   needs:
     - s390x_build
-    - check mr
 
 # Android NDK cross-build image
 android_build:
@@ -329,7 +325,6 @@ android_build:
   image: "$CI_REGISTRY_IMAGE/debian/android_build:$TAG"
   needs:
     - android_build
-    - check mr
 
 # Debian 10 based x86 test image base
 x86_test-base:
@@ -373,7 +368,6 @@ x86_build_old:
   image: "$CI_REGISTRY_IMAGE/debian/x86_build_old:$TAG"
   needs:
     - x86_build_old
-    - check mr
 
 # Debian 10 based ARM build image
 arm_build:
@@ -461,7 +455,6 @@ windows_build_vs2019:
   image: "$WINDOWS_IMAGE"
   needs:
     - windows_build_vs2019
-    - check mr
 
 
 # Git archive
@@ -498,17 +491,12 @@ make git archive:
 check mr:
   extends: .sanity-check
   rules:
-    - *ignore_scheduled_pipelines
     - if: *is-pre-merge
-      when: on_success
-    - changes: *all_paths
       when: on_success
     # Other cases default to never
   variables:
     GIT_STRATEGY: none
   script:
-    # Only run checks in pre-merge pipelines for MRs
-    - if test "x$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" != "x$CI_COMMIT_REF_NAME"; then exit 0; fi
     - ci-fairy check-merge-request --require-allow-collaboration --junit-xml=check-merge-request.xml
 
 .check commits:
@@ -767,7 +755,6 @@ meson-android:
     - .use-arm_build
   needs:
     - arm_build
-    - check mr
   variables:
     VULKAN_DRIVERS: freedreno,broadcom
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4"
