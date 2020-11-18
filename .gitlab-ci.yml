@@ -9,8 +9,8 @@ include:
   - project: 'freedesktop/ci-templates'
     ref: 43ac932d5b8ebf43040d302de3c6e734df178384
     file:
+      - '/templates/ci-fairy.yml'
       - '/templates/debian.yml'
-      - '/templates/alpine.yml'
   - local: '.gitlab-ci/lava-gitlab-ci.yml'
   - local: '.gitlab-ci/test-source-dep.yml'
 
@@ -71,10 +71,11 @@ stages:
 
 
 .docs-base:
-  extends: .ci-run-policy
-  image: alpine
+  extends:
+    - .fdo.ci-fairy
+    - .ci-run-policy
   script:
-  - apk --no-cache add py3-pip graphviz
+  - apk --no-cache add graphviz
   - pip3 install sphinx sphinx_rtd_theme
   - sphinx-build -b html docs public
 
@@ -462,40 +463,12 @@ windows_build_vs2019:
     - windows_build_vs2019
     - check mr
 
-git_archive:
-  extends: .fdo.container-build@alpine
-  stage: container
-  rules:
-    - if: *is-scheduled-pipeline
-      when: always
-    - if: *is-pre-merge
-      when: on_success
-    - changes: *all_paths
-      when: on_success
-    - if: *is-forked-branch
-      when: manual
-    # Other cases default to never
-  variables:
-    FDO_REPO_SUFFIX: &git-archive-suffix "alpine/git_archive"
-    FDO_DISTRIBUTION_EXEC: 'pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@6f5af7e5574509726c79109e3c147cee95e81366'
-    # no need to pull the whole repo to build the container image
-    GIT_STRATEGY: none
-    FDO_DISTRIBUTION_TAG: &git-archive-tag "2020-07-07"
-    FDO_DISTRIBUTION_PACKAGES: git py3-pip
-
-.use-git_archive:
-  extends: .fdo.suffixed-image@alpine
-  variables:
-    FDO_DISTRIBUTION_TAG: *git-archive-tag
-    FDO_REPO_SUFFIX: *git-archive-suffix
-  needs:
-    - git_archive
-
 
 # Git archive
 
 make git archive:
-  extends: .use-git_archive
+  extends:
+    - .fdo.ci-fairy
   stage: git-archive
   rules:
     - if: *is-scheduled-pipeline
@@ -514,7 +487,8 @@ make git archive:
 
 # Sanity checks of MR settings and commit logs
 .sanity-check:
-  extends: .use-git_archive
+  extends:
+    - .fdo.ci-fairy
   stage: sanity
   artifacts:
     when: on_failure
