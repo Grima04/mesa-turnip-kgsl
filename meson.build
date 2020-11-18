@@ -1648,6 +1648,15 @@ else
   dep_valgrind = null_dep
 endif
 
+# AddressSanitizer's leak reports need all the symbols to be present at exit to
+# decode well, which runs afoul of our dlopen()/dlclose()ing of the DRI drivers.
+# Set a flag so we can skip the dlclose for asan builds.
+if ['address', 'address,undefined'].contains(get_option('b_sanitize'))
+  asan_c_args = ['-DBUILT_WITH_ASAN=1']
+else
+  asan_c_args = ['-DBUILT_WITH_ASAN=0']
+endif
+
 # pthread stubs. Lets not and say we didn't
 
 if host_machine.system() == 'windows'

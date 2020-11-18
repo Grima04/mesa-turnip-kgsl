@@ -1237,8 +1237,15 @@ dri2_display_destroy(_EGLDisplay *disp)
    }
    if (dri2_dpy->fd >= 0)
       close(dri2_dpy->fd);
+
+   /* Don't dlclose the driver when building with the address sanitizer, so you
+    * get good symbols from the leak reports.
+    */
+#if !BUILT_WITH_ASAN || defined(NDEBUG)
    if (dri2_dpy->driver)
       dlclose(dri2_dpy->driver);
+#endif
+
    free(dri2_dpy->driver_name);
 
 #ifdef HAVE_WAYLAND_PLATFORM

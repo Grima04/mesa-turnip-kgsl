@@ -21,7 +21,7 @@
 inc_egl = include_directories('.', 'main')
 inc_egl_dri2 = include_directories('drivers/dri2')
 
-c_args_for_egl = []
+c_args_for_egl = [asan_c_args]
 link_for_egl = []
 deps_for_egl = []
 incs_for_egl = [inc_include, inc_src, inc_egl]
