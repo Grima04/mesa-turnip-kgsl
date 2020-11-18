@@ -2682,7 +2682,8 @@ bool combine_and_subbrev(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    return false;
 }
 
-/* v_add_co(c, s_lshl(a, b)) -> v_mad_u32_u24(a, 1<<b, c) */
+/* v_add_co(c, s_lshl(a, b)) -> v_mad_u32_u24(a, 1<<b, c)
+ * v_add_co(c, v_lshlrev(a, b)) -> v_mad_u32_u24(b, 1<<a, c) */
 bool combine_add_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    if (instr->usesModifiers())
@@ -2693,19 +2694,28 @@ bool combine_add_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (!op_instr)
          continue;
 
-      if (op_instr->opcode != aco_opcode::s_lshl_b32)
+      if (op_instr->opcode != aco_opcode::s_lshl_b32 &&
+          op_instr->opcode != aco_opcode::v_lshlrev_b32)
          continue;
 
-      if (op_instr->operands[1].isConstant() &&
-          op_instr->operands[1].constantValue() <= 6 && /* no literals */
-          (op_instr->operands[0].is24bit() ||
-           op_instr->operands[0].is16bit())) {
-         uint32_t multiplier = 1 << op_instr->operands[1].constantValue();
+      if (op_instr->opcode == aco_opcode::v_lshlrev_b32 &&
+          op_instr->operands[1].isTemp() &&
+          op_instr->operands[1].getTemp().type() == RegType::sgpr &&
+          instr->operands[!i].isTemp() &&
+          instr->operands[!i].getTemp().type() == RegType::sgpr)
+         return false;
+
+      int shift_op_idx = op_instr->opcode == aco_opcode::s_lshl_b32 ? 1 : 0;
+      if (op_instr->operands[shift_op_idx].isConstant() &&
+          op_instr->operands[shift_op_idx].constantValue() <= 6 && /* no literals */
+          (op_instr->operands[!shift_op_idx].is24bit() ||
+           op_instr->operands[!shift_op_idx].is16bit())) {
+         uint32_t multiplier = 1 << op_instr->operands[shift_op_idx].constantValue();
 
          ctx.uses[instr->operands[i].tempId()]--;
 
          aco_ptr<VOP3A_instruction> new_instr{create_instruction<VOP3A_instruction>(aco_opcode::v_mad_u32_u24, Format::VOP3A, 3, 1)};
-         new_instr->operands[0] = op_instr->operands[0];
+         new_instr->operands[0] = op_instr->operands[!shift_op_idx];
          new_instr->operands[1] = Operand(multiplier);
          new_instr->operands[2] = instr->operands[!i];
          new_instr->definitions[0] = instr->definitions[0];

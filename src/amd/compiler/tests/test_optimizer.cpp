@@ -795,3 +795,63 @@ BEGIN_TEST(optimize.mad_32_24)
       finish_opt_test();
    }
 END_TEST
+
+BEGIN_TEST(optimize.add_lshlrev)
+   for (unsigned i = GFX8; i <= GFX10; i++) {
+      //>> v1: %a, v1: %b, s1: %c, s2: %_:exec = p_startpgm
+      if (!setup_cs("v1 v1 s1", (chip_class)i))
+         continue;
+
+      Temp lshl;
+
+      //~gfx8! v1: %lshl0 = v_lshlrev_b32 3, %a
+      //~gfx8! v1: %res0, s2: %_ = v_add_co_u32 %lshl0, %b
+      //~gfx(9|10)! v1: %res0 = v_lshl_add_u32 %a, 3, %b
+      //! p_unit_test 0, %res0
+      lshl = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(3u), Operand(inputs[0]));
+      writeout(0, bld.vadd32(bld.def(v1), lshl, Operand(inputs[1])));
+
+      //~gfx8! v1: %lshl1 = v_lshlrev_b32 7, (is24bit)%a
+      //~gfx8! v1: %res1, s2: %_ = v_add_co_u32 %lshl1, %b
+      //~gfx(9|10)! v1: %res1 = v_lshl_add_u32 (is24bit)%a, 7, %b
+      //! p_unit_test 1, %res1
+      Operand a_24bit = Operand(inputs[0]);
+      a_24bit.set24bit(true);
+      lshl = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(7u), a_24bit);
+      writeout(1, bld.vadd32(bld.def(v1), lshl, Operand(inputs[1])));
+
+      //~gfx8! v1: %lshl2 = v_lshlrev_b32 (is24bit)%a, (is24bit)%b
+      //~gfx8! v1: %res2, s2: %_ = v_add_co_u32 %lshl2, %b
+      //~gfx(9|10)! v1: %res2 = v_lshl_add_u32 (is24bit)%b, (is24bit)%a, %b
+      //! p_unit_test 2, %res2
+      Operand b_24bit = Operand(inputs[1]);
+      b_24bit.set24bit(true);
+      lshl = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), a_24bit, b_24bit);
+      writeout(2, bld.vadd32(bld.def(v1), lshl, Operand(inputs[1])));
+
+      //~gfx8! v1: %res3 = v_mad_u32_u24 (is24bit)%a, 8, %b
+      //~gfx(9|10)! v1: %res3 = v_lshl_add_u32 (is24bit)%a, 3, %b
+      //! p_unit_test 3, %res3
+      lshl = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(3u), a_24bit);
+      writeout(3, bld.vadd32(bld.def(v1), lshl, Operand(inputs[1])));
+
+      //~gfx8! v1: %res4 = v_mad_u32_u24 (is16bit)%a, 16, %b
+      //~gfx(9|10)! v1: %res4 = v_lshl_add_u32 (is16bit)%a, 4, %b
+      //! p_unit_test 4, %res4
+      Operand a_16bit = Operand(inputs[0]);
+      a_16bit.set16bit(true);
+      lshl = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(4u), a_16bit);
+      writeout(4, bld.vadd32(bld.def(v1), lshl, Operand(inputs[1])));
+
+      //~gfx8! v1: %lshl5 = v_lshlrev_b32 4, (is24bit)%c
+      //~gfx8! v1: %res5, s2: %_ = v_add_co_u32 %c, %lshl5
+      //~gfx(9|10)! v1: %res5 = v_lshl_add_u32 (is24bit)%c, 4, %c
+      //! p_unit_test 5, %res5
+      Operand c_24bit = Operand(inputs[2]);
+      c_24bit.set24bit(true);
+      lshl = bld.vop2_e64(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(4u), c_24bit);
+      writeout(5, bld.vadd32(bld.def(v1), lshl, Operand(inputs[2])));
+
+      finish_opt_test();
+   }
+END_TEST
