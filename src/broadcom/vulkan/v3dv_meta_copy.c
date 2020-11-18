@@ -2875,51 +2875,41 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format)
    nir_ssa_dest_init(&offset->instr, &offset->dest, 1, 32, "buffer offset");
    nir_builder_instr_insert(&b, &offset->instr);
 
-   /* Pixel coordinate must be within the box, otherwise our buffer offsets
-    * could be out of bounds.
-    */
    nir_ssa_def *coord = nir_f2i32(&b, load_frag_coord(&b));
-   nir_ssa_def *cond =
-      nir_iand(&b,
-         nir_iand(&b, nir_ige(&b, nir_channel(&b, coord, 0),
-                                  nir_channel(&b, &box->dest.ssa, 0)),
-                      nir_ige(&b, nir_channel(&b, coord, 1),
-                                  nir_channel(&b, &box->dest.ssa, 1))),
-         nir_iand(&b, nir_ige(&b, nir_channel(&b, &box->dest.ssa, 2),
-                                  nir_channel(&b, coord, 0)),
-                      nir_ige(&b, nir_channel(&b, &box->dest.ssa, 3),
-                                  nir_channel(&b, coord, 1))));
 
-   nir_if *if_stmt = nir_push_if(&b, cond);
-      /* Load pixel data from texel buffer based on the x,y offset of the pixel
-       * within the box. Texel buffers are 1D arrays of texels.
-       */
-      nir_ssa_def *x_offset =
-         nir_isub(&b, nir_channel(&b, coord, 0),
-                      nir_channel(&b, &box->dest.ssa, 0));
-      nir_ssa_def *y_offset =
-         nir_isub(&b, nir_channel(&b, coord, 1),
-                      nir_channel(&b, &box->dest.ssa, 1));
-      nir_ssa_def *texel_offset =
-         nir_iadd(&b, nir_iadd(&b, &offset->dest.ssa, x_offset),
-                      nir_imul(&b, y_offset, &stride->dest.ssa));
+   /* Load pixel data from texel buffer based on the x,y offset of the pixel
+    * within the box. Texel buffers are 1D arrays of texels.
+    *
+    * Notice that we already make sure that we only generate fragments that are
+    * inside the box through the scissor/viewport state, so our offset into the
+    * texel buffer should always be within its bounds and we we don't need
+    * to add a check for that here.
+    */
+   nir_ssa_def *x_offset =
+      nir_isub(&b, nir_channel(&b, coord, 0),
+                   nir_channel(&b, &box->dest.ssa, 0));
+   nir_ssa_def *y_offset =
+      nir_isub(&b, nir_channel(&b, coord, 1),
+                   nir_channel(&b, &box->dest.ssa, 1));
+   nir_ssa_def *texel_offset =
+      nir_iadd(&b, nir_iadd(&b, &offset->dest.ssa, x_offset),
+                   nir_imul(&b, y_offset, &stride->dest.ssa));
 
-      nir_ssa_def *tex_deref = &nir_build_deref_var(&b, sampler)->dest.ssa;
-      nir_tex_instr *tex = nir_tex_instr_create(b.shader, 2);
-      tex->sampler_dim = GLSL_SAMPLER_DIM_BUF;
-      tex->op = nir_texop_txf;
-      tex->src[0].src_type = nir_tex_src_coord;
-      tex->src[0].src = nir_src_for_ssa(texel_offset);
-      tex->src[1].src_type = nir_tex_src_texture_deref;
-      tex->src[1].src = nir_src_for_ssa(tex_deref);
-      tex->dest_type = nir_type_uint;
-      tex->is_array = false;
-      tex->coord_components = 1;
-      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "texel buffer result");
-      nir_builder_instr_insert(&b, &tex->instr);
+   nir_ssa_def *tex_deref = &nir_build_deref_var(&b, sampler)->dest.ssa;
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 2);
+   tex->sampler_dim = GLSL_SAMPLER_DIM_BUF;
+   tex->op = nir_texop_txf;
+   tex->src[0].src_type = nir_tex_src_coord;
+   tex->src[0].src = nir_src_for_ssa(texel_offset);
+   tex->src[1].src_type = nir_tex_src_texture_deref;
+   tex->src[1].src = nir_src_for_ssa(tex_deref);
+   tex->dest_type = nir_type_uint;
+   tex->is_array = false;
+   tex->coord_components = 1;
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "texel buffer result");
+   nir_builder_instr_insert(&b, &tex->instr);
 
-      nir_store_var(&b, fs_out_color, &tex->dest.ssa, 0xf);
-   nir_pop_if(&b, if_stmt);
+   nir_store_var(&b, fs_out_color, &tex->dest.ssa, 0xf);
 
    return b.shader;
 }
