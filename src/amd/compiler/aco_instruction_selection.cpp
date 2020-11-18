@@ -4062,7 +4062,7 @@ Temp wave_count_in_threadgroup(isel_context *ctx)
 Temp ngg_gs_vertex_lds_addr(isel_context *ctx, Temp vertex_idx)
 {
    Builder bld(ctx->program, ctx->block);
-   unsigned write_stride_2exp = ffs(ctx->shader->info.gs.vertices_out) - 1;
+   unsigned write_stride_2exp = ffs(MAX2(ctx->shader->info.gs.vertices_out, 1)) - 1;
 
    /* gs_max_out_vertices = 2^(write_stride_2exp) * some odd number */
    if (write_stride_2exp) {

@@ -2147,7 +2147,7 @@ ngg_gs_vertex_ptr(struct radv_shader_context *ctx, LLVMValueRef vertexidx)
 	LLVMValueRef storage = ngg_gs_get_vertex_storage(ctx);
 
 	/* gs_max_out_vertices = 2^(write_stride_2exp) * some odd number */
-	unsigned write_stride_2exp = ffs(ctx->shader->info.gs.vertices_out) - 1;
+	unsigned write_stride_2exp = ffs(MAX2(ctx->shader->info.gs.vertices_out, 1)) - 1;
 	if (write_stride_2exp) {
 		LLVMValueRef row =
 			LLVMBuildLShr(builder, vertexidx,
