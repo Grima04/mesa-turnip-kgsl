@@ -177,9 +177,6 @@ v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
       pipeline->default_attribute_values = NULL;
    }
 
-   if (pipeline->default_attribute_values)
-      v3dv_bo_free(device, pipeline->default_attribute_values);
-
    vk_object_free(&device->vk, pAllocator, pipeline);
 }
 
