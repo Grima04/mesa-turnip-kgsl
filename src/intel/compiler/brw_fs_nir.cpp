@@ -46,6 +46,8 @@ fs_visitor::emit_nir_code()
    last_scratch = ALIGN(nir->scratch_size, 4) * dispatch_width;
 
    nir_emit_impl(nir_shader_get_entrypoint((nir_shader *)nir));
+
+   bld.emit(SHADER_OPCODE_HALT_TARGET);
 }
 
 void
