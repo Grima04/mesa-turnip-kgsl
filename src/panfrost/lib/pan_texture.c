@@ -251,6 +251,43 @@ panfrost_nonlinear_stride(uint64_t modifier,
                 return DIV_ROUND_UP(width, block_w) * block_size;
 }
 
+static uint64_t
+panfrost_get_surface_strides(struct panfrost_slice *slices,
+                             const struct util_format_description *desc,
+                             enum mali_texture_dimension dim,
+                             uint64_t modifier,
+                             unsigned width, unsigned height,
+                             unsigned l, unsigned cube_stride)
+{
+        bool is_3d = dim == MALI_TEXTURE_DIMENSION_3D;
+        bool is_linear = modifier == DRM_FORMAT_MOD_LINEAR;
+
+        unsigned line_stride =
+                 is_linear ?
+                 slices[l].stride :
+                 panfrost_nonlinear_stride(modifier,
+                                           MAX2(desc->block.bits / 8, 1),
+                                           desc->block.width * desc->block.height,
+                                           u_minify(width, l),
+                                           u_minify(height, l),
+                                           false);
+        return line_stride;
+}
+
+static mali_ptr
+panfrost_get_surface_pointer(mali_ptr base, struct panfrost_slice *slices,
+                             enum mali_texture_dimension dim,
+                             unsigned l, unsigned w, unsigned f, unsigned s,
+                             unsigned cube_stride)
+{
+        unsigned face_mult = dim == MALI_TEXTURE_DIMENSION_CUBE ? 6 : 1;
+        bool is_3d = dim == MALI_TEXTURE_DIMENSION_3D;
+
+        return base +
+               panfrost_texture_offset(slices, is_3d, cube_stride,
+                                       l, w * face_mult + f, s);
+}
+
 static void
 panfrost_emit_texture_payload(
         mali_ptr *payload,
@@ -271,12 +308,10 @@ panfrost_emit_texture_payload(
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
 
-        unsigned first_face  = 0, last_face = 0, face_mult = 1;
+        unsigned first_face  = 0, last_face = 0;
 
-        if (dim == MALI_TEXTURE_DIMENSION_CUBE) {
-                face_mult = 6;
+        if (dim == MALI_TEXTURE_DIMENSION_CUBE)
                 panfrost_adjust_cube_dimensions(&first_face, &last_face, &first_layer, &last_layer);
-        }
 
         nr_samples = MAX2(nr_samples, 1);
 
@@ -286,19 +321,17 @@ panfrost_emit_texture_payload(
                 for (unsigned l = first_level; l <= last_level; ++l) {
                         for (unsigned f = first_face; f <= last_face; ++f) {
                                 for (unsigned s = 0; s < nr_samples; ++s) {
-                                        payload[idx++] = base + panfrost_texture_offset(
-                                                        slices, dim == MALI_TEXTURE_DIMENSION_3D,
-                                                        cube_stride, l, w * face_mult + f, s);
+                                        payload[idx++] =
+                                                panfrost_get_surface_pointer(base, slices, dim,
+                                                                             l, w, f, s, cube_stride);
 
-                                        if (manual_stride) {
-                                                payload[idx++] = (modifier == DRM_FORMAT_MOD_LINEAR) ?
-                                                        slices[l].stride :
-                                                        panfrost_nonlinear_stride(modifier,
-                                                                        MAX2(desc->block.bits / 8, 1),
-                                                                        desc->block.width * desc->block.height,
-                                                                        u_minify(width, l),
-                                                                        u_minify(height, l), false);
-                                        }
+                                        if (!manual_stride)
+                                                continue;
+
+                                        payload[idx++] =
+                                                panfrost_get_surface_strides(slices, desc, dim,
+                                                                             modifier, width, height,
+                                                                             l, cube_stride);
                                 }
                         }
                 }
@@ -323,41 +356,28 @@ panfrost_emit_texture_payload_v7(mali_ptr *payload,
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
 
-        unsigned first_face  = 0, last_face = 0, face_mult = 1;
-
-        if (dim == MALI_TEXTURE_DIMENSION_CUBE) {
-                face_mult = 6;
-                panfrost_adjust_cube_dimensions(&first_face, &last_face, &first_layer, &last_layer);
-        }
+        unsigned first_face  = 0, last_face = 0;
 
         nr_samples = MAX2(nr_samples, 1);
 
-        unsigned idx = 0;
-        bool is_3d = dim == MALI_TEXTURE_DIMENSION_3D;
-        bool is_linear = modifier == DRM_FORMAT_MOD_LINEAR;
+        if (dim == MALI_TEXTURE_DIMENSION_CUBE) {
+                assert(nr_samples == 1);
+                panfrost_adjust_cube_dimensions(&first_face, &last_face, &first_layer, &last_layer);
+        }
 
-        assert(nr_samples == 1 || face_mult == 1);
+        unsigned idx = 0;
 
         for (unsigned w = first_layer; w <= last_layer; ++w) {
                 for (unsigned f = first_face; f <= last_face; ++f) {
                         for (unsigned s = 0; s < nr_samples; ++s) {
                                 for (unsigned l = first_level; l <= last_level; ++l) {
                                         payload[idx++] =
-                                                base +
-                                                panfrost_texture_offset(slices, is_3d,
-                                                                        cube_stride, l,
-                                                                        w * face_mult + f, s);
-
-                                        unsigned line_stride =
-						is_linear ?
-                                                slices[l].stride :
-                                                panfrost_nonlinear_stride(modifier,
-                                                                          MAX2(desc->block.bits / 8, 1),
-                                                                          desc->block.width * desc->block.height,
-                                                                          u_minify(width, l),
-                                                                          u_minify(height, l), false);
-                                        unsigned layer_stride = 0; /* FIXME */
-                                        payload[idx++] = ((uint64_t)layer_stride << 32) | line_stride;
+                                                panfrost_get_surface_pointer(base, slices, dim,
+                                                                             l, w, f, s, cube_stride);
+                                        payload[idx++] =
+                                                panfrost_get_surface_strides(slices, desc, dim,
+                                                                             modifier, width, height,
+                                                                             l, cube_stride);
                                 }
                         }
                 }
