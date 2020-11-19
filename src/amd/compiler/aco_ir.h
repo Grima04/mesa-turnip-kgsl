@@ -1294,7 +1294,7 @@ struct MIMG_instruction : public Instruction {
    bool slc : 1; /* system level coherent */
    bool tfe : 1; /* texture fail enable */
    bool da : 1; /* declare an array */
-   bool lwe : 1; /* Force data to be un-normalized */
+   bool lwe : 1; /* LOD warning enable */
    bool r128 : 1; /* NAVI: Texture resource size */
    bool a16 : 1; /* VEGA, NAVI: Address components are 16-bits */
    bool d16 : 1; /* Convert 32-bit data to 16-bit data */
