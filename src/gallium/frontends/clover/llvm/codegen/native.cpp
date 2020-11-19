@@ -27,16 +27,17 @@
 /// executable code as an ELF object file.
 ///
 
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Transforms/Utils/Cloning.h>
+
 #include "llvm/codegen.hpp"
 #include "llvm/compat.hpp"
 #include "llvm/util.hpp"
 #include "core/error.hpp"
 
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/Support/TargetRegistry.h>
-#include <llvm/Transforms/Utils/Cloning.h>
-
-using namespace clover;
+using clover::module;
+using clover::build_error;
 using namespace clover::llvm;
 using ::llvm::TargetMachine;
 
