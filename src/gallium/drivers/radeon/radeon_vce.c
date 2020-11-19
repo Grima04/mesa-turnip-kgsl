@@ -265,7 +265,9 @@ static void rvce_begin_frame(struct pipe_video_codec *encoder, struct pipe_video
       enc->pic.quant_i_frames != pic->quant_i_frames ||
       enc->pic.quant_p_frames != pic->quant_p_frames ||
       enc->pic.quant_b_frames != pic->quant_b_frames ||
-      enc->pic.rate_ctrl.target_bitrate != pic->rate_ctrl.target_bitrate;
+      enc->pic.rate_ctrl.target_bitrate != pic->rate_ctrl.target_bitrate ||
+      enc->pic.rate_ctrl.frame_rate_num != pic->rate_ctrl.frame_rate_num ||
+      enc->pic.rate_ctrl.frame_rate_den != pic->rate_ctrl.frame_rate_den;
 
    enc->pic = *pic;
    enc->si_get_pic_param(enc, pic);
