@@ -271,7 +271,11 @@ panfrost_get_surface_strides(struct panfrost_slice *slices,
                                            u_minify(width, l),
                                            u_minify(height, l),
                                            false);
-        return line_stride;
+
+        unsigned layer_stride =
+                panfrost_get_layer_stride(slices, is_3d, cube_stride, l);
+
+        return ((uint64_t)layer_stride << 32) | line_stride;
 }
 
 static mali_ptr
