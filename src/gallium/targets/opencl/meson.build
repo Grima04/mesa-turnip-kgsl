@@ -85,6 +85,14 @@ if not (dep_clang.found() and dep_clang_usable)
   endif
 endif
 
+# Be explicit about only using this lib on Windows, to avoid picking
+# up random libs with the generic name 'libversion'
+if host_machine.system() == 'windows'
+  dep_version = cpp.find_library('version')
+else
+  dep_version = null_dep
+endif
+
 libopencl = shared_library(
   opencl_libname,
   [],
@@ -94,7 +102,7 @@ libopencl = shared_library(
   link_with : [libpipe_loader_dynamic, libgallium],
   dependencies : [
     idep_mesautil,
-    dep_clock, dep_dl, dep_unwind, dep_elf, dep_clang
+    dep_clock, dep_dl, dep_unwind, dep_elf, dep_clang, dep_version
   ],
   version : '@0@.0.0'.format(opencl_version),
   install : true,
