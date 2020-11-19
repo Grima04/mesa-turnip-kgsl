@@ -6021,10 +6021,11 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
    aco_opcode opcode = level_zero ? aco_opcode::image_store : aco_opcode::image_store_mip;
 
-   aco_ptr<MIMG_instruction> store{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3, 0)};
+   aco_ptr<MIMG_instruction> store{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 4, 0)};
    store->operands[0] = Operand(resource);
-   store->operands[1] = Operand(data);
+   store->operands[1] = Operand(s4); /* no sampler */
    store->operands[2] = Operand(coords);
+   store->operands[3] = Operand(data);
    store->glc = glc;
    store->dlc = false;
    store->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
@@ -6148,10 +6149,11 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp coords = get_image_coords(ctx, instr, type);
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
-   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(image_op, Format::MIMG, 3, return_previous ? 1 : 0)};
+   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(image_op, Format::MIMG, 4, return_previous ? 1 : 0)};
    mimg->operands[0] = Operand(resource);
-   mimg->operands[1] = Operand(data);
+   mimg->operands[1] = Operand(s4); /* no sampler */
    mimg->operands[2] = Operand(coords);
+   mimg->operands[3] = Operand(data);
    if (return_previous)
       mimg->definitions[0] = Definition(dst);
    mimg->glc = return_previous;

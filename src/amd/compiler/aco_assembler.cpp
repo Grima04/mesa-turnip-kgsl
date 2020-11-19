@@ -451,11 +451,11 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding = (0xFF & instr->operands[2].physReg()); /* VADDR */
       if (!instr->definitions.empty()) {
          encoding |= (0xFF & instr->definitions[0].physReg()) << 8; /* VDATA */
-      } else if (instr->operands[1].regClass().type() == RegType::vgpr) {
-         encoding |= (0xFF & instr->operands[1].physReg()) << 8; /* VDATA */
+      } else if (instr->operands.size() >= 4) {
+         encoding |= (0xFF & instr->operands[3].physReg()) << 8; /* VDATA */
       }
       encoding |= (0x1F & (instr->operands[0].physReg() >> 2)) << 16; /* T# (resource) */
-      if (instr->operands[1].regClass().type() == RegType::sgpr)
+      if (!instr->operands[1].isUndefined())
          encoding |= (0x1F & (instr->operands[1].physReg() >> 2)) << 21; /* sampler */
 
       assert(!mimg->d16 || ctx.chip_class >= GFX9);

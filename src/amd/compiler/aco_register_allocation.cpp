@@ -2124,8 +2124,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             instr->definitions[0].setFixed(instr->operands[3].physReg());
          } else if (instr->format == Format::MIMG &&
                     instr->definitions.size() == 1 &&
-                    instr->operands[1].regClass().type() == RegType::vgpr) {
-            instr->definitions[0].setFixed(instr->operands[1].physReg());
+                    instr->operands.size() >= 4) {
+            instr->definitions[0].setFixed(instr->operands[3].physReg());
          }
 
          ctx.defs_done.reset();

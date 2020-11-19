@@ -435,15 +435,18 @@ bool validate_ir(Program* program)
             break;
          }
          case Format::MIMG: {
-            check(instr->operands.size() == 3, "MIMG instructions must have exactly 3 operands", instr.get());
+            check(instr->operands.size() >= 3, "MIMG instructions must have 3 or 4 operands", instr.get());
+            check(instr->operands.size() <= 4, "MIMG instructions must have 3 or 4 operands", instr.get());
             check(instr->operands[0].hasRegClass() && (instr->operands[0].regClass() == s4 || instr->operands[0].regClass() == s8),
                   "MIMG operands[0] (resource constant) must be in 4 or 8 SGPRs", instr.get());
-            if (instr->operands[1].hasRegClass() && instr->operands[1].regClass().type() == RegType::sgpr)
+            if (instr->operands[1].hasRegClass())
                check(instr->operands[1].regClass() == s4, "MIMG operands[1] (sampler constant) must be 4 SGPRs", instr.get());
-            else if (instr->operands[1].hasRegClass() && instr->operands[1].regClass().type() == RegType::vgpr)
-               check((instr->definitions.empty() || instr->definitions[0].regClass() == instr->operands[1].regClass() ||
-                     instr->opcode == aco_opcode::image_atomic_cmpswap || instr->opcode == aco_opcode::image_atomic_fcmpswap),
-                     "MIMG operands[1] (VDATA) must be the same as definitions[0] for atomics", instr.get());
+            if (instr->operands.size() >= 4) {
+               bool is_cmpswap = instr->opcode == aco_opcode::image_atomic_cmpswap ||
+                                 instr->opcode == aco_opcode::image_atomic_fcmpswap;
+               check(instr->definitions.empty() || (instr->definitions[0].regClass() == instr->operands[3].regClass() || is_cmpswap),
+                     "MIMG operands[3] (VDATA) must be the same as definitions[0] for atomics and TFE/LWE loads", instr.get());
+            }
             check(instr->operands[2].hasRegClass() && instr->operands[2].regClass().type() == RegType::vgpr,
                   "MIMG operands[2] (VADDR) must be VGPR", instr.get());
             check(instr->definitions.empty() || (instr->definitions[0].isTemp() && instr->definitions[0].regClass().type() == RegType::vgpr),

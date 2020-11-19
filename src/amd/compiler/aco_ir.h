@@ -1279,8 +1279,8 @@ static_assert(sizeof(MTBUF_instruction) == sizeof(Instruction) + 8, "Unexpected 
  * Vector Memory Image Instructions
  * Operand(0) SRSRC - Scalar GPR that specifies the resource constant.
  * Operand(1): SSAMP - Scalar GPR that specifies sampler constant.
- *             or VDATA - Vector GPR for write data.
  * Operand(2): VADDR - Address source. Can carry an offset or an index.
+ * Operand(3): VDATA - Vector GPR for write data or zero if TFE/LWE=1.
  * Definition(0): VDATA - Vector GPR for read result.
  *
  */
