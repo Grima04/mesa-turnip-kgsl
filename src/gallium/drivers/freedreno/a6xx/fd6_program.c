@@ -483,9 +483,14 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 	OUT_PKT4(ring, REG_A6XX_SP_MODE_CONTROL, 1);
 	OUT_RING(ring, A6XX_SP_MODE_CONTROL_CONSTANT_DEMOTION_ENABLE | 4);
 
+	bool fs_has_dual_src_color = !binning_pass &&
+		fs->shader->nir->info.fs.color_is_dual_source;
+
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_CNTL0, 1);
 	OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
 			 A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
+			 COND(fs_has_dual_src_color,
+					A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE) |
 			 0xfc000000);
 
 	enum a3xx_threadsize vssz;

@@ -73,7 +73,6 @@ static void
 emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		const struct fd_gmem_stateobj *gmem)
 {
-	unsigned char mrt_comp[A6XX_MAX_RENDER_TARGETS] = {0};
 	unsigned srgb_cntl = 0;
 	unsigned i;
 
@@ -91,8 +90,6 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 
 		if (!pfb->cbufs[i])
 			continue;
-
-		mrt_comp[i] = 0xf;
 
 		struct pipe_surface *psurf = pfb->cbufs[i];
 		enum pipe_format pformat = psurf->format;
@@ -141,26 +138,6 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 
 	OUT_REG(ring, A6XX_RB_SRGB_CNTL(.dword = srgb_cntl));
 	OUT_REG(ring, A6XX_SP_SRGB_CNTL(.dword = srgb_cntl));
-
-	OUT_REG(ring, A6XX_RB_RENDER_COMPONENTS(
-		.rt0 = mrt_comp[0],
-		.rt1 = mrt_comp[1],
-		.rt2 = mrt_comp[2],
-		.rt3 = mrt_comp[3],
-		.rt4 = mrt_comp[4],
-		.rt5 = mrt_comp[5],
-		.rt6 = mrt_comp[6],
-		.rt7 = mrt_comp[7]));
-
-	OUT_REG(ring, A6XX_SP_FS_RENDER_COMPONENTS(
-		.rt0 = mrt_comp[0],
-		.rt1 = mrt_comp[1],
-		.rt2 = mrt_comp[2],
-		.rt3 = mrt_comp[3],
-		.rt4 = mrt_comp[4],
-		.rt5 = mrt_comp[5],
-		.rt6 = mrt_comp[6],
-		.rt7 = mrt_comp[7]));
 
 	OUT_REG(ring, A6XX_GRAS_MAX_LAYER_INDEX(max_layer_index));
 }

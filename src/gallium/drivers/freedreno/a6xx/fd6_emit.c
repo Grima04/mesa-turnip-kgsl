@@ -955,23 +955,45 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 						   FD6_GROUP_RASTERIZER, ENABLE_ALL);
 	}
 
-	if (dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_RASTERIZER_DISCARD | FD_DIRTY_PROG)) {
+	if (dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_RASTERIZER_DISCARD |
+				 FD_DIRTY_PROG | FD_DIRTY_BLEND_DUAL)) {
 		struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
-				emit->ctx->batch->submit, 5 * 4, FD_RINGBUFFER_STREAMING);
+				emit->ctx->batch->submit, 9 * 4, FD_RINGBUFFER_STREAMING);
 
 		unsigned nr = pfb->nr_cbufs;
 
 		if (ctx->rasterizer->rasterizer_discard)
 			nr = 0;
 
+		struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
+
+		if (blend->use_dual_src_blend)
+			nr++;
+
 		OUT_PKT4(ring, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
 		OUT_RING(ring, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
 				COND(fs->writes_smask && pfb->samples > 1,
-						A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK));
+						A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK) |
+				COND(blend->use_dual_src_blend,
+						A6XX_RB_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
 		OUT_RING(ring, A6XX_RB_FS_OUTPUT_CNTL1_MRT(nr));
 
 		OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_CNTL1, 1);
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL1_MRT(nr));
+
+		unsigned mrt_components = 0;
+		for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
+			if (!pfb->cbufs[i])
+				continue;
+			mrt_components |= 0xf << (i * 4);
+		}
+
+		/* dual source blending has an extra fs output in the 2nd slot */
+		if (blend->use_dual_src_blend)
+			mrt_components |= 0xf << 4;
+
+		OUT_REG(ring, A6XX_SP_FS_RENDER_COMPONENTS(.dword = mrt_components));
+		OUT_REG(ring, A6XX_RB_RENDER_COMPONENTS(.dword = mrt_components));
 
 		fd6_emit_take_group(emit, ring, FD6_GROUP_PROG_FB_RAST, ENABLE_DRAW);
 	}
