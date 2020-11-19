@@ -552,6 +552,13 @@ enum opcode {
 
    SHADER_OPCODE_INTERLOCK,
 
+   /** Target for a HALT
+    *
+    * All HALT instructions in a shader must target the same jump point and
+    * that point is denoted by a HALT_TARGET instruction.
+    */
+   SHADER_OPCODE_HALT_TARGET,
+
    VEC4_OPCODE_MOV_BYTES,
    VEC4_OPCODE_PACK_BYTES,
    VEC4_OPCODE_UNPACK_UNIFORM,
@@ -581,7 +588,6 @@ enum opcode {
    FS_OPCODE_DISCARD_JUMP,
    FS_OPCODE_SET_SAMPLE_ID,
    FS_OPCODE_PACK_HALF_2x16_SPLIT,
-   FS_OPCODE_PLACEHOLDER_HALT,
    FS_OPCODE_INTERPOLATE_AT_SAMPLE,
    FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET,
    FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET,

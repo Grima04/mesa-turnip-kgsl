@@ -1047,7 +1047,7 @@ instruction_scheduler::add_dep(schedule_node *before, schedule_node *after)
 static bool
 is_scheduling_barrier(const backend_instruction *inst)
 {
-   return inst->opcode == FS_OPCODE_PLACEHOLDER_HALT ||
+   return inst->opcode == SHADER_OPCODE_HALT_TARGET ||
           inst->is_control_flow() ||
           inst->has_side_effects();
 }

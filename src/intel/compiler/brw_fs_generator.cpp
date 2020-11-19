@@ -222,7 +222,7 @@ public:
 };
 
 bool
-fs_generator::patch_discard_jumps_to_fb_writes()
+fs_generator::patch_halt_jumps()
 {
    if (this->discard_halt_patches.is_empty())
       return false;
@@ -2529,11 +2529,11 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
           generate_pack_half_2x16_split(inst, dst, src[0], src[1]);
           break;
 
-      case FS_OPCODE_PLACEHOLDER_HALT:
+      case SHADER_OPCODE_HALT_TARGET:
          /* This is the place where the final HALT needs to be inserted if
           * we've emitted any discards.  If not, this will emit no code.
           */
-         if (!patch_discard_jumps_to_fb_writes()) {
+         if (!patch_halt_jumps()) {
             if (unlikely(debug_flag)) {
                disasm_info->use_tail = true;
             }

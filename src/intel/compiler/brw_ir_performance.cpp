@@ -1098,7 +1098,7 @@ namespace {
          }
 
       case SHADER_OPCODE_UNDEF:
-      case FS_OPCODE_PLACEHOLDER_HALT:
+      case SHADER_OPCODE_HALT_TARGET:
       case FS_OPCODE_SCHEDULING_FENCE:
          return calculate_desc(info, unit_null, 0, 0, 0, 0, 0,
                                0, 0, 0, 0, 0, 0);
@@ -1552,7 +1552,7 @@ namespace {
 
             issue_instruction(st, s->devinfo, inst);
 
-            if (inst->opcode == FS_OPCODE_PLACEHOLDER_HALT && discard_count)
+            if (inst->opcode == SHADER_OPCODE_HALT_TARGET && discard_count)
                st.weight /= discard_weight;
 
             elapsed += (st.unit_ready[unit_fe] - clock0) * st.weight;

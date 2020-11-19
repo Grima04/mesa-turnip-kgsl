@@ -453,8 +453,8 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case FS_OPCODE_PACK_HALF_2x16_SPLIT:
       return "pack_half_2x16_split";
 
-   case FS_OPCODE_PLACEHOLDER_HALT:
-      return "placeholder_halt";
+   case SHADER_OPCODE_HALT_TARGET:
+      return "halt_target";
 
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
       return "interp_sample";

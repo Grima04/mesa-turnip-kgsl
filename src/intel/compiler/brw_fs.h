@@ -562,7 +562,7 @@ private:
                               struct brw_reg dst, struct brw_reg src,
                               unsigned swiz);
 
-   bool patch_discard_jumps_to_fb_writes();
+   bool patch_halt_jumps();
 
    const struct brw_compiler *compiler;
    void *log_data; /* Passed to compiler->*_log functions */
