@@ -131,7 +131,7 @@ adjust_block_for_loops(nir_block *use_block, nir_block *def_block,
  * the uses
  */
 static nir_block *
-get_preferred_block(nir_ssa_def *def, bool sink_into_loops, bool sink_out_of_loops)
+get_preferred_block(nir_ssa_def *def, bool sink_out_of_loops)
 {
    nir_block *lca = NULL;
 
@@ -166,24 +166,13 @@ get_preferred_block(nir_ssa_def *def, bool sink_into_loops, bool sink_out_of_loo
       lca = nir_dominance_lca(lca, use_block);
    }
 
-   /* If we're moving a load_ubo or load_interpolated_input, we don't want to
-    * sink it down into loops, which may result in accessing memory or shared
-    * functions multiple times.  Sink it just above the start of the loop
-    * where it's used.  For load_consts, undefs, and comparisons, we expect
-    * the driver to be able to emit them as simple ALU ops, so sinking as far
-    * in as we can go is probably worth it for register pressure.
+   /* We don't sink any instructions into loops to avoid repeated executions
+    * This might occasionally increase register pressure, but seems overall
+    * the better choice.
     */
-   if (!sink_into_loops) {
-      lca = adjust_block_for_loops(lca, def->parent_instr->block,
-                                   sink_out_of_loops);
-      assert(nir_block_dominates(def->parent_instr->block, lca));
-   } else {
-      /* sink_into_loops = true and sink_out_of_loops = false isn't
-       * implemented yet because it's not used.
-       */
-      assert(sink_out_of_loops);
-   }
-
+   lca = adjust_block_for_loops(lca, def->parent_instr->block,
+                                sink_out_of_loops);
+   assert(nir_block_dominates(def->parent_instr->block, lca));
 
    return lca;
 }
@@ -227,7 +216,6 @@ nir_opt_sink(nir_shader *shader, nir_move_options options)
 
             nir_ssa_def *def = nir_instr_ssa_def(instr);
 
-            bool sink_into_loops = instr->type != nir_instr_type_intrinsic;
             /* Don't sink load_ubo out of loops because that can make its
              * resource divergent and break code like that which is generated
              * by nir_lower_non_uniform_access.
@@ -236,7 +224,7 @@ nir_opt_sink(nir_shader *shader, nir_move_options options)
                instr->type != nir_instr_type_intrinsic ||
                nir_instr_as_intrinsic(instr)->intrinsic != nir_intrinsic_load_ubo;
             nir_block *use_block =
-                  get_preferred_block(def, sink_into_loops, sink_out_of_loops);
+                  get_preferred_block(def, sink_out_of_loops);
 
             if (!use_block || use_block == instr->block)
                continue;
