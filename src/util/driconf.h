@@ -241,22 +241,22 @@
 #define DRI_CONF_PP_CELSHADE(def) \
    DRI_CONF_OPT_E(pp_celshade, def, 0, 1, \
                   "A post-processing filter to cel-shade the output", \
-                  )
+                  { 0 } )
 
 #define DRI_CONF_PP_NORED(def) \
    DRI_CONF_OPT_E(pp_nored, def, 0, 1, \
                   "A post-processing filter to remove the red channel", \
-                  )
+                  { 0 } )
 
 #define DRI_CONF_PP_NOGREEN(def) \
    DRI_CONF_OPT_E(pp_nogreen, def, 0, 1, \
                   "A post-processing filter to remove the green channel", \
-                  )
+                  { 0 } )
 
 #define DRI_CONF_PP_NOBLUE(def) \
    DRI_CONF_OPT_E(pp_noblue, def, 0, 1, \
                   "A post-processing filter to remove the blue channel", \
-                  )
+                  { 0 } )
 
 #define DRI_CONF_PP_JIMENEZMLAA(def,min,max) \
    DRI_CONF_OPT_I(pp_jimenezmlaa, def, min, max, \
