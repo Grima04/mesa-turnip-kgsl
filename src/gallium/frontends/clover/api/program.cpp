@@ -123,7 +123,7 @@ clCreateProgramWithBinary(cl_context d_ctx, cl_uint n,
             return { CL_INVALID_VALUE, {} };
 
          try {
-            std::stringbuf bin( { (char*)p, l } );
+            std::stringbuf bin( std::string{ (char*)p, l } );
             std::istream s(&bin);
 
             return { CL_SUCCESS, module::deserialize(s) };

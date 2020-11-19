@@ -511,6 +511,7 @@ clSVMAlloc(cl_context d_ctx,
    if (!alignment)
       alignment = 0x80; // sizeof(long16)
 
+#if HAVE_POSIX_MEMALIGN
    bool can_emulate = all_of(std::mem_fn(&device::has_system_svm), ctx.devices());
    if (can_emulate) {
       // we can ignore all the flags as it's not required to honor them.
@@ -520,6 +521,7 @@ clSVMAlloc(cl_context d_ctx,
       posix_memalign(&ptr, alignment, size);
       return ptr;
    }
+#endif
 
    CLOVER_NOT_SUPPORTED_UNTIL("2.0");
    return nullptr;
