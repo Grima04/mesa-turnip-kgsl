@@ -678,7 +678,7 @@
     <field name="Format" size="22" start="2:0" type="uint"/>
     <field name="Dimension" size="2" start="2:22" type="Texture Dimension"/>
     <field name="Texel ordering" size="4" start="2:24" type="Texture Layout"/>
-    <field name="Unknown" size="1" start="2:28" type="bool" default="true"/>
+    <field name="Surface pointer is 64b" size="1" start="2:28" type="bool" default="true"/>
     <field name="Manual stride" size="1" start="2:29" type="bool" default="false"/>
     <field name="Levels" size="8" start="3:24" type="uint" modifier="minus(1)" default="1"/>
     <field name="Swizzle" size="12" start="4:0" type="uint"/>
