@@ -555,8 +555,10 @@ radv_pipeline_compute_spi_color_formats(const struct radv_pipeline *pipeline,
 	/* The output for dual source blending should have the same format as
 	 * the first output.
 	 */
-	if (blend->mrt0_is_dual_src)
+	if (blend->mrt0_is_dual_src) {
+		assert(!(col_format >> 4));
 		col_format |= (col_format & 0xf) << 4;
+	}
 
 	blend->spi_shader_col_format = col_format;
 	blend->col_format_is_int8 = is_int8;
@@ -682,6 +684,12 @@ radv_pipeline_init_blend_state(const struct radv_pipeline *pipeline,
 			blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) | S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
 
 			if (!att->colorWriteMask)
+				continue;
+
+			/* Ignore other blend targets if dual-source blending
+			 * is enabled to prevent wrong behaviour.
+			 */
+			if (blend.mrt0_is_dual_src)
 				continue;
 
 			blend.cb_target_mask |= (unsigned)att->colorWriteMask << (4 * i);
