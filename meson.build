@@ -1479,9 +1479,10 @@ if with_amd_vk or with_gallium_radeonsi or with_gallium_r600
 endif
 if with_gallium_opencl
   llvm_modules += [
-    'all-targets', 'linker', 'coverage', 'instrumentation', 'ipo', 'irreader',
-    'lto', 'option', 'objcarcopts', 'profiledata',
+    'linker', 'coverage', 'instrumentation', 'ipo', 'irreader',
+    'lto', 'option', 'objcarcopts', 'profiledata'
   ]
+  llvm_optional_modules += ['frontendopenmp']
 endif
 if with_microsoft_clc
   llvm_modules += ['target', 'linker', 'irreader', 'option', 'libdriver']
