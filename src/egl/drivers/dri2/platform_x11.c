@@ -1541,7 +1541,11 @@ dri2_initialize_x11(_EGLDisplay *disp)
          return EGL_TRUE;
 #endif
 
-   return dri2_initialize_x11_dri2(disp);
+   if (!env_var_as_boolean("LIBGL_DRI2_DISABLE", false))
+      if (dri2_initialize_x11_dri2(disp))
+         return EGL_TRUE;
+
+   return EGL_FALSE;
 }
 
 void

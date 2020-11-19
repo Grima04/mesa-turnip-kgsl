@@ -23,6 +23,8 @@ LibGL environment variables
 ``LIBGL_SHOW_FPS``
    print framerate to stdout based on the number of ``glXSwapBuffers``
    calls per second.
+``LIBGL_DRI2_DISABLE``
+   disable DRI2 if set to ``true``.
 ``LIBGL_DRI3_DISABLE``
    disable DRI3 if set to ``true``.
 
