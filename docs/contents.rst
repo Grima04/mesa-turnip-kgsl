@@ -50,6 +50,7 @@
    :caption: Drivers
    :hidden:
 
+   drivers/d3d12
    drivers/freedreno
    drivers/llvmpipe
    drivers/openswr
