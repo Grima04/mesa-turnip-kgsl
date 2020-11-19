@@ -71,7 +71,7 @@ libclllvm = static_library(
     clover_opencl_cpp_args,
     clover_spirv_cpp_args,
     '-DCLANG_RESOURCE_DIR="@0@"'.format(join_paths(
-      dep_llvm.get_configtool_variable('libdir'), 'clang',
+      dep_llvm.get_variable(cmake : 'LLVM_LIBRARY_DIR', configtool: 'libdir'), 'clang',
       dep_llvm.version(), 'include',
     )),
   ],

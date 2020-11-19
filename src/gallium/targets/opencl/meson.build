@@ -29,7 +29,7 @@ if with_ld_version_script
   opencl_link_deps += files('opencl.sym')
 endif
 
-llvm_libdir = dep_llvm.get_configtool_variable('libdir')
+llvm_libdir = dep_llvm.get_variable(cmake : 'LLVM_LIBRARY_DIR', configtool: 'libdir')
 opencl_libname = with_opencl_icd ? 'MesaOpenCL' : 'OpenCL'
 
 polly_dep = null_dep
