@@ -515,8 +515,8 @@ clc_context_new(const struct clc_logger *logger, const struct clc_context_option
    if (options && options->optimize)
       clc_context_optimize(s);
 
+   ralloc_steal(ctx, s);
    ctx->libclc_nir = s;
-   ralloc_steal(ctx, ctx->libclc_nir);
 
    return ctx;
 }
@@ -559,13 +559,14 @@ struct clc_context *
    struct blob_reader tmp;
    blob_reader_init(&tmp, serialized, serialized_size);
 
-   ctx->libclc_nir = nir_deserialize(NULL, libclc_nir_options, &tmp);
-   if (!ctx->libclc_nir) {
-      free(ctx);
+   nir_shader *s = nir_deserialize(NULL, libclc_nir_options, &tmp);
+   if (!s) {
+      ralloc_free(ctx);
       return NULL;
    }
 
-   ralloc_steal(ctx, ctx->libclc_nir);
+   ralloc_steal(ctx, s);
+   ctx->libclc_nir = s;
 
    return ctx;
 }
