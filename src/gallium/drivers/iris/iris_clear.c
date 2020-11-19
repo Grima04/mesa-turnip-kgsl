@@ -434,10 +434,14 @@ can_fast_clear_depth(struct iris_context *ice,
    if (!(res->aux.has_hiz & (1 << level)))
       return false;
 
-   return blorp_can_hiz_clear_depth(devinfo, &res->surf, res->aux.usage,
-                                    level, box->z, box->x, box->y,
-                                    box->x + box->width,
-                                    box->y + box->height);
+   if (!blorp_can_hiz_clear_depth(devinfo, &res->surf, res->aux.usage,
+                                  level, box->z, box->x, box->y,
+                                  box->x + box->width,
+                                  box->y + box->height)) {
+      return false;
+   }
+
+   return true;
 }
 
 static void
