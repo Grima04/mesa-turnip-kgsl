@@ -862,7 +862,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       }
 
       if (original_index_size) {
-         index_max_size = (indexbuf->width0 - index_offset) / original_index_size;
+         index_max_size = (indexbuf->width0 - index_offset) >> util_logbase2(original_index_size);
          /* Skip draw calls with 0-sized index buffers.
           * They cause a hang on some chips, like Navi10-14.
           */
