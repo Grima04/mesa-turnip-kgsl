@@ -280,7 +280,9 @@ panfrost_create_scanout_res(struct pipe_screen *screen,
 /* Setup the mip tree given a particular modifier, possibly with checksumming */
 
 static void
-panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
+panfrost_setup_slices(struct panfrost_device *dev,
+                      struct panfrost_resource *pres,
+                      size_t *bo_size)
 {
         struct pipe_resource *res = &pres->base;
         unsigned width = res->width0;
@@ -313,13 +315,6 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
         bool linear = pres->modifier == DRM_FORMAT_MOD_LINEAR;
         bool should_align = renderable || tiled || afbc;
 
-        /* We don't know how to specify a 2D stride for 3D textures */
-
-        bool can_align_stride =
-                res->target != PIPE_TEXTURE_3D;
-
-        should_align &= can_align_stride;
-
         unsigned offset = 0;
         unsigned size_2d = 0;
 
@@ -350,8 +345,11 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                 if (util_format_is_compressed(pres->internal_format))
                         stride /= 4;
 
-                /* ..but cache-line align it for performance */
-                if (can_align_stride && linear)
+                /* On Bifrost, pixel lines have to be aligned on 64 bytes otherwise
+                 * we end up with DATA_INVALID faults. That doesn't seem to be
+                 * mandatory on Midgard, but we keep the alignment for performance.
+                 */
+                if (linear)
                         stride = ALIGN_POT(stride, 64);
 
                 slice->stride = stride;
@@ -524,7 +522,7 @@ panfrost_resource_setup(struct panfrost_device *dev, struct panfrost_resource *p
         pres->modifier_constant = !((pres->modifier != DRM_FORMAT_MOD_LINEAR)
                         && (modifier == DRM_FORMAT_MOD_INVALID));
 
-        panfrost_setup_slices(pres, bo_size);
+        panfrost_setup_slices(dev, pres, bo_size);
 }
 
 void
