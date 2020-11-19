@@ -322,3 +322,34 @@ os_get_available_system_memory(uint64_t *size)
    return false;
 #endif
 }
+
+/**
+ * Return the size of a page
+ * \param size returns the size of a page
+ * \return true for success, or false on failure
+ */
+bool
+os_get_page_size(uint64_t *size)
+{
+#if DETECT_OS_LINUX || DETECT_OS_CYGWIN || DETECT_OS_SOLARIS || DETECT_OS_HURD
+   const long page_size = sysconf(_SC_PAGE_SIZE);
+
+   if (page_size <= 0)
+      return false;
+
+   *size = (uint64_t)page_size;
+   return true;
+#elif DETECT_OS_HAIKU
+   *size = (uint64_t)B_PAGE_SIZE;
+   return true;
+#elif DETECT_OS_WINDOWS
+   SYSTEM_INFO SysInfo;
+
+   GetSystemInfo(&SysInfo);
+   *size = SysInfo.dwPageSize;
+   return true;
+#else
+#error unexpected platform in os_sysinfo.c
+   return false;
+#endif
+}
