@@ -988,6 +988,7 @@ elif host_machine.system() == 'windows'
       '-D_SCL_SECURE_NO_DEPRECATE',
       '-D_ALLOW_KEYWORD_MACROS',
       '-D_HAS_EXCEPTIONS=0', # Tell C++ STL to not use exceptions
+      '-DNOMINMAX',
     ]
   else
     pre_args += ['-D__MSVCRT_VERSION__=0x0700']
