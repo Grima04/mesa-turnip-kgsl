@@ -2451,9 +2451,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
       while (aux_modes) {
          enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
 
-         /* If we have a multisampled depth buffer, do not create a sampler
-          * surface state with HiZ.
-          */
          fill_surface_state(&screen->isl_dev, map, isv->res, &isv->res->surf,
                             &isv->view, aux_usage, 0, 0, 0);
 
