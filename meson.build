@@ -1611,7 +1611,10 @@ else
   dep_llvmspirvlib = null_dep
 endif
 
-if (with_amd_vk or with_gallium_radeonsi or with_gallium_opencl or
+with_opencl_native = _opencl != 'disabled' and get_option('opencl-native')
+
+if (with_amd_vk or with_gallium_radeonsi or
+    (with_gallium_opencl and with_opencl_native) or
     (with_gallium_r600 and with_llvm))
   dep_elf = dependency('libelf', required : false)
   if not dep_elf.found()

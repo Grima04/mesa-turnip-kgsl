@@ -36,12 +36,14 @@
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
-#include <libelf.h>
-#include <gelf.h>
-
 using namespace clover;
 using namespace clover::llvm;
 using ::llvm::TargetMachine;
+
+#ifdef HAVE_CLOVER_NATIVE
+
+#include <libelf.h>
+#include <gelf.h>
 
 namespace {
    namespace elf {
@@ -161,3 +163,20 @@ clover::llvm::print_module_native(const ::llvm::Module &mod,
       return "Couldn't output native disassembly: " + log;
    }
 }
+
+#else
+
+module
+clover::llvm::build_module_native(::llvm::Module &mod, const target &target,
+                                  const clang::CompilerInstance &c,
+                                  std::string &r_log) {
+   unreachable("Native codegen support disabled at build time");
+}
+
+std::string
+clover::llvm::print_module_native(const ::llvm::Module &mod,
+                                  const target &target) {
+   unreachable("Native codegen support disabled at build time");
+}
+
+#endif
