@@ -1013,6 +1013,13 @@ struct v3dv_cmd_buffer_state {
       uint8_t index_size;
    } index_buffer;
 
+   /* Current uniforms */
+   struct {
+      struct v3dv_cl_reloc vs_bin;
+      struct v3dv_cl_reloc vs;
+      struct v3dv_cl_reloc fs;
+   } uniforms;
+
    /* Used to flag OOM conditions during command buffer recording */
    bool oom;
 

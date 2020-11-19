@@ -3506,6 +3506,22 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
+update_uniform_state(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(pipeline);
+
+   cmd_buffer->state.uniforms.fs =
+      v3dv_write_uniforms(cmd_buffer, pipeline->fs);
+
+   cmd_buffer->state.uniforms.vs =
+      v3dv_write_uniforms(cmd_buffer, pipeline->vs);
+
+   cmd_buffer->state.uniforms.vs_bin =
+      v3dv_write_uniforms(cmd_buffer, pipeline->vs_bin);
+}
+
+static void
 emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
@@ -3514,16 +3530,6 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    struct v3dv_pipeline *pipeline = state->pipeline;
    assert(pipeline);
-
-   /* Upload the uniforms to the indirect CL first */
-   struct v3dv_cl_reloc fs_uniforms =
-      v3dv_write_uniforms(cmd_buffer, pipeline->fs);
-
-   struct v3dv_cl_reloc vs_uniforms =
-      v3dv_write_uniforms(cmd_buffer, pipeline->vs);
-
-   struct v3dv_cl_reloc vs_bin_uniforms =
-      v3dv_write_uniforms(cmd_buffer, pipeline->vs_bin);
 
    /* Update the cache dirty flag based on the shader progs data */
    job->tmu_dirty_rcl |= pipeline->vs_bin->current_variant->prog_data.vs->base.tmu_dirty_rcl;
@@ -3561,9 +3567,9 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
       shader.fragment_shader_code_address =
          v3dv_cl_address(pipeline->fs->current_variant->assembly_bo, 0);
 
-      shader.coordinate_shader_uniforms_address = vs_bin_uniforms;
-      shader.vertex_shader_uniforms_address = vs_uniforms;
-      shader.fragment_shader_uniforms_address = fs_uniforms;
+      shader.coordinate_shader_uniforms_address = cmd_buffer->state.uniforms.vs_bin;
+      shader.vertex_shader_uniforms_address = cmd_buffer->state.uniforms.vs;
+      shader.fragment_shader_uniforms_address = cmd_buffer->state.uniforms.fs;
 
       shader.address_of_default_attribute_values =
          v3dv_cl_address(pipeline->default_attribute_values, 0);
@@ -4058,13 +4064,16 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
     * that will require that we new uniform state for QUNIFORM_VIEWPORT_*.
     */
    uint32_t *dirty = &cmd_buffer->state.dirty;
-   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE |
-                 V3DV_CMD_DIRTY_VERTEX_BUFFER |
-                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
-                 V3DV_CMD_DIRTY_PUSH_CONSTANTS |
-                 V3DV_CMD_DIRTY_VIEWPORT)) {
+
+   const bool dirty_uniforms = *dirty & (V3DV_CMD_DIRTY_PIPELINE |
+                                         V3DV_CMD_DIRTY_PUSH_CONSTANTS |
+                                         V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
+                                         V3DV_CMD_DIRTY_VIEWPORT);
+   if (dirty_uniforms)
+      update_uniform_state(cmd_buffer);
+
+   if (dirty_uniforms || (*dirty & V3DV_CMD_DIRTY_VERTEX_BUFFER))
       emit_gl_shader_state(cmd_buffer);
-   }
 
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE)) {
       emit_configuration_bits(cmd_buffer);
