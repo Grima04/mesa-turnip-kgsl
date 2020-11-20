@@ -932,12 +932,12 @@ elif _shader_cache == 'false'
 endif
 if _shader_cache != 'disabled'
   if host_machine.system() == 'windows'
-    if ['enabled', 'default-disabled'].contains(_shader_cache)
+    if _shader_cache == 'enabled'
       error('Shader Cache does not currently work on Windows')
     endif
   else
     pre_args += '-DENABLE_SHADER_CACHE'
-    if _shader_cache == 'default-disabled'
+    if not get_option('shader-cache-default')
       pre_args += '-DSHADER_CACHE_DISABLE_BY_DEFAULT'
     endif
     with_shader_cache = true
@@ -1816,7 +1816,7 @@ if with_platform_x11
       endif
     endif
   endif
-  if (with_egl or 
+  if (with_egl or
       with_dri3 or (
       with_gallium_vdpau or with_gallium_xvmc or with_gallium_xa or
       with_gallium_omx != 'disabled'))
