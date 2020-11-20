@@ -394,6 +394,10 @@ struct tu_device
    uint32_t *bo_idx;
    uint32_t bo_count, bo_list_size, bo_idx_size;
    mtx_t bo_mutex;
+
+   /* Command streams to set pass index to a scratch reg */
+   struct tu_cs *perfcntrs_pass_cs;
+   struct tu_cs_entry *perfcntrs_pass_cs_entries;
 };
 
 VkResult _tu_device_set_lost(struct tu_device *device,
@@ -1503,6 +1507,17 @@ struct tu_render_pass
    struct tu_subpass subpasses[0];
 };
 
+#define PERF_CNTRS_REG 4
+
+struct tu_perf_query_data
+{
+   uint32_t gid;      /* group-id */
+   uint32_t cid;      /* countable-id within the group */
+   uint32_t cntr_reg; /* counter register within the group */
+   uint32_t pass;     /* pass index that countables can be requested */
+   uint32_t app_idx;  /* index provided by apps */
+};
+
 struct tu_query_pool
 {
    struct vk_object_base base;
@@ -1517,7 +1532,7 @@ struct tu_query_pool
    const struct fd_perfcntr_group *perf_group;
    uint32_t perf_group_count;
    uint32_t counter_index_count;
-   uint32_t counter_indices[0];
+   struct tu_perf_query_data perf_query_data[0];
 };
 
 uint32_t
