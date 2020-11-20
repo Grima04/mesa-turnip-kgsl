@@ -2063,6 +2063,51 @@ bi_optimize_nir(nir_shader *nir)
         NIR_PASS(progress, nir, nir_convert_from_ssa, true);
 }
 
+/* The cmdstream lowers 8-bit fragment output as 16-bit, so we need to do the
+ * same lowering here to zero-extend correctly */
+
+static bool
+bifrost_nir_lower_i8_fragout_impl(struct nir_builder *b,
+                nir_instr *instr, UNUSED void *data)
+{
+        if (instr->type != nir_instr_type_intrinsic)
+                return false;
+
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+        if (intr->intrinsic != nir_intrinsic_store_output)
+                return false;
+
+        if (nir_src_bit_size(intr->src[0]) != 8)
+                return false;
+
+        nir_alu_type type =
+                nir_alu_type_get_base_type(nir_intrinsic_src_type(intr));
+
+        assert(type == nir_type_int || nir_type_uint);
+
+        b->cursor = nir_before_instr(instr);
+        nir_ssa_def *cast = type == nir_type_int ?
+                nir_i2i(b, intr->src[0].ssa, 16) :
+                nir_u2u(b, intr->src[0].ssa, 16);
+
+        nir_intrinsic_set_src_type(intr, type | 16);
+        nir_instr_rewrite_src(&intr->instr, &intr->src[0],
+                        nir_src_for_ssa(cast));
+        return true;
+}
+
+static bool
+bifrost_nir_lower_i8_fragout(nir_shader *shader)
+{
+        if (shader->info.stage != MESA_SHADER_FRAGMENT)
+                return false;
+
+        return nir_shader_instructions_pass(shader,
+                        bifrost_nir_lower_i8_fragout_impl,
+                        nir_metadata_block_index | nir_metadata_dominance,
+                        NULL);
+}
+
 panfrost_program *
 bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                            const struct panfrost_compile_inputs *inputs)
@@ -2100,6 +2145,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                         glsl_type_size, 0);
         NIR_PASS_V(nir, nir_lower_ssbo);
         NIR_PASS_V(nir, pan_nir_lower_zs_store);
+        NIR_PASS_V(nir, bifrost_nir_lower_i8_fragout);
         // TODO: re-enable when fp16 is flipped on
         // NIR_PASS_V(nir, nir_lower_mediump_outputs);
 
