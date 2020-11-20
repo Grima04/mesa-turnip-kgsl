@@ -553,6 +553,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"forcecompress", RADV_DEBUG_FORCE_COMPRESS},
 	{"hang", RADV_DEBUG_HANG},
 	{"img", RADV_DEBUG_IMG},
+	{"noumr", RADV_DEBUG_NO_UMR},
 	{NULL, 0}
 };
 

@@ -473,7 +473,8 @@ radv_dump_queue_state(struct radv_queue *queue, FILE *f)
 	pipeline = radv_get_saved_pipeline(queue->device, ring);
 	if (pipeline) {
 		radv_dump_shaders(pipeline, pipeline->active_stages, f);
-		radv_dump_annotated_shaders(pipeline, pipeline->active_stages, f);
+		if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_UMR))
+			radv_dump_annotated_shaders(pipeline, pipeline->active_stages, f);
 		radv_dump_descriptors(queue->device, f);
 	}
 }
@@ -670,20 +671,22 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		fclose(f);
 	}
 
-	/* Dump UMR ring. */
-	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_ring.log");
-	f = fopen(dump_path, "w+");
-	if (f) {
-		radv_dump_umr_ring(queue, f);
-		fclose(f);
-	}
+	if (!(device->instance->debug_flags & RADV_DEBUG_NO_UMR)) {
+		/* Dump UMR ring. */
+		snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_ring.log");
+		f = fopen(dump_path, "w+");
+		if (f) {
+			radv_dump_umr_ring(queue, f);
+			fclose(f);
+		}
 
-	/* Dump UMR waves. */
-	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_waves.log");
-	f = fopen(dump_path, "w+");
-	if (f) {
-		radv_dump_umr_waves(queue, f);
-		fclose(f);
+		/* Dump UMR waves. */
+		snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_waves.log");
+		f = fopen(dump_path, "w+");
+		if (f) {
+			radv_dump_umr_waves(queue, f);
+			fclose(f);
+		}
 	}
 
 	/* Dump debug registers. */
