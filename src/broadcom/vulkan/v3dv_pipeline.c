@@ -400,8 +400,10 @@ preprocess_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_var_copies);
 
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in |
-              nir_var_shader_out |
-              nir_var_function_temp, UINT32_MAX);
+              nir_var_shader_out, UINT32_MAX);
+
+   NIR_PASS_V(nir, nir_lower_indirect_derefs,
+              nir_var_function_temp, 2);
 
    NIR_PASS_V(nir, nir_lower_array_deref_of_vec,
               nir_var_mem_ubo | nir_var_mem_ssbo,
