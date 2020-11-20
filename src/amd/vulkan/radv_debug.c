@@ -627,6 +627,8 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		abort();
 	}
 
+	fprintf(stderr, "radv: GPU hang report will be saved to '%s'!\n", dump_dir);
+
 	/* Dump trace file. */
 	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "trace.log");
 	f = fopen(dump_path, "w+");
@@ -707,7 +709,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		fclose(f);
 	}
 
-	fprintf(stderr, "radv: GPU hang report saved to '%s'!\n", dump_dir);
+	fprintf(stderr, "radv: GPU hang report saved successfully!\n");
 	abort();
 }
 
