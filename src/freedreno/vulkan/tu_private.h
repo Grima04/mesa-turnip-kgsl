@@ -225,6 +225,7 @@ enum tu_debug_flags
    TU_DEBUG_NOUBWC = 1 << 6,
    TU_DEBUG_NOMULTIPOS = 1 << 7,
    TU_DEBUG_NOLRZ = 1 << 8,
+   TU_DEBUG_PERFC = 1 << 9,
 };
 
 struct tu_instance

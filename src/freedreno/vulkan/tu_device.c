@@ -186,6 +186,7 @@ static const struct debug_control tu_debug_options[] = {
    { "noubwc", TU_DEBUG_NOUBWC },
    { "nomultipos", TU_DEBUG_NOMULTIPOS },
    { "nolrz", TU_DEBUG_NOLRZ },
+   { "perfc", TU_DEBUG_PERFC },
    { NULL, 0 }
 };
 
