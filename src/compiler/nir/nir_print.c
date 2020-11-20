@@ -1218,6 +1218,10 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
    if (instr->sampler_non_uniform) {
       fprintf(fp, ", sampler non-uniform");
    }
+
+   if (instr->is_sparse) {
+      fprintf(fp, ", sparse");
+   }
 }
 
 static void

@@ -2036,6 +2036,12 @@ typedef struct {
     */
    bool is_new_style_shadow;
 
+   /**
+    * If this texture instruction should return a sparse residency code. The
+    * code is in the last component of the result.
+    */
+   bool is_sparse;
+
    /* gather component selector */
    unsigned component : 2;
 
@@ -2096,7 +2102,7 @@ nir_tex_instr_need_sampler(const nir_tex_instr *instr)
 }
 
 static inline unsigned
-nir_tex_instr_dest_size(const nir_tex_instr *instr)
+nir_tex_instr_result_size(const nir_tex_instr *instr)
 {
    switch (instr->op) {
    case nir_texop_txs: {
@@ -2140,6 +2146,13 @@ nir_tex_instr_dest_size(const nir_tex_instr *instr)
 
       return 4;
    }
+}
+
+static inline unsigned
+nir_tex_instr_dest_size(const nir_tex_instr *instr)
+{
+   /* One more component is needed for the residency code. */
+   return nir_tex_instr_result_size(instr) + instr->is_sparse;
 }
 
 /* Returns true if this texture operation queries something about the texture
