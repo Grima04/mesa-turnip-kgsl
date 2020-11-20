@@ -4,6 +4,7 @@
    :hidden:
 
    self
+   history
    developers
    systems
    license
