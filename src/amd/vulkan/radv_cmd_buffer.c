@@ -656,6 +656,23 @@ radv_save_pipeline(struct radv_cmd_buffer *cmd_buffer,
 	radv_emit_write_data_packet(cmd_buffer, va, 2, data);
 }
 
+static void
+radv_save_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
+			     uint64_t vb_ptr)
+{
+	struct radv_device *device = cmd_buffer->device;
+	uint32_t data[2];
+	uint64_t va;
+
+	va = radv_buffer_get_va(device->trace_bo);
+	va += 24;
+
+	data[0] = vb_ptr;
+	data[1] = vb_ptr >> 32;
+
+	radv_emit_write_data_packet(cmd_buffer, va, 2, data);
+}
+
 void radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
 			     VkPipelineBindPoint bind_point,
 			     struct radv_descriptor_set *set,
@@ -680,7 +697,7 @@ radv_save_descriptors(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t data[MAX_SETS * 2] = {0};
 	uint64_t va;
 	unsigned i;
-	va = radv_buffer_get_va(device->trace_bo) + 24;
+	va = radv_buffer_get_va(device->trace_bo) + 32;
 
 	for_each_bit(i, descriptors_state->valid) {
 		struct radv_descriptor_set *set = descriptors_state->sets[i];
@@ -2836,6 +2853,9 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 		cmd_buffer->state.vb_va = va;
 		cmd_buffer->state.vb_size = count * 16;
 		cmd_buffer->state.prefetch_L2_mask |= RADV_PREFETCH_VBO_DESCRIPTORS;
+
+		if (unlikely(cmd_buffer->device->trace_bo))
+			radv_save_vertex_descriptors(cmd_buffer, (uintptr_t)vb_ptr);
 	}
 	cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_VERTEX_BUFFER;
 }

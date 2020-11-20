@@ -53,7 +53,8 @@
  * [1]: secondary trace ID
  * [2-3]: 64-bit GFX ring pipeline pointer
  * [4-5]: 64-bit COMPUTE ring pipeline pointer
- * [6-7]: 64-bit descriptor set #0 pointer
+ * [6-7]: Vertex descriptors pointer
+ * [8-9]: 64-bit descriptor set #0 pointer
  * ...
  * [68-69]: 64-bit descriptor set #31 pointer
  */
@@ -242,7 +243,7 @@ radv_dump_descriptors(struct radv_device *device, FILE *f)
 	fprintf(f, "Descriptors:\n");
 	for (i = 0; i < MAX_SETS; i++) {
 		struct radv_descriptor_set *set =
-			*(struct radv_descriptor_set **)(ptr + i + 3);
+			*(struct radv_descriptor_set **)(ptr + i + 4);
 
 		radv_dump_descriptor_set(device, set, i, f);
 	}
@@ -453,6 +454,31 @@ radv_dump_shaders(struct radv_pipeline *pipeline,
 	}
 }
 
+static void
+radv_dump_vertex_descriptors(struct radv_pipeline *pipeline, FILE *f)
+{
+	void *ptr = (uint64_t *)pipeline->device->trace_id_ptr;
+	uint32_t count = pipeline->num_vertex_bindings;
+	uint32_t *vb_ptr = &((uint32_t *)ptr)[3];
+
+	if (!count)
+		return;
+
+	fprintf(f, "Num vertex bindings: %d\n", count);
+	for (uint32_t i = 0; i < count; i++) {
+		uint32_t *desc = &((uint32_t *)vb_ptr)[i * 4];
+		uint64_t va = 0;
+
+		va |= desc[0];
+		va |= (uint64_t)G_008F04_BASE_ADDRESS_HI(desc[1]) << 32;
+
+		fprintf(f, "VBO#%d:\n", i);
+		fprintf(f, "\tVA: 0x%"PRIx64"\n", va);
+		fprintf(f, "\tStride: %d\n", G_008F04_STRIDE(desc[1]));
+		fprintf(f, "\tNum records: %d (0x%x)\n", desc[2], desc[2]);
+	}
+}
+
 static struct radv_pipeline *
 radv_get_saved_pipeline(struct radv_device *device, enum ring_type ring)
 {
@@ -475,6 +501,7 @@ radv_dump_queue_state(struct radv_queue *queue, FILE *f)
 		radv_dump_shaders(pipeline, pipeline->active_stages, f);
 		if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_UMR))
 			radv_dump_annotated_shaders(pipeline, pipeline->active_stages, f);
+		radv_dump_vertex_descriptors(pipeline, f);
 		radv_dump_descriptors(queue->device, f);
 	}
 }
