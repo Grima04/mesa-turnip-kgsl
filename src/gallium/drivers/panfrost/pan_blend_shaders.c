@@ -240,6 +240,7 @@ bifrost_get_blend_desc(const struct panfrost_device *dev,
                         cfg.fixed_function.conversion.register_format =
                                 MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
                         break;
+                case nir_type_int8:
                 case nir_type_int16:
                         cfg.fixed_function.conversion.register_format =
                                 MALI_BIFROST_REGISTER_FILE_FORMAT_I16;
@@ -248,6 +249,7 @@ bifrost_get_blend_desc(const struct panfrost_device *dev,
                         cfg.fixed_function.conversion.register_format =
                                 MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
                         break;
+                case nir_type_uint8:
                 case nir_type_uint16:
                         cfg.fixed_function.conversion.register_format =
                                 MALI_BIFROST_REGISTER_FILE_FORMAT_U16;
