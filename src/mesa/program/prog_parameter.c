@@ -145,7 +145,7 @@ _mesa_new_parameter_list_sized(unsigned size)
 
 
    if ((p != NULL) && (size != 0)) {
-      _mesa_reserve_parameter_storage(p, size);
+      _mesa_reserve_parameter_storage(p, size, size);
 
       if ((p->Parameters == NULL) || (p->ParameterValues == NULL)) {
          free(p->Parameters);
@@ -181,17 +181,20 @@ _mesa_free_parameter_list(struct gl_program_parameter_list *paramList)
  * if needed.
  *
  * \param paramList        where to reserve parameter slots
- * \param reserve_slots    number of slots to reserve
+ * \param reserve_params   number of parameter description slots
+ * \param reserve_values   number of parameter vec4 slots
  */
 void
 _mesa_reserve_parameter_storage(struct gl_program_parameter_list *paramList,
-                                unsigned reserve_slots)
+                                unsigned reserve_params,
+                                unsigned reserve_values)
 {
    const GLuint oldNum = paramList->NumParameters;
+   const unsigned oldValNum = paramList->NumParameterValues;
 
-   if (oldNum + reserve_slots > paramList->Size) {
+   if (oldNum + reserve_params > paramList->Size) {
       /* Need to grow the parameter list array (alloc some extra) */
-      paramList->Size = paramList->Size + 4 * reserve_slots;
+      paramList->Size += 4 * reserve_params;
 
       /* realloc arrays */
       paramList->Parameters =
@@ -201,11 +204,15 @@ _mesa_reserve_parameter_storage(struct gl_program_parameter_list *paramList,
       paramList->ParameterValueOffset =
          realloc(paramList->ParameterValueOffset,
                  paramList->Size * sizeof(unsigned));
+   }
+
+   if (oldValNum + reserve_values > paramList->SizeValues) {
+      paramList->SizeValues += 4 * reserve_values;
 
       paramList->ParameterValues = (gl_constant_value *)
          align_realloc(paramList->ParameterValues,         /* old buf */
                        oldNum * 4 * sizeof(gl_constant_value),/* old sz */
-                       paramList->Size*4*sizeof(gl_constant_value),/*new*/
+                       paramList->SizeValues * 4 * sizeof(gl_constant_value),/*new*/
                        16);
    }
 }
@@ -237,26 +244,27 @@ _mesa_add_parameter(struct gl_program_parameter_list *paramList,
    assert(0 < size && size <=4);
    const GLuint oldNum = paramList->NumParameters;
    unsigned oldValNum = paramList->NumParameterValues;
+   const unsigned padded_size = pad_and_align ? align(size, 4) : size;
 
    if (pad_and_align)
       oldValNum = align(oldValNum, 4); /* pad start to a vec4 boundary */
    else if (_mesa_gl_datatype_is_64bit(datatype))
       oldValNum = align(oldValNum, 2); /* pad start to 64-bit */
 
-   _mesa_reserve_parameter_storage(paramList, 1);
+   _mesa_reserve_parameter_storage(paramList, 1, 1);
 
    if (!paramList->Parameters || !paramList->ParameterValueOffset ||
        !paramList->ParameterValues) {
       /* out of memory */
       paramList->NumParameters = 0;
       paramList->Size = 0;
+      paramList->SizeValues = 0;
       return -1;
    }
 
    paramList->NumParameters = oldNum + 1;
 
-   unsigned pad = pad_and_align ? align(size, 4) : size;
-   paramList->NumParameterValues = oldValNum + pad;
+   paramList->NumParameterValues = oldValNum + padded_size;
 
    memset(&paramList->Parameters[oldNum], 0,
           sizeof(struct gl_program_parameter));
@@ -281,12 +289,12 @@ _mesa_add_parameter(struct gl_program_parameter_list *paramList,
          }
 
          /* Zero out padding (if any) to avoid valgrind errors */
-         for (; j < pad; j++) {
+         for (; j < padded_size; j++) {
             paramList->ParameterValues[oldValNum + j].f = 0;
          }
       }
    } else {
-      for (unsigned j = 0; j < 4; j++) {
+      for (unsigned j = 0; j < padded_size; j++) {
          paramList->ParameterValues[oldValNum + j].f = 0;
       }
    }

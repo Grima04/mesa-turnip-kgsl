@@ -2391,7 +2391,7 @@ add_uniform_to_shader::visit_field(const glsl_type *type, const char *name,
    if (is_dual_slot)
       num_params *= 2;
 
-   _mesa_reserve_parameter_storage(params, num_params);
+   _mesa_reserve_parameter_storage(params, num_params, num_params);
    index = params->NumParameters;
 
    if (ctx->Const.PackedDriverUniformStorage) {

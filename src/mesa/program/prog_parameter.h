@@ -133,7 +133,8 @@ struct gl_program_parameter
  */
 struct gl_program_parameter_list
 {
-   GLuint Size;           /**< allocated size of Parameters, ParameterValues */
+   unsigned Size;           /**< allocated size of Parameters */
+   unsigned SizeValues;     /**< alllocate size of ParameterValues */
    GLuint NumParameters;  /**< number of used parameters in array */
    unsigned NumParameterValues;  /**< number of used parameter values array */
    struct gl_program_parameter *Parameters; /**< Array [Size] */
@@ -155,7 +156,8 @@ _mesa_free_parameter_list(struct gl_program_parameter_list *paramList);
 
 extern void
 _mesa_reserve_parameter_storage(struct gl_program_parameter_list *paramList,
-                                unsigned reserve_slots);
+                                unsigned reserve_params,
+                                unsigned reserve_values);
 
 extern GLint
 _mesa_add_parameter(struct gl_program_parameter_list *paramList,
