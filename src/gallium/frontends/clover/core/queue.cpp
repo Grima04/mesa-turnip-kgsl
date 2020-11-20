@@ -60,7 +60,7 @@ command_queue::command_queue(clover::context &ctx, clover::device &dev,
 }
 command_queue::command_queue(clover::context &ctx, clover::device &dev,
                              std::vector<cl_queue_properties> properties) :
-   context(ctx), device(dev), _properties(properties) {
+   context(ctx), device(dev), _properties(properties), _props(0) {
 
    for(std::vector<cl_queue_properties>::size_type i = 0; i != properties.size(); i += 2) {
       if (properties[i] == 0)
