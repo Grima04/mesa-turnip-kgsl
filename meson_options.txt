@@ -268,9 +268,8 @@ option(
 )
 option(
   'microsoft-clc',
-  type : 'combo',
+  type : 'feature',
   value : 'auto',
-  choices : ['auto', 'true', 'false'],
   description : 'Build support for the Microsoft CLC to DXIL compiler'
 )
 option(

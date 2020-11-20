@@ -299,25 +299,18 @@ if with_aco_tests and not with_amd_vk
   error('ACO tests require Radv')
 endif
 
-_microsoft_clc = get_option('microsoft-clc')
-if _microsoft_clc == 'auto'
-  with_microsoft_clc = false
-else
-  with_microsoft_clc = _microsoft_clc == 'true'
-endif
-
-if with_microsoft_clc
-  with_clc = true
-  dep_clang = dependency(
-    'clang',
-    method: 'cmake',
-    static: true,
-    modules: [
-      'clangBasic', 'clangCodeGen', 'clangDriver', 'clangFrontend', 'clangFrontendTool',
-      'clangHandleCXX', 'clangHandleLLVM',
-    ],
-  )
-endif
+dep_clang = dependency(
+  'clang',
+  method : 'cmake',
+  static : true,
+  modules : [
+    'clangBasic', 'clangCodeGen', 'clangDriver', 'clangFrontend', 'clangFrontendTool',
+    'clangHandleCXX', 'clangHandleLLVM',
+  ],
+  required : get_option('microsoft-clc'),
+)
+with_microsoft_clc = dep_clang.found()
+with_clc = dep_clang.found()
 
 if host_machine.system() == 'darwin'
   with_dri_platform = 'apple'
