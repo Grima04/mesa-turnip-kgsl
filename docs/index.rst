@@ -8,7 +8,7 @@ The Mesa project began as an open-source implementation of the
 
 Over the years the project has grown to implement more graphics APIs,
 including `OpenGL ES`_, `OpenCL`_, `OpenMAX`_, `VDPAU`_, `VA API`_,
-`XvMC`_ and `Vulkan`_.
+`XvMC`_, `Vulkan`_ and `EGL`_.
 
 A variety of device drivers allows the Mesa libraries to be used in many
 different environments ranging from software emulation to complete
@@ -26,5 +26,6 @@ and other operating systems.
 .. _VA API: https://en.wikipedia.org/wiki/Video_Acceleration_API
 .. _XvMC: https://en.wikipedia.org/wiki/X-Video_Motion_Compensation
 .. _Vulkan: https://www.khronos.org/vulkan/
+.. _EGL: https://www.khronos.org/egl/
 .. _Direct Rendering Infrastructure: https://dri.freedesktop.org/
 .. _X.org: https://x.org
