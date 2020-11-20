@@ -138,7 +138,7 @@ command_queue::sequence(hard_event &ev) {
 
    // Arbitrary threshold.
    // The CTS tends to run a lot of subtests without flushing with the image
-   // tests, so flush regulary to prevent stack overflows.
+   // tests, so flush regularly to prevent stack overflows.
    if (queued_events.size() > 1000)
       flush_unlocked();
 }
