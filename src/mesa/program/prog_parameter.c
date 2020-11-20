@@ -143,18 +143,9 @@ _mesa_new_parameter_list_sized(unsigned size)
 {
    struct gl_program_parameter_list *p = _mesa_new_parameter_list();
 
+
    if ((p != NULL) && (size != 0)) {
-      p->Size = size;
-
-      /* alloc arrays */
-      p->Parameters = (struct gl_program_parameter *)
-         calloc(size, sizeof(struct gl_program_parameter));
-
-      p->ParameterValueOffset = (unsigned *) calloc(size, sizeof(unsigned));
-
-      p->ParameterValues = (gl_constant_value *)
-         align_malloc(size * 4 *sizeof(gl_constant_value), 16);
-
+      _mesa_reserve_parameter_storage(p, size);
 
       if ((p->Parameters == NULL) || (p->ParameterValues == NULL)) {
          free(p->Parameters);
