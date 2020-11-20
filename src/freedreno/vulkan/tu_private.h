@@ -64,6 +64,7 @@
 #include "a6xx.xml.h"
 #include "fdl/freedreno_layout.h"
 #include "common/freedreno_dev_info.h"
+#include "perfcntrs/freedreno_perfcntr.h"
 
 #include "tu_descriptor_set.h"
 #include "tu_extensions.h"
@@ -1511,6 +1512,12 @@ struct tu_query_pool
    uint64_t size;
    uint32_t pipeline_statistics;
    struct tu_bo bo;
+
+   /* For performance query */
+   const struct fd_perfcntr_group *perf_group;
+   uint32_t perf_group_count;
+   uint32_t counter_index_count;
+   uint32_t counter_indices[0];
 };
 
 uint32_t
