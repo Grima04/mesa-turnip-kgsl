@@ -726,7 +726,7 @@ meson-classic:
       -D glx=dri
       -D gbm=enabled
       -D egl=enabled
-      -D platforms=x11,wayland,drm,surfaceless
+      -D platforms=x11,wayland
     DRI_DRIVERS: "auto"
     EXTRA_OPTION: >
       -D osmesa=classic
