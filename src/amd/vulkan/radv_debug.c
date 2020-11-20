@@ -529,6 +529,23 @@ radv_dump_enabled_options(struct radv_device *device, FILE *f)
 }
 
 static void
+radv_dump_app_info(struct radv_device *device, FILE *f)
+{
+	struct radv_instance *instance = device->instance;
+
+	fprintf(f, "Application name: %s\n", instance->applicationName);
+	fprintf(f, "Application version: %d\n", instance->applicationVersion);
+	fprintf(f, "Engine name: %s\n", instance->engineName);
+	fprintf(f, "Engine version: %d\n", instance->engineVersion);
+	fprintf(f, "API version: %d.%d.%d\n",
+		VK_VERSION_MAJOR(instance->apiVersion),
+		VK_VERSION_MINOR(instance->apiVersion),
+		VK_VERSION_PATCH(instance->apiVersion));
+
+	radv_dump_enabled_options(device, f);
+}
+
+static void
 radv_dump_device_name(struct radv_device *device, FILE *f)
 {
 	struct radeon_info *info = &device->physical_device->rad_info;
@@ -692,11 +709,11 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		}
 	}
 
-	/* Dump enabled debug/perftest options. */
-	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "options.log");
+	/* Dump app info. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "app_info.log");
 	f = fopen(dump_path, "w+");
 	if (f) {
-		radv_dump_enabled_options(device, f);
+		radv_dump_app_info(device, f);
 		fclose(f);
 	}
 
