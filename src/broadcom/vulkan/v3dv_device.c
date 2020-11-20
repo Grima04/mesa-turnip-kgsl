@@ -52,6 +52,11 @@
 #include <X11/Xlib-xcb.h>
 #endif
 
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+#include <wayland-client.h>
+#include "wayland-drm-client-protocol.h"
+#endif
+
 #ifdef USE_V3D_SIMULATOR
 #include "drm-uapi/i915_drm.h"
 #endif
@@ -383,6 +388,126 @@ finish:
 }
 #endif
 
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+struct v3dv_wayland_info {
+   struct wl_drm *wl_drm;
+   int fd;
+   bool is_set;
+   bool authenticated;
+};
+
+static void
+v3dv_drm_handle_device(void *data, struct wl_drm *drm, const char *device)
+{
+   struct v3dv_wayland_info *info = data;
+   info->fd = open(device, O_RDWR | O_CLOEXEC);
+   info->is_set = info->fd != -1;
+
+   drm_magic_t magic;
+   drmGetMagic(info->fd, &magic);
+   wl_drm_authenticate(info->wl_drm, magic);
+}
+
+static void
+v3dv_drm_handle_format(void *data, struct wl_drm *drm, uint32_t format)
+{
+}
+
+static void
+v3dv_drm_handle_authenticated(void *data, struct wl_drm *drm)
+{
+   struct v3dv_wayland_info *info = data;
+   info->authenticated = true;
+}
+
+static void
+v3dv_drm_handle_capabilities(void *data, struct wl_drm *drm, uint32_t value)
+{
+}
+
+struct wl_drm_listener v3dv_drm_listener = {
+   .device = v3dv_drm_handle_device,
+   .format = v3dv_drm_handle_format,
+   .authenticated = v3dv_drm_handle_authenticated,
+   .capabilities = v3dv_drm_handle_capabilities
+};
+
+static void
+v3dv_registry_global(void *data,
+                     struct wl_registry *registry,
+                     uint32_t name,
+                     const char *interface,
+                     uint32_t version)
+{
+   struct v3dv_wayland_info *info = data;
+   if (strcmp(interface, "wl_drm") == 0) {
+      info->wl_drm = wl_registry_bind(registry, name, &wl_drm_interface,
+                                      MIN2(version, 2));
+      wl_drm_add_listener(info->wl_drm, &v3dv_drm_listener, data);
+   };
+}
+
+static void
+v3dv_registry_global_remove_cb(void *data,
+                               struct wl_registry *registry,
+                               uint32_t name)
+{
+}
+
+static int
+create_display_fd_wayland(VkIcdSurfaceBase *surface)
+{
+   struct wl_display *display;
+   struct wl_registry *registry = NULL;
+
+   struct v3dv_wayland_info info = {
+      .wl_drm = NULL,
+      .fd = -1,
+      .is_set = false,
+      .authenticated = false
+   };
+
+   if (surface)
+      display = ((VkIcdSurfaceWayland *) surface)->display;
+   else
+      display = wl_display_connect(NULL);
+
+   if (!display)
+      return -1;
+
+   registry = wl_display_get_registry(display);
+   if (!registry) {
+      if (!surface)
+         wl_display_disconnect(display);
+      return -1;
+   }
+
+   static const struct wl_registry_listener registry_listener = {
+      v3dv_registry_global,
+      v3dv_registry_global_remove_cb
+   };
+   wl_registry_add_listener(registry, &registry_listener, &info);
+
+   wl_display_roundtrip(display); /* For the registry advertisement */
+   wl_display_roundtrip(display); /* For the DRM device event */
+   wl_display_roundtrip(display); /* For the authentication event */
+
+   wl_drm_destroy(info.wl_drm);
+   wl_registry_destroy(registry);
+
+   if (!surface)
+      wl_display_disconnect(display);
+
+   if (!info.is_set)
+      return -1;
+
+   if (!info.authenticated)
+      return -1;
+
+   return info.fd;
+}
+#endif
+
 /* Acquire an authenticated display fd without a surface reference. This is the
  * case where the application is making WSI allocations outside the Vulkan
  * swapchain context (only Zink, for now). Since we lack information about the
@@ -393,8 +518,13 @@ static void
 acquire_display_device_no_surface(struct v3dv_instance *instance,
                                   struct v3dv_physical_device *pdevice)
 {
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+   pdevice->display_fd = create_display_fd_wayland(NULL);
+#endif
+
 #ifdef VK_USE_PLATFORM_XCB_KHR
-   pdevice->display_fd = create_display_fd_xcb(NULL);
+   if (pdevice->display_fd == -1)
+      pdevice->display_fd = create_display_fd_xcb(NULL);
 #endif
 
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
@@ -422,6 +552,11 @@ acquire_display_device_surface(struct v3dv_instance *instance,
        surface->platform == VK_ICD_WSI_PLATFORM_XLIB) {
       pdevice->display_fd = create_display_fd_xcb(surface);
    }
+#endif
+
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+   if (surface->platform == VK_ICD_WSI_PLATFORM_WAYLAND)
+      pdevice->display_fd = create_display_fd_wayland(surface);
 #endif
 
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
