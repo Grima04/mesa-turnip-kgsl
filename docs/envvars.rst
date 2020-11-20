@@ -557,8 +557,8 @@ RADV driver environment variables
       Enables DCC,FMASK,CMASK,HTILE in situations where the driver supports it
       but normally does not deem it beneficial.
    ``hang``
-      enable GPU hangs detection and dump a report to $HOME/radv_dumps_<pid>
-      if a GPU hang is detected
+      enable GPU hangs detection and dump a report to
+      $HOME/radv_dumps_<pid>_<time> if a GPU hang is detected
    ``img``
       Print image info
    ``info``

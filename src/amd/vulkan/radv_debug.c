@@ -616,11 +616,19 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 
 	fprintf(stderr, "radv: GPU hang detected...\n");
 
-	/* Create a directory into $HOME/radv_dumps_<pid> to save various
-	 * debugging info about that GPU hang.
+	/* Create a directory into $HOME/radv_dumps_<pid>_<time> to save
+	 * various debugging info about that GPU hang.
 	 */
-	snprintf(dump_dir, sizeof(dump_dir), "%s/"RADV_DUMP_DIR"_%d",
-		 debug_get_option("HOME", "."), getpid());
+	struct tm *timep, result;
+	time_t raw_time;
+	char buf_time[128];
+
+	time(&raw_time);
+	timep = localtime_r(&raw_time, &result);
+	strftime(buf_time, sizeof(buf_time), "%Y.%m.%d_%H.%M.%S", timep);
+
+	snprintf(dump_dir, sizeof(dump_dir), "%s/"RADV_DUMP_DIR"_%d_%s",
+		 debug_get_option("HOME", "."), getpid(), buf_time);
 	if (mkdir(dump_dir, 0774) && errno != EEXIST) {
 		fprintf(stderr, "radv: can't create directory '%s' (%i).\n",
 			dump_dir, errno);
