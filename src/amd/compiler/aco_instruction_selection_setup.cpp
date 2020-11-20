@@ -212,6 +212,7 @@ void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
             flags |= has_glc_vmem_load | has_glc_vmem_store;
             break;
          case nir_intrinsic_image_deref_load:
+         case nir_intrinsic_image_deref_sparse_load:
             res = intrin->src[0].ssa;
             flags |= glc ? has_glc_vmem_load : has_nonglc_vmem_load;
             break;

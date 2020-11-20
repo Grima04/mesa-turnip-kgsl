@@ -5816,7 +5816,8 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
       count--;
       Temp src2 = get_ssa_temp(ctx, instr->src[2].ssa);
       /* get sample index */
-      if (instr->intrinsic == nir_intrinsic_image_deref_load) {
+      if (instr->intrinsic == nir_intrinsic_image_deref_load ||
+          instr->intrinsic == nir_intrinsic_image_deref_sparse_load) {
          nir_const_value *sample_cv = nir_src_as_const_value(instr->src[2]);
          Operand sample_index = sample_cv ? Operand(sample_cv->u32) : Operand(emit_extract_vector(ctx, src2, 0, v1));
          std::vector<Temp> fmask_load_address;
@@ -5842,8 +5843,9 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
    }
 
    if (instr->intrinsic == nir_intrinsic_image_deref_load ||
+       instr->intrinsic == nir_intrinsic_image_deref_sparse_load ||
        instr->intrinsic == nir_intrinsic_image_deref_store) {
-      int lod_index = instr->intrinsic == nir_intrinsic_image_deref_load ? 3 : 4;
+      int lod_index = instr->intrinsic == nir_intrinsic_image_deref_store ? 4 : 3;
       bool level_zero = nir_src_is_const(instr->src[lod_index]) && nir_src_as_uint(instr->src[lod_index]) == 0;
 
       if (!level_zero)
@@ -5897,21 +5899,27 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    const struct glsl_type *type = glsl_without_array(var->type);
    const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
    bool is_array = glsl_sampler_type_is_array(type);
+   bool is_sparse = instr->intrinsic == nir_intrinsic_image_deref_sparse_load;
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
    unsigned access = var->data.access | nir_intrinsic_access(instr);
 
-   unsigned expand_mask = nir_ssa_def_components_read(&instr->dest.ssa);
+   unsigned result_size = instr->dest.ssa.num_components - is_sparse;
+   unsigned expand_mask = nir_ssa_def_components_read(&instr->dest.ssa) &
+                          u_bit_consecutive(0, result_size);
+   expand_mask = MAX2(expand_mask, 1); /* this can be zero in the case of sparse image loads */
    if (dim == GLSL_SAMPLER_DIM_BUF)
-      expand_mask = (1u << util_last_bit(expand_mask)) - 1;
+      expand_mask = (1u << util_last_bit(expand_mask)) - 1u;
    unsigned dmask = expand_mask;
    if (instr->dest.ssa.bit_size == 64) {
       expand_mask &= 0x9;
       /* only R64_UINT and R64_SINT supported. x is in xy of the result, w in zw */
       dmask = ((expand_mask & 0x1) ? 0x3 : 0) | ((expand_mask & 0x8) ? 0xc : 0);
    }
-   unsigned num_components = util_bitcount(dmask);
+   if (is_sparse)
+      expand_mask |= 1 << result_size;
+   unsigned num_components = util_bitcount(dmask) + is_sparse;
 
    Temp tmp;
    if (num_components == dst.size() && dst.type() == RegType::vgpr)
@@ -5927,7 +5935,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
 
       aco_opcode opcode;
-      switch (num_components) {
+      switch (util_bitcount(dmask)) {
       case 1:
          opcode = aco_opcode::buffer_load_format_x;
          break;
@@ -5943,7 +5951,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
       default:
          unreachable(">4 channel buffer image load");
       }
-      aco_ptr<MUBUF_instruction> load{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 3, 1)};
+      aco_ptr<MUBUF_instruction> load{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 3 + is_sparse, 1)};
       load->operands[0] = Operand(resource);
       load->operands[1] = Operand(vindex);
       load->operands[2] = Operand((uint32_t) 0);
@@ -5952,6 +5960,9 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
       load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT);
       load->dlc = load->glc && ctx->options->chip_class >= GFX10;
       load->sync = sync;
+      load->tfe = is_sparse;
+      if (load->tfe)
+         load->operands[3] = emit_tfe_init(bld, tmp);
       ctx->block->instructions.emplace_back(std::move(load));
    } else {
       Temp coords = get_image_coords(ctx, instr, type);
@@ -5959,7 +5970,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
       bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
       aco_opcode opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
 
-      aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3, 1)};
+      aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3 + is_sparse, 1)};
       load->operands[0] = Operand(resource);
       load->operands[1] = Operand(s4); /* no sampler */
       load->operands[2] = Operand(coords);
@@ -5971,7 +5982,17 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
       load->unrm = true;
       load->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
       load->sync = sync;
+      load->tfe = is_sparse;
+      if (load->tfe)
+         load->operands[3] = emit_tfe_init(bld, tmp);
       ctx->block->instructions.emplace_back(std::move(load));
+   }
+
+   if (is_sparse && instr->dest.ssa.bit_size == 64) {
+      /* The result components are 64-bit but the sparse residency code is
+       * 32-bit. So add a zero to the end so expand_vector() works correctly.
+       */
+      tmp = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, tmp.size()+1), tmp, Operand(0u));
    }
 
    expand_vector(ctx, tmp, dst, instr->dest.ssa.num_components, expand_mask);
@@ -7859,6 +7880,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       visit_shared_atomic(ctx, instr);
       break;
    case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_deref_sparse_load:
       visit_image_load(ctx, instr);
       break;
    case nir_intrinsic_image_deref_store:
