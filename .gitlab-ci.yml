@@ -100,16 +100,10 @@ test-docs:
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   stage: deploy
-  needs: []
+  needs:
+    - sanity
   rules:
-    - *ignore_scheduled_pipelines
-    - if: *is-main-master
-      changes: *docs-or-ci
-      when: never
     - if: *is-pre-merge-for-marge
-      changes: *docs-or-ci
-      when: on_success
-    - if: *is-post-merge-not-for-marge
       changes: *docs-or-ci
       when: on_success
     - if: *is-forked-branch-or-pre-merge
