@@ -250,6 +250,9 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_image_sparse_load:
+   case nir_intrinsic_image_deref_sparse_load:
+   case nir_intrinsic_bindless_image_sparse_load:
       is_divergent = (instr->src[0].ssa->divergent && (nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM)) ||
                      instr->src[1].ssa->divergent || instr->src[2].ssa->divergent || instr->src[3].ssa->divergent;
       break;

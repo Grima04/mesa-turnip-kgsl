@@ -3150,7 +3150,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       image.lod = NULL;
       break;
 
-   case SpvOpImageRead: {
+   case SpvOpImageRead:
+   case SpvOpImageSparseRead: {
       res_val = vtn_untyped_value(b, w[3]);
       image.image = vtn_get_image(b, w[3], &access);
       image.coord = get_image_coord(b, w[4]);
@@ -3243,6 +3244,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    OP(ImageQuerySize,            size)
    OP(ImageQuerySizeLod,         size)
    OP(ImageRead,                 load)
+   OP(ImageSparseRead,           sparse_load)
    OP(ImageWrite,                store)
    OP(AtomicLoad,                load)
    OP(AtomicStore,               store)
@@ -3316,6 +3318,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       break;
    case SpvOpAtomicLoad:
    case SpvOpImageRead:
+   case SpvOpImageSparseRead:
       /* Only OpImageRead can support a lod parameter if
       * SPV_AMD_shader_image_load_store_lod is used but the current NIR
       * intrinsics definition for atomics requires us to set it for
@@ -3377,8 +3380,17 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    if (opcode != SpvOpImageWrite && opcode != SpvOpAtomicStore) {
       struct vtn_type *type = vtn_get_type(b, w[1]);
+      struct vtn_type *struct_type = NULL;
+      if (opcode == SpvOpImageSparseRead) {
+         vtn_assert(glsl_type_is_struct_or_ifc(type->type));
+         struct_type = type;
+         type = struct_type->members[1];
+      }
 
       unsigned dest_components = glsl_get_vector_elements(type->type);
+      if (opcode == SpvOpImageSparseRead)
+         dest_components++;
+
       if (nir_intrinsic_infos[op].dest_components == 0)
          intrin->num_components = dest_components;
 
@@ -3392,9 +3404,20 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (nir_intrinsic_dest_components(intrin) != dest_components)
          result = nir_channels(&b->nb, result, (1 << dest_components) - 1);
 
-      vtn_push_nir_ssa(b, w[2], result);
+      if (opcode == SpvOpImageSparseRead) {
+         struct vtn_ssa_value *dest = vtn_create_ssa_value(b, struct_type->type);
+         unsigned res_type_size = glsl_get_vector_elements(type->type);
+         dest->elems[0]->def = nir_channel(&b->nb, result, res_type_size);
+         if (intrin->dest.ssa.bit_size != 32)
+            dest->elems[0]->def = nir_u2u32(&b->nb, dest->elems[0]->def);
+         dest->elems[1]->def = nir_channels(&b->nb, result,
+                                            BITFIELD_MASK(res_type_size));
+         vtn_push_ssa_value(b, w[2], dest);
+      } else {
+         vtn_push_nir_ssa(b, w[2], result);
+      }
 
-      if (opcode == SpvOpImageRead)
+      if (opcode == SpvOpImageRead || opcode == SpvOpImageSparseRead)
          nir_intrinsic_set_dest_type(intrin, nir_get_nir_type_for_glsl_type(type->type));
    } else {
       nir_builder_instr_insert(&b->nb, &intrin->instr);
@@ -5281,6 +5304,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpImageRead:
+   case SpvOpImageSparseRead:
    case SpvOpImageWrite:
    case SpvOpImageTexelPointer:
    case SpvOpImageQueryFormat:

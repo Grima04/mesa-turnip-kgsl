@@ -187,6 +187,7 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 		info->desc_set_used_mask |= (1u << nir_intrinsic_desc_set(instr));
 		break;
 	case nir_intrinsic_image_deref_load:
+	case nir_intrinsic_image_deref_sparse_load:
 	case nir_intrinsic_image_deref_store:
 	case nir_intrinsic_image_deref_atomic_add:
 	case nir_intrinsic_image_deref_atomic_imin:

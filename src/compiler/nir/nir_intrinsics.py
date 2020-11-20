@@ -520,6 +520,7 @@ def image(name, src_comp=[], extra_indices=[], **kwargs):
               indices=[IMAGE_DIM, IMAGE_ARRAY, FORMAT, ACCESS] + extra_indices, **kwargs)
 
 image("load", src_comp=[4, 1, 1], extra_indices=[DEST_TYPE], dest_comp=0, flags=[CAN_ELIMINATE])
+image("sparse_load", src_comp=[4, 1, 1], extra_indices=[DEST_TYPE], dest_comp=0, flags=[CAN_ELIMINATE])
 image("store", src_comp=[4, 1, 0, 1], extra_indices=[SRC_TYPE])
 image("atomic_add",  src_comp=[4, 1, 1], dest_comp=1)
 image("atomic_imin",  src_comp=[4, 1, 1], dest_comp=1)

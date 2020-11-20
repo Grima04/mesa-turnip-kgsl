@@ -235,6 +235,7 @@ nir_lower_non_uniform_access_impl(nir_function_impl *impl,
                break;
 
             case nir_intrinsic_image_load:
+            case nir_intrinsic_image_sparse_load:
             case nir_intrinsic_image_store:
             case nir_intrinsic_image_atomic_add:
             case nir_intrinsic_image_atomic_imin:
@@ -250,6 +251,7 @@ nir_lower_non_uniform_access_impl(nir_function_impl *impl,
             case nir_intrinsic_image_size:
             case nir_intrinsic_image_samples:
             case nir_intrinsic_bindless_image_load:
+            case nir_intrinsic_bindless_image_sparse_load:
             case nir_intrinsic_bindless_image_store:
             case nir_intrinsic_bindless_image_atomic_add:
             case nir_intrinsic_bindless_image_atomic_imin:
@@ -265,6 +267,7 @@ nir_lower_non_uniform_access_impl(nir_function_impl *impl,
             case nir_intrinsic_bindless_image_size:
             case nir_intrinsic_bindless_image_samples:
             case nir_intrinsic_image_deref_load:
+            case nir_intrinsic_image_deref_sparse_load:
             case nir_intrinsic_image_deref_store:
             case nir_intrinsic_image_deref_atomic_add:
             case nir_intrinsic_image_deref_atomic_umin:
