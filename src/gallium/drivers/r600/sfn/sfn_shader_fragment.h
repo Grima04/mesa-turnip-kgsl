@@ -61,7 +61,6 @@ private:
    bool load_interpolated_two_comp(GPRVector &dest, ShaderInput& io, const Interpolator& ip,EAluOp op, int writemask);
    bool load_interpolated_two_comp_for_one(GPRVector &dest,
                                            ShaderInput& io, const Interpolator& ip, EAluOp op, int start, int comp);
-   bool emit_interp_deref_at_centroid(nir_intrinsic_instr* instr);
 
    bool emit_intrinsic_instruction_override(nir_intrinsic_instr* instr) override;
    void do_finalize() override;
@@ -73,8 +72,6 @@ private:
    bool emit_load_sample_mask_in(nir_intrinsic_instr* instr);
    bool emit_load_sample_pos(nir_intrinsic_instr* instr);
    bool emit_load_sample_id(nir_intrinsic_instr* instr);
-   bool emit_interp_deref_at_sample(nir_intrinsic_instr* instr);
-   bool emit_interp_deref_at_offset(nir_intrinsic_instr* instr);
 
    bool process_load_input(nir_intrinsic_instr *instr, bool interpolated);
    bool emit_load_interpolated_input(nir_intrinsic_instr* instr);
