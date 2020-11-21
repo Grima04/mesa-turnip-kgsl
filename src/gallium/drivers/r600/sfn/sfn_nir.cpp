@@ -99,6 +99,10 @@ bool ShaderFromNir::lower(const nir_shader *shader, r600_pipe_shader *pipe_shade
    const nir_function *func = reinterpret_cast<const nir_function *>(exec_list_get_head_const(&sh->functions));
 
    sfn_log << SfnLog::trans << "Scan shader\n";
+
+   if (sfn_log.has_debug_flag(SfnLog::instr))
+      nir_print_shader(const_cast<nir_shader *>(shader), stderr);
+
    nir_foreach_block(block, func->impl) {
       nir_foreach_instr(instr, block) {
          if (!impl->scan_instruction(instr)) {
@@ -824,8 +828,13 @@ int r600_shader_from_nir(struct r600_context *rctx,
    if (sel->nir->info.stage == MESA_SHADER_VERTEX)
       NIR_PASS_V(sel->nir, r600_vectorize_vs_inputs);
 
-   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT)
+   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, r600_glsl_type_size,
+                 (nir_lower_io_options)
+                 (nir_lower_io_lower_64bit_to_32));
+      NIR_PASS_V(sel->nir, r600_lower_fs_pos_input);
       NIR_PASS_V(sel->nir, r600_lower_fs_out_to_vector);
+   }
 
    if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
        (sel->nir->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
