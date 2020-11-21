@@ -700,6 +700,46 @@ r600_lower_shared_io(nir_shader *nir)
 	return progress;
 }
 
+
+static nir_ssa_def *
+r600_lower_fs_pos_input_impl(nir_builder *b, nir_instr *instr, void *_options)
+{
+   auto old_ir = nir_instr_as_intrinsic(instr);
+   auto load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_input);
+   nir_ssa_dest_init(&load->instr, &load->dest,
+                     old_ir->dest.ssa.num_components, old_ir->dest.ssa.bit_size, NULL);
+   nir_intrinsic_set_io_semantics(load, nir_intrinsic_io_semantics(old_ir));
+
+   nir_intrinsic_set_base(load, nir_intrinsic_base(old_ir));
+   nir_intrinsic_set_component(load, nir_intrinsic_component(old_ir));
+   nir_intrinsic_set_dest_type(load, nir_type_float32);
+   load->num_components = old_ir->num_components;
+   load->src[0] = old_ir->src[1];
+   nir_builder_instr_insert(b, &load->instr);
+   return &load->dest.ssa;
+}
+
+bool r600_lower_fs_pos_input_filter(const nir_instr *instr, const void *_options)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   auto ir = nir_instr_as_intrinsic(instr);
+   if (ir->intrinsic != nir_intrinsic_load_interpolated_input)
+      return false;
+
+   return nir_intrinsic_io_semantics(ir).location == VARYING_SLOT_POS;
+}
+
+/* Strip the interpolator specification, it is not needed and irritates */
+bool r600_lower_fs_pos_input(nir_shader *shader)
+{
+   return nir_shader_lower_instructions(shader,
+                                        r600_lower_fs_pos_input_filter,
+                                        r600_lower_fs_pos_input_impl,
+                                        nullptr);
+};
+
 static bool
 optimize_once(nir_shader *shader, bool vectorize)
 {
