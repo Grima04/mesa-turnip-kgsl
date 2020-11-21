@@ -78,15 +78,24 @@ panfrost_modifier_to_layout(uint64_t modifier)
  * alignment requirements for their strides as it is */
 
 static bool
-panfrost_needs_explicit_stride(
-                struct panfrost_slice *slices,
-                uint16_t width,
-                unsigned first_level, unsigned last_level,
-                unsigned bytes_per_pixel)
+panfrost_needs_explicit_stride(uint64_t modifier,
+                               enum pipe_format format,
+                               struct panfrost_slice *slices,
+                               uint16_t width,
+                               unsigned first_level,
+                               unsigned last_level)
 {
+        if (modifier != DRM_FORMAT_MOD_LINEAR)
+                return false;
+
+        unsigned bytes_per_block = util_format_get_blocksize(format);
+        unsigned block_w = util_format_get_blockwidth(format);
+
         for (unsigned l = first_level; l <= last_level; ++l) {
                 unsigned actual = slices[l].stride;
-                unsigned expected = u_minify(width, l) * bytes_per_pixel;
+                unsigned expected =
+                        DIV_ROUND_UP(u_minify(width, l), block_w) *
+                        bytes_per_block;
 
                 if (actual != expected)
                         return true;
@@ -407,11 +416,9 @@ panfrost_new_texture(
         const struct util_format_description *desc =
                 util_format_description(format);
 
-        unsigned bytes_per_pixel = util_format_get_blocksize(format);
-
-        bool manual_stride = (modifier == DRM_FORMAT_MOD_LINEAR)
-                && panfrost_needs_explicit_stride(slices, width,
-                                first_level, last_level, bytes_per_pixel);
+        bool manual_stride =
+                panfrost_needs_explicit_stride(modifier, format, slices, width,
+                                               first_level, last_level);
 
         pan_pack(out, MIDGARD_TEXTURE, cfg) {
                 cfg.width = u_minify(width, first_level);
