@@ -92,7 +92,7 @@ panfrost_needs_explicit_stride(uint64_t modifier,
         unsigned block_w = util_format_get_blockwidth(format);
 
         for (unsigned l = first_level; l <= last_level; ++l) {
-                unsigned actual = slices[l].stride;
+                unsigned actual = slices[l].line_stride;
                 unsigned expected =
                         DIV_ROUND_UP(u_minify(width, l), block_w) *
                         bytes_per_block;
@@ -237,29 +237,6 @@ panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
         }
 }
 
-static unsigned
-panfrost_nonlinear_stride(uint64_t modifier,
-                unsigned bytes_per_block,
-                unsigned pixels_per_block,
-                unsigned width,
-                unsigned height,
-                bool plane)
-{
-        unsigned block_w = panfrost_block_dim(modifier, true, plane);
-        unsigned block_h = panfrost_block_dim(modifier, false, plane);
-
-        /* Calculate block size. Ensure the division happens only at the end to
-         * avoid rounding errors if bytes per block < pixels per block */
-
-        unsigned block_size = (block_w * block_h * bytes_per_block)
-                / pixels_per_block;
-
-        if (height <= block_h)
-                return 0;
-        else
-                return DIV_ROUND_UP(width, block_w) * block_size;
-}
-
 static uint64_t
 panfrost_get_surface_strides(struct panfrost_slice *slices,
                              const struct util_format_description *desc,
@@ -269,18 +246,8 @@ panfrost_get_surface_strides(struct panfrost_slice *slices,
                              unsigned l, unsigned cube_stride)
 {
         bool is_3d = dim == MALI_TEXTURE_DIMENSION_3D;
-        bool is_linear = modifier == DRM_FORMAT_MOD_LINEAR;
 
-        unsigned line_stride =
-                 is_linear ?
-                 slices[l].stride :
-                 panfrost_nonlinear_stride(modifier,
-                                           MAX2(desc->block.bits / 8, 1),
-                                           desc->block.width * desc->block.height,
-                                           u_minify(width, l),
-                                           u_minify(height, l),
-                                           false);
-
+        unsigned line_stride = slices[l].row_stride;
         unsigned layer_stride =
                 panfrost_get_layer_stride(slices, is_3d, cube_stride, l);
 

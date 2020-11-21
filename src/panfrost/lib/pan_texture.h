@@ -40,7 +40,8 @@ extern uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT];
 
 struct panfrost_slice {
         unsigned offset;
-        unsigned stride;
+        unsigned line_stride;
+        unsigned row_stride;
         unsigned size0;
 
         /* If there is a header preceding each slice, how big is
