@@ -302,6 +302,13 @@ panfrost_setup_slices(struct panfrost_device *dev,
         unsigned depth = res->depth0;
         unsigned bytes_per_pixel = util_format_get_blocksize(pres->internal_format);
 
+        /* Z32_S8X24 variants are actually stored in 2 planes (one per
+         * component), we have to adjust the bytes_per_pixel value accordingly.
+         */
+        if (pres->internal_format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT ||
+            pres->internal_format == PIPE_FORMAT_X32_S8X24_UINT)
+                bytes_per_pixel = 4;
+
         /* MSAA is implemented as a 3D texture with z corresponding to the
          * sample #, horrifyingly enough */
 
