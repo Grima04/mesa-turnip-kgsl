@@ -1119,6 +1119,11 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 			has_alpha = false;
 		}
 
+		/* The HW doesn't quite blend correctly with rgb9e5 if we disable the alpha
+		 * optimization, even though it has no alpha. */
+		if (has_rgb && format == V_028C70_COLOR_5_9_9_9)
+			has_alpha = true;
+
 		/* Disable value checking for disabled channels. */
 		if (!has_rgb)
 			sx_blend_opt_control |= S_02875C_MRT0_COLOR_OPT_DISABLE(1) << (i * 4);
