@@ -89,6 +89,9 @@ bool
 panfrost_afbc_can_ytr(enum pipe_format format);
 
 unsigned
+panfrost_block_dim(uint64_t modifier, bool width, unsigned plane);
+
+unsigned
 panfrost_estimate_texture_payload_size(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,

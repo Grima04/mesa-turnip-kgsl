@@ -206,7 +206,7 @@ panfrost_estimate_texture_payload_size(
  * line stride as such.
  */
 
-static unsigned
+unsigned
 panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
 {
         if (!drm_is_afbc(modifier)) {
