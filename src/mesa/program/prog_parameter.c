@@ -30,6 +30,7 @@
 
 #include "main/glheader.h"
 #include "main/macros.h"
+#include "main/errors.h"
 #include "util/u_memory.h"
 #include "prog_instruction.h"
 #include "prog_parameter.h"
@@ -192,6 +193,14 @@ _mesa_reserve_parameter_storage(struct gl_program_parameter_list *paramList,
    const GLuint oldNum = paramList->NumParameters;
    const unsigned oldValNum = paramList->NumParameterValues;
 
+   if (paramList->DisallowRealloc &&
+       (oldNum + reserve_params > paramList->Size ||
+        oldValNum + reserve_values > paramList->SizeValues)) {
+      _mesa_problem(NULL, "Parameter storage reallocation disallowed. This "
+              "is a Mesa bug. Increase the reservation size in the code.");
+      abort();
+   }
+
    if (oldNum + reserve_params > paramList->Size) {
       /* Need to grow the parameter list array (alloc some extra) */
       paramList->Size += 4 * reserve_params;
@@ -215,6 +224,17 @@ _mesa_reserve_parameter_storage(struct gl_program_parameter_list *paramList,
                        paramList->SizeValues * 4 * sizeof(gl_constant_value),/*new*/
                        16);
    }
+}
+
+
+/**
+ * Disallow reallocating the parameter storage, so that uniform storage
+ * can have pointers pointing to it.
+ */
+void
+_mesa_disallow_parameter_storage_realloc(struct gl_program_parameter_list *paramList)
+{
+   paramList->DisallowRealloc = true;
 }
 
 
