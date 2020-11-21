@@ -24,6 +24,7 @@
 #ifndef UTIL_MACROS_H
 #define UTIL_MACROS_H
 
+#include <stdio.h>
 #include <assert.h>
 
 #include "c99_compat.h"
@@ -126,7 +127,11 @@ do {                       \
 #endif
 
 #ifdef HAVE_FUNC_ATTRIBUTE_FORMAT
-#define PRINTFLIKE(f, a) __attribute__ ((format(__printf__, f, a)))
+#if defined (__MINGW_PRINTF_FORMAT)
+# define PRINTFLIKE(f, a) __attribute__ ((format(__MINGW_PRINTF_FORMAT, f, a)))
+#else
+# define PRINTFLIKE(f, a) __attribute__ ((format(__printf__, f, a)))
+#endif
 #else
 #define PRINTFLIKE(f, a)
 #endif

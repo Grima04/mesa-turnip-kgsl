@@ -54,11 +54,7 @@ extern "C" {
 #endif
 
 
-#if defined(__GNUC__)
-#define _util_printf_format(fmt, list) __attribute__ ((format (printf, fmt, list)))
-#else
-#define _util_printf_format(fmt, list)
-#endif
+#define _util_printf_format(fmt, list) PRINTFLIKE(fmt, list)
 
 void _debug_vprintf(const char *format, va_list ap);
    
