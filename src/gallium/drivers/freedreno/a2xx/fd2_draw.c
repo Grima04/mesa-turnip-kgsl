@@ -117,8 +117,8 @@ draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 3);
 		OUT_RING(ring, CP_REG(REG_A2XX_VGT_MAX_VTX_INDX));
-		OUT_RING(ring, info->max_index);        /* VGT_MAX_VTX_INDX */
-		OUT_RING(ring, info->min_index);        /* VGT_MIN_VTX_INDX */
+		OUT_RING(ring, info->index_bounds_valid ? info->max_index : ~0); /* VGT_MAX_VTX_INDX */
+		OUT_RING(ring, info->index_bounds_valid ? info->min_index : 0);  /* VGT_MIN_VTX_INDX */
 	}
 
 	/* binning shader will take offset from C64 */
