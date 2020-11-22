@@ -335,6 +335,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 break;
         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
                 ext->zs_write_format = MALI_ZS_FORMAT_D24S8;
+                ext->s_writeback_base = ext->zs_writeback_base;
                 break;
         case PIPE_FORMAT_Z24X8_UNORM:
                 ext->zs_write_format = MALI_ZS_FORMAT_D24X8;
