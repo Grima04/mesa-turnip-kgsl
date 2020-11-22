@@ -113,7 +113,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    new_info.index_bounds_valid = info->index_bounds_valid;
    new_info.min_index = info->min_index;
    new_info.max_index = info->max_index;
-   new_info.index_bias = info->index_bias;
+   new_info.index_bias = info->index_size ? info->index_bias : 0;
    new_info.start_instance = info->start_instance;
    new_info.instance_count = info->instance_count;
    new_info.primitive_restart = info->primitive_restart;

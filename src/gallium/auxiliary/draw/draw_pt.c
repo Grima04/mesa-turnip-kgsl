@@ -502,9 +502,9 @@ draw_vbo(struct draw_context *draw,
 
    count = draws[0].count;
 
-   draw->pt.user.eltBias = info->index_bias;
-   draw->pt.user.min_index = info->min_index;
-   draw->pt.user.max_index = info->max_index;
+   draw->pt.user.eltBias = info->index_size ? info->index_bias : 0;
+   draw->pt.user.min_index = info->index_bounds_valid ? info->min_index : 0;
+   draw->pt.user.max_index = info->index_bounds_valid ? info->max_index : ~0;
    draw->pt.user.eltSize = info->index_size ? draw->pt.user.eltSizeIB : 0;
    draw->pt.user.drawid = info->drawid;
 

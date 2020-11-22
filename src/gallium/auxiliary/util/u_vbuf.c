@@ -1534,6 +1534,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
       if (unroll_indices) {
          new_info.index_size = 0;
          new_info.index_bias = 0;
+         new_info.index_bounds_valid = true;
          new_info.min_index = 0;
          new_info.max_index = new_draw.count - 1;
          new_draw.start = 0;
