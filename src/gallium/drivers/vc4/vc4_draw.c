@@ -182,6 +182,7 @@ vc4_emit_gl_shader_state(struct vc4_context *vc4,
         };
 
         uint32_t max_index = 0xffff;
+        unsigned index_bias = info->index_size ? info->index_bias : 0;
         for (int i = 0; i < vtx->num_elements; i++) {
                 struct pipe_vertex_element *elem = &vtx->pipe[i];
                 struct pipe_vertex_buffer *vb =
@@ -190,7 +191,7 @@ vc4_emit_gl_shader_state(struct vc4_context *vc4,
                 /* not vc4->dirty tracked: vc4->last_index_bias */
                 uint32_t offset = (vb->buffer_offset +
                                    elem->src_offset +
-                                   vb->stride * (info->index_bias +
+                                   vb->stride * (index_bias +
                                                  extra_index_bias));
                 uint32_t vb_size = rsc->bo->size - offset;
                 uint32_t elem_size =
@@ -247,7 +248,7 @@ vc4_emit_gl_shader_state(struct vc4_context *vc4,
                            &vc4->constbuf[PIPE_SHADER_VERTEX],
                            &vc4->verttex);
 
-        vc4->last_index_bias = info->index_bias + extra_index_bias;
+        vc4->last_index_bias = index_bias + extra_index_bias;
         vc4->max_index = max_index;
         job->shader_rec_count++;
 }
@@ -359,6 +360,7 @@ vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
         bool needs_drawarrays_shader_state = false;
 
+        unsigned index_bias = info->index_size ? info->index_bias : 0;
         if ((vc4->dirty & (VC4_DIRTY_VTXBUF |
                            VC4_DIRTY_VTXSTATE |
                            VC4_DIRTY_PRIM_MODE |
@@ -369,7 +371,7 @@ vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                            vc4->prog.cs->uniform_dirty_bits |
                            vc4->prog.vs->uniform_dirty_bits |
                            vc4->prog.fs->uniform_dirty_bits)) ||
-            vc4->last_index_bias != info->index_bias) {
+            vc4->last_index_bias != index_bias) {
                 if (info->index_size)
                         vc4_emit_gl_shader_state(vc4, info, 0);
                 else
