@@ -2069,10 +2069,10 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
 	}
 
 	struct r600_context *rctx = (struct r600_context *)ctx;
-	struct pipe_resource *indexbuf = info->has_user_indices ? NULL : info->index.resource;
+	struct pipe_resource *indexbuf = !info->index_size || info->has_user_indices ? NULL : info->index.resource;
 	struct radeon_cmdbuf *cs = &rctx->b.gfx.cs;
 	bool render_cond_bit = rctx->b.render_cond && !rctx->b.render_cond_force_off;
-	bool has_user_indices = info->has_user_indices;
+	bool has_user_indices = info->index_size && info->has_user_indices;
 	uint64_t mask;
 	unsigned num_patches, dirty_tex_counter, index_offset = 0;
 	unsigned index_size = info->index_size;
