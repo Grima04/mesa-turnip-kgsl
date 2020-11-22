@@ -265,8 +265,9 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
     * always start from 0 for DrawArrays and does not include baseVertex for
     * DrawIndexed.
     */
-   if (svga->curr.vertex_id_bias != (draws[0].start + info->index_bias)) {
-      svga->curr.vertex_id_bias = draws[0].start + info->index_bias;
+   unsigned index_bias = info->index_size ? info->index_bias : 0;
+   if (svga->curr.vertex_id_bias != (draws[0].start + index_bias)) {
+      svga->curr.vertex_id_bias = draws[0].start + index_bias;
       svga->dirty |= SVGA_NEW_VS_CONSTS;
    }
 
