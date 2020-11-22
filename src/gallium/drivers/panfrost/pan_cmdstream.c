@@ -1818,8 +1818,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD, MALI_ATTRIBUTE_SPECIAL_FRAG_COORD);
 
         *buffers = T.gpu;
-        *vs_attribs = trans.gpu;
-        *fs_attribs = trans.gpu + vs_size;
+        *vs_attribs = vs->varying_count ? trans.gpu : 0;
+        *fs_attribs = fs->varying_count ? trans.gpu + vs_size : 0;
 }
 
 void

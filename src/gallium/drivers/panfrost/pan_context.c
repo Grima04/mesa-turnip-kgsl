@@ -304,7 +304,7 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                 cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
                 cfg.attributes = panfrost_emit_vertex_data(batch, &cfg.attribute_buffers);
                 cfg.varyings = vs_vary;
-                cfg.varying_buffers = varyings;
+                cfg.varying_buffers = vs_vary ? varyings : 0;
                 cfg.thread_storage = shared_mem;
                 pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_VERTEX);
         }
@@ -402,7 +402,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.state = panfrost_emit_frag_shader_meta(batch);
                 cfg.viewport = panfrost_emit_viewport(batch);
                 cfg.varyings = fs_vary;
-                cfg.varying_buffers = varyings;
+                cfg.varying_buffers = fs_vary ? varyings : 0;
                 cfg.thread_storage = shared_mem;
 
                 pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_FRAGMENT);
