@@ -1116,8 +1116,8 @@ swr_user_vbuf_range(const struct pipe_draw_info *info,
       *size = elems * elem_pitch;
    } else if (vb->stride) {
       elems = info->max_index - info->min_index + 1;
-      *totelems = (info->max_index + info->index_bias) + 1;
-      *base = (info->min_index + info->index_bias) * vb->stride;
+      *totelems = (info->max_index + (info->index_size ? info->index_bias : 0)) + 1;
+      *base = (info->min_index + (info->index_size ? info->index_bias : 0)) * vb->stride;
       *size = elems * elem_pitch;
    } else {
       *totelems = 1;
@@ -1423,7 +1423,7 @@ swr_update_derived(struct pipe_context *pipe,
             uint32_t base;
             swr_user_vbuf_range(&info, ctx->velems, vb, i, &elems, &base, &size);
             partial_inbounds = 0;
-            min_vertex_index = info.min_index + info.index_bias;
+            min_vertex_index = info.min_index + (info.index_size ? info.index_bias : 0);
 
             size = AlignUp(size, 4);
             /* If size of client memory copy is too large, don't copy. The
