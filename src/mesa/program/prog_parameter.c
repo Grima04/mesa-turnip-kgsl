@@ -66,7 +66,7 @@ lookup_parameter_constant(const struct gl_program_parameter_list *list,
 
    for (i = 0; i < list->NumParameters; i++) {
       if (list->Parameters[i].Type == PROGRAM_CONSTANT) {
-         unsigned offset = list->ParameterValueOffset[i];
+         unsigned offset = list->Parameters[i].ValueOffset;
 
          if (!swizzleOut) {
             /* swizzle not allowed */
@@ -179,7 +179,6 @@ _mesa_free_parameter_list(struct gl_program_parameter_list *paramList)
       free((void *)paramList->Parameters[i].Name);
    }
    free(paramList->Parameters);
-   free(paramList->ParameterValueOffset);
    align_free(paramList->ParameterValues);
    free(paramList);
 }
@@ -217,10 +216,6 @@ _mesa_reserve_parameter_storage(struct gl_program_parameter_list *paramList,
       paramList->Parameters =
          realloc(paramList->Parameters,
                  paramList->Size * sizeof(struct gl_program_parameter));
-
-      paramList->ParameterValueOffset =
-         realloc(paramList->ParameterValueOffset,
-                 paramList->Size * sizeof(unsigned));
    }
 
    if (oldValNum + reserve_values > paramList->SizeValues) {
@@ -281,7 +276,7 @@ _mesa_add_parameter(struct gl_program_parameter_list *paramList,
 
    _mesa_reserve_parameter_storage(paramList, 1, DIV_ROUND_UP(padded_size, 4));
 
-   if (!paramList->Parameters || !paramList->ParameterValueOffset ||
+   if (!paramList->Parameters ||
        !paramList->ParameterValues) {
       /* out of memory */
       paramList->NumParameters = 0;
@@ -304,7 +299,7 @@ _mesa_add_parameter(struct gl_program_parameter_list *paramList,
    p->Padded = pad_and_align;
    p->DataType = datatype;
 
-   paramList->ParameterValueOffset[oldNum] = oldValNum;
+   paramList->Parameters[oldNum].ValueOffset = oldValNum;
    if (values) {
       if (size >= 4) {
          memcpy(paramList->ParameterValues + oldValNum, values,
@@ -382,7 +377,7 @@ _mesa_add_typed_unnamed_constant(struct gl_program_parameter_list *paramList,
    if (size == 1 && swizzleOut) {
       for (pos = 0; pos < (GLint) paramList->NumParameters; pos++) {
          struct gl_program_parameter *p = paramList->Parameters + pos;
-         unsigned offset = paramList->ParameterValueOffset[pos];
+         unsigned offset = paramList->Parameters[pos].ValueOffset;
          if (p->Type == PROGRAM_CONSTANT && p->Size + size <= 4) {
             /* ok, found room */
             gl_constant_value *pVal = paramList->ParameterValues + offset;

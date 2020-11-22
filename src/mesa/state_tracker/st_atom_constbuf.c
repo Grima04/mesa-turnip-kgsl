@@ -72,7 +72,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
       unsigned c;
 
       for (c = 0; c < MAX_NUM_FRAGMENT_CONSTANTS_ATI; c++) {
-         unsigned offset = params->ParameterValueOffset[c];
+         unsigned offset = params->Parameters[c].ValueOffset;
          if (ati_fs->LocalConstDef & (1 << c))
             memcpy(params->ParameterValues + offset,
                    ati_fs->Constants[c], sizeof(GLfloat) * 4);

@@ -122,7 +122,7 @@ static GLboolean r200VertexProgUpdateParams(struct gl_context *ctx, struct r200_
    }
 
    for(pi = 0; pi < paramList->NumParameters; pi++) {
-      unsigned pvo = paramList->ParameterValueOffset[pi];
+      unsigned pvo = paramList->Parameters[pi].ValueOffset;
 
       switch(paramList->Parameters[pi].Type) {
       case PROGRAM_STATE_VAR:

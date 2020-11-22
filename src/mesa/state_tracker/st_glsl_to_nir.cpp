@@ -228,7 +228,7 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
          if (ctx->Const.PackedDriverUniformStorage) {
             loc = _mesa_add_sized_state_reference(prog->Parameters,
                                                   stateTokens, comps, false);
-            loc = prog->Parameters->ParameterValueOffset[loc];
+            loc = prog->Parameters->Parameters[loc].ValueOffset;
          } else {
             loc = _mesa_add_state_reference(prog->Parameters, stateTokens);
          }
@@ -240,7 +240,7 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
           * only contains opaque types.
           */
          if (loc >= 0 && ctx->Const.PackedDriverUniformStorage) {
-            loc = prog->Parameters->ParameterValueOffset[loc];
+            loc = prog->Parameters->Parameters[loc].ValueOffset;
          }
       }
 

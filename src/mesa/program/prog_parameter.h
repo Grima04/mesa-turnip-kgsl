@@ -115,6 +115,11 @@ struct gl_program_parameter
    gl_state_index16 StateIndexes[STATE_LENGTH];
 
    /**
+    * Offset within ParameterValues where this parameter is stored.
+    */
+   unsigned ValueOffset;
+
+   /**
     * Index of this parameter's uniform storage.
     */
    uint32_t UniformStorageIndex;
@@ -137,7 +142,6 @@ struct gl_program_parameter_list
    GLuint NumParameters;  /**< number of used parameters in array */
    unsigned NumParameterValues;  /**< number of used parameter values array */
    struct gl_program_parameter *Parameters; /**< Array [Size] */
-   unsigned *ParameterValueOffset;
    gl_constant_value *ParameterValues; /**< Array [Size] of gl_constant_value */
    GLbitfield StateFlags; /**< _NEW_* flags indicating which state changes
                                might invalidate ParameterValues[] */

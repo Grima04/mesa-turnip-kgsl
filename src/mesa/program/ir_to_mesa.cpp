@@ -2556,7 +2556,7 @@ _mesa_associate_uniform_storage(struct gl_context *ctx,
             break;
          }
 
-         unsigned pvo = params->ParameterValueOffset[i];
+         unsigned pvo = params->Parameters[i].ValueOffset;
          _mesa_uniform_attach_driver_storage(storage, dmul * columns, dmul,
                                              format,
                                              &params->ParameterValues[pvo]);

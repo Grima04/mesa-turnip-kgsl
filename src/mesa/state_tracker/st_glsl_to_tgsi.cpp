@@ -6871,7 +6871,7 @@ st_translate_program(
       t->num_constants = proginfo->Parameters->NumParameters;
 
       for (i = 0; i < proginfo->Parameters->NumParameters; i++) {
-         unsigned pvo = proginfo->Parameters->ParameterValueOffset[i];
+         unsigned pvo = proginfo->Parameters->Parameters[i].ValueOffset;
 
          switch (proginfo->Parameters->Parameters[i].Type) {
          case PROGRAM_STATE_VAR:

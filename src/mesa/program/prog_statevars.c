@@ -1229,7 +1229,7 @@ _mesa_load_state_parameters(struct gl_context *ctx,
    int num = paramList->NumParameters;
 
    for (int i = paramList->FirstStateVarIndex; i < num; i++) {
-      unsigned pvo = paramList->ParameterValueOffset[i];
+      unsigned pvo = paramList->Parameters[i].ValueOffset;
       fetch_state(ctx, paramList->Parameters[i].StateIndexes,
                   paramList->ParameterValues + pvo);
    }
@@ -1244,7 +1244,7 @@ _mesa_upload_state_parameters(struct gl_context *ctx,
    int num = paramList->NumParameters;
 
    for (int i = paramList->FirstStateVarIndex; i < num; i++) {
-      unsigned pvo = paramList->ParameterValueOffset[i];
+      unsigned pvo = paramList->Parameters[i].ValueOffset;
       fetch_state(ctx, paramList->Parameters[i].StateIndexes,
                   (gl_constant_value*)(dst + pvo));
    }
@@ -1359,8 +1359,8 @@ _mesa_optimize_state_parameters(struct gl_program_parameter_list *list)
             list->Parameters[first_param].StateIndexes[2] =
             list->Parameters[first_param].Size =
                list->Parameters[last_param].Size +
-               list->ParameterValueOffset[last_param] -
-               list->ParameterValueOffset[first_param];
+               list->Parameters[last_param].ValueOffset -
+               list->Parameters[first_param].ValueOffset;
 
             param_diff = last_param - first_param;
          }
@@ -1381,10 +1381,6 @@ _mesa_optimize_state_parameters(struct gl_program_parameter_list *list)
          memmove(&list->Parameters[first_param + 1],
                  &list->Parameters[last_param + 1],
                  sizeof(list->Parameters[0]) *
-                 (list->NumParameters - last_param - 1));
-         memmove(&list->ParameterValueOffset[first_param + 1],
-                 &list->ParameterValueOffset[last_param + 1],
-                 sizeof(list->ParameterValueOffset[0]) *
                  (list->NumParameters - last_param - 1));
          list->NumParameters -= param_diff;
       }

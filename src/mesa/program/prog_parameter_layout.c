@@ -95,12 +95,12 @@ copy_indirect_accessed_array(struct gl_program_parameter_list *src,
       memcpy(&dst->Parameters[j], curr,
 	     sizeof(dst->Parameters[j]));
 
-      dst->ParameterValueOffset[j] = dst->NumParameterValues;
+      dst->Parameters[j].ValueOffset = dst->NumParameterValues;
 
       gl_constant_value *pv_dst =
-         dst->ParameterValues + dst->ParameterValueOffset[j];
+         dst->ParameterValues + dst->Parameters[j].ValueOffset;
       gl_constant_value *pv_src =
-         src->ParameterValues + src->ParameterValueOffset[i];
+         src->ParameterValues + src->Parameters[i].ValueOffset;
 
       memcpy(pv_dst, pv_src, MIN2(src->Parameters[i].Size, 4) *
              sizeof(GLfloat));
@@ -204,7 +204,7 @@ _mesa_layout_parameters(struct asm_parser_state *state)
 
             switch (p->Type) {
             case PROGRAM_CONSTANT: {
-               unsigned pvo = state->prog->Parameters->ParameterValueOffset[idx];
+               unsigned pvo = state->prog->Parameters->Parameters[idx].ValueOffset;
                const gl_constant_value *const v =
                   state->prog->Parameters->ParameterValues + pvo;
 

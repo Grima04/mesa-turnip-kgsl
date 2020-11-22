@@ -476,7 +476,7 @@ st_translate_atifs_program(
       }
 
       for (i = 0; i < program->Parameters->NumParameters; i++) {
-         unsigned pvo = program->Parameters->ParameterValueOffset[i];
+         unsigned pvo = program->Parameters->Parameters[i].ValueOffset;
 
          switch (program->Parameters->Parameters[i].Type) {
          case PROGRAM_STATE_VAR:
