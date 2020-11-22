@@ -1264,10 +1264,10 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
         /* The Base Vertex/Base Instance packet sets those values to nonzero
          * for the next draw call only.
          */
-        if (info->index_bias || info->start_instance) {
+        if ((info->index_size && info->index_bias) || info->start_instance) {
                 cl_emit(&job->bcl, BASE_VERTEX_BASE_INSTANCE, base) {
                         base.base_instance = info->start_instance;
-                        base.base_vertex = info->index_bias;
+                        base.base_vertex = info->index_size ? info->index_bias : 0;
                 }
         }
 
