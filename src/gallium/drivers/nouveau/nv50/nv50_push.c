@@ -253,7 +253,7 @@ nv50_push_vbo(struct nv50_context *nv50, const struct pipe_draw_info *info,
 
    ctx.need_vertex_id = nv50->screen->base.class_3d >= NV84_3D_CLASS &&
       nv50->vertprog->vp.need_vertex_id && (nv50->vertex->num_elements < 32);
-   ctx.index_bias = info->index_bias;
+   ctx.index_bias = info->index_size ? info->index_bias : 0;
    ctx.instance_id = 0;
 
    /* For indexed draws, gl_VertexID must be emitted for every vertex. */
@@ -276,7 +276,7 @@ nv50_push_vbo(struct nv50_context *nv50, const struct pipe_draw_info *info,
          data = vb->buffer.user;
 
       if (apply_bias && likely(!(nv50->vertex->instance_bufs & (1 << i))))
-         data += (ptrdiff_t)info->index_bias * vb->stride;
+         data += (ptrdiff_t)(info->index_size ? info->index_bias : 0) * vb->stride;
 
       ctx.translate->set_buffer(ctx.translate, i, data, vb->stride, ~0);
    }

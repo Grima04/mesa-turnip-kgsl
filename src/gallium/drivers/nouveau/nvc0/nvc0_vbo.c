@@ -945,8 +945,13 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    int s;
 
    /* NOTE: caller must ensure that (min_index + index_bias) is >= 0 */
-   nvc0->vb_elt_first = info->min_index + info->index_bias;
-   nvc0->vb_elt_limit = info->max_index - info->min_index;
+   if (info->index_bounds_valid) {
+      nvc0->vb_elt_first = info->min_index + (info->index_size ? info->index_bias : 0);
+      nvc0->vb_elt_limit = info->max_index - info->min_index;
+   } else {
+      nvc0->vb_elt_first = 0;
+      nvc0->vb_elt_limit = ~0;
+   }
    nvc0->instance_off = info->start_instance;
    nvc0->instance_max = info->instance_count - 1;
 
@@ -1029,7 +1034,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       PUSH_DATA (push, screen->uniform_bo->offset + NVC0_CB_AUX_INFO(0));
       BEGIN_1IC0(push, NVC0_3D(CB_POS), 1 + 3);
       PUSH_DATA (push, NVC0_CB_AUX_DRAW_INFO);
-      PUSH_DATA (push, info->index_bias);
+      PUSH_DATA (push, info->index_size ? info->index_bias : 0);
       PUSH_DATA (push, info->start_instance);
       PUSH_DATA (push, info->drawid);
    }
@@ -1111,7 +1116,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       nvc0_draw_stream_output(nvc0, info, indirect);
    } else
    if (info->index_size) {
-      bool shorten = info->max_index <= 65535;
+      bool shorten = info->index_bounds_valid && info->max_index <= 65535;
 
       if (info->primitive_restart && info->restart_index > 65535)
          shorten = false;
