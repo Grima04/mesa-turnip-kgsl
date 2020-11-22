@@ -105,6 +105,9 @@ simplify_draw_info(struct pipe_draw_info *info)
    /* This shouldn't be set when merging single draws. */
    info->increment_draw_id = false;
 
+   if (info->mode != PIPE_PRIM_PATCHES)
+      info->vertices_per_patch = 0;
+
    if (info->index_size) {
       if (!info->primitive_restart)
          info->restart_index = 0;
