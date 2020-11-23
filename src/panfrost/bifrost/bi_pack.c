@@ -70,7 +70,13 @@ bi_lookup_constant(bi_clause *clause, uint32_t cons, bool *hi)
                 /* Try to apply to top or to bottom */
                 uint64_t top = clause->constants[i];
 
-                if (cons == ((uint32_t) top | (cons & 0xF)))
+                /* Constant slots can actually be used by a different
+                 * tuples if the 60 upper bits match since the 4 LSB are
+                 * encoded in the tuple itself. Let's not bother about this
+                 * case until we start scheduling more than one tuple per
+                 * clause.
+                 */
+                if (cons == (uint32_t) top)
                         return i;
 
                 if (cons == (top >> 32ul)) {
