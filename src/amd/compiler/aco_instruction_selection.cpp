@@ -1197,7 +1197,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    switch(instr->op) {
    case nir_op_vec2:
    case nir_op_vec3:
-   case nir_op_vec4: {
+   case nir_op_vec4:
+   case nir_op_vec5: {
       std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
       unsigned num = instr->dest.dest.ssa.num_components;
       for (unsigned i = 0; i < num; ++i)
