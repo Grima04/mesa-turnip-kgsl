@@ -609,8 +609,11 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       /* For lines, reset the stipple pattern at each primitive. Otherwise,
        * reset the stipple pattern at each packet (line strips, line loops).
        */
+      bool reset_per_prim = rast_prim == PIPE_PRIM_LINES ||
+                            rast_prim == PIPE_PRIM_LINES_ADJACENCY;
+      /* 0 = no reset, 1 = reset per prim, 2 = reset per packet */
       unsigned value =
-         rs->pa_sc_line_stipple | S_028A0C_AUTO_RESET_CNTL(rast_prim == PIPE_PRIM_LINES ? 1 : 2);
+         rs->pa_sc_line_stipple | S_028A0C_AUTO_RESET_CNTL(reset_per_prim ? 1 : 2);
 
       radeon_opt_set_context_reg(sctx, R_028A0C_PA_SC_LINE_STIPPLE, SI_TRACKED_PA_SC_LINE_STIPPLE,
                                  value);
