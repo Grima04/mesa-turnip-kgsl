@@ -75,6 +75,7 @@ struct radeon_info {
    bool has_tc_compat_zrange_bug;
    bool has_msaa_sample_loc_bug;
    bool has_ls_vgpr_init_bug;
+   bool has_32bit_predication;
 
    /* Display features. */
    /* There are 2 display DCC codepaths, because display expects unaligned DCC. */

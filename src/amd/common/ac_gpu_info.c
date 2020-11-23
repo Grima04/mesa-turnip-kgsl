@@ -654,6 +654,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->has_ls_vgpr_init_bug = info->family == CHIP_VEGA10 || info->family == CHIP_RAVEN;
 
+   /* Support for GFX10.3 was added with F32_ME_FEATURE_VERSION_31 but the
+    * firmware version wasn't bumped.
+    */
+   info->has_32bit_predication = info->chip_class >= GFX10_3 &&
+                                 info->me_fw_version >= 32;
+
    /* Get the number of good compute units. */
    info->num_good_compute_units = 0;
    for (i = 0; i < info->max_se; i++) {
@@ -890,6 +896,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_tc_compat_zrange_bug = %i\n", info->has_tc_compat_zrange_bug);
    fprintf(f, "    has_msaa_sample_loc_bug = %i\n", info->has_msaa_sample_loc_bug);
    fprintf(f, "    has_ls_vgpr_init_bug = %i\n", info->has_ls_vgpr_init_bug);
+   fprintf(f, "    has_32bit_predication = %i\n", info->has_32bit_predication);
 
    fprintf(f, "Display features:\n");
    fprintf(f, "    use_display_dcc_unaligned = %u\n", info->use_display_dcc_unaligned);
