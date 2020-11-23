@@ -53,7 +53,7 @@ get_deref_info(nir_shader *shader, nir_variable *var, nir_deref_instr *deref,
    /* Vertex index is the outermost array index. */
    if (per_vertex) {
       assert((*p)->deref_type == nir_deref_type_array);
-      *cross_invocation = src_is_invocation_id(&(*p)->arr.index);
+      *cross_invocation = !src_is_invocation_id(&(*p)->arr.index);
       p++;
    }
 
