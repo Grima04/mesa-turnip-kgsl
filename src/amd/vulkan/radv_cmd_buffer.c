@@ -6431,9 +6431,7 @@ void radv_CmdBeginConditionalRenderingEXT(
 	RADV_FROM_HANDLE(radv_buffer, buffer, pConditionalRenderingBegin->buffer);
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	bool draw_visible = true;
-	uint64_t pred_value = 0;
-	uint64_t va, new_va;
-	unsigned pred_offset;
+	uint64_t va;
 
 	va = radv_buffer_get_va(buffer->bo) + pConditionalRenderingBegin->offset;
 
@@ -6449,51 +6447,62 @@ void radv_CmdBeginConditionalRenderingEXT(
 
 	si_emit_cache_flush(cmd_buffer);
 
-	/* From the Vulkan spec 1.1.107:
-	 *
-	 * "If the 32-bit value at offset in buffer memory is zero, then the
-	 *  rendering commands are discarded, otherwise they are executed as
-	 *  normal. If the value of the predicate in buffer memory changes while
-	 *  conditional rendering is active, the rendering commands may be
-	 *  discarded in an implementation-dependent way. Some implementations
-	 *  may latch the value of the predicate upon beginning conditional
-	 *  rendering while others may read it before every rendering command."
-	 *
-	 * But, the AMD hardware treats the predicate as a 64-bit value which
-	 * means we need a workaround in the driver. Luckily, it's not required
-	 * to support if the value changes when predication is active.
-	 *
-	 * The workaround is as follows:
-	 * 1) allocate a 64-value in the upload BO and initialize it to 0
-	 * 2) copy the 32-bit predicate value to the upload BO
-	 * 3) use the new allocated VA address for predication
-	 *
-	 * Based on the conditionalrender demo, it's faster to do the COPY_DATA
-	 * in ME  (+ sync PFP) instead of PFP.
-	 */
-	radv_cmd_buffer_upload_data(cmd_buffer, 8, 16, &pred_value, &pred_offset);
+	if (!cmd_buffer->device->physical_device->rad_info.has_32bit_predication) {
+		uint64_t pred_value, pred_va;
+		unsigned pred_offset;
 
-	new_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + pred_offset;
+		/* From the Vulkan spec 1.1.107:
+		 *
+		 * "If the 32-bit value at offset in buffer memory is zero,
+		 *  then the rendering commands are discarded, otherwise they
+		 *  are executed as normal. If the value of the predicate in
+		 *  buffer memory changes while conditional rendering is
+		 *  active, the rendering commands may be discarded in an
+		 *  implementation-dependent way. Some implementations may
+		 *  latch the value of the predicate upon beginning conditional
+		 *  rendering while others may read it before every rendering
+		 *  command."
+		 *
+		 * But, the AMD hardware treats the predicate as a 64-bit
+		 * value which means we need a workaround in the driver.
+		 * Luckily, it's not required to support if the value changes
+		 * when predication is active.
+		 *
+		 * The workaround is as follows:
+		 * 1) allocate a 64-value in the upload BO and initialize it
+		 *    to 0
+		 * 2) copy the 32-bit predicate value to the upload BO
+		 * 3) use the new allocated VA address for predication
+		 *
+		 * Based on the conditionalrender demo, it's faster to do the
+		 * COPY_DATA in ME  (+ sync PFP) instead of PFP.
+		 */
+		radv_cmd_buffer_upload_data(cmd_buffer, 8, 16, &pred_value, &pred_offset);
 
-	radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-	radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) |
-			COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
-			COPY_DATA_WR_CONFIRM);
-	radeon_emit(cs, va);
-	radeon_emit(cs, va >> 32);
-	radeon_emit(cs, new_va);
-	radeon_emit(cs, new_va >> 32);
+		pred_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + pred_offset;
 
-	radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
-	radeon_emit(cs, 0);
+		radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+		radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) |
+				COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+				COPY_DATA_WR_CONFIRM);
+		radeon_emit(cs, va);
+		radeon_emit(cs, va >> 32);
+		radeon_emit(cs, pred_va);
+		radeon_emit(cs, pred_va >> 32);
+
+		radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
+		radeon_emit(cs, 0);
+
+		va = pred_va;
+	}
 
 	/* Enable predication for this command buffer. */
-	si_emit_set_predication_state(cmd_buffer, draw_visible, new_va);
+	si_emit_set_predication_state(cmd_buffer, draw_visible, va);
 	cmd_buffer->state.predicating = true;
 
 	/* Store conditional rendering user info. */
 	cmd_buffer->state.predication_type = draw_visible;
-	cmd_buffer->state.predication_va = new_va;
+	cmd_buffer->state.predication_va = va;
 }
 
 void radv_CmdEndConditionalRenderingEXT(
