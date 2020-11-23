@@ -851,6 +851,8 @@ int r600_shader_from_nir(struct r600_context *rctx,
        sel->nir->info.stage == MESA_SHADER_TESS_EVAL) {
       NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, r600_glsl_type_size,
                  nir_lower_io_lower_64bit_to_32);
+      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_out, r600_glsl_type_size,
+                 nir_lower_io_lower_64bit_to_32);
    }
 
    if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
