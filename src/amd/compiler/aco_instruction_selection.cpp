@@ -4581,6 +4581,34 @@ void emit_load_frag_coord(isel_context *ctx, Temp dst, unsigned num_components)
    return;
 }
 
+void emit_load_frag_shading_rate(isel_context *ctx, Temp dst)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp cond;
+
+   /* VRS Rate X = Ancillary[2:3]
+    * VRS Rate Y = Ancillary[4:5]
+    */
+   Temp x_rate = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
+                          get_arg(ctx, ctx->args->ac.ancillary), Operand(2u), Operand(2u));
+   Temp y_rate = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
+                          get_arg(ctx, ctx->args->ac.ancillary), Operand(4u), Operand(2u));
+
+   /* xRate = xRate == 0x1 ? Horizontal2Pixels : None. */
+   cond = bld.vopc(aco_opcode::v_cmp_eq_i32, bld.def(bld.lm), Operand(1u), Operand(x_rate));
+   x_rate = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                     bld.copy(bld.def(v1), Operand(0u)),
+                     bld.copy(bld.def(v1), Operand(4u)), cond);
+
+   /* yRate = yRate == 0x1 ? Vertical2Pixels : None. */
+   cond = bld.vopc(aco_opcode::v_cmp_eq_i32, bld.def(bld.lm), Operand(1u), Operand(y_rate));
+   y_rate = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                     bld.copy(bld.def(v1), Operand(0u)),
+                     bld.copy(bld.def(v1), Operand(1u)), cond);
+
+   bld.vop2(aco_opcode::v_or_b32, Definition(dst), Operand(x_rate), Operand(y_rate));
+}
+
 void visit_load_interpolated_input(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
@@ -7701,6 +7729,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       emit_load_frag_coord(ctx, get_ssa_temp(ctx, &instr->dest.ssa), 4);
       break;
    }
+   case nir_intrinsic_load_frag_shading_rate:
+      emit_load_frag_shading_rate(ctx, get_ssa_temp(ctx, &instr->dest.ssa));
+      break;
    case nir_intrinsic_load_sample_pos: {
       Temp posx = get_arg(ctx, ctx->args->ac.frag_pos[0]);
       Temp posy = get_arg(ctx, ctx->args->ac.frag_pos[1]);
@@ -10174,7 +10205,7 @@ static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
    ctx->block->instructions.emplace_back(std::move(exp));
 }
 
-static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
+static void export_vs_psiz_layer_viewport_vrs(isel_context *ctx, int *next_pos)
 {
    aco_ptr<Export_instruction> exp{create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
    exp->enabled_mask = 0;
@@ -10204,6 +10235,37 @@ static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
          exp->enabled_mask |= 0x4;
       }
    }
+   if (ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_SHADING_RATE]) {
+      Builder bld(ctx->program, ctx->block);
+      Temp cond;
+
+      /* xRate = (shadingRate & (Horizontal2Pixels | Horizontal4Pixels)) ? 0x1 : 0x0; */
+      Temp x_rate = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(12u),
+                             Operand(ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_SHADING_RATE * 4u]));
+      cond = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), Operand(x_rate));
+      x_rate = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                        bld.copy(bld.def(v1), Operand(0u)),
+                        bld.copy(bld.def(v1), Operand(1u)), cond);
+
+      /* yRate = (shadingRate & (Vertical2Pixels | Vertical4Pixels)) ? 0x1 : 0x0; */
+      Temp y_rate = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(3u),
+                             Operand(ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_SHADING_RATE * 4u]));
+      cond = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), Operand(y_rate));
+      y_rate = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                        bld.copy(bld.def(v1), Operand(0u)),
+                        bld.copy(bld.def(v1), Operand(1u)), cond);
+
+      /* Bits [2:3] = VRS rate X
+       * Bits [4:5] = VRS rate Y
+       * HW shading rate = (xRate << 2) | (yRate << 4)
+       */
+      y_rate = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(4u), Operand(y_rate));
+      Temp out = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), Operand(x_rate), Operand(2u), Operand(y_rate));
+
+      exp->operands[1] = Operand(out);
+      exp->enabled_mask |= 0x2;
+   }
+
    exp->valid_mask = ctx->options->chip_class == GFX10 && *next_pos == 0;
    exp->done = false;
    exp->compressed = false;
@@ -10267,8 +10329,9 @@ static void create_vs_exports(isel_context *ctx)
    /* the order these position exports are created is important */
    int next_pos = 0;
    export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
-   if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_viewport_index) {
-      export_vs_psiz_layer_viewport(ctx, &next_pos);
+   if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_viewport_index ||
+       outinfo->writes_primitive_shading_rate) {
+      export_vs_psiz_layer_viewport_vrs(ctx, &next_pos);
    }
    if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
       export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, true, &next_pos);

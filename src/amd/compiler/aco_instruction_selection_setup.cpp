@@ -327,7 +327,8 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
 
    outinfo->param_exports = 0;
    int pos_written = 0x1;
-   if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer)
+   if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer ||
+       outinfo->writes_primitive_shading_rate)
       pos_written |= 1 << 1;
 
    uint64_t mask = nir->info.outputs_written;
@@ -797,6 +798,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_barycentric_at_offset:
                   case nir_intrinsic_load_interpolated_input:
                   case nir_intrinsic_load_frag_coord:
+                  case nir_intrinsic_load_frag_shading_rate:
                   case nir_intrinsic_load_sample_pos:
                   case nir_intrinsic_load_layer_id:
                   case nir_intrinsic_load_local_invocation_id:
@@ -910,6 +912,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      break;
                   }
                   case nir_intrinsic_load_sample_id:
+                  case nir_intrinsic_load_frag_shading_rate:
                      spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
                      break;
                   case nir_intrinsic_load_sample_mask_in:
