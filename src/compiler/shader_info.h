@@ -76,6 +76,7 @@ struct spirv_supported_capabilities {
    bool float_controls;
    bool shader_clock;
    bool shader_viewport_index_layer;
+   bool sparse_residency;
    bool stencil_export;
    bool storage_8bit;
    bool storage_16bit;

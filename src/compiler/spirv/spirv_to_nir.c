@@ -4256,9 +4256,12 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityLinkage:
-      case SpvCapabilitySparseResidency:
          vtn_warn("Unsupported SPIR-V capability: %s",
                   spirv_capability_to_string(cap));
+         break;
+
+      case SpvCapabilitySparseResidency:
+         spv_check_supported(sparse_residency, cap);
          break;
 
       case SpvCapabilityMinLod:
