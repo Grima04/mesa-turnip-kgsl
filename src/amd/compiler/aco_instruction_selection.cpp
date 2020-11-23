@@ -11793,7 +11793,11 @@ void select_program(Program *program,
       if (i) {
          Builder bld(ctx.program, ctx.block);
 
-         if (!ngg_gs)
+         /* Skip s_barrier from TCS when VS outputs are not stored in the LDS. */
+         bool tcs_skip_barrier = ctx.stage == vertex_tess_control_hs &&
+                                 ctx.tcs_temp_only_inputs == nir->info.inputs_read;
+
+         if (!ngg_gs && !tcs_skip_barrier)
             create_workgroup_barrier(bld);
 
          if (ctx.stage == vertex_geometry_gs || ctx.stage == tess_eval_geometry_gs) {
