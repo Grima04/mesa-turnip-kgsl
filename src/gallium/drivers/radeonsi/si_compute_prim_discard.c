@@ -460,7 +460,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    if (key->opt.cs_indexed) {
       for (unsigned i = 0; i < 3; i++) {
          index[i] = ac_build_buffer_load_format(&ctx->ac, input_indexbuf, index[i], ctx->ac.i32_0,
-                                                1, 0, true, false);
+                                                1, 0, true, false, false);
          index[i] = ac_to_integer(&ctx->ac, index[i]);
       }
    }

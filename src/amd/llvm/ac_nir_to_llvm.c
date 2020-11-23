@@ -1424,13 +1424,16 @@ static nir_deref_instr *get_tex_texture_deref(const nir_tex_instr *instr)
 static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_tex_instr *instr,
                                         struct ac_image_args *args)
 {
+   assert((!args->tfe || !args->d16) && "unsupported");
+
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
 
       assert(instr->dest.is_ssa);
       return ac_build_buffer_load_format(&ctx->ac, args->resource, args->coords[0], ctx->ac.i32_0,
                                          util_last_bit(mask), 0, true,
-                                         instr->dest.ssa.bit_size == 16);
+                                         instr->dest.ssa.bit_size == 16,
+                                         args->tfe);
    }
 
    args->opcode = ac_image_sample;
@@ -2298,7 +2301,9 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
    count = image_type_to_components_count(dim, is_array);
 
    if (is_ms && (instr->intrinsic == nir_intrinsic_image_deref_load ||
-                 instr->intrinsic == nir_intrinsic_bindless_image_load)) {
+                 instr->intrinsic == nir_intrinsic_bindless_image_load ||
+                 instr->intrinsic == nir_intrinsic_image_deref_sparse_load ||
+                 instr->intrinsic == nir_intrinsic_bindless_image_sparse_load)) {
       LLVMValueRef fmask_load_address[3];
 
       fmask_load_address[0] = LLVMBuildExtractElement(ctx->ac.builder, src0, masks[0], "");
@@ -2420,6 +2425,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
    struct ac_image_args args = {0};
 
    args.cache_policy = get_cache_policy(ctx, access, false, false);
+   args.tfe = instr->intrinsic == nir_intrinsic_image_deref_sparse_load;
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       unsigned num_channels = util_last_bit(nir_ssa_def_components_read(&instr->dest.ssa));
@@ -2435,8 +2441,9 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
       bool can_speculate = access & ACCESS_CAN_REORDER;
       res = ac_build_buffer_load_format(&ctx->ac, rsrc, vindex, ctx->ac.i32_0, num_channels,
                                         args.cache_policy, can_speculate,
-                                        instr->dest.ssa.bit_size == 16);
-      res = ac_build_expand_to_vec4(&ctx->ac, res, num_channels);
+                                        instr->dest.ssa.bit_size == 16,
+                                        args.tfe);
+      res = ac_build_expand(&ctx->ac, res, num_channels, args.tfe ? 5 : 4);
 
       res = ac_trim_vector(&ctx->ac, res, instr->dest.ssa.num_components);
       res = ac_to_integer(&ctx->ac, res);
@@ -2459,12 +2466,20 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
    }
 
    if (instr->dest.ssa.bit_size == 64) {
+      LLVMValueRef code = NULL;
+      if (args.tfe) {
+         code = ac_llvm_extract_elem(&ctx->ac, res, 4);
+         res = ac_trim_vector(&ctx->ac, res, 4);
+      }
+
       res = LLVMBuildBitCast(ctx->ac.builder, res, LLVMVectorType(ctx->ac.i64, 2), "");
       LLVMValueRef x = LLVMBuildExtractElement(ctx->ac.builder, res, ctx->ac.i32_0, "");
       LLVMValueRef w = LLVMBuildExtractElement(ctx->ac.builder, res, ctx->ac.i32_1, "");
 
-      LLVMValueRef values[4] = {x, ctx->ac.i64_0, ctx->ac.i64_0, w};
-      res = ac_build_gather_values(&ctx->ac, values, 4);
+      if (code)
+         code = LLVMBuildZExt(ctx->ac.builder, code, ctx->ac.i64, "");
+      LLVMValueRef values[5] = {x, ctx->ac.i64_0, ctx->ac.i64_0, w, code};
+      res = ac_build_gather_values(&ctx->ac, values, 4 + args.tfe);
    }
 
    return exit_waterfall(ctx, &wctx, res);
@@ -3583,6 +3598,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = visit_image_load(ctx, instr, true);
       break;
    case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_deref_sparse_load:
       result = visit_image_load(ctx, instr, false);
       break;
    case nir_intrinsic_bindless_image_store:
@@ -4441,8 +4457,15 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 
    assert(instr->dest.is_ssa);
    args.d16 = instr->dest.ssa.bit_size == 16;
+   args.tfe = instr->is_sparse;
 
    result = build_tex_intrinsic(ctx, instr, &args);
+
+   LLVMValueRef code = NULL;
+   if (instr->is_sparse) {
+      code = ac_llvm_extract_elem(&ctx->ac, result, 4);
+      result = ac_trim_vector(&ctx->ac, result, 4);
+   }
 
    if (instr->op == nir_texop_query_levels)
       result =
@@ -4462,8 +4485,11 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       LLVMValueRef two = LLVMConstInt(ctx->ac.i32, 2, false);
       LLVMValueRef layers = LLVMBuildExtractElement(ctx->ac.builder, result, two, "");
       result = LLVMBuildInsertElement(ctx->ac.builder, result, layers, ctx->ac.i32_1, "");
-   } else if (instr->dest.ssa.num_components != 4)
+   } else if (nir_tex_instr_result_size(instr) != 4)
       result = ac_trim_vector(&ctx->ac, result, instr->dest.ssa.num_components);
+
+   if (instr->is_sparse)
+      result = ac_build_concat(&ctx->ac, result, code);
 
 write_result:
    if (result) {

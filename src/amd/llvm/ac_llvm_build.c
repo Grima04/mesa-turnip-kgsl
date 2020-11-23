@@ -325,8 +325,27 @@ void ac_build_type_name_for_intr(LLVMTypeRef type, char *buf, unsigned bufsize)
 {
    LLVMTypeRef elem_type = type;
 
-   assert(bufsize >= 8);
+   if (LLVMGetTypeKind(type) == LLVMStructTypeKind) {
+      unsigned count = LLVMCountStructElementTypes(type);
+      int ret = snprintf(buf, bufsize, "sl_");
+      buf += ret;
+      bufsize -= ret;
 
+      LLVMTypeRef *elems = alloca(count * sizeof(LLVMTypeRef));
+      LLVMGetStructElementTypes(type, elems);
+
+      for (unsigned i = 0; i < count; i++) {
+         ac_build_type_name_for_intr(elems[i], buf, bufsize);
+         ret = strlen(buf);
+         buf += ret;
+         bufsize -= ret;
+      }
+
+      snprintf(buf, bufsize, "s");
+      return;
+   }
+
+   assert(bufsize >= 8);
    if (LLVMGetTypeKind(type) == LLVMVectorTypeKind) {
       int ret = snprintf(buf, bufsize, "v%u", LLVMGetVectorSize(type));
       if (ret < 0) {
@@ -566,11 +585,25 @@ LLVMValueRef ac_build_gather_values(struct ac_llvm_context *ctx, LLVMValueRef *v
    return ac_build_gather_values_extended(ctx, values, value_count, 1, false, false);
 }
 
+LLVMValueRef ac_build_concat(struct ac_llvm_context *ctx, LLVMValueRef a, LLVMValueRef b)
+{
+   unsigned a_size = ac_get_llvm_num_components(a);
+   unsigned b_size = ac_get_llvm_num_components(b);
+
+   LLVMValueRef *elems = alloca((a_size + b_size) * sizeof(LLVMValueRef));
+   for (unsigned i = 0; i < a_size; i++)
+      elems[i] = ac_llvm_extract_elem(ctx, a, i);
+   for (unsigned i = 0; i < b_size; i++)
+      elems[a_size + i] = ac_llvm_extract_elem(ctx, b, i);
+
+   return ac_build_gather_values(ctx, elems, a_size + b_size);
+}
+
 /* Expand a scalar or vector to <dst_channels x type> by filling the remaining
  * channels with undef. Extract at most src_channels components from the input.
  */
-static LLVMValueRef ac_build_expand(struct ac_llvm_context *ctx, LLVMValueRef value,
-                                    unsigned src_channels, unsigned dst_channels)
+LLVMValueRef ac_build_expand(struct ac_llvm_context *ctx, LLVMValueRef value,
+                             unsigned src_channels, unsigned dst_channels)
 {
    LLVMTypeRef elemtype;
    LLVMValueRef *const chan = alloca(dst_channels * sizeof(LLVMValueRef));
@@ -1231,8 +1264,42 @@ LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc
 LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                          LLVMValueRef vindex, LLVMValueRef voffset,
                                          unsigned num_channels, unsigned cache_policy,
-                                         bool can_speculate, bool d16)
+                                         bool can_speculate, bool d16, bool tfe)
 {
+   if (tfe) {
+      assert(!d16);
+
+      char code[256];
+      /* The definition in the assembly and the one in the constraint string
+       * differs because of an assembler bug.
+       */
+      snprintf(code, sizeof(code),
+               "v_mov_b32 v0, 0\n"
+               "v_mov_b32 v1, 0\n"
+               "v_mov_b32 v2, 0\n"
+               "v_mov_b32 v3, 0\n"
+               "v_mov_b32 v4, 0\n"
+               "buffer_load_format_xyzw v[0:3], $1, $2, 0, idxen offen %s %s tfe %s\n"
+               "s_waitcnt vmcnt(0)",
+               cache_policy & ac_glc ? "glc" : "",
+               cache_policy & ac_slc ? "slc" : "",
+               cache_policy & ac_dlc ? "dlc" : "");
+
+      LLVMTypeRef param_types[] = {ctx->v2i32, ctx->v4i32};
+      LLVMTypeRef calltype = LLVMFunctionType(LLVMVectorType(ctx->f32, 5), param_types, 2, false);
+      LLVMValueRef inlineasm = LLVMConstInlineAsm(calltype, code, "=&{v[0:4]},v,s", false, false);
+
+      LLVMValueRef addr_comp[2] = {vindex ? vindex : ctx->i32_0,
+                                   voffset ? voffset : ctx->i32_0};
+
+      LLVMValueRef args[] = {ac_build_gather_values(ctx, addr_comp, 2),
+                             LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, "")};
+      LLVMValueRef res = LLVMBuildCall(ctx->builder, inlineasm, args, 2, "");
+
+      return ac_build_concat(ctx, ac_trim_vector(ctx, res, num_channels),
+                             ac_llvm_extract_elem(ctx, res, 4));
+   }
+
    return ac_build_buffer_load_common(ctx, rsrc, vindex, voffset, ctx->i32_0, num_channels,
                                       d16 ? ctx->f16 : ctx->f32, cache_policy, can_speculate, true,
                                       true);
@@ -2120,7 +2187,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
    LLVMTypeRef coord_type = sample ? ctx->f32 : ctx->i32;
    uint8_t dmask = a->dmask;
    LLVMTypeRef data_type;
-   char data_type_str[8];
+   char data_type_str[32];
 
    if (atomic) {
       data_type = LLVMTypeOf(a->data[0]);
@@ -2130,6 +2197,11 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
       dmask = (1 << ac_get_llvm_num_components(a->data[0])) - 1;
    } else {
       data_type = a->d16 ? ctx->v4f16 : ctx->v4f32;
+   }
+
+   if (a->tfe) {
+      data_type = LLVMStructTypeInContext(
+         ctx->context, (LLVMTypeRef[]){data_type, ctx->i32}, 2, false);
    }
 
    if (atomic || a->opcode == ac_image_store || a->opcode == ac_image_store_mip) {
@@ -2171,7 +2243,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
       args[num_args++] = LLVMConstInt(ctx->i1, a->unorm, false);
    }
 
-   args[num_args++] = ctx->i32_0; /* texfailctrl */
+   args[num_args++] = a->tfe ? ctx->i32_1 : ctx->i32_0; /* texfailctrl */
    args[num_args++] = LLVMConstInt(
       ctx->i32, load ? get_load_cache_policy(ctx, a->cache_policy) : a->cache_policy, false);
 
@@ -2258,14 +2330,18 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
             data_type_str, overload[0], overload[1], overload[2]);
 
    LLVMTypeRef retty;
-   if (atomic)
-      retty = data_type;
-   else if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip)
+   if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip)
       retty = ctx->voidt;
    else
-      retty = a->d16 ? ctx->v4f16 : ctx->v4f32;
+      retty = data_type;
 
    LLVMValueRef result = ac_build_intrinsic(ctx, intr_name, retty, args, num_args, a->attributes);
+   if (a->tfe) {
+      LLVMValueRef texel = LLVMBuildExtractValue(ctx->builder, result, 0, "");
+      LLVMValueRef code = LLVMBuildExtractValue(ctx->builder, result, 1, "");
+      result = ac_build_concat(ctx, texel, ac_to_float(ctx, code));
+   }
+
    if (!sample && !atomic && retty != ctx->voidt)
       result = ac_to_integer(ctx, result);
 
