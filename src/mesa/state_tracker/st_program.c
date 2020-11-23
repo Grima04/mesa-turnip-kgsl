@@ -391,7 +391,7 @@ st_prog_to_nir_postprocess(struct st_context *st, nir_shader *nir,
    st_finalize_nir_before_variants(nir);
 
    if (st->allow_st_finalize_nir_twice)
-      st_finalize_nir(st, prog, NULL, nir, true);
+      st_finalize_nir(st, prog, NULL, nir, true, true);
 
    nir_validate_shader(nir, "after st/glsl finalize_nir");
 }
@@ -785,7 +785,7 @@ st_create_vp_variant(struct st_context *st,
 
       if (finalize || !st->allow_st_finalize_nir_twice) {
          st_finalize_nir(st, &stvp->Base, stvp->shader_program, state.ir.nir,
-                         true);
+                         true, false);
 
          /* Some of the lowering above may have introduced new varyings */
          nir_shader_gather_info(state.ir.nir,
@@ -1360,7 +1360,7 @@ st_create_fp_variant(struct st_context *st,
 
       if (finalize || !st->allow_st_finalize_nir_twice) {
          st_finalize_nir(st, &stfp->Base, stfp->shader_program, state.ir.nir,
-                         false);
+                         false, false);
       }
 
       /* This pass needs to happen *after* nir_lower_sampler */
@@ -1761,7 +1761,7 @@ st_get_common_variant(struct st_context *st,
 
             if (finalize || !st->allow_st_finalize_nir_twice) {
                st_finalize_nir(st, &prog->Base, prog->shader_program,
-                               state.ir.nir, true);
+                               state.ir.nir, true, false);
             }
 
             if (ST_DEBUG & DEBUG_PRINT_IR)
