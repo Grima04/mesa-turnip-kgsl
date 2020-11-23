@@ -4459,15 +4459,15 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(intel_subgroup_buffer_block_io, cap);
          break;
 
-      case SpvCapabilityRayTracingProvisionalKHR:
+      case SpvCapabilityRayTracingKHR:
          spv_check_supported(ray_tracing, cap);
          break;
 
-      case SpvCapabilityRayQueryProvisionalKHR:
+      case SpvCapabilityRayQueryKHR:
          spv_check_supported(ray_query, cap);
          break;
 
-      case SpvCapabilityRayTraversalPrimitiveCullingProvisionalKHR:
+      case SpvCapabilityRayTraversalPrimitiveCullingKHR:
          spv_check_supported(ray_traversal_primitive_culling, cap);
          break;
 
