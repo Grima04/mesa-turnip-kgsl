@@ -825,8 +825,13 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, nir_lower_io, nir_var_uniform, r600_glsl_type_size,
               nir_lower_io_lower_64bit_to_32);
 
-   if (sel->nir->info.stage == MESA_SHADER_VERTEX)
+   if (sel->nir->info.stage == MESA_SHADER_VERTEX) {
       NIR_PASS_V(sel->nir, r600_vectorize_vs_inputs);
+      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_out, r600_glsl_type_size,
+                    nir_lower_io_lower_64bit_to_32);
+      if (key->vs.as_ls)
+         NIR_PASS_V(sel->nir, r600_lower_tess_io, (pipe_prim_type)key->tcs.prim_mode);
+   }
 
    if (sel->nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, r600_glsl_type_size,
@@ -836,8 +841,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sel->nir, r600_lower_fs_out_to_vector);
    }
 
-   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
-       (sel->nir->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
+   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL) {
       NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_out, r600_glsl_type_size,
                  nir_lower_io_lower_64bit_to_32);
       NIR_PASS_V(sel->nir, r600_lower_tess_io, (pipe_prim_type)key->tcs.prim_mode);
@@ -850,8 +854,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    }
 
    if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
-       sel->nir->info.stage == MESA_SHADER_TESS_EVAL ||
-       (sel->nir->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
+       sel->nir->info.stage == MESA_SHADER_TESS_EVAL) {
       auto prim_type = sel->nir->info.stage == MESA_SHADER_TESS_CTRL ?
                           key->tcs.prim_mode : sel->nir->info.tess.primitive_mode;
       NIR_PASS_V(sel->nir, r600_lower_tess_io, static_cast<pipe_prim_type>(prim_type));

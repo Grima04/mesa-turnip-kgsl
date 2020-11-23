@@ -1,6 +1,6 @@
 #include "sfn_nir.h"
 
-bool r600_lower_tess_io_filter(const nir_instr *instr)
+bool r600_lower_tess_io_filter(const nir_instr *instr, gl_shader_stage stage)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -8,7 +8,6 @@ bool r600_lower_tess_io_filter(const nir_instr *instr)
    nir_intrinsic_instr *op = nir_instr_as_intrinsic(instr);
    switch (op->intrinsic) {
    case nir_intrinsic_load_input:
-   case nir_intrinsic_store_output:
    case nir_intrinsic_load_output:
    case nir_intrinsic_load_per_vertex_input:
    case nir_intrinsic_load_per_vertex_output:
@@ -17,6 +16,8 @@ bool r600_lower_tess_io_filter(const nir_instr *instr)
    case nir_intrinsic_load_tess_level_outer:
    case nir_intrinsic_load_tess_level_inner:
       return true;
+   case nir_intrinsic_store_output:
+      return stage == MESA_SHADER_TESS_CTRL || stage == MESA_SHADER_VERTEX;
    default:
       ;
    }
@@ -326,7 +327,7 @@ bool r600_lower_tess_io(nir_shader *shader, enum pipe_prim_type prim_type)
                if (instr->type != nir_instr_type_intrinsic)
                   continue;
 
-               if (r600_lower_tess_io_filter(instr))
+               if (r600_lower_tess_io_filter(instr, shader->info.stage))
                   progress |= r600_lower_tess_io_impl(&b, instr, prim_type);
             }
          }
