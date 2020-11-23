@@ -41,6 +41,7 @@
 #include "hud/hud_private.h"
 
 #include "cso_cache/cso_context.h"
+#include "util/debug.h"
 #include "util/u_draw_quad.h"
 #include "util/format/u_format.h"
 #include "util/u_inlines.h"
@@ -1811,8 +1812,10 @@ hud_create(struct cso_context *cso, struct hud_context *share)
 
    memset(&action, 0, sizeof(action));
 #endif
-   huds_visible = debug_get_bool_option("GALLIUM_HUD_VISIBLE", TRUE);
-   hud_scale = debug_get_num_option("GALLIUM_HUD_SCALE", 1);
+   do_once {
+      huds_visible = debug_get_bool_option("GALLIUM_HUD_VISIBLE", TRUE);
+      hud_scale = debug_get_num_option("GALLIUM_HUD_SCALE", 1);
+   }
 
    if (!env || !*env)
       return NULL;
