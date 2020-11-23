@@ -588,9 +588,6 @@ handle_cl_job(struct v3dv_queue *queue,
    submit.qms = job->tile_alloc->size;
    submit.qts = job->tile_state->offset;
 
-   /* FIXME: we already know that we support cache flush, as we only support
-    * hw that supports that, but would be better to just DRM-ask it
-    */
    submit.flags = 0;
    if (job->tmu_dirty_rcl)
       submit.flags |= DRM_V3D_SUBMIT_CL_FLUSH_CACHE;
