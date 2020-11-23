@@ -594,7 +594,7 @@ handle_cl_job(struct v3dv_queue *queue,
 
    submit.bo_handle_count = job->bo_count;
    uint32_t *bo_handles =
-      (uint32_t *) malloc(sizeof(uint32_t) * MAX2(4, submit.bo_handle_count * 2));
+      (uint32_t *) malloc(sizeof(uint32_t) * submit.bo_handle_count);
    uint32_t bo_idx = 0;
    set_foreach(job->bos, entry) {
       struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
