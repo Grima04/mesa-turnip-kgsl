@@ -143,6 +143,7 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
          case nir_op_vec2:
          case nir_op_vec3:
          case nir_op_vec4:
+         case nir_op_vec5:
          case nir_op_vec8:
          case nir_op_vec16:
             movelike = true;

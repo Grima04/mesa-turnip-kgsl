@@ -603,6 +603,7 @@ nir_fdot(nir_builder *build, nir_ssa_def *src0, nir_ssa_def *src1)
    case 2: return nir_fdot2(build, src0, src1);
    case 3: return nir_fdot3(build, src0, src1);
    case 4: return nir_fdot4(build, src0, src1);
+   case 5: return nir_fdot5(build, src0, src1);
    case 8: return nir_fdot8(build, src0, src1);
    case 16: return nir_fdot16(build, src0, src1);
    default:
@@ -620,6 +621,7 @@ nir_ball_iequal(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
    case 2: return nir_ball_iequal2(b, src0, src1);
    case 3: return nir_ball_iequal3(b, src0, src1);
    case 4: return nir_ball_iequal4(b, src0, src1);
+   case 5: return nir_ball_iequal5(b, src0, src1);
    case 8: return nir_ball_iequal8(b, src0, src1);
    case 16: return nir_ball_iequal16(b, src0, src1);
    default:
@@ -641,6 +643,7 @@ nir_bany_inequal(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
    case 2: return nir_bany_inequal2(b, src0, src1);
    case 3: return nir_bany_inequal3(b, src0, src1);
    case 4: return nir_bany_inequal4(b, src0, src1);
+   case 5: return nir_bany_inequal5(b, src0, src1);
    case 8: return nir_bany_inequal8(b, src0, src1);
    case 16: return nir_bany_inequal16(b, src0, src1);
    default:

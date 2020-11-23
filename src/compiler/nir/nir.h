@@ -72,7 +72,7 @@ static inline bool
 nir_num_components_valid(unsigned num_components)
 {
    return (num_components >= 1  &&
-           num_components <= 4) ||
+           num_components <= 5) ||
            num_components == 8  ||
            num_components == 16;
 }
@@ -1210,6 +1210,7 @@ nir_op_vec(unsigned components)
    case  2: return nir_op_vec2;
    case  3: return nir_op_vec3;
    case  4: return nir_op_vec4;
+   case  5: return nir_op_vec5;
    case  8: return nir_op_vec8;
    case 16: return nir_op_vec16;
    default: unreachable("bad component count");
@@ -1224,6 +1225,7 @@ nir_op_is_vec(nir_op op)
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
+   case nir_op_vec5:
    case nir_op_vec8:
    case nir_op_vec16:
       return true;
