@@ -85,7 +85,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    unsigned input_patch_size, output_patch_size, output_patch0_offset;
    unsigned perpatch_output_offset, lds_per_patch, lds_size;
    unsigned tcs_in_layout, tcs_out_layout, tcs_out_offsets;
-   unsigned offchip_layout, max_lds_size, target_lds_size, ls_hs_config;
+   unsigned offchip_layout, target_lds_size, ls_hs_config;
 
    /* Since GFX9 has merged LS-HS in the TCS state, set LS = TCS. */
    if (sctx->chip_class >= GFX9) {
@@ -171,7 +171,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
     *
     * Use 16K so that we can fit 2 workgroups on the same CU.
     */
-   max_lds_size = 32 * 1024; /* hw limit */
+   ASSERTED unsigned max_lds_size = 32 * 1024; /* hw limit */
    target_lds_size = 16 * 1024; /* target at least 2 workgroups per CU, 16K each */
    *num_patches = MIN2(*num_patches, target_lds_size / lds_per_patch);
    *num_patches = MAX2(*num_patches, 1);
