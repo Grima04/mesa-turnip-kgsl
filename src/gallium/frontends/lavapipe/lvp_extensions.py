@@ -136,7 +136,7 @@ EXTENSIONS = [
     Extension('VK_EXT_sampler_filter_minmax',             1, False),
     Extension('VK_EXT_scalar_block_layout',               1, False),
     Extension('VK_EXT_shader_viewport_index_layer',       1, False),
-    Extension('VK_EXT_shader_stencil_export',             1, False),
+    Extension('VK_EXT_shader_stencil_export',             1, True),
     Extension('VK_EXT_shader_subgroup_ballot',            1, False),
     Extension('VK_EXT_shader_subgroup_vote',              1, False),
     Extension('VK_EXT_transform_feedback',                1, False),
