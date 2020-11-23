@@ -851,7 +851,7 @@ class Definition final
 {
 public:
    constexpr Definition() : temp(Temp(0, s1)), reg_(0), isFixed_(0), hasHint_(0),
-                            isKill_(0), isPrecise_(0), isNUW_(0) {}
+                            isKill_(0), isPrecise_(0), isNUW_(0), isNoCSE_(0) {}
    Definition(uint32_t index, RegClass type) noexcept
       : temp(index, type) {}
    explicit Definition(Temp tmp) noexcept
@@ -959,6 +959,16 @@ public:
       return isNUW_;
    }
 
+   constexpr void setNoCSE(bool noCSE) noexcept
+   {
+      isNoCSE_ = noCSE;
+   }
+
+   constexpr bool isNoCSE() const noexcept
+   {
+      return isNoCSE_;
+   }
+
 private:
    Temp temp = Temp(0, s1);
    PhysReg reg_;
@@ -969,6 +979,7 @@ private:
          uint8_t isKill_:1;
          uint8_t isPrecise_:1;
          uint8_t isNUW_:1;
+         uint8_t isNoCSE_:1;
       };
       /* can't initialize bit-fields in c++11, so work around using a union */
       uint8_t control_ = 0;

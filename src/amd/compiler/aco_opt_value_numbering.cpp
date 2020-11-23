@@ -383,7 +383,7 @@ void process_block(vn_ctx& ctx, Block& block)
           instr->opcode == aco_opcode::p_demote_to_helper)
          ctx.exec_id++;
 
-      if (instr->definitions.empty() || instr->opcode == aco_opcode::p_phi || instr->opcode == aco_opcode::p_linear_phi) {
+      if (instr->definitions.empty() || is_phi(instr) || instr->definitions[0].isNoCSE()) {
          new_instructions.emplace_back(std::move(instr));
          continue;
       }

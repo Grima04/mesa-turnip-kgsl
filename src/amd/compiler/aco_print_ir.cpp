@@ -192,6 +192,8 @@ static void print_definition(const Definition *definition, FILE *output)
       fprintf(output, "(precise)");
    if (definition->isNUW())
       fprintf(output, "(nuw)");
+   if (definition->isNoCSE())
+      fprintf(output, "(noCSE)");
    fprintf(output, "%%%d", definition->tempId());
 
    if (definition->isFixed())

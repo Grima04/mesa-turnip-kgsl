@@ -5887,6 +5887,11 @@ Operand emit_tfe_init(Builder& bld, Temp dst)
    for (unsigned i = 0; i < dst.size(); i++)
       vec->operands[i] = Operand(0u);
    vec->definitions[0] = Definition(tmp);
+   /* Since this is fixed to an instruction's definition register, any CSE will
+    * just create copies. Copying costs about the same as zero-initialization,
+    * but these copies can break up clauses.
+    */
+   vec->definitions[0].setNoCSE(true);
    bld.insert(std::move(vec));
 
    return Operand(tmp);
