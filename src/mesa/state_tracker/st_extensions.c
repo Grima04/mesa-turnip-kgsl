@@ -1040,6 +1040,8 @@ void st_init_extensions(struct pipe_screen *screen,
         } },
    };
 
+   st_debug_init();
+
    /*
     * Extensions that are supported by all Gallium drivers:
     */
