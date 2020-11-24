@@ -660,7 +660,7 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
          }
          return;
       }
-      /* Fall through */
+      FALLTHROUGH;
 
    case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_ARRAY:
@@ -1197,6 +1197,7 @@ apply_var_decoration(struct vtn_builder *b,
       default:
          break;
       }
+      FALLTHROUGH;
    }
 
    case SpvDecorationSpecId:
@@ -1563,7 +1564,7 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
    case vtn_variable_mode_function:
       if (b->physical_ptrs)
          return b->options->temp_addr_format;
-      /* Fall through. */
+      FALLTHROUGH;
 
    case vtn_variable_mode_private:
    case vtn_variable_mode_uniform:
