@@ -1204,8 +1204,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->use_ngg = !(sscreen->debug_flags & DBG(NO_NGG)) &&
                       sscreen->info.chip_class >= GFX10 &&
                       (sscreen->info.family != CHIP_NAVI14 ||
-                       sscreen->info.is_pro_graphics) &&
-                      sscreen->info.has_dedicated_vram;
+                       sscreen->info.is_pro_graphics);
    sscreen->use_ngg_culling = sscreen->use_ngg && !(sscreen->debug_flags & DBG(NO_NGG_CULLING));
    sscreen->use_ngg_streamout = false;
 
