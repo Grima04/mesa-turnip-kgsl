@@ -1393,12 +1393,22 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
 
    nir_rematerialize_derefs_in_use_blocks_impl(impl);
 
-   /* Continue blocks for loops get inserted before the body of the loop
-    * but instructions in the continue may use SSA defs in the loop body.
-    * Therefore, we need to repair SSA to insert the needed phi nodes.
+   /*
+    * There are some cases where we need to repair SSA to insert
+    * the needed phi nodes:
+    *
+    * - Continue blocks for loops get inserted before the body of the loop
+    *   but instructions in the continue may use SSA defs in the loop body.
+    *
+    * - Early termination instructions `OpKill` and `OpTerminateInvocation`,
+    *   in NIR. They're represented by regular intrinsics with no control-flow
+    *   semantics. This means that the SSA form from the SPIR-V may not
+    *   100% match NIR.
+    *
+    * - Switches with only default case may also define SSA which may
+    *   subsequently be used out of the switch.
     */
-   if (func->nir_func->impl->structured &&
-       (b->has_loop_continue || b->has_early_terminate))
+   if (func->nir_func->impl->structured)
       nir_repair_ssa_impl(impl);
 
    func->emitted = true;
