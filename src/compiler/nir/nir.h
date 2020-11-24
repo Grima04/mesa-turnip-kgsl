@@ -4198,9 +4198,15 @@ void nir_metadata_check_validation_flag(nir_shader *shader);
 static inline bool
 should_skip_nir(const char *name)
 {
-   const char *list = get_once(getenv("NIR_SKIP"));
+   static const char *list = NULL;
+   if (!list) {
+      /* Comma separated list of names to skip. */
+      list = getenv("NIR_SKIP");
+      if (!list)
+         list = "";
+   }
 
-   if (!list || !list[0])
+   if (!list[0])
       return false;
 
    return comma_separated_list_contains(list, name);
@@ -4209,19 +4215,29 @@ should_skip_nir(const char *name)
 static inline bool
 should_clone_nir(void)
 {
-   return get_once(env_var_as_boolean("NIR_TEST_CLONE", false));
+   static int should_clone = -1;
+   if (should_clone < 0)
+      should_clone = env_var_as_boolean("NIR_TEST_CLONE", false);
+
+   return should_clone;
 }
 
 static inline bool
 should_serialize_deserialize_nir(void)
 {
-   return get_once(env_var_as_boolean("NIR_TEST_SERIALIZE", false));
+   static int test_serialize = -1;
+   if (test_serialize < 0)
+      test_serialize = env_var_as_boolean("NIR_TEST_SERIALIZE", false);
+
+   return test_serialize;
 }
 
 static inline bool
 should_print_nir(nir_shader *shader)
 {
-   int should_print = get_once(env_var_as_unsigned("NIR_PRINT", 0));
+   static int should_print = -1;
+   if (should_print < 0)
+      should_print = env_var_as_unsigned("NIR_PRINT", 0);
 
    if (should_print == 1)
       return !shader->info.internal;
