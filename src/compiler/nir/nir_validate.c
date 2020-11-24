@@ -644,7 +644,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    case nir_intrinsic_load_ubo:
       /* Make sure that the creator didn't forget to set the range_base+range. */
       validate_assert(state, nir_intrinsic_range(instr) != 0);
-      /* Fall through */
+      FALLTHROUGH;
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_shared:
    case nir_intrinsic_load_global:
@@ -656,7 +656,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
          util_is_power_of_two_nonzero(nir_intrinsic_align_mul(instr)));
       validate_assert(state, nir_intrinsic_align_offset(instr) <
                              nir_intrinsic_align_mul(instr));
-      /* Fall through */
+      FALLTHROUGH;
 
    case nir_intrinsic_load_uniform:
    case nir_intrinsic_load_input:
@@ -678,7 +678,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
          util_is_power_of_two_nonzero(nir_intrinsic_align_mul(instr)));
       validate_assert(state, nir_intrinsic_align_offset(instr) <
                              nir_intrinsic_align_mul(instr));
-      /* Fall through */
+      FALLTHROUGH;
 
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_per_vertex_output:

@@ -613,6 +613,7 @@ nir_lower_io_block(nir_block *block,
          if (options->use_interpolated_input_intrinsics ||
              options->lower_interpolate_at)
             break;
+         FALLTHROUGH;
       default:
          /* We can't lower the io for this nir instrinsic, so skip it */
          continue;

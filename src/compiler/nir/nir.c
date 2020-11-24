@@ -1741,7 +1741,7 @@ nir_block_cf_tree_next(nir_block *block)
 
       assert(block == nir_if_last_else_block(if_stmt));
    }
-   /* fallthrough */
+   FALLTHROUGH;
 
    case nir_cf_node_loop:
       return nir_cf_node_as_block(nir_cf_node_next(parent));
@@ -1779,7 +1779,7 @@ nir_block_cf_tree_prev(nir_block *block)
 
       assert(block == nir_if_first_then_block(if_stmt));
    }
-   /* fallthrough */
+   FALLTHROUGH;
 
    case nir_cf_node_loop:
       return nir_cf_node_as_block(nir_cf_node_prev(parent));

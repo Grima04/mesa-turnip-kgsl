@@ -230,7 +230,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_reduce:
       if (nir_intrinsic_cluster_size(instr) == 0)
          return false;
-      /* fallthrough */
+      FALLTHROUGH;
    case nir_intrinsic_inclusive_scan: {
       nir_op op = nir_intrinsic_reduction_op(instr);
       is_divergent = instr->src[0].ssa->divergent;
@@ -567,7 +567,7 @@ visit_deref(nir_shader *shader, nir_deref_instr *deref)
    case nir_deref_type_array:
    case nir_deref_type_ptr_as_array:
       is_divergent = deref->arr.index.ssa->divergent;
-      /* fallthrough */
+      FALLTHROUGH;
    case nir_deref_type_struct:
    case nir_deref_type_array_wildcard:
       is_divergent |= deref->parent.ssa->divergent;

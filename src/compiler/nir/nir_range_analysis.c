@@ -864,6 +864,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
 
       case eq_zero:
          assert(r.is_integral);
+         FALLTHROUGH;
       case gt_zero:
       case ge_zero:
          /* The fsat doesn't add any information in these cases. */
