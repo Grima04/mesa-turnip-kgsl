@@ -523,7 +523,7 @@ dri2_allocate_textures(struct dri_context *ctx,
             if (!screen->auto_fake_front) {
                continue; /* invalid attachment */
             }
-            /* fallthrough */
+            FALLTHROUGH;
          case __DRI_BUFFER_FAKE_FRONT_LEFT:
             statt = ST_ATTACHMENT_FRONT_LEFT;
             break;
