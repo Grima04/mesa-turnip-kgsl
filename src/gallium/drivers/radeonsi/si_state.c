@@ -2318,16 +2318,15 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
       }
    }
 
+   /* amdvlk: [min-compressed-block-size] should be set to 32 for dGPU and
+    * 64 for APU because all of our APUs to date use DIMMs which have
+    * a request granularity size of 64B while all other chips have a
+    * 32B request size */
+   unsigned min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_32B;
+   if (!sctx->screen->info.has_dedicated_vram)
+      min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_64B;
+
    if (sctx->chip_class >= GFX10) {
-      unsigned min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_32B;
-
-      /* amdvlk: [min-compressed-block-size] should be set to 32 for dGPU and
-         64 for APU because all of our APUs to date use DIMMs which have
-         a request granularity size of 64B while all other chips have a
-         32B request size */
-      if (!sctx->screen->info.has_dedicated_vram)
-         min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_64B;
-
       surf->cb_dcc_control = S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
                              S_028C78_MAX_COMPRESSED_BLOCK_SIZE(tex->surface.u.gfx9.dcc.max_compressed_block_size) |
                              S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
@@ -2335,14 +2334,6 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
                              S_028C78_INDEPENDENT_128B_BLOCKS(tex->surface.u.gfx9.dcc.independent_128B_blocks);
    } else if (sctx->chip_class >= GFX8) {
       unsigned max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
-      unsigned min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_32B;
-
-      /* amdvlk: [min-compressed-block-size] should be set to 32 for dGPU and
-         64 for APU because all of our APUs to date use DIMMs which have
-         a request granularity size of 64B while all other chips have a
-         32B request size */
-      if (!sctx->screen->info.has_dedicated_vram)
-         min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_64B;
 
       if (tex->buffer.b.b.nr_storage_samples > 1) {
          if (tex->surface.bpe == 1)
