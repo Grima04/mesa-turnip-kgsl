@@ -2052,11 +2052,12 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 }
         }
 
-        /* Allocate data registers contiguously */
+        /* Allocate data registers contiguously. Index must not be marked SSA
+         * due to a quirk of RA for tied operands, could be fixed eventually */
         bi_instruction combine = {
                 .type = BI_COMBINE,
                 .dest_type = nir_type_uint32,
-                .dest = bi_make_temp(ctx),
+                .dest = bi_make_temp_reg(ctx),
                 .src_types = {
                         nir_type_uint32, nir_type_uint32,
                         nir_type_uint32, nir_type_uint32,
@@ -2082,7 +2083,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 for (unsigned i = 0; i < dreg_index; ++i)
                         tex.swizzle[0][i] = i;
         } else {
-                tex.src[0] = tex.dest;
+                tex.src[0] = bi_make_temp_reg(ctx);
         }
 
         /* Pass the texture operation descriptor in src2 */

@@ -366,6 +366,7 @@ bi_register_allocate(bi_context *ctx)
                 unsigned both = BI_DATA_REG_SRC | BI_DATA_REG_DEST;
                 if ((props & both) != both) continue;
 
+                assert(ins->src[0] & PAN_IS_REG);
                 bi_rewrite_uses(ctx, ins->dest, 0, ins->src[0], 0);
                 ins->dest = ins->src[0];
         }
