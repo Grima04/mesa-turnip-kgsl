@@ -217,7 +217,7 @@ update_so_info(struct zink_shader *sh,
 }
 
 VkShaderModule
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct zink_shader_key *key,
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
                     unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
@@ -260,7 +260,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
    bool have_psiz = false;
 
-   ret->shader_id = p_atomic_inc_return(&screen->shader_id);
    ret->programs = _mesa_pointer_set_create(NULL);
 
    /* only do uniforms -> ubo if we have uniforms, otherwise we're just

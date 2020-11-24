@@ -44,19 +44,6 @@ struct zink_shader_module {
    VkShaderModule shader;
 };
 
-struct zink_fs_key {
-   unsigned shader_id;
-   //bool flat_shade;
-};
-
-
-struct zink_shader_key {
-   union {
-      struct zink_fs_key fs;
-   } key;
-   uint32_t size;
-};
-
 struct zink_gfx_program {
    struct pipe_reference reference;
 
@@ -69,7 +56,6 @@ struct zink_gfx_program {
    unsigned num_descriptors;
    struct hash_table *pipelines[10]; // number of draw modes we support
    struct set *render_passes;
-   struct hash_table *shader_cache;
 };
 
 struct zink_gfx_program *

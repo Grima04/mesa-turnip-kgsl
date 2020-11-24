@@ -50,8 +50,6 @@ struct zink_screen {
 
    struct slab_parent_pool transfer_pool;
 
-   unsigned shader_id;
-
    VkInstance instance;
    VkPhysicalDevice pdev;
 
