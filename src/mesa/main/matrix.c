@@ -87,7 +87,7 @@ get_named_matrix_stack(struct gl_context *ctx, GLenum mode, const char* caller)
          if (m <= ctx->Const.MaxProgramMatrices)
             return &ctx->ProgramMatrixStack[m];
       }
-      /* fallthrough */
+      FALLTHROUGH;
    default:
       break;
    }

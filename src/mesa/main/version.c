@@ -599,7 +599,7 @@ _mesa_get_version(const struct gl_extensions *extensions,
       if (!consts->AllowHigherCompatVersion) {
          consts->GLSLVersion = consts->GLSLVersionCompat;
       }
-      /* fall through */
+      FALLTHROUGH;
    case API_OPENGL_CORE:
       return compute_version(extensions, consts, api);
    case API_OPENGLES:

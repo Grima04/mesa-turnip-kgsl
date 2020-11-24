@@ -74,6 +74,7 @@ valid_filter_for_float(const struct gl_context *ctx,
       } else if (obj->_IsFloat && !ctx->Extensions.OES_texture_float_linear) {
          return false;
       }
+      FALLTHROUGH;
    case GL_NEAREST:
    case GL_NEAREST_MIPMAP_NEAREST:
       break;
@@ -91,6 +92,7 @@ valid_filter_for_float(const struct gl_context *ctx,
       } else if (obj->_IsFloat && !ctx->Extensions.OES_texture_float_linear) {
          return false;
       }
+      FALLTHROUGH;
    case GL_NEAREST:
    case GL_NEAREST_MIPMAP_NEAREST:
       break;
@@ -387,7 +389,7 @@ finish_texture_init(struct gl_context *ctx, GLenum target,
       case GL_TEXTURE_2D_MULTISAMPLE:
       case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
          filter = GL_NEAREST;
-         /* fallthrough */
+         FALLTHROUGH;
 
       case GL_TEXTURE_RECTANGLE_NV:
       case GL_TEXTURE_EXTERNAL_OES:

@@ -171,7 +171,7 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
             src.src = nir_src_for_ssa(nir_imm_vec4(b, v[0], v[1], v[2], v[3]));
             break;
          }
-         /* FALLTHROUGH */
+         FALLTHROUGH;
       case PROGRAM_STATE_VAR: {
          assert(c->parameters != NULL);
 

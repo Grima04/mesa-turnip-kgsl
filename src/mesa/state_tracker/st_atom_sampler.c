@@ -318,7 +318,7 @@ update_shader_samplers(struct st_context *st,
          if (stObj->pt->format == PIPE_FORMAT_R8_G8B8_420_UNORM)
             /* no additional views needed */
             break;
-         /* fallthrough */
+         FALLTHROUGH;
       case PIPE_FORMAT_P010:
       case PIPE_FORMAT_P012:
       case PIPE_FORMAT_P016:

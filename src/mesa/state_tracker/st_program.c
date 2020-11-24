@@ -1016,7 +1016,7 @@ st_translate_fragment_program(struct st_context *st,
                interpMode[slot] = TGSI_INTERPOLATE_LINEAR;
                break;
             }
-            /* fall through */
+            FALLTHROUGH;
          case VARYING_SLOT_TEX0:
          case VARYING_SLOT_TEX1:
          case VARYING_SLOT_TEX2:
@@ -1032,7 +1032,7 @@ st_translate_fragment_program(struct st_context *st,
                   TGSI_INTERPOLATE_COUNT : TGSI_INTERPOLATE_PERSPECTIVE;
                break;
             }
-            /* fall through */
+            FALLTHROUGH;
          case VARYING_SLOT_VAR0:
          default:
             /* Semantic indices should be zero-based because drivers may choose
@@ -1108,7 +1108,8 @@ st_translate_fragment_program(struct st_context *st,
             assert(0);
             break;
          case FRAG_RESULT_COLOR:
-            write_all = GL_TRUE; /* fallthrough */
+            write_all = GL_TRUE;
+            FALLTHROUGH;
          default: {
             int index;
             assert(loc == FRAG_RESULT_COLOR ||

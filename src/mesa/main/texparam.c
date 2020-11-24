@@ -286,7 +286,7 @@ set_tex_parameteri(struct gl_context *ctx,
             texObj->Sampler.MinFilter = params[0];
             return GL_TRUE;
          }
-         /* fall-through */
+         FALLTHROUGH;
       default:
          goto invalid_param;
       }
@@ -1704,7 +1704,7 @@ get_tex_level_parameter_image(struct gl_context *ctx,
       case GL_TEXTURE_INTENSITY_TYPE_ARB:
          if (ctx->API != API_OPENGL_COMPAT)
             goto invalid_pname;
-         /* FALLTHROUGH */
+         FALLTHROUGH;
       case GL_TEXTURE_RED_TYPE_ARB:
       case GL_TEXTURE_GREEN_TYPE_ARB:
       case GL_TEXTURE_BLUE_TYPE_ARB:

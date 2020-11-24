@@ -1267,7 +1267,7 @@ _mesa_initialize_context(struct gl_context *ctx,
       if (!ctx->BeginEnd || !ctx->Save)
          goto fail;
 
-      /* fall-through */
+      FALLTHROUGH;
    case API_OPENGL_CORE:
       break;
    case API_OPENGLES:

@@ -500,7 +500,7 @@ get_sampler_view_format(struct st_context *st,
          format = PIPE_FORMAT_R8_G8B8_420_UNORM;
          break;
       }
-      /* fallthrough */
+      FALLTHROUGH;
    case PIPE_FORMAT_IYUV:
       format = PIPE_FORMAT_R8_UNORM;
       break;
