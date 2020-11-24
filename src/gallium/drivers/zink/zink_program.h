@@ -39,10 +39,6 @@ struct zink_gfx_pipeline_state;
 struct hash_table;
 struct set;
 
-/* a shader module is used for directly reusing a shader module between programs,
- * e.g., in the case where we're swapping out only one shader,
- * allowing us to skip going through shader keys
- */
 struct zink_shader_module {
    struct pipe_reference reference;
    VkShaderModule shader;
@@ -53,11 +49,7 @@ struct zink_fs_key {
    //bool flat_shade;
 };
 
-/* a shader key is used for swapping out shader modules based on pipeline states,
- * e.g., if sampleCount changes, we must verify that the fs doesn't need a recompile
- *       to account for GL ignoring gl_SampleMask in some cases when VK will not
- * which allows us to avoid recompiling shaders when the pipeline state changes repeatedly
- */
+
 struct zink_shader_key {
    union {
       struct zink_fs_key fs;
@@ -65,18 +57,11 @@ struct zink_shader_key {
    uint32_t size;
 };
 
-/* the shader cache stores a mapping of zink_shader_key::VkShaderModule */
-struct zink_shader_cache {
-   struct pipe_reference reference;
-   struct hash_table *shader_cache;
-};
-
 struct zink_gfx_program {
    struct pipe_reference reference;
 
    struct zink_shader_module *modules[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
-   struct zink_shader_cache *shader_cache;
    unsigned char shader_slot_map[VARYING_SLOT_MAX];
    unsigned char shader_slots_reserved;
    VkDescriptorSetLayout dsl;
@@ -84,6 +69,7 @@ struct zink_gfx_program {
    unsigned num_descriptors;
    struct hash_table *pipelines[10]; // number of draw modes we support
    struct set *render_passes;
+   struct hash_table *shader_cache;
 };
 
 struct zink_gfx_program *
