@@ -222,14 +222,6 @@ st_draw_vbo(struct gl_context *ctx,
          info.max_index = draw.start + draw.count - 1;
       }
 
-      if (ST_DEBUG & DEBUG_DRAW) {
-         debug_printf("st/draw: mode %s  start %u  count %u  index_size %d\n",
-                      u_prim_name(info.mode),
-                      draw.start,
-                      draw.count,
-                      info.index_size);
-      }
-
       /* Don't call u_trim_pipe_prim. Drivers should do it if they need it. */
       cso_draw_vbo(st->cso_context, &info, NULL, draw);
    }
@@ -279,13 +271,6 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    indirect.buffer = st_buffer_object(indirect_data)->buffer;
    indirect.offset = indirect_offset;
 
-   if (ST_DEBUG & DEBUG_DRAW) {
-      debug_printf("st/draw indirect: mode %s drawcount %d index_size %d\n",
-                   u_prim_name(info.mode),
-                   draw_count,
-                   info.index_size);
-   }
-
    if (!st->has_multi_draw_indirect) {
       int i;
 
@@ -326,11 +311,6 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    info.mode = translate_prim(ctx, mode);
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.instance_count = num_instances;
-
-   if (ST_DEBUG & DEBUG_DRAW) {
-      debug_printf("st/draw transform feedback: mode %s\n",
-                   u_prim_name(info.mode));
-   }
 
    /* Transform feedback drawing is always non-indexed. */
    /* Set info.count_from_stream_output. */

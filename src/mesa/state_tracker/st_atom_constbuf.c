@@ -96,13 +96,6 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
 
       _mesa_shader_write_subroutine_indices(st->ctx, stage);
 
-      if (ST_DEBUG & DEBUG_CONSTANTS) {
-         debug_printf("%s(shader=%d, numParams=%d, stateFlags=0x%x)\n",
-                      __func__, shader_type, params->NumParameters,
-                      params->StateFlags);
-         _mesa_print_parameter_list(params);
-      }
-
       cb.buffer = NULL;
       cb.user_buffer = NULL;
       cb.buffer_offset = 0;
