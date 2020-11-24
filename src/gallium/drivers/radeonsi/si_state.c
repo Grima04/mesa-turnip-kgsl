@@ -5175,10 +5175,18 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
          } else {
             late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
 
-            /* CU2 & CU3 disabled because of the dual CU design */
+            /* Gfx10: CU2 & CU3 must be disabled to prevent a hw deadlock.
+             * Others: CU1 must be disabled to prevent a hw deadlock.
+             *
+             * The deadlock is caused by late alloc, which usually increases
+             * performance.
+             */
+            cu_mask_vs &= sctx->chip_class == GFX10 ? ~BITFIELD_RANGE(2, 2) :
+                                                      ~BITFIELD_RANGE(1, 1);
+
             /* Late alloc is not used for NGG on Navi14 due to a hw bug. */
-            cu_mask_vs = 0xfff3;
-            cu_mask_gs = sscreen->use_ngg && sctx->family != CHIP_NAVI14 ? 0xfff3 : 0xffff;
+            if (sscreen->use_ngg && sctx->family != CHIP_NAVI14)
+               cu_mask_gs = cu_mask_vs;
          }
       } else {
          if (!sscreen->info.use_late_alloc) {
