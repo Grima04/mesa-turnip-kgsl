@@ -579,10 +579,10 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
       copy.second.setTemp(ctx.program->allocateTmp(copy.second.regClass()));
       ctx.assignments.emplace_back(copy.second.physReg(), copy.second.regClass());
       assert(ctx.assignments.size() == ctx.program->peekAllocationId());
-      reg_file.fill(copy.second);
 
       /* check if we moved an operand */
       bool first = true;
+      bool fill = true;
       for (unsigned i = 0; i < instr->operands.size(); i++) {
          Operand& op = instr->operands[i];
          if (!op.isTemp())
@@ -605,8 +605,13 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
             }
             op.setTemp(copy.second.getTemp());
             op.setFixed(copy.second.physReg());
+
+            fill = !op.isKillBeforeDef();
          }
       }
+
+      if (fill)
+         reg_file.fill(copy.second);
    }
 }
 
@@ -1549,6 +1554,7 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
 {
    /* check if the operand is fixed */
    PhysReg dst;
+   bool blocking_var = false;
    if (operand.isFixed()) {
       assert(operand.physReg() != ctx.assignments[operand.tempId()].reg);
 
@@ -1564,6 +1570,7 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
          PhysReg reg = get_reg(ctx, register_file, pc_op.getTemp(), parallelcopy, ctx.pseudo_dummy);
          Definition pc_def = Definition(PhysReg{reg}, pc_op.regClass());
          parallelcopy.emplace_back(pc_op, pc_def);
+         blocking_var = true;
       }
       dst = operand.physReg();
 
@@ -1576,6 +1583,12 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
    Definition pc_def = Definition(dst, pc_op.regClass());
    parallelcopy.emplace_back(pc_op, pc_def);
    update_renames(ctx, register_file, parallelcopy, instr, true);
+
+   if (operand.isKillBeforeDef())
+      register_file.fill(parallelcopy.back().second);
+   /* fill in case the blocking var is a killed operand (update_renames() will not fill it) */
+   if (blocking_var)
+      register_file.fill(parallelcopy[parallelcopy.size() - 2].second);
 }
 
 Temp read_variable(ra_ctx& ctx, Temp val, unsigned block_idx)
