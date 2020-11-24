@@ -68,9 +68,7 @@ DEBUG_GET_ONCE_FLAGS_OPTION(st_debug, "ST_DEBUG", st_debug_flags, 0)
 void
 st_debug_init(void)
 {
-   do_once {
-      ST_DEBUG = debug_get_option_st_debug();
-   }
+   ST_DEBUG = debug_get_option_st_debug();
 }
 
 
