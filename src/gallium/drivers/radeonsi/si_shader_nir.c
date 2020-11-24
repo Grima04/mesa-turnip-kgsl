@@ -66,7 +66,7 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    unsigned mask, bit_size;
    bool is_output_load;
 
-   if (nir_intrinsic_infos[intr->intrinsic].index_map[NIR_INTRINSIC_WRMASK] > 0) {
+   if (nir_intrinsic_has_write_mask(intr)) {
       mask = nir_intrinsic_write_mask(intr); /* store */
       bit_size = nir_src_bit_size(intr->src[0]);
       is_output_load = false;

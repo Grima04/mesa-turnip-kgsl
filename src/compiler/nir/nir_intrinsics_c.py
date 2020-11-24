@@ -43,7 +43,7 @@ const nir_intrinsic_info nir_intrinsic_infos[nir_num_intrinsics] = {
 % if opcode.indices:
    .index_map = {
 % for i in range(len(opcode.indices)):
-      [${opcode.indices[i]}] = ${i + 1},
+      [NIR_INTRINSIC_${opcode.indices[i].name.upper()}] = ${i + 1},
 % endfor
     },
 % endif
@@ -51,9 +51,15 @@ const nir_intrinsic_info nir_intrinsic_infos[nir_num_intrinsics] = {
 },
 % endfor
 };
+
+const char *nir_intrinsic_index_names[NIR_INTRINSIC_NUM_INDEX_FLAGS] = {
+% for index in INTR_INDICES:
+   "${index.name}",
+% endfor
+};
 """
 
-from nir_intrinsics import INTR_OPCODES
+from nir_intrinsics import INTR_OPCODES, INTR_INDICES
 from mako.template import Template
 import argparse
 import os
@@ -67,7 +73,9 @@ def main():
 
     path = os.path.join(args.outdir, 'nir_intrinsics.c')
     with open(path, 'wb') as f:
-        f.write(Template(template, output_encoding='utf-8').render(INTR_OPCODES=INTR_OPCODES, reduce=reduce, operator=operator))
+        f.write(Template(template, output_encoding='utf-8').render(
+            INTR_OPCODES=INTR_OPCODES, INTR_INDICES=INTR_INDICES,
+            reduce=reduce, operator=operator))
 
 if __name__ == '__main__':
     main()

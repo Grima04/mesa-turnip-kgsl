@@ -27,6 +27,11 @@
 # The Intrinsic class corresponds one-to-one with nir_intrinsic_info
 # structure.
 
+class Index(object):
+    def __init__(self, c_data_type, name):
+        self.c_data_type = c_data_type
+        self.name = name
+
 class Intrinsic(object):
    """Class that represents all the information about an intrinsic opcode.
    NOTE: this must be kept in sync with nir_intrinsic_info.
@@ -54,7 +59,7 @@ class Intrinsic(object):
        assert isinstance(dest_components, int)
        assert isinstance(indices, list)
        if indices:
-           assert isinstance(indices[0], str)
+           assert isinstance(indices[0], Index)
        assert isinstance(flags, list)
        if flags:
            assert isinstance(flags[0], str)
@@ -74,88 +79,19 @@ class Intrinsic(object):
        self.bit_sizes = bit_sizes
 
 #
-# Possible indices:
-#
-
-# A constant 'base' value that is added to an offset src:
-BASE = "NIR_INTRINSIC_BASE"
-# For store instructions, a writemask:
-WRMASK = "NIR_INTRINSIC_WRMASK"
-# The stream-id for GS emit_vertex/end_primitive intrinsics:
-STREAM_ID = "NIR_INTRINSIC_STREAM_ID"
-# The clip-plane id for load_user_clip_plane intrinsics:
-UCP_ID = "NIR_INTRINSIC_UCP_ID"
-# The amount of data, starting from BASE, that this instruction
-# may access.  This is used to provide bounds if the offset is
-# not constant.
-RANGE = "NIR_INTRINSIC_RANGE"
-# The offset to the start of the NIR_INTRINSIC_RANGE.  This is an alternative
-# to NIR_INTRINSIC_BASE for describing the valid range in intrinsics that don't
-# have the implicit addition of a base to the offset.
-RANGE_BASE = "NIR_INTRINSIC_RANGE_BASE"
-# The vulkan descriptor set binding for vulkan_resource_index
-# intrinsic
-DESC_SET = "NIR_INTRINSIC_DESC_SET"
-# The vulkan descriptor set binding for vulkan_resource_index
-# intrinsic
-BINDING = "NIR_INTRINSIC_BINDING"
-# Component offset
-COMPONENT = "NIR_INTRINSIC_COMPONENT"
-# Column index for matrix system values
-COLUMN = "NIR_INTRINSIC_COLUMN"
-# Interpolation mode (only meaningful for FS inputs)
-INTERP_MODE = "NIR_INTRINSIC_INTERP_MODE"
-# A binary nir_op to use when performing a reduction or scan operation
-REDUCTION_OP = "NIR_INTRINSIC_REDUCTION_OP"
-# Cluster size for reduction operations
-CLUSTER_SIZE = "NIR_INTRINSIC_CLUSTER_SIZE"
-# Parameter index for a load_param intrinsic
-PARAM_IDX = "NIR_INTRINSIC_PARAM_IDX"
-# Image dimensionality for image intrinsics
-IMAGE_DIM = "NIR_INTRINSIC_IMAGE_DIM"
-# Non-zero if we are accessing an array image
-IMAGE_ARRAY = "NIR_INTRINSIC_IMAGE_ARRAY"
-# Access qualifiers for image and memory access intrinsics
-ACCESS = "NIR_INTRINSIC_ACCESS"
-DST_ACCESS = "NIR_INTRINSIC_DST_ACCESS"
-SRC_ACCESS = "NIR_INTRINSIC_SRC_ACCESS"
-# Image format for image intrinsics
-FORMAT = "NIR_INTRINSIC_FORMAT"
-# Offset or address alignment
-ALIGN_MUL = "NIR_INTRINSIC_ALIGN_MUL"
-ALIGN_OFFSET = "NIR_INTRINSIC_ALIGN_OFFSET"
-# The vulkan descriptor type for vulkan_resource_index
-DESC_TYPE = "NIR_INTRINSIC_DESC_TYPE"
-# The nir_alu_type of input data to a store or conversion
-SRC_TYPE = "NIR_INTRINSIC_SRC_TYPE"
-# The nir_alu_type of the data output from a load or conversion
-DEST_TYPE = "NIR_INTRINSIC_DEST_TYPE"
-# The swizzle mask for quad_swizzle_amd & masked_swizzle_amd
-SWIZZLE_MASK = "NIR_INTRINSIC_SWIZZLE_MASK"
-# Driver location of attribute
-DRIVER_LOCATION = "NIR_INTRINSIC_DRIVER_LOCATION"
-# Ordering and visibility of a memory operation
-MEMORY_SEMANTICS = "NIR_INTRINSIC_MEMORY_SEMANTICS"
-# Modes affected by a memory operation
-MEMORY_MODES = "NIR_INTRINSIC_MEMORY_MODES"
-# Scope of a memory operation
-MEMORY_SCOPE = "NIR_INTRINSIC_MEMORY_SCOPE"
-# Scope of a control barrier
-EXECUTION_SCOPE = "NIR_INTRINSIC_EXECUTION_SCOPE"
-IO_SEMANTICS = "NIR_INTRINSIC_IO_SEMANTICS"
-# Rounding mode for conversions
-ROUNDING_MODE = "NIR_INTRINSIC_ROUNDING_MODE"
-# Whether or not to saturate in conversions
-SATURATE = "NIR_INTRINSIC_SATURATE"
-
-#
 # Possible flags:
 #
 
 CAN_ELIMINATE = "NIR_INTRINSIC_CAN_ELIMINATE"
 CAN_REORDER   = "NIR_INTRINSIC_CAN_REORDER"
 
+INTR_INDICES = []
 INTR_OPCODES = {}
+
+def index(c_data_type, name):
+    idx = Index(c_data_type, name)
+    INTR_INDICES.append(idx)
+    globals()[name.upper()] = idx
 
 # Defines a new NIR intrinsic.  By default, the intrinsic will have no sources
 # and no destination.
@@ -174,6 +110,126 @@ def intrinsic(name, src_comp=[], dest_comp=-1, indices=[],
     INTR_OPCODES[name] = Intrinsic(name, src_comp, dest_comp,
                                    indices, flags, sysval, bit_sizes)
 
+#
+# Possible indices:
+#
+
+# Generally instructions that take a offset src argument, can encode
+# a constant 'base' value which is added to the offset.
+index("int", "base")
+
+# For store instructions, a writemask for the store.
+index("unsigned", "write_mask")
+
+# The stream-id for GS emit_vertex/end_primitive intrinsics.
+index("unsigned", "stream_id")
+
+# The clip-plane id for load_user_clip_plane intrinsic.
+index("unsigned", "ucp_id")
+
+# The offset to the start of the NIR_INTRINSIC_RANGE.  This is an alternative
+# to NIR_INTRINSIC_BASE for describing the valid range in intrinsics that don't
+# have the implicit addition of a base to the offset.
+#
+# If the [range_base, range] is [0, ~0], then we don't know the possible
+# range of the access.
+index("unsigned", "range_base")
+
+# The amount of data, starting from BASE or RANGE_BASE, that this
+# instruction may access.  This is used to provide bounds if the offset is
+# not constant.
+index("unsigned", "range")
+
+# The Vulkan descriptor set for vulkan_resource_index intrinsic.
+index("unsigned", "desc_set")
+
+# The Vulkan descriptor set binding for vulkan_resource_index intrinsic.
+index("unsigned", "binding")
+
+# Component offset
+index("unsigned", "component")
+
+# Column index for matrix system values
+index("unsigned", "column")
+
+# Interpolation mode (only meaningful for FS inputs)
+index("unsigned", "interp_mode")
+
+# A binary nir_op to use when performing a reduction or scan operation
+index("unsigned", "reduction_op")
+
+# Cluster size for reduction operations
+index("unsigned", "cluster_size")
+
+# Parameter index for a load_param intrinsic
+index("unsigned", "param_idx")
+
+# Image dimensionality for image intrinsics
+index("enum glsl_sampler_dim", "image_dim")
+
+# Non-zero if we are accessing an array image
+index("bool", "image_array")
+
+# Image format for image intrinsics
+index("enum pipe_format", "format")
+
+# Access qualifiers for image and memory access intrinsics
+index("enum gl_access_qualifier", "access")
+
+# Alignment for offsets and addresses
+#
+# These two parameters, specify an alignment in terms of a multiplier and
+# an offset.  The multiplier is always a power of two.  The offset or
+# address parameter X of the intrinsic is guaranteed to satisfy the
+# following:
+#
+#                (X - align_offset) % align_mul == 0
+#
+# For constant offset values, align_mul will be NIR_ALIGN_MUL_MAX and the
+# align_offset will be modulo that.
+index("unsigned", "align_mul")
+index("unsigned", "align_offset")
+
+# The Vulkan descriptor type for a vulkan_resource_[re]index intrinsic.
+index("unsigned", "desc_type")
+
+# The nir_alu_type of input data to a store or conversion
+index("nir_alu_type", "src_type")
+
+# The nir_alu_type of the data output from a load or conversion
+index("nir_alu_type", "dest_type")
+
+# The swizzle mask for quad_swizzle_amd & masked_swizzle_amd
+index("unsigned", "swizzle_mask")
+
+# Separate source/dest access flags for copies
+index("enum gl_access_qualifier", "dst_access")
+index("enum gl_access_qualifier", "src_access")
+
+# Driver location of attribute
+index("unsigned", "driver_location")
+
+# Ordering and visibility of a memory operation
+index("nir_memory_semantics", "memory_semantics")
+
+# Modes affected by a memory operation
+index("nir_variable_mode", "memory_modes")
+
+# Scope of a memory operation
+index("nir_scope", "memory_scope")
+
+# Scope of a control barrier
+index("nir_scope", "execution_scope")
+
+# Semantics of an IO instruction
+index("struct nir_io_semantics", "io_semantics")
+
+# Rounding mode for conversions
+index("nir_rounding_mode", "rounding_mode")
+
+# Whether or not to saturate in conversions
+index("unsigned", "saturate")
+
 intrinsic("nop", flags=[CAN_ELIMINATE])
 
 intrinsic("convert_alu_types", dest_comp=0, src_comp=[0],
@@ -184,7 +240,7 @@ intrinsic("load_param", dest_comp=0, indices=[PARAM_IDX], flags=[CAN_ELIMINATE])
 
 intrinsic("load_deref", dest_comp=0, src_comp=[-1],
           indices=[ACCESS], flags=[CAN_ELIMINATE])
-intrinsic("store_deref", src_comp=[-1, 0], indices=[WRMASK, ACCESS])
+intrinsic("store_deref", src_comp=[-1, 0], indices=[WRITE_MASK, ACCESS])
 intrinsic("copy_deref", src_comp=[-1, -1], indices=[DST_ACCESS, SRC_ACCESS])
 intrinsic("memcpy_deref", src_comp=[-1, -1, 1], indices=[DST_ACCESS, SRC_ACCESS])
 
@@ -863,17 +919,17 @@ def store(name, srcs, indices=[], flags=[]):
     intrinsic("store_" + name, [0] + srcs, indices=indices, flags=flags)
 
 # src[] = { value, offset }.
-store("output", [1], [BASE, WRMASK, COMPONENT, SRC_TYPE, IO_SEMANTICS])
+store("output", [1], [BASE, WRITE_MASK, COMPONENT, SRC_TYPE, IO_SEMANTICS])
 # src[] = { value, vertex, offset }.
-store("per_vertex_output", [1, 1], [BASE, WRMASK, COMPONENT, IO_SEMANTICS])
+store("per_vertex_output", [1, 1], [BASE, WRITE_MASK, COMPONENT, IO_SEMANTICS])
 # src[] = { value, block_index, offset }
-store("ssbo", [-1, 1], [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+store("ssbo", [-1, 1], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, offset }.
-store("shared", [1], [BASE, WRMASK, ALIGN_MUL, ALIGN_OFFSET])
+store("shared", [1], [BASE, WRITE_MASK, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, address }.
-store("global", [1], [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+store("global", [1], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, offset }.
-store("scratch", [1], [ALIGN_MUL, ALIGN_OFFSET, WRMASK])
+store("scratch", [1], [ALIGN_MUL, ALIGN_OFFSET, WRITE_MASK])
 
 # IR3-specific version of most SSBO intrinsics. The only different
 # compare to the originals is that they add an extra source to hold
@@ -887,7 +943,7 @@ store("scratch", [1], [ALIGN_MUL, ALIGN_OFFSET, WRMASK])
 # The float versions are not handled because those are not supported
 # by the backend.
 store("ssbo_ir3", [1, 1, 1],
-      indices=[WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+      indices=[WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 load("ssbo_ir3",  [1, 1, 1],
      indices=[ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE])
 intrinsic("ssbo_atomic_add_ir3",        src_comp=[1, 1, 1, 1],    dest_comp=1, indices=[ACCESS])
@@ -1018,7 +1074,7 @@ system_value("tcs_tess_factor_base_r600", 1)
 # load as many components as needed giving per-component addresses
 intrinsic("load_local_shared_r600", src_comp=[0], dest_comp=0, indices = [COMPONENT], flags = [CAN_ELIMINATE, CAN_REORDER])
 
-store("local_shared_r600", [1], [WRMASK])
+store("local_shared_r600", [1], [WRITE_MASK])
 store("tf_r600", [])
 
 # V3D-specific instrinc for tile buffer color reads.
@@ -1068,7 +1124,7 @@ intrinsic("load_reloc_const_intel", dest_comp=1, bit_sizes=[32],
 # OpSubgroupBlockReadINTEL and OpSubgroupBlockWriteINTEL from SPV_INTEL_subgroups.
 intrinsic("load_deref_block_intel", dest_comp=0, src_comp=[-1],
           indices=[ACCESS], flags=[CAN_ELIMINATE])
-intrinsic("store_deref_block_intel", src_comp=[-1, 0], indices=[WRMASK, ACCESS])
+intrinsic("store_deref_block_intel", src_comp=[-1, 0], indices=[WRITE_MASK, ACCESS])
 
 # src[] = { address }.
 load("global_block_intel", [1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
@@ -1080,13 +1136,13 @@ load("ssbo_block_intel", [-1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMIN
 load("shared_block_intel", [1], [BASE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
 
 # src[] = { value, address }.
-store("global_block_intel", [1], [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+store("global_block_intel", [1], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 
 # src[] = { value, block_index, offset }
-store("ssbo_block_intel", [-1, 1], [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+store("ssbo_block_intel", [-1, 1], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 
 # src[] = { value, offset }.
-store("shared_block_intel", [1], [BASE, WRMASK, ALIGN_MUL, ALIGN_OFFSET])
+store("shared_block_intel", [1], [BASE, WRITE_MASK, ALIGN_MUL, ALIGN_OFFSET])
 
 # Intrinsics for Intel bindless thread dispatch
 system_value("btd_dss_id_intel", 1)

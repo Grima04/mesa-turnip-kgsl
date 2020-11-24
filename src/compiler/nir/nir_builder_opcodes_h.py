@@ -72,7 +72,7 @@ nir_load_system_value(nir_builder *build, nir_intrinsic_op op, int index,
 def sysval_decl_list(opcode):
    res = ''
    if opcode.indices:
-      res += ', unsigned ' + opcode.indices[0].lower()
+      res += ', unsigned ' + opcode.indices[0].name.lower()
    if opcode.dest_components == 0:
       res += ', unsigned num_components'
    if len(opcode.bit_sizes) != 1:
@@ -82,7 +82,7 @@ def sysval_decl_list(opcode):
 def sysval_arg_list(opcode):
    args = []
    if opcode.indices:
-      args.append(opcode.indices[0].lower())
+      args.append(opcode.indices[0].name.lower())
    else:
       args.append('0')
 

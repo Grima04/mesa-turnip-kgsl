@@ -74,6 +74,15 @@ nir_intrinsics_h = custom_target(
   depend_files : files('nir_intrinsics.py'),
 )
 
+nir_intrinsics_indices_h = custom_target(
+  'nir_intrinsics_indices.h',
+  input : 'nir_intrinsics_indices_h.py',
+  output : 'nir_intrinsics_indices.h',
+  command : [prog_python, '@INPUT@', '--outdir', meson.current_build_dir()],
+  capture : false,
+  depend_files : files('nir_intrinsics.py'),
+)
+
 nir_intrinsics_c = custom_target(
   'nir_intrinsic.c',
   input : 'nir_intrinsics_c.py',
@@ -323,7 +332,7 @@ _libnir = static_library(
   'nir',
   [files_libnir, spirv_info_c, nir_opt_algebraic_c, nir_opcodes_c,
    nir_opcodes_h, nir_constant_expressions_c, nir_builder_opcodes_h,
-   vtn_gather_types_c, nir_intrinsics_c, nir_intrinsics_h, vtn_generator_ids_h],
+   vtn_gather_types_c, nir_intrinsics_c, nir_intrinsics_h, nir_intrinsics_indices_h, vtn_generator_ids_h],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_compiler, include_directories('../spirv')],
   c_args : [c_msvc_compat_args, no_override_init_args, _libnir_args],
   gnu_symbol_visibility : 'hidden',
@@ -334,7 +343,7 @@ _libnir = static_library(
 
 # Headers-only dependency
 idep_nir_headers = declare_dependency(
-  sources : [nir_opcodes_h, nir_builder_opcodes_h, nir_intrinsics_h],
+  sources : [nir_opcodes_h, nir_builder_opcodes_h, nir_intrinsics_h, nir_intrinsics_indices_h],
   include_directories : include_directories('.'),
 )
 

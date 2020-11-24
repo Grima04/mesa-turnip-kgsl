@@ -824,49 +824,12 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
    fprintf(fp, ")");
 
-   static const char *index_name[NIR_INTRINSIC_NUM_INDEX_FLAGS] = {
-      [NIR_INTRINSIC_BASE] = "base",
-      [NIR_INTRINSIC_WRMASK] = "wrmask",
-      [NIR_INTRINSIC_STREAM_ID] = "stream-id",
-      [NIR_INTRINSIC_UCP_ID] = "ucp-id",
-      [NIR_INTRINSIC_RANGE] = "range",
-      [NIR_INTRINSIC_RANGE_BASE] = "range_base",
-      [NIR_INTRINSIC_DESC_SET] = "desc-set",
-      [NIR_INTRINSIC_BINDING] = "binding",
-      [NIR_INTRINSIC_COMPONENT] = "component",
-      [NIR_INTRINSIC_COLUMN] = "column",
-      [NIR_INTRINSIC_INTERP_MODE] = "interp_mode",
-      [NIR_INTRINSIC_REDUCTION_OP] = "reduction_op",
-      [NIR_INTRINSIC_CLUSTER_SIZE] = "cluster_size",
-      [NIR_INTRINSIC_PARAM_IDX] = "param_idx",
-      [NIR_INTRINSIC_IMAGE_DIM] = "image_dim",
-      [NIR_INTRINSIC_IMAGE_ARRAY] = "image_array",
-      [NIR_INTRINSIC_ACCESS] = "access",
-      [NIR_INTRINSIC_SRC_ACCESS] = "src-access",
-      [NIR_INTRINSIC_DST_ACCESS] = "dst-access",
-      [NIR_INTRINSIC_FORMAT] = "format",
-      [NIR_INTRINSIC_ALIGN_MUL] = "align_mul",
-      [NIR_INTRINSIC_ALIGN_OFFSET] = "align_offset",
-      [NIR_INTRINSIC_DESC_TYPE] = "desc_type",
-      [NIR_INTRINSIC_SRC_TYPE] = "src_type",
-      [NIR_INTRINSIC_DEST_TYPE] = "dest_type",
-      [NIR_INTRINSIC_SWIZZLE_MASK] = "swizzle_mask",
-      [NIR_INTRINSIC_DRIVER_LOCATION] = "driver_location",
-      [NIR_INTRINSIC_MEMORY_SEMANTICS] = "mem_semantics",
-      [NIR_INTRINSIC_MEMORY_MODES] = "mem_modes",
-      [NIR_INTRINSIC_MEMORY_SCOPE] = "mem_scope",
-      [NIR_INTRINSIC_EXECUTION_SCOPE] = "exec_scope",
-      [NIR_INTRINSIC_IO_SEMANTICS] = "io_semantics",
-      [NIR_INTRINSIC_ROUNDING_MODE] = "src_type",
-      [NIR_INTRINSIC_SATURATE] = "src_type",
-   };
-
    for (unsigned idx = 1; idx < NIR_INTRINSIC_NUM_INDEX_FLAGS; idx++) {
       if (!info->index_map[idx])
          continue;
       fprintf(fp, " /*");
       switch (idx) {
-      case NIR_INTRINSIC_WRMASK: {
+      case NIR_INTRINSIC_WRITE_MASK: {
          /* special case wrmask to show it as a writemask.. */
          unsigned wrmask = nir_intrinsic_write_mask(instr);
          fprintf(fp, " wrmask=");
@@ -972,7 +935,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       case NIR_INTRINSIC_EXECUTION_SCOPE:
       case NIR_INTRINSIC_MEMORY_SCOPE: {
-         fprintf(fp, " %s=", index_name[idx]);
+         fprintf(fp, " %s=", nir_intrinsic_index_names[idx]);
          nir_scope scope =
             idx == NIR_INTRINSIC_MEMORY_SCOPE ? nir_intrinsic_memory_scope(instr)
                                               : nir_intrinsic_execution_scope(instr);
@@ -1039,8 +1002,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       default: {
          unsigned off = info->index_map[idx] - 1;
-         assert(index_name[idx]);  /* forgot to update index_name table? */
-         fprintf(fp, " %s=%d", index_name[idx], instr->const_index[off]);
+         fprintf(fp, " %s=%d", nir_intrinsic_index_names[idx], instr->const_index[off]);
          break;
       }
       }
