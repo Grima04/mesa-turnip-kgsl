@@ -4663,11 +4663,17 @@ void visit_load_interpolated_input(isel_context *ctx, nir_intrinsic_instr *instr
 bool check_vertex_fetch_size(isel_context *ctx, const ac_data_format_info *vtx_info,
                              unsigned offset, unsigned stride, unsigned channels)
 {
-   unsigned vertex_byte_size = vtx_info->chan_byte_size * channels;
    if (vtx_info->chan_byte_size != 4 && channels == 3)
       return false;
+
+   /* Always split typed vertex buffer loads on GFX6 and GFX10+ to avoid any
+    * alignment issues that triggers memory violations and eventually a GPU
+    * hang. This can happen if the stride (static or dynamic) is unaligned and
+    * also if the VBO offset is aligned to a scalar (eg. stride is 8 and VBO
+    * offset is 2 for R16G16B16A16_SNORM).
+    */
    return (ctx->options->chip_class >= GFX7 && ctx->options->chip_class <= GFX9) ||
-          (offset % vertex_byte_size == 0 && stride % vertex_byte_size == 0);
+          (channels == 1);
 }
 
 uint8_t get_fetch_data_format(isel_context *ctx, const ac_data_format_info *vtx_info,
