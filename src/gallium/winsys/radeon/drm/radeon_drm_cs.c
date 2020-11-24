@@ -558,8 +558,6 @@ static void radeon_bo_slab_fence(struct radeon_bo *bo, struct radeon_bo *fence)
    bo->u.slab.num_fences++;
 }
 
-DEBUG_GET_ONCE_BOOL_OPTION(noop, "RADEON_NOOP", false)
-
 static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
                                unsigned flags,
                                struct pipe_fence_handle **pfence)
@@ -639,7 +637,7 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
 
    /* If the CS is not empty or overflowed, emit it in a separate thread. */
    if (cs->base.current.cdw && cs->base.current.cdw <= cs->base.current.max_dw &&
-       !debug_get_option_noop() && !(flags & RADEON_FLUSH_NOOP)) {
+       !cs->ws->noop_cs && !(flags & RADEON_FLUSH_NOOP)) {
       unsigned i, num_relocs;
 
       num_relocs = cs->cst->num_relocs;
