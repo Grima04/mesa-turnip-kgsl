@@ -699,12 +699,10 @@ vtn_process_block(struct vtn_builder *b,
       return NULL;
 
    case SpvOpIgnoreIntersectionKHR:
-      b->has_early_terminate = true;
       block->branch_type = vtn_branch_type_ignore_intersection;
       return NULL;
 
    case SpvOpTerminateRayKHR:
-      b->has_early_terminate = true;
       block->branch_type = vtn_branch_type_terminate_ray;
       return NULL;
 
@@ -980,12 +978,14 @@ vtn_emit_branch(struct vtn_builder *b, enum vtn_branch_type branch_type,
          nir_intrinsic_instr_create(b->nb.shader,
                                     nir_intrinsic_ignore_ray_intersection);
       nir_builder_instr_insert(&b->nb, &ignore->instr);
+      nir_jump(&b->nb, nir_jump_halt);
       break;
    }
    case vtn_branch_type_terminate_ray: {
       nir_intrinsic_instr *terminate =
          nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_terminate_ray);
       nir_builder_instr_insert(&b->nb, &terminate->instr);
+      nir_jump(&b->nb, nir_jump_halt);
       break;
    }
    default:

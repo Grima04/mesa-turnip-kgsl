@@ -711,8 +711,6 @@ struct vtn_builder {
     *
     *  - OpKill
     *  - OpTerminateInvocation
-    *  - OpIgnoreIntersectionKHR
-    *  - OpTerminateRayKHR
     *
     * However, in NIR, they're represented by regular intrinsics with no
     * control-flow semantics.  This means that the SSA form from the SPIR-V
