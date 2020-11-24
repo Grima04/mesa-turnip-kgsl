@@ -47,7 +47,7 @@ enum ac_arg_type
 };
 
 struct ac_arg {
-   uint8_t arg_index;
+   uint16_t arg_index;
    bool used;
 };
 
@@ -63,7 +63,7 @@ struct ac_shader_args {
       bool skip;
    } args[AC_MAX_ARGS];
 
-   uint8_t arg_count;
+   uint16_t arg_count;
    uint8_t sgpr_count;
    uint8_t num_sgprs_used;
    uint8_t num_vgprs_used;
