@@ -204,8 +204,9 @@ ir3_optimize_loop(nir_shader *s)
 		progress |= OPT(s, nir_copy_prop);
 		progress |= OPT(s, nir_opt_dce);
 		progress |= OPT(s, nir_opt_cse);
-
-		int gcm = get_once(env_var_as_unsigned("GCM", 0));
+		static int gcm = -1;
+		if (gcm == -1)
+			gcm = env_var_as_unsigned("GCM", 0);
 		if (gcm == 1)
 			progress |= OPT(s, nir_opt_gcm, true);
 		else if (gcm == 2)
