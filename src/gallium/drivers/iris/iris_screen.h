@@ -70,7 +70,6 @@ struct iris_vtable {
                                 const struct pipe_grid_info *grid);
    void (*rebind_buffer)(struct iris_context *ice,
                          struct iris_resource *res);
-   void (*resolve_conditional_render)(struct iris_context *ice);
    void (*load_register_reg32)(struct iris_batch *batch, uint32_t dst,
                                uint32_t src);
    void (*load_register_reg64)(struct iris_batch *batch, uint32_t dst,

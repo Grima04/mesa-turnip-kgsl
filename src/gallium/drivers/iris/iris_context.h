@@ -627,11 +627,6 @@ struct iris_context {
       struct iris_bo *scratch_bos[1 << 4][MESA_SHADER_STAGES];
    } shaders;
 
-   struct {
-      struct iris_query *query;
-      bool condition;
-   } condition;
-
    struct gen_perf_context *perf_ctx;
 
    /** Frame number for debug prints */
