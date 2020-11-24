@@ -33,6 +33,7 @@
 
 #include "sid.h"
 #include "sid_tables.h"
+#include "util/compiler.h"
 #include "util/memstream.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
@@ -511,7 +512,7 @@ static void ac_do_parse_ib(FILE *f, struct ac_ib_parser *ib)
             fprintf(f, COLOR_GREEN "NOP (type 2)" COLOR_RESET "\n");
             break;
          }
-         /* fall through */
+         FALLTHROUGH;
       default:
          fprintf(f, "Unknown packet type %i\n", type);
          break;
