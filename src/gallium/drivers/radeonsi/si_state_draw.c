@@ -2169,7 +2169,9 @@ static void si_draw_vbo(struct pipe_context *ctx,
       /* Use NGG fast launch for certain primitive types.
        * A draw must have at least 1 full primitive.
        */
-      if (ngg_culling && min_direct_count >= 3 && !sctx->tes_shader.cso &&
+      if (ngg_culling &&
+          hw_vs->ngg_cull_nonindexed_fast_launch_vert_threshold < UINT32_MAX &&
+          min_direct_count >= 3 && !sctx->tes_shader.cso &&
           !sctx->gs_shader.cso) {
          if (prim == PIPE_PRIM_TRIANGLES && !index_size) {
             ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST;

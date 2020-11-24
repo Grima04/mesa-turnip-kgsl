@@ -2817,7 +2817,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          /* 1000 non-indexed vertices (roughly 8 primgroups) are needed
           * per draw call (no TES/GS) to enable NGG culling by default.
           */
-         sel->ngg_cull_nonindexed_fast_launch_vert_threshold = 1000;
+         if (!(sscreen->debug_flags & DBG(NO_FAST_LAUNCH)))
+            sel->ngg_cull_nonindexed_fast_launch_vert_threshold = 1000;
 
          if (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL))
             sel->ngg_cull_vert_threshold = 0; /* always enabled */

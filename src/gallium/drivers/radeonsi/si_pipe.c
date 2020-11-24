@@ -94,6 +94,7 @@ static const struct debug_named_value debug_options[] = {
    /* 3D engine options: */
    {"nogfx", DBG(NO_GFX), "Disable graphics. Only multimedia compute paths can be used."},
    {"nongg", DBG(NO_NGG), "Disable NGG and use the legacy pipeline."},
+   {"nofastlaunch", DBG(NO_FAST_LAUNCH), "Disable NGG GS fast launch."},
    {"nggc", DBG(ALWAYS_NGG_CULLING_ALL), "Always use NGG culling even when it can hurt."},
    {"nggctess", DBG(ALWAYS_NGG_CULLING_TESS), "Always use NGG culling for tessellation."},
    {"nonggc", DBG(NO_NGG_CULLING), "Disable NGG culling."},
