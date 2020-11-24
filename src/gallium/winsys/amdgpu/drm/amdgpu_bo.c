@@ -1560,7 +1560,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
          whandle->handle = (uintptr_t)entry->data;
          return true;
       }
-      /* Fall through */
+      FALLTHROUGH;
    case WINSYS_HANDLE_TYPE_FD:
       type = amdgpu_bo_handle_type_dma_buf_fd;
       break;
