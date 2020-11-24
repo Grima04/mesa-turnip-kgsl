@@ -37,7 +37,7 @@
 #include "util/slab.h"
 #include "util/u_suballoc.h"
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 #define D3D12_GFX_SHADER_STAGES (PIPE_SHADER_TYPES - 1)
 

@@ -26,7 +26,7 @@
 
 #include "pipe/p_state.h"
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 struct d3d12_descriptor_handle;
 struct pipe_context;

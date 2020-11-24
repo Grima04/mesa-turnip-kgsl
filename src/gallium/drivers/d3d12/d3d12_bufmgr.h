@@ -27,7 +27,7 @@
 #include "pipebuffer/pb_buffer.h"
 #include "util/u_atomic.h"
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 struct d3d12_bufmgr;
 struct d3d12_screen;

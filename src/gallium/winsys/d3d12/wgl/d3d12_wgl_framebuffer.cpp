@@ -25,7 +25,7 @@
 
 #include <Windows.h>
 #include <dxgi1_4.h>
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <wrl.h>
 
 #include "util/u_memory.h"

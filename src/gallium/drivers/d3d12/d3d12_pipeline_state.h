@@ -27,7 +27,7 @@
 #include "pipe/p_state.h"
 
 #define D3D12_IGNORE_SDK_LAYERS
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 struct d3d12_context;
 struct d3d12_root_signature;

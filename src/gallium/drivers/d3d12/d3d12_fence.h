@@ -26,7 +26,7 @@
 
 #include "util/u_inlines.h"
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 struct pipe_screen;
 struct d3d12_screen;

@@ -29,7 +29,7 @@ struct pipe_screen;
 #include "util/u_range.h"
 #include "util/u_transfer.h"
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 struct d3d12_resource {
    struct pipe_resource base;

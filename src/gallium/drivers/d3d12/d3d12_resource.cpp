@@ -38,7 +38,7 @@
 
 #include "frontend/sw_winsys.h"
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <memory>
 
 static bool

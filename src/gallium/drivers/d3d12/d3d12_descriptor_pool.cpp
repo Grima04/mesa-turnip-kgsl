@@ -32,7 +32,7 @@
 #include "util/u_dynarray.h"
 #include "util/u_memory.h"
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 struct d3d12_descriptor_pool {
    ID3D12Device *dev;

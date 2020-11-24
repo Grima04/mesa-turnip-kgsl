@@ -48,7 +48,7 @@ libd3d12 = static_library(
   files_libd3d12,
   gnu_symbol_visibility : 'hidden',
   include_directories : [inc_include, inc_src, inc_mesa, inc_gallium, inc_gallium_aux],
-  dependencies: [idep_nir_headers, idep_libdxil_compiler, idep_libd3d12_resource_state],
+  dependencies: [idep_nir_headers, idep_libdxil_compiler, idep_libd3d12_resource_state, dep_dxheaders],
 )
 
 driver_d3d12 = declare_dependency(

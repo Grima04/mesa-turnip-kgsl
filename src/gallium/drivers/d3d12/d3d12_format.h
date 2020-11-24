@@ -24,7 +24,7 @@
 #ifndef D3D12_FORMATS_H
 #define D3D12_FORMATS_H
 
-#include <dxgiformat.h>
+#include <directx/dxgiformat.h>
 
 #include "pipe/p_format.h"
 #include "pipe/p_defines.h"
