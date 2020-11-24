@@ -76,7 +76,7 @@ bi_allocate_registers(bi_context *ctx, bool *success)
         } else {
                 /* R0 - R63, all 32-bit */
                 l->class_start[BI_REG_CLASS_WORK] = 0;
-                l->class_size[BI_REG_CLASS_WORK] = 64 * 4;
+                l->class_size[BI_REG_CLASS_WORK] = 63 * 4;
         }
 
         bi_foreach_instr_global(ctx, ins) {
