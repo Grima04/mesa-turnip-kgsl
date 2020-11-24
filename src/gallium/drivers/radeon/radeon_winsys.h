@@ -817,6 +817,7 @@ static inline unsigned radeon_flags_from_heap(enum radeon_heap heap)
    case RADEON_HEAP_GTT_UNCACHED_WC_READ_ONLY_32BIT:
    case RADEON_HEAP_GTT_UNCACHED_WC_32BIT:
       flags |= RADEON_FLAG_32BIT;
+      FALLTHROUGH;
    default:
       break;
    }
