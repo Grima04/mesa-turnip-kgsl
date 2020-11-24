@@ -110,6 +110,7 @@ static bool do_winsys_init(struct amdgpu_winsys *ws,
 
    ws->check_vm = strstr(debug_get_option("R600_DEBUG", ""), "check_vm") != NULL ||
                   strstr(debug_get_option("AMD_DEBUG", ""), "check_vm") != NULL;
+   ws->noop_cs = debug_get_bool_option("RADEON_NOOP", false);
 #if DEBUG
    ws->debug_all_bos = debug_get_option_all_bos();
 #endif

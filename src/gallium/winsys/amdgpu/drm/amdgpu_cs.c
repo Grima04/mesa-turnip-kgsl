@@ -33,8 +33,6 @@
 
 #include "amd/common/sid.h"
 
-DEBUG_GET_ONCE_BOOL_OPTION(noop, "RADEON_NOOP", false)
-
 /* FENCES */
 
 static struct pipe_fence_handle *
@@ -259,7 +257,7 @@ amdgpu_cs_get_next_fence(struct radeon_cmdbuf *rcs)
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
    struct pipe_fence_handle *fence = NULL;
 
-   if (debug_get_option_noop())
+   if (cs->noop)
       return NULL;
 
    if (cs->next_fence) {
@@ -969,6 +967,7 @@ amdgpu_cs_create(struct radeon_winsys_ctx *rwctx,
    cs->flush_data = flush_ctx;
    cs->ring_type = ring_type;
    cs->stop_exec_on_failure = stop_exec_on_failure;
+   cs->noop = ctx->ws->noop_cs;
 
    struct amdgpu_cs_fence_info fence_info;
    fence_info.handle = cs->ctx->user_fence_bo;
@@ -1797,7 +1796,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    /* If the CS is not empty or overflowed.... */
    if (likely(radeon_emitted(&cs->main.base, 0) &&
        cs->main.base.current.cdw <= cs->main.base.current.max_dw &&
-       !debug_get_option_noop() &&
+       !cs->noop &&
        !(flags & RADEON_FLUSH_NOOP))) {
       struct amdgpu_cs_context *cur = cs->csc;
 

@@ -82,6 +82,7 @@ struct amdgpu_winsys {
    struct ac_addrlib *addrlib;
 
    bool check_vm;
+   bool noop_cs;
    bool reserve_vmid;
    bool zero_all_vram_allocs;
 #if DEBUG
