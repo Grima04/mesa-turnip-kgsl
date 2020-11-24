@@ -772,9 +772,6 @@ physical_device_init(struct v3dv_physical_device *device,
 
    pthread_mutex_init(&device->mutex, NULL);
 
-   fprintf(stderr, "WARNING: v3dv is neither a complete nor a conformant "
-                   "Vulkan implementation. Testing use only.\n");
-
    return VK_SUCCESS;
 
 fail:
