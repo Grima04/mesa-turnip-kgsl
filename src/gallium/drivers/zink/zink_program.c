@@ -287,7 +287,7 @@ zink_shader_cache_reference(struct zink_screen *screen,
 }
 
 static void
-update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_SHADER_COUNT], struct zink_gfx_program *prog, bool update)
+update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_SHADER_COUNT], struct zink_gfx_program *prog)
 {
    struct zink_shader *dirty[ZINK_SHADER_COUNT] = {NULL};
 
@@ -307,7 +307,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
          dirty[i]->has_geometry_shader = dirty[MESA_SHADER_GEOMETRY] || stages[PIPE_SHADER_GEOMETRY];
          zm = get_shader_module_for_stage(ctx, dirty[i], prog);
          zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], zm);
-      } else if (stages[type] && !update) /* reuse existing shader module */
+      } else if (stages[type]) /* reuse existing shader module */
          zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], ctx->curr_program->modules[type]);
       prog->shaders[type] = stages[type];
    }
@@ -330,6 +330,7 @@ static void
 init_slot_map(struct zink_context *ctx, struct zink_gfx_program *prog)
 {
    unsigned existing_shaders = 0;
+
    /* if there's a case where we'll be reusing any shaders, we need to reuse the slot map too */
    if (ctx->curr_program) {
       for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
@@ -356,12 +357,6 @@ init_slot_map(struct zink_context *ctx, struct zink_gfx_program *prog)
    }
 }
 
-void
-zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
-{
-   update_shader_modules(ctx, ctx->gfx_stages, prog, true);
-}
-
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader *stages[ZINK_SHADER_COUNT])
@@ -375,7 +370,7 @@ zink_create_gfx_program(struct zink_context *ctx,
 
    init_slot_map(ctx, prog);
 
-   update_shader_modules(ctx, stages, prog, false);
+   update_shader_modules(ctx, stages, prog);
 
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
       prog->pipelines[i] = _mesa_hash_table_create(NULL,

@@ -164,9 +164,7 @@ get_gfx_program(struct zink_context *ctx)
    if (ctx->dirty_shader_stages) {
       struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
                                                          ctx->gfx_stages);
-      if (entry)
-         zink_update_gfx_program(ctx, entry->data);
-      else {
+      if (!entry) {
          struct zink_gfx_program *prog;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages);
          entry = _mesa_hash_table_insert(ctx->program_cache, prog->shaders, prog);
