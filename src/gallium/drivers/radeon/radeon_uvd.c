@@ -1229,7 +1229,7 @@ struct pipe_video_codec *si_common_uvd_create_decoder(struct pipe_context *conte
       if (templ->entrypoint > PIPE_VIDEO_ENTRYPOINT_BITSTREAM)
          return vl_create_mpeg12_decoder(context, templ);
 
-      /* fall through */
+      FALLTHROUGH;
    case PIPE_VIDEO_FORMAT_MPEG4:
       width = align(width, VL_MACROBLOCK_WIDTH);
       height = align(height, VL_MACROBLOCK_HEIGHT);
