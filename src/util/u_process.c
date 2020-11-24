@@ -46,8 +46,6 @@
 
 #if defined(__linux__) && defined(HAVE_PROGRAM_INVOCATION_NAME)
 
-#include "debug.h"
-
 static char *path = NULL;
 
 static void __freeProgramPath()
@@ -68,7 +66,7 @@ __getProgramName()
        * Strip these arguments out by using the realpath only if it was
        * a prefix of the invocation name.
        */
-      do_once {
+      if (!path) {
          path = realpath("/proc/self/exe", NULL);
          atexit(__freeProgramPath);
       }
