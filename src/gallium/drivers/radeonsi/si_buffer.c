@@ -111,7 +111,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    switch (res->b.b.usage) {
    case PIPE_USAGE_STREAM:
       res->flags = RADEON_FLAG_GTT_WC;
-      /* fall through */
+      FALLTHROUGH;
    case PIPE_USAGE_STAGING:
       /* Transfers are likely to occur more often with these
        * resources. */
@@ -126,7 +126,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
          res->flags |= RADEON_FLAG_GTT_WC;
          break;
       }
-      /* fall through */
+      FALLTHROUGH;
    case PIPE_USAGE_DEFAULT:
    case PIPE_USAGE_IMMUTABLE:
    default:

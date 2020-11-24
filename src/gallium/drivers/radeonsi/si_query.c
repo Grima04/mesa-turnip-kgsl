@@ -928,7 +928,7 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw
       break;
    case PIPE_QUERY_TIME_ELAPSED:
       va += 8;
-      /* fall through */
+      FALLTHROUGH;
    case PIPE_QUERY_TIMESTAMP:
       si_cp_release_mem(sctx, cs, V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
                         EOP_DATA_SEL_TIMESTAMP, NULL, va, 0, query->b.type);
@@ -1223,7 +1223,7 @@ static void si_get_hw_query_params(struct si_context *sctx, struct si_query_hw *
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
       params->pair_count = SI_MAX_STREAMS;
       params->pair_stride = 32;
-      /* fallthrough */
+      FALLTHROUGH;
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
       params->start_offset = 0;
       params->end_offset = 16;

@@ -277,7 +277,7 @@ void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef 
       }
       /* as v4i32 (aligned to 4) */
       out[3] = LLVMGetUndef(ctx->ac.i32);
-      /* fall through */
+      FALLTHROUGH;
    case 4: /* as v4i32 */
       vdata = ac_build_gather_values(&ctx->ac, out, util_next_power_of_two(num_comps));
       break;
