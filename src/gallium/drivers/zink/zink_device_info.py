@@ -29,7 +29,8 @@ from os import path
 import re
 import sys
 
-# constructor: Extensions(name, alias="", required=False, properties=False, features=False, have_feature=None, guard=False)
+# constructor: 
+#     Extensions(name, alias="", required=False, properties=False, features=False, conditions=None, guard=False)
 # The attributes:
 #  - required: the generated code debug_prints "ZINK: {name} required!" and
 #              returns NULL if the extension is unavailable.
@@ -41,39 +42,76 @@ import sys
 #                Example: the properties for `VK_EXT_transform_feedback`, is stored in
 #                `VkPhysicalDeviceTransformFeedbackPropertiesEXT tf_props`.
 #
-#  - have_feature: enable the fine-grained detection of extension features in a
-#             device. Similar to `properties`, this stores the features
-#             struct inside `zink_device_info.{alias}_feats`.
-#             It sets `zink_device_info.have_{name} = true` only if
-#             `{alias}_feats.{has_feature}` is true. 
-#             If have_feature is None, `have_{extension_name}` is true when the extensions
-#             given by vkEnumerateDeviceExtensionProperties() include the extension.
-#             Furthermore, `zink_device_info.{extension_alias}_feats` is unavailable.
-#
 #  - features: enable the getting extension features in a
-#              device. Similar to `have_feature`, this stores the features
+#              device. Similar to `properties`, this stores the features
 #              struct inside `zink_device_info.{alias}_feats`.
-#              Unlike `have_feature` it does not create a `have_` member.
+#
+#  - conditions: criteria for enabling an extension. This is an array of strings,
+#                where each string is a condition, and all conditions have to be true
+#                for `zink_device_info.have_{name}` to be true.
+#
+#                The code generator will replace "$feats" and "$props" with the
+#                respective variables, e.g. "$feats.nullDescriptor" becomes 
+#                "info->rb2_feats.nullDescriptor" in the final code for VK_EXT_robustness2.
+#
+#                When empty or None, the extension is enabled when the extensions
+#                given by vkEnumerateDeviceExtensionProperties() include the extension.
 #
 #  - guard: adds a #if defined(`extension_name`)/#endif guard around the code generated for this Extension.
 def EXTENSIONS():
     return [
-        Extension("VK_KHR_maintenance1",             required=True),
+        Extension("VK_KHR_maintenance1",
+            required=True),
         Extension("VK_KHR_external_memory"),
         Extension("VK_KHR_external_memory_fd"),
         Extension("VK_KHR_vulkan_memory_model"),
-        Extension("VK_EXT_conditional_rendering",    alias="cond_render", have_feature="conditionalRendering"),
-        Extension("VK_EXT_transform_feedback",       alias="tf", properties=True, have_feature="transformFeedback"),
-        Extension("VK_EXT_index_type_uint8",         alias="index_uint8", have_feature="indexTypeUint8"),
-        Extension("VK_EXT_robustness2",              alias="rb2", properties=True, have_feature="nullDescriptor"),
-        Extension("VK_EXT_vertex_attribute_divisor", alias="vdiv", properties=True, have_feature="vertexAttributeInstanceRateDivisor"),
+        Extension("VK_EXT_conditional_rendering",
+            alias="cond_render", 
+            features=True, 
+            conditions=["$feats.conditionalRendering"]),
+        Extension("VK_EXT_transform_feedback",
+            alias="tf",
+            properties=True,
+            features=True,
+            conditions=["$feats.transformFeedback"]),
+        Extension("VK_EXT_index_type_uint8",
+            alias="index_uint8",
+            features=True,
+            conditions=["$feats.indexTypeUint8"]),
+        Extension("VK_EXT_robustness2",
+            alias="rb2",
+            properties=True,
+            features=True,
+            conditions=["$feats.nullDescriptor"]),
+        Extension("VK_EXT_vertex_attribute_divisor",
+            alias="vdiv", 
+            properties=True,
+            features=True,
+            conditions=["$feats.vertexAttributeInstanceRateDivisor"]),
         Extension("VK_EXT_calibrated_timestamps"),
-        Extension("VK_EXT_custom_border_color",      alias="border_color", properties=True, have_feature="customBorderColors"),
-        Extension("VK_EXT_blend_operation_advanced", alias="blend", properties=True),
-        Extension("VK_EXT_extended_dynamic_state",   alias="dynamic_state", have_feature="extendedDynamicState"),
-        Extension("VK_EXT_pipeline_creation_cache_control",   alias="pipeline_cache_control", have_feature="pipelineCreationCacheControl"),
-        Extension("VK_EXT_shader_stencil_export",    alias="stencil_export"),
-        Extension("VK_EXTX_portability_subset",      alias="portability_subset_extx", properties=True, features=True, guard=True),
+        Extension("VK_EXT_custom_border_color",
+            alias="border_color",
+            properties=True,
+            features=True,
+            conditions=["$feats.customBorderColors"]),
+        Extension("VK_EXT_blend_operation_advanced",
+            alias="blend",
+            properties=True),
+        Extension("VK_EXT_extended_dynamic_state",
+            alias="dynamic_state",
+            features=True,
+            conditions=["$feats.extendedDynamicState"]),
+        Extension("VK_EXT_pipeline_creation_cache_control",
+            alias="pipeline_cache_control",
+            features=True,
+            conditions=["$feats.pipelineCreationCacheControl"]),
+        Extension("VK_EXT_shader_stencil_export",
+            alias="stencil_export"),
+        Extension("VK_EXTX_portability_subset",
+            alias="portability_subset_extx",
+            properties=True,
+            features=True,
+            guard=True),
     ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))
@@ -160,7 +198,7 @@ struct zink_device_info {
 
 %for ext in extensions:
 <%helpers:guard ext="${ext}">
-%if ext.feature_field is not None or ext.has_features:
+%if ext.has_features:
    VkPhysicalDevice${ext.name_in_camel_case()}Features${ext.vendor()} ${ext.field("feats")};
 %endif
 %if ext.has_properties:
@@ -240,7 +278,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %endfor
 
 %for ext in extensions:
-%if ext.feature_field is not None or ext.has_features:
+%if ext.has_features:
 <%helpers:guard ext="${ext}">
       if (support_${ext.name_with_vendor()}) {
          info->${ext.field("feats")}.sType = ${ext.stype("FEATURES")};
@@ -252,23 +290,13 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %endfor
 
       screen->vk_GetPhysicalDeviceFeatures2(screen->pdev, &info->feats);
-
-%for ext in extensions:
-<%helpers:guard ext="${ext}">
-%if ext.feature_field is not None:
-      if (support_${ext.name_with_vendor()} && info->${ext.field("feats")}.${ext.feature_field}) {
-         info->have_${ext.name_with_vendor()} = true;
-      }
-%endif
-</%helpers:guard>
-%endfor
    } else {
       vkGetPhysicalDeviceFeatures(screen->pdev, &info->feats.features);
    }
 
 %for ext in extensions:
 <%helpers:guard ext="${ext}">
-%if ext.feature_field is None:
+%if ext.has_features == False:
    info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
 %endif
 </%helpers:guard>
@@ -301,6 +329,25 @@ zink_get_physical_device_info(struct zink_screen *screen)
 
       // note: setting up local VkPhysicalDeviceProperties2.
       screen->vk_GetPhysicalDeviceProperties2(screen->pdev, &props);
+   }
+
+   // enable the extensions if they match the conditions given by ext.enable_conds 
+   if (screen->vk_GetPhysicalDeviceProperties2) {
+        %for ext in extensions:
+<%helpers:guard ext="${ext}">
+<%
+    conditions = ""
+    if ext.enable_conds:
+        for cond in ext.enable_conds:
+            cond = cond.replace("$feats", "info->" + ext.field("feats"))
+            cond = cond.replace("$props", "info->" + ext.field("props"))
+            conditions += "&& (" + cond + ")\\n"
+    conditions = conditions.strip()
+%>\
+      info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()}
+         ${conditions};
+</%helpers:guard>
+        %endfor
    }
 
    // generate extension list
@@ -359,25 +406,25 @@ class Version:
                 + '_' + struct)
 
 class Extension:
-    name           : str  = None
-    alias          : str  = None
-    is_required    : bool = False
-    has_properties : bool = False
-    has_features   : bool = False
-    feature_field  : str  = None
-    guard          : bool = False
+    name           : str   = None
+    alias          : str   = None
+    is_required    : bool  = False
+    has_properties : bool  = False
+    has_features   : bool  = False
+    enable_conds   : [str] = None
+    guard          : bool  = False
 
-    def __init__(self, name, alias="", required=False, properties=False, features=False, have_feature=None, guard=False):
+    def __init__(self, name, alias="", required=False, properties=False, features=False, conditions=None, guard=False):
         self.name = name
         self.alias = alias
         self.is_required = required
         self.has_properties = properties
         self.has_features = features
-        self.feature_field = have_feature
+        self.enable_conds = conditions
         self.guard = guard
 
-        if alias == "" and (properties == True or have_feature is not None):
-            raise RuntimeError("alias must be available when properties/feature is used")
+        if alias == "" and (properties == True or features == True):
+            raise RuntimeError("alias must be available when properties and/or features are used")
 
     # e.g.: "VK_EXT_robustness2" -> "robustness2"
     def pure_name(self):
