@@ -847,6 +847,13 @@ int r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sel->nir, r600_lower_tess_io, (pipe_prim_type)key->tcs.prim_mode);
    }
 
+   if (sel->nir->info.stage == MESA_SHADER_GEOMETRY) {
+      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_out, r600_glsl_type_size,
+                 nir_lower_io_lower_64bit_to_32);
+      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, r600_glsl_type_size,
+                 nir_lower_io_lower_64bit_to_32);
+   }
+
    if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
        sel->nir->info.stage == MESA_SHADER_TESS_EVAL) {
       NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, r600_glsl_type_size,
