@@ -18,7 +18,6 @@ class VertexStageExportBase
 public:
    VertexStageExportBase(VertexStage& proc);
    virtual ~VertexStageExportBase();
-   virtual bool store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr);
    virtual void finalize_exports() = 0;
    virtual bool do_process_outputs(nir_variable *output);
 

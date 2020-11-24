@@ -33,18 +33,6 @@ void VertexStageExportBase::scan_store_output(nir_intrinsic_instr* instr)
 
 }
 
-bool VertexStageExportBase::store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
-{
-   const store_loc store_info  = {
-      out_var->data.location_frac,
-      (unsigned int)out_var->data.location,
-      out_var->data.driver_location,
-      1
-   };
-
-   return do_store_output(store_info, instr);
-}
-
 bool VertexStageExportBase::store_output(nir_intrinsic_instr* instr)
 {
    auto index = nir_src_as_const_value(instr->src[1]);

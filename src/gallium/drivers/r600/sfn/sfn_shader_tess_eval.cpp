@@ -143,7 +143,7 @@ bool TEvalShaderFromNir::do_process_outputs(nir_variable *output)
 
 bool TEvalShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
 {
-   return m_export_processor->store_deref(out_var, instr);
+   return false;
 }
 
 void TEvalShaderFromNir::do_finalize()
