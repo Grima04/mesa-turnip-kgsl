@@ -24,6 +24,7 @@
 # 
 
 from mako.template import Template
+from mako.lookup import TemplateLookup
 from os import path
 import re
 import sys
@@ -96,7 +97,28 @@ def REPLACEMENTS():
     }
 
 
+# This template provides helper functions for the other templates.
+# Right now, the following functions are defined:
+# - guard(ext) : surrounds the body with an if-def guard according to
+#                `ext.extension_name()` if `ext.guard` is True.
+include_template = """
+<%def name="guard_(ext, body)">
+%if ext.guard:
+#ifdef ${ext.extension_name()}
+%endif
+   ${capture(body)|trim}
+%if ext.guard:
+#endif
+%endif
+</%def>
+
+## This ugliness is here to prevent mako from adding tons of excessive whitespace
+<%def name="guard(ext)">${capture(guard_, ext, body=caller.body).strip('\\r\\n')}</%def>
+"""
+
 header_code = """
+<%namespace name="helpers" file="helpers"/>
+
 #ifndef ZINK_DEVICE_INFO_H
 #define ZINK_DEVICE_INFO_H
 
@@ -116,9 +138,9 @@ struct zink_device_info {
    uint32_t device_version;
 
 %for ext in extensions:
-   ${ext.guard_start()}
+<%helpers:guard ext="${ext}">
    bool have_${ext.name_with_vendor()};
-   ${ext.guard_end()}
+</%helpers:guard>
 %endfor
 %for version in versions:
    bool have_vulkan${version.struct()};
@@ -137,14 +159,14 @@ struct zink_device_info {
    VkPhysicalDeviceMemoryProperties mem_props;
 
 %for ext in extensions:
-   ${ext.guard_start()}
+<%helpers:guard ext="${ext}">
 %if ext.feature_field is not None or ext.has_features:
    VkPhysicalDevice${ext.name_in_camel_case()}Features${ext.vendor()} ${ext.field("feats")};
 %endif
 %if ext.has_properties:
    VkPhysicalDevice${ext.name_in_camel_case()}Properties${ext.vendor()} ${ext.field("props")};
 %endif
-   ${ext.guard_end()}
+</%helpers:guard>
 %endfor
 
     const char *extensions[${len(extensions)}];
@@ -159,6 +181,8 @@ zink_get_physical_device_info(struct zink_screen *screen);
 
 
 impl_code = """
+<%namespace name="helpers" file="helpers"/>
+
 #include "zink_device_info.h"
 #include "zink_screen.h"
 
@@ -167,9 +191,9 @@ zink_get_physical_device_info(struct zink_screen *screen)
 {
    struct zink_device_info *info = &screen->info;
 %for ext in extensions:
-   ${ext.guard_start()}
+<%helpers:guard ext="${ext}">
    bool support_${ext.name_with_vendor()} = false;
-   ${ext.guard_end()}
+</%helpers:guard>
 %endfor
    uint32_t num_extensions = 0;
 
@@ -189,11 +213,11 @@ zink_get_physical_device_info(struct zink_screen *screen)
 
          for (uint32_t i = 0; i < num_extensions; ++i) {
          %for ext in extensions:
-            ${ext.guard_start()}
+         <%helpers:guard ext="${ext}">
             if (!strcmp(extensions[i].extensionName, "${ext.name}")) {
                support_${ext.name_with_vendor()} = true;
             }
-            ${ext.guard_end()}
+         </%helpers:guard>
          %endfor
          }
 
@@ -217,37 +241,37 @@ zink_get_physical_device_info(struct zink_screen *screen)
 
 %for ext in extensions:
 %if ext.feature_field is not None or ext.has_features:
-      ${ext.guard_start()}
+<%helpers:guard ext="${ext}">
       if (support_${ext.name_with_vendor()}) {
          info->${ext.field("feats")}.sType = ${ext.stype("FEATURES")};
          info->${ext.field("feats")}.pNext = info->feats.pNext;
          info->feats.pNext = &info->${ext.field("feats")};
       }
-      ${ext.guard_end()}
+</%helpers:guard>
 %endif
 %endfor
 
       screen->vk_GetPhysicalDeviceFeatures2(screen->pdev, &info->feats);
 
 %for ext in extensions:
-      ${ext.guard_start()}
+<%helpers:guard ext="${ext}">
 %if ext.feature_field is not None:
       if (support_${ext.name_with_vendor()} && info->${ext.field("feats")}.${ext.feature_field}) {
          info->have_${ext.name_with_vendor()} = true;
       }
 %endif
-      ${ext.guard_end()}
+</%helpers:guard>
 %endfor
    } else {
       vkGetPhysicalDeviceFeatures(screen->pdev, &info->feats.features);
    }
 
 %for ext in extensions:
-   ${ext.guard_start()}
+<%helpers:guard ext="${ext}">
 %if ext.feature_field is None:
    info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
 %endif
-   ${ext.guard_end()}
+</%helpers:guard>
 %endfor
 
    // check for device properties
@@ -265,13 +289,13 @@ zink_get_physical_device_info(struct zink_screen *screen)
 
 %for ext in extensions:
 %if ext.has_properties:
-      ${ext.guard_start()}
+<%helpers:guard ext="${ext}">
       if (info->have_${ext.name_with_vendor()}) {
          info->${ext.field("props")}.sType = ${ext.stype("PROPERTIES")};
          info->${ext.field("props")}.pNext = props.pNext;
          props.pNext = &info->${ext.field("props")};
       }
-      ${ext.guard_end()}
+</%helpers:guard>
 %endif
 %endfor
 
@@ -283,7 +307,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
    num_extensions = 0;
 
 %for ext in extensions:
-   ${ext.guard_start()}
+<%helpers:guard ext="${ext}">
    if (info->have_${ext.name_with_vendor()}) {
        info->extensions[num_extensions++] = "${ext.name}";
 %if ext.is_required:
@@ -292,7 +316,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
        goto fail;
 %endif
    }
-   ${ext.guard_end()}
+</%helpers:guard>
 %endfor
 
    info->num_extensions = num_extensions;
@@ -397,21 +421,6 @@ class Extension:
     def vendor(self):
         return self.name.split('_')[1]
 
-    # e.g. #if defined(VK_EXT_robustness2)
-    def guard_start(self):
-        if self.guard == False:
-            return ""
-        return ("#if defined("
-                + self.extension_name()
-                + ")")
-
-    # e.g. #endif // VK_EXT_robustness2
-    def guard_end(self):
-        if self.guard == False:
-            return ""
-        return ("#endif //"
-                + self.extension_name())
-
 
 def replace_code(code: str, replacement: dict):
     for (k, v) in replacement.items():
@@ -435,12 +444,15 @@ if __name__ == "__main__":
     versions = VERSIONS()
     replacement = REPLACEMENTS()
 
+    lookup = TemplateLookup()
+    lookup.put_string("helpers", include_template)
+
     with open(header_path, "w") as header_file:
-        header = Template(header_code).render(extensions=extensions, versions=versions).strip()
+        header = Template(header_code, lookup=lookup).render(extensions=extensions, versions=versions).strip()
         header = replace_code(header, replacement)
         print(header, file=header_file)
 
     with open(impl_path, "w") as impl_file:
-        impl = Template(impl_code).render(extensions=extensions, versions=versions).strip()
+        impl = Template(impl_code, lookup=lookup).render(extensions=extensions, versions=versions).strip()
         impl = replace_code(impl, replacement)
         print(impl, file=impl_file)
