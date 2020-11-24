@@ -1132,11 +1132,6 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
    qci.queueCount = 1;
    qci.pQueuePriorities = &dummy;
 
-   /* TODO: we can probably support non-premul here with some work? */
-   screen->info.have_EXT_blend_operation_advanced = screen->info.have_EXT_blend_operation_advanced &&
-                                                    screen->info.blend_props.advancedBlendNonPremultipliedSrcColor &&
-                                                    screen->info.blend_props.advancedBlendNonPremultipliedDstColor;
-
    VkDeviceCreateInfo dci = {};
    dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
    dci.queueCreateInfoCount = 1;

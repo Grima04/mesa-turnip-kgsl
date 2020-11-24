@@ -96,7 +96,9 @@ def EXTENSIONS():
             conditions=["$feats.customBorderColors"]),
         Extension("VK_EXT_blend_operation_advanced",
             alias="blend",
-            properties=True),
+            properties=True,
+            # TODO: we can probably support non-premul here with some work?
+            conditions=["$props.advancedBlendNonPremultipliedSrcColor", "$props.advancedBlendNonPremultipliedDstColor"]),
         Extension("VK_EXT_extended_dynamic_state",
             alias="dynamic_state",
             features=True,
