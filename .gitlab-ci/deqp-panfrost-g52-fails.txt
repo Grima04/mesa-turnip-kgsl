@@ -37,3 +37,15 @@ dEQP-GLES2.functional.texture.vertex.cube.wrap.clamp_repeat,Fail
 dEQP-GLES2.functional.texture.vertex.cube.wrap.mirror_clamp,Fail
 dEQP-GLES2.functional.texture.vertex.cube.wrap.mirror_mirror,Fail
 dEQP-GLES2.functional.texture.vertex.cube.wrap.mirror_repeat,Fail
+dEQP-GLES3.functional.fbo.blit.conversion.rgb8_to_rgba4,Fail
+dEQP-GLES3.functional.fbo.blit.conversion.rgb8_to_srgb8_alpha8,Fail
+dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8,Fail
+dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_linear_out_of_bounds_blit_to_default,Fail
+dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_linear_scale_blit_to_default,Fail
+dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_nearest_scale_blit_to_default,Fail
+dEQP-GLES3.functional.transform_feedback.array_element.interleaved.triangles.mediump_mat2x4,Fail
+dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.9,Fail
+dEQP-GLES3.functional.transform_feedback.random.interleaved.points.1,Fail
+dEQP-GLES3.functional.transform_feedback.random.interleaved.points.3,Fail
+dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.5,Fail
+dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.9,Fail
