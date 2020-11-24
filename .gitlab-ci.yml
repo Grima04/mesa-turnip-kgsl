@@ -7,11 +7,10 @@ variables:
 
 include:
   - project: 'freedesktop/ci-templates'
-    ref: &ci-templates-sha 52dd4a94044449c8481d18dcdc221a3c636366d2
-    file: '/templates/debian.yml'
-  - project: 'freedesktop/ci-templates'
-    ref: *ci-templates-sha
-    file: '/templates/alpine.yml'
+    ref: 52dd4a94044449c8481d18dcdc221a3c636366d2
+    file:
+      - '/templates/debian.yml'
+      - '/templates/alpine.yml'
   - local: '.gitlab-ci/lava-gitlab-ci.yml'
   - local: '.gitlab-ci/test-source-dep.yml'
 
