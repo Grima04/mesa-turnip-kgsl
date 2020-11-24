@@ -280,7 +280,7 @@ stw_st_framebuffer_validate(struct st_context_iface *stctx,
                                : stwfb->textures;
 
    for (i = 0; i < count; i++) {
-      struct pipe_resource *texture;
+      struct pipe_resource *texture = NULL;
 
       if (stwfb->needs_fake_front) {
          if (statts[i] == ST_ATTACHMENT_FRONT_LEFT)
