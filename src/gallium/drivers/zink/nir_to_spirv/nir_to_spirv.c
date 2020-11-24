@@ -969,7 +969,7 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
        * so we need to ensure that the new xfb location slot doesn't conflict with any previously-emitted
        * outputs.
        */
-      uint32_t location = reserve_slot(ctx);
+      uint32_t location = ctx->shader_slots_reserved + i;
       assert(location < VARYING_SLOT_VAR0);
       spirv_builder_emit_location(&ctx->builder, var_id, location);
 
