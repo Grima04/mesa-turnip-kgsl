@@ -1803,7 +1803,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 
          Temp tmp = dst.regClass() == s1 ? bld.tmp(v1) : dst;
          if (src0_ub <= 0xffffff && src1_ub <= 0xffffff) {
-            emit_vop3a_instruction(ctx, instr, aco_opcode::v_mul_hi_u32_u24, tmp);
+            emit_vop2_instruction(ctx, instr, aco_opcode::v_mul_hi_u32_u24, tmp, true);
          } else {
             emit_vop3a_instruction(ctx, instr, aco_opcode::v_mul_hi_u32, tmp);
          }
