@@ -58,6 +58,7 @@
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_util.h"
 #include "tgsi_exec.h"
+#include "util/compiler.h"
 #include "util/half_float.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
@@ -2565,7 +2566,7 @@ exec_txf(struct tgsi_exec_machine *mach,
    case TGSI_TEXTURE_SHADOW2D_ARRAY:
    case TGSI_TEXTURE_2D_ARRAY_MSAA:
       IFETCH(&r[2], 0, TGSI_CHAN_Z);
-      /* fallthrough */
+      FALLTHROUGH;
    case TGSI_TEXTURE_2D:
    case TGSI_TEXTURE_RECT:
    case TGSI_TEXTURE_SHADOW1D_ARRAY:
@@ -2574,7 +2575,7 @@ exec_txf(struct tgsi_exec_machine *mach,
    case TGSI_TEXTURE_1D_ARRAY:
    case TGSI_TEXTURE_2D_MSAA:
       IFETCH(&r[1], 0, TGSI_CHAN_Y);
-      /* fallthrough */
+      FALLTHROUGH;
    case TGSI_TEXTURE_BUFFER:
    case TGSI_TEXTURE_1D:
    case TGSI_TEXTURE_SHADOW1D:
