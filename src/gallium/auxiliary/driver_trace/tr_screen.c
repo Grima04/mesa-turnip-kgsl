@@ -670,11 +670,15 @@ trace_screen_destroy(struct pipe_screen *_screen)
 bool
 trace_enabled(void)
 {
-   do_once {
-      if(trace_dump_trace_begin()) {
-         trace_dumping_start();
-         trace = true;
-      }
+   static bool firstrun = true;
+
+   if (!firstrun)
+      return trace;
+   firstrun = false;
+
+   if(trace_dump_trace_begin()) {
+      trace_dumping_start();
+      trace = true;
    }
 
    return trace;
