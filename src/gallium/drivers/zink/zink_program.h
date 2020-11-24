@@ -31,7 +31,6 @@
 #include "util/u_inlines.h"
 
 #include "zink_context.h"
-#include "zink_shader_keys.h"
 
 struct zink_screen;
 struct zink_shader;
@@ -47,6 +46,23 @@ struct set;
 struct zink_shader_module {
    struct pipe_reference reference;
    VkShaderModule shader;
+};
+
+struct zink_fs_key {
+   unsigned shader_id;
+   //bool flat_shade;
+};
+
+/* a shader key is used for swapping out shader modules based on pipeline states,
+ * e.g., if sampleCount changes, we must verify that the fs doesn't need a recompile
+ *       to account for GL ignoring gl_SampleMask in some cases when VK will not
+ * which allows us to avoid recompiling shaders when the pipeline state changes repeatedly
+ */
+struct zink_shader_key {
+   union {
+      struct zink_fs_key fs;
+   } key;
+   uint32_t size;
 };
 
 /* the shader cache stores a mapping of zink_shader_key::VkShaderModule */
