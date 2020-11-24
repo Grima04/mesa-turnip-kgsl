@@ -53,12 +53,15 @@ static const struct tgsi_opcode_info opcode_info[TGSI_OPCODE_LAST] =
 const struct tgsi_opcode_info *
 tgsi_get_opcode_info(enum tgsi_opcode opcode)
 {
+   static boolean firsttime = 1;
+
    ASSERT_BITFIELD_SIZE(struct tgsi_opcode_info, opcode, TGSI_OPCODE_LAST - 1);
    ASSERT_BITFIELD_SIZE(struct tgsi_opcode_info, output_mode,
                         TGSI_OUTPUT_OTHER);
 
-   do_once {
+   if (firsttime) {
       unsigned i;
+      firsttime = 0;
       for (i = 0; i < ARRAY_SIZE(opcode_info); i++)
          assert(opcode_info[i].opcode == i);
    }
