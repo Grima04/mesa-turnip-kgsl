@@ -347,12 +347,18 @@ si_emit_graphics(struct radv_device *device,
 			} else {
 				late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
 
-				/* CU2 & CU3 disabled because of the dual CU design */
-				cu_mask_vs = 0xfff3;
+				/* Gfx10: CU2 & CU3 must be disabled to
+				 * prevent a hw deadlock.  Others: CU1 must be
+				 * disabled to prevent a hw deadlock.
+				 *
+				 * The deadlock is caused by late alloc, which
+				 * usually increases performance.
+				 */
+				cu_mask_vs &= physical_device->rad_info.chip_class == GFX10 ?
+					      ~BITFIELD_RANGE(2, 2) : ~BITFIELD_RANGE(1, 1);
+
 				if (physical_device->use_ngg) {
-					cu_mask_gs = 0xfff3;
-				} else {
-					cu_mask_gs = 0xffff;
+					cu_mask_gs = cu_mask_vs;
 				}
 			}
 
