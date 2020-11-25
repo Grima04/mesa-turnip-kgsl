@@ -1507,6 +1507,9 @@ endif
 if with_microsoft_clc
   llvm_modules += ['target', 'linker', 'irreader', 'option', 'libdriver']
 endif
+if with_tests
+  llvm_modules += 'native'
+endif
 
 if with_microsoft_clc
   _llvm_version = '>= 10.0.0'
