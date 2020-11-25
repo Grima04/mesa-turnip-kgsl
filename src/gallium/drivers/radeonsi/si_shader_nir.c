@@ -346,6 +346,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->uses_frontface = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_FRONT_FACE);
    info->uses_instanceid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_INSTANCE_ID);
    info->uses_base_vertex = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BASE_VERTEX);
+   info->uses_base_instance = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BASE_INSTANCE);
    info->uses_invocationid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_INVOCATION_ID);
    info->uses_grid_size = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_NUM_WORK_GROUPS);
    info->uses_subgroup_info = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_LOCAL_INVOCATION_INDEX) ||

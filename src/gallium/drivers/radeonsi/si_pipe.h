@@ -45,6 +45,8 @@
  * one which will mean "unknown" for the purpose of state tracking and
  * the number shouldn't be a commonly-used one. */
 #define SI_BASE_VERTEX_UNKNOWN    INT_MIN
+#define SI_START_INSTANCE_UNKNOWN INT_MIN
+#define SI_DRAW_ID_UNKNOWN        INT_MIN
 #define SI_RESTART_INDEX_UNKNOWN  INT_MIN
 #define SI_INSTANCE_COUNT_UNKNOWN INT_MIN
 #define SI_NUM_SMOOTH_AA_SAMPLES  8
@@ -1045,6 +1047,8 @@ struct si_context {
    bool do_update_shaders;
    bool compute_shaderbuf_sgprs_dirty;
    bool compute_image_sgprs_dirty;
+   bool vs_uses_base_instance;
+   bool vs_uses_draw_id;
 
    /* shader descriptors */
    struct si_descriptors descriptors[SI_NUM_DESCS];
@@ -1634,6 +1638,8 @@ static inline void si_context_add_resource_size(struct si_context *sctx, struct 
 static inline void si_invalidate_draw_sh_constants(struct si_context *sctx)
 {
    sctx->last_base_vertex = SI_BASE_VERTEX_UNKNOWN;
+   sctx->last_start_instance = SI_START_INSTANCE_UNKNOWN;
+   sctx->last_drawid = SI_DRAW_ID_UNKNOWN;
 }
 
 static inline void si_invalidate_draw_constants(struct si_context *sctx)

@@ -368,6 +368,7 @@ struct si_shader_info {
    bool uses_interp_at_sample;
    bool uses_instanceid;
    bool uses_base_vertex;
+   bool uses_base_instance;
    bool uses_drawid;
    bool uses_primid;
    bool uses_frontface;
@@ -751,6 +752,8 @@ struct si_shader {
    /* SI_SGPR_VS_STATE_BITS */
    bool uses_vs_state_provoking_vertex;
    bool uses_vs_state_outprim;
+
+   bool uses_base_instance;
 
    struct {
       uint16_t ngg_emit_size; /* in dwords */

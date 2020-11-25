@@ -2630,6 +2630,22 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
                                    sel->info.stage == MESA_SHADER_VERTEX &&
                                    sel->so.num_outputs;
 
+   if (sel->info.stage == MESA_SHADER_VERTEX) {
+      shader->uses_base_instance = sel->info.uses_base_instance ||
+                                   shader->key.part.vs.prolog.instance_divisor_is_one ||
+                                   shader->key.part.vs.prolog.instance_divisor_is_fetched;
+   } else if (sel->info.stage == MESA_SHADER_TESS_CTRL) {
+      shader->uses_base_instance = shader->previous_stage_sel &&
+                                   (shader->previous_stage_sel->info.uses_base_instance ||
+                                    shader->key.part.tcs.ls_prolog.instance_divisor_is_one ||
+                                    shader->key.part.tcs.ls_prolog.instance_divisor_is_fetched);
+   } else if (sel->info.stage == MESA_SHADER_GEOMETRY) {
+      shader->uses_base_instance = shader->previous_stage_sel &&
+                                   (shader->previous_stage_sel->info.uses_base_instance ||
+                                    shader->key.part.gs.vs_prolog.instance_divisor_is_one ||
+                                    shader->key.part.gs.vs_prolog.instance_divisor_is_fetched);
+   }
+
    si_fix_resource_usage(sscreen, shader);
    si_shader_dump(sscreen, shader, debug, stderr, true);
 

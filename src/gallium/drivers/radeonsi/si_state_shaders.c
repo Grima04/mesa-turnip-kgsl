@@ -3005,6 +3005,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    sctx->vs_shader.cso = sel;
    sctx->vs_shader.current = sel ? sel->first_variant : NULL;
    sctx->num_vs_blit_sgprs = sel ? sel->info.base.vs.blit_sgprs_amd : 0;
+   sctx->vs_uses_draw_id = sel ? sel->info.uses_drawid : false;
 
    if (si_update_ngg(sctx))
       si_shader_change_notify(sctx);
@@ -4037,6 +4038,11 @@ bool si_update_shaders(struct si_context *sctx)
       key.u.ngg_passthrough = gfx10_is_ngg_passthrough(vs);
       key.u.ngg_gs_fast_launch = !!(vs->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
    }
+
+   sctx->vs_uses_base_instance =
+      sctx->vs_shader.current ? sctx->vs_shader.current->uses_base_instance :
+      sctx->queued.named.hs ? sctx->queued.named.hs->shader->uses_base_instance :
+      sctx->gs_shader.current->uses_base_instance;
 
    si_update_vgt_shader_config(sctx, key);
 
