@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include "context.h"
 
+#include "util/os_misc.h"
 #include "util/simple_mtx.h"
 
 #include "mtypes.h"
@@ -84,7 +85,7 @@ get_gl_override(gl_api api, int *version, bool *fwd_context,
    if (override[api].version < 0) {
       override[api].version = 0;
 
-      version_str = getenv(env_var);
+      version_str = os_get_option(env_var);
       if (version_str) {
          override[api].fc_suffix = check_for_ending(version_str, "FC");
          override[api].compat_suffix = check_for_ending(version_str, "COMPAT");

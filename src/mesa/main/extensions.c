@@ -29,6 +29,7 @@
  * \brief Extension handling
  */
 
+#include "util/os_misc.h"
 
 #include "glheader.h"
 
@@ -237,7 +238,7 @@ free_unknown_extensions_strings(void)
 void
 _mesa_one_time_init_extension_overrides(void)
 {
-   const char *env_const = getenv("MESA_EXTENSION_OVERRIDE");
+   const char *env_const = os_get_option("MESA_EXTENSION_OVERRIDE");
    char *env;
    char *ext;
    size_t offset;
