@@ -415,7 +415,6 @@ radv_physical_device_try_create(struct radv_instance *instance,
 
 	device->use_ngg = device->rad_info.chip_class >= GFX10 &&
 			  device->rad_info.family != CHIP_NAVI14 &&
-			  device->rad_info.has_dedicated_vram &&
 			  !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
 
 	device->use_ngg_streamout = false;
