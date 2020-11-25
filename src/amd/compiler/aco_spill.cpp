@@ -399,12 +399,13 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
          }
       }
 
-      /* select live-through vgpr variables */
+      /* select live-through vgpr variables and constants */
       while (new_demand.vgpr - spilled_registers.vgpr > ctx.target_pressure.vgpr) {
          unsigned distance = 0;
          Temp to_spill;
          for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_end[block_idx - 1]) {
             if (pair.first.type() == RegType::vgpr &&
+                (pair.second.first >= loop_end || ctx.remat.count(pair.first)) &&
                 pair.second.first >= loop_end &&
                 pair.second.second > distance &&
                 ctx.spills_entry[block_idx].find(pair.first) == ctx.spills_entry[block_idx].end()) {
@@ -426,13 +427,13 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
          spilled_registers.vgpr += to_spill.size();
       }
 
-      /* select live-through sgpr variables */
+      /* select live-through sgpr variables and constants */
       while (new_demand.sgpr - spilled_registers.sgpr > ctx.target_pressure.sgpr) {
          unsigned distance = 0;
          Temp to_spill;
          for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_end[block_idx - 1]) {
             if (pair.first.type() == RegType::sgpr &&
-                pair.second.first >= loop_end &&
+                (pair.second.first >= loop_end || ctx.remat.count(pair.first)) &&
                 pair.second.second > distance &&
                 ctx.spills_entry[block_idx].find(pair.first) == ctx.spills_entry[block_idx].end()) {
                to_spill = pair.first;
