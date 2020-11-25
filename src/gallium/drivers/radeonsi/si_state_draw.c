@@ -640,8 +640,10 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 ALWAYS_INLINE
 static void si_emit_vs_state(struct si_context *sctx, const struct pipe_draw_info *info)
 {
-   sctx->current_vs_state &= C_VS_STATE_INDEXED;
-   sctx->current_vs_state |= S_VS_STATE_INDEXED(!!info->index_size);
+   if (sctx->vs_shader.cso->info.uses_base_vertex) {
+      sctx->current_vs_state &= C_VS_STATE_INDEXED;
+      sctx->current_vs_state |= S_VS_STATE_INDEXED(!!info->index_size);
+   }
 
    if (sctx->num_vs_blit_sgprs) {
       /* Re-emit the state after we leave u_blitter. */
