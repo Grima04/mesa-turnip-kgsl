@@ -748,6 +748,10 @@ struct si_shader {
    struct ac_shader_config config;
    struct si_shader_binary_info info;
 
+   /* SI_SGPR_VS_STATE_BITS */
+   bool uses_vs_state_provoking_vertex;
+   bool uses_vs_state_outprim;
+
    struct {
       uint16_t ngg_emit_size; /* in dwords */
       uint16_t hw_max_esverts;

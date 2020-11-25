@@ -629,11 +629,19 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       sctx->context_roll = true;
 
    if (sctx->ngg) {
-      unsigned vtx_index = rs->flatshade_first ? 0 : gs_out_prim;
+      struct si_shader *hw_vs = si_get_vs_state(sctx);
 
-      sctx->current_vs_state &= C_VS_STATE_OUTPRIM & C_VS_STATE_PROVOKING_VTX_INDEX;
-      sctx->current_vs_state |=
-         S_VS_STATE_OUTPRIM(gs_out_prim) | S_VS_STATE_PROVOKING_VTX_INDEX(vtx_index);
+      if (hw_vs->uses_vs_state_provoking_vertex) {
+         unsigned vtx_index = rs->flatshade_first ? 0 : gs_out_prim;
+
+         sctx->current_vs_state &= C_VS_STATE_PROVOKING_VTX_INDEX;
+         sctx->current_vs_state |= S_VS_STATE_PROVOKING_VTX_INDEX(vtx_index);
+      }
+
+      if (hw_vs->uses_vs_state_outprim) {
+         sctx->current_vs_state &= C_VS_STATE_OUTPRIM;
+         sctx->current_vs_state |= S_VS_STATE_OUTPRIM(gs_out_prim);
+      }
    }
 }
 

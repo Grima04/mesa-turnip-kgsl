@@ -2614,6 +2614,22 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
       gfx9_get_gs_info(shader->previous_stage_sel, sel, &shader->gs_info);
    }
 
+   shader->uses_vs_state_provoking_vertex =
+      sscreen->use_ngg &&
+      /* Used to convert triangle strips from GS to triangles. */
+      ((sel->info.stage == MESA_SHADER_GEOMETRY &&
+        util_rast_prim_is_triangles(sel->info.base.gs.output_primitive)) ||
+       (sel->info.stage == MESA_SHADER_VERTEX &&
+        /* Used to export PrimitiveID from the correct vertex. */
+        (shader->key.mono.u.vs_export_prim_id ||
+         /* Used to generate triangle strip vertex IDs for all threads. */
+         shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP)));
+
+   shader->uses_vs_state_outprim = sscreen->use_ngg &&
+                                   /* Only used by streamout in vertex shaders. */
+                                   sel->info.stage == MESA_SHADER_VERTEX &&
+                                   sel->so.num_outputs;
+
    si_fix_resource_usage(sscreen, shader);
    si_shader_dump(sscreen, shader, debug, stderr, true);
 
