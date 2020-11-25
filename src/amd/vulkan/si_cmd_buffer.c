@@ -349,7 +349,11 @@ si_emit_graphics(struct radv_device *device,
 
 				/* CU2 & CU3 disabled because of the dual CU design */
 				cu_mask_vs = 0xfff3;
-				cu_mask_gs = 0xfff3; /* NGG only */
+				if (physical_device->use_ngg) {
+					cu_mask_gs = 0xfff3;
+				} else {
+					cu_mask_gs = 0xffff;
+				}
 			}
 
 			late_alloc_wave64_gs = late_alloc_wave64;
