@@ -3044,20 +3044,18 @@ static bool
 texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
                          VkImageAspectFlags aspect,
                          struct v3dv_image *image,
-                         uint32_t num_layers,
                          VkFormat dst_format,
                          VkFormat src_format,
                          struct v3dv_buffer *buffer,
-                         uint32_t buf_width,
-                         uint32_t buf_height,
                          uint32_t buffer_bpp,
                          VkColorComponentFlags cmask,
-                         const VkBufferImageCopy *region)
+                         uint32_t region_count,
+                         const VkBufferImageCopy *regions)
 {
    VkResult result;
    bool handled = false;
 
-   /* FIXME: we only only handle exact copies for now. */
+   /* FIXME: we only handle exact copies for now. */
    if (src_format != dst_format)
       return handled;
 
@@ -3159,8 +3157,9 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
 
    /* Push command buffer state before starting meta operation */
    v3dv_cmd_buffer_meta_state_push(cmd_buffer, true);
+   uint32_t dirty_dynamic_state = 0;
 
-   /* Bind common state for all layers */
+   /* Bind common state for all layers and regions  */
    VkCommandBuffer _cmd_buffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
    v3dv_CmdBindPipeline(_cmd_buffer,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -3172,37 +3171,34 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
                               0, 1, &set,
                               0, NULL);
 
-   const VkViewport viewport = {
-      .x = region->imageOffset.x,
-      .y = region->imageOffset.y,
-      .width = region->imageExtent.width,
-      .height = region->imageExtent.height,
-      .minDepth = 0.0f,
-      .maxDepth = 1.0f
-   };
-   v3dv_CmdSetViewport(_cmd_buffer, 0, 1, &viewport);
-   const VkRect2D scissor = {
-      .offset = { region->imageOffset.x, region->imageOffset.y },
-      .extent = { region->imageExtent.width, region->imageExtent.height }
-   };
-   v3dv_CmdSetScissor(_cmd_buffer, 0, 1, &scissor);
+   /* Compute the number of layers to copy.
+    *
+    * If we are batching (region_count > 1) all our regions have the same
+    * image subresource so we can take this from the first region.
+    */
+   const VkImageSubresourceLayers *resource = &regions[0].imageSubresource;
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D) {
+      num_layers = resource->layerCount;
+   } else {
+      assert(region_count == 1);
+      num_layers = regions[0].imageExtent.depth;
+   }
+   assert(num_layers > 0);
 
-   uint32_t dirty_dynamic_state =
-      V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
+   /* Sanity check: we can only batch multiple regions together if they have
+    * the same framebuffer (so the same layer).
+    */
+   assert(num_layers == 1 || region_count == 1);
 
-   bool can_skip_tlb_load = false;
-   const VkRect2D render_area = {
-     .offset = { region->imageOffset.x, region->imageOffset.y },
-     .extent = { region->imageExtent.width, region->imageExtent.height },
-   };
-
-   /* Record per-layer commands */
-   for (uint32_t i = 0; i < num_layers; i++) {
+   /* For each layer */
+   for (uint32_t l = 0; l < num_layers; l++) {
       /* Setup framebuffer for this layer.
        *
        * FIXME: once we support geometry shaders, we should be able to have
-       *        a single layered framebuffer and emit just one draw call for
-       *        all layers using layered rendering.
+       *        one layered framebuffer and emit just one draw call for
+       *        all layers using layered rendering. At that point, we should
+       *        also be able to batch multi-layered regions as well.
        */
       VkImageViewCreateInfo image_view_info = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -3211,9 +3207,9 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
          .format = format,
          .subresourceRange = {
             .aspectMask = aspect,
-            .baseMipLevel = region->imageSubresource.mipLevel,
+            .baseMipLevel = resource->mipLevel,
             .levelCount = 1,
-            .baseArrayLayer = region->imageSubresource.baseArrayLayer + i,
+            .baseArrayLayer = resource->baseArrayLayer + l,
             .layerCount = 1
          },
       };
@@ -3232,10 +3228,8 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
          .renderPass = pipeline->pass,
          .attachmentCount = 1,
          .pAttachments = &image_view,
-         .width = u_minify(image->extent.width,
-                           region->imageSubresource.mipLevel),
-         .height = u_minify(image->extent.height,
-                            region->imageSubresource.mipLevel),
+         .width = u_minify(image->extent.width, resource->mipLevel),
+         .height = u_minify(image->extent.height, resource->mipLevel),
          .layers = 1,
       };
 
@@ -3245,24 +3239,37 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
       if (result != VK_SUCCESS)
          goto fail;
 
-      v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (uintptr_t)fb,
-         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
+       v3dv_cmd_buffer_add_private_obj(
+          cmd_buffer, (uintptr_t)fb,
+          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
 
-      /* If the region we are about to blit is tile-aligned, then we can
-       * use the render pass version that won't pre-load the tile buffer
-       * with the dst image contents before the copy.
-       *
-       * The region is always the same for all layers, so we only need to
-       * compute this once.
-       */
-      if (i == 0) {
-         struct v3dv_render_pass *pipeline_pass =
-            v3dv_render_pass_from_handle(pipeline->pass);
-         can_skip_tlb_load =
-            v3dv_subpass_area_is_tile_aligned(&render_area,
-                                              v3dv_framebuffer_from_handle(fb),
-                                              pipeline_pass, 0);
+       /* Start render pass for this layer.
+        *
+        * If the we only have one region to copy, then we might be able to
+        * skip the TLB load if it is aligned to tile boundaries. All layers
+        * copy the same area, so we only need to check this once.
+        */
+      bool can_skip_tlb_load = false;
+      VkRect2D render_area;
+      if (region_count == 1) {
+         render_area.offset.x = regions[0].imageOffset.x;
+         render_area.offset.y = regions[0].imageOffset.y;
+         render_area.extent.width = regions[0].imageExtent.width;
+         render_area.extent.height = regions[0].imageExtent.height;
+
+         if (l == 0) {
+            struct v3dv_render_pass *pipeline_pass =
+               v3dv_render_pass_from_handle(pipeline->pass);
+            can_skip_tlb_load =
+               v3dv_subpass_area_is_tile_aligned(&render_area,
+                                                 v3dv_framebuffer_from_handle(fb),
+                                                 pipeline_pass, 0);
+         }
+      } else {
+         render_area.offset.x = 0;
+         render_area.offset.y = 0;
+         render_area.extent.width = fb_info.width;
+         render_area.extent.height = fb_info.height;
       }
 
       VkRenderPassBeginInfo rp_info = {
@@ -3274,36 +3281,67 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
          .clearValueCount = 0,
       };
 
-      /* Record draw */
       v3dv_CmdBeginRenderPass(_cmd_buffer, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
       struct v3dv_job *job = cmd_buffer->state.job;
       if (!job)
          goto fail;
 
-      const VkDeviceSize buf_offset =
-         region->bufferOffset / buffer_bpp  + i * buf_height * buf_width;
-      uint32_t push_data[6] = {
-         region->imageOffset.x,
-         region->imageOffset.y,
-         region->imageOffset.x + region->imageExtent.width - 1,
-         region->imageOffset.y + region->imageExtent.height - 1,
-         buf_width,
-         buf_offset,
-      };
+      /* For each region */
+      dirty_dynamic_state = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
+      for (uint32_t r = 0; r < region_count; r++) {
+         const VkBufferImageCopy *region = &regions[r];
 
-      v3dv_CmdPushConstants(_cmd_buffer,
-                            cmd_buffer->device->meta.texel_buffer_copy.p_layout,
-                            VK_SHADER_STAGE_FRAGMENT_BIT,
-                            0, sizeof(push_data), &push_data);
+         /* Obtain the 2D buffer region spec */
+         uint32_t buf_width, buf_height;
+         if (region->bufferRowLength == 0)
+             buf_width = region->imageExtent.width;
+         else
+             buf_width = region->bufferRowLength;
 
-      v3dv_CmdDraw(_cmd_buffer, 4, 1, 0, 0);
+         if (region->bufferImageHeight == 0)
+             buf_height = region->imageExtent.height;
+         else
+             buf_height = region->bufferImageHeight;
+
+         const VkViewport viewport = {
+            .x = region->imageOffset.x,
+            .y = region->imageOffset.y,
+            .width = region->imageExtent.width,
+            .height = region->imageExtent.height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
+         };
+         v3dv_CmdSetViewport(_cmd_buffer, 0, 1, &viewport);
+         const VkRect2D scissor = {
+            .offset = { region->imageOffset.x, region->imageOffset.y },
+            .extent = { region->imageExtent.width, region->imageExtent.height }
+         };
+         v3dv_CmdSetScissor(_cmd_buffer, 0, 1, &scissor);
+
+         const VkDeviceSize buf_offset =
+            region->bufferOffset / buffer_bpp  + l * buf_height * buf_width;
+         uint32_t push_data[6] = {
+            region->imageOffset.x,
+            region->imageOffset.y,
+            region->imageOffset.x + region->imageExtent.width - 1,
+            region->imageOffset.y + region->imageExtent.height - 1,
+            buf_width,
+            buf_offset,
+         };
+
+         v3dv_CmdPushConstants(_cmd_buffer,
+                               cmd_buffer->device->meta.texel_buffer_copy.p_layout,
+                               VK_SHADER_STAGE_FRAGMENT_BIT,
+                               0, sizeof(push_data), &push_data);
+
+         v3dv_CmdDraw(_cmd_buffer, 4, 1, 0, 0);
+      } /* For each region */
 
       v3dv_CmdEndRenderPass(_cmd_buffer);
-   }
+   } /* For each layer */
 
 fail:
    v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state, true);
-
    return handled;
 }
 
@@ -3311,17 +3349,34 @@ static bool
 copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                           VkImageAspectFlags aspect,
                           struct v3dv_image *image,
-                          uint32_t num_layers,
                           VkFormat dst_format,
                           VkFormat src_format,
                           struct v3dv_buffer *buffer,
-                          uint32_t buf_width,
-                          uint32_t buf_height,
                           uint32_t buffer_bpp,
                           VkColorComponentFlags cmask,
                           const VkBufferImageCopy *region)
 {
    perf_debug("Falling back to blit path for buffer to image copy.\n");
+
+   /* Obtain the layer count */
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->imageSubresource.layerCount;
+   else
+      num_layers = region->imageExtent.depth;
+   assert(num_layers > 0);
+
+   /* Obtain the 2D buffer region spec */
+   uint32_t buf_width, buf_height;
+   if (region->bufferRowLength == 0)
+       buf_width = region->imageExtent.width;
+   else
+       buf_width = region->bufferRowLength;
+
+   if (region->bufferImageHeight == 0)
+       buf_height = region->imageExtent.height;
+   else
+       buf_height = region->bufferImageHeight;
 
    /* If the image is compressed, the bpp refers to blocks, not pixels */
    uint32_t block_width = vk_format_get_blockwidth(image->vk_format);
@@ -3479,16 +3534,24 @@ static bool
 copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
                             struct v3dv_image *image,
                             struct v3dv_buffer *buffer,
-                            const VkBufferImageCopy *region,
+                            uint32_t region_count,
+                            const VkBufferImageCopy *regions,
                             bool use_texel_buffer)
 {
+   /* FIXME: we only support batching on the texel buffer path for now */
+   assert(region_count == 1 || use_texel_buffer);
+
+   /* We can only call this with region_count > 1 if we can batch the regions
+    * together, in which case they share the same image subresource, and so
+    * the same aspect.
+    */
+   VkImageAspectFlags aspect = regions[0].imageSubresource.aspectMask;
+
    /* Generally, the bpp of the data in the buffer matches that of the
     * destination image. The exception is the case where we are uploading
     * stencil (8bpp) to a combined d24s8 image (32bpp).
     */
    uint32_t buf_bpp = image->cpp;
-
-   VkImageAspectFlags aspect = region->imageSubresource.aspectMask;
 
    /* We are about to upload the buffer data to an image so we can then
     * blit that to our destination region. Because we are going to implement
@@ -3568,38 +3631,22 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
       return false;
    }
 
-   /* Obtain the 2D buffer region spec */
-   uint32_t buf_width, buf_height;
-   if (region->bufferRowLength == 0)
-      buf_width = region->imageExtent.width;
-   else
-      buf_width = region->bufferRowLength;
-
-   if (region->bufferImageHeight == 0)
-      buf_height = region->imageExtent.height;
-   else
-      buf_height = region->bufferImageHeight;
-
-   /* Compute layers to copy */
-   uint32_t num_layers;
-   if (image->type != VK_IMAGE_TYPE_3D)
-      num_layers = region->imageSubresource.layerCount;
-   else
-      num_layers = region->imageExtent.depth;
-   assert(num_layers > 0);
-
    if (use_texel_buffer) {
-      return texel_buffer_shader_copy(cmd_buffer, aspect,
-                                      image, num_layers,
+      return texel_buffer_shader_copy(cmd_buffer, aspect, image,
                                       dst_format, src_format,
-                                      buffer, buf_width, buf_height, buf_bpp,
-                                      cmask, region);
+                                      buffer, buf_bpp,
+                                      cmask, region_count, regions);
    } else {
-      return copy_buffer_to_image_blit(cmd_buffer, aspect,
-                                       image, num_layers,
-                                       dst_format, src_format,
-                                       buffer, buf_width, buf_height, buf_bpp,
-                                       cmask, region);
+      bool handled = true;
+      for (uint32_t i = 0; i < region_count; i++) {
+         handled = copy_buffer_to_image_blit(cmd_buffer, aspect, image,
+                                             dst_format, src_format,
+                                             buffer, buf_bpp,
+                                             cmask, &regions[i]);
+         if (!handled)
+            break;
+      }
+      return handled;
    }
 }
 
@@ -3683,18 +3730,60 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
 
    assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
 
-   for (uint32_t i = 0; i < regionCount; i++) {
-      if (copy_buffer_to_image_tfu(cmd_buffer, image, buffer, &pRegions[i]))
-         continue;
-      if (copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]))
-         continue;
-      if (copy_buffer_to_image_shader(cmd_buffer, image, buffer, &pRegions[i], true))
-         continue;
-      if (copy_buffer_to_image_cpu(cmd_buffer, image, buffer, &pRegions[i]))
-         continue;
-      if (copy_buffer_to_image_shader(cmd_buffer, image, buffer, &pRegions[i], false))
-         continue;
+   uint32_t r = 0;
+
+   while (r < regionCount) {
+      /* The TFU and TLB paths can only copy one region at a time and the region
+       * needs to start at the origin. We try these first for the common case
+       * where we are copying full images, since they should be the fastest.
+       */
+      uint32_t batch_size = 1;
+      if (copy_buffer_to_image_tfu(cmd_buffer, image, buffer, &pRegions[r]))
+         goto handled;
+
+      if (copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[r]))
+         goto handled;
+
+      /* Otherwise, we are copying subrects, so we fallback to copying
+       * via shader and texel buffers and we try to batch the regions
+       * if possible. We can only batch copies if they target the same
+       * image subresource (so they have the same framebuffer spec).
+       */
+      const VkImageSubresourceLayers *rsc = &pRegions[r].imageSubresource;
+      if (image->type != VK_IMAGE_TYPE_3D) {
+         for (uint32_t s = r + 1; s < regionCount; s++) {
+            const VkImageSubresourceLayers *rsc_s = &pRegions[s].imageSubresource;
+            if (memcmp(rsc, rsc_s, sizeof(VkImageSubresourceLayers)) != 0)
+               break;
+            batch_size++;
+         }
+      }
+
+      if (copy_buffer_to_image_shader(cmd_buffer, image, buffer,
+                                      batch_size, &pRegions[r], true)) {
+         goto handled;
+      }
+
+      /* If we still could not copy, fallback to slower paths.
+       *
+       * FIXME: we could try to batch these too, but since they are bound to be
+       * slow it might not be worth it and we should instead put more effort
+       * in handling more cases with the other paths.
+       */
+      batch_size = 1;
+
+      if (copy_buffer_to_image_cpu(cmd_buffer, image, buffer, &pRegions[r]))
+         goto handled;
+
+      if (copy_buffer_to_image_shader(cmd_buffer, image, buffer,
+                                      1, &pRegions[r], false)) {
+         goto handled;
+      }
+
       unreachable("Unsupported buffer to image copy.");
+
+handled:
+      r += batch_size;
    }
 }
 
