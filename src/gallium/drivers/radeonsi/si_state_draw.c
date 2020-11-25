@@ -1051,8 +1051,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                          */
                         S_0287F0_NOT_EOP(sctx->chip_class >= GFX10 &&
                                          !set_draw_id &&
-                                         i < num_draws - 1 &&
-                                         !(sctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)));
+                                         i < num_draws - 1));
          }
       } else {
          /* Set the index buffer for fast launch. The VS prolog will load the indices. */
