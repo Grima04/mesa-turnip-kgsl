@@ -536,7 +536,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
 
       /* Invalidate various draw states so that they are emitted before
        * the first draw call. */
-      si_invalidate_draw_sh_constants(ctx);
+      si_invalidate_draw_constants(ctx);
       ctx->last_index_size = -1;
       ctx->last_primitive_restart_en = -1;
       ctx->last_restart_index = SI_RESTART_INDEX_UNKNOWN;

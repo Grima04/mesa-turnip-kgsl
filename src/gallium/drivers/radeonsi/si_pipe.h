@@ -1634,6 +1634,11 @@ static inline void si_context_add_resource_size(struct si_context *sctx, struct 
 static inline void si_invalidate_draw_sh_constants(struct si_context *sctx)
 {
    sctx->last_base_vertex = SI_BASE_VERTEX_UNKNOWN;
+}
+
+static inline void si_invalidate_draw_constants(struct si_context *sctx)
+{
+   si_invalidate_draw_sh_constants(sctx);
    sctx->last_instance_count = SI_INSTANCE_COUNT_UNKNOWN;
 }
 

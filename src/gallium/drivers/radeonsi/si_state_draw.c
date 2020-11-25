@@ -901,7 +901,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
       assert(indirect_va % 8 == 0);
 
-      si_invalidate_draw_sh_constants(sctx);
+      si_invalidate_draw_constants(sctx);
 
       radeon_emit(cs, PKT3(PKT3_SET_BASE, 2, 0));
       radeon_emit(cs, 1);
