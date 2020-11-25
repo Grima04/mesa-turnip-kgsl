@@ -175,6 +175,8 @@ glsl_type::glsl_type(const glsl_type *return_type,
    this->mem_ctx = ralloc_context(NULL);
    assert(this->mem_ctx != NULL);
 
+   this->name = ralloc_strdup(this->mem_ctx, "");
+
    this->fields.parameters = rzalloc_array(this->mem_ctx,
                                            glsl_function_param, num_params + 1);
 
