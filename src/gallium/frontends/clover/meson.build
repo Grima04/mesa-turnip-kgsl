@@ -72,7 +72,7 @@ libclllvm = static_library(
     )),
   ],
   gnu_symbol_visibility : 'hidden',
-  dependencies : [dep_llvm, dep_elf, dep_llvmspirvlib],
+  dependencies : [dep_llvm, dep_elf, dep_llvmspirvlib, idep_mesautil],
 )
 
 libclspirv = static_library(
@@ -81,7 +81,7 @@ libclspirv = static_library(
   include_directories : clover_incs,
   cpp_args : [clover_opencl_cpp_args, clover_spirv_cpp_args],
   gnu_symbol_visibility : 'hidden',
-  dependencies : [dep_spirv_tools],
+  dependencies : [dep_spirv_tools, idep_mesautil],
 )
 
 libclnir = static_library(
@@ -161,4 +161,5 @@ libclover = static_library(
   ],
   gnu_symbol_visibility : 'hidden',
   link_with : [libclllvm, libclspirv, libclnir],
+  dependencies : idep_mesautil,
 )

@@ -71,7 +71,7 @@ libglcpp_standalone = static_library(
 glcpp = executable(
   'glcpp',
   'glcpp.c',
-  dependencies : [dep_m, idep_getopt],
+  dependencies : [dep_m, idep_getopt, idep_mesautil],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   link_with : [libglcpp_standalone, libglsl_util],
   c_args : [no_override_init_args, c_msvc_compat_args],

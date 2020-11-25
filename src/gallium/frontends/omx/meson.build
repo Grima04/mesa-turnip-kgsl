@@ -69,5 +69,5 @@ libomx_st = static_library(
   c_args : ['-fcommon'],
   gnu_symbol_visibility : 'hidden',
   include_directories : inc_st_omx,
-  dependencies : dep_st_omx,
+  dependencies : [dep_st_omx, idep_mesautil],
 )

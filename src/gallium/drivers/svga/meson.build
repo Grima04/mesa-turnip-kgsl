@@ -87,6 +87,7 @@ libsvga = static_library(
     inc_src, inc_include, inc_gallium, inc_gallium_aux,
     include_directories('include')
   ],
+  dependencies : idep_mesautil,
 )
 
 driver_svga = declare_dependency(

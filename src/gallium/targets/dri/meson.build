@@ -53,7 +53,7 @@ libgallium_dri = shared_library(
     libswkmsdri,
   ],
   dependencies : [
-    dep_selinux, dep_libdrm, dep_llvm, dep_thread, idep_xmlconfig,
+    dep_selinux, dep_libdrm, dep_llvm, dep_thread, idep_xmlconfig, idep_mesautil,
     driver_swrast, driver_r300, driver_r600, driver_radeonsi, driver_nouveau,
     driver_kmsro, driver_v3d, driver_vc4, driver_freedreno, driver_etnaviv,
     driver_tegra, driver_i915, driver_svga, driver_virgl,
