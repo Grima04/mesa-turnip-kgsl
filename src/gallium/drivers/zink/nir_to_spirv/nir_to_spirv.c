@@ -472,7 +472,6 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
             break;
 
          default:
-            slot = handle_slot(ctx, slot);
             spirv_builder_emit_location(&ctx->builder, var_id, slot);
             spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
          }
