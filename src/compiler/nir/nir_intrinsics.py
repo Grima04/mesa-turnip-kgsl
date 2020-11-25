@@ -288,6 +288,9 @@ intrinsic("deref_mode_is", src_comp=[-1], dest_comp=1,
 intrinsic("addr_mode_is", src_comp=[-1], dest_comp=1,
           indices=[MEMORY_MODES], flags=[CAN_ELIMINATE, CAN_REORDER])
 
+intrinsic("is_sparse_texels_resident", dest_comp=1, src_comp=[1], bit_sizes=[1],
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # a barrier is an intrinsic with no inputs/outputs but which can't be moved
 # around/optimized in general
 def barrier(name):

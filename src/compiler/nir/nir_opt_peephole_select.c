@@ -114,6 +114,7 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
          case nir_intrinsic_load_subgroup_invocation:
          case nir_intrinsic_load_num_subgroups:
          case nir_intrinsic_load_frag_shading_rate:
+         case nir_intrinsic_is_sparse_texels_resident:
             if (!alu_ok)
                return false;
             break;
