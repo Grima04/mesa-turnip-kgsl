@@ -622,6 +622,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
       goto fail;
 
    pipe_reference_init(&comp->base.reference, 1);
+   comp->base.is_compute = true;
 
    if (!ctx->curr_compute || !ctx->curr_compute->shader_cache) {
       /* TODO: cs shader keys placeholder for now */

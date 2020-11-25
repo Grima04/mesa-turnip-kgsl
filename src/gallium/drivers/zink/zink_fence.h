@@ -42,7 +42,6 @@ struct zink_fence {
    uint32_t batch_id;
    struct set *resources; /* resources need access removed asap, so they're on the fence */
    bool submitted;
-   bool is_compute;
 };
 
 static inline struct zink_fence *

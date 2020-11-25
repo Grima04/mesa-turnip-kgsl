@@ -232,7 +232,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       pipe_reference_init(&zds->reference, 1);
       zds->pool = pool;
       zds->hash = 0;
-      zds->batch_uses.usage[0] = zds->batch_uses.usage[1] = 0;
+      zds->batch_uses.usage = 0;
       zds->invalid = true;
       zds->punted = zds->recycled = false;
       if (num_resources) {
@@ -296,7 +296,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
    struct zink_descriptor_set *zds;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
-   struct zink_batch *batch = is_compute ? zink_batch_c(ctx) : zink_batch_g(ctx);
+   struct zink_batch *batch = &ctx->batch;
    struct zink_descriptor_pool *pool = pg->pool[type];
    unsigned descs_used = 1;
    assert(type < ZINK_DESCRIPTOR_TYPES);

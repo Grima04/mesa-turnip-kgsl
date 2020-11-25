@@ -125,7 +125,7 @@ void
 zink_resource_setup_transfer_layouts(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst);
 
 bool
-zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usage, enum zink_queue queue);
+zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usage);
 
 bool
 zink_resource_has_usage_for_id(struct zink_resource *res, uint32_t id);

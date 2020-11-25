@@ -192,7 +192,7 @@ zink_clear(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct pipe_framebuffer_state *fb = &ctx->fb_state;
-   struct zink_batch *batch = zink_batch_g(ctx);
+   struct zink_batch *batch = &ctx->batch;
    bool needs_rp = false;
 
    if (scissor_state) {
@@ -364,7 +364,7 @@ zink_clear_texture(struct pipe_context *pctx,
    struct pipe_screen *pscreen = pctx->screen;
    struct u_rect region = zink_rect_from_box(box);
    bool needs_rp = !zink_blit_region_fills(region, pres->width0, pres->height0) || ctx->render_condition_active;
-   struct zink_batch *batch = zink_batch_g(ctx);
+   struct zink_batch *batch = &ctx->batch;
    struct pipe_surface *surf = NULL;
 
    if (res->aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
@@ -452,7 +452,7 @@ fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, i
    if (!zink_fb_clear_enabled(ctx, i))
       return;
    if (zink_resource(pres)->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
-      assert(!zink_batch_g(ctx)->in_rp);
+      assert(!ctx->batch.in_rp);
       if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.cbufs[i]))
          /* this will automatically trigger all the clears */
          zink_batch_rp(ctx);
@@ -469,7 +469,7 @@ fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, i
       zink_fb_clear_reset(ctx, i);
       return;
    } else {
-      assert(!zink_batch_g(ctx)->in_rp);
+      assert(!ctx->batch.in_rp);
       if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.zsbuf))
          /* this will automatically trigger all the clears */
          zink_batch_rp(ctx);

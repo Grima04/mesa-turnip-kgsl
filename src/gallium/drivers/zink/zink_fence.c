@@ -38,8 +38,8 @@ zink_fence_clear_resources(struct zink_screen *screen, struct zink_fence *fence)
    /* unref all used resources */
    set_foreach(fence->resources, entry) {
       struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
-      zink_batch_usage_unset(&obj->reads, !!fence->is_compute, fence->batch_id);
-      zink_batch_usage_unset(&obj->writes, !!fence->is_compute, fence->batch_id);
+      zink_batch_usage_unset(&obj->reads, fence->batch_id);
+      zink_batch_usage_unset(&obj->writes, fence->batch_id);
       zink_resource_object_reference(screen, &obj, NULL);
       _mesa_set_remove(fence->resources, entry);
    }
@@ -108,7 +108,7 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
                   uint64_t timeout_ns)
 {
    if (pctx && fence->deferred_ctx == pctx) {
-      zink_batch_g(zink_context(pctx))->has_work = true;
+      zink_context(pctx)->batch.has_work = true;
       /* this must be the current batch */
       pctx->flush(pctx, NULL, 0);
    }
@@ -146,7 +146,7 @@ zink_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *pfen
       return;
 
    if (fence->deferred_ctx) {
-      zink_batch_g(zink_context(pctx))->has_work = true;
+      zink_context(pctx)->batch.has_work = true;
       /* this must be the current batch */
       pctx->flush(pctx, NULL, 0);
    }

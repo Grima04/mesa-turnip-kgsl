@@ -140,12 +140,12 @@ struct zink_context {
    bool is_device_lost;
 
    uint32_t curr_batch; //the current batch id
-   struct zink_batch batches[2]; //gfx, compute
-   struct zink_fence *last_fence[2]; //gfx, compute; the last command buffer submitted
-   VkQueue queue;
-   struct hash_table batch_states[2]; //gfx, compute; submitted batch states
-   struct util_dynarray free_batch_states[2]; //gfx, compute; unused batch states
-   VkDeviceSize resource_size[2]; //gfx, compute; the accumulated size of resources in submitted buffers
+   struct zink_batch batch;
+   struct zink_fence *last_fence; //the last command buffer submitted
+   VkQueue queue; //gfx+compute
+   struct hash_table batch_states; //submitted batch states
+   struct util_dynarray free_batch_states; //unused batch states
+   VkDeviceSize resource_size; //the accumulated size of resources in submitted buffers
 
    struct pipe_constant_buffer ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_shader_buffer ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
@@ -238,25 +238,6 @@ zink_fb_clear_enabled(const struct zink_context *ctx, unsigned idx)
    return ctx->clears_enabled & (PIPE_CLEAR_COLOR0 << idx);
 }
 
-static inline struct zink_batch *
-zink_batch_queue(struct zink_context *ctx, enum zink_queue queue_type)
-{
-   assert(queue_type < ARRAY_SIZE(ctx->batches));
-   return &ctx->batches[queue_type];
-}
-
-static inline struct zink_batch *
-zink_batch_g(struct zink_context *ctx)
-{
-   return &ctx->batches[ZINK_QUEUE_GFX];
-}
-
-static inline struct zink_batch *
-zink_batch_c(struct zink_context *ctx)
-{
-   return &ctx->batches[ZINK_QUEUE_COMPUTE];
-}
-
 struct zink_batch *
 zink_batch_rp(struct zink_context *ctx);
 
@@ -267,13 +248,13 @@ void
 zink_fence_wait(struct pipe_context *ctx);
 
 void
-zink_wait_on_batch(struct zink_context *ctx, enum zink_queue queue, uint32_t batch_id);
+zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id);
 
 void
-zink_flush_queue(struct zink_context *ctx, enum zink_queue queue);
+zink_flush_queue(struct zink_context *ctx);
 
 void
-zink_maybe_flush_or_stall(struct zink_context *ctx, enum zink_queue queue);
+zink_maybe_flush_or_stall(struct zink_context *ctx);
 
 bool
 zink_resource_access_is_write(VkAccessFlags flags);

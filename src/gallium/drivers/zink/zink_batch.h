@@ -44,15 +44,9 @@ struct zink_resource;
 struct zink_sampler_view;
 struct zink_surface;
 
-enum zink_queue {
-   ZINK_QUEUE_GFX,
-   ZINK_QUEUE_COMPUTE,
-   ZINK_QUEUE_ANY,
-};
-
 struct zink_batch_usage {
    /* this has to be atomic for fence access, so we can't use a bitmask and make everything neat */
-   uint32_t usage[2]; //gfx, compute
+   uint32_t usage;
 };
 
 struct zink_batch_state {
@@ -81,7 +75,6 @@ struct zink_batch_state {
 
 struct zink_batch {
    struct zink_batch_state *state;
-   enum zink_queue queue;
 
    uint32_t last_batch_id;
 
@@ -103,7 +96,7 @@ void
 zink_clear_batch_state(struct zink_context *ctx, struct zink_batch_state *bs);
 
 void
-zink_batch_reset_all(struct zink_context *ctx, enum zink_queue queue);
+zink_batch_reset_all(struct zink_context *ctx);
 
 void
 zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs);
@@ -122,7 +115,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch);
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch);
 
-enum zink_queue
+void
 zink_batch_reference_resource_rw(struct zink_batch *batch,
                                  struct zink_resource *res,
                                  bool write);
@@ -148,15 +141,15 @@ bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds);
 
 void
-zink_batch_usage_set(struct zink_batch_usage *u, enum zink_queue queue, uint32_t batch_id);
+zink_batch_usage_set(struct zink_batch_usage *u, uint32_t batch_id);
 bool
-zink_batch_usage_matches(struct zink_batch_usage *u, enum zink_queue queue, uint32_t batch_id);
+zink_batch_usage_matches(struct zink_batch_usage *u, uint32_t batch_id);
 bool
 zink_batch_usage_exists(struct zink_batch_usage *u);
 
 static inline void
-zink_batch_usage_unset(struct zink_batch_usage *u, enum zink_queue queue, uint32_t batch_id)
+zink_batch_usage_unset(struct zink_batch_usage *u, uint32_t batch_id)
 {
-   p_atomic_cmpxchg(&u->usage[queue], batch_id, 0);
+   p_atomic_cmpxchg(&u->usage, batch_id, 0);
 }
 #endif
