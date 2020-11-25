@@ -863,7 +863,7 @@ load_patch_vertices_in(struct ac_shader_abi *abi)
 }
 
 
-static LLVMValueRef radv_load_base_vertex(struct ac_shader_abi *abi)
+static LLVMValueRef radv_load_base_vertex(struct ac_shader_abi *abi, bool non_indexed_is_zero)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	return ac_get_arg(&ctx->ac, ctx->args->ac.base_vertex);

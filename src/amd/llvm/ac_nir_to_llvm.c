@@ -3316,7 +3316,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    }
    case nir_intrinsic_load_base_vertex:
    case nir_intrinsic_load_first_vertex:
-      result = ctx->abi->load_base_vertex(ctx->abi);
+      result = ctx->abi->load_base_vertex(ctx->abi,
+                                          instr->intrinsic == nir_intrinsic_load_base_vertex);
       break;
    case nir_intrinsic_load_local_group_size:
       result = ctx->abi->load_local_group_size(ctx->abi);

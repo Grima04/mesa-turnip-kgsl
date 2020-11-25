@@ -145,7 +145,7 @@ struct ac_shader_abi {
 
    LLVMValueRef (*load_sample_mask_in)(struct ac_shader_abi *abi);
 
-   LLVMValueRef (*load_base_vertex)(struct ac_shader_abi *abi);
+   LLVMValueRef (*load_base_vertex)(struct ac_shader_abi *abi, bool non_indexed_is_zero);
 
    LLVMValueRef (*emit_fbfetch)(struct ac_shader_abi *abi);
 
