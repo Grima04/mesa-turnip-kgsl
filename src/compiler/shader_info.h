@@ -251,7 +251,7 @@ typedef struct shader_info {
          /** 1 .. MAX_GEOMETRY_SHADER_INVOCATIONS */
          uint8_t invocations;
 
-         /** The number of vertices recieves per input primitive (max. 6) */
+         /** The number of vertices received per input primitive (max. 6) */
          uint8_t vertices_in:3;
 
          /** Whether or not this shader uses EndPrimitive */
