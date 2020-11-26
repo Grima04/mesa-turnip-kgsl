@@ -81,7 +81,8 @@ TEST_F(ComputeTest, two_global_arrays)
       EXPECT_EQ(g1[i], expected[i]);
 }
 
-TEST_F(ComputeTest, i64tof32)
+/* Disabled until saturated conversions from f32->i64 fixed (mesa/mesa#3824) */
+TEST_F(ComputeTest, DISABLED_i64tof32)
 {
    const char *kernel_source =
    "__kernel void main_test(__global long *out, __constant long *in)\n\
