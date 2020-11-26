@@ -2372,7 +2372,7 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_buffer *buffer,
                          const VkBufferImageCopy *region)
 {
-   VkFormat vk_format = image->vk_format;
+   const VkFormat vk_format = image->vk_format;
    const struct v3dv_format *format = image->format;
 
    /* Format must be supported for texturing */
@@ -2410,6 +2410,11 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    if (width != image->extent.width || height != image->extent.height)
       return false;
 
+   const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
+   const uint32_t block_h = vk_format_get_blockheight(image->vk_format);
+   width = DIV_ROUND_UP(width, block_w);
+   height = DIV_ROUND_UP(height, block_h);
+
    const struct v3d_resource_slice *slice = &image->slices[mip_level];
 
    uint32_t num_layers;
@@ -2431,7 +2436,7 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
       uint32_t layer = region->imageSubresource.baseArrayLayer + i;
 
       struct drm_v3d_submit_tfu tfu = {
-         .ios = (height << 16) | width,
+         .ios = ((height * block_h) << 16) | (width * block_w),
          .bo_handles = {
             dst_bo->handle,
             src_bo != dst_bo ? src_bo->handle : 0
@@ -5304,6 +5309,9 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
    /* From the Vulkan 1.0 spec, vkCmdBlitImage valid usage */
    assert(dst->samples == VK_SAMPLE_COUNT_1_BIT &&
           src->samples == VK_SAMPLE_COUNT_1_BIT);
+
+   /* We don't export VK_FORMAT_FEATURE_BLIT_DST_BIT on compressed formats */
+   assert(!vk_format_is_compressed(dst->vk_format));
 
    for (uint32_t i = 0; i < regionCount; i++) {
       if (blit_tfu(cmd_buffer, dst, src, &pRegions[i], filter))

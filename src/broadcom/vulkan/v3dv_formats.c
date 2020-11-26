@@ -359,6 +359,13 @@ v3dv_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
    case TEXTURE_DATA_FORMAT_R32F:
    case TEXTURE_DATA_FORMAT_RG32F:
    case TEXTURE_DATA_FORMAT_RGBA32F:
+   case TEXTURE_DATA_FORMAT_RGB8_ETC2:
+   case TEXTURE_DATA_FORMAT_RGB8_PUNCHTHROUGH_ALPHA1:
+   case TEXTURE_DATA_FORMAT_RGBA8_ETC2_EAC:
+   case TEXTURE_DATA_FORMAT_R11_EAC:
+   case TEXTURE_DATA_FORMAT_SIGNED_R11_EAC:
+   case TEXTURE_DATA_FORMAT_RG11_EAC:
+   case TEXTURE_DATA_FORMAT_SIGNED_RG11_EAC:
       return true;
    default:
       return false;
