@@ -1155,7 +1155,10 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
       S_00B228_VGPRS((shader->config.num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
          S_00B228_FLOAT_MODE(shader->config.float_mode) | S_00B228_DX10_CLAMP(1) |
-         S_00B228_MEM_ORDERED(1) | S_00B228_WGP_MODE(1) |
+         S_00B228_MEM_ORDERED(1) |
+         /* Disable the WGP mode on gfx10.3 because it can hang. (it happened on VanGogh)
+          * Let's disable it on all chips that disable exactly 1 CU per SA for GS. */
+         S_00B228_WGP_MODE(sscreen->info.chip_class == GFX10) |
          S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt));
    si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
                   S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0) |
