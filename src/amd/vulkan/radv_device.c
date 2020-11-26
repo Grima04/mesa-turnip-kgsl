@@ -2836,6 +2836,12 @@ VkResult radv_CreateDevice(
 			abort();
 		}
 
+		if (device->physical_device->rad_info.chip_class > GFX10) {
+			fprintf(stderr, "radv: Thread trace is not supported "
+					"for that GPU!\n");
+			exit(1);
+		}
+
 		/* Default buffer size set to 1MB per SE. */
 		device->thread_trace_buffer_size =
 			radv_get_int_debug_option("RADV_THREAD_TRACE_BUFFER_SIZE", 1024 * 1024);
