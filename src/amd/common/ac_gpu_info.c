@@ -930,8 +930,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->num_physical_sgprs_per_simd = 128 * info->max_wave64_per_simd;
       info->min_sgpr_alloc = 128;
       info->sgpr_alloc_granularity = 128;
-      /* Don't use late alloc on small chips. */
-      info->use_late_alloc = info->max_render_backends > 4;
+      info->use_late_alloc = true; /* APUs benefit too. */
    } else if (info->chip_class >= GFX8) {
       info->num_physical_sgprs_per_simd = 800;
       info->min_sgpr_alloc = 16;
