@@ -137,7 +137,9 @@ else
   driver_i915 = declare_dependency()
 endif
 if with_gallium_svga
-  subdir('winsys/svga/drm')
+  if not with_platform_windows
+     subdir('winsys/svga/drm')
+  endif
   subdir('drivers/svga')
 else
   driver_svga = declare_dependency()
