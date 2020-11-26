@@ -1747,6 +1747,7 @@ radv_llvm_export_vs(struct radv_shader_context *ctx,
 		    bool export_clip_dists)
 {
 	LLVMValueRef psize_value = NULL, layer_value = NULL, viewport_value = NULL;
+	LLVMValueRef primitive_shading_rate = NULL;
 	struct ac_export_args pos_args[4] = {0};
 	unsigned pos_idx, index;
 	int i;
@@ -1766,6 +1767,9 @@ radv_llvm_export_vs(struct radv_shader_context *ctx,
 			break;
 		case VARYING_SLOT_VIEWPORT:
 			viewport_value = outputs[i].values[0];
+			break;
+		case VARYING_SLOT_PRIMITIVE_SHADING_RATE:
+			primitive_shading_rate = outputs[i].values[0];
 			break;
 		case VARYING_SLOT_CLIP_DIST0:
 		case VARYING_SLOT_CLIP_DIST1:
@@ -1794,8 +1798,11 @@ radv_llvm_export_vs(struct radv_shader_context *ctx,
 
 	if (outinfo->writes_pointsize ||
 	    outinfo->writes_layer ||
-	    outinfo->writes_viewport_index) {
+	    outinfo->writes_layer ||
+	    outinfo->writes_viewport_index ||
+	    outinfo->writes_primitive_shading_rate) {
 		pos_args[1].enabled_channels = ((outinfo->writes_pointsize == true ? 1 : 0) |
+						(outinfo->writes_primitive_shading_rate == true ? 2 : 0) |
 						(outinfo->writes_layer == true ? 4 : 0));
 		pos_args[1].valid_mask = 0;
 		pos_args[1].done = 0;
@@ -1829,6 +1836,38 @@ radv_llvm_export_vs(struct radv_shader_context *ctx,
 				pos_args[1].out[3] = viewport_value;
 				pos_args[1].enabled_channels |= 1 << 3;
 			}
+		}
+
+		if (outinfo->writes_primitive_shading_rate) {
+			LLVMValueRef v = ac_to_integer(&ctx->ac, primitive_shading_rate);
+			LLVMValueRef cond;
+
+			/* xRate = (shadingRate & (Horizontal2Pixels | Horizontal4Pixels)) ? 0x1 : 0x0; */
+			LLVMValueRef x_rate =
+				LLVMBuildAnd(ctx->ac.builder, v,
+					     LLVMConstInt(ctx->ac.i32, 4 | 8, false), "");
+			cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntNE, x_rate, ctx->ac.i32_0, "");
+			x_rate = LLVMBuildSelect(ctx->ac.builder, cond,
+						 ctx->ac.i32_1, ctx->ac.i32_0, "");
+
+			/* yRate = (shadingRate & (Vertical2Pixels | Vertical4Pixels)) ? 0x1 : 0x0; */
+			LLVMValueRef y_rate =
+				LLVMBuildAnd(ctx->ac.builder, v,
+					     LLVMConstInt(ctx->ac.i32, 1 | 2, false), "");
+			cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntNE, y_rate, ctx->ac.i32_0, "");
+			y_rate = LLVMBuildSelect(ctx->ac.builder, cond,
+						 ctx->ac.i32_1, ctx->ac.i32_0, "");
+
+			/* Bits [2:3] = VRS rate X
+			 * Bits [4:5] = VRS rate Y
+			 * HW shading rate = (xRate << 2) | (yRate << 4)
+			 */
+			v = LLVMBuildOr(ctx->ac.builder,
+					LLVMBuildShl(ctx->ac.builder, x_rate,
+						      LLVMConstInt(ctx->ac.i32, 2, false), ""),
+					LLVMBuildShl(ctx->ac.builder, y_rate,
+						      LLVMConstInt(ctx->ac.i32, 4, false), ""), "");
+			pos_args[1].out[1] = ac_to_float(&ctx->ac, v);
 		}
 	}
 

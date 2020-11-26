@@ -3304,6 +3304,30 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    return LLVMBuildBitCast(ctx->ac.builder, result, dest_type, "");
 }
 
+static LLVMValueRef
+emit_load_frag_shading_rate(struct ac_nir_context *ctx)
+{
+   LLVMValueRef x_rate, y_rate, cond;
+
+   /* VRS Rate X = Ancillary[2:3]
+    * VRS Rate Y = Ancillary[4:5]
+    */
+   x_rate = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ancillary), 2, 2);
+   y_rate = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ancillary), 4, 2);
+
+   /* xRate = xRate == 0x1 ? Horizontal2Pixels : None. */
+   cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, x_rate, ctx->ac.i32_1, "");
+   x_rate = LLVMBuildSelect(ctx->ac.builder, cond,
+                            LLVMConstInt(ctx->ac.i32, 4, false), ctx->ac.i32_0, "");
+
+   /* yRate = yRate == 0x1 ? Vertical2Pixels : None. */
+   cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, y_rate, ctx->ac.i32_1, "");
+   y_rate = LLVMBuildSelect(ctx->ac.builder, cond,
+                            LLVMConstInt(ctx->ac.i32, 1, false), ctx->ac.i32_0, "");
+
+   return LLVMBuildOr(ctx->ac.builder, x_rate, y_rate, "");
+}
+
 static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
    LLVMValueRef result = NULL;
@@ -3405,6 +3429,9 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
       break;
    }
+   case nir_intrinsic_load_frag_shading_rate:
+      result = emit_load_frag_shading_rate(ctx);
+      break;
    case nir_intrinsic_load_layer_id:
       result = ctx->abi->inputs[ac_llvm_reg_index_soa(VARYING_SLOT_LAYER, 0)];
       break;
