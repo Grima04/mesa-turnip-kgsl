@@ -19,9 +19,14 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+clang_ver_dir = dep_clang.version()
+if clang_ver_dir.endswith('git')
+  clang_ver_dir = clang_ver_dir.substring(0, -3)
+endif
+
 clang_resource_dir = join_paths(
   dep_clang.get_variable(cmake: 'CLANG_INCLUDE_DIRS'), '..',
-  'lib', 'clang', dep_clang.version(), 'include'
+  'lib', 'clang', clang_ver_dir, 'include'
 )
 
 opencl_c_h = custom_target(
