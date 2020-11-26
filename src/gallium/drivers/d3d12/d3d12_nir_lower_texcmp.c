@@ -25,7 +25,7 @@
 #include "nir_builder.h"
 #include "nir_builtin_builder.h"
 
-bool
+static bool
 lower_sample_tex_compare_filter(const nir_instr *instr,
                                 UNUSED const void *_options)
 {

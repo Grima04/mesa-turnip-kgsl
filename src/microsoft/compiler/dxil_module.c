@@ -64,7 +64,7 @@ dxil_module_release(struct dxil_module *m)
    dxil_buffer_finish(&m->buf);
 }
 
-bool
+static bool
 emit_bits64(struct dxil_buffer *b, uint64_t data, unsigned width)
 {
    if (data > UINT32_MAX) {
@@ -1996,7 +1996,7 @@ emit_undef_value(struct dxil_module *m)
    return emit_record_no_abbrev(&m->buf, CST_CODE_UNDEF, NULL, 0);
 }
 
-uint64_t
+static uint64_t
 encode_signed(int64_t value)
 {
    return value >= 0 ?
@@ -2104,7 +2104,7 @@ emit_consts(struct dxil_module *m)
    return true;
 }
 
-bool
+static bool
 emit_module_consts(struct dxil_module *m)
 {
    return enter_subblock(m, DXIL_CONST_BLOCK, 4) &&
@@ -2988,7 +2988,7 @@ emit_cast(struct dxil_module *m, struct dxil_instr *instr)
                                   data, ARRAY_SIZE(data));
 }
 
-bool
+static bool
 emit_branch(struct dxil_module *m, struct dxil_instr *instr)
 {
    assert(instr->type == INSTR_BR);
@@ -3014,7 +3014,7 @@ emit_branch(struct dxil_module *m, struct dxil_instr *instr)
                                 data, ARRAY_SIZE(data));
 }
 
-bool
+static bool
 emit_phi(struct dxil_module *m, struct dxil_instr *instr)
 {
    assert(instr->type == INSTR_PHI);

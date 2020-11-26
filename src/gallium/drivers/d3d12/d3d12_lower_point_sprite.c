@@ -24,6 +24,7 @@
 #include "nir.h"
 #include "nir_builder.h"
 #include "d3d12_compiler.h"
+#include "d3d12_nir_passes.h"
 #include "program/prog_statevars.h"
 
 struct lower_state {

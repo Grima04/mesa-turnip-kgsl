@@ -417,7 +417,7 @@ lower_store_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
    return true;
 }
 
-void
+static void
 lower_load_vec32(nir_builder *b, nir_ssa_def *index, unsigned num_comps, nir_ssa_def **comps, nir_intrinsic_op op)
 {
    for (unsigned i = 0; i < num_comps; i++) {
@@ -719,7 +719,7 @@ dxil_nir_lower_ubo_to_temp(nir_shader *nir)
    return progress;
 }
 
-bool
+static bool
 lower_load_ubo(nir_builder *b, nir_intrinsic_instr *intr)
 {
    assert(intr->dest.is_ssa);
@@ -788,6 +788,7 @@ dxil_nir_lower_loads_stores_to_dxil(nir_shader *nir)
    return progress;
 }
 
+static bool
 lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr,
                     nir_intrinsic_op dxil_op)
 {

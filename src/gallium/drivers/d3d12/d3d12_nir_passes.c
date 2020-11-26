@@ -580,7 +580,7 @@ d3d12_create_bare_samplers(nir_shader *nir)
    }
 }
 
-bool
+static bool
 lower_bool_input_filter(const nir_instr *instr,
                         UNUSED const void *_options)
 {
@@ -779,7 +779,7 @@ d3d12_fix_io_uint_type(struct nir_shader *s, uint64_t in_mask, uint64_t out_mask
    return progress;
 }
 
-bool
+static bool
 lower_load_ubo_packed_filter(const nir_instr *instr,
                              UNUSED const void *_options) {
    if (instr->type != nir_instr_type_intrinsic)

@@ -1996,7 +1996,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    }
 }
 
-const struct dxil_value *
+static const struct dxil_value *
 load_ubo(struct ntd_context *ctx, const struct dxil_value *handle,
          const struct dxil_value *offset, enum overload_type overload)
 {
@@ -4031,7 +4031,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
           dxil_emit_module(&ctx->mod);
 }
 
-unsigned int
+static unsigned int
 get_dxil_shader_kind(struct nir_shader *s)
 {
    switch (s->info.stage) {
