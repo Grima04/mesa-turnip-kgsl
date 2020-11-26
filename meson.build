@@ -1371,9 +1371,12 @@ else
   dep_clock = cc.find_library('rt')
 endif
 
-# TODO: some of these may be conditional
-dep_zlib = dependency('zlib', version : '>= 1.2.3', fallback : ['zlib', 'zlib_dep'])
-pre_args += '-DHAVE_ZLIB'
+dep_zlib = dependency('zlib', version : '>= 1.2.3',
+                      fallback : ['zlib', 'zlib_dep'],
+                      required : get_option('zlib'))
+if dep_zlib.found()
+  pre_args += '-DHAVE_ZLIB'
+endif
 
 _zstd = get_option('zstd')
 if _zstd == 'true'

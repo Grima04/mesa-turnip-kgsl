@@ -442,6 +442,12 @@ option(
   description : 'Use ZSTD instead of ZLIB in some cases.'
 )
 option(
+   'zlib',
+   type : 'feature',
+   value : 'enabled',
+   description : 'Use ZLIB to build driver. Default: enabled'
+)
+option(
   'sse2',
   type : 'boolean',
   value : true,
