@@ -24,7 +24,7 @@
 #ifndef D3D12_COMPILER_H
 #define D3D12_COMPILER_H
 
-#include "d3d12_context.h"
+#include "dxil_nir_lower_int_samplers.h"
 
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
@@ -39,6 +39,16 @@ struct pipe_screen;
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+enum d3d12_state_var {
+   D3D12_STATE_VAR_Y_FLIP = 0,
+   D3D12_STATE_VAR_PT_SPRITE,
+   D3D12_STATE_VAR_FIRST_VERTEX,
+   D3D12_STATE_VAR_DEPTH_TRANSFORM,
+   D3D12_MAX_STATE_VARS
+};
+
+#define D3D12_MAX_POINT_SIZE 255.0f
 
 struct d3d12_validation_tools *d3d12_validator_create();
 
@@ -169,6 +179,7 @@ struct d3d12_shader_selector {
    struct d3d12_gs_variant_key gs_key;
 };
 
+struct d3d12_context;
 
 struct d3d12_shader_selector *
 d3d12_create_shader(struct d3d12_context *ctx,

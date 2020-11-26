@@ -40,7 +40,6 @@
 #include <d3d12.h>
 
 #define D3D12_GFX_SHADER_STAGES (PIPE_SHADER_TYPES - 1)
-#define D3D12_MAX_POINT_SIZE 255.0f
 
 enum d3d12_dirty_flags
 {
@@ -86,14 +85,6 @@ enum d3d12_binding_type {
    D3D12_BINDING_SAMPLER,
    D3D12_BINDING_STATE_VARS,
    D3D12_NUM_BINDING_TYPES
-};
-
-enum d3d12_state_var {
-   D3D12_STATE_VAR_Y_FLIP = 0,
-   D3D12_STATE_VAR_PT_SPRITE,
-   D3D12_STATE_VAR_FIRST_VERTEX,
-   D3D12_STATE_VAR_DEPTH_TRANSFORM,
-   D3D12_MAX_STATE_VARS
 };
 
 enum resource_dimension
