@@ -91,3 +91,6 @@ class Version:
         return ("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_"
                 + str(self.struct_version[0]) + "_" + str(self.struct_version[1])
                 + '_' + struct)
+
+# Type aliases
+Layer = Extension
