@@ -448,7 +448,6 @@ arm64_test:
   stage: container
   variables:
     GIT_STRATEGY: fetch # we do actually need the full repository though
-  timeout: 4h # LLVM takes ages
   tags:
     - windows
     - shell
