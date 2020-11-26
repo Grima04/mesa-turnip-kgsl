@@ -172,6 +172,9 @@ init_texture(struct d3d12_screen *screen,
       desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
       desc.DepthOrArraySize = templ->depth0;
       break;
+
+   default:
+      unreachable("Invalid texture type");
    }
 
    desc.Flags = D3D12_RESOURCE_FLAG_NONE;

@@ -134,6 +134,9 @@ initialize_dsv(struct pipe_context *pctx,
       desc.Texture2DArray.FirstArraySlice = tpl->u.tex.first_layer;
       desc.Texture2DArray.ArraySize = tpl->u.tex.last_layer - tpl->u.tex.first_layer + 1;
       break;
+
+   default:
+      unreachable("Unhandled DSV dimension");
    }
 
    d3d12_descriptor_pool_alloc_handle(ctx->dsv_pool, handle);
@@ -208,6 +211,9 @@ initialize_rtv(struct pipe_context *pctx,
       desc.Texture3D.FirstWSlice = tpl->u.tex.first_layer;
       desc.Texture3D.WSize = tpl->u.tex.last_layer - tpl->u.tex.first_layer + 1;
       break;
+
+   default:
+      unreachable("Unhandled RTV dimension");
    }
 
    d3d12_descriptor_pool_alloc_handle(ctx->rtv_pool, handle);

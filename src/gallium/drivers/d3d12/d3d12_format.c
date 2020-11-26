@@ -285,9 +285,10 @@ d3d12_non_opaque_plane_count(DXGI_FORMAT format)
    case DXGI_FORMAT_Y216:
    case DXGI_FORMAT_NV11:
       return 2;
-   }
 
-   return 1;
+   default:
+      return 1;
+   }
 }
 
 unsigned

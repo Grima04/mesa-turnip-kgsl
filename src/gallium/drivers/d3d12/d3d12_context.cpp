@@ -904,6 +904,8 @@ d3d12_create_sampler_view(struct pipe_context *pctx,
       desc.Buffer.StructureByteStride = 0;
       desc.Buffer.NumElements = texture->width0 / util_format_get_blocksize(state->format);
       break;
+   default:
+      unreachable("Invalid SRV dimension");
    }
 
    d3d12_descriptor_pool_alloc_handle(ctx->view_pool, &sampler_view->handle);
