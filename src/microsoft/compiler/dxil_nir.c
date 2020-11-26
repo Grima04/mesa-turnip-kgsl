@@ -283,7 +283,7 @@ lower_load_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
    b->cursor = nir_before_instr(&intr->instr);
 
    nir_ssa_def *buffer = intr->src[0].ssa;
-   nir_ssa_def *offset = nir_iand(b, intr->src[1].ssa, nir_imm_int(b, ~3UL));
+   nir_ssa_def *offset = nir_iand(b, intr->src[1].ssa, nir_imm_int(b, ~3));
    unsigned bit_size = nir_dest_bit_size(intr->dest);
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned num_bits = num_components * bit_size;
@@ -349,7 +349,7 @@ lower_store_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
 
    nir_ssa_def *val = intr->src[0].ssa;
    nir_ssa_def *buffer = intr->src[1].ssa;
-   nir_ssa_def *offset = nir_iand(b, intr->src[2].ssa, nir_imm_int(b, ~3UL));
+   nir_ssa_def *offset = nir_iand(b, intr->src[2].ssa, nir_imm_int(b, ~3));
 
    unsigned bit_size = val->bit_size;
    unsigned num_components = val->num_components;

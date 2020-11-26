@@ -94,14 +94,14 @@ resolve_supported(const struct pipe_blit_info *info)
       return false;
 
    // can only resolve full subresource
-   if (info->src.box.width != u_minify(info->src.resource->width0,
-                                       info->src.level) ||
-       info->src.box.height != u_minify(info->src.resource->height0,
-                                        info->src.level) ||
-       info->dst.box.width != u_minify(info->dst.resource->width0,
-                                           info->dst.level) ||
-       info->dst.box.height != u_minify(info->dst.resource->height0,
-                                            info->dst.level))
+   if (info->src.box.width != (int)u_minify(info->src.resource->width0,
+                                            info->src.level) ||
+       info->src.box.height != (int)u_minify(info->src.resource->height0,
+                                             info->src.level) ||
+       info->dst.box.width != (int)u_minify(info->dst.resource->width0,
+                                            info->dst.level) ||
+       info->dst.box.height != (int)u_minify(info->dst.resource->height0,
+                                             info->dst.level))
       return false;
 
    return true;
@@ -233,12 +233,12 @@ direct_copy_supported(struct d3d12_screen *screen,
       if (info->src.box.x != 0 ||
           info->src.box.y != 0 ||
           info->src.box.z != 0 ||
-          info->src.box.width != u_minify(info->src.resource->width0,
-                                          info->src.level) ||
-          info->src.box.height != u_minify(info->src.resource->height0,
-                                           info->src.level) ||
-          info->src.box.depth != u_minify(info->src.resource->depth0,
-                                          info->src.level))
+          info->src.box.width != (int)u_minify(info->src.resource->width0,
+                                               info->src.level) ||
+          info->src.box.height != (int)u_minify(info->src.resource->height0,
+                                                info->src.level) ||
+          info->src.box.depth != (int)u_minify(info->src.resource->depth0,
+                                               info->src.level))
          return false;
    }
 
@@ -323,9 +323,9 @@ copy_subregion_no_barriers(struct d3d12_context *ctx,
       dst_loc.pResource = d3d12_resource_resource(dst);
 
       if (psrc_box->x == 0 && psrc_box->y == 0 && psrc_box->z == 0 &&
-          psrc_box->width == u_minify(src->base.width0, src_level) &&
-          psrc_box->height == u_minify(src->base.height0, src_level) &&
-          psrc_box->depth == u_minify(src->base.depth0, src_level)) {
+          psrc_box->width == (int)u_minify(src->base.width0, src_level) &&
+          psrc_box->height == (int)u_minify(src->base.height0, src_level) &&
+          psrc_box->depth == (int)u_minify(src->base.depth0, src_level)) {
 
          assert((dstx == 0 && dsty == 0 && dstz == 0) ||
                 screen->opts2.ProgrammableSamplePositionsTier !=
@@ -341,9 +341,9 @@ copy_subregion_no_barriers(struct d3d12_context *ctx,
       } else {
          D3D12_BOX src_box;
          src_box.left = psrc_box->x;
-         src_box.right = MIN2(psrc_box->x + psrc_box->width, u_minify(src->base.width0, src_level));
+         src_box.right = MIN2(psrc_box->x + psrc_box->width, (int)u_minify(src->base.width0, src_level));
          src_box.top = psrc_box->y;
-         src_box.bottom = MIN2(psrc_box->y + psrc_box->height, u_minify(src->base.height0, src_level));
+         src_box.bottom = MIN2(psrc_box->y + psrc_box->height, (int)u_minify(src->base.height0, src_level));
          src_box.front = src_z;
          src_box.back = src_z + psrc_box->depth;
 

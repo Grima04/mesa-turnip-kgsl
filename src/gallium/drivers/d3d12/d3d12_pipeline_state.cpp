@@ -261,7 +261,7 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
    pso_desc.PrimitiveTopologyType = topology_type(reduced_prim);
 
    pso_desc.NumRenderTargets = state->num_cbufs;
-   for (int i = 0; i < state->num_cbufs; ++i)
+   for (unsigned i = 0; i < state->num_cbufs; ++i)
       pso_desc.RTVFormats[i] = d3d12_rtv_format(ctx, i);
    pso_desc.DSVFormat = state->dsv_format;
 

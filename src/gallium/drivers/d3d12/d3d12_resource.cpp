@@ -73,7 +73,7 @@ resource_is_busy(struct d3d12_context *ctx,
 {
    bool busy = false;
 
-   for (int i = 0; i < ARRAY_SIZE(ctx->batches); i++)
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->batches); i++)
       busy |= d3d12_batch_has_references(&ctx->batches[i], res->bo);
 
    return busy;

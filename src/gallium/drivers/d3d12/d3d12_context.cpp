@@ -62,7 +62,7 @@ d3d12_context_destroy(struct pipe_context *pctx)
 
    util_blitter_destroy(ctx->blitter);
    d3d12_end_batch(ctx, d3d12_current_batch(ctx));
-   for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
       d3d12_destroy_batch(ctx, &ctx->batches[i]);
    ctx->cmdlist->Release();
    ctx->cmdqueue_fence->Release();
@@ -1432,7 +1432,7 @@ d3d12_disable_fake_so_buffers(struct d3d12_context *ctx)
 
    d3d12_flush_cmdlist_and_wait(ctx);
 
-   for (int i = 0; i < ctx->gfx_pipeline_state.num_so_targets; ++i) {
+   for (unsigned i = 0; i < ctx->gfx_pipeline_state.num_so_targets; ++i) {
       struct d3d12_stream_output_target *target = (struct d3d12_stream_output_target *)ctx->so_targets[i];
       struct d3d12_stream_output_target *fake_target = (struct d3d12_stream_output_target *)ctx->fake_so_targets[i];
       uint64_t filled_size;
@@ -1471,7 +1471,7 @@ d3d12_disable_fake_so_buffers(struct d3d12_context *ctx)
       ctx->fake_so_buffer_views[i].SizeInBytes = 0;
 
       /* Make sure the buffer is not copied twice */
-      for (int j = i + 1; j <= ctx->gfx_pipeline_state.num_so_targets; ++j) {
+      for (unsigned j = i + 1; j <= ctx->gfx_pipeline_state.num_so_targets; ++j) {
          if (ctx->so_targets[j] && ctx->so_targets[j]->buffer == target->base.buffer)
             pipe_so_target_reference(&ctx->fake_so_targets[j], NULL);
       }
@@ -1577,7 +1577,9 @@ d3d12_clear_render_target(struct pipe_context *pctx,
          clear_color[c] = color->f[c];
    }
 
-   D3D12_RECT rect = { dstx, dsty, dstx + width, dsty + height };
+   D3D12_RECT rect = { (int)dstx, (int)dsty,
+                       (int)dstx + (int)width,
+                       (int)dsty + (int)height };
    ctx->cmdlist->ClearRenderTargetView(surf->desc_handle.cpu_handle,
                                        color->f, 1, &rect);
 
@@ -1616,7 +1618,9 @@ d3d12_clear_depth_stencil(struct pipe_context *pctx,
                                    D3D12_RESOURCE_STATE_DEPTH_WRITE);
    d3d12_apply_resource_states(ctx);
 
-   D3D12_RECT rect = { dstx, dsty, dstx + width, dsty + height };
+   D3D12_RECT rect = { (int)dstx, (int)dsty,
+                       (int)dstx + (int)width,
+                       (int)dsty + (int)height };
    ctx->cmdlist->ClearDepthStencilView(surf->desc_handle.cpu_handle, flags,
                                        depth, stencil, 1, &rect);
 
@@ -1943,7 +1947,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       return NULL;
    }
 
-   for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
       if (!d3d12_init_batch(ctx, &ctx->batches[i])) {
          FREE(ctx);
          return NULL;

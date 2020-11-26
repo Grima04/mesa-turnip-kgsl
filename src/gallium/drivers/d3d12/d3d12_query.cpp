@@ -186,7 +186,7 @@ accumulate_result(struct d3d12_context *ctx, struct d3d12_query *q,
    D3D12_QUERY_DATA_SO_STATISTICS *results_so = (D3D12_QUERY_DATA_SO_STATISTICS *)results;
 
    util_query_clear_result(result, q->type);
-   for (int i = 0; i < q->curr_query; ++i) {
+   for (unsigned i = 0; i < q->curr_query; ++i) {
       switch (q->type) {
       case PIPE_QUERY_OCCLUSION_PREDICATE:
       case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
