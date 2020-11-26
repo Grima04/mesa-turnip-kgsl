@@ -441,3 +441,9 @@ option(
   value : 'auto',
   description : 'Use ZSTD instead of ZLIB in some cases.'
 )
+option(
+  'sse2',
+  type : 'boolean',
+  value : true,
+  description : 'use msse2 flag for mingw x86. Default: true',
+)
