@@ -769,7 +769,7 @@ get_front_bo(struct dri2_egl_surface *dri2_surf, unsigned int format)
                                               dri2_surf->base.Height,
                                               format,
                                               0,
-                                              dri2_surf);
+                                              NULL);
       if (!dri2_surf->dri_image_front) {
          _eglLog(_EGL_WARNING, "dri2_image_front allocation failed");
          return -1;
