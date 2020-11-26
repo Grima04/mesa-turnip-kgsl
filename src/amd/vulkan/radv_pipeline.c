@@ -5787,7 +5787,7 @@ VkResult radv_GetPipelineExecutableStatisticsKHR(
 
 	if (shader->statistics) {
 		for (unsigned i = 0; i < shader->statistics->count; i++) {
-			struct aco_compiler_statistic_info *info = &shader->statistics->infos[i];
+			const struct aco_compiler_statistic_info *info = &shader->statistics->infos[i];
 			uint32_t value = shader->statistics->values[i];
 			if (s < end) {
 				desc_copy(s->name, info->name);
