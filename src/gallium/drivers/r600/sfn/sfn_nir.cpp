@@ -822,12 +822,9 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, r600_nir_lower_int_tg4);
    NIR_PASS_V(sel->nir, r600_nir_lower_pack_unpack_2x16);
 
-   NIR_PASS_V(sel->nir, nir_lower_io, nir_var_uniform, r600_glsl_type_size,
-              nir_lower_io_lower_64bit_to_32);
-
-   nir_variable_mode io_modes = (nir_variable_mode)0;
+   nir_variable_mode io_modes = nir_var_uniform;
    if (sel->nir->info.stage != MESA_SHADER_VERTEX)
-      io_modes = nir_var_shader_in;
+      io_modes |= nir_var_shader_in;
 
    if (sel->nir->info.stage != MESA_SHADER_FRAGMENT)
       io_modes |= nir_var_shader_out;
