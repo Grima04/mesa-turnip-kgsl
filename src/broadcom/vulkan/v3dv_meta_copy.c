@@ -3902,12 +3902,6 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    if (vk_format_is_depth_or_stencil(vk_format))
       return false;
 
-#if 0
-   /* FIXME: Only 2D images? */
-   if (dst->type == VK_IMAGE_TYPE_2D || src->type == VK_IMAGE_TYPE_2D)
-      return false;
-#endif
-
    /* Destination can't be raster format */
    const uint32_t dst_mip_level = region->dstSubresource.mipLevel;
    if (dst->slices[dst_mip_level].tiling == VC5_TILING_RASTER)
