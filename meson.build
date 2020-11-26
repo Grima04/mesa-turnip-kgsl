@@ -1685,7 +1685,7 @@ if host_machine.system() == 'windows'
     # _fileno functions)
     prog_flex = [prog_flex, '--wincompat', '-D__STDC_VERSION__=199901']
   else
-    prog_flex = [find_program('lex', 'flex', required : with_any_opengl)]
+    prog_flex = [find_program('flex', 'lex', required : with_any_opengl)]
   endif
   # Force flex to use const keyword in prototypes, as relies on __cplusplus or
   # __STDC__ macro to determine whether it's safe to use const keyword, but
@@ -1694,7 +1694,7 @@ if host_machine.system() == 'windows'
 
   prog_bison = find_program('win_bison', required : false)
   if not prog_bison.found()
-    prog_bison = find_program('yacc', 'bison', required : with_any_opengl)
+    prog_bison = find_program('bison', 'yacc', required : with_any_opengl)
   endif
 else
   prog_bison = find_program('bison', required : with_any_opengl)
