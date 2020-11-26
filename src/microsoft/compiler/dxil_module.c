@@ -30,6 +30,7 @@
 #include "util/rb_tree.h"
 
 #include <assert.h>
+#include <stdio.h>
 
 void
 dxil_module_init(struct dxil_module *m, void *ralloc_ctx)
@@ -811,11 +812,11 @@ dxil_module_get_res_type(struct dxil_module *m, enum dxil_resource_kind kind,
       const struct dxil_type *component_type = dxil_module_get_type_from_comp_type(m, comp_type);
       const struct dxil_type *vec_type = dxil_module_get_vector_type(m, component_type, 4);
       char class_name[64] = { 0 };
-      sprintf_s(class_name, 64, "class.%s%s<vector<%s, 4>%s>",
-                readwrite ? "RW" : "",
-                get_res_dimension_type_name(kind),
-                get_res_comp_type_name(comp_type),
-                get_res_ms_postfix(kind));
+      snprintf(class_name, 64, "class.%s%s<vector<%s, 4>%s>",
+               readwrite ? "RW" : "",
+               get_res_dimension_type_name(kind),
+               get_res_comp_type_name(comp_type),
+               get_res_ms_postfix(kind));
       return dxil_module_get_struct_type(m, class_name, &vec_type, 1);
    }
 

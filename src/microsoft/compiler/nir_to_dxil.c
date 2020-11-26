@@ -4019,7 +4019,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
    }
 
    if (ctx->mod.feats.native_low_precision)
-      ctx->mod.minor_version = max(ctx->mod.minor_version, 2);
+      ctx->mod.minor_version = MAX2(ctx->mod.minor_version, 2);
 
    return emit_metadata(ctx, s) &&
           dxil_emit_module(&ctx->mod);

@@ -304,7 +304,7 @@ copy_subregion_no_barriers(struct d3d12_context *ctx,
    }
 
    static_assert(PIPE_MASK_S == 0x20 && PIPE_MASK_Z == 0x10, "unexpected ZS format mask");
-   int nsubres = min(src_nres, dst_nres);
+   int nsubres = MIN2(src_nres, dst_nres);
    unsigned subresource_copy_mask = nsubres > 1 ? mask >> 4 : 1;
 
    for (int subres = 0; subres < nsubres; ++subres) {
