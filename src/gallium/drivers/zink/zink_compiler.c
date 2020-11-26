@@ -267,7 +267,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
     */
    if (nir->num_uniforms)
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
-   NIR_PASS_V(nir, nir_lower_ubo_vec4);
    NIR_PASS_V(nir, nir_lower_clip_halfz);
    if (nir->info.stage < MESA_SHADER_FRAGMENT)
       have_psiz = check_psiz(nir);

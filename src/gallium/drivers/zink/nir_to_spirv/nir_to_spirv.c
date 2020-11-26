@@ -1614,54 +1614,6 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
-emit_load_ubo_vec4(struct ntv_context *ctx, nir_intrinsic_instr *intr)
-{
-   ASSERTED nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
-   assert(const_block_index); // no dynamic indexing for now
-
-   SpvId offset = get_src(ctx, &intr->src[1]);
-   SpvId uvec4_type = get_uvec_type(ctx, 32, 4);
-   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
-                                                   SpvStorageClassUniform,
-                                                   uvec4_type);
-
-   SpvId member = emit_uint_const(ctx, 32, 0);
-   SpvId offsets[] = { member, offset };
-   SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
-                                               ctx->ubos[const_block_index->u32],
-                                               offsets, ARRAY_SIZE(offsets));
-   SpvId result = spirv_builder_emit_load(&ctx->builder, uvec4_type, ptr);
-
-   SpvId type = get_dest_uvec_type(ctx, &intr->dest);
-   unsigned num_components = nir_dest_num_components(intr->dest);
-   if (num_components == 1) {
-      uint32_t components[] = { 0 };
-      result = spirv_builder_emit_composite_extract(&ctx->builder,
-                                                    type,
-                                                    result, components,
-                                                    1);
-   } else if (num_components < 4) {
-      SpvId constituents[num_components];
-      SpvId uint_type = spirv_builder_type_uint(&ctx->builder, 32);
-      for (uint32_t i = 0; i < num_components; ++i)
-         constituents[i] = spirv_builder_emit_composite_extract(&ctx->builder,
-                                                                uint_type,
-                                                                result, &i,
-                                                                1);
-
-      result = spirv_builder_emit_composite_construct(&ctx->builder,
-                                                      type,
-                                                      constituents,
-                                                      num_components);
-   }
-
-   if (nir_dest_bit_size(intr->dest) == 1)
-      result = uvec_to_bvec(ctx, result, num_components);
-
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
-}
-
-static void
 emit_discard(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    assert(ctx->block_started);
@@ -1811,10 +1763,6 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    switch (intr->intrinsic) {
    case nir_intrinsic_load_ubo:
       emit_load_ubo(ctx, intr);
-      break;
-
-   case nir_intrinsic_load_ubo_vec4:
-      emit_load_ubo_vec4(ctx, intr);
       break;
 
    case nir_intrinsic_discard:
