@@ -58,6 +58,8 @@ struct zink_gfx_pipeline_state {
 
    bool primitive_restart;
 
+   VkShaderModule modules[PIPE_SHADER_TYPES - 1];
+
    /* Pre-hashed value for table lookup, invalid when zero.
     * Members after this point are not included in pipeline state hash key */
    uint32_t hash;

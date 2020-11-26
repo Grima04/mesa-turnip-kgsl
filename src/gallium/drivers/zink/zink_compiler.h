@@ -35,6 +35,7 @@
 struct pipe_screen;
 struct zink_context;
 struct zink_screen;
+struct zink_shader_key;
 struct zink_gfx_program;
 
 struct nir_shader_compiler_options;
@@ -58,6 +59,7 @@ struct nir_shader *
 zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens);
 
 struct zink_shader {
+   unsigned shader_id;
    struct nir_shader *nir;
 
    struct zink_so_info streamout;
@@ -74,7 +76,7 @@ struct zink_shader {
 };
 
 VkShaderModule
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct zink_shader_key *key,
                     unsigned char *shader_slot_map, unsigned char *shader_slots_reserved);
 
 struct zink_shader *
