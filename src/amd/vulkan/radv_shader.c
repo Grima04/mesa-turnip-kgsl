@@ -1039,8 +1039,12 @@ static void radv_postprocess_config(const struct radv_device *device,
 			gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 		}
 
+		/* Disable the WGP mode on gfx10.3 because it can hang. (it
+		 * happened on VanGogh) Let's disable it on all chips that
+		 * disable exactly 1 CU per SA for GS.
+		 */
 		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt) |
-				     S_00B228_WGP_MODE(1);
+				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class == GFX10);
 		config_out->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
 				     S_00B22C_LDS_SIZE(config_in->lds_size) |
 				     S_00B22C_OC_LDS_EN(es_stage == MESA_SHADER_TESS_EVAL);
