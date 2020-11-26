@@ -808,7 +808,6 @@ dxil_module_get_res_type(struct dxil_module *m, enum dxil_resource_kind kind,
    case DXIL_RESOURCE_KIND_TEXTURECUBE:
    case DXIL_RESOURCE_KIND_TEXTURECUBE_ARRAY:
    {
-      const struct dxil_type *int32_type = dxil_module_get_int_type(m, 32);
       const struct dxil_type *component_type = dxil_module_get_type_from_comp_type(m, comp_type);
       const struct dxil_type *vec_type = dxil_module_get_vector_type(m, component_type, 4);
       char class_name[64] = { 0 };
@@ -1261,7 +1260,6 @@ emit_attrib_group(struct dxil_module *m, int id, uint32_t slot,
    size_t size = 2;
 
    for (int i = 0; i < num_attrs; ++i) {
-      uint64_t kind;
       switch (attrs[i].type) {
       case DXIL_ATTR_ENUM:
          assert(size < ARRAY_SIZE(record) - 2);

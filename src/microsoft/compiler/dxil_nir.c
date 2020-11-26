@@ -79,7 +79,6 @@ load_comps_to_vec32(nir_builder *b, unsigned src_bit_size,
    nir_ssa_def *vec32comps[4];
 
    for (unsigned i = 0; i < num_vec32comps; i += step) {
-      nir_ssa_def *tmp;
       switch (src_bit_size) {
       case 64:
          vec32comps[i] = nir_unpack_64_2x32_split_x(b, src_comps[i / 2]);
@@ -1234,7 +1233,6 @@ float_to_half_impl(nir_builder *b, nir_ssa_def *src, nir_rounding_mode mode)
 {
    nir_ssa_def *f32infinity = nir_imm_int(b, 255 << 23);
    nir_ssa_def *f16max = nir_imm_int(b, (127 + 16) << 23);
-   nir_ssa_def *denorm_magic = nir_imm_int(b, ((127 - 15) + (23 - 10) + 1) << 23);
    nir_ssa_def *sign = nir_iand(b, src, nir_imm_int(b, 0x80000000));
    nir_ssa_def *one = nir_imm_int(b, 1);
 
