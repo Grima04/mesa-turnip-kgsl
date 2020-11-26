@@ -849,6 +849,7 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    img->layer = 0;
    img->use = 0;
    img->loader_private = loaderPrivate;
+   img->sPriv = _screen;
 
    return img;
 }
@@ -1057,6 +1058,7 @@ dri2_create_image_common(__DRIscreen *_screen,
    img->use = use;
 
    img->loader_private = loaderPrivate;
+   img->sPriv = _screen;
    return img;
 }
 
@@ -1309,6 +1311,7 @@ dri2_dup_image(__DRIimage *image, void *loaderPrivate)
    /* This should be 0 for sub images, but dup is also used for base images. */
    img->dri_components = image->dri_components;
    img->loader_private = loaderPrivate;
+   img->sPriv = image->sPriv;
 
    return img;
 }

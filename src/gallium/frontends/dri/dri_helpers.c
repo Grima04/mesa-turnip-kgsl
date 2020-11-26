@@ -296,6 +296,7 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
 
    img->dri_format = driGLFormatToImageFormat(rb->Format);
    img->loader_private = loaderPrivate;
+   img->sPriv = context->driScreenPriv;
 
    pipe_resource_reference(&img->texture, tex);
 
@@ -315,6 +316,17 @@ dri2_create_image_from_renderbuffer(__DRIcontext *context,
 void
 dri2_destroy_image(__DRIimage *img)
 {
+   const __DRIimageLoaderExtension *imgLoader = img->sPriv->image.loader;
+   const __DRIdri2LoaderExtension *dri2Loader = img->sPriv->dri2.loader;
+
+   if (imgLoader && imgLoader->base.version >= 4 &&
+         imgLoader->destroyLoaderImageState) {
+      imgLoader->destroyLoaderImageState(img->loader_private);
+   } else if (dri2Loader && dri2Loader->base.version >= 5 &&
+         dri2Loader->destroyLoaderImageState) {
+      dri2Loader->destroyLoaderImageState(img->loader_private);
+   }
+
    pipe_resource_reference(&img->texture, NULL);
    FREE(img);
 }
@@ -373,6 +385,7 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
    img->dri_format = driGLFormatToImageFormat(obj->Image[face][level]->TexFormat);
 
    img->loader_private = loaderPrivate;
+   img->sPriv = context->driScreenPriv;
 
    pipe_resource_reference(&img->texture, tex);
 
