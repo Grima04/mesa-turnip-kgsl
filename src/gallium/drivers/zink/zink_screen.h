@@ -25,6 +25,7 @@
 #define ZINK_SCREEN_H
 
 #include "zink_device_info.h"
+#include "zink_instance.h"
 
 #include "pipe/p_screen.h"
 #include "util/slab.h"
@@ -53,6 +54,8 @@ struct zink_screen {
    unsigned shader_id;
 
    VkInstance instance;
+   struct zink_instance_info instance_info;
+
    VkPhysicalDevice pdev;
 
    struct zink_device_info info;

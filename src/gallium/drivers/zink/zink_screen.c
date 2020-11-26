@@ -27,6 +27,7 @@
 #include "zink_context.h"
 #include "zink_device_info.h"
 #include "zink_fence.h"
+#include "zink_instance.h"
 #include "zink_public.h"
 #include "zink_resource.h"
 
@@ -644,144 +645,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    FREE(screen);
 }
 
-static VkInstance
-create_instance(struct zink_screen *screen)
-{
-   const char *layers[4] = { 0 };
-   uint32_t num_layers = 0;
-   const char *extensions[4] = { 0 };
-   uint32_t num_extensions = 0;
-
-   bool have_debug_utils_ext = false;
-#if defined(MVK_VERSION)
-   bool have_moltenvk_layer = false;
-   bool have_moltenvk_layer_ext = false;
-#endif
-
-   screen->loader_version = VK_API_VERSION_1_0;
-   {
-      // Get the Loader version
-      GET_PROC_ADDR_INSTANCE_LOCAL(NULL, EnumerateInstanceVersion);
-      if (vk_EnumerateInstanceVersion) {
-         uint32_t loader_version_temp = VK_API_VERSION_1_0;
-         if (VK_SUCCESS == (*vk_EnumerateInstanceVersion)( &loader_version_temp)) {
-            screen->loader_version = loader_version_temp;
-         }
-      }
-   }
-
-   {
-      // Build up the extensions from the reported ones but only for the unnamed layer
-      uint32_t extension_count = 0;
-      VkResult err = vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL);
-      if (err == VK_SUCCESS) {
-         VkExtensionProperties *extension_props = malloc(extension_count * sizeof(VkExtensionProperties));
-         if (extension_props) {
-            err = vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props);
-            if (err == VK_SUCCESS) {
-               for (uint32_t i = 0; i < extension_count; i++) {
-                  if (!strcmp(extension_props[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
-                     have_debug_utils_ext = true;
-                  }
-                  if (!strcmp(extension_props[i].extensionName, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
-                     extensions[num_extensions++] = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
-                     screen->have_physical_device_prop2_ext = true;
-                  }
-                  if (!strcmp(extension_props[i].extensionName, VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME)) {
-                     extensions[num_extensions++] = VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME;
-                  }
-#if defined(MVK_VERSION)
-                  if (!strcmp(extension_props[i].extensionName, VK_MVK_MOLTENVK_EXTENSION_NAME)) {
-                     have_moltenvk_layer_ext = true;
-                     extensions[num_extensions++] = VK_MVK_MOLTENVK_EXTENSION_NAME;
-                  }
-#endif
-               }
-            }
-            free(extension_props);
-         }
-      }
-   }
-
-   // Clear have_debug_utils_ext if we do not want debug info
-   if (!(zink_debug & ZINK_DEBUG_VALIDATION)) {
-      have_debug_utils_ext = false;
-   }
-
-   {
-      // Build up the layers from the reported ones
-      uint32_t layer_count = 0;
-      // Init has_validation_layer so if we have debug_util allow a validation layer to be added.
-      // Once a validation layer has been found, do not add any more.
-      bool has_validation_layer = !have_debug_utils_ext;
-
-      VkResult err = vkEnumerateInstanceLayerProperties(&layer_count, NULL);
-      if (err == VK_SUCCESS) {
-         VkLayerProperties *layer_props = malloc(layer_count * sizeof(VkLayerProperties));
-         if (layer_props) {
-            err = vkEnumerateInstanceLayerProperties(&layer_count, layer_props);
-            if (err == VK_SUCCESS) {
-               for (uint32_t i = 0; i < layer_count; i++) {
-                  if (!strcmp(layer_props[i].layerName, "VK_LAYER_KHRONOS_validation") && !has_validation_layer) {
-                     layers[num_layers++] = "VK_LAYER_KHRONOS_validation";
-                     has_validation_layer = true;
-                  }
-                  if (!strcmp(layer_props[i].layerName, "VK_LAYER_LUNARG_standard_validation") && !has_validation_layer) {
-                     layers[num_layers++] = "VK_LAYER_LUNARG_standard_validation";
-                     has_validation_layer = true;
-                  }
-#if defined(MVK_VERSION)
-                  if (!strcmp(layer_props[i].layerName, "MoltenVK")) {
-                     have_moltenvk_layer = true;
-                     layers[num_layers++] = "MoltenVK";
-                  }
-#endif
-               }
-            }
-            free(layer_props);
-         }
-      }
-   }
-
-   if (have_debug_utils_ext) {
-      extensions[num_extensions++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
-      screen->have_debug_utils_ext = have_debug_utils_ext;
-   }
-
-#if defined(MVK_VERSION)
-   if (have_moltenvk_layer_ext && have_moltenvk_layer) {
-      screen->have_moltenvk = true;
-   }
-#endif
-
-   VkApplicationInfo ai = {};
-   ai.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-
-   char proc_name[128];
-   if (os_get_process_name(proc_name, ARRAY_SIZE(proc_name)))
-      ai.pApplicationName = proc_name;
-   else
-      ai.pApplicationName = "unknown";
-
-   ai.pEngineName = "mesa zink";
-   ai.apiVersion = screen->loader_version;
-
-   VkInstanceCreateInfo ici = {};
-   ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-   ici.pApplicationInfo = &ai;
-   ici.ppEnabledExtensionNames = extensions;
-   ici.enabledExtensionCount = num_extensions;
-   ici.ppEnabledLayerNames = layers;
-   ici.enabledLayerCount = num_layers;
-
-   VkInstance instance = VK_NULL_HANDLE;
-   VkResult err = vkCreateInstance(&ici, NULL, &instance);
-   if (err != VK_SUCCESS)
-      return VK_NULL_HANDLE;
-
-   return instance;
-}
-
 static VkPhysicalDevice
 choose_pdev(const VkInstance instance)
 {
@@ -1070,7 +933,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_
 
    zink_debug = debug_get_option_zink_debug();
 
-   screen->instance = create_instance(screen);
+   screen->instance = zink_create_instance(screen);
    if (!screen->instance)
       goto fail;
 
