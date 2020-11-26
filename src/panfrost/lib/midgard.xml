@@ -1194,12 +1194,15 @@
     <field name="ZS Block Format" size="2" start="3:4" type="Block Format"/>
     <field name="ZS Block Format v7" size="2" start="3:4" type="Block Format v7"/>
     <field name="ZS MSAA" size="2" start="3:6" default="Single" type="MSAA"/>
+    <field name="ZS MSAA v7" size="2" start="3:8" default="Single" type="MSAA"/>
     <field name="ZS Big Endian" size="1" start="3:8" type="bool"/>
     <field name="ZS Clean Pixel Write Enable" size="1" start="3:10" type="bool"/>
     <field name="CRC Render Target" size="4" start="3:11" type="uint"/>
     <field name="S Write Format" size="4" start="3:16" type="S Format"/>
     <field name="S Block Format" size="2" start="3:20" type="Block Format"/>
+    <field name="S Block Format v7" size="4" start="3:20" type="Block Format v7"/>
     <field name="S MSAA" size="2" start="3:22" default="Single" type="MSAA"/>
+    <field name="S MSAA v7" size="2" start="3:24" default="Single" type="MSAA"/>
     <field name="ZS Preload Format" size="4" start="3:28" type="ZS Preload Format"/>
     <field name="ZS Writeback Base" size="64" start="4:0" type="address"/>
     <field name="ZS Writeback Row Stride" size="32" start="6:0" type="uint"/>

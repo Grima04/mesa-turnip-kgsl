@@ -286,7 +286,10 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
-        ext->zs_msaa = nr_samples > 1 ? MALI_MSAA_LAYERED : MALI_MSAA_SINGLE;
+        if (version < 7)
+                ext->zs_msaa = nr_samples > 1 ? MALI_MSAA_LAYERED : MALI_MSAA_SINGLE;
+        else
+                ext->zs_msaa_v7 = nr_samples > 1 ? MALI_MSAA_LAYERED : MALI_MSAA_SINGLE;
 
         if (drm_is_afbc(rsrc->modifier)) {
                 unsigned header_size = rsrc->slices[level].header_size;
@@ -345,6 +348,13 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                  */
                 ext->zs_write_format = MALI_ZS_FORMAT_D32;
                 ext->s_write_format = MALI_S_FORMAT_S8;
+                if (version < 7) {
+                        ext->s_block_format = ext->zs_block_format;
+                        ext->s_msaa = ext->zs_msaa;
+                } else {
+                        ext->s_block_format_v7 = ext->zs_block_format_v7;
+                        ext->s_msaa_v7 = ext->zs_msaa_v7;
+                }
 
                 struct panfrost_resource *stencil = rsrc->separate_stencil;
                 struct panfrost_slice stencil_slice = stencil->slices[level];
