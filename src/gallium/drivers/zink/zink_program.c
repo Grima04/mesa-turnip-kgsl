@@ -35,7 +35,7 @@
 #include "util/u_memory.h"
 #include "tgsi/tgsi_from_mesa.h"
 
-struct pipeline_cache_entry {
+struct gfx_pipeline_cache_entry {
    struct zink_gfx_pipeline_state state;
    VkPipeline pipeline;
 };
@@ -480,7 +480,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
 
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
       hash_table_foreach(prog->pipelines[i], entry) {
-         struct pipeline_cache_entry *pc_entry = entry->data;
+         struct gfx_pipeline_cache_entry *pc_entry = entry->data;
 
          vkDestroyPipeline(screen->dev, pc_entry->pipeline, NULL);
          free(pc_entry);
@@ -560,7 +560,7 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 
-      struct pipeline_cache_entry *pc_entry = CALLOC_STRUCT(pipeline_cache_entry);
+      struct gfx_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(gfx_pipeline_cache_entry);
       if (!pc_entry)
          return VK_NULL_HANDLE;
 
@@ -571,7 +571,7 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
       assert(entry);
    }
 
-   return ((struct pipeline_cache_entry *)(entry->data))->pipeline;
+   return ((struct gfx_pipeline_cache_entry *)(entry->data))->pipeline;
 }
 
 
