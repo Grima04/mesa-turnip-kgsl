@@ -6449,7 +6449,7 @@ void radv_CmdBeginConditionalRenderingEXT(
 
 	if (cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL &&
 	    !cmd_buffer->device->physical_device->rad_info.has_32bit_predication) {
-		uint64_t pred_value, pred_va;
+		uint64_t pred_value = 0, pred_va;
 		unsigned pred_offset;
 
 		/* From the Vulkan spec 1.1.107:
