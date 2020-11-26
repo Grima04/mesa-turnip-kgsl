@@ -108,8 +108,6 @@ delete_object(set_entry *entry)
 bool
 d3d12_reset_batch(struct d3d12_context *ctx, struct d3d12_batch *batch, uint64_t timeout_ns)
 {
-   struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
-
    // batch hasn't been submitted before
    if (!batch->fence && !batch->has_errors)
       return true;

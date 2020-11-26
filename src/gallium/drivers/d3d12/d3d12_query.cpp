@@ -106,7 +106,6 @@ d3d12_create_query(struct pipe_context *pctx,
    struct d3d12_screen *screen = d3d12_screen(pctx->screen);
    struct d3d12_query *query = CALLOC_STRUCT(d3d12_query);
    D3D12_QUERY_HEAP_DESC desc = {};
-   D3D12_RESOURCE_DESC res_desc = {};
 
    if (!query)
       return NULL;

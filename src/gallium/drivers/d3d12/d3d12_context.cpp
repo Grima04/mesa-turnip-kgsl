@@ -966,7 +966,6 @@ static void
 d3d12_destroy_sampler_view(struct pipe_context *pctx,
                            struct pipe_sampler_view *pview)
 {
-   struct d3d12_context *ctx = d3d12_context(pctx);
    struct d3d12_sampler_view *view = d3d12_sampler_view(pview);
    d3d12_descriptor_handle_free(&view->handle);
    pipe_resource_reference(&view->base.texture, NULL);
@@ -1296,8 +1295,6 @@ d3d12_create_stream_output_target(struct pipe_context *pctx,
                                   unsigned buffer_offset,
                                   unsigned buffer_size)
 {
-   struct d3d12_context *ctx = d3d12_context(pctx);
-   struct d3d12_screen *screen = d3d12_screen(pctx->screen);
    struct d3d12_resource *res = d3d12_resource(pres);
    struct d3d12_stream_output_target *cso = CALLOC_STRUCT(d3d12_stream_output_target);
 
@@ -1814,7 +1811,6 @@ static uint64_t
 d3d12_get_timestamp(struct pipe_context *pctx)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
-   struct d3d12_screen *screen = d3d12_screen(pctx->screen);
 
    if (!ctx->timestamp_query)
       ctx->timestamp_query =  pctx->create_query(pctx, PIPE_QUERY_TIMESTAMP, 0);

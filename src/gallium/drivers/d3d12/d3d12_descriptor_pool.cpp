@@ -197,8 +197,6 @@ d3d12_descriptor_pool_new(pipe_context *pctx,
                           D3D12_DESCRIPTOR_HEAP_TYPE type,
                           uint32_t num_descriptors)
 {
-   struct d3d12_context *ctx = d3d12_context(pctx);
-
    struct d3d12_descriptor_pool *pool = CALLOC_STRUCT(d3d12_descriptor_pool);
    if (!pool)
       return NULL;

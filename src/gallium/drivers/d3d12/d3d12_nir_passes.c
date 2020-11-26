@@ -992,7 +992,6 @@ d3d12_fixup_clipdist_writes(nir_shader *shader)
 {
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-   nir_ssa_def *primitive_id;
    nir_builder_init(&b, impl);
 
    nir_foreach_block(block, impl) {

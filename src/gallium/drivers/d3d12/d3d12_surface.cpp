@@ -220,10 +220,6 @@ d3d12_create_surface(struct pipe_context *pctx,
                      struct pipe_resource *pres,
                      const struct pipe_surface *tpl)
 {
-   struct d3d12_resource *res = d3d12_resource(pres);
-   struct d3d12_context *ctx = d3d12_context(pctx);
-   struct d3d12_screen *screen = d3d12_screen(pctx->screen);
-
    bool is_depth_or_stencil = util_format_is_depth_or_stencil(tpl->format);
    unsigned bind = is_depth_or_stencil ? PIPE_BIND_DEPTH_STENCIL : PIPE_BIND_RENDER_TARGET;
 
@@ -259,7 +255,6 @@ static void
 d3d12_surface_destroy(struct pipe_context *pctx,
                       struct pipe_surface *psurf)
 {
-   struct d3d12_context *ctx = d3d12_context(pctx);
    struct d3d12_surface *surface = (struct d3d12_surface*) psurf;
 
    d3d12_descriptor_handle_free(&surface->desc_handle);

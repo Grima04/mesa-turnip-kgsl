@@ -251,7 +251,7 @@ d3d12_resource_create(struct pipe_screen *pscreen,
                    templ->usage == PIPE_USAGE_STAGING ? "STAGING " :"",
                    util_format_name(templ->format), templ->nr_samples,
                    templ->width0, templ->height0, templ->depth0,
-                   templ->array_size, templ->last_level, templ);
+                   templ->array_size, templ->last_level);
    }
 
    pipe_reference_init(&res->base.reference, 1);
@@ -302,7 +302,6 @@ d3d12_resource_get_handle(struct pipe_screen *pscreen,
                           struct winsys_handle *handle,
                           unsigned usage)
 {
-   struct d3d12_screen *screen = d3d12_screen(pscreen);
    struct d3d12_resource *res = d3d12_resource(pres);
 
    if (handle->type != WINSYS_HANDLE_TYPE_D3D12_RES)

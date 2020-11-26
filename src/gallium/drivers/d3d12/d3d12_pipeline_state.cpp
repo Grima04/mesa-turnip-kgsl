@@ -88,7 +88,6 @@ fill_so_declaration(const struct pipe_stream_output_info *info,
    for (unsigned i = 0; i < info->num_outputs; i++) {
       const struct pipe_stream_output *output = &info->output[i];
       const int buffer = output->output_buffer;
-      const int varying = output->register_index;
       unsigned index;
 
       /* Mesa doesn't store entries for gl_SkipComponents in the Outputs[]
