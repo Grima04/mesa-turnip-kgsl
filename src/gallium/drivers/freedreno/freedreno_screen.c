@@ -466,6 +466,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return screen->has_syncobj;
 	case PIPE_CAP_CULL_DISTANCE:
 		return is_a6xx(screen);
+	case PIPE_CAP_SHADER_STENCIL_EXPORT:
+		return is_a6xx(screen);
 	default:
 		return u_pipe_screen_get_param_defaults(pscreen, param);
 	}

@@ -589,7 +589,8 @@ compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid)
 	if (fs->shader->nir->info.fs.early_fragment_tests)
 		return A6XX_EARLY_Z;
 
-	if (fs->no_earlyz || fs->writes_pos || !zsa->base.depth.enabled) {
+	if (fs->no_earlyz || fs->writes_pos || !zsa->base.depth.enabled ||
+			fs->writes_stencilref) {
 		return A6XX_LATE_Z;
 	} else if ((fs->has_kill || zsa->alpha_test) &&
 			(zsa->base.depth.writemask || !pfb->zsbuf)) {
@@ -974,6 +975,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_RING(ring, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
 				COND(fs->writes_smask && pfb->samples > 1,
 						A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK) |
+				COND(fs->writes_stencilref,
+						A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_STENCILREF) |
 				COND(blend->use_dual_src_blend,
 						A6XX_RB_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
 		OUT_RING(ring, A6XX_RB_FS_OUTPUT_CNTL1_MRT(nr));
