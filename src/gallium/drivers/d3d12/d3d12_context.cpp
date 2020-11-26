@@ -1437,7 +1437,7 @@ d3d12_disable_fake_so_buffers(struct d3d12_context *ctx)
    for (unsigned i = 0; i < ctx->gfx_pipeline_state.num_so_targets; ++i) {
       struct d3d12_stream_output_target *target = (struct d3d12_stream_output_target *)ctx->so_targets[i];
       struct d3d12_stream_output_target *fake_target = (struct d3d12_stream_output_target *)ctx->fake_so_targets[i];
-      uint64_t filled_size;
+      uint64_t filled_size = 0;
       struct pipe_transfer *src_transfer, *dst_transfer;
       uint8_t *src, *dst;
 

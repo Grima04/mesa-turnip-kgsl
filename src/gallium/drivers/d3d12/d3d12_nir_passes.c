@@ -572,7 +572,7 @@ d3d12_create_bare_samplers(nir_shader *nir)
       const struct glsl_type *type = glsl_without_array(var->type);
       if (glsl_type_is_sampler(type) && glsl_get_sampler_result_type(type) != GLSL_TYPE_VOID) {
          /* Since samplers are already lowered to be accessed by index, all we need to do
-         /* here is create a bare sampler with the same binding */
+          * here is create a bare sampler with the same binding */
          nir_variable *clone = nir_variable_clone(var, nir);
          clone->type = get_bare_samplers_for_type(var->type);
          nir_shader_add_variable(nir, clone);
@@ -792,7 +792,7 @@ lower_load_ubo_packed_filter(const nir_instr *instr,
 
 static nir_ssa_def *
 lower_load_ubo_packed_impl(nir_builder *b, nir_instr *instr,
-                              UNUSED const void *_options) {
+                              UNUSED void *_options) {
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
    nir_ssa_def *buffer = intr->src[0].ssa;

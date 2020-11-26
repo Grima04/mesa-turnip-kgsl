@@ -897,6 +897,8 @@ d3d12_transfer_map(struct pipe_context *pctx,
          ptr = read_zs_surface(ctx, res, box, trans);
       } else if (usage & PIPE_MAP_WRITE){
          ptr = prepare_write_zs_surface(res, box, trans);
+      } else {
+         ptr = nullptr;
       }
    } else {
       ptrans->stride = align(util_format_get_stride(pres->format, box->width),
