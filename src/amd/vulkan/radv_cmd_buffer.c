@@ -99,6 +99,12 @@ const struct radv_dynamic_state default_dynamic_state = {
 	.cull_mode = 0u,
 	.front_face = 0u,
 	.primitive_topology = 0u,
+	.fragment_shading_rate = {
+		.size = (VkExtent2D) { 1u, 1u },
+		.combiner_ops = { VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+				  VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR
+		},
+	},
 };
 
 static void
@@ -293,6 +299,15 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 			   sizeof(src->stencil_op))) {
 			dest->stencil_op = src->stencil_op;
 			dest_mask |= RADV_DYNAMIC_STENCIL_OP;
+		}
+	}
+
+	if (copy_mask & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
+		if (memcmp(&dest->fragment_shading_rate,
+			   &src->fragment_shading_rate,
+			   sizeof(src->fragment_shading_rate))) {
+			dest->fragment_shading_rate = src->fragment_shading_rate;
+			dest_mask |= RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 		}
 	}
 
@@ -1567,6 +1582,28 @@ radv_emit_stencil_control(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+	struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+	uint32_t rate_x = MIN2(2, d->fragment_shading_rate.size.width) - 1;
+	uint32_t rate_y = MIN2(2, d->fragment_shading_rate.size.height) - 1;
+	uint32_t pa_cl_vrs_cntl = pipeline->graphics.vrs.pa_cl_vrs_cntl;
+
+	/* Emit per-draw VRS rate which is the first combiner. */
+	radeon_set_uconfig_reg(cmd_buffer->cs, R_03098C_GE_VRS_RATE,
+			       S_03098C_RATE_X(rate_x) |
+			       S_03098C_RATE_Y(rate_y));
+
+	/* VERTEX_RATE_COMBINER_MODE controls the combiner mode between the
+	 * draw rate and the vertex rate.
+	 */
+	pa_cl_vrs_cntl |= S_028848_VERTEX_RATE_COMBINER_MODE(d->fragment_shading_rate.combiner_ops[0]);
+
+	radeon_set_context_reg(cmd_buffer->cs, R_028848_PA_CL_VRS_CNTL, pa_cl_vrs_cntl);
+}
+
+static void
 radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 			 int index,
 			 struct radv_color_buffer_info *cb,
@@ -2556,6 +2593,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 
 	if (states & RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP)
 		radv_emit_stencil_control(cmd_buffer);
+
+	if (states & RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE)
+		radv_emit_fragment_shading_rate(cmd_buffer);
 
 	cmd_buffer->state.dirty &= ~states;
 }
@@ -4734,6 +4774,21 @@ void radv_CmdSetStencilOpEXT(
 	}
 
 	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
+}
+
+void radv_CmdSetFragmentShadingRateKHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkExtent2D*                           pFragmentSize,
+	const VkFragmentShadingRateCombinerOpKHR    combinerOps[2])
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+
+	state->dynamic.fragment_shading_rate.size = *pFragmentSize;
+	for (unsigned i = 0; i < 2; i++)
+		state->dynamic.fragment_shading_rate.combiner_ops[i] = combinerOps[i];
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
 }
 
 void radv_CmdExecuteCommands(

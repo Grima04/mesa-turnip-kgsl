@@ -85,6 +85,10 @@ radv_meta_save(struct radv_meta_saved_state *state,
 		state->stencil_op.back.fail_op = cmd_buffer->state.dynamic.stencil_op.back.fail_op;
 		state->stencil_op.back.pass_op = cmd_buffer->state.dynamic.stencil_op.back.pass_op;
 		state->stencil_op.back.depth_fail_op = cmd_buffer->state.dynamic.stencil_op.back.depth_fail_op;
+
+		state->fragment_shading_rate.size = cmd_buffer->state.dynamic.fragment_shading_rate.size;
+		state->fragment_shading_rate.combiner_ops[0] = cmd_buffer->state.dynamic.fragment_shading_rate.combiner_ops[0];
+		state->fragment_shading_rate.combiner_ops[1] = cmd_buffer->state.dynamic.fragment_shading_rate.combiner_ops[1];
 	}
 
 	if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
@@ -167,6 +171,10 @@ radv_meta_restore(const struct radv_meta_saved_state *state,
 		cmd_buffer->state.dynamic.stencil_op.back.pass_op = state->stencil_op.back.pass_op;
 		cmd_buffer->state.dynamic.stencil_op.back.depth_fail_op = state->stencil_op.back.depth_fail_op;
 
+		cmd_buffer->state.dynamic.fragment_shading_rate.size = state->fragment_shading_rate.size;
+		cmd_buffer->state.dynamic.fragment_shading_rate.combiner_ops[0] = state->fragment_shading_rate.combiner_ops[0];
+		cmd_buffer->state.dynamic.fragment_shading_rate.combiner_ops[1] = state->fragment_shading_rate.combiner_ops[1];
+
 		cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
 					   RADV_CMD_DIRTY_DYNAMIC_SCISSOR |
 					   RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
@@ -177,7 +185,8 @@ radv_meta_restore(const struct radv_meta_saved_state *state,
 					   RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
 					   RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
 					   RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
-					   RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
+					   RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP |
+					   RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
 	}
 
 	if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {

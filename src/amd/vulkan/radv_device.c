@@ -8133,6 +8133,35 @@ void radv_GetPhysicalDeviceMultisamplePropertiesEXT(
 	}
 }
 
+VkResult radv_GetPhysicalDeviceFragmentShadingRatesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	uint32_t*                                   pFragmentShadingRateCount,
+	VkPhysicalDeviceFragmentShadingRateKHR*     pFragmentShadingRates)
+{
+	VK_OUTARRAY_MAKE(out, pFragmentShadingRates, pFragmentShadingRateCount);
+
+#define append_rate(w, h, s) {									\
+	VkPhysicalDeviceFragmentShadingRateKHR rate = {						\
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR,\
+		.sampleCounts = s,								\
+		.fragmentSize = { .width = w, .height = h },					\
+	};											\
+	vk_outarray_append(&out, r) *r = rate;							\
+}
+
+	for (uint32_t x = 2; x >= 1; x--) {
+		for (uint32_t y = 2; y >= 1; y--) {
+			append_rate(x, y, VK_SAMPLE_COUNT_1_BIT |
+					  VK_SAMPLE_COUNT_2_BIT |
+					  VK_SAMPLE_COUNT_4_BIT |
+					  VK_SAMPLE_COUNT_8_BIT);
+		}
+	}
+#undef append_rate
+
+	return vk_outarray_status(&out);
+}
+
 VkResult radv_CreatePrivateDataSlotEXT(
     VkDevice                                    _device,
     const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,

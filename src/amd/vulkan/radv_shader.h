@@ -212,6 +212,7 @@ struct radv_vs_output_info {
 	bool writes_pointsize;
 	bool writes_layer;
 	bool writes_viewport_index;
+	bool writes_primitive_shading_rate;
 	bool export_prim_id;
 	unsigned pos_exports;
 };
@@ -323,6 +324,7 @@ struct radv_shader_info {
 		bool can_discard;
 		bool early_fragment_test;
 		bool post_depth_coverage;
+		bool reads_sample_mask_in;
 		uint8_t depth_layout;
 	} ps;
 	struct {

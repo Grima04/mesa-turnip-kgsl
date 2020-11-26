@@ -1226,6 +1226,46 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 	ms->pa_sc_aa_mask[1] = mask | (mask << 16);
 }
 
+static void
+gfx103_pipeline_init_vrs_state(struct radv_pipeline *pipeline,
+			       const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	const VkPipelineMultisampleStateCreateInfo *vkms = radv_pipeline_get_multisample_state(pCreateInfo);
+	struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
+	struct radv_multisample_state *ms = &pipeline->graphics.ms;
+	struct radv_vrs_state *vrs = &pipeline->graphics.vrs;
+
+	if (vkms &&
+	    (vkms->sampleShadingEnable ||
+	     ps->info.ps.uses_sample_shading || ps->info.ps.reads_sample_mask_in)) {
+		/* Disable VRS and use the rates from PS_ITER_SAMPLES if:
+		 *
+		 * 1) sample shading is enabled or per-sample interpolation is
+		 *    used by the fragment shader
+		 * 2) the fragment shader reads gl_SampleMaskIn because the
+		 *    16-bit sample coverage mask isn't enough for MSAA8x and
+		 *    2x2 coarse shading isn't enough.
+		 */
+		vrs->pa_cl_vrs_cntl =
+			S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE);
+
+		/* Make sure sample shading is enabled even if only MSAA1x is
+		 * used because the SAMPLE_ITER combiner is in passthrough
+		 * mode if PS_ITER_SAMPLE is 0, and it uses the per-draw rate.
+		 * The default VRS rate when sample shading is enabled is 1x1.
+		 */
+		if (!G_028A4C_PS_ITER_SAMPLE(ms->pa_sc_mode_cntl_1))
+			ms->pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
+	} else {
+		vrs->pa_cl_vrs_cntl =
+			S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU);
+	}
+
+	/* Primitive and HTILE combiners are always passthrough. */
+	vrs->pa_cl_vrs_cntl |= S_028848_PRIMITIVE_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU) |
+			       S_028848_HTILE_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU);
+}
+
 static bool
 radv_prim_can_use_guardband(enum VkPrimitiveTopology topology)
 {
@@ -1344,6 +1384,8 @@ static unsigned radv_dynamic_state_mask(VkDynamicState state)
 		return RADV_DYNAMIC_STENCIL_OP;
 	case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT:
 		return RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE;
+	case VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR:
+		return RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 	default:
 		unreachable("Unhandled dynamic state");
 	}
@@ -1388,6 +1430,10 @@ static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreat
 	    !vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
 				  PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT))
 		states &= ~RADV_DYNAMIC_LINE_STIPPLE;
+
+	if (!vk_find_struct_const(pCreateInfo->pNext,
+				  PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR))
+		states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 
 	/* TODO: blend constants & line width. */
 
@@ -1724,6 +1770,14 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 
 	if (!(states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE))
 		pipeline->graphics.uses_dynamic_stride = true;
+
+	const VkPipelineFragmentShadingRateStateCreateInfoKHR *shading_rate =
+		vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR);
+	if (needed_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
+		dynamic->fragment_shading_rate.size = shading_rate->fragmentSize;
+		for (int i = 0; i < 2; i++)
+			dynamic->fragment_shading_rate.combiner_ops[i] = shading_rate->combinerOps[i];
+	}
 
 	pipeline->dynamic_state.mask = states;
 }
@@ -4228,7 +4282,8 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	total_mask = clip_dist_mask | cull_dist_mask;
 	bool misc_vec_ena = outinfo->writes_pointsize ||
 		outinfo->writes_layer ||
-		outinfo->writes_viewport_index;
+		outinfo->writes_viewport_index ||
+		outinfo->writes_primitive_shading_rate;
 	unsigned spi_vs_out_config, nparams;
 
 	/* VS is required to export at least one param. */
@@ -4257,12 +4312,11 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_USE_VTX_POINT_SIZE(outinfo->writes_pointsize) |
 	                       S_02881C_USE_VTX_RENDER_TARGET_INDX(outinfo->writes_layer) |
 	                       S_02881C_USE_VTX_VIEWPORT_INDX(outinfo->writes_viewport_index) |
+			       S_02881C_USE_VTX_VRS_RATE(outinfo->writes_primitive_shading_rate) |
 	                       S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
 	                       S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
-			       S_02881C_BYPASS_PRIM_RATE_COMBINER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
-			       S_02881C_BYPASS_VTX_RATE_COMBINER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
@@ -4335,7 +4389,8 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	total_mask = clip_dist_mask | cull_dist_mask;
 	bool misc_vec_ena = outinfo->writes_pointsize ||
 		outinfo->writes_layer ||
-		outinfo->writes_viewport_index;
+		outinfo->writes_viewport_index ||
+		outinfo->writes_primitive_shading_rate;
 	bool es_enable_prim_id = outinfo->export_prim_id ||
 				 (es && es->info.uses_prim_id);
 	bool break_wave_at_eoi = false;
@@ -4373,12 +4428,11 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_USE_VTX_POINT_SIZE(outinfo->writes_pointsize) |
 	                       S_02881C_USE_VTX_RENDER_TARGET_INDX(outinfo->writes_layer) |
 	                       S_02881C_USE_VTX_VIEWPORT_INDX(outinfo->writes_viewport_index) |
+			       S_02881C_USE_VTX_VRS_RATE(outinfo->writes_primitive_shading_rate) |
 	                       S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
 	                       S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
-			       S_02881C_BYPASS_PRIM_RATE_COMBINER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
-			       S_02881C_BYPASS_VTX_RATE_COMBINER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
@@ -5087,6 +5141,20 @@ radv_pipeline_generate_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
 }
 
 static void
+gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
+				   const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	bool enable_vrs = false;
+
+	if (vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
+	    radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR))
+		enable_vrs = true;
+
+	radeon_set_context_reg(ctx_cs, R_028A98_VGT_DRAW_PAYLOAD_CNTL,
+			       S_028A98_EN_VRS_RATE(enable_vrs));
+}
+
+static void
 radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            const struct radv_graphics_pipeline_create_info *extra,
@@ -5122,6 +5190,9 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 && !radv_pipeline_has_ngg(pipeline))
 		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
+		gfx103_pipeline_generate_vrs_state(ctx_cs, pCreateInfo);
 
 	pipeline->ctx_cs_hash = _mesa_hash_data(ctx_cs->buf, ctx_cs->cdw * 4);
 
@@ -5233,6 +5304,9 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, extra);
 	radv_pipeline_init_raster_state(pipeline, pCreateInfo);
 	radv_pipeline_init_depth_stencil_state(pipeline, pCreateInfo);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
+		gfx103_pipeline_init_vrs_state(pipeline, pCreateInfo);
 
 	/* Ensure that some export memory is always allocated, for two reasons:
 	 *
