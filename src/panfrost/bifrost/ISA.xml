@@ -1351,7 +1351,7 @@
 
   <ins name="*FREXPM.f32">
     <src start="0" mask="0xfb"/>
-    <mod name="abs0" start="6" size="1" opt="abs0"/>
+    <mod name="abs0" start="6" size="1" opt="abs"/>
     <mod name="sqrt" size="1" opt="sqrt"/>
     <mod name="log" size="1" opt="log"/>
     <mod name="widen0" start="3" size="2">
@@ -1360,7 +1360,7 @@
       <opt>h0</opt>
       <opt>h1</opt>
     </mod>
-    <mod name="neg0" size="1" opt="neg0"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <encoding mask="0x7fff20" exact="0x701b20">
       <and>
         <eq left="log" right="#none"/>
@@ -1379,7 +1379,7 @@
 
   <ins name="*FREXPM.v2f16">
     <src start="0" mask="0xfb"/>
-    <mod name="abs0" start="6" size="1" opt="abs0"/>
+    <mod name="abs0" start="6" size="1" opt="abs"/>
     <mod name="sqrt" size="1" opt="sqrt"/>
     <mod name="log" size="1" opt="log"/>
     <mod name="swz0" start="3" size="2" default="h01">
@@ -1388,7 +1388,7 @@
       <opt>h01</opt>
       <opt>h11</opt>
     </mod>
-    <mod name="neg0" size="1" opt="neg0"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <encoding mask="0x7fff20" exact="0x701b00">
       <and>
         <eq left="log" right="#none"/>
@@ -1407,8 +1407,8 @@
 
   <ins name="*FROUND.f32">
     <src start="0" mask="0xfb"/>
-    <mod name="abs0" start="7" size="1" opt="abs0"/>
-    <mod name="neg0" start="8" size="1" opt="neg0"/>
+    <mod name="abs0" start="7" size="1" opt="abs"/>
+    <mod name="neg0" start="8" size="1" opt="neg"/>
     <mod name="widen0" start="3" size="2">
       <reserved/>
       <opt>none</opt>
@@ -1438,8 +1438,8 @@
 
   <ins name="*FROUND.v2f16">
     <src start="0" mask="0xfb"/>
-    <mod name="abs0" start="7" size="1" opt="abs0"/>
-    <mod name="neg0" start="8" size="1" opt="neg0"/>
+    <mod name="abs0" start="7" size="1" opt="abs"/>
+    <mod name="neg0" start="8" size="1" opt="neg"/>
     <mod name="swz0" start="3" size="2" default="h01">
       <opt>h00</opt>
       <opt>h10</opt>
@@ -2443,7 +2443,7 @@
     <src start="6"/>
     <mod name="h" start="9" size="1" opt="h"/>
     <mod name="l" start="10" size="1" opt="l"/>
-    <mod name="neg2" start="11" size="1" opt="neg2"/>
+    <mod name="neg2" start="11" size="1" opt="neg"/>
   </ins>
 
   <ins name="*VN_ASST1.f32" mask="0x7fe000" exact="0x27c000">
@@ -2451,7 +2451,7 @@
     <src start="3" mask="0xfb"/>
     <src start="6"/>
     <src start="9"/>
-    <mod name="neg2" start="12" size="1" opt="neg2"/>
+    <mod name="neg2" start="12" size="1" opt="neg"/>
   </ins>
 
   <ins name="+ACMPSTORE.i32" staging="r" mask="0xffdc0" exact="0x648c0">
@@ -4332,7 +4332,7 @@
       <opt>low</opt>
     </mod>
     <mod name="neg" size="1" opt="neg"/>
-    <mod name="abs0" size="1" opt="abs0"/>
+    <mod name="abs0" size="1" opt="abs"/>
     <mod name="divzero" size="1" opt="divzero"/>
     <encoding mask="0xfffc0" exact="0x67300">
       <and>
@@ -4676,7 +4676,7 @@
       <opt>h1</opt>
     </mod>
     <mod name="neg" start="3" size="1" opt="neg"/>
-    <mod name="abs0" start="4" size="1" opt="abs0"/>
+    <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <encoding mask="0xfffc0" exact="0x67200">
       <eq left="widen0" right="#none"/>
@@ -4701,7 +4701,7 @@
   <ins name="+FRCP.f16" mask="0xffec0" exact="0x67080">
     <src start="0" mask="0xf7"/>
     <mod name="neg" start="3" size="1" opt="neg"/>
-    <mod name="abs0" start="4" size="1" opt="abs0"/>
+    <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <mod name="lane0" start="8" size="1" default="h0">
       <opt>h0</opt>
@@ -4715,7 +4715,7 @@
       <opt>none</opt>
     </mod>
     <mod name="neg" start="3" size="1" opt="neg"/>
-    <mod name="abs0" start="4" size="1" opt="abs0"/>
+    <mod name="abs0" start="4" size="1" opt="abs"/>
     <derived start="6" size="1">
       <eq left="widen0" right="#none"/>
       <reserved/>
@@ -4730,7 +4730,7 @@
       <opt>h1</opt>
     </mod>
     <mod name="neg" start="3" size="1" opt="neg"/>
-    <mod name="abs0" start="4" size="1" opt="abs0"/>
+    <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <encoding mask="0xfffc0" exact="0x67000">
       <eq left="widen0" right="#none"/>
@@ -4796,7 +4796,7 @@
 
   <ins name="+FREXPM.f32">
     <src start="0"/>
-    <mod name="abs0" start="6" size="1" opt="abs0"/>
+    <mod name="abs0" start="6" size="1" opt="abs"/>
     <mod name="sqrt" size="1" opt="sqrt"/>
     <mod name="log" size="1" opt="log"/>
     <mod name="widen0" start="3" size="2">
@@ -4805,7 +4805,7 @@
       <opt>h0</opt>
       <opt>h1</opt>
     </mod>
-    <mod name="neg0" size="1" opt="neg0"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <encoding mask="0xfff20" exact="0x3db20">
       <and>
         <eq left="log" right="#none"/>
@@ -4824,7 +4824,7 @@
 
   <ins name="+FREXPM.v2f16">
     <src start="0"/>
-    <mod name="abs0" start="6" size="1" opt="abs0"/>
+    <mod name="abs0" start="6" size="1" opt="abs"/>
     <mod name="sqrt" size="1" opt="sqrt"/>
     <mod name="log" size="1" opt="log"/>
     <mod name="swz0" start="3" size="2" default="h01">
@@ -4833,7 +4833,7 @@
       <opt>h01</opt>
       <opt>h11</opt>
     </mod>
-    <mod name="neg0" size="1" opt="neg0"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <encoding mask="0xfff20" exact="0x3db00">
       <and>
         <eq left="log" right="#none"/>
@@ -4852,8 +4852,8 @@
 
   <ins name="+FROUND.f32" mask="0xff860" exact="0x3e820">
     <src start="0"/>
-    <mod name="abs0" start="7" size="1" opt="abs0"/>
-    <mod name="neg0" start="8" size="1" opt="neg0"/>
+    <mod name="abs0" start="7" size="1" opt="abs"/>
+    <mod name="neg0" start="8" size="1" opt="neg"/>
     <mod name="widen0" start="3" size="2">
       <reserved/>
       <opt>none</opt>
@@ -4870,8 +4870,8 @@
 
   <ins name="+FROUND.v2f16" mask="0xff860" exact="0x3e800">
     <src start="0"/>
-    <mod name="abs0" start="7" size="1" opt="abs0"/>
-    <mod name="neg0" start="8" size="1" opt="neg0"/>
+    <mod name="abs0" start="7" size="1" opt="abs"/>
+    <mod name="neg0" start="8" size="1" opt="neg"/>
     <mod name="swz0" start="3" size="2" default="h01">
       <opt>h00</opt>
       <opt>h10</opt>
@@ -4889,7 +4889,7 @@
   <ins name="+FRSQ.f16" mask="0xffec0" exact="0x67280">
     <src start="0" mask="0xf7"/>
     <mod name="neg" start="3" size="1" opt="neg"/>
-    <mod name="abs0" start="4" size="1" opt="abs0"/>
+    <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <mod name="lane0" start="8" size="1" default="h0">
       <opt>h0</opt>
@@ -4903,7 +4903,7 @@
       <opt>none</opt>
     </mod>
     <mod name="neg" start="3" size="1" opt="neg"/>
-    <mod name="abs0" start="4" size="1" opt="abs0"/>
+    <mod name="abs0" start="4" size="1" opt="abs"/>
     <derived start="6" size="1">
       <eq left="widen0" right="#none"/>
       <reserved/>
@@ -4918,7 +4918,7 @@
       <opt>h1</opt>
     </mod>
     <mod name="neg" start="3" size="1" opt="neg"/>
-    <mod name="abs0" start="4" size="1" opt="abs0"/>
+    <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <encoding mask="0xfffc0" exact="0x67100">
       <eq left="widen0" right="#none"/>
@@ -8085,7 +8085,7 @@
   <ins name="+VN_ASST2.f32">
     <src start="0"/>
     <mod name="scale" size="1" opt="scale"/>
-    <mod name="neg0" size="1" opt="neg0"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <encoding mask="0xffff0" exact="0x3df80">
       <eq left="scale" right="#none"/>
       <copy name="neg0" start="3"/>
@@ -8098,7 +8098,7 @@
 
   <ins name="+VN_ASST2.v2f16" mask="0xffff0" exact="0x3dfa0">
     <src start="0"/>
-    <mod name="neg0" start="3" size="1" opt="neg0"/>
+    <mod name="neg0" start="3" size="1" opt="neg"/>
   </ins>
 
   <ins name="+WMASK" mask="0xfffc0" exact="0x3d700">
