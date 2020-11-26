@@ -3223,6 +3223,10 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
       if (result != VK_SUCCESS)
          goto fail;
 
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (uintptr_t)image_view,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
+
       VkFramebufferCreateInfo fb_info = {
          .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
          .renderPass = pipeline->pass,
