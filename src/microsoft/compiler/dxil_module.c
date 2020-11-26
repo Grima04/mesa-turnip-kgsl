@@ -906,12 +906,12 @@ enum type_codes {
   TYPE_CODE_FUNCTION = 21
 };
 
-#define LITERAL(x) { DXIL_OP_LITERAL, (x) }
-#define FIXED(x) { DXIL_OP_FIXED, (x) }
-#define VBR(x) { DXIL_OP_VBR, (x) }
-#define ARRAY { DXIL_OP_ARRAY, 0 }
-#define CHAR6 { DXIL_OP_CHAR6, 0 }
-#define BLOB { DXIL_OP_BLOB, 0 }
+#define LITERAL(x) { DXIL_OP_LITERAL, { (x) } }
+#define FIXED(x) { DXIL_OP_FIXED, { (x) } }
+#define VBR(x) { DXIL_OP_VBR, { (x) } }
+#define ARRAY { DXIL_OP_ARRAY, { 0 } }
+#define CHAR6 { DXIL_OP_CHAR6, { 0 } }
+#define BLOB { DXIL_OP_BLOB, { 0 } }
 
 #define TYPE_INDEX FIXED(32)
 
@@ -1826,8 +1826,8 @@ static unsigned
 get_attr_set(struct dxil_module *m, enum dxil_attr_kind attr)
 {
    struct dxil_attrib attrs[2] = {
-      { DXIL_ATTR_ENUM, DXIL_ATTR_KIND_NO_UNWIND },
-      { DXIL_ATTR_ENUM, attr }
+      { DXIL_ATTR_ENUM, { DXIL_ATTR_KIND_NO_UNWIND } },
+      { DXIL_ATTR_ENUM, { attr } }
    };
 
    int index = 1;

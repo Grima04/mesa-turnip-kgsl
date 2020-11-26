@@ -617,7 +617,7 @@ d3d12_create_sampler_state(struct pipe_context *pctx,
    struct d3d12_context *ctx = d3d12_context(pctx);
    struct d3d12_screen *screen = d3d12_screen(pctx->screen);
    struct d3d12_sampler_state *ss = CALLOC_STRUCT(d3d12_sampler_state);
-   D3D12_SAMPLER_DESC desc = {0};
+   D3D12_SAMPLER_DESC desc = {};
    if (!state)
       return NULL;
 

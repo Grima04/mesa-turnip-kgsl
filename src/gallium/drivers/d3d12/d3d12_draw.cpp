@@ -430,7 +430,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
    struct d3d12_batch *batch;
    struct pipe_resource *index_buffer = NULL;
    unsigned index_offset = 0;
-   enum d3d12_surface_conversion_mode conversion_modes[PIPE_MAX_COLOR_BUFS] = {0};
+   enum d3d12_surface_conversion_mode conversion_modes[PIPE_MAX_COLOR_BUFS] = {};
 
    if (!prim_supported(dinfo->mode) ||
        dinfo->index_size == 1 ||

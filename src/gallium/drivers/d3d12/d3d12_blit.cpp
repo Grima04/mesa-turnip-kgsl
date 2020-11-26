@@ -628,7 +628,7 @@ get_stencil_resolve_vs(struct d3d12_context *ctx)
 
    nir_store_var(&b, pos_out, nir_load_var(&b, pos_in), 0xf);
 
-   struct pipe_shader_state state = { 0 };
+   struct pipe_shader_state state = {};
    state.type = PIPE_SHADER_IR_NIR;
    state.ir.nir = b.shader;
    ctx->stencil_resolve_vs = ctx->base.create_vs_state(&ctx->base, &state);
@@ -684,7 +684,7 @@ get_stencil_resolve_fs(struct d3d12_context *ctx)
 
    nir_store_var(&b, stencil_out, nir_channel(&b, &tex->dest.ssa, 1), 0x1);
 
-   struct pipe_shader_state state = { 0 };
+   struct pipe_shader_state state = {};
    state.type = PIPE_SHADER_IR_NIR;
    state.ir.nir = b.shader;
    ctx->stencil_resolve_fs = ctx->base.create_fs_state(&ctx->base, &state);
