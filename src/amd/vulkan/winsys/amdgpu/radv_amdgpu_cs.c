@@ -1195,7 +1195,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 
 			for (unsigned j = 0; j < cnt; ++j) {
 				struct radv_amdgpu_cs *cs2 = radv_amdgpu_cs(cs_array[i + j]);
-				memcpy(ptr, cs2->base.buf, 4 * cs->base.cdw);
+				memcpy(ptr, cs2->base.buf, 4 * cs2->base.cdw);
 				ptr += cs2->base.cdw;
 
 			}
