@@ -55,6 +55,8 @@
 #include "frontend/vdpau_funcs.h"
 #include "frontend/drm_driver.h"
 
+#include "drm-uapi/drm_fourcc.h"
+
 static struct pipe_resource *
 st_vdpau_video_surface_gallium(struct gl_context *ctx, const void *vdpSurface,
                                GLuint index)
@@ -129,6 +131,7 @@ st_vdpau_resource_from_description(struct gl_context *ctx,
    memset(&whandle, 0, sizeof(whandle));
    whandle.type = WINSYS_HANDLE_TYPE_FD;
    whandle.handle = desc->handle;
+   whandle.modifier = DRM_FORMAT_MOD_INVALID;
    whandle.offset = desc->offset;
    whandle.stride = desc->stride;
 
@@ -218,6 +221,7 @@ st_vdpau_map_surface(struct gl_context *ctx, GLenum target, GLenum access,
           res->screen->get_param(res->screen, PIPE_CAP_DMABUF) &&
           res->screen->resource_get_handle(res->screen, NULL, res, &whandle,
                                            usage)) {
+         whandle.modifier = DRM_FORMAT_MOD_INVALID;
          new_res = screen->resource_from_handle(screen, res, &whandle, usage);
          close(whandle.handle);
       }
