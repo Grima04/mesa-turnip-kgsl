@@ -1039,7 +1039,7 @@ struct SMEM_instruction : public Instruction {
    bool nv : 1; /* VEGA only: Non-volatile */
    bool disable_wqm : 1;
    bool prevent_overflow : 1; /* avoid overflow when combining additions */
-   uint32_t padding: 3;
+   uint8_t padding: 3;
 };
 static_assert(sizeof(SMEM_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
@@ -1061,7 +1061,8 @@ struct VOP3A_instruction : public Instruction {
    uint8_t opsel : 4;
    uint8_t omod : 2;
    bool clamp : 1;
-   uint32_t padding : 9;
+   uint8_t padding0 : 1;
+   uint8_t padding1;
 };
 static_assert(sizeof(VOP3A_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
@@ -1071,7 +1072,8 @@ struct VOP3P_instruction : public Instruction {
    uint8_t opsel_lo : 3;
    uint8_t opsel_hi : 3;
    bool clamp : 1;
-   uint32_t padding : 9;
+   uint8_t padding0 : 1;
+   uint8_t padding1;
 };
 static_assert(sizeof(VOP3P_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
@@ -1088,7 +1090,7 @@ struct DPP_instruction : public Instruction {
    uint8_t row_mask : 4;
    uint8_t bank_mask : 4;
    bool bound_ctrl : 1;
-   uint32_t padding : 7;
+   uint8_t padding : 7;
 };
 static_assert(sizeof(DPP_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
@@ -1146,7 +1148,7 @@ struct SDWA_instruction : public Instruction {
    bool dst_preserve : 1;
    bool clamp : 1;
    uint8_t omod : 2; /* GFX9+ */
-   uint32_t padding : 4;
+   uint8_t padding : 4;
 };
 static_assert(sizeof(SDWA_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
@@ -1193,10 +1195,11 @@ struct MUBUF_instruction : public Instruction {
    bool slc : 1; /* system level coherent */
    bool tfe : 1; /* texture fail enable */
    bool lds : 1; /* Return read-data to LDS instead of VGPRs */
-   bool disable_wqm : 1; /* Require an exec mask without helper invocations */
+   uint16_t disable_wqm : 1; /* Require an exec mask without helper invocations */
    uint16_t offset : 12; /* Unsigned byte offset - 12 bit */
-   bool swizzled : 1;
-   uint32_t padding1 : 18;
+   uint16_t swizzled : 1;
+   uint16_t padding0 : 2;
+   uint16_t padding1;
 };
 static_assert(sizeof(MUBUF_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
@@ -1213,13 +1216,13 @@ struct MTBUF_instruction : public Instruction {
    uint8_t dfmt : 4; /* Data Format of data in memory buffer */
    uint8_t nfmt : 3; /* Numeric format of data in memory */
    bool offen : 1; /* Supply an offset from VGPR (VADDR) */
-   bool idxen : 1; /* Supply an index from VGPR (VADDR) */
-   bool glc : 1; /* globally coherent */
-   bool dlc : 1; /* NAVI: device level coherent */
-   bool slc : 1; /* system level coherent */
-   bool tfe : 1; /* texture fail enable */
-   bool disable_wqm : 1; /* Require an exec mask without helper invocations */
-   uint32_t padding : 10;
+   uint16_t idxen : 1; /* Supply an index from VGPR (VADDR) */
+   uint16_t glc : 1; /* globally coherent */
+   uint16_t dlc : 1; /* NAVI: device level coherent */
+   uint16_t slc : 1; /* system level coherent */
+   uint16_t tfe : 1; /* texture fail enable */
+   uint16_t disable_wqm : 1; /* Require an exec mask without helper invocations */
+   uint16_t padding : 10;
    uint16_t offset; /* Unsigned byte offset - 12 bit */
 };
 static_assert(sizeof(MTBUF_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
@@ -1248,7 +1251,9 @@ struct MIMG_instruction : public Instruction {
    bool a16 : 1; /* VEGA, NAVI: Address components are 16-bits */
    bool d16 : 1; /* Convert 32-bit data to 16-bit data */
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
-   uint32_t padding : 18;
+   uint8_t padding0 : 2;
+   uint8_t padding1;
+   uint8_t padding2;
 };
 static_assert(sizeof(MIMG_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
@@ -1267,7 +1272,7 @@ struct FLAT_instruction : public Instruction {
    bool lds : 1;
    bool nv : 1;
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
-   uint32_t padding0 : 2;
+   uint8_t padding0 : 2;
    uint16_t offset; /* Vega/Navi only */
    uint16_t padding1;
 };
@@ -1279,7 +1284,8 @@ struct Export_instruction : public Instruction {
    bool compressed : 1;
    bool done : 1;
    bool valid_mask : 1;
-   uint32_t padding : 13;
+   uint8_t padding0 : 5;
+   uint8_t padding1;
 };
 static_assert(sizeof(Export_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
