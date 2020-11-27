@@ -184,7 +184,7 @@ radv_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
 
 #define for_each_bit(b, dword)                          \
 	for (uint32_t __dword = (dword);		\
-	     (b) = __builtin_ffs(__dword) - 1, __dword;	\
+	     (b) = ffs(__dword) - 1, __dword;	\
 	     __dword &= ~(1 << (b)))
 
 /* Whenever we generate an error, pass it through this function. Useful for
@@ -1663,7 +1663,7 @@ radv_hash_shaders(unsigned char *hash,
 static inline gl_shader_stage
 vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
 {
-	assert(__builtin_popcount(vk_stage) == 1);
+	assert(util_bitcount(vk_stage) == 1);
 	return ffs(vk_stage) - 1;
 }
 
@@ -1678,7 +1678,7 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
 #define radv_foreach_stage(stage, stage_bits)				\
 	for (gl_shader_stage stage,					\
 		     __tmp = (gl_shader_stage)((stage_bits) & RADV_STAGE_MASK);	\
-	     stage = __builtin_ffs(__tmp) - 1, __tmp;			\
+	     stage = ffs(__tmp) - 1, __tmp;				\
 	     __tmp &= ~(1 << (stage)))
 
 extern const VkFormat radv_fs_key_format_exemplars[NUM_META_FS_KEYS];
