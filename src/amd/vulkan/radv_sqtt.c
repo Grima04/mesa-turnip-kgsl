@@ -579,8 +579,8 @@ radv_get_thread_trace(struct radv_queue *queue,
 	for (unsigned se = 0; se < max_se; se++) {
 		uint64_t info_offset = ac_thread_trace_get_info_offset(se);
 		uint64_t data_offset = ac_thread_trace_get_data_offset(&device->thread_trace, se);
-		void *info_ptr = thread_trace_ptr + info_offset;
-		void *data_ptr = thread_trace_ptr + data_offset;
+		void *info_ptr = (uint8_t *)thread_trace_ptr + info_offset;
+		void *data_ptr = (uint8_t *)thread_trace_ptr + data_offset;
 		struct ac_thread_trace_info *info =
 			(struct ac_thread_trace_info *)info_ptr;
 		struct ac_thread_trace_se thread_trace_se = {0};

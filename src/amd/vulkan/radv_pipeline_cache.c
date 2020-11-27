@@ -477,8 +477,8 @@ radv_pipeline_cache_load(struct radv_pipeline_cache *cache,
 	if (memcmp(header.uuid, device->physical_device->cache_uuid, VK_UUID_SIZE) != 0)
 		return false;
 
-	char *end = (void *) data + size;
-	char *p = (void *) data + header.header_size;
+	char *end = (char *) data + size;
+	char *p = (char *) data + header.header_size;
 
 	while (end - p >= sizeof(struct cache_entry)) {
 		struct cache_entry *entry = (struct cache_entry*)p;
@@ -580,14 +580,14 @@ VkResult radv_GetPipelineCacheData(
 		*pDataSize = 0;
 		return VK_INCOMPLETE;
 	}
-	void *p = pData, *end = pData + *pDataSize;
+	void *p = pData, *end = (char *) pData + *pDataSize;
 	header = p;
 	header->header_size = align(sizeof(*header), alignof(struct cache_entry));
 	header->header_version = VK_PIPELINE_CACHE_HEADER_VERSION_ONE;
 	header->vendor_id = ATI_VENDOR_ID;
 	header->device_id = device->physical_device->rad_info.pci_id;
 	memcpy(header->uuid, device->physical_device->cache_uuid, VK_UUID_SIZE);
-	p += header->header_size;
+	p = (char *)p + header->header_size;
 
 	struct cache_entry *entry;
 	for (uint32_t i = 0; i < cache->table_size; i++) {
@@ -595,7 +595,7 @@ VkResult radv_GetPipelineCacheData(
 			continue;
 		entry = cache->hash_table[i];
 		const uint32_t size_of_entry = entry_size(entry);
-		if (end < p + size_of_entry) {
+		if ((char *)end < (char *)p + size_of_entry) {
 			result = VK_INCOMPLETE;
 			break;
 		}
@@ -603,9 +603,9 @@ VkResult radv_GetPipelineCacheData(
 		memcpy(p, entry, size_of_entry);
 		for(int j = 0; j < MESA_SHADER_STAGES; ++j)
 			((struct cache_entry*)p)->variants[j] = NULL;
-		p += size_of_entry;
+		p = (char *)p + size_of_entry;
 	}
-	*pDataSize = p - pData;
+	*pDataSize = (char *)p - (char *)pData;
 
 	radv_pipeline_cache_unlock(cache);
 	return result;

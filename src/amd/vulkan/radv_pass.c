@@ -341,7 +341,7 @@ VkResult radv_CreateRenderPass(
 
 	pass->attachment_count = pCreateInfo->attachmentCount;
 	pass->subpass_count = pCreateInfo->subpassCount;
-	pass->attachments = (void *) pass + attachments_offset;
+	pass->attachments = (struct radv_render_pass_attachment *)((uint8_t *) pass + attachments_offset);
 
 	vk_foreach_struct(ext, pCreateInfo->pNext) {
 		switch(ext->sType) {
@@ -590,7 +590,7 @@ VkResult radv_CreateRenderPass2(
 
 	pass->attachment_count = pCreateInfo->attachmentCount;
 	pass->subpass_count = pCreateInfo->subpassCount;
-	pass->attachments = (void *) pass + attachments_offset;
+	pass->attachments = (struct radv_render_pass_attachment *)((uint8_t *) pass + attachments_offset);
 
 	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
 		struct radv_render_pass_attachment *att = &pass->attachments[i];

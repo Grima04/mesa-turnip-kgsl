@@ -412,8 +412,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			spec_entries = calloc(num_spec_entries, sizeof(*spec_entries));
 			for (uint32_t i = 0; i < num_spec_entries; i++) {
 				VkSpecializationMapEntry entry = spec_info->pMapEntries[i];
-				const void *data = spec_info->pData + entry.offset;
-				assert(data + entry.size <= spec_info->pData + spec_info->dataSize);
+				const void *data = (uint8_t *)spec_info->pData + entry.offset;
+				assert((uint8_t *)data + entry.size <= (uint8_t *)spec_info->pData + spec_info->dataSize);
 
 				spec_entries[i].id = spec_info->pMapEntries[i].constantID;
 				switch (entry.size) {
