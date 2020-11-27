@@ -281,29 +281,29 @@ enum bi_subgroup {
         BI_SUBGROUP_SUBGROUP8,
 };
 
-enum bi_clper_inactive_res {
-        BI_CLPER_INACTIVE_RES_ZERO,
-        BI_CLPER_INACTIVE_RES_UMAX,
-        BI_CLPER_INACTIVE_RES_I1,
-        BI_CLPER_INACTIVE_RES_V2I1,
-        BI_CLPER_INACTIVE_RES_SMIN,
-        BI_CLPER_INACTIVE_RES_SMAX,
-        BI_CLPER_INACTIVE_RES_V2SMIN,
-        BI_CLPER_INACTIVE_RES_V2SMAX,
-        BI_CLPER_INACTIVE_RES_V4SMIN,
-        BI_CLPER_INACTIVE_RES_V4SMAX,
-        BI_CLPER_INACTIVE_RES_F1,
-        BI_CLPER_INACTIVE_RES_V2F1,
-        BI_CLPER_INACTIVE_RES_INFN,
-        BI_CLPER_INACTIVE_RES_INF,
-        BI_CLPER_INACTIVE_RES_V2INFN,
-        BI_CLPER_INACTIVE_RES_V2INF,
+enum bi_clper_inactive_result {
+        BI_INACTIVE_RESULT_ZERO,
+        BI_INACTIVE_RESULT_UMAX,
+        BI_INACTIVE_RESULT_I1,
+        BI_INACTIVE_RESULT_V2I1,
+        BI_INACTIVE_RESULT_SMIN,
+        BI_INACTIVE_RESULT_SMAX,
+        BI_INACTIVE_RESULT_V2SMIN,
+        BI_INACTIVE_RESULT_V2SMAX,
+        BI_INACTIVE_RESULT_V4SMIN,
+        BI_INACTIVE_RESULT_V4SMAX,
+        BI_INACTIVE_RESULT_F1,
+        BI_INACTIVE_RESULT_V2F1,
+        BI_INACTIVE_RESULT_INFN,
+        BI_INACTIVE_RESULT_INF,
+        BI_INACTIVE_RESULT_V2INFN,
+        BI_INACTIVE_RESULT_V2INF,
 };
 
 struct bi_special {
         struct {
                 enum bi_lane_op lane_op_mod;
-                enum bi_clper_inactive_res inactive_res;
+                enum bi_clper_inactive_result inactive_res;
         } clper;
         enum bi_subgroup subgroup_sz;
 };
