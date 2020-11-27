@@ -2324,7 +2324,7 @@
     <mod name="seg" start="3" size="3">
       <reserved/>
       <reserved/>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <reserved/>
       <reserved/>
       <reserved/>
@@ -2339,7 +2339,7 @@
     <mod name="seg" start="3" size="3">
       <reserved/>
       <reserved/>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <reserved/>
       <reserved/>
       <reserved/>
@@ -2457,25 +2457,25 @@
   <ins name="+ACMPSTORE.i32" staging="r" mask="0xffdc0" exact="0x648c0">
     <src start="0"/>
     <src start="3"/>
-    <mod name="seg" start="9" size="1" opt="wgl"/>
+    <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
   <ins name="+ACMPSTORE.i64" staging="r" mask="0xffdc0" exact="0x64900">
     <src start="0"/>
     <src start="3"/>
-    <mod name="seg" start="9" size="1" opt="wgl"/>
+    <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
   <ins name="+ACMPXCHG.i32" staging="rw" mask="0xffdc0" exact="0x644c0">
     <src start="0"/>
     <src start="3"/>
-    <mod name="seg" start="9" size="1" opt="wgl"/>
+    <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
   <ins name="+ACMPXCHG.i64" staging="rw" mask="0xffdc0" exact="0x64500">
     <src start="0"/>
     <src start="3"/>
-    <mod name="seg" start="9" size="1" opt="wgl"/>
+    <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
   <ins name="+ATEST" staging="w" mask="0xfff00" exact="0xc8f00">
@@ -2498,13 +2498,13 @@
   <ins name="+AXCHG.i32" staging="rw" mask="0xffdc0" exact="0x640c0">
     <src start="0"/>
     <src start="3"/>
-    <mod name="seg" start="9" size="1" opt="wgl"/>
+    <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
   <ins name="+AXCHG.i64" staging="rw" mask="0xffdc0" exact="0x64100">
     <src start="0"/>
     <src start="3"/>
-    <mod name="seg" start="9" size="1" opt="wgl"/>
+    <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
   <ins name="+BARRIER" mask="0xfffff" exact="0xd7874"/>
@@ -7044,7 +7044,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <opt>ubo</opt>
       <reserved/>
@@ -7059,7 +7059,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <opt>ubo</opt>
       <reserved/>
@@ -7118,7 +7118,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <opt>ubo</opt>
       <reserved/>
@@ -7133,7 +7133,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <opt>ubo</opt>
       <reserved/>
@@ -7170,7 +7170,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <opt>ubo</opt>
       <reserved/>
@@ -7185,7 +7185,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <opt>ubo</opt>
       <reserved/>
@@ -7200,7 +7200,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <opt>ubo</opt>
       <reserved/>
@@ -7284,7 +7284,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <opt>ubo</opt>
       <reserved/>
@@ -7456,7 +7456,7 @@
     <mod name="seg" start="3" size="3">
       <reserved/>
       <reserved/>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <reserved/>
       <reserved/>
       <reserved/>
@@ -7471,7 +7471,7 @@
     <mod name="seg" start="3" size="3">
       <reserved/>
       <reserved/>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <reserved/>
       <reserved/>
       <reserved/>
@@ -7498,7 +7498,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <reserved/>
       <reserved/>
@@ -7513,7 +7513,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <reserved/>
       <reserved/>
@@ -7528,7 +7528,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <reserved/>
       <reserved/>
@@ -7543,7 +7543,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <reserved/>
       <reserved/>
@@ -7558,7 +7558,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <reserved/>
       <reserved/>
@@ -7573,7 +7573,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <reserved/>
       <reserved/>
@@ -7588,7 +7588,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <reserved/>
       <reserved/>
@@ -7603,7 +7603,7 @@
     <mod name="seg" start="6" size="3">
       <reserved/>
       <opt>none</opt>
-      <opt>wgl</opt>
+      <opt>wls</opt>
       <opt>stream</opt>
       <reserved/>
       <reserved/>

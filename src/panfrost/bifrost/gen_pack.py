@@ -203,7 +203,7 @@ def pack_seg(mod, opts, body, pack_exprs):
     if len(opts) == 8:
         body.append('assert(ins->segment);')
         return 'ins->segment'
-    elif opts == ['none', 'wgl']:
+    elif opts == ['none', 'wls']:
         body.append('assert(ins->segment == BI_SEGMENT_NONE || ins->segment == BI_SEGMENT_WLS);')
         return 'ins->segment == BI_SEGMENT_WLS ? 1 : 0'
     else:
