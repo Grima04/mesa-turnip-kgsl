@@ -138,8 +138,13 @@ _nir_build_${name}(nir_builder *build${intrinsic_decl_list(opcode)})
 
 % for name, opcode in sorted(INTR_OPCODES.items()):
 % if opcode.indices:
+#ifdef __cplusplus
+#define nir_build_${name}(build${intrinsic_macro_list(opcode)}, ...) ${'\\\\'}
+_nir_build_${name}(build${intrinsic_macro_list(opcode)}, _nir_${name}_indices{0, __VA_ARGS__})
+#else
 #define nir_build_${name}(build${intrinsic_macro_list(opcode)}, ...) ${'\\\\'}
 _nir_build_${name}(build${intrinsic_macro_list(opcode)}, (struct _nir_${name}_indices){0, __VA_ARGS__})
+#endif
 % else:
 #define nir_build_${name} _nir_build_${name}
 % endif
