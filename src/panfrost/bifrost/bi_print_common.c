@@ -64,13 +64,13 @@ bi_output_mod_name(enum bi_clamp mod)
 }
 
 const char *
-bi_minmax_mode_name(enum bifrost_minmax_mode mod)
+bi_minmax_mode_name(enum bi_sem mod)
 {
         switch (mod) {
-        case BIFROST_MINMAX_NONE: return "";
-        case BIFROST_NAN_WINS: return ".nan_wins";
-        case BIFROST_SRC1_WINS: return ".src1_wins";
-        case BIFROST_SRC0_WINS: return ".src0_wins";
+        case BI_SEM_NAN_SUPPRESS: return "";
+        case BI_SEM_NAN_PROPAGATE: return ".nan_wins";
+        case BI_SEM_C: return ".src1_wins";
+        case BI_SEM_INVERSE_C: return ".src0_wins";
         default: return "invalid";
         }
 }

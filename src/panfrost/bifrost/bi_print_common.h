@@ -32,7 +32,7 @@
 
 const char * bi_message_type_name(enum bifrost_message_type T);
 const char * bi_output_mod_name(enum bi_clamp mod);
-const char * bi_minmax_mode_name(enum bifrost_minmax_mode mod);
+const char * bi_minmax_mode_name(enum bi_sem mod);
 const char * bi_round_mode_name(enum bi_round mod);
 const char * bi_interp_mode_name(enum bi_sample mode);
 const char * bi_flow_control_name(enum bifrost_flow mode);

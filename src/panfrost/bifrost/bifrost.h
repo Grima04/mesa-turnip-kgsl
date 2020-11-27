@@ -215,11 +215,11 @@ enum bi_round {
  */
 
 
-enum bifrost_minmax_mode {
-        BIFROST_MINMAX_NONE = 0x0,
-        BIFROST_NAN_WINS    = 0x1,
-        BIFROST_SRC1_WINS   = 0x2,
-        BIFROST_SRC0_WINS   = 0x3,
+enum bi_sem {
+        BI_SEM_NAN_SUPPRESS = 0x0,
+        BI_SEM_NAN_PROPAGATE    = 0x1,
+        BI_SEM_C   = 0x2,
+        BI_SEM_INVERSE_C   = 0x3,
 };
 
 enum bi_sample {

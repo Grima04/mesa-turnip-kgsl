@@ -400,7 +400,7 @@ typedef struct {
 
         /* Union for class-specific information */
         union {
-                enum bifrost_minmax_mode minmax;
+                enum bi_sem minmax;
                 struct bi_load_vary load_vary;
                 struct bi_block *branch_target;
 
