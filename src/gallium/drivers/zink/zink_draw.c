@@ -16,44 +16,6 @@
 #include "util/u_prim.h"
 #include "util/u_prim_restart.h"
 
-
-static struct zink_descriptor_set *
-allocate_descriptor_set(struct zink_screen *screen,
-                        struct zink_batch *batch,
-                        struct zink_program *pg)
-{
-   struct zink_descriptor_set *zds;
-
-   if (util_dynarray_num_elements(&pg->alloc_desc_sets, struct zink_descriptor_set *)) {
-      /* grab one off the allocated array */
-      zds = util_dynarray_pop(&pg->alloc_desc_sets, struct zink_descriptor_set *);
-      goto out;
-   }
-
-   VkDescriptorSetAllocateInfo dsai;
-   memset((void *)&dsai, 0, sizeof(dsai));
-   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-   dsai.pNext = NULL;
-   dsai.descriptorPool = pg->descpool;
-   dsai.descriptorSetCount = 1;
-   dsai.pSetLayouts = &pg->dsl;
-
-   VkDescriptorSet desc_set;
-   if (vkAllocateDescriptorSets(screen->dev, &dsai, &desc_set) != VK_SUCCESS) {
-      debug_printf("ZINK: %p failed to allocate descriptor set :/\n", pg);
-      return VK_NULL_HANDLE;
-   }
-   zds = ralloc_size(NULL, sizeof(struct zink_descriptor_set));
-   assert(zds);
-   pipe_reference_init(&zds->reference, 1);
-   zds->desc_set = desc_set;
-out:
-   if (zink_batch_add_desc_set(batch, pg, zds))
-      batch->descs_used += pg->num_descriptors;
-
-   return zds;
-}
-
 static void
 zink_emit_xfb_counter_barrier(struct zink_context *ctx)
 {
@@ -543,7 +505,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
    zink_batch_reference_program(batch, pg);
    assert(pg->num_descriptors == num_descriptors);
-   struct zink_descriptor_set *zds = allocate_descriptor_set(screen, batch, pg);
+   struct zink_descriptor_set *zds = zink_program_allocate_desc_set(screen, batch, pg);
    /* probably oom, so we need to stall until we free up some descriptors */
    if (!zds) {
       /* update our max descriptor count so we can try and avoid this happening again */
@@ -567,7 +529,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
          }
       }
       zink_batch_reference_program(batch, pg);
-      zds = allocate_descriptor_set(screen, batch, pg);
+      zds = zink_program_allocate_desc_set(screen, batch, pg);
    }
    assert(zds != VK_NULL_HANDLE);
 

@@ -169,4 +169,8 @@ zink_get_compute_pipeline(struct zink_screen *screen,
 void
 zink_program_invalidate_desc_set(struct zink_program *pg, struct zink_descriptor_set *zds);
 
+struct zink_descriptor_set *
+zink_program_allocate_desc_set(struct zink_screen *screen,
+                               struct zink_batch *batch,
+                               struct zink_program *pg);
 #endif
