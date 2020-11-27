@@ -204,8 +204,8 @@ def pack_seg(mod, opts, body, pack_exprs):
         body.append('assert(ins->segment);')
         return 'ins->segment'
     elif opts == ['none', 'wls']:
-        body.append('assert(ins->segment == BI_SEGMENT_NONE || ins->segment == BI_SEGMENT_WLS);')
-        return 'ins->segment == BI_SEGMENT_WLS ? 1 : 0'
+        body.append('assert(ins->segment == BI_SEG_NONE || ins->segment == BI_SEG_WLS);')
+        return 'ins->segment == BI_SEG_WLS ? 1 : 0'
     else:
         assert(False)
 

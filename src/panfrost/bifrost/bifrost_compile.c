@@ -500,7 +500,7 @@ bi_emit_ld_ubo(bi_context *ctx, nir_intrinsic_instr *instr)
 
         bi_instruction ld = {
                 .type = BI_LOAD_UNIFORM,
-                .segment = BI_SEGMENT_UBO,
+                .segment = BI_SEG_UBO,
                 .vector_channels = instr->num_components,
                 .src_types = { nir_type_uint32, nir_type_uint32 },
                 .dest = pan_dest_index(&instr->dest),
@@ -541,7 +541,7 @@ bi_emit_sysval(bi_context *ctx, nir_instr *instr,
 
         bi_instruction load = {
                 .type = BI_LOAD_UNIFORM,
-                .segment = BI_SEGMENT_UBO,
+                .segment = BI_SEG_UBO,
                 .vector_channels = nr_components,
                 .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                 .src_types = { nir_type_uint32, nir_type_uint32 },

@@ -193,7 +193,7 @@ bi_spill(unsigned node, uint64_t offset, unsigned channels)
 {
         bi_instruction store = {
                 .type = BI_STORE,
-                .segment = BI_SEGMENT_TLS,
+                .segment = BI_SEG_TL,
                 .vector_channels = channels,
                 .src = {
                         node,
@@ -216,7 +216,7 @@ bi_fill(unsigned node, uint64_t offset, unsigned channels)
 {
         bi_instruction load = {
                 .type = BI_LOAD,
-                .segment = BI_SEGMENT_TLS,
+                .segment = BI_SEG_TL,
                 .vector_channels = channels,
                 .dest = node,
                 .dest_type = nir_type_uint32,
@@ -329,7 +329,7 @@ bi_spill_register(bi_context *ctx, unsigned node, unsigned offset)
                         if (!bi_has_arg(ins, node)) continue;
 
                         /* Don't rewrite spills themselves */
-                        if (ins->segment == BI_SEGMENT_TLS) continue;
+                        if (ins->segment == BI_SEG_TL) continue;
 
                         unsigned index = bi_make_temp(ctx);
 

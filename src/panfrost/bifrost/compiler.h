@@ -170,23 +170,23 @@ enum bi_cond {
  * instructions for address calculation, and directly in SEG_ADD/SEG_SUB
  * instructions. */
 
-enum bi_segment {
+enum bi_seg {
         /* No segment (use global addressing, offset from GPU VA 0x0) */
-        BI_SEGMENT_NONE = 1,
+        BI_SEG_NONE = 1,
 
         /* Within workgroup local memory (shared memory). Relative to
          * wls_base_pointer in the draw's thread storage descriptor */
-        BI_SEGMENT_WLS = 2,
+        BI_SEG_WLS = 2,
 
         /* Within one of the bound uniform buffers. Low 32-bits are the index
          * within the uniform buffer; high 32-bits are the index of the uniform
          * buffer itself. Relative to the uniform_array_pointer indexed within
          * the draw's uniform remap table indexed by the high 32-bits. */
-        BI_SEGMENT_UBO = 4,
+        BI_SEG_UBO = 4,
 
         /* Within thread local storage (for spilling). Relative to
          * tls_base_pointer in the draw's thread storage descriptor */
-        BI_SEGMENT_TLS = 7
+        BI_SEG_TL = 7
 };
 
 /* Opcodes within a class */
@@ -375,7 +375,7 @@ typedef struct {
         enum bi_cond cond;
 
         /* For memory ops, base address */
-        enum bi_segment segment;
+        enum bi_seg segment;
 
         /* Can we spill the value written here? Used to prevent
          * useless double fills */
