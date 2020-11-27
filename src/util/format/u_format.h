@@ -692,6 +692,8 @@ util_format_is_float(enum pipe_format format) ATTRIBUTE_CONST;
 boolean
 util_format_has_alpha(enum pipe_format format) ATTRIBUTE_CONST;
 
+boolean
+util_format_has_alpha1(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
 util_format_is_luminance(enum pipe_format format) ATTRIBUTE_CONST;
