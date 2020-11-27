@@ -49,7 +49,7 @@ radv_pipeline_cache_lock(struct radv_pipeline_cache *cache)
 	if (cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT)
 		return;
 
-	pthread_mutex_lock(&cache->mutex);
+	mtx_lock(&cache->mutex);
 }
 
 static void
@@ -58,7 +58,7 @@ radv_pipeline_cache_unlock(struct radv_pipeline_cache *cache)
 	if (cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT)
 		return;
 
-	pthread_mutex_unlock(&cache->mutex);
+	mtx_unlock(&cache->mutex);
 }
 
 void
@@ -66,7 +66,7 @@ radv_pipeline_cache_init(struct radv_pipeline_cache *cache,
 			 struct radv_device *device)
 {
 	cache->device = device;
-	pthread_mutex_init(&cache->mutex, NULL);
+	mtx_init(&cache->mutex, mtx_plain);
 	cache->flags = 0;
 
 	cache->modified = false;
@@ -98,7 +98,7 @@ radv_pipeline_cache_finish(struct radv_pipeline_cache *cache)
 			}
 			vk_free(&cache->alloc, cache->hash_table[i]);
 		}
-	pthread_mutex_destroy(&cache->mutex);
+	mtx_destroy(&cache->mutex);
 	free(cache->hash_table);
 }
 

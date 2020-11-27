@@ -373,7 +373,7 @@ struct cache_entry;
 struct radv_pipeline_cache {
 	struct vk_object_base                        base;
 	struct radv_device *                         device;
-	pthread_mutex_t                              mutex;
+	mtx_t                                        mutex;
 	VkPipelineCacheCreateFlags                   flags;
 
 	uint32_t                                     total_size;
@@ -727,9 +727,9 @@ struct radv_queue {
 	struct radeon_cmdbuf *continue_preamble_cs;
 
 	struct list_head pending_submissions;
-	pthread_mutex_t pending_mutex;
+	mtx_t pending_mutex;
 
-	pthread_mutex_t thread_mutex;
+	mtx_t thread_mutex;
 	struct u_cnd_monotonic thread_cond;
 	struct radv_deferred_queue_submission *thread_submission;
 	pthread_t submission_thread;
@@ -760,7 +760,7 @@ struct radv_device_border_color_data {
 
 	/* Mutex is required to guarantee vkCreateSampler thread safety
 	 * given that we are writing to a buffer and checking color occupation */
-	pthread_mutex_t          mutex;
+	mtx_t                    mutex;
 };
 
 struct radv_device {
@@ -2361,8 +2361,7 @@ struct radv_timeline_point {
 };
 
 struct radv_timeline {
-	/* Using a pthread mutex to be compatible with condition variables. */
-	pthread_mutex_t mutex;
+	mtx_t mutex;
 
 	uint64_t highest_signaled;
 	uint64_t highest_submitted;
