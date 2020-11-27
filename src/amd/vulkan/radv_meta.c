@@ -281,7 +281,7 @@ static void
 meta_free(void* _device, void *data)
 {
 	struct radv_device *device = _device;
-	return device->vk.alloc.pfnFree(device->vk.alloc.pUserData, data);
+	device->vk.alloc.pfnFree(device->vk.alloc.pUserData, data);
 }
 
 static bool
