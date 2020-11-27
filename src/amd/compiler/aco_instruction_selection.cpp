@@ -6991,7 +6991,7 @@ void ngg_visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *
    if (nir_src_is_const(instr->src[1])) {
       uint8_t current_vtx_per_prim = nir_src_as_uint(instr->src[1]);
       uint8_t completes_prim = (current_vtx_per_prim >= (total_vtx_per_prim - 1)) ? 1 : 0;
-      uint8_t odd = calc_odd & current_vtx_per_prim;
+      uint8_t odd = (uint8_t)calc_odd & current_vtx_per_prim;
       uint8_t flag = completes_prim | (odd << 1) | (1 << 2);
       prim_flag = bld.copy(bld.def(v1b), Operand(flag));
    } else if (!instr->src[1].ssa->divergent) {
@@ -9314,7 +9314,7 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
    assert(instr->dest.ssa.bit_size != 1 || dst.regClass() == ctx->program->lane_mask);
 
    bool logical = !dst.is_linear() || nir_dest_is_divergent(instr->dest);
-   logical |= ctx->block->kind & block_kind_merge;
+   logical |= (ctx->block->kind & block_kind_merge) != 0;
    aco_opcode opcode = logical ? aco_opcode::p_phi : aco_opcode::p_linear_phi;
 
    /* we want a sorted list of sources, since the predecessor list is also sorted */
