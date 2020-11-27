@@ -50,15 +50,6 @@ amd_vk_format_table_c = custom_target(
 
 libradv_files = files(
   'layers/radv_sqtt_layer.c',
-  'winsys/amdgpu/radv_amdgpu_bo.c',
-  'winsys/amdgpu/radv_amdgpu_bo.h',
-  'winsys/amdgpu/radv_amdgpu_cs.c',
-  'winsys/amdgpu/radv_amdgpu_cs.h',
-  'winsys/amdgpu/radv_amdgpu_surface.c',
-  'winsys/amdgpu/radv_amdgpu_surface.h',
-  'winsys/amdgpu/radv_amdgpu_winsys.c',
-  'winsys/amdgpu/radv_amdgpu_winsys.h',
-  'winsys/amdgpu/radv_amdgpu_winsys_public.h',
   'winsys/null/radv_null_bo.c',
   'winsys/null/radv_null_bo.h',
   'winsys/null/radv_null_cs.c',
@@ -112,6 +103,20 @@ libradv_files = files(
   'si_cmd_buffer.c',
   'vk_format.h',
 )
+
+if not with_platform_windows
+  libradv_files += files(
+    'winsys/amdgpu/radv_amdgpu_bo.c',
+    'winsys/amdgpu/radv_amdgpu_bo.h',
+    'winsys/amdgpu/radv_amdgpu_cs.c',
+    'winsys/amdgpu/radv_amdgpu_cs.h',
+    'winsys/amdgpu/radv_amdgpu_surface.c',
+    'winsys/amdgpu/radv_amdgpu_surface.h',
+    'winsys/amdgpu/radv_amdgpu_winsys.c',
+    'winsys/amdgpu/radv_amdgpu_winsys.h',
+    'winsys/amdgpu/radv_amdgpu_winsys_public.h',
+  )
+endif
 
 radv_deps = []
 radv_flags = cc.get_supported_arguments(['-Wshadow'])
