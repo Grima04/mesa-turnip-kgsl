@@ -648,6 +648,7 @@ struct v3d_job *v3d_get_job(struct v3d_context *v3d,
                             struct pipe_surface **cbufs,
                             struct pipe_surface *zsbuf);
 struct v3d_job *v3d_get_job_for_fbo(struct v3d_context *v3d);
+void v3d_job_set_tile_buffer_size(struct v3d_job *job);
 void v3d_job_add_bo(struct v3d_job *job, struct v3d_bo *bo);
 void v3d_job_add_write_resource(struct v3d_job *job, struct pipe_resource *prsc);
 void v3d_job_add_tf_write_resource(struct v3d_job *job, struct pipe_resource *prsc);

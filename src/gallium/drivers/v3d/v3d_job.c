@@ -274,7 +274,7 @@ v3d_flush_jobs_reading_resource(struct v3d_context *v3d,
         }
 }
 
-static void
+void
 v3d_job_set_tile_buffer_size(struct v3d_job *job)
 {
         static const uint8_t tile_sizes[] = {
