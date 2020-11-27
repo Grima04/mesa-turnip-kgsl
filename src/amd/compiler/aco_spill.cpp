@@ -316,7 +316,7 @@ void get_rematerialize_info(spill_ctx& ctx)
          if (logical && should_rematerialize(instr)) {
             for (const Definition& def : instr->definitions) {
                if (def.isTemp()) {
-                  ctx.remat[def.getTemp()] = (remat_info){instr.get()};
+                  ctx.remat[def.getTemp()] = remat_info{instr.get()};
                   ctx.remat_used[instr.get()] = false;
                }
             }

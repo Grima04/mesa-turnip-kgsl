@@ -26,6 +26,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <math.h>
 
 #include "aco_ir.h"
@@ -2266,10 +2267,10 @@ bool combine_salu_lshl_add(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       instr->operands[0] = op2_instr->operands[0];
       ctx.info[instr->definitions[0].tempId()].label = 0;
 
-      instr->opcode = ((aco_opcode[]){aco_opcode::s_lshl1_add_u32,
-                                      aco_opcode::s_lshl2_add_u32,
-                                      aco_opcode::s_lshl3_add_u32,
-                                      aco_opcode::s_lshl4_add_u32})[shift - 1];
+      instr->opcode = std::array<aco_opcode, 4>{aco_opcode::s_lshl1_add_u32,
+                                                aco_opcode::s_lshl2_add_u32,
+                                                aco_opcode::s_lshl3_add_u32,
+                                                aco_opcode::s_lshl4_add_u32}[shift - 1];
 
       return true;
    }

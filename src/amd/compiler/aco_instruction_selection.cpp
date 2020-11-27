@@ -703,8 +703,8 @@ Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
 
 uint32_t get_alu_src_ub(isel_context *ctx, nir_alu_instr *instr, int src_idx)
 {
-   nir_ssa_scalar scalar = (nir_ssa_scalar){instr->src[src_idx].src.ssa,
-                                            instr->src[src_idx].swizzle[0]};
+   nir_ssa_scalar scalar = nir_ssa_scalar{instr->src[src_idx].src.ssa,
+                                          instr->src[src_idx].swizzle[0]};
    return nir_unsigned_upper_bound(ctx->shader, ctx->range_ht, scalar, &ctx->ub_config);
 }
 
@@ -4655,14 +4655,20 @@ uint8_t get_fetch_data_format(isel_context *ctx, const ac_data_format_info *vtx_
 
    switch (vtx_info->chan_format) {
    case V_008F0C_BUF_DATA_FORMAT_8:
-      return (uint8_t[]){V_008F0C_BUF_DATA_FORMAT_8, V_008F0C_BUF_DATA_FORMAT_8_8,
-                         V_008F0C_BUF_DATA_FORMAT_INVALID, V_008F0C_BUF_DATA_FORMAT_8_8_8_8}[num_channels - 1];
+      return std::array<uint8_t, 4>{V_008F0C_BUF_DATA_FORMAT_8,
+                                    V_008F0C_BUF_DATA_FORMAT_8_8,
+                                    V_008F0C_BUF_DATA_FORMAT_INVALID,
+                                    V_008F0C_BUF_DATA_FORMAT_8_8_8_8}[num_channels - 1];
    case V_008F0C_BUF_DATA_FORMAT_16:
-      return (uint8_t[]){V_008F0C_BUF_DATA_FORMAT_16, V_008F0C_BUF_DATA_FORMAT_16_16,
-                         V_008F0C_BUF_DATA_FORMAT_INVALID, V_008F0C_BUF_DATA_FORMAT_16_16_16_16}[num_channels - 1];
+      return std::array<uint8_t, 4>{V_008F0C_BUF_DATA_FORMAT_16,
+                                    V_008F0C_BUF_DATA_FORMAT_16_16,
+                                    V_008F0C_BUF_DATA_FORMAT_INVALID,
+                                    V_008F0C_BUF_DATA_FORMAT_16_16_16_16}[num_channels - 1];
    case V_008F0C_BUF_DATA_FORMAT_32:
-      return (uint8_t[]){V_008F0C_BUF_DATA_FORMAT_32, V_008F0C_BUF_DATA_FORMAT_32_32,
-                         V_008F0C_BUF_DATA_FORMAT_32_32_32, V_008F0C_BUF_DATA_FORMAT_32_32_32_32}[num_channels - 1];
+      return std::array<uint8_t, 4>{V_008F0C_BUF_DATA_FORMAT_32,
+                                    V_008F0C_BUF_DATA_FORMAT_32_32,
+                                    V_008F0C_BUF_DATA_FORMAT_32_32_32,
+                                    V_008F0C_BUF_DATA_FORMAT_32_32_32_32}[num_channels - 1];
    }
    unreachable("shouldn't reach here");
    return V_008F0C_BUF_DATA_FORMAT_INVALID;
