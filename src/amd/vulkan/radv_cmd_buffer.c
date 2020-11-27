@@ -829,9 +829,9 @@ radv_compute_centroid_priority(struct radv_cmd_buffer *cmd_buffer,
 			       VkOffset2D *sample_locs,
 			       uint32_t num_samples)
 {
-	uint32_t centroid_priorities[num_samples];
+	uint32_t *centroid_priorities = alloca(num_samples * sizeof(*centroid_priorities));
 	uint32_t sample_mask = num_samples - 1;
-	uint32_t distances[num_samples];
+	uint32_t *distances = alloca(num_samples * sizeof(*distances));
 	uint64_t centroid_priority = 0;
 
 	/* Compute the distances from center for each sample. */
