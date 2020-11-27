@@ -2032,8 +2032,8 @@ bool match_op3_for_vop3(opt_ctx &ctx, aco_opcode op1, aco_opcode op2,
       return false;
 
    if (inbetween_opsel)
-      *inbetween_opsel = op1_vop3 ? op1_vop3->opsel & (1 << swap) : false;
-   else if (op1_vop3 && op1_vop3->opsel & (1 << swap))
+      *inbetween_opsel = op1_vop3 ? op1_vop3->opsel & (1 << (unsigned)swap) : false;
+   else if (op1_vop3 && op1_vop3->opsel & (1 << (unsigned)swap))
       return false;
 
    *precise = op1_instr->definitions[0].isPrecise() ||
@@ -2047,7 +2047,7 @@ bool match_op3_for_vop3(opt_ctx &ctx, aco_opcode op1, aco_opcode op2,
    operands[shuffle[0]] = op1_instr->operands[!swap];
    neg[shuffle[0]] = op1_vop3 ? op1_vop3->neg[!swap] : false;
    abs[shuffle[0]] = op1_vop3 ? op1_vop3->abs[!swap] : false;
-   if (op1_vop3 && op1_vop3->opsel & (1 << !swap))
+   if (op1_vop3 && (op1_vop3->opsel & (1 << (unsigned)!swap)))
       *opsel |= 1 << shuffle[0];
 
    for (unsigned i = 0; i < 2; i++) {
