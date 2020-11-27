@@ -4077,6 +4077,9 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
        */
       if (dst_mirror_z)
          return false;
+   } else {
+      min_dst_layer = region->dstSubresource.baseArrayLayer;
+      max_dst_layer = min_dst_layer + region->dstSubresource.layerCount - 1;
    }
 
    uint32_t min_src_layer;
@@ -4089,10 +4092,13 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
 
       if (src_mirror_z)
          return false;
-
-      if (max_dst_layer - min_dst_layer != max_src_layer - min_src_layer)
-         return false;
+   } else {
+      min_src_layer = region->srcSubresource.baseArrayLayer;
+      max_src_layer = min_src_layer + region->srcSubresource.layerCount - 1;
    }
+
+   if (max_dst_layer - min_dst_layer != max_src_layer - min_src_layer)
+      return false;
 
    const uint32_t layer_count = dst->type != VK_IMAGE_TYPE_3D ?
       region->dstSubresource.layerCount :
@@ -4101,8 +4107,8 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
 
    for (uint32_t i = 0; i < layer_count; i++) {
       emit_tfu_job(cmd_buffer,
-                   dst, dst_mip_level, region->dstSubresource.baseArrayLayer + i,
-                   src, src_mip_level, region->srcSubresource.baseArrayLayer + i,
+                   dst, dst_mip_level, min_dst_layer + i,
+                   src, src_mip_level, min_src_layer + i,
                    dst_width, dst_height, dst->format);
    }
 
