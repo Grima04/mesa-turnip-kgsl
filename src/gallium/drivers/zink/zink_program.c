@@ -114,7 +114,7 @@ create_desc_set_layout(VkDevice dev,
                        struct zink_shader *stages[ZINK_SHADER_COUNT],
                        unsigned *num_descriptors)
 {
-   VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS];
+   VkDescriptorSetLayoutBinding bindings[(PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES))];
    int num_bindings = 0;
 
    for (int i = 0; i < ZINK_SHADER_COUNT; i++) {
