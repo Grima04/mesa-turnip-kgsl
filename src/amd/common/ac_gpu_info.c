@@ -31,9 +31,137 @@
 #include "util/macros.h"
 #include "util/u_math.h"
 
-#include <amdgpu.h>
 #include <stdio.h>
+
+#ifdef _WIN32
+typedef struct _drmPciBusInfo {
+   uint16_t domain;
+   uint8_t bus;
+   uint8_t dev;
+   uint8_t func;
+} drmPciBusInfo, *drmPciBusInfoPtr;
+typedef struct _drmDevice {
+   union {
+      drmPciBusInfoPtr pci;
+   } businfo;
+} drmDevice, *drmDevicePtr;
+enum amdgpu_sw_info {
+   amdgpu_sw_info_address32_hi = 0,
+};
+typedef struct amdgpu_device *amdgpu_device_handle;
+typedef struct amdgpu_bo *amdgpu_bo_handle;
+struct amdgpu_bo_alloc_request {
+   uint64_t alloc_size;
+   uint64_t phys_alignment;
+   uint32_t preferred_heap;
+   uint64_t flags;
+};
+struct amdgpu_gds_resource_info {
+   uint32_t gds_gfx_partition_size;
+   uint32_t gds_total_size;
+};
+struct amdgpu_buffer_size_alignments {
+   uint64_t size_local;
+   uint64_t size_remote;
+};
+struct amdgpu_heap_info {
+   uint64_t heap_size;
+};
+struct amdgpu_gpu_info {
+   uint32_t asic_id;
+   uint32_t chip_external_rev;
+   uint32_t family_id;
+   uint64_t ids_flags;
+   uint64_t max_engine_clk;
+   uint64_t max_memory_clk;
+   uint32_t num_shader_engines;
+   uint32_t num_shader_arrays_per_engine;
+   uint32_t rb_pipes;
+   uint32_t enabled_rb_pipes_mask;
+   uint32_t gpu_counter_freq;
+   uint32_t mc_arb_ramcfg;
+   uint32_t gb_addr_cfg;
+   uint32_t gb_tile_mode[32];
+   uint32_t gb_macro_tile_mode[16];
+   uint32_t cu_bitmap[4][4];
+   uint32_t vram_type;
+   uint32_t vram_bit_width;
+   uint32_t ce_ram_size;
+   uint32_t vce_harvest_config;
+   uint32_t pci_rev_id;
+};
+int drmGetCap(int fd, uint64_t capability, uint64_t *value)
+{
+   return -EINVAL;
+}
+void drmFreeDevice(drmDevicePtr *device)
+{
+}
+int drmGetDevice2(int fd, uint32_t flags, drmDevicePtr *device)
+{
+   return -ENODEV;
+}
+int amdgpu_bo_alloc(amdgpu_device_handle dev,
+   struct amdgpu_bo_alloc_request *alloc_buffer,
+   amdgpu_bo_handle *buf_handle)
+{
+   return -EINVAL;
+}
+int amdgpu_bo_free(amdgpu_bo_handle buf_handle)
+{
+   return -EINVAL;
+}
+int amdgpu_query_buffer_size_alignment(amdgpu_device_handle dev,
+   struct amdgpu_buffer_size_alignments
+   *info)
+{
+   return -EINVAL;
+}
+int amdgpu_query_firmware_version(amdgpu_device_handle dev, unsigned fw_type,
+   unsigned ip_instance, unsigned index,
+   uint32_t *version, uint32_t *feature)
+{
+   return -EINVAL;
+}
+int amdgpu_query_hw_ip_info(amdgpu_device_handle dev, unsigned type,
+   unsigned ip_instance,
+   struct drm_amdgpu_info_hw_ip *info)
+{
+   return -EINVAL;
+}
+int amdgpu_query_heap_info(amdgpu_device_handle dev, uint32_t heap,
+   uint32_t flags, struct amdgpu_heap_info *info)
+{
+   return -EINVAL;
+}
+int amdgpu_query_gpu_info(amdgpu_device_handle dev,
+   struct amdgpu_gpu_info *info)
+{
+   return -EINVAL;
+}
+int amdgpu_query_info(amdgpu_device_handle dev, unsigned info_id,
+   unsigned size, void *value)
+{
+   return -EINVAL;
+}
+int amdgpu_query_sw_info(amdgpu_device_handle dev, enum amdgpu_sw_info info,
+   void *value)
+{
+   return -EINVAL;
+}
+int amdgpu_query_gds_info(amdgpu_device_handle dev,
+   struct amdgpu_gds_resource_info *gds_info)
+{
+   return -EINVAL;
+}
+const char *amdgpu_get_marketing_name(amdgpu_device_handle dev)
+{
+   return NULL;
+}
+#else
+#include <amdgpu.h>
 #include <xf86drm.h>
+#endif
 
 #define CIK_TILE_MODE_COLOR_2D 14
 

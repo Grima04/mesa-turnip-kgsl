@@ -639,6 +639,9 @@ void ac_parse_ib(FILE *f, uint32_t *ib, int num_dw, const int *trace_ids, unsign
 bool ac_vm_fault_occured(enum chip_class chip_class, uint64_t *old_dmesg_timestamp,
                          uint64_t *out_addr)
 {
+#ifdef _WIN32
+   return false;
+#else
    char line[2000];
    unsigned sec, usec;
    int progress = 0;
@@ -733,6 +736,7 @@ bool ac_vm_fault_occured(enum chip_class chip_class, uint64_t *old_dmesg_timesta
       *old_dmesg_timestamp = dmesg_timestamp;
 
    return fault;
+#endif
 }
 
 static int compare_wave(const void *p1, const void *p2)
@@ -773,6 +777,9 @@ static int compare_wave(const void *p1, const void *p2)
 unsigned ac_get_wave_info(enum chip_class chip_class,
                           struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP])
 {
+#ifdef _WIN32
+   return 0;
+#else
    char line[2000], cmd[128];
    unsigned num_waves = 0;
 
@@ -808,4 +815,5 @@ unsigned ac_get_wave_info(enum chip_class chip_class,
 
    pclose(p);
    return num_waves;
+#endif
 }
