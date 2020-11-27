@@ -192,6 +192,9 @@ zink_fence_wait(struct pipe_context *ctx);
 void
 zink_wait_on_batch(struct zink_context *ctx, int batch_id);
 
+bool
+zink_resource_access_is_write(VkAccessFlags flags);
+
 void
 zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 
