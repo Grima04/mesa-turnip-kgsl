@@ -275,10 +275,10 @@ enum bi_lane_op {
         BI_LANE_OP_SHIFT,
 };
 
-enum bi_subgroup_sz {
-        BI_CLPER_SUBGROUP_SZ_2,
-        BI_CLPER_SUBGROUP_SZ_4,
-        BI_CLPER_SUBGROUP_SZ_8,
+enum bi_subgroup {
+        BI_SUBGROUP_SUBGROUP2,
+        BI_SUBGROUP_SUBGROUP4,
+        BI_SUBGROUP_SUBGROUP8,
 };
 
 enum bi_clper_inactive_res {
@@ -305,7 +305,7 @@ struct bi_special {
                 enum bi_lane_op lane_op_mod;
                 enum bi_clper_inactive_res inactive_res;
         } clper;
-        enum bi_subgroup_sz subgroup_sz;
+        enum bi_subgroup subgroup_sz;
 };
 
 struct bi_attribute {

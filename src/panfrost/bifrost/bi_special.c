@@ -234,7 +234,7 @@ bi_emit_deriv(bi_context *ctx, nir_alu_instr *instr)
         bi_instruction clper1 = {
                 .type = BI_SPECIAL_ADD,
                 .op.special = ctx->arch == 6 ? BI_SPECIAL_CLPER_V6 : BI_SPECIAL_CLPER_V7,
-                .special.subgroup_sz = BI_CLPER_SUBGROUP_SZ_4,
+                .special.subgroup_sz = BI_SUBGROUP_SUBGROUP4,
                 .special.clper.lane_op_mod = BI_LANE_OP_NONE,
                 .special.clper.inactive_res = BI_CLPER_INACTIVE_RES_ZERO,
                 .dest = bi_make_temp(ctx),
@@ -247,7 +247,7 @@ bi_emit_deriv(bi_context *ctx, nir_alu_instr *instr)
         bi_instruction clper2 = {
                 .type = BI_SPECIAL_ADD,
                 .op.special = ctx->arch == 6 ? BI_SPECIAL_CLPER_V6 : BI_SPECIAL_CLPER_V7,
-                .special.subgroup_sz = BI_CLPER_SUBGROUP_SZ_4,
+                .special.subgroup_sz = BI_SUBGROUP_SUBGROUP4,
                 .special.clper.lane_op_mod = BI_LANE_OP_NONE,
                 .special.clper.inactive_res = BI_CLPER_INACTIVE_RES_ZERO,
                 .dest = bi_make_temp(ctx),
