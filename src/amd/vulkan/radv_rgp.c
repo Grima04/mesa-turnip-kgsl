@@ -132,7 +132,7 @@ radv_sqtt_fill_header(struct sqtt_file_header *header)
 	header->chunk_offset = sizeof(*header);
 
 	time(&raw_time);
-	timep = localtime_r(&raw_time, &result);
+	timep = os_localtime(&raw_time, &result);
 
 	header->second = timep->tm_sec;
 	header->minute = timep->tm_min;

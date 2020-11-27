@@ -669,7 +669,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 	char buf_time[128];
 
 	time(&raw_time);
-	timep = localtime_r(&raw_time, &result);
+	timep = os_localtime(&raw_time, &result);
 	strftime(buf_time, sizeof(buf_time), "%Y.%m.%d_%H.%M.%S", timep);
 
 	snprintf(dump_dir, sizeof(dump_dir), "%s/"RADV_DUMP_DIR"_%d_%s",
