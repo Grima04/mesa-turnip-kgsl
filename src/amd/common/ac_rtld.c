@@ -79,17 +79,13 @@ struct ac_rtld_part {
    unsigned num_sections;
 };
 
-static void report_erroraf(const char *fmt, va_list va)
+static void report_errorvf(const char *fmt, va_list va)
 {
-   char *msg;
-   int ret = vasprintf(&msg, fmt, va);
-   if (ret < 0)
-      msg = "(vasprintf failed)";
+   fprintf(stderr, "ac_rtld error: ");
 
-   fprintf(stderr, "ac_rtld error: %s\n", msg);
+   vfprintf(stderr, fmt, va);
 
-   if (ret >= 0)
-      free(msg);
+   fprintf(stderr, "\n");
 }
 
 static void report_errorf(const char *fmt, ...) PRINTFLIKE(1, 2);
@@ -98,7 +94,7 @@ static void report_errorf(const char *fmt, ...)
 {
    va_list va;
    va_start(va, fmt);
-   report_erroraf(fmt, va);
+   report_errorvf(fmt, va);
    va_end(va);
 }
 
@@ -108,7 +104,7 @@ static void report_elf_errorf(const char *fmt, ...)
 {
    va_list va;
    va_start(va, fmt);
-   report_erroraf(fmt, va);
+   report_errorvf(fmt, va);
    va_end(va);
 
    fprintf(stderr, "ELF error: %s\n", elf_errmsg(elf_errno()));
