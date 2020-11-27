@@ -550,6 +550,141 @@ bi_is_equiv(bi_index left, bi_index right)
                 (left.value == right.value);
 }
 
+#define BI_MAX_DESTS 2
+#define BI_MAX_SRCS 4
+
+typedef struct {
+        /* Must be first */
+        struct list_head link;
+
+        /* Link for the use chain */
+        struct list_head use;
+
+        enum bi_opcode op;
+
+        /* Data flow */
+        bi_index dest[BI_MAX_DESTS];
+        bi_index src[BI_MAX_SRCS];
+
+        /* For a branch */
+        struct bi_block *branch_target;
+
+        /* These don't fit neatly with anything else.. */
+        enum bi_register_format register_format;
+        enum bi_vecsize vecsize;
+
+        /* Can we spill the value written here? Used to prevent
+         * useless double fills */
+        bool no_spill;
+
+        /* Everything after this MUST NOT be accessed directly, since
+         * interpretation depends on opcodes */
+
+        /* Destination modifiers */
+        union {
+                enum bi_clamp clamp;
+                bool saturate;
+                bool not_result;
+        };
+
+        /* Immediates. All seen alone in an instruction, except for varying/texture
+         * which are specified jointly for VARTEX */
+        union {
+                uint32_t shift;
+                uint32_t fill;
+                uint32_t index;
+                uint32_t table;
+                uint32_t attribute_index;
+
+                struct {
+                        uint32_t varying_index;
+                        uint32_t sampler_index;
+                        uint32_t texture_index;
+                };
+
+                /* TEXC, ATOM_CX: # of staging registers used */
+                uint32_t sr_count;
+        };
+
+        /* Modifiers specific to particular instructions are thrown in a union */
+        union {
+                enum bi_adj adj; /* FEXP_TABLE.u4 */
+                enum bi_atom_opc atom_opc; /* atomics */
+                enum bi_func func; /* FPOW_SC_DET */
+                enum bi_function function; /* LD_VAR_FLAT */
+                enum bi_mode mode; /* FLOG_TABLE */
+                enum bi_mux mux; /* MUX */
+                enum bi_precision precision; /* FLOG_TABLE */
+                enum bi_sem sem; /* FMAX, FMIN */
+                enum bi_source source; /* LD_GCLK */
+                bool scale; /* VN_ASST2, FSINCOS_OFFSET */
+                bool offset; /* FSIN_TABLE, FOCS_TABLE */
+                bool divzero; /* FRSQ_APPROX, FRSQ */
+                bool mask; /* CLZ */
+                bool threads; /* IMULD, IMOV_FMA */
+                bool combine; /* BRANCHC */
+                bool format; /* LEA_TEX */
+
+                struct {
+                        bool skip; /* VAR_TEX, TEXS, TEXC */
+                        bool lod_mode; /* TEXS */
+                };
+
+                struct {
+                        enum bi_special special; /* FADD_RSCALE, FMA_RSCALE */
+                        enum bi_round round; /* FMA, converts, FADD, _RSCALE, etc */
+                };
+
+                struct {
+                        enum bi_result_type result_type; /* FCMP, ICMP */
+                        enum bi_cmpf cmpf; /* CSEL, FCMP, ICMP, BRANCH */
+                };
+
+                struct {
+                        enum bi_stack_mode stack_mode; /* JUMP_EX */
+                        bool test_mode;
+                };
+
+                struct {
+                        enum bi_seg seg; /* LOAD, STORE, SEG_ADD, SEG_SUB */
+                        bool preserve_null; /* SEG_ADD, SEG_SUB */
+                        enum bi_extend extend; /* LOAD, IMUL */
+                };
+
+                struct {
+                        enum bi_sample sample; /* LD_VAR */
+                        enum bi_update update; /* LD_VAR */
+                        enum bi_varying_name varying_name; /* LD_VAR_SPECIAL */
+                };
+
+                struct {
+                        enum bi_subgroup subgroup; /* WMASK, CLPER */
+                        enum bi_inactive_result inactive_result; /* CLPER */
+                        enum bi_lane_op lane_op; /* CLPER */
+                };
+
+                struct {
+                        bool z; /* ZS_EMIT */
+                        bool stencil; /* ZS_EMIT */
+                };
+
+                struct {
+                        bool h; /* VN_ASST1.f16 */
+                        bool l; /* VN_ASST1.f16 */
+                };
+
+                struct {
+                        bool bytes2; /* RROT_DOUBLE, FRSHIFT_DOUBLE */
+                        bool result_word;
+                };
+
+                struct {
+                        bool sqrt; /* FREXPM */
+                        bool log; /* FREXPM */
+                };
+        };
+} bi_instr;
+
 /* Represents the assignment of slots for a given bi_bundle */
 
 typedef struct {
