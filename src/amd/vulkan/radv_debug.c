@@ -379,8 +379,9 @@ radv_dump_annotated_shaders(struct radv_pipeline *pipeline,
 		"\n\n", num_waves);
 
 	/* Dump annotated active graphics shaders. */
-	while (active_stages) {
-		int stage = u_bit_scan(&active_stages);
+	unsigned stages = active_stages;
+	while (stages) {
+		int stage = u_bit_scan(&stages);
 
 		radv_dump_annotated_shader(pipeline->shaders[stage],
 					   stage, waves, num_waves, f);
@@ -447,8 +448,9 @@ radv_dump_shaders(struct radv_pipeline *pipeline,
 		  VkShaderStageFlagBits active_stages, FILE *f)
 {
 	/* Dump active graphics shaders. */
-	while (active_stages) {
-		int stage = u_bit_scan(&active_stages);
+	unsigned stages = active_stages;
+	while (stages) {
+		int stage = u_bit_scan(&stages);
 
 		radv_dump_shader(pipeline, pipeline->shaders[stage], stage, f);
 	}
