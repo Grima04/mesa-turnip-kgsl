@@ -893,17 +893,17 @@ panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
         /* Assume combined. If either depth or stencil is written, they will
          * both be written so we need to be careful for reloading */
 
-        unsigned draws = batch->draws;
+        unsigned reload = batch->draws | batch->read;
 
-        if (draws & PIPE_CLEAR_DEPTHSTENCIL)
-                draws |= PIPE_CLEAR_DEPTHSTENCIL;
+        if (reload & PIPE_CLEAR_DEPTHSTENCIL)
+                reload |= PIPE_CLEAR_DEPTHSTENCIL;
 
         /* Mask of buffers which need reload since they are not cleared and
          * they are drawn. (If they are cleared, reload is useless; if they are
-         * not drawn and also not cleared, we can generally omit the attachment
-         * at the framebuffer descriptor level */
+         * not drawn or read and also not cleared, we can generally omit the
+         * attachment at the framebuffer descriptor level */
 
-        unsigned reload = ~batch->clear & draws;
+        reload &= ~batch->clear;
 
         for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
                 if (reload & (PIPE_CLEAR_COLOR0 << i)) 

@@ -604,6 +604,12 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         else
                 batch->draws |= PIPE_CLEAR_COLOR0;
 
+        if (ctx->depth_stencil->base.depth.enabled)
+                batch->read |= PIPE_CLEAR_DEPTH;
+
+        if (ctx->depth_stencil->base.stencil[0].enabled)
+                batch->read |= PIPE_CLEAR_STENCIL;
+
         return xfer.gpu;
 }
 
