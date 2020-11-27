@@ -22,7 +22,7 @@
 
 import sys
 import itertools
-from isa_parse import parse_instructions, opname_to_c, expand_states
+from bifrost_isa import parse_instructions, opname_to_c, expand_states
 from mako.template import Template
 
 instructions = parse_instructions(sys.argv[1], include_unused = True)

@@ -21,7 +21,7 @@
 # IN THE SOFTWARE.
 
 import sys
-from isa_parse import parse_instructions, opname_to_c
+from bifrost_isa import parse_instructions, opname_to_c
 from mako.template import Template
 
 instructions = parse_instructions(sys.argv[1])
