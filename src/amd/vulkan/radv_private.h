@@ -97,7 +97,11 @@ typedef uint32_t xcb_window_t;
 #define RADV_SUPPORT_ANDROID_HARDWARE_BUFFER 0
 #endif
 
+#ifdef _WIN32
+#define radv_printflike(a, b)
+#else
 #define radv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
+#endif
 
 static inline uint32_t
 align_u32(uint32_t v, uint32_t a)
