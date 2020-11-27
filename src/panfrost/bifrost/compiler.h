@@ -1105,4 +1105,48 @@ signed bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target);
 
 void bi_pack(bi_context *ctx, struct util_dynarray *emission);
 
+/* Like in NIR, for use with the builder */
+
+enum bi_cursor_option {
+    bi_cursor_after_block,
+    bi_cursor_before_instr,
+    bi_cursor_after_instr
+};
+
+typedef struct {
+    enum bi_cursor_option option;
+
+    union {
+        bi_block *block;
+        bi_instr *instr;
+    };
+} bi_cursor;
+
+static inline bi_cursor
+bi_after_block(bi_block *block)
+{
+    return (bi_cursor) {
+        .option = bi_cursor_after_block,
+        .block = block
+    };
+}
+
+static inline bi_cursor
+bi_before_instr(bi_instr *instr)
+{
+    return (bi_cursor) {
+        .option = bi_cursor_before_instr,
+        .instr = instr
+    };
+}
+
+static inline bi_cursor
+bi_after_instr(bi_instr *instr)
+{
+    return (bi_cursor) {
+        .option = bi_cursor_after_instr,
+        .instr = instr
+    };
+}
+
 #endif
