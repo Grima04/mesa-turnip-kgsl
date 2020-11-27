@@ -78,7 +78,7 @@ load_general(struct v3d_cl *cl, struct pipe_surface *psurf, int buffer,
                 else
                         load.input_image_format = surf->format;
                 load.r_b_swap = surf->swap_rb;
-
+                load.force_alpha_1 = util_format_has_alpha1(psurf->format);
                 if (surf->tiling == VC5_TILING_UIF_NO_XOR ||
                     surf->tiling == VC5_TILING_UIF_XOR) {
                         load.height_in_ub_or_stride =
