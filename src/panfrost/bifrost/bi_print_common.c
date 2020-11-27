@@ -76,13 +76,13 @@ bi_minmax_mode_name(enum bifrost_minmax_mode mod)
 }
 
 const char *
-bi_round_mode_name(enum bifrost_roundmode mod)
+bi_round_mode_name(enum bi_round mod)
 {
         switch (mod) {
-        case BIFROST_RTE: return "";
-        case BIFROST_RTP: return ".rtp";
-        case BIFROST_RTN: return ".rtn";
-        case BIFROST_RTZ: return ".rtz";
+        case BI_ROUND_NONE: return "";
+        case BI_ROUND_RTP: return ".rtp";
+        case BI_ROUND_RTN: return ".rtn";
+        case BI_ROUND_RTZ: return ".rtz";
         default: return "invalid";
         }
 }

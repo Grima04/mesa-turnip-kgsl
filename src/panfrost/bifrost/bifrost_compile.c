@@ -1330,16 +1330,16 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.cond = bi_cond_for_nir(instr->op, false);
                 break;
         case nir_op_fround_even:
-                alu.roundmode = BIFROST_RTE;
+                alu.round = BI_ROUND_NONE;
                 break;
         case nir_op_fceil:
-                alu.roundmode = BIFROST_RTP;
+                alu.round = BI_ROUND_RTP;
                 break;
         case nir_op_ffloor:
-                alu.roundmode = BIFROST_RTN;
+                alu.round = BI_ROUND_RTN;
                 break;
         case nir_op_ftrunc:
-                alu.roundmode = BIFROST_RTZ;
+                alu.round = BI_ROUND_RTZ;
                 break;
         case nir_op_iand:
                 alu.op.bitwise = BI_BITWISE_AND;
@@ -1361,7 +1361,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_f2i32:
         case nir_op_f2u32:
-                alu.roundmode = BIFROST_RTZ;
+                alu.round = BI_ROUND_RTZ;
                 break;
 
         case nir_op_f2f16:
@@ -1508,7 +1508,7 @@ bi_emit_array_index(bi_context *ctx, unsigned idx, nir_alu_type T, unsigned *c)
 
         /* OpenGL ES 3.2 specification section 8.14.2 ("Coordinate Wrapping and
          * Texel Selection") defines the layer to be taken from clamp(RNE(r),
-         * 0, dt - 1). So we use roundmode RTE, clamping is handled at the data
+         * 0, dt - 1). So we use round RTE, clamping is handled at the data
          * structure level */
         bi_instruction f2i = {
                 .type = BI_CONVERT,
@@ -1517,7 +1517,7 @@ bi_emit_array_index(bi_context *ctx, unsigned idx, nir_alu_type T, unsigned *c)
                 .src = { idx },
                 .src_types = { T },
                 .swizzle = { { 2 } },
-                .roundmode = BIFROST_RTE
+                .round = BI_ROUND_NONE
         };
 
         *c = 0;
@@ -1550,7 +1550,7 @@ bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
                 .src = { lod, BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                 .src_types = { T, nir_type_float32, nir_type_float32 },
                 .clamp = BI_CLAMP_CLAMP_M1_1,
-                .roundmode = BIFROST_RTE,
+                .round = BI_ROUND_NONE,
                 .constant = {
                         .u64 = fui(1.0 / max_lod)
                 },
@@ -1563,7 +1563,7 @@ bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
                 .dest_type = T,
                 .src = { fsat.dest, BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                 .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
-                .roundmode = BIFROST_RTE,
+                .round = BI_ROUND_NONE,
                 .constant = {
                         .u64 = fui(max_lod * 256.0)
                 },
@@ -1576,7 +1576,7 @@ bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
                 .dest_type = nir_type_int32,
                 .src = { fmul.dest },
                 .src_types = { T },
-                .roundmode = BIFROST_RTZ
+                .round = BI_ROUND_RTZ
         };
 
         /* MKVEC.v2i16 s32.h0, #0 */

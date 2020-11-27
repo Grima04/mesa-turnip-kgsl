@@ -88,19 +88,19 @@ def pack_widen(mod, opts, body, pack_exprs):
 def pack_absneg(mod, opts, body, pack_exprs):
     return 'ins->src_{}[{}]'.format(mod[0:-1] if mod[-1] in "0123" else mod, mod_arg(mod))
 
-# ins->roundmode is the native format (RTE/RTP/RTN/RTZ) for most ops. But there
+# ins->round is the native format (RTE/RTP/RTN/RTZ) for most ops. But there
 # are some others we might encounter that we don't support in the IR at this
 # point, and there are a few that force a subset of round modes.
 
 def pack_round(mod, opts, body, pack_exprs):
     if opts == ['none', 'rtz']:
-        body.append('assert(ins->roundmode == BIFROST_RTE || ins->roundmode == BIFROST_RTZ);')
-        return '(ins->roundmode == BIFROST_RTZ) ? 1 : 0'
+        body.append('assert(ins->round == BI_ROUND_NONE || ins->round == BI_ROUND_RTZ);')
+        return '(ins->round == BI_ROUND_RTZ) ? 1 : 0'
     elif opts == ['rtn', 'rtp']:
-        body.append('assert(ins->roundmode == BIFROST_RTN || ins->roundmode == BIFROST_RTP);')
-        return '(ins->roundmode == BIFROST_RTP) ? 1 : 0'
+        body.append('assert(ins->round == BI_ROUND_RTN || ins->round == BI_ROUND_RTP);')
+        return '(ins->round == BI_ROUND_RTP) ? 1 : 0'
     elif opts[0:4] == ['none', 'rtp', 'rtn', 'rtz']:
-        return 'ins->roundmode'
+        return 'ins->round'
     else:
         assert False
 

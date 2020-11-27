@@ -188,11 +188,11 @@ enum bi_clamp {
         BI_CLAMP_CLAMP_0_1 = 3,
 };
 
-enum bifrost_roundmode {
-        BIFROST_RTE = 0x0, /* round to even */
-        BIFROST_RTP = 0x1, /* round to positive */
-        BIFROST_RTN = 0x2, /* round to negative */
-        BIFROST_RTZ = 0x3 /* round to zero */
+enum bi_round {
+        BI_ROUND_NONE = 0x0, /* round to even */
+        BI_ROUND_RTP = 0x1, /* round to positive */
+        BI_ROUND_RTN = 0x2, /* round to negative */
+        BI_ROUND_RTZ = 0x3 /* round to zero */
 };
 
 /* NONE: Same as fmax() and fmin() -- return the other

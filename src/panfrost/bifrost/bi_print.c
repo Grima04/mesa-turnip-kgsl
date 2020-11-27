@@ -347,7 +347,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_output_mod_name(ins->clamp));
 
         if (bi_class_props[ins->type] & BI_ROUNDMODE)
-                fprintf(fp, "%s", bi_round_mode_name(ins->roundmode));
+                fprintf(fp, "%s", bi_round_mode_name(ins->round));
 
         if (ins->type == BI_BITWISE && ins->bitwise.dest_invert)
                 fprintf(fp, ".not");

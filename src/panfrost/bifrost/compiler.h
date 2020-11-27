@@ -94,7 +94,7 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* Accepts a bi_cond */
 #define BI_CONDITIONAL (1 << 1)
 
-/* Accepts a bifrost_roundmode */
+/* Accepts a bi_round */
 #define BI_ROUNDMODE (1 << 2)
 
 /* Can be scheduled to FMA */
@@ -341,7 +341,7 @@ typedef struct {
         bool src_neg[BIR_SRC_COUNT];
 
         /* Round mode (requires BI_ROUNDMODE) */
-        enum bifrost_roundmode roundmode;
+        enum bi_round round;
 
         /* Destination type. Usually the type of the instruction
          * itself, but if sources and destination have different

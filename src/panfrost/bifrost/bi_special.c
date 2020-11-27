@@ -70,7 +70,7 @@ bi_emit_fexp2_new(bi_context *ctx, nir_alu_instr *instr)
                 .dest_type = nir_type_int32,
                 .src = { mscale.dest },
                 .src_types = { nir_type_float32 },
-                .roundmode = BIFROST_RTE
+                .round = BI_ROUND_NONE
         };
 
         /* FEXP2_FAST T, T, X */
@@ -113,7 +113,7 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .dest_type = nir_type_float32,
                 .src = { frexpe.dest },
                 .src_types = { nir_type_int32 },
-                .roundmode = BIFROST_RTZ
+                .round = BI_ROUND_RTZ
         };
 
         /* ADD_FREXPM (x-1), -1.0, X */
