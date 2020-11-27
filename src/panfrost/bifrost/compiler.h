@@ -268,11 +268,11 @@ struct bi_texture {
         bool compute_lod;
 };
 
-enum bi_clper_lane_op_mod {
-        BI_CLPER_LANE_OP_MOD_NONE,
-        BI_CLPER_LANE_OP_MOD_XOR,
-        BI_CLPER_LANE_OP_MOD_ACCUMULATE,
-        BI_CLPER_LANE_OP_MOD_SHIFT,
+enum bi_lane_op {
+        BI_LANE_OP_NONE,
+        BI_LANE_OP_XOR,
+        BI_LANE_OP_ACCUMULATE,
+        BI_LANE_OP_SHIFT,
 };
 
 enum bi_subgroup_sz {
@@ -302,7 +302,7 @@ enum bi_clper_inactive_res {
 
 struct bi_special {
         struct {
-                enum bi_clper_lane_op_mod lane_op_mod;
+                enum bi_lane_op lane_op_mod;
                 enum bi_clper_inactive_res inactive_res;
         } clper;
         enum bi_subgroup_sz subgroup_sz;
