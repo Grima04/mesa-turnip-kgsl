@@ -1492,11 +1492,13 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 
    decode->sw_ctxt_size = RDECODE_SESSION_CONTEXT_SIZE;
    decode->db_pitch = (((struct si_screen *)dec->screen)->info.family >= CHIP_RENOIR &&
-                       dec->base.width > 32 && dec->stream_type == RDECODE_CODEC_VP9)
+                       dec->base.width > 32 && (dec->stream_type == RDECODE_CODEC_VP9 ||
+                        dec->base.profile ==  PIPE_VIDEO_PROFILE_HEVC_MAIN_10))
                          ? align(dec->base.width, 64)
                          : align(dec->base.width, 32);
    if (((struct si_screen*)dec->screen)->info.family >= CHIP_SIENNA_CICHLID &&
-       (dec->stream_type == RDECODE_CODEC_VP9 || dec->stream_type == RDECODE_CODEC_AV1))
+       (dec->stream_type == RDECODE_CODEC_VP9 || dec->stream_type == RDECODE_CODEC_AV1 ||
+        dec->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10))
       decode->db_aligned_height = align(dec->base.height, 64);
 
    decode->db_surf_tile_config = 0;
@@ -1872,7 +1874,7 @@ static unsigned calc_dpb_size(struct radeon_decoder *dec)
       width = align(width, 16);
       height = align(height, 16);
       if (dec->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
-         dpb_size = align((align(width, 32) * height * 9) / 4, 256) * max_references;
+         dpb_size = align((align(width, 64) * align(height, 64) * 9) / 4, 256) * max_references;
       else
          dpb_size = align((align(width, 32) * height * 3) / 2, 256) * max_references;
       break;
