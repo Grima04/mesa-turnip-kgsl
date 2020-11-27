@@ -17,11 +17,19 @@
 #include "util/u_prim_restart.h"
 
 
-static VkDescriptorSet
+static struct zink_descriptor_set *
 allocate_descriptor_set(struct zink_screen *screen,
                         struct zink_batch *batch,
                         struct zink_program *pg)
 {
+   struct zink_descriptor_set *zds;
+
+   if (util_dynarray_num_elements(&pg->alloc_desc_sets, struct zink_descriptor_set *)) {
+      /* grab one off the allocated array */
+      zds = util_dynarray_pop(&pg->alloc_desc_sets, struct zink_descriptor_set *);
+      goto out;
+   }
+
    VkDescriptorSetAllocateInfo dsai;
    memset((void *)&dsai, 0, sizeof(dsai));
    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -35,10 +43,15 @@ allocate_descriptor_set(struct zink_screen *screen,
       debug_printf("ZINK: %p failed to allocate descriptor set :/\n", pg);
       return VK_NULL_HANDLE;
    }
-   if (zink_batch_add_desc_set(batch, pg, desc_set))
+   zds = ralloc_size(NULL, sizeof(struct zink_descriptor_set));
+   assert(zds);
+   pipe_reference_init(&zds->reference, 1);
+   zds->desc_set = desc_set;
+out:
+   if (zink_batch_add_desc_set(batch, pg, zds))
       batch->descs_used += pg->num_descriptors;
 
-   return desc_set;
+   return zds;
 }
 
 static void
@@ -530,9 +543,9 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
    zink_batch_reference_program(batch, pg);
    assert(pg->num_descriptors == num_descriptors);
-   VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch, pg);
+   struct zink_descriptor_set *zds = allocate_descriptor_set(screen, batch, pg);
    /* probably oom, so we need to stall until we free up some descriptors */
-   if (!desc_set) {
+   if (!zds) {
       /* update our max descriptor count so we can try and avoid this happening again */
       unsigned short max_descs = 0;
       for (int i = 0; i < ZINK_COMPUTE_BATCH_ID; i++)
@@ -554,15 +567,15 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
          }
       }
       zink_batch_reference_program(batch, pg);
-      desc_set = allocate_descriptor_set(screen, batch, pg);
+      zds = allocate_descriptor_set(screen, batch, pg);
    }
-   assert(desc_set != VK_NULL_HANDLE);
+   assert(zds != VK_NULL_HANDLE);
 
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
    bool need_flush = false;
    if (num_wds > 0) {
       for (int i = 0; i < num_wds; ++i) {
-         wds[i].dstSet = desc_set;
+         wds[i].dstSet = zds->desc_set;
          struct zink_resource *res = resources[i].res;
          if (res) {
             need_flush |= zink_batch_reference_resource_rw(batch, res, resources[i].write) == check_flush_id;
@@ -577,10 +590,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
    if (is_compute)
       vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE,
-                              ctx->curr_compute->layout, 0, 1, &desc_set, 0, NULL);
+                              ctx->curr_compute->layout, 0, 1, &zds->desc_set, 0, NULL);
    else
       vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              ctx->curr_program->layout, 0, 1, &desc_set, 0, NULL);
+                              ctx->curr_program->layout, 0, 1, &zds->desc_set, 0, NULL);
 
    for (int i = 0; i < num_stages; i++) {
       struct zink_shader *shader = stages[i];

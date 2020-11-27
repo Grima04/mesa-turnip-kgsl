@@ -63,6 +63,11 @@ struct zink_shader_cache {
    struct hash_table *shader_cache;
 };
 
+struct zink_descriptor_set {
+   struct pipe_reference reference; //incremented for batch usage
+   VkDescriptorSet desc_set;
+};
+
 struct zink_program {
    struct pipe_reference reference;
 
@@ -160,5 +165,8 @@ VkPipeline
 zink_get_compute_pipeline(struct zink_screen *screen,
                       struct zink_compute_program *comp,
                       struct zink_compute_pipeline_state *state);
+
+void
+zink_program_invalidate_desc_set(struct zink_program *pg, struct zink_descriptor_set *zds);
 
 #endif

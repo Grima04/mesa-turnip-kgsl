@@ -165,7 +165,7 @@ create_desc_set_layout(VkDevice dev,
    dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
    dpci.pPoolSizes = sizes;
    dpci.poolSizeCount = ARRAY_SIZE(sizes);
-   dpci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+   dpci.flags = 0;
    dpci.maxSets = ZINK_BATCH_DESC_SIZE;
    if (vkCreateDescriptorPool(dev, &dpci, 0, descpool) != VK_SUCCESS) {
       vkDestroyDescriptorSetLayout(dev, dsl, NULL);
@@ -668,6 +668,15 @@ fail:
    if (comp)
       zink_destroy_compute_program(screen, comp);
    return NULL;
+}
+
+void
+zink_program_invalidate_desc_set(struct zink_program *pg, struct zink_descriptor_set *zds)
+{
+   uint32_t refcount = p_atomic_read(&zds->reference.count);
+   /* refcount > 1 means this is currently in use, so we can't recycle it yet */
+   if (refcount == 1)
+      util_dynarray_append(&pg->alloc_desc_sets, struct zink_descriptor_set *, zds);
 }
 
 static void

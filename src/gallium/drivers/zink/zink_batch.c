@@ -54,8 +54,12 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
       struct zink_program *pg = (struct zink_program*)entry->key;
       struct set *desc_sets = (struct set*)entry->data;
       set_foreach(desc_sets, sentry) {
-         VkDescriptorSet desc_set = (VkDescriptorSet)sentry->key;
-         vkFreeDescriptorSets(screen->dev, pg->descpool, 1, &desc_set);
+         struct zink_descriptor_set *zds = (void*)sentry->key;
+         /* reset descriptor pools when no batch is using this program to avoid
+          * having some inactive program hogging a billion descriptors
+          */
+         pipe_reference(&zds->reference, NULL);
+         zink_program_invalidate_desc_set(pg, zds);
       }
       _mesa_set_destroy(desc_sets, NULL);
       if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
@@ -231,13 +235,14 @@ zink_batch_reference_program(struct zink_batch *batch,
 }
 
 bool
-zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, VkDescriptorSet desc_set)
+zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, struct zink_descriptor_set *zds)
 {
    struct hash_entry *entry = _mesa_hash_table_search(batch->programs, pg);
    assert(entry);
    struct set *desc_sets = (void*)entry->data;
-   if (!_mesa_set_search(desc_sets, desc_set)) {
-      _mesa_set_add(desc_sets, desc_set);
+   if (!_mesa_set_search(desc_sets, zds)) {
+      pipe_reference(NULL, &zds->reference);
+      _mesa_set_add(desc_sets, zds);
       return true;
    }
    return false;
