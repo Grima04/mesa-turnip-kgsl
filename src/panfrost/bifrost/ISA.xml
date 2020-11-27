@@ -7066,7 +7066,7 @@
       <reserved/>
       <opt>tl</opt>
     </mod>
-    <mod name="lane" size="2" default="h0">
+    <mod name="lane0" size="2" default="h0">
       <opt>h0</opt>
       <opt>h1</opt>
       <opt>w0</opt>
@@ -7081,19 +7081,19 @@
       <and>
         <eq left="extend" right="#none"/>
         <or>
-          <eq left="lane" right="#h0"/>
-          <eq left="lane" right="#h1"/>
+          <eq left="lane0" right="#h0"/>
+          <eq left="lane0" right="#h1"/>
         </or>
       </and>
       <derived start="9" size="1">
-        <eq left="lane" right="#h0"/>
-        <eq left="lane" right="#h1"/>
+        <eq left="lane0" right="#h0"/>
+        <eq left="lane0" right="#h1"/>
       </derived>
     </encoding>
     <encoding mask="0xffc00" exact="0x63000">
       <and>
         <neq left="extend" right="#none"/>
-        <eq left="lane" right="#w0"/>
+        <eq left="lane0" right="#w0"/>
       </and>
       <derived start="9" size="1">
         <eq left="extend" right="#sext"/>
@@ -7103,7 +7103,7 @@
     <encoding mask="0xffc00" exact="0x61800">
       <and>
         <neq left="extend" right="#none"/>
-        <eq left="lane" right="#d0"/>
+        <eq left="lane0" right="#d0"/>
       </and>
       <derived start="9" size="1">
         <eq left="extend" right="#sext"/>
@@ -7140,7 +7140,7 @@
       <reserved/>
       <opt>tl</opt>
     </mod>
-    <mod name="lane" size="1" opt="d0"/>
+    <mod name="lane0" size="1" opt="d0"/>
     <mod name="extend" size="2">
       <opt>none</opt>
       <opt>sext</opt>
@@ -7149,13 +7149,13 @@
     <encoding mask="0xffe00" exact="0x60c00">
       <and>
         <eq left="extend" right="#none"/>
-        <eq left="lane" right="#none"/>
+        <eq left="lane0" right="#none"/>
       </and>
     </encoding>
     <encoding mask="0xffc00" exact="0x61c00">
       <and>
         <neq left="extend" right="#none"/>
-        <eq left="lane" right="#d0"/>
+        <eq left="lane0" right="#d0"/>
       </and>
       <derived start="9" size="1">
         <eq left="extend" right="#sext"/>
@@ -7207,7 +7207,7 @@
       <reserved/>
       <opt>tl</opt>
     </mod>
-    <mod name="lane" size="3" default="b0">
+    <mod name="lane0" size="3" default="b0">
       <opt>b0</opt>
       <opt>b1</opt>
       <opt>b2</opt>
@@ -7226,25 +7226,25 @@
       <and>
         <eq left="extend" right="#none"/>
         <or>
-          <eq left="lane" right="#b0"/>
-          <eq left="lane" right="#b1"/>
-          <eq left="lane" right="#b2"/>
-          <eq left="lane" right="#b3"/>
+          <eq left="lane0" right="#b0"/>
+          <eq left="lane0" right="#b1"/>
+          <eq left="lane0" right="#b2"/>
+          <eq left="lane0" right="#b3"/>
         </or>
       </and>
       <derived start="9" size="2">
-        <eq left="lane" right="#b0"/>
-        <eq left="lane" right="#b1"/>
-        <eq left="lane" right="#b2"/>
-        <eq left="lane" right="#b3"/>
+        <eq left="lane0" right="#b0"/>
+        <eq left="lane0" right="#b1"/>
+        <eq left="lane0" right="#b2"/>
+        <eq left="lane0" right="#b3"/>
       </derived>
     </encoding>
     <encoding mask="0xff800" exact="0x63800">
       <and>
         <neq left="extend" right="#none"/>
         <or>
-          <eq left="lane" right="#h0"/>
-          <eq left="lane" right="#h1"/>
+          <eq left="lane0" right="#h0"/>
+          <eq left="lane0" right="#h1"/>
         </or>
       </and>
       <derived start="9" size="1">
@@ -7252,14 +7252,14 @@
         <eq left="extend" right="#zext"/>
       </derived>
       <derived start="10" size="1">
-        <eq left="lane" right="#h0"/>
-        <eq left="lane" right="#h1"/>
+        <eq left="lane0" right="#h0"/>
+        <eq left="lane0" right="#h1"/>
       </derived>
     </encoding>
     <encoding mask="0xffc00" exact="0x63400">
       <and>
         <neq left="extend" right="#none"/>
-        <eq left="lane" right="#w0"/>
+        <eq left="lane0" right="#w0"/>
       </and>
       <derived start="9" size="1">
         <eq left="extend" right="#sext"/>
@@ -7269,7 +7269,7 @@
     <encoding mask="0xffc00" exact="0x61400">
       <and>
         <neq left="extend" right="#none"/>
-        <eq left="lane" right="#d0"/>
+        <eq left="lane0" right="#d0"/>
       </and>
       <derived start="9" size="1">
         <eq left="extend" right="#sext"/>
