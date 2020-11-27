@@ -25,6 +25,7 @@
 #ifndef ACO_IR_H
 #define ACO_IR_H
 
+#include <algorithm>
 #include <vector>
 #include <set>
 #include <unordered_set>

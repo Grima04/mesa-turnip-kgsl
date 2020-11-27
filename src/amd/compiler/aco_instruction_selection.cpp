@@ -24,10 +24,11 @@
  */
 
 #include <algorithm>
-#include <numeric>
 #include <array>
-#include <stack>
+#include <functional>
 #include <map>
+#include <numeric>
+#include <stack>
 
 #include "ac_shader_util.h"
 #include "aco_ir.h"
