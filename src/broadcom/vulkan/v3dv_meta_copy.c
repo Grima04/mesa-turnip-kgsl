@@ -1417,6 +1417,109 @@ emit_copy_image_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
+/* Disable level 0 write, just write following mipmaps */
+#define V3D_TFU_IOA_DIMTW (1 << 0)
+#define V3D_TFU_IOA_FORMAT_SHIFT 3
+#define V3D_TFU_IOA_FORMAT_LINEARTILE 3
+#define V3D_TFU_IOA_FORMAT_UBLINEAR_1_COLUMN 4
+#define V3D_TFU_IOA_FORMAT_UBLINEAR_2_COLUMN 5
+#define V3D_TFU_IOA_FORMAT_UIF_NO_XOR 6
+#define V3D_TFU_IOA_FORMAT_UIF_XOR 7
+
+#define V3D_TFU_ICFG_NUMMM_SHIFT 5
+#define V3D_TFU_ICFG_TTYPE_SHIFT 9
+
+#define V3D_TFU_ICFG_OPAD_SHIFT 22
+
+#define V3D_TFU_ICFG_FORMAT_SHIFT 18
+#define V3D_TFU_ICFG_FORMAT_RASTER 0
+#define V3D_TFU_ICFG_FORMAT_SAND_128 1
+#define V3D_TFU_ICFG_FORMAT_SAND_256 2
+#define V3D_TFU_ICFG_FORMAT_LINEARTILE 11
+#define V3D_TFU_ICFG_FORMAT_UBLINEAR_1_COLUMN 12
+#define V3D_TFU_ICFG_FORMAT_UBLINEAR_2_COLUMN 13
+#define V3D_TFU_ICFG_FORMAT_UIF_NO_XOR 14
+#define V3D_TFU_ICFG_FORMAT_UIF_XOR 15
+
+static void
+emit_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
+             struct v3dv_image *dst,
+             uint32_t dst_mip_level,
+             uint32_t dst_layer,
+             struct v3dv_image *src,
+             uint32_t src_mip_level,
+             uint32_t src_layer,
+             uint32_t width,
+             uint32_t height,
+             const struct v3dv_format *format)
+{
+   const struct v3d_resource_slice *src_slice = &src->slices[src_mip_level];
+   const struct v3d_resource_slice *dst_slice = &dst->slices[src_mip_level];
+
+   assert(dst->mem && dst->mem->bo);
+   const struct v3dv_bo *dst_bo = dst->mem->bo;
+
+   assert(src->mem && src->mem->bo);
+   const struct v3dv_bo *src_bo = src->mem->bo;
+
+   struct drm_v3d_submit_tfu tfu = {
+      .ios = (height << 16) | width,
+      .bo_handles = {
+         dst_bo->handle,
+         src != dst ? src_bo->handle : 0
+      },
+   };
+
+   const uint32_t src_offset =
+      src_bo->offset + v3dv_layer_offset(src, src_mip_level, src_layer);
+   tfu.iia |= src_offset;
+
+   uint32_t icfg;
+   if (src_slice->tiling == VC5_TILING_RASTER) {
+      icfg = V3D_TFU_ICFG_FORMAT_RASTER;
+   } else {
+      icfg = V3D_TFU_ICFG_FORMAT_LINEARTILE +
+             (src_slice->tiling - VC5_TILING_LINEARTILE);
+   }
+   tfu.icfg |= icfg << V3D_TFU_ICFG_FORMAT_SHIFT;
+
+   const uint32_t dst_offset =
+      dst_bo->offset + v3dv_layer_offset(dst, dst_mip_level, dst_layer);
+   tfu.ioa |= dst_offset;
+
+   tfu.ioa |= (V3D_TFU_IOA_FORMAT_LINEARTILE +
+               (dst_slice->tiling - VC5_TILING_LINEARTILE)) <<
+                V3D_TFU_IOA_FORMAT_SHIFT;
+   tfu.icfg |= format->tex_type << V3D_TFU_ICFG_TTYPE_SHIFT;
+
+   switch (src_slice->tiling) {
+   case VC5_TILING_UIF_NO_XOR:
+   case VC5_TILING_UIF_XOR:
+      tfu.iis |= src_slice->padded_height / (2 * v3d_utile_height(src->cpp));
+      break;
+   case VC5_TILING_RASTER:
+      tfu.iis |= src_slice->stride / src->cpp;
+      break;
+   default:
+      break;
+   }
+
+   /* If we're writing level 0 (!IOA_DIMTW), then we need to supply the
+    * OPAD field for the destination (how many extra UIF blocks beyond
+    * those necessary to cover the height).
+    */
+   if (dst_slice->tiling == VC5_TILING_UIF_NO_XOR ||
+       dst_slice->tiling == VC5_TILING_UIF_XOR) {
+      uint32_t uif_block_h = 2 * v3d_utile_height(dst->cpp);
+      uint32_t implicit_padded_height = align(height, uif_block_h);
+      uint32_t icfg =
+         (dst_slice->padded_height - implicit_padded_height) / uif_block_h;
+      tfu.icfg |= icfg << V3D_TFU_ICFG_OPAD_SHIFT;
+   }
+
+   v3dv_cmd_buffer_add_tfu_job(cmd_buffer, &tfu);
+}
+
 /**
  * Returns true if the implementation supports the requested operation (even if
  * it failed to process it, for example, due to an out-of-memory error).
@@ -2337,30 +2440,6 @@ v3dv_CmdFillBuffer(VkCommandBuffer commandBuffer,
 
    fill_buffer(cmd_buffer, bo, dstOffset, size, data);
 }
-
-/* Disable level 0 write, just write following mipmaps */
-#define V3D_TFU_IOA_DIMTW (1 << 0)
-#define V3D_TFU_IOA_FORMAT_SHIFT 3
-#define V3D_TFU_IOA_FORMAT_LINEARTILE 3
-#define V3D_TFU_IOA_FORMAT_UBLINEAR_1_COLUMN 4
-#define V3D_TFU_IOA_FORMAT_UBLINEAR_2_COLUMN 5
-#define V3D_TFU_IOA_FORMAT_UIF_NO_XOR 6
-#define V3D_TFU_IOA_FORMAT_UIF_XOR 7
-
-#define V3D_TFU_ICFG_NUMMM_SHIFT 5
-#define V3D_TFU_ICFG_TTYPE_SHIFT 9
-
-#define V3D_TFU_ICFG_OPAD_SHIFT 22
-
-#define V3D_TFU_ICFG_FORMAT_SHIFT 18
-#define V3D_TFU_ICFG_FORMAT_RASTER 0
-#define V3D_TFU_ICFG_FORMAT_SAND_128 1
-#define V3D_TFU_ICFG_FORMAT_SAND_256 2
-#define V3D_TFU_ICFG_FORMAT_LINEARTILE 11
-#define V3D_TFU_ICFG_FORMAT_UBLINEAR_1_COLUMN 12
-#define V3D_TFU_ICFG_FORMAT_UBLINEAR_2_COLUMN 13
-#define V3D_TFU_ICFG_FORMAT_UIF_NO_XOR 14
-#define V3D_TFU_ICFG_FORMAT_UIF_XOR 15
 
 /**
  * Returns true if the implementation supports the requested operation (even if
@@ -3793,84 +3872,6 @@ handled:
 }
 
 static void
-emit_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
-             struct v3dv_image *dst,
-             uint32_t dst_mip_level,
-             uint32_t dst_layer,
-             struct v3dv_image *src,
-             uint32_t src_mip_level,
-             uint32_t src_layer,
-             uint32_t width,
-             uint32_t height)
-{
-   const struct v3d_resource_slice *src_slice = &src->slices[src_mip_level];
-   const struct v3d_resource_slice *dst_slice = &dst->slices[src_mip_level];
-
-   assert(dst->mem && dst->mem->bo);
-   const struct v3dv_bo *dst_bo = dst->mem->bo;
-
-   assert(src->mem && src->mem->bo);
-   const struct v3dv_bo *src_bo = src->mem->bo;
-
-   struct drm_v3d_submit_tfu tfu = {
-      .ios = (height << 16) | width,
-      .bo_handles = {
-         dst_bo->handle,
-         src != dst ? src_bo->handle : 0
-      },
-   };
-
-   const uint32_t src_offset =
-      src_bo->offset + v3dv_layer_offset(src, src_mip_level, src_layer);
-   tfu.iia |= src_offset;
-
-   uint32_t icfg;
-   if (src_slice->tiling == VC5_TILING_RASTER) {
-      icfg = V3D_TFU_ICFG_FORMAT_RASTER;
-   } else {
-      icfg = V3D_TFU_ICFG_FORMAT_LINEARTILE +
-             (src_slice->tiling - VC5_TILING_LINEARTILE);
-   }
-   tfu.icfg |= icfg << V3D_TFU_ICFG_FORMAT_SHIFT;
-
-   const uint32_t dst_offset =
-      dst_bo->offset + v3dv_layer_offset(dst, dst_mip_level, dst_layer);
-   tfu.ioa |= dst_offset;
-
-   tfu.ioa |= (V3D_TFU_IOA_FORMAT_LINEARTILE +
-               (dst_slice->tiling - VC5_TILING_LINEARTILE)) <<
-                V3D_TFU_IOA_FORMAT_SHIFT;
-   tfu.icfg |= dst->format->tex_type << V3D_TFU_ICFG_TTYPE_SHIFT;
-
-   switch (src_slice->tiling) {
-   case VC5_TILING_UIF_NO_XOR:
-   case VC5_TILING_UIF_XOR:
-      tfu.iis |= src_slice->padded_height / (2 * v3d_utile_height(src->cpp));
-      break;
-   case VC5_TILING_RASTER:
-      tfu.iis |= src_slice->stride / src->cpp;
-      break;
-   default:
-      break;
-   }
-
-   /* If we're writing level 0 (!IOA_DIMTW), then we need to supply the
-    * OPAD field for the destination (how many extra UIF blocks beyond
-    * those necessary to cover the height).
-    */
-   if (dst_slice->tiling == VC5_TILING_UIF_NO_XOR ||
-       dst_slice->tiling == VC5_TILING_UIF_XOR) {
-      uint32_t uif_block_h = 2 * v3d_utile_height(dst->cpp);
-      uint32_t implicit_padded_height = align(height, uif_block_h);
-      uint32_t icfg =
-         (dst_slice->padded_height - implicit_padded_height) / uif_block_h;
-      tfu.icfg |= icfg << V3D_TFU_ICFG_OPAD_SHIFT;
-   }
-
-   v3dv_cmd_buffer_add_tfu_job(cmd_buffer, &tfu);
-}
-
-static void
 compute_blit_3d_layers(const VkOffset3D *offsets,
                        uint32_t *min_layer, uint32_t *max_layer,
                        bool *mirror_z);
@@ -3982,7 +3983,7 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
       emit_tfu_job(cmd_buffer,
                    dst, dst_mip_level, region->dstSubresource.baseArrayLayer + i,
                    src, src_mip_level, region->srcSubresource.baseArrayLayer + i,
-                   dst_width, dst_height);
+                   dst_width, dst_height, dst->format);
    }
 
    return true;
