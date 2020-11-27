@@ -1837,8 +1837,10 @@ zink_fence_wait(struct pipe_context *pctx)
 
    if (ctx->batch.has_work)
       pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
-   if (ctx->last_fence)
+   if (ctx->last_fence) {
       zink_fence_finish(zink_screen(pctx->screen), pctx, ctx->last_fence, PIPE_TIMEOUT_INFINITE);
+      zink_batch_reset_all(ctx);
+   }
 }
 
 void
