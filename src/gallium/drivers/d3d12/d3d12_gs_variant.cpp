@@ -34,26 +34,6 @@
 #include "util/u_memory.h"
 #include "util/u_simple_shaders.h"
 
-static void
-nir_emit_vertex(nir_builder *b, unsigned stream_id)
-{
-   nir_intrinsic_instr *instr;
-
-   instr = nir_intrinsic_instr_create(b->shader, nir_intrinsic_emit_vertex);
-   nir_intrinsic_set_stream_id(instr, stream_id);
-   nir_builder_instr_insert(b, &instr->instr);
-}
-
-static void
-nir_end_primitve(nir_builder *b, unsigned stream_id)
-{
-   nir_intrinsic_instr *instr;
-
-   instr = nir_intrinsic_instr_create(b->shader, nir_intrinsic_end_primitive);
-   nir_intrinsic_set_stream_id(instr, 0);
-   nir_builder_instr_insert(b, &instr->instr);
-}
-
 static nir_ssa_def *
 nir_cull_face(nir_builder *b, nir_variable *vertices, bool ccw)
 {
@@ -126,7 +106,7 @@ d3d12_make_passthrough_gs(struct d3d12_context *ctx, struct d3d12_gs_variant_key
    }
 
    nir_emit_vertex(&b, 0);
-   nir_end_primitve(&b, 0);
+   nir_end_primitive(&b, 0);
 
    NIR_PASS_V(nir, nir_lower_var_copies);
    nir_validate_shader(nir, "in d3d12_create_passthrough_gs");
@@ -314,7 +294,7 @@ d3d12_finish_emit_primitives_gs(struct emit_primitives_context *emit_ctx, bool e
    nir_pop_loop(b, emit_ctx->loop);
 
    if (end_primitive)
-      nir_end_primitve(b, 0);
+      nir_end_primitive(b, 0);
 
    nir_validate_shader(nir, "in d3d12_lower_edge_flags");
 
@@ -403,7 +383,7 @@ d3d12_emit_lines(struct d3d12_context *ctx, struct d3d12_gs_variant_key *key)
        nir_store_var(b, emit_ctx.front_facing_var, emit_ctx.front_facing, 0x1);
    nir_emit_vertex(b, 0);
 
-   nir_end_primitve(b, 0);
+   nir_end_primitive(b, 0);
 
    return d3d12_finish_emit_primitives_gs(&emit_ctx, false);
 }

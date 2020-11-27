@@ -866,16 +866,6 @@ lower_triangle_strip_store(nir_builder *b, nir_intrinsic_instr *intr,
 }
 
 static void
-nir_emit_vertex(nir_builder *b, unsigned stream_id)
-{
-   nir_intrinsic_instr *instr;
-
-   instr = nir_intrinsic_instr_create(b->shader, nir_intrinsic_emit_vertex);
-   nir_intrinsic_set_stream_id(instr, stream_id);
-   nir_builder_instr_insert(b, &instr->instr);
-}
-
-static void
 lower_triangle_strip_emit_vertex(nir_builder *b, nir_intrinsic_instr *intr,
                                  nir_variable *vertex_count_var,
                                  nir_variable **varyings,
