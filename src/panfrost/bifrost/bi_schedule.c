@@ -32,7 +32,7 @@ static bool
 bi_is_fragz(bi_instruction *ins)
 {
         return ins->load_vary.special &&
-               ins->load_vary.var_id == BIFROST_SPECIAL_VAR_FRAGZ;
+               ins->load_vary.var_id == BI_VARYING_NAME_FRAG_Z;
 }
 
 static enum bifrost_message_type

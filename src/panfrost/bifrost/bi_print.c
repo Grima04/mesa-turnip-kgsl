@@ -242,9 +242,9 @@ bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
 
         if (load->special) {
                 switch (load->var_id) {
-                case BIFROST_SPECIAL_VAR_POINT: fprintf(fp, ".point"); break;
-                case BIFROST_SPECIAL_VAR_FRAGZ: fprintf(fp, ".fragz"); break;
-                case BIFROST_SPECIAL_VAR_FRAGW: fprintf(fp, ".fragw"); break;
+                case BI_VARYING_NAME_POINT: fprintf(fp, ".point"); break;
+                case BI_VARYING_NAME_FRAG_Z: fprintf(fp, ".fragz"); break;
+                case BI_VARYING_NAME_FRAG_W: fprintf(fp, ".fragw"); break;
                 default: unreachable("Invalid varying ID");
                 }
         }

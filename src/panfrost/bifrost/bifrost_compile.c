@@ -611,8 +611,8 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                                 .interp_mode = BIFROST_INTERP_CENTER,
                                 .update_mode = BIFROST_UPDATE_CLOBBER,
                                 .var_id = (i == 0) ?
-                                          BIFROST_SPECIAL_VAR_FRAGZ :
-                                          BIFROST_SPECIAL_VAR_FRAGW,
+                                          BI_VARYING_NAME_FRAG_Z :
+                                          BI_VARYING_NAME_FRAG_W,
                                 .special = true,
                                 .reuse = false,
                                 .flat = true
@@ -767,7 +767,7 @@ bi_emit_point_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                 .type = BI_LOAD_VAR,
                 .load_vary = {
                         .update_mode = BIFROST_UPDATE_CLOBBER,
-                        .var_id = BIFROST_SPECIAL_VAR_POINT,
+                        .var_id = BI_VARYING_NAME_POINT,
                         .special = true,
                 },
                 .vector_channels = 2,

@@ -238,10 +238,10 @@ enum bifrost_update_mode {
 };
 
 /* Fixed location for gl_FragCoord.zw */
-enum bifrost_special_var_id {
-        BIFROST_SPECIAL_VAR_POINT = 0,
-        BIFROST_SPECIAL_VAR_FRAGW = 2,
-        BIFROST_SPECIAL_VAR_FRAGZ = 3,
+enum bi_varying_name {
+        BI_VARYING_NAME_POINT = 0,
+        BI_VARYING_NAME_FRAG_W = 2,
+        BI_VARYING_NAME_FRAG_Z = 3,
 };
 
 enum branch_bit_size {

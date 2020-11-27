@@ -135,7 +135,7 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 struct bi_load_vary {
         enum bifrost_interp_mode interp_mode;
         enum bifrost_update_mode update_mode;
-        enum bifrost_special_var_id var_id;
+        enum bi_varying_name var_id;
         unsigned index;
         bool immediate;
         bool special;
