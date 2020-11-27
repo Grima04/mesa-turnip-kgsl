@@ -199,11 +199,11 @@ radv_dump_descriptor_set(struct radv_device *device,
 
 	if (!set)
 		return;
-	layout = set->layout;
+	layout = set->header.layout;
 
-	for (i = 0; i < set->layout->binding_count; i++) {
+	for (i = 0; i < set->header.layout->binding_count; i++) {
 		uint32_t *desc =
-			set->mapped_ptr + layout->binding[i].offset / 4;
+			set->header.mapped_ptr + layout->binding[i].offset / 4;
 
 		switch (layout->binding[i].type) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:

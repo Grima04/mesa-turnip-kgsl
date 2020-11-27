@@ -905,7 +905,7 @@ struct radv_descriptor_range {
 	uint32_t size;
 };
 
-struct radv_descriptor_set {
+struct radv_descriptor_set_header {
 	struct vk_object_base base;
 	const struct radv_descriptor_set_layout *layout;
 	uint32_t size;
@@ -915,13 +915,17 @@ struct radv_descriptor_set {
 	uint64_t va;
 	uint32_t *mapped_ptr;
 	struct radv_descriptor_range *dynamic_descriptors;
+};
 
-	struct radeon_winsys_bo *descriptors[0];
+struct radv_descriptor_set {
+	struct radv_descriptor_set_header header;
+
+	struct radeon_winsys_bo *descriptors[];
 };
 
 struct radv_push_descriptor_set
 {
-	struct radv_descriptor_set set;
+	struct radv_descriptor_set_header set;
 	uint32_t capacity;
 };
 
@@ -1457,7 +1461,7 @@ struct radv_cmd_buffer {
 
 	uint8_t push_constants[MAX_PUSH_CONSTANTS_SIZE];
 	VkShaderStageFlags push_constant_stages;
-	struct radv_descriptor_set meta_push_descriptors;
+	struct radv_descriptor_set_header meta_push_descriptors;
 
 	struct radv_descriptor_state descriptors[MAX_BIND_POINTS];
 

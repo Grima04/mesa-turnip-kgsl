@@ -789,7 +789,7 @@ radv_emit_descriptor_pointers(struct radv_cmd_buffer *cmd_buffer,
 			struct radv_descriptor_set *set =
 				descriptors_state->sets[start + i];
 
-			radv_emit_shader_pointer_body(device, cs, set->va, true);
+			radv_emit_shader_pointer_body(device, cs, set->header.va, true);
 		}
 	}
 }
@@ -2630,16 +2630,17 @@ radv_flush_push_descriptors(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radv_descriptor_state *descriptors_state =
 		radv_get_descriptors_state(cmd_buffer, bind_point);
-	struct radv_descriptor_set *set = &descriptors_state->push_set.set;
+	struct radv_descriptor_set *set =
+		(struct radv_descriptor_set *)&descriptors_state->push_set.set;
 	unsigned bo_offset;
 
-	if (!radv_cmd_buffer_upload_data(cmd_buffer, set->size, 32,
-					 set->mapped_ptr,
+	if (!radv_cmd_buffer_upload_data(cmd_buffer, set->header.size, 32,
+					 set->header.mapped_ptr,
 					 &bo_offset))
 		return;
 
-	set->va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
-	set->va += bo_offset;
+	set->header.va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
+	set->header.va += bo_offset;
 }
 
 static void
@@ -2661,7 +2662,7 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
 		uint64_t set_va = 0;
 		struct radv_descriptor_set *set = descriptors_state->sets[i];
 		if (descriptors_state->valid & (1u << i))
-			set_va = set->va;
+			set_va = set->header.va;
 		uptr[0] = set_va & 0xffffffff;
 	}
 
@@ -4115,13 +4116,13 @@ radv_bind_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
 	assert(set);
 
 	if (!cmd_buffer->device->use_global_bo_list) {
-		for (unsigned j = 0; j < set->buffer_count; ++j)
+		for (unsigned j = 0; j < set->header.buffer_count; ++j)
 			if (set->descriptors[j])
 				radv_cs_add_buffer(ws, cmd_buffer->cs, set->descriptors[j]);
 	}
 
-	if(set->bo)
-		radv_cs_add_buffer(ws, cmd_buffer->cs, set->bo);
+	if(set->header.bo)
+		radv_cs_add_buffer(ws, cmd_buffer->cs, set->header.bo);
 }
 
 void radv_CmdBindDescriptorSets(
@@ -4158,7 +4159,7 @@ void radv_CmdBindDescriptorSets(
 			uint32_t *dst = descriptors_state->dynamic_buffers + idx * 4;
 			assert(dyn_idx < dynamicOffsetCount);
 
-			struct radv_descriptor_range *range = set->dynamic_descriptors + j;
+			struct radv_descriptor_range *range = set->header.dynamic_descriptors + j;
 
 			if (!range->va) {
 				memset(dst, 0, 4 * 4);
@@ -4194,18 +4195,18 @@ static bool radv_init_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radv_descriptor_state *descriptors_state =
 		radv_get_descriptors_state(cmd_buffer, bind_point);
-	set->size = layout->size;
-	set->layout = layout;
+	set->header.size = layout->size;
+	set->header.layout = layout;
 
-	if (descriptors_state->push_set.capacity < set->size) {
-		size_t new_size = MAX2(set->size, 1024);
+	if (descriptors_state->push_set.capacity < set->header.size) {
+		size_t new_size = MAX2(set->header.size, 1024);
 		new_size = MAX2(new_size, 2 * descriptors_state->push_set.capacity);
 		new_size = MIN2(new_size, 96 * MAX_PUSH_DESCRIPTORS);
 
-		free(set->mapped_ptr);
-		set->mapped_ptr = malloc(new_size);
+		free(set->header.mapped_ptr);
+		set->header.mapped_ptr = malloc(new_size);
 
-		if (!set->mapped_ptr) {
+		if (!set->header.mapped_ptr) {
 			descriptors_state->push_set.capacity = 0;
 			cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
 			return false;
@@ -4226,22 +4227,23 @@ void radv_meta_push_descriptor_set(
 	const VkWriteDescriptorSet*          pDescriptorWrites)
 {
 	RADV_FROM_HANDLE(radv_pipeline_layout, layout, _layout);
-	struct radv_descriptor_set *push_set = &cmd_buffer->meta_push_descriptors;
+	struct radv_descriptor_set *push_set =
+		(struct radv_descriptor_set *)&cmd_buffer->meta_push_descriptors;
 	unsigned bo_offset;
 
 	assert(set == 0);
 	assert(layout->set[set].layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 
-	push_set->size = layout->set[set].layout->size;
-	push_set->layout = layout->set[set].layout;
+	push_set->header.size = layout->set[set].layout->size;
+	push_set->header.layout = layout->set[set].layout;
 
-	if (!radv_cmd_buffer_upload_alloc(cmd_buffer, push_set->size, 32,
+	if (!radv_cmd_buffer_upload_alloc(cmd_buffer, push_set->header.size, 32,
 	                                  &bo_offset,
-	                                  (void**) &push_set->mapped_ptr))
+	                                  (void**) &push_set->header.mapped_ptr))
 		return;
 
-	push_set->va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
-	push_set->va += bo_offset;
+	push_set->header.va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
+	push_set->header.va += bo_offset;
 
 	radv_update_descriptor_sets(cmd_buffer->device, cmd_buffer,
 	                            radv_descriptor_set_to_handle(push_set),
@@ -4262,7 +4264,8 @@ void radv_CmdPushDescriptorSetKHR(
 	RADV_FROM_HANDLE(radv_pipeline_layout, layout, _layout);
 	struct radv_descriptor_state *descriptors_state =
 		radv_get_descriptors_state(cmd_buffer, pipelineBindPoint);
-	struct radv_descriptor_set *push_set = &descriptors_state->push_set.set;
+	struct radv_descriptor_set *push_set =
+		(struct radv_descriptor_set *)&descriptors_state->push_set.set;
 
 	assert(layout->set[set].layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 
@@ -4299,7 +4302,8 @@ void radv_CmdPushDescriptorSetWithTemplateKHR(
 	RADV_FROM_HANDLE(radv_descriptor_update_template, templ, descriptorUpdateTemplate);
 	struct radv_descriptor_state *descriptors_state =
 		radv_get_descriptors_state(cmd_buffer, templ->bind_point);
-	struct radv_descriptor_set *push_set = &descriptors_state->push_set.set;
+	struct radv_descriptor_set *push_set =
+		(struct radv_descriptor_set *)&descriptors_state->push_set.set;
 
 	assert(layout->set[set].layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 
