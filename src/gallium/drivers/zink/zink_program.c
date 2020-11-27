@@ -119,6 +119,11 @@ create_desc_set_layout(VkDevice dev,
    VkDescriptorSetLayoutBinding bindings[(PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES))];
    int num_bindings = 0;
 
+   VkDescriptorPoolSize sizes[6] = {};
+   int type_map[12];
+   unsigned num_types = 0;
+   memset(type_map, -1, sizeof(type_map));
+
    for (int i = 0; i < ZINK_SHADER_COUNT; i++) {
       struct zink_shader *shader = stages[i];
       if (!shader)
@@ -132,6 +137,11 @@ create_desc_set_layout(VkDevice dev,
          bindings[num_bindings].descriptorCount = shader->bindings[j].size;
          bindings[num_bindings].stageFlags = stage_flags;
          bindings[num_bindings].pImmutableSamplers = NULL;
+         if (type_map[shader->bindings[j].type] == -1) {
+            type_map[shader->bindings[j].type] = num_types++;
+            sizes[type_map[shader->bindings[j].type]].type = shader->bindings[j].type;
+         }
+         sizes[type_map[shader->bindings[j].type]].descriptorCount += shader->bindings[j].size;
          ++num_bindings;
       }
    }
@@ -139,6 +149,9 @@ create_desc_set_layout(VkDevice dev,
    *num_descriptors = num_bindings;
    if (!num_bindings)
       return VK_NULL_HANDLE;
+
+   for (int i = 0; i < num_types; i++)
+      sizes[i].descriptorCount *= ZINK_DEFAULT_MAX_DESCS;
 
    VkDescriptorSetLayoutCreateInfo dcslci = {};
    dcslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -152,21 +165,12 @@ create_desc_set_layout(VkDevice dev,
       debug_printf("vkCreateDescriptorSetLayout failed\n");
       return VK_NULL_HANDLE;
    }
-   VkDescriptorPoolSize sizes[] = {
-      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         ZINK_BATCH_DESC_SIZE},
-   };
-
    VkDescriptorPoolCreateInfo dpci = {};
    dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
    dpci.pPoolSizes = sizes;
-   dpci.poolSizeCount = ARRAY_SIZE(sizes);
+   dpci.poolSizeCount = num_types;
    dpci.flags = 0;
-   dpci.maxSets = ZINK_BATCH_DESC_SIZE;
+   dpci.maxSets = ZINK_DEFAULT_MAX_DESCS;
    if (vkCreateDescriptorPool(dev, &dpci, 0, descpool) != VK_SUCCESS) {
       vkDestroyDescriptorSetLayout(dev, dsl, NULL);
       return VK_NULL_HANDLE;
