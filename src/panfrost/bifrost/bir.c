@@ -26,11 +26,11 @@
 
 #include "compiler.h"
 
-/* Does an instruction respect outmods and source mods? Depend
+/* Does an instruction respect clamps and source mods? Depend
  * on the types involved */
 
 bool
-bi_has_outmod(bi_instruction *ins)
+bi_has_clamp(bi_instruction *ins)
 {
         bool classy = bi_class_props[ins->type] & BI_MODS;
         bool floaty = nir_alu_type_get_base_type(ins->dest_type) == nir_type_float;

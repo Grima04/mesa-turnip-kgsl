@@ -343,8 +343,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         if (ins->format && ins->dest != ins->format)
                 pan_print_alu_type(ins->format, fp);
 
-        if (bi_has_outmod(ins))
-                fprintf(fp, "%s", bi_output_mod_name(ins->outmod));
+        if (bi_has_clamp(ins))
+                fprintf(fp, "%s", bi_output_mod_name(ins->clamp));
 
         if (bi_class_props[ins->type] & BI_ROUNDMODE)
                 fprintf(fp, "%s", bi_round_mode_name(ins->roundmode));

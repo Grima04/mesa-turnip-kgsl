@@ -108,10 +108,10 @@ def pack_round(mod, opts, body, pack_exprs):
 
 def pack_clamp(mod, opts, body, pack_exprs):
     if opts == ['none', 'clamp_0_inf', 'clamp_m1_1', 'clamp_0_1']:
-        return 'ins->outmod'
+        return 'ins->clamp'
     elif opts == ['none', 'clamp_0_1']:
-        body.append('assert(ins->outmod == BIFROST_NONE || ins->outmod == BIFROST_SAT);')
-        return '(ins->outmod == BIFROST_SAT) ? 1 : 0'
+        body.append('assert(ins->clamp == BI_CLAMP_NONE || ins->clamp == BI_CLAMP_CLAMP_0_1);')
+        return '(ins->clamp == BI_CLAMP_CLAMP_0_1) ? 1 : 0'
     else:
         assert False
 

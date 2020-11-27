@@ -52,13 +52,13 @@ bi_message_type_name(enum bifrost_message_type T)
 }
 
 const char *
-bi_output_mod_name(enum bifrost_outmod mod)
+bi_output_mod_name(enum bi_clamp mod)
 {
         switch (mod) {
-        case BIFROST_NONE: return "";
-        case BIFROST_POS: return ".pos";
-        case BIFROST_SAT_SIGNED: return ".sat_signed";
-        case BIFROST_SAT: return ".sat";
+        case BI_CLAMP_NONE: return "";
+        case BI_CLAMP_CLAMP_0_INF: return ".pos";
+        case BI_CLAMP_CLAMP_M1_1: return ".sat_signed";
+        case BI_CLAMP_CLAMP_0_1: return ".sat";
         default: return "invalid";
         }
 }

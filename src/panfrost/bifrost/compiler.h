@@ -88,7 +88,7 @@ enum bi_class {
 /* Properties of a class... */
 extern unsigned bi_class_props[BI_NUM_CLASSES];
 
-/* abs/neg/outmod valid for a float op */
+/* abs/neg/clamp valid for a float op */
 #define BI_MODS (1 << 0)
 
 /* Accepts a bi_cond */
@@ -336,7 +336,7 @@ typedef struct {
 
         /* Floating-point modifiers, type/class permitting. If not
          * allowed for the type/class, these are ignored. */
-        enum bifrost_outmod outmod;
+        enum bi_clamp clamp;
         bool src_abs[BIR_SRC_COUNT];
         bool src_neg[BIR_SRC_COUNT];
 
@@ -721,7 +721,7 @@ void bi_emit_deriv(bi_context *ctx, nir_alu_instr *instr);
 
 /* BIR manipulation */
 
-bool bi_has_outmod(bi_instruction *ins);
+bool bi_has_clamp(bi_instruction *ins);
 bool bi_has_source_mods(bi_instruction *ins);
 bool bi_is_src_swizzled(bi_instruction *ins, unsigned s);
 bool bi_has_arg(bi_instruction *ins, unsigned arg);

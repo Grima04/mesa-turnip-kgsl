@@ -1252,7 +1252,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.src_types[2] = alu.src_types[1];
                 break;
         case nir_op_fsat:
-                alu.outmod = BIFROST_SAT; /* FMOV */
+                alu.clamp = BI_CLAMP_CLAMP_0_1; /* FMOV */
                 break;
         case nir_op_fneg:
                 alu.src_neg[0] = true; /* FMOV */
@@ -1479,11 +1479,11 @@ bifrost_tex_format(enum glsl_sampler_dim dim)
 }
 
 static enum bifrost_texture_format_full
-bi_texture_format(nir_alu_type T, enum bifrost_outmod outmod)
+bi_texture_format(nir_alu_type T, enum bi_clamp clamp)
 {
         switch (T) {
-        case nir_type_float16: return BIFROST_TEXTURE_FORMAT_F16 + outmod;
-        case nir_type_float32: return BIFROST_TEXTURE_FORMAT_F32 + outmod;
+        case nir_type_float16: return BIFROST_TEXTURE_FORMAT_F16 + clamp;
+        case nir_type_float32: return BIFROST_TEXTURE_FORMAT_F32 + clamp;
         case nir_type_uint16:  return BIFROST_TEXTURE_FORMAT_U16;
         case nir_type_int16:   return BIFROST_TEXTURE_FORMAT_S16;
         case nir_type_uint32:  return BIFROST_TEXTURE_FORMAT_U32;
@@ -1549,7 +1549,7 @@ bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
                 .dest_type = nir_type_float32,
                 .src = { lod, BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                 .src_types = { T, nir_type_float32, nir_type_float32 },
-                .outmod = BIFROST_SAT_SIGNED,
+                .clamp = BI_CLAMP_CLAMP_M1_1,
                 .roundmode = BIFROST_RTE,
                 .constant = {
                         .u64 = fui(1.0 / max_lod)
@@ -1780,7 +1780,7 @@ bi_lower_cube_coord(bi_context *ctx, unsigned coord,
         /* Transform the s coordinate */
         bi_instruction fma2 = {
                 .type = BI_FMA,
-                .outmod = BIFROST_SAT,
+                .clamp = BI_CLAMP_CLAMP_0_1,
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_float32,
                 .src = { fma1.dest, cube_ssel.dest, BIR_INDEX_CONSTANT | 0 },
@@ -1791,7 +1791,7 @@ bi_lower_cube_coord(bi_context *ctx, unsigned coord,
         /* Transform the t coordinate */
         bi_instruction fma3 = {
                 .type = BI_FMA,
-                .outmod = BIFROST_SAT,
+                .clamp = BI_CLAMP_CLAMP_0_1,
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_float32,
                 .src = { fma1.dest, cube_tsel.dest, BIR_INDEX_CONSTANT | 0 },
@@ -1952,7 +1952,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 .shadow_or_clamp_disable = instr->is_shadow,
                 .array = instr->is_array,
                 .dimension = bifrost_tex_format(instr->sampler_dim),
-                .format = bi_texture_format(instr->dest_type, BIFROST_NONE), /* TODO */
+                .format = bi_texture_format(instr->dest_type, BI_CLAMP_NONE), /* TODO */
                 .mask = (1 << tex.vector_channels) - 1
         };
 

@@ -181,11 +181,11 @@ struct bifrost_add_inst {
         unsigned op   : 17;
 } __attribute__((packed));
 
-enum bifrost_outmod {
-        BIFROST_NONE = 0x0,
-        BIFROST_POS = 0x1,
-        BIFROST_SAT_SIGNED = 0x2,
-        BIFROST_SAT = 0x3,
+enum bi_clamp {
+        BI_CLAMP_NONE = 0,
+        BI_CLAMP_CLAMP_0_INF = 1,
+        BI_CLAMP_CLAMP_M1_1 = 2,
+        BI_CLAMP_CLAMP_0_1 = 3,
 };
 
 enum bifrost_roundmode {
