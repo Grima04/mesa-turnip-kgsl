@@ -259,10 +259,10 @@ bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
                 fprintf(fp, ".imm(%d)", load->index);
 
         switch (load->update_mode) {
-        case BIFROST_UPDATE_STORE: fprintf(fp, ".store"); break;
-        case BIFROST_UPDATE_RETRIEVE: fprintf(fp, ".retrieve"); break;
-        case BIFROST_UPDATE_CONDITIONAL: fprintf(fp, ".conditional"); break;
-        case BIFROST_UPDATE_CLOBBER: fprintf(fp, ".clobber"); break;
+        case BI_UPDATE_STORE: fprintf(fp, ".store"); break;
+        case BI_UPDATE_RETRIEVE: fprintf(fp, ".retrieve"); break;
+        case BI_UPDATE_CONDITIONAL: fprintf(fp, ".conditional"); break;
+        case BI_UPDATE_CLOBBER: fprintf(fp, ".clobber"); break;
         default: unreachable("Invalid update mode");
         }
 }

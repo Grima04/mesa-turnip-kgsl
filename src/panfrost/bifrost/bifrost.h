@@ -230,11 +230,11 @@ enum bi_sample {
         BI_SAMPLE_NONE = 0x4,
 };
 
-enum bifrost_update_mode {
-        BIFROST_UPDATE_STORE,
-        BIFROST_UPDATE_RETRIEVE,
-        BIFROST_UPDATE_CONDITIONAL,
-        BIFROST_UPDATE_CLOBBER,
+enum bi_update {
+        BI_UPDATE_STORE,
+        BI_UPDATE_RETRIEVE,
+        BI_UPDATE_CONDITIONAL,
+        BI_UPDATE_CLOBBER,
 };
 
 /* Fixed location for gl_FragCoord.zw */

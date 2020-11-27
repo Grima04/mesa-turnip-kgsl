@@ -171,7 +171,7 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                 .type = BI_LOAD_VAR,
                 .load_vary = {
                         .interp_mode = BI_SAMPLE_CENTER,
-                        .update_mode = BIFROST_UPDATE_STORE,
+                        .update_mode = BI_UPDATE_STORE,
                         .reuse = false,
                         .flat = instr->intrinsic != nir_intrinsic_load_interpolated_input,
                 },
@@ -609,7 +609,7 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                         .type = BI_LOAD_VAR,
                         .load_vary = {
                                 .interp_mode = BI_SAMPLE_CENTER,
-                                .update_mode = BIFROST_UPDATE_CLOBBER,
+                                .update_mode = BI_UPDATE_CLOBBER,
                                 .var_id = (i == 0) ?
                                           BI_VARYING_NAME_FRAG_Z :
                                           BI_VARYING_NAME_FRAG_W,
@@ -766,7 +766,7 @@ bi_emit_point_coord(bi_context *ctx, nir_intrinsic_instr *instr)
         bi_instruction ins = {
                 .type = BI_LOAD_VAR,
                 .load_vary = {
-                        .update_mode = BIFROST_UPDATE_CLOBBER,
+                        .update_mode = BI_UPDATE_CLOBBER,
                         .var_id = BI_VARYING_NAME_POINT,
                         .special = true,
                 },
