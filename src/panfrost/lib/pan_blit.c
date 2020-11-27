@@ -96,10 +96,12 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
         nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
         nir_builder_instr_insert(b, &tex->instr);
 
-        if (is_colour)
+        if (is_colour) {
                 nir_store_var(b, c_out, &tex->dest.ssa, 0xFF);
-        else
-                nir_store_var(b, c_out, nir_channel(b, &tex->dest.ssa, 0), 0xFF);
+        } else {
+                unsigned c = loc == FRAG_RESULT_STENCIL ? 1 : 0;
+                nir_store_var(b, c_out, nir_channel(b, &tex->dest.ssa, c), 0xFF);
+        }
 
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,

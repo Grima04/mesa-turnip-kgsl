@@ -51,7 +51,7 @@ traces:
   - path: humus/Portals.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 5415bbf2a69b605bb1052a0e0b0f7040
+        checksum: f83da726bff354684a576effa74ef681
       - device: gl-panfrost-t760
         checksum: a41f53e9318cbd32c27b48d304df1ea6
   - path: 0ad/0ad.trace
