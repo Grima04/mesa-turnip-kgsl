@@ -153,6 +153,13 @@ if with_platform_android
   ]
 endif
 
+if with_platform_windows
+  radv_flags += [
+    '-DVK_USE_PLATFORM_WIN32_KHR',
+    '-DVK_NO_PROTOTYPES',
+  ]
+endif
+
 # When static linking LLVM, all its symbols are public API.
 # That may cause symbol collision, so explicitly demote everything.
 libvulkan_radeon_ld_args = []
