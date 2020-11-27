@@ -295,6 +295,10 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
       if (st->lower_ucp && st_user_clip_planes_enabled(st->ctx) &&
           pipe_shader == PIPE_SHADER_GEOMETRY)
          key.lower_ucp = st->ctx->Transform.ClipPlanesEnabled;
+
+      key.lower_point_size = st->lower_point_size &&
+                             !st_point_size_per_vertex(st->ctx);
+
    }
 
    simple_mtx_lock(&st->ctx->Shared->Mutex);
