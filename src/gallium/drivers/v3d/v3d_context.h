@@ -686,6 +686,8 @@ void v3d_get_internal_type_bpp_for_output_format(const struct v3d_device_info *d
                                                  uint32_t *bpp);
 bool v3d_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
                                  uint32_t tex_format);
+bool v3d_format_supports_tlb_msaa_resolve(const struct v3d_device_info *devinfo,
+                                          enum pipe_format f);
 
 void v3d_init_query_functions(struct v3d_context *v3d);
 void v3d_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info);

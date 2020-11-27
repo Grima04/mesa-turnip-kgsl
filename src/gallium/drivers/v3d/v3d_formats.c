@@ -37,6 +37,10 @@
 #include "v3d_context.h"
 #include "v3d_format_table.h"
 
+/* The format internal types are the same across V3D versions */
+#define V3D_VERSION 33
+#include "broadcom/cle/v3dx_pack.h"
+
 static const struct v3d_format *
 get_format(const struct v3d_device_info *devinfo, enum pipe_format f)
 {
@@ -152,4 +156,25 @@ v3d_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
         } else {
                 return v3d33_tfu_supports_tex_format(tex_format);
         }
+}
+
+bool
+v3d_format_supports_tlb_msaa_resolve(const struct v3d_device_info *devinfo,
+                                     enum pipe_format f)
+{
+        uint32_t internal_type;
+        uint32_t internal_bpp;
+
+        const struct v3d_format *vf = get_format(devinfo, f);
+
+        if (!vf)
+                return false;
+
+        v3d_get_internal_type_bpp_for_output_format(devinfo,
+                                                    vf->rt_type,
+                                                    &internal_type,
+                                                    &internal_bpp);
+
+        return internal_type == V3D_INTERNAL_TYPE_8 ||
+               internal_type == V3D_INTERNAL_TYPE_16F;
 }
