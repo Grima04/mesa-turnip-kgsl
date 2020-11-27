@@ -1319,6 +1319,7 @@ enum ReduceOp : uint16_t {
    iand8, iand16, iand32, iand64,
    ior8, ior16, ior32, ior64,
    ixor8, ixor16, ixor32, ixor64,
+   num_reduce_ops,
 };
 
 /**
