@@ -508,15 +508,12 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    }
 
    unsigned num_descriptors;
-   VkDescriptorSetLayout dsl;
    if (is_compute) {
       num_descriptors = ctx->curr_compute->base.num_descriptors;
-      dsl = ctx->curr_compute->base.dsl;
       batch = &ctx->compute_batch;
    } else {
       batch = zink_curr_batch(ctx);
       num_descriptors = ctx->curr_program->base.num_descriptors;
-      dsl = ctx->curr_program->base.dsl;
    }
 
    if (batch->descs_used + num_descriptors >= batch->max_descs) {
@@ -528,13 +525,12 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
          batch = zink_curr_batch(ctx);
       }
    }
-   if (is_compute)
-      zink_batch_reference_program(batch, &ctx->curr_compute->base);
-   else
-      zink_batch_reference_program(batch, &ctx->curr_program->base);
+
+   struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
+   zink_batch_reference_program(batch, pg);
 
    VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch,
-                                                      dsl, num_descriptors);
+                                                      pg->dsl, num_descriptors);
    /* probably oom, so we need to stall until we free up some descriptors */
    if (!desc_set) {
       /* update our max descriptor count so we can try and avoid this happening again */
@@ -557,7 +553,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
             zink_reset_batch(ctx, &ctx->batches[i]);
          }
       }
-      desc_set = allocate_descriptor_set(screen, batch, dsl, num_descriptors);
+      desc_set = allocate_descriptor_set(screen, batch, pg->dsl, num_descriptors);
    }
    assert(desc_set != VK_NULL_HANDLE);
 
