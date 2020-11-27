@@ -367,6 +367,8 @@ struct threaded_context {
    unsigned num_direct_slots;
    unsigned num_syncs;
 
+   bool use_forced_staging_uploads;
+
    /* Estimation of how much vram/gtt bytes are mmap'd in
     * the current tc_batch.
     */

@@ -1504,6 +1504,7 @@ tc_improve_map_buffer_flags(struct threaded_context *tc,
        /* Try not to decrement the counter if it's not positive. Still racy,
         * but it makes it harder to wrap the counter from INT_MIN to INT_MAX. */
        tres->max_forced_staging_uploads > 0 &&
+       tc->use_forced_staging_uploads &&
        p_atomic_dec_return(&tres->max_forced_staging_uploads) >= 0) {
       usage &= ~(PIPE_MAP_DISCARD_WHOLE_RESOURCE |
                  PIPE_MAP_UNSYNCHRONIZED);
@@ -1639,6 +1640,7 @@ tc_transfer_map(struct pipe_context *_pipe,
           * written range(s).
           */
          usage &= ~PIPE_MAP_UNSYNCHRONIZED & ~TC_TRANSFER_MAP_THREADED_UNSYNC;
+         tc->use_forced_staging_uploads = false;
       }
    }
 
@@ -2957,6 +2959,8 @@ threaded_context_create(struct pipe_context *pipe,
 
    if (!tc->base.stream_uploader || !tc->base.const_uploader)
       goto fail;
+
+   tc->use_forced_staging_uploads = true;
 
    /* The queue size is the number of batches "waiting". Batches are removed
     * from the queue before being executed, so keep one tc_batch slot for that
