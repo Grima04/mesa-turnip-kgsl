@@ -279,7 +279,14 @@ ${strmap(device_strmap, 'device')}
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
+#ifdef _MSC_VER
+  #pragma comment(linker, "/alternatename:${e.prefixed_name('radv')}_Weak=${e.prefixed_name('radv')}_Null")
+  #pragma comment(linker, "/alternatename:${e.prefixed_name('radv')}=${e.prefixed_name('radv')}_Weak")
+  ${e.return_type} (*${e.prefixed_name('radv')}_Null)(${e.decl_params()}) = 0;
+  ${e.return_type} ${e.prefixed_name('radv')}_Weak(${e.decl_params()});
+#else
   ${e.return_type} ${e.prefixed_name('radv')}(${e.decl_params()}) __attribute__ ((weak));
+#endif
   % if e.guard is not None:
 #endif // ${e.guard}
   % endif
@@ -304,7 +311,14 @@ const struct radv_instance_dispatch_table radv_instance_dispatch_table = {
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
+#ifdef _MSC_VER
+  #pragma comment(linker, "/alternatename:${e.prefixed_name('radv')}_Weak=${e.prefixed_name('radv')}_Null")
+  #pragma comment(linker, "/alternatename:${e.prefixed_name('radv')}=${e.prefixed_name('radv')}_Weak")
+  ${e.return_type} (*${e.prefixed_name('radv')}_Null)(${e.decl_params()}) = 0;
+  ${e.return_type} ${e.prefixed_name('radv')}_Weak(${e.decl_params()});
+#else
   ${e.return_type} ${e.prefixed_name('radv')}(${e.decl_params()}) __attribute__ ((weak));
+#endif
   % if e.guard is not None:
 #endif // ${e.guard}
   % endif
@@ -332,24 +346,37 @@ const struct radv_physical_device_dispatch_table radv_physical_device_dispatch_t
 #ifdef ${e.guard}
     % endif
     % if layer == 'radv':
+#ifdef _MSC_VER
+      #pragma comment(linker, "/alternatename:${e.prefixed_name('radv')}=${e.prefixed_name('radv')}_Weak")
+      ${e.return_type}
+      ${e.prefixed_name('radv')}_Weak(${e.decl_params()})
+#else
       ${e.return_type} __attribute__ ((weak))
       ${e.prefixed_name('radv')}(${e.decl_params()})
+#endif
       {
         % if e.params[0].type == 'VkDevice':
           RADV_FROM_HANDLE(radv_device, radv_device, ${e.params[0].name});
-          return radv_device->dispatch.${e.name}(${e.call_params()});
+          ${'' if e.return_type == 'void' else 'return '}radv_device->dispatch.${e.name}(${e.call_params()});
         % elif e.params[0].type == 'VkCommandBuffer':
           RADV_FROM_HANDLE(radv_cmd_buffer, radv_cmd_buffer, ${e.params[0].name});
-          return radv_cmd_buffer->device->dispatch.${e.name}(${e.call_params()});
+          ${'' if e.return_type == 'void' else 'return '}radv_cmd_buffer->device->dispatch.${e.name}(${e.call_params()});
         % elif e.params[0].type == 'VkQueue':
           RADV_FROM_HANDLE(radv_queue, radv_queue, ${e.params[0].name});
-          return radv_queue->device->dispatch.${e.name}(${e.call_params()});
+          ${'' if e.return_type == 'void' else 'return '}radv_queue->device->dispatch.${e.name}(${e.call_params()});
         % else:
           assert(!"Unhandled device child trampoline case: ${e.params[0].type}");
         % endif
       }
     % else:
+#ifdef _MSC_VER
+      #pragma comment(linker, "/alternatename:${e.prefixed_name(layer)}_Weak=${e.prefixed_name(layer)}_Null")
+      #pragma comment(linker, "/alternatename:${e.prefixed_name(layer)}=${e.prefixed_name(layer)}_Weak")
+      ${e.return_type} (*${e.prefixed_name(layer)}_Null)(${e.decl_params()}) = 0;
+      ${e.return_type} ${e.prefixed_name(layer)}_Weak(${e.decl_params()});
+#else
       ${e.return_type} ${e.prefixed_name(layer)}(${e.decl_params()}) __attribute__ ((weak));
+#endif
     % endif
     % if e.guard is not None:
 #endif // ${e.guard}
@@ -508,7 +535,11 @@ radv_get_device_entry_name(int index)
    return device_entry_name(index);
 }
 
+#ifdef _MSC_VER
+__declspec(noinline) static void *
+#else
 static void * __attribute__ ((noinline))
+#endif
 radv_resolve_device_entrypoint(uint32_t index)
 {
     return radv_device_dispatch_table.entrypoints[index];
