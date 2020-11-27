@@ -640,6 +640,8 @@ enum lvp_cmds {
    LVP_CMD_NEXT_SUBPASS,
    LVP_CMD_END_RENDER_PASS,
    LVP_CMD_EXECUTE_COMMANDS,
+   LVP_CMD_DRAW_INDIRECT_COUNT,
+   LVP_CMD_DRAW_INDEXED_INDIRECT_COUNT,
 };
 
 struct lvp_cmd_bind_pipeline {
@@ -904,6 +906,15 @@ struct lvp_cmd_execute_commands {
    struct lvp_cmd_buffer *cmd_buffers[0];
 };
 
+struct lvp_cmd_draw_indirect_count {
+   VkDeviceSize offset;
+   struct lvp_buffer *buffer;
+   VkDeviceSize count_buffer_offset;
+   struct lvp_buffer *count_buffer;
+   uint32_t max_draw_count;
+   uint32_t stride;
+};
+
 struct lvp_cmd_buffer_entry {
    struct list_head cmd_link;
    uint32_t cmd_type;
@@ -944,6 +955,7 @@ struct lvp_cmd_buffer_entry {
       struct lvp_cmd_begin_render_pass begin_render_pass;
       struct lvp_cmd_next_subpass next_subpass;
       struct lvp_cmd_execute_commands execute_commands;
+      struct lvp_cmd_draw_indirect_count draw_indirect_count;
    } u;
 };
 

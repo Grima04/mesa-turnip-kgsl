@@ -2283,6 +2283,25 @@ static void handle_resolve_image(struct lvp_cmd_buffer_entry *cmd,
    }
 }
 
+static void handle_draw_indirect_count(struct lvp_cmd_buffer_entry *cmd,
+                                       struct rendering_state *state, bool indexed)
+{
+   if (indexed) {
+      state->info.index_bounds_valid = false;
+      state->info.index_size = state->index_size;
+      state->info.index.resource = state->index_buffer;
+      state->info.max_index = ~0;
+   } else
+      state->info.index_size = 0;
+   state->indirect_info.offset = cmd->u.draw_indirect_count.offset;
+   state->indirect_info.stride = cmd->u.draw_indirect_count.stride;
+   state->indirect_info.draw_count = cmd->u.draw_indirect_count.max_draw_count;
+   state->indirect_info.buffer = cmd->u.draw_indirect_count.buffer->bo;
+   state->indirect_info.indirect_draw_count_offset = cmd->u.draw_indirect_count.count_buffer_offset;
+   state->indirect_info.indirect_draw_count = cmd->u.draw_indirect_count.count_buffer->bo;
+   state->pctx->draw_vbo(state->pctx, &state->info, &state->indirect_info, &state->draw, 1);
+}
+
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
@@ -2425,6 +2444,14 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case LVP_CMD_EXECUTE_COMMANDS:
          handle_execute_commands(cmd, state);
+         break;
+      case LVP_CMD_DRAW_INDIRECT_COUNT:
+         emit_state(state);
+         handle_draw_indirect_count(cmd, state, false);
+         break;
+      case LVP_CMD_DRAW_INDEXED_INDIRECT_COUNT:
+         emit_state(state);
+         handle_draw_indirect_count(cmd, state, true);
          break;
       }
    }

@@ -1417,3 +1417,59 @@ void lvp_CmdPipelineBarrier(
    /* TODO finish off this */
    cmd_buf_queue(cmd_buffer, cmd);
 }
+
+void lvp_CmdDrawIndirectCount(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    buffer,
+    VkDeviceSize                                offset,
+    VkBuffer                                    countBuffer,
+    VkDeviceSize                                countBufferOffset,
+    uint32_t                                    maxDrawCount,
+    uint32_t                                    stride)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   LVP_FROM_HANDLE(lvp_buffer, buf, buffer);
+   LVP_FROM_HANDLE(lvp_buffer, count_buf, countBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_DRAW_INDIRECT_COUNT);
+   if (!cmd)
+      return;
+
+   cmd->u.draw_indirect_count.offset = offset;
+   cmd->u.draw_indirect_count.buffer = buf;
+   cmd->u.draw_indirect_count.count_buffer_offset = countBufferOffset;
+   cmd->u.draw_indirect_count.count_buffer = count_buf;
+   cmd->u.draw_indirect_count.max_draw_count = maxDrawCount;
+   cmd->u.draw_indirect_count.stride = stride;
+
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+void lvp_CmdDrawIndexedIndirectCount(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    buffer,
+    VkDeviceSize                                offset,
+    VkBuffer                                    countBuffer,
+    VkDeviceSize                                countBufferOffset,
+    uint32_t                                    maxDrawCount,
+    uint32_t                                    stride)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   LVP_FROM_HANDLE(lvp_buffer, buf, buffer);
+   LVP_FROM_HANDLE(lvp_buffer, count_buf, countBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_DRAW_INDEXED_INDIRECT_COUNT);
+   if (!cmd)
+      return;
+
+   cmd->u.draw_indirect_count.offset = offset;
+   cmd->u.draw_indirect_count.buffer = buf;
+   cmd->u.draw_indirect_count.count_buffer_offset = countBufferOffset;
+   cmd->u.draw_indirect_count.count_buffer = count_buf;
+   cmd->u.draw_indirect_count.max_draw_count = maxDrawCount;
+   cmd->u.draw_indirect_count.stride = stride;
+
+   cmd_buf_queue(cmd_buffer, cmd);
+}

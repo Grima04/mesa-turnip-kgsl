@@ -65,7 +65,7 @@ EXTENSIONS = [
     Extension('VK_KHR_descriptor_update_template',        1, False),
     Extension('VK_KHR_device_group',                      1, False),
     Extension('VK_KHR_device_group_creation',             1, False),
-    Extension('VK_KHR_draw_indirect_count',               1, False),
+    Extension('VK_KHR_draw_indirect_count',               1, True),
     Extension('VK_KHR_driver_properties',                 1, True),
     Extension('VK_KHR_external_fence',                    1, False),
     Extension('VK_KHR_external_fence_capabilities',       1, True),
