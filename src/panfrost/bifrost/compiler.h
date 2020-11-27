@@ -533,11 +533,10 @@ bi_remove_instruction(bi_instruction *ins)
  */
 
 #define BIR_INDEX_REGISTER (1 << 31)
-#define BIR_INDEX_UNIFORM  (1 << 30)
-#define BIR_INDEX_CONSTANT (1 << 29)
-#define BIR_INDEX_ZERO     (1 << 28)
-#define BIR_INDEX_PASS     (1 << 27)
-#define BIR_INDEX_FAU      (1 << 26)
+#define BIR_INDEX_CONSTANT (1 << 30)
+#define BIR_INDEX_ZERO     (1 << 29)
+#define BIR_INDEX_PASS     (1 << 28)
+#define BIR_INDEX_FAU      (1 << 27)
 
 enum bir_fau {
         BIR_FAU_ZERO = 0,
@@ -550,12 +549,13 @@ enum bir_fau {
         BIR_FAU_BLEND_0 = 8,
         /* blend descs 1 - 7 */
         BIR_FAU_TYPE_MASK = 15,
+        BIR_FAU_UNIFORM = (1 << 7),
         BIR_FAU_HI = (1 << 8),
 };
 
 /* Keep me synced please so we can check src & BIR_SPECIAL */
 
-#define BIR_SPECIAL        (BIR_INDEX_REGISTER | BIR_INDEX_UNIFORM | \
+#define BIR_SPECIAL        (BIR_INDEX_REGISTER | \
                             BIR_INDEX_CONSTANT | BIR_INDEX_ZERO | \
                             BIR_INDEX_PASS | BIR_INDEX_FAU)
 

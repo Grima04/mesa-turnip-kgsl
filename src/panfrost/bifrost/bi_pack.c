@@ -176,8 +176,6 @@ bi_assign_fau_idx_single(bi_registers *regs,
                         ins->src[s] = BIR_INDEX_PASS |
                                       (hi ? BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
                         assigned = true;
-                } else if (s & BIR_INDEX_UNIFORM) {
-                        unreachable("Push uniforms not implemented yet");
                 }
         }
 

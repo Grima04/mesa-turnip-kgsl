@@ -169,8 +169,9 @@ bi_print_index(FILE *fp, bi_instruction *ins, unsigned index, unsigned s)
         if (bi_print_dest_index(fp, ins, index))
                 return;
 
-        if (index & BIR_INDEX_UNIFORM)
-                fprintf(fp, "u%u", index & ~BIR_INDEX_UNIFORM);
+        if ((index & BIR_INDEX_FAU) && (index & BIR_FAU_UNIFORM))
+                fprintf(fp, "u%u", ((index & 0x7F) << 1) |
+                        (index & BIR_FAU_HI) ? 1 : 0);
         else if (index & BIR_INDEX_CONSTANT)
                 fprintf(fp, "#0x%" PRIx64, bi_get_immediate(ins, s));
         else if (index & BIR_INDEX_ZERO)
