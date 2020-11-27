@@ -303,8 +303,8 @@ bi_emit_blend(bi_context *ctx, unsigned rgba, nir_alu_type T, unsigned rt)
                 blend.dest = BIR_INDEX_REGISTER | 0;
         } else {
                 /* Blend descriptor comes from the FAU RAM */
-                blend.src[2] = BIR_INDEX_BLEND | BIFROST_SRC_FAU_LO;
-                blend.src[3] = BIR_INDEX_BLEND | BIFROST_SRC_FAU_HI;
+                blend.src[2] = BIR_INDEX_FAU | (BIR_FAU_BLEND_0 + rt);
+                blend.src[3] = blend.src[2] | BIR_FAU_HI;
 
                 /* By convention, the return address is stored in r48 and will
                  * be used by the blend shader to jump back to the fragment

@@ -537,8 +537,7 @@ bi_remove_instruction(bi_instruction *ins)
 #define BIR_INDEX_CONSTANT (1 << 29)
 #define BIR_INDEX_ZERO     (1 << 28)
 #define BIR_INDEX_PASS     (1 << 27)
-#define BIR_INDEX_BLEND    (1 << 26)
-#define BIR_INDEX_FAU      (1 << 25)
+#define BIR_INDEX_FAU      (1 << 26)
 
 enum bir_fau {
         BIR_FAU_ZERO = 0,
@@ -548,6 +547,8 @@ enum bir_fau {
         BIR_FAU_FB_EXTENT = 4,
         BIR_FAU_ATEST_PARAM = 5,
         BIR_FAU_SAMPLE_POS_ARRAY = 6,
+        BIR_FAU_BLEND_0 = 8,
+        /* blend descs 1 - 7 */
         BIR_FAU_TYPE_MASK = 15,
         BIR_FAU_HI = (1 << 8),
 };
@@ -556,8 +557,7 @@ enum bir_fau {
 
 #define BIR_SPECIAL        (BIR_INDEX_REGISTER | BIR_INDEX_UNIFORM | \
                             BIR_INDEX_CONSTANT | BIR_INDEX_ZERO | \
-                            BIR_INDEX_PASS | BIR_INDEX_BLEND | \
-                            BIR_INDEX_FAU)
+                            BIR_INDEX_PASS | BIR_INDEX_FAU)
 
 static inline unsigned
 bi_max_temp(bi_context *ctx)

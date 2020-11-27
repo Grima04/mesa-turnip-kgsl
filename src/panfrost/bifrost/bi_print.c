@@ -152,7 +152,11 @@ bir_fau_name(unsigned fau_idx)
 {
         const char *names[] = {
                 "zero", "lane-id", "wrap-id", "core-id",
-                "fb-extent", "atest-param", "sample-pos"
+                "fb-extent", "atest-param", "sample-pos",
+                "blend_descriptor_0", "blend_descriptor_1",
+                "blend_descriptor_2", "blend_descriptor_3",
+                "blend_descriptor_4", "blend_descriptor_5",
+                "blend_descriptor_6", "blend_descriptor_7",
         };
 
         assert(fau_idx < ARRAY_SIZE(names));
@@ -171,9 +175,6 @@ bi_print_index(FILE *fp, bi_instruction *ins, unsigned index, unsigned s)
                 fprintf(fp, "#0x%" PRIx64, bi_get_immediate(ins, s));
         else if (index & BIR_INDEX_ZERO)
                 fprintf(fp, "#0");
-        else if (index & BIR_INDEX_BLEND)
-                fprintf(fp, "blend_descriptor_%u.%c", ins->blend_location,
-                        (index & ~BIR_INDEX_BLEND) == BIFROST_SRC_FAU_HI ? 'y' : 'x');
         else if (index & BIR_INDEX_FAU)
                 fprintf(fp, "%s.%c", bir_fau_name(index & BIR_FAU_TYPE_MASK),
                         (index & BIR_FAU_HI) ? 'y' : 'x');

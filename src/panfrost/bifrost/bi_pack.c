@@ -167,18 +167,6 @@ bi_assign_fau_idx_single(bi_registers *regs,
                         assigned = true;
                 } else if (ins->src[s] & BIR_INDEX_ZERO && fast_zero) {
                         ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_STAGE;
-                } else if (ins->src[s] & BIR_INDEX_BLEND) {
-                        unsigned rt = ins->blend_location;
-
-                        assert(rt <= 7);
-                        assert((ins->src[s] & ~BIR_SPECIAL) == BIFROST_SRC_FAU_HI ||
-                               (ins->src[s] & ~BIR_SPECIAL) == BIFROST_SRC_FAU_LO);
-                        ins->src[s] = BIR_INDEX_PASS | (ins->src[s] & ~BIR_SPECIAL);
-                        if (assigned && regs->fau_idx != (8 | rt))
-                                unreachable("Mismatched FAU index");
-
-                        regs->fau_idx = 8 | rt;
-                        assigned = true;
                 } else if (ins->src[s] & BIR_INDEX_FAU) {
                         unsigned index = ins->src[s] & BIR_FAU_TYPE_MASK;
                         bool hi = !!(ins->src[s] & BIR_FAU_HI);
