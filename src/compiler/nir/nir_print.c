@@ -538,18 +538,23 @@ print_var_decl(nir_variable *var, print_state *state)
          if (var->data.mode == nir_var_shader_in)
             loc = gl_vert_attrib_name(var->data.location);
          else if (var->data.mode == nir_var_shader_out)
-            loc = gl_varying_slot_name(var->data.location);
+            loc = gl_varying_slot_name_for_stage(var->data.location,
+                                                 state->shader->info.stage);
          break;
       case MESA_SHADER_GEOMETRY:
          if ((var->data.mode == nir_var_shader_in) ||
-             (var->data.mode == nir_var_shader_out))
-            loc = gl_varying_slot_name(var->data.location);
+             (var->data.mode == nir_var_shader_out)) {
+            loc = gl_varying_slot_name_for_stage(var->data.location,
+                                                 state->shader->info.stage);
+         }
          break;
       case MESA_SHADER_FRAGMENT:
-         if (var->data.mode == nir_var_shader_in)
-            loc = gl_varying_slot_name(var->data.location);
-         else if (var->data.mode == nir_var_shader_out)
+         if (var->data.mode == nir_var_shader_in) {
+            loc = gl_varying_slot_name_for_stage(var->data.location,
+                                                 state->shader->info.stage);
+         } else if (var->data.mode == nir_var_shader_out) {
             loc = gl_frag_result_name(var->data.location);
+         }
          break;
       case MESA_SHADER_TESS_CTRL:
       case MESA_SHADER_TESS_EVAL:
