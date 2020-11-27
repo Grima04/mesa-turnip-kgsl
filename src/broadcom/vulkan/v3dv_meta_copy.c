@@ -1525,6 +1525,124 @@ emit_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
  * it failed to process it, for example, due to an out-of-memory error).
  */
 static bool
+copy_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
+               struct v3dv_image *dst,
+               struct v3dv_image *src,
+               const VkImageCopy *region)
+{
+   /* Destination can't be raster format */
+   if (dst->tiling == VK_IMAGE_TILING_LINEAR)
+      return false;
+
+   /* We can only do full copies, so if the format is D24S8 both aspects need
+    * to be copied. We only need to check the dst format because the spec
+    * states that depth/stencil formats must match exactly.
+    */
+   if (dst->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+       const VkImageAspectFlags ds_aspects = VK_IMAGE_ASPECT_DEPTH_BIT |
+                                             VK_IMAGE_ASPECT_STENCIL_BIT;
+       if (region->dstSubresource.aspectMask != ds_aspects)
+         return false;
+   }
+
+   /* Don't handle copies between uncompressed and compressed formats for now.
+    *
+    * FIXME: we should be able to handle these easily but there is no coverage
+    * in CTS at the moment that make such copies with full images (which we
+    * require here), only partial copies. Also, in that case the code below that
+    * checks for "dst image complete" requires some changes, since it is
+    * checking against the region dimensions, which are in units of the source
+    * image format.
+    */
+   if (vk_format_is_compressed(dst->vk_format) !=
+       vk_format_is_compressed(src->vk_format)) {
+      return false;
+   }
+
+   /* Source region must start at (0,0) */
+   if (region->srcOffset.x != 0 || region->srcOffset.y != 0)
+      return false;
+
+   /* Destination image must be complete */
+   if (region->dstOffset.x != 0 || region->dstOffset.y != 0)
+      return false;
+
+   const uint32_t dst_mip_level = region->dstSubresource.mipLevel;
+   uint32_t dst_width = u_minify(dst->extent.width, dst_mip_level);
+   uint32_t dst_height = u_minify(dst->extent.height, dst_mip_level);
+   if (region->extent.width != dst_width || region->extent.height != dst_height)
+      return false;
+
+   /* From vkCmdCopyImage:
+    *
+    *   "When copying between compressed and uncompressed formats the extent
+    *    members represent the texel dimensions of the source image and not
+    *    the destination."
+    */
+   const uint32_t block_w = vk_format_get_blockwidth(src->vk_format);
+   const uint32_t block_h = vk_format_get_blockheight(src->vk_format);
+   uint32_t width = DIV_ROUND_UP(region->extent.width, block_w);
+   uint32_t height = DIV_ROUND_UP(region->extent.height, block_h);
+
+   /* Account for sample count */
+   assert(dst->samples == src->samples);
+   if (dst->samples > VK_SAMPLE_COUNT_1_BIT) {
+      assert(dst->samples == VK_SAMPLE_COUNT_4_BIT);
+      width *= 2;
+      height *= 2;
+   }
+
+   /* The TFU unit doesn't handle format conversions so we need the formats to
+    * match. On the other hand, vkCmdCopyImage allows different color formats
+    * on the source and destination images, but only if they are texel
+    * compatible. For us, this means that we can effectively ignore different
+    * formats and just make the copy using either of them, since we are just
+    * moving raw data and not making any conversions.
+    *
+    * Also, the formats supported by the TFU unit are limited, but again, since
+    * we are only doing raw copies here without interpreting or converting
+    * the underlying pixel data according to its format, we can always choose
+    * to use compatible formats that are supported with the TFU unit.
+    */
+   assert(dst->cpp == src->cpp);
+   VkFormat vk_format;
+   switch (dst->cpp) {
+   case 16: vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;  break;
+   case 8:  vk_format = VK_FORMAT_R16G16B16A16_SFLOAT;  break;
+   case 4:  vk_format = VK_FORMAT_R32_SFLOAT;           break;
+   case 2:  vk_format = VK_FORMAT_R16_SFLOAT;           break;
+   case 1:  vk_format = VK_FORMAT_R8_UNORM;             break;
+   default: unreachable("unsupported format bit-size"); break;
+   };
+   const struct v3dv_format *format = v3dv_get_format(vk_format);
+   assert(v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
+                                       format->tex_type));
+
+   /* Emit a TFU job for each layer to blit */
+   const uint32_t layer_count = dst->type != VK_IMAGE_TYPE_3D ?
+      region->dstSubresource.layerCount :
+      region->extent.depth;
+   const uint32_t src_mip_level = region->srcSubresource.mipLevel;
+
+   const uint32_t base_src_layer = src->type != VK_IMAGE_TYPE_3D ?
+      region->srcSubresource.baseArrayLayer : region->srcOffset.z;
+   const uint32_t base_dst_layer = dst->type != VK_IMAGE_TYPE_3D ?
+      region->dstSubresource.baseArrayLayer : region->dstOffset.z;
+   for (uint32_t i = 0; i < layer_count; i++) {
+      emit_tfu_job(cmd_buffer,
+                   dst, dst_mip_level, base_dst_layer + i,
+                   src, src_mip_level, base_src_layer + i,
+                   width, height, format);
+   }
+
+   return true;
+}
+
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
+static bool
 copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                struct v3dv_image *dst,
                struct v3dv_image *src,
@@ -1811,6 +1929,8 @@ v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
    assert(src->samples == dst->samples);
 
    for (uint32_t i = 0; i < regionCount; i++) {
+      if (copy_image_tfu(cmd_buffer, dst, src, &pRegions[i]))
+         continue;
       if (copy_image_tlb(cmd_buffer, dst, src, &pRegions[i]))
          continue;
       if (copy_image_blit(cmd_buffer, dst, src, &pRegions[i]))
