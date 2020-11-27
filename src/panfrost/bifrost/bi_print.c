@@ -174,8 +174,6 @@ bi_print_index(FILE *fp, bi_instruction *ins, unsigned index, unsigned s)
                         (index & BIR_FAU_HI) ? 1 : 0);
         else if (index & BIR_INDEX_CONSTANT)
                 fprintf(fp, "#0x%" PRIx64, bi_get_immediate(ins, s));
-        else if (index & BIR_INDEX_ZERO)
-                fprintf(fp, "#0");
         else if (index & BIR_INDEX_FAU)
                 fprintf(fp, "%s.%c", bir_fau_name(index & BIR_FAU_TYPE_MASK),
                         (index & BIR_FAU_HI) ? 'y' : 'x');
@@ -416,7 +414,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 
                 if (ins->src[s] &&
                     !(ins->src[s] &
-                      (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO | BIR_INDEX_FAU))) {
+                      (BIR_INDEX_CONSTANT | BIR_INDEX_FAU))) {
                         pan_print_alu_type(ins->src_types[s], fp);
                         bi_print_swizzle(ins, s, fp);
                 }

@@ -151,6 +151,11 @@ bi_get_immediate(bi_instruction *ins, unsigned index)
         unsigned v = ins->src[index];
         assert(v & BIR_INDEX_CONSTANT);
         unsigned shift = v & ~BIR_INDEX_CONSTANT;
+
+        /* Don't invoke undefined behaviour on shift */
+        if (shift == 64)
+                return 0;
+
         uint64_t shifted = ins->constant.u64 >> shift;
 
         /* Mask off the accessed part */

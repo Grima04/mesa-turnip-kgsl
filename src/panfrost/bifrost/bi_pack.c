@@ -131,16 +131,16 @@ bi_assign_fau_idx_single(bi_registers *regs,
         }
 
         bi_foreach_src(ins, s) {
-                if (s == 0 && (ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_ATTR)) continue;
-                if (s == 1 && (ins->type == BI_BRANCH)) continue;
-
                 if (ins->src[s] & BIR_INDEX_CONSTANT) {
-                        /* Let direct addresses through */
-                        if (ins->type == BI_LOAD_VAR)
-                                continue;
-
                         bool hi = false;
                         uint32_t cons = bi_get_immediate(ins, s);
+
+                        /* FMA can encode zero for free */
+                        if (cons == 0 && fast_zero) {
+                                ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_STAGE;
+                                continue;
+                        }
+
                         unsigned idx = bi_lookup_constant(clause, cons, &hi);
                         unsigned lo = clause->constants[idx] & 0xF;
                         unsigned f = bi_constant_field(idx) | lo;
@@ -151,22 +151,6 @@ bi_assign_fau_idx_single(bi_registers *regs,
                         regs->fau_idx = f;
                         ins->src[s] = BIR_INDEX_PASS | (hi ? BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
                         assigned = true;
-                } else if (ins->src[s] & BIR_INDEX_ZERO && (ins->type == BI_LOAD_UNIFORM || ins->type == BI_LOAD_VAR)) {
-                        /* XXX: HACK UNTIL WE HAVE HI MATCHING DUE TO OVERFLOW XXX */
-                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_FAU_HI;
-                } else if (ins->src[s] & BIR_INDEX_ZERO && !fast_zero) {
-                        /* FMAs have a fast zero slot, ADD needs to use the
-                         * uniform/const slot's special 0 mode handled here */
-                        unsigned f = 0;
-
-                        if (assigned && regs->fau_idx != f)
-                                unreachable("Mismatched uniform/const field: 0");
-
-                        regs->fau_idx = f;
-                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_FAU_LO;
-                        assigned = true;
-                } else if (ins->src[s] & BIR_INDEX_ZERO && fast_zero) {
-                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_STAGE;
                 } else if (ins->src[s] & BIR_INDEX_FAU) {
                         unsigned index = ins->src[s] & BIR_FAU_TYPE_MASK;
                         bool hi = !!(ins->src[s] & BIR_FAU_HI);
