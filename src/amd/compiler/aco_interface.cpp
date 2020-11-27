@@ -181,11 +181,12 @@ void aco_compile_shader(unsigned shader_count,
    if (get_disasm) {
       char *data = NULL;
       size_t disasm_size = 0;
-      FILE *f = open_memstream(&data, &disasm_size);
-      if (f) {
-         bool fail = aco::print_asm(program.get(), code, exec_size / 4u, f);
-         fputc(0, f);
-         fclose(f);
+      struct u_memstream mem;
+      if (u_memstream_open(&mem, &data, &disasm_size)) {
+         FILE *const memf = u_memstream_get(&mem);
+         bool fail = aco::print_asm(program.get(), code, exec_size / 4u, memf);
+         fputc(0, memf);
+         u_memstream_close(&mem);
 
          if (fail) {
             fprintf(stderr, "Failed to disassemble program:\n");
