@@ -1824,7 +1824,7 @@ zink_maybe_flush_or_stall(struct zink_context *ctx)
    if (ctx->batch.state->resource_size >= screen->total_mem / 10)
       flush_batch(ctx);
 
-   if (ctx->resource_size >= screen->total_mem / 10) {
+   if (ctx->resource_size >= screen->total_mem / 10 || _mesa_hash_table_num_entries(&ctx->batch_states) > 10) {
       zink_fence_finish(zink_screen(ctx->base.screen), &ctx->base, ctx->last_fence, PIPE_TIMEOUT_INFINITE);
       zink_batch_reset_all(ctx);
    }
