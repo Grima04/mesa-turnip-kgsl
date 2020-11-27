@@ -1455,7 +1455,15 @@ static inline nir_ssa_def *
 nir_load_global(nir_builder *build, nir_ssa_def *addr, unsigned align,
                 unsigned num_components, unsigned bit_size)
 {
-   return nir_build_load_global(build, num_components, bit_size, addr, .align_mul=align);
+   nir_intrinsic_instr *load =
+      nir_intrinsic_instr_create(build->shader, nir_intrinsic_load_global);
+   load->num_components = num_components;
+   load->src[0] = nir_src_for_ssa(addr);
+   nir_intrinsic_set_align(load, align, 0);
+   nir_ssa_dest_init(&load->instr, &load->dest,
+                     num_components, bit_size, NULL);
+   nir_builder_instr_insert(build, &load->instr);
+   return &load->dest.ssa;
 }
 
 #undef nir_store_global
@@ -1463,8 +1471,15 @@ static inline void
 nir_store_global(nir_builder *build, nir_ssa_def *addr, unsigned align,
                  nir_ssa_def *value, nir_component_mask_t write_mask)
 {
-   write_mask &= BITFIELD_MASK(value->num_components);
-   nir_build_store_global(build, value, addr, .write_mask=write_mask, .align_mul=align);
+   nir_intrinsic_instr *store =
+      nir_intrinsic_instr_create(build->shader, nir_intrinsic_store_global);
+   store->num_components = value->num_components;
+   store->src[0] = nir_src_for_ssa(value);
+   store->src[1] = nir_src_for_ssa(addr);
+   nir_intrinsic_set_write_mask(store,
+      write_mask & BITFIELD_MASK(value->num_components));
+   nir_intrinsic_set_align(store, align, 0);
+   nir_builder_instr_insert(build, &store->instr);
 }
 
 #undef nir_load_global_constant
@@ -1472,7 +1487,15 @@ static inline nir_ssa_def *
 nir_load_global_constant(nir_builder *build, nir_ssa_def *addr, unsigned align,
                          unsigned num_components, unsigned bit_size)
 {
-   return nir_build_load_global_constant(build, num_components, bit_size, addr, .align_mul=align);
+   nir_intrinsic_instr *load =
+      nir_intrinsic_instr_create(build->shader, nir_intrinsic_load_global_constant);
+   load->num_components = num_components;
+   load->src[0] = nir_src_for_ssa(addr);
+   nir_intrinsic_set_align(load, align, 0);
+   nir_ssa_dest_init(&load->instr, &load->dest,
+                     num_components, bit_size, NULL);
+   nir_builder_instr_insert(build, &load->instr);
+   return &load->dest.ssa;
 }
 
 #undef nir_load_param
