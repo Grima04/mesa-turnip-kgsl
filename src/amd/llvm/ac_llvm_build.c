@@ -388,7 +388,7 @@ void ac_build_optimization_barrier(struct ac_llvm_context *ctx, LLVMValueRef *pv
    LLVMBuilderRef builder = ctx->builder;
    char code[16];
 
-   snprintf(code, sizeof(code), "; %d", p_atomic_inc_return(&counter));
+   snprintf(code, sizeof(code), "; %d", (int)p_atomic_inc_return(&counter));
 
    if (!pvgpr) {
       LLVMTypeRef ftype = LLVMFunctionType(ctx->voidt, NULL, 0, false);
