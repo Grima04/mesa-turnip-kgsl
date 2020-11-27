@@ -762,10 +762,14 @@ radv_alloc_shader_memory(struct radv_device *device,
 	list_for_each_entry(struct radv_shader_slab, slab, &device->shader_slabs, slabs) {
 		uint64_t offset = 0;
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
+#endif
 		list_for_each_entry(struct radv_shader_variant, s, &slab->shaders, slab_list) {
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 			if (s->bo_offset - offset >= shader->code_size) {
 				shader->bo = slab->bo;
 				shader->bo_offset = offset;

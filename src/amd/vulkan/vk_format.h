@@ -149,10 +149,14 @@ struct vk_format_description
 extern const struct vk_format_description vk_format_description_table[];
 
 /* Silence warnings triggered by sharing function/struct names */
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
+#endif
 const struct vk_format_description *vk_format_description(VkFormat format);
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 
 /**
  * Return total bits needed for the pixel format per block.
