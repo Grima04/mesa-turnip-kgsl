@@ -1079,6 +1079,8 @@ bool bi_writes_component(bi_instruction *ins, unsigned comp);
 unsigned bi_writemask(bi_instruction *ins);
 void bi_rewrite_uses(bi_context *ctx, unsigned old, unsigned oldc, unsigned new, unsigned newc);
 
+void bi_print_instr(bi_instr *I, FILE *fp);
+
 /* BIR passes */
 
 void bi_lower_combine(bi_context *ctx, bi_block *block);
