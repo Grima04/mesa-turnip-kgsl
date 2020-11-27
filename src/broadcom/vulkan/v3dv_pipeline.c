@@ -1717,7 +1717,7 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
     * We add two of those, one for the case we need a 16bit return_size, and
     * another for the case we need a 32bit return size.
     */
-   unsigned index =
+   UNUSED unsigned index =
       descriptor_map_add(&pipeline->sampler_map,
                          -1, -1, -1, 0, 16);
    assert(index == V3DV_NO_SAMPLER_16BIT_IDX);
