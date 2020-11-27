@@ -2258,6 +2258,9 @@ radv_emit_fb_mip_change_flush(struct radv_cmd_buffer *cmd_buffer)
 
 	for (int i = 0; i < subpass->color_count; ++i) {
 		int idx = subpass->color_attachments[i].attachment;
+		if (idx == VK_ATTACHMENT_UNUSED)
+			continue;
+
 		struct radv_image_view *iview = cmd_buffer->state.attachments[idx].iview;
 
 		if ((radv_image_has_CB_metadata(iview->image) ||
