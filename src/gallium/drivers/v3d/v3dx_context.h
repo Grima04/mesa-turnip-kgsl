@@ -29,6 +29,8 @@
 struct v3d_hw;
 struct v3d_format;
 
+void v3dX(start_binning)(struct v3d_context *v3d,
+                        struct v3d_job *job);
 void v3dX(emit_state)(struct pipe_context *pctx);
 void v3dX(emit_rcl)(struct v3d_job *job);
 void v3dX(draw_init)(struct pipe_context *pctx);

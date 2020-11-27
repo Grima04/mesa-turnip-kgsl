@@ -36,32 +36,25 @@
 #include "broadcom/common/v3d_macros.h"
 #include "broadcom/cle/v3dx_pack.h"
 
-/**
- * Does the initial bining command list setup for drawing to a given FBO.
- */
 static void
-v3d_start_draw(struct v3d_context *v3d)
+v3d_start_binning(struct v3d_context *v3d, struct v3d_job *job)
 {
-        struct v3d_job *job = v3d->job;
-
-        if (job->needs_flush)
-                return;
+        assert(job->needs_flush);
 
         /* Get space to emit our BCL state, using a branch to jump to a new BO
          * if necessary.
          */
+
         v3d_cl_ensure_space_with_branch(&job->bcl, 256 /* XXX */);
 
         job->submit.bcl_start = job->bcl.bo->offset;
         v3d_job_add_bo(job, job->bcl.bo);
 
-        uint32_t fb_layers = util_framebuffer_get_num_layers(&v3d->framebuffer);
-
         /* The PTB will request the tile alloc initial size per tile at start
          * of tile binning.
          */
         uint32_t tile_alloc_size =
-                MAX2(fb_layers, 1) * job->draw_tiles_x * job->draw_tiles_y * 64;
+                MAX2(job->num_layers, 1) * job->draw_tiles_x * job->draw_tiles_y * 64;
 
         /* The PTB allocates in aligned 4k chunks after the initial setup. */
         tile_alloc_size = align(tile_alloc_size, 4096);
@@ -82,28 +75,33 @@ v3d_start_draw(struct v3d_context *v3d)
                                        "tile_alloc");
         uint32_t tsda_per_tile_size = v3d->screen->devinfo.ver >= 40 ? 256 : 64;
         job->tile_state = v3d_bo_alloc(v3d->screen,
-                                       MAX2(fb_layers, 1) *
+                                       MAX2(job->num_layers, 1) *
                                        job->draw_tiles_y *
                                        job->draw_tiles_x *
                                        tsda_per_tile_size,
                                        "TSDA");
+
+        ubyte nr_cbufs = V3D_MAX_DRAW_BUFFERS;
+        while (nr_cbufs > 0 && !job->cbufs[nr_cbufs - 1])
+                nr_cbufs--;
+
 #if V3D_VERSION >= 41
         /* This must go before the binning mode configuration. It is
          * required for layered framebuffers to work.
          */
-        if (fb_layers > 0) {
+        if (job->num_layers > 0) {
                 cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
-                        config.number_of_layers = fb_layers;
+                        config.number_of_layers = job->num_layers;
                 }
         }
 #endif
 
 #if V3D_VERSION >= 40
         cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
-                config.width_in_pixels = v3d->framebuffer.width;
-                config.height_in_pixels = v3d->framebuffer.height;
+                config.width_in_pixels = job->draw_width;
+                config.height_in_pixels = job->draw_height;
                 config.number_of_render_targets =
-                        MAX2(v3d->framebuffer.nr_cbufs, 1);
+                        MAX2(nr_cbufs, 1);
 
                 config.multisample_mode_4x = job->msaa;
 
@@ -129,7 +127,7 @@ v3d_start_draw(struct v3d_context *v3d)
                 config.height_in_tiles = job->draw_tiles_y;
                 /* Must be >= 1 */
                 config.number_of_render_targets =
-                        MAX2(v3d->framebuffer.nr_cbufs, 1);
+                        MAX2(nr_cbufs, 1);
 
                 config.multisample_mode_4x = job->msaa;
 
@@ -147,11 +145,24 @@ v3d_start_draw(struct v3d_context *v3d)
          *  any prefix state data before the binning list proper starts."
          */
         cl_emit(&job->bcl, START_TILE_BINNING, bin);
+}
+/**
+ * Does the initial bining command list setup for drawing to a given FBO.
+ */
+static void
+v3d_start_draw(struct v3d_context *v3d)
+{
+        struct v3d_job *job = v3d->job;
+
+        if (job->needs_flush)
+                return;
 
         job->needs_flush = true;
         job->draw_width = v3d->framebuffer.width;
         job->draw_height = v3d->framebuffer.height;
-        job->num_layers = fb_layers;
+        job->num_layers = util_framebuffer_get_num_layers(&v3d->framebuffer);
+
+        v3d_start_binning(v3d, job);
 }
 
 static void
@@ -1780,6 +1791,12 @@ v3d_clear_depth_stencil(struct pipe_context *pctx, struct pipe_surface *ps,
                         bool render_condition_enabled)
 {
         fprintf(stderr, "unimpl: clear DS\n");
+}
+
+void
+v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
+{
+        v3d_start_binning(v3d, job);
 }
 
 void
