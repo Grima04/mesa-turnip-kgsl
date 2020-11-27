@@ -32,10 +32,6 @@
 #include "compiler.h"
 
 const char * bi_message_type_name(enum bifrost_message_type T);
-const char * bi_output_mod_name(enum bi_clamp mod);
-const char * bi_minmax_mode_name(enum bi_sem mod);
-const char * bi_round_mode_name(enum bi_round mod);
-const char * bi_interp_mode_name(enum bi_sample mode);
 const char * bi_class_name(enum bi_class cl);
 const char * bi_cond_name(enum bi_cond cond);
 const char * bi_special_op_name(enum bi_special_op op);
