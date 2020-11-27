@@ -150,17 +150,17 @@ bi_emit_ld_output(bi_context *ctx, nir_intrinsic_instr *instr)
         bi_emit(ctx, ins);
 }
 
-static enum bifrost_interp_mode
+static enum bi_sample
 bi_interp_for_intrinsic(nir_intrinsic_op op)
 {
         switch (op) {
         case nir_intrinsic_load_barycentric_centroid:
-                return BIFROST_INTERP_CENTROID;
+                return BI_SAMPLE_CENTROID;
         case nir_intrinsic_load_barycentric_sample:
-                return BIFROST_INTERP_SAMPLE;
+                return BI_SAMPLE_SAMPLE;
         case nir_intrinsic_load_barycentric_pixel:
         default:
-                return BIFROST_INTERP_CENTER;
+                return BI_SAMPLE_CENTER;
         }
 }
 
@@ -170,7 +170,7 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         bi_instruction ins = {
                 .type = BI_LOAD_VAR,
                 .load_vary = {
-                        .interp_mode = BIFROST_INTERP_CENTER,
+                        .interp_mode = BI_SAMPLE_CENTER,
                         .update_mode = BIFROST_UPDATE_STORE,
                         .reuse = false,
                         .flat = instr->intrinsic != nir_intrinsic_load_interpolated_input,
@@ -189,7 +189,7 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                 }
         }
 
-        if (ins.load_vary.interp_mode == BIFROST_INTERP_CENTER) {
+        if (ins.load_vary.interp_mode == BI_SAMPLE_CENTER) {
                 /* Zero it out for center interpolation */
                 ins.src[0] = BIR_INDEX_ZERO;
         } else {
@@ -608,7 +608,7 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                 bi_instruction load = {
                         .type = BI_LOAD_VAR,
                         .load_vary = {
-                                .interp_mode = BIFROST_INTERP_CENTER,
+                                .interp_mode = BI_SAMPLE_CENTER,
                                 .update_mode = BIFROST_UPDATE_CLOBBER,
                                 .var_id = (i == 0) ?
                                           BI_VARYING_NAME_FRAG_Z :

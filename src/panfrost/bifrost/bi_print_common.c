@@ -88,13 +88,13 @@ bi_round_mode_name(enum bi_round mod)
 }
 
 const char *
-bi_interp_mode_name(enum bifrost_interp_mode mode)
+bi_interp_mode_name(enum bi_sample mode)
 {
         switch (mode) {
-        case BIFROST_INTERP_CENTER: return ".center";
-        case BIFROST_INTERP_CENTROID: return ".centroid";
-        case BIFROST_INTERP_SAMPLE: return ".sample";
-        case BIFROST_INTERP_EXPLICIT: return ".explicit";
+        case BI_SAMPLE_CENTER: return ".center";
+        case BI_SAMPLE_CENTROID: return ".centroid";
+        case BI_SAMPLE_SAMPLE: return ".sample";
+        case BI_SAMPLE_EXPLICIT: return ".explicit";
         default: return ".unknown";
         }
 }

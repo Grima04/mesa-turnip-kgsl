@@ -222,12 +222,12 @@ enum bifrost_minmax_mode {
         BIFROST_SRC0_WINS   = 0x3,
 };
 
-enum bifrost_interp_mode {
-        BIFROST_INTERP_CENTER = 0x0,
-        BIFROST_INTERP_CENTROID = 0x1,
-        BIFROST_INTERP_SAMPLE  = 0x2,
-        BIFROST_INTERP_EXPLICIT = 0x3,
-        BIFROST_INTERP_NONE = 0x4,
+enum bi_sample {
+        BI_SAMPLE_CENTER = 0x0,
+        BI_SAMPLE_CENTROID = 0x1,
+        BI_SAMPLE_SAMPLE  = 0x2,
+        BI_SAMPLE_EXPLICIT = 0x3,
+        BI_SAMPLE_NONE = 0x4,
 };
 
 enum bifrost_update_mode {
