@@ -2376,7 +2376,7 @@ radv_queue_finish(struct radv_queue *queue)
 			if (queue->thread_running) {
 				p_atomic_set(&queue->thread_exit, true);
 				u_cnd_monotonic_broadcast(&queue->thread_cond);
-				pthread_join(queue->submission_thread, NULL);
+				thrd_join(queue->submission_thread, NULL);
 			}
 
 			u_cnd_monotonic_destroy(&queue->thread_cond);
@@ -4719,7 +4719,7 @@ wait_for_submission_timelines_available(struct radv_deferred_queue_submission *s
 	return success ? VK_SUCCESS : VK_TIMEOUT;
 }
 
-static void* radv_queue_submission_thread_run(void *q)
+static int radv_queue_submission_thread_run(void *q)
 {
 	struct radv_queue *queue = q;
 
@@ -4755,7 +4755,7 @@ static void* radv_queue_submission_thread_run(void *q)
 		mtx_lock(&queue->thread_mutex);
 	}
 	mtx_unlock(&queue->thread_mutex);
-	return NULL;
+	return 0;
 }
 
 static VkResult
@@ -4783,8 +4783,8 @@ radv_queue_trigger_submission(struct radv_deferred_queue_submission *submission,
 	/* Only start the thread on demand to save resources for the many games
 	 * which only use binary semaphores. */
 	if (!queue->thread_running) {
-		ret  = pthread_create(&queue->submission_thread, NULL,
-		                      radv_queue_submission_thread_run, queue);
+		ret  = thrd_create(&queue->submission_thread,
+		                   radv_queue_submission_thread_run, queue);
 		if (ret) {
 			mtx_unlock(&queue->thread_mutex);
 			return vk_errorf(queue->device->instance,

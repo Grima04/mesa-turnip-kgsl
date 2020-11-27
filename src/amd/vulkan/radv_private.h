@@ -732,7 +732,7 @@ struct radv_queue {
 	mtx_t thread_mutex;
 	struct u_cnd_monotonic thread_cond;
 	struct radv_deferred_queue_submission *thread_submission;
-	pthread_t submission_thread;
+	thrd_t submission_thread;
 	bool thread_exit;
 	bool thread_running;
 	bool cond_created;
