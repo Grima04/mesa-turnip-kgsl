@@ -1149,4 +1149,38 @@ bi_after_instr(bi_instr *instr)
     };
 }
 
+/* IR builder in terms of cursor infrastructure */
+
+typedef struct {
+    bi_context *shader;
+    bi_cursor cursor;
+} bi_builder;
+
+/* Insert an instruction at the cursor and move the cursor */
+
+static inline void
+bi_builder_insert(bi_cursor *cursor, bi_instr *I)
+{
+    switch (cursor->option) {
+    case bi_cursor_after_instr:
+        list_add(&I->link, &cursor->instr->link);
+        cursor->instr = I;
+        return;
+
+    case bi_cursor_after_block:
+        list_addtail(&I->link, &cursor->block->base.instructions);
+        cursor->option = bi_cursor_after_instr;
+        cursor->instr = I;
+        return;
+
+    case bi_cursor_before_instr:
+        list_addtail(&I->link, &cursor->instr->link);
+        cursor->option = bi_cursor_after_instr;
+        cursor->instr = I;
+        return;
+    }
+
+    unreachable("Invalid cursor option");
+}
+
 #endif
