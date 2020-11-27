@@ -42,7 +42,6 @@
 #include "util/u_math.h"
 #include "util/u_memory.h"
 
-#include <amdgpu.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -593,7 +592,7 @@ static ADDR_E_RETURNCODE ADDR_API freeSysMem(const ADDR_FREESYSMEM_INPUT *pInput
 }
 
 struct ac_addrlib *ac_addrlib_create(const struct radeon_info *info,
-                                     const struct amdgpu_gpu_info *amdinfo, uint64_t *max_alignment)
+                                     uint64_t *max_alignment)
 {
    ADDR_CREATE_INPUT addrCreateInput = {0};
    ADDR_CREATE_OUTPUT addrCreateOutput = {0};
@@ -605,7 +604,7 @@ struct ac_addrlib *ac_addrlib_create(const struct radeon_info *info,
    addrCreateInput.size = sizeof(ADDR_CREATE_INPUT);
    addrCreateOutput.size = sizeof(ADDR_CREATE_OUTPUT);
 
-   regValue.gbAddrConfig = amdinfo->gb_addr_cfg;
+   regValue.gbAddrConfig = info->gb_addr_config;
    createFlags.value = 0;
 
    addrCreateInput.chipFamily = info->family_id;
@@ -617,18 +616,18 @@ struct ac_addrlib *ac_addrlib_create(const struct radeon_info *info,
    if (addrCreateInput.chipFamily >= FAMILY_AI) {
       addrCreateInput.chipEngine = CIASICIDGFXENGINE_ARCTICISLAND;
    } else {
-      regValue.noOfBanks = amdinfo->mc_arb_ramcfg & 0x3;
-      regValue.noOfRanks = (amdinfo->mc_arb_ramcfg & 0x4) >> 2;
+      regValue.noOfBanks = info->mc_arb_ramcfg & 0x3;
+      regValue.noOfRanks = (info->mc_arb_ramcfg & 0x4) >> 2;
 
-      regValue.backendDisables = amdinfo->enabled_rb_pipes_mask;
-      regValue.pTileConfig = amdinfo->gb_tile_mode;
-      regValue.noOfEntries = ARRAY_SIZE(amdinfo->gb_tile_mode);
+      regValue.backendDisables = info->enabled_rb_mask;
+      regValue.pTileConfig = info->si_tile_mode_array;
+      regValue.noOfEntries = ARRAY_SIZE(info->si_tile_mode_array);
       if (addrCreateInput.chipFamily == FAMILY_SI) {
          regValue.pMacroTileConfig = NULL;
          regValue.noOfMacroEntries = 0;
       } else {
-         regValue.pMacroTileConfig = amdinfo->gb_macro_tile_mode;
-         regValue.noOfMacroEntries = ARRAY_SIZE(amdinfo->gb_macro_tile_mode);
+         regValue.pMacroTileConfig = info->cik_macrotile_mode_array;
+         regValue.noOfMacroEntries = ARRAY_SIZE(info->cik_macrotile_mode_array);
       }
 
       createFlags.useTileIndex = 1;

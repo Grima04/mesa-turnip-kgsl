@@ -567,6 +567,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    } else {
       info->tcc_cache_line_size = 64;
    }
+   info->mc_arb_ramcfg = amdinfo->mc_arb_ramcfg;
    info->gb_addr_config = amdinfo->gb_addr_cfg;
    if (info->chip_class >= GFX9) {
       info->num_tile_pipes = 1 << G_0098F8_NUM_PIPES(amdinfo->gb_addr_cfg);
