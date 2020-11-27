@@ -770,10 +770,10 @@ public:
 
 private:
    union {
+      Temp temp;
       uint32_t i;
       float f;
-      Temp temp = Temp(0, s1);
-   } data_;
+   } data_ = { Temp(0, s1) };
    PhysReg reg_;
    union {
       struct {
