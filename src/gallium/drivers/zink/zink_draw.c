@@ -525,6 +525,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       zink_batch_reference_program(batch, &ctx->curr_program->base);
 
    if (batch->descs_used + num_descriptors >= batch->max_descs) {
+      batch->descs_used += num_descriptors;
       if (is_compute)
          zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
       else {
