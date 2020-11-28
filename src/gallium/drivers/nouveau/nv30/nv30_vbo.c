@@ -515,7 +515,7 @@ nv30_draw_elements(struct nv30_context *nv30, bool shorten,
                                             nv04_resource(info->index.resource),
                                             start * index_size, NOUVEAU_BO_RD);
       else
-         data = info->index.user;
+         data = (char*)info->index.user + start * index_size;
       if (!data)
          return;
 

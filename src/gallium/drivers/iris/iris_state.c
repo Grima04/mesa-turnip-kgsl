@@ -6447,9 +6447,13 @@ iris_upload_render_state(struct iris_context *ice,
       unsigned offset;
 
       if (draw->has_user_indices) {
-         u_upload_data(ice->ctx.stream_uploader, 0,
-                       sc->count * draw->index_size, 4, draw->index.user,
+         unsigned start_offset = draw->index_size * sc->start;
+
+         u_upload_data(ice->ctx.stream_uploader, start_offset,
+                       sc->count * draw->index_size, 4,
+                       (char*)draw->index.user + start_offset,
                        &offset, &ice->state.last_res.index_buffer);
+         offset -= start_offset;
       } else {
          struct iris_resource *res = (void *) draw->index.resource;
          res->bind_history |= PIPE_BIND_INDEX_BUFFER;

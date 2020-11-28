@@ -394,10 +394,11 @@ vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                         index_size = 2;
                 } else {
                         if (info->has_user_indices) {
+                                unsigned start_offset = draws[0].start * info->index_size;
                                 prsc = NULL;
-                                u_upload_data(vc4->uploader, 0,
+                                u_upload_data(vc4->uploader, start_offset,
                                               draws[0].count * index_size, 4,
-                                              info->index.user,
+                                              (char*)info->index.user + start_offset,
                                               &offset, &prsc);
                         } else {
                                 prsc = info->index.resource;

@@ -1505,10 +1505,12 @@ swr_update_derived(struct pipe_context *pipe,
              * faster than queuing many large client draws. */
             if (size >= screen->client_copy_limit) {
                post_update_dirty_flags |= SWR_BLOCK_CLIENT_DRAW;
-               p_data = (const uint8_t *) info.index.user;
+               p_data = (const uint8_t *) info.index.user +
+                        draw->start * info.index_size;
             } else {
                /* Copy indices to scratch space */
-               const void *ptr = info.index.user;
+               const void *ptr = (char*)info.index.user +
+                                 draw->start * info.index_size;
                ptr = swr_copy_to_scratch_space(
                      ctx, &ctx->scratch->index_buffer, ptr, size);
                p_data = (const uint8_t *)ptr;

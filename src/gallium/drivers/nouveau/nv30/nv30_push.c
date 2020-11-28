@@ -231,7 +231,7 @@ nv30_push_vbo(struct nv30_context *nv30, const struct pipe_draw_info *info,
             nv04_resource(info->index.resource), draw->start * info->index_size,
             NOUVEAU_BO_RD);
       else
-         ctx.idxbuf = info->index.user;
+         ctx.idxbuf = (char*)info->index.user + draw->start * info->index_size;
       if (!ctx.idxbuf) {
          nv30_state_release(nv30);
          return;

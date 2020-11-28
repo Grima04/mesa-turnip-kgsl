@@ -585,9 +585,7 @@ void st_init_limits(struct pipe_screen *screen,
    c->VertexBufferOffsetIsInt32 =
       screen->get_param(screen, PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET);
 
-   c->MultiDrawWithUserIndices =
-      screen->get_param(screen, PIPE_CAP_DRAW_INFO_START_WITH_USER_INDICES);
-
+   c->MultiDrawWithUserIndices = true;
    c->AllowDynamicVAOFastPath = true;
 
    c->glBeginEndBufferSize =

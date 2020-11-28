@@ -415,7 +415,6 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
 
    case PIPE_CAP_OPENCL_INTEGER_FUNCTIONS:
    case PIPE_CAP_INTEGER_MULTIPLY_32X16:
-   case PIPE_CAP_DRAW_INFO_START_WITH_USER_INDICES:
       return 0;
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 1;

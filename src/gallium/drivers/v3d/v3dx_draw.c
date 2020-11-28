@@ -1289,10 +1289,11 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                 uint32_t offset = draws[0].start * index_size;
                 struct pipe_resource *prsc;
                 if (info->has_user_indices) {
+                        unsigned start_offset = draws[0].start * info->index_size;
                         prsc = NULL;
-                        u_upload_data(v3d->uploader, 0,
+                        u_upload_data(v3d->uploader, start_offset,
                                       draws[0].count * info->index_size, 4,
-                                      info->index.user,
+                                      (char*)info->index.user + start_offset,
                                       &offset, &prsc);
                 } else {
                         prsc = info->index.resource;

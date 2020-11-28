@@ -2199,10 +2199,13 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
 		if (has_user_indices && (R600_BIG_ENDIAN || indirect ||
 						 info->instance_count > 1 ||
 						 draws[0].count*index_size > 20)) {
+			unsigned start_offset = draws[0].start * index_size;
 			indexbuf = NULL;
-			u_upload_data(ctx->stream_uploader, 0,
+			u_upload_data(ctx->stream_uploader, start_offset,
                                       draws[0].count * index_size, 256,
-				      info->index.user, &index_offset, &indexbuf);
+				      (char*)info->index.user + start_offset,
+				      &index_offset, &indexbuf);
+			index_offset -= start_offset;
 			has_user_indices = false;
 		}
 		index_bias = info->index_bias;
@@ -2344,7 +2347,7 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
 			radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_IMMD, 1 + size_dw, render_cond_bit));
 			radeon_emit(cs, draws[0].count);
 			radeon_emit(cs, V_0287F0_DI_SRC_SEL_IMMEDIATE);
-			radeon_emit_array(cs, info->index.user, size_dw);
+			radeon_emit_array(cs, info->index.user + draws[0].start * index_size, size_dw);
 		} else {
 			uint64_t va = r600_resource(indexbuf)->gpu_address + index_offset;
 
