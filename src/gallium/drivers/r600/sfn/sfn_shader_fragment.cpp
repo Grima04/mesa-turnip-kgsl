@@ -95,15 +95,14 @@ unsigned barycentric_ij_index(nir_intrinsic_instr *instr)
    case INTERP_MODE_SMOOTH:
    case INTERP_MODE_COLOR:
       return index;
-      break;
    case INTERP_MODE_NOPERSPECTIVE:
       return index + 3;
-      break;
    case INTERP_MODE_FLAT:
    case INTERP_MODE_EXPLICIT:
    default:
-      assert(0 && "unknown/unsupported mode for load_interpolated");
+      unreachable("unknown/unsupported mode for load_interpolated");
    }
+   return 0;
 }
 
 bool FragmentShaderFromNir::process_load_input(nir_intrinsic_instr *instr,
