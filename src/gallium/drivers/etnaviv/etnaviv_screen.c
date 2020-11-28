@@ -380,7 +380,8 @@ etna_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
       return false;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
-      return 0;
+      return (1 << PIPE_SHADER_IR_TGSI) |
+             (DBG_ENABLED(ETNA_DBG_NIR) ? 1 << PIPE_SHADER_IR_NIR : 0);
    case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
       return 32;
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:

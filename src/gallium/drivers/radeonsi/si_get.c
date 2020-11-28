@@ -366,34 +366,6 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
 {
    struct si_screen *sscreen = (struct si_screen *)pscreen;
 
-   switch (shader) {
-   case PIPE_SHADER_FRAGMENT:
-   case PIPE_SHADER_VERTEX:
-   case PIPE_SHADER_GEOMETRY:
-   case PIPE_SHADER_TESS_CTRL:
-   case PIPE_SHADER_TESS_EVAL:
-      break;
-   case PIPE_SHADER_COMPUTE:
-      switch (param) {
-      case PIPE_SHADER_CAP_SUPPORTED_IRS: {
-         int ir = 1 << PIPE_SHADER_IR_NATIVE;
-
-         if (sscreen->info.has_indirect_compute_dispatch)
-            ir |= 1 << PIPE_SHADER_IR_NIR;
-
-         return ir;
-      }
-      default:
-         /* If compute shaders don't require a special value
-          * for this cap, we can return the same value we
-          * do for other shader types. */
-         break;
-      }
-      break;
-   default:
-      return 0;
-   }
-
    switch (param) {
    /* Shader limits. */
    case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
@@ -426,6 +398,16 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
    case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
       return 4;
 
+   case PIPE_SHADER_CAP_SUPPORTED_IRS:
+      if (shader == PIPE_SHADER_COMPUTE) {
+         return (1 << PIPE_SHADER_IR_NATIVE) |
+                (sscreen->info.has_indirect_compute_dispatch ?
+                    (1 << PIPE_SHADER_IR_NIR) |
+                    (1 << PIPE_SHADER_IR_TGSI) : 0);
+      }
+      return (1 << PIPE_SHADER_IR_TGSI) |
+             (1 << PIPE_SHADER_IR_NIR);
+
    /* Supported boolean features. */
    case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
@@ -449,7 +431,6 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
    case PIPE_SHADER_CAP_INT16:
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
    case PIPE_SHADER_CAP_SUBROUTINES:
-   case PIPE_SHADER_CAP_SUPPORTED_IRS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
       return 0;
