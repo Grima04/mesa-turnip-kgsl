@@ -1583,7 +1583,7 @@ d3d12_clear_render_target(struct pipe_context *pctx,
                        (int)dstx + (int)width,
                        (int)dsty + (int)height };
    ctx->cmdlist->ClearRenderTargetView(surf->desc_handle.cpu_handle,
-                                       color->f, 1, &rect);
+                                       clear_color, 1, &rect);
 
    d3d12_batch_reference_surface_texture(d3d12_current_batch(ctx), surf);
 
