@@ -101,6 +101,20 @@ idep_bi_opcodes_h = declare_dependency(
   include_directories : include_directories('.'),
 )
 
+bi_builder_h = custom_target(
+  'bi_builder.h',
+  input : ['bi_builder.h.py', 'ISA.xml'],
+  output : 'bi_builder.h',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+  depend_files : files('bifrost_isa.py'),
+)
+
+idep_bi_builder_h = declare_dependency(
+  sources : [bi_builder_h],
+  include_directories : include_directories('.'),
+)
+
 libpanfrost_bifrost_disasm = static_library(
   'panfrost_bifrost_disasm',
   ['disassemble.c', 'bi_print_common.c', bifrost_gen_disasm_c],
@@ -116,7 +130,7 @@ libpanfrost_bifrost = static_library(
   'panfrost_bifrost',
   [libpanfrost_bifrost_files, bifrost_nir_algebraic_c, bi_opcodes_c, bi_printer_c],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
-  dependencies: [idep_nir, idep_bi_generated_pack_h, idep_bi_opcodes_h],
+  dependencies: [idep_nir, idep_bi_generated_pack_h, idep_bi_opcodes_h, idep_bi_builder_h],
   link_with: [libpanfrost_util, libpanfrost_bifrost_disasm],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
