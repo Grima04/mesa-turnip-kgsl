@@ -777,6 +777,8 @@ dxil_nir_lower_loads_stores_to_dxil(nir_shader *nir)
             case nir_intrinsic_store_ssbo:
                progress |= lower_store_ssbo(&b, intr);
                break;
+            default:
+               break;
             }
          }
       }
@@ -851,6 +853,8 @@ dxil_nir_lower_atomics_to_dxil(nir_shader *nir)
             ATOMIC(comp_swap);
 
 #undef ATOMIC
+            default:
+               break;
             }
          }
       }
@@ -1199,6 +1203,8 @@ lower_fp16_casts_filter(const nir_instr *instr, const void *data)
       case nir_op_f2f16_rtne:
       case nir_op_f2f16_rtz:
          return true;
+      default:
+         return false;
       }
    } else if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
@@ -1348,6 +1354,7 @@ lower_fp16_cast_impl(nir_builder *b, nir_instr *instr, void *data)
       case nir_op_f2f16_rtz:
          mode = nir_rounding_mode_rtz;
          break;
+      default: unreachable("Should've been filtered");
       }
    } else {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);

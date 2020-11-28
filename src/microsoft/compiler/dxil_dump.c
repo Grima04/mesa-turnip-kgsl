@@ -326,6 +326,7 @@ dump_attr_set_list(struct dxil_dumper *d, struct list_head *list)
          case DXIL_ATTR_KIND_NO_UNWIND: value = "nounwind"; break;
          case DXIL_ATTR_KIND_READ_NONE: value = "readnone"; break;
          case DXIL_ATTR_KIND_READ_ONLY: value = "readonly"; break;
+         case DXIL_ATTR_KIND_NO_DUPLICATE: value = "noduplicate"; break;
          }
          _mesa_string_buffer_append(d->buf, value);
       }

@@ -429,9 +429,9 @@ unary_func_name(enum dxil_intr intr)
    case DXIL_INTR_ISFINITE:
    case DXIL_INTR_ISNORMAL:
       return "dx.op.isSpecialFloat";
+   default:
+      return "dx.op.unary";
    }
-
-   return "dx.op.unary";
 }
 
 static const struct dxil_value *
@@ -1608,6 +1608,8 @@ emit_cast(struct ntd_context *ctx, nir_alu_instr *alu,
    case DXIL_CAST_FPTOSI:
       if (is_double(info->input_types[0], nir_src_bit_size(alu->src[0].src)))
          ctx->mod.feats.dx11_1_double_extensions = true;
+      break;
+   default:
       break;
    }
 
@@ -3591,6 +3593,10 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
       const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, sample, 3);
       store_dest(ctx, &instr->dest, 0, retval, nir_alu_type_get_base_type(instr->dest_type));
       return true;
+
+   default:
+      fprintf(stderr, "texture op: %d\n", instr->op);
+      unreachable("unknown texture op");
    }
 
    if (!sample)
