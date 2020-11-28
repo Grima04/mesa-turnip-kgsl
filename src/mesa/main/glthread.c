@@ -225,7 +225,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
 
          util_set_thread_affinity(glthread->queue.threads[0],
                                   util_cpu_caps.L3_affinity_mask[L3_cache],
-                                  NULL, UTIL_MAX_CPUS);
+                                  NULL, util_cpu_caps.num_cpu_mask_bits);
          ctx->Driver.PinDriverToL3Cache(ctx, L3_cache);
       }
    }
