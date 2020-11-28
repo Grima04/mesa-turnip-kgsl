@@ -295,18 +295,6 @@ bool ShaderFromNirProcessor::process_outputs(nir_variable *output)
    return do_process_outputs(output);
 }
 
-void ShaderFromNirProcessor::add_array_deref(nir_deref_instr *instr)
-{
-   nir_variable *var = nir_deref_instr_get_variable(instr);
-
-   assert(nir_deref_mode_is(instr, nir_var_function_temp));
-   assert(glsl_type_is_array(var->type));
-
-   // add an alias for the index to the register(s);
-
-
-}
-
 void ShaderFromNirProcessor::set_var_address(nir_deref_instr *instr)
 {
    auto& dest = instr->dest;

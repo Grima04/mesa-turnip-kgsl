@@ -170,8 +170,6 @@ private:
    bool process_inputs(nir_variable *input);
    bool process_outputs(nir_variable *output);
 
-   void add_array_deref(nir_deref_instr* instr);
-
    void append_block(int nesting_change);
 
    virtual void emit_shader_start();

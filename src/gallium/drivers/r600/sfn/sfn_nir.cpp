@@ -855,10 +855,6 @@ int r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sel->nir, r600_append_tcs_TF_emission,
                  (pipe_prim_type)key->tcs.prim_mode);
 
-
-   const nir_function *func = reinterpret_cast<const nir_function *>(exec_list_get_head_const(&sel->nir->functions));
-   assert(func->impl->registers.length() == 0 && !has_saturate(func));
-
    NIR_PASS_V(sel->nir, nir_lower_ubo_vec4);
 
    /* Lower to scalar to let some optimization work out better */
