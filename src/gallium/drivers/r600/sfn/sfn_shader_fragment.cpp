@@ -574,7 +574,6 @@ bool FragmentShaderFromNir::emit_load_interpolated_input(nir_intrinsic_instr* in
 
    AluInstruction *ir = nullptr;
    if (nir_intrinsic_component(instr) != 0) {
-      std::cerr << "move in right pos \n";
       for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
          ir = new AluInstruction(op1_mov, from_nir(instr->dest, i), dst[i + nir_intrinsic_component(instr)], {alu_write});
          emit_instruction(ir);
