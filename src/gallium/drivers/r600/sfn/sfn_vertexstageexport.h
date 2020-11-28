@@ -52,7 +52,7 @@ protected:
    unsigned param_id(unsigned driver_location);
    unsigned current_param() const;
 private:
-   std::priority_queue<unsigned, std::vector<int>, std::greater<int> > m_param_driver_locations;
+   std::priority_queue<unsigned, std::vector<unsigned>, std::greater<unsigned> > m_param_driver_locations;
    std::map<unsigned, unsigned> m_param_map;
    unsigned m_current_param;
 };
