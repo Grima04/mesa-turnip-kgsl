@@ -60,6 +60,12 @@ bool r600_lower_scratch_addresses(nir_shader *shader);
 
 bool r600_lower_ubo_to_align16(nir_shader *shader);
 
+bool r600_nir_split_64bit_io(nir_shader *sh);
+
+bool r600_nir_64_to_vec2(nir_shader *sh);
+
+bool r600_merge_vec2_stores(nir_shader *shader);
+
 class Shader {
 public:
    std::vector<InstructionBlock>& m_ir;
