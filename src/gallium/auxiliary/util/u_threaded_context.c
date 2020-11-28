@@ -2290,16 +2290,18 @@ static void
 tc_call_draw_single(struct pipe_context *pipe, union tc_payload *payload)
 {
    struct tc_draw_single *info = (struct tc_draw_single*)payload;
-   struct pipe_draw_start_count draw;
 
    /* u_threaded_context stores start/count in min/max_index for single draws. */
    /* Drivers using u_threaded_context shouldn't use min/max_index. */
-   draw.start = info->info.min_index;
-   draw.count = info->info.max_index;
+   struct pipe_draw_start_count *draw =
+      (struct pipe_draw_start_count *)&info->info.min_index;
+   STATIC_ASSERT(offsetof(struct pipe_draw_start_count, start) == 0);
+   STATIC_ASSERT(offsetof(struct pipe_draw_start_count, count) == 4);
+
    info->info.index_bounds_valid = false;
    info->info.has_user_indices = false;
 
-   pipe->draw_vbo(pipe, &info->info, NULL, &draw, 1);
+   pipe->draw_vbo(pipe, &info->info, NULL, draw, 1);
    if (info->info.index_size)
       pipe_resource_reference(&info->info.index.resource, NULL);
 }
