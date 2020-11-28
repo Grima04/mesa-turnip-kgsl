@@ -844,6 +844,7 @@ static bool
 optimize_once(nir_shader *shader, bool vectorize)
 {
    bool progress = false;
+   NIR_PASS(progress, shader, nir_lower_vars_to_ssa);
    NIR_PASS(progress, shader, nir_copy_prop);
    NIR_PASS(progress, shader, nir_opt_dce);
    NIR_PASS(progress, shader, nir_opt_algebraic);
@@ -885,12 +886,45 @@ bool has_saturate(const nir_function *func)
    return false;
 }
 
+bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *)
+{
+   if (instr->type != nir_instr_type_alu)
+      return true;
+
+   auto alu = nir_instr_as_alu(instr);
+   switch (alu->op) {
+   case nir_op_bany_fnequal3:
+   case nir_op_bany_fnequal4:
+   case nir_op_ball_fequal3:
+   case nir_op_ball_fequal4:
+   case nir_op_bany_inequal3:
+   case nir_op_bany_inequal4:
+   case nir_op_ball_iequal3:
+   case nir_op_ball_iequal4:
+   case nir_op_fdot2:
+   case nir_op_fdot3:
+   case nir_op_fdot4:
+      return false;
+   case nir_op_bany_fnequal2:
+   case nir_op_ball_fequal2:
+   case nir_op_bany_inequal2:
+   case nir_op_ball_iequal2:
+      return nir_src_bit_size(alu->src[0].src) != 64;
+   default:
+      return true;
+   }
+}
+
 int r600_shader_from_nir(struct r600_context *rctx,
                          struct r600_pipe_shader *pipeshader,
                          r600_shader_key *key)
 {
    char filename[4000];
    struct r600_pipe_shader_selector *sel = pipeshader->selector;
+
+   bool lower_64bit = ((sel->nir->options->lower_int64_options ||
+                        sel->nir->options->lower_doubles_options) &&
+                       (sel->nir->info.bit_sizes_float | sel->nir->info.bit_sizes_int) & 64);
 
    r600::ShaderFromNir convert;
 
@@ -905,6 +939,12 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(sel->nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar);
+
+   if (lower_64bit)
+      NIR_PASS_V(sel->nir, nir_lower_int64);
+   while(optimize_once(sel->nir, false));
+
+   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
 
    NIR_PASS_V(sel->nir, r600_lower_shared_io);
    NIR_PASS_V(sel->nir, r600_nir_lower_atomics);
@@ -928,8 +968,22 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, nir_lower_io, io_modes, r600_glsl_type_size,
                  nir_lower_io_lower_64bit_to_32);
 
+   /**/
+   if (lower_64bit)
+      NIR_PASS_V(sel->nir, nir_lower_indirect_derefs, nir_var_function_temp, 10);
+
    NIR_PASS_V(sel->nir, nir_opt_constant_folding);
    NIR_PASS_V(sel->nir, nir_io_add_const_offset_to_base, io_modes);
+
+   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
+   NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar);
+   if (lower_64bit)
+      NIR_PASS_V(sel->nir, r600::r600_nir_split_64bit_io);
+   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
+   NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar);
+   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
+   NIR_PASS_V(sel->nir, nir_copy_prop);
+   NIR_PASS_V(sel->nir, nir_opt_dce);
 
    if (sel->nir->info.stage == MESA_SHADER_VERTEX)
       NIR_PASS_V(sel->nir, r600_vectorize_vs_inputs);
@@ -952,10 +1006,13 @@ int r600_shader_from_nir(struct r600_context *rctx,
                  (pipe_prim_type)key->tcs.prim_mode);
 
    NIR_PASS_V(sel->nir, nir_lower_ubo_vec4);
+   if (lower_64bit)
+      NIR_PASS_V(sel->nir, r600::r600_nir_64_to_vec2);
 
    /* Lower to scalar to let some optimization work out better */
-   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, NULL, NULL);
    while(optimize_once(sel->nir, false));
+
+   NIR_PASS_V(sel->nir, r600::r600_merge_vec2_stores);
 
    NIR_PASS_V(sel->nir, nir_remove_dead_variables, nir_var_shader_in, NULL);
    NIR_PASS_V(sel->nir, nir_remove_dead_variables,  nir_var_shader_out, NULL);
