@@ -1189,6 +1189,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
    AddrSurfInfoIn.flags.display = get_display_flag(config, surf);
    AddrSurfInfoIn.flags.pow2Pad = config->info.levels > 1;
    AddrSurfInfoIn.flags.tcCompatible = (surf->flags & RADEON_SURF_TC_COMPATIBLE_HTILE) != 0;
+   AddrSurfInfoIn.flags.prt = (surf->flags & RADEON_SURF_PRT) != 0;
 
    /* Only degrade the tile mode for space if TC-compatible HTILE hasn't been
     * requested, because TC-compatible HTILE requires 2D tiling.
@@ -1521,6 +1522,15 @@ static int gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib, struct radeon_su
       sin.flags.display = 0;
       sin.flags.color = 0;
       sin.flags.fmask = 1;
+   }
+
+   /* With PRT images we want to force 64 KiB block size so that the image
+    * created is consistent with the format properties returned in Vulkan
+    * independent of the image. */
+   if (sin.flags.prt) {
+      sin.forbiddenBlock.macroThin4KB = 1;
+      sin.forbiddenBlock.macroThick4KB = 1;
+      sin.forbiddenBlock.linear = 1;
    }
 
    if (surf->flags & RADEON_SURF_FORCE_MICRO_TILE_MODE) {
@@ -2104,6 +2114,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    /* flags.texture currently refers to TC-compatible HTILE */
    AddrSurfInfoIn.flags.texture = is_color_surface || surf->flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
    AddrSurfInfoIn.flags.opt4space = 1;
+   AddrSurfInfoIn.flags.prt = (surf->flags & RADEON_SURF_PRT) != 0;
 
    AddrSurfInfoIn.numMipLevels = config->info.levels;
    AddrSurfInfoIn.numSamples = MAX2(1, config->info.samples);
