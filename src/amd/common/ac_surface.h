@@ -70,18 +70,18 @@ enum radeon_micro_mode
 #define RADEON_SURF_Z_OR_SBUFFER (RADEON_SURF_ZBUFFER | RADEON_SURF_SBUFFER)
 /* bits 19 and 20 are reserved for libdrm_radeon, don't use them */
 #define RADEON_SURF_FMASK                 (1 << 21)
-#define RADEON_SURF_DISABLE_DCC           (1 << 22)
-#define RADEON_SURF_TC_COMPATIBLE_HTILE   (1 << 23)
-#define RADEON_SURF_IMPORTED              (1 << 24)
-#define RADEON_SURF_CONTIGUOUS_DCC_LAYERS (1 << 25)
-#define RADEON_SURF_SHAREABLE             (1 << 26)
-#define RADEON_SURF_NO_RENDER_TARGET      (1 << 27)
+#define RADEON_SURF_DISABLE_DCC           (1ull << 22)
+#define RADEON_SURF_TC_COMPATIBLE_HTILE   (1ull << 23)
+#define RADEON_SURF_IMPORTED              (1ull << 24)
+#define RADEON_SURF_CONTIGUOUS_DCC_LAYERS (1ull << 25)
+#define RADEON_SURF_SHAREABLE             (1ull << 26)
+#define RADEON_SURF_NO_RENDER_TARGET      (1ull << 27)
 /* Force a swizzle mode (gfx9+) or tile mode (gfx6-8).
  * If this is not set, optimize for space. */
-#define RADEON_SURF_FORCE_SWIZZLE_MODE    (1 << 28)
-#define RADEON_SURF_NO_FMASK              (1 << 29)
-#define RADEON_SURF_NO_HTILE              (1 << 30)
-#define RADEON_SURF_FORCE_MICRO_TILE_MODE (1u << 31)
+#define RADEON_SURF_FORCE_SWIZZLE_MODE    (1ull << 28)
+#define RADEON_SURF_NO_FMASK              (1ull << 29)
+#define RADEON_SURF_NO_HTILE              (1ull << 30)
+#define RADEON_SURF_FORCE_MICRO_TILE_MODE (1ull << 31)
 
 struct legacy_surf_level {
    uint64_t offset;
@@ -206,7 +206,7 @@ struct radeon_surf {
    unsigned is_displayable : 1;
    /* Displayable, thin, depth, rotated. AKA D,S,Z,R swizzle modes. */
    unsigned micro_tile_mode : 3;
-   uint32_t flags;
+   uint64_t flags;
 
     /*
      * DRM format modifier. Set to DRM_FORMAT_MOD_INVALID to have addrlib

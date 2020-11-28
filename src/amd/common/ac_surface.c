@@ -2904,7 +2904,7 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
       fprintf(out,
               "    Surf: size=%" PRIu64 ", slice_size=%" PRIu64 ", "
               "alignment=%u, swmode=%u, epitch=%u, pitch=%u, blk_w=%u, "
-              "blk_h=%u, bpe=%u, flags=0x%x\n",
+              "blk_h=%u, bpe=%u, flags=0x%"PRIx64"\n",
               surf->surf_size, surf->u.gfx9.surf_slice_size,
               surf->surf_alignment, surf->u.gfx9.surf.swizzle_mode,
               surf->u.gfx9.surf.epitch, surf->u.gfx9.surf_pitch,
@@ -2947,7 +2947,7 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
    } else {
       fprintf(out,
               "    Surf: size=%" PRIu64 ", alignment=%u, blk_w=%u, blk_h=%u, "
-              "bpe=%u, flags=0x%x\n",
+              "bpe=%u, flags=0x%"PRIx64"\n",
               surf->surf_size, surf->surf_alignment, surf->blk_w,
               surf->blk_h, surf->bpe, surf->flags);
 

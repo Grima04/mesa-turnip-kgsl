@@ -411,14 +411,14 @@ radv_patch_image_from_extra_info(struct radv_device *device,
 	return VK_SUCCESS;
 }
 
-static uint32_t
+static uint64_t
 radv_get_surface_flags(struct radv_device *device,
                        const struct radv_image *image,
                        unsigned plane_id,
                        const VkImageCreateInfo *pCreateInfo,
                        VkFormat image_format)
 {
-	uint32_t flags;
+	uint64_t flags;
 	unsigned array_mode = radv_choose_tiling(device, pCreateInfo, image_format);
 	VkFormat format = vk_format_get_plane_format(image_format, plane_id);
 	const struct vk_format_description *desc = vk_format_description(format);
@@ -1298,7 +1298,7 @@ radv_image_reset_layout(struct radv_image *image)
 	for (unsigned i = 0; i < image->plane_count; ++i) {
 		VkFormat format = vk_format_get_plane_format(image->vk_format, i);
 
-		uint32_t flags = image->planes[i].surface.flags;
+		uint64_t flags = image->planes[i].surface.flags;
 		uint64_t modifier = image->planes[i].surface.modifier;
 		memset(image->planes + i, 0, sizeof(image->planes[i]));
 

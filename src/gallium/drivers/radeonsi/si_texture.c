@@ -162,7 +162,8 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
    const struct util_format_description *desc = util_format_description(ptex->format);
    bool is_depth, is_stencil;
    int r;
-   unsigned bpe, flags = 0;
+   unsigned bpe;
+   uint64_t flags = 0;
 
    is_depth = util_format_has_depth(desc);
    is_stencil = util_format_has_stencil(desc);
