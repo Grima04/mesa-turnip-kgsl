@@ -393,7 +393,12 @@ bool GeometryShaderFromNir::emit_vertex(nir_intrinsic_instr* instr, bool cut)
 
 bool GeometryShaderFromNir::emit_load_per_vertex_input(nir_intrinsic_instr* instr)
 {
-   auto dest = vec_from_nir(instr->dest, instr->num_components);
+   auto dest = vec_from_nir(instr->dest, 4);
+
+   std::array<int, 4> swz = {7,7,7,7};
+   for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
+      swz[i] = i + nir_intrinsic_component(instr);
+   }
 
    auto literal_index = nir_src_as_const_value(instr->src[0]);
 
@@ -408,6 +413,8 @@ bool GeometryShaderFromNir::emit_load_per_vertex_input(nir_intrinsic_instr* inst
    auto fetch = new FetchInstruction(vc_fetch, no_index_offset, dest, addr,
                                      16 * nir_intrinsic_base(instr),
                                      R600_GS_RING_CONST_BUFFER, PValue(), bim_none, true);
+   fetch->set_dest_swizzle(swz);
+
    emit_instruction(fetch);
    return true;
 }
