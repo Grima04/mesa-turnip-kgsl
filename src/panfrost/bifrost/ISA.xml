@@ -1301,7 +1301,7 @@
 
   <ins name="*FREXPE.f32">
     <src start="0" mask="0xfb"/>
-    <mod name="neg" size="1" opt="neg"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <mod name="sqrt" size="1" opt="sqrt"/>
     <mod name="log" size="1" opt="log"/>
     <mod name="widen0" start="3" size="2">
@@ -1312,21 +1312,21 @@
     </mod>
     <encoding mask="0x7ffea0" exact="0x701c20">
       <eq left="log" right="#none"/>
-      <copy name="neg" start="6"/>
+      <copy name="neg0" start="6"/>
       <copy name="sqrt" start="8"/>
     </encoding>
     <encoding mask="0x7fffe0" exact="0x701e20">
       <and>
         <eq left="log" right="#log"/>
         <eq left="sqrt" right="#none"/>
-        <eq left="neg" right="#none"/>
+        <eq left="neg0" right="#none"/>
       </and>
     </encoding>
   </ins>
 
   <ins name="*FREXPE.v2f16">
     <src start="0" mask="0xfb"/>
-    <mod name="neg" size="1" opt="neg"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <mod name="sqrt" size="1" opt="sqrt"/>
     <mod name="log" size="1" opt="log"/>
     <mod name="swz0" start="3" size="2" default="h01">
@@ -1337,14 +1337,14 @@
     </mod>
     <encoding mask="0x7ffea0" exact="0x701c00">
       <eq left="log" right="#none"/>
-      <copy name="neg" start="6"/>
+      <copy name="neg0" start="6"/>
       <copy name="sqrt" start="8"/>
     </encoding>
     <encoding mask="0x7fffe0" exact="0x701e00">
       <and>
         <eq left="log" right="#log"/>
         <eq left="sqrt" right="#none"/>
-        <eq left="neg" right="#none"/>
+        <eq left="neg0" right="#none"/>
       </and>
     </encoding>
   </ins>
@@ -4331,7 +4331,7 @@
       <opt>high</opt>
       <opt>low</opt>
     </mod>
-    <mod name="neg" size="1" opt="neg"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <mod name="abs0" size="1" opt="abs"/>
     <mod name="divzero" size="1" opt="divzero"/>
     <encoding mask="0xfffc0" exact="0x67300">
@@ -4340,7 +4340,7 @@
         <eq left="widen0" right="#none"/>
         <eq left="precision" right="#none"/>
       </and>
-      <copy name="neg" start="3"/>
+      <copy name="neg0" start="3"/>
       <copy name="abs0" start="4"/>
       <copy name="divzero" start="5"/>
     </encoding>
@@ -4350,7 +4350,7 @@
         <neq left="widen0" right="#none"/>
         <eq left="precision" right="#none"/>
       </and>
-      <copy name="neg" start="3"/>
+      <copy name="neg0" start="3"/>
       <copy name="abs0" start="4"/>
       <copy name="divzero" start="5"/>
       <derived start="7" size="1">
@@ -4365,7 +4365,7 @@
         <eq left="precision" right="#none"/>
         <eq left="divzero" right="#none"/>
       </and>
-      <copy name="neg" start="3"/>
+      <copy name="neg0" start="3"/>
       <copy name="abs0" start="4"/>
       <derived start="5" size="1">
         <eq left="mode" right="#base2"/>
@@ -4379,7 +4379,7 @@
         <eq left="precision" right="#none"/>
         <eq left="divzero" right="#none"/>
       </and>
-      <copy name="neg" start="3"/>
+      <copy name="neg0" start="3"/>
       <copy name="abs0" start="4"/>
       <derived start="5" size="1">
         <eq left="mode" right="#base2"/>
@@ -4397,7 +4397,7 @@
         <neq left="precision" right="#none"/>
         <eq left="divzero" right="#none"/>
         <eq left="abs0" right="#none"/>
-        <eq left="neg" right="#none"/>
+        <eq left="neg0" right="#none"/>
       </and>
       <derived start="3" size="1">
         <eq left="mode" right="#natural"/>
@@ -4675,7 +4675,7 @@
       <opt>h0</opt>
       <opt>h1</opt>
     </mod>
-    <mod name="neg" start="3" size="1" opt="neg"/>
+    <mod name="neg0" start="3" size="1" opt="neg"/>
     <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <encoding mask="0xfffc0" exact="0x67200">
@@ -4700,7 +4700,7 @@
 
   <ins name="+FRCP.f16" mask="0xffec0" exact="0x67080">
     <src start="0" mask="0xf7"/>
-    <mod name="neg" start="3" size="1" opt="neg"/>
+    <mod name="neg0" start="3" size="1" opt="neg"/>
     <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <mod name="lane0" start="8" size="1" default="h0">
@@ -4714,7 +4714,7 @@
     <mod name="widen0" size="2">
       <opt>none</opt>
     </mod>
-    <mod name="neg" start="3" size="1" opt="neg"/>
+    <mod name="neg0" start="3" size="1" opt="neg"/>
     <mod name="abs0" start="4" size="1" opt="abs"/>
     <derived start="6" size="1">
       <eq left="widen0" right="#none"/>
@@ -4729,7 +4729,7 @@
       <opt>h0</opt>
       <opt>h1</opt>
     </mod>
-    <mod name="neg" start="3" size="1" opt="neg"/>
+    <mod name="neg0" start="3" size="1" opt="neg"/>
     <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <encoding mask="0xfffc0" exact="0x67000">
@@ -4746,7 +4746,7 @@
 
   <ins name="+FREXPE.f32">
     <src start="0"/>
-    <mod name="neg" size="1" opt="neg"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <mod name="sqrt" size="1" opt="sqrt"/>
     <mod name="log" size="1" opt="log"/>
     <mod name="widen0" start="3" size="2">
@@ -4757,21 +4757,21 @@
     </mod>
     <encoding mask="0xffea0" exact="0x3dc20">
       <eq left="log" right="#none"/>
-      <copy name="neg" start="6"/>
+      <copy name="neg0" start="6"/>
       <copy name="sqrt" start="8"/>
     </encoding>
     <encoding mask="0xfffe0" exact="0x3de20">
       <and>
         <eq left="log" right="#log"/>
         <eq left="sqrt" right="#none"/>
-        <eq left="neg" right="#none"/>
+        <eq left="neg0" right="#none"/>
       </and>
     </encoding>
   </ins>
 
   <ins name="+FREXPE.v2f16">
     <src start="0"/>
-    <mod name="neg" size="1" opt="neg"/>
+    <mod name="neg0" size="1" opt="neg"/>
     <mod name="sqrt" size="1" opt="sqrt"/>
     <mod name="log" size="1" opt="log"/>
     <mod name="swz0" start="3" size="2" default="h01">
@@ -4782,14 +4782,14 @@
     </mod>
     <encoding mask="0xffea0" exact="0x3dc00">
       <eq left="log" right="#none"/>
-      <copy name="neg" start="6"/>
+      <copy name="neg0" start="6"/>
       <copy name="sqrt" start="8"/>
     </encoding>
     <encoding mask="0xfffe0" exact="0x3de00">
       <and>
         <eq left="log" right="#log"/>
         <eq left="sqrt" right="#none"/>
-        <eq left="neg" right="#none"/>
+        <eq left="neg0" right="#none"/>
       </and>
     </encoding>
   </ins>
@@ -4888,7 +4888,7 @@
 
   <ins name="+FRSQ.f16" mask="0xffec0" exact="0x67280">
     <src start="0" mask="0xf7"/>
-    <mod name="neg" start="3" size="1" opt="neg"/>
+    <mod name="neg0" start="3" size="1" opt="neg"/>
     <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <mod name="lane0" start="8" size="1" default="h0">
@@ -4902,7 +4902,7 @@
     <mod name="widen0" size="2">
       <opt>none</opt>
     </mod>
-    <mod name="neg" start="3" size="1" opt="neg"/>
+    <mod name="neg0" start="3" size="1" opt="neg"/>
     <mod name="abs0" start="4" size="1" opt="abs"/>
     <derived start="6" size="1">
       <eq left="widen0" right="#none"/>
@@ -4917,7 +4917,7 @@
       <opt>h0</opt>
       <opt>h1</opt>
     </mod>
-    <mod name="neg" start="3" size="1" opt="neg"/>
+    <mod name="neg0" start="3" size="1" opt="neg"/>
     <mod name="abs0" start="4" size="1" opt="abs"/>
     <mod name="divzero" start="5" size="1" opt="divzero"/>
     <encoding mask="0xfffc0" exact="0x67100">
