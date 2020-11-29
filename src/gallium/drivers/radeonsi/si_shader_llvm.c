@@ -742,6 +742,11 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
        !same_thread_count && si_is_multi_part_shader(ctx->shader))
       ac_build_endif(&ctx->ac, 6507);
 
-   assert(LLVMGetTypeKind(LLVMTypeOf(ret)) == LLVMVoidTypeKind);
-   LLVMBuildRetVoid(builder);
+   /* Return the value from the last part. It's non-void only for the prim
+    * discard compute shader.
+    */
+   if (LLVMGetTypeKind(LLVMTypeOf(ret)) == LLVMVoidTypeKind)
+      LLVMBuildRetVoid(builder);
+   else
+      LLVMBuildRet(builder, ret);
 }
