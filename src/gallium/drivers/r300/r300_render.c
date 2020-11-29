@@ -215,7 +215,7 @@ static boolean r300_reserve_cs_dwords(struct r300_context *r300,
     cs_dwords += r300_get_num_cs_end_dwords(r300);
 
     /* Reserve requested CS space. */
-    if (!r300->rws->cs_check_space(r300->cs, cs_dwords, false)) {
+    if (!r300->rws->cs_check_space(&r300->cs, cs_dwords, false)) {
         r300_flush(&r300->context, PIPE_FLUSH_ASYNC, NULL);
         flushed = TRUE;
     }
@@ -375,7 +375,7 @@ static void r300_draw_arrays_immediate(struct r300_context *r300,
         if (!map[vbi]) {
             map[vbi] = (uint32_t*)r300->rws->buffer_map(
                 r300_resource(vbuf->buffer.resource)->buf,
-                r300->cs, PIPE_MAP_READ | PIPE_MAP_UNSYNCHRONIZED);
+                &r300->cs, PIPE_MAP_READ | PIPE_MAP_UNSYNCHRONIZED);
             map[vbi] += (vbuf->buffer_offset / 4) + stride[i] * draw->start;
         }
         mapelem[i] = map[vbi] + (velem->src_offset / 4);
@@ -611,7 +611,7 @@ static void r300_draw_elements(struct r300_context *r300,
     if (indexSize == 2 && (start & 1) && indexBuffer) {
         /* If we got here, then orgIndexBuffer == indexBuffer. */
         uint16_t *ptr = r300->rws->buffer_map(r300_resource(orgIndexBuffer)->buf,
-                                              r300->cs,
+                                              &r300->cs,
                                               PIPE_MAP_READ |
                                               PIPE_MAP_UNSYNCHRONIZED);
 
@@ -935,7 +935,7 @@ static boolean r300_render_allocate_vertices(struct vbuf_render* render,
             return FALSE;
         }
         r300->draw_vbo_offset = 0;
-        r300render->vbo_ptr = rws->buffer_map(r300->vbo, r300->cs,
+        r300render->vbo_ptr = rws->buffer_map(r300->vbo, &r300->cs,
                                               PIPE_MAP_WRITE);
     }
 

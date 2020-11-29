@@ -33,11 +33,11 @@
 bool si_rings_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
                                    enum radeon_bo_usage usage)
 {
-   if (sctx->ws->cs_is_buffer_referenced(sctx->gfx_cs, buf, usage)) {
+   if (sctx->ws->cs_is_buffer_referenced(&sctx->gfx_cs, buf, usage)) {
       return true;
    }
-   if (radeon_emitted(sctx->sdma_cs, 0) &&
-       sctx->ws->cs_is_buffer_referenced(sctx->sdma_cs, buf, usage)) {
+   if (radeon_emitted(&sctx->sdma_cs, 0) &&
+       sctx->ws->cs_is_buffer_referenced(&sctx->sdma_cs, buf, usage)) {
       return true;
    }
    return false;
@@ -60,8 +60,8 @@ void *si_buffer_map_sync_with_rings(struct si_context *sctx, struct si_resource 
       rusage = RADEON_USAGE_WRITE;
    }
 
-   if (radeon_emitted(sctx->gfx_cs, sctx->initial_gfx_cs_size) &&
-       sctx->ws->cs_is_buffer_referenced(sctx->gfx_cs, resource->buf, rusage)) {
+   if (radeon_emitted(&sctx->gfx_cs, sctx->initial_gfx_cs_size) &&
+       sctx->ws->cs_is_buffer_referenced(&sctx->gfx_cs, resource->buf, rusage)) {
       if (usage & PIPE_MAP_DONTBLOCK) {
          si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
          return NULL;
@@ -70,8 +70,8 @@ void *si_buffer_map_sync_with_rings(struct si_context *sctx, struct si_resource 
          busy = true;
       }
    }
-   if (radeon_emitted(sctx->sdma_cs, 0) &&
-       sctx->ws->cs_is_buffer_referenced(sctx->sdma_cs, resource->buf, rusage)) {
+   if (radeon_emitted(&sctx->sdma_cs, 0) &&
+       sctx->ws->cs_is_buffer_referenced(&sctx->sdma_cs, resource->buf, rusage)) {
       if (usage & PIPE_MAP_DONTBLOCK) {
          si_flush_dma_cs(sctx, PIPE_FLUSH_ASYNC, NULL);
          return NULL;
@@ -87,9 +87,9 @@ void *si_buffer_map_sync_with_rings(struct si_context *sctx, struct si_resource 
       } else {
          /* We will be wait for the GPU. Wait for any offloaded
           * CS flush to complete to avoid busy-waiting in the winsys. */
-         sctx->ws->cs_sync_flush(sctx->gfx_cs);
-         if (sctx->sdma_cs)
-            sctx->ws->cs_sync_flush(sctx->sdma_cs);
+         sctx->ws->cs_sync_flush(&sctx->gfx_cs);
+         if (sctx->sdma_cs.priv)
+            sctx->ws->cs_sync_flush(&sctx->sdma_cs);
       }
    }
 
@@ -804,18 +804,18 @@ static bool si_resource_commit(struct pipe_context *pctx, struct pipe_resource *
     * (b) wait for threaded submit to finish, including those that were
     *     triggered by some other, earlier operation.
     */
-   if (radeon_emitted(ctx->gfx_cs, ctx->initial_gfx_cs_size) &&
-       ctx->ws->cs_is_buffer_referenced(ctx->gfx_cs, res->buf, RADEON_USAGE_READWRITE)) {
+   if (radeon_emitted(&ctx->gfx_cs, ctx->initial_gfx_cs_size) &&
+       ctx->ws->cs_is_buffer_referenced(&ctx->gfx_cs, res->buf, RADEON_USAGE_READWRITE)) {
       si_flush_gfx_cs(ctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
    }
-   if (radeon_emitted(ctx->sdma_cs, 0) &&
-       ctx->ws->cs_is_buffer_referenced(ctx->sdma_cs, res->buf, RADEON_USAGE_READWRITE)) {
+   if (radeon_emitted(&ctx->sdma_cs, 0) &&
+       ctx->ws->cs_is_buffer_referenced(&ctx->sdma_cs, res->buf, RADEON_USAGE_READWRITE)) {
       si_flush_dma_cs(ctx, PIPE_FLUSH_ASYNC, NULL);
    }
 
-   if (ctx->sdma_cs)
-      ctx->ws->cs_sync_flush(ctx->sdma_cs);
-   ctx->ws->cs_sync_flush(ctx->gfx_cs);
+   if (ctx->sdma_cs.priv)
+      ctx->ws->cs_sync_flush(&ctx->sdma_cs);
+   ctx->ws->cs_sync_flush(&ctx->gfx_cs);
 
    assert(resource->target == PIPE_BUFFER);
 

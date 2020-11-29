@@ -832,7 +832,7 @@ static void emit_sample_streamout(struct radeon_cmdbuf *cs, uint64_t va, unsigne
 static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_hw *query,
                                       struct si_resource *buffer, uint64_t va)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    switch (query->b.type) {
    case SI_QUERY_TIME_ELAPSED_SDMA:
@@ -869,7 +869,7 @@ static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_h
    default:
       assert(0);
    }
-   radeon_add_to_buffer_list(sctx, sctx->gfx_cs, query->buffer.buf, RADEON_USAGE_WRITE,
+   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, query->buffer.buf, RADEON_USAGE_WRITE,
                              RADEON_PRIO_QUERY);
 }
 
@@ -896,7 +896,7 @@ static void si_query_hw_emit_start(struct si_context *sctx, struct si_query_hw *
 static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw *query,
                                      struct si_resource *buffer, uint64_t va)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    uint64_t fence_va = 0;
 
    switch (query->b.type) {
@@ -949,7 +949,7 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw
    default:
       assert(0);
    }
-   radeon_add_to_buffer_list(sctx, sctx->gfx_cs, query->buffer.buf, RADEON_USAGE_WRITE,
+   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, query->buffer.buf, RADEON_USAGE_WRITE,
                              RADEON_PRIO_QUERY);
 
    if (fence_va) {
@@ -991,7 +991,7 @@ static void si_query_hw_emit_stop(struct si_context *sctx, struct si_query_hw *q
 static void emit_set_predicate(struct si_context *ctx, struct si_resource *buf, uint64_t va,
                                uint32_t op)
 {
-   struct radeon_cmdbuf *cs = ctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &ctx->gfx_cs;
 
    if (ctx->chip_class >= GFX9) {
       radeon_emit(cs, PKT3(PKT3_SET_PREDICATION, 2, 0));
@@ -1003,7 +1003,7 @@ static void emit_set_predicate(struct si_context *ctx, struct si_resource *buf, 
       radeon_emit(cs, va);
       radeon_emit(cs, op | ((va >> 32) & 0xFF));
    }
-   radeon_add_to_buffer_list(ctx, ctx->gfx_cs, buf, RADEON_USAGE_READ, RADEON_PRIO_QUERY);
+   radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, buf, RADEON_USAGE_READ, RADEON_PRIO_QUERY);
 }
 
 static void si_emit_query_predication(struct si_context *ctx)
@@ -1567,7 +1567,7 @@ static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_q
          va = qbuf->buf->gpu_address + qbuf->results_end - query->result_size;
          va += params.fence_offset;
 
-         si_cp_wait_mem(sctx, sctx->gfx_cs, va, 0x80000000, 0x80000000, WAIT_REG_MEM_EQUAL);
+         si_cp_wait_mem(sctx, &sctx->gfx_cs, va, 0x80000000, 0x80000000, WAIT_REG_MEM_EQUAL);
       }
 
       sctx->b.launch_grid(&sctx->b, &grid);

@@ -35,10 +35,10 @@
 
 #include <stdio.h>
 
-#define RADEON_ENC_CS(value) (enc->cs->current.buf[enc->cs->current.cdw++] = (value))
+#define RADEON_ENC_CS(value) (enc->cs.current.buf[enc->cs.current.cdw++] = (value))
 #define RADEON_ENC_BEGIN(cmd)                                                                      \
    {                                                                                               \
-      uint32_t *begin = &enc->cs->current.buf[enc->cs->current.cdw++];                             \
+      uint32_t *begin = &enc->cs.current.buf[enc->cs.current.cdw++];                             \
       RADEON_ENC_CS(cmd)
 #define RADEON_ENC_READ(buf, domain, off)                                                          \
    radeon_uvd_enc_add_buffer(enc, (buf), RADEON_USAGE_READ, (domain), (off))
@@ -47,7 +47,7 @@
 #define RADEON_ENC_READWRITE(buf, domain, off)                                                     \
    radeon_uvd_enc_add_buffer(enc, (buf), RADEON_USAGE_READWRITE, (domain), (off))
 #define RADEON_ENC_END()                                                                           \
-   *begin = (&enc->cs->current.buf[enc->cs->current.cdw] - begin) * 4;                             \
+   *begin = (&enc->cs.current.buf[enc->cs.current.cdw] - begin) * 4;                             \
    enc->total_task_size += *begin;                                                                 \
    }
 
@@ -57,7 +57,7 @@ static void radeon_uvd_enc_add_buffer(struct radeon_uvd_encoder *enc, struct pb_
                                       enum radeon_bo_usage usage, enum radeon_bo_domain domain,
                                       signed offset)
 {
-   enc->ws->cs_add_buffer(enc->cs, buf, usage | RADEON_USAGE_SYNCHRONIZED, domain, 0);
+   enc->ws->cs_add_buffer(&enc->cs, buf, usage | RADEON_USAGE_SYNCHRONIZED, domain, 0);
    uint64_t addr;
    addr = enc->ws->buffer_get_virtual_address(buf);
    addr = addr + offset;
@@ -76,14 +76,14 @@ static void radeon_uvd_enc_set_emulation_prevention(struct radeon_uvd_encoder *e
 static void radeon_uvd_enc_output_one_byte(struct radeon_uvd_encoder *enc, unsigned char byte)
 {
    if (enc->byte_index == 0)
-      enc->cs->current.buf[enc->cs->current.cdw] = 0;
-   enc->cs->current.buf[enc->cs->current.cdw] |=
+      enc->cs.current.buf[enc->cs.current.cdw] = 0;
+   enc->cs.current.buf[enc->cs.current.cdw] |=
       ((unsigned int)(byte) << index_to_shifts[enc->byte_index]);
    enc->byte_index++;
 
    if (enc->byte_index >= 4) {
       enc->byte_index = 0;
-      enc->cs->current.cdw++;
+      enc->cs.current.cdw++;
    }
 }
 
@@ -159,7 +159,7 @@ static void radeon_uvd_enc_flush_headers(struct radeon_uvd_encoder *enc)
    }
 
    if (enc->byte_index > 0) {
-      enc->cs->current.cdw++;
+      enc->cs.current.cdw++;
       enc->byte_index = 0;
    }
 }
@@ -211,7 +211,7 @@ static void radeon_uvd_enc_task_info(struct radeon_uvd_encoder *enc, bool need_f
       enc->enc_pic.task_info.allowed_max_num_feedbacks = 0;
 
    RADEON_ENC_BEGIN(RENC_UVD_IB_PARAM_TASK_INFO);
-   enc->p_task_size = &enc->cs->current.buf[enc->cs->current.cdw++];
+   enc->p_task_size = &enc->cs.current.buf[enc->cs.current.cdw++];
    RADEON_ENC_CS(enc->enc_pic.task_info.task_id);
    RADEON_ENC_CS(enc->enc_pic.task_info.allowed_max_num_feedbacks);
    RADEON_ENC_END();
@@ -391,7 +391,7 @@ static void radeon_uvd_enc_nalu_sps_hevc(struct radeon_uvd_encoder *enc)
 {
    RADEON_ENC_BEGIN(RENC_UVD_IB_PARAM_INSERT_NALU_BUFFER);
    RADEON_ENC_CS(RENC_UVD_NALU_TYPE_SPS);
-   uint32_t *size_in_bytes = &enc->cs->current.buf[enc->cs->current.cdw++];
+   uint32_t *size_in_bytes = &enc->cs.current.buf[enc->cs.current.cdw++];
    int i;
 
    radeon_uvd_enc_reset(enc);
@@ -486,7 +486,7 @@ static void radeon_uvd_enc_nalu_pps_hevc(struct radeon_uvd_encoder *enc)
 {
    RADEON_ENC_BEGIN(RENC_UVD_IB_PARAM_INSERT_NALU_BUFFER);
    RADEON_ENC_CS(RENC_UVD_NALU_TYPE_PPS);
-   uint32_t *size_in_bytes = &enc->cs->current.buf[enc->cs->current.cdw++];
+   uint32_t *size_in_bytes = &enc->cs.current.buf[enc->cs.current.cdw++];
    radeon_uvd_enc_reset(enc);
    radeon_uvd_enc_set_emulation_prevention(enc, false);
    radeon_uvd_enc_code_fixed_bits(enc, 0x00000001, 32);
@@ -546,7 +546,7 @@ static void radeon_uvd_enc_nalu_vps_hevc(struct radeon_uvd_encoder *enc)
 {
    RADEON_ENC_BEGIN(RENC_UVD_IB_PARAM_INSERT_NALU_BUFFER);
    RADEON_ENC_CS(RENC_UVD_NALU_TYPE_VPS);
-   uint32_t *size_in_bytes = &enc->cs->current.buf[enc->cs->current.cdw++];
+   uint32_t *size_in_bytes = &enc->cs.current.buf[enc->cs.current.cdw++];
    int i;
 
    radeon_uvd_enc_reset(enc);
@@ -600,7 +600,7 @@ static void radeon_uvd_enc_nalu_aud_hevc(struct radeon_uvd_encoder *enc)
 {
    RADEON_ENC_BEGIN(RENC_UVD_IB_PARAM_INSERT_NALU_BUFFER);
    RADEON_ENC_CS(RENC_UVD_NALU_TYPE_AUD);
-   uint32_t *size_in_bytes = &enc->cs->current.buf[enc->cs->current.cdw++];
+   uint32_t *size_in_bytes = &enc->cs.current.buf[enc->cs.current.cdw++];
    radeon_uvd_enc_reset(enc);
    radeon_uvd_enc_set_emulation_prevention(enc, false);
    radeon_uvd_enc_code_fixed_bits(enc, 0x00000001, 32);

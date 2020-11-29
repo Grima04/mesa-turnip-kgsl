@@ -111,7 +111,7 @@ void si_test_dma_perf(struct si_screen *sscreen)
          unsigned cs_dwords_per_thread =
             test_cs ? cs_dwords_per_thread_list[cs_method % NUM_SHADERS] : 0;
 
-         if (test_sdma && !sctx->sdma_cs)
+         if (test_sdma && !sctx->sdma_cs.priv)
             continue;
 
          if (sctx->chip_class == GFX6) {
@@ -198,7 +198,7 @@ void si_test_dma_perf(struct si_screen *sscreen)
                      si_cp_dma_copy_buffer(sctx, dst, src, 0, 0, size, 0, SI_COHERENCY_NONE,
                                            cache_policy);
                   } else {
-                     si_cp_dma_clear_buffer(sctx, sctx->gfx_cs, dst, 0, size, clear_value, 0,
+                     si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, dst, 0, size, clear_value, 0,
                                             SI_COHERENCY_NONE, cache_policy);
                   }
                } else if (test_sdma) {

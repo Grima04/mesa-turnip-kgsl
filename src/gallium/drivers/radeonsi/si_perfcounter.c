@@ -703,7 +703,7 @@ static struct si_pc_block *lookup_group(struct si_perfcounters *pc, unsigned *in
 
 static void si_pc_emit_instance(struct si_context *sctx, int se, int instance)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned value = S_030800_SH_BROADCAST_WRITES(1);
 
    if (se >= 0) {
@@ -728,7 +728,7 @@ static void si_pc_emit_instance(struct si_context *sctx, int se, int instance)
 
 static void si_pc_emit_shaders(struct si_context *sctx, unsigned shaders)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    radeon_set_uconfig_reg_seq(cs, R_036780_SQ_PERFCOUNTER_CTRL, 2);
    radeon_emit(cs, shaders & 0x7f);
@@ -739,7 +739,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct si_pc_block *block
                               unsigned *selectors)
 {
    struct si_pc_block_base *regs = block->b->b;
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned idx;
    unsigned layout_multi = regs->layout & SI_PC_MULTI_MASK;
    unsigned dw;
@@ -830,9 +830,9 @@ static void si_pc_emit_select(struct si_context *sctx, struct si_pc_block *block
 
 static void si_pc_emit_start(struct si_context *sctx, struct si_resource *buffer, uint64_t va)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
-   si_cp_copy_data(sctx, sctx->gfx_cs, COPY_DATA_DST_MEM, buffer, va - buffer->gpu_address,
+   si_cp_copy_data(sctx, &sctx->gfx_cs, COPY_DATA_DST_MEM, buffer, va - buffer->gpu_address,
                    COPY_DATA_IMM, NULL, 1);
 
    radeon_set_uconfig_reg(cs, R_036020_CP_PERFMON_CNTL,
@@ -847,7 +847,7 @@ static void si_pc_emit_start(struct si_context *sctx, struct si_resource *buffer
  * do it again in here. */
 static void si_pc_emit_stop(struct si_context *sctx, struct si_resource *buffer, uint64_t va)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    si_cp_release_mem(sctx, cs, V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
                      EOP_DATA_SEL_VALUE_32BIT, buffer, va, 0, SI_NOT_QUERY);
@@ -866,7 +866,7 @@ static void si_pc_emit_read(struct si_context *sctx, struct si_pc_block *block, 
                             uint64_t va)
 {
    struct si_pc_block_base *regs = block->b->b;
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned idx;
    unsigned reg = regs->counter0_lo;
    unsigned reg_delta = 8;
@@ -922,10 +922,10 @@ static void si_pc_query_destroy(struct si_context *sctx, struct si_query *squery
 static void si_inhibit_clockgating(struct si_context *sctx, bool inhibit)
 {
    if (sctx->chip_class >= GFX10) {
-      radeon_set_uconfig_reg(sctx->gfx_cs, R_037390_RLC_PERFMON_CLK_CNTL,
+      radeon_set_uconfig_reg(&sctx->gfx_cs, R_037390_RLC_PERFMON_CLK_CNTL,
                             S_037390_PERFMON_CLOCK_STATE(inhibit));
    } else if (sctx->chip_class >= GFX8) {
-      radeon_set_uconfig_reg(sctx->gfx_cs, R_0372FC_RLC_PERFMON_CLK_CNTL,
+      radeon_set_uconfig_reg(&sctx->gfx_cs, R_0372FC_RLC_PERFMON_CLK_CNTL,
                             S_0372FC_PERFMON_CLOCK_STATE(inhibit));
    }
 }

@@ -276,7 +276,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
 {
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_winsys_bo *real;
-   struct amdgpu_cs *cs = (struct amdgpu_cs*)rcs;
+   struct amdgpu_cs *cs = rcs ? amdgpu_cs(rcs) : NULL;
 
    assert(!(bo->base.usage & RADEON_FLAG_SPARSE));
 

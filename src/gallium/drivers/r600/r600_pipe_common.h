@@ -474,7 +474,7 @@ struct r600_viewports {
 };
 
 struct r600_ring {
-	struct radeon_cmdbuf		*cs;
+	struct radeon_cmdbuf		cs;
 	void (*flush)(void *ctx, unsigned flags,
 		      struct pipe_fence_handle **fence);
 };

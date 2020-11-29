@@ -223,7 +223,7 @@ static bool gfx10_sh_query_end(struct si_context *sctx, struct si_query *rquery)
       uint64_t fence_va = query->last->buf->gpu_address;
       fence_va += query->last_end - sizeof(struct gfx10_sh_query_buffer_mem);
       fence_va += offsetof(struct gfx10_sh_query_buffer_mem, fence);
-      si_cp_release_mem(sctx, sctx->gfx_cs, V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM,
+      si_cp_release_mem(sctx, &sctx->gfx_cs, V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM,
                         EOP_INT_SEL_NONE, EOP_DATA_SEL_VALUE_32BIT, query->last->buf, fence_va,
                         0xffffffff, PIPE_QUERY_GPU_FINISHED);
    }
@@ -451,7 +451,7 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
          va += end - sizeof(struct gfx10_sh_query_buffer_mem);
          va += offsetof(struct gfx10_sh_query_buffer_mem, fence);
 
-         si_cp_wait_mem(sctx, sctx->gfx_cs, va, 0x00000001, 0x00000001, 0);
+         si_cp_wait_mem(sctx, &sctx->gfx_cs, va, 0x00000001, 0x00000001, 0);
       }
 
       void *saved_cs = sctx->cs_shader_state.program;

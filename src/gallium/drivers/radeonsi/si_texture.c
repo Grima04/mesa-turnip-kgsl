@@ -52,7 +52,7 @@ bool si_prepare_for_dma_blit(struct si_context *sctx, struct si_texture *dst, un
                              unsigned dstx, unsigned dsty, unsigned dstz, struct si_texture *src,
                              unsigned src_level, const struct pipe_box *src_box)
 {
-   if (!sctx->sdma_cs)
+   if (!sctx->sdma_cs.priv)
       return false;
 
    if (dst->surface.bpe != src->surface.bpe)

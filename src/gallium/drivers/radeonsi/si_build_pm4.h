@@ -150,7 +150,7 @@ static inline void radeon_opt_set_context_reg_rmw(struct si_context *sctx, unsig
                                                   enum si_tracked_reg reg, unsigned value,
                                                   unsigned mask)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    assert((value & ~mask) == 0);
    value &= mask;
@@ -168,7 +168,7 @@ static inline void radeon_opt_set_context_reg_rmw(struct si_context *sctx, unsig
 static inline void radeon_opt_set_context_reg(struct si_context *sctx, unsigned offset,
                                               enum si_tracked_reg reg, unsigned value)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    if (((sctx->tracked_regs.reg_saved >> reg) & 0x1) != 0x1 ||
        sctx->tracked_regs.reg_value[reg] != value) {
@@ -189,7 +189,7 @@ static inline void radeon_opt_set_context_reg2(struct si_context *sctx, unsigned
                                                enum si_tracked_reg reg, unsigned value1,
                                                unsigned value2)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    if (((sctx->tracked_regs.reg_saved >> reg) & 0x3) != 0x3 ||
        sctx->tracked_regs.reg_value[reg] != value1 ||
@@ -211,7 +211,7 @@ static inline void radeon_opt_set_context_reg3(struct si_context *sctx, unsigned
                                                enum si_tracked_reg reg, unsigned value1,
                                                unsigned value2, unsigned value3)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    if (((sctx->tracked_regs.reg_saved >> reg) & 0x7) != 0x7 ||
        sctx->tracked_regs.reg_value[reg] != value1 ||
@@ -236,7 +236,7 @@ static inline void radeon_opt_set_context_reg4(struct si_context *sctx, unsigned
                                                enum si_tracked_reg reg, unsigned value1,
                                                unsigned value2, unsigned value3, unsigned value4)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    if (((sctx->tracked_regs.reg_saved >> reg) & 0xf) != 0xf ||
        sctx->tracked_regs.reg_value[reg] != value1 ||
@@ -263,7 +263,7 @@ static inline void radeon_opt_set_context_reg4(struct si_context *sctx, unsigned
 static inline void radeon_opt_set_context_regn(struct si_context *sctx, unsigned offset,
                                                unsigned *value, unsigned *saved_val, unsigned num)
 {
-   struct radeon_cmdbuf *cs = sctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    int i, j;
 
    for (i = 0; i < num; i++) {

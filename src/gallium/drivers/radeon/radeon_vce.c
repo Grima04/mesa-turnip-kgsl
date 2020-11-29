@@ -51,7 +51,7 @@
  */
 static void flush(struct rvce_encoder *enc)
 {
-   enc->ws->cs_flush(enc->cs, PIPE_FLUSH_ASYNC, NULL);
+   enc->ws->cs_flush(&enc->cs, PIPE_FLUSH_ASYNC, NULL);
    enc->task_info_idx = 0;
    enc->bs_idx = 0;
 }
@@ -59,7 +59,7 @@ static void flush(struct rvce_encoder *enc)
 #if 0
 static void dump_feedback(struct rvce_encoder *enc, struct rvid_buffer *fb)
 {
-   uint32_t *ptr = enc->ws->buffer_map(fb->res->buf, enc->cs, PIPE_MAP_READ_WRITE);
+   uint32_t *ptr = enc->ws->buffer_map(fb->res->buf, &enc->cs, PIPE_MAP_READ_WRITE);
    unsigned i = 0;
    fprintf(stderr, "\n");
    fprintf(stderr, "encStatus:\t\t\t%08x\n", ptr[i++]);
@@ -248,7 +248,7 @@ static void rvce_destroy(struct pipe_video_codec *encoder)
       si_vid_destroy_buffer(&fb);
    }
    si_vid_destroy_buffer(&enc->cpb);
-   enc->ws->cs_destroy(enc->cs);
+   enc->ws->cs_destroy(&enc->cs);
    FREE(enc->cpb_array);
    FREE(enc);
 }
@@ -316,7 +316,7 @@ static void rvce_encode_bitstream(struct pipe_video_codec *encoder,
       RVID_ERR("Can't create feedback buffer.\n");
       return;
    }
-   if (!radeon_emitted(enc->cs, 0))
+   if (!radeon_emitted(&enc->cs, 0))
       enc->session(enc);
    enc->encode(enc);
    enc->feedback(enc);
@@ -347,7 +347,7 @@ static void rvce_get_feedback(struct pipe_video_codec *encoder, void *feedback, 
    struct rvid_buffer *fb = feedback;
 
    if (size) {
-      uint32_t *ptr = enc->ws->buffer_map(fb->res->buf, enc->cs,
+      uint32_t *ptr = enc->ws->buffer_map(fb->res->buf, &enc->cs,
                                           PIPE_MAP_READ_WRITE | RADEON_MAP_TEMPORARY);
 
       if (ptr[1]) {
@@ -428,8 +428,8 @@ struct pipe_video_codec *si_vce_create_encoder(struct pipe_context *context,
 
    enc->screen = context->screen;
    enc->ws = ws;
-   enc->cs = ws->cs_create(sctx->ctx, RING_VCE, rvce_cs_flush, enc, false);
-   if (!enc->cs) {
+
+   if (!ws->cs_create(&enc->cs, sctx->ctx, RING_VCE, rvce_cs_flush, enc, false)) {
       RVID_ERR("Can't get command submission context.\n");
       goto error;
    }
@@ -501,8 +501,7 @@ struct pipe_video_codec *si_vce_create_encoder(struct pipe_context *context,
    return &enc->base;
 
 error:
-   if (enc->cs)
-      enc->ws->cs_destroy(enc->cs);
+   enc->ws->cs_destroy(&enc->cs);
 
    si_vid_destroy_buffer(&enc->cpb);
 
@@ -542,7 +541,7 @@ void si_vce_add_buffer(struct rvce_encoder *enc, struct pb_buffer *buf, enum rad
 {
    int reloc_idx;
 
-   reloc_idx = enc->ws->cs_add_buffer(enc->cs, buf, usage | RADEON_USAGE_SYNCHRONIZED, domain, 0);
+   reloc_idx = enc->ws->cs_add_buffer(&enc->cs, buf, usage | RADEON_USAGE_SYNCHRONIZED, domain, 0);
    if (enc->use_vm) {
       uint64_t addr;
       addr = enc->ws->buffer_get_virtual_address(buf);

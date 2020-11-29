@@ -32,7 +32,7 @@
 /* initialize */
 void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_draws)
 {
-   struct radeon_cmdbuf *cs = ctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &ctx->gfx_cs;
 
    /* There is no need to flush the DMA IB here, because
     * si_need_dma_space always flushes the GFX IB if there is
@@ -45,7 +45,7 @@ void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_draws)
     * that have been added (cs_add_buffer) and two counters in the pipe
     * driver for those that haven't been added yet.
     */
-   if (unlikely(!radeon_cs_memory_below_limit(ctx->screen, ctx->gfx_cs, ctx->vram, ctx->gtt))) {
+   if (unlikely(!radeon_cs_memory_below_limit(ctx->screen, &ctx->gfx_cs, ctx->vram, ctx->gtt))) {
       ctx->gtt = 0;
       ctx->vram = 0;
       si_flush_gfx_cs(ctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
@@ -70,7 +70,7 @@ void si_unref_sdma_uploads(struct si_context *sctx)
 
 void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_handle **fence)
 {
-   struct radeon_cmdbuf *cs = ctx->gfx_cs;
+   struct radeon_cmdbuf *cs = &ctx->gfx_cs;
    struct radeon_winsys *ws = ctx->ws;
    struct si_screen *sscreen = ctx->screen;
    const unsigned wait_ps_cs = SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH;
@@ -125,7 +125,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
     * If the driver flushes the GFX IB internally, and it should never ask
     * for a fence handle.
     */
-   assert(!radeon_emitted(ctx->sdma_cs, 0) || fence == NULL);
+   assert(!radeon_emitted(&ctx->sdma_cs, 0) || fence == NULL);
 
    /* Update the sdma_uploads list by flushing the uploader. */
    u_upload_unmap(ctx->b.const_uploader);
@@ -144,11 +144,11 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    si_unref_sdma_uploads(ctx);
 
    /* Flush SDMA (preamble IB). */
-   if (radeon_emitted(ctx->sdma_cs, 0))
+   if (radeon_emitted(&ctx->sdma_cs, 0))
       si_flush_dma_cs(ctx, flags, NULL);
 
-   if (radeon_emitted(ctx->prim_discard_compute_cs, 0)) {
-      struct radeon_cmdbuf *compute_cs = ctx->prim_discard_compute_cs;
+   if (radeon_emitted(&ctx->prim_discard_compute_cs, 0)) {
+      struct radeon_cmdbuf *compute_cs = &ctx->prim_discard_compute_cs;
       si_compute_signal_gfx(ctx);
 
       /* Make sure compute shaders are idle before leaving the IB, so that
@@ -206,9 +206,9 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 
    if (si_compute_prim_discard_enabled(ctx)) {
       /* The compute IB can start after the previous gfx IB starts. */
-      if (radeon_emitted(ctx->prim_discard_compute_cs, 0) && ctx->last_gfx_fence) {
+      if (radeon_emitted(&ctx->prim_discard_compute_cs, 0) && ctx->last_gfx_fence) {
          ctx->ws->cs_add_fence_dependency(
-            ctx->gfx_cs, ctx->last_gfx_fence,
+            &ctx->gfx_cs, ctx->last_gfx_fence,
             RADEON_DEPENDENCY_PARALLEL_COMPUTE_ONLY | RADEON_DEPENDENCY_START_FENCE);
       }
 
@@ -290,16 +290,16 @@ static void si_begin_gfx_cs_debug(struct si_context *ctx)
 
    si_trace_emit(ctx);
 
-   radeon_add_to_buffer_list(ctx, ctx->gfx_cs, ctx->current_saved_cs->trace_buf,
+   radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->current_saved_cs->trace_buf,
                              RADEON_USAGE_READWRITE, RADEON_PRIO_TRACE);
 }
 
 static void si_add_gds_to_buffer_list(struct si_context *sctx)
 {
    if (sctx->gds) {
-      sctx->ws->cs_add_buffer(sctx->gfx_cs, sctx->gds, RADEON_USAGE_READWRITE, 0, 0);
+      sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->gds, RADEON_USAGE_READWRITE, 0, 0);
       if (sctx->gds_oa) {
-         sctx->ws->cs_add_buffer(sctx->gfx_cs, sctx->gds_oa, RADEON_USAGE_READWRITE, 0, 0);
+         sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->gds_oa, RADEON_USAGE_READWRITE, 0, 0);
       }
    }
 }
@@ -404,7 +404,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
        */
       ctx->prim_discard_vertex_count_threshold = UINT_MAX;
 
-      is_secure = ctx->ws->cs_is_secure(ctx->gfx_cs);
+      is_secure = ctx->ws->cs_is_secure(&ctx->gfx_cs);
    }
 
    if (ctx->is_debug)
@@ -429,10 +429,10 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    if (ctx->chip_class == GFX10 && ctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)
       ctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
-   radeon_add_to_buffer_list(ctx, ctx->gfx_cs, ctx->border_color_buffer,
+   radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->border_color_buffer,
                              RADEON_USAGE_READ, RADEON_PRIO_BORDER_COLORS);
    if (ctx->shadowed_regs) {
-      radeon_add_to_buffer_list(ctx, ctx->gfx_cs, ctx->shadowed_regs,
+      radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->shadowed_regs,
                                 RADEON_USAGE_READWRITE,
                                 RADEON_PRIO_DESCRIPTORS);
    }
@@ -445,12 +445,12 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    }
 
    if (!ctx->has_graphics) {
-      ctx->initial_gfx_cs_size = ctx->gfx_cs->current.cdw;
+      ctx->initial_gfx_cs_size = ctx->gfx_cs.current.cdw;
       return;
    }
 
    if (ctx->tess_rings) {
-      radeon_add_to_buffer_list(ctx, ctx->gfx_cs,
+      radeon_add_to_buffer_list(ctx, &ctx->gfx_cs,
                                 unlikely(is_secure) ? si_resource(ctx->tess_rings_tmz) : si_resource(ctx->tess_rings),
                                 RADEON_USAGE_READWRITE, RADEON_PRIO_SHADER_RINGS);
    }
@@ -575,8 +575,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    if (!list_is_empty(&ctx->active_queries))
       si_resume_queries(ctx);
 
-   assert(!ctx->gfx_cs->prev_dw);
-   ctx->initial_gfx_cs_size = ctx->gfx_cs->current.cdw;
+   assert(!ctx->gfx_cs.prev_dw);
+   ctx->initial_gfx_cs_size = ctx->gfx_cs.current.cdw;
    ctx->small_prim_cull_info_dirty = ctx->small_prim_cull_info_buf != NULL;
    ctx->prim_discard_compute_ib_initialized = false;
 

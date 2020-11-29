@@ -209,8 +209,8 @@ static struct pipe_context *r600_create_context(struct pipe_screen *screen,
 		goto fail;
 	}
 
-	rctx->b.gfx.cs = ws->cs_create(rctx->b.ctx, RING_GFX,
-				       r600_context_gfx_flush, rctx, false);
+	ws->cs_create(&rctx->b.gfx.cs, rctx->b.ctx, RING_GFX,
+                      r600_context_gfx_flush, rctx, false);
 	rctx->b.gfx.flush = r600_context_gfx_flush;
 
 	u_suballocator_init(&rctx->allocator_fetch_shader, &rctx->b.b, 64 * 1024,

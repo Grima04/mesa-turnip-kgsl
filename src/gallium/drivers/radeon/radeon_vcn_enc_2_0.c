@@ -91,7 +91,7 @@ static void radeon_enc_slice_header_hevc(struct radeon_encoder *enc)
    radeon_enc_reset(enc);
    radeon_enc_set_emulation_prevention(enc, false);
 
-   cdw_start = enc->cs->current.cdw;
+   cdw_start = enc->cs.current.cdw;
    radeon_enc_code_fixed_bits(enc, 0x0, 1);
    radeon_enc_code_fixed_bits(enc, enc->enc_pic.nal_unit_type, 6);
    radeon_enc_code_fixed_bits(enc, 0x0, 6);
@@ -202,7 +202,7 @@ static void radeon_enc_slice_header_hevc(struct radeon_encoder *enc)
    inst_index++;
    instruction[inst_index] = RENCODE_HEADER_INSTRUCTION_END;
 
-   cdw_filled = enc->cs->current.cdw - cdw_start;
+   cdw_filled = enc->cs.current.cdw - cdw_start;
    for (int i = 0; i < RENCODE_SLICE_HEADER_TEMPLATE_MAX_TEMPLATE_SIZE_IN_DWORDS - cdw_filled; i++)
       RADEON_ENC_CS(0x00000000);
 
@@ -246,7 +246,7 @@ static void radeon_enc_nalu_sps_hevc(struct radeon_encoder *enc)
 {
    RADEON_ENC_BEGIN(enc->cmd.nalu);
    RADEON_ENC_CS(RENCODE_DIRECT_OUTPUT_NALU_TYPE_SPS);
-   uint32_t *size_in_bytes = &enc->cs->current.buf[enc->cs->current.cdw++];
+   uint32_t *size_in_bytes = &enc->cs.current.buf[enc->cs.current.cdw++];
    int i;
 
    radeon_enc_reset(enc);
@@ -337,7 +337,7 @@ static void radeon_enc_nalu_pps_hevc(struct radeon_encoder *enc)
 {
    RADEON_ENC_BEGIN(enc->cmd.nalu);
    RADEON_ENC_CS(RENCODE_DIRECT_OUTPUT_NALU_TYPE_PPS);
-   uint32_t *size_in_bytes = &enc->cs->current.buf[enc->cs->current.cdw++];
+   uint32_t *size_in_bytes = &enc->cs.current.buf[enc->cs.current.cdw++];
    radeon_enc_reset(enc);
    radeon_enc_set_emulation_prevention(enc, false);
    radeon_enc_code_fixed_bits(enc, 0x00000001, 32);

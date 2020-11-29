@@ -31,10 +31,10 @@
 #include "radeon_video.h"
 #include "util/list.h"
 
-#define RVCE_CS(value) (enc->cs->current.buf[enc->cs->current.cdw++] = (value))
+#define RVCE_CS(value) (enc->cs.current.buf[enc->cs.current.cdw++] = (value))
 #define RVCE_BEGIN(cmd)                                                                            \
    {                                                                                               \
-      uint32_t *begin = &enc->cs->current.buf[enc->cs->current.cdw++];                             \
+      uint32_t *begin = &enc->cs.current.buf[enc->cs.current.cdw++];                             \
       RVCE_CS(cmd)
 #define RVCE_READ(buf, domain, off)                                                                \
    si_vce_add_buffer(enc, (buf), RADEON_USAGE_READ, (domain), (off))
@@ -43,7 +43,7 @@
 #define RVCE_READWRITE(buf, domain, off)                                                           \
    si_vce_add_buffer(enc, (buf), RADEON_USAGE_READWRITE, (domain), (off))
 #define RVCE_END()                                                                                 \
-   *begin = (&enc->cs->current.buf[enc->cs->current.cdw] - begin) * 4;                             \
+   *begin = (&enc->cs.current.buf[enc->cs.current.cdw] - begin) * 4;                             \
    }
 
 #define RVCE_MAX_BITSTREAM_OUTPUT_ROW_SIZE (4096 * 16 * 2.5)
@@ -389,7 +389,7 @@ struct rvce_encoder {
 
    struct pipe_screen *screen;
    struct radeon_winsys *ws;
-   struct radeon_cmdbuf *cs;
+   struct radeon_cmdbuf cs;
 
    rvce_get_buffer get_buffer;
 

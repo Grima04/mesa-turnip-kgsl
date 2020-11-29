@@ -1040,7 +1040,7 @@ struct radeon_decoder {
 
    struct pipe_screen *screen;
    struct radeon_winsys *ws;
-   struct radeon_cmdbuf *cs;
+   struct radeon_cmdbuf cs;
 
    void *msg;
    uint32_t *fb;

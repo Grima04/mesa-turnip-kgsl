@@ -501,7 +501,7 @@ static void *radeon_bo_map(struct pb_buffer *buf,
                            enum pipe_map_flags usage)
 {
    struct radeon_bo *bo = (struct radeon_bo*)buf;
-   struct radeon_drm_cs *cs = (struct radeon_drm_cs*)rcs;
+   struct radeon_drm_cs *cs = rcs ? radeon_drm_cs(rcs) : NULL;
 
    /* If it's not unsynchronized bo_map, flush CS if needed and then wait. */
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {

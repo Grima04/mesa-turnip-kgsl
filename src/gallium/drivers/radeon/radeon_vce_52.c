@@ -589,11 +589,11 @@ static void task_info(struct rvce_encoder *enc, uint32_t op, uint32_t dep, uint3
    RVCE_BEGIN(0x00000002); // task info
    if (op == 0x3) {
       if (enc->task_info_idx) {
-         uint32_t offs = enc->cs->current.cdw - enc->task_info_idx + 3;
+         uint32_t offs = enc->cs.current.cdw - enc->task_info_idx + 3;
          // Update offsetOfNextTaskInfo
-         enc->cs->current.buf[enc->task_info_idx] = offs;
+         enc->cs.current.buf[enc->task_info_idx] = offs;
       }
-      enc->task_info_idx = enc->cs->current.cdw;
+      enc->task_info_idx = enc->cs.current.cdw;
    }
    enc->enc_pic.ti.task_operation = op;
    enc->enc_pic.ti.reference_picture_dependency = dep;

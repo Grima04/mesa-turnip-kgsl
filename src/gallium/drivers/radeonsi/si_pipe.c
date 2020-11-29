@@ -284,10 +284,8 @@ static void si_destroy_context(struct pipe_context *context)
    if (sctx->sh_query_result_shader)
       sctx->b.delete_compute_state(&sctx->b, sctx->sh_query_result_shader);
 
-   if (sctx->gfx_cs)
-      sctx->ws->cs_destroy(sctx->gfx_cs);
-   if (sctx->sdma_cs)
-      sctx->ws->cs_destroy(sctx->sdma_cs);
+   sctx->ws->cs_destroy(&sctx->gfx_cs);
+   sctx->ws->cs_destroy(&sctx->sdma_cs);
    if (sctx->ctx)
       sctx->ws->ctx_destroy(sctx->ctx);
 
@@ -520,11 +518,11 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
     */
    if (sscreen->info.num_rings[RING_DMA] && !(sscreen->debug_flags & DBG(NO_SDMA)) &&
        sscreen->debug_flags & DBG(FORCE_SDMA)) {
-      sctx->sdma_cs = sctx->ws->cs_create(sctx->ctx, RING_DMA, (void *)si_flush_dma_cs, sctx,
-                                          stop_exec_on_failure);
+      sctx->ws->cs_create(&sctx->sdma_cs, sctx->ctx, RING_DMA, (void *)si_flush_dma_cs,
+                          sctx, stop_exec_on_failure);
    }
 
-   bool use_sdma_upload = sscreen->info.has_dedicated_vram && sctx->sdma_cs;
+   bool use_sdma_upload = sscreen->info.has_dedicated_vram && sctx->sdma_cs.priv;
    sctx->b.const_uploader =
       u_upload_create(&sctx->b, 256 * 1024, 0, PIPE_USAGE_DEFAULT,
                       SI_RESOURCE_FLAG_32BIT |
@@ -535,8 +533,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    if (use_sdma_upload)
       u_upload_enable_flush_explicit(sctx->b.const_uploader);
 
-   sctx->gfx_cs = ws->cs_create(sctx->ctx, sctx->has_graphics ? RING_GFX : RING_COMPUTE,
-                                (void *)si_flush_gfx_cs, sctx, stop_exec_on_failure);
+   ws->cs_create(&sctx->gfx_cs, sctx->ctx, sctx->has_graphics ? RING_GFX : RING_COMPUTE,
+                 (void *)si_flush_gfx_cs, sctx, stop_exec_on_failure);
 
    /* Border colors. */
    sctx->border_color_table = malloc(SI_MAX_BORDER_COLORS * sizeof(*sctx->border_color_table));
@@ -723,14 +721,14 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
                      &sctx->sample_positions);
 
    /* The remainder of this function initializes the gfx CS and must be last. */
-   assert(sctx->gfx_cs->current.cdw == 0);
+   assert(sctx->gfx_cs.current.cdw == 0);
 
    if (sctx->has_graphics) {
       si_init_cp_reg_shadowing(sctx);
    }
 
    si_begin_new_gfx_cs(sctx, true);
-   assert(sctx->gfx_cs->current.cdw == sctx->initial_gfx_cs_size);
+   assert(sctx->gfx_cs.current.cdw == sctx->initial_gfx_cs_size);
 
    /* Initialize per-context buffers. */
    if (sctx->wait_mem_scratch)
@@ -750,7 +748,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
                       &clear_value, 4, SI_COHERENCY_SHADER, true);
    }
 
-   sctx->initial_gfx_cs_size = sctx->gfx_cs->current.cdw;
+   sctx->initial_gfx_cs_size = sctx->gfx_cs.current.cdw;
    return &sctx->b;
 fail:
    fprintf(stderr, "radeonsi: Failed to create a context.\n");
@@ -906,11 +904,11 @@ static void si_test_gds_memory_management(struct si_context *sctx, unsigned allo
                                           unsigned alignment, enum radeon_bo_domain domain)
 {
    struct radeon_winsys *ws = sctx->ws;
-   struct radeon_cmdbuf *cs[8];
+   struct radeon_cmdbuf cs[8];
    struct pb_buffer *gds_bo[ARRAY_SIZE(cs)];
 
    for (unsigned i = 0; i < ARRAY_SIZE(cs); i++) {
-      cs[i] = ws->cs_create(sctx->ctx, RING_COMPUTE, NULL, NULL, false);
+      ws->cs_create(&cs[i], sctx->ctx, RING_COMPUTE, NULL, NULL, false);
       gds_bo[i] = ws->buffer_create(ws, alloc_size, alignment, domain, 0);
       assert(gds_bo[i]);
    }
@@ -923,12 +921,12 @@ static void si_test_gds_memory_management(struct si_context *sctx, unsigned allo
           * to make the GPU busy for a moment.
           */
          si_cp_dma_clear_buffer(
-            sctx, cs[i], NULL, 0, alloc_size, 0,
+            sctx, &cs[i], NULL, 0, alloc_size, 0,
             SI_CPDMA_SKIP_BO_LIST_UPDATE | SI_CPDMA_SKIP_CHECK_CS_SPACE | SI_CPDMA_SKIP_GFX_SYNC, 0,
             0);
 
-         ws->cs_add_buffer(cs[i], gds_bo[i], RADEON_USAGE_READWRITE, domain, 0);
-         ws->cs_flush(cs[i], PIPE_FLUSH_ASYNC, NULL);
+         ws->cs_add_buffer(&cs[i], gds_bo[i], RADEON_USAGE_READWRITE, domain, 0);
+         ws->cs_flush(&cs[i], PIPE_FLUSH_ASYNC, NULL);
       }
    }
    exit(0);

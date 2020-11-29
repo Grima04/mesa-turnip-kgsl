@@ -902,8 +902,8 @@ struct si_context {
 
    struct radeon_winsys *ws;
    struct radeon_winsys_ctx *ctx;
-   struct radeon_cmdbuf *gfx_cs; /* compute IB if graphics is disabled */
-   struct radeon_cmdbuf *sdma_cs;
+   struct radeon_cmdbuf gfx_cs; /* compute IB if graphics is disabled */
+   struct radeon_cmdbuf sdma_cs;
    struct pipe_fence_handle *last_gfx_fence;
    struct pipe_fence_handle *last_sdma_fence;
    struct si_resource *eop_bug_scratch;
@@ -976,7 +976,7 @@ struct si_context {
    unsigned prim_discard_vertex_count_threshold;
    struct pb_buffer *gds;
    struct pb_buffer *gds_oa;
-   struct radeon_cmdbuf *prim_discard_compute_cs;
+   struct radeon_cmdbuf prim_discard_compute_cs;
    unsigned compute_gds_offset;
    struct si_shader *compute_ib_last_shader;
    uint32_t compute_rewind_va;
@@ -1916,11 +1916,11 @@ static inline void radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sc
                                                            bool check_mem)
 {
    if (check_mem &&
-       !radeon_cs_memory_below_limit(sctx->screen, sctx->gfx_cs, sctx->vram + bo->vram_usage,
+       !radeon_cs_memory_below_limit(sctx->screen, &sctx->gfx_cs, sctx->vram + bo->vram_usage,
                                      sctx->gtt + bo->gart_usage))
       si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 
-   radeon_add_to_buffer_list(sctx, sctx->gfx_cs, bo, usage, priority);
+   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, bo, usage, priority);
 }
 
 static inline bool si_compute_prim_discard_enabled(struct si_context *sctx)

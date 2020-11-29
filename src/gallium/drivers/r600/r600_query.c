@@ -728,7 +728,7 @@ static void r600_query_hw_do_emit_start(struct r600_common_context *ctx,
 					struct r600_resource *buffer,
 					uint64_t va)
 {
-	struct radeon_cmdbuf *cs = ctx->gfx.cs;
+	struct radeon_cmdbuf *cs = &ctx->gfx.cs;
 
 	switch (query->b.type) {
 	case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -808,7 +808,7 @@ static void r600_query_hw_do_emit_stop(struct r600_common_context *ctx,
 				       struct r600_resource *buffer,
 				       uint64_t va)
 {
-	struct radeon_cmdbuf *cs = ctx->gfx.cs;
+	struct radeon_cmdbuf *cs = &ctx->gfx.cs;
 	uint64_t fence_va = 0;
 
 	switch (query->b.type) {
@@ -900,7 +900,7 @@ static void emit_set_predicate(struct r600_common_context *ctx,
 			       struct r600_resource *buf, uint64_t va,
 			       uint32_t op)
 {
-	struct radeon_cmdbuf *cs = ctx->gfx.cs;
+	struct radeon_cmdbuf *cs = &ctx->gfx.cs;
 
 	radeon_emit(cs, PKT3(PKT3_SET_PREDICATION, 1, 0));
 	radeon_emit(cs, va);
@@ -1834,7 +1834,7 @@ void r600_query_fix_enabled_rb_mask(struct r600_common_screen *rscreen)
 {
 	struct r600_common_context *ctx =
 		(struct r600_common_context*)rscreen->aux_context;
-	struct radeon_cmdbuf *cs = ctx->gfx.cs;
+	struct radeon_cmdbuf *cs = &ctx->gfx.cs;
 	struct r600_resource *buffer;
 	uint32_t *results;
 	unsigned i, mask = 0;
