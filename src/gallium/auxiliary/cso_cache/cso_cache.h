@@ -101,7 +101,13 @@ typedef void (*cso_sanitize_callback)(struct cso_hash *hash,
                                       int max_size,
                                       void *user_data);
 
-struct cso_cache;
+struct cso_cache {
+   struct cso_hash hashes[CSO_CACHE_MAX];
+   int    max_size;
+
+   cso_sanitize_callback sanitize_cb;
+   void                 *sanitize_data;
+};
 
 struct cso_blend {
    struct pipe_blend_state state;
@@ -146,7 +152,7 @@ struct cso_velements {
 
 unsigned cso_construct_key(void *item, int item_size);
 
-struct cso_cache *cso_cache_create(void);
+void cso_cache_init(struct cso_cache *sc);
 void cso_cache_delete(struct cso_cache *sc);
 
 void cso_cache_set_sanitize_callback(struct cso_cache *sc,

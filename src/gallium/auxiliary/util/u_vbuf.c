@@ -150,7 +150,7 @@ struct u_vbuf {
 
    struct pipe_context *pipe;
    struct translate_cache *translate_cache;
-   struct cso_cache *cso_cache;
+   struct cso_cache cso_cache;
 
    /* This is what was set in set_vertex_buffers.
     * May contain user buffers. */
@@ -322,7 +322,7 @@ u_vbuf_create(struct pipe_context *pipe, struct u_vbuf_caps *caps)
 
    mgr->caps = *caps;
    mgr->pipe = pipe;
-   mgr->cso_cache = cso_cache_create();
+   cso_cache_init(&mgr->cso_cache);
    mgr->translate_cache = translate_cache_create();
    memset(mgr->fallback_vbs, ~0, sizeof(mgr->fallback_vbs));
    mgr->allowed_vb_mask = u_bit_consecutive(0, mgr->caps.max_vertex_buffers);
@@ -349,7 +349,7 @@ u_vbuf_set_vertex_elements_internal(struct u_vbuf *mgr,
    key_size = sizeof(struct pipe_vertex_element) * velems->count +
               sizeof(unsigned);
    hash_key = cso_construct_key((void*)velems, key_size);
-   iter = cso_find_state_template(mgr->cso_cache, hash_key, CSO_VELEMENTS,
+   iter = cso_find_state_template(&mgr->cso_cache, hash_key, CSO_VELEMENTS,
                                   (void*)velems, key_size);
 
    if (cso_hash_iter_is_null(iter)) {
@@ -360,7 +360,7 @@ u_vbuf_set_vertex_elements_internal(struct u_vbuf *mgr,
       cso->delete_state = (cso_state_callback)u_vbuf_delete_vertex_elements;
       cso->context = (void*)mgr;
 
-      iter = cso_insert_state(mgr->cso_cache, hash_key, CSO_VELEMENTS, cso);
+      iter = cso_insert_state(&mgr->cso_cache, hash_key, CSO_VELEMENTS, cso);
       ve = cso->data;
    } else {
       ve = ((struct cso_velements *)cso_hash_iter_data(iter))->data;
@@ -402,7 +402,7 @@ void u_vbuf_destroy(struct u_vbuf *mgr)
    pipe_vertex_buffer_unreference(&mgr->vertex_buffer0_saved);
 
    translate_cache_destroy(mgr->translate_cache);
-   cso_cache_delete(mgr->cso_cache);
+   cso_cache_delete(&mgr->cso_cache);
    FREE(mgr);
 }
 

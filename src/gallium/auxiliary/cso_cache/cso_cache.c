@@ -36,14 +36,6 @@
 #include "cso_hash.h"
 
 
-struct cso_cache {
-   struct cso_hash hashes[CSO_CACHE_MAX];
-   int    max_size;
-
-   cso_sanitize_callback sanitize_cb;
-   void                 *sanitize_data;
-};
-
 #if 1
 static unsigned hash_key(const void *key, unsigned key_size)
 {
@@ -234,21 +226,16 @@ struct cso_hash_iter cso_find_state_template(struct cso_cache *sc,
    return iter;
 }
 
-struct cso_cache *cso_cache_create(void)
+void cso_cache_init(struct cso_cache *sc)
 {
-   struct cso_cache *sc = MALLOC_STRUCT(cso_cache);
-   int i;
-   if (!sc)
-      return NULL;
+   memset(sc, 0, sizeof(*sc));
 
    sc->max_size           = 4096;
-   for (i = 0; i < CSO_CACHE_MAX; i++)
+   for (int i = 0; i < CSO_CACHE_MAX; i++)
       cso_hash_init(&sc->hashes[i]);
 
    sc->sanitize_cb        = sanitize_cb;
    sc->sanitize_data      = 0;
-
-   return sc;
 }
 
 void cso_for_each_state(struct cso_cache *sc, enum cso_cache_type type,
@@ -270,10 +257,6 @@ void cso_for_each_state(struct cso_cache *sc, enum cso_cache_type type,
 void cso_cache_delete(struct cso_cache *sc)
 {
    int i;
-   assert(sc);
-
-   if (!sc)
-      return;
 
    /* delete driver data */
    cso_for_each_state(sc, CSO_BLEND, delete_blend_state, 0);
@@ -284,8 +267,6 @@ void cso_cache_delete(struct cso_cache *sc)
 
    for (i = 0; i < CSO_CACHE_MAX; i++)
       cso_hash_deinit(&sc->hashes[i]);
-
-   FREE(sc);
 }
 
 void cso_set_maximum_cache_size(struct cso_cache *sc, int number)
