@@ -378,7 +378,7 @@ static nir_shader *
 st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
                          gl_shader_stage stage)
 {
-   struct pipe_screen *screen = st->pipe->screen;
+   struct pipe_screen *screen = st->screen;
    const struct gl_shader_compiler_options *options =
       &st->ctx->Const.ShaderCompilerOptions[stage];
 
@@ -513,9 +513,9 @@ st_translate_vertex_program(struct st_context *st,
 
       /* Translate to NIR if preferred. */
       if (PIPE_SHADER_IR_NIR ==
-          st->pipe->screen->get_shader_param(st->pipe->screen,
-                                             PIPE_SHADER_VERTEX,
-                                             PIPE_SHADER_CAP_PREFERRED_IR)) {
+          st->screen->get_shader_param(st->screen,
+                                       PIPE_SHADER_VERTEX,
+                                       PIPE_SHADER_CAP_PREFERRED_IR)) {
          assert(!stp->glsl_to_tgsi);
 
          if (stp->Base.nir)
@@ -558,7 +558,7 @@ st_translate_vertex_program(struct st_context *st,
    output_semantic_name[num_outputs] = TGSI_SEMANTIC_EDGEFLAG;
    output_semantic_index[num_outputs] = 0;
 
-   ureg = ureg_create_with_screen(PIPE_SHADER_VERTEX, st->pipe->screen);
+   ureg = ureg_create_with_screen(PIPE_SHADER_VERTEX, st->screen);
    if (ureg == NULL)
       return false;
 
@@ -661,7 +661,7 @@ lower_ucp(struct st_context *st,
    if (nir->info.outputs_written & VARYING_BIT_CLIP_DIST0)
       NIR_PASS_V(nir, nir_lower_clip_disable, ucp_enables);
    else {
-      struct pipe_screen *screen = st->pipe->screen;
+      struct pipe_screen *screen = st->screen;
       bool can_compact = screen->get_param(screen,
                                            PIPE_CAP_NIR_COMPACT_ARRAYS);
       bool use_eye = st->ctx->_Shader->CurrentProgram[MESA_SHADER_VERTEX] != NULL;
@@ -887,9 +887,9 @@ st_translate_fragment_program(struct st_context *st,
       /* Translate to NIR. */
       if (!stfp->ati_fs &&
           PIPE_SHADER_IR_NIR ==
-          st->pipe->screen->get_shader_param(st->pipe->screen,
-                                             PIPE_SHADER_FRAGMENT,
-                                             PIPE_SHADER_CAP_PREFERRED_IR)) {
+          st->screen->get_shader_param(st->screen,
+                                       PIPE_SHADER_FRAGMENT,
+                                       PIPE_SHADER_CAP_PREFERRED_IR)) {
          nir_shader *nir =
             st_translate_prog_to_nir(st, &stfp->Base, MESA_SHADER_FRAGMENT);
 
@@ -1134,7 +1134,7 @@ st_translate_fragment_program(struct st_context *st,
       }
    }
 
-   ureg = ureg_create_with_screen(PIPE_SHADER_FRAGMENT, st->pipe->screen);
+   ureg = ureg_create_with_screen(PIPE_SHADER_FRAGMENT, st->screen);
    if (ureg == NULL)
       return false;
 
@@ -1321,7 +1321,7 @@ st_create_fp_variant(struct st_context *st,
                    key->external.lower_ayuv || key->external.lower_xyuv ||
                    key->external.lower_yuv)) {
 
-         st_nir_lower_samplers(pipe->screen, state.ir.nir,
+         st_nir_lower_samplers(st->screen, state.ir.nir,
                                stfp->shader_program, &stfp->Base);
 
          nir_lower_tex_options options = {0};
@@ -1359,7 +1359,7 @@ st_create_fp_variant(struct st_context *st,
          nir_shader_gather_info(state.ir.nir,
                                 nir_shader_get_entrypoint(state.ir.nir));
 
-         struct pipe_screen *screen = pipe->screen;
+         struct pipe_screen *screen = st->screen;
          if (screen->finalize_nir)
             screen->finalize_nir(screen, state.ir.nir, false);
       }
@@ -1567,7 +1567,7 @@ st_translate_common_program(struct st_context *st,
    struct gl_program *prog = &stp->Base;
    enum pipe_shader_type stage =
       pipe_shader_type_from_mesa(stp->Base.info.stage);
-   struct ureg_program *ureg = ureg_create_with_screen(stage, st->pipe->screen);
+   struct ureg_program *ureg = ureg_create_with_screen(stage, st->screen);
 
    if (ureg == NULL)
       return false;

@@ -714,7 +714,7 @@ emit_wpos(struct st_context *st,
           const struct gl_program *program,
           struct ureg_program *ureg)
 {
-   struct pipe_screen *pscreen = st->pipe->screen;
+   struct pipe_screen *pscreen = st->screen;
    GLfloat adjX = 0.0f;
    GLfloat adjY[2] = { 0.0f, 0.0f };
    boolean invert = FALSE;
@@ -980,7 +980,7 @@ st_translate_mesa_program(struct gl_context *ctx,
              * inconsistency, we insert a U2F.
              */
             struct st_context *st = st_context(ctx);
-            struct pipe_screen *pscreen = st->pipe->screen;
+            struct pipe_screen *pscreen = st->screen;
             assert(procType == PIPE_SHADER_VERTEX);
             assert(pscreen->get_shader_param(pscreen, PIPE_SHADER_VERTEX,
                    PIPE_SHADER_CAP_INTEGERS));

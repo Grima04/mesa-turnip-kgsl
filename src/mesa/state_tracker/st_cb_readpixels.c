@@ -102,7 +102,7 @@ try_pbo_readpixels(struct st_context *st, struct st_renderbuffer *strb,
                    const struct gl_pixelstore_attrib *pack, void *pixels)
 {
    struct pipe_context *pipe = st->pipe;
-   struct pipe_screen *screen = pipe->screen;
+   struct pipe_screen *screen = st->screen;
    struct cso_context *cso = st->cso_context;
    struct pipe_surface *surface = strb->surface;
    struct pipe_resource *texture = strb->texture;
@@ -271,8 +271,7 @@ blit_to_staging(struct st_context *st, struct st_renderbuffer *strb,
                    GLenum format,
                    enum pipe_format src_format, enum pipe_format dst_format)
 {
-   struct pipe_context *pipe = st->pipe;
-   struct pipe_screen *screen = pipe->screen;
+   struct pipe_screen *screen = st->screen;
    struct pipe_resource dst_templ;
    struct pipe_resource *dst;
    struct pipe_blit_info blit;
@@ -413,7 +412,7 @@ st_ReadPixels(struct gl_context *ctx, GLint x, GLint y,
          _mesa_get_read_renderbuffer_for_format(ctx, format);
    struct st_renderbuffer *strb = st_renderbuffer(rb);
    struct pipe_context *pipe = st->pipe;
-   struct pipe_screen *screen = pipe->screen;
+   struct pipe_screen *screen = st->screen;
    struct pipe_resource *src;
    struct pipe_resource *dst = NULL;
    enum pipe_format dst_format, src_format;

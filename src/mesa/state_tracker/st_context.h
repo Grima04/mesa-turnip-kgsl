@@ -123,7 +123,7 @@ struct st_context
    struct st_context_iface iface;
 
    struct gl_context *ctx;
-
+   struct pipe_screen *screen;
    struct pipe_context *pipe;
 
    struct draw_context *draw;  /**< For selection/feedback/rastpos only */
@@ -374,7 +374,6 @@ struct st_context
       struct st_zombie_shader_node list;
       simple_mtx_t mutex;
    } zombie_shaders;
-
 };
 
 
