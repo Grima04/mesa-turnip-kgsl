@@ -617,11 +617,8 @@ bool r600_common_context_init(struct r600_common_context *rctx,
 	r600_query_init(rctx);
 	cayman_init_msaa(&rctx->b);
 
-	rctx->allocator_zeroed_memory =
-		u_suballocator_create(&rctx->b, rscreen->info.gart_page_size,
-				      0, PIPE_USAGE_DEFAULT, 0, true);
-	if (!rctx->allocator_zeroed_memory)
-		return false;
+	u_suballocator_init(&rctx->allocator_zeroed_memory, &rctx->b, rscreen->info.gart_page_size,
+			    0, PIPE_USAGE_DEFAULT, 0, true);
 
 	rctx->b.stream_uploader = u_upload_create(&rctx->b, 1024 * 1024,
 						  0, PIPE_USAGE_STREAM, 0);
@@ -667,9 +664,7 @@ void r600_common_context_cleanup(struct r600_common_context *rctx)
 	slab_destroy_child(&rctx->pool_transfers);
 	slab_destroy_child(&rctx->pool_transfers_unsync);
 
-	if (rctx->allocator_zeroed_memory) {
-		u_suballocator_destroy(rctx->allocator_zeroed_memory);
-	}
+	u_suballocator_destroy(&rctx->allocator_zeroed_memory);
 	rctx->ws->fence_reference(&rctx->last_gfx_fence, NULL);
 	rctx->ws->fence_reference(&rctx->last_sdma_fence, NULL);
 	r600_resource_reference(&rctx->eop_bug_scratch, NULL);

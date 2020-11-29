@@ -118,9 +118,7 @@ static void r600_destroy_context(struct pipe_context *context)
 	if (rctx->blitter) {
 		util_blitter_destroy(rctx->blitter);
 	}
-	if (rctx->allocator_fetch_shader) {
-		u_suballocator_destroy(rctx->allocator_fetch_shader);
-	}
+	u_suballocator_destroy(&rctx->allocator_fetch_shader);
 
 	r600_release_command_buffer(&rctx->start_cs_cmd);
 
@@ -215,11 +213,8 @@ static struct pipe_context *r600_create_context(struct pipe_screen *screen,
 				       r600_context_gfx_flush, rctx, false);
 	rctx->b.gfx.flush = r600_context_gfx_flush;
 
-	rctx->allocator_fetch_shader =
-		u_suballocator_create(&rctx->b.b, 64 * 1024,
-				      0, PIPE_USAGE_DEFAULT, 0, FALSE);
-	if (!rctx->allocator_fetch_shader)
-		goto fail;
+	u_suballocator_init(&rctx->allocator_fetch_shader, &rctx->b.b, 64 * 1024,
+                            0, PIPE_USAGE_DEFAULT, 0, FALSE);
 
 	rctx->isa = calloc(1, sizeof(struct r600_isa));
 	if (!rctx->isa || r600_isa_init(rctx, rctx->isa))

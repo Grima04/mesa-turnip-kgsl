@@ -508,7 +508,7 @@ struct r600_common_context {
 	unsigned			last_num_draw_calls;
 
 	struct threaded_context		*tc;
-	struct u_suballocator		*allocator_zeroed_memory;
+	struct u_suballocator		allocator_zeroed_memory;
 	struct slab_child_pool		pool_transfers;
 	struct slab_child_pool		pool_transfers_unsync; /* for threaded_context */
 

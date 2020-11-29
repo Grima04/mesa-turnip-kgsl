@@ -49,7 +49,7 @@ static struct pipe_stream_output_target *si_create_so_target(struct pipe_context
    }
 
    unsigned buf_filled_size_size = sctx->screen->use_ngg_streamout ? 8 : 4;
-   u_suballocator_alloc(sctx->allocator_zeroed_memory, buf_filled_size_size, 4,
+   u_suballocator_alloc(&sctx->allocator_zeroed_memory, buf_filled_size_size, 4,
                         &t->buf_filled_size_offset, (struct pipe_resource **)&t->buf_filled_size);
    if (!t->buf_filled_size) {
       FREE(t);

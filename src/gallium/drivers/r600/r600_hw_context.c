@@ -451,7 +451,7 @@ void r600_emit_pfp_sync_me(struct r600_context *rctx)
 		uint64_t va;
 
 		/* 16-byte address alignment is required by WAIT_REG_MEM. */
-		u_suballocator_alloc(rctx->b.allocator_zeroed_memory, 4, 16,
+		u_suballocator_alloc(&rctx->b.allocator_zeroed_memory, 4, 16,
 				     &offset, (struct pipe_resource**)&buf);
 		if (!buf) {
 			/* This is too heavyweight, but will work. */

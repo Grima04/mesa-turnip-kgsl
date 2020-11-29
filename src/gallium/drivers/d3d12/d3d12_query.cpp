@@ -144,7 +144,7 @@ d3d12_create_query(struct pipe_context *pctx,
 
    /* Query result goes into a readback buffer */
    size_t buffer_size = query->query_size * query->num_queries;
-   u_suballocator_alloc(ctx->query_allocator, buffer_size, 256,
+   u_suballocator_alloc(&ctx->query_allocator, buffer_size, 256,
                         &query->buffer_offset, &query->buffer);
 
    return (struct pipe_query *)query;
@@ -509,9 +509,8 @@ d3d12_context_query_init(struct pipe_context *pctx)
    struct d3d12_context *ctx = d3d12_context(pctx);
    list_inithead(&ctx->active_queries);
 
-   ctx->query_allocator =
-       u_suballocator_create(&ctx->base, 4096, 0, PIPE_USAGE_STAGING,
-                             0, true);
+   u_suballocator_init(&ctx->query_allocator, &ctx->base, 4096, 0, PIPE_USAGE_STAGING,
+                         0, true);
 
    pctx->create_query = d3d12_create_query;
    pctx->destroy_query = d3d12_destroy_query;

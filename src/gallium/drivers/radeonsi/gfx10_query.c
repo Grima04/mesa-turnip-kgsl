@@ -341,7 +341,7 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
    }
 
    if (query->first != query->last) {
-      u_suballocator_alloc(sctx->allocator_zeroed_memory, 16, 16, &tmp_buffer_offset, &tmp_buffer);
+      u_suballocator_alloc(&sctx->allocator_zeroed_memory, 16, 16, &tmp_buffer_offset, &tmp_buffer);
       if (!tmp_buffer)
          return;
    }

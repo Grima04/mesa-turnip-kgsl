@@ -29,6 +29,7 @@
 #include "si_state.h"
 #include "util/u_dynarray.h"
 #include "util/u_idalloc.h"
+#include "util/u_suballoc.h"
 #include "util/u_threaded_context.h"
 
 #if UTIL_ARCH_BIG_ENDIAN
@@ -252,7 +253,6 @@ enum si_coherency
 struct si_compute;
 struct si_shader_context;
 struct hash_table;
-struct u_suballocator;
 
 /* Only 32-bit buffer allocations are supported, gallium doesn't support more
  * at the moment.
@@ -910,7 +910,7 @@ struct si_context {
    struct si_resource *eop_bug_scratch_tmz;
    struct u_upload_mgr *cached_gtt_allocator;
    struct threaded_context *tc;
-   struct u_suballocator *allocator_zeroed_memory;
+   struct u_suballocator allocator_zeroed_memory;
    struct slab_child_pool pool_transfers;
    struct slab_child_pool pool_transfers_unsync; /* for threaded_context */
    struct pipe_device_reset_callback device_reset_callback;

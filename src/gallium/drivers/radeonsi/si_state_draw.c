@@ -1147,7 +1147,7 @@ void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
       return;
 
    if (!sctx->barrier_buf) {
-      u_suballocator_alloc(sctx->allocator_zeroed_memory, 4, 4, &sctx->barrier_buf_offset,
+      u_suballocator_alloc(&sctx->allocator_zeroed_memory, 4, 4, &sctx->barrier_buf_offset,
                            (struct pipe_resource **)&sctx->barrier_buf);
    }
 

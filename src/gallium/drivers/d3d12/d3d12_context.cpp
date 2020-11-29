@@ -76,7 +76,7 @@ d3d12_context_destroy(struct pipe_context *pctx)
    d3d12_gfx_pipeline_state_cache_destroy(ctx);
    d3d12_root_signature_cache_destroy(ctx);
 
-   u_suballocator_destroy(ctx->query_allocator);
+   u_suballocator_destroy(&ctx->query_allocator);
 
    if (pctx->stream_uploader)
       u_upload_destroy(pctx->stream_uploader);
@@ -1354,7 +1354,7 @@ d3d12_set_stream_output_targets(struct pipe_context *pctx,
 
       if (target) {
          /* Sub-allocate a new fill buffer each time to avoid GPU/CPU synchronization */
-         u_suballocator_alloc(ctx->so_allocator, sizeof(uint64_t), 4,
+         u_suballocator_alloc(&ctx->so_allocator, sizeof(uint64_t), 4,
                               &target->fill_buffer_offset, &target->fill_buffer);
          fill_stream_output_buffer_view(&ctx->so_buffer_views[i], target);
          pipe_so_target_reference(&ctx->so_targets[i], targets[i]);
@@ -1407,7 +1407,7 @@ d3d12_enable_fake_so_buffers(struct d3d12_context *ctx, unsigned factor)
                                                        PIPE_BIND_STREAM_OUTPUT,
                                                        PIPE_USAGE_STAGING,
                                                        target->base.buffer->width0 * factor);
-         u_suballocator_alloc(ctx->so_allocator, sizeof(uint64_t), 4,
+         u_suballocator_alloc(&ctx->so_allocator, sizeof(uint64_t), 4,
                               &fake_target->fill_buffer_offset, &fake_target->fill_buffer);
          pipe_buffer_read(&ctx->base, target->fill_buffer,
                           target->fill_buffer_offset, sizeof(uint64_t),
@@ -1913,9 +1913,9 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.stream_uploader = u_upload_create_default(&ctx->base);
    ctx->base.const_uploader = u_upload_create_default(&ctx->base);
-   ctx->so_allocator = u_suballocator_create(&ctx->base, 4096, 0,
-                                             PIPE_USAGE_DEFAULT,
-                                             0, true);
+   u_suballocator_init(&ctx->so_allocator, &ctx->base, 4096, 0,
+                       PIPE_USAGE_DEFAULT,
+                       0, true);
 
    struct primconvert_config cfg;
    cfg.primtypes_mask = 1 << PIPE_PRIM_POINTS |

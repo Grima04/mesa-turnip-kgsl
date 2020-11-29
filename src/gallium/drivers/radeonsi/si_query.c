@@ -1466,7 +1466,7 @@ static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_q
    }
 
    if (query->buffer.previous) {
-      u_suballocator_alloc(sctx->allocator_zeroed_memory, 16, 16, &tmp_buffer_offset, &tmp_buffer);
+      u_suballocator_alloc(&sctx->allocator_zeroed_memory, 16, 16, &tmp_buffer_offset, &tmp_buffer);
       if (!tmp_buffer)
          return;
    }
@@ -1605,7 +1605,7 @@ static void si_render_condition(struct pipe_context *ctx, struct pipe_query *que
          bool old_force_off = sctx->render_cond_force_off;
          sctx->render_cond_force_off = true;
 
-         u_suballocator_alloc(sctx->allocator_zeroed_memory, 8, 8, &squery->workaround_offset,
+         u_suballocator_alloc(&sctx->allocator_zeroed_memory, 8, 8, &squery->workaround_offset,
                               (struct pipe_resource **)&squery->workaround_buf);
 
          /* Reset to NULL to avoid a redundant SET_PREDICATION
