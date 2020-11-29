@@ -92,22 +92,25 @@ def main():
     gmem_passes = []     # set of GMEM passes in frame
     gmem = None          # current GMEM pass
 
+    # Helper to set the appropriate times table for the current pass,
+    # which is expected to only happen once for a given render pass
+    def set_times(t):
+        nonlocal times
+        if times  is not None:
+            print("expected times to not be set yet")
+        times = t
+
     for line in lines:
         match = re.search(compute_match, line)
         if match is not None:
-            #printf("GRID/COMPUTE")
-            if times  is not None:
-                print("expected times to not be set yet")
-            times = times_compute
+            set_times(times_compute)
             continue
 
         match = re.search(gmem_start_match, line)
         if match is not None:
             if gmem is not None:
                 print("expected gmem to not be set yet")
-            if times is not None:
-                print("expected times to not be set yet")
-            times = times_gmem
+            set_times(times_gmem)
             gmem = GMEMPass()
             gmem.cleared = match.group(1)
             gmem.gmem_reason = match.group(2)
@@ -156,18 +159,12 @@ def main():
 
         match = re.search(sysmem_match, line)
         if match is not None:
-            #print("SYSMEM")
-            if times is not None:
-                print("expected times to not be set yet")
-            times = times_sysmem
+            set_times(times_sysmem)
             continue
 
         match = re.search(blit_match, line)
         if match is not None:
-            #print("BLIT")
-            if times is not None:
-                print("expected times to not be set yet")
-            times = times_blit
+            set_times(times_blit)
             continue
 
         match = re.search(eof_match, line)
