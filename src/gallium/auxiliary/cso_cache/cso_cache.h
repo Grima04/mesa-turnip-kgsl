@@ -163,11 +163,7 @@ struct cso_hash_iter cso_find_state_template(struct cso_cache *sc,
                                              void *templ, unsigned size);
 void cso_for_each_state(struct cso_cache *sc, enum cso_cache_type type,
                         cso_state_callback func, void *user_data);
-void * cso_take_state(struct cso_cache *sc, unsigned hash_key,
-                      enum cso_cache_type type);
-
 void cso_set_maximum_cache_size(struct cso_cache *sc, int number);
-int cso_maximum_cache_size(const struct cso_cache *sc);
 
 #ifdef	__cplusplus
 }

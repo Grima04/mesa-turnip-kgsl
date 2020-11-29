@@ -234,13 +234,6 @@ struct cso_hash_iter cso_find_state_template(struct cso_cache *sc,
    return iter;
 }
 
-void * cso_take_state(struct cso_cache *sc,
-                      unsigned hash_key, enum cso_cache_type type)
-{
-   struct cso_hash *hash = _cso_hash_for_type(sc, type);
-   return cso_hash_take(hash, hash_key);
-}
-
 struct cso_cache *cso_cache_create(void)
 {
    struct cso_cache *sc = MALLOC_STRUCT(cso_cache);
@@ -303,11 +296,6 @@ void cso_set_maximum_cache_size(struct cso_cache *sc, int number)
 
    for (i = 0; i < CSO_CACHE_MAX; i++)
       sanitize_hash(sc, &sc->hashes[i], i, sc->max_size);
-}
-
-int cso_maximum_cache_size(const struct cso_cache *sc)
-{
-   return sc->max_size;
 }
 
 void cso_cache_set_sanitize_callback(struct cso_cache *sc,
