@@ -43,7 +43,6 @@ extern "C" {
 #endif
 
 struct gl_context;
-struct vbo_module;
 
 /**
  * Max number of primitives (number of glBegin/End pairs) per VBO.
@@ -81,7 +80,6 @@ struct vbo_exec_copied_vtx {
 
 struct vbo_exec_context
 {
-   struct gl_context *ctx;
    GLvertexformat vtxfmt;
    GLvertexformat vtxfmt_noop;
 
@@ -134,7 +132,6 @@ struct vbo_save_copied_vtx {
 };
 
 struct vbo_save_context {
-   struct gl_context *ctx;
    GLvertexformat vtxfmt;
    GLvertexformat vtxfmt_noop;  /**< Used if out_of_memory is true */
 

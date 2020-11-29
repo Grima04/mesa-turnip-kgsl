@@ -1772,7 +1772,7 @@ current_init(struct gl_context *ctx)
 void
 vbo_save_api_init(struct vbo_save_context *save)
 {
-   struct gl_context *ctx = save->ctx;
+   struct gl_context *ctx = gl_context_from_vbo_save(save);
 
    save->opcode_vertex_list =
       _mesa_dlist_alloc_opcode(ctx,
