@@ -3497,7 +3497,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       cmp->predicate = BRW_PREDICATE_NORMAL;
       cmp->flag_subreg = sample_mask_flag_subreg(this);
 
-      fs_inst *jump = bld.emit(FS_OPCODE_DISCARD_JUMP);
+      fs_inst *jump = bld.emit(BRW_OPCODE_HALT);
       jump->flag_subreg = sample_mask_flag_subreg(this);
       jump->predicate_inverse = true;
 

@@ -444,9 +444,6 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL:
       return "varying_pull_const_logical";
 
-   case FS_OPCODE_DISCARD_JUMP:
-      return "discard_jump";
-
    case FS_OPCODE_SET_SAMPLE_ID:
       return "set_sample_id";
 

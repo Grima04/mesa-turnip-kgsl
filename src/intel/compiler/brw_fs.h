@@ -158,7 +158,7 @@ public:
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
    void validate();
    bool opt_algebraic();
-   bool opt_redundant_discard_jumps();
+   bool opt_redundant_halt();
    bool opt_cse();
    bool opt_cse_local(const brw::fs_live_variables &live, bblock_t *block, int &ip);
 
@@ -536,7 +536,7 @@ private:
                                struct brw_reg src0,
                                struct brw_reg src1);
 
-   void generate_discard_jump(fs_inst *inst);
+   void generate_halt(fs_inst *inst);
 
    void generate_pack_half_2x16_split(fs_inst *inst,
                                       struct brw_reg dst,

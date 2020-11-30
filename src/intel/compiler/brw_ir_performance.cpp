@@ -589,7 +589,7 @@ namespace {
       case BRW_OPCODE_WHILE:
       case BRW_OPCODE_BREAK:
       case BRW_OPCODE_CONTINUE:
-      case FS_OPCODE_DISCARD_JUMP:
+      case BRW_OPCODE_HALT:
          if (devinfo->gen >= 8)
             return calculate_desc(info, unit_null, 8, 0, 0, 0, 0,
                                   0, 0, 0, 0, 0, 0);
@@ -1540,7 +1540,7 @@ namespace {
       const float discard_weight = (dispatch_width > 16 || s->devinfo->gen < 12 ?
                                     1.0 : 0.5);
       const float loop_weight = 10;
-      unsigned discard_count = 0;
+      unsigned halt_count = 0;
       unsigned elapsed = 0;
       state st;
 
@@ -1552,7 +1552,7 @@ namespace {
 
             issue_instruction(st, s->devinfo, inst);
 
-            if (inst->opcode == SHADER_OPCODE_HALT_TARGET && discard_count)
+            if (inst->opcode == SHADER_OPCODE_HALT_TARGET && halt_count)
                st.weight /= discard_weight;
 
             elapsed += (st.unit_ready[unit_fe] - clock0) * st.weight;
@@ -1561,7 +1561,7 @@ namespace {
                st.weight *= loop_weight;
             else if (inst->opcode == BRW_OPCODE_WHILE)
                st.weight /= loop_weight;
-            else if (inst->opcode == FS_OPCODE_DISCARD_JUMP && !discard_count++)
+            else if (inst->opcode == BRW_OPCODE_HALT && !halt_count++)
                st.weight *= discard_weight;
          }
 

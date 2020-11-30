@@ -1450,7 +1450,7 @@ fs_generator::generate_ddy(const fs_inst *inst,
 }
 
 void
-fs_generator::generate_discard_jump(fs_inst *)
+fs_generator::generate_halt(fs_inst *)
 {
    /* This HALT will be patched up at FB write time to point UIP at the end of
     * the program, and at brw_uip_jip() JIP will be set to the end of the
@@ -2375,8 +2375,8 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          send_count++;
          break;
 
-      case FS_OPCODE_DISCARD_JUMP:
-         generate_discard_jump(inst);
+      case BRW_OPCODE_HALT:
+         generate_halt(inst);
          break;
 
       case SHADER_OPCODE_SHADER_TIME_ADD:

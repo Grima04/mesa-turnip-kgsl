@@ -3020,16 +3020,16 @@ fs_visitor::opt_register_renaming()
 }
 
 /**
- * Remove redundant or useless discard jumps.
+ * Remove redundant or useless halts.
  *
- * For example, we can eliminate jumps in the following sequence:
+ * For example, we can eliminate halts in the following sequence:
  *
- * discard-jump       (redundant with the next jump)
- * discard-jump       (useless; jumps to the next instruction)
- * placeholder-halt
+ * halt        (redundant with the next halt)
+ * halt        (useless; jumps to the next instruction)
+ * halt-target
  */
 bool
-fs_visitor::opt_redundant_discard_jumps()
+fs_visitor::opt_redundant_halt()
 {
    bool progress = false;
 
@@ -3048,7 +3048,7 @@ fs_visitor::opt_redundant_discard_jumps()
 
    /* Delete any HALTs immediately before the halt target. */
    for (fs_inst *prev = (fs_inst *) halt_target->prev;
-        !prev->is_head_sentinel() && prev->opcode == FS_OPCODE_DISCARD_JUMP;
+        !prev->is_head_sentinel() && prev->opcode == BRW_OPCODE_HALT;
         prev = (fs_inst *) halt_target->prev) {
       prev->remove(last_bblock);
       progress = true;
@@ -3285,7 +3285,7 @@ fs_visitor::eliminate_find_live_channel()
          depth--;
          break;
 
-      case FS_OPCODE_DISCARD_JUMP:
+      case BRW_OPCODE_HALT:
          /* This can potentially make control flow non-uniform until the end
           * of the program.
           */
@@ -7830,7 +7830,7 @@ fs_visitor::optimize()
       OPT(opt_peephole_sel);
    }
 
-   OPT(opt_redundant_discard_jumps);
+   OPT(opt_redundant_halt);
 
    if (OPT(lower_load_payload)) {
       split_virtual_grfs();
@@ -7951,7 +7951,7 @@ find_halt_control_flow_region_start(const fs_visitor *v)
    if (v->stage == MESA_SHADER_FRAGMENT &&
        brw_wm_prog_data(v->prog_data)->uses_kill) {
       foreach_block_and_inst(block, fs_inst, inst, v->cfg) {
-         if (inst->opcode == FS_OPCODE_DISCARD_JUMP ||
+         if (inst->opcode == BRW_OPCODE_HALT ||
              inst->opcode == SHADER_OPCODE_HALT_TARGET)
             return inst;
       }
@@ -8002,7 +8002,7 @@ fs_visitor::fixup_nomask_control_flow()
          switch (inst->opcode) {
          case BRW_OPCODE_DO:
          case BRW_OPCODE_IF:
-            /* Note that this doesn't handle FS_OPCODE_DISCARD_JUMP since only
+            /* Note that this doesn't handle BRW_OPCODE_HALT since only
              * the first one in the program closes the region of divergent
              * control flow due to any HALT instructions -- Instead this is
              * handled with the halt_start check below.
