@@ -46,7 +46,7 @@
  * better GPU utilization.
  *
  * Each accessed BO has a corresponding entry in the ->accessed_bos hash table.
- * A BO is either being written or read at any time (see if writer != NULL).
+ * A BO is either being written or read at any time (see last_is_write).
  * When the last access is a write, the batch writing the BO might have read
  * dependencies (readers that have not been executed yet and want to read the
  * previous BO content), and when the last access is a read, all readers might
@@ -60,6 +60,7 @@
 struct panfrost_bo_access {
         struct util_dynarray readers;
         struct panfrost_batch_fence *writer;
+        bool last_is_write;
 };
 
 static struct panfrost_batch_fence *
@@ -399,7 +400,7 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
         entry = _mesa_hash_table_search(ctx->accessed_bos, bo);
         access = entry ? entry->data : NULL;
         if (access) {
-                old_writes = access->writer != NULL;
+                old_writes = access->last_is_write;
         } else {
                 access = rzalloc(ctx, struct panfrost_bo_access);
                 util_dynarray_init(&access->readers, access);
@@ -479,7 +480,6 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
                         util_dynarray_append(&access->readers,
                                              struct panfrost_batch_fence *,
                                              batch->out_sync);
-                        access->writer = NULL;
                 }
         } else {
                 /* We already accessed this BO before, so we should already be
@@ -504,6 +504,8 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
                 if (access->writer)
                         panfrost_batch_add_dep(batch, access->writer);
         }
+
+        access->last_is_write = writes;
 }
 
 void
