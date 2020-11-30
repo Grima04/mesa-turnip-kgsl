@@ -782,19 +782,10 @@ static void
 write_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, unsigned num_wds, VkWriteDescriptorSet *wds,
                  bool cache_hit, bool need_resource_refs)
 {
-   struct zink_batch *batch = &ctx->batch;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   assert(zds->desc_set);
 
    if (!cache_hit && num_wds)
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
-   for (int i = 0; zds->pool->key.num_descriptors && i < util_dynarray_num_elements(&zds->barriers, struct zink_descriptor_barrier); ++i) {
-      struct zink_descriptor_barrier *barrier = util_dynarray_element(&zds->barriers, struct zink_descriptor_barrier, i);
-      if (need_resource_refs)
-         zink_batch_reference_resource_rw(batch, barrier->res, zink_resource_access_is_write(barrier->access));
-      zink_resource_barrier(ctx, NULL, barrier->res,
-                            barrier->layout, barrier->access, barrier->stage);
-   }
 }
 
 static unsigned
@@ -1220,6 +1211,19 @@ zink_descriptors_update(struct zink_context *ctx, struct zink_screen *screen, bo
       update_image_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_IMAGE],
                                                is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_IMAGE],
                                                need_resource_refs[ZINK_DESCRIPTOR_TYPE_IMAGE]);
+
+   for (int h = 0; zds[h] && h < ZINK_DESCRIPTOR_TYPES; h++) {
+      /* skip null descriptor sets since they have no resources */
+      if (!zds[h]->hash)
+         continue;
+      assert(zds[h]->desc_set);
+      util_dynarray_foreach(&zds[h]->barriers, struct zink_descriptor_barrier, barrier) {
+         if (need_resource_refs[h])
+            zink_batch_reference_resource_rw(batch, barrier->res, zink_resource_access_is_write(barrier->access));
+         zink_resource_barrier(ctx, NULL, barrier->res,
+                               barrier->layout, barrier->access, barrier->stage);
+      }
+   }
 
    for (unsigned h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
       if (zds[h]) {
