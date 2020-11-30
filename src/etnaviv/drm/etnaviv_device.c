@@ -109,9 +109,9 @@ void etna_device_del(struct etna_device *dev)
 	if (!p_atomic_dec_zero(&dev->refcnt))
 		return;
 
-	pthread_mutex_lock(&etna_drm_table_lock);
+	simple_mtx_lock(&etna_drm_table_lock);
 	etna_device_del_impl(dev);
-	pthread_mutex_unlock(&etna_drm_table_lock);
+	simple_mtx_unlock(&etna_drm_table_lock);
 }
 
 int etna_device_fd(struct etna_device *dev)

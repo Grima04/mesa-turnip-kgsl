@@ -122,7 +122,7 @@ static struct etna_bo *find_in_bucket(struct etna_bo_bucket *bucket, uint32_t fl
 {
 	struct etna_bo *bo = NULL, *tmp;
 
-	pthread_mutex_lock(&etna_drm_table_lock);
+	simple_mtx_lock(&etna_drm_table_lock);
 
 	if (list_is_empty(&bucket->list))
 		goto out_unlock;
@@ -146,7 +146,7 @@ static struct etna_bo *find_in_bucket(struct etna_bo_bucket *bucket, uint32_t fl
 	bo = NULL;
 
 out_unlock:
-	pthread_mutex_unlock(&etna_drm_table_lock);
+	simple_mtx_unlock(&etna_drm_table_lock);
 
 	return bo;
 }

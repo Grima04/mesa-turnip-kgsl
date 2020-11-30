@@ -30,7 +30,7 @@
 #include "etnaviv_priv.h"
 #include "etnaviv_drmif.h"
 
-pthread_mutex_t etna_drm_table_lock = PTHREAD_MUTEX_INITIALIZER;
+simple_mtx_t etna_drm_table_lock = _SIMPLE_MTX_INITIALIZER_NP;
 void _etna_bo_del(struct etna_bo *bo);
 
 /* set buffer name, and add to table, call w/ etna_drm_table_lock held: */
@@ -135,10 +135,10 @@ struct etna_bo *etna_bo_new(struct etna_device *dev, uint32_t size,
 	if (ret)
 		return NULL;
 
-	pthread_mutex_lock(&etna_drm_table_lock);
+	simple_mtx_lock(&etna_drm_table_lock);
 	bo = bo_from_handle(dev, size, req.handle, flags);
 	bo->reuse = 1;
-	pthread_mutex_unlock(&etna_drm_table_lock);
+	simple_mtx_unlock(&etna_drm_table_lock);
 
 	VG_BO_ALLOC(bo);
 
@@ -181,7 +181,7 @@ struct etna_bo *etna_bo_from_name(struct etna_device *dev,
 		.name = name,
 	};
 
-	pthread_mutex_lock(&etna_drm_table_lock);
+	simple_mtx_lock(&etna_drm_table_lock);
 
 	/* check name table first, to see if bo is already open: */
 	bo = lookup_bo(dev->name_table, name);
@@ -204,7 +204,7 @@ struct etna_bo *etna_bo_from_name(struct etna_device *dev,
 	}
 
 out_unlock:
-	pthread_mutex_unlock(&etna_drm_table_lock);
+	simple_mtx_unlock(&etna_drm_table_lock);
 
 	return bo;
 }
@@ -223,11 +223,11 @@ struct etna_bo *etna_bo_from_dmabuf(struct etna_device *dev, int fd)
 	 * racing against etna_bo_del, which might invalidate the
 	 * returned handle.
 	 */
-	pthread_mutex_lock(&etna_drm_table_lock);
+	simple_mtx_lock(&etna_drm_table_lock);
 
 	ret = drmPrimeFDToHandle(dev->fd, fd, &handle);
 	if (ret) {
-		pthread_mutex_unlock(&etna_drm_table_lock);
+		simple_mtx_unlock(&etna_drm_table_lock);
 		return NULL;
 	}
 
@@ -244,7 +244,7 @@ struct etna_bo *etna_bo_from_dmabuf(struct etna_device *dev, int fd)
 	VG_BO_ALLOC(bo);
 
 out_unlock:
-	pthread_mutex_unlock(&etna_drm_table_lock);
+	simple_mtx_unlock(&etna_drm_table_lock);
 
 	return bo;
 }
@@ -257,7 +257,7 @@ void etna_bo_del(struct etna_bo *bo)
 
 	struct etna_device *dev = bo->dev;
 
-	pthread_mutex_lock(&etna_drm_table_lock);
+	simple_mtx_lock(&etna_drm_table_lock);
 
 	/* Must test under table lock to avoid racing with the from_dmabuf/name
 	 * paths, which rely on the BO refcount to be stable over the lookup, so
@@ -272,7 +272,7 @@ void etna_bo_del(struct etna_bo *bo)
 	_etna_bo_del(bo);
 	etna_device_del_locked(dev);
 out:
-	pthread_mutex_unlock(&etna_drm_table_lock);
+	simple_mtx_unlock(&etna_drm_table_lock);
 }
 
 /* get the global flink/DRI2 buffer name */
@@ -289,9 +289,9 @@ int etna_bo_get_name(struct etna_bo *bo, uint32_t *name)
 			return ret;
 		}
 
-		pthread_mutex_lock(&etna_drm_table_lock);
+		simple_mtx_lock(&etna_drm_table_lock);
 		set_name(bo, req.name);
-		pthread_mutex_unlock(&etna_drm_table_lock);
+		simple_mtx_unlock(&etna_drm_table_lock);
 		bo->reuse = 0;
 	}
 
