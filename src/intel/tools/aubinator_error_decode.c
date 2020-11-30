@@ -749,7 +749,7 @@ print_help(const char *progname, FILE *file)
 int
 main(int argc, char *argv[])
 {
-   FILE *file;
+   FILE *file = NULL;
    const char *path;
    struct stat st;
    int c, i, error;
@@ -820,11 +820,14 @@ main(int argc, char *argv[])
       }
    } else {
       path = argv[optind];
-      error = stat(path, &st);
-      if (error != 0) {
-         fprintf(stderr, "Error opening %s: %s\n",
-                 path, strerror(errno));
-         exit(EXIT_FAILURE);
+      if (strcmp(path, "-") == 0) {
+         file = stdin;
+      } else {
+         error = stat(path, &st);
+         if (error != 0) {
+            fprintf(stderr, "Error opening %s: %s\n", path, strerror(errno));
+            exit(EXIT_FAILURE);
+         }
       }
    }
 
@@ -834,7 +837,7 @@ main(int argc, char *argv[])
    if (isatty(1) && pager)
       setup_pager();
 
-   if (S_ISDIR(st.st_mode)) {
+   if (!file && S_ISDIR(st.st_mode)) {
       ASSERTED int ret;
       char *filename;
 
@@ -860,7 +863,7 @@ main(int argc, char *argv[])
                  path);
          return EXIT_FAILURE;
       }
-   } else {
+   } else if (!file) {
       file = fopen(path, "r");
       if (!file) {
          fprintf(stderr, "Failed to open %s: %s\n",
