@@ -170,4 +170,7 @@ zink_descriptor_pool_reference(struct zink_screen *screen,
       zink_descriptor_pool_free(screen, old_dst);
    if (dst) *dst = src;
 }
+
+void
+zink_descriptors_update(struct zink_context *ctx, struct zink_screen *screen, bool is_compute);
 #endif
