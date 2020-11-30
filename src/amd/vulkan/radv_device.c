@@ -1466,6 +1466,14 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->mutableDescriptorType = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR: {
+			VkPhysicalDeviceFragmentShadingRateFeaturesKHR *features =
+				(VkPhysicalDeviceFragmentShadingRateFeaturesKHR *)ext;
+			features->pipelineFragmentShadingRate = true;
+			features->primitiveFragmentShadingRate = true;
+			features->attachmentFragmentShadingRate = false; /* TODO */
+			break;
+		}
 		default:
 			break;
 		}
@@ -2126,6 +2134,32 @@ void radv_GetPhysicalDeviceProperties2(
 			VkPhysicalDeviceCustomBorderColorPropertiesEXT *props =
 				(VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
 			props->maxCustomBorderColorSamplers = RADV_BORDER_COLOR_COUNT;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR: {
+			VkPhysicalDeviceFragmentShadingRatePropertiesKHR *props =
+				(VkPhysicalDeviceFragmentShadingRatePropertiesKHR *)ext;
+			props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
+			props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
+			props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
+			props->primitiveFragmentShadingRateWithMultipleViewports = true;
+			props->layeredShadingRateAttachments = false;
+			props->fragmentShadingRateNonTrivialCombinerOps = true;
+			props->maxFragmentSize = (VkExtent2D) { 2, 2 };
+			props->maxFragmentSizeAspectRatio = 1;
+			props->maxFragmentShadingRateCoverageSamples = 1;
+			props->maxFragmentShadingRateRasterizationSamples =
+				VK_SAMPLE_COUNT_1_BIT |
+				VK_SAMPLE_COUNT_2_BIT |
+				VK_SAMPLE_COUNT_4_BIT |
+				VK_SAMPLE_COUNT_8_BIT;
+			props->fragmentShadingRateWithShaderDepthStencilWrites = false;
+			props->fragmentShadingRateWithSampleMask = true;
+			props->fragmentShadingRateWithShaderSampleMask = false;
+			props->fragmentShadingRateWithConservativeRasterization = true;
+			props->fragmentShadingRateWithFragmentShaderInterlock = false;
+			props->fragmentShadingRateWithCustomSampleLocations = true;
+			props->fragmentShadingRateStrictMultiplyCombiner = true;
 			break;
 		}
 		default:
