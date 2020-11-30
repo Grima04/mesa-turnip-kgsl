@@ -404,7 +404,10 @@ v3dv_drm_handle_device(void *data, struct wl_drm *drm, const char *device)
    info->is_set = info->fd != -1;
 
    drm_magic_t magic;
-   drmGetMagic(info->fd, &magic);
+   if (drmGetMagic(info->fd, &magic)) {
+      fprintf(stderr, "drmGetMagic failed.");
+      return;
+   }
    wl_drm_authenticate(info->wl_drm, magic);
 }
 
