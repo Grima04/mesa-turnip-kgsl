@@ -783,6 +783,9 @@ main(int argc, char *argv[])
       case 'x':
          xml_path = strdup(optarg);
          break;
+      case '?':
+         print_help(argv[0], stderr);
+         exit(EXIT_FAILURE);
       default:
          break;
       }
