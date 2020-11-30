@@ -111,6 +111,9 @@ batch_init(struct fd_batch *batch)
 	util_dynarray_init(&batch->samples, NULL);
 
 	list_inithead(&batch->log_chunks);
+
+	u_trace_init(&batch->trace, &ctx->trace_context);
+	batch->last_timestamp_cmd = NULL;
 }
 
 struct fd_batch *
@@ -222,6 +225,8 @@ batch_fini(struct fd_batch *batch)
 	util_dynarray_fini(&batch->samples);
 
 	assert(list_is_empty(&batch->log_chunks));
+
+	u_trace_fini(&batch->trace);
 }
 
 static void

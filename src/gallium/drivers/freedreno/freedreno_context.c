@@ -115,6 +115,9 @@ out:
 
 	if (flags & PIPE_FLUSH_END_OF_FRAME)
 		fd_log_eof(ctx);
+
+	u_trace_context_process(&ctx->trace_context,
+		!!(flags & PIPE_FLUSH_END_OF_FRAME));
 }
 
 static void
@@ -344,6 +347,8 @@ fd_context_destroy(struct pipe_context *pctx)
 
 	simple_mtx_destroy(&ctx->gmem_lock);
 
+	u_trace_context_fini(&ctx->trace_context);
+
 	if (fd_mesa_debug & (FD_DBG_BSTAT | FD_DBG_MSGS)) {
 		printf("batch_total=%u, batch_sysmem=%u, batch_gmem=%u, batch_nondraw=%u, batch_restore=%u\n",
 			(uint32_t)ctx->stats.batch_total, (uint32_t)ctx->stats.batch_sysmem,
@@ -395,6 +400,47 @@ fd_get_device_reset_status(struct pipe_context *pctx)
 	ctx->global_reset_count = global_faults;
 
 	return status;
+}
+
+static void
+fd_trace_record_ts(struct u_trace *ut, struct pipe_resource *timestamps,
+		unsigned idx)
+{
+	struct fd_batch *batch = container_of(ut, batch, trace);
+	struct fd_ringbuffer *ring = batch->nondraw ? batch->draw : batch->gmem;
+
+	if (ring->cur == batch->last_timestamp_cmd) {
+		uint64_t *ts = fd_bo_map(fd_resource(timestamps)->bo);
+		ts[idx] = U_TRACE_NO_TIMESTAMP;
+		return;
+	}
+
+	unsigned ts_offset = idx * sizeof(uint64_t);
+	batch->ctx->record_timestamp(ring, fd_resource(timestamps)->bo, ts_offset);
+	batch->last_timestamp_cmd = ring->cur;
+}
+
+static uint64_t
+fd_trace_read_ts(struct u_trace_context *utctx,
+		struct pipe_resource *timestamps, unsigned idx)
+{
+	struct fd_context *ctx = container_of(utctx, ctx, trace_context);
+	struct fd_bo *ts_bo = fd_resource(timestamps)->bo;
+
+	/* Only need to stall on results for the first entry: */
+	if (idx == 0) {
+		int ret = fd_bo_cpu_prep(ts_bo, ctx->pipe, DRM_FREEDRENO_PREP_READ);
+		if (ret)
+			return U_TRACE_NO_TIMESTAMP;
+	}
+
+	uint64_t *ts = fd_bo_map(ts_bo);
+
+	/* Don't translate the no-timestamp marker: */
+	if (ts[idx] == U_TRACE_NO_TIMESTAMP)
+		return U_TRACE_NO_TIMESTAMP;
+
+	return ctx->ts_to_ns(ts[idx]);
 }
 
 /* TODO we could combine a few of these small buffers (solid_vbuf,
@@ -560,6 +606,9 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	ctx->current_scissor = &ctx->disabled_scissor;
 
 	ctx->log_out = stdout;
+
+	u_trace_context_init(&ctx->trace_context, pctx,
+			fd_trace_record_ts, fd_trace_read_ts);
 
 	if ((fd_mesa_debug & FD_DBG_LOG) &&
 			!(ctx->record_timestamp && ctx->ts_to_ns)) {

@@ -32,6 +32,7 @@
 #include "freedreno_fence.h"
 #include "freedreno_log.h"
 #include "freedreno_resource.h"
+#include "freedreno_tracepoints.h"
 
 #include "fd6_blitter.h"
 #include "fd6_format.h"
@@ -823,6 +824,8 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	emit_setup(batch);
 
+	trace_start_blit(&batch->trace, info->src.resource->target, info->dst.resource->target);
+
 	if ((info->src.resource->target == PIPE_BUFFER) &&
 			(info->dst.resource->target == PIPE_BUFFER)) {
 		assert(fd_resource(info->src.resource)->layout.tile_mode == TILE6_LINEAR);
@@ -838,6 +841,8 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		emit_blit_texture(ctx, batch->draw, info);
 		fd_log(batch, "END BLIT (TEXTURE)");
 	}
+
+	trace_end_blit(&batch->trace);
 
 	fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_COLOR_TS, true);
 	fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_DEPTH_TS, true);

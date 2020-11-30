@@ -34,6 +34,7 @@
 #include "util/list.h"
 #include "util/slab.h"
 #include "util/u_string.h"
+#include "util/u_trace.h"
 
 #include "freedreno_screen.h"
 #include "freedreno_gmem.h"
@@ -392,6 +393,8 @@ struct fd_context {
 	} pvtmem[2];
 
 	struct pipe_debug_callback debug;
+
+	struct u_trace_context trace_context;
 
 	/* Called on rebind_resource() for any per-gen cleanup required: */
 	void (*rebind_resource)(struct fd_context *ctx, struct fd_resource *rsc);

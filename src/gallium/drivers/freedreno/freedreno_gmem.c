@@ -32,6 +32,7 @@
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 #include "util/format/u_format.h"
+#include "u_tracepoints.h"
 
 #include "freedreno_gmem.h"
 #include "freedreno_context.h"
@@ -39,6 +40,7 @@
 #include "freedreno_log.h"
 #include "freedreno_resource.h"
 #include "freedreno_query_hw.h"
+#include "freedreno_tracepoints.h"
 #include "freedreno_util.h"
 
 /*
@@ -589,6 +591,8 @@ render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 
 		fd_log(batch, "bin_h=%d, yoff=%d, bin_w=%d, xoff=%d",
 			tile->bin_h, tile->yoff, tile->bin_w, tile->xoff);
+		trace_start_tile(&batch->trace, tile->bin_h,
+			tile->yoff, tile->bin_w, tile->xoff);
 
 		ctx->emit_tile_prep(batch, tile);
 
@@ -603,12 +607,13 @@ render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 
 		/* emit IB to drawcmds: */
 		fd_log(batch, "TILE[%d]: START DRAW IB", i);
+		trace_start_draw_ib(&batch->trace);
 		if (ctx->emit_tile) {
 			ctx->emit_tile(batch, tile);
 		} else {
 			ctx->screen->emit_ib(batch->gmem, batch->draw);
 		}
-
+		trace_end_draw_ib(&batch->trace);
 		fd_log(batch, "TILE[%d]: END DRAW IB", i);
 		fd_reset_wfi(batch);
 
@@ -634,11 +639,13 @@ render_sysmem(struct fd_batch *batch)
 
 	if (!batch->nondraw) {
 		fd_log(batch, "SYSMEM: START DRAW IB");
+		trace_start_draw_ib(&batch->trace);
 	}
 	/* emit IB to drawcmds: */
 	ctx->screen->emit_ib(batch->gmem, batch->draw);
 
 	if (!batch->nondraw) {
+		trace_end_draw_ib(&batch->trace);
 		fd_log(batch, "SYSMEM: END DRAW IB");
 	}
 
@@ -671,6 +678,12 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 	struct fd_context *ctx = batch->ctx;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	bool sysmem = false;
+
+	if (!batch->nondraw) {
+		trace_flush_batch(&batch->trace, batch, batch->cleared,
+				batch->gmem_reason, batch->num_draws);
+		trace_framebuffer_state(&batch->trace, pfb);
+	}
 
 	if (ctx->emit_sysmem_prep && !batch->nondraw) {
 		if (batch->cleared || batch->gmem_reason ||
@@ -731,6 +744,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 			util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
 			util_format_short_name(pipe_surface_format(pfb->zsbuf)),
 			batch->num_draws);
+		trace_render_sysmem(&batch->trace);
 		if (ctx->query_prepare)
 			ctx->query_prepare(batch, 1);
 		render_sysmem(batch);
@@ -742,6 +756,8 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 			batch, pfb->width, pfb->height, gmem->nbins_x, gmem->nbins_y,
 			util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
 			util_format_short_name(pipe_surface_format(pfb->zsbuf)));
+		trace_render_gmem(&batch->trace, gmem->nbins_x, gmem->nbins_y,
+			gmem->bin_w, gmem->bin_h);
 		if (ctx->query_prepare)
 			ctx->query_prepare(batch, gmem->nbins_x * gmem->nbins_y);
 		render_tiles(batch, gmem);
@@ -755,6 +771,8 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 	}
 
 	flush_ring(batch);
+
+	u_trace_flush(&batch->trace);
 }
 
 /* Determine a worst-case estimate (ie. assuming we don't eliminate an

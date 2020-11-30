@@ -217,6 +217,19 @@ files_libfreedreno = files(
   'ir3/ir3_gallium.h',
 )
 
+files_libfreedreno += custom_target(
+  'freedreno_tracepoints.[ch]',
+  input: 'freedreno_tracepoints.py',
+  output: ['freedreno_tracepoints.c', 'freedreno_tracepoints.h'],
+  command: [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/gallium/auxiliary/util/'),
+    '-C', '@OUTPUT0@',
+    '-H', '@OUTPUT1@',
+  ],
+  depend_files: u_trace_py,
+)
+
 freedreno_includes = [
   inc_mesa, inc_mapi,
   inc_src, inc_include, inc_gallium, inc_gallium_aux,
@@ -244,7 +257,8 @@ libfreedreno = static_library(
     dep_libdrm,
     idep_mesautil,
     idep_nir_headers,
-    idep_libfreedreno_common
+    idep_libfreedreno_common,
+    idep_u_tracepoints,
   ],
 )
 

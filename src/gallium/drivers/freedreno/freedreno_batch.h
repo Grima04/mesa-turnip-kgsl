@@ -29,6 +29,7 @@
 
 #include "util/u_inlines.h"
 #include "util/u_queue.h"
+#include "util/u_trace.h"
 #include "util/list.h"
 #include "util/simple_mtx.h"
 
@@ -51,6 +52,11 @@ struct fd_batch {
 	struct pipe_reference reference;
 	unsigned seqno;
 	unsigned idx;       /* index into cache->batches[] */
+
+	struct u_trace trace;
+
+	/* To detect cases where we can skip cmdstream to record timestamp: */
+	uint32_t *last_timestamp_cmd;
 
 	int in_fence_fd;
 	bool needs_out_fence_fd;
