@@ -136,7 +136,6 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkGraphicsPipelineCreateInfo pci = {};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-   pci.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
    pci.layout = prog->layout;
    pci.renderPass = state->render_pass->render_pass;
    pci.pVertexInputState = &vertex_input_state;
