@@ -25,6 +25,8 @@
 
 #include "radv_meta.h"
 
+#include "vk_util.h"
+
 #include <fcntl.h>
 #include <limits.h>
 #include <pwd.h>

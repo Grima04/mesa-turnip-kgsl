@@ -26,6 +26,7 @@
 #include "util/half_float.h"
 #include "util/u_pack_color.h"
 #include "vk_format_info.h"
+#include "vk_util.h"
 
 const struct v3dv_dynamic_state default_dynamic_state = {
    .viewport = {

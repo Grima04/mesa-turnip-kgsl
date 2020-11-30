@@ -66,10 +66,6 @@ extern "C" {
 
 #define lvp_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
-#define typed_memcpy(dest, src, count) ({ \
-   memcpy((dest), (src), (count) * sizeof(*(src))); \
-})
-
 int lvp_get_instance_entrypoint_index(const char *name);
 int lvp_get_device_entrypoint_index(const char *name);
 int lvp_get_physical_device_entrypoint_index(const char *name);

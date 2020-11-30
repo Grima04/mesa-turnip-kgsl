@@ -355,11 +355,6 @@ static inline uintptr_t anv_pack_ptr(void *ptr, int bits, int flags)
         (b) = __builtin_ffs(__dword) - 1, __dword;      \
         __dword &= ~(1 << (b)))
 
-#define typed_memcpy(dest, src, count) ({ \
-   STATIC_ASSERT(sizeof(*src) == sizeof(*dest)); \
-   memcpy((dest), (src), (count) * sizeof(*(src))); \
-})
-
 /* Mapping from anv object to VkDebugReportObjectTypeEXT. New types need
  * to be added here in order to utilize mapping in debug/error/perf macros.
  */

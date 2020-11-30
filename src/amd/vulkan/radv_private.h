@@ -183,11 +183,6 @@ radv_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
 	     (b) = __builtin_ffs(__dword) - 1, __dword;	\
 	     __dword &= ~(1 << (b)))
 
-#define typed_memcpy(dest, src, count) ({				\
-			STATIC_ASSERT(sizeof(*src) == sizeof(*dest)); \
-			memcpy((dest), (src), (count) * sizeof(*(src))); \
-		})
-
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
  * propagating errors. Might be useful to plug in a stack trace here.

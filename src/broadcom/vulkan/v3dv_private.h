@@ -114,11 +114,6 @@ pack_emit_reloc(void *cl, const void *reloc) {}
    for (uint32_t __dword = (dword);                                          \
         (b) = __builtin_ffs(__dword) - 1, __dword; __dword &= ~(1 << (b)))
 
-#define typed_memcpy(dest, src, count) ({				\
-			STATIC_ASSERT(sizeof(*src) == sizeof(*dest)); \
-			memcpy((dest), (src), (count) * sizeof(*(src))); \
-		})
-
 struct v3dv_instance;
 
 #ifdef USE_V3D_SIMULATOR
