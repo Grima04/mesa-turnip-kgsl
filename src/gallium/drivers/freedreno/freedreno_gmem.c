@@ -784,12 +784,6 @@ fd_gmem_needs_restore(struct fd_batch *batch, const struct fd_tile *tile,
 	return true;
 }
 
-static inline unsigned
-max_bitfield_val(unsigned high, unsigned low, unsigned shift)
-{
-	return BITFIELD_MASK(high - low) << shift;
-}
-
 void
 fd_gmem_screen_init(struct pipe_screen *pscreen)
 {
