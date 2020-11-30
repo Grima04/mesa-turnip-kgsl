@@ -4948,12 +4948,18 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          unsigned fetch_offset = attrib_offset + channel_start * vtx_info->chan_byte_size;
          bool expanded = false;
 
-         /* use MUBUF when possible to avoid possible alignment issues */
+         /* Use MUBUF when possible to avoid possible alignment issues.
+          * We don't use MUBUF for multi-component loads because
+          * robustBufferAccess2 requires that bounds checking is per-attribute,
+          * but MUBUF is per-dword. Other generations get around this by doing
+          * bounds checking with the index, instead of the offset like GFX8. */
          /* TODO: we could use SDWA to unpack 8/16-bit attributes without extra instructions */
          bool use_mubuf = (nfmt == V_008F0C_BUF_NUM_FORMAT_FLOAT ||
                            nfmt == V_008F0C_BUF_NUM_FORMAT_UINT ||
                            nfmt == V_008F0C_BUF_NUM_FORMAT_SINT) &&
-                          vtx_info->chan_byte_size == 4;
+                          vtx_info->chan_byte_size == 4 &&
+                          (fetch_component == 1 || ctx->options->chip_class != GFX8 ||
+                           !ctx->options->robust_buffer_access2);
          unsigned fetch_dfmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
          if (!use_mubuf) {
             fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, attrib_stride, &fetch_component);

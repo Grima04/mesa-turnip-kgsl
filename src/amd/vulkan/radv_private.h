@@ -826,8 +826,9 @@ struct radv_device {
 	struct radv_device_extension_table enabled_extensions;
 	struct radv_device_dispatch_table dispatch;
 
-	/* Whether the app has enabled the robustBufferAccess feature. */
+	/* Whether the app has enabled the robustBufferAccess/robustBufferAccess2 features. */
 	bool robust_buffer_access;
+	bool robust_buffer_access2;
 
 	/* Whether gl_FragCoord.z should be adjusted for VRS due to a hw bug
 	 * on some GFX10.3 chips.
