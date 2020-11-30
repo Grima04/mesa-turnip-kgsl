@@ -880,11 +880,11 @@ build_addr_for_var(nir_builder *b, nir_variable *var,
       nir_ssa_def *base_addr;
       switch (var->data.mode) {
       case nir_var_shader_temp:
-         base_addr = nir_load_scratch_base_ptr(b, 0, num_comps, bit_size);
+         base_addr = nir_load_scratch_base_ptr(b, num_comps, bit_size, 0);
          break;
 
       case nir_var_function_temp:
-         base_addr = nir_load_scratch_base_ptr(b, 1, num_comps, bit_size);
+         base_addr = nir_load_scratch_base_ptr(b, num_comps, bit_size, 1);
          break;
 
       case nir_var_mem_constant:

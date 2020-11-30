@@ -36,7 +36,7 @@ brw_nir_rt_load_scratch(nir_builder *b, uint32_t offset, unsigned align,
                         unsigned num_components, unsigned bit_size)
 {
    nir_ssa_def *addr =
-      nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 1, 64), offset);
+      nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 64, 1), offset);
    return nir_load_global(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
                           num_components, bit_size);
 }
@@ -46,7 +46,7 @@ brw_nir_rt_store_scratch(nir_builder *b, uint32_t offset, unsigned align,
                          nir_ssa_def *value, nir_component_mask_t write_mask)
 {
    nir_ssa_def *addr =
-      nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 1, 64), offset);
+      nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 64, 1), offset);
    nir_store_global(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
                     value, write_mask);
 }
