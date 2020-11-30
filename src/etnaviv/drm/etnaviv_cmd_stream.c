@@ -154,6 +154,8 @@ static uint32_t append_bo(struct etna_cmd_stream *stream, struct etna_bo *bo)
 	struct etna_cmd_stream_priv *priv = etna_cmd_stream_priv(stream);
 	uint32_t idx;
 
+	simple_mtx_assert_locked(&idx_lock);
+
 	idx = APPEND(&priv->submit, bos);
 	idx = APPEND(priv, bos);
 

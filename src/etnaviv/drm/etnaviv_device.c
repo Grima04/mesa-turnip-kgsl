@@ -98,6 +98,8 @@ static void etna_device_del_impl(struct etna_device *dev)
 
 void etna_device_del_locked(struct etna_device *dev)
 {
+	simple_mtx_assert_locked(&etna_drm_table_lock);
+
 	if (!p_atomic_dec_zero(&dev->refcnt))
 		return;
 

@@ -36,6 +36,8 @@ void _etna_bo_del(struct etna_bo *bo);
 /* set buffer name, and add to table, call w/ etna_drm_table_lock held: */
 static void set_name(struct etna_bo *bo, uint32_t name)
 {
+	simple_mtx_assert_locked(&etna_drm_table_lock);
+
 	bo->name = name;
 	/* add ourself into the name table: */
 	_mesa_hash_table_insert(bo->dev->name_table, &bo->name, bo);
@@ -45,6 +47,8 @@ static void set_name(struct etna_bo *bo, uint32_t name)
 void _etna_bo_del(struct etna_bo *bo)
 {
 	VG_BO_FREE(bo);
+
+	simple_mtx_assert_locked(&etna_drm_table_lock);
 
 	if (bo->va)
 		util_vma_heap_free(&bo->dev->address_space, bo->va, bo->size);
@@ -71,7 +75,11 @@ void _etna_bo_del(struct etna_bo *bo)
 static struct etna_bo *lookup_bo(void *tbl, uint32_t handle)
 {
 	struct etna_bo *bo = NULL;
-	struct hash_entry *entry = _mesa_hash_table_search(tbl, &handle);
+	struct hash_entry *entry;
+
+	simple_mtx_assert_locked(&etna_drm_table_lock);
+
+	entry = _mesa_hash_table_search(tbl, &handle);
 
 	if (entry) {
 		/* found, incr refcnt and return: */
@@ -89,6 +97,8 @@ static struct etna_bo *bo_from_handle(struct etna_device *dev,
 		uint32_t size, uint32_t handle, uint32_t flags)
 {
 	struct etna_bo *bo = calloc(sizeof(*bo), 1);
+
+	simple_mtx_assert_locked(&etna_drm_table_lock);
 
 	if (!bo) {
 		struct drm_gem_close req = {
