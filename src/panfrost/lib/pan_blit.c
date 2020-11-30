@@ -605,6 +605,7 @@ bifrost_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
                 }
                 cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
                 cfg.preload.fragment.coverage = true;
+                cfg.preload.fragment.sample_mask_id = image->nr_samples > 1;
         }
 
         for (unsigned i = 0; i < 8; ++i) {
