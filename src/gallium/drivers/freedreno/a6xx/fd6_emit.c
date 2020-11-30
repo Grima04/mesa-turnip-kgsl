@@ -32,7 +32,6 @@
 #include "util/format/u_format.h"
 #include "util/u_viewport.h"
 
-#include "freedreno_log.h"
 #include "freedreno_resource.h"
 #include "freedreno_state.h"
 #include "freedreno_tracepoints.h"
@@ -1176,7 +1175,6 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	//struct fd_context *ctx = batch->ctx;
 
 	if (!batch->nondraw) {
-		fd_log(batch, "START RESTORE");
 		trace_start_state_restore(&batch->trace);
 	}
 
@@ -1296,7 +1294,6 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 	if (!batch->nondraw) {
 		trace_end_state_restore(&batch->trace);
-		fd_log(batch, "END RESTORE");
 	}
 }
 

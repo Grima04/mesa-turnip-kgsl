@@ -34,7 +34,6 @@
 #include "util/format/u_format.h"
 
 #include "freedreno_draw.h"
-#include "freedreno_log.h"
 #include "freedreno_state.h"
 #include "freedreno_resource.h"
 #include "freedreno_tracepoints.h"
@@ -577,11 +576,9 @@ emit_binning_pass(struct fd_batch *batch)
 			A6XX_SP_TP_WINDOW_OFFSET_Y(0));
 
 	/* emit IB to binning drawcmds: */
-	fd_log(batch, "GMEM: START BINNING IB");
 	trace_start_binning_ib(&batch->trace);
 	fd6_emit_ib(ring, batch->draw);
 	trace_end_binning_ib(&batch->trace);
-	fd_log(batch, "GMEM: END BINNING IB");
 
 	fd_reset_wfi(batch);
 
@@ -601,11 +598,9 @@ emit_binning_pass(struct fd_batch *batch)
 
 	OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
 
-	fd_log(batch, "START VSC OVERFLOW TEST");
 	trace_start_vsc_overflow_test(&batch->trace);
 	emit_vsc_overflow_test(batch);
 	trace_end_vsc_overflow_test(&batch->trace);
-	fd_log(batch, "END VSC OVERFLOW TEST");
 
 	OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
 	OUT_RING(ring, 0x0);
@@ -662,11 +657,9 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	fd6_emit_lrz_flush(ring);
 
 	if (batch->prologue) {
-		fd_log(batch, "START PROLOGUE");
 		trace_start_prologue(&batch->trace);
 		fd6_emit_ib(ring, batch->prologue);
 		trace_end_prologue(&batch->trace);
-		fd_log(batch, "END PROLOGUE");
 	}
 
 	fd6_cache_inv(batch, ring);
@@ -1125,7 +1118,6 @@ fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 	if (!batch->tile_setup)
 		return;
 
-	fd_log(batch, "TILE: START CLEAR/RESTORE");
 	trace_start_clear_restore(&batch->trace, batch->fast_cleared);
 	if (batch->fast_cleared || !use_hw_binning(batch)) {
 		fd6_emit_ib(batch->gmem, batch->tile_setup);
@@ -1133,7 +1125,6 @@ fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 		emit_conditional_ib(batch, tile, batch->tile_setup);
 	}
 	trace_end_clear_restore(&batch->trace);
-	fd_log(batch, "TILE: END CLEAR/RESTORE");
 }
 
 static void
@@ -1253,7 +1244,6 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
 	emit_marker6(ring, 7);
 
-	fd_log(batch, "TILE: START RESOLVE");
 	trace_start_resolve(&batch->trace);
 	if (batch->fast_cleared || !use_hw_binning(batch)) {
 		fd6_emit_ib(batch->gmem, batch->tile_fini);
@@ -1261,7 +1251,6 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 		emit_conditional_ib(batch, tile, batch->tile_fini);
 	}
 	trace_end_resolve(&batch->trace);
-	fd_log(batch, "TILE: END RESOLVE");
 }
 
 static void
@@ -1373,13 +1362,11 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 
 	if (batch->prologue) {
 		if (!batch->nondraw) {
-			fd_log(batch, "START PROLOGUE");
 			trace_start_prologue(&batch->trace);
 		}
 		fd6_emit_ib(ring, batch->prologue);
 		if (!batch->nondraw) {
 			trace_end_prologue(&batch->trace);
-			fd_log(batch, "END PROLOGUE");
 		}
 	}
 

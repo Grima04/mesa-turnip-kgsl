@@ -246,8 +246,6 @@ struct fd_batch {
 	uint32_t tessparam_size;
 
 	struct fd_ringbuffer *tess_addrs_constobj;
-
-	struct list_head log_chunks;  /* list of unflushed log chunks in fifo order */
 };
 
 struct fd_batch * fd_batch_create(struct fd_context *ctx, bool nondraw);

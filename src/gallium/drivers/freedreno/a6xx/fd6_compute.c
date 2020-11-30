@@ -28,7 +28,6 @@
 #include "util/u_dump.h"
 #include "u_tracepoints.h"
 
-#include "freedreno_log.h"
 #include "freedreno_resource.h"
 #include "freedreno_tracepoints.h"
 
@@ -197,9 +196,6 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 	trace_grid_info(&ctx->batch->trace, info);
 	trace_start_compute(&ctx->batch->trace);
 
-	fd_log(ctx->batch, "COMPUTE: START");
-	fd_log_stream(ctx->batch, stream, util_dump_grid_info(stream, info));
-
 	if (info->indirect) {
 		struct fd_resource *rsc = fd_resource(info->indirect);
 
@@ -219,12 +215,9 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 
 	trace_end_compute(&ctx->batch->trace);
 
-	fd_log(ctx->batch, "COMPUTE: END");
 	OUT_WFI5(ring);
-	fd_log(ctx->batch, "..");
 
 	fd6_cache_flush(ctx->batch, ring);
-	fd_log(ctx->batch, "..");
 }
 
 void

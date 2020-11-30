@@ -441,10 +441,6 @@ struct fd_context {
 	void (*record_timestamp)(struct fd_ringbuffer *ring, struct fd_bo *bo, unsigned offset);
 	uint64_t (*ts_to_ns)(uint64_t ts);
 
-	struct list_head log_chunks;  /* list of flushed log chunks in fifo order */
-	unsigned frame_nr;            /* frame counter (for fd_log) */
-	FILE *log_out;
-
 	/*
 	 * Common pre-cooked VBO state (used for a3xx and later):
 	 */

@@ -201,7 +201,7 @@ timestamp_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 	/* We captured a timestamp in timestamp_resume(), nothing to do here. */
 }
 
-/* timestamp logging for fd_log(): */
+/* timestamp logging for u_trace: */
 static void
 record_timestamp(struct fd_ringbuffer *ring, struct fd_bo *bo, unsigned offset)
 {
