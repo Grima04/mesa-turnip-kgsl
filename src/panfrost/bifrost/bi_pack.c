@@ -104,6 +104,13 @@ bi_assign_fau_idx_single(bi_registers *regs,
         if (!ins)
                 return assigned;
 
+        if (ins->op == BI_OPCODE_ATEST) {
+                /* ATEST FAU index must point to the ATEST parameter datum slot */
+                assert(!assigned && !clause->branch_constant);
+                regs->fau_idx = BIR_FAU_ATEST_PARAM;
+                return true;
+        }
+
         if (ins->branch_target && clause->branch_constant) {
                 /* By convention branch constant is last XXX: this whole thing
                  * is a hack, FIXME */
