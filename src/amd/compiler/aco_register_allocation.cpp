@@ -945,11 +945,10 @@ bool get_regs_for_copies(ra_ctx& ctx,
 
       /* mark the area as blocked */
       reg_file.block(PhysReg{reg_lo}, var.rc);
+      adjust_max_used_regs(ctx, var.rc, reg_lo);
 
       if (!get_regs_for_copies(ctx, reg_file, parallelcopies, new_vars, lb, ub, instr, def_reg_lo, def_reg_hi))
          return false;
-
-      adjust_max_used_regs(ctx, var.rc, reg_lo);
 
       /* create parallelcopy pair (without definition id) */
       Temp tmp = Temp(id, var.rc);
