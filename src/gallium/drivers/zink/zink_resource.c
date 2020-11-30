@@ -845,9 +845,6 @@ zink_transfer_flush_region(struct pipe_context *pctx,
    if (trans->base.usage & PIPE_MAP_WRITE) {
       if (trans->staging_res) {
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
-         if (zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_WRITE))
-            /* don't actually have to stall here, only ensure batch is submitted */
-            zink_flush_queue(ctx);
 
          if (ptrans->resource->target == PIPE_BUFFER)
             zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x + trans->offset, box->width);
