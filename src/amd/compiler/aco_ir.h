@@ -421,7 +421,7 @@ public:
    constexpr Operand()
       : reg_(PhysReg{128}), isTemp_(false), isFixed_(true), isConstant_(false),
         isKill_(false), isUndef_(true), isFirstKill_(false), constSize(0),
-        isLateKill_(false), is16bit_(false), is24bit_(false) {}
+        isLateKill_(false), is16bit_(false), is24bit_(false), signext(false) {}
 
    explicit Operand(Temp r) noexcept
    {
@@ -538,8 +538,10 @@ public:
          data_.i = 0xc0800000;
          setFixed(PhysReg{247});
       } else { /* Literal Constant: we don't know if it is a long or double.*/
-         isConstant_ = 0;
-         assert(false && "attempt to create a 64-bit literal constant");
+         signext = v >> 63;
+         data_.i = v & 0xffffffffu;
+         setFixed(PhysReg{255});
+         assert(constantValue64() == v && "attempt to create a unrepresentable 64-bit literal constant");
       }
    };
    explicit Operand(RegClass type) noexcept
@@ -667,6 +669,8 @@ public:
             return 0x4010000000000000;
          case 247:
             return 0xC010000000000000;
+         case 255:
+            return (signext && (data_.i & 0x80000000u) ? 0xffffffff00000000ull : 0ull) | data_.i;
          }
          unreachable("invalid register for 64-bit constant");
       } else {
@@ -785,6 +789,7 @@ private:
          uint8_t isLateKill_:1;
          uint8_t is16bit_:1;
          uint8_t is24bit_:1;
+         uint8_t signext:1;
       };
       /* can't initialize bit-fields in c++11, so work around using a union */
       uint16_t control_ = 0;
