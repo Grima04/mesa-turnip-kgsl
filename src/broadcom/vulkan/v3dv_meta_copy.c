@@ -2571,23 +2571,23 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_buffer *buffer,
                          const VkBufferImageCopy *region)
 {
-   const VkFormat vk_format = image->vk_format;
-   const struct v3dv_format *format = image->format;
-
-   /* Format must be supported for texturing */
-   if (!v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
-                                     format->tex_type)) {
-      return false;
-   }
-
-   /* Only color formats */
-   if (vk_format_is_depth_or_stencil(vk_format))
-      return false;
+   assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
 
    /* Destination can't be raster format */
-   const uint32_t mip_level = region->imageSubresource.mipLevel;
-   if (image->slices[mip_level].tiling == VC5_TILING_RASTER)
+   if (image->tiling == VK_IMAGE_TILING_LINEAR)
       return false;
+
+   /* We can't copy D24S8 because buffer to image copies only copy one aspect
+    * at a time, and the TFU copies full images. Also, V3D depth bits for
+    * both D24S8 and D24X8 stored in the 24-bit MSB of each 32-bit word, but
+    * the Vulkan spec has the buffer data specified the other way around, so it
+    * is not a straight copy, we would havew to swizzle the channels, which the
+    * TFU can't do.
+    */
+   if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+       image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32) {
+         return false;
+   }
 
    /* Region must include full slice */
    const uint32_t offset_x = region->imageOffset.x;
@@ -2609,11 +2609,31 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    if (width != image->extent.width || height != image->extent.height)
       return false;
 
+   /* Handle region semantics for compressed images */
    const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
    const uint32_t block_h = vk_format_get_blockheight(image->vk_format);
    width = DIV_ROUND_UP(width, block_w);
    height = DIV_ROUND_UP(height, block_h);
 
+   /* Format must be supported for texturing via the TFU. Since we are just
+    * copying raw data and not converting between pixel formats, we can ignore
+    * the image's format and choose a compatible TFU format for the image
+    * texel size instead, which expands the list of formats we can handle here.
+    */
+   VkFormat vk_format;
+   switch (image->cpp) {
+   case 16: vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;  break;
+   case 8:  vk_format = VK_FORMAT_R16G16B16A16_SFLOAT;  break;
+   case 4:  vk_format = VK_FORMAT_R32_SFLOAT;           break;
+   case 2:  vk_format = VK_FORMAT_R16_SFLOAT;           break;
+   case 1:  vk_format = VK_FORMAT_R8_UNORM;             break;
+   default: unreachable("unsupported format bit-size"); break;
+   };
+   const struct v3dv_format *format = v3dv_get_format(vk_format);
+   assert(v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
+                                       format->tex_type));
+
+   const uint32_t mip_level = region->imageSubresource.mipLevel;
    const struct v3d_resource_slice *slice = &image->slices[mip_level];
 
    uint32_t num_layers;
@@ -2635,7 +2655,7 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
       uint32_t layer = region->imageSubresource.baseArrayLayer + i;
 
       struct drm_v3d_submit_tfu tfu = {
-         .ios = ((height * block_h) << 16) | (width * block_w),
+         .ios = (height << 16) | width,
          .bo_handles = {
             dst_bo->handle,
             src_bo != dst_bo ? src_bo->handle : 0
