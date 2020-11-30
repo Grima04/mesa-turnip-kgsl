@@ -69,6 +69,7 @@ apt-get install -y --no-remove \
         python3-setuptools \
         qemu-user \
         scons \
+        valgrind \
         wine64-development \
         x11proto-dri2-dev \
         x11proto-gl-dev \

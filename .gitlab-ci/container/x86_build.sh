@@ -26,6 +26,7 @@ apt-get update
 
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
+      libasan5 \
       libarchive-dev \
       libclang-cpp10-dev \
       liblua5.3-dev \
