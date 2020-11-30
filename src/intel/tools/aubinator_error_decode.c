@@ -791,7 +791,7 @@ main(int argc, char *argv[])
       }
    }
 
-   if (help || argc == 1) {
+   if (help) {
       print_help(argv[0], stderr);
       exit(EXIT_SUCCESS);
    }
@@ -815,8 +815,7 @@ main(int argc, char *argv[])
                  "\tsudo mount -t debugfs debugfs /sys/kernel/debug\n");
          }
       } else {
-         read_data_file(stdin);
-         exit(EXIT_SUCCESS);
+         file = stdin;
       }
    } else {
       path = argv[optind];
