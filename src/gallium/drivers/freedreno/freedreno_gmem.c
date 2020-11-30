@@ -632,10 +632,16 @@ render_sysmem(struct fd_batch *batch)
 	if (ctx->query_prepare_tile)
 		ctx->query_prepare_tile(batch, 0, batch->gmem);
 
+	if (!batch->nondraw) {
+		fd_log(batch, "SYSMEM: START DRAW IB");
+	}
 	/* emit IB to drawcmds: */
-	fd_log(batch, "SYSMEM: START DRAW IB");
 	ctx->screen->emit_ib(batch->gmem, batch->draw);
-	fd_log(batch, "SYSMEM: END DRAW IB");
+
+	if (!batch->nondraw) {
+		fd_log(batch, "SYSMEM: END DRAW IB");
+	}
+
 	fd_reset_wfi(batch);
 
 	if (ctx->emit_sysmem_fini)

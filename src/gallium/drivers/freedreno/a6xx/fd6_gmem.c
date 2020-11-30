@@ -1354,9 +1354,13 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	fd6_emit_lrz_flush(ring);
 
 	if (batch->prologue) {
-		fd_log(batch, "START PROLOGUE");
+		if (!batch->nondraw) {
+			fd_log(batch, "START PROLOGUE");
+		}
 		fd6_emit_ib(ring, batch->prologue);
-		fd_log(batch, "END PROLOGUE");
+		if (!batch->nondraw) {
+			fd_log(batch, "END PROLOGUE");
+		}
 	}
 
 	/* remaining setup below here does not apply to blit/compute: */
