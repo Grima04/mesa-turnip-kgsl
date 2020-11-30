@@ -120,6 +120,9 @@ lima_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
       return 1;
 
+   case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
+      return 1;
+
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
       return 1 << (LIMA_MAX_MIP_LEVELS - 1);
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
