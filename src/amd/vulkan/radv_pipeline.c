@@ -2985,7 +2985,7 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
 	case nir_intrinsic_store_deref:
 		assert(nir_deref_mode_is(nir_src_as_deref(low->src[0]),
 		                         nir_var_mem_shared));
-		/* fallthrough */
+		FALLTHROUGH;
 	case nir_intrinsic_load_shared:
 	case nir_intrinsic_store_shared:
 		if (bit_size * num_components > 64) /* 96 and 128 bit loads require 128 bit alignment and are split otherwise */
