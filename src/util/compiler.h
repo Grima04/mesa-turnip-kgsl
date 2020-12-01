@@ -76,8 +76,8 @@
 #  define __has_attribute(x) 0
 #endif
 
-#if __cplusplus >= 201703L || __STDC_VERSION__ >= 201710L
-/* Standard C++17/C18 attribute */
+#if __cplusplus >= 201703L || __STDC_VERSION__ > 201710L
+/* Standard C++17/C23 attribute */
 #define FALLTHROUGH [[fallthrough]]
 #elif __has_attribute(fallthrough)
 /* Non-standard but supported by at least gcc and clang */
