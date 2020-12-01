@@ -27,9 +27,8 @@
  *
  * - Infer readonly when it's missing.
  * - Infer ACCESS_CAN_REORDER when the following are true:
- *   - Either there are no writes, or ACCESS_NON_WRITEABLE and ACCESS_RESTRICT
- *     are both set. In either case there are no writes to the underlying
- *     memory.
+ *   - Either there are no writes, or ACCESS_NON_WRITEABLE is set. In either
+ *     case there are no writes to the underlying memory.
  *   - ACCESS_VOLATILE is not set.
  *
  * If these conditions are true, then image and buffer reads may be treated as
@@ -160,11 +159,8 @@ can_reorder(struct access_state *state, enum gl_access_qualifier access,
       state->images_written;
 
    /* Can we guarantee that the underlying memory is never written? */
-   if (!is_any_written ||
-       ((access & ACCESS_NON_WRITEABLE) &&
-        (access & ACCESS_RESTRICT))) {
+   if (!is_any_written || (access & ACCESS_NON_WRITEABLE))
       return !(access & ACCESS_VOLATILE);
-   }
 
    return false;
 }
