@@ -84,6 +84,7 @@ nir_options = {
    .lower_flrp16 = true,
    .lower_flrp32 = true,
    .lower_flrp64 = true,
+   .lower_bitfield_extract_to_shifts = true,
    .lower_extract_word = true,
    .lower_extract_byte = true,
    .lower_all_io_to_elements = true,
