@@ -4001,20 +4001,18 @@ compute_blit_3d_layers(const VkOffset3D *offsets,
 /**
  * Returns true if the implementation supports the requested operation (even if
  * it failed to process it, for example, due to an out-of-memory error).
+ *
+ * The TFU blit path doesn't handle scaling so the blit filter parameter can
+ * be ignored.
  */
 static bool
 blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
          struct v3dv_image *dst,
          struct v3dv_image *src,
-         const VkImageBlit *region,
-         VkFilter filter)
+         const VkImageBlit *region)
 {
    assert(dst->samples == VK_SAMPLE_COUNT_1_BIT);
    assert(src->samples == VK_SAMPLE_COUNT_1_BIT);
-
-   /* FIXME: The v3d driver seems to ignore filtering completely! */
-   if (filter != VK_FILTER_NEAREST)
-      return false;
 
    /* Format must match */
    if (src->vk_format != dst->vk_format)
@@ -5444,7 +5442,7 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
    assert(!vk_format_is_compressed(dst->vk_format));
 
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (blit_tfu(cmd_buffer, dst, src, &pRegions[i], filter))
+      if (blit_tfu(cmd_buffer, dst, src, &pRegions[i]))
          continue;
       if (blit_shader(cmd_buffer,
                       dst, dst->vk_format,
