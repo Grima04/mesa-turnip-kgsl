@@ -53,6 +53,7 @@
 extern "C" {
 #endif
 
+struct gl_buffer_object;
 
 /**
  * Implementation limits
@@ -778,6 +779,7 @@ struct pipe_draw_info
     */
    union {
       struct pipe_resource *resource;  /**< real buffer */
+      struct gl_buffer_object *gl_bo; /**< for the GL frontend, not passed to drivers */
       const void *user;  /**< pointer to a user buffer */
    } index;
 
