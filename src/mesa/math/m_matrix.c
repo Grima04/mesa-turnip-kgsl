@@ -1400,7 +1400,7 @@ _math_matrix_analyse( GLmatrix *mat )
 	 analyse_from_flags( mat );
    }
 
-   if (mat->inv && (mat->flags & MAT_DIRTY_INVERSE)) {
+   if (mat->flags & MAT_DIRTY_INVERSE) {
       matrix_invert( mat );
       mat->flags &= ~MAT_DIRTY_INVERSE;
    }
