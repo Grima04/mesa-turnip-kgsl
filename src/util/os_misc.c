@@ -195,7 +195,7 @@ os_get_android_option(const char *name)
       opt = ralloc_strdup(options_tbl, value);
    }
 
-   _mesa_hash_table_insert(options_tbl, name, value);
+   _mesa_hash_table_insert(options_tbl, name, (void *)opt);
 
    return opt;
 }
