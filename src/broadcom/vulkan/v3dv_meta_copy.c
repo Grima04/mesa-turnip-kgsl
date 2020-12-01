@@ -2913,9 +2913,15 @@ create_texel_buffer_copy_descriptor_pool(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (result == VK_SUCCESS) {
       assert(cmd_buffer->meta.texel_buffer_copy.dspool != VK_NULL_HANDLE);
+      const VkDescriptorPool _pool = cmd_buffer->meta.texel_buffer_copy.dspool;
+
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (uintptr_t)cmd_buffer->meta.texel_buffer_copy.dspool,
+         cmd_buffer, (uintptr_t) _pool,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyDescriptorPool);
+
+      struct v3dv_descriptor_pool *pool =
+         v3dv_descriptor_pool_from_handle(_pool);
+      pool->is_driver_internal = true;
    }
 
    return result;
@@ -4946,9 +4952,15 @@ create_blit_descriptor_pool(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (result == VK_SUCCESS) {
       assert(cmd_buffer->meta.blit.dspool != VK_NULL_HANDLE);
+      const VkDescriptorPool _pool = cmd_buffer->meta.blit.dspool;
+
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (uintptr_t)cmd_buffer->meta.blit.dspool,
+         cmd_buffer, (uintptr_t) _pool,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyDescriptorPool);
+
+      struct v3dv_descriptor_pool *pool =
+         v3dv_descriptor_pool_from_handle(_pool);
+      pool->is_driver_internal = true;
    }
 
    return result;

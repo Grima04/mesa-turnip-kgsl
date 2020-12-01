@@ -1450,6 +1450,11 @@ struct v3dv_descriptor_pool_entry
 struct v3dv_descriptor_pool {
    struct vk_object_base base;
 
+   /* If this descriptor pool has been allocated for the driver for internal
+    * use, typically to implement meta operations.
+    */
+   bool is_driver_internal;
+
    struct v3dv_bo *bo;
    /* Current offset at the descriptor bo. 0 means that we didn't use it for
     * any descriptor. If the descriptor bo is NULL, current offset is

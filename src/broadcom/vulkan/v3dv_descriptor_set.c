@@ -744,6 +744,19 @@ v3dv_DestroyDescriptorSetLayout(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, set_layout);
 }
 
+static inline VkResult
+out_of_pool_memory(const struct v3dv_device *device,
+                   const struct v3dv_descriptor_pool *pool)
+{
+   /* Don't log OOPM errors for internal driver pools, we handle these properly
+    * by allocating a new pool, so they don't point to real issues.
+    */
+   if (!pool->is_driver_internal)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY)
+   else
+      return VK_ERROR_OUT_OF_POOL_MEMORY;
+}
+
 static VkResult
 descriptor_set_create(struct v3dv_device *device,
                       struct v3dv_descriptor_pool *pool,
@@ -757,7 +770,7 @@ descriptor_set_create(struct v3dv_device *device,
 
    if (pool->host_memory_base) {
       if (pool->host_memory_end - pool->host_memory_ptr < mem_size)
-         return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+         return out_of_pool_memory(device, pool);
 
       set = (struct v3dv_descriptor_set*)pool->host_memory_ptr;
       pool->host_memory_ptr += mem_size;
@@ -786,7 +799,7 @@ descriptor_set_create(struct v3dv_device *device,
    if (layout->bo_size) {
       if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
          vk_object_free(&device->vk, NULL, set);
-         return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+         return out_of_pool_memory(device, pool);
       }
 
       /* We first try to allocate linearly fist, so that we don't spend time
@@ -810,14 +823,14 @@ descriptor_set_create(struct v3dv_device *device,
          }
          if (pool->bo->size - offset < layout->bo_size) {
             vk_object_free(&device->vk, NULL, set);
-            return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+            return out_of_pool_memory(device, pool);
          }
          memmove(&pool->entries[index + 1], &pool->entries[index],
                  sizeof(pool->entries[0]) * (pool->entry_count - index));
       } else {
          assert(pool->host_memory_base);
          vk_object_free(&device->vk, NULL, set);
-         return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+         return out_of_pool_memory(device, pool);
       }
 
       set->base_offset = offset;
