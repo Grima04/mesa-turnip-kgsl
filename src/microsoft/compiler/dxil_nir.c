@@ -88,16 +88,17 @@ load_comps_to_vec32(nir_builder *b, unsigned src_bit_size,
          vec32comps[i] = src_comps[i];
          break;
       case 16:
-      case 8:
+      case 8: {
          unsigned src_offs = i * comps_per32b;
 
          vec32comps[i] = nir_u2u32(b, src_comps[src_offs]);
          for (unsigned j = 1; j < comps_per32b && src_offs + j < num_src_comps; j++) {
-             nir_ssa_def *tmp = nir_ishl(b, nir_u2u32(b, src_comps[src_offs + j]),
-                                            nir_imm_int(b, j * src_bit_size));
-             vec32comps[i] = nir_ior(b, vec32comps[i], tmp);
+            nir_ssa_def *tmp = nir_ishl(b, nir_u2u32(b, src_comps[src_offs + j]),
+                                           nir_imm_int(b, j * src_bit_size));
+            vec32comps[i] = nir_ior(b, vec32comps[i], tmp);
          }
          break;
+      }
       }
    }
 

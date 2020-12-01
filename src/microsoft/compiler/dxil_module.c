@@ -2273,12 +2273,12 @@ dxil_get_metadata_node(struct dxil_module *m,
 
    n = create_mdnode(m, MD_NODE);
    if (n) {
-      n->node.subnodes = ralloc_array(n, struct dxil_mdnode *, num_subnodes);
-      if (!n->node.subnodes)
+      void *tmp = ralloc_array(n, struct dxil_mdnode *, num_subnodes);
+      if (!tmp)
          return NULL;
 
-      memcpy(n->node.subnodes, subnodes, sizeof(struct dxil_mdnode *) *
-             num_subnodes);
+      memcpy(tmp, subnodes, sizeof(struct dxil_mdnode *) * num_subnodes);
+      n->node.subnodes = tmp;
       n->node.num_subnodes = num_subnodes;
    }
    return n;
@@ -2354,12 +2354,12 @@ dxil_add_metadata_named_node(struct dxil_module *m, const char *name,
    if (!n->name)
       return false;
 
-   n->subnodes = ralloc_array(n, struct dxil_mdnode *, num_subnodes);
-   if (!n->subnodes)
+   void *tmp = ralloc_array(n, struct dxil_mdnode *, num_subnodes);
+   if (!tmp)
       return false;
 
-   memcpy(n->subnodes, subnodes, sizeof(struct dxil_mdnode *) *
-          num_subnodes);
+   memcpy(tmp, subnodes, sizeof(struct dxil_mdnode *) * num_subnodes);
+   n->subnodes = tmp;
    n->num_subnodes = num_subnodes;
 
    list_addtail(&n->head, &m->md_named_node_list);

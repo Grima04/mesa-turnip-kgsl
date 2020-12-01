@@ -649,7 +649,7 @@ dump_mdnodes(struct dxil_dumper *d, struct list_head *list)
 }
 
 static void
-dump_mdnode(struct dxil_dumper *d, struct dxil_mdnode *node)
+dump_mdnode(struct dxil_dumper *d, const struct dxil_mdnode *node)
 {
    dxil_dump_indent(d);
    switch (node->type) {
