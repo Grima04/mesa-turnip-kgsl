@@ -467,7 +467,7 @@ bool validate_ir(Program* program)
          }
          case Format::FLAT:
             check(instr->operands[1].isUndefined(), "Flat instructions don't support SADDR", instr.get());
-            /* fallthrough */
+            FALLTHROUGH;
          case Format::GLOBAL:
          case Format::SCRATCH: {
             check(instr->operands[0].isTemp() && instr->operands[0].regClass().type() == RegType::vgpr, "FLAT/GLOBAL/SCRATCH address must be vgpr", instr.get());

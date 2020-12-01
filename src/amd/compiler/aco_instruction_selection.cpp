@@ -7688,8 +7688,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.view_index)));
          break;
       }
-
-      /* fallthrough */
+      FALLTHROUGH;
    }
    case nir_intrinsic_load_layer_id: {
       unsigned idx = nir_intrinsic_base(instr);

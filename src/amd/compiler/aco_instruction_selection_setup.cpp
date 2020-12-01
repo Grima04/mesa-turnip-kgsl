@@ -738,7 +738,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      break;
                   case nir_op_bcsel:
                      type = nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
-                     /* fallthrough */
+                     FALLTHROUGH;
                   default:
                      for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
                         if (regclasses[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
