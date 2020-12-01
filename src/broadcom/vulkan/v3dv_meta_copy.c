@@ -4058,14 +4058,9 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
       return false;
    }
 
-   /* No scaling */
+   /* No XY scaling */
    if (region->srcOffsets[1].x != region->dstOffsets[1].x ||
        region->srcOffsets[1].y != region->dstOffsets[1].y) {
-      return false;
-   }
-
-   if (dst->type == VK_IMAGE_TYPE_3D &&
-       region->srcOffsets[1].z != region->dstOffsets[1].z) {
       return false;
    }
 
@@ -4108,16 +4103,9 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
       compute_blit_3d_layers(region->dstOffsets,
                              &min_dst_layer, &max_dst_layer,
                              &dst_mirror_z);
-
-      /* TFU can only do exact copies, so we can't handle mirroring. This checks
-       * mirroring in Z for 3D images, XY mirroring is already handled by earlier
-       * checks
-       */
-      if (dst_mirror_z)
-         return false;
    } else {
       min_dst_layer = region->dstSubresource.baseArrayLayer;
-      max_dst_layer = min_dst_layer + region->dstSubresource.layerCount - 1;
+      max_dst_layer = min_dst_layer + region->dstSubresource.layerCount;
    }
 
    uint32_t min_src_layer;
@@ -4127,27 +4115,31 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
       compute_blit_3d_layers(region->srcOffsets,
                              &min_src_layer, &max_src_layer,
                              &src_mirror_z);
-
-      if (src_mirror_z)
-         return false;
    } else {
       min_src_layer = region->srcSubresource.baseArrayLayer;
-      max_src_layer = min_src_layer + region->srcSubresource.layerCount - 1;
+      max_src_layer = min_src_layer + region->srcSubresource.layerCount;
    }
 
+   /* No Z scaling for 3D images (for non-3D images both src and dst must
+    * have the same layerCount).
+    */
    if (max_dst_layer - min_dst_layer != max_src_layer - min_src_layer)
       return false;
 
-   const uint32_t layer_count = dst->type != VK_IMAGE_TYPE_3D ?
-      region->dstSubresource.layerCount :
-      max_dst_layer - min_dst_layer;
+   const uint32_t layer_count = max_dst_layer - min_dst_layer;
    const uint32_t src_mip_level = region->srcSubresource.mipLevel;
-
    for (uint32_t i = 0; i < layer_count; i++) {
+      /* Since the TFU path doesn't handle scaling, Z mirroring for 3D images
+       * only involves reversing the order of the slices.
+       */
+      const uint32_t dst_layer =
+         dst_mirror_z ? max_dst_layer - i - 1: min_dst_layer + i;
+      const uint32_t src_layer =
+         src_mirror_z ? max_src_layer - i - 1: min_src_layer + i;
       emit_tfu_job(cmd_buffer,
-                   dst, dst_mip_level, min_dst_layer + i,
-                   src, src_mip_level, min_src_layer + i,
-                   dst_width, dst_height, dst->format);
+                   dst, dst_mip_level, dst_layer,
+                   src, src_mip_level, src_layer,
+                   dst_width, dst_height, format);
    }
 
    return true;
