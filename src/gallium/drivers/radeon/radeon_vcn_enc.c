@@ -49,7 +49,7 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       enc->enc_pic.ref_idx_l0 = pic->ref_idx_l0;
       enc->enc_pic.ref_idx_l1 = pic->ref_idx_l1;
       enc->enc_pic.not_referenced = pic->not_referenced;
-      enc->enc_pic.is_idr = (pic->picture_type == PIPE_H264_ENC_PICTURE_TYPE_IDR);
+      enc->enc_pic.is_idr = (pic->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR);
       if (pic->pic_ctrl.enc_frame_cropping_flag) {
          enc->enc_pic.crop_left = pic->pic_ctrl.enc_frame_crop_left_offset;
          enc->enc_pic.crop_right = pic->pic_ctrl.enc_frame_crop_right_offset;
@@ -80,15 +80,15 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       enc->enc_pic.rc_per_pic.skip_frame_enable = false;
       enc->enc_pic.rc_per_pic.enforce_hrd = pic->rate_ctrl.enforce_hrd;
       switch (pic->rate_ctrl.rate_ctrl_method) {
-      case PIPE_H264_ENC_RATE_CONTROL_METHOD_DISABLE:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_DISABLE:
          enc->enc_pic.rc_session_init.rate_control_method = RENCODE_RATE_CONTROL_METHOD_NONE;
          break;
-      case PIPE_H264_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP:
-      case PIPE_H264_ENC_RATE_CONTROL_METHOD_CONSTANT:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT:
          enc->enc_pic.rc_session_init.rate_control_method = RENCODE_RATE_CONTROL_METHOD_CBR;
          break;
-      case PIPE_H264_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP:
-      case PIPE_H264_ENC_RATE_CONTROL_METHOD_VARIABLE:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE:
          enc->enc_pic.rc_session_init.rate_control_method =
             RENCODE_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR;
          break;
@@ -104,8 +104,8 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       enc->enc_pic.ref_idx_l0 = pic->ref_idx_l0;
       enc->enc_pic.ref_idx_l1 = pic->ref_idx_l1;
       enc->enc_pic.not_referenced = pic->not_referenced;
-      enc->enc_pic.is_idr = (pic->picture_type == PIPE_H265_ENC_PICTURE_TYPE_IDR) ||
-                            (pic->picture_type == PIPE_H265_ENC_PICTURE_TYPE_I);
+      enc->enc_pic.is_idr = (pic->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR) ||
+                            (pic->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_I);
 
       if (pic->seq.conformance_window_flag) {
           enc->enc_pic.crop_left = pic->seq.conf_win_left_offset;
@@ -184,15 +184,15 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       enc->enc_pic.rc_per_pic.skip_frame_enable = false;
       enc->enc_pic.rc_per_pic.enforce_hrd = pic->rc.enforce_hrd;
       switch (pic->rc.rate_ctrl_method) {
-      case PIPE_H265_ENC_RATE_CONTROL_METHOD_DISABLE:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_DISABLE:
          enc->enc_pic.rc_session_init.rate_control_method = RENCODE_RATE_CONTROL_METHOD_NONE;
          break;
-      case PIPE_H265_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP:
-      case PIPE_H265_ENC_RATE_CONTROL_METHOD_CONSTANT:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT:
          enc->enc_pic.rc_session_init.rate_control_method = RENCODE_RATE_CONTROL_METHOD_CBR;
          break;
-      case PIPE_H265_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP:
-      case PIPE_H265_ENC_RATE_CONTROL_METHOD_VARIABLE:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE:
          enc->enc_pic.rc_session_init.rate_control_method =
             RENCODE_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR;
          break;

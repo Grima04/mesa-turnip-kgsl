@@ -58,8 +58,8 @@ static void radeon_uvd_enc_get_param(struct radeon_uvd_encoder *enc,
    enc->enc_pic.pic_order_cnt = pic->pic_order_cnt;
    enc->enc_pic.pic_order_cnt_type = pic->pic_order_cnt_type;
    enc->enc_pic.not_referenced = pic->not_referenced;
-   enc->enc_pic.is_iframe = (pic->picture_type == PIPE_H265_ENC_PICTURE_TYPE_IDR) ||
-                            (pic->picture_type == PIPE_H265_ENC_PICTURE_TYPE_I);
+   enc->enc_pic.is_iframe = (pic->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR) ||
+                            (pic->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_I);
 
    if (pic->seq.conformance_window_flag) {
          enc->enc_pic.crop_left = pic->seq.conf_win_left_offset;

@@ -409,7 +409,7 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
                                                radeon_enc_get_buffer get_buffer);
 
 struct radeon_enc_pic {
-   enum pipe_h264_enc_picture_type picture_type;
+   enum pipe_h2645_enc_picture_type picture_type;
 
    unsigned frame_num;
    unsigned pic_order_cnt;

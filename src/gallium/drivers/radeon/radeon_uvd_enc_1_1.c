@@ -304,15 +304,15 @@ static void radeon_uvd_enc_rc_session_init(struct radeon_uvd_encoder *enc,
    struct pipe_h265_enc_picture_desc *pic = (struct pipe_h265_enc_picture_desc *)picture;
    enc->enc_pic.rc_session_init.vbv_buffer_level = pic->rc.vbv_buf_lv;
    switch (pic->rc.rate_ctrl_method) {
-   case PIPE_H265_ENC_RATE_CONTROL_METHOD_DISABLE:
+   case PIPE_H2645_ENC_RATE_CONTROL_METHOD_DISABLE:
       enc->enc_pic.rc_session_init.rate_control_method = RENC_UVD_RATE_CONTROL_METHOD_NONE;
       break;
-   case PIPE_H265_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP:
-   case PIPE_H265_ENC_RATE_CONTROL_METHOD_CONSTANT:
+   case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP:
+   case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT:
       enc->enc_pic.rc_session_init.rate_control_method = RENC_UVD_RATE_CONTROL_METHOD_CBR;
       break;
-   case PIPE_H265_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP:
-   case PIPE_H265_ENC_RATE_CONTROL_METHOD_VARIABLE:
+   case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP:
+   case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE:
       enc->enc_pic.rc_session_init.rate_control_method =
          RENC_UVD_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR;
       break;
@@ -611,14 +611,14 @@ static void radeon_uvd_enc_nalu_aud_hevc(struct radeon_uvd_encoder *enc)
    radeon_uvd_enc_byte_align(enc);
    radeon_uvd_enc_set_emulation_prevention(enc, true);
    switch (enc->enc_pic.picture_type) {
-   case PIPE_H265_ENC_PICTURE_TYPE_I:
-   case PIPE_H265_ENC_PICTURE_TYPE_IDR:
+   case PIPE_H2645_ENC_PICTURE_TYPE_I:
+   case PIPE_H2645_ENC_PICTURE_TYPE_IDR:
       radeon_uvd_enc_code_fixed_bits(enc, 0x00, 3);
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_P:
+   case PIPE_H2645_ENC_PICTURE_TYPE_P:
       radeon_uvd_enc_code_fixed_bits(enc, 0x01, 3);
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_B:
+   case PIPE_H2645_ENC_PICTURE_TYPE_B:
       radeon_uvd_enc_code_fixed_bits(enc, 0x02, 3);
       break;
    default:
@@ -678,15 +678,15 @@ static void radeon_uvd_enc_slice_header_hevc(struct radeon_uvd_encoder *enc)
    inst_index++;
 
    switch (enc->enc_pic.picture_type) {
-   case PIPE_H265_ENC_PICTURE_TYPE_I:
-   case PIPE_H265_ENC_PICTURE_TYPE_IDR:
+   case PIPE_H2645_ENC_PICTURE_TYPE_I:
+   case PIPE_H2645_ENC_PICTURE_TYPE_IDR:
       radeon_uvd_enc_code_ue(enc, 0x2);
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_P:
-   case PIPE_H265_ENC_PICTURE_TYPE_SKIP:
+   case PIPE_H2645_ENC_PICTURE_TYPE_P:
+   case PIPE_H2645_ENC_PICTURE_TYPE_SKIP:
       radeon_uvd_enc_code_ue(enc, 0x1);
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_B:
+   case PIPE_H2645_ENC_PICTURE_TYPE_B:
       radeon_uvd_enc_code_ue(enc, 0x0);
       break;
    default:
@@ -695,7 +695,7 @@ static void radeon_uvd_enc_slice_header_hevc(struct radeon_uvd_encoder *enc)
 
    if ((enc->enc_pic.nal_unit_type != 19) && (enc->enc_pic.nal_unit_type != 20)) {
       radeon_uvd_enc_code_fixed_bits(enc, enc->enc_pic.pic_order_cnt, enc->enc_pic.log2_max_poc);
-      if (enc->enc_pic.picture_type == PIPE_H265_ENC_PICTURE_TYPE_P)
+      if (enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_P)
          radeon_uvd_enc_code_fixed_bits(enc, 0x1, 1);
       else {
          radeon_uvd_enc_code_fixed_bits(enc, 0x0, 1);
@@ -708,8 +708,8 @@ static void radeon_uvd_enc_slice_header_hevc(struct radeon_uvd_encoder *enc)
    if (enc->enc_pic.sample_adaptive_offset_enabled_flag)
       radeon_uvd_enc_code_fixed_bits(enc, 0x0, 1); /* slice_sao_luma_flag */
 
-   if ((enc->enc_pic.picture_type == PIPE_H265_ENC_PICTURE_TYPE_P) ||
-       (enc->enc_pic.picture_type == PIPE_H265_ENC_PICTURE_TYPE_B)) {
+   if ((enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_P) ||
+       (enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_B)) {
       radeon_uvd_enc_code_fixed_bits(enc, 0x0, 1);
       radeon_uvd_enc_code_fixed_bits(enc, enc->enc_pic.hevc_spec_misc.cabac_init_flag, 1);
       radeon_uvd_enc_code_ue(enc, 5 - enc->enc_pic.max_num_merge_cand);
@@ -856,17 +856,17 @@ static void radeon_uvd_enc_encode_params_hevc(struct radeon_uvd_encoder *enc)
 {
    struct si_screen *sscreen = (struct si_screen *)enc->screen;
    switch (enc->enc_pic.picture_type) {
-   case PIPE_H265_ENC_PICTURE_TYPE_I:
-   case PIPE_H265_ENC_PICTURE_TYPE_IDR:
+   case PIPE_H2645_ENC_PICTURE_TYPE_I:
+   case PIPE_H2645_ENC_PICTURE_TYPE_IDR:
       enc->enc_pic.enc_params.pic_type = RENC_UVD_PICTURE_TYPE_I;
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_P:
+   case PIPE_H2645_ENC_PICTURE_TYPE_P:
       enc->enc_pic.enc_params.pic_type = RENC_UVD_PICTURE_TYPE_P;
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_SKIP:
+   case PIPE_H2645_ENC_PICTURE_TYPE_SKIP:
       enc->enc_pic.enc_params.pic_type = RENC_UVD_PICTURE_TYPE_P_SKIP;
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_B:
+   case PIPE_H2645_ENC_PICTURE_TYPE_B:
       enc->enc_pic.enc_params.pic_type = RENC_UVD_PICTURE_TYPE_B;
       break;
    default:

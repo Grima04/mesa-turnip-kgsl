@@ -613,14 +613,14 @@ static void radeon_enc_nalu_aud_hevc(struct radeon_encoder *enc)
    radeon_enc_byte_align(enc);
    radeon_enc_set_emulation_prevention(enc, true);
    switch (enc->enc_pic.picture_type) {
-   case PIPE_H265_ENC_PICTURE_TYPE_I:
-   case PIPE_H265_ENC_PICTURE_TYPE_IDR:
+   case PIPE_H2645_ENC_PICTURE_TYPE_I:
+   case PIPE_H2645_ENC_PICTURE_TYPE_IDR:
       radeon_enc_code_fixed_bits(enc, 0x00, 3);
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_P:
+   case PIPE_H2645_ENC_PICTURE_TYPE_P:
       radeon_enc_code_fixed_bits(enc, 0x01, 3);
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_B:
+   case PIPE_H2645_ENC_PICTURE_TYPE_B:
       radeon_enc_code_fixed_bits(enc, 0x02, 3);
       break;
    default:
@@ -665,15 +665,15 @@ static void radeon_enc_slice_header(struct radeon_encoder *enc)
    inst_index++;
 
    switch (enc->enc_pic.picture_type) {
-   case PIPE_H264_ENC_PICTURE_TYPE_I:
-   case PIPE_H264_ENC_PICTURE_TYPE_IDR:
+   case PIPE_H2645_ENC_PICTURE_TYPE_I:
+   case PIPE_H2645_ENC_PICTURE_TYPE_IDR:
       radeon_enc_code_fixed_bits(enc, 0x08, 7);
       break;
-   case PIPE_H264_ENC_PICTURE_TYPE_P:
-   case PIPE_H264_ENC_PICTURE_TYPE_SKIP:
+   case PIPE_H2645_ENC_PICTURE_TYPE_P:
+   case PIPE_H2645_ENC_PICTURE_TYPE_SKIP:
       radeon_enc_code_fixed_bits(enc, 0x06, 5);
       break;
-   case PIPE_H264_ENC_PICTURE_TYPE_B:
+   case PIPE_H2645_ENC_PICTURE_TYPE_B:
       radeon_enc_code_fixed_bits(enc, 0x07, 5);
       break;
    default:
@@ -702,7 +702,7 @@ static void radeon_enc_slice_header(struct radeon_encoder *enc)
    if (enc->enc_pic.pic_order_cnt_type == 0)
       radeon_enc_code_fixed_bits(enc, enc->enc_pic.pic_order_cnt % 32, 5);
 
-   if (enc->enc_pic.picture_type != PIPE_H264_ENC_PICTURE_TYPE_IDR) {
+   if (enc->enc_pic.picture_type != PIPE_H2645_ENC_PICTURE_TYPE_IDR) {
       radeon_enc_code_fixed_bits(enc, 0x0, 1);
 
       if (enc->enc_pic.frame_num - enc->enc_pic.ref_idx_l0 > 1) {
@@ -720,7 +720,7 @@ static void radeon_enc_slice_header(struct radeon_encoder *enc)
    } else
       radeon_enc_code_fixed_bits(enc, 0x0, 1);
 
-   if ((enc->enc_pic.picture_type != PIPE_H264_ENC_PICTURE_TYPE_IDR) &&
+   if ((enc->enc_pic.picture_type != PIPE_H2645_ENC_PICTURE_TYPE_IDR) &&
        (enc->enc_pic.spec_misc.cabac_enable))
       radeon_enc_code_ue(enc, enc->enc_pic.spec_misc.cabac_init_idc);
 
@@ -805,15 +805,15 @@ static void radeon_enc_slice_header_hevc(struct radeon_encoder *enc)
    inst_index++;
 
    switch (enc->enc_pic.picture_type) {
-   case PIPE_H265_ENC_PICTURE_TYPE_I:
-   case PIPE_H265_ENC_PICTURE_TYPE_IDR:
+   case PIPE_H2645_ENC_PICTURE_TYPE_I:
+   case PIPE_H2645_ENC_PICTURE_TYPE_IDR:
       radeon_enc_code_ue(enc, 0x2);
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_P:
-   case PIPE_H265_ENC_PICTURE_TYPE_SKIP:
+   case PIPE_H2645_ENC_PICTURE_TYPE_P:
+   case PIPE_H2645_ENC_PICTURE_TYPE_SKIP:
       radeon_enc_code_ue(enc, 0x1);
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_B:
+   case PIPE_H2645_ENC_PICTURE_TYPE_B:
       radeon_enc_code_ue(enc, 0x0);
       break;
    default:
@@ -822,7 +822,7 @@ static void radeon_enc_slice_header_hevc(struct radeon_encoder *enc)
 
    if ((enc->enc_pic.nal_unit_type != 19) && (enc->enc_pic.nal_unit_type != 20)) {
       radeon_enc_code_fixed_bits(enc, enc->enc_pic.pic_order_cnt, enc->enc_pic.log2_max_poc);
-      if (enc->enc_pic.picture_type == PIPE_H264_ENC_PICTURE_TYPE_P)
+      if (enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_P)
          radeon_enc_code_fixed_bits(enc, 0x1, 1);
       else {
          radeon_enc_code_fixed_bits(enc, 0x0, 1);
@@ -832,8 +832,8 @@ static void radeon_enc_slice_header_hevc(struct radeon_encoder *enc)
       }
    }
 
-   if ((enc->enc_pic.picture_type == PIPE_H264_ENC_PICTURE_TYPE_P) ||
-       (enc->enc_pic.picture_type == PIPE_H264_ENC_PICTURE_TYPE_B)) {
+   if ((enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_P) ||
+       (enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_B)) {
       radeon_enc_code_fixed_bits(enc, 0x0, 1);
       radeon_enc_code_fixed_bits(enc, enc->enc_pic.hevc_spec_misc.cabac_init_flag, 1);
       radeon_enc_code_ue(enc, 5 - enc->enc_pic.max_num_merge_cand);
@@ -959,17 +959,17 @@ static void radeon_enc_rc_per_pic(struct radeon_encoder *enc)
 static void radeon_enc_encode_params(struct radeon_encoder *enc)
 {
    switch (enc->enc_pic.picture_type) {
-   case PIPE_H264_ENC_PICTURE_TYPE_I:
-   case PIPE_H264_ENC_PICTURE_TYPE_IDR:
+   case PIPE_H2645_ENC_PICTURE_TYPE_I:
+   case PIPE_H2645_ENC_PICTURE_TYPE_IDR:
       enc->enc_pic.enc_params.pic_type = RENCODE_PICTURE_TYPE_I;
       break;
-   case PIPE_H264_ENC_PICTURE_TYPE_P:
+   case PIPE_H2645_ENC_PICTURE_TYPE_P:
       enc->enc_pic.enc_params.pic_type = RENCODE_PICTURE_TYPE_P;
       break;
-   case PIPE_H264_ENC_PICTURE_TYPE_SKIP:
+   case PIPE_H2645_ENC_PICTURE_TYPE_SKIP:
       enc->enc_pic.enc_params.pic_type = RENCODE_PICTURE_TYPE_P_SKIP;
       break;
-   case PIPE_H264_ENC_PICTURE_TYPE_B:
+   case PIPE_H2645_ENC_PICTURE_TYPE_B:
       enc->enc_pic.enc_params.pic_type = RENCODE_PICTURE_TYPE_B;
       break;
    default:
@@ -981,7 +981,7 @@ static void radeon_enc_encode_params(struct radeon_encoder *enc)
    enc->enc_pic.enc_params.input_pic_chroma_pitch = enc->chroma->u.gfx9.surf_pitch;
    enc->enc_pic.enc_params.input_pic_swizzle_mode = RENCODE_INPUT_SWIZZLE_MODE_LINEAR;
 
-   if (enc->enc_pic.picture_type == PIPE_H264_ENC_PICTURE_TYPE_IDR)
+   if (enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR)
       enc->enc_pic.enc_params.reference_picture_index = 0xFFFFFFFF;
    else
       enc->enc_pic.enc_params.reference_picture_index = (enc->enc_pic.frame_num - 1) % 2;
@@ -1004,17 +1004,17 @@ static void radeon_enc_encode_params(struct radeon_encoder *enc)
 static void radeon_enc_encode_params_hevc(struct radeon_encoder *enc)
 {
    switch (enc->enc_pic.picture_type) {
-   case PIPE_H265_ENC_PICTURE_TYPE_I:
-   case PIPE_H265_ENC_PICTURE_TYPE_IDR:
+   case PIPE_H2645_ENC_PICTURE_TYPE_I:
+   case PIPE_H2645_ENC_PICTURE_TYPE_IDR:
       enc->enc_pic.enc_params.pic_type = RENCODE_PICTURE_TYPE_I;
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_P:
+   case PIPE_H2645_ENC_PICTURE_TYPE_P:
       enc->enc_pic.enc_params.pic_type = RENCODE_PICTURE_TYPE_P;
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_SKIP:
+   case PIPE_H2645_ENC_PICTURE_TYPE_SKIP:
       enc->enc_pic.enc_params.pic_type = RENCODE_PICTURE_TYPE_P_SKIP;
       break;
-   case PIPE_H265_ENC_PICTURE_TYPE_B:
+   case PIPE_H2645_ENC_PICTURE_TYPE_B:
       enc->enc_pic.enc_params.pic_type = RENCODE_PICTURE_TYPE_B;
       break;
    default:
