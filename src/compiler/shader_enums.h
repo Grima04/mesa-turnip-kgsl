@@ -807,7 +807,11 @@ enum gl_access_qualifier
    ACCESS_COHERENT      = (1 << 0),
    ACCESS_RESTRICT      = (1 << 1),
    ACCESS_VOLATILE      = (1 << 2),
+
+   /* The memory used by the access/variable is not read. */
    ACCESS_NON_READABLE  = (1 << 3),
+
+   /* The memory used by the access/variable is not written. */
    ACCESS_NON_WRITEABLE = (1 << 4),
 
    /** The access may use a non-uniform buffer or image index */
@@ -816,8 +820,7 @@ enum gl_access_qualifier
    /* This has the same semantics as NIR_INTRINSIC_CAN_REORDER, only to be
     * used with loads. In other words, it means that the load can be
     * arbitrarily reordered, or combined with other loads to the same address.
-    * It is implied by ACCESS_NON_WRITEABLE together with ACCESS_RESTRICT, and
-    * a lack of ACCESS_COHERENT and ACCESS_VOLATILE.
+    * It is implied by ACCESS_NON_WRITEABLE and a lack of ACCESS_VOLATILE.
     */
    ACCESS_CAN_REORDER = (1 << 6),
 
