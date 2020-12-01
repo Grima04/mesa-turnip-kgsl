@@ -1605,18 +1605,9 @@ copy_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
     * to use compatible formats that are supported with the TFU unit.
     */
    assert(dst->cpp == src->cpp);
-   VkFormat vk_format;
-   switch (dst->cpp) {
-   case 16: vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;  break;
-   case 8:  vk_format = VK_FORMAT_R16G16B16A16_SFLOAT;  break;
-   case 4:  vk_format = VK_FORMAT_R32_SFLOAT;           break;
-   case 2:  vk_format = VK_FORMAT_R16_SFLOAT;           break;
-   case 1:  vk_format = VK_FORMAT_R8_UNORM;             break;
-   default: unreachable("unsupported format bit-size"); break;
-   };
-   const struct v3dv_format *format = v3dv_get_format(vk_format);
-   assert(v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
-                                       format->tex_type));
+   const struct v3dv_format *format =
+      v3dv_get_compatible_tfu_format(&cmd_buffer->device->devinfo,
+                                     dst->cpp, NULL);
 
    /* Emit a TFU job for each layer to blit */
    const uint32_t layer_count = dst->type != VK_IMAGE_TYPE_3D ?
@@ -2620,18 +2611,9 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
     * the image's format and choose a compatible TFU format for the image
     * texel size instead, which expands the list of formats we can handle here.
     */
-   VkFormat vk_format;
-   switch (image->cpp) {
-   case 16: vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;  break;
-   case 8:  vk_format = VK_FORMAT_R16G16B16A16_SFLOAT;  break;
-   case 4:  vk_format = VK_FORMAT_R32_SFLOAT;           break;
-   case 2:  vk_format = VK_FORMAT_R16_SFLOAT;           break;
-   case 1:  vk_format = VK_FORMAT_R8_UNORM;             break;
-   default: unreachable("unsupported format bit-size"); break;
-   };
-   const struct v3dv_format *format = v3dv_get_format(vk_format);
-   assert(v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
-                                       format->tex_type));
+   const struct v3dv_format *format =
+      v3dv_get_compatible_tfu_format(&cmd_buffer->device->devinfo,
+                                     image->cpp, NULL);
 
    const uint32_t mip_level = region->imageSubresource.mipLevel;
    const struct v3d_resource_slice *slice = &image->slices[mip_level];
@@ -4079,18 +4061,9 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
     * conversions and we can rewrite the format to use one that is TFU
     * compatible based on its texel size.
     */
-   VkFormat vk_format;
-   switch (dst->cpp) {
-   case 16: vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;  break;
-   case 8:  vk_format = VK_FORMAT_R16G16B16A16_SFLOAT;  break;
-   case 4:  vk_format = VK_FORMAT_R32_SFLOAT;           break;
-   case 2:  vk_format = VK_FORMAT_R16_SFLOAT;           break;
-   case 1:  vk_format = VK_FORMAT_R8_UNORM;             break;
-   default: unreachable("unsupported format bit-size"); break;
-   };
-   const struct v3dv_format *format = v3dv_get_format(vk_format);
-   assert(v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
-                                       format->tex_type));
+   const struct v3dv_format *format =
+      v3dv_get_compatible_tfu_format(&cmd_buffer->device->devinfo,
+                                     dst->cpp, NULL);
 
    /* Emit a TFU job for each layer to blit */
    assert(region->dstSubresource.layerCount ==

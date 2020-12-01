@@ -1845,6 +1845,9 @@ void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *typ
 uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, bool compare_enable);
 bool v3dv_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
                                   uint32_t tex_format);
+const struct v3dv_format *
+v3dv_get_compatible_tfu_format(const struct v3d_device_info *devinfo,
+                               uint32_t bpp, VkFormat *out_vk_format);
 bool v3dv_buffer_format_supports_features(VkFormat vk_format,
                                           VkFormatFeatureFlags features);
 bool v3dv_format_supports_tlb_resolve(const struct v3dv_format *format);
