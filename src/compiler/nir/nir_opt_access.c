@@ -134,10 +134,19 @@ process_variable(struct access_state *state, nir_variable *var)
    if (var->data.access & ACCESS_CAN_REORDER)
       return false;
 
-   if (!(var->data.access & ACCESS_NON_WRITEABLE) &&
-       !_mesa_set_search(state->vars_written, var)) {
-      var->data.access |= ACCESS_NON_WRITEABLE;
-      return true;
+   if (!(var->data.access & ACCESS_NON_WRITEABLE)) {
+      if ((var->data.access & ACCESS_RESTRICT) &&
+          !_mesa_set_search(state->vars_written, var)) {
+         var->data.access |= ACCESS_NON_WRITEABLE;
+         return true;
+      }
+
+      bool is_buffer = var->data.mode == nir_var_mem_ssbo ||
+                       glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF;
+      if (is_buffer ? !state->buffers_written : !state->images_written) {
+         var->data.access |= ACCESS_NON_WRITEABLE;
+         return true;
+      }
    }
 
    return false;
