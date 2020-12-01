@@ -412,9 +412,9 @@ static uint32_t si_translate_blend_opt_factor(VkBlendFactor factor, bool is_alph
  * Get rid of DST in the blend factors by commuting the operands:
  *    func(src * DST, dst * 0) ---> func(src * 0, dst * SRC)
  */
-static void si_blend_remove_dst(unsigned *func, unsigned *src_factor,
-				unsigned *dst_factor, unsigned expected_dst,
-				unsigned replacement_src)
+static void si_blend_remove_dst(VkBlendOp *func, VkBlendFactor *src_factor,
+				VkBlendFactor *dst_factor, VkBlendFactor expected_dst,
+				VkBlendFactor replacement_src)
 {
 	if (*src_factor == expected_dst &&
 	    *dst_factor == VK_BLEND_FACTOR_ZERO) {
@@ -429,7 +429,7 @@ static void si_blend_remove_dst(unsigned *func, unsigned *src_factor,
 	}
 }
 
-static bool si_blend_factor_uses_dst(unsigned factor)
+static bool si_blend_factor_uses_dst(VkBlendFactor factor)
 {
 	return factor == VK_BLEND_FACTOR_DST_COLOR ||
 		factor == VK_BLEND_FACTOR_DST_ALPHA ||
