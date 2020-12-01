@@ -513,6 +513,126 @@ v3d_tfu_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
                        info->src.box.z, info->dst.box.z);
 }
 
+static struct pipe_surface *
+v3d_get_blit_surface(struct pipe_context *pctx,
+                     struct pipe_resource *prsc,
+                     unsigned level,
+                     int16_t layer)
+{
+        struct pipe_surface tmpl;
+
+        tmpl.format = prsc->format;
+        tmpl.u.tex.level = level;
+        tmpl.u.tex.first_layer = layer;
+        tmpl.u.tex.last_layer = layer;
+
+        return pctx->create_surface(pctx, prsc, &tmpl);
+}
+
+static bool
+is_tile_unaligned(unsigned size, unsigned tile_size)
+{
+        return size & (tile_size - 1);
+}
+
+static bool
+v3d_tlb_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
+{
+        struct v3d_context *v3d = v3d_context(pctx);
+        struct v3d_screen *screen = v3d->screen;
+
+        if (screen->devinfo.ver < 40)
+                return false;
+
+        if ((info->mask & PIPE_MASK_RGBA) == 0)
+                return false;
+
+        if (info->scissor_enable)
+                return false;
+
+        if (info->src.box.x != info->dst.box.x ||
+            info->src.box.y != info->dst.box.y ||
+            info->src.box.width != info->dst.box.width ||
+            info->src.box.height != info->dst.box.height)
+                return false;
+
+        if (util_format_is_depth_or_stencil(info->dst.resource->format))
+                return false;
+
+        if (!v3d_rt_format_supported(&screen->devinfo, info->src.resource->format))
+                return false;
+
+        if (v3d_get_rt_format(&screen->devinfo, info->src.resource->format) !=
+            v3d_get_rt_format(&screen->devinfo, info->dst.resource->format))
+                return false;
+
+        bool msaa = (info->src.resource->nr_samples > 1 ||
+                     info->dst.resource->nr_samples > 1);
+        bool is_msaa_resolve = (info->src.resource->nr_samples > 1 &&
+                                info->dst.resource->nr_samples < 2);
+
+        if (is_msaa_resolve &&
+            !v3d_format_supports_tlb_msaa_resolve(&screen->devinfo, info->src.resource->format))
+                return false;
+
+        v3d_flush_jobs_writing_resource(v3d, info->src.resource, V3D_FLUSH_DEFAULT, false);
+
+        struct pipe_surface *dst_surf =
+           v3d_get_blit_surface(pctx, info->dst.resource, info->dst.level, info->dst.box.z);
+        struct pipe_surface *src_surf =
+           v3d_get_blit_surface(pctx, info->src.resource, info->src.level, info->src.box.z);
+
+        struct pipe_surface *surfaces[V3D_MAX_DRAW_BUFFERS] = { 0 };
+        surfaces[0] = dst_surf;
+
+        uint32_t tile_width, tile_height, max_bpp;
+        v3d_get_tile_buffer_size(msaa, 1, surfaces, src_surf, &tile_width, &tile_height, &max_bpp);
+
+        int dst_surface_width = u_minify(info->dst.resource->width0,
+                                         info->dst.level);
+        int dst_surface_height = u_minify(info->dst.resource->height0,
+                                         info->dst.level);
+        if (is_tile_unaligned(info->dst.box.x, tile_width) ||
+            is_tile_unaligned(info->dst.box.y, tile_height) ||
+            (is_tile_unaligned(info->dst.box.width, tile_width) &&
+             info->dst.box.x + info->dst.box.width != dst_surface_width) ||
+            (is_tile_unaligned(info->dst.box.height, tile_height) &&
+             info->dst.box.y + info->dst.box.height != dst_surface_height)) {
+                pipe_surface_reference(&dst_surf, NULL);
+                pipe_surface_reference(&src_surf, NULL);
+                return false;
+        }
+
+        struct v3d_job *job = v3d_get_job(v3d, 1u, surfaces, NULL, src_surf);
+        job->msaa = msaa;
+        job->tile_width = tile_width;
+        job->tile_height = tile_height;
+        job->internal_bpp = max_bpp;
+        job->draw_min_x = info->dst.box.x;
+        job->draw_min_y = info->dst.box.y;
+        job->draw_max_x = info->dst.box.x + info->dst.box.width;
+        job->draw_max_y = info->dst.box.y + info->dst.box.height;
+        job->draw_width = dst_surf->width;
+        job->draw_height = dst_surf->height;
+        job->draw_tiles_x = DIV_ROUND_UP(dst_surf->width,
+                                         job->tile_width);
+        job->draw_tiles_y = DIV_ROUND_UP(dst_surf->height,
+                                         job->tile_height);
+
+        job->needs_flush = true;
+        job->store |= PIPE_CLEAR_COLOR0;
+        job->num_layers = info->dst.box.depth;
+
+        v3d41_start_binning(v3d, job);
+
+        v3d_job_submit(v3d, job);
+
+        pipe_surface_reference(&dst_surf, NULL);
+        pipe_surface_reference(&src_surf, NULL);
+
+        return true;
+}
+
 /* Optimal hardware path for blitting pixels.
  * Scaling, format conversion, up- and downsampling (resolve) are allowed.
  */
@@ -528,6 +648,9 @@ v3d_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
         }
 
         if (v3d_tfu_blit(pctx, blit_info))
+                info.mask &= ~PIPE_MASK_RGBA;
+
+        if (v3d_tlb_blit(pctx, blit_info))
                 info.mask &= ~PIPE_MASK_RGBA;
 
         if (info.mask)
