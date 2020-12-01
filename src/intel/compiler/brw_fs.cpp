@@ -3033,24 +3033,36 @@ fs_visitor::opt_redundant_halt()
 {
    bool progress = false;
 
-   bblock_t *last_bblock = cfg->blocks[cfg->num_blocks - 1];
-
+   unsigned halt_count = 0;
    fs_inst *halt_target = NULL;
-   foreach_inst_in_block_reverse(fs_inst, inst, last_bblock) {
+   bblock_t *halt_target_block = NULL;
+   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      if (inst->opcode == BRW_OPCODE_HALT)
+         halt_count++;
+
       if (inst->opcode == SHADER_OPCODE_HALT_TARGET) {
          halt_target = inst;
+         halt_target_block = block;
          break;
       }
    }
 
-   if (!halt_target)
+   if (!halt_target) {
+      assert(halt_count == 0);
       return false;
+   }
 
    /* Delete any HALTs immediately before the halt target. */
    for (fs_inst *prev = (fs_inst *) halt_target->prev;
         !prev->is_head_sentinel() && prev->opcode == BRW_OPCODE_HALT;
         prev = (fs_inst *) halt_target->prev) {
-      prev->remove(last_bblock);
+      prev->remove(halt_target_block);
+      halt_count--;
+      progress = true;
+   }
+
+   if (halt_count == 0) {
+      halt_target->remove(halt_target_block);
       progress = true;
    }
 
