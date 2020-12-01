@@ -115,7 +115,7 @@ FormatYCBCRToPipeChroma(VdpYCbCrFormat vdpau_format)
          assert(0);
    }
 
-   return PIPE_FORMAT_NONE;
+   return PIPE_VIDEO_CHROMA_FORMAT_NONE;
 }
 
 static inline enum pipe_format
