@@ -183,7 +183,7 @@ drm_authenticate(struct wl_client *client,
 	if (drm->callbacks.authenticate(drm->user_data, id) < 0)
 		wl_resource_post_error(resource,
 				       WL_DRM_ERROR_AUTHENTICATE_FAIL,
-				       "authenicate failed");
+				       "authenticate failed");
 	else
 		wl_resource_post_event(resource, WL_DRM_AUTHENTICATED);
 }
