@@ -30,9 +30,6 @@
  *   - Either there are no writes, or ACCESS_NON_WRITEABLE and ACCESS_RESTRICT
  *     are both set. In either case there are no writes to the underlying
  *     memory.
- *   - If ACCESS_COHERENT is set, then there must be no memory barriers
- *     involving the access. Coherent accesses may return different results
- *     before and after barriers.
  *   - ACCESS_VOLATILE is not set.
  *
  * If these conditions are true, then image and buffer reads may be treated as
@@ -44,8 +41,6 @@ struct access_state {
    struct set *vars_written;
    bool images_written;
    bool buffers_written;
-   bool image_barriers;
-   bool buffer_barriers;
 };
 
 static void
@@ -122,30 +117,6 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
       state->buffers_written = true;
       break;
 
-   case nir_intrinsic_memory_barrier:
-      state->buffer_barriers = true;
-      state->image_barriers = true;
-      break;
-
-   case nir_intrinsic_memory_barrier_buffer:
-      state->buffer_barriers = true;
-      break;
-
-   case nir_intrinsic_memory_barrier_image:
-      state->image_barriers = true;
-      break;
-
-   case nir_intrinsic_scoped_barrier:
-      /* TODO: Could be more granular if we had nir_var_mem_image. */
-      if (nir_intrinsic_memory_modes(instr) & (nir_var_mem_ubo |
-                                               nir_var_mem_ssbo |
-                                               nir_var_uniform |
-                                               nir_var_mem_global)) {
-         state->buffer_barriers = true;
-         state->image_barriers = true;
-      }
-      break;
-
    default:
       break;
    }
@@ -183,15 +154,7 @@ can_reorder(struct access_state *state, enum gl_access_qualifier access,
    if (!is_any_written ||
        ((access & ACCESS_NON_WRITEABLE) &&
         (access & ACCESS_RESTRICT))) {
-      /* Note: memoryBarrierBuffer() is only guaranteed to flush buffer
-       * variables and not imageBuffer's, so we only consider the GL-level
-       * type here.
-       */
-      bool is_any_barrier = is_ssbo ?
-         state->buffer_barriers : state->image_barriers;
-
-      return (!is_any_barrier || !(access & ACCESS_COHERENT)) &&
-          !(access & ACCESS_VOLATILE);
+      return !(access & ACCESS_VOLATILE);
    }
 
    return false;
