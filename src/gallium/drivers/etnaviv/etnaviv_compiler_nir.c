@@ -41,6 +41,7 @@
 #include "compiler/nir/nir_builder.h"
 
 #include "tgsi/tgsi_strings.h"
+#include "util/compiler.h"
 #include "util/half_float.h"
 
 static bool
@@ -852,7 +853,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
             need_mov = vec_dest_has_swizzle(alu, &nir_instr_as_intrinsic(instr)->dest.ssa);
             break;
          }
-         /* fallthrough */
+         FALLTHROUGH;
       default:
          need_mov = true;
       }
