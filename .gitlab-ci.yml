@@ -864,6 +864,7 @@ meson-vulkan:
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
+      -D vulkan-device-select-layer=true
       -D build-aco-tests=true
       -D werror=true
 
@@ -877,6 +878,7 @@ meson-i386:
     GALLIUM_DRIVERS: "iris,r300,radeonsi,swrast,virgl"
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
+      -D vulkan-device-select-layer=true
       -D werror=true
 
 meson-s390x:
