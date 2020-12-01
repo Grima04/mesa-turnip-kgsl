@@ -154,9 +154,9 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
 static bool
 process_variable(struct access_state *state, nir_variable *var)
 {
+   const struct glsl_type *type = glsl_without_array(var->type);
    if (var->data.mode != nir_var_mem_ssbo &&
-       !(var->data.mode == nir_var_uniform &&
-         glsl_type_is_image(var->type)))
+       !(var->data.mode == nir_var_uniform && glsl_type_is_image(type)))
       return false;
 
    /* Ignore variables we've already marked */
