@@ -354,7 +354,18 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.draw_mode = pan_draw_mode(info->mode);
                 if (panfrost_writes_point_size(ctx))
                         cfg.point_size_array_format = MALI_POINT_SIZE_ARRAY_FORMAT_FP16;
-                cfg.first_provoking_vertex = rast->flatshade_first;
+
+                /* For line primitives, PRIMITIVE.first_provoking_vertex must
+                 * be set to true and the provoking vertex is selected with
+                 * DRAW.flat_shading_vertex.
+                 */
+                if (info->mode == PIPE_PRIM_LINES ||
+                    info->mode == PIPE_PRIM_LINE_LOOP ||
+                    info->mode == PIPE_PRIM_LINE_STRIP)
+                        cfg.first_provoking_vertex = true;
+                else
+                        cfg.first_provoking_vertex = rast->flatshade_first;
+
                 if (info->primitive_restart)
                         cfg.primitive_restart = MALI_PRIMITIVE_RESTART_IMPLICIT;
                 cfg.job_task_split = 6;
@@ -401,6 +412,18 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.varyings = fs_vary;
                 cfg.varying_buffers = fs_vary ? varyings : 0;
                 cfg.thread_storage = shared_mem;
+
+                /* For all primitives but lines DRAW.flat_shading_vertex must
+                 * be set to 0 and the provoking vertex is selected with the
+                 * PRIMITIVE.first_provoking_vertex field.
+                 */
+                if (info->mode == PIPE_PRIM_LINES ||
+                    info->mode == PIPE_PRIM_LINE_LOOP ||
+                    info->mode == PIPE_PRIM_LINE_STRIP) {
+                        /* The logic is inverted on bifrost. */
+                        cfg.flat_shading_vertex =
+                                is_bifrost ? rast->flatshade_first : !rast->flatshade_first;
+                }
 
                 pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_FRAGMENT);
 
