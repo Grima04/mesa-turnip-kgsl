@@ -4027,7 +4027,10 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
          const VkImageBlit *region,
          VkFilter filter)
 {
-   /* FIXME? The v3d driver seems to ignore filtering completely! */
+   assert(dst->samples == VK_SAMPLE_COUNT_1_BIT);
+   assert(src->samples == VK_SAMPLE_COUNT_1_BIT);
+
+   /* FIXME: The v3d driver seems to ignore filtering completely! */
    if (filter != VK_FILTER_NEAREST)
       return false;
 
@@ -4035,22 +4038,8 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    if (src->vk_format != dst->vk_format)
       return false;
 
-   VkFormat vk_format = dst->vk_format;
-   const struct v3dv_format *format = dst->format;
-
-   /* Format must be supported for texturing */
-   if (!v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
-                                     format->tex_type)) {
-      return false;
-   }
-
-   /* Only color formats */
-   if (vk_format_is_depth_or_stencil(vk_format))
-      return false;
-
    /* Destination can't be raster format */
-   const uint32_t dst_mip_level = region->dstSubresource.mipLevel;
-   if (dst->slices[dst_mip_level].tiling == VC5_TILING_RASTER)
+   if (dst->tiling == VK_IMAGE_TILING_LINEAR)
       return false;
 
    /* Source region must start at (0,0) */
@@ -4061,6 +4050,7 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    if (region->dstOffsets[0].x != 0 || region->dstOffsets[0].y != 0)
       return false;
 
+   const uint32_t dst_mip_level = region->dstSubresource.mipLevel;
    const uint32_t dst_width = u_minify(dst->extent.width, dst_mip_level);
    const uint32_t dst_height = u_minify(dst->extent.height, dst_mip_level);
    if (region->dstOffsets[1].x < dst_width - 1||
@@ -4078,6 +4068,34 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
        region->srcOffsets[1].z != region->dstOffsets[1].z) {
       return false;
    }
+
+   /* If the format is D24S8 both aspects need to be copied, since the TFU
+    * can't be programmed to copy only one aspect of the image.
+    */
+   if (dst->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+       const VkImageAspectFlags ds_aspects = VK_IMAGE_ASPECT_DEPTH_BIT |
+                                             VK_IMAGE_ASPECT_STENCIL_BIT;
+       if (region->dstSubresource.aspectMask != ds_aspects)
+          return false;
+   }
+
+   /* Our TFU blits only handle exact copies (it requires same formats
+    * on input and output, no scaling, etc), so there is no pixel format
+    * conversions and we can rewrite the format to use one that is TFU
+    * compatible based on its texel size.
+    */
+   VkFormat vk_format;
+   switch (dst->cpp) {
+   case 16: vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;  break;
+   case 8:  vk_format = VK_FORMAT_R16G16B16A16_SFLOAT;  break;
+   case 4:  vk_format = VK_FORMAT_R32_SFLOAT;           break;
+   case 2:  vk_format = VK_FORMAT_R16_SFLOAT;           break;
+   case 1:  vk_format = VK_FORMAT_R8_UNORM;             break;
+   default: unreachable("unsupported format bit-size"); break;
+   };
+   const struct v3dv_format *format = v3dv_get_format(vk_format);
+   assert(v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
+                                       format->tex_type));
 
    /* Emit a TFU job for each layer to blit */
    assert(region->dstSubresource.layerCount ==
