@@ -738,7 +738,8 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
    }
 
    for (int i = 0; i < sel_ctx->ctx->num_samplers[stage]; ++i) {
-      if (sel_ctx->ctx->samplers[stage][i]->filter == PIPE_TEX_FILTER_NEAREST)
+      if (!sel_ctx->ctx->samplers[stage][i] ||
+          sel_ctx->ctx->samplers[stage][i]->filter == PIPE_TEX_FILTER_NEAREST)
          continue;
 
       if (sel_ctx->ctx->samplers[stage][i]->wrap_r == PIPE_TEX_WRAP_CLAMP)
