@@ -623,9 +623,10 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                                         nir_var_mem_ubo |
                                         nir_var_mem_ssbo)) {
          enum zink_descriptor_type ztype;
+         const struct glsl_type *type = glsl_without_array(var->type);
          if (var->data.mode == nir_var_mem_ubo) {
             /* ignore variables being accessed if they aren't the base of the UBO */
-            bool ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
+            bool ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(type);
             if (var->data.location && !ubo_array && var->type != var->interface_type)
                continue;
             var->data.binding = cur_ubo;
@@ -652,7 +653,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             }
          } else if (var->data.mode == nir_var_mem_ssbo) {
             /* same-ish mechanics as ubos */
-            bool bo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
+            bool bo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(type);
             if (var->data.location && !bo_array)
                continue;
             if (!var->data.explicit_binding) {
@@ -675,7 +676,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             }
          } else {
             assert(var->data.mode == nir_var_uniform);
-            const struct glsl_type *type = glsl_without_array(var->type);
             if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {
                VkDescriptorType vktype = glsl_type_is_image(type) ? zink_image_type(type) : zink_sampler_type(type);
                ztype = zink_desc_type_from_vktype(vktype);
