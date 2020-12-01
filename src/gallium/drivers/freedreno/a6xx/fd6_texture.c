@@ -512,6 +512,7 @@ fd6_rebind_resource(struct fd_context *ctx, struct fd_resource *rsc)
 		for (unsigned i = 0; i < ARRAY_SIZE(state->key.view); i++) {
 			if (rsc->seqno == state->key.view[i].rsc_seqno) {
 				remove_tex_entry(fd6_ctx, entry);
+				break;
 			}
 		}
 	}
