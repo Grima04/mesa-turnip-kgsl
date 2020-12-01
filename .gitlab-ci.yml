@@ -823,6 +823,7 @@ test-d3d12-windows:
   variables:
     GALLIUM_DRIVER: d3d12
     PIGLIT_PROFILE: quick_gl
+    PIGLIT_OPTIONS: -x nv_copy_depth_to_color
   script:
     - . .\.gitlab-ci\windows\piglit_run.ps1
   artifacts:

@@ -4663,11 +4663,6 @@ spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 9: 
 spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control-error: skip
 spec/nv_conditional_render/copypixels: fail
 spec/nv_conditional_render/generatemipmap: fail
-spec/nv_copy_depth_to_color/nv_copy_depth_to_color: crash
-spec/nv_copy_depth_to_color/nv_copy_depth_to_color 0 0x223344ff: crash
-spec/nv_copy_depth_to_color/nv_copy_depth_to_color 0 0x76356278: crash
-spec/nv_copy_depth_to_color/nv_copy_depth_to_color 1 0x223344ff: crash
-spec/nv_copy_depth_to_color/nv_copy_depth_to_color 1 0x76356278: crash
 spec/nv_copy_image/nv_copy_image-formats --samples=2: skip
 spec/nv_copy_image/nv_copy_image-formats --samples=4: skip
 spec/nv_copy_image/nv_copy_image-formats --samples=8: skip
@@ -4756,7 +4751,7 @@ summary:
        ----  --------
        pass:    13248
        fail:      539
-      crash:       80
+      crash:       75
        skip:     4114
     timeout:        0
        warn:       10
@@ -4766,4 +4761,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    18001
+      total:    17996
