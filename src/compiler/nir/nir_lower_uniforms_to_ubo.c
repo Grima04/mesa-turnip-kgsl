@@ -144,6 +144,7 @@ nir_lower_uniforms_to_ubo(nir_shader *shader, int multiplier)
          nir_variable *ubo = nir_variable_create(shader, nir_var_mem_ubo, type,
                                                  "uniform_0");
          ubo->data.binding = 0;
+         ubo->data.explicit_binding = 1;
 
          struct glsl_struct_field field = {
             .type = type,
