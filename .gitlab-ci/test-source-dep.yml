@@ -177,7 +177,7 @@
     - when: never
 
 .virgl-rules:
-  stage: virgl
+  stage: layered-backends
   rules:
     - *ignore_scheduled_pipelines
     - changes:

@@ -29,9 +29,8 @@ stages:
   - freedreno
   - panfrost
   - lima
-  - virgl
   - amd
-  - d3d12
+  - layered-backends
   - success
 
 # Generic rule to not run the job during scheduled pipelines
@@ -815,7 +814,7 @@ test-d3d12-windows:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
-  stage: d3d12
+  stage: layered-backends
   dependencies:
     - meson-windows-vs2019
   needs:
