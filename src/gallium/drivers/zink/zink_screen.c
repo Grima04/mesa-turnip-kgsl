@@ -724,6 +724,17 @@ choose_pdev(const VkInstance instance)
    for (i = 0; i < pdev_count; ++i) {
       VkPhysicalDeviceProperties props;
       vkGetPhysicalDeviceProperties(pdevs[i], &props);
+
+#ifdef ZINK_WITH_SWRAST_VK
+      char *use_lavapipe = getenv("ZINK_USE_LAVAPIPE");
+      if (use_lavapipe) {
+         if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
+            pdev = pdevs[i];
+            break;
+         } else
+            continue;
+      }
+#endif
       if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU) {
          pdev = pdevs[i];
          break;
@@ -1156,10 +1167,30 @@ fail:
 struct pipe_screen *
 zink_create_screen(struct sw_winsys *winsys)
 {
-   struct zink_screen *ret = zink_internal_create_screen(NULL);
+#ifdef ZINK_WITH_SWRAST_VK
+   char *use_lavapipe = getenv("ZINK_USE_LAVAPIPE"), *gallium_driver = NULL;
+   if (use_lavapipe) {
+      /**
+      * HACK: Temorarily unset $GALLIUM_DRIVER to prevent Lavapipe from
+      * recursively trying to use zink as the gallium driver.
+      *
+      * This is not thread-safe, so if an application creates another
+      * context in another thread at the same time, well, we're out of
+      * luck!
+      */
+      gallium_driver = getenv("GALLIUM_DRIVER");
+      setenv("GALLIUM_DRIVER", "llvmpipe", 1);
+   }
+#endif
 
+   struct zink_screen *ret = zink_internal_create_screen(NULL);
    if (ret)
       ret->winsys = winsys;
+
+#ifdef ZINK_WITH_SWRAST_VK
+   if (gallium_driver)
+      setenv("GALLIUM_DRIVER", gallium_driver, 1);
+#endif
 
    return &ret->base;
 }
