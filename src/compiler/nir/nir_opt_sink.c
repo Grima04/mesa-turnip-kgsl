@@ -166,6 +166,10 @@ get_preferred_block(nir_ssa_def *def, bool sink_out_of_loops)
       lca = nir_dominance_lca(lca, use_block);
    }
 
+   /* return in case, we didn't find a reachable user */
+   if (!lca)
+      return NULL;
+
    /* We don't sink any instructions into loops to avoid repeated executions
     * This might occasionally increase register pressure, but seems overall
     * the better choice.
