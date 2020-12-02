@@ -50,7 +50,7 @@ files_libclc_compiler = files(
 
 libclc_compiler = shared_library(
   'clglon12compiler',
-  [files_libclc_compiler],
+  [files_libclc_compiler, sha1_h],
   opencl_c_h,
   opencl_c_base_h,
   vs_module_defs : 'clglon12compiler.def',
