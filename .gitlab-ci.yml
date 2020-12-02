@@ -24,8 +24,7 @@ stages:
   - git-archive
   - deploy
   - meson-x86_64
-  - scons
-  - meson-misc
+  - build-misc
   - llvmpipe
   - softpipe
   - freedreno
@@ -556,7 +555,7 @@ sanity:
   extends:
     - .build-linux
     - .use-x86_build
-  stage: scons
+  stage: build-misc
   script:
     - env SCONSFLAGS="-j${FDO_CI_CONCURRENT:-4}" .gitlab-ci/scons-build.sh
 
@@ -718,7 +717,7 @@ meson-android:
 .meson-cross:
   extends:
     - .meson-build
-  stage: meson-misc
+  stage: build-misc
   variables:
     UNWIND: "disabled"
     DRI_LOADERS: >
@@ -807,7 +806,7 @@ meson-windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
-  stage: meson-misc
+  stage: build-misc
   script:
     - . .\.gitlab-ci\windows\mesa_build.ps1
   artifacts:
@@ -935,7 +934,7 @@ meson-ppc64el:
 
 meson-mingw32-x86_64:
   extends: .meson-build
-  stage: meson-misc
+  stage: build-misc
   variables:
     UNWIND: "disabled"
     DRI_DRIVERS: ""
