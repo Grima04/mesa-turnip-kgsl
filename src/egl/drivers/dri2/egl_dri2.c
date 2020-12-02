@@ -183,16 +183,6 @@ dri_is_thread_safe(void *loaderPrivate)
       return false;
 #endif
 
-#ifdef HAVE_XCB_PLATFORM
-   if (display->Platform == _EGL_PLATFORM_XCB)
-      return true;
-#endif
-
-#ifdef HAVE_WAYLAND_PLATFORM
-   if (display->Platform == _EGL_PLATFORM_WAYLAND)
-      return true;
-#endif
-
    return true;
 }
 
