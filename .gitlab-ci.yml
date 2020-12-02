@@ -25,10 +25,10 @@ stages:
   - deploy
   - meson-x86_64
   - build-misc
-  - software-renderer
   - amd
   - arm
   - freedreno
+  - software-renderer
   - layered-backends
   - success
 
