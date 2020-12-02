@@ -308,6 +308,8 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                 cfg.thread_storage = shared_mem;
                 pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_VERTEX);
         }
+
+        pan_section_pack(job, COMPUTE_JOB, DRAW_PADDING, cfg);
 }
 
 static void
@@ -420,6 +422,8 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 
         if (!is_bifrost)
                 panfrost_emit_primitive_size(ctx, points, psiz, prim_size);
+        else
+                pan_section_pack(job, BIFROST_TILER_JOB, DRAW_PADDING, cfg);
 }
 
 static void

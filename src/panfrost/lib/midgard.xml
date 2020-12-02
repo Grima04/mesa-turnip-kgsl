@@ -618,7 +618,7 @@
     <field name="Indices" size="64" start="4:0" type="address"/>
   </struct>
 
-  <struct name="Draw" size="32">
+  <struct name="Draw" size="30">
     <field name="Four Components Per Vertex" size="1" start="0:0" type="bool"/>
     <field name="Draw Descriptor Is 64b" size="1" start="0:1" type="bool"/>
     <field name="Texture Descriptor Is 64b" size="1" start="0:2" type="bool"/>
@@ -648,6 +648,9 @@
     <field name="Occlusion" size="64" start="26:0" type="address"/>
     <field name="Thread Storage" size="64" start="28:0" type="address"/>
     <field name="FBD" size="64" start="28:0" type="address"/>
+  </struct>
+
+  <struct name="Draw Padding" size="2">
   </struct>
 
   <struct name="Midgard Sampler">
@@ -1486,6 +1489,7 @@
     <section name="Invocation" offset="32" type="Invocation"/>
     <section name="Parameters" offset="40" type="Compute Job Parameters"/>
     <section name="Draw" offset="64" type="Draw"/>
+    <section name="Draw Padding" offset="184" type="Draw Padding"/>
   </aggregate>
 
   <struct name="Primitive Size">
@@ -1512,5 +1516,6 @@
     <section name="Tiler" offset="72" type="Bifrost Tiler Pointer"/>
     <section name="Padding" offset="80" type="Bifrost Tiler Job Padding"/>
     <section name="Draw" offset="128" type="Draw"/>
+    <section name="Draw Padding" offset="248" type="Draw Padding"/>
   </aggregate>
 </panxml>
