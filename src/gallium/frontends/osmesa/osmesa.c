@@ -131,21 +131,8 @@ osmesa_st_get_param(struct st_manager *smapi, enum st_manager_param param)
    return 0;
 }
 
-
-/**
- * Create/return singleton st_api object.
- */
-static struct st_api *
-get_st_api(void)
-{
-   static struct st_api *stapi = NULL;
-   if (!stapi) {
-      stapi = st_gl_api_create();
-   }
-   return stapi;
-}
-
 static struct st_manager *stmgr = NULL;
+static struct st_api *stapi = NULL;
 
 static void
 create_st_manager(void)
@@ -156,6 +143,8 @@ create_st_manager(void)
       stmgr->get_param = osmesa_st_get_param;
       stmgr->get_egl_image = NULL;
    }
+
+   stapi = st_gl_api_create();
 }
 
 /**
@@ -169,6 +158,16 @@ get_st_manager(void)
    call_once(&create_once_flag, create_st_manager);
 
    return stmgr;
+}
+
+/**
+ * Create/return singleton st_api object.
+ */
+static struct st_api *
+get_st_api(void)
+{
+   get_st_manager();
+   return stapi;
 }
 
 /* Reads the color or depth buffer from the backing context to either the user storage
@@ -500,8 +499,6 @@ osmesa_create_buffer(enum pipe_format color_format,
 static void
 osmesa_destroy_buffer(struct osmesa_buffer *osbuffer)
 {
-   struct st_api *stapi = get_st_api();
-
    /*
     * Notify the state manager that the associated framebuffer interface
     * is no longer valid.
