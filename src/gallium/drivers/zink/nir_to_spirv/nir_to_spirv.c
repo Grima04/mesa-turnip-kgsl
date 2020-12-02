@@ -879,18 +879,11 @@ get_bo_array_type(struct ntv_context *ctx, struct nir_variable *var)
    return array_type;
 }
 
-static void
-emit_bo(struct ntv_context *ctx, struct nir_variable *var)
+static SpvId
+get_bo_struct_type(struct ntv_context *ctx, struct nir_variable *var)
 {
-   bool is_ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
-   /* variables accessed inside a uniform block will get merged into a big
-    * memory blob and accessed by offset
-    */
-   if (var->data.location && !is_ubo_array && var->type != var->interface_type)
-      return;
-   bool ssbo = var->data.mode == nir_var_mem_ssbo;
-
    SpvId array_type = get_bo_array_type(ctx, var);
+   bool ssbo = var->data.mode == nir_var_mem_ssbo;
 
    // wrap UBO-array in a struct
    SpvId runtime_array = 0;
@@ -921,9 +914,23 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
                                                                    glsl_get_length(var->interface_type) - 1));
    }
 
-   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+   return spirv_builder_type_pointer(&ctx->builder,
                                                    ssbo ? SpvStorageClassStorageBuffer : SpvStorageClassUniform,
                                                    struct_type);
+}
+
+static void
+emit_bo(struct ntv_context *ctx, struct nir_variable *var)
+{
+   bool is_ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
+   /* variables accessed inside a uniform block will get merged into a big
+    * memory blob and accessed by offset
+    */
+   if (var->data.location && !is_ubo_array && var->type != var->interface_type)
+      return;
+   bool ssbo = var->data.mode == nir_var_mem_ssbo;
+
+   SpvId pointer_type = get_bo_struct_type(ctx, var);
 
    /* if this is a ubo array, create a binding point for each array member:
     * 
