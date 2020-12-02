@@ -17,3 +17,5 @@ if (!$buildstatus) {
   Write-Host "Mesa build or test failed"
   Exit 1
 }
+
+Copy-Item ".\.gitlab-ci\windows\piglit_run.ps1" -Destination $installdir
