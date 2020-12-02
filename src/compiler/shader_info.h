@@ -287,6 +287,11 @@ typedef struct shader_info {
          bool uses_sample_qualifier:1;
 
          /**
+          * Whether sample shading is used.
+          */
+         bool uses_sample_shading:1;
+
+         /**
           * Whether early fragment tests are enabled as defined by
           * ARB_shader_image_load_store.
           */
