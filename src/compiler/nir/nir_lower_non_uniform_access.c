@@ -24,20 +24,6 @@
 #include "nir.h"
 #include "nir_builder.h"
 
-static nir_ssa_def *
-read_first_invocation(nir_builder *b, nir_ssa_def *x)
-{
-   nir_intrinsic_instr *first =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_read_first_invocation);
-   first->num_components = x->num_components;
-   first->src[0] = nir_src_for_ssa(x);
-   nir_ssa_dest_init(&first->instr, &first->dest,
-                     x->num_components, x->bit_size, NULL);
-   nir_builder_instr_insert(b, &first->instr);
-   return &first->dest.ssa;
-}
-
 static bool
 lower_non_uniform_tex_access(nir_builder *b, nir_tex_instr *tex)
 {
@@ -113,7 +99,7 @@ lower_non_uniform_tex_access(nir_builder *b, nir_tex_instr *tex)
    nir_ssa_def *all_equal_first = nir_imm_true(b);
    nir_ssa_def *first[2];
    for (unsigned i = 0; i < handle_count; i++) {
-      first[i] = read_first_invocation(b, handles[i]);
+      first[i] = nir_read_first_invocation(b, handles[i]);
       nir_ssa_def *equal_first = nir_ieq(b, first[i], handles[i]);
       all_equal_first = nir_iand(b, all_equal_first, equal_first);
    }
@@ -173,7 +159,7 @@ lower_non_uniform_access_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
 
    assert(handle->num_components == 1);
 
-   nir_ssa_def *first = read_first_invocation(b, handle);
+   nir_ssa_def *first = nir_read_first_invocation(b, handle);
    nir_push_if(b, nir_ieq(b, first, handle));
 
    /* Replicate the deref. */
