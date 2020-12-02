@@ -135,8 +135,25 @@ static struct st_manager *stmgr = NULL;
 static struct st_api *stapi = NULL;
 
 static void
+destroy_st_manager(void)
+{
+   if (stmgr) {
+      if (stmgr->screen)
+         stmgr->screen->destroy(stmgr->screen);
+      FREE(stmgr);
+   }
+
+   if (stapi && stapi->destroy) {
+      stapi->destroy(stapi);
+   }
+}
+
+static void
 create_st_manager(void)
 {
+   if (atexit(destroy_st_manager) != 0)
+      return;
+
    stmgr = CALLOC_STRUCT(st_manager);
    if (stmgr) {
       stmgr->screen = osmesa_create_screen();
