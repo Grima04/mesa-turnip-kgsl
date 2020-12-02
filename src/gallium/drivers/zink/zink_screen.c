@@ -54,24 +54,6 @@ DEBUG_GET_ONCE_FLAGS_OPTION(zink_debug, "ZINK_DEBUG", debug_options, 0)
 uint32_t
 zink_debug;
 
-#define GET_PROC_ADDR(x) do {                                               \
-      screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x); \
-      if (!screen->vk_##x) {                                                \
-         debug_printf("vkGetDeviceProcAddr failed: vk"#x"\n");              \
-         return false;                                                      \
-      } \
-   } while (0)
-
-#define GET_PROC_ADDR_INSTANCE(x) do {                                          \
-      screen->vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(screen->instance, "vk"#x); \
-      if (!screen->vk_##x) {                                                \
-         debug_printf("GetInstanceProcAddr failed: vk"#x"\n");        \
-         return false;                                                      \
-      } \
-   } while (0)
-
-#define GET_PROC_ADDR_INSTANCE_LOCAL(instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
-
 static const char *
 zink_get_vendor(struct pipe_screen *pscreen)
 {
