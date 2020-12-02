@@ -47,7 +47,7 @@
     when: never
 
 .softpipe-rules:
-  stage: softpipe
+  stage: software-renderer
   rules:
     - *ignore_scheduled_pipelines
     - changes:
@@ -63,7 +63,7 @@
     - when: never
 
 .llvmpipe-rules:
-  stage: llvmpipe
+  stage: software-renderer
   rules:
     - *ignore_scheduled_pipelines
     - changes:
@@ -79,7 +79,7 @@
     - when: never
 
 .llvmpipe-cl-rules:
-  stage: llvmpipe
+  stage: software-renderer
   rules:
     - *ignore_scheduled_pipelines
     - changes:
