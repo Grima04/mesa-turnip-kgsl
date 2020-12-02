@@ -367,7 +367,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return 1;
 
 	case PIPE_CAP_MAX_VARYINGS:
-		return 16;
+		return is_a6xx(screen) ? 31 : 16;
 
 	case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
 		/* We don't really have a limit on this, it all goes into the main
@@ -544,8 +544,11 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 	case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
 		return 8; /* XXX */
 	case PIPE_SHADER_CAP_MAX_INPUTS:
+		if (shader == PIPE_SHADER_GEOMETRY && is_a6xx(screen))
+			return 16;
+		return is_a6xx(screen) ? 32 : 16;
 	case PIPE_SHADER_CAP_MAX_OUTPUTS:
-		return 16;
+		return is_a6xx(screen) ? 32 : 16;
 	case PIPE_SHADER_CAP_MAX_TEMPS:
 		return 64; /* Max native temporaries. */
 	case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
