@@ -119,6 +119,10 @@ fi
 
 SANITY_MESA_VERSION_CMD="$SANITY_MESA_VERSION_CMD | tee /tmp/version.txt | grep \"Mesa $MESA_VERSION\(\s\|$\)\""
 
+if [ "$ZINK_USE_LAVAPIPE" ]; then
+    export VK_ICD_FILENAMES="$INSTALL/share/vulkan/icd.d/lvp_icd.x86_64.json"
+fi
+
 rm -rf results
 cd /piglit
 

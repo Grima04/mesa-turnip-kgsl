@@ -294,3 +294,21 @@
     - changes: *d3d12_file_list
       when: on_success
     - when: never
+
+.zink-rules:
+  stage: layered-backends
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+        *llvmpipe_file_list
+      when: on_success
+    - changes:
+      - src/gallium/drivers/zink/**/*
+      when: on_success
+    - when: never
