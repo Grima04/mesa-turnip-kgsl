@@ -196,7 +196,7 @@
     - when: never
 
 .radeonsi-rules:
-  stage: radeonsi
+  stage: amd
   rules:
     - *ignore_scheduled_pipelines
     - changes:
