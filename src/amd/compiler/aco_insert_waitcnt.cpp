@@ -28,6 +28,7 @@
 #include <math.h>
 
 #include "aco_ir.h"
+#include "sid.h"
 
 namespace aco {
 
@@ -527,6 +528,24 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
           !smem->definitions.empty() &&
           !smem->sync.can_reorder()) {
          imm.lgkm = 0;
+      }
+   }
+
+   if (ctx.program->early_rast &&
+       instr->opcode == aco_opcode::exp) {
+
+      Export_instruction *exp = static_cast<Export_instruction *>(instr);
+      if (exp->dest >= V_008DFC_SQ_EXP_POS &&
+          exp->dest < V_008DFC_SQ_EXP_PRIM) {
+
+         /* With early_rast, the HW will start clipping and rasterization after the 1st DONE pos export.
+          * Wait for all stores (and atomics) to complete, so PS can read them.
+          * TODO: This only really applies to DONE pos exports. Consider setting the DONE bit earlier.
+          */
+         if (ctx.vs_cnt > 0)
+            imm.vs = 0;
+         if (ctx.vm_cnt > 0)
+            imm.vm = 0;
       }
    }
 
