@@ -42,11 +42,15 @@ opencl_c_base_h = custom_target(
   command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'opencl_c_base_source'],
 )
 
-libclc_compiler = shared_library(
-  'clglon12compiler',
+files_libclc_compiler = files(
   'clc_compiler.c',
   'clc_nir.c',
-  'clc_helpers.cpp',
+  'clc_helpers.cpp'
+)
+
+libclc_compiler = shared_library(
+  'clglon12compiler',
+  [files_libclc_compiler],
   opencl_c_h,
   opencl_c_base_h,
   vs_module_defs : 'clglon12compiler.def',
