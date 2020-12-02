@@ -706,7 +706,7 @@ pandecode_texture_payload(mali_ptr payload,
                           enum mali_texture_layout layout,
                           bool manual_stride,
                           uint8_t levels,
-                          uint16_t depth,
+                          uint16_t nr_samples,
                           uint16_t array_size,
                           struct pandecode_mapped_memory *tmem)
 {
@@ -726,7 +726,7 @@ pandecode_texture_payload(mali_ptr payload,
                 bitmap_count *= 6;
 
         /* Array of layers */
-        bitmap_count *= depth;
+        bitmap_count *= nr_samples;
 
         /* Array of textures */
         bitmap_count *= array_size;
@@ -770,9 +770,11 @@ pandecode_texture(mali_ptr u,
         DUMP_UNPACKED(MIDGARD_TEXTURE, temp, "Texture:\n")
 
         pandecode_indent++;
+        unsigned nr_samples = temp.dimension == MALI_TEXTURE_DIMENSION_3D ?
+                              1 : temp.sample_count;
         pandecode_texture_payload(u + MALI_MIDGARD_TEXTURE_LENGTH,
                         temp.dimension, temp.texel_ordering, temp.manual_stride,
-                        temp.levels, temp.depth, temp.array_size, mapped_mem);
+                        temp.levels, nr_samples, temp.array_size, mapped_mem);
         pandecode_indent--;
 }
 
@@ -786,9 +788,11 @@ pandecode_bifrost_texture(
         DUMP_UNPACKED(BIFROST_TEXTURE, temp, "Texture:\n")
 
         struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(temp.surfaces);
+        unsigned nr_samples = temp.dimension == MALI_TEXTURE_DIMENSION_3D ?
+                              1 : temp.sample_count;
         pandecode_indent++;
         pandecode_texture_payload(temp.surfaces, temp.dimension, temp.texel_ordering,
-                                  true, temp.levels, 1, 1, tmem);
+                                  true, temp.levels, nr_samples, temp.array_size, tmem);
         pandecode_indent--;
 }
 
