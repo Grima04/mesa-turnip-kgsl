@@ -214,7 +214,7 @@ v3d_rcl_emit_loads(struct v3d_job *job, struct v3d_cl *cl, int layer)
 {
         uint32_t loads_pending = job->load;
 
-        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < job->nr_cbufs; i++) {
                 uint32_t bit = PIPE_CLEAR_COLOR0 << i;
                 if (!(loads_pending & bit))
                         continue;
@@ -313,7 +313,7 @@ v3d_rcl_emit_stores(struct v3d_job *job, struct v3d_cl *cl, int layer)
          * perspective.  Non-MSAA surfaces will use
          * STORE_MULTI_SAMPLE_RESOLVED_TILE_COLOR_BUFFER_EXTENDED.
          */
-        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < job->nr_cbufs; i++) {
                 uint32_t bit = PIPE_CLEAR_COLOR0 << i;
                 if (!(job->store & bit))
                         continue;
@@ -639,12 +639,6 @@ v3dX(emit_rcl)(struct v3d_job *job)
         job->submit.rcl_start = job->rcl.bo->offset;
         v3d_job_add_bo(job, job->rcl.bo);
 
-        int nr_cbufs = 0;
-        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
-                if (job->cbufs[i])
-                        nr_cbufs = i + 1;
-        }
-
         /* Comon config must be the first TILE_RENDERING_MODE_CFG
          * and Z_STENCIL_CLEAR_VALUES must be last.  The ones in between are
          * optional updates to the previous HW state.
@@ -681,14 +675,14 @@ v3dX(emit_rcl)(struct v3d_job *job)
                 config.image_width_pixels = job->draw_width;
                 config.image_height_pixels = job->draw_height;
 
-                config.number_of_render_targets = MAX2(nr_cbufs, 1);
+                config.number_of_render_targets = MAX2(job->nr_cbufs, 1);
 
                 config.multisample_mode_4x = job->msaa;
 
                 config.maximum_bpp_of_all_render_targets = job->internal_bpp;
         }
 
-        for (int i = 0; i < nr_cbufs; i++) {
+        for (int i = 0; i < job->nr_cbufs; i++) {
                 struct pipe_surface *psurf = job->cbufs[i];
                 if (!psurf)
                         continue;

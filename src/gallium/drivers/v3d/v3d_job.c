@@ -55,7 +55,7 @@ v3d_job_free(struct v3d_context *v3d, struct v3d_job *job)
                 }
         }
 
-        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < job->nr_cbufs; i++) {
                 if (job->cbufs[i]) {
                         _mesa_hash_table_remove_key(v3d->write_jobs,
                                                     job->cbufs[i]->texture);
@@ -294,7 +294,7 @@ v3d_job_set_tile_buffer_size(struct v3d_job *job)
                 tile_size_index++;
 
         int max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
-        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < job->nr_cbufs; i++) {
                 if (job->cbufs[i]) {
                         struct v3d_surface *surf = v3d_surface(job->cbufs[i]);
                         max_bpp = MAX2(max_bpp, surf->internal_bpp);
@@ -319,7 +319,9 @@ v3d_job_set_tile_buffer_size(struct v3d_job *job)
  */
 struct v3d_job *
 v3d_get_job(struct v3d_context *v3d,
-            struct pipe_surface **cbufs, struct pipe_surface *zsbuf)
+            uint32_t nr_cbufs,
+            struct pipe_surface **cbufs,
+            struct pipe_surface *zsbuf)
 {
         /* Return the existing job for this FBO if we have one */
         struct v3d_job_key local_key = {
@@ -340,8 +342,9 @@ v3d_get_job(struct v3d_context *v3d,
          * writing these buffers are flushed.
          */
         struct v3d_job *job = v3d_job_create(v3d);
+        job->nr_cbufs = nr_cbufs;
 
-        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < job->nr_cbufs; i++) {
                 if (cbufs[i]) {
                         v3d_flush_jobs_reading_resource(v3d, cbufs[i]->texture,
                                                         V3D_FLUSH_DEFAULT,
@@ -361,7 +364,7 @@ v3d_get_job(struct v3d_context *v3d,
                         job->msaa = true;
         }
 
-        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < job->nr_cbufs; i++) {
                 if (cbufs[i])
                         _mesa_hash_table_insert(v3d->write_jobs,
                                                 cbufs[i]->texture, job);
@@ -393,9 +396,10 @@ v3d_get_job_for_fbo(struct v3d_context *v3d)
         if (v3d->job)
                 return v3d->job;
 
+        uint32_t nr_cbufs = v3d->framebuffer.nr_cbufs;
         struct pipe_surface **cbufs = v3d->framebuffer.cbufs;
         struct pipe_surface *zsbuf = v3d->framebuffer.zsbuf;
-        struct v3d_job *job = v3d_get_job(v3d, cbufs, zsbuf);
+        struct v3d_job *job = v3d_get_job(v3d, nr_cbufs, cbufs, zsbuf);
 
         if (v3d->framebuffer.samples >= 1)
                 job->msaa = true;
@@ -411,7 +415,7 @@ v3d_get_job_for_fbo(struct v3d_context *v3d)
         /* If we're binding to uninitialized buffers, no need to load their
          * contents before drawing.
          */
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < nr_cbufs; i++) {
                 if (cbufs[i]) {
                         struct v3d_resource *rsc = v3d_resource(cbufs[i]->texture);
                         if (!rsc->writes)
