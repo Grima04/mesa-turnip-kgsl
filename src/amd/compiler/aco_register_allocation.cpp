@@ -158,6 +158,7 @@ public:
       return res;
    }
 
+   /* Returns true if any of the bytes in the given range are allocated or blocked */
    bool test(PhysReg start, unsigned num_bytes) {
       for (PhysReg i = start; i.reg_b < start.reg_b + num_bytes; i = PhysReg(i + 1)) {
          if (regs[i] & 0x0FFFFFFF)
@@ -968,15 +969,21 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
 
    /* mark and count killed operands */
    unsigned killed_ops = 0;
+   std::bitset<256> is_killed_operand; /* per-register */
    for (unsigned j = 0; !is_phi(instr) && j < instr->operands.size(); j++) {
-      if (instr->operands[j].isTemp() &&
-          instr->operands[j].isFirstKillBeforeDef() &&
-          instr->operands[j].physReg() >= lb &&
-          instr->operands[j].physReg() < ub &&
-          !reg_file.test(instr->operands[j].physReg(), instr->operands[j].bytes())) {
-         assert(instr->operands[j].isFixed());
-         tmp_file.block(instr->operands[j].physReg(), instr->operands[j].regClass());
-         killed_ops += instr->operands[j].getTemp().size();
+      Operand& op = instr->operands[j];
+      if (op.isTemp() &&
+          op.isFirstKillBeforeDef() &&
+          op.physReg() >= lb &&
+          op.physReg() < ub &&
+          !reg_file.test(PhysReg{op.physReg().reg()}, align(op.bytes() + op.physReg().byte(), 4))) {
+         assert(op.isFixed());
+
+         for (unsigned i = 0; i < op.size(); ++i) {
+            is_killed_operand[(op.physReg() & 0xff) + i] = true;
+         }
+
+         killed_ops += op.getTemp().size();
       }
    }
 
@@ -1015,17 +1022,17 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       bool found = true;
       bool aligned = rc == RegClass::v4 && reg_lo % 4 == 0;
       for (unsigned j = reg_lo; found && j <= reg_hi; j++) {
-         if (tmp_file[j] == 0 || tmp_file[j] == last_var)
-            continue;
-
          /* dead operands effectively reduce the number of estimated moves */
-         if (tmp_file.is_blocked(PhysReg{j})) {
+         if (is_killed_operand[j & 0xFF]) {
             if (remaining_op_moves) {
                k--;
                remaining_op_moves--;
             }
             continue;
          }
+
+         if (tmp_file[j] == 0 || tmp_file[j] == last_var)
+            continue;
 
          if (tmp_file[j] == 0xF0000000) {
             k += 1;
