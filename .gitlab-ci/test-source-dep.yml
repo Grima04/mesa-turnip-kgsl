@@ -131,7 +131,7 @@
     - when: never
 
 .panfrost-rules:
-  stage: panfrost
+  stage: arm
   rules:
     - *ignore_scheduled_pipelines
     - changes:
@@ -148,7 +148,7 @@
     - when: never
 
 .lima-rules:
-  stage: lima
+  stage: arm
   rules:
     - *ignore_scheduled_pipelines
     - changes:

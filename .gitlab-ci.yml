@@ -26,10 +26,9 @@ stages:
   - meson-x86_64
   - build-misc
   - software-renderer
-  - freedreno
-  - panfrost
-  - lima
   - amd
+  - arm
+  - freedreno
   - layered-backends
   - success
 
