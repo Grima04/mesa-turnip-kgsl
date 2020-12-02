@@ -121,18 +121,6 @@ struct osmesa_context
    struct pp_queue_t *pp;
 };
 
-
-/**
- * Linked list of all osmesa_buffers.
- * We can re-use an osmesa_buffer from one OSMesaMakeCurrent() call to
- * the next unless the color/depth/stencil/accum formats change.
- * We have to do this to be compatible with the original OSMesa implementation
- * because some apps call OSMesaMakeCurrent() several times during rendering
- * a frame.
- */
-static struct osmesa_buffer *BufferList = NULL;
-
-
 /**
  * Called from the ST manager.
  */
@@ -503,38 +491,9 @@ osmesa_create_buffer(enum pipe_format color_format,
 
       osmesa_init_st_visual(&osbuffer->visual, color_format,
                             ds_format, accum_format);
-
-      /* insert into linked list */
-      osbuffer->next = BufferList;
-      BufferList = osbuffer;
    }
 
    return osbuffer;
-}
-
-
-/**
- * Search linked list for a buffer with matching pixel formats and size.
- */
-static struct osmesa_buffer *
-osmesa_find_buffer(enum pipe_format color_format,
-                   enum pipe_format ds_format,
-                   enum pipe_format accum_format,
-                   GLsizei width, GLsizei height)
-{
-   struct osmesa_buffer *b;
-
-   /* Check if we already have a suitable buffer for the given formats */
-   for (b = BufferList; b; b = b->next) {
-      if (b->visual.color_format == color_format &&
-          b->visual.depth_stencil_format == ds_format &&
-          b->visual.accum_format == accum_format &&
-          b->width == width &&
-          b->height == height) {
-         return b;
-      }
-   }
-   return NULL;
 }
 
 
@@ -786,7 +745,6 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
                   GLsizei width, GLsizei height)
 {
    struct st_api *stapi = get_st_api();
-   struct osmesa_buffer *osbuffer;
    enum pipe_format color_format;
 
    if (!osmesa && !buffer) {
@@ -805,27 +763,33 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
    }
 
    /* See if we already have a buffer that uses these pixel formats */
-   osbuffer = osmesa_find_buffer(color_format,
-                                 osmesa->depth_stencil_format,
-                                 osmesa->accum_format, width, height);
-   if (!osbuffer) {
-      /* Existing buffer found, create new buffer */
-      osbuffer = osmesa_create_buffer(color_format,
+   if (osmesa->current_buffer &&
+       (osmesa->current_buffer->visual.color_format != color_format ||
+        osmesa->current_buffer->visual.depth_stencil_format != osmesa->depth_stencil_format ||
+        osmesa->current_buffer->visual.accum_format != osmesa->accum_format)) {
+      osmesa_destroy_buffer(osmesa->current_buffer);
+   }
+
+   if (!osmesa->current_buffer) {
+      osmesa->current_buffer = osmesa_create_buffer(color_format,
                                       osmesa->depth_stencil_format,
                                       osmesa->accum_format);
    }
+
+   struct osmesa_buffer *osbuffer = osmesa->current_buffer;
 
    osbuffer->width = width;
    osbuffer->height = height;
    osbuffer->map = buffer;
 
-   /* XXX unused for now */
-   (void) osmesa_destroy_buffer;
-
-   osmesa->current_buffer = osbuffer;
    osmesa->type = type;
 
    stapi->make_current(stapi, osmesa->stctx, osbuffer->stfb, osbuffer->stfb);
+
+   /* XXX: We should probably load the current color value into the buffer here
+    * to match classic swrast behavior (context's fb starts with the contents of
+    * your pixel buffer).
+    */
 
    if (!osmesa->ever_used) {
       /* one-time init, just postprocessing for now */

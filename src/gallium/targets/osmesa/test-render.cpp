@@ -215,3 +215,54 @@ TEST(OSMesaRenderTest, depth)
    EXPECT_EQ(depth[w * 1 + 0], 0x00ffffff);
    EXPECT_EQ(depth[w * 1 + 1], 0x00000000);
 }
+
+static uint32_t be_bswap32(uint32_t x)
+{
+   if (UTIL_ARCH_BIG_ENDIAN)
+      return util_bswap32(x);
+   else
+      return x;
+}
+
+TEST(OSMesaRenderTest, separate_buffers_per_context)
+{
+   std::unique_ptr<osmesa_context, decltype(&OSMesaDestroyContext)> ctx1{
+      OSMesaCreateContext(GL_RGBA, NULL), &OSMesaDestroyContext};
+   std::unique_ptr<osmesa_context, decltype(&OSMesaDestroyContext)> ctx2{
+      OSMesaCreateContext(GL_RGBA, NULL), &OSMesaDestroyContext};
+   ASSERT_TRUE(ctx1);
+   ASSERT_TRUE(ctx2);
+
+   uint32_t pixel1, pixel2;
+
+   ASSERT_EQ(OSMesaMakeCurrent(ctx1.get(), &pixel1, GL_UNSIGNED_BYTE, 1, 1), GL_TRUE);
+   glClearColor(1.0, 0.0, 0.0, 0.0);
+   glClear(GL_COLOR_BUFFER_BIT);
+   glFinish();
+   EXPECT_EQ(pixel1, be_bswap32(0x000000ff));
+
+   ASSERT_EQ(OSMesaMakeCurrent(ctx2.get(), &pixel2, GL_UNSIGNED_BYTE, 1, 1), GL_TRUE);
+   glClearColor(0.0, 1.0, 0.0, 0.0);
+   glClear(GL_COLOR_BUFFER_BIT);
+   glFinish();
+   EXPECT_EQ(pixel1, be_bswap32(0x000000ff));
+   EXPECT_EQ(pixel2, be_bswap32(0x0000ff00));
+
+   /* Leave a dangling render to pixel2 as we switch contexts (there should be
+    */
+   glClearColor(0.0, 0.0, 1.0, 0.0);
+   glClear(GL_COLOR_BUFFER_BIT);
+
+   ASSERT_EQ(OSMesaMakeCurrent(ctx1.get(), &pixel1, GL_UNSIGNED_BYTE, 1, 1), GL_TRUE);
+   /* Draw something off screen to trigger a real flush.  We should have the
+    * same contents in pixel1 as before
+    */
+   glBegin(GL_TRIANGLES);
+   glVertex2f(-2, -2);
+   glVertex2f(-2, -2);
+   glVertex2f(-2, -2);
+   glEnd();
+   glFinish();
+   EXPECT_EQ(pixel1, be_bswap32(0x000000ff));
+   EXPECT_EQ(pixel2, be_bswap32(0x00ff0000));
+}
