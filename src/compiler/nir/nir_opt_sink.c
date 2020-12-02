@@ -181,26 +181,6 @@ get_preferred_block(nir_ssa_def *def, bool sink_out_of_loops)
    return lca;
 }
 
-/* insert before first non-phi instruction: */
-static void
-insert_after_phi(nir_instr *instr, nir_block *block)
-{
-   nir_foreach_instr(instr2, block) {
-      if (instr2->type == nir_instr_type_phi)
-         continue;
-
-      exec_node_insert_node_before(&instr2->node,
-                                   &instr->node);
-
-      return;
-   }
-
-   /* if haven't inserted it, push to tail (ie. empty block or possibly
-    * a block only containing phi's?)
-    */
-   exec_list_push_tail(&block->instr_list, &instr->node);
-}
-
 bool
 nir_opt_sink(nir_shader *shader, nir_move_options options)
 {
@@ -233,11 +213,8 @@ nir_opt_sink(nir_shader *shader, nir_move_options options)
             if (!use_block || use_block == instr->block)
                continue;
 
-            exec_node_remove(&instr->node);
-
-            insert_after_phi(instr, use_block);
-
-            instr->block = use_block;
+            nir_instr_remove(instr);
+            nir_instr_insert(nir_after_phis(use_block), instr);
 
             progress = true;
          }
