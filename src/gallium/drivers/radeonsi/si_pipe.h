@@ -1356,6 +1356,8 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
 void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_t offset,
                      uint64_t size, uint32_t *clear_value, uint32_t clear_value_size,
                      enum si_coherency coher, bool force_cpdma);
+void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst, uint64_t offset,
+                            uint64_t size, unsigned value);
 void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct pipe_resource *src,
                     uint64_t dst_offset, uint64_t src_offset, unsigned size);
 void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, unsigned dst_level,
@@ -1427,8 +1429,6 @@ void si_sdma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
 void si_need_dma_space(struct si_context *ctx, unsigned num_dw, struct si_resource *dst,
                        struct si_resource *src);
 void si_flush_dma_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_handle **fence);
-void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst, uint64_t offset,
-                            uint64_t size, unsigned value);
 
 /* si_fence.c */
 void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs, unsigned event,

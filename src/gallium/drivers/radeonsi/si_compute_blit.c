@@ -372,6 +372,17 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_
    }
 }
 
+void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst, uint64_t offset,
+                            uint64_t size, unsigned value)
+{
+   struct si_context *ctx = (struct si_context *)sscreen->aux_context;
+
+   simple_mtx_lock(&sscreen->aux_context_lock);
+   ctx->b.clear_buffer(&ctx->b, dst, offset, size, &value, 4);
+   sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
+   simple_mtx_unlock(&sscreen->aux_context_lock);
+}
+
 static void si_pipe_clear_buffer(struct pipe_context *ctx, struct pipe_resource *dst,
                                  unsigned offset, unsigned size, const void *clear_value,
                                  int clear_value_size)

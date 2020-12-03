@@ -317,14 +317,3 @@ void si_flush_dma_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
       si_clear_saved_cs(&saved);
    }
 }
-
-void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst, uint64_t offset,
-                            uint64_t size, unsigned value)
-{
-   struct si_context *ctx = (struct si_context *)sscreen->aux_context;
-
-   simple_mtx_lock(&sscreen->aux_context_lock);
-   si_sdma_clear_buffer(ctx, dst, offset, size, value);
-   sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
-   simple_mtx_unlock(&sscreen->aux_context_lock);
-}
