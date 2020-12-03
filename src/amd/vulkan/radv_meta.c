@@ -29,7 +29,9 @@
 
 #include <fcntl.h>
 #include <limits.h>
+#ifndef _WIN32
 #include <pwd.h>
+#endif
 #include <sys/stat.h>
 
 void
@@ -293,6 +295,7 @@ meta_free(void* _device, void *data)
 	device->vk.alloc.pfnFree(device->vk.alloc.pUserData, data);
 }
 
+#ifndef _WIN32
 static bool
 radv_builtin_cache_path(char *path)
 {
@@ -322,10 +325,14 @@ radv_builtin_cache_path(char *path)
 		       pwd.pw_dir, suffix2, sizeof(void *) * 8);
 	return ret > 0 && ret < PATH_MAX + 1;
 }
+#endif
 
 static bool
 radv_load_meta_pipeline(struct radv_device *device)
 {
+#ifdef _WIN32
+	return false;
+#else
 	char path[PATH_MAX + 1];
 	struct stat st;
 	void *data = NULL;
@@ -350,11 +357,13 @@ fail:
 	free(data);
 	close(fd);
 	return ret;
+#endif
 }
 
 static void
 radv_store_meta_pipeline(struct radv_device *device)
 {
+#ifndef _WIN32
 	char path[PATH_MAX + 1], path2[PATH_MAX + 7];
 	size_t size;
 	void *data = NULL;
@@ -391,6 +400,7 @@ fail:
 	free(data);
 	close(fd);
 	unlink(path2);
+#endif
 }
 
 VkResult

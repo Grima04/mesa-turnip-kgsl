@@ -36,10 +36,14 @@
 #include "util/disk_cache.h"
 #include "vk_deferred_operation.h"
 #include "vk_util.h"
+#ifdef _WIN32
+typedef void* drmDevicePtr;
+#else
 #include <xf86drm.h>
 #include <amdgpu.h>
 #include "drm-uapi/amdgpu_drm.h"
 #include "winsys/amdgpu/radv_amdgpu_winsys_public.h"
+#endif
 #include "winsys/null/radv_null_winsys_public.h"
 #include "ac_llvm_util.h"
 #include "vk_format.h"
@@ -293,6 +297,9 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	int fd = -1;
 	int master_fd = -1;
 
+#ifdef _WIN32
+	assert(drm_device == NULL);
+#else
 	if (drm_device) {
 		const char *path = drm_device->nodes[DRM_NODE_RENDER];
 		drmVersionPtr version;
@@ -330,6 +337,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 		if (instance->debug_flags & RADV_DEBUG_STARTUP)
 				radv_logi("Found compatible device '%s'.", path);
 	}
+#endif
 
 	struct radv_physical_device *device =
 		vk_zalloc2(&instance->alloc, NULL, sizeof(*device), 8,
@@ -342,12 +350,16 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
 	device->instance = instance;
 
+#ifdef _WIN32
+	device->ws = radv_null_winsys_create();
+#else
 	if (drm_device) {
 		device->ws = radv_amdgpu_winsys_create(fd, instance->debug_flags,
 						       instance->perftest_flags);
 	} else {
 		device->ws = radv_null_winsys_create();
 	}
+#endif
 
 	if (!device->ws) {
 		result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
@@ -355,6 +367,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 		goto fail_alloc;
 	}
 
+#ifndef _WIN32
 	if (drm_device && instance->enabled_extensions.KHR_display) {
 		master_fd = open(drm_device->nodes[DRM_NODE_PRIMARY], O_RDWR | O_CLOEXEC);
 		if (master_fd >= 0) {
@@ -371,6 +384,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 			}
 		}
 	}
+#endif
 
 	device->master_fd = master_fd;
 	device->local_fd = fd;
@@ -441,8 +455,10 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	radv_physical_device_get_supported_extensions(device,
 						      &device->supported_extensions);
 
+#ifndef _WIN32
 	if (drm_device)
 		device->bus_info = *drm_device->businfo.pci;
+#endif
 
 	if ((device->instance->debug_flags & RADV_DEBUG_INFO))
 		ac_print_gpu_info(&device->rad_info, stdout);
@@ -857,10 +873,7 @@ radv_enumerate_physical_devices(struct radv_instance *instance)
 
 	instance->physical_devices_enumerated = true;
 
-	/* TODO: Check for more devices ? */
-	drmDevicePtr devices[8];
 	VkResult result = VK_SUCCESS;
-	int max_devices;
 
 	if (getenv("RADV_FORCE_FAMILY")) {
 		/* When RADV_FORCE_FAMILY is set, the driver creates a nul
@@ -877,7 +890,10 @@ radv_enumerate_physical_devices(struct radv_instance *instance)
 		return VK_SUCCESS;
 	}
 
-	max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
+#ifndef _WIN32
+	/* TODO: Check for more devices ? */
+	drmDevicePtr devices[8];
+	int max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
 
 	if (instance->debug_flags & RADV_DEBUG_STARTUP)
 		radv_logi("Found %d drm nodes", max_devices);
@@ -907,6 +923,7 @@ radv_enumerate_physical_devices(struct radv_instance *instance)
 		}
 	}
 	drmFreeDevices(devices, max_devices);
+#endif
 
 	/* If we successfully enumerated any devices, call it success */
 	return result;
@@ -2005,6 +2022,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->conservativeRasterizationPostDepthCoverage = false;
 			break;
 		}
+#ifndef _WIN32
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
 			VkPhysicalDevicePCIBusInfoPropertiesEXT *properties =
 				(VkPhysicalDevicePCIBusInfoPropertiesEXT *)ext;
@@ -2014,6 +2032,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->pciFunction = pdevice->bus_info.func;
 			break;
 		}
+#endif
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
 			VkPhysicalDeviceDriverProperties *properties =
 				(VkPhysicalDeviceDriverProperties *) ext;
@@ -5264,20 +5283,10 @@ PFN_vkVoidFunction radv_GetInstanceProcAddr(
 PUBLIC
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
 	VkInstance                                  instance,
-	const char*                                 pName);
-
-PUBLIC
-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
-	VkInstance                                  instance,
 	const char*                                 pName)
 {
 	return radv_GetInstanceProcAddr(instance, pName);
 }
-
-PUBLIC
-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
-	VkInstance                                  _instance,
-	const char*                                 pName);
 
 PUBLIC
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
@@ -7682,12 +7691,6 @@ void radv_DestroySampler(
 	vk_object_base_finish(&sampler->base);
 	vk_free2(&device->vk.alloc, pAllocator, sampler);
 }
-
-/* vk_icd.h does not declare this function, so we declare it here to
- * suppress Wmissing-prototypes.
- */
-PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion);
 
 PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
 vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)

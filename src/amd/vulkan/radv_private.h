@@ -43,7 +43,10 @@
 #endif
 
 #include "c11/threads.h"
+#ifndef _WIN32
 #include <amdgpu.h>
+#include <xf86drm.h>
+#endif
 #include "compiler/shader_enums.h"
 #include "util/cnd_monotonic.h"
 #include "util/macros.h"
@@ -84,7 +87,6 @@ typedef uint32_t xcb_window_t;
 #include "radv_entrypoints.h"
 
 #include "wsi_common.h"
-#include "wsi_common_display.h"
 
 /* Helper to determine if we should compile
  * any of the Android AHB support.
@@ -322,7 +324,9 @@ struct radv_physical_device {
 	enum radeon_bo_flag memory_flags[VK_MAX_MEMORY_TYPES];
 	unsigned heaps;
 
+#ifndef _WIN32
 	drmPciBusInfo bus_info;
+#endif
 
 	struct radv_device_extension_table supported_extensions;
 };

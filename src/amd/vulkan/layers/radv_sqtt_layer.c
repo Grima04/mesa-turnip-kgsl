@@ -312,6 +312,7 @@ radv_handle_thread_trace(VkQueue _queue)
 	} else {
 		bool frame_trigger = num_frames == queue->device->thread_trace.start_frame;
 		bool file_trigger = false;
+#ifndef _WIN32
 		if (queue->device->thread_trace.trigger_file &&
 		    access(queue->device->thread_trace.trigger_file, W_OK) == 0) {
 			if (unlink(queue->device->thread_trace.trigger_file) == 0) {
@@ -322,6 +323,7 @@ radv_handle_thread_trace(VkQueue _queue)
 				fprintf(stderr, "RADV: could not remove thread trace trigger file, ignoring\n");
 			}
 		}
+#endif
 
 		if (frame_trigger || file_trigger) {
 			radv_begin_thread_trace(queue);
