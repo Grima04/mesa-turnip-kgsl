@@ -484,10 +484,8 @@ sanity:
     - .fdo.ci-fairy
   stage: sanity
   rules:
-    - if: *is-pre-merge
+    - if: *is-forked-branch-or-pre-merge
       when: on_success
-    - if: *is-forked-branch
-      when: manual
     # Other cases default to never
   variables:
     GIT_STRATEGY: none
