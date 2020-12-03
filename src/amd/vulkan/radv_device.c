@@ -5145,9 +5145,8 @@ bool radv_get_memory_fd(struct radv_device *device,
 {
 	struct radeon_bo_metadata metadata;
 
-	if (memory->image) {
-		if (memory->image->tiling != VK_IMAGE_TILING_LINEAR)
-			radv_init_metadata(device, memory->image, &metadata);
+	if (memory->image && memory->image->tiling != VK_IMAGE_TILING_LINEAR) {
+		radv_init_metadata(device, memory->image, &metadata);
 		device->ws->buffer_set_metadata(memory->bo, &metadata);
 	}
 
