@@ -817,11 +817,11 @@ static void r300_delete_dsa_state(struct pipe_context* pipe,
 }
 
 static void r300_set_stencil_ref(struct pipe_context* pipe,
-                                 const struct pipe_stencil_ref* sr)
+                                 const struct pipe_stencil_ref sr)
 {
     struct r300_context* r300 = r300_context(pipe);
 
-    r300->stencil_ref = *sr;
+    r300->stencil_ref = sr;
 
     r300_dsa_inject_stencilref(r300);
     r300_mark_atom_dirty(r300, &r300->dsa_state);

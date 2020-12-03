@@ -316,7 +316,7 @@ clear_with_quad(struct gl_context *ctx, unsigned clear_buffers)
          depth_stencil.stencil[0].valuemask = 0xff;
          depth_stencil.stencil[0].writemask = ctx->Stencil.WriteMask[0] & 0xff;
          stencil_ref.ref_value[0] = ctx->Stencil.Clear;
-         cso_set_stencil_ref(cso, &stencil_ref);
+         cso_set_stencil_ref(cso, stencil_ref);
       }
 
       cso_set_depth_stencil_alpha(cso, &depth_stencil);

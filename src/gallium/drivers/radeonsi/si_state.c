@@ -1059,14 +1059,14 @@ static void si_emit_stencil_ref(struct si_context *sctx)
                       S_028434_STENCILOPVAL_BF(1));
 }
 
-static void si_set_stencil_ref(struct pipe_context *ctx, const struct pipe_stencil_ref *state)
+static void si_set_stencil_ref(struct pipe_context *ctx, const struct pipe_stencil_ref state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
 
-   if (memcmp(&sctx->stencil_ref.state, state, sizeof(*state)) == 0)
+   if (memcmp(&sctx->stencil_ref.state, &state, sizeof(state)) == 0)
       return;
 
-   sctx->stencil_ref.state = *state;
+   sctx->stencil_ref.state = state;
    si_mark_atom_dirty(sctx, &sctx->atoms.s.stencil_ref);
 }
 

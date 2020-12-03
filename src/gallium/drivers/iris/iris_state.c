@@ -3021,10 +3021,10 @@ iris_set_scissor_states(struct pipe_context *ctx,
  */
 static void
 iris_set_stencil_ref(struct pipe_context *ctx,
-                     const struct pipe_stencil_ref *state)
+                     const struct pipe_stencil_ref state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   memcpy(&ice->state.stencil_ref, state, sizeof(*state));
+   memcpy(&ice->state.stencil_ref, &state, sizeof(state));
    if (GEN_GEN >= 12)
       ice->state.dirty |= IRIS_DIRTY_STENCIL_REF;
    else if (GEN_GEN >= 9)

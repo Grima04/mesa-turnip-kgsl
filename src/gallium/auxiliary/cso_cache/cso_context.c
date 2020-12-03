@@ -849,10 +849,10 @@ cso_restore_min_samples(struct cso_context *ctx)
 }
 
 void cso_set_stencil_ref(struct cso_context *ctx,
-                         const struct pipe_stencil_ref *sr)
+                         const struct pipe_stencil_ref sr)
 {
-   if (memcmp(&ctx->stencil_ref, sr, sizeof(ctx->stencil_ref))) {
-      ctx->stencil_ref = *sr;
+   if (memcmp(&ctx->stencil_ref, &sr, sizeof(ctx->stencil_ref))) {
+      ctx->stencil_ref = sr;
       ctx->pipe->set_stencil_ref(ctx->pipe, sr);
    }
 }
@@ -870,7 +870,7 @@ cso_restore_stencil_ref(struct cso_context *ctx)
    if (memcmp(&ctx->stencil_ref, &ctx->stencil_ref_saved,
               sizeof(ctx->stencil_ref))) {
       ctx->stencil_ref = ctx->stencil_ref_saved;
-      ctx->pipe->set_stencil_ref(ctx->pipe, &ctx->stencil_ref);
+      ctx->pipe->set_stencil_ref(ctx->pipe, ctx->stencil_ref);
    }
 }
 

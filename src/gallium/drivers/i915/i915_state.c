@@ -207,11 +207,11 @@ static void i915_set_blend_color( struct pipe_context *pipe,
 }
 
 static void i915_set_stencil_ref( struct pipe_context *pipe,
-                                  const struct pipe_stencil_ref *stencil_ref )
+                                  const struct pipe_stencil_ref stencil_ref )
 {
    struct i915_context *i915 = i915_context(pipe);
 
-   i915->stencil_ref = *stencil_ref;
+   i915->stencil_ref = stencil_ref;
 
    i915->dirty |= I915_NEW_DEPTH_STENCIL;
 }

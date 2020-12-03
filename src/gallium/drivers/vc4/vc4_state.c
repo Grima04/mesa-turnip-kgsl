@@ -60,10 +60,10 @@ vc4_set_blend_color(struct pipe_context *pctx,
 
 static void
 vc4_set_stencil_ref(struct pipe_context *pctx,
-                    const struct pipe_stencil_ref *stencil_ref)
+                    const struct pipe_stencil_ref stencil_ref)
 {
         struct vc4_context *vc4 = vc4_context(pctx);
-        vc4->stencil_ref =* stencil_ref;
+        vc4->stencil_ref = stencil_ref;
         vc4->dirty |= VC4_DIRTY_STENCIL_REF;
 }
 

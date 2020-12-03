@@ -583,10 +583,10 @@ zink_set_sampler_views(struct pipe_context *pctx,
 
 static void
 zink_set_stencil_ref(struct pipe_context *pctx,
-                     const struct pipe_stencil_ref *ref)
+                     const struct pipe_stencil_ref ref)
 {
    struct zink_context *ctx = zink_context(pctx);
-   ctx->stencil_ref = *ref;
+   ctx->stencil_ref = ref;
 }
 
 static void

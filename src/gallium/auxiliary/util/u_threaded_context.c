@@ -430,7 +430,7 @@ threaded_context_unwrap_sync(struct pipe_context *pipe)
 TC_FUNC1(set_active_query_state, flags, , bool, , *)
 
 TC_FUNC1(set_blend_color, blend_color, const, struct pipe_blend_color, *, )
-TC_FUNC1(set_stencil_ref, stencil_ref, const, struct pipe_stencil_ref, *, )
+TC_FUNC1(set_stencil_ref, stencil_ref, const, struct pipe_stencil_ref, , *)
 TC_FUNC1(set_clip_state, clip_state, const, struct pipe_clip_state, *, )
 TC_FUNC1(set_sample_mask, sample_mask, , unsigned, , *)
 TC_FUNC1(set_min_samples, min_samples, , unsigned, , *)

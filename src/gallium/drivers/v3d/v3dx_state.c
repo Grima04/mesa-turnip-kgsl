@@ -59,10 +59,10 @@ v3d_set_blend_color(struct pipe_context *pctx,
 
 static void
 v3d_set_stencil_ref(struct pipe_context *pctx,
-                    const struct pipe_stencil_ref *stencil_ref)
+                    const struct pipe_stencil_ref stencil_ref)
 {
         struct v3d_context *v3d = v3d_context(pctx);
-        v3d->stencil_ref = *stencil_ref;
+        v3d->stencil_ref = stencil_ref;
         v3d->dirty |= VC5_DIRTY_STENCIL_REF;
 }
 

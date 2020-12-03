@@ -155,19 +155,16 @@ llvmpipe_delete_depth_stencil_state(struct pipe_context *pipe, void *depth)
 
 static void
 llvmpipe_set_stencil_ref(struct pipe_context *pipe,
-                         const struct pipe_stencil_ref *stencil_ref)
+                         const struct pipe_stencil_ref stencil_ref)
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
 
-   if (!stencil_ref)
-      return;
-
-   if(memcmp(&llvmpipe->stencil_ref, stencil_ref, sizeof *stencil_ref) == 0)
+   if(memcmp(&llvmpipe->stencil_ref, &stencil_ref, sizeof stencil_ref) == 0)
       return;
 
    draw_flush(llvmpipe->draw);
 
-   memcpy(&llvmpipe->stencil_ref, stencil_ref, sizeof *stencil_ref);
+   memcpy(&llvmpipe->stencil_ref, &stencil_ref, sizeof stencil_ref);
 
    /* not sure. want new flag? */
    llvmpipe->dirty |= LP_NEW_DEPTH_STENCIL_ALPHA;

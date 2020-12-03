@@ -841,11 +841,11 @@ nvc0_set_blend_color(struct pipe_context *pipe,
 
 static void
 nvc0_set_stencil_ref(struct pipe_context *pipe,
-                     const struct pipe_stencil_ref *sr)
+                     const struct pipe_stencil_ref sr)
 {
     struct nvc0_context *nvc0 = nvc0_context(pipe);
 
-    nvc0->stencil_ref = *sr;
+    nvc0->stencil_ref = sr;
     nvc0->dirty_3d |= NVC0_NEW_3D_STENCIL_REF;
 }
 

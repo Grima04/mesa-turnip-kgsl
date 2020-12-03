@@ -157,5 +157,5 @@ st_update_depth_stencil_alpha(struct st_context *st)
    }
 
    cso_set_depth_stencil_alpha(st->cso_context, dsa);
-   cso_set_stencil_ref(st->cso_context, &sr);
+   cso_set_stencil_ref(st->cso_context, sr);
 }

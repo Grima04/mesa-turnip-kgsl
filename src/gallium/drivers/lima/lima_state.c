@@ -246,11 +246,11 @@ lima_set_blend_color(struct pipe_context *pctx,
 
 static void
 lima_set_stencil_ref(struct pipe_context *pctx,
-                     const struct pipe_stencil_ref *stencil_ref)
+                     const struct pipe_stencil_ref stencil_ref)
 {
    struct lima_context *ctx = lima_context(pctx);
 
-   ctx->stencil_ref = *stencil_ref;
+   ctx->stencil_ref = stencil_ref;
    ctx->dirty |= LIMA_CONTEXT_DIRTY_STENCIL_REF;
 }
 

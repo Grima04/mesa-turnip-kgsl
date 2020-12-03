@@ -949,11 +949,11 @@ nv50_set_blend_color(struct pipe_context *pipe,
 
 static void
 nv50_set_stencil_ref(struct pipe_context *pipe,
-                     const struct pipe_stencil_ref *sr)
+                     const struct pipe_stencil_ref sr)
 {
    struct nv50_context *nv50 = nv50_context(pipe);
 
-   nv50->stencil_ref = *sr;
+   nv50->stencil_ref = sr;
    nv50->dirty_3d |= NV50_NEW_3D_STENCIL_REF;
 }
 

@@ -610,10 +610,10 @@ static void virgl_hw_set_vertex_buffers(struct virgl_context *vctx)
 }
 
 static void virgl_set_stencil_ref(struct pipe_context *ctx,
-                                 const struct pipe_stencil_ref *ref)
+                                 const struct pipe_stencil_ref ref)
 {
    struct virgl_context *vctx = virgl_context(ctx);
-   virgl_encoder_set_stencil_ref(vctx, ref);
+   virgl_encoder_set_stencil_ref(vctx, &ref);
 }
 
 static void virgl_set_blend_color(struct pipe_context *ctx,

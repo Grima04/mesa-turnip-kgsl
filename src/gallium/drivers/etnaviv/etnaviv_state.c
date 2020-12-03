@@ -48,18 +48,18 @@
 #include "util/u_upload_mgr.h"
 
 static void
-etna_set_stencil_ref(struct pipe_context *pctx, const struct pipe_stencil_ref *sr)
+etna_set_stencil_ref(struct pipe_context *pctx, const struct pipe_stencil_ref sr)
 {
    struct etna_context *ctx = etna_context(pctx);
    struct compiled_stencil_ref *cs = &ctx->stencil_ref;
 
-   ctx->stencil_ref_s = *sr;
+   ctx->stencil_ref_s = sr;
 
    for (unsigned i = 0; i < 2; i++) {
       cs->PE_STENCIL_CONFIG[i] =
-         VIVS_PE_STENCIL_CONFIG_REF_FRONT(sr->ref_value[i]);
+         VIVS_PE_STENCIL_CONFIG_REF_FRONT(sr.ref_value[i]);
       cs->PE_STENCIL_CONFIG_EXT[i] =
-         VIVS_PE_STENCIL_CONFIG_EXT_REF_BACK(sr->ref_value[!i]);
+         VIVS_PE_STENCIL_CONFIG_EXT_REF_BACK(sr.ref_value[!i]);
    }
    ctx->dirty |= ETNA_DIRTY_STENCIL_REF;
 }

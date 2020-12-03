@@ -297,11 +297,11 @@ nv30_set_blend_color(struct pipe_context *pipe,
 
 static void
 nv30_set_stencil_ref(struct pipe_context *pipe,
-                     const struct pipe_stencil_ref *sr)
+                     const struct pipe_stencil_ref sr)
 {
     struct nv30_context *nv30 = nv30_context(pipe);
 
-    nv30->stencil_ref = *sr;
+    nv30->stencil_ref = sr;
     nv30->dirty |= NV30_NEW_STENCIL_REF;
 }
 

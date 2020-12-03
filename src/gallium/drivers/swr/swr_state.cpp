@@ -164,11 +164,11 @@ swr_set_blend_color(struct pipe_context *pipe,
 
 static void
 swr_set_stencil_ref(struct pipe_context *pipe,
-                    const struct pipe_stencil_ref *ref)
+                    const struct pipe_stencil_ref ref)
 {
    struct swr_context *ctx = swr_context(pipe);
 
-   ctx->stencil_ref = *ref;
+   ctx->stencil_ref = ref;
 
    ctx->dirty |= SWR_NEW_DEPTH_STENCIL_ALPHA;
 }

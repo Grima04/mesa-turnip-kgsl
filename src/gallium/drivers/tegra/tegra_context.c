@@ -431,7 +431,7 @@ tegra_set_blend_color(struct pipe_context *pcontext,
 
 static void
 tegra_set_stencil_ref(struct pipe_context *pcontext,
-                      const struct pipe_stencil_ref *ref)
+                      const struct pipe_stencil_ref ref)
 {
    struct tegra_context *context = to_tegra_context(pcontext);
 

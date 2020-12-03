@@ -285,11 +285,11 @@ static void r600_set_clip_state(struct pipe_context *ctx,
 }
 
 static void r600_set_stencil_ref(struct pipe_context *ctx,
-				 const struct r600_stencil_ref *state)
+				 const struct r600_stencil_ref state)
 {
 	struct r600_context *rctx = (struct r600_context *)ctx;
 
-	rctx->stencil_ref.state = *state;
+	rctx->stencil_ref.state = state;
 	r600_mark_atom_dirty(rctx, &rctx->stencil_ref.atom);
 }
 
@@ -310,25 +310,25 @@ void r600_emit_stencil_ref(struct r600_context *rctx, struct r600_atom *atom)
 }
 
 static void r600_set_pipe_stencil_ref(struct pipe_context *ctx,
-				      const struct pipe_stencil_ref *state)
+				      const struct pipe_stencil_ref state)
 {
 	struct r600_context *rctx = (struct r600_context *)ctx;
 	struct r600_dsa_state *dsa = (struct r600_dsa_state*)rctx->dsa_state.cso;
 	struct r600_stencil_ref ref;
 
-	rctx->stencil_ref.pipe_state = *state;
+	rctx->stencil_ref.pipe_state = state;
 
 	if (!dsa)
 		return;
 
-	ref.ref_value[0] = state->ref_value[0];
-	ref.ref_value[1] = state->ref_value[1];
+	ref.ref_value[0] = state.ref_value[0];
+	ref.ref_value[1] = state.ref_value[1];
 	ref.valuemask[0] = dsa->valuemask[0];
 	ref.valuemask[1] = dsa->valuemask[1];
 	ref.writemask[0] = dsa->writemask[0];
 	ref.writemask[1] = dsa->writemask[1];
 
-	r600_set_stencil_ref(ctx, &ref);
+	r600_set_stencil_ref(ctx, ref);
 }
 
 static void r600_bind_dsa_state(struct pipe_context *ctx, void *state)
@@ -361,7 +361,7 @@ static void r600_bind_dsa_state(struct pipe_context *ctx, void *state)
 		}
 	}
 
-	r600_set_stencil_ref(ctx, &ref);
+	r600_set_stencil_ref(ctx, ref);
 
 	/* Update alphatest state. */
 	if (rctx->alphatest_state.sx_alpha_test_control != dsa->sx_alpha_test_control ||

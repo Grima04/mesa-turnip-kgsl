@@ -189,7 +189,7 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 	struct pipe_stencil_ref sr = {
 		.ref_value = { stencil & 0xff }
 	};
-	pctx->set_stencil_ref(pctx, &sr);
+	pctx->set_stencil_ref(pctx, sr);
 
 	struct pipe_constant_buffer cb = {
 		.buffer_size = 16,

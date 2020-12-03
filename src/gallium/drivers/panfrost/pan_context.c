@@ -964,10 +964,10 @@ panfrost_set_constant_buffer(
 static void
 panfrost_set_stencil_ref(
         struct pipe_context *pctx,
-        const struct pipe_stencil_ref *ref)
+        const struct pipe_stencil_ref ref)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-        ctx->stencil_ref = *ref;
+        ctx->stencil_ref = ref;
 }
 
 void

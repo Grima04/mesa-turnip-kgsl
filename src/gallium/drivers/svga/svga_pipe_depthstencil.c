@@ -263,7 +263,7 @@ svga_delete_depth_stencil_state(struct pipe_context *pipe, void *depth_stencil)
 
 static void
 svga_set_stencil_ref(struct pipe_context *pipe,
-                     const struct pipe_stencil_ref *stencil_ref)
+                     const struct pipe_stencil_ref stencil_ref)
 {
    struct svga_context *svga = svga_context(pipe);
 
@@ -272,7 +272,7 @@ svga_set_stencil_ref(struct pipe_context *pipe,
       svga_hwtnl_flush_retry(svga);
    }
 
-   svga->curr.stencil_ref = *stencil_ref;
+   svga->curr.stencil_ref = stencil_ref;
 
    svga->dirty |= SVGA_NEW_STENCIL_REF;
 }

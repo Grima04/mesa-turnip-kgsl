@@ -1278,13 +1278,13 @@ d3d12_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 
 static void
 d3d12_set_stencil_ref(struct pipe_context *pctx,
-                      const struct pipe_stencil_ref *ref)
+                      const struct pipe_stencil_ref ref)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
-   if ((ref->ref_value[0] != ref->ref_value[1]) &&
+   if ((ref.ref_value[0] != ref.ref_value[1]) &&
        (d3d12_debug & D3D12_DEBUG_VERBOSE))
        debug_printf("D3D12: Different values for front and back stencil reference are not supported\n");
-   ctx->stencil_ref = *ref;
+   ctx->stencil_ref = ref;
    ctx->state_dirty |= D3D12_DIRTY_STENCIL_REF;
 }
 
