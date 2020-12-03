@@ -1452,28 +1452,22 @@ fetch_src_file_channel(const struct tgsi_exec_machine *mach,
    switch (file) {
    case TGSI_FILE_CONSTANT:
       for (i = 0; i < TGSI_QUAD_SIZE; i++) {
-         assert(index2D->i[i] >= 0 && index2D->i[i] < PIPE_MAX_CONSTANT_BUFFERS);
-
-         if (index->i[i] < 0) {
+         /* NOTE: copying the const value as a uint instead of float */
+         const uint constbuf = index2D->i[i];
+         const unsigned pos = index->i[i] * 4 + swizzle;
+         /* const buffer bounds check */
+         if (pos >= mach->ConstsSize[constbuf] / 4) {
+            if (0) {
+               /* Debug: print warning */
+               static int count = 0;
+               if (count++ < 100)
+                  debug_printf("TGSI Exec: const buffer index %d"
+                                 " out of bounds\n", pos);
+            }
             chan->u[i] = 0;
          } else {
-            /* NOTE: copying the const value as a uint instead of float */
-            const uint constbuf = index2D->i[i];
-            const int pos = index->i[i] * 4 + swizzle;
-            /* const buffer bounds check */
-            if (pos < 0 || pos >= (int) mach->ConstsSize[constbuf] / 4) {
-               if (0) {
-                  /* Debug: print warning */
-                  static int count = 0;
-                  if (count++ < 100)
-                     debug_printf("TGSI Exec: const buffer index %d"
-                                  " out of bounds\n", pos);
-               }
-               chan->u[i] = 0;
-            } else {
-               const uint *buf = (const uint *)mach->Consts[constbuf];
-               chan->u[i] = buf[pos];
-            }
+            const uint *buf = (const uint *)mach->Consts[constbuf];
+            chan->u[i] = buf[pos];
          }
       }
       break;
