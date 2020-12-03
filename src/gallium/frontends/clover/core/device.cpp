@@ -236,7 +236,7 @@ size_t
 device::mem_base_addr_align() const {
    uint64_t page_size = 0;
    os_get_page_size(&page_size);
-   return std::max(page_size, sizeof(cl_long) * 16);
+   return std::max((size_t)page_size, sizeof(cl_long) * 16);
 }
 
 cl_device_svm_capabilities
