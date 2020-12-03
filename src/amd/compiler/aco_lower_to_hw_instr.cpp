@@ -924,7 +924,8 @@ struct copy_operation {
    };
 };
 
-void split_copy(unsigned offset, Definition *def, Operand *op, const copy_operation& src, bool ignore_uses, unsigned max_size)
+void split_copy(lower_context *ctx, unsigned offset, Definition *def, Operand *op,
+                const copy_operation& src, bool ignore_uses, unsigned max_size)
 {
    PhysReg def_reg = src.def.physReg();
    PhysReg op_reg = src.op.physReg();
@@ -952,14 +953,8 @@ void split_copy(unsigned offset, Definition *def, Operand *op, const copy_operat
    *def = Definition(src.def.tempId(), def_reg, def_cls);
    if (src.op.isConstant()) {
       assert(bytes >= 1 && bytes <= 8);
-      if (bytes == 8)
-         *op = Operand(src.op.constantValue64() >> (offset * 8u));
-      else if (bytes == 4)
-         *op = Operand(uint32_t(src.op.constantValue64() >> (offset * 8u)));
-      else if (bytes == 2)
-         *op = Operand(uint16_t(src.op.constantValue64() >> (offset * 8u)));
-      else if (bytes == 1)
-         *op = Operand(uint8_t(src.op.constantValue64() >> (offset * 8u)));
+      uint64_t val = src.op.constantValue64() >> (offset * 8u);
+      *op = Operand::get_const(ctx->program->chip_class, val, bytes);
    } else {
       RegClass op_cls = bytes % 4 == 0 ? RegClass(src.op.regClass().type(), bytes / 4u) :
                         RegClass(src.op.regClass().type(), bytes).as_subdword();
@@ -1072,7 +1067,7 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
 
       Definition def;
       Operand op;
-      split_copy(offset, &def, &op, copy, false, 8);
+      split_copy(ctx, offset, &def, &op, copy, false, 8);
 
       if (def.physReg() == scc) {
          bld.sopc(aco_opcode::s_cmp_lg_i32, def, op, Operand(0u));
@@ -1160,7 +1155,7 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
    for (; offset < copy.bytes;) {
       Definition def;
       Operand op;
-      split_copy(offset, &def, &op, copy, true, 8);
+      split_copy(ctx, offset, &def, &op, copy, true, 8);
 
       assert(op.regClass() == def.regClass());
       Operand def_as_op = Operand(def.physReg(), def.regClass());
@@ -1548,7 +1543,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
             }
             Definition def;
             Operand op;
-            split_copy(offset, &def, &op, original, false, 8);
+            split_copy(ctx, offset, &def, &op, original, false, 8);
 
             copy_operation new_copy = {op, def, def.bytes()};
             for (unsigned i = 0; i < new_copy.bytes; i++)

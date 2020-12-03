@@ -556,6 +556,51 @@ public:
       setFixed(reg);
    }
 
+   /* This is useful over the constructors when you want to take a chip class
+    * for 1/2 PI or an unknown operand size.
+    */
+   static Operand get_const(enum chip_class chip, uint64_t val, unsigned bytes)
+   {
+      if (val == 0x3e22f983 && bytes == 4 && chip >= GFX8) {
+         /* 1/2 PI can be an inline constant on GFX8+ */
+         Operand op((uint32_t)val);
+         op.setFixed(PhysReg{248});
+         return op;
+      }
+
+      if (bytes == 8)
+         return Operand(val);
+      else if (bytes == 4)
+         return Operand((uint32_t)val);
+      else if (bytes == 2)
+         return Operand((uint16_t)val);
+      assert(bytes == 1);
+      return Operand((uint8_t)val);
+   }
+
+   static bool is_constant_representable(uint64_t val, unsigned bytes, bool zext=false, bool sext=false)
+   {
+      if (bytes <= 4)
+         return true;
+
+      if (zext && (val & 0xFFFFFFFF00000000) == 0x0000000000000000)
+         return true;
+      uint64_t upper33 = val & 0xFFFFFFFF80000000;
+      if (sext && (upper33 == 0xFFFFFFFF80000000 || upper33 == 0))
+         return true;
+
+      return val <= 64 ||
+             val >= 0xFFFFFFFFFFFFFFF0 || /* [-16 .. -1] */
+             val == 0x3FE0000000000000 || /* 0.5 */
+             val == 0xBFE0000000000000 || /* -0.5 */
+             val == 0x3FF0000000000000 || /* 1.0 */
+             val == 0xBFF0000000000000 || /* -1.0 */
+             val == 0x4000000000000000 || /* 2.0 */
+             val == 0xC000000000000000 || /* -2.0 */
+             val == 0x4010000000000000 || /* 4.0 */
+             val == 0xC010000000000000; /* -4.0 */
+   }
+
    constexpr bool isTemp() const noexcept
    {
       return isTemp_;
