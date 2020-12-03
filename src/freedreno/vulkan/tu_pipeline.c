@@ -249,10 +249,10 @@ struct tu_pipeline_builder
    const VkAllocationCallbacks *alloc;
    const VkGraphicsPipelineCreateInfo *create_info;
 
-   struct tu_shader *shaders[MESA_SHADER_STAGES];
-   struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
+   struct tu_shader *shaders[MESA_SHADER_FRAGMENT + 1];
+   struct ir3_shader_variant *variants[MESA_SHADER_FRAGMENT + 1];
    struct ir3_shader_variant *binning_variant;
-   uint64_t shader_iova[MESA_SHADER_STAGES];
+   uint64_t shader_iova[MESA_SHADER_FRAGMENT + 1];
    uint64_t binning_vs_iova;
 
    struct tu_pvtmem_config pvtmem;
@@ -2028,7 +2028,7 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
    /* graphics case: */
    if (builder) {
       uint32_t pvtmem_bytes = 0;
-      for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
+      for (uint32_t i = 0; i < ARRAY_SIZE(builder->variants); i++) {
          if (builder->variants[i]) {
             size += builder->variants[i]->info.size / 4;
             pvtmem_bytes = MAX2(pvtmem_bytes, builder->variants[i]->pvtmem_size);
@@ -2139,10 +2139,10 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    struct ir3_shader_key key = {};
    tu_pipeline_shader_key_init(&key, builder->create_info);
 
-   nir_shader *nir[MESA_SHADER_STAGES] = { NULL };
+   nir_shader *nir[ARRAY_SIZE(builder->shaders)] = { NULL };
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < MESA_SHADER_STAGES; stage++) {
+        stage < ARRAY_SIZE(nir); stage++) {
       const VkPipelineShaderStageCreateInfo *stage_info = stage_infos[stage];
       if (!stage_info)
          continue;
@@ -2164,7 +2164,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    /* TODO do intra-stage linking here */
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < MESA_SHADER_STAGES; stage++) {
+        stage < ARRAY_SIZE(nir); stage++) {
       if (!nir[stage])
          continue;
 
@@ -2201,7 +2201,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    pipeline->tess.patch_type = key.tessellation;
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < MESA_SHADER_STAGES; stage++) {
+        stage < ARRAY_SIZE(builder->shaders); stage++) {
       if (!builder->shaders[stage])
          continue;
       
@@ -2218,7 +2218,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    key.safe_constlen = true;
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < MESA_SHADER_STAGES; stage++) {
+        stage < ARRAY_SIZE(builder->shaders); stage++) {
       if (!builder->shaders[stage])
          continue;
 
@@ -2365,7 +2365,7 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    pipeline->active_stages = stages;
 
    uint32_t desc_sets = 0;
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(builder->shaders); i++) {
       if (!builder->shaders[i])
          continue;
 
@@ -2816,7 +2816,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
       return result;
    }
 
-   for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++)
+   for (uint32_t i = 0; i < ARRAY_SIZE(builder->variants); i++)
       builder->shader_iova[i] = tu_upload_variant(*pipeline, builder->variants[i]);
 
    builder->binning_vs_iova =
@@ -2829,7 +2829,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 
    uint32_t pvtmem_size = 0;
    bool per_wave = true;
-   for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
+   for (uint32_t i = 0; i < ARRAY_SIZE(builder->variants); i++) {
       if (builder->variants[i]) {
          pvtmem_size = MAX2(pvtmem_size, builder->variants[i]->pvtmem_size);
          if (!builder->variants[i]->pvtmem_per_wave)
@@ -2868,7 +2868,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 static void
 tu_pipeline_builder_finish(struct tu_pipeline_builder *builder)
 {
-   for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
+   for (uint32_t i = 0; i < ARRAY_SIZE(builder->shaders); i++) {
       if (!builder->shaders[i])
          continue;
       tu_shader_destroy(builder->device, builder->shaders[i], builder->alloc);
