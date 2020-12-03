@@ -25,12 +25,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "dirent.h"
-
-#include <stdatomic.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
 #include <fcntl.h>
 
 #include "radv_debug.h"
