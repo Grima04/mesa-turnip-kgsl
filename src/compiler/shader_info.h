@@ -378,6 +378,11 @@ typedef struct shader_info {
           *   AddressingModelPhysical64: 64
           */
          unsigned ptr_size;
+
+         /**
+          * Uses subgroup intrinsics which can communicate across a quad.
+          */
+         bool uses_wide_subgroup_intrinsics;
       } cs;
 
       /* Applies to both TCS and TES. */
