@@ -183,6 +183,7 @@ dEQP-VK.spirv_assembly.instruction.graphics.opquantize.too_small_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.too_small_tessc,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
+dEQP-VK.spirv_assembly.instruction.spirv1p4.opcopylogical.nested_arrays_different_inner_stride,Fail
 dEQP-VK.subgroups.basic.compute.subgroupelect,Crash
 dEQP-VK.subgroups.basic.compute.subgroupmemorybarrier,Crash
 dEQP-VK.subgroups.basic.compute.subgroupmemorybarriershared,Crash

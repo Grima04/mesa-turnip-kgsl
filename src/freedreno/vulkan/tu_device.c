@@ -444,7 +444,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->runtimeDescriptorArray                             = true;
 
          features->samplerFilterMinmax                 = true;
-         features->scalarBlockLayout                   = false;
+         features->scalarBlockLayout                   = true;
          features->imagelessFramebuffer                = false;
          features->uniformBufferStandardLayout         = false;
          features->shaderSubgroupExtendedTypes         = false;
@@ -610,6 +610,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->shaderInt8 = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+         VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features = (void *)ext;
+         features->scalarBlockLayout = true;
+         break;
+      }
+
       default:
          break;
       }
