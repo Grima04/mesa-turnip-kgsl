@@ -120,10 +120,6 @@ void cso_set_viewport(struct cso_context *cso,
 void cso_set_viewport_dims(struct cso_context *ctx,
                            float width, float height, boolean invert);
 
-
-void cso_set_blend_color(struct cso_context *cso,
-                         const struct pipe_blend_color *bc);
-
 void cso_set_sample_mask(struct cso_context *cso, unsigned stencil_mask);
 
 void cso_set_min_samples(struct cso_context *cso, unsigned min_samples);
