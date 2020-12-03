@@ -489,6 +489,8 @@ sanity:
     - if: *is-forked-branch
       when: manual
     # Other cases default to never
+  variables:
+    GIT_STRATEGY: none
   script:
     # ci-fairy check-commits --junit-xml=check-commits.xml
     # ci-fairy check-merge-request only works in pre-merge pipelines for MRs
