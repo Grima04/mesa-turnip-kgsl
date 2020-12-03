@@ -918,6 +918,14 @@ OSMesaGetDepthBuffer(OSMesaContext c, GLint *width, GLint *height,
    struct osmesa_buffer *osbuffer = c->current_buffer;
    struct pipe_resource *res = osbuffer->textures[ST_ATTACHMENT_DEPTH_STENCIL];
 
+   if (!res) {
+      *width = 0;
+      *height = 0;
+      *bytesPerValue = 0;
+      *buffer = NULL;
+      return GL_FALSE;
+   }
+
    *width = res->width0;
    *height = res->height0;
    *bytesPerValue = util_format_get_blocksize(res->format);

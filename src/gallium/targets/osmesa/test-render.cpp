@@ -216,6 +216,25 @@ TEST(OSMesaRenderTest, depth)
    EXPECT_EQ(depth[w * 1 + 1], 0x00000000);
 }
 
+TEST(OSMesaRenderTest, depth_get_no_attachment)
+{
+   std::unique_ptr<osmesa_context, decltype(&OSMesaDestroyContext)> ctx{
+      OSMesaCreateContextExt(OSMESA_RGBA, 0, 0, 0, NULL), &OSMesaDestroyContext};
+   ASSERT_TRUE(ctx);
+
+   uint32_t pixel;
+   auto ret = OSMesaMakeCurrent(ctx.get(), &pixel, GL_UNSIGNED_BYTE, 1, 1);
+   ASSERT_EQ(ret, GL_TRUE);
+
+   uint32_t *depth;
+   GLint dw = 1, dh = 1, depth_cpp = 1;
+   ASSERT_EQ(false, OSMesaGetDepthBuffer(ctx.get(), &dw, &dh, &depth_cpp, (void **)&depth));
+   ASSERT_EQ(depth_cpp, NULL);
+   ASSERT_EQ(dw, 0);
+   ASSERT_EQ(dh, 0);
+   ASSERT_EQ(depth_cpp, 0);
+}
+
 static uint32_t be_bswap32(uint32_t x)
 {
    if (UTIL_ARCH_BIG_ENDIAN)
