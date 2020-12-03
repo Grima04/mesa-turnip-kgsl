@@ -136,89 +136,35 @@ struct pipe_context *cso_get_pipe_context(struct cso_context *cso)
    return cso->pipe;
 }
 
-static boolean delete_blend_state(struct cso_context *ctx, void *state)
-{
-   struct cso_blend *cso = (struct cso_blend *)state;
-
-   if (ctx->blend == cso->data)
-      return FALSE;
-
-   if (cso->delete_state)
-      cso->delete_state(cso->context, cso->data);
-   FREE(state);
-   return TRUE;
-}
-
-static boolean delete_depth_stencil_state(struct cso_context *ctx, void *state)
-{
-   struct cso_depth_stencil_alpha *cso =
-      (struct cso_depth_stencil_alpha *)state;
-
-   if (ctx->depth_stencil == cso->data)
-      return FALSE;
-
-   if (cso->delete_state)
-      cso->delete_state(cso->context, cso->data);
-   FREE(state);
-
-   return TRUE;
-}
-
-static boolean delete_sampler_state(UNUSED struct cso_context *ctx, void *state)
-{
-   struct cso_sampler *cso = (struct cso_sampler *)state;
-   if (cso->delete_state)
-      cso->delete_state(cso->context, cso->data);
-   FREE(state);
-   return TRUE;
-}
-
-static boolean delete_rasterizer_state(struct cso_context *ctx, void *state)
-{
-   struct cso_rasterizer *cso = (struct cso_rasterizer *)state;
-
-   if (ctx->rasterizer == cso->data)
-      return FALSE;
-   if (cso->delete_state)
-      cso->delete_state(cso->context, cso->data);
-   FREE(state);
-   return TRUE;
-}
-
-static boolean delete_vertex_elements(struct cso_context *ctx,
-                                      void *state)
-{
-   struct cso_velements *cso = (struct cso_velements *)state;
-
-   if (ctx->velements == cso->data)
-      return FALSE;
-
-   if (cso->delete_state)
-      cso->delete_state(cso->context, cso->data);
-   FREE(state);
-   return TRUE;
-}
-
-
 static inline boolean delete_cso(struct cso_context *ctx,
                                  void *state, enum cso_cache_type type)
 {
    switch (type) {
    case CSO_BLEND:
-      return delete_blend_state(ctx, state);
-   case CSO_SAMPLER:
-      return delete_sampler_state(ctx, state);
+      if (ctx->blend == ((struct cso_blend*)state)->data)
+         return false;
+      break;
    case CSO_DEPTH_STENCIL_ALPHA:
-      return delete_depth_stencil_state(ctx, state);
+      if (ctx->depth_stencil == ((struct cso_depth_stencil_alpha*)state)->data)
+         return false;
+      break;
    case CSO_RASTERIZER:
-      return delete_rasterizer_state(ctx, state);
+      if (ctx->rasterizer == ((struct cso_rasterizer*)state)->data)
+         return false;
+      break;
    case CSO_VELEMENTS:
-      return delete_vertex_elements(ctx, state);
+      if (ctx->velements == ((struct cso_velements*)state)->data)
+         return false;
+      break;
+   case CSO_SAMPLER:
+      /* nothing to do for samplers */
+      break;
    default:
       assert(0);
-      FREE(state);
    }
-   return FALSE;
+
+   cso_delete_state(ctx->pipe, state, type);
+   return true;
 }
 
 static inline void
@@ -313,7 +259,7 @@ cso_create_context(struct pipe_context *pipe, unsigned flags)
    if (!ctx)
       return NULL;
 
-   cso_cache_init(&ctx->cache);
+   cso_cache_init(&ctx->cache, pipe);
    cso_cache_set_sanitize_callback(&ctx->cache, sanitize_hash, ctx);
 
    ctx->pipe = pipe;
@@ -501,8 +447,6 @@ enum pipe_error cso_set_blend(struct cso_context *ctx,
       memset(&cso->state, 0, sizeof cso->state);
       memcpy(&cso->state, templ, key_size);
       cso->data = ctx->pipe->create_blend_state(ctx->pipe, &cso->state);
-      cso->delete_state = (cso_state_callback)ctx->pipe->delete_blend_state;
-      cso->context = ctx->pipe;
 
       iter = cso_insert_state(&ctx->cache, hash_key, CSO_BLEND, cso);
       if (cso_hash_iter_is_null(iter)) {
@@ -563,9 +507,6 @@ cso_set_depth_stencil_alpha(struct cso_context *ctx,
       memcpy(&cso->state, templ, sizeof(*templ));
       cso->data = ctx->pipe->create_depth_stencil_alpha_state(ctx->pipe,
                                                               &cso->state);
-      cso->delete_state =
-         (cso_state_callback)ctx->pipe->delete_depth_stencil_alpha_state;
-      cso->context = ctx->pipe;
 
       iter = cso_insert_state(&ctx->cache, hash_key,
                               CSO_DEPTH_STENCIL_ALPHA, cso);
@@ -631,9 +572,6 @@ enum pipe_error cso_set_rasterizer(struct cso_context *ctx,
 
       memcpy(&cso->state, templ, sizeof(*templ));
       cso->data = ctx->pipe->create_rasterizer_state(ctx->pipe, &cso->state);
-      cso->delete_state =
-         (cso_state_callback)ctx->pipe->delete_rasterizer_state;
-      cso->context = ctx->pipe;
 
       iter = cso_insert_state(&ctx->cache, hash_key, CSO_RASTERIZER, cso);
       if (cso_hash_iter_is_null(iter)) {
@@ -1039,9 +977,6 @@ cso_set_vertex_elements_direct(struct cso_context *ctx,
       cso->data = ctx->pipe->create_vertex_elements_state(ctx->pipe,
                                                           velems->count,
                                                       &cso->state.velems[0]);
-      cso->delete_state =
-         (cso_state_callback) ctx->pipe->delete_vertex_elements_state;
-      cso->context = ctx->pipe;
 
       iter = cso_insert_state(&ctx->cache, hash_key, CSO_VELEMENTS, cso);
       if (cso_hash_iter_is_null(iter)) {
@@ -1257,9 +1192,6 @@ cso_single_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
 
          memcpy(&cso->state, templ, sizeof(*templ));
          cso->data = ctx->pipe->create_sampler_state(ctx->pipe, &cso->state);
-         cso->delete_state =
-            (cso_state_callback) ctx->pipe->delete_sampler_state;
-         cso->context = ctx->pipe;
          cso->hash_key = hash_key;
 
          iter = cso_insert_state(&ctx->cache, hash_key, CSO_SAMPLER, cso);
