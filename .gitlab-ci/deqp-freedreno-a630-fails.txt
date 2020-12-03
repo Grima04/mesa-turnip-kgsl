@@ -1,9 +1,4 @@
 
-dEQP-VK.api.image_clearing.core.clear_color_attachment.single_layer.a8b8g8r8_srgb_pack32_1x33,Fail
-dEQP-VK.api.image_clearing.core.partial_clear_color_attachment.single_layer.a8b8g8r8_srgb_pack32_200x180,Fail
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.single_layer.b8g8r8a8_srgb_33x128,Fail
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.single_layer.r8g8b8a8_srgb_200x180,Fail
-dEQP-VK.api.image_clearing.dedicated_allocation.partial_clear_color_attachment.single_layer.r8g8b8a8_srgb,Fail
 dEQP-VK.api.object_management.single_alloc_callbacks.compute_pipeline,Fail
 dEQP-VK.compute.indirect_dispatch.gen_in_compute.large_offset,Fail
 dEQP-VK.compute.indirect_dispatch.upload_buffer.small_offset,Fail

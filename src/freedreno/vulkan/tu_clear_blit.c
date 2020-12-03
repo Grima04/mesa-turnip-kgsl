@@ -2091,7 +2091,7 @@ pack_gmem_clear_value(const VkClearValue *val, VkFormat format, uint32_t clear_v
    float tmp[4];
    memcpy(tmp, val->color.float32, 4 * sizeof(float));
    if (vk_format_is_srgb(format)) {
-      for (int i = 0; i < 4; i++)
+      for (int i = 0; i < 3; i++)
          tmp[i] = util_format_linear_to_srgb_float(tmp[i]);
    }
 
