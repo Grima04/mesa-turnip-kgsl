@@ -662,12 +662,6 @@ radeonsi driver environment variables
 
 ``AMD_DEBUG``
    a comma-separated list of named flags, which do various things:
-``nodma``
-   Disable SDMA
-``nodmaclear``
-   Disable SDMA clears
-``nodmacopyimage``
-   Disable SDMA image copies
 ``nodcc``
    Disable DCC.
 ``nodccclear``
@@ -736,8 +730,6 @@ radeonsi driver environment variables
    Use old-style monolithic shaders compiled on demand
 ``nooptvariant``
    Disable compiling optimized shader variants.
-``forcedma``
-   Use SDMA for all operations when possible.
 ``nowc``
    Disable GTT write combining
 ``check_vm``

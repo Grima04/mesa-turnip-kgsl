@@ -82,10 +82,6 @@ static const struct debug_named_value debug_options[] = {
    {"cache_stats", DBG(CACHE_STATS), "Print shader cache statistics."},
 
    /* Driver options: */
-   {"forcedma", DBG(FORCE_SDMA), "Use SDMA for all operations when possible."},
-   {"nodma", DBG(NO_SDMA), "Disable SDMA"},
-   {"nodmaclear", DBG(NO_SDMA_CLEARS), "Disable SDMA clears"},
-   {"nodmacopyimage", DBG(NO_SDMA_COPY_IMAGE), "Disable SDMA image copies"},
    {"nowc", DBG(NO_WC), "Disable GTT write combining"},
    {"check_vm", DBG(CHECK_VM), "Check VM faults and dump debug info."},
    {"reserve_vmid", DBG(RESERVE_VMID), "Force VMID reservation per context."},
@@ -123,9 +119,8 @@ static const struct debug_named_value debug_options[] = {
 
 static const struct debug_named_value test_options[] = {
    /* Tests: */
-   {"testdma", DBG(TEST_DMA), "Invoke SDMA tests and exit."},
+   {"testdma", DBG(TEST_DMA), "Invoke blit tests and exit."},
    {"testvmfaultcp", DBG(TEST_VMFAULT_CP), "Invoke a CP VM fault test and exit."},
-   {"testvmfaultsdma", DBG(TEST_VMFAULT_SDMA), "Invoke a SDMA VM fault test and exit."},
    {"testvmfaultshader", DBG(TEST_VMFAULT_SHADER), "Invoke a shader VM fault test and exit."},
    {"testdmaperf", DBG(TEST_DMA_PERF), "Test DMA performance"},
    {"testgds", DBG(TEST_GDS), "Test GDS."},
@@ -285,7 +280,6 @@ static void si_destroy_context(struct pipe_context *context)
       sctx->b.delete_compute_state(&sctx->b, sctx->sh_query_result_shader);
 
    sctx->ws->cs_destroy(&sctx->gfx_cs);
-   sctx->ws->cs_destroy(&sctx->sdma_cs);
    if (sctx->ctx)
       sctx->ws->ctx_destroy(sctx->ctx);
 
@@ -306,7 +300,6 @@ static void si_destroy_context(struct pipe_context *context)
    u_suballocator_destroy(&sctx->allocator_zeroed_memory);
 
    sctx->ws->fence_reference(&sctx->last_gfx_fence, NULL);
-   sctx->ws->fence_reference(&sctx->last_sdma_fence, NULL);
    sctx->ws->fence_reference(&sctx->last_ib_barrier_fence, NULL);
    si_resource_reference(&sctx->eop_bug_scratch, NULL);
    si_resource_reference(&sctx->eop_bug_scratch_tmz, NULL);
@@ -329,8 +322,6 @@ static void si_destroy_context(struct pipe_context *context)
    util_dynarray_fini(&sctx->resident_tex_needs_color_decompress);
    util_dynarray_fini(&sctx->resident_img_needs_color_decompress);
    util_dynarray_fini(&sctx->resident_tex_needs_depth_decompress);
-   si_unref_sdma_uploads(sctx);
-   free(sctx->sdma_uploads);
    FREE(sctx);
 }
 
@@ -502,36 +493,11 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    if (!sctx->ctx)
       goto fail;
 
-   /* SDMA causes corruption on: :
-    *    - RX 580: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1399, 1889
-    *    - gfx9 APUs: https://gitlab.freedesktop.org/mesa/mesa/-/issues/2814
-    *    - gfx10: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1907,
-                  https://gitlab.freedesktop.org/drm/amd/issues/892
-    *
-    * While we could keep buffer copies and clears enabled, let's disable
-    * everything because SDMA decreases CPU performance because of its
-    * command submission overhead.
-    *
-    * And SDMA is disabled on all chips (instead of just the ones listed above),
-    * because it doesn't make sense to keep it enabled on old chips only
-    * that are not tested as often as newer chips.
-    */
-   if (sscreen->info.num_rings[RING_DMA] && !(sscreen->debug_flags & DBG(NO_SDMA)) &&
-       sscreen->debug_flags & DBG(FORCE_SDMA)) {
-      sctx->ws->cs_create(&sctx->sdma_cs, sctx->ctx, RING_DMA, (void *)si_flush_dma_cs,
-                          sctx, stop_exec_on_failure);
-   }
-
-   bool use_sdma_upload = sscreen->info.has_dedicated_vram && sctx->sdma_cs.priv;
    sctx->b.const_uploader =
       u_upload_create(&sctx->b, 256 * 1024, 0, PIPE_USAGE_DEFAULT,
-                      SI_RESOURCE_FLAG_32BIT |
-                         (use_sdma_upload ? SI_RESOURCE_FLAG_UPLOAD_FLUSH_EXPLICIT_VIA_SDMA : 0));
+                      SI_RESOURCE_FLAG_32BIT);
    if (!sctx->b.const_uploader)
       goto fail;
-
-   if (use_sdma_upload)
-      u_upload_enable_flush_explicit(sctx->b.const_uploader);
 
    ws->cs_create(&sctx->gfx_cs, sctx->ctx, sctx->has_graphics ? RING_GFX : RING_COMPUTE,
                  (void *)si_flush_gfx_cs, sctx, stop_exec_on_failure);
@@ -614,15 +580,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    } else {
       sctx->prim_discard_vertex_count_threshold = UINT_MAX;
    }
-
-   /* Initialize SDMA functions. */
-   if (sctx->chip_class >= GFX7)
-      cik_init_sdma_functions(sctx);
-   else
-      sctx->dma_copy = si_resource_copy_region;
-
-   if (sscreen->debug_flags & DBG(FORCE_SDMA))
-      sctx->b.resource_copy_region = sctx->dma_copy;
 
    sctx->sample_mask = 0xffff;
 
@@ -887,11 +844,6 @@ static void si_test_vmfault(struct si_screen *sscreen, uint64_t test_flags)
       si_cp_dma_copy_buffer(sctx, buf, buf, 0, 4, 4, 0, SI_COHERENCY_NONE, L2_BYPASS);
       ctx->flush(ctx, NULL, 0);
       puts("VM fault test: CP - done.");
-   }
-   if (test_flags & DBG(TEST_VMFAULT_SDMA)) {
-      si_sdma_clear_buffer(sctx, buf, 0, 4, 0);
-      ctx->flush(ctx, NULL, 0);
-      puts("VM fault test: SDMA - done.");
    }
    if (test_flags & DBG(TEST_VMFAULT_SHADER)) {
       util_test_constant_buffer(ctx, buf);
@@ -1343,7 +1295,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       si_test_dma_perf(sscreen);
    }
 
-   if (test_flags & (DBG(TEST_VMFAULT_CP) | DBG(TEST_VMFAULT_SDMA) | DBG(TEST_VMFAULT_SHADER)))
+   if (test_flags & (DBG(TEST_VMFAULT_CP) | DBG(TEST_VMFAULT_SHADER)))
       si_test_vmfault(sscreen, test_flags);
 
    if (test_flags & DBG(TEST_GDS))

@@ -33,68 +33,13 @@
 bool si_cs_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
                                 enum radeon_bo_usage usage)
 {
-   if (sctx->ws->cs_is_buffer_referenced(&sctx->gfx_cs, buf, usage)) {
-      return true;
-   }
-   if (radeon_emitted(&sctx->sdma_cs, 0) &&
-       sctx->ws->cs_is_buffer_referenced(&sctx->sdma_cs, buf, usage)) {
-      return true;
-   }
-   return false;
+   return sctx->ws->cs_is_buffer_referenced(&sctx->gfx_cs, buf, usage);
 }
 
 void *si_buffer_map(struct si_context *sctx, struct si_resource *resource,
                     unsigned usage)
 {
-   enum radeon_bo_usage rusage = RADEON_USAGE_READWRITE;
-   bool busy = false;
-
-   assert(!(resource->flags & RADEON_FLAG_SPARSE));
-
-   if (usage & PIPE_MAP_UNSYNCHRONIZED) {
-      return sctx->ws->buffer_map(resource->buf, NULL, usage);
-   }
-
-   if (!(usage & PIPE_MAP_WRITE)) {
-      /* have to wait for the last write */
-      rusage = RADEON_USAGE_WRITE;
-   }
-
-   if (radeon_emitted(&sctx->gfx_cs, sctx->initial_gfx_cs_size) &&
-       sctx->ws->cs_is_buffer_referenced(&sctx->gfx_cs, resource->buf, rusage)) {
-      if (usage & PIPE_MAP_DONTBLOCK) {
-         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
-         return NULL;
-      } else {
-         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
-         busy = true;
-      }
-   }
-   if (radeon_emitted(&sctx->sdma_cs, 0) &&
-       sctx->ws->cs_is_buffer_referenced(&sctx->sdma_cs, resource->buf, rusage)) {
-      if (usage & PIPE_MAP_DONTBLOCK) {
-         si_flush_dma_cs(sctx, PIPE_FLUSH_ASYNC, NULL);
-         return NULL;
-      } else {
-         si_flush_dma_cs(sctx, 0, NULL);
-         busy = true;
-      }
-   }
-
-   if (busy || !sctx->ws->buffer_wait(resource->buf, 0, rusage)) {
-      if (usage & PIPE_MAP_DONTBLOCK) {
-         return NULL;
-      } else {
-         /* We will be wait for the GPU. Wait for any offloaded
-          * CS flush to complete to avoid busy-waiting in the winsys. */
-         sctx->ws->cs_sync_flush(&sctx->gfx_cs);
-         if (sctx->sdma_cs.priv)
-            sctx->ws->cs_sync_flush(&sctx->sdma_cs);
-      }
-   }
-
-   /* Setting the CS to NULL will prevent doing checks we have done already. */
-   return sctx->ws->buffer_map(resource->buf, NULL, usage);
+   return sctx->ws->buffer_map(resource->buf, &sctx->gfx_cs, usage);
 }
 
 void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res, uint64_t size,
@@ -188,7 +133,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
       res->flags |= RADEON_FLAG_DRIVER_INTERNAL;
 
    /* For higher throughput and lower latency over PCIe assuming sequential access.
-    * Only CP DMA, SDMA, and optimized compute benefit from this.
+    * Only CP DMA and optimized compute benefit from this.
     * GFX8 and older don't support RADEON_FLAG_UNCACHED.
     */
    if (sscreen->info.chip_class >= GFX9 &&
@@ -442,13 +387,6 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
       }
    }
 
-   if (usage & PIPE_MAP_FLUSH_EXPLICIT &&
-       buf->b.b.flags & SI_RESOURCE_FLAG_UPLOAD_FLUSH_EXPLICIT_VIA_SDMA) {
-      usage &= ~(PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT);
-      usage |= PIPE_MAP_DISCARD_RANGE;
-      force_discard_range = true;
-   }
-
    if (usage & PIPE_MAP_DISCARD_RANGE &&
        ((!(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT))) ||
         (buf->flags & RADEON_FLAG_SPARSE))) {
@@ -502,8 +440,8 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
                                          box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT), 256);
       if (staging) {
          /* Copy the VRAM buffer to the staging buffer. */
-         si_sdma_copy_buffer(sctx, &staging->b.b, resource, box->x % SI_MAP_BUFFER_ALIGNMENT,
-                             box->x, box->width);
+         si_copy_buffer(sctx, &staging->b.b, resource, box->x % SI_MAP_BUFFER_ALIGNMENT,
+                        box->x, box->width);
 
          data = si_buffer_map(sctx, staging, usage & ~PIPE_MAP_UNSYNCHRONIZED);
          if (!data) {
@@ -537,45 +475,6 @@ static void si_buffer_do_flush_region(struct pipe_context *ctx, struct pipe_tran
    if (stransfer->staging) {
       unsigned src_offset =
          stransfer->offset + transfer->box.x % SI_MAP_BUFFER_ALIGNMENT + (box->x - transfer->box.x);
-
-      if (buf->b.b.flags & SI_RESOURCE_FLAG_UPLOAD_FLUSH_EXPLICIT_VIA_SDMA) {
-         /* This should be true for all uploaders. */
-         assert(transfer->box.x == 0);
-
-         /* Find a previous upload and extend its range. The last
-          * upload is likely to be at the end of the list.
-          */
-         for (int i = sctx->num_sdma_uploads - 1; i >= 0; i--) {
-            struct si_sdma_upload *up = &sctx->sdma_uploads[i];
-
-            if (up->dst != buf)
-               continue;
-
-            assert(up->src == stransfer->staging);
-            assert(box->x > up->dst_offset);
-            up->size = box->x + box->width - up->dst_offset;
-            return;
-         }
-
-         /* Enlarge the array if it's full. */
-         if (sctx->num_sdma_uploads == sctx->max_sdma_uploads) {
-            unsigned size;
-
-            sctx->max_sdma_uploads += 4;
-            size = sctx->max_sdma_uploads * sizeof(sctx->sdma_uploads[0]);
-            sctx->sdma_uploads = realloc(sctx->sdma_uploads, size);
-         }
-
-         /* Add a new upload. */
-         struct si_sdma_upload *up = &sctx->sdma_uploads[sctx->num_sdma_uploads++];
-         up->dst = up->src = NULL;
-         si_resource_reference(&up->dst, buf);
-         si_resource_reference(&up->src, stransfer->staging);
-         up->dst_offset = box->x;
-         up->src_offset = src_offset;
-         up->size = box->width;
-         return;
-      }
 
       /* Copy the staging buffer into the original one. */
       si_copy_buffer(sctx, transfer->resource, &stransfer->staging->b.b, box->x, src_offset,
@@ -808,13 +707,6 @@ static bool si_resource_commit(struct pipe_context *pctx, struct pipe_resource *
        ctx->ws->cs_is_buffer_referenced(&ctx->gfx_cs, res->buf, RADEON_USAGE_READWRITE)) {
       si_flush_gfx_cs(ctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
    }
-   if (radeon_emitted(&ctx->sdma_cs, 0) &&
-       ctx->ws->cs_is_buffer_referenced(&ctx->sdma_cs, res->buf, RADEON_USAGE_READWRITE)) {
-      si_flush_dma_cs(ctx, PIPE_FLUSH_ASYNC, NULL);
-   }
-
-   if (ctx->sdma_cs.priv)
-      ctx->ws->cs_sync_flush(&ctx->sdma_cs);
    ctx->ws->cs_sync_flush(&ctx->gfx_cs);
 
    assert(resource->target == PIPE_BUFFER);

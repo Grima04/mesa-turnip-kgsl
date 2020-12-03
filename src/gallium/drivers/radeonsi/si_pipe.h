@@ -116,8 +116,7 @@
 #define SI_RESOURCE_FLAG_READ_ONLY         (PIPE_RESOURCE_FLAG_DRV_PRIV << 5)
 #define SI_RESOURCE_FLAG_32BIT             (PIPE_RESOURCE_FLAG_DRV_PRIV << 6)
 #define SI_RESOURCE_FLAG_CLEAR             (PIPE_RESOURCE_FLAG_DRV_PRIV << 7)
-/* For const_uploader, upload data via GTT and copy to VRAM on context flush via SDMA. */
-#define SI_RESOURCE_FLAG_UPLOAD_FLUSH_EXPLICIT_VIA_SDMA (PIPE_RESOURCE_FLAG_DRV_PRIV << 8)
+/* gap */
 /* Set a micro tile mode: */
 #define SI_RESOURCE_FLAG_FORCE_MICRO_TILE_MODE (PIPE_RESOURCE_FLAG_DRV_PRIV << 9)
 #define SI_RESOURCE_FLAG_MICRO_TILE_MODE_SHIFT (util_logbase2(PIPE_RESOURCE_FLAG_DRV_PRIV) + 10)
@@ -179,10 +178,6 @@ enum
    DBG_CACHE_STATS,
 
    /* Driver options: */
-   DBG_FORCE_SDMA,
-   DBG_NO_SDMA,
-   DBG_NO_SDMA_CLEARS,
-   DBG_NO_SDMA_COPY_IMAGE,
    DBG_NO_WC,
    DBG_CHECK_VM,
    DBG_RESERVE_VMID,
@@ -223,7 +218,6 @@ enum
    /* Tests: */
    DBG_TEST_DMA,
    DBG_TEST_VMFAULT_CP,
-   DBG_TEST_VMFAULT_SDMA,
    DBG_TEST_VMFAULT_SHADER,
    DBG_TEST_DMA_PERF,
    DBG_TEST_GDS,
@@ -882,14 +876,6 @@ struct si_saved_cs {
    int64_t time_flush;
 };
 
-struct si_sdma_upload {
-   struct si_resource *dst;
-   struct si_resource *src;
-   unsigned src_offset;
-   unsigned dst_offset;
-   unsigned size;
-};
-
 struct si_small_prim_cull_info {
    float scale[2], translate[2];
 };
@@ -903,9 +889,7 @@ struct si_context {
    struct radeon_winsys *ws;
    struct radeon_winsys_ctx *ctx;
    struct radeon_cmdbuf gfx_cs; /* compute IB if graphics is disabled */
-   struct radeon_cmdbuf sdma_cs;
    struct pipe_fence_handle *last_gfx_fence;
-   struct pipe_fence_handle *last_sdma_fence;
    struct si_resource *eop_bug_scratch;
    struct si_resource *eop_bug_scratch_tmz;
    struct u_upload_mgr *cached_gtt_allocator;
@@ -1220,7 +1204,6 @@ struct si_context {
    unsigned num_spill_draw_calls;
    unsigned num_compute_calls;
    unsigned num_spill_compute_calls;
-   unsigned num_dma_calls;
    unsigned num_cp_dma_calls;
    unsigned num_vs_flushes;
    unsigned num_ps_flushes;
@@ -1251,12 +1234,6 @@ struct si_context {
    bool render_cond_invert;
    bool render_cond_force_off; /* for u_blitter */
 
-   /* For uploading data via GTT and copy to VRAM on context flush via SDMA. */
-   bool sdma_uploads_in_progress;
-   struct si_sdma_upload *sdma_uploads;
-   unsigned num_sdma_uploads;
-   unsigned max_sdma_uploads;
-
    /* Shader-based queries. */
    struct list_head shader_query_buffers;
    unsigned num_active_shader_queries;
@@ -1280,11 +1257,6 @@ struct si_context {
       bool query_active;
    } dcc_stats[5];
 
-   /* Copy one resource to another using async DMA. */
-   void (*dma_copy)(struct pipe_context *ctx, struct pipe_resource *dst, unsigned dst_level,
-                    unsigned dst_x, unsigned dst_y, unsigned dst_z, struct pipe_resource *src,
-                    unsigned src_level, const struct pipe_box *src_box);
-
    struct si_tracked_regs tracked_regs;
 
    /* Resources that need to be flushed, but will not get an explicit
@@ -1293,9 +1265,6 @@ struct si_context {
     */
    struct hash_table *dirty_implicit_resources;
 };
-
-/* cik_sdma.c */
-void cik_init_sdma_functions(struct si_context *sctx);
 
 /* si_blit.c */
 enum si_blitter_op /* bitmask */
@@ -1419,17 +1388,6 @@ void si_check_vm_faults(struct si_context *sctx, struct radeon_saved_cs *saved,
                         enum ring_type ring);
 bool si_replace_shader(unsigned num, struct si_shader_binary *binary);
 
-/* si_dma_cs.c */
-void si_dma_emit_timestamp(struct si_context *sctx, struct si_resource *dst, uint64_t offset);
-void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_t offset,
-                          uint64_t size, unsigned clear_value);
-void si_sdma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
-                         struct pipe_resource *src, uint64_t dst_offset, uint64_t src_offset,
-                         uint64_t size);
-void si_need_dma_space(struct si_context *ctx, unsigned num_dw, struct si_resource *dst,
-                       struct si_resource *src);
-void si_flush_dma_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_handle **fence);
-
 /* si_fence.c */
 void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs, unsigned event,
                        unsigned event_flags, unsigned dst_sel, unsigned int_sel, unsigned data_sel,
@@ -1452,7 +1410,6 @@ void si_allocate_gds(struct si_context *ctx);
 void si_set_tracked_regs_to_clear_state(struct si_context *ctx);
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs);
 void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_draws);
-void si_unref_sdma_uploads(struct si_context *sctx);
 
 /* si_gpu_load.c */
 void si_gpu_load_kill_thread(struct si_screen *sscreen);
@@ -1542,9 +1499,6 @@ void si_update_vs_viewport_state(struct si_context *ctx);
 void si_init_viewport_functions(struct si_context *ctx);
 
 /* si_texture.c */
-bool si_prepare_for_dma_blit(struct si_context *sctx, struct si_texture *dst, unsigned dst_level,
-                             unsigned dstx, unsigned dsty, unsigned dstz, struct si_texture *src,
-                             unsigned src_level, const struct pipe_box *src_box);
 void si_eliminate_fast_color_clear(struct si_context *sctx, struct si_texture *tex,
                                    bool *ctx_flushed);
 void si_texture_discard_cmask(struct si_screen *sscreen, struct si_texture *tex);
@@ -1900,8 +1854,6 @@ static inline void radeon_add_to_buffer_list(struct si_context *sctx, struct rad
  *
  * - if si_context_add_resource_size has been called for the buffer
  *   followed by *_need_cs_space for checking the memory usage
- *
- * - if si_need_dma_space has been called for the buffer
  *
  * - when emitting state packets and draw packets (because preceding packets
  *   can't be re-emitted at that point)

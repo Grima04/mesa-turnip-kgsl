@@ -1110,25 +1110,6 @@ void si_log_compute_state(struct si_context *sctx, struct u_log_context *log)
    si_dump_compute_descriptors(sctx, log);
 }
 
-static void si_dump_dma(struct si_context *sctx, struct radeon_saved_cs *saved, FILE *f)
-{
-   static const char ib_name[] = "sDMA IB";
-   unsigned i;
-
-   si_dump_bo_list(sctx, saved, f);
-
-   fprintf(f, "------------------ %s begin ------------------\n", ib_name);
-
-   for (i = 0; i < saved->num_dw; ++i) {
-      fprintf(f, " %08x\n", saved->ib[i]);
-   }
-
-   fprintf(f, "------------------- %s end -------------------\n", ib_name);
-   fprintf(f, "\n");
-
-   fprintf(f, "SDMA Dump Done.\n");
-}
-
 void si_check_vm_faults(struct si_context *sctx, struct radeon_saved_cs *saved, enum ring_type ring)
 {
    struct pipe_screen *screen = sctx->b.screen;
@@ -1167,9 +1148,6 @@ void si_check_vm_faults(struct si_context *sctx, struct radeon_saved_cs *saved, 
       u_log_context_destroy(&log);
       break;
    }
-   case RING_DMA:
-      si_dump_dma(sctx, saved, f);
-      break;
 
    default:
       break;

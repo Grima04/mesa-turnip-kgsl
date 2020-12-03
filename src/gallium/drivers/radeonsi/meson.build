@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 files_libradeonsi = files(
-  'cik_sdma.c',
   'driinfo_radeonsi.h',
   'gfx10_query.c',
   'gfx10_shader_ngg.c',
@@ -35,7 +34,6 @@ files_libradeonsi = files(
   'si_cp_reg_shadowing.c',
   'si_debug.c',
   'si_descriptors.c',
-  'si_dma_cs.c',
   'si_fence.c',
   'si_get.c',
   'si_gfx_cs.c',

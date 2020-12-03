@@ -48,66 +48,6 @@ static enum radeon_surf_mode si_choose_tiling(struct si_screen *sscreen,
 
 static bool si_texture_is_aux_plane(const struct pipe_resource *resource);
 
-bool si_prepare_for_dma_blit(struct si_context *sctx, struct si_texture *dst, unsigned dst_level,
-                             unsigned dstx, unsigned dsty, unsigned dstz, struct si_texture *src,
-                             unsigned src_level, const struct pipe_box *src_box)
-{
-   if (!sctx->sdma_cs.priv)
-      return false;
-
-   if (dst->surface.bpe != src->surface.bpe)
-      return false;
-
-   /* MSAA: Blits don't exist in the real world. */
-   if (src->buffer.b.b.nr_samples > 1 || dst->buffer.b.b.nr_samples > 1)
-      return false;
-
-   /* Depth-stencil surfaces:
-    *   When dst is linear, the DB->CB copy preserves HTILE.
-    *   When dst is tiled, the 3D path must be used to update HTILE.
-    */
-   if (src->is_depth || dst->is_depth)
-      return false;
-
-   /* DCC as:
-    *   src: Use the 3D path. DCC decompression is expensive.
-    *   dst: Use the 3D path to compress the pixels with DCC.
-    */
-   if (vi_dcc_enabled(src, src_level) || vi_dcc_enabled(dst, dst_level))
-      return false;
-
-   /* TMZ: mixing encrypted and non-encrypted buffer in a single command
-    * doesn't seem supported.
-    */
-   if ((src->buffer.flags & RADEON_FLAG_ENCRYPTED) !=
-       (dst->buffer.flags & RADEON_FLAG_ENCRYPTED))
-      return false;
-
-   /* CMASK as:
-    *   src: Both texture and SDMA paths need decompression. Use SDMA.
-    *   dst: If overwriting the whole texture, discard CMASK and use
-    *        SDMA. Otherwise, use the 3D path.
-    */
-   if (dst->cmask_buffer && dst->dirty_level_mask & (1 << dst_level)) {
-      /* The CMASK clear is only enabled for the first level. */
-      assert(dst_level == 0);
-      if (!util_texrange_covers_whole_level(&dst->buffer.b.b, dst_level, dstx, dsty, dstz,
-                                            src_box->width, src_box->height, src_box->depth))
-         return false;
-
-      si_texture_discard_cmask(sctx->screen, dst);
-   }
-
-   /* All requirements are met. Prepare textures for SDMA. */
-   if (src->cmask_buffer && src->dirty_level_mask & (1 << src_level))
-      sctx->b.flush_resource(&sctx->b, &src->buffer.b.b);
-
-   assert(!(src->dirty_level_mask & (1 << src_level)));
-   assert(!(dst->dirty_level_mask & (1 << dst_level)));
-
-   return true;
-}
-
 /* Same as resource_copy_region, except that both upsampling and downsampling are allowed. */
 static void si_copy_region_with_blit(struct pipe_context *pipe, struct pipe_resource *dst,
                                      unsigned dst_level, unsigned dstx, unsigned dsty,
@@ -141,7 +81,6 @@ static void si_copy_region_with_blit(struct pipe_context *pipe, struct pipe_reso
 /* Copy from a full GPU texture to a transfer's staging one. */
 static void si_copy_to_staging_texture(struct pipe_context *ctx, struct si_transfer *stransfer)
 {
-   struct si_context *sctx = (struct si_context *)ctx;
    struct pipe_transfer *transfer = (struct pipe_transfer *)stransfer;
    struct pipe_resource *dst = &stransfer->staging->b.b;
    struct pipe_resource *src = transfer->resource;
@@ -151,13 +90,12 @@ static void si_copy_to_staging_texture(struct pipe_context *ctx, struct si_trans
       return;
    }
 
-   sctx->dma_copy(ctx, dst, 0, 0, 0, 0, src, transfer->level, &transfer->box);
+   si_resource_copy_region(ctx, dst, 0, 0, 0, 0, src, transfer->level, &transfer->box);
 }
 
 /* Copy from a transfer's staging texture to a full GPU one. */
 static void si_copy_from_staging_texture(struct pipe_context *ctx, struct si_transfer *stransfer)
 {
-   struct si_context *sctx = (struct si_context *)ctx;
    struct pipe_transfer *transfer = (struct pipe_transfer *)stransfer;
    struct pipe_resource *dst = transfer->resource;
    struct pipe_resource *src = &stransfer->staging->b.b;
@@ -176,8 +114,8 @@ static void si_copy_from_staging_texture(struct pipe_context *ctx, struct si_tra
       sbox.height = util_format_get_nblocksx(dst->format, sbox.height);
    }
 
-   sctx->dma_copy(ctx, dst, transfer->level, transfer->box.x, transfer->box.y, transfer->box.z, src,
-                  0, &sbox);
+   si_resource_copy_region(ctx, dst, transfer->level, transfer->box.x, transfer->box.y,
+                           transfer->box.z, src, 0, &sbox);
 }
 
 static unsigned si_texture_get_offset(struct si_screen *sscreen, struct si_texture *tex,
@@ -479,7 +417,8 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
          u_box_3d(0, 0, 0, u_minify(templ.width0, i), u_minify(templ.height0, i),
                   util_num_layers(&templ, i), &box);
 
-         sctx->dma_copy(&sctx->b, &new_tex->buffer.b.b, i, 0, 0, 0, &tex->buffer.b.b, i, &box);
+         si_resource_copy_region(&sctx->b, &new_tex->buffer.b.b,
+                                 i, 0, 0, 0, &tex->buffer.b.b, i, &box);
       }
    }
 
@@ -1156,8 +1095,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       struct si_context *sctx = (struct si_context *)sscreen->aux_context;
 
       simple_mtx_lock(&sscreen->aux_context_lock);
-      si_sdma_copy_buffer(sctx, &tex->dcc_retile_buffer->b.b, &buf->b.b, 0,
-                          0, buf->b.b.width0);
+      si_copy_buffer(sctx, &tex->dcc_retile_buffer->b.b, &buf->b.b, 0,
+                     0, buf->b.b.width0);
       sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
       simple_mtx_unlock(&sscreen->aux_context_lock);
 

@@ -23,7 +23,7 @@
  *
  */
 
-/* This file implements randomized SDMA texture blit tests. */
+/* This file implements randomized texture blit tests. */
 
 #include "si_pipe.h"
 #include "util/rand_xor.h"
@@ -203,7 +203,7 @@ void si_test_dma(struct si_screen *sscreen)
       struct si_texture *ssrc;
       struct cpu_texture src_cpu, dst_cpu;
       unsigned max_width, max_height, max_depth, j, num;
-      unsigned gfx_blits = 0, dma_blits = 0, cs_blits = 0, max_tex_side_gen;
+      unsigned gfx_blits = 0, cs_blits = 0, max_tex_side_gen;
       unsigned max_tex_layers;
       bool pass;
       bool do_partial_copies = rand() & 1;
@@ -305,7 +305,6 @@ void si_test_dma(struct si_screen *sscreen)
          int srcx, srcy, srcz, dstx, dsty, dstz;
          struct pipe_box box;
          unsigned old_num_draw_calls = sctx->num_draw_calls;
-         unsigned old_num_dma_calls = sctx->num_dma_calls;
          unsigned old_num_cs_calls = sctx->num_compute_calls;
 
          if (!do_partial_copies) {
@@ -357,11 +356,10 @@ void si_test_dma(struct si_screen *sscreen)
 
          /* GPU copy */
          u_box_3d(srcx, srcy, srcz, width, height, depth, &box);
-         sctx->dma_copy(ctx, dst, 0, dstx, dsty, dstz, src, 0, &box);
+         si_resource_copy_region(ctx, dst, 0, dstx, dsty, dstz, src, 0, &box);
 
          /* See which engine was used. */
          gfx_blits += sctx->num_draw_calls > old_num_draw_calls;
-         dma_blits += sctx->num_dma_calls > old_num_dma_calls;
          cs_blits += sctx->num_compute_calls > old_num_cs_calls;
 
          /* CPU copy */
@@ -376,7 +374,7 @@ void si_test_dma(struct si_screen *sscreen)
       else
          num_fail++;
 
-      printf("BLITs: GFX = %2u, DMA = %2u, CS = %2u, %s [%u/%u]\n", gfx_blits, dma_blits, cs_blits,
+      printf("BLITs: GFX = %2u, CS = %2u, %s [%u/%u]\n", gfx_blits, cs_blits,
              pass ? "pass" : "fail", num_pass, num_pass + num_fail);
 
       /* cleanup */

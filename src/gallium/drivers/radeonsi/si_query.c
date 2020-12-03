@@ -82,8 +82,6 @@ static enum radeon_value_id winsys_id_from_type(unsigned type)
       return RADEON_NUM_MAPPED_BUFFERS;
    case SI_QUERY_NUM_GFX_IBS:
       return RADEON_NUM_GFX_IBS;
-   case SI_QUERY_NUM_SDMA_IBS:
-      return RADEON_NUM_SDMA_IBS;
    case SI_QUERY_GFX_BO_LIST_SIZE:
       return RADEON_GFX_BO_LIST_COUNTER;
    case SI_QUERY_GFX_IB_SIZE:
@@ -113,19 +111,6 @@ static enum radeon_value_id winsys_id_from_type(unsigned type)
    }
 }
 
-static int64_t si_finish_dma_get_cpu_time(struct si_context *sctx)
-{
-   struct pipe_fence_handle *fence = NULL;
-
-   si_flush_dma_cs(sctx, 0, &fence);
-   if (fence) {
-      sctx->ws->fence_wait(sctx->ws, fence, PIPE_TIMEOUT_INFINITE);
-      sctx->ws->fence_reference(&fence, NULL);
-   }
-
-   return os_time_get_nano();
-}
-
 static bool si_query_sw_begin(struct si_context *sctx, struct si_query *squery)
 {
    struct si_query_sw *query = (struct si_query_sw *)squery;
@@ -134,9 +119,6 @@ static bool si_query_sw_begin(struct si_context *sctx, struct si_query *squery)
    switch (query->b.type) {
    case PIPE_QUERY_TIMESTAMP_DISJOINT:
    case PIPE_QUERY_GPU_FINISHED:
-      break;
-   case SI_QUERY_TIME_ELAPSED_SDMA_SI:
-      query->begin_result = si_finish_dma_get_cpu_time(sctx);
       break;
    case SI_QUERY_DRAW_CALLS:
       query->begin_result = sctx->num_draw_calls;
@@ -158,9 +140,6 @@ static bool si_query_sw_begin(struct si_context *sctx, struct si_query *squery)
       break;
    case SI_QUERY_SPILL_COMPUTE_CALLS:
       query->begin_result = sctx->num_spill_compute_calls;
-      break;
-   case SI_QUERY_DMA_CALLS:
-      query->begin_result = sctx->num_dma_calls;
       break;
    case SI_QUERY_CP_DMA_CALLS:
       query->begin_result = sctx->num_cp_dma_calls;
@@ -215,7 +194,6 @@ static bool si_query_sw_begin(struct si_context *sctx, struct si_query *squery)
    case SI_QUERY_BUFFER_WAIT_TIME:
    case SI_QUERY_GFX_IB_SIZE:
    case SI_QUERY_NUM_GFX_IBS:
-   case SI_QUERY_NUM_SDMA_IBS:
    case SI_QUERY_NUM_BYTES_MOVED:
    case SI_QUERY_NUM_EVICTIONS:
    case SI_QUERY_NUM_VRAM_CPU_PAGE_FAULTS: {
@@ -317,9 +295,6 @@ static bool si_query_sw_end(struct si_context *sctx, struct si_query *squery)
    case PIPE_QUERY_GPU_FINISHED:
       sctx->b.flush(&sctx->b, &query->fence, PIPE_FLUSH_DEFERRED);
       break;
-   case SI_QUERY_TIME_ELAPSED_SDMA_SI:
-      query->end_result = si_finish_dma_get_cpu_time(sctx);
-      break;
    case SI_QUERY_DRAW_CALLS:
       query->end_result = sctx->num_draw_calls;
       break;
@@ -340,9 +315,6 @@ static bool si_query_sw_end(struct si_context *sctx, struct si_query *squery)
       break;
    case SI_QUERY_SPILL_COMPUTE_CALLS:
       query->end_result = sctx->num_spill_compute_calls;
-      break;
-   case SI_QUERY_DMA_CALLS:
-      query->end_result = sctx->num_dma_calls;
       break;
    case SI_QUERY_CP_DMA_CALLS:
       query->end_result = sctx->num_cp_dma_calls;
@@ -394,7 +366,6 @@ static bool si_query_sw_end(struct si_context *sctx, struct si_query *squery)
    case SI_QUERY_GFX_IB_SIZE:
    case SI_QUERY_NUM_MAPPED_BUFFERS:
    case SI_QUERY_NUM_GFX_IBS:
-   case SI_QUERY_NUM_SDMA_IBS:
    case SI_QUERY_NUM_BYTES_MOVED:
    case SI_QUERY_NUM_EVICTIONS:
    case SI_QUERY_NUM_VRAM_CPU_PAGE_FAULTS: {
@@ -739,10 +710,6 @@ static struct pipe_query *si_query_hw_create(struct si_screen *sscreen, unsigned
       query->result_size += 16; /* for the fence + alignment */
       query->b.num_cs_dw_suspend = 6 + si_cp_write_fence_dwords(sscreen);
       break;
-   case SI_QUERY_TIME_ELAPSED_SDMA:
-      /* GET_GLOBAL_TIMESTAMP only works if the offset is a multiple of 32. */
-      query->result_size = 64;
-      break;
    case PIPE_QUERY_TIME_ELAPSED:
       query->result_size = 24;
       query->b.num_cs_dw_suspend = 8 + si_cp_write_fence_dwords(sscreen);
@@ -835,9 +802,6 @@ static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_h
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    switch (query->b.type) {
-   case SI_QUERY_TIME_ELAPSED_SDMA:
-      si_dma_emit_timestamp(sctx, buffer, va - buffer->gpu_address);
-      return;
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
@@ -886,8 +850,7 @@ static void si_query_hw_emit_start(struct si_context *sctx, struct si_query_hw *
    if (query->b.type == PIPE_QUERY_PIPELINE_STATISTICS)
       sctx->num_pipeline_stat_queries++;
 
-   if (query->b.type != SI_QUERY_TIME_ELAPSED_SDMA)
-      si_need_gfx_cs_space(sctx, 0);
+   si_need_gfx_cs_space(sctx, 0);
 
    va = query->buffer.buf->gpu_address + query->buffer.results_end;
    query->ops->emit_start(sctx, query, query->buffer.buf, va);
@@ -900,9 +863,6 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw
    uint64_t fence_va = 0;
 
    switch (query->b.type) {
-   case SI_QUERY_TIME_ELAPSED_SDMA:
-      si_dma_emit_timestamp(sctx, buffer, va + 32 - buffer->gpu_address);
-      return;
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
@@ -1144,7 +1104,7 @@ static struct pipe_query *si_create_query(struct pipe_context *ctx, unsigned que
    struct si_screen *sscreen = (struct si_screen *)ctx->screen;
 
    if (query_type == PIPE_QUERY_TIMESTAMP_DISJOINT || query_type == PIPE_QUERY_GPU_FINISHED ||
-       (query_type >= PIPE_QUERY_DRIVER_SPECIFIC && query_type != SI_QUERY_TIME_ELAPSED_SDMA))
+       (query_type >= PIPE_QUERY_DRIVER_SPECIFIC))
       return si_query_sw_create(query_type);
 
    if (sscreen->use_ngg_streamout &&
@@ -1332,9 +1292,6 @@ static void si_query_hw_add_result(struct si_screen *sscreen, struct si_query_hw
    case PIPE_QUERY_TIME_ELAPSED:
       result->u64 += si_query_read_result(buffer, 0, 2, false);
       break;
-   case SI_QUERY_TIME_ELAPSED_SDMA:
-      result->u64 += si_query_read_result(buffer, 0, 32 / 4, false);
-      break;
    case PIPE_QUERY_TIMESTAMP:
       result->u64 = *(uint64_t *)buffer;
       break;
@@ -1474,7 +1431,7 @@ bool si_query_hw_get_result(struct si_context *sctx, struct si_query *squery, bo
    }
 
    /* Convert the time to expected units. */
-   if (squery->type == PIPE_QUERY_TIME_ELAPSED || squery->type == SI_QUERY_TIME_ELAPSED_SDMA ||
+   if (squery->type == PIPE_QUERY_TIME_ELAPSED ||
        squery->type == PIPE_QUERY_TIMESTAMP) {
       result->u64 = (1000000 * result->u64) / sscreen->info.clock_crystal_freq;
    }
@@ -1719,7 +1676,6 @@ static struct pipe_driver_query_info si_driver_query_list[] = {
    X("spill-draw-calls", SPILL_DRAW_CALLS, UINT64, AVERAGE),
    X("compute-calls", COMPUTE_CALLS, UINT64, AVERAGE),
    X("spill-compute-calls", SPILL_COMPUTE_CALLS, UINT64, AVERAGE),
-   X("dma-calls", DMA_CALLS, UINT64, AVERAGE),
    X("cp-dma-calls", CP_DMA_CALLS, UINT64, AVERAGE),
    X("num-vs-flushes", NUM_VS_FLUSHES, UINT64, AVERAGE),
    X("num-ps-flushes", NUM_PS_FLUSHES, UINT64, AVERAGE),
@@ -1741,7 +1697,6 @@ static struct pipe_driver_query_info si_driver_query_list[] = {
    X("buffer-wait-time", BUFFER_WAIT_TIME, MICROSECONDS, CUMULATIVE),
    X("num-mapped-buffers", NUM_MAPPED_BUFFERS, UINT64, AVERAGE),
    X("num-GFX-IBs", NUM_GFX_IBS, UINT64, AVERAGE),
-   X("num-SDMA-IBs", NUM_SDMA_IBS, UINT64, AVERAGE),
    X("GFX-BO-list-size", GFX_BO_LIST_SIZE, UINT64, AVERAGE),
    X("GFX-IB-size", GFX_IB_SIZE, UINT64, AVERAGE),
    X("num-bytes-moved", NUM_BYTES_MOVED, BYTES, CUMULATIVE),

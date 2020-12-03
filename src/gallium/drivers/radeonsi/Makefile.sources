@@ -1,5 +1,4 @@
 C_SOURCES := \
-	cik_sdma.c \
 	driinfo_radeonsi.h \
 	gfx10_query.c \
 	gfx10_shader_ngg.c \
@@ -15,7 +14,6 @@ C_SOURCES := \
 	si_cp_reg_shadowing.c \
 	si_debug.c \
 	si_descriptors.c \
-	si_dma_cs.c \
 	si_fence.c \
 	si_get.c \
 	si_gfx_cs.c \

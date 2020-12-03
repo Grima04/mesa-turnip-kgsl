@@ -529,7 +529,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    /* SNORM8 blitting has precision issues on some chips. Use the SINT
     * equivalent instead, which doesn't force DCC decompression.
-    * Note that some chips avoid this issue by using SDMA.
     */
    if (util_format_is_snorm8(dst->format)) {
       image[0].format = image[1].format = util_format_snorm8_to_sint8(dst->format);
