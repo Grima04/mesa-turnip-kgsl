@@ -36,8 +36,7 @@ When the build is complete you should find:
 
 ::
 
-   $PWD/builddir/install/lib/libOSMesa.so  (swrast-based OSMesa)
-   $PWD/builddir/install/lib/gallium/libOSMsea.so  (Gallium-based OSMesa)
+   $PWD/builddir/install/lib/libOSMesa.so
 
 Set your LD_LIBRARY_PATH to point to $PWD/builddir/install to use the
 libraries
