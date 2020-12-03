@@ -101,13 +101,24 @@ test-docs:
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   stage: deploy
+  needs: []
+  rules:
+    - *ignore_scheduled_pipelines
+    - if: *is-forked-branch
+      changes: *docs-or-ci
+      when: manual
+    # Other cases default to never
+
+test-docs-mr:
+  extends:
+    - test-docs
   needs:
     - sanity
   rules:
     - if: *is-pre-merge-for-marge
       changes: *docs-or-ci
       when: on_success
-    - if: *is-forked-branch-or-pre-merge
+    - if: *is-pre-merge
       changes: *docs-or-ci
       when: manual
     # Other cases default to never
@@ -496,8 +507,6 @@ sanity:
     GIT_STRATEGY: none
   script:
     # ci-fairy check-commits --junit-xml=check-commits.xml
-    # ci-fairy check-merge-request only works in pre-merge pipelines for MRs
-    - if test "x$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" != "x$CI_COMMIT_REF_NAME"; then exit 0; fi
     - ci-fairy check-merge-request --require-allow-collaboration --junit-xml=check-merge-request.xml
   artifacts:
     when: on_failure
