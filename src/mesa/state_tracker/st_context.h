@@ -125,6 +125,7 @@ struct st_context
    struct gl_context *ctx;
    struct pipe_screen *screen;
    struct pipe_context *pipe;
+   struct cso_context *cso_context;
 
    struct draw_context *draw;  /**< For selection/feedback/rastpos only */
    struct draw_stage *feedback_stage;  /**< For GL_FEEDBACK rendermode */
@@ -331,8 +332,6 @@ struct st_context
    void *passthrough_vs;
 
    enum pipe_texture_target internal_target;
-
-   struct cso_context *cso_context;
 
    void *winsys_drawable_handle;
 
