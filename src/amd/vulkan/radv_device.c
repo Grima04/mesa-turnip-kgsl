@@ -1994,7 +1994,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->maxTransformFeedbackBuffers = MAX_SO_BUFFERS;
 			properties->maxTransformFeedbackBufferSize = UINT32_MAX;
 			properties->maxTransformFeedbackStreamDataSize = 512;
-			properties->maxTransformFeedbackBufferDataSize = UINT32_MAX;
+			properties->maxTransformFeedbackBufferDataSize = 512;
 			properties->maxTransformFeedbackBufferDataStride = 512;
 			properties->transformFeedbackQueries = !pdevice->use_ngg_streamout;
 			properties->transformFeedbackStreamsLinesTriangles = !pdevice->use_ngg_streamout;
