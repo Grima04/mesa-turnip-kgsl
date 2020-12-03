@@ -352,20 +352,6 @@ x86_test-vk:
   variables:
     MESA_IMAGE_TAG: &x86_test-vk "2020-11-06-deqp-version"
 
-# Debian 9 based x86 build image (old LLVM)
-x86_build_old:
-  extends: x86_build-base
-  variables:
-    MESA_IMAGE_TAG: &x86_build_old "2020-12-02"
-    FDO_DISTRIBUTION_VERSION: stretch-slim
-
-.use-x86_build_old:
-  variables:
-    TAG: *x86_build_old
-  image: "$CI_REGISTRY_IMAGE/debian/x86_build_old:${TAG}-${MESA_TEMPLATES_COMMIT}"
-  needs:
-    - x86_build_old
-
 # Debian 10 based ARM build image
 arm_build:
   extends:
