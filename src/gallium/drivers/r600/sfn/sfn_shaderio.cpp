@@ -120,6 +120,7 @@ ShaderInputVarying::ShaderInputVarying(tgsi_semantic _name, int sid, unsigned dr
    m_interpolate(interpolate),
    m_interpolate_loc(interp_loc),
    m_ij_index(-10),
+   m_lds_pos(0),
    m_mask((1 << components) - 1)
 {
    evaluate_spi_sid();
@@ -139,6 +140,7 @@ ShaderInputVarying::ShaderInputVarying(tgsi_semantic _name, int sid, nir_variabl
    m_location_frac(input->data.location_frac),
    m_sid(sid),
    m_ij_index(-10),
+   m_lds_pos(0),
    m_mask((1 << input->type->components()) - 1)
 {
    sfn_log << SfnLog::io << __func__
@@ -180,6 +182,10 @@ ShaderInputVarying::ShaderInputVarying(tgsi_semantic _name, int sid, nir_variabl
       break;
 
    case INTERP_MODE_FLAT:
+      m_interpolate = TGSI_INTERPOLATE_CONSTANT;
+      break;
+
+   default:
       m_interpolate = TGSI_INTERPOLATE_CONSTANT;
       break;
    }
@@ -241,7 +247,8 @@ ShaderInputVarying::ShaderInputVarying(tgsi_semantic name,
    m_interpolate(orig.m_interpolate),
    m_interpolate_loc(orig.m_interpolate_loc),
    m_ij_index(orig.m_ij_index),
-   m_lds_pos(0)
+   m_lds_pos(0),
+   m_mask(0)
 {
    evaluate_spi_sid();
 }
