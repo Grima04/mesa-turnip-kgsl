@@ -642,7 +642,7 @@ public:
       return isConstant() && constantValue() == cmp;
    }
 
-   constexpr uint64_t constantValue64(bool signext=false) const noexcept
+   constexpr uint64_t constantValue64() const noexcept
    {
       if (constSize == 3) {
          if (reg_ <= 192)
@@ -668,12 +668,10 @@ public:
          case 247:
             return 0xC010000000000000;
          }
-      } else if (constSize == 1) {
-         return (signext && (data_.i & 0x8000u) ? 0xffffffffffff0000ull : 0ull) | data_.i;
-      } else if (constSize == 0) {
-         return (signext && (data_.i & 0x80u) ? 0xffffffffffffff00ull : 0ull) | data_.i;
+         unreachable("invalid register for 64-bit constant");
+      } else {
+         return data_.i;
       }
-      return (signext && (data_.i & 0x80000000u) ? 0xffffffff00000000ull : 0ull) | data_.i;
    }
 
    constexpr bool isOfType(RegType type) const noexcept
