@@ -6527,6 +6527,7 @@ void radv_CmdBeginConditionalRenderingEXT(
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	RADV_FROM_HANDLE(radv_buffer, buffer, pConditionalRenderingBegin->buffer);
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+	unsigned pred_op = PREDICATION_OP_BOOL32;
 	bool draw_visible = true;
 	uint64_t va;
 
@@ -6592,14 +6593,16 @@ void radv_CmdBeginConditionalRenderingEXT(
 		radeon_emit(cs, 0);
 
 		va = pred_va;
+		pred_op = PREDICATION_OP_BOOL64;
 	}
 
 	/* Enable predication for this command buffer. */
-	si_emit_set_predication_state(cmd_buffer, draw_visible, va);
+	si_emit_set_predication_state(cmd_buffer, draw_visible, pred_op, va);
 	cmd_buffer->state.predicating = true;
 
 	/* Store conditional rendering user info. */
 	cmd_buffer->state.predication_type = draw_visible;
+	cmd_buffer->state.predication_op = pred_op;
 	cmd_buffer->state.predication_va = va;
 }
 
@@ -6609,11 +6612,12 @@ void radv_CmdEndConditionalRenderingEXT(
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
 	/* Disable predication for this command buffer. */
-	si_emit_set_predication_state(cmd_buffer, false, 0);
+	si_emit_set_predication_state(cmd_buffer, false, 0, 0);
 	cmd_buffer->state.predicating = false;
 
 	/* Reset conditional rendering user info. */
 	cmd_buffer->state.predication_type = -1;
+	cmd_buffer->state.predication_op = 0;
 	cmd_buffer->state.predication_va = 0;
 }
 

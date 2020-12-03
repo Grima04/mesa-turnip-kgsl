@@ -1376,6 +1376,7 @@ struct radv_cmd_state {
 	bool dma_is_busy;
 
 	/* Conditional rendering info. */
+	uint8_t predication_op; /* 32-bit or 64-bit predicate value */
 	int predication_type; /* -1: disabled, 0: normal, 1: inverted */
 	uint64_t predication_va;
 
@@ -1513,7 +1514,8 @@ void si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 			    uint64_t gfx9_eop_bug_va);
 void si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer);
 void si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer,
-				   bool inverted, uint64_t va);
+				   bool draw_visible, unsigned pred_op,
+				   uint64_t va);
 void si_cp_dma_buffer_copy(struct radv_cmd_buffer *cmd_buffer,
 			   uint64_t src_va, uint64_t dest_va,
 			   uint64_t size);
