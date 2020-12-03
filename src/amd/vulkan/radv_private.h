@@ -411,6 +411,7 @@ struct radv_pipeline_key {
 	 * VK_EXT_subgroup_size_control.
 	 */
 	uint8_t compute_subgroup_size;
+	bool require_full_subgroups;
 };
 
 struct radv_shader_binary;

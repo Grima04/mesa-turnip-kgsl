@@ -2769,7 +2769,19 @@ radv_fill_shader_keys(struct radv_device *device,
 	keys[MESA_SHADER_FRAGMENT].fs.is_dual_src = key->is_dual_src;
 
 	if (nir[MESA_SHADER_COMPUTE]) {
-		keys[MESA_SHADER_COMPUTE].cs.subgroup_size = key->compute_subgroup_size;
+		unsigned subgroup_size = key->compute_subgroup_size;
+		unsigned req_subgroup_size = subgroup_size;
+		bool require_full_subgroups = key->require_full_subgroups;
+
+		if (!subgroup_size)
+			subgroup_size = device->physical_device->cs_wave_size;
+
+		if (require_full_subgroups && !req_subgroup_size) {
+			/* don't use wave32 pretending to be wave64 */
+			subgroup_size = RADV_SUBGROUP_SIZE;
+		}
+
+		keys[MESA_SHADER_COMPUTE].cs.subgroup_size = subgroup_size;
 	}
 }
 
@@ -2782,11 +2794,7 @@ radv_get_wave_size(struct radv_device *device,
 	if (stage == MESA_SHADER_GEOMETRY && !key->vs_common_out.as_ngg)
 		return 64;
 	else if (stage == MESA_SHADER_COMPUTE) {
-		if (key->cs.subgroup_size) {
-			/* Return the required subgroup size if specified. */
-			return key->cs.subgroup_size;
-		}
-		return device->physical_device->cs_wave_size;
+		return key->cs.subgroup_size;
 	}
 	else if (stage == MESA_SHADER_FRAGMENT)
 		return device->physical_device->ps_wave_size;
@@ -5528,6 +5536,8 @@ radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
 		assert(subgroup_size->requiredSubgroupSize == 32 ||
 		       subgroup_size->requiredSubgroupSize == 64);
 		key.compute_subgroup_size = subgroup_size->requiredSubgroupSize;
+	} else if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
+		key.require_full_subgroups = true;
 	}
 
 	return key;
