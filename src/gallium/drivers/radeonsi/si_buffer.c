@@ -30,8 +30,8 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-bool si_rings_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
-                                   enum radeon_bo_usage usage)
+bool si_cs_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
+                                enum radeon_bo_usage usage)
 {
    if (sctx->ws->cs_is_buffer_referenced(&sctx->gfx_cs, buf, usage)) {
       return true;
@@ -43,8 +43,8 @@ bool si_rings_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *bu
    return false;
 }
 
-void *si_buffer_map_sync_with_rings(struct si_context *sctx, struct si_resource *resource,
-                                    unsigned usage)
+void *si_buffer_map(struct si_context *sctx, struct si_resource *resource,
+                    unsigned usage)
 {
    enum radeon_bo_usage rusage = RADEON_USAGE_READWRITE;
    bool busy = false;
@@ -300,7 +300,7 @@ static bool si_invalidate_buffer(struct si_context *sctx, struct si_resource *bu
       return false;
 
    /* Check if mapping this buffer would cause waiting for the GPU. */
-   if (si_rings_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
+   if (si_cs_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
        !sctx->ws->buffer_wait(buf->buf, 0, RADEON_USAGE_READWRITE)) {
       /* Reallocate the buffer in the same pipe_resource. */
       si_alloc_resource(sctx->screen, buf);
@@ -457,7 +457,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
       /* Check if mapping this buffer would cause waiting for the GPU.
        */
       if (buf->flags & RADEON_FLAG_SPARSE || force_discard_range ||
-          si_rings_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
+          si_cs_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
           !sctx->ws->buffer_wait(buf->buf, 0, RADEON_USAGE_READWRITE)) {
          /* Do a wait-free write-only transfer using a temporary buffer. */
          struct u_upload_mgr *uploader;
@@ -505,7 +505,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
          si_sdma_copy_buffer(sctx, &staging->b.b, resource, box->x % SI_MAP_BUFFER_ALIGNMENT,
                              box->x, box->width);
 
-         data = si_buffer_map_sync_with_rings(sctx, staging, usage & ~PIPE_MAP_UNSYNCHRONIZED);
+         data = si_buffer_map(sctx, staging, usage & ~PIPE_MAP_UNSYNCHRONIZED);
          if (!data) {
             si_resource_reference(&staging, NULL);
             return NULL;
@@ -518,7 +518,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
       }
    }
 
-   data = si_buffer_map_sync_with_rings(sctx, buf, usage);
+   data = si_buffer_map(sctx, buf, usage);
    if (!data) {
       return NULL;
    }

@@ -1320,10 +1320,10 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex);
 void si_flush_implicit_resources(struct si_context *sctx);
 
 /* si_buffer.c */
-bool si_rings_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
-                                   enum radeon_bo_usage usage);
-void *si_buffer_map_sync_with_rings(struct si_context *sctx, struct si_resource *resource,
-                                    unsigned usage);
+bool si_cs_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
+                                enum radeon_bo_usage usage);
+void *si_buffer_map(struct si_context *sctx, struct si_resource *resource,
+                    unsigned usage);
 void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res, uint64_t size,
                              unsigned alignment);
 bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res);

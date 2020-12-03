@@ -79,7 +79,7 @@ static bool gfx10_alloc_query_buffer(struct si_context *sctx)
 
       qbuf = list_first_entry(&sctx->shader_query_buffers, struct gfx10_sh_query_buffer, list);
       if (!qbuf->refcount &&
-          !si_rings_is_buffer_referenced(sctx, qbuf->buf->buf, RADEON_USAGE_READWRITE) &&
+          !si_cs_is_buffer_referenced(sctx, qbuf->buf->buf, RADEON_USAGE_READWRITE) &&
           sctx->ws->buffer_wait(qbuf->buf->buf, 0, RADEON_USAGE_READWRITE)) {
          /* Can immediately re-use the oldest buffer */
          list_del(&qbuf->list);
@@ -251,7 +251,7 @@ static bool gfx10_sh_query_get_result(struct si_context *sctx, struct si_query *
       if (rquery->b.flushed)
          map = sctx->ws->buffer_map(qbuf->buf->buf, NULL, usage);
       else
-         map = si_buffer_map_sync_with_rings(sctx, qbuf->buf, usage);
+         map = si_buffer_map(sctx, qbuf->buf, usage);
 
       if (!map)
          return false;

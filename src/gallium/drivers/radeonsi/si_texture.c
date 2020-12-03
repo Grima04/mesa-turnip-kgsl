@@ -1877,7 +1877,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
          use_staging_texture =
             tex->buffer.domains & RADEON_DOMAIN_VRAM || tex->buffer.flags & RADEON_FLAG_GTT_WC;
       /* Write & linear only: */
-      else if (si_rings_is_buffer_referenced(sctx, tex->buffer.buf, RADEON_USAGE_READWRITE) ||
+      else if (si_cs_is_buffer_referenced(sctx, tex->buffer.buf, RADEON_USAGE_READWRITE) ||
                !sctx->ws->buffer_wait(tex->buffer.buf, 0, RADEON_USAGE_READWRITE)) {
          /* It's busy. */
          if (si_can_invalidate_texture(sctx->screen, tex, usage, box))
@@ -1955,7 +1955,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    if (sizeof(void *) == 4)
       usage |= RADEON_MAP_TEMPORARY;
 
-   if (!(map = si_buffer_map_sync_with_rings(sctx, buf, usage)))
+   if (!(map = si_buffer_map(sctx, buf, usage)))
       goto fail_trans;
 
    *ptransfer = &trans->b.b;
