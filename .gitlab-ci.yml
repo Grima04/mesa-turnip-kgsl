@@ -1187,6 +1187,8 @@ virgl-gl32-on-gl:
         *all_paths
       when: manual
     - when: never
+  variables:
+    GIT_STRATEGY: none
 
 virgl-gles2-on-gles:
   variables:
