@@ -331,7 +331,7 @@ os_get_available_system_memory(uint64_t *size)
 bool
 os_get_page_size(uint64_t *size)
 {
-#if DETECT_OS_LINUX || DETECT_OS_CYGWIN || DETECT_OS_SOLARIS || DETECT_OS_HURD
+#if DETECT_OS_UNIX && !DETECT_OS_APPLE && !DETECT_OS_HAIKU
    const long page_size = sysconf(_SC_PAGE_SIZE);
 
    if (page_size <= 0)
