@@ -2882,8 +2882,8 @@ validate_and_unmap_buffer(struct gl_context *ctx,
    }
 
 #ifdef BOUNDS_CHECK
-   if (bufObj->Access != GL_READ_ONLY_ARB) {
-      GLubyte *buf = (GLubyte *) bufObj->Pointer;
+   if (bufObj->Mappings[MAP_USER].AccessFlags != GL_READ_ONLY_ARB) {
+      GLubyte *buf = (GLubyte *) bufObj->Mappings[MAP_USER].Pointer;
       GLuint i;
       /* check that last 100 bytes are still = magic value */
       for (i = 0; i < 100; i++) {
@@ -2898,9 +2898,9 @@ validate_and_unmap_buffer(struct gl_context *ctx,
 #endif
 
 #ifdef VBO_DEBUG
-   if (bufObj->AccessFlags & GL_MAP_WRITE_BIT) {
+   if (bufObj->Mappings[MAP_USER].AccessFlags & GL_MAP_WRITE_BIT) {
       GLuint i, unchanged = 0;
-      GLubyte *b = (GLubyte *) bufObj->Pointer;
+      GLubyte *b = (GLubyte *) bufObj->Mappings[MAP_USER].Pointer;
       GLint pos = -1;
       /* check which bytes changed */
       for (i = 0; i < bufObj->Size - 1; i++) {
@@ -3583,7 +3583,7 @@ map_buffer_range(struct gl_context *ctx, struct gl_buffer_object *bufObj,
       /* Access must be write only */
       if ((access & GL_MAP_WRITE_BIT) && (!(access & ~GL_MAP_WRITE_BIT))) {
          GLuint i;
-         GLubyte *b = (GLubyte *) bufObj->Pointer;
+         GLubyte *b = (GLubyte *) bufObj->Mappings[MAP_USER].Pointer;
          for (i = 0; i < bufObj->Size; i++)
             b[i] = i & 0xff;
       }
@@ -3592,7 +3592,7 @@ map_buffer_range(struct gl_context *ctx, struct gl_buffer_object *bufObj,
 
 #ifdef BOUNDS_CHECK
    if (strstr(func, "Range") == NULL) { /* If not MapRange */
-      GLubyte *buf = (GLubyte *) bufObj->Pointer;
+      GLubyte *buf = (GLubyte *) bufObj->Mappings[MAP_USER].Pointer;
       GLuint i;
       /* buffer is 100 bytes larger than requested, fill with magic value */
       for (i = 0; i < 100; i++) {
