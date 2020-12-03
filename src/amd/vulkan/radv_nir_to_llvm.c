@@ -739,7 +739,7 @@ static LLVMValueRef load_sample_mask_in(struct ac_shader_abi *abi)
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	uint8_t log2_ps_iter_samples;
 
-	if (ctx->args->shader_info->ps.force_persample) {
+	if (ctx->args->shader_info->ps.uses_sample_shading) {
 		log2_ps_iter_samples =
 			util_logbase2(ctx->args->options->key.fs.num_samples);
 	} else {

@@ -1127,7 +1127,7 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 		 *
 		 * Otherwise, sample shading is considered disabled."
 		 */
-		if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.force_persample) {
+		if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading) {
 			ps_iter_samples = ms->num_samples;
 		} else {
 			ps_iter_samples = radv_pipeline_get_ps_iter_samples(pCreateInfo);

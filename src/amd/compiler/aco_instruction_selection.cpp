@@ -6907,7 +6907,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
 
 void visit_load_sample_mask_in(isel_context *ctx, nir_intrinsic_instr *instr) {
    uint8_t log2_ps_iter_samples;
-   if (ctx->program->info->ps.force_persample) {
+   if (ctx->program->info->ps.uses_sample_shading) {
       log2_ps_iter_samples =
          util_logbase2(ctx->options->key.fs.num_samples);
    } else {

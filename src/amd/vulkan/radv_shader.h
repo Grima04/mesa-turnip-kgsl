@@ -303,7 +303,7 @@ struct radv_shader_info {
 		uint8_t num_linked_outputs;
 	} tes;
 	struct {
-		bool force_persample;
+		bool uses_sample_shading;
 		bool needs_sample_positions;
 		bool writes_memory;
 		bool writes_z;
