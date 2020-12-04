@@ -6249,6 +6249,16 @@
     <field name="Semaphore Address" start="66" end="127" type="address"/>
   </instruction>
 
+  <instruction name="MI_SET_APPID" bias="1" length="1">
+    <field name="Protected Memory Application ID" start="0" end="6" type="uint"/>
+    <field name="Protected Memory Application ID Type" start="7" end="7" type="uint">
+      <value name="DISPLAY_APP" value="0"/>
+      <value name="TRANSCODE_APP" value="1"/>
+    </field>
+    <field name="MI Command Opcode" start="23" end="28" type="uint" default="14"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="0"/>
+  </instruction>
+
   <instruction name="MI_SET_CONTEXT" bias="2" length="2" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="0"/>
     <field name="MI Command Opcode" start="23" end="28" type="uint" default="24"/>
