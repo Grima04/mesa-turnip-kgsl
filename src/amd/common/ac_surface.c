@@ -31,7 +31,6 @@
 #include "addrlib/inc/addrinterface.h"
 #include "addrlib/src/amdgpu_asic_addr.h"
 #include "amd_family.h"
-#include "drm-uapi/amdgpu_drm.h"
 #include "drm-uapi/drm_fourcc.h"
 #include "sid.h"
 #include "util/hash_table.h"
@@ -45,6 +44,43 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifdef _WIN32
+#define AMDGPU_TILING_ARRAY_MODE_SHIFT			0
+#define AMDGPU_TILING_ARRAY_MODE_MASK			0xf
+#define AMDGPU_TILING_PIPE_CONFIG_SHIFT			4
+#define AMDGPU_TILING_PIPE_CONFIG_MASK			0x1f
+#define AMDGPU_TILING_TILE_SPLIT_SHIFT			9
+#define AMDGPU_TILING_TILE_SPLIT_MASK			0x7
+#define AMDGPU_TILING_MICRO_TILE_MODE_SHIFT		12
+#define AMDGPU_TILING_MICRO_TILE_MODE_MASK		0x7
+#define AMDGPU_TILING_BANK_WIDTH_SHIFT			15
+#define AMDGPU_TILING_BANK_WIDTH_MASK			0x3
+#define AMDGPU_TILING_BANK_HEIGHT_SHIFT			17
+#define AMDGPU_TILING_BANK_HEIGHT_MASK			0x3
+#define AMDGPU_TILING_MACRO_TILE_ASPECT_SHIFT		19
+#define AMDGPU_TILING_MACRO_TILE_ASPECT_MASK		0x3
+#define AMDGPU_TILING_NUM_BANKS_SHIFT			21
+#define AMDGPU_TILING_NUM_BANKS_MASK			0x3
+#define AMDGPU_TILING_SWIZZLE_MODE_SHIFT		0
+#define AMDGPU_TILING_SWIZZLE_MODE_MASK			0x1f
+#define AMDGPU_TILING_DCC_OFFSET_256B_SHIFT		5
+#define AMDGPU_TILING_DCC_OFFSET_256B_MASK		0xFFFFFF
+#define AMDGPU_TILING_DCC_PITCH_MAX_SHIFT		29
+#define AMDGPU_TILING_DCC_PITCH_MAX_MASK		0x3FFF
+#define AMDGPU_TILING_DCC_INDEPENDENT_64B_SHIFT		43
+#define AMDGPU_TILING_DCC_INDEPENDENT_64B_MASK		0x1
+#define AMDGPU_TILING_DCC_INDEPENDENT_128B_SHIFT	44
+#define AMDGPU_TILING_DCC_INDEPENDENT_128B_MASK		0x1
+#define AMDGPU_TILING_SCANOUT_SHIFT			63
+#define AMDGPU_TILING_SCANOUT_MASK			0x1
+#define AMDGPU_TILING_SET(field, value) \
+	(((__u64)(value) & AMDGPU_TILING_##field##_MASK) << AMDGPU_TILING_##field##_SHIFT)
+#define AMDGPU_TILING_GET(value, field) \
+	(((__u64)(value) >> AMDGPU_TILING_##field##_SHIFT) & AMDGPU_TILING_##field##_MASK)
+#else
+#include "drm-uapi/amdgpu_drm.h"
+#endif
 
 #ifndef CIASICIDGFXENGINE_SOUTHERNISLAND
 #define CIASICIDGFXENGINE_SOUTHERNISLAND 0x0000000A

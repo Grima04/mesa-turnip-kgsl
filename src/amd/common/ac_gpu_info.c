@@ -26,7 +26,6 @@
 #include "ac_gpu_info.h"
 
 #include "addrlib/src/amdgpu_asic_addr.h"
-#include "drm-uapi/amdgpu_drm.h"
 #include "sid.h"
 #include "util/macros.h"
 #include "util/u_cpu_detect.h"
@@ -35,6 +34,51 @@
 #include <stdio.h>
 
 #ifdef _WIN32
+#define DRM_CAP_SYNCOBJ 0x13
+#define DRM_CAP_SYNCOBJ_TIMELINE 0x14
+#define AMDGPU_GEM_DOMAIN_GTT 0x2
+#define AMDGPU_GEM_DOMAIN_VRAM 0x4
+#define AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED (1 << 0)
+#define AMDGPU_GEM_CREATE_ENCRYPTED (1 << 10)
+#define AMDGPU_HW_IP_GFX 0
+#define AMDGPU_HW_IP_COMPUTE 1
+#define AMDGPU_HW_IP_DMA 2
+#define AMDGPU_HW_IP_UVD 3
+#define AMDGPU_HW_IP_VCE 4
+#define AMDGPU_HW_IP_UVD_ENC 5
+#define AMDGPU_HW_IP_VCN_DEC 6
+#define AMDGPU_HW_IP_VCN_ENC 7
+#define AMDGPU_HW_IP_VCN_JPEG 8
+#define AMDGPU_IDS_FLAGS_FUSION 0x1
+#define AMDGPU_IDS_FLAGS_PREEMPTION 0x2
+#define AMDGPU_IDS_FLAGS_TMZ 0x4
+#define AMDGPU_INFO_FW_VCE 0x1
+#define AMDGPU_INFO_FW_UVD 0x2
+#define AMDGPU_INFO_FW_GFX_ME 0x04
+#define AMDGPU_INFO_FW_GFX_PFP 0x05
+#define AMDGPU_INFO_FW_GFX_CE 0x06
+#define AMDGPU_INFO_DEV_INFO 0x16
+#define AMDGPU_INFO_MEMORY 0x19
+#define AMDGPU_INFO_VIDEO_CAPS_DECODE 0
+#define AMDGPU_INFO_VIDEO_CAPS_ENCODE 1
+struct drm_amdgpu_heap_info {
+   uint64_t total_heap_size;
+};
+struct drm_amdgpu_memory_info {
+   struct drm_amdgpu_heap_info vram;
+   struct drm_amdgpu_heap_info cpu_accessible_vram;
+   struct drm_amdgpu_heap_info gtt;
+};
+struct drm_amdgpu_info_device {
+   uint32_t num_tcc_blocks;
+   uint32_t pa_sc_tile_steering_override;
+   uint64_t tcc_disabled_mask;
+};
+struct drm_amdgpu_info_hw_ip {
+   uint32_t ib_start_alignment;
+   uint32_t ib_size_alignment;
+   uint32_t available_rings;
+};
 typedef struct _drmPciBusInfo {
    uint16_t domain;
    uint8_t bus;
@@ -165,6 +209,7 @@ const char *amdgpu_get_marketing_name(amdgpu_device_handle dev)
    return NULL;
 }
 #else
+#include "drm-uapi/amdgpu_drm.h"
 #include <amdgpu.h>
 #include <xf86drm.h>
 #endif
