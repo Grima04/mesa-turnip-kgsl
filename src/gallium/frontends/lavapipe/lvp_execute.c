@@ -519,6 +519,12 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
    if (pipeline->graphics_create_info.pColorBlendState) {
       const VkPipelineColorBlendStateCreateInfo *cb = pipeline->graphics_create_info.pColorBlendState;
       int i;
+
+      if (cb->logicOpEnable) {
+         state->blend_state.logicop_enable = VK_TRUE;
+         state->blend_state.logicop_func = vk_conv_logic_op(cb->logicOp);
+      }
+
       if (cb->attachmentCount > 1)
          state->blend_state.independent_blend_enable = true;
       for (i = 0; i < cb->attachmentCount; i++) {
