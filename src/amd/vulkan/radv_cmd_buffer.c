@@ -1642,7 +1642,8 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 
 	if (radv_image_has_fmask(image) &&
 	    (radv_is_fmask_decompress_pipeline(cmd_buffer) ||
-	     radv_is_hw_resolve_pipeline(cmd_buffer))) {
+	     radv_is_hw_resolve_pipeline(cmd_buffer) ||
+	     radv_is_blit2d_msaa_pipeline(cmd_buffer))) {
 		/* Make sure FMASK is enabled if it has been cleared because:
 		 *
 		 * 1) it's required for FMASK_DECOMPRESS operations to avoid
