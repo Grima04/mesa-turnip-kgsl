@@ -67,6 +67,10 @@ struct ac_shader_args {
    uint16_t num_sgprs_used;
    uint16_t num_vgprs_used;
 
+   uint16_t return_count;
+   uint16_t num_sgprs_returned;
+   uint16_t num_vgprs_returned;
+
    struct ac_arg base_vertex;
    struct ac_arg start_instance;
    struct ac_arg draw_id;
@@ -108,5 +112,6 @@ struct ac_shader_args {
 
 void ac_add_arg(struct ac_shader_args *info, enum ac_arg_regfile regfile, unsigned registers,
                 enum ac_arg_type type, struct ac_arg *arg);
+void ac_add_return(struct ac_shader_args *info, enum ac_arg_regfile regfile);
 
 #endif
