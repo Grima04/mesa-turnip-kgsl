@@ -146,8 +146,6 @@ struct cso_velements {
    void *data;
 };
 
-unsigned cso_construct_key(void *item, int item_size);
-
 void cso_cache_init(struct cso_cache *sc, struct pipe_context *pipe);
 void cso_cache_delete(struct cso_cache *sc);
 
@@ -169,6 +167,20 @@ struct cso_hash_iter cso_find_state_template(struct cso_cache *sc,
 void cso_set_maximum_cache_size(struct cso_cache *sc, int number);
 void cso_delete_state(struct pipe_context *pipe, void *state,
                       enum cso_cache_type type);
+
+static inline unsigned
+cso_construct_key(void *key, int key_size)
+{
+   unsigned hash = 0, *ikey = (unsigned *)key;
+   unsigned num_elements = key_size / 4;
+
+   assert(key_size % 4 == 0);
+
+   for (unsigned i = 0; i < num_elements; i++)
+      hash ^= ikey[i];
+
+   return hash;
+}
 
 #ifdef	__cplusplus
 }

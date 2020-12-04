@@ -36,42 +36,6 @@
 #include "cso_hash.h"
 
 
-#if 1
-static unsigned hash_key(const void *key, unsigned key_size)
-{
-   unsigned *ikey = (unsigned *)key;
-   unsigned hash = 0, i;
-
-   assert(key_size % 4 == 0);
-
-   /* I'm sure this can be improved on:
-    */
-   for (i = 0; i < key_size/4; i++)
-      hash ^= ikey[i];
-
-   return hash;
-}
-#else
-static unsigned hash_key(const unsigned char *p, int n)
-{
-   unsigned h = 0;
-   unsigned g;
-
-   while (n--) {
-      h = (h << 4) + *p++;
-      if ((g = (h & 0xf0000000)) != 0)
-         h ^= g >> 23;
-      h &= ~g;
-   }
-   return h;
-}
-#endif
-
-unsigned cso_construct_key(void *item, int item_size)
-{
-   return hash_key((item), item_size);
-}
-
 static inline struct cso_hash *_cso_hash_for_type(struct cso_cache *sc, enum cso_cache_type type)
 {
    return &sc->hashes[type];
