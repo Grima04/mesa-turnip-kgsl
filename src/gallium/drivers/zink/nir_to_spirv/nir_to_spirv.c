@@ -199,6 +199,7 @@ get_atomic_op(nir_intrinsic_op op)
    CASE_ATOMIC_OP(comp_swap):
       return SpvOpAtomicCompareExchange;
    default:
+      debug_printf("%s - ", nir_intrinsic_infos[op].name);
       unreachable("unhandled atomic op");
    }
    return 0;
