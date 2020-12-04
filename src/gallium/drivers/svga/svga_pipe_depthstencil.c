@@ -197,10 +197,10 @@ svga_create_depth_stencil_state(struct pipe_context *pipe,
       ds->zfunc = SVGA3D_CMP_ALWAYS;
    }
 
-   ds->alphatestenable = templ->alpha.enabled;
+   ds->alphatestenable = templ->alpha_enabled;
    if (ds->alphatestenable) {
-      ds->alphafunc = svga_translate_compare_func(templ->alpha.func);
-      ds->alpharef = templ->alpha.ref_value;
+      ds->alphafunc = svga_translate_compare_func(templ->alpha_func);
+      ds->alpharef = templ->alpha_ref_value;
    }
    else {
       ds->alphafunc = SVGA3D_CMP_ALWAYS;

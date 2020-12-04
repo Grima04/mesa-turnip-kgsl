@@ -263,9 +263,9 @@ nv30_zsa_state_create(struct pipe_context *pipe,
    }
 
    SB_MTHD30(so, ALPHA_FUNC_ENABLE, 3);
-   SB_DATA  (so, cso->alpha.enabled ? 1 : 0);
-   SB_DATA  (so, nvgl_comparison_op(cso->alpha.func));
-   SB_DATA  (so, float_to_ubyte(cso->alpha.ref_value));
+   SB_DATA  (so, cso->alpha_enabled ? 1 : 0);
+   SB_DATA  (so, nvgl_comparison_op(cso->alpha_func));
+   SB_DATA  (so, float_to_ubyte(cso->alpha_ref_value));
 
    return so;
 }

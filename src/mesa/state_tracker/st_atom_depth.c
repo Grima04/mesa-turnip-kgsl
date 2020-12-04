@@ -151,9 +151,9 @@ st_update_depth_stencil_alpha(struct st_context *st)
 
    if (ctx->Color.AlphaEnabled && !st->lower_alpha_test &&
        !(ctx->DrawBuffer->_IntegerBuffers & 0x1)) {
-      dsa->alpha.enabled = 1;
-      dsa->alpha.func = st_compare_func_to_pipe(ctx->Color.AlphaFunc);
-      dsa->alpha.ref_value = ctx->Color.AlphaRefUnclamped;
+      dsa->alpha_enabled = 1;
+      dsa->alpha_func = st_compare_func_to_pipe(ctx->Color.AlphaFunc);
+      dsa->alpha_ref_value = ctx->Color.AlphaRefUnclamped;
    }
 
    cso_set_depth_stencil_alpha(st->cso_context, dsa);

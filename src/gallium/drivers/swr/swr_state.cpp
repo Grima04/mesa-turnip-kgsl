@@ -1837,7 +1837,6 @@ swr_update_derived(struct pipe_context *pipe,
       struct pipe_stencil_state *front_stencil =
       ctx->depth_stencil.stencil[0];
       struct pipe_stencil_state *back_stencil = ctx->depth_stencil.stencil[1];
-      struct pipe_alpha_state alpha;
       */
       if (stencil[0].enabled) {
          depthStencilState.stencilWriteEnable = 1;
@@ -1899,7 +1898,7 @@ swr_update_derived(struct pipe_context *pipe,
       blendState.constantColor[2] = ctx->blend_color.color[2];
       blendState.constantColor[3] = ctx->blend_color.color[3];
       blendState.alphaTestReference =
-         *((uint32_t*)&ctx->depth_stencil->alpha.ref_value);
+         *((uint32_t*)&ctx->depth_stencil->alpha_ref_value);
 
       blendState.sampleMask = ctx->sample_mask;
       blendState.sampleCount = GetSampleCount(fb->samples);
@@ -1942,13 +1941,13 @@ swr_update_derived(struct pipe_context *pipe,
 
             if (compileState.blendState.blendEnable == false &&
                 compileState.blendState.logicOpEnable == false &&
-                ctx->depth_stencil->alpha.enabled == 0) {
+                ctx->depth_stencil->alpha_enabled == 0) {
                ctx->api.pfnSwrSetBlendFunc(ctx->swrContext, target, NULL);
                continue;
             }
 
             compileState.desc.alphaTestEnable =
-               ctx->depth_stencil->alpha.enabled;
+               ctx->depth_stencil->alpha_enabled;
             compileState.desc.independentAlphaBlendEnable =
                (compileState.blendState.sourceBlendFactor !=
                 compileState.blendState.sourceAlphaBlendFactor) ||
@@ -1962,7 +1961,7 @@ swr_update_derived(struct pipe_context *pipe,
             compileState.desc.numSamples = fb->samples;
 
             compileState.alphaTestFunction =
-               swr_convert_depth_func(ctx->depth_stencil->alpha.func);
+               swr_convert_depth_func(ctx->depth_stencil->alpha_func);
             compileState.alphaTestFormat = ALPHA_TEST_FLOAT32; // xxx
 
             compileState.Canonicalize();

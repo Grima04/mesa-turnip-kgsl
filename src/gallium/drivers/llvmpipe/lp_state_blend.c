@@ -122,7 +122,7 @@ llvmpipe_create_depth_stencil_state(struct pipe_context *pipe,
    }
 
    if (LP_PERF & PERF_NO_ALPHATEST) {
-      state->alpha.enabled = 0;
+      state->alpha_enabled = 0;
    }
 
    return state;

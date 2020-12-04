@@ -441,10 +441,10 @@ static void *r600_create_dsa_state(struct pipe_context *ctx,
 	/* alpha */
 	alpha_test_control = 0;
 	alpha_ref = 0;
-	if (state->alpha.enabled) {
-		alpha_test_control = S_028410_ALPHA_FUNC(state->alpha.func);
+	if (state->alpha_enabled) {
+		alpha_test_control = S_028410_ALPHA_FUNC(state->alpha_func);
 		alpha_test_control |= S_028410_ALPHA_TEST_ENABLE(1);
-		alpha_ref = fui(state->alpha.ref_value);
+		alpha_ref = fui(state->alpha_ref_value);
 	}
 	dsa->sx_alpha_test_control = alpha_test_control & 0xff;
 	dsa->alpha_ref = alpha_ref;

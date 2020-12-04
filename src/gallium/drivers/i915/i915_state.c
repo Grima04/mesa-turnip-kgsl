@@ -535,9 +535,9 @@ i915_create_depth_stencil_state(struct pipe_context *pipe,
          cso->depth_LIS6 |= S6_DEPTH_WRITE_ENABLE;
    }
 
-   if (depth_stencil->alpha.enabled) {
-      int test = i915_translate_compare_func(depth_stencil->alpha.func);
-      ubyte refByte = float_to_ubyte(depth_stencil->alpha.ref_value);
+   if (depth_stencil->alpha_enabled) {
+      int test = i915_translate_compare_func(depth_stencil->alpha_func);
+      ubyte refByte = float_to_ubyte(depth_stencil->alpha_ref_value);
 
       cso->depth_LIS6 |= (S6_ALPHA_TEST_ENABLE |
 			  (test << S6_ALPHA_TEST_FUNC_SHIFT) |

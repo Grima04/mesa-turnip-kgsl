@@ -1224,7 +1224,7 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
         }
 
         /* Alpha lowered by frontend */
-        assert(!zsa->alpha.enabled);
+        assert(!zsa->alpha_enabled);
 
         /* TODO: Bounds test should be easy */
         assert(!zsa->depth.bounds_test);

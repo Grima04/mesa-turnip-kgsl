@@ -411,11 +411,11 @@ nvc0_zsa_state_create(struct pipe_context *pipe,
       SB_IMMED_3D(so, STENCIL_TWO_SIDE_ENABLE, 0);
    }
 
-   SB_IMMED_3D(so, ALPHA_TEST_ENABLE, cso->alpha.enabled);
-   if (cso->alpha.enabled) {
+   SB_IMMED_3D(so, ALPHA_TEST_ENABLE, cso->alpha_enabled);
+   if (cso->alpha_enabled) {
       SB_BEGIN_3D(so, ALPHA_TEST_REF, 2);
-      SB_DATA    (so, fui(cso->alpha.ref_value));
-      SB_DATA    (so, nvgl_comparison_op(cso->alpha.func));
+      SB_DATA    (so, fui(cso->alpha_ref_value));
+      SB_DATA    (so, nvgl_comparison_op(cso->alpha_func));
    }
 
    assert(so->size <= ARRAY_SIZE(so->state));

@@ -691,7 +691,7 @@ etna_update_zsa(struct etna_context *ctx)
       if (VIV_FEATURE(screen, chipMinorFeatures5, RA_WRITE_DEPTH) &&
           !VIV_FEATURE(screen, chipFeatures, NO_EARLY_Z) &&
           !zsa->stencil_enabled &&
-          !zsa_state->alpha.enabled &&
+          !zsa_state->alpha_enabled &&
           !shader_state->writes_z &&
           !shader_state->uses_discard)
          early_z_write = true;

@@ -177,7 +177,7 @@ nv50_fragprog_validate(struct nv50_context *nv50)
    if (!fp || !rast)
       return;
 
-   if (nv50->zsa && nv50->zsa->pipe.alpha.enabled) {
+   if (nv50->zsa && nv50->zsa->pipe.alpha_enabled) {
       struct pipe_framebuffer_state *fb = &nv50->framebuffer;
       bool blendable = fb->nr_cbufs == 0 || !fb->cbufs[0] ||
          nv50->screen->base.base.is_format_supported(
@@ -195,7 +195,7 @@ nv50_fragprog_validate(struct nv50_context *nv50)
       if (fp->fp.alphatest || !blendable) {
          uint8_t alphatest = PIPE_FUNC_ALWAYS + 1;
          if (!blendable)
-            alphatest = nv50->zsa->pipe.alpha.func + 1;
+            alphatest = nv50->zsa->pipe.alpha_func + 1;
          if (!fp->fp.alphatest)
             nv50_program_destroy(nv50, fp);
          else if (fp->mem && fp->fp.alphatest != alphatest)

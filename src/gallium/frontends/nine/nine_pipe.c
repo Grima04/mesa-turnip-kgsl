@@ -64,9 +64,9 @@ nine_convert_dsa_state(struct pipe_depth_stencil_alpha_state *dsa_state,
     }
 
     if (rs[D3DRS_ALPHATESTENABLE]) {
-        dsa.alpha.enabled = 1;
-        dsa.alpha.func = d3dcmpfunc_to_pipe_func(rs[D3DRS_ALPHAFUNC]);
-        dsa.alpha.ref_value = (float)rs[D3DRS_ALPHAREF] / 255.0f;
+        dsa.alpha_enabled = 1;
+        dsa.alpha_func = d3dcmpfunc_to_pipe_func(rs[D3DRS_ALPHAFUNC]);
+        dsa.alpha_ref_value = (float)rs[D3DRS_ALPHAREF] / 255.0f;
     }
 
     *dsa_state = dsa;

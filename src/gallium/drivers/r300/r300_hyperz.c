@@ -250,7 +250,7 @@ static boolean r300_dsa_alpha_test_enabled(
     /* We are interested only in the cases when alpha testing can kill
      * a fragment. */
 
-    return dsa->alpha.enabled && dsa->alpha.func != PIPE_FUNC_ALWAYS;
+    return dsa->alpha_enabled && dsa->alpha_func != PIPE_FUNC_ALWAYS;
 }
 
 static void r300_update_ztop(struct r300_context* r300)

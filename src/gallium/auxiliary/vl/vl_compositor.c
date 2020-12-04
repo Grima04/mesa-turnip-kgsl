@@ -205,9 +205,9 @@ init_pipe_state(struct vl_compositor *c)
                    dsa.stencil[i].valuemask = 0;
                    dsa.stencil[i].writemask = 0;
            }
-           dsa.alpha.enabled = 0;
-           dsa.alpha.func = PIPE_FUNC_ALWAYS;
-           dsa.alpha.ref_value = 0;
+           dsa.alpha_enabled = 0;
+           dsa.alpha_func = PIPE_FUNC_ALWAYS;
+           dsa.alpha_ref_value = 0;
            c->dsa = c->pipe->create_depth_stencil_alpha_state(c->pipe, &dsa);
            c->pipe->bind_depth_stencil_alpha_state(c->pipe, c->dsa);
    }

@@ -689,7 +689,7 @@ depth_stencil_test_quad(struct quad_stage *qs,
                            struct quad_header *quads[],                 \
                            unsigned nr )                                \
    {                                                                    \
-      const float ref = qs->softpipe->depth_stencil->alpha.ref_value;   \
+      const float ref = qs->softpipe->depth_stencil->alpha_ref_value;   \
       const uint cbuf = 0; /* only output[0].alpha is tested */         \
       unsigned pass_nr = 0;                                             \
       unsigned i;                                                       \
@@ -728,7 +728,7 @@ alpha_test_quads(struct quad_stage *qs,
                  struct quad_header *quads[], 
                  unsigned nr)
 {
-   switch (qs->softpipe->depth_stencil->alpha.func) {
+   switch (qs->softpipe->depth_stencil->alpha_func) {
    case PIPE_FUNC_LESS:
       return alpha_test_quads_LESS( qs, quads, nr );
    case PIPE_FUNC_EQUAL:
@@ -789,7 +789,7 @@ depth_test_quads_fallback(struct quad_stage *qs,
 
    data.use_shader_stencil_refs = FALSE;
 
-   if (qs->softpipe->depth_stencil->alpha.enabled) {
+   if (qs->softpipe->depth_stencil->alpha_enabled) {
       nr = alpha_test_quads(qs, quads, nr);
    }
 
@@ -904,7 +904,7 @@ choose_depth_test(struct quad_stage *qs,
 
    boolean interp_depth = !fsInfo->writes_z || qs->softpipe->early_depth;
 
-   boolean alpha = qs->softpipe->depth_stencil->alpha.enabled;
+   boolean alpha = qs->softpipe->depth_stencil->alpha_enabled;
 
    boolean depth = qs->softpipe->depth_stencil->depth.enabled;
 

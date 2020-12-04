@@ -370,8 +370,8 @@ int virgl_encode_dsa_state(struct virgl_context *ctx,
    tmp = VIRGL_OBJ_DSA_S0_DEPTH_ENABLE(dsa_state->depth.enabled) |
       VIRGL_OBJ_DSA_S0_DEPTH_WRITEMASK(dsa_state->depth.writemask) |
       VIRGL_OBJ_DSA_S0_DEPTH_FUNC(dsa_state->depth.func) |
-      VIRGL_OBJ_DSA_S0_ALPHA_ENABLED(dsa_state->alpha.enabled) |
-      VIRGL_OBJ_DSA_S0_ALPHA_FUNC(dsa_state->alpha.func);
+      VIRGL_OBJ_DSA_S0_ALPHA_ENABLED(dsa_state->alpha_enabled) |
+      VIRGL_OBJ_DSA_S0_ALPHA_FUNC(dsa_state->alpha_func);
    virgl_encoder_write_dword(ctx->cbuf, tmp);
 
    for (i = 0; i < 2; i++) {
@@ -385,7 +385,7 @@ int virgl_encode_dsa_state(struct virgl_context *ctx,
       virgl_encoder_write_dword(ctx->cbuf, tmp);
    }
 
-   virgl_encoder_write_dword(ctx->cbuf, fui(dsa_state->alpha.ref_value));
+   virgl_encoder_write_dword(ctx->cbuf, fui(dsa_state->alpha_ref_value));
    return 0;
 }
 int virgl_encode_rasterizer_state(struct virgl_context *ctx,

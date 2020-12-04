@@ -1174,11 +1174,11 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    }
 
    /* alpha */
-   if (state->alpha.enabled) {
-      dsa->alpha_func = state->alpha.func;
+   if (state->alpha_enabled) {
+      dsa->alpha_func = state->alpha_func;
 
       si_pm4_set_reg(pm4, R_00B030_SPI_SHADER_USER_DATA_PS_0 + SI_SGPR_ALPHA_REF * 4,
-                     fui(state->alpha.ref_value));
+                     fui(state->alpha_ref_value));
    } else {
       dsa->alpha_func = PIPE_FUNC_ALWAYS;
    }

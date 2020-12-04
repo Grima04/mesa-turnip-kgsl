@@ -50,7 +50,7 @@ fd2_zsa_state_create(struct pipe_context *pctx,
 
 	if (cso->depth.enabled)
 		so->rb_depthcontrol |= A2XX_RB_DEPTHCONTROL_Z_ENABLE |
-			COND(!cso->alpha.enabled, A2XX_RB_DEPTHCONTROL_EARLY_Z_ENABLE);
+			COND(!cso->alpha_enabled, A2XX_RB_DEPTHCONTROL_EARLY_Z_ENABLE);
 	if (cso->depth.writemask)
 		so->rb_depthcontrol |= A2XX_RB_DEPTHCONTROL_Z_WRITE_ENABLE;
 
@@ -84,11 +84,11 @@ fd2_zsa_state_create(struct pipe_context *pctx,
 		}
 	}
 
-	if (cso->alpha.enabled) {
+	if (cso->alpha_enabled) {
 		so->rb_colorcontrol =
-			A2XX_RB_COLORCONTROL_ALPHA_FUNC(cso->alpha.func) |
+			A2XX_RB_COLORCONTROL_ALPHA_FUNC(cso->alpha_func) |
 			A2XX_RB_COLORCONTROL_ALPHA_TEST_ENABLE;
-		so->rb_alpha_ref = fui(cso->alpha.ref_value);
+		so->rb_alpha_ref = fui(cso->alpha_ref_value);
 	}
 
 	return so;

@@ -753,7 +753,7 @@ nvc0_validate_zsa_fb(struct nvc0_context *nvc0)
 {
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
 
-   if (nvc0->zsa && nvc0->zsa->pipe.alpha.enabled &&
+   if (nvc0->zsa && nvc0->zsa->pipe.alpha_enabled &&
        nvc0->framebuffer.zsbuf &&
        nvc0->framebuffer.nr_cbufs == 0) {
       nvc0_fb_set_null_rt(push, 0, 0);

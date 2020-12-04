@@ -1347,7 +1347,9 @@ struct iris_depth_stencil_alpha_state {
 #endif
 
    /** Outbound to BLEND_STATE, 3DSTATE_PS_BLEND, COLOR_CALC_STATE. */
-   struct pipe_alpha_state alpha;
+   unsigned alpha_enabled:1;
+   unsigned alpha_func:3;     /**< PIPE_FUNC_x */
+   float alpha_ref_value;     /**< reference value */
 
    /** Outbound to resolve and cache set tracking. */
    bool depth_writes_enabled;
@@ -1372,7 +1374,9 @@ iris_create_zsa_state(struct pipe_context *ctx,
 
    bool two_sided_stencil = state->stencil[1].enabled;
 
-   cso->alpha = state->alpha;
+   cso->alpha_enabled = state->alpha_enabled;
+   cso->alpha_func = state->alpha_func;
+   cso->alpha_ref_value = state->alpha_ref_value;
    cso->depth_writes_enabled = state->depth.writemask;
    cso->depth_test_enabled = state->depth.enabled;
    cso->stencil_writes_enabled =
@@ -1437,13 +1441,13 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
    struct iris_depth_stencil_alpha_state *new_cso = state;
 
    if (new_cso) {
-      if (cso_changed(alpha.ref_value))
+      if (cso_changed(alpha_ref_value))
          ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
 
-      if (cso_changed(alpha.enabled))
+      if (cso_changed(alpha_enabled))
          ice->state.dirty |= IRIS_DIRTY_PS_BLEND | IRIS_DIRTY_BLEND_STATE;
 
-      if (cso_changed(alpha.func))
+      if (cso_changed(alpha_func))
          ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
 
       if (cso_changed(depth_writes_enabled))
@@ -1562,7 +1566,7 @@ want_pma_fix(struct iris_context *ice)
     *  3DSTATE_WM_CHROMAKEY::ChromaKeyKillEnable)
     */
    bool killpixels = wm_prog_data->uses_kill || wm_prog_data->uses_omask ||
-                     cso_blend->alpha_to_coverage || cso_zsa->alpha.enabled;
+                     cso_blend->alpha_to_coverage || cso_zsa->alpha_enabled;
 
    /* The Gen8 depth PMA equation becomes:
     *
@@ -4196,7 +4200,7 @@ iris_populate_fs_key(const struct iris_context *ice,
 
    key->alpha_to_coverage = blend->alpha_to_coverage;
 
-   key->alpha_test_replicate_alpha = fb->nr_cbufs > 1 && zsa->alpha.enabled;
+   key->alpha_test_replicate_alpha = fb->nr_cbufs > 1 && zsa->alpha_enabled;
 
    key->flat_shade = rast->flatshade &&
       (info->inputs_read & (VARYING_BIT_COL0 | VARYING_BIT_COL1));
@@ -5593,8 +5597,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       uint32_t blend_state_header;
       iris_pack_state(GENX(BLEND_STATE), &blend_state_header, bs) {
-         bs.AlphaTestEnable = cso_zsa->alpha.enabled;
-         bs.AlphaTestFunction = translate_compare_func(cso_zsa->alpha.func);
+         bs.AlphaTestEnable = cso_zsa->alpha_enabled;
+         bs.AlphaTestFunction = translate_compare_func(cso_zsa->alpha_func);
       }
 
       blend_map[0] = blend_state_header | cso_blend->blend_state[0];
@@ -5619,7 +5623,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                       64, &cc_offset);
       iris_pack_state(GENX(COLOR_CALC_STATE), cc_map, cc) {
          cc.AlphaTestFormat = ALPHATEST_FLOAT32;
-         cc.AlphaReferenceValueAsFLOAT32 = cso->alpha.ref_value;
+         cc.AlphaReferenceValueAsFLOAT32 = cso->alpha_ref_value;
          cc.BlendConstantColorRed   = ice->state.blend_color.color[0];
          cc.BlendConstantColorGreen = ice->state.blend_color.color[1];
          cc.BlendConstantColorBlue  = ice->state.blend_color.color[2];
@@ -5997,7 +6001,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       uint32_t dynamic_pb[GENX(3DSTATE_PS_BLEND_length)];
       iris_pack_command(GENX(3DSTATE_PS_BLEND), &dynamic_pb, pb) {
          pb.HasWriteableRT = has_writeable_rt(cso_blend, fs_info);
-         pb.AlphaTestEnable = cso_zsa->alpha.enabled;
+         pb.AlphaTestEnable = cso_zsa->alpha_enabled;
 
          /* The dual source blending docs caution against using SRC1 factors
           * when the shader doesn't use a dual source render target write.

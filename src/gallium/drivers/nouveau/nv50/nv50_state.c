@@ -418,11 +418,11 @@ nv50_zsa_state_create(struct pipe_context *pipe,
    }
 
    SB_BEGIN_3D(so, ALPHA_TEST_ENABLE, 1);
-   if (cso->alpha.enabled) {
+   if (cso->alpha_enabled) {
       SB_DATA    (so, 1);
       SB_BEGIN_3D(so, ALPHA_TEST_REF, 2);
-      SB_DATA    (so, fui(cso->alpha.ref_value));
-      SB_DATA    (so, nvgl_comparison_op(cso->alpha.func));
+      SB_DATA    (so, fui(cso->alpha_ref_value));
+      SB_DATA    (so, nvgl_comparison_op(cso->alpha_func));
    } else {
       SB_DATA    (so, 0);
    }
@@ -430,7 +430,7 @@ nv50_zsa_state_create(struct pipe_context *pipe,
    SB_BEGIN_3D(so, CB_ADDR, 1);
    SB_DATA    (so, NV50_CB_AUX_ALPHATEST_OFFSET << (8 - 2) | NV50_CB_AUX);
    SB_BEGIN_3D(so, CB_DATA(0), 1);
-   SB_DATA    (so, fui(cso->alpha.ref_value));
+   SB_DATA    (so, fui(cso->alpha_ref_value));
 
    assert(so->size <= ARRAY_SIZE(so->state));
    return (void *)so;

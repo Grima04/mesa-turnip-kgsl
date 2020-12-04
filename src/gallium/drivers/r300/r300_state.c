@@ -747,13 +747,13 @@ static void* r300_create_dsa_state(struct pipe_context* pipe,
     }
 
     /* Alpha test setup. */
-    if (state->alpha.enabled) {
+    if (state->alpha_enabled) {
         dsa->alpha_function =
-            r300_translate_alpha_function(state->alpha.func) |
+            r300_translate_alpha_function(state->alpha_func) |
             R300_FG_ALPHA_FUNC_ENABLE;
 
-        dsa->alpha_function |= float_to_ubyte(state->alpha.ref_value);
-        alpha_value_fp16 = _mesa_float_to_half(state->alpha.ref_value);
+        dsa->alpha_function |= float_to_ubyte(state->alpha_ref_value);
+        alpha_value_fp16 = _mesa_float_to_half(state->alpha_ref_value);
     }
 
     BEGIN_CB(&dsa->cb_begin, 8);

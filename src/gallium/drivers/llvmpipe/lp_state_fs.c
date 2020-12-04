@@ -3986,10 +3986,10 @@ make_variant_key(struct llvmpipe_context *lp,
    if (!lp->framebuffer.nr_cbufs ||
        !lp->framebuffer.cbufs[0] ||
        !util_format_is_pure_integer(lp->framebuffer.cbufs[0]->format)) {
-      key->alpha.enabled = lp->depth_stencil->alpha.enabled;
+      key->alpha.enabled = lp->depth_stencil->alpha_enabled;
    }
    if(key->alpha.enabled)
-      key->alpha.func = lp->depth_stencil->alpha.func;
+      key->alpha.func = lp->depth_stencil->alpha_func;
    /* alpha.ref_value is passed in jit_context */
 
    key->flatshade = lp->rasterizer->flatshade;

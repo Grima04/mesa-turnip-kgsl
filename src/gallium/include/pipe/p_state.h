@@ -324,19 +324,14 @@ struct pipe_stencil_state
 };
 
 
-struct pipe_alpha_state
-{
-   unsigned enabled:1;
-   unsigned func:3;     /**< PIPE_FUNC_x */
-   float ref_value;     /**< reference value */
-};
-
-
 struct pipe_depth_stencil_alpha_state
 {
    struct pipe_depth_state depth;
    struct pipe_stencil_state stencil[2]; /**< [0] = front, [1] = back */
-   struct pipe_alpha_state alpha;
+
+   unsigned alpha_enabled:1;  /**< alpha test enabled? */
+   unsigned alpha_func:3;     /**< PIPE_FUNC_x */
+   float alpha_ref_value;     /**< reference value */
 };
 
 
