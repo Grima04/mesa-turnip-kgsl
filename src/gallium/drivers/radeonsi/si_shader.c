@@ -1271,31 +1271,6 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
            key->opt.inlined_uniform_values[3]);
 }
 
-static void si_optimize_vs_outputs(struct si_shader_context *ctx)
-{
-   struct si_shader *shader = ctx->shader;
-   struct si_shader_info *info = &shader->selector->info;
-   unsigned skip_vs_optim_mask = 0;
-
-   if ((ctx->stage != MESA_SHADER_VERTEX && ctx->stage != MESA_SHADER_TESS_EVAL) ||
-       shader->key.as_ls || shader->key.as_es)
-      return;
-
-   /* Optimizing these outputs is not possible, since they might be overriden
-    * at runtime with S_028644_PT_SPRITE_TEX. */
-   for (int i = 0; i < info->num_outputs; i++) {
-      if (info->output_semantic[i] == VARYING_SLOT_PNTC ||
-          (info->output_semantic[i] >= VARYING_SLOT_TEX0 &&
-           info->output_semantic[i] <= VARYING_SLOT_TEX7)) {
-         skip_vs_optim_mask |= 1u << shader->info.vs_output_param_offset[i];
-      }
-   }
-
-   ac_optimize_vs_outputs(&ctx->ac, ctx->main_fn, shader->info.vs_output_param_offset,
-                          info->num_outputs, skip_vs_optim_mask,
-                          &shader->info.nr_param_exports);
-}
-
 bool si_vs_needs_prolog(const struct si_shader_selector *sel,
                         const struct si_vs_prolog_bits *prolog_key,
                         const struct si_shader_key *key, bool ngg_cull_shader)
@@ -1318,9 +1293,9 @@ bool si_vs_needs_prolog(const struct si_shader_selector *sel,
  * \param shader_out       The vertex shader, or the next shader if merging LS+HS or ES+GS.
  * \param key              Output shader part key.
  */
-static void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_sgprs,
-                                 bool ngg_cull_shader, const struct si_vs_prolog_bits *prolog_key,
-                                 struct si_shader *shader_out, union si_shader_part_key *key)
+void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_sgprs,
+                          bool ngg_cull_shader, const struct si_vs_prolog_bits *prolog_key,
+                          struct si_shader *shader_out, union si_shader_part_key *key)
 {
    memset(key, 0, sizeof(*key));
    key->vs_prolog.states = *prolog_key;
@@ -1364,23 +1339,9 @@ static void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num
       shader_out->info.uses_instanceid = true;
 }
 
-static bool si_should_optimize_less(struct ac_llvm_compiler *compiler,
-                                    struct si_shader_selector *sel)
-{
-   if (!compiler->low_opt_passes)
-      return false;
-
-   /* Assume a slow CPU. */
-   assert(!sel->screen->info.has_dedicated_vram && sel->screen->info.chip_class <= GFX8);
-
-   /* For a crazy dEQP test containing 2597 memory opcodes, mostly
-    * buffer stores. */
-   return sel->info.stage == MESA_SHADER_COMPUTE && sel->info.num_memory_stores > 1000;
-}
-
-static struct nir_shader *get_nir_shader(struct si_shader_selector *sel,
-                                         const struct si_shader_key *key,
-                                         bool *free_nir)
+struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
+                                     const struct si_shader_key *key,
+                                     bool *free_nir)
 {
    nir_shader *nir;
    *free_nir = false;
@@ -1457,244 +1418,12 @@ static struct nir_shader *get_nir_shader(struct si_shader_selector *sel,
    return nir;
 }
 
-static bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
-                                   struct si_shader *shader, struct pipe_debug_callback *debug,
-                                   struct nir_shader *nir, bool free_nir)
-{
-   struct si_shader_selector *sel = shader->selector;
-   struct si_shader_context ctx;
-
-   si_llvm_context_init(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
-
-   LLVMValueRef ngg_cull_main_fn = NULL;
-   if (shader->key.opt.ngg_culling) {
-      if (!si_llvm_translate_nir(&ctx, shader, nir, false, true)) {
-         si_llvm_dispose(&ctx);
-         return false;
-      }
-      ngg_cull_main_fn = ctx.main_fn;
-      ctx.main_fn = NULL;
-   }
-
-   if (!si_llvm_translate_nir(&ctx, shader, nir, free_nir, false)) {
-      si_llvm_dispose(&ctx);
-      return false;
-   }
-
-   if (shader->is_monolithic && ctx.stage == MESA_SHADER_VERTEX) {
-      LLVMValueRef parts[4];
-      unsigned num_parts = 0;
-      bool has_prolog = false;
-      LLVMValueRef main_fn = ctx.main_fn;
-
-      if (ngg_cull_main_fn) {
-         if (si_vs_needs_prolog(sel, &shader->key.part.vs.prolog, &shader->key, true)) {
-            union si_shader_part_key prolog_key;
-            si_get_vs_prolog_key(&sel->info, shader->info.num_input_sgprs, true,
-                                 &shader->key.part.vs.prolog, shader, &prolog_key);
-            prolog_key.vs_prolog.is_monolithic = true;
-            si_llvm_build_vs_prolog(&ctx, &prolog_key);
-            parts[num_parts++] = ctx.main_fn;
-            has_prolog = true;
-         }
-         parts[num_parts++] = ngg_cull_main_fn;
-      }
-
-      if (si_vs_needs_prolog(sel, &shader->key.part.vs.prolog, &shader->key, false)) {
-         union si_shader_part_key prolog_key;
-         si_get_vs_prolog_key(&sel->info, shader->info.num_input_sgprs, false,
-                              &shader->key.part.vs.prolog, shader, &prolog_key);
-         prolog_key.vs_prolog.is_monolithic = true;
-         si_llvm_build_vs_prolog(&ctx, &prolog_key);
-         parts[num_parts++] = ctx.main_fn;
-         has_prolog = true;
-      }
-      parts[num_parts++] = main_fn;
-
-      si_build_wrapper_function(&ctx, parts, num_parts, has_prolog ? 1 : 0, 0, false);
-
-      if (ctx.shader->key.opt.vs_as_prim_discard_cs)
-         si_build_prim_discard_compute_shader(&ctx);
-   } else if (shader->is_monolithic && ctx.stage == MESA_SHADER_TESS_EVAL && ngg_cull_main_fn) {
-      LLVMValueRef parts[2];
-
-      parts[0] = ngg_cull_main_fn;
-      parts[1] = ctx.main_fn;
-
-      si_build_wrapper_function(&ctx, parts, 2, 0, 0, false);
-   } else if (shader->is_monolithic && ctx.stage == MESA_SHADER_TESS_CTRL) {
-      if (sscreen->info.chip_class >= GFX9) {
-         struct si_shader_selector *ls = shader->key.part.tcs.ls;
-         LLVMValueRef parts[4];
-         bool vs_needs_prolog =
-            si_vs_needs_prolog(ls, &shader->key.part.tcs.ls_prolog, &shader->key, false);
-
-         /* TCS main part */
-         parts[2] = ctx.main_fn;
-
-         /* TCS epilog */
-         union si_shader_part_key tcs_epilog_key;
-         memset(&tcs_epilog_key, 0, sizeof(tcs_epilog_key));
-         tcs_epilog_key.tcs_epilog.states = shader->key.part.tcs.epilog;
-         si_llvm_build_tcs_epilog(&ctx, &tcs_epilog_key);
-         parts[3] = ctx.main_fn;
-
-         /* VS as LS main part */
-         ctx.next_shader_sel = ctx.shader->selector;
-         nir = get_nir_shader(ls, NULL, &free_nir);
-         struct si_shader shader_ls = {};
-         shader_ls.selector = ls;
-         shader_ls.key.as_ls = 1;
-         shader_ls.key.mono = shader->key.mono;
-         shader_ls.key.opt = shader->key.opt;
-         shader_ls.is_monolithic = true;
-
-         if (!si_llvm_translate_nir(&ctx, &shader_ls, nir, free_nir, false)) {
-            si_llvm_dispose(&ctx);
-            return false;
-         }
-         shader->info.uses_instanceid |= ls->info.uses_instanceid;
-         parts[1] = ctx.main_fn;
-
-         /* LS prolog */
-         if (vs_needs_prolog) {
-            union si_shader_part_key vs_prolog_key;
-            si_get_vs_prolog_key(&ls->info, shader_ls.info.num_input_sgprs, false,
-                                 &shader->key.part.tcs.ls_prolog, shader, &vs_prolog_key);
-            vs_prolog_key.vs_prolog.is_monolithic = true;
-            si_llvm_build_vs_prolog(&ctx, &vs_prolog_key);
-            parts[0] = ctx.main_fn;
-         }
-
-         /* Reset the shader context. */
-         ctx.shader = shader;
-         ctx.stage = MESA_SHADER_TESS_CTRL;
-
-         si_build_wrapper_function(&ctx, parts + !vs_needs_prolog, 4 - !vs_needs_prolog,
-                                   vs_needs_prolog, vs_needs_prolog ? 2 : 1,
-                                   shader->key.opt.same_patch_vertices);
-      } else {
-         LLVMValueRef parts[2];
-         union si_shader_part_key epilog_key;
-
-         parts[0] = ctx.main_fn;
-
-         memset(&epilog_key, 0, sizeof(epilog_key));
-         epilog_key.tcs_epilog.states = shader->key.part.tcs.epilog;
-         si_llvm_build_tcs_epilog(&ctx, &epilog_key);
-         parts[1] = ctx.main_fn;
-
-         si_build_wrapper_function(&ctx, parts, 2, 0, 0, false);
-      }
-   } else if (shader->is_monolithic && ctx.stage == MESA_SHADER_GEOMETRY) {
-      if (ctx.screen->info.chip_class >= GFX9) {
-         struct si_shader_selector *es = shader->key.part.gs.es;
-         LLVMValueRef es_prolog = NULL;
-         LLVMValueRef es_main = NULL;
-         LLVMValueRef gs_prolog = NULL;
-         LLVMValueRef gs_main = ctx.main_fn;
-
-         /* GS prolog */
-         union si_shader_part_key gs_prolog_key;
-         memset(&gs_prolog_key, 0, sizeof(gs_prolog_key));
-         gs_prolog_key.gs_prolog.states = shader->key.part.gs.prolog;
-         gs_prolog_key.gs_prolog.is_monolithic = true;
-         gs_prolog_key.gs_prolog.as_ngg = shader->key.as_ngg;
-         si_llvm_build_gs_prolog(&ctx, &gs_prolog_key);
-         gs_prolog = ctx.main_fn;
-
-         /* ES main part */
-         nir = get_nir_shader(es, NULL, &free_nir);
-         struct si_shader shader_es = {};
-         shader_es.selector = es;
-         shader_es.key.as_es = 1;
-         shader_es.key.as_ngg = shader->key.as_ngg;
-         shader_es.key.mono = shader->key.mono;
-         shader_es.key.opt = shader->key.opt;
-         shader_es.is_monolithic = true;
-
-         if (!si_llvm_translate_nir(&ctx, &shader_es, nir, free_nir, false)) {
-            si_llvm_dispose(&ctx);
-            return false;
-         }
-         shader->info.uses_instanceid |= es->info.uses_instanceid;
-         es_main = ctx.main_fn;
-
-         /* ES prolog */
-         if (es->info.stage == MESA_SHADER_VERTEX &&
-             si_vs_needs_prolog(es, &shader->key.part.gs.vs_prolog, &shader->key, false)) {
-            union si_shader_part_key vs_prolog_key;
-            si_get_vs_prolog_key(&es->info, shader_es.info.num_input_sgprs, false,
-                                 &shader->key.part.gs.vs_prolog, shader, &vs_prolog_key);
-            vs_prolog_key.vs_prolog.is_monolithic = true;
-            si_llvm_build_vs_prolog(&ctx, &vs_prolog_key);
-            es_prolog = ctx.main_fn;
-         }
-
-         /* Reset the shader context. */
-         ctx.shader = shader;
-         ctx.stage = MESA_SHADER_GEOMETRY;
-
-         /* Prepare the array of shader parts. */
-         LLVMValueRef parts[4];
-         unsigned num_parts = 0, main_part, next_first_part;
-
-         if (es_prolog)
-            parts[num_parts++] = es_prolog;
-
-         parts[main_part = num_parts++] = es_main;
-         parts[next_first_part = num_parts++] = gs_prolog;
-         parts[num_parts++] = gs_main;
-
-         si_build_wrapper_function(&ctx, parts, num_parts, main_part, next_first_part, false);
-      } else {
-         LLVMValueRef parts[2];
-         union si_shader_part_key prolog_key;
-
-         parts[1] = ctx.main_fn;
-
-         memset(&prolog_key, 0, sizeof(prolog_key));
-         prolog_key.gs_prolog.states = shader->key.part.gs.prolog;
-         si_llvm_build_gs_prolog(&ctx, &prolog_key);
-         parts[0] = ctx.main_fn;
-
-         si_build_wrapper_function(&ctx, parts, 2, 1, 0, false);
-      }
-   } else if (shader->is_monolithic && ctx.stage == MESA_SHADER_FRAGMENT) {
-      si_llvm_build_monolithic_ps(&ctx, shader);
-   }
-
-   si_llvm_optimize_module(&ctx);
-
-   /* Post-optimization transformations and analysis. */
-   si_optimize_vs_outputs(&ctx);
-
-   if ((debug && debug->debug_message) || si_can_dump_shader(sscreen, ctx.stage)) {
-      ctx.shader->info.private_mem_vgprs = ac_count_scratch_private_memory(ctx.main_fn);
-   }
-
-   /* Make sure the input is a pointer and not integer followed by inttoptr. */
-   assert(LLVMGetTypeKind(LLVMTypeOf(LLVMGetParam(ctx.main_fn, 0))) == LLVMPointerTypeKind);
-
-   /* Compile to bytecode. */
-   if (!si_compile_llvm(sscreen, &shader->binary, &shader->config, compiler, &ctx.ac, debug,
-                        ctx.stage, si_get_shader_name(shader),
-                        si_should_optimize_less(compiler, shader->selector))) {
-      si_llvm_dispose(&ctx);
-      fprintf(stderr, "LLVM failed to compile shader\n");
-      return false;
-   }
-
-   si_llvm_dispose(&ctx);
-   return true;
-}
-
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct pipe_debug_callback *debug)
 {
    struct si_shader_selector *sel = shader->selector;
    bool free_nir;
-   struct nir_shader *nir = get_nir_shader(sel, &shader->key, &free_nir);
+   struct nir_shader *nir = si_get_nir_shader(sel, &shader->key, &free_nir);
 
    /* Dump NIR before doing NIR->LLVM conversion in case the
     * conversion fails. */

@@ -205,6 +205,12 @@ unsigned si_get_max_workgroup_size(const struct si_shader *shader);
 bool si_vs_needs_prolog(const struct si_shader_selector *sel,
                         const struct si_vs_prolog_bits *prolog_key,
                         const struct si_shader_key *key, bool ngg_cull_shader);
+void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_sgprs,
+                          bool ngg_cull_shader, const struct si_vs_prolog_bits *prolog_key,
+                          struct si_shader *shader_out, union si_shader_part_key *key);
+struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
+                                     const struct si_shader_key *key,
+                                     bool *free_nir);
 bool si_need_ps_prolog(const union si_shader_part_key *key);
 void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,
                           bool separate_prolog);
@@ -259,6 +265,9 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
                                unsigned next_shader_first_part, bool same_thread_count);
 bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
                            struct nir_shader *nir, bool free_nir, bool ngg_cull_shader);
+bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
+                            struct si_shader *shader, struct pipe_debug_callback *debug,
+                            struct nir_shader *nir, bool free_nir);
 
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
