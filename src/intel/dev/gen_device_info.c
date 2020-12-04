@@ -1089,20 +1089,22 @@ update_from_topology(struct gen_device_info *devinfo,
    }
    assert(n_subslices > 0);
 
-   if (devinfo->gen == 11) {
-      /* On ICL we only have one slice */
+   if (devinfo->gen >= 11) {
+      /* On current ICL+ hardware we only have one slice. */
       assert(devinfo->slice_masks == 1);
 
-      /* Count the number of subslices on each pixel pipe. Assume that
-       * subslices 0-3 are on pixel pipe 0, and 4-7 are on pixel pipe 1.
+      /* Count the number of subslices on each pixel pipe. Assume that every
+       * contiguous group of 4 subslices in the mask belong to the same pixel
+       * pipe.  However note that on TGL the kernel returns a mask of enabled
+       * *dual* subslices instead of actual subslices somewhat confusingly, so
+       * each pixel pipe only takes 2 bits in the mask even though it's still
+       * 4 subslices.
        */
-      unsigned subslices = devinfo->subslice_masks[0];
-      unsigned ss = 0;
-      while (subslices > 0) {
-         if (subslices & 1)
-            devinfo->ppipe_subslices[ss >= 4 ? 1 : 0] += 1;
-         subslices >>= 1;
-         ss++;
+      const unsigned ppipe_bits = devinfo->gen >= 12 ? 2 : 4;
+      for (unsigned p = 0; p < GEN_DEVICE_MAX_PIXEL_PIPES; p++) {
+         const unsigned ppipe_mask = BITFIELD_RANGE(p * ppipe_bits, ppipe_bits);
+         devinfo->ppipe_subslices[p] =
+            __builtin_popcount(devinfo->subslice_masks[0] & ppipe_mask);
       }
    }
 
