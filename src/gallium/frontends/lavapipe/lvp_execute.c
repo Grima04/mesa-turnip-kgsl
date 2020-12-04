@@ -752,7 +752,7 @@ static void fill_sampler_stage(struct rendering_state *state,
       return;
    ss_idx += array_idx;
    ss_idx += dyn_info->stage[stage].sampler_count;
-   fill_sampler(&state->ss[p_stage][ss_idx], descriptor->sampler);
+   fill_sampler(&state->ss[p_stage][ss_idx], binding->immutable_samplers ? binding->immutable_samplers[array_idx] : descriptor->sampler);
    if (state->num_sampler_states[p_stage] <= ss_idx)
       state->num_sampler_states[p_stage] = ss_idx + 1;
    state->ss_dirty[p_stage] = true;
@@ -2335,6 +2335,90 @@ static void handle_draw_indirect_count(struct lvp_cmd_buffer_entry *cmd,
    state->pctx->draw_vbo(state->pctx, &state->info, &state->indirect_info, &state->draw, 1);
 }
 
+static void handle_compute_push_descriptor_set(struct lvp_cmd_buffer_entry *cmd,
+                                               struct dyn_info *dyn_info,
+                                               struct rendering_state *state)
+{
+   struct lvp_cmd_push_descriptor_set *pds = &cmd->u.push_descriptor_set;
+   struct lvp_descriptor_set_layout *layout = pds->layout->set[pds->set].layout;
+
+   if (!(layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT))
+      return;
+
+   unsigned info_idx = 0;
+   for (unsigned i = 0; i < pds->descriptor_write_count; i++) {
+      struct lvp_write_descriptor *desc = &pds->descriptors[i];
+      struct lvp_descriptor_set_binding_layout *binding = &layout->binding[desc->dst_binding];
+
+      if (!binding->valid)
+         continue;
+
+      for (unsigned j = 0; j < desc->descriptor_count; j++) {
+         union lvp_descriptor_info *info = &pds->infos[info_idx + j];
+
+         handle_descriptor(state, dyn_info, binding,
+                           MESA_SHADER_COMPUTE, PIPE_SHADER_COMPUTE,
+                           j, desc->descriptor_type,
+                           info);
+      }
+      info_idx += desc->descriptor_count;
+   }
+}
+
+static void handle_push_descriptor_set(struct lvp_cmd_buffer_entry *cmd,
+                                       struct rendering_state *state)
+{
+   struct lvp_cmd_push_descriptor_set *pds = &cmd->u.push_descriptor_set;
+   struct lvp_descriptor_set_layout *layout = pds->layout->set[pds->set].layout;
+   struct dyn_info dyn_info;
+
+   memset(&dyn_info.stage, 0, sizeof(dyn_info.stage));
+   dyn_info.dyn_index = 0;
+   if (pds->bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
+      handle_compute_push_descriptor_set(cmd, &dyn_info, state);
+   }
+
+   unsigned info_idx = 0;
+   for (unsigned i = 0; i < pds->descriptor_write_count; i++) {
+      struct lvp_write_descriptor *desc = &pds->descriptors[i];
+      struct lvp_descriptor_set_binding_layout *binding = &layout->binding[desc->dst_binding];
+
+      if (!binding->valid)
+         continue;
+
+      for (unsigned j = 0; j < desc->descriptor_count; j++) {
+         union lvp_descriptor_info *info = &pds->infos[info_idx + j];
+
+         if (layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
+            handle_descriptor(state, &dyn_info, binding,
+                              MESA_SHADER_VERTEX, PIPE_SHADER_VERTEX,
+                              j, desc->descriptor_type,
+                              info);
+         if (layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
+            handle_descriptor(state, &dyn_info, binding,
+                              MESA_SHADER_FRAGMENT, PIPE_SHADER_FRAGMENT,
+                              j, desc->descriptor_type,
+                              info);
+         if (layout->shader_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
+            handle_descriptor(state, &dyn_info, binding,
+                              MESA_SHADER_GEOMETRY, PIPE_SHADER_GEOMETRY,
+                              j, desc->descriptor_type,
+                              info);
+         if (layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+            handle_descriptor(state, &dyn_info, binding,
+                              MESA_SHADER_TESS_CTRL, PIPE_SHADER_TESS_CTRL,
+                              j, desc->descriptor_type,
+                              info);
+         if (layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+            handle_descriptor(state, &dyn_info, binding,
+                              MESA_SHADER_TESS_EVAL, PIPE_SHADER_TESS_EVAL,
+                              j, desc->descriptor_type,
+                              info);
+      }
+      info_idx += desc->descriptor_count;
+   }
+}
+
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
@@ -2485,6 +2569,9 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
       case LVP_CMD_DRAW_INDEXED_INDIRECT_COUNT:
          emit_state(state);
          handle_draw_indirect_count(cmd, state, true);
+         break;
+      case LVP_CMD_PUSH_DESCRIPTOR_SET:
+         handle_push_descriptor_set(cmd, state);
          break;
       }
    }
