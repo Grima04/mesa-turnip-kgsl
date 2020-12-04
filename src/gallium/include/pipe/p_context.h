@@ -154,6 +154,16 @@ struct pipe_context {
                              enum pipe_render_cond_flag mode );
 
    /**
+    * Predicate subsequent rendering on a value in a buffer
+    * \param buffer The buffer to query for the value
+    * \param offset Offset in the buffer to query 32-bit
+    * \param condition whether to skip on FALSE or TRUE query results
+    */
+   void (*render_condition_mem)( struct pipe_context *pipe,
+                                 struct pipe_resource *buffer,
+                                 uint32_t offset,
+                                 bool condition );
+   /**
     * Query objects
     */
    /*@{*/

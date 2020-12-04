@@ -563,6 +563,9 @@ Normally, if the occlusion query returned a non-zero result subsequent
 drawing happens normally so fragments may be generated, shaded and
 processed even where they're known to be obscured.
 
+The ''render_condition_mem'' function specifies the drawing is dependant
+on a value in memory. A buffer resource and offset denote which 32-bit
+value to use for the query. This is used for Vulkan API.
 
 Flushing
 ^^^^^^^^
