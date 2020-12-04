@@ -237,24 +237,6 @@ glX_send_client_info_test::~glX_send_client_info_test()
 }
 
 void
-glX_send_client_info_test::destroy_display()
-{
-   if (this->glx_dpy != NULL) {
-      if (this->glx_dpy->screens != NULL) {
-	 for (int i = 0; i < this->display->nscreens; i++) {
-	    delete [] this->glx_dpy->screens[i]->serverGLXexts;
-	    delete this->glx_dpy->screens[i];
-	 }
-
-	 delete [] this->glx_dpy->screens;
-      }
-
-      delete this->glx_dpy;
-      delete this->display;
-   }
-}
-
-void
 glX_send_client_info_test::SetUp()
 {
    ClientInfo_was_sent = false;
