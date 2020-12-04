@@ -396,8 +396,10 @@ spirv_builder_emit_access_chain(struct spirv_builder *b, SpvId result_type,
    spirv_buffer_emit_word(&b->instructions, result_type);
    spirv_buffer_emit_word(&b->instructions, result);
    spirv_buffer_emit_word(&b->instructions, base);
-   for (int i = 0; i < num_indexes; ++i)
+   for (int i = 0; i < num_indexes; ++i) {
+      assert(indexes[i]);
       spirv_buffer_emit_word(&b->instructions, indexes[i]);
+   }
    return result;
 }
 
