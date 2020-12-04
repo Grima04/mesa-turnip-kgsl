@@ -348,6 +348,13 @@ os_get_page_size(uint64_t *size)
    GetSystemInfo(&SysInfo);
    *size = SysInfo.dwPageSize;
    return true;
+#elif DETECT_OS_APPLE
+   size_t len = sizeof(*size);
+   int mib[2];
+
+   mib[0] = CTL_HW;
+   mib[1] = HW_PAGESIZE;
+   return (sysctl(mib, 2, size, &len, NULL, 0) == 0);
 #else
 #error unexpected platform in os_sysinfo.c
    return false;
