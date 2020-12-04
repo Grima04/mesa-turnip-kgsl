@@ -574,7 +574,18 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
          state->ve[location].src_offset = vi->pVertexAttributeDescriptions[i].offset;
          state->ve[location].vertex_buffer_index = vi->pVertexAttributeDescriptions[i].binding;
          state->ve[location].src_format = vk_format_to_pipe(vi->pVertexAttributeDescriptions[i].format);
-         state->ve[location].instance_divisor = vi->pVertexBindingDescriptions[vi->pVertexAttributeDescriptions[i].binding].inputRate;
+
+         switch (vi->pVertexBindingDescriptions[vi->pVertexAttributeDescriptions[i].binding].inputRate) {
+         case VK_VERTEX_INPUT_RATE_VERTEX:
+            state->ve[location].instance_divisor = 0;
+            break;
+         case VK_VERTEX_INPUT_RATE_INSTANCE:
+            state->ve[location].instance_divisor = 1;
+            break;
+         default:
+            assert(0);
+            break;
+         }
 
          if ((int)location > max_location)
             max_location = location;
