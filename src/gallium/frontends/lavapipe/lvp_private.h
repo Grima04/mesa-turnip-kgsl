@@ -128,6 +128,7 @@ LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer_view, VkBufferView)
 LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_pool, VkDescriptorPool)
 LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_set, VkDescriptorSet)
 LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_set_layout, VkDescriptorSetLayout)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_update_template, VkDescriptorUpdateTemplate)
 LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_device_memory, VkDeviceMemory)
 LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_event, VkEvent)
 LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_framebuffer, VkFramebuffer)
@@ -483,6 +484,17 @@ struct lvp_descriptor_pool {
    uint32_t max_sets;
 
    struct list_head sets;
+};
+
+struct lvp_descriptor_update_template {
+   struct vk_object_base base;
+   uint32_t entry_count;
+   uint32_t set;
+   VkDescriptorUpdateTemplateType type;
+   struct lvp_descriptor_set_layout *descriptor_set_layout;
+   VkPipelineBindPoint bind_point;
+   struct lvp_pipeline_layout *pipeline_layout;
+   VkDescriptorUpdateTemplateEntry entry[0];
 };
 
 VkResult

@@ -1553,3 +1553,92 @@ void lvp_CmdPushDescriptorSetKHR(
    }
    cmd_buf_queue(cmd_buffer, cmd);
 }
+
+void lvp_CmdPushDescriptorSetWithTemplateKHR(
+   VkCommandBuffer                             commandBuffer,
+   VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
+   VkPipelineLayout                            _layout,
+   uint32_t                                    set,
+   const void*                                 pData)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   LVP_FROM_HANDLE(lvp_descriptor_update_template, templ, descriptorUpdateTemplate);
+   int cmd_size = 0;
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd_size += templ->entry_count * sizeof(struct lvp_write_descriptor);
+
+   int count_descriptors = 0;
+   for (unsigned i = 0; i < templ->entry_count; i++) {
+      VkDescriptorUpdateTemplateEntry *entry = &templ->entry[i];
+      count_descriptors += entry->descriptorCount;
+   }
+   cmd_size += count_descriptors * sizeof(union lvp_descriptor_info);
+
+   cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_PUSH_DESCRIPTOR_SET);
+   if (!cmd)
+      return;
+
+   cmd->u.push_descriptor_set.bind_point = templ->bind_point;
+   cmd->u.push_descriptor_set.layout = templ->pipeline_layout;
+   cmd->u.push_descriptor_set.set = templ->set;
+   cmd->u.push_descriptor_set.descriptor_write_count = templ->entry_count;
+   cmd->u.push_descriptor_set.descriptors = (struct lvp_write_descriptor *)(cmd + 1);
+   cmd->u.push_descriptor_set.infos = (union lvp_descriptor_info *)(cmd->u.push_descriptor_set.descriptors + templ->entry_count);
+
+   unsigned descriptor_index = 0;
+
+   for (unsigned i = 0; i < templ->entry_count; i++) {
+      struct lvp_write_descriptor *desc = &cmd->u.push_descriptor_set.descriptors[i];
+      struct VkDescriptorUpdateTemplateEntry *entry = &templ->entry[i];
+      const uint8_t *pSrc = ((const uint8_t *) pData) + entry->offset;
+
+      /* dstSet is ignored */
+      desc->dst_binding = entry->dstBinding;
+      desc->dst_array_element = entry->dstArrayElement;
+      desc->descriptor_count = entry->descriptorCount;
+      desc->descriptor_type = entry->descriptorType;
+
+      for (unsigned j = 0; j < desc->descriptor_count; j++) {
+         union lvp_descriptor_info *info = &cmd->u.push_descriptor_set.infos[descriptor_index + j];
+         switch (desc->descriptor_type) {
+         case VK_DESCRIPTOR_TYPE_SAMPLER:
+            info->sampler = lvp_sampler_from_handle(*(VkSampler *)pSrc);
+            break;
+         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+            VkDescriptorImageInfo *image_info = (VkDescriptorImageInfo *)pSrc;
+            info->sampler = lvp_sampler_from_handle(image_info->sampler);
+            info->iview = lvp_image_view_from_handle(image_info->imageView);
+            info->image_layout = image_info->imageLayout;
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+            VkDescriptorImageInfo *image_info = (VkDescriptorImageInfo *)pSrc;
+            info->iview = lvp_image_view_from_handle(image_info->imageView);
+            info->image_layout = image_info->imageLayout;
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            info->buffer_view = lvp_buffer_view_from_handle(*(VkBufferView *)pSrc);
+            break;
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         default: {
+            VkDescriptorBufferInfo *buffer_info = (VkDescriptorBufferInfo *)pSrc;
+            info->buffer = lvp_buffer_from_handle(buffer_info->buffer);
+            info->offset = buffer_info->offset;
+            info->range = buffer_info->range;
+            break;
+         }
+         }
+         pSrc += entry->stride;
+      }
+      descriptor_index += desc->descriptor_count;
+   }
+   cmd_buf_queue(cmd_buffer, cmd);
+}
