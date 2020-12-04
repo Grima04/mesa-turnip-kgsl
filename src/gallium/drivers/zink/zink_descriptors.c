@@ -779,8 +779,7 @@ cmp_dynamic_offset_binding(const void *a, const void *b)
 }
 
 static void
-write_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, unsigned num_wds, VkWriteDescriptorSet *wds,
-                 bool cache_hit, bool need_resource_refs)
+write_descriptors(struct zink_context *ctx, unsigned num_wds, VkWriteDescriptorSet *wds, bool cache_hit)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
@@ -884,7 +883,7 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
       dynamic_offsets[i] = dynamic_buffers[i].offset;
    *dynamic_offset_idx = dynamic_offset_count;
 
-   write_descriptors(ctx, zds, num_wds, wds, cache_hit, need_resource_refs);
+   write_descriptors(ctx, num_wds, wds, cache_hit);
 }
 
 static void
@@ -950,7 +949,7 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
       }
    }
    _mesa_set_destroy(ht, NULL);
-   write_descriptors(ctx, zds, num_wds, wds, cache_hit, need_resource_refs);
+   write_descriptors(ctx, num_wds, wds, cache_hit);
 }
 
 static void
@@ -1084,7 +1083,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
       }
    }
    _mesa_set_destroy(ht, NULL);
-   write_descriptors(ctx, zds, num_wds, wds, cache_hit, need_resource_refs);
+   write_descriptors(ctx, num_wds, wds, cache_hit);
 }
 
 static void
@@ -1171,7 +1170,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
       }
    }
    _mesa_set_destroy(ht, NULL);
-   write_descriptors(ctx, zds, num_wds, wds, cache_hit, need_resource_refs);
+   write_descriptors(ctx, num_wds, wds, cache_hit);
 }
 
 void
