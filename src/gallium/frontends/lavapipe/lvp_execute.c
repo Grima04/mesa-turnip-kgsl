@@ -744,7 +744,7 @@ static void fill_sampler_stage(struct rendering_state *state,
                                gl_shader_stage stage,
                                enum pipe_shader_type p_stage,
                                int array_idx,
-                               const struct lvp_descriptor *descriptor,
+                               const union lvp_descriptor_info *descriptor,
                                const struct lvp_descriptor_set_binding_layout *binding)
 {
    int ss_idx = binding->stage[stage].sampler_index;
@@ -763,7 +763,7 @@ static void fill_sampler_view_stage(struct rendering_state *state,
                                     gl_shader_stage stage,
                                     enum pipe_shader_type p_stage,
                                     int array_idx,
-                                    const struct lvp_descriptor *descriptor,
+                                    const union lvp_descriptor_info *descriptor,
                                     const struct lvp_descriptor_set_binding_layout *binding)
 {
    int sv_idx = binding->stage[stage].sampler_view_index;
@@ -771,7 +771,7 @@ static void fill_sampler_view_stage(struct rendering_state *state,
       return;
    sv_idx += array_idx;
    sv_idx += dyn_info->stage[stage].sampler_view_count;
-   struct lvp_image_view *iv = descriptor->image_view;
+   struct lvp_image_view *iv = descriptor->iview;
    struct pipe_sampler_view templ;
 
    enum pipe_format pformat;
@@ -822,7 +822,7 @@ static void fill_sampler_buffer_view_stage(struct rendering_state *state,
                                            gl_shader_stage stage,
                                            enum pipe_shader_type p_stage,
                                            int array_idx,
-                                           const struct lvp_descriptor *descriptor,
+                                           const union lvp_descriptor_info *descriptor,
                                            const struct lvp_descriptor_set_binding_layout *binding)
 {
    int sv_idx = binding->stage[stage].sampler_view_index;
@@ -857,10 +857,10 @@ static void fill_image_view_stage(struct rendering_state *state,
                                   gl_shader_stage stage,
                                   enum pipe_shader_type p_stage,
                                   int array_idx,
-                                  const struct lvp_descriptor *descriptor,
+                                  const union lvp_descriptor_info *descriptor,
                                   const struct lvp_descriptor_set_binding_layout *binding)
 {
-   struct lvp_image_view *iv = descriptor->image_view;
+   struct lvp_image_view *iv = descriptor->iview;
    int idx = binding->stage[stage].image_index;
    if (idx == -1)
       return;
@@ -892,7 +892,7 @@ static void fill_image_buffer_view_stage(struct rendering_state *state,
                                          gl_shader_stage stage,
                                          enum pipe_shader_type p_stage,
                                          int array_idx,
-                                         const struct lvp_descriptor *descriptor,
+                                         const union lvp_descriptor_info *descriptor,
                                          const struct lvp_descriptor_set_binding_layout *binding)
 {
    struct lvp_buffer_view *bv = descriptor->buffer_view;
@@ -916,12 +916,13 @@ static void handle_descriptor(struct rendering_state *state,
                               gl_shader_stage stage,
                               enum pipe_shader_type p_stage,
                               int array_idx,
-                              const struct lvp_descriptor *descriptor)
+                              VkDescriptorType type,
+                              const union lvp_descriptor_info *descriptor)
 {
-   bool is_dynamic = descriptor->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-      descriptor->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+   bool is_dynamic = type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+      type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 
-   switch (descriptor->type) {
+   switch (type) {
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
       fill_image_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
@@ -934,16 +935,16 @@ static void handle_descriptor(struct rendering_state *state,
          return;
       idx += array_idx;
       idx += dyn_info->stage[stage].const_buffer_count;
-      state->const_buffer[p_stage][idx].buffer = descriptor->buf.buffer->bo;
-      state->const_buffer[p_stage][idx].buffer_offset = descriptor->buf.offset + descriptor->buf.buffer->offset;
+      state->const_buffer[p_stage][idx].buffer = descriptor->buffer->bo;
+      state->const_buffer[p_stage][idx].buffer_offset = descriptor->offset + descriptor->buffer->offset;
       if (is_dynamic) {
          uint32_t offset = dyn_info->dynamic_offsets[dyn_info->dyn_index + binding->dynamic_index + array_idx];
          state->const_buffer[p_stage][idx].buffer_offset += offset;
       }
-      if (descriptor->buf.range == VK_WHOLE_SIZE)
-         state->const_buffer[p_stage][idx].buffer_size = descriptor->buf.buffer->bo->width0 - state->const_buffer[p_stage][idx].buffer_offset;
+      if (descriptor->range == VK_WHOLE_SIZE)
+         state->const_buffer[p_stage][idx].buffer_size = descriptor->buffer->bo->width0 - state->const_buffer[p_stage][idx].buffer_offset;
       else
-         state->const_buffer[p_stage][idx].buffer_size = descriptor->buf.range;
+         state->const_buffer[p_stage][idx].buffer_size = descriptor->range;
       if (state->num_const_bufs[p_stage] <= idx)
          state->num_const_bufs[p_stage] = idx + 1;
       state->constbuf_dirty[p_stage] = true;
@@ -956,16 +957,16 @@ static void handle_descriptor(struct rendering_state *state,
          return;
       idx += array_idx;
       idx += dyn_info->stage[stage].shader_buffer_count;
-      state->sb[p_stage][idx].buffer = descriptor->buf.buffer->bo;
-      state->sb[p_stage][idx].buffer_offset = descriptor->buf.offset + descriptor->buf.buffer->offset;
+      state->sb[p_stage][idx].buffer = descriptor->buffer->bo;
+      state->sb[p_stage][idx].buffer_offset = descriptor->offset + descriptor->buffer->offset;
       if (is_dynamic) {
          uint32_t offset = dyn_info->dynamic_offsets[dyn_info->dyn_index + binding->dynamic_index + array_idx];
          state->sb[p_stage][idx].buffer_offset += offset;
       }
-      if (descriptor->buf.range == VK_WHOLE_SIZE)
-         state->sb[p_stage][idx].buffer_size = descriptor->buf.buffer->bo->width0 - state->sb[p_stage][idx].buffer_offset;
+      if (descriptor->range == VK_WHOLE_SIZE)
+         state->sb[p_stage][idx].buffer_size = descriptor->buffer->bo->width0 - state->sb[p_stage][idx].buffer_offset;
       else
-         state->sb[p_stage][idx].buffer_size = descriptor->buf.range;
+         state->sb[p_stage][idx].buffer_size = descriptor->range;
       if (state->num_shader_buffers[p_stage] <= idx)
          state->num_shader_buffers[p_stage] = idx + 1;
       state->sb_dirty[p_stage] = true;
@@ -990,7 +991,7 @@ static void handle_descriptor(struct rendering_state *state,
       fill_image_buffer_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
       break;
    default:
-      fprintf(stderr, "Unhandled descriptor set %d\n", descriptor->type);
+      fprintf(stderr, "Unhandled descriptor set %d\n", type);
       break;
    }
 }
@@ -1010,7 +1011,7 @@ static void handle_set_stage(struct rendering_state *state,
       if (binding->valid) {
          for (int i = 0; i < binding->array_size; i++) {
             descriptor = &set->descriptors[binding->descriptor_index + i];
-            handle_descriptor(state, dyn_info, binding, stage, p_stage, i, descriptor);
+            handle_descriptor(state, dyn_info, binding, stage, p_stage, i, descriptor->type, &descriptor->info);
          }
       }
    }

@@ -449,21 +449,24 @@ struct lvp_descriptor_set_layout {
    struct lvp_descriptor_set_binding_layout binding[0];
 };
 
+union lvp_descriptor_info {
+   struct {
+      struct lvp_sampler *sampler;
+      struct lvp_image_view *iview;
+      VkImageLayout image_layout;
+   };
+   struct {
+      struct lvp_buffer *buffer;
+      VkDeviceSize offset;
+      VkDeviceSize range;
+   };
+   struct lvp_buffer_view *buffer_view;
+};
+
 struct lvp_descriptor {
    VkDescriptorType type;
 
-   union {
-      struct {
-         struct lvp_image_view *image_view;
-         struct lvp_sampler *sampler;
-      };
-      struct {
-         uint64_t offset;
-         uint64_t range;
-         struct lvp_buffer *buffer;
-      } buf;
-      struct lvp_buffer_view *buffer_view;
-   };
+   union lvp_descriptor_info info;
 };
 
 struct lvp_descriptor_set {

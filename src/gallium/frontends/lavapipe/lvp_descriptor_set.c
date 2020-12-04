@@ -249,7 +249,7 @@ lvp_descriptor_set_create(struct lvp_device *device,
    for (uint32_t b = 0; b < layout->binding_count; b++) {
       if (layout->binding[b].immutable_samplers) {
          for (uint32_t i = 0; i < layout->binding[b].array_size; i++)
-            desc[i].sampler = layout->binding[b].immutable_samplers[i];
+            desc[i].info.sampler = layout->binding[b].immutable_samplers[i];
       }
       desc += layout->binding[b].array_size;
    }
@@ -339,7 +339,7 @@ void lvp_UpdateDescriptorSets(
 
             desc[j] = (struct lvp_descriptor) {
                .type = VK_DESCRIPTOR_TYPE_SAMPLER,
-               .sampler = sampler,
+               .info.sampler = sampler,
             };
          }
          break;
@@ -352,13 +352,13 @@ void lvp_UpdateDescriptorSets(
                             write->pImageInfo[j].sampler);
 
             desc[j].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            desc[j].image_view = iview;
+            desc[j].info.iview = iview;
 
             /* If this descriptor has an immutable sampler, we don't want
              * to stomp on it.
              */
             if (sampler)
-               desc[j].sampler = sampler;
+               desc[j].info.sampler = sampler;
          }
          break;
 
@@ -371,7 +371,7 @@ void lvp_UpdateDescriptorSets(
 
             desc[j] = (struct lvp_descriptor) {
                .type = write->descriptorType,
-               .image_view = iview,
+               .info.iview = iview,
             };
          }
          break;
@@ -384,7 +384,7 @@ void lvp_UpdateDescriptorSets(
 
             desc[j] = (struct lvp_descriptor) {
                .type = write->descriptorType,
-               .buffer_view = bview,
+               .info.buffer_view = bview,
             };
          }
          break;
@@ -399,9 +399,9 @@ void lvp_UpdateDescriptorSets(
             assert(buffer);
             desc[j] = (struct lvp_descriptor) {
                .type = write->descriptorType,
-               .buf.offset = write->pBufferInfo[j].offset,
-               .buf.buffer = buffer,
-               .buf.range =  write->pBufferInfo[j].range,
+               .info.offset = write->pBufferInfo[j].offset,
+               .info.buffer = buffer,
+               .info.range =  write->pBufferInfo[j].range,
             };
 
          }
