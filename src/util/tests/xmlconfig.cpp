@@ -202,6 +202,7 @@ TEST_F(xmlconfig_test, drirc_app)
 #else
    EXPECT_EQ(driQueryOptioni(&cache, "mesa_drirc_option"), 0);
 #endif
+   driDestroyOptionCache(&cache);
 }
 
 TEST_F(xmlconfig_test, drirc_user_app)
@@ -215,6 +216,7 @@ TEST_F(xmlconfig_test, drirc_user_app)
 #else
    EXPECT_EQ(driQueryOptioni(&cache, "mesa_drirc_option"), 0);
 #endif
+   driDestroyOptionCache(&cache);
 }
 
 TEST_F(xmlconfig_test, drirc_env_override)
@@ -227,6 +229,7 @@ TEST_F(xmlconfig_test, drirc_env_override)
    /* env var takes precedence over config files */
    EXPECT_EQ(driQueryOptioni(&cache, "mesa_drirc_option"), 7);
    unsetenv("mesa_drirc_option");
+   driDestroyOptionCache(&cache);
 }
 
 #if WITH_XMLCONFIG
@@ -237,6 +240,7 @@ TEST_F(xmlconfig_test, drirc_app_versioned)
                                      "Versioned App Name", 1,
                                      NULL, 0);
    EXPECT_EQ(driQueryOptioni(&cache, "mesa_drirc_option"), 3);
+   driDestroyOptionCache(&cache);
 }
 
 TEST_F(xmlconfig_test, drirc_engine_versioned)
@@ -246,5 +250,6 @@ TEST_F(xmlconfig_test, drirc_engine_versioned)
                                      "unknownapp", 0,
                                      "Versioned Engine Name", 1);
    EXPECT_EQ(driQueryOptioni(&cache, "mesa_drirc_option"), 5);
+   driDestroyOptionCache(&cache);
 }
 #endif
