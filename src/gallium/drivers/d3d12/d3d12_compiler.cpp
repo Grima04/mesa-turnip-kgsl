@@ -1174,19 +1174,25 @@ d3d12_validation_tools::d3d12_validation_tools()
 {
    load_dxil_dll();
    DxcCreateInstanceProc dxil_create_func = (DxcCreateInstanceProc)util_dl_get_proc_address(dxil_module, "DxcCreateInstance");
-   assert(dxil_create_func);
 
-   HRESULT hr = dxil_create_func(CLSID_DxcValidator,  IID_PPV_ARGS(&validator));
-   if (FAILED(hr)) {
-      debug_printf("D3D12: Unable to create validator\n");
+   if (dxil_create_func) {
+      HRESULT hr = dxil_create_func(CLSID_DxcValidator,  IID_PPV_ARGS(&validator));
+      if (FAILED(hr)) {
+         debug_printf("D3D12: Unable to create validator\n");
+      }
    }
+#ifdef _WIN32
+   else if (!(d3d12_debug & D3D12_DEBUG_EXPERIMENTAL)) {
+      debug_printf("D3D12: Unable to load DXIL.dll\n");
+   }
+#endif
 
    DxcCreateInstanceProc compiler_create_func  = nullptr;
    if(dxc_compiler_module.load("dxcompiler.dll"))
       compiler_create_func = (DxcCreateInstanceProc)util_dl_get_proc_address(dxc_compiler_module, "DxcCreateInstance");
 
    if (compiler_create_func) {
-      hr = compiler_create_func(CLSID_DxcLibrary, IID_PPV_ARGS(&library));
+      HRESULT hr = compiler_create_func(CLSID_DxcLibrary, IID_PPV_ARGS(&library));
       if (FAILED(hr)) {
          debug_printf("D3D12: Unable to create library instance: %x\n", hr);
       }
