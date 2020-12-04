@@ -1110,6 +1110,17 @@ signed bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target);
 
 void bi_pack(bi_context *ctx, struct util_dynarray *emission);
 
+unsigned bi_pack_fma(bi_instr *I,
+                enum bifrost_packed_src src0,
+                enum bifrost_packed_src src1,
+                enum bifrost_packed_src src2,
+                enum bifrost_packed_src src3);
+unsigned bi_pack_add(bi_instr *I,
+                enum bifrost_packed_src src0,
+                enum bifrost_packed_src src1,
+                enum bifrost_packed_src src2,
+                enum bifrost_packed_src src3);
+
 /* Like in NIR, for use with the builder */
 
 enum bi_cursor_option {
