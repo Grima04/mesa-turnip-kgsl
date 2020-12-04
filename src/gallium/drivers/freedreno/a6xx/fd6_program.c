@@ -383,6 +383,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 	psize_regid = ir3_find_output_regid(vs, VARYING_SLOT_PSIZ);
 	clip0_regid = ir3_find_output_regid(vs, VARYING_SLOT_CLIP_DIST0);
 	clip1_regid = ir3_find_output_regid(vs, VARYING_SLOT_CLIP_DIST1);
+	layer_regid = ir3_find_output_regid(vs, VARYING_SLOT_LAYER);
 	vertex_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
 	instance_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
 
@@ -416,7 +417,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 	} else {
 		gs_header_regid = regid(63, 0);
 		primitive_regid = regid(63, 0);
-		layer_regid = regid(63, 0);
 	}
 
 	if (fs->color0_mrt) {
@@ -740,6 +740,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 	OUT_PKT4(ring, REG_A6XX_PC_VS_OUT_CNTL, 1);
 	OUT_RING(ring, A6XX_PC_VS_OUT_CNTL_STRIDE_IN_VPC(l.max_loc) |
 			CONDREG(psize_regid, A6XX_PC_VS_OUT_CNTL_PSIZE) |
+			CONDREG(layer_regid, A6XX_PC_VS_OUT_CNTL_LAYER) |
 			A6XX_PC_VS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
 
 	OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_3, 1);
@@ -776,7 +777,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 			COND(fs->need_pixlod, A6XX_SP_FS_CTRL_REG0_PIXLODENABLE));
 
 	OUT_PKT4(ring, REG_A6XX_VPC_VS_LAYER_CNTL, 1);
-	OUT_RING(ring, 0x0000ffff);        /* XXX */
+	OUT_RING(ring, A6XX_VPC_VS_LAYER_CNTL_LAYERLOC(layer_loc) |
+			A6XX_VPC_VS_LAYER_CNTL_VIEWLOC(0xff));
 
 	bool need_size = fs->frag_face || fs->fragcoord_compmask != 0;
 	bool need_size_persamp = false;
@@ -928,6 +930,9 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 		OUT_RING(ring, 0);
 		OUT_PKT4(ring, REG_A6XX_SP_GS_PRIM_SIZE, 1);
 		OUT_RING(ring, 0);
+
+		OUT_PKT4(ring, REG_A6XX_GRAS_VS_LAYER_CNTL, 1);
+		OUT_RING(ring, CONDREG(layer_regid, A6XX_GRAS_VS_LAYER_CNTL_WRITES_LAYER));
 	}
 
 	OUT_PKT4(ring, REG_A6XX_VPC_VS_CLIP_CNTL, 1);
