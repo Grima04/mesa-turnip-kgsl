@@ -676,30 +676,25 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
    if (stage == MESA_SHADER_NONE) {
       unreachable("not supported");
    } else {
-      uint32_t stage_offset = (uint32_t)stage * (PIPE_MAX_CONSTANT_BUFFERS +
-                                                 PIPE_MAX_SAMPLERS +
-                                                 PIPE_MAX_SHADER_BUFFERS +
-                                                 PIPE_MAX_SHADER_IMAGES);
-
       switch (type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
          assert(index < PIPE_MAX_CONSTANT_BUFFERS);
-         return stage_offset + index;
+         return (stage * PIPE_MAX_CONSTANT_BUFFERS) + index;
 
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          assert(index < PIPE_MAX_SAMPLERS);
-         return stage_offset + PIPE_MAX_CONSTANT_BUFFERS + index;
+         return (stage * PIPE_MAX_SAMPLERS) + index;
 
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          assert(index < PIPE_MAX_SHADER_BUFFERS);
-         return stage_offset + PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_SAMPLER_VIEWS + index;
+         return (stage * PIPE_MAX_SHADER_BUFFERS) + index;
 
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          assert(index < PIPE_MAX_SHADER_IMAGES);
-         return stage_offset + PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_SAMPLER_VIEWS + PIPE_MAX_SHADER_IMAGES + index;
+         return (stage * PIPE_MAX_SHADER_IMAGES) + index;
 
       default:
          unreachable("unexpected type");
