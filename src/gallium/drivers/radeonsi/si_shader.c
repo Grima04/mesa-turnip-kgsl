@@ -368,7 +368,7 @@ void si_add_arg_checked(struct ac_shader_args *args, enum ac_arg_regfile file, u
    ac_add_arg(args, file, registers, type, arg);
 }
 
-static void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
+void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
    struct si_shader *shader = ctx->shader;
    unsigned i, num_returns, num_return_sgprs;
@@ -746,60 +746,6 @@ static void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_sha
 
    assert(shader->info.num_input_vgprs >= num_prolog_vgprs);
    shader->info.num_input_vgprs -= num_prolog_vgprs;
-}
-
-void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
-{
-   struct si_shader *shader = ctx->shader;
-   LLVMTypeRef returns[AC_MAX_ARGS];
-   unsigned i;
-
-   si_init_shader_args(ctx, ngg_cull_shader);
-
-   for (i = 0; i < ctx->args.num_sgprs_returned; i++)
-      returns[i] = ctx->ac.i32; /* SGPR */
-   for (; i < ctx->args.return_count; i++)
-      returns[i] = ctx->ac.f32; /* VGPR */
-
-   si_llvm_create_func(ctx, ngg_cull_shader ? "ngg_cull_main" : "main", returns,
-                       ctx->args.return_count, si_get_max_workgroup_size(shader));
-
-   /* Reserve register locations for VGPR inputs the PS prolog may need. */
-   if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->shader->is_monolithic) {
-      ac_llvm_add_target_dep_function_attr(
-         ctx->main_fn, "InitialPSInputAddr",
-         S_0286D0_PERSP_SAMPLE_ENA(1) | S_0286D0_PERSP_CENTER_ENA(1) |
-            S_0286D0_PERSP_CENTROID_ENA(1) | S_0286D0_LINEAR_SAMPLE_ENA(1) |
-            S_0286D0_LINEAR_CENTER_ENA(1) | S_0286D0_LINEAR_CENTROID_ENA(1) |
-            S_0286D0_FRONT_FACE_ENA(1) | S_0286D0_ANCILLARY_ENA(1) | S_0286D0_POS_FIXED_PT_ENA(1));
-   }
-
-
-   if (shader->key.as_ls || ctx->stage == MESA_SHADER_TESS_CTRL) {
-      if (USE_LDS_SYMBOLS && LLVM_VERSION_MAJOR >= 9) {
-         /* The LSHS size is not known until draw time, so we append it
-          * at the end of whatever LDS use there may be in the rest of
-          * the shader (currently none, unless LLVM decides to do its
-          * own LDS-based lowering).
-          */
-         ctx->ac.lds = LLVMAddGlobalInAddressSpace(ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0),
-                                                   "__lds_end", AC_ADDR_SPACE_LDS);
-         LLVMSetAlignment(ctx->ac.lds, 256);
-      } else {
-         ac_declare_lds_as_pointer(&ctx->ac);
-      }
-   }
-
-   /* Unlike radv, we override these arguments in the prolog, so to the
-    * API shader they appear as normal arguments.
-    */
-   if (ctx->stage == MESA_SHADER_VERTEX) {
-      ctx->abi.vertex_id = ac_get_arg(&ctx->ac, ctx->args.vertex_id);
-      ctx->abi.instance_id = ac_get_arg(&ctx->ac, ctx->args.instance_id);
-   } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      ctx->abi.persp_centroid = ac_get_arg(&ctx->ac, ctx->args.persp_centroid);
-      ctx->abi.linear_centroid = ac_get_arg(&ctx->ac, ctx->args.linear_centroid);
-   }
 }
 
 /* For the UMR disassembler. */
@@ -1402,7 +1348,7 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
       return false;
    }
 
-   si_create_function(ctx, ngg_cull_shader);
+   si_llvm_create_main_func(ctx, ngg_cull_shader);
 
    if (ctx->shader->key.as_es || ctx->stage == MESA_SHADER_GEOMETRY)
       si_preload_esgs_ring(ctx);

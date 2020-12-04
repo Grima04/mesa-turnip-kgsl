@@ -195,18 +195,20 @@ static inline struct si_shader_context *si_shader_context_from_abi(struct ac_sha
    return container_of(abi, ctx, abi);
 }
 
+/* si_shader.c */
 bool si_is_multi_part_shader(struct si_shader *shader);
 bool si_is_merged_shader(struct si_shader *shader);
 void si_add_arg_checked(struct ac_shader_args *args, enum ac_arg_regfile file, unsigned registers,
                         enum ac_arg_type type, struct ac_arg *arg, unsigned idx);
+void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader);
 unsigned si_get_max_workgroup_size(const struct si_shader *shader);
 bool si_need_ps_prolog(const union si_shader_part_key *key);
 void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,
                           bool separate_prolog);
 void si_get_ps_epilog_key(struct si_shader *shader, union si_shader_part_key *key);
 void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);
-void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader);
 
+/* gfx10_shader_ngg.c */
 bool gfx10_ngg_export_prim_early(struct si_shader *shader);
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx);
 void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef user_edgeflags[3],
@@ -229,6 +231,7 @@ void si_llvm_context_init(struct si_shader_context *ctx, struct si_screen *sscre
                           struct ac_llvm_compiler *compiler, unsigned wave_size);
 void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTypeRef *return_types,
                          unsigned num_return_elems, unsigned max_workgroup_size);
+void si_llvm_create_main_func(struct si_shader_context *ctx, bool ngg_cull_shader);
 void si_llvm_optimize_module(struct si_shader_context *ctx);
 void si_llvm_dispose(struct si_shader_context *ctx);
 LLVMValueRef si_buffer_load_const(struct si_shader_context *ctx, LLVMValueRef resource,
