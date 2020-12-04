@@ -599,7 +599,7 @@ standalone_compile_shader(const struct standalone_options *_options,
 fail:
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (whole_program->_LinkedShaders[i])
-         ralloc_free(whole_program->_LinkedShaders[i]->Program);
+         _mesa_delete_linked_shader(ctx, whole_program->_LinkedShaders[i]);
    }
 
    ralloc_free(whole_program);
@@ -611,12 +611,13 @@ standalone_compiler_cleanup(struct gl_shader_program *whole_program)
 {
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (whole_program->_LinkedShaders[i])
-         ralloc_free(whole_program->_LinkedShaders[i]->Program);
+         _mesa_delete_linked_shader(NULL, whole_program->_LinkedShaders[i]);
    }
 
    delete whole_program->AttributeBindings;
    delete whole_program->FragDataBindings;
    delete whole_program->FragDataIndexBindings;
+   delete whole_program->UniformHash;
 
    ralloc_free(whole_program);
    _mesa_glsl_builtin_functions_decref();
