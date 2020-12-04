@@ -432,7 +432,7 @@ bi_pack_fma_bitwise(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
+pan_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
 {
         if (!bundle.fma)
                 return pan_pack_fma_nop_i32(clause, NULL, regs);
@@ -698,7 +698,7 @@ bi_pack_add_ld_var(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_stage stage)
+pan_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_stage stage)
 {
         if (!bundle.add)
                 return pan_pack_add_nop_i32(clause, NULL, regs);
@@ -979,8 +979,8 @@ bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_b
         bi_flip_slots(&bundle.regs);
 
         uint64_t reg = bi_pack_registers(bundle.regs);
-        uint64_t fma = bi_pack_fma(clause, bundle, &bundle.regs);
-        uint64_t add = bi_pack_add(clause, bundle, &bundle.regs, stage);
+        uint64_t fma = pan_pack_fma(clause, bundle, &bundle.regs);
+        uint64_t add = pan_pack_add(clause, bundle, &bundle.regs, stage);
 
         struct bi_packed_bundle packed = {
                 .lo = reg | (fma << 35) | ((add & 0b111111) << 58),
