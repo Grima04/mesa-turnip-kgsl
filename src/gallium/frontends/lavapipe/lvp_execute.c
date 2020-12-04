@@ -2540,6 +2540,21 @@ static void handle_draw_indirect_byte_count(struct lvp_cmd_buffer_entry *cmd,
    state->pctx->draw_vbo(state->pctx, &state->info, &state->indirect_info, &state->draw, 1);
 }
 
+static void handle_begin_conditional_rendering(struct lvp_cmd_buffer_entry *cmd,
+                                               struct rendering_state *state)
+{
+   struct lvp_cmd_begin_conditional_rendering *bcr = &cmd->u.begin_conditional_rendering;
+   state->pctx->render_condition_mem(state->pctx,
+                                     bcr->buffer->bo,
+                                     bcr->buffer->offset + bcr->offset,
+                                     bcr->inverted);
+}
+
+static void handle_end_conditional_rendering(struct rendering_state *state)
+{
+   state->pctx->render_condition_mem(state->pctx, NULL, 0, false);
+}
+
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
@@ -2706,6 +2721,12 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
       case LVP_CMD_DRAW_INDIRECT_BYTE_COUNT:
          emit_state(state);
          handle_draw_indirect_byte_count(cmd, state);
+	 break;
+      case LVP_CMD_BEGIN_CONDITIONAL_RENDERING:
+         handle_begin_conditional_rendering(cmd, state);
+         break;
+      case LVP_CMD_END_CONDITIONAL_RENDERING:
+         handle_end_conditional_rendering(state);
          break;
       }
    }

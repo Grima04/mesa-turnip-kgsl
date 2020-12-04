@@ -110,7 +110,7 @@ EXTENSIONS = [
     Extension('VK_EXT_acquire_xlib_display',              1, 'VK_USE_PLATFORM_XLIB_XRANDR_EXT'),
     Extension('VK_EXT_buffer_device_address',             1, False),
     Extension('VK_EXT_calibrated_timestamps',             1, False),
-    Extension('VK_EXT_conditional_rendering',             1, False),
+    Extension('VK_EXT_conditional_rendering',             1, True),
     Extension('VK_EXT_conservative_rasterization',        1, False),
     Extension('VK_EXT_display_surface_counter',           1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_EXT_display_control',                   1, 'VK_USE_PLATFORM_DISPLAY_KHR'),

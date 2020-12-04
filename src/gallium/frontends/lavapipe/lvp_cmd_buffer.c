@@ -1797,6 +1797,32 @@ void lvp_CmdDispatchBase(
    cmd->u.dispatch.base_x = base_x;
    cmd->u.dispatch.base_y = base_y;
    cmd->u.dispatch.base_z = base_z;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
 
+void lvp_CmdBeginConditionalRenderingEXT(
+   VkCommandBuffer commandBuffer,
+   const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_BEGIN_CONDITIONAL_RENDERING);
+   if (!cmd)
+      return;
+
+   cmd->u.begin_conditional_rendering.buffer = lvp_buffer_from_handle(pConditionalRenderingBegin->buffer);
+   cmd->u.begin_conditional_rendering.offset = pConditionalRenderingBegin->offset;
+   cmd->u.begin_conditional_rendering.inverted = pConditionalRenderingBegin->flags & VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+void lvp_CmdEndConditionalRenderingEXT(
+   VkCommandBuffer commandBuffer)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_END_CONDITIONAL_RENDERING);
+   if (!cmd)
+      return;
    cmd_buf_queue(cmd_buffer, cmd);
 }

@@ -664,6 +664,8 @@ enum lvp_cmds {
    LVP_CMD_BEGIN_TRANSFORM_FEEDBACK,
    LVP_CMD_END_TRANSFORM_FEEDBACK,
    LVP_CMD_DRAW_INDIRECT_BYTE_COUNT,
+   LVP_CMD_BEGIN_CONDITIONAL_RENDERING,
+   LVP_CMD_END_CONDITIONAL_RENDERING,
 };
 
 struct lvp_cmd_bind_pipeline {
@@ -987,6 +989,12 @@ struct lvp_cmd_draw_indirect_byte_count {
    uint32_t vertex_stride;
 };
 
+struct lvp_cmd_begin_conditional_rendering {
+   struct lvp_buffer *buffer;
+   VkDeviceSize offset;
+   bool inverted;
+};
+
 struct lvp_cmd_buffer_entry {
    struct list_head cmd_link;
    uint32_t cmd_type;
@@ -1033,6 +1041,7 @@ struct lvp_cmd_buffer_entry {
       struct lvp_cmd_begin_transform_feedback begin_transform_feedback;
       struct lvp_cmd_end_transform_feedback end_transform_feedback;
       struct lvp_cmd_draw_indirect_byte_count draw_indirect_byte_count;
+      struct lvp_cmd_begin_conditional_rendering begin_conditional_rendering;
    } u;
 };
 
