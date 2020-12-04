@@ -253,6 +253,7 @@ struct fd_context {
 
 	/* shaders used by clear, and gmem->mem blits: */
 	struct fd_program_stateobj solid_prog; // TODO move to screen?
+	struct fd_program_stateobj solid_layered_prog;
 
 	/* shaders used by mem->gmem blits: */
 	struct fd_program_stateobj blit_prog[MAX_RENDER_TARGETS]; // TODO move to screen?

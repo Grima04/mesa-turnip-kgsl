@@ -222,7 +222,12 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 	pctx->set_vertex_buffers(pctx, blitter->vb_slot, 1,
 			&ctx->solid_vbuf_state.vertexbuf.vb[0]);
 	pctx->set_stream_output_targets(pctx, 0, NULL, NULL);
-	pctx->bind_vs_state(pctx, ctx->solid_prog.vs);
+
+	if (pfb->layers > 1)
+		pctx->bind_vs_state(pctx, ctx->solid_layered_prog.vs);
+	else
+		pctx->bind_vs_state(pctx, ctx->solid_prog.vs);
+
 	pctx->bind_fs_state(pctx, ctx->solid_prog.fs);
 
 	/* Clear geom/tess shaders, lest the draw emit code think we are
@@ -235,7 +240,7 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 	struct pipe_draw_info info = {
 		.mode = PIPE_PRIM_MAX,    /* maps to DI_PT_RECTLIST */
 		.max_index = 1,
-		.instance_count = 1,
+		.instance_count = MAX2(1, pfb->layers),
 	};
         struct pipe_draw_start_count draw = {
                 .count = 2,
