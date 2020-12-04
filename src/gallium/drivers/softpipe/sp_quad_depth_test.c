@@ -542,7 +542,7 @@ depth_test_quad(struct quad_stage *qs,
    unsigned zmask = 0;
    unsigned j;
 
-   switch (softpipe->depth_stencil->depth.func) {
+   switch (softpipe->depth_stencil->depth_func) {
    case PIPE_FUNC_NEVER:
       /* zmask = 0 */
       break;
@@ -600,7 +600,7 @@ depth_test_quad(struct quad_stage *qs,
     * depth.writemask is FALSE, may still need to write out buffer
     * data due to stencil changes.
     */
-   if (softpipe->depth_stencil->depth.writemask) {
+   if (softpipe->depth_stencil->depth_writemask) {
       for (j = 0; j < TGSI_QUAD_SIZE; j++) {
          if (quad->inout.mask & (1 << j)) {
             data->bzzzz[j] = data->qzzzz[j];
@@ -659,7 +659,7 @@ depth_stencil_test_quad(struct quad_stage *qs,
 
    if (quad->inout.mask) {
       /* now the pixels that passed the stencil test are depth tested */
-      if (softpipe->depth_stencil->depth.enabled) {
+      if (softpipe->depth_stencil->depth_enabled) {
          const unsigned origMask = quad->inout.mask;
 
          depth_test_quad(qs, data, quad);  /* quad->mask is updated */
@@ -794,7 +794,7 @@ depth_test_quads_fallback(struct quad_stage *qs,
    }
 
    if (qs->softpipe->framebuffer.zsbuf &&
-         (qs->softpipe->depth_stencil->depth.enabled ||
+         (qs->softpipe->depth_stencil->depth_enabled ||
           qs->softpipe->depth_stencil->stencil[0].enabled)) {
       float near_val, far_val;
 
@@ -813,7 +813,7 @@ depth_test_quads_fallback(struct quad_stage *qs,
       for (i = 0; i < nr; i++) {
          get_depth_stencil_values(&data, quads[i]);
 
-         if (qs->softpipe->depth_stencil->depth.enabled) {
+         if (qs->softpipe->depth_stencil->depth_enabled) {
             if (interp_depth)
                interpolate_quad_depth(quads[i]);
 
@@ -831,7 +831,7 @@ depth_test_quads_fallback(struct quad_stage *qs,
             if (!depth_test_quad(qs, &data, quads[i]))
                continue;
 
-            if (qs->softpipe->depth_stencil->depth.writemask)
+            if (qs->softpipe->depth_stencil->depth_writemask)
                write_depth_stencil_values(&data, quads[i]);
          }
 
@@ -906,13 +906,13 @@ choose_depth_test(struct quad_stage *qs,
 
    boolean alpha = qs->softpipe->depth_stencil->alpha_enabled;
 
-   boolean depth = qs->softpipe->depth_stencil->depth.enabled;
+   boolean depth = qs->softpipe->depth_stencil->depth_enabled;
 
-   unsigned depthfunc = qs->softpipe->depth_stencil->depth.func;
+   unsigned depthfunc = qs->softpipe->depth_stencil->depth_func;
 
    boolean stencil = qs->softpipe->depth_stencil->stencil[0].enabled;
 
-   boolean depthwrite = qs->softpipe->depth_stencil->depth.writemask;
+   boolean depthwrite = qs->softpipe->depth_stencil->depth_writemask;
 
    boolean occlusion = qs->softpipe->active_query_count;
 

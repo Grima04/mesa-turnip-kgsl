@@ -578,10 +578,11 @@ lima_stencil_op(enum pipe_stencil_op pipe)
 }
 
 static unsigned
-lima_calculate_depth_test(struct pipe_depth_state *depth, struct pipe_rasterizer_state *rst)
+lima_calculate_depth_test(struct pipe_depth_stencil_alpha_state *depth,
+                          struct pipe_rasterizer_state *rst)
 {
    int offset_scale = 0, offset_units = 0;
-   enum pipe_compare_func func = (depth->enabled ? depth->func : PIPE_FUNC_ALWAYS);
+   enum pipe_compare_func func = (depth->depth_enabled ? depth->depth_func : PIPE_FUNC_ALWAYS);
 
    offset_scale = CLAMP(rst->offset_scale * 4, -128, 127);
    if (offset_scale < 0)
@@ -591,7 +592,7 @@ lima_calculate_depth_test(struct pipe_depth_state *depth, struct pipe_rasterizer
    if (offset_units < 0)
       offset_units += 0x100;
 
-   return (depth->enabled && depth->writemask) |
+   return (depth->depth_enabled && depth->depth_writemask) |
       ((int)func << 1) |
       (offset_scale << 16) |
       (offset_units << 24) |
@@ -639,8 +640,7 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    render->alpha_blend |= (rt->colormask & PIPE_MASK_RGBA) << 28;
 
    struct pipe_rasterizer_state *rst = &ctx->rasterizer->base;
-   struct pipe_depth_state *depth = &ctx->zsa->base.depth;
-   render->depth_test = lima_calculate_depth_test(depth, rst);
+   render->depth_test = lima_calculate_depth_test(&ctx->zsa->base, rst);
 
    ushort far, near;
 
@@ -1010,7 +1010,7 @@ lima_draw_vbo_update(struct pipe_context *pctx,
    unsigned buffers = 0;
 
    if (fb->base.zsbuf) {
-      if (ctx->zsa->base.depth.enabled)
+      if (ctx->zsa->base.depth_enabled)
          buffers |= PIPE_CLEAR_DEPTH;
       if (ctx->zsa->base.stencil[0].enabled ||
           ctx->zsa->base.stencil[1].enabled)

@@ -415,11 +415,11 @@ static void *r600_create_dsa_state(struct pipe_context *ctx,
 	dsa->valuemask[1] = state->stencil[1].valuemask;
 	dsa->writemask[0] = state->stencil[0].writemask;
 	dsa->writemask[1] = state->stencil[1].writemask;
-	dsa->zwritemask = state->depth.writemask;
+	dsa->zwritemask = state->depth_writemask;
 
-	db_depth_control = S_028800_Z_ENABLE(state->depth.enabled) |
-		S_028800_Z_WRITE_ENABLE(state->depth.writemask) |
-		S_028800_ZFUNC(state->depth.func);
+	db_depth_control = S_028800_Z_ENABLE(state->depth_enabled) |
+		S_028800_Z_WRITE_ENABLE(state->depth_writemask) |
+		S_028800_ZFUNC(state->depth_func);
 
 	/* stencil */
 	if (state->stencil[0].enabled) {
@@ -2776,8 +2776,8 @@ void *r600_create_db_flush_dsa(struct r600_context *rctx)
 	memset(&dsa, 0, sizeof(dsa));
 
 	if (quirk) {
-		dsa.depth.enabled = 1;
-		dsa.depth.func = PIPE_FUNC_LEQUAL;
+		dsa.depth_enabled = 1;
+		dsa.depth_func = PIPE_FUNC_LEQUAL;
 		dsa.stencil[0].enabled = 1;
 		dsa.stencil[0].func = PIPE_FUNC_ALWAYS;
 		dsa.stencil[0].zpass_op = PIPE_STENCIL_OP_KEEP;

@@ -103,20 +103,20 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 	so->base = *cso;
 
 	so->rb_depth_cntl |=
-		A6XX_RB_DEPTH_CNTL_ZFUNC(cso->depth.func); /* maps 1:1 */
+		A6XX_RB_DEPTH_CNTL_ZFUNC(cso->depth_func); /* maps 1:1 */
 
-	if (cso->depth.enabled) {
+	if (cso->depth_enabled) {
 		so->rb_depth_cntl |=
 			A6XX_RB_DEPTH_CNTL_Z_ENABLE |
 			A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
 
 		so->lrz.test = true;
 
-		if (cso->depth.writemask) {
+		if (cso->depth_writemask) {
 			so->lrz.write = true;
 		}
 
-		switch (cso->depth.func) {
+		switch (cso->depth_func) {
 		case PIPE_FUNC_LESS:
 		case PIPE_FUNC_LEQUAL:
 			so->lrz.enable = true;
@@ -145,7 +145,7 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 		}
 	}
 
-	if (cso->depth.writemask)
+	if (cso->depth_writemask)
 		so->rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
 
 	if (cso->stencil[0].enabled) {

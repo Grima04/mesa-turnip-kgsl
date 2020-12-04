@@ -242,9 +242,9 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    ctx->dsa_keep_depth_stencil =
       pipe->create_depth_stencil_alpha_state(pipe, &dsa);
 
-   dsa.depth.enabled = 1;
-   dsa.depth.writemask = 1;
-   dsa.depth.func = PIPE_FUNC_ALWAYS;
+   dsa.depth_enabled = 1;
+   dsa.depth_writemask = 1;
+   dsa.depth_func = PIPE_FUNC_ALWAYS;
    ctx->dsa_write_depth_keep_stencil =
       pipe->create_depth_stencil_alpha_state(pipe, &dsa);
 
@@ -258,8 +258,8 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    ctx->dsa_write_depth_stencil =
       pipe->create_depth_stencil_alpha_state(pipe, &dsa);
 
-   dsa.depth.enabled = 0;
-   dsa.depth.writemask = 0;
+   dsa.depth_enabled = 0;
+   dsa.depth_writemask = 0;
    ctx->dsa_keep_depth_write_stencil =
       pipe->create_depth_stencil_alpha_state(pipe, &dsa);
 
@@ -2802,7 +2802,7 @@ get_stencil_blit_fallback_dsa(struct blitter_context_priv *ctx, unsigned i)
    assert(i < ARRAY_SIZE(ctx->dsa_replicate_stencil_bit));
    if (!ctx->dsa_replicate_stencil_bit[i]) {
       struct pipe_depth_stencil_alpha_state dsa = { 0 };
-      dsa.depth.func = PIPE_FUNC_ALWAYS;
+      dsa.depth_func = PIPE_FUNC_ALWAYS;
       dsa.stencil[0].enabled = 1;
       dsa.stencil[0].func = PIPE_FUNC_ALWAYS;
       dsa.stencil[0].fail_op = PIPE_STENCIL_OP_REPLACE;

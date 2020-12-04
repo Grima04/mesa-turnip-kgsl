@@ -367,18 +367,18 @@ nvc0_zsa_state_create(struct pipe_context *pipe,
 
    so->pipe = *cso;
 
-   SB_IMMED_3D(so, DEPTH_TEST_ENABLE, cso->depth.enabled);
-   if (cso->depth.enabled) {
-      SB_IMMED_3D(so, DEPTH_WRITE_ENABLE, cso->depth.writemask);
+   SB_IMMED_3D(so, DEPTH_TEST_ENABLE, cso->depth_enabled);
+   if (cso->depth_enabled) {
+      SB_IMMED_3D(so, DEPTH_WRITE_ENABLE, cso->depth_writemask);
       SB_BEGIN_3D(so, DEPTH_TEST_FUNC, 1);
-      SB_DATA    (so, nvgl_comparison_op(cso->depth.func));
+      SB_DATA    (so, nvgl_comparison_op(cso->depth_func));
    }
 
-   SB_IMMED_3D(so, DEPTH_BOUNDS_EN, cso->depth.bounds_test);
-   if (cso->depth.bounds_test) {
+   SB_IMMED_3D(so, DEPTH_BOUNDS_EN, cso->depth_bounds_test);
+   if (cso->depth_bounds_test) {
       SB_BEGIN_3D(so, DEPTH_BOUNDS(0), 2);
-      SB_DATA    (so, fui(cso->depth.bounds_min));
-      SB_DATA    (so, fui(cso->depth.bounds_max));
+      SB_DATA    (so, fui(cso->depth_bounds_min));
+      SB_DATA    (so, fui(cso->depth_bounds_max));
    }
 
    if (cso->stencil[0].enabled) {

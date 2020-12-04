@@ -514,13 +514,13 @@ v3dX(emit_state)(struct pipe_context *pctx)
                          */
                         config.early_z_updates_enable =
                                 (job->ez_state != VC5_EZ_DISABLED);
-                        if (v3d->zsa->base.depth.enabled) {
+                        if (v3d->zsa->base.depth_enabled) {
                                 config.z_updates_enable =
-                                        v3d->zsa->base.depth.writemask;
+                                        v3d->zsa->base.depth_writemask;
                                 config.early_z_enable =
                                         config.early_z_updates_enable;
                                 config.depth_test_function =
-                                        v3d->zsa->base.depth.func;
+                                        v3d->zsa->base.depth_func;
                         } else {
                                 config.depth_test_function = PIPE_FUNC_ALWAYS;
                         }

@@ -229,7 +229,7 @@ void llvmpipe_update_derived( struct llvmpipe_context *llvmpipe )
          (llvmpipe->sample_mask) == 0 ||
          (llvmpipe->rasterizer ? llvmpipe->rasterizer->rasterizer_discard : FALSE) ||
          (null_fs &&
-          !llvmpipe->depth_stencil->depth.enabled &&
+          !llvmpipe->depth_stencil->depth_enabled &&
           !llvmpipe->depth_stencil->stencil[0].enabled);
       lp_setup_set_rasterizer_discard(llvmpipe->setup, discard);
    }

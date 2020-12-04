@@ -220,19 +220,19 @@ vc4_create_depth_stencil_alpha_state(struct pipe_context *pctx,
          */
         so->config_bits[2] |= VC4_CONFIG_BITS_EARLY_Z_UPDATE;
 
-        if (cso->depth.enabled) {
-                if (cso->depth.writemask) {
+        if (cso->depth_enabled) {
+                if (cso->depth_writemask) {
                         so->config_bits[1] |= VC4_CONFIG_BITS_Z_UPDATE;
                 }
-                so->config_bits[1] |= (cso->depth.func <<
+                so->config_bits[1] |= (cso->depth_func <<
                                        VC4_CONFIG_BITS_DEPTH_FUNC_SHIFT);
 
                 /* We only handle early Z in the < direction because otherwise
                  * we'd have to runtime guess which direction to set in the
                  * render config.
                  */
-                if ((cso->depth.func == PIPE_FUNC_LESS ||
-                     cso->depth.func == PIPE_FUNC_LEQUAL) &&
+                if ((cso->depth_func == PIPE_FUNC_LESS ||
+                     cso->depth_func == PIPE_FUNC_LEQUAL) &&
                     (!cso->stencil[0].enabled ||
                      (cso->stencil[0].zfail_op == PIPE_STENCIL_OP_KEEP &&
                       (!cso->stencil[1].enabled ||

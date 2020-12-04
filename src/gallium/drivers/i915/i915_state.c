@@ -525,13 +525,13 @@ i915_create_depth_stencil_state(struct pipe_context *pipe,
       cso->bfo[1] = 0;
    }
 
-   if (depth_stencil->depth.enabled) {
-      int func = i915_translate_compare_func(depth_stencil->depth.func);
+   if (depth_stencil->depth_enabled) {
+      int func = i915_translate_compare_func(depth_stencil->depth_func);
 
       cso->depth_LIS6 |= (S6_DEPTH_TEST_ENABLE |
                           (func << S6_DEPTH_TEST_FUNC_SHIFT));
 
-      if (depth_stencil->depth.writemask)
+      if (depth_stencil->depth_writemask)
          cso->depth_LIS6 |= S6_DEPTH_WRITE_ENABLE;
    }
 

@@ -410,9 +410,9 @@ d3d12_create_depth_stencil_alpha_state(struct pipe_context *pctx,
    if (!dsa)
       return NULL;
 
-   if (depth_stencil_alpha->depth.enabled) {
+   if (depth_stencil_alpha->depth_enabled) {
       dsa->desc.DepthEnable = TRUE;
-      dsa->desc.DepthFunc = compare_op((pipe_compare_func) depth_stencil_alpha->depth.func);
+      dsa->desc.DepthFunc = compare_op((pipe_compare_func) depth_stencil_alpha->depth_func);
    }
 
    /* TODO Add support for GL_depth_bound_tests */
@@ -436,7 +436,7 @@ d3d12_create_depth_stencil_alpha_state(struct pipe_context *pctx,
 
    dsa->desc.StencilReadMask = depth_stencil_alpha->stencil[0].valuemask; /* FIXME Back face mask */
    dsa->desc.StencilWriteMask = depth_stencil_alpha->stencil[0].writemask; /* FIXME Back face mask */
-   dsa->desc.DepthWriteMask = (D3D12_DEPTH_WRITE_MASK) depth_stencil_alpha->depth.writemask;
+   dsa->desc.DepthWriteMask = (D3D12_DEPTH_WRITE_MASK) depth_stencil_alpha->depth_writemask;
 
    return dsa;
 }

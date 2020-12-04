@@ -366,22 +366,22 @@ nv50_zsa_state_create(struct pipe_context *pipe,
    so->pipe = *cso;
 
    SB_BEGIN_3D(so, DEPTH_WRITE_ENABLE, 1);
-   SB_DATA    (so, cso->depth.writemask);
+   SB_DATA    (so, cso->depth_writemask);
    SB_BEGIN_3D(so, DEPTH_TEST_ENABLE, 1);
-   if (cso->depth.enabled) {
+   if (cso->depth_enabled) {
       SB_DATA    (so, 1);
       SB_BEGIN_3D(so, DEPTH_TEST_FUNC, 1);
-      SB_DATA    (so, nvgl_comparison_op(cso->depth.func));
+      SB_DATA    (so, nvgl_comparison_op(cso->depth_func));
    } else {
       SB_DATA    (so, 0);
    }
 
    SB_BEGIN_3D(so, DEPTH_BOUNDS_EN, 1);
-   if (cso->depth.bounds_test) {
+   if (cso->depth_bounds_test) {
       SB_DATA    (so, 1);
       SB_BEGIN_3D(so, DEPTH_BOUNDS(0), 2);
-      SB_DATA    (so, fui(cso->depth.bounds_min));
-      SB_DATA    (so, fui(cso->depth.bounds_max));
+      SB_DATA    (so, fui(cso->depth_bounds_min));
+      SB_DATA    (so, fui(cso->depth_bounds_max));
    } else {
       SB_DATA    (so, 0);
    }

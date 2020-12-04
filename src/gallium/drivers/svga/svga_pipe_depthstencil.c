@@ -188,10 +188,10 @@ svga_create_depth_stencil_state(struct pipe_context *pipe,
    }
 
 
-   ds->zenable = templ->depth.enabled;
+   ds->zenable = templ->depth_enabled;
    if (ds->zenable) {
-      ds->zfunc = svga_translate_compare_func(templ->depth.func);
-      ds->zwriteenable = templ->depth.writemask;
+      ds->zfunc = svga_translate_compare_func(templ->depth_func);
+      ds->zwriteenable = templ->depth_writemask;
    }
    else {
       ds->zfunc = SVGA3D_CMP_ALWAYS;

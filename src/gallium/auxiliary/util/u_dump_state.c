@@ -521,15 +521,11 @@ util_dump_depth_stencil_alpha_state(FILE *stream, const struct pipe_depth_stenci
 
    util_dump_struct_begin(stream, "pipe_depth_stencil_alpha_state");
 
-   util_dump_member_begin(stream, "depth");
-   util_dump_struct_begin(stream, "pipe_depth_state");
-   util_dump_member(stream, bool, &state->depth, enabled);
-   if (state->depth.enabled) {
-      util_dump_member(stream, bool, &state->depth, writemask);
-      util_dump_member(stream, enum_func, &state->depth, func);
+   util_dump_member(stream, bool, state, depth_enabled);
+   if (state->depth_enabled) {
+      util_dump_member(stream, bool, state, depth_writemask);
+      util_dump_member(stream, enum_func, state, depth_func);
    }
-   util_dump_struct_end(stream);
-   util_dump_member_end(stream);
 
    util_dump_member_begin(stream, "stencil");
    util_dump_array_begin(stream);

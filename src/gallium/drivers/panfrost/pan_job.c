@@ -1195,7 +1195,7 @@ panfrost_batch_set_requirements(struct panfrost_batch *batch)
         if (ctx->rasterizer->base.multisample)
                 batch->requirements |= PAN_REQ_MSAA;
 
-        if (ctx->depth_stencil && ctx->depth_stencil->base.depth.writemask) {
+        if (ctx->depth_stencil && ctx->depth_stencil->base.depth_writemask) {
                 batch->requirements |= PAN_REQ_DEPTH_WRITE;
                 batch->draws |= PIPE_CLEAR_DEPTH;
         }

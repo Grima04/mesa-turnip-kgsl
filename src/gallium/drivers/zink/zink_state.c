@@ -336,15 +336,15 @@ zink_create_depth_stencil_alpha_state(struct pipe_context *pctx,
 
    cso->base = *depth_stencil_alpha;
 
-   if (depth_stencil_alpha->depth.enabled) {
+   if (depth_stencil_alpha->depth_enabled) {
       cso->hw_state.depth_test = VK_TRUE;
-      cso->hw_state.depth_compare_op = compare_op(depth_stencil_alpha->depth.func);
+      cso->hw_state.depth_compare_op = compare_op(depth_stencil_alpha->depth_func);
    }
 
-   if (depth_stencil_alpha->depth.bounds_test) {
+   if (depth_stencil_alpha->depth_bounds_test) {
       cso->hw_state.depth_bounds_test = VK_TRUE;
-      cso->hw_state.min_depth_bounds = depth_stencil_alpha->depth.bounds_min;
-      cso->hw_state.max_depth_bounds = depth_stencil_alpha->depth.bounds_max;
+      cso->hw_state.min_depth_bounds = depth_stencil_alpha->depth_bounds_min;
+      cso->hw_state.max_depth_bounds = depth_stencil_alpha->depth_bounds_max;
    }
 
    if (depth_stencil_alpha->stencil[0].enabled) {
@@ -357,7 +357,7 @@ zink_create_depth_stencil_alpha_state(struct pipe_context *pctx,
    else
       cso->hw_state.stencil_back = cso->hw_state.stencil_front;
 
-   cso->hw_state.depth_write = depth_stencil_alpha->depth.writemask;
+   cso->hw_state.depth_write = depth_stencil_alpha->depth_writemask;
 
    return cso;
 }

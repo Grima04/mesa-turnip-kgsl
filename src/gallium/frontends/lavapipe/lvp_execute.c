@@ -479,14 +479,14 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
    if (pipeline->graphics_create_info.pDepthStencilState) {
       const VkPipelineDepthStencilStateCreateInfo *dsa = pipeline->graphics_create_info.pDepthStencilState;
 
-      state->dsa_state.depth.enabled = dsa->depthTestEnable;
-      state->dsa_state.depth.writemask = dsa->depthWriteEnable;
-      state->dsa_state.depth.func = dsa->depthCompareOp;
-      state->dsa_state.depth.bounds_test = dsa->depthBoundsTestEnable;
+      state->dsa_state.depth_enabled = dsa->depthTestEnable;
+      state->dsa_state.depth_writemask = dsa->depthWriteEnable;
+      state->dsa_state.depth_func = dsa->depthCompareOp;
+      state->dsa_state.depth_bounds_test = dsa->depthBoundsTestEnable;
 
       if (!dynamic_states[VK_DYNAMIC_STATE_DEPTH_BOUNDS]) {
-         state->dsa_state.depth.bounds_min = dsa->minDepthBounds;
-         state->dsa_state.depth.bounds_max = dsa->maxDepthBounds;
+         state->dsa_state.depth_bounds_min = dsa->minDepthBounds;
+         state->dsa_state.depth_bounds_max = dsa->maxDepthBounds;
       }
 
       state->dsa_state.stencil[0].enabled = dsa->stencilTestEnable;
@@ -1402,8 +1402,8 @@ static void handle_set_blend_constants(struct lvp_cmd_buffer_entry *cmd,
 static void handle_set_depth_bounds(struct lvp_cmd_buffer_entry *cmd,
                                     struct rendering_state *state)
 {
-   state->dsa_state.depth.bounds_min = cmd->u.set_depth_bounds.min_depth;
-   state->dsa_state.depth.bounds_max = cmd->u.set_depth_bounds.max_depth;
+   state->dsa_state.depth_bounds_min = cmd->u.set_depth_bounds.min_depth;
+   state->dsa_state.depth_bounds_max = cmd->u.set_depth_bounds.max_depth;
    state->dsa_dirty = true;
 }
 

@@ -484,7 +484,7 @@ vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                 struct vc4_resource *rsc =
                         vc4_resource(vc4->framebuffer.zsbuf->texture);
 
-                if (vc4->zsa->base.depth.enabled) {
+                if (vc4->zsa->base.depth_enabled) {
                         job->resolve |= PIPE_CLEAR_DEPTH;
                         rsc->initialized_buffers = PIPE_CLEAR_DEPTH;
                 }

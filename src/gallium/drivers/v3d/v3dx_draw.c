@@ -1399,12 +1399,12 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
         for (int i = 0; i < v3d->streamout.num_targets; i++)
                 v3d->streamout.offsets[i] += draws[0].count;
 
-        if (v3d->zsa && job->zsbuf && v3d->zsa->base.depth.enabled) {
+        if (v3d->zsa && job->zsbuf && v3d->zsa->base.depth_enabled) {
                 struct v3d_resource *rsc = v3d_resource(job->zsbuf->texture);
                 v3d_job_add_bo(job, rsc->bo);
 
                 job->load |= PIPE_CLEAR_DEPTH & ~job->clear;
-                if (v3d->zsa->base.depth.writemask)
+                if (v3d->zsa->base.depth_writemask)
                         job->store |= PIPE_CLEAR_DEPTH;
                 rsc->initialized_buffers = PIPE_CLEAR_DEPTH;
         }

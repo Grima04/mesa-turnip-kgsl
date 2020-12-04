@@ -1147,8 +1147,8 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    dsa->stencil_ref.writemask[1] = state->stencil[1].writemask;
 
    db_depth_control =
-      S_028800_Z_ENABLE(state->depth.enabled) | S_028800_Z_WRITE_ENABLE(state->depth.writemask) |
-      S_028800_ZFUNC(state->depth.func) | S_028800_DEPTH_BOUNDS_ENABLE(state->depth.bounds_test);
+      S_028800_Z_ENABLE(state->depth_enabled) | S_028800_Z_WRITE_ENABLE(state->depth_writemask) |
+      S_028800_ZFUNC(state->depth_func) | S_028800_DEPTH_BOUNDS_ENABLE(state->depth_bounds_test);
 
    /* stencil */
    if (state->stencil[0].enabled) {
@@ -1186,13 +1186,13 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    si_pm4_set_reg(pm4, R_028800_DB_DEPTH_CONTROL, db_depth_control);
    if (state->stencil[0].enabled)
       si_pm4_set_reg(pm4, R_02842C_DB_STENCIL_CONTROL, db_stencil_control);
-   if (state->depth.bounds_test) {
-      si_pm4_set_reg(pm4, R_028020_DB_DEPTH_BOUNDS_MIN, fui(state->depth.bounds_min));
-      si_pm4_set_reg(pm4, R_028024_DB_DEPTH_BOUNDS_MAX, fui(state->depth.bounds_max));
+   if (state->depth_bounds_test) {
+      si_pm4_set_reg(pm4, R_028020_DB_DEPTH_BOUNDS_MIN, fui(state->depth_bounds_min));
+      si_pm4_set_reg(pm4, R_028024_DB_DEPTH_BOUNDS_MAX, fui(state->depth_bounds_max));
    }
 
-   dsa->depth_enabled = state->depth.enabled;
-   dsa->depth_write_enabled = state->depth.enabled && state->depth.writemask;
+   dsa->depth_enabled = state->depth_enabled;
+   dsa->depth_write_enabled = state->depth_enabled && state->depth_writemask;
    dsa->stencil_enabled = state->stencil[0].enabled;
    dsa->stencil_write_enabled =
       state->stencil[0].enabled &&
@@ -1200,9 +1200,9 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    dsa->db_can_write = dsa->depth_write_enabled || dsa->stencil_write_enabled;
 
    bool zfunc_is_ordered =
-      state->depth.func == PIPE_FUNC_NEVER || state->depth.func == PIPE_FUNC_LESS ||
-      state->depth.func == PIPE_FUNC_LEQUAL || state->depth.func == PIPE_FUNC_GREATER ||
-      state->depth.func == PIPE_FUNC_GEQUAL;
+      state->depth_func == PIPE_FUNC_NEVER || state->depth_func == PIPE_FUNC_LESS ||
+      state->depth_func == PIPE_FUNC_LEQUAL || state->depth_func == PIPE_FUNC_GREATER ||
+      state->depth_func == PIPE_FUNC_GEQUAL;
 
    bool nozwrite_and_order_invariant_stencil =
       !dsa->db_can_write ||
@@ -1216,10 +1216,10 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    dsa->order_invariance[1].pass_set =
       nozwrite_and_order_invariant_stencil ||
       (!dsa->stencil_write_enabled &&
-       (state->depth.func == PIPE_FUNC_ALWAYS || state->depth.func == PIPE_FUNC_NEVER));
+       (state->depth_func == PIPE_FUNC_ALWAYS || state->depth_func == PIPE_FUNC_NEVER));
    dsa->order_invariance[0].pass_set =
       !dsa->depth_write_enabled ||
-      (state->depth.func == PIPE_FUNC_ALWAYS || state->depth.func == PIPE_FUNC_NEVER);
+      (state->depth_func == PIPE_FUNC_ALWAYS || state->depth_func == PIPE_FUNC_NEVER);
 
    dsa->order_invariance[1].pass_last = sctx->screen->assume_no_z_fights &&
                                         !dsa->stencil_write_enabled && dsa->depth_write_enabled &&

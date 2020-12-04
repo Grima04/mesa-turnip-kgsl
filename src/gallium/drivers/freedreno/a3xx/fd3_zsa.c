@@ -46,14 +46,14 @@ fd3_zsa_state_create(struct pipe_context *pctx,
 	so->base = *cso;
 
 	so->rb_depth_control |=
-			A3XX_RB_DEPTH_CONTROL_ZFUNC(cso->depth.func); /* maps 1:1 */
+			A3XX_RB_DEPTH_CONTROL_ZFUNC(cso->depth_func); /* maps 1:1 */
 
-	if (cso->depth.enabled)
+	if (cso->depth_enabled)
 		so->rb_depth_control |=
 			A3XX_RB_DEPTH_CONTROL_Z_ENABLE |
 			A3XX_RB_DEPTH_CONTROL_Z_TEST_ENABLE;
 
-	if (cso->depth.writemask)
+	if (cso->depth_writemask)
 		so->rb_depth_control |= A3XX_RB_DEPTH_CONTROL_Z_WRITE_ENABLE;
 
 	if (cso->stencil[0].enabled) {

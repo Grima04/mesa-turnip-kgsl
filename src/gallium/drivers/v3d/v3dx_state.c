@@ -175,8 +175,8 @@ v3d_create_depth_stencil_alpha_state(struct pipe_context *pctx,
 
         so->base = *cso;
 
-        if (cso->depth.enabled) {
-                switch (cso->depth.func) {
+        if (cso->depth_enabled) {
+                switch (cso->depth_func) {
                 case PIPE_FUNC_LESS:
                 case PIPE_FUNC_LEQUAL:
                         so->ez_state = VC5_EZ_LT_LE;

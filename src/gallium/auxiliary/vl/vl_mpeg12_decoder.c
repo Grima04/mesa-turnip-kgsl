@@ -862,9 +862,9 @@ init_pipe_state(struct vl_mpeg12_decoder *dec)
    assert(dec);
 
    memset(&dsa, 0, sizeof dsa);
-   dsa.depth.enabled = 0;
-   dsa.depth.writemask = 0;
-   dsa.depth.func = PIPE_FUNC_ALWAYS;
+   dsa.depth_enabled = 0;
+   dsa.depth_writemask = 0;
+   dsa.depth_func = PIPE_FUNC_ALWAYS;
    for (i = 0; i < 2; ++i) {
       dsa.stencil[i].enabled = 0;
       dsa.stencil[i].func = PIPE_FUNC_ALWAYS;

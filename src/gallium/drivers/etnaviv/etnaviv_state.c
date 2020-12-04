@@ -710,7 +710,7 @@ etna_update_zsa(struct etna_context *ctx)
 
    new_pe_depth = VIVS_PE_DEPTH_CONFIG_DEPTH_FUNC(zsa->z_test_enabled ?
                      /* compare funcs have 1 to 1 mapping */
-                     zsa_state->depth.func : PIPE_FUNC_ALWAYS) |
+                     zsa_state->depth_func : PIPE_FUNC_ALWAYS) |
                   COND(zsa->z_write_enabled, VIVS_PE_DEPTH_CONFIG_WRITE_ENABLE) |
                   COND(early_z_test, VIVS_PE_DEPTH_CONFIG_EARLY_Z) |
                   COND(!late_z_write && !late_z_test && !zsa->stencil_enabled,

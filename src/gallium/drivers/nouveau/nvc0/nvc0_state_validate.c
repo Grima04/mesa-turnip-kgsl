@@ -733,7 +733,7 @@ nvc0_validate_fp_zsa_rast(struct nvc0_context *nvc0)
       rasterizer_discard = true;
    } else {
       bool zs = nvc0->zsa &&
-         (nvc0->zsa->pipe.depth.enabled || nvc0->zsa->pipe.stencil[0].enabled);
+         (nvc0->zsa->pipe.depth_enabled || nvc0->zsa->pipe.stencil[0].enabled);
       rasterizer_discard = !zs &&
          (!nvc0->fragprog || !nvc0->fragprog->hdr[18]);
    }

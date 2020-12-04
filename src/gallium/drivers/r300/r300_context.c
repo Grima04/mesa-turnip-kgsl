@@ -477,7 +477,7 @@ struct pipe_context* r300_create_context(struct pipe_screen* screen,
     {
         struct pipe_depth_stencil_alpha_state dsa;
         memset(&dsa, 0, sizeof(dsa));
-        dsa.depth.writemask = 1;
+        dsa.depth_writemask = 1;
 
         r300->dsa_decompress_zmask =
             r300->context.create_depth_stencil_alpha_state(&r300->context,

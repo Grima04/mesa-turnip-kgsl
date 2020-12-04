@@ -589,11 +589,11 @@ compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid)
 	if (fs->shader->nir->info.fs.early_fragment_tests)
 		return A6XX_EARLY_Z;
 
-	if (fs->no_earlyz || fs->writes_pos || !zsa->base.depth.enabled ||
+	if (fs->no_earlyz || fs->writes_pos || !zsa->base.depth_enabled ||
 			fs->writes_stencilref) {
 		return A6XX_LATE_Z;
 	} else if ((fs->has_kill || zsa->alpha_test) &&
-			(zsa->base.depth.writemask || !pfb->zsbuf)) {
+			(zsa->base.depth_writemask || !pfb->zsbuf)) {
 		/* Slightly odd, but seems like the hw wants us to select
 		 * LATE_Z mode if there is no depth buffer + discard.  Either
 		 * that, or when occlusion query is enabled.  See:
@@ -645,7 +645,7 @@ compute_lrz_state(struct fd6_emit *emit, bool binning_pass)
 	 * we switch from GT/GE <-> LT/LE, those values cannot be
 	 * interpreted properly.
 	 */
-	if (zsa->base.depth.enabled &&
+	if (zsa->base.depth_enabled &&
 			(rsc->lrz_direction != FD_LRZ_UNKNOWN) &&
 			(rsc->lrz_direction != lrz.direction)) {
 		rsc->lrz_valid = false;
@@ -676,7 +676,7 @@ compute_lrz_state(struct fd6_emit *emit, bool binning_pass)
 	 * of direction, it is possible to increase/decrease the z value
 	 * to the point where the overly-conservative test is incorrect.
 	 */
-	if (zsa->base.depth.writemask) {
+	if (zsa->base.depth_writemask) {
 		rsc->lrz_direction = lrz.direction;
 	}
 

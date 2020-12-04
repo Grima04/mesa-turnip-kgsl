@@ -3947,10 +3947,12 @@ make_variant_key(struct llvmpipe_context *lp,
       const struct util_format_description *zsbuf_desc =
          util_format_description(zsbuf_format);
 
-      if (lp->depth_stencil->depth.enabled &&
+      if (lp->depth_stencil->depth_enabled &&
           util_format_has_depth(zsbuf_desc)) {
          key->zsbuf_format = zsbuf_format;
-         memcpy(&key->depth, &lp->depth_stencil->depth, sizeof key->depth);
+         key->depth.enabled = lp->depth_stencil->depth_enabled;
+         key->depth.writemask = lp->depth_stencil->depth_writemask;
+         key->depth.func = lp->depth_stencil->depth_func;
       }
       if (lp->depth_stencil->stencil[0].enabled &&
           util_format_has_stencil(zsbuf_desc)) {

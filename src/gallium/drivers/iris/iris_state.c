@@ -1377,14 +1377,14 @@ iris_create_zsa_state(struct pipe_context *ctx,
    cso->alpha_enabled = state->alpha_enabled;
    cso->alpha_func = state->alpha_func;
    cso->alpha_ref_value = state->alpha_ref_value;
-   cso->depth_writes_enabled = state->depth.writemask;
-   cso->depth_test_enabled = state->depth.enabled;
+   cso->depth_writes_enabled = state->depth_writemask;
+   cso->depth_test_enabled = state->depth_enabled;
    cso->stencil_writes_enabled =
       state->stencil[0].writemask != 0 ||
       (two_sided_stencil && state->stencil[1].writemask != 0);
 
    /* gallium frontends need to optimize away EQUAL writes for us. */
-   assert(!(state->depth.func == PIPE_FUNC_EQUAL && state->depth.writemask));
+   assert(!(state->depth_func == PIPE_FUNC_EQUAL && state->depth_writemask));
 
    iris_pack_command(GENX(3DSTATE_WM_DEPTH_STENCIL), cso->wmds, wmds) {
       wmds.StencilFailOp = state->stencil[0].fail_op;
@@ -1397,14 +1397,14 @@ iris_create_zsa_state(struct pipe_context *ctx,
       wmds.BackfaceStencilPassDepthPassOp = state->stencil[1].zpass_op;
       wmds.BackfaceStencilTestFunction =
          translate_compare_func(state->stencil[1].func);
-      wmds.DepthTestFunction = translate_compare_func(state->depth.func);
+      wmds.DepthTestFunction = translate_compare_func(state->depth_func);
       wmds.DoubleSidedStencilEnable = two_sided_stencil;
       wmds.StencilTestEnable = state->stencil[0].enabled;
       wmds.StencilBufferWriteEnable =
          state->stencil[0].writemask != 0 ||
          (two_sided_stencil && state->stencil[1].writemask != 0);
-      wmds.DepthTestEnable = state->depth.enabled;
-      wmds.DepthBufferWriteEnable = state->depth.writemask;
+      wmds.DepthTestEnable = state->depth_enabled;
+      wmds.DepthBufferWriteEnable = state->depth_writemask;
       wmds.StencilTestMask = state->stencil[0].valuemask;
       wmds.StencilWriteMask = state->stencil[0].writemask;
       wmds.BackfaceStencilTestMask = state->stencil[1].valuemask;
@@ -1419,9 +1419,9 @@ iris_create_zsa_state(struct pipe_context *ctx,
    iris_pack_command(GENX(3DSTATE_DEPTH_BOUNDS), cso->depth_bounds, depth_bounds) {
       depth_bounds.DepthBoundsTestValueModifyDisable = false;
       depth_bounds.DepthBoundsTestEnableModifyDisable = false;
-      depth_bounds.DepthBoundsTestEnable = state->depth.bounds_test;
-      depth_bounds.DepthBoundsTestMinValue = state->depth.bounds_min;
-      depth_bounds.DepthBoundsTestMaxValue = state->depth.bounds_max;
+      depth_bounds.DepthBoundsTestEnable = state->depth_bounds_test;
+      depth_bounds.DepthBoundsTestMinValue = state->depth_bounds_min;
+      depth_bounds.DepthBoundsTestMaxValue = state->depth_bounds_max;
    }
 #endif
 

@@ -439,7 +439,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
 
                 /* If either depth or stencil is enabled, discard matters */
                 bool zs_enabled =
-                        (zsa->base.depth.enabled && zsa->base.depth.func != PIPE_FUNC_ALWAYS) ||
+                        (zsa->base.depth_enabled && zsa->base.depth_func != PIPE_FUNC_ALWAYS) ||
                         zsa->base.stencil[0].enabled;
 
                 bool has_blend_shader = false;
@@ -528,11 +528,11 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         /* EXT_shader_framebuffer_fetch requires per-sample */
         bool per_sample = ctx->min_samples > 1 || fs->outputs_read;
         state->multisample_misc.evaluate_per_sample = msaa && per_sample;
-        state->multisample_misc.depth_function = zsa->base.depth.enabled ?
-                panfrost_translate_compare_func(zsa->base.depth.func) :
+        state->multisample_misc.depth_function = zsa->base.depth_enabled ?
+                panfrost_translate_compare_func(zsa->base.depth_func) :
                 MALI_FUNC_ALWAYS;
 
-        state->multisample_misc.depth_write_mask = zsa->base.depth.writemask;
+        state->multisample_misc.depth_write_mask = zsa->base.depth_writemask;
         state->multisample_misc.fixed_function_near_discard = rast->depth_clip_near;
         state->multisample_misc.fixed_function_far_discard = rast->depth_clip_far;
         state->multisample_misc.shader_depth_range_fixed = true;
@@ -623,7 +623,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         else
                 batch->draws |= PIPE_CLEAR_COLOR0;
 
-        if (ctx->depth_stencil->base.depth.enabled)
+        if (ctx->depth_stencil->base.depth_enabled)
                 batch->read |= PIPE_CLEAR_DEPTH;
 
         if (ctx->depth_stencil->base.stencil[0].enabled)

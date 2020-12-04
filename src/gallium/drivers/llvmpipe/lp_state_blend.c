@@ -115,8 +115,8 @@ llvmpipe_create_depth_stencil_state(struct pipe_context *pipe,
    state = mem_dup(depth_stencil, sizeof *depth_stencil);
 
    if (LP_PERF & PERF_NO_DEPTH) {
-      state->depth.enabled = 0;
-      state->depth.writemask = 0;
+      state->depth_enabled = 0;
+      state->depth_writemask = 0;
       state->stencil[0].enabled = 0;
       state->stencil[1].enabled = 0;
    }

@@ -689,15 +689,15 @@ static void* r300_create_dsa_state(struct pipe_context* pipe,
     dsa->dsa = *state;
 
     /* Depth test setup. - separate write mask depth for decomp flush */
-    if (state->depth.writemask) {
+    if (state->depth_writemask) {
         z_buffer_control |= R300_Z_WRITE_ENABLE;
     }
 
-    if (state->depth.enabled) {
+    if (state->depth_enabled) {
         z_buffer_control |= R300_Z_ENABLE;
 
         z_stencil_control |=
-            (r300_translate_depth_stencil_function(state->depth.func) <<
+            (r300_translate_depth_stencil_function(state->depth_func) <<
                 R300_Z_FUNC_SHIFT);
     }
 

@@ -1828,8 +1828,8 @@ swr_update_derived(struct pipe_context *pipe,
 
    /* Depth/stencil state */
    if (ctx->dirty & (SWR_NEW_DEPTH_STENCIL_ALPHA | SWR_NEW_FRAMEBUFFER)) {
-      struct pipe_depth_state *depth = &(ctx->depth_stencil->depth);
-      struct pipe_stencil_state *stencil = ctx->depth_stencil->stencil;
+      struct pipe_depth_stencil_alpha_state *depth = ctx->depth_stencil;
+      struct pipe_stencil_state *stencil = depth->stencil;
       SWR_DEPTH_STENCIL_STATE depthStencilState = {{0}};
       SWR_DEPTH_BOUNDS_STATE depthBoundsState = {0};
 
@@ -1873,14 +1873,14 @@ swr_update_derived(struct pipe_context *pipe,
             ctx->stencil_ref.ref_value[1];
       }
 
-      depthStencilState.depthTestEnable = depth->enabled;
-      depthStencilState.depthTestFunc = swr_convert_depth_func(depth->func);
-      depthStencilState.depthWriteEnable = depth->writemask;
+      depthStencilState.depthTestEnable = depth->depth_enabled;
+      depthStencilState.depthTestFunc = swr_convert_depth_func(depth->depth_func);
+      depthStencilState.depthWriteEnable = depth->depth_writemask;
       ctx->api.pfnSwrSetDepthStencilState(ctx->swrContext, &depthStencilState);
 
-      depthBoundsState.depthBoundsTestEnable = depth->bounds_test;
-      depthBoundsState.depthBoundsTestMinValue = depth->bounds_min;
-      depthBoundsState.depthBoundsTestMaxValue = depth->bounds_max;
+      depthBoundsState.depthBoundsTestEnable = depth->depth_bounds_test;
+      depthBoundsState.depthBoundsTestMinValue = depth->depth_bounds_min;
+      depthBoundsState.depthBoundsTestMaxValue = depth->depth_bounds_max;
       ctx->api.pfnSwrSetDepthBoundsState(ctx->swrContext, &depthBoundsState);
    }
 

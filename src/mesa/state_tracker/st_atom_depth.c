@@ -106,15 +106,15 @@ st_update_depth_stencil_alpha(struct st_context *st)
 
    if (ctx->DrawBuffer->Visual.depthBits > 0) {
       if (ctx->Depth.Test) {
-         dsa->depth.enabled = 1;
-         dsa->depth.func = st_compare_func_to_pipe(ctx->Depth.Func);
-         if (dsa->depth.func != PIPE_FUNC_EQUAL)
-            dsa->depth.writemask = ctx->Depth.Mask;
+         dsa->depth_enabled = 1;
+         dsa->depth_func = st_compare_func_to_pipe(ctx->Depth.Func);
+         if (dsa->depth_func != PIPE_FUNC_EQUAL)
+            dsa->depth_writemask = ctx->Depth.Mask;
       }
       if (ctx->Depth.BoundsTest) {
-         dsa->depth.bounds_test = 1;
-         dsa->depth.bounds_min = ctx->Depth.BoundsMin;
-         dsa->depth.bounds_max = ctx->Depth.BoundsMax;
+         dsa->depth_bounds_test = 1;
+         dsa->depth_bounds_min = ctx->Depth.BoundsMin;
+         dsa->depth_bounds_max = ctx->Depth.BoundsMax;
       }
    }
 

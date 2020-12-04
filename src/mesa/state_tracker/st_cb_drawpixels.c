@@ -809,9 +809,9 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
       dsa.stencil[0].zpass_op = PIPE_STENCIL_OP_REPLACE;
       if (write_depth) {
          /* writing depth+stencil: depth test always passes */
-         dsa.depth.enabled = 1;
-         dsa.depth.writemask = ctx->Depth.Mask;
-         dsa.depth.func = PIPE_FUNC_ALWAYS;
+         dsa.depth_enabled = 1;
+         dsa.depth_writemask = ctx->Depth.Mask;
+         dsa.depth_func = PIPE_FUNC_ALWAYS;
       }
       cso_set_depth_stencil_alpha(cso, &dsa);
 

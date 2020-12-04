@@ -220,15 +220,15 @@ nv30_zsa_state_create(struct pipe_context *pipe,
    so->pipe = *cso;
 
    SB_MTHD30(so, DEPTH_FUNC, 3);
-   SB_DATA  (so, nvgl_comparison_op(cso->depth.func));
-   SB_DATA  (so, cso->depth.writemask);
-   SB_DATA  (so, cso->depth.enabled);
+   SB_DATA  (so, nvgl_comparison_op(cso->depth_func));
+   SB_DATA  (so, cso->depth_writemask);
+   SB_DATA  (so, cso->depth_enabled);
 
    if (eng3d->oclass == NV35_3D_CLASS || eng3d->oclass >= NV40_3D_CLASS) {
       SB_MTHD35(so, DEPTH_BOUNDS_TEST_ENABLE, 3);
-      SB_DATA  (so, cso->depth.bounds_test);
-      SB_DATA  (so, fui(cso->depth.bounds_min));
-      SB_DATA  (so, fui(cso->depth.bounds_max));
+      SB_DATA  (so, cso->depth_bounds_test);
+      SB_DATA  (so, fui(cso->depth_bounds_min));
+      SB_DATA  (so, fui(cso->depth_bounds_max));
    }
 
    if (cso->stencil[0].enabled) {
