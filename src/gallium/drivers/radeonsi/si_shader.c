@@ -368,12 +368,10 @@ void si_add_arg_checked(struct ac_shader_args *args, enum ac_arg_regfile file, u
    ac_add_arg(args, file, registers, type, arg);
 }
 
-void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
+static void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
    struct si_shader *shader = ctx->shader;
-   LLVMTypeRef returns[AC_MAX_ARGS];
-   unsigned i, num_return_sgprs;
-   unsigned num_returns = 0;
+   unsigned i, num_returns, num_return_sgprs;
    unsigned num_prolog_vgprs = 0;
    unsigned stage = ctx->stage;
 
@@ -419,7 +417,7 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       /* Return values */
       if (shader->key.opt.vs_as_prim_discard_cs) {
          for (i = 0; i < 4; i++)
-            returns[num_returns++] = ctx->ac.f32; /* VGPRs */
+            ac_add_return(&ctx->args, AC_ARG_VGPR);
       }
       break;
 
@@ -441,9 +439,9 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
        * placed after the user SGPRs.
        */
       for (i = 0; i < GFX6_TCS_NUM_USER_SGPR + 2; i++)
-         returns[num_returns++] = ctx->ac.i32; /* SGPRs */
+         ac_add_return(&ctx->args, AC_ARG_SGPR);
       for (i = 0; i < 11; i++)
-         returns[num_returns++] = ctx->ac.f32; /* VGPRs */
+         ac_add_return(&ctx->args, AC_ARG_VGPR);
       break;
 
    case SI_SHADER_MERGED_VERTEX_TESSCTRL:
@@ -476,15 +474,15 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
 
          /* LS return values are inputs to the TCS main shader part. */
          for (i = 0; i < 8 + GFX9_TCS_NUM_USER_SGPR; i++)
-            returns[num_returns++] = ctx->ac.i32; /* SGPRs */
+            ac_add_return(&ctx->args, AC_ARG_SGPR);
          for (i = 0; i < 2; i++)
-            returns[num_returns++] = ctx->ac.f32; /* VGPRs */
+            ac_add_return(&ctx->args, AC_ARG_VGPR);
 
          /* VS outputs passed via VGPRs to TCS. */
          if (shader->key.opt.same_patch_vertices) {
             unsigned num_outputs = util_last_bit64(shader->selector->outputs_written);
             for (i = 0; i < num_outputs * 4; i++)
-               returns[num_returns++] = ctx->ac.f32; /* VGPRs */
+               ac_add_return(&ctx->args, AC_ARG_VGPR);
          }
       } else {
          /* TCS inputs are passed via VGPRs from VS. */
@@ -501,9 +499,9 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
           * should be passed to the epilog.
           */
          for (i = 0; i <= 8 + GFX9_SGPR_TCS_OUT_LAYOUT; i++)
-            returns[num_returns++] = ctx->ac.i32; /* SGPRs */
+            ac_add_return(&ctx->args, AC_ARG_SGPR);
          for (i = 0; i < 11; i++)
-            returns[num_returns++] = ctx->ac.f32; /* VGPRs */
+            ac_add_return(&ctx->args, AC_ARG_VGPR);
       }
       break;
 
@@ -587,9 +585,9 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
 
          /* ES return values are inputs to GS. */
          for (i = 0; i < 8 + num_user_sgprs; i++)
-            returns[num_returns++] = ctx->ac.i32; /* SGPRs */
+            ac_add_return(&ctx->args, AC_ARG_SGPR);
          for (i = 0; i < num_vgprs; i++)
-            returns[num_returns++] = ctx->ac.f32; /* VGPRs */
+            ac_add_return(&ctx->args, AC_ARG_VGPR);
       }
       break;
 
@@ -689,9 +687,9 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       num_returns = MAX2(num_returns, num_return_sgprs + PS_EPILOG_SAMPLEMASK_MIN_LOC + 1);
 
       for (i = 0; i < num_return_sgprs; i++)
-         returns[i] = ctx->ac.i32;
+         ac_add_return(&ctx->args, AC_ARG_SGPR);
       for (; i < num_returns; i++)
-         returns[i] = ctx->ac.f32;
+         ac_add_return(&ctx->args, AC_ARG_VGPR);
       break;
 
    case MESA_SHADER_COMPUTE:
@@ -743,8 +741,28 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       return;
    }
 
-   si_llvm_create_func(ctx, ngg_cull_shader ? "ngg_cull_main" : "main", returns, num_returns,
-                       si_get_max_workgroup_size(shader));
+   shader->info.num_input_sgprs = ctx->args.num_sgprs_used;
+   shader->info.num_input_vgprs = ctx->args.num_vgprs_used;
+
+   assert(shader->info.num_input_vgprs >= num_prolog_vgprs);
+   shader->info.num_input_vgprs -= num_prolog_vgprs;
+}
+
+void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
+{
+   struct si_shader *shader = ctx->shader;
+   LLVMTypeRef returns[AC_MAX_ARGS];
+   unsigned i;
+
+   si_init_shader_args(ctx, ngg_cull_shader);
+
+   for (i = 0; i < ctx->args.num_sgprs_returned; i++)
+      returns[i] = ctx->ac.i32; /* SGPR */
+   for (; i < ctx->args.return_count; i++)
+      returns[i] = ctx->ac.f32; /* VGPR */
+
+   si_llvm_create_func(ctx, ngg_cull_shader ? "ngg_cull_main" : "main", returns,
+                       ctx->args.return_count, si_get_max_workgroup_size(shader));
 
    /* Reserve register locations for VGPR inputs the PS prolog may need. */
    if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->shader->is_monolithic) {
@@ -756,11 +774,6 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
             S_0286D0_FRONT_FACE_ENA(1) | S_0286D0_ANCILLARY_ENA(1) | S_0286D0_POS_FIXED_PT_ENA(1));
    }
 
-   shader->info.num_input_sgprs = ctx->args.num_sgprs_used;
-   shader->info.num_input_vgprs = ctx->args.num_vgprs_used;
-
-   assert(shader->info.num_input_vgprs >= num_prolog_vgprs);
-   shader->info.num_input_vgprs -= num_prolog_vgprs;
 
    if (shader->key.as_ls || ctx->stage == MESA_SHADER_TESS_CTRL) {
       if (USE_LDS_SYMBOLS && LLVM_VERSION_MAJOR >= 9) {
