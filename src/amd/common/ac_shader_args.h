@@ -64,9 +64,8 @@ struct ac_shader_args {
    } args[AC_MAX_ARGS];
 
    uint16_t arg_count;
-   uint8_t sgpr_count;
-   uint8_t num_sgprs_used;
-   uint8_t num_vgprs_used;
+   uint16_t num_sgprs_used;
+   uint16_t num_vgprs_used;
 
    struct ac_arg base_vertex;
    struct ac_arg start_instance;
