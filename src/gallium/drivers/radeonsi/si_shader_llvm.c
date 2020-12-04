@@ -406,7 +406,7 @@ LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx, unsigned swizzle
    }
 }
 
-LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
+static LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
@@ -414,7 +414,7 @@ LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
    return ac_get_arg(&ctx->ac, ctx->block_size);
 }
 
-void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
+static void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
 {
    struct si_shader_selector *sel = ctx->shader->selector;
    unsigned lds_size = sel->info.base.cs.shared_size;
@@ -431,7 +431,7 @@ void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
    ctx->ac.lds = LLVMBuildBitCast(ctx->ac.builder, var, i8p, "");
 }
 
-bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
+static bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 {
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       si_llvm_load_vs_inputs(ctx, nir);
@@ -803,4 +803,218 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
       LLVMBuildRetVoid(builder);
    else
       LLVMBuildRet(builder, ret);
+}
+
+bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
+                           struct nir_shader *nir, bool free_nir, bool ngg_cull_shader)
+{
+   struct si_shader_selector *sel = shader->selector;
+   const struct si_shader_info *info = &sel->info;
+
+   ctx->shader = shader;
+   ctx->stage = sel->info.stage;
+
+   ctx->num_const_buffers = info->base.num_ubos;
+   ctx->num_shader_buffers = info->base.num_ssbos;
+
+   ctx->num_samplers = util_last_bit(info->base.textures_used);
+   ctx->num_images = info->base.num_images;
+
+   si_llvm_init_resource_callbacks(ctx);
+
+   switch (ctx->stage) {
+   case MESA_SHADER_VERTEX:
+      si_llvm_init_vs_callbacks(ctx, ngg_cull_shader);
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      si_llvm_init_tcs_callbacks(ctx);
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      si_llvm_init_tes_callbacks(ctx, ngg_cull_shader);
+      break;
+   case MESA_SHADER_GEOMETRY:
+      si_llvm_init_gs_callbacks(ctx);
+      break;
+   case MESA_SHADER_FRAGMENT:
+      si_llvm_init_ps_callbacks(ctx);
+      break;
+   case MESA_SHADER_COMPUTE:
+      ctx->abi.load_local_group_size = si_llvm_get_block_size;
+      break;
+   default:
+      assert(!"Unsupported shader type");
+      return false;
+   }
+
+   si_llvm_create_main_func(ctx, ngg_cull_shader);
+
+   if (ctx->shader->key.as_es || ctx->stage == MESA_SHADER_GEOMETRY)
+      si_preload_esgs_ring(ctx);
+
+   if (ctx->stage == MESA_SHADER_GEOMETRY)
+      si_preload_gs_rings(ctx);
+   else if (ctx->stage == MESA_SHADER_TESS_EVAL)
+      si_llvm_preload_tes_rings(ctx);
+
+   if (ctx->stage == MESA_SHADER_TESS_CTRL && sel->info.tessfactors_are_def_in_all_invocs) {
+      for (unsigned i = 0; i < 6; i++) {
+         ctx->invoc0_tess_factors[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
+      }
+   }
+
+   if (ctx->stage == MESA_SHADER_GEOMETRY) {
+      for (unsigned i = 0; i < 4; i++) {
+         ctx->gs_next_vertex[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
+      }
+      if (shader->key.as_ngg) {
+         for (unsigned i = 0; i < 4; ++i) {
+            ctx->gs_curprim_verts[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
+            ctx->gs_generated_prims[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
+         }
+
+         assert(!ctx->gs_ngg_scratch);
+         LLVMTypeRef ai32 = LLVMArrayType(ctx->ac.i32, gfx10_ngg_get_scratch_dw_size(shader));
+         ctx->gs_ngg_scratch =
+            LLVMAddGlobalInAddressSpace(ctx->ac.module, ai32, "ngg_scratch", AC_ADDR_SPACE_LDS);
+         LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(ai32));
+         LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
+
+         ctx->gs_ngg_emit = LLVMAddGlobalInAddressSpace(
+            ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
+         LLVMSetLinkage(ctx->gs_ngg_emit, LLVMExternalLinkage);
+         LLVMSetAlignment(ctx->gs_ngg_emit, 4);
+      }
+   }
+
+   if (ctx->stage != MESA_SHADER_GEOMETRY && (shader->key.as_ngg && !shader->key.as_es)) {
+      /* Unconditionally declare scratch space base for streamout and
+       * vertex compaction. Whether space is actually allocated is
+       * determined during linking / PM4 creation.
+       *
+       * Add an extra dword per vertex to ensure an odd stride, which
+       * avoids bank conflicts for SoA accesses.
+       */
+      if (!gfx10_is_ngg_passthrough(shader))
+         si_llvm_declare_esgs_ring(ctx);
+
+      /* This is really only needed when streamout and / or vertex
+       * compaction is enabled.
+       */
+      if (!ctx->gs_ngg_scratch && (sel->so.num_outputs || shader->key.opt.ngg_culling)) {
+         LLVMTypeRef asi32 = LLVMArrayType(ctx->ac.i32, gfx10_ngg_get_scratch_dw_size(shader));
+         ctx->gs_ngg_scratch =
+            LLVMAddGlobalInAddressSpace(ctx->ac.module, asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
+         LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(asi32));
+         LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
+      }
+   }
+
+   /* For GFX9 merged shaders:
+    * - Set EXEC for the first shader. If the prolog is present, set
+    *   EXEC there instead.
+    * - Add a barrier before the second shader.
+    * - In the second shader, reset EXEC to ~0 and wrap the main part in
+    *   an if-statement. This is required for correctness in geometry
+    *   shaders, to ensure that empty GS waves do not send GS_EMIT and
+    *   GS_CUT messages.
+    *
+    * For monolithic merged shaders, the first shader is wrapped in an
+    * if-block together with its prolog in si_build_wrapper_function.
+    *
+    * NGG vertex and tess eval shaders running as the last
+    * vertex/geometry stage handle execution explicitly using
+    * if-statements.
+    */
+   if (ctx->screen->info.chip_class >= GFX9) {
+      if (!shader->is_monolithic && (shader->key.as_es || shader->key.as_ls) &&
+          (ctx->stage == MESA_SHADER_TESS_EVAL ||
+           (ctx->stage == MESA_SHADER_VERTEX &&
+            !si_vs_needs_prolog(sel, &shader->key.part.vs.prolog, &shader->key, ngg_cull_shader)))) {
+         si_init_exec_from_input(ctx, ctx->merged_wave_info, 0);
+      } else if (ctx->stage == MESA_SHADER_TESS_CTRL || ctx->stage == MESA_SHADER_GEOMETRY ||
+                 (shader->key.as_ngg && !shader->key.as_es)) {
+         LLVMValueRef thread_enabled = NULL;
+         bool nested_barrier;
+
+         if (!shader->is_monolithic || (ctx->stage == MESA_SHADER_TESS_EVAL && shader->key.as_ngg &&
+                                        !shader->key.as_es && !shader->key.opt.ngg_culling))
+            ac_init_exec_full_mask(&ctx->ac);
+
+         if ((ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL) &&
+             shader->key.as_ngg && !shader->key.as_es && !shader->key.opt.ngg_culling) {
+            gfx10_ngg_build_sendmsg_gs_alloc_req(ctx);
+
+            /* Build the primitive export at the beginning
+             * of the shader if possible.
+             */
+            if (gfx10_ngg_export_prim_early(shader))
+               gfx10_ngg_build_export_prim(ctx, NULL, NULL);
+         }
+
+         if (ctx->stage == MESA_SHADER_TESS_CTRL) {
+            /* We need the barrier only if TCS inputs are read from LDS. */
+            nested_barrier =
+               !shader->key.opt.same_patch_vertices ||
+               shader->selector->info.base.inputs_read &
+               ~shader->selector->tcs_vgpr_only_inputs;
+
+            /* The wrapper inserts the conditional for monolithic shaders,
+             * and if this is a monolithic shader, we are already inside
+             * the conditional, so don't insert it.
+             */
+            if (!shader->is_monolithic)
+               thread_enabled = si_is_gs_thread(ctx); /* 2nd shader thread really */
+         } else if (ctx->stage == MESA_SHADER_GEOMETRY) {
+            if (shader->key.as_ngg) {
+               gfx10_ngg_gs_emit_prologue(ctx);
+               nested_barrier = false;
+            } else {
+               nested_barrier = true;
+            }
+
+            thread_enabled = si_is_gs_thread(ctx);
+         } else {
+            thread_enabled = si_is_es_thread(ctx);
+            nested_barrier = false;
+         }
+
+         if (thread_enabled) {
+            ctx->merged_wrap_if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
+            ctx->merged_wrap_if_label = 11500;
+            ac_build_ifcc(&ctx->ac, thread_enabled, ctx->merged_wrap_if_label);
+         }
+
+         if (nested_barrier) {
+            /* Execute a barrier before the second shader in
+             * a merged shader.
+             *
+             * Execute the barrier inside the conditional block,
+             * so that empty waves can jump directly to s_endpgm,
+             * which will also signal the barrier.
+             *
+             * This is possible in gfx9, because an empty wave
+             * for the second shader does not participate in
+             * the epilogue. With NGG, empty waves may still
+             * be required to export data (e.g. GS output vertices),
+             * so we cannot let them exit early.
+             *
+             * If the shader is TCS and the TCS epilog is present
+             * and contains a barrier, it will wait there and then
+             * reach s_endpgm.
+             */
+            si_llvm_emit_barrier(ctx);
+         }
+      }
+   }
+
+   bool success = si_nir_build_llvm(ctx, nir);
+   if (free_nir)
+      ralloc_free(nir);
+   if (!success) {
+      fprintf(stderr, "Failed to translate shader from NIR to LLVM\n");
+      return false;
+   }
+
+   si_llvm_build_ret(ctx, ctx->return_value);
+   return true;
 }

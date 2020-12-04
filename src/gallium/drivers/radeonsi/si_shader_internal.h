@@ -202,6 +202,9 @@ void si_add_arg_checked(struct ac_shader_args *args, enum ac_arg_regfile file, u
                         enum ac_arg_type type, struct ac_arg *arg, unsigned idx);
 void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader);
 unsigned si_get_max_workgroup_size(const struct si_shader *shader);
+bool si_vs_needs_prolog(const struct si_shader_selector *sel,
+                        const struct si_vs_prolog_bits *prolog_key,
+                        const struct si_shader_key *key, bool ngg_cull_shader);
 bool si_need_ps_prolog(const union si_shader_part_key *key);
 void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,
                           bool separate_prolog);
@@ -251,12 +254,11 @@ void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg param,
 LLVMValueRef si_unpack_param(struct si_shader_context *ctx, struct ac_arg param, unsigned rshift,
                              unsigned bitwidth);
 LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx, unsigned swizzle);
-LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi);
-void si_llvm_declare_compute_memory(struct si_shader_context *ctx);
-bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir);
 void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *parts,
                                unsigned num_parts, unsigned main_part,
                                unsigned next_shader_first_part, bool same_thread_count);
+bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
+                           struct nir_shader *nir, bool free_nir, bool ngg_cull_shader);
 
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
