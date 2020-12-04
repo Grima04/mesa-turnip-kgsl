@@ -40,6 +40,8 @@
 #include "util/u_inlines.h"
 #include "util/format/u_format_zs.h"
 
+#include "vk_util.h"
+
 struct rendering_state {
    struct pipe_context *pctx;
 
@@ -563,6 +565,9 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
    {
       const VkPipelineVertexInputStateCreateInfo *vi = pipeline->graphics_create_info.pVertexInputState;
       int i;
+      const VkPipelineVertexInputDivisorStateCreateInfoEXT *div_state =
+         vk_find_struct_const(vi->pNext,
+                              PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
 
       for (i = 0; i < vi->vertexBindingDescriptionCount; i++) {
          state->vb[i].stride = vi->pVertexBindingDescriptions[i].stride;
@@ -580,7 +585,17 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
             state->ve[location].instance_divisor = 0;
             break;
          case VK_VERTEX_INPUT_RATE_INSTANCE:
-            state->ve[location].instance_divisor = 1;
+            if (div_state) {
+               for (unsigned j = 0; j < div_state->vertexBindingDivisorCount; j++) {
+                  const VkVertexInputBindingDivisorDescriptionEXT *desc =
+                     &div_state->pVertexBindingDivisors[j];
+                  if (desc->binding == state->ve[location].vertex_buffer_index) {
+                     state->ve[location].instance_divisor = desc->divisor;
+                     break;
+                  }
+               }
+            } else
+               state->ve[location].instance_divisor = 1;
             break;
          default:
             assert(0);

@@ -347,6 +347,7 @@ void lvp_GetPhysicalDeviceFeatures2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceFeatures2                  *pFeatures)
 {
+   LVP_FROM_HANDLE(lvp_physical_device, pdevice, physicalDevice);
    lvp_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 
    vk_foreach_struct(ext, pFeatures->pNext) {
@@ -372,6 +373,19 @@ void lvp_GetPhysicalDeviceFeatures2(
          features->privateData = true;
          break;
       }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+         VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *features =
+            (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *)ext;
+         features->vertexAttributeInstanceRateZeroDivisor = false;
+         if (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR) != 0) {
+            features->vertexAttributeInstanceRateDivisor = true;
+         } else {
+            features->vertexAttributeInstanceRateDivisor = false;
+         }
+         break;
+      }
+
       default:
          break;
       }
@@ -534,6 +548,7 @@ void lvp_GetPhysicalDeviceProperties2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceProperties2                *pProperties)
 {
+   LVP_FROM_HANDLE(lvp_physical_device, pdevice, physicalDevice);
    lvp_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
 
    vk_foreach_struct(ext, pProperties->pNext) {
@@ -567,6 +582,15 @@ void lvp_GetPhysicalDeviceProperties2(
          VkPhysicalDevicePointClippingProperties *properties =
             (VkPhysicalDevicePointClippingProperties*)ext;
          properties->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+         VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *props =
+            (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *)ext;
+         if (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR) != 0)
+            props->maxVertexAttribDivisor = UINT32_MAX;
+         else
+            props->maxVertexAttribDivisor = 1;
          break;
       }
       default:
