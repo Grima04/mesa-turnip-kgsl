@@ -559,6 +559,116 @@ lower_baseinstance(nir_shader *shader)
 
 bool nir_lower_dynamic_bo_access(nir_shader *shader);
 
+/* gl_nir_lower_buffers makes variables unusable for all UBO/SSBO access
+ * so instead we delete all those broken variables and just make new ones
+ */
+static bool
+unbreak_bos(nir_shader *shader)
+{
+   uint32_t ssbo_used = 0;
+   uint32_t ubo_used = 0;
+   uint64_t max_ssbo_size = 0;
+   uint64_t max_ubo_size = 0;
+   bool ssbo_sizes[PIPE_MAX_SHADER_BUFFERS] = {false};
+
+   if (!shader->info.num_ssbos && !shader->info.num_ubos && !shader->num_uniforms)
+      return false;
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_store_ssbo:
+            ssbo_used |= BITFIELD_BIT(nir_src_as_uint(intrin->src[1]));
+            break;
+
+         case nir_intrinsic_get_ssbo_size: {
+            uint32_t slot = nir_src_as_uint(intrin->src[0]);
+            ssbo_used |= BITFIELD_BIT(slot);
+            ssbo_sizes[slot] = true;
+            break;
+         }
+         case nir_intrinsic_ssbo_atomic_add:
+         case nir_intrinsic_ssbo_atomic_imin:
+         case nir_intrinsic_ssbo_atomic_umin:
+         case nir_intrinsic_ssbo_atomic_imax:
+         case nir_intrinsic_ssbo_atomic_umax:
+         case nir_intrinsic_ssbo_atomic_and:
+         case nir_intrinsic_ssbo_atomic_or:
+         case nir_intrinsic_ssbo_atomic_xor:
+         case nir_intrinsic_ssbo_atomic_exchange:
+         case nir_intrinsic_ssbo_atomic_comp_swap:
+         case nir_intrinsic_ssbo_atomic_fmin:
+         case nir_intrinsic_ssbo_atomic_fmax:
+         case nir_intrinsic_ssbo_atomic_fcomp_swap:
+         case nir_intrinsic_load_ssbo:
+            ssbo_used |= BITFIELD_BIT(nir_src_as_uint(intrin->src[0]));
+            break;
+         case nir_intrinsic_load_ubo:
+         case nir_intrinsic_load_ubo_vec4:
+            ubo_used |= BITFIELD_BIT(nir_src_as_uint(intrin->src[0]));
+            break;
+         default:
+            break;
+         }
+      }
+   }
+
+   nir_foreach_variable_with_modes(var, shader, nir_var_mem_ssbo | nir_var_mem_ubo) {
+      const struct glsl_type *type = glsl_without_array(var->type);
+      if (type_is_counter(type))
+         continue;
+      unsigned size = glsl_count_attribute_slots(type, false);
+      if (var->data.mode == nir_var_mem_ubo)
+         max_ubo_size = MAX2(max_ubo_size, size);
+      else
+         max_ssbo_size = MAX2(max_ssbo_size, size);
+      var->data.mode = nir_var_shader_temp;
+   }
+   nir_fixup_deref_modes(shader);
+   NIR_PASS_V(shader, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+   optimize_nir(shader);
+
+   if (!ssbo_used && !ubo_used)
+      return false;
+
+   struct glsl_struct_field *fields = rzalloc_array(shader, struct glsl_struct_field, 2);
+   fields[0].name = ralloc_strdup(shader, "base");
+   fields[1].name = ralloc_strdup(shader, "unsized");
+   if (ubo_used) {
+      const struct glsl_type *ubo_type = glsl_array_type(glsl_uint_type(), max_ubo_size * 4, 4);
+      fields[0].type = ubo_type;
+      u_foreach_bit(slot, ubo_used) {
+         char buf[64];
+         snprintf(buf, sizeof(buf), "ubo_slot_%u", slot);
+         nir_variable *var = nir_variable_create(shader, nir_var_mem_ubo, glsl_struct_type(fields, 1, "struct", false), buf);
+         var->interface_type = var->type;
+         var->data.driver_location = slot;
+      }
+   }
+   if (ssbo_used) {
+      const struct glsl_type *ssbo_type = glsl_array_type(glsl_uint_type(), max_ssbo_size * 4, 4);
+      const struct glsl_type *unsized = glsl_array_type(glsl_uint_type(), 0, 4);
+      fields[0].type = ssbo_type;
+      u_foreach_bit(slot, ssbo_used) {
+         char buf[64];
+         snprintf(buf, sizeof(buf), "ssbo_slot_%u", slot);
+         if (ssbo_sizes[slot])
+            fields[1].type = unsized;
+         else
+            fields[1].type = NULL;
+         nir_variable *var = nir_variable_create(shader, nir_var_mem_ssbo,
+                                                 glsl_struct_type(fields, 1 + !!ssbo_sizes[slot], "struct", false), buf);
+         var->interface_type = var->type;
+         var->data.driver_location = slot;
+      }
+   }
+   return true;
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -583,11 +693,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
    }
 
-   /* only do uniforms -> ubo if we have uniforms, otherwise we're just
-    * screwing with the bindings for no reason
-    */
-   if (nir->num_uniforms)
-      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
+   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
    if (nir->info.stage < MESA_SHADER_FRAGMENT)
       have_psiz = check_psiz(nir);
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
@@ -602,6 +708,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, lower_64bit_vertex_attribs);
    if (nir->info.num_ubos || nir->info.num_ssbos)
       NIR_PASS_V(nir, nir_lower_dynamic_bo_access);
+   NIR_PASS_V(nir, unbreak_bos);
 
    if (zink_debug & ZINK_DEBUG_NIR) {
       fprintf(stderr, "NIR shader:\n---8<---\n");
@@ -609,14 +716,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       fprintf(stderr, "---8<---\n");
    }
 
-   /* UBO buffers are zero-indexed, but buffer 0 is always the one created by nir_lower_uniforms_to_ubo,
-    * which means there is no buffer 0 if there are no uniforms
-    */
-   int ubo_index = !nir->num_uniforms;
-   /* need to set up var->data.binding for UBOs, which means we need to start at
-    * the "first" UBO, which is at the end of the list
-    */
-   int ssbo_array_index = 0;
    foreach_list_typed_reverse(nir_variable, var, node, &nir->variables) {
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |
                                         nir_var_mem_ubo |
@@ -624,58 +723,30 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          enum zink_descriptor_type ztype;
          const struct glsl_type *type = glsl_without_array(var->type);
          if (var->data.mode == nir_var_mem_ubo) {
-            /* ignore variables being accessed if they aren't the base of the UBO */
-            bool ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(type);
-            if (var->data.location && !ubo_array && var->type != var->interface_type)
-               continue;
             ztype = ZINK_DESCRIPTOR_TYPE_UBO;
-            var->data.driver_location = ret->num_bindings[ztype];
             var->data.binding = zink_binding(nir->info.stage,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             var->data.driver_location);
-            /* if this is a ubo array, create a binding point for each array member:
-             * 
-               "For uniform blocks declared as arrays, each individual array element
-                corresponds to a separate buffer object backing one instance of the block."
-                - ARB_gpu_shader5
+                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                 var->data.driver_location);
+            VkDescriptorType vktype = !var->data.driver_location ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            int binding = var->data.binding;
 
-               (also it's just easier)
-             */
-            for (unsigned i = 0; i < (ubo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
-               VkDescriptorType vktype = !ubo_index ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-               int binding = var->data.binding + i;
-               ret->bindings[ztype][ret->num_bindings[ztype]].index = ubo_index++;
-               ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
-               ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
-               ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
-               ret->ubos_used |= (1 << ret->bindings[ztype][ret->num_bindings[ztype]].index);
-               ret->num_bindings[ztype]++;
-            }
+            ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
+            ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
+            ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
+            ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
+            ret->ubos_used |= (1 << ret->bindings[ztype][ret->num_bindings[ztype]].index);
+            ret->num_bindings[ztype]++;
          } else if (var->data.mode == nir_var_mem_ssbo) {
-            /* same-ish mechanics as ubos */
-            bool bo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(type);
-            if (var->data.location && !bo_array)
-               continue;
-            if (!var->data.explicit_binding) {
-               var->data.driver_location = ssbo_array_index;
-            } else
-               var->data.driver_location = var->data.binding;
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
             var->data.binding = zink_binding(nir->info.stage,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              var->data.driver_location);
-            for (unsigned i = 0; i < (bo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
-               int binding = var->data.binding + i;
-               if (strcmp(glsl_get_type_name(var->interface_type), "counters"))
-                  ret->bindings[ztype][ret->num_bindings[ztype]].index = ssbo_array_index++;
-               else
-                  ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.binding;
-               ret->ssbos_used |= (1 << ret->bindings[ztype][ret->num_bindings[ztype]].index);
-               ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
-               ret->bindings[ztype][ret->num_bindings[ztype]].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-               ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
-               ret->num_bindings[ztype]++;
-            }
+            ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
+            ret->ssbos_used |= (1 << ret->bindings[ztype][ret->num_bindings[ztype]].index);
+            ret->bindings[ztype][ret->num_bindings[ztype]].binding = var->data.binding;
+            ret->bindings[ztype][ret->num_bindings[ztype]].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
+            ret->num_bindings[ztype]++;
          } else {
             assert(var->data.mode == nir_var_uniform);
             if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {

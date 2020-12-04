@@ -43,12 +43,9 @@ struct ntv_context {
    const struct zink_so_info *so_info;
 
    SpvId ubos[128];
-   size_t num_ubos;
 
    SpvId ssbos[PIPE_MAX_SHADER_BUFFERS];
    nir_variable *ssbo_vars[PIPE_MAX_SHADER_BUFFERS];
-   uint32_t ssbo_mask;
-   uint32_t num_ssbos;
    SpvId image_types[PIPE_MAX_SAMPLERS];
    SpvId images[PIPE_MAX_SAMPLERS];
    SpvId sampler_types[PIPE_MAX_SAMPLERS];
@@ -847,8 +844,8 @@ get_bo_array_type(struct ntv_context *ctx, struct nir_variable *var)
       array_type = spirv_builder_type_runtime_array(&ctx->builder, uint_type);
       spirv_builder_emit_array_stride(&ctx->builder, array_type, 4);
    } else {
-      uint32_t array_size = glsl_count_attribute_slots(var->interface_type, false);
-      array_type = get_sized_uint_array_type(ctx, array_size * 4);
+      uint32_t array_size = glsl_get_length(glsl_get_struct_field(var->interface_type, 0));
+      array_type = get_sized_uint_array_type(ctx, array_size);
    }
    return array_type;
 }
@@ -862,14 +859,12 @@ get_bo_struct_type(struct ntv_context *ctx, struct nir_variable *var)
    // wrap UBO-array in a struct
    SpvId runtime_array = 0;
    if (ssbo) {
-      if (glsl_type_is_interface(var->interface_type) && !glsl_type_is_unsized_array(var->type)) {
-          const struct glsl_type *last_member = glsl_get_struct_field(var->interface_type, glsl_get_length(var->interface_type) - 1);
-          if (glsl_type_is_unsized_array(last_member)) {
-             bool is_64bit = glsl_type_is_64bit(glsl_without_array(last_member));
-             runtime_array = spirv_builder_type_runtime_array(&ctx->builder, get_uvec_type(ctx, is_64bit ? 64 : 32, 1));
-             spirv_builder_emit_array_stride(&ctx->builder, runtime_array, glsl_get_explicit_stride(last_member));
-          }
-      }
+       const struct glsl_type *last_member = glsl_get_struct_field(var->interface_type, glsl_get_length(var->interface_type) - 1);
+       if (glsl_type_is_unsized_array(last_member)) {
+          bool is_64bit = glsl_type_is_64bit(glsl_without_array(last_member));
+          runtime_array = spirv_builder_type_runtime_array(&ctx->builder, get_uvec_type(ctx, is_64bit ? 64 : 32, 1));
+          spirv_builder_emit_array_stride(&ctx->builder, runtime_array, glsl_get_explicit_stride(last_member));
+       }
    }
    SpvId types[] = {array_type, runtime_array};
    SpvId struct_type = spirv_builder_type_struct(&ctx->builder, types, 1 + !!runtime_array);
@@ -896,78 +891,28 @@ get_bo_struct_type(struct ntv_context *ctx, struct nir_variable *var)
 static void
 emit_bo(struct ntv_context *ctx, struct nir_variable *var)
 {
-   bool is_ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
-   /* variables accessed inside a uniform block will get merged into a big
-    * memory blob and accessed by offset
-    */
-   if (var->data.location && !is_ubo_array && var->type != var->interface_type)
-      return;
    bool ssbo = var->data.mode == nir_var_mem_ssbo;
 
    SpvId pointer_type = get_bo_struct_type(ctx, var);
 
-   /* if this is a ubo array, create a binding point for each array member:
-    * 
-      "For uniform blocks declared as arrays, each individual array element
-       corresponds to a separate buffer object backing one instance of the block."
-       - ARB_gpu_shader5
+   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                         ssbo ? SpvStorageClassStorageBuffer : SpvStorageClassUniform);
+   if (var->name)
+      spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-      (also it's just easier)
-    */
-   unsigned size = is_ubo_array ? glsl_get_aoa_size(var->type) : 1;
-   int base = -1;
-   for (unsigned i = 0; i < size; i++) {
-      SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
-                                            ssbo ? SpvStorageClassStorageBuffer : SpvStorageClassUniform);
-      if (var->name) {
-         char struct_name[100];
-         snprintf(struct_name, sizeof(struct_name), "%s[%u]", var->name, i);
-         spirv_builder_emit_name(&ctx->builder, var_id, var->name);
-      }
-
-      if (ssbo) {
-         unsigned ssbo_idx = 0;
-         if (!is_ubo_array && var->data.explicit_binding &&
-             (glsl_type_is_unsized_array(var->type) || glsl_get_length(var->interface_type) == 1)) {
-             /* - block ssbos get their binding broken in gl_nir_lower_buffers,
-              *   but also they're totally indistinguishable from lowered counter buffers which have valid bindings
-              *
-              * hopefully this is a counter or some other non-block variable, but if not then we're probably fucked
-              */
-             ssbo_idx = var->data.binding;
-         } else if (base >= 0)
-            /* we're indexing into a ssbo array and already have the base index */
-            ssbo_idx = base + i;
-         else {
-            if (ctx->ssbo_mask & 1) {
-               /* 0 index is used, iterate through the used blocks until we find the first unused one */
-               for (unsigned j = 1; j < ctx->num_ssbos; j++)
-                  if (!(ctx->ssbo_mask & (1 << j))) {
-                     /* we're iterating forward through the blocks, so the first available one should be
-                      * what we're looking for
-                      */
-                     base = ssbo_idx = j;
-                     break;
-                  }
-            } else
-               /* we're iterating forward through the ssbos, so always assign 0 first */
-               base = ssbo_idx = 0;
-            assert(ssbo_idx < ctx->num_ssbos);
-         }
-         assert(!ctx->ssbos[ssbo_idx]);
-         ctx->ssbos[ssbo_idx] = var_id;
-         ctx->ssbo_mask |= 1 << ssbo_idx;
-         ctx->ssbo_vars[ssbo_idx] = var;
-      } else {
-         assert(ctx->num_ubos < ARRAY_SIZE(ctx->ubos));
-         ctx->ubos[ctx->num_ubos++] = var_id;
-      }
-      assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
-      ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
-
-      spirv_builder_emit_descriptor_set(&ctx->builder, var_id, ssbo ? ZINK_DESCRIPTOR_TYPE_SSBO : ZINK_DESCRIPTOR_TYPE_UBO);
-      spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding + i);
+   if (ssbo) {
+      assert(!ctx->ssbos[var->data.driver_location]);
+      ctx->ssbos[var->data.driver_location] = var_id;
+      ctx->ssbo_vars[var->data.driver_location] = var;
+   } else {
+      assert(!ctx->ubos[var->data.driver_location]);
+      ctx->ubos[var->data.driver_location] = var_id;
    }
+   assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+   ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
+
+   spirv_builder_emit_descriptor_set(&ctx->builder, var_id, ssbo ? ZINK_DESCRIPTOR_TYPE_SSBO : ZINK_DESCRIPTOR_TYPE_UBO);
+   spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
 }
 
 static void
@@ -1939,7 +1884,6 @@ emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    assert(const_block_index); // no dynamic indexing for now
 
    SpvId bo = ssbo ? ctx->ssbos[const_block_index->u32] : ctx->ubos[const_block_index->u32];
-
    unsigned bit_size = nir_dest_bit_size(intr->dest);
    SpvId uint_type = get_uvec_type(ctx, 32, 1);
    SpvId one = emit_uint_const(ctx, 32, 1);
@@ -3653,7 +3597,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    ctx.stage = s->info.stage;
    ctx.so_info = so_info;
-   ctx.num_ssbos = s->info.num_ssbos;
    if (shader_slot_map) {
       /* COMPUTE doesn't have this */
       ctx.shader_slot_map = shader_slot_map;

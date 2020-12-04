@@ -107,12 +107,8 @@ lower_dynamic_bo_access_instr(nir_intrinsic_instr *instr, nir_builder *b)
    bool ssbo_mode = instr->intrinsic != nir_intrinsic_load_ubo && instr->intrinsic != nir_intrinsic_load_ubo_vec4;
    unsigned first_idx = UINT_MAX, last_idx;
    if (ssbo_mode) {
-      /* ssbo bindings don't always start at 0 */
-      nir_foreach_variable_with_modes(var, b->shader, nir_var_mem_ssbo) {
-         first_idx = var->data.binding;
-         break;
-      }
-      assert(first_idx != UINT_MAX);
+      nir_foreach_variable_with_modes(var, b->shader, nir_var_mem_ssbo)
+         first_idx = MIN2(first_idx, var->data.driver_location);
       last_idx = first_idx + b->shader->info.num_ssbos;
    } else {
       /* skip 0 index if uniform_0 is one we created previously */
