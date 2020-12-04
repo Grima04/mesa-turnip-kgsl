@@ -218,5 +218,7 @@ main(int argc, char **argv)
 		ir3_shader_destroy(shader);
 	}
 
+	ir3_compiler_destroy(c);
+
 	return result;
 }
