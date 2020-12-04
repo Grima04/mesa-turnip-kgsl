@@ -52,6 +52,12 @@ spirv_shader_delete(struct spirv_shader *s);
 uint32_t
 zink_binding(gl_shader_stage stage, VkDescriptorType type, int index);
 
+static inline bool
+type_is_counter(const struct glsl_type *type)
+{
+   return glsl_get_base_type(glsl_without_array(type)) == GLSL_TYPE_ATOMIC_UINT;
+}
+
 static inline VkDescriptorType
 zink_sampler_type(const struct glsl_type *type)
 {
