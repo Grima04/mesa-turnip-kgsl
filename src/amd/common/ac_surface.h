@@ -99,7 +99,6 @@ struct legacy_surf_fmask {
    uint8_t tiling_index;    /* max 31 */
    uint8_t bankh;           /* max 8 */
    uint16_t pitch_in_pixels;
-   uint64_t slice_size;
 };
 
 struct legacy_surf_layout {
@@ -240,6 +239,7 @@ struct radeon_surf {
    uint64_t fmask_size;
    uint32_t surf_alignment;
    uint32_t fmask_alignment;
+   uint64_t fmask_slice_size;
 
    /* DCC and HTILE are very small. */
    uint32_t dcc_size;

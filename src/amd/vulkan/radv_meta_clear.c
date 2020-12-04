@@ -1449,8 +1449,7 @@ radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
 		size = image->planes[0].surface.fmask_size;
 	} else {
 		unsigned fmask_slice_size =
-			image->planes[0].surface.u.legacy.fmask.slice_size;
-
+			image->planes[0].surface.fmask_slice_size;
 
 		offset += fmask_slice_size * range->baseArrayLayer;
 		size = fmask_slice_size * radv_get_layerCount(image, range);

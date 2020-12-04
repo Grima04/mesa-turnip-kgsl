@@ -1404,6 +1404,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
 
       surf->fmask_size = fout.fmaskBytes;
       surf->fmask_alignment = fout.baseAlign;
+      surf->fmask_slice_size = fout.sliceSize;
       surf->fmask_tile_swizzle = 0;
 
       surf->u.legacy.fmask.slice_tile_max = (fout.pitch * fout.height) / 64;
@@ -1413,7 +1414,6 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
       surf->u.legacy.fmask.tiling_index = fout.tileIndex;
       surf->u.legacy.fmask.bankh = fout.pTileInfo->bankHeight;
       surf->u.legacy.fmask.pitch_in_pixels = fout.pitch;
-      surf->u.legacy.fmask.slice_size = fout.sliceSize;
 
       /* Compute tile swizzle for FMASK. */
       if (config->info.fmask_surf_index && !(surf->flags & RADEON_SURF_SHAREABLE)) {
@@ -1973,6 +1973,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->u.gfx9.fmask.epitch = fout.pitch - 1;
          surf->fmask_size = fout.fmaskBytes;
          surf->fmask_alignment = fout.baseAlign;
+         surf->fmask_slice_size = fout.sliceSize;
 
          /* Compute tile swizzle for the FMASK surface. */
          if (config->info.fmask_surf_index && fin.swizzleMode >= ADDR_SW_64KB_Z_T &&
