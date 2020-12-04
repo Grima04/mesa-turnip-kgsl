@@ -56,8 +56,8 @@ public:
    ~fake_glx_display()
    {
       for (int i = 0; i < this->dpy->nscreens; i++) {
-	 if (this->screens[i] != NULL)
-	    delete this->screens[i];
+         if (this->screens[i] != NULL)
+            delete (fake_glx_screen *)this->screens[i];
       }
 
       delete [] this->screens;
@@ -71,6 +71,7 @@ public:
    glX_send_client_info_test();
    virtual ~glX_send_client_info_test();
    virtual void SetUp();
+   virtual void TearDown();
 
    void common_protocol_expected_false_test(unsigned major, unsigned minor,
 					    const char *glx_ext, bool *value);
@@ -131,7 +132,7 @@ xcb_glx_client_info(xcb_connection_t *c,
    ClientInfo_was_sent = true;
    connection_used = c;
 
-   gl_ext_string = (char *) malloc(str_len);
+   gl_ext_string = new char[str_len];
    memcpy(gl_ext_string, string, str_len);
    gl_ext_length = str_len;
 
@@ -251,6 +252,17 @@ glX_send_client_info_test::SetUp()
    gl_versions = (uint32_t *) 0;
    glx_major = 0;
    glx_minor = 0;
+}
+
+void
+glX_send_client_info_test::TearDown()
+{
+   if (gl_ext_string)
+      delete [] gl_ext_string;
+   if (glx_ext_string)
+      delete [] glx_ext_string;
+   if (gl_versions)
+      delete [] gl_versions;
 }
 
 void
