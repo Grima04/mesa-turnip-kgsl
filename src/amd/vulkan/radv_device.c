@@ -8168,6 +8168,7 @@ VkResult radv_GetPhysicalDeviceCalibrateableTimeDomainsEXT(
 	return vk_outarray_status(&out);
 }
 
+#ifndef _WIN32
 static uint64_t
 radv_clock_gettime(clockid_t clock_id)
 {
@@ -8275,6 +8276,7 @@ VkResult radv_GetCalibratedTimestampsEXT(
 
 	return VK_SUCCESS;
 }
+#endif
 
 void radv_GetPhysicalDeviceMultisamplePropertiesEXT(
     VkPhysicalDevice                            physicalDevice,

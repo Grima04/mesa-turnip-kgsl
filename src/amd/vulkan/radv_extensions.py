@@ -121,7 +121,7 @@ EXTENSIONS = [
     Extension('VK_EXT_4444_formats',                      1, True),
     Extension('VK_EXT_acquire_xlib_display',              1, 'VK_USE_PLATFORM_XLIB_XRANDR_EXT'),
     Extension('VK_EXT_buffer_device_address',             2, True),
-    Extension('VK_EXT_calibrated_timestamps',             1, True),
+    Extension('VK_EXT_calibrated_timestamps',             1, 'RADV_SUPPORT_CALIBRATED_TIMESTAMPS'),
     Extension('VK_EXT_conditional_rendering',             2, True),
     Extension('VK_EXT_conservative_rasterization',        1, 'device->rad_info.chip_class >= GFX9'),
     Extension('VK_EXT_custom_border_color',               12, True),

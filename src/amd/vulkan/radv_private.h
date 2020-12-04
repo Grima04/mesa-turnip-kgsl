@@ -101,6 +101,12 @@ typedef uint32_t xcb_window_t;
 #endif
 
 #ifdef _WIN32
+#define RADV_SUPPORT_CALIBRATED_TIMESTAMPS 0
+#else
+#define RADV_SUPPORT_CALIBRATED_TIMESTAMPS 1
+#endif
+
+#ifdef _WIN32
 #define radv_printflike(a, b)
 #else
 #define radv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
