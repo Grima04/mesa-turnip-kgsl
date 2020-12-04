@@ -419,7 +419,7 @@ we DO NOT WANT implementations of these extensions for Mesa.
 
 Vulkan 1.0 -- all DONE: anv, lvp, radv, tu, v3dv
 
-Vulkan 1.1 -- all DONE: anv, lvp, radv
+Vulkan 1.1 -- all DONE: anv, lvp, radv, tu
 
   VK_KHR_16bit_storage                                  DONE (anv/gen8+, lvp, radv, tu/a650)
   VK_KHR_bind_memory2                                   DONE (anv, lvp, radv, tu)
@@ -439,7 +439,7 @@ Vulkan 1.1 -- all DONE: anv, lvp, radv
   VK_KHR_maintenance2                                   DONE (anv, lvp, radv, tu)
   VK_KHR_maintenance3                                   DONE (anv, lvp, radv, tu)
   VK_KHR_multiview                                      DONE (anv, lvp, radv, tu)
-  VK_KHR_relaxed_block_layout                           DONE (anv, lvp, radv)
+  VK_KHR_relaxed_block_layout                           DONE (anv, lvp, radv, tu)
   VK_KHR_sampler_ycbcr_conversion                       DONE (anv, radv, tu)
   VK_KHR_shader_draw_parameters                         DONE (anv, lvp, radv, tu)
   VK_KHR_storage_buffer_storage_class                   DONE (anv, lvp, radv, tu)
