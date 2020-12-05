@@ -58,24 +58,21 @@ vbo_context_const(const struct gl_context *ctx)
 static inline struct gl_context *
 gl_context_from_vbo_exec(struct vbo_exec_context *exec)
 {
-   struct gl_context *ctx = NULL;
-   return container_of(exec, ctx, vbo_context.exec);
+   return container_of(exec, struct gl_context, vbo_context.exec);
 }
 
 
 static inline const struct gl_context *
 gl_context_from_vbo_exec_const(const struct vbo_exec_context *exec)
 {
-   struct gl_context *ctx = NULL;
-   return container_of(exec, ctx, vbo_context.exec);
+   return container_of(exec, struct gl_context, vbo_context.exec);
 }
 
 
 static inline struct gl_context *
 gl_context_from_vbo_save(struct vbo_save_context *save)
 {
-   struct gl_context *ctx = NULL;
-   return container_of(save, ctx, vbo_context.save);
+   return container_of(save, struct gl_context, vbo_context.save);
 }
 
 

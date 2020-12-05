@@ -393,7 +393,7 @@ static void
 fd_trace_record_ts(struct u_trace *ut, struct pipe_resource *timestamps,
 		unsigned idx)
 {
-	struct fd_batch *batch = container_of(ut, batch, trace);
+	struct fd_batch *batch = container_of(ut, struct fd_batch, trace);
 	struct fd_ringbuffer *ring = batch->nondraw ? batch->draw : batch->gmem;
 
 	if (ring->cur == batch->last_timestamp_cmd) {
@@ -411,7 +411,7 @@ static uint64_t
 fd_trace_read_ts(struct u_trace_context *utctx,
 		struct pipe_resource *timestamps, unsigned idx)
 {
-	struct fd_context *ctx = container_of(utctx, ctx, trace_context);
+	struct fd_context *ctx = container_of(utctx, struct fd_context, trace_context);
 	struct fd_bo *ts_bo = fd_resource(timestamps)->bo;
 
 	/* Only need to stall on results for the first entry: */

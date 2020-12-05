@@ -2421,8 +2421,7 @@ void vid_dec_av1_FrameDecoded(OMX_COMPONENTTYPE *comp,
 
    if (task->is_sef_task) {
       if (task->buf_ref_count == 0) {
-         struct dec_av1_task *t;
-         t = container_of(task->buf_ref, t, buf);
+         struct dec_av1_task *t = container_of(task->buf_ref, struct dec_av1_task, buf);
          list_del(&task->list);
          t->buf_ref_count--;
          list_del(&t->list);

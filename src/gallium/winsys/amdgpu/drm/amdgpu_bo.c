@@ -625,8 +625,7 @@ bool amdgpu_bo_can_reclaim(struct pb_buffer *_buf)
 
 bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
 {
-   struct amdgpu_winsys_bo *bo = NULL; /* fix container_of */
-   bo = container_of(entry, bo, u.slab.entry);
+   struct amdgpu_winsys_bo *bo = container_of(entry, struct amdgpu_winsys_bo, u.slab.entry);
 
    return amdgpu_bo_can_reclaim(&bo->base);
 }
@@ -1032,10 +1031,9 @@ static void amdgpu_bo_sparse_destroy(struct pb_buffer *_buf)
    }
 
    while (!list_is_empty(&bo->u.sparse.backing)) {
-      struct amdgpu_sparse_backing *dummy = NULL;
       sparse_free_backing_buffer(bo,
                                  container_of(bo->u.sparse.backing.next,
-                                              dummy, list));
+                                              struct amdgpu_sparse_backing, list));
    }
 
    amdgpu_va_range_free(bo->u.sparse.va_handle);
@@ -1332,8 +1330,7 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
       if (!entry)
          return NULL;
 
-      bo = NULL;
-      bo = container_of(entry, bo, u.slab.entry);
+      bo = container_of(entry, struct amdgpu_winsys_bo, u.slab.entry);
 
       pipe_reference_init(&bo->base.reference, 1);
 

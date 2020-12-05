@@ -81,12 +81,12 @@ iris_lost_context_state(struct iris_batch *batch)
    struct iris_context *ice = NULL;
 
    if (batch->name == IRIS_BATCH_RENDER) {
-      ice = container_of(batch, ice, batches[IRIS_BATCH_RENDER]);
+      ice = container_of(batch, struct iris_context, batches[IRIS_BATCH_RENDER]);
       assert(&ice->batches[IRIS_BATCH_RENDER] == batch);
 
       batch->screen->vtbl.init_render_context(batch);
    } else if (batch->name == IRIS_BATCH_COMPUTE) {
-      ice = container_of(batch, ice, batches[IRIS_BATCH_COMPUTE]);
+      ice = container_of(batch, struct iris_context, batches[IRIS_BATCH_COMPUTE]);
       assert(&ice->batches[IRIS_BATCH_COMPUTE] == batch);
 
       batch->screen->vtbl.init_compute_context(batch);

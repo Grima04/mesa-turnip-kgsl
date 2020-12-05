@@ -87,6 +87,27 @@
 #  define STATIC_ASSERT(COND) do { } while (0)
 #endif
 
+/**
+ * container_of - cast a member of a structure out to the containing structure
+ * @ptr:        the pointer to the member.
+ * @type:       the type of the container struct this is embedded in.
+ * @member:     the name of the member within the struct.
+ */
+#ifndef __GNUC__
+   /* a grown-up compiler is required for the extra type checking: */
+#  define container_of(ptr, type, member)                               \
+      (type*)((uint8_t *)ptr - offsetof(type, member))
+#else
+#  define __same_type(a, b) \
+      __builtin_types_compatible_p(__typeof__(a), __typeof__(b))
+#  define container_of(ptr, type, member) ({                            \
+         uint8_t *__mptr = (uint8_t *)(ptr);                            \
+         STATIC_ASSERT(__same_type(*(ptr), ((type *)0)->member) ||      \
+                       __same_type(*(ptr), void) ||                     \
+                       !"pointer type mismatch in container_of()");     \
+         ((type *)(__mptr - offsetof(type, member)));                   \
+      })
+#endif
 
 /**
  * Unreachable macro. Useful for suppressing "control reaches end of non-void

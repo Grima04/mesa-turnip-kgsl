@@ -634,8 +634,7 @@ void si_query_hw_destroy(struct si_context *sctx, struct si_query *squery)
 
 static bool si_query_hw_prepare_buffer(struct si_context *sctx, struct si_query_buffer *qbuf)
 {
-   static const struct si_query_hw si_query_hw_s;
-   struct si_query_hw *query = container_of(qbuf, &si_query_hw_s, buffer);
+   struct si_query_hw *query = container_of(qbuf, struct si_query_hw, buffer);
    struct si_screen *screen = sctx->screen;
 
    /* The caller ensures that the buffer is currently unused by the GPU. */

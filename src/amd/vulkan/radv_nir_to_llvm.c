@@ -96,8 +96,7 @@ struct radv_shader_output_values {
 static inline struct radv_shader_context *
 radv_shader_context_from_abi(struct ac_shader_abi *abi)
 {
-	struct radv_shader_context *ctx = NULL;
-	return container_of(abi, ctx, abi);
+	return container_of(abi, struct radv_shader_context, abi);
 }
 
 static LLVMValueRef get_rel_patch_id(struct radv_shader_context *ctx)

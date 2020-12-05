@@ -48,8 +48,7 @@ struct radv_shader_args {
 static inline struct radv_shader_args *
 radv_shader_args_from_ac(struct ac_shader_args *args)
 {
-	struct radv_shader_args *radv_args = NULL;
-	return (struct radv_shader_args *) container_of(args, radv_args, ac);
+	return container_of(args, struct radv_shader_args, ac);
 }
 
 void radv_declare_shader_args(struct radv_shader_args *args,
