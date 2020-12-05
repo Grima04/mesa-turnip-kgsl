@@ -260,7 +260,8 @@ static struct asm_instruction *asm_instruction_copy_ctor(
 %type <integer> stateOptModMatNum stateModMatNum statePaletteMatNum
 %type <integer> stateProgramMatNum
 
-%type <integer> ambDiffSpecProperty
+%type <integer> ambDiffSpecPropertyMaterial
+%type <integer> ambDiffSpecPropertyLight
 
 %type <state> programSingleItem progEnvParam progLocalParam
 %type <state> programMultipleItem progEnvParams progLocalParams
@@ -1240,22 +1241,22 @@ stateMaterialItem: MATERIAL optFaceType stateMatProperty
 	{
 	   memset($$, 0, sizeof($$));
 	   $$[0] = STATE_MATERIAL;
-	   $$[1] = $2;
-	   $$[2] = $3;
+	   $$[1] = $3 + $2;
+	   $$[2] = 0;
 	}
 	;
 
-stateMatProperty: ambDiffSpecProperty
+stateMatProperty: ambDiffSpecPropertyMaterial
 	{
 	   $$ = $1;
 	}
 	| EMISSION
 	{
-	   $$ = STATE_EMISSION;
+	   $$ = MAT_ATTRIB_FRONT_EMISSION;
 	}
 	| SHININESS
 	{
-	   $$ = STATE_SHININESS;
+	   $$ = MAT_ATTRIB_FRONT_SHININESS;
 	}
 	;
 
@@ -1268,7 +1269,7 @@ stateLightItem: LIGHT '[' stateLightNumber ']' stateLightProperty
 	}
 	;
 
-stateLightProperty: ambDiffSpecProperty
+stateLightProperty: ambDiffSpecPropertyLight
 	{
 	   $$ = $1;
 	}
@@ -1326,12 +1327,12 @@ stateLightProdItem: LIGHTPROD '[' stateLightNumber ']' optFaceType stateLProdPro
 	   memset($$, 0, sizeof($$));
 	   $$[0] = STATE_LIGHTPROD;
 	   $$[1] = $3;
-	   $$[2] = $5;
-	   $$[3] = $6;
+	   $$[2] = $6 + $5;
+	   $$[3] = 0;
 	}
 	;
 
-stateLProdProperty: ambDiffSpecProperty;
+stateLProdProperty: ambDiffSpecPropertyMaterial;
 
 stateTexEnvItem: TEXENV optLegacyTexUnitNum stateTexEnvProperty
 	{
@@ -1347,19 +1348,33 @@ stateTexEnvProperty: COLOR
 	}
 	;
 
-ambDiffSpecProperty: AMBIENT
+ambDiffSpecPropertyMaterial: AMBIENT
 	{
-	   $$ = STATE_AMBIENT;
+	   $$ = MAT_ATTRIB_FRONT_AMBIENT;
 	}
 	| DIFFUSE
 	{
-	   $$ = STATE_DIFFUSE;
+	   $$ = MAT_ATTRIB_FRONT_DIFFUSE;
 	}
 	| SPECULAR
 	{
-	   $$ = STATE_SPECULAR;
+	   $$ = MAT_ATTRIB_FRONT_SPECULAR;
 	}
 	;
+
+ambDiffSpecPropertyLight: AMBIENT
+        {
+           $$ = STATE_AMBIENT;
+        }
+        | DIFFUSE
+        {
+           $$ = STATE_DIFFUSE;
+        }
+        | SPECULAR
+        {
+           $$ = STATE_SPECULAR;
+        }
+        ;
 
 stateLightNumber: INTEGER
 	{

@@ -881,7 +881,7 @@ static struct ureg get_material( struct tnl_program *p, GLuint side,
       return register_input( p, VERT_ATTRIB_MAT(attrib) );
    }
    else
-      return register_param3( p, STATE_MATERIAL, side, property );
+      return register_param2(p, STATE_MATERIAL, attrib);
 }
 
 #define SCENE_COLOR_BITS(side) (( MAT_BIT_FRONT_EMISSION | \
@@ -930,7 +930,7 @@ static struct ureg get_lightprod( struct tnl_program *p, GLuint light,
       return tmp;
    }
    else
-      return register_param4(p, STATE_LIGHTPROD, light, side, property);
+      return register_param3(p, STATE_LIGHTPROD, light, attrib);
 }
 
 

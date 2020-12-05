@@ -30,6 +30,7 @@
 
 
 #include <stdio.h>
+#include <stddef.h>
 #include "main/glheader.h"
 #include "main/context.h"
 #include "main/blend.h"
@@ -87,39 +88,20 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    switch (state[0]) {
    case STATE_MATERIAL:
       {
-         /* state[1] is either 0=front or 1=back side */
-         const GLuint face = (GLuint) state[1];
+         /* state[1] is MAT_ATTRIB_FRONT_* */
+         const GLuint index = (GLuint) state[1];
          const struct gl_material *mat = &ctx->Light.Material;
-         assert(face == 0 || face == 1);
-         /* we rely on tokens numbered so that _BACK_ == _FRONT_+ 1 */
-         assert(MAT_ATTRIB_FRONT_AMBIENT + 1 == MAT_ATTRIB_BACK_AMBIENT);
-         /* XXX we could get rid of this switch entirely with a little
-          * work in arbprogparse.c's parse_state_single_item().
-          */
-         /* state[2] is the material attribute */
-         switch (state[2]) {
-         case STATE_AMBIENT:
-            COPY_4V(value, mat->Attrib[MAT_ATTRIB_FRONT_AMBIENT + face]);
-            return;
-         case STATE_DIFFUSE:
-            COPY_4V(value, mat->Attrib[MAT_ATTRIB_FRONT_DIFFUSE + face]);
-            return;
-         case STATE_SPECULAR:
-            COPY_4V(value, mat->Attrib[MAT_ATTRIB_FRONT_SPECULAR + face]);
-            return;
-         case STATE_EMISSION:
-            COPY_4V(value, mat->Attrib[MAT_ATTRIB_FRONT_EMISSION + face]);
-            return;
-         case STATE_SHININESS:
-            value[0] = mat->Attrib[MAT_ATTRIB_FRONT_SHININESS + face][0];
+         assert(index >= MAT_ATTRIB_FRONT_AMBIENT &&
+                index <= MAT_ATTRIB_BACK_SHININESS);
+         if (index >= MAT_ATTRIB_FRONT_SHININESS) {
+            value[0] = mat->Attrib[index][0];
             value[1] = 0.0F;
             value[2] = 0.0F;
             value[3] = 1.0F;
-            return;
-         default:
-            unreachable("Invalid material state in fetch_state");
-            return;
+         } else {
+            COPY_4V(value, mat->Attrib[index]);
          }
+         return;
       }
    case STATE_LIGHT:
       {
@@ -175,38 +157,26 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    case STATE_LIGHTPROD:
       {
          const GLuint ln = (GLuint) state[1];
-         const GLuint face = (GLuint) state[2];
-         GLint i;
-         assert(face == 0 || face == 1);
-         switch (state[3]) {
-            case STATE_AMBIENT:
-               for (i = 0; i < 3; i++) {
-                  value[i] = ctx->Light.LightSource[ln].Ambient[i] *
-                     ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_AMBIENT+face][i];
-               }
-               /* [3] = material alpha */
-               value[3] = ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_AMBIENT+face][3];
-               return;
-            case STATE_DIFFUSE:
-               for (i = 0; i < 3; i++) {
-                  value[i] = ctx->Light.LightSource[ln].Diffuse[i] *
-                     ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_DIFFUSE+face][i];
-               }
-               /* [3] = material alpha */
-               value[3] = ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_DIFFUSE+face][3];
-               return;
-            case STATE_SPECULAR:
-               for (i = 0; i < 3; i++) {
-                  value[i] = ctx->Light.LightSource[ln].Specular[i] *
-                     ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_SPECULAR+face][i];
-               }
-               /* [3] = material alpha */
-               value[3] = ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_SPECULAR+face][3];
-               return;
-            default:
-               unreachable("Invalid lightprod state in fetch_state");
-               return;
+         const GLuint index = (GLuint) state[2];
+         const GLuint attr = (index / 2) * 4;
+         assert(index >= MAT_ATTRIB_FRONT_AMBIENT &&
+                index <= MAT_ATTRIB_BACK_SPECULAR);
+         for (int i = 0; i < 3; i++) {
+            /* We want attr to access out of bounds into the following Diffuse
+             * and Specular fields. This is guaranteed to work because
+             * STATE_LIGHT and STATE_LIGHT_ATTRIBS also rely on this memory
+             * layout.
+             */
+            STATIC_ASSERT(offsetof(struct gl_light_uniforms, Ambient) + 16 ==
+                          offsetof(struct gl_light_uniforms, Diffuse));
+            STATIC_ASSERT(offsetof(struct gl_light_uniforms, Diffuse) + 16 ==
+                          offsetof(struct gl_light_uniforms, Specular));
+            value[i] = ctx->Light.LightSource[ln].Ambient[attr + i] *
+                       ctx->Light.Material.Attrib[index][i];
          }
+         /* [3] = material alpha */
+         value[3] = ctx->Light.Material.Attrib[index][3];
+         return;
       }
    case STATE_TEXGEN:
       {
@@ -835,7 +805,7 @@ append_token(char *dst, gl_state_index k)
 {
    switch (k) {
    case STATE_MATERIAL:
-      append(dst, "material.");
+      append(dst, "material");
       break;
    case STATE_LIGHT:
       append(dst, "light");
@@ -1062,15 +1032,6 @@ append_token(char *dst, gl_state_index k)
 }
 
 static void
-append_face(char *dst, GLint face)
-{
-   if (face == 0)
-      append(dst, "front.");
-   else
-      append(dst, "back.");
-}
-
-static void
 append_index(char *dst, GLint index, bool structure)
 {
    char s[20];
@@ -1094,8 +1055,7 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
 
    switch (state[0]) {
    case STATE_MATERIAL:
-      append_face(str, state[1]);
-      append_token(str, state[2]);
+      append_index(str, state[1], false);
       break;
    case STATE_LIGHT:
       append_index(str, state[1], true); /* light number [i]. */
@@ -1116,9 +1076,8 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       }
       break;
    case STATE_LIGHTPROD:
-      append_index(str, state[1], true); /* light number [i]. */
-      append_face(str, state[2]);
-      append_token(str, state[3]);
+      append_index(str, state[1], false); /* light number [i] */
+      append_index(str, state[2], false);
       break;
    case STATE_TEXGEN:
       append_index(str, state[1], true); /* tex unit [i] */

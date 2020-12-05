@@ -74,19 +74,19 @@ static const struct gl_builtin_uniform_element gl_Point_elements[] = {
 };
 
 static const struct gl_builtin_uniform_element gl_FrontMaterial_elements[] = {
-   {"emission", {STATE_MATERIAL, 0, STATE_EMISSION}, SWIZZLE_XYZW},
-   {"ambient", {STATE_MATERIAL, 0, STATE_AMBIENT}, SWIZZLE_XYZW},
-   {"diffuse", {STATE_MATERIAL, 0, STATE_DIFFUSE}, SWIZZLE_XYZW},
-   {"specular", {STATE_MATERIAL, 0, STATE_SPECULAR}, SWIZZLE_XYZW},
-   {"shininess", {STATE_MATERIAL, 0, STATE_SHININESS}, SWIZZLE_XXXX},
+   {"emission", {STATE_MATERIAL, MAT_ATTRIB_FRONT_EMISSION}, SWIZZLE_XYZW},
+   {"ambient", {STATE_MATERIAL, MAT_ATTRIB_FRONT_AMBIENT}, SWIZZLE_XYZW},
+   {"diffuse", {STATE_MATERIAL, MAT_ATTRIB_FRONT_DIFFUSE}, SWIZZLE_XYZW},
+   {"specular", {STATE_MATERIAL, MAT_ATTRIB_FRONT_SPECULAR}, SWIZZLE_XYZW},
+   {"shininess", {STATE_MATERIAL, MAT_ATTRIB_FRONT_SHININESS}, SWIZZLE_XXXX},
 };
 
 static const struct gl_builtin_uniform_element gl_BackMaterial_elements[] = {
-   {"emission", {STATE_MATERIAL, 1, STATE_EMISSION}, SWIZZLE_XYZW},
-   {"ambient", {STATE_MATERIAL, 1, STATE_AMBIENT}, SWIZZLE_XYZW},
-   {"diffuse", {STATE_MATERIAL, 1, STATE_DIFFUSE}, SWIZZLE_XYZW},
-   {"specular", {STATE_MATERIAL, 1, STATE_SPECULAR}, SWIZZLE_XYZW},
-   {"shininess", {STATE_MATERIAL, 1, STATE_SHININESS}, SWIZZLE_XXXX},
+   {"emission", {STATE_MATERIAL, MAT_ATTRIB_BACK_EMISSION}, SWIZZLE_XYZW},
+   {"ambient", {STATE_MATERIAL, MAT_ATTRIB_BACK_AMBIENT}, SWIZZLE_XYZW},
+   {"diffuse", {STATE_MATERIAL, MAT_ATTRIB_BACK_DIFFUSE}, SWIZZLE_XYZW},
+   {"specular", {STATE_MATERIAL, MAT_ATTRIB_BACK_SPECULAR}, SWIZZLE_XYZW},
+   {"shininess", {STATE_MATERIAL, MAT_ATTRIB_BACK_SHININESS}, SWIZZLE_XXXX},
 };
 
 static const struct gl_builtin_uniform_element gl_LightSource_elements[] = {
@@ -121,15 +121,15 @@ static const struct gl_builtin_uniform_element gl_BackLightModelProduct_elements
 };
 
 static const struct gl_builtin_uniform_element gl_FrontLightProduct_elements[] = {
-   {"ambient", {STATE_LIGHTPROD, 0, 0, STATE_AMBIENT}, SWIZZLE_XYZW},
-   {"diffuse", {STATE_LIGHTPROD, 0, 0, STATE_DIFFUSE}, SWIZZLE_XYZW},
-   {"specular", {STATE_LIGHTPROD, 0, 0, STATE_SPECULAR}, SWIZZLE_XYZW},
+   {"ambient", {STATE_LIGHTPROD, 0, MAT_ATTRIB_FRONT_AMBIENT}, SWIZZLE_XYZW},
+   {"diffuse", {STATE_LIGHTPROD, 0, MAT_ATTRIB_FRONT_DIFFUSE}, SWIZZLE_XYZW},
+   {"specular", {STATE_LIGHTPROD, 0, MAT_ATTRIB_FRONT_SPECULAR}, SWIZZLE_XYZW},
 };
 
 static const struct gl_builtin_uniform_element gl_BackLightProduct_elements[] = {
-   {"ambient", {STATE_LIGHTPROD, 0, 1, STATE_AMBIENT}, SWIZZLE_XYZW},
-   {"diffuse", {STATE_LIGHTPROD, 0, 1, STATE_DIFFUSE}, SWIZZLE_XYZW},
-   {"specular", {STATE_LIGHTPROD, 0, 1, STATE_SPECULAR}, SWIZZLE_XYZW},
+   {"ambient", {STATE_LIGHTPROD, 0, MAT_ATTRIB_BACK_AMBIENT}, SWIZZLE_XYZW},
+   {"diffuse", {STATE_LIGHTPROD, 0, MAT_ATTRIB_BACK_DIFFUSE}, SWIZZLE_XYZW},
+   {"specular", {STATE_LIGHTPROD, 0, MAT_ATTRIB_BACK_SPECULAR}, SWIZZLE_XYZW},
 };
 
 static const struct gl_builtin_uniform_element gl_TextureEnvColor_elements[] = {
