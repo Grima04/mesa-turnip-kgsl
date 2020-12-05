@@ -43,7 +43,7 @@ get_state_var(nir_builder *b,
               const struct glsl_type *var_type,
               nir_variable **out_var)
 {
-   const gl_state_index16 tokens[STATE_LENGTH] = { STATE_INTERNAL, STATE_INTERNAL_DRIVER, var_enum };
+   const gl_state_index16 tokens[STATE_LENGTH] = { STATE_INTERNAL_DRIVER, var_enum };
    if (*out_var == NULL) {
       nir_variable *var = nir_variable_create(b->shader,
                                               nir_var_uniform,
@@ -432,10 +432,10 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b,
 
    if (variable == NULL ||
        variable->num_state_slots != 1 ||
-       variable->state_slots[0].tokens[1] != STATE_INTERNAL_DRIVER)
+       variable->state_slots[0].tokens[0] != STATE_INTERNAL_DRIVER)
       return false;
 
-   enum d3d12_state_var var = variable->state_slots[0].tokens[2];
+   enum d3d12_state_var var = variable->state_slots[0].tokens[1];
    nir_ssa_def *ubo_idx = nir_imm_int(b, binding);
    nir_ssa_def *ubo_offset =  nir_imm_int(b, get_state_var_offset(shader, var) * 4);
    nir_ssa_def *load =
@@ -476,7 +476,7 @@ d3d12_lower_state_vars(nir_shader *nir, struct d3d12_shader *shader)
 
    nir_foreach_variable_with_modes_safe(var, nir, nir_var_uniform) {
       if (var->num_state_slots == 1 &&
-          var->state_slots[0].tokens[1] == STATE_INTERNAL_DRIVER) {
+          var->state_slots[0].tokens[0] == STATE_INTERNAL_DRIVER) {
          if (var->data.mode == nir_var_mem_ubo) {
             binding = var->data.binding;
          }
@@ -510,13 +510,13 @@ d3d12_lower_state_vars(nir_shader *nir, struct d3d12_shader *shader)
       /* Remove state variables */
       nir_foreach_variable_with_modes_safe(var, nir, nir_var_uniform) {
          if (var->num_state_slots == 1 &&
-             var->state_slots[0].tokens[1] == STATE_INTERNAL_DRIVER) {
+             var->state_slots[0].tokens[0] == STATE_INTERNAL_DRIVER) {
             exec_node_remove(&var->node);
             nir->num_uniforms--;
          }
       }
 
-      const gl_state_index16 tokens[STATE_LENGTH] = { STATE_INTERNAL, STATE_INTERNAL_DRIVER };
+      const gl_state_index16 tokens[STATE_LENGTH] = { STATE_INTERNAL_DRIVER };
       const struct glsl_type *type = glsl_array_type(glsl_vec4_type(),
                                                      shader->state_vars_size / 4, 0);
       nir_variable *ubo = nir_variable_create(nir, nir_var_mem_ubo, type,

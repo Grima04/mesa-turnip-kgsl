@@ -1623,7 +1623,7 @@ glsl_to_tgsi_visitor::visit_expression(ir_expression* ir, st_src_reg *op)
        * It is then multiplied with the source operand of DDY.
        */
       static const gl_state_index16 transform_y_state[STATE_LENGTH]
-         = { STATE_INTERNAL, STATE_FB_WPOS_Y_TRANSFORM };
+         = { STATE_FB_WPOS_Y_TRANSFORM };
 
       unsigned transform_y_index =
          _mesa_add_state_reference(this->prog->Parameters,
@@ -2235,7 +2235,7 @@ glsl_to_tgsi_visitor::visit_expression(ir_expression* ir, st_src_reg *op)
    case ir_binop_interpolate_at_offset: {
       /* The y coordinate needs to be flipped for the default fb */
       static const gl_state_index16 transform_y_state[STATE_LENGTH]
-         = { STATE_INTERNAL, STATE_FB_WPOS_Y_TRANSFORM };
+         = { STATE_FB_WPOS_Y_TRANSFORM };
 
       unsigned transform_y_index =
          _mesa_add_state_reference(this->prog->Parameters,
@@ -7234,7 +7234,7 @@ get_mesa_program_tgsi(struct gl_context *ctx,
         prog->info.system_values_read & (1ull << SYSTEM_VALUE_FRAG_COORD) ||
         prog->info.system_values_read & (1ull << SYSTEM_VALUE_SAMPLE_POS))) {
       static const gl_state_index16 wposTransformState[STATE_LENGTH] = {
-         STATE_INTERNAL, STATE_FB_WPOS_Y_TRANSFORM
+         STATE_FB_WPOS_Y_TRANSFORM
       };
 
       v->wpos_transform_const = _mesa_add_state_reference(prog->Parameters,

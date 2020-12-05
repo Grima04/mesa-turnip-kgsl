@@ -716,9 +716,8 @@ lower_ucp(struct st_context *st,
             clipplane_state[i][0] = STATE_CLIPPLANE;
             clipplane_state[i][1] = i;
          } else {
-            clipplane_state[i][0] = STATE_INTERNAL;
-            clipplane_state[i][1] = STATE_CLIP_INTERNAL;
-            clipplane_state[i][2] = i;
+            clipplane_state[i][0] = STATE_CLIP_INTERNAL;
+            clipplane_state[i][1] = i;
          }
          _mesa_add_state_reference(params, clipplane_state[i]);
       }
@@ -750,7 +749,7 @@ st_create_vp_variant(struct st_context *st,
    struct pipe_shader_state state = {0};
 
    static const gl_state_index16 point_size_state[STATE_LENGTH] =
-      { STATE_INTERNAL, STATE_POINT_SIZE_CLAMPED, 0 };
+      { STATE_POINT_SIZE_CLAMPED, 0 };
    struct gl_program_parameter_list *params = stvp->Base.Parameters;
 
    vpv->key = *key;
@@ -1229,13 +1228,13 @@ st_create_fp_variant(struct st_context *st,
    struct pipe_shader_state state = {0};
    struct gl_program_parameter_list *params = stfp->Base.Parameters;
    static const gl_state_index16 texcoord_state[STATE_LENGTH] =
-      { STATE_INTERNAL, STATE_CURRENT_ATTRIB, VERT_ATTRIB_TEX0 };
+      { STATE_CURRENT_ATTRIB, VERT_ATTRIB_TEX0 };
    static const gl_state_index16 scale_state[STATE_LENGTH] =
-      { STATE_INTERNAL, STATE_PT_SCALE };
+      { STATE_PT_SCALE };
    static const gl_state_index16 bias_state[STATE_LENGTH] =
-      { STATE_INTERNAL, STATE_PT_BIAS };
+      { STATE_PT_BIAS };
    static const gl_state_index16 alpha_ref_state[STATE_LENGTH] =
-      { STATE_INTERNAL, STATE_ALPHA_REF };
+      { STATE_ALPHA_REF };
 
    if (!variant)
       return NULL;
@@ -1748,7 +1747,7 @@ st_get_common_variant(struct st_context *st,
 
             if (key->lower_point_size) {
                static const gl_state_index16 point_size_state[STATE_LENGTH] =
-                  { STATE_INTERNAL, STATE_POINT_SIZE_CLAMPED, 0 };
+                  { STATE_POINT_SIZE_CLAMPED, 0 };
                _mesa_add_state_reference(params, point_size_state);
                NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
                           point_size_state);

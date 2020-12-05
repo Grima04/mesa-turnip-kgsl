@@ -443,7 +443,7 @@ static struct ureg register_input( struct tnl_program *p, GLuint input )
       return make_ureg(PROGRAM_INPUT, input);
    }
    else {
-      return register_param3( p, STATE_INTERNAL, STATE_CURRENT_ATTRIB, input );
+      return register_param2(p, STATE_CURRENT_ATTRIB, input);
    }
 }
 
@@ -797,8 +797,7 @@ static struct ureg get_transformed_normal( struct tnl_program *p )
       else if (p->state->need_eye_coords == p->state->rescale_normals) {
          /* This is already adjusted for eye/non-eye rendering:
           */
-	 struct ureg rescale = register_param2(p, STATE_INTERNAL,
-                                               STATE_NORMAL_SCALE);
+	 struct ureg rescale = register_param1(p, STATE_NORMAL_SCALE);
 
 	 emit_op2( p, OPCODE_MUL, transformed_normal, 0, normal, rescale );
          normal = transformed_normal;
@@ -947,8 +946,7 @@ static struct ureg calculate_light_attenuation( struct tnl_program *p,
    /* Calculate spot attenuation:
     */
    if (!p->state->unit[i].light_spotcutoff_is_180) {
-      struct ureg spot_dir_norm = register_param3(p, STATE_INTERNAL,
-						  STATE_LIGHT_SPOT_DIR_NORMALIZED, i);
+      struct ureg spot_dir_norm = register_param2(p, STATE_LIGHT_SPOT_DIR_NORMALIZED, i);
       struct ureg spot = get_temp(p);
       struct ureg slt = get_temp(p);
 
@@ -1117,11 +1115,9 @@ static void build_lighting( struct tnl_program *p )
 
 	 count++;
          if (p->state->unit[i].light_eyepos3_is_zero) {
-             VPpli = register_param3(p, STATE_INTERNAL,
-                                     STATE_LIGHT_POSITION_NORMALIZED, i);
+             VPpli = register_param2(p, STATE_LIGHT_POSITION_NORMALIZED, i);
          } else {
-            struct ureg Ppli = register_param3(p, STATE_INTERNAL,
-                                               STATE_LIGHT_POSITION, i);
+            struct ureg Ppli = register_param2(p, STATE_LIGHT_POSITION, i);
             struct ureg V = get_eye_position(p);
 
             VPpli = get_temp(p);
@@ -1153,8 +1149,7 @@ static void build_lighting( struct tnl_program *p )
                emit_op2(p, OPCODE_SUB, half, 0, VPpli, eye_hat);
                emit_normalize_vec3(p, half, half);
             } else if (p->state->unit[i].light_eyepos3_is_zero) {
-               half = register_param3(p, STATE_INTERNAL,
-                                      STATE_LIGHT_HALF_VECTOR, i);
+               half = register_param2(p, STATE_LIGHT_HALF_VECTOR, i);
             } else {
                struct ureg z_dir = swizzle(get_identity_param(p),X,Y,W,Z);
                half = get_temp(p);
@@ -1521,7 +1516,7 @@ static void build_texture_transform( struct tnl_program *p )
 static void build_atten_pointsize( struct tnl_program *p )
 {
    struct ureg eye = get_eye_position_z(p);
-   struct ureg state_size = register_param2(p, STATE_INTERNAL, STATE_POINT_SIZE_CLAMPED);
+   struct ureg state_size = register_param1(p, STATE_POINT_SIZE_CLAMPED);
    struct ureg state_attenuation = register_param1(p, STATE_POINT_ATTENUATION);
    struct ureg out = register_output(p, VARYING_SLOT_PSIZ);
    struct ureg ut = get_temp(p);

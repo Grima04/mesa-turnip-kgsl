@@ -129,7 +129,7 @@ brw_create_nir(struct brw_context *brw,
    if (stage == MESA_SHADER_TESS_CTRL) {
       /* Lower gl_PatchVerticesIn from a sys. value to a uniform on Gen8+. */
       static const gl_state_index16 tokens[STATE_LENGTH] =
-         { STATE_INTERNAL, STATE_TCS_PATCH_VERTICES_IN };
+         { STATE_TCS_PATCH_VERTICES_IN };
       nir_lower_patch_vertices(nir, 0, devinfo->gen >= 8 ? tokens : NULL);
    }
 
@@ -142,13 +142,13 @@ brw_create_nir(struct brw_context *brw,
       uint32_t static_patch_vertices =
          tcs ? tcs->Program->nir->info.tess.tcs_vertices_out : 0;
       static const gl_state_index16 tokens[STATE_LENGTH] =
-         { STATE_INTERNAL, STATE_TES_PATCH_VERTICES_IN };
+         { STATE_TES_PATCH_VERTICES_IN };
       nir_lower_patch_vertices(nir, static_patch_vertices, tokens);
    }
 
    if (stage == MESA_SHADER_FRAGMENT) {
       static const struct nir_lower_wpos_ytransform_options wpos_options = {
-         .state_tokens = {STATE_INTERNAL, STATE_FB_WPOS_Y_TRANSFORM, 0, 0},
+         .state_tokens = {STATE_FB_WPOS_Y_TRANSFORM, 0, 0},
          .fs_coord_pixel_center_integer = 1,
          .fs_coord_origin_upper_left = 1,
       };

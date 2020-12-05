@@ -668,7 +668,7 @@ st_nir_lower_wpos_ytransform(struct nir_shader *nir,
       return;
 
    static const gl_state_index16 wposTransformState[STATE_LENGTH] = {
-      STATE_INTERNAL, STATE_FB_WPOS_Y_TRANSFORM
+      STATE_FB_WPOS_Y_TRANSFORM
    };
    nir_lower_wpos_ytransform_options wpos_options = { { 0 } };
 
@@ -693,7 +693,7 @@ st_nir_lower_wpos_ytransform(struct nir_shader *nir,
    }
 
    static const gl_state_index16 pntcTransformState[STATE_LENGTH] = {
-      STATE_INTERNAL, STATE_FB_PNTC_Y_TRANSFORM
+      STATE_FB_PNTC_Y_TRANSFORM
    };
 
    if (nir_lower_pntc_ytransform(nir, &pntcTransformState)) {

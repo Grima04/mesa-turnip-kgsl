@@ -177,19 +177,19 @@ static const struct gl_builtin_uniform_element gl_Fog_elements[] = {
 };
 
 static const struct gl_builtin_uniform_element gl_NormalScale_elements[] = {
-   {NULL, {STATE_NORMAL_SCALE}, SWIZZLE_XXXX},
+   {NULL, {STATE_NORMAL_SCALE_EYESPACE}, SWIZZLE_XXXX},
 };
 
 static const struct gl_builtin_uniform_element gl_FogParamsOptimizedMESA_elements[] = {
-   {NULL, {STATE_INTERNAL, STATE_FOG_PARAMS_OPTIMIZED}, SWIZZLE_XYZW},
+   {NULL, {STATE_FOG_PARAMS_OPTIMIZED}, SWIZZLE_XYZW},
 };
 
 static const struct gl_builtin_uniform_element gl_CurrentAttribVertMESA_elements[] = {
-   {NULL, {STATE_INTERNAL, STATE_CURRENT_ATTRIB, 0}, SWIZZLE_XYZW},
+   {NULL, {STATE_CURRENT_ATTRIB, 0}, SWIZZLE_XYZW},
 };
 
 static const struct gl_builtin_uniform_element gl_CurrentAttribFragMESA_elements[] = {
-   {NULL, {STATE_INTERNAL, STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED, 0}, SWIZZLE_XYZW},
+   {NULL, {STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED, 0}, SWIZZLE_XYZW},
 };
 
 #define MATRIX(name, statevar)				\
@@ -618,14 +618,8 @@ builtin_variable_generator::add_uniform(const glsl_type *type,
 	    &statevar->elements[j];
 
 	 memcpy(slots->tokens, element->tokens, sizeof(element->tokens));
-	 if (type->is_array()) {
-	    if (strcmp(name, "gl_CurrentAttribVertMESA") == 0 ||
-		strcmp(name, "gl_CurrentAttribFragMESA") == 0) {
-	       slots->tokens[2] = a;
-	    } else {
-	       slots->tokens[1] = a;
-	    }
-	 }
+	 if (type->is_array())
+            slots->tokens[1] = a;
 
 	 slots->swizzle = element->swizzle;
 	 slots++;

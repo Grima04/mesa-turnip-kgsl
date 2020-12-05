@@ -472,224 +472,215 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       }
       return;
 
-   case STATE_NORMAL_SCALE:
+   case STATE_NORMAL_SCALE_EYESPACE:
       ASSIGN_4V(value, ctx->_ModelViewInvScaleEyespace, 0, 0, 1);
       return;
 
-   case STATE_INTERNAL:
-      switch (state[1]) {
-      case STATE_CURRENT_ATTRIB:
-         {
-            const GLuint idx = (GLuint) state[2];
-            COPY_4V(value, ctx->Current.Attrib[idx]);
-         }
-         return;
-
-      case STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED:
-         {
-            const GLuint idx = (GLuint) state[2];
-            if(ctx->Light._ClampVertexColor &&
-               (idx == VERT_ATTRIB_COLOR0 ||
-                idx == VERT_ATTRIB_COLOR1)) {
-               value[0] = SATURATE(ctx->Current.Attrib[idx][0]);
-               value[1] = SATURATE(ctx->Current.Attrib[idx][1]);
-               value[2] = SATURATE(ctx->Current.Attrib[idx][2]);
-               value[3] = SATURATE(ctx->Current.Attrib[idx][3]);
-            }
-            else
-               COPY_4V(value, ctx->Current.Attrib[idx]);
-         }
-         return;
-
-      case STATE_NORMAL_SCALE:
-         ASSIGN_4V(value,
-                   ctx->_ModelViewInvScale,
-                   ctx->_ModelViewInvScale,
-                   ctx->_ModelViewInvScale,
-                   1);
-         return;
-
-      case STATE_FOG_PARAMS_OPTIMIZED: {
-         /* for simpler per-vertex/pixel fog calcs. POW (for EXP/EXP2 fog)
-          * might be more expensive than EX2 on some hw, plus it needs
-          * another constant (e) anyway. Linear fog can now be done with a
-          * single MAD.
-          * linear: fogcoord * -1/(end-start) + end/(end-start)
-          * exp: 2^-(density/ln(2) * fogcoord)
-          * exp2: 2^-((density/(sqrt(ln(2))) * fogcoord)^2)
-          */
-         float val =  (ctx->Fog.End == ctx->Fog.Start)
-            ? 1.0f : (GLfloat)(-1.0F / (ctx->Fog.End - ctx->Fog.Start));
-         value[0] = val;
-         value[1] = ctx->Fog.End * -val;
-         value[2] = (GLfloat)(ctx->Fog.Density * M_LOG2E); /* M_LOG2E == 1/ln(2) */
-         value[3] = (GLfloat)(ctx->Fog.Density * ONE_DIV_SQRT_LN2);
-         return;
+   case STATE_CURRENT_ATTRIB:
+      {
+         const GLuint idx = (GLuint) state[1];
+         COPY_4V(value, ctx->Current.Attrib[idx]);
       }
+      return;
 
-      case STATE_POINT_SIZE_CLAMPED:
-         {
-           /* this includes implementation dependent limits, to avoid
-            * another potentially necessary clamp.
-            * Note: for sprites, point smooth (point AA) is ignored
-            * and we'll clamp to MinPointSizeAA and MaxPointSize, because we
-            * expect drivers will want to say their minimum for AA size is 0.0
-            * but for non-AA it's 1.0 (because normal points with size below 1.0
-            * need to get rounded up to 1.0, hence never disappear). GL does
-            * not specify max clamp size for sprites, other than it needs to be
-            * at least as large as max AA size, hence use non-AA size there.
-            */
-            GLfloat minImplSize;
-            GLfloat maxImplSize;
-            if (ctx->Point.PointSprite) {
-               minImplSize = ctx->Const.MinPointSizeAA;
-               maxImplSize = ctx->Const.MaxPointSize;
-            }
-            else if (ctx->Point.SmoothFlag || _mesa_is_multisample_enabled(ctx)) {
-               minImplSize = ctx->Const.MinPointSizeAA;
-               maxImplSize = ctx->Const.MaxPointSizeAA;
-            }
-            else {
-               minImplSize = ctx->Const.MinPointSize;
-               maxImplSize = ctx->Const.MaxPointSize;
-            }
-            value[0] = ctx->Point.Size;
-            value[1] = ctx->Point.MinSize >= minImplSize ? ctx->Point.MinSize : minImplSize;
-            value[2] = ctx->Point.MaxSize <= maxImplSize ? ctx->Point.MaxSize : maxImplSize;
-            value[3] = ctx->Point.Threshold;
+   case STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED:
+      {
+         const GLuint idx = (GLuint) state[1];
+         if(ctx->Light._ClampVertexColor &&
+            (idx == VERT_ATTRIB_COLOR0 ||
+             idx == VERT_ATTRIB_COLOR1)) {
+            value[0] = SATURATE(ctx->Current.Attrib[idx][0]);
+            value[1] = SATURATE(ctx->Current.Attrib[idx][1]);
+            value[2] = SATURATE(ctx->Current.Attrib[idx][2]);
+            value[3] = SATURATE(ctx->Current.Attrib[idx][3]);
          }
-         return;
-      case STATE_LIGHT_SPOT_DIR_NORMALIZED:
-         {
-            /* here, state[2] is the light number */
-            /* pre-normalize spot dir */
-            const GLuint ln = (GLuint) state[2];
-            COPY_3V(value, ctx->Light.Light[ln]._NormSpotDirection);
-            value[3] = ctx->Light.LightSource[ln]._CosCutoff;
+         else
+            COPY_4V(value, ctx->Current.Attrib[idx]);
+      }
+      return;
+
+   case STATE_NORMAL_SCALE:
+      ASSIGN_4V(value,
+                ctx->_ModelViewInvScale,
+                ctx->_ModelViewInvScale,
+                ctx->_ModelViewInvScale,
+                1);
+      return;
+
+   case STATE_FOG_PARAMS_OPTIMIZED: {
+      /* for simpler per-vertex/pixel fog calcs. POW (for EXP/EXP2 fog)
+       * might be more expensive than EX2 on some hw, plus it needs
+       * another constant (e) anyway. Linear fog can now be done with a
+       * single MAD.
+       * linear: fogcoord * -1/(end-start) + end/(end-start)
+       * exp: 2^-(density/ln(2) * fogcoord)
+       * exp2: 2^-((density/(sqrt(ln(2))) * fogcoord)^2)
+       */
+      float val =  (ctx->Fog.End == ctx->Fog.Start)
+         ? 1.0f : (GLfloat)(-1.0F / (ctx->Fog.End - ctx->Fog.Start));
+      value[0] = val;
+      value[1] = ctx->Fog.End * -val;
+      value[2] = (GLfloat)(ctx->Fog.Density * M_LOG2E); /* M_LOG2E == 1/ln(2) */
+      value[3] = (GLfloat)(ctx->Fog.Density * ONE_DIV_SQRT_LN2);
+      return;
+   }
+
+   case STATE_POINT_SIZE_CLAMPED:
+      {
+        /* this includes implementation dependent limits, to avoid
+         * another potentially necessary clamp.
+         * Note: for sprites, point smooth (point AA) is ignored
+         * and we'll clamp to MinPointSizeAA and MaxPointSize, because we
+         * expect drivers will want to say their minimum for AA size is 0.0
+         * but for non-AA it's 1.0 (because normal points with size below 1.0
+         * need to get rounded up to 1.0, hence never disappear). GL does
+         * not specify max clamp size for sprites, other than it needs to be
+         * at least as large as max AA size, hence use non-AA size there.
+         */
+         GLfloat minImplSize;
+         GLfloat maxImplSize;
+         if (ctx->Point.PointSprite) {
+            minImplSize = ctx->Const.MinPointSizeAA;
+            maxImplSize = ctx->Const.MaxPointSize;
          }
-         return;
-
-      case STATE_LIGHT_POSITION:
-         {
-            const GLuint ln = (GLuint) state[2];
-            COPY_4V(value, ctx->Light.Light[ln]._Position);
+         else if (ctx->Point.SmoothFlag || _mesa_is_multisample_enabled(ctx)) {
+            minImplSize = ctx->Const.MinPointSizeAA;
+            maxImplSize = ctx->Const.MaxPointSizeAA;
          }
-         return;
-
-      case STATE_LIGHT_POSITION_NORMALIZED:
-         {
-            const GLuint ln = (GLuint) state[2];
-            float p[4];
-            COPY_4V(p, ctx->Light.Light[ln]._Position);
-            NORMALIZE_3FV(p);
-            COPY_4V(value, p);
+         else {
+            minImplSize = ctx->Const.MinPointSize;
+            maxImplSize = ctx->Const.MaxPointSize;
          }
-         return;
+         value[0] = ctx->Point.Size;
+         value[1] = ctx->Point.MinSize >= minImplSize ? ctx->Point.MinSize : minImplSize;
+         value[2] = ctx->Point.MaxSize <= maxImplSize ? ctx->Point.MaxSize : maxImplSize;
+         value[3] = ctx->Point.Threshold;
+      }
+      return;
+   case STATE_LIGHT_SPOT_DIR_NORMALIZED:
+      {
+         /* here, state[1] is the light number */
+         /* pre-normalize spot dir */
+         const GLuint ln = (GLuint) state[1];
+         COPY_3V(value, ctx->Light.Light[ln]._NormSpotDirection);
+         value[3] = ctx->Light.LightSource[ln]._CosCutoff;
+      }
+      return;
 
-      case STATE_LIGHT_HALF_VECTOR:
-         {
-            const GLuint ln = (GLuint) state[2];
-            GLfloat p[3];
-            /* Compute infinite half angle vector:
-             *   halfVector = normalize(normalize(lightPos) + (0, 0, 1))
-             * light.EyePosition.w should be 0 for infinite lights.
-             */
-            COPY_3V(p, ctx->Light.Light[ln]._Position);
-            NORMALIZE_3FV(p);
-            ADD_3V(p, p, ctx->_EyeZDir);
-            NORMALIZE_3FV(p);
-            COPY_3V(value, p);
-            value[3] = 1.0;
-         }
-         return;
+   case STATE_LIGHT_POSITION:
+      {
+         const GLuint ln = (GLuint) state[1];
+         COPY_4V(value, ctx->Light.Light[ln]._Position);
+      }
+      return;
 
-      case STATE_PT_SCALE:
-         value[0] = ctx->Pixel.RedScale;
-         value[1] = ctx->Pixel.GreenScale;
-         value[2] = ctx->Pixel.BlueScale;
-         value[3] = ctx->Pixel.AlphaScale;
-         return;
+   case STATE_LIGHT_POSITION_NORMALIZED:
+      {
+         const GLuint ln = (GLuint) state[1];
+         float p[4];
+         COPY_4V(p, ctx->Light.Light[ln]._Position);
+         NORMALIZE_3FV(p);
+         COPY_4V(value, p);
+      }
+      return;
 
-      case STATE_PT_BIAS:
-         value[0] = ctx->Pixel.RedBias;
-         value[1] = ctx->Pixel.GreenBias;
-         value[2] = ctx->Pixel.BlueBias;
-         value[3] = ctx->Pixel.AlphaBias;
-         return;
+   case STATE_LIGHT_HALF_VECTOR:
+      {
+         const GLuint ln = (GLuint) state[1];
+         GLfloat p[3];
+         /* Compute infinite half angle vector:
+          *   halfVector = normalize(normalize(lightPos) + (0, 0, 1))
+          * light.EyePosition.w should be 0 for infinite lights.
+          */
+         COPY_3V(p, ctx->Light.Light[ln]._Position);
+         NORMALIZE_3FV(p);
+         ADD_3V(p, p, ctx->_EyeZDir);
+         NORMALIZE_3FV(p);
+         COPY_3V(value, p);
+         value[3] = 1.0;
+      }
+      return;
 
-      case STATE_FB_SIZE:
-         value[0] = (GLfloat) (ctx->DrawBuffer->Width - 1);
-         value[1] = (GLfloat) (ctx->DrawBuffer->Height - 1);
+   case STATE_PT_SCALE:
+      value[0] = ctx->Pixel.RedScale;
+      value[1] = ctx->Pixel.GreenScale;
+      value[2] = ctx->Pixel.BlueScale;
+      value[3] = ctx->Pixel.AlphaScale;
+      return;
+
+   case STATE_PT_BIAS:
+      value[0] = ctx->Pixel.RedBias;
+      value[1] = ctx->Pixel.GreenBias;
+      value[2] = ctx->Pixel.BlueBias;
+      value[3] = ctx->Pixel.AlphaBias;
+      return;
+
+   case STATE_FB_SIZE:
+      value[0] = (GLfloat) (ctx->DrawBuffer->Width - 1);
+      value[1] = (GLfloat) (ctx->DrawBuffer->Height - 1);
+      value[2] = 0.0F;
+      value[3] = 0.0F;
+      return;
+
+   case STATE_FB_WPOS_Y_TRANSFORM:
+      /* A driver may negate this conditional by using ZW swizzle
+       * instead of XY (based on e.g. some other state). */
+      if (!ctx->DrawBuffer->FlipY) {
+         /* Identity (XY) followed by flipping Y upside down (ZW). */
+         value[0] = 1.0F;
+         value[1] = 0.0F;
+         value[2] = -1.0F;
+         value[3] = _mesa_geometric_height(ctx->DrawBuffer);
+      } else {
+         /* Flipping Y upside down (XY) followed by identity (ZW). */
+         value[0] = -1.0F;
+         value[1] = _mesa_geometric_height(ctx->DrawBuffer);
+         value[2] = 1.0F;
+         value[3] = 0.0F;
+      }
+      return;
+
+   case STATE_FB_PNTC_Y_TRANSFORM:
+      {
+         bool flip_y = (ctx->Point.SpriteOrigin == GL_LOWER_LEFT) ^
+            (ctx->DrawBuffer->FlipY);
+
+         value[0] = flip_y ? -1.0F : 1.0F;
+         value[1] = flip_y ? 1.0F : 0.0F;
          value[2] = 0.0F;
          value[3] = 0.0F;
-         return;
-
-      case STATE_FB_WPOS_Y_TRANSFORM:
-         /* A driver may negate this conditional by using ZW swizzle
-          * instead of XY (based on e.g. some other state). */
-         if (!ctx->DrawBuffer->FlipY) {
-            /* Identity (XY) followed by flipping Y upside down (ZW). */
-            value[0] = 1.0F;
-            value[1] = 0.0F;
-            value[2] = -1.0F;
-            value[3] = _mesa_geometric_height(ctx->DrawBuffer);
-         } else {
-            /* Flipping Y upside down (XY) followed by identity (ZW). */
-            value[0] = -1.0F;
-            value[1] = _mesa_geometric_height(ctx->DrawBuffer);
-            value[2] = 1.0F;
-            value[3] = 0.0F;
-         }
-         return;
-
-      case STATE_FB_PNTC_Y_TRANSFORM:
-         {
-            bool flip_y = (ctx->Point.SpriteOrigin == GL_LOWER_LEFT) ^
-               (ctx->DrawBuffer->FlipY);
-
-            value[0] = flip_y ? -1.0F : 1.0F;
-            value[1] = flip_y ? 1.0F : 0.0F;
-            value[2] = 0.0F;
-            value[3] = 0.0F;
-         }
-         return;
-
-      case STATE_TCS_PATCH_VERTICES_IN:
-         val[0].i = ctx->TessCtrlProgram.patch_vertices;
-         return;
-
-      case STATE_TES_PATCH_VERTICES_IN:
-         if (ctx->TessCtrlProgram._Current)
-            val[0].i = ctx->TessCtrlProgram._Current->info.tess.tcs_vertices_out;
-         else
-            val[0].i = ctx->TessCtrlProgram.patch_vertices;
-         return;
-
-      case STATE_ADVANCED_BLENDING_MODE:
-         val[0].i = _mesa_get_advanced_blend_sh_constant(
-                      ctx->Color.BlendEnabled, ctx->Color._AdvancedBlendMode);
-         return;
-
-      case STATE_ALPHA_REF:
-         value[0] = ctx->Color.AlphaRefUnclamped;
-         return;
-
-      case STATE_CLIP_INTERNAL:
-         {
-            const GLuint plane = (GLuint) state[2];
-            COPY_4V(value, ctx->Transform._ClipUserPlane[plane]);
-         }
-         return;
-
-      /* XXX: make sure new tokens added here are also handled in the
-       * _mesa_program_state_flags() switch, below.
-       */
-      default:
-         /* Unknown state indexes are silently ignored here.
-          * Drivers may do something special.
-          */
-         return;
       }
+      return;
+
+   case STATE_TCS_PATCH_VERTICES_IN:
+      val[0].i = ctx->TessCtrlProgram.patch_vertices;
+      return;
+
+   case STATE_TES_PATCH_VERTICES_IN:
+      if (ctx->TessCtrlProgram._Current)
+         val[0].i = ctx->TessCtrlProgram._Current->info.tess.tcs_vertices_out;
+      else
+         val[0].i = ctx->TessCtrlProgram.patch_vertices;
+      return;
+
+   case STATE_ADVANCED_BLENDING_MODE:
+      val[0].i = _mesa_get_advanced_blend_sh_constant(
+                   ctx->Color.BlendEnabled, ctx->Color._AdvancedBlendMode);
+      return;
+
+   case STATE_ALPHA_REF:
+      value[0] = ctx->Color.AlphaRefUnclamped;
+      return;
+
+   case STATE_CLIP_INTERNAL:
+      {
+         const GLuint plane = (GLuint) state[1];
+         COPY_4V(value, ctx->Transform._ClipUserPlane[plane]);
+      }
+      return;
+
+   case STATE_INTERNAL_DRIVER:
+      /* Internal driver state */
       return;
 
    case STATE_NOT_STATE_VAR:
@@ -789,55 +780,49 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
    case STATE_VERTEX_PROGRAM:
       return _NEW_PROGRAM;
 
+   case STATE_NORMAL_SCALE_EYESPACE:
+      return _NEW_MODELVIEW;
+
+   case STATE_CURRENT_ATTRIB:
+      return _NEW_CURRENT_ATTRIB;
+   case STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED:
+      return _NEW_CURRENT_ATTRIB | _NEW_LIGHT | _NEW_BUFFERS;
+
    case STATE_NORMAL_SCALE:
       return _NEW_MODELVIEW;
 
-   case STATE_INTERNAL:
-      switch (state[1]) {
-      case STATE_CURRENT_ATTRIB:
-         return _NEW_CURRENT_ATTRIB;
-      case STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED:
-         return _NEW_CURRENT_ATTRIB | _NEW_LIGHT | _NEW_BUFFERS;
+   case STATE_FOG_PARAMS_OPTIMIZED:
+      return _NEW_FOG;
+   case STATE_POINT_SIZE_CLAMPED:
+      return _NEW_POINT | _NEW_MULTISAMPLE;
+   case STATE_LIGHT_SPOT_DIR_NORMALIZED:
+   case STATE_LIGHT_POSITION:
+   case STATE_LIGHT_POSITION_NORMALIZED:
+   case STATE_LIGHT_HALF_VECTOR:
+      return _NEW_LIGHT;
 
-      case STATE_NORMAL_SCALE:
-         return _NEW_MODELVIEW;
+   case STATE_PT_SCALE:
+   case STATE_PT_BIAS:
+      return _NEW_PIXEL;
 
-      case STATE_FOG_PARAMS_OPTIMIZED:
-	 return _NEW_FOG;
-      case STATE_POINT_SIZE_CLAMPED:
-         return _NEW_POINT | _NEW_MULTISAMPLE;
-      case STATE_LIGHT_SPOT_DIR_NORMALIZED:
-      case STATE_LIGHT_POSITION:
-      case STATE_LIGHT_POSITION_NORMALIZED:
-      case STATE_LIGHT_HALF_VECTOR:
-         return _NEW_LIGHT;
+   case STATE_FB_SIZE:
+   case STATE_FB_WPOS_Y_TRANSFORM:
+      return _NEW_BUFFERS;
 
-      case STATE_PT_SCALE:
-      case STATE_PT_BIAS:
-         return _NEW_PIXEL;
+   case STATE_FB_PNTC_Y_TRANSFORM:
+      return _NEW_BUFFERS | _NEW_POINT;
 
-      case STATE_FB_SIZE:
-      case STATE_FB_WPOS_Y_TRANSFORM:
-         return _NEW_BUFFERS;
+   case STATE_ADVANCED_BLENDING_MODE:
+      return _NEW_COLOR;
 
-      case STATE_FB_PNTC_Y_TRANSFORM:
-         return _NEW_BUFFERS | _NEW_POINT;
+   case STATE_ALPHA_REF:
+      return _NEW_COLOR;
 
-      case STATE_ADVANCED_BLENDING_MODE:
-         return _NEW_COLOR;
+   case STATE_CLIP_INTERNAL:
+      return _NEW_TRANSFORM | _NEW_PROJECTION;
 
-      case STATE_ALPHA_REF:
-         return _NEW_COLOR;
-
-      case STATE_CLIP_INTERNAL:
-         return _NEW_TRANSFORM | _NEW_PROJECTION;
-
-      default:
-         /* unknown state indexes are silently ignored and
-         *  no flag set, since it is handled by the driver.
-         */
-	 return 0;
-      }
+   case STATE_INTERNAL_DRIVER:
+      return 0; /* internal driver state */
 
    case STATE_NOT_STATE_VAR:
       return 0;
@@ -1035,15 +1020,14 @@ append_token(char *dst, gl_state_index k)
    case STATE_LOCAL:
       append(dst, "local");
       break;
-   /* BEGIN internal state vars */
-   case STATE_INTERNAL:
-      append(dst, "internal.");
-      break;
    case STATE_CURRENT_ATTRIB:
       append(dst, "current");
       break;
    case STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED:
       append(dst, "currentAttribMaybeVPClamped");
+      break;
+   case STATE_NORMAL_SCALE_EYESPACE:
+      append(dst, "normalScaleEyeSpace");
       break;
    case STATE_NORMAL_SCALE:
       append(dst, "normalScale");
@@ -1226,14 +1210,29 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       append_token(str, state[1]);
       append_index(str, state[2], false);
       break;
-   case STATE_NORMAL_SCALE:
+   case STATE_NORMAL_SCALE_EYESPACE:
       break;
-   case STATE_INTERNAL:
-      append_token(str, state[1]);
-      if (state[1] == STATE_CURRENT_ATTRIB ||
-          state[1] == STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED)
-         append_index(str, state[2], false);
-       break;
+   case STATE_CURRENT_ATTRIB:
+   case STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED:
+   case STATE_LIGHT_SPOT_DIR_NORMALIZED:
+   case STATE_LIGHT_POSITION:
+   case STATE_LIGHT_POSITION_NORMALIZED:
+   case STATE_LIGHT_HALF_VECTOR:
+   case STATE_CLIP_INTERNAL:
+      append_index(str, state[1], false);
+      break;
+   case STATE_NORMAL_SCALE:
+   case STATE_FOG_PARAMS_OPTIMIZED:
+   case STATE_POINT_SIZE_CLAMPED:
+   case STATE_PT_SCALE:
+   case STATE_PT_BIAS:
+   case STATE_FB_SIZE:
+   case STATE_FB_WPOS_Y_TRANSFORM:
+   case STATE_TCS_PATCH_VERTICES_IN:
+   case STATE_TES_PATCH_VERTICES_IN:
+   case STATE_ADVANCED_BLENDING_MODE:
+   case STATE_ALPHA_REF:
+      break;
    case STATE_NOT_STATE_VAR:
       append(str, "not_state");
       break;

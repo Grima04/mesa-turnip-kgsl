@@ -540,7 +540,7 @@ st_init_atifs_prog(struct gl_context *ctx, struct gl_program *prog)
    unsigned pass, i, r, optype, arg;
 
    static const gl_state_index16 fog_params_state[STATE_LENGTH] =
-      {STATE_INTERNAL, STATE_FOG_PARAMS_OPTIMIZED, 0, 0};
+      {STATE_FOG_PARAMS_OPTIMIZED, 0, 0};
    static const gl_state_index16 fog_color[STATE_LENGTH] =
       {STATE_FOG_COLOR, 0, 0, 0};
 

@@ -132,10 +132,10 @@ typedef enum gl_state_index_ {
    STATE_ENV,
    STATE_LOCAL,
 
-   STATE_INTERNAL,		/* Mesa additions */
    STATE_CURRENT_ATTRIB,        /* ctx->Current vertex attrib value */
    STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED,        /* ctx->Current vertex attrib value after passthrough vertex processing */
    STATE_NORMAL_SCALE,
+   STATE_NORMAL_SCALE_EYESPACE,
    STATE_FOG_PARAMS_OPTIMIZED,  /* for faster fog calc */
    STATE_POINT_SIZE_CLAMPED,    /* includes implementation dependent size clamp */
    STATE_LIGHT_SPOT_DIR_NORMALIZED,   /* pre-normalized spot dir */
@@ -156,6 +156,7 @@ typedef enum gl_state_index_ {
    STATE_ADVANCED_BLENDING_MODE,
    STATE_ALPHA_REF,        /* alpha-test reference value */
    STATE_CLIP_INTERNAL,    /* similar to STATE_CLIPPLANE, but in clip-space */
+
    STATE_INTERNAL_DRIVER	/* first available state index for drivers (must be last) */
 } gl_state_index;
 
