@@ -52,6 +52,10 @@ struct zink_gfx_push_constant {
    float default_outer_level[4];
 };
 
+struct zink_cs_push_constant {
+   unsigned work_dim;
+};
+
 /* a shader module is used for directly reusing a shader module between programs,
  * e.g., in the case where we're swapping out only one shader,
  * allowing us to skip going through shader keys

@@ -55,6 +55,26 @@ create_vs_pushconst(nir_shader *nir)
    vs_pushconst->data.location = INT_MAX; //doesn't really matter
 }
 
+static void
+create_cs_pushconst(nir_shader *nir)
+{
+   nir_variable *cs_pushconst;
+   /* create compatible layout for the ntv push constant loader */
+   struct glsl_struct_field *fields = rzalloc_size(nir, 1 * sizeof(struct glsl_struct_field));
+   fields[0].type = glsl_array_type(glsl_uint_type(), 1, 0);
+   fields[0].name = ralloc_asprintf(nir, "work_dim");
+   fields[0].offset = 0;
+   cs_pushconst = nir_variable_create(nir, nir_var_mem_push_const,
+                                                 glsl_struct_type(fields, 1, "struct", false), "cs_pushconst");
+   cs_pushconst->data.location = INT_MAX; //doesn't really matter
+}
+
+static bool
+reads_work_dim(nir_shader *shader)
+{
+   return BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_WORK_DIM);
+}
+
 static bool
 lower_discard_if_instr(nir_intrinsic_instr *instr, nir_builder *b)
 {
@@ -137,6 +157,42 @@ lower_discard_if(nir_shader *shader)
    }
 
    return progress;
+}
+
+static bool
+lower_work_dim_instr(nir_builder *b, nir_instr *in, void *data)
+{
+   if (in->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(in);
+   if (instr->intrinsic != nir_intrinsic_load_work_dim)
+      return false;
+
+   if (instr->intrinsic == nir_intrinsic_load_work_dim) {
+      b->cursor = nir_after_instr(&instr->instr);
+      nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
+      load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+      nir_intrinsic_set_range(load, 3 * sizeof(uint32_t));
+      load->num_components = 1;
+      nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, "work_dim");
+      nir_builder_instr_insert(b, &load->instr);
+
+      nir_ssa_def_rewrite_uses(&instr->dest.ssa, &load->dest.ssa);
+   }
+
+   return true;
+}
+
+static bool
+lower_work_dim(nir_shader *shader)
+{
+   if (shader->info.stage != MESA_SHADER_KERNEL)
+      return false;
+
+   if (!reads_work_dim(shader))
+      return false;
+
+   return nir_shader_instructions_pass(shader, lower_work_dim_instr, nir_metadata_dominance, NULL);
 }
 
 static bool
@@ -750,7 +806,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             nir->info.stage == MESA_SHADER_TESS_EVAL) {
       NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out, UINT_MAX);
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
-   }
+   } else if (nir->info.stage == MESA_SHADER_KERNEL)
+      create_cs_pushconst(nir);
 
    NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
    if (nir->info.stage < MESA_SHADER_FRAGMENT)
@@ -758,6 +815,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
    NIR_PASS_V(nir, lower_basevertex);
+   NIR_PASS_V(nir, lower_work_dim);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, lower_baseinstance);
    optimize_nir(nir);

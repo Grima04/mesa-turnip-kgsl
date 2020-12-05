@@ -177,6 +177,15 @@ create_compute_pipeline_layout(VkDevice dev, struct zink_compute_program *comp)
    plci.pSetLayouts = layouts;
    plci.setLayoutCount = num_layouts;
 
+   VkPushConstantRange pcr = {};
+   if (comp->shader->nir->info.stage == MESA_SHADER_KERNEL) {
+      pcr.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+      pcr.offset = 0;
+      pcr.size = sizeof(struct zink_cs_push_constant);
+      plci.pushConstantRangeCount = 1;
+      plci.pPushConstantRanges = &pcr;
+   }
+
    VkPipelineLayout layout;
    if (vkCreatePipelineLayout(dev, &plci, NULL, &layout) != VK_SUCCESS) {
       debug_printf("vkCreatePipelineLayout failed!\n");

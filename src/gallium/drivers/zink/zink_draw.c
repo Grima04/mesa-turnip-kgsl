@@ -634,6 +634,11 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
    vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 
+   if (BITSET_TEST(comp_program->shader->nir->info.system_values_read, SYSTEM_VALUE_WORK_DIM))
+      vkCmdPushConstants(batch->state->cmdbuf, comp_program->base.layout, VK_SHADER_STAGE_COMPUTE_BIT,
+                         offsetof(struct zink_cs_push_constant, work_dim), sizeof(uint32_t),
+                         &info->work_dim);
+
    if (info->indirect) {
       vkCmdDispatchIndirect(batch->state->cmdbuf, zink_resource(info->indirect)->obj->buffer, info->indirect_offset);
       zink_batch_reference_resource_rw(batch, zink_resource(info->indirect), false);
