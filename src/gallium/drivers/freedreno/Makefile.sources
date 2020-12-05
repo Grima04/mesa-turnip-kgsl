@@ -39,6 +39,10 @@ C_SOURCES := \
 	freedreno_util.c \
 	freedreno_util.h
 
+GENERATED_SOURCES := \
+	freedreno_tracepoints.c \
+	freedreno_tracepoints.h
+
 a2xx_SOURCES := \
 	a2xx/fd2_blend.c \
 	a2xx/fd2_blend.h \
