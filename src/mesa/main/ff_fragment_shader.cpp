@@ -363,14 +363,13 @@ static ir_rvalue *
 get_current_attrib(texenv_fragment_program *p, GLuint attrib)
 {
    ir_variable *current;
-   ir_rvalue *val;
+   char name[128];
 
-   current = p->shader->symbols->get_variable("gl_CurrentAttribFragMESA");
+   snprintf(name, sizeof(name), "gl_CurrentAttribFrag%uMESA", attrib);
+
+   current = p->shader->symbols->get_variable(name);
    assert(current);
-   current->data.max_array_access = MAX2(current->data.max_array_access, (int)attrib);
-   val = new(p->mem_ctx) ir_dereference_variable(current);
-   ir_rvalue *index = new(p->mem_ctx) ir_constant(attrib);
-   return new(p->mem_ctx) ir_dereference_array(val, index);
+   return new(p->mem_ctx) ir_dereference_variable(current);
 }
 
 static ir_rvalue *

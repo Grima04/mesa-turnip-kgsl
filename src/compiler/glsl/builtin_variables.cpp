@@ -184,9 +184,43 @@ static const struct gl_builtin_uniform_element gl_FogParamsOptimizedMESA_element
    {NULL, {STATE_FOG_PARAMS_OPTIMIZED}, SWIZZLE_XYZW},
 };
 
-static const struct gl_builtin_uniform_element gl_CurrentAttribFragMESA_elements[] = {
-   {NULL, {STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED, 0}, SWIZZLE_XYZW},
-};
+#define ATTRIB(i) \
+   static const struct gl_builtin_uniform_element gl_CurrentAttribFrag##i##MESA_elements[] = { \
+      {NULL, {STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED, i}, SWIZZLE_XYZW}, \
+   };
+
+ATTRIB(0)
+ATTRIB(1)
+ATTRIB(2)
+ATTRIB(3)
+ATTRIB(4)
+ATTRIB(5)
+ATTRIB(6)
+ATTRIB(7)
+ATTRIB(8)
+ATTRIB(9)
+ATTRIB(10)
+ATTRIB(11)
+ATTRIB(12)
+ATTRIB(13)
+ATTRIB(14)
+ATTRIB(15)
+ATTRIB(16)
+ATTRIB(17)
+ATTRIB(18)
+ATTRIB(19)
+ATTRIB(20)
+ATTRIB(21)
+ATTRIB(22)
+ATTRIB(23)
+ATTRIB(24)
+ATTRIB(25)
+ATTRIB(26)
+ATTRIB(27)
+ATTRIB(28)
+ATTRIB(29)
+ATTRIB(30)
+ATTRIB(31)
 
 #define MATRIX(name, statevar)				\
    static const struct gl_builtin_uniform_element name ## _elements[] = { \
@@ -277,7 +311,39 @@ static const struct gl_builtin_uniform_desc _mesa_builtin_uniform_desc[] = {
    STATEVAR(gl_NormalScale),
 
    STATEVAR(gl_FogParamsOptimizedMESA),
-   STATEVAR(gl_CurrentAttribFragMESA),
+
+   STATEVAR(gl_CurrentAttribFrag0MESA),
+   STATEVAR(gl_CurrentAttribFrag1MESA),
+   STATEVAR(gl_CurrentAttribFrag2MESA),
+   STATEVAR(gl_CurrentAttribFrag3MESA),
+   STATEVAR(gl_CurrentAttribFrag4MESA),
+   STATEVAR(gl_CurrentAttribFrag5MESA),
+   STATEVAR(gl_CurrentAttribFrag6MESA),
+   STATEVAR(gl_CurrentAttribFrag7MESA),
+   STATEVAR(gl_CurrentAttribFrag8MESA),
+   STATEVAR(gl_CurrentAttribFrag9MESA),
+   STATEVAR(gl_CurrentAttribFrag10MESA),
+   STATEVAR(gl_CurrentAttribFrag11MESA),
+   STATEVAR(gl_CurrentAttribFrag12MESA),
+   STATEVAR(gl_CurrentAttribFrag13MESA),
+   STATEVAR(gl_CurrentAttribFrag14MESA),
+   STATEVAR(gl_CurrentAttribFrag15MESA),
+   STATEVAR(gl_CurrentAttribFrag16MESA),
+   STATEVAR(gl_CurrentAttribFrag17MESA),
+   STATEVAR(gl_CurrentAttribFrag18MESA),
+   STATEVAR(gl_CurrentAttribFrag19MESA),
+   STATEVAR(gl_CurrentAttribFrag20MESA),
+   STATEVAR(gl_CurrentAttribFrag21MESA),
+   STATEVAR(gl_CurrentAttribFrag22MESA),
+   STATEVAR(gl_CurrentAttribFrag23MESA),
+   STATEVAR(gl_CurrentAttribFrag24MESA),
+   STATEVAR(gl_CurrentAttribFrag25MESA),
+   STATEVAR(gl_CurrentAttribFrag26MESA),
+   STATEVAR(gl_CurrentAttribFrag27MESA),
+   STATEVAR(gl_CurrentAttribFrag28MESA),
+   STATEVAR(gl_CurrentAttribFrag29MESA),
+   STATEVAR(gl_CurrentAttribFrag30MESA),
+   STATEVAR(gl_CurrentAttribFrag31MESA),
 
    {NULL, NULL, 0}
 };
@@ -960,7 +1026,13 @@ builtin_variable_generator::generate_uniforms()
        state->OES_sample_variables_enable)
       add_uniform(int_t, GLSL_PRECISION_LOW, "gl_NumSamples");
    add_uniform(type("gl_DepthRangeParameters"), "gl_DepthRange");
-   add_uniform(array(vec4_t, VARYING_SLOT_MAX), "gl_CurrentAttribFragMESA");
+
+   for (unsigned i = 0; i < VARYING_SLOT_VAR0; i++) {
+      char name[128];
+
+      snprintf(name, sizeof(name), "gl_CurrentAttribFrag%uMESA", i);
+      add_uniform(vec4_t, name);
+   }
 
    if (compatibility) {
       add_uniform(mat4_t, "gl_ModelViewMatrix");
