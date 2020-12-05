@@ -1090,7 +1090,7 @@ else
   # Check for C and C++ arguments for MSVC compatibility. These are only used
   # in parts of the mesa code base that need to compile with MSVC, mainly
   # common code
-  foreach a : ['-Werror=pointer-arith', '-Werror=vla', '-Werror=gnu-empty-initializer']
+  foreach a : ['-Werror=pointer-arith', '-Werror=gnu-empty-initializer']
     if cc.has_argument(a)
       c_msvc_compat_args += a
     endif

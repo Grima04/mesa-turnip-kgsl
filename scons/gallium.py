@@ -86,7 +86,6 @@ def install_shared_library(env, sources, version = ()):
 def msvc2013_compat(env):
     if env['gcc']:
         env.Append(CCFLAGS = [
-            '-Werror=vla',
             '-Werror=pointer-arith',
         ])
 
