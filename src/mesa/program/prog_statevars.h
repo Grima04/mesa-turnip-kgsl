@@ -126,11 +126,10 @@ typedef enum gl_state_index_ {
 
    STATE_DEPTH_RANGE,
 
-   STATE_VERTEX_PROGRAM,
-   STATE_FRAGMENT_PROGRAM,
-
-   STATE_ENV,
-   STATE_LOCAL,
+   STATE_VERTEX_PROGRAM_ENV,
+   STATE_VERTEX_PROGRAM_LOCAL,
+   STATE_FRAGMENT_PROGRAM_ENV,
+   STATE_FRAGMENT_PROGRAM_LOCAL,
 
    STATE_CURRENT_ATTRIB,        /* ctx->Current vertex attrib value */
    STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED,        /* ctx->Current vertex attrib value after passthrough vertex processing */

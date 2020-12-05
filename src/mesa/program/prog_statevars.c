@@ -414,63 +414,43 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       value[2] = ctx->ViewportArray[0].Far - ctx->ViewportArray[0].Near; /* far - near */
       value[3] = 1.0;
       return;
-   case STATE_FRAGMENT_PROGRAM:
-      {
-         /* state[1] = {STATE_ENV, STATE_LOCAL} */
-         /* state[2] = parameter index          */
-         const int idx = (int) state[2];
-         switch (state[1]) {
-            case STATE_ENV:
-               COPY_4V(value, ctx->FragmentProgram.Parameters[idx]);
-               return;
-            case STATE_LOCAL:
-               if (!ctx->FragmentProgram.Current->arb.LocalParams) {
-                  ctx->FragmentProgram.Current->arb.LocalParams =
-                     rzalloc_array_size(ctx->FragmentProgram.Current,
-                                        sizeof(float[4]),
-                                        MAX_PROGRAM_LOCAL_PARAMS);
-                  if (!ctx->FragmentProgram.Current->arb.LocalParams)
-                     return;
-               }
-
-               COPY_4V(value,
-                       ctx->FragmentProgram.Current->arb.LocalParams[idx]);
-               return;
-            default:
-               unreachable("Bad state switch in fetch_state()");
-               return;
-         }
-      }
+   case STATE_FRAGMENT_PROGRAM_ENV: {
+      const int idx = (int) state[1];
+      COPY_4V(value, ctx->FragmentProgram.Parameters[idx]);
       return;
-
-   case STATE_VERTEX_PROGRAM:
-      {
-         /* state[1] = {STATE_ENV, STATE_LOCAL} */
-         /* state[2] = parameter index          */
-         const int idx = (int) state[2];
-         switch (state[1]) {
-            case STATE_ENV:
-               COPY_4V(value, ctx->VertexProgram.Parameters[idx]);
-               return;
-            case STATE_LOCAL:
-               if (!ctx->VertexProgram.Current->arb.LocalParams) {
-                  ctx->VertexProgram.Current->arb.LocalParams =
-                     rzalloc_array_size(ctx->VertexProgram.Current,
-                                        sizeof(float[4]),
-                                        MAX_PROGRAM_LOCAL_PARAMS);
-                  if (!ctx->VertexProgram.Current->arb.LocalParams)
-                     return;
-               }
-
-               COPY_4V(value,
-                       ctx->VertexProgram.Current->arb.LocalParams[idx]);
-               return;
-            default:
-               unreachable("Bad state switch in fetch_state()");
-               return;
-         }
+   }
+   case STATE_FRAGMENT_PROGRAM_LOCAL: {
+      if (!ctx->FragmentProgram.Current->arb.LocalParams) {
+         ctx->FragmentProgram.Current->arb.LocalParams =
+            rzalloc_array_size(ctx->FragmentProgram.Current, sizeof(float[4]),
+                               MAX_PROGRAM_LOCAL_PARAMS);
+         if (!ctx->FragmentProgram.Current->arb.LocalParams)
+            return;
       }
+
+      const int idx = (int) state[1];
+      COPY_4V(value,
+              ctx->FragmentProgram.Current->arb.LocalParams[idx]);
       return;
+   }
+   case STATE_VERTEX_PROGRAM_ENV: {
+      const int idx = (int) state[1];
+      COPY_4V(value, ctx->VertexProgram.Parameters[idx]);
+      return;
+   }
+   case STATE_VERTEX_PROGRAM_LOCAL: {
+      if (!ctx->VertexProgram.Current->arb.LocalParams) {
+         ctx->VertexProgram.Current->arb.LocalParams =
+            rzalloc_array_size(ctx->VertexProgram.Current, sizeof(float[4]),
+                               MAX_PROGRAM_LOCAL_PARAMS);
+         if (!ctx->VertexProgram.Current->arb.LocalParams)
+            return;
+      }
+
+      const int idx = (int) state[1];
+      COPY_4V(value, ctx->VertexProgram.Current->arb.LocalParams[idx]);
+      return;
+   }
 
    case STATE_NORMAL_SCALE_EYESPACE:
       ASSIGN_4V(value, ctx->_ModelViewInvScaleEyespace, 0, 0, 1);
@@ -776,8 +756,10 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
    case STATE_DEPTH_RANGE:
       return _NEW_VIEWPORT;
 
-   case STATE_FRAGMENT_PROGRAM:
-   case STATE_VERTEX_PROGRAM:
+   case STATE_FRAGMENT_PROGRAM_ENV:
+   case STATE_FRAGMENT_PROGRAM_LOCAL:
+   case STATE_VERTEX_PROGRAM_ENV:
+   case STATE_VERTEX_PROGRAM_LOCAL:
       return _NEW_PROGRAM;
 
    case STATE_NORMAL_SCALE_EYESPACE:
@@ -1011,13 +993,12 @@ append_token(char *dst, gl_state_index k)
    case STATE_DEPTH_RANGE:
       append(dst, "depth.range");
       break;
-   case STATE_VERTEX_PROGRAM:
-   case STATE_FRAGMENT_PROGRAM:
-      break;
-   case STATE_ENV:
+   case STATE_VERTEX_PROGRAM_ENV:
+   case STATE_FRAGMENT_PROGRAM_ENV:
       append(dst, "env");
       break;
-   case STATE_LOCAL:
+   case STATE_VERTEX_PROGRAM_LOCAL:
+   case STATE_FRAGMENT_PROGRAM_LOCAL:
       append(dst, "local");
       break;
    case STATE_CURRENT_ATTRIB:
@@ -1203,12 +1184,12 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       break;
    case STATE_DEPTH_RANGE:
       break;
-   case STATE_FRAGMENT_PROGRAM:
-   case STATE_VERTEX_PROGRAM:
-      /* state[1] = {STATE_ENV, STATE_LOCAL} */
-      /* state[2] = parameter index          */
-      append_token(str, state[1]);
-      append_index(str, state[2], false);
+   case STATE_FRAGMENT_PROGRAM_ENV:
+   case STATE_FRAGMENT_PROGRAM_LOCAL:
+   case STATE_VERTEX_PROGRAM_ENV:
+   case STATE_VERTEX_PROGRAM_LOCAL:
+      /* state[1] = parameter index          */
+      append_index(str, state[1], false);
       break;
    case STATE_NORMAL_SCALE_EYESPACE:
       break;

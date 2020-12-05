@@ -1633,10 +1633,10 @@ programMultipleItem: progEnvParams | progLocalParams;
 progEnvParams: PROGRAM ENV '[' progEnvParamNums ']'
 	{
 	   memset($$, 0, sizeof($$));
-	   $$[0] = state->state_param_enum;
-	   $$[1] = STATE_ENV;
-	   $$[2] = $4[0];
-	   $$[3] = $4[1];
+	   $$[0] = state->state_param_enum_env;
+	   $$[1] = $4[0];
+	   $$[2] = $4[1];
+           $$[3] = 0;
 	}
 	;
 
@@ -1655,20 +1655,20 @@ progEnvParamNums: progEnvParamNum
 progEnvParam: PROGRAM ENV '[' progEnvParamNum ']'
 	{
 	   memset($$, 0, sizeof($$));
-	   $$[0] = state->state_param_enum;
-	   $$[1] = STATE_ENV;
+	   $$[0] = state->state_param_enum_env;
+	   $$[1] = $4;
 	   $$[2] = $4;
-	   $$[3] = $4;
+           $$[3] = 0;
 	}
 	;
 
 progLocalParams: PROGRAM LOCAL '[' progLocalParamNums ']'
 	{
 	   memset($$, 0, sizeof($$));
-	   $$[0] = state->state_param_enum;
-	   $$[1] = STATE_LOCAL;
-	   $$[2] = $4[0];
-	   $$[3] = $4[1];
+	   $$[0] = state->state_param_enum_local;
+	   $$[1] = $4[0];
+	   $$[2] = $4[1];
+           $$[3] = 0;
 	}
 
 progLocalParamNums: progLocalParamNum
@@ -1686,10 +1686,10 @@ progLocalParamNums: progLocalParamNum
 progLocalParam: PROGRAM LOCAL '[' progLocalParamNum ']'
 	{
 	   memset($$, 0, sizeof($$));
-	   $$[0] = state->state_param_enum;
-	   $$[1] = STATE_LOCAL;
+	   $$[0] = state->state_param_enum_local;
+	   $$[1] = $4;
 	   $$[2] = $4;
-	   $$[3] = $4;
+           $$[3] = 0;
 	}
 	;
 
@@ -2386,10 +2386,10 @@ initialize_symbol_from_param(struct gl_program *prog,
 
    memcpy(state_tokens, tokens, sizeof(state_tokens));
 
-   assert((state_tokens[0] == STATE_VERTEX_PROGRAM)
-	  || (state_tokens[0] == STATE_FRAGMENT_PROGRAM));
-   assert((state_tokens[1] == STATE_ENV)
-	  || (state_tokens[1] == STATE_LOCAL));
+   assert(state_tokens[0] == STATE_VERTEX_PROGRAM_ENV ||
+          state_tokens[0] == STATE_VERTEX_PROGRAM_LOCAL ||
+          state_tokens[0] == STATE_FRAGMENT_PROGRAM_ENV ||
+          state_tokens[0] == STATE_FRAGMENT_PROGRAM_LOCAL);
 
    /*
     * The param type is STATE_VAR.  The program parameter entry will
@@ -2401,13 +2401,13 @@ initialize_symbol_from_param(struct gl_program *prog,
    /* If we are adding a STATE_ENV or STATE_LOCAL that has multiple elements,
     * we need to unroll it and call add_state_reference() for each row
     */
-   if (state_tokens[2] != state_tokens[3]) {
+   if (state_tokens[1] != state_tokens[2]) {
       int row;
-      const int first_row = state_tokens[2];
-      const int last_row = state_tokens[3];
+      const int first_row = state_tokens[1];
+      const int last_row = state_tokens[2];
 
       for (row = first_row; row <= last_row; row++) {
-	 state_tokens[2] = state_tokens[3] = row;
+	 state_tokens[1] = state_tokens[2] = row;
 
 	 idx = add_state_reference(prog->Parameters, state_tokens);
 	 if (param_var->param_binding_begin == ~0U) {
@@ -2561,8 +2561,10 @@ _mesa_parse_arb_program(struct gl_context *ctx, GLenum target, const GLubyte *st
    state->MaxProgramMatrices = ctx->Const.MaxProgramMatrices;
    state->MaxDrawBuffers = ctx->Const.MaxDrawBuffers;
 
-   state->state_param_enum = (target == GL_VERTEX_PROGRAM_ARB)
-      ? STATE_VERTEX_PROGRAM : STATE_FRAGMENT_PROGRAM;
+   state->state_param_enum_env = (target == GL_VERTEX_PROGRAM_ARB)
+      ? STATE_VERTEX_PROGRAM_ENV : STATE_FRAGMENT_PROGRAM_ENV;
+   state->state_param_enum_local = (target == GL_VERTEX_PROGRAM_ARB)
+      ? STATE_VERTEX_PROGRAM_LOCAL : STATE_FRAGMENT_PROGRAM_LOCAL;
 
    _mesa_set_program_error(ctx, -1, NULL);
 
