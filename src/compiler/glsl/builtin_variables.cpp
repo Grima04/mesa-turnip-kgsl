@@ -184,10 +184,6 @@ static const struct gl_builtin_uniform_element gl_FogParamsOptimizedMESA_element
    {NULL, {STATE_FOG_PARAMS_OPTIMIZED}, SWIZZLE_XYZW},
 };
 
-static const struct gl_builtin_uniform_element gl_CurrentAttribVertMESA_elements[] = {
-   {NULL, {STATE_CURRENT_ATTRIB, 0}, SWIZZLE_XYZW},
-};
-
 static const struct gl_builtin_uniform_element gl_CurrentAttribFragMESA_elements[] = {
    {NULL, {STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED, 0}, SWIZZLE_XYZW},
 };
@@ -281,7 +277,6 @@ static const struct gl_builtin_uniform_desc _mesa_builtin_uniform_desc[] = {
    STATEVAR(gl_NormalScale),
 
    STATEVAR(gl_FogParamsOptimizedMESA),
-   STATEVAR(gl_CurrentAttribVertMESA),
    STATEVAR(gl_CurrentAttribFragMESA),
 
    {NULL, NULL, 0}
@@ -965,7 +960,6 @@ builtin_variable_generator::generate_uniforms()
        state->OES_sample_variables_enable)
       add_uniform(int_t, GLSL_PRECISION_LOW, "gl_NumSamples");
    add_uniform(type("gl_DepthRangeParameters"), "gl_DepthRange");
-   add_uniform(array(vec4_t, VERT_ATTRIB_MAX), "gl_CurrentAttribVertMESA");
    add_uniform(array(vec4_t, VARYING_SLOT_MAX), "gl_CurrentAttribFragMESA");
 
    if (compatibility) {
