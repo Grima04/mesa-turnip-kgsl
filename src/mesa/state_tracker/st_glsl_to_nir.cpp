@@ -504,7 +504,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
     * storage is only associated with the original parameter list.
     * This should be enough for Bitmap and DrawPixels constants.
     */
-   _mesa_reserve_parameter_storage(prog->Parameters, 8, 8);
+   _mesa_reserve_parameter_storage(prog->Parameters, 16, 16);
    _mesa_disallow_parameter_storage_realloc(prog->Parameters);
 
    /* This has to be done last.  Any operation the can cause
