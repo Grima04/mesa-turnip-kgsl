@@ -180,21 +180,28 @@ u_trace_context_init(struct u_trace_context *utctx,
 
    list_inithead(&utctx->flushed_trace_chunks);
 
+   utctx->out = get_tracefile();
+
+   if (!utctx->out)
+      return;
+
    bool ret = util_queue_init(&utctx->queue, "traceq", 256, 1,
          UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY |
          UTIL_QUEUE_INIT_RESIZE_IF_FULL);
    assert(ret);
 
-   utctx->out = ret ? get_tracefile() : NULL;
+   if (!ret)
+      utctx->out = NULL;
 }
 
 void
 u_trace_context_fini(struct u_trace_context *utctx)
 {
+   if (!utctx->out)
+      return;
    util_queue_finish(&utctx->queue);
    util_queue_destroy(&utctx->queue);
-   if (utctx->out)
-      fflush(utctx->out);
+   fflush(utctx->out);
    free_chunks(&utctx->flushed_trace_chunks);
 }
 
