@@ -551,8 +551,8 @@ _mesa_init_constants(struct gl_constants *consts, gl_api api)
    /* Constants, may be overriden (usually only reduced) by device drivers */
    consts->MaxTextureMbytes = MAX_TEXTURE_MBYTES;
    consts->MaxTextureSize = 1 << (MAX_TEXTURE_LEVELS - 1);
-   consts->Max3DTextureLevels = MAX_3D_TEXTURE_LEVELS;
-   consts->MaxCubeTextureLevels = MAX_CUBE_TEXTURE_LEVELS;
+   consts->Max3DTextureLevels = MAX_TEXTURE_LEVELS;
+   consts->MaxCubeTextureLevels = MAX_TEXTURE_LEVELS;
    consts->MaxTextureRectSize = MAX_TEXTURE_RECT_SIZE;
    consts->MaxArrayTextureLayers = MAX_ARRAY_TEXTURE_LAYERS;
    consts->MaxTextureCoordUnits = MAX_TEXTURE_COORD_UNITS;
@@ -793,13 +793,9 @@ check_context_limits(struct gl_context *ctx)
 
    /* Texture size checks */
    assert(ctx->Const.MaxTextureSize <= (1 << (MAX_TEXTURE_LEVELS - 1)));
-   assert(ctx->Const.Max3DTextureLevels <= MAX_3D_TEXTURE_LEVELS);
-   assert(ctx->Const.MaxCubeTextureLevels <= MAX_CUBE_TEXTURE_LEVELS);
+   assert(ctx->Const.Max3DTextureLevels <= MAX_TEXTURE_LEVELS);
+   assert(ctx->Const.MaxCubeTextureLevels <= MAX_TEXTURE_LEVELS);
    assert(ctx->Const.MaxTextureRectSize <= MAX_TEXTURE_RECT_SIZE);
-
-   /* Texture level checks */
-   assert(MAX_TEXTURE_LEVELS >= MAX_3D_TEXTURE_LEVELS);
-   assert(MAX_TEXTURE_LEVELS >= MAX_CUBE_TEXTURE_LEVELS);
 
    /* Max texture size should be <= max viewport size (render to texture) */
    assert(ctx->Const.MaxTextureSize <= ctx->Const.MaxViewportWidth);
