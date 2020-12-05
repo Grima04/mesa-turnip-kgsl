@@ -782,7 +782,6 @@ struct gl_point_attrib
    GLboolean _Attenuated;	/**< True if Params != [1, 0, 0] */
    GLboolean PointSprite;	/**< GL_NV/ARB_point_sprite */
    GLbitfield CoordReplace;     /**< GL_ARB_point_sprite*/
-   GLenum16 SpriteRMode;	/**< GL_NV_point_sprite (only!) */
    GLenum16 SpriteOrigin;	/**< GL_ARB_point_sprite */
 };
 
@@ -4495,7 +4494,6 @@ struct gl_extensions
    GLboolean NV_copy_image;
    GLboolean NV_fill_rectangle;
    GLboolean NV_fog_distance;
-   GLboolean NV_point_sprite;
    GLboolean NV_primitive_restart;
    GLboolean NV_shader_atomic_float;
    GLboolean NV_shader_atomic_int64;
@@ -5023,7 +5021,7 @@ struct gl_enable_attrib_node
    /* GL_ARB_fragment_program */
    GLboolean FragmentProgram;
 
-   /* GL_ARB_point_sprite / GL_NV_point_sprite */
+   /* GL_ARB_point_sprite */
    GLboolean PointSprite;
    GLboolean FragmentShaderATI;
 

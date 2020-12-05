@@ -1047,11 +1047,10 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          ctx->Transform.RasterPositionUnclipped = state;
          break;
 
-      /* GL_NV_point_sprite */
-      case GL_POINT_SPRITE_NV:
+      /* GL_ARB_point_sprite */
+      case GL_POINT_SPRITE:
          if (!(ctx->API == API_OPENGL_COMPAT &&
-               (_mesa_has_ARB_point_sprite(ctx) ||
-                _mesa_has_NV_point_sprite(ctx))) &&
+               _mesa_has_ARB_point_sprite(ctx)) &&
              !_mesa_has_OES_point_sprite(ctx))
             goto invalid_enum_error;
          if (ctx->Point.PointSprite == state)
@@ -1824,11 +1823,10 @@ _mesa_IsEnabled( GLenum cap )
             goto invalid_enum_error;
          return ctx->Transform.RasterPositionUnclipped;
 
-      /* GL_NV_point_sprite */
-      case GL_POINT_SPRITE_NV:
+      /* GL_ARB_point_sprite */
+      case GL_POINT_SPRITE:
          if (!(ctx->API == API_OPENGL_COMPAT &&
-               (_mesa_has_ARB_point_sprite(ctx) ||
-                _mesa_has_NV_point_sprite(ctx))) &&
+               _mesa_has_ARB_point_sprite(ctx)) &&
              !_mesa_has_OES_point_sprite(ctx))
             goto invalid_enum_error;
          return ctx->Point.PointSprite;

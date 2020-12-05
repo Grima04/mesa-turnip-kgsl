@@ -820,8 +820,6 @@ void st_init_extensions(struct pipe_screen *screen,
       { o(NV_viewport_array2),               PIPE_CAP_VIEWPORT_MASK                    },
       { o(NV_viewport_swizzle),              PIPE_CAP_VIEWPORT_SWIZZLE                 },
       { o(NVX_gpu_memory_info),              PIPE_CAP_QUERY_MEMORY_INFO                },
-      /* GL_NV_point_sprite is not supported by gallium because we don't
-       * support the GL_POINT_SPRITE_R_MODE_NV option. */
 
       { o(OES_standard_derivatives),         PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES      },
       { o(OES_texture_float_linear),         PIPE_CAP_TEXTURE_FLOAT_LINEAR             },

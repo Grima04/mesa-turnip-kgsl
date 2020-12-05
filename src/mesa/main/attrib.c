@@ -388,9 +388,9 @@ pop_enable_group(struct gl_context *ctx, const struct gl_enable_attrib_node *ena
                    GL_RASTER_POSITION_UNCLIPPED_IBM);
    TEST_AND_UPDATE(ctx->Point.SmoothFlag, enable->PointSmooth,
                    GL_POINT_SMOOTH);
-   if (ctx->Extensions.NV_point_sprite || ctx->Extensions.ARB_point_sprite) {
+   if (ctx->Extensions.ARB_point_sprite) {
       TEST_AND_UPDATE(ctx->Point.PointSprite, enable->PointSprite,
-                      GL_POINT_SPRITE_NV);
+                      GL_POINT_SPRITE);
    }
    TEST_AND_UPDATE(ctx->Polygon.OffsetPoint, enable->PolygonOffsetPoint,
                    GL_POLYGON_OFFSET_POINT);
@@ -970,7 +970,7 @@ _mesa_PopAttrib(void)
          TEST_AND_CALL1_SEL(Point.MaxSize, PointParameterf, GL_POINT_SIZE_MAX_EXT);
          TEST_AND_CALL1_SEL(Point.Threshold, PointParameterf, GL_POINT_FADE_THRESHOLD_SIZE_EXT);
       }
-      if (ctx->Extensions.NV_point_sprite || ctx->Extensions.ARB_point_sprite) {
+      if (ctx->Extensions.ARB_point_sprite) {
          if (ctx->Point.CoordReplace != attr->Point.CoordReplace) {
             ctx->NewState |= _NEW_POINT;
             ctx->Point.CoordReplace = attr->Point.CoordReplace;
@@ -988,9 +988,7 @@ _mesa_PopAttrib(void)
             }
          }
          TEST_AND_UPDATE(ctx->Point.PointSprite, attr->Point.PointSprite,
-                         GL_POINT_SPRITE_NV);
-         if (ctx->Extensions.NV_point_sprite)
-            TEST_AND_CALL1_SEL(Point.SpriteRMode, PointParameteri, GL_POINT_SPRITE_R_MODE_NV);
+                         GL_POINT_SPRITE);
 
          if ((ctx->API == API_OPENGL_COMPAT && ctx->Version >= 20)
              || ctx->API == API_OPENGL_CORE)

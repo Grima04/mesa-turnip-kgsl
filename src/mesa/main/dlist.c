@@ -3783,7 +3783,7 @@ save_PointParameterfEXT(GLenum pname, GLfloat param)
 }
 
 static void GLAPIENTRY
-save_PointParameteriNV(GLenum pname, GLint param)
+save_PointParameteri(GLenum pname, GLint param)
 {
    GLfloat parray[3];
    parray[0] = (GLfloat) param;
@@ -3792,7 +3792,7 @@ save_PointParameteriNV(GLenum pname, GLint param)
 }
 
 static void GLAPIENTRY
-save_PointParameterivNV(GLenum pname, const GLint * param)
+save_PointParameteriv(GLenum pname, const GLint * param)
 {
    GLfloat parray[3];
    parray[0] = (GLfloat) param[0];
@@ -14279,9 +14279,9 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_BindFragmentShaderATI(table, save_BindFragmentShaderATI);
    SET_SetFragmentShaderConstantATI(table, save_SetFragmentShaderConstantATI);
 
-   /* 262. GL_NV_point_sprite */
-   SET_PointParameteri(table, save_PointParameteriNV);
-   SET_PointParameteriv(table, save_PointParameterivNV);
+   /* 262. GL_ARB_point_sprite */
+   SET_PointParameteri(table, save_PointParameteri);
+   SET_PointParameteriv(table, save_PointParameteriv);
 
    /* 268. GL_EXT_stencil_two_side */
    SET_ActiveStencilFaceEXT(table, save_ActiveStencilFaceEXT);

@@ -259,7 +259,7 @@ _mesa_texenv_enum_to_count(GLenum pname)
    case GL_RGB_SCALE:
    case GL_ALPHA_SCALE:
    case GL_TEXTURE_LOD_BIAS_EXT:
-   case GL_COORD_REPLACE_NV:
+   case GL_COORD_REPLACE:
       return 1;
    case GL_TEXTURE_ENV_COLOR:
       return 4;
@@ -310,7 +310,6 @@ _mesa_point_param_enum_to_count(GLenum pname)
    case GL_POINT_SIZE_MIN_EXT:
    case GL_POINT_SIZE_MAX_EXT:
    case GL_POINT_FADE_THRESHOLD_SIZE_EXT:
-   case GL_POINT_SPRITE_R_MODE_NV:
    case GL_POINT_SPRITE_COORD_ORIGIN:
       return 1;
    default:

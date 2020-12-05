@@ -630,7 +630,6 @@ static void r200PointParameter( struct gl_context *ctx, GLenum pname, const GLfl
       /* don't support multisampling, so doesn't matter. */
       break;
    /* can't do these but don't need them.
-   case GL_POINT_SPRITE_R_MODE_NV:
    case GL_POINT_SPRITE_COORD_ORIGIN: */
    default:
       fprintf(stderr, "bad pname parameter in r200PointParameter\n");
