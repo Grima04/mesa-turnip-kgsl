@@ -23,7 +23,6 @@ stages:
   - container
   - container-2
   - git-archive
-  - deploy
   - meson-x86_64
   - build-misc
   - amd
@@ -32,6 +31,7 @@ stages:
   - raspberrypi
   - software-renderer
   - layered-backends
+  - deploy
   - success
 
 # Generic rule to not run the job during scheduled pipelines
