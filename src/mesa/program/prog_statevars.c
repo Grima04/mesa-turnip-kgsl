@@ -178,6 +178,84 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
          value[3] = ctx->Light.Material.Attrib[index][3];
          return;
       }
+   case STATE_LIGHTPROD_ARRAY_FRONT: {
+      const unsigned first_light = state[1];
+      const unsigned num_lights = state[2];
+
+      for (unsigned i = 0; i < num_lights; i++) {
+         unsigned light = first_light + i;
+
+         for (unsigned attrib = MAT_ATTRIB_FRONT_AMBIENT;
+              attrib <= MAT_ATTRIB_FRONT_SPECULAR; attrib += 2) {
+            for (int chan = 0; chan < 3; chan++) {
+               /* We want offset to access out of bounds into the following
+                * Diffuse and Specular fields. This is guaranteed to work
+                * because STATE_LIGHT and STATE_LIGHT_ATTRIBS also rely
+                * on this memory layout.
+                */
+               unsigned offset = (attrib / 2) * 4 + chan;
+               *value++ =
+                  (&ctx->Light.LightSource[light].Ambient[0])[offset] *
+                  ctx->Light.Material.Attrib[attrib][chan];
+            }
+            /* [3] = material alpha */
+            *value++ = ctx->Light.Material.Attrib[attrib][3];
+         }
+      }
+      return;
+   }
+   case STATE_LIGHTPROD_ARRAY_BACK: {
+      const unsigned first_light = state[1];
+      const unsigned num_lights = state[2];
+
+      for (unsigned i = 0; i < num_lights; i++) {
+         unsigned light = first_light + i;
+
+         for (unsigned attrib = MAT_ATTRIB_BACK_AMBIENT;
+              attrib <= MAT_ATTRIB_BACK_SPECULAR; attrib += 2) {
+            for (int chan = 0; chan < 3; chan++) {
+               /* We want offset to access out of bounds into the following
+                * Diffuse and Specular fields. This is guaranteed to work
+                * because STATE_LIGHT and STATE_LIGHT_ATTRIBS also rely
+                * on this memory layout.
+                */
+               unsigned offset = (attrib / 2) * 4 + chan;
+               *value++ =
+                  (&ctx->Light.LightSource[light].Ambient[0])[offset] *
+                  ctx->Light.Material.Attrib[attrib][chan];
+            }
+            /* [3] = material alpha */
+            *value++ = ctx->Light.Material.Attrib[attrib][3];
+         }
+      }
+      return;
+   }
+   case STATE_LIGHTPROD_ARRAY_TWOSIDE: {
+      const unsigned first_light = state[1];
+      const unsigned num_lights = state[2];
+
+      for (unsigned i = 0; i < num_lights; i++) {
+         unsigned light = first_light + i;
+
+         for (unsigned attrib = MAT_ATTRIB_FRONT_AMBIENT;
+              attrib <= MAT_ATTRIB_BACK_SPECULAR; attrib++) {
+            for (int chan = 0; chan < 3; chan++) {
+               /* We want offset to access out of bounds into the following
+                * Diffuse and Specular fields. This is guaranteed to work
+                * because STATE_LIGHT and STATE_LIGHT_ATTRIBS also rely
+                * on this memory layout.
+                */
+               unsigned offset = (attrib / 2) * 4 + chan;
+               *value++ =
+                  (&ctx->Light.LightSource[light].Ambient[0])[offset] *
+                  ctx->Light.Material.Attrib[attrib][chan];
+            }
+            /* [3] = material alpha */
+            *value++ = ctx->Light.Material.Attrib[attrib][3];
+         }
+      }
+      return;
+   }
    case STATE_TEXGEN:
       {
          /* state[1] is the texture unit */
@@ -698,6 +776,9 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
       return _NEW_MATERIAL | _NEW_CURRENT_ATTRIB;
 
    case STATE_LIGHTPROD:
+   case STATE_LIGHTPROD_ARRAY_FRONT:
+   case STATE_LIGHTPROD_ARRAY_BACK:
+   case STATE_LIGHTPROD_ARRAY_TWOSIDE:
    case STATE_LIGHTMODEL_SCENECOLOR:
       /* these can be affected by glColor when colormaterial mode is used */
       return _NEW_LIGHT_CONSTANTS | _NEW_MATERIAL | _NEW_CURRENT_ATTRIB;
@@ -845,6 +926,15 @@ append_token(char *dst, gl_state_index k)
       break;
    case STATE_LIGHTPROD:
       append(dst, "lightprod");
+      break;
+   case STATE_LIGHTPROD_ARRAY_FRONT:
+      append(dst, "lightprod.array.front");
+      break;
+   case STATE_LIGHTPROD_ARRAY_BACK:
+      append(dst, "lightprod.array.back");
+      break;
+   case STATE_LIGHTPROD_ARRAY_TWOSIDE:
+      append(dst, "lightprod.array.twoside");
       break;
    case STATE_TEXGEN:
       append(dst, "texgen");
@@ -1162,6 +1252,9 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
    case STATE_FRAGMENT_PROGRAM_LOCAL_ARRAY:
    case STATE_VERTEX_PROGRAM_ENV_ARRAY:
    case STATE_VERTEX_PROGRAM_LOCAL_ARRAY:
+   case STATE_LIGHTPROD_ARRAY_FRONT:
+   case STATE_LIGHTPROD_ARRAY_BACK:
+   case STATE_LIGHTPROD_ARRAY_TWOSIDE:
       sprintf(tmp, "[%d..%d]", state[1], state[1] + state[2] - 1);
       append(str, tmp);
       break;
@@ -1409,6 +1502,75 @@ _mesa_optimize_state_parameters(struct gl_constants *consts,
             list->Parameters[first_param].Size = size * 4;
          }
          break;
+
+      case STATE_LIGHTPROD: {
+         if (list->Parameters[first_param].Size != 4)
+            break;
+
+         gl_state_index16 state = STATE_NOT_STATE_VAR;
+         unsigned num_lights = 0;
+
+         for (unsigned state_iter = STATE_LIGHTPROD_ARRAY_FRONT;
+              state_iter <= STATE_LIGHTPROD_ARRAY_TWOSIDE; state_iter++) {
+            unsigned num_attribs, base_attrib, attrib_incr;
+
+            if (state_iter == STATE_LIGHTPROD_ARRAY_FRONT)  {
+               num_attribs = 3;
+               base_attrib = MAT_ATTRIB_FRONT_AMBIENT;
+               attrib_incr = 2;
+            } else if (state_iter == STATE_LIGHTPROD_ARRAY_BACK) {
+               num_attribs = 3;
+               base_attrib = MAT_ATTRIB_BACK_AMBIENT;
+               attrib_incr = 2;
+            } else if (state_iter == STATE_LIGHTPROD_ARRAY_TWOSIDE) {
+               num_attribs = 6;
+               base_attrib = MAT_ATTRIB_FRONT_AMBIENT;
+               attrib_incr = 1;
+            }
+
+            /* Find all attributes for one light. */
+            while (first_param + (num_lights + 1) * num_attribs <=
+                   list->NumParameters &&
+                   (state == STATE_NOT_STATE_VAR || state == state_iter)) {
+               unsigned i = 0, base = first_param + num_lights * num_attribs;
+
+               /* Consecutive light indices: */
+               if (list->Parameters[first_param].StateIndexes[1] + num_lights ==
+                   list->Parameters[base].StateIndexes[1]) {
+                  for (i = 0; i < num_attribs; i++) {
+                     if (list->Parameters[base + i].StateIndexes[0] ==
+                         STATE_LIGHTPROD &&
+                         list->Parameters[base + i].Size == 4 &&
+                         /* Equal light indices: */
+                         list->Parameters[base + i].StateIndexes[1] ==
+                         list->Parameters[base + 0].StateIndexes[1] &&
+                         /* Consecutive attributes: */
+                         list->Parameters[base + i].StateIndexes[2] ==
+                         base_attrib + i * attrib_incr)
+                        continue;
+                     break;
+                  }
+               }
+               if (i == num_attribs) {
+                  /* Accept all parameters for merging. */
+                  state = state_iter;
+                  last_param = base + num_attribs - 1;
+                  num_lights++;
+               } else {
+                  break;
+               }
+            }
+         }
+
+         if (last_param > first_param) {
+            param_diff = last_param - first_param;
+
+            list->Parameters[first_param].StateIndexes[0] = state;
+            list->Parameters[first_param].StateIndexes[2] = num_lights;
+            list->Parameters[first_param].Size = (param_diff + 1) * 4;
+         }
+         break;
+      }
       }
 
       if (param_diff) {

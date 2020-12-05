@@ -60,6 +60,9 @@ typedef enum gl_state_index_ {
    STATE_LIGHTMODEL_AMBIENT,
    STATE_LIGHTMODEL_SCENECOLOR,
    STATE_LIGHTPROD,
+   STATE_LIGHTPROD_ARRAY_FRONT,   /* multiple lights, only front faces */
+   STATE_LIGHTPROD_ARRAY_BACK,    /* multiple lights, only back faces */
+   STATE_LIGHTPROD_ARRAY_TWOSIDE, /* multiple lights, both sides */
 
    STATE_TEXGEN,
    STATE_TEXENV_COLOR,

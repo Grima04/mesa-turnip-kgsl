@@ -1107,6 +1107,28 @@ static void build_lighting( struct tnl_program *p )
       return;
    }
 
+   /* Declare light products first to place them sequentially next to each
+    * other for optimal constant uploads.
+    */
+   struct ureg lightprod_front[MAX_LIGHTS][3];
+   struct ureg lightprod_back[MAX_LIGHTS][3];
+
+   for (i = 0; i < MAX_LIGHTS; i++) {
+      if (p->state->unit[i].light_enabled) {
+         lightprod_front[i][0] = get_lightprod(p, i, 0, STATE_AMBIENT);
+         if (twoside)
+            lightprod_back[i][0] = get_lightprod(p, i, 1, STATE_AMBIENT);
+
+         lightprod_front[i][1] = get_lightprod(p, i, 0, STATE_DIFFUSE);
+         if (twoside)
+            lightprod_back[i][1] = get_lightprod(p, i, 1, STATE_DIFFUSE);
+
+         lightprod_front[i][2] = get_lightprod(p, i, 0, STATE_SPECULAR);
+         if (twoside)
+            lightprod_back[i][2] = get_lightprod(p, i, 1, STATE_SPECULAR);
+      }
+   }
+
    for (i = 0; i < MAX_LIGHTS; i++) {
       if (p->state->unit[i].light_enabled) {
 	 struct ureg half = undef;
@@ -1171,9 +1193,9 @@ static void build_lighting( struct tnl_program *p )
 	 /* Front face lighting:
 	  */
 	 {
-	    struct ureg ambient = get_lightprod(p, i, 0, STATE_AMBIENT);
-	    struct ureg diffuse = get_lightprod(p, i, 0, STATE_DIFFUSE);
-	    struct ureg specular = get_lightprod(p, i, 0, STATE_SPECULAR);
+	    struct ureg ambient = lightprod_front[i][0];
+	    struct ureg diffuse = lightprod_front[i][1];
+	    struct ureg specular = lightprod_front[i][2];
 	    struct ureg res0, res1;
 	    GLuint mask0, mask1;
 
@@ -1226,9 +1248,9 @@ static void build_lighting( struct tnl_program *p )
 	 /* Back face lighting:
 	  */
 	 if (twoside) {
-	    struct ureg ambient = get_lightprod(p, i, 1, STATE_AMBIENT);
-	    struct ureg diffuse = get_lightprod(p, i, 1, STATE_DIFFUSE);
-	    struct ureg specular = get_lightprod(p, i, 1, STATE_SPECULAR);
+	    struct ureg ambient = lightprod_back[i][0];
+	    struct ureg diffuse = lightprod_back[i][1];
+	    struct ureg specular = lightprod_back[i][2];
 	    struct ureg res0, res1;
 	    GLuint mask0, mask1;
 
