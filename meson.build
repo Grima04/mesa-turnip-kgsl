@@ -947,7 +947,7 @@ endif
 
 # Check for GCC style builtins
 foreach b : ['bswap32', 'bswap64', 'clz', 'clzll', 'ctz', 'expect', 'ffs',
-             'ffsll', 'popcount', 'popcountll', 'unreachable']
+             'ffsll', 'popcount', 'popcountll', 'unreachable', 'types_compatible_p']
   if cc.has_function(b)
     pre_args += '-DHAVE___BUILTIN_@0@'.format(b.to_upper())
   endif

@@ -57,6 +57,12 @@
 #  endif
 #endif
 
+/**
+ * __builtin_types_compatible_p compat
+ */
+#if defined(__cplusplus) || !defined(HAVE___BUILTIN_TYPES_COMPATIBLE_P)
+#  define __builtin_types_compatible_p(type1, type2) (1)
+#endif
 
 /**
  * Static (compile-time) assertion.
