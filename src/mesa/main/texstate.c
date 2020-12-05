@@ -112,6 +112,12 @@ _mesa_copy_texture_state( const struct gl_context *src, struct gl_context *dst )
       dst->Texture.FixedFuncUnit[u].GenT = src->Texture.FixedFuncUnit[u].GenT;
       dst->Texture.FixedFuncUnit[u].GenR = src->Texture.FixedFuncUnit[u].GenR;
       dst->Texture.FixedFuncUnit[u].GenQ = src->Texture.FixedFuncUnit[u].GenQ;
+      memcpy(dst->Texture.FixedFuncUnit[u].ObjectPlane,
+             src->Texture.FixedFuncUnit[u].ObjectPlane,
+             sizeof(src->Texture.FixedFuncUnit[u].ObjectPlane));
+      memcpy(dst->Texture.FixedFuncUnit[u].EyePlane,
+             src->Texture.FixedFuncUnit[u].EyePlane,
+             sizeof(src->Texture.FixedFuncUnit[u].EyePlane));
 
       /* GL_EXT_texture_env_combine */
       dst->Texture.FixedFuncUnit[u].Combine = src->Texture.FixedFuncUnit[u].Combine;
@@ -1054,14 +1060,14 @@ _mesa_init_texture(struct gl_context *ctx)
       texUnit->GenQ._ModeBit = TEXGEN_EYE_LINEAR;
 
       /* Yes, these plane coefficients are correct! */
-      ASSIGN_4V( texUnit->GenS.ObjectPlane, 1.0, 0.0, 0.0, 0.0 );
-      ASSIGN_4V( texUnit->GenT.ObjectPlane, 0.0, 1.0, 0.0, 0.0 );
-      ASSIGN_4V( texUnit->GenR.ObjectPlane, 0.0, 0.0, 0.0, 0.0 );
-      ASSIGN_4V( texUnit->GenQ.ObjectPlane, 0.0, 0.0, 0.0, 0.0 );
-      ASSIGN_4V( texUnit->GenS.EyePlane, 1.0, 0.0, 0.0, 0.0 );
-      ASSIGN_4V( texUnit->GenT.EyePlane, 0.0, 1.0, 0.0, 0.0 );
-      ASSIGN_4V( texUnit->GenR.EyePlane, 0.0, 0.0, 0.0, 0.0 );
-      ASSIGN_4V( texUnit->GenQ.EyePlane, 0.0, 0.0, 0.0, 0.0 );
+      ASSIGN_4V( texUnit->ObjectPlane[GEN_S], 1.0, 0.0, 0.0, 0.0 );
+      ASSIGN_4V( texUnit->ObjectPlane[GEN_T], 0.0, 1.0, 0.0, 0.0 );
+      ASSIGN_4V( texUnit->ObjectPlane[GEN_R], 0.0, 0.0, 0.0, 0.0 );
+      ASSIGN_4V( texUnit->ObjectPlane[GEN_Q], 0.0, 0.0, 0.0, 0.0 );
+      ASSIGN_4V( texUnit->EyePlane[GEN_S], 1.0, 0.0, 0.0, 0.0 );
+      ASSIGN_4V( texUnit->EyePlane[GEN_T], 0.0, 1.0, 0.0, 0.0 );
+      ASSIGN_4V( texUnit->EyePlane[GEN_R], 0.0, 0.0, 0.0, 0.0 );
+      ASSIGN_4V( texUnit->EyePlane[GEN_Q], 0.0, 0.0, 0.0, 0.0 );
    }
 
    /* After we're done initializing the context's texture state the default

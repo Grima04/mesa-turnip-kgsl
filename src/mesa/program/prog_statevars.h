@@ -111,6 +111,9 @@ typedef enum gl_state_index_ {
    STATE_EMISSION,
    STATE_SHININESS,
 
+   /* These 8 enums must be in the same order as the memory layout of
+    * gl_fixedfunc_texture_unit::EyePlane/ObjectPlane.
+    */
    STATE_TEXGEN_EYE_S,
    STATE_TEXGEN_EYE_T,
    STATE_TEXGEN_EYE_R,

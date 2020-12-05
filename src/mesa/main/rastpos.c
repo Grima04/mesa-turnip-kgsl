@@ -305,10 +305,10 @@ compute_texgen(struct gl_context *ctx, const GLfloat vObj[4], const GLfloat vEye
    if (texUnit->TexGenEnabled & S_BIT) {
       switch (texUnit->GenS.Mode) {
          case GL_OBJECT_LINEAR:
-            texcoord[0] = DOT4(vObj, texUnit->GenS.ObjectPlane);
+            texcoord[0] = DOT4(vObj, texUnit->ObjectPlane[GEN_S]);
             break;
          case GL_EYE_LINEAR:
-            texcoord[0] = DOT4(vEye, texUnit->GenS.EyePlane);
+            texcoord[0] = DOT4(vEye, texUnit->EyePlane[GEN_S]);
             break;
          case GL_SPHERE_MAP:
             texcoord[0] = rx * mInv + 0.5F;
@@ -328,10 +328,10 @@ compute_texgen(struct gl_context *ctx, const GLfloat vObj[4], const GLfloat vEye
    if (texUnit->TexGenEnabled & T_BIT) {
       switch (texUnit->GenT.Mode) {
          case GL_OBJECT_LINEAR:
-            texcoord[1] = DOT4(vObj, texUnit->GenT.ObjectPlane);
+            texcoord[1] = DOT4(vObj, texUnit->ObjectPlane[GEN_T]);
             break;
          case GL_EYE_LINEAR:
-            texcoord[1] = DOT4(vEye, texUnit->GenT.EyePlane);
+            texcoord[1] = DOT4(vEye, texUnit->EyePlane[GEN_T]);
             break;
          case GL_SPHERE_MAP:
             texcoord[1] = ry * mInv + 0.5F;
@@ -351,10 +351,10 @@ compute_texgen(struct gl_context *ctx, const GLfloat vObj[4], const GLfloat vEye
    if (texUnit->TexGenEnabled & R_BIT) {
       switch (texUnit->GenR.Mode) {
          case GL_OBJECT_LINEAR:
-            texcoord[2] = DOT4(vObj, texUnit->GenR.ObjectPlane);
+            texcoord[2] = DOT4(vObj, texUnit->ObjectPlane[GEN_R]);
             break;
          case GL_EYE_LINEAR:
-            texcoord[2] = DOT4(vEye, texUnit->GenR.EyePlane);
+            texcoord[2] = DOT4(vEye, texUnit->EyePlane[GEN_R]);
             break;
          case GL_REFLECTION_MAP:
             texcoord[2] = rz;
@@ -371,10 +371,10 @@ compute_texgen(struct gl_context *ctx, const GLfloat vObj[4], const GLfloat vEye
    if (texUnit->TexGenEnabled & Q_BIT) {
       switch (texUnit->GenQ.Mode) {
          case GL_OBJECT_LINEAR:
-            texcoord[3] = DOT4(vObj, texUnit->GenQ.ObjectPlane);
+            texcoord[3] = DOT4(vObj, texUnit->ObjectPlane[GEN_Q]);
             break;
          case GL_EYE_LINEAR:
-            texcoord[3] = DOT4(vEye, texUnit->GenQ.EyePlane);
+            texcoord[3] = DOT4(vEye, texUnit->EyePlane[GEN_Q]);
             break;
          default:
             _mesa_problem(ctx, "Bad Q texgen in compute_texgen()");

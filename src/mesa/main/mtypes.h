@@ -1210,8 +1210,6 @@ struct gl_texgen
 {
    GLenum16 Mode;       /**< GL_EYE_LINEAR, GL_SPHERE_MAP, etc */
    GLbitfield8 _ModeBit; /**< TEXGEN_x bit corresponding to Mode */
-   GLfloat ObjectPlane[4];
-   GLfloat EyePlane[4];
 };
 
 
@@ -1235,6 +1233,13 @@ struct gl_texture_unit
    struct gl_texture_object *_Current;
 };
 
+enum {
+   GEN_S,
+   GEN_T,
+   GEN_R,
+   GEN_Q,
+   NUM_GEN,
+};
 
 /**
  * Fixed-function-related subset of a texture unit, like enable flags,
@@ -1252,6 +1257,10 @@ struct gl_fixedfunc_texture_unit
    struct gl_texgen GenT;
    struct gl_texgen GenR;
    struct gl_texgen GenQ;
+
+   GLfloat EyePlane[NUM_GEN][4];
+   GLfloat ObjectPlane[NUM_GEN][4];
+
    GLbitfield8 TexGenEnabled;	/**< Bitwise-OR of [STRQ]_BIT values */
    GLbitfield8 _GenFlags;	/**< Bitwise-OR of Gen[STRQ]._ModeBit */
 
