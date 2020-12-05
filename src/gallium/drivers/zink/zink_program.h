@@ -45,7 +45,7 @@ struct util_dynarray;
 
 struct zink_program;
 
-struct zink_push_constant {
+struct zink_gfx_push_constant {
    unsigned draw_mode_is_indexed;
    unsigned draw_id;
    float default_inner_level[2];

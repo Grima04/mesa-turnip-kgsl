@@ -139,10 +139,10 @@ create_gfx_pipeline_layout(VkDevice dev, struct zink_gfx_program *prog)
 
    VkPushConstantRange pcr[2] = {};
    pcr[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-   pcr[0].offset = offsetof(struct zink_push_constant, draw_mode_is_indexed);
+   pcr[0].offset = offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed);
    pcr[0].size = 2 * sizeof(unsigned);
    pcr[1].stageFlags = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-   pcr[1].offset = offsetof(struct zink_push_constant, default_inner_level);
+   pcr[1].offset = offsetof(struct zink_gfx_push_constant, default_inner_level);
    pcr[1].size = sizeof(float) * 6;
    plci.pushConstantRangeCount = 2;
    plci.pPushConstantRanges = &pcr[0];
