@@ -970,11 +970,22 @@ _mesa_PopAttrib(void)
          TEST_AND_CALL1_SEL(Point.MaxSize, PointParameterf, GL_POINT_SIZE_MAX_EXT);
          TEST_AND_CALL1_SEL(Point.Threshold, PointParameterf, GL_POINT_FADE_THRESHOLD_SIZE_EXT);
       }
-      if (ctx->Extensions.NV_point_sprite
-          || ctx->Extensions.ARB_point_sprite) {
+      if (ctx->Extensions.NV_point_sprite || ctx->Extensions.ARB_point_sprite) {
          if (ctx->Point.CoordReplace != attr->Point.CoordReplace) {
             ctx->NewState |= _NEW_POINT;
             ctx->Point.CoordReplace = attr->Point.CoordReplace;
+
+            if (ctx->Driver.TexEnv) {
+               unsigned active_texture = ctx->Texture.CurrentUnit;
+
+               for (unsigned i = 0; i < ctx->Const.MaxTextureUnits; i++) {
+                  float param = !!(ctx->Point.CoordReplace & (1 << i));
+                  ctx->Texture.CurrentUnit = i;
+                  ctx->Driver.TexEnv(ctx, GL_POINT_SPRITE, GL_COORD_REPLACE,
+                                     &param);
+               }
+               ctx->Texture.CurrentUnit = active_texture;
+            }
          }
          TEST_AND_UPDATE(ctx->Point.PointSprite, attr->Point.PointSprite,
                          GL_POINT_SPRITE_NV);
