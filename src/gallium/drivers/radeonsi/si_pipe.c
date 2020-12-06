@@ -475,22 +475,27 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
          goto fail;
    }
 
-   /* Initialize context allocators. */
+   /* Initialize the context handle and the command stream. */
+   sctx->ctx = sctx->ws->ctx_create(sctx->ws);
+   if (!sctx->ctx)
+      goto fail;
+
+   ws->cs_create(&sctx->gfx_cs, sctx->ctx, sctx->has_graphics ? RING_GFX : RING_COMPUTE,
+                 (void *)si_flush_gfx_cs, sctx, stop_exec_on_failure);
+
+   /* Initialize private allocators. */
    u_suballocator_init(&sctx->allocator_zeroed_memory, &sctx->b, 128 * 1024, 0,
                        PIPE_USAGE_DEFAULT,
                        SI_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_CLEAR, false);
-
-   sctx->b.stream_uploader =
-      u_upload_create(&sctx->b, 1024 * 1024, 0, PIPE_USAGE_STREAM, SI_RESOURCE_FLAG_READ_ONLY);
-   if (!sctx->b.stream_uploader)
-      goto fail;
 
    sctx->cached_gtt_allocator = u_upload_create(&sctx->b, 16 * 1024, 0, PIPE_USAGE_STAGING, 0);
    if (!sctx->cached_gtt_allocator)
       goto fail;
 
-   sctx->ctx = sctx->ws->ctx_create(sctx->ws);
-   if (!sctx->ctx)
+   /* Initialize public allocators. */
+   sctx->b.stream_uploader =
+      u_upload_create(&sctx->b, 1024 * 1024, 0, PIPE_USAGE_STREAM, SI_RESOURCE_FLAG_READ_ONLY);
+   if (!sctx->b.stream_uploader)
       goto fail;
 
    sctx->b.const_uploader =
@@ -498,9 +503,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
                       SI_RESOURCE_FLAG_32BIT);
    if (!sctx->b.const_uploader)
       goto fail;
-
-   ws->cs_create(&sctx->gfx_cs, sctx->ctx, sctx->has_graphics ? RING_GFX : RING_COMPUTE,
-                 (void *)si_flush_gfx_cs, sctx, stop_exec_on_failure);
 
    /* Border colors. */
    sctx->border_color_table = malloc(SI_MAX_BORDER_COLORS * sizeof(*sctx->border_color_table));
