@@ -289,7 +289,7 @@ static void si_destroy_context(struct pipe_context *context)
 
    if (sctx->b.stream_uploader)
       u_upload_destroy(sctx->b.stream_uploader);
-   if (sctx->b.const_uploader)
+   if (sctx->b.const_uploader && sctx->b.const_uploader != sctx->b.stream_uploader)
       u_upload_destroy(sctx->b.const_uploader);
    if (sctx->cached_gtt_allocator)
       u_upload_destroy(sctx->cached_gtt_allocator);
@@ -493,16 +493,23 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       goto fail;
 
    /* Initialize public allocators. */
+   bool all_vram_visible = sscreen->info.all_vram_visible;
    sctx->b.stream_uploader =
-      u_upload_create(&sctx->b, 1024 * 1024, 0, PIPE_USAGE_STREAM, SI_RESOURCE_FLAG_READ_ONLY);
+      u_upload_create(&sctx->b, 1024 * 1024, 0,
+                      all_vram_visible ? PIPE_USAGE_DEFAULT : PIPE_USAGE_STREAM,
+                      SI_RESOURCE_FLAG_32BIT); /* same flags as const_uploader */
    if (!sctx->b.stream_uploader)
       goto fail;
 
-   sctx->b.const_uploader =
-      u_upload_create(&sctx->b, 256 * 1024, 0, PIPE_USAGE_DEFAULT,
-                      SI_RESOURCE_FLAG_32BIT);
-   if (!sctx->b.const_uploader)
-      goto fail;
+   if (all_vram_visible) {
+      sctx->b.const_uploader = sctx->b.stream_uploader;
+   } else {
+      sctx->b.const_uploader =
+         u_upload_create(&sctx->b, 256 * 1024, 0, PIPE_USAGE_DEFAULT,
+                         SI_RESOURCE_FLAG_32BIT);
+      if (!sctx->b.const_uploader)
+         goto fail;
+   }
 
    /* Border colors. */
    sctx->border_color_table = malloc(SI_MAX_BORDER_COLORS * sizeof(*sctx->border_color_table));
