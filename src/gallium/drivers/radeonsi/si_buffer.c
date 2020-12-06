@@ -55,8 +55,12 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
 
    switch (res->b.b.usage) {
    case PIPE_USAGE_STREAM:
-      res->flags = RADEON_FLAG_GTT_WC;
-      FALLTHROUGH;
+      res->flags |= RADEON_FLAG_GTT_WC;
+      if (sscreen->info.all_vram_visible)
+         res->domains = RADEON_DOMAIN_VRAM;
+      else
+         res->domains = RADEON_DOMAIN_GTT;
+      break;
    case PIPE_USAGE_STAGING:
       /* Transfers are likely to occur more often with these
        * resources. */
