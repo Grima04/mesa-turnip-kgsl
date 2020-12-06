@@ -4295,6 +4295,83 @@ radv_sparse_image_opaque_bind_memory(struct radv_device *device,
 }
 
 static VkResult
+radv_sparse_image_bind_memory(struct radv_device *device,
+                              const VkSparseImageMemoryBindInfo *bind)
+{
+	RADV_FROM_HANDLE(radv_image, image, bind->image);
+	struct radeon_surf *surface = &image->planes[0].surface;
+	uint32_t bs = vk_format_get_blocksize(image->vk_format);
+	VkResult result;
+
+	for (uint32_t i = 0; i < bind->bindCount; ++i) {
+		struct radv_device_memory *mem = NULL;
+		uint32_t offset, pitch;
+		uint32_t mem_offset = bind->pBinds[i].memoryOffset;
+		const uint32_t layer = bind->pBinds[i].subresource.arrayLayer;
+		const uint32_t level = bind->pBinds[i].subresource.mipLevel;
+
+		VkExtent3D bind_extent = bind->pBinds[i].extent;
+		bind_extent.width = DIV_ROUND_UP(bind_extent.width, vk_format_get_blockwidth(image->vk_format));
+		bind_extent.height = DIV_ROUND_UP(bind_extent.height, vk_format_get_blockheight(image->vk_format));
+
+		VkOffset3D bind_offset = bind->pBinds[i].offset;
+		bind_offset.x /= vk_format_get_blockwidth(image->vk_format);
+		bind_offset.y /= vk_format_get_blockheight(image->vk_format);
+
+		if (bind->pBinds[i].memory != VK_NULL_HANDLE)
+			mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
+
+		if (device->physical_device->rad_info.chip_class >= GFX9) {
+			offset = surface->u.gfx9.surf_slice_size * layer +
+			         surface->u.gfx9.prt_level_offset[level];
+			pitch = surface->u.gfx9.prt_level_pitch[level];
+		} else {
+			offset = surface->u.legacy.level[level].offset +
+			         surface->u.legacy.level[level].slice_size_dw * 4 * layer;
+			pitch = surface->u.legacy.level[level].nblk_x;
+		}
+
+		offset += (bind_offset.y * pitch * bs) +
+		          (bind_offset.x * surface->prt_tile_height * bs);
+
+		uint32_t aligned_extent_width = ALIGN(bind_extent.width,
+		                                      surface->prt_tile_width);
+
+		bool whole_subres = bind_offset.x == 0 &&
+		                    aligned_extent_width == pitch;
+
+		if (whole_subres) {
+			uint32_t aligned_extent_height = ALIGN(bind_extent.height,
+			                                       surface->prt_tile_height);
+
+			uint32_t size = aligned_extent_width * aligned_extent_height * bs;
+			result = device->ws->buffer_virtual_bind(image->bo,
+			                                         offset,
+			                                         size,
+			                                         mem ? mem->bo : NULL,
+			                                         mem_offset);
+			if (result != VK_SUCCESS)
+				return result;
+		} else {
+			uint32_t img_increment = pitch * bs;
+			uint32_t mem_increment = aligned_extent_width * bs;
+			uint32_t size = mem_increment * surface->prt_tile_height;
+			for (unsigned y = 0; y < bind_extent.height; y += surface->prt_tile_height) {
+				result = device->ws->buffer_virtual_bind(image->bo,
+				                                         offset + img_increment * y,
+				                                         size,
+				                                         mem ? mem->bo : NULL,
+				                                         mem_offset + mem_increment * y);
+				if (result != VK_SUCCESS)
+					return result;
+			}
+		}
+	}
+
+	return VK_SUCCESS;
+}
+
+static VkResult
 radv_get_preambles(struct radv_queue *queue,
                    const VkCommandBuffer *cmd_buffers,
                    uint32_t cmd_buffer_count,
@@ -4346,6 +4423,8 @@ struct radv_deferred_queue_submission {
 	uint32_t buffer_bind_count;
 	VkSparseImageOpaqueMemoryBindInfo *image_opaque_binds;
 	uint32_t image_opaque_bind_count;
+	VkSparseImageMemoryBindInfo *image_binds;
+	uint32_t image_bind_count;
 
 	bool flush_caches;
 	VkShaderStageFlags wait_dst_stage_mask;
@@ -4377,6 +4456,8 @@ struct radv_queue_submission {
 	uint32_t buffer_bind_count;
 	const VkSparseImageOpaqueMemoryBindInfo *image_opaque_binds;
 	uint32_t image_opaque_bind_count;
+	const VkSparseImageMemoryBindInfo *image_binds;
+	uint32_t image_bind_count;
 
 	bool flush_caches;
 	VkPipelineStageFlags wait_dst_stage_mask;
@@ -4415,6 +4496,11 @@ radv_create_deferred_submission(struct radv_queue *queue,
 	size += submission->cmd_buffer_count * sizeof(VkCommandBuffer);
 	size += submission->buffer_bind_count * sizeof(VkSparseBufferMemoryBindInfo);
 	size += submission->image_opaque_bind_count * sizeof(VkSparseImageOpaqueMemoryBindInfo);
+	size += submission->image_bind_count * sizeof(VkSparseImageMemoryBindInfo);
+
+	for (uint32_t i = 0; i < submission->image_bind_count; ++i)
+		size += submission->image_binds[i].bindCount * sizeof(VkSparseImageMemoryBind);
+
 	size += submission->wait_semaphore_count * sizeof(struct radv_semaphore_part *);
 	size += temporary_count * sizeof(struct radv_semaphore_part);
 	size += submission->signal_semaphore_count * sizeof(struct radv_semaphore_part *);
@@ -4449,10 +4535,22 @@ radv_create_deferred_submission(struct radv_queue *queue,
 		       submission->image_opaque_bind_count * sizeof(*deferred->image_opaque_binds));
 	}
 
+	deferred->image_binds = (void*)(deferred->image_opaque_binds + deferred->image_opaque_bind_count);
+	deferred->image_bind_count = submission->image_bind_count;
+
+	VkSparseImageMemoryBind *sparse_image_binds = (void*)(deferred->image_binds + deferred->image_bind_count);
+	for (uint32_t i = 0; i < deferred->image_bind_count; ++i) {
+		deferred->image_binds[i] = submission->image_binds[i];
+		deferred->image_binds[i].pBinds = sparse_image_binds;
+
+		for (uint32_t j = 0; j < deferred->image_binds[i].bindCount; ++j)
+			*sparse_image_binds++ = submission->image_binds[i].pBinds[j];
+	}
+
 	deferred->flush_caches = submission->flush_caches;
 	deferred->wait_dst_stage_mask = submission->wait_dst_stage_mask;
 
-	deferred->wait_semaphores = (void*)(deferred->image_opaque_binds + deferred->image_opaque_bind_count);
+	deferred->wait_semaphores = (void*)sparse_image_binds;
 	deferred->wait_semaphore_count = submission->wait_semaphore_count;
 
 	deferred->signal_semaphores = (void*)(deferred->wait_semaphores + deferred->wait_semaphore_count);
@@ -4627,6 +4725,13 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 	for (uint32_t i = 0; i < submission->image_opaque_bind_count; ++i) {
 		result = radv_sparse_image_opaque_bind_memory(queue->device,
 							      submission->image_opaque_binds + i);
+		if (result != VK_SUCCESS)
+			goto fail;
+	}
+
+	for (uint32_t i = 0; i < submission->image_bind_count; ++i) {
+		result = radv_sparse_image_bind_memory(queue->device,
+						       submission->image_binds + i);
 		if (result != VK_SUCCESS)
 			goto fail;
 	}
@@ -5721,6 +5826,8 @@ static bool radv_sparse_bind_has_effects(const VkBindSparseInfo *info)
 				.buffer_bind_count = pBindInfo[i].bufferBindCount,
 				.image_opaque_binds = pBindInfo[i].pImageOpaqueBinds,
 				.image_opaque_bind_count = pBindInfo[i].imageOpaqueBindCount,
+				.image_binds = pBindInfo[i].pImageBinds,
+				.image_bind_count = pBindInfo[i].imageBindCount,
 				.wait_semaphores = pBindInfo[i].pWaitSemaphores,
 				.wait_semaphore_count = pBindInfo[i].waitSemaphoreCount,
 				.signal_semaphores = pBindInfo[i].pSignalSemaphores,
