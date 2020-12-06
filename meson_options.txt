@@ -204,12 +204,12 @@ option(
   'shader-cache-max-size',
   type : 'string',
   value : '',
-  description : 'Default value for MESA_GLSL_CACHE_MAX_SIZE enviroment variable. 
+  description : '''Default value for MESA_GLSL_CACHE_MAX_SIZE enviroment variable.
    If set, determines the maximum size of the on-disk cache of compiled
    GLSL programs, can be overriden by enviroment variable if needed. Should be set to a number optionally followed by
    ``K``, ``M``, or ``G`` to specify a size in kilobytes, megabytes, or
    gigabytes. By default, gigabytes will be assumed. And if unset, a
-   maximum size of 1GB will be used.'
+   maximum size of 1GB will be used.'''
 )
 option(
   'vulkan-icd-dir',
