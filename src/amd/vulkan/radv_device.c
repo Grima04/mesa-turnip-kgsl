@@ -5690,24 +5690,6 @@ void radv_GetImageMemoryRequirements2(
 	}
 }
 
-void radv_GetImageSparseMemoryRequirements(
-	VkDevice                                    device,
-	VkImage                                     image,
-	uint32_t*                                   pSparseMemoryRequirementCount,
-	VkSparseImageMemoryRequirements*            pSparseMemoryRequirements)
-{
-	stub();
-}
-
-void radv_GetImageSparseMemoryRequirements2(
-	VkDevice                                    device,
-	const VkImageSparseMemoryRequirementsInfo2 *pInfo,
-	uint32_t*                                   pSparseMemoryRequirementCount,
-	VkSparseImageMemoryRequirements2           *pSparseMemoryRequirements)
-{
-	stub();
-}
-
 void radv_GetDeviceMemoryCommitment(
 	VkDevice                                    device,
 	VkDeviceMemory                              memory,
