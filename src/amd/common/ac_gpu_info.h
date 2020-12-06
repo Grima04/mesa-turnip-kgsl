@@ -98,6 +98,7 @@ struct radeon_info {
    uint32_t min_alloc_size;
    uint32_t address32_hi;
    bool has_dedicated_vram;
+   bool all_vram_visible;
    bool has_l2_uncached;
    bool r600_has_virtual_memory;
    uint32_t num_sdp_interfaces;
