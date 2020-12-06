@@ -1110,6 +1110,11 @@ struct anv_execbuf {
    /* Allocated length of the 'objects' and 'bos' arrays */
    uint32_t                                  array_length;
 
+   /* Indicates whether any of the command buffers have relocations. This
+    * doesn't not necessarily mean we'll need the kernel to process them. It
+    * might be that a previous execbuf has already placed things in the VMA
+    * and we can make i915 skip the relocations.
+    */
    bool                                      has_relocs;
 
    const VkAllocationCallbacks *             alloc;
