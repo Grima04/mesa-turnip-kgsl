@@ -819,6 +819,18 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
    else
       surf->u.legacy.tiling_index[level] = AddrSurfInfoOut->tileIndex;
 
+   if (AddrSurfInfoIn->flags.prt) {
+      if (level == 0) {
+         surf->prt_tile_width = AddrSurfInfoOut->pitchAlign;
+         surf->prt_tile_height = AddrSurfInfoOut->heightAlign;
+      }
+      if (surf_level->nblk_x >= surf->prt_tile_width &&
+          surf_level->nblk_y >= surf->prt_tile_height) {
+         /* +1 because the current level is not in the miptail */
+         surf->first_mip_tail_level = level + 1;
+      }
+   }
+
    surf->surf_size = surf_level->offset + AddrSurfInfoOut->surfSize;
 
    /* Clear DCC fields at the beginning. */
@@ -1651,6 +1663,23 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
    ret = Addr2ComputeSurfaceInfo(addrlib->handle, in, &out);
    if (ret != ADDR_OK)
       return ret;
+
+   if (in->flags.prt) {
+      surf->prt_tile_width = out.blockWidth;
+      surf->prt_tile_height = out.blockHeight;
+
+      for (surf->first_mip_tail_level = 0; surf->first_mip_tail_level < in->numMipLevels;
+           ++surf->first_mip_tail_level) {
+         if(mip_info[surf->first_mip_tail_level].pitch < out.blockWidth ||
+            mip_info[surf->first_mip_tail_level].height < out.blockHeight)
+            break;
+      }
+
+      for (unsigned i = 0; i < in->numMipLevels; i++) {
+         surf->u.gfx9.prt_level_offset[i] = mip_info[i].offset;
+         surf->u.gfx9.prt_level_pitch[i] = mip_info[i].pitch;
+      }
+   }
 
    if (in->flags.stencil) {
       surf->u.gfx9.stencil.swizzle_mode = in->swizzleMode;

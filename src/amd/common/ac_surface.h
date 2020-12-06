@@ -189,6 +189,11 @@ struct gfx9_surf_layout {
    bool dcc_retile_use_uint16;     /* if all values fit into uint16_t */
    uint32_t dcc_retile_num_elements;
    void *dcc_retile_map;
+
+   /* Offset within slice in bytes, only valid for prt images. */
+   uint32_t prt_level_offset[RADEON_SURF_MAX_LEVELS];
+   /* Pitch of level in blocks, only valid for prt images. */
+   uint16_t prt_level_pitch[RADEON_SURF_MAX_LEVELS];
 };
 
 struct radeon_surf {
@@ -219,6 +224,11 @@ struct radeon_surf {
     * they will be treated as hints (e.g. bankw, bankh) and might be
     * changed by the calculator.
     */
+
+   /* Not supported yet for depth + stencil. */
+   uint8_t first_mip_tail_level;
+   uint16_t prt_tile_width;
+   uint16_t prt_tile_height;
 
    /* Tile swizzle can be OR'd with low bits of the BASE_256B address.
     * The value is the same for all mipmap levels. Supported tile modes:
