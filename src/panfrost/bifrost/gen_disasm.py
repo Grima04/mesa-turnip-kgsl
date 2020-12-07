@@ -81,7 +81,9 @@ bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bif
         bi_disasm_${name}(fp, bits, srcs, next_regs, staging_register, branch_offset, consts, last);
 % endfor
     else
-        fprintf(fp, "INSTR_INVALID_ENC ${unit} %X\\n", bits);
+        fprintf(fp, "INSTR_INVALID_ENC ${unit} %X", bits);
+
+    fputs("\\n", fp);
 }"""
 
     return Template(template).render(options = mapped, unit = "fma" if is_fma else "add")
@@ -343,7 +345,6 @@ def disasm_op(name, op):
     if desc.get('staging'):
         body += '    fprintf(fp, ", @r%u", staging_register);\n'
 
-    body += '    fputs("\\n", fp);\n'
     return disasm_op_template.render(c_name = opname_to_c(name), body = body)
 
 print('#include "util/macros.h"')
