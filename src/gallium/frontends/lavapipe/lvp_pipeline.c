@@ -174,8 +174,7 @@ deep_copy_viewport_state(void *mem_ctx,
                          const VkPipelineViewportStateCreateInfo *src)
 {
    dst->sType = src->sType;
-   dst->pNext = src->pNext;
-
+   dst->pNext = NULL;
    dst->flags = src->flags;
 
    if (src->pViewports) {
@@ -205,7 +204,7 @@ deep_copy_color_blend_state(void *mem_ctx,
                             const VkPipelineColorBlendStateCreateInfo *src)
 {
    dst->sType = src->sType;
-   dst->pNext = src->pNext;
+   dst->pNext = NULL;
    dst->flags = src->flags;
    dst->logicOpEnable = src->logicOpEnable;
    dst->logicOp = src->logicOp;
@@ -227,7 +226,7 @@ deep_copy_dynamic_state(void *mem_ctx,
                         const VkPipelineDynamicStateCreateInfo *src)
 {
    dst->sType = src->sType;
-   dst->pNext = src->pNext;
+   dst->pNext = NULL;
    dst->flags = src->flags;
 
    LVP_PIPELINE_DUP(dst->pDynamicStates,
