@@ -101,6 +101,12 @@ struct backend_instruction : public exec_node {
    bool reads_accumulator_implicitly() const;
    bool writes_accumulator_implicitly(const struct gen_device_info *devinfo) const;
 
+   /**
+    * Instructions that use indirect addressing have additional register
+    * regioning restrictions.
+    */
+   bool uses_indirect_addressing() const;
+
    void remove(bblock_t *block);
    void insert_after(bblock_t *block, backend_instruction *inst);
    void insert_before(bblock_t *block, backend_instruction *inst);
