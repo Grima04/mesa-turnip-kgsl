@@ -295,7 +295,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_atomic_counter_read_deref:
    case nir_intrinsic_quad_swizzle_amd:
    case nir_intrinsic_masked_swizzle_amd:
-   case nir_intrinsic_is_sparse_texels_resident: {
+   case nir_intrinsic_is_sparse_texels_resident:
+   case nir_intrinsic_sparse_residency_code_and: {
       unsigned num_srcs = nir_intrinsic_infos[instr->intrinsic].num_srcs;
       for (unsigned i = 0; i < num_srcs; i++) {
          if (instr->src[i].ssa->divergent) {
