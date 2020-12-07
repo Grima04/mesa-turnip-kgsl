@@ -414,6 +414,11 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		    rscreen->b.family == CHIP_HEMLOCK)
 			return 1;
 		return 0;
+        case PIPE_CAP_INT64_DIVMOD:
+           /* it is actually not supported, but the nir lowering hdanles this corectly wheras
+            * the glsl lowering path seems to not initialize the buildins correctly.
+            */
+           return is_nir_enabled(&rscreen->b);
 	case PIPE_CAP_CULL_DISTANCE:
 		return 1;
 
