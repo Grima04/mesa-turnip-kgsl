@@ -324,7 +324,7 @@ hash_gfx_pipeline_state(const void *key)
 static bool
 equals_gfx_pipeline_state(const void *a, const void *b)
 {
-   return memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash)) == 0;
+   return !memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash));
 }
 
 static void
