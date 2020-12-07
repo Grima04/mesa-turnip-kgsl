@@ -70,4 +70,6 @@ void vbo_save_destroy( struct gl_context *ctx )
       free(save->vertex_store);
       save->vertex_store = NULL;
    }
+
+   _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
 }

@@ -649,7 +649,7 @@ compile_vertex_list(struct gl_context *ctx)
 
    /* Create an index buffer. */
    node->min_index = node->max_index = 0;
-   if (save->vert_count) {
+   if (save->vert_count && node->prim_count) {
       /* We won't modify node->prims, so use a const alias to avoid unintended
        * writes to it. */
       const struct _mesa_prim *original_prims = node->prims;
@@ -665,6 +665,13 @@ compile_vertex_list(struct gl_context *ctx)
        * wrap_buffers may call use but the last primitive may not be complete) */
       int max_indices_count = MAX2(total_vert_count * 2 - (node->prim_count * 2) + 1,
                                    total_vert_count);
+
+      int indices_offset = 0;
+      int available = save->previous_ib ? (save->previous_ib->Size / 4 - save->ib_first_free_index) : 0;
+      if (available >= max_indices_count) {
+         indices_offset = save->ib_first_free_index;
+         node->min_index = node->max_index = indices_offset;
+      }
       int size = max_indices_count * sizeof(uint32_t);
       uint32_t* indices = (uint32_t*) malloc(size);
       uint32_t max_index = 0, min_index = 0xFFFFFFFF;
@@ -750,16 +757,13 @@ compile_vertex_list(struct gl_context *ctx)
             assert(last_valid_prim <= i);
             node->merged.prims = realloc(node->merged.prims, (1 + last_valid_prim) * sizeof(struct _mesa_prim));
             node->merged.prims[last_valid_prim] = original_prims[i];
-            node->merged.prims[last_valid_prim].start = start;
+            node->merged.prims[last_valid_prim].start = indices_offset + start;
             node->merged.prims[last_valid_prim].count = idx - start;
          }
          node->merged.prims[last_valid_prim].mode = mode;
       }
 
-      if (idx == 0)
-         goto skip_node;
-
-      assert(idx <= max_indices_count);
+      assert(idx > 0 && idx <= max_indices_count);
 
       node->merged.prim_count = last_valid_prim + 1;
       node->merged.ib.ptr = NULL;
@@ -768,25 +772,36 @@ compile_vertex_list(struct gl_context *ctx)
       node->merged.min_index = min_index;
       node->merged.max_index = max_index;
 
-      node->merged.ib.obj = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
-      bool success = ctx->Driver.BufferData(ctx,
+      if (!indices_offset) {
+         /* Allocate a new index buffer */
+         _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
+         save->previous_ib = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
+         bool success = ctx->Driver.BufferData(ctx,
                                             GL_ELEMENT_ARRAY_BUFFER_ARB,
-                                            idx * sizeof(uint32_t), indices,
+                                            MAX2(VBO_SAVE_INDEX_SIZE, idx) * sizeof(uint32_t),
+                                            NULL,
                                             GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
-                                            node->merged.ib.obj);
+                                            save->previous_ib);
+         if (!success) {
+            _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
+            _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
+         }
+      }
 
-      if (success)
-         goto out;
+      _mesa_reference_buffer_object(ctx, &node->merged.ib.obj, save->previous_ib);
 
-      ctx->Driver.DeleteBuffer(ctx, node->merged.ib.obj);
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
+      if (node->merged.ib.obj) {
+         ctx->Driver.BufferSubData(ctx,
+                                   indices_offset * sizeof(uint32_t),
+                                   idx * sizeof(uint32_t),
+                                   indices,
+                                   node->merged.ib.obj);
+         save->ib_first_free_index = indices_offset + idx;
+      } else {
+         node->vertex_count = 0;
+         node->prim_count = 0;
+      }
 
-   skip_node:
-      node->merged.ib.obj = NULL;
-      node->vertex_count = 0;
-      node->prim_count = 0;
-
-   out:
       free(indices);
    }
 

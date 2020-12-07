@@ -178,6 +178,8 @@ struct vbo_save_context {
 
    struct vbo_save_vertex_store *vertex_store;
    struct vbo_save_primitive_store *prim_store;
+   struct gl_buffer_object *previous_ib;
+   unsigned ib_first_free_index;
 
    fi_type *buffer_map;            /**< Mapping of vertex_store's buffer */
    fi_type *buffer_ptr;		   /**< cursor, points into buffer_map */
