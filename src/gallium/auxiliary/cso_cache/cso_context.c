@@ -399,6 +399,7 @@ void cso_destroy_context( struct cso_context *ctx )
             assert(maxsam <= PIPE_MAX_SAMPLERS);
             assert(maxview <= PIPE_MAX_SHADER_SAMPLER_VIEWS);
             assert(maxssbo <= PIPE_MAX_SHADER_BUFFERS);
+            assert(maxcb <= PIPE_MAX_CONSTANT_BUFFERS);
             if (maxsam > 0) {
                ctx->pipe->bind_sampler_states(ctx->pipe, sh, 0, maxsam, zeros);
             }
