@@ -474,8 +474,8 @@ indirect_create_context_attribs(struct glx_screen *psc,
 
    /*
     ** Constrain the maximum drawing command size allowed to be
-    ** transfered using the X_GLXRender protocol request.  First
-    ** constrain by a software limit, then constrain by the protocl
+    ** transferred using the X_GLXRender protocol request.  First
+    ** constrain by a software limit, then constrain by the protocol
     ** limit.
     */
    gc->maxSmallRenderCommandSize = MIN3(bufSize, __GLX_RENDER_CMD_SIZE_LIMIT,
