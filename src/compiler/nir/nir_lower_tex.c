@@ -924,7 +924,7 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
 
    b->cursor = nir_after_instr(&tex->instr);
 
-   nir_ssa_def *dest[4];
+   nir_ssa_def *dest[5] = {NULL};
    for (unsigned i = 0; i < 4; ++i) {
       nir_tex_instr *tex_copy = nir_tex_instr_create(b->shader, tex->num_srcs + 1);
       tex_copy->op = tex->op;
@@ -933,6 +933,7 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
       tex_copy->is_array = tex->is_array;
       tex_copy->is_shadow = tex->is_shadow;
       tex_copy->is_new_style_shadow = tex->is_new_style_shadow;
+      tex_copy->is_sparse = tex->is_sparse;
       tex_copy->component = tex->component;
       tex_copy->dest_type = tex->dest_type;
 
@@ -953,9 +954,13 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
       nir_builder_instr_insert(b, &tex_copy->instr);
 
       dest[i] = nir_channel(b, &tex_copy->dest.ssa, 3);
+      if (tex->is_sparse) {
+         nir_ssa_def *code = nir_channel(b, &tex_copy->dest.ssa, 4);
+         dest[4] = dest[4] ? nir_sparse_residency_code_and(b, dest[4], code) : code;
+      }
    }
 
-   nir_ssa_def *res = nir_vec4(b, dest[0], dest[1], dest[2], dest[3]);
+   nir_ssa_def *res = nir_vec(b, dest, tex->dest.ssa.num_components);
    nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(res));
    nir_instr_remove(&tex->instr);
 
