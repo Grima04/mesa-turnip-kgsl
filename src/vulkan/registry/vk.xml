@@ -67,6 +67,7 @@ branch of the member gitlab server.
         <tag name="MESA"        author="Mesa open source project"      contact="Chad Versace @chadversary, Daniel Stone @fooishbar, David Airlie @airlied, Jason Ekstrand @jekstrand"/>
         <tag name="INTEL"       author="Intel Corporation"             contact="Slawek Grajewski @sgrajewski"/>
         <tag name="HUAWEI"      author="Huawei Technologies Co. Ltd."  contact="Hueilong Wang @wyvernathuawei"/>
+        <tag name="VALVE"       author="Valve Corporation"             contact="Pierre-Loup Griffais @plagman, Joshua Ashton @Joshua-Ashton, Hans-Kristian Arntzen @HansKristian-Work"/>
     </tags>
 
     <types comment="Vulkan type definitions">
@@ -136,7 +137,7 @@ branch of the member gitlab server.
         <type category="define">// Vulkan 1.2 version number
 #define <name>VK_API_VERSION_1_2</name> <type>VK_MAKE_VERSION</type>(1, 2, 0)// Patch version should always be set to 0</type>
         <type category="define">// Version of this file
-#define <name>VK_HEADER_VERSION</name> 162</type>
+#define <name>VK_HEADER_VERSION</name> 164</type>
         <type category="define" requires="VK_HEADER_VERSION">// Complete version of this file
 #define <name>VK_HEADER_VERSION_COMPLETE</name> <type>VK_MAKE_VERSION</type>(1, 2, VK_HEADER_VERSION)</type>
 
@@ -337,50 +338,50 @@ typedef void <name>CAMetalLayer</name>;
         <type requires="VkToolPurposeFlagBitsEXT"         category="bitmask">typedef <type>VkFlags</type> <name>VkToolPurposeFlagsEXT</name>;</type>
 
             <comment>Types which can be void pointers or class pointers, selected at compile time</comment>
-        <type category="handle"><type>VK_DEFINE_HANDLE</type>(<name>VkInstance</name>)</type>
-        <type category="handle" parent="VkInstance"><type>VK_DEFINE_HANDLE</type>(<name>VkPhysicalDevice</name>)</type>
-        <type category="handle" parent="VkPhysicalDevice"><type>VK_DEFINE_HANDLE</type>(<name>VkDevice</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_HANDLE</type>(<name>VkQueue</name>)</type>
-        <type category="handle" parent="VkCommandPool"><type>VK_DEFINE_HANDLE</type>(<name>VkCommandBuffer</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDeviceMemory</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkCommandPool</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkBuffer</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkBufferView</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkImage</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkImageView</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkShaderModule</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPipeline</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPipelineLayout</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSampler</name>)</type>
-        <type category="handle" parent="VkDescriptorPool"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDescriptorSet</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDescriptorSetLayout</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDescriptorPool</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkFence</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSemaphore</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkEvent</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkQueryPool</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkFramebuffer</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkRenderPass</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPipelineCache</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkIndirectCommandsLayoutNV</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDescriptorUpdateTemplate</name>)</type>
+        <type category="handle"                           objtypeenum="VK_OBJECT_TYPE_INSTANCE"><type>VK_DEFINE_HANDLE</type>(<name>VkInstance</name>)</type>
+        <type category="handle" parent="VkInstance"       objtypeenum="VK_OBJECT_TYPE_PHYSICAL_DEVICE"><type>VK_DEFINE_HANDLE</type>(<name>VkPhysicalDevice</name>)</type>
+        <type category="handle" parent="VkPhysicalDevice" objtypeenum="VK_OBJECT_TYPE_DEVICE"><type>VK_DEFINE_HANDLE</type>(<name>VkDevice</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_QUEUE"><type>VK_DEFINE_HANDLE</type>(<name>VkQueue</name>)</type>
+        <type category="handle" parent="VkCommandPool"    objtypeenum="VK_OBJECT_TYPE_COMMAND_BUFFER"><type>VK_DEFINE_HANDLE</type>(<name>VkCommandBuffer</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_DEVICE_MEMORY"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDeviceMemory</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_COMMAND_POOL"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkCommandPool</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_BUFFER"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkBuffer</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_BUFFER_VIEW"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkBufferView</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_IMAGE"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkImage</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_IMAGE_VIEW"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkImageView</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_SHADER_MODULE"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkShaderModule</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_PIPELINE"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPipeline</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_PIPELINE_LAYOUT"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPipelineLayout</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_SAMPLER"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSampler</name>)</type>
+        <type category="handle" parent="VkDescriptorPool" objtypeenum="VK_OBJECT_TYPE_DESCRIPTOR_SET"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDescriptorSet</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDescriptorSetLayout</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_DESCRIPTOR_POOL"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDescriptorPool</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_FENCE"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkFence</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_SEMAPHORE"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSemaphore</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_EVENT"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkEvent</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_QUERY_POOL"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkQueryPool</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_FRAMEBUFFER"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkFramebuffer</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_RENDER_PASS"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkRenderPass</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_PIPELINE_CACHE"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPipelineCache</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkIndirectCommandsLayoutNV</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDescriptorUpdateTemplate</name>)</type>
         <type category="handle" name="VkDescriptorUpdateTemplateKHR" alias="VkDescriptorUpdateTemplate"/>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSamplerYcbcrConversion</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSamplerYcbcrConversion</name>)</type>
         <type category="handle" name="VkSamplerYcbcrConversionKHR"   alias="VkSamplerYcbcrConversion"/>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkValidationCacheEXT</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkAccelerationStructureKHR</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkAccelerationStructureNV</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPerformanceConfigurationINTEL</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDeferredOperationKHR</name>)</type>
-        <type category="handle" parent="VkDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPrivateDataSlotEXT</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_VALIDATION_CACHE_EXT"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkValidationCacheEXT</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkAccelerationStructureKHR</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkAccelerationStructureNV</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPerformanceConfigurationINTEL</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDeferredOperationKHR</name>)</type>
+        <type category="handle" parent="VkDevice"         objtypeenum="VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkPrivateDataSlotEXT</name>)</type>
 
             <comment>WSI extensions</comment>
-        <type category="handle" parent="VkPhysicalDevice"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDisplayKHR</name>)</type>
-        <type category="handle" parent="VkDisplayKHR"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDisplayModeKHR</name>)</type>
-        <type category="handle" parent="VkInstance"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSurfaceKHR</name>)</type>
-        <type category="handle" parent="VkSurfaceKHR"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSwapchainKHR</name>)</type>
-        <type category="handle" parent="VkInstance"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDebugReportCallbackEXT</name>)</type>
-        <type category="handle" parent="VkInstance"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDebugUtilsMessengerEXT</name>)</type>
+        <type category="handle" parent="VkPhysicalDevice" objtypeenum="VK_OBJECT_TYPE_DISPLAY_KHR"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDisplayKHR</name>)</type>
+        <type category="handle" parent="VkDisplayKHR"     objtypeenum="VK_OBJECT_TYPE_DISPLAY_MODE_KHR"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDisplayModeKHR</name>)</type>
+        <type category="handle" parent="VkInstance"       objtypeenum="VK_OBJECT_TYPE_SURFACE_KHR"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSurfaceKHR</name>)</type>
+        <type category="handle" parent="VkSurfaceKHR"     objtypeenum="VK_OBJECT_TYPE_SWAPCHAIN_KHR"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSwapchainKHR</name>)</type>
+        <type category="handle" parent="VkInstance"       objtypeenum="VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDebugReportCallbackEXT</name>)</type>
+        <type category="handle" parent="VkInstance"       objtypeenum="VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT"><type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkDebugUtilsMessengerEXT</name>)</type>
 
             <comment>Types generated from corresponding enums tags below</comment>
         <type name="VkAttachmentLoadOp" category="enum"/>
@@ -1082,7 +1083,7 @@ typedef void <name>CAMetalLayer</name>;
             <member optional="true">const <type>void</type>*            <name>pNext</name></member>
             <member><type>VkDescriptorPool</type>       <name>descriptorPool</name></member>
             <member><type>uint32_t</type>               <name>descriptorSetCount</name></member>
-            <member len="descriptorSetCount">const <type>VkDescriptorSetLayout</type>* <name>pSetLayouts</name></member>
+            <member>const <type>VkDescriptorSetLayout</type>* <name>pSetLayouts</name></member>
         </type>
         <type category="struct" name="VkSpecializationMapEntry">
             <member><type>uint32_t</type>                     <name>constantID</name><comment>The SpecConstant ID specified in the BIL</comment></member>
@@ -5117,6 +5118,21 @@ typedef void <name>CAMetalLayer</name>;
             <member><type>VkDeviceSize</type>                       <name>updateScratchSize</name></member>
             <member><type>VkDeviceSize</type>                       <name>buildScratchSize</name></member>
         </type>
+        <type category="struct" name="VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE" structextends="VkPhysicalDeviceFeatures2,VkDeviceCreateInfo">
+            <member values="VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE"><type>VkStructureType</type> <name>sType</name></member>
+            <member noautovalidity="true"><type>void</type>*                     <name>pNext</name></member>
+            <member><type>VkBool32</type>                                        <name>mutableDescriptorType</name></member>
+        </type>
+        <type category="struct" name="VkMutableDescriptorTypeListVALVE">
+            <member optional="true"><type>uint32_t</type>                                          <name>descriptorTypeCount</name></member>
+            <member len="descriptorTypeCount">const <type>VkDescriptorType</type>* <name>pDescriptorTypes</name></member>
+        </type>
+        <type category="struct" name="VkMutableDescriptorTypeCreateInfoVALVE" structextends="VkDescriptorSetLayoutCreateInfo,VkDescriptorPoolCreateInfo">
+            <member values="VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE"><type>VkStructureType</type> <name>sType</name></member>
+            <member>const <type>void</type>*                                                                      <name>pNext</name></member>
+            <member optional="true"><type>uint32_t</type>                                                         <name>mutableDescriptorTypeListCount</name></member>
+            <member len="mutableDescriptorTypeListCount">const <type>VkMutableDescriptorTypeListVALVE</type>* <name>pMutableDescriptorTypeLists</name></member>
+        </type>
     </types>
 
     <comment>Vulkan enumerant (token) definitions</comment>
@@ -5662,7 +5678,7 @@ typedef void <name>CAMetalLayer</name>;
     <enums name="VkDescriptorUpdateTemplateType" type="enum">
         <enum value="0"     name="VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET"   comment="Create descriptor update template for descriptor set updates"/>
     </enums>
-    <enums name="VkObjectType" type="enum" comment="Enums to track objects of various types">
+    <enums name="VkObjectType" type="enum" comment="Enums to track objects of various types - also see objtypeenum attributes on type tags">
         <enum value="0"     name="VK_OBJECT_TYPE_UNKNOWN"/>
         <enum value="1"     name="VK_OBJECT_TYPE_INSTANCE"                           comment="VkInstance"/>
         <enum value="2"     name="VK_OBJECT_TYPE_PHYSICAL_DEVICE"                    comment="VkPhysicalDevice"/>
@@ -6256,7 +6272,8 @@ typedef void <name>CAMetalLayer</name>;
         <enum value="0x10003" name="VK_VENDOR_ID_KAZAN" comment="Kazan Software Renderer"/>
         <enum value="0x10004" name="VK_VENDOR_ID_CODEPLAY" comment="Codeplay Software Ltd. vendor ID"/>
         <enum value="0x10005" name="VK_VENDOR_ID_MESA"  comment="Mesa vendor ID"/>
-            <unused start="0x10006" comment="This is the next unused available Khronos vendor ID"/>
+        <enum value="0x10006" name="VK_VENDOR_ID_POCL"  comment="PoCL vendor ID"/>
+            <unused start="0x10007" comment="This is the next unused available Khronos vendor ID"/>
     </enums>
     <enums name="VkDriverId" type="enum">
         <comment>Driver IDs are now represented as enums instead of the old
@@ -7992,6 +8009,17 @@ typedef void <name>CAMetalLayer</name>;
             <param><type>VkPhysicalDevice</type> <name>physicalDevice</name></param>
             <param><type>Display</type>* <name>dpy</name></param>
             <param><type>RROutput</type> <name>rrOutput</name></param>
+            <param><type>VkDisplayKHR</type>* <name>pDisplay</name></param>
+        </command>
+        <command successcodes="VK_SUCCESS" errorcodes="VK_ERROR_OUT_OF_HOST_MEMORY,VK_ERROR_DEVICE_LOST,VK_ERROR_INITIALIZATION_FAILED">
+            <proto><type>VkResult</type> <name>vkAcquireWinrtDisplayNV</name></proto>
+            <param><type>VkPhysicalDevice</type> <name>physicalDevice</name></param>
+            <param><type>VkDisplayKHR</type> <name>display</name></param>
+        </command>
+        <command successcodes="VK_SUCCESS" errorcodes="VK_ERROR_OUT_OF_HOST_MEMORY,VK_ERROR_DEVICE_LOST,VK_ERROR_INITIALIZATION_FAILED">
+            <proto><type>VkResult</type> <name>vkGetWinrtDisplayNV</name></proto>
+            <param><type>VkPhysicalDevice</type> <name>physicalDevice</name></param>
+            <param><type>uint32_t</type> <name>deviceRelativeId</name></param>
             <param><type>VkDisplayKHR</type>* <name>pDisplay</name></param>
         </command>
         <command successcodes="VK_SUCCESS" errorcodes="VK_ERROR_OUT_OF_HOST_MEMORY">
@@ -14357,10 +14385,12 @@ typedef void <name>CAMetalLayer</name>;
                 <enum value="&quot;VK_ARM_extension_345&quot;"              name="VK_ARM_EXTENSION_345_EXTENSION_NAME"/>
             </require>
         </extension>
-        <extension name="VK_NV_extension_346" number="346" author="NV" contact="Jeff Juliano @jjuliano" supported="disabled">
+        <extension name="VK_NV_acquire_winrt_display" number="346" type="device" requires="VK_EXT_direct_mode_display" author="NV" contact="Jeff Juliano @jjuliano" platform="win32" supported="vulkan">
             <require>
-                <enum value="0"                                             name="VK_NV_EXTENSION_346_SPEC_VERSION"/>
-                <enum value="&quot;VK_NV_extension_346&quot;"               name="VK_NV_EXTENSION_346_EXTENSION_NAME"/>
+                <enum value="1"                                             name="VK_NV_ACQUIRE_WINRT_DISPLAY_SPEC_VERSION"/>
+                <enum value="&quot;VK_NV_acquire_winrt_display&quot;"       name="VK_NV_ACQUIRE_WINRT_DISPLAY_EXTENSION_NAME"/>
+                <command name="vkAcquireWinrtDisplayNV"/>
+                <command name="vkGetWinrtDisplayNV"/>
             </require>
         </extension>
         <extension name="VK_EXT_directfb_surface" number="347" type="instance" requires="VK_KHR_surface" platform="directfb" supported="vulkan" author="EXT" contact="Nicolas Caramelli @caramelli">
@@ -14387,10 +14417,18 @@ typedef void <name>CAMetalLayer</name>;
                 <enum value="&quot;VK_NV_extension_351&quot;"               name="VK_NV_EXTENSION_351_EXTENSION_NAME"/>
             </require>
         </extension>
-        <extension name="VK_EXT_extension_352" number="352" author="EXT" contact="Joshua Ashton @Joshua-Ashton" supported="disabled">
+        <extension name="VK_VALVE_mutable_descriptor_type" number="352" type="device" supported="vulkan" author="VALVE" contact="Joshua Ashton @Joshua-Ashton,Hans-Kristian Arntzen @HansKristian-Work" specialuse="d3demulation" requires="VK_KHR_maintenance3">
             <require>
-                <enum value="0"                                             name="VK_EXT_EXTENSION_352_SPEC_VERSION"/>
-                <enum value="&quot;VK_EXT_extension_352&quot;"              name="VK_EXT_EXTENSION_352_EXTENSION_NAME"/>
+                <enum value="1"                                                name="VK_VALVE_MUTABLE_DESCRIPTOR_TYPE_SPEC_VERSION"/>
+                <enum value="&quot;VK_VALVE_mutable_descriptor_type&quot;"     name="VK_VALVE_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME"/>
+                <enum offset="0" extends="VkStructureType"                     name="VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE"/>
+                <enum offset="2" extends="VkStructureType"                     name="VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE"/>
+                <enum offset="0" extends="VkDescriptorType"                    name="VK_DESCRIPTOR_TYPE_MUTABLE_VALVE"/>
+                <enum bitpos="2" extends="VkDescriptorPoolCreateFlagBits"      name="VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_VALVE"/>
+                <enum bitpos="2" extends="VkDescriptorSetLayoutCreateFlagBits" name="VK_DESCRIPTOR_SET_LAYOUT_CREATE_HOST_ONLY_POOL_BIT_VALVE"/>
+                <type name="VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE"/>
+                <type name="VkMutableDescriptorTypeListVALVE"/>
+                <type name="VkMutableDescriptorTypeCreateInfoVALVE"/>
             </require>
         </extension>
         <extension name="VK_EXT_extension_353" number="353" author="EXT" contact="Piers Daniell @pdaniell-nv" supported="disabled">
@@ -14514,6 +14552,36 @@ typedef void <name>CAMetalLayer</name>;
                 <enum value="&quot;VK_NV_extension_372&quot;"           name="VK_NV_EXTENSION_372_EXTENSION_NAME"/>
                 <enum bitpos="5" extends="VkBufferCreateFlagBits"       name="VK_BUFFER_CREATE_RESERVED_5_BIT_NV"/>
                 <enum bitpos="15" extends="VkImageCreateFlagBits"       name="VK_IMAGE_CREATE_RESERVED_15_BIT_NV"/>
+            </require>
+        </extension>
+        <extension name="VK_NV_extension_373" number="373" author="NV" contact="Daniel Koch @dgkoch" supported="disabled">
+            <require>
+                <enum value="0"                                         name="VK_NV_EXTENSION_373_SPEC_VERSION"/>
+                <enum value="&quot;VK_NV_extension_373&quot;"           name="VK_NV_EXTENSION_373_EXTENSION_NAME"/>
+            </require>
+        </extension>
+        <extension name="VK_NV_extension_374" number="374" author="NV" contact="Daniel Koch @dgkoch" supported="disabled">
+            <require>
+                <enum value="0"                                         name="VK_NV_EXTENSION_374_SPEC_VERSION"/>
+                <enum value="&quot;VK_NV_extension_374&quot;"           name="VK_NV_EXTENSION_374_EXTENSION_NAME"/>
+            </require>
+        </extension>
+        <extension name="VK_NV_extension_375" number="375" author="NV" contact="Daniel Koch @dgkoch" supported="disabled">
+            <require>
+                <enum value="0"                                         name="VK_NV_EXTENSION_375_SPEC_VERSION"/>
+                <enum value="&quot;VK_NV_extension_375&quot;"           name="VK_NV_EXTENSION_375_EXTENSION_NAME"/>
+            </require>
+        </extension>
+        <extension name="VK_EXT_extension_376" number="376" author="EXT" contact="Shahbaz Youssefi @syoussefi" supported="disabled">
+            <require>
+                <enum value="0"                                         name="VK_EXT_EXTENSION_376_SPEC_VERSION"/>
+                <enum value="&quot;VK_EXT_extension_376&quot;"          name="VK_EXT_EXTENSION_376_EXTENSION_NAME"/>
+            </require>
+        </extension>
+        <extension name="VK_EXT_extension_377" number="377" author="EXT" contact="Hugues Evrard @hevrard" supported="disabled">
+            <require>
+                <enum value="0"                                         name="VK_EXT_EXTENSION_377_SPEC_VERSION"/>
+                <enum value="&quot;VK_EXT_extension_377&quot;"          name="VK_EXT_EXTENSION_377_EXTENSION_NAME"/>
             </require>
         </extension>
     </extensions>
