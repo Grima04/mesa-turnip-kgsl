@@ -461,6 +461,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 
 		radv_cmd_buffer_upload_alloc(cmd_buffer, 8, 8, &fence_offset,
 					     &fence_ptr);
+		memset(fence_ptr, 0, 8);
 
 		cmd_buffer->gfx9_fence_va =
 			radv_buffer_get_va(cmd_buffer->upload.upload_bo);
@@ -470,6 +471,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 			/* Allocate a buffer for the EOP bug on GFX9. */
 			radv_cmd_buffer_upload_alloc(cmd_buffer, 16 * num_db, 8,
 						     &eop_bug_offset, &fence_ptr);
+			memset(fence_ptr, 0, 16 * num_db);
 			cmd_buffer->gfx9_eop_bug_va =
 				radv_buffer_get_va(cmd_buffer->upload.upload_bo);
 			cmd_buffer->gfx9_eop_bug_va += eop_bug_offset;
@@ -479,6 +481,15 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	cmd_buffer->status = RADV_CMD_BUFFER_STATUS_INITIAL;
 
 	return cmd_buffer->record_result;
+}
+
+enum radeon_bo_domain
+radv_cmdbuffer_domain(const struct radeon_info *info, uint32_t perftest)
+{
+	return (info->all_vram_visible &&
+	        info->has_dedicated_vram &&
+	        !(perftest & RADV_PERFTEST_NO_SAM)) ?
+		RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
 }
 
 static bool
@@ -495,7 +506,8 @@ radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer,
 
 	bo = device->ws->buffer_create(device->ws,
 				       new_size, 4096,
-				       RADEON_DOMAIN_GTT,
+				       radv_cmdbuffer_domain(&device->physical_device->rad_info,
+							     device->instance->perftest_flags),
 				       RADEON_FLAG_CPU_ACCESS|
 				       RADEON_FLAG_NO_INTERPROCESS_SHARING |
 				       RADEON_FLAG_32BIT |

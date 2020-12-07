@@ -631,6 +631,8 @@ RADV driver environment variables
       enable wave32 for vertex/tess/geometry shaders (GFX10+)
    ``localbos``
       enable local BOs
+   ``nosam``
+      disable optimizations that get enabled when all VRAM is CPU visible.
    ``pswave32``
       enable wave32 for pixel shaders (GFX10+)
    ``tccompatcmask``
