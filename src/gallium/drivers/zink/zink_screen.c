@@ -895,17 +895,16 @@ load_instance_extensions(struct zink_screen *screen)
       printf("zink: Loader %d.%d.%d \n", VK_VERSION_MAJOR(screen->loader_version), VK_VERSION_MINOR(screen->loader_version), VK_VERSION_PATCH(screen->loader_version));
    }
 
-   if (VK_MAKE_VERSION(1,1,0) <= screen->loader_version) {
-      // Get Vk 1.1+ Instance functions
-      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceFeatures2);
-      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceProperties2);
-   } else
    if (screen->have_physical_device_prop2_ext) {
       // Not Vk 1.1+ so if VK_KHR_get_physical_device_properties2 the use it
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceFeatures2KHR);
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceProperties2KHR);
       screen->vk_GetPhysicalDeviceFeatures2 = vk_GetPhysicalDeviceFeatures2KHR;
       screen->vk_GetPhysicalDeviceProperties2 = vk_GetPhysicalDeviceProperties2KHR;
+   } else if (VK_MAKE_VERSION(1,1,0) <= screen->loader_version) {
+      // Get Vk 1.1+ Instance functions
+      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceFeatures2);
+      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceProperties2);
    }
 
    return true;

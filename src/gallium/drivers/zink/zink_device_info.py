@@ -202,7 +202,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
    }
 
    // get device features
-   if (VK_MAKE_VERSION(1, 1, 0) <= info->device_version && screen->vk_GetPhysicalDeviceFeatures2) {
+   if (screen->vk_GetPhysicalDeviceFeatures2) {
       // check for device extension features
       info->feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
@@ -251,7 +251,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %endfor
 
    // check for device properties
-   if (VK_MAKE_VERSION(1, 1, 0) <= info->device_version && screen->vk_GetPhysicalDeviceProperties2) {
+   if (screen->vk_GetPhysicalDeviceProperties2) {
       VkPhysicalDeviceProperties2 props = {};
       props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 
