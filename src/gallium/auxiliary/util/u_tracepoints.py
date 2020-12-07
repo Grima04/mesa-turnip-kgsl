@@ -29,8 +29,8 @@ import sys
 #
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', '--import-path', required=True)
-parser.add_argument('-C', '--src', required=True)
-parser.add_argument('-H', '--hdr', required=True)
+parser.add_argument('-C', '--src')
+parser.add_argument('-H', '--hdr')
 args = parser.parse_args()
 sys.path.insert(0, args.import_path)
 

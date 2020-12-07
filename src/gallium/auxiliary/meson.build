@@ -485,19 +485,32 @@ endif
 
 u_trace_py = files('util/u_trace.py')
 
-files_u_tracepoints = custom_target(
-  'u_tracepoints.[ch]',
+files_libgallium += custom_target(
+  'u_tracepoints.c',
   input: 'util/u_tracepoints.py',
-  output: ['u_tracepoints.c', 'u_tracepoints.h'],
+  output: 'u_tracepoints.c',
   command: [
     prog_python, '@INPUT@',
     '-p', join_paths(meson.source_root(), 'src/gallium/auxiliary/util/'),
-    '-C', '@OUTPUT0@',
-    '-H', '@OUTPUT1@',
+    '-C', '@OUTPUT@',
   ],
   depend_files: u_trace_py,
 )
+
+files_u_tracepoints = custom_target(
+  'u_tracepoints.h',
+  input: 'util/u_tracepoints.py',
+  output: 'u_tracepoints.h',
+  command: [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/gallium/auxiliary/util/'),
+    '-H', '@OUTPUT@',
+  ],
+  depend_files: u_trace_py,
+)
+
 files_libgallium += files_u_tracepoints
+
 idep_u_tracepoints = declare_dependency(
   sources: files_u_tracepoints,
 )
