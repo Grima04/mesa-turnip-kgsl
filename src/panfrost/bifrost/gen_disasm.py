@@ -25,7 +25,7 @@ import itertools
 from isa_parse import parse_instructions, opname_to_c, expand_states
 from mako.template import Template
 
-instructions = parse_instructions(sys.argv[1])
+instructions = parse_instructions(sys.argv[1], include_unused = True)
 
 # Constructs a reserved mask for a derived to cull impossible encodings
 

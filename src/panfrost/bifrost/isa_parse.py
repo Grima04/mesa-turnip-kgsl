@@ -96,7 +96,8 @@ def parse_instruction(ins):
             'immediates': [],
             'swaps': [],
             'derived': [],
-            'staging': ins.attrib.get('staging', '')
+            'staging': ins.attrib.get('staging', ''),
+            'unused': ins.attrib.get('unused', False),
     }
 
     if 'exact' in ins.attrib:
@@ -146,12 +147,19 @@ def parse_instruction(ins):
 
     return variants
 
-def parse_instructions(xml):
+def parse_instructions(xml, include_unused = False):
     final = {}
     instructions = ET.parse(xml).getroot().findall('ins')
 
     for ins in instructions:
-        final[ins.attrib['name']] = parse_instruction(ins)
+        parsed = parse_instruction(ins)
+
+        # Some instructions are for useful disassembly only and can be stripped
+        # out of the compiler, particularly useful for release builds
+        if parsed[0][1]["unused"] and not include_unused:
+            continue
+
+        final[ins.attrib['name']] = parsed
 
     return final
 
