@@ -1,4 +1,4 @@
-#include "zink_screen.h"
+#include "zink_format.h"
 
 static const VkFormat formats[PIPE_FORMAT_COUNT] = {
 #define MAP_FORMAT_NORM(FMT) \
@@ -129,48 +129,8 @@ static const VkFormat formats[PIPE_FORMAT_COUNT] = {
    [PIPE_FORMAT_BPTC_RGB_UFLOAT] = VK_FORMAT_BC6H_UFLOAT_BLOCK,
 };
 
-bool
-zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format)
-{
-   VkFormatProperties props;
-   vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &props);
-   return (props.linearTilingFeatures | props.optimalTilingFeatures) &
-          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-}
-
-static enum pipe_format
-emulate_x8(enum pipe_format format)
-{
-   /* convert missing X8 variants to A8 */
-   switch (format) {
-   case PIPE_FORMAT_B8G8R8X8_UNORM:
-      return PIPE_FORMAT_B8G8R8A8_UNORM;
-
-   case PIPE_FORMAT_B8G8R8X8_SRGB:
-      return PIPE_FORMAT_B8G8R8A8_SRGB;
-
-   default:
-      return format;
-   }
-}
-
 VkFormat
-zink_get_format(struct zink_screen *screen, enum pipe_format format)
+zink_pipe_format_to_vk_format(enum pipe_format format)
 {
-   VkFormat ret = formats[emulate_x8(format)];
-
-   if (ret == VK_FORMAT_X8_D24_UNORM_PACK32 &&
-       !screen->have_X8_D24_UNORM_PACK32) {
-      assert(zink_is_depth_format_supported(screen, VK_FORMAT_D32_SFLOAT));
-      return VK_FORMAT_D32_SFLOAT;
-   }
-
-   if (ret == VK_FORMAT_D24_UNORM_S8_UINT &&
-       !screen->have_D24_UNORM_S8_UINT) {
-      assert(zink_is_depth_format_supported(screen,
-                                            VK_FORMAT_D32_SFLOAT_S8_UINT));
-      return VK_FORMAT_D32_SFLOAT_S8_UINT;
-   }
-
-   return ret;
+   return formats[format];
 }

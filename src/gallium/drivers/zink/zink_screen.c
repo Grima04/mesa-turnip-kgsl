@@ -27,6 +27,7 @@
 #include "zink_context.h"
 #include "zink_device_info.h"
 #include "zink_fence.h"
+#include "zink_format.h"
 #include "zink_instance.h"
 #include "zink_public.h"
 #include "zink_resource.h"
@@ -733,6 +734,52 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
    assert(res->dt);
    if (res->dt)
       winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
+}
+
+bool
+zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format)
+{
+   VkFormatProperties props;
+   vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &props);
+   return (props.linearTilingFeatures | props.optimalTilingFeatures) &
+          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+}
+
+static enum pipe_format
+emulate_x8(enum pipe_format format)
+{
+   /* convert missing X8 variants to A8 */
+   switch (format) {
+   case PIPE_FORMAT_B8G8R8X8_UNORM:
+      return PIPE_FORMAT_B8G8R8A8_UNORM;
+
+   case PIPE_FORMAT_B8G8R8X8_SRGB:
+      return PIPE_FORMAT_B8G8R8A8_SRGB;
+
+   default:
+      return format;
+   }
+}
+
+VkFormat
+zink_get_format(struct zink_screen *screen, enum pipe_format format)
+{
+   VkFormat ret = zink_pipe_format_to_vk_format(emulate_x8(format));
+
+   if (ret == VK_FORMAT_X8_D24_UNORM_PACK32 &&
+       !screen->have_X8_D24_UNORM_PACK32) {
+      assert(zink_is_depth_format_supported(screen, VK_FORMAT_D32_SFLOAT));
+      return VK_FORMAT_D32_SFLOAT;
+   }
+
+   if (ret == VK_FORMAT_D24_UNORM_S8_UINT &&
+       !screen->have_D24_UNORM_S8_UINT) {
+      assert(zink_is_depth_format_supported(screen,
+                                            VK_FORMAT_D32_SFLOAT_S8_UINT));
+      return VK_FORMAT_D32_SFLOAT_S8_UINT;
+   }
+
+   return ret;
 }
 
 static bool
