@@ -581,7 +581,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 		setup_stream_out(state, last_shader, &l);
 	}
 
-	debug_assert(l.cnt < 32);
+	debug_assert(l.cnt <= 32);
 	if (gs)
 		OUT_PKT4(ring, REG_A6XX_SP_GS_OUT_REG(0), DIV_ROUND_UP(l.cnt, 2));
 	else if (ds)
