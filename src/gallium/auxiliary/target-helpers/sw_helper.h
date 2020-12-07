@@ -16,6 +16,10 @@
 #include "zink/zink_public.h"
 #endif
 
+#ifdef GALLIUM_D3D12
+#include "d3d12/d3d12_public.h"
+#endif
+
 #ifdef GALLIUM_SOFTPIPE
 #include "softpipe/sp_public.h"
 #endif
@@ -66,6 +70,11 @@ sw_screen_create_named(struct sw_winsys *winsys, const char *driver)
       screen = zink_create_screen(winsys);
 #endif
 
+#if defined(GALLIUM_D3D12)
+   if (screen == NULL && strcmp(driver, "d3d12") == 0)
+      screen = d3d12_create_dxcore_screen(winsys, NULL);
+#endif
+
    return screen;
 }
 
@@ -84,6 +93,8 @@ sw_screen_create(struct sw_winsys *winsys)
    default_driver = "swr";
 #elif defined(GALLIUM_ZINK)
    default_driver = "zink";
+#elif defined(GALLIUM_D3D12)
+   default_driver = "d3d12";
 #else
    default_driver = "";
 #endif
