@@ -2319,7 +2319,7 @@
     </mod>
   </ins>
 
-  <ins name="*SEG_ADD" mask="0x7fff40" exact="0x701500">
+  <ins name="*SEG_ADD" mask="0x7fff40" exact="0x701500" unused="true">
     <src start="0" mask="0xfb"/>
     <mod name="seg" start="3" size="3">
       <reserved/>
@@ -2334,7 +2334,7 @@
     <mod name="preserve_null" start="7" size="1" opt="preserve_null"/>
   </ins>
 
-  <ins name="*SEG_SUB" mask="0x7fff40" exact="0x701540">
+  <ins name="*SEG_SUB" mask="0x7fff40" exact="0x701540" unused="true">
     <src start="0" mask="0xfb"/>
     <mod name="seg" start="3" size="3">
       <reserved/>
@@ -3823,11 +3823,11 @@
     </swap>
   </ins>
 
-  <ins name="+DOORBELL" mask="0xffff8" exact="0xd7860">
+  <ins name="+DOORBELL" mask="0xffff8" exact="0xd7860" unused="true">
     <src start="0"/>
   </ins>
 
-  <ins name="+EUREKA" mask="0xffff8" exact="0xd7850">
+  <ins name="+EUREKA" mask="0xffff8" exact="0xd7850" unused="true">
     <src start="0"/>
   </ins>
 
@@ -4115,7 +4115,7 @@
     </derived>
   </ins>
 
-  <ins name="+FATAN_ASSIST.f16" mask="0xfff00" exact="0x67800">
+  <ins name="+FATAN_ASSIST.f16" mask="0xfff00" exact="0x67800" unused="true">
     <src start="0" mask="0xf7"/>
     <src start="3" mask="0xf7"/>
     <mod name="lane1" start="6" size="1" default="h0">
@@ -4128,12 +4128,12 @@
     </mod>
   </ins>
 
-  <ins name="+FATAN_ASSIST.f32" mask="0xfffc0" exact="0x67a00">
+  <ins name="+FATAN_ASSIST.f32" mask="0xfffc0" exact="0x67a00" unused="true">
     <src start="0" mask="0xf7"/>
     <src start="3" mask="0xf7"/>
   </ins>
 
-  <ins name="+FATAN_TABLE.f16" mask="0xfff00" exact="0x67900">
+  <ins name="+FATAN_TABLE.f16" mask="0xfff00" exact="0x67900" unused="true">
     <src start="0" mask="0xf7"/>
     <src start="3" mask="0xf7"/>
     <mod name="lane1" start="6" size="1" default="h0">
@@ -4146,7 +4146,7 @@
     </mod>
   </ins>
 
-  <ins name="+FATAN_TABLE.f32" mask="0xfffc0" exact="0x67a40">
+  <ins name="+FATAN_TABLE.f32" mask="0xfffc0" exact="0x67a40" unused="true">
     <src start="0" mask="0xf7"/>
     <src start="3" mask="0xf7"/>
   </ins>
@@ -4668,7 +4668,7 @@
     </mod>
   </ins>
 
-  <ins name="+FRCBRT_APPROX_A.f32">
+  <ins name="+FRCBRT_APPROX_A.f32" unused="true">
     <src start="0" mask="0xf7"/>
     <mod name="widen0" size="2">
       <opt>none</opt>
@@ -4690,11 +4690,11 @@
     </encoding>
   </ins>
 
-  <ins name="+FRCBRT_APPROX_B.f32" mask="0xffff8" exact="0x67ab0">
+  <ins name="+FRCBRT_APPROX_B.f32" mask="0xffff8" exact="0x67ab0" unused="true">
     <src start="0" mask="0xf7"/>
   </ins>
 
-  <ins name="+FRCBRT_APPROX_C.f32" mask="0xffff8" exact="0x67ab8">
+  <ins name="+FRCBRT_APPROX_C.f32" mask="0xffff8" exact="0x67ab8" unused="true">
     <src start="0" mask="0xf7"/>
   </ins>
 
@@ -6157,7 +6157,7 @@
     <src start="6" mask="0xf7"/>
   </ins>
 
-  <ins name="+KABOOM" mask="0xffff8" exact="0xd7858">
+  <ins name="+KABOOM" mask="0xffff8" exact="0xd7858" unused="true">
     <src start="0"/>
   </ins>
 
@@ -7451,7 +7451,7 @@
     </mod>
   </ins>
 
-  <ins name="+SEG_ADD" mask="0xfff40" exact="0x3d500">
+  <ins name="+SEG_ADD" mask="0xfff40" exact="0x3d500" unused="true">
     <src start="0"/>
     <mod name="seg" start="3" size="3">
       <reserved/>
@@ -7466,7 +7466,7 @@
     <mod name="preserve_null" start="7" size="1" opt="preserve_null"/>
   </ins>
 
-  <ins name="+SEG_SUB" mask="0xfff40" exact="0x3d540">
+  <ins name="+SEG_SUB" mask="0xfff40" exact="0x3d540" unused="true">
     <src start="0"/>
     <mod name="seg" start="3" size="3">
       <reserved/>
