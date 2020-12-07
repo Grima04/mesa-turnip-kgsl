@@ -1986,9 +1986,9 @@ lower_explicit_io_array_length(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_ssa_def *index = addr_to_index(b, addr, addr_format);
    nir_ssa_def *offset = addr_to_offset(b, addr, addr_format);
 
-   nir_ssa_def *arr_size =
-      nir_idiv(b, nir_isub(b, nir_get_ssbo_size(b, index), offset),
-                  nir_imm_int(b, stride));
+   nir_ssa_def *arr_size = nir_get_ssbo_size(b, index);
+   arr_size = nir_imax(b, nir_isub(b, arr_size, offset), nir_imm_int(b, 0u));
+   arr_size = nir_idiv(b, arr_size, nir_imm_int(b, stride));
 
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(arr_size));
    nir_instr_remove(&intrin->instr);
