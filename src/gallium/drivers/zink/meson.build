@@ -82,3 +82,16 @@ driver_zink = declare_dependency(
   compile_args : '-DGALLIUM_ZINK',
   link_with : [libzink],
 )
+
+if with_tests
+  test(
+    'zink_format_test',
+    executable(
+      'zink_format_test',
+      ['zink_format_test.c', 'zink_format.c'],
+      dependencies : [idep_mesautil, idep_vulkan_util],
+      include_directories : [inc_gallium, inc_gallium_aux, inc_include, inc_src],
+    ),
+    suite : ['zink'],
+  )
+endif
