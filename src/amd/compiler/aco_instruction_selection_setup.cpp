@@ -791,7 +791,6 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_num_subgroups:
                   case nir_intrinsic_load_first_vertex:
                   case nir_intrinsic_load_base_instance:
-                  case nir_intrinsic_get_ssbo_size:
                   case nir_intrinsic_vote_all:
                   case nir_intrinsic_vote_any:
                   case nir_intrinsic_read_first_invocation:
@@ -889,6 +888,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_global:
                   case nir_intrinsic_vulkan_resource_index:
                   case nir_intrinsic_load_shared:
+                  case nir_intrinsic_get_ssbo_size:
                      type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;
                      break;
                   case nir_intrinsic_load_view_index:

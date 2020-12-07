@@ -732,14 +732,14 @@ uint32_t get_alu_src_ub(isel_context *ctx, nir_alu_instr *instr, int src_idx)
    return nir_unsigned_upper_bound(ctx->shader, ctx->range_ht, scalar, &ctx->ub_config);
 }
 
-Temp convert_pointer_to_64_bit(isel_context *ctx, Temp ptr)
+Temp convert_pointer_to_64_bit(isel_context *ctx, Temp ptr, bool non_uniform=false)
 {
    if (ptr.size() == 2)
       return ptr;
    Builder bld(ctx->program, ctx->block);
-   if (ptr.type() == RegType::vgpr)
+   if (ptr.type() == RegType::vgpr && !non_uniform)
       ptr = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), ptr);
-   return bld.pseudo(aco_opcode::p_create_vector, bld.def(s2),
+   return bld.pseudo(aco_opcode::p_create_vector, bld.def(RegClass(ptr.type(), 2)),
                      ptr, Operand((unsigned)ctx->options->address32_hi));
 }
 
@@ -6358,9 +6358,9 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    return;
 }
 
-void get_buffer_size(isel_context *ctx, Temp desc, Temp dst, bool in_elements)
+void get_buffer_size(isel_context *ctx, Temp desc, Temp dst)
 {
-   if (in_elements && ctx->options->chip_class == GFX8) {
+   if (ctx->options->chip_class == GFX8) {
       /* we only have to divide by 1, 2, 4, 8, 12 or 16 */
       Builder bld(ctx->program, ctx->block);
 
@@ -6397,7 +6397,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
 
    if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF) {
       Temp desc = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, NULL, true, false);
-      return get_buffer_size(ctx, desc, get_ssa_temp(ctx, &instr->dest.ssa), true);
+      return get_buffer_size(ctx, desc, get_ssa_temp(ctx, &instr->dest.ssa));
    }
 
    /* LOD */
@@ -6599,11 +6599,20 @@ void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 void visit_get_ssbo_size(isel_context *ctx, nir_intrinsic_instr *instr) {
 
    Temp rsrc = get_ssa_temp(ctx, instr->src[0].ssa);
-   Temp index = convert_pointer_to_64_bit(ctx, rsrc);
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+   bool non_uniform = dst.type() == RegType::vgpr;
+   Temp index = convert_pointer_to_64_bit(ctx, rsrc, non_uniform);
 
    Builder bld(ctx->program, ctx->block);
-   Temp desc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), index, Operand(0u));
-   get_buffer_size(ctx, desc, get_ssa_temp(ctx, &instr->dest.ssa), false);
+   if (non_uniform) {
+      LoadEmitInfo info = {Operand(index), dst, 1, 4};
+      info.align_mul = 4;
+      info.const_offset = 8;
+      emit_load(ctx, bld, info, global_load_params);
+   } else {
+      Temp desc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), index, Operand(0u));
+      emit_extract_vector(ctx, desc, 2, dst);
+   }
 }
 
 void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -8988,7 +8997,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    }
 
    if (instr->op == nir_texop_txs && instr->sampler_dim == GLSL_SAMPLER_DIM_BUF)
-      return get_buffer_size(ctx, resource, get_ssa_temp(ctx, &instr->dest.ssa), true);
+      return get_buffer_size(ctx, resource, get_ssa_temp(ctx, &instr->dest.ssa));
 
    if (instr->op == nir_texop_texture_samples) {
       Temp dword3 = emit_extract_vector(ctx, resource, 3, s1);
