@@ -683,6 +683,8 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    case nir_intrinsic_shared_atomic_exchange:
    case nir_intrinsic_shared_atomic_comp_swap:
       return emit_atomic_local_shared(instr);
+   case nir_intrinsic_shader_clock:
+      return emit_shader_clock(instr);
    case nir_intrinsic_copy_deref:
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_input:
@@ -765,6 +767,15 @@ bool ShaderFromNirProcessor::emit_load_scratch(nir_intrinsic_instr* instr)
    ir->prelude_append(new WaitAck(0));
    emit_instruction(ir);
    sh_info().needs_scratch_space = 1;
+   return true;
+}
+
+bool ShaderFromNirProcessor::emit_shader_clock(nir_intrinsic_instr* instr)
+{
+   emit_instruction(new AluInstruction(op1_mov, from_nir(instr->dest, 0),
+                                       PValue(new InlineConstValue(ALU_SRC_TIME_LO, 0)), EmitInstruction::write));
+   emit_instruction(new AluInstruction(op1_mov, from_nir(instr->dest, 1),
+                                       PValue(new InlineConstValue(ALU_SRC_TIME_HI, 0)), EmitInstruction::last_write));
    return true;
 }
 
