@@ -204,7 +204,6 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
 
       memset(&blit, 0, sizeof(blit));
       blit.src.resource = from->texture;
-      blit.src.resource->height0 = src_region->height;
       blit.src.format = from->format;
       blit.src.level = 0;
       blit.src.box.z = from->u.tex.first_layer;
@@ -212,7 +211,6 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
       vlVaGetBox(src, i, &blit.src.box, src_region);
 
       blit.dst.resource = dst_surfaces[i]->texture;
-      blit.dst.resource->height0 = dst_region->height;
       blit.dst.format = dst_surfaces[i]->format;
       blit.dst.level = 0;
       blit.dst.box.z = dst_surfaces[i]->u.tex.first_layer;
@@ -311,7 +309,7 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
    src = src_surface->buffer;
    dst = dst_surface->buffer;
 
-   /* convert the destination buffer to progressive if we're deinterlacing 
+   /* convert the destination buffer to progressive if we're deinterlacing
       otherwise we might end up deinterlacing twice */
    if (param->num_filters && dst->interlaced) {
       vlVaSurface *surf;
