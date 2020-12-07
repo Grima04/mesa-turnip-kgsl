@@ -478,14 +478,9 @@ indirect_create_context_attribs(struct glx_screen *psc,
     ** constrain by a software limit, then constrain by the protocl
     ** limit.
     */
-   if (bufSize > __GLX_RENDER_CMD_SIZE_LIMIT) {
-      bufSize = __GLX_RENDER_CMD_SIZE_LIMIT;
-   }
-   if (bufSize > __GLX_MAX_RENDER_CMD_SIZE) {
-      bufSize = __GLX_MAX_RENDER_CMD_SIZE;
-   }
-   gc->maxSmallRenderCommandSize = bufSize;
-   
+   gc->maxSmallRenderCommandSize = MIN3(bufSize, __GLX_RENDER_CMD_SIZE_LIMIT,
+                                        __GLX_MAX_RENDER_CMD_SIZE);
+
 
    return gc;
 }
