@@ -927,6 +927,7 @@ struct radv_descriptor_pool_entry {
 struct radv_descriptor_pool {
 	struct vk_object_base base;
 	struct radeon_winsys_bo *bo;
+	uint8_t *host_bo;
 	uint8_t *mapped_ptr;
 	uint64_t current_offset;
 	uint64_t size;

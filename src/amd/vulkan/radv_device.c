@@ -1460,6 +1460,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->sparseImageInt64Atomics = false;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
+			VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *features =
+				(VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *)ext;
+			features->mutableDescriptorType = true;
+			break;
+		}
 		default:
 			break;
 		}
