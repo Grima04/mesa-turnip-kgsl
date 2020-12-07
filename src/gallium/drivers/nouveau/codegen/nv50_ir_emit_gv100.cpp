@@ -862,7 +862,8 @@ CodeEmitterGV100::emitATOM()
    }
 
    emitPRED (81);
-   emitField(79, 2, 1);
+   emitField(79, 2, 2); // .INVALID0/./.STRONG/.INVALID3
+   emitField(77, 2, 2); // .CTA/.SM/.GPU/.SYS
    emitField(72, 1, insn->src(0).getIndirect(0)->getSize() == 8);
    emitGPR  (32, insn->src(1));
    emitADDR (24, 40, 24, 0, insn->src(0));
