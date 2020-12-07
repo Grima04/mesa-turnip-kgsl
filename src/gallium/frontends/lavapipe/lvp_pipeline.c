@@ -99,42 +99,14 @@ void lvp_DestroyPipeline(
    if (pipeline->shader_cso[PIPE_SHADER_COMPUTE])
       device->queue.ctx->delete_compute_state(device->queue.ctx, pipeline->shader_cso[PIPE_SHADER_COMPUTE]);
 
-   if (!pipeline->is_compute_pipeline) {
-      for (unsigned i = 0; i < pipeline->graphics_create_info.stageCount; i++)
-         if (pipeline->graphics_create_info.pStages[i].pSpecializationInfo)
-            free((void *)pipeline->graphics_create_info.pStages[i].pSpecializationInfo);
-
-      free((void *)pipeline->graphics_create_info.pStages);
-      free((void *)pipeline->graphics_create_info.pVertexInputState->pVertexBindingDescriptions);
-      free((void *)pipeline->graphics_create_info.pVertexInputState->pVertexAttributeDescriptions);
-      free((void *)pipeline->graphics_create_info.pVertexInputState);
-      free((void *)pipeline->graphics_create_info.pInputAssemblyState);
-      if (pipeline->graphics_create_info.pViewportState) {
-         free((void *)pipeline->graphics_create_info.pViewportState->pViewports);
-         free((void *)pipeline->graphics_create_info.pViewportState->pScissors);
-      }
-      free((void *)pipeline->graphics_create_info.pViewportState);
-
-      if (pipeline->graphics_create_info.pTessellationState)
-         free((void *)pipeline->graphics_create_info.pTessellationState);
-      free((void *)pipeline->graphics_create_info.pRasterizationState);
-      free((void *)pipeline->graphics_create_info.pMultisampleState);
-      free((void *)pipeline->graphics_create_info.pDepthStencilState);
-      if (pipeline->graphics_create_info.pColorBlendState)
-         free((void *)pipeline->graphics_create_info.pColorBlendState->pAttachments);
-      free((void *)pipeline->graphics_create_info.pColorBlendState);
-      if (pipeline->graphics_create_info.pDynamicState)
-         free((void *)pipeline->graphics_create_info.pDynamicState->pDynamicStates);
-      free((void *)pipeline->graphics_create_info.pDynamicState);
-   } else
-      if (pipeline->compute_create_info.stage.pSpecializationInfo)
-         free((void *)pipeline->compute_create_info.stage.pSpecializationInfo);
+   ralloc_free(pipeline->mem_ctx);
    vk_object_base_finish(&pipeline->base);
    vk_free2(&device->vk.alloc, pAllocator, pipeline);
 }
 
 static VkResult
-deep_copy_shader_stage(struct VkPipelineShaderStageCreateInfo *dst,
+deep_copy_shader_stage(void *mem_ctx,
+                       struct VkPipelineShaderStageCreateInfo *dst,
                        const struct VkPipelineShaderStageCreateInfo *src)
 {
    dst->sType = src->sType;
@@ -146,9 +118,9 @@ deep_copy_shader_stage(struct VkPipelineShaderStageCreateInfo *dst,
    dst->pSpecializationInfo = NULL;
    if (src->pSpecializationInfo) {
       const VkSpecializationInfo *src_spec = src->pSpecializationInfo;
-      VkSpecializationInfo *dst_spec = malloc(sizeof(VkSpecializationInfo) +
-                                              src_spec->mapEntryCount * sizeof(VkSpecializationMapEntry) +
-                                              src_spec->dataSize);
+      VkSpecializationInfo *dst_spec = ralloc_size(mem_ctx, sizeof(VkSpecializationInfo) +
+                                                   src_spec->mapEntryCount * sizeof(VkSpecializationMapEntry) +
+                                                   src_spec->dataSize);
       VkSpecializationMapEntry *maps = (VkSpecializationMapEntry *)(dst_spec + 1);
       dst_spec->pMapEntries = maps;
       void *pdata = (void *)(dst_spec->pMapEntries + src_spec->mapEntryCount);
@@ -165,7 +137,8 @@ deep_copy_shader_stage(struct VkPipelineShaderStageCreateInfo *dst,
 }
 
 static VkResult
-deep_copy_vertex_input_state(struct VkPipelineVertexInputStateCreateInfo *dst,
+deep_copy_vertex_input_state(void *mem_ctx,
+                             struct VkPipelineVertexInputStateCreateInfo *dst,
                              const struct VkPipelineVertexInputStateCreateInfo *src)
 {
    int i;
@@ -176,7 +149,7 @@ deep_copy_vertex_input_state(struct VkPipelineVertexInputStateCreateInfo *dst,
    dst->flags = src->flags;
    dst->vertexBindingDescriptionCount = src->vertexBindingDescriptionCount;
 
-   dst_binding_descriptions = malloc(src->vertexBindingDescriptionCount * sizeof(VkVertexInputBindingDescription));
+   dst_binding_descriptions = ralloc_array(mem_ctx, VkVertexInputBindingDescription, src->vertexBindingDescriptionCount);
    if (!dst_binding_descriptions)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    for (i = 0; i < dst->vertexBindingDescriptionCount; i++) {
@@ -186,7 +159,7 @@ deep_copy_vertex_input_state(struct VkPipelineVertexInputStateCreateInfo *dst,
 
    dst->vertexAttributeDescriptionCount = src->vertexAttributeDescriptionCount;
 
-   dst_attrib_descriptions = malloc(src->vertexAttributeDescriptionCount * sizeof(VkVertexInputAttributeDescription));
+   dst_attrib_descriptions = ralloc_array(mem_ctx, VkVertexInputAttributeDescription, src->vertexAttributeDescriptionCount);
    if (!dst_attrib_descriptions)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -198,7 +171,8 @@ deep_copy_vertex_input_state(struct VkPipelineVertexInputStateCreateInfo *dst,
 }
 
 static VkResult
-deep_copy_viewport_state(VkPipelineViewportStateCreateInfo *dst,
+deep_copy_viewport_state(void *mem_ctx,
+                         VkPipelineViewportStateCreateInfo *dst,
                          const VkPipelineViewportStateCreateInfo *src)
 {
    int i;
@@ -210,7 +184,7 @@ deep_copy_viewport_state(VkPipelineViewportStateCreateInfo *dst,
    dst->flags = src->flags;
 
    if (src->pViewports) {
-      viewports = malloc(src->viewportCount * sizeof(VkViewport));
+      viewports = ralloc_array(mem_ctx, VkViewport, src->viewportCount);
       for (i = 0; i < src->viewportCount; i++)
          memcpy(&viewports[i], &src->pViewports[i], sizeof(VkViewport));
       dst->pViewports = viewports;
@@ -219,7 +193,7 @@ deep_copy_viewport_state(VkPipelineViewportStateCreateInfo *dst,
    dst->viewportCount = src->viewportCount;
 
    if (src->pScissors) {
-      scissors = malloc(src->scissorCount * sizeof(VkRect2D));
+      scissors = ralloc_array(mem_ctx, VkRect2D, src->scissorCount);
       for (i = 0; i < src->scissorCount; i++)
          memcpy(&scissors[i], &src->pScissors[i], sizeof(VkRect2D));
       dst->pScissors = scissors;
@@ -231,7 +205,8 @@ deep_copy_viewport_state(VkPipelineViewportStateCreateInfo *dst,
 }
 
 static VkResult
-deep_copy_color_blend_state(VkPipelineColorBlendStateCreateInfo *dst,
+deep_copy_color_blend_state(void *mem_ctx,
+                            VkPipelineColorBlendStateCreateInfo *dst,
                             const VkPipelineColorBlendStateCreateInfo *src)
 {
    VkPipelineColorBlendAttachmentState *attachments;
@@ -241,7 +216,7 @@ deep_copy_color_blend_state(VkPipelineColorBlendStateCreateInfo *dst,
    dst->logicOpEnable = src->logicOpEnable;
    dst->logicOp = src->logicOp;
 
-   attachments = malloc(src->attachmentCount * sizeof(VkPipelineColorBlendAttachmentState));
+   attachments = ralloc_array(mem_ctx, VkPipelineColorBlendAttachmentState, src->attachmentCount);
    memcpy(attachments, src->pAttachments, src->attachmentCount * sizeof(VkPipelineColorBlendAttachmentState));
    dst->attachmentCount = src->attachmentCount;
    dst->pAttachments = attachments;
@@ -252,7 +227,8 @@ deep_copy_color_blend_state(VkPipelineColorBlendStateCreateInfo *dst,
 }
 
 static VkResult
-deep_copy_dynamic_state(VkPipelineDynamicStateCreateInfo *dst,
+deep_copy_dynamic_state(void *mem_ctx,
+                        VkPipelineDynamicStateCreateInfo *dst,
                         const VkPipelineDynamicStateCreateInfo *src)
 {
    VkDynamicState *dynamic_states;
@@ -260,7 +236,7 @@ deep_copy_dynamic_state(VkPipelineDynamicStateCreateInfo *dst,
    dst->pNext = src->pNext;
    dst->flags = src->flags;
 
-   dynamic_states = malloc(src->dynamicStateCount * sizeof(VkDynamicState));
+   dynamic_states = ralloc_array(mem_ctx, VkDynamicState, src->dynamicStateCount);
    if (!dynamic_states)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -271,7 +247,8 @@ deep_copy_dynamic_state(VkPipelineDynamicStateCreateInfo *dst,
 }
 
 static VkResult
-deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
+deep_copy_graphics_create_info(void *mem_ctx,
+                               VkGraphicsPipelineCreateInfo *dst,
                                const VkGraphicsPipelineCreateInfo *src)
 {
    int i;
@@ -292,24 +269,24 @@ deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
 
    /* pStages */
    dst->stageCount = src->stageCount;
-   stages = malloc(dst->stageCount * sizeof(VkPipelineShaderStageCreateInfo));
+   stages = ralloc_array(mem_ctx, VkPipelineShaderStageCreateInfo, dst->stageCount);
    for (i = 0 ; i < dst->stageCount; i++) {
-      result = deep_copy_shader_stage(&stages[i], &src->pStages[i]);
+      result = deep_copy_shader_stage(mem_ctx, &stages[i], &src->pStages[i]);
       if (result != VK_SUCCESS)
          return result;
    }
    dst->pStages = stages;
 
    /* pVertexInputState */
-   vertex_input = malloc(sizeof(VkPipelineVertexInputStateCreateInfo));
-   result = deep_copy_vertex_input_state(vertex_input,
+   vertex_input = ralloc(mem_ctx, VkPipelineVertexInputStateCreateInfo);
+   result = deep_copy_vertex_input_state(mem_ctx, vertex_input,
                                          src->pVertexInputState);
    if (result != VK_SUCCESS)
       return result;
    dst->pVertexInputState = vertex_input;
 
    /* pInputAssemblyState */
-   input_assembly = malloc(sizeof(VkPipelineInputAssemblyStateCreateInfo));
+   input_assembly = ralloc(mem_ctx, VkPipelineInputAssemblyStateCreateInfo);
    if (!input_assembly)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    memcpy(input_assembly, src->pInputAssemblyState, sizeof(VkPipelineInputAssemblyStateCreateInfo));
@@ -318,7 +295,7 @@ deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
    /* pTessellationState */
    if (src->pTessellationState) {
       VkPipelineTessellationStateCreateInfo *tess_state;
-      tess_state = malloc(sizeof(VkPipelineTessellationStateCreateInfo));
+      tess_state = ralloc(mem_ctx, VkPipelineTessellationStateCreateInfo);
       if (!tess_state)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
       memcpy(tess_state, src->pTessellationState, sizeof(VkPipelineTessellationStateCreateInfo));
@@ -329,16 +306,16 @@ deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
    /* pViewportState */
    if (src->pViewportState) {
       VkPipelineViewportStateCreateInfo *viewport_state;
-      viewport_state = malloc(sizeof(VkPipelineViewportStateCreateInfo));
+      viewport_state = ralloc(mem_ctx, VkPipelineViewportStateCreateInfo);
       if (!viewport_state)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-      deep_copy_viewport_state(viewport_state, src->pViewportState);
+      deep_copy_viewport_state(mem_ctx, viewport_state, src->pViewportState);
       dst->pViewportState = viewport_state;
    } else
       dst->pViewportState = NULL;
 
    /* pRasterizationState */
-   raster_state = malloc(sizeof(VkPipelineRasterizationStateCreateInfo));
+   raster_state = ralloc(mem_ctx, VkPipelineRasterizationStateCreateInfo);
    if (!raster_state)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    memcpy(raster_state, src->pRasterizationState, sizeof(VkPipelineRasterizationStateCreateInfo));
@@ -347,7 +324,7 @@ deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
    /* pMultisampleState */
    if (src->pMultisampleState) {
       VkPipelineMultisampleStateCreateInfo*   ms_state;
-      ms_state = malloc(sizeof(VkPipelineMultisampleStateCreateInfo) + sizeof(VkSampleMask));
+      ms_state = ralloc_size(mem_ctx, sizeof(VkPipelineMultisampleStateCreateInfo) + sizeof(VkSampleMask));
       if (!ms_state)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
       /* does samplemask need deep copy? */
@@ -365,7 +342,7 @@ deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
    if (src->pDepthStencilState) {
       VkPipelineDepthStencilStateCreateInfo*  ds_state;
 
-      ds_state = malloc(sizeof(VkPipelineDepthStencilStateCreateInfo));
+      ds_state = ralloc(mem_ctx, VkPipelineDepthStencilStateCreateInfo);
       if (!ds_state)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
       memcpy(ds_state, src->pDepthStencilState, sizeof(VkPipelineDepthStencilStateCreateInfo));
@@ -377,10 +354,10 @@ deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
    if (src->pColorBlendState) {
       VkPipelineColorBlendStateCreateInfo*    cb_state;
 
-      cb_state = malloc(sizeof(VkPipelineColorBlendStateCreateInfo));
+      cb_state = ralloc(mem_ctx, VkPipelineColorBlendStateCreateInfo);
       if (!cb_state)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-      deep_copy_color_blend_state(cb_state, src->pColorBlendState);
+      deep_copy_color_blend_state(mem_ctx, cb_state, src->pColorBlendState);
       dst->pColorBlendState = cb_state;
    } else
       dst->pColorBlendState = NULL;
@@ -389,10 +366,10 @@ deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
       VkPipelineDynamicStateCreateInfo*       dyn_state;
 
       /* pDynamicState */
-      dyn_state = malloc(sizeof(VkPipelineDynamicStateCreateInfo));
+      dyn_state = ralloc(mem_ctx, VkPipelineDynamicStateCreateInfo);
       if (!dyn_state)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-      deep_copy_dynamic_state(dyn_state, src->pDynamicState);
+      deep_copy_dynamic_state(mem_ctx, dyn_state, src->pDynamicState);
       dst->pDynamicState = dyn_state;
    } else
       dst->pDynamicState = NULL;
@@ -401,7 +378,8 @@ deep_copy_graphics_create_info(VkGraphicsPipelineCreateInfo *dst,
 }
 
 static VkResult
-deep_copy_compute_create_info(VkComputePipelineCreateInfo *dst,
+deep_copy_compute_create_info(void *mem_ctx,
+                              VkComputePipelineCreateInfo *dst,
                               const VkComputePipelineCreateInfo *src)
 {
    VkResult result;
@@ -412,7 +390,7 @@ deep_copy_compute_create_info(VkComputePipelineCreateInfo *dst,
    dst->basePipelineHandle = src->basePipelineHandle;
    dst->basePipelineIndex = src->basePipelineIndex;
 
-   result = deep_copy_shader_stage(&dst->stage, &src->stage);
+   result = deep_copy_shader_stage(mem_ctx, &dst->stage, &src->stage);
    if (result != VK_SUCCESS)
       return result;
    return VK_SUCCESS;
@@ -754,8 +732,9 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
    pipeline->layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
    pipeline->force_min_sample = false;
 
+   pipeline->mem_ctx = ralloc_context(NULL);
    /* recreate createinfo */
-   deep_copy_graphics_create_info(&pipeline->graphics_create_info, pCreateInfo);
+   deep_copy_graphics_create_info(pipeline->mem_ctx, &pipeline->graphics_create_info, pCreateInfo);
    pipeline->is_compute_pipeline = false;
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
@@ -878,7 +857,9 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
    pipeline->layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
    pipeline->force_min_sample = false;
 
-   deep_copy_compute_create_info(&pipeline->compute_create_info, pCreateInfo);
+   pipeline->mem_ctx = ralloc_context(NULL);
+   deep_copy_compute_create_info(pipeline->mem_ctx,
+                                 &pipeline->compute_create_info, pCreateInfo);
    pipeline->is_compute_pipeline = true;
 
    lvp_shader_compile_to_ir(pipeline, module,

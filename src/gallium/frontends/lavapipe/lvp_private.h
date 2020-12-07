@@ -509,6 +509,7 @@ struct lvp_pipeline {
    struct lvp_device *                          device;
    struct lvp_pipeline_layout *                 layout;
 
+   void *mem_ctx;
    bool is_compute_pipeline;
    bool force_min_sample;
    nir_shader *pipeline_nir[MESA_SHADER_STAGES];
