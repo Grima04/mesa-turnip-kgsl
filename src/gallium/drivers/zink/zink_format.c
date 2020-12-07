@@ -73,9 +73,7 @@ static const VkFormat formats[PIPE_FORMAT_COUNT] = {
    MAP_FORMAT_INT(R8G8B8A8)
    MAP_FORMAT_SRGB(R8G8B8A8)
    [PIPE_FORMAT_B8G8R8A8_UNORM] = VK_FORMAT_B8G8R8A8_UNORM,
-   [PIPE_FORMAT_B8G8R8X8_UNORM] = VK_FORMAT_B8G8R8A8_UNORM,
    MAP_FORMAT_SRGB(B8G8R8A8)
-   [PIPE_FORMAT_B8G8R8X8_SRGB] = VK_FORMAT_B8G8R8A8_SRGB,
    [PIPE_FORMAT_A8B8G8R8_SRGB] = VK_FORMAT_A8B8G8R8_SRGB_PACK32,
    // 16-bits
    MAP_FORMAT_NORM(R16G16B16A16)
@@ -140,10 +138,26 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format)
           VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 }
 
+static enum pipe_format
+emulate_x8(enum pipe_format format)
+{
+   /* convert missing X8 variants to A8 */
+   switch (format) {
+   case PIPE_FORMAT_B8G8R8X8_UNORM:
+      return PIPE_FORMAT_B8G8R8A8_UNORM;
+
+   case PIPE_FORMAT_B8G8R8X8_SRGB:
+      return PIPE_FORMAT_B8G8R8A8_SRGB;
+
+   default:
+      return format;
+   }
+}
+
 VkFormat
 zink_get_format(struct zink_screen *screen, enum pipe_format format)
 {
-   VkFormat ret = formats[format];
+   VkFormat ret = formats[emulate_x8(format)];
 
    if (ret == VK_FORMAT_X8_D24_UNORM_PACK32 &&
        !screen->have_X8_D24_UNORM_PACK32) {
