@@ -26,6 +26,7 @@
 
 struct pipe_screen;
 struct sw_winsys;
+typedef struct _LUID LUID;
 
 #ifdef __cplusplus
 extern "C" {
