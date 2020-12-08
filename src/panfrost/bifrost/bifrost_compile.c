@@ -121,6 +121,30 @@ bi_load_old(enum bi_class T, nir_intrinsic_instr *instr, unsigned offset_idx)
 }
 
 static void
+bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        assert(b->shader->is_blend);
+
+        /* We want to load the current pixel.
+         * FIXME: The sample to load is currently hardcoded to 0. This should
+         * be addressed for multi-sample FBs.
+         */
+        struct bifrost_pixel_indices pix = {
+                .y = BIFROST_CURRENT_PIXEL,
+        };
+
+        uint32_t indices = 0;
+        memcpy(&indices, &pix, sizeof(indices));
+
+        bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_imm_u32(indices),
+                bi_register(60), /* coverage bitmap, TODO ra */
+                /* Only keep the conversion part of the blend descriptor. */
+                bi_imm_u32(b->shader->blend_desc >> 32),
+                (instr->num_components - 1));
+
+}
+
+static void
 bi_emit_ld_output(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         assert(ctx->is_blend);
