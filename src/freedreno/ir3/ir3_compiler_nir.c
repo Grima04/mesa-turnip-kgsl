@@ -2522,7 +2522,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	if (opc == OPC_GETLOD) {
 		struct ir3_instruction *factor = create_immed(b, fui(1.0 / 256));
 
-		compile_assert(ctx, tex->dest_type == nir_type_float);
+		compile_assert(ctx, nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
 		for (i = 0; i < 2; i++) {
 			dst[i] = ir3_MUL_F(b, ir3_COV(b, dst[i], TYPE_S32, TYPE_F32), 0,
 							   factor, 0);
