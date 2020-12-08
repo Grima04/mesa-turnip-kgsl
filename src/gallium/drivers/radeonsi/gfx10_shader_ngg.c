@@ -30,12 +30,12 @@
 
 static LLVMValueRef get_wave_id_in_tg(struct si_shader_context *ctx)
 {
-   return si_unpack_param(ctx, ctx->merged_wave_info, 24, 4);
+   return si_unpack_param(ctx, ctx->args.merged_wave_info, 24, 4);
 }
 
 static LLVMValueRef get_tgsize(struct si_shader_context *ctx)
 {
-   return si_unpack_param(ctx, ctx->merged_wave_info, 28, 4);
+   return si_unpack_param(ctx, ctx->args.merged_wave_info, 28, 4);
 }
 
 static LLVMValueRef get_thread_id_in_tg(struct si_shader_context *ctx)
@@ -49,17 +49,17 @@ static LLVMValueRef get_thread_id_in_tg(struct si_shader_context *ctx)
 
 static LLVMValueRef ngg_get_vtx_cnt(struct si_shader_context *ctx)
 {
-   return si_unpack_param(ctx, ctx->gs_tg_info, 12, 9);
+   return si_unpack_param(ctx, ctx->args.gs_tg_info, 12, 9);
 }
 
 static LLVMValueRef ngg_get_prim_cnt(struct si_shader_context *ctx)
 {
-   return si_unpack_param(ctx, ctx->gs_tg_info, 22, 9);
+   return si_unpack_param(ctx, ctx->args.gs_tg_info, 22, 9);
 }
 
 static LLVMValueRef ngg_get_ordered_id(struct si_shader_context *ctx)
 {
-   return si_unpack_param(ctx, ctx->gs_tg_info, 0, 12);
+   return si_unpack_param(ctx, ctx->args.gs_tg_info, 0, 12);
 }
 
 static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
@@ -1011,11 +1011,11 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
          }
       } else {
          assert(ctx->stage == MESA_SHADER_TESS_EVAL);
-         LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->tes_u)),
+         LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args.tes_u)),
                         ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_tes_u, 0)));
-         LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->tes_v)),
+         LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args.tes_v)),
                         ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_tes_v, 0)));
-         LLVMBuildStore(builder, LLVMBuildTrunc(builder, ac_get_arg(&ctx->ac, ctx->tes_rel_patch_id), ctx->ac.i8, ""),
+         LLVMBuildStore(builder, LLVMBuildTrunc(builder, ac_get_arg(&ctx->ac, ctx->args.tes_rel_patch_id), ctx->ac.i8, ""),
                         si_build_gep_i8(ctx, new_vtx, lds_byte2_tes_rel_patch_id));
          if (uses_tes_prim_id) {
             LLVMBuildStore(
@@ -1048,8 +1048,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
                                  ngg_get_prim_cnt(ctx));
 
    /* Update thread counts in SGPRs. */
-   LLVMValueRef new_gs_tg_info = ac_get_arg(&ctx->ac, ctx->gs_tg_info);
-   LLVMValueRef new_merged_wave_info = ac_get_arg(&ctx->ac, ctx->merged_wave_info);
+   LLVMValueRef new_gs_tg_info = ac_get_arg(&ctx->ac, ctx->args.gs_tg_info);
+   LLVMValueRef new_merged_wave_info = ac_get_arg(&ctx->ac, ctx->args.merged_wave_info);
 
    /* This also converts the thread count from the total count to the per-wave count. */
    update_thread_counts(ctx, &new_num_es_threads, &new_gs_tg_info, 9, 12, &new_merged_wave_info, 8,
@@ -1128,7 +1128,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
    ret = LLVMBuildInsertValue(ctx->ac.builder, ret, new_gs_tg_info, 2, "");
    ret = LLVMBuildInsertValue(ctx->ac.builder, ret, new_merged_wave_info, 3, "");
    if (ctx->stage == MESA_SHADER_TESS_EVAL)
-      ret = si_insert_input_ret(ctx, ret, ctx->tcs_offchip_offset, 4);
+      ret = si_insert_input_ret(ctx, ret, ctx->args.tess_offchip_offset, 4);
 
    ret = si_insert_input_ptr(ctx, ret, ctx->rw_buffers, 8 + SI_SGPR_RW_BUFFERS);
    ret = si_insert_input_ptr(ctx, ret, ctx->bindless_samplers_and_images,
@@ -1142,7 +1142,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
       ret = si_insert_input_ptr(ctx, ret, ctx->args.base_vertex, 8 + SI_SGPR_BASE_VERTEX);
       ret = si_insert_input_ptr(ctx, ret, ctx->args.draw_id, 8 + SI_SGPR_DRAWID);
       ret = si_insert_input_ptr(ctx, ret, ctx->args.start_instance, 8 + SI_SGPR_START_INSTANCE);
-      ret = si_insert_input_ptr(ctx, ret, ctx->vertex_buffers, 8 + SI_VS_NUM_USER_SGPR);
+      ret = si_insert_input_ptr(ctx, ret, ctx->args.vertex_buffers, 8 + SI_VS_NUM_USER_SGPR);
 
       for (unsigned i = 0; i < shader->selector->num_vbos_in_user_sgprs; i++) {
          ret = si_insert_input_v4i32(ctx, ret, ctx->vb_descriptors[i],

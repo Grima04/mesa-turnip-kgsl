@@ -105,7 +105,7 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
       vb_desc = ac_get_arg(&ctx->ac, ctx->vb_descriptors[input_index]);
    } else {
       unsigned index = input_index - num_vbos_in_user_sgprs;
-      vb_desc = ac_build_load_to_sgpr(&ctx->ac, ac_get_arg(&ctx->ac, ctx->vertex_buffers),
+      vb_desc = ac_build_load_to_sgpr(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args.vertex_buffers),
                                       LLVMConstInt(ctx->ac.i32, index, 0));
    }
 
@@ -301,7 +301,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
    int i;
 
    /* Get bits [22:16], i.e. (so_param >> 16) & 127; */
-   LLVMValueRef so_vtx_count = si_unpack_param(ctx, ctx->streamout_config, 16, 7);
+   LLVMValueRef so_vtx_count = si_unpack_param(ctx, ctx->args.streamout_config, 16, 7);
 
    LLVMValueRef tid = ac_get_thread_id(&ctx->ac);
 
@@ -319,7 +319,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
        *                attrib_offset
        */
 
-      LLVMValueRef so_write_index = ac_get_arg(&ctx->ac, ctx->streamout_write_index);
+      LLVMValueRef so_write_index = ac_get_arg(&ctx->ac, ctx->args.streamout_write_index);
 
       /* Compute (streamout_write_index + thread_id). */
       so_write_index = LLVMBuildAdd(builder, so_write_index, tid, "");
@@ -338,7 +338,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
 
          so_buffers[i] = ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
 
-         LLVMValueRef so_offset = ac_get_arg(&ctx->ac, ctx->streamout_offset[i]);
+         LLVMValueRef so_offset = ac_get_arg(&ctx->ac, ctx->args.streamout_offset[i]);
          so_offset = LLVMBuildMul(builder, so_offset, LLVMConstInt(ctx->ac.i32, 4, 0), "");
 
          so_write_offset[i] = ac_build_imad(

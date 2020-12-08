@@ -393,7 +393,7 @@ LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx, unsigned swizzle
 
    switch (ctx->stage) {
    case MESA_SHADER_VERTEX:
-      return ac_get_arg(&ctx->ac, ctx->vs_prim_id);
+      return ac_get_arg(&ctx->ac, ctx->args.vs_prim_id);
    case MESA_SHADER_TESS_CTRL:
       return ac_get_arg(&ctx->ac, ctx->args.tcs_patch_id);
    case MESA_SHADER_TESS_EVAL:
@@ -930,7 +930,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
           (ctx->stage == MESA_SHADER_TESS_EVAL ||
            (ctx->stage == MESA_SHADER_VERTEX &&
             !si_vs_needs_prolog(sel, &shader->key.part.vs.prolog, &shader->key, ngg_cull_shader)))) {
-         si_init_exec_from_input(ctx, ctx->merged_wave_info, 0);
+         si_init_exec_from_input(ctx, ctx->args.merged_wave_info, 0);
       } else if (ctx->stage == MESA_SHADER_TESS_CTRL || ctx->stage == MESA_SHADER_GEOMETRY ||
                  (shader->key.as_ngg && !shader->key.as_es)) {
          LLVMValueRef thread_enabled = NULL;

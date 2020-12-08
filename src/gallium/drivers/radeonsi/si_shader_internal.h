@@ -80,15 +80,9 @@ struct si_shader_context {
 
    struct ac_arg rw_buffers;
    struct ac_arg bindless_samplers_and_images;
-   /* Common inputs for merged shaders. */
-   struct ac_arg merged_wave_info;
-   struct ac_arg merged_scratch_offset;
    struct ac_arg small_prim_cull_info;
    /* API VS */
-   struct ac_arg vertex_buffers;
    struct ac_arg vb_descriptors[5];
-   struct ac_arg rel_auto_id;
-   struct ac_arg vs_prim_id;
    struct ac_arg vertex_index0;
    /* VS states and layout of LS outputs / TCS inputs at the end
     *   [0] = clamp vertex color
@@ -110,10 +104,6 @@ struct si_shader_context {
     */
    struct ac_arg vs_state_bits;
    struct ac_arg vs_blit_inputs;
-   /* HW VS */
-   struct ac_arg streamout_config;
-   struct ac_arg streamout_write_index;
-   struct ac_arg streamout_offset[4];
 
    /* API TCS & TES */
    /* Layout of TCS outputs in the offchip buffer
@@ -141,27 +131,10 @@ struct si_shader_context {
     *   [19:31] = high 13 bits of the 32-bit address of tessellation ring buffers
     */
    struct ac_arg tcs_out_lds_layout;
-   struct ac_arg tcs_offchip_offset;
-   struct ac_arg tcs_factor_offset;
 
    /* API TES */
    struct ac_arg tes_offchip_addr;
-   struct ac_arg tes_u;
-   struct ac_arg tes_v;
-   struct ac_arg tes_rel_patch_id;
-   /* HW ES */
-   struct ac_arg es2gs_offset;
-   /* HW GS */
-   /* On gfx10:
-    *  - bits 0..11: ordered_wave_id
-    *  - bits 12..20: number of vertices in group
-    *  - bits 22..30: number of primitives in group
-    */
-   struct ac_arg gs_tg_info;
    /* API GS */
-   struct ac_arg gs2vs_offset;
-   struct ac_arg gs_wave_id;       /* GFX6 */
-   struct ac_arg gs_vtx_offset[6]; /* in dwords (GFX6) */
    struct ac_arg gs_vtx01_offset;  /* in dwords (GFX9) */
    struct ac_arg gs_vtx23_offset;  /* in dwords (GFX9) */
    struct ac_arg gs_vtx45_offset;  /* in dwords (GFX9) */

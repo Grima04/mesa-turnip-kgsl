@@ -58,7 +58,7 @@ struct radv_shader_context {
 
 	LLVMValueRef ring_offsets;
 
-	LLVMValueRef rel_auto_id;
+	LLVMValueRef vs_rel_patch_id;
 
 	LLVMValueRef gs_wave_id;
 	LLVMValueRef gs_vtx_offset[6];
@@ -108,7 +108,7 @@ static LLVMValueRef get_rel_patch_id(struct radv_shader_context *ctx)
 				       ac_get_arg(&ctx->ac, ctx->args->ac.tcs_rel_ids),
 				       0, 8);
 	case MESA_SHADER_TESS_EVAL:
-		return ac_get_arg(&ctx->ac, ctx->args->tes_rel_patch_id);
+		return ac_get_arg(&ctx->ac, ctx->args->ac.tes_rel_patch_id);
 		break;
 	default:
 		unreachable("Illegal stage");
@@ -559,7 +559,7 @@ store_tcs_output(struct ac_shader_abi *abi,
 	LLVMValueRef dw_addr;
 	LLVMValueRef stride = NULL;
 	LLVMValueRef buf_addr = NULL;
-	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->oc_lds);
+	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->ac.tess_offchip_offset);
 	unsigned param = driver_location;
 	bool store_lds = true;
 
@@ -626,7 +626,7 @@ load_tes_input(struct ac_shader_abi *abi,
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	LLVMValueRef buf_addr;
 	LLVMValueRef result;
-	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->oc_lds);
+	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->ac.tess_offchip_offset);
 	unsigned param = driver_location;
 
 	buf_addr = get_tcs_tes_buffer_address_params(ctx, param, vertex_index, param_index);
@@ -813,7 +813,7 @@ visit_emit_vertex_with_counter(struct ac_shader_abi *abi, unsigned stream,
 						    out_val, 1,
 						    voffset,
 						    ac_get_arg(&ctx->ac,
-							       ctx->args->gs2vs_offset),
+							       ctx->args->ac.gs2vs_offset),
 						    0, ac_glc | ac_slc | ac_swizzled);
 		}
 	}
@@ -842,8 +842,8 @@ load_tess_coord(struct ac_shader_abi *abi)
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 
 	LLVMValueRef coord[4] = {
-		ac_get_arg(&ctx->ac, ctx->args->tes_u),
-		ac_get_arg(&ctx->ac, ctx->args->tes_v),
+		ac_get_arg(&ctx->ac, ctx->args->ac.tes_u),
+		ac_get_arg(&ctx->ac, ctx->args->ac.tes_v),
 		ctx->ac.f32_0,
 		ctx->ac.f32_0,
 	};
@@ -1114,7 +1114,7 @@ static void
 handle_vs_input_decl(struct radv_shader_context *ctx,
 		     struct nir_variable *variable)
 {
-	LLVMValueRef t_list_ptr = ac_get_arg(&ctx->ac, ctx->args->vertex_buffers);
+	LLVMValueRef t_list_ptr = ac_get_arg(&ctx->ac, ctx->args->ac.vertex_buffers);
 	LLVMValueRef t_offset;
 	LLVMValueRef t_list;
 	LLVMValueRef input;
@@ -1619,10 +1619,10 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 	int i;
 
 	/* Get bits [22:16], i.e. (so_param >> 16) & 127; */
-	assert(ctx->args->streamout_config.used);
+	assert(ctx->args->ac.streamout_config.used);
 	LLVMValueRef so_vtx_count =
 		ac_build_bfe(&ctx->ac,
-			     ac_get_arg(&ctx->ac, ctx->args->streamout_config),
+			     ac_get_arg(&ctx->ac, ctx->args->ac.streamout_config),
 			     LLVMConstInt(ctx->ac.i32, 16, false),
 			     LLVMConstInt(ctx->ac.i32, 7, false), false);
 
@@ -1644,7 +1644,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 		 *                attrib_offset
 		 */
 		LLVMValueRef so_write_index =
-			ac_get_arg(&ctx->ac, ctx->args->streamout_write_idx);
+			ac_get_arg(&ctx->ac, ctx->args->ac.streamout_write_index);
 
 		/* Compute (streamout_write_index + thread_id). */
 		so_write_index =
@@ -1670,7 +1670,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 							      buf_ptr, offset);
 
 			LLVMValueRef so_offset =
-				ac_get_arg(&ctx->ac, ctx->args->streamout_offset[i]);
+				ac_get_arg(&ctx->ac, ctx->args->ac.streamout_offset[i]);
 
 			so_offset = LLVMBuildMul(ctx->ac.builder, so_offset,
 						 LLVMConstInt(ctx->ac.i32, 4, false), "");
@@ -1938,7 +1938,7 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 				ac_get_arg(&ctx->ac, ctx->args->ac.tes_patch_id);
 		else
 			outputs[noutput].values[0] =
-				ac_get_arg(&ctx->ac, ctx->args->vs_prim_id);
+				ac_get_arg(&ctx->ac, ctx->args->ac.vs_prim_id);
 		for (unsigned j = 1; j < 4; j++)
 			outputs[noutput].values[j] = ctx->ac.f32_0;
 		noutput++;
@@ -1961,7 +1961,7 @@ handle_es_outputs_post(struct radv_shader_context *ctx,
 		LLVMValueRef vertex_idx = ac_get_thread_id(&ctx->ac);
 		LLVMValueRef wave_idx =
 			ac_unpack_param(&ctx->ac,
-					ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 24, 4);
+					ac_get_arg(&ctx->ac, ctx->args->ac.merged_wave_info), 24, 4);
 		vertex_idx = LLVMBuildOr(ctx->ac.builder, vertex_idx,
 					 LLVMBuildMul(ctx->ac.builder, wave_idx,
 						      LLVMConstInt(ctx->ac.i32,
@@ -2013,7 +2013,7 @@ handle_es_outputs_post(struct radv_shader_context *ctx,
 				                            ctx->esgs_ring,
 				                            out_val, 1,
 				                            NULL,
-							    ac_get_arg(&ctx->ac, ctx->args->es2gs_offset),
+							    ac_get_arg(&ctx->ac, ctx->args->ac.es2gs_offset),
 				                            (4 * i + j) * 4,
 				                            ac_glc | ac_slc | ac_swizzled);
 			}
@@ -2024,7 +2024,7 @@ handle_es_outputs_post(struct radv_shader_context *ctx,
 static void
 handle_ls_outputs_post(struct radv_shader_context *ctx)
 {
-	LLVMValueRef vertex_id = ctx->rel_auto_id;
+	LLVMValueRef vertex_id = ctx->vs_rel_patch_id;
 	uint32_t num_tcs_inputs = ctx->args->shader_info->vs.num_linked_outputs;
 	LLVMValueRef vertex_dw_stride = LLVMConstInt(ctx->ac.i32, num_tcs_inputs * 4, false);
 	LLVMValueRef base_dw_addr = LLVMBuildMul(ctx->ac.builder, vertex_id,
@@ -2052,12 +2052,12 @@ handle_ls_outputs_post(struct radv_shader_context *ctx)
 static LLVMValueRef get_wave_id_in_tg(struct radv_shader_context *ctx)
 {
 	return ac_unpack_param(&ctx->ac,
-			       ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 24, 4);
+			       ac_get_arg(&ctx->ac, ctx->args->ac.merged_wave_info), 24, 4);
 }
 
 static LLVMValueRef get_tgsize(struct radv_shader_context *ctx)
 {
-	return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 28, 4);
+	return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.merged_wave_info), 28, 4);
 }
 
 static LLVMValueRef get_thread_id_in_tg(struct radv_shader_context *ctx)
@@ -2071,7 +2071,7 @@ static LLVMValueRef get_thread_id_in_tg(struct radv_shader_context *ctx)
 
 static LLVMValueRef ngg_get_vtx_cnt(struct radv_shader_context *ctx)
 {
-	return ac_build_bfe(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info),
+	return ac_build_bfe(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_tg_info),
 			    LLVMConstInt(ctx->ac.i32, 12, false),
 			    LLVMConstInt(ctx->ac.i32, 9, false),
 			    false);
@@ -2079,7 +2079,7 @@ static LLVMValueRef ngg_get_vtx_cnt(struct radv_shader_context *ctx)
 
 static LLVMValueRef ngg_get_prim_cnt(struct radv_shader_context *ctx)
 {
-	return ac_build_bfe(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info),
+	return ac_build_bfe(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_tg_info),
 			    LLVMConstInt(ctx->ac.i32, 22, false),
 			    LLVMConstInt(ctx->ac.i32, 9, false),
 			    false);
@@ -2087,7 +2087,7 @@ static LLVMValueRef ngg_get_prim_cnt(struct radv_shader_context *ctx)
 
 static LLVMValueRef ngg_get_ordered_id(struct radv_shader_context *ctx)
 {
-	return ac_build_bfe(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info),
+	return ac_build_bfe(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_tg_info),
 			    ctx->ac.i32_0,
 			    LLVMConstInt(ctx->ac.i32, 12, false),
 			    false);
@@ -2709,17 +2709,17 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 	        ctx->stage == MESA_SHADER_TESS_EVAL) && !ctx->args->is_gs_copy_shader);
 
 	LLVMValueRef prims_in_wave = ac_unpack_param(&ctx->ac,
-						     ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 8, 8);
+						     ac_get_arg(&ctx->ac, ctx->args->ac.merged_wave_info), 8, 8);
 	LLVMValueRef vtx_in_wave = ac_unpack_param(&ctx->ac,
-						   ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 0, 8);
+						   ac_get_arg(&ctx->ac, ctx->args->ac.merged_wave_info), 0, 8);
 	LLVMValueRef is_gs_thread = LLVMBuildICmp(builder, LLVMIntULT,
 						  ac_get_thread_id(&ctx->ac), prims_in_wave, "");
 	LLVMValueRef is_es_thread = LLVMBuildICmp(builder, LLVMIntULT,
 						  ac_get_thread_id(&ctx->ac), vtx_in_wave, "");
 	LLVMValueRef vtxindex[] = {
-		ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]), 0, 16),
-		ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]), 16, 16),
-		ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[2]), 0, 16),
+		ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[0]), 0, 16),
+		ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[0]), 16, 16),
+		ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[2]), 0, 16),
 	};
 
 	/* Determine the number of vertices per primitive. */
@@ -2802,7 +2802,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 		struct ac_ngg_prim prim = {0};
 
 		if (ctx->args->options->key.vs_common_out.as_ngg_passthrough) {
-			prim.passthrough = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]);
+			prim.passthrough = ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[0]);
 		} else {
 			prim.num_vertices = num_vertices;
 			prim.isnull = ctx->ac.i1false;
@@ -3390,7 +3390,7 @@ write_tess_factors(struct radv_shader_context *ctx)
 
 
 	buffer = ctx->hs_ring_tess_factor;
-	tf_base = ac_get_arg(&ctx->ac, ctx->args->tess_factor_offset);
+	tf_base = ac_get_arg(&ctx->ac, ctx->args->ac.tcs_factor_offset);
 	byteoffset = LLVMBuildMul(ctx->ac.builder, rel_patch_id,
 				  LLVMConstInt(ctx->ac.i32, 4 * stride, false), "");
 	unsigned tf_offset = 0;
@@ -3432,7 +3432,7 @@ write_tess_factors(struct radv_shader_context *ctx)
 
 		ac_build_buffer_store_dword(&ctx->ac, ctx->hs_ring_tess_offchip, outer_vec,
 					    outer_comps, tf_outer_offset,
-					    ac_get_arg(&ctx->ac, ctx->args->oc_lds),
+					    ac_get_arg(&ctx->ac, ctx->args->ac.tess_offchip_offset),
 					    0, ac_glc);
 		if (inner_comps) {
 			tf_inner_offset = get_tcs_tes_buffer_address(ctx, NULL,
@@ -3442,7 +3442,7 @@ write_tess_factors(struct radv_shader_context *ctx)
 				ac_build_gather_values(&ctx->ac, inner, inner_comps);
 			ac_build_buffer_store_dword(&ctx->ac, ctx->hs_ring_tess_offchip, inner_vec,
 						    inner_comps, tf_inner_offset,
-						    ac_get_arg(&ctx->ac, ctx->args->oc_lds),
+						    ac_get_arg(&ctx->ac, ctx->args->ac.tess_offchip_offset),
 						    0, ac_glc);
 		}
 	}
@@ -3757,15 +3757,15 @@ radv_nir_get_max_workgroup_size(enum chip_class chip_class,
 static void ac_nir_fixup_ls_hs_input_vgprs(struct radv_shader_context *ctx)
 {
 	LLVMValueRef count =
-		ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 8, 8);
+		ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.merged_wave_info), 8, 8);
 	LLVMValueRef hs_empty = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, count,
 	                                      ctx->ac.i32_0, "");
 	ctx->abi.instance_id = LLVMBuildSelect(ctx->ac.builder, hs_empty,
-					       ac_get_arg(&ctx->ac, ctx->args->rel_auto_id),
+					       ac_get_arg(&ctx->ac, ctx->args->ac.vs_rel_patch_id),
 					       ctx->abi.instance_id, "");
-	ctx->rel_auto_id = LLVMBuildSelect(ctx->ac.builder, hs_empty,
+	ctx->vs_rel_patch_id = LLVMBuildSelect(ctx->ac.builder, hs_empty,
 					   ac_get_arg(&ctx->ac, ctx->args->ac.tcs_rel_ids),
-					   ctx->rel_auto_id,
+					   ctx->vs_rel_patch_id,
 					   "");
 	ctx->abi.vertex_id = LLVMBuildSelect(ctx->ac.builder, hs_empty,
 						 ac_get_arg(&ctx->ac, ctx->args->ac.tcs_patch_id),
@@ -3778,17 +3778,17 @@ static void prepare_gs_input_vgprs(struct radv_shader_context *ctx, bool merged)
 		for(int i = 5; i >= 0; --i) {
 			ctx->gs_vtx_offset[i] =
 				ac_unpack_param(&ctx->ac,
-						ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[i & ~1]),
+						ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[i & ~1]),
 							   (i & 1) * 16, 16);
 		}
 
 		ctx->gs_wave_id = ac_unpack_param(&ctx->ac,
-						  ac_get_arg(&ctx->ac, ctx->args->merged_wave_info),
+						  ac_get_arg(&ctx->ac, ctx->args->ac.merged_wave_info),
 						  16, 8);
 	} else {
 		for (int i = 0; i < 6; i++)
-			ctx->gs_vtx_offset[i] = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[i]);
-		ctx->gs_wave_id = ac_get_arg(&ctx->ac, ctx->args->gs_wave_id);
+			ctx->gs_vtx_offset[i] = ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[i]);
+		ctx->gs_wave_id = ac_get_arg(&ctx->ac, ctx->args->ac.gs_wave_id);
 	}
 }
 
@@ -3866,8 +3866,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 	if (args->ac.vertex_id.used)
 		ctx.abi.vertex_id = ac_get_arg(&ctx.ac, args->ac.vertex_id);
-	if (args->rel_auto_id.used)
-		ctx.rel_auto_id = ac_get_arg(&ctx.ac, args->rel_auto_id);
+	if (args->ac.vs_rel_patch_id.used)
+		ctx.vs_rel_patch_id = ac_get_arg(&ctx.ac, args->ac.vs_rel_patch_id);
 	if (args->ac.instance_id.used)
 		ctx.abi.instance_id = ac_get_arg(&ctx.ac, args->ac.instance_id);
 
@@ -4016,7 +4016,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 			LLVMValueRef count =
 				ac_unpack_param(&ctx.ac,
-						ac_get_arg(&ctx.ac, args->merged_wave_info),
+						ac_get_arg(&ctx.ac, args->ac.merged_wave_info),
 						8 * shader_idx, 8);
 			LLVMValueRef thread_id = ac_get_thread_id(&ctx.ac);
 			LLVMValueRef cond = LLVMBuildICmp(ctx.ac.builder, LLVMIntULT,
@@ -4215,7 +4215,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 		stream_id =
 			ac_unpack_param(&ctx->ac,
 					ac_get_arg(&ctx->ac,
-						   ctx->args->streamout_config),
+						   ctx->args->ac.streamout_config),
 					24, 2);
 	} else {
 		stream_id = ctx->ac.i32_0;
