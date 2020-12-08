@@ -37,6 +37,7 @@
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_screen.h"
+#include "util/u_dl.h"
 
 #include "nir.h"
 #include "frontend/sw_winsys.h"
@@ -645,13 +646,13 @@ get_debug_interface()
    typedef HRESULT(WINAPI *PFN_D3D12_GET_DEBUG_INTERFACE)(REFIID riid, void **ppFactory);
    PFN_D3D12_GET_DEBUG_INTERFACE D3D12GetDebugInterface;
 
-   HMODULE hD3D12Mod = LoadLibrary("D3D12.DLL");
-   if (!hD3D12Mod) {
+   util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
+   if (!d3d12_mod) {
       debug_printf("D3D12: failed to load D3D12.DLL\n");
       return NULL;
    }
 
-   D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)GetProcAddress(hD3D12Mod, "D3D12GetDebugInterface");
+   D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)util_dl_get_proc_address(d3d12_mod, "D3D12GetDebugInterface");
    if (!D3D12GetDebugInterface) {
       debug_printf("D3D12: failed to load D3D12GetDebugInterface from D3D12.DLL\n");
       return NULL;
@@ -692,18 +693,18 @@ create_device(IUnknown *adapter)
    PFN_D3D12CREATEDEVICE D3D12CreateDevice;
    PFN_D3D12ENABLEEXPERIMENTALFEATURES D3D12EnableExperimentalFeatures;
 
-   HMODULE hD3D12Mod = LoadLibrary("D3D12.DLL");
-   if (!hD3D12Mod) {
+   util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
+   if (!d3d12_mod) {
       debug_printf("D3D12: failed to load D3D12.DLL\n");
       return NULL;
    }
 
    if (d3d12_debug & D3D12_DEBUG_EXPERIMENTAL) {
-      D3D12EnableExperimentalFeatures = (PFN_D3D12ENABLEEXPERIMENTALFEATURES)GetProcAddress(hD3D12Mod, "D3D12EnableExperimentalFeatures");
+      D3D12EnableExperimentalFeatures = (PFN_D3D12ENABLEEXPERIMENTALFEATURES)util_dl_get_proc_address(d3d12_mod, "D3D12EnableExperimentalFeatures");
       D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModels, NULL, NULL);
    }
 
-   D3D12CreateDevice = (PFN_D3D12CREATEDEVICE)GetProcAddress(hD3D12Mod, "D3D12CreateDevice");
+   D3D12CreateDevice = (PFN_D3D12CREATEDEVICE)util_dl_get_proc_address(d3d12_mod, "D3D12CreateDevice");
    if (!D3D12CreateDevice) {
       debug_printf("D3D12: failed to load D3D12CreateDevice from D3D12.DLL\n");
       return NULL;

@@ -26,6 +26,7 @@
 
 #include "util/debug.h"
 #include "util/u_memory.h"
+#include "util/u_dl.h"
 
 #include <directx/dxcore.h>
 #include <dxguids/dxguids.h>
@@ -36,13 +37,13 @@ get_dxcore_factory()
    typedef HRESULT(WINAPI *PFN_CREATE_DXCORE_ADAPTER_FACTORY)(REFIID riid, void **ppFactory);
    PFN_CREATE_DXCORE_ADAPTER_FACTORY DXCoreCreateAdapterFactory;
 
-   HMODULE hDXCoreMod = LoadLibrary("DXCore.DLL");
-   if (!hDXCoreMod) {
+   util_dl_library *dxcore_mod = util_dl_open(UTIL_DL_PREFIX "dxcore" UTIL_DL_EXT);
+   if (!dxcore_mod) {
       debug_printf("D3D12: failed to load DXCore.DLL\n");
       return NULL;
    }
 
-   DXCoreCreateAdapterFactory = (PFN_CREATE_DXCORE_ADAPTER_FACTORY)GetProcAddress(hDXCoreMod, "DXCoreCreateAdapterFactory");
+   DXCoreCreateAdapterFactory = (PFN_CREATE_DXCORE_ADAPTER_FACTORY)util_dl_get_proc_address(dxcore_mod, "DXCoreCreateAdapterFactory");
    if (!DXCoreCreateAdapterFactory) {
       debug_printf("D3D12: failed to load DXCoreCreateAdapterFactory from DXCore.DLL\n");
       return NULL;

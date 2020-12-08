@@ -41,6 +41,7 @@
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_pstipple.h"
+#include "util/u_dl.h"
 #include "nir_to_dxil.h"
 
 #include "D3D12ResourceState.h"
@@ -1936,13 +1937,13 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    d3d12_root_signature_cache_init(ctx);
    d3d12_gs_variant_cache_init(ctx);
 
-   HMODULE hD3D12Mod = LoadLibrary("D3D12.DLL");
-   if (!hD3D12Mod) {
+   util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
+   if (!d3d12_mod) {
       debug_printf("D3D12: failed to load D3D12.DLL\n");
       return NULL;
    }
    ctx->D3D12SerializeVersionedRootSignature =
-      (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)GetProcAddress(hD3D12Mod, "D3D12SerializeVersionedRootSignature");
+      (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)util_dl_get_proc_address(d3d12_mod, "D3D12SerializeVersionedRootSignature");
 
    if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE,
                                        IID_PPV_ARGS(&ctx->cmdqueue_fence)))) {

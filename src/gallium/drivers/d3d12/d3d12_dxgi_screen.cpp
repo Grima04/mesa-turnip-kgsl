@@ -26,6 +26,7 @@
 
 #include "util/debug.h"
 #include "util/u_memory.h"
+#include "util/u_dl.h"
 
 #include <dxgi1_4.h>
 
@@ -40,13 +41,13 @@ get_dxgi_factory()
    typedef HRESULT(WINAPI *PFN_CREATE_DXGI_FACTORY)(REFIID riid, void **ppFactory);
    PFN_CREATE_DXGI_FACTORY CreateDXGIFactory;
 
-   HMODULE hDXGIMod = LoadLibrary("DXGI.DLL");
-   if (!hDXGIMod) {
+   util_dl_library *dxgi_mod = util_dl_open(UTIL_DL_PREFIX "dxgi" UTIL_DL_EXT);
+   if (!dxgi_mod) {
       debug_printf("D3D12: failed to load DXGI.DLL\n");
       return NULL;
    }
 
-   CreateDXGIFactory = (PFN_CREATE_DXGI_FACTORY)GetProcAddress(hDXGIMod, "CreateDXGIFactory");
+   CreateDXGIFactory = (PFN_CREATE_DXGI_FACTORY)util_dl_get_proc_address(dxgi_mod, "CreateDXGIFactory");
    if (!CreateDXGIFactory) {
       debug_printf("D3D12: failed to load CreateDXGIFactory from DXGI.DLL\n");
       return NULL;

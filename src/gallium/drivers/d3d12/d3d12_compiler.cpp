@@ -40,6 +40,7 @@
 #include "util/u_memory.h"
 #include "util/u_prim.h"
 #include "util/u_simple_shaders.h"
+#include "util/u_dl.h"
 
 #include <directx/d3d12.h>
 #include <dxguids/dxguids.h>
@@ -69,9 +70,9 @@ struct d3d12_validation_tools
       ~HModule();
 
       bool load(LPCSTR file_name);
-      operator HMODULE () const;
+      operator util_dl_library *() const;
    private:
-      HMODULE module;
+      util_dl_library *module;
    };
 
    HModule dxil_module;
@@ -1141,7 +1142,7 @@ extern "C" extern IMAGE_DOS_HEADER __ImageBase;
 
 void d3d12_validation_tools::load_dxil_dll()
 {
-   if (!dxil_module.load("dxil.dll")) {
+   if (!dxil_module.load(UTIL_DL_PREFIX "dxil" UTIL_DL_EXT)) {
       char selfPath[MAX_PATH] = "";
       uint32_t pathSize = GetModuleFileNameA((HINSTANCE)&__ImageBase, selfPath, sizeof(selfPath));
       if (pathSize == 0 || pathSize == sizeof(selfPath)) {
@@ -1168,7 +1169,7 @@ void d3d12_validation_tools::load_dxil_dll()
 d3d12_validation_tools::d3d12_validation_tools()
 {
    load_dxil_dll();
-   DxcCreateInstanceProc dxil_create_func = (DxcCreateInstanceProc)GetProcAddress(dxil_module, "DxcCreateInstance");
+   DxcCreateInstanceProc dxil_create_func = (DxcCreateInstanceProc)util_dl_get_proc_address(dxil_module, "DxcCreateInstance");
    assert(dxil_create_func);
 
    HRESULT hr = dxil_create_func(CLSID_DxcValidator,  IID_PPV_ARGS(&validator));
@@ -1178,7 +1179,7 @@ d3d12_validation_tools::d3d12_validation_tools()
 
    DxcCreateInstanceProc compiler_create_func  = nullptr;
    if(dxc_compiler_module.load("dxcompiler.dll"))
-      compiler_create_func = (DxcCreateInstanceProc)GetProcAddress(dxc_compiler_module, "DxcCreateInstance");
+      compiler_create_func = (DxcCreateInstanceProc)util_dl_get_proc_address(dxc_compiler_module, "DxcCreateInstance");
 
    if (compiler_create_func) {
       hr = compiler_create_func(CLSID_DxcLibrary, IID_PPV_ARGS(&library));
@@ -1205,11 +1206,11 @@ d3d12_validation_tools::HModule::HModule():
 d3d12_validation_tools::HModule::~HModule()
 {
    if (module)
-      ::FreeLibrary(module);
+      util_dl_close(module);
 }
 
 inline
-d3d12_validation_tools::HModule::operator HMODULE () const
+d3d12_validation_tools::HModule::operator util_dl_library * () const
 {
    return module;
 }
@@ -1217,7 +1218,7 @@ d3d12_validation_tools::HModule::operator HMODULE () const
 bool
 d3d12_validation_tools::HModule::load(LPCSTR file_name)
 {
-   module = ::LoadLibrary(file_name);
+   module = util_dl_open(file_name);
    return module != nullptr;
 }
 
