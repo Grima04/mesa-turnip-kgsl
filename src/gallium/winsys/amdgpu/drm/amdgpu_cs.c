@@ -705,14 +705,23 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    buffer_size = MIN2(buffer_size, max_size);
    buffer_size = MAX2(buffer_size, min_size); /* min_size is more important */
 
+   enum radeon_bo_domain domain;
+   unsigned flags = RADEON_FLAG_NO_INTERPROCESS_SHARING;
+
+   if (cs->ring_type == RING_GFX ||
+       cs->ring_type == RING_COMPUTE ||
+       cs->ring_type == RING_DMA) {
+      domain = ws->info.all_vram_visible ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
+      flags |= RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC;
+   } else {
+      /* UVD/VCE */
+      /* TODO: validate that UVD/VCE don't read from IBs and enable WC or even VRAM. */
+      domain = RADEON_DOMAIN_GTT;
+   }
+
    pb = amdgpu_bo_create(ws, buffer_size,
                          ws->info.gart_page_size,
-                         RADEON_DOMAIN_GTT,
-                         RADEON_FLAG_NO_INTERPROCESS_SHARING |
-                         (cs->ring_type == RING_GFX ||
-                          cs->ring_type == RING_COMPUTE ||
-                          cs->ring_type == RING_DMA ?
-                          RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC : 0));
+                         domain, flags);
    if (!pb)
       return false;
 
