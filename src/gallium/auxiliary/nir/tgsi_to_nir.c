@@ -268,14 +268,14 @@ ttn_emit_declaration(struct ttn_compile *c)
 
       switch (sview->ReturnTypeX) {
       case TGSI_RETURN_TYPE_SINT:
-         type = nir_type_int;
+         type = nir_type_int32;
          break;
       case TGSI_RETURN_TYPE_UINT:
-         type = nir_type_uint;
+         type = nir_type_uint32;
          break;
       case TGSI_RETURN_TYPE_FLOAT:
       default:
-         type = nir_type_float;
+         type = nir_type_float32;
          break;
       }
 
@@ -1421,11 +1421,11 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    sview = tgsi_inst->Src[samp].Register.Index;
 
    if (op == nir_texop_lod) {
-      instr->dest_type = nir_type_float;
+      instr->dest_type = nir_type_float32;
    } else if (sview < c->num_samp_types) {
       instr->dest_type = c->samp_types[sview];
    } else {
-      instr->dest_type = nir_type_float;
+      instr->dest_type = nir_type_float32;
    }
 
    nir_variable *var =
