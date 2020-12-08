@@ -28,7 +28,6 @@ files_libd3d12 = files(
   'd3d12_descriptor_pool.cpp',
   'd3d12_draw.cpp',
   'd3d12_dxcore_screen.cpp',
-  'd3d12_dxgi_screen.cpp',
   'd3d12_fence.cpp',
   'd3d12_format.c',
   'd3d12_gs_variant.cpp',
@@ -44,6 +43,10 @@ files_libd3d12 = files(
   'd3d12_screen.cpp',
   'd3d12_surface.cpp',
 )
+
+if host_machine.system() == 'windows'
+  files_libd3d12 += files('d3d12_dxgi_screen.cpp')
+endif
 
 libd3d12 = static_library(
   'd3d12',

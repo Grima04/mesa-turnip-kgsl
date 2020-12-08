@@ -32,8 +32,10 @@ typedef struct _LUID LUID;
 extern "C" {
 #endif
 
+#ifdef _WIN32
 struct pipe_screen *
 d3d12_create_dxgi_screen(struct sw_winsys *winsys, LUID *adapter_luid);
+#endif
 
 struct pipe_screen *
 d3d12_create_dxcore_screen(struct sw_winsys *winsys, LUID *adapter_luid);
