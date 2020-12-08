@@ -229,6 +229,60 @@ bi_is_intr_immediate(nir_intrinsic_instr *instr, unsigned *immediate)
 }
 
 static void
+bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        enum bi_sample sample = BI_SAMPLE_CENTER;
+        enum bi_update update = BI_UPDATE_STORE;
+        enum bi_register_format regfmt = BI_REGISTER_FORMAT_AUTO;
+        enum bi_vecsize vecsize = instr->num_components - 1;
+        bool smooth = instr->intrinsic == nir_intrinsic_load_interpolated_input;
+
+        if (smooth) {
+                nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
+                assert(parent);
+
+                sample = bi_interp_for_intrinsic(parent->intrinsic);
+        } else {
+                regfmt = bi_reg_fmt_for_nir(nir_intrinsic_dest_type(instr));
+        }
+
+        /* Ignored for non-conditional center and retrieve modes (use an
+         * efficient encoding), otherwise R61 for sample mask XXX RA */
+
+        bi_index src0 = (sample == BI_SAMPLE_CENTER) ? bi_passthrough(BIFROST_SRC_FAU_HI) :
+                bi_register(61);
+
+        nir_src *offset = nir_get_io_offset_src(instr);
+        unsigned imm_index = 0;
+        bool immediate = bi_is_intr_immediate(instr, &imm_index);
+
+        if (immediate && smooth) {
+                bi_ld_var_imm_to(b, bi_dest_index(&instr->dest),
+                                src0, regfmt, sample, update, vecsize,
+                                imm_index);
+        } else if (immediate && !smooth) {
+                bi_ld_var_flat_imm_to(b, bi_dest_index(&instr->dest),
+                                BI_FUNCTION_NONE, regfmt, vecsize, imm_index);
+        } else {
+                bi_index idx = bi_src_index(offset);
+                unsigned base = nir_intrinsic_base(instr);
+
+                if (base != 0)
+                        idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
+
+                if (smooth) {
+                        bi_ld_var_to(b, bi_dest_index(&instr->dest),
+                                        src0, idx, regfmt, sample, update,
+                                        vecsize);
+                } else {
+                        bi_ld_var_flat_to(b, bi_dest_index(&instr->dest),
+                                        idx, BI_FUNCTION_NONE, regfmt,
+                                        vecsize);
+                }
+        }
+}
+
+static void
 bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bi_instruction ins = {
