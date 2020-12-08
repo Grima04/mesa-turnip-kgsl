@@ -824,6 +824,10 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
    }
 
    validate_dest(&instr->dest, state, 0, nir_tex_instr_dest_size(instr));
+
+   validate_assert(state,
+                   nir_alu_type_get_type_size(instr->dest_type) ==
+                   nir_dest_bit_size(instr->dest));
 }
 
 static void
