@@ -88,7 +88,6 @@ libradv_files = files(
   'radv_pipeline_cache.c',
   'radv_private.h',
   'radv_radeon_winsys.h',
-  'radv_rgp.c',
   'radv_shader.c',
   'radv_shader.h',
   'radv_shader_args.c',
