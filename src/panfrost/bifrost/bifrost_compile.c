@@ -322,6 +322,22 @@ bi_make_vec_to(bi_builder *b, bi_index final_dst,
 }
 
 static void
+bi_emit_load_blend_input(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        ASSERTED nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+
+        /* We don't support dual-source blending yet. */
+        assert(sem.location == VARYING_SLOT_COL0);
+
+        /* Source color is passed through r0-r3.  TODO: Precolour instead */
+        bi_index srcs[] = {
+                bi_register(0), bi_register(1), bi_register(2), bi_register(3)
+        };
+
+        bi_make_vec_to(b, bi_dest_index(&instr->dest), srcs, NULL, 4, 32);
+}
+
+static void
 bi_emit_ld_blend_input(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         ASSERTED nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
