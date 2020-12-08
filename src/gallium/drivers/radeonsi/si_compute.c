@@ -793,6 +793,11 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
       radeon_emit(cs, info->grid[2]);
       radeon_emit(cs, dispatch_initiator);
    }
+
+   if (unlikely(sctx->thread_trace_enabled && sctx->chip_class >= GFX9)) {
+      radeon_emit(&sctx->gfx_cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+      radeon_emit(&sctx->gfx_cs, EVENT_TYPE(V_028A90_THREAD_TRACE_MARKER) | EVENT_INDEX(0));
+   }
 }
 
 static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)

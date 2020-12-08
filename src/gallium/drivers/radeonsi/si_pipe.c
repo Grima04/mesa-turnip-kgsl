@@ -113,6 +113,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"nofmask", DBG(NO_FMASK), "Disable MSAA compression"},
 
    {"tmz", DBG(TMZ), "Force allocation of scanout/depth/stencil buffer as encrypted"},
+   {"sqtt", DBG(SQTT), "Enable SQTT"},
 
    DEBUG_NAMED_VALUE_END /* must be last */
 };
@@ -185,6 +186,9 @@ static void si_destroy_context(struct pipe_context *context)
 
    if (sctx->chip_class >= GFX10 && sctx->has_graphics)
       gfx10_destroy_query(sctx);
+
+   if (sctx->thread_trace)
+      si_destroy_thread_trace(sctx);
 
    pipe_resource_reference(&sctx->esgs_ring, NULL);
    pipe_resource_reference(&sctx->gsvs_ring, NULL);
@@ -733,6 +737,13 @@ static struct pipe_context *si_pipe_create_context(struct pipe_screen *screen, v
       flags |= PIPE_CONTEXT_DEBUG;
 
    ctx = si_create_context(screen, flags);
+
+   if (ctx && sscreen->info.chip_class >= GFX9 && sscreen->debug_flags & DBG(SQTT)) {
+      if (!si_init_thread_trace((struct si_context *)ctx)) {
+         FREE(ctx);
+         return NULL;
+      }
+   }
 
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED))
       return ctx;

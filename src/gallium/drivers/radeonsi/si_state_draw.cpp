@@ -23,6 +23,7 @@
  */
 
 #include "ac_debug.h"
+#include "ac_sqtt.h"
 #include "si_build_pm4.h"
 #include "sid.h"
 #include "util/u_index_modify.h"
@@ -815,6 +816,15 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
    }
 }
 
+#define EMIT_SQTT_END_DRAW do {                                          \
+      if (GFX_VERSION >= GFX9 && unlikely(sctx->thread_trace_enabled)) { \
+         radeon_emit(&sctx->gfx_cs, PKT3(PKT3_EVENT_WRITE, 0, 0));       \
+         radeon_emit(&sctx->gfx_cs,                                      \
+                     EVENT_TYPE(V_028A90_THREAD_TRACE_MARKER) |          \
+                     EVENT_INDEX(0));                                    \
+      }                                                                  \
+   } while (0)
+
 template <chip_class GFX_VERSION, si_has_ngg NGG, si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
 static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw_info *info,
                                  const struct pipe_draw_indirect_info *indirect,
@@ -830,6 +840,11 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    uint32_t index_max_size = 0;
    uint32_t use_opaque = 0;
    uint64_t index_va = 0;
+
+   if (unlikely(sctx->thread_trace_enabled)) {
+      si_sqtt_write_event_marker(sctx, &sctx->gfx_cs, EventCmdDraw,
+                                 UINT_MAX, UINT_MAX, UINT_MAX);
+   }
 
    if (indirect && indirect->count_from_stream_output) {
       struct si_streamout_target *t = (struct si_streamout_target *)indirect->count_from_stream_output;
@@ -1031,6 +1046,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                                                     original_index_size, base_vertex,
                                                     va, MIN2(index_max_size, draws[i].count));
             }
+            EMIT_SQTT_END_DRAW;
             return;
          }
 
@@ -1088,6 +1104,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                radeon_emit(cs, draws[i].count);
                radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX);
             }
+            EMIT_SQTT_END_DRAW;
             return;
          }
 
@@ -1114,6 +1131,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
             sctx->last_base_vertex = draws[num_draws - 1].start;
       }
    }
+
+   EMIT_SQTT_END_DRAW;
 }
 
 extern "C"
