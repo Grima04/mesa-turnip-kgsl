@@ -537,24 +537,6 @@ radv_end_thread_trace(struct radv_queue *queue)
 	return radv_queue_internal_submit(queue, cs);
 }
 
-static bool
-radv_is_thread_trace_complete(struct radv_device *device,
-			      const struct ac_thread_trace_info *info)
-{
-	if (device->physical_device->rad_info.chip_class == GFX10) {
-		/* GFX10 doesn't have THREAD_TRACE_CNTR but it reports the
-		 * number of dropped bytes for all SEs via
-		 * THREAD_TRACE_DROPPED_CNTR.
-		 */
-		return info->gfx10_dropped_cntr == 0;
-	}
-
-	/* Otherwise, compare the current thread trace offset with the number
-	 * of written bytes.
-	 */
-	return info->cur_offset == info->gfx9_write_counter;
-}
-
 static uint32_t
 radv_get_expected_buffer_size(struct radv_device *device,
 			      const struct ac_thread_trace_info *info)
@@ -587,7 +569,7 @@ radv_get_thread_trace(struct radv_queue *queue,
 			(struct ac_thread_trace_info *)info_ptr;
 		struct ac_thread_trace_se thread_trace_se = {0};
 
-		if (!radv_is_thread_trace_complete(device, info)) {
+		if (!ac_is_thread_trace_complete(&device->physical_device->rad_info, info)) {
 			uint32_t expected_size =
 				radv_get_expected_buffer_size(device, info);
 			uint32_t available_size =

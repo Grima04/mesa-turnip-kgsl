@@ -25,6 +25,7 @@
 
 #include "ac_sqtt.h"
 
+#include "ac_gpu_info.h"
 #include "util/u_math.h"
 
 uint64_t
@@ -55,4 +56,22 @@ uint64_t
 ac_thread_trace_get_data_va(struct ac_thread_trace_data *data, uint64_t va, unsigned se)
 {
    return va + ac_thread_trace_get_data_offset(data, se);
+}
+
+bool
+ac_is_thread_trace_complete(struct radeon_info *rad_info,
+                            const struct ac_thread_trace_info *info)
+{
+   if (rad_info->chip_class == GFX10) {
+      /* GFX10 doesn't have THREAD_TRACE_CNTR but it reports the
+       * number of dropped bytes for all SEs via
+       * THREAD_TRACE_DROPPED_CNTR.
+       */
+      return info->gfx10_dropped_cntr == 0;
+   }
+
+   /* Otherwise, compare the current thread trace offset with the number
+    * of written bytes.
+    */
+   return info->cur_offset == info->gfx9_write_counter;
 }

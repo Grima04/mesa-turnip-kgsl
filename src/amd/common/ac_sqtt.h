@@ -27,8 +27,12 @@
 #define AC_SQTT_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "c11_compat.h"
+
+struct radeon_cmdbuf;
+struct radeon_info;
 
 struct ac_thread_trace_data {
    struct radeon_cmdbuf *start_cs[2];
@@ -74,6 +78,10 @@ ac_thread_trace_get_info_va(uint64_t va, unsigned se);
 
 uint64_t
 ac_thread_trace_get_data_va(struct ac_thread_trace_data *data, uint64_t va, unsigned se);
+
+bool
+ac_is_thread_trace_complete(struct radeon_info *rad_info, const struct ac_thread_trace_info *info);
+
 
 /**
  * Identifiers for RGP SQ thread-tracing markers (Table 1)
