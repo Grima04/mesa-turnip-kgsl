@@ -180,7 +180,8 @@ drm_authenticate(struct wl_client *client,
 {
 	struct wl_drm *drm = wl_resource_get_user_data(resource);
 
-	if (drm->callbacks.authenticate(drm->user_data, id) < 0)
+	if (!drm->callbacks.authenticate ||
+	    drm->callbacks.authenticate(drm->user_data, id) < 0)
 		wl_resource_post_error(resource,
 				       WL_DRM_ERROR_AUTHENTICATE_FAIL,
 				       "authenticate failed");
