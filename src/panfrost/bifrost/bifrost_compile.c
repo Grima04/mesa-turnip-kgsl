@@ -198,6 +198,21 @@ bi_interp_for_intrinsic(nir_intrinsic_op op)
         }
 }
 
+/* auto, 64-bit omitted */
+static enum bi_register_format
+bi_reg_fmt_for_nir(nir_alu_type T)
+{
+        switch (T) {
+        case nir_type_float16: return BI_REGISTER_FORMAT_F16;
+        case nir_type_float32: return BI_REGISTER_FORMAT_F32;
+        case nir_type_int16:   return BI_REGISTER_FORMAT_S16;
+        case nir_type_uint16:  return BI_REGISTER_FORMAT_U16;
+        case nir_type_int32:   return BI_REGISTER_FORMAT_S32;
+        case nir_type_uint32:  return BI_REGISTER_FORMAT_U32;
+        default: unreachable("Invalid type for register format");
+        }
+}
+
 /* Checks if the _IMM variant of an intrinsic can be used, returning in imm the
  * immediate to be used (which applies even if _IMM can't be used) */
 
