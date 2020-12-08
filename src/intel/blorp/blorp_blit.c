@@ -137,7 +137,7 @@ blorp_create_nir_tex_instr(nir_builder *b, struct brw_blorp_blit_vars *v,
 
    tex->op = op;
 
-   tex->dest_type = dst_type;
+   tex->dest_type = dst_type | 32;
    tex->is_array = false;
    tex->is_shadow = false;
 
