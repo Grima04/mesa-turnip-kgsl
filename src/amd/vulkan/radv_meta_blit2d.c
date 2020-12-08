@@ -518,7 +518,7 @@ build_nir_texel_fetch(struct nir_builder *b, struct radv_device *device,
 		tex->src[3].src_type = nir_tex_src_lod;
 		tex->src[3].src = nir_src_for_ssa(nir_imm_int(b, 0));
 	}
-	tex->dest_type = nir_type_uint;
+	tex->dest_type = nir_type_uint32;
 	tex->is_array = false;
 	tex->coord_components = is_3d ? 3 : 2;
 
@@ -556,7 +556,7 @@ build_nir_buffer_fetch(struct nir_builder *b, struct radv_device *device,
 	tex->src[0].src = nir_src_for_ssa(pos_x);
 	tex->src[1].src_type = nir_tex_src_texture_deref;
 	tex->src[1].src = nir_src_for_ssa(tex_deref);
-	tex->dest_type = nir_type_uint;
+	tex->dest_type = nir_type_uint32;
 	tex->is_array = false;
 	tex->coord_components = 1;
 

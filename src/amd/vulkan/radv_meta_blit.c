@@ -123,7 +123,7 @@ build_nir_copy_fragment_shader(enum glsl_sampler_dim tex_dim)
 	tex->src[1].src = nir_src_for_ssa(tex_deref);
 	tex->src[2].src_type = nir_tex_src_sampler_deref;
 	tex->src[2].src = nir_src_for_ssa(tex_deref);
-	tex->dest_type = nir_type_float; /* TODO */
+	tex->dest_type = nir_type_float32; /* TODO */
 	tex->is_array = glsl_sampler_type_is_array(sampler_type);
 	tex->coord_components = tex_pos->num_components;
 
@@ -175,7 +175,7 @@ build_nir_copy_fragment_shader_depth(enum glsl_sampler_dim tex_dim)
 	tex->src[1].src = nir_src_for_ssa(tex_deref);
 	tex->src[2].src_type = nir_tex_src_sampler_deref;
 	tex->src[2].src = nir_src_for_ssa(tex_deref);
-	tex->dest_type = nir_type_float; /* TODO */
+	tex->dest_type = nir_type_float32; /* TODO */
 	tex->is_array = glsl_sampler_type_is_array(sampler_type);
 	tex->coord_components = tex_pos->num_components;
 
@@ -227,7 +227,7 @@ build_nir_copy_fragment_shader_stencil(enum glsl_sampler_dim tex_dim)
 	tex->src[1].src = nir_src_for_ssa(tex_deref);
 	tex->src[2].src_type = nir_tex_src_sampler_deref;
 	tex->src[2].src = nir_src_for_ssa(tex_deref);
-	tex->dest_type = nir_type_float; /* TODO */
+	tex->dest_type = nir_type_float32; /* TODO */
 	tex->is_array = glsl_sampler_type_is_array(sampler_type);
 	tex->coord_components = tex_pos->num_components;
 

@@ -81,7 +81,7 @@ build_nir_itob_compute_shader(struct radv_device *dev, bool is_3d)
 	tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
 	tex->src[2].src_type = nir_tex_src_texture_deref;
 	tex->src[2].src = nir_src_for_ssa(input_img_deref);
-	tex->dest_type = nir_type_float;
+	tex->dest_type = nir_type_float32;
 	tex->is_array = false;
 	tex->coord_components = is_3d ? 3 : 2;
 
@@ -295,7 +295,7 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
 	tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
 	tex->src[2].src_type = nir_tex_src_texture_deref;
 	tex->src[2].src = nir_src_for_ssa(input_img_deref);
-	tex->dest_type = nir_type_float;
+	tex->dest_type = nir_type_float32;
 	tex->is_array = false;
 	tex->coord_components = 1;
 
@@ -503,7 +503,7 @@ build_nir_btoi_r32g32b32_compute_shader(struct radv_device *dev)
 	tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
 	tex->src[2].src_type = nir_tex_src_texture_deref;
 	tex->src[2].src = nir_src_for_ssa(input_img_deref);
-	tex->dest_type = nir_type_float;
+	tex->dest_type = nir_type_float32;
 	tex->is_array = false;
 	tex->coord_components = 1;
 	nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");
@@ -671,7 +671,7 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d)
 	tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
 	tex->src[2].src_type = nir_tex_src_texture_deref;
 	tex->src[2].src = nir_src_for_ssa(input_img_deref);
-	tex->dest_type = nir_type_float;
+	tex->dest_type = nir_type_float32;
 	tex->is_array = false;
 	tex->coord_components = is_3d ? 3 : 2;
 
@@ -889,7 +889,7 @@ build_nir_itoi_r32g32b32_compute_shader(struct radv_device *dev)
 		tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
 		tex->src[2].src_type = nir_tex_src_texture_deref;
 		tex->src[2].src = nir_src_for_ssa(input_img_deref);
-		tex->dest_type = nir_type_float;
+		tex->dest_type = nir_type_float32;
 		tex->is_array = false;
 		tex->coord_components = 1;
 		nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");

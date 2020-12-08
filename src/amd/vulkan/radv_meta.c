@@ -598,7 +598,7 @@ void radv_meta_build_resolve_shader_core(nir_builder *b,
 	tex->src[1].src = nir_src_for_ssa(nir_imm_int(b, 0));
 	tex->src[2].src_type = nir_tex_src_texture_deref;
 	tex->src[2].src = nir_src_for_ssa(input_img_deref);
-	tex->dest_type = nir_type_float;
+	tex->dest_type = nir_type_float32;
 	tex->is_array = false;
 	tex->coord_components = 2;
 
@@ -615,7 +615,7 @@ void radv_meta_build_resolve_shader_core(nir_builder *b,
 		tex_all_same->src[0].src = nir_src_for_ssa(img_coord);
 		tex_all_same->src[1].src_type = nir_tex_src_texture_deref;
 		tex_all_same->src[1].src = nir_src_for_ssa(input_img_deref);
-		tex_all_same->dest_type = nir_type_uint;
+		tex_all_same->dest_type = nir_type_bool1;
 		tex_all_same->is_array = false;
 		tex_all_same->coord_components = 2;
 
@@ -634,7 +634,7 @@ void radv_meta_build_resolve_shader_core(nir_builder *b,
 			tex_add->src[1].src = nir_src_for_ssa(nir_imm_int(b, i));
 			tex_add->src[2].src_type = nir_tex_src_texture_deref;
 			tex_add->src[2].src = nir_src_for_ssa(input_img_deref);
-			tex_add->dest_type = nir_type_float;
+			tex_add->dest_type = nir_type_float32;
 			tex_add->is_array = false;
 			tex_add->coord_components = 2;
 

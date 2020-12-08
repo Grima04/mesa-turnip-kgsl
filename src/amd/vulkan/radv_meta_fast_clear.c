@@ -75,7 +75,7 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
 	tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
 	tex->src[2].src_type = nir_tex_src_texture_deref;
 	tex->src[2].src = nir_src_for_ssa(input_img_deref);
-	tex->dest_type = nir_type_float;
+	tex->dest_type = nir_type_float32;
 	tex->is_array = false;
 	tex->coord_components = 2;
 

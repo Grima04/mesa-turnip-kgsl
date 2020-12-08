@@ -376,7 +376,7 @@ build_depth_stencil_resolve_fragment_shader(struct radv_device *dev, int samples
 
 	nir_ssa_def *input_img_deref = &nir_build_deref_var(&b, input_img)->dest.ssa;
 
-	nir_alu_type type = index == DEPTH_RESOLVE ? nir_type_float : nir_type_uint;
+	nir_alu_type type = index == DEPTH_RESOLVE ? nir_type_float32 : nir_type_uint32;
 
 	nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
 	tex->sampler_dim = GLSL_SAMPLER_DIM_MS;
