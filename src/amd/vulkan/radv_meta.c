@@ -506,6 +506,7 @@ radv_device_finish_meta(struct radv_device *device)
    radv_device_finish_meta_resolve_fragment_state(device);
    radv_device_finish_meta_fmask_expand_state(device);
    radv_device_finish_meta_dcc_retile_state(device);
+   radv_device_finish_meta_copy_vrs_htile_state(device);
 
    radv_store_meta_pipeline(device);
    radv_pipeline_cache_finish(&device->meta_state.cache);

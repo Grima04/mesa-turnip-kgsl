@@ -473,6 +473,11 @@ struct radv_meta_state {
    VkPipelineLayout clear_htile_mask_p_layout;
    VkDescriptorSetLayout clear_htile_mask_ds_layout;
 
+   /* Copy VRS into HTILE. */
+   VkPipeline copy_vrs_htile_pipeline;
+   VkPipelineLayout copy_vrs_htile_p_layout;
+   VkDescriptorSetLayout copy_vrs_htile_ds_layout;
+
    struct {
       VkRenderPass render_pass[NUM_META_FS_KEYS][RADV_META_DST_LAYOUT_COUNT];
 
