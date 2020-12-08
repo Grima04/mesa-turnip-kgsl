@@ -108,19 +108,8 @@ try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load,
    tex->op = nir_texop_txf;
    tex->sampler_dim = image_dim;
 
-   switch (glsl_get_sampler_result_type(deref->type)) {
-   case GLSL_TYPE_FLOAT:
-      tex->dest_type = nir_type_float;
-      break;
-   case GLSL_TYPE_INT:
-      tex->dest_type = nir_type_int;
-      break;
-   case GLSL_TYPE_UINT:
-      tex->dest_type = nir_type_uint;
-      break;
-   default:
-      unreachable("Invalid image type");
-   }
+   tex->dest_type =
+      nir_get_nir_type_for_glsl_base_type(glsl_get_sampler_result_type(deref->type));
    tex->is_array = true;
    tex->is_shadow = false;
    tex->is_sparse = load->intrinsic == nir_intrinsic_image_deref_sparse_load;

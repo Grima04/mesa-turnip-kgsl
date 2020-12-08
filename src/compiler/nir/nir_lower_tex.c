@@ -264,7 +264,7 @@ sample_plane(nir_builder *b, nir_tex_instr *tex, int plane,
    plane_tex->src[tex->num_srcs].src_type = nir_tex_src_plane;
    plane_tex->op = nir_texop_tex;
    plane_tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
-   plane_tex->dest_type = nir_type_float;
+   plane_tex->dest_type = nir_type_float | nir_dest_bit_size(tex->dest);
    plane_tex->coord_components = 2;
 
    plane_tex->texture_index = tex->texture_index;
