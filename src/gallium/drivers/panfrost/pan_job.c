@@ -825,7 +825,9 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
         if (loc >= FRAG_RESULT_DATA0 && !panfrost_can_fixed_blend(rsrc->base.format)) {
                 struct panfrost_blend_shader *b =
                         panfrost_get_blend_shader(batch->ctx, batch->ctx->blit_blend,
-                                                  rsrc->base.format, loc - FRAG_RESULT_DATA0,
+                                                  rsrc->base.format,
+                                                  rsrc->base.nr_samples,
+                                                  loc - FRAG_RESULT_DATA0,
                                                   NULL);
 
                 struct panfrost_bo *bo = panfrost_batch_create_bo(batch, b->size,

@@ -287,6 +287,7 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
                 .gpu_id = dev->gpu_id,
                 .is_blend = true,
                 .blend.rt = shader->key.rt,
+                .blend.nr_samples = shader->key.nr_samples,
                 .rt_formats = {shader->key.format},
         };
 
