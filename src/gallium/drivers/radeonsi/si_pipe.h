@@ -216,7 +216,7 @@ enum
 enum
 {
    /* Tests: */
-   DBG_TEST_DMA,
+   DBG_TEST_BLIT,
    DBG_TEST_VMFAULT_CP,
    DBG_TEST_VMFAULT_SHADER,
    DBG_TEST_DMA_PERF,
@@ -1479,8 +1479,8 @@ void *gfx10_create_sh_query_result_cs(struct si_context *sctx);
 void gfx10_init_query(struct si_context *sctx);
 void gfx10_destroy_query(struct si_context *sctx);
 
-/* si_test_dma.c */
-void si_test_dma(struct si_screen *sscreen);
+/* si_test_blit.c */
+void si_test_blit(struct si_screen *sscreen);
 
 /* si_test_clearbuffer.c */
 void si_test_dma_perf(struct si_screen *sscreen);

@@ -166,7 +166,7 @@ static unsigned generate_max_tex_side(unsigned max_tex_side)
    }
 }
 
-void si_test_dma(struct si_screen *sscreen)
+void si_test_blit(struct si_screen *sscreen)
 {
    struct pipe_screen *screen = &sscreen->b;
    struct pipe_context *ctx = screen->context_create(screen, NULL, 0);
