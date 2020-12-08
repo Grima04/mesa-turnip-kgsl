@@ -1,9 +1,0 @@
-traces:
-  - path: trace1/magenta.testtrace
-    expectations:
-      - device: gl-test-device
-        checksum: 8e0a801367e1714463475a824dab363b
-  - path: trace2/olive.testtrace
-    expectations:
-      - device: vk-test-device
-        checksum: 5efda83854befe0155ff8517a58d5b51

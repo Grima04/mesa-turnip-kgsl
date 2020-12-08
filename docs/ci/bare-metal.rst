@@ -42,8 +42,8 @@ at /tftp in the container.
 
 Since we're going the TFTP route, we also use NFS root.  This avoids
 packing the rootfs and sending it to the board as a ramdisk, which
-means we can support larger rootfses (for piglit or tracie testing),
-at the cost of needing more storage on the runner.
+means we can support larger rootfses (for piglit testing), at the cost
+of needing more storage on the runner.
 
 Telling the board about where its TFTP and NFS should come from is
 done using dnsmasq on the runner host.  For example, this snippet in
