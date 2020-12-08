@@ -1038,6 +1038,24 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_load_const(bi_builder *b, nir_load_const_instr *instr)
+{
+        /* Make sure we've been lowered */
+        assert(instr->def.num_components <= (32 / instr->def.bit_size));
+
+        /* Accumulate all the channels of the constant, as if we did an
+         * implicit SEL over them */
+        uint32_t acc = 0;
+
+        for (unsigned i = 0; i < instr->def.num_components; ++i) {
+                unsigned v = nir_const_value_as_uint(instr->value[i], instr->def.bit_size);
+                acc |= (v << (i * instr->def.bit_size));
+        }
+
+        bi_mov_i32_to(b, bi_get_index(instr->def.index, false, 0), bi_imm_u32(acc));
+}
+
+static void
 emit_load_const(bi_context *ctx, nir_load_const_instr *instr)
 {
         /* Make sure we've been lowered */
