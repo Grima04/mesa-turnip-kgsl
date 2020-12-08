@@ -3097,7 +3097,7 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format)
    tex->src[0].src = nir_src_for_ssa(texel_offset);
    tex->src[1].src_type = nir_tex_src_texture_deref;
    tex->src[1].src = nir_src_for_ssa(tex_deref);
-   tex->dest_type = nir_type_uint;
+   tex->dest_type = nir_type_uint32;
    tex->is_array = false;
    tex->coord_components = 1;
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "texel buffer result");
@@ -4309,8 +4309,7 @@ build_nir_tex_op_read(struct nir_builder *b,
    tex->src[1].src = nir_src_for_ssa(tex_deref);
    tex->src[2].src_type = nir_tex_src_sampler_deref;
    tex->src[2].src = nir_src_for_ssa(tex_deref);
-   tex->dest_type =
-      nir_alu_type_get_base_type(nir_get_nir_type_for_glsl_base_type(tex_type));
+   tex->dest_type = nir_get_nir_type_for_glsl_base_type(tex_type);
    tex->is_array = glsl_sampler_type_is_array(sampler_type);
    tex->coord_components = tex_pos->num_components;
 
@@ -4338,8 +4337,7 @@ build_nir_tex_op_ms_fetch_sample(struct nir_builder *b,
    tex->src[2].src = nir_src_for_ssa(tex_deref);
    tex->src[3].src_type = nir_tex_src_ms_index;
    tex->src[3].src = nir_src_for_ssa(sample_idx);
-   tex->dest_type =
-      nir_alu_type_get_base_type(nir_get_nir_type_for_glsl_base_type(tex_type));
+   tex->dest_type = nir_get_nir_type_for_glsl_base_type(tex_type);
    tex->is_array = false;
    tex->coord_components = tex_pos->num_components;
 
