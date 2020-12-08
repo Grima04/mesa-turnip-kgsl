@@ -23,54 +23,36 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef AC_SQTT_H
-#define AC_SQTT_H
+#include "ac_sqtt.h"
 
-#include <stdint.h>
-
-struct ac_thread_trace_data {
-   struct radeon_cmdbuf *start_cs[2];
-   struct radeon_cmdbuf *stop_cs[2];
-   /* struct radeon_winsys_bo or struct pb_buffer */
-   void *bo;
-   void *ptr;
-   uint32_t buffer_size;
-   int start_frame;
-   char *trigger_file;
-};
-
-#define SQTT_BUFFER_ALIGN_SHIFT 12
-
-struct ac_thread_trace_info {
-   uint32_t cur_offset;
-   uint32_t trace_status;
-   union {
-      uint32_t gfx9_write_counter;
-      uint32_t gfx10_dropped_cntr;
-   };
-};
-
-struct ac_thread_trace_se {
-   struct ac_thread_trace_info info;
-   void *data_ptr;
-   uint32_t shader_engine;
-   uint32_t compute_unit;
-};
-
-struct ac_thread_trace {
-   uint32_t num_traces;
-   struct ac_thread_trace_se traces[4];
-};
+#include "util/u_math.h"
 
 uint64_t
-ac_thread_trace_get_info_offset(unsigned se);
+ac_thread_trace_get_info_offset(unsigned se)
+{
+   return sizeof(struct ac_thread_trace_info) * se;
+}
 
 uint64_t
-ac_thread_trace_get_data_offset(struct ac_thread_trace_data *data, unsigned se);
-uint64_t
-ac_thread_trace_get_info_va(uint64_t va, unsigned se);
+ac_thread_trace_get_data_offset(struct ac_thread_trace_data *data, unsigned se)
+{
+   uint64_t data_offset;
+
+   data_offset = align64(sizeof(struct ac_thread_trace_info) * 4,
+               1 << SQTT_BUFFER_ALIGN_SHIFT);
+   data_offset += data->buffer_size * se;
+
+   return data_offset;
+}
 
 uint64_t
-ac_thread_trace_get_data_va(struct ac_thread_trace_data *data, uint64_t va, unsigned se);
+ac_thread_trace_get_info_va(uint64_t va, unsigned se)
+{
+   return va + ac_thread_trace_get_info_offset(se);
+}
 
-#endif
+uint64_t
+ac_thread_trace_get_data_va(struct ac_thread_trace_data *data, uint64_t va, unsigned se)
+{
+   return va + ac_thread_trace_get_data_offset(data, se);
+}

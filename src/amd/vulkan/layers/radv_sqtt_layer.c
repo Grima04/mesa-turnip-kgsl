@@ -624,7 +624,7 @@ radv_handle_thread_trace(VkQueue _queue)
 	static uint64_t num_frames = 0;
 
 	if (thread_trace_enabled) {
-		struct radv_thread_trace thread_trace = {0};
+		struct ac_thread_trace thread_trace = {0};
 
 		radv_end_thread_trace(queue);
 		thread_trace_enabled = false;

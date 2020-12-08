@@ -583,7 +583,7 @@ radv_sqtt_fill_sqtt_data(struct sqtt_file_chunk_sqtt_data *chunk,
 
 static void
 radv_sqtt_dump_data(struct radv_device *device,
-		    const struct radv_thread_trace *thread_trace,
+		    const struct ac_thread_trace *thread_trace,
 		    FILE *output)
 {
 	struct sqtt_file_chunk_asic_info asic_info = {0};
@@ -614,8 +614,8 @@ radv_sqtt_dump_data(struct radv_device *device,
 
 	if (thread_trace) {
 		for (unsigned i = 0; i < thread_trace->num_traces; i++) {
-			const struct radv_thread_trace_se *se = &thread_trace->traces[i];
-			const struct radv_thread_trace_info *info = &se->info;
+			const struct ac_thread_trace_se *se = &thread_trace->traces[i];
+			const struct ac_thread_trace_info *info = &se->info;
 			struct sqtt_file_chunk_sqtt_desc desc = {0};
 			struct sqtt_file_chunk_sqtt_data data = {0};
 			uint64_t size = info->cur_offset * 32; /* unit of 32 bytes */
@@ -641,7 +641,7 @@ radv_sqtt_dump_data(struct radv_device *device,
 
 int
 radv_dump_thread_trace(struct radv_device *device,
-		       const struct radv_thread_trace *thread_trace)
+		       const struct ac_thread_trace *thread_trace)
 {
 	char filename[2048];
 	struct tm now;

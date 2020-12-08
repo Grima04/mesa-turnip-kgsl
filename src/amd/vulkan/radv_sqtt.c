@@ -29,37 +29,6 @@
 
 #define SQTT_BUFFER_ALIGN_SHIFT 12
 
-static uint64_t
-radv_thread_trace_get_info_offset(unsigned se)
-{
-	return sizeof(struct radv_thread_trace_info) * se;
-}
-
-static uint64_t
-radv_thread_trace_get_data_offset(struct radv_device *device, unsigned se)
-{
-	uint64_t data_offset;
-
-	data_offset = align64(sizeof(struct radv_thread_trace_info) * 4,
-			      1 << SQTT_BUFFER_ALIGN_SHIFT);
-	data_offset += device->thread_trace.buffer_size * se;
-
-	return data_offset;
-}
-
-static uint64_t
-radv_thread_trace_get_info_va(struct radv_device *device, unsigned se)
-{
-	uint64_t va = radv_buffer_get_va(device->thread_trace.bo);
-	return va + radv_thread_trace_get_info_offset(se);
-}
-
-static uint64_t
-radv_thread_trace_get_data_va(struct radv_device *device, unsigned se)
-{
-	uint64_t va = radv_buffer_get_va(device->thread_trace.bo);
-	return va + radv_thread_trace_get_data_offset(device, se);
-}
 
 static void
 radv_emit_thread_trace_start(struct radv_device *device,
@@ -72,7 +41,8 @@ radv_emit_thread_trace_start(struct radv_device *device,
 	assert(device->physical_device->rad_info.chip_class >= GFX8);
 
 	for (unsigned se = 0; se < max_se; se++) {
-		uint64_t data_va = radv_thread_trace_get_data_va(device, se);
+		uint64_t va = radv_buffer_get_va(device->thread_trace.bo);
+		uint64_t data_va = ac_thread_trace_get_data_va(&device->thread_trace, va, se);
 		uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
 
 		/* Target SEx and SH0. */
@@ -250,7 +220,8 @@ radv_copy_thread_trace_info_regs(struct radv_device *device,
 	}
 
 	/* Get the VA where the info struct is stored for this SE. */
-	uint64_t info_va = radv_thread_trace_get_info_va(device, se_index);
+	uint64_t va = radv_buffer_get_va(device->thread_trace.bo);
+	uint64_t info_va = ac_thread_trace_get_info_va(va, se_index);
 
 	/* Copy back the info struct one DWORD at a time. */
 	for (unsigned i = 0; i < 3; i++) {
@@ -504,7 +475,7 @@ radv_thread_trace_init_bo(struct radv_device *device)
 	                                           1u << SQTT_BUFFER_ALIGN_SHIFT);
 
 	/* Compute total size of the thread trace BO for 4 SEs. */
-	size = align64(sizeof(struct radv_thread_trace_info) * 4,
+	size = align64(sizeof(struct ac_thread_trace_info) * 4,
 		       1 << SQTT_BUFFER_ALIGN_SHIFT);
 	size += device->thread_trace.buffer_size * 4;
 
@@ -568,7 +539,7 @@ radv_end_thread_trace(struct radv_queue *queue)
 
 static bool
 radv_is_thread_trace_complete(struct radv_device *device,
-			      const struct radv_thread_trace_info *info)
+			      const struct ac_thread_trace_info *info)
 {
 	if (device->physical_device->rad_info.chip_class == GFX10) {
 		/* GFX10 doesn't have THREAD_TRACE_CNTR but it reports the
@@ -586,7 +557,7 @@ radv_is_thread_trace_complete(struct radv_device *device,
 
 static uint32_t
 radv_get_expected_buffer_size(struct radv_device *device,
-			      const struct radv_thread_trace_info *info)
+			      const struct ac_thread_trace_info *info)
 {
 	if (device->physical_device->rad_info.chip_class == GFX10) {
 		uint32_t dropped_cntr_per_se = info->gfx10_dropped_cntr / device->physical_device->rad_info.max_se;
@@ -598,7 +569,7 @@ radv_get_expected_buffer_size(struct radv_device *device,
 
 bool
 radv_get_thread_trace(struct radv_queue *queue,
-		      struct radv_thread_trace *thread_trace)
+		      struct ac_thread_trace *thread_trace)
 {
 	struct radv_device *device = queue->device;
 	unsigned max_se = device->physical_device->rad_info.max_se;
@@ -608,13 +579,13 @@ radv_get_thread_trace(struct radv_queue *queue,
 	thread_trace->num_traces = max_se;
 
 	for (unsigned se = 0; se < max_se; se++) {
-		uint64_t info_offset = radv_thread_trace_get_info_offset(se);
-		uint64_t data_offset = radv_thread_trace_get_data_offset(device, se);
+		uint64_t info_offset = ac_thread_trace_get_info_offset(se);
+		uint64_t data_offset = ac_thread_trace_get_data_offset(&device->thread_trace, se);
 		void *info_ptr = thread_trace_ptr + info_offset;
 		void *data_ptr = thread_trace_ptr + data_offset;
-		struct radv_thread_trace_info *info =
-			(struct radv_thread_trace_info *)info_ptr;
-		struct radv_thread_trace_se thread_trace_se = {0};
+		struct ac_thread_trace_info *info =
+			(struct ac_thread_trace_info *)info_ptr;
+		struct ac_thread_trace_se thread_trace_se = {0};
 
 		if (!radv_is_thread_trace_complete(device, info)) {
 			uint32_t expected_size =

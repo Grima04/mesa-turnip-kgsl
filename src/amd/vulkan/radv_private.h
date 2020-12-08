@@ -2554,41 +2554,18 @@ void radv_nir_shader_info_pass(const struct nir_shader *nir,
 
 void radv_nir_shader_info_init(struct radv_shader_info *info);
 
-/* radv_sqtt.c */
-struct radv_thread_trace_info {
-	uint32_t cur_offset;
-	uint32_t trace_status;
-	union {
-		uint32_t gfx9_write_counter;
-		uint32_t gfx10_dropped_cntr;
-	};
-};
-
-struct radv_thread_trace_se {
-	struct radv_thread_trace_info info;
-	void *data_ptr;
-	uint32_t shader_engine;
-	uint32_t compute_unit;
-};
-
-struct radv_thread_trace {
-	uint32_t num_traces;
-	struct radv_thread_trace_se traces[4];
-};
-
 bool radv_thread_trace_init(struct radv_device *device);
 void radv_thread_trace_finish(struct radv_device *device);
 bool radv_begin_thread_trace(struct radv_queue *queue);
 bool radv_end_thread_trace(struct radv_queue *queue);
 bool radv_get_thread_trace(struct radv_queue *queue,
-			   struct radv_thread_trace *thread_trace);
+			   struct ac_thread_trace *thread_trace);
 void radv_emit_thread_trace_userdata(const struct radv_device *device,
 				     struct radeon_cmdbuf *cs,
 				     const void *data, uint32_t num_dwords);
-
 /* radv_rgp.c */
 int radv_dump_thread_trace(struct radv_device *device,
-			   const struct radv_thread_trace *trace);
+                           const struct ac_thread_trace *trace);
 
 /* radv_sqtt_layer_.c */
 struct radv_barrier_data {
