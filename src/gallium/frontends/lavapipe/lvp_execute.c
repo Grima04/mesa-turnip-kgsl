@@ -125,6 +125,10 @@ struct rendering_state {
    const struct lvp_attachment_state *attachments;
    VkImageAspectFlags *pending_clear_aspects;
    int num_pending_aspects;
+
+   uint32_t num_so_targets;
+   struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_BUFFERS];
+   uint32_t so_offsets[PIPE_MAX_SO_BUFFERS];
 };
 
 static void emit_compute_state(struct rendering_state *state)
@@ -2422,6 +2426,81 @@ static void handle_push_descriptor_set(struct lvp_cmd_buffer_entry *cmd,
    }
 }
 
+static void handle_bind_transform_feedback_buffers(struct lvp_cmd_buffer_entry *cmd,
+                                                   struct rendering_state *state)
+{
+   struct lvp_cmd_bind_transform_feedback_buffers *btfb = &cmd->u.bind_transform_feedback_buffers;
+
+   for (unsigned i = 0; i < btfb->binding_count; i++) {
+      int idx = i + btfb->first_binding;
+      if (state->so_targets[idx])
+         state->pctx->stream_output_target_destroy(state->pctx, state->so_targets[idx]);
+
+      state->so_targets[idx] = state->pctx->create_stream_output_target(state->pctx,
+                                                                        btfb->buffers[i]->bo,
+                                                                        btfb->offsets[i],
+                                                                        btfb->sizes[i]);
+   }
+   state->num_so_targets = btfb->first_binding + btfb->binding_count;
+}
+
+static void handle_begin_transform_feedback(struct lvp_cmd_buffer_entry *cmd,
+                                            struct rendering_state *state)
+{
+   struct lvp_cmd_begin_transform_feedback *btf = &cmd->u.begin_transform_feedback;
+   uint32_t offsets[4];
+
+   memset(offsets, 0, sizeof(uint32_t)*4);
+
+   for (unsigned i = 0; i < btf->counter_buffer_count; i++) {
+      pipe_buffer_read(state->pctx,
+                       btf->counter_buffers[i]->bo,
+                       btf->counter_buffer_offsets[i],
+                       4,
+                       &offsets[i]);
+   }
+   state->pctx->set_stream_output_targets(state->pctx, state->num_so_targets,
+                                          state->so_targets, offsets);
+}
+
+static void handle_end_transform_feedback(struct lvp_cmd_buffer_entry *cmd,
+                                          struct rendering_state *state)
+{
+   struct lvp_cmd_end_transform_feedback *etf = &cmd->u.end_transform_feedback;
+
+   if (etf->counter_buffer_count) {
+      for (unsigned i = 0; i < etf->counter_buffer_count; i++) {
+         uint32_t offset;
+         offset = state->pctx->stream_output_target_offset(state->so_targets[i]);
+
+         pipe_buffer_write(state->pctx,
+                           etf->counter_buffers[i]->bo,
+                           etf->counter_buffer_offsets[i],
+                           4,
+                           &offset);
+      }
+   }
+   state->pctx->set_stream_output_targets(state->pctx, 0, NULL, NULL);
+}
+
+static void handle_draw_indirect_byte_count(struct lvp_cmd_buffer_entry *cmd,
+                                            struct rendering_state *state)
+{
+   struct lvp_cmd_draw_indirect_byte_count *dibc = &cmd->u.draw_indirect_byte_count;
+
+   pipe_buffer_read(state->pctx,
+                    dibc->counter_buffer->bo,
+                    dibc->counter_buffer->offset + dibc->counter_buffer_offset,
+                    4, &state->draw.count);
+
+   state->info.start_instance = cmd->u.draw_indirect_byte_count.first_instance;
+   state->info.instance_count = cmd->u.draw_indirect_byte_count.instance_count;
+   state->info.index_size = 0;
+
+   state->draw.count /= cmd->u.draw_indirect_byte_count.vertex_stride;
+   state->pctx->draw_vbo(state->pctx, &state->info, &state->indirect_info, &state->draw, 1);
+}
+
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
@@ -2575,6 +2654,19 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case LVP_CMD_PUSH_DESCRIPTOR_SET:
          handle_push_descriptor_set(cmd, state);
+         break;
+      case LVP_CMD_BIND_TRANSFORM_FEEDBACK_BUFFERS:
+         handle_bind_transform_feedback_buffers(cmd, state);
+         break;
+      case LVP_CMD_BEGIN_TRANSFORM_FEEDBACK:
+         handle_begin_transform_feedback(cmd, state);
+         break;
+      case LVP_CMD_END_TRANSFORM_FEEDBACK:
+         handle_end_transform_feedback(cmd, state);
+         break;
+      case LVP_CMD_DRAW_INDIRECT_BYTE_COUNT:
+         emit_state(state);
+         handle_draw_indirect_byte_count(cmd, state);
          break;
       }
    }

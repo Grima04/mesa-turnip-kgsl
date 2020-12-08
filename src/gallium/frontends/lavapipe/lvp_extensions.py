@@ -139,7 +139,7 @@ EXTENSIONS = [
     Extension('VK_EXT_shader_stencil_export',             1, True),
     Extension('VK_EXT_shader_subgroup_ballot',            1, False),
     Extension('VK_EXT_shader_subgroup_vote',              1, False),
-    Extension('VK_EXT_transform_feedback',                1, False),
+    Extension('VK_EXT_transform_feedback',                1, True),
     Extension('VK_EXT_vertex_attribute_divisor',          3, True),
     Extension('VK_EXT_ycbcr_image_arrays',                1, False),
     Extension('VK_GOOGLE_decorate_string',                1, True),
