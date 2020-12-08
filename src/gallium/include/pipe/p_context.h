@@ -517,6 +517,8 @@ struct pipe_context {
                               struct pipe_stream_output_target **targets,
                               const unsigned *offsets);
 
+   uint32_t (*stream_output_target_offset)(struct pipe_stream_output_target *target);
+
    /*@}*/
 
 
