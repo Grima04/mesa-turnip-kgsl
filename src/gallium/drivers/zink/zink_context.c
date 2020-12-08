@@ -1341,14 +1341,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       if (vkAllocateCommandBuffers(screen->dev, &cbai, &ctx->batches[i].cmdbuf) != VK_SUCCESS)
          goto fail;
 
-      ctx->batches[i].resources = _mesa_set_create(NULL, _mesa_hash_pointer,
-                                                   _mesa_key_pointer_equal);
-      ctx->batches[i].sampler_views = _mesa_set_create(NULL,
-                                                       _mesa_hash_pointer,
-                                                       _mesa_key_pointer_equal);
-      ctx->batches[i].programs = _mesa_set_create(NULL,
-                                                  _mesa_hash_pointer,
-                                                  _mesa_key_pointer_equal);
+      ctx->batches[i].resources = _mesa_pointer_set_create(NULL);
+      ctx->batches[i].sampler_views = _mesa_pointer_set_create(NULL);
+      ctx->batches[i].programs = _mesa_pointer_set_create(NULL);
 
       if (!ctx->batches[i].resources || !ctx->batches[i].sampler_views ||
           !ctx->batches[i].programs)
