@@ -29,7 +29,7 @@
 
 #include <dxguids/dxguids.h>
 
-#include <wrl.h>
+#include <wrl/client.h>
 using Microsoft::WRL::ComPtr;
 
 struct d3d12_root_signature {

@@ -45,7 +45,7 @@
 #include <dxguids/dxguids.h>
 
 #include <dxcapi.h>
-#include <wrl.h>
+#include <wrl/client.h>
 
 extern "C" {
 #include "tgsi/tgsi_parse.h"
