@@ -39,6 +39,7 @@ struct d3d12_fence {
    struct pipe_reference reference;
    ID3D12Fence *cmdqueue_fence;
    HANDLE event;
+   int event_fd;
    uint64_t value;
    bool signaled;
 };

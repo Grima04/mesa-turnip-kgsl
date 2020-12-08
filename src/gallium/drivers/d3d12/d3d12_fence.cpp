@@ -28,11 +28,58 @@
 
 #include "util/u_memory.h"
 
+#ifdef _WIN32
+static void
+close_event(HANDLE event, int fd)
+{
+   if (event)
+      CloseHandle(event);
+}
+
+static HANDLE
+create_event(int *fd)
+{
+   *fd = -1;
+   return CreateEvent(NULL, FALSE, FALSE, NULL);
+}
+
+static bool
+wait_event(HANDLE event, int event_fd, uint64_t timeout_ns)
+{
+   DWORD timeout_ms = (timeout_ns == PIPE_TIMEOUT_INFINITE) ? INFINITE : timeout_ns / 1000000;
+   return WaitForSingleObject(event, timeout_ms) == WAIT_OBJECT_0;
+}
+#else
+#include <sys/eventfd.h>
+#include <poll.h>
+#include <util/libsync.h>
+
+static void
+close_event(HANDLE event, int fd)
+{
+   if (fd != -1)
+      close(fd);
+}
+
+static HANDLE
+create_event(int *fd)
+{
+   *fd = eventfd(0, 0);
+   return (HANDLE)(size_t)*fd;
+}
+
+static bool
+wait_event(HANDLE event, int event_fd, uint64_t timeout_ns)
+{
+   int timeout_ms = (timeout_ns == PIPE_TIMEOUT_INFINITE) ? -1 : timeout_ns / 1000000;
+   return sync_wait(event_fd, timeout_ms);
+}
+#endif
+
 static void
 destroy_fence(struct d3d12_fence *fence)
 {
-   if (fence->event)
-      CloseHandle(fence->event);
+   close_event(fence->event, fence->event_fd);
    FREE(fence);
 }
 
@@ -47,7 +94,7 @@ d3d12_create_fence(struct d3d12_screen *screen, struct d3d12_context *ctx)
 
    ret->cmdqueue_fence = ctx->cmdqueue_fence;
    ret->value = ++ctx->fence_value;
-   ret->event = CreateEvent(NULL, FALSE, FALSE, NULL);
+   ret->event = create_event(&ret->event_fd);
    if (FAILED(ctx->cmdqueue_fence->SetEventOnCompletion(ret->value, ret->event)))
       goto fail;
    if (FAILED(screen->cmdqueue->Signal(ctx->cmdqueue_fence, ret->value)))
@@ -85,10 +132,8 @@ d3d12_fence_finish(struct d3d12_fence *fence, uint64_t timeout_ns)
       return true;
    
    bool complete = fence->cmdqueue_fence->GetCompletedValue() >= fence->value;
-   if (!complete && timeout_ns) {
-      DWORD timeout_ms = (timeout_ns == PIPE_TIMEOUT_INFINITE) ? INFINITE : timeout_ns / 1000000;
-      complete = WaitForSingleObject(fence->event, timeout_ms) == WAIT_OBJECT_0;
-   }
+   if (!complete && timeout_ns)
+      complete = wait_event(fence->event, fence->event_fd, timeout_ns);
 
    fence->signaled = complete;
    return complete;
