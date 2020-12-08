@@ -94,22 +94,22 @@ resolve_sampler_views(struct iris_context *ice,
    while (views) {
       const int i = u_bit_scan(&views);
       struct iris_sampler_view *isv = shs->textures[i];
-      struct iris_resource *res = isv->res;
 
-      if (res->base.target != PIPE_BUFFER) {
+      if (isv->res->base.target != PIPE_BUFFER) {
          if (consider_framebuffer) {
-            disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
-                                  res, isv->view.base_level, isv->view.levels,
+            disable_rb_aux_buffer(ice, draw_aux_buffer_disabled, isv->res,
+                                  isv->view.base_level, isv->view.levels,
                                   "for sampling");
          }
 
-         iris_resource_prepare_texture(ice, res, isv->view.format,
+         iris_resource_prepare_texture(ice, isv->res, isv->view.format,
                                        isv->view.base_level, isv->view.levels,
                                        isv->view.base_array_layer,
                                        isv->view.array_len);
       }
 
-      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
+      iris_emit_buffer_barrier_for(batch, isv->res->bo,
+                                   IRIS_DOMAIN_OTHER_READ);
    }
 }
 
