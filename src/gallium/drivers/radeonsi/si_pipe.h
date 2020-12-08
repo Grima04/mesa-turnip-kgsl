@@ -1385,7 +1385,7 @@ void si_init_compute_blit_functions(struct si_context *sctx);
    (SI_CPDMA_SKIP_CHECK_CS_SPACE | SI_CPDMA_SKIP_SYNC_AFTER | SI_CPDMA_SKIP_SYNC_BEFORE |          \
     SI_CPDMA_SKIP_GFX_SYNC | SI_CPDMA_SKIP_BO_LIST_UPDATE | SI_CPDMA_SKIP_TMZ)
 
-void si_cp_dma_wait_for_idle(struct si_context *sctx);
+void si_cp_dma_wait_for_idle(struct si_context *sctx, struct radeon_cmdbuf *cs);
 void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
                             struct pipe_resource *dst, uint64_t offset, uint64_t size,
                             unsigned value, unsigned user_flags, enum si_coherency coher,

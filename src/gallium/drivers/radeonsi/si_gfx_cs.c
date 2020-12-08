@@ -141,7 +141,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    /* Make sure CP DMA is idle at the end of IBs after L2 prefetches
     * because the kernel doesn't wait for it. */
    if (ctx->chip_class >= GFX7)
-      si_cp_dma_wait_for_idle(ctx);
+      si_cp_dma_wait_for_idle(ctx, &ctx->gfx_cs);
 
    /* Wait for draw calls to finish if needed. */
    if (wait_flags) {

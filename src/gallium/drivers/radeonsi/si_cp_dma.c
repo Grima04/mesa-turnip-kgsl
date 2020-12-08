@@ -132,7 +132,7 @@ static void si_emit_cp_dma(struct si_context *sctx, struct radeon_cmdbuf *cs, ui
    }
 }
 
-void si_cp_dma_wait_for_idle(struct si_context *sctx)
+void si_cp_dma_wait_for_idle(struct si_context *sctx, struct radeon_cmdbuf *cs)
 {
    /* Issue a dummy DMA that copies zero bytes.
     *
@@ -140,7 +140,7 @@ void si_cp_dma_wait_for_idle(struct si_context *sctx)
     * DMA request, however, the CP will see the sync flag and still wait
     * for all DMAs to complete.
     */
-   si_emit_cp_dma(sctx, &sctx->gfx_cs, 0, 0, 0, CP_DMA_SYNC, L2_BYPASS);
+   si_emit_cp_dma(sctx, cs, 0, 0, 0, CP_DMA_SYNC, L2_BYPASS);
 }
 
 static void si_cp_dma_prepare(struct si_context *sctx, struct pipe_resource *dst,
