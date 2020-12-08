@@ -111,8 +111,7 @@ d3d12_bo_new(ID3D12Device *dev, uint64_t size, uint64_t alignment)
                                                &res_desc,
                                                D3D12_RESOURCE_STATE_COMMON,
                                                NULL,
-                                               __uuidof(ID3D12Resource),
-                                               (void **)&res);
+                                               IID_PPV_ARGS(&res));
 
    if (FAILED(hres))
       return NULL;

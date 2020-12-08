@@ -633,8 +633,7 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
    }
 
    ID3D12SharingContract *sharing_contract;
-   if (SUCCEEDED(screen->cmdqueue->QueryInterface(__uuidof(sharing_contract),
-                                                  (void **)&sharing_contract)))
+   if (SUCCEEDED(screen->cmdqueue->QueryInterface(IID_PPV_ARGS(&sharing_contract))))
       sharing_contract->Present(d3d12_res, 0, WindowFromDC((HDC)winsys_drawable_handle));
 
    winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
@@ -659,7 +658,7 @@ get_debug_interface()
    }
 
    ID3D12Debug *debug;
-   if (FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug), (void **)&debug))) {
+   if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
       debug_printf("D3D12: D3D12GetDebugInterface failed\n");
       return NULL;
    }
@@ -681,7 +680,7 @@ enable_gpu_validation()
    ID3D12Debug *debug = get_debug_interface();
    ID3D12Debug3 *debug3;
    if (debug &&
-       SUCCEEDED(debug->QueryInterface(__uuidof(debug), (void **)&debug3)))
+       SUCCEEDED(debug->QueryInterface(IID_PPV_ARGS(&debug3))))
       debug3->SetEnableGPUBasedValidation(true);
 }
 
@@ -712,7 +711,7 @@ create_device(IUnknown *adapter)
 
    ID3D12Device *dev;
    if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
-                 __uuidof(ID3D12Device), (void **)&dev)))
+                 IID_PPV_ARGS(&dev))))
       return dev;
 
    debug_printf("D3D12: D3D12CreateDevice failed\n");
@@ -764,8 +763,7 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    }
 
    ID3D12InfoQueue *info_queue;
-   if (SUCCEEDED(screen->dev->QueryInterface(__uuidof(info_queue),
-                                             (void **)&info_queue))) {
+   if (SUCCEEDED(screen->dev->QueryInterface(IID_PPV_ARGS(&info_queue)))) {
       D3D12_MESSAGE_SEVERITY severities[] = {
          D3D12_MESSAGE_SEVERITY_INFO,
          D3D12_MESSAGE_SEVERITY_WARNING,
@@ -840,8 +838,7 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
    queue_desc.NodeMask = 0;
    if (FAILED(screen->dev->CreateCommandQueue(&queue_desc,
-                                              __uuidof(screen->cmdqueue),
-                                              (void **)&screen->cmdqueue)))
+                                              IID_PPV_ARGS(&screen->cmdqueue))))
       goto failed;
 
    UINT64 timestamp_freq;

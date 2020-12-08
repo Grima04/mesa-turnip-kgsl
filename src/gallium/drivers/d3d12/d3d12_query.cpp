@@ -138,8 +138,7 @@ d3d12_create_query(struct pipe_context *pctx,
    desc.Count = query->num_queries;
    desc.Type = d3d12_query_heap_type(query_type);
    if (FAILED(screen->dev->CreateQueryHeap(&desc,
-                                           __uuidof(query->query_heap),
-                                           (void **)&query->query_heap))) {
+                                           IID_PPV_ARGS(&query->query_heap)))) {
       FREE(query);
       return NULL;
    }

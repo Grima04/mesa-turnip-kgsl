@@ -68,16 +68,14 @@ choose_dxgi_adapter(IDXGIFactory4 *factory, LUID *adapter)
    IDXGIAdapter1 *ret;
    if (adapter) {
       if (SUCCEEDED(factory->EnumAdapterByLuid(*adapter,
-                                               __uuidof(IDXGIAdapter1),
-                                               (void**)&ret)))
+                                               IID_PPV_ARGS(&ret))))
          return ret;
       debug_printf("D3D12: requested adapter missing, falling back to auto-detection...\n");
    }
 
    bool want_warp = env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
    if (want_warp) {
-      if (SUCCEEDED(factory->EnumWarpAdapter(__uuidof(IDXGIAdapter1),
-                                             (void**)&ret)))
+      if (SUCCEEDED(factory->EnumWarpAdapter(IID_PPV_ARGS(&ret))))
          return ret;
       debug_printf("D3D12: failed to enum warp adapter\n");
       return NULL;

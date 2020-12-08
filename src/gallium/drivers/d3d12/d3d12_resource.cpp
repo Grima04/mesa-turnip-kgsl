@@ -217,8 +217,7 @@ init_texture(struct d3d12_screen *screen,
                                                    &desc,
                                                    D3D12_RESOURCE_STATE_COMMON,
                                                    NULL,
-                                                   __uuidof(ID3D12Resource),
-                                                   (void **)&d3d12_res);
+                                                   IID_PPV_ARGS(&d3d12_res));
    if (FAILED(hres))
       return false;
 

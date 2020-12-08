@@ -1945,8 +1945,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)GetProcAddress(hD3D12Mod, "D3D12SerializeVersionedRootSignature");
 
    if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE,
-                                       __uuidof(ctx->cmdqueue_fence),
-                                       (void **)&ctx->cmdqueue_fence))) {
+                                       IID_PPV_ARGS(&ctx->cmdqueue_fence)))) {
       FREE(ctx);
       return NULL;
    }
