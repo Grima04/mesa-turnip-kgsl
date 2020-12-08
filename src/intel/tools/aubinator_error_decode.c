@@ -762,18 +762,17 @@ open_error_state_file(const char *path)
       ret = asprintf(&filename, "%s/i915_error_state", path);
       assert(ret > 0);
       file = fopen(filename, "r");
+      free(filename);
       if (!file) {
          int minor;
-         free(filename);
          for (minor = 0; minor < 64; minor++) {
             ret = asprintf(&filename, "%s/%d/i915_error_state", path, minor);
             assert(ret > 0);
 
             file = fopen(filename, "r");
+            free(filename);
             if (file)
                break;
-
-            free(filename);
          }
       }
       if (!file) {
