@@ -675,7 +675,7 @@ get_stencil_resolve_fs(struct d3d12_context *ctx)
    tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0)); /* just use first sample */
    tex->src[2].src_type = nir_tex_src_texture_deref;
    tex->src[2].src = nir_src_for_ssa(tex_deref);
-   tex->dest_type = nir_type_uint;
+   tex->dest_type = nir_type_uint32;
    tex->is_array = false;
    tex->coord_components = 2;
 
