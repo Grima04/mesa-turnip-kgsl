@@ -2908,13 +2908,13 @@ VkResult radv_CreateDevice(
 		}
 
 		/* Default buffer size set to 1MB per SE. */
-		device->thread_trace_buffer_size =
+		device->thread_trace.buffer_size =
 			radv_get_int_debug_option("RADV_THREAD_TRACE_BUFFER_SIZE", 1024 * 1024);
-		device->thread_trace_start_frame = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
+		device->thread_trace.start_frame = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
 
 		const char *trigger_file = getenv("RADV_THREAD_TRACE_TRIGGER");
 		if (trigger_file)
-			device->thread_trace_trigger_file = strdup(trigger_file);
+			device->thread_trace.trigger_file = strdup(trigger_file);
 
 		if (!radv_thread_trace_init(device))
 			goto fail;
@@ -3013,7 +3013,7 @@ fail:
 	radv_bo_list_finish(&device->bo_list);
 
 	radv_thread_trace_finish(device);
-	free(device->thread_trace_trigger_file);
+	free(device->thread_trace.trigger_file);
 
 	radv_trap_handler_finish(device);
 
@@ -3073,7 +3073,7 @@ void radv_DestroyDevice(
 	u_cnd_monotonic_destroy(&device->timeline_cond);
 	radv_bo_list_finish(&device->bo_list);
 
-	free(device->thread_trace_trigger_file);
+	free(device->thread_trace.trigger_file);
 	radv_thread_trace_finish(device);
 
 	vk_free(&device->vk.alloc, device);

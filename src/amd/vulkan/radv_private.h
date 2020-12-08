@@ -67,6 +67,7 @@
 #include "radv_descriptor_set.h"
 #include "radv_extensions.h"
 #include "sid.h"
+#include "ac_sqtt.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -846,13 +847,7 @@ struct radv_device {
 	struct u_cnd_monotonic timeline_cond;
 
 	/* Thread trace. */
-	struct radeon_cmdbuf *thread_trace_start_cs[2];
-	struct radeon_cmdbuf *thread_trace_stop_cs[2];
-	struct radeon_winsys_bo *thread_trace_bo;
-	void *thread_trace_ptr;
-	uint32_t thread_trace_buffer_size;
-	int thread_trace_start_frame;
-	char *thread_trace_trigger_file;
+	struct ac_thread_trace_data thread_trace;
 
 	/* Trap handler. */
 	struct radv_shader_variant *trap_handler_shader;

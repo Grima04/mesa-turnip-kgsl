@@ -437,7 +437,7 @@ radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	struct rgp_sqtt_marker_cb_start marker = {0};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-	if (likely(!cmd_buffer->device->thread_trace_bo))
+	if (likely(!cmd_buffer->device->thread_trace.bo))
 		return;
 
 	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_CB_START;
@@ -462,7 +462,7 @@ radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	struct rgp_sqtt_marker_cb_end marker = {0};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-	if (likely(!cmd_buffer->device->thread_trace_bo))
+	if (likely(!cmd_buffer->device->thread_trace.bo))
 		return;
 
 	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_CB_END;
@@ -476,7 +476,7 @@ radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 void
 radv_describe_draw(struct radv_cmd_buffer *cmd_buffer)
 {
-	if (likely(!cmd_buffer->device->thread_trace_bo))
+	if (likely(!cmd_buffer->device->thread_trace.bo))
 		return;
 
 	radv_write_event_marker(cmd_buffer, cmd_buffer->state.current_event_type,
@@ -486,7 +486,7 @@ radv_describe_draw(struct radv_cmd_buffer *cmd_buffer)
 void
 radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, int x, int y, int z)
 {
-	if (likely(!cmd_buffer->device->thread_trace_bo))
+	if (likely(!cmd_buffer->device->thread_trace.bo))
 		return;
 
 	radv_write_event_with_dims_marker(cmd_buffer,
@@ -514,7 +514,7 @@ radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer)
 	struct rgp_sqtt_marker_barrier_end marker = {0};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-	if (likely(!cmd_buffer->device->thread_trace_bo) ||
+	if (likely(!cmd_buffer->device->thread_trace.bo) ||
 	    !cmd_buffer->state.pending_sqtt_barrier_end)
 		return;
 
@@ -571,7 +571,7 @@ radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer,
 	struct rgp_sqtt_marker_barrier_start marker = {0};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-	if (likely(!cmd_buffer->device->thread_trace_bo))
+	if (likely(!cmd_buffer->device->thread_trace.bo))
 		return;
 
 	radv_describe_barrier_end_delayed(cmd_buffer);
@@ -597,7 +597,7 @@ radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 	struct rgp_sqtt_marker_layout_transition marker = {0};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-	if (likely(!cmd_buffer->device->thread_trace_bo))
+	if (likely(!cmd_buffer->device->thread_trace.bo))
 		return;
 
 	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_LAYOUT_TRANSITION;
@@ -635,11 +635,11 @@ radv_handle_thread_trace(VkQueue _queue)
 		if (radv_get_thread_trace(queue, &thread_trace))
 			radv_dump_thread_trace(queue->device, &thread_trace);
 	} else {
-		bool frame_trigger = num_frames == queue->device->thread_trace_start_frame;
+		bool frame_trigger = num_frames == queue->device->thread_trace.start_frame;
 		bool file_trigger = false;
-		if (queue->device->thread_trace_trigger_file &&
-		    access(queue->device->thread_trace_trigger_file, W_OK) == 0) {
-			if (unlink(queue->device->thread_trace_trigger_file) == 0) {
+		if (queue->device->thread_trace.trigger_file &&
+		    access(queue->device->thread_trace.trigger_file, W_OK) == 0) {
+			if (unlink(queue->device->thread_trace.trigger_file) == 0) {
 				file_trigger = true;
 			} else {
 				/* Do not enable tracing if we cannot remove the file,

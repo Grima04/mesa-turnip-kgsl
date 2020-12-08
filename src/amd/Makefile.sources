@@ -51,7 +51,8 @@ AMD_COMMON_FILES = \
 	common/ac_shader_util.c \
 	common/ac_shader_util.h \
 	common/ac_shadowed_regs.c \
-	common/ac_shadowed_regs.h
+	common/ac_shadowed_regs.h \
+	common/ac_sqtt.h
 
 AMD_COMMON_LLVM_FILES = \
 	llvm/ac_llvm_build.c \
