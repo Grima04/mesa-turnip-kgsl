@@ -31,6 +31,8 @@
 #include "util/u_memory.h"
 #include "util/u_prim.h"
 
+#include <dxguids/dxguids.h>
+
 struct d3d12_pso_entry {
    struct d3d12_gfx_pipeline_state key;
    ID3D12PipelineState *pso;

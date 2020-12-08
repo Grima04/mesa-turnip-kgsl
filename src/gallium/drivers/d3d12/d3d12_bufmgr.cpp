@@ -34,6 +34,7 @@
 #include "util/u_memory.h"
 
 #include <directx/d3d12.h>
+#include <dxguids/dxguids.h>
 
 struct d3d12_bufmgr {
    struct pb_manager base;

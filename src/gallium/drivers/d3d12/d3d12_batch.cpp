@@ -33,6 +33,8 @@
 #include "util/set.h"
 #include "util/u_inlines.h"
 
+#include <dxguids/dxguids.h>
+
 bool
 d3d12_init_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
 {

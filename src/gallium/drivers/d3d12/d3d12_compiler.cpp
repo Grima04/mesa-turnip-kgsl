@@ -42,6 +42,8 @@
 #include "util/u_simple_shaders.h"
 
 #include <directx/d3d12.h>
+#include <dxguids/dxguids.h>
+
 #include <dxcapi.h>
 #include <wrl.h>
 

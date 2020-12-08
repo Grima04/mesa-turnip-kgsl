@@ -27,6 +27,8 @@
 
 #include "util/u_memory.h"
 
+#include <dxguids/dxguids.h>
+
 #include <wrl.h>
 using Microsoft::WRL::ComPtr;
 

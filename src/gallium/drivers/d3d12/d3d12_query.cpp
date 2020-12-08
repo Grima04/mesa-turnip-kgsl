@@ -30,6 +30,8 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 
+#include <dxguids/dxguids.h>
+
 struct d3d12_query {
    enum pipe_query_type type;
 

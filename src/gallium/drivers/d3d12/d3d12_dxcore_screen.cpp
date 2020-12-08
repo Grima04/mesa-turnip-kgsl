@@ -28,6 +28,7 @@
 #include "util/u_memory.h"
 
 #include <directx/dxcore.h>
+#include <dxguids/dxguids.h>
 
 static IDXCoreAdapterFactory *
 get_dxcore_factory()

@@ -45,6 +45,8 @@
 
 #include "D3D12ResourceState.h"
 
+#include <dxguids/dxguids.h>
+
 extern "C" {
 #include "indices/u_primconvert.h"
 }
