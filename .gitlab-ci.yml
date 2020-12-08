@@ -410,12 +410,12 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &armhf_test "2020-12-03-expect"
+    MESA_IMAGE_TAG: &armhf_test "2020-12-03-expect"
 
 .use-armhf_test:
   variables:
     TAG: *armhf_test
-  image: "$CI_REGISTRY_IMAGE/debian/armhf_test:$TAG"
+  image: "$CI_REGISTRY_IMAGE/debian/armhf_test:${TAG}-${MESA_TEMPLATES_COMMIT}"
   needs:
     - armhf_test
 
