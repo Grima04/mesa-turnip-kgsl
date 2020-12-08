@@ -142,9 +142,9 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
         };
 
         nir_alu_type nir_types[PAN_BLIT_NUM_TYPES] = {
-                nir_type_float,
-                nir_type_uint,
-                nir_type_int
+                nir_type_float32,
+                nir_type_uint32,
+                nir_type_int32
         };
 
         /* Total size = # of shaders * bytes per shader. There are
