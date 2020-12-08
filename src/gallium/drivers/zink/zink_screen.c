@@ -925,6 +925,24 @@ check_device_needs_mesa_wsi(struct zink_screen *screen)
    }
 }
 
+static uint32_t
+zink_get_loader_version(void)
+{
+
+   uint32_t loader_version = VK_API_VERSION_1_0;
+
+   // Get the Loader version
+   GET_PROC_ADDR_INSTANCE_LOCAL(NULL, EnumerateInstanceVersion);
+   if (vk_EnumerateInstanceVersion) {
+      uint32_t loader_version_temp = VK_API_VERSION_1_0;
+      if (VK_SUCCESS == (*vk_EnumerateInstanceVersion)(&loader_version_temp)) {
+         loader_version = loader_version_temp;
+      }
+   }
+
+   return loader_version;
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
@@ -934,6 +952,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_debug = debug_get_option_zink_debug();
 
+   screen->loader_version = zink_get_loader_version();
    screen->instance = zink_create_instance(screen);
    if (!screen->instance)
       goto fail;

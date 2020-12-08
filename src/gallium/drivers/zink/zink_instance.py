@@ -87,18 +87,6 @@ zink_create_instance(struct zink_screen *screen)
    bool have_moltenvk = false;
 #endif
 
-   screen->loader_version = VK_API_VERSION_1_0;
-   {
-      // Get the Loader version
-      GET_PROC_ADDR_INSTANCE_LOCAL(NULL, EnumerateInstanceVersion);
-      if (vk_EnumerateInstanceVersion) {
-         uint32_t loader_version_temp = VK_API_VERSION_1_0;
-         if (VK_SUCCESS == (*vk_EnumerateInstanceVersion)(&loader_version_temp)) {
-            screen->loader_version = loader_version_temp;
-         }
-      }
-   }
-
    // Build up the extensions from the reported ones but only for the unnamed layer
    uint32_t extension_count = 0;
    if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL) == VK_SUCCESS) {
