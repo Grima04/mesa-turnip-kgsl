@@ -86,7 +86,7 @@ d3d12_fence_finish(struct d3d12_fence *fence, uint64_t timeout_ns)
    
    bool complete = fence->cmdqueue_fence->GetCompletedValue() >= fence->value;
    if (!complete && timeout_ns) {
-      DWORD timeout_ms = (timeout_ns == PIPE_TIMEOUT_INFINITE) ? INFINITE : timeout_ns * 1000;
+      DWORD timeout_ms = (timeout_ns == PIPE_TIMEOUT_INFINITE) ? INFINITE : timeout_ns / 1000000;
       complete = WaitForSingleObject(fence->event, timeout_ms) == WAIT_OBJECT_0;
    }
 
