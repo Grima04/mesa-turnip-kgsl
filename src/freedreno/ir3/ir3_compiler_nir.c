@@ -2050,18 +2050,22 @@ get_tex_dest_type(nir_tex_instr *tex)
 {
 	type_t type;
 
-	switch (nir_alu_type_get_base_type(tex->dest_type)) {
+	switch (tex->dest_type) {
+	case nir_type_float32:
+		return TYPE_F32;
+	case nir_type_float16:
+		return TYPE_F16;
+	case nir_type_int32:
+		return TYPE_S32;
+	case nir_type_int16:
+		return TYPE_S16;
+	case nir_type_bool32:
+	case nir_type_uint32:
+		return TYPE_U32;
+	case nir_type_bool16:
+	case nir_type_uint16:
+		return TYPE_U16;
 	case nir_type_invalid:
-	case nir_type_float:
-		type = nir_dest_bit_size(tex->dest) == 16 ? TYPE_F16 : TYPE_F32;
-		break;
-	case nir_type_int:
-		type = nir_dest_bit_size(tex->dest) == 16 ? TYPE_S16 : TYPE_S32;
-		break;
-	case nir_type_uint:
-	case nir_type_bool:
-		type = nir_dest_bit_size(tex->dest) == 16 ? TYPE_U16 : TYPE_U32;
-		break;
 	default:
 		unreachable("bad dest_type");
 	}
@@ -2522,7 +2526,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	if (opc == OPC_GETLOD) {
 		struct ir3_instruction *factor = create_immed(b, fui(1.0 / 256));
 
-		compile_assert(ctx, nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
+		compile_assert(ctx, tex->dest_type == nir_type_float32);
 		for (i = 0; i < 2; i++) {
 			dst[i] = ir3_MUL_F(b, ir3_COV(b, dst[i], TYPE_S32, TYPE_F32), 0,
 							   factor, 0);
