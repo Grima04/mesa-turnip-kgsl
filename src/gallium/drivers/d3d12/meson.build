@@ -27,6 +27,7 @@ files_libd3d12 = files(
   'd3d12_context.cpp',
   'd3d12_descriptor_pool.cpp',
   'd3d12_draw.cpp',
+  'd3d12_dxgi_screen.cpp',
   'd3d12_fence.cpp',
   'd3d12_format.c',
   'd3d12_gs_variant.cpp',

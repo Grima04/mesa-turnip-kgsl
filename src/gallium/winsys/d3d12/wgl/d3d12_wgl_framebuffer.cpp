@@ -71,7 +71,7 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
                              pipe_resource *templ)
 {
    struct d3d12_wgl_framebuffer *framebuffer = d3d12_wgl_framebuffer(fb);
-   struct d3d12_screen *screen = framebuffer->screen;
+   struct d3d12_dxgi_screen *screen = d3d12_dxgi_screen(framebuffer->screen);
 
    DXGI_SWAP_CHAIN_DESC1 desc = {};
    desc.BufferCount = 2;
@@ -88,7 +88,7 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
    if (!framebuffer->swapchain) {
       ComPtr<IDXGISwapChain1> swapchain1;
       if (FAILED(screen->factory->CreateSwapChainForHwnd(
-         screen->cmdqueue,
+         screen->base.cmdqueue,
          framebuffer->window,
          &desc,
          nullptr,

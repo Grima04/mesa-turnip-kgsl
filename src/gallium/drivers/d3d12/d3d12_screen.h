@@ -30,7 +30,6 @@
 
 #define D3D12_IGNORE_SDK_LAYERS
 #include <directx/d3d12.h>
-#include <dxgi1_4.h>
 
 struct pb_manager;
 
@@ -38,8 +37,6 @@ struct d3d12_screen {
    struct pipe_screen base;
    struct sw_winsys *winsys;
 
-   IDXGIFactory4 *factory;
-   IDXGIAdapter1 *adapter;
    ID3D12Device *dev;
    ID3D12CommandQueue *cmdqueue;
 
@@ -57,7 +54,8 @@ struct d3d12_screen {
    D3D12_FEATURE_DATA_D3D12_OPTIONS4 opts4;
 
    /* description */
-   DXGI_ADAPTER_DESC1 adapter_desc;
+   uint32_t vendor_id;
+   uint64_t memory_size_megabytes;
    double timestamp_multiplier;
    bool have_load_at_vertex;
 };
@@ -67,5 +65,22 @@ d3d12_screen(struct pipe_screen *pipe)
 {
    return (struct d3d12_screen *)pipe;
 }
+
+struct d3d12_dxgi_screen {
+   struct d3d12_screen base;
+
+   struct IDXGIFactory4 *factory;
+   struct IDXGIAdapter1 *adapter;
+   wchar_t description[128];
+};
+
+static inline struct d3d12_dxgi_screen *
+d3d12_dxgi_screen(struct d3d12_screen *screen)
+{
+   return (struct d3d12_dxgi_screen *)screen;
+}
+
+bool
+d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknown *adapter);
 
 #endif

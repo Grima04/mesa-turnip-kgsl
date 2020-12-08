@@ -29,7 +29,6 @@
 #include "d3d12_debug.h"
 #include "d3d12_fence.h"
 #include "d3d12_format.h"
-#include "d3d12_public.h"
 #include "d3d12_resource.h"
 #include "d3d12_nir_passes.h"
 
@@ -42,7 +41,6 @@
 #include "nir.h"
 #include "frontend/sw_winsys.h"
 
-#include <dxgi1_4.h>
 #include <directx/d3d12sdklayers.h>
 
 static const struct debug_named_value
@@ -81,7 +79,7 @@ d3d12_get_device_vendor(struct pipe_screen *pscreen)
 {
    struct d3d12_screen* screen = d3d12_screen(pscreen);
 
-   switch (screen->adapter_desc.VendorId) {
+   switch (screen->vendor_id) {
    case HW_VENDOR_MICROSOFT:
       return "Microsoft";
    case HW_VENDOR_AMD:
@@ -95,29 +93,12 @@ d3d12_get_device_vendor(struct pipe_screen *pscreen)
    }
 }
 
-static const char *
-d3d12_get_name(struct pipe_screen *pscreen)
-{
-   struct d3d12_screen* screen = d3d12_screen(pscreen);
-
-   if (screen->adapter_desc.Description[0] == '\0')
-      return "D3D12 (Unknown)";
-
-   static char buf[1000];
-   snprintf(buf, sizeof(buf), "D3D12 (%S)", screen->adapter_desc.Description);
-   return buf;
-}
-
 static int
 d3d12_get_video_mem(struct pipe_screen *pscreen)
 {
    struct d3d12_screen* screen = d3d12_screen(pscreen);
 
-   // Note: memory sizes in bytes, but stored in size_t, so may be capped at 4GB.
-   // In that case, adding before conversion to MB can easily overflow.
-   return (screen->adapter_desc.DedicatedVideoMemory >> 20) +
-          (screen->adapter_desc.DedicatedSystemMemory >> 20) +
-          (screen->adapter_desc.SharedSystemMemory >> 20);
+   return screen->memory_size_megabytes;
 }
 
 static int
@@ -702,69 +683,8 @@ enable_gpu_validation()
       debug3->SetEnableGPUBasedValidation(true);
 }
 
-static IDXGIFactory4 *
-get_dxgi_factory()
-{
-   static const GUID IID_IDXGIFactory4 = {
-      0x1bc6ea02, 0xef36, 0x464f,
-      { 0xbf, 0x0c, 0x21, 0xca, 0x39, 0xe5, 0x16, 0x8a }
-   };
-
-   typedef HRESULT(WINAPI *PFN_CREATE_DXGI_FACTORY)(REFIID riid, void **ppFactory);
-   PFN_CREATE_DXGI_FACTORY CreateDXGIFactory;
-
-   HMODULE hDXGIMod = LoadLibrary("DXGI.DLL");
-   if (!hDXGIMod) {
-      debug_printf("D3D12: failed to load DXGI.DLL\n");
-      return NULL;
-   }
-
-   CreateDXGIFactory = (PFN_CREATE_DXGI_FACTORY)GetProcAddress(hDXGIMod, "CreateDXGIFactory");
-   if (!CreateDXGIFactory) {
-      debug_printf("D3D12: failed to load CreateDXGIFactory from DXGI.DLL\n");
-      return NULL;
-   }
-
-   IDXGIFactory4 *factory = NULL;
-   HRESULT hr = CreateDXGIFactory(IID_IDXGIFactory4, (void **)&factory);
-   if (FAILED(hr)) {
-      debug_printf("D3D12: CreateDXGIFactory failed: %08x\n", hr);
-      return NULL;
-   }
-
-   return factory;
-}
-
-static IDXGIAdapter1 *
-choose_adapter(IDXGIFactory4 *factory, LUID *adapter)
-{
-   IDXGIAdapter1 *ret;
-   if (adapter) {
-      if (SUCCEEDED(factory->EnumAdapterByLuid(*adapter,
-                                               __uuidof(IDXGIAdapter1),
-                                               (void**)&ret)))
-         return ret;
-      debug_printf("D3D12: requested adapter missing, falling back to auto-detection...\n");
-   }
-
-   bool want_warp = env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
-   if (want_warp) {
-      if (SUCCEEDED(factory->EnumWarpAdapter(__uuidof(IDXGIAdapter1),
-                                             (void**)&ret)))
-         return ret;
-      debug_printf("D3D12: failed to enum warp adapter\n");
-      return NULL;
-   }
-
-   // The first adapter is the default
-   if (SUCCEEDED(factory->EnumAdapters1(0, &ret)))
-      return ret;
-
-   return NULL;
-}
-
 static ID3D12Device *
-create_device(IDXGIAdapter1 *adapter)
+create_device(IUnknown *adapter)
 {
    typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
    typedef HRESULT(WINAPI *PFN_D3D12ENABLEEXPERIMENTALFEATURES)(UINT, const IID*, void*, UINT*);
@@ -800,7 +720,7 @@ create_device(IDXGIAdapter1 *adapter)
 static bool
 can_attribute_at_vertex(struct d3d12_screen *screen)
 {
-   switch (screen->adapter_desc.VendorId)  {
+   switch (screen->vendor_id)  {
    case HW_VENDOR_MICROSOFT:
       return true;
    default:
@@ -808,18 +728,13 @@ can_attribute_at_vertex(struct d3d12_screen *screen)
    }
 }
 
-struct pipe_screen *
-d3d12_create_screen(struct sw_winsys *winsys, LUID *adapter_luid)
+bool
+d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknown *adapter)
 {
-   struct d3d12_screen *screen = CALLOC_STRUCT(d3d12_screen);
-   if (!screen)
-      return NULL;
-
    d3d12_debug = debug_get_option_d3d12_debug();
 
    screen->winsys = winsys;
 
-   screen->base.get_name = d3d12_get_name;
    screen->base.get_vendor = d3d12_get_vendor;
    screen->base.get_device_vendor = d3d12_get_device_vendor;
    screen->base.get_param = d3d12_get_param;
@@ -839,24 +754,8 @@ d3d12_create_screen(struct sw_winsys *winsys, LUID *adapter_luid)
    if (d3d12_debug & D3D12_DEBUG_GPU_VALIDATOR)
       enable_gpu_validation();
 
-   screen->factory = get_dxgi_factory();
-   if (!screen->factory) {
-      debug_printf("D3D12: failed to create DXGI factory\n");
-      goto failed;
-   }
+   screen->dev = create_device(adapter);
 
-   screen->adapter = choose_adapter(screen->factory, adapter_luid);
-   if (!screen->adapter) {
-      debug_printf("D3D12: no suitable adapter\n");
-      return NULL;
-   }
-
-   if (FAILED(screen->adapter->GetDesc1(&screen->adapter_desc))) {
-      debug_printf("D3D12: failed to retrieve adapter description\n");
-      return NULL;
-   }
-
-   screen->dev = create_device(screen->adapter);
    if (!screen->dev) {
       debug_printf("D3D12: failed to create device\n");
       goto failed;
@@ -963,9 +862,8 @@ d3d12_create_screen(struct sw_winsys *winsys, LUID *adapter_luid)
                                                       &desc);
 
    screen->have_load_at_vertex = can_attribute_at_vertex(screen);
-   return &screen->base;
+   return true;
 
 failed:
-   FREE(screen);
-   return NULL;
+   return false;
 }
