@@ -2613,22 +2613,22 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    case SpvOpImageQuerySizeLod:
    case SpvOpImageQuerySize:
       texop = nir_texop_txs;
-      dest_type = nir_type_int;
+      dest_type = nir_type_int32;
       break;
 
    case SpvOpImageQueryLod:
       texop = nir_texop_lod;
-      dest_type = nir_type_float;
+      dest_type = nir_type_float32;
       break;
 
    case SpvOpImageQueryLevels:
       texop = nir_texop_query_levels;
-      dest_type = nir_type_int;
+      dest_type = nir_type_int32;
       break;
 
    case SpvOpImageQuerySamples:
       texop = nir_texop_texture_samples;
-      dest_type = nir_type_int;
+      dest_type = nir_type_int32;
       break;
 
    case SpvOpFragmentFetchAMD:
@@ -2637,7 +2637,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpFragmentMaskFetchAMD:
       texop = nir_texop_fragment_mask_fetch;
-      dest_type = nir_type_uint;
+      dest_type = nir_type_uint32;
       break;
 
    default:
@@ -2941,14 +2941,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       vtn_fail_if(sampler_base != ret_base && sampler_base != GLSL_TYPE_VOID,
                   "SPIR-V return type mismatches image type. This is only valid "
                   "for untyped images (OpenCL).");
-      switch (ret_base) {
-      case GLSL_TYPE_FLOAT:   dest_type = nir_type_float;   break;
-      case GLSL_TYPE_INT:     dest_type = nir_type_int;     break;
-      case GLSL_TYPE_UINT:    dest_type = nir_type_uint;    break;
-      case GLSL_TYPE_BOOL:    dest_type = nir_type_bool;    break;
-      default:
-         vtn_fail("Invalid base type for sampler result");
-      }
+      dest_type = nir_get_nir_type_for_glsl_base_type(ret_base);
    }
 
    instr->dest_type = dest_type;
