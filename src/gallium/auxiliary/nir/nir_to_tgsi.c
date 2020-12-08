@@ -2041,12 +2041,15 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
 
    enum tgsi_return_type tex_type;
    switch (instr->dest_type) {
+   case nir_type_float32:
    case nir_type_float:
       tex_type = TGSI_RETURN_TYPE_FLOAT;
       break;
+   case nir_type_int32:
    case nir_type_int:
       tex_type = TGSI_RETURN_TYPE_SINT;
       break;
+   case nir_type_uint32:
    case nir_type_uint:
       tex_type = TGSI_RETURN_TYPE_UINT;
       break;
