@@ -1785,10 +1785,8 @@ bi_is_simple_tex(nir_tex_instr *instr)
         if (instr->op != nir_texop_tex && instr->op != nir_texop_txl)
                 return false;
 
-        nir_alu_type base = nir_alu_type_get_base_type(instr->dest_type);
-        unsigned sz = nir_dest_bit_size(instr->dest);
-
-        if (!(base == nir_type_float && (sz == 16 || sz == 32)))
+        if (instr->dest_type != nir_type_float32 &&
+            instr->dest_type != nir_type_float16)
                 return false;
 
         if (instr->is_shadow || instr->is_array)

@@ -2118,7 +2118,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         int sampler_index = texture_index;
 
         nir_alu_type dest_base = nir_alu_type_get_base_type(instr->dest_type);
-        nir_alu_type dest_type = dest_base | nir_dest_bit_size(*dest);
 
         /* texture instructions support float outmods */
         unsigned outmod = midgard_outmod_none;
@@ -2131,7 +2130,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 .mask = 0xF,
                 .dest = nir_dest_index(dest),
                 .src = { ~0, ~0, ~0, ~0 },
-                .dest_type = dest_type,
+                .dest_type = instr->dest_type,
                 .swizzle = SWIZZLE_IDENTITY_4,
                 .outmod = outmod,
                 .op = midgard_texop,
