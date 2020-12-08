@@ -52,6 +52,7 @@ bifrost_gen_disasm_c = custom_target(
   output : 'bifrost_gen_disasm.c',
   command : [prog_python, '@INPUT@'],
   capture : true,
+  depend_files : files('bifrost_isa.py'),
 )
 
 bi_generated_pack_h = custom_target(
@@ -60,6 +61,7 @@ bi_generated_pack_h = custom_target(
   output : 'bi_generated_pack.h',
   command : [prog_python, '@INPUT@'],
   capture : true,
+  depend_files : files('bifrost_isa.py'),
 )
 
 idep_bi_generated_pack_h = declare_dependency(
