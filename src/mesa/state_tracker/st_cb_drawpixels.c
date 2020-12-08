@@ -167,7 +167,7 @@ make_drawpix_z_stencil_program_nir(struct st_context *st,
                              "gl_FragDepth");
       out->data.location = FRAG_RESULT_DEPTH;
       nir_ssa_def *depth = sample_via_nir(&b, texcoord, "depth", 0,
-                                          GLSL_TYPE_FLOAT, nir_type_float);
+                                          GLSL_TYPE_FLOAT, nir_type_float32);
       nir_store_var(&b, out, depth, 0x1);
 
       /* Also copy color */
@@ -189,7 +189,7 @@ make_drawpix_z_stencil_program_nir(struct st_context *st,
                              "gl_FragStencilRefARB");
       out->data.location = FRAG_RESULT_STENCIL;
       nir_ssa_def *stencil = sample_via_nir(&b, texcoord, "stencil", 1,
-                                            GLSL_TYPE_UINT, nir_type_uint);
+                                            GLSL_TYPE_UINT, nir_type_uint32);
       nir_store_var(&b, out, stencil, 0x1);
    }
 
@@ -213,9 +213,9 @@ make_drawpix_zs_to_color_program_nir(struct st_context *st,
 
    /* Sample depth and stencil */
    nir_ssa_def *depth = sample_via_nir(&b, texcoord, "depth", 0,
-                                       GLSL_TYPE_FLOAT, nir_type_float);
+                                       GLSL_TYPE_FLOAT, nir_type_float32);
    nir_ssa_def *stencil = sample_via_nir(&b, texcoord, "stencil", 1,
-                                         GLSL_TYPE_UINT, nir_type_uint);
+                                         GLSL_TYPE_UINT, nir_type_uint32);
 
    /* Create the variable to store the output color */
    nir_variable *color_out =
