@@ -1316,11 +1316,13 @@ compute_builtin_arg(nir_op op)
 }
 
 static void
-emit_fragment_store(compiler_context *ctx, unsigned src, unsigned src_z, unsigned src_s, enum midgard_rt_id rt)
+emit_fragment_store(compiler_context *ctx, unsigned src, unsigned src_z, unsigned src_s,
+                    enum midgard_rt_id rt, unsigned sample_iter)
 {
         assert(rt < ARRAY_SIZE(ctx->writeout_branch));
+        assert(sample_iter < ARRAY_SIZE(ctx->writeout_branch[0]));
 
-        midgard_instruction *br = ctx->writeout_branch[rt];
+        midgard_instruction *br = ctx->writeout_branch[rt][sample_iter];
 
         assert(!br);
 
@@ -1336,7 +1338,12 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned src_z, unsigne
         /* Add dependencies */
         ins.src[0] = src;
         ins.src_types[0] = nir_type_uint32;
-        ins.constants.u32[0] = depth_only ? 0xFF : (rt - MIDGARD_COLOR_RT0) * 0x100;
+
+        if (depth_only)
+                ins.constants.u32[0] = 0xFF;
+        else
+                ins.constants.u32[0] = ((rt - MIDGARD_COLOR_RT0) << 8) | sample_iter;
+
         for (int i = 0; i < 4; ++i)
                 ins.swizzle[0][i] = i;
 
@@ -1356,7 +1363,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned src_z, unsigne
         /* Emit the branch */
         br = emit_mir_instruction(ctx, ins);
         schedule_barrier(ctx);
-        ctx->writeout_branch[rt] = br;
+        ctx->writeout_branch[rt][sample_iter] = br;
 
         /* Push our current location = current block count - 1 = where we'll
          * jump to. Maybe a bit too clever for my own good */
@@ -1693,7 +1700,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                         reg_s = nir_src_index(ctx, &instr->src[3]);
                         }
 
-                        emit_fragment_store(ctx, reg, reg_z, reg_s, rt);
+                        emit_fragment_store(ctx, reg, reg_z, reg_s, rt, 0);
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
                         assert(instr->intrinsic == nir_intrinsic_store_output);
 
@@ -1757,7 +1764,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_store_raw_output_pan:
                 assert (ctx->stage == MESA_SHADER_FRAGMENT);
                 reg = nir_src_index(ctx, &instr->src[0]);
-                emit_fragment_store(ctx, reg, ~0, ~0, ctx->blend_rt);
+                for (unsigned s = 0; s < ctx->blend_sample_iterations; s++)
+                        emit_fragment_store(ctx, reg, ~0, ~0, ctx->blend_rt, s);
                 break;
 
         case nir_intrinsic_store_global:
@@ -2451,10 +2459,10 @@ midgard_legalize_invert(compiler_context *ctx, midgard_block *block)
 }
 
 static unsigned
-emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
+emit_fragment_epilogue(compiler_context *ctx, unsigned rt, unsigned sample_iter)
 {
         /* Loop to ourselves */
-        midgard_instruction *br = ctx->writeout_branch[rt];
+        midgard_instruction *br = ctx->writeout_branch[rt][sample_iter];
         struct midgard_instruction ins = v_branch(false, false);
         ins.writeout = br->writeout;
         ins.branch.target_block = ctx->block_count - 1;
@@ -2683,27 +2691,38 @@ static void
 mir_add_writeout_loops(compiler_context *ctx)
 {
         for (unsigned rt = 0; rt < ARRAY_SIZE(ctx->writeout_branch); ++rt) {
-                midgard_instruction *br = ctx->writeout_branch[rt];
-                if (!br) continue;
+                for (unsigned s = 0; s < MIDGARD_MAX_SAMPLE_ITER; ++s) {
+                        midgard_instruction *br = ctx->writeout_branch[rt][s];
+                        if (!br) continue;
 
-                unsigned popped = br->branch.target_block;
-                pan_block_add_successor(&(mir_get_block(ctx, popped - 1)->base), &ctx->current_block->base);
-                br->branch.target_block = emit_fragment_epilogue(ctx, rt);
-                br->branch.target_type = TARGET_GOTO;
+                        unsigned popped = br->branch.target_block;
+                        pan_block_add_successor(&(mir_get_block(ctx, popped - 1)->base),
+                                                &ctx->current_block->base);
+                        br->branch.target_block = emit_fragment_epilogue(ctx, rt, s);
+                        br->branch.target_type = TARGET_GOTO;
 
-                /* If we have more RTs, we'll need to restore back after our
-                 * loop terminates */
+                        /* If we have more RTs, we'll need to restore back after our
+                         * loop terminates */
+                        midgard_instruction *next_br = NULL;
 
-                if ((rt + 1) < ARRAY_SIZE(ctx->writeout_branch) && ctx->writeout_branch[rt + 1]) {
-                        midgard_instruction uncond = v_branch(false, false);
-                        uncond.branch.target_block = popped;
-                        uncond.branch.target_type = TARGET_GOTO;
-                        emit_mir_instruction(ctx, uncond);
-                        pan_block_add_successor(&ctx->current_block->base, &(mir_get_block(ctx, popped)->base));
-                        schedule_barrier(ctx);
-                } else {
-                        /* We're last, so we can terminate here */
-                        br->last_writeout = true;
+                        if ((s + 1) < MIDGARD_MAX_SAMPLE_ITER)
+                                next_br = ctx->writeout_branch[rt][s + 1];
+
+                        if (!next_br && (rt + 1) < ARRAY_SIZE(ctx->writeout_branch))
+			        next_br = ctx->writeout_branch[rt + 1][0];
+
+                        if (next_br) {
+                                midgard_instruction uncond = v_branch(false, false);
+                                uncond.branch.target_block = popped;
+                                uncond.branch.target_type = TARGET_GOTO;
+                                emit_mir_instruction(ctx, uncond);
+                                pan_block_add_successor(&ctx->current_block->base,
+                                                        &(mir_get_block(ctx, popped)->base));
+                                schedule_barrier(ctx);
+                        } else {
+                                /* We're last, so we can terminate here */
+                                br->last_writeout = true;
+                        }
                 }
         }
 }
@@ -2725,6 +2744,15 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         ctx->stage = nir->info.stage;
         ctx->is_blend = inputs->is_blend;
         ctx->blend_rt = MIDGARD_COLOR_RT0 + inputs->blend.rt;
+        if (inputs->is_blend) {
+                unsigned nr_samples = MAX2(inputs->blend.nr_samples, 1);
+                const struct util_format_description *desc =
+                        util_format_description(inputs->rt_formats[inputs->blend.rt]);
+
+                /* We have to split writeout in 128 bit chunks */
+                ctx->blend_sample_iterations =
+                        DIV_ROUND_UP(desc->block.bits * nr_samples, 128);
+        }
         memcpy(ctx->blend_constants, inputs->blend.constants, sizeof(ctx->blend_constants));
         ctx->blend_input = ~0;
         ctx->blend_src1 = ~0;
