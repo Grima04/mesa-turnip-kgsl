@@ -132,6 +132,8 @@ static const char *array_mode_to_string(struct si_screen *sscreen, struct radeon
          return "64KB_S_X";
       case 26:
          return "64KB_D_X";
+      case 27:
+         return "64KB_R_X";
       default:
          printf("Unhandled swizzle mode = %u\n", surf->u.gfx9.surf.swizzle_mode);
          return " UNKNOWN";
