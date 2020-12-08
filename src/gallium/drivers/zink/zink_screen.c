@@ -943,6 +943,38 @@ zink_get_loader_version(void)
    return loader_version;
 }
 
+static VkDevice
+zink_create_logical_device(struct zink_screen *screen)
+{
+   VkDevice dev = VK_NULL_HANDLE;
+
+   VkDeviceQueueCreateInfo qci = {};
+   float dummy = 0.0f;
+   qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+   qci.queueFamilyIndex = screen->gfx_queue;
+   qci.queueCount = 1;
+   qci.pQueuePriorities = &dummy;
+
+   VkDeviceCreateInfo dci = {};
+   dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+   dci.queueCreateInfoCount = 1;
+   dci.pQueueCreateInfos = &qci;
+   /* extensions don't have bool members in pEnabledFeatures.
+    * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
+    */
+   if (screen->info.feats.sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2) {
+      dci.pNext = &screen->info.feats;
+   } else {
+      dci.pEnabledFeatures = &screen->info.feats.features;
+   }
+
+   dci.ppEnabledExtensionNames = screen->info.extensions;
+   dci.enabledExtensionCount = screen->info.num_extensions;
+
+   vkCreateDevice(screen->pdev, &dci, NULL, &dev);
+   return dev;
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
@@ -985,30 +1017,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    zink_internal_setup_moltenvk(screen);
 #endif
 
-   VkDeviceQueueCreateInfo qci = {};
-   float dummy = 0.0f;
-   qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-   qci.queueFamilyIndex = screen->gfx_queue;
-   qci.queueCount = 1;
-   qci.pQueuePriorities = &dummy;
-
-   VkDeviceCreateInfo dci = {};
-   dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-   dci.queueCreateInfoCount = 1;
-   dci.pQueueCreateInfos = &qci;
-   /* extensions don't have bool members in pEnabledFeatures.
-    * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
-    */
-   if (screen->info.feats.sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2) {
-      dci.pNext = &screen->info.feats;
-   } else {
-      dci.pEnabledFeatures = &screen->info.feats.features;
-   }
-
-   dci.ppEnabledExtensionNames = screen->info.extensions;
-   dci.enabledExtensionCount = screen->info.num_extensions;
-
-   if (vkCreateDevice(screen->pdev, &dci, NULL, &screen->dev) != VK_SUCCESS)
+   screen->dev = zink_create_logical_device(screen);
+   if (!screen->dev)
       goto fail;
 
    if (!load_device_extensions(screen))
