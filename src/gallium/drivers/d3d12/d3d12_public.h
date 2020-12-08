@@ -34,6 +34,9 @@ extern "C" {
 struct pipe_screen *
 d3d12_create_dxgi_screen(struct sw_winsys *winsys, LUID *adapter_luid);
 
+struct pipe_screen *
+d3d12_create_dxcore_screen(struct sw_winsys *winsys, LUID *adapter_luid);
+
 #ifdef __cplusplus
 }
 #endif

@@ -80,6 +80,20 @@ d3d12_dxgi_screen(struct d3d12_screen *screen)
    return (struct d3d12_dxgi_screen *)screen;
 }
 
+struct d3d12_dxcore_screen {
+   struct d3d12_screen base;
+
+   struct IDXCoreAdapterFactory *factory;
+   struct IDXCoreAdapter *adapter;
+   char description[256];
+};
+
+static inline struct d3d12_dxcore_screen *
+d3d12_dxcore_screen(struct d3d12_screen *screen)
+{
+   return (struct d3d12_dxcore_screen *)screen;
+}
+
 bool
 d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknown *adapter);
 
