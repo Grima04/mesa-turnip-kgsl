@@ -537,18 +537,6 @@ radv_end_thread_trace(struct radv_queue *queue)
 	return radv_queue_internal_submit(queue, cs);
 }
 
-static uint32_t
-radv_get_expected_buffer_size(struct radv_device *device,
-			      const struct ac_thread_trace_info *info)
-{
-	if (device->physical_device->rad_info.chip_class == GFX10) {
-		uint32_t dropped_cntr_per_se = info->gfx10_dropped_cntr / device->physical_device->rad_info.max_se;
-		return ((info->cur_offset * 32) + dropped_cntr_per_se) / 1024;
-	}
-
-	return (info->gfx9_write_counter * 32) / 1024;
-}
-
 bool
 radv_get_thread_trace(struct radv_queue *queue,
 		      struct ac_thread_trace *thread_trace)
@@ -571,7 +559,7 @@ radv_get_thread_trace(struct radv_queue *queue,
 
 		if (!ac_is_thread_trace_complete(&device->physical_device->rad_info, info)) {
 			uint32_t expected_size =
-				radv_get_expected_buffer_size(device, info);
+				ac_get_expected_buffer_size(&device->physical_device->rad_info, info);
 			uint32_t available_size =
 				(info->cur_offset * 32) / 1024;
 
