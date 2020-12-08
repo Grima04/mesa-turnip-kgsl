@@ -27,6 +27,10 @@
 #include "pipebuffer/pb_buffer.h"
 #include "util/u_atomic.h"
 
+#ifndef _WIN32
+#include <wsl/winadapter.h>
+#endif
+
 #include <directx/d3d12.h>
 
 struct d3d12_bufmgr;

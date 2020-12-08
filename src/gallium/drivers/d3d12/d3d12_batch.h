@@ -27,6 +27,10 @@
 #include "util/u_dynarray.h"
 #include <stdint.h>
 
+#ifndef _WIN32
+#include <wsl/winadapter.h>
+#endif
+
 #define D3D12_IGNORE_SDK_LAYERS
 #include <directx/d3d12.h>
 

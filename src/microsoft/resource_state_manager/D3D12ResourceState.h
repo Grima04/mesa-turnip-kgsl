@@ -24,6 +24,10 @@
 #ifndef D3D12_RESOURCE_STATE_H
 #define D3D12_RESOURCE_STATE_H
 
+#ifndef _WIN32
+#include <wsl/winadapter.h>
+#endif
+
 #include <vector>
 #include <assert.h>
 #include <directx/d3d12.h>
