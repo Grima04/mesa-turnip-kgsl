@@ -179,7 +179,7 @@ static void si_cp_dma_prepare(struct si_context *sctx, struct pipe_resource *dst
     * Also wait for the previous CP DMA operations.
     */
    if (!(user_flags & SI_CPDMA_SKIP_GFX_SYNC) && sctx->flags)
-      sctx->emit_cache_flush(sctx);
+      sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
 
    if (!(user_flags & SI_CPDMA_SKIP_SYNC_BEFORE) && *is_first && !(*packet_flags & CP_DMA_CLEAR))
       *packet_flags |= CP_DMA_RAW_WAIT;

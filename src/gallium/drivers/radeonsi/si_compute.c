@@ -886,7 +886,7 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
 
    /* Registers that are not read from memory should be set before this: */
    if (sctx->flags)
-      sctx->emit_cache_flush(sctx);
+      sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
 
    if (sctx->has_graphics && si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
       sctx->atoms.s.render_cond.emit(sctx);

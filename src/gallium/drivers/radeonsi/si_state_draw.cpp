@@ -1173,10 +1173,8 @@ void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
    *sctx->last_pkt3_write_data = PKT3(PKT3_NOP, 3, 0);
 }
 
-extern "C"
-void gfx10_emit_cache_flush(struct si_context *ctx)
+void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
 {
-   struct radeon_cmdbuf *cs = &ctx->gfx_cs;
    uint32_t gcr_cntl = 0;
    unsigned cb_db_event = 0;
    unsigned flags = ctx->flags;
@@ -1318,7 +1316,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx)
                         EOP_DST_SEL_MEM, EOP_INT_SEL_SEND_DATA_AFTER_WR_CONFIRM,
                         EOP_DATA_SEL_VALUE_32BIT, wait_mem_scratch, va, ctx->wait_mem_number,
                         SI_NOT_QUERY);
-      si_cp_wait_mem(ctx, &ctx->gfx_cs, va, ctx->wait_mem_number, 0xffffffff, WAIT_REG_MEM_EQUAL);
+      si_cp_wait_mem(ctx, cs, va, ctx->wait_mem_number, 0xffffffff, WAIT_REG_MEM_EQUAL);
    }
 
    /* Ignore fields that only modify the behavior of other fields. */
@@ -1354,9 +1352,8 @@ void gfx10_emit_cache_flush(struct si_context *ctx)
 }
 
 extern "C"
-void si_emit_cache_flush(struct si_context *sctx)
+void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
 {
-   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    uint32_t flags = sctx->flags;
 
    if (!sctx->has_graphics) {
@@ -1545,7 +1542,7 @@ void si_emit_cache_flush(struct si_context *sctx)
       /* Invalidate L1 & L2. (L1 is always invalidated on GFX6)
        * WB must be set on GFX8+ when TC_ACTION is set.
        */
-      si_emit_surface_sync(sctx, &sctx->gfx_cs,
+      si_emit_surface_sync(sctx, cs,
                            cp_coher_cntl | S_0085F0_TC_ACTION_ENA(1) | S_0085F0_TCL1_ACTION_ENA(1) |
                               S_0301F0_TC_WB_ACTION_ENA(sctx->chip_class >= GFX8));
       cp_coher_cntl = 0;
@@ -1562,21 +1559,21 @@ void si_emit_cache_flush(struct si_context *sctx)
           * WB doesn't work without NC.
           */
          si_emit_surface_sync(
-            sctx, &sctx->gfx_cs,
+            sctx, cs,
             cp_coher_cntl | S_0301F0_TC_WB_ACTION_ENA(1) | S_0301F0_TC_NC_ACTION_ENA(1));
          cp_coher_cntl = 0;
          sctx->num_L2_writebacks++;
       }
       if (flags & SI_CONTEXT_INV_VCACHE) {
          /* Invalidate per-CU VMEM L1. */
-         si_emit_surface_sync(sctx, &sctx->gfx_cs, cp_coher_cntl | S_0085F0_TCL1_ACTION_ENA(1));
+         si_emit_surface_sync(sctx, cs, cp_coher_cntl | S_0085F0_TCL1_ACTION_ENA(1));
          cp_coher_cntl = 0;
       }
    }
 
    /* If TC flushes haven't cleared this... */
    if (cp_coher_cntl)
-      si_emit_surface_sync(sctx, &sctx->gfx_cs, cp_coher_cntl);
+      si_emit_surface_sync(sctx, cs, cp_coher_cntl);
 
    if (is_barrier)
       si_prim_discard_signal_next_compute_ib_start(sctx);
@@ -2347,7 +2344,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
       si_emit_all_states<GFX_VERSION, HAS_TESS, HAS_GS, NGG>
             (sctx, info, indirect, prim, instance_count, min_direct_count,
              primitive_restart, masked_atoms);
-      sctx->emit_cache_flush(sctx);
+      sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
       /* <-- CUs are idle here. */
 
       if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
@@ -2378,7 +2375,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
        * states, and draw at the end.
        */
       if (sctx->flags)
-         sctx->emit_cache_flush(sctx);
+         sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
 
       /* Only prefetch the API VS and VBO descriptors. */
       if (GFX_VERSION >= GFX7 && sctx->prefetch_L2_mask)

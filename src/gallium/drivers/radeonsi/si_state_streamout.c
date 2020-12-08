@@ -207,7 +207,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
       si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
 
    if (wait_now)
-      sctx->emit_cache_flush(sctx);
+      sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
 }
 
 static void gfx10_emit_streamout_begin(struct si_context *sctx)

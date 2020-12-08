@@ -592,8 +592,8 @@ bool si_update_ngg(struct si_context *sctx);
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,
                           unsigned cp_coher_cntl);
 void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx);
-void gfx10_emit_cache_flush(struct si_context *sctx);
-void si_emit_cache_flush(struct si_context *sctx);
+void gfx10_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
+void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
 void si_trace_emit(struct si_context *sctx);
 void si_init_draw_functions(struct si_context *sctx);
 

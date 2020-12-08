@@ -934,7 +934,7 @@ struct si_context {
    void *sh_query_result_shader;
    struct si_resource *shadowed_regs;
 
-   void (*emit_cache_flush)(struct si_context *ctx);
+   void (*emit_cache_flush)(struct si_context *ctx, struct radeon_cmdbuf *cs);
 
    struct blitter_context *blitter;
    void *noop_blend;
