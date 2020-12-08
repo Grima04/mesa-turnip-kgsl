@@ -630,6 +630,24 @@ bi_emit_ld_ubo(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_load_sysval(bi_builder *b, nir_instr *instr,
+                unsigned nr_components, unsigned offset)
+{
+        nir_dest nir_dest;
+
+        /* Figure out which uniform this is */
+        int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
+        void *val = _mesa_hash_table_u64_search(b->shader->sysvals.sysval_to_id, sysval);
+
+        /* Sysvals are prefix uniforms */
+        unsigned uniform = ((uintptr_t) val) - 1;
+        unsigned idx = (uniform * 16) + offset;
+
+        bi_load_to(b, nr_components * 32, bi_dest_index(&nir_dest),
+                        bi_imm_u32(idx), bi_zero(), BI_SEG_UBO);
+}
+
+static void
 bi_emit_sysval(bi_context *ctx, nir_instr *instr,
                 unsigned nr_components, unsigned offset)
 {
