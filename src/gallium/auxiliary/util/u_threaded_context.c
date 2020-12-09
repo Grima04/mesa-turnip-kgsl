@@ -98,6 +98,7 @@ simplify_draw_info(struct pipe_draw_info *info)
    /* Clear these fields to facilitate draw merging.
     * Drivers shouldn't use them.
     */
+   info->has_user_indices = false;
    info->index_bounds_valid = false;
    info->_pad = 0;
 
