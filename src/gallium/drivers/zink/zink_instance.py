@@ -7,6 +7,7 @@ EXTENSIONS = [
     Extension("VK_EXT_debug_utils"),
     Extension("VK_KHR_get_physical_device_properties2"),
     Extension("VK_KHR_external_memory_capabilities"),
+    Extension("VK_MVK_moltenvk"),
 ]
 
 LAYERS = [
@@ -45,12 +46,6 @@ struct zink_instance_info {
 %for layer in layers:
    bool have_layer_${layer.pure_name()};
 %endfor
-
-#if defined(MVK_VERSION)
-   bool have_moltenvk_layer_ext;
-   bool have_moltenvk_layer;
-   bool have_moltenvk;
-#endif
 };
 
 VkInstance
@@ -82,9 +77,7 @@ zink_create_instance(struct zink_screen *screen)
 %endfor
 
 #if defined(MVK_VERSION)
-   bool have_moltenvk_layer_ext = false;
    bool have_moltenvk_layer = false;
-   bool have_moltenvk = false;
 #endif
 
    // Build up the extensions from the reported ones but only for the unnamed layer
@@ -95,17 +88,11 @@ zink_create_instance(struct zink_screen *screen)
            if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props) == VK_SUCCESS) {
               for (uint32_t i = 0; i < extension_count; i++) {
 %for ext in extensions:
-                 if (!strcmp(extension_props[i].extensionName, ${ext.extension_name()})) {
+                 if (!strcmp(extension_props[i].extensionName, ${ext.extension_name_literal()})) {
                     have_${ext.name_with_vendor()} = true;
-                    extensions[num_extensions++] = ${ext.extension_name()};
+                    extensions[num_extensions++] = ${ext.extension_name_literal()};
                  }
 %endfor
-#if defined(MVK_VERSION)
-                 if (!strcmp(extension_props[i].extensionName, VK_MVK_MOLTENVK_EXTENSION_NAME)) {
-                    have_moltenvk_layer_ext = true;
-                    extensions[num_extensions++] = VK_MVK_MOLTENVK_EXTENSION_NAME;
-                 }
-#endif
               }
            }
        free(extension_props);
@@ -159,12 +146,6 @@ zink_create_instance(struct zink_screen *screen)
       screen->instance_info.have_layer_${layer.pure_name()} = true;
    }
 %endfor
-
-#if defined(MVK_VERSION)
-   screen->instance_info.have_moltenvk_layer_ext = have_moltenvk_layer_ext;
-   screen->instance_info.have_moltenvk_layer = have_moltenvk_layer;
-   screen->have_moltenvk = have_moltenvk_layer_ext && have_moltenvk_layer;
-#endif
 
    VkApplicationInfo ai = {};
    ai.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;

@@ -874,11 +874,11 @@ create_debug(struct zink_screen *screen)
    return true;
 }
 
-#if defined(MVK_VERSION)
 static bool
 zink_internal_setup_moltenvk(struct zink_screen *screen)
 {
-   if (!screen->have_moltenvk)
+#if defined(MVK_VERSION)
+   if (!screen->have_MVK_moltenvk)
       return true;
 
    GET_PROC_ADDR_INSTANCE(GetMoltenVKConfigurationMVK);
@@ -910,10 +910,10 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
          (*screen->vk_SetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
       }
    }
+#endif // MVK_VERSION
 
    return true;
 }
-#endif // MVK_VERSION
 
 static void
 check_device_needs_mesa_wsi(struct zink_screen *screen)
@@ -1013,9 +1013,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
     */
    check_device_needs_mesa_wsi(screen);
 
-#if defined(MVK_VERSION)
    zink_internal_setup_moltenvk(screen);
-#endif
 
    screen->dev = zink_create_logical_device(screen);
    if (!screen->dev)
