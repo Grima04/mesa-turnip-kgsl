@@ -311,7 +311,7 @@ gen_device_info_eu_available(const struct gen_device_info *devinfo,
 }
 
 static inline unsigned
-gen_device_info_num_dual_subslices(const struct gen_device_info *devinfo)
+gen_device_info_num_dual_subslices(UNUSED const struct gen_device_info *devinfo)
 {
    unreachable("TODO");
 }
