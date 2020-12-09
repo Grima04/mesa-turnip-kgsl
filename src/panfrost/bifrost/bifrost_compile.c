@@ -700,6 +700,40 @@ bi_load_with_r61(enum bi_class T, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        nir_alu_type T = nir_intrinsic_src_type(instr);
+        enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
+
+        nir_src *offset = nir_get_io_offset_src(instr);
+        unsigned imm_index = 0;
+        bool immediate = bi_is_intr_immediate(instr, &imm_index);
+
+        bi_index address = immediate ?
+                bi_lea_attr_imm(b,
+                                bi_register(61), /* TODO RA */
+                                bi_register(62), /* TODO RA */
+                                regfmt, imm_index) :
+                bi_lea_attr(b,
+                                bi_register(61), /* TODO RA */
+                                bi_register(62), /* TODO RA */
+                                bi_src_index(offset), regfmt);
+
+        /* Only look at the total components needed. In effect, we fill in all
+         * the intermediate "holes" in the write mask, since we can't mask off
+         * stores. Since nir_lower_io_to_temporaries ensures each varying is
+         * written at most once, anything that's masked out is undefined, so it
+         * doesn't matter what we write there. So we may as well do the
+         * simplest thing possible. */
+        unsigned nr = util_last_bit(nir_intrinsic_write_mask(instr));
+        assert(nr > 0 && nr <= nir_intrinsic_src_components(instr, 0));
+
+        bi_st_cvt_to(b, bi_null(), bi_src_index(&instr->src[0]),
+                        address, bi_word(address, 1), bi_word(address, 2),
+                        regfmt, nr - 1);
+}
+
+static void
 bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bi_instruction address = bi_load_with_r61(BI_LOAD_VAR_ADDRESS, instr);
