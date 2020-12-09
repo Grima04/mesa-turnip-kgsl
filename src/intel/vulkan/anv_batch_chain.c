@@ -614,6 +614,20 @@ cmd_buffer_chain_to_batch_bo(struct anv_cmd_buffer *cmd_buffer,
    anv_batch_bo_finish(current_bbo, batch);
 }
 
+static void
+anv_cmd_buffer_record_end_submit(struct anv_cmd_buffer *cmd_buffer)
+{
+   assert(cmd_buffer->device->physical->use_softpin);
+
+   struct anv_batch_bo *last_bbo =
+      list_last_entry(&cmd_buffer->batch_bos, struct anv_batch_bo, link);
+   last_bbo->chained = false;
+
+   uint32_t *batch = cmd_buffer->batch_end;
+   anv_pack_struct(batch, GEN8_MI_BATCH_BUFFER_END,
+                   __anv_cmd_header(GEN8_MI_BATCH_BUFFER_END));
+}
+
 static VkResult
 anv_cmd_buffer_chain_batch(struct anv_batch *batch, void *_data)
 {
@@ -919,7 +933,14 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
       /* Save end instruction location to override it later. */
       cmd_buffer->batch_end = cmd_buffer->batch.next;
 
-      anv_batch_emit(&cmd_buffer->batch, GEN8_MI_BATCH_BUFFER_END, bbe);
+      /* If we can chain this command buffer to another one, leave some place
+       * for the jump instruction.
+       */
+      batch_bo->chained = anv_cmd_buffer_is_chainable(cmd_buffer);
+      if (batch_bo->chained)
+         emit_batch_buffer_start(cmd_buffer, batch_bo->bo, 0);
+      else
+         anv_batch_emit(&cmd_buffer->batch, GEN8_MI_BATCH_BUFFER_END, bbe);
 
       /* Round batch up to an even number of dwords. */
       if ((cmd_buffer->batch.next - cmd_buffer->batch.start) & 4)
@@ -1744,6 +1765,8 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
    }
 
    if (submit->cmd_buffer) {
+      if (!anv_cmd_buffer_is_chainable(submit->cmd_buffer))
+         anv_cmd_buffer_record_end_submit(submit->cmd_buffer);
       result = setup_execbuf_for_cmd_buffer(&execbuf, queue, submit->cmd_buffer);
    } else if (submit->simple_bo) {
       result = anv_execbuf_add_bo(device, &execbuf, submit->simple_bo, NULL, 0);
