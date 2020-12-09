@@ -572,7 +572,8 @@ static void si_fence_server_sync(struct pipe_context *ctx, struct pipe_fence_han
     * the time it takes to create and submit that IB, flushing decreases
     * performance. Therefore, DO NOT FLUSH.
     */
-   si_add_fence_dependency(sctx, sfence->gfx);
+   if (sfence->gfx)
+      si_add_fence_dependency(sctx, sfence->gfx);
 }
 
 void si_init_fence_functions(struct si_context *ctx)
