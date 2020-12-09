@@ -634,12 +634,13 @@ get_render_pass(struct zink_context *ctx)
    }
    state.have_zsbuf = fb->zsbuf != NULL;
 
-   struct hash_entry *entry = _mesa_hash_table_search(ctx->render_pass_cache,
-                                                      &state);
+   uint32_t hash = hash_render_pass_state(&state);
+   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ctx->render_pass_cache, hash,
+                                                                 &state);
    if (!entry) {
       struct zink_render_pass *rp;
       rp = zink_create_render_pass(screen, &state);
-      entry = _mesa_hash_table_insert(ctx->render_pass_cache, &state, rp);
+      entry = _mesa_hash_table_insert_pre_hashed(ctx->render_pass_cache, hash, &rp->state, rp);
       if (!entry)
          return NULL;
    }
