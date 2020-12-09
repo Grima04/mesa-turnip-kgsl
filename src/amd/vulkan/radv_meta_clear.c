@@ -953,7 +953,7 @@ radv_get_htile_fast_clear_value(const struct radv_image *image,
 	if (!image->planes[0].surface.has_stencil) {
 		clear_value = value.depth ? 0xfffffff0 : 0;
 	} else {
-		clear_value = value.depth ? 0xfffc0000 : 0;
+		clear_value = value.depth ? 0xfffc00f0 : 0xf0;
 	}
 
 	return clear_value;

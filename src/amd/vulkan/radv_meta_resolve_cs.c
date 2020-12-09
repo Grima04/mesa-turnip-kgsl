@@ -998,7 +998,7 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
 				 * buffer if it's resolved, otherwise this
 				 * might break if the stencil has been cleared.
 				 */
-				clear_value = 0xfffff30f;
+				clear_value = 0xfffff3ff;
 			}
 
 			cmd_buffer->state.flush_bits |=

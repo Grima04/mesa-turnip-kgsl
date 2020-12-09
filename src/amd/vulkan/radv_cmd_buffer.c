@@ -6000,7 +6000,7 @@ static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
 	assert(range->levelCount == 1 || range->levelCount == VK_REMAINING_ARRAY_LAYERS);
 	VkImageAspectFlags aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
 	struct radv_cmd_state *state = &cmd_buffer->state;
-	uint32_t htile_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
+	uint32_t htile_value = vk_format_is_stencil(image->vk_format) ? 0xfffff3ff : 0xfffc000f;
 	VkClearDepthStencilValue value = {0};
 	struct radv_barrier_data barrier = {0};
 
