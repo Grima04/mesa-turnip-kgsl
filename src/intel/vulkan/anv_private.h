@@ -2951,6 +2951,12 @@ struct anv_cmd_buffer {
 
    struct anv_batch                             batch;
 
+   /* Pointer to the location in the batch where MI_BATCH_BUFFER_END was
+    * recorded upon calling vkEndCommandBuffer(). This is useful if we need to
+    * rewrite the end to chain multiple batch together at vkQueueSubmit().
+    */
+   void *                                       batch_end;
+
    /* Fields required for the actual chain of anv_batch_bo's.
     *
     * These fields are initialized by anv_cmd_buffer_init_batch_bo_chain().

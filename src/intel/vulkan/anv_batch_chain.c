@@ -913,7 +913,11 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
        * with our BATCH_BUFFER_END in another BO.
        */
       cmd_buffer->batch.end += GEN8_MI_BATCH_BUFFER_START_length * 4;
+      assert(cmd_buffer->batch.start == batch_bo->bo->map);
       assert(cmd_buffer->batch.end == batch_bo->bo->map + batch_bo->bo->size);
+
+      /* Save end instruction location to override it later. */
+      cmd_buffer->batch_end = cmd_buffer->batch.next;
 
       anv_batch_emit(&cmd_buffer->batch, GEN8_MI_BATCH_BUFFER_END, bbe);
 
