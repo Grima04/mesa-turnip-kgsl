@@ -118,8 +118,8 @@ zink_create_instance(struct zink_screen *screen)
                     extensions[num_extensions++] = VK_MVK_MOLTENVK_EXTENSION_NAME;
                  }
 #endif
+              }
            }
-       }
        free(extension_props);
        }
    }
