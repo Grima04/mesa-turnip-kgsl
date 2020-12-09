@@ -1120,13 +1120,8 @@ anv_queue_submit_add_out_semaphores(struct anv_queue_submit *submit,
 static VkResult
 anv_queue_submit_add_fence(struct anv_queue_submit *submit,
                            struct anv_device *device,
-                           VkFence _fence)
+                           struct anv_fence *fence)
 {
-   ANV_FROM_HANDLE(anv_fence, fence, _fence);
-
-   if (!fence)
-      return VK_SUCCESS;
-
    /* Under most circumstances, out fences won't be temporary. However, the
     * spec does allow it for opaque_fd. From the Vulkan 1.0.53 spec:
     *
@@ -1176,11 +1171,9 @@ anv_queue_submit_add_fence(struct anv_queue_submit *submit,
 }
 
 static void
-anv_post_queue_fence_update(struct anv_device *device, VkFence _fence)
+anv_post_queue_fence_update(struct anv_device *device, struct anv_fence *fence)
 {
-   ANV_FROM_HANDLE(anv_fence, fence, _fence);
-
-   if (fence && fence->permanent.type == ANV_FENCE_TYPE_BO) {
+   if (fence->permanent.type == ANV_FENCE_TYPE_BO) {
       assert(!device->has_thread_submit);
       /* If we have permanent BO fence, the only type of temporary possible
        * would be BO_WSI (because BO fences are not shareable). The Vulkan spec
@@ -1231,72 +1224,85 @@ anv_queue_submit_add_cmd_buffer(struct anv_queue_submit *submit,
    return VK_SUCCESS;
 }
 
-static VkResult
-anv_queue_submit_empty(struct anv_queue *queue,
-                       const VkSemaphore *in_semaphores,
-                       const uint64_t *in_values,
-                       uint32_t num_in_semaphores,
-                       const VkSemaphore *out_semaphores,
-                       const uint64_t *out_values,
-                       uint32_t num_out_semaphores,
-                       struct anv_bo *wsi_signal_bo,
-                       VkFence fence,
-                       int perf_query_pass)
+static bool
+anv_queue_submit_can_add_cmd_buffer(const struct anv_queue_submit *submit,
+                                    const struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_device *device = queue->device;
-   UNUSED struct anv_physical_device *pdevice = device->physical;
-   struct anv_queue_submit *submit = anv_queue_submit_alloc(device, perf_query_pass);
-   VkResult result;
+   /* If first command buffer, no problem. */
+   if (submit->cmd_buffer_count == 0)
+      return true;
 
+   /* Can we chain the last buffer into the next one? */
+   if (!anv_cmd_buffer_is_chainable(submit->cmd_buffers[submit->cmd_buffer_count - 1]))
+      return false;
+
+   /* A change of perf query pools between VkSubmitInfo elements means we
+    * can't batch things up.
+    */
+   if (cmd_buffer->perf_query_pool &&
+       submit->perf_query_pool &&
+       submit->perf_query_pool != cmd_buffer->perf_query_pool)
+      return false;
+
+   return true;
+}
+
+static bool
+anv_queue_submit_can_add_submit(const struct anv_queue_submit *submit,
+                                uint32_t n_wait_semaphores,
+                                uint32_t n_signal_semaphores,
+                                int perf_pass)
+{
+   /* We can add to an empty anv_queue_submit. */
+   if (submit->cmd_buffer_count == 0 &&
+       submit->fence_count == 0 &&
+       submit->sync_fd_semaphore_count == 0 &&
+       submit->wait_timeline_count == 0 &&
+       submit->signal_timeline_count == 0 &&
+       submit->fence_bo_count == 0)
+      return true;
+
+   /* Different perf passes will require different EXECBUF ioctls. */
+   if (perf_pass != submit->perf_query_pass)
+      return false;
+
+   /* If the current submit is signaling anything, we can't add anything. */
+   if (submit->signal_timeline_count ||
+       submit->sync_fd_semaphore_count)
+      return false;
+
+   /* If a submit is waiting on anything, anything that happened before needs
+    * to be submitted.
+    */
+   if (n_wait_semaphores)
+      return false;
+
+   return true;
+}
+
+static VkResult
+anv_queue_submit_post_and_alloc_new(struct anv_queue *queue,
+                                    struct anv_queue_submit **submit,
+                                    int perf_pass)
+{
+   VkResult result = anv_queue_submit_post(queue, submit, false);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *submit = anv_queue_submit_alloc(queue->device, perf_pass);
    if (!submit)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   result = anv_queue_submit_add_in_semaphores(submit,
-                                               device,
-                                               in_semaphores,
-                                               in_values,
-                                               num_in_semaphores);
-   if (result != VK_SUCCESS)
-      goto error;
-
-   result = anv_queue_submit_add_out_semaphores(submit,
-                                                device,
-                                                out_semaphores,
-                                                out_values,
-                                                num_out_semaphores);
-   if (result != VK_SUCCESS)
-      goto error;
-
-   if (wsi_signal_bo) {
-      result = anv_queue_submit_add_fence_bo(submit, wsi_signal_bo, true /* signal */);
-      if (result != VK_SUCCESS)
-         goto error;
-   }
-
-   result = anv_queue_submit_add_fence(submit, device, fence);
-   if (result != VK_SUCCESS)
-      goto error;
-
-   result = anv_queue_submit_post(queue, &submit, false);
-   if (result != VK_SUCCESS)
-      goto error;
-
-   anv_post_queue_fence_update(device, fence);
-
- error:
-   if (submit)
-      anv_queue_submit_free(device, submit);
-
-   return result;
+   return VK_SUCCESS;
 }
 
 VkResult anv_QueueSubmit(
     VkQueue                                     _queue,
     uint32_t                                    submitCount,
     const VkSubmitInfo*                         pSubmits,
-    VkFence                                     fence)
+    VkFence                                     _fence)
 {
    ANV_FROM_HANDLE(anv_queue, queue, _queue);
+   ANV_FROM_HANDLE(anv_fence, fence, _fence);
    struct anv_device *device = queue->device;
 
    if (device->no_hw)
@@ -1313,23 +1319,11 @@ VkResult anv_QueueSubmit(
    if (result != VK_SUCCESS)
       return result;
 
-   struct anv_queue_submit *submit = NULL;
-
-   if (fence && submitCount == 0) {
-      /* If we don't have any command buffers, we need to submit a dummy
-       * batch to give GEM something to wait on.  We could, potentially,
-       * come up with something more efficient but this shouldn't be a
-       * common case.
-       */
-      result = anv_queue_submit_empty(queue, NULL, NULL, 0, NULL, NULL, 0,
-                                      NULL, fence, -1);
-      goto out;
-   }
+   struct anv_queue_submit *submit = anv_queue_submit_alloc(device, 0);
+   if (!submit)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    for (uint32_t i = 0; i < submitCount; i++) {
-      /* Fence for this submit.  NULL for all but the last one */
-      VkFence submit_fence = (i == submitCount - 1) ? fence : VK_NULL_HANDLE;
-
       const struct wsi_memory_signal_submit_info *mem_signal_info =
          vk_find_struct_const(pSubmits[i].pNext,
                               WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA);
@@ -1343,6 +1337,7 @@ VkResult anv_QueueSubmit(
       const VkPerformanceQuerySubmitInfoKHR *perf_info =
          vk_find_struct_const(pSubmits[i].pNext,
                               PERFORMANCE_QUERY_SUBMIT_INFO_KHR);
+      const int perf_pass = perf_info ? perf_info->counterPassIndex : 0;
       const uint64_t *wait_values =
          timeline_info && timeline_info->waitSemaphoreValueCount ?
          timeline_info->pWaitSemaphoreValues : NULL;
@@ -1350,28 +1345,25 @@ VkResult anv_QueueSubmit(
          timeline_info && timeline_info->signalSemaphoreValueCount ?
          timeline_info->pSignalSemaphoreValues : NULL;
 
-      if (pSubmits[i].commandBufferCount == 0) {
-         /* If we don't have any command buffers, we need to submit a dummy
-          * batch to give GEM something to wait on.  We could, potentially,
-          * come up with something more efficient but this shouldn't be a
-          * common case.
-          */
-         result = anv_queue_submit_empty(queue,
-                                         pSubmits[i].pWaitSemaphores,
-                                         wait_values,
-                                         pSubmits[i].waitSemaphoreCount,
-                                         pSubmits[i].pSignalSemaphores,
-                                         signal_values,
-                                         pSubmits[i].signalSemaphoreCount,
-                                         wsi_signal_bo,
-                                         submit_fence,
-                                         -1);
+      if (!anv_queue_submit_can_add_submit(submit,
+                                           pSubmits[i].waitSemaphoreCount,
+                                           pSubmits[i].signalSemaphoreCount,
+                                           perf_pass)) {
+         result = anv_queue_submit_post_and_alloc_new(queue, &submit, perf_pass);
          if (result != VK_SUCCESS)
             goto out;
-
-         continue;
       }
 
+      /* Wait semaphores */
+      result = anv_queue_submit_add_in_semaphores(submit,
+                                                  device,
+                                                  pSubmits[i].pWaitSemaphores,
+                                                  wait_values,
+                                                  pSubmits[i].waitSemaphoreCount);
+      if (result != VK_SUCCESS)
+         goto out;
+
+      /* Command buffers */
       for (uint32_t j = 0; j < pSubmits[i].commandBufferCount; j++) {
          ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer,
                          pSubmits[i].pCommandBuffers[j]);
@@ -1379,57 +1371,50 @@ VkResult anv_QueueSubmit(
          assert(!anv_batch_has_error(&cmd_buffer->batch));
          anv_measure_submit(cmd_buffer);
 
-         submit = anv_queue_submit_alloc(device,
-                                         perf_info ? perf_info->counterPassIndex : 0);
-         if (!submit) {
-            result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-            goto out;
+         /* If we can't add an additional command buffer to the existing
+          * anv_queue_submit, post it and create a new one.
+          */
+         if (!anv_queue_submit_can_add_cmd_buffer(submit, cmd_buffer)) {
+            result = anv_queue_submit_post_and_alloc_new(queue, &submit, perf_pass);
+            if (result != VK_SUCCESS)
+               goto out;
          }
 
          result = anv_queue_submit_add_cmd_buffer(submit, cmd_buffer);
          if (result != VK_SUCCESS)
             goto out;
+      }
 
-         if (j == 0) {
-            /* Only the first batch gets the in semaphores */
-            result = anv_queue_submit_add_in_semaphores(submit,
-                                                        device,
-                                                        pSubmits[i].pWaitSemaphores,
-                                                        wait_values,
-                                                        pSubmits[i].waitSemaphoreCount);
-            if (result != VK_SUCCESS)
-               goto out;
-         }
+      /* Signal semaphores */
+      result = anv_queue_submit_add_out_semaphores(submit,
+                                                   device,
+                                                   pSubmits[i].pSignalSemaphores,
+                                                   signal_values,
+                                                   pSubmits[i].signalSemaphoreCount);
+      if (result != VK_SUCCESS)
+         goto out;
 
-         if (j == pSubmits[i].commandBufferCount - 1) {
-            /* Only the last batch gets the out semaphores */
-            result = anv_queue_submit_add_out_semaphores(submit,
-                                                         device,
-                                                         pSubmits[i].pSignalSemaphores,
-                                                         signal_values,
-                                                         pSubmits[i].signalSemaphoreCount);
-            if (result != VK_SUCCESS)
-               goto out;
-
-            if (wsi_signal_bo) {
-               result = anv_queue_submit_add_fence_bo(submit, wsi_signal_bo,
-                                                      true /* signal */);
-               if (result != VK_SUCCESS)
-                  goto out;
-            }
-
-            result = anv_queue_submit_add_fence(submit, device, submit_fence);
-            if (result != VK_SUCCESS)
-               goto out;
-         }
-
-         result = anv_queue_submit_post(queue, &submit, false);
+      /* WSI BO */
+      if (wsi_signal_bo) {
+         result = anv_queue_submit_add_fence_bo(submit, wsi_signal_bo,
+                                                true /* signal */);
          if (result != VK_SUCCESS)
             goto out;
       }
    }
 
-   anv_post_queue_fence_update(device, fence);
+   if (fence) {
+      result = anv_queue_submit_add_fence(submit, device, fence);
+      if (result != VK_SUCCESS)
+         goto out;
+   }
+
+   result = anv_queue_submit_post(queue, &submit, false);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   if (fence)
+      anv_post_queue_fence_update(device, fence);
 
 out:
    if (submit)
