@@ -460,6 +460,31 @@ bi_emit_atest(bi_context *ctx, unsigned rgba, nir_alu_type T)
 }
 
 static void
+bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
+{
+        if (b->shader->is_blend) {
+                /* Blend descriptor comes from the compile inputs */
+                /* Put the result in r0 */
+                bi_blend_to(b, bi_register(0), rgba,
+                                bi_register(60) /* TODO RA */,
+                                bi_imm_u32(b->shader->blend_desc & 0xffffffff),
+                                bi_imm_u32(b->shader->blend_desc >> 32));
+        } else {
+                /* Blend descriptor comes from the FAU RAM. By convention, the
+                 * return address is stored in r48 and will be used by the
+                 * blend shader to jump back to the fragment shader after */
+                bi_blend_to(b, bi_register(48), rgba,
+                                bi_register(60) /* TODO RA */,
+                                bi_fau(BIR_FAU_BLEND_0 + rt, false),
+                                bi_fau(BIR_FAU_BLEND_0 + rt, true));
+        }
+
+        assert(rt < 8);
+        assert(b->shader->blend_types);
+        b->shader->blend_types[rt] = T;
+}
+
+static void
 bi_emit_blend(bi_context *ctx, unsigned rgba, nir_alu_type T, unsigned rt)
 {
         bi_instruction blend = {
