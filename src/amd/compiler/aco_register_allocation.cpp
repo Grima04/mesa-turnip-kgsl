@@ -1253,6 +1253,35 @@ void increase_register_file(ra_ctx& ctx, RegType type) {
    }
 }
 
+bool is_mimg_vaddr_intact(ra_ctx& ctx, RegisterFile& reg_file, Instruction *instr)
+{
+   PhysReg first{512};
+   for (unsigned i = 0; i < instr->operands.size() - 3u; i++) {
+      Operand op = instr->operands[i + 3];
+
+      if (ctx.assignments[op.tempId()].assigned) {
+         PhysReg reg = ctx.assignments[op.tempId()].reg;
+
+         if (first.reg() != 512 && reg != first.advance(i * 4))
+            return false; /* not at the best position */
+
+         if ((reg.reg() - 256) < i)
+            return false; /* no space for previous operands */
+
+         first = reg.advance(i * -4);
+      } else if (first.reg() != 512) {
+         /* If there's an unexpected temporary, this operand is unlikely to be
+          * placed in the best position.
+          */
+         unsigned id = reg_file.get_id(first.advance(i * 4));
+         if (id && id != op.tempId())
+            return false;
+      }
+   }
+
+   return true;
+}
+
 PhysReg get_reg(ra_ctx& ctx,
                 RegisterFile& reg_file,
                 Temp temp,
@@ -1284,35 +1313,42 @@ PhysReg get_reg(ra_ctx& ctx,
 
    if (ctx.vectors.find(temp.id()) != ctx.vectors.end()) {
       Instruction* vec = ctx.vectors[temp.id()];
+      unsigned first_operand = vec->format == Format::MIMG ? 3 : 0;
       unsigned byte_offset = 0;
-      for (const Operand& op : vec->operands) {
+      for (unsigned i = first_operand; i < vec->operands.size(); i++) {
+         Operand& op = vec->operands[i];
          if (op.isTemp() && op.tempId() == temp.id())
             break;
          else
             byte_offset += op.bytes();
       }
-      unsigned k = 0;
-      for (const Operand& op : vec->operands) {
-         if (op.isTemp() &&
-             op.tempId() != temp.id() &&
-             op.getTemp().type() == temp.type() &&
-             ctx.assignments[op.tempId()].assigned) {
-            PhysReg reg = ctx.assignments[op.tempId()].reg;
-            reg.reg_b += (byte_offset - k);
+
+      if (vec->format != Format::MIMG || is_mimg_vaddr_intact(ctx, reg_file, vec)) {
+         unsigned k = 0;
+         for (unsigned i = first_operand; i < vec->operands.size(); i++) {
+            Operand& op = vec->operands[i];
+            if (op.isTemp() &&
+                op.tempId() != temp.id() &&
+                op.getTemp().type() == temp.type() &&
+                ctx.assignments[op.tempId()].assigned) {
+               PhysReg reg = ctx.assignments[op.tempId()].reg;
+               reg.reg_b += (byte_offset - k);
+               if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
+                  return reg;
+            }
+            k += op.bytes();
+         }
+
+         RegClass vec_rc = RegClass::get(temp.type(), k);
+         DefInfo info(ctx, ctx.pseudo_dummy, vec_rc, -1);
+         std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
+         PhysReg reg = res.first;
+         if (res.second) {
+            reg.reg_b += byte_offset;
+            /* make sure to only use byte offset if the instruction supports it */
             if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
                return reg;
          }
-         k += op.bytes();
-      }
-
-      DefInfo info(ctx, ctx.pseudo_dummy, vec->definitions[0].regClass(), -1);
-      std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
-      PhysReg reg = res.first;
-      if (res.second) {
-         reg.reg_b += byte_offset;
-         /* make sure to only use byte offset if the instruction supports it */
-         if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
-            return reg;
       }
    }
 
@@ -1830,6 +1866,9 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                   if (op.isTemp() && op.isFirstKill() && op.getTemp().type() == instr->definitions[0].getTemp().type())
                      ctx.vectors[op.tempId()] = instr.get();
                }
+            } else if (instr->format == Format::MIMG && instr->operands.size() > 4) {
+               for (unsigned i = 3; i < instr->operands.size(); i++)
+                  ctx.vectors[instr->operands[i].tempId()] = instr.get();
             }
 
             if (instr->opcode == aco_opcode::p_split_vector && instr->operands[0].isFirstKillBeforeDef())
