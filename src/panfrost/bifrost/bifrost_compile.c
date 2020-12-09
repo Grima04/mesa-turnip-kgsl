@@ -560,6 +560,69 @@ bi_emit_zs_emit(bi_context *ctx, unsigned z, unsigned stencil)
 }
 
 static void
+bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        bool combined = instr->intrinsic ==
+                nir_intrinsic_store_combined_output_pan;
+
+        unsigned writeout = combined ? nir_intrinsic_component(instr) :
+                PAN_WRITEOUT_C;
+
+        bool emit_blend = writeout & (PAN_WRITEOUT_C);
+        bool emit_zs = writeout & (PAN_WRITEOUT_Z | PAN_WRITEOUT_S);
+
+        const nir_variable *var =
+                nir_find_variable_with_driver_location(b->shader->nir,
+                                nir_var_shader_out, nir_intrinsic_base(instr));
+        assert(var);
+
+        if (!b->shader->emitted_atest && !b->shader->is_blend) {
+                nir_alu_type T = nir_intrinsic_src_type(instr);
+                assert(T == nir_type_float16 || T == nir_type_float32);
+
+                bi_index rgba = bi_src_index(&instr->src[0]);
+                bi_index alpha = (T == nir_type_float32) ? bi_word(rgba, 3) :
+                        bi_half(bi_word(rgba, 1), true) ;
+
+                bi_atest_to(b, bi_register(60), bi_register(60), alpha);
+                b->shader->emitted_atest = true;
+        }
+
+        if (emit_zs) {
+                bi_index z = { 0 }, s = { 0 };
+
+                if (writeout & PAN_WRITEOUT_Z)
+                        z = bi_src_index(&instr->src[2]);
+
+                if (writeout & PAN_WRITEOUT_S)
+                        s = bi_src_index(&instr->src[3]);
+
+                bi_zs_emit_to(b, bi_register(60), z, s,
+                                bi_register(60) /* TODO RA */,
+                                writeout & PAN_WRITEOUT_S,
+                                writeout & PAN_WRITEOUT_Z);
+        }
+
+        if (emit_blend) {
+                unsigned loc = var->data.location;
+                assert(loc == FRAG_RESULT_COLOR || loc >= FRAG_RESULT_DATA0);
+
+                unsigned rt = loc == FRAG_RESULT_COLOR ? 0 :
+                        (loc - FRAG_RESULT_DATA0);
+
+                bi_emit_blend_op(b, bi_src_index(&instr->src[0]),
+                                nir_intrinsic_src_type(instr), rt);
+        }
+
+        if (b->shader->is_blend) {
+                /* Jump back to the fragment shader, return address is stored
+                 * in r48 (see above).
+                 */
+                bi_jump_to(b, bi_null(), bi_register(48));
+        }
+}
+
+static void
 bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bool combined = instr->intrinsic ==
