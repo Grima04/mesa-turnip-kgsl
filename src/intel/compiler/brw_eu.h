@@ -1026,7 +1026,7 @@ brw_mdc_sm2_exec_size(uint32_t sm2)
 }
 
 static inline uint32_t
-brw_btd_spawn_desc(const struct gen_device_info *devinfo,
+brw_btd_spawn_desc(ASSERTED const struct gen_device_info *devinfo,
                    unsigned exec_size, unsigned msg_type)
 {
    assert(devinfo->has_ray_tracing);
@@ -1037,21 +1037,21 @@ brw_btd_spawn_desc(const struct gen_device_info *devinfo,
 }
 
 static inline uint32_t
-brw_btd_spawn_msg_type(const struct gen_device_info *devinfo,
+brw_btd_spawn_msg_type(UNUSED const struct gen_device_info *devinfo,
                        uint32_t desc)
 {
    return GET_BITS(desc, 17, 14);
 }
 
 static inline uint32_t
-brw_btd_spawn_exec_size(const struct gen_device_info *devinfo,
+brw_btd_spawn_exec_size(UNUSED const struct gen_device_info *devinfo,
                         uint32_t desc)
 {
    return brw_mdc_sm2_exec_size(GET_BITS(desc, 8, 8));
 }
 
 static inline uint32_t
-brw_rt_trace_ray_desc(const struct gen_device_info *devinfo,
+brw_rt_trace_ray_desc(ASSERTED const struct gen_device_info *devinfo,
                       unsigned exec_size)
 {
    assert(devinfo->has_ray_tracing);
@@ -1062,7 +1062,7 @@ brw_rt_trace_ray_desc(const struct gen_device_info *devinfo,
 }
 
 static inline uint32_t
-brw_rt_trace_ray_desc_exec_size(const struct gen_device_info *devinfo,
+brw_rt_trace_ray_desc_exec_size(UNUSED const struct gen_device_info *devinfo,
                                 uint32_t desc)
 {
    return brw_mdc_sm2_exec_size(GET_BITS(desc, 8, 8));
