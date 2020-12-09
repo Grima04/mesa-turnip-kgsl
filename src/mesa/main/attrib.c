@@ -591,7 +591,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
       for (tgt = 0; tgt < NUM_TEXTURE_TARGETS; tgt++) {
          const struct gl_texture_object *savedObj = &texstate->SavedObj[u][tgt];
          struct gl_texture_object *texObj =
-            texObj = _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
+            _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
 
          if (texObj->Name != savedObj->Name) {
             /* We don't need to check whether the texture target is supported,
