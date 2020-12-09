@@ -615,6 +615,37 @@ cmd_buffer_chain_to_batch_bo(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static void
+anv_cmd_buffer_record_chain_submit(struct anv_cmd_buffer *cmd_buffer_from,
+                                   struct anv_cmd_buffer *cmd_buffer_to)
+{
+   assert(cmd_buffer_from->device->physical->use_softpin);
+
+   uint32_t *bb_start = cmd_buffer_from->batch_end;
+
+   struct anv_batch_bo *last_bbo =
+      list_last_entry(&cmd_buffer_from->batch_bos, struct anv_batch_bo, link);
+   struct anv_batch_bo *first_bbo =
+      list_first_entry(&cmd_buffer_to->batch_bos, struct anv_batch_bo, link);
+
+   struct GEN8_MI_BATCH_BUFFER_START gen_bb_start = {
+      __anv_cmd_header(GEN8_MI_BATCH_BUFFER_START),
+      .SecondLevelBatchBuffer    = Firstlevelbatch,
+      .AddressSpaceIndicator     = ASI_PPGTT,
+      .BatchBufferStartAddress   = (struct anv_address) { first_bbo->bo, 0 },
+   };
+   struct anv_batch local_batch = {
+      .start  = last_bbo->bo->map,
+      .end    = last_bbo->bo->map + last_bbo->bo->size,
+      .relocs = &last_bbo->relocs,
+      .alloc  = &cmd_buffer_from->pool->alloc,
+   };
+
+   __anv_cmd_pack(GEN8_MI_BATCH_BUFFER_START)(&local_batch, bb_start, &gen_bb_start);
+
+   last_bbo->chained = true;
+}
+
+static void
 anv_cmd_buffer_record_end_submit(struct anv_cmd_buffer *cmd_buffer)
 {
    assert(cmd_buffer->device->physical->use_softpin);
@@ -1135,6 +1166,11 @@ struct anv_execbuf {
    /* Allocated length of the 'objects' and 'bos' arrays */
    uint32_t                                  array_length;
 
+   /* List of relocations for surface states, only used with platforms not
+    * using softpin.
+    */
+   void *                                    surface_states_relocs;
+
    /* Indicates whether any of the command buffers have relocations. This
     * doesn't not necessarily mean we'll need the kernel to process them. It
     * might be that a previous execbuf has already placed things in the VMA
@@ -1157,6 +1193,7 @@ anv_execbuf_init(struct anv_execbuf *exec)
 static void
 anv_execbuf_finish(struct anv_execbuf *exec)
 {
+   vk_free(exec->alloc, exec->surface_states_relocs);
    vk_free(exec->alloc, exec->objects);
    vk_free(exec->alloc, exec->bos);
 }
@@ -1434,8 +1471,7 @@ anv_reloc_list_apply(struct anv_device *device,
  * have to make a full copy of all the relocations lists.
  */
 static bool
-relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
-                    struct anv_execbuf *exec)
+execbuf_can_skip_relocations(struct anv_execbuf *exec)
 {
    if (!exec->has_relocs)
       return true;
@@ -1459,6 +1495,13 @@ relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
          return false;
    }
 
+   return true;
+}
+
+static void
+relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
+                    struct anv_execbuf *exec)
+{
    /* Since surface states are shared between command buffers and we don't
     * know what order they will be submitted to the kernel, we don't know
     * what address is actually written in the surface state object at any
@@ -1482,16 +1525,27 @@ relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
 
    for (uint32_t i = 0; i < exec->bo_count; i++)
       exec->objects[i].offset = exec->bos[i]->offset;
+}
 
-   return true;
+static void
+reset_cmd_buffer_surface_offsets(struct anv_cmd_buffer *cmd_buffer)
+{
+   /* In the case where we fall back to doing kernel relocations, we need to
+    * ensure that the relocation list is valid. All relocations on the batch
+    * buffers are already valid and kept up-to-date. Since surface states are
+    * shared between command buffers and we don't know what order they will be
+    * submitted to the kernel, we don't know what address is actually written
+    * in the surface state object at any given time. The only option is to set
+    * a bogus presumed offset and let the kernel relocate them.
+    */
+   for (size_t i = 0; i < cmd_buffer->surface_relocs.num_relocs; i++)
+      cmd_buffer->surface_relocs.relocs[i].presumed_offset = -1;
 }
 
 static VkResult
 setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
-                             struct anv_queue *queue,
                              struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_batch *batch = &cmd_buffer->batch;
    struct anv_state_pool *ss_pool =
       &cmd_buffer->device->surface_state_pool;
 
@@ -1499,58 +1553,10 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
                                       cmd_buffer->last_ss_pool_center);
    VkResult result;
    if (cmd_buffer->device->physical->use_softpin) {
-      anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
-         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
       /* Add surface dependencies (BOs) to the execbuf */
       anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
                                 cmd_buffer->surface_relocs.dep_words,
                                 cmd_buffer->surface_relocs.deps, 0);
-
-      /* Add the BOs for all memory objects */
-      list_for_each_entry(struct anv_device_memory, mem,
-                          &cmd_buffer->device->memory_objects, link) {
-         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     mem->bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
-
-      struct anv_block_pool *pool;
-      pool = &cmd_buffer->device->general_state_pool.block_pool;
-      anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
-
-      pool = &cmd_buffer->device->dynamic_state_pool.block_pool;
-      anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
-
-      pool = &cmd_buffer->device->instruction_state_pool.block_pool;
-      anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
-
-      pool = &cmd_buffer->device->binding_table_pool.block_pool;
-      anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
    } else {
       /* Since we aren't in the softpin case, all of our STATE_BASE_ADDRESS BOs
        * will get added automatically by processing relocations on the batch
@@ -1584,8 +1590,146 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
     */
    cmd_buffer->last_ss_pool_center = ss_pool->block_pool.center_bo_offset;
 
+   return VK_SUCCESS;
+}
+
+static void
+chain_command_buffers(struct anv_cmd_buffer **cmd_buffers,
+                      uint32_t num_cmd_buffers)
+{
+   if (!anv_cmd_buffer_is_chainable(cmd_buffers[0])) {
+      assert(num_cmd_buffers == 1);
+      return;
+   }
+
+   /* Chain the N-1 first batch buffers */
+   for (uint32_t i = 0; i < (num_cmd_buffers - 1); i++)
+      anv_cmd_buffer_record_chain_submit(cmd_buffers[i], cmd_buffers[i + 1]);
+
+   /* Put an end to the last one */
+   anv_cmd_buffer_record_end_submit(cmd_buffers[num_cmd_buffers - 1]);
+}
+
+static VkResult
+setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
+                              struct anv_queue *queue,
+                              struct anv_cmd_buffer **cmd_buffers,
+                              uint32_t num_cmd_buffers)
+{
+   struct anv_device *device = queue->device;
+   struct anv_state_pool *ss_pool = &device->surface_state_pool;
+   VkResult result;
+
+   /* Edit the tail of the command buffers to chain them all together if they
+    * can be.
+    */
+   chain_command_buffers(cmd_buffers, num_cmd_buffers);
+
+   for (uint32_t i = 0; i < num_cmd_buffers; i++) {
+      result = setup_execbuf_for_cmd_buffer(execbuf, cmd_buffers[i]);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   /* Add all the global BOs to the object list for softpin case. */
+   if (device->physical->use_softpin) {
+      anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
+         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
+      struct anv_block_pool *pool;
+      pool = &device->dynamic_state_pool.block_pool;
+      anv_block_pool_foreach_bo(bo, pool) {
+         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
+      pool = &device->instruction_state_pool.block_pool;
+      anv_block_pool_foreach_bo(bo, pool) {
+         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
+      pool = &device->binding_table_pool.block_pool;
+      anv_block_pool_foreach_bo(bo, pool) {
+         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
+      /* Add the BOs for all user allocated memory objects because we can't
+       * track after binding updates of VK_EXT_descriptor_indexing.
+       */
+      list_for_each_entry(struct anv_device_memory, mem,
+                          &device->memory_objects, link) {
+         result = anv_execbuf_add_bo(device, execbuf, mem->bo, NULL, 0);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+   } else {
+      /* We do not support chaining primary command buffers without
+       * softpin.
+       */
+      assert(num_cmd_buffers == 1);
+   }
+
+   bool no_reloc = true;
+   if (execbuf->has_relocs) {
+      no_reloc = execbuf_can_skip_relocations(execbuf);
+      if (no_reloc) {
+         /* If we were able to successfully relocate everything, tell the
+          * kernel that it can skip doing relocations. The requirement for
+          * using NO_RELOC is:
+          *
+          *  1) The addresses written in the objects must match the
+          *     corresponding reloc.presumed_offset which in turn must match
+          *     the corresponding execobject.offset.
+          *
+          *  2) To avoid stalling, execobject.offset should match the current
+          *     address of that object within the active context.
+          *
+          * In order to satisfy all of the invariants that make userspace
+          * relocations to be safe (see relocate_cmd_buffer()), we need to
+          * further ensure that the addresses we use match those used by the
+          * kernel for the most recent execbuf2.
+          *
+          * The kernel may still choose to do relocations anyway if something
+          * has moved in the GTT. In this case, the relocation list still
+          * needs to be valid. All relocations on the batch buffers are
+          * already valid and kept up-to-date. For surface state relocations,
+          * by applying the relocations in relocate_cmd_buffer, we ensured
+          * that the address in the RENDER_SURFACE_STATE matches
+          * presumed_offset, so it should be safe for the kernel to relocate
+          * them as needed.
+          */
+         for (uint32_t i = 0; i < num_cmd_buffers; i++) {
+            relocate_cmd_buffer(cmd_buffers[i], execbuf);
+
+            anv_reloc_list_apply(device, &cmd_buffers[i]->surface_relocs,
+                                 device->surface_state_pool.block_pool.bo,
+                                 true /* always relocate surface states */);
+         }
+      } else {
+         /* In the case where we fall back to doing kernel relocations, we
+          * need to ensure that the relocation list is valid. All relocations
+          * on the batch buffers are already valid and kept up-to-date. Since
+          * surface states are shared between command buffers and we don't
+          * know what order they will be submitted to the kernel, we don't
+          * know what address is actually written in the surface state object
+          * at any given time. The only option is to set a bogus presumed
+          * offset and let the kernel relocate them.
+          */
+         for (uint32_t i = 0; i < num_cmd_buffers; i++)
+            reset_cmd_buffer_surface_offsets(cmd_buffers[i]);
+      }
+   }
+
    struct anv_batch_bo *first_batch_bo =
-      list_first_entry(&cmd_buffer->batch_bos, struct anv_batch_bo, link);
+      list_first_entry(&cmd_buffers[0]->batch_bos, struct anv_batch_bo, link);
 
    /* The kernel requires that the last entry in the validation list be the
     * batch buffer to execute.  We can simply swap the element
@@ -1609,28 +1753,34 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
    }
 
    /* If we are pinning our BOs, we shouldn't have to relocate anything */
-   if (cmd_buffer->device->physical->use_softpin)
+   if (device->physical->use_softpin)
       assert(!execbuf->has_relocs);
 
-   /* Now we go through and fixup all of the relocation lists to point to
-    * the correct indices in the object array.  We have to do this after we
-    * reorder the list above as some of the indices may have changed.
+   /* Now we go through and fixup all of the relocation lists to point to the
+    * correct indices in the object array (I915_EXEC_HANDLE_LUT).  We have to
+    * do this after we reorder the list above as some of the indices may have
+    * changed.
     */
+   struct anv_batch_bo **bbo;
    if (execbuf->has_relocs) {
-      u_vector_foreach(bbo, &cmd_buffer->seen_bbos)
-         anv_cmd_buffer_process_relocs(cmd_buffer, &(*bbo)->relocs);
+      assert(num_cmd_buffers == 1);
+      u_vector_foreach(bbo, &cmd_buffers[0]->seen_bbos)
+         anv_cmd_buffer_process_relocs(cmd_buffers[0], &(*bbo)->relocs);
 
-      anv_cmd_buffer_process_relocs(cmd_buffer, &cmd_buffer->surface_relocs);
+      anv_cmd_buffer_process_relocs(cmd_buffers[0], &cmd_buffers[0]->surface_relocs);
    }
 
-   if (!cmd_buffer->device->info.has_llc) {
+   if (!device->info.has_llc) {
       __builtin_ia32_mfence();
-      u_vector_foreach(bbo, &cmd_buffer->seen_bbos) {
-         for (uint32_t i = 0; i < (*bbo)->length; i += CACHELINE_SIZE)
-            __builtin_ia32_clflush((*bbo)->bo->map + i);
+      for (uint32_t i = 0; i < num_cmd_buffers; i++) {
+         u_vector_foreach(bbo, &cmd_buffers[i]->seen_bbos) {
+            for (uint32_t i = 0; i < (*bbo)->length; i += CACHELINE_SIZE)
+               __builtin_ia32_clflush((*bbo)->bo->map + i);
+         }
       }
    }
 
+   struct anv_batch *batch = &cmd_buffers[0]->batch;
    execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf->objects,
       .buffer_count = execbuf->bo_count,
@@ -1640,50 +1790,10 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       .num_cliprects = 0,
       .DR1 = 0,
       .DR4 = 0,
-      .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags,
-      .rsvd1 = cmd_buffer->device->context_id,
+      .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags | (no_reloc ? I915_EXEC_NO_RELOC : 0),
+      .rsvd1 = device->context_id,
       .rsvd2 = 0,
    };
-
-   if (relocate_cmd_buffer(cmd_buffer, execbuf)) {
-      /* If we were able to successfully relocate everything, tell the kernel
-       * that it can skip doing relocations. The requirement for using
-       * NO_RELOC is:
-       *
-       *  1) The addresses written in the objects must match the corresponding
-       *     reloc.presumed_offset which in turn must match the corresponding
-       *     execobject.offset.
-       *
-       *  2) To avoid stalling, execobject.offset should match the current
-       *     address of that object within the active context.
-       *
-       * In order to satisfy all of the invariants that make userspace
-       * relocations to be safe (see relocate_cmd_buffer()), we need to
-       * further ensure that the addresses we use match those used by the
-       * kernel for the most recent execbuf2.
-       *
-       * The kernel may still choose to do relocations anyway if something has
-       * moved in the GTT. In this case, the relocation list still needs to be
-       * valid.  All relocations on the batch buffers are already valid and
-       * kept up-to-date.  For surface state relocations, by applying the
-       * relocations in relocate_cmd_buffer, we ensured that the address in
-       * the RENDER_SURFACE_STATE matches presumed_offset, so it should be
-       * safe for the kernel to relocate them as needed.
-       */
-      execbuf->execbuf.flags |= I915_EXEC_NO_RELOC;
-   } else {
-      /* In the case where we fall back to doing kernel relocations, we need
-       * to ensure that the relocation list is valid.  All relocations on the
-       * batch buffers are already valid and kept up-to-date.  Since surface
-       * states are shared between command buffers and we don't know what
-       * order they will be submitted to the kernel, we don't know what
-       * address is actually written in the surface state object at any given
-       * time.  The only option is to set a bogus presumed offset and let the
-       * kernel relocate them.
-       */
-      for (size_t i = 0; i < cmd_buffer->surface_relocs.num_relocs; i++)
-         cmd_buffer->surface_relocs.relocs[i].presumed_offset = -1;
-   }
 
    return VK_SUCCESS;
 }
@@ -1764,10 +1874,10 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
          goto error;
    }
 
-   if (submit->cmd_buffer) {
-      if (!anv_cmd_buffer_is_chainable(submit->cmd_buffer))
-         anv_cmd_buffer_record_end_submit(submit->cmd_buffer);
-      result = setup_execbuf_for_cmd_buffer(&execbuf, queue, submit->cmd_buffer);
+   if (submit->cmd_buffer_count) {
+      result = setup_execbuf_for_cmd_buffers(&execbuf, queue,
+                                             submit->cmd_buffers,
+                                             submit->cmd_buffer_count);
    } else if (submit->simple_bo) {
       result = anv_execbuf_add_bo(device, &execbuf, submit->simple_bo, NULL, 0);
       if (result != VK_SUCCESS)
@@ -1791,14 +1901,14 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
 
    const bool has_perf_query =
       submit->perf_query_pass >= 0 &&
-      submit->cmd_buffer &&
-      submit->cmd_buffer->perf_query_pool;
+      submit->cmd_buffer_count &&
+      submit->perf_query_pool;
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
       fprintf(stderr, "Batch on queue %d\n", (int)(queue - device->queues));
-      if (submit->cmd_buffer) {
+      if (submit->cmd_buffer_count) {
          if (has_perf_query) {
-            struct anv_query_pool *query_pool = submit->cmd_buffer->perf_query_pool;
+            struct anv_query_pool *query_pool = submit->perf_query_pool;
             struct anv_bo *pass_batch_bo = query_pool->bo;
             uint64_t pass_batch_offset =
                khr_perf_query_preamble_offset(query_pool,
@@ -1809,11 +1919,14 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
                             pass_batch_bo->offset + pass_batch_offset, false);
          }
 
-         struct anv_batch_bo **bo = u_vector_tail(&submit->cmd_buffer->seen_bbos);
-         device->cmd_buffer_being_decoded = submit->cmd_buffer;
-         gen_print_batch(&device->decoder_ctx, (*bo)->bo->map,
-                         (*bo)->bo->size, (*bo)->bo->offset, false);
-         device->cmd_buffer_being_decoded = NULL;
+         for (uint32_t i = 0; i < submit->cmd_buffer_count; i++) {
+            struct anv_batch_bo **bo =
+               u_vector_tail(&submit->cmd_buffers[i]->seen_bbos);
+            device->cmd_buffer_being_decoded = submit->cmd_buffers[i];
+            gen_print_batch(&device->decoder_ctx, (*bo)->bo->map,
+                            (*bo)->bo->size, (*bo)->bo->offset, false);
+            device->cmd_buffer_being_decoded = NULL;
+         }
       } else if (submit->simple_bo) {
          gen_print_batch(&device->decoder_ctx, submit->simple_bo->map,
                          submit->simple_bo->size, submit->simple_bo->offset, false);
@@ -1853,7 +1966,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
    }
 
    if (has_perf_query) {
-      struct anv_query_pool *query_pool = submit->cmd_buffer->perf_query_pool;
+      struct anv_query_pool *query_pool = submit->perf_query_pool;
       assert(submit->perf_query_pass < query_pool->n_passes);
       struct gen_perf_query_info *query_info =
          query_pool->pass_query[submit->perf_query_pass];

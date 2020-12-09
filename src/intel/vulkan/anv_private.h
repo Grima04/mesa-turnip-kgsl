@@ -1090,7 +1090,9 @@ VkResult anv_init_wsi(struct anv_physical_device *physical_device);
 void anv_finish_wsi(struct anv_physical_device *physical_device);
 
 struct anv_queue_submit {
-   struct anv_cmd_buffer *                   cmd_buffer;
+   struct anv_cmd_buffer **                  cmd_buffers;
+   uint32_t                                  cmd_buffer_count;
+   uint32_t                                  cmd_buffer_array_length;
 
    uint32_t                                  fence_count;
    uint32_t                                  fence_array_length;
@@ -1132,6 +1134,7 @@ struct anv_queue_submit {
    uintptr_t *                               fence_bos;
 
    int                                       perf_query_pass;
+   struct anv_query_pool *                   perf_query_pool;
 
    const VkAllocationCallbacks *             alloc;
    VkSystemAllocationScope                   alloc_scope;

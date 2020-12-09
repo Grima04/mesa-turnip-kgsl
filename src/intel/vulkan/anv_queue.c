@@ -112,6 +112,7 @@ anv_queue_submit_free(struct anv_device *device,
    vk_free(alloc, submit->signal_timelines);
    vk_free(alloc, submit->signal_timeline_values);
    vk_free(alloc, submit->fence_bos);
+   vk_free(alloc, submit->cmd_buffers);
    vk_free(alloc, submit);
 }
 
@@ -1208,6 +1209,29 @@ anv_post_queue_fence_update(struct anv_device *device, VkFence _fence)
 }
 
 static VkResult
+anv_queue_submit_add_cmd_buffer(struct anv_queue_submit *submit,
+                                struct anv_cmd_buffer *cmd_buffer)
+{
+   if (submit->cmd_buffer_count >= submit->cmd_buffer_array_length) {
+      uint32_t new_len = MAX2(submit->cmd_buffer_array_length * 2, 4);
+      struct anv_cmd_buffer **new_cmd_buffers =
+         vk_realloc(submit->alloc,
+                    submit->cmd_buffers, new_len * sizeof(*submit->cmd_buffers),
+                    8, submit->alloc_scope);
+      if (new_cmd_buffers == NULL)
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      submit->cmd_buffers = new_cmd_buffers;
+      submit->cmd_buffer_array_length = new_len;
+   }
+
+   submit->cmd_buffers[submit->cmd_buffer_count++] = cmd_buffer;
+   submit->perf_query_pool = cmd_buffer->perf_query_pool;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 anv_queue_submit_empty(struct anv_queue *queue,
                        const VkSemaphore *in_semaphores,
                        const uint64_t *in_values,
@@ -1362,7 +1386,9 @@ VkResult anv_QueueSubmit(
             goto out;
          }
 
-         submit->cmd_buffer = cmd_buffer;
+         result = anv_queue_submit_add_cmd_buffer(submit, cmd_buffer);
+         if (result != VK_SUCCESS)
+            goto out;
 
          if (j == 0) {
             /* Only the first batch gets the in semaphores */
