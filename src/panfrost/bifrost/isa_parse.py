@@ -99,6 +99,7 @@ def parse_instruction(ins):
             'staging': ins.attrib.get('staging', ''),
             'unused': ins.attrib.get('unused', False),
             'pseudo': ins.attrib.get('pseudo', False),
+            'message': ins.attrib.get('message', 'none'),
     }
 
     if 'exact' in ins.attrib:

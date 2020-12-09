@@ -2454,31 +2454,31 @@
     <mod name="neg2" start="12" size="1" opt="neg"/>
   </ins>
 
-  <ins name="+ACMPSTORE.i32" staging="r" mask="0xffdc0" exact="0x648c0">
+  <ins name="+ACMPSTORE.i32" staging="r" mask="0xffdc0" exact="0x648c0" message="atomic">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
-  <ins name="+ACMPSTORE.i64" staging="r" mask="0xffdc0" exact="0x64900">
+  <ins name="+ACMPSTORE.i64" staging="r" mask="0xffdc0" exact="0x64900" message="atomic">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
-  <ins name="+ACMPXCHG.i32" staging="rw" mask="0xffdc0" exact="0x644c0">
+  <ins name="+ACMPXCHG.i32" staging="rw" mask="0xffdc0" exact="0x644c0" message="atomic">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
-  <ins name="+ACMPXCHG.i64" staging="rw" mask="0xffdc0" exact="0x64500">
+  <ins name="+ACMPXCHG.i64" staging="rw" mask="0xffdc0" exact="0x64500" message="atomic">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
-  <ins name="+ATEST" staging="w" mask="0xfff00" exact="0xc8f00">
+  <ins name="+ATEST" staging="w" mask="0xfff00" exact="0xc8f00" message="atest">
     <src start="0" mask="0xf7"/>
     <src start="3" mask="0xf7"/>
     <mod name="widen1" start="6" size="2">
@@ -2489,27 +2489,27 @@
     </mod>
   </ins>
 
-  <ins name="+ATOM_CX" staging="rw" mask="0xffe00" exact="0xd7400">
+  <ins name="+ATOM_CX" staging="rw" mask="0xffe00" exact="0xd7400" message="atomic">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
   </ins>
 
-  <ins name="+AXCHG.i32" staging="rw" mask="0xffdc0" exact="0x640c0">
+  <ins name="+AXCHG.i32" staging="rw" mask="0xffdc0" exact="0x640c0" message="atomic">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
-  <ins name="+AXCHG.i64" staging="rw" mask="0xffdc0" exact="0x64100">
+  <ins name="+AXCHG.i64" staging="rw" mask="0xffdc0" exact="0x64100" message="atomic">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="9" size="1" opt="wls"/>
   </ins>
 
-  <ins name="+BARRIER" mask="0xfffff" exact="0xd7874"/>
+  <ins name="+BARRIER" mask="0xfffff" exact="0xd7874" message="barrier"/>
 
-  <ins name="+BLEND" staging="r" mask="0xffe00" exact="0xca800">
+  <ins name="+BLEND" staging="r" mask="0xffe00" exact="0xca800" message="blend">
     <src start="0"/>
     <src start="3" mask="0xf7"/>
     <src start="6" mask="0xf7"/>
@@ -3823,11 +3823,11 @@
     </swap>
   </ins>
 
-  <ins name="+DOORBELL" mask="0xffff8" exact="0xd7860" unused="true">
+  <ins name="+DOORBELL" mask="0xffff8" exact="0xd7860" unused="true" message="job_management">
     <src start="0"/>
   </ins>
 
-  <ins name="+EUREKA" mask="0xffff8" exact="0xd7850" unused="true">
+  <ins name="+EUREKA" mask="0xffff8" exact="0xd7850" unused="true" message="job_management">
     <src start="0"/>
   </ins>
 
@@ -6157,7 +6157,7 @@
     <src start="6" mask="0xf7"/>
   </ins>
 
-  <ins name="+KABOOM" mask="0xffff8" exact="0xd7858" unused="true">
+  <ins name="+KABOOM" mask="0xffff8" exact="0xd7858" unused="true" message="job_management">
     <src start="0"/>
   </ins>
 
@@ -6191,7 +6191,7 @@
     </mod>
   </ins>
 
-  <ins name="+LD_ATTR" staging="w">
+  <ins name="+LD_ATTR" staging="w" message="attribute">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
@@ -6230,7 +6230,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LD_ATTR_IMM" staging="w">
+  <ins name="+LD_ATTR_IMM" staging="w" message="attribute">
     <src start="0"/>
     <src start="3"/>
     <immediate name="attribute_index" start="6" size="4"/>
@@ -6269,7 +6269,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LD_ATTR_TEX" staging="w">
+  <ins name="+LD_ATTR_TEX" staging="w" message="attribute">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
@@ -6308,7 +6308,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LD_CVT" staging="w" mask="0xff800" exact="0xc9000">
+  <ins name="+LD_CVT" staging="w" mask="0xff800" exact="0xc9000" message="load">
     <src start="0"/>
     <src start="3"/>
     <src start="6" mask="0xf7"/>
@@ -6320,7 +6320,7 @@
     </mod>
   </ins>
 
-  <ins name="+LD_GCLK.u64" staging="w" mask="0xffff8" exact="0xd7800">
+  <ins name="+LD_GCLK.u64" staging="w" mask="0xffff8" exact="0xd7800" message="attribute">
     <mod name="source" start="0" size="3">
       <reserved/>
       <reserved/>
@@ -6333,7 +6333,7 @@
     </mod>
   </ins>
 
-  <ins name="+LD_TILE" staging="w" mask="0xff800" exact="0xcb000">
+  <ins name="+LD_TILE" staging="w" mask="0xff800" exact="0xcb000" message="tile">
     <src start="0"/>
     <src start="3"/>
     <src start="6" mask="0xf7"/>
@@ -6345,7 +6345,7 @@
     </mod>
   </ins>
 
-  <ins name="+LD_VAR" staging="w">
+  <ins name="+LD_VAR" staging="w" message="varying">
     <src start="0"/>
     <src start="3"/>
     <mod name="vecsize" start="8" size="2">
@@ -6486,7 +6486,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LD_VAR_FLAT" staging="w">
+  <ins name="+LD_VAR_FLAT" staging="w" message="varying">
     <src start="3"/>
     <mod name="vecsize" start="8" size="2">
       <opt>none</opt>
@@ -6539,7 +6539,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LD_VAR_FLAT_IMM" staging="w">
+  <ins name="+LD_VAR_FLAT_IMM" staging="w" message="varying">
     <immediate name="index" start="3" size="5"/>
     <mod name="vecsize" start="8" size="2">
       <opt>none</opt>
@@ -6592,7 +6592,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LD_VAR_IMM" staging="w">
+  <ins name="+LD_VAR_IMM" staging="w" message="varying">
     <src start="0"/>
     <immediate name="index" start="3" size="5"/>
     <mod name="vecsize" start="8" size="2">
@@ -6733,7 +6733,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LD_VAR_SPECIAL" staging="w">
+  <ins name="+LD_VAR_SPECIAL" staging="w" message="varying">
     <src start="0"/>
     <mod name="varying_name" size="5">
       <opt>point</opt>
@@ -6919,7 +6919,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LEA_ATTR" staging="w">
+  <ins name="+LEA_ATTR" staging="w" message="attribute">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
@@ -6952,7 +6952,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LEA_ATTR_IMM" staging="w">
+  <ins name="+LEA_ATTR_IMM" staging="w" message="attribute">
     <src start="0"/>
     <src start="3"/>
     <immediate name="attribute_index" start="6" size="4"/>
@@ -6985,7 +6985,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LEA_ATTR_TEX" staging="w">
+  <ins name="+LEA_ATTR_TEX" staging="w" message="attribute">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
@@ -7018,7 +7018,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LEA_TEX" staging="w" mask="0xff600" exact="0xd6600">
+  <ins name="+LEA_TEX" staging="w" mask="0xff600" exact="0xd6600" message="attribute">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
@@ -7028,7 +7028,7 @@
     </mod>
   </ins>
 
-  <ins name="+LEA_TEX_IMM" staging="w" mask="0xff000" exact="0xd6000">
+  <ins name="+LEA_TEX_IMM" staging="w" mask="0xff000" exact="0xd6000" message="attribute">
     <src start="0"/>
     <src start="3"/>
     <immediate name="texture_index" start="6" size="5"/>
@@ -7038,7 +7038,7 @@
     </mod>
   </ins>
 
-  <ins name="+LOAD.i128" staging="w" mask="0xffe00" exact="0x61000">
+  <ins name="+LOAD.i128" staging="w" mask="0xffe00" exact="0x61000" message="load">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7053,7 +7053,7 @@
     </mod>
   </ins>
 
-  <ins name="+LOAD.i16" staging="w">
+  <ins name="+LOAD.i16" staging="w" message="load">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7112,7 +7112,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LOAD.i24" staging="w" mask="0xffe00" exact="0x65000">
+  <ins name="+LOAD.i24" staging="w" mask="0xffe00" exact="0x65000" message="load">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7127,7 +7127,7 @@
     </mod>
   </ins>
 
-  <ins name="+LOAD.i32" staging="w">
+  <ins name="+LOAD.i32" staging="w" message="load">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7164,7 +7164,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LOAD.i48" staging="w" mask="0xffe00" exact="0x65200">
+  <ins name="+LOAD.i48" staging="w" mask="0xffe00" exact="0x65200" message="load">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7179,7 +7179,7 @@
     </mod>
   </ins>
 
-  <ins name="+LOAD.i64" staging="w" mask="0xffe00" exact="0x60e00">
+  <ins name="+LOAD.i64" staging="w" mask="0xffe00" exact="0x60e00" message="load">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7194,7 +7194,7 @@
     </mod>
   </ins>
 
-  <ins name="+LOAD.i8" staging="w">
+  <ins name="+LOAD.i8" staging="w" message="load">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7278,7 +7278,7 @@
     </encoding>
   </ins>
 
-  <ins name="+LOAD.i96" staging="w" mask="0xffe00" exact="0x65400">
+  <ins name="+LOAD.i96" staging="w" mask="0xffe00" exact="0x65400" message="load">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7492,7 +7492,7 @@
     <src start="6"/>
   </ins>
 
-  <ins name="+STORE.i128" staging="r" mask="0xffe00" exact="0x61200">
+  <ins name="+STORE.i128" staging="r" mask="0xffe00" exact="0x61200" message="store">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7507,7 +7507,7 @@
     </mod>
   </ins>
 
-  <ins name="+STORE.i16" staging="r" mask="0xffe00" exact="0x62800">
+  <ins name="+STORE.i16" staging="r" mask="0xffe00" exact="0x62800" message="store">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7522,7 +7522,7 @@
     </mod>
   </ins>
 
-  <ins name="+STORE.i24" staging="r" mask="0xffe00" exact="0x65800">
+  <ins name="+STORE.i24" staging="r" mask="0xffe00" exact="0x65800" message="store">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7537,7 +7537,7 @@
     </mod>
   </ins>
 
-  <ins name="+STORE.i32" staging="r" mask="0xffe00" exact="0x62c00">
+  <ins name="+STORE.i32" staging="r" mask="0xffe00" exact="0x62c00" message="store">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7552,7 +7552,7 @@
     </mod>
   </ins>
 
-  <ins name="+STORE.i48" staging="r" mask="0xffe00" exact="0x65a00">
+  <ins name="+STORE.i48" staging="r" mask="0xffe00" exact="0x65a00" message="store">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7567,7 +7567,7 @@
     </mod>
   </ins>
 
-  <ins name="+STORE.i64" staging="r" mask="0xffe00" exact="0x62e00">
+  <ins name="+STORE.i64" staging="r" mask="0xffe00" exact="0x62e00" message="store">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7582,7 +7582,7 @@
     </mod>
   </ins>
 
-  <ins name="+STORE.i8" staging="r" mask="0xffe00" exact="0x62000">
+  <ins name="+STORE.i8" staging="r" mask="0xffe00" exact="0x62000" message="store">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7597,7 +7597,7 @@
     </mod>
   </ins>
 
-  <ins name="+STORE.i96" staging="r" mask="0xffe00" exact="0x65c00">
+  <ins name="+STORE.i96" staging="r" mask="0xffe00" exact="0x65c00" message="store">
     <src start="0"/>
     <src start="3"/>
     <mod name="seg" start="6" size="3">
@@ -7612,7 +7612,7 @@
     </mod>
   </ins>
 
-  <ins name="+ST_CVT" staging="r" mask="0xff800" exact="0xc9800">
+  <ins name="+ST_CVT" staging="r" mask="0xff800" exact="0xc9800" message="store">
     <src start="0"/>
     <src start="3"/>
     <src start="6" mask="0xf7"/>
@@ -7624,7 +7624,7 @@
     </mod>
   </ins>
 
-  <ins name="+ST_TILE" staging="r" mask="0xff800" exact="0xcb800">
+  <ins name="+ST_TILE" staging="r" mask="0xff800" exact="0xcb800" message="tile">
     <src start="0"/>
     <src start="3"/>
     <src start="6" mask="0xf7"/>
@@ -7660,14 +7660,14 @@
     </mod>
   </ins>
 
-  <ins name="+TEXC" staging="rw" mask="0xffc00" exact="0xd7000">
+  <ins name="+TEXC" staging="rw" mask="0xffc00" exact="0xd7000" message="tex">
     <src start="0"/>
     <src start="3"/>
     <src start="6" mask="0xf7"/>
     <mod name="skip" start="9" size="1" opt="skip"/>
   </ins>
 
-  <ins name="+TEXS_2D.f16" staging="w" mask="0xfc000" exact="0xd8000">
+  <ins name="+TEXS_2D.f16" staging="w" mask="0xfc000" exact="0xd8000" message="tex">
     <src start="0"/>
     <src start="3"/>
     <immediate name="texture_index" start="6" size="3"/>
@@ -7679,7 +7679,7 @@
     </mod>
   </ins>
 
-  <ins name="+TEXS_2D.f32" staging="w" mask="0xfc000" exact="0x58000">
+  <ins name="+TEXS_2D.f32" staging="w" mask="0xfc000" exact="0x58000" message="tex">
     <src start="0"/>
     <src start="3"/>
     <immediate name="texture_index" start="6" size="3"/>
@@ -7691,7 +7691,7 @@
     </mod>
   </ins>
 
-  <ins name="+TEXS_CUBE.f16" staging="w" mask="0xfc000" exact="0xdc000">
+  <ins name="+TEXS_CUBE.f16" staging="w" mask="0xfc000" exact="0xdc000" message="tex">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
@@ -7700,7 +7700,7 @@
     <mod name="skip" start="9" size="1" opt="skip"/>
   </ins>
 
-  <ins name="+TEXS_CUBE.f32" staging="w" mask="0xfc000" exact="0x5c000">
+  <ins name="+TEXS_CUBE.f32" staging="w" mask="0xfc000" exact="0x5c000" message="tex">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
@@ -8022,7 +8022,7 @@
     </mod>
   </ins>
 
-  <ins name="+VAR_TEX.f16" staging="w" mask="0xffd00" exact="0xca100">
+  <ins name="+VAR_TEX.f16" staging="w" mask="0xffd00" exact="0xca100" message="vartex">
     <immediate name="varying_index" start="0" size="3"/>
     <immediate name="texture_index" start="3" size="2"/>
     <mod name="update" size="1">
@@ -8052,7 +8052,7 @@
     </derived>
   </ins>
 
-  <ins name="+VAR_TEX.f32" staging="w" mask="0xffd00" exact="0xca000">
+  <ins name="+VAR_TEX.f32" staging="w" mask="0xffd00" exact="0xca000" message="vartex">
     <immediate name="varying_index" start="0" size="3"/>
     <immediate name="texture_index" start="3" size="2"/>
     <mod name="update" size="1">
@@ -8111,7 +8111,7 @@
     </mod>
   </ins>
 
-  <ins name="+ZS_EMIT" staging="w" mask="0xff800" exact="0xd7800">
+  <ins name="+ZS_EMIT" staging="w" mask="0xff800" exact="0xd7800" message="z_stencil">
     <src start="0"/>
     <src start="3"/>
     <src start="6"/>
