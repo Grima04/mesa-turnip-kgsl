@@ -2228,11 +2228,13 @@ static void si_draw_vbo(struct pipe_context *ctx,
              min_direct_count >= 3 && !HAS_TESS && !HAS_GS) {
             if (prim == PIPE_PRIM_TRIANGLES && !index_size) {
                ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST;
+#if 0 /* It's disabled because this hangs: AMD_DEBUG=nggc torcs */
             } else if (prim == PIPE_PRIM_TRIANGLE_STRIP && !primitive_restart) {
                ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP |
                               SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(MIN2(index_size, 3));
                /* The index buffer will be emulated. */
                index_size = 0;
+#endif
             }
          }
 
