@@ -3297,9 +3297,16 @@ static void si_emit_msaa_sample_locs(struct si_context *sctx)
          /* line bug */
          S_028830_LINE_FILTER_DISABLE(sctx->family <= CHIP_POLARIS12);
 
-      /* The alternative of setting sample locations to 0 would
-       * require a DB flush to avoid Z errors, see
-       * https://bugs.freedesktop.org/show_bug.cgi?id=96908
+      /* For hardware with the sample location bug, the problem is that in order to use the small
+       * primitive filter, we need to explicitly set the sample locations to 0. But the DB doesn't
+       * properly process the change of sample locations without a flush, and so we can end up
+       * with incorrect Z values.
+       *
+       * Instead of doing a flush, just disable the small primitive filter when MSAA is
+       * force-disabled.
+       *
+       * The alternative of setting sample locations to 0 would require a DB flush to avoid
+       * Z errors, see https://bugs.freedesktop.org/show_bug.cgi?id=96908
        */
       if (has_msaa_sample_loc_bug && sctx->framebuffer.nr_samples > 1 && !rs->multisample_enable)
          small_prim_filter_cntl &= C_028830_SMALL_PRIM_FILTER_ENABLE;
