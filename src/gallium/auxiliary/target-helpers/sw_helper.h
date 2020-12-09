@@ -84,6 +84,12 @@ sw_screen_create(struct sw_winsys *winsys)
 {
    const char *drivers[] = {
       debug_get_option("GALLIUM_DRIVER", ""),
+#if defined(GALLIUM_ZINK)
+      "zink",
+#endif
+#if defined(GALLIUM_D3D12)
+      "d3d12",
+#endif
 #if defined(GALLIUM_LLVMPIPE)
       "llvmpipe",
 #endif
@@ -92,12 +98,6 @@ sw_screen_create(struct sw_winsys *winsys)
 #endif
 #if defined(GALLIUM_SWR)
       "swr",
-#endif
-#if defined(GALLIUM_ZINK)
-      "zink",
-#endif
-#if defined(GALLIUM_D3D12)
-      "d3d12",
 #endif
    };
 
