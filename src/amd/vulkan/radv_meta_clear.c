@@ -945,12 +945,13 @@ clear_htile_mask(struct radv_cmd_buffer *cmd_buffer,
 }
 
 static uint32_t
-radv_get_htile_fast_clear_value(const struct radv_image *image,
+radv_get_htile_fast_clear_value(const struct radv_device *device,
+				const struct radv_image *image,
 				VkClearDepthStencilValue value)
 {
 	uint32_t clear_value;
 
-	if (!image->planes[0].surface.has_stencil) {
+	if (radv_image_tile_stencil_disabled(device, image)) {
 		clear_value = value.depth ? 0xfffffff0 : 0;
 	} else {
 		clear_value = value.depth ? 0xfffc00f0 : 0xf0;
@@ -960,11 +961,12 @@ radv_get_htile_fast_clear_value(const struct radv_image *image,
 }
 
 static uint32_t
-radv_get_htile_mask(const struct radv_image *image, VkImageAspectFlags aspects)
+radv_get_htile_mask(const struct radv_device *device,
+		    const struct radv_image *image, VkImageAspectFlags aspects)
 {
 	uint32_t mask = 0;
 
-	if (!image->planes[0].surface.has_stencil) {
+	if (radv_image_tile_stencil_disabled(device, image)) {
 		/* All the HTILE buffer is used when there is no stencil. */
 		mask = UINT32_MAX;
 	} else {
@@ -1099,7 +1101,7 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 	VkImageAspectFlags aspects = clear_att->aspectMask;
 	uint32_t clear_word, flush_bits;
 
-	clear_word = radv_get_htile_fast_clear_value(iview->image, clear_value);
+	clear_word = radv_get_htile_fast_clear_value(cmd_buffer->device, iview->image, clear_value);
 
 	if (pre_flush) {
 		cmd_buffer->state.flush_bits |= (RADV_CMD_FLAG_FLUSH_AND_INV_DB |
@@ -1505,7 +1507,7 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer,
 	                  image->planes[0].surface.htile_slice_size * range->baseArrayLayer;
 	uint32_t htile_mask, flush_bits;
 
-	htile_mask = radv_get_htile_mask(image, range->aspectMask);
+	htile_mask = radv_get_htile_mask(cmd_buffer->device, image, range->aspectMask);
 
 	if (htile_mask == UINT_MAX) {
 		/* Clear the whole HTILE buffer. */
