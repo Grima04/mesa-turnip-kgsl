@@ -414,16 +414,8 @@ iris_resolve_color(struct iris_context *ice,
    iris_batch_sync_region_start(batch);
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-   /* On Gen >= 12, Stencil buffer with lossless compression needs to be
-    * resolve with WM_HZ_OP packet.
-    */
-   if (res->aux.usage == ISL_AUX_USAGE_STC_CCS) {
-      blorp_hiz_stencil_op(&blorp_batch, &surf, level, layer,
-                           1, resolve_op);
-   } else {
-      blorp_ccs_resolve(&blorp_batch, &surf, level, layer, 1,
-                        res->surf.format, resolve_op);
-   }
+   blorp_ccs_resolve(&blorp_batch, &surf, level, layer, 1, res->surf.format,
+                     resolve_op);
    blorp_batch_finish(&blorp_batch);
 
    /* See comment above */
@@ -724,6 +716,8 @@ iris_resource_prepare_access(struct iris_context *ice,
             iris_mcs_partial_resolve(ice, batch, res, layer, 1);
          } else if (isl_aux_usage_has_hiz(res->aux.usage)) {
             iris_hiz_exec(ice, batch, res, level, layer, 1, aux_op, false);
+         } else if (res->aux.usage == ISL_AUX_USAGE_STC_CCS) {
+            unreachable("iris doesn't resolve STC_CCS resources");
          } else {
             assert(isl_aux_usage_has_ccs(res->aux.usage));
             iris_resolve_color(ice, batch, res, level, layer, aux_op);
