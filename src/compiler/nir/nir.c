@@ -2041,31 +2041,30 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
 
       assert(nir_foreach_dest(instr, dest_is_ssa, NULL));
       nir_ssa_def *old_def = nir_instr_ssa_def(instr);
-      if (old_def == NULL) {
-         iter = nir_after_instr(instr);
-         continue;
-      }
-
-      /* We're about to ask the callback to generate a replacement for instr.
-       * Save off the uses from instr's SSA def so we know what uses to
-       * rewrite later.  If we use nir_ssa_def_rewrite_uses, it fails in the
-       * case where the generated replacement code uses the result of instr
-       * itself.  If we use nir_ssa_def_rewrite_uses_after (which is the
-       * normal solution to this problem), it doesn't work well if control-
-       * flow is inserted as part of the replacement, doesn't handle cases
-       * where the replacement is something consumed by instr, and suffers
-       * from performance issues.  This is the only way to 100% guarantee
-       * that we rewrite the correct set efficiently.
-       */
       struct list_head old_uses, old_if_uses;
-      list_replace(&old_def->uses, &old_uses);
-      list_inithead(&old_def->uses);
-      list_replace(&old_def->if_uses, &old_if_uses);
-      list_inithead(&old_def->if_uses);
+      if (old_def != NULL) {
+         /* We're about to ask the callback to generate a replacement for instr.
+          * Save off the uses from instr's SSA def so we know what uses to
+          * rewrite later.  If we use nir_ssa_def_rewrite_uses, it fails in the
+          * case where the generated replacement code uses the result of instr
+          * itself.  If we use nir_ssa_def_rewrite_uses_after (which is the
+          * normal solution to this problem), it doesn't work well if control-
+          * flow is inserted as part of the replacement, doesn't handle cases
+          * where the replacement is something consumed by instr, and suffers
+          * from performance issues.  This is the only way to 100% guarantee
+          * that we rewrite the correct set efficiently.
+          */
+
+         list_replace(&old_def->uses, &old_uses);
+         list_inithead(&old_def->uses);
+         list_replace(&old_def->if_uses, &old_if_uses);
+         list_inithead(&old_def->if_uses);
+      }
 
       b.cursor = nir_after_instr(instr);
       nir_ssa_def *new_def = lower(&b, instr, cb_data);
-      if (new_def && new_def != NIR_LOWER_INSTR_PROGRESS) {
+      if (new_def && new_def != NIR_LOWER_INSTR_PROGRESS &&
+          new_def != NIR_LOWER_INSTR_PROGRESS_REPLACE) {
          assert(old_def != NULL);
          if (new_def->parent_instr->block != instr->block)
             preserved = nir_metadata_none;
@@ -2089,7 +2088,13 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
             list_replace(&old_uses, &old_def->uses);
             list_replace(&old_if_uses, &old_def->if_uses);
          }
-         iter = nir_after_instr(instr);
+         if (new_def == NIR_LOWER_INSTR_PROGRESS_REPLACE) {
+            /* Only instructions without a return value can be removed like this */
+            assert(!old_def);
+            iter = nir_instr_remove(instr);
+            progress = true;
+         } else
+            iter = nir_after_instr(instr);
 
          if (new_def == NIR_LOWER_INSTR_PROGRESS)
             progress = true;
