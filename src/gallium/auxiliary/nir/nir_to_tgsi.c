@@ -162,6 +162,124 @@ ntt_tgsi_var_usage_mask(const struct nir_variable *var)
                               glsl_type_is_64bit(type_without_array));
 }
 
+static struct ureg_dst
+ntt_store_output_decl(struct ntt_compile *c, nir_intrinsic_instr *instr, uint32_t *frac)
+{
+   nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
+   int base = nir_intrinsic_base(instr);
+   *frac = nir_intrinsic_component(instr);
+   bool is_64 = nir_src_bit_size(instr->src[0]) == 64;
+
+   struct ureg_dst out;
+   if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
+      if (semantics.location == FRAG_RESULT_COLOR)
+         ureg_property(c->ureg, TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS, 1);
+
+      unsigned semantic_name, semantic_index;
+      tgsi_get_gl_frag_result_semantic(semantics.location,
+                                       &semantic_name, &semantic_index);
+      semantic_index += semantics.dual_source_blend_index;
+
+      switch (semantics.location) {
+      case FRAG_RESULT_DEPTH:
+         *frac = 2; /* z write is the to the .z channel in TGSI */
+         break;
+      case FRAG_RESULT_STENCIL:
+         *frac = 1;
+         break;
+      default:
+         break;
+      }
+
+      out = ureg_DECL_output(c->ureg, semantic_name, semantic_index);
+   } else {
+      unsigned semantic_name, semantic_index;
+
+      ntt_get_gl_varying_semantic(c, semantics.location,
+                                  &semantic_name, &semantic_index);
+
+      uint32_t usage_mask = ntt_tgsi_usage_mask(*frac,
+                                                instr->num_components,
+                                                is_64);
+      uint32_t gs_streams = semantics.gs_streams;
+      for (int i = 0; i < 4; i++) {
+         if (!(usage_mask & (1 << i)))
+            gs_streams &= ~(0x3 << 2 * i);
+      }
+
+      /* No driver appears to use array_id of outputs. */
+      unsigned array_id = 0;
+
+      /* This bit is lost in the i/o semantics, but it's unused in in-tree
+       * drivers.
+       */
+      bool invariant = false;
+
+      out = ureg_DECL_output_layout(c->ureg,
+                                    semantic_name, semantic_index,
+                                    gs_streams,
+                                    base,
+                                    usage_mask,
+                                    array_id,
+                                    semantics.num_slots,
+                                    invariant);
+   }
+
+   unsigned write_mask = nir_intrinsic_write_mask(instr);
+
+   if (is_64) {
+      write_mask = ntt_64bit_write_mask(write_mask);
+      if (*frac >= 2)
+         write_mask = write_mask << 2;
+   } else {
+      write_mask = write_mask << *frac;
+   }
+   return ureg_writemask(out, write_mask);
+}
+
+/* If this reg or SSA def is used only for storing an output, then in the simple
+ * cases we can write directly to the TGSI output instead of having store_output
+ * emit its own MOV.
+ */
+static bool
+ntt_try_store_in_tgsi_output(struct ntt_compile *c, struct ureg_dst *dst,
+                             struct list_head *uses, struct list_head *if_uses)
+{
+   *dst = ureg_dst_undef();
+
+   switch (c->s->info.stage) {
+   case MESA_SHADER_FRAGMENT:
+   case MESA_SHADER_VERTEX:
+      break;
+   default:
+      /* tgsi_exec (at least) requires that output stores happen per vertex
+       * emitted, you don't get to reuse a previous output value for the next
+       * vertex.
+       */
+      return false;
+   }
+
+   if (!list_is_empty(if_uses) || !list_is_singular(uses))
+      return false;
+
+   nir_src *src = list_first_entry(uses, nir_src, use_link);
+
+   if (src->parent_instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(src->parent_instr);
+   if (intr->intrinsic != nir_intrinsic_store_output ||
+       !nir_src_is_const(intr->src[1])) {
+      return false;
+   }
+
+   uint32_t frac;
+   *dst = ntt_store_output_decl(c, intr, &frac);
+   dst->Index += nir_src_as_uint(intr->src[1]);
+
+   return frac == 0;
+}
+
 static void
 ntt_setup_inputs(struct ntt_compile *c)
 {
@@ -297,16 +415,18 @@ ntt_setup_registers(struct ntt_compile *c, struct exec_list *list)
       struct ureg_dst decl;
       if (nir_reg->num_array_elems == 0) {
          uint32_t write_mask = BITFIELD_MASK(nir_reg->num_components);
-         if (nir_reg->bit_size == 64) {
-            if (nir_reg->num_components > 2) {
-               fprintf(stderr, "NIR-to-TGSI: error: %d-component NIR r%d\n",
-                       nir_reg->num_components, nir_reg->index);
+         if (!ntt_try_store_in_tgsi_output(c, &decl, &nir_reg->uses, &nir_reg->if_uses)) {
+            if (nir_reg->bit_size == 64) {
+               if (nir_reg->num_components > 2) {
+                  fprintf(stderr, "NIR-to-TGSI: error: %d-component NIR r%d\n",
+                        nir_reg->num_components, nir_reg->index);
+               }
+
+               write_mask = ntt_64bit_write_mask(write_mask);
             }
 
-            write_mask = ntt_64bit_write_mask(write_mask);
+            decl = ureg_writemask(ureg_DECL_temporary(c->ureg), write_mask);
          }
-
-         decl = ureg_writemask(ureg_DECL_temporary(c->ureg), write_mask);
       } else {
          decl = ureg_DECL_array_temporary(c->ureg, nir_reg->num_array_elems,
                                           true);
@@ -455,13 +575,15 @@ ntt_swizzle_for_write_mask(struct ureg_src src, uint32_t write_mask)
 static struct ureg_dst *
 ntt_get_ssa_def_decl(struct ntt_compile *c, nir_ssa_def *ssa)
 {
-   struct ureg_dst temp = ureg_DECL_temporary(c->ureg);
-
    uint32_t writemask = BITSET_MASK(ssa->num_components);
    if (ssa->bit_size == 64)
       writemask = ntt_64bit_write_mask(writemask);
 
-   c->ssa_temp[ssa->index] = ureg_writemask(temp, writemask);
+   struct ureg_dst dst;
+   if (!ntt_try_store_in_tgsi_output(c, &dst, &ssa->uses, &ssa->if_uses))
+      dst = ureg_DECL_temporary(c->ureg);
+
+   c->ssa_temp[ssa->index] = ureg_writemask(dst, writemask);
 
    return &c->ssa_temp[ssa->index];
 }
@@ -997,7 +1119,9 @@ ntt_ureg_src_dimension_indirect(struct ntt_compile *c, struct ureg_src usrc,
 {
    if (nir_src_is_const(src)) {
       return ureg_src_dimension(usrc, nir_src_as_uint(src));
-   } else {
+   }
+   else
+   {
       return ureg_src_dimension_indirect(usrc,
                                          ntt_reladdr(c, ntt_get_src(c, src)),
                                          0);
@@ -1445,70 +1569,18 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
 static void
 ntt_emit_store_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
 {
-   /* TODO: When making an SSA def's storage, we should check if it's only
-    * used as the source of a store_output and point it at our
-    * TGSI_FILE_OUTPUT instead of generating the extra MOV here.
-    */
-   uint32_t base = nir_intrinsic_base(instr);
    struct ureg_src src = ntt_get_src(c, instr->src[0]);
-   bool is_64 = nir_src_bit_size(instr->src[0]) == 64;
-   struct ureg_dst out;
-   nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
-   uint32_t frac = nir_intrinsic_component(instr);
 
-   if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
-      if (semantics.location == FRAG_RESULT_COLOR)
-         ureg_property(c->ureg, TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS, 1);
-
-      unsigned semantic_name, semantic_index;
-      tgsi_get_gl_frag_result_semantic(semantics.location,
-                                       &semantic_name, &semantic_index);
-      semantic_index += semantics.dual_source_blend_index;
-
-      out = ureg_DECL_output(c->ureg, semantic_name, semantic_index);
-
-      switch (semantics.location) {
-      case FRAG_RESULT_DEPTH:
-         frac = 2; /* z write is the to the .z channel in TGSI */
-         break;
-      case FRAG_RESULT_STENCIL:
-         frac = 1;
-         break;
-      default:
-         break;
-      }
-   } else {
-      unsigned semantic_name, semantic_index;
-
-      ntt_get_gl_varying_semantic(c, semantics.location,
-                                  &semantic_name, &semantic_index);
-
-      uint32_t usage_mask = ntt_tgsi_usage_mask(frac,
-                                                instr->num_components,
-                                                is_64);
-      uint32_t gs_streams = semantics.gs_streams;
-      for (int i = 0; i < 4; i++) {
-         if (!(usage_mask & (1 << i)))
-            gs_streams &= ~(0x3 << 2 * i);
-      }
-
-      /* No driver appears to use array_id of outputs. */
-      unsigned array_id = 0;
-
-      /* This bit is lost in the i/o semantics, but it's unused in in-tree
-       * drivers.
+   if (src.File == TGSI_FILE_OUTPUT) {
+      /* If our src is the output file, that's an indication that we were able
+       * to emit the output stores in the generating instructions and we have
+       * nothing to do here.
        */
-      bool invariant = false;
-
-      out = ureg_DECL_output_layout(c->ureg,
-                                    semantic_name, semantic_index,
-                                    gs_streams,
-                                    base,
-                                    usage_mask,
-                                    array_id,
-                                    semantics.num_slots,
-                                    invariant);
+      return;
    }
+
+   uint32_t frac;
+   struct ureg_dst out = ntt_store_output_decl(c, instr, &frac);
 
    if (instr->intrinsic == nir_intrinsic_store_per_vertex_output) {
       out = ntt_ureg_dst_indirect(c, out, instr->src[2]);
@@ -1517,24 +1589,13 @@ ntt_emit_store_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
       out = ntt_ureg_dst_indirect(c, out, instr->src[1]);
    }
 
-   unsigned write_mask = nir_intrinsic_write_mask(instr);
-
-   if (is_64) {
-      write_mask = ntt_64bit_write_mask(write_mask);
-      if (frac >= 2)
-         write_mask = write_mask << 2;
-   } else {
-      write_mask = write_mask << frac;
-   }
-
    uint8_t swizzle[4] = { 0, 0, 0, 0 };
    for (int i = frac; i <= 4; i++) {
-      if (write_mask & (1 << i))
+      if (out.WriteMask & (1 << i))
          swizzle[i] = i - frac;
    }
 
    src = ureg_swizzle(src, swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
-   out = ureg_writemask(out, write_mask);
 
    ureg_MOV(c->ureg, out, src);
    ntt_reladdr_dst_put(c, out);
