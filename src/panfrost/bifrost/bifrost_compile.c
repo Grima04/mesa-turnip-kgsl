@@ -242,6 +242,62 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_make_vec_to(bi_builder *b, bi_index final_dst,
+                bi_index *src,
+                unsigned *channel,
+                unsigned count,
+                unsigned bitsize)
+{
+        /* If we reads our own output, we need a temporary move to allow for
+         * swapping. TODO: Could do a bit better for pairwise swaps of 16-bit
+         * vectors */
+        bool reads_self = false;
+
+        for (unsigned i = 0; i < count; ++i)
+                reads_self |= bi_is_equiv(final_dst, src[i]);
+
+        /* SSA can't read itself */
+        assert(!reads_self || final_dst.reg);
+
+        bi_index dst = reads_self ? bi_temp(b->shader) : final_dst;
+
+        if (bitsize == 32) {
+                for (unsigned i = 0; i < count; ++i) {
+                        bi_mov_i32_to(b, bi_word(dst, i),
+                                        bi_word(src[i], channel ? channel[i] : 0));
+                }
+        } else if (bitsize == 16) {
+                for (unsigned i = 0; i < count; i += 2) {
+                        unsigned chan = channel ? channel[i] : 0;
+
+                        bi_index w0 = bi_half(bi_word(src[i], chan >> 1), chan & 1);
+                        bi_index w1 = bi_imm_u16(0);
+
+                        /* Don't read out of bound for vec3 */
+                        if ((i + 1) < count) {
+                                unsigned nextc = channel ? channel[i + 1] : 0;
+                                w1 = bi_half(bi_word(src[i + 1], nextc >> 1), nextc & 1);
+                        }
+
+                        bi_mkvec_v2i16_to(b, bi_word(dst, i >> 1), w0, w1);
+                }
+        } else {
+                unreachable("8-bit mkvec not yet supported");
+        }
+
+        /* Emit an explicit copy if needed */
+        if (!bi_is_equiv(dst, final_dst)) {
+                unsigned shift = (bitsize == 8) ? 2 : (bitsize == 16) ? 1 : 0;
+                unsigned vec = (1 << shift);
+
+                for (unsigned i = 0; i < count; i += vec) {
+                        bi_mov_i32_to(b, bi_word(final_dst, i >> shift),
+                                        bi_word(dst, i >> shift));
+                }
+        }
+}
+
+static void
 bi_emit_ld_blend_input(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         ASSERTED nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
