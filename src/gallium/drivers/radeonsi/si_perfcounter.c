@@ -730,7 +730,7 @@ static void si_pc_emit_shaders(struct si_context *sctx, unsigned shaders)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
-   radeon_set_uconfig_reg_seq(cs, R_036780_SQ_PERFCOUNTER_CTRL, 2);
+   radeon_set_uconfig_reg_seq(cs, R_036780_SQ_PERFCOUNTER_CTRL, 2, false);
    radeon_emit(cs, shaders & 0x7f);
    radeon_emit(cs, 0xffffffff);
 }
@@ -755,7 +755,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct si_pc_block *block
       dw = count + regs->num_prelude;
       if (count >= regs->num_multi)
          dw += regs->num_multi;
-      radeon_set_uconfig_reg_seq(cs, regs->select0, dw);
+      radeon_set_uconfig_reg_seq(cs, regs->select0, dw, false);
       for (idx = 0; idx < regs->num_prelude; ++idx)
          radeon_emit(cs, 0);
       for (idx = 0; idx < MIN2(count, regs->num_multi); ++idx)
@@ -763,7 +763,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct si_pc_block *block
 
       if (count < regs->num_multi) {
          unsigned select1 = regs->select0 + 4 * regs->num_multi;
-         radeon_set_uconfig_reg_seq(cs, select1, count);
+         radeon_set_uconfig_reg_seq(cs, select1, count, false);
       }
 
       for (idx = 0; idx < MIN2(count, regs->num_multi); ++idx)
@@ -778,7 +778,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct si_pc_block *block
 
       assert(!(regs->layout & SI_PC_REG_REVERSE));
 
-      radeon_set_uconfig_reg_seq(cs, regs->select0, count + regs->num_prelude);
+      radeon_set_uconfig_reg_seq(cs, regs->select0, count + regs->num_prelude, false);
       for (idx = 0; idx < regs->num_prelude; ++idx)
          radeon_emit(cs, 0);
       for (idx = 0; idx < count; ++idx)
@@ -786,7 +786,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct si_pc_block *block
 
       select1 = regs->select0 + 4 * regs->num_counters;
       select1_count = MIN2(count, regs->num_multi);
-      radeon_set_uconfig_reg_seq(cs, select1, select1_count);
+      radeon_set_uconfig_reg_seq(cs, select1, select1_count, false);
       for (idx = 0; idx < select1_count; ++idx)
          radeon_emit(cs, 0);
    } else if (layout_multi == SI_PC_MULTI_CUSTOM) {
@@ -804,7 +804,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct si_pc_block *block
       reg_count += regs->num_prelude;
 
       if (!(regs->layout & SI_PC_REG_REVERSE)) {
-         radeon_set_uconfig_reg_seq(cs, reg_base, reg_count);
+         radeon_set_uconfig_reg_seq(cs, reg_base, reg_count, false);
 
          for (idx = 0; idx < regs->num_prelude; ++idx)
             radeon_emit(cs, 0);
@@ -815,7 +815,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct si_pc_block *block
          }
       } else {
          reg_base -= (reg_count - 1) * 4;
-         radeon_set_uconfig_reg_seq(cs, reg_base, reg_count);
+         radeon_set_uconfig_reg_seq(cs, reg_base, reg_count, false);
 
          for (idx = count; idx > 0; --idx) {
             if (idx <= regs->num_multi)

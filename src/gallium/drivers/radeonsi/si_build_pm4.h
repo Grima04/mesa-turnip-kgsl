@@ -102,18 +102,24 @@ static inline void radeon_set_sh_reg(struct radeon_cmdbuf *cs, unsigned reg, uns
    radeon_emit(cs, value);
 }
 
-static inline void radeon_set_uconfig_reg_seq(struct radeon_cmdbuf *cs, unsigned reg, unsigned num)
+static inline void radeon_set_uconfig_reg_seq(struct radeon_cmdbuf *cs, unsigned reg, unsigned num, bool perfctr)
 {
    SI_CHECK_SHADOWED_REGS(reg, num);
    assert(reg >= CIK_UCONFIG_REG_OFFSET && reg < CIK_UCONFIG_REG_END);
    assert(cs->current.cdw + 2 + num <= cs->current.max_dw);
-   radeon_emit(cs, PKT3(PKT3_SET_UCONFIG_REG, num, 0));
+   radeon_emit(cs, PKT3(PKT3_SET_UCONFIG_REG, num, perfctr));
    radeon_emit(cs, (reg - CIK_UCONFIG_REG_OFFSET) >> 2);
 }
 
 static inline void radeon_set_uconfig_reg(struct radeon_cmdbuf *cs, unsigned reg, unsigned value)
 {
-   radeon_set_uconfig_reg_seq(cs, reg, 1);
+   radeon_set_uconfig_reg_seq(cs, reg, 1, false);
+   radeon_emit(cs, value);
+}
+
+static inline void radeon_set_uconfig_reg_perfctr(struct radeon_cmdbuf *cs, unsigned reg, unsigned value)
+{
+   radeon_set_uconfig_reg_seq(cs, reg, 1, true);
    radeon_emit(cs, value);
 }
 

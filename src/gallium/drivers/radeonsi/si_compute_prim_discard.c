@@ -1226,7 +1226,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
       /* Disable ordered alloc for OA resources. */
       for (unsigned i = 0; i < 2; i++) {
-         radeon_set_uconfig_reg_seq(cs, R_031074_GDS_OA_CNTL, 3);
+         radeon_set_uconfig_reg_seq(cs, R_031074_GDS_OA_CNTL, 3, false);
          radeon_emit(cs, S_031074_INDEX(i));
          radeon_emit(cs, 0);
          radeon_emit(cs, S_03107C_ENABLE(0));

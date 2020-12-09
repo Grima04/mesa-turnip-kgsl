@@ -382,7 +382,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
       }
 
       /* Set the pointer to border colors. */
-      radeon_set_uconfig_reg_seq(cs, R_030E00_TA_CS_BC_BASE_ADDR, 2);
+      radeon_set_uconfig_reg_seq(cs, R_030E00_TA_CS_BC_BASE_ADDR, 2, false);
       radeon_emit(cs, bc_va >> 8);                    /* R_030E00_TA_CS_BC_BASE_ADDR */
       radeon_emit(cs, S_030E04_ADDRESS(bc_va >> 40)); /* R_030E04_TA_CS_BC_BASE_ADDR_HI */
    }
