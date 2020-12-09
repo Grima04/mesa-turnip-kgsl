@@ -595,6 +595,18 @@ zink_set_clip_state(struct pipe_context *pctx,
 {
 }
 
+static uint32_t
+hash_render_pass_state(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct zink_render_pass_state));
+}
+
+static bool
+equals_render_pass_state(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct zink_render_pass_state)) == 0;
+}
+
 static struct zink_render_pass *
 get_render_pass(struct zink_context *ctx)
 {
@@ -1036,18 +1048,6 @@ static bool
 equals_gfx_program(const void *a, const void *b)
 {
    return memcmp(a, b, sizeof(struct zink_shader *) * (ZINK_SHADER_COUNT)) == 0;
-}
-
-static uint32_t
-hash_render_pass_state(const void *key)
-{
-   return _mesa_hash_data(key, sizeof(struct zink_render_pass_state));
-}
-
-static bool
-equals_render_pass_state(const void *a, const void *b)
-{
-   return memcmp(a, b, sizeof(struct zink_render_pass_state)) == 0;
 }
 
 static void
