@@ -1286,7 +1286,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          if (dst.regClass() == s2) {
             Temp carry = bld.tmp(s1);
             Temp dst0 = bld.sop2(aco_opcode::s_sub_u32, bld.def(s1), bld.scc(Definition(carry)), Operand(0u), src0);
-            Temp dst1 = bld.sop2(aco_opcode::s_subb_u32, bld.def(s1), bld.def(s1, scc), Operand(0u), src1, carry);
+            Temp dst1 = bld.sop2(aco_opcode::s_subb_u32, bld.def(s1), bld.def(s1, scc), Operand(0u), src1, bld.scc(carry));
             bld.pseudo(aco_opcode::p_create_vector, Definition(dst), dst0, dst1);
          } else {
             Temp lower = bld.tmp(v1);
@@ -1702,7 +1702,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (dst.regClass() == s2) {
          Temp carry = bld.tmp(s1);
          Temp dst0 = bld.sop2(aco_opcode::s_sub_u32, bld.def(s1), bld.scc(Definition(carry)), src00, src10);
-         Temp dst1 = bld.sop2(aco_opcode::s_subb_u32, bld.def(s1), bld.def(s1, scc), src01, src11, carry);
+         Temp dst1 = bld.sop2(aco_opcode::s_subb_u32, bld.def(s1), bld.def(s1, scc), src01, src11, bld.scc(carry));
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), dst0, dst1);
       } else if (dst.regClass() == v2) {
          Temp lower = bld.tmp(v1);
@@ -2487,7 +2487,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          upper = bld.sop2(aco_opcode::s_xor_b32, bld.def(s1), bld.def(s1, scc), sign, upper);
          Temp borrow = bld.tmp(s1);
          lower = bld.sop2(aco_opcode::s_sub_u32, bld.def(s1), bld.scc(Definition(borrow)), lower, sign);
-         upper = bld.sop2(aco_opcode::s_subb_u32, bld.def(s1), bld.def(s1, scc), upper, sign, borrow);
+         upper = bld.sop2(aco_opcode::s_subb_u32, bld.def(s1), bld.def(s1, scc), upper, sign, bld.scc(borrow));
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lower, upper);
 
       } else if (instr->src[0].src.ssa->bit_size == 64) {
