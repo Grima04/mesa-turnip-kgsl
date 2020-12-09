@@ -1156,19 +1156,19 @@ get_render_pass(struct zink_context *ctx)
 #ifndef NDEBUG
    state.clears = clears;
 #endif
-
    uint32_t hash = hash_render_pass_state(&state);
    struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ctx->render_pass_cache, hash,
                                                                  &state);
-   if (!entry) {
-      struct zink_render_pass *rp;
+   struct zink_render_pass *rp;
+   if (entry) {
+      rp = entry->data;
+      assert(rp->state.clears == clears);
+   } else {
       rp = zink_create_render_pass(screen, &state);
-      entry = _mesa_hash_table_insert_pre_hashed(ctx->render_pass_cache, hash, &rp->state, rp);
-      if (!entry)
+      if (!_mesa_hash_table_insert_pre_hashed(ctx->render_pass_cache, hash, &rp->state, rp))
          return NULL;
    }
-
-   return entry->data;
+   return rp;
 }
 
 static struct zink_framebuffer *
