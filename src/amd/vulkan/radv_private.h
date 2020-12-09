@@ -2088,6 +2088,36 @@ radv_get_ds_clear_value_va(const struct radv_image *image,
 	return va;
 }
 
+static inline uint32_t
+radv_get_htile_initial_value(const struct radv_device *device,
+			     const struct radv_image *image)
+{
+	uint32_t initial_value;
+
+	if (radv_image_tile_stencil_disabled(device, image)) {
+		/* Z only (no stencil):
+		 *
+		 * |31     18|17      4|3     0|
+		 * +---------+---------+-------+
+		 * |  Max Z  |  Min Z  | ZMask |
+		 */
+		initial_value = 0xfffc000f;
+	} else {
+		/* Z and stencil:
+		 *
+		 * |31       12|11 10|9    8|7   6|5   4|3     0|
+		 * +-----------+-----+------+-----+-----+-------+
+		 * |  Z Range  |     | SMem | SR1 | SR0 | ZMask |
+		 *
+		 * SR0/SR1 contains the stencil test results. Initializing
+		 * SR0/SR1 to 0x3 means the stencil test result is unknown.
+		 */
+		initial_value = 0xfffff3ff;
+	}
+
+	return initial_value;
+}
+
 unsigned radv_image_queue_family_mask(const struct radv_image *image, uint32_t family, uint32_t queue_family);
 
 static inline uint32_t
