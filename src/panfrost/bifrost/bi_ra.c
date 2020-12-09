@@ -138,8 +138,6 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
 
                 nir_alu_type T = ins->src_types[src];
                 unsigned size = nir_alu_type_get_type_size(T);
- 
-                /* TODO: 64-bit? */
                 unsigned components_per_word = MAX2(32 / size, 1);
 
                 for (unsigned i = 0; i < components; ++i) {
