@@ -312,7 +312,7 @@ static void radv_compiler_debug(void *private_data,
 }
 
 static bool
-lower_load_vulkan_descriptor(nir_shader *nir)
+lower_intrinsics(nir_shader *nir)
 {
 	nir_function_impl *entry = nir_shader_get_entrypoint(nir);
 	bool progress = false;
@@ -326,14 +326,20 @@ lower_load_vulkan_descriptor(nir_shader *nir)
 				continue;
 
 			nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-			if (intrin->intrinsic != nir_intrinsic_load_vulkan_descriptor)
-				continue;
-
 			b.cursor = nir_before_instr(&intrin->instr);
 
-			nir_ssa_def *def = nir_vec2(&b,
-						    nir_channel(&b, intrin->src[0].ssa, 0),
-						    nir_imm_int(&b, 0));
+			nir_ssa_def *def = NULL;
+			if (intrin->intrinsic == nir_intrinsic_load_vulkan_descriptor) {
+				def = nir_vec2(&b, nir_channel(&b, intrin->src[0].ssa, 0),
+						   nir_imm_int(&b, 0));
+			} else if (intrin->intrinsic == nir_intrinsic_is_sparse_texels_resident) {
+				def = nir_ieq_imm(&b, intrin->src[0].ssa, 0);
+			} else if (intrin->intrinsic == nir_intrinsic_sparse_residency_code_and) {
+				def = nir_ior(&b, intrin->src[0].ssa, intrin->src[1].ssa);
+			} else {
+				continue;
+			}
+
 			nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
 						 nir_src_for_ssa(def));
 
@@ -630,7 +636,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		   nir_var_mem_ubo | nir_var_mem_ssbo,
 		   nir_address_format_32bit_index_offset);
 
-	NIR_PASS_V(nir, lower_load_vulkan_descriptor);
+	NIR_PASS_V(nir, lower_intrinsics);
 
 	/* Lower deref operations for compute shared memory. */
 	if (nir->info.stage == MESA_SHADER_COMPUTE) {
