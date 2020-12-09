@@ -12,7 +12,7 @@ check_minio()
 }
 
 # If remote files are up-to-date, skip rebuilding them
-check_minio "mesa/mesa"
+check_minio "${FDO_UPSTREAM_REPO}"
 check_minio "${CI_PROJECT_PATH}"
 
 . .gitlab-ci/container/container_pre_build.sh

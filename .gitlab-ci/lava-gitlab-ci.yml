@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-12-16-cmake"
+  DISTRIBUTION_TAG: "2020-12-17-fdo-upstream-repo"
 
 .kernel+rootfs:
   stage: container-2
@@ -51,7 +51,7 @@ kernel+rootfs_armhf:
   script:
     # Try to use the kernel and rootfs built in mainline first, to save cycles
     - >
-      if wget -q --method=HEAD "${ARTIFACTS_PREFIX}/mesa/mesa/${DISTRIBUTION_TAG}/${ARCH}/done"; then
+      if wget -q --method=HEAD "${ARTIFACTS_PREFIX}/${FDO_UPSTREAM_REPO}/${DISTRIBUTION_TAG}/${ARCH}/done"; then
         ARTIFACTS_URL="${ARTIFACTS_PREFIX}/mesa/mesa/${DISTRIBUTION_TAG}/${ARCH}"
       else
         ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${CI_PROJECT_PATH}/${DISTRIBUTION_TAG}/${ARCH}"
