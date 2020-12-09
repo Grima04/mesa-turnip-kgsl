@@ -186,7 +186,7 @@ TEST(OSMesaRenderTest, depth)
    ASSERT_EQ(depth_cpp, 4);
 
    glClearDepth(1.0);
-   glClear(GL_DEPTH_BUFFER_BIT);
+   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
    glFinish();
    EXPECT_EQ(depth[w * 0 + 0], 0x00ffffff);
    EXPECT_EQ(depth[w * 0 + 1], 0x00ffffff);
