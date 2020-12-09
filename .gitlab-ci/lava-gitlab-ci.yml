@@ -130,6 +130,7 @@ kernel+rootfs_armhf:
     - .use-arm_build
   needs:
     - kernel+rootfs_amd64
+    - arm_build
     - meson-testing
 
 .lava-traces-base:
