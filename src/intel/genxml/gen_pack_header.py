@@ -128,7 +128,7 @@ __gen_offset(uint64_t v, NDEBUG_UNUSED uint32_t start, NDEBUG_UNUSED uint32_t en
 static inline __attribute__((always_inline)) uint64_t
 __gen_address(__gen_user_data *data, void *location,
               __gen_address_type address, uint32_t delta,
-              NDEBUG_UNUSED uint32_t start, uint32_t end)
+              __attribute__((unused)) uint32_t start, uint32_t end)
 {
    uint64_t addr_u64 = __gen_combine_address(data, location, address, delta);
    if (end == 31) {
