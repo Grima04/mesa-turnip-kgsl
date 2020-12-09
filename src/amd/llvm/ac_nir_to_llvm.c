@@ -605,13 +605,23 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       }
       break;
    case nir_op_ineg:
-      result = LLVMBuildNeg(ctx->ac.builder, src[0], "");
+      if (instr->no_unsigned_wrap)
+         result = LLVMBuildNUWNeg(ctx->ac.builder, src[0], "");
+      else if (instr->no_signed_wrap)
+         result = LLVMBuildNSWNeg(ctx->ac.builder, src[0], "");
+      else
+         result = LLVMBuildNeg(ctx->ac.builder, src[0], "");
       break;
    case nir_op_inot:
       result = LLVMBuildNot(ctx->ac.builder, src[0], "");
       break;
    case nir_op_iadd:
-      result = LLVMBuildAdd(ctx->ac.builder, src[0], src[1], "");
+      if (instr->no_unsigned_wrap)
+         result = LLVMBuildNUWAdd(ctx->ac.builder, src[0], src[1], "");
+      else if (instr->no_signed_wrap)
+         result = LLVMBuildNSWAdd(ctx->ac.builder, src[0], src[1], "");
+      else
+         result = LLVMBuildAdd(ctx->ac.builder, src[0], src[1], "");
       break;
    case nir_op_fadd:
       src[0] = ac_to_float(&ctx->ac, src[0]);
@@ -624,10 +634,20 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = LLVMBuildFSub(ctx->ac.builder, src[0], src[1], "");
       break;
    case nir_op_isub:
-      result = LLVMBuildSub(ctx->ac.builder, src[0], src[1], "");
+      if (instr->no_unsigned_wrap)
+         result = LLVMBuildNUWSub(ctx->ac.builder, src[0], src[1], "");
+      else if (instr->no_signed_wrap)
+         result = LLVMBuildNSWSub(ctx->ac.builder, src[0], src[1], "");
+      else
+         result = LLVMBuildSub(ctx->ac.builder, src[0], src[1], "");
       break;
    case nir_op_imul:
-      result = LLVMBuildMul(ctx->ac.builder, src[0], src[1], "");
+      if (instr->no_unsigned_wrap)
+         result = LLVMBuildNUWMul(ctx->ac.builder, src[0], src[1], "");
+      else if (instr->no_signed_wrap)
+         result = LLVMBuildNSWMul(ctx->ac.builder, src[0], src[1], "");
+      else
+         result = LLVMBuildMul(ctx->ac.builder, src[0], src[1], "");
       break;
    case nir_op_imod:
       result = LLVMBuildSRem(ctx->ac.builder, src[0], src[1], "");
