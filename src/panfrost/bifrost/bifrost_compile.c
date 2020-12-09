@@ -174,6 +174,21 @@ bi_interp_for_intrinsic(nir_intrinsic_op op)
         }
 }
 
+/* Checks if the _IMM variant of an intrinsic can be used, returning in imm the
+ * immediate to be used (which applies even if _IMM can't be used) */
+
+static bool
+bi_is_intr_immediate(nir_intrinsic_instr *instr, unsigned *immediate)
+{
+        nir_src *offset = nir_get_io_offset_src(instr);
+
+        if (!nir_src_is_const(*offset))
+                return false;
+
+        *immediate = nir_intrinsic_base(instr) + nir_src_as_uint(*offset);
+        return (*immediate) < 20;
+}
+
 static void
 bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
