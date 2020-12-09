@@ -190,11 +190,16 @@ success:
       - artifacts
 
 
-# Docker image tag helper template
+# Docker image tag helper templates
 
 .incorporate-templates-commit:
   variables:
     FDO_DISTRIBUTION_TAG: "${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
+
+.set-image:
+  variables:
+    MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
+  image: "$MESA_IMAGE"
 
 
 # Build the CI docker images.
@@ -289,9 +294,11 @@ x86_build:
     MESA_IMAGE_TAG: &x86_build "2021-02-08-container-reorg"
 
 .use-x86_build:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/x86_build"
     MESA_IMAGE_TAG: *x86_build
-  image: "$CI_REGISTRY_IMAGE/debian/x86_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - x86_build
 
@@ -303,9 +310,11 @@ i386_build:
     MESA_IMAGE_TAG: &i386_build "2021-02-08-container-reorg"
 
 .use-i386_build:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/i386_build"
     MESA_IMAGE_TAG: *i386_build
-  image: "$CI_REGISTRY_IMAGE/debian/i386_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - i386_build
 
@@ -317,9 +326,11 @@ ppc64el_build:
     MESA_IMAGE_TAG: &ppc64el_build "2021-02-08-container-reorg"
 
 .use-ppc64el_build:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/ppc64el_build"
     MESA_IMAGE_TAG: *ppc64el_build
-  image: "$CI_REGISTRY_IMAGE/debian/ppc64el_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - ppc64el_build
 
@@ -331,9 +342,11 @@ s390x_build:
     MESA_IMAGE_TAG: &s390x_build "2021-02-08-container-reorg"
 
 .use-s390x_build:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/s390x_build"
     MESA_IMAGE_TAG: *s390x_build
-  image: "$CI_REGISTRY_IMAGE/debian/s390x_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - s390x_build
 
@@ -345,9 +358,11 @@ android_build:
     MESA_IMAGE_TAG: &android_build "2021-02-08-container-reorg"
 
 .use-android_build:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/android_build"
     MESA_IMAGE_TAG: *android_build
-  image: "$CI_REGISTRY_IMAGE/debian/android_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - android_build
 
@@ -388,9 +403,11 @@ arm_build:
     MESA_IMAGE_TAG: &arm_build "2021-02-08-container-reorg"
 
 .use-arm_build:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/arm_build"
     MESA_IMAGE_TAG: *arm_build
-  image: "$CI_REGISTRY_IMAGE/debian/arm_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - arm_build
 
@@ -420,9 +437,11 @@ arm64_test:
     MESA_IMAGE_TAG: &arm64_test "2021-02-08-container-reorg"
 
 .use-arm64_test:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/arm64_test"
     MESA_IMAGE_TAG: *arm64_test
-  image: "$CI_REGISTRY_IMAGE/debian/arm64_test:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - arm64_test
 
@@ -434,9 +453,11 @@ armhf_test:
     MESA_IMAGE_TAG: &armhf_test "2021-02-08-container-reorg"
 
 .use-armhf_test:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/armhf_test"
     MESA_IMAGE_TAG: *armhf_test
-  image: "$CI_REGISTRY_IMAGE/debian/armhf_test:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - armhf_test
 
@@ -453,10 +474,12 @@ armhf_test:
 # then in the build stage by executing inside Docker.
 
 .windows-docker-vs2019:
+  extends:
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "windows/x64_build"
     MESA_IMAGE_TAG: "2021-01-29"
-    MESA_IMAGE: "$CI_REGISTRY_IMAGE/windows/x64_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
-    MESA_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/windows/x64_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/$MESA_IMAGE_PATH:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
 
 windows_build_vs2019:
   extends:
@@ -990,9 +1013,10 @@ meson-mingw32-x86_64:
 .use-x86_test-gl:
   extends:
     - .test
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/x86_test-gl"
     MESA_IMAGE_TAG: *x86_test-gl
-  image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - x86_test-gl
 
@@ -1006,9 +1030,10 @@ meson-mingw32-x86_64:
 .test-vk:
   extends:
     - .test
+    - .set-image
   variables:
+    MESA_IMAGE_PATH: "debian/x86_test-vk"
     MESA_IMAGE_TAG: *x86_test-vk
-  image: "$CI_REGISTRY_IMAGE/debian/x86_test-vk:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - meson-testing
     - x86_test-vk
