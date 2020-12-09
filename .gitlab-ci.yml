@@ -282,8 +282,8 @@ x86_build:
 
 .use-x86_build:
   variables:
-    TAG: *x86_build
-  image: "$CI_REGISTRY_IMAGE/debian/x86_build:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *x86_build
+  image: "$CI_REGISTRY_IMAGE/debian/x86_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - x86_build
 
@@ -296,8 +296,8 @@ i386_build:
 
 .use-i386_build:
   variables:
-    TAG: *i386_build
-  image: "$CI_REGISTRY_IMAGE/debian/i386_build:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *i386_build
+  image: "$CI_REGISTRY_IMAGE/debian/i386_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - i386_build
 
@@ -310,8 +310,8 @@ ppc64el_build:
 
 .use-ppc64el_build:
   variables:
-    TAG: *ppc64el_build
-  image: "$CI_REGISTRY_IMAGE/debian/ppc64el_build:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *ppc64el_build
+  image: "$CI_REGISTRY_IMAGE/debian/ppc64el_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - ppc64el_build
 
@@ -324,8 +324,8 @@ s390x_build:
 
 .use-s390x_build:
   variables:
-    TAG: *s390x_build
-  image: "$CI_REGISTRY_IMAGE/debian/s390x_build:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *s390x_build
+  image: "$CI_REGISTRY_IMAGE/debian/s390x_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - s390x_build
 
@@ -338,8 +338,8 @@ android_build:
 
 .use-android_build:
   variables:
-    TAG: *android_build
-  image: "$CI_REGISTRY_IMAGE/debian/android_build:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *android_build
+  image: "$CI_REGISTRY_IMAGE/debian/android_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - android_build
 
@@ -381,8 +381,8 @@ arm_build:
 
 .use-arm_build:
   variables:
-    TAG: *arm_build
-  image: "$CI_REGISTRY_IMAGE/debian/arm_build:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *arm_build
+  image: "$CI_REGISTRY_IMAGE/debian/arm_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - arm_build
 
@@ -413,8 +413,8 @@ arm64_test:
 
 .use-arm64_test:
   variables:
-    TAG: *arm64_test
-  image: "$CI_REGISTRY_IMAGE/debian/arm64_test:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *arm64_test
+  image: "$CI_REGISTRY_IMAGE/debian/arm64_test:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - arm64_test
 
@@ -427,8 +427,8 @@ armhf_test:
 
 .use-armhf_test:
   variables:
-    TAG: *armhf_test
-  image: "$CI_REGISTRY_IMAGE/debian/armhf_test:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *armhf_test
+  image: "$CI_REGISTRY_IMAGE/debian/armhf_test:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - armhf_test
 
@@ -983,8 +983,8 @@ meson-mingw32-x86_64:
   extends:
     - .test
   variables:
-    TAG: *x86_test-gl
-  image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *x86_test-gl
+  image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - x86_test-gl
 
@@ -999,8 +999,8 @@ meson-mingw32-x86_64:
   extends:
     - .test
   variables:
-    TAG: *x86_test-vk
-  image: "$CI_REGISTRY_IMAGE/debian/x86_test-vk:${TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: *x86_test-vk
+  image: "$CI_REGISTRY_IMAGE/debian/x86_test-vk:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   needs:
     - meson-testing
     - x86_test-vk
