@@ -446,9 +446,9 @@ armhf_test:
 
 .windows-docker-vs2019:
   variables:
-    WINDOWS_TAG: "2021-01-29"
-    WINDOWS_IMAGE: "$CI_REGISTRY_IMAGE/windows/x64_build:${WINDOWS_TAG}--${MESA_TEMPLATES_COMMIT}"
-    WINDOWS_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/windows/x64_build:${WINDOWS_TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE_TAG: "2021-01-29"
+    MESA_IMAGE: "$CI_REGISTRY_IMAGE/windows/x64_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/windows/x64_build:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
 
 windows_build_vs2019:
   extends:
@@ -464,11 +464,11 @@ windows_build_vs2019:
     - "1809"
     - mesa
   script:
-    - .\.gitlab-ci\windows\mesa_container.ps1 $CI_REGISTRY $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $WINDOWS_IMAGE $WINDOWS_UPSTREAM_IMAGE
+    - .\.gitlab-ci\windows\mesa_container.ps1 $CI_REGISTRY $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $MESA_IMAGE $MESA_UPSTREAM_IMAGE
 
 .use-windows_build_vs2019:
   extends: .windows-docker-vs2019
-  image: "$WINDOWS_IMAGE"
+  image: "$MESA_IMAGE"
   needs:
     - windows_build_vs2019
 
