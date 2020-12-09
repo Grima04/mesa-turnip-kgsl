@@ -81,10 +81,6 @@ v3d_start_binning(struct v3d_context *v3d, struct v3d_job *job)
                                        tsda_per_tile_size,
                                        "TSDA");
 
-        ubyte nr_cbufs = V3D_MAX_DRAW_BUFFERS;
-        while (nr_cbufs > 0 && !job->cbufs[nr_cbufs - 1])
-                nr_cbufs--;
-
 #if V3D_VERSION >= 41
         /* This must go before the binning mode configuration. It is
          * required for layered framebuffers to work.
@@ -101,7 +97,7 @@ v3d_start_binning(struct v3d_context *v3d, struct v3d_job *job)
                 config.width_in_pixels = job->draw_width;
                 config.height_in_pixels = job->draw_height;
                 config.number_of_render_targets =
-                        MAX2(nr_cbufs, 1);
+                        MAX2(job->nr_cbufs, 1);
 
                 config.multisample_mode_4x = job->msaa;
 
@@ -127,7 +123,7 @@ v3d_start_binning(struct v3d_context *v3d, struct v3d_job *job)
                 config.height_in_tiles = job->draw_tiles_y;
                 /* Must be >= 1 */
                 config.number_of_render_targets =
-                        MAX2(nr_cbufs, 1);
+                        MAX2(job->nr_cbufs, 1);
 
                 config.multisample_mode_4x = job->msaa;
 
