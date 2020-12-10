@@ -214,7 +214,8 @@ v3d_tfu(struct pipe_context *pctx,
         unsigned int base_level,
         unsigned int last_level,
         unsigned int src_layer,
-        unsigned int dst_layer)
+        unsigned int dst_layer,
+        bool for_mipmap)
 {
         struct v3d_context *v3d = v3d_context(pctx);
         struct v3d_screen *screen = v3d->screen;
@@ -234,7 +235,7 @@ v3d_tfu(struct pipe_context *pctx,
         uint32_t tex_format = v3d_get_tex_format(&screen->devinfo,
                                                  pdst->format);
 
-        if (!v3d_tfu_supports_tex_format(&screen->devinfo, tex_format))
+        if (!v3d_tfu_supports_tex_format(&screen->devinfo, tex_format, for_mipmap))
                 return false;
 
         if (pdst->target != PIPE_TEXTURE_2D || psrc->target != PIPE_TEXTURE_2D)
@@ -343,7 +344,8 @@ v3d_generate_mipmap(struct pipe_context *pctx,
                        prsc, prsc,
                        base_level,
                        base_level, last_level,
-                       first_layer, first_layer);
+                       first_layer, first_layer,
+                       true);
 }
 
 static bool
@@ -373,7 +375,8 @@ v3d_tfu_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
         return v3d_tfu(pctx, info->dst.resource, info->src.resource,
                        info->src.level,
                        info->dst.level, info->dst.level,
-                       info->src.box.z, info->dst.box.z);
+                       info->src.box.z, info->dst.box.z,
+                       false);
 }
 
 static struct pipe_surface *

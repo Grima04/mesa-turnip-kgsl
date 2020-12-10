@@ -691,7 +691,8 @@ void v3d_get_internal_type_bpp_for_output_format(const struct v3d_device_info *d
                                                  uint32_t *type,
                                                  uint32_t *bpp);
 bool v3d_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
-                                 uint32_t tex_format);
+                                 uint32_t tex_format,
+                                 bool for_mipmap);
 bool v3d_format_supports_tlb_msaa_resolve(const struct v3d_device_info *devinfo,
                                           enum pipe_format f);
 

@@ -149,12 +149,13 @@ v3d_get_internal_type_bpp_for_output_format(const struct v3d_device_info *devinf
 
 bool
 v3d_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
-                            uint32_t tex_format)
+                            uint32_t tex_format,
+                            bool for_mipmap)
 {
         if (devinfo->ver >= 41) {
-                return v3d41_tfu_supports_tex_format(tex_format);
+                return v3d41_tfu_supports_tex_format(tex_format, for_mipmap);
         } else {
-                return v3d33_tfu_supports_tex_format(tex_format);
+                return v3d33_tfu_supports_tex_format(tex_format, for_mipmap);
         }
 }
 
