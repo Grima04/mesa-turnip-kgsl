@@ -1137,12 +1137,15 @@ d3d12_shader_free(struct d3d12_shader_selector *sel)
    ralloc_free(sel);
 }
 
+#ifdef _WIN32
 // Used to get path to self
 extern "C" extern IMAGE_DOS_HEADER __ImageBase;
+#endif
 
 void d3d12_validation_tools::load_dxil_dll()
 {
    if (!dxil_module.load(UTIL_DL_PREFIX "dxil" UTIL_DL_EXT)) {
+#ifdef _WIN32
       char selfPath[MAX_PATH] = "";
       uint32_t pathSize = GetModuleFileNameA((HINSTANCE)&__ImageBase, selfPath, sizeof(selfPath));
       if (pathSize == 0 || pathSize == sizeof(selfPath)) {
@@ -1163,6 +1166,7 @@ void d3d12_validation_tools::load_dxil_dll()
       }
 
       dxil_module.load(selfPath);
+#endif
    }
 }
 
