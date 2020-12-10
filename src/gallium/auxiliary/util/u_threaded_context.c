@@ -1770,7 +1770,7 @@ tc_call_transfer_unmap(struct pipe_context *pipe, union tc_payload *payload)
       /* Nothing to do except keeping track of staging uploads */
       assert(tres->pending_staging_uploads > 0);
       p_atomic_dec(&tres->pending_staging_uploads);
-      tc_set_resource_reference(&p->resource, NULL);
+      pipe_resource_reference(&p->resource, NULL);
       return;
    }
    pipe->transfer_unmap(pipe, p->transfer);
