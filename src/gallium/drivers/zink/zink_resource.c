@@ -189,6 +189,7 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    VkBufferCreateInfo bci = {};
    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
    bci.size = templ->width0;
+   assert(bci.size > 0);
 
    bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
                VK_BUFFER_USAGE_TRANSFER_DST_BIT |
@@ -398,20 +399,26 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    if (templ->flags & PIPE_RESOURCE_FLAG_MAP_COHERENT)
       flags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+   else if (!(flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+      flags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
    VkMemoryAllocateInfo mai = {};
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
    mai.allocationSize = reqs.size;
    mai.memoryTypeIndex = get_memory_type_index(screen, &reqs, flags);
 
+   obj->coherent = flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
    if (templ->target != PIPE_BUFFER) {
       VkMemoryType mem_type =
          screen->info.mem_props.memoryTypes[mai.memoryTypeIndex];
       obj->host_visible = mem_type.propertyFlags &
                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-   } else
+   } else {
       obj->host_visible = true;
-   obj->coherent = flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+      if (!obj->coherent)
+         mai.allocationSize = reqs.size = align(reqs.size, screen->info.props.limits.nonCoherentAtomSize);
+   }
 
    VkExportMemoryAllocateInfo emai = {};
    if (templ->bind & PIPE_BIND_SHARED) {
@@ -658,6 +665,31 @@ zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usa
    return batch_uses & usage;
 }
 
+static VkMappedMemoryRange
+init_mem_range(struct zink_screen *screen, struct zink_resource *res, VkDeviceSize offset, VkDeviceSize size)
+{
+   assert(res->obj->size);
+   VkDeviceSize align = offset % screen->info.props.limits.nonCoherentAtomSize;
+   if (screen->info.props.limits.nonCoherentAtomSize - 1 > offset)
+      offset = 0;
+   else
+      offset -= align, size += align;
+   align = screen->info.props.limits.nonCoherentAtomSize - (size % screen->info.props.limits.nonCoherentAtomSize);
+   if (offset + size + align > res->obj->size)
+      size = res->obj->size - offset;
+   else
+      size += align;
+   VkMappedMemoryRange range = {
+      VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+      NULL,
+      res->obj->mem,
+      offset,
+      size
+   };
+   assert(range.size);
+   return range;
+}
+
 static void *
 map_resource(struct zink_screen *screen, struct zink_resource *res)
 {
@@ -732,25 +764,25 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          return NULL;
    }
 
-#if defined(__APPLE__)
-      if (!(usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)) {
-         // Work around for MoltenVk limitation
-         // MoltenVk returns blank memory ranges when there should be data present
-         // This is a known limitation of MoltenVK.
-         // See https://github.com/KhronosGroup/MoltenVK/blob/master/Docs/MoltenVK_Runtime_UserGuide.md#known-moltenvk-limitations
-         VkMappedMemoryRange range = {
-            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            NULL,
-            res->mem,
-            res->offset,
-            res->size
-         };
-         result = vkFlushMappedMemoryRanges(screen->dev, 1, &range);
-         if (result != VK_SUCCESS)
-            return NULL;
-      }
-#endif
+   if (!res->obj->coherent
+#if defined(MVK_VERSION)
+      // Work around for MoltenVk limitation specifically on coherent memory
+      // MoltenVk returns blank memory ranges when there should be data present
+      // This is a known limitation of MoltenVK.
+      // See https://github.com/KhronosGroup/MoltenVK/blob/master/Docs/MoltenVK_Runtime_UserGuide.md#known-moltenvk-limitations
 
+       || screen->have_moltenvk
+#endif
+      ) {
+      VkDeviceSize size = box->width;
+      VkDeviceSize offset = trans->offset + box->x;
+      VkMappedMemoryRange range = init_mem_range(screen, res, offset, size);
+      if (vkInvalidateMappedMemoryRanges(screen->dev, 1, &range) != VK_SUCCESS) {
+         vkUnmapMemory(screen->dev, res->obj->mem);
+         return NULL;
+      }
+   }
+   trans->base.usage = usage;
    if (usage & PIPE_MAP_WRITE)
       util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
    return ptr;
@@ -851,11 +883,18 @@ zink_transfer_map(struct pipe_context *pctx,
          vkGetImageSubresourceLayout(screen->dev, res->obj->image, &isr, &srl);
          trans->base.stride = srl.rowPitch;
          trans->base.layer_stride = srl.arrayPitch;
+         trans->offset = srl.offset;
+         trans->depthPitch = srl.depthPitch;
          const struct util_format_description *desc = util_format_description(res->base.format);
          unsigned offset = srl.offset +
                            box->z * srl.depthPitch +
                            (box->y / desc->block.height) * srl.rowPitch +
                            (box->x / desc->block.width) * (desc->block.bits / 8);
+         if (!res->obj->coherent) {
+            VkDeviceSize size = box->width * box->height * desc->block.bits / 8;
+            VkMappedMemoryRange range = init_mem_range(screen, res, offset, size);
+            vkFlushMappedMemoryRanges(screen->dev, 1, &range);
+         }
          ptr = ((uint8_t *)base) + offset;
       }
    }
@@ -876,11 +915,30 @@ zink_transfer_flush_region(struct pipe_context *pctx,
    struct zink_transfer *trans = (struct zink_transfer *)ptrans;
 
    if (trans->base.usage & PIPE_MAP_WRITE) {
+      struct zink_screen *screen = zink_screen(pctx->screen);
+      struct zink_resource *m = trans->staging_res ? zink_resource(trans->staging_res) :
+                                                     res;
+      ASSERTED VkDeviceSize size, offset;
+      if (m->obj->is_buffer) {
+         size = box->width;
+         offset = trans->offset + box->x;
+      } else {
+         size = box->width * box->height * util_format_get_blocksize(m->base.format);
+         offset = trans->offset +
+                  box->z * trans->depthPitch +
+                  util_format_get_2d_size(m->base.format, trans->base.stride, box->y) +
+                  util_format_get_stride(m->base.format, box->x);
+         assert(offset + size <= res->obj->size);
+      }
+      if (!m->obj->coherent) {
+         VkMappedMemoryRange range = init_mem_range(screen, m, m->obj->offset, m->obj->size);
+         vkFlushMappedMemoryRanges(screen->dev, 1, &range);
+      }
       if (trans->staging_res) {
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
          if (ptrans->resource->target == PIPE_BUFFER)
-            zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x + trans->offset, box->width);
+            zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x + trans->offset + m->obj->offset, box->width);
          else
             zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
       }
@@ -895,15 +953,17 @@ zink_transfer_unmap(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(ptrans->resource);
    struct zink_transfer *trans = (struct zink_transfer *)ptrans;
+
+   if (!(trans->base.usage & (PIPE_MAP_FLUSH_EXPLICIT | PIPE_MAP_COHERENT))) {
+      zink_transfer_flush_region(pctx, ptrans, &ptrans->box);
+   }
+
    if (trans->staging_res) {
       unmap_resource(screen, zink_resource(trans->staging_res));
    } else
       unmap_resource(screen, res);
    if ((trans->base.usage & PIPE_MAP_PERSISTENT) && !(trans->base.usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps--;
-   if (!(trans->base.usage & (PIPE_MAP_FLUSH_EXPLICIT | PIPE_MAP_COHERENT))) {
-      zink_transfer_flush_region(pctx, ptrans, &ptrans->box);
-   }
 
    if (trans->staging_res)
       pipe_resource_reference(&trans->staging_res, NULL);
@@ -957,6 +1017,7 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
       if (res->obj->sbuffer)
          return true;
       VkBufferCreateInfo bci = create_bci(screen, &res->base, res->base.bind | PIPE_BIND_SHADER_IMAGE);
+      bci.size = res->obj->size;
       VkBuffer buffer;
       if (vkCreateBuffer(screen->dev, &bci, NULL, &buffer) != VK_SUCCESS)
          return false;

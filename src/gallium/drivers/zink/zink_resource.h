@@ -110,6 +110,7 @@ struct zink_transfer {
    struct pipe_transfer base;
    struct pipe_resource *staging_res;
    unsigned offset;
+   unsigned depthPitch;
 };
 
 static inline struct zink_resource *
