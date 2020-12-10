@@ -2086,8 +2086,7 @@ radv_load_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 	uint64_t va = radv_get_ds_clear_value_va(image, iview->base_mip);
 	unsigned reg_offset = 0, reg_count = 0;
 
-	if (!radv_image_has_htile(image))
-		return;
+	assert(radv_image_has_htile(image));
 
 	if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
 		++reg_count;
@@ -2419,7 +2418,16 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 			cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
 			cmd_buffer->state.offset_scale = cmd_buffer->state.attachments[idx].ds.offset_scale;
 		}
-		radv_load_ds_clear_metadata(cmd_buffer, iview);
+
+		if (radv_layout_is_htile_compressed(iview->image, layout, in_render_loop,
+						    radv_image_queue_family_mask(iview->image,
+										 cmd_buffer->queue_family_index,
+										 cmd_buffer->queue_family_index))) {
+			/* Only load the depth/stencil fast clear values when
+			 * compressed rendering is enabled.
+			 */
+			radv_load_ds_clear_metadata(cmd_buffer, iview);
+		}
 	} else {
 		if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9)
 			radeon_set_context_reg_seq(cmd_buffer->cs, R_028038_DB_Z_INFO, 2);
