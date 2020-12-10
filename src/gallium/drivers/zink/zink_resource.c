@@ -36,6 +36,7 @@
 #include "util/u_transfer_helper.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
+#include "util/u_upload_mgr.h"
 
 #include "frontend/sw_winsys.h"
 
@@ -615,7 +616,7 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    struct pipe_box box = trans->base.box;
    int x = box.x;
    if (buf2img)
-      box.x = src->obj->offset;
+      box.x = src->obj->offset + trans->offset;
 
    zink_copy_image_buffer(ctx, NULL, dst, src, trans->base.level, buf2img ? x : dst->obj->offset,
                            box.y, box.z, trans->base.level, &box, trans->base.usage);
@@ -656,7 +657,11 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
              * mesa/mesa#2966
              */
 
-            trans->staging_res = pipe_buffer_create(&screen->base, 0, PIPE_USAGE_STAGING, res->base.width0);
+            struct u_upload_mgr *mgr = ctx->base.stream_uploader;
+            u_upload_alloc(mgr, 0, box->width + box->x,
+                        screen->info.props.limits.minMemoryMapAlignment, &trans->offset,
+                        (struct pipe_resource **)&trans->staging_res, (void **)&ptr);
+
             res = zink_resource(trans->staging_res);
          }
       }
@@ -845,7 +850,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
             zink_flush_queue(ctx);
 
          if (ptrans->resource->target == PIPE_BUFFER)
-            zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x, box->width);
+            zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x + trans->offset, box->width);
          else
             zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
       }
