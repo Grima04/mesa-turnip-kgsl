@@ -187,6 +187,85 @@ bi_back_to_back(bi_block *block)
 /* Insert a clause wrapping a single instruction */
 
 bi_clause *
+bi_singleton(void *memctx, bi_instr *ins,
+                bi_block *block,
+                unsigned scoreboard_id,
+                unsigned dependencies,
+                bool osrb)
+{
+        bi_clause *u = rzalloc(memctx, bi_clause);
+        u->bundle_count = 1;
+
+        ASSERTED bool can_fma = bi_opcode_props[ins->op].fma;
+        bool can_add = bi_opcode_props[ins->op].add;
+        assert(can_fma || can_add);
+
+        if (can_add)
+                u->bundles[0].add = (bi_instruction *) ins;
+        else
+                u->bundles[0].fma = (bi_instruction *) ins;
+
+        u->scoreboard_id = scoreboard_id;
+        u->staging_barrier = osrb;
+        u->dependencies = dependencies;
+
+        if (ins->op == BI_OPCODE_ATEST)
+                u->dependencies |= (1 << 6);
+
+        if (ins->op == BI_OPCODE_BLEND)
+                u->dependencies |= (1 << 6) | (1 << 7);
+
+        /* Let's be optimistic, we'll fix up later */
+        u->flow_control = BIFROST_FLOW_NBTB;
+
+        /* Build up a combined constant, count in 32-bit words */
+        uint64_t combined_constant = 0;
+        unsigned constant_count = 0;
+
+        bi_foreach_src(ins, s) {
+                if (ins->src[s].type != BI_INDEX_CONSTANT) continue;
+                unsigned value = ins->src[s].value;
+
+                /* Allow fast zero */
+                if (value == 0 && u->bundles[0].fma) continue;
+
+                if (constant_count == 0) {
+                        combined_constant = ins->src[s].value;
+                } else if (constant_count == 1) {
+                        /* Allow reuse */
+                        if (combined_constant == value)
+                                continue;
+
+                        combined_constant |= ((uint64_t) value) << 32ull;
+                } else {
+                        /* No more room! */
+                        assert((combined_constant & 0xffffffff) == value ||
+                                        (combined_constant >> 32ull) == value);
+                }
+
+                constant_count++;
+        }
+
+        if (ins->branch_target)
+                u->branch_constant = true;
+
+        /* XXX: Investigate errors when constants are not used */
+        if (constant_count || u->branch_constant || true) {
+                /* Clause in 64-bit, above in 32-bit */
+                u->constant_count = 1;
+                u->constants[0] = combined_constant;
+        }
+
+        u->next_clause_prefetch = (ins->op != BI_OPCODE_JUMP);
+        u->message_type = bi_message_type_for_instr(ins);
+        u->block = block;
+
+        return u;
+}
+
+/* Insert a clause wrapping a single instruction */
+
+bi_clause *
 bi_make_singleton(void *memctx, bi_instruction *ins,
                 bi_block *block,
                 unsigned scoreboard_id,
