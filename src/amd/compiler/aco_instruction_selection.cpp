@@ -4563,13 +4563,39 @@ void emit_interp_instr(isel_context *ctx, unsigned idx, unsigned component, Temp
 
 void emit_load_frag_coord(isel_context *ctx, Temp dst, unsigned num_components)
 {
+   Builder bld(ctx->program, ctx->block);
+
    aco_ptr<Pseudo_instruction> vec(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1));
    for (unsigned i = 0; i < num_components; i++)
       vec->operands[i] = Operand(get_arg(ctx, ctx->args->ac.frag_pos[i]));
    if (G_0286CC_POS_W_FLOAT_ENA(ctx->program->config->spi_ps_input_ena)) {
       assert(num_components == 4);
-      Builder bld(ctx->program, ctx->block);
       vec->operands[3] = bld.vop1(aco_opcode::v_rcp_f32, bld.def(v1), get_arg(ctx, ctx->args->ac.frag_pos[3]));
+   }
+
+   if (ctx->options->adjust_frag_coord_z &&
+       G_0286CC_POS_Z_FLOAT_ENA(ctx->program->config->spi_ps_input_ena)) {
+      /* Adjust gl_FragCoord.z for VRS due to a hw bug on some GFX10.3 chips. */
+      Operand frag_z = vec->operands[2];
+      Temp adjusted_frag_z = bld.tmp(v1);
+      Temp tmp;
+
+      /* dFdx fine */
+      Temp tl = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), frag_z, dpp_quad_perm(0, 0, 2, 2));
+      tmp = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), frag_z, tl, dpp_quad_perm(1, 1, 3, 3));
+      emit_wqm(ctx, tmp, adjusted_frag_z, true);
+
+      /* adjusted_frag_z * 0.0625 + frag_z */
+      adjusted_frag_z = bld.vop3(aco_opcode::v_fma_f32, bld.def(v1), adjusted_frag_z,
+                                 Operand(0x3d800000u /* 0.0625 */), frag_z);
+
+      /* VRS Rate X = Ancillary[2:3] */
+      Temp x_rate = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
+                             get_arg(ctx, ctx->args->ac.ancillary), Operand(2u), Operand(2u));
+
+      /* xRate = xRate == 0x1 ? adjusted_frag_z : frag_z. */
+      Temp cond = bld.vopc(aco_opcode::v_cmp_eq_i32, bld.def(bld.lm), Operand(1u), Operand(x_rate));
+      vec->operands[2] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), frag_z, adjusted_frag_z, cond);
    }
 
    for (Operand& op : vec->operands)
