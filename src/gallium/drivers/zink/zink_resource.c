@@ -764,11 +764,6 @@ zink_transfer_map(struct pipe_context *pctx,
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
          if (usage & PIPE_MAP_READ) {
-            /* TODO: can probably just do a full cs copy if it's already in a cs batch */
-            if (zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_WRITE))
-               /* don't actually have to stall here, only ensure batch is submitted */
-               zink_flush_queue(ctx);
-            struct zink_context *ctx = zink_context(pctx);
             zink_transfer_copy_bufimage(ctx, staging_res, res, trans);
             /* need to wait for rendering to finish */
             zink_fence_wait(pctx);
