@@ -396,7 +396,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.props.limits.minTexelBufferOffsetAlignment;
 
    case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
-      return 0; /* unsure */
+      return 1;
 
    case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
       return screen->info.props.limits.maxTexelBufferElements;
