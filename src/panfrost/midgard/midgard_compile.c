@@ -1912,6 +1912,150 @@ mdg_texture_mode(nir_tex_instr *instr)
 }
 
 static void
+set_tex_coord(compiler_context *ctx, nir_tex_instr *instr,
+              midgard_instruction *ins)
+{
+        int coord_idx = nir_tex_instr_src_index(instr, nir_tex_src_coord);
+
+        assert(coord_idx >= 0);
+
+        int comparator_idx = nir_tex_instr_src_index(instr, nir_tex_src_comparator);
+        int ms_idx = nir_tex_instr_src_index(instr, nir_tex_src_ms_index);
+        assert(comparator_idx < 0 || ms_idx < 0);
+        int ms_or_comparator_idx = ms_idx >= 0 ? ms_idx : comparator_idx;
+
+        unsigned coords = nir_src_index(ctx, &instr->src[coord_idx].src);
+
+        emit_explicit_constant(ctx, coords, coords);
+
+        ins->src_types[1] = nir_tex_instr_src_type(instr, coord_idx) |
+                            nir_src_bit_size(instr->src[coord_idx].src);
+
+        unsigned nr_comps = instr->coord_components;
+        unsigned written_mask = 0, write_mask = 0;
+
+        /* Initialize all components to coord.x which is expected to always be
+         * present. Swizzle is updated below based on the texture dimension
+         * and extra attributes that are packed in the coordinate argument.
+         */
+        for (unsigned c = 0; c < MIR_VEC_COMPONENTS; c++)
+                ins->swizzle[1][c] = COMPONENT_X;
+
+        /* Shadow ref value is part of the coordinates if there's no comparator
+         * source, in that case it's always placed in the last component.
+         * Midgard wants the ref value in coord.z.
+         */
+        if (instr->is_shadow && comparator_idx < 0) {
+                ins->swizzle[1][COMPONENT_Z] = --nr_comps;
+                write_mask |= 1 << COMPONENT_Z;
+        }
+
+        /* The array index is the last component if there's no shadow ref value
+         * or second last if there's one. We already decremented the number of
+         * components to account for the shadow ref value above.
+         * Midgard wants the array index in coord.w.
+         */
+        if (instr->is_array) {
+                ins->swizzle[1][COMPONENT_W] = --nr_comps;
+                write_mask |= 1 << COMPONENT_W;
+        }
+
+        if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+                /* texelFetch is undefined on samplerCube */
+                assert(ins->op != TEXTURE_OP_TEXEL_FETCH);
+
+                ins->src[1] = make_compiler_temp_reg(ctx);
+
+                /* For cubemaps, we use a special ld/st op to select the face
+                 * and copy the xy into the texture register
+                 */
+                midgard_instruction ld = m_ld_cubemap_coords(ins->src[1], 0);
+                ld.src[1] = coords;
+                ld.src_types[1] = ins->src_types[1];
+                ld.mask = 0x3; /* xy */
+                ld.load_store.arg_1 = 0x20;
+                ld.swizzle[1][3] = COMPONENT_X;
+                emit_mir_instruction(ctx, ld);
+
+                /* We packed cube coordiates (X,Y,Z) into (X,Y), update the
+                 * written mask accordingly and decrement the number of
+                 * components
+                 */
+                nr_comps--;
+                written_mask |= 3;
+        }
+
+        /* Now flag tex coord components that have not been written yet */
+        write_mask |= mask_of(nr_comps) & ~written_mask;
+        for (unsigned c = 0; c < nr_comps; c++)
+                ins->swizzle[1][c] = c;
+
+        /* Sample index and shadow ref are expected in coord.z */
+        if (ms_or_comparator_idx >= 0) {
+                assert(!((write_mask | written_mask) & (1 << COMPONENT_Z)));
+
+                unsigned sample_or_ref =
+                        nir_src_index(ctx, &instr->src[ms_or_comparator_idx].src);
+
+                emit_explicit_constant(ctx, sample_or_ref, sample_or_ref);
+
+                if (ins->src[1] == ~0)
+                        ins->src[1] = make_compiler_temp_reg(ctx);
+
+                midgard_instruction mov = v_mov(sample_or_ref, ins->src[1]);
+
+                for (unsigned c = 0; c < MIR_VEC_COMPONENTS; c++)
+                        mov.swizzle[1][c] = COMPONENT_X;
+
+                mov.mask = 1 << COMPONENT_Z;
+                written_mask |= 1 << COMPONENT_Z;
+                ins->swizzle[1][COMPONENT_Z] = COMPONENT_Z;
+                emit_mir_instruction(ctx, mov);
+        }
+
+        /* Texelfetch coordinates uses all four elements (xyz/index) regardless
+         * of texture dimensionality, which means it's necessary to zero the
+         * unused components to keep everything happy.
+         */
+        if (ins->op == TEXTURE_OP_TEXEL_FETCH &&
+            (written_mask | write_mask) != 0xF) {
+                if (ins->src[1] == ~0)
+                        ins->src[1] = make_compiler_temp_reg(ctx);
+
+                /* mov index.zw, #0, or generalized */
+                midgard_instruction mov =
+                        v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), ins->src[1]);
+                mov.has_constants = true;
+                mov.mask = (written_mask | write_mask) ^ 0xF;
+                emit_mir_instruction(ctx, mov);
+                for (unsigned c = 0; c < MIR_VEC_COMPONENTS; c++) {
+                        if (mov.mask & (1 << c))
+                                ins->swizzle[1][c] = c;
+                }
+        }
+
+        if (ins->src[1] == ~0) {
+                /* No temporary reg created, use the src coords directly */
+                ins->src[1] = coords;
+	} else if (write_mask) {
+                /* Move the remaining coordinates to the temporary reg */
+                midgard_instruction mov = v_mov(coords, ins->src[1]);
+
+                for (unsigned c = 0; c < MIR_VEC_COMPONENTS; c++) {
+                        if ((1 << c) & write_mask) {
+                                mov.swizzle[1][c] = ins->swizzle[1][c];
+                                ins->swizzle[1][c] = c;
+                        } else {
+                                mov.swizzle[1][c] = COMPONENT_X;
+                        }
+                }
+
+                mov.mask = write_mask;
+                emit_mir_instruction(ctx, mov);
+        }
+}
+
+static void
 emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                   unsigned midgard_texop)
 {
@@ -1953,105 +2097,15 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
            for (int i = 0; i < 4; ++i)
               ins.swizzle[0][i] = COMPONENT_X;
 
-        /* We may need a temporary for the coordinate */
-
-        bool needs_temp_coord =
-                (midgard_texop == TEXTURE_OP_TEXEL_FETCH) ||
-                (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) ||
-                (instr->is_shadow);
-
-        unsigned coords = needs_temp_coord ? make_compiler_temp_reg(ctx) : 0;
-
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 int index = nir_src_index(ctx, &instr->src[i].src);
-                unsigned nr_components = nir_src_num_components(instr->src[i].src);
                 unsigned sz = nir_src_bit_size(instr->src[i].src);
                 nir_alu_type T = nir_tex_instr_src_type(instr, i) | sz;
 
                 switch (instr->src[i].src_type) {
-                case nir_tex_src_coord: {
-                        emit_explicit_constant(ctx, index, index);
-
-                        unsigned coord_mask = mask_of(instr->coord_components);
-
-                        bool flip_zw = (instr->sampler_dim == GLSL_SAMPLER_DIM_2D) && (coord_mask & (1 << COMPONENT_Z));
-
-                        if (flip_zw)
-                                coord_mask ^= ((1 << COMPONENT_Z) | (1 << COMPONENT_W));
-
-                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
-                                /* texelFetch is undefined on samplerCube */
-                                assert(midgard_texop != TEXTURE_OP_TEXEL_FETCH);
-
-                                /* For cubemaps, we use a special ld/st op to
-                                 * select the face and copy the xy into the
-                                 * texture register */
-
-                                midgard_instruction ld = m_ld_cubemap_coords(coords, 0);
-                                ld.src[1] = index;
-                                ld.src_types[1] = T;
-                                ld.mask = 0x3; /* xy */
-                                ld.load_store.arg_1 = 0x20;
-                                ld.swizzle[1][3] = COMPONENT_X;
-                                emit_mir_instruction(ctx, ld);
-
-                                /* xyzw -> xyxx */
-                                ins.swizzle[1][2] = instr->is_shadow ? COMPONENT_Z : COMPONENT_X;
-                                ins.swizzle[1][3] = COMPONENT_X;
-                        } else if (needs_temp_coord) {
-                                /* mov coord_temp, coords */
-                                midgard_instruction mov = v_mov(index, coords);
-                                mov.mask = coord_mask;
-
-                                if (flip_zw)
-                                        mov.swizzle[1][COMPONENT_W] = COMPONENT_Z;
-
-                                emit_mir_instruction(ctx, mov);
-                        } else {
-                                coords = index;
-                        }
-
-                        ins.src[1] = coords;
-                        ins.src_types[1] = T;
-
-                        /* Texelfetch coordinates uses all four elements
-                         * (xyz/index) regardless of texture dimensionality,
-                         * which means it's necessary to zero the unused
-                         * components to keep everything happy */
-
-                        if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
-                                /* mov index.zw, #0, or generalized */
-                                midgard_instruction mov =
-                                        v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), coords);
-                                mov.has_constants = true;
-                                mov.mask = coord_mask ^ 0xF;
-                                emit_mir_instruction(ctx, mov);
-                        }
-
-                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D) {
-                                /* Array component in w but NIR wants it in z,
-                                 * but if we have a temp coord we already fixed
-                                 * that up */
-
-                                if (nr_components == 3) {
-                                        ins.swizzle[1][2] = COMPONENT_Z;
-                                        ins.swizzle[1][3] = needs_temp_coord ? COMPONENT_W : COMPONENT_Z;
-                                } else if (nr_components == 2) {
-                                        ins.swizzle[1][2] =
-                                                instr->is_shadow ? COMPONENT_Z : COMPONENT_X;
-                                        ins.swizzle[1][3] = COMPONENT_X;
-                                } else
-                                        unreachable("Invalid texture 2D components");
-                        }
-
-                        if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
-                                /* We zeroed */
-                                ins.swizzle[1][2] = COMPONENT_Z;
-                                ins.swizzle[1][3] = COMPONENT_W;
-                        }
-
+                case nir_tex_src_coord:
+                        set_tex_coord(ctx, instr, &ins);
                         break;
-                }
 
                 case nir_tex_src_bias:
                 case nir_tex_src_lod: {
@@ -2086,19 +2140,9 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 };
 
                 case nir_tex_src_comparator:
-                case nir_tex_src_ms_index: {
-                        unsigned comp = COMPONENT_Z;
-
-                        /* mov coord_temp.foo, coords */
-                        midgard_instruction mov = v_mov(index, coords);
-                        mov.mask = 1 << comp;
-
-                        for (unsigned i = 0; i < MIR_VEC_COMPONENTS; ++i)
-                                mov.swizzle[1][i] = COMPONENT_X;
-
-                        emit_mir_instruction(ctx, mov);
+                case nir_tex_src_ms_index:
+                        /* Nothing to do, handled in set_tex_coord() */
                         break;
-                }
 
                 default: {
                         fprintf(stderr, "Unknown texture source type: %d\n", instr->src[i].src_type);
