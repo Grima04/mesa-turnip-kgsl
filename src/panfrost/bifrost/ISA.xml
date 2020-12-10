@@ -4945,7 +4945,7 @@
   <ins name="+HADD.s32" mask="0xfefc0" exact="0xbc640">
     <src start="0"/>
     <src start="3"/>
-    <mod name="round" start="12" size="1" default="round_down">
+    <mod name="round" start="12" size="1" default="rtn">
       <opt>rtn</opt>
       <opt>rtp</opt>
     </mod>
@@ -4954,7 +4954,7 @@
   <ins name="+HADD.u32" mask="0xfefc0" exact="0xbc6c0">
     <src start="0"/>
     <src start="3"/>
-    <mod name="round" start="12" size="1" default="round_down">
+    <mod name="round" start="12" size="1" default="rtn">
       <opt>rtn</opt>
       <opt>rtp</opt>
     </mod>
@@ -4963,7 +4963,7 @@
   <ins name="+HADD.v2s16" mask="0xfe9c0" exact="0xbc840">
     <src start="0"/>
     <src start="3"/>
-    <mod name="round" start="12" size="1" default="round_down">
+    <mod name="round" start="12" size="1" default="rtn">
       <opt>rtn</opt>
       <opt>rtp</opt>
     </mod>
@@ -4980,7 +4980,7 @@
   <ins name="+HADD.v2u16" mask="0xfe9c0" exact="0xbc8c0">
     <src start="0"/>
     <src start="3"/>
-    <mod name="round" start="12" size="1" default="round_down">
+    <mod name="round" start="12" size="1" default="rtn">
       <opt>rtn</opt>
       <opt>rtp</opt>
     </mod>
@@ -4997,7 +4997,7 @@
   <ins name="+HADD.v4s8" mask="0xfefc0" exact="0xbc440">
     <src start="0"/>
     <src start="3"/>
-    <mod name="round" start="12" size="1" default="round_down">
+    <mod name="round" start="12" size="1" default="rtn">
       <opt>rtn</opt>
       <opt>rtp</opt>
     </mod>
@@ -5006,7 +5006,7 @@
   <ins name="+HADD.v4u8" mask="0xfefc0" exact="0xbc4c0">
     <src start="0"/>
     <src start="3"/>
-    <mod name="round" start="12" size="1" default="round_down">
+    <mod name="round" start="12" size="1" default="rtn">
       <opt>rtn</opt>
       <opt>rtp</opt>
     </mod>
