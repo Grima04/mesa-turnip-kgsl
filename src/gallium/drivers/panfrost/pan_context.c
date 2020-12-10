@@ -1017,10 +1017,11 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 array_size /= 6;
         }
 
-        /* MSAA only supported for 2D textures (and 2D texture arrays via an
-         * extension currently unimplemented) */
+        /* MSAA only supported for 2D textures */
 
-        assert(texture->nr_samples <= 1 || so->base.target == PIPE_TEXTURE_2D);
+        assert(texture->nr_samples <= 1 ||
+               so->base.target == PIPE_TEXTURE_2D ||
+               so->base.target == PIPE_TEXTURE_2D_ARRAY);
 
         enum mali_texture_dimension type =
                 panfrost_translate_texture_dimension(so->base.target);
