@@ -2602,11 +2602,11 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    size_t num_words = spirv_builder_get_num_words(&ctx.builder);
 
-   ret = CALLOC_STRUCT(spirv_shader);
+   ret = ralloc(NULL, struct spirv_shader);
    if (!ret)
       goto fail;
 
-   ret->words = MALLOC(sizeof(uint32_t) * num_words);
+   ret->words = ralloc_size(ret, sizeof(uint32_t) * num_words);
    if (!ret->words)
       goto fail;
 

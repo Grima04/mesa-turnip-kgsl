@@ -269,8 +269,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
       ralloc_free(nir);
 
    /* TODO: determine if there's any reason to cache spirv output? */
-   free(spirv->words);
-   free(spirv);
+   ralloc_free(spirv);
    return mod;
 }
 
