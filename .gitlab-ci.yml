@@ -500,7 +500,7 @@ sanity:
     - .fdo.ci-fairy
   stage: sanity
   rules:
-    - if: *is-forked-branch-or-pre-merge
+    - if: *is-pre-merge
       when: on_success
     # Other cases default to never
   variables:
