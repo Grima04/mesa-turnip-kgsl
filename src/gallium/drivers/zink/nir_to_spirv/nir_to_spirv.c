@@ -967,7 +967,7 @@ emit_so_outputs(struct ntv_context *ctx,
             result = spirv_builder_emit_vector_shuffle(&ctx->builder, type,
                                                              src, src,
                                                              components, so_output.num_components);
-            result = emit_unop(ctx, SpvOpBitcast, type, result);
+            result = emit_bitcast(ctx, type, result);
          } else {
              /* for arrays, we need to manually extract each desired member
               * and re-pack them into the desired output type
