@@ -492,7 +492,6 @@ dEQP-GLES31.functional.image_load_store.early_fragment_tests.early_fragment_test
 dEQP-GLES31.functional.image_load_store.early_fragment_tests.early_fragment_tests_stencil_fbo,Fail
 dEQP-GLES31.functional.image_load_store.early_fragment_tests.no_early_fragment_tests_depth,Fail
 dEQP-GLES31.functional.image_load_store.early_fragment_tests.no_early_fragment_tests_depth_fbo,Fail
-dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_geometry,Crash
 dEQP-GLES31.functional.state_query.integer.max_framebuffer_samples_getfloat,Fail
 dEQP-GLES31.functional.state_query.integer.max_framebuffer_samples_getinteger,Fail
 dEQP-GLES31.functional.state_query.integer.max_framebuffer_samples_getinteger64,Fail
