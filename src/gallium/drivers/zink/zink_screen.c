@@ -846,6 +846,14 @@ zink_is_format_supported(struct pipe_screen *pscreen,
       if (bind & PIPE_BIND_VERTEX_BUFFER &&
           !(props.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT))
          return false;
+
+      if (bind & PIPE_BIND_SAMPLER_VIEW &&
+         !(props.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT))
+            return false;
+
+      if (bind & PIPE_BIND_SHADER_IMAGE &&
+          !(props.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))
+         return false;
    } else {
       /* all other targets are texture-targets */
       if (bind & PIPE_BIND_RENDER_TARGET &&
@@ -870,6 +878,10 @@ zink_is_format_supported(struct pipe_screen *pscreen,
 
       if (bind & PIPE_BIND_DEPTH_STENCIL &&
           !(props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+         return false;
+
+      if (bind & PIPE_BIND_SHADER_IMAGE &&
+          !(props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
          return false;
    }
 
