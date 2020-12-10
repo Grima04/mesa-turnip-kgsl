@@ -128,6 +128,7 @@ enum class instr_class : uint8_t {
    vmem = 17,
    waitcnt = 18,
    other = 19,
+   count,
 };
 
 enum storage_class : uint8_t {
@@ -1827,7 +1828,8 @@ enum statistic {
    statistic_instructions,
    statistic_copies,
    statistic_branches,
-   statistic_cycles,
+   statistic_latency,
+   statistic_inv_throughput,
    statistic_vmem_clauses,
    statistic_smem_clauses,
    statistic_vmem_score,

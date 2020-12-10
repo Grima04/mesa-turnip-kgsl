@@ -37,7 +37,8 @@ static const std::array<aco_compiler_statistic_info, aco::num_statistics> statis
    ret[aco::statistic_instructions] = aco_compiler_statistic_info{"Instructions", "Instruction count"};
    ret[aco::statistic_copies] = aco_compiler_statistic_info{"Copies", "Copy instructions created for pseudo-instructions"};
    ret[aco::statistic_branches] = aco_compiler_statistic_info{"Branches", "Branch instructions"};
-   ret[aco::statistic_cycles] = aco_compiler_statistic_info{"Busy Cycles", "Estimate of busy cycles"};
+   ret[aco::statistic_latency] = aco_compiler_statistic_info{"Latency", "Issue cycles plus stall cycles"};
+   ret[aco::statistic_inv_throughput] = aco_compiler_statistic_info{"Inverse Throughput", "Estimated busy cycles to execute one wave"};
    ret[aco::statistic_vmem_clauses] = aco_compiler_statistic_info{"VMEM Clause", "Number of VMEM clauses (includes 1-sized clauses)"};
    ret[aco::statistic_smem_clauses] = aco_compiler_statistic_info{"SMEM Clause", "Number of SMEM clauses (includes 1-sized clauses)"};
    ret[aco::statistic_vmem_score] = aco_compiler_statistic_info{"VMEM Score", "Average VMEM def-use distances"};
