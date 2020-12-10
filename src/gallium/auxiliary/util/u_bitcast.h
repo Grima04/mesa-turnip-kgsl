@@ -29,6 +29,7 @@
 #define U_BITCAST_H_
 
 #include <string.h>
+#include <stdint.h>
 
 #include "c99_compat.h"
 
@@ -36,7 +37,7 @@
 extern "C" {
 #endif
 
-static inline unsigned
+static inline uint32_t
 u_bitcast_f2u(float f)
 {
    unsigned u;
@@ -45,7 +46,7 @@ u_bitcast_f2u(float f)
 }
 
 static inline float
-u_bitcast_u2f(unsigned u)
+u_bitcast_u2f(uint32_t u)
 {
    float f;
    memcpy(&f, &u, sizeof(f));
