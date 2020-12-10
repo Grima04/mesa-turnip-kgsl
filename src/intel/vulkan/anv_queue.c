@@ -485,12 +485,13 @@ _anv_queue_submit(struct anv_queue *queue, struct anv_queue_submit **_submit,
 }
 
 VkResult
-anv_queue_init(struct anv_device *device, struct anv_queue *queue)
+anv_queue_init(struct anv_device *device, struct anv_queue *queue,
+               const VkDeviceQueueCreateInfo *pCreateInfo)
 {
    VkResult result;
 
    queue->device = device;
-   queue->flags = 0;
+   queue->flags = pCreateInfo->flags;
    queue->lost = false;
    queue->quit = false;
 
