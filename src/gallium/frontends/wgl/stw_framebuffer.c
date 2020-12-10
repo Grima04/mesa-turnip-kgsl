@@ -497,7 +497,9 @@ BOOL APIENTRY
 DrvPresentBuffers(HDC hdc, LPPRESENTBUFFERS data)
 {
    struct stw_framebuffer *fb;
+   struct stw_context *ctx;
    struct pipe_screen *screen;
+   struct pipe_context *pipe;
    struct pipe_resource *res;
 
    if (!stw_dev)
@@ -508,6 +510,8 @@ DrvPresentBuffers(HDC hdc, LPPRESENTBUFFERS data)
       return FALSE;
 
    screen = stw_dev->screen;
+   ctx = stw_current_context();
+   pipe = ctx ? ctx->st->pipe : NULL;
 
    res = (struct pipe_resource *)data->pPrivData;
 
@@ -536,7 +540,7 @@ DrvPresentBuffers(HDC hdc, LPPRESENTBUFFERS data)
                                       data->ullPresentToken);
       }
       else {
-         stw_dev->stw_winsys->present( screen, res, hdc );
+         stw_dev->stw_winsys->present( screen, pipe, res, hdc );
       }
    }
 
@@ -587,8 +591,10 @@ stw_framebuffer_present_locked(HDC hdc,
    }
    else {
       struct pipe_screen *screen = stw_dev->screen;
+      struct stw_context *ctx = stw_current_context();
+      struct pipe_context *pipe = ctx ? ctx->st->pipe : NULL;
 
-      stw_dev->stw_winsys->present( screen, res, hdc );
+      stw_dev->stw_winsys->present( screen, pipe, res, hdc );
 
       stw_framebuffer_update(fb);
       stw_notify_current_locked(fb);

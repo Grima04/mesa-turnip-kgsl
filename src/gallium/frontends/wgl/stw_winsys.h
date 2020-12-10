@@ -74,6 +74,7 @@ struct stw_winsys
     */
    void
    (*present)( struct pipe_screen *screen,
+               struct pipe_context *context,
                struct pipe_resource *res,
                HDC hDC );
 

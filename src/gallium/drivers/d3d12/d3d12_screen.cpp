@@ -627,6 +627,7 @@ d3d12_destroy_screen(struct pipe_screen *pscreen)
 
 static void
 d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
+                        struct pipe_context *pctx,
                         struct pipe_resource *pres,
                         unsigned level, unsigned layer,
                         void *winsys_drawable_handle,

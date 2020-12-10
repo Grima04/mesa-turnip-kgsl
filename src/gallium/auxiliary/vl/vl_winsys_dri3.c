@@ -555,6 +555,7 @@ dri3_get_screen_for_root(xcb_connection_t *conn, xcb_window_t root)
 
 static void
 vl_dri3_flush_frontbuffer(struct pipe_screen *screen,
+                          struct pipe_context *pipe,
                           struct pipe_resource *resource,
                           unsigned level, unsigned layer,
                           void *context_private, struct pipe_box *sub_box)

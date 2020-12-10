@@ -745,6 +745,7 @@ virgl_is_format_supported( struct pipe_screen *screen,
 }
 
 static void virgl_flush_frontbuffer(struct pipe_screen *screen,
+                                    struct pipe_context *ctx,
                                       struct pipe_resource *res,
                                       unsigned level, unsigned layer,
                                     void *winsys_drawable_handle, struct pipe_box *sub_box)

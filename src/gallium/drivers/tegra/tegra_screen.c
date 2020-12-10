@@ -358,6 +358,7 @@ tegra_screen_resource_destroy(struct pipe_screen *pscreen,
 
 static void
 tegra_screen_flush_frontbuffer(struct pipe_screen *pscreen,
+                               struct pipe_context *pcontext,
                                struct pipe_resource *resource,
                                unsigned int level,
                                unsigned int layer,
@@ -365,8 +366,11 @@ tegra_screen_flush_frontbuffer(struct pipe_screen *pscreen,
                                struct pipe_box *box)
 {
    struct tegra_screen *screen = to_tegra_screen(pscreen);
+   struct tegra_context *context = to_tegra_context(pcontext);
 
-   screen->gpu->flush_frontbuffer(screen->gpu, resource, level, layer,
+   screen->gpu->flush_frontbuffer(screen->gpu,
+                                  context ? context->gpu : NULL,
+                                  resource, level, layer,
                                   winsys_drawable_handle, box);
 }
 

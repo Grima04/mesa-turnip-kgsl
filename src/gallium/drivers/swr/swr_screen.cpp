@@ -988,6 +988,7 @@ swr_resource_destroy(struct pipe_screen *p_screen, struct pipe_resource *pt)
 
 static void
 swr_flush_frontbuffer(struct pipe_screen *p_screen,
+                      struct pipe_context *pipe,
                       struct pipe_resource *resource,
                       unsigned level,
                       unsigned layer,
@@ -997,7 +998,6 @@ swr_flush_frontbuffer(struct pipe_screen *p_screen,
    struct swr_screen *screen = swr_screen(p_screen);
    struct sw_winsys *winsys = screen->winsys;
    struct swr_resource *spr = swr_resource(resource);
-   struct pipe_context *pipe = screen->pipe;
    struct swr_context *ctx = swr_context(pipe);
 
    if (pipe) {

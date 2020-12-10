@@ -481,6 +481,7 @@ softpipe_destroy_screen( struct pipe_screen *screen )
  */
 static void
 softpipe_flush_frontbuffer(struct pipe_screen *_screen,
+                           struct pipe_context *pipe,
                            struct pipe_resource *resource,
                            unsigned level, unsigned layer,
                            void *context_private,

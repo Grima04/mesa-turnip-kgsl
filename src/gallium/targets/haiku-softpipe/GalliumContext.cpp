@@ -342,7 +342,7 @@ GalliumContext::SwapBuffers(context_id contextID)
 		return B_ERROR;
 	}
 
-	fScreen->flush_frontbuffer(fScreen, surface->texture, 0, 0,
+	fScreen->flush_frontbuffer(fScreen, context->st->pipe, surface->texture, 0, 0,
 		context->bitmap, NULL);
 
 	return B_OK;

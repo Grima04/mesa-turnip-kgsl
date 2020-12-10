@@ -64,10 +64,11 @@ no_winsys:
 
 static void
 gdi_present(struct pipe_screen *screen,
+            struct pipe_context *context,
             struct pipe_resource *res,
             HDC hDC)
 {
-   d3d12_wgl_present(screen, res, hDC);
+   d3d12_wgl_present(screen, context, res, hDC);
 }
 
 

@@ -208,7 +208,7 @@ graw_util_viewport(struct graw_info *info,
 static inline void
 graw_util_flush_front(const struct graw_info *info)
 {
-   info->screen->flush_frontbuffer(info->screen, info->color_buf[0],
+   info->screen->flush_frontbuffer(info->screen, info->ctx, info->color_buf[0],
                                    0, 0, info->window, NULL);
 }
 

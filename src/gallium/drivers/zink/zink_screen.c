@@ -692,6 +692,7 @@ update_queue_props(struct zink_screen *screen)
 
 static void
 zink_flush_frontbuffer(struct pipe_screen *pscreen,
+                       struct pipe_context *pcontext,
                        struct pipe_resource *pres,
                        unsigned level, unsigned layer,
                        void *winsys_drawable_handle,

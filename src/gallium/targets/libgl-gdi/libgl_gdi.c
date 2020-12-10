@@ -40,6 +40,7 @@
 #include "stw_winsys.h"
 #include "stw_device.h"
 #include "gdi/gdi_sw_winsys.h"
+#include "pipe/p_context.h"
 
 #ifdef GALLIUM_SOFTPIPE
 #include "softpipe/sp_texture.h"
@@ -151,6 +152,7 @@ no_winsys:
 
 static void
 gdi_present(struct pipe_screen *screen,
+            struct pipe_context *ctx,
             struct pipe_resource *res,
             HDC hDC)
 {
@@ -178,21 +180,21 @@ gdi_present(struct pipe_screen *screen,
 
 #ifdef GALLIUM_SWR
    if (use_swr) {
-      swr_gdi_swap(screen, res, hDC);
+      swr_gdi_swap(screen, ctx, res, hDC);
       return;
    }
 #endif
 
 #ifdef GALLIUM_D3D12
    if (use_d3d12) {
-      d3d12_wgl_present(screen, res, hDC);
+      d3d12_wgl_present(screen, ctx, res, hDC);
       return;
    }
 #endif
 
 #ifdef GALLIUM_ZINK
    if (use_zink) {
-      screen->flush_frontbuffer(screen, res, 0, 0, hDC, NULL);
+      screen->flush_frontbuffer(screen, ctx, res, 0, 0, hDC, NULL);
       return;
    }
 #endif

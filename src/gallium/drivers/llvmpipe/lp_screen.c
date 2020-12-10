@@ -714,6 +714,7 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
 
 static void
 llvmpipe_flush_frontbuffer(struct pipe_screen *_screen,
+                           struct pipe_context *_pipe,
                            struct pipe_resource *resource,
                            unsigned level, unsigned layer,
                            void *context_private,

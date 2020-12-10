@@ -43,10 +43,11 @@ d3d12_wgl_create_screen(struct sw_winsys *winsys, HDC hDC)
 
 void
 d3d12_wgl_present(struct pipe_screen *screen,
+                  struct pipe_context *ctx,
                   struct pipe_resource *res,
                   HDC hDC)
 {
-   screen->flush_frontbuffer(screen, res, 0, 0, hDC, NULL);
+   screen->flush_frontbuffer(screen, ctx, res, 0, 0, hDC, NULL);
 }
 
 unsigned
