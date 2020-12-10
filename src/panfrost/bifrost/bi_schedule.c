@@ -35,6 +35,26 @@ bi_is_fragz(bi_instruction *ins)
                ins->load_vary.var_id == BI_VARYING_NAME_FRAG_Z;
 }
 
+/* Determines messsage type by checking the table and a few special cases. Only
+ * case missing is tilebuffer instructions that access depth/stencil, which
+ * require a Z_STENCIL message (to implement
+ * ARM_shader_framebuffer_fetch_depth_stencil) */
+
+static enum bifrost_message_type
+bi_message_type_for_instr(bi_instr *ins)
+{
+        enum bifrost_message_type msg = bi_opcode_props[ins->op].message;
+        bool ld_var_special = (ins->op == BI_OPCODE_LD_VAR_SPECIAL);
+
+        if (ld_var_special && ins->varying_name == BI_VARYING_NAME_FRAG_Z)
+                return BIFROST_MESSAGE_Z_STENCIL;
+
+        if (msg == BIFROST_MESSAGE_LOAD && ins->seg == BI_SEG_UBO)
+                return BIFROST_MESSAGE_ATTRIBUTE;
+
+        return msg;
+}
+
 static enum bifrost_message_type
 bi_message_type_for_ins(bi_instruction *ins)
 {
