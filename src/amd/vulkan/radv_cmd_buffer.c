@@ -1763,7 +1763,7 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer,
 	    !radv_image_is_tc_compat_htile(image))
 		return;
 
-	if (!radv_layout_is_htile_compressed(image, layout, in_render_loop,
+	if (!radv_layout_is_htile_compressed(cmd_buffer->device, image, layout, in_render_loop,
 					     radv_image_queue_family_mask(image,
 									  cmd_buffer->queue_family_index,
 									  cmd_buffer->queue_family_index))) {
@@ -1806,7 +1806,7 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t db_z_info = ds->db_z_info;
 	uint32_t db_stencil_info = ds->db_stencil_info;
 
-	if (!radv_layout_is_htile_compressed(image, layout, in_render_loop,
+	if (!radv_layout_is_htile_compressed(cmd_buffer->device, image, layout, in_render_loop,
 					     radv_image_queue_family_mask(image,
 									  cmd_buffer->queue_family_index,
 									  cmd_buffer->queue_family_index))) {
@@ -2419,7 +2419,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 			cmd_buffer->state.offset_scale = cmd_buffer->state.attachments[idx].ds.offset_scale;
 		}
 
-		if (radv_layout_is_htile_compressed(iview->image, layout, in_render_loop,
+		if (radv_layout_is_htile_compressed(cmd_buffer->device, iview->image, layout, in_render_loop,
 						    radv_image_queue_family_mask(iview->image,
 										 cmd_buffer->queue_family_index,
 										 cmd_buffer->queue_family_index))) {
@@ -6048,16 +6048,18 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 					       const VkImageSubresourceRange *range,
 					       struct radv_sample_locations_state *sample_locs)
 {
+	struct radv_device *device = cmd_buffer->device;
+
 	if (!radv_image_has_htile(image))
 		return;
 
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
 		radv_initialize_htile(cmd_buffer, image, range);
-	} else if (!radv_layout_is_htile_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
-	           radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
+	} else if (!radv_layout_is_htile_compressed(device, image, src_layout, src_render_loop, src_queue_mask) &&
+	           radv_layout_is_htile_compressed(device, image, dst_layout, dst_render_loop, dst_queue_mask)) {
 		radv_initialize_htile(cmd_buffer, image, range);
-	} else if (radv_layout_is_htile_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
-	           !radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
+	} else if (radv_layout_is_htile_compressed(device, image, src_layout, src_render_loop, src_queue_mask) &&
+	           !radv_layout_is_htile_compressed(device, image, dst_layout, dst_render_loop, dst_queue_mask)) {
 		cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
 		                                RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 
