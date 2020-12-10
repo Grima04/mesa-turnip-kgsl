@@ -1764,6 +1764,11 @@ bool radv_layout_is_htile_compressed(const struct radv_image *image,
 			return true;
 		}
 
+		if ((layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ||
+		     layout == VK_IMAGE_LAYOUT_GENERAL) &&
+		    (queue_mask & (1u << RADV_QUEUE_COMPUTE)))
+			return false;
+
 		return layout != VK_IMAGE_LAYOUT_GENERAL;
 	}
 
