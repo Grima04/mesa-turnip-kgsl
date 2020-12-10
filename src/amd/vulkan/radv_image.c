@@ -1749,35 +1749,29 @@ bool radv_layout_is_htile_compressed(const struct radv_image *image,
 				     bool in_render_loop,
                                      unsigned queue_mask)
 {
-	if (radv_image_is_tc_compat_htile(image)) {
-		if (layout == VK_IMAGE_LAYOUT_GENERAL &&
-		    !in_render_loop &&
-		    !(image->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
-			/* It should be safe to enable TC-compat HTILE with
-			 * VK_IMAGE_LAYOUT_GENERAL if we are not in a render
-			 * loop and if the image doesn't have the storage bit
-			 * set. This improves performance for apps that use
-			 * GENERAL for the main depth pass because this allows
-			 * compression and this reduces the number of
-			 * decompressions from/to GENERAL.
-			 */
-			return true;
-		}
-
-		if ((layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ||
-		     layout == VK_IMAGE_LAYOUT_GENERAL) &&
-		    (queue_mask & (1u << RADV_QUEUE_COMPUTE)))
-			return false;
-
-		return layout != VK_IMAGE_LAYOUT_GENERAL;
+	switch (layout) {
+	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+	case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR:
+	case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR:
+		return radv_image_has_htile(image);
+	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+		return radv_image_has_htile(image) && queue_mask == (1u << RADV_QUEUE_GENERAL);
+	case VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR:
+	case VK_IMAGE_LAYOUT_GENERAL:
+		/* It should be safe to enable TC-compat HTILE with
+		 * VK_IMAGE_LAYOUT_GENERAL if we are not in a render loop and
+		 * if the image doesn't have the storage bit set. This
+		 * improves performance for apps that use GENERAL for the main
+		 * depth pass because this allows compression and this reduces
+		 * the number of decompressions from/to GENERAL.
+		 */
+		return radv_image_is_tc_compat_htile(image) &&
+		       queue_mask == (1u << RADV_QUEUE_GENERAL) &&
+		       !(image->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
+		       !in_render_loop;
+	default:
+	    return radv_image_is_tc_compat_htile(image);
 	}
-
-	return radv_image_has_htile(image) &&
-	       (layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ||
-	        layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR ||
-		layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR ||
-	        (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-	         queue_mask == (1u << RADV_QUEUE_GENERAL)));
 }
 
 bool radv_layout_can_fast_clear(const struct radv_device *device,
