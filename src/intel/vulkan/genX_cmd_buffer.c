@@ -663,7 +663,7 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
     * destinations, we can update it as part of the transfer op. For the other
     * layouts, we delay the copy until a transition into some other layout.
     */
-   if (image->planes[plane].shadow_surface.isl.size_B > 0 &&
+   if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
        vk_image_layout_stencil_write_optimal(initial_layout) &&
        !vk_image_layout_stencil_write_optimal(final_layout)) {
       anv_image_copy_to_shadow(cmd_buffer, image,
@@ -1144,7 +1144,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
 
-   if (image->planes[plane].shadow_surface.isl.size_B > 0 &&
+   if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
        final_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
       /* This surface is a linear compressed image with a tiled shadow surface
        * for texturing.  The client is about to use it in READ_ONLY_OPTIMAL so
@@ -6021,7 +6021,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          uint32_t plane = anv_image_aspect_to_plane(image->aspects,
                                                     VK_IMAGE_ASPECT_STENCIL_BIT);
 
-         if (image->planes[plane].shadow_surface.isl.size_B > 0 &&
+         if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
              att_state->current_stencil_layout == VK_IMAGE_LAYOUT_GENERAL) {
             assert(image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT);
             anv_image_copy_to_shadow(cmd_buffer, image,

@@ -276,7 +276,7 @@ get_blorp_surf_for_anv_shadow_image(const struct anv_device *device,
 {
 
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-   if (image->planes[plane].shadow_surface.isl.size_B == 0)
+   if (!anv_surface_is_valid(&image->planes[plane].shadow_surface))
       return false;
 
    *blorp_surf = (struct blorp_surf) {

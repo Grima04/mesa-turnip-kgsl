@@ -3711,7 +3711,6 @@ anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm);
  * Subsurface of an anv_image.
  */
 struct anv_surface {
-   /** Valid only if isl_surf::size_B > 0. */
    struct isl_surf isl;
 
    /**
@@ -3719,6 +3718,12 @@ struct anv_surface {
     */
    uint32_t offset;
 };
+
+static inline bool MUST_CHECK
+anv_surface_is_valid(const struct anv_surface *surface)
+{
+   return surface->isl.size_B > 0;
+}
 
 struct anv_image {
    struct vk_object_base base;
