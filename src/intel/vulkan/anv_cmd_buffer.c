@@ -1152,6 +1152,8 @@ VkResult anv_CreateCommandPool(
 
    list_inithead(&pool->cmd_buffers);
 
+   pool->flags = pCreateInfo->flags;
+
    *pCmdPool = anv_cmd_pool_to_handle(pool);
 
    return VK_SUCCESS;

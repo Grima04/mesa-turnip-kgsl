@@ -2929,6 +2929,8 @@ struct anv_cmd_pool {
    struct vk_object_base                        base;
    VkAllocationCallbacks                        alloc;
    struct list_head                             cmd_buffers;
+
+   VkCommandPoolCreateFlags                     flags;
 };
 
 #define ANV_CMD_BUFFER_BATCH_SIZE 8192
