@@ -816,12 +816,6 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
           phi->opcode != aco_opcode::p_linear_phi)
          break;
 
-      /* prevent it's definining instruction from being DCE'd if it could be rematerialized */
-      for (const Operand& op : phi->operands) {
-         if (op.isTemp() && ctx.remat.count(op.getTemp()))
-            ctx.remat_used[ctx.remat[op.getTemp()].instr] = true;
-      }
-
       /* if the phi is not spilled, add to instructions */
       if (ctx.spills_entry[block_idx].find(phi->definitions[0].getTemp()) == ctx.spills_entry[block_idx].end()) {
          instructions.emplace_back(std::move(phi));
@@ -839,6 +833,11 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          assert(phi->operands[i].isTemp() && phi->operands[i].isKill());
          Temp var = phi->operands[i].getTemp();
 
+         std::map<Temp, Temp>::iterator rename_it = ctx.renames[pred_idx].find(var);
+         /* prevent the definining instruction from being DCE'd if it could be rematerialized */
+         if (rename_it == ctx.renames[preds[i]].end() && ctx.remat.count(var))
+            ctx.remat_used[ctx.remat[var].instr] = true;
+
          /* build interferences between the phi def and all spilled variables at the predecessor blocks */
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
             if (var == pair.first)
@@ -855,7 +854,6 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          }
 
          /* rename if necessary */
-         std::map<Temp, Temp>::iterator rename_it = ctx.renames[pred_idx].find(var);
          if (rename_it != ctx.renames[pred_idx].end()) {
             var = rename_it->second;
             ctx.renames[pred_idx].erase(rename_it);
@@ -946,6 +944,9 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
             std::map<Temp, Temp>::iterator it = ctx.renames[pred_idx].find(phi->operands[i].getTemp());
             if (it != ctx.renames[pred_idx].end())
                phi->operands[i].setTemp(it->second);
+            /* prevent the definining instruction from being DCE'd if it could be rematerialized */
+            else if (ctx.remat.count(phi->operands[i].getTemp()))
+               ctx.remat_used[ctx.remat[phi->operands[i].getTemp()].instr] = true;
             continue;
          }
 
@@ -1035,12 +1036,16 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          rename = ctx.program->allocateTmp(pair.first.regClass());
          for (unsigned i = 0; i < phi->operands.size(); i++) {
             Temp tmp;
-            if (ctx.renames[preds[i]].find(pair.first) != ctx.renames[preds[i]].end())
+            if (ctx.renames[preds[i]].find(pair.first) != ctx.renames[preds[i]].end()) {
                tmp = ctx.renames[preds[i]][pair.first];
-            else if (preds[i] >= block_idx)
+            } else if (preds[i] >= block_idx) {
                tmp = rename;
-            else
+            } else {
                tmp = pair.first;
+               /* prevent the definining instruction from being DCE'd if it could be rematerialized */
+               if (ctx.remat.count(tmp))
+                  ctx.remat_used[ctx.remat[tmp].instr] = true;
+            }
             phi->operands[i] = Operand(tmp);
          }
          phi->definitions[0] = Definition(rename);
@@ -1103,7 +1108,7 @@ void process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
             if (ctx.renames[block_idx].find(op.getTemp()) != ctx.renames[block_idx].end())
                op.setTemp(ctx.renames[block_idx][op.getTemp()]);
             /* prevent it's definining instruction from being DCE'd if it could be rematerialized */
-            if (ctx.remat.count(op.getTemp()))
+            else if (ctx.remat.count(op.getTemp()))
                ctx.remat_used[ctx.remat[op.getTemp()].instr] = true;
             continue;
          }
@@ -1244,16 +1249,6 @@ void spill_block(spill_ctx& ctx, unsigned block_idx)
 
    /* add coupling code to all loop header predecessors */
    add_coupling_code(ctx, loop_header, loop_header->index);
-
-   /* update remat_used for phis added in add_coupling_code() */
-   for (aco_ptr<Instruction>& instr : loop_header->instructions) {
-      if (!is_phi(instr))
-         break;
-      for (const Operand& op : instr->operands) {
-         if (op.isTemp() && ctx.remat.count(op.getTemp()))
-            ctx.remat_used[ctx.remat[op.getTemp()].instr] = true;
-      }
-   }
 
    /* propagate new renames through loop: i.e. repair the SSA */
    renames.swap(ctx.renames[loop_header->index]);
