@@ -7,7 +7,7 @@ cmd.exe /C "C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=amd6
 
 py -3 C:\Piglit\bin\piglit.py summary console .\results | Select -SkipLast 1 | Select-String -NotMatch -Pattern ': pass' | Set-Content -Path .\result.txt
 
-$diff = Compare-Object -ReferenceObject $(Get-Content ".gitlab-ci\windows\$env:PIGLIT_PROFILE.txt") `
+$diff = Compare-Object -ReferenceObject $(Get-Content ".\_install\$env:PIGLIT_PROFILE.txt") `
                        -DifferenceObject $(Get-Content .\result.txt)
 if (-Not $diff) {
   Exit 0

@@ -19,3 +19,4 @@ if (!$buildstatus) {
 }
 
 Copy-Item ".\.gitlab-ci\windows\piglit_run.ps1" -Destination $installdir
+Copy-Item ".\.gitlab-ci\windows\quick_gl.txt" -Destination $installdir
