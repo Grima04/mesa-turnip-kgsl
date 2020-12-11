@@ -2923,17 +2923,12 @@ VkResult radv_CreateDevice(
 		fprintf(stderr, "* WARNING: Thread trace support is experimental *\n");
 		fprintf(stderr, "*************************************************\n");
 
-		if (device->physical_device->rad_info.chip_class < GFX8) {
+		if (device->physical_device->rad_info.chip_class < GFX8 ||
+		    device->physical_device->rad_info.chip_class > GFX10_3) {
 			fprintf(stderr, "GPU hardware not supported: refer to "
 					"the RGP documentation for the list of "
 					"supported GPUs!\n");
 			abort();
-		}
-
-		if (device->physical_device->rad_info.chip_class > GFX10) {
-			fprintf(stderr, "radv: Thread trace is not supported "
-					"for that GPU!\n");
-			exit(1);
 		}
 
 		/* Default buffer size set to 1MB per SE. */
