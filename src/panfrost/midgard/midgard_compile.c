@@ -287,6 +287,9 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
         if (quirks & MIDGARD_BROKEN_LOD)
                 NIR_PASS_V(nir, midgard_nir_lod_errata);
 
+        /* Midgard image ops coordinates are 16-bit instead of 32-bit */
+        NIR_PASS(progress, nir, midgard_nir_lower_image_bitsize);
+
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
 
         do {
