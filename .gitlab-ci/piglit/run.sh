@@ -137,10 +137,11 @@ if [ ${PIGLIT_JUNIT_RESULTS:-0} -eq 1 ]; then
 fi
 
 PIGLIT_RESULTS="${PIGLIT_RESULTS:-$PIGLIT_PROFILES}"
+RESULTSFILE="$RESULTS/$PIGLIT_RESULTS.txt"
 mkdir -p .gitlab-ci/piglit
 ./piglit summary console "$RESULTS"/results.json.bz2 \
     | tee ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.orig" \
-    | head -n -1 | grep -v ": pass" >".gitlab-ci/piglit/$PIGLIT_RESULTS.txt"
+    | head -n -1 | grep -v ": pass" > $RESULTSFILE
 
 if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
        && [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
@@ -181,8 +182,7 @@ fi
 
 cp "$INSTALL/piglit/$PIGLIT_RESULTS.txt" \
    ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline"
-if diff -q ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" \
-        ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt"; then
+if diff -q ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE; then
     exit 0
 fi
 
@@ -199,6 +199,5 @@ if [ ${PIGLIT_HTML_SUMMARY:-1} -eq 1 ]; then
 fi
 
 printf "%s\n" "Unexpected change in results:"
-diff -u ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" \
-     ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt"
+diff -u ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE
 exit 1
