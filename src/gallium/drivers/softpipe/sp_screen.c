@@ -189,9 +189,8 @@ softpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
       return 1;
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
-      return 400;
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 140;
+      return 400;
    case PIPE_CAP_COMPUTE:
       return 1;
    case PIPE_CAP_USER_VERTEX_BUFFERS:
