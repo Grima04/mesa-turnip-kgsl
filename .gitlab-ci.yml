@@ -1232,6 +1232,46 @@ softpipe-gles31:
     DEQP_VER: gles31
   extends: softpipe-gles2
 
+softpipe-piglit-quick:
+  extends:
+    - .piglit-test
+    - .test-gl
+    - .softpipe-rules
+  variables:
+    GALLIUM_DRIVER: softpipe
+    # rasterpos skipped due to flakes from use-after-free of the draw vs.
+    # glsl-1.50 removed due to GS flakes
+    PIGLIT_OPTIONS: >
+      --process-isolation false
+      -x rasterpos
+      -x glsl-1.50
+      -x egl_ext_device_
+      -x egl_ext_platform_device
+      -x ext_timer_query@time-elapsed
+      -x glx-multithread-clearbuffer
+      -x glx-multithread-shader-compile
+      -x max-texture-size
+      -x maxsize
+      -x fs-execution-ordering
+      -x local-id-explosion
+      -x arb_pipeline_statistics_query-comp
+      -x streaming-texture-leak
+      -x longprim
+      -x shader-mem-barrier
+      -x arb_gpu_shader_fp64
+      -x arb_gpu_shader_int64
+      -x arb_tessellation_shader
+      -x glsl-4.00
+      -x glsl-4.10
+      -x glsl-4.20
+      -x glsl-4.30
+      -x glsl-4.40
+      -x glsl-4.50
+      -x gpu_shader4
+      -x gpu_shader5
+    PIGLIT_PROFILES: quick_gl quick_shader
+    PIGLIT_RESULTS: softpipe-quick
+
 # Note that KHR-GL3* test sets include all tests from the previous
 # version, so we only need to run one test list (unlike dEQP-GLES,
 # where the test sets are separate).
