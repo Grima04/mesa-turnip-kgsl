@@ -1223,10 +1223,12 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
    unsigned op;
    struct ureg_src srcs[3];
    int num_src = 0;
+   enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
+   bool is_array = nir_intrinsic_image_array(instr);
 
-   enum tgsi_texture_type target =
-      tgsi_target_from_sampler_dim(nir_intrinsic_image_dim(instr),
-                                   nir_intrinsic_image_array(instr));
+   struct ureg_dst temp = ureg_dst_undef();
+
+   enum tgsi_texture_type target = tgsi_target_from_sampler_dim(dim, is_array);
 
    struct ureg_src resource =
       ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
@@ -1241,8 +1243,17 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
    }
 
    if (instr->intrinsic != nir_intrinsic_image_size) {
-      srcs[num_src++] = ntt_get_src(c, instr->src[1]); /* coord */
-      /* XXX: src[2] sample index to coord.z (2d) or coord.w (2darray) */
+      struct ureg_src coord = ntt_get_src(c, instr->src[1]);
+
+      if (dim == GLSL_SAMPLER_DIM_MS) {
+         temp = ureg_DECL_temporary(c->ureg);
+         ureg_MOV(c->ureg, temp, coord);
+         ureg_MOV(c->ureg, ureg_writemask(temp, 1 << (is_array ? 3 : 2)),
+                  ureg_scalar(ntt_get_src(c, instr->src[2]), TGSI_SWIZZLE_X));
+         coord = ureg_src(temp);
+      }
+      srcs[num_src++] = coord;
+
       if (instr->intrinsic != nir_intrinsic_image_load) {
          srcs[num_src++] = ntt_get_src(c, instr->src[3]); /* data */
          if (instr->intrinsic == nir_intrinsic_image_atomic_comp_swap)
@@ -1301,6 +1312,9 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
                     ntt_get_access_qualifier(instr),
                     target,
                     nir_intrinsic_format(instr));
+
+   if (!ureg_dst_is_undef(temp))
+      ureg_release_temporary(c->ureg, temp);
 }
 
 static void
