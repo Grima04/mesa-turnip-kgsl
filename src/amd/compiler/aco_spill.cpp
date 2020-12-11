@@ -816,6 +816,12 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
           phi->opcode != aco_opcode::p_linear_phi)
          break;
 
+      /* prevent it's definining instruction from being DCE'd if it could be rematerialized */
+      for (const Operand& op : phi->operands) {
+         if (op.isTemp() && ctx.remat.count(op.getTemp()))
+            ctx.remat_used[ctx.remat[op.getTemp()].instr] = true;
+      }
+
       /* if the phi is not spilled, add to instructions */
       if (ctx.spills_entry[block_idx].find(phi->definitions[0].getTemp()) == ctx.spills_entry[block_idx].end()) {
          instructions.emplace_back(std::move(phi));
@@ -1077,14 +1083,7 @@ void process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
    /* phis are handled separetely */
    while (block->instructions[idx]->opcode == aco_opcode::p_phi ||
           block->instructions[idx]->opcode == aco_opcode::p_linear_phi) {
-      aco_ptr<Instruction>& instr = block->instructions[idx];
-      for (const Operand& op : instr->operands) {
-         /* prevent it's definining instruction from being DCE'd if it could be rematerialized */
-         if (op.isTemp() && ctx.remat.count(op.getTemp()))
-            ctx.remat_used[ctx.remat[op.getTemp()].instr] = true;
-      }
-      instructions.emplace_back(std::move(instr));
-      idx++;
+      instructions.emplace_back(std::move(block->instructions[idx++]));
    }
 
    if (block->register_demand.exceeds(ctx.target_pressure))
