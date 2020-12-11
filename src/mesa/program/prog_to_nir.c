@@ -467,6 +467,25 @@ ptn_kil(nir_builder *b, nir_ssa_def **src)
    nir_builder_instr_insert(b, &discard->instr);
 }
 
+enum glsl_sampler_dim
+_mesa_texture_index_to_sampler_dim(gl_texture_index index)
+{
+   switch (index) {
+   case TEXTURE_1D_INDEX:
+      return GLSL_SAMPLER_DIM_1D;
+   case TEXTURE_2D_INDEX:
+      return GLSL_SAMPLER_DIM_2D;
+   case TEXTURE_3D_INDEX:
+      return GLSL_SAMPLER_DIM_3D;
+   case TEXTURE_CUBE_INDEX:
+      return GLSL_SAMPLER_DIM_CUBE;
+   case TEXTURE_RECT_INDEX:
+      return GLSL_SAMPLER_DIM_RECT;
+   default:
+      unreachable("unknown texture target");
+   }
+}
+
 static void
 ptn_tex(struct ptn_compile *c, nir_alu_dest dest, nir_ssa_def **src,
         struct prog_instruction *prog_inst)
@@ -513,26 +532,7 @@ ptn_tex(struct ptn_compile *c, nir_alu_dest dest, nir_ssa_def **src,
    instr->dest_type = nir_type_float;
    instr->is_shadow = prog_inst->TexShadow;
 
-   switch (prog_inst->TexSrcTarget) {
-   case TEXTURE_1D_INDEX:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_1D;
-      break;
-   case TEXTURE_2D_INDEX:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_2D;
-      break;
-   case TEXTURE_3D_INDEX:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_3D;
-      break;
-   case TEXTURE_CUBE_INDEX:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_CUBE;
-      break;
-   case TEXTURE_RECT_INDEX:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_RECT;
-      break;
-   default:
-      fprintf(stderr, "Unknown texture target %d\n", prog_inst->TexSrcTarget);
-      abort();
-   }
+   instr->sampler_dim = _mesa_texture_index_to_sampler_dim(prog_inst->TexSrcTarget);
 
    instr->coord_components =
       glsl_get_sampler_dim_coordinate_components(instr->sampler_dim);
