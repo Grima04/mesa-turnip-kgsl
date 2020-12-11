@@ -3896,6 +3896,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	ctx.abi.load_sampler_desc = radv_get_sampler_desc;
 	ctx.abi.load_resource = radv_load_resource;
 	ctx.abi.clamp_shadow_reference = false;
+	ctx.abi.adjust_frag_coord_z = args->options->adjust_frag_coord_z;
 	ctx.abi.robust_buffer_access = args->options->robust_buffer_access;
 
 	bool is_ngg = is_pre_gs_stage(shaders[0]->info.stage) &&  args->options->key.vs_common_out.as_ngg;

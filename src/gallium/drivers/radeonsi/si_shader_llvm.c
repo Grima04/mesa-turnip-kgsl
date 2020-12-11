@@ -487,6 +487,7 @@ static bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *
    ctx->abi.robust_buffer_access = true;
    ctx->abi.convert_undef_to_zero = true;
    ctx->abi.clamp_div_by_zero = ctx->screen->options.clamp_div_by_zero;
+   ctx->abi.adjust_frag_coord_z = false;
 
    const struct si_shader_info *info = &ctx->shader->selector->info;
    for (unsigned i = 0; i < info->num_outputs; i++) {

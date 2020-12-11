@@ -3328,6 +3328,37 @@ emit_load_frag_shading_rate(struct ac_nir_context *ctx)
    return LLVMBuildOr(ctx->ac.builder, x_rate, y_rate, "");
 }
 
+static LLVMValueRef
+emit_load_frag_coord(struct ac_nir_context *ctx)
+{
+   LLVMValueRef values[4] = {
+      ac_get_arg(&ctx->ac, ctx->args->frag_pos[0]), ac_get_arg(&ctx->ac, ctx->args->frag_pos[1]),
+      ac_get_arg(&ctx->ac, ctx->args->frag_pos[2]),
+      ac_build_fdiv(&ctx->ac, ctx->ac.f32_1, ac_get_arg(&ctx->ac, ctx->args->frag_pos[3]))};
+
+   if (ctx->abi->adjust_frag_coord_z) {
+      /* Adjust gl_FragCoord.z for VRS due to a hw bug on some GFX10.3 chips. */
+      LLVMValueRef frag_z = values[2];
+
+      /* dFdx fine */
+      LLVMValueRef adjusted_frag_z = emit_ddxy(ctx, nir_op_fddx_fine, frag_z);
+
+      /* adjusted_frag_z * 0.0625 + frag_z */
+      adjusted_frag_z = LLVMBuildFAdd(ctx->ac.builder, frag_z,
+                                      LLVMBuildFMul(ctx->ac.builder, adjusted_frag_z,
+                                                    LLVMConstReal(ctx->ac.f32, 0.0625), ""), "");
+
+      /* VRS Rate X = Ancillary[2:3] */
+      LLVMValueRef x_rate = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ancillary), 2, 2);
+
+      /* xRate = xRate == 0x1 ? adjusted_frag_z : frag_z. */
+      LLVMValueRef cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, x_rate, ctx->ac.i32_1, "");
+      values[2] = LLVMBuildSelect(ctx->ac.builder, cond, adjusted_frag_z, frag_z, "");
+   }
+
+   return ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
+}
+
 static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
    LLVMValueRef result = NULL;
@@ -3421,14 +3452,9 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_sample_mask_in:
       result = ctx->abi->load_sample_mask_in(ctx->abi);
       break;
-   case nir_intrinsic_load_frag_coord: {
-      LLVMValueRef values[4] = {
-         ac_get_arg(&ctx->ac, ctx->args->frag_pos[0]), ac_get_arg(&ctx->ac, ctx->args->frag_pos[1]),
-         ac_get_arg(&ctx->ac, ctx->args->frag_pos[2]),
-         ac_build_fdiv(&ctx->ac, ctx->ac.f32_1, ac_get_arg(&ctx->ac, ctx->args->frag_pos[3]))};
-      result = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
+   case nir_intrinsic_load_frag_coord:
+      result = emit_load_frag_coord(ctx);
       break;
-   }
    case nir_intrinsic_load_frag_shading_rate:
       result = emit_load_frag_shading_rate(ctx);
       break;
