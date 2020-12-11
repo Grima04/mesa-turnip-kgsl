@@ -42,6 +42,7 @@ struct ntt_compile {
    bool needs_texcoord_semantic;
    bool any_reg_as_address;
    bool native_integers;
+   bool has_txf_lz;
 
    int next_addr_reg;
    bool addr_declared[2];
@@ -1780,8 +1781,16 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
       break;
    case nir_texop_txf:
    case nir_texop_txf_ms:
-      /* XXX: Support txf_lz */
       tex_opcode = TGSI_OPCODE_TXF;
+
+      if (c->has_txf_lz) {
+         int lod_src = nir_tex_instr_src_index(instr, nir_tex_src_lod);
+         if (lod_src >= 0 &&
+             nir_src_is_const(instr->src[lod_src].src) &&
+             nir_src_as_uint(instr->src[lod_src].src) == 0) {
+            tex_opcode = TGSI_OPCODE_TXF_LZ;
+         }
+      }
       break;
    case nir_texop_txl:
       tex_opcode = TGSI_OPCODE_TXL;
@@ -1820,7 +1829,8 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
    s.chan = MAX2(s.chan, 3);
 
    ntt_push_tex_arg(c, instr, nir_tex_src_bias, &s);
-   ntt_push_tex_arg(c, instr, nir_tex_src_lod, &s);
+   if (tex_opcode != TGSI_OPCODE_TXF_LZ)
+      ntt_push_tex_arg(c, instr, nir_tex_src_lod, &s);
 
    /* End of packed src setup, everything that follows gets its own operand. */
    if (s.chan)
@@ -2633,6 +2643,8 @@ nir_to_tgsi(struct nir_shader *s,
       screen->get_param(screen, PIPE_CAP_TGSI_TEXCOORD);
    c->any_reg_as_address =
       screen->get_param(screen, PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS);
+   c->has_txf_lz =
+      screen->get_param(screen, PIPE_CAP_TGSI_TEX_TXF_LZ);
 
    c->s = s;
    c->native_integers = native_integers;
