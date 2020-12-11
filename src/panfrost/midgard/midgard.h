@@ -418,6 +418,9 @@ typedef enum {
         /* Likewise packs from fp32 */
         midgard_op_pack_colour_32 = 0x0A,
 
+        /* Converts image/tex coordinates into mem address */
+        midgard_op_lea_tex = 0x0D,
+
         /* Unclear why this is on the L/S unit, but moves fp32 cube map
          * coordinates in r27 to its cube map texture coordinate destination
          * (e.g r29). */
