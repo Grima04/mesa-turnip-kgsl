@@ -31,6 +31,7 @@
 #include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_ureg.h"
 #include "util/debug.h"
+#include "util/u_memory.h"
 
 struct ntt_compile {
    nir_shader *s;
@@ -2509,17 +2510,30 @@ nir_to_tgsi_lower_64bit_to_vec2(nir_shader *s)
 }
 
 static void
-ntt_sanity_check_driver_options(struct nir_shader *s)
+ntt_fix_nir_options(struct nir_shader *s)
 {
-   UNUSED const struct nir_shader_compiler_options *options = s->options;
+   const struct nir_shader_compiler_options *options = s->options;
 
-   assert(options->lower_extract_byte);
-   assert(options->lower_extract_word);
-   assert(options->lower_fdph);
-   assert(options->lower_flrp64);
-   assert(options->lower_fmod);
-   assert(options->lower_rotate);
-   assert(options->lower_vector_cmp);
+   if (!options->lower_extract_byte ||
+       !options->lower_extract_word ||
+       !options->lower_fdph ||
+       !options->lower_flrp64 ||
+       !options->lower_fmod ||
+       !options->lower_rotate ||
+       !options->lower_vector_cmp) {
+      struct nir_shader_compiler_options *new_options =
+         mem_dup(s->options, sizeof(*s->options));
+
+      new_options->lower_extract_byte = true;
+      new_options->lower_extract_word = true;
+      new_options->lower_fdph = true;
+      new_options->lower_flrp64 = true;
+      new_options->lower_fmod = true;
+      new_options->lower_rotate = true;
+      new_options->lower_vector_cmp = true;
+
+      s->options = new_options;
+   }
 }
 
 const void *
@@ -2533,8 +2547,9 @@ nir_to_tgsi(struct nir_shader *s,
    bool native_integers = screen->get_shader_param(screen,
                                                    pipe_shader_type_from_mesa(s->info.stage),
                                                    PIPE_SHADER_CAP_INTEGERS);
+   const struct nir_shader_compiler_options *original_options = s->options;
 
-   ntt_sanity_check_driver_options(s);
+   ntt_fix_nir_options(s);
 
    NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
               type_size, (nir_lower_io_options)0);
@@ -2646,6 +2661,11 @@ nir_to_tgsi(struct nir_shader *s,
    ureg_destroy(c->ureg);
 
    ralloc_free(c);
+
+   if (s->options != original_options) {
+      free((void*)s->options);
+      s->options = original_options;
+   }
 
    return tgsi_tokens;
 }
