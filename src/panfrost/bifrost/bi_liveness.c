@@ -66,23 +66,3 @@ bi_invalidate_liveness(bi_context *ctx)
 
         ctx->has_liveness = false;
 }
-
-bool
-bi_is_live_after(bi_context *ctx, bi_block *block, bi_instruction *start, int src)
-{
-        bi_compute_liveness(ctx);
-
-        /* Check whether we're live in the successors */
-
-        if (pan_liveness_get(block->base.live_out, src, bi_max_temp(ctx)))
-                return true;
-
-        /* Check the rest of the block for liveness */
-
-        bi_foreach_instr_in_block_from(block, ins, bi_next_op(start)) {
-                if (bi_has_arg(ins, src))
-                        return true;
-        }
-
-        return false;
-}
