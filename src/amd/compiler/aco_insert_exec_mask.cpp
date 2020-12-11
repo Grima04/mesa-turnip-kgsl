@@ -590,7 +590,10 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
       /* if one of the predecessors ends in exact mask, we pop it from stack */
       unsigned num_exec_masks = std::min(ctx.info[preds[0]].exec.size(),
                                          ctx.info[preds[1]].exec.size());
-      if (block->kind & block_kind_top_level && !(block->kind & block_kind_merge))
+
+      if (block->kind & block_kind_merge)
+         num_exec_masks--;
+      else if (block->kind & block_kind_top_level)
          num_exec_masks = std::min(num_exec_masks, 2u);
 
       /* create phis for diverged exec masks */
@@ -616,9 +619,6 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
       bld.insert(std::move(block->instructions[i]));
       i++;
    }
-
-   if (block->kind & block_kind_merge)
-      ctx.info[idx].exec.pop_back();
 
    if (block->kind & block_kind_top_level && ctx.info[idx].exec.size() == 3) {
       assert(ctx.info[idx].exec.back().second == mask_type_exact);
