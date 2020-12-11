@@ -1921,6 +1921,7 @@ tu_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < counterBufferCount; i++) {
       uint32_t idx = firstCounterBuffer + i;
       uint32_t offset = cmd->state.streamout_offset[idx];
+      uint64_t counter_buffer_offset = pCounterBufferOffsets ? pCounterBufferOffsets[i] : 0u;
 
       if (!pCounterBuffers[i])
          continue;
@@ -1931,7 +1932,7 @@ tu_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(idx)) |
                      CP_MEM_TO_REG_0_UNK31 |
                      CP_MEM_TO_REG_0_CNT(1));
-      tu_cs_emit_qw(cs, buf->bo->iova + pCounterBufferOffsets[i]);
+      tu_cs_emit_qw(cs, buf->bo->iova + counter_buffer_offset);
 
       if (offset) {
          tu_cs_emit_pkt7(cs, CP_REG_RMW, 3);
@@ -1969,6 +1970,7 @@ void tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < counterBufferCount; i++) {
       uint32_t idx = firstCounterBuffer + i;
       uint32_t offset = cmd->state.streamout_offset[idx];
+      uint64_t counter_buffer_offset = pCounterBufferOffsets ? pCounterBufferOffsets[i] : 0u;
 
       if (!pCounterBuffers[i])
          continue;
@@ -1995,7 +1997,7 @@ void tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
       tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(REG_A6XX_CP_SCRATCH_REG(0)) |
                      CP_REG_TO_MEM_0_CNT(1));
-      tu_cs_emit_qw(cs, buf->bo->iova + pCounterBufferOffsets[i]);
+      tu_cs_emit_qw(cs, buf->bo->iova + counter_buffer_offset);
    }
 
    tu_cond_exec_end(cs);
