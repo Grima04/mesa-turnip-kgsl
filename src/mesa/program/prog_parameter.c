@@ -141,7 +141,6 @@ _mesa_new_parameter_list(void)
       return NULL;
 
    list->UniformBytes = 0;
-   list->LastUniformIndex = -1;
    list->FirstStateVarIndex = INT_MAX;
    return list;
 }
@@ -331,8 +330,6 @@ _mesa_add_parameter(struct gl_program_parameter_list *paramList,
    }
 
    if (type == PROGRAM_UNIFORM || type == PROGRAM_CONSTANT) {
-      paramList->LastUniformIndex =
-         MAX2(paramList->LastUniformIndex, oldNum);
       paramList->UniformBytes =
          MAX2(paramList->UniformBytes, paramList->NumParameterValues * 4);
    } else if (type == PROGRAM_STATE_VAR) {
@@ -454,13 +451,11 @@ void
 _mesa_recompute_parameter_bounds(struct gl_program_parameter_list *list)
 {
    list->FirstStateVarIndex = INT_MAX;
-   list->LastUniformIndex = -1;
 
    for (int i = 0; i < (int)list->NumParameters; i++) {
       if (list->Parameters[i].Type == PROGRAM_STATE_VAR) {
          list->FirstStateVarIndex = MIN2(list->FirstStateVarIndex, i);
       } else {
-         list->LastUniformIndex = MAX2(list->LastUniformIndex, i);
          list->UniformBytes = MAX2(list->UniformBytes, list->NumParameterValues * 4);
       }
    }

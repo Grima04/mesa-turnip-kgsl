@@ -153,7 +153,6 @@ struct gl_program_parameter_list
     * which can't sort parameters.
     */
    int UniformBytes;
-   int LastUniformIndex;
    int FirstStateVarIndex;
 };
 
