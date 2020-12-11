@@ -1465,7 +1465,7 @@ ntt_emit_store_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
             gs_streams &= ~(0x3 << 2 * i);
       }
 
-      /* XXX: array_id is used in svga tess. */
+      /* No driver appears to use array_id of outputs. */
       unsigned array_id = 0;
 
       /* This bit is lost in the i/o semantics, but it's unused in in-tree
