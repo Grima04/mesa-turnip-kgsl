@@ -51,7 +51,7 @@ radv_emit_thread_trace_start(struct radv_device *device,
 				       S_030800_SH_INDEX(0) |
 				       S_030800_INSTANCE_BROADCAST_WRITES(1));
 
-		if (device->physical_device->rad_info.chip_class == GFX10) {
+		if (device->physical_device->rad_info.chip_class >= GFX10) {
 			/* Order seems important for the following 2 registers. */
 			radeon_set_privileged_config_reg(cs, R_008D04_SQ_THREAD_TRACE_BUF0_SIZE,
 							 S_008D04_SIZE(shifted_size) |
@@ -66,27 +66,37 @@ radv_emit_thread_trace_start(struct radv_device *device,
 							 S_008D14_WGP_SEL(0) |
 							 S_008D14_SIMD_SEL(0));
 
+			uint32_t thread_trace_token_mask =
+				S_008D18_REG_INCLUDE(V_008D18_REG_INCLUDE_SQDEC |
+						     V_008D18_REG_INCLUDE_SHDEC |
+						     V_008D18_REG_INCLUDE_GFXUDEC |
+						     V_008D18_REG_INCLUDE_CONTEXT |
+						     V_008D18_REG_INCLUDE_COMP |
+						     V_008D18_REG_INCLUDE_CONTEXT |
+						     V_008D18_REG_INCLUDE_CONFIG);
+
+			if (device->physical_device->rad_info.chip_class < GFX10_3)
+				thread_trace_token_mask |= S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF);
+
 			radeon_set_privileged_config_reg(cs, R_008D18_SQ_THREAD_TRACE_TOKEN_MASK,
-							 S_008D18_REG_INCLUDE(V_008D18_REG_INCLUDE_SQDEC |
-									      V_008D18_REG_INCLUDE_SHDEC |
-									      V_008D18_REG_INCLUDE_GFXUDEC |
-									      V_008D18_REG_INCLUDE_CONTEXT |
-									      V_008D18_REG_INCLUDE_COMP |
-									      V_008D18_REG_INCLUDE_CONTEXT |
-									      V_008D18_REG_INCLUDE_CONFIG) |
-							 S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF));
+							 thread_trace_token_mask);
+
+			uint32_t thread_trace_ctrl = S_008D1C_MODE(1) |
+						     S_008D1C_HIWATER(5) |
+						     S_008D1C_UTIL_TIMER(1) |
+						     S_008D1C_RT_FREQ(2) | /* 4096 clk */
+						     S_008D1C_DRAW_EVENT_EN(1) |
+						     S_008D1C_REG_STALL_EN(1) |
+						     S_008D1C_SPI_STALL_EN(1) |
+						     S_008D1C_SQ_STALL_EN(1) |
+						     S_008D1C_REG_DROP_ON_STALL(0);
+
+			if (device->physical_device->rad_info.chip_class == GFX10_3)
+				thread_trace_ctrl |= S_008D1C_LOWATER_OFFSET(4);
 
 			/* Should be emitted last (it enables thread traces). */
 			radeon_set_privileged_config_reg(cs, R_008D1C_SQ_THREAD_TRACE_CTRL,
-							 S_008D1C_MODE(1) |
-							 S_008D1C_HIWATER(5) |
-							 S_008D1C_UTIL_TIMER(1) |
-							 S_008D1C_RT_FREQ(2) | /* 4096 clk */
-							 S_008D1C_DRAW_EVENT_EN(1) |
-							 S_008D1C_REG_STALL_EN(1) |
-							 S_008D1C_SPI_STALL_EN(1) |
-							 S_008D1C_SQ_STALL_EN(1) |
-							 S_008D1C_REG_DROP_ON_STALL(0));
+							 thread_trace_ctrl);
 		} else {
 			/* Order seems important for the following 4 registers. */
 			radeon_set_uconfig_reg(cs, R_030CDC_SQ_THREAD_TRACE_BASE2,
@@ -205,18 +215,13 @@ radv_copy_thread_trace_info_regs(struct radv_device *device,
 {
 	const uint32_t *thread_trace_info_regs = NULL;
 
-	switch (device->physical_device->rad_info.chip_class) {
-	case GFX10:
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
 		thread_trace_info_regs = gfx10_thread_trace_info_regs;
-		break;
-	case GFX9:
+	} else if (device->physical_device->rad_info.chip_class == GFX9) {
 		thread_trace_info_regs = gfx9_thread_trace_info_regs;
-		break;
-	case GFX8:
+	} else {
+		assert(device->physical_device->rad_info.chip_class == GFX8);
 		thread_trace_info_regs = gfx8_thread_trace_info_regs;
-		break;
-	default:
-		unreachable("Unsupported chip_class");
 	}
 
 	/* Get the VA where the info struct is stored for this SE. */
@@ -265,7 +270,7 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 				       S_030800_SH_INDEX(0) |
 				       S_030800_INSTANCE_BROADCAST_WRITES(1));
 
-		if (device->physical_device->rad_info.chip_class == GFX10) {
+		if (device->physical_device->rad_info.chip_class >= GFX10) {
 			/* Make sure to wait for the trace buffer. */
 			radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
 			radeon_emit(cs, WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
@@ -345,7 +350,7 @@ radv_emit_spi_config_cntl(struct radv_device *device,
 					   S_031100_ENABLE_SQG_TOP_EVENTS(enable) |
 					   S_031100_ENABLE_SQG_BOP_EVENTS(enable);
 
-		if (device->physical_device->rad_info.chip_class == GFX10)
+		if (device->physical_device->rad_info.chip_class >= GFX10)
 			spi_config_cntl |= S_031100_PS_PKR_PRIORITY_CNTL(3);
 
 		radeon_set_uconfig_reg(cs, R_031100_SPI_CONFIG_CNTL, spi_config_cntl);
