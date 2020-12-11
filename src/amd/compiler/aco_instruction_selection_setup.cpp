@@ -398,8 +398,7 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    if (ctx->stage == vertex_ngg && ctx->args->options->key.vs_common_out.export_prim_id) {
       /* We need to store the primitive IDs in LDS */
       unsigned lds_size = ctx->program->info->ngg_info.esgs_ring_size;
-      ctx->program->config->lds_size = (lds_size + ctx->program->lds_alloc_granule - 1) /
-                                       ctx->program->lds_alloc_granule;
+      ctx->program->config->lds_size = DIV_ROUND_UP(lds_size, ctx->program->lds_encoding_granule);
    }
 }
 
@@ -424,7 +423,7 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       unsigned total_lds_bytes = esgs_ring_bytes + ngg_emit_bytes + ngg_gs_scratch_bytes;
       assert(total_lds_bytes >= ctx->ngg_gs_emit_addr);
       assert(total_lds_bytes >= ctx->ngg_gs_scratch_addr);
-      ctx->program->config->lds_size = (total_lds_bytes + ctx->program->lds_alloc_granule - 1) / ctx->program->lds_alloc_granule;
+      ctx->program->config->lds_size = DIV_ROUND_UP(total_lds_bytes, ctx->program->lds_encoding_granule);
 
       /* Make sure we have enough room for emitted GS vertices */
       if (nir->info.gs.vertices_out)
@@ -488,8 +487,7 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
 
    ctx->args->shader_info->tcs.num_patches = ctx->tcs_num_patches;
    ctx->args->shader_info->tcs.num_lds_blocks = lds_size;
-   ctx->program->config->lds_size = (lds_size + ctx->program->lds_alloc_granule - 1) /
-                                    ctx->program->lds_alloc_granule;
+   ctx->program->config->lds_size = DIV_ROUND_UP(lds_size, ctx->program->lds_encoding_granule);
 }
 
 void
@@ -520,8 +518,7 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       break;
    }
    case MESA_SHADER_COMPUTE: {
-      ctx->program->config->lds_size = (nir->info.cs.shared_size + ctx->program->lds_alloc_granule - 1) /
-                                       ctx->program->lds_alloc_granule;
+      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.cs.shared_size, ctx->program->lds_encoding_granule);
       break;
    }
    case MESA_SHADER_VERTEX: {
@@ -544,7 +541,7 @@ setup_variables(isel_context *ctx, nir_shader *nir)
    }
 
    /* Make sure we fit the available LDS space. */
-   assert((ctx->program->config->lds_size * ctx->program->lds_alloc_granule) <= ctx->program->lds_limit);
+   assert((ctx->program->config->lds_size * ctx->program->lds_encoding_granule) <= ctx->program->lds_limit);
 }
 
 void

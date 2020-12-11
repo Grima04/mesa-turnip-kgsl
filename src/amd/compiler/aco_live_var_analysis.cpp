@@ -353,7 +353,8 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
       unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
       unsigned workgroups_per_cu_wgp = max_waves_per_simd * simd_per_cu_wgp / waves_per_workgroup;
       if (program->config->lds_size) {
-         unsigned lds = program->config->lds_size * program->lds_alloc_granule;
+         unsigned lds = program->config->lds_size * program->lds_encoding_granule;
+         lds = align(lds, program->lds_alloc_granule);
          workgroups_per_cu_wgp = std::min(workgroups_per_cu_wgp, lds_limit / lds);
       }
       if (waves_per_workgroup > 1 && program->chip_class < GFX10)
