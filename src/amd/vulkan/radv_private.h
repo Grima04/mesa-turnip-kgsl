@@ -825,6 +825,11 @@ struct radv_device {
 	/* Whether the app has enabled the robustBufferAccess feature. */
 	bool robust_buffer_access;
 
+	/* Whether gl_FragCoord.z should be adjusted for VRS due to a hw bug
+	 * on some GFX10.3 chips.
+	 */
+	bool adjust_frag_coord_z;
+
 	/* Whether the driver uses a global BO list. */
 	bool use_global_bo_list;
 

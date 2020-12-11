@@ -2657,6 +2657,7 @@ VkResult radv_CreateDevice(
 	bool robust_buffer_access = false;
 	bool overallocation_disallowed = false;
 	bool custom_border_colors = false;
+	bool vrs_enabled = false;
 
 	/* Check enabled features */
 	if (pCreateInfo->pEnabledFeatures) {
@@ -2691,6 +2692,13 @@ VkResult radv_CreateDevice(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
 			const VkPhysicalDeviceCustomBorderColorFeaturesEXT *border_color_features = (const void *)ext;
 			custom_border_colors = border_color_features->customBorderColors;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR: {
+			const VkPhysicalDeviceFragmentShadingRateFeaturesKHR *vrs = (const void *)ext;
+			vrs_enabled = vrs->pipelineFragmentShadingRate ||
+				      vrs->primitiveFragmentShadingRate ||
+				      vrs->attachmentFragmentShadingRate;
 			break;
 		}
 		default:
@@ -2737,6 +2745,12 @@ VkResult radv_CreateDevice(
 		device->enabled_extensions.KHR_buffer_device_address;
 
 	device->robust_buffer_access = robust_buffer_access;
+
+	device->adjust_frag_coord_z = (vrs_enabled ||
+				       device->enabled_extensions.KHR_fragment_shading_rate) &&
+				      (device->physical_device->rad_info.family == CHIP_SIENNA_CICHLID ||
+				       device->physical_device->rad_info.family == CHIP_NAVY_FLOUNDER ||
+				       device->physical_device->rad_info.family == CHIP_VANGOGH);
 
 	mtx_init(&device->shader_slab_mutex, mtx_plain);
 	list_inithead(&device->shader_slabs);
