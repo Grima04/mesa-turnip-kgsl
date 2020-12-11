@@ -48,8 +48,6 @@ struct ntt_compile {
    bool addr_declared[2];
    struct ureg_dst addr_reg[2];
 
-   unsigned loop_label;
-
    /* if condition set up at the end of a block, for ntt_emit_if(). */
    struct ureg_src if_cond;
 
@@ -2086,20 +2084,16 @@ ntt_emit_if(struct ntt_compile *c, nir_if *if_stmt)
 static void
 ntt_emit_loop(struct ntt_compile *c, nir_loop *loop)
 {
-   unsigned last_loop_label = c->loop_label;
-
+   /* GLSL-to-TGSI never set the begin/end labels to anything, even though nvfx
+    * does reference BGNLOOP's.  Follow the former behavior unless something comes up
+    * with a need.
+    */
    unsigned begin_label;
    ureg_BGNLOOP(c->ureg, &begin_label);
    ntt_emit_cf_list(c, &loop->body);
 
-   /* XXX: Need to set cont/break labels for svga, nv30, nv50.
-    *
-    * ureg_fixup_label(c->ureg, label, ureg_get_instruction_number(c->ureg));
-    */
    unsigned end_label;
    ureg_ENDLOOP(c->ureg, &end_label);
-
-   c->loop_label = last_loop_label;
 }
 
 static void
