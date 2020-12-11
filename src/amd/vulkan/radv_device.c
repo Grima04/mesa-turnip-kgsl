@@ -5191,9 +5191,9 @@ bool radv_get_memory_fd(struct radv_device *device,
 			struct radv_device_memory *memory,
 			int *pFD)
 {
-	struct radeon_bo_metadata metadata;
-
-	if (memory->image && memory->image->tiling != VK_IMAGE_TILING_LINEAR) {
+	/* Only set BO metadata for the first plane */
+	if (memory->image && memory->image->offset == 0) {
+		struct radeon_bo_metadata metadata;
 		radv_init_metadata(device, memory->image, &metadata);
 		device->ws->buffer_set_metadata(memory->bo, &metadata);
 	}
