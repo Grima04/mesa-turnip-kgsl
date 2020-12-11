@@ -148,7 +148,9 @@ struct gl_program_parameter_list
    bool DisallowRealloc;
 
    /* Parameters are optionally sorted as follows. Uniforms and constants
-    * are first, then state vars.
+    * are first, then state vars. This should be true in all cases except
+    * ir_to_mesa, which adds constants at the end, and ARB_vp with ARL,
+    * which can't sort parameters.
     */
    int UniformBytes;
    int LastUniformIndex;
