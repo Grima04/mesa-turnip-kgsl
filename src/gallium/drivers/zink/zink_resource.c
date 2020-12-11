@@ -613,9 +613,12 @@ zink_transfer_map(struct pipe_context *pctx,
          vkGetImageSubresourceLayout(screen->dev, res->image, &isr, &srl);
          trans->base.stride = srl.rowPitch;
          trans->base.layer_stride = srl.arrayPitch;
-         ptr = ((uint8_t *)ptr) + box->z * srl.depthPitch +
-                                  box->y * srl.rowPitch +
-                                  box->x;
+         const struct util_format_description *desc = util_format_description(res->format);
+         unsigned offset = srl.offset +
+                           box->z * srl.depthPitch +
+                           (box->y / desc->block.height) * srl.rowPitch +
+                           (box->x / desc->block.width) * (util_format_get_blocksize(res->format) / desc->nr_channels);
+         ptr = ((uint8_t *)ptr) + offset;
       }
    }
 
