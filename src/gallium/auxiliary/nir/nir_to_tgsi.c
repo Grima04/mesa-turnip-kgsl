@@ -277,6 +277,14 @@ ntt_setup_uniforms(struct ntt_compile *c)
       ureg_DECL_constant2D(c->ureg, 0, 0, var->data.driver_location);
    }
 
+   nir_foreach_variable_with_modes(var, c->s, nir_var_mem_ssbo) {
+      /* XXX: nv50 uses the atomic flag to set caching for (lowered) atomic
+       * counters
+       */
+      bool atomic = false;
+      ureg_DECL_buffer(c->ureg, var->data.binding, atomic);
+   }
+
    for (int i = 0; i < PIPE_MAX_SAMPLERS; i++) {
       if (c->s->info.textures_used & (1 << i))
          ureg_DECL_sampler(c->ureg, i);
@@ -1076,9 +1084,6 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
    struct ureg_src memory;
    switch (mode) {
    case nir_var_mem_ssbo:
-      /* XXX: TGSI should have BUFFER declarations for the SSBOs.  Needed for
-       * r600, nv50, llvmpipe.
-       */
       memory = ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_BUFFER, 0),
                                      instr->src[is_store ? 1 : 0]);
       nir_src = 1;
