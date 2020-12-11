@@ -93,6 +93,49 @@ bi_from_bytemask(uint16_t bytemask, unsigned bytes)
         return value;
 }
 
+/* Precondition: valid 16-bit or 32-bit register format. Returns whether it is
+ * 32-bit. Note auto reads to 32-bit registers even if the memory format is
+ * 16-bit, so is considered as such here */
+
+static bool
+bi_is_regfmt_16(enum bi_register_format fmt)
+{
+        switch  (fmt) {
+        case BI_REGISTER_FORMAT_F16:
+        case BI_REGISTER_FORMAT_S16:
+        case BI_REGISTER_FORMAT_U16:
+                return true;
+        case BI_REGISTER_FORMAT_F32:
+        case BI_REGISTER_FORMAT_S32:
+        case BI_REGISTER_FORMAT_U32:
+        case BI_REGISTER_FORMAT_AUTO:
+                return false;
+        default:
+                unreachable("Invalid register format");
+        }
+}
+
+static unsigned
+bi_count_staging_registers(bi_instr *ins)
+{
+        enum bi_sr_count count = bi_opcode_props[ins->op].sr_count;
+        unsigned vecsize = ins->vecsize + 1; /* XXX: off-by-one */
+
+        switch (count) {
+        case BI_SR_COUNT_0 ... BI_SR_COUNT_4:
+                return count;
+        case BI_SR_COUNT_FORMAT:
+                return bi_is_regfmt_16(ins->register_format) ?
+                        DIV_ROUND_UP(vecsize, 2) : vecsize;
+        case BI_SR_COUNT_VECSIZE:
+                return vecsize;
+        case BI_SR_COUNT_SR_COUNT:
+                return ins->sr_count;
+        }
+
+        unreachable("Invalid sr_count");
+}
+
 unsigned
 bi_get_component_count(bi_instruction *ins, signed src)
 {
