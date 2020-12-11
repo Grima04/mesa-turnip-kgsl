@@ -807,6 +807,7 @@ meson-windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
+    - .windows-build-rules
   stage: build-misc
   script:
     - . .\.gitlab-ci\windows\mesa_build.ps1
@@ -818,6 +819,7 @@ test-d3d12-windows:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
+    - .windows-test-rules
   stage: layered-backends
   dependencies:
     - meson-windows-vs2019
