@@ -434,8 +434,12 @@ input_var_init(struct ntv_context *ctx, struct nir_variable *var)
 
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
-   if (var->data.mode == nir_var_mem_push_const)
+   if (var->data.mode == nir_var_mem_push_const) {
       ctx->push_const_var = var_id;
+
+      assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+      ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
+   }
    return var_id;
 }
 
@@ -829,6 +833,8 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
       _mesa_hash_table_insert(ctx->image_vars, key, var);
       emit_access_decorations(ctx, var, var_id);
    }
+   assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+   ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
 
    spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
    int binding = zink_binding(ctx->stage,
@@ -949,6 +955,8 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
          assert(ctx->num_ubos < ARRAY_SIZE(ctx->ubos));
          ctx->ubos[ctx->num_ubos++] = var_id;
       }
+      assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+      ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
 
       spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
       int binding = zink_binding(ctx->stage,
