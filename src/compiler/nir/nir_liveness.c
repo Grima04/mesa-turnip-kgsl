@@ -54,7 +54,7 @@ struct live_ssa_defs_state {
 /* Initialize the liveness data to zero and add the given block to the
  * worklist.
  */
-static bool
+static void
 init_liveness_block(nir_block *block,
                     struct live_ssa_defs_state *state)
 {
@@ -67,8 +67,6 @@ init_liveness_block(nir_block *block,
    memset(block->live_out, 0, state->bitset_words * sizeof(BITSET_WORD));
 
    nir_block_worklist_push_head(&state->worklist, block);
-
-   return true;
 }
 
 static bool
