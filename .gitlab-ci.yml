@@ -196,10 +196,22 @@ success:
   variables:
     FDO_DISTRIBUTION_TAG: "${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
 
+.incorporate-base-tag+templates-commit:
+  variables:
+    FDO_BASE_IMAGE: "${CI_REGISTRY_IMAGE}/${MESA_BASE_IMAGE}:${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
+    FDO_DISTRIBUTION_TAG: "${MESA_IMAGE_TAG}--${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
+
 .set-image:
   variables:
     MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   image: "$MESA_IMAGE"
+
+.set-image-base-tag:
+  extends:
+    - .set-image
+    - .incorporate-base-tag+templates-commit
+  variables:
+    MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${MESA_IMAGE_TAG}--${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
 
 
 # Build the CI docker images.
@@ -262,11 +274,10 @@ success:
 .use-base-image:
   extends:
     - .container
+    - .incorporate-base-tag+templates-commit
     # Don't want the .container rules
     - .ci-run-policy
   stage: container-2
-  variables:
-    FDO_BASE_IMAGE: "${CI_REGISTRY_IMAGE}/${MESA_BASE_IMAGE}:${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
 
 # Debian 10 based x86 build image base
 x86_build-base:
@@ -295,8 +306,9 @@ x86_build:
 
 .use-x86_build:
   extends:
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *x86_build-base
     MESA_IMAGE_PATH: "debian/x86_build"
     MESA_IMAGE_TAG: *x86_build
   needs:
@@ -311,8 +323,9 @@ i386_build:
 
 .use-i386_build:
   extends:
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *x86_build-base
     MESA_IMAGE_PATH: "debian/i386_build"
     MESA_IMAGE_TAG: *i386_build
   needs:
@@ -327,8 +340,9 @@ ppc64el_build:
 
 .use-ppc64el_build:
   extends:
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *x86_build-base
     MESA_IMAGE_PATH: "debian/ppc64el_build"
     MESA_IMAGE_TAG: *ppc64el_build
   needs:
@@ -343,8 +357,9 @@ s390x_build:
 
 .use-s390x_build:
   extends:
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *x86_build-base
     MESA_IMAGE_PATH: "debian/s390x_build"
     MESA_IMAGE_TAG: *s390x_build
   needs:
@@ -359,8 +374,9 @@ android_build:
 
 .use-android_build:
   extends:
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *x86_build-base
     MESA_IMAGE_PATH: "debian/android_build"
     MESA_IMAGE_TAG: *android_build
   needs:
@@ -438,8 +454,9 @@ arm64_test:
 
 .use-arm64_test:
   extends:
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *arm_test-base
     MESA_IMAGE_PATH: "debian/arm64_test"
     MESA_IMAGE_TAG: *arm64_test
   needs:
@@ -454,8 +471,9 @@ armhf_test:
 
 .use-armhf_test:
   extends:
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *arm_test-base
     MESA_IMAGE_PATH: "debian/armhf_test"
     MESA_IMAGE_TAG: *armhf_test
   needs:
@@ -1013,8 +1031,9 @@ meson-mingw32-x86_64:
 .use-x86_test-gl:
   extends:
     - .test
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *x86_test-base
     MESA_IMAGE_PATH: "debian/x86_test-gl"
     MESA_IMAGE_TAG: *x86_test-gl
   needs:
@@ -1030,8 +1049,9 @@ meson-mingw32-x86_64:
 .test-vk:
   extends:
     - .test
-    - .set-image
+    - .set-image-base-tag
   variables:
+    MESA_BASE_TAG: *x86_test-base
     MESA_IMAGE_PATH: "debian/x86_test-vk"
     MESA_IMAGE_TAG: *x86_test-vk
   needs:
