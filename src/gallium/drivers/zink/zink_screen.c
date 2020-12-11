@@ -413,8 +413,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_TGSI_VS_LAYER_VIEWPORT:
-      return screen->info.feats12.shaderOutputLayer &&
-             screen->info.feats12.shaderOutputViewportIndex;
+      return screen->info.have_EXT_shader_viewport_index_layer ||
+             (screen->info.feats12.shaderOutputLayer &&
+              screen->info.feats12.shaderOutputViewportIndex);
 
    case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
    case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
