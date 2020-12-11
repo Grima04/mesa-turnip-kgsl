@@ -466,12 +466,27 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                 pan_unpack(cl + i * MALI_ATTRIBUTE_BUFFER_LENGTH, ATTRIBUTE_BUFFER, temp);
                 DUMP_UNPACKED(ATTRIBUTE_BUFFER, temp, "%s:\n", prefix);
 
-                if (temp.type == MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR) {
+                switch (temp.type) {
+                case MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR_WRITE_REDUCTION:
+                case MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR: {
                         pan_unpack(cl + (i + 1) * MALI_ATTRIBUTE_BUFFER_LENGTH,
                                    ATTRIBUTE_BUFFER_CONTINUATION_NPOT, temp2);
                         pan_print(pandecode_dump_stream, ATTRIBUTE_BUFFER_CONTINUATION_NPOT,
                                   temp2, (pandecode_indent + 1) * 2);
                         i++; count++;
+                        break;
+                }
+                case MALI_ATTRIBUTE_TYPE_3D_LINEAR:
+                case MALI_ATTRIBUTE_TYPE_3D_INTERLEAVED: {
+                        pan_unpack(cl + (i + 1) * MALI_ATTRIBUTE_BUFFER_CONTINUATION_3D_LENGTH,
+                                   ATTRIBUTE_BUFFER_CONTINUATION_3D, temp2);
+                        pan_print(pandecode_dump_stream, ATTRIBUTE_BUFFER_CONTINUATION_3D,
+                                  temp2, (pandecode_indent + 1) * 2);
+                        i++; count++;
+                        break;
+                }
+                default:
+                        break;
                 }
         }
         pandecode_log("\n");
