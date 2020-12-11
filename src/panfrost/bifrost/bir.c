@@ -167,6 +167,51 @@ bi_get_component_count(bi_instruction *ins, signed src)
 }
 
 uint16_t
+bi_bytemask_of_read_components_new(bi_instr *ins, bi_index node)
+{
+        uint16_t mask = 0x0;
+        bool reads_sr = bi_opcode_props[ins->op].sr_read;
+
+        bi_foreach_src(ins, s) {
+                if (!bi_is_equiv(ins->src[s], node)) continue;
+
+                /* assume we read a scalar */
+                unsigned rmask = 0xF;
+
+                if (s == 0 && reads_sr) {
+                        /* Override for a staging register */
+                        unsigned count = bi_count_staging_registers(ins);
+                        rmask = (1 << (count * 4)) - 1;
+                }
+
+                mask |= (rmask << (4 * node.offset));
+        }
+
+        return mask;
+}
+
+unsigned
+bi_writemask_new(bi_instr *ins)
+{
+        /* Assume we write a scalar */
+        unsigned mask = 0xF;
+
+        if (bi_opcode_props[ins->op].sr_write) {
+                unsigned count = bi_count_staging_registers(ins);
+
+                /* TODO: this special case is even more special, TEXC has a
+                 * generic write mask stuffed in the desc... */
+                if (ins->op == BI_OPCODE_TEXC)
+                        count = 4;
+
+                mask = (1 << (count * 4)) - 1;
+        }
+
+        unsigned shift = ins->dest[0].offset * 4; /* 32-bit words */
+        return (mask << shift);
+}
+
+uint16_t
 bi_bytemask_of_read_components(bi_instruction *ins, unsigned node)
 {
         uint16_t mask = 0x0;
