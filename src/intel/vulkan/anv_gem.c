@@ -416,14 +416,14 @@ anv_gem_get_context_param(int fd, int context, uint32_t param, uint64_t *value)
 }
 
 int
-anv_gem_gpu_get_reset_stats(struct anv_device *device,
-                            uint32_t *active, uint32_t *pending)
+anv_gem_context_get_reset_stats(int fd, int context,
+                                uint32_t *active, uint32_t *pending)
 {
    struct drm_i915_reset_stats stats = {
-      .ctx_id = device->context_id,
+      .ctx_id = context,
    };
 
-   int ret = gen_ioctl(device->fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats);
+   int ret = gen_ioctl(fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats);
    if (ret == 0) {
       *active = stats.batch_active;
       *pending = stats.batch_pending;

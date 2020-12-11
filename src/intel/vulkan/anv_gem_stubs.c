@@ -172,8 +172,8 @@ anv_gem_has_context_priority(int fd)
 }
 
 int
-anv_gem_gpu_get_reset_stats(struct anv_device *device,
-                            uint32_t *active, uint32_t *pending)
+anv_gem_context_get_reset_stats(int fd, int context,
+                                uint32_t *active, uint32_t *pending)
 {
    unreachable("Unused");
 }

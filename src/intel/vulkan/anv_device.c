@@ -3347,7 +3347,8 @@ anv_device_query_status(struct anv_device *device)
       return VK_ERROR_DEVICE_LOST;
 
    uint32_t active, pending;
-   int ret = anv_gem_gpu_get_reset_stats(device, &active, &pending);
+   int ret = anv_gem_context_get_reset_stats(device->fd, device->context_id,
+                                             &active, &pending);
    if (ret == -1) {
       /* We don't know the real error. */
       return anv_device_set_lost(device, "get_reset_stats failed: %m");

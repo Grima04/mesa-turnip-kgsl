@@ -1606,8 +1606,8 @@ int anv_gem_get_param(int fd, uint32_t param);
 uint64_t anv_gem_get_drm_cap(int fd, uint32_t capability);
 int anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle);
 bool anv_gem_get_bit6_swizzle(int fd, uint32_t tiling);
-int anv_gem_gpu_get_reset_stats(struct anv_device *device,
-                                uint32_t *active, uint32_t *pending);
+int anv_gem_context_get_reset_stats(int fd, int context,
+                                    uint32_t *active, uint32_t *pending);
 int anv_gem_handle_to_fd(struct anv_device *device, uint32_t gem_handle);
 int anv_gem_reg_read(int fd, uint32_t offset, uint64_t *result);
 uint32_t anv_gem_fd_to_handle(struct anv_device *device, int fd);
