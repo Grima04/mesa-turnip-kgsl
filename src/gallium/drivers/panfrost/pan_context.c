@@ -432,6 +432,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.cull_back_face = rast->cull_face & PIPE_FACE_BACK;
                 cfg.position = pos;
                 cfg.state = panfrost_emit_frag_shader_meta(batch);
+                cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_FRAGMENT);
                 cfg.viewport = panfrost_emit_viewport(batch);
                 cfg.varyings = fs_vary;
                 cfg.varying_buffers = fs_vary ? varyings : 0;

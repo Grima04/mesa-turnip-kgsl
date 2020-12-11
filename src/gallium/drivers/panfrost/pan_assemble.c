@@ -309,7 +309,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         switch (stage) {
         case MESA_SHADER_VERTEX:
-                attribute_count = util_bitcount64(s->info.inputs_read);
+                attribute_count = util_bitcount64(s->info.inputs_read) +
+                                  util_bitcount(s->info.images_used);
                 varying_count = util_bitcount64(s->info.outputs_written);
 
                 if (vertex_id)
@@ -328,6 +329,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                                                     program->blend_ret_offsets[i];
                         assert(!(state->blend_ret_addrs[i] & 0x7));
                 }
+                attribute_count = util_bitcount(s->info.images_used);
                 varying_count = util_bitcount64(s->info.inputs_read);
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
                         state->writes_depth = true;
@@ -349,7 +351,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                         s->info.fs.uses_demote;
                 break;
         case MESA_SHADER_COMPUTE:
-                /* TODO: images */
+                attribute_count = util_bitcount(s->info.images_used);
                 state->shared_size = s->info.cs.shared_size;
                 break;
         default:

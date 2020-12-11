@@ -34,6 +34,7 @@
 #include "pan_cmdstream.h"
 #include "pan_context.h"
 #include "pan_job.h"
+#include "pan_texture.h"
 
 /* If a BO is accessed for a particular shader stage, will it be in the primary
  * batch (vertex/tiler) or the secondary batch (fragment)? Anything but
@@ -1181,6 +1182,127 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
         return T.gpu;
 }
 
+/* Packs all image attribute descs and attribute buffer descs.
+ * `first_image_buf_index` must be the index of the first image attribute buffer descriptor.
+ */
+static void
+emit_image_attribs(struct panfrost_batch *batch, enum pipe_shader_type shader,
+                   struct mali_attribute_packed *attribs,
+                   struct mali_attribute_buffer_packed *bufs,
+                   unsigned first_image_buf_index)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+
+        unsigned k = 0;
+        unsigned last_bit = util_last_bit(ctx->image_mask[shader]);
+        for (unsigned i = 0; i < last_bit; ++i) {
+                struct pipe_image_view *image = &ctx->images[shader][i];
+
+                /* TODO: understand how v3d/freedreno does it */
+                if (!(ctx->image_mask[shader] & (1 << i)) ||
+                    !(image->shader_access & PIPE_IMAGE_ACCESS_READ_WRITE)) {
+                        /* Unused image bindings */
+                        pan_pack(bufs + (k * 2), ATTRIBUTE_BUFFER, cfg);
+                        pan_pack(bufs + (k * 2) + 1, ATTRIBUTE_BUFFER, cfg);
+                        pan_pack(attribs + k, ATTRIBUTE, cfg);
+                        k++;
+                        continue;
+                }
+
+                struct panfrost_resource *rsrc = pan_resource(image->resource);
+
+                /* TODO: MSAA */
+                assert(image->resource->nr_samples <= 1 && "MSAA'd images not supported");
+
+                bool is_3d = rsrc->base.target == PIPE_TEXTURE_3D;
+                bool is_linear = rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR;
+                bool is_buffer = rsrc->base.target == PIPE_BUFFER;
+
+                unsigned offset = is_buffer ? image->u.buf.offset :
+                        panfrost_texture_offset(&rsrc->layout,
+                                                image->u.tex.level,
+                                                is_3d ? 0 : image->u.tex.first_layer,
+                                                is_3d ? image->u.tex.first_layer : 0);
+
+                /* AFBC should've been converted to tiled on panfrost_set_shader_image */
+                assert(!drm_is_afbc(rsrc->layout.modifier));
+
+                /* Add a dependency of the batch on the shader image buffer */
+                uint32_t flags = PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_VERTEX_TILER;
+                if (image->shader_access & PIPE_IMAGE_ACCESS_READ)
+                        flags |= PAN_BO_ACCESS_READ;
+                if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE) {
+                        flags |= PAN_BO_ACCESS_WRITE;
+                        unsigned level = is_buffer ? 0 : image->u.tex.level;
+                        rsrc->layout.slices[level].initialized = true;
+                }
+                panfrost_batch_add_bo(batch, rsrc->bo, flags);
+
+                pan_pack(bufs + (k * 2), ATTRIBUTE_BUFFER, cfg) {
+                        cfg.type = is_linear ?
+                                MALI_ATTRIBUTE_TYPE_3D_LINEAR :
+                                MALI_ATTRIBUTE_TYPE_3D_INTERLEAVED;
+
+                        cfg.pointer = rsrc->bo->ptr.gpu + offset;
+                        cfg.stride = util_format_get_blocksize(image->format);
+                        cfg.size = rsrc->bo->size;
+                }
+
+                pan_pack(bufs + (k * 2) + 1, ATTRIBUTE_BUFFER_CONTINUATION_3D, cfg) {
+                        cfg.s_dimension = rsrc->base.width0;
+                        cfg.t_dimension = rsrc->base.height0;
+                        cfg.r_dimension = is_3d ? rsrc->base.depth0 :
+                                image->u.tex.last_layer - image->u.tex.first_layer + 1;
+
+                        cfg.row_stride =
+                                is_buffer ? 0 : rsrc->layout.slices[image->u.tex.level].row_stride;
+
+                        if (rsrc->base.target != PIPE_TEXTURE_2D && !is_buffer) {
+                                cfg.slice_stride =
+                                        panfrost_get_layer_stride(&rsrc->layout,
+                                                                  image->u.tex.level);
+                        }
+                }
+
+                /* We map compute shader attributes 1:2 with attribute buffers, because
+                 * every image attribute buffer needs an ATTRIBUTE_BUFFER_CONTINUATION_3D */
+                pan_pack(attribs + k, ATTRIBUTE, cfg) {
+                        cfg.buffer_index = first_image_buf_index + (k * 2);
+                        cfg.offset_enable = !(dev->quirks & IS_BIFROST);
+                        cfg.format =
+                                dev->formats[image->format].hw;
+                }
+
+                k++;
+        }
+}
+
+mali_ptr
+panfrost_emit_image_attribs(struct panfrost_batch *batch,
+                            mali_ptr *buffers,
+                            enum pipe_shader_type type)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_shader_state *shader = panfrost_get_shader_state(ctx, type);
+
+        /* Images always need a MALI_ATTRIBUTE_BUFFER_CONTINUATION_3D */
+        unsigned attrib_buf_size = MALI_ATTRIBUTE_BUFFER_LENGTH +
+                                   MALI_ATTRIBUTE_BUFFER_CONTINUATION_3D_LENGTH;
+        unsigned bytes_per_image_desc = MALI_ATTRIBUTE_LENGTH + attrib_buf_size;
+        unsigned attribs_offset = attrib_buf_size * shader->attribute_count;
+
+        struct panfrost_ptr ptr =
+                panfrost_pool_alloc_aligned(&batch->pool,
+                                            bytes_per_image_desc * shader->attribute_count,
+                                            util_next_power_of_two(bytes_per_image_desc));
+
+        emit_image_attribs(batch, type, ptr.cpu + attribs_offset, ptr.cpu, 0);
+
+        *buffers = ptr.gpu;
+        return ptr.gpu + attribs_offset;
+}
+
 mali_ptr
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           mali_ptr *buffers)
@@ -1190,12 +1312,18 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         bool is_bifrost = !!(dev->quirks & IS_BIFROST);
         struct panfrost_vertex_state *so = ctx->vertex;
         struct panfrost_shader_state *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
+        uint32_t image_mask = ctx->image_mask[PIPE_SHADER_VERTEX];
+        unsigned nr_images = util_bitcount(image_mask);
 
         /* Worst case: everything is NPOT, which is only possible if instancing
-         * is enabled. Otherwise single record is gauranteed */
+         * is enabled. Otherwise single record is gauranteed.
+         * Also, we allocate more memory than what's needed here if either instancing
+         * is enabled or images are present, this can be improved. */
+        unsigned bufs_per_attrib = (ctx->instance_count > 1 || nr_images > 0) ? 2 : 1;
+        unsigned nr_bufs = (vs->attribute_count + 1) * bufs_per_attrib;
+
         struct panfrost_ptr S = panfrost_pool_alloc_aligned(&batch->pool,
-                        MALI_ATTRIBUTE_BUFFER_LENGTH * (vs->attribute_count + 1) *
-                        (ctx->instance_count > 1 ? 2 : 1),
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * nr_bufs,
                         MALI_ATTRIBUTE_BUFFER_LENGTH * 2);
 
         struct panfrost_ptr T = panfrost_pool_alloc_aligned(&batch->pool,
@@ -1206,7 +1334,8 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 (struct mali_attribute_buffer_packed *) S.cpu;
 
         /* Determine (n + 1)'th index to suppress prefetch on Bifrost */
-        unsigned last = vs->attribute_count * ((ctx->instance_count > 1) ? 2 : 1);
+        unsigned last = (nr_images + vs->attribute_count) *
+                        ((ctx->instance_count > 1) ? 2 : 1);
         memset(bufs + last, 0, sizeof(*bufs));
 
         struct mali_attribute_packed *out =
@@ -1326,6 +1455,10 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         cfg.format = so->formats[PAN_INSTANCE_ID];
                 }
         }
+
+        k = ALIGN_POT(k, 2);
+        emit_image_attribs(batch, PIPE_SHADER_VERTEX, out + so->num_elements, bufs + k, k);
+        k += util_bitcount(ctx->image_mask[PIPE_SHADER_VERTEX]);
 
         /* We need an empty attrib buf to stop the prefetching on Bifrost */
         if (is_bifrost)

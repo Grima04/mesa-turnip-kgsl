@@ -62,6 +62,11 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage);
 
 mali_ptr
+panfrost_emit_image_attribs(struct panfrost_batch *batch,
+                            mali_ptr *buffers,
+                            enum pipe_shader_type type);
+
+mali_ptr
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           mali_ptr *buffers);
 

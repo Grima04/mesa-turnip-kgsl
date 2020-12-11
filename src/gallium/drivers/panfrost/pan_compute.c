@@ -153,6 +153,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
                 if (!(dev->quirks & IS_BIFROST))
                         cfg.texture_descriptor_is_64b = true;
                 cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
+                cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_COMPUTE);
                 cfg.thread_storage = panfrost_emit_shared_memory(batch, info);
                 cfg.uniform_buffers = panfrost_emit_const_buf(batch,
                                 PIPE_SHADER_COMPUTE, &cfg.push_uniforms);
