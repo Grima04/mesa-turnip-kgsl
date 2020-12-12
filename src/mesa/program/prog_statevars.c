@@ -382,17 +382,18 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       return;
    }
    case STATE_FRAGMENT_PROGRAM_LOCAL: {
-      if (!ctx->FragmentProgram.Current->arb.LocalParams) {
-         ctx->FragmentProgram.Current->arb.LocalParams =
-            rzalloc_array_size(ctx->FragmentProgram.Current, sizeof(float[4]),
-                               MAX_PROGRAM_LOCAL_PARAMS);
-         if (!ctx->FragmentProgram.Current->arb.LocalParams)
-            return;
+      float (*params)[4] = ctx->FragmentProgram.Current->arb.LocalParams;
+      if (unlikely(!params)) {
+         /* Local parameters haven't been allocated yet.
+          * ARB_fragment_program says that local parameters are
+          * "initially set to (0,0,0,0)." Return that.
+          */
+         memset(value, 0, sizeof(float) * 4);
+         return;
       }
 
       const int idx = (int) state[1];
-      COPY_4V(value,
-              ctx->FragmentProgram.Current->arb.LocalParams[idx]);
+      COPY_4V(value, params[idx]);
       return;
    }
    case STATE_VERTEX_PROGRAM_ENV: {
@@ -401,16 +402,18 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       return;
    }
    case STATE_VERTEX_PROGRAM_LOCAL: {
-      if (!ctx->VertexProgram.Current->arb.LocalParams) {
-         ctx->VertexProgram.Current->arb.LocalParams =
-            rzalloc_array_size(ctx->VertexProgram.Current, sizeof(float[4]),
-                               MAX_PROGRAM_LOCAL_PARAMS);
-         if (!ctx->VertexProgram.Current->arb.LocalParams)
-            return;
+      float (*params)[4] = ctx->VertexProgram.Current->arb.LocalParams;
+      if (unlikely(!params)) {
+         /* Local parameters haven't been allocated yet.
+          * ARB_vertex_program says that local parameters are
+          * "initially set to (0,0,0,0)." Return that.
+          */
+         memset(value, 0, sizeof(float) * 4);
+         return;
       }
 
       const int idx = (int) state[1];
-      COPY_4V(value, ctx->VertexProgram.Current->arb.LocalParams[idx]);
+      COPY_4V(value, params[idx]);
       return;
    }
 
