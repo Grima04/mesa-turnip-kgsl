@@ -116,7 +116,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
             value[0] = ctx->Light.LightSource[ln].SpotCutoff;
          return;
       }
-   case STATE_LIGHT_ATTRIBS: {
+   case STATE_LIGHT_ARRAY: {
       /* This must be exact because it must match the gl_LightSource layout
        * in GLSL.
        */
@@ -164,7 +164,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
          for (int i = 0; i < 3; i++) {
             /* We want attr to access out of bounds into the following Diffuse
              * and Specular fields. This is guaranteed to work because
-             * STATE_LIGHT and STATE_LIGHT_ATTRIBS also rely on this memory
+             * STATE_LIGHT and STATE_LIGHT_ARRAY also rely on this memory
              * layout.
              */
             STATIC_ASSERT(offsetof(struct gl_light_uniforms, Ambient) + 16 ==
@@ -665,7 +665,7 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
       return _NEW_LIGHT | _NEW_CURRENT_ATTRIB;
 
    case STATE_LIGHT:
-   case STATE_LIGHT_ATTRIBS:
+   case STATE_LIGHT_ARRAY:
    case STATE_LIGHTMODEL_AMBIENT:
       return _NEW_LIGHT;
 
@@ -802,8 +802,8 @@ append_token(char *dst, gl_state_index k)
    case STATE_LIGHT:
       append(dst, "light");
       break;
-   case STATE_LIGHT_ATTRIBS:
-      append(dst, "light.attribs");
+   case STATE_LIGHT_ARRAY:
+      append(dst, "light.array");
       break;
    case STATE_LIGHTMODEL_AMBIENT:
       append(dst, "lightmodel.ambient");
@@ -1053,7 +1053,7 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       append_index(str, state[1], true); /* light number [i]. */
       append_token(str, state[2]); /* coefficients */
       break;
-   case STATE_LIGHT_ATTRIBS:
+   case STATE_LIGHT_ARRAY:
       sprintf(tmp, "[%d..%d]", state[1], state[1] + state[2] - 1);
       append(str, tmp);
       break;
@@ -1313,8 +1313,8 @@ _mesa_optimize_state_parameters(struct gl_constants *consts,
             break; /* The adjacent state var is incompatible. */
          }
          if (last_param > first_param) {
-            /* Convert the state var to STATE_LIGHT_ATTRIBS. */
-            list->Parameters[first_param].StateIndexes[0] = STATE_LIGHT_ATTRIBS;
+            /* Convert the state var to STATE_LIGHT_ARRAY. */
+            list->Parameters[first_param].StateIndexes[0] = STATE_LIGHT_ARRAY;
             /* Set the offset in floats. */
             list->Parameters[first_param].StateIndexes[1] =
                list->Parameters[first_param].StateIndexes[1] * /* light index */
