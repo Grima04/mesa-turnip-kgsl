@@ -52,6 +52,9 @@
 #include "decode.h"
 #include "panfrost-quirks.h"
 
+static bool
+panfrost_should_checksum(const struct panfrost_device *dev, const struct panfrost_resource *pres);
+
 bool
 pan_render_condition_check(struct pipe_context *pctx)
 {
@@ -117,8 +120,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         rsc->layout.slices[0].initialized = true;
         panfrost_resource_set_damage_region(NULL, &rsc->base, 0, NULL);
 
-        if (dev->quirks & IS_BIFROST &&
-            templat->bind & PIPE_BIND_RENDER_TARGET) {
+        if (panfrost_should_checksum(dev, rsc)) {
                 unsigned size =
                         panfrost_compute_checksum_size(&rsc->layout.slices[0],
                                                        templat->width0,
@@ -618,13 +620,30 @@ panfrost_best_modifier(struct panfrost_device *dev,
                 return DRM_FORMAT_MOD_LINEAR;
 }
 
+static bool
+panfrost_should_checksum(const struct panfrost_device *dev, const struct panfrost_resource *pres)
+{
+        /* When checksumming is enabled, the tile data must fit in the
+         * size of the writeback buffer, so don't checksum formats
+         * that use too much space. */
+
+        unsigned bytes_per_pixel_max = (dev->arch == 6) ? 6 : 4;
+
+        unsigned bytes_per_pixel = MAX2(pres->base.nr_samples, 1) *
+                util_format_get_blocksize(pres->base.format);
+
+        return pres->base.bind & PIPE_BIND_RENDER_TARGET &&
+                panfrost_is_2d(pres) &&
+                bytes_per_pixel <= bytes_per_pixel_max;
+}
+
 static void
 panfrost_resource_setup(struct panfrost_device *dev, struct panfrost_resource *pres,
                         size_t *bo_size, uint64_t modifier)
 {
         pres->layout.modifier = (modifier != DRM_FORMAT_MOD_INVALID) ? modifier :
                 panfrost_best_modifier(dev, pres);
-        pres->checksummed = (pres->base.bind & PIPE_BIND_RENDER_TARGET);
+        pres->checksummed = panfrost_should_checksum(dev, pres);
 
         /* We can only switch tiled->linear if the resource isn't already
          * linear and if we control the modifier */
