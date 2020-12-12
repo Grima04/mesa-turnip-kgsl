@@ -764,8 +764,13 @@ tc_set_tess_state(struct pipe_context *_pipe,
    memcpy(p + 4, default_inner_level, 2 * sizeof(float));
 }
 
-struct tc_constant_buffer {
+struct tc_constant_buffer_info {
    ubyte shader, index;
+   bool is_null;
+};
+
+struct tc_constant_buffer {
+   struct tc_constant_buffer_info info;
    struct pipe_constant_buffer cb;
 };
 
@@ -774,7 +779,12 @@ tc_call_set_constant_buffer(struct pipe_context *pipe, union tc_payload *payload
 {
    struct tc_constant_buffer *p = (struct tc_constant_buffer *)payload;
 
-   pipe->set_constant_buffer(pipe, p->shader, p->index, true, &p->cb);
+   if (unlikely(p->info.is_null)) {
+      pipe->set_constant_buffer(pipe, p->info.shader, p->info.index, false, NULL);
+      return;
+   }
+
+   pipe->set_constant_buffer(pipe, p->info.shader, p->info.index, true, &p->cb);
 }
 
 static void
@@ -785,7 +795,17 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
 {
    struct threaded_context *tc = threaded_context(_pipe);
 
-   if (cb && cb->user_buffer) {
+   if (unlikely(!cb || (!cb->buffer && !cb->user_buffer))) {
+      struct tc_constant_buffer_info *p =
+         tc_add_struct_typed_call(tc, TC_CALL_set_constant_buffer,
+                                  tc_constant_buffer_info);
+      p->shader = shader;
+      p->index = index;
+      p->is_null = true;
+      return;
+   }
+
+   if (cb->user_buffer) {
       struct pipe_resource *buffer = NULL;
       unsigned offset;
 
@@ -800,8 +820,9 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
       struct tc_constant_buffer *p =
          tc_add_struct_typed_call(tc, TC_CALL_set_constant_buffer,
                                   tc_constant_buffer);
-      p->shader = shader;
-      p->index = index;
+      p->info.shader = shader;
+      p->info.index = index;
+      p->info.is_null = false;
       p->cb.buffer_size = cb->buffer_size;
       p->cb.user_buffer = NULL;
       p->cb.buffer_offset = offset;
@@ -812,21 +833,17 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
    struct tc_constant_buffer *p =
       tc_add_struct_typed_call(tc, TC_CALL_set_constant_buffer,
                                tc_constant_buffer);
-   p->shader = shader;
-   p->index = index;
+   p->info.shader = shader;
+   p->info.index = index;
+   p->info.is_null = false;
+   p->cb.user_buffer = NULL;
+   p->cb.buffer_offset = cb->buffer_offset;
+   p->cb.buffer_size = cb->buffer_size;
 
-   if (cb) {
-      if (take_ownership)
-         p->cb.buffer = cb->buffer;
-      else
-         tc_set_resource_reference(&p->cb.buffer, cb->buffer);
-
-      p->cb.user_buffer = NULL;
-      p->cb.buffer_offset = cb->buffer_offset;
-      p->cb.buffer_size = cb->buffer_size;
-   } else {
-      memset(&p->cb, 0, sizeof(*cb));
-   }
+   if (take_ownership)
+      p->cb.buffer = cb->buffer;
+   else
+      tc_set_resource_reference(&p->cb.buffer, cb->buffer);
 }
 
 struct tc_inlinable_constants {
