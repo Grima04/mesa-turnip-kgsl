@@ -925,6 +925,34 @@ bi_emit_sysval(bi_context *ctx, nir_instr *instr,
  */
 
 static void
+bi_emit_load_frag_coord(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        bi_index src[4] = {};
+
+        for (unsigned i = 0; i < 2; ++i) {
+                src[i] = bi_fadd_f32(b,
+                                bi_u16_to_f32(b, bi_half(bi_register(59), i)),
+                                bi_imm_f32(0.5f), BI_ROUND_NONE);
+        }
+
+        for (unsigned i = 0; i < 2; ++i) {
+                src[2 + i] = bi_ld_var_special(b, bi_zero(),
+                                BI_REGISTER_FORMAT_F32, BI_SAMPLE_CENTER,
+                                BI_UPDATE_CLOBBER,
+                                (i == 0) ? BI_VARYING_NAME_FRAG_Z :
+                                        BI_VARYING_NAME_FRAG_W,
+                                BI_VECSIZE_NONE);
+        }
+
+        bi_make_vec_to(b, bi_dest_index(&instr->dest), src, NULL, 4, 32);
+}
+
+/* gl_FragCoord.xy = u16_to_f32(R59.xy) + 0.5
+ * gl_FragCoord.z = ld_vary(fragz)
+ * gl_FragCoord.w = ld_vary(fragw)
+ */
+
+static void
 bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         /* Future proofing for mediump fragcoord at some point.. */
