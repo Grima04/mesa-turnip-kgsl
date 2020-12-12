@@ -775,6 +775,42 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        /* nir_lower_uniforms_to_ubo() should have been called, reserving
+         * UBO #0 for uniforms even if the shaders doesn't have uniforms.
+         */
+        assert(b->shader->nir->info.first_ubo_is_default_ubo);
+
+        bool offset_is_const = nir_src_is_const(instr->src[1]);
+        bi_index dyn_offset = bi_src_index(&instr->src[1]);
+        uint32_t const_offset = 0;
+
+        /* We may need to offset UBO loads by however many sysvals we have */
+        unsigned sysval_offset = 16 * b->shader->sysvals.sysval_count;
+
+        if (nir_src_is_const(instr->src[1]))
+                const_offset = nir_src_as_uint(instr->src[1]);
+
+        if (nir_src_is_const(instr->src[0]) &&
+            nir_src_as_uint(instr->src[0]) == 0 &&
+            b->shader->sysvals.sysval_count) {
+                if (offset_is_const) {
+                        const_offset += sysval_offset;
+                } else {
+                        dyn_offset = bi_iadd_u32(b, dyn_offset,
+                                        bi_imm_u32(sysval_offset), false);
+                }
+        }
+
+        bi_load_to(b, instr->num_components * 32,
+                        bi_dest_index(&instr->dest), offset_is_const ?
+                        bi_imm_u32(const_offset) : dyn_offset,
+                        bi_src_index(&instr->src[0]),
+                        BI_SEG_UBO);
+}
+
+static void
 bi_emit_ld_ubo(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         /* nir_lower_uniforms_to_ubo() should have been called, reserving
