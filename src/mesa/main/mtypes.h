@@ -2277,6 +2277,7 @@ struct gl_program
           * once it's allocated.
           */
          GLfloat (*LocalParams)[4];
+         unsigned MaxLocalParams;
 
          /** Bitmask of which register files are read/written with indirect
           * addressing.  Mask of (1 << PROGRAM_x) bits.
