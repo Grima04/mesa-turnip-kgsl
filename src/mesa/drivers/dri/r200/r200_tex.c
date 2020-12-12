@@ -387,6 +387,7 @@ static void r200TexParameter(struct gl_context *ctx,
 	       _mesa_enum_to_string( pname ) );
 
    switch ( pname ) {
+   case GL_ALL_ATTRIB_BITS: /* meaning is all pnames, internal */
    case GL_TEXTURE_MIN_FILTER:
    case GL_TEXTURE_MAG_FILTER:
    case GL_TEXTURE_MAX_ANISOTROPY_EXT:

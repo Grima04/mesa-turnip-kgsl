@@ -604,6 +604,10 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          memcpy(&texObj->Sampler.Attrib, &savedObj->Sampler.Attrib,
                 sizeof(savedObj->Sampler.Attrib));
          memcpy(&texObj->Attrib, &savedObj->Attrib, sizeof(savedObj->Attrib));
+
+         /* GL_ALL_ATTRIB_BITS means all pnames. (internal) */
+         if (texObj->Name != 0 && ctx->Driver.TexParameter)
+            ctx->Driver.TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
       }
    }
 
