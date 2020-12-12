@@ -984,6 +984,10 @@ zink_set_shader_images(struct pipe_context *pctx,
       if (images && images[i].resource) {
          util_dynarray_init(&image_view->desc_set_refs.refs, NULL);
          struct zink_resource *res = zink_resource(images[i].resource);
+         if (!zink_resource_object_init_storage(ctx, res)) {
+            debug_printf("couldn't create storage image!");
+            continue;
+         }
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_IMAGE);
          res->bind_stages |= 1 << p_stage;
          util_copy_image_view(&image_view->base, images + i);
@@ -1055,6 +1059,12 @@ zink_set_sampler_views(struct pipe_context *pctx,
                sampler_view_buffer_clear(ctx, b);
                b->buffer_view = buffer_view;
             }
+         } else if (!res->obj->is_buffer) {
+             if (res->obj != b->image_view->obj) {
+                struct pipe_surface *psurf = &b->image_view->base;
+                zink_rebind_surface(ctx, &psurf);
+                b->image_view = zink_surface(psurf);
+             }
          }
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
          res->bind_stages |= 1 << shader_type;
@@ -1375,6 +1385,27 @@ zink_flush_queue(struct zink_context *ctx)
    flush_batch(ctx);
 }
 
+static bool
+rebind_fb_surface(struct zink_context *ctx, struct pipe_surface **surf, struct zink_resource *match_res)
+{
+   if (!*surf)
+      return false;
+   struct zink_resource *surf_res = zink_resource((*surf)->texture);
+   if ((match_res == surf_res) || surf_res->obj != zink_surface(*surf)->obj)
+      return zink_rebind_surface(ctx, surf);
+   return false;
+}
+
+static bool
+rebind_fb_state(struct zink_context *ctx, struct zink_resource *match_res)
+{
+   bool rebind = false;
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++)
+      rebind |= rebind_fb_surface(ctx, &ctx->fb_state.cbufs[i], match_res);
+   rebind |= rebind_fb_surface(ctx, &ctx->fb_state.zsbuf, match_res);
+   return rebind;
+}
+
 static void
 zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
@@ -1398,6 +1429,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    }
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
+   rebind_fb_state(ctx, NULL);
    /* get_framebuffer adds a ref if the fb is reused or created;
     * always do get_framebuffer first to avoid deleting the same fb
     * we're about to use
@@ -1632,6 +1664,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_batch *batch, 
    /* only barrier if we're changing layout or doing something besides read -> read */
    batch = zink_batch_no_rp(ctx);
    assert(!batch->in_rp);
+   assert(new_layout);
    vkCmdPipelineBarrier(
       batch->state->cmdbuf,
       res->access_stage ? res->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -2327,6 +2360,22 @@ zink_set_stream_output_targets(struct pipe_context *pctx,
 }
 
 void
+zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
+{
+   if (!ctx->framebuffer)
+      return;
+   for (unsigned i = 0; i < ctx->framebuffer->state.num_attachments; i++) {
+      if (!ctx->framebuffer->surfaces[i] ||
+          zink_resource(ctx->framebuffer->surfaces[i]->texture) != res)
+         continue;
+      zink_rebind_surface(ctx, &ctx->framebuffer->surfaces[i]);
+      zink_batch_no_rp(ctx);
+   }
+   if (rebind_fb_state(ctx, res))
+      zink_batch_no_rp(ctx);
+}
+
+void
 zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 {
    assert(res->base.target == PIPE_BUFFER);
@@ -2368,6 +2417,10 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
                struct zink_image_view *image_view = &ctx->image_views[shader][i];
                zink_descriptor_set_refs_clear(&image_view->desc_set_refs, image_view);
                zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
+               if (!zink_resource_object_init_storage(ctx, res)) {
+                  debug_printf("couldn't create storage image!");
+                  continue;
+               }
                image_view->buffer_view = get_buffer_view(ctx, res, image_view->base.format,
                                                          image_view->base.u.buf.offset, image_view->base.u.buf.size);
                assert(image_view->buffer_view);

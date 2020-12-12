@@ -123,10 +123,13 @@ void
 zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_object *obj)
 {
    assert(!obj->map_count);
-   if (obj->is_buffer)
+   if (obj->is_buffer) {
+      if (obj->sbuffer)
+         vkDestroyBuffer(screen->dev, obj->sbuffer, NULL);
       vkDestroyBuffer(screen->dev, obj->buffer, NULL);
-   else
+   } else {
       vkDestroyImage(screen->dev, obj->image, NULL);
+   }
 
    zink_descriptor_set_refs_clear(&obj->desc_set_refs, obj);
    cache_or_free_mem(screen, obj);
@@ -201,9 +204,6 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                    VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
-      VkFormatProperties props = screen->format_props[templ->format];
-      if (props.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
-         bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
    }
 
    if (bind & PIPE_BIND_VERTEX_BUFFER)
@@ -221,6 +221,9 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
 
    if (bind & PIPE_BIND_SHADER_BUFFER)
       bci.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+   if (bind & PIPE_BIND_SHADER_IMAGE)
+      bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
    if (bind & PIPE_BIND_COMMAND_ARGS_BUFFER)
       bci.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
@@ -294,12 +297,8 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
                VK_IMAGE_USAGE_SAMPLED_BIT;
 
    if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
-       (bind & PIPE_BIND_SHADER_IMAGE ||
-       (bind & PIPE_BIND_SAMPLER_VIEW && templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY))) {
+       (bind & PIPE_BIND_SHADER_IMAGE)) {
       VkFormatProperties props = screen->format_props[templ->format];
-      /* gallium doesn't provide any way to actually know whether this will be used as a shader image,
-       * so we have to just assume and set the bit if it's available
-       */
       if ((ici.tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
           (ici.tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
          ici.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
@@ -927,6 +926,81 @@ zink_resource_get_separate_stencil(struct pipe_resource *pres)
 
    return NULL;
 
+}
+
+bool
+zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource *res)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   /* base resource already has the cap */
+   if (res->base.bind & PIPE_BIND_SHADER_IMAGE)
+      return true;
+   if (res->obj->is_buffer) {
+      if (res->obj->sbuffer)
+         return true;
+      VkBufferCreateInfo bci = create_bci(screen, &res->base, res->base.bind | PIPE_BIND_SHADER_IMAGE);
+      VkBuffer buffer;
+      if (vkCreateBuffer(screen->dev, &bci, NULL, &buffer) != VK_SUCCESS)
+         return false;
+      vkBindBufferMemory(screen->dev, buffer, res->obj->mem, res->obj->offset);
+      res->obj->sbuffer = res->obj->buffer;
+      res->obj->buffer = buffer;
+   } else {
+      zink_fb_clears_apply_region(ctx, &res->base, (struct u_rect){0, res->base.width0, 0, res->base.height0});
+      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
+      res->base.bind |= PIPE_BIND_SHADER_IMAGE;
+      struct zink_resource_object *old_obj = res->obj;
+      struct zink_resource_object *new_obj = resource_object_create(screen, &res->base, NULL, &res->optimal_tiling);
+      if (!new_obj) {
+         debug_printf("new backing resource alloc failed!");
+         res->base.bind &= ~PIPE_BIND_SHADER_IMAGE;
+         return false;
+      }
+      struct zink_resource staging = *res;
+      staging.obj = old_obj;
+      res->obj = new_obj;
+      zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
+      for (unsigned i = 0; i <= res->base.last_level; i++) {
+         struct pipe_box box = {0, 0, 0,
+                                u_minify(res->base.width0, i),
+                                u_minify(res->base.height0, i), res->base.array_size};
+         box.depth = util_num_layers(&res->base, i);
+         ctx->base.resource_copy_region(&ctx->base, &res->base, i, 0, 0, 0, &staging.base, i, &box);
+      }
+      zink_resource_object_reference(screen, &old_obj, NULL);
+   }
+
+   if (res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
+      for (unsigned shader = 0; shader < PIPE_SHADER_TYPES; shader++) {
+         if (res->bind_stages & (1 << shader)) {
+            for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPE_IMAGE; i++) {
+               if (res->bind_history & BITFIELD64_BIT(i))
+                  zink_context_invalidate_descriptor_state(ctx, shader, i);
+            }
+         }
+      }
+   }
+   if (res->obj->is_buffer)
+      zink_resource_rebind(ctx, res);
+   else {
+      zink_rebind_framebuffer(ctx, res);
+      /* this will be cleaned up in future commits */
+      if (res->bind_history & BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
+         for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
+            for (unsigned j = 0; j < ctx->num_sampler_views[i]; j++) {
+               struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
+               if (sv && sv->base.texture == &res->base) {
+                   struct pipe_surface *psurf = &sv->image_view->base;
+                   zink_rebind_surface(ctx, &psurf);
+                   sv->image_view = zink_surface(psurf);
+                   zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+               }
+            }
+         }
+      }
+   }
+
+   return true;
 }
 
 void
