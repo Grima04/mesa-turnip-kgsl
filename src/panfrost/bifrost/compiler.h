@@ -715,6 +715,20 @@ bi_max_temp(bi_context *ctx)
         return ((alloc + 2 + ctx->temp_alloc) << 1);
 }
 
+static inline bi_index
+bi_temp(bi_context *ctx)
+{
+        unsigned alloc = (ctx->impl->ssa_alloc + ctx->temp_alloc++);
+        return bi_get_index(alloc, false, 0);
+}
+
+static inline bi_index
+bi_temp_reg(bi_context *ctx)
+{
+        unsigned alloc = (ctx->impl->reg_alloc + ctx->temp_alloc++);
+        return bi_get_index(alloc, true, 0);
+}
+
 static inline unsigned
 bi_make_temp(bi_context *ctx)
 {
