@@ -598,6 +598,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
              * because we wouldn't get in this conditional block if it wasn't.
              */
             _mesa_BindTexture_no_error(savedObj->Target, savedObj->Name);
+            texObj = _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
          }
 
          memcpy(&texObj->Sampler.Attrib, &savedObj->Sampler.Attrib,
