@@ -71,6 +71,26 @@ static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
 static bi_instruction *bi_emit_branch(bi_context *ctx);
 
 static void
+bi_emit_jump(bi_builder *b, nir_jump_instr *instr)
+{
+        bi_instr *branch = bi_jump_to(b, bi_null(), bi_zero());
+
+        switch (instr->type) {
+        case nir_jump_break:
+                branch->branch_target = b->shader->break_block;
+                break;
+        case nir_jump_continue:
+                branch->branch_target = b->shader->continue_block;
+                break;
+        default:
+                unreachable("Unhandled jump type");
+        }
+
+        pan_block_add_successor(&b->shader->current_block->base, &branch->branch_target->base);
+        b->shader->current_block->base.unconditional_jumps = true;
+}
+
+static void
 emit_jump(bi_context *ctx, nir_jump_instr *instr)
 {
         bi_instruction *branch = bi_emit_branch(ctx);
