@@ -2048,6 +2048,33 @@ bi_nir_round(nir_op op)
         }
 }
 
+static enum bi_cmpf
+bi_cmpf_nir(nir_op op)
+{
+        switch (op) {
+        case nir_op_flt32:
+        case nir_op_ilt32:
+        case nir_op_ult32:
+                return BI_CMPF_LT;
+
+        case nir_op_fge32:
+        case nir_op_ige32:
+        case nir_op_uge32:
+                return BI_CMPF_GE;
+
+        case nir_op_feq32:
+        case nir_op_ieq32:
+                return BI_CMPF_EQ;
+
+        case nir_op_fneu32:
+        case nir_op_ine32:
+                return BI_CMPF_NE;
+
+        default:
+                unreachable("Invalid compare");
+        }
+}
+
 /* TEXS instructions assume normal 2D f32 operation but are more
  * space-efficient and with simpler RA/scheduling requirements*/
 
