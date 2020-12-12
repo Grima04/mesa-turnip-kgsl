@@ -391,6 +391,30 @@ enum bi_swizzle {
         BI_SWIZZLE_B0022 = 12, /* for b02 lanes */
 };
 
+enum bi_index_type {
+        BI_INDEX_NULL = 0,
+        BI_INDEX_NORMAL = 1,
+        BI_INDEX_REGISTER = 2,
+        BI_INDEX_CONSTANT = 3,
+        BI_INDEX_PASS = 4,
+        BI_INDEX_FAU = 5
+};
+
+typedef struct {
+        uint32_t value;
+
+        /* modifiers, should only be set if applicable for a given instruction.
+         * For *IDP.v4i8, abs plays the role of sign. For bitwise ops where
+         * applicable, neg plays the role of not */
+        bool abs : 1;
+        bool neg : 1;
+
+        enum bi_swizzle swizzle : 4;
+        uint32_t offset : 2;
+        bool reg : 1;
+        enum bi_index_type type : 3;
+} bi_index;
+
 /* Represents the assignment of slots for a given bi_bundle */
 
 typedef struct {
