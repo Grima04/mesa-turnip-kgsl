@@ -1992,6 +1992,50 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         bi_emit(ctx, alu);
 }
 
+static bi_index
+bi_alu_src_index(nir_alu_src src, unsigned comps)
+{
+        /* we don't lower modifiers until the backend */
+        assert(!(src.negate || src.abs));
+
+        unsigned bitsize = nir_src_bit_size(src.src);
+
+        /* the bi_index carries the 32-bit (word) offset separate from the
+         * subword swizzle, first handle the offset */
+
+        unsigned offset = 0;
+
+        assert(bitsize == 8 || bitsize == 16 || bitsize == 32);
+        unsigned subword_shift = (bitsize == 32) ? 0 : (bitsize == 16) ? 1 : 2;
+
+        for (unsigned i = 0; i < comps; ++i) {
+                unsigned new_offset = (src.swizzle[i] >> subword_shift);
+
+                if (i > 0)
+                        assert(offset == new_offset);
+
+                offset = new_offset;
+        }
+
+        bi_index idx = bi_word(bi_src_index(&src.src), offset);
+
+        /* Compose the subword swizzle with existing (identity) swizzle */
+        assert(idx.swizzle == BI_SWIZZLE_H01);
+
+        /* Bigger vectors should have been lowered */
+        assert(comps <= (1 << bitsize));
+
+        if (bitsize == 16) {
+                unsigned c0 = src.swizzle[0] & 1;
+                unsigned c1 = (comps > 1) ? src.swizzle[1] & 1 : c0;
+                idx.swizzle = BI_SWIZZLE_H00 + c1 + (c0 << 1);
+        } else if (bitsize == 8) {
+                unreachable("8-bit handling todo");
+        }
+
+        return idx;
+}
+
 /* TEXS instructions assume normal 2D f32 operation but are more
  * space-efficient and with simpler RA/scheduling requirements*/
 
