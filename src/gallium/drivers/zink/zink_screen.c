@@ -905,7 +905,7 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
       VkResult res = (*screen->vk_GetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
       if (res == VK_SUCCESS || res == VK_INCOMPLETE) {
          // Needed to allow MoltenVK to accept VkImageView swizzles.
-         // Encounted when using VK_FORMAT_R8G8_UNORM
+         // Encountered when using VK_FORMAT_R8G8_UNORM
          molten_config.fullImageViewSwizzle = VK_TRUE;
          (*screen->vk_SetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
       }
