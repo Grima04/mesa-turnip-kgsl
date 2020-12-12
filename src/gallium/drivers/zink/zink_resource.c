@@ -179,6 +179,149 @@ aspect_from_format(enum pipe_format fmt)
      return VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
+static VkBufferCreateInfo
+create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsigned bind)
+{
+   VkBufferCreateInfo bci = {};
+   bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+   bci.size = templ->width0;
+
+   bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+               VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+   if (templ->usage != PIPE_USAGE_STAGING)
+      bci.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+
+   /* apparently gallium thinks these are the jack-of-all-trades bind types */
+   if (bind & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_QUERY_BUFFER)) {
+      bci.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                   VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+                   VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                   VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+      VkFormatProperties props = screen->format_props[templ->format];
+      if (props.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
+         bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+   }
+
+   if (bind & PIPE_BIND_VERTEX_BUFFER)
+      bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                   VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                   VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                   VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+
+   if (bind & PIPE_BIND_INDEX_BUFFER)
+      bci.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+   if (bind & PIPE_BIND_CONSTANT_BUFFER)
+      bci.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+   if (bind & PIPE_BIND_SHADER_BUFFER)
+      bci.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+   if (bind & PIPE_BIND_COMMAND_ARGS_BUFFER)
+      bci.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+
+   if (bind == (PIPE_BIND_STREAM_OUTPUT | PIPE_BIND_CUSTOM)) {
+      bci.usage |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
+   } else if (bind & PIPE_BIND_STREAM_OUTPUT) {
+      bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                   VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                   VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+   }
+   return bci;
+}
+
+static VkImageCreateInfo
+create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsigned bind)
+{
+   VkImageCreateInfo ici = {};
+   ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+   ici.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+
+   switch (templ->target) {
+   case PIPE_TEXTURE_1D:
+   case PIPE_TEXTURE_1D_ARRAY:
+      ici.imageType = VK_IMAGE_TYPE_1D;
+      break;
+
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      ici.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+      /* fall-through */
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_RECT:
+      ici.imageType = VK_IMAGE_TYPE_2D;
+      break;
+
+   case PIPE_TEXTURE_3D:
+      ici.imageType = VK_IMAGE_TYPE_3D;
+      if (bind & PIPE_BIND_RENDER_TARGET)
+         ici.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+      break;
+
+   case PIPE_BUFFER:
+      unreachable("PIPE_BUFFER should already be handled");
+
+   default:
+      unreachable("Unknown target");
+   }
+
+   ici.format = zink_get_format(screen, templ->format);
+   ici.extent.width = templ->width0;
+   ici.extent.height = templ->height0;
+   ici.extent.depth = templ->depth0;
+   ici.mipLevels = templ->last_level + 1;
+   ici.arrayLayers = MAX2(templ->array_size, 1);
+   ici.samples = templ->nr_samples ? templ->nr_samples : VK_SAMPLE_COUNT_1_BIT;
+   ici.tiling = bind & PIPE_BIND_LINEAR ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+
+   if (templ->target == PIPE_TEXTURE_CUBE ||
+       templ->target == PIPE_TEXTURE_CUBE_ARRAY)
+      ici.arrayLayers *= 6;
+
+   if (templ->usage == PIPE_USAGE_STAGING)
+      ici.tiling = VK_IMAGE_TILING_LINEAR;
+
+   /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
+   ici.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+               VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+               VK_IMAGE_USAGE_SAMPLED_BIT;
+
+   if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
+       (bind & PIPE_BIND_SHADER_IMAGE ||
+       (bind & PIPE_BIND_SAMPLER_VIEW && templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY))) {
+      VkFormatProperties props = screen->format_props[templ->format];
+      /* gallium doesn't provide any way to actually know whether this will be used as a shader image,
+       * so we have to just assume and set the bit if it's available
+       */
+      if ((ici.tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
+          (ici.tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
+         ici.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+   }
+
+   if (bind & PIPE_BIND_RENDER_TARGET)
+      ici.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+   if (bind & PIPE_BIND_DEPTH_STENCIL)
+      ici.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
+      ici.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+
+   if (bind & PIPE_BIND_STREAM_OUTPUT)
+      ici.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
+   ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+   ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+   return ici;
+}
+
 static struct zink_resource_object *
 resource_object_create(struct zink_screen *screen, const struct pipe_resource *templ, struct winsys_handle *whandle, bool *optimal_tiling)
 {
@@ -192,57 +335,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    pipe_reference_init(&obj->reference, 1);
    util_dynarray_init(&obj->desc_set_refs.refs, NULL);
    if (templ->target == PIPE_BUFFER) {
-      VkBufferCreateInfo bci = {};
-      bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      bci.size = templ->width0;
-
-      bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
-                  VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-
-      if (templ->usage != PIPE_USAGE_STAGING)
-         bci.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-
-      /* apparently gallium thinks these are the jack-of-all-trades bind types */
-      if (templ->bind & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_QUERY_BUFFER)) {
-         bci.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                      VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
-                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                      VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
-         VkFormatProperties props = screen->format_props[templ->format];
-         if (props.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
-            bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-      }
-
-      if (templ->bind & PIPE_BIND_VERTEX_BUFFER)
-         bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                      VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                      VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
-
-      if (templ->bind & PIPE_BIND_INDEX_BUFFER)
-         bci.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-
-      if (templ->bind & PIPE_BIND_CONSTANT_BUFFER)
-         bci.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-      if (templ->bind & PIPE_BIND_SHADER_BUFFER)
-         bci.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-
-      if (templ->bind & PIPE_BIND_COMMAND_ARGS_BUFFER)
-         bci.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-
-      if (templ->bind == (PIPE_BIND_STREAM_OUTPUT | PIPE_BIND_CUSTOM)) {
-         bci.usage |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
-      } else if (templ->bind & PIPE_BIND_STREAM_OUTPUT) {
-         bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                      VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
-      }
+      VkBufferCreateInfo bci = create_bci(screen, templ, templ->bind);
 
       if (vkCreateBuffer(screen->dev, &bci, NULL, &obj->buffer) != VK_SUCCESS) {
          debug_printf("vkCreateBuffer failed\n");
@@ -253,52 +346,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
       obj->is_buffer = true;
    } else {
-      VkImageCreateInfo ici = {};
+      VkImageCreateInfo ici = create_ici(screen, templ, templ->bind);
       VkExternalMemoryImageCreateInfo emici = {};
-      ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-      ici.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-
-      switch (templ->target) {
-      case PIPE_TEXTURE_1D:
-      case PIPE_TEXTURE_1D_ARRAY:
-         ici.imageType = VK_IMAGE_TYPE_1D;
-         break;
-
-      case PIPE_TEXTURE_CUBE:
-      case PIPE_TEXTURE_CUBE_ARRAY:
-         ici.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-         /* fall-through */
-      case PIPE_TEXTURE_2D:
-      case PIPE_TEXTURE_2D_ARRAY:
-      case PIPE_TEXTURE_RECT:
-         ici.imageType = VK_IMAGE_TYPE_2D;
-         break;
-
-      case PIPE_TEXTURE_3D:
-         ici.imageType = VK_IMAGE_TYPE_3D;
-         if (templ->bind & PIPE_BIND_RENDER_TARGET)
-            ici.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
-         break;
-
-      case PIPE_BUFFER:
-         unreachable("PIPE_BUFFER should already be handled");
-
-      default:
-         unreachable("Unknown target");
-      }
-
-      ici.format = zink_get_format(screen, templ->format);
-      ici.extent.width = templ->width0;
-      ici.extent.height = templ->height0;
-      ici.extent.depth = templ->depth0;
-      ici.mipLevels = templ->last_level + 1;
-      ici.arrayLayers = MAX2(templ->array_size, 1);
-      ici.samples = templ->nr_samples ? templ->nr_samples : VK_SAMPLE_COUNT_1_BIT;
-      ici.tiling = templ->bind & PIPE_BIND_LINEAR ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
-
-      if (templ->target == PIPE_TEXTURE_CUBE ||
-          templ->target == PIPE_TEXTURE_CUBE_ARRAY)
-         ici.arrayLayers *= 6;
 
       if (templ->bind & PIPE_BIND_SHARED) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
@@ -309,42 +358,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          ici.tiling = VK_IMAGE_TILING_LINEAR;
       }
 
-      if (templ->usage == PIPE_USAGE_STAGING)
-         ici.tiling = VK_IMAGE_TILING_LINEAR;
-
-      /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
-      ici.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                  VK_IMAGE_USAGE_SAMPLED_BIT;
-
-      if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
-          (templ->bind & PIPE_BIND_SHADER_IMAGE ||
-          (templ->bind & PIPE_BIND_SAMPLER_VIEW && templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY))) {
-         VkFormatProperties props = screen->format_props[templ->format];
-         /* gallium doesn't provide any way to actually know whether this will be used as a shader image,
-          * so we have to just assume and set the bit if it's available
-          */
-         if ((ici.tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
-             (ici.tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
-            ici.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-      }
       if (optimal_tiling)
          *optimal_tiling = ici.tiling != VK_IMAGE_TILING_LINEAR;
-
-      if (templ->bind & PIPE_BIND_RENDER_TARGET)
-         ici.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-      if (templ->bind & PIPE_BIND_DEPTH_STENCIL)
-         ici.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-      if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
-         ici.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
-
-      if (templ->bind & PIPE_BIND_STREAM_OUTPUT)
-         ici.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-
-      ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-      ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
       struct wsi_image_create_info image_wsi_info = {
          VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
