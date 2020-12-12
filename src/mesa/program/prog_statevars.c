@@ -381,6 +381,12 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       COPY_4V(value, ctx->FragmentProgram.Parameters[idx]);
       return;
    }
+   case STATE_FRAGMENT_PROGRAM_ENV_ARRAY: {
+      const unsigned idx = state[1];
+      const unsigned bytes = state[2] * 16;
+      memcpy(value, ctx->FragmentProgram.Parameters[idx], bytes);
+      return;
+   }
    case STATE_FRAGMENT_PROGRAM_LOCAL: {
       float (*params)[4] = ctx->FragmentProgram.Current->arb.LocalParams;
       if (unlikely(!params)) {
@@ -396,9 +402,30 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       COPY_4V(value, params[idx]);
       return;
    }
+   case STATE_FRAGMENT_PROGRAM_LOCAL_ARRAY: {
+      const unsigned idx = state[1];
+      const unsigned bytes = state[2] * 16;
+      float (*params)[4] = ctx->FragmentProgram.Current->arb.LocalParams;
+      if (!params) {
+         /* Local parameters haven't been allocated yet.
+          * ARB_fragment_program says that local parameters are
+          * "initially set to (0,0,0,0)." Return that.
+          */
+         memset(value, 0, bytes);
+         return;
+      }
+      memcpy(value, params[idx], bytes);
+      return;
+   }
    case STATE_VERTEX_PROGRAM_ENV: {
       const int idx = (int) state[1];
       COPY_4V(value, ctx->VertexProgram.Parameters[idx]);
+      return;
+   }
+   case STATE_VERTEX_PROGRAM_ENV_ARRAY: {
+      const unsigned idx = state[1];
+      const unsigned bytes = state[2] * 16;
+      memcpy(value, ctx->VertexProgram.Parameters[idx], bytes);
       return;
    }
    case STATE_VERTEX_PROGRAM_LOCAL: {
@@ -414,6 +441,21 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
 
       const int idx = (int) state[1];
       COPY_4V(value, params[idx]);
+      return;
+   }
+   case STATE_VERTEX_PROGRAM_LOCAL_ARRAY: {
+      const unsigned idx = state[1];
+      const unsigned bytes = state[2] * 16;
+      float (*params)[4] = ctx->VertexProgram.Current->arb.LocalParams;
+      if (!params) {
+         /* Local parameters haven't been allocated yet.
+          * ARB_vertex_program says that local parameters are
+          * "initially set to (0,0,0,0)." Return that.
+          */
+         memset(value, 0, bytes);
+         return;
+      }
+      memcpy(value, params[idx], bytes);
       return;
    }
 
@@ -722,9 +764,13 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
       return _NEW_VIEWPORT;
 
    case STATE_FRAGMENT_PROGRAM_ENV:
+   case STATE_FRAGMENT_PROGRAM_ENV_ARRAY:
    case STATE_FRAGMENT_PROGRAM_LOCAL:
+   case STATE_FRAGMENT_PROGRAM_LOCAL_ARRAY:
    case STATE_VERTEX_PROGRAM_ENV:
+   case STATE_VERTEX_PROGRAM_ENV_ARRAY:
    case STATE_VERTEX_PROGRAM_LOCAL:
+   case STATE_VERTEX_PROGRAM_LOCAL_ARRAY:
       return _NEW_PROGRAM;
 
    case STATE_NORMAL_SCALE_EYESPACE:
@@ -962,9 +1008,17 @@ append_token(char *dst, gl_state_index k)
    case STATE_FRAGMENT_PROGRAM_ENV:
       append(dst, "env");
       break;
+   case STATE_VERTEX_PROGRAM_ENV_ARRAY:
+   case STATE_FRAGMENT_PROGRAM_ENV_ARRAY:
+      append(dst, "env.range");
+      break;
    case STATE_VERTEX_PROGRAM_LOCAL:
    case STATE_FRAGMENT_PROGRAM_LOCAL:
       append(dst, "local");
+      break;
+   case STATE_VERTEX_PROGRAM_LOCAL_ARRAY:
+   case STATE_FRAGMENT_PROGRAM_LOCAL_ARRAY:
+      append(dst, "local.range");
       break;
    case STATE_CURRENT_ATTRIB:
       append(dst, "current");
@@ -1144,6 +1198,13 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
    case STATE_VERTEX_PROGRAM_LOCAL:
       /* state[1] = parameter index          */
       append_index(str, state[1], false);
+      break;
+   case STATE_FRAGMENT_PROGRAM_ENV_ARRAY:
+   case STATE_FRAGMENT_PROGRAM_LOCAL_ARRAY:
+   case STATE_VERTEX_PROGRAM_ENV_ARRAY:
+   case STATE_VERTEX_PROGRAM_LOCAL_ARRAY:
+      sprintf(tmp, "[%d..%d]", state[1], state[1] + state[2] - 1);
+      append(str, tmp);
       break;
    case STATE_NORMAL_SCALE_EYESPACE:
       break;
@@ -1337,6 +1398,46 @@ _mesa_optimize_state_parameters(struct gl_constants *consts,
                list->Parameters[first_param].ValueOffset;
 
             param_diff = last_param - first_param;
+         }
+         break;
+
+      case STATE_VERTEX_PROGRAM_ENV:
+      case STATE_VERTEX_PROGRAM_LOCAL:
+      case STATE_FRAGMENT_PROGRAM_ENV:
+      case STATE_FRAGMENT_PROGRAM_LOCAL:
+         if (list->Parameters[first_param].Size != 4)
+            break;
+
+         /* Search for adjacent mergeable state vars. */
+         for (int i = first_param + 1; i < (int)list->NumParameters; i++) {
+            if (list->Parameters[i].StateIndexes[0] ==
+                list->Parameters[i - 1].StateIndexes[0] &&
+                list->Parameters[i].StateIndexes[1] ==
+                list->Parameters[i - 1].StateIndexes[1] + 1 &&
+                list->Parameters[i].Size == 4) {
+               last_param = i;
+               continue;
+            }
+            break; /* The adjacent state var is incompatible. */
+         }
+         if (last_param > first_param) {
+            /* Set STATE_xxx_RANGE. */
+            STATIC_ASSERT(STATE_VERTEX_PROGRAM_ENV + 1 ==
+                          STATE_VERTEX_PROGRAM_ENV_ARRAY);
+            STATIC_ASSERT(STATE_VERTEX_PROGRAM_LOCAL + 1 ==
+                          STATE_VERTEX_PROGRAM_LOCAL_ARRAY);
+            STATIC_ASSERT(STATE_FRAGMENT_PROGRAM_ENV + 1 ==
+                          STATE_FRAGMENT_PROGRAM_ENV_ARRAY);
+            STATIC_ASSERT(STATE_FRAGMENT_PROGRAM_LOCAL + 1 ==
+                          STATE_FRAGMENT_PROGRAM_LOCAL_ARRAY);
+            list->Parameters[first_param].StateIndexes[0]++;
+
+            param_diff = last_param - first_param;
+
+            /* Set the size. */
+            unsigned size = param_diff + 1;
+            list->Parameters[first_param].StateIndexes[2] = size;
+            list->Parameters[first_param].Size = size * 4;
          }
          break;
       }
