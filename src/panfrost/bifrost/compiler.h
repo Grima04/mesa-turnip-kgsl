@@ -741,6 +741,34 @@ bi_make_temp_reg(bi_context *ctx)
         return ((ctx->impl->reg_alloc + ctx->temp_alloc++) << 1) | PAN_IS_REG;
 }
 
+/* Inline constants automatically, will be lowered out by bi_lower_fau where a
+ * constant is not allowed. load_const_to_scalar gaurantees that this makes
+ * sense */
+
+static inline bi_index
+bi_src_index(nir_src *src)
+{
+        if (nir_src_is_const(*src))
+                return bi_imm_u32(nir_src_as_uint(*src));
+        else if (src->is_ssa)
+                return bi_get_index(src->ssa->index, false, 0);
+        else {
+                assert(!src->reg.indirect);
+                return bi_get_index(src->reg.reg->index, true, 0);
+        }
+}
+
+static inline bi_index
+bi_dest_index(nir_dest *dst)
+{
+        if (dst->is_ssa)
+                return bi_get_index(dst->ssa.index, false, 0);
+        else {
+                assert(!dst->reg.indirect);
+                return bi_get_index(dst->reg.reg->index, true, 0);
+        }
+}
+
 /* Iterators for Bifrost IR */
 
 #define bi_foreach_block(ctx, v) \
