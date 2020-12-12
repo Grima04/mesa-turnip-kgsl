@@ -679,9 +679,15 @@ static void
 etna_determine_sampler_limits(struct etna_screen *screen)
 {
    /* vertex and fragment samplers live in one address space */
-   screen->specs.vertex_sampler_offset = 8;
-   screen->specs.fragment_sampler_count = 8;
-   screen->specs.vertex_sampler_count = 4;
+   if (screen->specs.halti >= 1) {
+      screen->specs.vertex_sampler_offset = 16;
+      screen->specs.fragment_sampler_count = 16;
+      screen->specs.vertex_sampler_count = 16;
+   } else {
+      screen->specs.vertex_sampler_offset = 8;
+      screen->specs.fragment_sampler_count = 8;
+      screen->specs.vertex_sampler_count = 4;
+   }
 
    if (screen->model == 0x400)
       screen->specs.vertex_sampler_count = 0;
