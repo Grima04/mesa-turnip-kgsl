@@ -814,7 +814,7 @@ fixup_formats(union virgl_caps *caps, struct virgl_supported_format_mask *mask)
    const size_t size = ARRAY_SIZE(mask->bitmask);
    for (int i = 0; i < size; ++i) {
       if (mask->bitmask[i] != 0)
-         return; /* we got some formats, we definately have a new protocol */
+         return; /* we got some formats, we definitely have a new protocol */
    }
 
    /* old protocol used; fall back to considering all sampleable formats valid
