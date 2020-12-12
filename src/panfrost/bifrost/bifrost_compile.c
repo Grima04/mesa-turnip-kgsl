@@ -2036,6 +2036,18 @@ bi_alu_src_index(nir_alu_src src, unsigned comps)
         return idx;
 }
 
+static enum bi_round
+bi_nir_round(nir_op op)
+{
+        switch (op) {
+        case nir_op_fround_even: return BI_ROUND_NONE;
+        case nir_op_ftrunc: return BI_ROUND_RTZ;
+        case nir_op_fceil: return BI_ROUND_RTP;
+        case nir_op_ffloor: return BI_ROUND_RTN;
+        default: unreachable("invalid nir round op");
+        }
+}
+
 /* TEXS instructions assume normal 2D f32 operation but are more
  * space-efficient and with simpler RA/scheduling requirements*/
 
