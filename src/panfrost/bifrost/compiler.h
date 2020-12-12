@@ -415,6 +415,62 @@ typedef struct {
         enum bi_index_type type : 3;
 } bi_index;
 
+static inline bi_index
+bi_get_index(unsigned value, bool is_reg, unsigned offset)
+{
+        return (bi_index) {
+                .type = BI_INDEX_NORMAL,
+                .value = value,
+                .swizzle = BI_SWIZZLE_H01,
+                .offset = offset,
+                .reg = is_reg,
+        };
+}
+
+static inline bi_index
+bi_register(unsigned reg)
+{
+        assert(reg < 64);
+
+        return (bi_index) {
+                .type = BI_INDEX_REGISTER,
+                .swizzle = BI_SWIZZLE_H01,
+                .value = reg
+        };
+}
+
+static inline bi_index
+bi_imm_u32(uint32_t imm)
+{
+        return (bi_index) {
+                .type = BI_INDEX_CONSTANT,
+                .swizzle = BI_SWIZZLE_H01,
+                .value = imm
+        };
+}
+
+static inline bi_index
+bi_null()
+{
+        return (bi_index) { .type = BI_INDEX_NULL };
+}
+
+static inline bi_index
+bi_zero()
+{
+        return bi_imm_u32(0);
+}
+
+static inline bi_index
+bi_passthrough(enum bifrost_packed_src value)
+{
+        return (bi_index) {
+                .type = BI_INDEX_PASS,
+                .swizzle = BI_SWIZZLE_H01,
+                .value = value
+        };
+}
+
 /* Represents the assignment of slots for a given bi_bundle */
 
 typedef struct {
@@ -609,6 +665,17 @@ enum bir_fau {
         BIR_FAU_UNIFORM = (1 << 7),
         BIR_FAU_HI = (1 << 8),
 };
+
+static inline bi_index
+bi_fau(enum bir_fau value, bool hi)
+{
+        return (bi_index) {
+                .type = BI_INDEX_FAU,
+                .value = value,
+                .swizzle = BI_SWIZZLE_H01,
+                .offset = hi ? 1 : 0
+        };
+}
 
 /* Keep me synced please so we can check src & BIR_SPECIAL */
 
