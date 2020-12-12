@@ -665,20 +665,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
          COPY_4V(value, ctx->Transform._ClipUserPlane[plane]);
       }
       return;
-
-   case STATE_INTERNAL_DRIVER:
-      /* Internal driver state */
-      return;
-
-   case STATE_NOT_STATE_VAR:
-      /* Most likely PROGRAM_CONSTANT. This only happens in rare cases, e.g.
-       * ARB_vp with ARL, which can't sort parameters by type.
-       */
-      return;
-
-   default:
-      unreachable("Invalid state in _mesa_fetch_state");
-      return;
    }
 }
 
