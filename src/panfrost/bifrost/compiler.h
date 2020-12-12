@@ -769,6 +769,15 @@ bi_dest_index(nir_dest *dst)
         }
 }
 
+static inline unsigned
+bi_get_node(bi_index index)
+{
+        if (bi_is_null(index) || index.type != BI_INDEX_NORMAL)
+                return ~0;
+        else
+                return (index.value << 1) | index.reg;
+}
+
 /* Iterators for Bifrost IR */
 
 #define bi_foreach_block(ctx, v) \
