@@ -282,12 +282,10 @@ etna_sampler_view_state_destroy(struct pipe_context *pctx,
 #define EMIT_STATE_RELOC(state_name, src_value) \
    etna_coalsence_emit_reloc(stream, &coalesce, VIVS_##state_name, src_value)
 
-/* Emit plain (non-descriptor) texture state */
 static void
-etna_emit_texture_state(struct etna_context *ctx)
+etna_emit_ts_state(struct etna_context *ctx)
 {
    struct etna_cmd_stream *stream = ctx->stream;
-   struct etna_screen *screen = ctx->screen;
    uint32_t active_samplers = active_samplers_bits(ctx);
    uint32_t dirty = ctx->dirty;
    struct etna_coalesce coalesce;
@@ -320,6 +318,24 @@ etna_emit_texture_state(struct etna_context *ctx)
          }
       }
    }
+
+   etna_coalesce_end(stream, &coalesce);
+}
+
+/* Emit plain (non-descriptor) texture state */
+static void
+etna_emit_texture_state(struct etna_context *ctx)
+{
+   struct etna_cmd_stream *stream = ctx->stream;
+   struct etna_screen *screen = ctx->screen;
+   uint32_t active_samplers = active_samplers_bits(ctx);
+   uint32_t dirty = ctx->dirty;
+   struct etna_coalesce coalesce;
+
+   etna_emit_ts_state(ctx);
+
+   etna_coalesce_start(stream, &coalesce);
+
    if (unlikely(dirty & (ETNA_DIRTY_SAMPLER_VIEWS | ETNA_DIRTY_SAMPLERS))) {
       for (int x = 0; x < VIVS_TE_SAMPLER__LEN; ++x) {
          uint32_t val = 0; /* 0 == sampler inactive */
