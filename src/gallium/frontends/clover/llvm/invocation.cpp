@@ -507,7 +507,7 @@ clover::llvm::compile_to_spirv(const std::string &source,
    }
 
    const std::string osContent = os.str();
-   std::vector<char> binary(osContent.begin(), osContent.end());
+   std::string binary(osContent.begin(), osContent.end());
    if (binary.empty()) {
       r_log += "Failed to retrieve SPIR-V binary.\n";
       throw error(CL_INVALID_VALUE);

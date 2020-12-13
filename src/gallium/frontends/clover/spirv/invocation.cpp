@@ -113,7 +113,7 @@ namespace {
    }
 
    module::section
-   make_text_section(const std::vector<char> &code,
+   make_text_section(const std::string &code,
                      enum module::section::type section_type) {
       const pipe_binary_program_header header { uint32_t(code.size()) };
       module::section text { 0, section_type, header.num_bytes, {} };
@@ -126,7 +126,7 @@ namespace {
    }
 
    module
-   create_module_from_spirv(const std::vector<char> &source,
+   create_module_from_spirv(const std::string &source,
                             size_t pointer_byte_size,
                             std::string &err) {
       const size_t length = source.size() / sizeof(uint32_t);
@@ -471,7 +471,7 @@ namespace {
    }
 
    bool
-   check_capabilities(const device &dev, const std::vector<char> &source,
+   check_capabilities(const device &dev, const std::string &source,
                       std::string &r_log) {
       const size_t length = source.size() / sizeof(uint32_t);
       size_t i = SPIRV_HEADER_WORD_SIZE; // Skip header
@@ -541,7 +541,7 @@ namespace {
    }
 
    bool
-   check_extensions(const device &dev, const std::vector<char> &source,
+   check_extensions(const device &dev, const std::string &source,
                     std::string &r_log) {
       const size_t length = source.size() / sizeof(uint32_t);
       size_t i = SPIRV_HEADER_WORD_SIZE; // Skip header
@@ -572,7 +572,7 @@ namespace {
    }
 
    bool
-   check_memory_model(const device &dev, const std::vector<char> &source,
+   check_memory_model(const device &dev, const std::string &source,
                       std::string &r_log) {
       const size_t length = source.size() / sizeof(uint32_t);
       size_t i = SPIRV_HEADER_WORD_SIZE; // Skip header
@@ -605,8 +605,8 @@ namespace {
    }
 
    // Copies the input binary and convert it to the endianness of the host CPU.
-   std::vector<char>
-   spirv_to_cpu(const std::vector<char> &binary)
+   std::string
+   spirv_to_cpu(const std::string &binary)
    {
       const uint32_t first_word = get<uint32_t>(binary.data(), 0u);
       if (first_word == SpvMagicNumber)
@@ -619,7 +619,8 @@ namespace {
             util_bswap32(word);
       }
 
-      return cpu_endianness_binary;
+      return std::string(cpu_endianness_binary.begin(),
+                         cpu_endianness_binary.end());
    }
 
 #ifdef HAVE_CLOVER_SPIRV
@@ -691,10 +692,10 @@ clover::spirv::is_binary_spirv(const std::string &binary)
 }
 
 module
-clover::spirv::compile_program(const std::vector<char> &binary,
+clover::spirv::compile_program(const std::string &binary,
                                const device &dev, std::string &r_log,
                                bool validate) {
-   std::vector<char> source = spirv_to_cpu(binary);
+   std::string source = spirv_to_cpu(binary);
 
    if (validate && !is_valid_spirv(source, dev.device_version(), r_log))
       throw build_error();
@@ -778,7 +779,7 @@ clover::spirv::link_program(const std::vector<module> &modules,
             &linked_binary, linker_options) != SPV_SUCCESS)
       throw error(CL_LINK_PROGRAM_FAILURE);
 
-   std::vector<char> final_binary{
+   std::string final_binary{
          reinterpret_cast<char *>(linked_binary.data()),
          reinterpret_cast<char *>(linked_binary.data() +
                linked_binary.size()) };
@@ -797,7 +798,7 @@ clover::spirv::link_program(const std::vector<module> &modules,
 }
 
 bool
-clover::spirv::is_valid_spirv(const std::vector<char> &binary,
+clover::spirv::is_valid_spirv(const std::string &binary,
                               const cl_version opencl_version,
                               std::string &r_log) {
    auto const validator_consumer =
@@ -816,7 +817,7 @@ clover::spirv::is_valid_spirv(const std::vector<char> &binary,
 }
 
 std::string
-clover::spirv::print_module(const std::vector<char> &binary,
+clover::spirv::print_module(const std::string &binary,
                             const cl_version opencl_version) {
    const spv_target_env target_env =
       convert_opencl_version_to_target_env(opencl_version);
@@ -871,14 +872,14 @@ clover::spirv::is_binary_spirv(const std::string &binary)
 }
 
 bool
-clover::spirv::is_valid_spirv(const std::vector<char> &/*binary*/,
+clover::spirv::is_valid_spirv(const std::string &/*binary*/,
                               const cl_version opencl_version,
                               std::string &/*r_log*/) {
    return false;
 }
 
 module
-clover::spirv::compile_program(const std::vector<char> &binary,
+clover::spirv::compile_program(const std::string &binary,
                                const device &dev, std::string &r_log,
                                bool validate) {
    r_log += "SPIR-V support in clover is not enabled.\n";
@@ -894,7 +895,7 @@ clover::spirv::link_program(const std::vector<module> &/*modules*/,
 }
 
 std::string
-clover::spirv::print_module(const std::vector<char> &binary,
+clover::spirv::print_module(const std::string &binary,
                             const cl_version opencl_version) {
    return std::string();
 }

@@ -42,12 +42,12 @@ namespace clover {
       //
       // It uses SPIRV-Tools validator to do the validation, and potential
       // warnings and errors are appended to |r_log|.
-      bool is_valid_spirv(const std::vector<char> &binary,
+      bool is_valid_spirv(const std::string &binary,
                           const cl_version opencl_version,
                           std::string &r_log);
 
       // Creates a clover module out of the given SPIR-V binary.
-      module compile_program(const std::vector<char> &binary,
+      module compile_program(const std::string &binary,
                              const device &dev, std::string &r_log,
                              bool validate = true);
 
@@ -57,7 +57,7 @@ namespace clover {
                           const std::string &opts, std::string &r_log);
 
       // Returns a textual representation of the given binary.
-      std::string print_module(const std::vector<char> &binary,
+      std::string print_module(const std::string &binary,
                                const cl_version opencl_version);
 
       // Returns a set of supported SPIR-V extensions.
