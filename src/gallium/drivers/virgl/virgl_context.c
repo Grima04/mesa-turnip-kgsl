@@ -58,7 +58,7 @@ struct virgl_vertex_elements_state {
 static uint32_t next_handle;
 uint32_t virgl_object_assign_handle(void)
 {
-   return ++next_handle;
+   return p_atomic_inc_return(&next_handle);
 }
 
 bool
