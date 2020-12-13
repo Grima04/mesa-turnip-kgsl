@@ -65,10 +65,14 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    set_foreach(batch->programs, entry) {
       if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
          struct zink_compute_program *comp = (struct zink_compute_program*)entry->key;
-         zink_compute_program_reference(screen, &comp, NULL);
+         bool in_use = comp == ctx->curr_compute;
+         if (zink_compute_program_reference(screen, &comp, NULL) && in_use)
+            ctx->curr_compute = NULL;
       } else {
          struct zink_gfx_program *prog = (struct zink_gfx_program*)entry->key;
-         zink_gfx_program_reference(screen, &prog, NULL);
+         bool in_use = prog == ctx->curr_program;
+         if (zink_gfx_program_reference(screen, &prog, NULL) && in_use)
+            ctx->curr_program = NULL;
       }
       _mesa_set_remove(batch->programs, entry);
    }
