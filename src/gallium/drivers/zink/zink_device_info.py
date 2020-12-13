@@ -294,14 +294,6 @@ zink_get_physical_device_info(struct zink_screen *screen)
       vkGetPhysicalDeviceFeatures(screen->pdev, &info->feats.features);
    }
 
-%for ext in extensions:
-<%helpers:guard ext="${ext}">
-%if ext.has_features == False:
-   info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()};
-%endif
-</%helpers:guard>
-%endfor
-
    // check for device properties
    if (screen->vk_GetPhysicalDeviceProperties2) {
       VkPhysicalDeviceProperties2 props = {};
@@ -318,7 +310,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %for ext in extensions:
 %if ext.has_properties:
 <%helpers:guard ext="${ext}">
-      if (info->have_${ext.name_with_vendor()}) {
+      if (support_${ext.name_with_vendor()}) {
          info->${ext.field("props")}.sType = ${ext.stype("PROPERTIES")};
          info->${ext.field("props")}.pNext = props.pNext;
          props.pNext = &info->${ext.field("props")};
