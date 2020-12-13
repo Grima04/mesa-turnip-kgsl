@@ -887,6 +887,28 @@ zink_transfer_unmap(struct pipe_context *pctx,
    slab_free(&ctx->transfer_pool, ptrans);
 }
 
+static void
+zink_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *buffer,
+                    unsigned usage, unsigned offset, unsigned size, const void *data)
+{
+   struct pipe_transfer *transfer = NULL;
+   struct pipe_box box;
+   uint8_t *map = NULL;
+
+   usage |= PIPE_MAP_WRITE;
+
+   if (!(usage & PIPE_MAP_DIRECTLY))
+      usage |= PIPE_MAP_DISCARD_RANGE;
+
+   u_box_1d(offset, size, &box);
+   map = zink_transfer_map(ctx, buffer, 0, usage, &box, &transfer);
+   if (!map)
+      return;
+
+   memcpy(map, data, size);
+   zink_transfer_unmap(ctx, transfer);
+}
+
 static struct pipe_resource *
 zink_resource_get_separate_stencil(struct pipe_resource *pres)
 {
@@ -1007,7 +1029,7 @@ zink_context_resource_init(struct pipe_context *pctx)
    pctx->transfer_unmap = u_transfer_helper_deinterleave_transfer_unmap;
 
    pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
-   pctx->buffer_subdata = u_default_buffer_subdata;
+   pctx->buffer_subdata = zink_buffer_subdata;
    pctx->texture_subdata = u_default_texture_subdata;
    pctx->invalidate_resource = zink_resource_invalidate;
 }
