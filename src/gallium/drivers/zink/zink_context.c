@@ -620,6 +620,21 @@ out:
    return buffer_view;
 }
 
+static inline enum pipe_swizzle
+clamp_void_swizzle(const struct util_format_description *desc, enum pipe_swizzle swizzle)
+{
+   switch (swizzle) {
+   case PIPE_SWIZZLE_X:
+   case PIPE_SWIZZLE_Y:
+   case PIPE_SWIZZLE_Z:
+   case PIPE_SWIZZLE_W:
+      return desc->channel[swizzle].type == UTIL_FORMAT_TYPE_VOID ? PIPE_SWIZZLE_1 : swizzle;
+   default:
+      break;
+   }
+   return swizzle;
+}
+
 static struct pipe_sampler_view *
 zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
                          const struct pipe_sampler_view *state)
@@ -641,16 +656,34 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       ivci.image = res->obj->image;
       ivci.viewType = image_view_type(state->target);
 
-      ivci.components.r = component_mapping(state->swizzle_r);
-      ivci.components.g = component_mapping(state->swizzle_g);
-      ivci.components.b = component_mapping(state->swizzle_b);
-      ivci.components.a = component_mapping(state->swizzle_a);
+      ivci.components.r = component_mapping(sampler_view->base.swizzle_r);
+      ivci.components.g = component_mapping(sampler_view->base.swizzle_g);
+      ivci.components.b = component_mapping(sampler_view->base.swizzle_b);
+      ivci.components.a = component_mapping(sampler_view->base.swizzle_a);
+
       ivci.subresourceRange.aspectMask = sampler_aspect_from_format(state->format);
+      ivci.format = zink_get_format(screen, state->format);
       /* samplers for stencil aspects of packed formats need to always use stencil swizzle */
       if (ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
          ivci.components.g = VK_COMPONENT_SWIZZLE_R;
+      } else {
+         /* if we have e.g., R8G8B8X8, then we have to ignore alpha since we're just emulating
+          * these formats
+          */
+         if (ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
+             const struct util_format_description *desc = util_format_description(state->format);
+             if (util_format_is_rgba8_variant(desc)) {
+                sampler_view->base.swizzle_r = clamp_void_swizzle(desc, sampler_view->base.swizzle_r);
+                sampler_view->base.swizzle_g = clamp_void_swizzle(desc, sampler_view->base.swizzle_g);
+                sampler_view->base.swizzle_b = clamp_void_swizzle(desc, sampler_view->base.swizzle_b);
+                sampler_view->base.swizzle_a = clamp_void_swizzle(desc, sampler_view->base.swizzle_a);
+                ivci.components.r = component_mapping(sampler_view->base.swizzle_r);
+                ivci.components.g = component_mapping(sampler_view->base.swizzle_g);
+                ivci.components.b = component_mapping(sampler_view->base.swizzle_b);
+                ivci.components.a = component_mapping(sampler_view->base.swizzle_a);
+             }
+         }
       }
-      ivci.format = zink_get_format(screen, state->format);
       assert(ivci.format);
 
       ivci.subresourceRange.baseMipLevel = state->u.tex.first_level;
