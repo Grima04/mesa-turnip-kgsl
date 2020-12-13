@@ -57,6 +57,7 @@ typedef enum gl_state_index_ {
 
    STATE_LIGHT,         /* One gl_light attribute. */
    STATE_LIGHT_ARRAY, /* Multiple gl_light attributes loaded at once. */
+   STATE_LIGHT_ATTENUATION_ARRAY,
    STATE_LIGHTMODEL_AMBIENT,
    STATE_LIGHTMODEL_SCENECOLOR,
    STATE_LIGHTPROD,
@@ -121,7 +122,9 @@ typedef enum gl_state_index_ {
    STATE_POINT_SIZE_CLAMPED,    /* includes implementation dependent size clamp */
    STATE_LIGHT_SPOT_DIR_NORMALIZED,   /* pre-normalized spot dir */
    STATE_LIGHT_POSITION,              /* object vs eye space */
+   STATE_LIGHT_POSITION_ARRAY,
    STATE_LIGHT_POSITION_NORMALIZED,   /* object vs eye space */
+   STATE_LIGHT_POSITION_NORMALIZED_ARRAY,
    STATE_LIGHT_HALF_VECTOR,           /* object vs eye space */
    STATE_PT_SCALE,              /**< Pixel transfer RGBA scale */
    STATE_PT_BIAS,               /**< Pixel transfer RGBA bias */

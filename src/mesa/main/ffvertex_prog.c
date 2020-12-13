@@ -1129,6 +1129,22 @@ static void build_lighting( struct tnl_program *p )
       }
    }
 
+   /* Add more variables now that we'll use later, so that they are nicely
+    * sorted in the parameter list.
+    */
+   for (i = 0; i < MAX_LIGHTS; i++) {
+      if (p->state->unit[i].light_enabled) {
+         if (p->state->unit[i].light_eyepos3_is_zero)
+            register_param2(p, STATE_LIGHT_POSITION_NORMALIZED, i);
+         else
+            register_param2(p, STATE_LIGHT_POSITION, i);
+      }
+   }
+   for (i = 0; i < MAX_LIGHTS; i++) {
+      if (p->state->unit[i].light_enabled)
+         register_param3(p, STATE_LIGHT, i, STATE_ATTENUATION);
+   }
+
    for (i = 0; i < MAX_LIGHTS; i++) {
       if (p->state->unit[i].light_enabled) {
 	 struct ureg half = undef;

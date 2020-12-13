@@ -129,6 +129,16 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
              state[2] * sizeof(float));
       return;
    }
+   case STATE_LIGHT_ATTENUATION_ARRAY: {
+      const unsigned first = state[1];
+      const unsigned num_lights = state[2];
+      for (unsigned i = 0; i < num_lights; i++) {
+         COPY_4V(value,
+                 &ctx->Light.LightSource[first + i].ConstantAttenuation);
+         value += 4;
+      }
+      return;
+   }
    case STATE_LIGHTMODEL_AMBIENT:
       COPY_4V(value, ctx->Light.Model.Ambient);
       return;
@@ -643,6 +653,16 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       }
       return;
 
+   case STATE_LIGHT_POSITION_ARRAY: {
+      const unsigned first = state[1];
+      const unsigned num_lights = state[2];
+      for (unsigned i = 0; i < num_lights; i++) {
+         COPY_4V(value, ctx->Light.Light[first + i]._Position);
+         value += 4;
+      }
+      return;
+   }
+
    case STATE_LIGHT_POSITION_NORMALIZED:
       {
          const GLuint ln = (GLuint) state[1];
@@ -652,6 +672,19 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
          COPY_4V(value, p);
       }
       return;
+
+   case STATE_LIGHT_POSITION_NORMALIZED_ARRAY: {
+      const unsigned first = state[1];
+      const unsigned num_lights = state[2];
+      for (unsigned i = 0; i < num_lights; i++) {
+         float p[4];
+         COPY_4V(p, ctx->Light.Light[first + i]._Position);
+         NORMALIZE_3FV(p);
+         COPY_4V(value, p);
+         value += 4;
+      }
+      return;
+   }
 
    case STATE_LIGHT_HALF_VECTOR:
       {
@@ -785,10 +818,13 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
 
    case STATE_LIGHT:
    case STATE_LIGHT_ARRAY:
+   case STATE_LIGHT_ATTENUATION_ARRAY:
    case STATE_LIGHTMODEL_AMBIENT:
    case STATE_LIGHT_SPOT_DIR_NORMALIZED:
    case STATE_LIGHT_POSITION:
+   case STATE_LIGHT_POSITION_ARRAY:
    case STATE_LIGHT_POSITION_NORMALIZED:
+   case STATE_LIGHT_POSITION_NORMALIZED_ARRAY:
    case STATE_LIGHT_HALF_VECTOR:
       return _NEW_LIGHT_CONSTANTS;
 
@@ -918,6 +954,9 @@ append_token(char *dst, gl_state_index k)
       break;
    case STATE_LIGHT_ARRAY:
       append(dst, "light.array");
+      break;
+   case STATE_LIGHT_ATTENUATION_ARRAY:
+      append(dst, "light.attenuation");
       break;
    case STATE_LIGHTMODEL_AMBIENT:
       append(dst, "lightmodel.ambient");
@@ -1116,10 +1155,16 @@ append_token(char *dst, gl_state_index k)
       append(dst, "lightSpotDirNormalized");
       break;
    case STATE_LIGHT_POSITION:
-      append(dst, "lightPosition");
+      append(dst, "light.position");
+      break;
+   case STATE_LIGHT_POSITION_ARRAY:
+      append(dst, "light.position.array");
       break;
    case STATE_LIGHT_POSITION_NORMALIZED:
       append(dst, "light.position.normalized");
+      break;
+   case STATE_LIGHT_POSITION_NORMALIZED_ARRAY:
+      append(dst, "light.position.normalized.array");
       break;
    case STATE_LIGHT_HALF_VECTOR:
       append(dst, "lightHalfVector");
@@ -1248,6 +1293,7 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       }
       break;
    case STATE_LIGHT_ARRAY:
+   case STATE_LIGHT_ATTENUATION_ARRAY:
    case STATE_FRAGMENT_PROGRAM_ENV_ARRAY:
    case STATE_FRAGMENT_PROGRAM_LOCAL_ARRAY:
    case STATE_VERTEX_PROGRAM_ENV_ARRAY:
@@ -1255,6 +1301,8 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
    case STATE_LIGHTPROD_ARRAY_FRONT:
    case STATE_LIGHTPROD_ARRAY_BACK:
    case STATE_LIGHTPROD_ARRAY_TWOSIDE:
+   case STATE_LIGHT_POSITION_ARRAY:
+   case STATE_LIGHT_POSITION_NORMALIZED_ARRAY:
       sprintf(tmp, "[%d..%d]", state[1], state[1] + state[2] - 1);
       append(str, tmp);
       break;
@@ -1460,6 +1508,40 @@ _mesa_optimize_state_parameters(struct gl_constants *consts,
                list->Parameters[first_param].ValueOffset;
 
             param_diff = last_param - first_param;
+            break; /* all done */
+         }
+
+         /* We were not able to convert light attributes to STATE_LIGHT_ARRAY.
+          * Another occuring pattern is light attentuation vectors placed back
+          * to back. Find them.
+          */
+         if (list->Parameters[first_param].StateIndexes[2] == STATE_ATTENUATION) {
+            for (int i = first_param + 1; i < (int)list->NumParameters; i++) {
+               if (list->Parameters[i].StateIndexes[0] == STATE_LIGHT &&
+                   /* Consecutive light: */
+                   list->Parameters[i].StateIndexes[1] ==
+                   list->Parameters[i - 1].StateIndexes[1] + 1 &&
+                   /* Same attribute: */
+                   list->Parameters[i].StateIndexes[2] ==
+                   list->Parameters[i - 1].StateIndexes[2]) {
+                  last_param = i;
+                  continue;
+               }
+               break; /* The adjacent state var is incompatible. */
+            }
+            if (last_param > first_param) {
+               param_diff = last_param - first_param;
+
+               /* Convert the state var to STATE_LIGHT_ATTENUATION_ARRAY. */
+               list->Parameters[first_param].StateIndexes[0] =
+                  STATE_LIGHT_ATTENUATION_ARRAY;
+               /* Keep the light index the same. */
+               /* Set the number of lights. */
+               unsigned size = param_diff + 1;
+               list->Parameters[first_param].StateIndexes[2] = size;
+               list->Parameters[first_param].Size = size * 4;
+               break; /* all done */
+            }
          }
          break;
 
@@ -1571,6 +1653,38 @@ _mesa_optimize_state_parameters(struct gl_constants *consts,
          }
          break;
       }
+
+      case STATE_LIGHT_POSITION:
+      case STATE_LIGHT_POSITION_NORMALIZED:
+         if (list->Parameters[first_param].Size != 4)
+            break;
+
+         for (int i = first_param + 1; i < (int)list->NumParameters; i++) {
+            if (list->Parameters[i].StateIndexes[0] ==
+                list->Parameters[i - 1].StateIndexes[0] &&
+                /* Consecutive light: */
+                list->Parameters[i].StateIndexes[1] ==
+                list->Parameters[i - 1].StateIndexes[1] + 1) {
+               last_param = i;
+               continue;
+            }
+            break; /* The adjacent state var is incompatible. */
+         }
+         if (last_param > first_param) {
+            param_diff = last_param - first_param;
+
+            /* Convert the state var to STATE_LIGHT_POSITION_*ARRAY. */
+            STATIC_ASSERT(STATE_LIGHT_POSITION + 1 ==
+                          STATE_LIGHT_POSITION_ARRAY);
+            STATIC_ASSERT(STATE_LIGHT_POSITION_NORMALIZED + 1 ==
+                          STATE_LIGHT_POSITION_NORMALIZED_ARRAY);
+            list->Parameters[first_param].StateIndexes[0]++;
+            /* Keep the light index the same. */
+            unsigned size = param_diff + 1;
+            /* Set the number of lights. */
+            list->Parameters[first_param].StateIndexes[2] = size;
+            list->Parameters[first_param].Size = size * 4;
+         }
       }
 
       if (param_diff) {
