@@ -972,8 +972,11 @@ d3d12_transfer_map(struct pipe_context *pctx,
          range.Begin = aligned_x;
       }
 
+      pipe_resource_usage staging_usage = (usage & (PIPE_MAP_READ | PIPE_MAP_READ_WRITE)) ?
+         PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
+
       trans->staging_res = pipe_buffer_create(pctx->screen, 0,
-                                              PIPE_USAGE_STAGING,
+                                              staging_usage,
                                               staging_res_size);
       if (!trans->staging_res)
          return NULL;
