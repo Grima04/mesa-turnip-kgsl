@@ -45,10 +45,9 @@
 static bool
 can_map_directly(struct pipe_resource *pres)
 {
-   return pres->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED | PIPE_BIND_LINEAR) ||
-         (pres->target == PIPE_BUFFER &&
+   return pres->target == PIPE_BUFFER &&
           pres->usage != PIPE_USAGE_DEFAULT &&
-          pres->usage != PIPE_USAGE_IMMUTABLE);
+          pres->usage != PIPE_USAGE_IMMUTABLE;
 }
 
 static void
@@ -217,16 +216,7 @@ init_texture(struct d3d12_screen *screen,
                       PIPE_BIND_SHARED | PIPE_BIND_LINEAR))
       desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-   D3D12_HEAP_TYPE heap_type = D3D12_HEAP_TYPE_DEFAULT;
-
-   if (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
-                      PIPE_BIND_SCANOUT |
-                      PIPE_BIND_SHARED))
-      heap_type = D3D12_HEAP_TYPE_READBACK;
-   else if (templ->usage == PIPE_USAGE_STAGING)
-      heap_type = D3D12_HEAP_TYPE_UPLOAD;
-
-   D3D12_HEAP_PROPERTIES heap_pris = screen->dev->GetCustomHeapProperties(0, heap_type);
+   D3D12_HEAP_PROPERTIES heap_pris = screen->dev->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_DEFAULT);
 
    HRESULT hres = screen->dev->CreateCommittedResource(&heap_pris,
                                                    D3D12_HEAP_FLAG_NONE,
@@ -237,9 +227,7 @@ init_texture(struct d3d12_screen *screen,
    if (FAILED(hres))
       return false;
 
-   if (screen->winsys && (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
-                                         PIPE_BIND_SCANOUT |
-                                         PIPE_BIND_SHARED))) {
+   if (screen->winsys && (templ->bind & PIPE_BIND_DISPLAY_TARGET)) {
       struct sw_winsys *winsys = screen->winsys;
       res->dt = winsys->displaytarget_create(screen->winsys,
                                              res->base.bind,

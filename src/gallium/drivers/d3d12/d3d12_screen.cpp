@@ -621,27 +621,35 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
    struct d3d12_screen *screen = d3d12_screen(pscreen);
    struct sw_winsys *winsys = screen->winsys;
    struct d3d12_resource *res = d3d12_resource(pres);
-   ID3D12Resource *d3d12_res = d3d12_resource_resource(res);
 
-   if (!winsys)
+   if (!winsys || !pctx)
      return;
-
-   if (pctx)
-      d3d12_flush_cmdlist_and_wait(d3d12_context(pctx));
 
    assert(res->dt);
    void *map = winsys->displaytarget_map(winsys, res->dt, 0);
 
    if (map) {
-      d3d12_res->ReadFromSubresource(map, res->dt_stride, 0, 0, NULL);
+      pipe_transfer *transfer = nullptr;
+      void *res_map = pipe_transfer_map(pctx, pres, level, layer, PIPE_MAP_READ, 0, 0,
+                                        u_minify(pres->width0, level),
+                                        u_minify(pres->height0, level),
+                                        &transfer);
+      if (res_map) {
+         util_copy_rect((ubyte*)map, pres->format, res->dt_stride, 0, 0,
+                        transfer->box.width, transfer->box.height,
+                        (const ubyte*)res_map, transfer->stride, 0, 0);
+         pipe_transfer_unmap(pctx, transfer);
+      }
       winsys->displaytarget_unmap(winsys, res->dt);
    }
 
 #ifdef _WIN32
    // WindowFromDC is Windows-only, and this method requires an HWND, so only use it on Windows
    ID3D12SharingContract *sharing_contract;
-   if (SUCCEEDED(screen->cmdqueue->QueryInterface(IID_PPV_ARGS(&sharing_contract))))
+   if (SUCCEEDED(screen->cmdqueue->QueryInterface(IID_PPV_ARGS(&sharing_contract)))) {
+      ID3D12Resource *d3d12_res = d3d12_resource_resource(res);
       sharing_contract->Present(d3d12_res, 0, WindowFromDC((HDC)winsys_drawable_handle));
+   }
 #endif
 
    winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
