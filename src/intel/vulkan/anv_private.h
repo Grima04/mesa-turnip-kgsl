@@ -1373,10 +1373,7 @@ anv_mocs(const struct anv_device *device,
          const struct anv_bo *bo,
          isl_surf_usage_flags_t usage)
 {
-   if (bo->is_external)
-      return device->isl_dev.mocs.external;
-
-   return isl_mocs(&device->isl_dev, usage);
+   return isl_mocs(&device->isl_dev, usage, bo && bo->is_external);
 }
 
 void anv_device_init_blorp(struct anv_device *device);

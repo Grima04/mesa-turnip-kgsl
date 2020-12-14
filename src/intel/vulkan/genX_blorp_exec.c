@@ -155,7 +155,7 @@ blorp_alloc_vertex_buffer(struct blorp_batch *batch, uint32_t size,
       .buffer = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
       .offset = vb_state.offset,
       .mocs = isl_mocs(&cmd_buffer->device->isl_dev,
-                       ISL_SURF_USAGE_VERTEX_BUFFER_BIT),
+                       ISL_SURF_USAGE_VERTEX_BUFFER_BIT, false),
    };
 
    return vb_state.map;

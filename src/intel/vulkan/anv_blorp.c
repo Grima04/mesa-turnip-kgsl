@@ -892,7 +892,7 @@ void anv_CmdUpdateBuffer(
          .buffer = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
          .offset = tmp_data.offset,
          .mocs = isl_mocs(&cmd_buffer->device->isl_dev,
-                          ISL_SURF_USAGE_TEXTURE_BIT)
+                          ISL_SURF_USAGE_TEXTURE_BIT, false)
       };
       struct blorp_address dst = {
          .buffer = dst_buffer->address.bo,

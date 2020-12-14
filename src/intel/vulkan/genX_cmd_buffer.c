@@ -61,7 +61,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_device *device = cmd_buffer->device;
    UNUSED const struct gen_device_info *devinfo = &device->info;
-   uint32_t mocs = isl_mocs(&device->isl_dev, 0);
+   uint32_t mocs = isl_mocs(&device->isl_dev, 0, false);
 
    /* If we are emitting a new state base address we probably need to re-emit
     * binding tables.
@@ -3171,7 +3171,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
           * same bit of memory for both scanout and a UBO is nuts.  Let's not
           * bother and assume it's all internal.
           */
-         c.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0);
+         c.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0, false);
 #endif
 
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
@@ -3235,7 +3235,7 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
    if (buffer_count == 0) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_ALL), c) {
          c.ShaderUpdateEnable = shader_mask;
-         c.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0);
+         c.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0, false);
       }
       return;
    }
@@ -3267,7 +3267,7 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
                         GENX(3DSTATE_CONSTANT_ALL),
                         .ShaderUpdateEnable = shader_mask,
                         .PointerBufferMask = buffer_mask,
-                        .MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0));
+                        .MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0, false));
 
    for (int i = 0; i < buffer_count; i++) {
       const struct anv_push_range *range = &bind_map->push_ranges[i];
@@ -3563,7 +3563,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 #endif
 
             if (cmd_buffer->state.xfb_enabled && xfb->buffer && xfb->size != 0) {
-               sob.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0);
+               sob.MOCS = anv_mocs(cmd_buffer->device, xfb->buffer->address.bo, 0);
                sob.SurfaceBaseAddress = anv_address_add(xfb->buffer->address,
                                                         xfb->offset);
 #if GEN_GEN >= 8

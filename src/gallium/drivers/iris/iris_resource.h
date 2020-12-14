@@ -291,7 +291,7 @@ iris_mocs(const struct iris_bo *bo,
           const struct isl_device *dev,
           isl_surf_usage_flags_t usage)
 {
-   return bo && bo->external ? dev->mocs.external : isl_mocs(dev, usage);
+   return isl_mocs(dev, usage, bo && bo->external);
 }
 
 struct iris_format_info iris_format_for_usage(const struct gen_device_info *,

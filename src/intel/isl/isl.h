@@ -2027,7 +2027,8 @@ isl_swizzle_compose(struct isl_swizzle first, struct isl_swizzle second);
 struct isl_swizzle
 isl_swizzle_invert(struct isl_swizzle swizzle);
 
-uint32_t isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage);
+uint32_t isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage,
+                  bool external);
 
 #define isl_surf_init(dev, surf, ...) \
    isl_surf_init_s((dev), (surf), \

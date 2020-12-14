@@ -698,7 +698,7 @@ static void
 init_state_base_address(struct iris_batch *batch)
 {
    struct isl_device *isl_dev = &batch->screen->isl_dev;
-   uint32_t mocs = isl_mocs(isl_dev, 0);
+   uint32_t mocs = isl_mocs(isl_dev, 0, false);
    flush_before_state_base_change(batch);
 
    /* We program most base addresses once at context initialization time.
@@ -5264,7 +5264,7 @@ iris_update_surface_base_address(struct iris_batch *batch,
       return;
 
    struct isl_device *isl_dev = &batch->screen->isl_dev;
-   uint32_t mocs = isl_mocs(isl_dev, 0);
+   uint32_t mocs = isl_mocs(isl_dev, 0, false);
 
    iris_batch_sync_region_start(batch);
 
@@ -5445,7 +5445,7 @@ emit_push_constant_packets(struct iris_context *ice,
    iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
       pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
 #if GEN_GEN >= 12
-      pkt.MOCS = isl_mocs(isl_dev, 0);
+      pkt.MOCS = isl_mocs(isl_dev, 0, false);
 #endif
       if (prog_data) {
          /* The Skylake PRM contains the following restriction:
@@ -5496,7 +5496,7 @@ emit_push_constant_packet_all(struct iris_context *ice,
    assert(n <= max_pointers);
    iris_pack_command(GENX(3DSTATE_CONSTANT_ALL), dw, all) {
       all.DWordLength = num_dwords - 2;
-      all.MOCS = isl_mocs(isl_dev, 0);
+      all.MOCS = isl_mocs(isl_dev, 0, false);
       all.ShaderUpdateEnable = shader_mask;
       all.PointerBufferMask = (1 << n) - 1;
    }

@@ -161,8 +161,12 @@ isl_device_setup_mocs(struct isl_device *dev)
  * Return an appropriate MOCS entry for the given usage flags.
  */
 uint32_t
-isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage)
+isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage,
+         bool external)
 {
+   if (external)
+      return dev->mocs.external;
+
    if (dev->info->gen >= 12 && !dev->info->is_dg1) {
       if (usage & ISL_SURF_USAGE_STAGING_BIT)
          return dev->mocs.internal;
