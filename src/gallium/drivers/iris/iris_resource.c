@@ -385,7 +385,6 @@ iris_resource_disable_aux(struct iris_resource *res)
    res->aux.usage = ISL_AUX_USAGE_NONE;
    res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
    res->aux.sampler_usages = 1 << ISL_AUX_USAGE_NONE;
-   res->aux.has_hiz = 0;
    res->aux.surf.size_B = 0;
    res->aux.bo = NULL;
    res->aux.extra_aux.surf.size_B = 0;
@@ -759,19 +758,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
    res->aux.state = create_aux_state_map(res, initial_state);
    if (!res->aux.state)
       return false;
-
-   if (isl_aux_usage_has_hiz(res->aux.usage)) {
-      for (unsigned level = 0; level < res->surf.levels; ++level) {
-         uint32_t width = u_minify(res->surf.phys_level0_sa.width, level);
-         uint32_t height = u_minify(res->surf.phys_level0_sa.height, level);
-
-         /* Disable HiZ for LOD > 0 unless the width/height are 8x4 aligned.
-          * For LOD == 0, we can grow the dimensions to make it work.
-          */
-         if (level == 0 || ((width & 7) == 0 && (height & 3) == 0))
-            res->aux.has_hiz |= 1 << level;
-      }
-   }
 
    return true;
 }

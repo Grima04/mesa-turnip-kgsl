@@ -590,7 +590,22 @@ bool
 iris_resource_level_has_hiz(const struct iris_resource *res, uint32_t level)
 {
    iris_resource_check_level_layer(res, level, 0);
-   return res->aux.has_hiz & 1 << level;
+
+   if (!isl_aux_usage_has_hiz(res->aux.usage))
+      return false;
+
+   /* Disable HiZ for LOD > 0 unless the width/height are 8x4 aligned.
+    * For LOD == 0, we can grow the dimensions to make it work.
+    */
+   if (level > 0) {
+      if (u_minify(res->base.width0, level) & 7)
+         return false;
+
+      if (u_minify(res->base.height0, level) & 3)
+         return false;
+   }
+
+   return true;
 }
 
 /** \brief Assert that the level and layer are valid for the resource. */

@@ -152,11 +152,6 @@ struct iris_resource {
        * aux state for each slice.
        */
       enum isl_aux_state **state;
-
-      /**
-       * If (1 << level) is set, HiZ is enabled for that miplevel.
-       */
-      uint16_t has_hiz;
    } aux;
 
    /**

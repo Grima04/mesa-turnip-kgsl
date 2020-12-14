@@ -435,7 +435,7 @@ can_fast_clear_depth(struct iris_context *ice,
       return false;
    }
 
-   if (!(res->aux.has_hiz & (1 << level)))
+   if (!iris_resource_level_has_hiz(res, level))
       return false;
 
    if (!blorp_can_hiz_clear_depth(devinfo, &res->surf, res->aux.usage,
