@@ -420,7 +420,7 @@ panfrost_setup_slices(struct panfrost_device *dev,
 
                 /* Add a checksum region if necessary */
                 if (pres->checksummed) {
-                        slice->checksum_offset = offset;
+                        slice->crc.offset = offset;
 
                         unsigned size = panfrost_compute_checksum_size(
                                                 slice, width, height);

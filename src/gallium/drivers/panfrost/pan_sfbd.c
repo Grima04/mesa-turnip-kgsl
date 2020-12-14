@@ -232,8 +232,8 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                                 unsigned level = surf->u.tex.level;
                                 struct panfrost_slice *slice = &rsrc->slices[level];
 
-                                params.crc_buffer.row_stride = slice->checksum_stride;
-                                params.crc_buffer.base = bo->ptr.gpu + slice->checksum_offset;
+                                params.crc_buffer.row_stride = slice->crc.stride;
+                                params.crc_buffer.base = bo->ptr.gpu + slice->crc.offset;
                         }
                 }
 

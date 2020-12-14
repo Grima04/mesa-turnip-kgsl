@@ -509,9 +509,9 @@ panfrost_compute_checksum_size(
         unsigned tile_count_x = aligned_width / CHECKSUM_TILE_WIDTH;
         unsigned tile_count_y = aligned_height / CHECKSUM_TILE_HEIGHT;
 
-        slice->checksum_stride = tile_count_x * CHECKSUM_BYTES_PER_TILE;
+        slice->crc.stride = tile_count_x * CHECKSUM_BYTES_PER_TILE;
 
-        return slice->checksum_stride * tile_count_y;
+        return slice->crc.stride * tile_count_y;
 }
 
 unsigned
