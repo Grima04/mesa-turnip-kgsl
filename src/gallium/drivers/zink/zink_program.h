@@ -163,17 +163,21 @@ zink_program_get_descriptor_usage(struct zink_context *ctx, enum pipe_shader_typ
 void
 debug_describe_zink_gfx_program(char* buf, const struct zink_gfx_program *ptr);
 
-static inline void
+static inline bool
 zink_gfx_program_reference(struct zink_screen *screen,
                            struct zink_gfx_program **dst,
                            struct zink_gfx_program *src)
 {
    struct zink_gfx_program *old_dst = dst ? *dst : NULL;
+   bool ret = false;
 
    if (pipe_reference_described(old_dst ? &old_dst->base.reference : NULL, &src->base.reference,
-                                (debug_reference_descriptor)debug_describe_zink_gfx_program))
+                                (debug_reference_descriptor)debug_describe_zink_gfx_program)) {
       zink_destroy_gfx_program(screen, old_dst);
+      ret = true;
+   }
    if (dst) *dst = src;
+   return ret;
 }
 
 struct zink_compute_program *
@@ -185,17 +189,21 @@ zink_destroy_compute_program(struct zink_screen *screen,
 void
 debug_describe_zink_compute_program(char* buf, const struct zink_compute_program *ptr);
 
-static inline void
+static inline bool
 zink_compute_program_reference(struct zink_screen *screen,
                            struct zink_compute_program **dst,
                            struct zink_compute_program *src)
 {
    struct zink_compute_program *old_dst = dst ? *dst : NULL;
+   bool ret = false;
 
    if (pipe_reference_described(old_dst ? &old_dst->base.reference : NULL, &src->base.reference,
-                                (debug_reference_descriptor)debug_describe_zink_compute_program))
+                                (debug_reference_descriptor)debug_describe_zink_compute_program)) {
       zink_destroy_compute_program(screen, old_dst);
+      ret = true;
+   }
    if (dst) *dst = src;
+   return ret;
 }
 
 void
