@@ -183,9 +183,7 @@ static bool gfx10_sh_query_end(struct si_context *sctx, struct si_query *rquery)
 
    sctx->num_active_shader_queries--;
 
-   if (sctx->num_active_shader_queries > 0) {
-      gfx10_alloc_query_buffer(sctx);
-   } else {
+   if (sctx->num_active_shader_queries <= 0 || !si_is_atom_dirty(sctx, &sctx->atoms.s.shader_query)) {
       si_set_rw_shader_buffer(sctx, GFX10_GS_QUERY_BUF, NULL);
       sctx->current_vs_state &= C_VS_STATE_STREAMOUT_QUERY_ENABLED;
 
