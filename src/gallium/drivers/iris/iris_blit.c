@@ -240,10 +240,6 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
 
    assert(!iris_resource_unfinished_aux_import(res));
 
-   if (isl_aux_usage_has_hiz(aux_usage) &&
-       !iris_resource_level_has_hiz(res, level))
-      aux_usage = ISL_AUX_USAGE_NONE;
-
    *surf = (struct blorp_surf) {
       .surf = &res->surf,
       .addr = (struct blorp_address) {
@@ -550,6 +546,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 static void
 get_copy_region_aux_settings(struct iris_context *ice,
                              struct iris_resource *res,
+                             unsigned level,
                              enum isl_aux_usage *out_aux_usage,
                              bool *out_clear_supported,
                              bool is_render_target)
@@ -563,7 +560,9 @@ get_copy_region_aux_settings(struct iris_context *ice,
    case ISL_AUX_USAGE_HIZ_CCS_WT:
    case ISL_AUX_USAGE_STC_CCS:
       if (is_render_target) {
-         *out_aux_usage = res->aux.usage;
+         *out_aux_usage = iris_resource_render_aux_usage(ice, res, level,
+                                                         res->surf.format,
+                                                         false);
       } else {
          *out_aux_usage = iris_resource_texture_aux_usage(ice, res,
                                                           res->surf.format);
@@ -630,9 +629,9 @@ iris_copy_region(struct blorp_context *blorp,
 
    enum isl_aux_usage src_aux_usage, dst_aux_usage;
    bool src_clear_supported, dst_clear_supported;
-   get_copy_region_aux_settings(ice, src_res, &src_aux_usage,
+   get_copy_region_aux_settings(ice, src_res, src_level, &src_aux_usage,
                                 &src_clear_supported, false);
-   get_copy_region_aux_settings(ice, dst_res, &dst_aux_usage,
+   get_copy_region_aux_settings(ice, dst_res, dst_level, &dst_aux_usage,
                                 &dst_clear_supported, true);
 
    if (iris_batch_references(batch, src_res->bo))

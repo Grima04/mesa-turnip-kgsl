@@ -573,11 +573,14 @@ clear_depth_stencil(struct iris_context *ice,
    }
 
    if (clear_depth && z_res) {
-      iris_resource_prepare_depth(ice, batch, z_res, level, box->z, box->depth);
+      const enum isl_aux_usage aux_usage =
+         iris_resource_render_aux_usage(ice, z_res, level, z_res->surf.format,
+                                        false);
+      iris_resource_prepare_render(ice, z_res, level, box->z, box->depth,
+                                   aux_usage);
       iris_emit_buffer_barrier_for(batch, z_res->bo, IRIS_DOMAIN_DEPTH_WRITE);
-      iris_blorp_surf_for_resource(&batch->screen->isl_dev,
-                                   &z_surf, &z_res->base, z_res->aux.usage,
-                                   level, true);
+      iris_blorp_surf_for_resource(&batch->screen->isl_dev, &z_surf,
+                                   &z_res->base, aux_usage, level, true);
    }
 
    uint8_t stencil_mask = clear_stencil && stencil_res ? 0xff : 0;
@@ -611,8 +614,8 @@ clear_depth_stencil(struct iris_context *ice,
                                     "cache history: post slow ZS clear");
 
    if (clear_depth && z_res) {
-      iris_resource_finish_depth(ice, z_res, level,
-                                 box->z, box->depth, true);
+      iris_resource_finish_render(ice, z_res, level, box->z, box->depth,
+                                  z_surf.aux_usage);
    }
 
    if (stencil_mask) {
