@@ -1775,9 +1775,9 @@ void radv_GetPhysicalDeviceSparseImageFormatProperties2(
 		return;
 	}
 
-	VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+	VK_OUTARRAY_MAKE_TYPED(VkSparseImageFormatProperties2, out, pProperties, pPropertyCount);
 
-	vk_outarray_append(&out, prop) {
+	vk_outarray_append_typed(VkSparseImageFormatProperties2 , &out, prop) {
 		fill_sparse_image_format_properties(pdev, pFormatInfo->format, &prop->properties);
 	};
 }
@@ -1836,9 +1836,9 @@ void radv_GetImageSparseMemoryRequirements2(
 		return;
 	}
 
-	VK_OUTARRAY_MAKE(out, pSparseMemoryRequirements, pSparseMemoryRequirementCount);
+	VK_OUTARRAY_MAKE_TYPED(VkSparseImageMemoryRequirements2, out, pSparseMemoryRequirements, pSparseMemoryRequirementCount);
 
-	vk_outarray_append(&out, req) {
+	vk_outarray_append_typed(VkSparseImageMemoryRequirements2, &out, req) {
 		fill_sparse_image_format_properties(device->physical_device,
 						    image->vk_format,
 						    &req->memoryRequirements.formatProperties);
