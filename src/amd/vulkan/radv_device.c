@@ -8302,7 +8302,7 @@ VkResult radv_GetPhysicalDeviceFragmentShadingRatesKHR(
 	uint32_t*                                   pFragmentShadingRateCount,
 	VkPhysicalDeviceFragmentShadingRateKHR*     pFragmentShadingRates)
 {
-	VK_OUTARRAY_MAKE(out, pFragmentShadingRates, pFragmentShadingRateCount);
+	VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceFragmentShadingRateKHR, out, pFragmentShadingRates, pFragmentShadingRateCount);
 
 #define append_rate(w, h, s) {									\
 	VkPhysicalDeviceFragmentShadingRateKHR rate = {						\
@@ -8310,7 +8310,7 @@ VkResult radv_GetPhysicalDeviceFragmentShadingRatesKHR(
 		.sampleCounts = s,								\
 		.fragmentSize = { .width = w, .height = h },					\
 	};											\
-	vk_outarray_append(&out, r) *r = rate;							\
+	vk_outarray_append_typed(VkPhysicalDeviceFragmentShadingRateKHR, &out, r) *r = rate;	\
 }
 
 	for (uint32_t x = 2; x >= 1; x--) {
