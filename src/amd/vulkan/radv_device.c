@@ -607,6 +607,10 @@ radv_handle_per_app_options(struct radv_instance *instance,
 		} else if (!strcmp(name, "DOOMEternal")) {
 			/* Zero VRAM for Doom Eternal to fix rendering issues. */
 			instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
+		} else if (!strcmp(name, "ShadowOfTheTomb")) {
+			/* Work around flickering foliage for native Shadow of the Tomb Raider
+			 * on GFX10.3 */
+			instance->debug_flags |= RADV_DEBUG_INVARIANT_GEOM;
 		}
 	}
 
