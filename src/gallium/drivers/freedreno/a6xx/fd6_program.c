@@ -654,8 +654,24 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 		OUT_PKT4(ring, REG_A6XX_PC_HS_INPUT_SIZE, 1);
 		OUT_RING(ring, hs_info->tess.tcs_vertices_out * vs->output_size / 4);
 
-		OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
-		OUT_RING(ring, vs->output_size);
+		const uint32_t wavesize = 64;
+		const uint32_t max_wave_input_size = 64;
+		const uint32_t patch_control_points = hs_info->tess.tcs_vertices_out;
+
+		/* note: if HS is really just the VS extended, then this
+		 * should be by MAX2(patch_control_points, hs_info->tess.tcs_vertices_out)
+		 * however that doesn't match the blob, and fails some dEQP tests.
+		 */
+		uint32_t prims_per_wave = wavesize / hs_info->tess.tcs_vertices_out;
+		uint32_t max_prims_per_wave =
+			max_wave_input_size * wavesize / (vs->output_size * patch_control_points);
+		prims_per_wave = MIN2(prims_per_wave, max_prims_per_wave);
+
+		uint32_t total_size = vs->output_size * patch_control_points * prims_per_wave;
+		uint32_t wave_input_size = DIV_ROUND_UP(total_size, wavesize);
+
+		OUT_PKT4(ring, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
+		OUT_RING(ring, wave_input_size);
 
 		shader_info *ds_info = &ds->shader->nir->info;
 		OUT_PKT4(ring, REG_A6XX_PC_TESS_CNTL, 1);
@@ -706,7 +722,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 				A6XX_PC_DS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
 
 	} else {
-		OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
 		OUT_RING(ring, 0);
 	}
 

@@ -1058,7 +1058,7 @@ tu6_emit_vpc(struct tu_cs *cs,
          unknown_a831 = DIV_ROUND_UP(total_size, wavesize);
       }
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
       tu_cs_emit(cs, unknown_a831);
 
       /* In SPIR-V generated from GLSL, the tessellation primitive params are
@@ -1563,7 +1563,7 @@ tu6_emit_program(struct tu_cs *cs,
       tu_cs_emit(cs, builder->multiview_mask);
    }
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
    tu_cs_emit(cs, 0);
 
    tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch,
