@@ -131,7 +131,7 @@ Temp emit_mbcnt(isel_context *ctx, Temp dst, Operand mask = Operand(), Operand b
 {
    Builder bld(ctx->program, ctx->block);
    assert(mask.isUndefined() || mask.isTemp() || (mask.isFixed() && mask.physReg() == exec));
-   assert(mask.isUndefined() || mask.regClass() == bld.lm);
+   assert(mask.isUndefined() || mask.bytes() == bld.lm.bytes());
 
    if (ctx->program->wave_size == 32) {
       Operand mask_lo = mask.isUndefined() ? Operand(-1u) : mask;
