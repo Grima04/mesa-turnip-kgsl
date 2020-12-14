@@ -128,7 +128,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         }
 
         if (drm_is_afbc(whandle->modifier)) {
-                rsc->layout.slices[0].header_size =
+                rsc->layout.slices[0].afbc.header_size =
                         panfrost_afbc_header_size(templat->width0, templat->height0);
         }
 
@@ -403,10 +403,10 @@ panfrost_setup_layout(struct panfrost_device *dev,
 
                 /* Compute AFBC sizes if necessary */
                 if (afbc) {
-                        slice->header_size =
+                        slice->afbc.header_size =
                                 panfrost_afbc_header_size(width, height);
 
-                        offset += slice->header_size;
+                        offset += slice->afbc.header_size;
                 }
 
                 offset += slice_full_size;

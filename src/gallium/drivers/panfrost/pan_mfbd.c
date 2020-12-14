@@ -175,7 +175,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                 else
                         rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
 
-                unsigned header_size = rsrc->layout.slices[level].header_size;
+                unsigned header_size = rsrc->layout.slices[level].afbc.header_size;
 
                 rt->afbc.header = base;
                 rt->afbc.chunk_size = 9;
@@ -292,7 +292,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 ext->zs_msaa_v7 = nr_samples > 1 ? MALI_MSAA_LAYERED : MALI_MSAA_SINGLE;
 
         if (drm_is_afbc(rsrc->layout.modifier)) {
-                unsigned header_size = rsrc->layout.slices[level].header_size;
+                unsigned header_size = rsrc->layout.slices[level].afbc.header_size;
                 ext->zs_afbc_header = base;
                 ext->zs_afbc_body = base + header_size;
                 ext->zs_afbc_body_size = 0x1000;

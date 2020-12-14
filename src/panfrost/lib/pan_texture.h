@@ -44,9 +44,10 @@ struct panfrost_slice {
         unsigned row_stride;
         unsigned surface_stride;
 
-        /* If there is a header preceding each slice, how big is
-         * that header? Used for AFBC */
-        unsigned header_size;
+        struct {
+                /* Size of the AFBC header preceding each slice */
+                unsigned header_size;
+        } afbc;
 
         /* If checksumming is enabled following the slice, what
          * is its offset/stride? */
