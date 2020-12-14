@@ -2147,7 +2147,7 @@ void radv_GetPhysicalDeviceProperties2(
 			props->fragmentShadingRateNonTrivialCombinerOps = true;
 			props->maxFragmentSize = (VkExtent2D) { 2, 2 };
 			props->maxFragmentSizeAspectRatio = 1;
-			props->maxFragmentShadingRateCoverageSamples = 1;
+			props->maxFragmentShadingRateCoverageSamples = 2 * 2;
 			props->maxFragmentShadingRateRasterizationSamples =
 				VK_SAMPLE_COUNT_1_BIT |
 				VK_SAMPLE_COUNT_2_BIT |
