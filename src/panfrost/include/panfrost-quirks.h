@@ -78,7 +78,7 @@
                 | MIDGARD_MISSING_LOADS)
 
 /* TODO: AFBC on Bifrost */
-#define BIFROST_QUIRKS (IS_BIFROST | NO_BLEND_PACKS | MIDGARD_NO_AFBC)
+#define BIFROST_QUIRKS (IS_BIFROST | NO_BLEND_PACKS)
 
 static inline unsigned
 panfrost_get_quirks(unsigned gpu_id, unsigned gpu_revision)
