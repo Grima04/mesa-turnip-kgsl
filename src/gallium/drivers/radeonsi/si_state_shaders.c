@@ -4105,6 +4105,21 @@ bool si_update_shaders(struct si_context *sctx)
          if (sctx->framebuffer.nr_samples <= 1)
             si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_sample_locs);
       }
+
+      if (sctx->chip_class >= GFX10_3) {
+         struct si_shader_info *info = &sctx->ps_shader.cso->info;
+         bool allow_flat_shading = info->allow_flat_shading;
+
+         if (allow_flat_shading &&
+             (rs->line_smooth || rs->poly_smooth || rs->poly_stipple_enable ||
+              (!rs->flatshade && info->uses_interp_color)))
+            allow_flat_shading = false;
+
+         if (sctx->allow_flat_shading != allow_flat_shading) {
+            sctx->allow_flat_shading = allow_flat_shading;
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
+         }
+      }
    }
 
    if (si_pm4_state_enabled_and_changed(sctx, ls) || si_pm4_state_enabled_and_changed(sctx, hs) ||

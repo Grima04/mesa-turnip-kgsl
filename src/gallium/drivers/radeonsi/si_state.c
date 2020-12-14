@@ -1412,19 +1412,29 @@ static void si_emit_db_render_state(struct si_context *sctx)
    radeon_opt_set_context_reg(sctx, R_02880C_DB_SHADER_CONTROL, SI_TRACKED_DB_SHADER_CONTROL,
                               db_shader_control);
 
-   if (sctx->screen->options.vrs2x2) {
-      /* If the shader is using discard, turn off coarse shading because
-       * discard at 2x2 pixel granularity degrades quality too much.
-       *
-       * MIN allows sample shading but not coarse shading.
-       */
-      unsigned mode = G_02880C_KILL_ENABLE(db_shader_control) ? V_028064_VRS_COMB_MODE_MIN
-                                                              : V_028064_VRS_COMB_MODE_PASSTHRU;
-      radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
-                                 SI_TRACKED_DB_VRS_OVERRIDE_CNTL,
-                                 S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
-                                 S_028064_VRS_OVERRIDE_RATE_X(0) |
-                                 S_028064_VRS_OVERRIDE_RATE_Y(0));
+   if (sctx->chip_class >= GFX10_3) {
+      if (sctx->allow_flat_shading) {
+         radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
+                                    SI_TRACKED_DB_VRS_OVERRIDE_CNTL,
+                                    S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(
+                                    V_028064_VRS_COMB_MODE_OVERRIDE) |
+                                    S_028064_VRS_OVERRIDE_RATE_X(1) |
+                                    S_028064_VRS_OVERRIDE_RATE_Y(1));
+      } else {
+         /* If the shader is using discard, turn off coarse shading because
+          * discard at 2x2 pixel granularity degrades quality too much.
+          *
+          * MIN allows sample shading but not coarse shading.
+          */
+         unsigned mode = sctx->screen->options.vrs2x2 && G_02880C_KILL_ENABLE(db_shader_control) ?
+            V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
+
+         radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
+                                    SI_TRACKED_DB_VRS_OVERRIDE_CNTL,
+                                    S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
+                                    S_028064_VRS_OVERRIDE_RATE_X(0) |
+                                    S_028064_VRS_OVERRIDE_RATE_Y(0));
+      }
    }
 
    if (initial_cdw != sctx->gfx_cs.current.cdw)

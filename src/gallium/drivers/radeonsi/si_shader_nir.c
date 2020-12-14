@@ -427,6 +427,22 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
          scan_instruction(nir, info, instr);
    }
 
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      info->allow_flat_shading = !(info->uses_persp_center || info->uses_persp_centroid ||
+                                   info->uses_persp_sample || info->uses_linear_center ||
+                                   info->uses_linear_centroid || info->uses_linear_sample ||
+                                   info->uses_interp_at_sample || nir->info.writes_memory ||
+                                   nir->info.fs.uses_fbfetch_output ||
+                                   nir->info.fs.needs_quad_helper_invocations ||
+                                   (nir->info.system_values_read &
+                                    (BITFIELD64_BIT(SYSTEM_VALUE_FRAG_COORD) |
+                                     BITFIELD64_BIT(SYSTEM_VALUE_POINT_COORD) |
+                                     BITFIELD64_BIT(SYSTEM_VALUE_SAMPLE_ID) |
+                                     BITFIELD64_BIT(SYSTEM_VALUE_SAMPLE_POS) |
+                                     BITFIELD64_BIT(SYSTEM_VALUE_SAMPLE_MASK_IN) |
+                                     BITFIELD64_BIT(SYSTEM_VALUE_HELPER_INVOCATION))));
+   }
+
    /* Add color inputs to the list of inputs. */
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       for (unsigned i = 0; i < 2; i++) {

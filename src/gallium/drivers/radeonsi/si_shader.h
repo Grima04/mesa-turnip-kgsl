@@ -397,6 +397,11 @@ struct si_shader_info {
 
    /** Whether all codepaths write tess factors in all invocations. */
    bool tessfactors_are_def_in_all_invocs;
+
+   /* A flag to check if vrs2x2 can be enabled to reduce number of
+    * fragment shader invocations if flat shading.
+    */
+   bool allow_flat_shading;
 };
 
 /* A shader selector is a gallium CSO and contains shader variants and
