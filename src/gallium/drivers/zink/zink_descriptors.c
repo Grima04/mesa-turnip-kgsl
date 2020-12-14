@@ -1054,7 +1054,8 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
                bufferview = sampler_view->buffer_view->buffer_view;
             } else if (res) {
                imageview = sampler_view->image_view->image_view;
-               layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+               layout = (res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_IMAGE)) ?
+                        VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                sampler = ctx->sampler_states[stage][index + k];
             }
             assert(num_resources < num_bindings);
