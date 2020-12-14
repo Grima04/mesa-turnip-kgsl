@@ -386,6 +386,13 @@ void lvp_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
+         VkPhysicalDeviceIndexTypeUint8FeaturesEXT *features =
+            (VkPhysicalDeviceIndexTypeUint8FeaturesEXT *)ext;
+         features->indexTypeUint8 = true;
+         break;
+      }
+
       default:
          break;
       }

@@ -1917,6 +1917,9 @@ static void handle_index_buffer(struct lvp_cmd_buffer_entry *cmd,
 {
    struct lvp_cmd_bind_index_buffer *ib = &cmd->u.index_buffer;
    switch (ib->index_type) {
+   case VK_INDEX_TYPE_UINT8_EXT:
+      state->index_size = 1;
+      break;
    case VK_INDEX_TYPE_UINT16:
       state->index_size = 2;
       break;

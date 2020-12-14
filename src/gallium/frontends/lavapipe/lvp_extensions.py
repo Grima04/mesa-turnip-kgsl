@@ -123,7 +123,7 @@ EXTENSIONS = [
     Extension('VK_EXT_external_memory_host',              1, False),
     Extension('VK_EXT_global_priority',                   1, False),
     Extension('VK_EXT_host_query_reset',                  1, False),
-    Extension('VK_EXT_index_type_uint8',                  1, False),
+    Extension('VK_EXT_index_type_uint8',                  1, True),
     Extension('VK_EXT_inline_uniform_block',              1, False),
     Extension('VK_EXT_memory_budget',                     1, False),
     Extension('VK_EXT_memory_priority',                   1, False),
