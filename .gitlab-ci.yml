@@ -361,13 +361,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2020-11-06-deqp-version"
+    MESA_IMAGE_TAG: &x86_test-gl "2020-12-14-cts"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2020-12-10-shm"
+    MESA_IMAGE_TAG: &x86_test-vk "2020-12-14-cts"
 
 # Debian 10 based ARM build image
 arm_build:
@@ -407,7 +407,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &arm64_test "2020-12-03-expect"
+    MESA_IMAGE_TAG: &arm64_test "2020-12-14-cts"
 
 .use-arm64_test:
   variables:
@@ -421,7 +421,7 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &armhf_test "2020-12-03-expect"
+    MESA_IMAGE_TAG: &armhf_test "2020-12-14-cts"
 
 .use-armhf_test:
   variables:
@@ -1430,6 +1430,7 @@ lavapipe-vk:
   variables:
     DEQP_EXPECTED_FAILS: deqp-lvp-fails.txt
     DEQP_FLAKES: deqp-lvp-flakes.txt
+    DEQP_SKIPS: deqp-lvp-skips.txt
     VK_DRIVER: lvp
     DEQP_FRACTION: 10
 
