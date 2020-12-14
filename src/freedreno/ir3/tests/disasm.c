@@ -65,11 +65,17 @@ static const struct test {
 	/* dEQP-VK.subgroups.ballot.compute.compute */
 	INSTR_6XX(260cc3c0_00000000, "movmsk.w128 r48.x"), /* movmsk.w128 sr48.x */
 
+	INSTR_6XX(20510005_0000ffff, "mov.s16s16 hr1.y, -1"),
+	INSTR_6XX(20400005_00003900, "mov.f16f16 hr1.y, h(0.625000)"),
+	INSTR_6XX(20400006_00003800, "mov.f16f16 hr1.z, h(0.500000)"),
+
 	/* cat2 */
 	INSTR_6XX(40104002_0c210001, "add.f hr0.z, r0.y, c<a0.x + 33>"),
 	INSTR_6XX(40b80804_10408004, "(nop3) cmps.f.lt r1.x, (abs)r1.x, c16.x"),
 	INSTR_6XX(47308a02_00002000, "(rpt2)bary.f (ei)r0.z, (r)0, r0.x"),
 	INSTR_6XX(43480801_00008001, "(nop3) absneg.s hr0.y, (abs)hr0.y"),
+	INSTR_6XX(50600004_2c010004, "(sy)mul.f hr1.x, hr1.x, h(0.5)"),
+	INSTR_6XX(42280807_27ff0000, "(nop3) add.s hr1.w, hr0.x, h(-1)"),
 
 	/* cat3 */
 	INSTR_6XX(66000000_10421041, "sel.f16 hr0.x, hc16.y, hr0.x, hc16.z"),
@@ -122,6 +128,10 @@ static const struct test {
 	/* dEQP-VK.compute.basic.shared_var_single_group */
 	INSTR_6XX(c1060500_01800008, "stl.u32 l[r0.z], r1.x, 1"),
 	INSTR_6XX(c0460001_01804001, "ldl.u32 r0.y, l[r0.y], 1"),
+
+	INSTR_6XX(c0b00000_3e800000, "ldp.f16 0, p[r0.x], 62"),
+	INSTR_6XX(c0700000_bfa00000, "ldl.f16 0, l[r0.x], 191"),
+	INSTR_6XX(c1100000_c0a00000, "stl.f16 l[0], hr0.x, 192"),
 
 	/* resinfo */
 	INSTR_6XX(c0260000_0063c200, "resinfo.untyped.2d.u32.1.imm r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */

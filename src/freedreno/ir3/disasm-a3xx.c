@@ -29,6 +29,8 @@
 #include <assert.h>
 
 #include <util/u_debug.h>
+#include <util/half_float.h>
+#include <util/hash_table.h>
 
 #include "disasm.h"
 #include "instr-a3xx.h"
@@ -133,10 +135,15 @@ static void print_reg(struct disasm_ctx *ctx, reg_t reg, bool full,
 		fprintf(ctx->out, "(r)");
 
 	if (im) {
-		if (is_float && full && reg.iim_val < ARRAY_SIZE(float_imms)) {
-			fprintf(ctx->out, "(%s)", float_imms[reg.iim_val]);
-		} else {
+		unsigned flut_idx = reg.iim_val & 0x3f;
+		if (is_float && full && flut_idx < ARRAY_SIZE(float_imms)) {
+			fprintf(ctx->out, "(%s)", float_imms[flut_idx]);
+		} else if (is_float && flut_idx < ARRAY_SIZE(float_imms)) {
+			fprintf(ctx->out, "h(%s)", float_imms[flut_idx]);
+		} else if (full) {
 			fprintf(ctx->out, "%d", reg.iim_val);
+		} else {
+			fprintf(ctx->out, "h(%d)", reg.iim_val);
 		}
 	} else if (addr_rel) {
 		/* I would just use %+d but trying to make it diff'able with
@@ -468,12 +475,22 @@ static void print_instr_cat1(struct disasm_ctx *ctx, instr_t *instr)
 
 		/* ugg, have to special case this.. vs print_reg().. */
 		if (cat1->src_im) {
-			if (type_float(cat1->src_type))
-				fprintf(ctx->out, "(%f)", cat1->fim_val);
-			else if (type_uint(cat1->src_type))
+			if (type_float(cat1->src_type)) {
+				if (type_size(cat1->src_type) < 32) {
+					fprintf(ctx->out, "h(%f)", _mesa_half_to_float(cat1->uim_val));
+				} else {
+					fprintf(ctx->out, "(%f)", cat1->fim_val);
+				}
+			} else if (type_uint(cat1->src_type)) {
 				fprintf(ctx->out, "0x%08x", cat1->uim_val);
-			else
-				fprintf(ctx->out, "%d", cat1->iim_val);
+			} else {
+				if ((type_size(cat1->src_type) < 32) && (cat1->uim_val & 0x8000)) {
+					/* need sign extension for signed half immed: */
+					fprintf(ctx->out, "-%d", 0x10000 - (cat1->uim_val & 0xffff));
+				} else {
+					fprintf(ctx->out, "%d", cat1->iim_val);
+				}
+			}
 		} else if (cat1->src_rel && !cat1->src_c) {
 			/* I would just use %+d but trying to make it diff'able with
 			 * libllvm-a3xx...
@@ -935,6 +952,8 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		break;
 	default:
 		dst.im = cat6->g && !cat6->dst_off;
+		if (dst.im)
+			dst.full = true;
 		fprintf(ctx->out, ".%s", type[cat6->type]);
 		break;
 	}
@@ -989,6 +1008,8 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		src1.reg = (reg_t)(cat6->stgb.src1);
 		src2.reg = (reg_t)(cat6->stgb.src2);
 		src2.im  = cat6->stgb.src2_im;
+		if (src2.im)
+			src2.full = true;
 		src3.reg = (reg_t)(cat6->stgb.src3);
 		src3.im  = cat6->stgb.src3_im;
 		src3.full = true;
@@ -1010,8 +1031,12 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 
 		src1.reg = (reg_t)(cat6->ldgb.src1);
 		src1.im  = cat6->ldgb.src1_im;
+		if (src1.im)
+			src1.full = true;
 		src2.reg = (reg_t)(cat6->ldgb.src2);
 		src2.im  = cat6->ldgb.src2_im;
+		if (src2.im)
+			src2.full = true;
 		dst.reg  = (reg_t)(cat6->ldgb.dst);
 
 		print_src(ctx, &dst);
@@ -1060,6 +1085,8 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		dst.reg  = (reg_t)(cat6->ldgb.dst);
 		ssbo.reg = (reg_t)(cat6->ldgb.src_ssbo);
 		ssbo.im  = cat6->ldgb.src_ssbo_im;
+		if (ssbo.im)
+			ssbo.full = true;
 
 		print_src(ctx, &dst);
 		fprintf(ctx->out, ", ");
@@ -1073,10 +1100,17 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 
 		src1.reg = (reg_t)(cat6->ldgb.src1);
 		src1.im  = cat6->ldgb.src1_im;
+		if (src1.im)
+			src1.full = true;
 		src2.reg = (reg_t)(cat6->ldgb.src2);
 		src2.im  = cat6->ldgb.src2_im;
+		if (src2.im)
+			src2.full = true;
+		ssbo.full = true;
 		ssbo.reg = (reg_t)(cat6->ldgb.src_ssbo);
 		ssbo.im  = cat6->ldgb.src_ssbo_im;
+		if (ssbo.im)
+			ssbo.full = true;
 		dst.reg  = (reg_t)(cat6->ldgb.dst);
 
 		print_src(ctx, &dst);
@@ -1101,6 +1135,8 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		src1.reg = (reg_t)(cat6->a.src1);
 		src2.reg = (reg_t)(cat6->a.src2);
 		src2.im  = cat6->a.src2_im;
+		if (src2.im)
+			src2.full = true;
 		src3.reg = (reg_t)(cat6->a.off);
 		src3.full = true;
 		dst.reg  = (reg_t)(cat6->d.dst);
@@ -1128,6 +1164,11 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		src2.reg = (reg_t)(cat6->b.src2);
 		src2.im  = cat6->b.src2_im;
 	}
+
+	if (src1.im)
+		src1.full = true;
+	if (src2.im)
+		src2.full = true;
 
 	if (!nodst) {
 		if (sd)
