@@ -100,7 +100,7 @@ const struct radv_dynamic_state default_dynamic_state = {
 	.front_face = 0u,
 	.primitive_topology = 0u,
 	.fragment_shading_rate = {
-		.size = (VkExtent2D) { 1u, 1u },
+		.size = { 1u, 1u },
 		.combiner_ops = { VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
 				  VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR
 		},
