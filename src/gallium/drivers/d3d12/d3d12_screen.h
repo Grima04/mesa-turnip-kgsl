@@ -48,6 +48,7 @@ struct d3d12_screen {
    struct pb_manager *bufmgr;
    struct pb_manager *cache_bufmgr;
    struct pb_manager *slab_bufmgr;
+   struct pb_manager *readback_slab_bufmgr;
 
    /* capabilities */
    D3D_FEATURE_LEVEL max_feature_level;

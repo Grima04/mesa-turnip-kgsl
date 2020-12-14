@@ -603,6 +603,7 @@ d3d12_destroy_screen(struct pipe_screen *pscreen)
 {
    struct d3d12_screen *screen = d3d12_screen(pscreen);
    slab_destroy_parent(&screen->transfer_pool);
+   screen->readback_slab_bufmgr->destroy(screen->readback_slab_bufmgr);
    screen->slab_bufmgr->destroy(screen->slab_bufmgr);
    screen->cache_bufmgr->destroy(screen->cache_bufmgr);
    screen->bufmgr->destroy(screen->bufmgr);
@@ -869,6 +870,10 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    screen->slab_bufmgr = pb_slab_range_manager_create(screen->cache_bufmgr, 16, 512,
                                                       D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                       &desc);
+   desc.usage = (pb_usage_flags)(PB_USAGE_CPU_READ_WRITE | PB_USAGE_GPU_WRITE);
+   screen->readback_slab_bufmgr = pb_slab_range_manager_create(screen->cache_bufmgr, 16, 512,
+                                                               D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+                                                               &desc);
 
    screen->have_load_at_vertex = can_attribute_at_vertex(screen);
    return true;
