@@ -279,7 +279,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (dinfo->index_size > 0) {
        uint32_t restart_index = util_prim_restart_index_from_size(dinfo->index_size);
        if ((dinfo->primitive_restart && (dinfo->restart_index != restart_index)) ||
-           (!screen->info.have_EXT_index_type_uint8 && dinfo->index_size == 8)) {
+           (!screen->info.have_EXT_index_type_uint8 && dinfo->index_size == 1)) {
           util_translate_prim_restart_ib(pctx, dinfo, dindirect, &draws[0], &index_buffer);
           need_index_buffer_unref = true;
        } else {
