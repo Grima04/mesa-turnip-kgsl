@@ -471,6 +471,14 @@ bi_passthrough(enum bifrost_packed_src value)
         };
 }
 
+/* Extracts a word from a vectored index */
+static inline bi_index
+bi_word(bi_index idx, unsigned component)
+{
+        idx.offset += component;
+        return idx;
+}
+
 static inline bool
 bi_is_null(bi_index idx)
 {
