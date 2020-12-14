@@ -1313,8 +1313,9 @@ d3d12_create_stream_output_target(struct pipe_context *pctx,
    cso->base.buffer_size = buffer_size;
    cso->base.context = pctx;
 
-   util_range_add(pres, &res->valid_buffer_range, buffer_offset,
-                  buffer_offset + buffer_size);
+   if (res->bo && res->bo->buffer && d3d12_buffer(res->bo->buffer)->map)
+      util_range_add(pres, &res->valid_buffer_range, buffer_offset,
+                     buffer_offset + buffer_size);
 
    return &cso->base;
 }

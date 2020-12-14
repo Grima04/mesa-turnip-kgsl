@@ -46,7 +46,9 @@ static bool
 can_map_directly(struct pipe_resource *pres)
 {
    return pres->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED | PIPE_BIND_LINEAR) ||
-          pres->target == PIPE_BUFFER;
+         (pres->target == PIPE_BUFFER &&
+          pres->usage != PIPE_USAGE_DEFAULT &&
+          pres->usage != PIPE_USAGE_IMMUTABLE);
 }
 
 static void
@@ -118,11 +120,25 @@ init_buffer(struct d3d12_screen *screen,
     * element state */
    assert(templ->format == d3d12_emulated_vtx_format(templ->format));
 
-   /* Don't use slab buffer manager for GPU writable buffers */
-   bufmgr = templ->bind & PIPE_BIND_STREAM_OUTPUT ? screen->cache_bufmgr
-                                                  : screen->slab_bufmgr;
+   switch (templ->usage) {
+   case PIPE_USAGE_DEFAULT:
+   case PIPE_USAGE_IMMUTABLE:
+      bufmgr = screen->cache_bufmgr;
+      buf_desc.usage = (pb_usage_flags)PB_USAGE_GPU_READ_WRITE;
+      break;
+   case PIPE_USAGE_DYNAMIC:
+   case PIPE_USAGE_STREAM:
+      bufmgr = screen->slab_bufmgr;
+      buf_desc.usage = (pb_usage_flags)(PB_USAGE_CPU_WRITE | PB_USAGE_GPU_READ);
+      break;
+   case PIPE_USAGE_STAGING:
+      bufmgr = screen->readback_slab_bufmgr;
+      buf_desc.usage = (pb_usage_flags)(PB_USAGE_GPU_WRITE | PB_USAGE_CPU_READ_WRITE);
+      break;
+   default:
+      unreachable("Invalid pipe usage");
+   }
    buf_desc.alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-   buf_desc.usage = (pb_usage_flags)PB_USAGE_ALL;
    res->dxgi_format = DXGI_FORMAT_UNKNOWN;
    buf = bufmgr->create_buffer(bufmgr, templ->width0, &buf_desc);
    if (!buf)
