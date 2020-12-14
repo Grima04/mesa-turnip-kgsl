@@ -812,15 +812,18 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
+      assert(res->surf.format == view_format);
       if (iris_sample_with_depth_aux(devinfo, res))
          return ISL_AUX_USAGE_HIZ;
       break;
 
    case ISL_AUX_USAGE_HIZ_CCS:
+      assert(res->surf.format == view_format);
       assert(!iris_sample_with_depth_aux(devinfo, res));
       return ISL_AUX_USAGE_NONE;
 
    case ISL_AUX_USAGE_HIZ_CCS_WT:
+      assert(res->surf.format == view_format);
       if (iris_sample_with_depth_aux(devinfo, res))
          return ISL_AUX_USAGE_HIZ_CCS_WT;
       break;
