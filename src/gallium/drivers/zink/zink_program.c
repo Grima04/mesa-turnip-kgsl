@@ -274,7 +274,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
    uint32_t hash;
 
    shader_key_vtbl[stage](ctx, zs, ctx->gfx_stages, &key);
-   keybox = make_keybox(NULL, stage, &key, key.size);
+   keybox = make_keybox(prog->shader_cache, stage, &key, key.size);
    hash = keybox_hash(keybox);
    struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(prog->shader_cache->shader_cache,
                                                                  hash, keybox);
@@ -329,9 +329,10 @@ zink_destroy_shader_cache(struct zink_screen *screen, struct zink_shader_cache *
    hash_table_foreach(sc->shader_cache, entry) {
       struct zink_shader_module *zm = entry->data;
       zink_shader_module_reference(screen, &zm, NULL);
+      _mesa_hash_table_remove(sc->shader_cache, entry);
    }
    _mesa_hash_table_destroy(sc->shader_cache, NULL);
-   free(sc);
+   ralloc_free(sc);
 }
 
 static inline void
@@ -513,7 +514,7 @@ init_slot_map(struct zink_context *ctx, struct zink_gfx_program *prog)
        * the slots match up
        * TOOD: if we compact the slot map table, we can store it on the shader keys and reuse the cache
        */
-      prog->shader_cache = CALLOC_STRUCT(zink_shader_cache);
+      prog->shader_cache = ralloc(NULL, struct zink_shader_cache);
       pipe_reference_init(&prog->shader_cache->reference, 1);
       prog->shader_cache->shader_cache =  _mesa_hash_table_create(NULL, keybox_hash, keybox_equals);
    } else {
@@ -627,7 +628,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
 
    if (!ctx->curr_compute || !ctx->curr_compute->shader_cache) {
       /* TODO: cs shader keys placeholder for now */
-      comp->shader_cache = CALLOC_STRUCT(zink_shader_cache);
+      comp->shader_cache = ralloc(NULL, struct zink_shader_cache);
       pipe_reference_init(&comp->shader_cache->reference, 1);
       comp->shader_cache->shader_cache = _mesa_hash_table_create(NULL, _mesa_hash_u32, _mesa_key_u32_equal);
    } else
