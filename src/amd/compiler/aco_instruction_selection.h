@@ -62,7 +62,6 @@ struct isel_context {
    Stage stage;
    struct {
       bool has_branch;
-      uint16_t loop_nest_depth = 0;
       struct {
          unsigned header_idx;
          Block* exit;

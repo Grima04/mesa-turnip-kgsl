@@ -1179,7 +1179,6 @@ setup_isel_context(Program* program,
    ctx.program->config->scratch_bytes_per_wave = align(scratch_size * ctx.program->wave_size, 1024);
 
    ctx.block = ctx.program->create_and_insert_block();
-   ctx.block->loop_nest_depth = 0;
    ctx.block->kind = block_kind_top_level;
 
    return ctx;

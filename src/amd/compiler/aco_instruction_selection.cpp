@@ -5560,7 +5560,7 @@ void visit_load_constant(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void visit_discard_if(isel_context *ctx, nir_intrinsic_instr *instr)
 {
-   if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
+   if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
       ctx->cf_info.exec_potentially_empty_discard = true;
 
    ctx->program->needs_exact = true;
@@ -5579,7 +5579,7 @@ void visit_discard(isel_context* ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
 
-   if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
+   if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
       ctx->cf_info.exec_potentially_empty_discard = true;
 
    bool divergent = ctx->cf_info.parent_if.is_divergent ||
@@ -8572,7 +8572,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_demote:
       bld.pseudo(aco_opcode::p_demote_to_helper, Operand(-1u));
 
-      if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
+      if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
       ctx->block->kind |= block_kind_uses_demote;
       ctx->program->needs_exact = true;
@@ -8583,7 +8583,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp cond = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
       bld.pseudo(aco_opcode::p_demote_to_helper, cond);
 
-      if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
+      if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
       ctx->block->kind |= block_kind_uses_demote;
       ctx->program->needs_exact = true;
@@ -9712,11 +9712,11 @@ void begin_loop(isel_context *ctx, loop_context *lc)
    bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
    unsigned loop_preheader_idx = ctx->block->index;
 
-   lc->loop_exit.loop_nest_depth = ctx->cf_info.loop_nest_depth;
    lc->loop_exit.kind |= (block_kind_loop_exit | (ctx->block->kind & block_kind_top_level));
 
+   ctx->program->next_loop_depth++;
+
    Block *loop_header = ctx->program->create_and_insert_block();
-   loop_header->loop_nest_depth = ctx->cf_info.loop_nest_depth + 1;
    loop_header->kind |= block_kind_loop_header;
    add_edge(loop_preheader_idx, loop_header);
    ctx->block = loop_header;
@@ -9728,7 +9728,6 @@ void begin_loop(isel_context *ctx, loop_context *lc)
    lc->divergent_cont_old = std::exchange(ctx->cf_info.parent_loop.has_divergent_continue, false);
    lc->divergent_branch_old = std::exchange(ctx->cf_info.parent_loop.has_divergent_branch, false);
    lc->divergent_if_old = std::exchange(ctx->cf_info.parent_if.is_divergent, false);
-   ctx->cf_info.loop_nest_depth++;
 }
 
 void end_loop(isel_context *ctx, loop_context *lc)
@@ -9749,7 +9748,6 @@ void end_loop(isel_context *ctx, loop_context *lc)
 
          /* create helper blocks to avoid critical edges */
          Block *break_block = ctx->program->create_and_insert_block();
-         break_block->loop_nest_depth = ctx->cf_info.loop_nest_depth;
          break_block->kind = block_kind_uniform;
          bld.reset(break_block);
          bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
@@ -9757,7 +9755,6 @@ void end_loop(isel_context *ctx, loop_context *lc)
          add_linear_edge(break_block->index, &lc->loop_exit);
 
          Block *continue_block = ctx->program->create_and_insert_block();
-         continue_block->loop_nest_depth = ctx->cf_info.loop_nest_depth;
          continue_block->kind = block_kind_uniform;
          bld.reset(continue_block);
          bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
@@ -9780,6 +9777,7 @@ void end_loop(isel_context *ctx, loop_context *lc)
    }
 
    ctx->cf_info.has_branch = false;
+   ctx->program->next_loop_depth--;
 
    // TODO: if the loop has not a single exit, we must add one °°
    /* emit loop successor block */
@@ -9812,8 +9810,7 @@ void end_loop(isel_context *ctx, loop_context *lc)
    ctx->cf_info.parent_loop.has_divergent_continue = lc->divergent_cont_old;
    ctx->cf_info.parent_loop.has_divergent_branch = lc->divergent_branch_old;
    ctx->cf_info.parent_if.is_divergent = lc->divergent_if_old;
-   ctx->cf_info.loop_nest_depth = ctx->cf_info.loop_nest_depth - 1;
-   if (!ctx->cf_info.loop_nest_depth && !ctx->cf_info.parent_if.is_divergent)
+   if (!ctx->block->loop_nest_depth && !ctx->cf_info.parent_if.is_divergent)
       ctx->cf_info.exec_potentially_empty_discard = false;
 }
 
@@ -9861,13 +9858,12 @@ void emit_loop_jump(isel_context *ctx, bool is_break)
 
    if (ctx->cf_info.parent_if.is_divergent && !ctx->cf_info.exec_potentially_empty_break) {
       ctx->cf_info.exec_potentially_empty_break = true;
-      ctx->cf_info.exec_potentially_empty_break_depth = ctx->cf_info.loop_nest_depth;
+      ctx->cf_info.exec_potentially_empty_break_depth = ctx->block->loop_nest_depth;
    }
 
    /* remove critical edges from linear CFG */
    bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
    Block* break_block = ctx->program->create_and_insert_block();
-   break_block->loop_nest_depth = ctx->cf_info.loop_nest_depth;
    break_block->kind |= block_kind_uniform;
    add_linear_edge(idx, break_block);
    /* the loop_header pointer might be invalidated by this point */
@@ -9878,7 +9874,6 @@ void emit_loop_jump(isel_context *ctx, bool is_break)
    bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
 
    Block* continue_block = ctx->program->create_and_insert_block();
-   continue_block->loop_nest_depth = ctx->cf_info.loop_nest_depth;
    add_linear_edge(idx, continue_block);
    append_logical_start(continue_block);
    ctx->block = continue_block;
@@ -10061,12 +10056,10 @@ static void begin_divergent_if_then(isel_context *ctx, if_context *ic, Temp cond
 
    ic->BB_if_idx = ctx->block->index;
    ic->BB_invert = Block();
-   ic->BB_invert.loop_nest_depth = ctx->cf_info.loop_nest_depth;
    /* Invert blocks are intentionally not marked as top level because they
     * are not part of the logical cfg. */
    ic->BB_invert.kind |= block_kind_invert;
    ic->BB_endif = Block();
-   ic->BB_endif.loop_nest_depth = ctx->cf_info.loop_nest_depth;
    ic->BB_endif.kind |= (block_kind_merge | (ctx->block->kind & block_kind_top_level));
 
    ic->exec_potentially_empty_discard_old = ctx->cf_info.exec_potentially_empty_discard;
@@ -10082,7 +10075,6 @@ static void begin_divergent_if_then(isel_context *ctx, if_context *ic, Temp cond
 
    /** emit logical then block */
    Block* BB_then_logical = ctx->program->create_and_insert_block();
-   BB_then_logical->loop_nest_depth = ctx->cf_info.loop_nest_depth;
    add_edge(ic->BB_if_idx, BB_then_logical);
    ctx->block = BB_then_logical;
    append_logical_start(BB_then_logical);
@@ -10108,7 +10100,6 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
 
    /** emit linear then block */
    Block* BB_then_linear = ctx->program->create_and_insert_block();
-   BB_then_linear->loop_nest_depth = ctx->cf_info.loop_nest_depth;
    BB_then_linear->kind |= block_kind_uniform;
    add_linear_edge(ic->BB_if_idx, BB_then_linear);
    /* branch from linear then block to invert block */
@@ -10140,7 +10131,6 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
 
    /** emit logical else block */
    Block* BB_else_logical = ctx->program->create_and_insert_block();
-   BB_else_logical->loop_nest_depth = ctx->cf_info.loop_nest_depth;
    add_logical_edge(ic->BB_if_idx, BB_else_logical);
    add_linear_edge(ic->invert_idx, BB_else_logical);
    ctx->block = BB_else_logical;
@@ -10169,7 +10159,6 @@ static void end_divergent_if(isel_context *ctx, if_context *ic)
 
    /** emit linear else block */
    Block* BB_else_linear = ctx->program->create_and_insert_block();
-   BB_else_linear->loop_nest_depth = ctx->cf_info.loop_nest_depth;
    BB_else_linear->kind |= block_kind_uniform;
    add_linear_edge(ic->invert_idx, BB_else_linear);
 
@@ -10191,13 +10180,13 @@ static void end_divergent_if(isel_context *ctx, if_context *ic)
    ctx->cf_info.exec_potentially_empty_break |= ic->exec_potentially_empty_break_old;
    ctx->cf_info.exec_potentially_empty_break_depth =
       std::min(ic->exec_potentially_empty_break_depth_old, ctx->cf_info.exec_potentially_empty_break_depth);
-   if (ctx->cf_info.loop_nest_depth == ctx->cf_info.exec_potentially_empty_break_depth &&
+   if (ctx->block->loop_nest_depth == ctx->cf_info.exec_potentially_empty_break_depth &&
        !ctx->cf_info.parent_if.is_divergent) {
       ctx->cf_info.exec_potentially_empty_break = false;
       ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
    }
    /* uniform control flow never has an empty exec-mask */
-   if (!ctx->cf_info.loop_nest_depth && !ctx->cf_info.parent_if.is_divergent) {
+   if (!ctx->block->loop_nest_depth && !ctx->cf_info.parent_if.is_divergent) {
       ctx->cf_info.exec_potentially_empty_discard = false;
       ctx->cf_info.exec_potentially_empty_break = false;
       ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
@@ -10222,7 +10211,6 @@ static void begin_uniform_if_then(isel_context *ctx, if_context *ic, Temp cond)
 
    ic->BB_if_idx = ctx->block->index;
    ic->BB_endif = Block();
-   ic->BB_endif.loop_nest_depth = ctx->cf_info.loop_nest_depth;
    ic->BB_endif.kind |= ctx->block->kind & block_kind_top_level;
 
    ctx->cf_info.has_branch = false;
@@ -10230,7 +10218,6 @@ static void begin_uniform_if_then(isel_context *ctx, if_context *ic, Temp cond)
 
    /** emit then block */
    Block* BB_then = ctx->program->create_and_insert_block();
-   BB_then->loop_nest_depth = ctx->cf_info.loop_nest_depth;
    add_edge(ic->BB_if_idx, BB_then);
    append_logical_start(BB_then);
    ctx->block = BB_then;
@@ -10262,7 +10249,6 @@ static void begin_uniform_if_else(isel_context *ctx, if_context *ic)
 
    /** emit else block */
    Block* BB_else = ctx->program->create_and_insert_block();
-   BB_else->loop_nest_depth = ctx->cf_info.loop_nest_depth;
    add_edge(ic->BB_if_idx, BB_else);
    append_logical_start(BB_else);
    ctx->block = BB_else;
@@ -12259,7 +12245,6 @@ void select_trap_handler_shader(Program *program, struct nir_shader *shader,
    ctx.stage = program->stage;
 
    ctx.block = ctx.program->create_and_insert_block();
-   ctx.block->loop_nest_depth = 0;
    ctx.block->kind = block_kind_top_level;
 
    program->workgroup_size = 1; /* XXX */
