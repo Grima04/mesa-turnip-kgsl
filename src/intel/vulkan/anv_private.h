@@ -3936,21 +3936,25 @@ anv_image_get_compression_state_addr(const struct anv_device *device,
    UNUSED uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
    assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E);
 
-   struct anv_address addr =
-      anv_image_get_fast_clear_type_addr(device, image, aspect);
-   addr.offset += 4; /* Go past the fast clear type */
+   /* Relative to start of the plane's fast clear memory range */
+   uint32_t offset;
+
+   offset = 4; /* Go past the fast clear type */
 
    if (image->type == VK_IMAGE_TYPE_3D) {
       for (uint32_t l = 0; l < level; l++)
-         addr.offset += anv_minify(image->extent.depth, l) * 4;
+         offset += anv_minify(image->extent.depth, l) * 4;
    } else {
-      addr.offset += level * image->array_size * 4;
+      offset += level * image->array_size * 4;
    }
-   addr.offset += array_layer * 4;
 
-   assert(addr.offset <
-          image->planes[plane].address.offset + image->planes[plane].size);
-   return addr;
+   offset += array_layer * 4;
+
+   assert(offset < image->planes[plane].offset + image->planes[plane].size);
+
+   return anv_address_add(
+      anv_image_get_fast_clear_type_addr(device, image, aspect),
+      offset);
 }
 
 /* Returns true if a HiZ-enabled depth buffer can be sampled from. */
