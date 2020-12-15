@@ -61,6 +61,7 @@ zink_context_destroy(struct pipe_context *pctx)
 
    util_blitter_destroy(ctx->blitter);
 
+   pipe_resource_reference(&ctx->dummy_buffer, NULL);
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->null_buffers); i++)
       pipe_resource_reference(&ctx->null_buffers[i], NULL);
 
