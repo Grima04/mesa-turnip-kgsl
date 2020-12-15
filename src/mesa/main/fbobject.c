@@ -814,6 +814,7 @@ is_format_color_renderable(const struct gl_context *ctx, mesa_format format,
    case GL_RGB10:
    case GL_RGB9_E5:
    case GL_SR8_EXT:
+   case GL_SRG8_EXT:
       return GL_FALSE;
    default:
       break;

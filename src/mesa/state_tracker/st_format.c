@@ -427,6 +427,10 @@ static const struct format_mapping format_map[] = {
       { GL_SR8_EXT, 0 },
       { PIPE_FORMAT_R8_SRGB, 0 }
    },
+   {
+      { GL_SRG8_EXT, 0 },
+      { PIPE_FORMAT_R8G8_SRGB, 0 }
+   },
 
    /* 16-bit float formats */
    {

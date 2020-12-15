@@ -2511,6 +2511,15 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
+   if (_mesa_has_EXT_texture_sRGB_RG8(ctx)) {
+      switch (internalFormat) {
+      case GL_SRG8_EXT:
+         return GL_RG;
+      default:
+         ; /* fallthrough */
+      }
+   }
+
    if (_mesa_has_integer_textures(ctx)) {
       switch (internalFormat) {
       case GL_RGBA8UI_EXT:
@@ -3157,11 +3166,13 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          return GL_INVALID_OPERATION;
       switch (type) {
       case GL_UNSIGNED_BYTE:
-         if (internalFormat != GL_RG8 &&
-             (!_mesa_has_EXT_texture_compression_rgtc(ctx) ||
-              internalFormat != GL_COMPRESSED_RED_GREEN_RGTC2_EXT))
-            return GL_INVALID_OPERATION;
-         break;
+         if (internalFormat == GL_RG8 ||
+             (_mesa_has_EXT_texture_compression_rgtc(ctx) &&
+              internalFormat == GL_COMPRESSED_RED_GREEN_RGTC2_EXT) ||
+             (_mesa_has_EXT_texture_sRGB_RG8(ctx) &&
+              internalFormat == GL_SRG8_EXT))
+            break;
+         return GL_INVALID_OPERATION;
 
       case GL_BYTE:
          if (internalFormat != GL_RG8_SNORM &&

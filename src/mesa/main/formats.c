@@ -1129,6 +1129,7 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       *comps = 1;
       return;
    case MESA_FORMAT_LA_SRGB8:
+   case MESA_FORMAT_RG_SRGB8:
       *datatype = GL_UNSIGNED_BYTE;
       *comps = 2;
       return;
