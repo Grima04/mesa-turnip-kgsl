@@ -3708,21 +3708,61 @@ void
 anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm);
 
 /**
+ * Describes how each part of anv_image will be bound to memory.
+ */
+struct anv_image_memory_range {
+   /**
+    * Disjoint bindings into which each portion of the image will be bound.
+    *
+    * Binding images to memory can be complicated and invold binding different
+    * portions of the image to different memory objects or regions.  For most
+    * images, everything lives in the MAIN binding and gets bound by
+    * vkBindImageMemory.  For disjoint multi-planar images, each plane has
+    * a unique, disjoint binding and gets bound by vkBindImageMemory2 with
+    * VkBindImagePlaneMemoryInfo.  There may also exist bits of memory which are
+    * implicit or driver-managed and live in special-case bindings.
+    */
+   enum anv_image_memory_binding {
+      /**
+       * Used if and only if image is not multi-planar disjoint. Bound by
+       * vkBindImageMemory2 without VkBindImagePlaneMemoryInfo.
+       */
+      ANV_IMAGE_MEMORY_BINDING_MAIN,
+
+      /**
+       * Used if and only if image is multi-planar disjoint.  Bound by
+       * vkBindImageMemory2 with VkBindImagePlaneMemoryInfo.
+       */
+      ANV_IMAGE_MEMORY_BINDING_PLANE_0,
+      ANV_IMAGE_MEMORY_BINDING_PLANE_1,
+      ANV_IMAGE_MEMORY_BINDING_PLANE_2,
+
+      /** Sentinel */
+      ANV_IMAGE_MEMORY_BINDING_END,
+   } binding;
+
+   /**
+    * Offset is relative to the start of the binding created by
+    * vkBindImageMemory, not to the start of the bo.
+    */
+   uint64_t offset;
+
+   uint64_t size;
+   uint32_t alignment;
+};
+
+/**
  * Subsurface of an anv_image.
  */
 struct anv_surface {
    struct isl_surf isl;
-
-   /**
-    * Offset from VkImage's base address, as bound by vkBindImageMemory().
-    */
-   uint32_t offset;
+   struct anv_image_memory_range memory_range;
 };
 
 static inline bool MUST_CHECK
 anv_surface_is_valid(const struct anv_surface *surface)
 {
-   return surface->isl.size_B > 0;
+   return surface->isl.size_B > 0 && surface->memory_range.size > 0;
 }
 
 struct anv_image {
@@ -3761,9 +3801,6 @@ struct anv_image {
     */
    uint64_t drm_format_mod;
 
-   VkDeviceSize size;
-   uint32_t alignment;
-
    /**
     * Image has multi-planar format and was created with
     * VK_IMAGE_CREATE_DISJOINT_BIT.
@@ -3778,6 +3815,23 @@ struct anv_image {
     * must be released when the image is destroyed.
     */
    bool from_gralloc;
+
+   /**
+    * The memory bindings created by vkCreateImage and vkBindImageMemory.
+    *
+    * vkCreateImage constructs the `memory_range` for each
+    * anv_image_memory_binding.  After vkCreateImage, each binding is valid if
+    * and only if `memory_range::size > 0`.
+    *
+    * vkBindImageMemory binds each valid `memory_range` to an `address`.
+    * Usually, the app will provide the address via the parameters of
+    * vkBindImageMemory.  However, special-case bindings may be bound to
+    * driver-private memory.
+    */
+   struct anv_image_binding {
+      struct anv_image_memory_range memory_range;
+      struct anv_address address;
+   } bindings[ANV_IMAGE_MEMORY_BINDING_END];
 
    /**
     * Image subsurfaces
@@ -3816,15 +3870,6 @@ struct anv_image {
     * -----------------------
     */
    struct anv_image_plane {
-      /**
-       * Offset of the entire plane (whenever the image is disjoint this is
-       * set to 0).
-       */
-      uint32_t offset;
-
-      VkDeviceSize size;
-      uint32_t alignment;
-
       struct anv_surface primary_surface;
 
       /**
@@ -3843,16 +3888,8 @@ struct anv_image {
 
       struct anv_surface aux_surface;
 
-      /**
-       * Offset of the fast clear state (used to compute the
-       * fast_clear_state_offset of the following planes).
-       */
-      uint32_t fast_clear_state_offset;
-
-      /**
-       * BO associated with this plane, set when bound.
-       */
-      struct anv_address address;
+      /** Location of the fast clear state.  */
+      struct anv_image_memory_range fast_clear_memory_range;
    } planes[3];
 };
 
@@ -3901,10 +3938,15 @@ anv_image_aux_layers(const struct anv_image * const image,
 
 static inline struct anv_address MUST_CHECK
 anv_image_address(const struct anv_image *image,
-                  uint32_t plane, uint64_t offset)
+                  const struct anv_image_memory_range *mem_range)
 {
-   assert(image->planes[plane].address.offset == 0);
-   return anv_address_add(image->planes[plane].address, offset);
+   const struct anv_image_binding *binding = &image->bindings[mem_range->binding];
+   assert(binding->memory_range.offset == 0);
+
+   if (mem_range->size == 0)
+      return ANV_NULL_ADDRESS;
+
+   return anv_address_add(binding->address, mem_range->offset);
 }
 
 static inline struct anv_address
@@ -3915,8 +3957,10 @@ anv_image_get_clear_color_addr(UNUSED const struct anv_device *device,
    assert(image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
 
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-   return anv_image_address(image, plane,
-                            image->planes[plane].fast_clear_state_offset);
+   const struct anv_image_memory_range *mem_range =
+      &image->planes[plane].fast_clear_memory_range;
+
+   return anv_image_address(image, mem_range);
 }
 
 static inline struct anv_address
@@ -3958,7 +4002,7 @@ anv_image_get_compression_state_addr(const struct anv_device *device,
 
    offset += array_layer * 4;
 
-   assert(offset < image->planes[plane].offset + image->planes[plane].size);
+   assert(offset < image->planes[plane].fast_clear_memory_range.size);
 
    return anv_address_add(
       anv_image_get_fast_clear_type_addr(device, image, aspect),

@@ -79,7 +79,20 @@ VkResult anv_CreateDmaBufImageINTEL(
    if (result != VK_SUCCESS)
       goto fail_import;
 
-   VkDeviceSize aligned_image_size = align_u64(image->size, 4096);
+   VkImageMemoryRequirementsInfo2 mem_reqs_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+      .image = image_h,
+   };
+
+   VkMemoryRequirements2 mem_reqs = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+   };
+
+   anv_GetImageMemoryRequirements2(_device, &mem_reqs_info, &mem_reqs);
+
+   VkDeviceSize aligned_image_size =
+      align_u64(mem_reqs.memoryRequirements.size,
+                mem_reqs.memoryRequirements.alignment);
 
    if (mem->bo->size < aligned_image_size) {
       result = vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
@@ -90,7 +103,7 @@ VkResult anv_CreateDmaBufImageINTEL(
       goto fail_import;
    }
 
-   image->planes[0].address = (struct anv_address) {
+   image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address = (struct anv_address) {
       .bo = mem->bo,
       .offset = 0,
    };

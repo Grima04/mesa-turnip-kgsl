@@ -466,7 +466,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 
    const struct anv_surface *surface = &image->planes[plane].primary_surface;
    uint64_t base_address =
-      anv_address_physical(anv_image_address(image, plane, surface->offset));
+      anv_address_physical(anv_image_address(image, &surface->memory_range));
 
    const struct isl_surf *isl_surf = &image->planes[plane].primary_surface.isl;
    uint64_t format_bits = gen_aux_map_format_bits_for_isl_surf(isl_surf);
@@ -5206,7 +5206,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       const struct anv_surface *depth_surface =
          &image->planes[depth_plane].primary_surface;
       const struct anv_address depth_address =
-         anv_image_address(image, depth_plane, depth_surface->offset);
+         anv_image_address(image, &depth_surface->memory_range);
 
       info.depth_surf = &depth_surface->isl;
 
@@ -5226,7 +5226,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
          const struct anv_surface *hiz_surface =
             &image->planes[depth_plane].aux_surface;
          const struct anv_address hiz_address =
-            anv_image_address(image, depth_plane, hiz_surface->offset);
+            anv_image_address(image, &hiz_surface->memory_range);
 
          info.hiz_surf = &hiz_surface->isl;
 
@@ -5245,7 +5245,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       const struct anv_surface *stencil_surface =
          &image->planes[stencil_plane].primary_surface;
       const struct anv_address stencil_address =
-         anv_image_address(image, stencil_plane, stencil_surface->offset);
+         anv_image_address(image, &stencil_surface->memory_range);
 
       info.stencil_surf = &stencil_surface->isl;
 

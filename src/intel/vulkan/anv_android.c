@@ -534,10 +534,13 @@ anv_image_from_gralloc(VkDevice device_h,
       goto fail_size;
    }
 
+   assert(!image->disjoint);
    assert(image->n_planes == 1);
-   assert(image->planes[0].address.offset == 0);
-
-   image->planes[0].address.bo = bo;
+   assert(image->planes[0].primary_surface.memory_range.binding ==
+          ANV_IMAGE_MEMORY_BINDING_MAIN);
+   assert(image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo == NULL);
+   assert(image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.offset == 0);
+   image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo = bo;
    image->from_gralloc = true;
 
    /* Don't clobber the out-parameter until success is certain. */
