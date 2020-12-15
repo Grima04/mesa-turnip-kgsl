@@ -45,7 +45,7 @@ void swr_destroy_screen_internal(struct swr_screen **screen);
 
 #ifdef _WIN32
 void swr_gdi_swap(struct pipe_screen *screen,
-                  struct pipe_conext *ctx,
+                  struct pipe_context *ctx,
                   struct pipe_resource *res,
                   void *hDC);
 #endif /* _WIN32 */
