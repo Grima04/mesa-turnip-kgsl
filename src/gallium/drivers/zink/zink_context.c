@@ -222,7 +222,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
       sci.anisotropyEnable = VK_TRUE;
    }
 
-   struct zink_sampler_state *sampler = CALLOC(1, sizeof(struct zink_sampler_state));
+   struct zink_sampler_state *sampler = CALLOC_STRUCT(zink_sampler_state);
    if (!sampler)
       return NULL;
 
