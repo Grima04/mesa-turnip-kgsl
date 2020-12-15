@@ -933,6 +933,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
          surf->htile_size = AddrHtileOut->htileBytes;
          surf->htile_slice_size = AddrHtileOut->sliceSize;
          surf->htile_alignment = AddrHtileOut->baseAlign;
+         surf->num_htile_levels = level + 1;
       }
    }
 
@@ -1754,9 +1755,11 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
       /* HTILE */
       ADDR2_COMPUTE_HTILE_INFO_INPUT hin = {0};
       ADDR2_COMPUTE_HTILE_INFO_OUTPUT hout = {0};
+      ADDR2_META_MIP_INFO meta_mip_info[RADEON_SURF_MAX_LEVELS] = {0};
 
       hin.size = sizeof(ADDR2_COMPUTE_HTILE_INFO_INPUT);
       hout.size = sizeof(ADDR2_COMPUTE_HTILE_INFO_OUTPUT);
+      hout.pMipInfo = meta_mip_info;
 
       assert(in->flags.metaPipeUnaligned == 0);
       assert(in->flags.metaRbUnaligned == 0);
@@ -1778,6 +1781,24 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
       surf->htile_size = hout.htileBytes;
       surf->htile_slice_size = hout.sliceSize;
       surf->htile_alignment = hout.baseAlign;
+      surf->num_htile_levels = in->numMipLevels;
+
+      for (unsigned i = 0; i < in->numMipLevels; i++) {
+         surf->u.gfx9.htile_levels[i].offset = meta_mip_info[i].offset;
+         surf->u.gfx9.htile_levels[i].size = meta_mip_info[i].sliceSize;
+
+         if (meta_mip_info[i].inMiptail) {
+            /* GFX10 can only compress the first level
+             * in the mip tail.
+             */
+            surf->num_htile_levels = i + 1;
+            break;
+         }
+      }
+
+      if (!surf->num_htile_levels)
+         surf->htile_size = 0;
+
       return 0;
    }
 

@@ -202,6 +202,9 @@ struct gfx9_surf_layout {
 
    /* DCC level info */
    struct gfx9_surf_level dcc_levels[RADEON_SURF_MAX_LEVELS];
+
+   /* HTILE level info */
+   struct gfx9_surf_level htile_levels[RADEON_SURF_MAX_LEVELS];
 };
 
 struct radeon_surf {
@@ -268,6 +271,7 @@ struct radeon_surf {
    uint32_t htile_size;
    uint32_t htile_slice_size;
    uint32_t htile_alignment;
+   uint32_t num_htile_levels : 4;
 
    uint32_t cmask_size;
    uint32_t cmask_slice_size;
