@@ -1,5 +1,5 @@
 variables:
-  MESA_LAVA_TAG: "2020-02-17-gfxreconstruct-master"
+  MESA_LAVA_TAG: "2021-02-17-asan"
 
 .kernel+rootfs:
   stage: container-2

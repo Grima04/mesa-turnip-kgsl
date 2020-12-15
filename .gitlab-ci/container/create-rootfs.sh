@@ -56,6 +56,7 @@ apt-get -y install --no-install-recommends \
     ca-certificates \
     curl \
     initramfs-tools \
+    libasan5 \
     libexpat1 \
     libpng16-16 \
     libsensors5 \

@@ -23,6 +23,7 @@ apt-get -y install \
 	git \
 	kmod \
 	lavacli \
+	libasan5 \
 	libdrm-dev \
 	libelf-dev \
 	libexpat1-dev \

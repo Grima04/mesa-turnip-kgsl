@@ -414,7 +414,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    MESA_IMAGE_TAG: &arm_build "2021-02-08-container-reorg"
+    MESA_IMAGE_TAG: &arm_build "2021-02-15-asan"
 
 .use-arm_build:
   extends:
@@ -448,7 +448,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &arm64_test "2021-02-17-gfxreconstruct-master"
+    MESA_IMAGE_TAG: &arm64_test "2021-02-17-asan"
 
 .use-arm64_test:
   extends:
@@ -465,7 +465,7 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &armhf_test "2021-02-17-gfxreconstruct-master"
+    MESA_IMAGE_TAG: &armhf_test "2021-02-17-asan"
 
 .use-armhf_test:
   extends:
@@ -836,6 +836,17 @@ meson-arm64:
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
+
+meson-arm64-asan:
+  extends:
+    - meson-arm64
+  variables:
+    EXTRA_OPTION: >
+      -D llvm=disabled
+      -D b_sanitize=address
+    ARTIFACTS_DEBUG_SYMBOLS: 1
+    MINIO_ARTIFACT_NAME: mesa-arm64-asan
+    MESON_TEST_ARGS: "--no-suite mesa:compiler"
 
 meson-arm64-build-test:
   extends:
@@ -1502,6 +1513,16 @@ arm64_a630_gles_others:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/bare-metal/arm64_a630_gles_others.sh"
 
+arm64_a630_gles_asan:
+  extends:
+    - .baremetal-deqp-test
+    - .arm64-a630-test
+    - .baremetal-arm64-asan-test
+  variables:
+    DEQP_VER: gles31
+    DEQP_FRACTION: 10
+    GPU_VERSION: freedreno-a630-asan
+
 arm64_a630_vk:
   extends:
     - .baremetal-deqp-test-freedreno-vk
@@ -1514,6 +1535,23 @@ arm64_a630_vk:
     # features.  However, we end up with flaky results in
     # dEQP-VK.binding_model.*.geometry and dEQP-VK.glsl.*_vertex.
     TU_DEBUG: forcebin
+
+# Disabled by default until we can sort out what looks like timeouts before
+# getting to the first test (or is it at cleanup after tests completed?).
+# Clicking play can show you some useful areas for fixing turnip, though.
+arm64_a630_vk_asan:
+  extends:
+    - .baremetal-deqp-test-freedreno-vk
+    - .arm64-a630-test
+    - .baremetal-arm64-asan-test
+    - .test-manual
+  variables:
+    DEQP_FRACTION: 100
+    DEQP_PARALLEL: 4 # We get OOMkills if we go too wide with asan enabled
+    TU_DEBUG: forcebin
+    # Disable the leak checks, since the library gets dlclose()d and thus get
+    # totally useless leak reports.  We can still catch buffer overflows.
+    ASAN_OPTIONS: "detect_leaks=0"
 
 # Do a separate sysmem pass over the testcases that really affect sysmem
 # rendering.  This is currently very flaky, leave it as an option for devs
@@ -1631,6 +1669,15 @@ arm64_a630_piglit_shader:
     - .baremetal-test
   variables:
     MINIO_ARTIFACT_NAME: mesa-armhf
+
+.baremetal-arm64-asan-test:
+  variables:
+    TEST_LD_PRELOAD: libasan.so.5
+    MINIO_ARTIFACT_NAME: mesa-arm64-asan
+  needs:
+    - arm64_test
+    - job: meson-arm64-asan
+      artifacts: false
 
 .freedreno-test:
   extends:
