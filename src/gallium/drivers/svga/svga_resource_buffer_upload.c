@@ -730,9 +730,6 @@ svga_buffer_upload_flush(struct svga_context *svga, struct svga_buffer *sbuf)
 
    assert(sbuf->head.prev && sbuf->head.next);
    list_del(&sbuf->head);  /* remove from svga->dirty_buffers list */
-#ifdef DEBUG
-   sbuf->head.next = sbuf->head.prev = NULL;
-#endif
    sbuf->dma.pending = FALSE;
    sbuf->dma.flags.discard = FALSE;
    sbuf->dma.flags.unsynchronized = FALSE;
