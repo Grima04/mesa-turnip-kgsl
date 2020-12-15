@@ -365,7 +365,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                         num_components = tmu_writes - 1;
                 }
 
-                uint32_t perquad = is_load
+                uint32_t perquad = is_load && !vir_in_nonuniform_control_flow(c)
                    ? GENERAL_TMU_LOOKUP_PER_QUAD
                    : GENERAL_TMU_LOOKUP_PER_PIXEL;
                 uint32_t config = (0xffffff00 |
