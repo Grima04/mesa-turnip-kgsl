@@ -123,13 +123,6 @@ struct zink_viewport_state {
    uint8_t num_viewports;
 };
 
-
-/* hashes of all the named types in a given state */
-struct zink_descriptor_state {
-   bool valid[ZINK_DESCRIPTOR_TYPES];
-   uint32_t state[ZINK_DESCRIPTOR_TYPES];
-};
-
 struct zink_context {
    struct pipe_context base;
    struct slab_child_pool transfer_pool;

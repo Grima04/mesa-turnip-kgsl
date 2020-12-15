@@ -31,6 +31,12 @@
 #include "util/u_inlines.h"
 #include "util/u_dynarray.h"
 
+#include "zink_batch.h"
+
+#ifndef ZINK_SHADER_COUNT
+#define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
+#endif
+
 enum zink_descriptor_type {
    ZINK_DESCRIPTOR_TYPE_UBO,
    ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW,
@@ -45,13 +51,22 @@ struct zink_descriptor_refs {
 };
 
 
-#include "zink_context.h"
+/* hashes of all the named types in a given state */
+struct zink_descriptor_state {
+   bool valid[ZINK_DESCRIPTOR_TYPES];
+   uint32_t state[ZINK_DESCRIPTOR_TYPES];
+};
 
 struct hash_table;
 
+struct zink_context;
+struct zink_image_view;
 struct zink_program;
 struct zink_resource;
+struct zink_sampler;
+struct zink_sampler_view;
 struct zink_shader;
+struct zink_screen;
 
 
 struct zink_descriptor_state_key {
