@@ -1466,7 +1466,7 @@ emit_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
       .ios = (height << 16) | width,
       .bo_handles = {
          dst_bo->handle,
-         src != dst ? src_bo->handle : 0
+         src_bo->handle != dst_bo->handle ? src_bo->handle : 0
       },
    };
 
@@ -2640,7 +2640,7 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
          .ios = (height << 16) | width,
          .bo_handles = {
             dst_bo->handle,
-            src_bo != dst_bo ? src_bo->handle : 0
+            src_bo->handle != dst_bo->handle ? src_bo->handle : 0
          },
       };
 
