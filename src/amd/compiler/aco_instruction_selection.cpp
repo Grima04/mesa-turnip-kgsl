@@ -10073,7 +10073,9 @@ static void begin_divergent_if_then(isel_context *ctx, if_context *ic, Temp cond
    ctx->cf_info.exec_potentially_empty_break = false;
    ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
 
+
    /** emit logical then block */
+   ctx->program->next_divergent_if_logical_depth++;
    Block* BB_then_logical = ctx->program->create_and_insert_block();
    add_edge(ic->BB_if_idx, BB_then_logical);
    ctx->block = BB_then_logical;
@@ -10097,6 +10099,7 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
    assert(!ctx->cf_info.has_branch);
    ic->then_branch_divergent = ctx->cf_info.parent_loop.has_divergent_branch;
    ctx->cf_info.parent_loop.has_divergent_branch = false;
+   ctx->program->next_divergent_if_logical_depth--;
 
    /** emit linear then block */
    Block* BB_then_linear = ctx->program->create_and_insert_block();
@@ -10108,6 +10111,7 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
    branch->definitions[0].setHint(vcc);
    BB_then_linear->instructions.emplace_back(std::move(branch));
    add_linear_edge(BB_then_linear->index, &ic->BB_invert);
+
 
    /** emit invert merge block */
    ctx->block = ctx->program->insert_block(std::move(ic->BB_invert));
@@ -10129,7 +10133,9 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
    ctx->cf_info.exec_potentially_empty_break = false;
    ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
 
+
    /** emit logical else block */
+   ctx->program->next_divergent_if_logical_depth++;
    Block* BB_else_logical = ctx->program->create_and_insert_block();
    add_logical_edge(ic->BB_if_idx, BB_else_logical);
    add_linear_edge(ic->invert_idx, BB_else_logical);
@@ -10152,6 +10158,7 @@ static void end_divergent_if(isel_context *ctx, if_context *ic)
    if (!ctx->cf_info.parent_loop.has_divergent_branch)
       add_logical_edge(BB_else_logical->index, &ic->BB_endif);
    BB_else_logical->kind |= block_kind_uniform;
+   ctx->program->next_divergent_if_logical_depth--;
 
    assert(!ctx->cf_info.has_branch);
    ctx->cf_info.parent_loop.has_divergent_branch &= ic->then_branch_divergent;
@@ -10216,7 +10223,9 @@ static void begin_uniform_if_then(isel_context *ctx, if_context *ic, Temp cond)
    ctx->cf_info.has_branch = false;
    ctx->cf_info.parent_loop.has_divergent_branch = false;
 
+
    /** emit then block */
+   ctx->program->next_uniform_if_depth++;
    Block* BB_then = ctx->program->create_and_insert_block();
    add_edge(ic->BB_if_idx, BB_then);
    append_logical_start(BB_then);
@@ -10275,7 +10284,9 @@ static void end_uniform_if(isel_context *ctx, if_context *ic)
    ctx->cf_info.has_branch &= ic->uniform_has_then_branch;
    ctx->cf_info.parent_loop.has_divergent_branch &= ic->then_branch_divergent;
 
+
    /** emit endif merge block */
+   ctx->program->next_uniform_if_depth--;
    if (!ctx->cf_info.has_branch) {
       ctx->block = ctx->program->insert_block(std::move(ic->BB_endif));
       append_logical_start(ctx->block);
