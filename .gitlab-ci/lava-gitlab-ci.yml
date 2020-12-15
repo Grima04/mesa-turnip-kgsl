@@ -19,7 +19,7 @@ kernel+rootfs_amd64:
   extends:
     - .use-x86_build-base
     - .kernel+rootfs
-  image: "$CI_REGISTRY_IMAGE/debian/x86_build-base:${MESA_BASE_TAG}-${MESA_TEMPLATES_COMMIT}"
+  image: "$CI_REGISTRY_IMAGE/debian/x86_build-base:${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
   variables:
     DEBIAN_ARCH: "amd64"
 
