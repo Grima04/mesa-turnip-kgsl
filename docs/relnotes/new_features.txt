@@ -8,3 +8,4 @@ GL_ARB_texture_filter_minmax on nvc0 (gm200+)
 GL_ARB_post_depth_coverage on zink
 VK_KHR_copy_commands2 on lavapipe
 lavapipe exposes Vulkan 1.1
+VRS attachment on RADV

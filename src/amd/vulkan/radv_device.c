@@ -1621,7 +1621,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceFragmentShadingRateFeaturesKHR *)ext;
          features->pipelineFragmentShadingRate = true;
          features->primitiveFragmentShadingRate = true;
-         features->attachmentFragmentShadingRate = false; /* TODO */
+         features->attachmentFragmentShadingRate = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR: {
@@ -2285,11 +2285,11 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR: {
          VkPhysicalDeviceFragmentShadingRatePropertiesKHR *props =
             (VkPhysicalDeviceFragmentShadingRatePropertiesKHR *)ext;
-         props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D){0, 0};
-         props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D){0, 0};
-         props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
+         props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D){8, 8};
+         props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D){8, 8};
+         props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 1;
          props->primitiveFragmentShadingRateWithMultipleViewports = true;
-         props->layeredShadingRateAttachments = false;
+         props->layeredShadingRateAttachments = false; /* TODO */
          props->fragmentShadingRateNonTrivialCombinerOps = true;
          props->maxFragmentSize = (VkExtent2D){2, 2};
          props->maxFragmentSizeAspectRatio = 1;
