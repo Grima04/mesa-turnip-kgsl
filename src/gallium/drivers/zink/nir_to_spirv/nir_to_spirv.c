@@ -1285,6 +1285,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BUILTIN_UNOP(nir_op_isign, GLSLstd450SSign)
    BUILTIN_UNOP(nir_op_fsin, GLSLstd450Sin)
    BUILTIN_UNOP(nir_op_fcos, GLSLstd450Cos)
+   BUILTIN_UNOP(nir_op_ufind_msb, GLSLstd450FindUMsb)
 #undef BUILTIN_UNOP
 
    case nir_op_frcp:
@@ -1512,6 +1513,16 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
                                                       src, num_inputs);
    }
    break;
+
+   case nir_op_ubitfield_extract:
+      assert(nir_op_infos[alu->op].num_inputs == 3);
+      result = emit_triop(ctx, SpvOpBitFieldUExtract, dest_type, src[0], src[1], src[2]);
+      break;
+
+   case nir_op_bitfield_insert:
+      assert(nir_op_infos[alu->op].num_inputs == 4);
+      result = spirv_builder_emit_quadop(&ctx->builder, SpvOpBitFieldInsert, dest_type, src[0], src[1], src[2], src[3]);
+      break;
 
    default:
       fprintf(stderr, "emit_alu: not implemented (%s)\n",
