@@ -546,8 +546,6 @@ iris_hiz_exec(struct iris_context *ice,
                                 PIPE_CONTROL_DEPTH_STALL |
                                 PIPE_CONTROL_CS_STALL);
 
-   assert(isl_aux_usage_has_hiz(res->aux.usage) && res->aux.bo);
-
    iris_batch_sync_region_start(batch);
 
    struct blorp_surf surf;
