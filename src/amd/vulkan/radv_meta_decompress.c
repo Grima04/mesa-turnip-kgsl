@@ -508,6 +508,11 @@ static void radv_process_depth_stencil(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	for (uint32_t l = 0; l < radv_get_levelCount(image, subresourceRange); ++l) {
+
+		/* Do not decompress levels without HTILE. */
+		if (!radv_htile_enabled(image, subresourceRange->baseMipLevel + l))
+			continue;
+
 		uint32_t width =
 			radv_minify(image->info.width,
 				    subresourceRange->baseMipLevel + l);
