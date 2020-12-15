@@ -39,6 +39,7 @@
 #include "util/u_memory.h"
 #include "util/u_screen.h"
 #include "util/u_string.h"
+#include "util/u_transfer_helper.h"
 
 #include "frontend/sw_winsys.h"
 
@@ -678,6 +679,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (VK_NULL_HANDLE != screen->debugUtilsCallbackHandle) {
       screen->vk_DestroyDebugUtilsMessengerEXT(screen->instance, screen->debugUtilsCallbackHandle, NULL);
    }
+
+   u_transfer_helper_destroy(pscreen->transfer_helper);
 
    slab_destroy_parent(&screen->transfer_pool);
    FREE(screen);
