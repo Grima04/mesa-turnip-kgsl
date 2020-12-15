@@ -124,7 +124,7 @@ static inline bool list_is_linked(const struct list_head *list)
  */
 static inline bool list_is_singular(const struct list_head *list)
 {
-   return list_is_linked(list) && list->next != list && list->next->next == list;
+   return list_is_linked(list) && !list_is_empty(list) && list->next->next == list;
 }
 
 static inline unsigned list_length(const struct list_head *list)
