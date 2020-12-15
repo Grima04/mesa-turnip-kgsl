@@ -102,7 +102,7 @@ struct PhysRegIterator {
 
    PhysReg reg;
 
-   unsigned operator*() const {
+   PhysReg operator*() const {
       return reg;
    }
 
@@ -240,11 +240,11 @@ public:
    std::array<uint32_t, 512> regs;
    std::map<uint32_t, std::array<uint32_t, 4>> subdword_regs;
 
-   const uint32_t& operator [] (unsigned index) const {
+   const uint32_t& operator [] (PhysReg index) const {
       return regs[index];
    }
 
-   uint32_t& operator [] (unsigned index) {
+   uint32_t& operator [] (PhysReg index) {
       return regs[index];
    }
 
@@ -751,7 +751,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
          return res;
    }
 
-   auto is_free = [&](unsigned reg_index) { return reg_file[reg_index] == 0 && !ctx.war_hint[reg_index]; };
+   auto is_free = [&](PhysReg reg_index) { return reg_file[reg_index] == 0 && !ctx.war_hint[reg_index]; };
 
    if (stride == 1) {
       /* best fit algorithm: find the smallest gap to fit in the variable */
@@ -773,7 +773,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
             next_nonfree_it = bounds.end();
          }
 
-         PhysRegInterval gap = PhysRegInterval::from_until(PhysReg{*reg_it}, PhysReg{*next_nonfree_it});
+         PhysRegInterval gap = PhysRegInterval::from_until(*reg_it, *next_nonfree_it);
 
          /* early return on exact matches */
          if (size == gap.size) {
@@ -822,8 +822,8 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
     * larger instruction encodings or copies
     * TODO: don't do this in situations where it doesn't benefit */
    if (rc.is_subdword()) {
-      for (std::pair<uint32_t, std::array<uint32_t, 4>> entry : reg_file.subdword_regs) {
-         assert(reg_file[entry.first] == 0xF0000000);
+      for (std::pair<const uint32_t, std::array<uint32_t, 4>>& entry : reg_file.subdword_regs) {
+         assert(reg_file[PhysReg{entry.first}] == 0xF0000000);
          if (!bounds.contains(PhysReg{entry.first}))
             continue;
 
@@ -834,7 +834,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 
             /* check if also the neighboring reg is free if needed */
             if (reg_found && i + rc.bytes() > 4)
-                reg_found = (reg_file[entry.first + 1] == 0);
+                reg_found = (reg_file[PhysReg{entry.first + 1}] == 0);
 
             if (reg_found) {
                PhysReg res{entry.first};
@@ -854,8 +854,8 @@ std::set<std::pair<unsigned, unsigned>> collect_vars(ra_ctx& ctx, RegisterFile& 
                                                      PhysReg reg, unsigned size)
 {
    std::set<std::pair<unsigned, unsigned>> vars;
-   for (unsigned j = reg; j < reg + size; j++) {
-      if (reg_file.is_blocked(PhysReg{j}))
+   for (PhysReg j : PhysRegInterval { reg, size }) {
+      if (reg_file.is_blocked(j))
          continue;
       if (reg_file[j] == 0xF0000000) {
          for (unsigned k = 0; k < 4; k++) {
@@ -964,11 +964,11 @@ bool get_regs_for_copies(ra_ctx& ctx,
          unsigned n = 0;
          unsigned last_var = 0;
          bool found = true;
-         for (const unsigned j : reg_win) {
+         for (PhysReg j : reg_win) {
             if (reg_file[j] == 0 || reg_file[j] == last_var)
                continue;
 
-            if (reg_file.is_blocked(PhysReg{j}) || k > num_moves) {
+            if (reg_file.is_blocked(j) || k > num_moves) {
                found = false;
                break;
             }
@@ -1103,7 +1103,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       unsigned last_var = 0;
       bool found = true;
       bool aligned = rc == RegClass::v4 && reg_win.lo() % 4 == 0;
-      for (const unsigned j : reg_win) {
+      for (const PhysReg j : reg_win) {
          /* dead operands effectively reduce the number of estimated moves */
          if (is_killed_operand[j & 0xFF]) {
             if (remaining_op_moves) {
@@ -1402,7 +1402,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
       /* count variables to be moved and check war_hint */
       bool war_hint = false;
       bool linear_vgpr = false;
-      for (unsigned j : reg_win) {
+      for (PhysReg j : reg_win) {
          if (linear_vgpr) {
             break;
          }
@@ -1411,7 +1411,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
             if (reg_file[j] == 0xF0000000) {
                PhysReg reg;
                reg.reg_b = j * 4;
-               unsigned bytes_left = bytes - (j - reg_win.lo()) * 4;
+               unsigned bytes_left = bytes - ((unsigned)j - reg_win.lo()) * 4;
                for (unsigned byte_idx = 0; byte_idx < MIN2(bytes_left, 4); byte_idx++, reg.reg_b++)
                   k += reg_file.test(reg, 1);
             } else {
@@ -1535,15 +1535,15 @@ void handle_pseudo(ra_ctx& ctx,
       return;
 
    Pseudo_instruction *pi = (Pseudo_instruction *)instr;
-   if (reg_file[scc.reg()]) {
+   if (reg_file[scc]) {
       pi->tmp_in_scc = true;
 
       int reg = ctx.max_used_sgpr;
-      for (; reg >= 0 && reg_file[reg]; reg--)
+      for (; reg >= 0 && reg_file[PhysReg{(unsigned)reg}]; reg--)
          ;
       if (reg < 0) {
          reg = ctx.max_used_sgpr + 1;
-         for (; reg < ctx.program->max_reg_demand.sgpr && reg_file[reg]; reg++)
+         for (; reg < ctx.program->max_reg_demand.sgpr && reg_file[PhysReg{(unsigned)reg}]; reg++)
             ;
          if (reg == ctx.program->max_reg_demand.sgpr) {
             assert(reads_subdword && reg_file[m0] == 0);
@@ -1605,9 +1605,9 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
       assert(operand.physReg() != ctx.assignments[operand.tempId()].reg);
 
       /* check if target reg is blocked, and move away the blocking var */
-      if (register_file[operand.physReg().reg()]) {
+      if (register_file[operand.physReg()]) {
          assert(register_file[operand.physReg()] != 0xF0000000);
-         uint32_t blocking_id = register_file[operand.physReg().reg()];
+         uint32_t blocking_id = register_file[operand.physReg()];
          RegClass rc = ctx.assignments[blocking_id].rc;
          Operand pc_op = Operand(Temp{blocking_id, rc});
          pc_op.setFixed(operand.physReg());
@@ -2059,8 +2059,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
 
       /* fill in sgpr_live_in */
       for (unsigned i = 0; i <= ctx.max_used_sgpr; i++)
-         sgpr_live_in[block.index][i] = register_file[i];
-      sgpr_live_in[block.index][127] = register_file[scc.reg()];
+         sgpr_live_in[block.index][i] = register_file[PhysReg{i}];
+      sgpr_live_in[block.index][127] = register_file[scc];
 
       /* Handle all other instructions of the block */
       for (; instr_it != block.instructions.end(); ++instr_it) {
@@ -2255,7 +2255,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                continue;
 
             /* find free reg */
-            if (definition->hasHint() && register_file[definition->physReg().reg()] == 0)
+            if (definition->hasHint() && register_file[definition->physReg()] == 0)
                definition->setFixed(definition->physReg());
             else if (instr->opcode == aco_opcode::p_split_vector) {
                PhysReg reg = instr->operands[0].physReg();
@@ -2325,7 +2325,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
          if (!parallelcopy.empty()) {
             aco_ptr<Pseudo_instruction> pc;
             pc.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, parallelcopy.size(), parallelcopy.size()));
-            bool temp_in_scc = register_file[scc.reg()];
+            bool temp_in_scc = register_file[scc];
             bool sgpr_operands_alias_defs = false;
             uint64_t sgpr_operands[4] = {0, 0, 0, 0};
             for (unsigned i = 0; i < parallelcopy.size(); i++) {
