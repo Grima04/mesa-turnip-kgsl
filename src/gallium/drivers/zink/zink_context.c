@@ -70,12 +70,18 @@ zink_context_destroy(struct pipe_context *pctx)
       util_dynarray_fini(&ctx->batches[i].zombie_samplers);
       vkDestroyDescriptorPool(screen->dev, ctx->batches[i].descpool, NULL);
       vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->batches[i].cmdbuf);
+
+      _mesa_set_destroy(ctx->batches[i].resources, NULL);
+      _mesa_set_destroy(ctx->batches[i].sampler_views, NULL);
+      _mesa_set_destroy(ctx->batches[i].programs, NULL);
    }
    vkDestroyCommandPool(screen->dev, ctx->cmdpool, NULL);
 
    util_primconvert_destroy(ctx->primconvert);
    u_upload_destroy(pctx->stream_uploader);
    slab_destroy_child(&ctx->transfer_pool);
+   _mesa_hash_table_destroy(ctx->program_cache, NULL);
+   _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
    FREE(ctx);
 }
 
