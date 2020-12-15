@@ -68,6 +68,7 @@ static const struct test {
 	INSTR_6XX(20510005_0000ffff, "mov.s16s16 hr1.y, -1"),
 	INSTR_6XX(20400005_00003900, "mov.f16f16 hr1.y, h(0.625000)"),
 	INSTR_6XX(20400006_00003800, "mov.f16f16 hr1.z, h(0.500000)"),
+	INSTR_6XX(204880f5_00000000, "mova1 a1.x, 0"),
 
 	/* cat2 */
 	INSTR_6XX(40104002_0c210001, "add.f hr0.z, r0.y, c<a0.x + 33>"),

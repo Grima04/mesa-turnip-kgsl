@@ -450,9 +450,12 @@ static void print_instr_cat1(struct disasm_ctx *ctx, instr_t *instr)
 	switch (_OPC(1, cat1->opc)) {
 	case OPC_MOV:
 		if (cat1->src_type == cat1->dst_type) {
-			if ((cat1->src_type == TYPE_S16) && (((reg_t)cat1->dst).num == REG_A0)) {
+			reg_t dst = (reg_t)cat1->dst;
+			if ((cat1->src_type == TYPE_S16) && (dst.num == REG_A0) && (dst.comp == 0)) {
 				/* special case (nmemonic?): */
 				fprintf(ctx->out, "mova");
+			} else if ((cat1->src_type == TYPE_U16) && (dst.num == REG_A0) && (dst.comp == 1)) {
+				fprintf(ctx->out, "mova1");
 			} else {
 				fprintf(ctx->out, "mov.%s%s", type[cat1->src_type], type[cat1->dst_type]);
 			}
@@ -481,7 +484,11 @@ static void print_instr_cat1(struct disasm_ctx *ctx, instr_t *instr)
 				} else {
 					fprintf(ctx->out, "(%f)", cat1->fim_val);
 				}
-			} else if (type_uint(cat1->src_type)) {
+			} else if (type_uint(cat1->src_type) && (cat1->uim_val > 0x1000)) {
+				/* Print large uint as hex, which differs from blob, but ir3
+				 * will generate mov.u32u32 for floats sometimes, and this is
+				 * easier to see in hex than dec
+				 */
 				fprintf(ctx->out, "0x%08x", cat1->uim_val);
 			} else {
 				if ((type_size(cat1->src_type) < 32) && (cat1->uim_val & 0x8000)) {
