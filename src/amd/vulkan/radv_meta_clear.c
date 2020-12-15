@@ -699,7 +699,8 @@ static bool depth_view_can_fast_clear(struct radv_cmd_buffer *cmd_buffer,
 	      clear_value.depth != 1.0) ||
 	     ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) && clear_value.stencil != 0)))
 		return false;
-	if (iview->base_mip == 0 &&
+	if (radv_htile_enabled(iview->image, iview->base_mip) &&
+	    iview->base_mip == 0 &&
 	    iview->base_layer == 0 &&
 	    iview->layer_count == iview->image->info.array_size &&
 	    radv_layout_is_htile_compressed(cmd_buffer->device, iview->image, layout, in_render_loop, queue_mask) &&

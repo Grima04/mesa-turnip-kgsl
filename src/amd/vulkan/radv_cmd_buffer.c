@@ -2058,7 +2058,7 @@ radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 	};
 	struct radv_image *image = iview->image;
 
-	assert(radv_image_has_htile(image));
+	assert(radv_htile_enabled(image, range.baseMipLevel));
 
 	radv_set_ds_clear_metadata(cmd_buffer, iview->image, &range,
 				   ds_clear_value, aspects);
@@ -6156,7 +6156,7 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 {
 	struct radv_device *device = cmd_buffer->device;
 
-	if (!radv_image_has_htile(image))
+	if (!radv_htile_enabled(image, range->baseMipLevel))
 		return;
 
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
