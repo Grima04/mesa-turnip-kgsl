@@ -625,6 +625,9 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
    if (!winsys)
      return;
 
+   if (pctx)
+      d3d12_flush_cmdlist_and_wait(d3d12_context(pctx));
+
    assert(res->dt);
    void *map = winsys->displaytarget_map(winsys, res->dt, 0);
 
