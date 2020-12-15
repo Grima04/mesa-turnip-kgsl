@@ -1098,6 +1098,8 @@ void anv_GetImageMemoryRequirements2(
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_image, image, pInfo->image);
 
+   const VkImagePlaneMemoryRequirementsInfo *plane_reqs = NULL;
+
    /* The Vulkan spec (git aaed022) says:
     *
     *    memoryTypeBits is a bitfield and contains one bit set for every
@@ -1109,36 +1111,20 @@ void anv_GetImageMemoryRequirements2(
     */
    uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
 
-   pMemoryRequirements->memoryRequirements.size = image->size;
-   pMemoryRequirements->memoryRequirements.alignment = image->alignment;
-   pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
-
    vk_foreach_struct_const(ext, pInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
-         const VkImagePlaneMemoryRequirementsInfo *plane_reqs =
-            (const VkImagePlaneMemoryRequirementsInfo *) ext;
+         assert(image->disjoint);
+         plane_reqs = (const VkImagePlaneMemoryRequirementsInfo *) ext;
          uint32_t plane = anv_image_aspect_to_plane(image->aspects,
                                                     plane_reqs->planeAspect);
 
          assert(image->planes[plane].offset == 0);
 
-         /* The Vulkan spec (git aaed022) says:
-          *
-          *    memoryTypeBits is a bitfield and contains one bit set for every
-          *    supported memory type for the resource. The bit `1<<i` is set
-          *    if and only if the memory type `i` in the
-          *    VkPhysicalDeviceMemoryProperties structure for the physical
-          *    device is supported.
-          *
-          * All types are currently supported for images.
-          */
-         pMemoryRequirements->memoryRequirements.memoryTypeBits =
-               (1ull << device->physical->memory.type_count) - 1;
-
          pMemoryRequirements->memoryRequirements.size = image->planes[plane].size;
          pMemoryRequirements->memoryRequirements.alignment =
             image->planes[plane].alignment;
+         pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
          break;
       }
 
@@ -1171,6 +1157,24 @@ void anv_GetImageMemoryRequirements2(
          anv_debug_ignored_stype(ext->sType);
          break;
       }
+   }
+
+   /* If the image is disjoint, then we must return the memory requirements for
+    * the single plane specified in VkImagePlaneMemoryRequirementsInfo. If
+    * non-disjoint, then exactly one set of memory requirements exists for the
+    * whole image.
+    *
+    * This is enforced by the Valid Usage for VkImageMemoryRequirementsInfo2,
+    * which requires that the app provide VkImagePlaneMemoryRequirementsInfo if
+    * and only if the image is disjoint (that is, multi-planar format and
+    * VK_IMAGE_CREATE_DISJOINT_BIT).
+    */
+   assert(image->disjoint == (plane_reqs != NULL));
+
+   if (!image->disjoint) {
+      pMemoryRequirements->memoryRequirements.size = image->size;
+      pMemoryRequirements->memoryRequirements.alignment = image->alignment;
+      pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
    }
 }
 
