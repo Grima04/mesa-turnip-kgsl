@@ -54,6 +54,13 @@ static const struct test {
 	INSTR_6XX(03820000_00000015, "shps #21"), /* emit */
 	INSTR_6XX(04021000_00000000, "(ss)shpe"), /* cut */
 	INSTR_6XX(02820000_00000014, "getone #20"), /* kill p0.x */
+	INSTR_6XX(00906020_00000007, "brao !p0.x, !p0.y, #7"),
+	INSTR_6XX(00804040_00000003, "braa p0.x, p0.y, #3"),
+	INSTR_6XX(07820000_00000000, "prede"),
+	INSTR_6XX(00800063_0000001e, "brac.3 #30"),
+	INSTR_6XX(06820000_00000000, "predt p0.x"),
+	INSTR_6XX(07020000_00000000, "predf p0.x"),
+	INSTR_6XX(07820000_00000000, "prede"),
 
 	/* cat1 */
 	INSTR_6XX(20244000_00000020, "mov.f32f32 r0.x, c8.x"),
@@ -62,6 +69,9 @@ static const struct test {
 	INSTR_6XX(20156004_00000c11, "(ul)mov.s32s32 r1.x, c<a0.x + 17>"),
 	INSTR_6XX(201100f4_00000000, "mova a0.x, hr0.x"),
 	INSTR_6XX(20244905_00000410, "(rpt1)mov.f32f32 r1.y, (r)c260.x"),
+	INSTR_6XX(20174004_00000008, "mov.s32s32 r<a0.x + 4>, r2.x"),
+	INSTR_6XX(20130000_00000005, "mov.s16s16 hr<a0.x>, hr1.y"),
+	INSTR_6XX(20110004_00000800, "mov.s16s16 hr1.x, hr<a0.x>"),
 	/* dEQP-VK.subgroups.ballot.compute.compute */
 	INSTR_6XX(260cc3c0_00000000, "movmsk.w128 r48.x"), /* movmsk.w128 sr48.x */
 
@@ -77,6 +87,14 @@ static const struct test {
 	INSTR_6XX(43480801_00008001, "(nop3) absneg.s hr0.y, (abs)hr0.y"),
 	INSTR_6XX(50600004_2c010004, "(sy)mul.f hr1.x, hr1.x, h(0.5)"),
 	INSTR_6XX(42280807_27ff0000, "(nop3) add.s hr1.w, hr0.x, h(-1)"),
+	INSTR_6XX(40a500f8_2c000004, "cmps.f.ne p0.x, hr1.x, h(0.0)"),
+	INSTR_6XX(438000f8_20010009, "and.b p0.x, hr2.y, h(1)"),
+	INSTR_6XX(438000f9_00020001, "and.b p0.y, hr0.y, hr0.z"),
+	INSTR_6XX(40080902_50200006, "(rpt1)add.f hr0.z, (r)hr1.z, (neg)(r)hc8.x"),
+	INSTR_6XX(42380c01_00040001, "(sat)(nop3) add.s r0.y, r0.y, r1.x"),
+	INSTR_6XX(42480000_48801086, "(nop2) sub.u hr0.x, hc33.z, (neg)hr<a0.x + 128>"),
+	INSTR_6XX(46b00001_00001020, "clz.b r0.y, c8.x"),
+	INSTR_6XX(46700009_00000009, "bfrev.b r2.y, r2.y"),
 
 	/* cat3 */
 	INSTR_6XX(66000000_10421041, "sel.f16 hr0.x, hc16.y, hr0.x, hc16.z"),
@@ -85,6 +103,7 @@ static const struct test {
 	INSTR_6XX(64818902_20041032, "(rpt1)sel.b32 r0.z, (r)c12.z, r0.w, (r)r1.x"),
 	INSTR_6XX(63820005_10315030, "mad.f32 r1.y, (neg)c12.x, r1.x, c12.y"),
 	INSTR_6XX(62050009_00091000, "mad.u24 r2.y, c0.x, r2.z, r2.y"),
+	INSTR_6XX(61828008_00081033, "madsh.m16 r2.x, c12.w, r1.y, r2.x"),
 
 	/* cat4 */
 	INSTR_6XX(8010000a_00000003, "rcp r2.z, r0.w"),
@@ -99,6 +118,14 @@ static const struct test {
 	INSTR_6XX(a6201105_00000001, "dsxpp.1.p (x)r1.y, r0.x"), /* dsxpp.1 (xOOO)r1.y, r0.x */
 
 	INSTR_6XX(a2802f00_00000001, "getsize (u16)(xyzw)hr0.x, r0.x, t#0"),
+	INSTR_6XX(a0c89f04_c4600005, "sam.base1 (f32)(xyzw)r1.x, r0.z, s#3, t#2"),  /* sam.s2en.mode6.base1 (f32)(xyzw)r1.x, r0.z, 35 */
+	INSTR_6XX(a1c85f00_c0200005, "getlod.base0 (s32)(xyzw)r0.x, r0.z, s#1, t#0"),  /* getlod.s2en.mode6.base0 (s32)(xyzw)r0.x, r0.z, 1 */
+	INSTR_6XX(a1000f00_00000004, "samb (f16)(xyzw)hr0.x, hr0.z, hr0.x, s#0, t#0"),
+	INSTR_6XX(a1000f00_00000003, "samb (f16)(xyzw)hr0.x, r0.y, r0.x, s#0, t#0"),
+	INSTR_6XX(a0c00f00_04400002, "sam (f16)(xyzw)hr0.x, hr0.y, s#2, t#2"),
+	INSTR_6XX(a6c02f00_00000000, "rgetinfo (u16)(xyzw)hr0.x"),
+	INSTR_6XX(a3482f08_c0000000, "getinfo.base0 (u16)(xyzw)hr2.x, t#0"),
+
 
 	/* cat6 */
 
@@ -130,9 +157,10 @@ static const struct test {
 	INSTR_6XX(c1060500_01800008, "stl.u32 l[r0.z], r1.x, 1"),
 	INSTR_6XX(c0460001_01804001, "ldl.u32 r0.y, l[r0.y], 1"),
 
-	INSTR_6XX(c0b00000_3e800000, "ldp.f16 0, p[r0.x], 62"),
-	INSTR_6XX(c0700000_bfa00000, "ldl.f16 0, l[r0.x], 191"),
-	INSTR_6XX(c1100000_c0a00000, "stl.f16 l[0], hr0.x, 192"),
+	INSTR_6XX(c0860018_03820001, "ldp.u32 r6.x, p[r2.x], 3"),
+	INSTR_6XX(c0420002_01808019, "ldl.f32 r0.z, l[r0.z+12], 1"),
+	INSTR_6XX(c1021710_04800000, "stl.f32 l[r2.w+16], r0.x, 4"),
+	INSTR_6XX(d7c60011_03c00000, "(sy)ldlv.u32 r4.y, l[0], 3"),
 
 	/* resinfo */
 	INSTR_6XX(c0260000_0063c200, "resinfo.untyped.2d.u32.1.imm r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
@@ -198,6 +226,16 @@ static const struct test {
 	INSTR_6XX(c0860008_01860001, "ldp.u32 r2.x, p[r6.x], 1"),
 	/* Custom stp based on above to catch a disasm bug. */
 	INSTR_6XX(c1465b00_0180022a, "stp.u32 p[r11.y+256], r5.y, 1"),
+
+	/* Atomic: */
+	INSTR_5XX(c4d60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
+	INSTR_5XX(c4160205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
+	INSTR_6XX(d5c60003_03008001, "(sy)atomic.max.untyped.1d.u32.1.l r0.w, l[r0.z], r0.w"),
+
+	/* Bindless atomic: */
+	INSTR_6XX(c03a0003_01640001, "atomic.add.b.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.add.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
+	INSTR_6XX(c03a0003_01660001, "atomic.and.b.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.and.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
+	INSTR_6XX(c0360000_0365c801, "atomic.max.b.typed.1d.u32.1.imm r0.x, r0.w, 0"),   /* atomic.b.max.g.u32.1d.mode0.base0 r0.x,r0.w,0 */
 
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.fragment.sampler2d */
 	INSTR_6XX(a0c01f04_0cc00005, "sam (f32)(xyzw)r1.x, r0.z, s#6, t#6"),
