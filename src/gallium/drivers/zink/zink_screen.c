@@ -682,6 +682,9 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
 
+   vkDestroyDevice(screen->dev, NULL);
+   vkDestroyInstance(screen->instance, NULL);
+
    slab_destroy_parent(&screen->transfer_pool);
    FREE(screen);
 }
