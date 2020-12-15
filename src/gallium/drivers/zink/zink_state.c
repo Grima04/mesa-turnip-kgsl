@@ -106,6 +106,7 @@ static void
 zink_delete_vertex_elements_state(struct pipe_context *pctx,
                                   void *ves)
 {
+   FREE(ves);
 }
 
 static VkBlendFactor
