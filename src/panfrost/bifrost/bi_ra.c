@@ -49,7 +49,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
 
                                 for (unsigned i = 1; i < l->node_count; ++i) {
                                         if (live[i])
-                                                lcra_add_node_interference(l, bi_get_node(ins->dest[d]), bi_writemask_new(ins), i, live[i]);
+                                                lcra_add_node_interference(l, bi_get_node(ins->dest[d]), bi_writemask(ins), i, live[i]);
                                 }
                         }
 
@@ -214,7 +214,7 @@ bi_spill_dest(bi_builder *b, bi_index index, uint32_t offset,
         ins->dest[0] = bi_temp(b->shader);
         ins->no_spill = true;
 
-        unsigned newc = util_last_bit(bi_writemask_new(ins)) >> 2;
+        unsigned newc = util_last_bit(bi_writemask(ins)) >> 2;
         *channels = MAX2(*channels, newc);
 
         b->cursor = bi_after_instr(ins);

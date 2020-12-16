@@ -1061,19 +1061,9 @@ pan_next_block(pan_block *block)
 
 /* BIR manipulation */
 
-bool bi_has_clamp(bi_instruction *ins);
-bool bi_has_source_mods(bi_instruction *ins);
-bool bi_is_src_swizzled(bi_instruction *ins, unsigned s);
 bool bi_has_arg(bi_instr *ins, bi_index arg);
-uint16_t bi_from_bytemask(uint16_t bytemask, unsigned bytes);
-unsigned bi_get_component_count(bi_instruction *ins, signed s);
-uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
-uint64_t bi_get_immediate(bi_instruction *ins, unsigned index);
-bool bi_writes_component(bi_instruction *ins, unsigned comp);
-unsigned bi_writemask(bi_instruction *ins);
-uint16_t bi_bytemask_of_read_components_new(bi_instr *ins, bi_index node);
-unsigned bi_writemask_new(bi_instr *ins);
-void bi_rewrite_uses(bi_context *ctx, unsigned old, unsigned oldc, unsigned new, unsigned newc);
+uint16_t bi_bytemask_of_read_components(bi_instr *ins, bi_index node);
+unsigned bi_writemask(bi_instr *ins);
 
 void bi_print_instr(bi_instr *I, FILE *fp);
 void bi_print_slots(bi_registers *regs, FILE *fp);
