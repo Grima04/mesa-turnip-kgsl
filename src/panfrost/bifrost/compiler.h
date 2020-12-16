@@ -87,9 +87,6 @@ enum bi_class {
         BI_NUM_CLASSES
 };
 
-/* Properties of a class... */
-extern unsigned bi_class_props[BI_NUM_CLASSES];
-
 /* abs/neg/clamp valid for a float op */
 #define BI_MODS (1 << 0)
 
