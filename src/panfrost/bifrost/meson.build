@@ -22,7 +22,6 @@
 libpanfrost_bifrost_files = files(
   'bi_layout.c',
   'bi_liveness.c',
-  'bi_lower_combine.c',
   'bi_print.c',
   'bi_opt_dce.c',
   'bi_pack.c',

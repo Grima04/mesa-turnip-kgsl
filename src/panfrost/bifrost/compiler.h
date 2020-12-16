@@ -1085,7 +1085,6 @@ void bi_print_instr(bi_instr *I, FILE *fp);
 
 /* BIR passes */
 
-void bi_lower_combine(bi_context *ctx, bi_block *block);
 bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block);
 void bi_schedule(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
