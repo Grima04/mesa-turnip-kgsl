@@ -177,26 +177,26 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                 rt->rgb.row_stride = row_stride;
                 rt->rgb.surface_stride = layer_stride;
         } else if (drm_is_afbc(rsrc->layout.modifier)) {
-                if (version >= 7)
-                        rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_AFBC;
-                else
-                        rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
+                const struct panfrost_slice *slice = &rsrc->layout.slices[level];
 
-                unsigned header_size = rsrc->layout.slices[level].afbc.header_size;
+                if (version >= 7) {
+                        rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_AFBC;
+                        rt->afbc.row_stride = slice->afbc.row_stride /
+                                              AFBC_HEADER_BYTES_PER_TILE;
+                        rt->bifrost_afbc.afbc_wide_block_enable =
+                                panfrost_block_dim(rsrc->layout.modifier, true, 0) > 16;
+                } else {
+                        rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
+                        rt->afbc.chunk_size = 9;
+                        rt->midgard_afbc.sparse = true;
+                        rt->afbc.body_size = slice->afbc.body_size;
+                }
 
                 rt->afbc.header = base;
-                rt->afbc.chunk_size = 9;
-                rt->afbc.body = base + header_size;
-
-                if (!(dev->quirks & IS_BIFROST))
-                        rt->midgard_afbc.sparse = true;
+                rt->afbc.body = base + slice->afbc.header_size;
 
                 if (rsrc->layout.modifier & AFBC_FORMAT_MOD_YTR)
                         rt->afbc.yuv_transform_enable = true;
-
-                /* TODO: The blob sets this to something nonzero, but it's not
-                 * clear what/how to calculate/if it matters */
-                rt->afbc.body_size = 0;
         } else {
                 unreachable("Invalid mod");
         }
@@ -299,17 +299,21 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 ext->zs_msaa_v7 = nr_samples > 1 ? MALI_MSAA_LAYERED : MALI_MSAA_SINGLE;
 
         if (drm_is_afbc(rsrc->layout.modifier)) {
-                unsigned header_size = rsrc->layout.slices[level].afbc.header_size;
-                ext->zs_afbc_header = base;
-                ext->zs_afbc_body = base + header_size;
-                ext->zs_afbc_body_size = 0x1000;
-                ext->zs_afbc_chunk_size = 9;
-                ext->zs_afbc_sparse = true;
+                struct panfrost_slice *slice = &rsrc->layout.slices[level];
 
-                if (version >= 7)
+                ext->zs_afbc_header = base;
+                ext->zs_afbc_body = base + slice->afbc.header_size;
+
+                if (version >= 7) {
                         ext->zs_block_format_v7 = MALI_BLOCK_FORMAT_V7_AFBC;
-                else
+                        ext->zs_afbc_row_stride = slice->afbc.row_stride /
+                                                  AFBC_HEADER_BYTES_PER_TILE;
+		} else {
                         ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
+                        ext->zs_afbc_body_size = 0x1000;
+                        ext->zs_afbc_chunk_size = 9;
+                        ext->zs_afbc_sparse = true;
+                }
         } else {
                 assert(rsrc->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED ||
                        rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR);
