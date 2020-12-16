@@ -1059,12 +1059,6 @@ pan_next_block(pan_block *block)
         return list_first_entry(&(block->link), pan_block, link);
 }
 
-/* Special functions */
-
-void bi_emit_fexp2(bi_context *ctx, nir_alu_instr *instr);
-void bi_emit_flog2(bi_context *ctx, nir_alu_instr *instr);
-void bi_emit_deriv(bi_context *ctx, nir_alu_instr *instr);
-
 /* BIR manipulation */
 
 bool bi_has_clamp(bi_instruction *ins);
