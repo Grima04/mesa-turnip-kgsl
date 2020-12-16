@@ -1052,12 +1052,12 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 		*pre_flush |= cmd_buffer->state.flush_bits;
 	}
 
-	struct VkImageSubresourceRange range = {
+	VkImageSubresourceRange range = {
 		.aspectMask = aspects,
-		.baseMipLevel = 0,
-		.levelCount = VK_REMAINING_MIP_LEVELS,
-		.baseArrayLayer = 0,
-		.layerCount = VK_REMAINING_ARRAY_LAYERS,
+		.baseMipLevel = iview->base_mip,
+		.levelCount = iview->level_count,
+		.baseArrayLayer = iview->base_layer,
+		.layerCount = iview->layer_count,
 	};
 
 	flush_bits = radv_clear_htile(cmd_buffer, iview->image, &range, clear_word);
