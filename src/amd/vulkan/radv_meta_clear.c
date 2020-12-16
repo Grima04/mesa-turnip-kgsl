@@ -1455,22 +1455,51 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer,
 		 const VkImageSubresourceRange *range,
 		 uint32_t value)
 {
-	unsigned layer_count = radv_get_layerCount(image, range);
-	uint64_t size = image->planes[0].surface.htile_slice_size * layer_count;
-	uint64_t offset = image->offset + image->planes[0].surface.htile_offset +
-	                  image->planes[0].surface.htile_slice_size * range->baseArrayLayer;
-	uint32_t htile_mask, flush_bits;
+	uint32_t level_count = radv_get_levelCount(image, range);
+	uint32_t flush_bits = 0;
+	uint32_t htile_mask;
 
 	htile_mask = radv_get_htile_mask(cmd_buffer->device, image, range->aspectMask);
 
-	if (htile_mask == UINT_MAX) {
-		/* Clear the whole HTILE buffer. */
-		flush_bits = radv_fill_buffer(cmd_buffer, image, image->bo, offset,
-					      size, value);
+	if (level_count != image->info.levels) {
+		assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10);
+
+		/* Clear individuals levels separately. */
+		for (uint32_t l = 0; l < level_count; l++) {
+			uint32_t level = range->baseMipLevel + l;
+			uint64_t offset = image->offset + image->planes[0].surface.htile_offset +
+					  image->planes[0].surface.u.gfx9.htile_levels[level].offset;
+			uint32_t size = image->planes[0].surface.u.gfx9.htile_levels[level].size;
+
+			/* Do not clear this level if it can be compressed. */
+			if (!size)
+				continue;
+
+			if (htile_mask == UINT_MAX) {
+				/* Clear the whole HTILE buffer. */
+				flush_bits = radv_fill_buffer(cmd_buffer, image, image->bo, offset,
+							      size, value);
+			} else {
+				/* Only clear depth or stencil bytes in the HTILE buffer. */
+				flush_bits = clear_htile_mask(cmd_buffer, image, image->bo, offset,
+							      size, value, htile_mask);
+			}
+		}
 	} else {
-		/* Only clear depth or stencil bytes in the HTILE buffer. */
-		flush_bits = clear_htile_mask(cmd_buffer, image, image->bo, offset,
-					      size, value, htile_mask);
+		unsigned layer_count = radv_get_layerCount(image, range);
+		uint64_t size = image->planes[0].surface.htile_slice_size * layer_count;
+		uint64_t offset = image->offset + image->planes[0].surface.htile_offset +
+		                  image->planes[0].surface.htile_slice_size * range->baseArrayLayer;
+
+		if (htile_mask == UINT_MAX) {
+			/* Clear the whole HTILE buffer. */
+			flush_bits = radv_fill_buffer(cmd_buffer, image, image->bo, offset,
+						      size, value);
+		} else {
+			/* Only clear depth or stencil bytes in the HTILE buffer. */
+			flush_bits = clear_htile_mask(cmd_buffer, image, image->bo, offset,
+						      size, value, htile_mask);
+		}
 	}
 
 	return flush_bits;
