@@ -625,7 +625,7 @@ typedef struct nir_variable {
     * Constant expression assigned in the initializer of the variable
     *
     * This field should only be used temporarily by creators of NIR shaders
-    * and then lower_constant_initializers can be used to get rid of them.
+    * and then nir_lower_variable_initializers can be used to get rid of them.
     * Most of the rest of NIR ignores this field or asserts that it's NULL.
     */
    nir_constant *constant_initializer;
@@ -633,7 +633,7 @@ typedef struct nir_variable {
    /**
     * Global variable assigned in the initializer of the variable
     * This field should only be used temporarily by creators of NIR shaders
-    * and then lower_constant_initializers can be used to get rid of them.
+    * and then nir_lower_variable_initializers can be used to get rid of them.
     * Most of the rest of NIR ignores this field or asserts that it's NULL.
     */
    struct nir_variable *pointer_initializer;
