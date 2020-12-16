@@ -1646,6 +1646,12 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 emit_image_op(ctx, instr, false);
                 break;
 
+        case nir_intrinsic_image_size: {
+                unsigned nr_comp = nir_intrinsic_dest_components(instr);
+                emit_sysval_read(ctx, &instr->instr, nr_comp, 0);
+                break;
+        }
+
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_global:
