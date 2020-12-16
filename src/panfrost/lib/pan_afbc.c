@@ -68,7 +68,6 @@
 
 #define AFBC_TILE_WIDTH 16
 #define AFBC_TILE_HEIGHT 16
-#define AFBC_HEADER_BYTES_PER_TILE 16
 #define AFBC_CACHE_ALIGN 64
 
 /* Is it possible to AFBC compress a particular format? Common formats (and

@@ -128,8 +128,19 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         }
 
         if (drm_is_afbc(whandle->modifier)) {
+                unsigned tile_w =
+                        panfrost_block_dim(whandle->modifier, true, 0);
+                unsigned tile_h =
+                        panfrost_block_dim(whandle->modifier, false, 0);
+
+                rsc->layout.slices[0].afbc.body_size =
+                        rsc->layout.slices[0].row_stride *
+                        DIV_ROUND_UP(templat->height0, tile_h);
                 rsc->layout.slices[0].afbc.header_size =
                         panfrost_afbc_header_size(templat->width0, templat->height0);
+                rsc->layout.slices[0].afbc.row_stride =
+                        DIV_ROUND_UP(templat->width0, tile_w) *
+                        AFBC_HEADER_BYTES_PER_TILE;
         }
 
         if (dev->ro) {
@@ -403,14 +414,28 @@ panfrost_setup_layout(struct panfrost_device *dev,
                         slice->afbc.header_size =
                                 panfrost_afbc_header_size(width, height);
 
+                        /* Stride between two rows of AFBC headers */
+                        slice->afbc.row_stride =
+                                (effective_width / tile_w) *
+                                AFBC_HEADER_BYTES_PER_TILE;
+
+                        /* AFBC body size */
+                        slice->afbc.body_size = slice_one_size;
+
                         /* 3D AFBC resources have all headers placed at the
                          * beginning instead of having them split per depth
                          * level
                          */
-                        if (is_3d)
+                        if (is_3d) {
+                                slice->afbc.surface_stride =
+                                        slice->afbc.header_size;
                                 slice->afbc.header_size *= effective_depth;
-                        else
+                                slice->afbc.body_size *= effective_depth;
+                                offset += slice->afbc.header_size;
+                        } else {
                                 slice_one_size += slice->afbc.header_size;
+                                slice->afbc.surface_stride = slice_one_size;
+                        }
                 }
 
                 unsigned slice_full_size =
