@@ -82,7 +82,9 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 	if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
 		return false;
 
-	if (pCreateInfo->mipLevels > 1)
+	if (pCreateInfo->mipLevels > 1 &&
+	    (device->physical_device->rad_info.chip_class < GFX10 ||
+	     pCreateInfo->arrayLayers > 1))
 		return false;
 
 	/* Do not enable TC-compatible HTILE if the image isn't readable by a
@@ -249,8 +251,15 @@ static inline bool
 radv_use_htile_for_image(const struct radv_device *device,
                          const struct radv_image *image)
 {
-	return image->info.levels == 1 &&
-	       !image->shareable &&
+	/* TODO:
+	 * - Investigate about mips+layers.
+	 * - Enable on other gens.
+	 */
+	bool use_htile_for_mips = image->info.array_size == 1 &&
+				  device->physical_device->rad_info.chip_class >= GFX10;
+
+	return (image->info.levels == 1 || use_htile_for_mips) &&
+		!image->shareable &&
 	       ((image->info.width * image->info.height >= 8 * 8) ||
 	        (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS));
 }
