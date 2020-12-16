@@ -823,24 +823,6 @@ typedef struct {
        unsigned fills;
 } bi_context;
 
-static inline bi_instruction *
-bi_emit(bi_context *ctx, bi_instruction ins)
-{
-        bi_instruction *u = rzalloc(ctx, bi_instruction);
-        memcpy(u, &ins, sizeof(ins));
-        list_addtail(&u->link, &ctx->current_block->base.instructions);
-        return u;
-}
-
-static inline bi_instruction *
-bi_emit_before(bi_context *ctx, bi_instruction *tag, bi_instruction ins)
-{
-        bi_instruction *u = rzalloc(ctx, bi_instruction);
-        memcpy(u, &ins, sizeof(ins));
-        list_addtail(&u->link, &tag->link);
-        return u;
-}
-
 static inline void
 bi_remove_instruction(bi_instruction *ins)
 {
