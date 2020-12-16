@@ -698,9 +698,10 @@ void disassemble_bifrost(FILE *fp, uint8_t *code, size_t size, bool verbose)
         while (words != words_end) {
                 fprintf(fp, "clause_%d:\n", offset);
                 unsigned size;
-                if (dump_clause(fp, words, &size, offset, verbose) == true) {
+
+                if (dump_clause(fp, words, &size, offset, verbose))
                         break;
-                }
+
                 words += size * 4;
                 offset += size;
         }
