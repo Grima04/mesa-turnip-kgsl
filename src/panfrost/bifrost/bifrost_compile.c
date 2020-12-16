@@ -2585,6 +2585,25 @@ bi_texture_format(nir_alu_type T, enum bi_clamp clamp)
 }
 
 /* Array indices are specified as 32-bit uints, need to convert. In .z component from NIR */
+static bi_index
+bi_emit_texc_array_index(bi_builder *b, bi_index idx, nir_alu_type T)
+{
+        /* For (u)int we can just passthrough */
+        nir_alu_type base = nir_alu_type_get_base_type(T);
+        if (base == nir_type_int || base == nir_type_uint)
+                return idx;
+
+        /* Otherwise we convert */
+        assert(T == nir_type_float32);
+
+        /* OpenGL ES 3.2 specification section 8.14.2 ("Coordinate Wrapping and
+         * Texel Selection") defines the layer to be taken from clamp(RNE(r),
+         * 0, dt - 1). So we use round RTE, clamping is handled at the data
+         * structure level */
+
+        return bi_f32_to_u32(b, idx, BI_ROUND_NONE);
+}
+
 static unsigned
 bi_emit_array_index(bi_context *ctx, unsigned idx, nir_alu_type T, unsigned *c)
 {
@@ -2623,6 +2642,28 @@ bi_emit_array_index(bi_context *ctx, unsigned idx, nir_alu_type T, unsigned *c)
  * F32_TO_S32(clamp(x, -16.0, +16.0) * 256.0) & 0xFFFF =
  * MKVEC(F32_TO_S32(clamp(x * 1.0/16.0, -1.0, 1.0) * (16.0 * 256.0)), #0)
  */
+
+static bi_index
+bi_emit_texc_lod_88(bi_builder *b, bi_index lod, bool fp16)
+{
+        /* Sort of arbitrary. Must be less than 128.0, greater than or equal to
+         * the max LOD (16 since we cap at 2^16 texture dimensions), and
+         * preferably small to minimize precision loss */
+        const float max_lod = 16.0;
+
+        bi_instr *fsat = bi_fma_f32_to(b, bi_temp(b->shader),
+                        fp16 ? bi_half(lod, false) : lod,
+                        bi_imm_f32(1.0f / max_lod), bi_zero(), BI_ROUND_NONE);
+
+        fsat->clamp = BI_CLAMP_CLAMP_M1_1;
+
+        bi_index fmul = bi_fma_f32(b, fsat->dest[0], bi_imm_f32(max_lod * 256.0f),
+                        bi_zero(), BI_ROUND_NONE);
+
+        return bi_mkvec_v2i16(b,
+                        bi_half(bi_f32_to_s32(b, fmul, BI_ROUND_RTZ), false),
+                        bi_imm_u16(0));
+}
 
 static unsigned
 bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
@@ -2693,6 +2734,12 @@ bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
  * TODO: Cube face.
  */
 
+static bi_index
+bi_emit_texc_lod_cube(bi_builder *b, bi_index lod)
+{
+        return bi_lshift_or_i32(b, lod, bi_zero(), bi_imm_u8(8));
+}
+
 static unsigned
 bi_emit_lod_cube(bi_context *ctx, unsigned lod)
 {
@@ -2723,6 +2770,36 @@ bi_emit_lod_cube(bi_context *ctx, unsigned lod)
  * nonzero texel offset or a nonzero multisample index, we build a u8vec4 with
  * the bits we need and return that to be passed as a staging register. Else we
  * return 0 to avoid allocating a data register when everything is zero. */
+
+static bi_index
+bi_emit_texc_offset_ms_index(bi_builder *b, nir_tex_instr *instr)
+{
+        bi_index dest = bi_zero();
+
+        int offs_idx = nir_tex_instr_src_index(instr, nir_tex_src_offset);
+        if (offs_idx >= 0 &&
+            (!nir_src_is_const(instr->src[offs_idx].src) ||
+             nir_src_as_uint(instr->src[offs_idx].src) != 0)) {
+                unsigned nr = nir_src_num_components(instr->src[offs_idx].src);
+                bi_index idx = bi_src_index(&instr->src[offs_idx].src);
+                dest = bi_mkvec_v4i8(b, 
+                                (nr > 0) ? bi_byte(bi_word(idx, 0), 0) : bi_imm_u8(0),
+                                (nr > 1) ? bi_byte(bi_word(idx, 1), 0) : bi_imm_u8(0),
+                                (nr > 2) ? bi_byte(bi_word(idx, 2), 0) : bi_imm_u8(0),
+                                bi_imm_u8(0));
+        }
+
+        int ms_idx = nir_tex_instr_src_index(instr, nir_tex_src_ms_index);
+        if (ms_idx >= 0 &&
+            (!nir_src_is_const(instr->src[ms_idx].src) ||
+             nir_src_as_uint(instr->src[ms_idx].src) != 0)) {
+                dest = bi_lshift_or_i32(b,
+                                bi_src_index(&instr->src[ms_idx].src), dest,
+                                bi_imm_u8(24));
+        }
+
+        return dest;
+}
 
 static unsigned
 bi_emit_tex_offset_ms_index(bi_context *ctx, nir_tex_instr *instr)
@@ -2785,6 +2862,67 @@ bi_emit_tex_offset_ms_index(bi_context *ctx, nir_tex_instr *instr)
         }
 
         return dest;
+}
+
+static void
+bi_emit_cube_coord(bi_builder *b, bi_index coord,
+                    bi_index *face, bi_index *s, bi_index *t)
+{
+        /* Compute max { |x|, |y|, |z| } */
+        bi_index cubeface1 = bi_cubeface1(b, coord,
+                        bi_word(coord, 1), bi_word(coord, 2));
+
+        /* Calculate packed exponent / face / infinity. In reality this reads
+         * the destination from cubeface1 but that's handled by lowering */
+        bi_instr *cubeface2 = bi_cubeface1_to(b, bi_temp(b->shader), coord,
+                        bi_word(coord, 1), bi_word(coord, 2));
+        cubeface2->op = BI_OPCODE_CUBEFACE2; /* XXX: DEEP VOODOO */
+
+        /* Select coordinates */
+
+        bi_index ssel = bi_cube_ssel(b, bi_word(coord, 2), coord,
+                        cubeface2->dest[0]);
+
+        bi_index tsel = bi_cube_tsel(b, bi_word(coord, 1), bi_word(coord, 2),
+                        cubeface2->dest[0]);
+
+        /* The OpenGL ES specification requires us to transform an input vector
+         * (x, y, z) to the coordinate, given the selected S/T:
+         *
+         * (1/2 ((s / max{x,y,z}) + 1), 1/2 ((t / max{x, y, z}) + 1))
+         *
+         * We implement (s shown, t similar) in a form friendlier to FMA
+         * instructions, and clamp coordinates at the end for correct
+         * NaN/infinity handling:
+         *
+         * fsat(s * (0.5 * (1 / max{x, y, z})) + 0.5)
+         *
+         * Take the reciprocal of max{x, y, z}
+         */
+
+        bi_index rcp = bi_frcp_f32(b, cubeface1);
+
+        /* Calculate 0.5 * (1.0 / max{x, y, z}) */
+        bi_index fma1 = bi_fma_f32(b, rcp, bi_imm_f32(0.5f), bi_zero(),
+                        BI_ROUND_NONE);
+
+        /* Transform the coordinates */
+        *s = bi_temp(b->shader);
+        *t = bi_temp(b->shader);
+
+        bi_instr *S = bi_fma_f32_to(b, *s, fma1, ssel, bi_imm_f32(0.5f),
+                        BI_ROUND_NONE);
+        bi_instr *T = bi_fma_f32_to(b, *t, fma1, tsel, bi_imm_f32(0.5f),
+                        BI_ROUND_NONE);
+
+        S->clamp = BI_CLAMP_CLAMP_0_1;
+        T->clamp = BI_CLAMP_CLAMP_0_1;
+
+        /* Cube face is stored in bit[29:31], we don't apply the shift here
+         * because the TEXS_CUBE and TEXC instructions expect the face index to
+         * be at this position.
+         */
+        *face = cubeface2->dest[0];
 }
 
 static void
@@ -2907,6 +3045,24 @@ bi_lower_cube_coord(bi_context *ctx, unsigned coord,
         *face = cubeface2.dest;
         *s = fma2.dest;
         *t = fma3.dest;
+}
+
+/* Emits a cube map descriptor, returning lower 32-bits and putting upper
+ * 32-bits in passed pointer t */
+
+static bi_index
+bi_emit_texc_cube_coord(bi_builder *b, bi_index coord, bi_index *t)
+{
+        bi_index face, s;
+        bi_emit_cube_coord(b, coord, &face, &s, t);
+
+        bi_index and1 = bi_lshift_and_i32(b, face, bi_imm_u32(0xe0000000),
+                        bi_imm_u8(0));
+
+        bi_index and2 = bi_lshift_and_i32(b, s, bi_imm_u32(0x1fffffff),
+                        bi_imm_u8(0));
+
+        return bi_lshift_or_i32(b, and1, and2, bi_imm_u8(0));
 }
 
 static void
