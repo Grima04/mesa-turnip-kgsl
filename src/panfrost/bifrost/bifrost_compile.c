@@ -3645,7 +3645,38 @@ emit_instr(bi_context *ctx, struct nir_instr *instr)
         }
 }
 
+/* Prototype to avoid -Wunused-function warning during merge */
+void
+bi_emit_instr(bi_builder *b, struct nir_instr *instr);
 
+void
+bi_emit_instr(bi_builder *b, struct nir_instr *instr)
+{
+        switch (instr->type) {
+        case nir_instr_type_load_const:
+                bi_emit_load_const(b, nir_instr_as_load_const(instr));
+                break;
+
+        case nir_instr_type_intrinsic:
+                bi_emit_intrinsic(b, nir_instr_as_intrinsic(instr));
+                break;
+
+        case nir_instr_type_alu:
+                bi_emit_alu(b, nir_instr_as_alu(instr));
+                break;
+
+        case nir_instr_type_tex:
+                bi_emit_tex(b, nir_instr_as_tex(instr));
+                break;
+
+        case nir_instr_type_jump:
+                bi_emit_jump(b, nir_instr_as_jump(instr));
+                break;
+
+        default:
+                unreachable("should've been lowered");
+        }
+}
 
 static bi_block *
 create_empty_block(bi_context *ctx)
