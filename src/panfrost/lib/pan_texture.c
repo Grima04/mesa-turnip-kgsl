@@ -268,11 +268,20 @@ panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
 }
 
 static uint64_t
-panfrost_get_surface_strides(const struct pan_image_layout *layout,
+panfrost_get_surface_strides(const struct panfrost_device *dev,
+                             const struct pan_image_layout *layout,
                              unsigned l)
 {
-        return ((uint64_t)layout->slices[l].surface_stride << 32) |
-               layout->slices[l].row_stride;
+        const struct panfrost_slice *slice = &layout->slices[l];
+
+        if (drm_is_afbc(layout->modifier)) {
+                /* Pre v7 don't have a row stride field. This field is
+                 * repurposed as a Y offset which we don't use */
+                return ((uint64_t)slice->afbc.surface_stride << 32) |
+                       (dev->arch < 7 ? 0 : slice->afbc.row_stride);
+        }
+
+        return ((uint64_t)slice->surface_stride << 32) | slice->row_stride;
 }
 
 static mali_ptr
@@ -385,7 +394,7 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
                         continue;
 
                 payload[idx++] =
-                        panfrost_get_surface_strides(layout, iter.level);
+                        panfrost_get_surface_strides(dev, layout, iter.level);
         }
 }
 
@@ -492,10 +501,12 @@ unsigned
 panfrost_get_layer_stride(const struct pan_image_layout *layout,
                           unsigned level)
 {
-        if (layout->dim == MALI_TEXTURE_DIMENSION_3D)
+        if (layout->dim != MALI_TEXTURE_DIMENSION_3D)
+                return layout->array_stride;
+        else if (drm_is_afbc(layout->modifier))
+                return layout->slices[level].afbc.surface_stride;
+        else
                 return layout->slices[level].surface_stride;
-
-        return layout->array_stride;
 }
 
 /* Computes the offset into a texture at a particular level/face. Add to
