@@ -919,6 +919,18 @@ zink_set_scissor_states(struct pipe_context *pctx,
 }
 
 static void
+zink_set_inlinable_constants(struct pipe_context *pctx,
+                             enum pipe_shader_type shader,
+                             uint num_values, uint32_t *values)
+{
+   struct zink_context *ctx = (struct zink_context *)pctx;
+
+   memcpy(ctx->inlinable_uniforms[shader], values, num_values * 4);
+   ctx->inlinable_uniforms_dirty_mask |= 1 << shader;
+   ctx->inlinable_uniforms_valid_mask |= 1 << shader;
+}
+
+static void
 zink_set_constant_buffer(struct pipe_context *pctx,
                          enum pipe_shader_type shader, uint index,
                          bool take_ownership,
@@ -966,6 +978,11 @@ zink_set_constant_buffer(struct pipe_context *pctx,
       ctx->ubos[shader][index].buffer_size = 0;
       ctx->ubos[shader][index].user_buffer = NULL;
    }
+   if (index == 0) {
+      /* Invalidate current inlinable uniforms. */
+      ctx->inlinable_uniforms_valid_mask &= ~(1 << shader);
+   }
+
    if (update)
       zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO);
 }
@@ -2668,6 +2685,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_vertex_buffers = zink_set_vertex_buffers;
    ctx->base.set_viewport_states = zink_set_viewport_states;
    ctx->base.set_scissor_states = zink_set_scissor_states;
+   ctx->base.set_inlinable_constants = zink_set_inlinable_constants;
    ctx->base.set_constant_buffer = zink_set_constant_buffer;
    ctx->base.set_shader_buffers = zink_set_shader_buffers;
    ctx->base.set_shader_images = zink_set_shader_images;

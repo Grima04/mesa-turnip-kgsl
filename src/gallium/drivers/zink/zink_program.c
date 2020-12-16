@@ -276,13 +276,26 @@ static struct zink_shader_module *
 get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, struct zink_gfx_program *prog)
 {
    gl_shader_stage stage = zs->nir->info.stage;
+   enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
    struct zink_shader_key key = {};
    VkShaderModule mod;
    struct zink_shader_module *zm;
    struct keybox *keybox;
    uint32_t hash;
+   bool needs_base_size = false;
 
    shader_key_vtbl[stage](ctx, zs, ctx->gfx_stages, &key);
+
+   if (zs->nir->info.num_inlinable_uniforms &&
+       ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
+      key.inline_uniforms = true;
+      memcpy(key.base.inlined_uniform_values,
+             ctx->inlinable_uniforms[pstage],
+             zs->nir->info.num_inlinable_uniforms * 4);
+      needs_base_size = true;
+   }
+   if (needs_base_size)
+      key.size += sizeof(struct zink_shader_key_base);
    keybox = make_keybox(prog->shader_cache, stage, &key, key.size);
    hash = keybox_hash(keybox);
    struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(prog->shader_cache->shader_cache,
@@ -999,6 +1012,10 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
    else
       ctx->gfx_stages[stage] = shader;
    ctx->dirty_shader_stages |= 1 << stage;
+   if (shader && shader->nir->info.num_inlinable_uniforms)
+      ctx->shader_has_inlinable_uniforms_mask |= 1 << stage;
+   else
+      ctx->shader_has_inlinable_uniforms_mask &= ~(1 << stage);
 }
 
 static void

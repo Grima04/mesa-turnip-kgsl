@@ -146,6 +146,7 @@ struct zink_screen {
 
    struct {
       bool dual_color_blend_by_location;
+      bool inline_uniforms;
    } driconf;
 
    VkFormatProperties format_props[PIPE_FORMAT_COUNT];

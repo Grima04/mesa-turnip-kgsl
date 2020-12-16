@@ -570,6 +570,24 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
    VkShaderModule mod = VK_NULL_HANDLE;
    void *streamout = NULL;
    nir_shader *nir = zs->nir;
+
+   if (key) {
+      if (key->inline_uniforms) {
+         if (nir == zs->nir)
+            nir = nir_shader_clone(NULL, nir);
+         NIR_PASS_V(nir, nir_inline_uniforms,
+                    nir->info.num_inlinable_uniforms,
+                    key->base.inlined_uniform_values,
+                    nir->info.inlinable_uniform_dw_offsets);
+
+         optimize_nir(nir);
+
+         /* This must be done again. */
+         NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
+                                                          nir_var_shader_out);
+      }
+   }
+
    /* TODO: use a separate mem ctx here for ralloc */
    if (zs->nir->info.stage < MESA_SHADER_FRAGMENT) {
       if (zink_vs_key(key)->last_vertex_stage) {
@@ -903,6 +921,8 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr, bool optimize)
    if (nir->info.num_ubos || nir->info.num_ssbos)
       NIR_PASS_V(nir, nir_lower_dynamic_bo_access);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+   if (screen->driconf.inline_uniforms)
+      nir_find_inlinable_uniforms(nir);
 }
 
 void
