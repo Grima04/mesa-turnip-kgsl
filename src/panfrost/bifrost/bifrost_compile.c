@@ -3161,6 +3161,171 @@ enum bifrost_tex_dreg {
 };
 
 static void
+bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
+{
+        /* TODO: support more with other encodings */
+        assert(instr->sampler_index < 16);
+
+        /* TODO: support more ops */
+        switch (instr->op) {
+        case nir_texop_tex:
+        case nir_texop_txl:
+        case nir_texop_txb:
+        case nir_texop_txf:
+        case nir_texop_txf_ms:
+                break;
+        default:
+                unreachable("Unsupported texture op");
+        }
+
+        struct bifrost_texture_operation desc = {
+                .sampler_index_or_mode = instr->sampler_index,
+                .index = instr->texture_index,
+                .immediate_indices = 1, /* TODO */
+                .op = bi_tex_op(instr->op),
+                .offset_or_bias_disable = false, /* TODO */
+                .shadow_or_clamp_disable = instr->is_shadow,
+                .array = instr->is_array,
+                .dimension = bifrost_tex_format(instr->sampler_dim),
+                .format = bi_texture_format(instr->dest_type | nir_dest_bit_size(instr->dest), BI_CLAMP_NONE), /* TODO */
+                .mask = 0xF,
+        };
+
+        switch (desc.op) {
+        case BIFROST_TEX_OP_TEX:
+                desc.lod_or_fetch = BIFROST_LOD_MODE_COMPUTE;
+                break;
+        case BIFROST_TEX_OP_FETCH:
+                /* TODO: gathers */
+                desc.lod_or_fetch = BIFROST_TEXTURE_FETCH_TEXEL;
+                break;
+        default:
+                unreachable("texture op unsupported");
+        }
+
+        /* 32-bit indices to be allocated as consecutive staging registers */
+        bi_index dregs[BIFROST_TEX_DREG_COUNT] = { };
+        bi_index cx = bi_null(), cy = bi_null();
+
+        for (unsigned i = 0; i < instr->num_srcs; ++i) {
+                bi_index index = bi_src_index(&instr->src[i].src);
+                unsigned sz = nir_src_bit_size(instr->src[i].src);
+                ASSERTED nir_alu_type base = nir_tex_instr_src_type(instr, i);
+                nir_alu_type T = base | sz;
+
+                switch (instr->src[i].src_type) {
+                case nir_tex_src_coord:
+                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+                                cx = bi_emit_texc_cube_coord(b, index, &cy);
+			} else {
+                                unsigned components = nir_src_num_components(instr->src[i].src);
+
+                                /* Copy XY (for 2D+) or XX (for 1D) */
+                                cx = index;
+                                cy = bi_word(index, MIN2(1, components - 1));
+
+                                assert(components >= 1 && components <= 3);
+
+                                if (components < 3) {
+                                        /* nothing to do */
+                                } else if (desc.array) {
+                                        /* 2D array */
+                                        dregs[BIFROST_TEX_DREG_ARRAY] =
+                                                bi_emit_texc_array_index(b,
+                                                                bi_word(index, 2), T);
+                                } else {
+                                        /* 3D */
+                                        dregs[BIFROST_TEX_DREG_Z_COORD] =
+                                                bi_word(index, 2);
+                                }
+                        }
+                        break;
+
+                case nir_tex_src_lod:
+                        if (desc.op == BIFROST_TEX_OP_TEX &&
+                            nir_src_is_const(instr->src[i].src) &&
+                            nir_src_as_uint(instr->src[i].src) == 0) {
+                                desc.lod_or_fetch = BIFROST_LOD_MODE_ZERO;
+                        } else if (desc.op == BIFROST_TEX_OP_TEX) {
+                                assert(base == nir_type_float);
+
+                                assert(sz == 16 || sz == 32);
+                                dregs[BIFROST_TEX_DREG_LOD] =
+                                        bi_emit_texc_lod_88(b, index, sz == 16);
+                                desc.lod_or_fetch = BIFROST_LOD_MODE_EXPLICIT;
+                        } else {
+                                assert(desc.op == BIFROST_TEX_OP_FETCH);
+                                assert(base == nir_type_uint || base == nir_type_int);
+                                assert(sz == 16 || sz == 32);
+
+                                dregs[BIFROST_TEX_DREG_LOD] =
+                                        bi_emit_texc_lod_cube(b, index);
+                        }
+
+                        break;
+
+                case nir_tex_src_bias:
+                        /* Upper 16-bits interpreted as a clamp, leave zero */
+                        assert(desc.op == BIFROST_TEX_OP_TEX);
+                        assert(base == nir_type_float);
+                        assert(sz == 16 || sz == 32);
+                        dregs[BIFROST_TEX_DREG_LOD] =
+                                bi_emit_texc_lod_88(b, index, sz == 16);
+                        desc.lod_or_fetch = BIFROST_LOD_MODE_BIAS;
+                        break;
+
+                case nir_tex_src_ms_index:
+                case nir_tex_src_offset:
+                        if (desc.offset_or_bias_disable)
+                                break;
+
+                        dregs[BIFROST_TEX_DREG_OFFSETMS] =
+	                        bi_emit_texc_offset_ms_index(b, instr);
+                        if (!bi_is_equiv(dregs[BIFROST_TEX_DREG_OFFSETMS], bi_zero()))
+                                desc.offset_or_bias_disable = true;
+                        break;
+
+                case nir_tex_src_comparator:
+                        dregs[BIFROST_TEX_DREG_SHADOW] = index;
+                        break;
+
+                default:
+                        unreachable("Unhandled src type in texc emit");
+                }
+        }
+
+        if (desc.op == BIFROST_TEX_OP_FETCH && bi_is_null(dregs[BIFROST_TEX_DREG_LOD])) {
+                dregs[BIFROST_TEX_DREG_LOD] =
+                        bi_emit_texc_lod_cube(b, bi_zero());
+        }
+
+        /* Allocate staging registers contiguously by compacting the array.
+         * Index is not SSA (tied operands) */
+
+        bi_index idx = bi_temp_reg(b->shader);
+        unsigned sr_count = 0;
+
+        for (unsigned i = 0; i < ARRAY_SIZE(dregs); ++i) {
+                if (!bi_is_null(dregs[i]))
+                        dregs[sr_count++] = dregs[i];
+        }
+
+        if (sr_count)
+                bi_make_vec_to(b, idx, dregs, NULL, sr_count, 32);
+        else
+                bi_mov_i32_to(b, idx, bi_zero()); /* XXX: shouldn't be necessary */
+
+        uint32_t desc_u = 0;
+        memcpy(&desc_u, &desc, sizeof(desc_u));
+        bi_texc_to(b, idx, idx, cx, cy, bi_imm_u32(desc_u), sr_count);
+
+        /* Explicit copy to facilitate tied operands */
+        bi_index srcs[4] = { idx, idx, idx, idx };
+        unsigned channels[4] = { 0, 1, 2, 3 };
+        bi_make_vec_to(b, bi_dest_index(&instr->dest), srcs, channels, 4, 32);
+}
+
+static void
 emit_texc(bi_context *ctx, nir_tex_instr *instr)
 {
         /* TODO: support more with other encodings */
