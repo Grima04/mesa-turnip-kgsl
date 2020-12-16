@@ -331,14 +331,9 @@ panfrost_setup_slices(struct panfrost_device *dev,
         /* MSAA is implemented as a 3D texture with z corresponding to the
          * sample #, horrifyingly enough */
 
-        bool msaa = res->nr_samples > 1;
+        unsigned nr_samples = MAX2(res->nr_samples, 1);
 
-        if (msaa) {
-                assert(depth == 1);
-                depth = res->nr_samples;
-        }
-
-        assert(depth > 0);
+        assert(depth == 1 || nr_samples == 1);
 
         /* Tiled operates blockwise; linear is packed. Also, anything
          * we render to has to be tile-aligned. Maybe not strictly
@@ -399,7 +394,8 @@ panfrost_setup_slices(struct panfrost_device *dev,
                 slice->row_stride = stride * (tile_h >> tile_shift);
 
                 unsigned slice_one_size = slice->line_stride * effective_height;
-                unsigned slice_full_size = slice_one_size * effective_depth;
+                unsigned slice_full_size =
+                        slice_one_size * effective_depth * nr_samples;
 
                 slice->surface_stride = slice_one_size;
 
@@ -430,10 +426,7 @@ panfrost_setup_slices(struct panfrost_device *dev,
 
                 width = u_minify(width, 1);
                 height = u_minify(height, 1);
-
-                /* Don't mipmap the sample count */
-                if (!msaa)
-                        depth = u_minify(depth, 1);
+                depth = u_minify(depth, 1);
         }
 
         assert(res->array_size);
