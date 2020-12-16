@@ -636,7 +636,7 @@ meson-testing:
       -D platforms=x11
     GALLIUM_ST: >
       -D dri3=enabled
-    GALLIUM_DRIVERS: "swrast,virgl,radeonsi,zink"
+    GALLIUM_DRIVERS: "swrast,virgl,radeonsi,zink,iris"
     VULKAN_DRIVERS: "swrast,amd"
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
