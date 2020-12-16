@@ -1101,12 +1101,6 @@ bi_singleton(void *memctx, bi_instr *ins,
                 unsigned dependencies,
                 bool osrb);
 
-bi_clause *bi_make_singleton(void *memctx, bi_instruction *ins,
-                bi_block *block,
-                unsigned scoreboard_id,
-                unsigned dependencies,
-                bool osrb);
-
 /* Liveness */
 
 void bi_compute_liveness(bi_context *ctx);
