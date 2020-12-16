@@ -1235,6 +1235,142 @@ bi_emit_instance_id(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        bi_index dst = nir_intrinsic_infos[instr->intrinsic].has_dest ?
+                bi_dest_index(&instr->dest) : bi_null();
+        gl_shader_stage stage = b->shader->stage;
+
+        switch (instr->intrinsic) {
+        case nir_intrinsic_load_barycentric_pixel:
+        case nir_intrinsic_load_barycentric_centroid:
+        case nir_intrinsic_load_barycentric_sample:
+                /* handled later via load_vary */
+                break;
+        case nir_intrinsic_load_interpolated_input:
+        case nir_intrinsic_load_input:
+                if (b->shader->is_blend)
+                        bi_emit_load_blend_input(b, instr);
+                else if (stage == MESA_SHADER_FRAGMENT)
+                        bi_emit_load_vary(b, instr);
+                else if (stage == MESA_SHADER_VERTEX)
+                        bi_emit_load_attr(b, instr);
+                else
+                        unreachable("Unsupported shader stage");
+                break;
+
+        case nir_intrinsic_store_output:
+                if (stage == MESA_SHADER_FRAGMENT)
+                        bi_emit_fragment_out(b, instr);
+                else if (stage == MESA_SHADER_VERTEX)
+                        bi_emit_store_vary(b, instr);
+                else
+                        unreachable("Unsupported shader stage");
+                break;
+
+        case nir_intrinsic_store_combined_output_pan:
+                assert(stage == MESA_SHADER_FRAGMENT);
+                bi_emit_fragment_out(b, instr);
+                break;
+
+        case nir_intrinsic_load_ubo:
+                bi_emit_load_ubo(b, instr);
+                break;
+
+        case nir_intrinsic_load_frag_coord:
+                bi_emit_load_frag_coord(b, instr);
+                break;
+
+        case nir_intrinsic_load_output:
+                bi_emit_ld_tile(b, instr);
+                break;
+
+        case nir_intrinsic_discard_if: {
+                bi_index src = bi_src_index(&instr->src[0]);
+
+                unsigned sz = nir_src_bit_size(instr->src[0]);
+                assert(sz == 16 || sz == 32);
+
+                if (sz == 16)
+                        src = bi_half(src, false);
+
+                bi_discard_f32_to(b, bi_null(), src, bi_zero(), BI_CMPF_NE);
+                break;
+        }
+
+        case nir_intrinsic_discard:
+                bi_discard_f32_to(b, bi_null(), bi_zero(), bi_zero(),
+                                BI_CMPF_EQ);
+                break;
+
+        case nir_intrinsic_load_ssbo_address:
+                bi_load_sysval(b, &instr->instr, 1, 0);
+                break;
+
+        case nir_intrinsic_get_ssbo_size:
+                bi_load_sysval(b, &instr->instr, 1, 8);
+                break;
+
+        case nir_intrinsic_load_viewport_scale:
+        case nir_intrinsic_load_viewport_offset:
+        case nir_intrinsic_load_num_work_groups:
+        case nir_intrinsic_load_sampler_lod_parameters_pan:
+                bi_load_sysval(b, &instr->instr, 3, 0);
+                break;
+        case nir_intrinsic_load_blend_const_color_r_float:
+                bi_mov_i32_to(b, dst,
+                                bi_imm_f32(b->shader->blend_constants[0]));
+                break;
+
+        case nir_intrinsic_load_blend_const_color_g_float:
+                bi_mov_i32_to(b, dst,
+                                bi_imm_f32(b->shader->blend_constants[1]));
+                break;
+
+        case nir_intrinsic_load_blend_const_color_b_float:
+                bi_mov_i32_to(b, dst,
+                                bi_imm_f32(b->shader->blend_constants[2]));
+                break;
+
+        case nir_intrinsic_load_blend_const_color_a_float:
+                bi_mov_i32_to(b, dst,
+                                bi_imm_f32(b->shader->blend_constants[3]));
+                break;
+
+	case nir_intrinsic_load_sample_id: {
+                /* r61[16:23] contains the sampleID, mask it out */
+
+                bi_rshift_and_i32_to(b, dst, bi_register(61), bi_imm_u32(0xff),
+                                bi_imm_u8(16));
+                break;
+        }
+
+	case nir_intrinsic_load_front_face:
+                /* r58 == 0 means primitive is front facing */
+                bi_icmp_i32_to(b, dst, bi_register(58), bi_zero(), BI_CMPF_EQ,
+                                BI_RESULT_TYPE_M1);
+                break;
+
+        case nir_intrinsic_load_point_coord:
+                bi_ld_var_special_to(b, dst, bi_zero(), BI_REGISTER_FORMAT_F32,
+                                BI_SAMPLE_CENTER, BI_UPDATE_CLOBBER,
+                                BI_VARYING_NAME_POINT, BI_VECSIZE_V2);
+                break;
+
+        case nir_intrinsic_load_vertex_id:
+                bi_mov_i32_to(b, dst, bi_register(61));
+                break;
+
+        case nir_intrinsic_load_instance_id:
+                bi_mov_i32_to(b, dst, bi_register(62));
+                break;
+
+        default:
+                unreachable("Unknown intrinsic");
+        }
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
