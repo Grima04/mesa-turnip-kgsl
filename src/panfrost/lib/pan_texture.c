@@ -78,13 +78,18 @@ panfrost_modifier_to_layout(uint64_t modifier)
  * alignment requirements for their strides as it is */
 
 static bool
-panfrost_needs_explicit_stride(uint64_t modifier,
+panfrost_needs_explicit_stride(const struct panfrost_device *dev,
+                               uint64_t modifier,
                                enum pipe_format format,
                                struct panfrost_slice *slices,
                                uint16_t width,
                                unsigned first_level,
                                unsigned last_level)
 {
+        /* Stride is explicit on Bifrost */
+        if (dev->quirks & IS_BIFROST)
+                return true;
+
         if (modifier != DRM_FORMAT_MOD_LINEAR)
                 return false;
 
@@ -396,8 +401,8 @@ panfrost_new_texture(
                 util_format_description(format);
 
         bool manual_stride =
-                panfrost_needs_explicit_stride(modifier, format, slices, width,
-                                               first_level, last_level);
+                panfrost_needs_explicit_stride(dev, modifier, format, slices,
+                                               width, first_level, last_level);
 
         pan_pack(out, MIDGARD_TEXTURE, cfg) {
                 cfg.width = u_minify(width, first_level);
