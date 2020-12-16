@@ -3582,6 +3582,37 @@ emit_tex(bi_context *ctx, nir_tex_instr *instr)
 }
 
 static void
+bi_emit_tex(bi_builder *b, nir_tex_instr *instr)
+{
+        switch (instr->op) {
+        case nir_texop_txs:
+                bi_load_sysval(b, &instr->instr, 4, 0);
+                return;
+        case nir_texop_tex:
+        case nir_texop_txl:
+        case nir_texop_txb:
+        case nir_texop_txf:
+        case nir_texop_txf_ms:
+                break;
+        default:
+                unreachable("Invalid texture operation");
+        }
+
+        nir_alu_type base = nir_alu_type_get_base_type(instr->dest_type);
+        unsigned sz = nir_dest_bit_size(instr->dest);
+
+        bool is_simple = bi_is_simple_tex(instr);
+        bool is_2d = instr->sampler_dim == GLSL_SAMPLER_DIM_2D ||
+                instr->sampler_dim == GLSL_SAMPLER_DIM_EXTERNAL;
+        bool is_f = base == nir_type_float && (sz == 16 || sz == 32);
+
+        if (is_simple && is_2d && is_f && !instr->is_shadow && !instr->is_array)
+                bi_emit_texs(b, instr);
+        else
+                bi_emit_texc(b, instr);
+}
+
+static void
 emit_instr(bi_context *ctx, struct nir_instr *instr)
 {
         switch (instr->type) {
