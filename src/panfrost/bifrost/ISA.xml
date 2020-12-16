@@ -6314,6 +6314,16 @@
     <src start="0"/>
     <src start="3"/>
     <src start="6" mask="0xf7"/>
+    <mod name="register_format" size="4" pseudo="true">
+      <opt>f16</opt>
+      <opt>f32</opt>
+      <opt>s32</opt>
+      <opt>u32</opt>
+      <opt>s16</opt>
+      <opt>u16</opt>
+      <opt>f64</opt>
+      <opt>i64</opt>
+    </mod>
     <mod name="vecsize" start="9" size="2">
       <opt>none</opt>
       <opt>v2</opt>
@@ -7618,6 +7628,16 @@
     <src start="0"/>
     <src start="3"/>
     <src start="6" mask="0xf7"/>
+    <mod name="register_format" size="4" pseudo="true">
+      <opt>f16</opt>
+      <opt>f32</opt>
+      <opt>s32</opt>
+      <opt>u32</opt>
+      <opt>s16</opt>
+      <opt>u16</opt>
+      <opt>f64</opt>
+      <opt>i64</opt>
+    </mod>
     <mod name="vecsize" start="9" size="2">
       <opt>none</opt>
       <opt>v2</opt>

@@ -55,10 +55,13 @@ def parse_derived(obj):
 
     return out
 
-def parse_modifiers(obj):
+def parse_modifiers(obj, include_pseudo):
     out = []
 
     for mod in obj.findall('mod'):
+        if mod.attrib.get('pseudo', False) and not include_pseudo:
+            continue
+
         name = mod.attrib['name']
         start = mod.attrib.get('start', None)
         size = int(mod.attrib['size'])
@@ -118,7 +121,7 @@ def parse_instruction(ins, include_pseudo):
         common['immediates'].append([imm.attrib['name'], start, int(imm.attrib['size'])])
 
     common['derived'] = parse_derived(ins)
-    common['modifiers'] = parse_modifiers(ins)
+    common['modifiers'] = parse_modifiers(ins, include_pseudo)
 
     for swap in ins.findall('swap'):
         lr = [int(swap.get('left')), int(swap.get('right'))]
