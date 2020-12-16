@@ -493,6 +493,11 @@ panfrost_draw_vbo(
         /* Now that we have a guaranteed terminating path, find the job. */
 
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        /* Don't add too many jobs to a single batch */
+        if (batch->scoreboard.job_index > 10000)
+                batch = panfrost_get_fresh_batch_for_fbo(ctx);
+
         panfrost_batch_set_requirements(batch);
 
         /* Take into account a negative bias */
