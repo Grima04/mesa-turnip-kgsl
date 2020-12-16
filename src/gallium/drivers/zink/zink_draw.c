@@ -231,7 +231,8 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 static struct zink_compute_program *
 get_compute_program(struct zink_context *ctx)
 {
-   if (ctx->dirty_shader_stages) {
+   unsigned bits = 1 << PIPE_SHADER_COMPUTE;
+   if (ctx->dirty_shader_stages & bits) {
       struct hash_entry *entry = _mesa_hash_table_search(ctx->compute_program_cache,
                                                          &ctx->compute_stage->shader_id);
       if (!entry) {
@@ -244,7 +245,7 @@ get_compute_program(struct zink_context *ctx)
       if (entry->data != ctx->curr_compute)
          ctx->compute_pipeline_state.dirty = true;
       ctx->curr_compute = entry->data;
-      ctx->dirty_shader_stages &= (1 << PIPE_SHADER_COMPUTE);
+      ctx->dirty_shader_stages &= bits;
    }
 
    assert(ctx->curr_compute);
@@ -263,7 +264,8 @@ get_gfx_program(struct zink_context *ctx)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
       ctx->last_vertex_stage_dirty = false;
    }
-   if (ctx->dirty_shader_stages) {
+   unsigned bits = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
+   if (ctx->dirty_shader_stages & bits) {
       struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
                                                          ctx->gfx_stages);
       if (entry)
@@ -278,7 +280,6 @@ get_gfx_program(struct zink_context *ctx)
       if (ctx->curr_program != entry->data)
          ctx->gfx_pipeline_state.combined_dirty = true;
       ctx->curr_program = entry->data;
-      unsigned bits = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
       ctx->dirty_shader_stages &= ~bits;
    }
 
