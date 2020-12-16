@@ -1278,6 +1278,29 @@ panfrost_get_texture_address(struct panfrost_resource *rsrc,
                                        array_idx, surface_idx);
 }
 
+void
+panfrost_get_afbc_pointers(struct panfrost_resource *rsrc,
+                           unsigned level, unsigned layer,
+                           mali_ptr *header, mali_ptr *body)
+{
+        assert(drm_is_afbc(rsrc->layout.modifier));
+
+        struct panfrost_slice *slice = &rsrc->layout.slices[level];
+
+        if (rsrc->base.target == PIPE_TEXTURE_3D) {
+                *header = rsrc->bo->ptr.gpu + slice->offset +
+                          (layer * slice->afbc.surface_stride);
+                *body = rsrc->bo->ptr.gpu + slice->offset +
+                        slice->afbc.header_size +
+                        (slice->surface_stride * layer);
+        } else {
+                *header = rsrc->bo->ptr.gpu +
+                          panfrost_texture_offset(&rsrc->layout,
+                                                  level, layer, 0);
+                *body = *header + slice->afbc.header_size;
+        }
+}
+
 static void
 panfrost_resource_set_stencil(struct pipe_resource *prsrc,
                               struct pipe_resource *stencil)
