@@ -219,6 +219,11 @@ void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
                 cfg.minimum_lod = FIXED_16(cso->min_lod, false);
                 cfg.maximum_lod = FIXED_16(cso->max_lod, false);
 
+                if (cso->max_anisotropy > 1) {
+                        cfg.maximum_anisotropy = cso->max_anisotropy;
+                        cfg.lod_algorithm = MALI_LOD_ALGORITHM_ANISOTROPIC;
+                }
+
                 cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s, false, using_nearest);
                 cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t, false, using_nearest);
                 cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r, false, using_nearest);
