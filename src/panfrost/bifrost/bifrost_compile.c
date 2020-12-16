@@ -41,6 +41,7 @@ static const struct debug_named_value debug_options[] = {
         {"msgs",      BIFROST_DBG_MSGS,		"Print debug messages"},
         {"shaders",   BIFROST_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
         {"shaderdb",  BIFROST_DBG_SHADERDB,	"Print statistics"},
+        {"verbose",   BIFROST_DBG_VERBOSE,	"Disassemble verbosely"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -2599,8 +2600,11 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
         memcpy(program->blend_ret_offsets, ctx->blend_ret_offsets, sizeof(program->blend_ret_offsets));
 
-        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal)
-                disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal) {
+                disassemble_bifrost(stdout, program->compiled.data,
+                                program->compiled.size,
+                                bifrost_debug & BIFROST_DBG_VERBOSE);
+        }
 
         program->tls_size = ctx->tls_size;
 
