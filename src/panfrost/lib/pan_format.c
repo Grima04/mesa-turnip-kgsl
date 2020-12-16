@@ -490,7 +490,7 @@ const struct panfrost_format panfrost_pipe_format_v7[PIPE_FORMAT_COUNT] = {
         PAN_V7(R32G32B32_SSCALED,       RGB32I,          RGB1, L, V___),
         PAN_V7(R32G32B32A32_SSCALED,    RGBA32I,         RGBA, L, V___),
         PAN_V7(R3G3B2_UNORM,            RGB332_UNORM,    RGB1, L, VT__),
-        PAN_V7(Z16_UNORM,               R16_UNORM,       RGBA, L, _T_Z),
+        PAN_V7(Z16_UNORM,               RGB332_UNORM /* XXX: Deduplicate enum */,    RGBA, L, _T_Z),
         PAN_V7(Z24_UNORM_S8_UINT,       Z24X8_UNORM,     RGBA, L, _T_Z),
         PAN_V7(Z24X8_UNORM,             Z24X8_UNORM,     RGBA, L, _T_Z),
         PAN_V7(Z32_FLOAT,               R32F,            RGBA, L, _T_Z),
