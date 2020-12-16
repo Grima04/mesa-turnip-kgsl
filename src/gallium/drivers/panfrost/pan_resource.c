@@ -533,8 +533,14 @@ panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource
                 return false;
 
         /* TODO: Is AFBC of 3D textures possible? */
-        if ((pres->base.target != PIPE_TEXTURE_2D) && (pres->base.target != PIPE_TEXTURE_RECT))
+        switch (pres->base.target) {
+        case PIPE_TEXTURE_2D:
+        case PIPE_TEXTURE_2D_ARRAY:
+        case PIPE_TEXTURE_RECT:
+                break;
+        default:
                 return false;
+        }
 
         /* For one tile, AFBC is a loss compared to u-interleaved */
         if (pres->base.width0 <= 16 && pres->base.height0 <= 16)
