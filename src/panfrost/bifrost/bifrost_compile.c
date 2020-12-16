@@ -3743,6 +3743,24 @@ bi_set_branch_cond(bi_instruction *branch, nir_src *cond, bool invert)
         branch->cond = invert ? BI_COND_EQ : BI_COND_NE;
 }
 
+/* Emits a direct branch based on a given condition. TODO: try to unwrap the
+ * condition to optimize */
+
+static bi_instr *
+bi_branch(bi_builder *b, nir_src *condition, bool invert)
+{
+        return bi_branchz_i32_to(b, bi_null(), bi_src_index(condition),
+                        bi_zero(), invert ? BI_CMPF_EQ : BI_CMPF_NE);
+}
+
+static bi_instr *
+bi_jump(bi_builder *b, bi_block *target)
+{
+        bi_instr *I = bi_jump_to(b, bi_null(), bi_zero());
+        I->branch_target = target;
+        return I;
+}
+
 static void
 emit_if(bi_context *ctx, nir_if *nif)
 {
