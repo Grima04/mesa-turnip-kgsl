@@ -311,7 +311,7 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
          * itself is for a 2D texture with array size 1 even for 3D/array
          * textures, removing the need to separately key the blit shaders for
          * 2D and 3D variants */
-         panfrost_new_texture(texture.cpu,
+         panfrost_new_texture(pool->dev, texture.cpu,
                               image->width0, image->height0,
                               MAX2(image->nr_samples, 1), 1,
                               image->format, MALI_TEXTURE_DIMENSION_2D,

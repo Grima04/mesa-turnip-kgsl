@@ -1080,6 +1080,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 so->bo = panfrost_bo_create(device, size, 0);
 
                 panfrost_new_texture(
+                                device,
                                 so->bo->ptr.cpu,
                                 texture->width0, texture->height0,
                                 depth, array_size,

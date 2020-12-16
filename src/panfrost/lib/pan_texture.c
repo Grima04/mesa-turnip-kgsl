@@ -366,6 +366,7 @@ panfrost_emit_texture_payload_v7(mali_ptr *payload,
 
 void
 panfrost_new_texture(
+        const struct panfrost_device *dev,
         void *out,
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
