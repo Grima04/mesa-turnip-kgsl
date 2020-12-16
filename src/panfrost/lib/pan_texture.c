@@ -407,81 +407,29 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
 }
 
 void
-panfrost_new_texture(
-        const struct panfrost_device *dev,
-        void *out,
-        uint16_t width, uint16_t height,
-        uint16_t depth, uint16_t array_size,
-        enum pipe_format format,
-        enum mali_texture_dimension dim,
-        uint64_t modifier,
-        unsigned first_level, unsigned last_level,
-        unsigned first_layer, unsigned last_layer,
-        unsigned nr_samples,
-        unsigned cube_stride,
-        unsigned swizzle,
-        mali_ptr base,
-        struct panfrost_slice *slices)
+panfrost_new_texture(const struct panfrost_device *dev,
+                     void *out,
+                     uint16_t width, uint16_t height,
+                     uint16_t depth, uint16_t array_size,
+                     enum pipe_format format,
+                     enum mali_texture_dimension dim,
+                     uint64_t modifier,
+                     unsigned first_level, unsigned last_level,
+                     unsigned first_layer, unsigned last_layer,
+                     unsigned nr_samples,
+                     unsigned cube_stride,
+                     unsigned swizzle,
+                     mali_ptr base,
+                     struct panfrost_slice *slices,
+                     const struct panfrost_ptr *payload)
 {
         const struct util_format_description *desc =
                 util_format_description(format);
 
+        bool is_bifrost = dev->quirks & IS_BIFROST;
         bool manual_stride =
                 panfrost_needs_explicit_stride(dev, modifier, format, slices,
                                                width, first_level, last_level);
-
-        pan_pack(out, MIDGARD_TEXTURE, cfg) {
-                cfg.width = u_minify(width, first_level);
-                cfg.height = u_minify(height, first_level);
-                if (dim == MALI_TEXTURE_DIMENSION_3D)
-                        cfg.depth = u_minify(depth, first_level);
-                else
-                        cfg.sample_count = MAX2(1, nr_samples);
-                cfg.array_size = array_size;
-                cfg.format = panfrost_pipe_format_v6[format].hw;
-                cfg.dimension = dim;
-                cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
-                cfg.manual_stride = manual_stride;
-                cfg.levels = last_level - first_level + 1;
-                cfg.swizzle = swizzle;
-        };
-
-        panfrost_emit_texture_payload(
-                dev,
-                (mali_ptr *) (out + MALI_MIDGARD_TEXTURE_LENGTH),
-                desc,
-                dim,
-                modifier,
-                width, height,
-                first_level, last_level,
-                first_layer, last_layer,
-                nr_samples,
-                cube_stride,
-                manual_stride,
-                base,
-                slices);
-}
-
-void
-panfrost_new_texture_bifrost(
-        const struct panfrost_device *dev,
-        struct mali_bifrost_texture_packed *out,
-        uint16_t width, uint16_t height,
-        uint16_t depth, uint16_t array_size,
-        enum pipe_format format,
-        enum mali_texture_dimension dim,
-        uint64_t modifier,
-        unsigned first_level, unsigned last_level,
-        unsigned first_layer, unsigned last_layer,
-        unsigned nr_samples,
-        unsigned cube_stride,
-        unsigned swizzle,
-        mali_ptr base,
-        struct panfrost_slice *slices,
-        const struct panfrost_ptr *payload)
-{
-        const struct util_format_description *desc =
-                util_format_description(format);
 
         panfrost_emit_texture_payload(dev,
                                       payload->cpu,
@@ -493,30 +441,47 @@ panfrost_new_texture_bifrost(
                                       first_layer, last_layer,
                                       nr_samples,
                                       cube_stride,
-                                      true, /* Stride explicit on Bifrost */
+                                      manual_stride,
                                       base,
                                       slices);
 
-        pan_pack(out, BIFROST_TEXTURE, cfg) {
-                cfg.dimension = dim;
-                cfg.format = dev->formats[format].hw;
+        if (is_bifrost) {
+                pan_pack(out, BIFROST_TEXTURE, cfg) {
+                        cfg.dimension = dim;
+                        cfg.format = dev->formats[format].hw;
+                        cfg.width = u_minify(width, first_level);
+                        cfg.height = u_minify(height, first_level);
+                        if (dim == MALI_TEXTURE_DIMENSION_3D)
+                                cfg.depth = u_minify(depth, first_level);
+                        else
+                                cfg.sample_count = MAX2(nr_samples, 1);
+                        cfg.swizzle = swizzle;
+                        cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
+                        cfg.levels = last_level - first_level + 1;
+                        cfg.array_size = array_size;
+                        cfg.surfaces = payload->gpu;
 
-                cfg.width = u_minify(width, first_level);
-                cfg.height = u_minify(height, first_level);
-                if (dim == MALI_TEXTURE_DIMENSION_3D)
-                        cfg.depth = u_minify(depth, first_level);
-                else
-                        cfg.sample_count = MAX2(nr_samples, 1);
-                cfg.swizzle = swizzle;
-                cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
-                cfg.levels = last_level - first_level + 1;
-                cfg.array_size = array_size;
-                cfg.surfaces = payload->gpu;
-
-                /* We specify API-level LOD clamps in the sampler descriptor
-                 * and use these clamps simply for bounds checking */
-                cfg.minimum_lod = FIXED_16(0, false);
-                cfg.maximum_lod = FIXED_16(cfg.levels - 1, false);
+                        /* We specify API-level LOD clamps in the sampler descriptor
+                         * and use these clamps simply for bounds checking */
+                        cfg.minimum_lod = FIXED_16(0, false);
+                        cfg.maximum_lod = FIXED_16(cfg.levels - 1, false);
+                }
+        } else {
+                pan_pack(out, MIDGARD_TEXTURE, cfg) {
+                        cfg.width = u_minify(width, first_level);
+                        cfg.height = u_minify(height, first_level);
+                        if (dim == MALI_TEXTURE_DIMENSION_3D)
+                                cfg.depth = u_minify(depth, first_level);
+                        else
+                                cfg.sample_count = MAX2(1, nr_samples);
+                        cfg.array_size = array_size;
+                        cfg.format = panfrost_pipe_format_v6[format].hw;
+                        cfg.dimension = dim;
+                        cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
+                        cfg.manual_stride = manual_stride;
+                        cfg.levels = last_level - first_level + 1;
+                        cfg.swizzle = swizzle;
+                };
         }
 }
 

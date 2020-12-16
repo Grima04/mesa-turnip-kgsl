@@ -985,6 +985,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 struct pipe_resource *texture)
 {
         struct panfrost_device *device = pan_device(pctx->screen);
+        bool is_bifrost = device->quirks & IS_BIFROST;
         struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
         enum pipe_format format = so->base.format;
         assert(prsrc->bo);
@@ -1040,62 +1041,39 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         enum mali_texture_dimension type =
                 panfrost_translate_texture_dimension(so->base.target);
 
-        if (device->quirks & IS_BIFROST) {
-                unsigned size = panfrost_estimate_texture_payload_size(
-                                so->base.u.tex.first_level,
-                                so->base.u.tex.last_level,
-                                so->base.u.tex.first_layer,
-                                so->base.u.tex.last_layer,
-                                texture->nr_samples,
-                                type, prsrc->modifier);
+        unsigned size =
+                (is_bifrost ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
+                panfrost_estimate_texture_payload_size(so->base.u.tex.first_level,
+                                                       so->base.u.tex.last_level,
+                                                       so->base.u.tex.first_layer,
+                                                       so->base.u.tex.last_layer,
+                                                       texture->nr_samples,
+                                                       type, prsrc->modifier);
 
-                so->bo = panfrost_bo_create(device, size, 0);
+        so->bo = panfrost_bo_create(device, size, 0);
 
-                panfrost_new_texture_bifrost(
-                                device,
-                                &so->bifrost_descriptor,
-                                texture->width0, texture->height0,
-                                depth, array_size,
-                                format,
-                                type, prsrc->modifier,
-                                so->base.u.tex.first_level,
-                                so->base.u.tex.last_level,
-                                so->base.u.tex.first_layer,
-                                so->base.u.tex.last_layer,
-                                texture->nr_samples,
-                                prsrc->cubemap_stride,
-                                panfrost_translate_swizzle_4(user_swizzle),
-                                prsrc->bo->ptr.gpu,
-                                prsrc->slices, &so->bo->ptr);
-        } else {
-                unsigned size = panfrost_estimate_texture_payload_size(
-                                so->base.u.tex.first_level,
-                                so->base.u.tex.last_level,
-                                so->base.u.tex.first_layer,
-                                so->base.u.tex.last_layer,
-                                texture->nr_samples,
-                                type, prsrc->modifier);
-                size += MALI_MIDGARD_TEXTURE_LENGTH;
+        struct panfrost_ptr payload = so->bo->ptr;
+        void *tex = is_bifrost ? &so->bifrost_descriptor : so->bo->ptr.cpu;
 
-                so->bo = panfrost_bo_create(device, size, 0);
-
-                panfrost_new_texture(
-                                device,
-                                so->bo->ptr.cpu,
-                                texture->width0, texture->height0,
-                                depth, array_size,
-                                format,
-                                type, prsrc->modifier,
-                                so->base.u.tex.first_level,
-                                so->base.u.tex.last_level,
-                                so->base.u.tex.first_layer,
-                                so->base.u.tex.last_layer,
-                                texture->nr_samples,
-                                prsrc->cubemap_stride,
-                                panfrost_translate_swizzle_4(user_swizzle),
-                                prsrc->bo->ptr.gpu,
-                                prsrc->slices);
+        if (!is_bifrost) {
+                payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
+                payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
         }
+
+        panfrost_new_texture(device, tex,
+                             texture->width0, texture->height0,
+                             depth, array_size,
+                             format,
+                             type, prsrc->modifier,
+                             so->base.u.tex.first_level,
+                             so->base.u.tex.last_level,
+                             so->base.u.tex.first_layer,
+                             so->base.u.tex.last_layer,
+                             texture->nr_samples,
+                             prsrc->cubemap_stride,
+                             panfrost_translate_swizzle_4(user_swizzle),
+                             prsrc->bo->ptr.gpu,
+                             prsrc->slices, &payload);
 }
 
 static struct pipe_sampler_view *

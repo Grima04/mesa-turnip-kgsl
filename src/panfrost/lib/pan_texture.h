@@ -101,40 +101,21 @@ panfrost_estimate_texture_payload_size(
                 enum mali_texture_dimension dim, uint64_t modifier);
 
 void
-panfrost_new_texture(
-        const struct panfrost_device *dev,
-        void *out,
-        uint16_t width, uint16_t height,
-        uint16_t depth, uint16_t array_size,
-        enum pipe_format format,
-        enum mali_texture_dimension dim,
-        uint64_t modifier,
-        unsigned first_level, unsigned last_level,
-        unsigned first_layer, unsigned last_layer,
-        unsigned nr_samples,
-        unsigned cube_stride,
-        unsigned swizzle,
-        mali_ptr base,
-        struct panfrost_slice *slices);
-
-void
-panfrost_new_texture_bifrost(
-        const struct panfrost_device *dev,
-        struct mali_bifrost_texture_packed *out,
-        uint16_t width, uint16_t height,
-        uint16_t depth, uint16_t array_size,
-        enum pipe_format format,
-        enum mali_texture_dimension dim,
-        uint64_t modifier,
-        unsigned first_level, unsigned last_level,
-        unsigned first_layer, unsigned last_layer,
-        unsigned nr_samples,
-        unsigned cube_stride,
-        unsigned swizzle,
-        mali_ptr base,
-        struct panfrost_slice *slices,
-        const struct panfrost_ptr *payload);
-
+panfrost_new_texture(const struct panfrost_device *dev,
+                     void *out,
+                     uint16_t width, uint16_t height,
+                     uint16_t depth, uint16_t array_size,
+                     enum pipe_format format,
+                     enum mali_texture_dimension dim,
+                     uint64_t modifier,
+                     unsigned first_level, unsigned last_level,
+                     unsigned first_layer, unsigned last_layer,
+                     unsigned nr_samples,
+                     unsigned cube_stride,
+                     unsigned swizzle,
+                     mali_ptr base,
+                     struct panfrost_slice *slices,
+                     const struct panfrost_ptr *payload);
 
 unsigned
 panfrost_get_layer_stride(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level);
