@@ -168,52 +168,6 @@ bi_rewrite_index_src_single(bi_instr *ins, bi_index old, bi_index new)
         }
 }
 
-static bi_instruction
-bi_spill(unsigned node, uint64_t offset, unsigned channels)
-{
-        bi_instruction store = {
-                .type = BI_STORE,
-                .segment = BI_SEG_TL,
-                .vector_channels = channels,
-                .src = {
-                        node,
-                        BIR_INDEX_CONSTANT,
-                        BIR_INDEX_CONSTANT | 32,
-                },
-                .src_types = {
-                        nir_type_uint32,
-                        nir_type_uint32,
-                        nir_type_uint32
-                },
-                .constant = { .u64 = offset },
-        };
-
-        return store;
-}
-
-static bi_instruction
-bi_fill(unsigned node, uint64_t offset, unsigned channels)
-{
-        bi_instruction load = {
-                .type = BI_LOAD,
-                .segment = BI_SEG_TL,
-                .vector_channels = channels,
-                .dest = node,
-                .dest_type = nir_type_uint32,
-                .src = {
-                        BIR_INDEX_CONSTANT,
-                        BIR_INDEX_CONSTANT | 32,
-                },
-                .src_types = {
-                        nir_type_uint32,
-                        nir_type_uint32
-                },
-                .constant = { .u64 = offset },
-        };
-
-        return load;
-}
-
 /* Get the single instruction in a singleton clause. Precondition: clause
  * contains exactly 1 instruction.
  *
@@ -229,29 +183,6 @@ bi_unwrap_singleton(bi_clause *clause)
 
        return clause->bundles[0].fma ? clause->bundles[0].fma
                : clause->bundles[0].add;
-}
-
-static inline void
-bi_insert_singleton(void *memctx, bi_clause *cursor, bi_block *block,
-                bi_instruction ins, bool before)
-{
-        bi_instruction *uins = rzalloc(memctx, bi_instruction);
-        memcpy(uins, &ins, sizeof(ins));
-
-        /* Get the instruction to pivot around. Should be first/last of clause
-         * depending on before setting, those coincide for singletons */
-        bi_instruction *cursor_ins = bi_unwrap_singleton(cursor);
-
-        bi_clause *clause = bi_make_singleton(memctx, uins,
-                        block, 0, (1 << 0), true);
-
-        if (before) {
-                list_addtail(&clause->link, &cursor->link);
-                list_addtail(&uins->link, &cursor_ins->link);
-        } else {
-                list_add(&clause->link, &cursor->link);
-                list_add(&uins->link, &cursor_ins->link);
-        }
 }
 
 /* If register allocation fails, find the best spill node */
