@@ -66,6 +66,8 @@ def decode_op(instructions, is_fma):
     template = """void
 bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, struct bi_constants *consts, bool last)
 {
+    fputs("    ", fp);
+
 % for (i, (name, (emask, ebits), derived)) in enumerate(options):
 % if len(derived) > 0:
     ${"else " if i > 0 else ""}if (unlikely(((bits & ${hex(emask)}) == ${hex(ebits)})
