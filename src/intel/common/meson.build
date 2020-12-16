@@ -42,8 +42,8 @@ files_libintel_common = files(
 )
 
 libintel_common = static_library(
-  ['intel_common', genX_xml_h],
-  files_libintel_common,
+  'intel_common',
+  [files_libintel_common, genX_xml_h, sha1_h],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
