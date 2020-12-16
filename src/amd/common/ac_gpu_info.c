@@ -531,6 +531,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       identify_chip(VEGA12);
       identify_chip(VEGA20);
       identify_chip(ARCTURUS);
+      identify_chip(ALDEBARAN);
       break;
    case FAMILY_RV:
       identify_chip(RAVEN);
@@ -913,6 +914,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          pc_lines = 256;
          break;
       case CHIP_ARCTURUS:
+      case CHIP_ALDEBARAN:
          break;
       default:
          assert(0);

@@ -2446,6 +2446,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       dec->jpg.direct_reg = true;
       break;
    case CHIP_ARCTURUS:
+   case CHIP_ALDEBARAN:
    case CHIP_SIENNA_CICHLID:
    case CHIP_NAVY_FLOUNDER:
    case CHIP_DIMGREY_CAVEFISH:
