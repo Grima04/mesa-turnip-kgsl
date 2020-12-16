@@ -2023,7 +2023,8 @@ radv_image_has_htile(const struct radv_image *image)
 static inline bool
 radv_htile_enabled(const struct radv_image *image, unsigned level)
 {
-	return radv_image_has_htile(image) && level == 0;
+	return radv_image_has_htile(image) &&
+	       level < image->planes[0].surface.num_htile_levels;
 }
 
 /**
