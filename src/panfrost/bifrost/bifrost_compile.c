@@ -2495,6 +2495,20 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
  * space-efficient and with simpler RA/scheduling requirements*/
 
 static void
+bi_emit_texs(bi_builder *b, nir_tex_instr *instr)
+{
+        int coord_idx = nir_tex_instr_src_index(instr, nir_tex_src_coord);
+        assert(coord_idx >= 0);
+        bi_index coords = bi_src_index(&instr->src[coord_idx].src);
+
+        bi_texs_2d_to(b, nir_dest_bit_size(instr->dest),
+                        bi_dest_index(&instr->dest),
+                        coords, bi_word(coords, 1),
+                        instr->op != nir_texop_tex, /* zero LOD */
+                        instr->sampler_index, instr->texture_index);
+}
+
+static void
 emit_texs(bi_context *ctx, nir_tex_instr *instr)
 {
         bi_instruction tex = {
