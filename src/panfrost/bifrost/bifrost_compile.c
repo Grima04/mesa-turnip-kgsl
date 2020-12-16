@@ -36,6 +36,7 @@
 #include "compiler.h"
 #include "bi_quirks.h"
 #include "bi_print.h"
+#include "bi_builder.h"
 
 static const struct debug_named_value debug_options[] = {
         {"msgs",      BIFROST_DBG_MSGS,		"Print debug messages"},
@@ -56,6 +57,15 @@ int bifrost_debug = 0;
 		do { if (bifrost_debug & BIFROST_DBG_MSGS) \
 			fprintf(stderr, "%s:%d: "fmt, \
 				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
+
+static inline bi_builder
+bi_init_builder(bi_context *ctx)
+{
+        return (bi_builder) {
+                .shader = ctx,
+                .cursor = bi_after_block(ctx->current_block)
+        };
+}
 
 static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
 static bi_instruction *bi_emit_branch(bi_context *ctx);
