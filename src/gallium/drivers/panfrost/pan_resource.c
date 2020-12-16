@@ -350,6 +350,7 @@ panfrost_setup_layout(struct panfrost_device *dev,
         bool tiled = pres->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED;
         bool linear = pres->layout.modifier == DRM_FORMAT_MOD_LINEAR;
         bool should_align = renderable || tiled || afbc;
+        bool is_3d = res->target == PIPE_TEXTURE_3D;
 
         unsigned offset = 0;
         unsigned tile_h = 1, tile_w = 1, tile_shift = 0;
@@ -396,18 +397,28 @@ panfrost_setup_layout(struct panfrost_device *dev,
                 slice->row_stride = stride * (tile_h >> tile_shift);
 
                 unsigned slice_one_size = slice->line_stride * effective_height;
-                unsigned slice_full_size =
-                        slice_one_size * effective_depth * nr_samples;
-
-                slice->surface_stride = slice_one_size;
 
                 /* Compute AFBC sizes if necessary */
                 if (afbc) {
                         slice->afbc.header_size =
                                 panfrost_afbc_header_size(width, height);
 
-                        offset += slice->afbc.header_size;
+                        /* 3D AFBC resources have all headers placed at the
+                         * beginning instead of having them split per depth
+                         * level
+                         */
+                        if (is_3d)
+                                slice->afbc.header_size *= effective_depth;
+                        else
+                                slice_one_size += slice->afbc.header_size;
                 }
+
+                unsigned slice_full_size =
+                        slice_one_size * effective_depth * nr_samples;
+
+                slice->surface_stride = slice_one_size;
+
+                /* Compute AFBC sizes if necessary */
 
                 offset += slice_full_size;
 
