@@ -268,20 +268,76 @@ panfrost_get_surface_pointer(mali_ptr base, struct panfrost_slice *slices,
                                        l, w * face_mult + f, s);
 }
 
+struct panfrost_surface_iter {
+        unsigned layer, last_layer;
+        unsigned level, first_level, last_level;
+        unsigned face, first_face, last_face;
+        unsigned sample, first_sample, last_sample;
+};
+
 static void
-panfrost_emit_texture_payload(
-        mali_ptr *payload,
-        const struct util_format_description *desc,
-        enum mali_texture_dimension dim,
-        uint64_t modifier,
-        unsigned width, unsigned height,
-        unsigned first_level, unsigned last_level,
-        unsigned first_layer, unsigned last_layer,
-        unsigned nr_samples,
-        unsigned cube_stride,
-        bool manual_stride,
-        mali_ptr base,
-        struct panfrost_slice *slices)
+panfrost_surface_iter_begin(struct panfrost_surface_iter *iter,
+                            unsigned first_layer, unsigned last_layer,
+                            unsigned first_level, unsigned last_level,
+                            unsigned first_face, unsigned last_face,
+                            unsigned nr_samples)
+{
+        iter->layer = first_layer;
+        iter->last_layer = last_layer;
+        iter->level = iter->first_level = first_level;
+        iter->last_level = last_level;
+        iter->face = iter->first_face = first_face;
+        iter->last_face = last_face;
+        iter->sample = iter->first_sample = 0;
+        iter->last_sample = nr_samples - 1;
+}
+
+static bool
+panfrost_surface_iter_end(const struct panfrost_surface_iter *iter)
+{
+        return iter->layer > iter->last_layer;
+}
+
+static void
+panfrost_surface_iter_next(const struct panfrost_device *dev,
+                           struct panfrost_surface_iter *iter)
+{
+#define INC_TEST(field) \
+        do { \
+                if (iter->field++ < iter->last_ ## field) \
+                       return; \
+                iter->field = iter->first_ ## field; \
+        } while (0)
+
+        /* Ordering is different on v7: inner loop is iterating on levels */
+        if (dev->arch >= 7)
+                INC_TEST(level);
+
+        INC_TEST(sample);
+        INC_TEST(face);
+
+        if (dev->arch < 7)
+                INC_TEST(level);
+
+        iter->layer++;
+
+#undef INC_TEST
+}
+
+static void
+panfrost_emit_texture_payload(const struct panfrost_device *dev,
+                              mali_ptr *payload,
+                              const struct util_format_description *desc,
+                              enum mali_texture_dimension dim,
+                              uint64_t modifier,
+                              unsigned width, unsigned height,
+                              unsigned first_level, unsigned last_level,
+                              unsigned first_layer, unsigned last_layer,
+                              unsigned nr_samples,
+                              unsigned cube_stride,
+                              bool manual_stride,
+                              mali_ptr base,
+                              struct panfrost_slice *slices)
 {
         base |= panfrost_compression_tag(desc, modifier);
 
@@ -295,72 +351,27 @@ panfrost_emit_texture_payload(
 
         nr_samples = MAX2(nr_samples, 1);
 
+        struct panfrost_surface_iter iter;
         unsigned idx = 0;
 
-        for (unsigned w = first_layer; w <= last_layer; ++w) {
-                for (unsigned l = first_level; l <= last_level; ++l) {
-                        for (unsigned f = first_face; f <= last_face; ++f) {
-                                for (unsigned s = 0; s < nr_samples; ++s) {
-                                        payload[idx++] =
-                                                panfrost_get_surface_pointer(base, slices, dim,
-                                                                             l, w, f, s, cube_stride);
+        for (panfrost_surface_iter_begin(&iter, first_layer, last_layer,
+                                         first_level, last_level,
+                                         first_face, last_face, nr_samples);
+             !panfrost_surface_iter_end(&iter);
+             panfrost_surface_iter_next(dev, &iter)) {
+                payload[idx++] =
+                        panfrost_get_surface_pointer(base, slices, dim,
+                                                     iter.level, iter.layer,
+                                                     iter.face, iter.sample,
+                                                     cube_stride);
 
-                                        if (!manual_stride)
-                                                continue;
+                if (!manual_stride)
+                        continue;
 
-                                        payload[idx++] =
-                                                panfrost_get_surface_strides(slices, desc, dim,
-                                                                             modifier, width, height,
-                                                                             l, cube_stride);
-                                }
-                        }
-                }
-        }
-}
-
-static void
-panfrost_emit_texture_payload_v7(mali_ptr *payload,
-                                 const struct util_format_description *desc,
-                                 enum mali_texture_dimension dim,
-                                 uint64_t modifier,
-                                 unsigned width, unsigned height,
-                                 unsigned first_level, unsigned last_level,
-                                 unsigned first_layer, unsigned last_layer,
-                                 unsigned nr_samples,
-                                 unsigned cube_stride,
-                                 mali_ptr base,
-                                 struct panfrost_slice *slices)
-{
-        base |= panfrost_compression_tag(desc, modifier);
-
-        /* Inject the addresses in, interleaving array indices, mip levels,
-         * cube faces, and strides in that order */
-
-        unsigned first_face  = 0, last_face = 0;
-
-        nr_samples = MAX2(nr_samples, 1);
-
-        if (dim == MALI_TEXTURE_DIMENSION_CUBE) {
-                assert(nr_samples == 1);
-                panfrost_adjust_cube_dimensions(&first_face, &last_face, &first_layer, &last_layer);
-        }
-
-        unsigned idx = 0;
-
-        for (unsigned w = first_layer; w <= last_layer; ++w) {
-                for (unsigned f = first_face; f <= last_face; ++f) {
-                        for (unsigned s = 0; s < nr_samples; ++s) {
-                                for (unsigned l = first_level; l <= last_level; ++l) {
-                                        payload[idx++] =
-                                                panfrost_get_surface_pointer(base, slices, dim,
-                                                                             l, w, f, s, cube_stride);
-                                        payload[idx++] =
-                                                panfrost_get_surface_strides(slices, desc, dim,
-                                                                             modifier, width, height,
-                                                                             l, cube_stride);
-                                }
-                        }
-                }
+                payload[idx++] =
+                        panfrost_get_surface_strides(slices, desc, dim,
+                                                     modifier, width, height,
+                                                     iter.level, cube_stride);
         }
 }
 
@@ -405,6 +416,7 @@ panfrost_new_texture(
         };
 
         panfrost_emit_texture_payload(
+                dev,
                 (mali_ptr *) (out + MALI_MIDGARD_TEXTURE_LENGTH),
                 desc,
                 dim,
@@ -440,32 +452,19 @@ panfrost_new_texture_bifrost(
         const struct util_format_description *desc =
                 util_format_description(format);
 
-        if (dev->arch >= 7) {
-                panfrost_emit_texture_payload_v7(payload->cpu,
-                                                 desc,
-                                                 dim,
-                                                 modifier,
-                                                 width, height,
-                                                 first_level, last_level,
-                                                 first_layer, last_layer,
-                                                 nr_samples,
-                                                 cube_stride,
-                                                 base,
-                                                 slices);
-        } else {
-                panfrost_emit_texture_payload(payload->cpu,
-                                              desc,
-                                              dim,
-                                              modifier,
-                                              width, height,
-                                              first_level, last_level,
-                                              first_layer, last_layer,
-                                              nr_samples,
-                                              cube_stride,
-                                              true, /* Stride explicit on Bifrost */
-                                              base,
-                                              slices);
-        }
+        panfrost_emit_texture_payload(dev,
+                                      payload->cpu,
+                                      desc,
+                                      dim,
+                                      modifier,
+                                      width, height,
+                                      first_level, last_level,
+                                      first_layer, last_layer,
+                                      nr_samples,
+                                      cube_stride,
+                                      true, /* Stride explicit on Bifrost */
+                                      base,
+                                      slices);
 
         pan_pack(out, BIFROST_TEXTURE, cfg) {
                 cfg.dimension = dim;
