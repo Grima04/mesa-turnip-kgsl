@@ -3528,7 +3528,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
  * map, TODO) textures. Anything else needs a complete texture op. */
 
 static bool
-bi_is_normal_tex(gl_shader_stage stage, nir_tex_instr *instr)
+bi_is_simple_tex(nir_tex_instr *instr)
 {
         if (instr->op != nir_texop_tex && instr->op != nir_texop_txl)
                 return false;
@@ -3570,7 +3570,7 @@ emit_tex(bi_context *ctx, nir_tex_instr *instr)
         unsigned sz =  nir_dest_bit_size(instr->dest);
         instr->dest_type = base | sz;
 
-        bool is_normal = bi_is_normal_tex(ctx->stage, instr);
+        bool is_normal = bi_is_simple_tex(instr);
         bool is_2d = instr->sampler_dim == GLSL_SAMPLER_DIM_2D ||
                 instr->sampler_dim == GLSL_SAMPLER_DIM_EXTERNAL;
         bool is_f = base == nir_type_float && (sz == 16 || sz == 32);
