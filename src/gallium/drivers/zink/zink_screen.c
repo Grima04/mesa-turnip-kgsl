@@ -1164,8 +1164,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_debug = debug_get_option_zink_debug();
 
-   screen->loader_version = zink_get_loader_version();
-   screen->instance = zink_create_instance(screen);
+   screen->instance_info.loader_version = zink_get_loader_version();
+   screen->instance = zink_create_instance(&screen->instance_info);
+
    if (!screen->instance)
       goto fail;
 

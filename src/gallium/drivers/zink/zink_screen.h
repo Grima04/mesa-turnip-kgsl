@@ -73,8 +73,6 @@ struct zink_screen {
 
    uint32_t cur_custom_border_color_samplers;
 
-   uint32_t loader_version;
-
    bool needs_mesa_wsi;
 
    PFN_vkGetPhysicalDeviceFeatures2 vk_GetPhysicalDeviceFeatures2;
