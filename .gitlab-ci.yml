@@ -1232,7 +1232,6 @@ arm64_a630_gles2:
     DEQP_SKIPS: deqp-freedreno-a630-skips.txt
     GIT_STRATEGY: none
     DEQP_EXPECTED_RENDERER: FD630
-    DEQP_NO_SAVE_RESULTS: ""
     VK_DRIVER: freedreno
   tags:
     - google-freedreno-cheza
@@ -1333,8 +1332,6 @@ arm64_a306_gles2:
     DEQP_VER: gles2
     DEQP_PARALLEL: 4
     DEQP_EXPECTED_RENDERER: FD307
-    # Since we can't get artifacts back yet, skip making them.
-    DEQP_NO_SAVE_RESULTS: 1
   script:
     - ./install/bare-metal/fastboot.sh
   needs:
