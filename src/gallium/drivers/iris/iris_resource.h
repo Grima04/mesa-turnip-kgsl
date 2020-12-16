@@ -513,12 +513,4 @@ void iris_resource_finish_render(struct iris_context *ice,
                                  struct iris_resource *res, uint32_t level,
                                  uint32_t start_layer, uint32_t layer_count,
                                  enum isl_aux_usage aux_usage);
-void iris_resource_prepare_depth(struct iris_context *ice,
-                                 struct iris_batch *batch,
-                                 struct iris_resource *res, uint32_t level,
-                                 uint32_t start_layer, uint32_t layer_count);
-void iris_resource_finish_depth(struct iris_context *ice,
-                                struct iris_resource *res, uint32_t level,
-                                uint32_t start_layer, uint32_t layer_count,
-                                bool depth_written);
 #endif

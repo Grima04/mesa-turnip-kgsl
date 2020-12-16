@@ -3167,6 +3167,8 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
             info.hiz_surf = &zres->aux.surf;
             info.hiz_address = zres->aux.bo->gtt_offset + zres->aux.offset;
          }
+
+         ice->state.hiz_usage = info.hiz_usage;
       }
 
       if (stencil_res) {

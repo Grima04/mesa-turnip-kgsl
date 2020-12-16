@@ -201,10 +201,9 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
             zs_surf->u.tex.last_layer - zs_surf->u.tex.first_layer + 1;
 
          if (z_res) {
-            iris_resource_prepare_depth(ice, batch, z_res,
-                                        zs_surf->u.tex.level,
-                                        zs_surf->u.tex.first_layer,
-                                        num_layers);
+            iris_resource_prepare_render(ice, z_res, zs_surf->u.tex.level,
+                                         zs_surf->u.tex.first_layer,
+                                         num_layers, ice->state.hiz_usage);
             iris_emit_buffer_barrier_for(batch, z_res->bo,
                                          IRIS_DOMAIN_DEPTH_WRITE);
          }
@@ -293,10 +292,10 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
          zs_surf->u.tex.last_layer - zs_surf->u.tex.first_layer + 1;
 
       if (z_res) {
-         if (may_have_resolved_depth) {
-            iris_resource_finish_depth(ice, z_res, zs_surf->u.tex.level,
-                                       zs_surf->u.tex.first_layer, num_layers,
-                                       ice->state.depth_writes_enabled);
+         if (may_have_resolved_depth && ice->state.depth_writes_enabled) {
+            iris_resource_finish_render(ice, z_res, zs_surf->u.tex.level,
+                                        zs_surf->u.tex.first_layer,
+                                        num_layers, ice->state.hiz_usage);
          }
       }
 
@@ -1041,26 +1040,4 @@ iris_resource_finish_render(struct iris_context *ice,
 {
    iris_resource_finish_write(ice, res, level, start_layer, layer_count,
                               aux_usage);
-}
-
-void
-iris_resource_prepare_depth(struct iris_context *ice,
-                            struct iris_batch *batch,
-                            struct iris_resource *res, uint32_t level,
-                            uint32_t start_layer, uint32_t layer_count)
-{
-   iris_resource_prepare_access(ice, res, level, 1, start_layer,
-                                layer_count, res->aux.usage, !!res->aux.bo);
-}
-
-void
-iris_resource_finish_depth(struct iris_context *ice,
-                           struct iris_resource *res, uint32_t level,
-                           uint32_t start_layer, uint32_t layer_count,
-                           bool depth_written)
-{
-   if (depth_written) {
-      iris_resource_finish_write(ice, res, level, start_layer, layer_count,
-                                 res->aux.usage);
-   }
 }
