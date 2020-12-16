@@ -6111,8 +6111,6 @@ static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
                                   struct radv_image *image,
                                   const VkImageSubresourceRange *range)
 {
-	assert(range->baseMipLevel == 0);
-	assert(range->levelCount == 1 || range->levelCount == VK_REMAINING_ARRAY_LAYERS);
 	VkImageAspectFlags aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
 	struct radv_cmd_state *state = &cmd_buffer->state;
 	uint32_t htile_value = radv_get_htile_initial_value(cmd_buffer->device, image);
