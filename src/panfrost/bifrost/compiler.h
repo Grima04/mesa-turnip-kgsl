@@ -31,6 +31,7 @@
 #include "bi_opcodes.h"
 #include "compiler/nir/nir.h"
 #include "panfrost/util/pan_ir.h"
+#include "util/u_math.h"
 
 /* Bifrost opcodes are tricky -- the same op may exist on both FMA and
  * ADD with two completely different opcodes, and opcodes can be varying
@@ -447,6 +448,12 @@ bi_imm_u32(uint32_t imm)
                 .swizzle = BI_SWIZZLE_H01,
                 .value = imm
         };
+}
+
+static inline bi_index
+bi_imm_f32(float imm)
+{
+        return bi_imm_u32(fui(imm));
 }
 
 static inline bi_index
