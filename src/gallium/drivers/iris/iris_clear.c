@@ -464,9 +464,6 @@ fast_clear_depth(struct iris_context *ice,
     */
    if (res->aux.clear_color.f32[0] != depth) {
       for (unsigned res_level = 0; res_level < res->surf.levels; res_level++) {
-         if (!(res->aux.has_hiz & (1 << res_level)))
-            continue;
-
          const unsigned level_layers =
             iris_get_num_logical_layers(res, res_level);
          for (unsigned layer = 0; layer < level_layers; layer++) {

@@ -583,14 +583,6 @@ iris_hiz_exec(struct iris_context *ice,
    iris_batch_sync_region_end(batch);
 }
 
-static bool
-level_has_aux(const struct iris_resource *res, uint32_t level)
-{
-   return isl_aux_usage_has_hiz(res->aux.usage) ?
-          iris_resource_level_has_hiz(res, level) :
-          res->aux.usage != ISL_AUX_USAGE_NONE;
-}
-
 /**
  * Does the resource's slice have hiz enabled?
  */
@@ -656,9 +648,6 @@ iris_has_invalid_primary(const struct iris_resource *res,
 
    for (uint32_t l = 0; l < num_levels; l++) {
       const uint32_t level = start_level + l;
-      if (!level_has_aux(res, level))
-         continue;
-
       const uint32_t level_layers =
          miptree_layer_range_length(res, level, start_layer, num_layers);
       for (unsigned a = 0; a < level_layers; a++) {
@@ -680,6 +669,9 @@ iris_resource_prepare_access(struct iris_context *ice,
                              enum isl_aux_usage aux_usage,
                              bool fast_clear_supported)
 {
+   if (!res->aux.bo)
+      return;
+
    /* We can't do resolves on the compute engine, so awkwardly, we have to
     * do them on the render batch...
     */
@@ -689,9 +681,6 @@ iris_resource_prepare_access(struct iris_context *ice,
       miptree_level_range_length(res, start_level, num_levels);
    for (uint32_t l = 0; l < clamped_levels; l++) {
       const uint32_t level = start_level + l;
-      if (!level_has_aux(res, level))
-         continue;
-
       const uint32_t level_layers =
          miptree_layer_range_length(res, level, start_layer, num_layers);
       for (uint32_t a = 0; a < level_layers; a++) {
@@ -734,7 +723,7 @@ iris_resource_finish_write(struct iris_context *ice,
                            uint32_t start_layer, uint32_t num_layers,
                            enum isl_aux_usage aux_usage)
 {
-   if (!level_has_aux(res, level))
+   if (!res->aux.bo)
       return;
 
    const uint32_t level_layers =
