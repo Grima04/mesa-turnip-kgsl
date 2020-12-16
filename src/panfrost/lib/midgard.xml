@@ -707,7 +707,7 @@
     <field name="Minimum LOD" size="13" start="1:0" type="uint" default="0"/>
     <field name="Compare Function" size="3" start="1:13" type="Func" default="Never"/>
     <field name="Maximum LOD" size="13" start="1:16" type="uint" default="0"/>
-    <field name="LOD bias" size="16" start="2:0" type="uint" default="0"/>
+    <field name="LOD bias" size="16" start="2:0" type="int" default="0"/>
     <field name="Maximum anisotropy" size="5" start="2:16" type="uint"/>
     <field name="Anisotropy" size="1" start="2:25" type="bool"/>
     <field name="Border Color R" size="32" start="4:0" type="float" default="0.0"/>
