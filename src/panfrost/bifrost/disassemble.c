@@ -696,11 +696,6 @@ void disassemble_bifrost(FILE *fp, uint8_t *code, size_t size, bool verbose)
         // used for displaying branch targets
         unsigned offset = 0;
         while (words != words_end) {
-                // we don't know what the program-end bit is quite yet, so for now just
-                // assume that an all-0 quadword is padding
-                uint32_t zero[4] = {};
-                if (memcmp(words, zero, 4 * sizeof(uint32_t)) == 0)
-                        break;
                 fprintf(fp, "clause_%d:\n", offset);
                 unsigned size;
                 if (dump_clause(fp, words, &size, offset, verbose) == true) {
