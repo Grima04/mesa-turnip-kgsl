@@ -1082,6 +1082,11 @@ unsigned bi_writemask_new(bi_instr *ins);
 void bi_rewrite_uses(bi_context *ctx, unsigned old, unsigned oldc, unsigned new, unsigned newc);
 
 void bi_print_instr(bi_instr *I, FILE *fp);
+void bi_print_slots(bi_registers *regs, FILE *fp);
+void bi_print_bundle(bi_bundle *bundle, FILE *fp);
+void bi_print_clause(bi_clause *clause, FILE *fp);
+void bi_print_block(bi_block *block, FILE *fp);
+void bi_print_shader(bi_context *ctx, FILE *fp);
 
 /* BIR passes */
 

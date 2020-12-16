@@ -25,7 +25,6 @@
  */
 
 #include "compiler.h"
-#include "bi_print.h"
 #include "bi_builder.h"
 #include "panfrost/util/lcra.h"
 #include "util/u_memory.h"

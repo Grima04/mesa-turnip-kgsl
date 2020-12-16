@@ -22,7 +22,6 @@
  */
 
 #include "compiler.h"
-#include "bi_print.h"
 
 /* This file contains the final passes of the compiler. Running after
  * scheduling and RA, the IR is now finalized, so we need to emit it to actual
