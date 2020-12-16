@@ -85,6 +85,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		struct fd_resource *rsc = NULL;
 		struct fdl_slice *slice = NULL;
 		uint32_t stride = 0;
+		uint32_t array_stride = 0;
 		uint32_t offset;
 		uint32_t tile_mode;
 
@@ -110,6 +111,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 				psurf->u.tex.first_layer);
 
 		stride = fd_resource_pitch(rsc, psurf->u.tex.level);
+		array_stride = fd_resource_layer_stride(rsc, psurf->u.tex.level);
 		swap = fd6_resource_swap(rsc, pformat);
 
 		tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
@@ -123,7 +125,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 				.color_tile_mode = tile_mode,
 				.color_swap = swap),
 			A6XX_RB_MRT_PITCH(i, .a6xx_rb_mrt_pitch = stride),
-			A6XX_RB_MRT_ARRAY_PITCH(i, .a6xx_rb_mrt_array_pitch = slice->size0),
+			A6XX_RB_MRT_ARRAY_PITCH(i, .a6xx_rb_mrt_array_pitch = array_stride),
 			A6XX_RB_MRT_BASE(i, .bo = rsc->bo, .bo_offset = offset),
 			A6XX_RB_MRT_BASE_GMEM(i, .unknown = base));
 
@@ -150,7 +152,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		struct fd_resource *rsc = fd_resource(zsbuf->texture);
 		enum a6xx_depth_format fmt = fd6_pipe2depth(zsbuf->format);
 		uint32_t stride = fd_resource_pitch(rsc, 0);
-		uint32_t size = fd_resource_slice(rsc, 0)->size0;
+		uint32_t array_stride = fd_resource_layer_stride(rsc, 0);
 		uint32_t base = gmem ? gmem->zsbuf_base[0] : 0;
 		uint32_t offset = fd_resource_offset(rsc, zsbuf->u.tex.level,
 				zsbuf->u.tex.first_layer);
@@ -158,7 +160,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		OUT_REG(ring,
 			A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt),
 			A6XX_RB_DEPTH_BUFFER_PITCH(.a6xx_rb_depth_buffer_pitch = stride),
-			A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(.a6xx_rb_depth_buffer_array_pitch = size),
+			A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(.a6xx_rb_depth_buffer_array_pitch = array_stride),
 			A6XX_RB_DEPTH_BUFFER_BASE(.bo = rsc->bo, .bo_offset = offset),
 			A6XX_RB_DEPTH_BUFFER_BASE_GMEM(.dword = base));
 
@@ -192,13 +194,13 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 		if (rsc->stencil) {
 			stride = fd_resource_pitch(rsc->stencil, 0);
-			size = fd_resource_slice(rsc->stencil, 0)->size0;
+			array_stride = fd_resource_layer_stride(rsc->stencil, 0);
 			uint32_t base = gmem ? gmem->zsbuf_base[1] : 0;
 
 			OUT_REG(ring,
 				A6XX_RB_STENCIL_INFO(.separate_stencil = true),
 				A6XX_RB_STENCIL_BUFFER_PITCH(.a6xx_rb_stencil_buffer_pitch = stride),
-				A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(.a6xx_rb_stencil_buffer_array_pitch = size),
+				A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(.a6xx_rb_stencil_buffer_array_pitch = array_stride),
 				A6XX_RB_STENCIL_BUFFER_BASE(.bo = rsc->stencil->bo),
 				A6XX_RB_STENCIL_BUFFER_BASE_GMEM(.dword = base));
 		} else {
