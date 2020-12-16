@@ -1,11 +1,12 @@
 variables:
-  DISTRIBUTION_TAG: "2021-02-08-subdir-move"
+  MESA_LAVA_TAG: "2021-02-08-subdir-move"
 
 .kernel+rootfs:
   stage: container-2
   extends:
     - .ci-run-policy
   variables:
+    DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_LAVA_TAG}--${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
     GIT_STRATEGY: fetch
     KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
     UPLOAD_FOR_LAVA: 1
@@ -22,6 +23,7 @@ kernel+rootfs_amd64:
   image: "$FDO_BASE_IMAGE"
   variables:
     DEBIAN_ARCH: "amd64"
+    DISTRIBUTION_TAG: &distribution-tag-amd64 "${MESA_LAVA_TAG}--${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
 
 kernel+rootfs_arm64:
   extends:
@@ -44,6 +46,7 @@ kernel+rootfs_armhf:
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   variables:
+    DISTRIBUTION_TAG: *distribution-tag-arm
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"
     FIXED_ENV_VARS: "CI_PIPELINE_ID=${CI_PIPELINE_ID} CI_JOB_ID=${CI_JOB_ID} CI_JOB_URL=${CI_JOB_URL} CI_PROJECT_PATH=${CI_PROJECT_PATH} CI_JOB_JWT=${CI_JOB_JWT} CI_SERVER_URL=${CI_SERVER_URL} DRIVER_NAME=${DRIVER_NAME} FDO_UPSTREAM_REPO=${FDO_UPSTREAM_REPO} PIGLIT_NO_WINDOW=1 PIGLIT_REPLAY_UPLOAD_TO_MINIO=1 MINIO_HOST=${MINIO_HOST}"
@@ -123,13 +126,15 @@ kernel+rootfs_armhf:
 .lava-test:amd64:
   variables:
     ARCH: amd64
+    DISTRIBUTION_TAG: *distribution-tag-amd64
     KERNEL_IMAGE_NAME: bzImage
     KERNEL_IMAGE_TYPE: "type:\ zimage"
     BOOT_METHOD: u-boot
     TEST_SUITE: "deqp"
   extends:
-    - .lava-test
+    - .use-x86_build-base # for same $MESA_BASE_TAG as in kernel+rootfs_amd64
     - .use-arm_build
+    - .lava-test
   needs:
     - kernel+rootfs_amd64
     - arm_build
