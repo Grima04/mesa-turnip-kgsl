@@ -131,16 +131,42 @@ panfrost_astc_stretch(unsigned dim)
  * For ASTC, this is a "stretch factor" encoding the block size. */
 
 static unsigned
-panfrost_compression_tag(
-                const struct util_format_description *desc, uint64_t modifier)
+panfrost_compression_tag(const struct panfrost_device *dev,
+                         const struct util_format_description *desc,
+                         enum mali_texture_dimension dim,
+                         uint64_t modifier)
 {
-        if (drm_is_afbc(modifier))
-                return (modifier & AFBC_FORMAT_MOD_YTR) ? 1 : 0;
-        else if (desc->layout == UTIL_FORMAT_LAYOUT_ASTC)
+        bool is_bifrost = dev->quirks & IS_BIFROST;
+
+        if (drm_is_afbc(modifier)) {
+                unsigned flags = (modifier & AFBC_FORMAT_MOD_YTR) ?
+                                 MALI_AFBC_SURFACE_FLAG_YTR : 0;
+
+                if (!is_bifrost)
+                        return flags;
+
+                /* Prefetch enable */
+                flags |= MALI_AFBC_SURFACE_FLAG_PREFETCH;
+
+                /* Wide blocks (> 16x16) */
+                if (panfrost_block_dim(modifier, true, 0) > 16)
+                        flags |= MALI_AFBC_SURFACE_FLAG_WIDE_BLOCK;
+
+                /* Used to make sure AFBC headers don't point outside the AFBC
+                 * body. HW is using the AFBC surface stride to do this check,
+                 * which doesn't work for 3D textures because the surface
+                 * stride does not cover the body. Only supported on v7+.
+                 */
+                if (dev->arch >= 7 && dim != MALI_TEXTURE_DIMENSION_3D)
+                        flags |= MALI_AFBC_SURFACE_FLAG_CHECK_PAYLOAD_RANGE;
+
+                return flags;
+        } else if (desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
                 return (panfrost_astc_stretch(desc->block.height) << 3) |
                         panfrost_astc_stretch(desc->block.width);
-        else
+        } else {
                 return 0;
+        }
 }
 
 
@@ -344,7 +370,7 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
                               mali_ptr base,
                               struct panfrost_slice *slices)
 {
-        base |= panfrost_compression_tag(desc, modifier);
+        base |= panfrost_compression_tag(dev, desc, dim, modifier);
 
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
