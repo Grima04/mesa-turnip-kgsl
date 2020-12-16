@@ -789,6 +789,41 @@ static void panfrost_upload_txs_sysval(struct panfrost_batch *batch,
                 uniform->i[dim] = tex->texture->array_size;
 }
 
+static void panfrost_upload_image_size_sysval(struct panfrost_batch *batch,
+                                              enum pipe_shader_type st,
+                                              unsigned int sysvalid,
+                                              struct sysval_uniform *uniform)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        unsigned idx = PAN_SYSVAL_ID_TO_TXS_TEX_IDX(sysvalid);
+        unsigned dim = PAN_SYSVAL_ID_TO_TXS_DIM(sysvalid);
+        unsigned is_array = PAN_SYSVAL_ID_TO_TXS_IS_ARRAY(sysvalid);
+
+        assert(dim && dim < 4);
+
+        struct pipe_image_view *image = &ctx->images[st][idx];
+
+        if (image->resource->target == PIPE_BUFFER) {
+                unsigned blocksize = util_format_get_blocksize(image->format);
+                uniform->i[0] = image->resource->width0 / blocksize;
+                return;
+        }
+
+        uniform->i[0] = u_minify(image->resource->width0,
+                                 image->u.tex.level);
+
+        if (dim > 1)
+                uniform->i[1] = u_minify(image->resource->height0,
+                                         image->u.tex.level);
+
+        if (dim > 2)
+                uniform->i[2] = u_minify(image->resource->depth0,
+                                         image->u.tex.level);
+
+        if (is_array)
+                uniform->i[dim] = image->resource->array_size;
+}
+
 static void
 panfrost_upload_ssbo_sysval(struct panfrost_batch *batch,
                             enum pipe_shader_type st,
@@ -910,6 +945,11 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                         panfrost_upload_sampler_sysval(batch, st,
                                                        PAN_SYSVAL_ID(sysval),
                                                        &uniforms[i]);
+                        break;
+                case PAN_SYSVAL_IMAGE_SIZE:
+                        panfrost_upload_image_size_sysval(batch, st,
+                                                          PAN_SYSVAL_ID(sysval),
+                                                          &uniforms[i]);
                         break;
                 default:
                         assert(0);
