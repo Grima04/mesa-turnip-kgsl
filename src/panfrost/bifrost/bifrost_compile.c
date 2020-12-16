@@ -2075,6 +2075,402 @@ bi_cmpf_nir(nir_op op)
         }
 }
 
+static void
+bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
+{
+        bi_index dst = bi_dest_index(&instr->dest.dest);
+        unsigned sz = nir_dest_bit_size(instr->dest.dest);
+
+        unsigned srcs = nir_op_infos[instr->op].num_inputs;
+        unsigned comps = nir_dest_num_components(instr->dest.dest);
+
+        if (!instr->dest.dest.is_ssa) {
+                for (unsigned i = 0; i < comps; ++i)
+                        assert(instr->dest.write_mask);
+        }
+
+        /* First, match against the various moves in NIR. These are
+         * special-cased because they can operate on vectors even after
+         * lowering ALU to scalar. For Bifrost, bi_alu_src_index assumes the
+         * instruction is no "bigger" than SIMD-within-a-register. These moves
+         * are the exceptions that need to handle swizzles specially. */
+
+        switch (instr->op) {
+        case nir_op_vec2:
+        case nir_op_vec3:
+        case nir_op_vec4: {
+                bi_index unoffset_srcs[4] = {
+                        srcs > 0 ? bi_src_index(&instr->src[0].src) : bi_null(),
+                        srcs > 1 ? bi_src_index(&instr->src[1].src) : bi_null(),
+                        srcs > 2 ? bi_src_index(&instr->src[2].src) : bi_null(),
+                        srcs > 3 ? bi_src_index(&instr->src[3].src) : bi_null(),
+                };
+
+                unsigned channels[4] = {
+                        instr->src[0].swizzle[0],
+                        instr->src[1].swizzle[0],
+                        srcs > 2 ? instr->src[2].swizzle[0] : 0,
+                        srcs > 3 ? instr->src[3].swizzle[0] : 0,
+                };
+
+                bi_make_vec_to(b, dst, unoffset_srcs, channels, srcs, sz);
+                return;
+        }
+
+        case nir_op_vec8:
+        case nir_op_vec16:
+                unreachable("should've been lowered");
+
+        case nir_op_mov: {
+                bi_index idx = bi_src_index(&instr->src[0].src);
+                bi_index unoffset_srcs[4] = { idx, idx, idx, idx };
+
+                unsigned channels[4] = {
+                        comps > 0 ? instr->src[0].swizzle[0] : 0,
+                        comps > 1 ? instr->src[0].swizzle[1] : 0,
+                        comps > 2 ? instr->src[0].swizzle[2] : 0,
+                        comps > 3 ? instr->src[0].swizzle[3] : 0,
+                };
+
+                bi_make_vec_to(b, dst, unoffset_srcs, channels, comps, sz);
+                return;
+        }
+
+        default:
+                break;
+        }
+
+        bi_index s0 = srcs > 0 ? bi_alu_src_index(instr->src[0], comps) : bi_null();
+        bi_index s1 = srcs > 1 ? bi_alu_src_index(instr->src[1], comps) : bi_null();
+        bi_index s2 = srcs > 2 ? bi_alu_src_index(instr->src[2], comps) : bi_null();
+
+        unsigned src_sz = srcs > 0 ? nir_src_bit_size(instr->src[0].src) : 0;
+
+        switch (instr->op) {
+        case nir_op_ffma:
+                bi_fma_to(b, sz, dst, s0, s1, s2, BI_ROUND_NONE);
+                break;
+
+        case nir_op_fmul:
+                bi_fma_to(b, sz, dst, s0, s1, bi_zero(), BI_ROUND_NONE);
+                break;
+
+        case nir_op_fsub:
+                s1 = bi_neg(s1);
+                /* fallthrough */
+        case nir_op_fadd:
+                bi_fadd_to(b, sz, dst, s0, s1, BI_ROUND_NONE);
+                break;
+
+        case nir_op_fsat: {
+                bi_instr *I = (sz == 32) ?
+                        bi_fadd_f32_to(b, dst, s0, bi_zero(), BI_ROUND_NONE) :
+                        bi_fma_v2f16_to(b, dst, s0, bi_zero(), bi_zero(),
+                                        BI_ROUND_NONE);
+
+                I->clamp = BI_CLAMP_CLAMP_0_1;
+                break;
+        }
+
+        case nir_op_fneg:
+                bi_fadd_to(b, sz, dst, bi_neg(s0), bi_zero(), BI_ROUND_NONE);
+                break;
+
+        case nir_op_fabs:
+                bi_fadd_to(b, sz, dst, bi_abs(s0), bi_zero(), BI_ROUND_NONE);
+                break;
+
+        case nir_op_fexp2: {
+                /* TODO G71 */
+                assert(sz == 32); /* should've been lowered */
+
+                /* multiply by 1.0 * 2*24 */
+                bi_index scale = bi_fma_rscale_f32(b, s0, bi_imm_f32(1.0f),
+                                bi_zero(), bi_imm_u32(24), BI_ROUND_NONE,
+                                BI_SPECIAL_NONE);
+
+                bi_fexp_f32_to(b, dst, bi_f32_to_s32(b, scale, BI_ROUND_NONE), s0);
+                break;
+        }
+
+        case nir_op_flog2: {
+                /* TODO G71 */
+                assert(sz == 32); /* should've been lowered */
+                bi_index frexp = bi_frexpe_f32(b, s0, true, false);
+                bi_index frexpi = bi_s32_to_f32(b, frexp, BI_ROUND_RTZ);
+                bi_index add = bi_fadd_lscale_f32(b, bi_imm_f32(-1.0f), s0);
+                bi_fma_f32_to(b, dst, bi_flogd_f32(b, s0), add, frexpi,
+                                BI_ROUND_NONE);
+                break;
+        }
+
+        case nir_op_b8csel:
+        case nir_op_b16csel:
+        case nir_op_b32csel:
+                if (sz == 8)
+                        bi_mux_v4i8_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
+                else
+                        bi_csel_to(b, sz, dst, s0, bi_zero(), s1, s2, BI_CMPF_NE);
+                break;
+
+        case nir_op_ishl:
+                bi_lshift_or_to(b, sz, dst, s0, bi_zero(), bi_byte(s1, 0));
+                break;
+        case nir_op_ushr:
+                bi_rshift_or_to(b, sz, dst, s0, bi_zero(), bi_byte(s1, 0));
+                break;
+
+        case nir_op_ishr:
+                bi_arshift_to(b, sz, dst, s0, bi_null(), bi_byte(s1, 0));
+                break;
+
+        case nir_op_flt32:
+        case nir_op_fge32:
+        case nir_op_feq32:
+        case nir_op_fneu32:
+                bi_fcmp_to(b, sz, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                BI_RESULT_TYPE_M1);
+                break;
+
+        case nir_op_ieq32:
+        case nir_op_ine32:
+                if (sz == 32) {
+                        bi_icmp_i32_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                } else if (sz == 16) {
+                        bi_icmp_v2i16_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                } else {
+                        bi_icmp_v4i8_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                }
+                break;
+
+        case nir_op_ilt32:
+        case nir_op_ige32:
+                if (sz == 32) {
+                        bi_icmp_s32_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                } else if (sz == 16) {
+                        bi_icmp_v2s16_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                } else {
+                        bi_icmp_v4s8_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                }
+                break;
+
+        case nir_op_ult32:
+        case nir_op_uge32:
+                if (sz == 32) {
+                        bi_icmp_u32_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                } else if (sz == 16) {
+                        bi_icmp_v2u16_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                } else {
+                        bi_icmp_v4u8_to(b, dst, s0, s1, bi_cmpf_nir(instr->op),
+                                        BI_RESULT_TYPE_M1);
+                }
+                break;
+
+        case nir_op_fddx:
+        case nir_op_fddy: {
+                bi_index cur_lane = bi_mov_i32(b, bi_fau(BIR_FAU_LANE_ID, false));
+
+                bi_index lane1 = bi_lshift_and_i32(b, cur_lane,
+                                bi_imm_u32(instr->op == nir_op_fddx ? 2 : 1),
+                                bi_byte(bi_zero(), 0));
+
+                bi_index lane2 = bi_iadd_u32(b, lane1,
+                                bi_imm_u32(instr->op == nir_op_fddx ? 1 : 2),
+                                false);
+
+                bi_index left, right;
+
+                if (b->shader->arch == 6) {
+                        left = bi_clper_v6_i32(b, s0, lane1);
+                        right = bi_clper_v6_i32(b, s0, lane2);
+                } else {
+                        left = bi_clper_v7_i32(b, s0, lane1,
+                                        BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_NONE,
+                                        BI_SUBGROUP_SUBGROUP4);
+
+                        right = bi_clper_v7_i32(b, s0, lane2,
+                                        BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_NONE,
+                                        BI_SUBGROUP_SUBGROUP4);
+                }
+
+                bi_fadd_to(b, sz, dst, right, bi_neg(left), BI_ROUND_NONE);
+                break;
+        }
+
+        case nir_op_f2f16:
+                bi_v2f32_to_v2f16_to(b, dst, s0, s0, BI_ROUND_NONE);
+                break;
+
+        case nir_op_f2f32:
+                bi_f16_to_f32_to(b, dst, s0);
+                break;
+
+        case nir_op_f2i32:
+                if (src_sz == 32)
+                        bi_f32_to_s32_to(b, dst, s0, BI_ROUND_RTZ);
+                else
+                        bi_f16_to_s32_to(b, dst, s0, BI_ROUND_RTZ);
+                break;
+
+        case nir_op_f2u16:
+                if (src_sz == 32)
+                        unreachable("should've been lowered");
+                else
+                        bi_v2f16_to_v2u16_to(b, dst, s0, BI_ROUND_RTZ);
+                break;
+
+        case nir_op_f2i16:
+                if (src_sz == 32)
+                        unreachable("should've been lowered");
+                else
+                        bi_v2f16_to_v2s16_to(b, dst, s0, BI_ROUND_RTZ);
+                break;
+
+        case nir_op_f2u32:
+                if (src_sz == 32)
+                        bi_f32_to_u32_to(b, dst, s0, BI_ROUND_RTZ);
+                else
+                        bi_f16_to_u32_to(b, dst, s0, BI_ROUND_RTZ);
+                break;
+
+        case nir_op_u2f16:
+                if (src_sz == 32)
+                        unreachable("should've been lowered");
+                else if (src_sz == 16)
+                        bi_v2u16_to_v2f16_to(b, dst, s0, BI_ROUND_RTZ);
+                else if (src_sz == 8)
+                        bi_v2u8_to_v2f16_to(b, dst, s0);
+                break;
+
+        case nir_op_u2f32:
+                if (src_sz == 32)
+                        bi_u32_to_f32_to(b, dst, s0, BI_ROUND_RTZ);
+                else if (src_sz == 16)
+                        bi_u16_to_f32_to(b, dst, s0);
+                else
+                        bi_u8_to_f32_to(b, dst, bi_byte(s0, 0));
+                break;
+
+        case nir_op_i2f16:
+                if (src_sz == 32)
+                        unreachable("should've been lowered");
+                else
+                        bi_v2s16_to_v2f16_to(b, dst, s0, BI_ROUND_RTZ);
+                break;
+
+        case nir_op_i2f32:
+                if (src_sz == 32)
+                        bi_s32_to_f32_to(b, dst, s0, BI_ROUND_RTZ);
+                else
+                        bi_s16_to_f32_to(b, dst, s0);
+                break;
+
+        case nir_op_i2i32:
+                if (src_sz == 16)
+                        bi_s16_to_s32_to(b, dst, s0);
+                else
+                        bi_s8_to_s32_to(b, dst, s0);
+                break;
+
+        case nir_op_u2u32:
+                if (src_sz == 16)
+                        bi_u16_to_u32_to(b, dst, s0);
+                else
+                        bi_u8_to_u32_to(b, dst, s0);
+                break;
+
+        /* todo optimize out downcasts */
+        case nir_op_i2i16:
+                assert(src_sz == 8 || src_sz == 32);
+
+                if (src_sz == 8)
+                        bi_v2s8_to_v2s16_to(b, dst, s0);
+                else
+                        bi_mkvec_v2i16_to(b, dst, bi_half(s0, false), bi_imm_u16(0));
+                break;
+
+        case nir_op_u2u16:
+                assert(src_sz == 8 || src_sz == 32);
+
+                if (src_sz == 8)
+                        bi_v2u8_to_v2u16_to(b, dst, s0);
+                else
+                        bi_mkvec_v2i16_to(b, dst, bi_half(s0, false), bi_imm_u16(0));
+                break;
+
+        case nir_op_i2i8:
+        case nir_op_u2u8:
+                unreachable("should've been lowered");
+
+        case nir_op_fround_even:
+        case nir_op_fceil:
+        case nir_op_ffloor:
+        case nir_op_ftrunc:
+                bi_fround_to(b, sz, dst, s0, bi_nir_round(instr->op));
+                break;
+
+        case nir_op_fmin:
+                bi_fmin_to(b, sz, dst, s0, s1);
+                break;
+
+        case nir_op_fmax:
+                bi_fmax_to(b, sz, dst, s0, s1);
+                break;
+
+        case nir_op_iadd:
+                bi_iadd_to(b, sz, dst, s0, s1, false);
+                break;
+
+        case nir_op_isub:
+                bi_isub_to(b, sz, dst, s0, s1, false);
+                break;
+
+        case nir_op_imul:
+                bi_imul_to(b, sz, dst, s0, s1);
+                break;
+
+        case nir_op_iabs:
+                bi_iabs_to(b, sz, dst, s0);
+                break;
+
+        case nir_op_iand:
+                bi_lshift_and_to(b, sz, dst, s0, s1, bi_imm_u8(0));
+                break;
+
+        case nir_op_ior:
+                bi_lshift_or_to(b, sz, dst, s0, s1, bi_imm_u8(0));
+                break;
+
+        case nir_op_ixor:
+                bi_lshift_xor_to(b, sz, dst, s0, s1, bi_imm_u8(0));
+                break;
+
+        case nir_op_inot:
+                bi_lshift_or_to(b, sz, dst, bi_zero(), bi_not(s0), bi_imm_u8(0));
+                break;
+
+        case nir_op_frsq:
+                bi_frsq_to(b, sz, dst, s0);
+                break;
+
+        case nir_op_frcp:
+                bi_frcp_to(b, sz, dst, s0);
+                break;
+
+        default:
+                fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
+                unreachable("Unknown ALU op");
+        }
+}
+
 /* TEXS instructions assume normal 2D f32 operation but are more
  * space-efficient and with simpler RA/scheduling requirements*/
 
