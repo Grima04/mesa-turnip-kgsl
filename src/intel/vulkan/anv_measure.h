@@ -51,6 +51,10 @@ void anv_measure_acquire(struct anv_device *device);
 /* should be combined with endcommandbuffer */
 void _anv_measure_submit(struct anv_cmd_buffer *cmd_buffer);
 
+void
+_anv_measure_add_secondary(struct anv_cmd_buffer *primary,
+                           struct anv_cmd_buffer *secondary);
+
 #define anv_measure_snapshot(cmd_buffer, type, event_name, count) \
    if (unlikely(cmd_buffer->measure)) \
       _anv_measure_snapshot(cmd_buffer, type, event_name, count)
@@ -67,5 +71,8 @@ void _anv_measure_submit(struct anv_cmd_buffer *cmd_buffer);
    if (unlikely(cmd_buffer->measure)) \
       _anv_measure_submit(cmd_buffer)
 
+#define anv_measure_add_secondary(primary, secondary) \
+   if (unlikely(primary->measure)) \
+      _anv_measure_add_secondary(primary, secondary)
 
 #endif   /* ANV_MEASURE_H */

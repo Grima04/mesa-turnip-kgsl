@@ -48,6 +48,7 @@ enum intel_measure_snapshot_type {
    INTEL_SNAPSHOT_MCS_PARTIAL_RESOLVE,
    INTEL_SNAPSHOT_SLOW_COLOR_CLEAR,
    INTEL_SNAPSHOT_SLOW_DEPTH_CLEAR,
+   INTEL_SNAPSHOT_SECONDARY_BATCH,
    INTEL_SNAPSHOT_END,
 };
 
@@ -101,11 +102,15 @@ struct intel_measure_config {
    bool                       enabled;
 };
 
+struct intel_measure_batch;
+
 struct intel_measure_snapshot {
    enum intel_measure_snapshot_type type;
    unsigned count, event_count;
    const char* event_name;
    uintptr_t framebuffer, vs, tcs, tes, gs, fs, cs;
+   /* for vulkan secondary command buffers */
+   struct intel_measure_batch *secondary;
 };
 
 struct intel_measure_buffered_result {
@@ -139,6 +144,7 @@ struct intel_measure_batch {
    unsigned index;
    unsigned frame, batch_count, event_count;
    uintptr_t framebuffer;
+   uint64_t *timestamps;
    struct intel_measure_snapshot snapshots[0];
 };
 
@@ -148,9 +154,11 @@ bool intel_measure_state_changed(const struct intel_measure_batch *batch,
                                  uintptr_t vs, uintptr_t tcs, uintptr_t tes,
                                  uintptr_t gs, uintptr_t fs, uintptr_t cs);
 void intel_measure_frame_transition(unsigned frame);
+
+bool intel_measure_ready(struct intel_measure_batch *batch);
+
 void intel_measure_push_result(struct intel_measure_device *device,
-                               struct intel_measure_batch *batch,
-                               uint64_t *timestamps);
+                               struct intel_measure_batch *batch);
 
 struct gen_device_info;
 void intel_measure_print(struct intel_measure_device *device,

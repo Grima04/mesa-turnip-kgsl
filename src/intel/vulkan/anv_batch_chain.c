@@ -28,6 +28,7 @@
 #include <fcntl.h>
 
 #include "anv_private.h"
+#include "anv_measure.h"
 
 #include "genxml/gen8_pack.h"
 #include "genxml/genX_bits.h"
@@ -1013,6 +1014,7 @@ void
 anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
                              struct anv_cmd_buffer *secondary)
 {
+   anv_measure_add_secondary(primary, secondary);
    switch (secondary->exec_mode) {
    case ANV_CMD_BUFFER_EXEC_MODE_EMIT:
       anv_batch_emit_batch(&primary->batch, &secondary->batch);

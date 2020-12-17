@@ -105,24 +105,17 @@ iris_init_batch_measure(struct iris_context *ice, struct iris_batch *batch)
    memset(batch->measure, 0, batch_bytes);
    struct iris_measure_batch *measure = batch->measure;
 
-   measure->bo =
-      iris_bo_alloc_tiled(bufmgr, "measure",
-                          config->batch_size * sizeof(uint64_t),
-                          1,  /* alignment */
-                          IRIS_MEMZONE_OTHER,
-                          I915_TILING_NONE,
-                          0, /* pitch */
-                          BO_ALLOC_ZEROED);
-
+   measure->bo = iris_bo_alloc_tiled(bufmgr, "measure",
+                                     config->batch_size * sizeof(uint64_t),
+                                     1,  /* alignment */
+                                     IRIS_MEMZONE_OTHER,
+                                     I915_TILING_NONE,
+                                     0, /* pitch */
+                                     BO_ALLOC_ZEROED);
+   measure->base.timestamps = iris_bo_map(NULL, measure->bo, MAP_READ);
    measure->base.framebuffer =
       (uintptr_t)util_hash_crc32(&ice->state.framebuffer,
                                  sizeof(ice->state.framebuffer));
-}
-
-static bool
-iris_measure_ready(struct iris_measure_batch *measure)
-{
-   return !iris_bo_busy(measure->bo);
 }
 
 void
@@ -130,7 +123,7 @@ iris_destroy_batch_measure(struct iris_measure_batch *batch)
 {
    if (!batch)
       return;
-
+   iris_bo_unmap(batch->bo);
    iris_bo_unreference(batch->bo);
    batch->bo = NULL;
    free(batch);
@@ -347,21 +340,8 @@ iris_measure_gather(struct iris_context *ice)
          list_first_entry(&measure_device->queued_snapshots,
                           struct iris_measure_batch, link);
 
-      if (!iris_measure_ready(measure)) {
-         /* command buffer has begun execution on the gpu, but has not
-          * completed.
-          */
-         break;
-      }
-
-      /* iris_bo_wait returns immediately if the batch has been submitted but
-       * not started execution.  The first timestamp will be non-zero if the
-       * buffer object is ready.
-       */
-      uint64_t *map = iris_bo_map(NULL, measure->bo, MAP_READ);
-      if (map[0] == 0) {
-         /* The command buffer has not begun execution on the gpu. */
-         iris_bo_unmap(measure->bo);
+      if (!intel_measure_ready(&measure->base)) {
+         /* batch has not completed execution */
          break;
       }
 
@@ -369,9 +349,9 @@ iris_measure_gather(struct iris_context *ice)
       assert(measure->bo);
       assert(measure->base.index % 2 == 0);
 
-      intel_measure_push_result(measure_device, &measure->base, map);
+      intel_measure_push_result(measure_device, &measure->base);
 
-      iris_bo_unmap(measure->bo);
+      /* iris_bo_unmap(measure->bo); */
       measure->base.index = 0;
       measure->base.frame = 0;
       iris_destroy_batch_measure(measure);

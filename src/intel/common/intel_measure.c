@@ -233,6 +233,7 @@ intel_measure_snapshot_string(enum intel_measure_snapshot_type type)
       [INTEL_SNAPSHOT_MCS_PARTIAL_RESOLVE] = "mcs partial resolve",
       [INTEL_SNAPSHOT_SLOW_COLOR_CLEAR]    = "slow color clear",
       [INTEL_SNAPSHOT_SLOW_DEPTH_CLEAR]    = "slow depth clear",
+      [INTEL_SNAPSHOT_SECONDARY_BATCH]     = "secondary command buffer",
       [INTEL_SNAPSHOT_END]                 = "end",
    };
    assert(type < ARRAY_SIZE(names));
@@ -369,6 +370,19 @@ raw_timestamp_delta(uint64_t time0, uint64_t time1)
 }
 
 /**
+ * Verify that rendering has completed for the batch
+ *
+ * Rendering is complete when the last timestamp has been written.
+*/
+bool
+intel_measure_ready(struct intel_measure_batch *batch)
+{
+   assert(batch->timestamps);
+   assert(batch->index > 1);
+   return (batch->timestamps[batch->index - 1] != 0);
+}
+
+/**
  * Submit completed snapshots for buffering.
  *
  * Snapshot data becomes available when asynchronous rendering completes.
@@ -377,16 +391,27 @@ raw_timestamp_delta(uint64_t time0, uint64_t time1)
  */
 void
 intel_measure_push_result(struct intel_measure_device *device,
-                          struct intel_measure_batch *batch,
-                          uint64_t *timestamps)
+                          struct intel_measure_batch *batch)
 {
    struct intel_measure_ringbuffer *rb = device->ringbuffer;
+
+   uint64_t *timestamps = batch->timestamps;
+   assert(timestamps != NULL);
+   assert(timestamps[0] != 0);
 
    for (int i = 0; i < batch->index; i += 2) {
       const struct intel_measure_snapshot *begin = &batch->snapshots[i];
       const struct intel_measure_snapshot *end = &batch->snapshots[i+1];
 
       assert (end->type == INTEL_SNAPSHOT_END);
+
+      if (begin->type == INTEL_SNAPSHOT_SECONDARY_BATCH) {
+         assert(begin->secondary != NULL);
+         begin->secondary->batch_count = batch->batch_count;
+         intel_measure_push_result(device, begin->secondary);
+         continue;
+      }
+
       const uint64_t prev_end_ts = rb->results[rb->head].end_ts;
 
       /* advance ring buffer */
@@ -402,7 +427,7 @@ intel_measure_push_result(struct intel_measure_device *device,
                     config.buffer_size);
             warned = true;
          }
-         return;
+         break;
       }
 
       struct intel_measure_buffered_result *buffered_result =
