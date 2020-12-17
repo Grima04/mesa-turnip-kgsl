@@ -325,8 +325,7 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                               0, 0,
                               image->nr_samples,
                               0,
-                              (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) |
-                              (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_A << 9),
+                              PAN_V6_SWIZZLE(R, G, B, A),
                               image->bo->ptr.gpu + image->first_layer *
                               panfrost_get_layer_stride(image->slices,
                                                         image->dim == MALI_TEXTURE_DIMENSION_3D,
@@ -502,8 +501,7 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                              0, 0,
                              image->nr_samples,
                              0,
-                             (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) |
-                             (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_A << 9),
+                             PAN_V6_SWIZZLE(R, G, B, A),
                              image->bo->ptr.gpu + image->first_layer *
                              panfrost_get_layer_stride(image->slices,
                                                        image->dim == MALI_TEXTURE_DIMENSION_3D,
