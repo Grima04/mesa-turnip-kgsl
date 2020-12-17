@@ -204,8 +204,6 @@ struct tu_physical_device
    int msm_major_version;
    int msm_minor_version;
 
-   bool limited_z24s8;
-
    /* This is the drivers on-disk cache used as a fallback as opposed to
     * the pipeline cache defined by apps.
     */

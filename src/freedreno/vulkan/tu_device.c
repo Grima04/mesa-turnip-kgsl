@@ -76,8 +76,6 @@ tu_physical_device_init(struct tu_physical_device *device,
    memset(device->name, 0, sizeof(device->name));
    sprintf(device->name, "FD%d", device->gpu_id);
 
-   device->limited_z24s8 = (device->gpu_id == 630);
-
    switch (device->gpu_id) {
    case 615:
    case 618:
