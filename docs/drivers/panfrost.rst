@@ -22,7 +22,7 @@ work but may be buggy. End users are advised against using Panfrost on
 unsupported hardware. Developers interested in porting will need to allowlist
 the hardware (``src/gallium/drivers/panfrost/pan_screen.c``).
 
-Older Mali chips based on the Utgard architecture (Mali 200, Mali 400) are
+Older Mali chips based on the Utgard architecture (Mali 400, Mali 450) are
 supported in the Lima driver, not Panfrost. Lima is also available in Mesa.
 
 Work to enable OpenGL ES 3.1 and OpenGL 3.1 is on-going for architectures v5
