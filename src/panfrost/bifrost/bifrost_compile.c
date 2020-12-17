@@ -2409,11 +2409,12 @@ bi_print_stats(bi_context *ctx, FILE *fp)
 
         /* Dump stats */
 
-        fprintf(stderr, "shader%d - %s shader: "
+        fprintf(stderr, "shader%d:%s - %s shader: "
                         "%u inst, %u nops, %u clauses, "
                         "%u threads, %u loops, "
                         "%u:%u spills:fills\n",
                         SHADER_DB_COUNT++,
+                        ctx->nir->info.label ?: "",
                         ctx->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_nops, nr_clauses,
