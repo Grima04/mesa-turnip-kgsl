@@ -257,8 +257,8 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                         struct panfrost_slice *slice = &rsrc->slices[level];
 
                         ext->crc_row_stride = slice->checksum_stride;
-                        if (slice->checksum_bo)
-                                ext->crc_base = slice->checksum_bo->ptr.gpu;
+                        if (rsrc->checksum_bo)
+                                ext->crc_base = rsrc->checksum_bo->ptr.gpu;
                         else
                                 ext->crc_base = rsrc->bo->ptr.gpu + slice->checksum_offset;
 

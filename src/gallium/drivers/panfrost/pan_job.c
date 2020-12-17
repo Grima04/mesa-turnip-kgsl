@@ -558,8 +558,8 @@ panfrost_batch_add_resource_bos(struct panfrost_batch *batch,
         panfrost_batch_add_bo(batch, rsrc->bo, flags);
 
         for (unsigned i = 0; i < MAX_MIP_LEVELS; i++)
-                if (rsrc->slices[i].checksum_bo)
-                        panfrost_batch_add_bo(batch, rsrc->slices[i].checksum_bo, flags);
+                if (rsrc->checksum_bo)
+                        panfrost_batch_add_bo(batch, rsrc->checksum_bo, flags);
 
         if (rsrc->separate_stencil)
                 panfrost_batch_add_bo(batch, rsrc->separate_stencil->bo, flags);

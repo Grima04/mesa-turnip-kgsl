@@ -120,7 +120,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
             templat->bind & PIPE_BIND_RENDER_TARGET) {
                 unsigned size = panfrost_compute_checksum_size(
                                         &rsc->slices[0], templat->width0, templat->height0);
-                rsc->slices[0].checksum_bo = panfrost_bo_create(dev, size, 0);
+                rsc->checksum_bo = panfrost_bo_create(dev, size, 0);
                 rsc->checksummed = true;
         }
 
@@ -709,8 +709,8 @@ panfrost_resource_destroy(struct pipe_screen *screen,
         if (rsrc->bo)
                 panfrost_bo_unreference(rsrc->bo);
 
-        if (rsrc->slices[0].checksum_bo)
-                panfrost_bo_unreference(rsrc->slices[0].checksum_bo);
+        if (rsrc->checksum_bo)
+                panfrost_bo_unreference(rsrc->checksum_bo);
 
         util_range_destroy(&rsrc->valid_buffer_range);
         ralloc_free(rsrc);
@@ -1036,8 +1036,8 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                         if (panfrost_should_linear_convert(prsrc, transfer)) {
 
                                 panfrost_bo_unreference(prsrc->bo);
-                                if (prsrc->slices[0].checksum_bo)
-                                        panfrost_bo_unreference(prsrc->slices[0].checksum_bo);
+                                if (prsrc->checksum_bo)
+                                        panfrost_bo_unreference(prsrc->checksum_bo);
 
                                 panfrost_resource_setup(dev, prsrc, NULL, DRM_FORMAT_MOD_LINEAR);
 

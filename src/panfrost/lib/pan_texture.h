@@ -52,7 +52,6 @@ struct panfrost_slice {
          * is its offset/stride? */
         unsigned checksum_offset;
         unsigned checksum_stride;
-        struct panfrost_bo *checksum_bo;
 
         /* Has anything been written to this slice? */
         bool initialized;

@@ -67,6 +67,9 @@ struct panfrost_resource {
         /* Is transaciton elimination enabled? */
         bool checksummed;
 
+        /* The CRC BO can be allocated separately */
+        struct panfrost_bo *checksum_bo;
+
         /* Used to decide when to convert to another modifier */
         uint16_t modifier_updates;
 
