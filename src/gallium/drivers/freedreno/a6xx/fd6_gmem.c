@@ -1435,6 +1435,7 @@ fd6_emit_sysmem_fini(struct fd_batch *batch)
 	fd6_emit_lrz_flush(ring);
 
 	fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
 }
 
 void

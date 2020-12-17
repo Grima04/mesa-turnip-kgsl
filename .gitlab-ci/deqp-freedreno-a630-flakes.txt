@@ -25,11 +25,6 @@ dEQP-GLES31.functional.ssbo.atomic.compswap.mediump_uint
 # Non-sysmem flakes
 dEQP-VK.pipeline.spec_constant.compute.composite.matrix.mat3x2
 
-# Sysmem flakes
-dEQP-GLES31.functional.texture.multisample.samples_3.use_texture_depth_2d
-dEQP-GLES31.functional.texture.multisample.samples_4.use_texture_depth_2d_array
-dEQP-GLES31.functional.stencil_texturing.render.depth24_stencil8_draw
-
 # Fails NIR_VALIDATE so probably flaky
 dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_local.buffer.comp
 
