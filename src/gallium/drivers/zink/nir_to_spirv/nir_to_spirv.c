@@ -1257,10 +1257,11 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       break;
 
    case nir_op_b2f32:
+   case nir_op_b2f64:
       assert(nir_op_infos[alu->op].num_inputs == 1);
       result = emit_select(ctx, dest_type, src[0],
-                           get_fvec_constant(ctx, 32, num_components, 1),
-                           get_fvec_constant(ctx, 32, num_components, 0));
+                           get_fvec_constant(ctx, bit_size, num_components, 1),
+                           get_fvec_constant(ctx, bit_size, num_components, 0));
       break;
 
 #define BUILTIN_UNOP(nir_op, spirv_op) \
