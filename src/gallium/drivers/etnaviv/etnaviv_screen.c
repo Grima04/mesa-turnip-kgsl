@@ -1050,6 +1050,7 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
       .lower_fceil = !screen->specs.has_sign_floor_ceil,
       .lower_fsqrt = !screen->specs.has_sin_cos_sqrt,
       .lower_sincos = !screen->specs.has_sin_cos_sqrt,
+      .lower_uniforms_to_ubo = screen->specs.halti >= 2,
    };
 
    /* apply debug options that disable individual features */
