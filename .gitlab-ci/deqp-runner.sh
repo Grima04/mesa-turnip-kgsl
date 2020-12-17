@@ -24,8 +24,8 @@ if [ "$DEQP_VER" = "vk" ]; then
    fi
 fi
 
-if [ -z "$DEQP_SKIPS" ]; then
-   echo 'DEQP_SKIPS must be set to something like "deqp-default-skips.txt"'
+if [ -z "$GPU_VERSION" ]; then
+   echo 'GPU_VERSION must be set to something like "llvmpipe" or "freedreno-a630" (the name used in .gitlab-ci/deqp-gpu-version-*.txt)'
    exit 1
 fi
 
@@ -79,12 +79,18 @@ if [ ! -s /tmp/case-list.txt ]; then
     exit 1
 fi
 
-if [ -n "$DEQP_EXPECTED_FAILS" ]; then
-    BASELINE="--baseline $INSTALL/$DEQP_EXPECTED_FAILS"
+if [ -e "$INSTALL/deqp-$GPU_VERSION-fails.txt" ]; then
+    DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --baseline $INSTALL/deqp-$GPU_VERSION-fails.txt"
 fi
 
-if [ -n "$DEQP_FLAKES" ]; then
-    FLAKES="--flakes $INSTALL/$DEQP_FLAKES"
+if [ -e "$INSTALL/deqp-$GPU_VERSION-flakes.txt" ]; then
+    DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt"
+fi
+
+if [ -e "$INSTALL/deqp-$GPU_VERSION-skips.txt" ]; then
+    DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --skips $INSTALL/deqp-$GPU_VERSION-skips.txt"
+else
+    DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --skips $INSTALL/deqp-default-skips.txt"
 fi
 
 set +e
@@ -114,9 +120,6 @@ run_cts() {
         --deqp $deqp \
         --output $RESULTS \
         --caselist $caselist \
-        --skips $INSTALL/$DEQP_SKIPS \
-        $BASELINE \
-        $FLAKES \
         $JOB \
         $SUMMARY_LIMIT \
 	$DEQP_RUNNER_OPTIONS \

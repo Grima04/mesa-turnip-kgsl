@@ -1063,8 +1063,6 @@ llvmpipe-piglit-quick_shader:
     PIGLIT_PROFILES: quick_shader
 
 .deqp-test:
-  variables:
-    DEQP_SKIPS: deqp-default-skips.txt
   script:
     - ./install/deqp-runner.sh
 
@@ -1096,7 +1094,7 @@ llvmpipe-gles2:
     # Don't use threads inside llvmpipe, we've already got all cores
     # busy at the deqp-runner level.
     LP_NUM_THREADS: 0
-    DEQP_EXPECTED_FAILS: deqp-llvmpipe-fails.txt
+    GPU_VERSION: llvmpipe
     LIBGL_ALWAYS_SOFTWARE: "true"
     DEQP_EXPECTED_RENDERER: llvmpipe
   extends:
@@ -1108,9 +1106,7 @@ softpipe-gles2:
     - llvmpipe-gles2
     - .softpipe-rules
   variables:
-    DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
-    DEQP_SKIPS: deqp-softpipe-skips.txt
-    DEQP_FLAKES: deqp-softpipe-flakes.txt
+    GPU_VERSION: softpipe
     GALLIUM_DRIVER: "softpipe"
     DEQP_EXPECTED_RENDERER: softpipe
 
@@ -1138,11 +1134,10 @@ virgl-gles2-on-gl:
   variables:
     DEQP_VER: gles2
     DEQP_NO_SAVE_RESULTS: 1
-    DEQP_SKIPS: deqp-virgl-gl-skips.txt
+    GPU_VERSION: virgl-gl
     # Don't use threads inside llvmpipe, we've already got all cores
     # busy at the deqp-runner level.
     LP_NUM_THREADS: 0
-    DEQP_EXPECTED_FAILS: deqp-virgl-gl-fails.txt
     DEQP_OPTIONS: "--deqp-log-images=disable"
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "virpipe"
@@ -1200,7 +1195,7 @@ virgl-gl32-on-gl:
 virgl-gles2-on-gles:
   variables:
     VIRGL_HOST_API: GLES
-    DEQP_EXPECTED_FAILS: deqp-virgl-gles-fails.txt
+    GPU_VERSION: virgl-gles
   extends:
     - virgl-gles2-on-gl
     - .test-manual
@@ -1208,7 +1203,7 @@ virgl-gles2-on-gles:
 virgl-gles3-on-gles:
   variables:
     VIRGL_HOST_API: GLES
-    DEQP_EXPECTED_FAILS: deqp-virgl-gles-fails.txt
+    GPU_VERSION: virgl-gles
   extends:
     - virgl-gles3-on-gl
     - .test-manual
@@ -1216,7 +1211,7 @@ virgl-gles3-on-gles:
 virgl-gles31-on-gles:
   variables:
     VIRGL_HOST_API: GLES
-    DEQP_EXPECTED_FAILS: deqp-virgl-gles-fails.txt
+    GPU_VERSION: virgl-gles
   extends:
     - virgl-gles31-on-gl
     - .test-manual
@@ -1227,9 +1222,7 @@ arm64_a630_gles2:
   variables:
     BM_KERNEL: /lava-files/cheza-kernel
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
-    DEQP_FLAKES: deqp-freedreno-a630-flakes.txt
-    DEQP_SKIPS: deqp-freedreno-a630-skips.txt
+    GPU_VERSION: freedreno-a630
     GIT_STRATEGY: none
     DEQP_EXPECTED_RENDERER: FD630
     VK_DRIVER: freedreno
@@ -1297,7 +1290,7 @@ arm64_a630_vk_sysmem:
     DEQP_VER: vk
     DEQP_FRACTION: 15
     DEQP_CASELIST_FILTER: "dEQP-VK.renderpass.*"
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-bypass-fails.txt
+    GPU_VERSION: freedreno-a630-bypass
     TU_DEBUG: sysmem
 
 .baremetal-test:
@@ -1326,9 +1319,7 @@ arm64_a306_gles2:
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
     FLAKES_CHANNEL: "#freedreno-ci"
     BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
-    DEQP_SKIPS: deqp-default-skips.txt
-    DEQP_FLAKES: deqp-freedreno-a307-flakes.txt
+    GPU_VERSION: freedreno-a307
     DEQP_PARALLEL: 0 # Default to number of CPUs
     DEQP_VER: gles2
     DEQP_EXPECTED_RENDERER: FD307
@@ -1368,8 +1359,7 @@ arm64_a306_gles3_options:
     # Disable SMP because only CPU 0 is at a freq higher than 19mhz on
     # current upstream kernel.
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 nosmp"
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a530-fails.txt
-    DEQP_FLAKES: deqp-freedreno-a530-flakes.txt
+    GPU_VERSION: freedreno-a530
     DEQP_EXPECTED_RENDERER: FD530
   tags:
     - google-freedreno-db820c
@@ -1406,10 +1396,8 @@ vc4-rpi3-gles2:armhf:
     BM_KERNEL_MODULES: vc4
     BM_ROOTFS: /lava-files/rootfs-armhf
     BM_ROOTFS_EXTRA: /modules/armhf
-    DEQP_EXPECTED_FAILS: deqp-vc4-rpi3-fails.txt
+    GPU_VERSION: vc4-rpi3
     DEQP_EXPECTED_RENDERER: VC4
-    DEQP_FLAKES: deqp-vc4-rpi3-flakes.txt
-    DEQP_SKIPS: deqp-vc4-rpi3-skips.txt
     DEQP_VER: gles2
   script:
     - ./install/bare-metal/poe-powered.sh
@@ -1425,9 +1413,7 @@ lavapipe-vk:
     - .llvmpipe-rules
     - .deqp-test-vk
   variables:
-    DEQP_EXPECTED_FAILS: deqp-lvp-fails.txt
-    DEQP_FLAKES: deqp-lvp-flakes.txt
-    DEQP_SKIPS: deqp-lvp-skips.txt
+    GPU_VERSION: lvp
     VK_DRIVER: lvp
     DEQP_FRACTION: 10
 
@@ -1447,7 +1433,7 @@ radv_polaris10_vkcts:
     - .test-radv
     - .test-manual
   variables:
-    DEQP_SKIPS: deqp-radv-polaris10-skips.txt
+    GPU_VERSION: radv-polaris10
   tags:
     - polaris10
 

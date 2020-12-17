@@ -170,7 +170,7 @@ panfrost-t720-gles2:arm64:
     DEVICE_TYPE: sun50i-h6-pine-h64
     DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t720
-    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T720 DEQP_FLAKES=deqp-panfrost-t720-flakes.txt"
+    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T720"
   tags:
     - mesa-ci-aarch64-lava-collabora
 
