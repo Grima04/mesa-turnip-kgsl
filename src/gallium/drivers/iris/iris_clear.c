@@ -370,8 +370,8 @@ clear_color(struct iris_context *ice,
    enum isl_aux_usage aux_usage =
       iris_resource_render_aux_usage(ice, res, format, false);
 
-   iris_resource_prepare_render(ice, batch, res, level,
-                                box->z, box->depth, aux_usage);
+   iris_resource_prepare_render(ice, res, level, box->z, box->depth,
+                                aux_usage);
    iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_RENDER_WRITE);
 
    struct blorp_surf surf;

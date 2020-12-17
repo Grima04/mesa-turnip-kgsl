@@ -249,7 +249,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
             ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
          }
 
-         iris_resource_prepare_render(ice, batch, res, surf->view.base_level,
+         iris_resource_prepare_render(ice, res, surf->view.base_level,
                                       surf->view.base_array_layer,
                                       surf->view.array_len,
                                       aux_usage);
@@ -1012,7 +1012,6 @@ iris_resource_render_aux_usage(struct iris_context *ice,
 
 void
 iris_resource_prepare_render(struct iris_context *ice,
-                             struct iris_batch *batch,
                              struct iris_resource *res, uint32_t level,
                              uint32_t start_layer, uint32_t layer_count,
                              enum isl_aux_usage aux_usage)

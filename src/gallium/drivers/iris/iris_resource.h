@@ -505,7 +505,6 @@ enum isl_aux_usage iris_resource_render_aux_usage(struct iris_context *ice,
                                                   enum isl_format render_fmt,
                                                   bool draw_aux_disabled);
 void iris_resource_prepare_render(struct iris_context *ice,
-                                  struct iris_batch *batch,
                                   struct iris_resource *res, uint32_t level,
                                   uint32_t start_layer, uint32_t layer_count,
                                   enum isl_aux_usage aux_usage);
