@@ -179,6 +179,20 @@ get_uvec_type(struct ntv_context *ctx, unsigned bit_size, unsigned num_component
    return uint_type;
 }
 
+static SpvStorageClass
+get_storage_class(struct nir_variable *var)
+{
+   switch (var->data.mode) {
+   case nir_var_shader_in:
+      return SpvStorageClassInput;
+   case nir_var_shader_out:
+      return SpvStorageClassOutput;
+   default:
+      unreachable("Unsupported nir_variable_mode");
+   }
+   return 0;
+}
+
 static SpvId
 get_dest_uvec_type(struct ntv_context *ctx, nir_dest *dest)
 {
@@ -2147,19 +2161,7 @@ emit_deref_array(struct ntv_context *ctx, nir_deref_instr *deref)
    assert(deref->deref_type == nir_deref_type_array);
    nir_variable *var = nir_deref_instr_get_variable(deref);
 
-   SpvStorageClass storage_class;
-   switch (var->data.mode) {
-   case nir_var_shader_in:
-      storage_class = SpvStorageClassInput;
-      break;
-
-   case nir_var_shader_out:
-      storage_class = SpvStorageClassOutput;
-      break;
-
-   default:
-      unreachable("Unsupported nir_variable_mode\n");
-   }
+   SpvStorageClass storage_class = get_storage_class(var);
 
    SpvId index = get_src(ctx, &deref->arr.index);
 
