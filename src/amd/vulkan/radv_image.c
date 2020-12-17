@@ -94,12 +94,9 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 		return false;
 
 	/* FIXME: for some reason TC compat with 2/4/8 samples breaks some cts
-	 * tests - disable for now. On GFX10 D32_SFLOAT is affected as well.
+	 * tests - disable for now.
 	 */
-	if (pCreateInfo->samples >= 2 &&
-	    (format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
-	     (format == VK_FORMAT_D32_SFLOAT &&
-	      device->physical_device->rad_info.chip_class >= GFX10)))
+	if (pCreateInfo->samples >= 2 && format == VK_FORMAT_D32_SFLOAT_S8_UINT)
 		return false;
 
 	/* GFX9 supports both 32-bit and 16-bit depth surfaces, while GFX8 only
