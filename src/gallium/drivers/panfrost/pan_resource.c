@@ -401,7 +401,7 @@ panfrost_setup_slices(struct panfrost_device *dev,
                 unsigned slice_one_size = slice->line_stride * effective_height;
                 unsigned slice_full_size = slice_one_size * effective_depth;
 
-                slice->size0 = slice_one_size;
+                slice->surface_stride = slice_one_size;
 
                 /* Report 2D size for 3D texturing */
 

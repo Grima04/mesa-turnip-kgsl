@@ -139,7 +139,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
         /* Only set layer_stride for layered MSAA rendering  */
 
         unsigned nr_samples = surf->texture->nr_samples;
-        unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].size0 : 0;
+        unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].surface_stride : 0;
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
         if (layer_stride)
@@ -310,7 +310,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 
                 int row_stride = rsrc->slices[level].row_stride;
 
-                unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].size0 : 0;
+                unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].surface_stride : 0;
 
                 ext->zs_writeback_base = base;
                 ext->zs_writeback_row_stride = row_stride;
@@ -359,7 +359,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 
                 struct panfrost_resource *stencil = rsrc->separate_stencil;
                 struct panfrost_slice stencil_slice = stencil->slices[level];
-                unsigned stencil_layer_stride = (nr_samples > 1) ? stencil_slice.size0 : 0;
+                unsigned stencil_layer_stride = (nr_samples > 1) ? stencil_slice.surface_stride : 0;
 
                 ext->s_writeback_base = panfrost_get_texture_address(stencil, level, first_layer, 0);
                 ext->s_writeback_row_stride = stencil_slice.row_stride;

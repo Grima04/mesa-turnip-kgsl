@@ -513,7 +513,7 @@ panfrost_compute_checksum_size(
 unsigned
 panfrost_get_layer_stride(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level)
 {
-        return is_3d ? slices[level].size0 : cube_stride;
+        return is_3d ? slices[level].surface_stride : cube_stride;
 }
 
 /* Computes the offset into a texture at a particular level/face. Add to
@@ -523,5 +523,5 @@ unsigned
 panfrost_texture_offset(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level, unsigned face, unsigned sample)
 {
         unsigned layer_stride = panfrost_get_layer_stride(slices, is_3d, cube_stride, level);
-        return slices[level].offset + (face * layer_stride) + (sample * slices[level].size0);
+        return slices[level].offset + (face * layer_stride) + (sample * slices[level].surface_stride);
 }

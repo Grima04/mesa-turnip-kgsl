@@ -42,7 +42,7 @@ struct panfrost_slice {
         unsigned offset;
         unsigned line_stride;
         unsigned row_stride;
-        unsigned size0;
+        unsigned surface_stride;
 
         /* If there is a header preceding each slice, how big is
          * that header? Used for AFBC */
