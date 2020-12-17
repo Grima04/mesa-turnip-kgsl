@@ -31,8 +31,6 @@ dEQP-VK.pipeline.extended_dynamic_state.after_pipelines.depth_compare_greater_eq
 dEQP-VK.pipeline.extended_dynamic_state.before_draw.depth_compare_always_greater,Fail
 dEQP-VK.pipeline.multisample.alpha_to_coverage_unused_attachment.samples_4.alpha_invisible,Fail
 dEQP-VK.pipeline.push_descriptor.compute.binding3_numcalls2_sampler,Crash
-dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_16_64_6.samples_2.d24_unorm_s8_uint.depth_zero,Fail
-dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_16_64_6.samples_4.x8_d24_unorm_pack32.depth_zero,Fail
 dEQP-VK.renderpass2.suballocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_to_exponent_tesse,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.negative_round_up_or_round_down_tesse,Fail

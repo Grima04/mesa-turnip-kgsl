@@ -1396,7 +1396,8 @@ tu_image_view_init(struct tu_image_view *iview,
                    bool limited_z24s8);
 
 bool
-ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage, bool limited_z24s8);
+ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage, bool limited_z24s8,
+              VkSampleCountFlagBits samples);
 
 struct tu_buffer_view
 {
