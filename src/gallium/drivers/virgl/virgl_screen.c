@@ -40,7 +40,7 @@
 #include "virtio-gpu/virgl_protocol.h"
 
 int virgl_debug = 0;
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value virgl_debug_options[] = {
    { "verbose",   VIRGL_DEBUG_VERBOSE,             NULL },
    { "tgsi",      VIRGL_DEBUG_TGSI,                NULL },
    { "noemubgra", VIRGL_DEBUG_NO_EMULATE_BGRA,     "Disable tweak to emulate BGRA as RGBA on GLES hosts"},
@@ -49,7 +49,7 @@ static const struct debug_named_value debug_options[] = {
    { "xfer",      VIRGL_DEBUG_XFER,                "Do not optimize for transfers" },
    DEBUG_NAMED_VALUE_END
 };
-DEBUG_GET_ONCE_FLAGS_OPTION(virgl_debug, "VIRGL_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(virgl_debug, "VIRGL_DEBUG", virgl_debug_options, 0)
 
 static const char *
 virgl_get_vendor(struct pipe_screen *screen)

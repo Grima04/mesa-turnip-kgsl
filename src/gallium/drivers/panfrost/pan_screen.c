@@ -55,7 +55,7 @@
 #include "bifrost/bifrost_compile.h"
 #include "panfrost-quirks.h"
 
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value panfrost_debug_options[] = {
         {"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
         {"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
         {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
@@ -779,7 +779,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         struct panfrost_device *dev = pan_device(&screen->base);
         panfrost_open_device(screen, fd, dev);
 
-        dev->debug = debug_get_flags_option("PAN_MESA_DEBUG", debug_options, 0);
+        dev->debug = debug_get_flags_option("PAN_MESA_DEBUG", panfrost_debug_options, 0);
 
         if (dev->debug & PAN_DBG_NO_AFBC)
                 dev->quirks |= MIDGARD_NO_AFBC;

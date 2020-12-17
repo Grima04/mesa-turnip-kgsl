@@ -37,7 +37,7 @@
 #include "bi_quirks.h"
 #include "bi_builder.h"
 
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value bifrost_debug_options[] = {
         {"msgs",      BIFROST_DBG_MSGS,		"Print debug messages"},
         {"shaders",   BIFROST_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
         {"shaderdb",  BIFROST_DBG_SHADERDB,	"Print statistics"},
@@ -45,7 +45,7 @@ static const struct debug_named_value debug_options[] = {
         DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(bifrost_debug, "BIFROST_MESA_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(bifrost_debug, "BIFROST_MESA_DEBUG", bifrost_debug_options, 0)
 
 /* TODO: This is not thread safe!! */
 static unsigned SHADER_DB_COUNT = 0;

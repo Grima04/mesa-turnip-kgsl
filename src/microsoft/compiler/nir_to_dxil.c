@@ -42,7 +42,7 @@
 int debug_dxil = 0;
 
 static const struct debug_named_value
-debug_options[] = {
+dxil_debug_options[] = {
    { "verbose", DXIL_DEBUG_VERBOSE, NULL },
    { "dump_blob",  DXIL_DEBUG_DUMP_BLOB , "Write shader blobs" },
    { "trace",  DXIL_DEBUG_TRACE , "Trace instruction conversion" },
@@ -50,7 +50,7 @@ debug_options[] = {
    DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(debug_dxil, "DXIL_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(debug_dxil, "DXIL_DEBUG", dxil_debug_options, 0)
 
 #define NIR_INSTR_UNSUPPORTED(instr) \
    if (debug_dxil & DXIL_DEBUG_VERBOSE) \

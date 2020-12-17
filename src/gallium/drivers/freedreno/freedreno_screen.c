@@ -64,7 +64,7 @@
 #include "ir3/ir3_compiler.h"
 #include "a2xx/ir2.h"
 
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value fd_debug_options[] = {
 		{"msgs",      FD_DBG_MSGS,   "Print debug messages"},
 		{"disasm",    FD_DBG_DISASM, "Dump TGSI and adreno shader disassembly (a2xx only, see IR3_SHADER_DEBUG)"},
 		{"dclear",    FD_DBG_DCLEAR, "Mark all state dirty after clear"},
@@ -97,7 +97,7 @@ static const struct debug_named_value debug_options[] = {
 		DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(fd_mesa_debug, "FD_MESA_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(fd_mesa_debug, "FD_MESA_DEBUG", fd_debug_options, 0)
 
 int fd_mesa_debug = 0;
 bool fd_binning_enabled = true;

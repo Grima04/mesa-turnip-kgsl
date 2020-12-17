@@ -43,7 +43,7 @@
 #include "vc4_context.h"
 #include "vc4_resource.h"
 
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value vc4_debug_options[] = {
         { "cl",       VC4_DEBUG_CL,
           "Dump command list during creation" },
         { "surf",       VC4_DEBUG_SURFACE,
@@ -73,7 +73,7 @@ static const struct debug_named_value debug_options[] = {
         { NULL }
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(vc4_debug, "VC4_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(vc4_debug, "VC4_DEBUG", vc4_debug_options, 0)
 uint32_t vc4_debug;
 
 static const char *

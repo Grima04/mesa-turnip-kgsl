@@ -54,14 +54,14 @@
 
 #include "disassemble.h"
 
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value midgard_debug_options[] = {
         {"msgs",      MIDGARD_DBG_MSGS,		"Print debug messages"},
         {"shaders",   MIDGARD_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
         {"shaderdb",  MIDGARD_DBG_SHADERDB,     "Prints shader-db statistics"},
         DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(midgard_debug, "MIDGARD_MESA_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(midgard_debug, "MIDGARD_MESA_DEBUG", midgard_debug_options, 0)
 
 /* TODO: This is not thread safe!! */
 static unsigned SHADER_DB_COUNT = 0;

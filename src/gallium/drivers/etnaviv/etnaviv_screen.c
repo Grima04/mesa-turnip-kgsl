@@ -53,7 +53,7 @@
 #define ETNA_DRM_VERSION_FENCE_FD      ETNA_DRM_VERSION(1, 1)
 #define ETNA_DRM_VERSION_PERFMON       ETNA_DRM_VERSION(1, 2)
 
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value etna_debug_options[] = {
    {"dbg_msgs",       ETNA_DBG_MSGS, "Print debug messages"},
    {"frame_msgs",     ETNA_DBG_FRAME_MSGS, "Print frame messages"},
    {"resource_msgs",  ETNA_DBG_RESOURCE_MSGS, "Print resource messages"},
@@ -78,7 +78,7 @@ static const struct debug_named_value debug_options[] = {
    DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(etna_mesa_debug, "ETNA_MESA_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(etna_mesa_debug, "ETNA_MESA_DEBUG", etna_debug_options, 0)
 int etna_mesa_debug = 0;
 
 static void

@@ -43,7 +43,7 @@
 #include "frontend/sw_winsys.h"
 
 static const struct debug_named_value
-debug_options[] = {
+zink_debug_options[] = {
    { "nir", ZINK_DEBUG_NIR, "Dump NIR during program compile" },
    { "spirv", ZINK_DEBUG_SPIRV, "Dump SPIR-V during program compile" },
    { "tgsi", ZINK_DEBUG_TGSI, "Dump TGSI during program compile" },
@@ -51,7 +51,7 @@ debug_options[] = {
    DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(zink_debug, "ZINK_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(zink_debug, "ZINK_DEBUG", zink_debug_options, 0)
 
 uint32_t
 zink_debug;

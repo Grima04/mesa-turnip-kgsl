@@ -47,7 +47,7 @@
 #include <dxguids/dxguids.h>
 
 static const struct debug_named_value
-debug_options[] = {
+d3d12_debug_options[] = {
    { "verbose",      D3D12_DEBUG_VERBOSE,       NULL },
    { "blit",         D3D12_DEBUG_BLIT,          "Trace blit and copy resource calls" },
    { "experimental", D3D12_DEBUG_EXPERIMENTAL,  "Enable experimental shader models feature" },
@@ -59,7 +59,7 @@ debug_options[] = {
    DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(d3d12_debug, "D3D12_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(d3d12_debug, "D3D12_DEBUG", d3d12_debug_options, 0)
 
 uint32_t
 d3d12_debug;

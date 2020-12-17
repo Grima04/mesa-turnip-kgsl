@@ -541,7 +541,7 @@ lima_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
    return false;
 }
 
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value lima_debug_options[] = {
         { "gp",       LIMA_DEBUG_GP,
           "print GP shader compiler result of each stage" },
         { "pp",       LIMA_DEBUG_PP,
@@ -563,7 +563,7 @@ static const struct debug_named_value debug_options[] = {
         { NULL }
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(lima_debug, "LIMA_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(lima_debug, "LIMA_DEBUG", lima_debug_options, 0)
 uint32_t lima_debug;
 
 static void

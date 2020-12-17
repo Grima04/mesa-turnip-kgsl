@@ -45,13 +45,13 @@ enum clc_debug_flags {
    CLC_DEBUG_VERBOSE = 1 << 1,
 };
 
-static const struct debug_named_value debug_options[] = {
+static const struct debug_named_value clc_debug_options[] = {
    { "dump_spirv",  CLC_DEBUG_DUMP_SPIRV, "Dump spirv blobs" },
    { "verbose",  CLC_DEBUG_VERBOSE, NULL },
    DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(debug_clc, "CLC_DEBUG", debug_options, 0)
+DEBUG_GET_ONCE_FLAGS_OPTION(debug_clc, "CLC_DEBUG", clc_debug_options, 0)
 
 static void
 clc_print_kernels_info(const struct clc_object *obj)
