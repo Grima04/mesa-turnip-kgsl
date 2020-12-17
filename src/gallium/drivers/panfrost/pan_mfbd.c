@@ -456,7 +456,7 @@ pan_internal_cbuf_size(struct panfrost_batch *batch, unsigned *tile_size)
         total_size = ALIGN_POT(total_size, 1024);
 
         /* Minimum tile size is 4x4. */
-        assert(*tile_size > 4 * 4);
+        assert(*tile_size >= 4 * 4);
         return total_size;
 }
 
