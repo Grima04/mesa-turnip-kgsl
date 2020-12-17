@@ -79,9 +79,8 @@ panfrost_modifier_to_layout(uint64_t modifier)
 
 static bool
 panfrost_needs_explicit_stride(const struct panfrost_device *dev,
-                               uint64_t modifier,
+                               const struct pan_image_layout *layout,
                                enum pipe_format format,
-                               struct panfrost_slice *slices,
                                uint16_t width,
                                unsigned first_level,
                                unsigned last_level)
@@ -90,14 +89,14 @@ panfrost_needs_explicit_stride(const struct panfrost_device *dev,
         if (dev->quirks & IS_BIFROST)
                 return true;
 
-        if (modifier != DRM_FORMAT_MOD_LINEAR)
+        if (layout->modifier != DRM_FORMAT_MOD_LINEAR)
                 return false;
 
         unsigned bytes_per_block = util_format_get_blocksize(format);
         unsigned block_w = util_format_get_blockwidth(format);
 
         for (unsigned l = first_level; l <= last_level; ++l) {
-                unsigned actual = slices[l].line_stride;
+                unsigned actual = layout->slices[l].line_stride;
                 unsigned expected =
                         DIV_ROUND_UP(u_minify(width, l), block_w) *
                         bytes_per_block;
@@ -269,34 +268,22 @@ panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
 }
 
 static uint64_t
-panfrost_get_surface_strides(struct panfrost_slice *slices,
-                             const struct util_format_description *desc,
-                             enum mali_texture_dimension dim,
-                             uint64_t modifier,
-                             unsigned width, unsigned height,
-                             unsigned l, unsigned cube_stride)
+panfrost_get_surface_strides(const struct pan_image_layout *layout,
+                             unsigned l)
 {
-        bool is_3d = dim == MALI_TEXTURE_DIMENSION_3D;
-
-        unsigned line_stride = slices[l].row_stride;
-        unsigned layer_stride =
-                panfrost_get_layer_stride(slices, is_3d, cube_stride, l);
-
-        return ((uint64_t)layer_stride << 32) | line_stride;
+        return ((uint64_t)layout->slices[l].surface_stride << 32) |
+               layout->slices[l].row_stride;
 }
 
 static mali_ptr
-panfrost_get_surface_pointer(mali_ptr base, struct panfrost_slice *slices,
+panfrost_get_surface_pointer(const struct pan_image_layout *layout,
                              enum mali_texture_dimension dim,
-                             unsigned l, unsigned w, unsigned f, unsigned s,
-                             unsigned cube_stride)
+                             mali_ptr base,
+                             unsigned l, unsigned w, unsigned f, unsigned s)
 {
         unsigned face_mult = dim == MALI_TEXTURE_DIMENSION_CUBE ? 6 : 1;
-        bool is_3d = dim == MALI_TEXTURE_DIMENSION_3D;
 
-        return base +
-               panfrost_texture_offset(slices, is_3d, cube_stride,
-                                       l, w * face_mult + f, s);
+        return base + panfrost_texture_offset(layout, l, w * face_mult + f, s);
 }
 
 struct panfrost_surface_iter {
@@ -357,28 +344,27 @@ panfrost_surface_iter_next(const struct panfrost_device *dev,
 
 static void
 panfrost_emit_texture_payload(const struct panfrost_device *dev,
+                              const struct pan_image_layout *layout,
                               mali_ptr *payload,
                               const struct util_format_description *desc,
                               enum mali_texture_dimension dim,
-                              uint64_t modifier,
-                              unsigned width, unsigned height,
                               unsigned first_level, unsigned last_level,
                               unsigned first_layer, unsigned last_layer,
                               unsigned nr_samples,
-                              unsigned cube_stride,
                               bool manual_stride,
-                              mali_ptr base,
-                              struct panfrost_slice *slices)
+                              mali_ptr base)
 {
-        base |= panfrost_compression_tag(dev, desc, dim, modifier);
+        base |= panfrost_compression_tag(dev, desc, dim, layout->modifier);
 
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
 
         unsigned first_face  = 0, last_face = 0;
 
-        if (dim == MALI_TEXTURE_DIMENSION_CUBE)
-                panfrost_adjust_cube_dimensions(&first_face, &last_face, &first_layer, &last_layer);
+        if (dim == MALI_TEXTURE_DIMENSION_CUBE) {
+                panfrost_adjust_cube_dimensions(&first_face, &last_face,
+                                                &first_layer, &last_layer);
+        }
 
         nr_samples = MAX2(nr_samples, 1);
 
@@ -391,36 +377,31 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
              !panfrost_surface_iter_end(&iter);
              panfrost_surface_iter_next(dev, &iter)) {
                 payload[idx++] =
-                        panfrost_get_surface_pointer(base, slices, dim,
+                        panfrost_get_surface_pointer(layout, dim, base,
                                                      iter.level, iter.layer,
-                                                     iter.face, iter.sample,
-                                                     cube_stride);
+                                                     iter.face, iter.sample);
 
                 if (!manual_stride)
                         continue;
 
                 payload[idx++] =
-                        panfrost_get_surface_strides(slices, desc, dim,
-                                                     modifier, width, height,
-                                                     iter.level, cube_stride);
+                        panfrost_get_surface_strides(layout, iter.level);
         }
 }
 
 void
 panfrost_new_texture(const struct panfrost_device *dev,
+                     const struct pan_image_layout *layout,
                      void *out,
                      uint16_t width, uint16_t height,
                      uint16_t depth, uint16_t array_size,
                      enum pipe_format format,
                      enum mali_texture_dimension dim,
-                     uint64_t modifier,
                      unsigned first_level, unsigned last_level,
                      unsigned first_layer, unsigned last_layer,
                      unsigned nr_samples,
-                     unsigned cube_stride,
                      unsigned swizzle,
                      mali_ptr base,
-                     struct panfrost_slice *slices,
                      const struct panfrost_ptr *payload)
 {
         const struct util_format_description *desc =
@@ -428,22 +409,17 @@ panfrost_new_texture(const struct panfrost_device *dev,
 
         bool is_bifrost = dev->quirks & IS_BIFROST;
         bool manual_stride =
-                panfrost_needs_explicit_stride(dev, modifier, format, slices,
-                                               width, first_level, last_level);
+                panfrost_needs_explicit_stride(dev, layout, format, width,
+                                               first_level, last_level);
 
-        panfrost_emit_texture_payload(dev,
+        panfrost_emit_texture_payload(dev, layout,
                                       payload->cpu,
-                                      desc,
-                                      dim,
-                                      modifier,
-                                      width, height,
+                                      desc, dim,
                                       first_level, last_level,
                                       first_layer, last_layer,
                                       nr_samples,
-                                      cube_stride,
                                       manual_stride,
-                                      base,
-                                      slices);
+                                      base);
 
         if (is_bifrost) {
                 pan_pack(out, BIFROST_TEXTURE, cfg) {
@@ -456,7 +432,8 @@ panfrost_new_texture(const struct panfrost_device *dev,
                         else
                                 cfg.sample_count = MAX2(nr_samples, 1);
                         cfg.swizzle = swizzle;
-                        cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
+                        cfg.texel_ordering =
+                                panfrost_modifier_to_layout(layout->modifier);
                         cfg.levels = last_level - first_level + 1;
                         cfg.array_size = array_size;
                         cfg.surfaces = payload->gpu;
@@ -477,7 +454,8 @@ panfrost_new_texture(const struct panfrost_device *dev,
                         cfg.array_size = array_size;
                         cfg.format = panfrost_pipe_format_v6[format].hw;
                         cfg.dimension = dim;
-                        cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
+                        cfg.texel_ordering =
+                                panfrost_modifier_to_layout(layout->modifier);
                         cfg.manual_stride = manual_stride;
                         cfg.levels = last_level - first_level + 1;
                         cfg.swizzle = swizzle;
@@ -511,17 +489,24 @@ panfrost_compute_checksum_size(
 }
 
 unsigned
-panfrost_get_layer_stride(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level)
+panfrost_get_layer_stride(const struct pan_image_layout *layout,
+                          unsigned level)
 {
-        return is_3d ? slices[level].surface_stride : cube_stride;
+        if (layout->dim == MALI_TEXTURE_DIMENSION_3D)
+                return layout->slices[level].surface_stride;
+
+        return layout->array_stride;
 }
 
 /* Computes the offset into a texture at a particular level/face. Add to
  * the base address of a texture to get the address to that level/face */
 
 unsigned
-panfrost_texture_offset(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level, unsigned face, unsigned sample)
+panfrost_texture_offset(const struct pan_image_layout *layout,
+                        unsigned level, unsigned array_idx,
+                        unsigned surface_idx)
 {
-        unsigned layer_stride = panfrost_get_layer_stride(slices, is_3d, cube_stride, level);
-        return slices[level].offset + (face * layer_stride) + (sample * slices[level].surface_stride);
+        return layout->slices[level].offset +
+               (array_idx * layout->array_stride) +
+               (surface_idx * layout->slices[level].surface_stride);
 }

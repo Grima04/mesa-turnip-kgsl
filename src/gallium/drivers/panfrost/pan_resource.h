@@ -52,14 +52,8 @@ struct panfrost_resource {
 
         struct util_range valid_buffer_range;
 
-        /* Description of the mip levels */
-        struct panfrost_slice slices[MAX_MIP_LEVELS];
-
-        /* Distance from tree to tree */
-        unsigned cubemap_stride;
-
-        /* DRM fourcc code: linear, 16x16 u-interleaved, AFBC */
-        uint64_t modifier;
+        /* Description of the resource layout */
+        struct pan_image_layout layout;
 
         /* Whether the modifier can be changed */
         bool modifier_constant;
@@ -101,9 +95,9 @@ pan_transfer(struct pipe_transfer *p)
 }
 
 mali_ptr
-panfrost_get_texture_address(
-        struct panfrost_resource *rsrc,
-        unsigned level, unsigned face, unsigned sample);
+panfrost_get_texture_address(struct panfrost_resource *rsrc,
+                             unsigned level, unsigned layer,
+                             unsigned sample);
 
 void panfrost_resource_screen_init(struct pipe_screen *screen);
 

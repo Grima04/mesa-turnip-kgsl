@@ -59,6 +59,13 @@ struct panfrost_slice {
         bool initialized;
 };
 
+struct pan_image_layout {
+        uint64_t modifier;
+        enum mali_texture_dimension dim;
+        struct panfrost_slice slices[MAX_MIP_LEVELS];
+        unsigned array_stride;
+};
+
 struct pan_image {
         /* Format and size */
         uint16_t width0, height0, depth0, array_size;
@@ -68,9 +75,7 @@ struct pan_image {
         unsigned first_layer, last_layer;
         unsigned nr_samples;
         struct panfrost_bo *bo;
-        struct panfrost_slice *slices;
-        unsigned cubemap_stride;
-        uint64_t modifier;
+        const struct pan_image_layout *layout;
 };
 
 unsigned
@@ -102,26 +107,27 @@ panfrost_estimate_texture_payload_size(
 
 void
 panfrost_new_texture(const struct panfrost_device *dev,
+                     const struct pan_image_layout *layout,
                      void *out,
                      uint16_t width, uint16_t height,
                      uint16_t depth, uint16_t array_size,
                      enum pipe_format format,
                      enum mali_texture_dimension dim,
-                     uint64_t modifier,
                      unsigned first_level, unsigned last_level,
                      unsigned first_layer, unsigned last_layer,
                      unsigned nr_samples,
-                     unsigned cube_stride,
                      unsigned swizzle,
                      mali_ptr base,
-                     struct panfrost_slice *slices,
                      const struct panfrost_ptr *payload);
 
 unsigned
-panfrost_get_layer_stride(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level);
+panfrost_get_layer_stride(const struct pan_image_layout *layout,
+                          unsigned level);
 
 unsigned
-panfrost_texture_offset(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level, unsigned face, unsigned sample);
+panfrost_texture_offset(const struct pan_image_layout *layout,
+                        unsigned level, unsigned array_idx,
+                        unsigned surface_idx);
 
 /* Formats */
 

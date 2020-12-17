@@ -1011,7 +1011,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         }
 
         so->texture_bo = prsrc->bo->ptr.gpu;
-        so->modifier = prsrc->modifier;
+        so->modifier = prsrc->layout.modifier;
 
         unsigned char user_swizzle[4] = {
                 so->base.swizzle_r,
@@ -1048,7 +1048,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                                        so->base.u.tex.first_layer,
                                                        so->base.u.tex.last_layer,
                                                        texture->nr_samples,
-                                                       type, prsrc->modifier);
+                                                       type,
+                                                       prsrc->layout.modifier);
 
         so->bo = panfrost_bo_create(device, size, 0);
 
@@ -1060,20 +1061,17 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
         }
 
-        panfrost_new_texture(device, tex,
+        panfrost_new_texture(device, &prsrc->layout, tex,
                              texture->width0, texture->height0,
                              depth, array_size,
-                             format,
-                             type, prsrc->modifier,
+                             format, type,
                              so->base.u.tex.first_level,
                              so->base.u.tex.last_level,
                              so->base.u.tex.first_layer,
                              so->base.u.tex.last_layer,
                              texture->nr_samples,
-                             prsrc->cubemap_stride,
                              panfrost_translate_swizzle_4(user_swizzle),
-                             prsrc->bo->ptr.gpu,
-                             prsrc->slices, &payload);
+                             prsrc->bo->ptr.gpu, &payload);
 }
 
 static struct pipe_sampler_view *

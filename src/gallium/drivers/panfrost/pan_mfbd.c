@@ -134,12 +134,12 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
         unsigned level = surf->u.tex.level;
         unsigned first_layer = surf->u.tex.first_layer;
         assert(surf->u.tex.last_layer == first_layer);
-        int row_stride = rsrc->slices[level].row_stride;
+        int row_stride = rsrc->layout.slices[level].row_stride;
 
         /* Only set layer_stride for layered MSAA rendering  */
 
         unsigned nr_samples = surf->texture->nr_samples;
-        unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].surface_stride : 0;
+        unsigned layer_stride = (nr_samples > 1) ? rsrc->layout.slices[level].surface_stride : 0;
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
         if (layer_stride)
@@ -151,7 +151,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
 
         panfrost_mfbd_rt_init_format(surf, rt);
 
-        if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
+        if (rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR) {
                 if (version >= 7)
                         rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_LINEAR;
                 else
@@ -160,7 +160,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                 rt->rgb.base = base;
                 rt->rgb.row_stride = row_stride;
                 rt->rgb.surface_stride = layer_stride;
-        } else if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
+        } else if (rsrc->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                 if (version >= 7)
                         rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
                 else
@@ -169,13 +169,13 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                 rt->rgb.base = base;
                 rt->rgb.row_stride = row_stride;
                 rt->rgb.surface_stride = layer_stride;
-        } else if (drm_is_afbc(rsrc->modifier)) {
+        } else if (drm_is_afbc(rsrc->layout.modifier)) {
                 if (version >= 7)
                         rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_AFBC;
                 else
                         rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
 
-                unsigned header_size = rsrc->slices[level].header_size;
+                unsigned header_size = rsrc->layout.slices[level].header_size;
 
                 rt->afbc.header = base;
                 rt->afbc.chunk_size = 9;
@@ -184,7 +184,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                 if (!(dev->quirks & IS_BIFROST))
                         rt->midgard_afbc.sparse = true;
 
-                if (rsrc->modifier & AFBC_FORMAT_MOD_YTR)
+                if (rsrc->layout.modifier & AFBC_FORMAT_MOD_YTR)
                         rt->afbc.yuv_transform_enable = true;
 
                 /* TODO: The blob sets this to something nonzero, but it's not
@@ -254,7 +254,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 
                 if (rsrc->checksummed) {
                         unsigned level = c_surf->u.tex.level;
-                        struct panfrost_slice *slice = &rsrc->slices[level];
+                        struct panfrost_slice *slice = &rsrc->layout.slices[level];
 
                         ext->crc_row_stride = slice->crc.stride;
                         if (rsrc->checksum_bo)
@@ -291,8 +291,8 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
         else
                 ext->zs_msaa_v7 = nr_samples > 1 ? MALI_MSAA_LAYERED : MALI_MSAA_SINGLE;
 
-        if (drm_is_afbc(rsrc->modifier)) {
-                unsigned header_size = rsrc->slices[level].header_size;
+        if (drm_is_afbc(rsrc->layout.modifier)) {
+                unsigned header_size = rsrc->layout.slices[level].header_size;
                 ext->zs_afbc_header = base;
                 ext->zs_afbc_body = base + header_size;
                 ext->zs_afbc_body_size = 0x1000;
@@ -304,19 +304,18 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 else
                         ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
         } else {
-                assert(rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED ||
-                       rsrc->modifier == DRM_FORMAT_MOD_LINEAR);
+                assert(rsrc->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED ||
+                       rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR);
                 /* TODO: Z32F(S8) support, which is always linear */
 
-                int row_stride = rsrc->slices[level].row_stride;
-
-                unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].surface_stride : 0;
-
                 ext->zs_writeback_base = base;
-                ext->zs_writeback_row_stride = row_stride;
-                ext->zs_writeback_surface_stride = layer_stride;
+                ext->zs_writeback_row_stride =
+                        rsrc->layout.slices[level].row_stride;
+                ext->zs_writeback_surface_stride =
+                        (nr_samples > 1) ?
+                        rsrc->layout.slices[level].surface_stride : 0;
 
-                if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
+                if (rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR) {
                         if (version >= 7)
                                 ext->zs_block_format_v7 = MALI_BLOCK_FORMAT_V7_LINEAR;
                         else
@@ -358,12 +357,14 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 }
 
                 struct panfrost_resource *stencil = rsrc->separate_stencil;
-                struct panfrost_slice stencil_slice = stencil->slices[level];
-                unsigned stencil_layer_stride = (nr_samples > 1) ? stencil_slice.surface_stride : 0;
+                struct panfrost_slice *stencil_slice =
+			&stencil->layout.slices[level];
 
-                ext->s_writeback_base = panfrost_get_texture_address(stencil, level, first_layer, 0);
-                ext->s_writeback_row_stride = stencil_slice.row_stride;
-                ext->s_writeback_surface_stride = stencil_layer_stride;
+                ext->s_writeback_base =
+                        panfrost_get_texture_address(stencil, level, first_layer, 0);
+                ext->s_writeback_row_stride = stencil_slice->row_stride;
+                ext->s_writeback_surface_stride =
+                        (nr_samples > 1) ? stencil_slice->surface_stride : 0;
                 break;
         default:
                 unreachable("Unsupported depth/stencil format.");

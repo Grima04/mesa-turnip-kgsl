@@ -316,21 +316,20 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
          * itself is for a 2D texture with array size 1 even for 3D/array
          * textures, removing the need to separately key the blit shaders for
          * 2D and 3D variants */
-         panfrost_new_texture(pool->dev, texture.cpu,
-                              image->width0, image->height0,
-                              MAX2(image->nr_samples, 1), 1,
-                              image->format, MALI_TEXTURE_DIMENSION_2D,
-                              image->modifier,
-                              image->first_level, image->last_level,
-                              0, 0,
-                              image->nr_samples,
-                              0,
-                              PAN_V6_SWIZZLE(R, G, B, A),
-                              image->bo->ptr.gpu + image->first_layer *
-                              panfrost_get_layer_stride(image->slices,
-                                                        image->dim == MALI_TEXTURE_DIMENSION_3D,
-                                                        image->cubemap_stride, image->first_level),
-                              image->slices, &payload);
+
+        unsigned offset =
+                image->first_layer *
+                panfrost_get_layer_stride(image->layout, image->first_level);
+
+        panfrost_new_texture(pool->dev, image->layout, texture.cpu,
+                             image->width0, image->height0,
+                             MAX2(image->nr_samples, 1), 1,
+                             image->format, MALI_TEXTURE_DIMENSION_2D,
+                             image->first_level, image->last_level,
+                             0, 0,
+                             image->nr_samples,
+                             PAN_V6_SWIZZLE(R, G, B, A),
+                             image->bo->ptr.gpu + offset, &payload);
 
         pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg)
                 cfg.normalized_coordinates = false;
@@ -492,21 +491,19 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                  .gpu = texture.gpu + MALI_BIFROST_TEXTURE_LENGTH,
         };
 
-        panfrost_new_texture(pool->dev, (void *)texture.cpu,
+        unsigned offset =
+                image->first_layer *
+                panfrost_get_layer_stride(image->layout, image->first_level);
+
+        panfrost_new_texture(pool->dev, image->layout, texture.cpu,
                              image->width0, image->height0,
                              MAX2(image->nr_samples, 1), 1,
                              image->format, MALI_TEXTURE_DIMENSION_2D,
-                             image->modifier,
                              image->first_level, image->last_level,
                              0, 0,
                              image->nr_samples,
-                             0,
                              PAN_V6_SWIZZLE(R, G, B, A),
-                             image->bo->ptr.gpu + image->first_layer *
-                             panfrost_get_layer_stride(image->slices,
-                                                       image->dim == MALI_TEXTURE_DIMENSION_3D,
-                                                       image->cubemap_stride, image->first_level),
-                             image->slices, &payload);
+                             image->bo->ptr.gpu + offset, &payload);
 
         pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {
                 cfg.seamless_cube_map = false;
