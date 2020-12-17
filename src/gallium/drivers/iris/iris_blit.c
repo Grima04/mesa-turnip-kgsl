@@ -320,20 +320,6 @@ tex_cache_flush_hack(struct iris_batch *batch,
                                 PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
 }
 
-static enum isl_aux_usage
-iris_resource_blorp_write_aux_usage(struct iris_context *ice,
-                                    struct iris_resource *res,
-                                    enum isl_format render_format)
-{
-   if (res->surf.usage & (ISL_SURF_USAGE_DEPTH_BIT |
-                          ISL_SURF_USAGE_STENCIL_BIT)) {
-      assert(render_format == res->surf.format);
-      return res->aux.usage;
-   } else {
-      return iris_resource_render_aux_usage(ice, res, render_format, false);
-   }
-}
-
 static struct iris_resource *
 iris_resource_for_aspect(struct pipe_resource *p_res, unsigned pipe_mask)
 {
@@ -501,8 +487,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
          iris_format_for_usage(devinfo, dst_pfmt,
                                ISL_SURF_USAGE_RENDER_TARGET_BIT);
       enum isl_aux_usage dst_aux_usage =
-         iris_resource_blorp_write_aux_usage(ice, dst_res, dst_fmt.fmt);
-      bool dst_clear_supported = isl_aux_usage_has_fast_clears(dst_aux_usage);
+         iris_resource_render_aux_usage(ice, dst_res, info->dst.level,
+                                        dst_fmt.fmt, false);
 
       struct blorp_surf src_surf, dst_surf;
       iris_blorp_surf_for_resource(&screen->isl_dev,  &src_surf,
@@ -512,9 +498,9 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                    &dst_res->base, dst_aux_usage,
                                    info->dst.level, true);
 
-      iris_resource_prepare_access(ice, dst_res, info->dst.level, 1,
+      iris_resource_prepare_render(ice, dst_res, info->dst.level,
                                    info->dst.box.z, info->dst.box.depth,
-                                   dst_aux_usage, dst_clear_supported);
+                                   dst_aux_usage);
       iris_emit_buffer_barrier_for(batch, dst_res->bo,
                                    IRIS_DOMAIN_RENDER_WRITE);
 
@@ -548,9 +534,9 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
       tex_cache_flush_hack(batch, src_fmt.fmt, src_res->surf.format);
 
-      iris_resource_finish_write(ice, dst_res, info->dst.level,
-                                 info->dst.box.z, info->dst.box.depth,
-                                 dst_aux_usage);
+      iris_resource_finish_render(ice, dst_res, info->dst.level,
+                                  info->dst.box.z, info->dst.box.depth,
+                                  dst_aux_usage);
    }
 
    blorp_batch_finish(&blorp_batch);

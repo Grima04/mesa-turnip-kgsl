@@ -502,6 +502,7 @@ bool iris_render_formats_color_compatible(enum isl_format a,
                                           union isl_color_value color);
 enum isl_aux_usage iris_resource_render_aux_usage(struct iris_context *ice,
                                                   struct iris_resource *res,
+                                                  uint32_t level,
                                                   enum isl_format render_fmt,
                                                   bool draw_aux_disabled);
 void iris_resource_prepare_render(struct iris_context *ice,
