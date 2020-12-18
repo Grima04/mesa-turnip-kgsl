@@ -184,6 +184,8 @@ static SpvStorageClass
 get_storage_class(struct nir_variable *var)
 {
    switch (var->data.mode) {
+   case nir_var_mem_push_const:
+      return SpvStorageClassPushConstant;
    case nir_var_shader_in:
       return SpvStorageClassInput;
    case nir_var_shader_out:
