@@ -873,6 +873,11 @@ struct pipe_grid_info
     */
    uint grid[3];
 
+   /**
+    * Base offsets to launch grids from
+    */
+   uint grid_base[3];
+
    /* Indirect compute parameters resource: If not NULL, block sizes are taken
     * from this buffer instead, which is laid out as follows:
     *
