@@ -481,9 +481,6 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
    util_range_add(&res->base, &res->valid_buffer_range, offset, offset + result_size);
    vkCmdCopyQueryPoolResults(batch->state->cmdbuf, query->query_pool, query_id, num_results, res->obj->buffer,
                              offset, 0, flags);
-   /* this is required for compute batch sync and will be removed later */
-   zink_flush_queue(ctx);
-
 }
 
 static void
