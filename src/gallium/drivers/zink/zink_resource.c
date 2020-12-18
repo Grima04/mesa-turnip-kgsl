@@ -849,8 +849,14 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
    } else if ((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT)) {
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
       uint32_t latest_write = get_most_recent_access(res, ZINK_RESOURCE_ACCESS_WRITE);
-      if (latest_write)
-         zink_wait_on_batch(ctx, latest_write);
+      if (latest_write) {
+         if (usage & PIPE_MAP_DONTBLOCK) {
+            if (latest_write == ctx->curr_batch ||
+               !zink_check_batch_completion(ctx, latest_write))
+               return NULL;
+         } else
+            zink_wait_on_batch(ctx, latest_write);
+      }
    }
 
    if (!ptr) {
