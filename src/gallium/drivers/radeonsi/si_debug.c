@@ -796,8 +796,6 @@ static void si_dump_descriptors(struct si_context *sctx, gl_shader_stage stage,
    } else {
       enabled_constbuf =
          sctx->const_and_shader_buffers[processor].enabled_mask >> SI_NUM_SHADER_BUFFERS;
-      enabled_shaderbuf = sctx->const_and_shader_buffers[processor].enabled_mask &
-                          u_bit_consecutive64(0, SI_NUM_SHADER_BUFFERS);
       enabled_shaderbuf = 0;
       for (int i = 0; i < SI_NUM_SHADER_BUFFERS; i++) {
          enabled_shaderbuf |=

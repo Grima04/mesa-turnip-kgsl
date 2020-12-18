@@ -107,8 +107,6 @@ static void get_pic_control_param(struct rvce_encoder *enc, struct pipe_h264_enc
    enc->enc_pic.pc.enc_num_default_active_ref_l1 = 0x00000001;
    enc->enc_pic.pc.enc_cabac_enable = pic->pic_ctrl.enc_cabac_enable;
    enc->enc_pic.pc.enc_constraint_set_flags = pic->pic_ctrl.enc_constraint_set_flags;
-   enc->enc_pic.pc.enc_num_default_active_ref_l0 = 0x00000001;
-   enc->enc_pic.pc.enc_num_default_active_ref_l1 = 0x00000001;
 }
 
 static void get_task_info_param(struct rvce_encoder *enc)
