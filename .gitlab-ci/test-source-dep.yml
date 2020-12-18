@@ -292,6 +292,23 @@
       when: on_success
     - when: never
 
+.iris-rules:
+  stage: intel
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+      - src/gallium/drivers/iris/**/*
+      - src/gallium/winsys/iris/**/*
+      - src/intel/**/*
+      when: on_success
+    - when: never
+
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
 .windows-build-rules:

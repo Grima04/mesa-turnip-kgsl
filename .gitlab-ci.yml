@@ -27,6 +27,7 @@ stages:
   - meson-x86_64
   - build-misc
   - amd
+  - intel
   - arm
   - broadcom
   - freedreno
