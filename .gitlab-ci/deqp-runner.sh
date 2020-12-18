@@ -104,7 +104,7 @@ else
 fi
 
 # If this CI lab lacks artifacts support, print the whole list of failures/flakes.
-if [ -z "$DEQP_NO_SAVE_RESULTS" ]; then
+if [ -n "$DEQP_NO_SAVE_RESULTS" ]; then
    SUMMARY_LIMIT="--summary-limit 0"
 fi
 
