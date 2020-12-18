@@ -128,16 +128,16 @@ GL 4.0, GLSL 4.00 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virg
   - Enhanced per-sample shading                         DONE ()
   - Interpolation functions                             DONE (softpipe)
   - New overload resolution rules                       DONE (softpipe)
-  GL_ARB_gpu_shader_fp64                                DONE (i965/gen7+, softpipe, swr)
+  GL_ARB_gpu_shader_fp64                                DONE (i965/gen7+, softpipe, swr, zink)
   GL_ARB_sample_shading                                 DONE (freedreno/a6xx, i965/gen6+, nv50, zink)
-  GL_ARB_shader_subroutine                              DONE (freedreno, i965/gen6+, nv50, softpipe, swr, d3d12)
+  GL_ARB_shader_subroutine                              DONE (freedreno, i965/gen6+, nv50, softpipe, swr, d3d12, zink)
   GL_ARB_tessellation_shader                            DONE (i965/gen7+, swr)
-  GL_ARB_texture_buffer_object_rgb32                    DONE (freedreno, i965/gen6+, softpipe, swr, d3d12)
+  GL_ARB_texture_buffer_object_rgb32                    DONE (freedreno, i965/gen6+, softpipe, swr, d3d12, zink)
   GL_ARB_texture_cube_map_array                         DONE (i965/gen6+, nv50, softpipe, swr, zink)
   GL_ARB_texture_gather                                 DONE (freedreno, i965/gen6+, nv50, softpipe, swr, v3d, panfrost)
   GL_ARB_texture_query_lod                              DONE (freedreno, i965, nv50, softpipe, swr, v3d, panfrost, zink, d3d12)
-  GL_ARB_transform_feedback2                            DONE (i965/gen6+, nv50, softpipe, swr, v3d, panfrost)
-  GL_ARB_transform_feedback3                            DONE (i965/gen7+, softpipe, swr)
+  GL_ARB_transform_feedback2                            DONE (i965/gen6+, nv50, softpipe, swr, v3d, panfrost, zink)
+  GL_ARB_transform_feedback3                            DONE (i965/gen7+, softpipe, swr, zink)
 
 
 GL 4.1, GLSL 4.10 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virgl
