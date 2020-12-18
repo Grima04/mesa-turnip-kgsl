@@ -974,15 +974,14 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
-   struct lp_build_context *bld_broad = bit_size == 64 ? &bld_base->dbl_bld : &bld_base->base;
+   struct lp_build_context *bld_broad = get_int_bld(bld_base, true, bit_size);
    LLVMValueRef consts_ptr = lp_build_array_get(gallivm, bld->consts_ptr, index);
    unsigned size_shift = bit_size_to_shift_size(bit_size);
    if (size_shift)
       offset = lp_build_shr(uint_bld, offset, lp_build_const_int_vec(gallivm, uint_bld->type, size_shift));
-   if (bit_size == 64) {
-      LLVMTypeRef dptr_type = LLVMPointerType(bld_base->dbl_bld.elem_type, 0);
-      consts_ptr = LLVMBuildBitCast(builder, consts_ptr, dptr_type, "");
-   }
+
+   LLVMTypeRef ptr_type = LLVMPointerType(bld_broad->elem_type, 0);
+   consts_ptr = LLVMBuildBitCast(builder, consts_ptr, ptr_type, "");
 
    if (offset_is_uniform) {
       offset = LLVMBuildExtractElement(builder, offset, lp_build_const_int32(gallivm, 0), "");
@@ -998,6 +997,13 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
       LLVMValueRef num_consts = lp_build_array_get(gallivm, bld->const_sizes_ptr, index);
 
       num_consts = lp_build_broadcast_scalar(uint_bld, num_consts);
+      if (bit_size == 64)
+         num_consts = lp_build_shr_imm(uint_bld, num_consts, 1);
+      else if (bit_size == 16)
+         num_consts = lp_build_shl_imm(uint_bld, num_consts, 1);
+      else if (bit_size == 8)
+         num_consts = lp_build_shl_imm(uint_bld, num_consts, 2);
+
       for (unsigned c = 0; c < nc; c++) {
          LLVMValueRef this_offset = lp_build_add(uint_bld, offset, lp_build_const_int_vec(gallivm, uint_bld->type, c));
          overflow_mask = lp_build_compare(gallivm, uint_bld->type, PIPE_FUNC_GEQUAL,
