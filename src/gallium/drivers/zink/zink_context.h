@@ -128,6 +128,9 @@ struct zink_context {
 
    struct pipe_stencil_ref stencil_ref;
 
+   float default_inner_level[2];
+   float default_outer_level[4];
+
    struct list_head suspended_queries;
    struct list_head primitives_generated_queries;
    bool queries_disabled, render_condition_active;
