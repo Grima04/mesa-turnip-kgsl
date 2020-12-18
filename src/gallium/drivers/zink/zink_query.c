@@ -154,6 +154,15 @@ is_so_overflow_query(struct zink_query *query)
    return query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE || query->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE;
 }
 
+static bool
+is_bool_query(struct zink_query *query)
+{
+   return is_so_overflow_query(query) ||
+          query->type == PIPE_QUERY_OCCLUSION_PREDICATE ||
+          query->type == PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE ||
+          query->type == PIPE_QUERY_GPU_FINISHED;
+}
+
 static void
 destroy_query(struct zink_screen *screen, struct zink_query *query)
 {
@@ -451,14 +460,14 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, e
          limit = INT_MAX;
       else
          limit = UINT_MAX;
-      if (is_so_overflow_query(query))
+      if (is_bool_query(query))
          u32 = result.b;
       else
          u32 = MIN2(limit, result.u64);
       pipe_buffer_write(pctx, pres, offset, result_size, &u32);
    } else {
       uint64_t u64;
-      if (is_so_overflow_query(query))
+      if (is_bool_query(query))
          u64 = result.b;
       else
          u64 = result.u64;
