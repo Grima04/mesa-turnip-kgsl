@@ -312,8 +312,10 @@ d3d12_get_gfx_pipeline_state(struct d3d12_context *ctx)
 
       data->key = ctx->gfx_pipeline_state;
       data->pso = create_gfx_pipeline_state(ctx);
-      if (!data->pso)
+      if (!data->pso) {
+         FREE(data);
          return NULL;
+      }
 
       entry = _mesa_hash_table_insert_pre_hashed(ctx->pso_cache, hash, &data->key, data);
       assert(entry);
