@@ -102,6 +102,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_TEXCOORD:
    case PIPE_CAP_DRAW_INDIRECT:
    case PIPE_CAP_TEXTURE_QUERY_LOD:
+   case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
       return 1;
 
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
@@ -391,6 +392,11 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_FRAGMENT:
       case PIPE_SHADER_VERTEX:
          return INT_MAX;
+      case PIPE_SHADER_TESS_CTRL:
+      case PIPE_SHADER_TESS_EVAL:
+         if (screen->info.feats.features.tessellationShader)
+            return INT_MAX;
+         break;
 
       case PIPE_SHADER_GEOMETRY:
          if (screen->info.feats.features.geometryShader)
@@ -415,6 +421,12 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_VERTEX:
          return MIN2(screen->info.props.limits.maxVertexInputAttributes,
                      PIPE_MAX_SHADER_INPUTS);
+      case PIPE_SHADER_TESS_CTRL:
+         return MIN2(screen->info.props.limits.maxTessellationControlPerVertexInputComponents / 4,
+                     PIPE_MAX_SHADER_INPUTS);
+      case PIPE_SHADER_TESS_EVAL:
+         return MIN2(screen->info.props.limits.maxTessellationEvaluationInputComponents / 4,
+                     PIPE_MAX_SHADER_INPUTS);
       case PIPE_SHADER_GEOMETRY:
          return MIN2(screen->info.props.limits.maxGeometryInputComponents,
                      PIPE_MAX_SHADER_INPUTS);
@@ -429,6 +441,12 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       switch (shader) {
       case PIPE_SHADER_VERTEX:
          return MIN2(screen->info.props.limits.maxVertexOutputComponents / 4,
+                     PIPE_MAX_SHADER_OUTPUTS);
+      case PIPE_SHADER_TESS_CTRL:
+         return MIN2(screen->info.props.limits.maxTessellationControlPerVertexOutputComponents / 4,
+                     PIPE_MAX_SHADER_OUTPUTS);
+      case PIPE_SHADER_TESS_EVAL:
+         return MIN2(screen->info.props.limits.maxTessellationEvaluationOutputComponents / 4,
                      PIPE_MAX_SHADER_OUTPUTS);
       case PIPE_SHADER_GEOMETRY:
          return MIN2(screen->info.props.limits.maxGeometryOutputComponents / 4,
@@ -445,6 +463,8 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_VERTEX:
       case PIPE_SHADER_FRAGMENT:
       case PIPE_SHADER_GEOMETRY:
+      case PIPE_SHADER_TESS_CTRL:
+      case PIPE_SHADER_TESS_EVAL:
          /* this might be a bit simplistic... */
          return MIN2(screen->info.props.limits.maxPerStageDescriptorSamplers,
                      PIPE_MAX_SAMPLERS);
