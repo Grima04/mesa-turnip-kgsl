@@ -6343,6 +6343,7 @@
     <field name="Global Snapshot Count Reset" start="51" end="51" type="bool"/>
     <field name="Command Streamer Stall Enable" start="52" end="52" type="bool"/>
     <field name="Store Data Index" start="53" end="53" type="uint"/>
+    <field name="Protected Memory Enable" start="54" end="54" type="bool"/>
     <field name="LRI Post Sync Operation" start="55" end="55" type="uint">
       <value name="No LRI Operation" value="0"/>
       <value name="MMIO Write Immediate Data" value="1"/>
@@ -6352,6 +6353,7 @@
       <value name="GGTT" value="1"/>
     </field>
     <field name="Flush LLC" start="58" end="58" type="bool"/>
+    <field name="Protected Memory Disable" start="59" end="59" type="bool"/>
     <field name="Tile Cache Flush Enable" start="60" end="60" type="bool"/>
     <field name="Command Cache Invalidate Enable" start="61" end="61" type="bool"/>
     <field name="Address" start="66" end="111" type="address"/>
