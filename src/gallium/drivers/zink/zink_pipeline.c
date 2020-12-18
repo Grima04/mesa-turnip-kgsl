@@ -147,6 +147,13 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    pci.pDepthStencilState = &depth_stencil_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;
 
+   VkPipelineTessellationStateCreateInfo tci = {};
+   if (prog->shaders[PIPE_SHADER_TESS_CTRL] && prog->shaders[PIPE_SHADER_TESS_EVAL]) {
+      tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+      tci.patchControlPoints = state->vertices_per_patch;
+      pci.pTessellationState = &tci;
+   }
+
    VkPipelineShaderStageCreateInfo shader_stages[ZINK_SHADER_COUNT];
    uint32_t num_stages = 0;
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {

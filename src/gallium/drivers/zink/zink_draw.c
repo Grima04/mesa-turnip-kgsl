@@ -249,6 +249,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.primitive_restart != !!dinfo->primitive_restart)
       ctx->gfx_pipeline_state.hash = 0;
    ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
+   ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
 
    VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
                                                &ctx->gfx_pipeline_state,

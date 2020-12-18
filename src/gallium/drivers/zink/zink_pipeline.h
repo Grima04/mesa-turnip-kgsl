@@ -53,6 +53,7 @@ struct zink_gfx_pipeline_state {
 
    VkSampleMask sample_mask;
    uint8_t rast_samples;
+   uint8_t vertices_per_patch;
 
    unsigned num_viewports;
 
