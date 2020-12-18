@@ -830,9 +830,6 @@ zink_get_query_result_resource(struct pipe_context *pctx,
       /* result happens to be ready or we're waiting */
       if (num_queries == 1 && query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
                               query->type != PIPE_QUERY_PRIMITIVES_EMITTED &&
-                              /* FIXME: I don't know why, but occlusion is broken here */
-                              query->type != PIPE_QUERY_OCCLUSION_PREDICATE &&
-                              query->type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE &&
                               !is_so_overflow_query(query)) {
          copy_results_to_buffer(ctx, query, res, offset, 1, size_flags);
          return;
