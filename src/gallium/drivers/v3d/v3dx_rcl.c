@@ -665,7 +665,7 @@ v3dX(emit_rcl)(struct v3d_job *job)
         job->submit.rcl_start = job->rcl.bo->offset;
         v3d_job_add_bo(job, job->rcl.bo);
 
-        /* Comon config must be the first TILE_RENDERING_MODE_CFG
+        /* Common config must be the first TILE_RENDERING_MODE_CFG
          * and Z_STENCIL_CLEAR_VALUES must be last.  The ones in between are
          * optional updates to the previous HW state.
          */

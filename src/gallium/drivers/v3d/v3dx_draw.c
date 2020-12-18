@@ -510,7 +510,7 @@ compute_vpm_config_gs(struct v3d_device_info *devinfo,
         /* Try to fit program into our VPM memory budget by adjusting
          * configurable parameters iteratively. We do this in two phases:
          * the first phase tries to fit the program into the total available
-         * VPM memory. If we suceed at that, then the second phase attempts
+         * VPM memory. If we succeed at that, then the second phase attempts
          * to fit the program into half of that budget so we can run bin and
          * render programs in parallel.
          */

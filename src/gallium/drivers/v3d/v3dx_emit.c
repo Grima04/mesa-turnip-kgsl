@@ -748,7 +748,7 @@ v3dX(emit_state)(struct pipe_context *pctx)
                 }
         }
 
-        /* Set up the trasnform feedback buffers. */
+        /* Set up the transform feedback buffers. */
         if (v3d->dirty & VC5_DIRTY_STREAMOUT) {
                 struct v3d_uncompiled_shader *tf_shader = get_tf_shader(v3d);
                 struct v3d_streamout_stateobj *so = &v3d->streamout;

@@ -117,7 +117,7 @@ v3d_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 }
 
 /**
- * Flushes the current job to get up-to-date primive counts written to the
+ * Flushes the current job to get up-to-date primitive counts written to the
  * primitive counts BO, then accumulates the transform feedback primitive count
  * in the context and the corresponding vertex counts in the bound stream
  * output targets.
