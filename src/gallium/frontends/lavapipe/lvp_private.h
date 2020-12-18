@@ -756,6 +756,9 @@ struct lvp_cmd_dispatch {
    uint32_t x;
    uint32_t y;
    uint32_t z;
+   uint32_t base_x;
+   uint32_t base_y;
+   uint32_t base_z;
 };
 
 struct lvp_cmd_dispatch_indirect {

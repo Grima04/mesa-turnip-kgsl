@@ -1948,6 +1948,9 @@ static void handle_dispatch(struct lvp_cmd_buffer_entry *cmd,
    state->dispatch_info.grid[0] = cmd->u.dispatch.x;
    state->dispatch_info.grid[1] = cmd->u.dispatch.y;
    state->dispatch_info.grid[2] = cmd->u.dispatch.z;
+   state->dispatch_info.grid_base[0] = cmd->u.dispatch.base_x;
+   state->dispatch_info.grid_base[1] = cmd->u.dispatch.base_y;
+   state->dispatch_info.grid_base[2] = cmd->u.dispatch.base_z;
    state->dispatch_info.indirect = NULL;
    state->pctx->launch_grid(state->pctx, &state->dispatch_info);
 }

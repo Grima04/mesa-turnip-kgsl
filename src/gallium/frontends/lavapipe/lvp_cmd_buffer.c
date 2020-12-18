@@ -793,6 +793,9 @@ void lvp_CmdDispatch(
    cmd->u.dispatch.x = x;
    cmd->u.dispatch.y = y;
    cmd->u.dispatch.z = z;
+   cmd->u.dispatch.base_x = 0;
+   cmd->u.dispatch.base_y = 0;
+   cmd->u.dispatch.base_z = 0;
 
    cmd_buf_queue(cmd_buffer, cmd);
 }
@@ -1761,6 +1764,39 @@ void lvp_CmdDrawIndirectByteCountEXT(
    cmd->u.draw_indirect_byte_count.counter_buffer_offset = counterBufferOffset;
    cmd->u.draw_indirect_byte_count.counter_offset = counterOffset;
    cmd->u.draw_indirect_byte_count.vertex_stride = vertexStride;
+
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+void lvp_CmdSetDeviceMask(
+   VkCommandBuffer commandBuffer,
+   uint32_t deviceMask)
+{
+   /* No-op */
+}
+
+void lvp_CmdDispatchBase(
+   VkCommandBuffer                             commandBuffer,
+   uint32_t                                    base_x,
+   uint32_t                                    base_y,
+   uint32_t                                    base_z,
+   uint32_t                                    x,
+   uint32_t                                    y,
+   uint32_t                                    z)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_DISPATCH);
+   if (!cmd)
+      return;
+
+   cmd->u.dispatch.x = x;
+   cmd->u.dispatch.y = y;
+   cmd->u.dispatch.z = z;
+   cmd->u.dispatch.base_x = base_x;
+   cmd->u.dispatch.base_y = base_y;
+   cmd->u.dispatch.base_z = base_z;
 
    cmd_buf_queue(cmd_buffer, cmd);
 }
