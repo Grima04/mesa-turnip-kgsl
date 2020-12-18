@@ -112,6 +112,14 @@ panfrost_afbc_header_size(unsigned width, unsigned height);
 bool
 panfrost_afbc_can_ytr(enum pipe_format format);
 
+bool
+panfrost_afbc_format_needs_fixup(const struct panfrost_device *dev,
+                                 enum pipe_format format);
+
+enum pipe_format
+panfrost_afbc_format_fixup(const struct panfrost_device *dev,
+                           enum pipe_format format);
+
 unsigned
 panfrost_block_dim(uint64_t modifier, bool width, unsigned plane);
 

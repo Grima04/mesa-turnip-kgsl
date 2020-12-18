@@ -83,13 +83,20 @@ panfrost_mfbd_raw_format(unsigned bits)
 }
 
 static void
-panfrost_mfbd_rt_init_format(struct pipe_surface *surf,
+panfrost_mfbd_rt_init_format(const struct panfrost_device *dev,
+                             struct pipe_surface *surf,
                              struct MALI_RENDER_TARGET *rt)
 {
+        struct panfrost_resource *rsrc = pan_resource(surf->texture);
+        enum pipe_format format =
+                drm_is_afbc(rsrc->layout.modifier) ?
+                panfrost_afbc_format_fixup(dev, surf->format) :
+                surf->format;
+
         /* Explode details on the format */
 
         const struct util_format_description *desc =
-                util_format_description(surf->format);
+                util_format_description(format);
 
         /* The swizzle for rendering is inverted from texturing */
 
@@ -149,7 +156,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
         else
                 rt->writeback_msaa = MALI_MSAA_SINGLE;
 
-        panfrost_mfbd_rt_init_format(surf, rt);
+        panfrost_mfbd_rt_init_format(dev, surf, rt);
 
         if (rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR) {
                 if (version >= 7)
