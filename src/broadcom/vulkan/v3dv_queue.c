@@ -153,6 +153,9 @@ v3dv_QueueWaitIdle(VkQueue _queue)
 static VkResult
 handle_reset_query_cpu_job(struct v3dv_job *job)
 {
+   struct v3dv_reset_query_cpu_job_info *info = &job->cpu.query_reset;
+   assert(info->pool);
+
    /* We are about to reset query counters so we need to make sure that
     * The GPU is not using them. The exception is timestamp queries, since
     * we handle those in the CPU.
@@ -160,21 +163,14 @@ handle_reset_query_cpu_job(struct v3dv_job *job)
     * FIXME: we could avoid blocking the main thread for this if we use
     *        submission thread.
     */
-   struct v3dv_reset_query_cpu_job_info *info = &job->cpu.query_reset;
-   assert(info->pool);
-
-   if (info->pool->query_type == VK_QUERY_TYPE_OCCLUSION) {
-      VkResult result = gpu_queue_wait_idle(&job->device->queue);
-      if (result != VK_SUCCESS)
-         return result;
-   }
-
    for (uint32_t i = info->first; i < info->first + info->count; i++) {
       assert(i < info->pool->query_count);
       struct v3dv_query *query = &info->pool->queries[i];
       query->maybe_available = false;
       switch (info->pool->query_type) {
       case VK_QUERY_TYPE_OCCLUSION: {
+         const uint64_t infinite = 0xffffffffffffffffull;
+         v3dv_bo_wait(job->device, query->bo, infinite);
          uint32_t *counter = (uint32_t *) query->bo->map;
          *counter = 0;
          break;
