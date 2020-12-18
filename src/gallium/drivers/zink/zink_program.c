@@ -501,6 +501,9 @@ primitive_topology(enum pipe_prim_type mode)
    case PIPE_PRIM_TRIANGLES_ADJACENCY:
       return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
 
+   case PIPE_PRIM_PATCHES:
+      return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+
    default:
       unreachable("unexpected enum pipe_prim_type");
    }
