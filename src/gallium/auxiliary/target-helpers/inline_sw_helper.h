@@ -5,6 +5,7 @@
 #include "pipe/p_compiler.h"
 #include "util/u_debug.h"
 #include "frontend/sw_winsys.h"
+#include "target-helpers/inline_debug_helper.h"
 
 #ifdef GALLIUM_SWR
 #include "swr/swr_public.h"
@@ -69,7 +70,7 @@ sw_screen_create_named(struct sw_winsys *winsys, const char *driver)
       screen = d3d12_create_dxcore_screen(winsys, NULL);
 #endif
 
-   return screen;
+   return screen ? debug_screen_wrap(screen) : NULL;
 }
 
 
