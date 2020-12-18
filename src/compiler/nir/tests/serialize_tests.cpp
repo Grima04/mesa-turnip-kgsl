@@ -44,7 +44,7 @@ protected:
 };
 
 nir_serialize_test::nir_serialize_test()
-:  options()
+:  dup(NULL), options()
 {
    glsl_type_singleton_init_or_ref();
 
