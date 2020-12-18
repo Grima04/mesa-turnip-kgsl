@@ -500,6 +500,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.push_const_addr_format = nir_address_format_logical,
 			.shared_addr_format = nir_address_format_32bit_offset,
 			.frag_coord_is_sysval = true,
+			.use_deref_buffer_array_length = true,
 			.debug = {
 				.func = radv_spirv_nir_debug,
 				.private_data = &spirv_debug_data,
