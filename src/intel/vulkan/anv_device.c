@@ -4422,6 +4422,7 @@ VkResult anv_CreateBuffer(
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
+   buffer->create_flags = pCreateInfo->flags;
    buffer->size = pCreateInfo->size;
    buffer->usage = pCreateInfo->usage;
    buffer->address = ANV_NULL_ADDRESS;

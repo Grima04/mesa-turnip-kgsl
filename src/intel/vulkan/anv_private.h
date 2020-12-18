@@ -2246,6 +2246,7 @@ struct anv_buffer {
    struct anv_device *                          device;
    VkDeviceSize                                 size;
 
+   VkBufferCreateFlags                          create_flags;
    VkBufferUsageFlags                           usage;
 
    /* Set when bound */
