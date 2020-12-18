@@ -71,7 +71,8 @@ struct ntv_context {
 
    SpvId front_face_var, instance_id_var, vertex_id_var,
          primitive_id_var, invocation_id_var, // geometry
-         sample_mask_type, sample_id_var, sample_pos_var;
+         sample_mask_type, sample_id_var, sample_pos_var,
+         tess_patch_vertices_in, tess_coord_var; // tess
 };
 
 static SpvId
@@ -1944,6 +1945,27 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_end_primitive_with_counter:
       spirv_builder_end_primitive(&ctx->builder);
+      break;
+
+   case nir_intrinsic_load_patch_vertices_in:
+      emit_load_vec_input(ctx, intr, &ctx->tess_patch_vertices_in, "gl_PatchVerticesIn",
+                          SpvBuiltInPatchVertices, nir_type_int);
+      break;
+
+   case nir_intrinsic_load_tess_coord:
+      emit_load_vec_input(ctx, intr, &ctx->tess_coord_var, "gl_TessCoord",
+                          SpvBuiltInTessCoord, nir_type_float);
+      break;
+
+   case nir_intrinsic_memory_barrier_tcs_patch:
+      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeWorkgroup,
+                                        SpvMemorySemanticsOutputMemoryMask | SpvMemorySemanticsReleaseMask);
+      break;
+
+   case nir_intrinsic_control_barrier:
+      spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
+                                         SpvScopeWorkgroup,
+                                         SpvMemorySemanticsWorkgroupMemoryMask | SpvMemorySemanticsAcquireMask);
       break;
 
    default:
