@@ -13,12 +13,19 @@
 
 #define NUM_QUERIES 50
 
+struct zink_query_buffer {
+   struct list_head list;
+   unsigned num_results;
+   struct pipe_resource *buffer;
+   struct pipe_resource *xfb_buffers[PIPE_MAX_VERTEX_STREAMS - 1];
+};
+
 struct zink_query {
    enum pipe_query_type type;
 
    VkQueryPool query_pool;
    VkQueryPool xfb_query_pool[PIPE_MAX_VERTEX_STREAMS - 1]; //stream 0 is in the base pool
-   unsigned curr_query, num_queries, last_start;
+   unsigned curr_query, last_start;
 
    VkQueryType vkqtype;
    unsigned index;
@@ -29,6 +36,7 @@ struct zink_query {
    bool active; /* query is considered active by vk */
    bool needs_reset; /* query is considered active by vk and cannot be destroyed */
    bool dead; /* query should be destroyed when its fence finishes */
+   bool needs_update; /* query needs to update its qbos */
 
    unsigned fences;
    struct list_head active_list;
@@ -38,13 +46,18 @@ struct zink_query {
    bool have_xfb[NUM_QUERIES]; /* xfb was active during this query */
 
    struct zink_batch_usage batch_id; //batch that the query was started in
-   struct pipe_resource *buffer;
-   struct pipe_resource *xfb_buffers[PIPE_MAX_VERTEX_STREAMS - 1];
 
-   union pipe_query_result accumulated_result;
+   struct list_head buffers;
+   struct zink_query_buffer *curr_qbo;
+
    struct zink_resource *predicate;
    bool predicate_dirty;
 };
+
+static void
+update_qbo(struct zink_context *ctx, struct zink_query *q);
+static void
+reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q);
 
 static inline unsigned
 get_num_results(enum pipe_query_type query_type)
@@ -163,20 +176,77 @@ is_bool_query(struct zink_query *query)
           query->type == PIPE_QUERY_GPU_FINISHED;
 }
 
+static bool
+qbo_append(struct pipe_screen *screen, struct zink_query *query)
+{
+   if (query->curr_qbo && query->curr_qbo->list.next)
+      return true;
+   struct zink_query_buffer *qbo = CALLOC_STRUCT(zink_query_buffer);
+   if (!qbo)
+      return false;
+   qbo->buffer = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
+                                  PIPE_USAGE_STREAM,
+                                  /* this is the maximum possible size of the results in a given buffer */
+                                  NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
+   if (!qbo->buffer)
+      goto fail;
+   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+      /* need separate xfb buffer */
+      qbo->xfb_buffers[0] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
+                                     PIPE_USAGE_STREAM,
+                                     /* this is the maximum possible size of the results in a given buffer */
+                                     NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
+      if (!qbo->xfb_buffers[0])
+         goto fail;
+   } else if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
+      /* need to monitor all xfb streams */
+      for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers); i++) {
+         /* need separate xfb buffer */
+         qbo->xfb_buffers[i] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
+                                        PIPE_USAGE_STREAM,
+                                        /* this is the maximum possible size of the results in a given buffer */
+                                        NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
+         if (!qbo->xfb_buffers[i])
+            goto fail;
+      }
+   }
+   list_addtail(&qbo->list, &query->buffers);
+
+   return true;
+fail:
+   pipe_resource_reference(&qbo->buffer, NULL);
+   for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers); i++)
+      pipe_resource_reference(&qbo->xfb_buffers[i], NULL);
+   FREE(qbo);
+   return false;
+}
+
 static void
 destroy_query(struct zink_screen *screen, struct zink_query *query)
 {
    assert(!p_atomic_read(&query->fences));
    if (query->query_pool)
       vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
+   struct zink_query_buffer *qbo, *next;
+   LIST_FOR_EACH_ENTRY_SAFE(qbo, next, &query->buffers, list) {
+      pipe_resource_reference(&qbo->buffer, NULL);
+      for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers); i++)
+         pipe_resource_reference(&qbo->xfb_buffers[i], NULL);
+      FREE(qbo);
+   }
    for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool); i++) {
       if (query->xfb_query_pool[i])
          vkDestroyQueryPool(screen->dev, query->xfb_query_pool[i], NULL);
-      pipe_resource_reference(&query->xfb_buffers[i], NULL);
    }
    pipe_resource_reference((struct pipe_resource**)&query->predicate, NULL);
-   pipe_resource_reference(&query->buffer, NULL);
    FREE(query);
+}
+
+static void
+reset_qbo(struct zink_query *q)
+{
+   q->curr_qbo = list_first_entry(&q->buffers, struct zink_query_buffer, list);
+   q->curr_qbo->num_results = 0;
 }
 
 static struct pipe_query *
@@ -189,6 +259,7 @@ zink_create_query(struct pipe_context *pctx,
 
    if (!query)
       return NULL;
+   list_inithead(&query->buffers);
 
    query->index = index;
    query->type = query_type;
@@ -196,12 +267,11 @@ zink_create_query(struct pipe_context *pctx,
    if (query->vkqtype == -1)
       return NULL;
 
-   query->num_queries = NUM_QUERIES;
    query->curr_query = 0;
 
    pool_create.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
    pool_create.queryType = query->vkqtype;
-   pool_create.queryCount = query->num_queries;
+   pool_create.queryCount = NUM_QUERIES;
    if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
      pool_create.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
                                       VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT;
@@ -211,27 +281,14 @@ zink_create_query(struct pipe_context *pctx,
    VkResult status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->query_pool);
    if (status != VK_SUCCESS)
       goto fail;
-   query->buffer = pipe_buffer_create(pctx->screen, PIPE_BIND_QUERY_BUFFER,
-                                  PIPE_USAGE_STREAM,
-                                  /* this is the maximum possible size of the results in a given buffer */
-                                  NUM_QUERIES * get_num_results(query_type) * sizeof(uint64_t));
-   if (!query->buffer)
-      goto fail;
    if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       /* if xfb is active, we need to use an xfb query, otherwise we need pipeline statistics */
       pool_create.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
       pool_create.queryType = VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT;
-      pool_create.queryCount = query->num_queries;
+      pool_create.queryCount = NUM_QUERIES;
 
       status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->xfb_query_pool[0]);
       if (status != VK_SUCCESS)
-         goto fail;
-      /* need separate xfb buffer */
-      query->xfb_buffers[0] = pipe_buffer_create(pctx->screen, PIPE_BIND_QUERY_BUFFER,
-                                     PIPE_USAGE_STREAM,
-                                     /* this is the maximum possible size of the results in a given buffer */
-                                     NUM_QUERIES * get_num_results(query_type) * sizeof(uint64_t));
-      if (!query->xfb_buffers[0])
          goto fail;
    } else if (query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
       /* need to monitor all xfb streams */
@@ -239,22 +296,18 @@ zink_create_query(struct pipe_context *pctx,
          status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->xfb_query_pool[i]);
          if (status != VK_SUCCESS)
             goto fail;
-         /* need separate xfb buffer */
-         query->xfb_buffers[i] = pipe_buffer_create(pctx->screen, PIPE_BIND_QUERY_BUFFER,
-                                        PIPE_USAGE_STREAM,
-                                        /* this is the maximum possible size of the results in a given buffer */
-                                        NUM_QUERIES * get_num_results(query_type) * sizeof(uint64_t));
-         if (!query->xfb_buffers[i])
-            goto fail;
       }
    }
+   if (!qbo_append(pctx->screen, query))
+      goto fail;
    struct zink_batch *batch = &zink_context(pctx)->batch;
    batch->has_work = true;
-   vkCmdResetQueryPool(batch->state->cmdbuf, query->query_pool, 0, query->num_queries);
-   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
-      vkCmdResetQueryPool(batch->state->cmdbuf, query->xfb_query_pool[0], 0, query->num_queries);
-   if (query->type == PIPE_QUERY_TIMESTAMP)
+   query->needs_reset = true;
+   if (query->type == PIPE_QUERY_TIMESTAMP) {
       query->active = true;
+      reset_pool(zink_context(pctx), batch, query);
+      reset_qbo(query);
+   }
    return (struct pipe_query *)query;
 fail:
    destroy_query(screen, query);
@@ -289,9 +342,10 @@ zink_prune_query(struct zink_screen *screen, struct zink_query *query)
 
 static void
 check_query_results(struct zink_query *query, union pipe_query_result *result,
-                    int num_results, int result_size, uint64_t *results, uint64_t *xfb_results)
+                    int num_results, uint64_t *results, uint64_t *xfb_results)
 {
    uint64_t last_val = 0;
+   int result_size = get_num_results(query->type);
    for (int i = 0; i < num_results * result_size; i += result_size) {
       switch (query->type) {
       case PIPE_QUERY_OCCLUSION_PREDICATE:
@@ -357,97 +411,82 @@ get_query_result(struct pipe_context *pctx,
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_query *query = (struct zink_query *)q;
-   VkQueryResultFlagBits flags = 0;
+   unsigned flags = PIPE_MAP_READ;
 
-   if (wait)
-      flags |= VK_QUERY_RESULT_WAIT_BIT;
+   if (!wait)
+      flags |= PIPE_MAP_DONTBLOCK;
 
-   flags |= VK_QUERY_RESULT_64_BIT;
+   util_query_clear_result(result, query->type);
 
-   if (result != &query->accumulated_result) {
-      if (query->type == PIPE_QUERY_TIMESTAMP ||
-          is_so_overflow_query(query))
-         util_query_clear_result(result, query->type);
-      else {
-         memcpy(result, &query->accumulated_result, sizeof(query->accumulated_result));
-         util_query_clear_result(&query->accumulated_result, query->type);
-      }
-   } else
-      flags |= VK_QUERY_RESULT_PARTIAL_BIT;
-
-   // union pipe_query_result results[NUM_QUERIES * 2];
-   /* xfb queries return 2 results */
-   uint64_t results[NUM_QUERIES * 2];
-   memset(results, 0, sizeof(results));
-   uint64_t xfb_results[NUM_QUERIES * 2];
-   memset(xfb_results, 0, sizeof(xfb_results));
    int num_results = query->curr_query - query->last_start;
-   int result_size = 1;
-      /* these query types emit 2 values */
-   if (query->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT ||
-       query->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
-       query->type == PIPE_QUERY_PRIMITIVES_EMITTED)
-      result_size = 2;
+   int result_size = get_num_results(query->type) * sizeof(uint64_t);
 
-   for (unsigned last_start = query->last_start; last_start + num_results <= query->curr_query; last_start++) {
-      /* verify that we have the expected number of results pending */
-      assert(num_results <= ARRAY_SIZE(results) / result_size);
-      VkResult status = vkGetQueryPoolResults(screen->dev, query->query_pool,
-                                              last_start, num_results,
-                                              sizeof(results),
-                                              results,
-                                              sizeof(uint64_t) * result_size,
-                                              flags);
-      if (status != VK_SUCCESS)
+   struct zink_query_buffer *qbo;
+   struct pipe_transfer *xfer;
+   LIST_FOR_EACH_ENTRY(qbo, &query->buffers, list) {
+      uint64_t *xfb_results = NULL;
+      uint64_t *results;
+      bool is_timestamp = query->type == PIPE_QUERY_TIMESTAMP || query->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
+      results = pipe_buffer_map_range(pctx, qbo->buffer, zink_resource(qbo->buffer)->obj->offset,
+                                      (is_timestamp ? 1 : qbo->num_results) * result_size, flags, &xfer);
+      if (!results) {
+         if (wait)
+            debug_printf("zink: qbo read failed!");
          return false;
-
-      if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
-         status = vkGetQueryPoolResults(screen->dev, query->xfb_query_pool[0],
-                                                 last_start, num_results,
-                                                 sizeof(xfb_results),
-                                                 xfb_results,
-                                                 2 * sizeof(uint64_t),
-                                                 flags | VK_QUERY_RESULT_64_BIT);
-         if (status != VK_SUCCESS)
-            return false;
-
       }
-
-      check_query_results(query, result, num_results, result_size, results, xfb_results);
-   }
-
-   if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE && !result->b) {
-      for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool) && !result->b; i++) {
-         memset(results, 0, sizeof(results));
-         VkResult status = vkGetQueryPoolResults(screen->dev, query->xfb_query_pool[i],
-                                                    query->last_start, num_results,
-                                                    sizeof(results),
-                                                    results,
-                                                    sizeof(uint64_t) * 2,
-                                                    flags);
-         if (status != VK_SUCCESS)
-            return false;
-         check_query_results(query, result, num_results, result_size, results, xfb_results);
+      struct pipe_transfer *xfb_xfer = NULL;
+      if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+         xfb_results = pipe_buffer_map_range(pctx, qbo->xfb_buffers[0], zink_resource(qbo->xfb_buffers[0])->obj->offset,
+                                         qbo->num_results * result_size, flags, &xfb_xfer);
+         if (!xfb_results) {
+            if (wait)
+               debug_printf("zink: xfb qbo read failed!");
+         }
+      }
+      check_query_results(query, result, is_timestamp ? 1 : qbo->num_results, results, xfb_results);
+      pipe_buffer_unmap(pctx, xfer);
+      if (xfb_xfer)
+         pipe_buffer_unmap(pctx, xfb_xfer);
+      if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
+         for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers) && !result->b; i++) {
+            uint64_t *results = pipe_buffer_map_range(pctx, qbo->xfb_buffers[i],
+                                              zink_resource(qbo->xfb_buffers[i])->obj->offset,
+                                              qbo->num_results * result_size, flags, &xfer);
+            if (!results) {
+               if (wait)
+                  debug_printf("zink: qbo read failed!");
+               return false;
+            }
+            check_query_results(query, result, num_results, results, xfb_results);
+            pipe_buffer_unmap(pctx, xfer);
+         }
+         /* if overflow is detected we can stop */
+         if (result->b)
+            break;
       }
    }
 
    if (is_time_query(query))
       timestamp_to_nanoseconds(screen, &result->u64);
 
-   return TRUE;
+   return true;
 }
 
 static void
-force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, enum pipe_query_value_type result_type, struct pipe_resource *pres, unsigned offset)
+force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, enum pipe_query_value_type result_type, struct pipe_resource *pres, unsigned offset)
 {
    struct pipe_context *pctx = &ctx->base;
    unsigned result_size = result_type <= PIPE_QUERY_TYPE_U32 ? sizeof(uint32_t) : sizeof(uint64_t);
    struct zink_query *query = (struct zink_query*)pquery;
    union pipe_query_result result;
-   if (zink_batch_usage_matches(&query->batch_id, ctx->curr_batch))
-      pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
+   uint32_t batch_id = p_atomic_read(&query->batch_id.usage);
 
-   bool success = get_query_result(pctx, pquery, wait, &result);
+   if (query->needs_update)
+      update_qbo(ctx, query);
+
+   zink_wait_on_batch(ctx, batch_id);
+
+   bool success = get_query_result(pctx, pquery, true, &result);
    if (!success) {
       debug_printf("zink: getting query result failed\n");
       return;
@@ -476,20 +515,30 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, e
 }
 
 static void
-copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struct zink_resource *res, unsigned offset, int num_results, VkQueryResultFlags flags)
+copy_pool_results_to_buffer(struct zink_context *ctx, struct zink_query *query, VkQueryPool pool,
+                            unsigned query_id, struct zink_resource *res, unsigned offset,
+                            int num_results, VkQueryResultFlags flags)
 {
-   unsigned query_id = query->last_start;
    struct zink_batch *batch = &ctx->batch;
-   unsigned base_result_size = (flags & VK_QUERY_RESULT_64_BIT) ? sizeof(uint64_t) : sizeof(uint32_t);
+   unsigned type_size = (flags & VK_QUERY_RESULT_64_BIT) ? sizeof(uint64_t) : sizeof(uint32_t);
+   unsigned base_result_size = get_num_results(query->type) * type_size;
    unsigned result_size = base_result_size * num_results;
    if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
-      result_size += base_result_size;
+      result_size += type_size;
+   zink_batch_no_rp(ctx);
    /* if it's a single query that doesn't need special handling, we can copy it and be done */
    zink_batch_reference_resource_rw(batch, res, true);
    zink_resource_buffer_barrier(ctx, batch, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
    util_range_add(&res->base, &res->valid_buffer_range, offset, offset + result_size);
-   vkCmdCopyQueryPoolResults(batch->state->cmdbuf, query->query_pool, query_id, num_results, res->obj->buffer,
+   assert(query_id < NUM_QUERIES);
+   vkCmdCopyQueryPoolResults(batch->state->cmdbuf, pool, query_id, num_results, res->obj->buffer,
                              offset, 0, flags);
+}
+
+static void
+copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struct zink_resource *res, unsigned offset, int num_results, VkQueryResultFlags flags)
+{
+   copy_pool_results_to_buffer(ctx, query, query->query_pool, query->last_start, res, offset, num_results, flags);
 }
 
 static void
@@ -500,20 +549,71 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
     * - vkCmdResetQueryPool spec
     */
    zink_batch_no_rp(ctx);
+   if (q->needs_update)
+      update_qbo(ctx, q);
 
-   if (q->type != PIPE_QUERY_TIMESTAMP)
-      get_query_result(&ctx->base, (struct pipe_query*)q, false, &q->accumulated_result);
-   vkCmdResetQueryPool(batch->state->cmdbuf, q->query_pool, 0, q->num_queries);
+   vkCmdResetQueryPool(batch->state->cmdbuf, q->query_pool, 0, NUM_QUERIES);
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
-      vkCmdResetQueryPool(batch->state->cmdbuf, q->xfb_query_pool[0], 0, q->num_queries);
+      vkCmdResetQueryPool(batch->state->cmdbuf, q->xfb_query_pool[0], 0, NUM_QUERIES);
    else if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
       for (unsigned i = 0; i < ARRAY_SIZE(q->xfb_query_pool); i++)
-         vkCmdResetQueryPool(batch->state->cmdbuf, q->xfb_query_pool[i], 0, q->num_queries);
+         vkCmdResetQueryPool(batch->state->cmdbuf, q->xfb_query_pool[i], 0, NUM_QUERIES);
    }
    memset(q->have_gs, 0, sizeof(q->have_gs));
    memset(q->have_xfb, 0, sizeof(q->have_xfb));
    q->last_start = q->curr_query = 0;
    q->needs_reset = false;
+   /* create new qbo for non-timestamp queries */
+   if (q->type != PIPE_QUERY_TIMESTAMP) {
+      if (qbo_append(ctx->base.screen, q))
+         reset_qbo(q);
+      else
+         debug_printf("zink: qbo alloc failed on reset!");
+   }
+}
+
+static inline unsigned
+get_buffer_offset(struct zink_query *q, struct pipe_resource *pres, unsigned query_id)
+{
+   return zink_resource(pres)->obj->offset + (query_id - q->last_start) * get_num_results(q->type) * sizeof(uint64_t);
+}
+
+static void
+update_qbo(struct zink_context *ctx, struct zink_query *q)
+{
+   struct zink_query_buffer *qbo = q->curr_qbo;
+   unsigned offset = 0;
+   uint32_t query_id = q->curr_query - 1;
+   bool is_timestamp = q->type == PIPE_QUERY_TIMESTAMP || q->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
+   /* timestamp queries just write to offset 0 always */
+   if (!is_timestamp)
+      offset = get_buffer_offset(q, qbo->buffer, query_id);
+   copy_pool_results_to_buffer(ctx, q, q->query_pool, query_id, zink_resource(qbo->buffer),
+                          offset,
+                          1, VK_QUERY_RESULT_64_BIT);
+
+   if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
+       q->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+       q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
+      copy_pool_results_to_buffer(ctx, q,
+                                  q->xfb_query_pool[0] ? q->xfb_query_pool[0] : q->query_pool,
+                                  query_id,
+                                  zink_resource(qbo->xfb_buffers[0] ? qbo->xfb_buffers[0] : qbo->buffer),
+                             get_buffer_offset(q, qbo->xfb_buffers[0] ? qbo->xfb_buffers[0] : qbo->buffer, query_id),
+                             1, VK_QUERY_RESULT_64_BIT);
+   }
+
+   else if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
+      for (unsigned i = 0; i < ARRAY_SIZE(q->xfb_query_pool); i++) {
+         copy_pool_results_to_buffer(ctx, q, q->xfb_query_pool[i], query_id, zink_resource(qbo->xfb_buffers[i]),
+                                get_buffer_offset(q, qbo->xfb_buffers[i], query_id),
+                                1, VK_QUERY_RESULT_64_BIT);
+      }
+   }
+
+   if (!is_timestamp)
+      q->curr_qbo->num_results++;
+   q->needs_update = false;
 }
 
 static void
@@ -524,11 +624,14 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    q->predicate_dirty = true;
    if (q->needs_reset)
       reset_pool(ctx, batch, q);
-   assert(q->curr_query < q->num_queries);
+   assert(q->curr_query < NUM_QUERIES);
    q->active = true;
    batch->has_work = true;
-   if (q->type == PIPE_QUERY_TIME_ELAPSED)
-      vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, q->query_pool, q->curr_query++);
+   if (q->type == PIPE_QUERY_TIME_ELAPSED) {
+      vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, q->query_pool, q->curr_query);
+      q->curr_query++;
+      update_qbo(ctx, q);
+   }
    /* ignore the rest of begin_query for timestamps */
    if (is_time_query(q))
       return;
@@ -575,8 +678,8 @@ zink_begin_query(struct pipe_context *pctx,
    struct zink_batch *batch = &ctx->batch;
 
    query->last_start = query->curr_query;
-
-   util_query_clear_result(&query->accumulated_result, query->type);
+   /* drop all past results */
+   reset_qbo(query);
 
    begin_query(ctx, batch, query);
 
@@ -587,6 +690,8 @@ static void
 end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   ASSERTED struct zink_query_buffer *qbo = q->curr_qbo;
+   assert(qbo);
    batch->has_work = true;
    q->active = q->type == PIPE_QUERY_TIMESTAMP;
    if (is_time_query(q)) {
@@ -595,24 +700,32 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
       zink_batch_usage_set(&q->batch_id, batch->state->fence.batch_id);
    } else if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
             q->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
-            q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE)
+            q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
       screen->vk_CmdEndQueryIndexedEXT(batch->state->cmdbuf, q->xfb_query_pool[0] ? q->xfb_query_pool[0] :
                                                                                     q->query_pool,
                                        q->curr_query, q->index);
+   }
 
    else if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
       screen->vk_CmdEndQueryIndexedEXT(batch->state->cmdbuf, q->query_pool, q->curr_query, 0);
-      for (unsigned i = 0; i < ARRAY_SIZE(q->xfb_query_pool); i++)
+      for (unsigned i = 0; i < ARRAY_SIZE(q->xfb_query_pool); i++) {
          screen->vk_CmdEndQueryIndexedEXT(batch->state->cmdbuf, q->xfb_query_pool[i], q->curr_query, i + 1);
+      }
    }
    if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT && !is_time_query(q))
       vkCmdEndQuery(batch->state->cmdbuf, q->query_pool, q->curr_query);
+
    if (needs_stats_list(q))
       list_delinit(&q->stats_list);
-   if (++q->curr_query == q->num_queries) {
+   if (++q->curr_query == NUM_QUERIES) {
       /* always reset on start; this ensures we can actually submit the batch that the current query is on */
       q->needs_reset = true;
    }
+
+   if (batch->in_rp)
+      q->needs_update = true;
+   else
+      update_qbo(ctx, q);
 }
 
 static bool
@@ -641,10 +754,11 @@ zink_get_query_result(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    uint32_t batch_id = p_atomic_read(&query->batch_id.usage);
 
+   if (query->needs_update)
+      update_qbo(ctx, query);
+
    if (wait)
       zink_wait_on_batch(ctx, batch_id);
-   else if (batch_id == ctx->curr_batch)
-      zink_flush_queue(ctx);
 
    return get_query_result(pctx, q, wait, result);
 }
@@ -662,6 +776,8 @@ zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
           */
          list_addtail(&query->active_list, &ctx->suspended_queries);
       }
+      if (query->needs_update)
+         update_qbo(ctx, query);
    }
 }
 
@@ -770,7 +886,7 @@ zink_render_condition(struct pipe_context *pctx,
          copy_results_to_buffer(ctx, query, res, 0, num_results, flags);
       } else {
          /* these need special handling */
-         force_cpu_read(ctx, pquery, true, PIPE_QUERY_TYPE_U32, &res->base, 0);
+         force_cpu_read(ctx, pquery, PIPE_QUERY_TYPE_U32, &res->base, 0);
       }
       query->predicate_dirty = false;
    }
@@ -826,20 +942,30 @@ zink_get_query_result_resource(struct pipe_context *pctx,
       return;
    }
 
-   if (!is_time_query(query) && (!fences || wait)) {
-      /* result happens to be ready or we're waiting */
+   if (!is_time_query(query) && !is_bool_query(query)) {
       if (num_queries == 1 && query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
                               query->type != PIPE_QUERY_PRIMITIVES_EMITTED &&
-                              !is_so_overflow_query(query)) {
-         copy_results_to_buffer(ctx, query, res, offset, 1, size_flags);
+                              !is_bool_query(query)) {
+         if (size_flags == VK_QUERY_RESULT_64_BIT) {
+            if (query->needs_update)
+               update_qbo(ctx, query);
+            /* internal qbo always writes 64bit value so we can just direct copy */
+            zink_copy_buffer(ctx, NULL, res, zink_resource(query->curr_qbo->buffer), offset,
+                             get_buffer_offset(query, query->curr_qbo->buffer, query->last_start),
+                             result_size);
+         } else
+            /* have to do a new copy for 32bit */
+            copy_results_to_buffer(ctx, query, res, offset, 1, size_flags);
          return;
       }
    }
 
+   /* TODO: use CS to aggregate results */
+
    /* unfortunately, there's no way to accumulate results from multiple queries on the gpu without either
     * clobbering all but the last result or writing the results sequentially, so we have to manually write the result
     */
-   force_cpu_read(ctx, pquery, true, result_type, pres, offset);
+   force_cpu_read(ctx, pquery, result_type, pres, offset);
 }
 
 static uint64_t
