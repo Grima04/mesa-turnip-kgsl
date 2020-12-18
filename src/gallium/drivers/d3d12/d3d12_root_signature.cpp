@@ -211,8 +211,10 @@ d3d12_get_root_signature(struct d3d12_context *ctx)
 
       data->key = key;
       data->sig = create_root_signature(ctx, &key);
-      if (!data->sig)
+      if (!data->sig) {
+         FREE(data);
          return NULL;
+      }
 
       entry = _mesa_hash_table_insert(ctx->root_signature_cache, &data->key, data);
       assert(entry);
