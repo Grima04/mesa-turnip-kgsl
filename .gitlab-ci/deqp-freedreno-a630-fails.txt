@@ -1,4 +1,3 @@
-KHR-GL33.packed_depth_stencil.blit.depth24_stencil8,Fail
 KHR-GL33.packed_depth_stencil.verify_get_tex_image.depth24_stencil8,Fail
 KHR-GL33.packed_depth_stencil.verify_read_pixels.depth24_stencil8,Fail
 KHR-GL33.transform_feedback.api_errors_test,Fail

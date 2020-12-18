@@ -30,7 +30,6 @@ dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrit
 
 # Undiagnosed flakes appearing more than once in the last 2 months as
 # of 2020-08-19, in descending order of frequency.
-dEQP-GLES3.functional.fbo.msaa.2_samples.stencil_index8
 dEQP-GLES3.functional.fragment_out.random.39
 dEQP-VK.subgroups.shuffle.framebuffer.subgroupshufflexor_bvec3_tess_eval
 dEQP-VK.image.texel_view_compatible.graphic.extended.2d_image.texture_read.astc_10x6_unorm_block.r32g32b32a32_uint
