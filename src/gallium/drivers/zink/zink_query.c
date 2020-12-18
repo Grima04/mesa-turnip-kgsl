@@ -129,6 +129,20 @@ is_so_overflow_query(struct zink_query *query)
    return query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE || query->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE;
 }
 
+static void
+destroy_query(struct zink_screen *screen, struct zink_query *query)
+{
+   assert(!p_atomic_read(&query->fences));
+   if (query->query_pool)
+      vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
+   for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool); i++) {
+      if (query->xfb_query_pool[i])
+         vkDestroyQueryPool(screen->dev, query->xfb_query_pool[i], NULL);
+   }
+   pipe_resource_reference((struct pipe_resource**)&query->predicate, NULL);
+   FREE(query);
+}
+
 static struct pipe_query *
 zink_create_query(struct pipe_context *pctx,
                   unsigned query_type, unsigned index)
@@ -159,10 +173,8 @@ zink_create_query(struct pipe_context *pctx,
       pool_create.pipelineStatistics = pipeline_statistic_convert(index);
 
    VkResult status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->query_pool);
-   if (status != VK_SUCCESS) {
-      FREE(query);
-      return NULL;
-   }
+   if (status != VK_SUCCESS)
+      goto fail;
    if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       /* if xfb is active, we need to use an xfb query, otherwise we need pipeline statistics */
       pool_create.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -170,22 +182,14 @@ zink_create_query(struct pipe_context *pctx,
       pool_create.queryCount = query->num_queries;
 
       status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->xfb_query_pool[0]);
-      if (status != VK_SUCCESS) {
-         vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
-         FREE(query);
-         return NULL;
-      }
+      if (status != VK_SUCCESS)
+         goto fail;
    } else if (query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
       /* need to monitor all xfb streams */
       for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool); i++) {
          status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->xfb_query_pool[i]);
-         if (status != VK_SUCCESS) {
-            vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
-            for (unsigned j = 0; j < i; j++)
-               vkDestroyQueryPool(screen->dev, query->xfb_query_pool[j], NULL);
-            FREE(query);
-            return NULL;
-         }
+         if (status != VK_SUCCESS)
+            goto fail;
       }
    }
    struct zink_batch *batch = &zink_context(pctx)->batch;
@@ -196,18 +200,9 @@ zink_create_query(struct pipe_context *pctx,
    if (query->type == PIPE_QUERY_TIMESTAMP)
       query->active = true;
    return (struct pipe_query *)query;
-}
-
-static void
-destroy_query(struct zink_screen *screen, struct zink_query *query)
-{
-   assert(!p_atomic_read(&query->fences));
-   vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
-   for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool); i++)
-      if (query->xfb_query_pool[i])
-         vkDestroyQueryPool(screen->dev, query->xfb_query_pool[i], NULL);
-   pipe_resource_reference((struct pipe_resource**)&query->predicate, NULL);
-   FREE(query);
+fail:
+   destroy_query(screen, query);
+   return NULL;
 }
 
 static void
