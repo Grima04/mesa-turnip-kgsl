@@ -532,12 +532,20 @@ panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource
         if (pres->base.nr_samples > 1)
                 return false;
 
-        /* TODO: Is AFBC of 3D textures possible? */
         switch (pres->base.target) {
         case PIPE_TEXTURE_2D:
         case PIPE_TEXTURE_2D_ARRAY:
         case PIPE_TEXTURE_RECT:
                 break;
+
+        case PIPE_TEXTURE_3D:
+                /* 3D AFBC is only supported on Bifrost v7+. It's supposed to
+                 * be supported on Midgard but it doesn't seem to work */
+                if (dev->arch < 7)
+                        return false;
+
+                break;
+
         default:
                 return false;
         }
