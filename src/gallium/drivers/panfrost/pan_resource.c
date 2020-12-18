@@ -1085,11 +1085,16 @@ panfrost_should_linear_convert(struct panfrost_resource *prsrc,
          * overwrites to keep things simple, but we could do better.
          */
 
-        bool entire_overwrite = prsrc->base.last_level == 0
-                && transfer->box.width == prsrc->base.width0
-                && transfer->box.height == prsrc->base.height0
-                && transfer->box.x == 0
-                && transfer->box.y == 0;
+        unsigned depth = prsrc->base.target == PIPE_TEXTURE_3D ?
+                         prsrc->base.depth0 : prsrc->base.array_size;
+        bool entire_overwrite =
+                prsrc->base.last_level == 0 &&
+                transfer->box.width == prsrc->base.width0 &&
+                transfer->box.height == prsrc->base.height0 &&
+                transfer->box.depth == depth &&
+                transfer->box.x == 0 &&
+                transfer->box.y == 0 &&
+                transfer->box.z == 0;
 
         if (entire_overwrite)
                 ++prsrc->modifier_updates;
