@@ -263,6 +263,8 @@ get_storage_class(struct nir_variable *var)
       return SpvStorageClassInput;
    case nir_var_shader_out:
       return SpvStorageClassOutput;
+   case nir_var_uniform:
+      return SpvStorageClassUniformConstant;
    default:
       unreachable("Unsupported nir_variable_mode");
    }
