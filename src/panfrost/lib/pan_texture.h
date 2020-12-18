@@ -133,7 +133,7 @@ panfrost_new_texture(const struct panfrost_device *dev,
                      unsigned first_level, unsigned last_level,
                      unsigned first_layer, unsigned last_layer,
                      unsigned nr_samples,
-                     unsigned swizzle,
+                     const unsigned char swizzle[4],
                      mali_ptr base,
                      const struct panfrost_ptr *payload);
 

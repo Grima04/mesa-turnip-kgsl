@@ -321,6 +321,10 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                 image->first_layer *
                 panfrost_get_layer_stride(image->layout, image->first_level);
 
+        unsigned char swizzle[4] = {
+                PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W
+        };
+
         panfrost_new_texture(pool->dev, image->layout, texture.cpu,
                              image->width0, image->height0,
                              MAX2(image->nr_samples, 1), 1,
@@ -328,7 +332,7 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                              image->first_level, image->last_level,
                              0, 0,
                              image->nr_samples,
-                             PAN_V6_SWIZZLE(R, G, B, A),
+                             swizzle,
                              image->bo->ptr.gpu + offset, &payload);
 
         pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg)
@@ -495,6 +499,10 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                 image->first_layer *
                 panfrost_get_layer_stride(image->layout, image->first_level);
 
+        unsigned char swizzle[4] = {
+                PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W
+        };
+
         panfrost_new_texture(pool->dev, image->layout, texture.cpu,
                              image->width0, image->height0,
                              MAX2(image->nr_samples, 1), 1,
@@ -502,7 +510,7 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                              image->first_level, image->last_level,
                              0, 0,
                              image->nr_samples,
-                             PAN_V6_SWIZZLE(R, G, B, A),
+                             swizzle,
                              image->bo->ptr.gpu + offset, &payload);
 
         pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {

@@ -1070,7 +1070,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                              so->base.u.tex.first_layer,
                              so->base.u.tex.last_layer,
                              texture->nr_samples,
-                             panfrost_translate_swizzle_4(user_swizzle),
+                             user_swizzle,
                              prsrc->bo->ptr.gpu, &payload);
 }
 
