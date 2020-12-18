@@ -304,6 +304,19 @@ handle_slot(struct ntv_context *ctx, unsigned slot)
          break
 
 
+static inline unsigned
+handle_handle_slot(struct ntv_context *ctx, struct nir_variable *var)
+{
+   if (var->data.patch) {
+      assert(var->data.location >= VARYING_SLOT_PATCH0);
+      return var->data.location - VARYING_SLOT_PATCH0;
+   } else if (ctx->stage == MESA_SHADER_TESS_CTRL) {
+      assert(var->data.location >= VARYING_SLOT_VAR0);
+      return var->data.location - VARYING_SLOT_VAR0;
+   }
+   return handle_slot(ctx, var->data.location);
+}
+
 static void
 emit_input(struct ntv_context *ctx, struct nir_variable *var)
 {
@@ -357,7 +370,7 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
          break;
 
       default:
-         slot = handle_slot(ctx, slot);
+         slot = handle_handle_slot(ctx, var);
          spirv_builder_emit_location(&ctx->builder, var_id, slot);
       }
    }
@@ -365,6 +378,9 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
    if (var->data.location_frac)
       spirv_builder_emit_component(&ctx->builder, var_id,
                                    var->data.location_frac);
+
+   if (var->data.patch)
+      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationPatch);
 
    if (var->data.interpolation == INTERP_MODE_FLAT)
       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationFlat);
@@ -413,12 +429,15 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
          break;
 
       default:
-         slot = handle_slot(ctx, slot);
+         slot = handle_handle_slot(ctx, var);
          spirv_builder_emit_location(&ctx->builder, var_id, slot);
       }
-      ctx->outputs[var->data.location] = var_id;
-      ctx->so_output_gl_types[var->data.location] = var->type;
-      ctx->so_output_types[var->data.location] = var_type;
+      /* tcs can't do xfb */
+      if (ctx->stage != MESA_SHADER_TESS_CTRL) {
+         ctx->outputs[var->data.location] = var_id;
+         ctx->so_output_gl_types[var->data.location] = var->type;
+         ctx->so_output_types[var->data.location] = var_type;
+      }
    } else {
       if (var->data.location >= FRAG_RESULT_DATA0) {
          spirv_builder_emit_location(&ctx->builder, var_id,
@@ -467,6 +486,9 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
    default:
       unreachable("unknown interpolation value");
    }
+
+   if (var->data.patch)
+      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationPatch);
 
    _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
 
