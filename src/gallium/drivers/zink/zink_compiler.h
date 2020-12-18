@@ -72,6 +72,7 @@ struct zink_shader {
    size_t num_bindings;
    struct set *programs;
 
+   bool has_tess_shader; // vertex shaders need to know if a tesseval shader exists
    bool has_geometry_shader; // vertex shaders need to know if a geometry shader exists
 };
 

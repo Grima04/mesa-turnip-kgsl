@@ -331,8 +331,16 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
    void *streamout = NULL;
    nir_shader *nir = zs->nir;
    /* TODO: use a separate mem ctx here for ralloc */
-   if (zs->streamout.so_info_slots && (zs->nir->info.stage != MESA_SHADER_VERTEX || !zs->has_geometry_shader))
+   if (zs->has_geometry_shader) {
+      if (zs->nir->info.stage == MESA_SHADER_GEOMETRY)
+         streamout = &zs->streamout;
+   } else if (zs->has_tess_shader) {
+      if (zs->nir->info.stage == MESA_SHADER_TESS_EVAL)
+         streamout = &zs->streamout;
+   } else
       streamout = &zs->streamout;
+   if (!zs->streamout.so_info_slots)
+       streamout = NULL;
    if (zs->nir->info.stage == MESA_SHADER_FRAGMENT) {
       nir = nir_shader_clone(NULL, nir);
       if (!zink_fs_key(key)->samples &&
