@@ -53,3 +53,8 @@ supported but reportedly works. Your mileage may vary.
 
 For general information on building Mesa, read :doc:`the install documentation
 <install>`.
+
+Chat
+----
+
+Panfrost developers and users hang out on IRC at ``#panfrost`` on Freenode.
