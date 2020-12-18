@@ -218,6 +218,7 @@ static const struct nir_shader_compiler_options nir_options = {
    .lower_uadd_carry = true,
    .lower_pack_64_2x32_split = true,
    .lower_unpack_64_2x32_split = true,
+   .use_scoped_barrier = true,
    .lower_int64_options = ~0,
    .lower_doubles_options = ~nir_lower_fp64_full_software,
 };
@@ -237,6 +238,7 @@ static const struct nir_shader_compiler_options softfp_nir_options = {
    .lower_uadd_carry = true,
    .lower_pack_64_2x32_split = true,
    .lower_unpack_64_2x32_split = true,
+   .use_scoped_barrier = true,
    .lower_int64_options = ~0,
    .lower_doubles_options = ~0,
 };
