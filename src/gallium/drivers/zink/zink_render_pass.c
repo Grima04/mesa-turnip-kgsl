@@ -81,8 +81,10 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
    rpci.pSubpasses = &subpass;
 
    VkRenderPass render_pass;
-   if (vkCreateRenderPass(dev, &rpci, NULL, &render_pass) != VK_SUCCESS)
+   if (vkCreateRenderPass(dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
+      debug_printf("vkCreateRenderPass failed\n");
       return VK_NULL_HANDLE;
+   }
 
    return render_pass;
 }
