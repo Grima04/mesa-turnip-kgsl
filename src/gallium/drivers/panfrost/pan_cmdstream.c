@@ -116,15 +116,25 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
 }
 
 static unsigned
-translate_tex_wrap(enum pipe_tex_wrap w)
+translate_tex_wrap(enum pipe_tex_wrap w, bool supports_clamp, bool using_nearest)
 {
+        /* Bifrost doesn't support the GL_CLAMP wrap mode, so instead use
+         * CLAMP_TO_EDGE and CLAMP_TO_BORDER. On Midgard, CLAMP is broken for
+         * nearest filtering, so use CLAMP_TO_EDGE in that case. */
+
         switch (w) {
         case PIPE_TEX_WRAP_REPEAT: return MALI_WRAP_MODE_REPEAT;
-        case PIPE_TEX_WRAP_CLAMP: return MALI_WRAP_MODE_CLAMP;
+        case PIPE_TEX_WRAP_CLAMP:
+                return using_nearest ? MALI_WRAP_MODE_CLAMP_TO_EDGE :
+                     (supports_clamp ? MALI_WRAP_MODE_CLAMP :
+                                       MALI_WRAP_MODE_CLAMP_TO_BORDER);
         case PIPE_TEX_WRAP_CLAMP_TO_EDGE: return MALI_WRAP_MODE_CLAMP_TO_EDGE;
         case PIPE_TEX_WRAP_CLAMP_TO_BORDER: return MALI_WRAP_MODE_CLAMP_TO_BORDER;
         case PIPE_TEX_WRAP_MIRROR_REPEAT: return MALI_WRAP_MODE_MIRRORED_REPEAT;
-        case PIPE_TEX_WRAP_MIRROR_CLAMP: return MALI_WRAP_MODE_MIRRORED_CLAMP;
+        case PIPE_TEX_WRAP_MIRROR_CLAMP:
+                return using_nearest ? MALI_WRAP_MODE_MIRRORED_CLAMP_TO_EDGE :
+                     (supports_clamp ? MALI_WRAP_MODE_MIRRORED_CLAMP :
+                                       MALI_WRAP_MODE_MIRRORED_CLAMP_TO_BORDER);
         case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE: return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_EDGE;
         case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER: return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_BORDER;
         default: unreachable("Invalid wrap");
@@ -158,6 +168,8 @@ pan_pipe_to_mipmode(enum pipe_tex_mipfilter f)
 void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
                                 struct mali_midgard_sampler_packed *hw)
 {
+        bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
+
         pan_pack(hw, MIDGARD_SAMPLER, cfg) {
                 cfg.magnify_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
                 cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
@@ -178,9 +190,9 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
                         cfg.minimum_lod + 1 :
                         FIXED_16(cso->max_lod, false);
 
-                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s);
-                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t);
-                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r);
+                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s, true, using_nearest);
+                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t, true, using_nearest);
+                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r, true, using_nearest);
 
                 cfg.compare_function = panfrost_sampler_compare_func(cso);
                 cfg.seamless_cube_map = cso->seamless_cube_map;
@@ -195,6 +207,8 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
 void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
                                         struct mali_bifrost_sampler_packed *hw)
 {
+        bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
+
         pan_pack(hw, BIFROST_SAMPLER, cfg) {
                 cfg.point_sample_magnify = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
                 cfg.point_sample_minify = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
@@ -205,9 +219,9 @@ void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
                 cfg.minimum_lod = FIXED_16(cso->min_lod, false);
                 cfg.maximum_lod = FIXED_16(cso->max_lod, false);
 
-                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s);
-                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t);
-                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r);
+                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s, false, using_nearest);
+                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t, false, using_nearest);
+                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r, false, using_nearest);
 
                 cfg.compare_function = panfrost_sampler_compare_func(cso);
                 cfg.seamless_cube_map = cso->seamless_cube_map;
