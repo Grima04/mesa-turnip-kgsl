@@ -4852,10 +4852,8 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
             si_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
       }
    } else {
-      for (i = 0; i < count; i++) {
+      for (i = 0; i < count; i++)
          pipe_resource_reference(&dst[i].buffer.resource, NULL);
-      }
-      unaligned &= ~updated_mask;
    }
    sctx->vertex_buffers_dirty = true;
    sctx->vertex_buffer_unaligned = (orig_unaligned & ~updated_mask) | unaligned;
