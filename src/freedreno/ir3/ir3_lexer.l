@@ -31,6 +31,14 @@
 #define TOKEN(t) (ir3_yylval.tok = t)
 extern YYSTYPE ir3_yylval;
 
+void ir3_yyset_input(FILE *f);
+
+void ir3_yyset_input(FILE *f)
+{
+	YY_FLUSH_BUFFER;
+	ir3_yyin = f;
+}
+
 static int parse_wrmask(const char *src)
 {
 	int i, num = 0;
