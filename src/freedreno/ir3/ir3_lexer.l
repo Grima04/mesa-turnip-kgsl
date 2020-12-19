@@ -69,6 +69,17 @@ static int parse_reg(const char *str)
 	}
 	return num;
 }
+
+static int parse_w(const char *str)
+{
+	str++;
+	unsigned num = strtol(str, NULL, 10);
+	if ((num % 32) != 0)
+		yy_fatal_error("w# must be multiple of 32");
+	if (num < 32)
+		yy_fatal_error("w# must be at least 32");
+	return num / 32;
+}
 %}
 
 %option noyywrap
@@ -107,8 +118,10 @@ static int parse_reg(const char *str)
 
 [h]?"r"[0-9]+"."[xyzw]            ir3_yylval.num = parse_reg(yytext); return T_REGISTER;
 [h]?"c"[0-9]+"."[xyzw]            ir3_yylval.num = parse_reg(yytext); return T_CONSTANT;
-"a0."[xyzw]                       ir3_yylval.num = parse_reg(yytext); return T_A0;
+"a0.x"                            return T_A0;
+"a1.x"                            return T_A1;
 "p0."[xyzw]                       ir3_yylval.num = parse_reg(yytext); return T_P0;
+"w"[0-9]+                         ir3_yylval.num = parse_w(yytext);   return T_W;
 "s#"[0-9]+                        ir3_yylval.num = strtol(yytext+2, NULL, 10); return T_SAMP;
 "t#"[0-9]+                        ir3_yylval.num = strtol(yytext+2, NULL, 10); return T_TEX;
 
@@ -145,6 +158,8 @@ static int parse_reg(const char *str)
 "prede"                           return TOKEN(T_OP_PREDE);
 
                                   /* category 1: */
+"movmsk"                          return TOKEN(T_OP_MOVMSK);
+"mova1"                           return TOKEN(T_OP_MOVA1);
 "mova"                            return TOKEN(T_OP_MOVA);
 "mov"                             return TOKEN(T_OP_MOV);
 "cov"                             return TOKEN(T_OP_COV);

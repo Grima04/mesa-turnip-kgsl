@@ -314,6 +314,8 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_PREDE
 
 /* category 1: */
+%token <tok> T_OP_MOVMSK
+%token <tok> T_OP_MOVA1
 %token <tok> T_OP_MOVA
 %token <tok> T_OP_MOV
 %token <tok> T_OP_COV
@@ -494,7 +496,9 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_NAN
 %token <tok> T_INF
 %token <num> T_A0
+%token <num> T_A1
 %token <num> T_P0
+%token <num> T_W
 %token <str> T_CAT1_TYPE_TYPE
 
 %type <num> integer offset
@@ -643,20 +647,40 @@ cat0_instr:        T_OP_NOP        { new_instr(OPC_NOP); }
 |                  T_OP_PREDF      { new_instr(OPC_PREDF); }    cat0_src1
 |                  T_OP_PREDE      { new_instr(OPC_PREDE); }
 
-cat1_opc:          T_OP_MOVA {
-                       new_instr(OPC_MOV);
-                       instr->cat1.src_type = TYPE_S16;
-                       instr->cat1.dst_type = TYPE_S16;
-}
-|                  T_OP_MOV '.' T_CAT1_TYPE_TYPE {
+cat1_opc:          T_OP_MOV '.' T_CAT1_TYPE_TYPE {
                        parse_type_type(new_instr(OPC_MOV), $3);
 }
 |                  T_OP_COV '.' T_CAT1_TYPE_TYPE {
                        parse_type_type(new_instr(OPC_MOV), $3);
 }
 
+cat1_movmsk:       T_OP_MOVMSK '.' T_W {
+                       new_instr(OPC_MOVMSK);
+                       instr->cat1.src_type = TYPE_U32;
+                       instr->cat1.dst_type = TYPE_U32;
+                   } dst_reg {
+                       instr->regs[0]->wrmask = (1 << $3) - 1;
+                   }
+
+cat1_mova1:        T_OP_MOVA1 T_A1 ',' {
+                       new_instr(OPC_MOV);
+                       instr->cat1.src_type = TYPE_U16;
+                       instr->cat1.dst_type = TYPE_U16;
+                       new_reg((61 << 3) + 2, IR3_REG_HALF);
+                   } src_reg_or_const_or_rel_or_imm
+
+cat1_mova:         T_OP_MOVA T_A0 ',' {
+                       new_instr(OPC_MOV);
+                       instr->cat1.src_type = TYPE_S16;
+                       instr->cat1.dst_type = TYPE_S16;
+                       new_reg((61 << 3), IR3_REG_HALF);
+                   } src_reg_or_const_or_rel_or_imm
+
                    /* NOTE: cat1 can also *write* to relative gpr */
-cat1_instr:        cat1_opc dst_reg ',' src_reg_or_const_or_rel_or_imm
+cat1_instr:        cat1_movmsk
+|                  cat1_mova1
+|                  cat1_mova
+|                  cat1_opc dst_reg ',' src_reg_or_const_or_rel_or_imm
 |                  cat1_opc relative_gpr ',' src_reg_or_const_or_rel_or_imm
 
 cat2_opc_1src:     T_OP_ABSNEG_F  { new_instr(OPC_ABSNEG_F); }
@@ -877,7 +901,8 @@ cat6_instr:        cat6_load
 |                  cat6_todo
 
 reg:               T_REGISTER     { $$ = new_reg($1, 0); }
-|                  T_A0           { $$ = new_reg((61 << 3) + $1, IR3_REG_HALF); }
+|                  T_A0           { $$ = new_reg((61 << 3), IR3_REG_HALF); }
+|                  T_A1           { $$ = new_reg((61 << 3) + 1, IR3_REG_HALF); }
 |                  T_P0           { $$ = new_reg((62 << 3) + $1, 0); }
 
 const:             T_CONSTANT     { $$ = new_reg($1, IR3_REG_CONST); }
