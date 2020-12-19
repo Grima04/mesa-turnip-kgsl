@@ -115,6 +115,12 @@ static int parse_reg(const char *str)
                                   /* category 0: */
 "nop"                             return TOKEN(T_OP_NOP);
 "br"                              return TOKEN(T_OP_BR);
+"brao"                            return TOKEN(T_OP_BRAO);
+"braa"                            return TOKEN(T_OP_BRAA);
+"brac"                            return TOKEN(T_OP_BRAC);
+"bany"                            return TOKEN(T_OP_BANY);
+"ball"                            return TOKEN(T_OP_BALL);
+"brax"                            return TOKEN(T_OP_BRAX);
 "jump"                            return TOKEN(T_OP_JUMP);
 "call"                            return TOKEN(T_OP_CALL);
 "ret"                             return TOKEN(T_OP_RET);
@@ -125,6 +131,18 @@ static int parse_reg(const char *str)
 "chmask"                          return TOKEN(T_OP_CHMASK);
 "chsh"                            return TOKEN(T_OP_CHSH);
 "flow_rev"                        return TOKEN(T_OP_FLOW_REV);
+"bkt"                             return TOKEN(T_OP_BKT);
+"stks"                            return TOKEN(T_OP_STKS);
+"stkr"                            return TOKEN(T_OP_STKR);
+"xset"                            return TOKEN(T_OP_XSET);
+"xclr"                            return TOKEN(T_OP_XCLR);
+"getone"                          return TOKEN(T_OP_GETONE);
+"dbg"                             return TOKEN(T_OP_DBG);
+"shps"                            return TOKEN(T_OP_SHPS);
+"shpe"                            return TOKEN(T_OP_SHPE);
+"predt"                           return TOKEN(T_OP_PREDT);
+"predf"                           return TOKEN(T_OP_PREDF);
+"prede"                           return TOKEN(T_OP_PREDE);
 
                                   /* category 1: */
 "mova"                            return TOKEN(T_OP_MOVA);

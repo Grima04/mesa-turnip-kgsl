@@ -284,6 +284,12 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 /* category 0: */
 %token <tok> T_OP_NOP
 %token <tok> T_OP_BR
+%token <tok> T_OP_BRAO
+%token <tok> T_OP_BRAA
+%token <tok> T_OP_BRAC
+%token <tok> T_OP_BANY
+%token <tok> T_OP_BALL
+%token <tok> T_OP_BRAX
 %token <tok> T_OP_JUMP
 %token <tok> T_OP_CALL
 %token <tok> T_OP_RET
@@ -294,6 +300,18 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_CHMASK
 %token <tok> T_OP_CHSH
 %token <tok> T_OP_FLOW_REV
+%token <tok> T_OP_BKT
+%token <tok> T_OP_STKS
+%token <tok> T_OP_STKR
+%token <tok> T_OP_XSET
+%token <tok> T_OP_XCLR
+%token <tok> T_OP_GETONE
+%token <tok> T_OP_DBG
+%token <tok> T_OP_SHPS
+%token <tok> T_OP_SHPE
+%token <tok> T_OP_PREDT
+%token <tok> T_OP_PREDF
+%token <tok> T_OP_PREDE
 
 /* category 1: */
 %token <tok> T_OP_MOVA
@@ -589,10 +607,19 @@ instr:             iflags cat0_instr
 cat0_src1:         '!' T_P0        { instr->cat0.inv1 = true; instr->cat0.comp1 = $2 >> 1; }
 |                  T_P0            { instr->cat0.comp1 = $1 >> 1; }
 
+cat0_src2:         '!' T_P0        { instr->cat0.inv2 = true; instr->cat0.comp2 = $2 >> 1; }
+|                  T_P0            { instr->cat0.comp2 = $1 >> 1; }
+
 cat0_immed:        '#' integer     { instr->cat0.immed = $2; }
 
 cat0_instr:        T_OP_NOP        { new_instr(OPC_NOP); }
-|                  T_OP_BR         { new_instr(OPC_B); }    cat0_src1 ',' cat0_immed
+|                  T_OP_BR         { new_instr(OPC_B)->cat0.brtype = BRANCH_PLAIN; } cat0_src1 ',' cat0_immed
+|                  T_OP_BRAO       { new_instr(OPC_B)->cat0.brtype = BRANCH_OR;    } cat0_src1 ',' cat0_src2 ',' cat0_immed
+|                  T_OP_BRAA       { new_instr(OPC_B)->cat0.brtype = BRANCH_AND;    } cat0_src1 ',' cat0_src2 ',' cat0_immed
+|                  T_OP_BRAC '.' integer { new_instr(OPC_B)->cat0.brtype = BRANCH_CONST; instr->cat0.idx = $3; } cat0_immed
+|                  T_OP_BANY       { new_instr(OPC_B)->cat0.brtype = BRANCH_ANY; } cat0_src1 ',' cat0_immed
+|                  T_OP_BALL       { new_instr(OPC_B)->cat0.brtype = BRANCH_ALL; } cat0_src1 ',' cat0_immed
+|                  T_OP_BRAX       { new_instr(OPC_B)->cat0.brtype = BRANCH_X; } cat0_immed
 |                  T_OP_JUMP       { new_instr(OPC_JUMP); }  cat0_immed
 |                  T_OP_CALL       { new_instr(OPC_CALL); }  cat0_immed
 |                  T_OP_RET        { new_instr(OPC_RET); }
@@ -603,6 +630,18 @@ cat0_instr:        T_OP_NOP        { new_instr(OPC_NOP); }
 |                  T_OP_CHMASK     { new_instr(OPC_CHMASK); }
 |                  T_OP_CHSH       { new_instr(OPC_CHSH); }
 |                  T_OP_FLOW_REV   { new_instr(OPC_FLOW_REV); }
+|                  T_OP_BKT        { new_instr(OPC_BKT); }      cat0_immed
+|                  T_OP_STKS       { new_instr(OPC_STKS); }
+|                  T_OP_STKR       { new_instr(OPC_STKR); }
+|                  T_OP_XSET       { new_instr(OPC_XSET); }
+|                  T_OP_XCLR       { new_instr(OPC_XCLR); }
+|                  T_OP_GETONE     { new_instr(OPC_GETONE); }   cat0_immed
+|                  T_OP_DBG        { new_instr(OPC_DBG); }
+|                  T_OP_SHPS       { new_instr(OPC_SHPS); }     cat0_immed
+|                  T_OP_SHPE       { new_instr(OPC_SHPE); }
+|                  T_OP_PREDT      { new_instr(OPC_PREDT); }    cat0_src1
+|                  T_OP_PREDF      { new_instr(OPC_PREDF); }    cat0_src1
+|                  T_OP_PREDE      { new_instr(OPC_PREDE); }
 
 cat1_opc:          T_OP_MOVA {
                        new_instr(OPC_MOV);
