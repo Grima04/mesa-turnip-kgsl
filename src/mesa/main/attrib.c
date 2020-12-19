@@ -63,6 +63,26 @@
 #include "util/u_memory.h"
 
 
+static inline bool
+copy_texture_attribs(struct gl_texture_object *dst,
+                     const struct gl_texture_object *src,
+                     gl_texture_index tex)
+{
+   /* All pushed fields have no effect on texture buffers. */
+   if (tex == TEXTURE_BUFFER_INDEX)
+      return false;
+
+   /* Sampler fields have no effect on MSAA textures. */
+   if (tex != TEXTURE_2D_MULTISAMPLE_INDEX &&
+       tex != TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX) {
+      memcpy(&dst->Sampler.Attrib, &src->Sampler.Attrib,
+             sizeof(src->Sampler.Attrib));
+   }
+   memcpy(&dst->Attrib, &src->Attrib, sizeof(src->Attrib));
+   return true;
+}
+
+
 void GLAPIENTRY
 _mesa_PushAttrib(GLbitfield mask)
 {
@@ -251,8 +271,8 @@ _mesa_PushAttrib(GLbitfield mask)
             struct gl_texture_object *src = ctx->Texture.Unit[u].CurrentTex[tex];
 
             dst->Name = src->Name;
-            memcpy(&dst->Sampler.Attrib, &src->Sampler.Attrib, sizeof(src->Sampler.Attrib));
-            memcpy(&dst->Attrib, &src->Attrib, sizeof(src->Attrib));
+
+            copy_texture_attribs(dst, src, tex);
          }
       }
 
@@ -594,8 +614,15 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          const struct gl_texture_object *savedObj = &texstate->SavedObj[u][tgt];
          struct gl_texture_object *texObj =
             _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
+         bool is_msaa = tgt == TEXTURE_2D_MULTISAMPLE_INDEX ||
+                        tgt == TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX;
 
-         if (texObj->Name != savedObj->Name) {
+         /* According to the OpenGL 4.6 Compatibility Profile specification,
+          * table 23.17, GL_TEXTURE_BINDING_2D_MULTISAMPLE and
+          * GL_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY do not belong in the
+          * texture attrib group.
+          */
+         if (!is_msaa && texObj->Name != savedObj->Name) {
             /* We don't need to check whether the texture target is supported,
              * because we wouldn't get in this conditional block if it wasn't.
              */
@@ -603,9 +630,8 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
             texObj = _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
          }
 
-         memcpy(&texObj->Sampler.Attrib, &savedObj->Sampler.Attrib,
-                sizeof(savedObj->Sampler.Attrib));
-         memcpy(&texObj->Attrib, &savedObj->Attrib, sizeof(savedObj->Attrib));
+         if (!copy_texture_attribs(texObj, savedObj, tgt))
+            continue;
 
          /* GL_ALL_ATTRIB_BITS means all pnames. (internal) */
          if (texObj->Name != 0 && ctx->Driver.TexParameter)
