@@ -826,7 +826,20 @@ _mesa_PopAttrib(void)
 
    if (mask & GL_ENABLE_BIT) {
       pop_enable_group(ctx, &attr->Enable);
-      ctx->NewState |= _NEW_ALL;
+      ctx->NewState |= _NEW_COLOR |
+                       _NEW_DEPTH |
+                       _NEW_FOG |
+                       _NEW_LIGHT |
+                       _NEW_LINE |
+                       _NEW_POINT |
+                       _NEW_POLYGON |
+                       _NEW_SCISSOR |
+                       _NEW_TRANSFORM |
+                       _NEW_TEXTURE_STATE |
+                       _NEW_BUFFERS |
+                       _NEW_MULTISAMPLE |
+                       _NEW_PROGRAM |
+                       _NEW_FRAG_CLAMP;
       ctx->NewDriverState |= ctx->DriverFlags.NewAlphaTest |
                              ctx->DriverFlags.NewBlend |
                              ctx->DriverFlags.NewClipPlaneEnable |
