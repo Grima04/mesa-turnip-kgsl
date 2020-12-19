@@ -37,6 +37,10 @@
 #include "util/macros.h"
 #include "disasm.h"
 
+#include "ir3.h"
+#include "ir3_assembler.h"
+#include "ir3_shader.h"
+
 #define INSTR_5XX(i, d) { .gpu_id = 540, .instr = #i, .expected = d }
 #define INSTR_6XX(i, d) { .gpu_id = 630, .instr = #i, .expected = d }
 
@@ -260,6 +264,7 @@ int
 main(int argc, char **argv)
 {
 	int retval = 0;
+	int decode_fails = 0, asm_fails = 0, encode_fails = 0;
 	const int output_size = 4096;
 	char *disasm_output = malloc(output_size);
 	FILE *fdisasm = fmemopen(disasm_output, output_size, "w+");
@@ -268,6 +273,8 @@ main(int argc, char **argv)
 		return 1;
 	}
 
+	struct ir3_compiler *compilers[10] = {};
+
 	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
 		const struct test *test = &tests[i];
 		printf("Testing a%d %s: \"%s\"...\n",
@@ -275,6 +282,10 @@ main(int argc, char **argv)
 
 		rewind(fdisasm);
 		memset(disasm_output, 0, output_size);
+
+		/*
+		 * Test disassembly:
+		 */
 
 		uint32_t code[2] = {
 			strtoll(&test->instr[9], NULL, 16),
@@ -286,12 +297,60 @@ main(int argc, char **argv)
 		trim(disasm_output);
 
 		if (strcmp(disasm_output, test->expected) != 0) {
-			printf("FAIL\n");
+			printf("FAIL: disasm\n");
 			printf("  Expected: \"%s\"\n", test->expected);
 			printf("  Got:      \"%s\"\n", disasm_output);
 			retval = 1;
+			decode_fails++;
 			continue;
 		}
+
+		/*
+		 * Test assembly, which should result in the identical binary:
+		 */
+
+		unsigned gen = test->gpu_id / 100;
+		if (!compilers[gen]) {
+			compilers[gen] = ir3_compiler_create(NULL, test->gpu_id);
+		}
+
+		FILE *fasm = fmemopen((void *)test->expected, strlen(test->expected), "r");
+
+		struct ir3_kernel_info info = {};
+		struct ir3_shader *shader = ir3_parse_asm(compilers[gen], &info, fasm);
+		fclose(fasm);
+		if (!shader) {
+			printf("FAIL: assembler failed\n");
+			asm_fails++;
+			/* Until the assembler is more complete, don't count this as
+			 * a failure, but skip checking that assembled binary matches.
+			 */
+			continue;
+		}
+
+		struct ir3_shader_variant *v = shader->variants;
+		if (memcmp(v->bin, code, sizeof(code))) {
+			printf("FAIL: assembler\n");
+			printf("  Expected: %08x_%08x\n", code[1], code[0]);
+			printf("  Got:      %08x_%08x\n", v->bin[1], v->bin[0]);
+			retval = 1;
+			encode_fails++;
+		}
+
+		ir3_shader_destroy(shader);
+	}
+
+	if (decode_fails)
+		printf("%d/%d decode fails\n", decode_fails, (int)ARRAY_SIZE(tests));
+	if (asm_fails)
+		printf("%d/%d assembler fails\n", asm_fails, (int)ARRAY_SIZE(tests));
+	if (encode_fails)
+		printf("%d/%d encode fails\n", encode_fails, (int)ARRAY_SIZE(tests));
+
+	for (unsigned i = 0; i < ARRAY_SIZE(compilers); i++) {
+		if (!compilers[i])
+			continue;
+		ir3_compiler_destroy(compilers[i]);
 	}
 
 	fclose(fdisasm);
