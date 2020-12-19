@@ -412,8 +412,8 @@ static void print_instr_cat0(struct disasm_ctx *ctx, instr_t *instr)
 	case OPC_KILL:
 	case OPC_PREDT:
 	case OPC_PREDF:
-		fprintf(ctx->out, " %sp0.%c", cat0->inv0 ? "!" : "",
-				component[cat0->comp0]);
+		fprintf(ctx->out, " %sp0.%c", cat0->inv1 ? "!" : "",
+				component[cat0->comp1]);
 		break;
 	case OPC_B:
 		fprintf(ctx->out, "%s", brinfo[cat0->brtype].suffix);
@@ -421,12 +421,12 @@ static void print_instr_cat0(struct disasm_ctx *ctx, instr_t *instr)
 			fprintf(ctx->out, ".%u", cat0->idx);
 		}
 		if (brinfo[cat0->brtype].nsrc >= 1) {
-			fprintf(ctx->out, " %sp0.%c,", cat0->inv0 ? "!" : "",
-					component[cat0->comp0]);
-		}
-		if (brinfo[cat0->brtype].nsrc >= 2) {
 			fprintf(ctx->out, " %sp0.%c,", cat0->inv1 ? "!" : "",
 					component[cat0->comp1]);
+		}
+		if (brinfo[cat0->brtype].nsrc >= 2) {
+			fprintf(ctx->out, " %sp0.%c,", cat0->inv2 ? "!" : "",
+					component[cat0->comp2]);
 		}
 		fprintf(ctx->out, " #%d", cat0->a3xx.immed);
 		break;

@@ -397,13 +397,13 @@ typedef struct PACKED {
 	uint32_t repeat   : 3;
 	uint32_t dummy3   : 1;
 	uint32_t ss       : 1;
-	uint32_t inv1     : 1;
-	uint32_t comp1    : 2;
+	uint32_t inv2     : 1;
+	uint32_t comp2    : 2;
 	uint32_t eq       : 1;
 	uint32_t opc_hi   : 1;  /* at least one bit */
 	uint32_t dummy4   : 2;
-	uint32_t inv0     : 1;
-	uint32_t comp0    : 2;  /* component for first src */
+	uint32_t inv1     : 1;
+	uint32_t comp1    : 2;  /* component for first src */
 	uint32_t opc      : 4;
 	uint32_t jmp_tgt  : 1;
 	uint32_t sync     : 1;

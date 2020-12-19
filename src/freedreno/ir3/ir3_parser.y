@@ -586,17 +586,17 @@ instr:             iflags cat0_instr
 |                  iflags cat5_instr
 |                  iflags cat6_instr
 
-cat0_src:          '!' T_P0        { instr->cat0.inv = true; instr->cat0.comp = $2 >> 1; }
-|                  T_P0            { instr->cat0.comp = $1 >> 1; }
+cat0_src1:         '!' T_P0        { instr->cat0.inv1 = true; instr->cat0.comp1 = $2 >> 1; }
+|                  T_P0            { instr->cat0.comp1 = $1 >> 1; }
 
 cat0_immed:        '#' integer     { instr->cat0.immed = $2; }
 
 cat0_instr:        T_OP_NOP        { new_instr(OPC_NOP); }
-|                  T_OP_BR         { new_instr(OPC_B); }    cat0_src ',' cat0_immed
+|                  T_OP_BR         { new_instr(OPC_B); }    cat0_src1 ',' cat0_immed
 |                  T_OP_JUMP       { new_instr(OPC_JUMP); }  cat0_immed
 |                  T_OP_CALL       { new_instr(OPC_CALL); }  cat0_immed
 |                  T_OP_RET        { new_instr(OPC_RET); }
-|                  T_OP_KILL       { new_instr(OPC_KILL); }  cat0_src
+|                  T_OP_KILL       { new_instr(OPC_KILL); }  cat0_src1
 |                  T_OP_END        { new_instr(OPC_END); }
 |                  T_OP_EMIT       { new_instr(OPC_EMIT); }
 |                  T_OP_CUT        { new_instr(OPC_CUT); }

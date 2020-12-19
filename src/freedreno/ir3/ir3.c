@@ -144,8 +144,12 @@ static int emit_cat0(struct ir3_instruction *instr, void *ptr,
 	}
 	cat0->repeat   = instr->repeat;
 	cat0->ss       = !!(instr->flags & IR3_INSTR_SS);
-	cat0->inv0     = instr->cat0.inv;
-	cat0->comp0    = instr->cat0.comp;
+	cat0->inv1     = instr->cat0.inv1;
+	cat0->comp1    = instr->cat0.comp1;
+	cat0->inv2     = instr->cat0.inv2;
+	cat0->comp2    = instr->cat0.comp2;
+	cat0->brtype   = instr->cat0.brtype;
+	cat0->idx      = instr->cat0.idx;
 	cat0->opc      = instr->opc;
 	cat0->opc_hi   = instr->opc >= 16;
 	cat0->jmp_tgt  = !!(instr->flags & IR3_INSTR_JP);

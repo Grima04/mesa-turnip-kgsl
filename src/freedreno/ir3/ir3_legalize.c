@@ -517,7 +517,7 @@ resolve_jump(struct ir3_instruction *instr)
 	 * then we can just drop the jump.
 	 */
 	unsigned next_block;
-	if (instr->cat0.inv == true)
+	if (instr->cat0.inv1 == true)
 		next_block = 2;
 	else
 		next_block = 1;
@@ -609,7 +609,7 @@ block_sched(struct ir3 *ir)
 			 * frequently/always end up being a fall-thru):
 			 */
 			br = ir3_B(block, block->condition, 0);
-			br->cat0.inv = true;
+			br->cat0.inv1 = true;
 			br->cat0.target = block->successors[1];
 
 			/* "then" branch: */

@@ -247,10 +247,12 @@ struct ir3_instruction {
 	struct ir3_register **regs;
 	union {
 		struct {
-			char inv;
-			char comp;
+			char inv1, inv2;
+			char comp1, comp2;
 			int  immed;
 			struct ir3_block *target;
+			brtype_t brtype;
+			unsigned idx;  /* for brac.N */
 		} cat0;
 		struct {
 			type_t src_type, dst_type;
