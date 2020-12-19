@@ -31,6 +31,8 @@ ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
 {
 	struct ir3_kernel *kernel = calloc(1, sizeof(*kernel));
 	struct ir3_shader *shader = ir3_parse_asm(c, &kernel->info, in);
+	if (!shader)
+		errx(-1, "assembler failed");
 	struct ir3_shader_variant *v = shader->variants;
 
 	v->mergedregs = true;

@@ -21,6 +21,7 @@
  * IN THE SOFTWARE.
  */
 
+#include <err.h>
 #include <stdio.h>
 
 #include "ir3.h"
@@ -93,6 +94,9 @@ parse_asm(struct ir3_compiler *c, const char *asmstr)
 	struct ir3_shader *shader = ir3_parse_asm(c, &info, in);
 
 	fclose(in);
+
+	if (!shader)
+		errx(-1, "assembler failed");
 
 	return shader;
 }
