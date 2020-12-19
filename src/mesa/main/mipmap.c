@@ -62,7 +62,7 @@ _mesa_compute_num_levels(struct gl_context *ctx,
    numLevels = texObj->Attrib.BaseLevel + baseImage->MaxNumLevels;
    numLevels = MIN2(numLevels, (GLuint) texObj->Attrib.MaxLevel + 1);
    if (texObj->Immutable)
-      numLevels = MIN2(numLevels, texObj->NumLevels);
+      numLevels = MIN2(numLevels, texObj->Attrib.NumLevels);
    assert(numLevels >= 1);
 
    return numLevels;

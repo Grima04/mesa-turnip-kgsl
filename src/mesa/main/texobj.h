@@ -143,7 +143,7 @@ _mesa_is_texture_complete(const struct gl_texture_object *texObj,
     */
    if (!isMultisample &&
        (texObj->_IsIntegerFormat ||
-        (texObj->Attrib.StencilSampling &&
+        (texObj->StencilSampling &&
          img->_BaseFormat == GL_DEPTH_STENCIL)) &&
        (sampler->Attrib.MagFilter != GL_NEAREST ||
         (sampler->Attrib.MinFilter != GL_NEAREST &&

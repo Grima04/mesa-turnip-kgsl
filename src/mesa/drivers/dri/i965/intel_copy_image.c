@@ -81,13 +81,13 @@ intel_copy_image_sub_data(struct gl_context *ctx,
 
    if (src_image) {
       src_mt = intel_texture_image(src_image)->mt;
-      src_level = src_image->Level + src_image->TexObject->MinLevel;
+      src_level = src_image->Level + src_image->TexObject->Attrib.MinLevel;
 
       /* Cube maps actually have different images per face */
       if (src_image->TexObject->Target == GL_TEXTURE_CUBE_MAP)
          src_z = src_image->Face;
 
-      src_z += src_image->TexObject->MinLayer;
+      src_z += src_image->TexObject->Attrib.MinLayer;
    } else {
       assert(src_renderbuffer);
       src_mt = intel_renderbuffer(src_renderbuffer)->mt;
@@ -98,13 +98,13 @@ intel_copy_image_sub_data(struct gl_context *ctx,
    if (dst_image) {
       dst_mt = intel_texture_image(dst_image)->mt;
 
-      dst_level = dst_image->Level + dst_image->TexObject->MinLevel;
+      dst_level = dst_image->Level + dst_image->TexObject->Attrib.MinLevel;
 
       /* Cube maps actually have different images per face */
       if (dst_image->TexObject->Target == GL_TEXTURE_CUBE_MAP)
          dst_z = dst_image->Face;
 
-      dst_z += dst_image->TexObject->MinLayer;
+      dst_z += dst_image->TexObject->Attrib.MinLayer;
    } else {
       assert(dst_renderbuffer);
       dst_mt = intel_renderbuffer(dst_renderbuffer)->mt;

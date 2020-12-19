@@ -540,8 +540,8 @@ intel_renderbuffer_update_wrapper(struct brw_context *brw,
    rb->AllocStorage = intel_nop_alloc_storage;
 
    /* adjust for texture view parameters */
-   layer += image->TexObject->MinLayer;
-   level += image->TexObject->MinLevel;
+   layer += image->TexObject->Attrib.MinLayer;
+   level += image->TexObject->Attrib.MinLevel;
 
    intel_miptree_check_level_layer(mt, level, layer);
    irb->mt_level = level;
@@ -549,8 +549,8 @@ intel_renderbuffer_update_wrapper(struct brw_context *brw,
 
    if (!layered) {
       irb->layer_count = 1;
-   } else if (mt->target != GL_TEXTURE_3D && image->TexObject->NumLayers > 0) {
-      irb->layer_count = image->TexObject->NumLayers;
+   } else if (mt->target != GL_TEXTURE_3D && image->TexObject->Attrib.NumLayers > 0) {
+      irb->layer_count = image->TexObject->Attrib.NumLayers;
    } else {
       irb->layer_count = mt->surf.dim == ISL_SURF_DIM_3D ?
                             minify(mt->surf.logical_level0_px.depth, level) :

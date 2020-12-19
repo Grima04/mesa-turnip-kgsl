@@ -1925,10 +1925,10 @@ dri2_interop_export_object(__DRIcontext *_ctx,
          }
 
          out->internal_format = obj->Image[0][0]->InternalFormat;
-         out->view_minlevel = obj->MinLevel;
-         out->view_numlevels = obj->NumLevels;
-         out->view_minlayer = obj->MinLayer;
-         out->view_numlayers = obj->NumLayers;
+         out->view_minlevel = obj->Attrib.MinLevel;
+         out->view_numlevels = obj->Attrib.NumLevels;
+         out->view_minlayer = obj->Attrib.MinLayer;
+         out->view_numlayers = obj->Attrib.NumLayers;
       }
    }
 

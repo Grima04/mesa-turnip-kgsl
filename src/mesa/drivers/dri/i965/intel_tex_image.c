@@ -136,8 +136,8 @@ intel_texsubimage_blorp(struct brw_context *brw, GLuint dims,
                         const struct gl_pixelstore_attrib *packing)
 {
    struct intel_texture_image *intel_image = intel_texture_image(tex_image);
-   const unsigned mt_level = tex_image->Level + tex_image->TexObject->MinLevel;
-   const unsigned mt_z = tex_image->TexObject->MinLayer + tex_image->Face + z;
+   const unsigned mt_level = tex_image->Level + tex_image->TexObject->Attrib.MinLevel;
+   const unsigned mt_z = tex_image->TexObject->Attrib.MinLayer + tex_image->Face + z;
 
    /* The blorp path can't understand crazy format hackery */
    if (_mesa_base_tex_format(&brw->ctx, tex_image->InternalFormat) !=
@@ -228,7 +228,7 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
       return false;
 
    /* If this is a nontrivial texture view, let another path handle it instead. */
-   if (texImage->TexObject->MinLayer)
+   if (texImage->TexObject->Attrib.MinLayer)
       return false;
 
    if (!image->mt ||
@@ -249,7 +249,7 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
    if (devinfo->gen < 5 && brw->has_swizzling)
       return false;
 
-   int level = texImage->Level + texImage->TexObject->MinLevel;
+   int level = texImage->Level + texImage->TexObject->Attrib.MinLevel;
 
    /* Since we are going to write raw data to the miptree, we need to resolve
     * any pending fast color clears before we start.
@@ -702,8 +702,8 @@ intel_gettexsubimage_blorp(struct brw_context *brw,
                            const struct gl_pixelstore_attrib *packing)
 {
    struct intel_texture_image *intel_image = intel_texture_image(tex_image);
-   const unsigned mt_level = tex_image->Level + tex_image->TexObject->MinLevel;
-   const unsigned mt_z = tex_image->TexObject->MinLayer + tex_image->Face + z;
+   const unsigned mt_level = tex_image->Level + tex_image->TexObject->Attrib.MinLevel;
+   const unsigned mt_z = tex_image->TexObject->Attrib.MinLayer + tex_image->Face + z;
 
    /* The blorp path can't understand crazy format hackery */
    if (_mesa_base_tex_format(&brw->ctx, tex_image->InternalFormat) !=
@@ -781,7 +781,7 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
       return false;
 
    /* If this is a nontrivial texture view, let another path handle it instead. */
-   if (texImage->TexObject->MinLayer)
+   if (texImage->TexObject->Attrib.MinLayer)
       return false;
 
    if (!image->mt ||
@@ -802,7 +802,7 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
    if (devinfo->gen < 5 && brw->has_swizzling)
       return false;
 
-   int level = texImage->Level + texImage->TexObject->MinLevel;
+   int level = texImage->Level + texImage->TexObject->Attrib.MinLevel;
 
    /* Since we are going to write raw data to the miptree, we need to resolve
     * any pending fast color clears before we start.

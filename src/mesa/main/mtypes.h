@@ -970,8 +970,13 @@ struct gl_texture_object_attrib
    GLenum Swizzle[4];          /**< GL_EXT_texture_swizzle */
    GLushort _Swizzle;          /**< same as Swizzle, but SWIZZLE_* format */
    GLenum16 DepthMode;         /**< GL_ARB_depth_texture */
-   bool StencilSampling;       /**< Should we sample stencil instead of depth? */
+   GLenum16 ImageFormatCompatibilityType; /**< GL_ARB_shader_image_load_store */
+   GLushort MinLayer;          /**< GL_ARB_texture_view */
+   GLushort NumLayers;         /**< GL_ARB_texture_view */
    GLboolean GenerateMipmap;   /**< GL_SGIS_generate_mipmap */
+   GLbyte ImmutableLevels;     /**< ES 3.0 / ARB_texture_view */
+   GLubyte MinLevel;           /**< GL_ARB_texture_view */
+   GLubyte NumLevels;          /**< GL_ARB_texture_view */
 };
 
 /**
@@ -1013,7 +1018,6 @@ struct gl_texture_object
    GLbyte _MaxLevel;           /**< actual max mipmap level (q in the spec) */
    GLfloat _MaxLambda;         /**< = _MaxLevel - BaseLevel (q - p in spec) */
    GLint CropRect[4];          /**< GL_OES_draw_texture */
-   GLbyte ImmutableLevels;     /**< ES 3.0 / ARB_texture_view */
    GLboolean _BaseComplete;    /**< Is the base texture level valid? */
    GLboolean _MipmapComplete;  /**< Is the whole mipmap valid? */
    GLboolean _IsIntegerFormat; /**< Does the texture store integer values? */
@@ -1025,24 +1029,20 @@ struct gl_texture_object
    GLboolean _IsHalfFloat;     /**< GL_OES_half_float_texture */
    bool HandleAllocated;       /**< GL_ARB_bindless_texture */
 
+   /* This should not be restored by glPopAttrib: */
+   bool StencilSampling;       /**< Should we sample stencil instead of depth? */
+
    /** GL_OES_EGL_image_external */
    GLubyte RequiredTextureImageUnits;
 
-   GLubyte MinLevel;            /**< GL_ARB_texture_view */
-   GLubyte NumLevels;           /**< GL_ARB_texture_view */
-   GLushort MinLayer;            /**< GL_ARB_texture_view */
-   GLushort NumLayers;           /**< GL_ARB_texture_view */
-
    /** GL_EXT_memory_object */
    GLenum16 TextureTiling;
-
-   /** GL_ARB_shader_image_load_store */
-   GLenum16 ImageFormatCompatibilityType;
 
    /** GL_ARB_texture_buffer_object */
    GLenum16 BufferObjectFormat;
    /** Equivalent Mesa format for BufferObjectFormat. */
    mesa_format _BufferObjectFormat;
+   /* TODO: BufferObject->Name should be restored by glPopAttrib(GL_TEXTURE_BIT); */
    struct gl_buffer_object *BufferObject;
 
    /** GL_ARB_texture_buffer_range */

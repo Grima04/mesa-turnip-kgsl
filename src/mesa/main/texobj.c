@@ -352,7 +352,7 @@ _mesa_initialize_texture_object( struct gl_context *ctx,
    obj->Sampler.Attrib.CompareMode = GL_NONE;         /* ARB_shadow */
    obj->Sampler.Attrib.CompareFunc = GL_LEQUAL;       /* ARB_shadow */
    obj->Attrib.DepthMode = ctx->API == API_OPENGL_CORE ? GL_RED : GL_LUMINANCE;
-   obj->Attrib.StencilSampling = false;
+   obj->StencilSampling = false;
    obj->Sampler.Attrib.CubeMapSeamless = GL_FALSE;
    obj->Sampler.HandleAllocated = GL_FALSE;
    obj->Attrib.Swizzle[0] = GL_RED;
@@ -363,7 +363,7 @@ _mesa_initialize_texture_object( struct gl_context *ctx,
    obj->Sampler.Attrib.sRGBDecode = GL_DECODE_EXT;
    obj->BufferObjectFormat = GL_R8;
    obj->_BufferObjectFormat = MESA_FORMAT_R_UNORM8;
-   obj->ImageFormatCompatibilityType = GL_IMAGE_FORMAT_COMPATIBILITY_BY_SIZE;
+   obj->Attrib.ImageFormatCompatibilityType = GL_IMAGE_FORMAT_COMPATIBILITY_BY_SIZE;
 
    /* GL_ARB_bindless_texture */
    _mesa_init_texture_handles(obj);
@@ -710,7 +710,7 @@ _mesa_test_texobj_completeness( const struct gl_context *ctx,
       /* Adjust max level for views: the data store may have more levels than
        * the view exposes.
        */
-      t->_MaxLevel = MAX2(MIN2(t->_MaxLevel, t->NumLevels - 1), 0);
+      t->_MaxLevel = MAX2(MIN2(t->_MaxLevel, t->Attrib.NumLevels - 1), 0);
    }
 
    /* Compute _MaxLambda = q - p in the spec used during mipmapping */

@@ -168,7 +168,7 @@ st_convert_sampler(const struct st_context *st,
       const GLboolean is_integer = texobj->_IsIntegerFormat;
       GLenum texBaseFormat = _mesa_base_tex_image(texobj)->_BaseFormat;
 
-      if (texobj->Attrib.StencilSampling)
+      if (texobj->StencilSampling)
          texBaseFormat = GL_STENCIL_INDEX;
 
       if (st->apply_texture_swizzle_to_border_color) {
@@ -212,7 +212,7 @@ st_convert_sampler(const struct st_context *st,
       GLenum texBaseFormat = _mesa_base_tex_image(texobj)->_BaseFormat;
 
       if (texBaseFormat == GL_DEPTH_COMPONENT ||
-          (texBaseFormat == GL_DEPTH_STENCIL && !texobj->Attrib.StencilSampling)) {
+          (texBaseFormat == GL_DEPTH_STENCIL && !texobj->StencilSampling)) {
          sampler->compare_mode = PIPE_TEX_COMPARE_R_TO_TEXTURE;
          sampler->compare_func = st_compare_func_to_pipe(msamp->Attrib.CompareFunc);
       }

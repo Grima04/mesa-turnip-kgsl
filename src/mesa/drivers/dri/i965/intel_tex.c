@@ -231,8 +231,8 @@ intel_map_texture_image(struct gl_context *ctx,
       slice = tex_image->Face;
 
    intel_miptree_map(brw, mt,
-                     tex_image->Level + tex_image->TexObject->MinLevel,
-                     slice + tex_image->TexObject->MinLayer,
+                     tex_image->Level + tex_image->TexObject->Attrib.MinLevel,
+                     slice + tex_image->TexObject->Attrib.MinLayer,
                      x, y, w, h, mode,
                      (void **)map, &stride);
 
@@ -251,8 +251,8 @@ intel_unmap_texture_image(struct gl_context *ctx,
       slice = tex_image->Face;
 
    intel_miptree_unmap(brw, mt,
-         tex_image->Level + tex_image->TexObject->MinLevel,
-         slice + tex_image->TexObject->MinLayer);
+         tex_image->Level + tex_image->TexObject->Attrib.MinLevel,
+         slice + tex_image->TexObject->Attrib.MinLayer);
 }
 
 static GLboolean
@@ -274,7 +274,7 @@ intel_texture_view(struct gl_context *ctx,
     * except it hasn't copied our mt pointers, etc.
     */
    const int numFaces = _mesa_num_tex_faces(texObj->Target);
-   const int numLevels = texObj->NumLevels;
+   const int numLevels = texObj->Attrib.NumLevels;
 
    int face;
    int level;

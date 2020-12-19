@@ -5321,7 +5321,7 @@ genX(update_sampler_state)(struct brw_context *brw,
 
 #if GEN_GEN == 6
    samp_st.BaseMipLevel =
-      CLAMP(texObj->MinLevel + texObj->Attrib.BaseLevel, 0, hw_max_lod);
+      CLAMP(texObj->Attrib.MinLevel + texObj->Attrib.BaseLevel, 0, hw_max_lod);
    samp_st.MinandMagStateNotEqual =
       samp_st.MinModeFilter != samp_st.MagModeFilter;
 #endif
@@ -5336,7 +5336,7 @@ genX(update_sampler_state)(struct brw_context *brw,
        wrap_mode_needs_border_color(wrap_r)) {
       genX(upload_default_color)(brw, sampler, format, base_format,
                                  texObj->_IsIntegerFormat,
-                                 texObj->Attrib.StencilSampling,
+                                 texObj->StencilSampling,
                                  &border_color_offset);
    }
 #if GEN_GEN < 6

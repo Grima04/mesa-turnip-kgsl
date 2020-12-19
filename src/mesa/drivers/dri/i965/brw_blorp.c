@@ -745,8 +745,8 @@ brw_blorp_copytexsubimage(struct brw_context *brw,
       apply_y_flip(&srcY0, &srcY1, src_rb->Height);
 
    /* Account for face selection and texture view MinLayer */
-   int dst_slice = slice + dst_image->TexObject->MinLayer + dst_image->Face;
-   int dst_level = dst_image->Level + dst_image->TexObject->MinLevel;
+   int dst_slice = slice + dst_image->TexObject->Attrib.MinLayer + dst_image->Face;
+   int dst_level = dst_image->Level + dst_image->TexObject->Attrib.MinLevel;
 
    brw_blorp_blit_miptrees(brw,
                            src_mt, src_irb->mt_level, src_irb->mt_layer,

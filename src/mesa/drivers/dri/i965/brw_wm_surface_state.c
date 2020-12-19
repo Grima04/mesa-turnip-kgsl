@@ -491,7 +491,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
        */
       unsigned view_num_layers;
       if (obj->Immutable && obj->Target != GL_TEXTURE_3D) {
-         view_num_layers = obj->NumLayers;
+         view_num_layers = obj->Attrib.NumLayers;
       } else {
          view_num_layers = mt->surf.dim == ISL_SURF_DIM_3D ?
                               mt->surf.logical_level0_px.depth :
@@ -566,7 +566,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
          }
       }
 
-      if (obj->Attrib.StencilSampling && firstImage->_BaseFormat == GL_DEPTH_STENCIL) {
+      if (obj->StencilSampling && firstImage->_BaseFormat == GL_DEPTH_STENCIL) {
          if (devinfo->gen <= 7) {
             assert(mt->shadow_mt && !mt->stencil_mt->shadow_needs_update);
             mt = mt->shadow_mt;
@@ -587,9 +587,9 @@ static void brw_update_texture_surface(struct gl_context *ctx,
 
       struct isl_view view = {
          .format = format,
-         .base_level = obj->MinLevel + obj->Attrib.BaseLevel,
+         .base_level = obj->Attrib.MinLevel + obj->Attrib.BaseLevel,
          .levels = intel_obj->_MaxLevel - obj->Attrib.BaseLevel + 1,
-         .base_array_layer = obj->MinLayer,
+         .base_array_layer = obj->Attrib.MinLayer,
          .array_len = view_num_layers,
          .swizzle = {
             .r = swizzle_to_scs(GET_SWZ(swizzle, 0), need_green_to_blue),
@@ -1151,7 +1151,7 @@ is_depth_texture(struct intel_texture_object *iobj)
 {
    GLenum base_format = _mesa_get_format_base_format(iobj->_Format);
    return base_format == GL_DEPTH_COMPONENT ||
-          (base_format == GL_DEPTH_STENCIL && !iobj->base.Attrib.StencilSampling);
+          (base_format == GL_DEPTH_STENCIL && !iobj->base.StencilSampling);
 }
 
 static void
@@ -1550,20 +1550,20 @@ update_image_surface(struct brw_context *brw,
                base_layer = 0;
                num_layers = minify(mt->surf.logical_level0_px.depth, u->Level);
             } else {
-               assert(obj->Immutable || obj->MinLayer == 0);
-               base_layer = obj->MinLayer;
+               assert(obj->Immutable || obj->Attrib.MinLayer == 0);
+               base_layer = obj->Attrib.MinLayer;
                num_layers = obj->Immutable ?
-                                obj->NumLayers :
+                                obj->Attrib.NumLayers :
                                 mt->surf.logical_level0_px.array_len;
             }
          } else {
-            base_layer = obj->MinLayer + u->_Layer;
+            base_layer = obj->Attrib.MinLayer + u->_Layer;
             num_layers = 1;
          }
 
          struct isl_view view = {
             .format = format,
-            .base_level = obj->MinLevel + u->Level,
+            .base_level = obj->Attrib.MinLevel + u->Level,
             .levels = 1,
             .base_array_layer = base_layer,
             .array_len = num_layers,

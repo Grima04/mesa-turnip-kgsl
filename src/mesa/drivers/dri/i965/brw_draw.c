@@ -547,11 +547,11 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
 
       unsigned min_level, min_layer, num_levels, num_layers;
       if (tex_obj->base.Immutable) {
-         min_level  = tex_obj->base.MinLevel;
-         num_levels = MIN2(tex_obj->base.NumLevels, tex_obj->_MaxLevel + 1);
-         min_layer  = tex_obj->base.MinLayer;
+         min_level  = tex_obj->base.Attrib.MinLevel;
+         num_levels = MIN2(tex_obj->base.Attrib.NumLevels, tex_obj->_MaxLevel + 1);
+         min_layer  = tex_obj->base.Attrib.MinLayer;
          num_layers = tex_obj->base.Target != GL_TEXTURE_3D ?
-                      tex_obj->base.NumLayers : INTEL_REMAINING_LAYERS;
+                      tex_obj->base.Attrib.NumLayers : INTEL_REMAINING_LAYERS;
       } else {
          min_level  = tex_obj->base.Attrib.BaseLevel;
          num_levels = tex_obj->_MaxLevel - tex_obj->base.Attrib.BaseLevel + 1;
@@ -586,7 +586,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
 
       brw_cache_flush_for_read(brw, tex_obj->mt->bo);
 
-      if (tex_obj->base.Attrib.StencilSampling ||
+      if (tex_obj->base.StencilSampling ||
           tex_obj->mt->format == MESA_FORMAT_S_UINT8) {
          intel_update_r8stencil(brw, tex_obj->mt);
       }

@@ -386,7 +386,7 @@ set_tex_parameteri(struct gl_context *ctx,
 
       /** See note about ARB_texture_storage below */
       if (texObj->Immutable)
-         texObj->Attrib.BaseLevel = MIN2(texObj->ImmutableLevels - 1, params[0]);
+         texObj->Attrib.BaseLevel = MIN2(texObj->Attrib.ImmutableLevels - 1, params[0]);
       else
          texObj->Attrib.BaseLevel = params[0];
 
@@ -413,7 +413,7 @@ set_tex_parameteri(struct gl_context *ctx,
        */
       if (texObj->Immutable)
           texObj->Attrib.MaxLevel = CLAMP(params[0], texObj->Attrib.BaseLevel,
-                                   texObj->ImmutableLevels - 1);
+                                   texObj->Attrib.ImmutableLevels - 1);
       else
          texObj->Attrib.MaxLevel = params[0];
 
@@ -503,10 +503,10 @@ set_tex_parameteri(struct gl_context *ctx,
          if (!stencil && params[0] != GL_DEPTH_COMPONENT)
             goto invalid_param;
 
-         if (texObj->Attrib.StencilSampling == stencil)
+         if (texObj->StencilSampling == stencil)
             return GL_FALSE;
 
-         texObj->Attrib.StencilSampling = stencil;
+         texObj->StencilSampling = stencil;
          return GL_TRUE;
       }
       goto invalid_pname;
@@ -2246,7 +2246,7 @@ get_tex_parameterfv(struct gl_context *ctx,
          if (!_mesa_has_ARB_stencil_texturing(ctx) && !_mesa_is_gles31(ctx))
             goto invalid_pname;
          *params = (GLfloat)
-            (obj->Attrib.StencilSampling ? GL_STENCIL_INDEX : GL_DEPTH_COMPONENT);
+            (obj->StencilSampling ? GL_STENCIL_INDEX : GL_DEPTH_COMPONENT);
          break;
       case GL_TEXTURE_LOD_BIAS:
          if (_mesa_is_gles(ctx))
@@ -2302,7 +2302,7 @@ get_tex_parameterfv(struct gl_context *ctx,
 
       case GL_TEXTURE_IMMUTABLE_LEVELS:
          if (_mesa_is_gles3(ctx) || _mesa_has_texture_view(ctx))
-            *params = (GLfloat) obj->ImmutableLevels;
+            *params = (GLfloat) obj->Attrib.ImmutableLevels;
          else
             goto invalid_pname;
          break;
@@ -2310,25 +2310,25 @@ get_tex_parameterfv(struct gl_context *ctx,
       case GL_TEXTURE_VIEW_MIN_LEVEL:
          if (!_mesa_has_texture_view(ctx))
             goto invalid_pname;
-         *params = (GLfloat) obj->MinLevel;
+         *params = (GLfloat) obj->Attrib.MinLevel;
          break;
 
       case GL_TEXTURE_VIEW_NUM_LEVELS:
          if (!_mesa_has_texture_view(ctx))
             goto invalid_pname;
-         *params = (GLfloat) obj->NumLevels;
+         *params = (GLfloat) obj->Attrib.NumLevels;
          break;
 
       case GL_TEXTURE_VIEW_MIN_LAYER:
          if (!_mesa_has_texture_view(ctx))
             goto invalid_pname;
-         *params = (GLfloat) obj->MinLayer;
+         *params = (GLfloat) obj->Attrib.MinLayer;
          break;
 
       case GL_TEXTURE_VIEW_NUM_LAYERS:
          if (!_mesa_has_texture_view(ctx))
             goto invalid_pname;
-         *params = (GLfloat) obj->NumLayers;
+         *params = (GLfloat) obj->Attrib.NumLayers;
          break;
 
       case GL_REQUIRED_TEXTURE_IMAGE_UNITS_OES:
@@ -2346,7 +2346,7 @@ get_tex_parameterfv(struct gl_context *ctx,
       case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
          if (!ctx->Extensions.ARB_shader_image_load_store)
             goto invalid_pname;
-         *params = (GLfloat) obj->ImageFormatCompatibilityType;
+         *params = (GLfloat) obj->Attrib.ImageFormatCompatibilityType;
          break;
 
       case GL_TEXTURE_TARGET:
@@ -2508,7 +2508,7 @@ get_tex_parameteriv(struct gl_context *ctx,
          if (!_mesa_has_ARB_stencil_texturing(ctx) && !_mesa_is_gles31(ctx))
             goto invalid_pname;
          *params = (GLint)
-            (obj->Attrib.StencilSampling ? GL_STENCIL_INDEX : GL_DEPTH_COMPONENT);
+            (obj->StencilSampling ? GL_STENCIL_INDEX : GL_DEPTH_COMPONENT);
          break;
       case GL_TEXTURE_LOD_BIAS:
          if (_mesa_is_gles(ctx))
@@ -2568,7 +2568,7 @@ get_tex_parameteriv(struct gl_context *ctx,
       case GL_TEXTURE_IMMUTABLE_LEVELS:
          if (_mesa_is_gles3(ctx) ||
              (_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_view))
-            *params = obj->ImmutableLevels;
+            *params = obj->Attrib.ImmutableLevels;
          else
             goto invalid_pname;
          break;
@@ -2576,25 +2576,25 @@ get_tex_parameteriv(struct gl_context *ctx,
       case GL_TEXTURE_VIEW_MIN_LEVEL:
          if (!ctx->Extensions.ARB_texture_view)
             goto invalid_pname;
-         *params = (GLint) obj->MinLevel;
+         *params = (GLint) obj->Attrib.MinLevel;
          break;
 
       case GL_TEXTURE_VIEW_NUM_LEVELS:
          if (!ctx->Extensions.ARB_texture_view)
             goto invalid_pname;
-         *params = (GLint) obj->NumLevels;
+         *params = (GLint) obj->Attrib.NumLevels;
          break;
 
       case GL_TEXTURE_VIEW_MIN_LAYER:
          if (!ctx->Extensions.ARB_texture_view)
             goto invalid_pname;
-         *params = (GLint) obj->MinLayer;
+         *params = (GLint) obj->Attrib.MinLayer;
          break;
 
       case GL_TEXTURE_VIEW_NUM_LAYERS:
          if (!ctx->Extensions.ARB_texture_view)
             goto invalid_pname;
-         *params = (GLint) obj->NumLayers;
+         *params = (GLint) obj->Attrib.NumLayers;
          break;
 
       case GL_REQUIRED_TEXTURE_IMAGE_UNITS_OES:
@@ -2612,7 +2612,7 @@ get_tex_parameteriv(struct gl_context *ctx,
       case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
          if (!ctx->Extensions.ARB_shader_image_load_store)
             goto invalid_pname;
-         *params = obj->ImageFormatCompatibilityType;
+         *params = obj->Attrib.ImageFormatCompatibilityType;
          break;
 
       case GL_TEXTURE_TARGET:

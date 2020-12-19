@@ -3710,7 +3710,7 @@ check_level(struct gl_context *ctx, struct gl_texture_object *texObj,
     *     greater than or equal to zero and smaller than the value of
     *     TEXTURE_VIEW_NUM_LEVELS for texture."
     */
-   const int max_levels = texObj->Immutable ? texObj->ImmutableLevels :
+   const int max_levels = texObj->Immutable ? texObj->Attrib.ImmutableLevels :
                           _mesa_max_texture_levels(ctx, target);
 
    if (level < 0 || level >= max_levels) {

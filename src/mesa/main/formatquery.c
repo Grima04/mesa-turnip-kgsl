@@ -1458,7 +1458,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        * just with the purpose of getting the value.
        */
       struct gl_texture_object *tex_obj = _mesa_new_texture_object(ctx, 0, target);
-      buffer[0] = tex_obj->ImageFormatCompatibilityType;
+      buffer[0] = tex_obj->Attrib.ImageFormatCompatibilityType;
       _mesa_delete_texture_object(ctx, tex_obj);
 
       break;

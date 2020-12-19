@@ -495,7 +495,7 @@ _mesa_is_image_unit_valid(struct gl_context *ctx, struct gl_image_unit *u)
    if (!tex_format)
       return GL_FALSE;
 
-   switch (t->ImageFormatCompatibilityType) {
+   switch (t->Attrib.ImageFormatCompatibilityType) {
    case GL_IMAGE_FORMAT_COMPATIBILITY_BY_SIZE:
       if (_mesa_get_format_bytes(tex_format) !=
           _mesa_get_format_bytes(u->_ActualFormat))
