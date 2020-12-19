@@ -87,7 +87,9 @@ _mesa_PushAttrib(GLbitfield mask)
       }
       ctx->AttribStack[ctx->AttribStackDepth] = head;
    }
+
    head->Mask = mask;
+   head->OldPopAttribStateMask = ctx->PopAttribState;
 
    if (mask & GL_ACCUM_BUFFER_BIT)
       memcpy(&head->Accum, &ctx->Accum, sizeof(head->Accum));
@@ -276,6 +278,7 @@ _mesa_PushAttrib(GLbitfield mask)
       memcpy(&head->Multisample, &ctx->Multisample, sizeof(head->Multisample));
 
    ctx->AttribStackDepth++;
+   ctx->PopAttribState = 0;
 }
 
 
@@ -666,6 +669,15 @@ _mesa_PopAttrib(void)
 
    unsigned mask = attr->Mask;
 
+   /* Flush current attribs. This must be done before PopAttribState is
+    * applied.
+    */
+   if (mask & GL_CURRENT_BIT)
+      FLUSH_CURRENT(ctx, 0);
+
+   /* Only restore states that have been changed since glPushAttrib. */
+   mask &= ctx->PopAttribState;
+
    if (mask & GL_ACCUM_BUFFER_BIT) {
       _mesa_ClearAccum(attr->Accum.ClearColor[0],
                        attr->Accum.ClearColor[1],
@@ -805,7 +817,6 @@ _mesa_PopAttrib(void)
    }
 
    if (mask & GL_CURRENT_BIT) {
-      FLUSH_CURRENT(ctx, 0);
       memcpy(&ctx->Current, &attr->Current,
              sizeof(struct gl_current_attrib));
       /* Set _NEW_LIGHT because current attribs may reference materials. */
@@ -1202,6 +1213,8 @@ _mesa_PopAttrib(void)
       TEST_AND_CALL1(Multisample.SampleAlphaToCoverageDitherControl,
                      AlphaToCoverageDitherControlNV);
    }
+
+   ctx->PopAttribState = attr->OldPopAttribStateMask;
 }
 
 
