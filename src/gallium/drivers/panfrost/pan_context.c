@@ -1446,7 +1446,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
                         for (int i = 0; i < dev->core_count; ++i)
                                 passed += result[i];
 
-                        if (!query->msaa)
+                        if (!(dev->quirks & IS_BIFROST) && !query->msaa)
                                 passed /= 4;
 
                         vresult->u64 = passed;
