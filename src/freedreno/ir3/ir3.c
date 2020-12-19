@@ -302,6 +302,23 @@ static int emit_cat2(struct ir3_instruction *instr, void *ptr,
 		cat2->src2_abs = !!(src2->flags & (IR3_REG_FABS | IR3_REG_SABS));
 	}
 
+	if (!ir3_cat2_int(instr->opc)) {
+		/* For floating point ALU with immediate arg, it will be a
+		 * FLUT index
+		 */
+		if (src1->flags & IR3_REG_IMMED) {
+			cat2->must_be_zero1 = 1;
+			if (src1->flags & IR3_REG_HALF)
+				cat2->src1 |= 0x400;
+		}
+
+		if (src2 && (src2->flags & IR3_REG_IMMED)) {
+			cat2->must_be_zero2 = 1;
+			if (src2->flags & IR3_REG_HALF)
+				cat2->src2 |= 0x400;
+		}
+	}
+
 	cat2->dst      = reg(dst, info, instr->repeat,
 			IR3_REG_R | IR3_REG_EI | IR3_REG_HALF | IR3_REG_SHARED);
 	cat2->repeat   = instr->repeat;

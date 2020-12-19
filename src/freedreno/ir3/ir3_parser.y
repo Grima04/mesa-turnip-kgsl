@@ -36,6 +36,7 @@ struct ir3 * ir3_parse(struct ir3_shader_variant *v,
 #include <string.h>
 #include <math.h>
 
+#include "util/half_float.h"
 #include "util/u_math.h"
 
 #include "ir3/ir3.h"
@@ -266,12 +267,27 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 
 %token <tok> T_HR
 %token <tok> T_HC
+%token <tok> T_HP
 
 /* dst register flags */
 %token <tok> T_EVEN
 %token <tok> T_POS_INFINITY
 %token <tok> T_EI
 %token <num> T_WRMASK
+
+/* Float LUT values accepted as immed: */
+%token <num> T_FLUT_0_0
+%token <num> T_FLUT_0_5
+%token <num> T_FLUT_1_0
+%token <num> T_FLUT_2_0
+%token <num> T_FLUT_E
+%token <num> T_FLUT_PI
+%token <num> T_FLUT_INV_PI
+%token <num> T_FLUT_INV_LOG2_E
+%token <num> T_FLUT_LOG2_E
+%token <num> T_FLUT_INV_LOG2_10
+%token <num> T_FLUT_LOG2_10
+%token <num> T_FLUT_4_0
 
 /* instruction flags */
 %token <tok> T_SY
@@ -502,6 +518,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <str> T_CAT1_TYPE_TYPE
 
 %type <num> integer offset
+%type <num> flut_immed
 %type <flt> float
 %type <reg> reg const
 %type <tok> cat1_opc
@@ -654,6 +671,9 @@ cat1_opc:          T_OP_MOV '.' T_CAT1_TYPE_TYPE {
                        parse_type_type(new_instr(OPC_MOV), $3);
 }
 
+cat1_src:          src_reg_or_const_or_rel
+|                  immediate_cat1
+
 cat1_movmsk:       T_OP_MOVMSK '.' T_W {
                        new_instr(OPC_MOVMSK);
                        instr->cat1.src_type = TYPE_U32;
@@ -667,21 +687,21 @@ cat1_mova1:        T_OP_MOVA1 T_A1 ',' {
                        instr->cat1.src_type = TYPE_U16;
                        instr->cat1.dst_type = TYPE_U16;
                        new_reg((61 << 3) + 2, IR3_REG_HALF);
-                   } src_reg_or_const_or_rel_or_imm
+                   } cat1_src
 
 cat1_mova:         T_OP_MOVA T_A0 ',' {
                        new_instr(OPC_MOV);
                        instr->cat1.src_type = TYPE_S16;
                        instr->cat1.dst_type = TYPE_S16;
                        new_reg((61 << 3), IR3_REG_HALF);
-                   } src_reg_or_const_or_rel_or_imm
+                   } cat1_src
 
                    /* NOTE: cat1 can also *write* to relative gpr */
 cat1_instr:        cat1_movmsk
 |                  cat1_mova1
 |                  cat1_mova
-|                  cat1_opc dst_reg ',' src_reg_or_const_or_rel_or_imm
-|                  cat1_opc relative_gpr ',' src_reg_or_const_or_rel_or_imm
+|                  cat1_opc dst_reg ',' cat1_src
+|                  cat1_opc relative_gpr ',' cat1_src
 
 cat2_opc_1src:     T_OP_ABSNEG_F  { new_instr(OPC_ABSNEG_F); }
 |                  T_OP_ABSNEG_S  { new_instr(OPC_ABSNEG_S); }
@@ -956,11 +976,37 @@ relative_const:    'c' '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV | IR3_R
 relative:          relative_gpr
 |                  relative_const
 
-immediate:         integer             { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
+/* cat1 immediates differ slighly in the floating point case from the cat2
+ * case which can only encode certain predefined values (ie. and index into
+ * the FLUT table)
+ */
+immediate_cat1:    integer             { new_reg(0, IR3_REG_IMMED)->iim_val = type_size(instr->cat1.src_type) < 32 ? $1 & 0xffff : $1; }
 |                  '(' integer ')'     { new_reg(0, IR3_REG_IMMED)->fim_val = $2; }
 |                  '(' float ')'       { new_reg(0, IR3_REG_IMMED)->fim_val = $2; }
+|                  T_HP integer ')'    { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->iim_val = $2 & 0xffff; }
+|                  T_HP float ')'      { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->uim_val = _mesa_float_to_half($2); }
 |                  '(' T_NAN ')'       { new_reg(0, IR3_REG_IMMED)->fim_val = NAN; }
 |                  '(' T_INF ')'       { new_reg(0, IR3_REG_IMMED)->fim_val = INFINITY; }
+
+immediate:         integer             { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
+|                  '(' integer ')'     { new_reg(0, IR3_REG_IMMED)->fim_val = $2; }
+|                  '(' flut_immed ')'  { new_reg(0, IR3_REG_IMMED)->uim_val = $2; }
+|                  T_HP integer ')'    { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->iim_val = $2; }
+|                  T_HP flut_immed ')' { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->uim_val = $2; }
+
+/* Float LUT values accepted as immed: */
+flut_immed:        T_FLUT_0_0
+|                  T_FLUT_0_5
+|                  T_FLUT_1_0
+|                  T_FLUT_2_0
+|                  T_FLUT_E
+|                  T_FLUT_PI
+|                  T_FLUT_INV_PI
+|                  T_FLUT_INV_LOG2_E
+|                  T_FLUT_LOG2_E
+|                  T_FLUT_INV_LOG2_10
+|                  T_FLUT_LOG2_10
+|                  T_FLUT_4_0
 
 integer:           T_INT       { $$ = $1; }
 |                  '-' T_INT   { $$ = -$2; }
