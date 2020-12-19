@@ -39,6 +39,7 @@ dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.3,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.points.3,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.triangles.3,Fail
 dEQP-GLES31.functional.image_load_store.cube.format_reinterpret.r32i_rgba8,Fail
+dEQP-GLES31.functional.image_load_store.cube.format_reinterpret.rgba32f_rgba32ui,Fail
 dEQP-GLES31.functional.image_load_store.cube.format_reinterpret.rgba8_snorm_r32ui,Fail
 dEQP-GLES31.functional.image_load_store.cube.format_reinterpret.rgba8i_r32f,Fail
 dEQP-GLES31.functional.image_load_store.cube.load_store.r32f_single_layer,Fail

@@ -4,6 +4,7 @@ dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_unorm.r16g16
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_unorm.a2b10g10r10_unorm_pack32.optimal_optimal_linear,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_unorm.r16g16_unorm.general_optimal_linear,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_unorm.r16g16b16a16_unorm.linear_general_linear,Fail
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8_unorm.r16g16b16a16_unorm.general_optimal_linear,Fail
 dEQP-VK.glsl.builtin.precision.pow.highp.vec3,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_fixed_fragment,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_fixed_fragment,Fail
