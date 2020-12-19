@@ -924,7 +924,7 @@ _mesa_PopAttrib(void)
                            (GLfloat) attr->Light.Model.ColorControl);
       } else {
          /* Fast path for other drivers. */
-         FLUSH_VERTICES(ctx, _NEW_LIGHT);
+         ctx->NewState |= _NEW_LIGHT;
 
          memcpy(ctx->Light.LightSource, attr->Light.LightSource,
                 sizeof(attr->Light.LightSource));
