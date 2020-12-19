@@ -466,7 +466,7 @@ pop_enable_group(struct gl_context *ctx, const struct gl_enable_attrib_node *ena
       if (old_enabled == enabled && old_gen_enabled == gen_enabled)
          continue;
 
-      _mesa_ActiveTexture(GL_TEXTURE0 + i);
+      ctx->Texture.CurrentUnit = i;
 
       if (old_enabled != enabled) {
          TEST_AND_UPDATE_BIT(old_enabled, enabled, TEXTURE_1D_INDEX, GL_TEXTURE_1D);
@@ -490,7 +490,7 @@ pop_enable_group(struct gl_context *ctx, const struct gl_enable_attrib_node *ena
       }
    }
 
-   _mesa_ActiveTexture(GL_TEXTURE0 + curTexUnitSave);
+   ctx->Texture.CurrentUnit = curTexUnitSave;
 }
 
 
@@ -511,7 +511,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          &ctx->Texture.FixedFuncUnit[u];
       GLuint tgt;
 
-      _mesa_ActiveTexture(GL_TEXTURE0_ARB + u);
+      ctx->Texture.CurrentUnit = u;
 
       if (ctx->Driver.TexEnv || ctx->Driver.TexGen) {
          /* Slow path for legacy classic drivers. */
