@@ -655,7 +655,9 @@ cat1_opc:          T_OP_MOVA {
                        parse_type_type(new_instr(OPC_MOV), $3);
 }
 
+                   /* NOTE: cat1 can also *write* to relative gpr */
 cat1_instr:        cat1_opc dst_reg ',' src_reg_or_const_or_rel_or_imm
+|                  cat1_opc relative_gpr ',' src_reg_or_const_or_rel_or_imm
 
 cat2_opc_1src:     T_OP_ABSNEG_F  { new_instr(OPC_ABSNEG_F); }
 |                  T_OP_ABSNEG_S  { new_instr(OPC_ABSNEG_S); }
@@ -920,10 +922,14 @@ offset:            { $$ = 0; }
 |                  '+' integer { $$ = $2; }
 |                  '-' integer { $$ = -$2; }
 
-relative:          'r' '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV)->array.offset = $4; }
-|                  'c' '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV | IR3_REG_CONST)->array.offset = $4; }
+relative_gpr:      'r' '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV)->array.offset = $4; }
 |                  T_HR '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV | IR3_REG_HALF)->array.offset = $4; }
+
+relative_const:    'c' '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV | IR3_REG_CONST)->array.offset = $4; }
 |                  T_HC '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV | IR3_REG_CONST | IR3_REG_HALF)->array.offset = $4; }
+
+relative:          relative_gpr
+|                  relative_const
 
 immediate:         integer             { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
 |                  '(' integer ')'     { new_reg(0, IR3_REG_IMMED)->fim_val = $2; }
