@@ -161,7 +161,7 @@ intel_dri2_flush_with_flags(__DRIcontext *cPriv,
 
    _mesa_glthread_finish(ctx);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (flags & __DRI2_FLUSH_DRAWABLE)
       intel_resolve_for_dri2_flush(brw, dPriv);

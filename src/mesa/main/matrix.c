@@ -115,7 +115,7 @@ static void matrix_frustum(struct gl_matrix_stack* stack,
       return;
    }
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    _math_matrix_frustum(stack->Top,
                         (GLfloat) left, (GLfloat) right,
@@ -196,7 +196,7 @@ matrix_ortho(struct gl_matrix_stack* stack,
       return;
    }
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    _math_matrix_ortho( stack->Top,
                        (GLfloat) left, (GLfloat) right,
@@ -285,6 +285,7 @@ _mesa_MatrixMode( GLenum mode )
    if (stack) {
       ctx->CurrentStack = stack;
       ctx->Transform.MatrixMode = mode;
+      ctx->PopAttribState |= GL_TRANSFORM_BIT;
    }
 }
 
@@ -377,7 +378,7 @@ pop_matrix( struct gl_context *ctx, struct gl_matrix_stack *stack )
     */
    if (memcmp(stack->Top, &stack->Stack[stack->Depth],
               sizeof(GLmatrix))) {
-      FLUSH_VERTICES(ctx, 0);
+      FLUSH_VERTICES(ctx, 0, 0);
       ctx->NewState |= stack->DirtyFlag;
    }
 
@@ -445,7 +446,7 @@ _mesa_MatrixPopEXT( GLenum matrixMode )
 void
 _mesa_load_identity_matrix(struct gl_context *ctx, struct gl_matrix_stack *stack)
 {
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    _math_matrix_set_identity(stack->Top);
    ctx->NewState |= stack->DirtyFlag;
@@ -491,7 +492,7 @@ _mesa_load_matrix(struct gl_context *ctx, struct gl_matrix_stack *stack,
                   const GLfloat *m)
 {
    if (memcmp(m, stack->Top->m, 16 * sizeof(GLfloat)) != 0) {
-      FLUSH_VERTICES(ctx, 0);
+      FLUSH_VERTICES(ctx, 0, 0);
       _math_matrix_loadf(stack->Top, m);
       ctx->NewState |= stack->DirtyFlag;
    }
@@ -575,7 +576,7 @@ matrix_mult(struct gl_matrix_stack *stack, const GLfloat *m, const char* caller)
           m[2], m[6], m[10], m[14],
           m[3], m[7], m[11], m[15]);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    _math_matrix_mul_floats(stack->Top, m);
    ctx->NewState |= stack->DirtyFlag;
 }
@@ -619,7 +620,7 @@ matrix_rotate(struct gl_matrix_stack *stack, GLfloat angle,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    if (angle != 0.0F) {
       _math_matrix_rotate(stack->Top, angle, x, y, z);
       ctx->NewState |=stack->DirtyFlag;
@@ -680,7 +681,7 @@ _mesa_Scalef( GLfloat x, GLfloat y, GLfloat z )
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    _math_matrix_scale( ctx->CurrentStack->Top, x, y, z);
    ctx->NewState |= ctx->CurrentStack->DirtyFlag;
 }
@@ -696,7 +697,7 @@ _mesa_MatrixScalefEXT( GLenum matrixMode, GLfloat x, GLfloat y, GLfloat z )
    if (!stack)
       return;
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    _math_matrix_scale(stack->Top, x, y, z);
    ctx->NewState |= stack->DirtyFlag;
 }
@@ -720,7 +721,7 @@ _mesa_Translatef( GLfloat x, GLfloat y, GLfloat z )
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    _math_matrix_translate( ctx->CurrentStack->Top, x, y, z);
    ctx->NewState |= ctx->CurrentStack->DirtyFlag;
 }
@@ -735,7 +736,7 @@ _mesa_MatrixTranslatefEXT( GLenum matrixMode, GLfloat x, GLfloat y, GLfloat z )
    if (!stack)
       return;
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    _math_matrix_translate(stack->Top, x, y, z);
    ctx->NewState |= stack->DirtyFlag;
 }

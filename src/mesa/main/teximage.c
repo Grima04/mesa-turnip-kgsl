@@ -2968,7 +2968,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
    mesa_format texFormat;
    bool dimensionsOK = true, sizeOK = true;
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (MESA_VERBOSE & (VERBOSE_API|VERBOSE_TEXTURE)) {
       if (compressed)
@@ -3397,7 +3397,7 @@ egl_image_target_texture(struct gl_context *ctx,
 {
    struct gl_texture_image *texImage;
    bool valid_target;
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    switch (target) {
    case GL_TEXTURE_2D:
@@ -3562,7 +3562,7 @@ texture_sub_image(struct gl_context *ctx, GLuint dims,
                   GLsizei width, GLsizei height, GLsizei depth,
                   GLenum format, GLenum type, const GLvoid *pixels)
 {
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (ctx->NewState & _NEW_PIXEL)
       _mesa_update_state(ctx);
@@ -4241,7 +4241,7 @@ copy_texture_sub_image_err(struct gl_context *ctx, GLuint dims,
                            GLint x, GLint y, GLsizei width, GLsizei height,
                            const char *caller)
 {
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (MESA_VERBOSE & (VERBOSE_API|VERBOSE_TEXTURE))
       _mesa_debug(ctx, "%s %s %d %d %d %d %d %d %d %d\n", caller,
@@ -4269,7 +4269,7 @@ copy_texture_sub_image_no_error(struct gl_context *ctx, GLuint dims,
                                 GLint xoffset, GLint yoffset, GLint zoffset,
                                 GLint x, GLint y, GLsizei width, GLsizei height)
 {
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (ctx->NewState & NEW_COPY_TEX_STATE)
       _mesa_update_state(ctx);
@@ -4291,7 +4291,7 @@ copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texO
    struct gl_texture_image *texImage;
    mesa_format texFormat;
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (MESA_VERBOSE & (VERBOSE_API|VERBOSE_TEXTURE))
       _mesa_debug(ctx, "glCopyTexImage%uD %s %d %s %d %d %d %d %d\n",
@@ -5659,7 +5659,7 @@ compressed_texture_sub_image(struct gl_context *ctx, GLuint dims,
                              GLsizei height, GLsizei depth, GLenum format,
                              GLsizei imageSize, const GLvoid *data)
 {
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    _mesa_lock_texture(ctx, texObj);
    {
@@ -6331,7 +6331,7 @@ texture_buffer_range(struct gl_context *ctx,
       return;
    }
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, GL_TEXTURE_BIT);
 
    _mesa_lock_texture(ctx, texObj);
    {

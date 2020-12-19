@@ -51,7 +51,7 @@ _mesa_ShadeModel( GLenum mode )
       return;
    }
 
-   FLUSH_VERTICES(ctx, _NEW_LIGHT);
+   FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
    ctx->Light.ShadeModel = mode;
 
    if (ctx->Driver.ShadeModel)
@@ -84,7 +84,7 @@ _mesa_ProvokingVertex(GLenum mode)
       return;
    }
 
-   FLUSH_VERTICES(ctx, _NEW_LIGHT);
+   FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
    ctx->Light.ProvokingVertex = mode;
 }
 
@@ -110,26 +110,26 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
    case GL_AMBIENT:
       if (TEST_EQ_4V(lu->Ambient, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       COPY_4V( lu->Ambient, params );
       break;
    case GL_DIFFUSE:
       if (TEST_EQ_4V(lu->Diffuse, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       COPY_4V( lu->Diffuse, params );
       break;
    case GL_SPECULAR:
       if (TEST_EQ_4V(lu->Specular, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       COPY_4V( lu->Specular, params );
       break;
    case GL_POSITION: {
       /* NOTE: position has already been transformed by ModelView! */
       if (TEST_EQ_4V(lu->EyePosition, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       COPY_4V(lu->EyePosition, params);
       if (lu->EyePosition[3] != 0.0F)
 	 light->_Flags |= LIGHT_POSITIONAL;
@@ -154,7 +154,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
       /* NOTE: Direction already transformed by inverse ModelView! */
       if (TEST_EQ_3V(lu->SpotDirection, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       COPY_3V(lu->SpotDirection, params);
       break;
    case GL_SPOT_EXPONENT:
@@ -162,14 +162,14 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
       assert(params[0] <= ctx->Const.MaxSpotExponent);
       if (lu->SpotExponent == params[0])
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       lu->SpotExponent = params[0];
       break;
    case GL_SPOT_CUTOFF:
       assert(params[0] == 180.0F || (params[0] >= 0.0F && params[0] <= 90.0F));
       if (lu->SpotCutoff == params[0])
          return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       lu->SpotCutoff = params[0];
       lu->_CosCutoff = (cosf(lu->SpotCutoff * M_PI / 180.0));
       if (lu->_CosCutoff < 0)
@@ -183,21 +183,21 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
       assert(params[0] >= 0.0F);
       if (lu->ConstantAttenuation == params[0])
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       lu->ConstantAttenuation = params[0];
       break;
    case GL_LINEAR_ATTENUATION:
       assert(params[0] >= 0.0F);
       if (lu->LinearAttenuation == params[0])
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       lu->LinearAttenuation = params[0];
       break;
    case GL_QUADRATIC_ATTENUATION:
       assert(params[0] >= 0.0F);
       if (lu->QuadraticAttenuation == params[0])
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
       lu->QuadraticAttenuation = params[0];
       break;
    default:
@@ -461,7 +461,7 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
       case GL_LIGHT_MODEL_AMBIENT:
          if (TEST_EQ_4V( ctx->Light.Model.Ambient, params ))
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
          COPY_4V( ctx->Light.Model.Ambient, params );
          break;
       case GL_LIGHT_MODEL_LOCAL_VIEWER:
@@ -470,14 +470,14 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
          newbool = (params[0] != 0.0F);
 	 if (ctx->Light.Model.LocalViewer == newbool)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
 	 ctx->Light.Model.LocalViewer = newbool;
          break;
       case GL_LIGHT_MODEL_TWO_SIDE:
          newbool = (params[0] != 0.0F);
 	 if (ctx->Light.Model.TwoSide == newbool)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
 	 ctx->Light.Model.TwoSide = newbool;
          break;
       case GL_LIGHT_MODEL_COLOR_CONTROL:
@@ -494,7 +494,7 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
          }
 	 if (ctx->Light.Model.ColorControl == newenum)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
 	 ctx->Light.Model.ColorControl = newenum;
          break;
       default:
@@ -763,7 +763,7 @@ _mesa_ColorMaterial( GLenum face, GLenum mode )
        ctx->Light.ColorMaterialMode == mode)
       return;
 
-   FLUSH_VERTICES(ctx, _NEW_LIGHT);
+   FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
    ctx->Light._ColorMaterialBitmask = bitmask;
    ctx->Light.ColorMaterialFace = face;
    ctx->Light.ColorMaterialMode = mode;
@@ -784,8 +784,8 @@ _mesa_GetMaterialfv( GLenum face, GLenum pname, GLfloat *params )
    GET_CURRENT_CONTEXT(ctx);
    GLuint f;
    GLfloat (*mat)[4] = ctx->Light.Material.Attrib;
-   FLUSH_VERTICES(ctx, 0); /* update materials */
 
+   FLUSH_VERTICES(ctx, 0, 0); /* update materials */
    FLUSH_CURRENT(ctx, 0); /* update ctx->Light.Material from vertex buffer */
 
    if (face==GL_FRONT) {
@@ -839,7 +839,7 @@ _mesa_GetMaterialiv( GLenum face, GLenum pname, GLint *params )
 
    assert(ctx->API == API_OPENGL_COMPAT);
 
-   FLUSH_VERTICES(ctx, 0); /* update materials */
+   FLUSH_VERTICES(ctx, 0, 0); /* update materials */
    FLUSH_CURRENT(ctx, 0); /* update ctx->Light.Material from vertex buffer */
 
    if (face==GL_FRONT) {

@@ -892,6 +892,7 @@ _mesa_dirty_texobj(struct gl_context *ctx, struct gl_texture_object *texObj)
    texObj->_BaseComplete = GL_FALSE;
    texObj->_MipmapComplete = GL_FALSE;
    ctx->NewState |= _NEW_TEXTURE_OBJECT;
+   ctx->PopAttribState |= GL_TEXTURE_BIT;
 }
 
 
@@ -1395,6 +1396,7 @@ unbind_textures_from_unit(struct gl_context *ctx, GLuint unit)
 
       texUnit->_BoundTextures &= ~(1 << index);
       ctx->NewState |= _NEW_TEXTURE_OBJECT;
+      ctx->PopAttribState |= GL_TEXTURE_BIT;
    }
 }
 
@@ -1416,7 +1418,7 @@ unbind_textures_from_unit(struct gl_context *ctx, GLuint unit)
 static void
 delete_textures(struct gl_context *ctx, GLsizei n, const GLuint *textures)
 {
-   FLUSH_VERTICES(ctx, 0); /* too complex */
+   FLUSH_VERTICES(ctx, 0, 0); /* too complex */
 
    if (!textures)
       return;
@@ -1454,6 +1456,7 @@ delete_textures(struct gl_context *ctx, GLsizei n, const GLuint *textures)
             _mesa_unlock_texture(ctx, delObj);
 
             ctx->NewState |= _NEW_TEXTURE_OBJECT;
+            ctx->PopAttribState |= GL_TEXTURE_BIT;
 
             /* The texture _name_ is now free for re-use.
              * Remove it from the hash table now.
@@ -1483,7 +1486,7 @@ _mesa_delete_nameless_texture(struct gl_context *ctx,
    if (!texObj)
       return;
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
 
    _mesa_lock_texture(ctx, texObj);
    {
@@ -1505,8 +1508,6 @@ _mesa_delete_nameless_texture(struct gl_context *ctx,
       unbind_texobj_from_image_units(ctx, texObj);
    }
    _mesa_unlock_texture(ctx, texObj);
-
-   ctx->NewState |= _NEW_TEXTURE_OBJECT;
 
    /* Unreference the texobj.  If refcount hits zero, the texture
     * will be deleted.
@@ -1632,8 +1633,14 @@ bind_texture_object(struct gl_context *ctx, unsigned unit,
       }
    }
 
-   /* flush before changing binding */
-   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+   /* Flush before changing binding.
+    *
+    * Note: Multisample textures don't need to flag GL_TEXTURE_BIT because
+    *       they are not restored by glPopAttrib according to the GL 4.6
+    *       Compatibility Profile specification. We set GL_TEXTURE_BIT anyway
+    *       to simplify the code. This has no effect on behavior.
+    */
+   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
 
    /* If the refcount on the previously bound texture is decremented to
     * zero, it'll be deleted here.
@@ -2025,7 +2032,6 @@ _mesa_PrioritizeTextures( GLsizei n, const GLuint *texName,
    if (MESA_VERBOSE & (VERBOSE_API|VERBOSE_TEXTURE))
       _mesa_debug(ctx, "glPrioritizeTextures %d\n", n);
 
-   FLUSH_VERTICES(ctx, 0);
 
    if (n < 0) {
       _mesa_error( ctx, GL_INVALID_VALUE, "glPrioritizeTextures" );
@@ -2035,6 +2041,8 @@ _mesa_PrioritizeTextures( GLsizei n, const GLuint *texName,
    if (!priorities)
       return;
 
+   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
+
    for (i = 0; i < n; i++) {
       if (texName[i] > 0) {
          struct gl_texture_object *t = _mesa_lookup_texture(ctx, texName[i]);
@@ -2043,8 +2051,6 @@ _mesa_PrioritizeTextures( GLsizei n, const GLuint *texName,
          }
       }
    }
-
-   ctx->NewState |= _NEW_TEXTURE_OBJECT;
 }
 
 
@@ -2150,6 +2156,7 @@ _mesa_lock_context_textures( struct gl_context *ctx )
 
    if (ctx->Shared->TextureStateStamp != ctx->TextureStateTimestamp) {
       ctx->NewState |= _NEW_TEXTURE_OBJECT;
+      ctx->PopAttribState |= GL_TEXTURE_BIT;
       ctx->TextureStateTimestamp = ctx->Shared->TextureStateStamp;
    }
 }

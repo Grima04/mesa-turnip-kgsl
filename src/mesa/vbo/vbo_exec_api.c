@@ -224,10 +224,13 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
           * that doesn't get used (eg light positions).
           */
          if (i >= VBO_ATTRIB_MAT_FRONT_AMBIENT &&
-             i <= VBO_ATTRIB_MAT_BACK_INDEXES)
+             i <= VBO_ATTRIB_MAT_BACK_INDEXES) {
             ctx->NewState |= _NEW_LIGHT;
+            ctx->PopAttribState |= GL_LIGHTING_BIT;
+         }
 
          ctx->NewState |= _NEW_CURRENT_ATTRIB;
+         ctx->PopAttribState |= GL_CURRENT_BIT;
       }
    }
 

@@ -232,7 +232,7 @@ _mesa_CreateSamplers(GLsizei count, GLuint *samplers)
 static void
 delete_samplers(struct gl_context *ctx, GLsizei count, const GLuint *samplers)
 {
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    _mesa_HashLockMutex(ctx->Shared->SamplerObjects);
 
@@ -246,7 +246,7 @@ delete_samplers(struct gl_context *ctx, GLsizei count, const GLuint *samplers)
             /* If the sampler is currently bound, unbind it. */
             for (j = 0; j < ctx->Const.MaxCombinedTextureImageUnits; j++) {
                if (ctx->Texture.Unit[j].Sampler == sampObj) {
-                  FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+                  FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
                   _mesa_reference_sampler_object(ctx, &ctx->Texture.Unit[j].Sampler, NULL);
                }
             }
@@ -300,7 +300,7 @@ _mesa_bind_sampler(struct gl_context *ctx, GLuint unit,
                    struct gl_sampler_object *sampObj)
 {
    if (ctx->Texture.Unit[unit].Sampler != sampObj) {
-      FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+      FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
    }
 
    _mesa_reference_sampler_object(ctx, &ctx->Texture.Unit[unit].Sampler,
@@ -357,7 +357,7 @@ bind_samplers(struct gl_context *ctx, GLuint first, GLsizei count,
 {
    GLsizei i;
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (samplers) {
       /* Note that the error semantics for multi-bind commands differ from
@@ -416,6 +416,7 @@ bind_samplers(struct gl_context *ctx, GLuint first, GLsizei count,
                                            &ctx->Texture.Unit[unit].Sampler,
                                            sampObj);
             ctx->NewState |= _NEW_TEXTURE_OBJECT;
+            ctx->PopAttribState |= GL_TEXTURE_BIT;
          }
       }
 
@@ -430,6 +431,7 @@ bind_samplers(struct gl_context *ctx, GLuint first, GLsizei count,
                                            &ctx->Texture.Unit[unit].Sampler,
                                            NULL);
             ctx->NewState |= _NEW_TEXTURE_OBJECT;
+            ctx->PopAttribState |= GL_TEXTURE_BIT;
          }
       }
    }
@@ -510,7 +512,7 @@ validate_texture_wrap_mode(struct gl_context *ctx, GLenum wrap)
 static inline void
 flush(struct gl_context *ctx)
 {
-   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
 }
 
 void

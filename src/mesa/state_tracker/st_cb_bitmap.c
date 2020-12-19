@@ -770,6 +770,7 @@ st_DrawAtlasBitmaps(struct gl_context *ctx,
       /* Update the raster position */
       ctx->Current.RasterPos[0] += xmove;
       ctx->Current.RasterPos[1] += ymove;
+      ctx->PopAttribState |= GL_CURRENT_BIT;
    }
 
    u_upload_unmap(pipe->stream_uploader);

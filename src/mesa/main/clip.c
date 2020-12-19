@@ -84,7 +84,7 @@ _mesa_ClipPlane( GLenum plane, const GLdouble *eq )
       return;
 
    /* EyeUserPlane is used by program state constants. */
-   FLUSH_VERTICES(ctx, _NEW_TRANSFORM);
+   FLUSH_VERTICES(ctx, _NEW_TRANSFORM, GL_TRANSFORM_BIT);
    ctx->NewDriverState |= ctx->DriverFlags.NewClipPlane;
    COPY_4FV(ctx->Transform.EyeUserPlane[p], equation);
 

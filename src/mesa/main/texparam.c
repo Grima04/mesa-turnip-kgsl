@@ -206,7 +206,7 @@ set_swizzle_component(GLushort *swizzle, GLuint comp, GLuint swz)
 static inline void
 flush(struct gl_context *ctx)
 {
-   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
 }
 
 
@@ -220,7 +220,7 @@ flush(struct gl_context *ctx)
 static inline void
 incomplete(struct gl_context *ctx, struct gl_texture_object *texObj)
 {
-   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+   FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
    _mesa_dirty_texobj(ctx, texObj);
 }
 
@@ -507,7 +507,7 @@ set_tex_parameteri(struct gl_context *ctx,
             return GL_FALSE;
 
          /* This should not be restored by glPopAttrib. */
-         FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+         FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, 0);
          texObj->StencilSampling = stencil;
          return GL_TRUE;
       }
@@ -1028,7 +1028,7 @@ _mesa_texture_parameterIiv(struct gl_context *ctx,
          _mesa_error(ctx, dsa ? GL_INVALID_OPERATION : GL_INVALID_ENUM, "glTextureParameterIiv(texture)");
          return;
       }
-      FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+      FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
       /* set the integer-valued border color */
       COPY_4V(texObj->Sampler.Attrib.BorderColor.i, params);
       break;
@@ -1056,7 +1056,7 @@ _mesa_texture_parameterIuiv(struct gl_context *ctx,
          _mesa_error(ctx, dsa ? GL_INVALID_OPERATION : GL_INVALID_ENUM, "glTextureParameterIuiv(texture)");
          return;
       }
-      FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
+      FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
       /* set the unsigned integer-valued border color */
       COPY_4V(texObj->Sampler.Attrib.BorderColor.ui, params);
       break;

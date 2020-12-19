@@ -55,7 +55,7 @@ flush_vertices_for_program_constants(struct gl_context *ctx, GLenum target)
          ctx->DriverFlags.NewShaderConstants[MESA_SHADER_VERTEX];
    }
 
-   FLUSH_VERTICES(ctx, new_driver_state ? 0 : _NEW_PROGRAM_CONSTANTS);
+   FLUSH_VERTICES(ctx, new_driver_state ? 0 : _NEW_PROGRAM_CONSTANTS, 0);
    ctx->NewDriverState |= new_driver_state;
 }
 
@@ -136,7 +136,7 @@ _mesa_BindProgramARB(GLenum target, GLuint id)
    }
 
    /* signal new program (and its new constants) */
-   FLUSH_VERTICES(ctx, _NEW_PROGRAM);
+   FLUSH_VERTICES(ctx, _NEW_PROGRAM, 0);
    flush_vertices_for_program_constants(ctx, target);
 
    /* bind newProg */
@@ -166,7 +166,7 @@ _mesa_DeleteProgramsARB(GLsizei n, const GLuint *ids)
    GLint i;
    GET_CURRENT_CONTEXT(ctx);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (n < 0) {
       _mesa_error( ctx, GL_INVALID_VALUE, "glDeleteProgramsNV" );
@@ -359,7 +359,7 @@ set_program_string(struct gl_program *prog, GLenum target, GLenum format, GLsize
    bool failed;
    GET_CURRENT_CONTEXT(ctx);
 
-   FLUSH_VERTICES(ctx, _NEW_PROGRAM);
+   FLUSH_VERTICES(ctx, _NEW_PROGRAM, 0);
 
    if (!ctx->Extensions.ARB_vertex_program
        && !ctx->Extensions.ARB_fragment_program) {

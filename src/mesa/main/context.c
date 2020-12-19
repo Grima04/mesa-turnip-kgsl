@@ -181,7 +181,7 @@ _mesa_notifySwapBuffers(struct gl_context *ctx)
 {
    if (MESA_VERBOSE & VERBOSE_SWAPBUFFERS)
       _mesa_debug(ctx, "SwapBuffers\n");
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    if (ctx->Driver.Flush) {
       ctx->Driver.Flush(ctx);
    }
@@ -1868,7 +1868,7 @@ _mesa_get_dispatch(struct gl_context *ctx)
 void
 _mesa_flush(struct gl_context *ctx)
 {
-   FLUSH_VERTICES( ctx, 0 );
+   FLUSH_VERTICES(ctx, 0, 0);
    if (ctx->Driver.Flush) {
       ctx->Driver.Flush(ctx);
    }
@@ -1888,7 +1888,7 @@ _mesa_Finish(void)
    GET_CURRENT_CONTEXT(ctx);
    ASSERT_OUTSIDE_BEGIN_END(ctx);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    if (ctx->Driver.Finish) {
       ctx->Driver.Finish(ctx);

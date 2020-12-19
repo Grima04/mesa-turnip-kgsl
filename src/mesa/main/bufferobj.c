@@ -1315,7 +1315,7 @@ bind_buffer(struct gl_context *ctx,
       return;
    }
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    ctx->NewDriverState |= driver_state;
 
    set_buffer_binding(ctx, binding, bufObj, offset, size, autoSize, usage);
@@ -1456,7 +1456,7 @@ bind_buffer_base_atomic_buffer(struct gl_context *ctx,
 static void
 delete_buffers(struct gl_context *ctx, GLsizei n, const GLuint *ids)
 {
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    _mesa_HashLockMaybeLocked(ctx->Shared->BufferObjects,
                              ctx->BufferObjectsLocked);
@@ -1813,7 +1813,7 @@ buffer_storage(struct gl_context *ctx, struct gl_buffer_object *bufObj,
    /* Unmap the existing buffer.  We'll replace it now.  Not an error. */
    _mesa_buffer_unmap_all_mappings(ctx, bufObj);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    bufObj->Written = GL_TRUE;
    bufObj->Immutable = GL_TRUE;
@@ -2061,7 +2061,7 @@ buffer_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
    /* Unmap the existing buffer.  We'll replace it now.  Not an error. */
    _mesa_buffer_unmap_all_mappings(ctx, bufObj);
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
 
    bufObj->Written = GL_TRUE;
    bufObj->MinMaxCacheDirty = true;
@@ -4032,7 +4032,7 @@ bind_uniform_buffers(struct gl_context *ctx, GLuint first, GLsizei count,
       return;
 
    /* Assume that at least one binding will be changed */
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    ctx->NewDriverState |= ctx->DriverFlags.NewUniformBuffer;
 
    if (!buffers) {
@@ -4135,7 +4135,7 @@ bind_shader_storage_buffers(struct gl_context *ctx, GLuint first,
       return;
 
    /* Assume that at least one binding will be changed */
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    ctx->NewDriverState |= ctx->DriverFlags.NewShaderStorageBuffer;
 
    if (!buffers) {
@@ -4303,7 +4303,7 @@ bind_xfb_buffers(struct gl_context *ctx,
       return;
 
    /* Assume that at least one binding will be changed */
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    ctx->NewDriverState |= ctx->DriverFlags.NewTransformFeedback;
 
    if (!buffers) {
@@ -4464,7 +4464,7 @@ bind_atomic_buffers(struct gl_context *ctx,
      return;
 
    /* Assume that at least one binding will be changed */
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    ctx->NewDriverState |= ctx->DriverFlags.NewAtomicBuffer;
 
    if (!buffers) {

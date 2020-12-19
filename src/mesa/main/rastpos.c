@@ -392,6 +392,8 @@ compute_texgen(struct gl_context *ctx, const GLfloat vObj[4], const GLfloat vEye
 void
 _mesa_RasterPos(struct gl_context *ctx, const GLfloat vObj[4])
 {
+   ctx->PopAttribState |= GL_CURRENT_BIT;
+
    if (_mesa_arb_vertex_program_enabled(ctx)) {
       /* XXX implement this */
       _mesa_problem(ctx, "Vertex programs not implemented for glRasterPos");
@@ -533,7 +535,7 @@ rasterpos(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
    p[2] = z;
    p[3] = w;
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, 0);
    FLUSH_CURRENT(ctx, 0);
 
    if (ctx->NewState)
@@ -705,7 +707,7 @@ window_pos3f(GLfloat x, GLfloat y, GLfloat z)
    GET_CURRENT_CONTEXT(ctx);
    GLfloat z2;
 
-   FLUSH_VERTICES(ctx, 0);
+   FLUSH_VERTICES(ctx, 0, GL_CURRENT_BIT);
    FLUSH_CURRENT(ctx, 0);
 
    z2 = CLAMP(z, 0.0F, 1.0F)

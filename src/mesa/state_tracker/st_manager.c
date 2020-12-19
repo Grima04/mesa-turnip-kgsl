@@ -666,7 +666,7 @@ st_context_flush(struct st_context_iface *stctxi, unsigned flags,
     * it means that glBitmap was called first and then glBegin.
     */
    st_flush_bitmap_cache(st);
-   FLUSH_VERTICES(st->ctx, 0);
+   FLUSH_VERTICES(st->ctx, 0, 0);
 
    /* Notify the caller that we're ready to flush */
    if (before_flush_cb)

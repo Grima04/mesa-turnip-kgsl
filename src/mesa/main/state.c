@@ -143,7 +143,7 @@ _mesa_update_allow_draw_out_of_order(struct gl_context *ctx)
     * vertices.
     */
    if (previous_state && !ctx->_AllowDrawOutOfOrder)
-      FLUSH_VERTICES(ctx, 0);
+      FLUSH_VERTICES(ctx, 0, 0);
 }
 
 

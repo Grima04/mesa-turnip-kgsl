@@ -327,7 +327,7 @@ active_texture(GLenum texture, bool no_error)
     *
     * https://bugs.freedesktop.org/show_bug.cgi?id=105436
     */
-   FLUSH_VERTICES(ctx, _NEW_TEXTURE_STATE);
+   FLUSH_VERTICES(ctx, _NEW_TEXTURE_STATE, GL_TEXTURE_BIT);
 
    ctx->Texture.CurrentUnit = texUnit;
    if (ctx->Transform.MatrixMode == GL_TEXTURE) {

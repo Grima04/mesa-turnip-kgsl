@@ -1892,6 +1892,7 @@ prepare_mipmap_level(struct gl_context *ctx,
          _mesa_update_fbo_texture(ctx, texObj, face, level);
 
          ctx->NewState |= _NEW_TEXTURE_OBJECT;
+         ctx->PopAttribState |= GL_TEXTURE_BIT;
       }
    }
 

@@ -44,7 +44,8 @@
 
 static void
 copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
-         GLbitfield mask, GLbitfield state, int shift, fi_type **data)
+         GLbitfield mask, GLbitfield state, GLbitfield pop_state,
+         int shift, fi_type **data)
 {
    struct vbo_context *vbo = vbo_context(ctx);
 
@@ -74,6 +75,7 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
          vbo_set_vertex_format(&currval->Format, size, type);
 
          ctx->NewState |= state;
+         ctx->PopAttribState |= pop_state;
       }
 
       *data += size;
@@ -94,10 +96,12 @@ playback_copy_to_current(struct gl_context *ctx,
    fi_type *data = node->current_data;
    /* Copy conventional attribs and generics except pos */
    copy_vao(ctx, node->VAO[VP_MODE_SHADER], ~VERT_BIT_POS & VERT_BIT_ALL,
-            _NEW_CURRENT_ATTRIB, 0, &data);
+            _NEW_CURRENT_ATTRIB, GL_CURRENT_BIT, 0, &data);
    /* Copy materials */
    copy_vao(ctx, node->VAO[VP_MODE_FF], VERT_BIT_MAT_ALL,
-            _NEW_CURRENT_ATTRIB | _NEW_LIGHT, VBO_MATERIAL_SHIFT, &data);
+            _NEW_CURRENT_ATTRIB | _NEW_LIGHT,
+            GL_CURRENT_BIT | GL_LIGHTING_BIT,
+            VBO_MATERIAL_SHIFT, &data);
 
    /* Colormaterial -- this kindof sucks.
     */
