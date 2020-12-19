@@ -1140,9 +1140,18 @@ _mesa_PopAttrib(void)
 
       for (i = 0; i < ctx->Const.MaxViewports; i++) {
          const struct gl_viewport_attrib *vp = &attr->Viewport.ViewportArray[i];
-         _mesa_set_viewport(ctx, i, vp->X, vp->Y, vp->Width,
-                            vp->Height);
-         _mesa_set_depth_range(ctx, i, vp->Near, vp->Far);
+
+         if (memcmp(&ctx->ViewportArray[i].X, &vp->X, sizeof(float) * 6)) {
+            ctx->NewState |= _NEW_VIEWPORT;
+            ctx->NewDriverState |= ctx->DriverFlags.NewViewport;
+
+            memcpy(&ctx->ViewportArray[i].X, &vp->X, sizeof(float) * 6);
+
+            if (ctx->Driver.Viewport)
+               ctx->Driver.Viewport(ctx);
+            if (ctx->Driver.DepthRange)
+               ctx->Driver.DepthRange(ctx);
+         }
       }
 
       if (ctx->Extensions.NV_conservative_raster) {
