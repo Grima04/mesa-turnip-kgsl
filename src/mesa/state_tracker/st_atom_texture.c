@@ -198,7 +198,7 @@ update_textures(struct st_context *st,
          tmpl.swizzle_g = PIPE_SWIZZLE_Y;   /* tmpl from Y plane is R8 */
          extra = u_bit_scan(&free_slots);
          sampler_views[extra] =
-               st->pipe->create_sampler_view(st->pipe, stObj->pt->next, &tmpl);
+               pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
          break;
       case PIPE_FORMAT_P010:
       case PIPE_FORMAT_P012:
@@ -208,17 +208,17 @@ update_textures(struct st_context *st,
          tmpl.swizzle_g = PIPE_SWIZZLE_Y;   /* tmpl from Y plane is R16 */
          extra = u_bit_scan(&free_slots);
          sampler_views[extra] =
-               st->pipe->create_sampler_view(st->pipe, stObj->pt->next, &tmpl);
+               pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
          break;
       case PIPE_FORMAT_IYUV:
          /* we need two additional R8 views: */
          tmpl.format = PIPE_FORMAT_R8_UNORM;
          extra = u_bit_scan(&free_slots);
          sampler_views[extra] =
-               st->pipe->create_sampler_view(st->pipe, stObj->pt->next, &tmpl);
+               pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
          extra = u_bit_scan(&free_slots);
          sampler_views[extra] =
-               st->pipe->create_sampler_view(st->pipe, stObj->pt->next->next, &tmpl);
+               pipe->create_sampler_view(pipe, stObj->pt->next->next, &tmpl);
          break;
       case PIPE_FORMAT_YUYV:
          /* we need one additional BGRA8888 view: */
@@ -227,7 +227,7 @@ update_textures(struct st_context *st,
          tmpl.swizzle_a = PIPE_SWIZZLE_W;
          extra = u_bit_scan(&free_slots);
          sampler_views[extra] =
-               st->pipe->create_sampler_view(st->pipe, stObj->pt->next, &tmpl);
+               pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
          break;
       case PIPE_FORMAT_UYVY:
          /* we need one additional RGBA8888 view: */
@@ -236,7 +236,7 @@ update_textures(struct st_context *st,
          tmpl.swizzle_a = PIPE_SWIZZLE_W;
          extra = u_bit_scan(&free_slots);
          sampler_views[extra] =
-               st->pipe->create_sampler_view(st->pipe, stObj->pt->next, &tmpl);
+               pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
          break;
       default:
          break;

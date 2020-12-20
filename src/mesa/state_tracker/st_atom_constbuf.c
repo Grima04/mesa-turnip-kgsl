@@ -108,7 +108,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
           * but matrix rows are sometimes allocated partially, so add 12
           * to compensate for the fetch_state defect.
           */
-         u_upload_alloc(st->pipe->const_uploader, 0, paramBytes + 12, 64,
+         u_upload_alloc(pipe->const_uploader, 0, paramBytes + 12, 64,
                         &cb.buffer_offset, &cb.buffer, (void**)&ptr);
 
          int uniform_bytes = params->UniformBytes;
@@ -121,7 +121,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
          if (params->StateFlags)
             _mesa_upload_state_parameters(st->ctx, params, ptr);
 
-         u_upload_unmap(st->pipe->const_uploader);
+         u_upload_unmap(pipe->const_uploader);
          pipe->set_constant_buffer(pipe, shader_type, 0, &cb);
          pipe_resource_reference(&cb.buffer, NULL);
 
