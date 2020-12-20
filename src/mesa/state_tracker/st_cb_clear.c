@@ -266,7 +266,6 @@ clear_with_quad(struct gl_context *ctx, unsigned clear_buffers)
                         CSO_BIT_VIEWPORT |
                         CSO_BIT_STREAM_OUTPUTS |
                         CSO_BIT_VERTEX_ELEMENTS |
-                        CSO_BIT_AUX_VERTEX_BUFFER_SLOT |
                         (st->active_queries ? CSO_BIT_PAUSE_QUERIES : 0) |
                         CSO_BITS_ALL_SHADERS));
 
@@ -362,6 +361,7 @@ clear_with_quad(struct gl_context *ctx, unsigned clear_buffers)
 
    /* Restore pipe state */
    cso_restore_state(cso);
+   st->dirty |= ST_NEW_VERTEX_ARRAYS;
 }
 
 
