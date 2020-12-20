@@ -248,7 +248,6 @@ _mesa_PushAttrib(GLbitfield mask)
             struct gl_texture_object *dst = &head->Texture.SavedObj[u][tex];
             struct gl_texture_object *src = ctx->Texture.Unit[u].CurrentTex[tex];
 
-            dst->Target = src->Target;
             dst->Name = src->Name;
             memcpy(&dst->Sampler.Attrib, &src->Sampler.Attrib, sizeof(src->Sampler.Attrib));
             memcpy(&dst->Attrib, &src->Attrib, sizeof(src->Attrib));
@@ -597,7 +596,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
             /* We don't need to check whether the texture target is supported,
              * because we wouldn't get in this conditional block if it wasn't.
              */
-            _mesa_BindTexture_no_error(savedObj->Target, savedObj->Name);
+            _mesa_BindTexture_no_error(texObj->Target, savedObj->Name);
             texObj = _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
          }
 
