@@ -170,6 +170,7 @@ setup_render_state(struct gl_context *ctx,
                    bool atlas)
 {
    struct st_context *st = st_context(ctx);
+   struct pipe_context *pipe = st->pipe;
    struct cso_context *cso = st->cso_context;
    struct st_fp_variant *fpv;
    struct st_fp_variant_key key;
@@ -200,11 +201,9 @@ setup_render_state(struct gl_context *ctx,
 
    cso_save_state(cso, (CSO_BIT_RASTERIZER |
                         CSO_BIT_FRAGMENT_SAMPLERS |
-                        CSO_BIT_FRAGMENT_SAMPLER_VIEWS |
                         CSO_BIT_VIEWPORT |
                         CSO_BIT_STREAM_OUTPUTS |
                         CSO_BIT_VERTEX_ELEMENTS |
-                        CSO_BIT_AUX_VERTEX_BUFFER_SLOT |
                         CSO_BITS_ALL_SHADERS));
 
 
@@ -248,7 +247,7 @@ setup_render_state(struct gl_context *ctx,
       memcpy(sampler_views, st->state.frag_sampler_views,
              sizeof(sampler_views));
       sampler_views[fpv->bitmap_sampler] = sv;
-      cso_set_sampler_views(cso, PIPE_SHADER_FRAGMENT, num, sampler_views);
+      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num, sampler_views);
    }
 
    /* viewport state: viewport matching window dims */
@@ -273,6 +272,9 @@ restore_render_state(struct gl_context *ctx)
    struct cso_context *cso = st->cso_context;
 
    cso_restore_state(cso);
+
+   st->dirty |= ST_NEW_VERTEX_ARRAYS |
+                ST_NEW_FS_SAMPLER_VIEWS;
 }
 
 
