@@ -55,6 +55,7 @@ NineBuffer9_ctor( struct NineBuffer9 *This,
     This->maps = MALLOC(sizeof(struct NineTransfer));
     if (!This->maps)
         return E_OUTOFMEMORY;
+    This->nlocks = 0;
     This->nmaps = 0;
     This->maxmaps = 1;
     This->size = Size;
@@ -152,9 +153,10 @@ NineBuffer9_dtor( struct NineBuffer9 *This )
     DBG("This=%p\n", This);
 
     if (This->maps) {
-        while (This->nmaps) {
+        while (This->nlocks) {
             NineBuffer9_Unlock(This);
         }
+        assert(!This->nmaps);
         FREE(This->maps);
     }
 
@@ -259,7 +261,7 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
         }
         *ppbData = (char *)This->managed.data + OffsetToLock;
         DBG("returning pointer %p\n", *ppbData);
-        This->nmaps++;
+        This->nlocks++;
         return D3D_OK;
     }
 
@@ -355,6 +357,7 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
         if (This->buf) {
             This->maps[This->nmaps].buf = This->buf;
             This->nmaps++;
+            This->nlocks++;
             *ppbData = nine_upload_buffer_get_map(This->buf) + OffsetToLock;
             return D3D_OK;
         } else {
@@ -419,6 +422,7 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
 
     DBG("returning pointer %p\n", data);
     This->nmaps++;
+    This->nlocks++;
     *ppbData = data;
 
     return D3D_OK;
@@ -429,23 +433,30 @@ NineBuffer9_Unlock( struct NineBuffer9 *This )
 {
     struct NineDevice9 *device = This->base.base.device;
     struct pipe_context *pipe;
+    int i;
     DBG("This=%p\n", This);
 
-    user_assert(This->nmaps > 0, D3DERR_INVALIDCALL);
-    This->nmaps--;
+    user_assert(This->nlocks > 0, D3DERR_INVALIDCALL);
+    This->nlocks--;
+    if (This->nlocks > 0)
+        return D3D_OK; /* Pending unlocks. Wait all unlocks before unmapping */
+
     if (This->base.pool != D3DPOOL_MANAGED) {
-        if (!This->maps[This->nmaps].buf) {
-            pipe = This->maps[This->nmaps].is_pipe_secondary ?
-                device->pipe_secondary :
-                nine_context_get_pipe_acquire(device);
-            pipe->transfer_unmap(pipe, This->maps[This->nmaps].transfer);
-            /* We need to flush in case the driver does implicit copies */
-            if (This->maps[This->nmaps].is_pipe_secondary)
-                pipe->flush(pipe, NULL, 0);
-            else
-                nine_context_get_pipe_release(device);
-        } else if (This->maps[This->nmaps].should_destroy_buf)
-            nine_upload_release_buffer(device->buffer_upload, This->maps[This->nmaps].buf);
+        for (i = 0; i < This->nmaps; i++) {
+            if (!This->maps[i].buf) {
+                pipe = This->maps[i].is_pipe_secondary ?
+                    device->pipe_secondary :
+                    nine_context_get_pipe_acquire(device);
+                pipe->transfer_unmap(pipe, This->maps[i].transfer);
+                /* We need to flush in case the driver does implicit copies */
+                if (This->maps[i].is_pipe_secondary)
+                    pipe->flush(pipe, NULL, 0);
+                else
+                    nine_context_get_pipe_release(device);
+            } else if (This->maps[i].should_destroy_buf)
+                nine_upload_release_buffer(device->buffer_upload, This->maps[i].buf);
+        }
+        This->nmaps = 0;
     }
     return D3D_OK;
 }

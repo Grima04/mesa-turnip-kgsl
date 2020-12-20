@@ -49,7 +49,7 @@ struct NineBuffer9
 
     /* G3D */
     struct NineTransfer *maps;
-    int nmaps, maxmaps;
+    int nlocks, nmaps, maxmaps;
     UINT size;
 
     int16_t bind_count; /* to Device9->state.stream */
