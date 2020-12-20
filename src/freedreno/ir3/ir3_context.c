@@ -308,7 +308,7 @@ ir3_create_collect(struct ir3_context *ctx, struct ir3_instruction *const *arr,
 
 	unsigned flags = dest_flags(arr[0]);
 
-	collect = ir3_instr_create2(block, OPC_META_COLLECT, 1 + arrsz);
+	collect = ir3_instr_create(block, OPC_META_COLLECT, 1 + arrsz);
 	__ssa_dst(collect)->flags |= flags;
 	for (unsigned i = 0; i < arrsz; i++) {
 		struct ir3_instruction *elem = arr[i];
@@ -382,7 +382,7 @@ ir3_split_dest(struct ir3_block *block, struct ir3_instruction **dst,
 
 	for (int i = 0, j = 0; i < n; i++) {
 		struct ir3_instruction *split =
-				ir3_instr_create(block, OPC_META_SPLIT);
+				ir3_instr_create(block, OPC_META_SPLIT, 2);
 		__ssa_dst(split)->flags |= flags;
 		__ssa_src(split, src, flags);
 		split->split.off = i + base;
@@ -584,7 +584,7 @@ ir3_create_array_load(struct ir3_context *ctx, struct ir3_array *arr, int n,
 	struct ir3_register *src;
 	unsigned flags = 0;
 
-	mov = ir3_instr_create(block, OPC_MOV);
+	mov = ir3_instr_create(block, OPC_MOV, 2);
 	if (arr->half) {
 		mov->cat1.src_type = TYPE_U16;
 		mov->cat1.dst_type = TYPE_U16;
@@ -645,7 +645,7 @@ ir3_create_array_store(struct ir3_context *ctx, struct ir3_array *arr, int n,
 		return;
 	}
 
-	mov = ir3_instr_create(block, OPC_MOV);
+	mov = ir3_instr_create(block, OPC_MOV, 2);
 	if (arr->half) {
 		mov->cat1.src_type = TYPE_U16;
 		mov->cat1.dst_type = TYPE_U16;

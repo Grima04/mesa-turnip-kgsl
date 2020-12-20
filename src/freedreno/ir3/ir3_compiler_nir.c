@@ -55,7 +55,7 @@ create_input(struct ir3_context *ctx, unsigned compmask)
 {
 	struct ir3_instruction *in;
 
-	in = ir3_instr_create(ctx->in_block, OPC_META_INPUT);
+	in = ir3_instr_create(ctx->in_block, OPC_META_INPUT, 1);
 	in->input.sysval = ~0;
 	__ssa_dst(in)->wrmask = compmask;
 
@@ -2480,9 +2480,8 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
 		compile_assert(ctx, tex->src[idx].src.is_ssa);
 
-		sam = ir3_META_TEX_PREFETCH(b);
-		__ssa_dst(sam)->wrmask = MASK(ncomp);   /* dst */
-		__ssa_src(sam, get_barycentric(ctx, IJ_PERSP_PIXEL), 0);
+		sam = ir3_SAM(b, opc, type, MASK(ncomp), 0, NULL,
+				get_barycentric(ctx, IJ_PERSP_PIXEL), 0);
 		sam->prefetch.input_offset =
 				ir3_nir_coord_offset(tex->src[idx].src.ssa);
 		/* make sure not to add irrelevant flags like S2EN */

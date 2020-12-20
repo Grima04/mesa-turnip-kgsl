@@ -232,7 +232,7 @@ static int emit_cat2(struct ir3_instruction *instr, void *ptr,
 {
 	struct ir3_register *dst = instr->regs[0];
 	struct ir3_register *src1 = instr->regs[1];
-	struct ir3_register *src2 = instr->regs[2];
+	struct ir3_register *src2 = (instr->regs_count > 2) ? instr->regs[2] : NULL;
 	instr_cat2_t *cat2 = ptr;
 	unsigned absneg = ir3_cat2_absneg(instr->opc);
 
@@ -1141,7 +1141,7 @@ static struct ir3_instruction *instr_create(struct ir3_block *block, int nreg)
 	return instr;
 }
 
-struct ir3_instruction * ir3_instr_create2(struct ir3_block *block,
+struct ir3_instruction * ir3_instr_create(struct ir3_block *block,
 		opc_t opc, int nreg)
 {
 	struct ir3_instruction *instr = instr_create(block, nreg);
@@ -1149,14 +1149,6 @@ struct ir3_instruction * ir3_instr_create2(struct ir3_block *block,
 	instr->opc = opc;
 	insert_instr(block, instr);
 	return instr;
-}
-
-struct ir3_instruction * ir3_instr_create(struct ir3_block *block, opc_t opc)
-{
-	/* NOTE: we could be slightly more clever, at least for non-meta,
-	 * and choose # of regs based on category.
-	 */
-	return ir3_instr_create2(block, opc, 4);
 }
 
 struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)

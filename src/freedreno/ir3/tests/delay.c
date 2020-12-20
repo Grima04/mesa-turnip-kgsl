@@ -139,7 +139,7 @@ regs_to_ssa(struct ir3 *ir)
 				unsigned nsrc = 1 + instr->repeat;
 				unsigned flags = src->regs[0]->flags & IR3_REG_HALF;
 				struct ir3_instruction *collect =
-					ir3_instr_create2(block, OPC_META_COLLECT, 1 + nsrc);
+					ir3_instr_create(block, OPC_META_COLLECT, 1 + nsrc);
 				__ssa_dst(collect)->flags |= flags;
 				for (unsigned i = 0; i < nsrc; i++)
 					__ssa_src(collect, regfile[regn(reg) + i], flags);
@@ -159,7 +159,7 @@ regs_to_ssa(struct ir3 *ir)
 
 			for (unsigned i = 0; i < ndst; i++) {
 				struct ir3_instruction *split =
-					ir3_instr_create(block, OPC_META_SPLIT);
+					ir3_instr_create(block, OPC_META_SPLIT, 2);
 				__ssa_dst(split)->flags |= flags;
 				__ssa_src(split, instr, flags);
 				split->split.off = i;

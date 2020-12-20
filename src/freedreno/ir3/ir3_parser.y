@@ -79,7 +79,7 @@ int ir3_yyget_lineno(void);
 
 static struct ir3_instruction * new_instr(opc_t opc)
 {
-	instr = ir3_instr_create(block, opc);
+	instr = ir3_instr_create(block, opc, 5);
 	instr->flags = iflags.flags;
 	instr->repeat = iflags.repeat;
 	instr->nop = iflags.nop;
