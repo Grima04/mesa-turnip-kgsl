@@ -745,6 +745,7 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
                    GLboolean write_depth, GLboolean write_stencil)
 {
    struct st_context *st = st_context(ctx);
+   struct pipe_context *pipe = st->pipe;
    struct cso_context *cso = st->cso_context;
    const unsigned fb_width = _mesa_geometric_width(ctx->DrawBuffer);
    const unsigned fb_height = _mesa_geometric_height(ctx->DrawBuffer);
@@ -767,10 +768,8 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
    cso_state_mask = (CSO_BIT_RASTERIZER |
                      CSO_BIT_VIEWPORT |
                      CSO_BIT_FRAGMENT_SAMPLERS |
-                     CSO_BIT_FRAGMENT_SAMPLER_VIEWS |
                      CSO_BIT_STREAM_OUTPUTS |
                      CSO_BIT_VERTEX_ELEMENTS |
-                     CSO_BIT_AUX_VERTEX_BUFFER_SLOT |
                      CSO_BITS_ALL_SHADERS);
    if (write_stencil) {
       cso_state_mask |= (CSO_BIT_DEPTH_STENCIL_ALPHA |
@@ -882,10 +881,10 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
       sampler_views[fpv->drawpix_sampler] = sv[0];
       if (sv[1])
          sampler_views[fpv->pixelmap_sampler] = sv[1];
-      cso_set_sampler_views(cso, PIPE_SHADER_FRAGMENT, num, sampler_views);
+      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num, sampler_views);
    } else {
       /* drawing a depth/stencil image */
-      cso_set_sampler_views(cso, PIPE_SHADER_FRAGMENT, num_sampler_view, sv);
+      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_sampler_view, sv);
    }
 
    /* viewport state: viewport matching window dims */
@@ -933,6 +932,9 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
 
    /* restore state */
    cso_restore_state(cso);
+
+   st->dirty |= ST_NEW_VERTEX_ARRAYS |
+                ST_NEW_FS_SAMPLER_VIEWS;
 }
 
 
