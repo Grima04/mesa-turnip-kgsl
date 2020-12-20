@@ -135,6 +135,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
                 return true;
 
+        case PIPE_CAP_ANISOTROPIC_FILTER:
+                return !!(dev->quirks & HAS_ANISOTROPIC);
+
         /* ES3 features unsupported on Bifrost */
         case PIPE_CAP_TGSI_INSTANCEID:
         case PIPE_CAP_TEXTURE_MULTISAMPLE:
