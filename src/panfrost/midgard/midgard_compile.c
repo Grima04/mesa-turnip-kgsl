@@ -2830,7 +2830,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         NIR_PASS_V(nir, nir_lower_var_copies);
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
-        unsigned pan_quirks = panfrost_get_quirks(inputs->gpu_id);
+        unsigned pan_quirks = panfrost_get_quirks(inputs->gpu_id, 0);
         NIR_PASS_V(nir, pan_lower_framebuffer,
                    inputs->rt_formats, inputs->is_blend, pan_quirks);
 
