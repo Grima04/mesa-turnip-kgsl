@@ -174,13 +174,16 @@ st_bind_images(struct st_context *st, struct gl_program *prog,
       st_convert_image_from_unit(st, img, prog->sh.ImageUnits[i],
                                  prog->sh.ImageAccess[i]);
    }
-   cso_set_shader_images(st->cso_context, shader_type, 0,
-                         prog->info.num_images, images);
+
+   struct pipe_context *pipe = st->pipe;
+   pipe->set_shader_images(pipe, shader_type, 0,
+                           prog->info.num_images, images);
    /* clear out any stale shader images */
-   if (prog->info.num_images < c->MaxImageUniforms)
-      cso_set_shader_images(
-            st->cso_context, shader_type, prog->info.num_images,
-            c->MaxImageUniforms - prog->info.num_images, NULL);
+   if (prog->info.num_images < c->MaxImageUniforms) {
+      pipe->set_shader_images(pipe, shader_type, prog->info.num_images,
+                              c->MaxImageUniforms - prog->info.num_images,
+                              NULL);
+   }
 }
 
 void st_bind_vs_images(struct st_context *st)

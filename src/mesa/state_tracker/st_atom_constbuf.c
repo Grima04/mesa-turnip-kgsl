@@ -102,6 +102,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
       cb.buffer_size = paramBytes;
 
       if (st->prefer_real_buffer_in_constbuf0) {
+         struct pipe_context *pipe = st->pipe;
          uint32_t *ptr;
          /* fetch_state always stores 4 components (16 bytes) per matrix row,
           * but matrix rows are sometimes allocated partially, so add 12
@@ -121,7 +122,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
             _mesa_upload_state_parameters(st->ctx, params, ptr);
 
          u_upload_unmap(st->pipe->const_uploader);
-         cso_set_constant_buffer(st->cso_context, shader_type, 0, &cb);
+         pipe->set_constant_buffer(pipe, shader_type, 0, &cb);
          pipe_resource_reference(&cb.buffer, NULL);
 
          /* Set inlinable constants. This is more involved because state
@@ -131,7 +132,6 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
           */
          unsigned num_inlinable_uniforms = prog->info.num_inlinable_uniforms;
          if (num_inlinable_uniforms) {
-            struct pipe_context *pipe = st->pipe;
             uint32_t values[MAX_INLINABLE_UNIFORMS];
             gl_constant_value *constbuf = params->ParameterValues;
             bool loaded_state_vars = false;
@@ -152,6 +152,8 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
                                           values);
          }
       } else {
+         struct pipe_context *pipe = st->pipe;
+
          cb.user_buffer = params->ParameterValues;
 
          /* Update the constants which come from fixed-function state, such as
@@ -160,12 +162,11 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
          if (params->StateFlags)
             _mesa_load_state_parameters(st->ctx, params);
 
-         cso_set_constant_buffer(st->cso_context, shader_type, 0, &cb);
+         pipe->set_constant_buffer(pipe, shader_type, 0, &cb);
 
          /* Set inlinable constants. */
          unsigned num_inlinable_uniforms = prog->info.num_inlinable_uniforms;
          if (num_inlinable_uniforms) {
-            struct pipe_context *pipe = st->pipe;
             uint32_t values[MAX_INLINABLE_UNIFORMS];
             gl_constant_value *constbuf = params->ParameterValues;
 
@@ -181,7 +182,9 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
       st->state.constbuf0_enabled_shader_mask |= 1 << shader_type;
    } else if (st->state.constbuf0_enabled_shader_mask & (1 << shader_type)) {
       /* Unbind. */
-      cso_set_constant_buffer(st->cso_context, shader_type, 0, NULL);
+      struct pipe_context *pipe = st->pipe;
+
+      pipe->set_constant_buffer(pipe, shader_type, 0, NULL);
       st->state.constbuf0_enabled_shader_mask &= ~(1 << shader_type);
    }
 }
@@ -260,6 +263,8 @@ st_bind_ubos(struct st_context *st, struct gl_program *prog,
    if (!prog)
       return;
 
+   struct pipe_context *pipe = st->pipe;
+
    for (i = 0; i < prog->sh.NumUniformBlocks; i++) {
       struct gl_buffer_binding *binding;
       struct st_buffer_object *st_obj;
@@ -285,7 +290,7 @@ st_bind_ubos(struct st_context *st, struct gl_program *prog,
          cb.buffer_size = 0;
       }
 
-      cso_set_constant_buffer(st->cso_context, shader_type, 1 + i, &cb);
+      pipe->set_constant_buffer(pipe, shader_type, 1 + i, &cb);
    }
 }
 
