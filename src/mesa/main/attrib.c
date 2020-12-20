@@ -276,7 +276,8 @@ _mesa_PushAttrib(GLbitfield mask)
       }
 
       /* copy state/contents of the currently bound texture objects */
-      for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
+      unsigned num_tex_used = ctx->Texture.NumCurrentTexUsed;
+      for (u = 0; u < num_tex_used; u++) {
          head->Texture.LodBias[u] = ctx->Texture.Unit[u].LodBias;
 
          for (tex = 0; tex < NUM_TEXTURE_TARGETS; tex++) {
@@ -290,6 +291,7 @@ _mesa_PushAttrib(GLbitfield mask)
                copy_texture_attribs(dst, src, tex);
          }
       }
+      head->Texture.NumTexSaved = num_tex_used;
       _mesa_unlock_context_textures(ctx);
    }
 
@@ -537,12 +539,12 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
 
    _mesa_lock_context_textures(ctx);
 
+   /* Restore fixed-function texture unit states. */
    for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
       const struct gl_fixedfunc_texture_unit *unit =
          &texstate->FixedFuncUnit[u];
       struct gl_fixedfunc_texture_unit *destUnit =
          &ctx->Texture.FixedFuncUnit[u];
-      GLuint tgt;
 
       ctx->Texture.CurrentUnit = u;
 
@@ -619,6 +621,14 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          destUnit->_CurrentCombine = NULL;
          ctx->Texture.Unit[u].LodBias = texstate->LodBias[u];
       }
+   }
+
+   /* Restore saved textures. */
+   unsigned num_tex_saved = texstate->NumTexSaved;
+   for (u = 0; u < num_tex_saved; u++) {
+      gl_texture_index tgt;
+
+      ctx->Texture.CurrentUnit = u;
 
       /* Restore texture object state for each target */
       for (tgt = 0; tgt < NUM_TEXTURE_TARGETS; tgt++) {
@@ -651,6 +661,34 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          /* GL_ALL_ATTRIB_BITS means all pnames. (internal) */
          if (ctx->Driver.TexParameter)
             ctx->Driver.TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
+      }
+   }
+
+   /* Restore textures in units that were not used before glPushAttrib (thus
+    * they were not saved) but were used after glPushAttrib. Revert
+    * the bindings to Name = 0.
+    */
+   unsigned num_tex_changed = ctx->Texture.NumCurrentTexUsed;
+   for (u = num_tex_saved; u < num_tex_changed; u++) {
+      ctx->Texture.CurrentUnit = u;
+
+      for (gl_texture_index tgt = 0; tgt < NUM_TEXTURE_TARGETS; tgt++) {
+         struct gl_texture_object *texObj =
+            _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
+         bool is_msaa = tgt == TEXTURE_2D_MULTISAMPLE_INDEX ||
+                        tgt == TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX;
+
+         /* According to the OpenGL 4.6 Compatibility Profile specification,
+          * table 23.17, GL_TEXTURE_BINDING_2D_MULTISAMPLE and
+          * GL_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY do not belong in the
+          * texture attrib group.
+          */
+         if (!is_msaa && texObj->Name != 0) {
+            /* We don't need to check whether the texture target is supported,
+             * because we wouldn't get in this conditional block if it wasn't.
+             */
+            _mesa_BindTexture_no_error(texObj->Target, 0);
+         }
       }
    }
 
