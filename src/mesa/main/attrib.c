@@ -275,10 +275,6 @@ _mesa_PushAttrib(GLbitfield mask)
             copy_texture_attribs(dst, src, tex);
          }
       }
-
-      head->Texture.SharedRef = NULL;
-      _mesa_reference_shared_state(ctx, &head->Texture.SharedRef, ctx->Shared);
-
       _mesa_unlock_context_textures(ctx);
    }
 
@@ -645,9 +641,6 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
    }
 
    _mesa_ActiveTexture(GL_TEXTURE0_ARB + texstate->CurrentUnit);
-
-   _mesa_reference_shared_state(ctx, &texstate->SharedRef, NULL);
-
    _mesa_unlock_context_textures(ctx);
 }
 
@@ -1555,16 +1548,6 @@ _mesa_PushClientAttribDefaultEXT( GLbitfield mask )
 void
 _mesa_free_attrib_data(struct gl_context *ctx)
 {
-   while (ctx->AttribStackDepth > 0) {
-      struct gl_attrib_node *attr;
-
-      ctx->AttribStackDepth--;
-      attr = ctx->AttribStack[ctx->AttribStackDepth];
-
-      if (attr->Mask & GL_TEXTURE_BIT)
-         _mesa_reference_shared_state(ctx, &attr->Texture.SharedRef, NULL);
-   }
-
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->AttribStack); i++)
       free(ctx->AttribStack[i]);
 }

@@ -5057,13 +5057,6 @@ struct gl_texture_attrib_node
     * SavedObj[][].Target is unused, so the value is invalid.
     */
    struct gl_texture_object SavedObj[MAX_TEXTURE_UNITS][NUM_TEXTURE_TARGETS];
-
-   /* We need to keep a reference to the shared state.  That's where the
-    * default texture objects are kept.  We don't want that state to be
-    * freed while the attribute stack contains pointers to any default
-    * texture objects.
-    */
-   struct gl_shared_state *SharedRef;
 };
 
 
