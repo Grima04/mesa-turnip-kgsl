@@ -157,9 +157,6 @@ struct u_vbuf {
    struct pipe_vertex_buffer vertex_buffer[PIPE_MAX_ATTRIBS];
    uint32_t enabled_vb_mask;
 
-   /* Saved vertex buffer. */
-   struct pipe_vertex_buffer vertex_buffer0_saved;
-
    /* Vertex buffers for the driver.
     * There are usually no user buffers. */
    struct pipe_vertex_buffer real_vertex_buffer[PIPE_MAX_ATTRIBS];
@@ -400,8 +397,6 @@ void u_vbuf_destroy(struct u_vbuf *mgr)
       pipe_vertex_buffer_unreference(&mgr->vertex_buffer[i]);
    for (i = 0; i < PIPE_MAX_ATTRIBS; i++)
       pipe_vertex_buffer_unreference(&mgr->real_vertex_buffer[i]);
-
-   pipe_vertex_buffer_unreference(&mgr->vertex_buffer0_saved);
 
    translate_cache_destroy(mgr->translate_cache);
    cso_cache_delete(&mgr->cso_cache);
@@ -1603,16 +1598,4 @@ void u_vbuf_restore_vertex_elements(struct u_vbuf *mgr)
                                        mgr->ve ? mgr->ve->driver_cso : NULL);
    }
    mgr->ve_saved = NULL;
-}
-
-void u_vbuf_save_vertex_buffer0(struct u_vbuf *mgr)
-{
-   pipe_vertex_buffer_reference(&mgr->vertex_buffer0_saved,
-                                &mgr->vertex_buffer[0]);
-}
-
-void u_vbuf_restore_vertex_buffer0(struct u_vbuf *mgr)
-{
-   u_vbuf_set_vertex_buffers(mgr, 0, 1, &mgr->vertex_buffer0_saved);
-   pipe_vertex_buffer_unreference(&mgr->vertex_buffer0_saved);
 }

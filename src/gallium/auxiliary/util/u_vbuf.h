@@ -88,7 +88,5 @@ void u_vbuf_get_minmax_index(struct pipe_context *pipe,
 /* Save/restore functionality. */
 void u_vbuf_save_vertex_elements(struct u_vbuf *mgr);
 void u_vbuf_restore_vertex_elements(struct u_vbuf *mgr);
-void u_vbuf_save_vertex_buffer0(struct u_vbuf *mgr);
-void u_vbuf_restore_vertex_buffer0(struct u_vbuf *mgr);
 
 #endif
