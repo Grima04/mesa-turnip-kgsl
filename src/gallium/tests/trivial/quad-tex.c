@@ -322,7 +322,7 @@ static void draw(struct program *p)
 	cso_set_samplers(p->cso, PIPE_SHADER_FRAGMENT, 1, samplers);
 
 	/* texture sampler view */
-	cso_set_sampler_views(p->cso, PIPE_SHADER_FRAGMENT, 1, &p->view);
+	p->pipe->set_sampler_views(p->pipe, PIPE_SHADER_FRAGMENT, 0, 1, &p->view);
 
 	/* shaders */
 	cso_set_fragment_shader_handle(p->cso, p->fs);
