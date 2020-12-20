@@ -262,6 +262,19 @@ _mesa_PushAttrib(GLbitfield mask)
       memcpy(&head->Texture.FixedFuncUnit, &ctx->Texture.FixedFuncUnit,
              sizeof(ctx->Texture.FixedFuncUnit));
 
+      /* Copy/save contents of default texture objects. They are almost
+       * always bound, so this can be done unconditionally.
+       *
+       * We save them separately, so that we don't have to save them in every
+       * texture unit where they are bound. This decreases CPU overhead.
+       */
+      for (tex = 0; tex < NUM_TEXTURE_TARGETS; tex++) {
+         struct gl_texture_object *dst = &head->Texture.SavedDefaultObj[tex];
+         struct gl_texture_object *src = ctx->Shared->DefaultTex[tex];
+
+         copy_texture_attribs(dst, src, tex);
+      }
+
       /* copy state/contents of the currently bound texture objects */
       for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
          head->Texture.LodBias[u] = ctx->Texture.Unit[u].LodBias;
@@ -272,7 +285,9 @@ _mesa_PushAttrib(GLbitfield mask)
 
             dst->Name = src->Name;
 
-            copy_texture_attribs(dst, src, tex);
+            /* Default texture targets are saved separately above. */
+            if (src->Name != 0)
+               copy_texture_attribs(dst, src, tex);
          }
       }
       _mesa_unlock_context_textures(ctx);
@@ -626,13 +641,25 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
             texObj = _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
          }
 
+         /* Default texture object states are restored separately below. */
+         if (texObj->Name == 0)
+            continue;
+
          if (!copy_texture_attribs(texObj, savedObj, tgt))
             continue;
 
          /* GL_ALL_ATTRIB_BITS means all pnames. (internal) */
-         if (texObj->Name != 0 && ctx->Driver.TexParameter)
+         if (ctx->Driver.TexParameter)
             ctx->Driver.TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
       }
+   }
+
+   /* Restore default texture object states. */
+   for (gl_texture_index tex = 0; tex < NUM_TEXTURE_TARGETS; tex++) {
+      struct gl_texture_object *dst = ctx->Shared->DefaultTex[tex];
+      const struct gl_texture_object *src = &texstate->SavedDefaultObj[tex];
+
+      copy_texture_attribs(dst, src, tex);
    }
 
    if (!ctx->Driver.TexEnv && !ctx->Driver.TexGen) {
