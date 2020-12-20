@@ -274,6 +274,10 @@ struct ir3_instruction {
 		} cat5;
 		struct {
 			type_t type;
+			/* TODO remove dst_offset and handle as a ir3_register
+			 * which might be IMMED, similar to how src_offset is
+			 * handled.
+			 */
 			int dst_offset;
 			int iim_val : 3;      /* for ldgb/stgb, # of components */
 			unsigned d : 3;       /* for ldc, component offset */
