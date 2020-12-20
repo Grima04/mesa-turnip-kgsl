@@ -380,15 +380,12 @@ load_text_file(void *ctx, const char *file_name)
 static void
 compile_shader(struct gl_context *ctx, struct gl_shader *shader)
 {
-   struct _mesa_glsl_parse_state *state =
-      new(shader) _mesa_glsl_parse_state(ctx, shader->Stage, shader);
-
    _mesa_glsl_compile_shader(ctx, shader, options->dump_ast,
                              options->dump_hir, true);
 
    /* Print out the resulting IR */
-   if (!state->error && options->dump_lir) {
-      _mesa_print_ir(stdout, shader->ir, state);
+   if (shader->CompileStatus == COMPILE_SUCCESS && options->dump_lir) {
+      _mesa_print_ir(stdout, shader->ir, NULL);
    }
 
    return;
