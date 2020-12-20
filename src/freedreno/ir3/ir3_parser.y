@@ -795,8 +795,8 @@ cat4_opc:          T_OP_RCP       { new_instr(OPC_RCP); }
 
 cat4_instr:        cat4_opc dst_reg ',' src_reg_or_const_or_rel_or_imm
 
-cat5_opc_dsxypp:   T_OP_DSXPP_1   { new_instr(OPC_DSXPP_1); }
-|                  T_OP_DSYPP_1   { new_instr(OPC_DSYPP_1); }
+cat5_opc_dsxypp:   T_OP_DSXPP_1   { new_instr(OPC_DSXPP_1)->cat5.type = TYPE_F32; }
+|                  T_OP_DSYPP_1   { new_instr(OPC_DSYPP_1)->cat5.type = TYPE_F32; }
 
 cat5_opc:          T_OP_ISAM      { new_instr(OPC_ISAM); }
 |                  T_OP_ISAML     { new_instr(OPC_ISAML); }
