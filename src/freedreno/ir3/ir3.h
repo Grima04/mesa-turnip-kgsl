@@ -274,7 +274,6 @@ struct ir3_instruction {
 		} cat5;
 		struct {
 			type_t type;
-			int src_offset;
 			int dst_offset;
 			int iim_val : 3;      /* for ldgb/stgb, # of components */
 			unsigned d : 3;       /* for ldc, component offset */

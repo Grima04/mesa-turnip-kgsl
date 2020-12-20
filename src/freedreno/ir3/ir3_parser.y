@@ -862,14 +862,16 @@ cat6_dim:          '.' T_1D  { instr->cat6.d = 1; }
 |                  '.' T_4D  { instr->cat6.d = 4; }
 
 cat6_type:         '.' type  { instr->cat6.type = $2; }
-cat6_offset:       offset    { instr->cat6.src_offset = $1; }
+cat6_offset:       offset    { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
 cat6_immed:        integer   { instr->cat6.iim_val = $1; }
 
 cat6_load:         T_OP_LDG  { new_instr(OPC_LDG); }  cat6_type dst_reg ',' 'g' '[' reg cat6_offset ']' ',' immediate
 |                  T_OP_LDP  { new_instr(OPC_LDP); }  cat6_type dst_reg ',' 'p' '[' reg cat6_offset ']' ',' immediate
 |                  T_OP_LDL  { new_instr(OPC_LDL); }  cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' immediate
 |                  T_OP_LDLW { new_instr(OPC_LDLW); } cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' immediate
-|                  T_OP_LDLV { new_instr(OPC_LDLV); } cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' immediate
+|                  T_OP_LDLV { new_instr(OPC_LDLV); } cat6_type dst_reg ',' 'l' '[' integer ']' {
+                       new_reg(0, IR3_REG_IMMED)->iim_val = $8;
+                   } ',' immediate
 
 // TODO some of the cat6 instructions have different syntax for a6xx..
 //|                  T_OP_LDIB { new_instr(OPC_LDIB); } cat6_type dst_reg cat6_offset ',' reg ',' cat6_immed

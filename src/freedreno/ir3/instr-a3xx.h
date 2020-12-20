@@ -738,15 +738,15 @@ typedef struct PACKED {
 	uint32_t opc_cat          : 3;
 } instr_cat5_t;
 
-/* dword0 encoding for src_off: [src1 + off], src2: */
+/* dword0 encoding for src_off: [src1 + off], src3: */
 typedef struct PACKED {
 	/* dword0: */
 	uint32_t mustbe1  : 1;
-	int32_t  off      : 13;
+	int32_t  off      : 13;   /* src2 */
 	uint32_t src1     : 8;
 	uint32_t src1_im  : 1;
-	uint32_t src2_im  : 1;
-	uint32_t src2     : 8;
+	uint32_t src3_im  : 1;
+	uint32_t src3     : 8;
 
 	/* dword1: */
 	uint32_t dword1;

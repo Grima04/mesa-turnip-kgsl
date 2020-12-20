@@ -1135,26 +1135,26 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 			fprintf(ctx->out, " (pad0=%x, ssbo_im=%x, mustbe0=%x)", cat6->ldgb.pad0, cat6->ldgb.src_ssbo_im, cat6->ldgb.mustbe0);
 
 		return;
-	} else if (_OPC(6, cat6->opc) == OPC_LDG && cat6->a.src1_im && cat6->a.src2_im) {
+	} else if (_OPC(6, cat6->opc) == OPC_LDG && cat6->a.src1_im && cat6->a.src3_im) {
 		struct reginfo src3;
 
 		memset(&src3, 0, sizeof(src3));
 		src1.reg = (reg_t)(cat6->a.src1);
-		src2.reg = (reg_t)(cat6->a.src2);
-		src2.im  = cat6->a.src2_im;
-		if (src2.im)
-			src2.full = true;
-		src3.reg = (reg_t)(cat6->a.off);
-		src3.full = true;
+		src3.reg = (reg_t)(cat6->a.src3);
+		src3.im  = cat6->a.src3_im;
+		if (src3.im)
+			src3.full = true;
+		src2.reg = (reg_t)(cat6->a.off);
+		src2.full = true;
 		dst.reg  = (reg_t)(cat6->d.dst);
 
 		print_src(ctx, &dst);
 		fprintf(ctx->out, ", g[");
 		print_src(ctx, &src1);
 		fprintf(ctx->out, "+");
-		print_src(ctx, &src3);
-		fprintf(ctx->out, "], ");
 		print_src(ctx, &src2);
+		fprintf(ctx->out, "], ");
+		print_src(ctx, &src3);
 
 		return;
 	}
@@ -1162,8 +1162,8 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 	if (cat6->src_off) {
 		src1.reg = (reg_t)(cat6->a.src1);
 		src1.im  = cat6->a.src1_im;
-		src2.reg = (reg_t)(cat6->a.src2);
-		src2.im  = cat6->a.src2_im;
+		src2.reg = (reg_t)(cat6->a.src3);
+		src2.im  = cat6->a.src3_im;
 		src1off  = cat6->a.off;
 	} else {
 		src1.reg = (reg_t)(cat6->b.src1);

@@ -816,8 +816,9 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 
 	for (int i = 0; i < intr->num_components; i++) {
 		struct ir3_instruction *load =
-			ir3_LDG(b, addr, 0, create_immed(b, 1), 0, /* num components */
-					create_immed(b, off + i * 4), 0);
+			ir3_LDG(b, addr, 0,
+					create_immed(b, off + i * 4), 0,
+					create_immed(b, 1), 0); /* num components */
 		load->cat6.type = TYPE_U32;
 		dst[i] = load;
 	}
@@ -874,8 +875,8 @@ emit_intrinsic_load_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	base   = nir_intrinsic_base(intr);
 
 	ldl = ir3_LDL(b, offset, 0,
-			create_immed(b, intr->num_components), 0,
-			create_immed(b, base), 0);
+			create_immed(b, base), 0,
+			create_immed(b, intr->num_components), 0);
 
 	ldl->cat6.type = utype_dst(intr->dest);
 	ldl->regs[0]->wrmask = MASK(intr->num_components);
@@ -928,8 +929,8 @@ emit_intrinsic_load_shared_ir3(struct ir3_context *ctx, nir_intrinsic_instr *int
 	base   = nir_intrinsic_base(intr);
 
 	load = ir3_LDLW(b, offset, 0,
-			create_immed(b, intr->num_components), 0,
-			create_immed(b, base), 0);
+			create_immed(b, base), 0,
+			create_immed(b, intr->num_components), 0);
 
 	/* for a650, use LDL for tess ctrl inputs: */
 	if (ctx->so->type == MESA_SHADER_TESS_CTRL && ctx->compiler->tess_use_shared)
@@ -1063,8 +1064,8 @@ emit_intrinsic_load_scratch(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	offset = ir3_get_src(ctx, &intr->src[0])[0];
 
 	ldp = ir3_LDP(b, offset, 0,
-			create_immed(b, intr->num_components), 0,
-			create_immed(b, 0), 0);
+			create_immed(b, 0), 0,
+			create_immed(b, intr->num_components), 0);
 
 	ldp->cat6.type = utype_dst(intr->dest);
 	ldp->regs[0]->wrmask = MASK(intr->num_components);
@@ -1666,8 +1667,8 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		offset = ir3_get_src(ctx, &intr->src[1])[0];
 
 		struct ir3_instruction *load =
-			ir3_LDG(b, addr, 0, create_immed(ctx->block, dest_components),
-					0, offset, 0);
+			ir3_LDG(b, addr, 0, offset, 0,
+					create_immed(ctx->block, dest_components), 0);
 		load->cat6.type = TYPE_U32;
 		load->regs[0]->wrmask = MASK(dest_components);
 
