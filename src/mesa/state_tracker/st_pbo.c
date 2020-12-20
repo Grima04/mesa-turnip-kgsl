@@ -194,6 +194,7 @@ st_pbo_draw(struct st_context *st, const struct st_pbo_addresses *addr,
             unsigned surface_width, unsigned surface_height)
 {
    struct cso_context *cso = st->cso_context;
+   struct pipe_context *pipe = st->pipe;
 
    /* Setup vertex and geometry shaders */
    if (!st->pbo.vs) {
@@ -268,7 +269,7 @@ st_pbo_draw(struct st_context *st, const struct st_pbo_addresses *addr,
       cb.buffer_offset = 0;
       cb.buffer_size = sizeof(addr->constants);
 
-      cso_set_constant_buffer(cso, PIPE_SHADER_FRAGMENT, 0, &cb);
+      pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, &cb);
 
       pipe_resource_reference(&cb.buffer, NULL);
    }
