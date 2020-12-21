@@ -134,7 +134,8 @@ def parse_instruction(ins, include_pseudo):
             'unused': ins.attrib.get('unused', False),
             'pseudo': ins.attrib.get('pseudo', False),
             'message': ins.attrib.get('message', 'none'),
-            'last': ins.attrib.get('last', False)
+            'last': ins.attrib.get('last', False),
+            'table': ins.attrib.get('table', False),
     }
 
     if 'exact' in ins.attrib:
