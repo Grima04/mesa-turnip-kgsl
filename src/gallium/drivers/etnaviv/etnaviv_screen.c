@@ -675,6 +675,18 @@ etna_determine_uniform_limits(struct etna_screen *screen)
    }
 }
 
+static void
+etna_determine_sampler_limits(struct etna_screen *screen)
+{
+   /* vertex and fragment samplers live in one address space */
+   screen->specs.vertex_sampler_offset = 8;
+   screen->specs.fragment_sampler_count = 8;
+   screen->specs.vertex_sampler_count = 4;
+
+   if (screen->model == 0x400)
+      screen->specs.vertex_sampler_count = 0;
+}
+
 static bool
 etna_get_specs(struct etna_screen *screen)
 {
@@ -770,15 +782,6 @@ etna_get_specs(struct etna_screen *screen)
       VIV_FEATURE(screen, chipMinorFeatures0, 2BITPERTILE) ? 0x55555555 :
                                                              0x11111111;
 
-
-   /* vertex and fragment samplers live in one address space */
-   screen->specs.vertex_sampler_offset = 8;
-   screen->specs.fragment_sampler_count = 8;
-   screen->specs.vertex_sampler_count = 4;
-
-   if (screen->model == 0x400)
-      screen->specs.vertex_sampler_count = 0;
-
    screen->specs.vs_need_z_div =
       screen->model < 0x1000 && screen->model != 0x880;
    screen->specs.has_sin_cos_sqrt =
@@ -843,6 +846,7 @@ etna_get_specs(struct etna_screen *screen)
    }
 
    etna_determine_uniform_limits(screen);
+   etna_determine_sampler_limits(screen);
 
    if (screen->specs.halti >= 5) {
       screen->specs.has_unified_uniforms = true;
