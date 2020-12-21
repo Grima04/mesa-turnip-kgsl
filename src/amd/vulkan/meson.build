@@ -141,7 +141,7 @@ if system_has_kms_drm and not with_platform_android
 endif
 
 if with_xlib_lease
-  radv_deps += [dep_xcb_xrandr, dep_xlib_xrandr]
+  radv_deps += [dep_xlib_xrandr]
   radv_flags += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
 endif
 
