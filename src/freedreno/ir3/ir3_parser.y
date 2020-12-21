@@ -478,7 +478,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_LDLW
 %token <tok> T_OP_STLW
 %token <tok> T_OP_RESFMT
-%token <tok> T_OP_RESINF
+%token <tok> T_OP_RESINFO
 %token <tok> T_OP_ATOMIC_ADD
 %token <tok> T_OP_ATOMIC_SUB
 %token <tok> T_OP_ATOMIC_XCHG
@@ -528,6 +528,10 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_SAMP
 %token <tok> T_TEX
 %token <tok> T_BASE
+%token <tok> T_OFFSET
+%token <tok> T_UNIFORM
+%token <tok> T_NONUNIFORM
+%token <tok> T_IMM
 
 %token <tok> T_NAN
 %token <tok> T_INF
@@ -932,10 +936,27 @@ cat6_id_opc:
 
 cat6_id:           cat6_id_opc cat6_type dst_reg
 
+/* TODO adding support for both pre and post a6xx versions of ldib/stib/etc
+ * is going to be tricky.  Maybe we end up needing to cpp preprocess the
+ * parser and generate multiple versions?  For now, punt.
+ */
+cat6_bindless_ibo_opc: T_OP_RESINFO    { new_instr(OPC_RESINFO); }
+
+cat6_bindless_base:
+|                  '.' T_BASE { instr->flags |= IR3_INSTR_B; instr->cat6.base = $2; }
+
+cat6_bindless_mode: T_IMM cat6_bindless_base
+|                  T_UNIFORM cat6_bindless_base
+|                  T_NONUNIFORM cat6_bindless_base
+
+cat6_reg_or_immed: reg
+|                  integer { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
+
+cat6_bindless_ibo: cat6_bindless_ibo_opc cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed
+
 cat6_todo:         T_OP_G2L                 { new_instr(OPC_G2L); }
 |                  T_OP_L2G                 { new_instr(OPC_L2G); }
 |                  T_OP_RESFMT              { new_instr(OPC_RESFMT); }
-|                  T_OP_RESINF              { new_instr(OPC_RESINFO); }
 |                  T_OP_LDGB                { new_instr(OPC_LDGB); }
 |                  T_OP_STGB                { new_instr(OPC_STGB); }
 |                  T_OP_LDC                 { new_instr(OPC_LDC); }
@@ -946,6 +967,7 @@ cat6_instr:        cat6_load
 |                  cat6_prefetch
 |                  cat6_atomic
 |                  cat6_id
+|                  cat6_bindless_ibo
 |                  cat6_todo
 
 reg:               T_REGISTER     { $$ = new_reg($1, 0); }

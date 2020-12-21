@@ -301,7 +301,7 @@ static int parse_w(const char *str)
 "ldlw"                            return TOKEN(T_OP_LDLW);
 "stlw"                            return TOKEN(T_OP_STLW);
 "resfmt"                          return TOKEN(T_OP_RESFMT);
-"resinf"                          return TOKEN(T_OP_RESINF);
+"resinfo"                         return TOKEN(T_OP_RESINFO);
 "atomic.add"                      return TOKEN(T_OP_ATOMIC_ADD);
 "atomic.sub"                      return TOKEN(T_OP_ATOMIC_SUB);
 "atomic.xchg"                     return TOKEN(T_OP_ATOMIC_XCHG);
@@ -351,6 +351,10 @@ static int parse_w(const char *str)
 "s2en"                            return TOKEN(T_S2EN);
 "s"                               return 's';
 "base"[0-9]+                      ir3_yylval.num = strtol(yytext+4, NULL, 10); return T_BASE;
+"offset"[0-9]+                    ir3_yylval.num = strtol(yytext+6, NULL, 10); return T_OFFSET;
+"uniform"                         return T_UNIFORM;
+"nonuniform"                      return T_NONUNIFORM;
+"imm"                             return T_IMM;
 
 "h("                              return TOKEN(T_HP);
 "="                               return '=';
