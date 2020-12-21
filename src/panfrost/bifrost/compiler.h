@@ -494,7 +494,6 @@ typedef struct {
        uint64_t blend_desc;
 
        /* During NIR->BIR */
-       nir_function_impl *impl;
        bi_block *current_block;
        bi_block *after_block;
        bi_block *break_block;
@@ -503,7 +502,8 @@ typedef struct {
        nir_alu_type *blend_types;
 
        /* For creating temporaries */
-       unsigned temp_alloc;
+       unsigned ssa_alloc;
+       unsigned reg_alloc;
 
        /* Analysis results */
        bool has_liveness;
@@ -550,24 +550,20 @@ bi_fau(enum bir_fau value, bool hi)
 static inline unsigned
 bi_max_temp(bi_context *ctx)
 {
-        unsigned alloc = MAX2(ctx->impl->reg_alloc, ctx->impl->ssa_alloc);
-        return ((alloc + 2 + ctx->temp_alloc) << 1);
+        return (MAX2(ctx->reg_alloc, ctx->ssa_alloc) + 2) << 1;
 }
 
 static inline bi_index
 bi_temp(bi_context *ctx)
 {
-        unsigned alloc = (ctx->impl->ssa_alloc + ctx->temp_alloc++);
-        return bi_get_index(alloc, false, 0);
+        return bi_get_index(ctx->ssa_alloc++, false, 0);
 }
 
 static inline bi_index
 bi_temp_reg(bi_context *ctx)
 {
-        unsigned alloc = (ctx->impl->reg_alloc + ctx->temp_alloc++);
-        return bi_get_index(alloc, true, 0);
+        return bi_get_index(ctx->reg_alloc++, true, 0);
 }
-
 
 /* Inline constants automatically, will be lowered out by bi_lower_fau where a
  * constant is not allowed. load_const_to_scalar gaurantees that this makes

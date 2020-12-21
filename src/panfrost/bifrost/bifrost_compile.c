@@ -2356,7 +2356,9 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 if (!func->impl)
                         continue;
 
-                ctx->impl = func->impl;
+                ctx->ssa_alloc += func->impl->ssa_alloc;
+                ctx->reg_alloc += func->impl->reg_alloc;
+
                 emit_cf_list(ctx, &func->impl->body);
                 break; /* TODO: Multi-function shaders */
         }
