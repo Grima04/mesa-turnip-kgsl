@@ -360,6 +360,37 @@ typedef struct {
         };
 } bi_instruction;
 
+/* Swizzles across bytes in a 32-bit word. Expresses swz in the XML directly.
+ * To express widen, use the correpsonding replicated form, i.e. H01 = identity
+ * for widen = none, H00 for widen = h0, B1111 for widen = b1. For lane, also
+ * use the replicated form (interpretation is governed by the opcode). For
+ * 8-bit lanes with two channels, use replicated forms for replicated forms
+ * (TODO: what about others?). For 8-bit lanes with four channels using
+ * matching form (TODO: what about others?).
+ */
+
+enum bi_swizzle {
+        /* 16-bit swizzle ordering deliberate for fast compute */
+        BI_SWIZZLE_H00 = 0, /* = B0101 */
+        BI_SWIZZLE_H01 = 1, /* = B0123 = W0 */
+        BI_SWIZZLE_H10 = 2, /* = B2301 */
+        BI_SWIZZLE_H11 = 3, /* = B2323 */
+
+        /* replication order should be maintained for fast compute */
+        BI_SWIZZLE_B0000 = 4, /* single channel (replicate) */
+        BI_SWIZZLE_B1111 = 5,
+        BI_SWIZZLE_B2222 = 6,
+        BI_SWIZZLE_B3333 = 7,
+
+        /* totally special for explicit pattern matching */
+        BI_SWIZZLE_B0011 = 8, /* +SWZ.v4i8 */
+        BI_SWIZZLE_B2233 = 9, /* +SWZ.v4i8 */
+        BI_SWIZZLE_B1032 = 10, /* +SWZ.v4i8 */
+        BI_SWIZZLE_B3210 = 11, /* +SWZ.v4i8 */
+
+        BI_SWIZZLE_B0022 = 12, /* for b02 lanes */
+};
+
 /* Represents the assignment of slots for a given bi_bundle */
 
 typedef struct {
