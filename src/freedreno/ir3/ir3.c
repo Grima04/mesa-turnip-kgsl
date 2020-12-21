@@ -653,13 +653,9 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 		cat6->pad5 = 0x3;
 		break;
 	case OPC_STIB:
-		cat6->pad1 = 0x0;
-		cat6->pad3 = 0x6;
-		cat6->pad5 = 0x2;
-		break;
 	case OPC_LDIB:
 	case OPC_RESINFO:
-		cat6->pad1 = 0x1;
+		cat6->pad1 = 0x0;
 		cat6->pad3 = 0x6;
 		cat6->pad5 = 0x2;
 		break;
