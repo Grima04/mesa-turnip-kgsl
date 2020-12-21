@@ -204,6 +204,11 @@ check_vk_device_name() {
     fi
 }
 
+report_load() {
+    echo "System load: $(cut -d' ' -f1-3 < /proc/loadavg)"
+    echo "# of CPU cores: $(cat /proc/cpuinfo | grep processor | wc -l)"
+}
+
 # wrapper to supress +x to avoid spamming the log
 quiet() {
     set +x
@@ -239,8 +244,7 @@ FAILURES_CSV=$RESULTS/failures.csv
 run_cts $DEQP /tmp/case-list.txt $RESULTS_CSV
 DEQP_EXITCODE=$?
 
-echo "System load: $(cut -d' ' -f1-3 < /proc/loadavg)"
-echo "# of CPU cores: $(cat /proc/cpuinfo | grep processor | wc -l)"
+quiet report_load
 
 # Remove all but the first 50 individual XML files uploaded as artifacts, to
 # save fd.o space when you break everything.
