@@ -514,6 +514,7 @@ struct pipe_context {
    void (*set_vertex_buffers)( struct pipe_context *,
                                unsigned start_slot,
                                unsigned num_buffers,
+                               unsigned unbind_num_trailing_slots,
                                const struct pipe_vertex_buffer * );
 
    /*@}*/

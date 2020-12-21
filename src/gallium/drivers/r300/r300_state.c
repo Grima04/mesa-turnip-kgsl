@@ -1732,19 +1732,21 @@ static void r300_set_viewport_states(struct pipe_context* pipe,
 
 static void r300_set_vertex_buffers_hwtcl(struct pipe_context* pipe,
                                     unsigned start_slot, unsigned count,
+                                    unsigned unbind_num_trailing_slots,
                                     const struct pipe_vertex_buffer* buffers)
 {
     struct r300_context* r300 = r300_context(pipe);
 
     util_set_vertex_buffers_count(r300->vertex_buffer,
                                   &r300->nr_vertex_buffers,
-                                  buffers, start_slot, count);
+                                  buffers, start_slot, count,
+                                  unbind_num_trailing_slots);
 
     /* There must be at least one vertex buffer set, otherwise it locks up. */
     if (!r300->nr_vertex_buffers) {
         util_set_vertex_buffers_count(r300->vertex_buffer,
                                       &r300->nr_vertex_buffers,
-                                      &r300->dummy_vb, 0, 1);
+                                      &r300->dummy_vb, 0, 1, 0);
     }
 
     r300->vertex_arrays_dirty = TRUE;
@@ -1752,6 +1754,7 @@ static void r300_set_vertex_buffers_hwtcl(struct pipe_context* pipe,
 
 static void r300_set_vertex_buffers_swtcl(struct pipe_context* pipe,
                                     unsigned start_slot, unsigned count,
+                                    unsigned unbind_num_trailing_slots,
                                     const struct pipe_vertex_buffer* buffers)
 {
     struct r300_context* r300 = r300_context(pipe);
@@ -1759,8 +1762,10 @@ static void r300_set_vertex_buffers_swtcl(struct pipe_context* pipe,
 
     util_set_vertex_buffers_count(r300->vertex_buffer,
                                   &r300->nr_vertex_buffers,
-                                  buffers, start_slot, count);
-    draw_set_vertex_buffers(r300->draw, start_slot, count, buffers);
+                                  buffers, start_slot, count,
+                                  unbind_num_trailing_slots);
+    draw_set_vertex_buffers(r300->draw, start_slot, count,
+                            unbind_num_trailing_slots, buffers);
 
     if (!buffers)
         return;

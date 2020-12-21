@@ -4829,16 +4829,17 @@ static void si_delete_vertex_element(struct pipe_context *ctx, void *state)
 }
 
 static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot, unsigned count,
+                                  unsigned unbind_num_trailing_slots,
                                   const struct pipe_vertex_buffer *buffers)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct pipe_vertex_buffer *dst = sctx->vertex_buffer + start_slot;
-   unsigned updated_mask = u_bit_consecutive(start_slot, count);
+   unsigned updated_mask = u_bit_consecutive(start_slot, count + unbind_num_trailing_slots);
    uint32_t orig_unaligned = sctx->vertex_buffer_unaligned;
    uint32_t unaligned = 0;
    int i;
 
-   assert(start_slot + count <= ARRAY_SIZE(sctx->vertex_buffer));
+   assert(start_slot + count + unbind_num_trailing_slots <= ARRAY_SIZE(sctx->vertex_buffer));
 
    if (buffers) {
       for (i = 0; i < count; i++) {
@@ -4862,6 +4863,9 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
       for (i = 0; i < count; i++)
          pipe_resource_reference(&dst[i].buffer.resource, NULL);
    }
+
+   for (i = 0; i < unbind_num_trailing_slots; i++)
+      pipe_resource_reference(&dst[count + i].buffer.resource, NULL);
 
    sctx->vertex_buffers_dirty = sctx->num_vertex_elements > 0;
    sctx->vertex_buffer_unaligned = (orig_unaligned & ~updated_mask) | unaligned;

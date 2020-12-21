@@ -996,6 +996,7 @@ nvc0_set_tess_state(struct pipe_context *pipe,
 static void
 nvc0_set_vertex_buffers(struct pipe_context *pipe,
                         unsigned start_slot, unsigned count,
+                        unsigned unbind_num_trailing_slots,
                         const struct pipe_vertex_buffer *vb)
 {
     struct nvc0_context *nvc0 = nvc0_context(pipe);
@@ -1005,7 +1006,8 @@ nvc0_set_vertex_buffers(struct pipe_context *pipe,
     nvc0->dirty_3d |= NVC0_NEW_3D_ARRAYS;
 
     util_set_vertex_buffers_count(nvc0->vtxbuf, &nvc0->num_vtxbufs, vb,
-                                  start_slot, count);
+                                  start_slot, count,
+                                  unbind_num_trailing_slots);
 
     if (!vb) {
        nvc0->vbo_user &= ~(((1ull << count) - 1) << start_slot);

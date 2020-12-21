@@ -1008,11 +1008,13 @@ panfrost_set_vertex_buffers(
         struct pipe_context *pctx,
         unsigned start_slot,
         unsigned num_buffers,
+        unsigned unbind_num_trailing_slots,
         const struct pipe_vertex_buffer *buffers)
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-        util_set_vertex_buffers_mask(ctx->vertex_buffers, &ctx->vb_mask, buffers, start_slot, num_buffers);
+        util_set_vertex_buffers_mask(ctx->vertex_buffers, &ctx->vb_mask, buffers,
+                                     start_slot, num_buffers, unbind_num_trailing_slots);
 }
 
 static void

@@ -237,7 +237,7 @@ static void emit_state(struct rendering_state *state)
 
    if (state->vb_dirty) {
       state->pctx->set_vertex_buffers(state->pctx, state->start_vb,
-                                      state->num_vb, state->vb);
+                                      state->num_vb, 0, state->vb);
       state->vb_dirty = false;
    }
 
@@ -2755,7 +2755,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    }
    state.start_vb = -1;
    state.num_vb = 0;
-   state.pctx->set_vertex_buffers(state.pctx, 0, PIPE_MAX_ATTRIBS, NULL);
+   state.pctx->set_vertex_buffers(state.pctx, 0, 0, PIPE_MAX_ATTRIBS, NULL);
    state.pctx->bind_vertex_elements_state(state.pctx, NULL);
    state.pctx->bind_vs_state(state.pctx, NULL);
    state.pctx->bind_fs_state(state.pctx, NULL);

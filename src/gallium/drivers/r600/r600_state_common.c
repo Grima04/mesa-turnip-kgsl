@@ -566,6 +566,7 @@ void r600_vertex_buffers_dirty(struct r600_context *rctx)
 
 static void r600_set_vertex_buffers(struct pipe_context *ctx,
 				    unsigned start_slot, unsigned count,
+				    unsigned unbind_num_trailing_slots,
 				    const struct pipe_vertex_buffer *input)
 {
 	struct r600_context *rctx = (struct r600_context *)ctx;
@@ -601,6 +602,11 @@ static void r600_set_vertex_buffers(struct pipe_context *ctx,
 		}
 		disable_mask = ((1ull << count) - 1);
 	}
+
+	for (i = 0; i < unbind_num_trailing_slots; i++) {
+		pipe_resource_reference(&vb[count + i].buffer.resource, NULL);
+	}
+	disable_mask |= ((1ull << unbind_num_trailing_slots) - 1) << count;
 
 	disable_mask <<= start_slot;
 	new_buffer_mask <<= start_slot;

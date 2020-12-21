@@ -290,13 +290,15 @@ v3d_set_viewport_states(struct pipe_context *pctx,
 static void
 v3d_set_vertex_buffers(struct pipe_context *pctx,
                        unsigned start_slot, unsigned count,
+                       unsigned unbind_num_trailing_slots,
                        const struct pipe_vertex_buffer *vb)
 {
         struct v3d_context *v3d = v3d_context(pctx);
         struct v3d_vertexbuf_stateobj *so = &v3d->vertexbuf;
 
         util_set_vertex_buffers_mask(so->vb, &so->enabled_mask, vb,
-                                     start_slot, count);
+                                     start_slot, count,
+                                     unbind_num_trailing_slots);
         so->count = util_last_bit(so->enabled_mask);
 
         v3d->dirty |= VC5_DIRTY_VTXBUF;

@@ -391,7 +391,7 @@ void u_vbuf_destroy(struct u_vbuf *mgr)
    const unsigned num_vb = screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
                                                     PIPE_SHADER_CAP_MAX_INPUTS);
 
-   mgr->pipe->set_vertex_buffers(mgr->pipe, 0, num_vb, NULL);
+   mgr->pipe->set_vertex_buffers(mgr->pipe, 0, 0, num_vb, NULL);
 
    for (i = 0; i < PIPE_MAX_ATTRIBS; i++)
       pipe_vertex_buffer_unreference(&mgr->vertex_buffer[i]);
@@ -877,6 +877,7 @@ static void u_vbuf_delete_vertex_elements(void *ctx, void *state,
 
 void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
                                unsigned start_slot, unsigned count,
+                               unsigned unbind_num_trailing_slots,
                                const struct pipe_vertex_buffer *bufs)
 {
    unsigned i;
@@ -888,7 +889,8 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
    uint32_t incompatible_vb_mask = 0;
    /* which buffers have a non-zero stride */
    uint32_t nonzero_stride_vb_mask = 0;
-   const uint32_t mask = ~(((1ull << count) - 1) << start_slot);
+   const uint32_t mask =
+      ~(((1ull << (count + unbind_num_trailing_slots)) - 1) << start_slot);
 
    /* Zero out the bits we are going to rewrite completely. */
    mgr->user_vb_mask &= mask;
@@ -899,16 +901,18 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
    if (!bufs) {
       struct pipe_context *pipe = mgr->pipe;
       /* Unbind. */
+      unsigned total_count = count + unbind_num_trailing_slots;
       mgr->dirty_real_vb_mask &= mask;
 
-      for (i = 0; i < count; i++) {
+      for (i = 0; i < total_count; i++) {
          unsigned dst_index = start_slot + i;
 
          pipe_vertex_buffer_unreference(&mgr->vertex_buffer[dst_index]);
          pipe_vertex_buffer_unreference(&mgr->real_vertex_buffer[dst_index]);
       }
 
-      pipe->set_vertex_buffers(pipe, start_slot, count, NULL);
+      pipe->set_vertex_buffers(pipe, start_slot, count,
+                               unbind_num_trailing_slots, NULL);
       return;
    }
 
@@ -951,6 +955,13 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
       }
 
       pipe_vertex_buffer_reference(real_vb, vb);
+   }
+
+   for (i = 0; i < unbind_num_trailing_slots; i++) {
+      unsigned dst_index = start_slot + count + i;
+
+      pipe_vertex_buffer_unreference(&mgr->vertex_buffer[dst_index]);
+      pipe_vertex_buffer_unreference(&mgr->real_vertex_buffer[dst_index]);
    }
 
    mgr->user_vb_mask |= user_vb_mask;
@@ -1251,7 +1262,7 @@ static void u_vbuf_set_driver_vertex_buffers(struct u_vbuf *mgr)
    start_slot = ffs(mgr->dirty_real_vb_mask) - 1;
    count = util_last_bit(mgr->dirty_real_vb_mask >> start_slot);
 
-   pipe->set_vertex_buffers(pipe, start_slot, count,
+   pipe->set_vertex_buffers(pipe, start_slot, count, 0,
                             mgr->real_vertex_buffer + start_slot);
    mgr->dirty_real_vb_mask = 0;
 }

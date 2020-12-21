@@ -182,7 +182,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       }
    }
 
-   draw_set_vertex_buffers(draw, 0, num_vbuffers, vbuffers);
+   draw_set_vertex_buffers(draw, 0, num_vbuffers, 0, vbuffers);
    draw_set_vertex_elements(draw, vp->num_inputs, velements.velems);
 
    unsigned start = 0;
@@ -517,7 +517,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
          pipe_buffer_unmap(pipe, vb_transfer[buf]);
       draw_set_mapped_vertex_buffer(draw, buf, NULL, 0);
    }
-   draw_set_vertex_buffers(draw, 0, num_vbuffers, NULL);
+   draw_set_vertex_buffers(draw, 0, 0, num_vbuffers, NULL);
 
    draw_bind_vertex_shader(draw, NULL);
 }

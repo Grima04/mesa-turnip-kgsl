@@ -411,13 +411,15 @@ void draw_set_viewport_states( struct draw_context *draw,
 void
 draw_set_vertex_buffers(struct draw_context *draw,
                         unsigned start_slot, unsigned count,
+                        unsigned unbind_num_trailing_slots,
                         const struct pipe_vertex_buffer *buffers)
 {
    assert(start_slot + count <= PIPE_MAX_ATTRIBS);
 
    util_set_vertex_buffers_count(draw->pt.vertex_buffer,
                                  &draw->pt.nr_vertex_buffers,
-                                 buffers, start_slot, count);
+                                 buffers, start_slot, count,
+                                 unbind_num_trailing_slots);
 }
 
 

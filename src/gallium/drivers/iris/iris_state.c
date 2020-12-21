@@ -3421,6 +3421,7 @@ iris_delete_state(struct pipe_context *ctx, void *state)
 static void
 iris_set_vertex_buffers(struct pipe_context *ctx,
                         unsigned start_slot, unsigned count,
+                        unsigned unbind_num_trailing_slots,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
@@ -3466,6 +3467,13 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
             vb.NullVertexBuffer = true;
          }
       }
+   }
+
+   for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
+      struct iris_vertex_buffer_state *state =
+         &genx->vertex_buffers[start_slot + count + i];
+
+      pipe_resource_reference(&state->resource, NULL);
    }
 
    ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;

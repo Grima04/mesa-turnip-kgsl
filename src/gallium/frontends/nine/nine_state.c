@@ -906,7 +906,7 @@ update_vertex_buffers(struct NineDevice9 *device)
             dummy_vtxbuf.is_user_buffer = false;
             dummy_vtxbuf.buffer_offset = 0;
             pipe->set_vertex_buffers(pipe, context->dummy_vbo_bound_at,
-                                     1, &dummy_vtxbuf);
+                                     1, 0, &dummy_vtxbuf);
             context->vbo_bound_done = TRUE;
         }
         mask &= ~(1 << context->dummy_vbo_bound_at);
@@ -915,9 +915,9 @@ update_vertex_buffers(struct NineDevice9 *device)
     for (i = 0; mask; mask >>= 1, ++i) {
         if (mask & 1) {
             if (context->vtxbuf[i].buffer.resource)
-                pipe->set_vertex_buffers(pipe, i, 1, &context->vtxbuf[i]);
+                pipe->set_vertex_buffers(pipe, i, 1, 0, &context->vtxbuf[i]);
             else
-                pipe->set_vertex_buffers(pipe, i, 1, NULL);
+                pipe->set_vertex_buffers(pipe, i, 0, 1, NULL);
         }
     }
 
@@ -2390,7 +2390,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_primitive_from_vtxbuf,
     info.max_index = draw.count - 1;
     info.index.resource = NULL;
 
-    context->pipe->set_vertex_buffers(context->pipe, 0, 1, vtxbuf);
+    context->pipe->set_vertex_buffers(context->pipe, 0, 1, 0, vtxbuf);
 
     context->pipe->draw_vbo(context->pipe, &info, NULL, &draw, 1);
 }
@@ -2425,7 +2425,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf,
     else
         info.index.user = user_ibuf;
 
-    context->pipe->set_vertex_buffers(context->pipe, 0, 1, vbuf);
+    context->pipe->set_vertex_buffers(context->pipe, 0, 1, 0, vbuf);
 
     context->pipe->draw_vbo(context->pipe, &info, NULL, &draw, 1);
 }
@@ -2916,7 +2916,7 @@ nine_context_clear(struct NineDevice9 *device)
     pipe->set_sampler_views(pipe, PIPE_SHADER_VERTEX, 0, NINE_MAX_SAMPLERS_VS, NULL);
     pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, NINE_MAX_SAMPLERS_PS, NULL);
 
-    pipe->set_vertex_buffers(pipe, 0, device->caps.MaxStreams, NULL);
+    pipe->set_vertex_buffers(pipe, 0, 0, device->caps.MaxStreams, NULL);
 
     for (i = 0; i < ARRAY_SIZE(context->rt); ++i)
        nine_bind(&context->rt[i], NULL);
@@ -3100,10 +3100,10 @@ update_vertex_buffers_sw(struct NineDevice9 *device, int start_vertice, int num_
                                   &(vtxbuf.buffer.resource));
                     u_upload_unmap(device->pipe_sw->stream_uploader);
                 }
-                pipe_sw->set_vertex_buffers(pipe_sw, i, 1, &vtxbuf);
+                pipe_sw->set_vertex_buffers(pipe_sw, i, 1, 0, &vtxbuf);
                 pipe_vertex_buffer_unreference(&vtxbuf);
             } else
-                pipe_sw->set_vertex_buffers(pipe_sw, i, 1, NULL);
+                pipe_sw->set_vertex_buffers(pipe_sw, i, 0, 1, NULL);
         }
     }
     nine_context_get_pipe_release(device);
@@ -3243,7 +3243,7 @@ nine_state_after_draw_sw(struct NineDevice9 *device)
     int i;
 
     for (i = 0; i < 4; i++) {
-        pipe_sw->set_vertex_buffers(pipe_sw, i, 1, NULL);
+        pipe_sw->set_vertex_buffers(pipe_sw, i, 0, 1, NULL);
         if (sw_internal->transfers_so[i])
             pipe->transfer_unmap(pipe, sw_internal->transfers_so[i]);
         sw_internal->transfers_so[i] = NULL;

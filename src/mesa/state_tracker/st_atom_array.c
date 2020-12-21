@@ -354,7 +354,8 @@ st_update_array(struct st_context *st)
    cso_set_vertex_buffers_and_elements(cso, &velements,
                                        num_vbuffers,
                                        unbind_trailing_vbuffers,
-                                       vbuffer, uses_user_vertex_buffers);
+                                       uses_user_vertex_buffers,
+                                       vbuffer);
    st->last_num_vbuffers = num_vbuffers;
 
    /* Unreference uploaded current attrib buffer. */
