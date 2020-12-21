@@ -172,6 +172,12 @@ bi_must_last(bi_instr *ins)
         return bi_opcode_props[ins->op].last;
 }
 
+ASSERTED static bool
+bi_must_message(bi_instr *ins)
+{
+        return bi_opcode_props[ins->op].message != BIFROST_MESSAGE_NONE;
+}
+
 /* Eventually, we'll need a proper scheduling, grouping instructions
  * into clauses and ordering/assigning grouped instructions to the
  * appropriate FMA/ADD slots. Right now we do the dumbest possible
