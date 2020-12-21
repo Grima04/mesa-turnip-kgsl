@@ -325,24 +325,42 @@ bi_test_units(bi_builder *b)
         assert(bi_can_add(mov));
         assert(!bi_must_last(mov));
         assert(!bi_must_message(mov));
+        assert(bi_reads_zero(mov));
+        assert(bi_reads_temps(mov, 0));
+        assert(bi_reads_t(mov, 0));
 
         bi_instr *fma = bi_fma_f32_to(b, TMP(), TMP(), TMP(), bi_zero(), BI_ROUND_NONE);
         assert(bi_can_fma(fma));
         assert(!bi_can_add(fma));
         assert(!bi_must_last(fma));
         assert(!bi_must_message(fma));
+        assert(bi_reads_zero(fma));
+        for (unsigned i = 0; i < 3; ++i) {
+                assert(bi_reads_temps(fma, i));
+                assert(bi_reads_t(fma, i));
+        }
 
         bi_instr *load = bi_load_i128_to(b, TMP(), TMP(), TMP(), BI_SEG_UBO);
         assert(!bi_can_fma(load));
         assert(bi_can_add(load));
         assert(!bi_must_last(load));
         assert(bi_must_message(load));
+        for (unsigned i = 0; i < 2; ++i) {
+                assert(bi_reads_temps(load, i));
+                assert(bi_reads_t(load, i));
+        }
 
         bi_instr *blend = bi_blend_to(b, TMP(), TMP(), TMP(), TMP(), TMP());
         assert(!bi_can_fma(load));
         assert(bi_can_add(load));
         assert(bi_must_last(blend));
         assert(bi_must_message(blend));
+        for (unsigned i = 0; i < 4; ++i)
+                assert(bi_reads_temps(blend, i));
+        assert(!bi_reads_t(blend, 0));
+        assert(bi_reads_t(blend, 1));
+        assert(!bi_reads_t(blend, 2));
+        assert(!bi_reads_t(blend, 3));
 }
 
 int bi_test_scheduler(void)
