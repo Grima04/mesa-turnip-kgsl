@@ -152,6 +152,25 @@ static struct ir3_register * dummy_dst(void)
 	return new_reg(0, 0);
 }
 
+static void fixup_cat5_s2en(void)
+{
+	assert(opc_cat(instr->opc) == 5);
+	if (!(instr->flags & IR3_INSTR_S2EN))
+		return;
+	/* For various reasons (ie. mainly to make the .s2en src easier to
+	 * find, given that various different cat5 tex instructions can have
+	 * different # of src registers), in ir3 the samp/tex src register
+	 * is first, rather than last.  So we have to detect this case and
+	 * fix things up.
+	 */
+	struct ir3_register *s2en_src = instr->regs[instr->regs_count - 1];
+	assert(s2en_src->flags & IR3_REG_HALF);
+	for (int i = 1; i < instr->regs_count - 1; i++) {
+		instr->regs[i+1] = instr->regs[i];
+	}
+	instr->regs[1] = s2en_src;
+}
+
 static void add_const(unsigned reg, unsigned c0, unsigned c1, unsigned c2, unsigned c3)
 {
 	struct ir3_const_state *const_state = ir3_const_state(variant);
@@ -622,7 +641,7 @@ instr:             iflags cat0_instr
 |                  iflags cat2_instr
 |                  iflags cat3_instr
 |                  iflags cat4_instr
-|                  iflags cat5_instr
+|                  iflags cat5_instr { fixup_cat5_s2en(); }
 |                  iflags cat6_instr
 
 cat0_src1:         '!' T_P0        { instr->cat0.inv1 = true; instr->cat0.comp1 = $2 >> 1; }
