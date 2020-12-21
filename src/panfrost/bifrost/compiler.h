@@ -505,6 +505,22 @@ bi_byte(bi_index idx, unsigned lane)
 }
 
 static inline bi_index
+bi_abs(bi_index idx)
+{
+        assert(idx.type != BI_INDEX_CONSTANT);
+        idx.abs = true;
+        return idx;
+}
+
+static inline bi_index
+bi_neg(bi_index idx)
+{
+        assert(idx.type != BI_INDEX_CONSTANT);
+        idx.neg ^= true;
+        return idx;
+}
+
+static inline bi_index
 bi_imm_u8(uint8_t imm)
 {
         return bi_byte(bi_imm_u32(imm), 0);
