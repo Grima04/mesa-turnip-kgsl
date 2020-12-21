@@ -166,6 +166,12 @@ bi_can_add(bi_instr *ins)
         return bi_opcode_props[ins->op].add;
 }
 
+ASSERTED static bool
+bi_must_last(bi_instr *ins)
+{
+        return bi_opcode_props[ins->op].last;
+}
+
 /* Eventually, we'll need a proper scheduling, grouping instructions
  * into clauses and ordering/assigning grouped instructions to the
  * appropriate FMA/ADD slots. Right now we do the dumbest possible
