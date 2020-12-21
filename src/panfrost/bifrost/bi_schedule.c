@@ -150,6 +150,22 @@ bi_singleton(void *memctx, bi_instr *ins,
         return u;
 }
 
+/* Scheduler predicates */
+
+ASSERTED static bool
+bi_can_fma(bi_instr *ins)
+{
+        /* TODO: some additional fp16 constraints */
+        return bi_opcode_props[ins->op].fma;
+}
+
+ASSERTED static bool
+bi_can_add(bi_instr *ins)
+{
+        /* TODO: some additional fp16 constraints */
+        return bi_opcode_props[ins->op].add;
+}
+
 /* Eventually, we'll need a proper scheduling, grouping instructions
  * into clauses and ordering/assigning grouped instructions to the
  * appropriate FMA/ADD slots. Right now we do the dumbest possible
