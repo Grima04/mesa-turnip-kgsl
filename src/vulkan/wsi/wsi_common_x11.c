@@ -1551,19 +1551,21 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
 
-   unsigned num_images = pCreateInfo->minImageCount;
-   if (wsi_device->x11.strict_imageCount)
-      num_images = pCreateInfo->minImageCount;
-   else if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
-      num_images = MAX2(num_images, 5);
-   else if (wsi_device->x11.ensure_minImageCount)
-      num_images = MAX2(num_images, x11_get_min_image_count(wsi_device));
-
    xcb_connection_t *conn = x11_surface_get_connection(icd_surface);
    struct wsi_x11_connection *wsi_conn =
       wsi_x11_get_connection(wsi_device, conn);
    if (!wsi_conn)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   unsigned num_images = pCreateInfo->minImageCount;
+   if (wsi_device->x11.strict_imageCount)
+      num_images = pCreateInfo->minImageCount;
+   else if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR ||
+            (present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR &&
+             wsi_conn->is_xwayland))
+      num_images = MAX2(num_images, 5);
+   else if (wsi_device->x11.ensure_minImageCount)
+      num_images = MAX2(num_images, x11_get_min_image_count(wsi_device));
 
    /* Check for whether or not we have a window up-front */
    xcb_window_t window = x11_surface_get_window(icd_surface);
@@ -1667,7 +1669,9 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
 
    if ((chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR ||
        chain->base.present_mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR ||
-       chain->base.present_mode == VK_PRESENT_MODE_MAILBOX_KHR) && !chain->base.wsi->sw) {
+       chain->base.present_mode == VK_PRESENT_MODE_MAILBOX_KHR ||
+        (chain->base.present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR &&
+         wsi_conn->is_xwayland)) && !chain->base.wsi->sw) {
       chain->has_present_queue = true;
 
       /* Initialize our queues.  We make them base.image_count + 1 because we will
