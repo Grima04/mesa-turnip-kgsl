@@ -38,6 +38,7 @@
 #include <xf86drm.h>
 #include "drm-uapi/drm_fourcc.h"
 #include "util/hash_table.h"
+#include "util/u_thread.h"
 #include "util/xmlconfig.h"
 
 #include "vk_util.h"
@@ -1141,6 +1142,9 @@ x11_manage_fifo_queues(void *state)
    VkResult result = VK_SUCCESS;
 
    assert(chain->has_present_queue);
+
+   u_thread_setname("WSI swapchain queue");
+
    while (chain->status >= 0) {
       /* We can block here unconditionally because after an image was sent to
        * the server (later on in this loop) we ensure at least one image is
