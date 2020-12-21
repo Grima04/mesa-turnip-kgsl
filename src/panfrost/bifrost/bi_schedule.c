@@ -324,21 +324,25 @@ bi_test_units(bi_builder *b)
         assert(bi_can_fma(mov));
         assert(bi_can_add(mov));
         assert(!bi_must_last(mov));
+        assert(!bi_must_message(mov));
 
         bi_instr *fma = bi_fma_f32_to(b, TMP(), TMP(), TMP(), bi_zero(), BI_ROUND_NONE);
         assert(bi_can_fma(fma));
         assert(!bi_can_add(fma));
         assert(!bi_must_last(fma));
+        assert(!bi_must_message(fma));
 
         bi_instr *load = bi_load_i128_to(b, TMP(), TMP(), TMP(), BI_SEG_UBO);
         assert(!bi_can_fma(load));
         assert(bi_can_add(load));
         assert(!bi_must_last(load));
+        assert(bi_must_message(load));
 
         bi_instr *blend = bi_blend_to(b, TMP(), TMP(), TMP(), TMP(), TMP());
         assert(!bi_can_fma(load));
         assert(bi_can_add(load));
         assert(bi_must_last(blend));
+        assert(bi_must_message(blend));
 }
 
 int bi_test_scheduler(void)
