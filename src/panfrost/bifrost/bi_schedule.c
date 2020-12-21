@@ -25,6 +25,7 @@
  */
 
 #include "compiler.h"
+#include "bi_builder.h"
 
 /* Determines messsage type by checking the table and a few special cases. Only
  * case missing is tilebuffer instructions that access depth/stencil, which
@@ -292,8 +293,52 @@ bi_schedule(bi_context *ctx)
 }
 
 #ifndef NDEBUG
+
+static bi_builder *
+bit_builder(void *memctx)
+{
+        bi_context *ctx = rzalloc(memctx, bi_context);
+        list_inithead(&ctx->blocks);
+
+        bi_block *blk = rzalloc(ctx, bi_block);
+
+        blk->base.predecessors = _mesa_set_create(blk,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+        list_addtail(&blk->base.link, &ctx->blocks);
+        list_inithead(&blk->base.instructions);
+
+        bi_builder *b = rzalloc(memctx, bi_builder);
+        b->shader = ctx;
+        b->cursor = bi_after_block(blk);
+        return b;
+}
+
+#define TMP() bi_temp(b->shader)
+
+static void
+bi_test_units(bi_builder *b)
+{
+        bi_instr *mov = bi_mov_i32_to(b, TMP(), TMP());
+        assert(bi_can_fma(mov));
+        assert(bi_can_add(mov));
+
+        bi_instr *fma = bi_fma_f32_to(b, TMP(), TMP(), TMP(), bi_zero(), BI_ROUND_NONE);
+        assert(bi_can_fma(fma));
+        assert(!bi_can_add(fma));
+
+        bi_instr *load = bi_load_i128_to(b, TMP(), TMP(), TMP(), BI_SEG_UBO);
+        assert(!bi_can_fma(load));
+        assert(bi_can_add(load));
+}
+
 int bi_test_scheduler(void)
 {
+        void *memctx = NULL;
+
+        bi_test_units(bit_builder(memctx));
+
         return 0;
 }
 #endif
