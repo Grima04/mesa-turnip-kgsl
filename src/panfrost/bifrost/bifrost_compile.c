@@ -229,6 +229,37 @@ bi_is_intr_immediate(nir_intrinsic_instr *instr, unsigned *immediate)
 }
 
 static void
+bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        nir_alu_type T = nir_intrinsic_dest_type(instr);
+        enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
+        nir_src *offset = nir_get_io_offset_src(instr);
+        unsigned imm_index = 0;
+        unsigned base = nir_intrinsic_base(instr);
+        bool constant = nir_src_is_const(*offset);
+        bool immediate = bi_is_intr_immediate(instr, &imm_index);
+
+        if (immediate) {
+                bi_ld_attr_imm_to(b, bi_dest_index(&instr->dest),
+                                bi_register(61), /* TODO RA */
+                                bi_register(62), /* TODO RA */
+                                regfmt, instr->num_components - 1, imm_index);
+        } else {
+                bi_index idx = bi_src_index(&instr->src[0]);
+
+                if (constant)
+                        idx = bi_imm_u32(imm_index);
+                else if (base != 0)
+                        idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
+
+                bi_ld_attr_to(b, bi_dest_index(&instr->dest),
+                                bi_register(61), /* TODO RA */
+                                bi_register(62), /* TODO RA */
+                                idx, regfmt, instr->num_components - 1);
+        }
+}
+
+static void
 bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
 {
         enum bi_sample sample = BI_SAMPLE_CENTER;
