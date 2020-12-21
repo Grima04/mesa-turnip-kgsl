@@ -325,7 +325,9 @@ static int emit_cat2(struct ir3_instruction *instr, void *ptr,
 	cat2->sat      = !!(instr->flags & IR3_INSTR_SAT);
 	cat2->ss       = !!(instr->flags & IR3_INSTR_SS);
 	cat2->ul       = !!(instr->flags & IR3_INSTR_UL);
-	cat2->dst_half = !!((src1->flags ^ dst->flags) & IR3_REG_HALF);
+	/* dst widen/narrow doesn't apply to p0.c */
+	if (dst->num < regid(REG_P0, 0))
+		cat2->dst_half = !!((src1->flags ^ dst->flags) & IR3_REG_HALF);
 	cat2->ei       = !!(dst->flags & IR3_REG_EI);
 	cat2->cond     = instr->cat2.condition;
 	cat2->full     = ! (src1->flags & IR3_REG_HALF);
