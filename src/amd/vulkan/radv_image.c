@@ -108,29 +108,6 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 	    format != VK_FORMAT_D16_UNORM)
 		return false;
 
-	if (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
-		const struct VkImageFormatListCreateInfo *format_list =
-			(const struct  VkImageFormatListCreateInfo *)
-				vk_find_struct_const(pCreateInfo->pNext,
-						     IMAGE_FORMAT_LIST_CREATE_INFO);
-
-		/* We have to ignore the existence of the list if viewFormatCount = 0 */
-		if (format_list && format_list->viewFormatCount) {
-			/* compatibility is transitive, so we only need to check
-			 * one format with everything else.
-			 */
-			for (unsigned i = 0; i < format_list->viewFormatCount; ++i) {
-				if (format_list->pViewFormats[i] == VK_FORMAT_UNDEFINED)
-					continue;
-
-				if (format != format_list->pViewFormats[i])
-					return false;
-			}
-		} else {
-			return false;
-		}
-	}
-
 	return true;
 }
 
