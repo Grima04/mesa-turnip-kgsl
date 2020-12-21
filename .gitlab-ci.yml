@@ -1410,6 +1410,8 @@ arm64_a630_vk_sysmem:
     paths:
       - results/
       - serial*.txt
+    exclude:
+      - results/*.shader_cache
 
 .freedreno-test:
   extends:

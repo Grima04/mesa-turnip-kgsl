@@ -266,9 +266,6 @@ DEQP_EXITCODE=$?
 echo "System load: $(cut -d' ' -f1-3 < /proc/loadavg)"
 echo "# of CPU cores: $(cat /proc/cpuinfo | grep processor | wc -l)"
 
-# Remove the shader cache, no need to include in the artifacts.
-find $RESULTS -name \*.shader_cache | xargs rm -f
-
 # junit is disabled, because it overloads gitlab.freedesktop.org to parse it.
 # quiet generate_junit $RESULTS_CSV > $RESULTS/results.xml
 
