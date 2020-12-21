@@ -481,7 +481,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             res->needs_xfb_barrier = false;
          }
       }
-      ctx->gfx_pipeline_state.hash = 0;
+      ctx->gfx_pipeline_state.dirty = true;
    }
 
    util_set_vertex_buffers_mask(ctx->buffers, &ctx->buffers_enabled_mask,
@@ -509,7 +509,7 @@ zink_set_viewport_states(struct pipe_context *pctx,
       ctx->viewports[start_slot + i] = viewport;
    }
    if (ctx->gfx_pipeline_state.num_viewports != start_slot + num_viewports)
-      ctx->gfx_pipeline_state.hash = 0;
+      ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.num_viewports = start_slot + num_viewports;
 }
 
@@ -804,7 +804,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       ctx->dirty_shader_stages |= 1 << PIPE_SHADER_FRAGMENT;
    ctx->gfx_pipeline_state.rast_samples = rast_samples;
    ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
-   ctx->gfx_pipeline_state.hash = 0;
+   ctx->gfx_pipeline_state.dirty = true;
 
    struct zink_batch *batch = zink_batch_no_rp(ctx);
 
@@ -824,7 +824,7 @@ zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 {
    struct zink_context *ctx = zink_context(pctx);
    ctx->gfx_pipeline_state.sample_mask = sample_mask;
-   ctx->gfx_pipeline_state.hash = 0;
+   ctx->gfx_pipeline_state.dirty = true;
 }
 
 static VkAccessFlags
@@ -1265,7 +1265,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx)
       goto fail;
 
-   ctx->gfx_pipeline_state.hash = 0;
+   ctx->gfx_pipeline_state.dirty = true;
 
    ctx->base.screen = pscreen;
    ctx->base.priv = priv;

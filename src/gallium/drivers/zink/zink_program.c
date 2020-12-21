@@ -334,7 +334,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
          zm = get_shader_module_for_stage(ctx, dirty[i], prog);
          zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], zm);
          /* we probably need a new pipeline when we switch shader modules */
-         ctx->gfx_pipeline_state.hash = 0;
+         ctx->gfx_pipeline_state.dirty = true;
       } else if (stages[type] && !disallow_reuse) /* reuse existing shader module */
          zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], ctx->curr_program->modules[type]);
       prog->shaders[type] = stages[type];
@@ -559,14 +559,12 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
 
    struct hash_entry *entry = NULL;
    
-   if (!state->hash) {
+   if (state->dirty) {
       for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
          state->modules[i] = prog->modules[i] ? prog->modules[i]->shader : VK_NULL_HANDLE;
 
       state->hash = hash_gfx_pipeline_state(state);
-      /* make sure the hash is not zero, as we take it as invalid.
-       * TODO: rework this using a separate dirty-bit */
-      assert(state->hash != 0);
+      state->dirty = false;
    }
    entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[vkmode], state->hash, state);
 
@@ -583,7 +581,6 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
       memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
 
-      assert(state->hash);
       entry = _mesa_hash_table_insert_pre_hashed(prog->pipelines[vkmode], state->hash, state, pc_entry);
       assert(entry);
 
