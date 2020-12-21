@@ -803,6 +803,7 @@ static void si_set_shader_image(struct si_context *ctx, unsigned shader, unsigne
 
 static void si_set_shader_images(struct pipe_context *pipe, enum pipe_shader_type shader,
                                  unsigned start_slot, unsigned count,
+                                 unsigned unbind_num_trailing_slots,
                                  const struct pipe_image_view *views)
 {
    struct si_context *ctx = (struct si_context *)pipe;
@@ -810,10 +811,10 @@ static void si_set_shader_images(struct pipe_context *pipe, enum pipe_shader_typ
 
    assert(shader < SI_NUM_SHADERS);
 
-   if (!count)
+   if (!count && !unbind_num_trailing_slots)
       return;
 
-   assert(start_slot + count <= SI_NUM_IMAGES);
+   assert(start_slot + count + unbind_num_trailing_slots <= SI_NUM_IMAGES);
 
    if (views) {
       for (i = 0, slot = start_slot; i < count; ++i, ++slot)
@@ -822,6 +823,9 @@ static void si_set_shader_images(struct pipe_context *pipe, enum pipe_shader_typ
       for (i = 0, slot = start_slot; i < count; ++i, ++slot)
          si_set_shader_image(ctx, shader, slot, NULL, false);
    }
+
+   for (i = 0; i < unbind_num_trailing_slots; ++i, ++slot)
+      si_set_shader_image(ctx, shader, slot, NULL, false);
 
    if (shader == PIPE_SHADER_COMPUTE &&
        ctx->cs_shader_state.program &&

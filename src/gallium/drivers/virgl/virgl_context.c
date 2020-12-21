@@ -1282,6 +1282,7 @@ static void virgl_fence_server_sync(struct pipe_context *ctx,
 static void virgl_set_shader_images(struct pipe_context *ctx,
                                     enum pipe_shader_type shader,
                                     unsigned start_slot, unsigned count,
+                                    unsigned unbind_num_trailing_slots,
                                     const struct pipe_image_view *images)
 {
    struct virgl_context *vctx = virgl_context(ctx);
@@ -1311,6 +1312,11 @@ static void virgl_set_shader_images(struct pipe_context *ctx,
    if (!max_shader_images)
       return;
    virgl_encode_set_shader_images(vctx, shader, start_slot, count, images);
+
+   if (unbind_num_trailing_slots) {
+      virgl_set_shader_images(ctx, shader, start_slot + count,
+                              unbind_num_trailing_slots, 0, NULL);
+   }
 }
 
 static void virgl_memory_barrier(struct pipe_context *ctx,

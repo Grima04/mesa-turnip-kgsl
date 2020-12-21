@@ -165,6 +165,7 @@ void
 fd_set_shader_images(struct pipe_context *pctx,
 		enum pipe_shader_type shader,
 		unsigned start, unsigned count,
+		unsigned unbind_num_trailing_slots,
 		const struct pipe_image_view *images)
 {
 	struct fd_context *ctx = fd_context(pctx);
@@ -205,6 +206,11 @@ fd_set_shader_images(struct pipe_context *pctx,
 
 		so->enabled_mask &= ~mask;
 	}
+
+	for (unsigned i = 0; i < unbind_num_trailing_slots; i++)
+		pipe_resource_reference(&so->si[i + start + count].resource, NULL);
+
+	so->enabled_mask &= ~(BITFIELD_MASK(unbind_num_trailing_slots) << (start + count));
 
 	ctx->dirty_shader[shader] |= FD_DIRTY_SHADER_IMAGE;
 	ctx->dirty |= FD_DIRTY_IMAGE;

@@ -53,6 +53,7 @@ static inline bool fd_depth_clamp_enabled(struct fd_context *ctx)
 void fd_set_shader_images(struct pipe_context *pctx,
 		enum pipe_shader_type shader,
 		unsigned start, unsigned count,
+		unsigned unbind_num_trailing_slots,
 		const struct pipe_image_view *images);
 
 void fd_state_init(struct pipe_context *pctx);

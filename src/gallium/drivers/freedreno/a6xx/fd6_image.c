@@ -316,12 +316,14 @@ fd6_build_ibo_state(struct fd_context *ctx, const struct ir3_shader_variant *v,
 static void fd6_set_shader_images(struct pipe_context *pctx,
 		enum pipe_shader_type shader,
 		unsigned start, unsigned count,
+		unsigned unbind_num_trailing_slots,
 		const struct pipe_image_view *images)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_shaderimg_stateobj *so = &ctx->shaderimg[shader];
 
-	fd_set_shader_images(pctx, shader, start, count, images);
+	fd_set_shader_images(pctx, shader, start, count,
+			     unbind_num_trailing_slots, images);
 
 	if (!images)
 		return;

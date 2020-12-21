@@ -175,14 +175,11 @@ st_bind_images(struct st_context *st, struct gl_program *prog,
    }
 
    struct pipe_context *pipe = st->pipe;
-   pipe->set_shader_images(pipe, shader_type, 0, num_images, images);
-
-   /* clear out any stale shader images */
    unsigned last_num_images = st->state.num_images[shader_type];
-   if (num_images < last_num_images) {
-      pipe->set_shader_images(pipe, shader_type, num_images,
-                              last_num_images - num_images, NULL);
-   }
+   unsigned unbind_slots = last_num_images > num_images ?
+                              last_num_images - num_images : 0;
+   pipe->set_shader_images(pipe, shader_type, 0, num_images, unbind_slots,
+                           images);
    st->state.num_images[shader_type] = num_images;
 }
 

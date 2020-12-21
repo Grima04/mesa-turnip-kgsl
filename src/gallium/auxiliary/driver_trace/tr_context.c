@@ -1772,6 +1772,7 @@ static void trace_context_set_shader_buffers(struct pipe_context *_context,
 static void trace_context_set_shader_images(struct pipe_context *_context,
                                             enum pipe_shader_type shader,
                                             unsigned start, unsigned nr,
+                                            unsigned unbind_num_trailing_slots,
                                             const struct pipe_image_view *images)
 {
    struct trace_context *tr_context = trace_context(_context);
@@ -1784,9 +1785,11 @@ static void trace_context_set_shader_images(struct pipe_context *_context,
    trace_dump_arg_begin("images");
    trace_dump_struct_array(image_view, images, nr);
    trace_dump_arg_end();
+   trace_dump_arg(uint, unbind_num_trailing_slots);
    trace_dump_call_end();
 
-   context->set_shader_images(context, shader, start, nr, images);
+   context->set_shader_images(context, shader, start, nr,
+                              unbind_num_trailing_slots, images);
 }
 
 static void trace_context_launch_grid(struct pipe_context *_pipe,

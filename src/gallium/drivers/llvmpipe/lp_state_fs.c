@@ -3876,7 +3876,8 @@ llvmpipe_set_shader_buffers(struct pipe_context *pipe,
 static void
 llvmpipe_set_shader_images(struct pipe_context *pipe,
                             enum pipe_shader_type shader, unsigned start_slot,
-                           unsigned count, const struct pipe_image_view *images)
+                           unsigned count, unsigned unbind_num_trailing_slots,
+                           const struct pipe_image_view *images)
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
    unsigned i, idx;
@@ -3901,6 +3902,11 @@ llvmpipe_set_shader_images(struct pipe_context *pipe,
       llvmpipe->cs_dirty |= LP_CSNEW_IMAGES;
    else
       llvmpipe->dirty |= LP_NEW_FS_IMAGES;
+
+   if (unbind_num_trailing_slots) {
+      llvmpipe_set_shader_images(pipe, shader, start_slot + count,
+                                 unbind_num_trailing_slots, 0, NULL);
+   }
 }
 
 /**

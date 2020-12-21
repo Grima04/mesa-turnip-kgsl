@@ -597,7 +597,7 @@ cs_launch(struct vl_compositor *c,
    image.shader_access = image.access = PIPE_IMAGE_ACCESS_READ_WRITE;
    image.format = c->fb_state.cbufs[0]->texture->format;
 
-   ctx->set_shader_images(c->pipe, PIPE_SHADER_COMPUTE, 0, 1, &image);
+   ctx->set_shader_images(c->pipe, PIPE_SHADER_COMPUTE, 0, 1, 0, &image);
 
    /* Bind compute shader */
    ctx->bind_compute_state(ctx, cs);
@@ -732,7 +732,7 @@ draw_layers(struct vl_compositor       *c,
          cs_launch(c, layer->cs, &(drawn.area));
 
          /* Unbind. */
-         c->pipe->set_shader_images(c->pipe, PIPE_SHADER_COMPUTE, 0, 1, NULL);
+         c->pipe->set_shader_images(c->pipe, PIPE_SHADER_COMPUTE, 0, 0, 1, NULL);
          c->pipe->set_constant_buffer(c->pipe, PIPE_SHADER_COMPUTE, 0, false, NULL);
          c->pipe->set_sampler_views(c->pipe, PIPE_SHADER_FRAGMENT, 0,
                         num_sampler_views, NULL);

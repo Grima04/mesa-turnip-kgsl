@@ -343,7 +343,7 @@ void cso_destroy_context( struct cso_context *ctx )
                ctx->pipe->set_shader_buffers(ctx->pipe, sh, 0, maxssbo, ssbos, 0);
             }
             if (maximg > 0) {
-               ctx->pipe->set_shader_images(ctx->pipe, sh, 0, maximg, NULL);
+               ctx->pipe->set_shader_images(ctx->pipe, sh, 0, 0, maximg, NULL);
             }
             for (int i = 0; i < maxcb; i++) {
                ctx->pipe->set_constant_buffer(ctx->pipe, sh, i, false, NULL);

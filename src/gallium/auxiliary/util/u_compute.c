@@ -118,7 +118,7 @@ void util_compute_blit(struct pipe_context *ctx, struct pipe_blit_info *blit_inf
    image.u.tex.first_layer = 0;
    image.u.tex.last_layer = (unsigned)(dst->array_size - 1);
 
-   ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, &image);
+   ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, 0, &image);
 
    struct pipe_sampler_state sampler_state={0};
    sampler_state.wrap_s = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
@@ -157,7 +157,7 @@ void util_compute_blit(struct pipe_context *ctx, struct pipe_blit_info *blit_inf
 
    ctx->memory_barrier(ctx, PIPE_BARRIER_ALL);
 
-   ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, NULL);
+   ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 0, 1, NULL);
    ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, false, NULL);
    ctx->set_sampler_views(ctx, PIPE_SHADER_COMPUTE, 0, 1, NULL);
    pipe_sampler_view_reference(&src_view, NULL);

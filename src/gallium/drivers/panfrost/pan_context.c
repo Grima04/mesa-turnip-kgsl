@@ -642,14 +642,14 @@ static void
 panfrost_set_shader_images(
         struct pipe_context *pctx,
         enum pipe_shader_type shader,
-        unsigned start_slot, unsigned count,
+        unsigned start_slot, unsigned count, unsigned unbind_num_trailing_slots,
         const struct pipe_image_view *iviews)
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
         /* Unbind start_slot...start_slot+count */
         if (!iviews) {
-                for (int i = start_slot; i < start_slot + count; i++) {
+                for (int i = start_slot; i < start_slot + count + unbind_num_trailing_slots; i++) {
                         pipe_resource_reference(&ctx->images[shader][i].resource, NULL);
                 }
 
@@ -676,6 +676,12 @@ panfrost_set_shader_images(
                 }
 
                 util_copy_image_view(&ctx->images[shader][start_slot+i], image);
+        }
+
+        /* Unbind start_slot+count...start_slot+count+unbind_num_trailing_slots */
+        for (int i = 0; i < unbind_num_trailing_slots; i++) {
+                SET_BIT(ctx->image_mask[shader], 1 << (start_slot + count + i), NULL);
+                util_copy_image_view(&ctx->images[shader][start_slot+count+i], NULL);
         }
 }
 

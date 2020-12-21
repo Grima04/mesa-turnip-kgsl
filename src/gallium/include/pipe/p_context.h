@@ -501,6 +501,8 @@ struct pipe_context {
     * \param shader     selects shader stage
     * \param start_slot first image slot to bind.
     * \param count      number of consecutive images to bind.
+    * \param unbind_num_trailing_slots  number of images to unbind after
+    *                                   the bound slot
     * \param buffers    array of the images to bind, it
     *                   should contain at least \a count elements
     *                   unless it's NULL, in which case no images will
@@ -509,6 +511,7 @@ struct pipe_context {
    void (*set_shader_images)(struct pipe_context *,
                              enum pipe_shader_type shader,
                              unsigned start_slot, unsigned count,
+                             unsigned unbind_num_trailing_slots,
                              const struct pipe_image_view *images);
 
    void (*set_vertex_buffers)( struct pipe_context *,

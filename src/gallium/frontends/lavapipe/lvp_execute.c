@@ -136,7 +136,7 @@ static void emit_compute_state(struct rendering_state *state)
    if (state->iv_dirty[PIPE_SHADER_COMPUTE]) {
       state->pctx->set_shader_images(state->pctx, PIPE_SHADER_COMPUTE,
                                      0, state->num_shader_images[PIPE_SHADER_COMPUTE],
-                                     state->iv[PIPE_SHADER_COMPUTE]);
+                                     0, state->iv[PIPE_SHADER_COMPUTE]);
       state->iv_dirty[PIPE_SHADER_COMPUTE] = false;
    }
 
@@ -281,7 +281,7 @@ static void emit_state(struct rendering_state *state)
    for (sh = 0; sh < PIPE_SHADER_TYPES; sh++) {
       if (state->iv_dirty[sh]) {
          state->pctx->set_shader_images(state->pctx, sh,
-                                        0, state->num_shader_images[sh],
+                                        0, state->num_shader_images[sh], 0,
                                         state->iv[sh]);
       }
    }
@@ -2792,7 +2792,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
       }
       state.pctx->bind_sampler_states(state.pctx, s, 0, PIPE_MAX_SAMPLERS, state.ss_cso[s]);
 
-      state.pctx->set_shader_images(state.pctx, s, 0, device->physical_device->max_images, NULL);
+      state.pctx->set_shader_images(state.pctx, s, 0, 0, device->physical_device->max_images, NULL);
    }
 
    free(state.pending_clear_aspects);

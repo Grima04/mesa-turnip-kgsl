@@ -524,6 +524,7 @@ static void
 dd_context_set_shader_images(struct pipe_context *_pipe,
                              enum pipe_shader_type shader,
                              unsigned start, unsigned num,
+                             unsigned unbind_num_trailing_slots,
                              const struct pipe_image_view *views)
 {
    struct dd_context *dctx = dd_context(_pipe);
@@ -531,7 +532,10 @@ dd_context_set_shader_images(struct pipe_context *_pipe,
 
    safe_memcpy(&dctx->draw_state.shader_images[shader][start], views,
                sizeof(views[0]) * num);
-   pipe->set_shader_images(pipe, shader, start, num, views);
+   safe_memcpy(&dctx->draw_state.shader_images[shader][start + num], NULL,
+               sizeof(views[0]) * unbind_num_trailing_slots);
+   pipe->set_shader_images(pipe, shader, start, num,
+                           unbind_num_trailing_slots, views);
 }
 
 static void

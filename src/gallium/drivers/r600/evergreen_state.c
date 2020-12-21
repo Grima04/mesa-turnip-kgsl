@@ -4150,7 +4150,7 @@ static void evergreen_set_shader_buffers(struct pipe_context *ctx,
 
 static void evergreen_set_shader_images(struct pipe_context *ctx,
 					enum pipe_shader_type shader, unsigned start_slot,
-					unsigned count,
+					unsigned count, unsigned unbind_num_trailing_slots,
 					const struct pipe_image_view *images)
 {
 	struct r600_context *rctx = (struct r600_context *)ctx;
@@ -4164,7 +4164,9 @@ static void evergreen_set_shader_images(struct pipe_context *ctx,
 	unsigned old_mask;
 	struct r600_image_state *istate = NULL;
 	int idx;
-	if (shader != PIPE_SHADER_FRAGMENT && shader != PIPE_SHADER_COMPUTE && count == 0)
+	if (shader != PIPE_SHADER_FRAGMENT && shader != PIPE_SHADER_COMPUTE)
+		return;
+	if (!count && !unbind_num_trailing_slots)
 		return;
 
 	if (shader == PIPE_SHADER_FRAGMENT)
@@ -4305,6 +4307,16 @@ static void evergreen_set_shader_images(struct pipe_context *ctx,
 							     rview->resource_words);
 		}
 		istate->enabled_mask |= (1 << i);
+	}
+
+	for (i = start_slot + count, idx = 0;
+	     i < start_slot + count + unbind_num_trailing_slots; i++, idx++) {
+		rview = &istate->views[i];
+
+		pipe_resource_reference((struct pipe_resource **)&rview->base.resource, NULL);
+		istate->enabled_mask &= ~(1 << i);
+		istate->compressed_colortex_mask &= ~(1 << i);
+		istate->compressed_depthtex_mask &= ~(1 << i);
 	}
 
 	istate->atom.num_dw = util_bitcount(istate->enabled_mask) * 46;

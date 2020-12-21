@@ -211,7 +211,7 @@ try_pbo_readpixels(struct st_context *st, struct st_renderbuffer *strb,
       image.u.buf.size = (addr.last_element - addr.first_element + 1) *
                          addr.bytes_per_pixel;
 
-      pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 1, &image);
+      pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0, &image);
    }
 
    /* Set up no-attachment framebuffer */
@@ -263,7 +263,7 @@ fail:
                            st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
                            null);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
-   pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 1, NULL);
+   pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 0, 1, NULL);
 
    st->dirty |= ST_NEW_FS_CONSTANTS |
                 ST_NEW_FS_IMAGES |

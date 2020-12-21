@@ -2740,6 +2740,7 @@ static void
 iris_set_shader_images(struct pipe_context *ctx,
                        enum pipe_shader_type p_stage,
                        unsigned start_slot, unsigned count,
+                       unsigned unbind_num_trailing_slots,
                        const struct pipe_image_view *p_images)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
@@ -2839,6 +2840,11 @@ iris_set_shader_images(struct pipe_context *ctx,
    if (GEN_GEN < 9) {
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_CONSTANTS_VS << stage;
       shs->sysvals_need_upload = true;
+   }
+
+   if (unbind_num_trailing_slots) {
+      iris_set_shader_images(ctx, p_stage, start_slot + count,
+                             unbind_num_trailing_slots, 0, NULL);
    }
 }
 

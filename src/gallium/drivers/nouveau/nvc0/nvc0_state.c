@@ -1283,9 +1283,14 @@ static void
 nvc0_set_shader_images(struct pipe_context *pipe,
                        enum pipe_shader_type shader,
                        unsigned start, unsigned nr,
+                       unsigned unbind_num_trailing_slots,
                        const struct pipe_image_view *images)
 {
    const unsigned s = nvc0_shader_stage(shader);
+
+   nvc0_bind_images_range(nvc0_context(pipe), s, start + nr,
+                          unbind_num_trailing_slots, NULL);
+
    if (!nvc0_bind_images_range(nvc0_context(pipe), s, start, nr, images))
       return;
 

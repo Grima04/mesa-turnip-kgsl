@@ -612,12 +612,13 @@ tegra_set_shader_buffers(struct pipe_context *pcontext, unsigned int shader,
 static void
 tegra_set_shader_images(struct pipe_context *pcontext, unsigned int shader,
                         unsigned start, unsigned count,
+                        unsigned unbind_num_trailing_slots,
                         const struct pipe_image_view *images)
 {
    struct tegra_context *context = to_tegra_context(pcontext);
 
    context->gpu->set_shader_images(context->gpu, shader, start, count,
-                                   images);
+                                   unbind_num_trailing_slots, images);
 }
 
 static void
