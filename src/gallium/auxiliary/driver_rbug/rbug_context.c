@@ -738,6 +738,7 @@ rbug_set_sampler_views(struct pipe_context *_pipe,
                        enum pipe_shader_type shader,
                        unsigned start,
                        unsigned num,
+                       unsigned unbind_num_trailing_slots,
                        struct pipe_sampler_view **_views)
 {
    struct rbug_context *rb_pipe = rbug_context(_pipe);
@@ -766,7 +767,8 @@ rbug_set_sampler_views(struct pipe_context *_pipe,
       views = unwrapped_views;
    }
 
-   pipe->set_sampler_views(pipe, shader, start, num, views);
+   pipe->set_sampler_views(pipe, shader, start, num,
+                           unbind_num_trailing_slots, views);
 
    mtx_unlock(&rb_pipe->call_mutex);
 }

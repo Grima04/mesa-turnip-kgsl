@@ -1156,6 +1156,7 @@ static void
 v3d_set_sampler_views(struct pipe_context *pctx,
                       enum pipe_shader_type shader,
                       unsigned start, unsigned nr,
+                      unsigned unbind_num_trailing_slots,
                       struct pipe_sampler_view **views)
 {
         struct v3d_context *v3d = v3d_context(pctx);

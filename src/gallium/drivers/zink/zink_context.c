@@ -674,14 +674,22 @@ zink_set_sampler_views(struct pipe_context *pctx,
                        enum pipe_shader_type shader_type,
                        unsigned start_slot,
                        unsigned num_views,
+                       unsigned unbind_num_trailing_slots,
                        struct pipe_sampler_view **views)
 {
    struct zink_context *ctx = zink_context(pctx);
-   for (unsigned i = 0; i < num_views; ++i) {
+   unsigned i;
+
+   for (i = 0; i < num_views; ++i) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
       pipe_sampler_view_reference(
          &ctx->sampler_views[shader_type][start_slot + i],
          pview);
+   }
+   for (; i < num_views + unbind_num_trailing_slots; ++i) {
+      pipe_sampler_view_reference(
+         &ctx->sampler_views[shader_type][start_slot + i],
+         NULL);
    }
    ctx->num_sampler_views[shader_type] = start_slot + num_views;
 }

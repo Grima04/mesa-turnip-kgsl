@@ -746,7 +746,7 @@ static void i915_set_fragment_sampler_views(struct pipe_context *pipe,
    assert(num <= PIPE_MAX_SAMPLERS);
 
    /* Check for no-op */
-   if (num == i915->num_fragment_sampler_views &&
+   if (views && num == i915->num_fragment_sampler_views &&
        !memcmp(i915->fragment_sampler_views, views, num * sizeof(struct pipe_sampler_view *)))
       return;
 
@@ -773,7 +773,7 @@ i915_set_vertex_sampler_views(struct pipe_context *pipe,
    assert(num <= ARRAY_SIZE(i915->vertex_sampler_views));
 
    /* Check for no-op */
-   if (num == i915->num_vertex_sampler_views &&
+   if (views && num == i915->num_vertex_sampler_views &&
        !memcmp(i915->vertex_sampler_views, views, num * sizeof(struct pipe_sampler_view *))) {
       return;
    }
@@ -795,7 +795,7 @@ i915_set_vertex_sampler_views(struct pipe_context *pipe,
 
 static void
 i915_set_sampler_views(struct pipe_context *pipe, enum pipe_shader_type shader,
-                       unsigned start, unsigned num,
+                       unsigned start, unsigned num, unsigned unbind_num_trailing_slots,
                        struct pipe_sampler_view **views)
 {
    assert(start == 0);

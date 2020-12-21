@@ -573,12 +573,14 @@ static void si_update_shader_needs_decompress_mask(struct si_context *sctx, unsi
 }
 
 static void si_set_sampler_views(struct pipe_context *ctx, enum pipe_shader_type shader,
-                                 unsigned start, unsigned count, struct pipe_sampler_view **views)
+                                 unsigned start, unsigned count,
+                                 unsigned unbind_num_trailing_slots,
+                                 struct pipe_sampler_view **views)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    int i;
 
-   if (!count || shader >= SI_NUM_SHADERS)
+   if ((!count && !unbind_num_trailing_slots) || shader >= SI_NUM_SHADERS)
       return;
 
    if (views) {
@@ -588,6 +590,9 @@ static void si_set_sampler_views(struct pipe_context *ctx, enum pipe_shader_type
       for (i = 0; i < count; i++)
          si_set_sampler_view(sctx, shader, start + i, NULL, false);
    }
+
+   for (; i < count + unbind_num_trailing_slots; i++)
+      si_set_sampler_view(sctx, shader, start + i, NULL, false);
 
    si_update_shader_needs_decompress_mask(sctx, shader);
 }

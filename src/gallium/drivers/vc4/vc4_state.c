@@ -649,6 +649,7 @@ static void
 vc4_set_sampler_views(struct pipe_context *pctx,
                       enum pipe_shader_type shader,
                       unsigned start, unsigned nr,
+                      unsigned unbind_num_trailing_slots,
                       struct pipe_sampler_view **views)
 {
         struct vc4_context *vc4 = vc4_context(pctx);

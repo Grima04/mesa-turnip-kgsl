@@ -987,6 +987,7 @@ trace_context_set_sampler_views(struct pipe_context *_pipe,
                                 enum pipe_shader_type shader,
                                 unsigned start,
                                 unsigned num,
+                                unsigned unbind_num_trailing_slots,
                                 struct pipe_sampler_view **views)
 {
    struct trace_context *tr_ctx = trace_context(_pipe);
@@ -1010,9 +1011,11 @@ trace_context_set_sampler_views(struct pipe_context *_pipe,
    trace_dump_arg(uint, shader);
    trace_dump_arg(uint, start);
    trace_dump_arg(uint, num);
+   trace_dump_arg(uint, unbind_num_trailing_slots);
    trace_dump_arg_array(ptr, views, num);
 
-   pipe->set_sampler_views(pipe, shader, start, num, views);
+   pipe->set_sampler_views(pipe, shader, start, num,
+                           unbind_num_trailing_slots, views);
 
    trace_dump_call_end();
 }

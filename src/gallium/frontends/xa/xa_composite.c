@@ -504,7 +504,7 @@ bind_samplers(struct xa_context *ctx,
 
     cso_set_samplers(ctx->cso, PIPE_SHADER_FRAGMENT, num_samplers,
 		     (const struct pipe_sampler_state **)samplers);
-    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_samplers,
+    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_samplers, 0,
                             ctx->bound_sampler_views);
     ctx->num_bound_samplers = num_samplers;
 }

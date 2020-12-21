@@ -2856,15 +2856,17 @@ static void
 iris_set_sampler_views(struct pipe_context *ctx,
                        enum pipe_shader_type p_stage,
                        unsigned start, unsigned count,
+                       unsigned unbind_num_trailing_slots,
                        struct pipe_sampler_view **views)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
+   unsigned i;
 
    shs->bound_sampler_views &= ~u_bit_consecutive(start, count);
 
-   for (unsigned i = 0; i < count; i++) {
+   for (i = 0; i < count; i++) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
       pipe_sampler_view_reference((struct pipe_sampler_view **)
                                   &shs->textures[start + i], pview);
@@ -2878,6 +2880,10 @@ iris_set_sampler_views(struct pipe_context *ctx,
          update_surface_state_addrs(ice->state.surface_uploader,
                                     &view->surface_state, view->res->bo);
       }
+   }
+   for (; i < count + unbind_num_trailing_slots; i++) {
+      pipe_sampler_view_reference((struct pipe_sampler_view **)
+                                  &shs->textures[start + i], NULL);
    }
 
    ice->state.stage_dirty |= (IRIS_STAGE_DIRTY_BINDINGS_VS << stage);

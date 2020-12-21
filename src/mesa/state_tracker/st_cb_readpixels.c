@@ -189,7 +189,8 @@ try_pbo_readpixels(struct st_context *st, struct st_renderbuffer *strb,
       if (sampler_view == NULL)
          goto fail;
 
-      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, &sampler_view);
+      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0,
+                              &sampler_view);
       st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
          MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], 1);
 
@@ -258,10 +259,9 @@ fail:
    /* Unbind all because st/mesa won't do it if the current shader doesn't
     * use them.
     */
-   static struct pipe_sampler_view *null[PIPE_MAX_SAMPLERS];
-   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0,
+   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
                            st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                           null);
+                           NULL);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
    pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 0, 1, NULL);
 

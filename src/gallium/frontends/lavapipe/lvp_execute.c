@@ -162,7 +162,7 @@ static void emit_compute_state(struct rendering_state *state)
 
    if (state->sv_dirty[PIPE_SHADER_COMPUTE]) {
       state->pctx->set_sampler_views(state->pctx, PIPE_SHADER_COMPUTE, 0, state->num_sampler_views[PIPE_SHADER_COMPUTE],
-                                     state->sv[PIPE_SHADER_COMPUTE]);
+                                     0, state->sv[PIPE_SHADER_COMPUTE]);
       state->sv_dirty[PIPE_SHADER_COMPUTE] = false;
    }
 
@@ -292,7 +292,7 @@ static void emit_state(struct rendering_state *state)
          continue;
 
       state->pctx->set_sampler_views(state->pctx, sh, 0, state->num_sampler_views[sh],
-                                     state->sv[sh]);
+                                     0, state->sv[sh]);
       state->sv_dirty[sh] = false;
    }
 

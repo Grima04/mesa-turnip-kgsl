@@ -510,6 +510,7 @@ static void
 dd_context_set_sampler_views(struct pipe_context *_pipe,
                              enum pipe_shader_type shader,
                              unsigned start, unsigned num,
+                             unsigned unbind_num_trailing_slots,
                              struct pipe_sampler_view **views)
 {
    struct dd_context *dctx = dd_context(_pipe);
@@ -517,7 +518,10 @@ dd_context_set_sampler_views(struct pipe_context *_pipe,
 
    safe_memcpy(&dctx->draw_state.sampler_views[shader][start], views,
                sizeof(views[0]) * num);
-   pipe->set_sampler_views(pipe, shader, start, num, views);
+   safe_memcpy(&dctx->draw_state.sampler_views[shader][start + num], views,
+               sizeof(views[0]) * unbind_num_trailing_slots);
+   pipe->set_sampler_views(pipe, shader, start, num,
+                           unbind_num_trailing_slots, views);
 }
 
 static void

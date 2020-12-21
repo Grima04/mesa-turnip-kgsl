@@ -371,6 +371,7 @@ static void
 lima_set_sampler_views(struct pipe_context *pctx,
                       enum pipe_shader_type shader,
                       unsigned start, unsigned nr,
+                       unsigned unbind_num_trailing_slots,
                       struct pipe_sampler_view **views)
 {
    struct lima_context *ctx = lima_context(pctx);

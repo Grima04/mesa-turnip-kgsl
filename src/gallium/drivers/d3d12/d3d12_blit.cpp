@@ -739,7 +739,7 @@ resolve_stencil_to_temp(struct d3d12_context *ctx,
    void *sampler_state = get_sampler_state(ctx);
 
    util_blit_save_state(ctx);
-   pctx->set_sampler_views(pctx, PIPE_SHADER_FRAGMENT, 0, 1, &src_view);
+   pctx->set_sampler_views(pctx, PIPE_SHADER_FRAGMENT, 0, 1, 0, &src_view);
    pctx->bind_sampler_states(pctx, PIPE_SHADER_FRAGMENT, 0, 1, &sampler_state);
    util_blitter_custom_shader(ctx->blitter, dst_surf,
                               get_stencil_resolve_vs(ctx),

@@ -114,6 +114,7 @@ static struct pipe_surface *noop_create_surface(struct pipe_context *ctx,
 static void noop_set_sampler_views(struct pipe_context *ctx,
                                    enum pipe_shader_type shader,
                                    unsigned start, unsigned count,
+                                   unsigned unbind_num_trailing_slots,
                                    struct pipe_sampler_view **views)
 {
 }

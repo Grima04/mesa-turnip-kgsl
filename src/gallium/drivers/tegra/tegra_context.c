@@ -564,6 +564,7 @@ tegra_set_viewport_states(struct pipe_context *pcontext, unsigned start_slot,
 static void
 tegra_set_sampler_views(struct pipe_context *pcontext, unsigned shader,
                         unsigned start_slot, unsigned num_views,
+                        unsigned unbind_num_trailing_slots,
                         struct pipe_sampler_view **pviews)
 {
    struct pipe_sampler_view *views[PIPE_MAX_SHADER_SAMPLER_VIEWS];
@@ -574,7 +575,8 @@ tegra_set_sampler_views(struct pipe_context *pcontext, unsigned shader,
       views[i] = tegra_sampler_view_unwrap(pviews[i]);
 
    context->gpu->set_sampler_views(context->gpu, shader, start_slot,
-                                   num_views, views);
+                                   num_views, unbind_num_trailing_slots,
+                                   views);
 }
 
 static void

@@ -1013,7 +1013,7 @@ update_textures_and_samplers(struct NineDevice9 *device)
         context->bound_samplers_mask_ps |= (1 << s);
     }
 
-    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_textures, view);
+    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_textures, 0, view);
 
     if (commit_samplers)
         cso_single_sampler_done(context->cso, PIPE_SHADER_FRAGMENT);
@@ -1061,7 +1061,7 @@ update_textures_and_samplers(struct NineDevice9 *device)
         context->bound_samplers_mask_vs |= (1 << i);
     }
 
-    pipe->set_sampler_views(pipe, PIPE_SHADER_VERTEX, 0, num_textures, view);
+    pipe->set_sampler_views(pipe, PIPE_SHADER_VERTEX, 0, num_textures, 0, view);
 
     if (commit_samplers)
         cso_single_sampler_done(context->cso, PIPE_SHADER_VERTEX);
@@ -2913,8 +2913,8 @@ nine_context_clear(struct NineDevice9 *device)
     cso_set_samplers(cso, PIPE_SHADER_VERTEX, 0, NULL);
     cso_set_samplers(cso, PIPE_SHADER_FRAGMENT, 0, NULL);
 
-    pipe->set_sampler_views(pipe, PIPE_SHADER_VERTEX, 0, NINE_MAX_SAMPLERS_VS, NULL);
-    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, NINE_MAX_SAMPLERS_PS, NULL);
+    pipe->set_sampler_views(pipe, PIPE_SHADER_VERTEX, 0, 0, NINE_MAX_SAMPLERS_VS, NULL);
+    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0, NINE_MAX_SAMPLERS_PS, NULL);
 
     pipe->set_vertex_buffers(pipe, 0, 0, device->caps.MaxStreams, NULL);
 

@@ -1015,6 +1015,7 @@ static void virgl_set_sampler_views(struct pipe_context *ctx,
                                    enum pipe_shader_type shader_type,
                                    unsigned start_slot,
                                    unsigned num_views,
+                                   unsigned unbind_num_trailing_slots,
                                    struct pipe_sampler_view **views)
 {
    struct virgl_context *vctx = virgl_context(ctx);
@@ -1038,6 +1039,11 @@ static void virgl_set_sampler_views(struct pipe_context *ctx,
    virgl_encode_set_sampler_views(vctx, shader_type,
          start_slot, num_views, (struct virgl_sampler_view **)binding->views);
    virgl_attach_res_sampler_views(vctx, shader_type);
+
+   if (unbind_num_trailing_slots) {
+      virgl_set_sampler_views(ctx, shader_type, start_slot + num_views,
+                              unbind_num_trailing_slots, 0, NULL);
+   }
 }
 
 static void
