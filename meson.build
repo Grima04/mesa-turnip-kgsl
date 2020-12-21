@@ -312,6 +312,8 @@ dep_clang = dependency(
 with_microsoft_clc = dep_clang.found()
 with_clc = dep_clang.found()
 
+with_spirv_to_dxil = get_option('spirv-to-dxil')
+
 if host_machine.system() == 'darwin'
   with_dri_platform = 'apple'
   pre_args += '-DBUILDING_MESA'

@@ -290,6 +290,12 @@ option(
   description : 'Build support for the Microsoft CLC to DXIL compiler'
 )
 option(
+  'spirv-to-dxil',
+  type : 'boolean',
+  value : false,
+  description : 'Build support for the SPIR-V to DXIL library'
+)
+option(
   'glvnd-vendor-name',
   type : 'string',
   value : 'mesa',
