@@ -8169,23 +8169,26 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_ballot: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      Definition tmp = bld.def(dst.regClass());
-      Definition lanemask_tmp = dst.size() == bld.lm.size() ? tmp : bld.def(bld.lm);
+
       if (instr->src[0].ssa->bit_size == 1) {
          assert(src.regClass() == bld.lm);
-         bld.sop2(Builder::s_and, lanemask_tmp, bld.def(s1, scc), Operand(exec, bld.lm), src);
       } else if (instr->src[0].ssa->bit_size == 32 && src.regClass() == v1) {
-         bld.vopc(aco_opcode::v_cmp_lg_u32, lanemask_tmp, Operand(0u), src);
+         src = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), src);
       } else if (instr->src[0].ssa->bit_size == 64 && src.regClass() == v2) {
-         bld.vopc(aco_opcode::v_cmp_lg_u64, lanemask_tmp, Operand(0u), src);
+         src = bld.vopc(aco_opcode::v_cmp_lg_u64, bld.def(bld.lm), Operand(0u), src);
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }
+
+      /* Make sure that all inactive lanes return zero.
+       * Value-numbering might remove the comparison above */
+      src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src);
       if (dst.size() != bld.lm.size()) {
          /* Wave32 with ballot size set to 64 */
-         bld.pseudo(aco_opcode::p_create_vector, Definition(tmp), lanemask_tmp.getTemp(), Operand(0u));
+         src = bld.pseudo(aco_opcode::p_create_vector, bld.def(dst.regClass()), src, Operand(0u));
       }
-      emit_wqm(bld, tmp.getTemp(), dst);
+
+      emit_wqm(bld, src, dst);
       break;
    }
    case nir_intrinsic_shuffle:

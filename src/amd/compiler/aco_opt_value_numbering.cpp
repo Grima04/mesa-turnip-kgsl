@@ -173,10 +173,6 @@ struct InstrPred {
       if (a->opcode == aco_opcode::v_readfirstlane_b32)
          return a->pass_flags == b->pass_flags;
 
-      /* The results of VOPC depend on the exec mask if used for subgroup operations. */
-      if (a->isVOPC() && a->pass_flags != b->pass_flags)
-         return false;
-
       if (a->isVOP3()) {
          VOP3_instruction& a3 = a->vop3();
          VOP3_instruction& b3 = b->vop3();
