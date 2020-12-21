@@ -997,39 +997,53 @@ ntt_shift_by_frac(struct ureg_src src, unsigned frac, unsigned num_components)
                        frac + MIN2(num_components - 1, 3));
 }
 
-/* PIPE_CAP_LOAD_CONSTBUF */
+
 static void
 ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
-{
-   /* XXX: Emit a TGSI_OPCODE_LOAD instr. */
-}
-
-/* !PIPE_CAP_LOAD_CONSTBUF */
-static void
-ntt_emit_load_ubo_vec4(struct ntt_compile *c, nir_intrinsic_instr *instr)
 {
    int bit_size = nir_dest_bit_size(instr->dest);
    assert(bit_size == 32 || instr->num_components <= 2);
 
-   struct ureg_src src;
-   if (nir_src_is_const(instr->src[1])) {
-      src = ureg_src_register(TGSI_FILE_CONSTANT,
-                              nir_src_as_uint(instr->src[1]));
-   } else {
-      src = ureg_src_indirect(ureg_src_register(TGSI_FILE_CONSTANT, 0),
-                              ntt_reladdr(c, ntt_get_src(c, instr->src[1])));
-   }
-
-   int start_component = nir_intrinsic_component(instr);
-   if (bit_size == 64)
-      start_component *= 2;
-
-   src = ntt_shift_by_frac(src, start_component,
-                           instr->num_components * bit_size / 32);
+   struct ureg_src src = ureg_src_register(TGSI_FILE_CONSTANT, 0);
 
    src = ntt_ureg_src_dimension_indirect(c, src, instr->src[0]);
 
-   ntt_store(c, &instr->dest, src);
+   if (instr->intrinsic == nir_intrinsic_load_ubo_vec4) {
+      /* !PIPE_CAP_LOAD_CONSTBUF: Just emit it as a vec4 reference to the const
+       * file.
+       */
+
+      if (nir_src_is_const(instr->src[1])) {
+         src.Index += nir_src_as_uint(instr->src[1]);
+      } else {
+         src = ureg_src_indirect(src, ntt_reladdr(c, ntt_get_src(c, instr->src[1])));
+      }
+
+      int start_component = nir_intrinsic_component(instr);
+      if (bit_size == 64)
+         start_component *= 2;
+
+      src = ntt_shift_by_frac(src, start_component,
+                              instr->num_components * bit_size / 32);
+
+      ntt_store(c, &instr->dest, src);
+   } else {
+      /* PIPE_CAP_LOAD_CONSTBUF: Not necessarily vec4 aligned, emit a
+       * TGSI_OPCODE_LOAD instruction from the const file.
+       */
+      struct ureg_dst dst = ntt_get_dest(c, &instr->dest);
+      struct ureg_src srcs[2] = {
+          src,
+          ntt_get_src(c, instr->src[1]),
+      };
+      ureg_memory_insn(c->ureg, TGSI_OPCODE_LOAD,
+                       &dst, 1,
+                       srcs, ARRAY_SIZE(srcs),
+                       0 /* qualifier */,
+                       0 /* tex target */,
+                       0 /* format: unused */
+      );
+   }
 }
 
 static unsigned
@@ -1491,11 +1505,8 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_load_ubo:
-      ntt_emit_load_ubo(c, instr);
-      break;
-
    case nir_intrinsic_load_ubo_vec4:
-      ntt_emit_load_ubo_vec4(c, instr);
+      ntt_emit_load_ubo(c, instr);
       break;
 
       /* Vertex */
