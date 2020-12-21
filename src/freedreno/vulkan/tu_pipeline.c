@@ -992,7 +992,6 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    if (hs) {
       shader_info *hs_info = &hs->shader->nir->info;
-      uint32_t unknown_a831 = vs->output_size;
 
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
       tu_cs_emit(cs, hs_info->tess.tcs_vertices_out);
@@ -1001,20 +1000,23 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_HS_INPUT_SIZE, 1);
       tu_cs_emit(cs, patch_control_points * vs->output_size / 4);
 
-      /* for A650 this value seems to be local memory size per wave */
-      if (vshs_workgroup) {
-         const uint32_t wavesize = 64;
-         /* note: if HS is really just the VS extended, then this
-          * should be by MAX2(patch_control_points, hs_info->tess.tcs_vertices_out)
-          * however that doesn't match the blob, and fails some dEQP tests.
-          */
-         uint32_t prims_per_wave = wavesize / hs_info->tess.tcs_vertices_out;
-         uint32_t total_size = vs->output_size * patch_control_points * prims_per_wave;
-         unknown_a831 = DIV_ROUND_UP(total_size, wavesize);
-      }
+      const uint32_t wavesize = 64;
+      const uint32_t max_wave_input_size = 64;
+
+      /* note: if HS is really just the VS extended, then this
+       * should be by MAX2(patch_control_points, hs_info->tess.tcs_vertices_out)
+       * however that doesn't match the blob, and fails some dEQP tests.
+       */
+      uint32_t prims_per_wave = wavesize / hs_info->tess.tcs_vertices_out;
+      uint32_t max_prims_per_wave =
+         max_wave_input_size * wavesize / (vs->output_size * patch_control_points);
+      prims_per_wave = MIN2(prims_per_wave, max_prims_per_wave);
+
+      uint32_t total_size = vs->output_size * patch_control_points * prims_per_wave;
+      uint32_t wave_input_size = DIV_ROUND_UP(total_size, wavesize);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
-      tu_cs_emit(cs, unknown_a831);
+      tu_cs_emit(cs, wave_input_size);
 
       /* In SPIR-V generated from GLSL, the tessellation primitive params are
        * are specified in the tess eval shader, but in SPIR-V generated from
