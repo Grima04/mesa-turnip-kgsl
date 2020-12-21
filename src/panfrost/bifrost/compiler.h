@@ -504,6 +504,18 @@ bi_byte(bi_index idx, unsigned lane)
         return idx;
 }
 
+static inline bi_index
+bi_imm_u8(uint8_t imm)
+{
+        return bi_byte(bi_imm_u32(imm), 0);
+}
+
+static inline bi_index
+bi_imm_u16(uint16_t imm)
+{
+        return bi_half(bi_imm_u32(imm), false);
+}
+
 static inline bool
 bi_is_null(bi_index idx)
 {
