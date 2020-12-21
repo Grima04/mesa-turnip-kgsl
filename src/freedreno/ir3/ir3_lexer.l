@@ -124,6 +124,7 @@ static int parse_w(const char *str)
 "(pos_infinity)"                  return TOKEN(T_POS_INFINITY);
 "(ei)"                            return TOKEN(T_EI);
 "(jp)"                            return TOKEN(T_JP);
+"(sat)"                           return TOKEN(T_SAT);
 "(rpt"[0-7]")"                    ir3_yylval.num = strtol(yytext+4, NULL, 10); return T_RPT;
 "(nop"[0-7]")"                    ir3_yylval.num = strtol(yytext+4, NULL, 10); return T_NOP;
 "("[x]?[y]?[z]?[w]?")"            ir3_yylval.num = parse_wrmask(yytext); return T_WRMASK;
