@@ -479,6 +479,24 @@ bi_word(bi_index idx, unsigned component)
         return idx;
 }
 
+/* Helps construct swizzles */
+static inline bi_index
+bi_half(bi_index idx, bool upper)
+{
+        assert(idx.swizzle == BI_SWIZZLE_H01);
+        idx.swizzle = upper ? BI_SWIZZLE_H11 : BI_SWIZZLE_H00;
+        return idx;
+}
+
+static inline bi_index
+bi_byte(bi_index idx, unsigned lane)
+{
+        assert(idx.swizzle == BI_SWIZZLE_H01);
+        assert(lane < 4);
+        idx.swizzle = BI_SWIZZLE_B0000 + lane;
+        return idx;
+}
+
 static inline bool
 bi_is_null(bi_index idx)
 {
