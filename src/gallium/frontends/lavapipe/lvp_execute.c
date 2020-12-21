@@ -2265,25 +2265,50 @@ static void handle_clear_attachments(struct lvp_cmd_buffer_entry *cmd,
             continue;
          imgv = state->vk_framebuffer->attachments[ds_att->attachment];
       }
-      uint32_t col_val[4];
-      if (util_format_is_depth_or_stencil(imgv->pformat)) {
-         int64_t val = util_pack64_z_stencil(imgv->pformat, att->clearValue.depthStencil.depth, att->clearValue.depthStencil.stencil);
-         memcpy(col_val, &val, 8);
-      } else
-         pack_clear_color(imgv->pformat, &att->clearValue.color, col_val);
-      for (uint32_t r = 0; r < cmd->u.clear_attachments.rect_count; r++) {
-         struct pipe_box box;
-         VkClearRect *rect = &cmd->u.clear_attachments.rects[r];
-         box.x = rect->rect.offset.x;
-         box.y = rect->rect.offset.y;
-         box.z = imgv->subresourceRange.baseArrayLayer + rect->baseArrayLayer;
-         box.width = rect->rect.extent.width;
-         box.height = rect->rect.extent.height;
-         box.depth = rect->layerCount;
+      union pipe_color_union col_val;
+      double dclear_val = 0;
+      uint32_t sclear_val = 0;
+      uint32_t ds_clear_flags = 0;
+      if (att->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         ds_clear_flags |= PIPE_CLEAR_DEPTH;
+         dclear_val = att->clearValue.depthStencil.depth;
+      }
+      if (att->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+         ds_clear_flags |= PIPE_CLEAR_STENCIL;
+         sclear_val = att->clearValue.depthStencil.stencil;
+      }
+      if (att->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+         for (unsigned i = 0; i < 4; i++)
+            col_val.ui[i] = att->clearValue.color.uint32[i];
+      }
 
-         state->pctx->clear_texture(state->pctx, imgv->image->bo,
-                                    imgv->subresourceRange.baseMipLevel,
-                                    &box, col_val);
+      for (uint32_t r = 0; r < cmd->u.clear_attachments.rect_count; r++) {
+
+         VkClearRect *rect = &cmd->u.clear_attachments.rects[r];
+         struct pipe_surface *clear_surf = create_img_surface(state,
+                                                              imgv,
+                                                              imgv->format,
+                                                              state->framebuffer.width,
+                                                              state->framebuffer.height,
+                                                              rect->baseArrayLayer,
+                                                              rect->baseArrayLayer + rect->layerCount - 1);
+
+         if (ds_clear_flags) {
+            state->pctx->clear_depth_stencil(state->pctx,
+                                             clear_surf,
+                                             ds_clear_flags,
+                                             dclear_val, sclear_val,
+                                             rect->rect.offset.x, rect->rect.offset.y,
+                                             rect->rect.extent.width, rect->rect.extent.height,
+                                             true);
+         } else {
+            state->pctx->clear_render_target(state->pctx, clear_surf,
+                                             &col_val,
+                                             rect->rect.offset.x, rect->rect.offset.y,
+                                             rect->rect.extent.width, rect->rect.extent.height,
+                                             true);
+         }
+         state->pctx->surface_destroy(state->pctx, clear_surf);
       }
    }
 }
