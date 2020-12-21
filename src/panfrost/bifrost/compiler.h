@@ -728,6 +728,9 @@ bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block, bool soft);
 void bi_schedule(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
 
+/* Test suite */
+int bi_test_scheduler(void);
+
 bi_clause *
 bi_singleton(void *memctx, bi_instr *ins,
                 bi_block *block,

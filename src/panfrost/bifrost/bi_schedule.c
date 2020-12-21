@@ -187,3 +187,10 @@ bi_schedule(bi_context *ctx)
                 bblock->scheduled = true;
         }
 }
+
+#ifndef NDEBUG
+int bi_test_scheduler(void)
+{
+        return 0;
+}
+#endif

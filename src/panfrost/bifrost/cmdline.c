@@ -22,6 +22,7 @@
  */
 
 #include "disassemble.h"
+#include "compiler.h"
 
 #include "main/mtypes.h"
 #include "compiler/glsl/standalone.h"
@@ -117,6 +118,19 @@ disassemble(const char *filename, bool verbose)
         free(code);
 }
 
+static int
+bi_tests()
+{
+#ifndef NDEBUG
+        bi_test_scheduler();
+        printf("Pass.\n");
+        return 0;
+#else
+        printf("Tests omitted in release mode.");
+        return 1;
+#endif
+}
+
 int
 main(int argc, char **argv)
 {
@@ -131,6 +145,8 @@ main(int argc, char **argv)
                 disassemble(argv[2], false);
         else if (strcmp(argv[1], "disasm-verbose") == 0)
                 disassemble(argv[2], true);
+        else if (strcmp(argv[1], "test") == 0)
+                bi_tests();
         else
                 unreachable("Unknown command. Valid: compile/disasm");
 
