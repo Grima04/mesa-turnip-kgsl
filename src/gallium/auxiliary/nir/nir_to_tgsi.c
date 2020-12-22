@@ -980,7 +980,7 @@ ntt_ureg_src_dimension_indirect(struct ntt_compile *c, struct ureg_src usrc,
    } else {
       return ureg_src_dimension_indirect(usrc,
                                          ntt_reladdr(c, ntt_get_src(c, src)),
-                                         1);
+                                         0);
    }
 }
 
