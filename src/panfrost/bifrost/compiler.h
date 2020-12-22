@@ -460,8 +460,8 @@ typedef struct {
          */
         bool branch_constant;
 
-        /* What type of high latency instruction is here, basically */
-        unsigned message_type;
+        /* Unique in a clause */
+        enum bifrost_message_type message_type;
 } bi_clause;
 
 typedef struct bi_block {
