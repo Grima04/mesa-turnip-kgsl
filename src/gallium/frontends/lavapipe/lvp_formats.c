@@ -24,6 +24,8 @@
 #include "lvp_private.h"
 #include "util/format/u_format.h"
 #include "util/u_math.h"
+#include "vk_util.h"
+
 #define COMMON_NAME(x) [VK_FORMAT_##x] = PIPE_FORMAT_##x
 
 #define FLOAT_NAME(x) [VK_FORMAT_##x##_SFLOAT] = PIPE_FORMAT_##x##_FLOAT
@@ -411,12 +413,42 @@ VkResult lvp_GetPhysicalDeviceImageFormatProperties2(
         VkImageFormatProperties2                   *base_props)
 {
    LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
+   const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
+   VkExternalImageFormatProperties *external_props = NULL;
    VkResult result;
    result = lvp_get_image_format_properties(physical_device, base_info,
                                              &base_props->imageFormatProperties);
    if (result != VK_SUCCESS)
       return result;
 
+   vk_foreach_struct_const(s, base_info->pNext) {
+      switch (s->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
+         external_info = (const void *) s;
+         break;
+      default:
+         break;
+      }
+   }
+
+   /* Extract output structs */
+   vk_foreach_struct(s, base_props->pNext) {
+      switch (s->sType) {
+      case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES:
+         external_props = (void *) s;
+         break;
+      default:
+         break;
+      }
+   }
+
+   if (external_info && external_info->handleType != 0) {
+      external_props->externalMemoryProperties = (VkExternalMemoryProperties) {
+         .externalMemoryFeatures = 0,
+         .exportFromImportedHandleTypes = 0,
+         .compatibleHandleTypes = 0,
+      };
+   }
    return VK_SUCCESS;
 }
 
@@ -442,4 +474,16 @@ void lvp_GetPhysicalDeviceSparseImageFormatProperties2(
 {
         /* Sparse images are not yet supported. */
         *pPropertyCount = 0;
+}
+
+void lvp_GetPhysicalDeviceExternalBufferProperties(
+   VkPhysicalDevice                            physicalDevice,
+   const VkPhysicalDeviceExternalBufferInfo    *pExternalBufferInfo,
+   VkExternalBufferProperties                  *pExternalBufferProperties)
+{
+   pExternalBufferProperties->externalMemoryProperties = (VkExternalMemoryProperties) {
+      .externalMemoryFeatures = 0,
+      .exportFromImportedHandleTypes = 0,
+      .compatibleHandleTypes = 0,
+   };
 }

@@ -1796,3 +1796,23 @@ void lvp_GetPrivateDataEXT(
    vk_object_base_get_private_data(&device->vk, objectType, objectHandle,
                                    privateDataSlot, pData);
 }
+
+void lvp_GetPhysicalDeviceExternalFenceProperties(
+   VkPhysicalDevice                           physicalDevice,
+   const VkPhysicalDeviceExternalFenceInfo    *pExternalFenceInfo,
+   VkExternalFenceProperties                  *pExternalFenceProperties)
+{
+   pExternalFenceProperties->exportFromImportedHandleTypes = 0;
+   pExternalFenceProperties->compatibleHandleTypes = 0;
+   pExternalFenceProperties->externalFenceFeatures = 0;
+}
+
+void lvp_GetPhysicalDeviceExternalSemaphoreProperties(
+   VkPhysicalDevice                            physicalDevice,
+   const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
+   VkExternalSemaphoreProperties               *pExternalSemaphoreProperties)
+{
+   pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
+   pExternalSemaphoreProperties->compatibleHandleTypes = 0;
+   pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
+}
