@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-11-09-deqp-uprev-3"
+  DISTRIBUTION_TAG: "2020-12-14-cts"
 
 .kernel+rootfs:
   stage: container-2

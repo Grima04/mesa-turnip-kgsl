@@ -20,3 +20,5 @@ dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_loop_r
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_loop_read_vertex,Crash
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_read_fragment,Crash
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_read_vertex,Crash
+dEQP-GLES3.functional.shaders.matrix.inverse.dynamic.lowp_mat2_float_vertex,Fail
+dEQP-GLES3.functional.shaders.matrix.inverse.dynamic.mediump_mat2_float_vertex,Fail
