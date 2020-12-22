@@ -33,6 +33,7 @@
 
 struct pipe_reference;
 
+struct zink_buffer_view;
 struct zink_context;
 struct zink_descriptor_set;
 struct zink_framebuffer;
@@ -138,6 +139,11 @@ zink_batch_reference_program(struct zink_batch *batch,
 void
 zink_batch_reference_image_view(struct zink_batch *batch,
                                 struct zink_image_view *image_view);
+
+void
+zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_view *buffer_view);
+void
+zink_batch_reference_surface(struct zink_batch *batch, struct zink_surface *surface);
 
 bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds);

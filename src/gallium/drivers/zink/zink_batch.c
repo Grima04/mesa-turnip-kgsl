@@ -394,19 +394,32 @@ ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_ba
 }
 
 void
+zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_view *buffer_view)
+{
+   if (!ptr_add_usage(batch, batch->state->bufferviews, buffer_view, &buffer_view->batch_uses))
+      return;
+   pipe_reference(NULL, &buffer_view->reference);
+   batch->has_work = true;
+}
+
+void
+zink_batch_reference_surface(struct zink_batch *batch, struct zink_surface *surface)
+{
+   if (!ptr_add_usage(batch, batch->state->surfaces, surface, &surface->batch_uses))
+      return;
+   struct pipe_surface *surf = NULL;
+   pipe_surface_reference(&surf, &surface->base);
+   batch->has_work = true;
+}
+
+void
 zink_batch_reference_sampler_view(struct zink_batch *batch,
                                   struct zink_sampler_view *sv)
 {
-   if (sv->base.target == PIPE_BUFFER) {
-      if (!ptr_add_usage(batch, batch->state->bufferviews, sv->buffer_view, &sv->buffer_view->batch_uses))
-         return;
-      pipe_reference(NULL, &sv->buffer_view->reference);
-   } else {
-      if (!ptr_add_usage(batch, batch->state->surfaces, sv->image_view, &sv->image_view->batch_uses))
-         return;
-      pipe_reference(NULL, &sv->image_view->base.reference);
-   }
-   batch->has_work = true;
+   if (sv->base.target == PIPE_BUFFER)
+      zink_batch_reference_bufferview(batch, sv->buffer_view);
+   else
+      zink_batch_reference_surface(batch, sv->image_view);
 }
 
 void
@@ -443,16 +456,10 @@ void
 zink_batch_reference_image_view(struct zink_batch *batch,
                                 struct zink_image_view *image_view)
 {
-   if (image_view->base.resource->target == PIPE_BUFFER) {
-      if (!ptr_add_usage(batch, batch->state->bufferviews, image_view->buffer_view, &image_view->buffer_view->batch_uses))
-         return;
-      pipe_reference(NULL, &image_view->buffer_view->reference);
-   } else {
-      if (!ptr_add_usage(batch, batch->state->surfaces, image_view->surface, &image_view->surface->batch_uses))
-         return;
-      pipe_reference(NULL, &image_view->surface->base.reference);
-   }
-   batch->has_work = true;
+   if (image_view->base.resource->target == PIPE_BUFFER)
+      zink_batch_reference_bufferview(batch, image_view->buffer_view);
+   else
+      zink_batch_reference_surface(batch, image_view->surface);
 }
 
 void
