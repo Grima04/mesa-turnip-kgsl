@@ -2492,7 +2492,19 @@ bi_optimize_nir(nir_shader *nir)
                          nir_var_function_temp);
         } while (progress);
 
-        NIR_PASS(progress, nir, nir_opt_algebraic_late);
+        /* We need to cleanup after each iteration of late algebraic
+         * optimizations, since otherwise NIR can produce weird edge cases
+         * (like fneg of a constant) which we don't handle */
+        bool late_algebraic = true;
+        while (late_algebraic) {
+                late_algebraic = false;
+                NIR_PASS(late_algebraic, nir, nir_opt_algebraic_late);
+                NIR_PASS(progress, nir, nir_opt_constant_folding);
+                NIR_PASS(progress, nir, nir_copy_prop);
+                NIR_PASS(progress, nir, nir_opt_dce);
+                NIR_PASS(progress, nir, nir_opt_cse);
+        }
+
         NIR_PASS(progress, nir, nir_lower_bool_to_int32);
         NIR_PASS(progress, nir, bifrost_nir_lower_algebraic_late);
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
