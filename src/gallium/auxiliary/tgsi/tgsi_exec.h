@@ -220,11 +220,7 @@ struct tgsi_sampler
 #define TGSI_EXEC_TEMP_KILMASK_I    (TGSI_EXEC_NUM_TEMPS + 0)
 #define TGSI_EXEC_TEMP_KILMASK_C    0
 
-/* 4 register buffer for various purposes */
-#define TGSI_EXEC_TEMP_R0           (TGSI_EXEC_NUM_TEMPS + 1)
-#define TGSI_EXEC_NUM_TEMP_R        4
-
-#define TGSI_EXEC_NUM_TEMP_EXTRAS   5
+#define TGSI_EXEC_NUM_TEMP_EXTRAS   1
 
 
 
