@@ -2053,7 +2053,7 @@ ntt_emit_if(struct ntt_compile *c, nir_if *if_stmt)
    ureg_UIF(c->ureg, c->if_cond, &label);
    ntt_emit_cf_list(c, &if_stmt->then_list);
 
-   if (!exec_list_is_empty(&if_stmt->else_list)) {
+   if (!nir_cf_list_is_empty_block(&if_stmt->else_list)) {
       ureg_fixup_label(c->ureg, label, ureg_get_instruction_number(c->ureg));
       ureg_ELSE(c->ureg, &label);
       ntt_emit_cf_list(c, &if_stmt->else_list);
