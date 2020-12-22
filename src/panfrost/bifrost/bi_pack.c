@@ -56,8 +56,8 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd
 }
 
 /* The uniform/constant slot allows loading a contiguous 64-bit immediate or
- * pushed uniform per bundle. Figure out which one we need in the bundle (the
- * scheduler needs to ensure we only have one type per bundle), validate
+ * pushed uniform per tuple. Figure out which one we need in the tuple (the
+ * scheduler needs to ensure we only have one type per tuple), validate
  * everything, and rewrite away the register/uniform indices to use 3-bit
  * sources directly. */
 
@@ -181,12 +181,12 @@ bi_assign_fau_idx_single(bi_registers *regs,
 
 static void
 bi_assign_fau_idx(bi_clause *clause,
-                  bi_bundle *bundle)
+                  bi_tuple *tuple)
 {
         bool assigned =
-                bi_assign_fau_idx_single(&bundle->regs, clause, bundle->fma, false, true);
+                bi_assign_fau_idx_single(&tuple->regs, clause, tuple->fma, false, true);
 
-        bi_assign_fau_idx_single(&bundle->regs, clause, bundle->add, assigned, false);
+        bi_assign_fau_idx_single(&tuple->regs, clause, tuple->add, assigned, false);
 }
 
 /* Assigns a slot for reading, before anything is written */
@@ -228,7 +228,7 @@ bi_assign_slot_read(bi_registers *regs, bi_index src)
 }
 
 static bi_registers
-bi_assign_slots(bi_bundle *now, bi_bundle *prev)
+bi_assign_slots(bi_tuple *now, bi_tuple *prev)
 {
         /* We assign slots for the main register mechanism. Special ops
          * use the data registers, which has its own mechanism entirely
@@ -388,7 +388,7 @@ bi_pack_registers(bi_registers regs)
         return packed;
 }
 
-struct bi_packed_bundle {
+struct bi_packed_tuple {
         uint64_t lo;
         uint64_t hi;
 };
@@ -411,9 +411,9 @@ bi_flip_slots(bi_registers *regs)
  * doesn't have to worry about this while we're just packing singletons */
 
 static void
-bi_lower_cubeface2(bi_context *ctx, bi_bundle *bundle)
+bi_lower_cubeface2(bi_context *ctx, bi_tuple *tuple)
 {
-        bi_instr *old = bundle->add;
+        bi_instr *old = tuple->add;
 
         /* Filter for +CUBEFACE2 */
         if (!old || old->op != BI_OPCODE_CUBEFACE2)
@@ -421,7 +421,7 @@ bi_lower_cubeface2(bi_context *ctx, bi_bundle *bundle)
 
         /* This won't be used once we emit non-singletons, for now this is just
          * a fact of our scheduler and allows us to clobber FMA */
-        assert(!bundle->fma);
+        assert(!tuple->fma);
 
         /* Construct an FMA op */
         bi_instr *new = rzalloc(ctx, bi_instr);
@@ -433,7 +433,7 @@ bi_lower_cubeface2(bi_context *ctx, bi_bundle *bundle)
 
         /* Emit the instruction */
         list_addtail(&new->link, &old->link);
-        bundle->fma = new;
+        tuple->fma = new;
 
         /* Now replace the sources of the CUBEFACE2 with a single passthrough
          * from the CUBEFACE1 (and a side-channel) */
@@ -474,33 +474,33 @@ bi_get_src_new(bi_instr *ins, bi_registers *regs, unsigned s)
         }
 }
 
-static struct bi_packed_bundle
-bi_pack_bundle(bi_clause *clause, bi_bundle *bundle, bi_bundle *prev, bool first_bundle, gl_shader_stage stage)
+static struct bi_packed_tuple
+bi_pack_tuple(bi_clause *clause, bi_tuple *tuple, bi_tuple *prev, bool first_tuple, gl_shader_stage stage)
 {
-        bi_assign_slots(bundle, prev);
-        bi_assign_fau_idx(clause, bundle);
-        bundle->regs.first_instruction = first_bundle;
+        bi_assign_slots(tuple, prev);
+        bi_assign_fau_idx(clause, tuple);
+        tuple->regs.first_instruction = first_tuple;
 
-        bi_flip_slots(&bundle->regs);
+        bi_flip_slots(&tuple->regs);
 
-        bool sr_read = bundle->add &&
-                bi_opcode_props[(bundle->add)->op].sr_read;
+        bool sr_read = tuple->add &&
+                bi_opcode_props[(tuple->add)->op].sr_read;
 
-        uint64_t reg = bi_pack_registers(bundle->regs);
-        uint64_t fma = bi_pack_fma(bundle->fma,
-                        bi_get_src_new(bundle->fma, &bundle->regs, 0),
-                        bi_get_src_new(bundle->fma, &bundle->regs, 1),
-                        bi_get_src_new(bundle->fma, &bundle->regs, 2),
-                        bi_get_src_new(bundle->fma, &bundle->regs, 3));
+        uint64_t reg = bi_pack_registers(tuple->regs);
+        uint64_t fma = bi_pack_fma(tuple->fma,
+                        bi_get_src_new(tuple->fma, &tuple->regs, 0),
+                        bi_get_src_new(tuple->fma, &tuple->regs, 1),
+                        bi_get_src_new(tuple->fma, &tuple->regs, 2),
+                        bi_get_src_new(tuple->fma, &tuple->regs, 3));
 
-        uint64_t add = bi_pack_add(bundle->add,
-                        bi_get_src_new(bundle->add, &bundle->regs, sr_read + 0),
-                        bi_get_src_new(bundle->add, &bundle->regs, sr_read + 1),
-                        bi_get_src_new(bundle->add, &bundle->regs, sr_read + 2),
+        uint64_t add = bi_pack_add(tuple->add,
+                        bi_get_src_new(tuple->add, &tuple->regs, sr_read + 0),
+                        bi_get_src_new(tuple->add, &tuple->regs, sr_read + 1),
+                        bi_get_src_new(tuple->add, &tuple->regs, sr_read + 2),
                         0);
 
-        if (bundle->add) {
-                bi_instr *add = bundle->add;
+        if (tuple->add) {
+                bi_instr *add = tuple->add;
 
                 bool sr_write = bi_opcode_props[add->op].sr_write;
 
@@ -516,7 +516,7 @@ bi_pack_bundle(bi_clause *clause, bi_bundle *bundle, bi_bundle *prev, bool first
                 }
         }
 
-        struct bi_packed_bundle packed = {
+        struct bi_packed_tuple packed = {
                 .lo = reg | (fma << 35) | ((add & 0b111111) << 58),
                 .hi = add >> 6
         };
@@ -551,12 +551,12 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
         bool branches = clause->branch_constant && done;
 
         /* TODO: Pos */
-        assert(index == 0 && clause->bundle_count == 1);
+        assert(index == 0 && clause->tuple_count == 1);
         assert(only);
 
         /* Compute branch offset instead of a dummy 0 */
         if (branches) {
-                bi_instr *br = clause->bundles[clause->bundle_count - 1].add;
+                bi_instr *br = clause->tuples[clause->tuple_count - 1].add;
                 assert(br && br->branch_target);
 
                 /* Put it in the high place */
@@ -609,10 +609,10 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bool tdd)
 {
         /* TODO After the deadline lowering */
-        bi_lower_cubeface2(ctx, &clause->bundles[0]);
+        bi_lower_cubeface2(ctx, &clause->tuples[0]);
 
-        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, &clause->bundles[0], &clause->bundles[0], true, stage);
-        assert(clause->bundle_count == 1);
+        struct bi_packed_tuple ins_1 = bi_pack_tuple(clause, &clause->tuples[0], &clause->tuples[0], true, stage);
+        assert(clause->tuple_count == 1);
 
         /* State for packing constants throughout */
         unsigned constant_index = 0;
@@ -657,14 +657,14 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
         if (ctx->is_blend)
                 return;
 
-        const bi_bundle *bundle = &clause->bundles[clause->bundle_count - 1];
-        const bi_instr *ins = bundle->add;
+        const bi_tuple *tuple = &clause->tuples[clause->tuple_count - 1];
+        const bi_instr *ins = tuple->add;
 
         if (!ins || ins->op != BI_OPCODE_BLEND)
                 return;
 
 
-        unsigned loc = bundle->regs.fau_idx - BIR_FAU_BLEND_0;
+        unsigned loc = tuple->regs.fau_idx - BIR_FAU_BLEND_0;
         assert(loc < ARRAY_SIZE(ctx->blend_ret_offsets));
         assert(!ctx->blend_ret_offsets[loc]);
         ctx->blend_ret_offsets[loc] =

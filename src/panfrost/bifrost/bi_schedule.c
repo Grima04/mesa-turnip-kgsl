@@ -82,16 +82,16 @@ bi_singleton(void *memctx, bi_instr *ins,
                 bool osrb)
 {
         bi_clause *u = rzalloc(memctx, bi_clause);
-        u->bundle_count = 1;
+        u->tuple_count = 1;
 
         ASSERTED bool can_fma = bi_opcode_props[ins->op].fma;
         bool can_add = bi_opcode_props[ins->op].add;
         assert(can_fma || can_add);
 
         if (can_add)
-                u->bundles[0].add = ins;
+                u->tuples[0].add = ins;
         else
-                u->bundles[0].fma = ins;
+                u->tuples[0].fma = ins;
 
         u->scoreboard_id = scoreboard_id;
         u->staging_barrier = osrb;
@@ -115,7 +115,7 @@ bi_singleton(void *memctx, bi_instr *ins,
                 unsigned value = ins->src[s].value;
 
                 /* Allow fast zero */
-                if (value == 0 && u->bundles[0].fma) continue;
+                if (value == 0 && u->tuples[0].fma) continue;
 
                 if (constant_count == 0) {
                         combined_constant = ins->src[s].value;

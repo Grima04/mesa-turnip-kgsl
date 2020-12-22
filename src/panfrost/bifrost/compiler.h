@@ -377,7 +377,7 @@ typedef struct {
         };
 } bi_instr;
 
-/* Represents the assignment of slots for a given bi_bundle */
+/* Represents the assignment of slots for a given bi_tuple */
 
 typedef struct {
         /* Register to assign to each slot */
@@ -396,9 +396,9 @@ typedef struct {
         bool first_instruction;
 } bi_registers;
 
-/* A bi_bundle contains two paired instruction pointers. If a slot is unfilled,
+/* A bi_tuple contains two paired instruction pointers. If a slot is unfilled,
  * leave it NULL; the emitter will fill in a nop. Instructions reference
- * registers via slots which are assigned per bundle.
+ * registers via slots which are assigned per tuple.
  */
 
 typedef struct {
@@ -406,7 +406,7 @@ typedef struct {
         bi_registers regs;
         bi_instr *fma;
         bi_instr *add;
-} bi_bundle;
+} bi_tuple;
 
 struct bi_block;
 
@@ -416,11 +416,11 @@ typedef struct {
         /* Link back up for branch calculations */
         struct bi_block *block;
 
-        /* A clause can have 8 instructions in bundled FMA/ADD sense, so there
-         * can be 8 bundles. */
+        /* A clause can have 8 instructions in tupled FMA/ADD sense, so there
+         * can be 8 tuples. */
 
-        unsigned bundle_count;
-        bi_bundle bundles[8];
+        unsigned tuple_count;
+        bi_tuple tuples[8];
 
         /* For scoreboarding -- the clause ID (this is not globally unique!)
          * and its dependencies in terms of other clauses, computed during
@@ -446,9 +446,9 @@ typedef struct {
 
         /* Constants read by this clause. ISA limit. Must satisfy:
          *
-         *      constant_count + bundle_count <= 13
+         *      constant_count + tuple_count <= 13
          *
-         * Also implicitly constant_count <= bundle_count since a bundle only
+         * Also implicitly constant_count <= tuple_count since a tuple only
          * reads a single constant.
          */
         uint64_t constants[8];
@@ -713,7 +713,7 @@ bi_clause * bi_next_clause(bi_context *ctx, pan_block *block, bi_clause *clause)
 
 void bi_print_instr(bi_instr *I, FILE *fp);
 void bi_print_slots(bi_registers *regs, FILE *fp);
-void bi_print_bundle(bi_bundle *bundle, FILE *fp);
+void bi_print_tuple(bi_tuple *tuple, FILE *fp);
 void bi_print_clause(bi_clause *clause, FILE *fp);
 void bi_print_block(bi_block *block, FILE *fp);
 void bi_print_shader(bi_context *ctx, FILE *fp);
@@ -742,7 +742,7 @@ void bi_invalidate_liveness(bi_context *ctx);
 
 /* Layout */
 
-bool bi_can_insert_bundle(bi_clause *clause, bool constant);
+bool bi_can_insert_tuple(bi_clause *clause, bool constant);
 unsigned bi_clause_quadwords(bi_clause *clause);
 signed bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target);
 
@@ -808,15 +808,15 @@ bi_after_instr(bi_instr *instr)
 static inline bi_instr *
 bi_first_instr_in_clause(bi_clause *clause)
 {
-        bi_bundle bundle = clause->bundles[0];
-        return bundle.fma ?: bundle.add;
+        bi_tuple tuple = clause->tuples[0];
+        return tuple.fma ?: tuple.add;
 }
 
 static inline bi_instr *
 bi_last_instr_in_clause(bi_clause *clause)
 {
-        bi_bundle bundle = clause->bundles[clause->bundle_count - 1];
-        return bundle.add ?: bundle.fma;
+        bi_tuple tuple = clause->tuples[clause->tuple_count - 1];
+        return tuple.add ?: tuple.fma;
 }
 
 /* Implemented by expanding bi_foreach_instr_in_block_from(_rev) with the start

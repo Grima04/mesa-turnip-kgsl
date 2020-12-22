@@ -2041,13 +2041,13 @@ bi_print_stats(bi_context *ctx, FILE *fp)
 
                 bi_foreach_clause_in_block(block, clause) {
                         nr_clauses++;
-                        nr_tuples += clause->bundle_count;
+                        nr_tuples += clause->tuple_count;
 
-                        for (unsigned i = 0; i < clause->bundle_count; ++i) {
-                                if (clause->bundles[i].fma)
+                        for (unsigned i = 0; i < clause->tuple_count; ++i) {
+                                if (clause->tuples[i].fma)
                                         nr_ins++;
 
-                                if (clause->bundles[i].add)
+                                if (clause->tuples[i].add)
                                         nr_ins++;
                         }
                 }
