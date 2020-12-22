@@ -1080,7 +1080,7 @@
     <field name="CS Fence" start="84" end="94" type="uint"/>
   </instruction>
 
-  <instruction name="XY_COLOR_BLT" bias="2" length="6" engine="blitter">
+  <instruction name="XY_COLOR_BLT" bias="2" length="6" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="4"/>
     <field name="Tiling Enable" start="11" end="11" type="bool"/>
     <field name="32bpp Byte Mask" start="20" end="21" type="uint"/>
@@ -1129,7 +1129,7 @@
     <field name="Pattern Base Address" start="224" end="255" type="uint"/>
   </instruction>
 
-  <instruction name="XY_SRC_COPY_BLT" bias="2" length="8" engine="blitter">
+  <instruction name="XY_SRC_COPY_BLT" bias="2" length="8" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
     <field name="Destination Tiling Enable" start="11" end="11" type="bool"/>
     <field name="Source Tiling Enable" start="15" end="15" type="bool"/>
@@ -1156,7 +1156,7 @@
     <field name="Source Base Address" start="224" end="255" type="address"/>
   </instruction>
 
-  <instruction name="XY_TEXT_IMMEDIATE_BLT" bias="2" length="3" engine="blitter">
+  <instruction name="XY_TEXT_IMMEDIATE_BLT" bias="2" length="3" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="1"/>
     <field name="Tiling Enable" start="11" end="11" type="bool"/>
     <field name="Packing" start="16" end="16" type="uint">
