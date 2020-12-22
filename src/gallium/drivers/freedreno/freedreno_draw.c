@@ -334,8 +334,8 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	if (fd_mesa_debug & FD_DBG_DDRAW)
 		fd_context_all_dirty(ctx);
 
-	fd_batch_check_size(batch);
 	fd_batch_unlock_submit(batch);
+	fd_batch_check_size(batch);
 	fd_batch_reference(&batch, NULL);
 
 	if (info == &new_info)
@@ -451,8 +451,8 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 		}
 	}
 
-	fd_batch_check_size(batch);
 	fd_batch_unlock_submit(batch);
+	fd_batch_check_size(batch);
 
 	if (fallback) {
 		fd_blitter_clear(pctx, buffers, color, depth, stencil);
