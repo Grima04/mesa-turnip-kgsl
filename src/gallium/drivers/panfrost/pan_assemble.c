@@ -98,6 +98,24 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                 state->preload.fragment.coverage = true;
                 state->preload.fragment.primitive_flags = state->reads_face;
                 break;
+        case MESA_SHADER_COMPUTE:
+                pan_prepare(&state->properties, RENDERER_PROPERTIES);
+                state->properties.uniform_buffer_count = state->ubo_count;
+
+                pan_prepare(&state->preload, PRELOAD);
+                state->preload.uniform_count = state->uniform_count;
+
+                state->preload.compute.local_invocation_xy = true;
+                state->preload.compute.local_invocation_z = true;
+
+                state->preload.compute.work_group_x = true;
+                state->preload.compute.work_group_y = true;
+                state->preload.compute.work_group_z = true;
+
+                state->preload.compute.global_invocation_x = true;
+                state->preload.compute.global_invocation_y = true;
+                state->preload.compute.global_invocation_z = true;
+                break;
         default:
                 unreachable("TODO");
         }
