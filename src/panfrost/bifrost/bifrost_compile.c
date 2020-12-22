@@ -488,18 +488,23 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
          */
         assert(b->shader->nir->info.first_ubo_is_default_ubo);
 
-        bool offset_is_const = nir_src_is_const(instr->src[1]);
-        bi_index dyn_offset = bi_src_index(&instr->src[1]);
+        nir_src *offset = nir_get_io_offset_src(instr);
+
+        bool offset_is_const = nir_src_is_const(*offset);
+        bi_index dyn_offset = bi_src_index(offset);
         uint32_t const_offset = 0;
+
+        bool kernel_input = (instr->intrinsic == nir_intrinsic_load_kernel_input);
 
         /* We may need to offset UBO loads by however many sysvals we have */
         unsigned sysval_offset = 16 * b->shader->sysvals.sysval_count;
 
-        if (nir_src_is_const(instr->src[1]))
-                const_offset = nir_src_as_uint(instr->src[1]);
+        if (nir_src_is_const(*offset))
+                const_offset = nir_src_as_uint(*offset);
 
-        if (nir_src_is_const(instr->src[0]) &&
-            nir_src_as_uint(instr->src[0]) == 0 &&
+        if ((kernel_input ||
+             (nir_src_is_const(instr->src[0]) &&
+              nir_src_as_uint(instr->src[0]) == 0)) &&
             b->shader->sysvals.sysval_count) {
                 if (offset_is_const) {
                         const_offset += sysval_offset;
@@ -512,7 +517,7 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
         bi_load_to(b, instr->num_components * 32,
                         bi_dest_index(&instr->dest), offset_is_const ?
                         bi_imm_u32(const_offset) : dyn_offset,
-                        bi_src_index(&instr->src[0]),
+                        kernel_input ? bi_zero() : bi_src_index(&instr->src[0]),
                         BI_SEG_UBO);
 }
 
@@ -628,6 +633,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ubo:
+        case nir_intrinsic_load_kernel_input:
                 bi_emit_load_ubo(b, instr);
                 break;
 
