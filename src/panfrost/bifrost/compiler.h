@@ -416,9 +416,7 @@ typedef struct {
         /* Link back up for branch calculations */
         struct bi_block *block;
 
-        /* A clause can have 8 instructions in tupled FMA/ADD sense, so there
-         * can be 8 tuples. */
-
+        /* Architectural limit of 8 tuples/clause */
         unsigned tuple_count;
         bi_tuple tuples[8];
 
