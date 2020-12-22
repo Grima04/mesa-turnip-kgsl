@@ -1264,10 +1264,12 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    framebuffer_state_buffer_barriers_setup(ctx, fb_state, batch);
 
    zink_batch_reference_framebuffer(batch, ctx->framebuffer);
-   for (int i = 0; i < ARRAY_SIZE(ctx->framebuffer->surfaces); i++) {
-      if (!ctx->framebuffer->surfaces[i])
-         break;
-      zink_batch_reference_resource_rw(batch, zink_resource(ctx->framebuffer->surfaces[i]->texture), true);
+   for (int i = 0; i < ctx->framebuffer->state.num_attachments; i++) {
+      if (ctx->framebuffer->surfaces[i]) {
+         struct zink_surface *surf = zink_surface(ctx->framebuffer->surfaces[i]);
+         zink_batch_reference_resource_rw(batch, zink_resource(surf->base.texture), true);
+         zink_batch_reference_surface(batch, surf);
+      }
    }
 
    vkCmdBeginRenderPass(batch->state->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
