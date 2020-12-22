@@ -1499,18 +1499,20 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_global:
         case nir_intrinsic_load_shared:
         case nir_intrinsic_load_input:
+        case nir_intrinsic_load_kernel_input:
         case nir_intrinsic_load_interpolated_input: {
                 bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
                 bool is_global = instr->intrinsic == nir_intrinsic_load_global;
                 bool is_shared = instr->intrinsic == nir_intrinsic_load_shared;
                 bool is_flat = instr->intrinsic == nir_intrinsic_load_input;
+                bool is_kernel = instr->intrinsic == nir_intrinsic_load_kernel_input;
                 bool is_interp = instr->intrinsic == nir_intrinsic_load_interpolated_input;
 
                 /* Get the base type of the intrinsic */
                 /* TODO: Infer type? Does it matter? */
                 nir_alu_type t =
-                        (is_ubo || is_global || is_shared) ? nir_type_uint :
+                        (is_ubo || is_global || is_shared || is_kernel) ? nir_type_uint :
                         (is_interp) ? nir_type_float :
                         nir_intrinsic_dest_type(instr);
 
@@ -1537,6 +1539,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 if (is_uniform && !ctx->is_blend) {
                         emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysvals.sysval_count + offset) * 16, indirect_offset, 4, 0);
+                } else if (is_kernel) {
+                        emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysvals.sysval_count * 16) + offset, indirect_offset, 0, 0);
                 } else if (is_ubo) {
                         nir_src index = instr->src[0];
 
