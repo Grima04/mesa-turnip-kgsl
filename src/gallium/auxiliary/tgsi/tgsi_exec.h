@@ -224,10 +224,7 @@ struct tgsi_sampler
 #define TGSI_EXEC_TEMP_R0           (TGSI_EXEC_NUM_TEMPS + 1)
 #define TGSI_EXEC_NUM_TEMP_R        4
 
-#define TGSI_EXEC_TEMP_ADDR         (TGSI_EXEC_NUM_TEMPS + 5)
-#define TGSI_EXEC_NUM_ADDRS         3
-
-#define TGSI_EXEC_NUM_TEMP_EXTRAS   8
+#define TGSI_EXEC_NUM_TEMP_EXTRAS   5
 
 
 
@@ -321,7 +318,7 @@ struct tgsi_exec_machine
    unsigned                      SysSemanticToIndex[TGSI_SEMANTIC_COUNT];
    struct tgsi_exec_vector       SystemValue[TGSI_MAX_MISC_INPUTS];
 
-   struct tgsi_exec_vector       *Addrs;
+   struct tgsi_exec_vector       Addrs[3];
 
    struct tgsi_sampler           *Sampler;
 

@@ -1264,7 +1264,6 @@ tgsi_exec_machine_create(enum pipe_shader_type shader_type)
    memset(mach, 0, sizeof(*mach));
 
    mach->ShaderType = shader_type;
-   mach->Addrs = &mach->Temps[TGSI_EXEC_TEMP_ADDR];
    mach->MaxGeometryShaderOutputs = TGSI_MAX_TOTAL_VERTICES;
 
    if (shader_type != PIPE_SHADER_COMPUTE) {
@@ -1528,7 +1527,7 @@ fetch_src_file_channel(const struct tgsi_exec_machine *mach,
 
    case TGSI_FILE_ADDRESS:
       for (i = 0; i < TGSI_QUAD_SIZE; i++) {
-         assert(index->i[i] >= 0);
+         assert(index->i[i] >= 0 && index->i[i] < ARRAY_SIZE(mach->Addrs));
          assert(index2D->i[i] == 0);
 
          chan->u[i] = mach->Addrs[index->i[i]].xyzw[swizzle].u[i];
@@ -1893,6 +1892,7 @@ store_dest_dstret(struct tgsi_exec_machine *mach,
 
    case TGSI_FILE_ADDRESS:
       index = reg->Register.Index;
+      assert(index >= 0 && index < ARRAY_SIZE(mach->Addrs));
       dst = &mach->Addrs[index].xyzw[chan_index];
       break;
 
