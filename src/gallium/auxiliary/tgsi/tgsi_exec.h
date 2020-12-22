@@ -214,16 +214,6 @@ struct tgsi_sampler
 
 #define TGSI_EXEC_NUM_TEMPS       4096
 
-/*
- * Locations of various utility registers (_I = Index, _C = Channel)
- */
-#define TGSI_EXEC_TEMP_KILMASK_I    (TGSI_EXEC_NUM_TEMPS + 0)
-#define TGSI_EXEC_TEMP_KILMASK_C    0
-
-#define TGSI_EXEC_NUM_TEMP_EXTRAS   1
-
-
-
 #define TGSI_EXEC_MAX_NESTING  32
 #define TGSI_EXEC_MAX_COND_NESTING  TGSI_EXEC_MAX_NESTING
 #define TGSI_EXEC_MAX_LOOP_NESTING  TGSI_EXEC_MAX_NESTING
@@ -300,8 +290,7 @@ struct tgsi_exec_machine
 {
    /* Total = program temporaries + internal temporaries
     */
-   struct tgsi_exec_vector       Temps[TGSI_EXEC_NUM_TEMPS +
-                                       TGSI_EXEC_NUM_TEMP_EXTRAS];
+   struct tgsi_exec_vector       Temps[TGSI_EXEC_NUM_TEMPS];
 
    unsigned                       ImmsReserved;
    float4                         *Imms;
@@ -359,6 +348,7 @@ struct tgsi_exec_machine
    uint ContMask;  /**< For loop CONT statements */
    uint FuncMask;  /**< For function calls */
    uint ExecMask;  /**< = CondMask & LoopMask */
+   uint KillMask;  /**< Mask of channels killed in the current shader execution */
 
    /* Current switch-case state. */
    struct tgsi_switch_record Switch;

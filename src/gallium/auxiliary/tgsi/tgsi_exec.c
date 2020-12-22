@@ -971,12 +971,6 @@ enum tgsi_exec_datatype {
    TGSI_EXEC_DATA_UINT64,
 };
 
-/*
- * Shorthand locations of various utility registers (_I = Index, _C = Channel)
- */
-#define TEMP_KILMASK_I     TGSI_EXEC_TEMP_KILMASK_I
-#define TEMP_KILMASK_C     TGSI_EXEC_TEMP_KILMASK_C
-
 /** The execution mask depends on the conditional mask and the loop mask */
 #define UPDATE_EXEC_MASK(MACH) \
       MACH->ExecMask = MACH->CondMask & MACH->LoopMask & MACH->ContMask & MACH->Switch.mask & MACH->FuncMask
@@ -2006,7 +2000,7 @@ exec_kill_if(struct tgsi_exec_machine *mach,
    /* restrict to fragments currently executing */
    kilmask &= mach->ExecMask;
 
-   mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0] |= kilmask;
+   mach->KillMask |= kilmask;
 }
 
 /**
@@ -2015,11 +2009,10 @@ exec_kill_if(struct tgsi_exec_machine *mach,
 static void
 exec_kill(struct tgsi_exec_machine *mach)
 {
-   uint kilmask; /* bit 0 = pixel 0, bit 1 = pixel 1, etc */
-
-   /* kill fragment for all fragments currently executing */
-   kilmask = mach->ExecMask;
-   mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0] |= kilmask;
+   /* kill fragment for all fragments currently executing.
+    * bit 0 = pixel 0, bit 1 = pixel 1, etc.
+    */
+   mach->KillMask |= mach->ExecMask;
 }
 
 static void
@@ -3871,14 +3864,13 @@ exec_load_img(struct tgsi_exec_machine *mach,
    uint chan;
    float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE];
    struct tgsi_image_params params;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
 
    unit = fetch_sampler_unit(mach, inst, 0);
    dim = get_image_coord_dim(inst->Memory.Texture);
    sample = get_image_coord_sample(inst->Memory.Texture);
    assert(dim <= 3);
 
-   params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
+   params.execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
    params.unit = unit;
    params.tgsi_tex_instr = inst->Memory.Texture;
    params.format = inst->Memory.Format;
@@ -4024,13 +4016,12 @@ exec_store_img(struct tgsi_exec_machine *mach,
    int sample;
    int i, j;
    uint unit;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
    unit = fetch_store_img_unit(mach, &inst->Dst[0]);
    dim = get_image_coord_dim(inst->Memory.Texture);
    sample = get_image_coord_sample(inst->Memory.Texture);
    assert(dim <= 3);
 
-   params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
+   params.execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
    params.unit = unit;
    params.tgsi_tex_instr = inst->Memory.Texture;
    params.format = inst->Memory.Format;
@@ -4065,8 +4056,7 @@ exec_store_buf(struct tgsi_exec_machine *mach,
    uint32_t size;
    char *ptr = mach->Buffer->lookup(mach->Buffer, unit, &size);
 
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
-   int execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
+   int execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
 
    union tgsi_exec_channel offset;
    IFETCH(&offset, 0, TGSI_CHAN_X);
@@ -4099,8 +4089,7 @@ exec_store_mem(struct tgsi_exec_machine *mach,
    union tgsi_exec_channel value[4];
    uint i, chan;
    char *ptr = mach->LocalMem;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
-   int execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
+   int execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
 
    IFETCH(&r[0], 0, TGSI_CHAN_X);
 
@@ -4148,13 +4137,12 @@ exec_atomop_img(struct tgsi_exec_machine *mach,
    int sample;
    int i, j;
    uint unit, chan;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
    unit = fetch_sampler_unit(mach, inst, 0);
    dim = get_image_coord_dim(inst->Memory.Texture);
    sample = get_image_coord_sample(inst->Memory.Texture);
    assert(dim <= 3);
 
-   params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
+   params.execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
    params.unit = unit;
    params.tgsi_tex_instr = inst->Memory.Texture;
    params.format = inst->Memory.Format;
@@ -4209,8 +4197,7 @@ exec_atomop_membuf(struct tgsi_exec_machine *mach,
 {
    union tgsi_exec_channel offset, r0, r1;
    uint chan, i;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
-   int execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
+   int execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
    IFETCH(&offset, 1, TGSI_CHAN_X);
 
    if (!(inst->Dst[0].Register.WriteMask & TGSI_WRITEMASK_X))
@@ -4323,11 +4310,10 @@ exec_resq_img(struct tgsi_exec_machine *mach,
    uint unit;
    int i, chan, j;
    struct tgsi_image_params params;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
 
    unit = fetch_sampler_unit(mach, inst, 0);
 
-   params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
+   params.execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
    params.unit = unit;
    params.tgsi_tex_instr = inst->Memory.Texture;
    params.format = inst->Memory.Format;
@@ -6231,7 +6217,7 @@ tgsi_exec_machine_setup_masks(struct tgsi_exec_machine *mach)
 {
    uint default_mask = 0xf;
 
-   mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0] = 0;
+   mach->KillMask = 0;
    mach->OutputVertexOffset = 0;
 
    if (mach->ShaderType == PIPE_SHADER_GEOMETRY) {
@@ -6283,7 +6269,7 @@ tgsi_exec_machine_run( struct tgsi_exec_machine *mach, int start_pc )
 
    {
 #if DEBUG_EXECUTION
-      struct tgsi_exec_vector temps[TGSI_EXEC_NUM_TEMPS + TGSI_EXEC_NUM_TEMP_EXTRAS];
+      struct tgsi_exec_vector temps[TGSI_EXEC_NUM_TEMPS];
       struct tgsi_exec_vector outputs[PIPE_MAX_ATTRIBS];
       uint inst = 1;
 
@@ -6313,7 +6299,7 @@ tgsi_exec_machine_run( struct tgsi_exec_machine *mach, int start_pc )
             return 0;
 
 #if DEBUG_EXECUTION
-         for (i = 0; i < TGSI_EXEC_NUM_TEMPS + TGSI_EXEC_NUM_TEMP_EXTRAS; i++) {
+         for (i = 0; i < TGSI_EXEC_NUM_TEMPS; i++) {
             if (memcmp(&temps[i], &mach->Temps[i], sizeof(temps[i]))) {
                uint j;
 
@@ -6376,5 +6362,5 @@ tgsi_exec_machine_run( struct tgsi_exec_machine *mach, int start_pc )
    assert(mach->BreakStackTop == 0);
    assert(mach->CallStackTop == 0);
 
-   return ~mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
+   return ~mach->KillMask;
 }
