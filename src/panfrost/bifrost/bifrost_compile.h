@@ -67,6 +67,8 @@ static const nir_shader_compiler_options bifrost_nir_options = {
         .lower_pack_split = true,
 
         .lower_doubles_options = nir_lower_dmod,
+        /* TODO: Don't lower supported 64-bit operations */
+        .lower_int64_options = ~0,
 
         .lower_bitfield_extract_to_shifts = true,
         .has_fsub = true,
