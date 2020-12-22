@@ -311,7 +311,7 @@ bi_register_allocate(bi_context *ctx)
         unsigned iter_count = 1000; /* max iterations */
 
         /* Number of bytes of memory we've spilled into */
-        unsigned spill_count = 0;
+        unsigned spill_count = ctx->tls_size;
 
         do {
                 if (l) {

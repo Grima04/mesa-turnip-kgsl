@@ -2213,6 +2213,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         program->sysval_count = ctx->sysvals.sysval_count;
         memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
         ctx->blend_types = program->blend_types;
+        ctx->tls_size = nir->scratch_size;
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)
