@@ -176,7 +176,21 @@ panfrost_set_global_binding(struct pipe_context *pctx,
                       struct pipe_resource **resources,
                       uint32_t **handles)
 {
-        /* TODO */
+        if (!resources)
+                return;
+
+        struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        for (unsigned i = first; i < first + count; ++i) {
+                struct panfrost_resource *rsrc = pan_resource(resources[i]);
+
+                panfrost_batch_add_bo(batch, rsrc->bo,
+                                      PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_RW);
+
+                /* The handle points to uint32_t, but space is allocated for 64 bits */
+                memcpy(handles[i], &rsrc->bo->ptr.gpu, sizeof(mali_ptr));
+        }
 }
 
 static void
