@@ -798,7 +798,11 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
    if (pipeline->pipeline_nir[MESA_SHADER_TESS_CTRL]) {
       nir_lower_patch_vertices(pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL], pipeline->pipeline_nir[MESA_SHADER_TESS_CTRL]->info.tess.tcs_vertices_out, NULL);
       merge_tess_info(&pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info, &pipeline->pipeline_nir[MESA_SHADER_TESS_CTRL]->info);
-      pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw = !pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw;
+      const VkPipelineTessellationDomainOriginStateCreateInfo *domain_origin_state =
+         vk_find_struct_const(pCreateInfo->pTessellationState,
+                              PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
+      if (!domain_origin_state || domain_origin_state->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT)
+         pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw = !pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw;
    }
 
 
