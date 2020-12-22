@@ -502,4 +502,19 @@ struct bifrost_pixel_indices {
         unsigned y : 8;
 } __attribute__((packed));
 
+enum bi_constmod {
+        BI_CONSTMOD_NONE,
+        BI_CONSTMOD_PC_LO,
+        BI_CONSTMOD_PC_HI,
+        BI_CONSTMOD_PC_LO_HI
+};
+
+struct bi_constants {
+        /* Raw constant values */
+        uint64_t raw[6];
+
+        /* Associated modifier derived from M values */
+        enum bi_constmod mods[6];
+};
+
 #endif
