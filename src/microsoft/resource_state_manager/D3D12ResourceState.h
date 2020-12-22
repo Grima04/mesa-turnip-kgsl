@@ -142,6 +142,7 @@ struct TransitionableResourceState
    TransitionableResourceState(ID3D12Resource *pResource, UINT TotalSubresources, bool SupportsSimultaneousAccess) :
       m_DesiredState(TotalSubresources),
       m_TotalSubresources(TotalSubresources),
+      m_SupportsSimultaneousAccess(SupportsSimultaneousAccess),
       m_currentState(TotalSubresources, SupportsSimultaneousAccess),
       m_pResource(pResource)
    {
