@@ -622,7 +622,8 @@ synchronize(struct d3d12_context *ctx,
 /* A wrapper to make sure local resources are freed and unmapped with
  * any exit path */
 struct local_resource {
-   local_resource(pipe_screen *s, struct pipe_resource *tmpl)
+   local_resource(pipe_screen *s, struct pipe_resource *tmpl) :
+      mapped(false)
    {
       res = d3d12_resource(d3d12_resource_create(s, tmpl));
    }
