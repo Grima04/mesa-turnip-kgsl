@@ -693,6 +693,23 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_mov_i32_to(b, dst, bi_register(62));
                 break;
 
+        case nir_intrinsic_load_local_invocation_id:
+                for (unsigned i = 0; i < 3; ++i)
+                        bi_u16_to_u32_to(b, bi_word(dst, i),
+                                         bi_half(bi_register(55 + i / 2), i % 2));
+                break;
+
+        case nir_intrinsic_load_work_group_id:
+                for (unsigned i = 0; i < 3; ++i)
+                        bi_mov_i32_to(b, bi_word(dst, i), bi_register(57 + i));
+                break;
+
+        case nir_intrinsic_load_global_invocation_id:
+        case nir_intrinsic_load_global_invocation_id_zero_base:
+                for (unsigned i = 0; i < 3; ++i)
+                        bi_mov_i32_to(b, bi_word(dst, i), bi_register(60 + i));
+                break;
+
         default:
                 unreachable("Unknown intrinsic");
         }
