@@ -274,7 +274,7 @@ ntt_setup_uniforms(struct ntt_compile *c)
    }
 
    nir_foreach_variable_with_modes(var, c->s, nir_var_mem_ubo) {
-      ureg_DECL_constant2D(c->ureg, 0, 0, var->data.driver_location + 1);
+      ureg_DECL_constant2D(c->ureg, 0, 0, var->data.driver_location);
    }
 
    for (int i = 0; i < PIPE_MAX_SAMPLERS; i++) {
@@ -984,16 +984,6 @@ ntt_ureg_src_dimension_indirect(struct ntt_compile *c, struct ureg_src usrc,
    }
 }
 
-static void
-ntt_emit_load_uniform(struct ntt_compile *c, nir_intrinsic_instr *instr)
-{
-   struct ureg_src src =
-      ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_CONSTANT,
-                                                 nir_intrinsic_base(instr)),
-                            instr->src[0]);
-   ntt_store(c, &instr->dest, src);
-}
-
 /* Some load operations in NIR will have a fractional offset that we need to
  * swizzle down before storing to the result register.
  */
@@ -1037,13 +1027,7 @@ ntt_emit_load_ubo_vec4(struct ntt_compile *c, nir_intrinsic_instr *instr)
    src = ntt_shift_by_frac(src, start_component,
                            instr->num_components * bit_size / 32);
 
-   if (nir_src_is_const(instr->src[0])) {
-      src = ureg_src_dimension(src, nir_src_as_uint(instr->src[0]) + 1);
-   } else {
-      struct ureg_src block_index = ntt_get_src(c, instr->src[0]);
-
-      src = ureg_src_dimension_indirect(src, ntt_reladdr(c, block_index), 1);
-   }
+   src = ntt_ureg_src_dimension_indirect(c, src, instr->src[0]);
 
    ntt_store(c, &instr->dest, src);
 }
@@ -1506,10 +1490,6 @@ static void
 ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
-   case nir_intrinsic_load_uniform:
-      ntt_emit_load_uniform(c, instr);
-      break;
-
    case nir_intrinsic_load_ubo:
       ntt_emit_load_ubo(c, instr);
       break;
@@ -2313,7 +2293,6 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
    b->cursor = nir_after_instr(&instr->instr);
 
    switch (instr->intrinsic) {
-   case nir_intrinsic_load_uniform:
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_ubo_vec4:
    case nir_intrinsic_load_ssbo:
@@ -2345,10 +2324,6 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
       nir_instr_as_intrinsic(nir_instr_clone(b->shader, &instr->instr));
 
    switch (instr->intrinsic) {
-   case nir_intrinsic_load_uniform:
-      nir_intrinsic_set_base(second, nir_intrinsic_base(second) + 1);
-      break;
-
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_ubo_vec4:
    case nir_intrinsic_load_ssbo:
@@ -2519,6 +2494,7 @@ ntt_fix_nir_options(struct nir_shader *s)
        !options->lower_flrp64 ||
        !options->lower_fmod ||
        !options->lower_rotate ||
+       !options->lower_uniforms_to_ubo ||
        !options->lower_vector_cmp) {
       struct nir_shader_compiler_options *new_options =
          mem_dup(s->options, sizeof(*s->options));
@@ -2529,6 +2505,7 @@ ntt_fix_nir_options(struct nir_shader *s)
       new_options->lower_flrp64 = true;
       new_options->lower_fmod = true;
       new_options->lower_rotate = true;
+      new_options->lower_uniforms_to_ubo = true,
       new_options->lower_vector_cmp = true;
 
       s->options = new_options;
@@ -2679,6 +2656,7 @@ static const nir_shader_compiler_options nir_to_tgsi_compiler_options = {
    .lower_fmod = true,
    .lower_rotate = true,
    .lower_sub = true,
+   .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
    .use_interpolated_input_intrinsics = true,
 };

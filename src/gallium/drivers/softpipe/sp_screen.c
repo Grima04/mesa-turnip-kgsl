@@ -83,6 +83,7 @@ static const nir_shader_compiler_options sp_compiler_options = {
    .lower_fmod = true,
    .lower_rotate = true,
    .lower_sub = true,
+   .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
    .use_interpolated_input_intrinsics = true,
 };
