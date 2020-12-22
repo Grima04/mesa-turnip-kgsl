@@ -78,6 +78,7 @@ static LLVMValueRef cast_type(struct lp_build_nir_context *bld_base, LLVMValueRe
          return LLVMBuildBitCast(builder, val, bld_base->uint8_bld.vec_type, "");
       case 16:
          return LLVMBuildBitCast(builder, val, bld_base->uint16_bld.vec_type, "");
+      case 1:
       case 32:
          return LLVMBuildBitCast(builder, val, bld_base->uint_bld.vec_type, "");
       case 64:
@@ -2211,7 +2212,7 @@ handle_shader_output_decl(struct lp_build_nir_context *bld_base,
 static LLVMTypeRef get_register_type(struct lp_build_nir_context *bld_base,
                                      nir_register *reg)
 {
-   struct lp_build_context *int_bld = get_int_bld(bld_base, true, reg->bit_size);
+   struct lp_build_context *int_bld = get_int_bld(bld_base, true, reg->bit_size == 1 ? 32 : reg->bit_size);
 
    LLVMTypeRef type = int_bld->vec_type;
    if (reg->num_array_elems)
