@@ -848,6 +848,24 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         case nir_op_vec16:
                 unreachable("should've been lowered");
 
+        case nir_op_unpack_64_2x32_split_x:
+                bi_mov_i32_to(b, dst, bi_src_index(&instr->src[0].src));
+                return;
+
+        case nir_op_unpack_64_2x32_split_y:
+                bi_mov_i32_to(b, dst, bi_word(bi_src_index(&instr->src[0].src), 1));
+                return;
+
+        case nir_op_pack_64_2x32_split:
+                bi_mov_i32_to(b, bi_word(dst, 0), bi_src_index(&instr->src[0].src));
+                bi_mov_i32_to(b, bi_word(dst, 1), bi_src_index(&instr->src[1].src));
+                return;
+
+        case nir_op_pack_64_2x32:
+                bi_mov_i32_to(b, bi_word(dst, 0), bi_word(bi_src_index(&instr->src[0].src), 0));
+                bi_mov_i32_to(b, bi_word(dst, 1), bi_word(bi_src_index(&instr->src[0].src), 1));
+                return;
+
         case nir_op_mov: {
                 bi_index idx = bi_src_index(&instr->src[0].src);
                 bi_index unoffset_srcs[4] = { idx, idx, idx, idx };
