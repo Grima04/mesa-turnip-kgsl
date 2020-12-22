@@ -1310,6 +1310,9 @@ compute_builtin_arg(nir_op op)
                 return 0x14;
         case nir_intrinsic_load_local_invocation_id:
                 return 0x10;
+        case nir_intrinsic_load_global_invocation_id:
+        case nir_intrinsic_load_global_invocation_id_zero_base:
+                return 0x18;
         default:
                 unreachable("Invalid compute paramater loaded");
         }
@@ -1797,6 +1800,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_work_group_id:
         case nir_intrinsic_load_local_invocation_id:
+        case nir_intrinsic_load_global_invocation_id:
+        case nir_intrinsic_load_global_invocation_id_zero_base:
                 emit_compute_builtin(ctx, instr);
                 break;
 
