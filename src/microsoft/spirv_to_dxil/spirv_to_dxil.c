@@ -33,18 +33,10 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
               unsigned int num_specializations, dxil_spirv_shader_stage stage,
               const char *entry_point_name, void **buffer, size_t *size)
 {
+   if (stage == MESA_SHADER_NONE || stage == MESA_SHADER_KERNEL)
+      return false;
+
    struct spirv_to_nir_options spirv_opts = {0};
-   if (stage == MESA_SHADER_KERNEL) {
-      spirv_opts.environment = NIR_SPIRV_OPENCL;
-      spirv_opts.caps.address = true;
-      spirv_opts.caps.float64 = true;
-      spirv_opts.caps.int8 = true;
-      spirv_opts.caps.int16 = true;
-      spirv_opts.caps.int64 = true;
-      spirv_opts.caps.kernel = true;
-   } else {
-      spirv_opts.environment = NIR_SPIRV_VULKAN;
-   }
 
    glsl_type_singleton_init_or_ref();
 
