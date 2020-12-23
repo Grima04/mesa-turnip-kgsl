@@ -2461,7 +2461,7 @@ dri2_create_image_khr_texture(_EGLDisplay *disp, _EGLContext *ctx,
                                               depth,
                                               attrs.GLTextureLevel,
                                               &error,
-                                              dri2_img);
+                                              NULL);
    dri2_create_image_khr_texture_error(error);
 
    if (!dri2_img->dri_image) {
