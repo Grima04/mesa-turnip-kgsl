@@ -2272,8 +2272,11 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
        * index out of our vertex id here.
        * for ARB_shader_draw_parameters, base_vertex should be 0 for non-indexed draws.
        */
-      LLVMValueRef base_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, lp_build_const_int32(gallivm, 0));;
+      LLVMValueRef base_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, lp_build_const_int32(gallivm, 0));
       system_values.basevertex = lp_build_broadcast_scalar(&blduivec, base_vertex);
+      /* first vertex is for Vulkan base vertex support */
+      LLVMValueRef first_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, start_or_maxelt);
+      system_values.firstvertex = lp_build_broadcast_scalar(&blduivec, first_vertex);
       system_values.vertex_id = true_index_array;
       system_values.vertex_id_nobase = LLVMBuildSub(builder, true_index_array,
                                                     lp_build_broadcast_scalar(&blduivec, vertex_id_offset), "");
