@@ -133,6 +133,7 @@ private:
 
 bool r600_nir_lower_int_tg4(nir_shader *nir);
 bool r600_nir_lower_txl_txf_array_or_cube(nir_shader *shader);
+bool r600_nir_lower_cube_to_2darray(nir_shader *shader);
 
 }
 

@@ -873,7 +873,7 @@ bool EmitTexInstruction::get_inputs(const nir_tex_instr& instr, TexInputs &src)
    sfn_log << SfnLog::tex << "Get Inputs with " << instr.coord_components << " components\n";
 
    unsigned grad_components = instr.coord_components;
-   if (instr.is_array)
+   if (instr.is_array && !instr.array_is_lowered_cube)
       --grad_components;
 
 
