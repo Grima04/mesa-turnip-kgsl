@@ -1380,7 +1380,7 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             n = (Node *) get_pointer(&n[1]);
             free(block);
             block = n;
-            break;
+            continue;
          case OPCODE_END_OF_LIST:
             free(block);
             done = GL_TRUE;
@@ -1390,10 +1390,8 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             ;
          }
 
-         if (opcode != OPCODE_CONTINUE) {
-            assert(InstSize[opcode] > 0);
-            n += InstSize[opcode];
-         }
+         assert(InstSize[opcode] > 0);
+         n += InstSize[opcode];
       }
    }
 
@@ -13459,7 +13457,7 @@ execute_list(struct gl_context *ctx, GLuint list)
 
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
-            break;
+            continue;
          case OPCODE_NOP:
             /* no-op */
             break;
@@ -13477,10 +13475,8 @@ execute_list(struct gl_context *ctx, GLuint list)
          }
 
          /* increment n to point to next compiled command */
-         if (opcode != OPCODE_CONTINUE) {
-            assert(InstSize[opcode] > 0);
-            n += InstSize[opcode];
-         }
+         assert(InstSize[opcode] > 0);
+         n += InstSize[opcode];
       }
    }
 
@@ -14882,7 +14878,7 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
          case OPCODE_CONTINUE:
             fprintf(f, "DISPLAY-LIST-CONTINUE\n");
             n = (Node *) get_pointer(&n[1]);
-            break;
+            continue;
          case OPCODE_NOP:
             fprintf(f, "NOP\n");
             break;
@@ -14903,10 +14899,8 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
             }
          }
          /* increment n to point to next compiled command */
-         if (opcode != OPCODE_CONTINUE) {
-            assert(InstSize[opcode] > 0);
-            n += InstSize[opcode];
-         }
+         assert(InstSize[opcode] > 0);
+         n += InstSize[opcode];
       }
    }
 
