@@ -1598,53 +1598,53 @@
         <glx rop="44"/>
     </function>
 
-    <function name="Rectd" vectorequiv="Rectdv" deprecated="3.1" exec="dynamic">
+    <function name="Rectd" vectorequiv="Rectdv" deprecated="3.1">
         <param name="x1" type="GLdouble"/>
         <param name="y1" type="GLdouble"/>
         <param name="x2" type="GLdouble"/>
         <param name="y2" type="GLdouble"/>
     </function>
 
-    <function name="Rectdv" deprecated="3.1" exec="dynamic">
+    <function name="Rectdv" deprecated="3.1">
         <param name="v1" type="const GLdouble *" count="2"/>
         <param name="v2" type="const GLdouble *" count="2"/>
         <glx rop="45"/>
     </function>
 
-    <function name="Rectf" vectorequiv="Rectfv" deprecated="3.1" exec="dynamic">
+    <function name="Rectf" vectorequiv="Rectfv" deprecated="3.1">
         <param name="x1" type="GLfloat"/>
         <param name="y1" type="GLfloat"/>
         <param name="x2" type="GLfloat"/>
         <param name="y2" type="GLfloat"/>
     </function>
 
-    <function name="Rectfv" deprecated="3.1" exec="dynamic">
+    <function name="Rectfv" deprecated="3.1">
         <param name="v1" type="const GLfloat *" count="2"/>
         <param name="v2" type="const GLfloat *" count="2"/>
         <glx rop="46"/>
     </function>
 
-    <function name="Recti" vectorequiv="Rectiv" deprecated="3.1" exec="dynamic">
+    <function name="Recti" vectorequiv="Rectiv" deprecated="3.1">
         <param name="x1" type="GLint"/>
         <param name="y1" type="GLint"/>
         <param name="x2" type="GLint"/>
         <param name="y2" type="GLint"/>
     </function>
 
-    <function name="Rectiv" deprecated="3.1" exec="dynamic">
+    <function name="Rectiv" deprecated="3.1">
         <param name="v1" type="const GLint *" count="2"/>
         <param name="v2" type="const GLint *" count="2"/>
         <glx rop="47"/>
     </function>
 
-    <function name="Rects" vectorequiv="Rectsv" deprecated="3.1" exec="dynamic">
+    <function name="Rects" vectorequiv="Rectsv" deprecated="3.1">
         <param name="x1" type="GLshort"/>
         <param name="y1" type="GLshort"/>
         <param name="x2" type="GLshort"/>
         <param name="y2" type="GLshort"/>
     </function>
 
-    <function name="Rectsv" deprecated="3.1" exec="dynamic">
+    <function name="Rectsv" deprecated="3.1">
         <param name="v1" type="const GLshort *" count="2"/>
         <param name="v2" type="const GLshort *" count="2"/>
         <glx rop="48"/>
@@ -3199,14 +3199,14 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="DrawArrays" es1="1.0" es2="2.0" exec="dynamic" marshal="custom">
+    <function name="DrawArrays" es1="1.0" es2="2.0" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="first" type="GLint"/>
         <param name="count" type="GLsizei"/>
         <glx rop="193" handcode="true"/>
     </function>
 
-    <function name="DrawElements" es1="1.0" es2="2.0" exec="dynamic" marshal="custom">
+    <function name="DrawElements" es1="1.0" es2="2.0" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="count" type="GLsizei"/>
         <param name="type" type="GLenum"/>
@@ -3777,7 +3777,7 @@
         <glx rop="4097"/>
     </function>
 
-    <function name="DrawRangeElements" es2="3.0" exec="dynamic" marshal="custom">
+    <function name="DrawRangeElements" es2="3.0" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="start" type="GLuint"/>
         <param name="end" type="GLuint"/>
@@ -10298,14 +10298,14 @@
 </category>
 
 <category name="GL_EXT_multi_draw_arrays" number="148">
-    <function name="MultiDrawArraysEXT" es1="1.0" es2="2.0" exec="dynamic" alias="MultiDrawArrays">
+    <function name="MultiDrawArraysEXT" es1="1.0" es2="2.0" alias="MultiDrawArrays">
         <param name="mode" type="GLenum"/>
         <param name="first" type="const GLint *"/>
         <param name="count" type="const GLsizei *"/>
         <param name="primcount" type="GLsizei"/>
     </function>
 
-    <function name="MultiDrawElementsEXT" es1="1.0" es2="2.0" exec="dynamic" marshal="custom">
+    <function name="MultiDrawElementsEXT" es1="1.0" es2="2.0" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="type" type="GLenum"/>

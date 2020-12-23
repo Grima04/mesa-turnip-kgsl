@@ -600,8 +600,8 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
 /**
  * Execute a glRectf() function.
  */
-static void GLAPIENTRY
-_mesa_exec_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
+void GLAPIENTRY
+_mesa_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
 {
    GET_CURRENT_CONTEXT(ctx);
    ASSERT_OUTSIDE_BEGIN_END(ctx);
@@ -617,46 +617,46 @@ _mesa_exec_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
 }
 
 
-static void GLAPIENTRY
-_mesa_exec_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
+void GLAPIENTRY
+_mesa_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
 {
-   _mesa_exec_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+   _mesa_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
 }
 
-static void GLAPIENTRY
-_mesa_exec_Rectdv(const GLdouble *v1, const GLdouble *v2)
+void GLAPIENTRY
+_mesa_Rectdv(const GLdouble *v1, const GLdouble *v2)
 {
-   _mesa_exec_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+   _mesa_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
-static void GLAPIENTRY
-_mesa_exec_Rectfv(const GLfloat *v1, const GLfloat *v2)
+void GLAPIENTRY
+_mesa_Rectfv(const GLfloat *v1, const GLfloat *v2)
 {
-   _mesa_exec_Rectf(v1[0], v1[1], v2[0], v2[1]);
+   _mesa_Rectf(v1[0], v1[1], v2[0], v2[1]);
 }
 
-static void GLAPIENTRY
-_mesa_exec_Recti(GLint x1, GLint y1, GLint x2, GLint y2)
+void GLAPIENTRY
+_mesa_Recti(GLint x1, GLint y1, GLint x2, GLint y2)
 {
-   _mesa_exec_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+   _mesa_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
 }
 
-static void GLAPIENTRY
-_mesa_exec_Rectiv(const GLint *v1, const GLint *v2)
+void GLAPIENTRY
+_mesa_Rectiv(const GLint *v1, const GLint *v2)
 {
-   _mesa_exec_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+   _mesa_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
-static void GLAPIENTRY
-_mesa_exec_Rects(GLshort x1, GLshort y1, GLshort x2, GLshort y2)
+void GLAPIENTRY
+_mesa_Rects(GLshort x1, GLshort y1, GLshort x2, GLshort y2)
 {
-   _mesa_exec_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+   _mesa_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
 }
 
-static void GLAPIENTRY
-_mesa_exec_Rectsv(const GLshort *v1, const GLshort *v2)
+void GLAPIENTRY
+_mesa_Rectsv(const GLshort *v1, const GLshort *v2)
 {
-   _mesa_exec_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+   _mesa_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
 
@@ -889,9 +889,9 @@ _mesa_DrawArraysInstancedBaseInstance(GLenum mode, GLint first,
 /**
  * Called from glMultiDrawArrays when in immediate mode.
  */
-static void GLAPIENTRY
-_mesa_exec_MultiDrawArrays(GLenum mode, const GLint *first,
-                           const GLsizei *count, GLsizei primcount)
+void GLAPIENTRY
+_mesa_MultiDrawArrays(GLenum mode, const GLint *first,
+                      const GLsizei *count, GLsizei primcount)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLint i;
@@ -1598,8 +1598,8 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
 
 
 void GLAPIENTRY
-_mesa_MultiDrawElements(GLenum mode, const GLsizei *count, GLenum type,
-                        const GLvoid * const *indices, GLsizei primcount)
+_mesa_MultiDrawElementsEXT(GLenum mode, const GLsizei *count, GLenum type,
+                           const GLvoid * const *indices, GLsizei primcount)
 {
    GET_CURRENT_CONTEXT(ctx);
 
@@ -2169,49 +2169,6 @@ _mesa_MultiDrawElementsIndirectCountARB(GLenum mode, GLenum type,
                                              drawcount_offset, maxdrawcount,
                                              stride, ctx->ParameterBuffer);
 }
-
-
-/**
- * Initialize the dispatch table with the VBO functions for drawing.
- */
-void
-_mesa_initialize_exec_dispatch(const struct gl_context *ctx,
-                               struct _glapi_table *exec)
-{
-   SET_DrawArrays(exec, _mesa_DrawArrays);
-   SET_DrawElements(exec, _mesa_DrawElements);
-
-   if (_mesa_is_desktop_gl(ctx) || _mesa_is_gles3(ctx)) {
-      SET_DrawRangeElements(exec, _mesa_DrawRangeElements);
-   }
-
-   SET_MultiDrawArrays(exec, _mesa_exec_MultiDrawArrays);
-   SET_MultiDrawElementsEXT(exec, _mesa_MultiDrawElements);
-
-   if (ctx->API == API_OPENGL_COMPAT) {
-      SET_Rectf(exec, _mesa_exec_Rectf);
-      SET_Rectd(exec, _mesa_exec_Rectd);
-      SET_Rectdv(exec, _mesa_exec_Rectdv);
-      SET_Rectfv(exec, _mesa_exec_Rectfv);
-      SET_Recti(exec, _mesa_exec_Recti);
-      SET_Rectiv(exec, _mesa_exec_Rectiv);
-      SET_Rects(exec, _mesa_exec_Rects);
-      SET_Rectsv(exec, _mesa_exec_Rectsv);
-   }
-
-   if (ctx->API != API_OPENGLES &&
-       ctx->Extensions.ARB_draw_elements_base_vertex) {
-      SET_DrawElementsBaseVertex(exec, _mesa_DrawElementsBaseVertex);
-      SET_MultiDrawElementsBaseVertex(exec,
-                                      _mesa_MultiDrawElementsBaseVertex);
-
-      if (_mesa_is_desktop_gl(ctx) || _mesa_is_gles3(ctx)) {
-         SET_DrawRangeElementsBaseVertex(exec,
-                                         _mesa_DrawRangeElementsBaseVertex);
-      }
-   }
-}
-
 
 
 /* GL_IBM_multimode_draw_arrays */
