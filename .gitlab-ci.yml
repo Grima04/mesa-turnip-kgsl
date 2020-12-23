@@ -1443,6 +1443,70 @@ arm64_a630_vk_sysmem:
     GPU_VERSION: freedreno-a630-bypass
     TU_DEBUG: sysmem
 
+.arm64_a630_piglit:
+  extends:
+    - .piglit-test
+    - .arm64-a630-test
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
+    # Excluding various features we don't support to keep runtime down in
+    # deciding that they aren't supported.
+    #
+    # Also excluding some particularly slow tests (gl-1.3-texture-env takes 100s)
+    #
+    # Known flakes in the list are between "arb_blend_func_extended" and
+    # "varray-disabled"
+    PIGLIT_OPTIONS: >-
+      --process-isolation false
+      -x arb_blend_func_extended-fbo-extended-blend-pattern_gles2
+      -x clear-accum
+      -x copypixels-sync
+      -x copyteximage-border
+      -x copytexsubimage
+      -x draw-sync
+      -x getteximage-simple
+      -x gl30basic
+      -x tcs-input
+      -x tes-input
+      -x unaligned-blit
+      -x user-clip
+      -x varray-disabled
+      -x egl_ext_device_
+      -x egl_ext_platform_device
+      -x ext_timer_query@time-elapsed
+      -x glx-multithread-clearbuffer
+      -x glx-multithread-shader-compile
+      -x max-texture-size
+      -x maxsize
+      -x arb_gpu_shader_fp64
+      -x arb_gpu_shader_gpu5
+      -x arb_gpu_shader_int64
+      -x glsl-4.00
+      -x glsl-4.10
+      -x glsl-4.20
+      -x glsl-4.30
+      -x glsl-4.40
+      -x glsl-4.50
+      -x glsl-4.60
+      -x gl-1.3-texture-env
+    PIGLIT_PLATFORM: gbm
+
+# Takes ~20 minutes, so manual-only until we can sort out runtime.
+arm64_a630_piglit_gl:
+  extends:
+    - .arm64_a630_piglit
+    - .test-manual
+  variables:
+    PIGLIT_PROFILES: quick_gl
+    PIGLIT_RESULTS: freedreno-a630-gl
+
+arm64_a630_piglit_shader:
+  extends:
+    - .arm64_a630_piglit
+  variables:
+    PIGLIT_PROFILES: quick_shader
+    PIGLIT_RESULTS: freedreno-a630-shader
+
 .baremetal-test:
   extends:
     - .ci-run-policy
@@ -1566,6 +1630,67 @@ arm64_a530_gles31:
   variables:
     DEQP_VER: gles31
     DEQP_FRACTION: 10
+
+.arm64_a530_piglit:
+  extends:
+    - .piglit-test
+    - .arm64-a530-test
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
+    # SMP is disabled in the current kernels for db820c.
+    FDO_CI_CONCURRENT: 1
+    # Excluding for flakes in multisample (MSAA fails covered well by deqp, we
+    # can enable it once we stabilize that.) and other flakes from
+    # atomic_counters through userclip in the list.
+    #
+    # Also excluding some particularly slow tests (gl-1.3-texture-env)
+    #
+    # Check fastboot.sh for more piglit tests being excluded!
+    PIGLIT_OPTIONS: >-
+      --process-isolation false
+      -x atomic_counters
+      -x gl-1.0-blend-func
+      -x glsl-1.30@execution@clipping
+      -x user-clip
+      -x arb_texture_multisample
+      -x ext_framebuffer_multisample
+      -x egl_ext_device_
+      -x egl_ext_platform_device
+      -x ext_timer_query@time-elapsed
+      -x glx-multithread-clearbuffer
+      -x glx-multithread-shader-compile
+      -x max-texture-size
+      -x maxsize
+      -x arb_gpu_shader5
+      -x arb_gpu_shader_fp64
+      -x arb_gpu_shader_int64
+      -x arb_tessellation_shader
+      -x glsl-1.50
+      -x glsl-4.00
+      -x glsl-4.10
+      -x glsl-4.20
+      -x glsl-4.30
+      -x glsl-4.40
+      -x glsl-4.50
+      -x glsl-4.60
+      -x gl-1.3-texture-env
+    PIGLIT_PLATFORM: gbm
+
+# Takes ~25 minutes, so manual-only until we can sort out runtime.
+arm64_a530_piglit_gl:
+  extends:
+    - .arm64_a530_piglit
+    - .test-manual
+  variables:
+    PIGLIT_PROFILES: quick_gl
+    PIGLIT_RESULTS: freedreno-a530-gl
+
+arm64_a530_piglit_shader:
+  extends:
+    - .arm64_a530_piglit
+  variables:
+    PIGLIT_PROFILES: quick_shader
+    PIGLIT_RESULTS: freedreno-a530-shader
 
 vc4-rpi3-gles2:armhf:
   extends:

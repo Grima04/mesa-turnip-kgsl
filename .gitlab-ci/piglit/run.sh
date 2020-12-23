@@ -78,13 +78,13 @@ else
 
     # Set up the platform windowing system.
 
+    # Set environment for the waffle library.
+    export __LD_LIBRARY_PATH="/waffle/build/lib:$__LD_LIBRARY_PATH"
+
+    # Set environment for wflinfo executable.
+    export PATH="/waffle/build/bin:$PATH"
+
     if [ "x$EGL_PLATFORM" = "xsurfaceless" ]; then
-
-        # Set environment for the waffle library.
-        export __LD_LIBRARY_PATH="/waffle/build/lib:$__LD_LIBRARY_PATH"
-
-        # Set environment for wflinfo executable.
-        export PATH="/waffle/build/bin:$PATH"
 
         # Use the surfaceless EGL platform.
         export DISPLAY=
@@ -105,6 +105,8 @@ else
 
             sleep 1
         fi
+    elif [ "x$PIGLIT_PLATFORM" = "xgbm" ]; then
+        SANITY_MESA_VERSION_CMD="$SANITY_MESA_VERSION_CMD --platform gbm --api gl"
     else
         SANITY_MESA_VERSION_CMD="$SANITY_MESA_VERSION_CMD --platform glx --api gl --profile core"
         RUN_CMD_WRAPPER="xvfb-run --server-args=\"-noreset\" sh -c"
