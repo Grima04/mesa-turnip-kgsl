@@ -805,9 +805,11 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
       surf_level->mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
       break;
    case ADDR_TM_1D_TILED_THIN1:
+   case ADDR_TM_PRT_TILED_THIN1:
       surf_level->mode = RADEON_SURF_MODE_1D;
       break;
    case ADDR_TM_2D_TILED_THIN1:
+   case ADDR_TM_PRT_2D_TILED_THIN1:
       surf_level->mode = RADEON_SURF_MODE_2D;
       break;
    default:
@@ -1153,10 +1155,16 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
       AddrSurfInfoIn.tileMode = ADDR_TM_LINEAR_ALIGNED;
       break;
    case RADEON_SURF_MODE_1D:
-      AddrSurfInfoIn.tileMode = ADDR_TM_1D_TILED_THIN1;
+      if (surf->flags & RADEON_SURF_PRT)
+         AddrSurfInfoIn.tileMode = ADDR_TM_PRT_TILED_THIN1;
+      else
+         AddrSurfInfoIn.tileMode = ADDR_TM_1D_TILED_THIN1;
       break;
    case RADEON_SURF_MODE_2D:
-      AddrSurfInfoIn.tileMode = ADDR_TM_2D_TILED_THIN1;
+      if (surf->flags & RADEON_SURF_PRT)
+         AddrSurfInfoIn.tileMode = ADDR_TM_PRT_2D_TILED_THIN1;
+      else
+         AddrSurfInfoIn.tileMode = ADDR_TM_2D_TILED_THIN1;
       break;
    default:
       assert(0);
