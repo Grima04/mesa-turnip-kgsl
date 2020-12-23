@@ -840,6 +840,7 @@ bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *)
    case nir_op_fdot2:
    case nir_op_fdot3:
    case nir_op_fdot4:
+   case nir_op_cube_r600:
       return false;
    case nir_op_bany_fnequal2:
    case nir_op_ball_fequal2:
@@ -890,8 +891,8 @@ int r600_shader_from_nir(struct r600_context *rctx,
    };
    NIR_PASS_V(sel->nir, nir_lower_tex, &lower_tex_options);
    NIR_PASS_V(sel->nir, r600::r600_nir_lower_txl_txf_array_or_cube);
+   NIR_PASS_V(sel->nir, r600::r600_nir_lower_cube_to_2darray);
 
-   NIR_PASS_V(sel->nir, r600_nir_lower_int_tg4);
    NIR_PASS_V(sel->nir, r600_nir_lower_pack_unpack_2x16);
 
    nir_variable_mode io_modes = nir_var_uniform;
