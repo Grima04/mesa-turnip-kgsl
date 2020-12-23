@@ -29,7 +29,7 @@
 #include <vulkan/vulkan.h>
 #include "util/u_dynarray.h"
 #include "util/u_inlines.h"
-#include "util/u_dynarray.h"
+#include "util/simple_mtx.h"
 
 #include "zink_batch.h"
 
@@ -99,6 +99,7 @@ struct zink_descriptor_pool {
    struct zink_descriptor_pool_key key;
    unsigned num_resources;
    unsigned num_sets_allocated;
+   simple_mtx_t mtx;
 };
 
 struct zink_descriptor_set {

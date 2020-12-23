@@ -97,6 +97,7 @@ descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type typ
    }
    memcpy(pool->key.bindings, bindings, bindings_size);
    memcpy(pool->key.sizes, sizes, types_size);
+   simple_mtx_init(&pool->mtx, mtx_plain);
    for (unsigned i = 0; i < num_bindings; i++) {
        pool->num_resources += bindings[i].descriptorCount;
    }
@@ -303,6 +304,8 @@ zink_descriptor_set_get(struct zink_context *ctx,
    uint32_t hash = pool->key.num_descriptors ? ctx->descriptor_states[is_compute].state[type] : 0;
    struct zink_descriptor_state_key key;
    populate_zds_key(ctx, type, is_compute, &key);
+
+   simple_mtx_lock(&pool->mtx);
    if (pg->last_set[type] && pg->last_set[type]->hash == hash &&
        desc_state_equal(&pg->last_set[type]->key, &key)) {
       zds = pg->last_set[type];
@@ -375,6 +378,7 @@ skip_hash_tables:
       }
 
       if (pool->num_sets_allocated + pool->key.num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
+         simple_mtx_unlock(&pool->mtx);
          zink_fence_wait(&ctx->base);
          zink_batch_reference_program(batch, pg);
          return zink_descriptor_set_get(ctx, type, is_compute, cache_hit, need_resource_refs);
@@ -411,6 +415,8 @@ quick_out:
       *need_resource_refs = true;
    }
    pg->last_set[type] = zds;
+   simple_mtx_unlock(&pool->mtx);
+
    return zds;
 }
 
@@ -425,15 +431,17 @@ zink_descriptor_set_recycle(struct zink_descriptor_set *zds)
    /* this is a null set */
    if (!pool->key.num_descriptors)
       return;
-
+   simple_mtx_lock(&pool->mtx);
    if (zds->punted)
       zds->invalid = true;
    else {
       /* if we've previously punted this set, then it won't have a hash or be in either of the tables */
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pool->desc_sets, zds->hash, &zds->key);
-      if (!he)
+      if (!he) {
          /* desc sets can be used multiple times in the same batch */
+         simple_mtx_unlock(&pool->mtx);
          return;
+      }
       _mesa_hash_table_remove(pool->desc_sets, he);
    }
 
@@ -443,6 +451,7 @@ zink_descriptor_set_recycle(struct zink_descriptor_set *zds)
       zds->recycled = true;
       _mesa_hash_table_insert_pre_hashed(pool->free_desc_sets, zds->hash, &zds->key, zds);
    }
+   simple_mtx_unlock(&pool->mtx);
 }
 
 
@@ -638,6 +647,7 @@ zink_descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_poo
    if (pool->descpool)
       vkDestroyDescriptorPool(screen->dev, pool->descpool, NULL);
 
+   simple_mtx_lock(&pool->mtx);
 #ifndef NDEBUG
    if (pool->desc_sets)
       descriptor_pool_clear(pool->desc_sets);
@@ -649,7 +659,9 @@ zink_descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_poo
    if (pool->free_desc_sets)
       _mesa_hash_table_destroy(pool->free_desc_sets, NULL);
 
+   simple_mtx_unlock(&pool->mtx);
    util_dynarray_fini(&pool->alloc_desc_sets);
+   simple_mtx_destroy(&pool->mtx);
    ralloc_free(pool);
 }
 
