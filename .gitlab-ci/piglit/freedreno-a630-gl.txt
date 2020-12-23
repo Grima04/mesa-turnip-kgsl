@@ -869,7 +869,6 @@ spec/!opengl 2.1/pbo/test_polygon_stip: fail
 spec/!opengl 2.1/polygon-stipple-fs: fail
 spec/!opengl 3.0/clearbuffer-depth: fail
 spec/!opengl 3.0/clearbuffer-stencil: fail
-spec/!opengl 3.0/viewport-clamp: crash
 spec/!opengl 3.1/primitive-restart-xfb generated: fail
 spec/!opengl 3.2/layered-rendering/clear-depth: crash
 spec/!opengl 3.2/pointsprite-origin: fail
@@ -1069,7 +1068,6 @@ spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_program/sparse-samplers: crash
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-params/dsa: skip
-spec/arb_framebuffer_object/fbo-viewport: crash
 spec/arb_framebuffer_srgb/blit renderbuffer linear msaa disabled clear: fail
 spec/arb_framebuffer_srgb/blit renderbuffer linear msaa disabled render: fail
 spec/arb_framebuffer_srgb/blit renderbuffer linear msaa enabled clear: fail

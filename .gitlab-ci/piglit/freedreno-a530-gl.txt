@@ -508,7 +508,6 @@ spec/!opengl 2.1/polygon-stipple-fs: fail
 spec/!opengl 3.0/clearbuffer-depth: fail
 spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
 spec/!opengl 3.0/clearbuffer-stencil: fail
-spec/!opengl 3.0/viewport-clamp: crash
 spec/!opengl 3.1/minmax: fail
 spec/!opengl 3.1/primitive-restart-xfb generated: fail
 spec/!opengl 3.1/primitive-restart-xfb written: fail
@@ -841,7 +840,6 @@ spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl
 spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index16: fail
 spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index4: fail
 spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index8: fail
-spec/arb_framebuffer_object/fbo-viewport: crash
 spec/arb_framebuffer_object/framebuffer-blit-levels draw stencil: fail
 spec/arb_framebuffer_object/framebuffer-blit-levels read stencil: fail
 spec/arb_framebuffer_srgb/blit renderbuffer linear msaa disabled clear: fail

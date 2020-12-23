@@ -331,14 +331,13 @@ fd_set_viewport_states(struct pipe_context *pctx,
 		swap(miny, maxy);
 	}
 
-	debug_assert(miny >= 0);
-	debug_assert(maxy >= 0);
+	const float max_dims = is_a3xx(ctx->screen) ? 4096.f : 16384.f;
 
-	/* Convert to integer and round up the max bounds. */
-	scissor->minx = minx;
-	scissor->miny = miny;
-	scissor->maxx = ceilf(maxx);
-	scissor->maxy = ceilf(maxy);
+	/* Clamp, convert to integer and round up the max bounds. */
+	scissor->minx = CLAMP(minx, 0.f, max_dims);
+	scissor->miny = CLAMP(miny, 0.f, max_dims);
+	scissor->maxx = CLAMP(ceilf(maxx), 0.f, max_dims);
+	scissor->maxy = CLAMP(ceilf(maxy), 0.f, max_dims);
 
 	ctx->dirty |= FD_DIRTY_VIEWPORT;
 }
