@@ -211,6 +211,8 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
 
    case nir_op_umad24: return emit_alu_op3(instr, op3_muladd_uint24,  {0, 1, 2});
    case nir_op_umul24: return emit_alu_op2(instr, op2_mul_uint24);
+
+   case nir_op_cube_r600: return emit_cube(instr);
    default:
       return false;
    }
@@ -263,6 +265,7 @@ unsigned EmitAluInstruction::num_src_comp(const nir_alu_instr& instr)
    case nir_op_b32all_iequal3:
    case nir_op_b32any_fnequal3:
    case nir_op_b32all_fequal3:
+   case nir_op_cube_r600:
       return 3;
 
    case nir_op_fdot4:
@@ -288,7 +291,21 @@ unsigned EmitAluInstruction::num_src_comp(const nir_alu_instr& instr)
    }
 }
 
+bool EmitAluInstruction::emit_cube(const nir_alu_instr& instr)
+{
+   AluInstruction *ir = nullptr;
+   const uint16_t src0_chan[4] = {2, 2, 0, 1};
+   const uint16_t src1_chan[4] = {1, 0, 2, 2};
 
+   for (int i = 0; i < 4; ++i)  {
+      ir = new AluInstruction(op2_cube, from_nir(instr.dest, i),
+                              from_nir(instr.src[0], src0_chan[i]),
+                              from_nir(instr.src[0], src1_chan[i]), {alu_write});
+      emit_instruction(ir);
+   }
+   ir->set_flag(alu_last_instr);
+   return true;
+}
 
 void EmitAluInstruction::split_constants(const nir_alu_instr& instr, unsigned nsrc_comp)
 {

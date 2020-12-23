@@ -99,6 +99,7 @@ private:
    bool emit_unpack_32_2x16_split_x(const nir_alu_instr& instr);
    bool emit_pack_32_2x16_split(const nir_alu_instr& instr);
 
+   bool emit_cube(const nir_alu_instr& instr);
 private:
    void make_last(AluInstruction *ir) const;
    void split_alu_modifiers(const nir_alu_src &src, const GPRVector::Values& v,
