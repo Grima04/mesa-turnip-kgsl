@@ -1111,14 +1111,14 @@
     <type name="DEBUGPROC" size="4" pointer="true"/>
 
     <function name="NewList" deprecated="3.1"
-              marshal_call_after="if (COMPAT) ctx->GLThread.inside_dlist = true;">
+              marshal_call_after="if (COMPAT) ctx->GLThread.ListMode = mode;">
         <param name="list" type="GLuint"/>
         <param name="mode" type="GLenum"/>
         <glx sop="101"/>
     </function>
 
     <function name="EndList" deprecated="3.1"
-              marshal_call_after="if (COMPAT) ctx->GLThread.inside_dlist = false;">
+              marshal_call_after="if (COMPAT) ctx->GLThread.ListMode = 0;">
         <glx sop="102"/>
     </function>
 

@@ -379,7 +379,7 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
    unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
 
-   if (compiled_into_dlist && ctx->GLThread.inside_dlist) {
+   if (compiled_into_dlist && ctx->GLThread.ListMode) {
       _mesa_glthread_finish_before(ctx, "DrawArrays");
       /* Use the function that's compiled into a display list. */
       CALL_DrawArrays(ctx->CurrentServerDispatch, (mode, first, count));
@@ -492,7 +492,7 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
    unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
 
-   if (ctx->GLThread.inside_dlist)
+   if (ctx->GLThread.ListMode)
       goto sync;
 
    if (draw_count >= 0 &&
@@ -764,7 +764,7 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
    unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
    bool has_user_indices = vao->CurrentElementBufferName == 0;
 
-   if (compiled_into_dlist && ctx->GLThread.inside_dlist)
+   if (compiled_into_dlist && ctx->GLThread.ListMode)
       goto sync;
 
    /* Fast path when nothing needs to be done.
@@ -837,7 +837,7 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
 sync:
    _mesa_glthread_finish_before(ctx, "DrawElements");
 
-   if (compiled_into_dlist && ctx->GLThread.inside_dlist) {
+   if (compiled_into_dlist && ctx->GLThread.ListMode) {
       /* Only use the ones that are compiled into display lists. */
       if (basevertex) {
          CALL_DrawElementsBaseVertex(ctx->CurrentServerDispatch,
@@ -977,7 +977,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
    bool has_user_indices = vao->CurrentElementBufferName == 0;
 
-   if (ctx->GLThread.inside_dlist)
+   if (ctx->GLThread.ListMode)
       goto sync;
 
    /* Fast path when nothing needs to be done. */

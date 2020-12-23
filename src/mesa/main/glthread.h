@@ -153,8 +153,8 @@ struct glthread_state
    /** Whether GLThread is enabled. */
    bool enabled;
 
-   /** Whether GLThread is inside a display list generation. */
-   bool inside_dlist;
+   /** Display lists. */
+   GLenum ListMode; /**< Zero if not inside display list, else list mode. */
 
    /** For L3 cache pinning. */
    unsigned pin_thread_counter;
