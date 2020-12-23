@@ -1458,63 +1458,6 @@ destroy_list(struct gl_context *ctx, GLuint list)
 }
 
 
-/*
- * Translate the nth element of list from <type> to GLint.
- */
-static GLint
-translate_id(GLsizei n, GLenum type, const GLvoid * list)
-{
-   GLbyte *bptr;
-   GLubyte *ubptr;
-   GLshort *sptr;
-   GLushort *usptr;
-   GLint *iptr;
-   GLuint *uiptr;
-   GLfloat *fptr;
-
-   switch (type) {
-   case GL_BYTE:
-      bptr = (GLbyte *) list;
-      return (GLint) bptr[n];
-   case GL_UNSIGNED_BYTE:
-      ubptr = (GLubyte *) list;
-      return (GLint) ubptr[n];
-   case GL_SHORT:
-      sptr = (GLshort *) list;
-      return (GLint) sptr[n];
-   case GL_UNSIGNED_SHORT:
-      usptr = (GLushort *) list;
-      return (GLint) usptr[n];
-   case GL_INT:
-      iptr = (GLint *) list;
-      return iptr[n];
-   case GL_UNSIGNED_INT:
-      uiptr = (GLuint *) list;
-      return (GLint) uiptr[n];
-   case GL_FLOAT:
-      fptr = (GLfloat *) list;
-      return (GLint) floorf(fptr[n]);
-   case GL_2_BYTES:
-      ubptr = ((GLubyte *) list) + 2 * n;
-      return (GLint) ubptr[0] * 256
-           + (GLint) ubptr[1];
-   case GL_3_BYTES:
-      ubptr = ((GLubyte *) list) + 3 * n;
-      return (GLint) ubptr[0] * 65536
-           + (GLint) ubptr[1] * 256
-           + (GLint) ubptr[2];
-   case GL_4_BYTES:
-      ubptr = ((GLubyte *) list) + 4 * n;
-      return (GLint) ubptr[0] * 16777216
-           + (GLint) ubptr[1] * 65536
-           + (GLint) ubptr[2] * 256
-           + (GLint) ubptr[3];
-   default:
-      return 0;
-   }
-}
-
-
 /**
  * Wrapper for _mesa_unpack_image/bitmap() that handles pixel buffer objects.
  * If width < 0 or height < 0 or format or type are invalid we'll just
@@ -13786,8 +13729,9 @@ _mesa_CallList(GLuint list)
    if (0)
       mesa_print_display_list( list );
 
-   /* VERY IMPORTANT:  Save the CompileFlag status, turn it off,
-    * execute the display list, and restore the CompileFlag.
+   /* Save the CompileFlag status, turn it off, execute the display list,
+    * and restore the CompileFlag. This is needed for GL_COMPILE_AND_EXECUTE
+    * because the call is already recorded and we just need to execute it.
     */
    save_compile_flag = ctx->CompileFlag;
    if (save_compile_flag) {
@@ -13874,26 +13818,12 @@ void GLAPIENTRY
 _mesa_CallLists(GLsizei n, GLenum type, const GLvoid * lists)
 {
    GET_CURRENT_CONTEXT(ctx);
-   GLint i;
    GLboolean save_compile_flag;
 
    if (MESA_VERBOSE & VERBOSE_API)
       _mesa_debug(ctx, "glCallLists %d\n", n);
 
-   switch (type) {
-   case GL_BYTE:
-   case GL_UNSIGNED_BYTE:
-   case GL_SHORT:
-   case GL_UNSIGNED_SHORT:
-   case GL_INT:
-   case GL_UNSIGNED_INT:
-   case GL_FLOAT:
-   case GL_2_BYTES:
-   case GL_3_BYTES:
-   case GL_4_BYTES:
-      /* OK */
-      break;
-   default:
+   if (type < GL_BYTE || type > GL_4_BYTES) {
       _mesa_error(ctx, GL_INVALID_ENUM, "glCallLists(type)");
       return;
    }
@@ -13910,15 +13840,87 @@ _mesa_CallLists(GLsizei n, GLenum type, const GLvoid * lists)
       return;
    }
 
-   /* Save the CompileFlag status, turn it off, execute display list,
-    * and restore the CompileFlag.
+   /* Save the CompileFlag status, turn it off, execute the display lists,
+    * and restore the CompileFlag. This is needed for GL_COMPILE_AND_EXECUTE
+    * because the call is already recorded and we just need to execute it.
     */
    save_compile_flag = ctx->CompileFlag;
    ctx->CompileFlag = GL_FALSE;
 
-   for (i = 0; i < n; i++) {
-      GLuint list = (GLuint) (ctx->List.ListBase + translate_id(i, type, lists));
-      execute_list(ctx, list);
+   GLbyte *bptr;
+   GLubyte *ubptr;
+   GLshort *sptr;
+   GLushort *usptr;
+   GLint *iptr;
+   GLuint *uiptr;
+   GLfloat *fptr;
+
+   GLuint base = ctx->List.ListBase;
+
+   /* A loop inside a switch is faster than a switch inside a loop. */
+   switch (type) {
+   case GL_BYTE:
+      bptr = (GLbyte *) lists;
+      for (unsigned i = 0; i < n; i++)
+         execute_list(ctx, base + (int)bptr[i]);
+      break;
+   case GL_UNSIGNED_BYTE:
+      ubptr = (GLubyte *) lists;
+      for (unsigned i = 0; i < n; i++)
+         execute_list(ctx, base + (int)ubptr[i]);
+      break;
+   case GL_SHORT:
+      sptr = (GLshort *) lists;
+      for (unsigned i = 0; i < n; i++)
+         execute_list(ctx, base + (int)sptr[i]);
+      break;
+   case GL_UNSIGNED_SHORT:
+      usptr = (GLushort *) lists;
+      for (unsigned i = 0; i < n; i++)
+         execute_list(ctx, base + (int)usptr[i]);
+      break;
+   case GL_INT:
+      iptr = (GLint *) lists;
+      for (unsigned i = 0; i < n; i++)
+         execute_list(ctx, base + (int)iptr[i]);
+      break;
+   case GL_UNSIGNED_INT:
+      uiptr = (GLuint *) lists;
+      for (unsigned i = 0; i < n; i++)
+         execute_list(ctx, base + (int)uiptr[i]);
+      break;
+   case GL_FLOAT:
+      fptr = (GLfloat *) lists;
+      for (unsigned i = 0; i < n; i++)
+         execute_list(ctx, base + (int)fptr[i]);
+      break;
+   case GL_2_BYTES:
+      ubptr = (GLubyte *) lists;
+      for (unsigned i = 0; i < n; i++) {
+         execute_list(ctx, base +
+                      (int)ubptr[2 * i] * 256 +
+                      (int)ubptr[2 * i + 1]);
+      }
+      break;
+   case GL_3_BYTES:
+      ubptr = (GLubyte *) lists;
+      for (unsigned i = 0; i < n; i++) {
+         execute_list(ctx, base +
+                      (int)ubptr[3 * i] * 65536 +
+                      (int)ubptr[3 * i + 1] * 256 +
+                      (int)ubptr[3 * i + 2]);
+      }
+      break;
+   case GL_4_BYTES:
+      ubptr = (GLubyte *) lists;
+      for (unsigned i = 0; i < n; i++) {
+         execute_list(ctx, base +
+                      (int)ubptr[4 * i] * 16777216 +
+                      (int)ubptr[4 * i + 1] * 65536 +
+                      (int)ubptr[4 * i + 2] * 256 +
+                      (int)ubptr[4 * i + 3]);
+      }
+      break;
    }
 
    ctx->CompileFlag = save_compile_flag;
