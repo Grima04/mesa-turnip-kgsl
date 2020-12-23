@@ -3169,7 +3169,7 @@
     <enum name="CLIENT_VERTEX_ARRAY_BIT"                  value="0x00000002"/>
     <enum name="CLIENT_ALL_ATTRIB_BITS"                   value="0xFFFFFFFF"/>
 
-    <function name="ArrayElement" deprecated="3.1" exec="dynamic" marshal="draw">
+    <function name="ArrayElement" deprecated="3.1" exec="dynamic">
         <param name="i" type="GLint"/>
         <glx handcode="true"/>
     </function>
@@ -8156,7 +8156,7 @@
   <enum name="MAX_TRANSFORM_FEEDBACK_BUFFERS" value="0x8E70"/>
   <enum name="MAX_VERTEX_STREAMS"             value="0x8E71"/>
 
-  <function name="DrawTransformFeedbackStream" marshal="draw">
+  <function name="DrawTransformFeedbackStream">
     <param name="mode" type="GLenum"/>
     <param name="id" type="GLuint"/>
     <param name="stream" type="GLuint"/>
@@ -8204,13 +8204,13 @@
 <xi:include href="ARB_base_instance.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 
 <category name="GL_ARB_transform_feedback_instanced" number="109">
-  <function name="DrawTransformFeedbackInstanced" marshal="draw">
+  <function name="DrawTransformFeedbackInstanced">
     <param name="mode" type="GLenum"/>
     <param name="id" type="GLuint"/>
     <param name="primcount" type="GLsizei"/>
   </function>
 
-  <function name="DrawTransformFeedbackStreamInstanced" marshal="draw">
+  <function name="DrawTransformFeedbackStreamInstanced">
     <param name="mode" type="GLenum"/>
     <param name="id" type="GLuint"/>
     <param name="stream" type="GLuint"/>
@@ -11409,7 +11409,7 @@
 </category>
 
 <category name="GL_IBM_multimode_draw_arrays" number="200">
-    <function name="MultiModeDrawArraysIBM" marshal="draw"
+    <function name="MultiModeDrawArraysIBM"
               marshal_sync="_mesa_glthread_has_non_vbo_vertices(ctx)">
         <param name="mode" type="const GLenum *" count="primcount"/>
         <param name="first" type="const GLint *" count="primcount"/>
@@ -11419,7 +11419,7 @@
         <glx handcode="true" ignore="true"/>
     </function>
 
-    <function name="MultiModeDrawElementsIBM" marshal="draw"
+    <function name="MultiModeDrawElementsIBM"
               marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indices(ctx)">
         <param name="mode" type="const GLenum *" count="primcount"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
