@@ -1621,6 +1621,8 @@ zink_flush(struct pipe_context *pctx,
             zink_resource_image_barrier(ctx, batch,
                                         ctx->fb_state.cbufs[i] ? zink_resource(ctx->fb_state.cbufs[i]->texture) : NULL,
                                         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, 0);
+         if (zink_screen(pctx->screen)->needs_mesa_flush_wsi && ctx->fb_state.cbufs[0])
+            batch->flush_res = zink_resource(ctx->fb_state.cbufs[0]->texture);
       }
       flush_batch(ctx);
 

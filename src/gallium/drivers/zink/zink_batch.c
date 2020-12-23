@@ -14,6 +14,8 @@
 #include "util/u_debug.h"
 #include "util/set.h"
 
+#include "wsi_common.h"
+
 void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
@@ -135,6 +137,16 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    si.commandBufferCount = 1;
    si.pCommandBuffers = &batch->cmdbuf;
 
+   struct wsi_memory_signal_submit_info mem_signal = {
+      .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA,
+      .pNext = si.pNext,
+   };
+
+   if (batch->flush_res) {
+      mem_signal.memory = batch->flush_res->mem;
+      si.pNext = &mem_signal;
+   }
+
    if (vkQueueSubmit(ctx->queue, 1, &si, batch->fence->fence) != VK_SUCCESS) {
       debug_printf("ZINK: vkQueueSubmit() failed\n");
       ctx->is_device_lost = true;
@@ -144,6 +156,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       }
    }
    batch->submitted = true;
+   batch->flush_res = NULL;
 }
 
 /* returns either the compute batch id or 0 (gfx batch id) based on whether a resource

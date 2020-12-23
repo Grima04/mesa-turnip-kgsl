@@ -46,6 +46,8 @@ struct zink_batch {
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
 
+   struct zink_resource *flush_res;
+
    unsigned short descs_used; //number of descriptors currently allocated
    struct zink_fence *fence;
 
