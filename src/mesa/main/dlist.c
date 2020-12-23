@@ -520,7 +520,6 @@ typedef enum
    OPCODE_MATERIAL,
    OPCODE_BEGIN,
    OPCODE_END,
-   OPCODE_RECTF,
    OPCODE_EVAL_C1,
    OPCODE_EVAL_C2,
    OPCODE_EVAL_P1,
@@ -6100,66 +6099,6 @@ save_End(void)
    if (ctx->ExecuteFlag) {
       CALL_End(ctx->Exec, ());
    }
-}
-
-static void GLAPIENTRY
-save_Rectf(GLfloat a, GLfloat b, GLfloat c, GLfloat d)
-{
-   GET_CURRENT_CONTEXT(ctx);
-   Node *n;
-   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
-   n = alloc_instruction(ctx, OPCODE_RECTF, 4);
-   if (n) {
-      n[1].f = a;
-      n[2].f = b;
-      n[3].f = c;
-      n[4].f = d;
-   }
-   if (ctx->ExecuteFlag) {
-      CALL_Rectf(ctx->Exec, (a, b, c, d));
-   }
-}
-
-static void GLAPIENTRY
-save_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
-{
-   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
-}
-
-static void GLAPIENTRY
-save_Rectdv(const GLdouble *v1, const GLdouble *v2)
-{
-   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
-}
-
-static void GLAPIENTRY
-save_Rectfv(const GLfloat *v1, const GLfloat *v2)
-{
-   save_Rectf(v1[0], v1[1], v2[0], v2[1]);
-}
-
-static void GLAPIENTRY
-save_Recti(GLint x1, GLint y1, GLint x2, GLint y2)
-{
-   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
-}
-
-static void GLAPIENTRY
-save_Rectiv(const GLint *v1, const GLint *v2)
-{
-   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
-}
-
-static void GLAPIENTRY
-save_Rects(GLshort x1, GLshort y1, GLshort x2, GLshort y2)
-{
-   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
-}
-
-static void GLAPIENTRY
-save_Rectsv(const GLshort *v1, const GLshort *v2)
-{
-   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
 static void GLAPIENTRY
@@ -12962,9 +12901,6 @@ execute_list(struct gl_context *ctx, GLuint list)
          case OPCODE_END:
             CALL_End(ctx->Exec, ());
             break;
-         case OPCODE_RECTF:
-            CALL_Rectf(ctx->Exec, (n[1].f, n[2].f, n[3].f, n[4].f));
-            break;
          case OPCODE_EVAL_C1:
             CALL_EvalCoord1f(ctx->Exec, (n[1].f));
             break;
@@ -14143,14 +14079,6 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_RasterPos4s(table, save_RasterPos4s);
    SET_RasterPos4sv(table, save_RasterPos4sv);
    SET_ReadBuffer(table, save_ReadBuffer);
-   SET_Rectf(table, save_Rectf);
-   SET_Rectd(table, save_Rectd);
-   SET_Rectdv(table, save_Rectdv);
-   SET_Rectfv(table, save_Rectfv);
-   SET_Recti(table, save_Recti);
-   SET_Rectiv(table, save_Rectiv);
-   SET_Rects(table, save_Rects);
-   SET_Rectsv(table, save_Rectsv);
    SET_Rotated(table, save_Rotated);
    SET_Rotatef(table, save_Rotatef);
    SET_Scaled(table, save_Scaled);
@@ -14923,10 +14851,6 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
             break;
          case OPCODE_END:
             fprintf(f, "END\n");
-            break;
-         case OPCODE_RECTF:
-            fprintf(f, "RECTF %f %f %f %f\n", n[1].f, n[2].f, n[3].f,
-                         n[4].f);
             break;
          case OPCODE_EVAL_C1:
             fprintf(f, "EVAL_C1 %f\n", n[1].f);
