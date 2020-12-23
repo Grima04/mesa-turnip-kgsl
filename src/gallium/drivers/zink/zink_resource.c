@@ -108,7 +108,7 @@ resource_create(struct pipe_screen *pscreen,
    pipe_reference_init(&res->base.reference, 1);
    res->base.screen = pscreen;
 
-   VkMemoryRequirements reqs;
+   VkMemoryRequirements reqs = {};
    VkMemoryPropertyFlags flags = 0;
 
    res->internal_format = templ->format;
