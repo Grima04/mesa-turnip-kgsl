@@ -89,14 +89,15 @@ def parse_copy(enc, existing):
             if ex[0][0] == name:
                 ex[0][1] = node.get('start')
 
-def parse_instruction(ins):
+def parse_instruction(ins, include_pseudo):
     common = {
             'srcs': [],
             'modifiers': [],
             'immediates': [],
             'swaps': [],
             'derived': [],
-            'staging': ins.attrib.get('staging', ''),
+            'staging': ins.attrib.get('staging', '').split('=')[0],
+            'staging_count': ins.attrib.get('staging', '=0').split('=')[1],
             'unused': ins.attrib.get('unused', False),
             'pseudo': ins.attrib.get('pseudo', False),
             'message': ins.attrib.get('message', 'none'),
@@ -110,7 +111,11 @@ def parse_instruction(ins):
         common['srcs'].append([int(src.attrib['start'], 0), mask])
 
     for imm in ins.findall('immediate'):
-        common['immediates'].append([imm.attrib['name'], int(imm.attrib['start']), int(imm.attrib['size'])])
+        if imm.attrib.get('pseudo', False) and not include_pseudo:
+            continue
+
+        start = int(imm.attrib['start']) if 'start' in imm.attrib else None
+        common['immediates'].append([imm.attrib['name'], start, int(imm.attrib['size'])])
 
     common['derived'] = parse_derived(ins)
     common['modifiers'] = parse_modifiers(ins)
@@ -154,7 +159,7 @@ def parse_instructions(xml, include_unused = False, include_pseudo = False):
     instructions = ET.parse(xml).getroot().findall('ins')
 
     for ins in instructions:
-        parsed = parse_instruction(ins)
+        parsed = parse_instruction(ins, include_pseudo)
 
         # Some instructions are for useful disassembly only and can be stripped
         # out of the compiler, particularly useful for release builds
