@@ -1252,15 +1252,11 @@ static void
 radv_image_alloc_values(const struct radv_device *device, struct radv_image *image)
 {
 	if (radv_image_has_dcc(image)) {
-		unsigned pred_size = 8;
-		if (device->physical_device->rad_info.has_32bit_predication)
-			pred_size = 4;
-
 		image->fce_pred_offset = image->size;
-		image->size += pred_size * image->info.levels;
+		image->size += 8 * image->info.levels;
 
 		image->dcc_pred_offset = image->size;
-		image->size += pred_size * image->info.levels;
+		image->size += 8 * image->info.levels;
 	}
 
 	if (radv_image_has_dcc(image) || radv_image_has_cmask(image) ||

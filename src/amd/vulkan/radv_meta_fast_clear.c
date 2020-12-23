@@ -565,18 +565,14 @@ radv_emit_set_predication_state_from_image(struct radv_cmd_buffer *cmd_buffer,
 				      struct radv_image *image,
 				      uint64_t pred_offset, bool value)
 {
-	unsigned pred_op = PREDICATION_OP_BOOL64;
 	uint64_t va = 0;
-
-	if (cmd_buffer->device->physical_device->rad_info.has_32bit_predication)
-		pred_op = PREDICATION_OP_BOOL32;
 
 	if (value) {
 		va = radv_buffer_get_va(image->bo) + image->offset;
 		va += pred_offset;
 	}
 
-	si_emit_set_predication_state(cmd_buffer, true, pred_op, va);
+	si_emit_set_predication_state(cmd_buffer, true, PREDICATION_OP_BOOL64, va);
 }
 
 static void
