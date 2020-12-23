@@ -181,69 +181,6 @@ struct bifrost_add_inst {
         unsigned op   : 17;
 } __attribute__((packed));
 
-enum bi_clamp {
-        BI_CLAMP_NONE = 0,
-        BI_CLAMP_CLAMP_0_INF = 1,
-        BI_CLAMP_CLAMP_M1_1 = 2,
-        BI_CLAMP_CLAMP_0_1 = 3,
-};
-
-enum bi_round {
-        BI_ROUND_NONE = 0x0, /* round to even */
-        BI_ROUND_RTP = 0x1, /* round to positive */
-        BI_ROUND_RTN = 0x2, /* round to negative */
-        BI_ROUND_RTZ = 0x3 /* round to zero */
-};
-
-/* NONE: Same as fmax() and fmin() -- return the other
- * number if any number is NaN.  Also always return +0 if
- * one argument is +0 and the other is -0.
- *
- * NAN_WINS: Instead of never returning a NaN, always return
- * one. The "greater"/"lesser" NaN is always returned, first
- * by checking the sign and then the mantissa bits.
- *
- * SRC1_WINS: For max, implement src0 > src1 ? src0 : src1.
- * For min, implement src0 < src1 ? src0 : src1.  This
- * includes handling NaN's and signedness of 0 differently
- * from above, since +0 and -0 compare equal and comparisons
- * always return false for NaN's. As a result, this mode is
- * *not* commutative.
- *
- * SRC0_WINS: For max, implement src0 < src1 ? src1 : src0
- * For min, implement src0 > src1 ? src1 : src0
- */
-
-
-enum bi_sem {
-        BI_SEM_NAN_SUPPRESS = 0x0,
-        BI_SEM_NAN_PROPAGATE    = 0x1,
-        BI_SEM_C   = 0x2,
-        BI_SEM_INVERSE_C   = 0x3,
-};
-
-enum bi_sample {
-        BI_SAMPLE_CENTER = 0x0,
-        BI_SAMPLE_CENTROID = 0x1,
-        BI_SAMPLE_SAMPLE  = 0x2,
-        BI_SAMPLE_EXPLICIT = 0x3,
-        BI_SAMPLE_NONE = 0x4,
-};
-
-enum bi_update {
-        BI_UPDATE_STORE,
-        BI_UPDATE_RETRIEVE,
-        BI_UPDATE_CONDITIONAL,
-        BI_UPDATE_CLOBBER,
-};
-
-/* Fixed location for gl_FragCoord.zw */
-enum bi_varying_name {
-        BI_VARYING_NAME_POINT = 0,
-        BI_VARYING_NAME_FRAG_W = 2,
-        BI_VARYING_NAME_FRAG_Z = 3,
-};
-
 enum branch_bit_size {
         BR_SIZE_32 = 0,
         BR_SIZE_16XX = 1,

@@ -28,6 +28,7 @@
 #define __BIFROST_COMPILER_H
 
 #include "bifrost.h"
+#include "bi_opcodes.h"
 #include "compiler/nir/nir.h"
 #include "panfrost/util/pan_ir.h"
 
@@ -166,29 +167,6 @@ enum bi_cond {
         BI_COND_NE,
 };
 
-/* Segments, as synced with ISA. Used as an immediate in LOAD/STORE
- * instructions for address calculation, and directly in SEG_ADD/SEG_SUB
- * instructions. */
-
-enum bi_seg {
-        /* No segment (use global addressing, offset from GPU VA 0x0) */
-        BI_SEG_NONE = 1,
-
-        /* Within workgroup local memory (shared memory). Relative to
-         * wls_base_pointer in the draw's thread storage descriptor */
-        BI_SEG_WLS = 2,
-
-        /* Within one of the bound uniform buffers. Low 32-bits are the index
-         * within the uniform buffer; high 32-bits are the index of the uniform
-         * buffer itself. Relative to the uniform_array_pointer indexed within
-         * the draw's uniform remap table indexed by the high 32-bits. */
-        BI_SEG_UBO = 4,
-
-        /* Within thread local storage (for spilling). Relative to
-         * tls_base_pointer in the draw's thread storage descriptor */
-        BI_SEG_TL = 7
-};
-
 /* Opcodes within a class */
 enum bi_minmax_op {
         BI_MINMAX_MIN,
@@ -268,42 +246,10 @@ struct bi_texture {
         bool compute_lod;
 };
 
-enum bi_lane_op {
-        BI_LANE_OP_NONE,
-        BI_LANE_OP_XOR,
-        BI_LANE_OP_ACCUMULATE,
-        BI_LANE_OP_SHIFT,
-};
-
-enum bi_subgroup {
-        BI_SUBGROUP_SUBGROUP2,
-        BI_SUBGROUP_SUBGROUP4,
-        BI_SUBGROUP_SUBGROUP8,
-};
-
-enum bi_clper_inactive_result {
-        BI_INACTIVE_RESULT_ZERO,
-        BI_INACTIVE_RESULT_UMAX,
-        BI_INACTIVE_RESULT_I1,
-        BI_INACTIVE_RESULT_V2I1,
-        BI_INACTIVE_RESULT_SMIN,
-        BI_INACTIVE_RESULT_SMAX,
-        BI_INACTIVE_RESULT_V2SMIN,
-        BI_INACTIVE_RESULT_V2SMAX,
-        BI_INACTIVE_RESULT_V4SMIN,
-        BI_INACTIVE_RESULT_V4SMAX,
-        BI_INACTIVE_RESULT_F1,
-        BI_INACTIVE_RESULT_V2F1,
-        BI_INACTIVE_RESULT_INFN,
-        BI_INACTIVE_RESULT_INF,
-        BI_INACTIVE_RESULT_V2INFN,
-        BI_INACTIVE_RESULT_V2INF,
-};
-
-struct bi_special {
+struct bi_clper {
         struct {
                 enum bi_lane_op lane_op_mod;
-                enum bi_clper_inactive_result inactive_res;
+                enum bi_inactive_result inactive_res;
         } clper;
         enum bi_subgroup subgroup_sz;
 };
@@ -409,7 +355,7 @@ typedef struct {
 
                 struct bi_bitwise bitwise;
                 struct bi_texture texture;
-                struct bi_special special;
+                struct bi_clper special;
                 struct bi_attribute attribute;
         };
 } bi_instruction;
