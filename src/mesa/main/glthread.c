@@ -76,7 +76,7 @@ glthread_unmarshal_batch(void *job, int thread_index)
    unsigned batch_index = batch - ctx->GLThread.batches;
    /* Atomically set this to -1 if it's equal to batch_index. */
    p_atomic_cmpxchg(&ctx->GLThread.LastProgramChangeBatch, batch_index, -1);
-
+   p_atomic_cmpxchg(&ctx->GLThread.LastDListChangeBatchIndex, batch_index, -1);
 }
 
 static void
@@ -138,6 +138,8 @@ _mesa_glthread_init(struct gl_context *ctx)
                                      ctx->Const.VertexBufferOffsetIsInt32;
 
    ctx->CurrentClientDispatch = ctx->MarshalExec;
+
+   glthread->LastDListChangeBatchIndex = -1;
 
    /* Execute the thread initialization function in the thread. */
    struct util_queue_fence fence;

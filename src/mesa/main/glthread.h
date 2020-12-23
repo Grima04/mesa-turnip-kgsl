@@ -155,6 +155,8 @@ struct glthread_state
 
    /** Display lists. */
    GLenum ListMode; /**< Zero if not inside display list, else list mode. */
+   unsigned ListBase;
+   unsigned ListCallDepth;
 
    /** For L3 cache pinning. */
    unsigned pin_thread_counter;
@@ -210,6 +212,12 @@ struct glthread_state
     */
    int LastProgramChangeBatch;
 
+   /**
+    * The batch index of the last occurence of glEndList or
+    * glDeleteLists or -1 if there is no such enqueued call.
+    */
+   int LastDListChangeBatchIndex;
+
    /** Basic matrix state tracking. */
    int ActiveTexture;
    GLenum MatrixMode;
@@ -234,6 +242,7 @@ void _mesa_glthread_upload(struct gl_context *ctx, const void *data,
 void _mesa_glthread_reset_vao(struct glthread_vao *vao);
 void _mesa_error_glthread_safe(struct gl_context *ctx, GLenum error,
                                bool glthread, const char *format, ...);
+void _mesa_glthread_execute_list(struct gl_context *ctx, GLuint list);
 
 void _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target,
                                GLuint buffer);
