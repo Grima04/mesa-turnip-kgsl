@@ -768,7 +768,8 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
 
         default:
-                unreachable("Unknown intrinsic");
+                fprintf(stderr, "Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
+                assert(0);
         }
 }
 
