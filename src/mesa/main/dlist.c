@@ -1157,12 +1157,16 @@ void
 _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
 {
    Node *n, *block;
-   GLboolean done;
+
+   if (!dlist->Head) {
+      free(dlist->Label);
+      free(dlist);
+      return;
+   }
 
    n = block = dlist->Head;
 
-   done = block ? GL_FALSE : GL_TRUE;
-   while (!done) {
+   while (1) {
       const OpCode opcode = n[0].opcode;
 
       /* check for extension opcodes first */
@@ -1383,8 +1387,9 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             continue;
          case OPCODE_END_OF_LIST:
             free(block);
-            done = GL_TRUE;
-            break;
+            free(dlist->Label);
+            free(dlist);
+            return;
          default:
             /* just increment 'n' pointer, below */
             ;
@@ -1394,9 +1399,6 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
          n += InstSize[opcode];
       }
    }
-
-   free(dlist->Label);
-   free(dlist);
 }
 
 
@@ -11263,7 +11265,6 @@ execute_list(struct gl_context *ctx, GLuint list)
 {
    struct gl_display_list *dlist;
    Node *n;
-   GLboolean done;
 
    if (list == 0 || !_mesa_get_list(ctx, list, &dlist))
       return;
@@ -11279,8 +11280,7 @@ execute_list(struct gl_context *ctx, GLuint list)
 
    n = dlist->Head;
 
-   done = GL_FALSE;
-   while (!done) {
+   while (1) {
       const OpCode opcode = n[0].opcode;
 
       if (is_ext_opcode(opcode)) {
@@ -13461,9 +13461,6 @@ execute_list(struct gl_context *ctx, GLuint list)
          case OPCODE_NOP:
             /* no-op */
             break;
-         case OPCODE_END_OF_LIST:
-            done = GL_TRUE;
-            break;
          default:
             {
                char msg[1000];
@@ -13471,7 +13468,11 @@ execute_list(struct gl_context *ctx, GLuint list)
                              (int) opcode);
                _mesa_problem(ctx, "%s", msg);
             }
-            done = GL_TRUE;
+            FALLTHROUGH;
+         case OPCODE_END_OF_LIST:
+            vbo_save_EndCallList(ctx);
+            ctx->ListState.CallDepth--;
+            return;
          }
 
          /* increment n to point to next compiled command */
@@ -13479,10 +13480,6 @@ execute_list(struct gl_context *ctx, GLuint list)
          n += InstSize[opcode];
       }
    }
-
-   vbo_save_EndCallList(ctx);
-
-   ctx->ListState.CallDepth--;
 }
 
 
@@ -14612,7 +14609,6 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
 {
    struct gl_display_list *dlist;
    Node *n;
-   GLboolean done;
    FILE *f = stdout;
 
    if (fname) {
@@ -14623,15 +14619,17 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
 
    if (!_mesa_get_list(ctx, list, &dlist)) {
       fprintf(f, "%u is not a display list ID\n", list);
-      goto out;
+      fflush(f);
+      if (fname)
+         fclose(f);
+      return;
    }
 
    n = dlist->Head;
 
    fprintf(f, "START-LIST %u, address %p\n", list, (void *) n);
 
-   done = n ? GL_FALSE : GL_TRUE;
-   while (!done) {
+   while (1) {
       const OpCode opcode = n[0].opcode;
 
       if (is_ext_opcode(opcode)) {
@@ -14882,32 +14880,30 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
          case OPCODE_NOP:
             fprintf(f, "NOP\n");
             break;
-         case OPCODE_END_OF_LIST:
-            fprintf(f, "END-LIST %u\n", list);
-            done = GL_TRUE;
-            break;
          default:
             if (opcode < 0 || opcode > OPCODE_END_OF_LIST) {
                printf
                   ("ERROR IN DISPLAY LIST: opcode = %d, address = %p\n",
                    opcode, (void *) n);
-               goto out;
-            }
-            else {
+            } else {
                fprintf(f, "command %d, %u operands\n", opcode,
                             InstSize[opcode]);
+               break;
             }
+            FALLTHROUGH;
+         case OPCODE_END_OF_LIST:
+            fprintf(f, "END-LIST %u\n", list);
+            fflush(f);
+            if (fname)
+               fclose(f);
+            return;
          }
+
          /* increment n to point to next compiled command */
          assert(InstSize[opcode] > 0);
          n += InstSize[opcode];
       }
    }
-
- out:
-   fflush(f);
-   if (fname)
-      fclose(f);
 }
 
 
