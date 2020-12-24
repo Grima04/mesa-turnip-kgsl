@@ -493,7 +493,7 @@ namespace SwrJit
                 }
             }
 
-            // advance to the next arguement
+            // advance to the next argument
             v++;
             pos = tempStr.find('%', ++pos);
         }

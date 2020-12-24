@@ -40,7 +40,7 @@ extern "C" void ScatterPS_256(uint8_t*, SIMD256::Integer, SIMD256::Float, uint8_
 
 namespace llvm
 {
-    // foward declare the initializer
+    // forward declare the initializer
     void initializeLowerX86Pass(PassRegistry&);
 } // namespace llvm
 
@@ -421,7 +421,7 @@ namespace SwrJit
         }
 
         //////////////////////////////////////////////////////////////////////////
-        /// @brief LLVM funtion pass run method.
+        /// @brief LLVM function pass run method.
         /// @param f- The function we're working on with this pass.
         virtual bool runOnFunction(Function& F)
         {
