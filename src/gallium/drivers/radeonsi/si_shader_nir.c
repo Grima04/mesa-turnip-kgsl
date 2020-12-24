@@ -266,6 +266,37 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          unsigned index = intr->intrinsic == nir_intrinsic_load_color1;
          uint8_t mask = nir_ssa_def_components_read(&intr->dest.ssa);
          info->colors_read |= mask << (index * 4);
+
+         switch (info->color_interpolate[index]) {
+         case INTERP_MODE_SMOOTH:
+            if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_SAMPLE)
+               info->uses_persp_sample = true;
+            else if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_CENTROID)
+               info->uses_persp_centroid = true;
+            else if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_CENTER)
+               info->uses_persp_center = true;
+            break;
+         case INTERP_MODE_NOPERSPECTIVE:
+            if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_SAMPLE)
+               info->uses_linear_sample = true;
+            else if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_CENTROID)
+               info->uses_linear_centroid = true;
+            else if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_CENTER)
+               info->uses_linear_center = true;
+            break;
+         case INTERP_MODE_COLOR:
+            /* We don't know the final value. This will be FLAT if flatshading is enabled
+             * in the rasterizer state, otherwise it will be SMOOTH.
+             */
+            info->uses_interp_color = true;
+            if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_SAMPLE)
+               info->uses_persp_sample_color = true;
+            else if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_CENTROID)
+               info->uses_persp_centroid_color = true;
+            else if (info->color_interpolate_loc[index] == TGSI_INTERPOLATE_LOC_CENTER)
+               info->uses_persp_center_color = true;
+            break;
+         }
          break;
       }
       case nir_intrinsic_load_barycentric_at_offset:   /* uses center */

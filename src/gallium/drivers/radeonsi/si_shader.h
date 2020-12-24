@@ -363,6 +363,10 @@ struct si_shader_info {
    bool writes_stencil;     /**< does fragment shader write stencil value? */
    bool writes_samplemask;  /**< does fragment shader write sample mask? */
    bool writes_edgeflag;    /**< vertex shader outputs edgeflag */
+   bool uses_interp_color;
+   bool uses_persp_center_color;
+   bool uses_persp_centroid_color;
+   bool uses_persp_sample_color;
    bool uses_persp_center;
    bool uses_persp_centroid;
    bool uses_persp_sample;

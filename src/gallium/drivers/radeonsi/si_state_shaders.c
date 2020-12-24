@@ -2009,7 +2009,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       bool is_line = util_prim_is_lines(sctx->current_rast_prim);
 
       key->part.ps.prolog.color_two_side = rs->two_side && sel->info.colors_read;
-      key->part.ps.prolog.flatshade_colors = rs->flatshade && sel->info.colors_read;
+      key->part.ps.prolog.flatshade_colors = rs->flatshade && sel->info.uses_interp_color;
 
       key->part.ps.epilog.alpha_to_one = blend->alpha_to_one && rs->multisample_enable;
 
@@ -2023,30 +2023,35 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          key->part.ps.prolog.samplemask_log_ps_iter = util_logbase2(sctx->ps_iter_samples);
       }
 
+      bool uses_persp_center = sel->info.uses_persp_center ||
+                               (!rs->flatshade && sel->info.uses_persp_center_color);
+      bool uses_persp_centroid = sel->info.uses_persp_centroid ||
+                                 (!rs->flatshade && sel->info.uses_persp_centroid_color);
+      bool uses_persp_sample = sel->info.uses_persp_sample ||
+                               (!rs->flatshade && sel->info.uses_persp_sample_color);
+
       if (rs->force_persample_interp && rs->multisample_enable &&
           sctx->framebuffer.nr_samples > 1 && sctx->ps_iter_samples > 1) {
          key->part.ps.prolog.force_persp_sample_interp =
-            sel->info.uses_persp_center || sel->info.uses_persp_centroid;
+            uses_persp_center || uses_persp_centroid;
 
          key->part.ps.prolog.force_linear_sample_interp =
             sel->info.uses_linear_center || sel->info.uses_linear_centroid;
       } else if (rs->multisample_enable && sctx->framebuffer.nr_samples > 1) {
          key->part.ps.prolog.bc_optimize_for_persp =
-            sel->info.uses_persp_center && sel->info.uses_persp_centroid;
+            uses_persp_center && uses_persp_centroid;
          key->part.ps.prolog.bc_optimize_for_linear =
             sel->info.uses_linear_center && sel->info.uses_linear_centroid;
       } else {
          /* Make sure SPI doesn't compute more than 1 pair
           * of (i,j), which is the optimization here. */
-         key->part.ps.prolog.force_persp_center_interp = sel->info.uses_persp_center +
-                                                            sel->info.uses_persp_centroid +
-                                                            sel->info.uses_persp_sample >
-                                                         1;
+         key->part.ps.prolog.force_persp_center_interp = uses_persp_center +
+                                                         uses_persp_centroid +
+                                                         uses_persp_sample > 1;
 
          key->part.ps.prolog.force_linear_center_interp = sel->info.uses_linear_center +
-                                                             sel->info.uses_linear_centroid +
-                                                             sel->info.uses_linear_sample >
-                                                          1;
+                                                          sel->info.uses_linear_centroid +
+                                                          sel->info.uses_linear_sample > 1;
 
          if (sel->info.uses_interp_at_sample)
             key->mono.u.ps.interpolate_at_sample_force_center = 1;
