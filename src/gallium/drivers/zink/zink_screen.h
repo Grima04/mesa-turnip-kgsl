@@ -74,8 +74,6 @@ struct zink_screen {
    uint32_t loader_version;
    bool have_physical_device_prop2_ext;
 
-   bool have_debug_utils_ext;
-
    bool needs_mesa_wsi;
 
 #if defined(MVK_VERSION)
