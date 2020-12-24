@@ -90,6 +90,7 @@ static const struct vk_instance_extension_table lvp_instance_extensions_supporte
 
 static const struct vk_device_extension_table lvp_device_extensions_supported = {
    .KHR_bind_memory2                      = true,
+   .KHR_create_renderpass2                = true,
    .KHR_dedicated_allocation              = true,
    .KHR_descriptor_update_template        = true,
    .KHR_device_group                      = true,
