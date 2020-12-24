@@ -115,6 +115,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
 #ifdef LVP_USE_WSI_PLATFORM
    .KHR_swapchain                         = true,
 #endif
+   .KHR_variable_pointers                 = true,
    .EXT_calibrated_timestamps             = true,
    .EXT_conditional_rendering             = true,
    .EXT_extended_dynamic_state            = true,
@@ -437,7 +438,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
          VkPhysicalDeviceVariablePointersFeatures *features = (void *)ext;
-         features->variablePointers = true;
+         features->variablePointers = false;
          features->variablePointersStorageBuffer = true;
          break;
       }
