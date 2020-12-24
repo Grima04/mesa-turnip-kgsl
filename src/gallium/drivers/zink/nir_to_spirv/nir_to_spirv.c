@@ -309,12 +309,13 @@ handle_slot(struct ntv_context *ctx, unsigned slot)
 
 
 static inline unsigned
-handle_handle_slot(struct ntv_context *ctx, struct nir_variable *var)
+handle_handle_slot(struct ntv_context *ctx, struct nir_variable *var, bool output)
 {
    if (var->data.patch) {
       assert(var->data.location >= VARYING_SLOT_PATCH0);
       return var->data.location - VARYING_SLOT_PATCH0;
-   } else if (ctx->stage == MESA_SHADER_TESS_CTRL) {
+   } else if ((output && ctx->stage == MESA_SHADER_TESS_CTRL) ||
+              (!output && ctx->stage == MESA_SHADER_TESS_EVAL)) {
       assert(var->data.location >= VARYING_SLOT_VAR0);
       return var->data.location - VARYING_SLOT_VAR0;
    }
@@ -383,7 +384,7 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
          break;
 
       default:
-         slot = handle_handle_slot(ctx, var);
+         slot = handle_handle_slot(ctx, var, false);
          spirv_builder_emit_location(&ctx->builder, var_id, slot);
       }
    }
@@ -442,7 +443,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
          break;
 
       default:
-         slot = handle_handle_slot(ctx, var);
+         slot = handle_handle_slot(ctx, var, true);
          spirv_builder_emit_location(&ctx->builder, var_id, slot);
       }
       /* tcs can't do xfb */
