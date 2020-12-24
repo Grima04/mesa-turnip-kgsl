@@ -456,6 +456,12 @@ struct qblock {
         /** Offset within the uniform stream of the branch instruction */
         uint32_t branch_uniform;
 
+        /**
+         * Has the terminating branch of this block already been emitted
+         * by a break or continue?
+         */
+        bool branch_emitted;
+
         /** @{ used by v3d_vir_live_variables.c */
         BITSET_WORD *def;
         BITSET_WORD *defin;
