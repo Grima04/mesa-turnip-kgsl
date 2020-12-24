@@ -27,6 +27,7 @@
 #include "pipe/p_state.h"
 #include <vulkan/vulkan.h>
 
+#include "util/hash_table.h"
 #include "util/u_inlines.h"
 
 struct zink_context;
@@ -34,7 +35,6 @@ struct zink_screen;
 struct zink_render_pass;
 
 struct zink_framebuffer_state {
-   struct zink_render_pass *rp;
    uint32_t width;
    uint16_t height, layers;
    uint8_t samples;
@@ -44,17 +44,24 @@ struct zink_framebuffer_state {
 
 struct zink_framebuffer {
    struct pipe_reference reference;
+
+   /* current objects */
    VkFramebuffer fb;
+   struct zink_render_pass *rp;
 
    struct pipe_surface *surfaces[PIPE_MAX_COLOR_BUFS + 1];
    struct pipe_surface *null_surface; /* for use with unbound attachments */
    struct zink_framebuffer_state state;
+   struct hash_table objects;
 };
 
 struct zink_framebuffer *
-zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
+zink_create_framebuffer(struct zink_context *ctx,
                         struct zink_framebuffer_state *fb,
                         struct pipe_surface **attachments);
+
+void
+zink_init_framebuffer(struct zink_screen *screen, struct zink_framebuffer *fb, struct zink_render_pass *rp);
 
 void
 zink_destroy_framebuffer(struct zink_screen *screen,

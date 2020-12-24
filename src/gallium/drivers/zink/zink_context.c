@@ -709,7 +709,6 @@ create_framebuffer(struct zink_context *ctx)
    struct pipe_surface *attachments[PIPE_MAX_COLOR_BUFS + 1] = {};
 
    struct zink_framebuffer_state state = {};
-   state.rp = get_render_pass(ctx);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       state.attachments[i] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
@@ -728,7 +727,9 @@ create_framebuffer(struct zink_context *ctx)
    state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1);
    state.samples = ctx->fb_state.samples;
 
-   return zink_create_framebuffer(ctx, screen, &state, attachments);
+   struct zink_framebuffer *fb = zink_create_framebuffer(ctx, &state, attachments);
+   zink_init_framebuffer(screen, fb, get_render_pass(ctx));
+   return fb;
 }
 
 static void
@@ -814,7 +815,7 @@ zink_batch_rp(struct zink_context *ctx)
    struct zink_batch *batch = zink_curr_batch(ctx);
    if (!batch->in_rp) {
       zink_begin_render_pass(ctx, batch);
-      assert(batch->fb && batch->fb->state.rp);
+      assert(batch->fb && batch->fb->rp);
    }
    return batch;
 }
@@ -847,7 +848,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       zink_framebuffer_reference(screen, &fb, NULL);
    fb = create_framebuffer(ctx);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
-   ctx->gfx_pipeline_state.render_pass = fb->state.rp;
+   ctx->gfx_pipeline_state.render_pass = fb->rp;
 
    uint8_t rast_samples = util_framebuffer_get_num_samples(state);
    /* in vulkan, gl_SampleMask needs to be explicitly ignored for sampleCount == 1 */
