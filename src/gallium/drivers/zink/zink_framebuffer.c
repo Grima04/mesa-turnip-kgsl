@@ -69,7 +69,7 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 
    pipe_surface_reference(&fbuf->null_surface, NULL);
 
-   FREE(fbuf);
+   ralloc_free(fbuf);
 }
 
 struct zink_framebuffer *
@@ -77,7 +77,7 @@ zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
                         struct zink_framebuffer_state *fb,
                         struct pipe_surface **attachments)
 {
-   struct zink_framebuffer *fbuf = CALLOC_STRUCT(zink_framebuffer);
+   struct zink_framebuffer *fbuf = rzalloc(NULL, struct zink_framebuffer);
    if (!fbuf)
       return NULL;
 
