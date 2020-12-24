@@ -202,8 +202,6 @@ perfcntr_index(const struct fd_perfcntr_group *group, uint32_t group_count,
          break;
       }
       index -= group[i].num_countables;
-
-      assert(index >= 0);
    }
 
    assert(i < group_count);
