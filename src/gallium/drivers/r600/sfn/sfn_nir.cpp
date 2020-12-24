@@ -964,6 +964,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    while (optimize_once(sh, true));
 
    NIR_PASS_V(sh, nir_lower_bool_to_int32);
+   NIR_PASS_V(sh, r600_nir_lower_int_tg4);
    NIR_PASS_V(sh, nir_opt_algebraic_late);
 
    if (sh->info.stage == MESA_SHADER_FRAGMENT)
