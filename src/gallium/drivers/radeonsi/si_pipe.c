@@ -493,15 +493,15 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       goto fail;
 
    /* Initialize public allocators. */
-   bool all_vram_visible = sscreen->info.all_vram_visible;
+   bool smart_access_memory = sscreen->info.smart_access_memory;
    sctx->b.stream_uploader =
       u_upload_create(&sctx->b, 1024 * 1024, 0,
-                      all_vram_visible ? PIPE_USAGE_DEFAULT : PIPE_USAGE_STREAM,
+                      smart_access_memory ? PIPE_USAGE_DEFAULT : PIPE_USAGE_STREAM,
                       SI_RESOURCE_FLAG_32BIT); /* same flags as const_uploader */
    if (!sctx->b.stream_uploader)
       goto fail;
 
-   if (all_vram_visible) {
+   if (smart_access_memory) {
       sctx->b.const_uploader = sctx->b.stream_uploader;
    } else {
       sctx->b.const_uploader =

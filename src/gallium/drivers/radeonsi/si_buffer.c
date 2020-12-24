@@ -56,7 +56,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    switch (res->b.b.usage) {
    case PIPE_USAGE_STREAM:
       res->flags |= RADEON_FLAG_GTT_WC;
-      if (sscreen->info.all_vram_visible)
+      if (sscreen->info.smart_access_memory)
          res->domains = RADEON_DOMAIN_VRAM;
       else
          res->domains = RADEON_DOMAIN_GTT;
@@ -153,7 +153,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    if (res->domains & RADEON_DOMAIN_VRAM) {
       res->vram_usage = size;
 
-      if (!sscreen->info.all_vram_visible) {
+      if (!sscreen->info.smart_access_memory) {
          /* We don't want to evict buffers from VRAM by mapping them for CPU access,
           * because they might never be moved back again. If a buffer is large enough,
           * upload data by copying from a temporary GTT buffer. 8K might not seem much,

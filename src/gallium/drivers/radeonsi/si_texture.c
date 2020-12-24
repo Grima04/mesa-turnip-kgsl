@@ -1810,7 +1810,8 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
        * is busy.
        */
       if (!tex->surface.is_linear || (tex->buffer.flags & RADEON_FLAG_ENCRYPTED) ||
-          (tex->buffer.domains & RADEON_DOMAIN_VRAM && !sctx->screen->info.all_vram_visible))
+          (tex->buffer.domains & RADEON_DOMAIN_VRAM &&
+           !sctx->screen->info.smart_access_memory))
          use_staging_texture = true;
       else if (usage & PIPE_MAP_READ)
          use_staging_texture =

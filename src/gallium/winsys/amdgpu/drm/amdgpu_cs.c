@@ -711,7 +711,7 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    if (cs->ring_type == RING_GFX ||
        cs->ring_type == RING_COMPUTE ||
        cs->ring_type == RING_DMA) {
-      domain = ws->info.all_vram_visible ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
+      domain = ws->info.smart_access_memory ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
       flags |= RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC;
    } else {
       /* UVD/VCE */

@@ -29,6 +29,7 @@
 #include "drm-uapi/amdgpu_drm.h"
 #include "sid.h"
 #include "util/macros.h"
+#include "util/u_cpu_detect.h"
 #include "util/u_math.h"
 
 #include <stdio.h>
@@ -505,6 +506,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    /* Add some margin of error, though this shouldn't be needed in theory. */
    info->all_vram_visible = info->vram_size * 0.9 < info->vram_vis_size;
+
+   util_cpu_detect();
+   info->smart_access_memory = info->all_vram_visible &&
+                               info->chip_class >= GFX10_3 &&
+                               util_cpu_caps.family >= CPU_AMD_ZEN3 &&
+                               util_cpu_caps.family < CPU_AMD_LAST;
 
    /* Set chip identification. */
    info->pci_id = amdinfo->asic_id; /* TODO: is this correct? */
@@ -1048,6 +1055,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    address32_hi = %u\n", info->address32_hi);
    fprintf(f, "    has_dedicated_vram = %u\n", info->has_dedicated_vram);
    fprintf(f, "    all_vram_visible = %u\n", info->all_vram_visible);
+   fprintf(f, "    smart_access_memory = %u\n", info->smart_access_memory);
    fprintf(f, "    num_sdp_interfaces = %u\n", info->num_sdp_interfaces);
    fprintf(f, "    num_tcc_blocks = %i\n", info->num_tcc_blocks);
    fprintf(f, "    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
