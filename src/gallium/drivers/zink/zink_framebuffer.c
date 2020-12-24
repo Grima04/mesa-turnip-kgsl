@@ -61,15 +61,15 @@ framebuffer_null_surface_init(struct zink_context *ctx, struct zink_framebuffer_
 
 void
 zink_destroy_framebuffer(struct zink_screen *screen,
-                         struct zink_framebuffer *fbuf)
+                         struct zink_framebuffer *fb)
 {
-   vkDestroyFramebuffer(screen->dev, fbuf->fb, NULL);
-   for (int i = 0; i < ARRAY_SIZE(fbuf->surfaces); ++i)
-      pipe_surface_reference(fbuf->surfaces + i, NULL);
+   vkDestroyFramebuffer(screen->dev, fb->fb, NULL);
+   for (int i = 0; i < ARRAY_SIZE(fb->surfaces); ++i)
+      pipe_surface_reference(fb->surfaces + i, NULL);
 
-   pipe_surface_reference(&fbuf->null_surface, NULL);
+   pipe_surface_reference(&fb->null_surface, NULL);
 
-   ralloc_free(fbuf);
+   ralloc_free(fb);
 }
 
 struct zink_framebuffer *
@@ -77,19 +77,19 @@ zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
                         struct zink_framebuffer_state *state,
                         struct pipe_surface **attachments)
 {
-   struct zink_framebuffer *fbuf = rzalloc(NULL, struct zink_framebuffer);
-   if (!fbuf)
+   struct zink_framebuffer *fb = rzalloc(NULL, struct zink_framebuffer);
+   if (!fb)
       return NULL;
 
-   pipe_reference_init(&fbuf->reference, 1);
+   pipe_reference_init(&fb->reference, 1);
 
    for (int i = 0; i < state->num_attachments; i++) {
       if (state->attachments[i])
-         pipe_surface_reference(&fbuf->surfaces[i], attachments[i]);
+         pipe_surface_reference(&fb->surfaces[i], attachments[i]);
       else {
-         if (!fbuf->null_surface)
-            fbuf->null_surface = framebuffer_null_surface_init(ctx, state);
-         state->attachments[i] = zink_surface(fbuf->null_surface)->image_view;
+         if (!fb->null_surface)
+            fb->null_surface = framebuffer_null_surface_init(ctx, state);
+         state->attachments[i] = zink_surface(fb->null_surface)->image_view;
       }
    }
 
@@ -102,13 +102,13 @@ zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
    fci.height = state->height;
    fci.layers = state->layers;
 
-   if (vkCreateFramebuffer(screen->dev, &fci, NULL, &fbuf->fb) != VK_SUCCESS) {
-      zink_destroy_framebuffer(screen, fbuf);
+   if (vkCreateFramebuffer(screen->dev, &fci, NULL, &fb->fb) != VK_SUCCESS) {
+      zink_destroy_framebuffer(screen, fb);
       return NULL;
    }
-   memcpy(&fbuf->state, state, sizeof(struct zink_framebuffer_state));
+   memcpy(&fb->state, state, sizeof(struct zink_framebuffer_state));
 
-   return fbuf;
+   return fb;
 }
 
 void
