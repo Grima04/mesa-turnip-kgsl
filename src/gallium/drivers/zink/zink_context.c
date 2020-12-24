@@ -706,19 +706,21 @@ static struct zink_framebuffer *
 create_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct pipe_surface *attachments[PIPE_MAX_COLOR_BUFS + 1] = {};
 
    struct zink_framebuffer_state state = {};
    state.rp = get_render_pass(ctx);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
-      state.attachments[i] = zink_surface(psurf);
-      state.has_null_attachments |= !state.attachments[i];
+      state.attachments[i] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
+      attachments[i] = psurf;
    }
 
    state.num_attachments = ctx->fb_state.nr_cbufs;
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;
-      state.attachments[state.num_attachments++] = zink_surface(psurf);
+      state.attachments[state.num_attachments] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;;
+      attachments[state.num_attachments++] = psurf;
    }
 
    state.width = MAX2(ctx->fb_state.width, 1);
@@ -726,7 +728,7 @@ create_framebuffer(struct zink_context *ctx)
    state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1);
    state.samples = ctx->fb_state.samples;
 
-   return zink_create_framebuffer(ctx, screen, &state);
+   return zink_create_framebuffer(ctx, screen, &state, attachments);
 }
 
 static void

@@ -76,7 +76,8 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 
 struct zink_framebuffer *
 zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
-                        struct zink_framebuffer_state *fb)
+                        struct zink_framebuffer_state *fb,
+                        struct pipe_surface **attachments)
 {
    struct zink_framebuffer *fbuf = CALLOC_STRUCT(zink_framebuffer);
    if (!fbuf)
@@ -84,16 +85,14 @@ zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
 
    pipe_reference_init(&fbuf->reference, 1);
 
-   if (fb->has_null_attachments)
-      fbuf->null_surface = framebuffer_null_surface_init(ctx, fb);
-
-   VkImageView attachments[ARRAY_SIZE(fb->attachments)] = {};
    for (int i = 0; i < fb->num_attachments; i++) {
-      struct zink_surface *surf = fb->attachments[i];
-      if (!surf)
-         surf = zink_surface(fbuf->null_surface);
-      pipe_surface_reference(fbuf->surfaces + i, &surf->base);
-      attachments[i] = surf->image_view;
+      if (fb->attachments[i])
+         pipe_surface_reference(&fbuf->surfaces[i], attachments[i]);
+      else {
+         if (!fbuf->null_surface)
+            fbuf->null_surface = framebuffer_null_surface_init(ctx, fb);
+         fb->attachments[i] = zink_surface(fbuf->null_surface)->image_view;
+      }
    }
 
    zink_render_pass_reference(screen, &fbuf->rp, fb->rp);
@@ -102,7 +101,7 @@ zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
    fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
    fci.renderPass = fbuf->rp->render_pass;
    fci.attachmentCount = fb->num_attachments;
-   fci.pAttachments = attachments;
+   fci.pAttachments = fb->attachments;
    fci.width = fb->width;
    fci.height = fb->height;
    fci.layers = fb->layers;
@@ -111,6 +110,7 @@ zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
       zink_destroy_framebuffer(screen, fbuf);
       return NULL;
    }
+   memcpy(&fbuf->state, fb, sizeof(struct zink_framebuffer_state));
 
    return fbuf;
 }
