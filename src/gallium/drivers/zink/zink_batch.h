@@ -57,6 +57,8 @@ struct zink_batch {
    struct util_dynarray zombie_samplers;
 
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
+
+   bool in_rp; //renderpass is currently active
 };
 
 /* release all resources attached to batch */

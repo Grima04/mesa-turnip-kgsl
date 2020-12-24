@@ -774,26 +774,31 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    rpbi.framebuffer = ctx->framebuffer->fb;
 
    assert(ctx->gfx_pipeline_state.render_pass && ctx->framebuffer);
-   assert(!batch->rp || batch->rp == ctx->gfx_pipeline_state.render_pass);
    assert(!batch->fb || batch->fb == ctx->framebuffer);
 
    framebuffer_state_buffer_barriers_setup(ctx, fb_state, batch);
 
-   zink_render_pass_reference(screen, &batch->rp, ctx->gfx_pipeline_state.render_pass);
    zink_framebuffer_reference(screen, &batch->fb, ctx->framebuffer);
    for (struct zink_surface **surf = (struct zink_surface **)batch->fb->surfaces; *surf; surf++)
       zink_batch_reference_resource_rw(batch, zink_resource((*surf)->base.texture), true);
 
    vkCmdBeginRenderPass(batch->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
+   batch->in_rp = true;
+}
+
+static void
+zink_end_render_pass(struct zink_context *ctx, struct zink_batch *batch)
+{
+   if (batch->in_rp)
+      vkCmdEndRenderPass(batch->cmdbuf);
+   batch->in_rp = false;
 }
 
 static void
 flush_batch(struct zink_context *ctx)
 {
    struct zink_batch *batch = zink_curr_batch(ctx);
-   if (batch->rp)
-      vkCmdEndRenderPass(batch->cmdbuf);
-
+   zink_end_render_pass(ctx, batch);
    zink_end_batch(ctx, batch);
 
    ctx->curr_batch++;
@@ -807,7 +812,7 @@ struct zink_batch *
 zink_batch_rp(struct zink_context *ctx)
 {
    struct zink_batch *batch = zink_curr_batch(ctx);
-   if (!batch->rp) {
+   if (!batch->in_rp) {
       zink_begin_render_pass(ctx, batch);
       assert(batch->rp);
    }
@@ -818,11 +823,11 @@ struct zink_batch *
 zink_batch_no_rp(struct zink_context *ctx)
 {
    struct zink_batch *batch = zink_curr_batch(ctx);
-   if (batch->rp) {
+   if (batch->in_rp) {
       /* flush batch and get a new one */
       flush_batch(ctx);
       batch = zink_curr_batch(ctx);
-      assert(!batch->rp);
+      assert(!batch->in_rp);
    }
    return batch;
 }
