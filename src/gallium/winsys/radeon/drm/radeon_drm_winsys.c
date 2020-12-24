@@ -645,7 +645,9 @@ static void radeon_winsys_destroy(struct radeon_winsys *rws)
 }
 
 static void radeon_query_info(struct radeon_winsys *rws,
-                              struct radeon_info *info)
+                              struct radeon_info *info,
+                              bool enable_smart_access_memory,
+                              bool disable_smart_access_memory)
 {
    *info = ((struct radeon_drm_winsys *)rws)->info;
 }

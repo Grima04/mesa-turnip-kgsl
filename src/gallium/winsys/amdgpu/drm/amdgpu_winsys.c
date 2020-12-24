@@ -186,9 +186,18 @@ static void amdgpu_winsys_destroy(struct radeon_winsys *rws)
 }
 
 static void amdgpu_winsys_query_info(struct radeon_winsys *rws,
-                                     struct radeon_info *info)
+                                     struct radeon_info *info,
+                                     bool enable_smart_access_memory,
+                                     bool disable_smart_access_memory)
 {
-   *info = amdgpu_winsys(rws)->info;
+   struct amdgpu_winsys *ws = amdgpu_winsys(rws);
+
+   if (disable_smart_access_memory)
+      ws->info.smart_access_memory = false;
+   else if (enable_smart_access_memory && ws->info.all_vram_visible)
+      ws->info.smart_access_memory = true;
+
+   *info = ws->info;
 }
 
 static bool amdgpu_cs_request_feature(struct radeon_cmdbuf *rcs,

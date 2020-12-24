@@ -945,8 +945,16 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       return NULL;
    }
 
+   {
+#define OPT_BOOL(name, dflt, description)                                                          \
+   sscreen->options.name = driQueryOptionb(config->options, "radeonsi_" #name);
+#include "si_debug_options.h"
+   }
+
    sscreen->ws = ws;
-   ws->query_info(ws, &sscreen->info);
+   ws->query_info(ws, &sscreen->info,
+                  sscreen->options.enable_sam,
+                  sscreen->options.disable_sam);
 
    /* Older LLVM have buggy v_pk_* instructions. */
    sscreen->info.has_packed_math_16bit &= LLVM_VERSION_MAJOR >= 11;
@@ -1029,12 +1037,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    if (!si_init_shader_cache(sscreen)) {
       FREE(sscreen);
       return NULL;
-   }
-
-   {
-#define OPT_BOOL(name, dflt, description)                                                          \
-   sscreen->options.name = driQueryOptionb(config->options, "radeonsi_" #name);
-#include "si_debug_options.h"
    }
 
    if (sscreen->info.chip_class < GFX10_3)
