@@ -70,17 +70,21 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 void
 debug_describe_zink_framebuffer(char* buf, const struct zink_framebuffer *ptr);
 
-static inline void
+static inline bool
 zink_framebuffer_reference(struct zink_screen *screen,
                            struct zink_framebuffer **dst,
                            struct zink_framebuffer *src)
 {
    struct zink_framebuffer *old_dst = *dst;
+   bool ret = false;
 
    if (pipe_reference_described(&old_dst->reference, src ? &src->reference : NULL,
-                                (debug_reference_descriptor)debug_describe_zink_framebuffer))
+                                (debug_reference_descriptor)debug_describe_zink_framebuffer)) {
       zink_destroy_framebuffer(screen, old_dst);
+      ret = true;
+   }
    *dst = src;
+   return ret;
 }
 
 #endif
