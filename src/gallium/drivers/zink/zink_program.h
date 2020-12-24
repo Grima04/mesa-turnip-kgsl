@@ -67,7 +67,6 @@ struct zink_gfx_program {
    VkPipelineLayout layout;
    unsigned num_descriptors;
    struct hash_table *pipelines[11]; // number of draw modes we support
-   struct set *render_passes;
 };
 
 

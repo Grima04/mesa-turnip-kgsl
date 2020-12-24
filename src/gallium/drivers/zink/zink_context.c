@@ -814,7 +814,7 @@ zink_batch_rp(struct zink_context *ctx)
    struct zink_batch *batch = zink_curr_batch(ctx);
    if (!batch->in_rp) {
       zink_begin_render_pass(ctx, batch);
-      assert(batch->rp);
+      assert(batch->fb && batch->fb->state.rp);
    }
    return batch;
 }
@@ -847,7 +847,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       zink_framebuffer_reference(screen, &fb, NULL);
    fb = create_framebuffer(ctx);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
-   zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, fb->rp);
+   ctx->gfx_pipeline_state.render_pass = fb->state.rp;
 
    uint8_t rast_samples = util_framebuffer_get_num_samples(state);
    /* in vulkan, gl_SampleMask needs to be explicitly ignored for sampleCount == 1 */

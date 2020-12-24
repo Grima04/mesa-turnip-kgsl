@@ -95,8 +95,6 @@ zink_create_render_pass(struct zink_screen *screen,
    if (!rp)
       goto fail;
 
-   pipe_reference_init(&rp->reference, 1);
-
    rp->render_pass = create_render_pass(screen->dev, state);
    if (!rp->render_pass)
       goto fail;
@@ -115,10 +113,4 @@ zink_destroy_render_pass(struct zink_screen *screen,
 {
    vkDestroyRenderPass(screen->dev, rp->render_pass, NULL);
    FREE(rp);
-}
-
-void
-debug_describe_zink_render_pass(char* buf, const struct zink_render_pass *ptr)
-{
-   sprintf(buf, "zink_render_pass");
 }

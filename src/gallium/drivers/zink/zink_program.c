@@ -431,11 +431,6 @@ zink_create_gfx_program(struct zink_context *ctx,
    if (!prog->layout)
       goto fail;
 
-   prog->render_passes = _mesa_set_create(NULL, _mesa_hash_pointer,
-                                          _mesa_key_pointer_equal);
-   if (!prog->render_passes)
-      goto fail;
-
    return prog;
 
 fail:
@@ -469,15 +464,6 @@ zink_destroy_gfx_program(struct zink_screen *screen,
          gfx_program_remove_shader(prog, prog->shaders[i]);
       if (prog->modules[i])
          zink_shader_module_reference(screen, &prog->modules[i], NULL);
-   }
-
-   /* unref all used render-passes */
-   if (prog->render_passes) {
-      set_foreach(prog->render_passes, entry) {
-         struct zink_render_pass *pres = (struct zink_render_pass *)entry->key;
-         zink_render_pass_reference(screen, &pres, NULL);
-      }
-      _mesa_set_destroy(prog->render_passes, NULL);
    }
 
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
@@ -536,19 +522,6 @@ primitive_topology(enum pipe_prim_type mode)
    }
 }
 
-static void
-reference_render_pass(struct zink_screen *screen,
-                      struct zink_gfx_program *prog,
-                      struct zink_render_pass *render_pass)
-{
-   struct set_entry *entry = _mesa_set_search(prog->render_passes,
-                                              render_pass);
-   if (!entry) {
-      entry = _mesa_set_add(prog->render_passes, render_pass);
-      pipe_reference(NULL, &render_pass->reference);
-   }
-}
-
 VkPipeline
 zink_get_gfx_pipeline(struct zink_screen *screen,
                       struct zink_gfx_program *prog,
@@ -584,8 +557,6 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
 
       entry = _mesa_hash_table_insert_pre_hashed(prog->pipelines[vkmode], state->hash, state, pc_entry);
       assert(entry);
-
-      reference_render_pass(screen, prog, state->render_pass);
    }
 
    return ((struct pipeline_cache_entry *)(entry->data))->pipeline;

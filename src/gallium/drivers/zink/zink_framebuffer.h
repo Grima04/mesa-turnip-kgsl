@@ -47,7 +47,6 @@ struct zink_framebuffer {
    VkFramebuffer fb;
 
    struct pipe_surface *surfaces[PIPE_MAX_COLOR_BUFS + 1];
-   struct zink_render_pass *rp;
    struct pipe_surface *null_surface; /* for use with unbound attachments */
    struct zink_framebuffer_state state;
 };

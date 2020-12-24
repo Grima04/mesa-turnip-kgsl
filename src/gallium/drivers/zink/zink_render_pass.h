@@ -44,8 +44,6 @@ struct zink_render_pass_state {
 };
 
 struct zink_render_pass {
-   struct pipe_reference reference;
-
    VkRenderPass render_pass;
    struct zink_render_pass_state state;
 };
@@ -57,21 +55,5 @@ zink_create_render_pass(struct zink_screen *screen,
 void
 zink_destroy_render_pass(struct zink_screen *screen,
                          struct zink_render_pass *rp);
-
-void
-debug_describe_zink_render_pass(char* buf, const struct zink_render_pass *ptr);
-
-static inline void
-zink_render_pass_reference(struct zink_screen *screen,
-                           struct zink_render_pass **dst,
-                           struct zink_render_pass *src)
-{
-   struct zink_render_pass *old_dst = *dst;
-
-   if (pipe_reference_described(&old_dst->reference, &src->reference,
-                                (debug_reference_descriptor)debug_describe_zink_render_pass))
-      zink_destroy_render_pass(screen, old_dst);
-   *dst = src;
-}
 
 #endif

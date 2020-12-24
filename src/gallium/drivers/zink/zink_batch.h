@@ -47,7 +47,6 @@ struct zink_batch {
    int descs_left;
    struct zink_fence *fence;
 
-   struct zink_render_pass *rp;
    struct zink_framebuffer *fb;
    struct set *programs;
 

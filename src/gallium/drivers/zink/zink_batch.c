@@ -18,7 +18,6 @@ zink_batch_release(struct zink_screen *screen, struct zink_batch *batch)
 {
    zink_fence_reference(screen, &batch->fence, NULL);
 
-   zink_render_pass_reference(screen, &batch->rp, NULL);
    zink_framebuffer_reference(screen, &batch->fb, NULL);
    set_foreach(batch->programs, entry) {
       struct zink_gfx_program *prog = (struct zink_gfx_program*)entry->key;

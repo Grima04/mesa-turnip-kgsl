@@ -69,8 +69,6 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 
    pipe_surface_reference(&fbuf->null_surface, NULL);
 
-   zink_render_pass_reference(screen, &fbuf->rp, NULL);
-
    FREE(fbuf);
 }
 
@@ -95,11 +93,9 @@ zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
       }
    }
 
-   zink_render_pass_reference(screen, &fbuf->rp, fb->rp);
-
    VkFramebufferCreateInfo fci = {};
    fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-   fci.renderPass = fbuf->rp->render_pass;
+   fci.renderPass = fb->rp->render_pass;
    fci.attachmentCount = fb->num_attachments;
    fci.pAttachments = fb->attachments;
    fci.width = fb->width;
