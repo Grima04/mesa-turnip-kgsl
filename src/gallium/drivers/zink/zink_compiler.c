@@ -404,6 +404,13 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    ret->shader_id = p_atomic_inc_return(&screen->shader_id);
    ret->programs = _mesa_pointer_set_create(NULL);
 
+   if (!screen->info.feats.features.shaderImageGatherExtended) {
+      nir_lower_tex_options tex_opts = {};
+      tex_opts.lower_tg4_offsets = true;
+      tex_opts.lower_txf_offset = true;
+      NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
+   }
+
    /* only do uniforms -> ubo if we have uniforms, otherwise we're just
     * screwing with the bindings for no reason
     */
