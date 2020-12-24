@@ -266,8 +266,8 @@ zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute)
    }
 }
 
-static void
-invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type)
+void
+zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type)
 {
    if (shader != PIPE_SHADER_COMPUTE) {
       ctx->gfx_descriptor_states[shader].valid[type] = false;
@@ -512,7 +512,7 @@ zink_bind_sampler_states(struct pipe_context *pctx,
    }
    ctx->num_samplers[shader] = start_slot + num_samplers;
    if (update)
-      invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+      zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
 }
 
 static void
@@ -912,7 +912,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
       ctx->ubos[shader][index].user_buffer = NULL;
    }
    if (update)
-      invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO);
+      zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO);
 }
 
 static void
@@ -950,7 +950,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
       }
    }
    if (update)
-      invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_SSBO);
+      zink_context_invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_SSBO);
 }
 
 static void
@@ -1014,7 +1014,7 @@ zink_set_shader_images(struct pipe_context *pctx,
       unbind_shader_image(ctx, p_stage, start_slot + count + i);
    }
    if (update)
-      invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_IMAGE);
+      zink_context_invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_IMAGE);
 }
 
 static void
@@ -1073,7 +1073,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
    }
    ctx->num_sampler_views[shader_type] = start_slot + num_views;
    if (update)
-      invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+      zink_context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
 }
 
 static void
@@ -2362,7 +2362,7 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
                break;
             }
 
-            invalidate_descriptor_state(ctx, shader, type);
+            zink_context_invalidate_descriptor_state(ctx, shader, type);
          }
       }
    }
