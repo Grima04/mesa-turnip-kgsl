@@ -74,7 +74,7 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 
 struct zink_framebuffer *
 zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
-                        struct zink_framebuffer_state *fb,
+                        struct zink_framebuffer_state *state,
                         struct pipe_surface **attachments)
 {
    struct zink_framebuffer *fbuf = rzalloc(NULL, struct zink_framebuffer);
@@ -83,30 +83,30 @@ zink_create_framebuffer(struct zink_context *ctx, struct zink_screen *screen,
 
    pipe_reference_init(&fbuf->reference, 1);
 
-   for (int i = 0; i < fb->num_attachments; i++) {
-      if (fb->attachments[i])
+   for (int i = 0; i < state->num_attachments; i++) {
+      if (state->attachments[i])
          pipe_surface_reference(&fbuf->surfaces[i], attachments[i]);
       else {
          if (!fbuf->null_surface)
-            fbuf->null_surface = framebuffer_null_surface_init(ctx, fb);
-         fb->attachments[i] = zink_surface(fbuf->null_surface)->image_view;
+            fbuf->null_surface = framebuffer_null_surface_init(ctx, state);
+         state->attachments[i] = zink_surface(fbuf->null_surface)->image_view;
       }
    }
 
    VkFramebufferCreateInfo fci = {};
    fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-   fci.renderPass = fb->rp->render_pass;
-   fci.attachmentCount = fb->num_attachments;
-   fci.pAttachments = fb->attachments;
-   fci.width = fb->width;
-   fci.height = fb->height;
-   fci.layers = fb->layers;
+   fci.renderPass = state->rp->render_pass;
+   fci.attachmentCount = state->num_attachments;
+   fci.pAttachments = state->attachments;
+   fci.width = state->width;
+   fci.height = state->height;
+   fci.layers = state->layers;
 
    if (vkCreateFramebuffer(screen->dev, &fci, NULL, &fbuf->fb) != VK_SUCCESS) {
       zink_destroy_framebuffer(screen, fbuf);
       return NULL;
    }
-   memcpy(&fbuf->state, fb, sizeof(struct zink_framebuffer_state));
+   memcpy(&fbuf->state, state, sizeof(struct zink_framebuffer_state));
 
    return fbuf;
 }
