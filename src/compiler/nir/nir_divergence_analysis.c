@@ -890,6 +890,8 @@ visit_loop(nir_loop *loop, struct divergence_state *state)
                                       loop_state.divergent_loop_break);
    }
 
+   loop->divergent = (loop_state.divergent_loop_break || loop_state.divergent_loop_continue);
+
    return progress;
 }
 

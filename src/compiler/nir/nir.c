@@ -465,6 +465,8 @@ nir_loop_create(nir_shader *shader)
    nir_loop *loop = rzalloc(shader, nir_loop);
 
    cf_init(&loop->cf_node, nir_cf_node_loop);
+   /* Assume that loops are divergent until proven otherwise */
+   loop->divergent = true;
 
    nir_block *body = nir_block_create(shader);
    exec_list_make_empty(&loop->body);

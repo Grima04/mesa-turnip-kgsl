@@ -2783,6 +2783,7 @@ typedef struct {
    nir_loop_info *info;
    nir_loop_control control;
    bool partially_unrolled;
+   bool divergent;
 } nir_loop;
 
 /**
