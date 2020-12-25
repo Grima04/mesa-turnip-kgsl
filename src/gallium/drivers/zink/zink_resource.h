@@ -31,6 +31,7 @@ struct zink_context;
 
 #define ZINK_RESOURCE_USAGE_STREAMOUT (1 << 10) //much greater than ZINK_DESCRIPTOR_TYPES
 
+#include "util/simple_mtx.h"
 #include "util/u_transfer.h"
 #include "util/u_range.h"
 #include "util/u_dynarray.h"
@@ -71,6 +72,7 @@ struct zink_resource_object {
 
    struct zink_batch_usage reads;
    struct zink_batch_usage writes;
+   simple_mtx_t map_mtx;
    unsigned map_count;
    void *map;
    bool is_buffer;
