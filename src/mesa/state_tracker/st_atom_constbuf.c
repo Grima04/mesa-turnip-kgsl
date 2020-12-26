@@ -122,8 +122,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
             _mesa_upload_state_parameters(st->ctx, params, ptr);
 
          u_upload_unmap(pipe->const_uploader);
-         pipe->set_constant_buffer(pipe, shader_type, 0, &cb);
-         pipe_resource_reference(&cb.buffer, NULL);
+         pipe->set_constant_buffer(pipe, shader_type, 0, true, &cb);
 
          /* Set inlinable constants. This is more involved because state
           * parameters are uploaded directly above instead of being loaded
@@ -162,7 +161,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
          if (params->StateFlags)
             _mesa_load_state_parameters(st->ctx, params);
 
-         pipe->set_constant_buffer(pipe, shader_type, 0, &cb);
+         pipe->set_constant_buffer(pipe, shader_type, 0, false, &cb);
 
          /* Set inlinable constants. */
          unsigned num_inlinable_uniforms = prog->info.num_inlinable_uniforms;
@@ -184,7 +183,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
       /* Unbind. */
       struct pipe_context *pipe = st->pipe;
 
-      pipe->set_constant_buffer(pipe, shader_type, 0, NULL);
+      pipe->set_constant_buffer(pipe, shader_type, 0, false, NULL);
       st->state.constbuf0_enabled_shader_mask &= ~(1 << shader_type);
    }
 }
@@ -290,7 +289,7 @@ st_bind_ubos(struct st_context *st, struct gl_program *prog,
          cb.buffer_size = 0;
       }
 
-      pipe->set_constant_buffer(pipe, shader_type, 1 + i, &cb);
+      pipe->set_constant_buffer(pipe, shader_type, 1 + i, false, &cb);
    }
 }
 

@@ -632,7 +632,7 @@ rbug_set_clip_state(struct pipe_context *_pipe,
 static void
 rbug_set_constant_buffer(struct pipe_context *_pipe,
                          enum pipe_shader_type shader,
-                         uint index,
+                         uint index, bool take_ownership,
                          const struct pipe_constant_buffer *_cb)
 {
    struct rbug_context *rb_pipe = rbug_context(_pipe);
@@ -648,7 +648,7 @@ rbug_set_constant_buffer(struct pipe_context *_pipe,
    mtx_lock(&rb_pipe->call_mutex);
    pipe->set_constant_buffer(pipe,
                              shader,
-                             index,
+                             index, take_ownership,
                              _cb ? &cb : NULL);
    mtx_unlock(&rb_pipe->call_mutex);
 }

@@ -467,7 +467,7 @@ OMX_ERRORTYPE enc_LoadImage_common(vid_enc_PrivateType * priv, OMX_VIDEO_PORTDEF
 
          cb.buffer_size = sizeof(constants);
          cb.user_buffer = constants;
-         pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, &cb);
+         pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, false, &cb);
 
          /* Use the optimal block size for the linear image layout. */
          struct pipe_grid_info info = {};
@@ -497,7 +497,7 @@ OMX_ERRORTYPE enc_LoadImage_common(vid_enc_PrivateType * priv, OMX_VIDEO_PORTDEF
 
          /* Unbind. */
          pipe->set_shader_images(pipe, PIPE_SHADER_COMPUTE, 0, 3, NULL);
-         pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, NULL);
+         pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, false, NULL);
          pipe->bind_compute_state(pipe, NULL);
       } else {
          /* Graphics path */

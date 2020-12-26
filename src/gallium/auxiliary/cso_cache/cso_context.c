@@ -346,16 +346,16 @@ void cso_destroy_context( struct cso_context *ctx )
                ctx->pipe->set_shader_images(ctx->pipe, sh, 0, maximg, NULL);
             }
             for (int i = 0; i < maxcb; i++) {
-               ctx->pipe->set_constant_buffer(ctx->pipe, sh, i, NULL);
+               ctx->pipe->set_constant_buffer(ctx->pipe, sh, i, false, NULL);
             }
          }
       }
 
       ctx->pipe->bind_depth_stencil_alpha_state( ctx->pipe, NULL );
       ctx->pipe->bind_fs_state( ctx->pipe, NULL );
-      ctx->pipe->set_constant_buffer(ctx->pipe, PIPE_SHADER_FRAGMENT, 0, NULL);
+      ctx->pipe->set_constant_buffer(ctx->pipe, PIPE_SHADER_FRAGMENT, 0, false, NULL);
       ctx->pipe->bind_vs_state( ctx->pipe, NULL );
-      ctx->pipe->set_constant_buffer(ctx->pipe, PIPE_SHADER_VERTEX, 0, NULL);
+      ctx->pipe->set_constant_buffer(ctx->pipe, PIPE_SHADER_VERTEX, 0, false, NULL);
       if (ctx->has_geometry_shader) {
          ctx->pipe->bind_gs_state(ctx->pipe, NULL);
       }

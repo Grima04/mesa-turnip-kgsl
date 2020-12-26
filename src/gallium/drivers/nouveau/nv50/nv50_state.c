@@ -890,6 +890,7 @@ nv50_cp_state_bind(struct pipe_context *pipe, void *hwcso)
 static void
 nv50_set_constant_buffer(struct pipe_context *pipe,
                          enum pipe_shader_type shader, uint index,
+                         bool take_ownership,
                          const struct pipe_constant_buffer *cb)
 {
    struct nv50_context *nv50 = nv50_context(pipe);
@@ -908,7 +909,13 @@ nv50_set_constant_buffer(struct pipe_context *pipe,
       nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_CB(s, i));
       nv04_resource(nv50->constbuf[s][i].u.buf)->cb_bindings[s] &= ~(1 << i);
    }
-   pipe_resource_reference(&nv50->constbuf[s][i].u.buf, res);
+
+   if (take_ownership) {
+      pipe_resource_reference(&nv50->constbuf[s][i].u.buf, NULL);
+      nv50->constbuf[s][i].u.buf = res;
+   } else {
+      pipe_resource_reference(&nv50->constbuf[s][i].u.buf, res);
+   }
 
    nv50->constbuf[s][i].user = (cb && cb->user_buffer) ? true : false;
    if (nv50->constbuf[s][i].user) {

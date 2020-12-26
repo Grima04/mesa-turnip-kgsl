@@ -382,6 +382,7 @@ vc4_vertex_state_bind(struct pipe_context *pctx, void *hwcso)
 static void
 vc4_set_constant_buffer(struct pipe_context *pctx,
                         enum pipe_shader_type shader, uint index,
+                        bool take_ownership,
                         const struct pipe_constant_buffer *cb)
 {
         struct vc4_context *vc4 = vc4_context(pctx);
@@ -399,10 +400,7 @@ vc4_set_constant_buffer(struct pipe_context *pctx,
         if (index == 1 && so->cb[index].buffer_size != cb->buffer_size)
                 vc4->dirty |= VC4_DIRTY_UBO_1_SIZE;
 
-        pipe_resource_reference(&so->cb[index].buffer, cb->buffer);
-        so->cb[index].buffer_offset = cb->buffer_offset;
-        so->cb[index].buffer_size   = cb->buffer_size;
-        so->cb[index].user_buffer   = cb->user_buffer;
+        util_copy_constant_buffer(&so->cb[index], cb, take_ownership);
 
         so->enabled_mask |= 1 << index;
         so->dirty_mask |= 1 << index;

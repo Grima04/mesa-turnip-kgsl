@@ -549,9 +549,9 @@ pipe_set_constant_buffer(struct pipe_context *pipe,
       cb.buffer_offset = 0;
       cb.buffer_size = buf->width0;
       cb.user_buffer = NULL;
-      pipe->set_constant_buffer(pipe, shader, index, &cb);
+      pipe->set_constant_buffer(pipe, shader, index, false, &cb);
    } else {
-      pipe->set_constant_buffer(pipe, shader, index, NULL);
+      pipe->set_constant_buffer(pipe, shader, index, false, NULL);
    }
 }
 
@@ -667,10 +667,16 @@ util_pipe_tex_to_tgsi_tex(enum pipe_texture_target pipe_tex_target,
 
 static inline void
 util_copy_constant_buffer(struct pipe_constant_buffer *dst,
-                          const struct pipe_constant_buffer *src)
+                          const struct pipe_constant_buffer *src,
+                          bool take_ownership)
 {
    if (src) {
-      pipe_resource_reference(&dst->buffer, src->buffer);
+      if (take_ownership) {
+         pipe_resource_reference(&dst->buffer, NULL);
+         dst->buffer = src->buffer;
+      } else {
+         pipe_resource_reference(&dst->buffer, src->buffer);
+      }
       dst->buffer_offset = src->buffer_offset;
       dst->buffer_size = src->buffer_size;
       dst->user_buffer = src->user_buffer;

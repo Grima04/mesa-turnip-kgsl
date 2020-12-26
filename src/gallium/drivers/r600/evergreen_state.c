@@ -4525,11 +4525,11 @@ void evergreen_setup_tess_constants(struct r600_context *rctx, const struct pipe
 	if (!rctx->tes_shader) {
 		rctx->lds_alloc = 0;
 		rctx->b.b.set_constant_buffer(&rctx->b.b, PIPE_SHADER_VERTEX,
-					      R600_LDS_INFO_CONST_BUFFER, NULL);
+					      R600_LDS_INFO_CONST_BUFFER, false, NULL);
 		rctx->b.b.set_constant_buffer(&rctx->b.b, PIPE_SHADER_TESS_CTRL,
-					      R600_LDS_INFO_CONST_BUFFER, NULL);
+					      R600_LDS_INFO_CONST_BUFFER, false, NULL);
 		rctx->b.b.set_constant_buffer(&rctx->b.b, PIPE_SHADER_TESS_EVAL,
-					      R600_LDS_INFO_CONST_BUFFER, NULL);
+					      R600_LDS_INFO_CONST_BUFFER, false, NULL);
 		return;
 	}
 
@@ -4589,12 +4589,11 @@ void evergreen_setup_tess_constants(struct r600_context *rctx, const struct pipe
 	constbuf.buffer_size = 8 * 4;
 
 	rctx->b.b.set_constant_buffer(&rctx->b.b, PIPE_SHADER_VERTEX,
-				      R600_LDS_INFO_CONST_BUFFER, &constbuf);
+				      R600_LDS_INFO_CONST_BUFFER, false, &constbuf);
 	rctx->b.b.set_constant_buffer(&rctx->b.b, PIPE_SHADER_TESS_CTRL,
-				      R600_LDS_INFO_CONST_BUFFER, &constbuf);
+				      R600_LDS_INFO_CONST_BUFFER, false, &constbuf);
 	rctx->b.b.set_constant_buffer(&rctx->b.b, PIPE_SHADER_TESS_EVAL,
-				      R600_LDS_INFO_CONST_BUFFER, &constbuf);
-	pipe_resource_reference(&constbuf.buffer, NULL);
+				      R600_LDS_INFO_CONST_BUFFER, true, &constbuf);
 }
 
 uint32_t evergreen_get_ls_hs_config(struct r600_context *rctx,

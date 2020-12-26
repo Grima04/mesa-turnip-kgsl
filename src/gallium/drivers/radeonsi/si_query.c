@@ -1544,7 +1544,7 @@ static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_q
          params.start_offset += qbuf->results_end - query->result_size;
       }
 
-      sctx->b.set_constant_buffer(&sctx->b, PIPE_SHADER_COMPUTE, 0, &constant_buffer);
+      sctx->b.set_constant_buffer(&sctx->b, PIPE_SHADER_COMPUTE, 0, false, &constant_buffer);
 
       ssbo[0].buffer = &qbuf->buf->b.b;
       ssbo[0].buffer_offset = params.start_offset;

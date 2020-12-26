@@ -546,7 +546,7 @@ swr_delete_tes_state(struct pipe_context *pipe, void *tes)
 static void
 swr_set_constant_buffer(struct pipe_context *pipe,
                         enum pipe_shader_type shader,
-                        uint index,
+                        uint index, bool take_ownership,
                         const struct pipe_constant_buffer *cb)
 {
    struct swr_context *ctx = swr_context(pipe);
@@ -556,7 +556,7 @@ swr_set_constant_buffer(struct pipe_context *pipe,
    assert(index < ARRAY_SIZE(ctx->constants[shader]));
 
    /* note: reference counting */
-   util_copy_constant_buffer(&ctx->constants[shader][index], cb);
+   util_copy_constant_buffer(&ctx->constants[shader][index], cb, take_ownership);
 
    if (shader == PIPE_SHADER_VERTEX) {
       ctx->dirty |= SWR_NEW_VSCONSTANTS;

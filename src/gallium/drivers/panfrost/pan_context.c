@@ -1018,13 +1018,13 @@ panfrost_set_vertex_buffers(
 static void
 panfrost_set_constant_buffer(
         struct pipe_context *pctx,
-        enum pipe_shader_type shader, uint index,
+        enum pipe_shader_type shader, uint index, bool take_ownership,
         const struct pipe_constant_buffer *buf)
 {
         struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_constant_buffer *pbuf = &ctx->constant_buffer[shader];
 
-        util_copy_constant_buffer(&pbuf->cb[index], buf);
+        util_copy_constant_buffer(&pbuf->cb[index], buf, take_ownership);
 
         unsigned mask = (1 << index);
 

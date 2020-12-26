@@ -85,7 +85,7 @@ hud_draw_colored_prims(struct hud_context *hud, unsigned prim,
    hud->constants.translate[1] = (float) (yoffset * hud_scale);
    hud->constants.scale[0] = hud_scale;
    hud->constants.scale[1] = yscale * hud_scale;
-   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, &hud->constbuf);
+   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, &hud->constbuf);
 
    u_upload_data(hud->pipe->stream_uploader, 0,
                  num_vertices * 2 * sizeof(float), 16, buffer,
@@ -540,7 +540,7 @@ hud_draw_results(struct hud_context *hud, struct pipe_resource *tex)
    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1,
                            &hud->font_sampler_view);
    cso_set_samplers(cso, PIPE_SHADER_FRAGMENT, 1, sampler_states);
-   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, &hud->constbuf);
+   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, &hud->constbuf);
 
    /* draw accumulated vertices for background quads */
    cso_set_blend(cso, &hud->alpha_blend);
@@ -556,7 +556,7 @@ hud_draw_results(struct hud_context *hud, struct pipe_resource *tex)
       hud->constants.scale[0] = hud_scale;
       hud->constants.scale[1] = hud_scale;
 
-      pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, &hud->constbuf);
+      pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, &hud->constbuf);
 
       cso_set_vertex_buffers(cso, 0, 1, &hud->bg.vbuf);
       cso_draw_arrays(cso, PIPE_PRIM_QUADS, 0, hud->bg.num_vertices);
@@ -585,7 +585,7 @@ hud_draw_results(struct hud_context *hud, struct pipe_resource *tex)
    hud->constants.translate[1] = 0;
    hud->constants.scale[0] = hud_scale;
    hud->constants.scale[1] = hud_scale;
-   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, &hud->constbuf);
+   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, &hud->constbuf);
 
    if (hud->whitelines.num_vertices) {
       cso_set_vertex_buffers(cso, 0, 1, &hud->whitelines.vbuf);
@@ -606,7 +606,7 @@ done:
    cso_restore_state(cso);
 
    /* Unbind resources that we have bound. */
-   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, NULL);
+   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, NULL);
    pipe->set_vertex_buffers(pipe, 0, 1, NULL);
    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, NULL);
 

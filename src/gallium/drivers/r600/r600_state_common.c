@@ -1186,6 +1186,7 @@ void r600_constant_buffers_dirty(struct r600_context *rctx, struct r600_constbuf
 
 static void r600_set_constant_buffer(struct pipe_context *ctx,
 				     enum pipe_shader_type shader, uint index,
+				     bool take_ownership,
 				     const struct pipe_constant_buffer *input)
 {
 	struct r600_context *rctx = (struct r600_context *)ctx;
@@ -1236,7 +1237,12 @@ static void r600_set_constant_buffer(struct pipe_context *ctx,
 	} else {
 		/* Setup the hw buffer. */
 		cb->buffer_offset = input->buffer_offset;
-		pipe_resource_reference(&cb->buffer, input->buffer);
+		if (take_ownership) {
+			pipe_resource_reference(&cb->buffer, NULL);
+			cb->buffer = input->buffer;
+		} else {
+			pipe_resource_reference(&cb->buffer, input->buffer);
+		}
 		r600_context_add_resource_size(ctx, input->buffer);
 	}
 
@@ -1342,7 +1348,7 @@ void r600_update_driver_const_buffers(struct r600_context *rctx, bool compute_on
 		cb.user_buffer = ptr;
 		cb.buffer_offset = 0;
 		cb.buffer_size = size;
-		rctx->b.b.set_constant_buffer(&rctx->b.b, sh, R600_BUFFER_INFO_CONST_BUFFER, &cb);
+		rctx->b.b.set_constant_buffer(&rctx->b.b, sh, R600_BUFFER_INFO_CONST_BUFFER, false, &cb);
 		pipe_resource_reference(&cb.buffer, NULL);
 	}
 }
@@ -1531,21 +1537,21 @@ static void update_gs_block_state(struct r600_context *rctx, unsigned enable)
 
 		if (enable) {
 			r600_set_constant_buffer(&rctx->b.b, PIPE_SHADER_GEOMETRY,
-					R600_GS_RING_CONST_BUFFER, &rctx->gs_rings.esgs_ring);
+					R600_GS_RING_CONST_BUFFER, false, &rctx->gs_rings.esgs_ring);
 			if (rctx->tes_shader) {
 				r600_set_constant_buffer(&rctx->b.b, PIPE_SHADER_TESS_EVAL,
-							 R600_GS_RING_CONST_BUFFER, &rctx->gs_rings.gsvs_ring);
+							 R600_GS_RING_CONST_BUFFER, false, &rctx->gs_rings.gsvs_ring);
 			} else {
 				r600_set_constant_buffer(&rctx->b.b, PIPE_SHADER_VERTEX,
-							 R600_GS_RING_CONST_BUFFER, &rctx->gs_rings.gsvs_ring);
+							 R600_GS_RING_CONST_BUFFER, false, &rctx->gs_rings.gsvs_ring);
 			}
 		} else {
 			r600_set_constant_buffer(&rctx->b.b, PIPE_SHADER_GEOMETRY,
-					R600_GS_RING_CONST_BUFFER, NULL);
+					R600_GS_RING_CONST_BUFFER, false, NULL);
 			r600_set_constant_buffer(&rctx->b.b, PIPE_SHADER_VERTEX,
-					R600_GS_RING_CONST_BUFFER, NULL);
+					R600_GS_RING_CONST_BUFFER, false, NULL);
 			r600_set_constant_buffer(&rctx->b.b, PIPE_SHADER_TESS_EVAL,
-					R600_GS_RING_CONST_BUFFER, NULL);
+					R600_GS_RING_CONST_BUFFER, false, NULL);
 		}
 	}
 }

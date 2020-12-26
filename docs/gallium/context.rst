@@ -48,6 +48,8 @@ buffers, surfaces) are bound to the driver.
   type. index is used to indicate which buffer to set (some APIs may allow
   multiple ones to be set, and binding a specific one later, though drivers
   are mostly restricted to the first one right now).
+  If take_ownership is true, the buffer reference is passed to the driver, so
+  that the driver doesn't have to increment the reference count.
 
 * ``set_inlinable_constants`` sets inlinable constants for constant buffer 0.
 

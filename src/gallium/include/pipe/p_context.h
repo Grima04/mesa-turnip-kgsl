@@ -358,8 +358,18 @@ struct pipe_context {
    void (*set_clip_state)( struct pipe_context *,
                             const struct pipe_clip_state * );
 
+   /**
+    * Set constant buffer
+    *
+    * \param shader           Shader stage
+    * \param index            Buffer binding slot index within a shader stage
+    * \param take_ownership   The callee takes ownership of the buffer reference.
+    *                         (the callee shouldn't increment the ref count)
+    * \param buf              Constant buffer parameters
+    */
    void (*set_constant_buffer)( struct pipe_context *,
                                 enum pipe_shader_type shader, uint index,
+                                bool take_ownership,
                                 const struct pipe_constant_buffer *buf );
 
    /**

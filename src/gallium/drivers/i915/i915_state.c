@@ -676,6 +676,7 @@ static void i915_delete_vs_state(struct pipe_context *pipe, void *shader)
 
 static void i915_set_constant_buffer(struct pipe_context *pipe,
                                      enum pipe_shader_type shader, uint index,
+                                     bool take_ownership,
                                      const struct pipe_constant_buffer *cb)
 {
    struct i915_context *i915 = i915_context(pipe);
@@ -718,7 +719,12 @@ static void i915_set_constant_buffer(struct pipe_context *pipe,
       diff = i915->current.num_user_constants[shader] != 0;
    }
 
-   pipe_resource_reference(&i915->constants[shader], buf);
+   if (take_ownership) {
+      pipe_resource_reference(&i915->constants[shader], NULL);
+      i915->constants[shader] = buf;
+   } else {
+      pipe_resource_reference(&i915->constants[shader], buf);
+   }
    i915->current.num_user_constants[shader] = new_num;
 
    if (diff)

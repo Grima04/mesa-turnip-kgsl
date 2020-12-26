@@ -128,7 +128,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         };
 
         if (info->input)
-                pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, &ubuf);
+                pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, false, &ubuf);
 
         /* Invoke according to the grid info */
 

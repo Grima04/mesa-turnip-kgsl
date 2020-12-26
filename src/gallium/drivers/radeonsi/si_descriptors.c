@@ -1093,7 +1093,7 @@ static void si_upload_const_buffer(struct si_context *sctx, struct si_resource *
 }
 
 static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_resources *buffers,
-                                   unsigned descriptors_idx, uint slot,
+                                   unsigned descriptors_idx, uint slot, bool take_ownership,
                                    const struct pipe_constant_buffer *input)
 {
    struct si_descriptors *descs = &sctx->descriptors[descriptors_idx];
@@ -1116,11 +1116,16 @@ static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_res
                                 input->buffer_size, &buffer_offset);
          if (!buffer) {
             /* Just unbind on failure. */
-            si_set_constant_buffer(sctx, buffers, descriptors_idx, slot, NULL);
+            si_set_constant_buffer(sctx, buffers, descriptors_idx, slot, false, NULL);
             return;
          }
       } else {
-         pipe_resource_reference(&buffer, input->buffer);
+         if (take_ownership) {
+            pipe_resource_reference(&buffer, NULL);
+            buffer = input->buffer;
+         } else {
+            pipe_resource_reference(&buffer, input->buffer);
+         }
          buffer_offset = input->buffer_offset;
       }
 
@@ -1157,7 +1162,8 @@ static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_res
 }
 
 static void si_pipe_set_constant_buffer(struct pipe_context *ctx, enum pipe_shader_type shader,
-                                        uint slot, const struct pipe_constant_buffer *input)
+                                        uint slot, bool take_ownership,
+                                        const struct pipe_constant_buffer *input)
 {
    struct si_context *sctx = (struct si_context *)ctx;
 
@@ -1182,7 +1188,8 @@ static void si_pipe_set_constant_buffer(struct pipe_context *ctx, enum pipe_shad
 
    slot = si_get_constbuf_slot(slot);
    si_set_constant_buffer(sctx, &sctx->const_and_shader_buffers[shader],
-                          si_const_and_shader_buffer_descriptors_idx(shader), slot, input);
+                          si_const_and_shader_buffer_descriptors_idx(shader), slot,
+                          take_ownership, input);
 }
 
 static void si_set_inlinable_constants(struct pipe_context *ctx,
@@ -1303,7 +1310,7 @@ void si_get_shader_buffers(struct si_context *sctx, enum pipe_shader_type shader
 void si_set_internal_const_buffer(struct si_context *sctx, uint slot,
                                   const struct pipe_constant_buffer *input)
 {
-   si_set_constant_buffer(sctx, &sctx->internal_bindings, SI_DESCS_INTERNAL, slot, input);
+   si_set_constant_buffer(sctx, &sctx->internal_bindings, SI_DESCS_INTERNAL, slot, false, input);
 }
 
 void si_set_internal_shader_buffer(struct si_context *sctx, uint slot,

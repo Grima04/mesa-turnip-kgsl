@@ -104,8 +104,8 @@ pp_jimenezmlaa_run(struct pp_queue_t *ppq, struct pipe_resource *in,
    cb.user_buffer = constants;
 
    struct pipe_context *pipe = ppq->p->pipe;
-   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, &cb);
-   pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, &cb);
+   pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, &cb);
+   pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, false, &cb);
 
    mstencil.stencil[0].enabled = 1;
    mstencil.stencil[0].valuemask = mstencil.stencil[0].writemask = ~0;

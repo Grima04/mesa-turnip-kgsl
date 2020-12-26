@@ -446,7 +446,7 @@ vl_bicubic_filter_render(struct vl_bicubic_filter *filter,
    filter->pipe->clear_render_target(filter->pipe, dst, &clear_color,
                                      0, 0, dst->width, dst->height, false);
    filter->pipe->set_constant_buffer(filter->pipe, PIPE_SHADER_FRAGMENT,
-                                     0, &cb);
+                                     0, false, &cb);
    filter->pipe->bind_rasterizer_state(filter->pipe, filter->rs_state);
    filter->pipe->bind_blend_state(filter->pipe, filter->blend);
    filter->pipe->bind_sampler_states(filter->pipe, PIPE_SHADER_FRAGMENT,

@@ -3206,6 +3206,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 static void
 iris_set_constant_buffer(struct pipe_context *ctx,
                          enum pipe_shader_type p_stage, unsigned index,
+                         bool take_ownership,
                          const struct pipe_constant_buffer *input)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
@@ -3227,14 +3228,19 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 
          if (!cbuf->buffer) {
             /* Allocation was unsuccessful - just unbind */
-            iris_set_constant_buffer(ctx, p_stage, index, NULL);
+            iris_set_constant_buffer(ctx, p_stage, index, false, NULL);
             return;
          }
 
          assert(map);
          memcpy(map, input->user_buffer, input->buffer_size);
       } else if (input->buffer) {
-         pipe_resource_reference(&cbuf->buffer, input->buffer);
+         if (take_ownership) {
+            pipe_resource_reference(&cbuf->buffer, NULL);
+            cbuf->buffer = input->buffer;
+         } else {
+            pipe_resource_reference(&cbuf->buffer, input->buffer);
+         }
 
          cbuf->buffer_offset = input->buffer_offset;
       }

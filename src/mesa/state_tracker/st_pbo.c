@@ -270,7 +270,7 @@ st_pbo_draw(struct st_context *st, const struct st_pbo_addresses *addr,
       cb.buffer_offset = 0;
       cb.buffer_size = sizeof(addr->constants);
 
-      pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, &cb);
+      pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, false, &cb);
 
       pipe_resource_reference(&cb.buffer, NULL);
    }

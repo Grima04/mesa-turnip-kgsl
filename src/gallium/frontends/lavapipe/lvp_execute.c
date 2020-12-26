@@ -142,14 +142,14 @@ static void emit_compute_state(struct rendering_state *state)
 
    if (state->pcbuf_dirty[PIPE_SHADER_COMPUTE]) {
       state->pctx->set_constant_buffer(state->pctx, PIPE_SHADER_COMPUTE,
-                                       0, &state->pc_buffer[PIPE_SHADER_COMPUTE]);
+                                       0, false, &state->pc_buffer[PIPE_SHADER_COMPUTE]);
       state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = false;
    }
 
    if (state->constbuf_dirty[PIPE_SHADER_COMPUTE]) {
       for (unsigned i = 0; i < state->num_const_bufs[PIPE_SHADER_COMPUTE]; i++)
          state->pctx->set_constant_buffer(state->pctx, PIPE_SHADER_COMPUTE,
-                                          i + 1, &state->const_buffer[PIPE_SHADER_COMPUTE][i]);
+                                          i + 1, false, &state->const_buffer[PIPE_SHADER_COMPUTE][i]);
       state->constbuf_dirty[PIPE_SHADER_COMPUTE] = false;
    }
 
@@ -258,7 +258,7 @@ static void emit_state(struct rendering_state *state)
       if (state->constbuf_dirty[sh]) {
          for (unsigned idx = 0; idx < state->num_const_bufs[sh]; idx++)
             state->pctx->set_constant_buffer(state->pctx, sh,
-                                             idx + 1, &state->const_buffer[sh][idx]);
+                                             idx + 1, false, &state->const_buffer[sh][idx]);
       }
       state->constbuf_dirty[sh] = false;
    }
@@ -266,7 +266,7 @@ static void emit_state(struct rendering_state *state)
    for (sh = 0; sh < PIPE_SHADER_TYPES; sh++) {
       if (state->pcbuf_dirty[sh]) {
          state->pctx->set_constant_buffer(state->pctx, sh,
-                                          0, &state->pc_buffer[sh]);
+                                          0, false, &state->pc_buffer[sh]);
       }
    }
 

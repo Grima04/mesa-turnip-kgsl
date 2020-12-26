@@ -774,16 +774,13 @@ tc_call_set_constant_buffer(struct pipe_context *pipe, union tc_payload *payload
 {
    struct tc_constant_buffer *p = (struct tc_constant_buffer *)payload;
 
-   pipe->set_constant_buffer(pipe,
-                             p->shader,
-                             p->index,
-                             &p->cb);
-   pipe_resource_reference(&p->cb.buffer, NULL);
+   pipe->set_constant_buffer(pipe, p->shader, p->index, true, &p->cb);
 }
 
 static void
 tc_set_constant_buffer(struct pipe_context *_pipe,
                        enum pipe_shader_type shader, uint index,
+                       bool take_ownership,
                        const struct pipe_constant_buffer *cb)
 {
    struct threaded_context *tc = threaded_context(_pipe);
@@ -819,7 +816,11 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
    p->index = index;
 
    if (cb) {
-      tc_set_resource_reference(&p->cb.buffer, cb->buffer);
+      if (take_ownership)
+         p->cb.buffer = cb->buffer;
+      else
+         tc_set_resource_reference(&p->cb.buffer, cb->buffer);
+
       p->cb.user_buffer = NULL;
       p->cb.buffer_offset = cb->buffer_offset;
       p->cb.buffer_size = cb->buffer_size;

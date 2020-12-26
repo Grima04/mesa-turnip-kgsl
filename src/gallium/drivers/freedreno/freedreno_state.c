@@ -97,12 +97,13 @@ fd_set_min_samples(struct pipe_context *pctx, unsigned min_samples)
 static void
 fd_set_constant_buffer(struct pipe_context *pctx,
 		enum pipe_shader_type shader, uint index,
+		bool take_ownership,
 		const struct pipe_constant_buffer *cb)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_constbuf_stateobj *so = &ctx->constbuf[shader];
 
-	util_copy_constant_buffer(&so->cb[index], cb);
+	util_copy_constant_buffer(&so->cb[index], cb, take_ownership);
 
 	/* Note that gallium frontends can unbind constant buffers by
 	 * passing NULL here.

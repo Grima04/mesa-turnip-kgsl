@@ -3786,6 +3786,7 @@ llvmpipe_delete_fs_state(struct pipe_context *pipe, void *fs)
 static void
 llvmpipe_set_constant_buffer(struct pipe_context *pipe,
                              enum pipe_shader_type shader, uint index,
+                             bool take_ownership,
                              const struct pipe_constant_buffer *cb)
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
@@ -3795,7 +3796,8 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
    assert(index < ARRAY_SIZE(llvmpipe->constants[shader]));
 
    /* note: reference counting */
-   util_copy_constant_buffer(&llvmpipe->constants[shader][index], cb);
+   util_copy_constant_buffer(&llvmpipe->constants[shader][index], cb,
+                             take_ownership);
 
    if (constants) {
        if (!(constants->bind & PIPE_BIND_CONSTANT_BUFFER)) {

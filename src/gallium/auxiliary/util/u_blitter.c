@@ -798,8 +798,8 @@ void util_blitter_restore_constant_buffer_state(struct blitter_context *blitter)
    struct pipe_context *pipe = blitter->pipe;
 
    pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, blitter->cb_slot,
-                            &blitter->saved_fs_constant_buffer);
-   pipe_resource_reference(&blitter->saved_fs_constant_buffer.buffer, NULL);
+                             true, &blitter->saved_fs_constant_buffer);
+   blitter->saved_fs_constant_buffer.buffer = NULL;
 }
 
 static void blitter_set_rectangle(struct blitter_context_priv *ctx,
@@ -2908,7 +2908,7 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
          .buffer_size = sizeof(mask),
       };
       pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, blitter->cb_slot,
-                                &cb);
+                                false, &cb);
 
       pipe->bind_depth_stencil_alpha_state(pipe,
          get_stencil_blit_fallback_dsa(ctx, i));

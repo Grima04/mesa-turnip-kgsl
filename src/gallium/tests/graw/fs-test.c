@@ -117,7 +117,7 @@ static void init_fs_constbuf( void )
    cb1.user_buffer = constants1;
 
    ctx->set_constant_buffer(ctx,
-                            PIPE_SHADER_FRAGMENT, 0,
+                            PIPE_SHADER_FRAGMENT, 0, false,
                             &cb1);
 
    memset(&cb2, 0, sizeof cb2);
@@ -125,7 +125,7 @@ static void init_fs_constbuf( void )
    cb2.user_buffer = constants2;
 
    ctx->set_constant_buffer(ctx,
-                            PIPE_SHADER_FRAGMENT, 1,
+                            PIPE_SHADER_FRAGMENT, 1, false,
                             &cb2);
 }
 

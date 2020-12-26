@@ -632,6 +632,7 @@ static void virgl_hw_set_index_buffer(struct virgl_context *vctx,
 
 static void virgl_set_constant_buffer(struct pipe_context *ctx,
                                      enum pipe_shader_type shader, uint index,
+                                      bool take_ownership,
                                      const struct pipe_constant_buffer *buf)
 {
    struct virgl_context *vctx = virgl_context(ctx);
@@ -646,7 +647,12 @@ static void virgl_set_constant_buffer(struct pipe_context *ctx,
                                        buf->buffer_offset,
                                        buf->buffer_size, res);
 
-      pipe_resource_reference(&binding->ubos[index].buffer, buf->buffer);
+      if (take_ownership) {
+         pipe_resource_reference(&binding->ubos[index].buffer, NULL);
+         binding->ubos[index].buffer = buf->buffer;
+      } else {
+         pipe_resource_reference(&binding->ubos[index].buffer, buf->buffer);
+      }
       binding->ubos[index] = *buf;
       binding->ubo_enabled_mask |= 1 << index;
    } else {

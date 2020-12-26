@@ -774,6 +774,7 @@ nvc0_cp_state_bind(struct pipe_context *pipe, void *hwcso)
 static void
 nvc0_set_constant_buffer(struct pipe_context *pipe,
                          enum pipe_shader_type shader, uint index,
+                         bool take_ownership,
                          const struct pipe_constant_buffer *cb)
 {
    struct nvc0_context *nvc0 = nvc0_context(pipe);
@@ -802,7 +803,13 @@ nvc0_set_constant_buffer(struct pipe_context *pipe,
 
    if (nvc0->constbuf[s][i].u.buf)
       nv04_resource(nvc0->constbuf[s][i].u.buf)->cb_bindings[s] &= ~(1 << i);
-   pipe_resource_reference(&nvc0->constbuf[s][i].u.buf, res);
+
+   if (take_ownership) {
+      pipe_resource_reference(&nvc0->constbuf[s][i].u.buf, NULL);
+      nvc0->constbuf[s][i].u.buf = res;
+   } else {
+      pipe_resource_reference(&nvc0->constbuf[s][i].u.buf, res);
+   }
 
    nvc0->constbuf[s][i].user = (cb && cb->user_buffer) ? true : false;
    if (nvc0->constbuf[s][i].user) {

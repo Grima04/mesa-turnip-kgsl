@@ -1109,15 +1109,15 @@ commit_vs_constants(struct NineDevice9 *device)
     struct pipe_context *pipe = context->pipe;
 
     if (unlikely(!context->programmable_vs))
-        pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, &context->pipe_data.cb_vs_ff);
+        pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, &context->pipe_data.cb_vs_ff);
     else {
         if (context->swvp) {
-            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, &context->pipe_data.cb0_swvp);
-            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 1, &context->pipe_data.cb1_swvp);
-            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 2, &context->pipe_data.cb2_swvp);
-            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 3, &context->pipe_data.cb3_swvp);
+            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, &context->pipe_data.cb0_swvp);
+            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 1, false, &context->pipe_data.cb1_swvp);
+            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 2, false, &context->pipe_data.cb2_swvp);
+            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 3, false, &context->pipe_data.cb3_swvp);
         } else {
-            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, &context->pipe_data.cb_vs);
+            pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, &context->pipe_data.cb_vs);
         }
     }
 }
@@ -1129,9 +1129,9 @@ commit_ps_constants(struct NineDevice9 *device)
     struct pipe_context *pipe = context->pipe;
 
     if (unlikely(!context->ps))
-        pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, &context->pipe_data.cb_ps_ff);
+        pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, false, &context->pipe_data.cb_ps_ff);
     else
-        pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, &context->pipe_data.cb_ps);
+        pipe->set_constant_buffer(pipe, PIPE_SHADER_FRAGMENT, 0, false, &context->pipe_data.cb_ps);
 }
 
 static inline void
@@ -3145,13 +3145,13 @@ update_vs_constants_sw(struct NineDevice9 *device)
 
         buf = cb.user_buffer;
 
-        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 0, &cb);
+        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 0, false, &cb);
         if (cb.buffer)
             pipe_resource_reference(&cb.buffer, NULL);
 
         cb.user_buffer = (char *)buf + 4096 * sizeof(float[4]);
 
-        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 1, &cb);
+        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 1, false, &cb);
         if (cb.buffer)
             pipe_resource_reference(&cb.buffer, NULL);
     }
@@ -3164,7 +3164,7 @@ update_vs_constants_sw(struct NineDevice9 *device)
         cb.buffer_size = 2048 * sizeof(float[4]);
         cb.user_buffer = state->vs_const_i;
 
-        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 2, &cb);
+        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 2, false, &cb);
         if (cb.buffer)
             pipe_resource_reference(&cb.buffer, NULL);
     }
@@ -3177,7 +3177,7 @@ update_vs_constants_sw(struct NineDevice9 *device)
         cb.buffer_size = 512 * sizeof(float[4]);
         cb.user_buffer = state->vs_const_b;
 
-        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 3, &cb);
+        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 3, false, &cb);
         if (cb.buffer)
             pipe_resource_reference(&cb.buffer, NULL);
     }
@@ -3208,7 +3208,7 @@ update_vs_constants_sw(struct NineDevice9 *device)
             cb.user_buffer = NULL;
         }
 
-        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 4, &cb);
+        pipe_sw->set_constant_buffer(pipe_sw, PIPE_SHADER_VERTEX, 4, false, &cb);
         if (cb.buffer)
             pipe_resource_reference(&cb.buffer, NULL);
     }
