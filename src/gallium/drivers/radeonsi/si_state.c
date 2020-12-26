@@ -715,7 +715,6 @@ static void si_set_clip_state(struct pipe_context *ctx, const struct pipe_clip_s
    cb.buffer_offset = 0;
    cb.buffer_size = 4 * 4 * 8;
    si_set_rw_buffer(sctx, SI_VS_CONST_CLIP_PLANES, &cb);
-   pipe_resource_reference(&cb.buffer, NULL);
 }
 
 static void si_emit_clip_state(struct si_context *sctx)
@@ -4888,14 +4887,11 @@ static void si_set_tess_state(struct pipe_context *ctx, const float default_oute
    memcpy(array + 4, default_inner_level, sizeof(float) * 2);
 
    cb.buffer = NULL;
-   cb.user_buffer = NULL;
+   cb.user_buffer = array;
+   cb.buffer_offset = 0;
    cb.buffer_size = sizeof(array);
 
-   si_upload_const_buffer(sctx, (struct si_resource **)&cb.buffer, (void *)array, sizeof(array),
-                          &cb.buffer_offset);
-
    si_set_rw_buffer(sctx, SI_HS_CONST_DEFAULT_TESS_LEVELS, &cb);
-   pipe_resource_reference(&cb.buffer, NULL);
 }
 
 static void si_texture_barrier(struct pipe_context *ctx, unsigned flags)

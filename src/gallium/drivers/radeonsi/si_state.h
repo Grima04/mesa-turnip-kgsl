@@ -512,8 +512,6 @@ bool si_gfx_resources_check_encrypted(struct si_context *sctx);
 bool si_compute_resources_check_encrypted(struct si_context *sctx);
 void si_shader_pointers_mark_dirty(struct si_context *sctx);
 void si_add_all_descriptors_to_bo_list(struct si_context *sctx);
-void si_upload_const_buffer(struct si_context *sctx, struct si_resource **buf, const uint8_t *ptr,
-                            unsigned size, uint32_t *const_offset);
 void si_update_all_texture_descriptors(struct si_context *sctx);
 void si_shader_change_notify(struct si_context *sctx);
 void si_update_needs_color_decompress_masks(struct si_context *sctx);

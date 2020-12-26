@@ -1081,8 +1081,8 @@ static struct si_descriptors *si_const_and_shader_buffer_descriptors(struct si_c
    return &sctx->descriptors[si_const_and_shader_buffer_descriptors_idx(shader)];
 }
 
-void si_upload_const_buffer(struct si_context *sctx, struct si_resource **buf, const uint8_t *ptr,
-                            unsigned size, uint32_t *const_offset)
+static void si_upload_const_buffer(struct si_context *sctx, struct si_resource **buf,
+                                   const uint8_t *ptr, unsigned size, uint32_t *const_offset)
 {
    void *tmp;
 
