@@ -740,6 +740,73 @@ bi_promote_atom_c1(enum bi_atom_opc op, bi_index arg, enum bi_atom_opc *out)
         }
 }
 
+/* Coordinates are 16-bit integers in Bifrost but 32-bit in NIR */
+
+static bi_index
+bi_emit_image_coord(bi_builder *b, bi_index coord)
+{
+        return bi_mkvec_v2i16(b,
+                        bi_half(bi_word(coord, 0), false),
+                        bi_half(bi_word(coord, 1), false));
+}
+
+static void
+bi_emit_image_load(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
+        ASSERTED unsigned nr_dim = glsl_get_sampler_dim_coordinate_components(dim);
+
+        bi_index coords = bi_src_index(&instr->src[1]);
+        /* TODO: MSAA */
+        assert(nr_dim != GLSL_SAMPLER_DIM_MS && "MSAA'd images not supported");
+
+        bi_ld_attr_tex_to(b, bi_dest_index(&instr->dest),
+                          bi_emit_image_coord(b, coords),
+                          bi_emit_image_coord(b, bi_word(coords, 2)),
+                          bi_src_index(&instr->src[0]),
+                          bi_reg_fmt_for_nir(nir_intrinsic_dest_type(instr)),
+                          instr->num_components - 1);
+}
+
+static bi_index
+bi_emit_lea_image(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
+        ASSERTED unsigned nr_dim = glsl_get_sampler_dim_coordinate_components(dim);
+
+        /* TODO: MSAA */
+        assert(nr_dim != GLSL_SAMPLER_DIM_MS && "MSAA'd images not supported");
+
+        enum bi_register_format type = (instr->intrinsic == nir_intrinsic_image_store) ?
+                bi_reg_fmt_for_nir(nir_intrinsic_src_type(instr)) :
+                BI_REGISTER_FORMAT_AUTO;
+
+        bi_index coords = bi_src_index(&instr->src[1]);
+        bi_index xy = bi_emit_image_coord(b, coords);
+        bi_index zw = bi_emit_image_coord(b, bi_word(coords, 2));
+
+        bi_instr *I = bi_lea_attr_tex_to(b, bi_temp(b->shader), xy, zw,
+                        bi_src_index(&instr->src[0]), type);
+
+        /* LEA_ATTR_TEX defaults to the secondary attribute table, but our ABI
+         * has all images in the primary attribute table */
+        I->table = BI_TABLE_ATTRIBUTE_1;
+
+        return I->dest[0];
+}
+
+static void
+bi_emit_image_store(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        bi_index addr = bi_emit_lea_image(b, instr);
+
+        bi_st_cvt_to(b, bi_null(),
+                     bi_src_index(&instr->src[3]),
+                     addr, bi_word(addr, 1), bi_word(addr, 2),
+                     bi_reg_fmt_for_nir(nir_intrinsic_src_type(instr)),
+                     instr->num_components - 1);
+}
+
 static void
 bi_emit_atomic_i32_to(bi_builder *b, bi_index dst,
                 bi_index addr, bi_index arg, nir_op intrinsic)
@@ -929,6 +996,14 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                                 bi_src_index(&instr->src[0]),
                                 bi_src_index(&instr->src[1]),
                                 instr->intrinsic);
+                break;
+
+        case nir_intrinsic_image_load:
+                bi_emit_image_load(b, instr);
+                break;
+
+        case nir_intrinsic_image_store:
+                bi_emit_image_store(b, instr);
                 break;
 
         case nir_intrinsic_global_atomic_exchange:
