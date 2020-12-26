@@ -804,6 +804,12 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
       return VK_FORMAT_D32_SFLOAT_S8_UINT;
    }
 
+   if ((ret == VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT &&
+        !screen->info.format_4444_feats.formatA4B4G4R4) ||
+       (ret == VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT &&
+        !screen->info.format_4444_feats.formatA4R4G4B4))
+      return VK_FORMAT_UNDEFINED;
+
    return ret;
 }
 
