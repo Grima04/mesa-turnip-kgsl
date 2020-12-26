@@ -2848,6 +2848,8 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         NIR_PASS_V(nir, nir_lower_ssbo);
         NIR_PASS_V(nir, pan_nir_lower_zs_store);
 
+        NIR_PASS_V(nir, pan_nir_lower_64bit_intrin);
+
         /* Optimisation passes */
 
         optimise_nir(nir, ctx->quirks, inputs->is_blend);
