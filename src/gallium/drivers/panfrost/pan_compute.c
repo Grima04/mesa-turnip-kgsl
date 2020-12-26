@@ -32,6 +32,8 @@
 #include "pan_bo.h"
 #include "util/u_memory.h"
 #include "nir_serialize.h"
+#include "midgard/midgard_compile.h"
+#include "bifrost/bifrost_compile.h"
 
 /* Compute CSOs are tracked like graphics shader CSOs, but are
  * considerably simpler. We do not implement multiple
@@ -44,6 +46,7 @@ panfrost_create_compute_state(
         const struct pipe_compute_state *cso)
 {
         struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_device *dev = pan_device(pctx->screen);
 
         struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
         so->cbase = *cso;
@@ -60,7 +63,12 @@ panfrost_create_compute_state(
                 const struct pipe_binary_program_header *hdr = cso->prog;
 
                 blob_reader_init(&reader, hdr->blob, hdr->num_bytes);
-                so->cbase.prog = nir_deserialize(NULL, &midgard_nir_options, &reader);
+
+                const struct nir_shader_compiler_options *options =
+                        (dev->quirks & IS_BIFROST) ? &bifrost_nir_options
+                                                   : &midgard_nir_options;
+
+                so->cbase.prog = nir_deserialize(NULL, options, &reader);
                 so->cbase.ir_type = PIPE_SHADER_IR_NIR;
         }
 
