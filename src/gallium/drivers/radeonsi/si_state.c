@@ -4829,7 +4829,7 @@ static void si_delete_vertex_element(struct pipe_context *ctx, void *state)
 }
 
 static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot, unsigned count,
-                                  unsigned unbind_num_trailing_slots,
+                                  unsigned unbind_num_trailing_slots, bool take_ownership,
                                   const struct pipe_vertex_buffer *buffers)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -4842,22 +4842,43 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
    assert(start_slot + count + unbind_num_trailing_slots <= ARRAY_SIZE(sctx->vertex_buffer));
 
    if (buffers) {
-      for (i = 0; i < count; i++) {
-         const struct pipe_vertex_buffer *src = buffers + i;
-         struct pipe_vertex_buffer *dsti = dst + i;
-         struct pipe_resource *buf = src->buffer.resource;
-         unsigned slot_bit = 1 << (start_slot + i);
+      if (take_ownership) {
+         for (i = 0; i < count; i++) {
+            const struct pipe_vertex_buffer *src = buffers + i;
+            struct pipe_vertex_buffer *dsti = dst + i;
+            struct pipe_resource *buf = src->buffer.resource;
+            unsigned slot_bit = 1 << (start_slot + i);
 
-         pipe_resource_reference(&dsti->buffer.resource, buf);
-         dsti->buffer_offset = src->buffer_offset;
-         dsti->stride = src->stride;
+            /* Only unreference bound vertex buffers. (take_ownership) */
+            pipe_resource_reference(&dsti->buffer.resource, NULL);
 
-         if (dsti->buffer_offset & 3 || dsti->stride & 3)
-            unaligned |= slot_bit;
+            if (src->buffer_offset & 3 || src->stride & 3)
+               unaligned |= slot_bit;
 
-         si_context_add_resource_size(sctx, buf);
-         if (buf)
-            si_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+            si_context_add_resource_size(sctx, buf);
+            if (buf)
+               si_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+         }
+         /* take_ownership allows us to copy pipe_resource pointers without refcounting. */
+         memcpy(dst, buffers, count * sizeof(struct pipe_vertex_buffer));
+      } else {
+         for (i = 0; i < count; i++) {
+            const struct pipe_vertex_buffer *src = buffers + i;
+            struct pipe_vertex_buffer *dsti = dst + i;
+            struct pipe_resource *buf = src->buffer.resource;
+            unsigned slot_bit = 1 << (start_slot + i);
+
+            pipe_resource_reference(&dsti->buffer.resource, buf);
+            dsti->buffer_offset = src->buffer_offset;
+            dsti->stride = src->stride;
+
+            if (dsti->buffer_offset & 3 || dsti->stride & 3)
+               unaligned |= slot_bit;
+
+            si_context_add_resource_size(sctx, buf);
+            if (buf)
+               si_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+         }
       }
    } else {
       for (i = 0; i < count; i++)

@@ -78,6 +78,7 @@ static void
 llvmpipe_set_vertex_buffers(struct pipe_context *pipe,
                             unsigned start_slot, unsigned count,
                             unsigned unbind_num_trailing_slots,
+                            bool take_ownership,
                             const struct pipe_vertex_buffer *buffers)
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
@@ -87,7 +88,8 @@ llvmpipe_set_vertex_buffers(struct pipe_context *pipe,
    util_set_vertex_buffers_count(llvmpipe->vertex_buffer,
                                  &llvmpipe->num_vertex_buffers,
                                  buffers, start_slot, count,
-                                 unbind_num_trailing_slots);
+                                 unbind_num_trailing_slots,
+                                 take_ownership);
 
    llvmpipe->dirty |= LP_NEW_VERTEX;
 

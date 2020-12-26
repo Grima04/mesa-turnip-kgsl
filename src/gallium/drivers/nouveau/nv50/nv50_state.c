@@ -1077,6 +1077,7 @@ static void
 nv50_set_vertex_buffers(struct pipe_context *pipe,
                         unsigned start_slot, unsigned count,
                         unsigned unbind_num_trailing_slots,
+                        bool take_ownership,
                         const struct pipe_vertex_buffer *vb)
 {
    struct nv50_context *nv50 = nv50_context(pipe);
@@ -1087,7 +1088,8 @@ nv50_set_vertex_buffers(struct pipe_context *pipe,
 
    util_set_vertex_buffers_count(nv50->vtxbuf, &nv50->num_vtxbufs, vb,
                                  start_slot, count,
-                                 unbind_num_trailing_slots);
+                                 unbind_num_trailing_slots,
+                                 take_ownership);
 
    if (!vb) {
       nv50->vbo_user &= ~(((1ull << count) - 1) << start_slot);

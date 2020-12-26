@@ -185,6 +185,7 @@ static void
 lima_set_vertex_buffers(struct pipe_context *pctx,
                         unsigned start_slot, unsigned count,
                         unsigned unbind_num_trailing_slots,
+                        bool take_ownership,
                         const struct pipe_vertex_buffer *vb)
 {
    struct lima_context *ctx = lima_context(pctx);
@@ -192,7 +193,8 @@ lima_set_vertex_buffers(struct pipe_context *pctx,
 
    util_set_vertex_buffers_mask(so->vb, &so->enabled_mask,
                                 vb, start_slot, count,
-                                unbind_num_trailing_slots);
+                                unbind_num_trailing_slots,
+                                take_ownership);
    so->count = util_last_bit(so->enabled_mask);
 
    ctx->dirty |= LIMA_CONTEXT_DIRTY_VERTEX_BUFF;
@@ -448,7 +450,7 @@ lima_state_fini(struct lima_context *ctx)
    struct lima_context_vertex_buffer *so = &ctx->vertex_buffers;
 
    util_set_vertex_buffers_mask(so->vb, &so->enabled_mask, NULL,
-                                0, 0, ARRAY_SIZE(so->vb));
+                                0, 0, ARRAY_SIZE(so->vb), false);
 
    pipe_surface_reference(&ctx->framebuffer.base.cbufs[0], NULL);
    pipe_surface_reference(&ctx->framebuffer.base.zsbuf, NULL);

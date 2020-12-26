@@ -515,10 +515,22 @@ struct pipe_context {
                              unsigned unbind_num_trailing_slots,
                              const struct pipe_image_view *images);
 
+   /**
+    * Bind an array of vertex buffers to the specified slots.
+    *
+    * \param start_slot      first vertex buffer slot
+    * \param count           number of consecutive vertex buffers to bind.
+    * \param unbind_num_trailing_slots  unbind slots after the bound slots
+    * \param take_ownership the caller holds buffer references and they
+    *                        should be taken over by the callee. This means
+    *                        that drivers shouldn't increment reference counts.
+    * \param buffers         array of the buffers to bind
+    */
    void (*set_vertex_buffers)( struct pipe_context *,
                                unsigned start_slot,
                                unsigned num_buffers,
                                unsigned unbind_num_trailing_slots,
+                               bool take_ownership,
                                const struct pipe_vertex_buffer * );
 
    /*@}*/

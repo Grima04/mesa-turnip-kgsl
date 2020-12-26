@@ -717,7 +717,7 @@ vl_compositor_gfx_render(struct vl_compositor_state *s,
 
    c->pipe->set_framebuffer_state(c->pipe, &c->fb_state);
    c->pipe->bind_vs_state(c->pipe, c->vs);
-   c->pipe->set_vertex_buffers(c->pipe, 0, 1, 0, &c->vertex_buf);
+   c->pipe->set_vertex_buffers(c->pipe, 0, 1, 0, false, &c->vertex_buf);
    c->pipe->bind_vertex_elements_state(c->pipe, c->vertex_elems_state);
    pipe_set_constant_buffer(c->pipe, PIPE_SHADER_FRAGMENT, 0, s->shader_params);
    c->pipe->bind_rasterizer_state(c->pipe, c->rast);

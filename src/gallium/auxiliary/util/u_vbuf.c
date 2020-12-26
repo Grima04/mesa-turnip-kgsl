@@ -391,7 +391,7 @@ void u_vbuf_destroy(struct u_vbuf *mgr)
    const unsigned num_vb = screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
                                                     PIPE_SHADER_CAP_MAX_INPUTS);
 
-   mgr->pipe->set_vertex_buffers(mgr->pipe, 0, 0, num_vb, NULL);
+   mgr->pipe->set_vertex_buffers(mgr->pipe, 0, 0, num_vb, false, NULL);
 
    for (i = 0; i < PIPE_MAX_ATTRIBS; i++)
       pipe_vertex_buffer_unreference(&mgr->vertex_buffer[i]);
@@ -912,7 +912,7 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
       }
 
       pipe->set_vertex_buffers(pipe, start_slot, count,
-                               unbind_num_trailing_slots, NULL);
+                               unbind_num_trailing_slots, false, NULL);
       return;
    }
 
@@ -1262,7 +1262,7 @@ static void u_vbuf_set_driver_vertex_buffers(struct u_vbuf *mgr)
    start_slot = ffs(mgr->dirty_real_vb_mask) - 1;
    count = util_last_bit(mgr->dirty_real_vb_mask >> start_slot);
 
-   pipe->set_vertex_buffers(pipe, start_slot, count, 0,
+   pipe->set_vertex_buffers(pipe, start_slot, count, 0, false,
                             mgr->real_vertex_buffer + start_slot);
    mgr->dirty_real_vb_mask = 0;
 }

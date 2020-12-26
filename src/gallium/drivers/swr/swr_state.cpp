@@ -670,6 +670,7 @@ swr_set_vertex_buffers(struct pipe_context *pipe,
                        unsigned start_slot,
                        unsigned num_elements,
                        unsigned unbind_num_trailing_slots,
+                       bool take_ownership,
                        const struct pipe_vertex_buffer *buffers)
 {
    struct swr_context *ctx = swr_context(pipe);
@@ -681,7 +682,8 @@ swr_set_vertex_buffers(struct pipe_context *pipe,
                                  buffers,
                                  start_slot,
                                  num_elements,
-                                 unbind_num_trailing_slots);
+                                 unbind_num_trailing_slots,
+                                 take_ownership);
 
    ctx->dirty |= SWR_NEW_VERTEX;
 }

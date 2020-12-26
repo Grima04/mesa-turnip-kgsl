@@ -607,7 +607,7 @@ done:
 
    /* Unbind resources that we have bound. */
    pipe->set_constant_buffer(pipe, PIPE_SHADER_VERTEX, 0, false, NULL);
-   pipe->set_vertex_buffers(pipe, 0, 0, 1, NULL);
+   pipe->set_vertex_buffers(pipe, 0, 0, 1, false, NULL);
    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0, 1, NULL);
 
    /* restore states not restored by cso */

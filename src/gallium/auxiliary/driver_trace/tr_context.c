@@ -1025,6 +1025,7 @@ static void
 trace_context_set_vertex_buffers(struct pipe_context *_pipe,
                                  unsigned start_slot, unsigned num_buffers,
                                  unsigned unbind_num_trailing_slots,
+                                 bool take_ownership,
                                  const struct pipe_vertex_buffer *buffers)
 {
    struct trace_context *tr_ctx = trace_context(_pipe);
@@ -1036,13 +1037,15 @@ trace_context_set_vertex_buffers(struct pipe_context *_pipe,
    trace_dump_arg(uint, start_slot);
    trace_dump_arg(uint, num_buffers);
    trace_dump_arg(uint, unbind_num_trailing_slots);
+   trace_dump_arg(bool, take_ownership);
 
    trace_dump_arg_begin("buffers");
    trace_dump_struct_array(vertex_buffer, buffers, num_buffers);
    trace_dump_arg_end();
 
    pipe->set_vertex_buffers(pipe, start_slot, num_buffers,
-                            unbind_num_trailing_slots, buffers);
+                            unbind_num_trailing_slots, take_ownership,
+                            buffers);
 
    trace_dump_call_end();
 }

@@ -61,7 +61,7 @@ static void set_vertices(void)
                                               sizeof(vertices),
                                               vertices);
 
-   info.ctx->set_vertex_buffers(info.ctx, 0, 1, 0, &vbuf);
+   info.ctx->set_vertex_buffers(info.ctx, 0, 1, 0, false, &vbuf);
 }
 
 static void set_vertex_shader(void)

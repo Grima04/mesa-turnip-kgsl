@@ -419,7 +419,7 @@ draw_set_vertex_buffers(struct draw_context *draw,
    util_set_vertex_buffers_count(draw->pt.vertex_buffer,
                                  &draw->pt.nr_vertex_buffers,
                                  buffers, start_slot, count,
-                                 unbind_num_trailing_slots);
+                                 unbind_num_trailing_slots, false);
 }
 
 

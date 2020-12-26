@@ -463,7 +463,7 @@ vl_deint_filter_render(struct vl_deint_filter *filter,
 
    /* set up pipe state */
    filter->pipe->bind_rasterizer_state(filter->pipe, filter->rs_state);
-   filter->pipe->set_vertex_buffers(filter->pipe, 0, 1, 0, &filter->quad);
+   filter->pipe->set_vertex_buffers(filter->pipe, 0, 1, 0, false, &filter->quad);
    filter->pipe->bind_vertex_elements_state(filter->pipe, filter->ves);
    filter->pipe->bind_vs_state(filter->pipe, filter->vs);
    filter->pipe->bind_sampler_states(filter->pipe, PIPE_SHADER_FRAGMENT,

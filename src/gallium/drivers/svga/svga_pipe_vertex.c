@@ -44,6 +44,7 @@ static void
 svga_set_vertex_buffers(struct pipe_context *pipe,
                         unsigned start_slot, unsigned count,
                         unsigned unbind_num_trailing_slots,
+                        bool take_ownership,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct svga_context *svga = svga_context(pipe);
@@ -51,7 +52,8 @@ svga_set_vertex_buffers(struct pipe_context *pipe,
    util_set_vertex_buffers_count(svga->curr.vb,
                                  &svga->curr.num_vertex_buffers,
                                  buffers, start_slot, count,
-                                 unbind_num_trailing_slots);
+                                 unbind_num_trailing_slots,
+                                 take_ownership);
 
    svga->dirty |= SVGA_NEW_VBUFFER;
 }
