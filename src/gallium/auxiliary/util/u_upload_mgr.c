@@ -54,6 +54,7 @@ struct u_upload_mgr {
    unsigned buffer_size; /* Same as buffer->width0. */
    unsigned offset; /* Aligned offset to the upload buffer, pointing
                      * at the first unused byte. */
+   int buffer_private_refcount;
 };
 
 
@@ -151,6 +152,15 @@ u_upload_release_buffer(struct u_upload_mgr *upload)
 {
    /* Unmap and unreference the upload buffer. */
    upload_unmap_internal(upload, TRUE);
+   if (upload->buffer_private_refcount) {
+      /* Subtract the remaining private references before unreferencing
+       * the buffer. The mega comment below explains it.
+       */
+      assert(upload->buffer_private_refcount > 0);
+      p_atomic_add(&upload->buffer->reference.count,
+                   -upload->buffer_private_refcount);
+      upload->buffer_private_refcount = 0;
+   }
    pipe_resource_reference(&upload->buffer, NULL);
    upload->buffer_size = 0;
 }
@@ -199,13 +209,35 @@ u_upload_alloc_buffer(struct u_upload_mgr *upload, unsigned min_size)
    if (upload->buffer == NULL)
       return 0;
 
+   /* Since atomic operations are very very slow when 2 threads are not
+    * sharing the same L3 cache (which happens on AMD Zen), eliminate all
+    * atomics in u_upload_alloc as follows:
+    *
+    * u_upload_alloc has to return a buffer reference to the caller.
+    * Instead of atomic_inc for every call, it does all possible future
+    * increments in advance here. The maximum number of times u_upload_alloc
+    * can be called per upload buffer is "size", because the minimum
+    * allocation size is 1, thus u_upload_alloc can only return "size" number
+    * of suballocations at most, so we will never need more. This is
+    * the number that is added to reference.count here.
+    *
+    * buffer_private_refcount tracks how many buffer references we can return
+    * without using atomics. If the buffer is full and there are still
+    * references left, they are atomically subtracted from reference.count
+    * before the buffer is unreferenced.
+    *
+    * This technique can increase CPU performance by 10%.
+    */
+   assert(size < INT32_MAX / 2); /* prevent overflows of reference.count */
+   p_atomic_add(&upload->buffer->reference.count, size);
+   upload->buffer_private_refcount = size;
+
    /* Map the new buffer. */
    upload->map = pipe_buffer_map_range(upload->pipe, upload->buffer,
                                        0, size, upload->map_flags,
                                        &upload->transfer);
    if (upload->map == NULL) {
-      upload->transfer = NULL;
-      pipe_resource_reference(&upload->buffer, NULL);
+      u_upload_release_buffer(upload);
       return 0;
    }
 
@@ -267,8 +299,13 @@ u_upload_alloc(struct u_upload_mgr *upload,
 
    /* Emit the return values: */
    *ptr = upload->map + offset;
-   pipe_resource_reference(outbuf, upload->buffer);
    *out_offset = offset;
+
+   if (*outbuf != upload->buffer) {
+      pipe_resource_reference(outbuf, NULL);
+      *outbuf = upload->buffer;
+      upload->buffer_private_refcount--;
+   }
 
    upload->offset = offset + size;
 }
