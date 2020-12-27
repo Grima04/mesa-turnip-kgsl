@@ -904,10 +904,11 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 }
 
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
-static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_draw_info *info,
+static void si_emit_draw_registers(struct si_context *sctx,
                                    const struct pipe_draw_indirect_info *indirect,
                                    enum pipe_prim_type prim, unsigned num_patches,
-                                   unsigned instance_count, bool primitive_restart,
+                                   unsigned instance_count, ubyte vertices_per_patch,
+                                   bool primitive_restart, unsigned restart_index,
                                    unsigned min_vertex_count)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
@@ -917,7 +918,7 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
    else
       si_emit_ia_multi_vgt_param<GFX_VERSION, HAS_TESS, HAS_GS>
          (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
-          min_vertex_count, info->vertices_per_patch);
+          min_vertex_count, vertices_per_patch);
 
    if (prim != sctx->last_prim) {
       unsigned vgt_prim = si_conv_pipe_prim(prim);
@@ -941,9 +942,9 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
 
       sctx->last_primitive_restart_en = primitive_restart;
    }
-   if (si_prim_restart_index_changed(sctx, primitive_restart, info->restart_index)) {
-      radeon_set_context_reg(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, info->restart_index);
-      sctx->last_restart_index = info->restart_index;
+   if (si_prim_restart_index_changed(sctx, primitive_restart, restart_index)) {
+      radeon_set_context_reg(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, restart_index);
+      sctx->last_restart_index = restart_index;
       sctx->context_roll = true;
    }
 }
@@ -1503,8 +1504,8 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
    /* Emit draw states. */
    si_emit_vs_state(sctx, info->index_size);
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG>
-         (sctx, info, indirect, prim, num_patches, instance_count, primitive_restart,
-          min_vertex_count);
+         (sctx, indirect, prim, num_patches, instance_count, info->vertices_per_patch,
+          primitive_restart, info->restart_index, min_vertex_count);
 }
 
 static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_resource *indexbuf)
