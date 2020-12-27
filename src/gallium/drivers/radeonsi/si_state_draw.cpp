@@ -781,7 +781,6 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
                                    unsigned min_vertex_count)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   unsigned vgt_prim = si_conv_pipe_prim(prim);
 
    if (GFX_VERSION >= GFX10)
       gfx10_emit_ge_cntl<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, num_patches);
@@ -790,7 +789,9 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
          (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
           min_vertex_count, info->vertices_per_patch);
 
-   if (vgt_prim != sctx->last_prim) {
+   if (prim != sctx->last_prim) {
+      unsigned vgt_prim = si_conv_pipe_prim(prim);
+
       if (GFX_VERSION >= GFX10)
          radeon_set_uconfig_reg(cs, R_030908_VGT_PRIMITIVE_TYPE, vgt_prim);
       else if (GFX_VERSION >= GFX7)
@@ -798,7 +799,7 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
       else
          radeon_set_config_reg(cs, R_008958_VGT_PRIMITIVE_TYPE, vgt_prim);
 
-      sctx->last_prim = vgt_prim;
+      sctx->last_prim = prim;
    }
 
    /* Primitive restart. */
