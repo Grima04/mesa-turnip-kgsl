@@ -66,7 +66,8 @@ static unsigned si_conv_pipe_prim(unsigned mode)
  * The information about LDS and other non-compile-time parameters is then
  * written to userdata SGPRs.
  */
-static void si_emit_derived_tess_state(struct si_context *sctx, const struct pipe_draw_info *info,
+static void si_emit_derived_tess_state(struct si_context *sctx,
+                                       ubyte vertices_per_patch,
                                        unsigned *num_patches)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
@@ -79,7 +80,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    unsigned tess_uses_primid = sctx->ia_multi_vgt_param_key.u.tess_uses_prim_id;
    bool has_primid_instancing_bug = sctx->chip_class == GFX6 && sctx->screen->info.max_se == 1;
    unsigned tes_sh_base = sctx->shader_pointers.sh_base[PIPE_SHADER_TESS_EVAL];
-   unsigned num_tcs_input_cp = info->vertices_per_patch;
+   unsigned num_tcs_input_cp = vertices_per_patch;
    unsigned num_tcs_output_cp, num_tcs_inputs, num_tcs_outputs;
    unsigned num_tcs_patch_outputs;
    unsigned input_vertex_size, output_vertex_size, pervertex_output_patch_size;
@@ -1347,7 +1348,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 
    si_emit_rasterizer_prim_state<HAS_GS, NGG>(sctx);
    if (HAS_TESS)
-      si_emit_derived_tess_state(sctx, info, &num_patches);
+      si_emit_derived_tess_state(sctx, info->vertices_per_patch, &num_patches);
 
    /* Emit state atoms. */
    unsigned mask = sctx->dirty_atoms & ~skip_atom_mask;
