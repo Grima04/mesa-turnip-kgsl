@@ -648,11 +648,11 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 }
 
 ALWAYS_INLINE
-static void si_emit_vs_state(struct si_context *sctx, const struct pipe_draw_info *info)
+static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
 {
    if (sctx->vs_shader.cso->info.uses_base_vertex) {
       sctx->current_vs_state &= C_VS_STATE_INDEXED;
-      sctx->current_vs_state |= S_VS_STATE_INDEXED(!!info->index_size);
+      sctx->current_vs_state |= S_VS_STATE_INDEXED(!!index_size);
    }
 
    if (sctx->num_vs_blit_sgprs) {
@@ -1369,7 +1369,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
    sctx->dirty_states = 0;
 
    /* Emit draw states. */
-   si_emit_vs_state(sctx, info);
+   si_emit_vs_state(sctx, info->index_size);
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG>
          (sctx, info, indirect, prim, num_patches, instance_count, primitive_restart,
           min_vertex_count);
