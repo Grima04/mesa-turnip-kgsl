@@ -1648,7 +1648,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
    bool dispatch_prim_discard_cs = false;
    bool prim_discard_cs_instancing = false;
    unsigned original_index_size = index_size;
-   unsigned avg_direct_count = 0;
    unsigned min_direct_count = 0;
    unsigned total_direct_count = 0;
 
@@ -1678,12 +1677,11 @@ static void si_draw_vbo(struct pipe_context *ctx,
          total_direct_count += count;
          min_direct_count = MIN2(min_direct_count, count);
       }
-      avg_direct_count = (total_direct_count / num_draws) * instance_count;
    }
 
    /* Determine if we can use the primitive discard compute shader. */
    if (ALLOW_PRIM_DISCARD_CS &&
-       (avg_direct_count > sctx->prim_discard_vertex_count_threshold
+       (total_direct_count > sctx->prim_discard_vertex_count_threshold
            ? (sctx->compute_num_verts_rejected += total_direct_count, true)
            : /* Add, then return true. */
            (sctx->compute_num_verts_ineligible += total_direct_count,
@@ -1769,9 +1767,9 @@ static void si_draw_vbo(struct pipe_context *ctx,
       struct si_shader_selector *hw_vs;
       if (NGG && !dispatch_prim_discard_cs && rast_prim == PIPE_PRIM_TRIANGLES &&
           (hw_vs = si_get_vs(sctx)->cso) &&
-          (avg_direct_count > hw_vs->ngg_cull_vert_threshold ||
+          (total_direct_count > hw_vs->ngg_cull_vert_threshold ||
            (!index_size &&
-            avg_direct_count > hw_vs->ngg_cull_nonindexed_fast_launch_vert_threshold &&
+            total_direct_count > hw_vs->ngg_cull_nonindexed_fast_launch_vert_threshold &&
             prim & ((1 << PIPE_PRIM_TRIANGLES) |
                     (1 << PIPE_PRIM_TRIANGLE_STRIP))))) {
          uint8_t ngg_culling = 0;
