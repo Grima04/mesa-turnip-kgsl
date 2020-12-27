@@ -506,29 +506,28 @@ static bool si_is_line_stipple_enabled(struct si_context *sctx)
           (rs->polygon_mode_is_lines || util_prim_is_lines(sctx->current_rast_prim));
 }
 
-static bool num_instanced_prims_less_than(const struct pipe_draw_info *info,
-                                          const struct pipe_draw_indirect_info *indirect,
+static bool num_instanced_prims_less_than(const struct pipe_draw_indirect_info *indirect,
                                           enum pipe_prim_type prim,
                                           unsigned min_vertex_count,
                                           unsigned instance_count,
-                                          unsigned num_prims)
+                                          unsigned num_prims,
+                                          ubyte vertices_per_patch)
 {
    if (indirect) {
       return indirect->buffer ||
              (instance_count > 1 && indirect->count_from_stream_output);
    } else {
       return instance_count > 1 &&
-             si_num_prims_for_vertices(prim, min_vertex_count, info->vertices_per_patch) < num_prims;
+             si_num_prims_for_vertices(prim, min_vertex_count, vertices_per_patch) < num_prims;
    }
 }
 
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS> ALWAYS_INLINE
 static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
-                                          const struct pipe_draw_info *info,
                                           const struct pipe_draw_indirect_info *indirect,
                                           enum pipe_prim_type prim, unsigned num_patches,
                                           unsigned instance_count, bool primitive_restart,
-                                          unsigned min_vertex_count)
+                                          unsigned min_vertex_count, ubyte vertices_per_patch)
 {
    union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
    unsigned primgroup_size;
@@ -545,7 +544,8 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
    key.u.prim = prim;
    key.u.uses_instancing = (indirect && indirect->buffer) || instance_count > 1;
    key.u.multi_instances_smaller_than_primgroup =
-      num_instanced_prims_less_than(info, indirect, prim, min_vertex_count, instance_count, primgroup_size);
+      num_instanced_prims_less_than(indirect, prim, min_vertex_count, instance_count,
+                                    primgroup_size, vertices_per_patch);
    key.u.primitive_restart = primitive_restart;
    key.u.count_from_stream_output = indirect && indirect->count_from_stream_output;
    key.u.line_stipple_enabled = si_is_line_stipple_enabled(sctx);
@@ -565,7 +565,8 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
        */
       if (GFX_VERSION == GFX7 &&
           sctx->family == CHIP_HAWAII && G_028AA8_SWITCH_ON_EOI(ia_multi_vgt_param) &&
-          num_instanced_prims_less_than(info, indirect, prim, min_vertex_count, instance_count, 2))
+          num_instanced_prims_less_than(indirect, prim, min_vertex_count, instance_count, 2,
+                                        vertices_per_patch))
          sctx->flags |= SI_CONTEXT_VGT_FLUSH;
    }
 
@@ -699,19 +700,19 @@ static bool si_prim_restart_index_changed(struct si_context *sctx, bool primitiv
 }
 
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS> ALWAYS_INLINE
-static void si_emit_ia_multi_vgt_param(struct si_context *sctx, const struct pipe_draw_info *info,
+static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
                                        const struct pipe_draw_indirect_info *indirect,
                                        enum pipe_prim_type prim, unsigned num_patches,
                                        unsigned instance_count, bool primitive_restart,
-                                       unsigned min_vertex_count)
+                                       unsigned min_vertex_count, ubyte vertices_per_patch)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned ia_multi_vgt_param;
 
    ia_multi_vgt_param =
       si_get_ia_multi_vgt_param<GFX_VERSION, HAS_TESS, HAS_GS>
-         (sctx, info, indirect, prim, num_patches, instance_count, primitive_restart,
-          min_vertex_count);
+         (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
+          min_vertex_count, vertices_per_patch);
 
    /* Draw state. */
    if (ia_multi_vgt_param != sctx->last_multi_vgt_param) {
@@ -786,8 +787,8 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
       gfx10_emit_ge_cntl<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, num_patches);
    else
       si_emit_ia_multi_vgt_param<GFX_VERSION, HAS_TESS, HAS_GS>
-         (sctx, info, indirect, prim, num_patches, instance_count, primitive_restart,
-          min_vertex_count);
+         (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
+          min_vertex_count, info->vertices_per_patch);
 
    if (vgt_prim != sctx->last_prim) {
       if (GFX_VERSION >= GFX10)
