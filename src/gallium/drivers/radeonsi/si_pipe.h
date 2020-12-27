@@ -1450,6 +1450,10 @@ void si_allocate_gds(struct si_context *ctx);
 void si_set_tracked_regs_to_clear_state(struct si_context *ctx);
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs);
 void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_draws);
+void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,
+                          unsigned cp_coher_cntl);
+void gfx10_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
+void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
 
 /* si_gpu_load.c */
 void si_gpu_load_kill_thread(struct si_screen *sscreen);
