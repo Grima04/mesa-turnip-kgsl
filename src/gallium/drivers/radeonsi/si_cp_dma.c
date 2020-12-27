@@ -399,6 +399,44 @@ void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
    }
 }
 
+void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
+                        unsigned offset, unsigned size)
+{
+   uint64_t address = si_resource(buf)->gpu_address + offset;
+
+   assert(sctx->chip_class >= GFX7);
+
+   /* The prefetch address and size must be aligned, so that we don't have to apply
+    * the complicated hw bug workaround.
+    *
+    * The size should also be less than 2 MB, so that we don't have to use a loop.
+    * Callers shouldn't need to prefetch more than 2 MB.
+    */
+   assert(size % SI_CPDMA_ALIGNMENT == 0);
+   assert(address % SI_CPDMA_ALIGNMENT == 0);
+   assert(size < S_414_BYTE_COUNT_GFX6(~0u));
+
+   uint32_t header = S_411_SRC_SEL(V_411_SRC_ADDR_TC_L2);
+   uint32_t command = S_414_BYTE_COUNT_GFX6(size);
+
+   if (sctx->chip_class >= GFX9) {
+      command |= S_414_DISABLE_WR_CONFIRM_GFX9(1);
+      header |= S_411_DST_SEL(V_411_NOWHERE);
+   } else {
+      command |= S_414_DISABLE_WR_CONFIRM_GFX6(1);
+      header |= S_411_DST_SEL(V_411_DST_ADDR_TC_L2);
+   }
+
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+   radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, 0));
+   radeon_emit(cs, header);
+   radeon_emit(cs, address);       /* SRC_ADDR_LO [31:0] */
+   radeon_emit(cs, address >> 32); /* SRC_ADDR_HI [31:0] */
+   radeon_emit(cs, address);       /* DST_ADDR_LO [31:0] */
+   radeon_emit(cs, address >> 32); /* DST_ADDR_HI [31:0] */
+   radeon_emit(cs, command);
+}
+
 void si_test_gds(struct si_context *sctx)
 {
    struct pipe_context *ctx = &sctx->b;

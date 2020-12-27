@@ -587,8 +587,6 @@ unsigned si_get_input_prim(const struct si_shader_selector *gs);
 bool si_update_ngg(struct si_context *sctx);
 
 /* si_state_draw.c */
-void cik_prefetch_TC_L2_async(struct si_context *sctx, struct pipe_resource *buf, uint64_t offset,
-                              unsigned size);
 void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx);
 void si_trace_emit(struct si_context *sctx);
 void si_init_draw_functions(struct si_context *sctx);

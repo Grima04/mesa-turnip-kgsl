@@ -59,20 +59,11 @@ static unsigned si_conv_pipe_prim(unsigned mode)
    return prim_conv[mode];
 }
 
-void cik_prefetch_TC_L2_async(struct si_context *sctx, struct pipe_resource *buf, uint64_t offset,
-                              unsigned size)
-{
-   assert(sctx->chip_class >= GFX7);
-
-   si_cp_dma_copy_buffer(sctx, buf, buf, offset, offset, size, SI_CPDMA_SKIP_ALL,
-                         SI_COHERENCY_SHADER, L2_LRU);
-}
-
 static void si_prefetch_shader_async(struct si_context *sctx, struct si_pm4_state *state)
 {
    struct pipe_resource *bo = &state->shader->bo->b.b;
 
-   cik_prefetch_TC_L2_async(sctx, bo, 0, bo->width0);
+   si_cp_dma_prefetch(sctx, bo, 0, bo->width0);
 }
 
 static void si_prefetch_VBO_descriptors(struct si_context *sctx)
@@ -80,7 +71,7 @@ static void si_prefetch_VBO_descriptors(struct si_context *sctx)
    if (!sctx->vertex_elements || !sctx->vertex_elements->vb_desc_list_alloc_size)
       return;
 
-   cik_prefetch_TC_L2_async(sctx, &sctx->vb_descriptors_buffer->b.b, sctx->vb_descriptors_offset,
+   si_cp_dma_prefetch(sctx, &sctx->vb_descriptors_buffer->b.b, sctx->vb_descriptors_offset,
                             sctx->vertex_elements->vb_desc_list_alloc_size);
 }
 

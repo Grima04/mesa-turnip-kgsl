@@ -1401,6 +1401,8 @@ void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
                            struct pipe_resource *src, uint64_t dst_offset, uint64_t src_offset,
                            unsigned size, unsigned user_flags, enum si_coherency coher,
                            enum si_cache_policy cache_policy);
+void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
+                        unsigned offset, unsigned size);
 void si_test_gds(struct si_context *sctx);
 void si_cp_write_data(struct si_context *sctx, struct si_resource *buf, unsigned offset,
                       unsigned size, unsigned dst_sel, unsigned engine, const void *data);
