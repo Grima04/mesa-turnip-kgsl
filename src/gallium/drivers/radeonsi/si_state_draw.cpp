@@ -341,7 +341,8 @@ static unsigned si_num_prims_for_vertices(enum pipe_prim_type prim,
    case PIPE_PRIM_PATCHES:
       return count / vertices_per_patch;
    case PIPE_PRIM_POLYGON:
-      return count >= 3;
+      /* It's a triangle fan with different edge flags. */
+      return count >= 3 ? count - 2 : 0;
    case SI_PRIM_RECTANGLE_LIST:
       return count / 3;
    default:
