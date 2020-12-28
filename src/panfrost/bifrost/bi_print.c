@@ -67,11 +67,11 @@ bi_print_slots(bi_registers *regs, FILE *fp)
 void
 bi_print_bundle(bi_bundle *bundle, FILE *fp)
 {
-        bi_instruction *ins[2] = { bundle->fma, bundle->add };
+        bi_instr *ins[2] = { bundle->fma, bundle->add };
 
         for (unsigned i = 0; i < 2; ++i) {
                 if (ins[i])
-                        bi_print_instr((bi_instr *) ins[i], fp);
+                        bi_print_instr(ins[i], fp);
                 else
                         fprintf(fp, "nop\n");
         }

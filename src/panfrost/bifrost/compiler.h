@@ -712,8 +712,8 @@ typedef struct {
 typedef struct {
         uint8_t fau_idx;
         bi_registers regs;
-        bi_instruction *fma;
-        bi_instruction *add;
+        bi_instr *fma;
+        bi_instr *add;
 } bi_bundle;
 
 struct bi_block;
@@ -824,7 +824,7 @@ typedef struct {
 } bi_context;
 
 static inline void
-bi_remove_instruction(bi_instruction *ins)
+bi_remove_instruction(bi_instr *ins)
 {
         list_del(&ins->link);
 }
@@ -969,22 +969,22 @@ bi_node_to_index(unsigned node, unsigned node_count)
         list_for_each_entry_from_rev(pan_block, v, from, &ctx->blocks, link)
 
 #define bi_foreach_instr_in_block(block, v) \
-        list_for_each_entry(bi_instruction, v, &(block)->base.instructions, link)
+        list_for_each_entry(bi_instr, v, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_rev(block, v) \
-        list_for_each_entry_rev(bi_instruction, v, &(block)->base.instructions, link)
+        list_for_each_entry_rev(bi_instr, v, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_safe(block, v) \
-        list_for_each_entry_safe(bi_instruction, v, &(block)->base.instructions, link)
+        list_for_each_entry_safe(bi_instr, v, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_safe_rev(block, v) \
-        list_for_each_entry_safe_rev(bi_instruction, v, &(block)->base.instructions, link)
+        list_for_each_entry_safe_rev(bi_instr, v, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_from(block, v, from) \
-        list_for_each_entry_from(bi_instruction, v, from, &(block)->base.instructions, link)
+        list_for_each_entry_from(bi_instr, v, from, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_from_rev(block, v, from) \
-        list_for_each_entry_from_rev(bi_instruction, v, from, &(block)->base.instructions, link)
+        list_for_each_entry_from_rev(bi_instr, v, from, &(block)->base.instructions, link)
 
 #define bi_foreach_clause_in_block(block, v) \
         list_for_each_entry(bi_clause, v, &(block)->clauses, link)
@@ -1020,16 +1020,16 @@ bi_node_to_index(unsigned node, unsigned node_count)
 #define bi_foreach_src(ins, v) \
         for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
 
-static inline bi_instruction *
-bi_prev_op(bi_instruction *ins)
+static inline bi_instr *
+bi_prev_op(bi_instr *ins)
 {
-        return list_last_entry(&(ins->link), bi_instruction, link);
+        return list_last_entry(&(ins->link), bi_instr, link);
 }
 
-static inline bi_instruction *
-bi_next_op(bi_instruction *ins)
+static inline bi_instr *
+bi_next_op(bi_instr *ins)
 {
-        return list_first_entry(&(ins->link), bi_instruction, link);
+        return list_first_entry(&(ins->link), bi_instr, link);
 }
 
 static inline pan_block *

@@ -173,9 +173,9 @@ bi_assign_fau_idx(bi_clause *clause,
                   bi_bundle *bundle)
 {
         bool assigned =
-                bi_assign_fau_idx_single(&bundle->regs, clause, (bi_instr *) bundle->fma, false, true);
+                bi_assign_fau_idx_single(&bundle->regs, clause, bundle->fma, false, true);
 
-        bi_assign_fau_idx_single(&bundle->regs, clause, (bi_instr *) bundle->add, assigned, false);
+        bi_assign_fau_idx_single(&bundle->regs, clause, bundle->add, assigned, false);
 }
 
 /* Assigns a slot for reading, before anything is written */
@@ -224,21 +224,21 @@ bi_assign_slots(bi_bundle *now, bi_bundle *prev)
          * and thus gets skipped over here. */
 
         bool read_dreg = now->add &&
-                bi_opcode_props[((bi_instr *) now->add)->op].sr_read;
+                bi_opcode_props[(now->add)->op].sr_read;
 
         bool write_dreg = now->add &&
-                bi_opcode_props[((bi_instr *) now->add)->op].sr_write;
+                bi_opcode_props[(now->add)->op].sr_write;
 
         /* First, assign reads */
 
         if (now->fma)
                 bi_foreach_src(now->fma, src)
-                        bi_assign_slot_read(&now->regs, ((bi_instr *) now->fma)->src[src]);
+                        bi_assign_slot_read(&now->regs, (now->fma)->src[src]);
 
         if (now->add) {
                 bi_foreach_src(now->add, src) {
                         if (!(src == 0 && read_dreg))
-                                bi_assign_slot_read(&now->regs, ((bi_instr *) now->add)->src[src]);
+                                bi_assign_slot_read(&now->regs, (now->add)->src[src]);
                 }
         }
 
@@ -246,8 +246,8 @@ bi_assign_slots(bi_bundle *now, bi_bundle *prev)
          * +ATEST wants its destination written to both a staging register
          * _and_ a regular write, because it may not generate a message */
 
-        if (prev->add && (!write_dreg || ((bi_instr *) prev->add)->op == BI_OPCODE_ATEST)) {
-                bi_index idx = ((bi_instr *) prev->add)->dest[0];
+        if (prev->add && (!write_dreg || prev->add->op == BI_OPCODE_ATEST)) {
+                bi_index idx = prev->add->dest[0];
 
                 if (idx.type == BI_INDEX_REGISTER) {
                         now->regs.slot[3] = idx.value;
@@ -256,7 +256,7 @@ bi_assign_slots(bi_bundle *now, bi_bundle *prev)
         }
 
         if (prev->fma) {
-                bi_index idx = ((bi_instr *) prev->fma)->dest[0];
+                bi_index idx = (prev->fma)->dest[0];
 
                 if (idx.type == BI_INDEX_REGISTER) {
                         if (now->regs.slot23.slot3) {
@@ -405,7 +405,7 @@ bi_flip_slots(bi_registers *regs)
 static void
 bi_lower_cubeface2(bi_context *ctx, bi_bundle *bundle)
 {
-        bi_instr *old = (bi_instr *) bundle->add;
+        bi_instr *old = bundle->add;
 
         /* Filter for +CUBEFACE2 */
         if (!old || old->op != BI_OPCODE_CUBEFACE2)
@@ -425,7 +425,7 @@ bi_lower_cubeface2(bi_context *ctx, bi_bundle *bundle)
 
         /* Emit the instruction */
         list_addtail(&new->link, &old->link);
-        bundle->fma = (bi_instruction *) new;
+        bundle->fma = new;
 
         /* Now replace the sources of the CUBEFACE2 with a single passthrough
          * from the CUBEFACE1 (and a side-channel) */
@@ -476,23 +476,23 @@ bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_b
         bi_flip_slots(&bundle.regs);
 
         bool sr_read = bundle.add &&
-                bi_opcode_props[((bi_instr *) bundle.add)->op].sr_read;
+                bi_opcode_props[(bundle.add)->op].sr_read;
 
         uint64_t reg = bi_pack_registers(bundle.regs);
-        uint64_t fma = bi_pack_fma((bi_instr *) bundle.fma,
-                        bi_get_src_new((bi_instr *) bundle.fma, &bundle.regs, 0),
-                        bi_get_src_new((bi_instr *) bundle.fma, &bundle.regs, 1),
-                        bi_get_src_new((bi_instr *) bundle.fma, &bundle.regs, 2),
-                        bi_get_src_new((bi_instr *) bundle.fma, &bundle.regs, 3));
+        uint64_t fma = bi_pack_fma(bundle.fma,
+                        bi_get_src_new(bundle.fma, &bundle.regs, 0),
+                        bi_get_src_new(bundle.fma, &bundle.regs, 1),
+                        bi_get_src_new(bundle.fma, &bundle.regs, 2),
+                        bi_get_src_new(bundle.fma, &bundle.regs, 3));
 
-        uint64_t add = bi_pack_add((bi_instr *) bundle.add,
-                        bi_get_src_new((bi_instr *) bundle.add, &bundle.regs, sr_read + 0),
-                        bi_get_src_new((bi_instr *) bundle.add, &bundle.regs, sr_read + 1),
-                        bi_get_src_new((bi_instr *) bundle.add, &bundle.regs, sr_read + 2),
+        uint64_t add = bi_pack_add(bundle.add,
+                        bi_get_src_new(bundle.add, &bundle.regs, sr_read + 0),
+                        bi_get_src_new(bundle.add, &bundle.regs, sr_read + 1),
+                        bi_get_src_new(bundle.add, &bundle.regs, sr_read + 2),
                         0);
 
         if (bundle.add) {
-                bi_instr *add = (bi_instr *) bundle.add;
+                bi_instr *add = bundle.add;
 
                 bool sr_write = bi_opcode_props[add->op].sr_write;
 
@@ -548,7 +548,7 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
 
         /* Compute branch offset instead of a dummy 0 */
         if (branches) {
-                bi_instr *br = (bi_instr *) clause->bundles[clause->bundle_count - 1].add;
+                bi_instr *br = clause->bundles[clause->bundle_count - 1].add;
                 assert(br && br->branch_target);
 
                 /* Put it in the high place */
@@ -674,7 +674,7 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
                 return;
 
         const bi_bundle *bundle = &clause->bundles[clause->bundle_count - 1];
-        const bi_instr *ins = (bi_instr *) bundle->add;
+        const bi_instr *ins = bundle->add;
 
         if (!ins || ins->op != BI_OPCODE_BLEND)
                 return;

@@ -88,9 +88,9 @@ bi_singleton(void *memctx, bi_instr *ins,
         assert(can_fma || can_add);
 
         if (can_add)
-                u->bundles[0].add = (bi_instruction *) ins;
+                u->bundles[0].add = ins;
         else
-                u->bundles[0].fma = (bi_instruction *) ins;
+                u->bundles[0].fma = ins;
 
         u->scoreboard_id = scoreboard_id;
         u->staging_barrier = osrb;
@@ -167,7 +167,7 @@ bi_schedule(bi_context *ctx)
                 list_inithead(&bblock->clauses);
 
                 bi_foreach_instr_in_block(bblock, ins) {
-                        bi_clause *u = bi_singleton(ctx, (bi_instr *) ins,
+                        bi_clause *u = bi_singleton(ctx, ins,
                                         bblock, 0, (1 << 0),
                                         !is_first);
 
