@@ -740,7 +740,7 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
       }
    }
 
-   for (int i = 0; i < sel_ctx->ctx->num_samplers[stage]; ++i) {
+   for (unsigned i = 0; i < sel_ctx->ctx->num_samplers[stage]; ++i) {
       if (!sel_ctx->ctx->samplers[stage][i] ||
           sel_ctx->ctx->samplers[stage][i]->filter == PIPE_TEX_FILTER_NEAREST)
          continue;
@@ -1113,7 +1113,7 @@ d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_i
 
    validate_geometry_shader_variant(&sel_ctx);
 
-   for (int i = 0; i < ARRAY_SIZE(order); ++i) {
+   for (unsigned i = 0; i < ARRAY_SIZE(order); ++i) {
       auto sel = ctx->gfx_stages[order[i]];
       if (!sel)
          continue;
