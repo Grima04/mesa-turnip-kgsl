@@ -229,6 +229,29 @@ mdg_is_64(const nir_instr *instr, const void *_unused)
         }
 }
 
+/* Only vectorize int64 up to vec2 */
+static bool
+midgard_vectorize_filter(const nir_instr *instr, void *data)
+{
+        if (instr->type != nir_instr_type_alu)
+                return true;
+
+        const nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+        unsigned num_components = alu->dest.dest.ssa.num_components;
+
+        int src_bit_size = nir_src_bit_size(alu->src[0].src);
+        int dst_bit_size = nir_dest_bit_size(alu->dest.dest);
+
+        if (src_bit_size == 64 || dst_bit_size == 64) {
+                if (num_components > 1)
+                        return false;
+        }
+
+        return true;
+}
+
+
 /* Flushes undefined values to zero */
 
 static void
@@ -308,7 +331,8 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
                          nir_var_shader_out |
                          nir_var_function_temp);
 
-                NIR_PASS(progress, nir, nir_opt_vectorize, NULL, NULL);
+                NIR_PASS(progress, nir, nir_opt_vectorize,
+                         midgard_vectorize_filter, NULL);
         } while (progress);
 
         NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_is_64, NULL);
