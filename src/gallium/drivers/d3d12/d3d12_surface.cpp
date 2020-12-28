@@ -274,7 +274,7 @@ d3d12_surface_destroy(struct pipe_context *pctx,
 static void
 blit_surface(struct d3d12_surface *surface, bool pre)
 {
-   struct pipe_blit_info info = {0};
+   struct pipe_blit_info info = {};
 
    info.src.resource = pre ? surface->base.texture : surface->rgba_texture;
    info.dst.resource = pre ? surface->rgba_texture : surface->base.texture;

@@ -594,7 +594,7 @@ static struct pipe_resource *
 create_tmp_resource(struct pipe_screen *screen,
                     const struct pipe_blit_info *info)
 {
-   struct pipe_resource tpl = { 0 };
+   struct pipe_resource tpl = {};
    tpl.width0 = info->dst.box.width;
    tpl.height0 = info->dst.box.height;
    tpl.depth0 = info->dst.box.depth;

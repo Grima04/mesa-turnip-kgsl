@@ -533,7 +533,7 @@ transfer_image_to_buf(struct d3d12_context *ctx,
       struct pipe_resource tmpl = res->base;
       tmpl.nr_samples = 0;
       resolved_resource = d3d12_resource_create(ctx->base.screen, &tmpl);
-      struct pipe_blit_info resolve_info = {0};
+      struct pipe_blit_info resolve_info = {};
       struct pipe_box box = {0,0,0, (int)res->base.width0, (int16_t)res->base.height0, (int16_t)res->base.depth0};
       resolve_info.dst.resource = resolved_resource;
       resolve_info.dst.box = box;
