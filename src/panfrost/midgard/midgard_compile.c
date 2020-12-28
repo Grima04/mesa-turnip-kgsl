@@ -463,7 +463,7 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
 		break;
 
 #define ALU_CHECK_CMP() \
-                assert(src_bitsize == 16 || src_bitsize == 32); \
+                assert(src_bitsize == 16 || src_bitsize == 32 || src_bitsize == 64); \
                 assert(dst_bitsize == 16 || dst_bitsize == 32); \
 
 #define ALU_CASE_BCAST(nir, _op, count) \
