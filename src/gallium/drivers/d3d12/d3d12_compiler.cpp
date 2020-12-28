@@ -1269,12 +1269,12 @@ bool d3d12_validation_tools::validate_and_sign(struct blob *dxil)
       char *errorString;
       if (printBlobUtf8) {
          errorString = reinterpret_cast<char*>(printBlobUtf8->GetBufferPointer());
-      }
 
-      errorString[printBlobUtf8->GetBufferSize() - 1] = 0;
-      debug_printf("== VALIDATION ERROR =============================================\n%s\n"
-                   "== END ==========================================================\n",
-                   errorString);
+         errorString[printBlobUtf8->GetBufferSize() - 1] = 0;
+         debug_printf("== VALIDATION ERROR =============================================\n%s\n"
+                     "== END ==========================================================\n",
+                     errorString);
+      }
 
       return false;
    }
