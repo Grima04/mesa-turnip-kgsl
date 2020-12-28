@@ -1499,50 +1499,6 @@ get_image_offset_el(const struct isl_surf *surf, unsigned level, unsigned z,
 }
 
 /**
- * This function computes the tile_w (in bytes) and tile_h (in rows) of
- * different tiling patterns.
- */
-static void
-iris_resource_get_tile_dims(enum isl_tiling tiling, uint32_t cpp,
-                            uint32_t *tile_w, uint32_t *tile_h)
-{
-   switch (tiling) {
-   case ISL_TILING_X:
-      *tile_w = 512;
-      *tile_h = 8;
-      break;
-   case ISL_TILING_Y0:
-      *tile_w = 128;
-      *tile_h = 32;
-      break;
-   case ISL_TILING_LINEAR:
-      *tile_w = cpp;
-      *tile_h = 1;
-      break;
-   default:
-      unreachable("not reached");
-   }
-
-}
-
-/**
- * This function computes masks that may be used to select the bits of the X
- * and Y coordinates that indicate the offset within a tile.  If the BO is
- * untiled, the masks are set to 0.
- */
-static void
-iris_resource_get_tile_masks(enum isl_tiling tiling, uint32_t cpp,
-                             uint32_t *mask_x, uint32_t *mask_y)
-{
-   uint32_t tile_w_bytes, tile_h;
-
-   iris_resource_get_tile_dims(tiling, cpp, &tile_w_bytes, &tile_h);
-
-   *mask_x = tile_w_bytes / cpp - 1;
-   *mask_y = tile_h - 1;
-}
-
-/**
  * Compute the offset (in bytes) from the start of the BO to the given x
  * and y coordinate.  For tiled BOs, caller must ensure that x and y are
  * multiples of the tile size.
@@ -1592,7 +1548,7 @@ iris_resource_get_tile_offsets(const struct iris_resource *res,
    const struct isl_format_layout *fmtl = isl_format_get_layout(res->surf.format);
    const unsigned cpp = fmtl->bpb / 8;
 
-   iris_resource_get_tile_masks(res->surf.tiling, cpp, &mask_x, &mask_y);
+   isl_get_tile_masks(res->surf.tiling, cpp, &mask_x, &mask_y);
    get_image_offset_el(&res->surf, level, z, &x, &y);
 
    *tile_x = x & mask_x;

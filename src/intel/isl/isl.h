@@ -2396,6 +2396,48 @@ isl_memcpy_tiled_to_linear(uint32_t xt1, uint32_t xt2,
                            enum isl_tiling tiling,
                            isl_memcpy_type copy_type);
 
+/**
+ * @brief computes the tile_w (in bytes) and tile_h (in rows) of
+ * different tiling patterns.
+ */
+static inline void
+isl_get_tile_dims(enum isl_tiling tiling, uint32_t cpp,
+                  uint32_t *tile_w, uint32_t *tile_h)
+{
+   switch (tiling) {
+   case ISL_TILING_X:
+      *tile_w = 512;
+      *tile_h = 8;
+      break;
+   case ISL_TILING_Y0:
+      *tile_w = 128;
+      *tile_h = 32;
+      break;
+   case ISL_TILING_LINEAR:
+      *tile_w = cpp;
+      *tile_h = 1;
+      break;
+   default:
+      unreachable("not reached");
+   }
+}
+
+/**
+ * @brief Computes masks that may be used to select the bits of the X
+ * and Y coordinates that indicate the offset within a tile.  If the BO is
+ * untiled, the masks are set to 0.
+ */
+static inline void
+isl_get_tile_masks(enum isl_tiling tiling, uint32_t cpp,
+                   uint32_t *mask_x, uint32_t *mask_y)
+{
+   uint32_t tile_w_bytes, tile_h;
+
+   isl_get_tile_dims(tiling, cpp, &tile_w_bytes, &tile_h);
+
+   *mask_x = tile_w_bytes / cpp - 1;
+   *mask_y = tile_h - 1;
+}
 #ifdef __cplusplus
 }
 #endif
