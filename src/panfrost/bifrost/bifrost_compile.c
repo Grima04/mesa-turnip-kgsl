@@ -1067,6 +1067,12 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_local_group_size:
                 bi_load_sysval_nir(b, instr, 3, 0);
                 break;
+
+        case nir_intrinsic_image_size:
+                bi_load_sysval_nir(b, instr,
+                                nir_dest_num_components(instr->dest), 0);
+                break;
+
         case nir_intrinsic_load_blend_const_color_r_float:
                 bi_mov_i32_to(b, dst,
                                 bi_imm_f32(b->shader->inputs->blend.constants[0]));
