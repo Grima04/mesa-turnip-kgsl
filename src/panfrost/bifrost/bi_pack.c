@@ -612,7 +612,14 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
         /* TODO After the deadline lowering */
         bi_lower_cubeface2(ctx, &clause->tuples[0]);
 
-        struct bi_packed_tuple ins_1 = bi_pack_tuple(clause, &clause->tuples[0], &clause->tuples[0], true, stage);
+        struct bi_packed_tuple ins[8] = { 0 };
+
+        for (unsigned i = 0; i < clause->tuple_count; ++i) {
+                unsigned prev = ((i == 0) ? clause->tuple_count : i) - 1;
+                ins[i] = bi_pack_tuple(clause, &clause->tuples[i],
+                                &clause->tuples[prev], i == 0, stage);
+        }
+
         assert(clause->tuple_count == 1);
 
         /* State for packing constants throughout */
@@ -621,9 +628,9 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
         struct bifrost_fmt1 quad_1 = {
                 .tag = clause->constant_count ? BIFROST_FMT1_CONSTANTS : BIFROST_FMT1_FINAL,
                 .header = bi_pack_header(clause, next_1, next_2, tdd),
-                .ins_1 = ins_1.lo,
-                .ins_2 = ins_1.hi & ((1 << 11) - 1),
-                .ins_0 = (ins_1.hi >> 11) & 0b111,
+                .ins_1 = ins[0].lo,
+                .ins_2 = ins[0].hi & ((1 << 11) - 1),
+                .ins_0 = (ins[0].hi >> 11) & 0b111,
         };
 
         util_dynarray_append(emission, struct bifrost_fmt1, quad_1);
