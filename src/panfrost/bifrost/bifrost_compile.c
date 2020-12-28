@@ -81,7 +81,7 @@ emit_jump(bi_context *ctx, nir_jump_instr *instr)
 }
 
 static bi_instruction
-bi_load(enum bi_class T, nir_intrinsic_instr *instr, unsigned offset_idx)
+bi_load_old(enum bi_class T, nir_intrinsic_instr *instr, unsigned offset_idx)
 {
         bi_instruction load = {
                 .type = T,
@@ -403,7 +403,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 static bi_instruction
 bi_load_with_r61(enum bi_class T, nir_intrinsic_instr *instr)
 {
-        bi_instruction ld = bi_load(T, instr, 2);
+        bi_instruction ld = bi_load_old(T, instr, 2);
         ld.src[0] = BIR_INDEX_REGISTER | 61; /* TODO: RA */
         ld.src[1] = BIR_INDEX_REGISTER | 62;
         ld.src_types[0] = nir_type_uint32;
