@@ -603,19 +603,19 @@ get_copy_region_aux_settings(struct iris_context *ice,
    case ISL_AUX_USAGE_HIZ:
    case ISL_AUX_USAGE_HIZ_CCS:
    case ISL_AUX_USAGE_HIZ_CCS_WT:
+   case ISL_AUX_USAGE_STC_CCS:
       if (is_render_target) {
          *out_aux_usage = res->aux.usage;
       } else {
          *out_aux_usage = iris_resource_texture_aux_usage(ice, res,
                                                           res->surf.format);
       }
-      *out_clear_supported = (*out_aux_usage != ISL_AUX_USAGE_NONE);
+      *out_clear_supported = isl_aux_usage_has_fast_clears(*out_aux_usage);
       break;
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_GEN12_CCS_E:
-   case ISL_AUX_USAGE_STC_CCS:
       *out_aux_usage = res->aux.usage;
       *out_clear_supported = false;
       break;
