@@ -1500,13 +1500,15 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_global:
+        case nir_intrinsic_load_global_constant:
         case nir_intrinsic_load_shared:
         case nir_intrinsic_load_input:
         case nir_intrinsic_load_kernel_input:
         case nir_intrinsic_load_interpolated_input: {
                 bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
-                bool is_global = instr->intrinsic == nir_intrinsic_load_global;
+                bool is_global = instr->intrinsic == nir_intrinsic_load_global ||
+                        instr->intrinsic == nir_intrinsic_load_global_constant;
                 bool is_shared = instr->intrinsic == nir_intrinsic_load_shared;
                 bool is_flat = instr->intrinsic == nir_intrinsic_load_input;
                 bool is_kernel = instr->intrinsic == nir_intrinsic_load_kernel_input;
