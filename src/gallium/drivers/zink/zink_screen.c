@@ -814,7 +814,7 @@ load_instance_extensions(struct zink_screen *screen)
       printf("zink: Loader %d.%d.%d \n", VK_VERSION_MAJOR(screen->loader_version), VK_VERSION_MINOR(screen->loader_version), VK_VERSION_PATCH(screen->loader_version));
    }
 
-   if (screen->have_physical_device_prop2_ext) {
+   if (screen->instance_info.have_KHR_get_physical_device_properties2) {
       // Not Vk 1.1+ so if VK_KHR_get_physical_device_properties2 the use it
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceFeatures2KHR);
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceProperties2KHR);
@@ -950,7 +950,7 @@ static bool
 zink_internal_setup_moltenvk(struct zink_screen *screen)
 {
 #if defined(MVK_VERSION)
-   if (!screen->have_MVK_moltenvk)
+   if (!screen->instance_info.have_MVK_moltenvk)
       return true;
 
    GET_PROC_ADDR_INSTANCE(GetMoltenVKConfigurationMVK);
