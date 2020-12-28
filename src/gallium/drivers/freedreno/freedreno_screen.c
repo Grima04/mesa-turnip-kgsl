@@ -309,7 +309,12 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
 	case PIPE_CAP_GLSL_FEATURE_LEVEL:
 	case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-		return is_ir3(screen) ? 140 : 120;
+		if (is_a6xx(screen))
+			return 150;
+		else if (is_ir3(screen))
+			return 140;
+		else
+			return 120;
 
 	case PIPE_CAP_ESSL_FEATURE_LEVEL:
 		/* we can probably enable 320 for a5xx too, but need to test: */
