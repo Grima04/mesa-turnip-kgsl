@@ -185,7 +185,7 @@ static bool
 is_char7_string(const char *str)
 {
    while (*str != '\0') {
-      if (*str++ >= 128)
+      if (*str++ & 0x80)
          return false;
    }
    return true;
