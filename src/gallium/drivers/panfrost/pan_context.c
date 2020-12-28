@@ -728,7 +728,10 @@ panfrost_bind_sampler_states(
 
         /* XXX: Should upload, not just copy? */
         ctx->sampler_count[shader] = num_sampler;
-        memcpy(ctx->samplers[shader], sampler, num_sampler * sizeof (void *));
+        if (sampler)
+                memcpy(ctx->samplers[shader], sampler, num_sampler * sizeof (void *));
+        else
+                memset(ctx->samplers[shader], 0, num_sampler * sizeof (void *));
 }
 
 static bool
@@ -1120,6 +1123,9 @@ panfrost_set_sampler_views(
         unsigned i;
 
         assert(start_slot == 0);
+
+        if (!views)
+                num_views = 0;
 
         for (i = 0; i < num_views; ++i) {
                 if (views[i])
