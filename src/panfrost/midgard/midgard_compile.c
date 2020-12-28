@@ -1822,6 +1822,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_memory_barrier_buffer:
         case nir_intrinsic_memory_barrier_shared:
+        case nir_intrinsic_group_memory_barrier:
                 break;
 
         case nir_intrinsic_control_barrier:
