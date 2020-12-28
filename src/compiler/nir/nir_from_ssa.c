@@ -178,6 +178,13 @@ get_merge_node(nir_ssa_def *def, struct from_ssa_state *state)
 static bool
 merge_nodes_interfere(merge_node *a, merge_node *b)
 {
+   /* There's no need to check for interference within the same set,
+    * because we assume, that sets themselves are already
+    * interference-free.
+    */
+   if (a->set == b->set)
+      return false;
+
    return nir_ssa_defs_interfere(a->def, b->def);
 }
 
