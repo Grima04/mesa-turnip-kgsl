@@ -34,6 +34,10 @@
 
 #include "util/list.h"
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+#endif
+
 #define UNKNOWN_RESOURCE_STATE (D3D12_RESOURCE_STATES)0x8000u
 #define RESOURCE_STATE_VALID_BITS 0x2f3fff
 #define RESOURCE_STATE_VALID_INTERNAL_BITS 0x2fffff
