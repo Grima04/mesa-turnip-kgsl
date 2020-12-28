@@ -237,7 +237,7 @@ get_semantic_name(nir_variable *var, struct semantic_info *info,
 
    case VARYING_SLOT_CLIP_DIST1:
       info->index = 1;
-      /* fallthrough */
+      FALLTHROUGH;
    case VARYING_SLOT_CLIP_DIST0:
       assert(var->data.location == VARYING_SLOT_CLIP_DIST1 || info->index == 0);
       snprintf(info->name, 64, "%s", "SV_ClipDistance");

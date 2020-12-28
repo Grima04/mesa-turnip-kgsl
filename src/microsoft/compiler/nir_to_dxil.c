@@ -1340,14 +1340,14 @@ store_dest(struct ntd_context *ctx, nir_dest *dest, unsigned chan,
    case nir_type_float:
       if (nir_dest_bit_size(*dest) == 64)
          ctx->mod.feats.doubles = true;
-      /* fallthrough */
+      FALLTHROUGH;
    case nir_type_uint:
    case nir_type_int:
       if (nir_dest_bit_size(*dest) == 16)
          ctx->mod.feats.native_low_precision = true;
       if (nir_dest_bit_size(*dest) == 64)
          ctx->mod.feats.int64_ops = true;
-      /* fallthrough */
+      FALLTHROUGH;
    case nir_type_bool:
       store_dest_value(ctx, dest, chan, value);
       break;
@@ -1568,6 +1568,7 @@ get_cast_dest_type(struct ntd_context *ctx, nir_alu_instr *alu)
    switch (nir_alu_type_get_base_type(nir_op_infos[alu->op].output_type)) {
    case nir_type_bool:
       assert(dst_bits == 1);
+      FALLTHROUGH;
    case nir_type_int:
    case nir_type_uint:
       return dxil_module_get_int_type(&ctx->mod, dst_bits);
@@ -3550,7 +3551,7 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
          break;
       }
       params.lod_or_sample = dxil_module_get_float_const(&ctx->mod, 0);
-      /* fallthrough */
+      FALLTHROUGH;
    case nir_texop_txl:
       sample = emit_sample_level(ctx, &params);
       break;
@@ -4378,7 +4379,7 @@ nir_var_to_dxil_sysvalue_type(nir_variable *var, uint64_t other_stage_mask)
    case VARYING_SLOT_PSIZ:
       if (!((1 << var->data.location) & other_stage_mask))
          return DXIL_SYSVALUE;
-      /* fallthrough */
+      FALLTHROUGH;
    default:
       return DXIL_NO_SYSVALUE;
    }
