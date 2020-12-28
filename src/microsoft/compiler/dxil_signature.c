@@ -163,7 +163,7 @@ get_semantic_sv_name(nir_variable *var, struct semantic_info *info)
    default:
       unreachable("unsupported system value");
    }
-   strncpy(info->name, var->name, 64);
+   strncpy(info->name, var->name, ARRAY_SIZE(info->name) - 1);
 }
 
 static void
