@@ -423,6 +423,28 @@ wrap_needs_border_color(unsigned wrap)
           wrap == PIPE_TEX_WRAP_MIRROR_CLAMP || wrap == PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER;
 }
 
+static VkBorderColor
+get_border_color(const union pipe_color_union *color, bool is_integer)
+{
+   if (is_integer) {
+      if (color->ui[0] == 0 && color->ui[1] == 0 && color->ui[2] == 0 && color->ui[3] == 0)
+         return VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
+      if (color->ui[0] == 0 && color->ui[1] == 0 && color->ui[2] == 0 && color->ui[3] == 1)
+         return VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+      if (color->ui[0] == 1 && color->ui[1] == 1 && color->ui[2] == 1 && color->ui[3] == 1)
+         return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+      return VK_BORDER_COLOR_INT_CUSTOM_EXT;
+   }
+
+   if (color->f[0] == 0 && color->f[1] == 0 && color->f[2] == 0 && color->f[3] == 0)
+      return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+   if (color->f[0] == 0 && color->f[1] == 0 && color->f[2] == 0 && color->f[3] == 1)
+      return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+   if (color->f[0] == 1 && color->f[1] == 1 && color->f[2] == 1 && color->f[3] == 1)
+      return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+   return VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
+}
+
 static void *
 zink_create_sampler_state(struct pipe_context *pctx,
                           const struct pipe_sampler_state *state)
@@ -462,18 +484,23 @@ zink_create_sampler_state(struct pipe_context *pctx,
       sci.compareEnable = VK_TRUE;
    }
 
-   if (screen->info.have_EXT_custom_border_color &&
-       screen->info.border_color_feats.customBorderColorWithoutFormat && need_custom) {
-      cbci.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
-      cbci.format = VK_FORMAT_UNDEFINED;
-      /* these are identical unions */
-      memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
-      sci.pNext = &cbci;
-      sci.borderColor = VK_BORDER_COLOR_INT_CUSTOM_EXT;
-      UNUSED uint32_t check = p_atomic_inc_return(&screen->cur_custom_border_color_samplers);
-      assert(check <= screen->info.border_color_props.maxCustomBorderColorSamplers);
-   } else
-      sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO with custom shader if we're super interested?
+   bool is_integer = state->border_color_is_integer;
+
+   sci.borderColor = get_border_color(&state->border_color, is_integer);
+   if (sci.borderColor > VK_BORDER_COLOR_INT_OPAQUE_WHITE && need_custom) {
+      if (screen->info.have_EXT_custom_border_color &&
+          screen->info.border_color_feats.customBorderColorWithoutFormat) {
+         cbci.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
+         cbci.format = VK_FORMAT_UNDEFINED;
+         /* these are identical unions */
+         memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
+         sci.pNext = &cbci;
+         UNUSED uint32_t check = p_atomic_inc_return(&screen->cur_custom_border_color_samplers);
+         assert(check <= screen->info.border_color_props.maxCustomBorderColorSamplers);
+      } else
+         sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO with custom shader if we're super interested?
+   }
+
    sci.unnormalizedCoordinates = !state->normalized_coords;
 
    if (state->max_anisotropy > 1) {
@@ -491,6 +518,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
    }
    util_dynarray_init(&sampler->desc_set_refs.refs, NULL);
    calc_descriptor_hash_sampler_state(sampler);
+   sampler->custom_border_color = need_custom;
 
    return sampler;
 }
