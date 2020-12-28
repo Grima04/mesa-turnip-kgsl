@@ -689,6 +689,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ssbo_address:
+        case nir_intrinsic_load_work_dim:
                 bi_load_sysval(b, &instr->instr, 1, 0);
                 break;
 

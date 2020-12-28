@@ -856,6 +856,15 @@ panfrost_upload_local_group_size_sysval(struct panfrost_batch *batch,
 }
 
 static void
+panfrost_upload_work_dim_sysval(struct panfrost_batch *batch,
+                                struct sysval_uniform *uniform)
+{
+        struct panfrost_context *ctx = batch->ctx;
+
+        uniform->u[0] = ctx->compute_grid->work_dim;
+}
+
+static void
 panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                         struct panfrost_shader_state *ss,
                         enum pipe_shader_type st)
@@ -891,6 +900,10 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                 case PAN_SYSVAL_LOCAL_GROUP_SIZE:
                         panfrost_upload_local_group_size_sysval(batch,
                                                                 &uniforms[i]);
+                        break;
+                case PAN_SYSVAL_WORK_DIM:
+                        panfrost_upload_work_dim_sysval(batch,
+                                                        &uniforms[i]);
                         break;
                 case PAN_SYSVAL_SAMPLER:
                         panfrost_upload_sampler_sysval(batch, st,
