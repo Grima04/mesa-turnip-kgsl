@@ -599,6 +599,9 @@ get_copy_region_aux_settings(struct iris_context *ice,
                              bool *out_clear_supported,
                              bool is_render_target)
 {
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   struct gen_device_info *devinfo = &screen->devinfo;
+
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
    case ISL_AUX_USAGE_HIZ_CCS:
@@ -617,7 +620,27 @@ get_copy_region_aux_settings(struct iris_context *ice,
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_GEN12_CCS_E:
       *out_aux_usage = res->aux.usage;
-      *out_clear_supported = false;
+
+      /* blorp_copy may reinterpret the surface format and has limited support
+       * for adjusting the clear color, so clear support may only be enabled
+       * in some cases:
+       *
+       * - On gen11+, the clear color is indirect and comes in two forms: a
+       *   32bpc representation used for rendering and a pixel representation
+       *   used for sampling. blorp_copy doesn't change indirect clear colors,
+       *   so clears are only supported in the sampling case.
+       *
+       * - A clear color of zeroes holds the same meaning regardless of the
+       *   format. Although it could avoid more resolves, we don't use
+       *   isl_color_value_is_zero because the surface format used by
+       *   blorp_copy isn't guaranteed to access the same components as the
+       *   original format (e.g. A8_UNORM/R8_UINT).
+       */
+      *out_clear_supported = (devinfo->gen >= 11 && !is_render_target) ||
+                             (res->aux.clear_color.u32[0] == 0 &&
+                              res->aux.clear_color.u32[1] == 0 &&
+                              res->aux.clear_color.u32[2] == 0 &&
+                              res->aux.clear_color.u32[3] == 0);
       break;
    default:
       *out_aux_usage = ISL_AUX_USAGE_NONE;
