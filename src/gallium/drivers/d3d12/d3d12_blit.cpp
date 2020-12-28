@@ -267,7 +267,7 @@ copy_subregion_no_barriers(struct d3d12_context *ctx,
                            const struct pipe_box *psrc_box,
                            unsigned mask)
 {
-   struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
+   UNUSED struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
    D3D12_TEXTURE_COPY_LOCATION src_loc, dst_loc;
    unsigned src_z = psrc_box->z;
 
