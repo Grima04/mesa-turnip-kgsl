@@ -64,7 +64,7 @@ get_semantic_name(int slot, unsigned *index)
 
    case VARYING_SLOT_CLIP_DIST1:
       *index = 1;
-      /* fallthrough */
+      FALLTHROUGH;
    case VARYING_SLOT_CLIP_DIST0:
       return "SV_ClipDistance";
 

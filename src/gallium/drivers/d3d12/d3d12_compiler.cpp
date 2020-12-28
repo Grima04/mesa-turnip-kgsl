@@ -915,7 +915,7 @@ get_prev_shader(struct d3d12_context *ctx, pipe_shader_type current)
    case PIPE_SHADER_FRAGMENT:
       if (ctx->gfx_stages[PIPE_SHADER_GEOMETRY])
          return ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
-      /* fallthrough */
+      FALLTHROUGH;
    case PIPE_SHADER_GEOMETRY:
       return ctx->gfx_stages[PIPE_SHADER_VERTEX];
    default:
@@ -932,7 +932,7 @@ get_next_shader(struct d3d12_context *ctx, pipe_shader_type current)
    case PIPE_SHADER_VERTEX:
       if (ctx->gfx_stages[PIPE_SHADER_GEOMETRY])
          return ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
-      /* fallthrough */
+      FALLTHROUGH;
    case PIPE_SHADER_GEOMETRY:
       return ctx->gfx_stages[PIPE_SHADER_FRAGMENT];
    case PIPE_SHADER_FRAGMENT:
@@ -963,7 +963,7 @@ scan_texture_use(nir_shader *nir)
                case nir_texop_txd:
                   if (tex->is_shadow)
                      result |= TEX_CMP_WITH_LOD_BIAS_GRAD;
-                  /* fallthrough */
+                  FALLTHROUGH;
                case nir_texop_tex:
                   if (tex->dest_type & (nir_type_int | nir_type_uint))
                      result |= TEX_SAMPLE_INTEGER_TEXTURE;

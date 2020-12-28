@@ -26,6 +26,7 @@
 #include "pipe/p_format.h"
 #include "util/format/u_format.h"
 #include "util/u_math.h"
+#include "util/compiler.h"
 
 static const DXGI_FORMAT formats[PIPE_FORMAT_COUNT] = {
 #define MAP_FORMAT_NORM(FMT) \
@@ -180,7 +181,7 @@ d3d12_get_resource_srv_format(enum pipe_format f, enum pipe_texture_target targe
    case PIPE_FORMAT_A8_UNORM:
       if (target == PIPE_BUFFER)
          return DXGI_FORMAT_R8_UNORM; /* A8_UNORM is not supported for buffer SRV */
-      /* passthrough */
+      FALLTHROUGH;
    default:
       return d3d12_get_format(f);
    }
