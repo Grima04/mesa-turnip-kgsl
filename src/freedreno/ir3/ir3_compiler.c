@@ -56,6 +56,7 @@ enum ir3_shader_debug ir3_shader_debug = 0;
 void
 ir3_compiler_destroy(struct ir3_compiler *compiler)
 {
+	disk_cache_destroy(compiler->disk_cache);
 	ralloc_free(compiler);
 }
 
