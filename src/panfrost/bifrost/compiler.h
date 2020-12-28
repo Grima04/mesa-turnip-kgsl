@@ -520,6 +520,9 @@ bi_neg(bi_index idx)
         return idx;
 }
 
+/* For bitwise instructions */
+#define bi_not(x) bi_neg(x)
+
 static inline bi_index
 bi_imm_u8(uint8_t imm)
 {
