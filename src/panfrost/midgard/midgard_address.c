@@ -132,6 +132,25 @@ mir_match_u2u64(struct mir_address *address)
         address->type = ITYPE_U32;
 }
 
+/* Matches i2i64 and sets type */
+
+static void
+mir_match_i2i64(struct mir_address *address)
+{
+        if (!address->B.def || !nir_ssa_scalar_is_alu(address->B))
+                return;
+
+        if (!mir_args_ssa(address->B, 1))
+                return;
+
+        nir_op op = nir_ssa_scalar_alu_op(address->B);
+        if (op != nir_op_i2i64) return;
+        nir_ssa_scalar arg = nir_ssa_scalar_chase_alu_src(address->B, 0);
+
+        address->B = arg;
+        address->type = ITYPE_I32;
+}
+
 /* Matches ishl to shift */
 
 static void
@@ -193,6 +212,7 @@ mir_match_offset(nir_ssa_def *offset, bool first_free)
         mir_match_iadd(&address, first_free);
         mir_match_mov(&address);
         mir_match_u2u64(&address);
+        mir_match_i2i64(&address);
         mir_match_mov(&address);
         mir_match_ishl(&address);
 
