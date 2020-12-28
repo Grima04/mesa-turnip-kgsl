@@ -2115,7 +2115,7 @@ emit_module_consts(struct dxil_module *m)
 
 static bool
 emit_value_symtab_abbrev_record(struct dxil_module *m,
-                                enum const_abbrev_id abbrev,
+                                enum value_symtab_abbrev_id abbrev,
                                 const uint64_t *data, size_t size)
 {
    assert(abbrev < ARRAY_SIZE(value_symtab_abbrevs));
