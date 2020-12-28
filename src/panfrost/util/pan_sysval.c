@@ -123,6 +123,7 @@ panfrost_nir_assign_sysval_body(struct panfrost_sysvals *ctx, nir_instr *instr)
         /* It hasn't -- so assign it now! */
 
         unsigned id = ctx->sysval_count++;
+        assert(id < MAX_SYSVAL_COUNT);
         _mesa_hash_table_u64_insert(ctx->sysval_to_id, sysval, (void *) ((uintptr_t) id + 1));
         ctx->sysvals[id] = sysval;
 }
