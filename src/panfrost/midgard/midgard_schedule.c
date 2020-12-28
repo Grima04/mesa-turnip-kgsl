@@ -116,6 +116,8 @@ mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, 
                 instructions[i]->nr_dependencies = 0;
         }
 
+        unsigned prev_ldst[3] = {~0, ~0, ~0};
+
         /* Populate dependency graph */
         for (signed i = count - 1; i >= 0; --i) {
                 if (instructions[i]->compact_branch)
@@ -131,6 +133,34 @@ mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, 
                                 unsigned readmask = mir_bytemask_of_read_components(instructions[i], src);
                                 add_dependency(last_write, src, readmask, instructions, i);
                         }
+                }
+
+                /* Create a list of dependencies for each type of load/store
+                 * instruction to prevent reordering. */
+                if (instructions[i]->type == TAG_LOAD_STORE_4 &&
+                    load_store_opcode_props[instructions[i]->op].props & LDST_ADDRESS) {
+
+                        unsigned type;
+                        switch (instructions[i]->load_store.arg_1 & 0x3E) {
+                        case LDST_SHARED: type = 0; break;
+                        case LDST_SCRATCH: type = 1; break;
+                        default: type = 2; break;
+                        }
+
+                        unsigned prev = prev_ldst[type];
+
+                        if (prev != ~0) {
+                                BITSET_WORD *dependents = instructions[prev]->dependents;
+
+                                /* Already have the dependency */
+                                if (BITSET_TEST(dependents, i))
+                                        continue;
+
+                                BITSET_SET(dependents, i);
+                                instructions[i]->nr_dependencies++;
+                        }
+
+                        prev_ldst[type] = i;
                 }
 
                 if (dest < node_count) {
