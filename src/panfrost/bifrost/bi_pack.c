@@ -316,8 +316,9 @@ bi_pack_registers(bi_registers regs)
         if (regs.first_instruction) {
                 /* Bit 3 implicitly must be clear for first instructions.
                  * The affected patterns all write both ADD/FMA, but that
-                 * is forbidden for the first instruction, so this does
-                 * not add additional encoding constraints */
+                 * is forbidden for the last instruction (whose writes are
+                 * encoded by the first), so this does not add additional
+                 * encoding constraints */
                 assert(!(mode & 0x8));
 
                 /* Move bit 4 to bit 3, since bit 3 is clear */
