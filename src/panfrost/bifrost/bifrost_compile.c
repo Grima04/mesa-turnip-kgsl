@@ -2162,6 +2162,8 @@ bi_optimize_nir(nir_shader *nir)
                 NIR_PASS(progress, nir, nir_opt_algebraic);
                 NIR_PASS(progress, nir, nir_opt_constant_folding);
 
+                NIR_PASS(progress, nir, nir_lower_alu);
+
                 if (lower_flrp != 0) {
                         bool lower_flrp_progress = false;
                         NIR_PASS(lower_flrp_progress,
