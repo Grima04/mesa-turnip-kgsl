@@ -50,6 +50,7 @@ enum {
         PAN_SYSVAL_SSBO = 4,
         PAN_SYSVAL_NUM_WORK_GROUPS = 5,
         PAN_SYSVAL_SAMPLER = 7,
+        PAN_SYSVAL_LOCAL_GROUP_SIZE = 8,
 };
 
 #define PAN_TXS_SYSVAL_ID(texidx, dim, is_array)          \

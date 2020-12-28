@@ -1809,6 +1809,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_viewport_offset:
         case nir_intrinsic_load_num_work_groups:
         case nir_intrinsic_load_sampler_lod_parameters_pan:
+        case nir_intrinsic_load_local_group_size:
                 emit_sysval_read(ctx, &instr->instr, 3, 0);
                 break;
 
