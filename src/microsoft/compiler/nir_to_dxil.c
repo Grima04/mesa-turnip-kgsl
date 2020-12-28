@@ -874,7 +874,6 @@ var_fill_const_array_with_vector_or_scalar(struct ntd_context *ctx,
                                            unsigned int offset)
 {
    assert(glsl_type_is_vector_or_scalar(type));
-   enum glsl_base_type base_type = glsl_get_base_type(type);
    unsigned int components = glsl_get_vector_elements(type);
    unsigned bit_size = glsl_get_bit_size(type);
    unsigned int increment = bit_size / 8;
@@ -893,7 +892,7 @@ var_fill_const_array_with_vector_or_scalar(struct ntd_context *ctx,
          memcpy(dst, &c->values[comp].u16, sizeof(c->values[0].u16));
          break;
       case 8:
-         assert(glsl_base_type_is_integer(base_type));
+         assert(glsl_base_type_is_integer(glsl_get_base_type(type)));
          memcpy(dst, &c->values[comp].u8, sizeof(c->values[0].u8));
          break;
       default:
@@ -2304,12 +2303,11 @@ static bool
 emit_store_shared(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *zero, *index;
-   unsigned bit_size = nir_src_bit_size(intr->src[0]);
 
    /* All shared mem accesses should have been lowered to scalar 32bit
     * accesses.
     */
-   assert(bit_size == 32);
+   assert(nir_src_bit_size(intr->src[0]) == 32);
    assert(nir_src_num_components(intr->src[0]) == 1);
 
    zero = dxil_module_get_int32_const(&ctx->mod, 0);
@@ -2354,12 +2352,11 @@ static bool
 emit_store_scratch(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *zero, *index;
-   unsigned bit_size = nir_src_bit_size(intr->src[0]);
 
    /* All scratch mem accesses should have been lowered to scalar 32bit
     * accesses.
     */
-   assert(bit_size == 32);
+   assert(nir_src_bit_size(intr->src[0]) == 32);
    assert(nir_src_num_components(intr->src[0]) == 1);
 
    zero = dxil_module_get_int32_const(&ctx->mod, 0);
@@ -2974,9 +2971,8 @@ emit_shared_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
                    enum dxil_rmw_op op, nir_alu_type type)
 {
    const struct dxil_value *zero, *index;
-   unsigned bit_size = nir_src_bit_size(intr->src[1]);
 
-   assert(bit_size == 32);
+   assert(nir_src_bit_size(intr->src[1]) == 32);
 
    zero = dxil_module_get_int32_const(&ctx->mod, 0);
    if (!zero)
@@ -3009,9 +3005,8 @@ static bool
 emit_shared_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *zero, *index;
-   unsigned bit_size = nir_src_bit_size(intr->src[1]);
 
-   assert(bit_size == 32);
+   assert(nir_src_bit_size(intr->src[1]) == 32);
 
    zero = dxil_module_get_int32_const(&ctx->mod, 0);
    if (!zero)

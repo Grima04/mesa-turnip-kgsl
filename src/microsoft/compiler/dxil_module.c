@@ -2506,7 +2506,7 @@ create_instr(struct dxil_module *m, enum instr_type type,
    return ret;
 }
 
-static bool
+static inline bool
 legal_arith_type(const struct dxil_type *type)
 {
    switch (type->type) {
