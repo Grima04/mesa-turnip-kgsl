@@ -277,7 +277,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2020-12-17-use-ephemeral"
+    MESA_IMAGE_TAG: &x86_build "2021-1-4-directx-headers"
 
 .use-x86_build:
   variables:
