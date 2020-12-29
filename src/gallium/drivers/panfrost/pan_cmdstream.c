@@ -1048,6 +1048,19 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
                 ls.wls_base_pointer = bo->ptr.gpu;
                 ls.wls_instances = instances;
                 ls.wls_size_scale = util_logbase2(single_size) + 1;
+
+                if (ss->stack_size) {
+                        unsigned shift =
+                                panfrost_get_stack_shift(ss->stack_size);
+                        struct panfrost_bo *bo =
+                                panfrost_batch_get_scratchpad(batch,
+                                                              ss->stack_size,
+                                                              dev->thread_tls_alloc,
+                                                              dev->core_count);
+
+                        ls.tls_size = shift;
+                        ls.tls_base_pointer = bo->ptr.gpu;
+                }
         };
 
         return t.gpu;
