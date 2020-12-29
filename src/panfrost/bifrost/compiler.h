@@ -232,6 +232,16 @@ bi_is_equiv(bi_index left, bi_index right)
                 (left.value == right.value);
 }
 
+/* A stronger equivalence relation that requires the indices access the
+ * same offset, useful for RA/scheduling to see what registers will
+ * correspond to */
+
+static inline bool
+bi_is_word_equiv(bi_index left, bi_index right)
+{
+        return bi_is_equiv(left, right) && left.offset == right.offset;
+}
+
 #define BI_MAX_DESTS 2
 #define BI_MAX_SRCS 4
 
