@@ -973,10 +973,25 @@ bi_test_pack_upper(void)
         assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 7, tuples, 8) == 4);
 }
 
+static void
+bi_test_pack_tuple_bits(void)
+{
+        struct bi_packed_tuple tuples[] = {
+                { 0x1234567801234567, 0x3A },
+                { 0x9876543299999999, 0x1B },
+                { 0xABCDEF0101234567, 0x7C },
+        };
+
+        assert(bi_pack_tuple_bits(BI_CLAUSE_SUBWORD_TUPLE_0 + 0, tuples, 8, 0, 30) == 0x01234567);
+        assert(bi_pack_tuple_bits(BI_CLAUSE_SUBWORD_TUPLE_0 + 1, tuples, 8, 10, 30) == 0xca66666);
+        assert(bi_pack_tuple_bits(BI_CLAUSE_SUBWORD_TUPLE_0 + 2, tuples, 8, 40, 15) == 0x4def);
+}
+
 int bi_test_packing(void)
 {
         bi_test_pack_literal();
         bi_test_pack_upper();
+        bi_test_pack_tuple_bits();
 
         return 0;
 }
