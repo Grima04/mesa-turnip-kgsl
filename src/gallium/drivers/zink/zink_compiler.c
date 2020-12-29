@@ -503,6 +503,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
                     false, zink_fs_key(key)->coord_replace_yinvert);
       }
    }
+   NIR_PASS_V(nir, nir_convert_from_ssa, true);
    struct spirv_shader *spirv = nir_to_spirv(nir, streamout, shader_slot_map, shader_slots_reserved);
    assert(spirv);
 
@@ -601,7 +602,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, lower_64bit_vertex_attribs);
    if (nir->info.num_ubos || nir->info.num_ssbos)
       NIR_PASS_V(nir, nir_lower_dynamic_bo_access);
-   NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    if (zink_debug & ZINK_DEBUG_NIR) {
       fprintf(stderr, "NIR shader:\n---8<---\n");
