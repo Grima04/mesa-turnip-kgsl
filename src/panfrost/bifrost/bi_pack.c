@@ -942,8 +942,17 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
 
 #ifndef NDEBUG
 
+static void
+bi_test_pack_literal(void)
+{
+        for (unsigned x = 0; x <= 7; ++x)
+                assert(bi_pack_literal(BI_CLAUSE_SUBWORD_LITERAL_0 + x) == x);
+}
+
 int bi_test_packing(void)
 {
+        bi_test_pack_literal();
+
         return 0;
 }
 #endif
