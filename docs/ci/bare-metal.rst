@@ -116,7 +116,10 @@ required by your bare-metal script, something like::
 
   [[runners]]
     name = "google-freedreno-db410c-1"
-    environment = ["BM_SERIAL=/dev/ttyDB410c8", "BM_POWERUP=google-power-up.sh 8", "BM_FASTBOOT_SERIAL=15e9e390"]
+    environment = ["BM_SERIAL=/dev/ttyDB410c8", "BM_POWERUP=google-power-up.sh 8", "BM_FASTBOOT_SERIAL=15e9e390", "FDO_CI_CONCURRENT=4"]
+
+The ``FDO_CI_CONCURRENT`` variable should be set to the number of CPU threads on
+the board, which is used for auto-tuning of job parallelism.
 
 If you want to collect the results for fastboot you need to add the following
 two board-specific environment variables ``BM_WEBDAV_IP`` and ``BM_WEBDAV_PORT``.

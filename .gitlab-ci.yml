@@ -1538,6 +1538,7 @@ arm64_a306_gles3_options:
     # Disable SMP because only CPU 0 is at a freq higher than 19mhz on
     # current upstream kernel.
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 nosmp"
+    FDO_CI_CONCURRENT: 1
     GPU_VERSION: freedreno-a530
     DEQP_EXPECTED_RENDERER: FD530
   tags:
