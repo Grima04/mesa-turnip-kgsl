@@ -53,6 +53,7 @@ struct zink_screen {
    struct pipe_screen base;
    bool threaded;
    uint32_t curr_batch; //the current batch id
+   uint32_t last_finished; //this is racy but ultimately doesn't matter
 
    struct sw_winsys *winsys;
 
@@ -147,6 +148,41 @@ struct zink_screen {
       uint32_t buffer_view;
    } null_descriptor_hashes;
 };
+
+
+/* update last_finished to account for batch_id wrapping */
+static inline void
+zink_screen_update_last_finished(struct zink_screen *screen, uint32_t batch_id)
+{
+   /* last_finished may have wrapped */
+   if (screen->last_finished < UINT_MAX / 2) {
+      /* last_finished has wrapped, batch_id has not */
+      if (batch_id > UINT_MAX / 2)
+         return;
+   } else if (batch_id < UINT_MAX / 2) {
+      /* batch_id has wrapped, last_finished has not */
+      screen->last_finished = batch_id;
+      return;
+   }
+   /* neither have wrapped */
+   screen->last_finished = MAX2(batch_id, screen->last_finished);
+}
+
+/* check a batch_id against last_finished while accounting for wrapping */
+static inline bool
+zink_screen_check_last_finished(struct zink_screen *screen, uint32_t batch_id)
+{
+   /* last_finished may have wrapped */
+   if (screen->last_finished < UINT_MAX / 2) {
+      /* last_finished has wrapped, batch_id has not */
+      if (batch_id > UINT_MAX / 2)
+         return true;
+   } else if (batch_id < UINT_MAX / 2) {
+      /* batch_id has wrapped, last_finished has not */
+      return false;
+   }
+   return screen->last_finished >= batch_id;
+}
 
 static inline struct zink_screen *
 zink_screen(struct pipe_screen *pipe)

@@ -156,6 +156,7 @@ zink_vkfence_wait(struct zink_screen *screen, struct zink_fence *fence, uint64_t
    if (success) {
       p_atomic_set(&fence->completed, true);
       zink_fence_clear_resources(screen, fence);
+      zink_screen_update_last_finished(screen, fence->batch_id);
    }
    return success;
 }

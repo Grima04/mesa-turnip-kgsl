@@ -97,6 +97,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
     * before the state is reused
     */
    bs->fence.submitted = false;
+   zink_screen_update_last_finished(screen, bs->fence.batch_id);
    bs->fence.batch_id = 0;
 }
 

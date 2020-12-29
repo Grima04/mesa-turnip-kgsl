@@ -2042,6 +2042,8 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
       /* not submitted yet */
       return false;
 
+   if (zink_screen_check_last_finished(zink_screen(ctx->base.screen), batch_id))
+      return true;
    struct zink_fence *fence;
 
    simple_mtx_lock(&ctx->batch_mtx);
