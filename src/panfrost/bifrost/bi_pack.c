@@ -987,11 +987,37 @@ bi_test_pack_tuple_bits(void)
         assert(bi_pack_tuple_bits(BI_CLAUSE_SUBWORD_TUPLE_0 + 2, tuples, 8, 40, 15) == 0x4def);
 }
 
+#define L(x) (BI_CLAUSE_SUBWORD_LITERAL_0 + x)
+#define U(x) (BI_CLAUSE_SUBWORD_UPPER_0 + x)
+#define Z    BI_CLAUSE_SUBWORD_Z
+
+static void
+bi_test_pack_sync(void)
+{
+        struct bi_packed_tuple tuples[] = {
+                { 0, 0x3 << (75 - 64) },
+                { 0, 0x5 << (75 - 64) },
+                { 0, 0x7 << (75 - 64) },
+                { 0, 0x0 << (75 - 64) },
+                { 0, 0x2 << (75 - 64) },
+                { 0, 0x6 << (75 - 64) },
+                { 0, 0x5 << (75 - 64) },
+                { 0, 0x4 << (75 - 64) },
+        };
+
+        assert(bi_pack_sync(L(3), L(1), L(7), tuples, 8, false) == 0xCF);
+        assert(bi_pack_sync(L(3), L(1), U(7), tuples, 8, false) == 0xCC);
+        assert(bi_pack_sync(L(3), U(1), U(7), tuples, 8, false) == 0xEC);
+        assert(bi_pack_sync(Z,    U(1), U(7), tuples, 8, false) == 0x2C);
+        assert(bi_pack_sync(Z,    U(1), U(7), tuples, 8, true)  == 0x6C);
+}
+
 int bi_test_packing(void)
 {
         bi_test_pack_literal();
         bi_test_pack_upper();
         bi_test_pack_tuple_bits();
+        bi_test_pack_sync();
 
         return 0;
 }
