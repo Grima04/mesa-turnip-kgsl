@@ -125,17 +125,42 @@ fixup_regfootprint(struct ir3_shader_variant *v)
 void * ir3_shader_assemble(struct ir3_shader_variant *v)
 {
 	const struct ir3_compiler *compiler = v->shader->compiler;
-	void *bin;
+	struct ir3_info *info = &v->info;
+	uint32_t *bin;
+
+	ir3_collect_info(v);
+
+	if (v->constant_data_size) {
+		/* Make sure that where we're about to place the constant_data is safe
+		 * to indirectly upload from.
+		 */
+		info->constant_data_offset =
+			align(info->size, v->shader->compiler->const_upload_unit * 16);
+		info->size = info->constant_data_offset + v->constant_data_size;
+	}
+
+	/* Pad out the size so that when turnip uploads the shaders in
+	 * sequence, the starting offset of the next one is properly aligned.
+	 */
+	info->size = align(info->size, compiler->instr_align * sizeof(instr_t));
 
 	bin = ir3_assemble(v);
 	if (!bin)
 		return NULL;
 
+	/* Append the immediates after the end of the program.  This lets us emit
+	 * the immediates as an indirect load, while avoiding creating another BO.
+	 */
+	if (v->constant_data_size)
+		memcpy(&bin[info->constant_data_offset / 4], v->constant_data, v->constant_data_size);
+	ralloc_free(v->constant_data);
+	v->constant_data = NULL;
+
 	/* NOTE: if relative addressing is used, we set constlen in
 	 * the compiler (to worst-case value) since we don't know in
 	 * the assembler what the max addr reg value can be:
 	 */
-	v->constlen = MAX2(v->constlen, v->info.max_const + 1);
+	v->constlen = MAX2(v->constlen, info->max_const + 1);
 
 	/* On a4xx and newer, constlen must be a multiple of 16 dwords even though
 	 * uploads are in units of 4 dwords. Round it up here to make calculations
@@ -147,7 +172,7 @@ void * ir3_shader_assemble(struct ir3_shader_variant *v)
 	/* Use the per-wave layout by default on a6xx. It should result in better
 	 * performance when loads/stores are to a uniform index.
 	 */
-	v->pvtmem_per_wave = compiler->gpu_id >= 600 && !v->info.multi_dword_ldp_stp;
+	v->pvtmem_per_wave = compiler->gpu_id >= 600 && !info->multi_dword_ldp_stp;
 
 	fixup_regfootprint(v);
 
