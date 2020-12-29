@@ -99,6 +99,9 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                  const struct pipe_stream_output_info *so_info);
 
 void
+zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr, bool optimize);
+
+void
 zink_shader_free(struct zink_context *ctx, struct zink_shader *shader);
 
 struct zink_shader *

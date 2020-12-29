@@ -794,12 +794,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    ret->shader_id = p_atomic_inc_return(&screen->shader_id);
    ret->programs = _mesa_pointer_set_create(NULL);
 
-   if (!screen->info.feats.features.shaderImageGatherExtended) {
-      nir_lower_tex_options tex_opts = {};
-      tex_opts.lower_tg4_offsets = true;
-      NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
-   }
-
    if (nir->info.stage == MESA_SHADER_VERTEX)
       create_vs_pushconst(nir);
    else if (nir->info.stage == MESA_SHADER_TESS_CTRL ||
@@ -809,11 +803,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    } else if (nir->info.stage == MESA_SHADER_KERNEL)
       create_cs_pushconst(nir);
 
-   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
    if (nir->info.stage < MESA_SHADER_FRAGMENT)
       have_psiz = check_psiz(nir);
-   if (nir->info.stage == MESA_SHADER_GEOMETRY)
-      NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
    NIR_PASS_V(nir, lower_basevertex);
    NIR_PASS_V(nir, lower_work_dim);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
@@ -823,8 +814,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, lower_discard_if);
    NIR_PASS_V(nir, nir_lower_fragcolor);
    NIR_PASS_V(nir, lower_64bit_vertex_attribs);
-   if (nir->info.num_ubos || nir->info.num_ssbos)
-      NIR_PASS_V(nir, nir_lower_dynamic_bo_access);
    NIR_PASS_V(nir, unbreak_bos);
 
    if (zink_debug & ZINK_DEBUG_NIR) {
@@ -894,6 +883,26 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
 
    return ret;
+}
+
+void
+zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr, bool optimize)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   nir_shader *nir = nirptr;
+
+   if (!screen->info.feats.features.shaderImageGatherExtended) {
+      nir_lower_tex_options tex_opts = {};
+      tex_opts.lower_tg4_offsets = true;
+      NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
+   }
+   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
+   if (nir->info.stage == MESA_SHADER_GEOMETRY)
+      NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
+   optimize_nir(nir);
+   if (nir->info.num_ubos || nir->info.num_ssbos)
+      NIR_PASS_V(nir, nir_lower_dynamic_bo_access);
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 }
 
 void
