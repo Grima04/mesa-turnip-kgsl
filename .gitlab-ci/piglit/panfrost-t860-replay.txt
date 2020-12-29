@@ -1,7 +1,7 @@
 summary:
        name:  results
        ----  --------
-       pass:       49
+       pass:       48
        fail:        0
       crash:        0
        skip:        0
@@ -13,4 +13,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:       49
+      total:       48
