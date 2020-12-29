@@ -1557,7 +1557,6 @@ arm64_a530_gles3:
     - .arm64-a530-test
   variables:
     DEQP_VER: gles3
-    DEQP_PARALLEL: 1
     DEQP_FRACTION: 40
 
 arm64_a530_gles31:
