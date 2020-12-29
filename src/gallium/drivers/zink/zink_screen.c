@@ -1624,7 +1624,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->driconf.dual_color_blend_by_location = driQueryOptionb(config->options, "dual_color_blend_by_location");
       //screen->driconf.inline_uniforms = driQueryOptionb(config->options, "radeonsi_inline_uniforms");
 #endif
-   screen->driconf.inline_uniforms = !!getenv("ZINK_INLINE_UNIFORMS");
+   screen->driconf.inline_uniforms = debug_get_bool_option("ZINK_INLINE_UNIFORMS", false);
 
    screen->total_video_mem = get_video_mem(screen);
    if (!os_get_total_physical_memory(&screen->total_mem))
