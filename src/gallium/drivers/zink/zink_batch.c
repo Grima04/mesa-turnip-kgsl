@@ -232,9 +232,12 @@ get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
       }
    }
    simple_mtx_unlock(&ctx->batch_mtx);
-   if (bs)
+   if (bs) {
+      if (bs->fence.submitted && !bs->fence.completed)
+         /* this fence is already done, so we need vulkan to release the cmdbuf */
+         zink_vkfence_wait(zink_screen(ctx->base.screen), &bs->fence, PIPE_TIMEOUT_INFINITE);
       zink_reset_batch_state(ctx, bs);
-   else {
+   } else {
       if (!batch->state) {
          /* this is batch init, so create a few more states for later use */
          for (int i = 0; i < 3; i++) {
