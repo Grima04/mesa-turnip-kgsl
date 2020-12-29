@@ -939,3 +939,11 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
                 }
         }
 }
+
+#ifndef NDEBUG
+
+int bi_test_packing(void)
+{
+        return 0;
+}
+#endif

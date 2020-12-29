@@ -724,6 +724,7 @@ void bi_register_allocate(bi_context *ctx);
 
 /* Test suite */
 int bi_test_scheduler(void);
+int bi_test_packing(void);
 
 bi_clause *
 bi_singleton(void *memctx, bi_instr *ins,
