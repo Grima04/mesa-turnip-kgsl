@@ -135,6 +135,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_blend_const_color_rgba8888_unorm:
    case nir_intrinsic_load_line_width:
    case nir_intrinsic_load_aa_line_width:
+   case nir_intrinsic_load_fb_layers_v3d:
       is_divergent = false;
       break;
 
@@ -470,6 +471,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_write_invocation_amd:
    case nir_intrinsic_mbcnt_amd:
    case nir_intrinsic_elect:
+   case nir_intrinsic_load_tlb_color_v3d:
       is_divergent = true;
       break;
 
