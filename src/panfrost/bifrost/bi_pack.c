@@ -949,9 +949,34 @@ bi_test_pack_literal(void)
                 assert(bi_pack_literal(BI_CLAUSE_SUBWORD_LITERAL_0 + x) == x);
 }
 
+static void
+bi_test_pack_upper(void)
+{
+        struct bi_packed_tuple tuples[] = {
+                { 0, 0x3 << (75 - 64) },
+                { 0, 0x1 << (75 - 64) },
+                { 0, 0x7 << (75 - 64) },
+                { 0, 0x0 << (75 - 64) },
+                { 0, 0x2 << (75 - 64) },
+                { 0, 0x6 << (75 - 64) },
+                { 0, 0x5 << (75 - 64) },
+                { 0, 0x4 << (75 - 64) },
+        };
+
+        assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 0, tuples, 8) == 3);
+        assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 1, tuples, 8) == 1);
+        assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 2, tuples, 8) == 7);
+        assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 3, tuples, 8) == 0);
+        assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 4, tuples, 8) == 2);
+        assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 5, tuples, 8) == 6);
+        assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 6, tuples, 8) == 5);
+        assert(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 7, tuples, 8) == 4);
+}
+
 int bi_test_packing(void)
 {
         bi_test_pack_literal();
+        bi_test_pack_upper();
 
         return 0;
 }
