@@ -785,6 +785,32 @@ bi_after_instr(bi_instr *instr)
     };
 }
 
+static inline bi_instr *
+bi_first_instr_in_clause(bi_clause *clause)
+{
+        bi_bundle bundle = clause->bundles[0];
+        return bundle.fma ?: bundle.add;
+}
+
+static inline bi_instr *
+bi_last_instr_in_clause(bi_clause *clause)
+{
+        bi_bundle bundle = clause->bundles[clause->bundle_count - 1];
+        return bundle.add ?: bundle.fma;
+}
+
+static inline bi_cursor
+bi_before_clause(bi_clause *clause)
+{
+    return bi_before_instr(bi_first_instr_in_clause(clause));
+}
+
+static inline bi_cursor
+bi_after_clause(bi_clause *clause)
+{
+    return bi_after_instr(bi_last_instr_in_clause(clause));
+}
+
 /* IR builder in terms of cursor infrastructure */
 
 typedef struct {
