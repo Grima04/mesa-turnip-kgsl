@@ -962,8 +962,6 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    uint32_t stride = info.stride;
    RegClass rc = info.rc;
 
-   RegisterFile tmp_file(reg_file);
-
    /* check how many free regs we have */
    unsigned regs_free = reg_file.count_zero(PhysReg{lb}, ub-lb);
 
@@ -1006,11 +1004,11 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       /* first check if the register window starts in the middle of an
        * allocated variable: this is what we have to fix to allow for
        * num_moves > size */
-      if (reg_lo > lb && !tmp_file.is_empty_or_blocked(PhysReg(reg_lo)) &&
-          tmp_file.get_id(PhysReg(reg_lo)) == tmp_file.get_id(PhysReg(reg_lo).advance(-1)))
+      if (reg_lo > lb && !reg_file.is_empty_or_blocked(PhysReg(reg_lo)) &&
+          reg_file.get_id(PhysReg(reg_lo)) == reg_file.get_id(PhysReg(reg_lo).advance(-1)))
          continue;
-      if (reg_hi < ub - 1 && !tmp_file.is_empty_or_blocked(PhysReg(reg_hi).advance(3)) &&
-          tmp_file.get_id(PhysReg(reg_hi).advance(3)) == tmp_file.get_id(PhysReg(reg_hi).advance(4)))
+      if (reg_hi < ub - 1 && !reg_file.is_empty_or_blocked(PhysReg(reg_hi).advance(3)) &&
+          reg_file.get_id(PhysReg(reg_hi).advance(3)) == reg_file.get_id(PhysReg(reg_hi).advance(4)))
          continue;
 
       /* second, check that we have at most k=num_moves elements in the window
@@ -1031,29 +1029,29 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
             continue;
          }
 
-         if (tmp_file[j] == 0 || tmp_file[j] == last_var)
+         if (reg_file[j] == 0 || reg_file[j] == last_var)
             continue;
 
-         if (tmp_file[j] == 0xF0000000) {
+         if (reg_file[j] == 0xF0000000) {
             k += 1;
             n++;
             continue;
          }
 
-         if (ctx.assignments[tmp_file[j]].rc.size() >= size) {
+         if (ctx.assignments[reg_file[j]].rc.size() >= size) {
             found = false;
             break;
          }
 
          /* we cannot split live ranges of linear vgprs */
-         if (ctx.assignments[tmp_file[j]].rc & (1 << 6)) {
+         if (ctx.assignments[reg_file[j]].rc & (1 << 6)) {
             found = false;
             break;
          }
 
-         k += ctx.assignments[tmp_file[j]].rc.size();
+         k += ctx.assignments[reg_file[j]].rc.size();
          n++;
-         last_var = tmp_file[j];
+         last_var = reg_file[j];
       }
 
       if (!found || k > num_moves)
@@ -1074,6 +1072,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       return {{}, false};
 
    /* now, we figured the placement for our definition */
+   RegisterFile tmp_file(reg_file);
    std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, tmp_file, PhysReg{best_pos}, size);
 
    if (instr->opcode == aco_opcode::p_create_vector) {
