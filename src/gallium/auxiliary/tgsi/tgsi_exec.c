@@ -4374,27 +4374,17 @@ static void
 exec_resq_buf(struct tgsi_exec_machine *mach,
               const struct tgsi_full_instruction *inst)
 {
-   int result;
-   union tgsi_exec_channel r[4];
-   uint unit;
-   int i, chan;
-   struct tgsi_buffer_params params;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
+   uint32_t unit = fetch_sampler_unit(mach, inst, 0);
+   uint32_t size;
+   (void)mach->Buffer->lookup(mach->Buffer, unit, &size);
 
-   unit = fetch_sampler_unit(mach, inst, 0);
+   union tgsi_exec_channel r;
+   for (int i = 0; i < TGSI_QUAD_SIZE; i++)
+      r.i[i] = size;
 
-   params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
-   params.unit = unit;
-
-   mach->Buffer->get_dims(mach->Buffer, &params, &result);
-
-   for (i = 0; i < TGSI_QUAD_SIZE; i++) {
-      r[0].i[i] = result;
-   }
-
-   for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-      if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
-         store_dest(mach, &r[chan], &inst->Dst[0], inst, chan,
+   if (inst->Dst[0].Register.WriteMask & TGSI_WRITEMASK_X) {
+      for (int chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
+         store_dest(mach, &r, &inst->Dst[0], inst, TGSI_CHAN_X,
                     TGSI_EXEC_DATA_INT);
       }
    }

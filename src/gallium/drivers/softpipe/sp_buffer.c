@@ -27,21 +27,6 @@
 
 #include "util/format/u_format.h"
 
-static bool
-get_dimensions(const struct pipe_shader_buffer *bview,
-               const struct softpipe_resource *spr,
-               unsigned *width)
-{
-   *width = bview->buffer_size;
-   /*
-    * Bounds check the buffer size from the view
-    * and the buffer size from the underlying buffer.
-    */
-   if (*width > spr->base.width0)
-      return false;
-   return true;
-}
-
 static void *
 sp_tgsi_ssbo_lookup(const struct tgsi_buffer *buffer,
                     uint32_t unit,
@@ -49,42 +34,18 @@ sp_tgsi_ssbo_lookup(const struct tgsi_buffer *buffer,
 {
    struct sp_tgsi_buffer *sp_buf = (struct sp_tgsi_buffer *)buffer;
 
-   if (unit >= PIPE_MAX_SHADER_BUFFERS) {
-      *size = 0;
+   *size = 0;
+   if (unit >= PIPE_MAX_SHADER_BUFFERS)
       return NULL;
-   }
 
    struct pipe_shader_buffer *bview = &sp_buf->sp_bview[unit];
-   struct softpipe_resource *spr = softpipe_resource(bview->buffer);
-   if (!spr || !get_dimensions(bview, spr, size)) {
-      *size = 0;
+   /* Sanity check the view size is within our buffer. */
+   if (!bview->buffer || bview->buffer_size > bview->buffer->width0)
       return NULL;
-   }
 
+   struct softpipe_resource *spr = softpipe_resource(bview->buffer);
+   *size = bview->buffer_size;
    return (char *)spr->data + bview->buffer_offset;
-}
-
-/*
- * return size of the attached buffer for RESQ opcode.
- */
-static void
-sp_tgsi_get_dims(const struct tgsi_buffer *buffer,
-                 const struct tgsi_buffer_params *params,
-                 int *dim)
-{
-   struct sp_tgsi_buffer *sp_buf = (struct sp_tgsi_buffer *)buffer;
-   struct pipe_shader_buffer *bview;
-   struct softpipe_resource *spr;
-
-   if (params->unit >= PIPE_MAX_SHADER_BUFFERS)
-      return;
-
-   bview = &sp_buf->sp_bview[params->unit];
-   spr = softpipe_resource(bview->buffer);
-   if (!spr)
-      return;
-
-   *dim = bview->buffer_size;
 }
 
 struct sp_tgsi_buffer *
@@ -95,6 +56,5 @@ sp_create_tgsi_buffer(void)
       return NULL;
 
    buf->base.lookup = sp_tgsi_ssbo_lookup;
-   buf->base.get_dims = sp_tgsi_get_dims;
    return buf;
 };

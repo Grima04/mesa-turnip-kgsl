@@ -157,10 +157,6 @@ struct tgsi_buffer_params {
 struct tgsi_buffer {
    void *(*lookup)(const struct tgsi_buffer *buffer,
                    uint32_t unit, uint32_t *size);
-
-   void (*get_dims)(const struct tgsi_buffer *buffer,
-                    const struct tgsi_buffer_params *params,
-                    int *dim);
 };
 
 /**
