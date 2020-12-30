@@ -624,15 +624,20 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 		if (instr->flags & IR3_INSTR_B) {
 			if (ssbo->flags & IR3_REG_IMMED) {
 				cat6->desc_mode = CAT6_BINDLESS_IMM;
+			} else if (instr->flags & IR3_INSTR_NONUNIF) {
+				cat6->desc_mode = CAT6_BINDLESS_NONUNIFORM;
 			} else {
 				cat6->desc_mode = CAT6_BINDLESS_UNIFORM;
 			}
 			cat6->base = instr->cat6.base;
 		} else {
-			if (ssbo->flags & IR3_REG_IMMED)
+			if (ssbo->flags & IR3_REG_IMMED) {
 				cat6->desc_mode = CAT6_IMM;
-			else
+			} else if (instr->flags & IR3_INSTR_NONUNIF) {
+				cat6->desc_mode = CAT6_NONUNIFORM;
+			} else {
 				cat6->desc_mode = CAT6_UNIFORM;
+			}
 		}
 	}
 

@@ -230,13 +230,15 @@ struct ir3_instruction {
 		IR3_INSTR_SAT   = 0x800,
 		/* (cat5/cat6) Bindless */
 		IR3_INSTR_B     = 0x1000,
+		/* (cat5/cat6) nonuniform */
+		IR3_INSTR_NONUNIF    = 0x02000,
 		/* (cat5-only) Get some parts of the encoding from a1.x */
-		IR3_INSTR_A1EN  = 0x2000,
+		IR3_INSTR_A1EN       = 0x04000,
 		/* meta-flags, for intermediate stages of IR, ie.
 		 * before register assignment is done:
 		 */
-		IR3_INSTR_MARK  = 0x4000,
-		IR3_INSTR_UNUSED= 0x8000,
+		IR3_INSTR_MARK       = 0x08000,
+		IR3_INSTR_UNUSED     = 0x10000,
 	} flags;
 	uint8_t repeat;
 	uint8_t nop;
