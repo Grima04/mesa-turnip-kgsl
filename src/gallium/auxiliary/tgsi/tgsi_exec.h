@@ -323,7 +323,6 @@ struct tgsi_exec_machine
    /* Offsets in ->Outputs of the primitives' vertex output data */
    unsigned                      *PrimitiveOffsets[TGSI_MAX_VERTEX_STREAMS];
    unsigned                       NumOutputs;
-   unsigned                       MaxGeometryShaderOutputs;
    unsigned                       MaxOutputVertices;
    /* Offset in ->Outputs for the current vertex to be emitted. */
    unsigned                       OutputVertexOffset;

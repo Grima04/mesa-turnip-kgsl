@@ -1258,7 +1258,6 @@ tgsi_exec_machine_create(enum pipe_shader_type shader_type)
    memset(mach, 0, sizeof(*mach));
 
    mach->ShaderType = shader_type;
-   mach->MaxGeometryShaderOutputs = TGSI_MAX_TOTAL_VERTICES;
 
    if (shader_type != PIPE_SHADER_COMPUTE) {
       mach->Inputs = align_malloc(sizeof(struct tgsi_exec_vector) * PIPE_MAX_SHADER_INPUTS, 16);
@@ -2060,7 +2059,7 @@ emit_primitive(struct tgsi_exec_machine *mach,
    prim_count = &mach->OutputPrimCount[stream_id];
    if (mach->ExecMask) {
       ++(*prim_count);
-      debug_assert((*prim_count * mach->NumOutputs) < mach->MaxGeometryShaderOutputs);
+      debug_assert((*prim_count * mach->NumOutputs) < TGSI_MAX_TOTAL_VERTICES);
       mach->Primitives[stream_id][*prim_count] = 0;
    }
 }
