@@ -4230,67 +4230,8 @@ exec_atomop_img(struct tgsi_exec_machine *mach,
 }
 
 static void
-exec_atomop_buf(struct tgsi_exec_machine *mach,
-                const struct tgsi_full_instruction *inst)
-{
-   union tgsi_exec_channel r[4];
-   union tgsi_exec_channel value[4], value2[4];
-   float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE];
-   float rgba2[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE];
-   struct tgsi_buffer_params params;
-   int i, j;
-   uint unit, chan;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
-
-   unit = fetch_sampler_unit(mach, inst, 0);
-
-   params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
-   params.unit = unit;
-   params.writemask = inst->Dst[0].Register.WriteMask;
-
-   IFETCH(&r[0], 1, TGSI_CHAN_X);
-
-   for (i = 0; i < 4; i++) {
-      FETCH(&value[i], 2, TGSI_CHAN_X + i);
-      if (inst->Instruction.Opcode == TGSI_OPCODE_ATOMCAS)
-         FETCH(&value2[i], 3, TGSI_CHAN_X + i);
-   }
-
-   for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-      rgba[0][j] = value[0].f[j];
-      rgba[1][j] = value[1].f[j];
-      rgba[2][j] = value[2].f[j];
-      rgba[3][j] = value[3].f[j];
-   }
-   if (inst->Instruction.Opcode == TGSI_OPCODE_ATOMCAS) {
-      for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-         rgba2[0][j] = value2[0].f[j];
-         rgba2[1][j] = value2[1].f[j];
-         rgba2[2][j] = value2[2].f[j];
-         rgba2[3][j] = value2[3].f[j];
-      }
-   }
-
-   mach->Buffer->op(mach->Buffer, &params, inst->Instruction.Opcode,
-                   r[0].i,
-                   rgba, rgba2);
-
-   for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-      r[0].f[j] = rgba[0][j];
-      r[1].f[j] = rgba[1][j];
-      r[2].f[j] = rgba[2][j];
-      r[3].f[j] = rgba[3][j];
-   }
-   for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-      if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
-         store_dest(mach, &r[chan], &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
-      }
-   }
-}
-
-static void
-exec_atomop_mem(struct tgsi_exec_machine *mach,
-                const struct tgsi_full_instruction *inst)
+exec_atomop_membuf(struct tgsi_exec_machine *mach,
+                   const struct tgsi_full_instruction *inst)
 {
    union tgsi_exec_channel offset, r0, r1;
    uint chan, i;
@@ -4302,11 +4243,25 @@ exec_atomop_mem(struct tgsi_exec_machine *mach,
       return;
 
    void *ptr[TGSI_QUAD_SIZE];
-   for (i = 0; i < TGSI_QUAD_SIZE; i++) {
-      if (likely(mach->LocalMemSize >= 4 && offset.u[i] <= mach->LocalMemSize - 4))
-         ptr[i] = (char *)mach->LocalMem + offset.u[i];
-      else
-         ptr[i] = NULL;
+   if (inst->Src[0].Register.File == TGSI_FILE_BUFFER) {
+      uint32_t unit = fetch_sampler_unit(mach, inst, 0);
+      uint32_t size;
+      char *buffer = mach->Buffer->lookup(mach->Buffer, unit, &size);
+      for (int i = 0; i < TGSI_QUAD_SIZE; i++) {
+         if (likely(size >= 4 && offset.u[i] <= size - 4))
+            ptr[i] = buffer + offset.u[i];
+         else
+            ptr[i] = NULL;
+      }
+   } else {
+      assert(inst->Src[0].Register.File == TGSI_FILE_MEMORY);
+
+      for (i = 0; i < TGSI_QUAD_SIZE; i++) {
+         if (likely(mach->LocalMemSize >= 4 && offset.u[i] <= mach->LocalMemSize - 4))
+            ptr[i] = (char *)mach->LocalMem + offset.u[i];
+         else
+            ptr[i] = NULL;
+      }
    }
 
    FETCH(&r0, 2, TGSI_CHAN_X);
@@ -4381,10 +4336,8 @@ exec_atomop(struct tgsi_exec_machine *mach,
 {
    if (inst->Src[0].Register.File == TGSI_FILE_IMAGE)
       exec_atomop_img(mach, inst);
-   else if (inst->Src[0].Register.File == TGSI_FILE_BUFFER)
-      exec_atomop_buf(mach, inst);
-   else if (inst->Src[0].Register.File == TGSI_FILE_MEMORY)
-      exec_atomop_mem(mach, inst);
+   else
+      exec_atomop_membuf(mach, inst);
 }
 
 static void
