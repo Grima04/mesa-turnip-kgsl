@@ -42,6 +42,7 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"shaders",   BIFROST_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
         {"shaderdb",  BIFROST_DBG_SHADERDB,	"Print statistics"},
         {"verbose",   BIFROST_DBG_VERBOSE,	"Disassemble verbosely"},
+        {"internal",  BIFROST_DBG_INTERNAL,	"Dump even internal shaders"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -2325,7 +2326,10 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
         NIR_PASS_V(nir, pan_nir_reorder_writeout);
 
-        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal) {
+        bool skip_internal = nir->info.internal;
+        skip_internal &= !(bifrost_debug & BIFROST_DBG_INTERNAL);
+
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
                 nir_print_shader(nir, stdout);
         }
 
@@ -2370,11 +2374,11 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 bi_lower_fau(ctx, block);
         }
 
-        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal)
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
         bi_schedule(ctx);
         bi_register_allocate(ctx);
-        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal)
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
 
         util_dynarray_init(&program->compiled, NULL);
