@@ -43,60 +43,6 @@ get_dimensions(const struct pipe_shader_buffer *bview,
 }
 
 /*
- * Implement the image LOAD operation.
- */
-static void
-sp_tgsi_load(const struct tgsi_buffer *buffer,
-             const struct tgsi_buffer_params *params,
-             const int s[TGSI_QUAD_SIZE],
-             float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE])
-{
-   struct sp_tgsi_buffer *sp_buf = (struct sp_tgsi_buffer *)buffer;
-   struct pipe_shader_buffer *bview;
-   struct softpipe_resource *spr;
-   unsigned width;
-   int c, j;
-
-   if (params->unit >= PIPE_MAX_SHADER_BUFFERS)
-      goto fail_write_all_zero;
-
-   bview = &sp_buf->sp_bview[params->unit];
-   spr = softpipe_resource(bview->buffer);
-   if (!spr)
-      goto fail_write_all_zero;
-
-   if (!get_dimensions(bview, spr, &width))
-      return;
-
-   for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-      int s_coord;
-      bool fill_zero = false;
-
-      if (!(params->execmask & (1 << j)))
-         fill_zero = true;
-
-      s_coord = s[j];
-      if (s_coord >= width)
-         fill_zero = true;
-
-      if (fill_zero) {
-         for (c = 0; c < 4; c++)
-            rgba[c][j] = 0;
-         continue;
-      }
-      uint32_t *src = (uint32_t *)((unsigned char *)spr->data +
-                                   bview->buffer_offset + s_coord);
-      for (c = 0; c < 4; c++) {
-         memcpy(&rgba[c][j], &src[c], 4);
-      }
-   }
-   return;
-fail_write_all_zero:
-   memset(rgba, 0, TGSI_NUM_CHANNELS * TGSI_QUAD_SIZE * 4);
-   return;
-}
-
-/*
  * Implement the buffer STORE operation.
  */
 static void
@@ -194,7 +140,6 @@ sp_create_tgsi_buffer(void)
    if (!buf)
       return NULL;
 
-   buf->base.load = sp_tgsi_load;
    buf->base.store = sp_tgsi_store;
    buf->base.lookup = sp_tgsi_ssbo_lookup;
    buf->base.get_dims = sp_tgsi_get_dims;

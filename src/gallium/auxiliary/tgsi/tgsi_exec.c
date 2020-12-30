@@ -3932,31 +3932,28 @@ static void
 exec_load_buf(struct tgsi_exec_machine *mach,
               const struct tgsi_full_instruction *inst)
 {
-   union tgsi_exec_channel r[4];
-   uint unit;
-   int j;
-   uint chan;
-   float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE];
-   struct tgsi_buffer_params params;
-   int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
+   uint32_t unit = fetch_sampler_unit(mach, inst, 0);
+   uint32_t size;
+   char *ptr = mach->Buffer->lookup(mach->Buffer, unit, &size);
 
-   unit = fetch_sampler_unit(mach, inst, 0);
+   union tgsi_exec_channel offset;
+   IFETCH(&offset, 1, TGSI_CHAN_X);
 
-   params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
-   params.unit = unit;
-   IFETCH(&r[0], 1, TGSI_CHAN_X);
+   assert(inst->Dst[0].Register.WriteMask);
+   uint32_t load_size = util_last_bit(inst->Dst[0].Register.WriteMask) * 4;
 
-   mach->Buffer->load(mach->Buffer, &params,
-                      r[0].i, rgba);
-   for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-      r[0].f[j] = rgba[0][j];
-      r[1].f[j] = rgba[1][j];
-      r[2].f[j] = rgba[2][j];
-      r[3].f[j] = rgba[3][j];
+   union tgsi_exec_channel rgba[TGSI_NUM_CHANNELS];
+   memset(&rgba, 0, sizeof(rgba));
+   for (int j = 0; j < TGSI_QUAD_SIZE; j++) {
+      if (size >= load_size && offset.u[j] <= (size - load_size)) {
+         for (int chan = 0; chan < load_size / 4; chan++)
+            rgba[chan].u[j] = *(uint32_t *)(ptr + offset.u[j] + chan * 4);
+      }
    }
-   for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
+
+   for (int chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
       if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
-         store_dest(mach, &r[chan], &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
+         store_dest(mach, &rgba[chan], &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
       }
    }
 }
