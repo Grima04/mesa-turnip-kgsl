@@ -1280,6 +1280,28 @@ static void print_instr_cat6_a6xx(struct disasm_ctx *ctx, instr_t *instr)
 	memset(&src2, 0, sizeof(src2));
 	memset(&ssbo, 0, sizeof(ssbo));
 
+	/* disambiguate from pre-bindless variants: */
+	switch (opc) {
+	case OPC_RESINFO:
+	case OPC_LDIB:
+	case OPC_STIB:
+	case OPC_ATOMIC_ADD:
+	case OPC_ATOMIC_SUB:
+	case OPC_ATOMIC_XCHG:
+	case OPC_ATOMIC_INC:
+	case OPC_ATOMIC_DEC:
+	case OPC_ATOMIC_CMPXCHG:
+	case OPC_ATOMIC_MIN:
+	case OPC_ATOMIC_MAX:
+	case OPC_ATOMIC_AND:
+	case OPC_ATOMIC_OR:
+	case OPC_ATOMIC_XOR:
+		fprintf(ctx->out, ".b");
+		break;
+	default:
+		break;
+	}
+
 	if (uses_type) {
 		if (!is_id) {
 			fprintf(ctx->out, ".%s", cat6->typed ? "typed" : "untyped");

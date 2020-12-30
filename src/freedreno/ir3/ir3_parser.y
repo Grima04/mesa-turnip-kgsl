@@ -490,6 +490,20 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_ATOMIC_AND
 %token <tok> T_OP_ATOMIC_OR
 %token <tok> T_OP_ATOMIC_XOR
+%token <tok> T_OP_RESINFO_B
+%token <tok> T_OP_LDIB_B
+%token <tok> T_OP_STIB_B
+%token <tok> T_OP_ATOMIC_B_ADD
+%token <tok> T_OP_ATOMIC_B_SUB
+%token <tok> T_OP_ATOMIC_B_XCHG
+%token <tok> T_OP_ATOMIC_B_INC
+%token <tok> T_OP_ATOMIC_B_DEC
+%token <tok> T_OP_ATOMIC_B_CMPXCHG
+%token <tok> T_OP_ATOMIC_B_MIN
+%token <tok> T_OP_ATOMIC_B_MAX
+%token <tok> T_OP_ATOMIC_B_AND
+%token <tok> T_OP_ATOMIC_B_OR
+%token <tok> T_OP_ATOMIC_B_XOR
 %token <tok> T_OP_LDGB
 %token <tok> T_OP_STGB
 %token <tok> T_OP_STIB
@@ -940,7 +954,7 @@ cat6_id:           cat6_id_opc cat6_type dst_reg
  * is going to be tricky.  Maybe we end up needing to cpp preprocess the
  * parser and generate multiple versions?  For now, punt.
  */
-cat6_bindless_ibo_opc: T_OP_RESINFO    { new_instr(OPC_RESINFO); }
+cat6_bindless_ibo_opc: T_OP_RESINFO_B  { new_instr(OPC_RESINFO); }
 
 cat6_bindless_base:
 |                  '.' T_BASE { instr->flags |= IR3_INSTR_B; instr->cat6.base = $2; }
