@@ -394,7 +394,9 @@ zink_get_shader_param(struct pipe_screen *pscreen,
          return INT_MAX;
       case PIPE_SHADER_TESS_CTRL:
       case PIPE_SHADER_TESS_EVAL:
-         if (screen->info.feats.features.tessellationShader)
+         if (screen->info.feats.features.tessellationShader &&
+             (screen->instance_info.have_KHR_maintenance2 ||
+              VK_MAKE_VERSION(1,1,0) <= screen->loader_version))
             return INT_MAX;
          break;
 

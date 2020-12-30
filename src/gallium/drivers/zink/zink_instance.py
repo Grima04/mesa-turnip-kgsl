@@ -5,6 +5,7 @@ import sys
 
 EXTENSIONS = [
     Extension("VK_EXT_debug_utils"),
+    Extension("VK_KHR_maintenance2"),
     Extension("VK_KHR_get_physical_device_properties2"),
     Extension("VK_KHR_external_memory_capabilities"),
     Extension("VK_MVK_moltenvk"),
