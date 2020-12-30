@@ -703,7 +703,7 @@ void bi_print_shader(bi_context *ctx, FILE *fp);
 
 /* BIR passes */
 
-bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block);
+bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block, bool soft);
 void bi_schedule(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
 

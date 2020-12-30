@@ -2389,7 +2389,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
                 bi_foreach_block(ctx, _block) {
                         bi_block *block = (bi_block *) _block;
-                        progress |= bi_opt_dead_code_eliminate(ctx, block);
+                        progress |= bi_opt_dead_code_eliminate(ctx, block, false);
                 }
         } while(progress);
 
