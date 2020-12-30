@@ -289,9 +289,9 @@ bi_assign_slots(bi_bundle *now, bi_bundle *prev)
 static enum bifrost_reg_mode
 bi_pack_register_mode(bi_registers r)
 {
-        /* Handle idle special case for first instructions */
-        if (r.first_instruction && !(r.slot23.slot2 | r.slot23.slot3))
-                return BIFROST_IDLE_1;
+        /* Handle idle as a special case */
+        if (!(r.slot23.slot2 | r.slot23.slot3))
+                return r.first_instruction ? BIFROST_IDLE_1 : BIFROST_IDLE;
 
         /* Otherwise, use the LUT */
         for (unsigned i = 0; i < ARRAY_SIZE(bifrost_reg_ctrl_lut); ++i) {
