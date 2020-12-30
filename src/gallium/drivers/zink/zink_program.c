@@ -319,7 +319,8 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
       dirty[tgsi_processor_to_shader_stage(type)] = stages[type];
    }
    if (ctx->dirty_shader_stages & (1 << PIPE_SHADER_TESS_EVAL)) {
-      if (dirty[MESA_SHADER_TESS_EVAL] && !dirty[MESA_SHADER_TESS_CTRL]) {
+      if (dirty[MESA_SHADER_TESS_EVAL] && !dirty[MESA_SHADER_TESS_CTRL] &&
+          !stages[PIPE_SHADER_TESS_CTRL]) {
          dirty[MESA_SHADER_TESS_CTRL] = stages[PIPE_SHADER_TESS_CTRL] = zink_shader_tcs_create(ctx, stages[PIPE_SHADER_VERTEX]);
          dirty[MESA_SHADER_TESS_EVAL]->generated = stages[PIPE_SHADER_TESS_CTRL];
       }
