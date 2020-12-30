@@ -3703,8 +3703,10 @@ emit_block(bi_context *ctx, nir_block *block)
         list_addtail(&ctx->current_block->base.link, &ctx->blocks);
         list_inithead(&ctx->current_block->base.instructions);
 
+        bi_builder _b = bi_init_builder(ctx);
+
         nir_foreach_instr(instr, block) {
-                emit_instr(ctx, instr);
+                bi_emit_instr(&_b, instr);
                 ++ctx->instruction_count;
         }
 
@@ -3767,15 +3769,12 @@ emit_if(bi_context *ctx, nir_if *nif)
         bi_block *before_block = ctx->current_block;
 
         /* Speculatively emit the branch, but we can't fill it in until later */
-        bi_instruction *then_branch = bi_emit_branch(ctx);
-        bi_set_branch_cond(then_branch, &nif->condition, true);
+        bi_builder _b = bi_init_builder(ctx);
+        bi_instr *then_branch = bi_branch(&_b, &nif->condition, true);
 
         /* Emit the two subblocks. */
         bi_block *then_block = emit_cf_list(ctx, &nif->then_list);
         bi_block *end_then_block = ctx->current_block;
-
-        /* Emit a jump from the end of the then block to the end of the else */
-        bi_instruction *then_exit = bi_emit_branch(ctx);
 
         /* Emit second block, and check if it's empty */
 
@@ -3790,13 +3789,15 @@ emit_if(bi_context *ctx, nir_if *nif)
         assert(else_block);
 
         if (ctx->instruction_count == count_in) {
-                /* The else block is empty, so don't emit an exit jump */
-                bi_remove_instruction(then_exit);
                 then_branch->branch_target = ctx->after_block;
                 pan_block_add_successor(&end_then_block->base, &ctx->after_block->base); /* fallthrough */
         } else {
                 then_branch->branch_target = else_block;
-                then_exit->branch_target = ctx->after_block;
+
+                /* Emit a jump from the end of the then block to the end of the else */
+                _b.cursor = bi_after_block(end_then_block);
+                bi_instr *then_exit = bi_jump(&_b, ctx->after_block);
+
                 pan_block_add_successor(&end_then_block->base, &then_exit->branch_target->base);
                 pan_block_add_successor(&end_else_block->base, &ctx->after_block->base); /* fallthrough */
         }
@@ -3822,8 +3823,8 @@ emit_loop(bi_context *ctx, nir_loop *nloop)
         emit_cf_list(ctx, &nloop->body);
 
         /* Branch back to loop back */
-        bi_instruction *br_back = bi_emit_branch(ctx);
-        br_back->branch_target = ctx->continue_block;
+        bi_builder _b = bi_init_builder(ctx);
+        bi_jump(&_b, ctx->continue_block);
         pan_block_add_successor(&start_block->base, &ctx->continue_block->base);
         pan_block_add_successor(&ctx->current_block->base, &ctx->continue_block->base);
 
@@ -4130,8 +4131,6 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 /* Name blocks now that we're done emitting so the order is
                  * consistent */
                 block->base.name = block_source_count++;
-
-                bi_lower_combine(ctx, block);
         }
 
         bool progress = false;
@@ -4144,6 +4143,11 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                         progress |= bi_opt_dead_code_eliminate(ctx, block);
                 }
         } while(progress);
+
+        bi_foreach_block(ctx, _block) {
+                bi_block *block = (bi_block *) _block;
+                bi_lower_fau(ctx, block);
+        }
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal)
                 bi_print_shader(ctx, stdout);

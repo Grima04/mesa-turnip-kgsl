@@ -25,15 +25,15 @@
 #include "compiler.h"
 
 void
-bi_liveness_ins_update(uint16_t *live, bi_instruction *ins, unsigned max)
+bi_liveness_ins_update(uint16_t *live, bi_instr *ins, unsigned max)
 {
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
-        pan_liveness_kill(live, ins->dest, max, bi_writemask(ins));
+        pan_liveness_kill(live, bi_get_node(ins->dest[0]), max, bi_writemask_new(ins));
 
         bi_foreach_src(ins, src) {
-                unsigned node = ins->src[src];
-                unsigned bytemask = bi_bytemask_of_read_components(ins, node);
+                unsigned node = bi_get_node(ins->src[src]);
+                unsigned bytemask = bi_bytemask_of_read_components_new(ins, ins->src[src]);
 
                 pan_liveness_gen(live, node, max, bytemask);
         }
@@ -42,7 +42,7 @@ bi_liveness_ins_update(uint16_t *live, bi_instruction *ins, unsigned max)
 static void
 bi_liveness_ins_update_wrap(uint16_t *live, void *ins, unsigned max)
 {
-        bi_liveness_ins_update(live, (bi_instruction *) ins, max);
+        bi_liveness_ins_update(live, (bi_instr *) ins, max);
 }
 
 void

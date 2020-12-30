@@ -36,12 +36,13 @@ bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block)
 
         uint16_t *live = mem_dup(block->base.live_out, temp_count * sizeof(uint16_t));
 
-        bi_foreach_instr_in_block_safe_rev(block, ins) {
-                if (ins->dest && !(ins->dest & BIR_SPECIAL)) {
-                        if (!live[ins->dest]) {
-                                bi_remove_instruction(ins);
-                                progress |= true;
-                        }
+        bi_foreach_instr_in_block_safe_rev(block, _ins) {
+                bi_instr *ins = (bi_instr *) _ins;
+                unsigned index = bi_get_node(ins->dest[0]);
+
+                if (index < temp_count && !live[index]) {
+                        bi_remove_instruction((bi_instruction *) ins);
+                        progress |= true;
                 }
 
                 bi_liveness_ins_update(live, ins, temp_count);

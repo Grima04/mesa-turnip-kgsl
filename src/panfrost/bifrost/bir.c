@@ -63,13 +63,13 @@ bi_is_src_swizzled(bi_instruction *ins, unsigned s)
 }
 
 bool
-bi_has_arg(bi_instruction *ins, unsigned arg)
+bi_has_arg(bi_instr *ins, bi_index arg)
 {
         if (!ins)
                 return false;
 
         bi_foreach_src(ins, s) {
-                if (ins->src[s] == arg)
+                if (bi_is_equiv(ins->src[s], arg))
                         return true;
         }
 

@@ -341,9 +341,9 @@ bi_schedule(bi_context *ctx)
 
                 bi_foreach_instr_in_block(bblock, ins) {
                         /* Convenient time to lower */
-                        bi_lower_fmov(ins);
+//                        bi_lower_fmov(ins);
 
-                        bi_clause *u = bi_make_singleton(ctx, ins,
+                        bi_clause *u = bi_singleton(ctx, (bi_instr *) ins,
                                         bblock, 0, (1 << 0),
                                         !is_first);
 

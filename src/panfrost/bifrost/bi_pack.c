@@ -49,7 +49,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd
                         (next_1 == NULL) ? BIFROST_FLOW_END :
                         clause->flow_control,
                 .terminate_discarded_threads = tdd,
-                .next_clause_prefetch = clause->next_clause_prefetch,
+                .next_clause_prefetch = clause->next_clause_prefetch && next_1,
                 .staging_barrier = clause->staging_barrier,
                 .staging_register = clause->staging_register,
                 .dependency_wait = dependency_wait,
@@ -105,15 +105,16 @@ bi_constant_field(unsigned idx)
 static bool
 bi_assign_fau_idx_single(bi_registers *regs,
                          bi_clause *clause,
-                         bi_instruction *ins,
+                         bi_instr *ins,
                          bool assigned,
                          bool fast_zero)
 {
         if (!ins)
                 return assigned;
 
-        if (ins->type == BI_BRANCH && clause->branch_constant) {
-                /* By convention branch constant is last */
+        if (ins->branch_target && clause->branch_constant) {
+                /* By convention branch constant is last XXX: this whole thing
+                 * is a hack, FIXME */
                 unsigned idx = clause->constant_count - 1;
 
                 /* We can only jump to clauses which are qword aligned so the
@@ -126,18 +127,26 @@ bi_assign_fau_idx_single(bi_registers *regs,
                 if (assigned && regs->fau_idx != C)
                         unreachable("Mismatched fau_idx: branch");
 
+                bi_foreach_src(ins, s) {
+                        if (ins->src[s].type == BI_INDEX_CONSTANT)
+                                ins->src[s] = bi_passthrough(BIFROST_SRC_FAU_HI);
+                }
+
                 regs->fau_idx = C;
                 return true;
         }
 
         bi_foreach_src(ins, s) {
-                if (ins->src[s] & BIR_INDEX_CONSTANT) {
+                if (ins->src[s].type == BI_INDEX_CONSTANT) {
                         bool hi = false;
-                        uint32_t cons = bi_get_immediate(ins, s);
+                        uint32_t cons = ins->src[s].value;
+                        unsigned swizzle = ins->src[s].swizzle;
 
                         /* FMA can encode zero for free */
                         if (cons == 0 && fast_zero) {
-                                ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_STAGE;
+                                assert(!ins->src[s].abs && !ins->src[s].neg);
+                                ins->src[s] = bi_passthrough(BIFROST_SRC_STAGE);
+                                ins->src[s].swizzle = swizzle;
                                 continue;
                         }
 
@@ -149,16 +158,17 @@ bi_assign_fau_idx_single(bi_registers *regs,
                                 unreachable("Mismatched uniform/const field: imm");
 
                         regs->fau_idx = f;
-                        ins->src[s] = BIR_INDEX_PASS | (hi ? BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
+                        ins->src[s] = bi_passthrough(hi ? BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
+                        ins->src[s].swizzle = swizzle;
                         assigned = true;
-                } else if (ins->src[s] & BIR_INDEX_FAU) {
-                        unsigned index = ins->src[s] & BIR_FAU_TYPE_MASK;
-                        bool hi = !!(ins->src[s] & BIR_FAU_HI);
+                } else if (ins->src[s].type == BI_INDEX_FAU) {
+                        bool hi = ins->src[s].offset > 0;
 
-                        assert(!assigned || regs->fau_idx == index);
-                        regs->fau_idx = index;
-                        ins->src[s] = BIR_INDEX_PASS |
-                                      (hi ? BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
+                        assert(!assigned || regs->fau_idx == ins->src[s].value);
+                        assert(ins->src[s].swizzle == BI_SWIZZLE_H01);
+                        regs->fau_idx = ins->src[s].value;
+                        ins->src[s] = bi_passthrough(hi ? BIFROST_SRC_FAU_HI :
+                                        BIFROST_SRC_FAU_LO);
                         assigned = true;
                 }
         }
@@ -171,43 +181,41 @@ bi_assign_fau_idx(bi_clause *clause,
                   bi_bundle *bundle)
 {
         bool assigned =
-                bi_assign_fau_idx_single(&bundle->regs, clause, bundle->fma, false, true);
+                bi_assign_fau_idx_single(&bundle->regs, clause, (bi_instr *) bundle->fma, false, true);
 
-        bi_assign_fau_idx_single(&bundle->regs, clause, bundle->add, assigned, false);
+        bi_assign_fau_idx_single(&bundle->regs, clause, (bi_instr *) bundle->add, assigned, false);
 }
 
 /* Assigns a slot for reading, before anything is written */
 
 static void
-bi_assign_slot_read(bi_registers *regs, unsigned src)
+bi_assign_slot_read(bi_registers *regs, bi_index src)
 {
         /* We only assign for registers */
-        if (!(src & BIR_INDEX_REGISTER))
+        if (src.type != BI_INDEX_REGISTER)
                 return;
-
-        unsigned reg = src & ~BIR_INDEX_REGISTER;
 
         /* Check if we already assigned the slot */
         for (unsigned i = 0; i <= 1; ++i) {
-                if (regs->slot[i] == reg && regs->enabled[i])
+                if (regs->slot[i] == src.value && regs->enabled[i])
                         return;
         }
 
-        if (regs->slot[2] == reg && regs->slot23.slot2 == BIFROST_OP_READ)
+        if (regs->slot[2] == src.value && regs->slot23.slot2 == BIFROST_OP_READ)
                 return;
 
         /* Assign it now */
 
         for (unsigned i = 0; i <= 1; ++i) {
                 if (!regs->enabled[i]) {
-                        regs->slot[i] = reg;
+                        regs->slot[i] = src.value;
                         regs->enabled[i] = true;
                         return;
                 }
         }
 
         if (!regs->slot23.slot3) {
-                regs->slot[2] = reg;
+                regs->slot[2] = src.value;
                 regs->slot23.slot2 = BIFROST_OP_READ;
                 return;
         }
@@ -223,44 +231,52 @@ bi_assign_slots(bi_bundle *now, bi_bundle *prev)
          * use the data registers, which has its own mechanism entirely
          * and thus gets skipped over here. */
 
-        unsigned read_dreg = now->add &&
-                bi_class_props[now->add->type] & BI_DATA_REG_SRC;
+        bool read_dreg = now->add &&
+                bi_opcode_props[((bi_instr *) now->add)->op].sr_read;
 
-        unsigned write_dreg = prev->add &&
-                bi_class_props[prev->add->type] & BI_DATA_REG_DEST;
+        bool write_dreg = now->add &&
+                bi_opcode_props[((bi_instr *) now->add)->op].sr_write;
 
         /* First, assign reads */
 
         if (now->fma)
                 bi_foreach_src(now->fma, src)
-                        bi_assign_slot_read(&now->regs, now->fma->src[src]);
+                        bi_assign_slot_read(&now->regs, ((bi_instr *) now->fma)->src[src]);
 
         if (now->add) {
                 bi_foreach_src(now->add, src) {
                         if (!(src == 0 && read_dreg))
-                                bi_assign_slot_read(&now->regs, now->add->src[src]);
+                                bi_assign_slot_read(&now->regs, ((bi_instr *) now->add)->src[src]);
                 }
         }
 
-        /* Next, assign writes */
+        /* Next, assign writes. Staging writes are assigned separately, but
+         * +ATEST wants its destination written to both a staging register
+         * _and_ a regular write, because it may not generate a message */
 
-        if (prev->add && prev->add->dest & BIR_INDEX_REGISTER && !write_dreg) {
-                now->regs.slot[3] = prev->add->dest & ~BIR_INDEX_REGISTER;
-                now->regs.slot23.slot3 = BIFROST_OP_WRITE;
+        if (prev->add && (!write_dreg || ((bi_instr *) prev->add)->op == BI_OPCODE_ATEST)) {
+                bi_index idx = ((bi_instr *) prev->add)->dest[0];
+
+                if (idx.type == BI_INDEX_REGISTER) {
+                        now->regs.slot[3] = idx.value;
+                        now->regs.slot23.slot3 = BIFROST_OP_WRITE;
+                }
         }
 
-        if (prev->fma && prev->fma->dest & BIR_INDEX_REGISTER) {
-                unsigned r = prev->fma->dest & ~BIR_INDEX_REGISTER;
+        if (prev->fma) {
+                bi_index idx = ((bi_instr *) prev->fma)->dest[0];
 
-                if (now->regs.slot23.slot3) {
-                        /* Scheduler constraint: cannot read 3 and write 2 */
-                        assert(!now->regs.slot23.slot2);
-                        now->regs.slot[2] = r;
-                        now->regs.slot23.slot2 = BIFROST_OP_WRITE;
-                } else {
-                        now->regs.slot[3] = r;
-                        now->regs.slot23.slot3 = BIFROST_OP_WRITE;
-                        now->regs.slot23.slot3_fma = true;
+                if (idx.type == BI_INDEX_REGISTER) {
+                        if (now->regs.slot23.slot3) {
+                                /* Scheduler constraint: cannot read 3 and write 2 */
+                                assert(!now->regs.slot23.slot2);
+                                now->regs.slot[2] = idx.value;
+                                now->regs.slot23.slot2 = BIFROST_OP_WRITE;
+                        } else {
+                                now->regs.slot[3] = idx.value;
+                                now->regs.slot23.slot3 = BIFROST_OP_WRITE;
+                                now->regs.slot23.slot3_fma = true;
+                        }
                 }
         }
 
@@ -934,39 +950,65 @@ bi_flip_slots(bi_registers *regs)
 static void
 bi_lower_cubeface2(bi_context *ctx, bi_bundle *bundle)
 {
+        bi_instr *old = (bi_instr *) bundle->add;
+
         /* Filter for +CUBEFACE2 */
-        if (!bundle->add || bundle->add->type != BI_SPECIAL_ADD
-                         || bundle->add->op.special != BI_SPECIAL_CUBEFACE2) {
+        if (!old || old->op != BI_OPCODE_CUBEFACE2)
                 return;
-        }
 
         /* This won't be used once we emit non-singletons, for now this is just
          * a fact of our scheduler and allows us to clobber FMA */
         assert(!bundle->fma);
 
         /* Construct an FMA op */
-        bi_instruction cubeface1 = {
-                .type = BI_SPECIAL_FMA,
-                .op.special = BI_SPECIAL_CUBEFACE1,
-                /* no dest, just to a temporary */
-                .dest_type = nir_type_float32,
-                .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
-        };
-
-        /* Copy over the register allocated sources (coordinates). */
-        memcpy(&cubeface1.src, bundle->add->src, sizeof(cubeface1.src));
-
-        /* Zeroed by RA since this is all 32-bit */
-        for (unsigned i = 0; i < 3; ++i)
-                assert(bundle->add->swizzle[i][0] == 0);
+        bi_instr *new = rzalloc(ctx, bi_instr);
+        new->op = BI_OPCODE_CUBEFACE1;
+        /* no dest, just a temporary */
+        new->src[0] = old->src[0];
+        new->src[1] = old->src[1];
+        new->src[2] = old->src[2];
 
         /* Emit the instruction */
-        bundle->fma = bi_emit_before(ctx, bundle->add, cubeface1);
+        list_addtail(&new->link, &old->link);
+        bundle->fma = (bi_instruction *) new;
 
         /* Now replace the sources of the CUBEFACE2 with a single passthrough
          * from the CUBEFACE1 (and a side-channel) */
-        bundle->add->src[0] = BIR_INDEX_PASS | BIFROST_SRC_STAGE;
-        bundle->add->src[1] = bundle->add->src[2] = 0;
+        old->src[0] = bi_passthrough(BIFROST_SRC_STAGE);
+        old->src[1] = old->src[2] = bi_null();
+}
+
+static inline enum bifrost_packed_src
+bi_get_src_slot(bi_registers *regs, unsigned reg)
+{
+        if (regs->slot[0] == reg && regs->enabled[0])
+                return BIFROST_SRC_PORT0;
+        else if (regs->slot[1] == reg && regs->enabled[1])
+                return BIFROST_SRC_PORT1;
+        else if (regs->slot[2] == reg && regs->slot23.slot2 == BIFROST_OP_READ)
+                return BIFROST_SRC_PORT2;
+        else
+                unreachable("Tried to access register with no port");
+}
+
+static inline enum bifrost_packed_src
+bi_get_src_new(bi_instr *ins, bi_registers *regs, unsigned s)
+{
+        if (!ins)
+                return 0;
+
+        bi_index src = ins->src[s];
+
+        if (src.type == BI_INDEX_REGISTER)
+                return bi_get_src_slot(regs, src.value);
+        else if (src.type == BI_INDEX_PASS)
+                return src.value;
+        else if (bi_is_null(src) && ins->op == BI_OPCODE_ZS_EMIT && s < 2)
+                return BIFROST_SRC_STAGE;
+        else {
+                /* TODO make safer */
+                return BIFROST_SRC_STAGE;
+        }
 }
 
 static struct bi_packed_bundle
@@ -978,9 +1020,38 @@ bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_b
 
         bi_flip_slots(&bundle.regs);
 
+        bool sr_read = bundle.add &&
+                bi_opcode_props[((bi_instr *) bundle.add)->op].sr_read;
+
         uint64_t reg = bi_pack_registers(bundle.regs);
-        uint64_t fma = pan_pack_fma(clause, bundle, &bundle.regs);
-        uint64_t add = pan_pack_add(clause, bundle, &bundle.regs, stage);
+        uint64_t fma = bi_pack_fma((bi_instr *) bundle.fma,
+                        bi_get_src_new((bi_instr *) bundle.fma, &bundle.regs, 0),
+                        bi_get_src_new((bi_instr *) bundle.fma, &bundle.regs, 1),
+                        bi_get_src_new((bi_instr *) bundle.fma, &bundle.regs, 2),
+                        bi_get_src_new((bi_instr *) bundle.fma, &bundle.regs, 3));
+
+        uint64_t add = bi_pack_add((bi_instr *) bundle.add,
+                        bi_get_src_new((bi_instr *) bundle.add, &bundle.regs, sr_read + 0),
+                        bi_get_src_new((bi_instr *) bundle.add, &bundle.regs, sr_read + 1),
+                        bi_get_src_new((bi_instr *) bundle.add, &bundle.regs, sr_read + 2),
+                        0);
+
+        if (bundle.add) {
+                bi_instr *add = (bi_instr *) bundle.add;
+
+                bool sr_write = bi_opcode_props[add->op].sr_write;
+
+                if (sr_read) {
+                        assert(add->src[0].type == BI_INDEX_REGISTER);
+                        clause->staging_register = add->src[0].value;
+
+                        if (sr_write)
+                                assert(bi_is_equiv(add->src[0], add->dest[0]));
+                } else if (sr_write) {
+                        assert(add->dest[0].type == BI_INDEX_REGISTER);
+                        clause->staging_register = add->dest[0].value;
+                }
+        }
 
         struct bi_packed_bundle packed = {
                 .lo = reg | (fma << 35) | ((add & 0b111111) << 58),
@@ -1022,8 +1093,8 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
 
         /* Compute branch offset instead of a dummy 0 */
         if (branches) {
-                bi_instruction *br = clause->bundles[clause->bundle_count - 1].add;
-                assert(br && br->type == BI_BRANCH && br->branch_target);
+                bi_instr *br = (bi_instr *) clause->bundles[clause->bundle_count - 1].add;
+                assert(br && br->branch_target);
 
                 /* Put it in the high place */
                 int32_t qwords = bi_block_offset(ctx, clause, br->branch_target);
@@ -1074,7 +1145,7 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 struct util_dynarray *emission, gl_shader_stage stage,
                 bool tdd)
 {
-        /* After the deadline lowering */
+        /* TODO After the deadline lowering */
         bi_lower_cubeface2(ctx, &clause->bundles[0]);
 
         struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true, stage);
@@ -1148,9 +1219,9 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
                 return;
 
         const bi_bundle *bundle = &clause->bundles[clause->bundle_count - 1];
-        const bi_instruction *ins = bundle->add;
+        const bi_instr *ins = (bi_instr *) bundle->add;
 
-        if (!ins || ins->type != BI_BLEND)
+        if (!ins || ins->op != BI_OPCODE_BLEND)
                 return;
 
         /* We don't support non-terminal blend instructions yet.
@@ -1160,11 +1231,13 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
          */
         assert(0);
 
+#if 0
         assert(ins->blend_location < ARRAY_SIZE(ctx->blend_ret_offsets));
         assert(!ctx->blend_ret_offsets[ins->blend_location]);
         ctx->blend_ret_offsets[ins->blend_location] =
                 util_dynarray_num_elements(emission, uint8_t);
         assert(!(ctx->blend_ret_offsets[ins->blend_location] & 0x7));
+#endif
 }
 
 void
