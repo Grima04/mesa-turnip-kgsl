@@ -42,52 +42,6 @@ get_dimensions(const struct pipe_shader_buffer *bview,
    return true;
 }
 
-/*
- * Implement the buffer STORE operation.
- */
-static void
-sp_tgsi_store(const struct tgsi_buffer *buffer,
-              const struct tgsi_buffer_params *params,
-              const int s[TGSI_QUAD_SIZE],
-              float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE])
-{
-   struct sp_tgsi_buffer *sp_buf = (struct sp_tgsi_buffer *)buffer;
-   struct pipe_shader_buffer *bview;
-   struct softpipe_resource *spr;
-   unsigned width;
-   int j, c;
-
-   if (params->unit >= PIPE_MAX_SHADER_BUFFERS)
-      return;
-
-   bview = &sp_buf->sp_bview[params->unit];
-   spr = softpipe_resource(bview->buffer);
-   if (!spr)
-      return;
-
-   if (!get_dimensions(bview, spr, &width))
-      return;
-
-   for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-      int s_coord;
-
-      if (!(params->execmask & (1 << j)))
-         continue;
-
-      s_coord = s[j];
-      if (s_coord >= width)
-         continue;
-
-      uint32_t *dst = (uint32_t *)((unsigned char *)spr->data +
-                                   bview->buffer_offset + s_coord);
-
-      for (c = 0; c < 4; c++) {
-         if (params->writemask & (1 << c))
-            memcpy(&dst[c], &rgba[c][j], 4);
-      }
-   }
-}
-
 static void *
 sp_tgsi_ssbo_lookup(const struct tgsi_buffer *buffer,
                     uint32_t unit,
@@ -140,7 +94,6 @@ sp_create_tgsi_buffer(void)
    if (!buf)
       return NULL;
 
-   buf->base.store = sp_tgsi_store;
    buf->base.lookup = sp_tgsi_ssbo_lookup;
    buf->base.get_dims = sp_tgsi_get_dims;
    return buf;

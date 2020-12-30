@@ -4083,35 +4083,34 @@ static void
 exec_store_buf(struct tgsi_exec_machine *mach,
                const struct tgsi_full_instruction *inst)
 {
-   union tgsi_exec_channel r[3];
-   union tgsi_exec_channel value[4];
-   float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE];
-   struct tgsi_buffer_params params;
-   int i, j;
-   uint unit;
+   uint32_t unit = fetch_store_img_unit(mach, &inst->Dst[0]);
+   uint32_t size;
+   char *ptr = mach->Buffer->lookup(mach->Buffer, unit, &size);
+
    int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
+   int execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
 
-   unit = fetch_store_img_unit(mach, &inst->Dst[0]);
+   union tgsi_exec_channel offset;
+   IFETCH(&offset, 0, TGSI_CHAN_X);
 
-   params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
-   params.unit = unit;
-   params.writemask = inst->Dst[0].Register.WriteMask;
-
-   IFETCH(&r[0], 0, TGSI_CHAN_X);
-   for (i = 0; i < 4; i++) {
+   union tgsi_exec_channel value[4];
+   for (int i = 0; i < 4; i++)
       FETCH(&value[i], 1, TGSI_CHAN_X + i);
-   }
 
-   for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-      rgba[0][j] = value[0].f[j];
-      rgba[1][j] = value[1].f[j];
-      rgba[2][j] = value[2].f[j];
-      rgba[3][j] = value[3].f[j];
-   }
+   for (int j = 0; j < TGSI_QUAD_SIZE; j++) {
+      if (!(execmask & (1 << j)))
+         continue;
+      if (size < offset.u[j])
+         continue;
 
-   mach->Buffer->store(mach->Buffer, &params,
-                      r[0].i,
-                      rgba);
+      uint32_t *invocation_ptr = (uint32_t *)(ptr + offset.u[j]);
+      uint32_t size_avail = size - offset.u[j];
+
+      for (int chan = 0; chan < MIN2(4, size_avail / 4); chan++) {
+         if (inst->Dst[0].Register.WriteMask & (1 << chan))
+            memcpy(&invocation_ptr[chan], &value[chan].u[j], 4);
+      }
+   }
 }
 
 static void

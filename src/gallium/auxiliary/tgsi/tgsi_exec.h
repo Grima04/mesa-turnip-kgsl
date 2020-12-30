@@ -155,11 +155,6 @@ struct tgsi_buffer_params {
 
 /* SSBO interfaces */
 struct tgsi_buffer {
-   void (*store)(const struct tgsi_buffer *buffer,
-                 const struct tgsi_buffer_params *params,
-                 const int s[TGSI_QUAD_SIZE],
-                 float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE]);
-
    void *(*lookup)(const struct tgsi_buffer *buffer,
                    uint32_t unit, uint32_t *size);
 
