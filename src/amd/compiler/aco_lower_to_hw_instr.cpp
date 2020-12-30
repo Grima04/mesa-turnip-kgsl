@@ -1023,49 +1023,53 @@ void copy_constant(lower_context *ctx, Builder& bld, Definition dst, Operand op)
       }
    } else if (dst.regClass() == v1) {
       bld.vop1(aco_opcode::v_mov_b32, dst, op);
-   } else if (dst.regClass() == v1b) {
-      assert(ctx->program->chip_class >= GFX8);
-      uint8_t val = op.constantValue();
-      Operand op32((uint32_t)val | (val & 0x80u ? 0xffffff00u : 0u));
-      aco_ptr<SDWA_instruction> sdwa;
-      if (op32.isLiteral()) {
-         uint32_t a = (uint32_t)int8_mul_table[val * 2];
-         uint32_t b = (uint32_t)int8_mul_table[val * 2 + 1];
-         bld.vop2_sdwa(aco_opcode::v_mul_u32_u24, dst,
-                       Operand(a | (a & 0x80u ? 0xffffff00u : 0x0u)),
-                       Operand(b | (b & 0x80u ? 0xffffff00u : 0x0u)));
+   } else {
+      assert(dst.regClass() == v1b || dst.regClass() == v2b);
+
+      if (dst.regClass() == v1b && ctx->program->chip_class >= GFX9) {
+         uint8_t val = op.constantValue();
+         Operand op32((uint32_t)val | (val & 0x80u ? 0xffffff00u : 0u));
+         if (op32.isLiteral()) {
+            uint32_t a = (uint32_t)int8_mul_table[val * 2];
+            uint32_t b = (uint32_t)int8_mul_table[val * 2 + 1];
+            bld.vop2_sdwa(aco_opcode::v_mul_u32_u24, dst,
+                          Operand(a | (a & 0x80u ? 0xffffff00u : 0x0u)),
+                          Operand(b | (b & 0x80u ? 0xffffff00u : 0x0u)));
+         } else {
+            bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op32);
+         }
+      } else if (dst.regClass() == v2b && ctx->program->chip_class >= GFX9 && !op.isLiteral()) {
+         if (op.constantValue() >= 0xfff0 || op.constantValue() <= 64) {
+            /* use v_mov_b32 to avoid possible issues with denormal flushing or
+             * NaN. v_add_f16 is still needed for float constants. */
+            uint32_t val32 = (int32_t)(int16_t)op.constantValue();
+            bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, Operand(val32));
+         } else {
+            bld.vop2_sdwa(aco_opcode::v_add_f16, dst, op, Operand(0u));
+         }
+      } else if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10 &&
+                 (ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in)) {
+         if (dst.physReg().byte() == 2) {
+            Operand def_lo(dst.physReg().advance(-2), v2b);
+            Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, def_lo, op);
+            static_cast<VOP3A_instruction*>(instr)->opsel = 0;
+         } else {
+            assert(dst.physReg().byte() == 0);
+            Operand def_hi(dst.physReg().advance(2), v2b);
+            Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, op, def_hi);
+            static_cast<VOP3A_instruction*>(instr)->opsel = 2;
+         }
       } else {
-         bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op32);
-      }
-   } else if (dst.regClass() == v2b && op.isConstant() && !op.isLiteral()) {
-      assert(ctx->program->chip_class >= GFX8);
-      if (op.constantValue() >= 0xfff0 || op.constantValue() <= 64) {
-         /* use v_mov_b32 to avoid possible issues with denormal flushing or
-          * NaN. v_add_f16 is still needed for float constants. */
-         uint32_t val32 = (int32_t)(int16_t)op.constantValue();
-         bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, Operand(val32));
-      } else {
-         bld.vop2_sdwa(aco_opcode::v_add_f16, dst, op, Operand(0u));
-      }
-   } else if (dst.regClass() == v2b && op.isLiteral()) {
-      if (ctx->program->chip_class < GFX10 || !(ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in)) {
-         unsigned offset = dst.physReg().byte() * 8u;
+         uint32_t offset = dst.physReg().byte() * 8u;
+         uint32_t mask = ((1u << (dst.bytes() * 8)) - 1) << offset;
+         uint32_t val = (op.constantValue() << offset) & mask;
          dst = Definition(PhysReg(dst.physReg().reg()), v1);
          Operand def_op(dst.physReg(), v1);
-         bld.vop2(aco_opcode::v_and_b32, dst, Operand(~(0xffffu << offset)), def_op);
-         bld.vop2(aco_opcode::v_or_b32, dst, Operand(op.constantValue() << offset), def_op);
-      } else if (dst.physReg().byte() == 2) {
-         Operand def_lo(dst.physReg().advance(-2), v2b);
-         Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, def_lo, op);
-         static_cast<VOP3A_instruction*>(instr)->opsel = 0;
-      } else {
-         assert(dst.physReg().byte() == 0);
-         Operand def_hi(dst.physReg().advance(2), v2b);
-         Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, op, def_hi);
-         static_cast<VOP3A_instruction*>(instr)->opsel = 2;
+         if (val != mask)
+            bld.vop2(aco_opcode::v_and_b32, dst, Operand(~mask), def_op);
+         if (val != 0)
+            bld.vop2(aco_opcode::v_or_b32, dst, Operand(val), def_op);
       }
-   } else {
-      unreachable("unsupported copy");
    }
 }
 
