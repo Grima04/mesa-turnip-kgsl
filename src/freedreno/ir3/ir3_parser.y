@@ -45,6 +45,9 @@ struct ir3 * ir3_parse(struct ir3_shader_variant *v,
 
 #include "ir3_parser.h"
 
+#define swap(a, b) \
+	do { __typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
+
 /* ir3 treats the abs/neg flags as separate flags for float vs integer,
  * but in the instruction encoding they are the same thing.  Tracking
  * them separately is only for the benefit of ir3 opt passes, and not
@@ -961,19 +964,27 @@ cat6_bindless_base:
 
 cat6_bindless_mode: T_IMM cat6_bindless_base
 |                  T_UNIFORM cat6_bindless_base
-|                  T_NONUNIFORM cat6_bindless_base
+|                  T_NONUNIFORM cat6_bindless_base { instr->flags |= IR3_INSTR_NONUNIF; }
 
 cat6_reg_or_immed: reg
 |                  integer { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
 
 cat6_bindless_ibo: cat6_bindless_ibo_opc cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed
 
+cat6_bindless_ldc_opc: T_OP_LDC  { new_instr(OPC_LDC); }
+
+cat6_bindless_ldc: cat6_bindless_ldc_opc '.' T_OFFSET '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed ',' cat6_reg_or_immed {
+                      instr->cat6.d = $3;
+                      instr->cat6.type = TYPE_U32;
+                      /* TODO cleanup ir3 src order: */
+                      swap(instr->regs[1], instr->regs[2]);
+                   }
+
 cat6_todo:         T_OP_G2L                 { new_instr(OPC_G2L); }
 |                  T_OP_L2G                 { new_instr(OPC_L2G); }
 |                  T_OP_RESFMT              { new_instr(OPC_RESFMT); }
 |                  T_OP_LDGB                { new_instr(OPC_LDGB); }
 |                  T_OP_STGB                { new_instr(OPC_STGB); }
-|                  T_OP_LDC                 { new_instr(OPC_LDC); }
 
 cat6_instr:        cat6_load
 |                  cat6_store
@@ -981,6 +992,7 @@ cat6_instr:        cat6_load
 |                  cat6_prefetch
 |                  cat6_atomic
 |                  cat6_id
+|                  cat6_bindless_ldc
 |                  cat6_bindless_ibo
 |                  cat6_todo
 

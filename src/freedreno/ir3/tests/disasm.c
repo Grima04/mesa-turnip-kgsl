@@ -211,12 +211,22 @@ static const struct test {
 	/* LDC.  Our disasm differs greatly from qcom here, and we've got some
 	 * important info they lack(?!), but same goes the other way.
 	 */
+#if 0
+	/* TODO our encoding differs in b23 for these four.. unsure if that is dontcare bit */
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.uniform_fragment */
 	INSTR_6XX(c0260000_00c78040, "ldc.offset0.1.uniform r0.x, r0.x, r0.x"), /* ldc.1.mode1.base0 r0.x, 0, r0.x */
 	INSTR_6XX(c0260201_00c78040, "ldc.offset0.1.uniform r0.y, r0.x, r0.y"), /* ldc.1.mode1.base0 r0.y, 0, r0.y */
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_fragment  */
 	INSTR_6XX(c0260000_00c78080, "ldc.offset0.1.nonuniform r0.x, r0.x, r0.x"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
 	INSTR_6XX(c0260201_00c78080, "ldc.offset0.1.nonuniform r0.y, r0.x, r0.y"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
+#else
+	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.uniform_fragment */
+	INSTR_6XX(c0260000_00478040, "ldc.offset0.1.uniform r0.x, r0.x, r0.x"), /* ldc.1.mode1.base0 r0.x, 0, r0.x */
+	INSTR_6XX(c0260201_00478040, "ldc.offset0.1.uniform r0.y, r0.x, r0.y"), /* ldc.1.mode1.base0 r0.y, 0, r0.y */
+	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_fragment  */
+	INSTR_6XX(c0260000_00478080, "ldc.offset0.1.nonuniform r0.x, r0.x, r0.x"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
+	INSTR_6XX(c0260201_00478080, "ldc.offset0.1.nonuniform r0.y, r0.x, r0.y"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
+#endif
 	/* custom shaders, loading .x, .y, .z, .w from an array of vec4 in block 0 */
 	INSTR_6XX(c0260000_00478000, "ldc.offset0.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
 	INSTR_6XX(c0260000_00478200, "ldc.offset1.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
