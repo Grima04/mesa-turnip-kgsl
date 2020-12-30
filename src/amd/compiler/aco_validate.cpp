@@ -359,6 +359,7 @@ bool validate_ir(Program* program)
             if (instr->opcode == aco_opcode::p_create_vector) {
                unsigned size = 0;
                for (const Operand& op : instr->operands) {
+                  check(op.bytes() < 4 || size % 4 == 0, "Operand is not aligned", instr.get());
                   size += op.bytes();
                }
                check(size == instr->definitions[0].bytes(), "Definition size does not match operand sizes", instr.get());
