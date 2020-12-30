@@ -203,20 +203,16 @@ bi_rewrite_index_src_single(bi_instr *ins, bi_index old, bi_index new)
         }
 }
 
-/* Get the single instruction in a singleton clause. Precondition: clause
- * contains exactly 1 instruction.
- *
- * More complex scheduling implies tougher constraints on spilling. We'll cross
- * that bridge when we get to it. For now, just grab the one and only
- * instruction in the clause */
-
-static bi_instr *
-bi_unwrap_singleton(bi_clause *clause)
+static void
+bi_rewrite_index_dst_single(bi_instr *ins, bi_index old, bi_index new)
 {
-       assert(clause->bundle_count == 1);
-       assert((clause->bundles[0].fma != NULL) ^ (clause->bundles[0].add != NULL));
-
-       return clause->bundles[0].fma ?: clause->bundles[0].add;
+        bi_foreach_dest(ins, i) {
+                if (bi_is_equiv(ins->dest[i], old)) {
+                        ins->dest[i].type = new.type;
+                        ins->dest[i].reg = new.reg;
+                        ins->dest[i].value = new.value;
+                }
+        }
 }
 
 /* If register allocation fails, find the best spill node */
@@ -241,21 +237,13 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
 }
 
 static void
-bi_spill_dest(bi_builder *b, bi_index index, uint32_t offset,
-                bi_clause *clause, bi_block *block, bi_instr *ins,
-                uint32_t *channels)
+bi_spill_dest(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
+                bi_clause *clause, bi_block *block, unsigned channels)
 {
-        ins->dest[0] = bi_temp(b->shader);
-        ins->no_spill = true;
+        b->cursor = bi_after_clause(clause);
 
-        unsigned newc = util_last_bit(bi_writemask(ins)) >> 2;
-        *channels = MAX2(*channels, newc);
-
-        b->cursor = bi_after_instr(ins);
-
-        bi_instr *st = bi_store_to(b, (*channels) * 32, bi_null(),
-                        ins->dest[0], bi_imm_u32(offset), bi_zero(),
-                        BI_SEG_TL);
+        bi_instr *st = bi_store_to(b, channels * 32, bi_null(),
+                        temp, bi_imm_u32(offset), bi_zero(), BI_SEG_TL);
 
         bi_clause *singleton = bi_singleton(b->shader, st, block, 0, (1 << 0),
                         true);
@@ -265,12 +253,10 @@ bi_spill_dest(bi_builder *b, bi_index index, uint32_t offset,
 }
 
 static void
-bi_fill_src(bi_builder *b, bi_index index, uint32_t offset, bi_clause *clause,
-                bi_block *block, bi_instr *ins, unsigned channels)
+bi_fill_src(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
+                bi_clause *clause, bi_block *block, unsigned channels)
 {
-        bi_index temp = bi_temp(b->shader);
-
-        b->cursor = bi_before_instr(ins);
+        b->cursor = bi_before_clause(clause);
         bi_instr *ld = bi_load_to(b, channels * 32, temp, bi_imm_u32(offset),
                         bi_zero(), BI_SEG_TL);
         ld->no_spill = true;
@@ -279,10 +265,41 @@ bi_fill_src(bi_builder *b, bi_index index, uint32_t offset, bi_clause *clause,
                         (1 << 0), true);
 
         list_addtail(&singleton->link, &clause->link);
-
-        /* Rewrite to use */
-        bi_rewrite_index_src_single(ins, index, temp);
         b->shader->fills++;
+}
+
+static unsigned
+bi_clause_mark_spill(bi_context *ctx, bi_block *block,
+                bi_clause *clause, bi_index index, bi_index *temp)
+{
+        unsigned channels = 0;
+
+        bi_foreach_instr_in_clause(block, clause, ins) {
+                if (!bi_is_equiv(ins->dest[0], index)) continue;
+                if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
+                ins->no_spill = true;
+                bi_rewrite_index_dst_single(ins, index, *temp);
+                unsigned newc = util_last_bit(bi_writemask(ins)) >> 2;
+                channels = MAX2(channels, newc);
+        }
+
+        return channels;
+}
+
+static bool
+bi_clause_mark_fill(bi_context *ctx, bi_block *block, bi_clause *clause,
+                bi_index index, bi_index *temp)
+{
+        bool fills = false;
+
+        bi_foreach_instr_in_clause(block, clause, ins) {
+                if (!bi_has_arg(ins, index)) continue;
+                if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
+                bi_rewrite_index_src_single(ins, index, *temp);
+                fills = true;
+        }
+
+        return fills;
 }
 
 /* Once we've chosen a spill node, spill it. Precondition: node is a valid
@@ -301,14 +318,22 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
                 bi_foreach_clause_in_block_safe(block, clause) {
-                        bi_instr *ins = bi_unwrap_singleton(clause);
-                        if (bi_is_equiv(ins->dest[0], index)) {
-                                bi_spill_dest(&_b, index, offset, clause,
-                                                block, ins, &channels);
+                        bi_index tmp = bi_null();
+
+                        unsigned local_channels = bi_clause_mark_spill(ctx,
+                                        block, clause, index, &tmp);
+
+                        channels = MAX2(channels, local_channels);
+
+                        if (local_channels) {
+                                bi_spill_dest(&_b, index, tmp, offset,
+                                                clause, block, channels);
                         }
 
-                        if (bi_has_arg(ins, index))
-                                bi_fill_src(&_b, index, offset, clause, block, ins, channels);
+                        if (bi_clause_mark_fill(ctx, block, clause, index, &tmp)) {
+                                bi_fill_src(&_b, index, tmp, offset,
+                                                clause, block, channels);
+                        }
                 }
         }
 
