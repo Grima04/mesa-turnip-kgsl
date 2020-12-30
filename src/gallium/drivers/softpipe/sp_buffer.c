@@ -40,8 +40,11 @@ sp_tgsi_ssbo_lookup(const struct tgsi_buffer *buffer,
 
    struct pipe_shader_buffer *bview = &sp_buf->sp_bview[unit];
    /* Sanity check the view size is within our buffer. */
-   if (!bview->buffer || bview->buffer_size > bview->buffer->width0)
+   if (!bview->buffer ||
+       bview->buffer_offset > bview->buffer->width0 ||
+       bview->buffer_size > bview->buffer->width0 - bview->buffer_offset) {
       return NULL;
+   }
 
    struct softpipe_resource *spr = softpipe_resource(bview->buffer);
    *size = bview->buffer_size;
