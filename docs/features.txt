@@ -82,33 +82,33 @@ GL 3.1, GLSL 1.40 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   GL_EXT_texture_snorm (Signed normalized textures)     DONE (panfrost, v3d)
 
 
-GL 3.2, GLSL 1.50 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12
+GL 3.2, GLSL 1.50 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12
 
   Core/compatibility profiles                           DONE
-  Geometry shaders                                      DONE ()
-  GL_ARB_vertex_array_bgra (BGRA vertex order)          DONE (freedreno, v3d, panfrost)
-  GL_ARB_draw_elements_base_vertex (Base vertex offset) DONE (freedreno, v3d, panfrost)
-  GL_ARB_fragment_coord_conventions (Frag shader coord) DONE (freedreno, v3d, vc4, panfrost)
-  GL_ARB_provoking_vertex (Provoking vertex)            DONE (freedreno, v3d, vc4, panfrost)
-  GL_ARB_seamless_cube_map (Seamless cubemaps)          DONE (freedreno, panfrost)
+  Geometry shaders                                      DONE (freedreno/a6xx)
+  GL_ARB_vertex_array_bgra (BGRA vertex order)          DONE (v3d, panfrost)
+  GL_ARB_draw_elements_base_vertex (Base vertex offset) DONE (v3d, panfrost)
+  GL_ARB_fragment_coord_conventions (Frag shader coord) DONE (v3d, vc4, panfrost)
+  GL_ARB_provoking_vertex (Provoking vertex)            DONE (v3d, vc4, panfrost)
+  GL_ARB_seamless_cube_map (Seamless cubemaps)          DONE (panfrost)
   GL_ARB_texture_multisample (Multisample textures)     DONE (freedreno/a5xx+, v3d, vc4, panfrost)
-  GL_ARB_depth_clamp (Frag depth clamp)                 DONE (freedreno, panfrost)
-  GL_ARB_sync (Fence objects)                           DONE (freedreno, v3d, vc4, panfrost)
+  GL_ARB_depth_clamp (Frag depth clamp)                 DONE (panfrost)
+  GL_ARB_sync (Fence objects)                           DONE (v3d, vc4, panfrost)
   GLX_ARB_create_context_profile                        DONE
 
 
-GL 3.3, GLSL 3.30 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, virgl, zink, d3d12
+GL 3.3, GLSL 3.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, virgl, zink, d3d12
 
-  GL_ARB_blend_func_extended                            DONE (freedreno/a3xx, swr, panfrost)
+  GL_ARB_blend_func_extended                            DONE (freedreno/a3xx, freedreno/a6xx, swr, panfrost)
   GL_ARB_explicit_attrib_location                       DONE (all drivers that support GLSL)
-  GL_ARB_occlusion_query2                               DONE (freedreno, swr, v3d, vc4, panfrost)
+  GL_ARB_occlusion_query2                               DONE (swr, v3d, vc4, panfrost)
   GL_ARB_sampler_objects                                DONE (all drivers)
-  GL_ARB_shader_bit_encoding                            DONE (freedreno, swr, v3d, panfrost)
-  GL_ARB_texture_rgb10_a2ui                             DONE (freedreno, swr, panfrost)
-  GL_ARB_texture_swizzle                                DONE (freedreno, swr, v3d, vc4, panfrost)
-  GL_ARB_timer_query                                    DONE (freedreno, swr)
-  GL_ARB_instanced_arrays                               DONE (freedreno, swr, v3d, panfrost)
-  GL_ARB_vertex_type_2_10_10_10_rev                     DONE (freedreno, swr, v3d, panfrost)
+  GL_ARB_shader_bit_encoding                            DONE (swr, v3d, panfrost)
+  GL_ARB_texture_rgb10_a2ui                             DONE (swr, panfrost)
+  GL_ARB_texture_swizzle                                DONE (swr, v3d, vc4, panfrost)
+  GL_ARB_timer_query                                    DONE (swr)
+  GL_ARB_instanced_arrays                               DONE (swr, v3d, panfrost)
+  GL_ARB_vertex_type_2_10_10_10_rev                     DONE (swr, v3d, panfrost)
 
 
 GL 4.0, GLSL 4.00 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virgl, zink

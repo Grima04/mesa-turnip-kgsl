@@ -137,7 +137,6 @@ object namespace pollution/vertex-array with glclear: skip
 object namespace pollution/vertex-array with glcleartexsubimage: skip
 object namespace pollution/vertex-array with glcopyimagesubdata: skip
 object namespace pollution/vertex-array with glcopypixels: skip
-object namespace pollution/vertex-array with glcopytexsubimage2d: skip
 object namespace pollution/vertex-array with gldrawpixels: skip
 object namespace pollution/vertex-array with glgeneratemipmap: skip
 object namespace pollution/vertex-array with glgetteximage: skip
@@ -177,7 +176,6 @@ spec/!opengl 1.0/gl-1.0-rendermode-feedback/gl_4d_color_texture: notrun
 spec/!opengl 1.0/gl-1.0-scissor-offscreen: fail
 spec/!opengl 1.0/gl-1.0-spot-light: fail
 spec/!opengl 1.0/gl-1.0-swapbuffers-behavior: fail
-spec/!opengl 1.1/clear-accum: skip
 spec/!opengl 1.1/copyteximage 1d: crash
 spec/!opengl 1.1/copyteximage 2d: crash
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=16: skip
@@ -873,17 +871,8 @@ spec/!opengl 3.0/clearbuffer-depth: fail
 spec/!opengl 3.0/clearbuffer-stencil: fail
 spec/!opengl 3.0/viewport-clamp: crash
 spec/!opengl 3.1/primitive-restart-xfb generated: fail
-spec/!opengl 3.2/layered-rendering/clear-color-all-types 2d_multisample_array single_level: fail
 spec/!opengl 3.2/layered-rendering/clear-depth: crash
-spec/!opengl 3.2/layered-rendering/gl-layer-cube-map: fail
-spec/!opengl 3.2/layered-rendering/gl-layer-render: fail
-spec/!opengl 3.2/layered-rendering/gl-layer-render-clipped: fail
-spec/!opengl 3.2/layered-rendering/gl-layer-render-storage: fail
 spec/!opengl 3.2/pointsprite-origin: fail
-spec/!opengl 3.3/minmax: skip
-spec/!opengl 3.3/required-renderbuffer-attachment-formats: skip
-spec/!opengl 3.3/required-sized-texture-formats: skip
-spec/!opengl 3.3/required-texture-attachment-formats: skip
 spec/!opengl 4.2/gl-max-vertex-attrib-stride: skip
 spec/!opengl 4.2/required-renderbuffer-attachment-formats: skip
 spec/!opengl 4.2/required-sized-texture-formats: skip
@@ -898,7 +887,6 @@ spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgba_fxt1_3d
 spec/3dfx_texture_compression_fxt1/fbo-generatemipmap-formats: skip
 spec/3dfx_texture_compression_fxt1/fxt1-teximage: skip
 spec/amd_compressed_atc_texture/miptree: skip
-spec/amd_depth_clamp_separate/amd_depth_clamp_separate_range: fail
 spec/amd_framebuffer_multisample_advanced/api-glcore: skip
 spec/amd_framebuffer_multisample_advanced/api-gles3: skip
 spec/amd_performance_monitor/api: skip
@@ -945,17 +933,6 @@ spec/arb_clear_texture/arb_clear_texture-sized-formats: skip
 spec/arb_clear_texture/arb_clear_texture-srgb: skip
 spec/arb_clear_texture/arb_clear_texture-stencil: skip
 spec/arb_clear_texture/arb_clear_texture-texview: skip
-spec/arb_compute_shader/api_errors: skip
-spec/arb_compute_shader/built-in constants: skip
-spec/arb_compute_shader/compiler/work_group_size_too_large: skip
-spec/arb_compute_shader/display-list: skip
-spec/arb_compute_shader/indirect-compute: skip
-spec/arb_compute_shader/local-id-explosion: skip
-spec/arb_compute_shader/render-and-compute: skip
-spec/arb_compute_shader/zero-dispatch-size: skip
-spec/arb_compute_variable_group_size/errors: skip
-spec/arb_compute_variable_group_size/local-size: skip
-spec/arb_compute_variable_group_size/minmax: skip
 spec/arb_copy_image/arb_copy_image-api_errors: skip
 spec/arb_copy_image/arb_copy_image-format-swizzle: skip
 spec/arb_copy_image/arb_copy_image-formats: skip
@@ -1073,9 +1050,9 @@ spec/arb_direct_state_access/transformfeedback-bufferrange/general test: fail
 spec/arb_draw_buffers/fbo-mrt-alphatest: fail
 spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-base-instance: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-compat: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-prim-restart: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-elements-base-instance: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-elements-compat: skip
+spec/arb_draw_indirect/arb_draw_indirect-transform-feedback: fail
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs: skip
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs_max: skip
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs: skip
@@ -1087,8 +1064,6 @@ spec/arb_enhanced_layouts/explicit-offset-bufferstorage: skip
 spec/arb_enhanced_layouts/gs-stream-location-aliasing: skip
 spec/arb_es2_compatibility/fbo-alphatest-formats/gl_rgb565: fail
 spec/arb_es2_compatibility/texwrap formats bordercolor-swizzled/gl_rgb565, swizzled, border color only: fail
-spec/arb_es3_compatibility/es3-drawarrays-primrestart-fixedindex: skip
-spec/arb_es3_compatibility/es3-primrestart-fixedindex: skip
 spec/arb_fragment_program/fp-fragment-position: crash
 spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_program/sparse-samplers: crash
@@ -2481,7 +2456,6 @@ spec/arb_shader_storage_buffer_object/layout-std430-write-shader: skip
 spec/arb_shader_storage_buffer_object/max-ssbo-size/vs: skip
 spec/arb_shader_storage_buffer_object/max-ssbo-size/vsexceed: skip
 spec/arb_shader_storage_buffer_object/minmax: skip
-spec/arb_shader_storage_buffer_object/program-interface-query: fail
 spec/arb_shader_texture_image_samples/builtin-image: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-2: skip
@@ -2623,7 +2597,6 @@ spec/arb_sparse_buffer/commit: skip
 spec/arb_sparse_buffer/minmax: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-immediate-mode-draw-patches: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-tes-gs-max-output -small -scan 1 50: fail
-spec/arb_tessellation_shader/built-in-constants: skip
 spec/arb_texture_buffer_object/formats (fs, arb)/gl_alpha16f_arb: fail
 spec/arb_texture_buffer_object/formats (fs, arb)/gl_alpha32f_arb: fail
 spec/arb_texture_buffer_object/formats (fs, arb)/gl_intensity16f_arb: fail
@@ -3837,14 +3810,8 @@ spec/ext_texture_array/copyteximage 2d_array samples=32: skip
 spec/ext_texture_array/copyteximage 2d_array samples=4: crash
 spec/ext_texture_array/copyteximage 2d_array samples=6: skip
 spec/ext_texture_array/copyteximage 2d_array samples=8: skip
-spec/ext_texture_array/fbo-depth-array depth-clear: skip
-spec/ext_texture_array/fbo-depth-array depth-draw: skip
-spec/ext_texture_array/fbo-depth-array depth-layered-clear: skip
-spec/ext_texture_array/fbo-depth-array fs-writes-depth: skip
-spec/ext_texture_array/fbo-depth-array fs-writes-stencil: skip
-spec/ext_texture_array/fbo-depth-array stencil-clear: skip
-spec/ext_texture_array/fbo-depth-array stencil-draw: skip
-spec/ext_texture_array/fbo-depth-array stencil-layered-clear: skip
+spec/ext_texture_array/fbo-depth-array depth-layered-clear: crash
+spec/ext_texture_array/fbo-depth-array stencil-layered-clear: crash
 spec/ext_texture_compression_rgtc/texwrap formats bordercolor-swizzled/gl_compressed_red_rgtc1, swizzled, border color only: fail
 spec/ext_texture_compression_rgtc/texwrap formats bordercolor-swizzled/gl_compressed_rg_rgtc2, swizzled, border color only: fail
 spec/ext_texture_compression_rgtc/texwrap formats bordercolor-swizzled/gl_compressed_signed_rg_rgtc2, swizzled, border color only: fail
@@ -4126,7 +4093,6 @@ spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triang
 spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency other: fail
 spec/glsl-1.50/gs-max-output: skip
 spec/glsl-1.50/gs-max-output-components: fail
-spec/glsl-3.30/built-in constants: skip
 spec/intel_blackhole_render/intel_blackhole-blit: skip
 spec/intel_blackhole_render/intel_blackhole-blit_gles2: skip
 spec/intel_blackhole_render/intel_blackhole-blit_gles3: skip
@@ -4798,10 +4764,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    16759
-       fail:     1630
-      crash:      174
-       skip:     2824
+       pass:    16808
+       fail:     1616
+      crash:      175
+       skip:     2758
     timeout:        0
        warn:      116
  incomplete:        0
@@ -4810,4 +4776,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21623
+      total:    21593

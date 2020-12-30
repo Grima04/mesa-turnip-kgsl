@@ -1408,7 +1408,7 @@ arm64_a630_gl:
     - .baremetal-deqp-test
     - .arm64-a630-test
   variables:
-    DEQP_VER: gl32
+    DEQP_VER: gl33
 
 arm64_a630_gles_others:
   extends:

@@ -310,7 +310,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_GLSL_FEATURE_LEVEL:
 	case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
 		if (is_a6xx(screen))
-			return 150;
+			return 330;
 		else if (is_ir3(screen))
 			return 140;
 		else

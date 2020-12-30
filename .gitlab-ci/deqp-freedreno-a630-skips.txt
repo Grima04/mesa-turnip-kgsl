@@ -9,6 +9,9 @@ dEQP-GLES[0-9]*.stress.*
 # These are really slow on tiling architectures (including llvmpipe).
 dEQP-GLES[0-9]*.functional.flush_finish.*
 
+# Timeouts, passes otherwise
+KHR-GL33.texture_swizzle.smoke
+
 # Timeout on what looks like an infinite loop in ir3's mark_kill_path()
 dEQP-VK.geometry.layered.cube_array.36_36_12.secondary_cmd_buffer_inherit_framebuffer
 # More timeouts, possibly the same.
