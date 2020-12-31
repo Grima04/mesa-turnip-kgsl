@@ -1240,11 +1240,9 @@ softpipe-piglit-quick:
   variables:
     GALLIUM_DRIVER: softpipe
     # rasterpos skipped due to flakes from use-after-free of the draw vs.
-    # glsl-1.50 removed due to GS flakes
     PIGLIT_OPTIONS: >
       --process-isolation false
       -x rasterpos
-      -x glsl-1.50
       -x egl_ext_device_
       -x egl_ext_platform_device
       -x ext_timer_query@time-elapsed

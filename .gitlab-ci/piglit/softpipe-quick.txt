@@ -2756,6 +2756,59 @@ spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 2d: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 2d_projvec4: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 2dshadow: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 3d: fail
+spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept: fail
+spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-reject: fail
+spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-different-from-position: fail
+spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-homogeneity: fail
+spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-primitives-lines: fail
+spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-primitives-points: fail
+spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-primitives-triangle-strip: fail
+spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-const-accept: fail
+spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-const-reject: fail
+spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-different-from-position: fail
+spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-homogeneity: fail
+spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-primitives-triangle-strip: fail
+spec/glsl-1.50/execution/compatibility/gs-clamp-vertex-color: fail
+spec/glsl-1.50/execution/geometry/clip-distance-bulk-copy: fail
+spec/glsl-1.50/execution/geometry/clip-distance-itemized-copy: fail
+spec/glsl-1.50/execution/geometry/end-primitive 127: fail
+spec/glsl-1.50/execution/interface-vs-unnamed-to-fs-unnamed: fail
+spec/glsl-1.50/execution/primitive-id-no-gs: fail
+spec/glsl-1.50/execution/primitive-id-no-gs-first-vertex: fail
+spec/glsl-1.50/execution/primitive-id-no-gs-instanced: fail
+spec/glsl-1.50/execution/primitive-id-no-gs-quad-strip: crash
+spec/glsl-1.50/execution/primitive-id-no-gs-quads: crash
+spec/glsl-1.50/execution/primitive-id-no-gs-strip: fail
+spec/glsl-1.50/execution/primitive-id-no-gs-strip-first-vertex: fail
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler1d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler1darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler2d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler2darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler2drect: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler3d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isamplerbuffer: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isamplercube: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler1d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler1darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler1darrayshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler1dshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2darrayshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2drect: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2drectshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2dshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler3d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-samplerbuffer: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-samplercube: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-samplercubeshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler1d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler1darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler2d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler2darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler3d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usamplerbuffer: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usamplercube: skip
 spec/glsl-es-3.00/execution/varying-struct-centroid_gles3: fail
 spec/intel_blackhole_render/intel_blackhole-blit: skip
 spec/intel_blackhole_render/intel_blackhole-blit_gles2: skip
@@ -3031,10 +3084,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    24961
-       fail:      378
-      crash:       40
-       skip:     2583
+       pass:    26804
+       fail:      400
+      crash:       42
+       skip:     2612
     timeout:        0
        warn:        4
  incomplete:        0
@@ -3043,4 +3096,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    27991
+      total:    29887
