@@ -35,11 +35,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "util/macros.h"
-#include "disasm.h"
 
 #include "ir3.h"
 #include "ir3_assembler.h"
 #include "ir3_shader.h"
+
+#include "isa/isa.h"
 
 #define INSTR_5XX(i, d, ...) { .gpu_id = 540, .instr = #i, .expected = d, __VA_ARGS__ }
 #define INSTR_6XX(i, d, ...) { .gpu_id = 630, .instr = #i, .expected = d, __VA_ARGS__ }
@@ -140,7 +141,8 @@ static const struct test {
 	INSTR_5XX(c6e60000_00010600, "ldgb.untyped.4d.u32.1 r0.x, g[0], r1.x, r0.x"),
 	INSTR_5XX(d7660204_02000a01, "(sy)stib.typed.2d.u32.1 g[1], r0.x, r0.z, r1.x"),
 
-	INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x", .parse_fail=true),
+	// TODO is this a real instruction?  Or float -6.0 ?
+	// INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x", .parse_fail=true),
 	/* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
 	INSTR_6XX(c0d20906_02800004, "stg.f32 g[r1.x+r1.z], r0.z, 2"), /* stg.a.f32 g[r1.x+(r1.z<<2)], r0.z, 2 */
 	INSTR_6XX(c0da052e_01800042, "stg.s32 g[r0.z+r11.z], r8.y, 1"), /* stg.a.s32 g[r0.z+(r11.z<<2)], r8.y, 1 */
@@ -159,15 +161,10 @@ static const struct test {
 	INSTR_6XX(c0060006_0181800f, "ldg.u32 r1.z, g[r1.z+7], 1"),
 	INSTR_6XX(c0060006_01818001, "ldg.u32 r1.z, g[r1.z], 1"),
 
-	/* TODO: We don't support disasm of stc yet and produce a stgb instead
-	 * (same as their disasm does for other families.  They're used as part
-	 * uniforms setup, followed by a shpe and then a load of the constant that
-	 * was stored in the dynamic part of the shader.
-	 */
 	/* dEQP-GLES3.functional.ubo.random.basic_arrays.0 */
-	/* INSTR_6XX(c7020020_01800000, "stc c[32], r0.x, 1"), */
+	INSTR_6XX(c7020020_01800000, "stc c[32], r0.x, 1", .parse_fail=true),
 	/* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
-	/* INSTR_6XX(c7060020_03800000, "stc c[32], r0.x, 3"), */
+	INSTR_6XX(c7060020_03800000, "stc c[32], r0.x, 3", .parse_fail=true),
 
 	/* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
 	INSTR_6XX(c0260200_03676100, "stib.b.untyped.1d.u32.3.imm.base0 r0.x, r0.w, 1"), /* stib.untyped.u32.1d.3.mode4.base0 r0.x, r0.w, 1 */
@@ -297,9 +294,9 @@ static const struct test {
 	INSTR_6XX(d5c60003_03008001, "(sy)atomic.max.untyped.1d.u32.1.l r0.w, l[r0.z], r0.w"),
 
 	/* Bindless atomic: */
-	INSTR_6XX(c03a0003_01640001, "atomic.add.b.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.add.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
-	INSTR_6XX(c03a0003_01660001, "atomic.and.b.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.and.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
-	INSTR_6XX(c0360000_0365c801, "atomic.max.b.typed.1d.u32.1.imm r0.x, r0.w, 0"),   /* atomic.b.max.g.u32.1d.mode0.base0 r0.x,r0.w,0 */
+	INSTR_6XX(c03a0003_01640001, "atomic.b.add.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.add.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
+	INSTR_6XX(c03a0003_01660001, "atomic.b.and.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.and.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
+	INSTR_6XX(c0360000_0365c801, "atomic.b.max.typed.1d.u32.1.imm r0.x, r0.w, 0"),   /* atomic.b.max.g.u32.1d.mode0.base0 r0.x,r0.w,0 */
 
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.fragment.sampler2d */
 	INSTR_6XX(a0c01f04_0cc00005, "sam (f32)(xyzw)r1.x, r0.z, s#6, t#6"),
@@ -351,7 +348,10 @@ main(int argc, char **argv)
 			strtoll(&test->instr[9], NULL, 16),
 			strtoll(&test->instr[0], NULL, 16),
 		};
-		disasm_a3xx(code, ARRAY_SIZE(code), 0, fdisasm, test->gpu_id);
+		isa_decode(code, 8, fdisasm, &(struct isa_decode_options){
+			.gpu_id = test->gpu_id,
+			.show_errors = true,
+		});
 		fflush(fdisasm);
 
 		trim(disasm_output);
