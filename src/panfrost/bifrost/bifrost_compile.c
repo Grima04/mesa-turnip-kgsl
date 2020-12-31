@@ -1260,6 +1260,14 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_iadd_to(b, sz, dst, s0, s1, true);
                 break;
 
+        case nir_op_ihadd:
+                bi_hadd_to(b, sz, dst, s0, s1, BI_ROUND_RTN);
+                break;
+
+        case nir_op_irhadd:
+                bi_hadd_to(b, sz, dst, s0, s1, BI_ROUND_RTP);
+                break;
+
         case nir_op_isub:
                 bi_isub_to(b, sz, dst, s0, s1, false);
                 break;
