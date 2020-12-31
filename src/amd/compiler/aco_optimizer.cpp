@@ -1146,28 +1146,16 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
 
       /* expand vector operands */
-      bool accept_subdword = instr->definitions[0].regClass().type() == RegType::vgpr &&
-                             std::all_of(instr->operands.begin(), instr->operands.end(),
-                             [&] (const Operand& op) { return !op.isLiteral() &&
-                             (ctx.program->chip_class >= GFX9 || (op.hasRegClass() && op.regClass().type() == RegType::vgpr));});
-
       std::vector<Operand> ops;
+      unsigned offset = 0;
       for (const Operand& op : instr->operands) {
-         if (!op.isTemp() || !ctx.info[op.tempId()].is_vec()) {
-            ops.emplace_back(op);
-            continue;
-         }
-         Instruction* vec = ctx.info[op.tempId()].instr;
-         bool is_subdword = std::any_of(vec->operands.begin(), vec->operands.end(),
-                               [&] (const Operand& op2) { return op2.bytes() % 4; } );
-
-         if (accept_subdword || !is_subdword) {
-            for (const Operand& vec_op : vec->operands) {
+         /* ensure that any expanded operands are properly aligned */
+         bool aligned = offset % 4 == 0 || op.bytes() < 4;
+         offset += op.bytes();
+         if (aligned && op.isTemp() && ctx.info[op.tempId()].is_vec()) {
+            Instruction* vec = ctx.info[op.tempId()].instr;
+            for (const Operand& vec_op : vec->operands)
                ops.emplace_back(vec_op);
-               if (op.isLiteral() || (ctx.program->chip_class <= GFX8 &&
-                                      (!op.hasRegClass() || op.regClass().type() == RegType::sgpr)))
-                  accept_subdword = false;
-            }
          } else {
             ops.emplace_back(op);
          }
@@ -1180,7 +1168,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          instr.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, ops.size(), 1));
          for (unsigned i = 0; i < ops.size(); i++) {
             if (ops[i].isTemp() && ctx.info[ops[i].tempId()].is_temp() &&
-                ctx.info[ops[i].tempId()].temp.type() == def.regClass().type())
+                ops[i].regClass() == ctx.info[ops[i].tempId()].temp.regClass())
                ops[i].setTemp(ctx.info[ops[i].tempId()].temp);
             instr->operands[i] = ops[i];
          }
