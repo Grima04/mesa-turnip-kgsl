@@ -220,7 +220,7 @@ mir_match_offset(nir_ssa_def *offset, bool first_free)
 }
 
 void
-mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset, bool is_shared)
+mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset, unsigned seg)
 {
         for(unsigned i = 0; i < 16; ++i) {
                 ins->swizzle[1][i] = 0;
@@ -232,7 +232,7 @@ mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset,
         bool force_sext = (nir_src_bit_size(*offset) < 64);
 
         if (!offset->is_ssa) {
-                ins->load_store.arg_1 |= is_shared ? 0x6E : 0x7E;
+                ins->load_store.arg_1 |= seg;
                 ins->src[2] = nir_src_index(ctx, offset);
                 ins->src_types[2] = nir_type_uint | nir_src_bit_size(*offset);
 
@@ -244,14 +244,16 @@ mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset,
                 return;
         }
 
-        struct mir_address match = mir_match_offset(offset->ssa, !is_shared);
+        bool first_free = (seg == LDST_GLOBAL);
+
+        struct mir_address match = mir_match_offset(offset->ssa, first_free);
 
         if (match.A.def) {
                 ins->src[1] = nir_ssa_index(match.A.def);
                 ins->swizzle[1][0] = match.A.comp;
                 ins->src_types[1] = nir_type_uint | match.A.def->bit_size;
         } else
-                ins->load_store.arg_1 |= is_shared ? 0x6E : 0x7E;
+                ins->load_store.arg_1 |= seg;
 
         if (match.B.def) {
                 ins->src[2] = nir_ssa_index(match.B.def);

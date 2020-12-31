@@ -1106,7 +1106,7 @@ emit_global(
         bool is_read,
         unsigned srcdest,
         nir_src *offset,
-        bool is_shared)
+        unsigned seg)
 {
         /* TODO: types */
 
@@ -1117,7 +1117,7 @@ emit_global(
         else
                 ins = m_st_int4(srcdest, 0);
 
-        mir_set_offset(ctx, &ins, offset, is_shared);
+        mir_set_offset(ctx, &ins, offset, seg);
         mir_set_intr_mask(instr, &ins, is_read);
 
         /* Set a valid swizzle for masked out components */
@@ -1178,7 +1178,7 @@ emit_atomic(
                 if (is_shared)
                         ins.load_store.arg_1 |= 0x6E;
         } else {
-                mir_set_offset(ctx, &ins, src_offset, is_shared);
+                mir_set_offset(ctx, &ins, src_offset, is_shared ? LDST_SHARED : LDST_GLOBAL);
         }
 
         mir_set_intr_mask(&instr->instr, &ins, true);
@@ -1555,7 +1555,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         uint32_t uindex = nir_src_as_uint(index) + 1;
                         emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, uindex);
                 } else if (is_global || is_shared) {
-                        emit_global(ctx, &instr->instr, true, reg, src_offset, is_shared);
+                        unsigned seg = is_global ? LDST_GLOBAL : (is_shared ? LDST_SHARED : LDST_SCRATCH);
+                        emit_global(ctx, &instr->instr, true, reg, src_offset, seg);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
                         emit_varying_read(ctx, reg, offset, nr_comp, component, indirect_offset, t | nir_dest_bit_size(instr->dest), is_flat);
                 } else if (ctx->is_blend) {
@@ -1782,7 +1783,13 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_src_index(ctx, &instr->src[0]);
                 emit_explicit_constant(ctx, reg, reg);
 
-                emit_global(ctx, &instr->instr, false, reg, &instr->src[1], instr->intrinsic == nir_intrinsic_store_shared);
+                unsigned seg;
+                if (instr->intrinsic == nir_intrinsic_store_global)
+                        seg = LDST_GLOBAL;
+                else if (instr->intrinsic == nir_intrinsic_store_shared)
+                        seg = LDST_SHARED;
+
+                emit_global(ctx, &instr->instr, false, reg, &instr->src[1], seg);
                 break;
 
         case nir_intrinsic_load_ssbo_address:
