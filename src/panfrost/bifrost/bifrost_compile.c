@@ -264,6 +264,33 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_make_vec16_to(bi_builder *b, bi_index dst, bi_index *src,
+                unsigned *channel, unsigned count)
+{
+        for (unsigned i = 0; i < count; i += 2) {
+                bool next = (i + 1) < count;
+
+                unsigned chan = channel ? channel[i] : 0;
+                unsigned nextc = next && channel ? channel[i + 1] : 0;
+
+                bi_index w0 = bi_word(src[i], chan >> 1);
+                bi_index w1 = next ? bi_word(src[i + 1], nextc >> 1) : bi_zero();
+
+                bi_index h0 = bi_half(w0, chan & 1);
+                bi_index h1 = bi_half(w1, nextc & 1);
+
+                bi_index to = bi_word(dst, i >> 1);
+
+                if (bi_is_word_equiv(w0, w1) && (chan & 1) == 0 && ((nextc & 1) == 1))
+                        bi_mov_i32_to(b, to, w0);
+                else if (bi_is_word_equiv(w0, w1))
+                        bi_swz_v2i16_to(b, to, bi_swz_16(w0, chan & 1, nextc & 1));
+                else
+                        bi_mkvec_v2i16_to(b, to, h0, h1);
+        }
+}
+
+static void
 bi_make_vec_to(bi_builder *b, bi_index final_dst,
                 bi_index *src,
                 unsigned *channel,
@@ -289,20 +316,7 @@ bi_make_vec_to(bi_builder *b, bi_index final_dst,
                                         bi_word(src[i], channel ? channel[i] : 0));
                 }
         } else if (bitsize == 16) {
-                for (unsigned i = 0; i < count; i += 2) {
-                        unsigned chan = channel ? channel[i] : 0;
-
-                        bi_index w0 = bi_half(bi_word(src[i], chan >> 1), chan & 1);
-                        bi_index w1 = bi_imm_u16(0);
-
-                        /* Don't read out of bound for vec3 */
-                        if ((i + 1) < count) {
-                                unsigned nextc = channel ? channel[i + 1] : 0;
-                                w1 = bi_half(bi_word(src[i + 1], nextc >> 1), nextc & 1);
-                        }
-
-                        bi_mkvec_v2i16_to(b, bi_word(dst, i >> 1), w0, w1);
-                }
+                bi_make_vec16_to(b, dst, src, channel, count);
         } else {
                 unreachable("8-bit mkvec not yet supported");
         }
