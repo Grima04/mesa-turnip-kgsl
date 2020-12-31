@@ -751,7 +751,7 @@ decode_3dstate_constant(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 }
 
 static void
-decode_gfx6_3dstate_binding_table_pointers(struct intel_batch_decode_ctx *ctx,
+decode_gfx4_3dstate_binding_table_pointers(struct intel_batch_decode_ctx *ctx,
                                            const uint32_t *p)
 {
    fprintf(ctx->fp, "VS Binding Table:\n");
@@ -760,8 +760,17 @@ decode_gfx6_3dstate_binding_table_pointers(struct intel_batch_decode_ctx *ctx,
    fprintf(ctx->fp, "GS Binding Table:\n");
    dump_binding_table(ctx, p[2], -1);
 
-   fprintf(ctx->fp, "PS Binding Table:\n");
-   dump_binding_table(ctx, p[3], -1);
+   if (ctx->devinfo.ver < 6) {
+      fprintf(ctx->fp, "CLIP Binding Table:\n");
+      dump_binding_table(ctx, p[3], -1);
+      fprintf(ctx->fp, "SF Binding Table:\n");
+      dump_binding_table(ctx, p[4], -1);
+      fprintf(ctx->fp, "PS Binding Table:\n");
+      dump_binding_table(ctx, p[5], -1);
+   } else {
+      fprintf(ctx->fp, "PS Binding Table:\n");
+      dump_binding_table(ctx, p[3], -1);
+   }
 }
 
 static void
@@ -1144,7 +1153,7 @@ struct custom_decoder {
    { "3DSTATE_CONSTANT_DS", decode_3dstate_constant },
    { "3DSTATE_CONSTANT_ALL", decode_3dstate_constant_all },
 
-   { "3DSTATE_BINDING_TABLE_POINTERS", decode_gfx6_3dstate_binding_table_pointers },
+   { "3DSTATE_BINDING_TABLE_POINTERS", decode_gfx4_3dstate_binding_table_pointers },
    { "3DSTATE_BINDING_TABLE_POINTERS_VS", decode_3dstate_binding_table_pointers },
    { "3DSTATE_BINDING_TABLE_POINTERS_HS", decode_3dstate_binding_table_pointers },
    { "3DSTATE_BINDING_TABLE_POINTERS_DS", decode_3dstate_binding_table_pointers },
