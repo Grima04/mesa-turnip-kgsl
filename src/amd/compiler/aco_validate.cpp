@@ -182,10 +182,6 @@ bool validate_ir(Program* program)
                      "SDWA can't be used with this opcode", instr.get());
             }
 
-            for (unsigned i = 0; i < MIN2(instr->operands.size(), 2); i++) {
-               if (instr->operands[i].hasRegClass() && instr->operands[i].regClass().is_subdword())
-                  check((sdwa->sel[i] & sdwa_asuint) == (sdwa_isra | instr->operands[i].bytes()), "Unexpected SDWA sel for sub-dword operand", instr.get());
-            }
             if (instr->definitions[0].regClass().is_subdword())
                check((sdwa->dst_sel & sdwa_asuint) == (sdwa_isra | instr->definitions[0].bytes()), "Unexpected SDWA sel for sub-dword definition", instr.get());
          }
@@ -328,34 +324,6 @@ bool validate_ir(Program* program)
 
          switch (instr->format) {
          case Format::PSEUDO: {
-            if (instr->opcode == aco_opcode::p_parallelcopy) {
-               for (unsigned i = 0; i < instr->operands.size(); i++) {
-                  if (!instr->definitions[i].regClass().is_subdword())
-                     continue;
-                  Operand op = instr->operands[i];
-                  check(program->chip_class >= GFX9 || !op.isLiteral(), "Sub-dword copies cannot take literals", instr.get());
-                  if (op.isConstant() || (op.hasRegClass() && op.regClass().type() == RegType::sgpr))
-                     check(program->chip_class >= GFX9, "Sub-dword pseudo instructions can only take constants or SGPRs on GFX9+", instr.get());
-               }
-            } else {
-               bool is_subdword = false;
-               bool has_const_sgpr = false;
-               bool has_literal = false;
-               for (Definition def : instr->definitions)
-                  is_subdword |= def.regClass().is_subdword();
-               for (unsigned i = 0; i < instr->operands.size(); i++) {
-                  if (instr->opcode == aco_opcode::p_extract_vector && i == 1)
-                     continue;
-                  Operand op = instr->operands[i];
-                  is_subdword |= op.hasRegClass() && op.regClass().is_subdword();
-                  has_const_sgpr |= op.isConstant() || (op.hasRegClass() && op.regClass().type() == RegType::sgpr);
-                  has_literal |= op.isLiteral();
-               }
-
-               check(!is_subdword || !has_const_sgpr || program->chip_class >= GFX9 || instr->opcode == aco_opcode::p_unit_test,
-                     "Sub-dword pseudo instructions can only take constants or SGPRs on GFX9+", instr.get());
-            }
-
             if (instr->opcode == aco_opcode::p_create_vector) {
                unsigned size = 0;
                for (const Operand& op : instr->operands) {
@@ -374,6 +342,8 @@ bool validate_ir(Program* program)
                check((instr->operands[1].constantValue() + 1) * instr->definitions[0].bytes() <= instr->operands[0].bytes(), "Index out of range", instr.get());
                check(instr->definitions[0].getTemp().type() == RegType::vgpr || instr->operands[0].regClass().type() == RegType::sgpr,
                      "Cannot extract SGPR value from VGPR vector", instr.get());
+               check(program->chip_class >= GFX9 || !instr->definitions[0].regClass().is_subdword() ||
+                     instr->operands[0].regClass().type() == RegType::vgpr, "Cannot extract subdword from SGPR before GFX9+", instr.get());
             } else if (instr->opcode == aco_opcode::p_split_vector) {
                check(instr->operands[0].isTemp(), "Operand must be a temporary", instr.get());
                unsigned size = 0;
@@ -384,6 +354,9 @@ bool validate_ir(Program* program)
                if (instr->operands[0].getTemp().type() == RegType::vgpr) {
                   for (const Definition& def : instr->definitions)
                      check(def.regClass().type() == RegType::vgpr, "Wrong Definition type for VGPR split_vector", instr.get());
+               } else {
+                  for (const Definition& def : instr->definitions)
+                     check(program->chip_class >= GFX9 || !def.regClass().is_subdword(), "Cannot split SGPR into subdword VGPRs before GFX9+", instr.get());
                }
             } else if (instr->opcode == aco_opcode::p_parallelcopy) {
                check(instr->definitions.size() == instr->operands.size(), "Number of Operands does not match number of Definitions", instr.get());
