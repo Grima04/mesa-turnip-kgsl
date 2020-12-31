@@ -519,7 +519,6 @@ spec/!opengl 3.0/clearbuffer-depth: fail
 spec/!opengl 3.0/clearbuffer-stencil: fail
 spec/!opengl 3.0/viewport-clamp: crash
 spec/!opengl 3.1/minmax: fail
-spec/!opengl 3.1/primitive-restart-xfb flush: fail
 spec/!opengl 3.1/primitive-restart-xfb generated: fail
 spec/!opengl 3.1/primitive-restart-xfb written: fail
 spec/!opengl 3.1/vao-broken-attrib: crash
@@ -595,7 +594,6 @@ spec/!opengl 4.5/compare-framebuffer-parameter-with-get: skip
 spec/!opengl 4.5/named-framebuffer-draw-buffers-errors: skip
 spec/!opengl 4.5/named-framebuffer-read-buffer-errors: skip
 spec/!opengl es 2.0/invalid-es3-queries_gles2: skip
-spec/!opengl es 3.0/gles-3.0-transform-feedback-uniform-buffer-object: fail
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgb_fxt1_3dfx: skip
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgba_fxt1_3dfx: skip
 spec/3dfx_texture_compression_fxt1/fbo-generatemipmap-formats: skip
@@ -1426,8 +1424,6 @@ spec/arb_texture_view/max-level: skip
 spec/arb_texture_view/rendering-layers-image: skip
 spec/arb_timer_query/query gl_timestamp: fail
 spec/arb_timer_query/timestamp-get: fail
-spec/arb_transform_feedback2/change objects while paused: fail
-spec/arb_transform_feedback2/change objects while paused (gles3): fail
 spec/arb_transform_feedback3/arb_transform_feedback3-begin_end: skip
 spec/arb_transform_feedback3/arb_transform_feedback3-bind_buffer_invalid_index: skip
 spec/arb_transform_feedback3/arb_transform_feedback3-draw_using_invalid_stream_index: skip
@@ -1758,7 +1754,6 @@ spec/ext_transform_feedback/geometry-shaders-basic: skip
 spec/ext_transform_feedback/immediate-reuse: fail
 spec/ext_transform_feedback/immediate-reuse-index-buffer: fail
 spec/ext_transform_feedback/immediate-reuse-uniform-buffer: fail
-spec/ext_transform_feedback/intervening-read output: fail
 spec/ext_transform_feedback/intervening-read output use_gs: skip
 spec/ext_transform_feedback/intervening-read prims_generated use_gs: skip
 spec/ext_transform_feedback/intervening-read prims_written: fail
