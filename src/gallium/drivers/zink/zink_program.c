@@ -115,80 +115,6 @@ keybox_equals(const void *void_a, const void *void_b)
    return memcmp(a->data, b->data, a->size) == 0;
 }
 
-static VkPipelineLayout
-create_gfx_pipeline_layout(VkDevice dev, struct zink_gfx_program *prog)
-{
-   VkPipelineLayoutCreateInfo plci = {};
-   plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-
-   VkDescriptorSetLayout layouts[ZINK_DESCRIPTOR_TYPES];
-   unsigned num_layouts = 0;
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      if (prog->base.dsl[i]) {
-         layouts[num_layouts] = prog->base.dsl[i];
-         num_layouts++;
-      }
-   }
-
-   plci.pSetLayouts = layouts;
-   plci.setLayoutCount = num_layouts;
-
-
-   VkPushConstantRange pcr[2] = {};
-   pcr[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-   pcr[0].offset = offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed);
-   pcr[0].size = 2 * sizeof(unsigned);
-   pcr[1].stageFlags = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-   pcr[1].offset = offsetof(struct zink_gfx_push_constant, default_inner_level);
-   pcr[1].size = sizeof(float) * 6;
-   plci.pushConstantRangeCount = 2;
-   plci.pPushConstantRanges = &pcr[0];
-
-   VkPipelineLayout layout;
-   if (vkCreatePipelineLayout(dev, &plci, NULL, &layout) != VK_SUCCESS) {
-      debug_printf("vkCreatePipelineLayout failed!\n");
-      return VK_NULL_HANDLE;
-   }
-
-   return layout;
-}
-
-static VkPipelineLayout
-create_compute_pipeline_layout(VkDevice dev, struct zink_compute_program *comp)
-{
-   VkPipelineLayoutCreateInfo plci = {};
-   plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-
-   VkDescriptorSetLayout layouts[ZINK_DESCRIPTOR_TYPES];
-   unsigned num_layouts = 0;
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      if (comp->base.dsl[i]) {
-         layouts[num_layouts] = comp->base.dsl[i];
-         num_layouts++;
-      }
-   }
-
-   plci.pSetLayouts = layouts;
-   plci.setLayoutCount = num_layouts;
-
-   VkPushConstantRange pcr = {};
-   if (comp->shader->nir->info.stage == MESA_SHADER_KERNEL) {
-      pcr.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-      pcr.offset = 0;
-      pcr.size = sizeof(struct zink_cs_push_constant);
-      plci.pushConstantRangeCount = 1;
-      plci.pPushConstantRanges = &pcr;
-   }
-
-   VkPipelineLayout layout;
-   if (vkCreatePipelineLayout(dev, &plci, NULL, &layout) != VK_SUCCESS) {
-      debug_printf("vkCreatePipelineLayout failed!\n");
-      return VK_NULL_HANDLE;
-   }
-
-   return layout;
-}
-
 static void
 shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
                   struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
@@ -586,6 +512,52 @@ zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
    update_shader_modules(ctx, ctx->gfx_stages, prog, true);
 }
 
+static VkPipelineLayout
+pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg, bool is_compute)
+{
+   VkPipelineLayoutCreateInfo plci = {};
+   plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+
+   VkDescriptorSetLayout layouts[ZINK_DESCRIPTOR_TYPES];
+   unsigned num_layouts = 0;
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
+      if (pg->dsl[i]) {
+         layouts[num_layouts] = pg->dsl[i];
+         num_layouts++;
+      }
+   }
+
+   plci.pSetLayouts = layouts;
+   plci.setLayoutCount = num_layouts;
+
+   VkPushConstantRange pcr[2] = {};
+   if (is_compute) {
+      if (((struct zink_compute_program*)pg)->shader->nir->info.stage == MESA_SHADER_KERNEL) {
+         pcr[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+         pcr[0].offset = 0;
+         pcr[0].size = sizeof(struct zink_cs_push_constant);
+         plci.pushConstantRangeCount = 1;
+      }
+   } else {
+      pcr[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+      pcr[0].offset = offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed);
+      pcr[0].size = 2 * sizeof(unsigned);
+      pcr[1].stageFlags = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+      pcr[1].offset = offsetof(struct zink_gfx_push_constant, default_inner_level);
+      pcr[1].size = sizeof(float) * 6;
+      plci.pushConstantRangeCount = 2;
+   }
+   plci.pPushConstantRanges = &pcr[0];
+
+   VkPipelineLayout layout;
+   if (vkCreatePipelineLayout(screen->dev, &plci, NULL, &layout) != VK_SUCCESS) {
+      debug_printf("vkCreatePipelineLayout failed!\n");
+      return VK_NULL_HANDLE;
+   }
+
+   return layout;
+}
+
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader *stages[ZINK_SHADER_COUNT])
@@ -620,7 +592,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    if (!zink_descriptor_program_init(ctx, stages, (struct zink_program*)prog))
       goto fail;
 
-   prog->base.layout = create_gfx_pipeline_layout(screen->dev, prog);
+   prog->base.layout = pipeline_layout_create(screen, &prog->base, false);
    if (!prog->base.layout)
       goto fail;
 
@@ -720,7 +692,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    if (!zink_descriptor_program_init(ctx, stages, (struct zink_program*)comp))
       goto fail;
 
-   comp->base.layout = create_compute_pipeline_layout(screen->dev, comp);
+   comp->base.layout = pipeline_layout_create(screen, &comp->base, true);
    if (!comp->base.layout)
       goto fail;
 
