@@ -81,6 +81,7 @@ static const nir_shader_compiler_options bifrost_nir_options = {
         .has_fsub = true,
         .has_isub = true,
         .vectorize_io = true,
+        .vectorize_vec2_16bit = true,
         .fuse_ffma16 = true,
         .fuse_ffma32 = true,
         .fuse_ffma64 = true,

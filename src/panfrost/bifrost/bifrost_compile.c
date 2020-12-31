@@ -2873,6 +2873,34 @@ bi_lower_bit_size(const nir_instr *instr, UNUSED void *data)
         }
 }
 
+/* Although Bifrost generally supports packed 16-bit vec2 and 8-bit vec4,
+ * transcendentals are an exception. Also shifts because of lane size mismatch
+ * (8-bit in Bifrost, 32-bit in NIR TODO - workaround!). Some conversions need
+ * to be scalarized due to type size. */
+
+static bool
+bi_vectorize_filter(const nir_instr *instr, void *data)
+{
+        /* Defaults work for everything else */
+        if (instr->type != nir_instr_type_alu)
+                return true;
+
+        const nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+        switch (alu->op) {
+        case nir_op_frcp:
+        case nir_op_frsq:
+        case nir_op_ishl:
+        case nir_op_ishr:
+        case nir_op_ushr:
+        case nir_op_f2i16:
+        case nir_op_f2u16:
+                return false;
+        default:
+                return true;
+        }
+}
+
 static void
 bi_optimize_nir(nir_shader *nir, bool is_blend)
 {
@@ -2964,6 +2992,9 @@ bi_optimize_nir(nir_shader *nir, bool is_blend)
         }
 
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
+        NIR_PASS(progress, nir, nir_opt_vectorize, bi_vectorize_filter, NULL);
+        NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
+        NIR_PASS(progress, nir, nir_opt_dce);
 
         /* Backend scheduler is purely local, so do some global optimizations
          * to reduce register pressure.  Skip the passes for blend shaders to
@@ -2976,8 +3007,6 @@ bi_optimize_nir(nir_shader *nir, bool is_blend)
                 NIR_PASS_V(nir, nir_opt_sink, move_all);
                 NIR_PASS_V(nir, nir_opt_move, move_all);
         }
-
-        NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
 
         /* Take us out of SSA */
         NIR_PASS(progress, nir, nir_lower_locals_to_regs);
