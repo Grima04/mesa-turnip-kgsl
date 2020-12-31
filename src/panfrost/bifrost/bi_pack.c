@@ -234,11 +234,8 @@ bi_assign_slots(bi_bundle *now, bi_bundle *prev)
          * use the data registers, which has its own mechanism entirely
          * and thus gets skipped over here. */
 
-        bool read_dreg = now->add &&
-                bi_opcode_props[(now->add)->op].sr_read;
-
-        bool write_dreg = now->add &&
-                bi_opcode_props[(now->add)->op].sr_write;
+        bool read_dreg = now->add && bi_opcode_props[now->add->op].sr_read;
+        bool write_dreg = prev->add && bi_opcode_props[prev->add->op].sr_write;
 
         /* First, assign reads */
 
