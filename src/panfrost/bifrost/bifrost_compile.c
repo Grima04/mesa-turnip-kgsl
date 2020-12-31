@@ -229,6 +229,12 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
 
                 sample = bi_interp_for_intrinsic(parent->intrinsic);
                 src0 = bi_varying_src0_for_barycentric(b, parent);
+
+                unsigned sz = nir_dest_bit_size(instr->dest);
+                assert(sz == 16 || sz == 32);
+
+                regfmt = (sz == 16) ? BI_REGISTER_FORMAT_F16
+                        : BI_REGISTER_FORMAT_F32;
         } else {
                 regfmt = bi_reg_fmt_for_nir(nir_intrinsic_dest_type(instr));
         }
