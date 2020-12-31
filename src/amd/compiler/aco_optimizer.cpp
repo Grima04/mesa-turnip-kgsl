@@ -627,6 +627,67 @@ bool can_use_VOP3(opt_ctx& ctx, const aco_ptr<Instruction>& instr)
           instr->opcode != aco_opcode::v_readfirstlane_b32;
 }
 
+bool pseudo_propagate_temp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
+                           Temp temp, unsigned index)
+{
+   if (instr->definitions.empty())
+      return false;
+
+   const bool vgpr = instr->opcode == aco_opcode::p_as_uniform ||
+                     std::all_of(instr->definitions.begin(), instr->definitions.end(),
+                                 [] (const Definition& def) { return def.regClass().type() == RegType::vgpr;});
+
+   /* don't propagate VGPRs into SGPR instructions */
+   if (temp.type() == RegType::vgpr && !vgpr)
+      return false;
+
+   bool can_accept_sgpr = ctx.program->chip_class >= GFX9 ||
+                          std::none_of(instr->definitions.begin(), instr->definitions.end(),
+                                       [] (const Definition& def) { return def.regClass().is_subdword();});
+
+   switch (instr->opcode) {
+   case aco_opcode::p_phi:
+   case aco_opcode::p_linear_phi:
+   case aco_opcode::p_parallelcopy:
+   case aco_opcode::p_create_vector:
+      if (temp.bytes() != instr->operands[index].bytes())
+         return false;
+      break;
+   case aco_opcode::p_extract_vector:
+      if (temp.type() == RegType::sgpr && !can_accept_sgpr)
+         return false;
+      break;
+   case aco_opcode::p_split_vector: {
+      if (temp.type() == RegType::sgpr && !can_accept_sgpr)
+         return false;
+      /* don't increase the vector size */
+      if (temp.bytes() > instr->operands[index].bytes())
+         return false;
+      /* We can decrease the vector size as smaller temporaries are only
+       * propagated by p_as_uniform instructions.
+       * If this propagation leads to invalid IR or hits the assertion below,
+       * it means that some undefined bytes within a dword are begin accessed
+       * and a bug in instruction_selection is likely. */
+      int decrease = instr->operands[index].bytes() - temp.bytes();
+      while (decrease > 0) {
+         decrease -= instr->definitions.back().bytes();
+         instr->definitions.pop_back();
+      }
+      assert(decrease == 0);
+      break;
+   }
+   case aco_opcode::p_as_uniform:
+      if (temp.regClass() == instr->definitions[0].regClass())
+         instr->opcode = aco_opcode::p_parallelcopy;
+      break;
+   default:
+      return false;
+   }
+
+   instr->operands[index].setTemp(temp);
+   return true;
+}
+
 bool can_apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    if (instr->isSDWA() && ctx.program->chip_class < GFX9)
@@ -839,48 +900,21 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       if (info.is_undefined() && is_phi(instr))
          instr->operands[i] = Operand(instr->operands[i].regClass());
       /* propagate reg->reg of same type */
-      if (info.is_temp() && info.temp.regClass() == instr->operands[i].getTemp().regClass()) {
+      while (info.is_temp() && info.temp.regClass() == instr->operands[i].getTemp().regClass()) {
          instr->operands[i].setTemp(ctx.info[instr->operands[i].tempId()].temp);
          info = ctx.info[info.temp.id()];
       }
 
+      /* PSEUDO: propagate temporaries */
+      if (instr->format == Format::PSEUDO) {
+         while (info.is_temp()) {
+            pseudo_propagate_temp(ctx, instr, info.temp, i);
+            info = ctx.info[info.temp.id()];
+         }
+      }
+
       /* SALU / PSEUDO: propagate inline constants */
       if (instr->isSALU() || instr->format == Format::PSEUDO) {
-         bool is_subdword = false;
-         // TODO: optimize SGPR propagation for subdword pseudo instructions on gfx9+
-         if (instr->format == Format::PSEUDO) {
-            is_subdword = std::any_of(instr->definitions.begin(), instr->definitions.end(),
-                                      [] (const Definition& def) { return def.regClass().is_subdword();});
-            is_subdword = is_subdword || std::any_of(instr->operands.begin(), instr->operands.end(),
-                                                     [] (const Operand& op) { return op.bytes() % 4;});
-            if (is_subdword && ctx.program->chip_class < GFX9)
-               continue;
-         }
-
-         if (info.is_temp() && info.temp.type() == RegType::sgpr) {
-            instr->operands[i].setTemp(info.temp);
-            info = ctx.info[info.temp.id()];
-         } else if (info.is_temp() && info.temp.type() == RegType::vgpr &&
-                    info.temp.bytes() == instr->operands[i].bytes()) {
-            /* propagate vgpr if it can take it */
-            switch (instr->opcode) {
-            case aco_opcode::p_create_vector:
-            case aco_opcode::p_split_vector:
-            case aco_opcode::p_extract_vector:
-            case aco_opcode::p_phi:
-            case aco_opcode::p_parallelcopy: {
-               const bool all_vgpr = std::none_of(instr->definitions.begin(), instr->definitions.end(),
-                                                  [] (const Definition& def) { return def.getTemp().type() != RegType::vgpr;});
-               if (all_vgpr) {
-                  instr->operands[i] = Operand(info.temp);
-                  info = ctx.info[info.temp.id()];
-               }
-               break;
-            }
-            default:
-               break;
-            }
-         }
          unsigned bits = get_operand_size(instr, i);
          if ((info.is_constant(bits) || (info.is_literal(bits) && instr->format == Format::PSEUDO)) &&
              !instr->operands[i].isFixed() && alu_can_accept_constant(instr->opcode, i)) {
