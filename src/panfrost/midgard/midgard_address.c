@@ -55,7 +55,9 @@ static bool
 mir_args_ssa(nir_ssa_scalar s, unsigned count)
 {
         nir_alu_instr *alu = nir_instr_as_alu(s.def->parent_instr);
-        assert(count <= nir_op_infos[alu->op].num_inputs);
+
+        if (count > nir_op_infos[alu->op].num_inputs)
+                return false;
 
         for (unsigned i = 0; i < count; ++i) {
                 if (!alu->src[i].src.is_ssa)
