@@ -2807,9 +2807,14 @@ ntq_emit_uniform_if(struct v3d_compile *c, nir_if *if_stmt)
         enum v3d_qpu_cond cond = ntq_emit_bool_to_cond(c, if_stmt->condition);
 
         /* Jump to ELSE. */
-        vir_BRANCH(c, cond == V3D_QPU_COND_IFA ?
-                   V3D_QPU_BRANCH_COND_ALLNA :
-                   V3D_QPU_BRANCH_COND_ALLA);
+        struct qinst *branch = vir_BRANCH(c, cond == V3D_QPU_COND_IFA ?
+                   V3D_QPU_BRANCH_COND_ANYNA :
+                   V3D_QPU_BRANCH_COND_ANYA);
+        /* Pixels that were not dispatched or have been discarded should not
+         * contribute to the ANYA/ANYNA condition.
+         */
+        branch->qpu.branch.msfign = V3D_QPU_MSFIGN_P;
+
         vir_link_blocks(c->cur_block, else_block);
         vir_link_blocks(c->cur_block, then_block);
 
