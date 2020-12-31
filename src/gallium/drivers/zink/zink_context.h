@@ -369,14 +369,4 @@ zink_buffer_view_reference(struct zink_screen *screen,
    if (dst) *dst = src;
 }
 
-void
-zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute);
-void
-zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type);
-
-uint32_t
-zink_get_sampler_view_hash(struct zink_context *ctx, struct zink_sampler_view *sampler_view, bool is_buffer);
-uint32_t
-zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image_view, bool is_buffer);
-
 #endif
