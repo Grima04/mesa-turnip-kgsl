@@ -286,7 +286,13 @@ punt_invalid_set(struct zink_descriptor_set *zds, struct hash_entry *he)
    zds->punted = true;
 }
 
-struct zink_descriptor_set *
+static void
+zink_descriptor_set_invalidate(struct zink_descriptor_set *zds)
+{
+   zds->invalid = true;
+}
+
+static struct zink_descriptor_set *
 zink_descriptor_set_get(struct zink_context *ctx,
                                enum zink_descriptor_type type,
                                bool is_compute,
@@ -464,25 +470,25 @@ desc_set_ref_add(struct zink_descriptor_set *zds, struct zink_descriptor_refs *r
       util_dynarray_append(&refs->refs, struct zink_descriptor_reference, ref);
 }
 
-void
+static void
 zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx)
 {
    desc_set_ref_add(zds, &image_view->desc_set_refs, (void**)&zds->image_views[idx], image_view);
 }
 
-void
+static void
 zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct zink_descriptor_set *zds, unsigned idx)
 {
    desc_set_ref_add(zds, &sampler_state->desc_set_refs, (void**)&zds->sampler_states[idx], sampler_state);
 }
 
-void
+static void
 zink_sampler_view_desc_set_add(struct zink_sampler_view *sampler_view, struct zink_descriptor_set *zds, unsigned idx)
 {
    desc_set_ref_add(zds, &sampler_view->desc_set_refs, (void**)&zds->sampler_views[idx], sampler_view);
 }
 
-void
+static void
 zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx)
 {
    desc_set_ref_add(zds, res ? &res->obj->desc_set_refs : NULL, (void**)&zds->res_objs[idx], res ? res->obj : NULL);
@@ -617,12 +623,6 @@ zink_descriptor_program_init(struct zink_context *ctx,
       zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pg->pool[i], pool);
    }
    return true;
-}
-
-void
-zink_descriptor_set_invalidate(struct zink_descriptor_set *zds)
-{
-   zds->invalid = true;
 }
 
 #ifndef NDEBUG

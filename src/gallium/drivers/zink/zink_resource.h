@@ -139,10 +139,6 @@ bool
 zink_resource_has_curr_read_usage(struct zink_context *ctx, struct zink_resource *res);
 
 void
-zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx);
-
-
-void
 zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_object *resource_object);
 
 void

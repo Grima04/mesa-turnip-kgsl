@@ -136,30 +136,12 @@ void
 zink_descriptor_set_refs_clear(struct zink_descriptor_refs *refs, void *ptr);
 
 void
-zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx);
-void
-zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct zink_descriptor_set *zds, unsigned idx);
-void
-zink_sampler_view_desc_set_add(struct zink_sampler_view *sv, struct zink_descriptor_set *zds, unsigned idx);
-void
-zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx);
-
-struct zink_descriptor_set *
-zink_descriptor_set_get(struct zink_context *ctx,
-                               enum zink_descriptor_type type,
-                               bool is_compute,
-                               bool *cache_hit,
-                               bool *need_resource_refs);
-void
 zink_descriptor_set_recycle(struct zink_descriptor_set *zds);
 
 bool
 zink_descriptor_program_init(struct zink_context *ctx,
                        struct zink_shader *stages[ZINK_SHADER_COUNT],
                        struct zink_program *pg);
-
-void
-zink_descriptor_set_invalidate(struct zink_descriptor_set *zds);
 
 void
 zink_descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *pool);
