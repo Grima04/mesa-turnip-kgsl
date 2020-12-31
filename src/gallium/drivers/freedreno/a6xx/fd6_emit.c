@@ -732,30 +732,38 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 	emit->streamout_mask = 0;
 
 	for (unsigned i = 0; i < so->num_targets; i++) {
-		struct pipe_stream_output_target *target = so->targets[i];
+		struct fd_stream_output_target *target = fd_stream_output_target(so->targets[i]);
 
 		if (!target)
 			continue;
 
 		OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_BASE_LO(i), 3);
 		/* VPC_SO[i].BUFFER_BASE_LO: */
-		OUT_RELOC(ring, fd_resource(target->buffer)->bo, target->buffer_offset, 0, 0);
-		OUT_RING(ring, target->buffer_size - target->buffer_offset);
+		OUT_RELOC(ring, fd_resource(target->base.buffer)->bo, 0, 0, 0);
+		OUT_RING(ring, target->base.buffer_size + target->base.buffer_offset);
+
+		struct fd_bo *offset_bo = fd_resource(target->offset_buf)->bo;
 
 		if (so->reset & (1 << i)) {
-			unsigned offset = (so->offsets[i] * info->stride[i] * 4);
+			assert(so->offsets[i] == 0);
+
+			OUT_PKT7(ring, CP_MEM_WRITE, 3);
+			OUT_RELOC(ring, offset_bo, 0, 0, 0);
+			OUT_RING(ring, target->base.buffer_offset);
+
 			OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_OFFSET(i), 1);
-			OUT_RING(ring, offset);
+			OUT_RING(ring, target->base.buffer_offset);
 		} else {
 			OUT_PKT7(ring, CP_MEM_TO_REG, 3);
 			OUT_RING(ring, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(i)) |
 					CP_MEM_TO_REG_0_SHIFT_BY_2 | CP_MEM_TO_REG_0_UNK31 |
 					CP_MEM_TO_REG_0_CNT(0));
-			OUT_RELOC(ring, control_ptr(fd6_context(ctx), flush_base[i].offset));
+			OUT_RELOC(ring, offset_bo, 0, 0, 0);
 		}
 
+		// After a draw HW would write the new offset to offset_bo
 		OUT_PKT4(ring, REG_A6XX_VPC_SO_FLUSH_BASE_LO(i), 2);
-		OUT_RELOC(ring, control_ptr(fd6_context(ctx), flush_base[i]));
+		OUT_RELOC(ring, offset_bo, 0, 0, 0);
 
 		so->reset &= ~(1 << i);
 

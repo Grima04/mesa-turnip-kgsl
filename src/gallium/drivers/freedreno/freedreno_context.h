@@ -87,6 +87,11 @@ struct fd_vertex_stateobj {
 	unsigned num_elements;
 };
 
+struct fd_stream_output_target {
+	struct pipe_stream_output_target base;
+	struct pipe_resource *offset_buf;
+};
+
 struct fd_streamout_stateobj {
 	struct pipe_stream_output_target *targets[PIPE_MAX_SO_BUFFERS];
 	/* Bitmask of stream that should be reset. */
@@ -483,6 +488,12 @@ static inline struct fd_context *
 fd_context(struct pipe_context *pctx)
 {
 	return (struct fd_context *)pctx;
+}
+
+static inline struct fd_stream_output_target *
+fd_stream_output_target(struct pipe_stream_output_target *target)
+{
+	return (struct fd_stream_output_target *)target;
 }
 
 /* mark all state dirty: */

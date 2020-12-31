@@ -3097,8 +3097,6 @@ spec/arb_texture_view/rendering-formats/sample gl_rgba16_snorm as gl_rgba16ui: f
 spec/arb_texture_view/rendering-layers-image/layers rendering of image1darray: fail
 spec/arb_texture_view/rendering-layers-image/layers rendering of imagecubearray: fail
 spec/arb_timer_query/timestamp-get: fail
-spec/arb_transform_feedback2/change objects while paused: fail
-spec/arb_transform_feedback2/change objects while paused (gles3): fail
 spec/arb_transform_feedback3/arb_transform_feedback3-draw_using_invalid_stream_index: skip
 spec/arb_transform_feedback3/arb_transform_feedback3-ext_interleaved_two_bufs_gs: skip
 spec/arb_transform_feedback3/arb_transform_feedback3-ext_interleaved_two_bufs_gs_max: skip
@@ -3968,32 +3966,12 @@ spec/ext_texture_srgb/texwrap formats-s3tc bordercolor-swizzled/gl_compressed_sr
 spec/ext_texture_srgb/texwrap formats-s3tc bordercolor-swizzled/gl_compressed_srgb_alpha_s3tc_dxt5_ext, swizzled, border color only: fail
 spec/ext_texture_srgb/texwrap formats-s3tc bordercolor-swizzled/gl_compressed_srgb_s3tc_dxt1_ext, swizzled, border color only: fail
 spec/ext_transform_feedback2/draw-auto: crash
-spec/ext_transform_feedback/alignment 12: fail
-spec/ext_transform_feedback/alignment 4: fail
-spec/ext_transform_feedback/alignment 8: fail
-spec/ext_transform_feedback/change-size offset-grow: fail
-spec/ext_transform_feedback/change-size offset-shrink: fail
-spec/ext_transform_feedback/change-size range-grow: fail
-spec/ext_transform_feedback/change-size range-shrink: fail
 spec/ext_transform_feedback/geometry-shaders-basic: fail
 spec/ext_transform_feedback/immediate-reuse-index-buffer: fail
-spec/ext_transform_feedback/immediate-reuse-uniform-buffer: fail
 spec/ext_transform_feedback/intervening-read prims_generated: fail
 spec/ext_transform_feedback/intervening-read prims_generated use_gs: fail
 spec/ext_transform_feedback/overflow-edge-cases: fail
 spec/ext_transform_feedback/overflow-edge-cases use_gs: fail
-spec/ext_transform_feedback/position-readback-bufferoffset: fail
-spec/ext_transform_feedback/position-readback-bufferoffset-discard: fail
-spec/ext_transform_feedback/position-readback-bufferrange: fail
-spec/ext_transform_feedback/position-readback-bufferrange-discard: fail
-spec/ext_transform_feedback/position-render-bufferoffset: fail
-spec/ext_transform_feedback/position-render-bufferoffset-discard: fail
-spec/ext_transform_feedback/position-render-bufferrange: fail
-spec/ext_transform_feedback/position-render-bufferrange-discard: fail
-spec/ext_transform_feedback/query-primitives_written-bufferoffset: fail
-spec/ext_transform_feedback/query-primitives_written-bufferoffset-discard: fail
-spec/ext_transform_feedback/query-primitives_written-bufferrange: fail
-spec/ext_transform_feedback/query-primitives_written-bufferrange-discard: fail
 spec/ext_transform_feedback/structs struct-array-elem run: fail
 spec/ext_transform_feedback/structs struct-array-elem run interface: fail
 spec/ext_transform_feedback/tessellation triangle_fan flat_first: fail
