@@ -955,7 +955,10 @@ cat6_atomic:       cat6_atomic_g
 
 cat6_ibo_opc_1src: T_OP_RESINFO   { new_instr(OPC_RESINFO)->cat6.type = TYPE_U32; }
 
+cat6_ibo_opc_ldgb: T_OP_LDGB      { new_instr(OPC_LDGB); }
+
 cat6_ibo:          cat6_ibo_opc_1src cat6_dim dst_reg ',' 'g' '[' cat6_reg_or_immed ']'
+|                  cat6_ibo_opc_ldgb cat6_typed cat6_dim cat6_type '.' cat6_immed dst_reg ',' 'g' '[' cat6_reg_or_immed ']' ',' reg ',' reg
 
 cat6_id_opc:
                    T_OP_GETSPID { new_instr(OPC_GETSPID); }
@@ -1005,7 +1008,6 @@ cat6_bindless_ldc: cat6_bindless_ldc_opc '.' T_OFFSET '.' cat6_immed '.' cat6_bi
 cat6_todo:         T_OP_G2L                 { new_instr(OPC_G2L); }
 |                  T_OP_L2G                 { new_instr(OPC_L2G); }
 |                  T_OP_RESFMT              { new_instr(OPC_RESFMT); }
-|                  T_OP_LDGB                { new_instr(OPC_LDGB); }
 |                  T_OP_STGB                { new_instr(OPC_STGB); }
 
 cat6_instr:        cat6_load
