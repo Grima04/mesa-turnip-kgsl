@@ -1517,9 +1517,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 /* Get the base type of the intrinsic */
                 /* TODO: Infer type? Does it matter? */
                 nir_alu_type t =
-                        (is_ubo || is_global || is_shared || is_kernel) ? nir_type_uint :
                         (is_interp) ? nir_type_float :
-                        nir_intrinsic_dest_type(instr);
+                        (is_uniform || is_flat) ? nir_intrinsic_dest_type(instr) :
+                        nir_type_uint;
 
                 t = nir_alu_type_get_base_type(t);
 
