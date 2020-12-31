@@ -388,6 +388,7 @@ bool validate_ir(Program* program)
             } else if (instr->opcode == aco_opcode::p_parallelcopy) {
                check(instr->definitions.size() == instr->operands.size(), "Number of Operands does not match number of Definitions", instr.get());
                for (unsigned i = 0; i < instr->operands.size(); i++) {
+                  check(instr->definitions[i].bytes() == instr->operands[i].bytes(), "Operand and Definition size must match", instr.get());
                   if (instr->operands[i].isTemp())
                      check((instr->definitions[i].getTemp().type() == instr->operands[i].regClass().type()) ||
                            (instr->definitions[i].getTemp().type() == RegType::vgpr && instr->operands[i].regClass().type() == RegType::sgpr),
