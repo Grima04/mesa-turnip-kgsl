@@ -960,12 +960,12 @@ cat6_atomic_l:     cat6_atomic_opc cat6_typed cat6_dim cat6_type '.' cat6_immed 
 cat6_atomic:       cat6_atomic_g
 |                  cat6_atomic_l
 
-cat6_ibo_opc_1src: T_OP_RESINFO   { new_instr(OPC_RESINFO)->cat6.type = TYPE_U32; }
+cat6_ibo_opc_1src: T_OP_RESINFO   { new_instr(OPC_RESINFO); }
 
 cat6_ibo_opc_ldgb: T_OP_LDGB      { new_instr(OPC_LDGB); }
 cat6_ibo_opc_stgb: T_OP_STGB      { new_instr(OPC_STGB); }
 
-cat6_ibo:          cat6_ibo_opc_1src cat6_dim dst_reg ',' 'g' '[' cat6_reg_or_immed ']'
+cat6_ibo:          cat6_ibo_opc_1src cat6_type cat6_dim dst_reg ',' 'g' '[' cat6_reg_or_immed ']'
 |                  cat6_ibo_opc_ldgb cat6_typed cat6_dim cat6_type '.' cat6_immed dst_reg ',' 'g' '[' cat6_reg_or_immed ']' ',' reg ',' reg
 |                  cat6_ibo_opc_stgb cat6_typed cat6_dim cat6_type '.' cat6_immed { dummy_dst(); } 'g' '[' cat6_reg_or_immed ']' ',' reg ',' cat6_reg_or_immed ',' reg
 
