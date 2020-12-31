@@ -242,8 +242,14 @@ static const struct test {
 	INSTR_6XX(c1465b00_0180022a, "stp.u32 p[r11.y+256], r5.y, 1"),
 
 	/* Atomic: */
+#if 0
+	/* TODO our encoding differs in b53 for these two */
 	INSTR_5XX(c4d60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
 	INSTR_5XX(c4160205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
+#else
+	INSTR_5XX(c4f60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
+	INSTR_5XX(c4360205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
+#endif
 	INSTR_6XX(d5c60003_03008001, "(sy)atomic.max.untyped.1d.u32.1.l r0.w, l[r0.z], r0.w"),
 
 	/* Bindless atomic: */

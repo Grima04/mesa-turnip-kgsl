@@ -932,32 +932,32 @@ cat6_storeib:      T_OP_STIB { new_instr(OPC_STIB); dummy_dst(); } cat6_typed ca
 
 cat6_prefetch:     T_OP_PREFETCH { new_instr(OPC_PREFETCH); new_reg(0,0); /* dummy dst */ } 'g' '[' reg cat6_offset ']' ',' cat6_immed
 
-cat6_atomic_l_g:   '.' 'g'  { instr->flags |= IR3_INSTR_G; }
-|                  '.' 'l'  {  }
+cat6_atomic_opc:   T_OP_ATOMIC_ADD     { new_instr(OPC_ATOMIC_ADD); }
+|                  T_OP_ATOMIC_SUB     { new_instr(OPC_ATOMIC_SUB); }
+|                  T_OP_ATOMIC_XCHG    { new_instr(OPC_ATOMIC_XCHG); }
+|                  T_OP_ATOMIC_INC     { new_instr(OPC_ATOMIC_INC); }
+|                  T_OP_ATOMIC_DEC     { new_instr(OPC_ATOMIC_DEC); }
+|                  T_OP_ATOMIC_CMPXCHG { new_instr(OPC_ATOMIC_CMPXCHG); }
+|                  T_OP_ATOMIC_MIN     { new_instr(OPC_ATOMIC_MIN); }
+|                  T_OP_ATOMIC_MAX     { new_instr(OPC_ATOMIC_MAX); }
+|                  T_OP_ATOMIC_AND     { new_instr(OPC_ATOMIC_AND); }
+|                  T_OP_ATOMIC_OR      { new_instr(OPC_ATOMIC_OR); }
+|                  T_OP_ATOMIC_XOR     { new_instr(OPC_ATOMIC_XOR); }
 
-cat6_atomic:       T_OP_ATOMIC_ADD     { new_instr(OPC_ATOMIC_ADD); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_SUB     { new_instr(OPC_ATOMIC_SUB); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_XCHG    { new_instr(OPC_ATOMIC_XCHG); }   cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_INC     { new_instr(OPC_ATOMIC_INC); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_DEC     { new_instr(OPC_ATOMIC_DEC); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_CMPXCHG { new_instr(OPC_ATOMIC_CMPXCHG); }cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_MIN     { new_instr(OPC_ATOMIC_MIN); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_MAX     { new_instr(OPC_ATOMIC_MAX); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_AND     { new_instr(OPC_ATOMIC_AND); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_OR      { new_instr(OPC_ATOMIC_OR); }     cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
-|                  T_OP_ATOMIC_XOR     { new_instr(OPC_ATOMIC_XOR); }    cat6_atomic_l_g cat6_type dst_reg ',' 'l' '[' reg cat6_offset ']' ',' cat6_immed
+cat6_atomic_g:     cat6_atomic_opc cat6_typed cat6_dim cat6_type '.' cat6_immed '.' 'g' dst_reg ',' 'g' '[' cat6_reg_or_immed ']' ',' reg ',' reg ',' reg {
+                       instr->flags |= IR3_INSTR_G;
+                   }
+
+cat6_atomic_l:     cat6_atomic_opc cat6_typed cat6_dim cat6_type '.' cat6_immed '.' 'l' dst_reg ',' 'l' '[' cat6_reg_or_immed ']' ',' reg
+
+cat6_atomic:       cat6_atomic_g
+|                  cat6_atomic_l
 
 cat6_id_opc:
                    T_OP_GETSPID { new_instr(OPC_GETSPID); }
 |                  T_OP_GETWID  { new_instr(OPC_GETWID); }
 
 cat6_id:           cat6_id_opc cat6_type dst_reg
-
-/* TODO adding support for both pre and post a6xx versions of ldib/stib/etc
- * is going to be tricky.  Maybe we end up needing to cpp preprocess the
- * parser and generate multiple versions?  For now, punt.
- */
-cat6_bindless_ibo_opc: T_OP_RESINFO_B  { new_instr(OPC_RESINFO); }
 
 cat6_bindless_base:
 |                  '.' T_BASE { instr->flags |= IR3_INSTR_B; instr->cat6.base = $2; }
@@ -969,7 +969,25 @@ cat6_bindless_mode: T_IMM cat6_bindless_base
 cat6_reg_or_immed: reg
 |                  integer { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
 
-cat6_bindless_ibo: cat6_bindless_ibo_opc cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed
+cat6_bindless_ibo_opc_1src: T_OP_RESINFO_B       { new_instr(OPC_RESINFO); }
+
+cat6_bindless_ibo_opc_2src: T_OP_ATOMIC_B_ADD        { new_instr(OPC_ATOMIC_ADD)->flags  |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_SUB        { new_instr(OPC_ATOMIC_SUB)->flags  |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_XCHG       { new_instr(OPC_ATOMIC_XCHG)->flags |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_INC        { new_instr(OPC_ATOMIC_INC)->flags  |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_DEC        { new_instr(OPC_ATOMIC_DEC)->flags  |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_CMPXCHG    { new_instr(OPC_ATOMIC_CMPXCHG)->flags |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_MIN        { new_instr(OPC_ATOMIC_MIN)->flags  |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_MAX        { new_instr(OPC_ATOMIC_MAX)->flags  |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_AND        { new_instr(OPC_ATOMIC_AND)->flags  |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_OR         { new_instr(OPC_ATOMIC_OR)->flags   |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_ATOMIC_B_XOR        { new_instr(OPC_ATOMIC_XOR)->flags  |= IR3_INSTR_G; dummy_dst(); }
+
+cat6_bindless_ibo: cat6_bindless_ibo_opc_1src cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed
+|                  cat6_bindless_ibo_opc_2src cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed ',' cat6_reg_or_immed {
+                       /* TODO cleanup ir3 src order: */
+                       swap(instr->regs[1], instr->regs[3]);
+                   }
 
 cat6_bindless_ldc_opc: T_OP_LDC  { new_instr(OPC_LDC); }
 
