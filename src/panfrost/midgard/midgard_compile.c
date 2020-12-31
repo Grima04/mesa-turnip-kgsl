@@ -1502,6 +1502,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_global:
         case nir_intrinsic_load_global_constant:
         case nir_intrinsic_load_shared:
+        case nir_intrinsic_load_scratch:
         case nir_intrinsic_load_input:
         case nir_intrinsic_load_kernel_input:
         case nir_intrinsic_load_interpolated_input: {
@@ -1510,6 +1511,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 bool is_global = instr->intrinsic == nir_intrinsic_load_global ||
                         instr->intrinsic == nir_intrinsic_load_global_constant;
                 bool is_shared = instr->intrinsic == nir_intrinsic_load_shared;
+                bool is_scratch = instr->intrinsic == nir_intrinsic_load_scratch;
                 bool is_flat = instr->intrinsic == nir_intrinsic_load_input;
                 bool is_kernel = instr->intrinsic == nir_intrinsic_load_kernel_input;
                 bool is_interp = instr->intrinsic == nir_intrinsic_load_interpolated_input;
@@ -1523,7 +1525,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 t = nir_alu_type_get_base_type(t);
 
-                if (!(is_ubo || is_global)) {
+                if (!(is_ubo || is_global || is_scratch)) {
                         offset = nir_intrinsic_base(instr);
                 }
 
@@ -1554,7 +1556,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         uint32_t uindex = nir_src_as_uint(index) + 1;
                         emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, uindex);
-                } else if (is_global || is_shared) {
+                } else if (is_global || is_shared || is_scratch) {
                         unsigned seg = is_global ? LDST_GLOBAL : (is_shared ? LDST_SHARED : LDST_SCRATCH);
                         emit_global(ctx, &instr->instr, true, reg, src_offset, seg);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
@@ -1780,6 +1782,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_store_global:
         case nir_intrinsic_store_shared:
+        case nir_intrinsic_store_scratch:
                 reg = nir_src_index(ctx, &instr->src[0]);
                 emit_explicit_constant(ctx, reg, reg);
 
@@ -1788,6 +1791,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         seg = LDST_GLOBAL;
                 else if (instr->intrinsic == nir_intrinsic_store_shared)
                         seg = LDST_SHARED;
+                else
+                        seg = LDST_SCRATCH;
 
                 emit_global(ctx, &instr->instr, false, reg, &instr->src[1], seg);
                 break;
@@ -2876,6 +2881,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         panfrost_nir_assign_sysvals(&ctx->sysvals, ctx, nir);
         program->sysval_count = ctx->sysvals.sysval_count;
         memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
+        ctx->tls_size = nir->scratch_size;
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)
