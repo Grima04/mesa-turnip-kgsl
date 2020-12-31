@@ -819,7 +819,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
                                                          image_type);
    SpvId var_type = is_sampler ? sampled_type : image_type;
 
-   int index = var->data.binding;
+   int index = var->data.driver_location;
    assert(!is_sampler || (!(ctx->samplers_used & (1 << index))));
    assert(!is_sampler || !ctx->sampler_types[index]);
    assert(is_sampler || !ctx->image_types[index]);
@@ -857,10 +857,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
    ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
 
    spirv_builder_emit_descriptor_set(&ctx->builder, var_id, is_sampler ? ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW : ZINK_DESCRIPTOR_TYPE_IMAGE);
-   int binding = zink_binding(ctx->stage,
-                              is_sampler ? zink_sampler_type(type) : zink_image_type(type),
-                              var->data.binding);
-   spirv_builder_emit_binding(&ctx->builder, var_id, binding);
+   spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
 }
 
 static SpvId
@@ -1001,12 +998,7 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
       ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
 
       spirv_builder_emit_descriptor_set(&ctx->builder, var_id, ssbo ? ZINK_DESCRIPTOR_TYPE_SSBO : ZINK_DESCRIPTOR_TYPE_UBO);
-      int binding = zink_binding(ctx->stage,
-                                 ssbo ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER :
-                                        /* only make the first ubo dynamic to stay within driver limits */
-                                        (ctx->num_ubos == 1) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                 var->data.binding + i);
-      spirv_builder_emit_binding(&ctx->builder, var_id, binding);
+      spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding + i);
    }
 }
 
@@ -2829,7 +2821,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_image_deref_store: {
       SpvId img_var = get_src(ctx, &intr->src[0]);
       nir_variable *var = get_var_from_image(ctx, img_var);
-      SpvId img_type = ctx->image_types[var->data.binding];
+      SpvId img_type = ctx->image_types[var->data.driver_location];
       const struct glsl_type *type = glsl_without_array(var->type);
       SpvId base_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
       SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
@@ -2846,7 +2838,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_image_deref_load: {
       SpvId img_var = get_src(ctx, &intr->src[0]);
       nir_variable *var = get_var_from_image(ctx, img_var);
-      SpvId img_type = ctx->image_types[var->data.binding];
+      SpvId img_type = ctx->image_types[var->data.driver_location];
       const struct glsl_type *type = glsl_without_array(var->type);
       SpvId base_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
       SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
@@ -2860,7 +2852,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_image_deref_size: {
       SpvId img_var = get_src(ctx, &intr->src[0]);
       nir_variable *var = get_var_from_image(ctx, img_var);
-      SpvId img_type = ctx->image_types[var->data.binding];
+      SpvId img_type = ctx->image_types[var->data.driver_location];
       const struct glsl_type *type = glsl_without_array(var->type);
       SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
       SpvId result = spirv_builder_emit_image_query_size(&ctx->builder, get_uvec_type(ctx, 32, glsl_get_sampler_coordinate_components(type)), img, 0);
@@ -3280,7 +3272,7 @@ emit_deref_array(struct ntv_context *ctx, nir_deref_instr *deref)
       struct hash_entry *he = _mesa_hash_table_search(ctx->vars, var);
       assert(he);
       base = (SpvId)(intptr_t)he->data;
-      type = ctx->image_types[var->data.binding];
+      type = ctx->image_types[var->data.driver_location];
       break;
    }
 

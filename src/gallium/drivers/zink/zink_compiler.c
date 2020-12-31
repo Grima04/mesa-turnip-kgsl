@@ -609,7 +609,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       fprintf(stderr, "---8<---\n");
    }
 
-   uint32_t cur_ubo = 0;
    /* UBO buffers are zero-indexed, but buffer 0 is always the one created by nir_lower_uniforms_to_ubo,
     * which means there is no buffer 0 if there are no uniforms
     */
@@ -629,8 +628,11 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             bool ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(type);
             if (var->data.location && !ubo_array && var->type != var->interface_type)
                continue;
-            var->data.binding = cur_ubo;
             ztype = ZINK_DESCRIPTOR_TYPE_UBO;
+            var->data.driver_location = ret->num_bindings[ztype];
+            var->data.binding = zink_binding(nir->info.stage,
+                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                             var->data.driver_location);
             /* if this is a ubo array, create a binding point for each array member:
              * 
                "For uniform blocks declared as arrays, each individual array element
@@ -641,9 +643,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
              */
             for (unsigned i = 0; i < (ubo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
                VkDescriptorType vktype = !ubo_index ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-               int binding = zink_binding(nir->info.stage,
-                                          vktype,
-                                          cur_ubo++);
+               int binding = var->data.binding + i;
                ret->bindings[ztype][ret->num_bindings[ztype]].index = ubo_index++;
                ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
                ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
@@ -657,13 +657,15 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             if (var->data.location && !bo_array)
                continue;
             if (!var->data.explicit_binding) {
-               var->data.binding = ssbo_array_index;
-            }
+               var->data.driver_location = ssbo_array_index;
+            } else
+               var->data.driver_location = var->data.binding;
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
+            var->data.binding = zink_binding(nir->info.stage,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                             var->data.driver_location);
             for (unsigned i = 0; i < (bo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
-               int binding = zink_binding(nir->info.stage,
-                                          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                          var->data.binding + i);
+               int binding = var->data.binding + i;
                if (strcmp(glsl_get_type_name(var->interface_type), "counters"))
                   ret->bindings[ztype][ret->num_bindings[ztype]].index = ssbo_array_index++;
                else
@@ -679,11 +681,12 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {
                VkDescriptorType vktype = glsl_type_is_image(type) ? zink_image_type(type) : zink_sampler_type(type);
                ztype = zink_desc_type_from_vktype(vktype);
-               int binding = zink_binding(nir->info.stage,
-                                          vktype,
-                                          var->data.binding);
-               ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.binding;
-               ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
+               var->data.driver_location = var->data.binding;
+               var->data.binding = zink_binding(nir->info.stage,
+                                                vktype,
+                                                var->data.driver_location);
+               ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
+               ret->bindings[ztype][ret->num_bindings[ztype]].binding = var->data.binding;
                ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
                if (glsl_type_is_array(var->type))
                   ret->bindings[ztype][ret->num_bindings[ztype]].size = glsl_get_aoa_size(var->type);
