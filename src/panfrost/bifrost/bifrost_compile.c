@@ -1196,23 +1196,6 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         }
 }
 
-/* TEXS instructions assume normal 2D f32 operation but are more
- * space-efficient and with simpler RA/scheduling requirements*/
-
-static void
-bi_emit_texs(bi_builder *b, nir_tex_instr *instr)
-{
-        int coord_idx = nir_tex_instr_src_index(instr, nir_tex_src_coord);
-        assert(coord_idx >= 0);
-        bi_index coords = bi_src_index(&instr->src[coord_idx].src);
-
-        bi_texs_2d_to(b, nir_dest_bit_size(instr->dest),
-                        bi_dest_index(&instr->dest),
-                        coords, bi_word(coords, 1),
-                        instr->op != nir_texop_tex, /* zero LOD */
-                        instr->sampler_index, instr->texture_index);
-}
-
 /* Returns dimension with 0 special casing cubemaps. Shamelessly copied from Midgard */
 static unsigned
 bifrost_tex_format(enum glsl_sampler_dim dim)
@@ -1645,9 +1628,33 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
         bi_make_vec_to(b, bi_dest_index(&instr->dest), srcs, channels, 4, 32);
 }
 
-/* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D (or cube
- * map, TODO) textures with sufficiently small immediate indices. Anything else
+/* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D/cube
+ * textures with sufficiently small immediate indices. Anything else
  * needs a complete texture op. */
+
+static void
+bi_emit_texs(bi_builder *b, nir_tex_instr *instr)
+{
+        int coord_idx = nir_tex_instr_src_index(instr, nir_tex_src_coord);
+        assert(coord_idx >= 0);
+        bi_index coords = bi_src_index(&instr->src[coord_idx].src);
+
+        if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+                bi_index face, s, t;
+                bi_emit_cube_coord(b, coords, &face, &s, &t);
+
+                bi_texs_cube_to(b, nir_dest_bit_size(instr->dest),
+                                bi_dest_index(&instr->dest),
+                                s, t, face,
+                                instr->sampler_index, instr->texture_index);
+        } else {
+                bi_texs_2d_to(b, nir_dest_bit_size(instr->dest),
+                                bi_dest_index(&instr->dest),
+                                coords, bi_word(coords, 1),
+                                instr->op != nir_texop_tex, /* zero LOD */
+                                instr->sampler_index, instr->texture_index);
+        }
+}
 
 static bool
 bi_is_simple_tex(nir_tex_instr *instr)
@@ -1655,14 +1662,39 @@ bi_is_simple_tex(nir_tex_instr *instr)
         if (instr->op != nir_texop_tex && instr->op != nir_texop_txl)
                 return false;
 
+        nir_alu_type base = nir_alu_type_get_base_type(instr->dest_type);
+        unsigned sz = nir_dest_bit_size(instr->dest);
+
+        if (!(base == nir_type_float && (sz == 16 || sz == 32)))
+                return false;
+
+        if (instr->is_shadow || instr->is_array)
+                return false;
+
+        switch (instr->sampler_dim) {
+        case GLSL_SAMPLER_DIM_2D:
+        case GLSL_SAMPLER_DIM_EXTERNAL:
+                break;
+
+        case GLSL_SAMPLER_DIM_CUBE:
+                /* LOD can't be specified with TEXS_CUBE */
+                if (instr->op == nir_texop_txl)
+                        return false;
+                break;
+
+        default:
+                return false;
+        }
+
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 if (instr->src[i].src_type != nir_tex_src_lod &&
                     instr->src[i].src_type != nir_tex_src_coord)
                         return false;
         }
 
-        /* Indices need to fit in 3 bits */
-        if (MAX2(instr->sampler_index, instr->texture_index) >= (1 << 3))
+        /* Indices need to fit in provided bits */
+        unsigned idx_bits = instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE ? 2 : 3;
+        if (MAX2(instr->sampler_index, instr->texture_index) >= (1 << idx_bits))
                 return false;
 
         int lod_idx = nir_tex_instr_src_index(instr, nir_tex_src_lod);
@@ -1690,15 +1722,7 @@ bi_emit_tex(bi_builder *b, nir_tex_instr *instr)
                 unreachable("Invalid texture operation");
         }
 
-        nir_alu_type base = nir_alu_type_get_base_type(instr->dest_type);
-        unsigned sz = nir_dest_bit_size(instr->dest);
-
-        bool is_simple = bi_is_simple_tex(instr);
-        bool is_2d = instr->sampler_dim == GLSL_SAMPLER_DIM_2D ||
-                instr->sampler_dim == GLSL_SAMPLER_DIM_EXTERNAL;
-        bool is_f = base == nir_type_float && (sz == 16 || sz == 32);
-
-        if (is_simple && is_2d && is_f && !instr->is_shadow && !instr->is_array)
+        if (bi_is_simple_tex(instr))
                 bi_emit_texs(b, instr);
         else
                 bi_emit_texc(b, instr);
