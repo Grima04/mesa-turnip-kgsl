@@ -36,11 +36,17 @@
  * This allows for fast indexing into arrays. This file tries to pattern match the offset in NIR with this form to reduce pressure on the ALU pipe.
  */
 
+enum index_type {
+        ITYPE_U64 = 1 << 6,
+        ITYPE_U32 = 2 << 6, // zero-extend
+        ITYPE_I32 = 3 << 6, // sign-extend
+};
+
 struct mir_address {
         nir_ssa_scalar A;
         nir_ssa_scalar B;
 
-        bool zext;
+        enum index_type type;
         unsigned shift;
         unsigned bias;
 };
@@ -105,7 +111,7 @@ mir_match_iadd(struct mir_address *address, bool first_free)
         }
 }
 
-/* Matches u2u64 and sets zext */
+/* Matches u2u64 and sets type */
 
 static void
 mir_match_u2u64(struct mir_address *address)
@@ -121,7 +127,7 @@ mir_match_u2u64(struct mir_address *address)
         nir_ssa_scalar arg = nir_ssa_scalar_chase_alu_src(address->B, 0);
 
         address->B = arg;
-        address->zext = true;
+        address->type = ITYPE_U32;
 }
 
 /* Matches ishl to shift */
@@ -175,7 +181,8 @@ static struct mir_address
 mir_match_offset(nir_ssa_def *offset, bool first_free)
 {
         struct mir_address address = {
-                .B = { .def = offset }
+                .B = { .def = offset },
+                .type = ITYPE_U64,
         };
 
         mir_match_mov(&address);
@@ -198,15 +205,19 @@ mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset,
                 ins->swizzle[2][i] = 0;
         }
 
-        bool force_zext = (nir_src_bit_size(*offset) < 64);
+        /* Sign extend instead of zero extend in case the address is something
+         * like `base + offset + 20`, where offset could be negative. */
+        bool force_sext = (nir_src_bit_size(*offset) < 64);
 
         if (!offset->is_ssa) {
                 ins->load_store.arg_1 |= is_shared ? 0x6E : 0x7E;
                 ins->src[2] = nir_src_index(ctx, offset);
                 ins->src_types[2] = nir_type_uint | nir_src_bit_size(*offset);
 
-                if (force_zext)
-                        ins->load_store.arg_1 |= 0x80;
+                if (force_sext)
+                        ins->load_store.arg_1 |= ITYPE_I32;
+                else
+                        ins->load_store.arg_1 |= ITYPE_U64;
 
                 return;
         }
@@ -227,8 +238,10 @@ mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset,
         } else
                 ins->load_store.arg_2 = 0x1E;
 
-        if (match.zext || force_zext)
-                ins->load_store.arg_1 |= 0x80;
+        if (force_sext)
+                match.type = ITYPE_I32;
+
+        ins->load_store.arg_1 |= match.type;
 
         assert(match.shift <= 7);
         ins->load_store.arg_2 |= (match.shift) << 5;
