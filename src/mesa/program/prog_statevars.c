@@ -134,13 +134,19 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
             value[0] = ctx->Light.LightSource[ln].SpotCutoff;
          return;
       }
-   case STATE_LIGHT_ATTRIBS:
+   case STATE_LIGHT_ATTRIBS: {
+      /* This must be exact because it must match the gl_LightSource layout
+       * in GLSL.
+       */
+      STATIC_ASSERT(sizeof(struct gl_light_uniforms) == 29 * 4);
+      STATIC_ASSERT(ARRAY_SIZE(ctx->Light.LightSourceData) == 29 * MAX_LIGHTS);
       /* state[1] is the index of the first value */
       /* state[2] is the number of values */
       assert(state[1] + state[2] <= ARRAY_SIZE(ctx->Light.LightSourceData));
       memcpy(value, &ctx->Light.LightSourceData[state[1]],
              state[2] * sizeof(float));
       return;
+   }
    case STATE_LIGHTMODEL_AMBIENT:
       COPY_4V(value, ctx->Light.Model.Ambient);
       return;
