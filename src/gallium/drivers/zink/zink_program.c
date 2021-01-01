@@ -805,15 +805,6 @@ zink_program_num_bindings(const struct zink_program *pg, bool is_compute)
    return num_bindings;
 }
 
-unsigned
-zink_program_num_descriptors(const struct zink_program *pg)
-{
-   unsigned num_descriptors = 0;
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
-      num_descriptors += pg->pool[i] ? pg->pool[i]->key.layout->num_descriptors : 0;
-   return num_descriptors;
-}
-
 void
 zink_destroy_gfx_program(struct zink_screen *screen,
                          struct zink_gfx_program *prog)

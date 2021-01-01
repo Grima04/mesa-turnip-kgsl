@@ -43,6 +43,11 @@ struct zink_descriptor_data {
    struct hash_table *descriptor_pools[ZINK_DESCRIPTOR_TYPES];
 };
 
+struct zink_program_descriptor_data {
+   struct zink_descriptor_pool *pool[ZINK_DESCRIPTOR_TYPES];
+   struct zink_descriptor_set *last_set[ZINK_DESCRIPTOR_TYPES];
+};
+
 static void
 debug_describe_zink_descriptor_pool(char *buf, const struct zink_descriptor_pool *ptr)
 {
@@ -315,7 +320,7 @@ static struct zink_descriptor_set *
 allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink_descriptor_type type, unsigned descs_used, bool is_compute)
 {
    VkDescriptorSetAllocateInfo dsai;
-   struct zink_descriptor_pool *pool = pg->pool[type];
+   struct zink_descriptor_pool *pool = pg->dd->pool[type];
 #define DESC_BUCKET_FACTOR 10
    unsigned bucket_size = pool->key.layout->num_descriptors ? DESC_BUCKET_FACTOR : 1;
    if (pool->key.layout->num_descriptors) {
@@ -418,7 +423,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_batch *batch = &ctx->batch;
-   struct zink_descriptor_pool *pool = pg->pool[type];
+   struct zink_descriptor_pool *pool = pg->dd->pool[type];
    unsigned descs_used = 1;
    assert(type < ZINK_DESCRIPTOR_TYPES);
    uint32_t hash = pool->key.layout->num_descriptors ? ctx->dd->descriptor_states[is_compute].state[type] : 0;
@@ -426,9 +431,9 @@ zink_descriptor_set_get(struct zink_context *ctx,
    populate_zds_key(ctx, type, is_compute, &key);
 
    simple_mtx_lock(&pool->mtx);
-   if (pg->last_set[type] && pg->last_set[type]->hash == hash &&
-       desc_state_equal(&pg->last_set[type]->key, &key)) {
-      zds = pg->last_set[type];
+   if (pg->dd->last_set[type] && pg->dd->last_set[type]->hash == hash &&
+       desc_state_equal(&pg->dd->last_set[type]->key, &key)) {
+      zds = pg->dd->last_set[type];
       *cache_hit = !zds->invalid;
       if (pool->key.layout->num_descriptors) {
          if (zds->recycled) {
@@ -504,8 +509,8 @@ skip_hash_tables:
          return zink_descriptor_set_get(ctx, type, is_compute, cache_hit, need_resource_refs);
       }
    } else {
-      if (pg->last_set[type] && !pg->last_set[type]->hash) {
-         zds = pg->last_set[type];
+      if (pg->dd->last_set[type] && !pg->dd->last_set[type]->hash) {
+         zds = pg->dd->last_set[type];
          *cache_hit = true;
          goto quick_out;
       }
@@ -521,8 +526,8 @@ out:
    else {
       /* we can safely apply the null set to all the slots which will need it here */
       for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-         if (pg->pool[i] && !pg->pool[i]->key.layout->num_descriptors)
-            pg->last_set[i] = zds;
+         if (pg->dd->pool[i] && !pg->dd->pool[i]->key.layout->num_descriptors)
+            pg->dd->last_set[i] = zds;
       }
    }
 quick_out:
@@ -534,7 +539,7 @@ quick_out:
       batch->state->descs_used += pool->key.layout->num_descriptors;
       *need_resource_refs = true;
    }
-   pg->last_set[type] = zds;
+   pg->dd->last_set[type] = zds;
    simple_mtx_unlock(&pool->mtx);
 
    return zds;
@@ -641,6 +646,10 @@ zink_descriptor_program_init(struct zink_context *ctx,
    VkDescriptorSetLayoutBinding bindings[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 32];
    int num_bindings[ZINK_DESCRIPTOR_TYPES] = {};
 
+   if (!pg->dd)
+      pg->dd = rzalloc(pg, struct zink_program_descriptor_data);
+   if (!pg->dd)
+      return false;
    VkDescriptorPoolSize sizes[6] = {};
    int type_map[12];
    unsigned num_types = 0;
@@ -674,6 +683,7 @@ zink_descriptor_program_init(struct zink_context *ctx,
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       total_descs += num_bindings[i];
    }
+   pg->has_descriptors = !!total_descs;
    if (!total_descs)
       return true;
 
@@ -702,7 +712,7 @@ zink_descriptor_program_init(struct zink_context *ctx,
          pg->dsl[i] = descriptor_layout_get(ctx, i, &null_binding, 1, &layout_key);
          if (!pg->dsl[i])
             return false;
-         zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pg->pool[i], pool);
+         zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pg->dd->pool[i], pool);
          continue;
       }
       found_descriptors = true;
@@ -753,7 +763,7 @@ zink_descriptor_program_init(struct zink_context *ctx,
       pool = descriptor_pool_get(ctx, i, layout_key, type_sizes, num_type_sizes);
       if (!pool)
          return false;
-      zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pg->pool[i], pool);
+      zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pg->dd->pool[i], pool);
    }
    return true;
 }
@@ -761,8 +771,10 @@ zink_descriptor_program_init(struct zink_context *ctx,
 void
 zink_descriptor_program_deinit(struct zink_screen *screen, struct zink_program *pg)
 {
+   if (!pg->dd)
+      return;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
-      zink_descriptor_pool_reference(screen, &pg->pool[i], NULL);
+      zink_descriptor_pool_reference(screen, &pg->dd->pool[i], NULL);
 }
 
 static void
@@ -919,7 +931,7 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->pool->type]->key.layout->num_descriptors;
+   unsigned num_descriptors = pg->dd->pool[zds->pool->type]->key.layout->num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
    VkDescriptorBufferInfo buffer_infos[num_bindings];
@@ -1004,7 +1016,7 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    ASSERTED struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->pool->type]->key.layout->num_descriptors;
+   unsigned num_descriptors = pg->dd->pool[zds->pool->type]->key.layout->num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
    VkDescriptorBufferInfo buffer_infos[num_bindings];
@@ -1119,7 +1131,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->pool->type]->key.layout->num_descriptors;
+   unsigned num_descriptors = pg->dd->pool[zds->pool->type]->key.layout->num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
    VkDescriptorImageInfo image_infos[num_bindings];
@@ -1205,7 +1217,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->pool->type]->key.layout->num_descriptors;
+   unsigned num_descriptors = pg->dd->pool[zds->pool->type]->key.layout->num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
    VkDescriptorImageInfo image_infos[num_bindings];
@@ -1296,7 +1308,7 @@ zink_descriptors_update(struct zink_context *ctx, struct zink_screen *screen, bo
    bool need_resource_refs[ZINK_DESCRIPTOR_TYPES];
    struct zink_descriptor_set *zds[ZINK_DESCRIPTOR_TYPES];
    for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
-      if (pg->pool[h])
+      if (pg->dd->pool[h])
          zds[h] = zink_descriptor_set_get(ctx, h, is_compute, &cache_hit[h], &need_resource_refs[h]);
       else
          zds[h] = NULL;

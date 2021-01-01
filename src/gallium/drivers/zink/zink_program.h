@@ -76,8 +76,8 @@ struct zink_program {
    struct zink_batch_usage batch_uses;
    bool is_compute;
 
-   struct zink_descriptor_pool *pool[ZINK_DESCRIPTOR_TYPES];
-   struct zink_descriptor_set *last_set[ZINK_DESCRIPTOR_TYPES];
+   struct zink_program_descriptor_data *dd;
+   bool has_descriptors;
 
    VkPipelineLayout layout;
    VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
@@ -127,19 +127,6 @@ zink_desc_type_from_vktype(VkDescriptorType type)
    return 0;
    
 }
-
-static inline bool
-zink_program_has_descriptors(const struct zink_program *pg)
-{
-   for (unsigned i = 0; i < ARRAY_SIZE(pg->pool); i++) {
-      if (pg->pool[i])
-         return true;
-   }
-   return false;
-}
-
-unsigned
-zink_program_num_descriptors(const struct zink_program *pg);
 
 unsigned
 zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descriptor_type type, bool is_compute);
