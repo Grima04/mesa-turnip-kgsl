@@ -840,9 +840,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       _mesa_hash_table_destroy(prog->pipelines[i], NULL);
    }
    zink_shader_cache_reference(screen, &prog->shader_cache, NULL);
-
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
-      zink_descriptor_pool_reference(screen, &prog->base.pool[i], NULL);
+   zink_descriptor_program_deinit(screen, &prog->base);
 
    ralloc_free(prog);
 }
@@ -867,9 +865,7 @@ zink_destroy_compute_program(struct zink_screen *screen,
    }
    _mesa_hash_table_destroy(comp->pipelines, NULL);
    zink_shader_cache_reference(screen, &comp->shader_cache, NULL);
-
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
-      zink_descriptor_pool_reference(screen, &comp->base.pool[i], NULL);
+   zink_descriptor_program_deinit(screen, &comp->base);
 
    ralloc_free(comp);
 }

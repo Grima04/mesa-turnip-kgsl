@@ -43,7 +43,7 @@ struct zink_descriptor_data {
    struct hash_table *descriptor_pools[ZINK_DESCRIPTOR_TYPES];
 };
 
-void
+static void
 debug_describe_zink_descriptor_pool(char *buf, const struct zink_descriptor_pool *ptr)
 {
    sprintf(buf, "zink_descriptor_pool");
@@ -81,6 +81,50 @@ desc_state_hash(const void *key)
       }
    }
    return hash;
+}
+
+static void
+descriptor_set_invalidate(struct zink_descriptor_set *zds)
+{
+   zds->invalid = true;
+}
+
+#ifndef NDEBUG
+static void
+descriptor_pool_clear(struct hash_table *ht)
+{
+   hash_table_foreach(ht, entry) {
+      struct zink_descriptor_set *zds = entry->data;
+      descriptor_set_invalidate(zds);
+   }
+   _mesa_hash_table_clear(ht, NULL);
+}
+#endif
+
+static void
+descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *pool)
+{
+   if (!pool)
+      return;
+   if (pool->descpool)
+      vkDestroyDescriptorPool(screen->dev, pool->descpool, NULL);
+
+   simple_mtx_lock(&pool->mtx);
+#ifndef NDEBUG
+   if (pool->desc_sets)
+      descriptor_pool_clear(pool->desc_sets);
+   if (pool->free_desc_sets)
+      descriptor_pool_clear(pool->free_desc_sets);
+#endif
+   if (pool->desc_sets)
+      _mesa_hash_table_destroy(pool->desc_sets, NULL);
+   if (pool->free_desc_sets)
+      _mesa_hash_table_destroy(pool->free_desc_sets, NULL);
+
+   simple_mtx_unlock(&pool->mtx);
+   util_dynarray_fini(&pool->alloc_desc_sets);
+   simple_mtx_destroy(&pool->mtx);
+   ralloc_free(pool);
 }
 
 static struct zink_descriptor_pool *
@@ -128,7 +172,7 @@ descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type typ
 
    return pool;
 fail:
-   zink_descriptor_pool_free(screen, pool);
+   descriptor_pool_free(screen, pool);
    return NULL;
 }
 
@@ -362,12 +406,6 @@ punt_invalid_set(struct zink_descriptor_set *zds, struct hash_entry *he)
    zds->punted = true;
 }
 
-static void
-zink_descriptor_set_invalidate(struct zink_descriptor_set *zds)
-{
-   zds->invalid = true;
-}
-
 static struct zink_descriptor_set *
 zink_descriptor_set_get(struct zink_context *ctx,
                                enum zink_descriptor_type type,
@@ -452,7 +490,7 @@ skip_hash_tables:
             if ((count++ >= 100 && tmp->reference.count == 1) || get_invalidated_desc_set(he->data)) {
                zds = tmp;
                assert(p_atomic_read(&zds->reference.count) == 1);
-               zink_descriptor_set_invalidate(zds);
+               descriptor_set_invalidate(zds);
                _mesa_hash_table_remove(pool->free_desc_sets, he);
                goto out;
             }
@@ -582,6 +620,19 @@ zink_descriptor_set_refs_clear(struct zink_descriptor_refs *refs, void *ptr)
    util_dynarray_fini(&refs->refs);
 }
 
+static inline void
+zink_descriptor_pool_reference(struct zink_screen *screen,
+                               struct zink_descriptor_pool **dst,
+                               struct zink_descriptor_pool *src)
+{
+   struct zink_descriptor_pool *old_dst = dst ? *dst : NULL;
+
+   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
+                                (debug_reference_descriptor)debug_describe_zink_descriptor_pool))
+      descriptor_pool_free(screen, old_dst);
+   if (dst) *dst = src;
+}
+
 bool
 zink_descriptor_program_init(struct zink_context *ctx,
                        struct zink_shader *stages[ZINK_SHADER_COUNT],
@@ -707,45 +758,14 @@ zink_descriptor_program_init(struct zink_context *ctx,
    return true;
 }
 
-#ifndef NDEBUG
+void
+zink_descriptor_program_deinit(struct zink_screen *screen, struct zink_program *pg)
+{
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
+      zink_descriptor_pool_reference(screen, &pg->pool[i], NULL);
+}
+
 static void
-descriptor_pool_clear(struct hash_table *ht)
-{
-   hash_table_foreach(ht, entry) {
-      struct zink_descriptor_set *zds = entry->data;
-      zink_descriptor_set_invalidate(zds);
-   }
-   _mesa_hash_table_clear(ht, NULL);
-}
-#endif
-
-void
-zink_descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *pool)
-{
-   if (!pool)
-      return;
-   if (pool->descpool)
-      vkDestroyDescriptorPool(screen->dev, pool->descpool, NULL);
-
-   simple_mtx_lock(&pool->mtx);
-#ifndef NDEBUG
-   if (pool->desc_sets)
-      descriptor_pool_clear(pool->desc_sets);
-   if (pool->free_desc_sets)
-      descriptor_pool_clear(pool->free_desc_sets);
-#endif
-   if (pool->desc_sets)
-      _mesa_hash_table_destroy(pool->desc_sets, NULL);
-   if (pool->free_desc_sets)
-      _mesa_hash_table_destroy(pool->free_desc_sets, NULL);
-
-   simple_mtx_unlock(&pool->mtx);
-   util_dynarray_fini(&pool->alloc_desc_sets);
-   simple_mtx_destroy(&pool->mtx);
-   ralloc_free(pool);
-}
-
-void
 zink_descriptor_pool_deinit(struct zink_context *ctx)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
@@ -757,7 +777,7 @@ zink_descriptor_pool_deinit(struct zink_context *ctx)
    }
 }
 
-bool
+static bool
 zink_descriptor_pool_init(struct zink_context *ctx)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {

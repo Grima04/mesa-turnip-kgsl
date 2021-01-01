@@ -153,30 +153,7 @@ zink_descriptor_program_init(struct zink_context *ctx,
                        struct zink_program *pg);
 
 void
-zink_descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *pool);
-
-void
-zink_descriptor_pool_deinit(struct zink_context *ctx);
-
-bool
-zink_descriptor_pool_init(struct zink_context *ctx);
-
-
-void
-debug_describe_zink_descriptor_pool(char* buf, const struct zink_descriptor_pool *ptr);
-
-static inline void
-zink_descriptor_pool_reference(struct zink_screen *screen,
-                               struct zink_descriptor_pool **dst,
-                               struct zink_descriptor_pool *src)
-{
-   struct zink_descriptor_pool *old_dst = dst ? *dst : NULL;
-
-   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
-                                (debug_reference_descriptor)debug_describe_zink_descriptor_pool))
-      zink_descriptor_pool_free(screen, old_dst);
-   if (dst) *dst = src;
-}
+zink_descriptor_program_deinit(struct zink_screen *screen, struct zink_program *pg);
 
 void
 zink_descriptors_update(struct zink_context *ctx, struct zink_screen *screen, bool is_compute);
