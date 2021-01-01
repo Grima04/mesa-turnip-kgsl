@@ -1292,7 +1292,8 @@ _mesa_upload_state_parameters(struct gl_context *ctx,
  * It's only meant to optimize _mesa_load/upload_state_parameters.
  */
 void
-_mesa_optimize_state_parameters(struct gl_program_parameter_list *list)
+_mesa_optimize_state_parameters(struct gl_constants *consts,
+                                struct gl_program_parameter_list *list)
 {
    for (int first_param = list->FirstStateVarIndex;
         first_param < (int)list->NumParameters; first_param++) {
@@ -1368,7 +1369,10 @@ _mesa_optimize_state_parameters(struct gl_program_parameter_list *list)
                   list->Parameters[i].StateIndexes[2] ==
                   list->Parameters[i - 1].StateIndexes[2] + 1) ||
                  /* Consecutive attributes between 2 lights: */
-                 (list->Parameters[i].StateIndexes[1] ==
+                 /* SPOT_CUTOFF should have only 1 component, which isn't true
+                  * with unpacked uniform storage. */
+                 (consts->PackedDriverUniformStorage &&
+                  list->Parameters[i].StateIndexes[1] ==
                   list->Parameters[i - 1].StateIndexes[1] + 1 &&
                   list->Parameters[i].StateIndexes[2] == STATE_AMBIENT &&
                   list->Parameters[i - 1].StateIndexes[2] == STATE_SPOT_CUTOFF))) {

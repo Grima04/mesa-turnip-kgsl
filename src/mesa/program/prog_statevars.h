@@ -37,6 +37,7 @@ extern "C" {
 
 
 struct gl_context;
+struct gl_constants;
 struct gl_program_parameter_list;
 
 
@@ -169,7 +170,8 @@ _mesa_upload_state_parameters(struct gl_context *ctx,
                               uint32_t *dst);
 
 extern void
-_mesa_optimize_state_parameters(struct gl_program_parameter_list *list);
+_mesa_optimize_state_parameters(struct gl_constants *consts,
+                                struct gl_program_parameter_list *list);
 
 extern unsigned
 _mesa_program_state_value_size(const gl_state_index16 state[STATE_LENGTH]);
