@@ -30,7 +30,7 @@
  * descriptors in CPU memory and re-uploads a whole list if some slots have
  * been changed.
  *
- * This code is also reponsible for updating shader pointers to those lists.
+ * This code is also responsible for updating shader pointers to those lists.
  *
  * Note that CP DMA can't be used for updating the lists, because a GPU hang
  * could leave the list in a mid-IB state and the next IB would get wrong

@@ -539,7 +539,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
             LLVMValueRef strip_start = ac_build_umsb(&ctx->ac, preceding_reset_threadmask, NULL);
             strip_start = LLVMBuildAdd(builder, strip_start, ctx->ac.i32_1, "");
 
-            /* This flips the orientatino based on reset indices within this wave only. */
+            /* This flips the orientation based on reset indices within this wave only. */
             first_is_odd = LLVMBuildTrunc(builder, strip_start, ctx->ac.i1, "");
 
             LLVMValueRef last_strip_start, prev_wave_state, ret, tmp;

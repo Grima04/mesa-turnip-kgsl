@@ -1041,7 +1041,7 @@ static void si_delete_rs_state(struct pipe_context *ctx, void *state)
 }
 
 /*
- * infeered state between dsa and stencil ref
+ * inferred state between dsa and stencil ref
  */
 static void si_emit_stencil_ref(struct si_context *sctx)
 {

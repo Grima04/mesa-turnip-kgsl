@@ -297,7 +297,7 @@ struct si_resource {
     * streamout, DMA, or as a random access target). The rest of
     * the buffer is considered invalid and can be mapped unsynchronized.
     *
-    * This allows unsychronized mapping of a buffer range which hasn't
+    * This allows unsynchronized mapping of a buffer range which hasn't
     * been used yet. It's for applications which forget to use
     * the unsynchronized map flag and expect the driver to figure it out.
     */

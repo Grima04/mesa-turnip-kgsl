@@ -1506,7 +1506,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
        * surface pitch isn't correctly aligned by default.
        *
        * In order to support it correctly we require multi-image
-       * metadata to be syncrhonized between radv and radeonsi. The
+       * metadata to be synchronized between radv and radeonsi. The
        * semantics of associating multiple image metadata to a memory
        * object on the vulkan export side are not concretely defined
        * either.

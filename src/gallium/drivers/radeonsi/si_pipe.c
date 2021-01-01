@@ -656,7 +656,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
     * evenly between CUs. The number is only a function of the number of CUs.
     * We can decrease the constant to decrease the scratch buffer size.
     *
-    * sctx->scratch_waves must be >= the maximum posible size of
+    * sctx->scratch_waves must be >= the maximum possible size of
     * 1 threadgroup, so that the hw doesn't hang from being unable
     * to start any.
     *

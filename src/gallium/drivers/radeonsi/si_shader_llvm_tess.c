@@ -460,7 +460,7 @@ static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef
       get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index, param_index, semantic);
 
    /* TODO: This will generate rather ordinary llvm code, although it
-    * should be easy for the optimiser to fix up. In future we might want
+    * should be easy for the optimizer to fix up. In future we might want
     * to refactor buffer_load().
     */
    LLVMValueRef value[4];

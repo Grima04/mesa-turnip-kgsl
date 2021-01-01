@@ -1167,7 +1167,7 @@ void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
 
    sctx->last_pkt3_write_data = &sctx->gfx_cs.current.buf[sctx->gfx_cs.current.cdw - 5];
 
-   /* Only the last occurence of WRITE_DATA will be executed.
+   /* Only the last occurrence of WRITE_DATA will be executed.
     * The packet will be enabled in si_flush_gfx_cs.
     */
    *sctx->last_pkt3_write_data = PKT3(PKT3_NOP, 3, 0);
