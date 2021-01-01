@@ -1586,7 +1586,7 @@ TEST_F(nir_dead_write_vars_test, DISABLED_unrelated_barrier_in_two_blocks)
    /* Emit vertex will ensure writes to output variables are considered used,
     * but should not affect other types of variables. */
 
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_emit_vertex)->instr);
+   nir_emit_vertex(b);
 
    nir_store_var(b, out, nir_load_var(b, v[2]), 1);
    nir_store_var(b, v[0], nir_load_var(b, v[2]), 1);

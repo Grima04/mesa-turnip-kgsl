@@ -309,12 +309,8 @@ nir_load_store_vectorize_test::create_store(
 void nir_load_store_vectorize_test::create_shared_load(
    nir_deref_instr *deref, uint32_t id, unsigned bit_size, unsigned components)
 {
-   nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_deref);
-   nir_ssa_dest_init(&load->instr, &load->dest, components, bit_size, NULL);
-   load->num_components = components;
-   load->src[0] = nir_src_for_ssa(&deref->dest.ssa);
-   nir_builder_instr_insert(b, &load->instr);
-   nir_alu_instr *mov = nir_instr_as_alu(nir_mov(b, &load->dest.ssa)->parent_instr);
+   nir_ssa_def *load = nir_load_deref(b, deref);
+   nir_alu_instr *mov = nir_instr_as_alu(nir_mov(b, load)->parent_instr);
    movs[id] = mov;
    loads[id] = &mov->src[0];
 }
@@ -328,13 +324,7 @@ void nir_load_store_vectorize_test::create_shared_store(
       values[i] = nir_const_value_for_raw_uint((id << 4) | i, bit_size);
    nir_ssa_def *value = nir_build_imm(b, components, bit_size, values);
 
-   nir_intrinsic_instr *store = nir_intrinsic_instr_create(b->shader, nir_intrinsic_store_deref);
-   nir_ssa_dest_init(&store->instr, &store->dest, components, bit_size, NULL);
-   store->num_components = components;
-   store->src[0] = nir_src_for_ssa(&deref->dest.ssa);
-   store->src[1] = nir_src_for_ssa(value);
-   nir_intrinsic_set_write_mask(store, wrmask & ((1 << components) - 1));
-   nir_builder_instr_insert(b, &store->instr);
+   nir_store_deref(b, deref, value, wrmask & ((1 << components) - 1));
 }
 
 bool nir_load_store_vectorize_test::test_alu(nir_instr *instr, nir_op op)
@@ -868,7 +858,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier_shared)
 TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_discard)
 {
    create_store(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard)->instr);
+   nir_discard(b);
    create_store(nir_var_mem_ssbo, 0, 4, 0x2);
 
    nir_validate_shader(b->shader, NULL);
@@ -882,7 +872,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_discard)
 TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_demote)
 {
    create_store(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_demote)->instr);
+   nir_demote(b);
    create_store(nir_var_mem_ssbo, 0, 4, 0x2);
 
    nir_validate_shader(b->shader, NULL);
@@ -896,7 +886,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_demote)
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_discard)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard)->instr);
+   nir_discard(b);
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);
 
    nir_validate_shader(b->shader, NULL);
@@ -910,7 +900,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_discard)
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_demote)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_demote)->instr);
+   nir_demote(b);
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);
 
    nir_validate_shader(b->shader, NULL);

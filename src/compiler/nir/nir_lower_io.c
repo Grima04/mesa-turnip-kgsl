@@ -558,32 +558,25 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
 
    nir_builder_instr_insert(b, &bary_setup->instr);
 
-   nir_intrinsic_instr *load =
-      nir_intrinsic_instr_create(state->builder.shader,
-                                 nir_intrinsic_load_interpolated_input);
-   load->num_components = intrin->num_components;
-
-   nir_intrinsic_set_base(load, var->data.driver_location);
-   nir_intrinsic_set_component(load, component);
-
    nir_io_semantics semantics = {0};
    semantics.location = var->data.location;
    semantics.num_slots = get_number_of_slots(state, var);
    semantics.medium_precision =
       var->data.precision == GLSL_PRECISION_MEDIUM ||
       var->data.precision == GLSL_PRECISION_LOW;
-   nir_intrinsic_set_io_semantics(load, semantics);
-
-   load->src[0] = nir_src_for_ssa(&bary_setup->dest.ssa);
-   load->src[1] = nir_src_for_ssa(offset);
 
    assert(intrin->dest.is_ssa);
-   nir_ssa_dest_init(&load->instr, &load->dest,
-                     intrin->dest.ssa.num_components,
-                     intrin->dest.ssa.bit_size, NULL);
-   nir_builder_instr_insert(b, &load->instr);
+   nir_ssa_def *load =
+      nir_load_interpolated_input(&state->builder,
+                                  intrin->dest.ssa.num_components,
+                                  intrin->dest.ssa.bit_size,
+                                  &bary_setup->dest.ssa,
+                                  offset,
+                                  .base = var->data.driver_location,
+                                  .component = component,
+                                  .io_semantics = semantics);
 
-   return &load->dest.ssa;
+   return load;
 }
 
 static bool
