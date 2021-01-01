@@ -1389,8 +1389,14 @@ _mesa_optimize_state_parameters(struct gl_constants *consts,
                list->Parameters[first_param].StateIndexes[1] * /* light index */
                sizeof(struct gl_light_uniforms) / 4 +
                (list->Parameters[first_param].StateIndexes[2] - STATE_AMBIENT) * 4;
-            /* Set the size in floats. */
+
+            /* Set the real size in floats that we will upload (memcpy). */
             list->Parameters[first_param].StateIndexes[2] =
+               _mesa_program_state_value_size(list->Parameters[last_param].StateIndexes) +
+               list->Parameters[last_param].ValueOffset -
+               list->Parameters[first_param].ValueOffset;
+
+            /* Set the allocated size, which can be aligned to 4 components. */
             list->Parameters[first_param].Size =
                list->Parameters[last_param].Size +
                list->Parameters[last_param].ValueOffset -
