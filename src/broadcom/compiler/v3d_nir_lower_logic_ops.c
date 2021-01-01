@@ -205,18 +205,8 @@ static nir_ssa_def *
 v3d_nir_get_tlb_color(nir_builder *b, int rt, int sample)
 {
         nir_ssa_def *color[4];
-        for (int i = 0; i < 4; i++) {
-                nir_intrinsic_instr *load =
-                        nir_intrinsic_instr_create(b->shader,
-                                                   nir_intrinsic_load_tlb_color_v3d);
-                load->num_components = 1;
-                nir_intrinsic_set_base(load, sample);
-                nir_intrinsic_set_component(load, i);
-                load->src[0] = nir_src_for_ssa(nir_imm_int(b, rt));
-                nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, NULL);
-                nir_builder_instr_insert(b, &load->instr);
-                color[i] = &load->dest.ssa;
-        }
+        for (int i = 0; i < 4; i++)
+                color[i] = nir_load_tlb_color_v3d(b, 1, 32, nir_imm_int(b, rt), .base = sample, .component = i);
 
         return nir_vec4(b, color[0], color[1], color[2], color[3]);
 }
@@ -295,17 +285,7 @@ v3d_emit_ms_output(struct v3d_compile *c, nir_builder *b,
                    nir_ssa_def *color, nir_src *offset,
                    nir_alu_type type, int rt, int sample)
 {
-
-        nir_intrinsic_instr *store =
-                nir_intrinsic_instr_create(b->shader,
-                                           nir_intrinsic_store_tlb_sample_color_v3d);
-        store->num_components = 4;
-        nir_intrinsic_set_base(store, sample);
-        nir_intrinsic_set_component(store, 0);
-        nir_intrinsic_set_src_type(store, type);
-        store->src[0] = nir_src_for_ssa(color);
-        store->src[1] = nir_src_for_ssa(nir_imm_int(b, rt));
-        nir_builder_instr_insert(b, &store->instr);
+        nir_store_tlb_sample_color_v3d(b, color, nir_imm_int(b, rt), .base = sample, .component = 0, .src_type = type);
 }
 
 static void
