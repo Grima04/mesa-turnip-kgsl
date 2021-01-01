@@ -36,50 +36,50 @@ context as extensions.
 Feature                                                 Status
 ------------------------------------------------------- ------------------------
 
-GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12
+GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12, panfrost
 
   glBindFragDataLocation, glGetFragDataLocation         DONE
   GL_NV_conditional_render (Conditional rendering)      DONE ()
-  GL_ARB_map_buffer_range (Map buffer subranges)        DONE (panfrost, v3d, vc4)
-  GL_ARB_color_buffer_float (Clamping controls)         DONE (panfrost, v3d)
-  GL_ARB_texture_float (Float textures, renderbuffers)  DONE (panfrost, v3d)
-  GL_EXT_packed_float                                   DONE (panfrost, v3d)
-  GL_EXT_texture_shared_exponent                        DONE (panfrost, v3d)
-  GL_ARB_depth_buffer_float (Float depth buffers)       DONE (panfrost, v3d)
-  GL_ARB_framebuffer_object (Framebuffer objects)       DONE (panfrost, v3d, vc4)
+  GL_ARB_map_buffer_range (Map buffer subranges)        DONE (v3d, vc4)
+  GL_ARB_color_buffer_float (Clamping controls)         DONE (v3d)
+  GL_ARB_texture_float (Float textures, renderbuffers)  DONE (v3d)
+  GL_EXT_packed_float                                   DONE (v3d)
+  GL_EXT_texture_shared_exponent                        DONE (v3d)
+  GL_ARB_depth_buffer_float (Float depth buffers)       DONE (v3d)
+  GL_ARB_framebuffer_object (Framebuffer objects)       DONE (v3d, vc4)
   GL_ARB_half_float_pixel                               DONE (all drivers)
-  GL_ARB_half_float_vertex                              DONE (panfrost, v3d, vc4)
-  GL_EXT_texture_integer                                DONE (panfrost, v3d)
-  GL_EXT_texture_array                                  DONE (panfrost, v3d)
-  GL_EXT_draw_buffers2 (Per-buffer blend and masks)     DONE (panfrost, v3d)
-  GL_EXT_texture_compression_rgtc                       DONE (panfrost)
-  GL_ARB_texture_rg                                     DONE (panfrost, v3d)
-  GL_EXT_transform_feedback (Transform feedback)        DONE (panfrost, v3d)
-  GL_ARB_vertex_array_object (Vertex array objects)     DONE (panfrost, v3d, vc4)
-  GL_EXT_framebuffer_sRGB (sRGB framebuffer format)     DONE (panfrost, v3d, vc4)
+  GL_ARB_half_float_vertex                              DONE (v3d, vc4)
+  GL_EXT_texture_integer                                DONE (v3d)
+  GL_EXT_texture_array                                  DONE (v3d)
+  GL_EXT_draw_buffers2 (Per-buffer blend and masks)     DONE (v3d)
+  GL_EXT_texture_compression_rgtc                       DONE (
+  GL_ARB_texture_rg                                     DONE (v3d)
+  GL_EXT_transform_feedback (Transform feedback)        DONE (v3d)
+  GL_ARB_vertex_array_object (Vertex array objects)     DONE (v3d, vc4)
+  GL_EXT_framebuffer_sRGB (sRGB framebuffer format)     DONE (v3d, vc4)
   glClearBuffer commands                                DONE
   glGetStringi command                                  DONE
   glTexParameterI, glGetTexParameterI commands          DONE
   glVertexAttribI commands                              DONE
-  Depth format cube textures                            DONE (panfrost)
-  GLX_ARB_create_context (GLX 1.4 is required)          DONE (panfrost, v3d, vc4)
-  Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*), swr (*), panfrost)
+  Depth format cube textures                            DONE ()
+  GLX_ARB_create_context (GLX 1.4 is required)          DONE (v3d, vc4)
+  Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*), swr (*))
   8 draw buffers                                        DONE (panfrost/t760+)
 
 (*) freedreno (a2xx-a4xx), llvmpipe, softpipe, and swr have fake Multisample anti-aliasing support
 
 
-GL 3.1, GLSL 1.40 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, panfrost, zink, d3d12
+GL 3.1, GLSL 1.40 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12
 
   Forward compatible context support/deprecations       DONE
-  GL_ARB_draw_instanced (Instanced drawing)             DONE (v3d)
-  GL_ARB_copy_buffer (Buffer copying)                   DONE (v3d, vc4)
-  GL_NV_primitive_restart (Primitive restart)           DONE ()
-  16 vertex texture image units                         DONE ()
+  GL_ARB_draw_instanced (Instanced drawing)             DONE (panfrost, v3d)
+  GL_ARB_copy_buffer (Buffer copying)                   DONE (panfrost, v3d, vc4)
+  GL_NV_primitive_restart (Primitive restart)           DONE (panfrost)
+  16 vertex texture image units                         DONE (panfrost)
   GL_ARB_texture_buffer_object (Texture buffer objs)    DONE ()
-  GL_ARB_texture_rectangle (Rectangular textures)       DONE (v3d, vc4)
-  GL_ARB_uniform_buffer_object (Uniform buffer objs)    DONE (v3d)
-  GL_EXT_texture_snorm (Signed normalized textures)     DONE (v3d)
+  GL_ARB_texture_rectangle (Rectangular textures)       DONE (panfrost, v3d, vc4)
+  GL_ARB_uniform_buffer_object (Uniform buffer objs)    DONE (panfrost, v3d)
+  GL_EXT_texture_snorm (Signed normalized textures)     DONE (panfrost, v3d)
 
 
 GL 3.2, GLSL 1.50 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12
@@ -214,7 +214,7 @@ GL 4.5, GLSL 4.50 -- all DONE: nvc0, r600, radeonsi, llvmpipe
 
   GL_ARB_ES3_1_compatibility                            DONE (i965/hsw+, softpipe, virgl)
   GL_ARB_clip_control                                   DONE (freedreno, i965, nv50, softpipe, swr, virgl)
-  GL_ARB_conditional_render_inverted                    DONE (freedreno, i965, nv50, softpipe, swr, virgl)
+  GL_ARB_conditional_render_inverted                    DONE (freedreno, i965, nv50, softpipe, swr, virgl, panfrost)
   GL_ARB_cull_distance                                  DONE (i965, nv50, softpipe, swr, virgl, zink)
   GL_ARB_derivative_control                             DONE (i965, nv50, softpipe, virgl, zink)
   GL_ARB_direct_state_access                            DONE (all drivers)
