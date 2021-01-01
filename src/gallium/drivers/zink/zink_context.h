@@ -167,9 +167,7 @@ struct zink_context {
    struct hash_table *program_cache;
    struct zink_gfx_program *curr_program;
 
-   struct zink_descriptor_state gfx_descriptor_states[ZINK_SHADER_COUNT]; // keep incremental hashes here
-   struct zink_descriptor_state descriptor_states[2]; // gfx, compute
-   struct hash_table *descriptor_pools[ZINK_DESCRIPTOR_TYPES];
+   struct zink_descriptor_data *dd;
 
    struct zink_shader *compute_stage;
    struct zink_compute_pipeline_state compute_pipeline_state;

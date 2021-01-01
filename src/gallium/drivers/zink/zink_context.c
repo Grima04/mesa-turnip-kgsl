@@ -134,7 +134,7 @@ zink_context_destroy(struct pipe_context *pctx)
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
    slab_destroy_child(&ctx->transfer_pool_unsync);
 
-   zink_descriptor_pool_deinit(ctx);
+   zink_descriptors_deinit(ctx);
 
    zink_descriptor_layouts_deinit(ctx);
 
@@ -2658,7 +2658,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!zink_descriptor_layouts_init(ctx))
       goto fail;
 
-   if (!zink_descriptor_pool_init(ctx))
+   if (!zink_descriptors_init(ctx))
       goto fail;
 
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED) || flags & PIPE_CONTEXT_COMPUTE_ONLY) {

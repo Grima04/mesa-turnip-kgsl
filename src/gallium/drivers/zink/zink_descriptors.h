@@ -193,4 +193,10 @@ uint32_t
 zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image_view, bool is_buffer);
 struct zink_resource *
 zink_get_resource_for_descriptor(struct zink_context *ctx, enum zink_descriptor_type type, enum pipe_shader_type shader, int idx);
+
+bool
+zink_descriptors_init(struct zink_context *ctx);
+
+void
+zink_descriptors_deinit(struct zink_context *ctx);
 #endif

@@ -37,6 +37,12 @@
 #define XXH_INLINE_ALL
 #include "util/xxhash.h"
 
+struct zink_descriptor_data {
+   struct zink_descriptor_state gfx_descriptor_states[ZINK_SHADER_COUNT]; // keep incremental hashes here
+   struct zink_descriptor_state descriptor_states[2]; // gfx, compute
+   struct hash_table *descriptor_pools[ZINK_DESCRIPTOR_TYPES];
+};
+
 void
 debug_describe_zink_descriptor_pool(char *buf, const struct zink_descriptor_pool *ptr)
 {
@@ -245,11 +251,11 @@ descriptor_pool_get(struct zink_context *ctx, enum zink_descriptor_type type,
    };
 
    hash = hash_descriptor_pool(&key);
-   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(ctx->descriptor_pools[type], hash, &key);
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(ctx->dd->descriptor_pools[type], hash, &key);
    if (he)
       return (void*)he->data;
    struct zink_descriptor_pool *pool = descriptor_pool_create(zink_screen(ctx->base.screen), type, layout_key, sizes, num_type_sizes);
-   _mesa_hash_table_insert_pre_hashed(ctx->descriptor_pools[type], hash, &pool->key, pool);
+   _mesa_hash_table_insert_pre_hashed(ctx->dd->descriptor_pools[type], hash, &pool->key, pool);
    return pool;
 }
 
@@ -336,11 +342,11 @@ populate_zds_key(struct zink_context *ctx, enum zink_descriptor_type type, bool 
       for (unsigned i = 1; i < ZINK_SHADER_COUNT; i++)
          key->exists[i] = false;
       key->exists[0] = true;
-      key->state[0] = ctx->descriptor_states[is_compute].state[type];
+      key->state[0] = ctx->dd->descriptor_states[is_compute].state[type];
    } else {
       for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
-         key->exists[i] = ctx->gfx_descriptor_states[i].valid[type];
-         key->state[i] = ctx->gfx_descriptor_states[i].state[type];
+         key->exists[i] = ctx->dd->gfx_descriptor_states[i].valid[type];
+         key->state[i] = ctx->dd->gfx_descriptor_states[i].state[type];
       }
    }
 }
@@ -377,7 +383,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
    struct zink_descriptor_pool *pool = pg->pool[type];
    unsigned descs_used = 1;
    assert(type < ZINK_DESCRIPTOR_TYPES);
-   uint32_t hash = pool->key.layout->num_descriptors ? ctx->descriptor_states[is_compute].state[type] : 0;
+   uint32_t hash = pool->key.layout->num_descriptors ? ctx->dd->descriptor_states[is_compute].state[type] : 0;
    struct zink_descriptor_state_key key;
    populate_zds_key(ctx, type, is_compute, &key);
 
@@ -743,11 +749,11 @@ void
 zink_descriptor_pool_deinit(struct zink_context *ctx)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      hash_table_foreach(ctx->descriptor_pools[i], entry) {
+      hash_table_foreach(ctx->dd->descriptor_pools[i], entry) {
          struct zink_descriptor_pool *pool = (void*)entry->data;
          zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pool, NULL);
       }
-      _mesa_hash_table_destroy(ctx->descriptor_pools[i], NULL);
+      _mesa_hash_table_destroy(ctx->dd->descriptor_pools[i], NULL);
    }
 }
 
@@ -755,8 +761,8 @@ bool
 zink_descriptor_pool_init(struct zink_context *ctx)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      ctx->descriptor_pools[i] = _mesa_hash_table_create(ctx, hash_descriptor_pool, equals_descriptor_pool);
-      if (!ctx->descriptor_pools[i])
+      ctx->dd->descriptor_pools[i] = _mesa_hash_table_create(ctx, hash_descriptor_pool, equals_descriptor_pool);
+      if (!ctx->dd->descriptor_pools[i])
          return false;
    }
    return true;
@@ -1463,16 +1469,16 @@ static void
 update_descriptor_state(struct zink_context *ctx, enum zink_descriptor_type type, bool is_compute)
 {
    /* we shouldn't be calling this if we don't have to */
-   assert(!ctx->descriptor_states[is_compute].valid[type]);
+   assert(!ctx->dd->descriptor_states[is_compute].valid[type]);
    bool has_any_usage = false;
 
    if (is_compute) {
       /* just update compute state */
       bool has_usage = zink_program_get_descriptor_usage(ctx, PIPE_SHADER_COMPUTE, type);
       if (has_usage)
-         ctx->descriptor_states[is_compute].state[type] = update_descriptor_stage_state(ctx, PIPE_SHADER_COMPUTE, type);
+         ctx->dd->descriptor_states[is_compute].state[type] = update_descriptor_stage_state(ctx, PIPE_SHADER_COMPUTE, type);
       else
-         ctx->descriptor_states[is_compute].state[type] = 0;
+         ctx->dd->descriptor_states[is_compute].state[type] = 0;
       has_any_usage = has_usage;
    } else {
       /* update all gfx states */
@@ -1480,38 +1486,38 @@ update_descriptor_state(struct zink_context *ctx, enum zink_descriptor_type type
       for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
          bool has_usage = false;
          /* this is the incremental update for the shader stage */
-         if (!ctx->gfx_descriptor_states[i].valid[type]) {
-            ctx->gfx_descriptor_states[i].state[type] = 0;
+         if (!ctx->dd->gfx_descriptor_states[i].valid[type]) {
+            ctx->dd->gfx_descriptor_states[i].state[type] = 0;
             if (ctx->gfx_stages[i]) {
                has_usage = zink_program_get_descriptor_usage(ctx, i, type);
                if (has_usage)
-                  ctx->gfx_descriptor_states[i].state[type] = update_descriptor_stage_state(ctx, i, type);
-               ctx->gfx_descriptor_states[i].valid[type] = has_usage;
+                  ctx->dd->gfx_descriptor_states[i].state[type] = update_descriptor_stage_state(ctx, i, type);
+               ctx->dd->gfx_descriptor_states[i].valid[type] = has_usage;
             }
          }
-         if (ctx->gfx_descriptor_states[i].valid[type]) {
+         if (ctx->dd->gfx_descriptor_states[i].valid[type]) {
             /* this is the overall state update for the descriptor set hash */
             if (first) {
                /* no need to double hash the first state */
-               ctx->descriptor_states[is_compute].state[type] = ctx->gfx_descriptor_states[i].state[type];
+               ctx->dd->descriptor_states[is_compute].state[type] = ctx->dd->gfx_descriptor_states[i].state[type];
                first = false;
             } else {
-               ctx->descriptor_states[is_compute].state[type] = XXH32(&ctx->gfx_descriptor_states[i].state[type],
+               ctx->dd->descriptor_states[is_compute].state[type] = XXH32(&ctx->dd->gfx_descriptor_states[i].state[type],
                                                                       sizeof(uint32_t),
-                                                                      ctx->descriptor_states[is_compute].state[type]);
+                                                                      ctx->dd->descriptor_states[is_compute].state[type]);
             }
          }
          has_any_usage |= has_usage;
       }
    }
-   ctx->descriptor_states[is_compute].valid[type] = has_any_usage;
+   ctx->dd->descriptor_states[is_compute].valid[type] = has_any_usage;
 }
 
 void
 zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      if (!ctx->descriptor_states[is_compute].valid[i])
+      if (!ctx->dd->descriptor_states[is_compute].valid[i])
          update_descriptor_state(ctx, i, is_compute);
    }
 }
@@ -1520,11 +1526,26 @@ void
 zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type)
 {
    if (shader != PIPE_SHADER_COMPUTE) {
-      ctx->gfx_descriptor_states[shader].valid[type] = false;
-      ctx->gfx_descriptor_states[shader].state[type] = 0;
+      ctx->dd->gfx_descriptor_states[shader].valid[type] = false;
+      ctx->dd->gfx_descriptor_states[shader].state[type] = 0;
    }
-   ctx->descriptor_states[shader == PIPE_SHADER_COMPUTE].valid[type] = false;
-   ctx->descriptor_states[shader == PIPE_SHADER_COMPUTE].state[type] = 0;
+   ctx->dd->descriptor_states[shader == PIPE_SHADER_COMPUTE].valid[type] = false;
+   ctx->dd->descriptor_states[shader == PIPE_SHADER_COMPUTE].state[type] = 0;
+}
+
+bool
+zink_descriptors_init(struct zink_context *ctx)
+{
+   ctx->dd = rzalloc(ctx, struct zink_descriptor_data);
+   if (!ctx->dd)
+      return false;
+   return zink_descriptor_pool_init(ctx);
+}
+
+void
+zink_descriptors_deinit(struct zink_context *ctx)
+{
+   zink_descriptor_pool_deinit(ctx);
 }
 
 bool
