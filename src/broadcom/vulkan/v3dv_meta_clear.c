@@ -129,12 +129,7 @@ v3dv_meta_clear_finish(struct v3dv_device *device)
 static nir_ssa_def *
 gen_rect_vertices(nir_builder *b)
 {
-   nir_intrinsic_instr *vertex_id =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_load_vertex_id);
-   nir_ssa_dest_init(&vertex_id->instr, &vertex_id->dest, 1, 32, "vertexid");
-   nir_builder_instr_insert(b, &vertex_id->instr);
-
+   nir_ssa_def *vertex_id = nir_load_vertex_id(b);
 
    /* vertex 0: -1.0, -1.0
     * vertex 1: -1.0,  1.0
@@ -148,8 +143,8 @@ gen_rect_vertices(nir_builder *b)
     */
 
    nir_ssa_def *one = nir_imm_int(b, 1);
-   nir_ssa_def *c0cmp = nir_ilt(b, &vertex_id->dest.ssa, nir_imm_int(b, 2));
-   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, &vertex_id->dest.ssa, one), one);
+   nir_ssa_def *c0cmp = nir_ilt(b, vertex_id, nir_imm_int(b, 2));
+   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, vertex_id, one), one);
 
    nir_ssa_def *comp[4];
    comp[0] = nir_bcsel(b, c0cmp,
@@ -197,16 +192,8 @@ get_color_clear_rect_fs(uint32_t rt_idx, VkFormat format)
       nir_variable_create(b.shader, nir_var_shader_out, fs_out_type, "out_color");
    fs_out_color->data.location = FRAG_RESULT_DATA0 + rt_idx;
 
-   nir_intrinsic_instr *color_load =
-      nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-   nir_intrinsic_set_base(color_load, 0);
-   nir_intrinsic_set_range(color_load, 16);
-   color_load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   color_load->num_components = 4;
-   nir_ssa_dest_init(&color_load->instr, &color_load->dest, 4, 32, "clear color");
-   nir_builder_instr_insert(&b, &color_load->instr);
-
-   nir_store_var(&b, fs_out_color, &color_load->dest.ssa, 0xf);
+   nir_ssa_def *color_load = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
+   nir_store_var(&b, fs_out_color, color_load, 0xf);
 
    return b.shader;
 }
@@ -223,17 +210,10 @@ get_depth_clear_rect_fs()
                           "out_depth");
    fs_out_depth->data.location = FRAG_RESULT_DEPTH;
 
-   nir_intrinsic_instr *depth_load =
-      nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-   nir_intrinsic_set_base(depth_load, 0);
-   nir_intrinsic_set_range(depth_load, 4);
-   depth_load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   depth_load->num_components = 1;
-   nir_ssa_dest_init(&depth_load->instr, &depth_load->dest, 1, 32,
-                     "clear depth value");
-   nir_builder_instr_insert(&b, &depth_load->instr);
+   nir_ssa_def *depth_load =
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 0, .range = 4);
 
-   nir_store_var(&b, fs_out_depth, &depth_load->dest.ssa, 0x1);
+   nir_store_var(&b, fs_out_depth, depth_load, 0x1);
 
    return b.shader;
 }

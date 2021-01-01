@@ -3058,34 +3058,16 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format)
    /* Load the box describing the pixel region we want to copy from the
     * texel buffer.
     */
-   nir_intrinsic_instr *box =
-      nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-   box->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   nir_intrinsic_set_base(box, 0);
-   nir_intrinsic_set_range(box, 16);
-   box->num_components = 4;
-   nir_ssa_dest_init(&box->instr, &box->dest, 4, 32, "box");
-   nir_builder_instr_insert(&b, &box->instr);
+   nir_ssa_def *box =
+      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
 
    /* Load the buffer stride (this comes in texel units) */
-   nir_intrinsic_instr *stride =
-      nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-   stride->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   nir_intrinsic_set_base(stride, 16);
-   nir_intrinsic_set_range(stride, 4);
-   stride->num_components = 1;
-   nir_ssa_dest_init(&stride->instr, &stride->dest, 1, 32, "buffer stride");
-   nir_builder_instr_insert(&b, &stride->instr);
+   nir_ssa_def *stride =
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 16, .range = 4);
 
    /* Load the buffer offset (this comes in texel units) */
-   nir_intrinsic_instr *offset =
-      nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-   offset->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   nir_intrinsic_set_base(offset, 20);
-   nir_intrinsic_set_range(offset, 4);
-   offset->num_components = 1;
-   nir_ssa_dest_init(&offset->instr, &offset->dest, 1, 32, "buffer offset");
-   nir_builder_instr_insert(&b, &offset->instr);
+   nir_ssa_def *offset =
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 20, .range = 4);
 
    nir_ssa_def *coord = nir_f2i32(&b, load_frag_coord(&b));
 
@@ -3099,13 +3081,13 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format)
     */
    nir_ssa_def *x_offset =
       nir_isub(&b, nir_channel(&b, coord, 0),
-                   nir_channel(&b, &box->dest.ssa, 0));
+                   nir_channel(&b, box, 0));
    nir_ssa_def *y_offset =
       nir_isub(&b, nir_channel(&b, coord, 1),
-                   nir_channel(&b, &box->dest.ssa, 1));
+                   nir_channel(&b, box, 1));
    nir_ssa_def *texel_offset =
-      nir_iadd(&b, nir_iadd(&b, &offset->dest.ssa, x_offset),
-                   nir_imul(&b, y_offset, &stride->dest.ssa));
+      nir_iadd(&b, nir_iadd(&b, offset, x_offset),
+                   nir_imul(&b, y_offset, stride));
 
    nir_ssa_def *tex_deref = &nir_build_deref_var(&b, sampler)->dest.ssa;
    nir_tex_instr *tex = nir_tex_instr_create(b.shader, 2);
@@ -4233,12 +4215,7 @@ create_blit_render_pass(struct v3dv_device *device,
 static nir_ssa_def *
 gen_rect_vertices(nir_builder *b)
 {
-   nir_intrinsic_instr *vertex_id =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_load_vertex_id);
-   nir_ssa_dest_init(&vertex_id->instr, &vertex_id->dest, 1, 32, "vertexid");
-   nir_builder_instr_insert(b, &vertex_id->instr);
-
+   nir_ssa_def *vertex_id = nir_load_vertex_id(b);
 
    /* vertex 0: -1.0, -1.0
     * vertex 1: -1.0,  1.0
@@ -4252,8 +4229,8 @@ gen_rect_vertices(nir_builder *b)
     */
 
    nir_ssa_def *one = nir_imm_int(b, 1);
-   nir_ssa_def *c0cmp = nir_ilt(b, &vertex_id->dest.ssa, nir_imm_int(b, 2));
-   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, &vertex_id->dest.ssa, one), one);
+   nir_ssa_def *c0cmp = nir_ilt(b, vertex_id, nir_imm_int(b, 2));
+   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, vertex_id, one), one);
 
    nir_ssa_def *comp[4];
    comp[0] = nir_bcsel(b, c0cmp,
@@ -4271,28 +4248,13 @@ gen_rect_vertices(nir_builder *b)
 static nir_ssa_def *
 gen_tex_coords(nir_builder *b)
 {
-   nir_intrinsic_instr *tex_box =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
-   tex_box->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
-   nir_intrinsic_set_base(tex_box, 0);
-   nir_intrinsic_set_range(tex_box, 16);
-   tex_box->num_components = 4;
-   nir_ssa_dest_init(&tex_box->instr, &tex_box->dest, 4, 32, "tex_box");
-   nir_builder_instr_insert(b, &tex_box->instr);
+   nir_ssa_def *tex_box =
+      nir_load_push_constant(b, 4, 32, nir_imm_int(b, 0), .base = 0, .range = 16);
 
-   nir_intrinsic_instr *tex_z =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
-   tex_z->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
-   nir_intrinsic_set_base(tex_z, 16);
-   nir_intrinsic_set_range(tex_z, 4);
-   tex_z->num_components = 1;
-   nir_ssa_dest_init(&tex_z->instr, &tex_z->dest, 1, 32, "tex_z");
-   nir_builder_instr_insert(b, &tex_z->instr);
+   nir_ssa_def *tex_z =
+      nir_load_push_constant(b, 1, 32, nir_imm_int(b, 0), .base = 16, .range = 4);
 
-   nir_intrinsic_instr *vertex_id =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_vertex_id);
-   nir_ssa_dest_init(&vertex_id->instr, &vertex_id->dest, 1, 32, "vertexid");
-   nir_builder_instr_insert(b, &vertex_id->instr);
+   nir_ssa_def *vertex_id = nir_load_vertex_id(b);
 
    /* vertex 0: src0_x, src0_y
     * vertex 1: src0_x, src1_y
@@ -4306,18 +4268,18 @@ gen_tex_coords(nir_builder *b)
     */
 
    nir_ssa_def *one = nir_imm_int(b, 1);
-   nir_ssa_def *c0cmp = nir_ilt(b, &vertex_id->dest.ssa, nir_imm_int(b, 2));
-   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, &vertex_id->dest.ssa, one), one);
+   nir_ssa_def *c0cmp = nir_ilt(b, vertex_id, nir_imm_int(b, 2));
+   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, vertex_id, one), one);
 
    nir_ssa_def *comp[4];
    comp[0] = nir_bcsel(b, c0cmp,
-                       nir_channel(b, &tex_box->dest.ssa, 0),
-                       nir_channel(b, &tex_box->dest.ssa, 2));
+                       nir_channel(b, tex_box, 0),
+                       nir_channel(b, tex_box, 2));
 
    comp[1] = nir_bcsel(b, c1cmp,
-                       nir_channel(b, &tex_box->dest.ssa, 3),
-                       nir_channel(b, &tex_box->dest.ssa, 1));
-   comp[2] = &tex_z->dest.ssa;
+                       nir_channel(b, tex_box, 3),
+                       nir_channel(b, tex_box, 1));
+   comp[2] = tex_z;
    comp[3] = nir_imm_float(b, 1.0f);
    return nir_vec(b, comp, 4);
 }
