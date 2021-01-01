@@ -344,6 +344,9 @@ panfrost_flush(
         struct pipe_fence_handle **fence,
         unsigned flags);
 
+bool
+pan_render_condition_check(struct pipe_context *pctx);
+
 mali_ptr panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws);
 mali_ptr panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws);
 

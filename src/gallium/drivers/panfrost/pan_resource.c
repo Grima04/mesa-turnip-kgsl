@@ -52,6 +52,25 @@
 #include "decode.h"
 #include "panfrost-quirks.h"
 
+bool
+pan_render_condition_check(struct pipe_context *pctx)
+{
+	struct panfrost_context *ctx = pan_context(pctx);
+
+	if (!ctx->cond_query)
+		return true;
+
+	union pipe_query_result res = { 0 };
+	bool wait =
+		ctx->cond_mode != PIPE_RENDER_COND_NO_WAIT &&
+		ctx->cond_mode != PIPE_RENDER_COND_BY_REGION_NO_WAIT;
+
+	if (pctx->get_query_result(pctx, (struct pipe_query *) ctx->cond_query, wait, &res))
+			return (bool)res.u64 != ctx->cond_cond;
+
+	return true;
+}
+
 static struct pipe_resource *
 panfrost_resource_from_handle(struct pipe_screen *pscreen,
                               const struct pipe_resource *templat,
