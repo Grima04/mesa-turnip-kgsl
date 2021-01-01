@@ -131,6 +131,9 @@ panfrost_clear(
 {
         struct panfrost_context *ctx = pan_context(pipe);
 
+        if (!pan_render_condition_check(pipe))
+                return;
+
         /* TODO: panfrost_get_fresh_batch_for_fbo() instantiates a new batch if
          * the existing batch targeting this FBO has draws. We could probably
          * avoid that by replacing plain clears by quad-draws with a specific
@@ -456,6 +459,9 @@ panfrost_draw_vbo(
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *device = pan_device(ctx->base.screen);
+
+        if (!pan_render_condition_check(pipe))
+                return;
 
         /* First of all, check the scissor to see if anything is drawn at all.
          * If it's not, we drop the draw (mostly a conformance issue;
