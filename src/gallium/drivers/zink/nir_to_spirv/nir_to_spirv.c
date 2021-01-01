@@ -670,38 +670,6 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
    return SpvDim2D;
 }
 
-uint32_t
-zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
-{
-   if (stage == MESA_SHADER_NONE) {
-      unreachable("not supported");
-   } else {
-      switch (type) {
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-         assert(index < PIPE_MAX_CONSTANT_BUFFERS);
-         return (stage * PIPE_MAX_CONSTANT_BUFFERS) + index;
-
-      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-         assert(index < PIPE_MAX_SAMPLERS);
-         return (stage * PIPE_MAX_SAMPLERS) + index;
-
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         assert(index < PIPE_MAX_SHADER_BUFFERS);
-         return (stage * PIPE_MAX_SHADER_BUFFERS) + index;
-
-      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-         assert(index < PIPE_MAX_SHADER_IMAGES);
-         return (stage * PIPE_MAX_SHADER_IMAGES) + index;
-
-      default:
-         unreachable("unexpected type");
-      }
-   }
-}
-
 static inline SpvImageFormat
 get_image_format(enum pipe_format format)
 {

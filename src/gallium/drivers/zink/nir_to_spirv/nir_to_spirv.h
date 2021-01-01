@@ -49,9 +49,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 void
 spirv_shader_delete(struct spirv_shader *s);
 
-uint32_t
-zink_binding(gl_shader_stage stage, VkDescriptorType type, int index);
-
 static inline bool
 type_is_counter(const struct glsl_type *type)
 {
