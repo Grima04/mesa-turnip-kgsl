@@ -461,10 +461,7 @@ ptn_kil(nir_builder *b, nir_ssa_def **src)
    nir_ssa_def *cmp = nir_bany(b, nir_flt(b, src[0], nir_imm_float(b, 0.0)));
    b->exact = false;
 
-   nir_intrinsic_instr *discard =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard_if);
-   discard->src[0] = nir_src_for_ssa(cmp);
-   nir_builder_instr_insert(b, &discard->instr);
+   nir_discard_if(b, cmp);
 }
 
 enum glsl_sampler_dim
