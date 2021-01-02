@@ -799,7 +799,7 @@ GPRVector ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src
    std::array<bool,4> used_swizzles = {false, false, false, false};
 
    /* Check whether all sources come from a GPR, and,
-    * if requested, whether they are swizzled as epected */
+    * if requested, whether they are swizzled as expected */
 
    for (int i = 0; i < 4 && use_same; ++i)  {
       if ((1 << i) & mask) {

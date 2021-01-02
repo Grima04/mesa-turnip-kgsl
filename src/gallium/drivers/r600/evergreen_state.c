@@ -1252,7 +1252,7 @@ static void evergreen_set_color_surface_common(struct r600_context *rctx,
 		color->info |= S_028C70_COMPRESSION(1);
 	}
 
-	/* EXPORT_NORM is an optimzation that can be enabled for better
+	/* EXPORT_NORM is an optimization that can be enabled for better
 	 * performance in certain cases.
 	 * EXPORT_NORM can be enabled if:
 	 * - 11-bit or smaller UNORM/SNORM/SRGB
@@ -1282,7 +1282,7 @@ static void evergreen_set_color_surface_common(struct r600_context *rctx,
 }
 
 /**
- * This function intializes the CB* register values for RATs.  It is meant
+ * This function initializes the CB* register values for RATs.  It is meant
  * to be used for 1D aligned buffers that do not have an associated
  * radeon_surf.
  */

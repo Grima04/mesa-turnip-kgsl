@@ -97,7 +97,7 @@ private:
       bool indirect;
    };
 
-   SamplerId get_samplerr_id(int sampler_id, const nir_variable *deref);
+   SamplerId get_sampler_id(int sampler_id, const nir_variable *deref);
 
 };
 

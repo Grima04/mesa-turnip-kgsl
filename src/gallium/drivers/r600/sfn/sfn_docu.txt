@@ -11,8 +11,8 @@ CTS gles
  - 3 no regressions, a few fixes compared to TGSI
  - 31
     * a few fixes with interpolation specifiers
-    * a few regressiones with seperate_shader.random
-    * syncronization has some unstable tests, this might be because global syncronization is missing (in both)
+    * a few regressions with separate_shader.random
+    * synchronization has some unstable tests, this might be because global synchronization is missing (in both)
 
 ## Currently missing features w.r.t. TGSI:
 
@@ -29,7 +29,7 @@ CTS gles
   - copy propagation:
     - Moves from inputs are usually not required, they could be forwarded
     - texture operations often move additional parameters in extra registers
-      but they are actually needed in the same registes they come from and
+      but they are actually needed in the same registers they come from and
       could just be swizzled into the right place
       (lower in NIR like it is done in e.g. in ETNAVIV)
 

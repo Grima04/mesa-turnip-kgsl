@@ -56,10 +56,10 @@ void TexInstruction::set_gather_comp(int cmp)
    m_inst_mode = cmp;
 }
 
-void TexInstruction::replace_values(const ValueSet& candiates, PValue new_value)
+void TexInstruction::replace_values(const ValueSet& candidates, PValue new_value)
 {
    // I wonder whether we can actually end up here ...
-   for (auto c: candiates) {
+   for (auto c: candidates) {
       if (*c == *m_src.reg_i(c->chan()))
          m_src.set_reg_i(c->chan(), new_value);
       if (*c == *m_dst.reg_i(c->chan()))

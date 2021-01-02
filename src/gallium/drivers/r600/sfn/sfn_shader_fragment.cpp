@@ -68,7 +68,7 @@ bool FragmentShaderFromNir::do_process_inputs(nir_variable *input)
 
 bool FragmentShaderFromNir::do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr)
 {
-   assert(0 && "all input derefs should have benn lowered");
+   assert(0 && "all input derefs should have been lowered");
    return false;
 }
 

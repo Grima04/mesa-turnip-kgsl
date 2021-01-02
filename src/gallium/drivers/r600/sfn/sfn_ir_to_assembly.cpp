@@ -266,7 +266,7 @@ bool AssemblyFromShaderLegacyImpl::emit_alu(const AluInstruction& ai, ECFAluOpCo
          ++m_nliterals_in_group;
    }
 
-   /* This instruction group would exeed the limit of literals, so
+   /* This instruction group would exceed the limit of literals, so
     * force a new instruction group by adding a NOP as last
     * instruction. This will no loner be needed with a real
     * scheduler */
@@ -967,7 +967,7 @@ bool AssemblyFromShaderLegacyImpl::emit_ldsread(const LDSReadInstruction& instr)
    r600_bytecode_alu alu_read;
 
    /* We must add a new ALU clause if the fetch and read op would be split otherwise
-    * r600_asm limites at 120 slots = 240 dwords */
+    * r600_asm limits at 120 slots = 240 dwords */
    if (m_bc->cf_last->ndw > 240 - 4 * n_values)
       m_bc->force_add_cf = 1;
 

@@ -157,7 +157,7 @@ bool EmitTexInstruction::emit_cube_txd(nir_tex_instr* instr, TexInputs& tex_src)
       {alu_last_instr, alu_write}));
    }
 
-   auto sampler = get_samplerr_id(instr->sampler_index, tex_src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, tex_src.sampler_deref);
    assert(!sampler.indirect);
 
    TexInstruction *irgh = new TexInstruction(TexInstruction::set_gradient_h, empty_dst, tex_src.ddx,
@@ -217,7 +217,7 @@ bool EmitTexInstruction::emit_cube_txl(nir_tex_instr* instr, TexInputs& tex_src)
    GPRVector src(src_elms);
    GPRVector dst(dst_elms);
 
-   auto sampler = get_samplerr_id(instr->sampler_index, tex_src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, tex_src.sampler_deref);
    assert(!sampler.indirect);
 
    auto tir = new TexInstruction(TexInstruction::sample_l, dst, src,
@@ -242,7 +242,7 @@ bool EmitTexInstruction::emit_cube_lod(nir_tex_instr* instr, TexInputs& src)
    GPRVector cubed(v);
    emit_cube_prep(src.coord, cubed, instr->is_array);
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect);
 
    auto dst = make_dest(*instr);
@@ -293,7 +293,7 @@ bool EmitTexInstruction::emit_cube_txb(nir_tex_instr* instr, TexInputs& tex_src)
       tex_op = TexInstruction::sample_c_lb;
    }
 
-   auto sampler = get_samplerr_id(instr->sampler_index, tex_src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, tex_src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    auto tir = new TexInstruction(tex_op, dst, src,
@@ -332,7 +332,7 @@ bool EmitTexInstruction::emit_cube_tex(nir_tex_instr* instr, TexInputs& tex_src)
    GPRVector dst(dst_elms);
    GPRVector src(src_elms);
 
-   auto sampler = get_samplerr_id(instr->sampler_index, tex_src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, tex_src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    auto tir = new TexInstruction(tex_op, dst, src,
@@ -411,7 +411,7 @@ bool EmitTexInstruction::emit_tex_tex(nir_tex_instr* instr, TexInputs& src)
 
    auto tex_op = TexInstruction::sample;
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect);
 
    if (instr->is_shadow)  {
@@ -450,7 +450,7 @@ bool EmitTexInstruction::emit_tex_txd(nir_tex_instr* instr, TexInputs& src)
       tex_op = TexInstruction::sample_c_g;
    }
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    TexInstruction *irgh = new TexInstruction(TexInstruction::set_gradient_h, empty_dst, src.ddx,
@@ -491,7 +491,7 @@ bool EmitTexInstruction::emit_tex_txf(nir_tex_instr* instr, TexInputs& src)
          src.coord.set_reg_i(3, src.lod);
    }
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect);
 
    /* txf doesn't need rounding for the array index, but 1D has the array index
@@ -527,7 +527,7 @@ bool EmitTexInstruction::emit_tex_lod(nir_tex_instr* instr, TexInputs& src)
 {
    auto tex_op = TexInstruction::get_tex_lod;
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    auto dst = make_dest(*instr);
@@ -560,7 +560,7 @@ bool EmitTexInstruction::emit_tex_txl(nir_tex_instr* instr, TexInputs& src)
    else
       src.coord.set_reg_i(3, src.lod);
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    auto dst = make_dest(*instr);
@@ -598,7 +598,7 @@ bool EmitTexInstruction::emit_tex_txb(nir_tex_instr* instr, TexInputs& src)
 
    GPRVector tex_src(src.coord, in_swizzle);
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    auto dst = make_dest(*instr);
@@ -635,7 +635,7 @@ bool EmitTexInstruction::emit_tex_txs(nir_tex_instr* instr, TexInputs& tex_src,
          src_elms[i] =  tex_src.lod;
       GPRVector src(src_elms);
 
-      auto sampler = get_samplerr_id(instr->sampler_index, tex_src.sampler_deref);
+      auto sampler = get_sampler_id(instr->sampler_index, tex_src.sampler_deref);
       assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
       auto ir = new TexInstruction(TexInstruction::get_resinfo, dst, src,
@@ -681,7 +681,7 @@ bool EmitTexInstruction::emit_tex_tg4(nir_tex_instr* instr, TexInputs& src)
       tex_op = TexInstruction::gather4_c;
    }
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    bool literal_offset = false;
@@ -768,7 +768,7 @@ bool EmitTexInstruction::emit_cube_tg4(nir_tex_instr* instr, TexInputs& tex_src)
    GPRVector dst(dst_elms);
    GPRVector src(src_elms);
 
-   auto sampler = get_samplerr_id(instr->sampler_index, tex_src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, tex_src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    auto tir = new TexInstruction(tex_op, dst, src, sampler.id,
@@ -793,7 +793,7 @@ bool EmitTexInstruction::emit_tex_txf_ms(nir_tex_instr* instr, TexInputs& src)
                  << *reinterpret_cast<nir_instr*>(instr)
                  << "' (" << __func__ << ")\n";
 
-   auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
+   auto sampler = get_sampler_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    int sample_id = allocate_temp_register();
@@ -802,7 +802,7 @@ bool EmitTexInstruction::emit_tex_txf_ms(nir_tex_instr* instr, TexInputs& src)
    PValue help(new GPRValue(sample_id, 1));
 
    /* FIXME: Texture destination registers must be handled differently,
-    * because the swizzle identfies which source componnet has to be written
+    * because the swizzle identifies which source component has to be written
     * at a certain position, and the target register is actually different.
     * At this point we just add a helper register, but for later work (scheduling
     * and optimization on the r600 IR level, this needs to be implemented
@@ -997,7 +997,7 @@ void EmitTexInstruction::handle_array_index(const nir_tex_instr& instr, const GP
 }
 
 EmitTexInstruction::SamplerId
-EmitTexInstruction::get_samplerr_id(int sampler_id, const nir_variable *deref)
+EmitTexInstruction::get_sampler_id(int sampler_id, const nir_variable *deref)
 {
    EmitTexInstruction::SamplerId result = {sampler_id, false};
 

@@ -930,7 +930,7 @@ public:
 	bool empty() { assert(first != NULL || first == last); return !first; }
 	unsigned count();
 
-	// used with node containers that represent shceduling queues
+	// used with node containers that represent scheduling queues
 	// ignores copies and takes into account alu_packed_node items
 	unsigned real_alu_count();
 
