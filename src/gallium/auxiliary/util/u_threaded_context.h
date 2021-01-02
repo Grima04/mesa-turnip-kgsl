@@ -396,6 +396,12 @@ threaded_context_flush(struct pipe_context *_pipe,
                        struct tc_unflushed_batch_token *token,
                        bool prefer_async);
 
+void
+tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
+            const struct pipe_draw_indirect_info *indirect,
+            const struct pipe_draw_start_count *draws,
+            unsigned num_draws);
+
 static inline struct threaded_context *
 threaded_context(struct pipe_context *pipe)
 {

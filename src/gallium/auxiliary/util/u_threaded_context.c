@@ -2389,7 +2389,7 @@ tc_call_draw_multi(struct pipe_context *pipe, union tc_payload *payload)
 #define DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX \
    offsetof(struct pipe_draw_info, index)
 
-static void
+void
 tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
             const struct pipe_draw_indirect_info *indirect,
             const struct pipe_draw_start_count *draws,
