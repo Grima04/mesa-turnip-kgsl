@@ -1435,9 +1435,14 @@ cso_multi_draw(struct cso_context *cso,
    struct u_vbuf *vbuf = cso->vbuf_current;
 
    if (vbuf) {
+      /* Increase refcount to be able to use take_index_buffer_ownership with
+       * all draws.
+       */
+      if (num_draws > 1 && info->take_index_buffer_ownership)
+         p_atomic_add(&info->index.resource->reference.count, num_draws - 1);
+
       for (unsigned i = 0; i < num_draws; i++) {
-         if (draws[i].count)
-            u_vbuf_draw_vbo(vbuf, info, NULL, draws[i]);
+         u_vbuf_draw_vbo(vbuf, info, NULL, draws[i]);
 
          if (info->increment_draw_id)
             info->drawid++;

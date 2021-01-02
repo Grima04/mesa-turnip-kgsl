@@ -1278,6 +1278,12 @@ u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
                                unsigned *indirect_data, unsigned stride,
                                unsigned draw_count)
 {
+   /* Increase refcount to be able to use take_index_buffer_ownership with
+    * all draws.
+    */
+   if (draw_count > 1 && info->take_index_buffer_ownership)
+      p_atomic_add(&info->index.resource->reference.count, draw_count - 1);
+
    assert(info->index_size);
 
    for (unsigned i = 0; i < draw_count; i++) {
@@ -1286,10 +1292,6 @@ u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
 
       draw.count = indirect_data[offset + 0];
       info->instance_count = indirect_data[offset + 1];
-
-      if (!draw.count || !info->instance_count)
-         continue;
-
       draw.start = indirect_data[offset + 2];
       info->index_bias = indirect_data[offset + 3];
       info->start_instance = indirect_data[offset + 4];
@@ -1345,13 +1347,13 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
       }
 
       if (!draw_count)
-         return;
+         goto cleanup;
 
       unsigned data_size = (draw_count - 1) * indirect->stride +
                            (new_info.index_size ? 20 : 16);
       unsigned *data = malloc(data_size);
       if (!data)
-         return; /* report an error? */
+         goto cleanup; /* report an error? */
 
       /* Read the used buffer range only once, because the read can be
        * uncached.
@@ -1449,7 +1451,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
          new_info.instance_count = end_instance - new_info.start_instance;
 
          if (new_info.start_instance == ~0u || !new_info.instance_count)
-            return;
+            goto cleanup;
       } else {
          /* Non-indexed multidraw.
           *
@@ -1486,7 +1488,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
          new_info.instance_count = end_instance - new_info.start_instance;
 
          if (new_draw.start == ~0u || !new_draw.count || !new_info.instance_count)
-            return;
+            goto cleanup;
       }
    }
 
@@ -1540,7 +1542,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
                                   start_vertex, num_vertices,
                                   min_index, unroll_indices)) {
          debug_warn_once("u_vbuf_translate_begin() failed");
-         return;
+         goto cleanup;
       }
 
       if (unroll_indices) {
@@ -1562,7 +1564,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
                                 new_info.start_instance,
                                 new_info.instance_count) != PIPE_OK) {
          debug_warn_once("u_vbuf_upload_buffers() failed");
-         return;
+         goto cleanup;
       }
 
       mgr->dirty_real_vb_mask |= user_vb_mask;
@@ -1596,6 +1598,13 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
 
    if (mgr->using_translate) {
       u_vbuf_translate_end(mgr);
+   }
+   return;
+
+cleanup:
+   if (info->take_index_buffer_ownership) {
+      struct pipe_resource *indexbuf = info->index.resource;
+      pipe_resource_reference(&indexbuf, NULL);
    }
 }
 

@@ -158,6 +158,7 @@ st_draw_vbo(struct gl_context *ctx,
    info.restart_index = 0;
    info.start_instance = base_instance;
    info.instance_count = num_instances;
+   info.take_index_buffer_ownership = false;
    info._pad = 0;
 
    if (ib) {
@@ -305,6 +306,11 @@ st_draw_gallium_complex(struct gl_context *ctx,
             info->mode = mode[first];
             cso_multi_draw(cso, info, &draws[first], i - first);
             first = i;
+
+            /* We can pass the reference only once. st_buffer_object keeps
+             * the reference alive for later draws.
+             */
+            info->take_index_buffer_ownership = false;
          }
       }
       break;
@@ -315,6 +321,11 @@ st_draw_gallium_complex(struct gl_context *ctx,
             info->index_bias = base_vertex[first];
             cso_multi_draw(cso, info, &draws[first], i - first);
             first = i;
+
+            /* We can pass the reference only once. st_buffer_object keeps
+             * the reference alive for later draws.
+             */
+            info->take_index_buffer_ownership = false;
          }
       }
       break;
@@ -328,6 +339,11 @@ st_draw_gallium_complex(struct gl_context *ctx,
             info->index_bias = base_vertex[first];
             cso_multi_draw(cso, info, &draws[first], i - first);
             first = i;
+
+            /* We can pass the reference only once. st_buffer_object keeps
+             * the reference alive for later draws.
+             */
+            info->take_index_buffer_ownership = false;
          }
       }
       break;
