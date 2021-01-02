@@ -188,21 +188,17 @@ static void
 lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
                          struct tu_shader *shader)
 {
-   nir_intrinsic_instr *load =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_uniform);
-   load->num_components = instr->num_components;
    uint32_t base = nir_intrinsic_base(instr);
    assert(base % 4 == 0);
    assert(base >= shader->push_consts.lo * 16);
    base -= shader->push_consts.lo * 16;
-   nir_intrinsic_set_base(load, base / 4);
-   load->src[0] =
-      nir_src_for_ssa(nir_ushr(b, instr->src[0].ssa, nir_imm_int(b, 2)));
-   nir_ssa_dest_init(&load->instr, &load->dest,
-                     load->num_components, instr->dest.ssa.bit_size,
-                     instr->dest.ssa.name);
-   nir_builder_instr_insert(b, &load->instr);
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(&load->dest.ssa));
+
+   nir_ssa_def *load =
+      nir_load_uniform(b, instr->num_components, instr->dest.ssa.bit_size,
+                       nir_ushr(b, instr->src[0].ssa, nir_imm_int(b, 2)),
+                       .base = base / 4);
+
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(load));
 
    nir_instr_remove(&instr->instr);
 }
@@ -281,15 +277,8 @@ lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
       /* if (base_idx == i) { ... */
       nir_if *nif = nir_push_if(b, nir_ieq_imm(b, base_idx, i));
 
-      nir_intrinsic_instr *bindless =
-         nir_intrinsic_instr_create(b->shader,
-                                    nir_intrinsic_bindless_resource_ir3);
-      bindless->num_components = 0;
-      nir_ssa_dest_init(&bindless->instr, &bindless->dest,
-                        1, 32, NULL);
-      nir_intrinsic_set_desc_set(bindless, i);
-      bindless->src[0] = nir_src_for_ssa(descriptor_idx);
-      nir_builder_instr_insert(b, &bindless->instr);
+      nir_ssa_def *bindless =
+         nir_bindless_resource_ir3(b, 32, descriptor_idx, .desc_set = i);
 
       nir_intrinsic_instr *copy =
          nir_intrinsic_instr_create(b->shader, intrin->intrinsic);
@@ -298,7 +287,7 @@ lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
 
       for (unsigned src = 0; src < info->num_srcs; src++) {
          if (src == buffer_src)
-            copy->src[src] = nir_src_for_ssa(&bindless->dest.ssa);
+            copy->src[src] = nir_src_for_ssa(bindless);
          else
             copy->src[src] = nir_src_for_ssa(intrin->src[src].ssa);
       }
@@ -391,17 +380,7 @@ build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
                              nir_imul_imm(b, arr_index, descriptor_stride));
    }
 
-   nir_intrinsic_instr *bindless =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_bindless_resource_ir3);
-   bindless->num_components = 0;
-   nir_ssa_dest_init(&bindless->instr, &bindless->dest,
-                     1, 32, NULL);
-   nir_intrinsic_set_desc_set(bindless, set);
-   bindless->src[0] = nir_src_for_ssa(desc_offset);
-   nir_builder_instr_insert(b, &bindless->instr);
-
-   return &bindless->dest.ssa;
+   return nir_bindless_resource_ir3(b, 32, desc_offset, .desc_set = set);
 }
 
 static void
