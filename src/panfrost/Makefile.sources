@@ -4,7 +4,6 @@ bifrost_FILES := \
         bifrost/bifrost_compile.h \
         bifrost/bi_layout.c \
         bifrost/bi_liveness.c \
-        bifrost/bi_tables.c \
         bifrost/bi_schedule.c \
         bifrost/bi_pack.c \
         bifrost/bi_print.c \
