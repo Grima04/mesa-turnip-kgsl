@@ -653,11 +653,7 @@ pan_lower_fb_store(nir_shader *shader,
         nir_ssa_def *unpacked = nir_ssa_for_src(b, intr->src[1], 4);
         nir_ssa_def *packed = pan_pack(b, desc, unpacked);
 
-        nir_intrinsic_instr *new =
-                nir_intrinsic_instr_create(shader, nir_intrinsic_store_raw_output_pan);
-        new->src[0] = nir_src_for_ssa(packed);
-        new->num_components = 4;
-        nir_builder_instr_insert(b, &new->instr);
+        nir_store_raw_output_pan(b, packed);
 }
 
 static nir_ssa_def *
@@ -673,18 +669,11 @@ pan_lower_fb_load(nir_shader *shader,
                 const struct util_format_description *desc,
                 unsigned base, int sample, unsigned quirks)
 {
-        nir_intrinsic_instr *new = nir_intrinsic_instr_create(shader,
-                       nir_intrinsic_load_raw_output_pan);
-        new->num_components = 4;
-        new->src[0] = nir_src_for_ssa(pan_sample_id(b, sample));
-
-        nir_intrinsic_set_base(new, base);
-
-        nir_ssa_dest_init(&new->instr, &new->dest, 4, 32, NULL);
-        nir_builder_instr_insert(b, &new->instr);
+        nir_ssa_def *packed =
+                nir_load_raw_output_pan(b, 4, 32, pan_sample_id(b, sample),
+                                        .base = base);
 
         /* Convert the raw value */
-        nir_ssa_def *packed = &new->dest.ssa;
         nir_ssa_def *unpacked = pan_unpack(b, desc, packed);
 
         if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
