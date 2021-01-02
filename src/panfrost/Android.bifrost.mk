@@ -86,6 +86,7 @@ LOCAL_GENERATED_SOURCES := \
 	$(intermediates)/bi_generated_pack.h \
 	$(intermediates)/bi_opcodes.c \
 	$(intermediates)/bi_opcodes.h \
+	$(intermediates)/bi_printer.c \
 	$(MESA_GEN_GLSL_H)
 
 bifrost_nir_algebraic_gen := $(LOCAL_PATH)/bifrost/bifrost_nir_algebraic.py
@@ -116,6 +117,13 @@ bi_opcodes_h_deps := $(LOCAL_PATH)/bifrost/ISA.xml $(LOCAL_PATH)/bifrost/bifrost
 $(intermediates)/bi_opcodes.h: $(bi_opcodes_h_deps)
 	@mkdir -p $(dir $@)
 	$(hide) $(MESA_PYTHON3) $(bi_opcodes_h_gen) $< > $@
+
+bi_printer_c_gen := $(LOCAL_PATH)/bifrost/bi_printer.c.py
+bi_printer_c_deps := $(LOCAL_PATH)/bifrost/ISA.xml $(LOCAL_PATH)/bifrost/bifrost_isa.py
+
+$(intermediates)/bi_printer.c: $(bi_printer_c_deps)
+	@mkdir -p $(dir $@)
+	$(hide) $(MESA_PYTHON3) $(bi_printer_c_gen) $< > $@
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
 	$(MESA_TOP)/src/panfrost/bifrost/ \
