@@ -108,15 +108,7 @@ load_comps_to_vec32(nir_builder *b, unsigned src_bit_size,
 static nir_ssa_def *
 build_load_ptr_dxil(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *idx)
 {
-   nir_intrinsic_instr *load =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_ptr_dxil);
-
-   load->num_components = 1;
-   load->src[0] = nir_src_for_ssa(&deref->dest.ssa);
-   load->src[1] = nir_src_for_ssa(idx);
-   nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, NULL);
-   nir_builder_instr_insert(b, &load->instr);
-   return &load->dest.ssa;
+   return nir_load_ptr_dxil(b, 1, 32, &deref->dest.ssa, idx);
 }
 
 static bool
@@ -238,18 +230,8 @@ build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,
        * load.
        */
       unsigned subload_num_bits = MIN2(num_bits - i, 16 * 8);
-      nir_intrinsic_instr *load =
-         nir_intrinsic_instr_create(b->shader,
-                                    nir_intrinsic_load_ubo_dxil);
-
-      load->num_components = 4;
-      load->src[0] = nir_src_for_ssa(buffer);
-      load->src[1] = nir_src_for_ssa(nir_iadd(b, idx, nir_imm_int(b, i / (16 * 8))));
-      nir_ssa_dest_init(&load->instr, &load->dest, load->num_components,
-                        32, NULL);
-      nir_builder_instr_insert(b, &load->instr);
-
-      nir_ssa_def *vec32 = &load->dest.ssa;
+      nir_ssa_def *vec32 =
+         nir_load_ubo_dxil(b, 4, 32, buffer, nir_iadd(b, idx, nir_imm_int(b, i / (16 * 8))));
 
       /* First re-arrange the vec32 to account for intra 16-byte offset. */
       vec32 = ubo_load_select_32b_comps(b, vec32, offset, subload_num_bits / 8);
@@ -301,19 +283,13 @@ lower_load_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
        * load.
        */
       unsigned subload_num_bits = MIN2(num_bits - i, 4 * 32);
-      nir_intrinsic_instr *load =
-         nir_intrinsic_instr_create(b->shader,
-                                    nir_intrinsic_load_ssbo);
 
       /* The number of components to store depends on the number of bytes. */
-      load->num_components = DIV_ROUND_UP(subload_num_bits, 32);
-      load->src[0] = nir_src_for_ssa(buffer);
-      load->src[1] = nir_src_for_ssa(nir_iadd(b, offset, nir_imm_int(b, i / 8)));
-      nir_ssa_dest_init(&load->instr, &load->dest, load->num_components,
-                        32, NULL);
-      nir_builder_instr_insert(b, &load->instr);
-
-      nir_ssa_def *vec32 = &load->dest.ssa;
+      nir_ssa_def *vec32 =
+         nir_load_ssbo(b, DIV_ROUND_UP(subload_num_bits, 32), 32,
+                       buffer, nir_iadd(b, offset, nir_imm_int(b, i / 8)),
+                       .align_mul = 4,
+                       .align_offset = 0);
 
       /* If we have 2 bytes or less to load we need to adjust the u32 value so
        * we can always extract the LSB.
@@ -323,8 +299,6 @@ lower_load_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
                                           nir_imm_int(b, 8));
          vec32 = nir_ushr(b, vec32, shift);
       }
-
-      nir_intrinsic_set_align(load, 4, 0);
 
       /* And now comes the pack/unpack step to match the original type. */
       extract_comps_from_vec32(b, vec32, bit_size, &comps[comp_idx],
@@ -525,26 +499,15 @@ lower_masked_store_vec32(nir_builder *b, nir_ssa_def *offset, nir_ssa_def *index
 
    if (op == nir_intrinsic_store_shared_dxil) {
       /* Use the dedicated masked intrinsic */
-      nir_intrinsic_instr *store =
-         nir_intrinsic_instr_create(b->shader,
-                                    nir_intrinsic_store_shared_masked_dxil);
-      store->src[0] = nir_src_for_ssa(vec32);
-      store->src[1] = nir_src_for_ssa(nir_inot(b, mask));
-      store->src[2] = nir_src_for_ssa(index);
-      store->num_components = 1;
-      nir_builder_instr_insert(b, &store->instr);
+      nir_store_shared_masked_dxil(b, vec32, nir_inot(b, mask), index);
    } else {
       /* For scratch, since we don't need atomics, just generate the read-modify-write in NIR */
-      nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_scratch_dxil);
-      load->src[0] = nir_src_for_ssa(index);
-      load->num_components = 1;
-      nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, NULL);
-      nir_builder_instr_insert(b, &load->instr);
+      nir_ssa_def *load = nir_load_scratch_dxil(b, 1, 32, index);
 
       nir_ssa_def *new_val = nir_ior(b, vec32,
                                      nir_iand(b,
                                               nir_inot(b, mask),
-                                              &load->dest.ssa));
+                                              load));
 
       lower_store_vec32(b, index, new_val, op);
    }
