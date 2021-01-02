@@ -45,9 +45,7 @@ lower_discard_if_instr(nir_intrinsic_instr *instr, nir_builder *b)
       b->cursor = nir_before_instr(&instr->instr);
 
       nir_if *if_stmt = nir_push_if(b, nir_ssa_for_src(b, instr->src[0], 1));
-      nir_intrinsic_instr *discard =
-         nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard);
-      nir_builder_instr_insert(b, &discard->instr);
+      nir_discard(b);
       nir_pop_if(b, if_stmt);
       nir_instr_remove(&instr->instr);
       return true;
@@ -590,9 +588,7 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
    nir_builder_init(&b, impl);
    b.cursor = nir_before_block(nir_start_block(impl));
 
-   nir_intrinsic_instr *invocation_id = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_invocation_id);
-   nir_ssa_dest_init(&invocation_id->instr, &invocation_id->dest, 1, 32, "gl_InvocationID");
-   nir_builder_instr_insert(&b, &invocation_id->instr);
+   nir_ssa_def *invocation_id = nir_load_invocation_id(&b);
 
    nir_foreach_shader_out_variable(var, vs->nir) {
       const struct glsl_type *type = var->type;
@@ -617,8 +613,8 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
        */
       for (unsigned i = 0; i < vertices_per_patch; i++) {
          /* we need to load the invocation-specific value of the vertex output and then store it to the per-patch output */
-         nir_if *start_block = nir_push_if(&b, nir_ieq(&b, &invocation_id->dest.ssa, nir_imm_int(&b, i)));
-         nir_deref_instr *in_array_var = nir_build_deref_array(&b, nir_build_deref_var(&b, in), &invocation_id->dest.ssa);
+         nir_if *start_block = nir_push_if(&b, nir_ieq(&b, invocation_id, nir_imm_int(&b, i)));
+         nir_deref_instr *in_array_var = nir_build_deref_array(&b, nir_build_deref_var(&b, in), invocation_id);
          nir_ssa_def *load = nir_load_deref(&b, in_array_var);
          nir_deref_instr *out_array_var = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, out), i);
          nir_store_deref(&b, out_array_var, load, 0xff);
@@ -644,29 +640,16 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
                                                  glsl_struct_type(fields, 2, "struct", false), "pushconst");
    pushconst->data.location = VARYING_SLOT_VAR0;
 
-   nir_intrinsic_instr *load_inner = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-   load_inner->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   nir_intrinsic_set_base(load_inner, 0);
-   nir_intrinsic_set_range(load_inner, 8);
-   load_inner->num_components = 2;
-   nir_ssa_dest_init(&load_inner->instr, &load_inner->dest, 2, 32, "TessLevelInner");
-   nir_builder_instr_insert(&b, &load_inner->instr);
-
-   nir_intrinsic_instr *load_outer = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-   load_outer->src[0] = nir_src_for_ssa(nir_imm_int(&b, 8));
-   nir_intrinsic_set_base(load_outer, 8);
-   nir_intrinsic_set_range(load_outer, 16);
-   load_outer->num_components = 4;
-   nir_ssa_dest_init(&load_outer->instr, &load_outer->dest, 4, 32, "TessLevelOuter");
-   nir_builder_instr_insert(&b, &load_outer->instr);
+   nir_ssa_def *load_inner = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .base = 0, .range = 8);
+   nir_ssa_def *load_outer = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 8), .base = 8, .range = 16);
 
    for (unsigned i = 0; i < 2; i++) {
       nir_deref_instr *store_idx = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, gl_TessLevelInner), i);
-      nir_store_deref(&b, store_idx, nir_channel(&b, &load_inner->dest.ssa, i), 0xff);
+      nir_store_deref(&b, store_idx, nir_channel(&b, load_inner, i), 0xff);
    }
    for (unsigned i = 0; i < 4; i++) {
       nir_deref_instr *store_idx = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, gl_TessLevelOuter), i);
-      nir_store_deref(&b, store_idx, nir_channel(&b, &load_outer->dest.ssa, i), 0xff);
+      nir_store_deref(&b, store_idx, nir_channel(&b, load_outer, i), 0xff);
    }
 
    nir->info.tess.tcs_vertices_out = vertices_per_patch;
