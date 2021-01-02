@@ -192,15 +192,11 @@ lower_emit_vertex(nir_intrinsic_instr *instr, nir_builder *b, struct lower_state
          nir_store_var(b, state->point_coord_out[j], point_coord, 0xf);
 
       /* EmitVertex */
-      instr = nir_intrinsic_instr_create(b->shader, nir_intrinsic_emit_vertex);
-      nir_intrinsic_set_stream_id(instr, stream_id);
-      nir_builder_instr_insert(b, &instr->instr);
+      nir_emit_vertex(b, .stream_id = stream_id);
    }
 
    /* EndPrimitive */
-   instr = nir_intrinsic_instr_create(b->shader, nir_intrinsic_end_primitive);
-   nir_intrinsic_set_stream_id(instr, stream_id);
-   nir_builder_instr_insert(b, &instr->instr);
+   nir_end_primitive(b, .stream_id = stream_id);
 
    /* Reset everything */
    state->point_pos = NULL;

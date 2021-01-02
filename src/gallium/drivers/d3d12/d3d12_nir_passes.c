@@ -438,21 +438,16 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b,
    enum d3d12_state_var var = variable->state_slots[0].tokens[2];
    nir_ssa_def *ubo_idx = nir_imm_int(b, binding);
    nir_ssa_def *ubo_offset =  nir_imm_int(b, get_state_var_offset(shader, var) * 4);
-   nir_intrinsic_instr *load =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_ubo);
-   load->num_components = instr->num_components;
-   load->src[0] = nir_src_for_ssa(ubo_idx);
-   load->src[1] = nir_src_for_ssa(ubo_offset);
-   assert(instr->dest.ssa.bit_size >= 8);
-   nir_intrinsic_set_align(load, instr->dest.ssa.bit_size / 8, 0);
-   nir_intrinsic_set_range_base(load, 0);
-   nir_intrinsic_set_range(load, ~0);
+   nir_ssa_def *load =
+      nir_load_ubo(b, instr->num_components, instr->dest.ssa.bit_size,
+                   ubo_idx, ubo_offset,
+                   .align_mul = instr->dest.ssa.bit_size / 8,
+                   .align_offset = 0,
+                   .range_base = 0,
+                   .range = ~0,
+                   );
 
-   nir_ssa_dest_init(&load->instr, &load->dest,
-                     load->num_components, instr->dest.ssa.bit_size,
-                     instr->dest.ssa.name);
-   nir_builder_instr_insert(b, &load->instr);
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(&load->dest.ssa));
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(load));
 
    /* Remove the old load_* instruction and any parent derefs */
    nir_instr_remove(&instr->instr);
@@ -886,7 +881,6 @@ lower_triangle_strip_emit_vertex(nir_builder *b, nir_intrinsic_instr *intr,
     * vertex_count++;
     */
 
-   nir_intrinsic_instr *instr;
    nir_ssa_def *two = nir_imm_int(b, 2);
    nir_ssa_def *vertex_count = nir_load_var(b, vertex_count_var);
    nir_ssa_def *count_cmp = nir_uge(b, vertex_count, two);
@@ -909,9 +903,7 @@ lower_triangle_strip_emit_vertex(nir_builder *b, nir_intrinsic_instr *intr,
                         nir_build_deref_array(b, nir_build_deref_var(b, varyings[i]), two));
    }
 
-   instr = nir_intrinsic_instr_create(b->shader, nir_intrinsic_end_primitive);
-   nir_intrinsic_set_stream_id(instr, 0);
-   nir_builder_instr_insert(b, &instr->instr);
+   nir_end_primitive(b, .stream_id = 0);
 
    nir_pop_if(b, count_check);
 
