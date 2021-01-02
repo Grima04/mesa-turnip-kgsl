@@ -223,6 +223,14 @@ static inline void
 pipe_vertex_buffer_reference(struct pipe_vertex_buffer *dst,
                              const struct pipe_vertex_buffer *src)
 {
+   if (dst->buffer.resource == src->buffer.resource) {
+      /* Just copy the fields, don't touch reference counts. */
+      dst->stride = src->stride;
+      dst->is_user_buffer = src->is_user_buffer;
+      dst->buffer_offset = src->buffer_offset;
+      return;
+   }
+
    pipe_vertex_buffer_unreference(dst);
    if (!src->is_user_buffer)
       pipe_resource_reference(&dst->buffer.resource, src->buffer.resource);
