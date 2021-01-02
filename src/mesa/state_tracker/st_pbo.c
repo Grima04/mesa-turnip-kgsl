@@ -525,16 +525,12 @@ create_fs(struct st_context *st, bool download,
       img_var->data.explicit_binding = true;
       img_var->data.binding = 0;
       nir_deref_instr *img_deref = nir_build_deref_var(&b, img_var);
-      nir_intrinsic_instr *intrin =
-         nir_intrinsic_instr_create(b.shader, nir_intrinsic_image_deref_store);
-      intrin->src[0] = nir_src_for_ssa(&img_deref->dest.ssa);
-      intrin->src[1] =
-         nir_src_for_ssa(nir_vec4(&b, pbo_addr, zero, zero, zero));
-      intrin->src[2] = nir_src_for_ssa(zero);
-      intrin->src[3] = nir_src_for_ssa(result);
-      intrin->src[4] = nir_src_for_ssa(nir_imm_int(&b, 0));
-      intrin->num_components = 4;
-      nir_builder_instr_insert(&b, &intrin->instr);
+
+      nir_image_deref_store(&b, &img_deref->dest.ssa,
+                            nir_vec4(&b, pbo_addr, zero, zero, zero),
+                            zero,
+                            result,
+                            nir_imm_int(&b, 0));
    } else {
       nir_variable *color =
          nir_variable_create(b.shader, nir_var_shader_out, glsl_vec4_type(),
