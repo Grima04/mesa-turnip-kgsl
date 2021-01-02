@@ -54,32 +54,19 @@ brw_nir_rt_store_scratch(nir_builder *b, uint32_t offset, unsigned align,
 static inline void
 brw_nir_btd_spawn(nir_builder *b, nir_ssa_def *record_addr)
 {
-   nir_intrinsic_instr *spawn =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_btd_spawn_intel);
-   spawn->src[0] = nir_src_for_ssa(nir_load_btd_global_arg_addr_intel(b));
-   spawn->src[1] = nir_src_for_ssa(record_addr);
-   nir_builder_instr_insert(b, &spawn->instr);
+   nir_btd_spawn_intel(b, nir_load_btd_global_arg_addr_intel(b), record_addr);
 }
 
 static inline void
 brw_nir_btd_retire(nir_builder *b)
 {
-   nir_intrinsic_instr *retire =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_btd_retire_intel);
-   nir_builder_instr_insert(b, &retire->instr);
+   nir_btd_retire_intel(b);
 }
 
 static inline void
 brw_nir_btd_resume(nir_builder *b, uint32_t call_idx, unsigned stack_size)
 {
-   nir_intrinsic_instr *resume =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_btd_resume_intel);
-   nir_intrinsic_set_base(resume, call_idx);
-   nir_intrinsic_set_range(resume, stack_size);
-   nir_builder_instr_insert(b, &resume->instr);
+   nir_btd_resume_intel(b, .base = call_idx, .range = stack_size);
 }
 
 /** This is a pseudo-op which does a bindless return

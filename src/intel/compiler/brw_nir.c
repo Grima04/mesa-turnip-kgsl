@@ -1524,8 +1524,7 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
    ralloc_adopt(mem_ctx, b.shader);
    nir_shader *nir = b.shader;
    nir_variable *var;
-   nir_intrinsic_instr *load;
-   nir_intrinsic_instr *store;
+   nir_ssa_def *load;
    nir_ssa_def *zero = nir_imm_int(&b, 0);
    nir_ssa_def *invoc_id = nir_load_invocation_id(&b);
 
@@ -1542,20 +1541,11 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
 
    /* Write the patch URB header. */
    for (int i = 0; i <= 1; i++) {
-      load = nir_intrinsic_instr_create(nir, nir_intrinsic_load_uniform);
-      load->num_components = 4;
-      load->src[0] = nir_src_for_ssa(zero);
-      nir_ssa_dest_init(&load->instr, &load->dest, 4, 32, NULL);
-      nir_intrinsic_set_base(load, i * 4 * sizeof(uint32_t));
-      nir_builder_instr_insert(&b, &load->instr);
+      load = nir_load_uniform(&b, 4, 32, zero, .base = i * 4 * sizeof(uint32_t));
 
-      store = nir_intrinsic_instr_create(nir, nir_intrinsic_store_output);
-      store->num_components = 4;
-      store->src[0] = nir_src_for_ssa(&load->dest.ssa);
-      store->src[1] = nir_src_for_ssa(zero);
-      nir_intrinsic_set_base(store, VARYING_SLOT_TESS_LEVEL_INNER - i);
-      nir_intrinsic_set_write_mask(store, WRITEMASK_XYZW);
-      nir_builder_instr_insert(&b, &store->instr);
+      nir_store_output(&b, load, zero,
+                       .base = VARYING_SLOT_TESS_LEVEL_INNER - i,
+                       .write_mask = WRITEMASK_XYZW);
    }
 
    /* Copy inputs to outputs. */
@@ -1564,24 +1554,11 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
    while (varyings != 0) {
       const int varying = ffsll(varyings) - 1;
 
-      load = nir_intrinsic_instr_create(nir,
-                                        nir_intrinsic_load_per_vertex_input);
-      load->num_components = 4;
-      load->src[0] = nir_src_for_ssa(invoc_id);
-      load->src[1] = nir_src_for_ssa(zero);
-      nir_ssa_dest_init(&load->instr, &load->dest, 4, 32, NULL);
-      nir_intrinsic_set_base(load, varying);
-      nir_builder_instr_insert(&b, &load->instr);
+      load = nir_load_per_vertex_input(&b, 4, 32, invoc_id, zero, .base = varying);
 
-      store = nir_intrinsic_instr_create(nir,
-                                         nir_intrinsic_store_per_vertex_output);
-      store->num_components = 4;
-      store->src[0] = nir_src_for_ssa(&load->dest.ssa);
-      store->src[1] = nir_src_for_ssa(invoc_id);
-      store->src[2] = nir_src_for_ssa(zero);
-      nir_intrinsic_set_base(store, varying);
-      nir_intrinsic_set_write_mask(store, WRITEMASK_XYZW);
-      nir_builder_instr_insert(&b, &store->instr);
+      nir_store_per_vertex_output(&b, load, invoc_id, zero,
+                                  .base = varying,
+                                  .write_mask = WRITEMASK_XYZW);
 
       varyings &= ~BITFIELD64_BIT(varying);
    }

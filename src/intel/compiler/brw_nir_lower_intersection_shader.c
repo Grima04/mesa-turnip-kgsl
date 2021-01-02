@@ -169,17 +169,11 @@ brw_nir_lower_intersection_shader(nir_shader *intersection,
             nir_ior(b, nir_load_global(b, flags_dw_addr, 4, 1, 32),
                        nir_imm_int(b, 1 << 16)), 0x1 /* write_mask */);
 
-         nir_intrinsic_instr *accept =
-            nir_intrinsic_instr_create(b->shader,
-                                       nir_intrinsic_accept_ray_intersection);
-         nir_builder_instr_insert(b, &accept->instr);
+         nir_accept_ray_intersection(b);
       }
       nir_push_else(b, NULL);
       {
-         nir_intrinsic_instr *ignore =
-            nir_intrinsic_instr_create(b->shader,
-                                       nir_intrinsic_ignore_ray_intersection);
-         nir_builder_instr_insert(b, &ignore->instr);
+         nir_ignore_ray_intersection(b);
       }
       nir_pop_if(b, NULL);
       break;

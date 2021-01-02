@@ -599,10 +599,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
                .shader_index_multiplier = sbt_stride,
             };
             brw_nir_rt_store_mem_ray(b, &ray_defs, BRW_RT_BVH_LEVEL_WORLD);
-            nir_intrinsic_instr *ray_intel =
-               nir_intrinsic_instr_create(b->shader,
-                                          nir_intrinsic_trace_ray_initial_intel);
-            nir_builder_instr_insert(b, &ray_intel->instr);
+            nir_trace_ray_initial_intel(b);
             break;
          }
 
