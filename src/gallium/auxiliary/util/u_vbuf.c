@@ -878,6 +878,7 @@ static void u_vbuf_delete_vertex_elements(void *ctx, void *state,
 void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
                                unsigned start_slot, unsigned count,
                                unsigned unbind_num_trailing_slots,
+                               bool take_ownership,
                                const struct pipe_vertex_buffer *bufs)
 {
    unsigned i;
@@ -928,7 +929,12 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
          continue;
       }
 
-      pipe_vertex_buffer_reference(orig_vb, vb);
+      if (take_ownership) {
+         pipe_vertex_buffer_unreference(orig_vb);
+         memcpy(orig_vb, vb, sizeof(*vb));
+      } else {
+         pipe_vertex_buffer_reference(orig_vb, vb);
+      }
 
       if (vb->stride) {
          nonzero_stride_vb_mask |= 1 << dst_index;

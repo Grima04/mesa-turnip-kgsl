@@ -169,6 +169,7 @@ cso_set_vertex_buffers_and_elements(struct cso_context *ctx,
                                     const struct cso_velems_state *velems,
                                     unsigned vb_count,
                                     unsigned unbind_trailing_vb_count,
+                                    bool take_ownership,
                                     bool uses_user_vertex_buffers,
                                     const struct pipe_vertex_buffer *vbuffers);
 
