@@ -84,7 +84,6 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_GENERATED_SOURCES := \
 	$(intermediates)/bifrost_nir_algebraic.c \
 	$(intermediates)/bi_builder.h \
-	$(intermediates)/bi_generated_pack.h \
 	$(intermediates)/bi_opcodes.c \
 	$(intermediates)/bi_opcodes.h \
 	$(intermediates)/bi_packer.c \
@@ -105,13 +104,6 @@ bi_builder_h_deps := $(LOCAL_PATH)/bifrost/ISA.xml $(LOCAL_PATH)/bifrost/bifrost
 $(intermediates)/bi_builder.h: $(bi_builder_h_deps)
 	@mkdir -p $(dir $@)
 	$(hide) $(MESA_PYTHON3) $(bi_builder_h_gen) $< > $@
-
-bi_generated_pack_gen := $(LOCAL_PATH)/bifrost/gen_pack.py
-bi_generated_pack_deps := $(LOCAL_PATH)/bifrost/ISA.xml $(LOCAL_PATH)/bifrost/bifrost_isa.py
-
-$(intermediates)/bi_generated_pack.h: $(bi_generated_pack_deps)
-	@mkdir -p $(dir $@)
-	$(hide) $(MESA_PYTHON3) $(bi_generated_pack_gen) $< > $@
 
 bi_opcodes_c_gen := $(LOCAL_PATH)/bifrost/bi_opcodes.c.py
 bi_opcodes_c_deps := $(LOCAL_PATH)/bifrost/ISA.xml $(LOCAL_PATH)/bifrost/bifrost_isa.py
