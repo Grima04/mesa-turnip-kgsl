@@ -266,13 +266,11 @@ st_bind_ubos(struct st_context *st, struct gl_program *prog,
 
    for (i = 0; i < prog->sh.NumUniformBlocks; i++) {
       struct gl_buffer_binding *binding;
-      struct st_buffer_object *st_obj;
 
       binding =
          &st->ctx->UniformBufferBindings[prog->sh.UniformBlocks[i]->Binding];
-      st_obj = st_buffer_object(binding->BufferObject);
 
-      cb.buffer = st_obj ? st_obj->buffer : NULL;
+      cb.buffer = st_get_buffer_reference(st->ctx, binding->BufferObject);
 
       if (cb.buffer) {
          cb.buffer_offset = binding->Offset;
@@ -289,7 +287,7 @@ st_bind_ubos(struct st_context *st, struct gl_program *prog,
          cb.buffer_size = 0;
       }
 
-      pipe->set_constant_buffer(pipe, shader_type, 1 + i, false, &cb);
+      pipe->set_constant_buffer(pipe, shader_type, 1 + i, true, &cb);
    }
 }
 
