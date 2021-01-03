@@ -19,7 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-SKIP = set(["lane", "lanes", "lanes", "replicate", "swz", "widen", "swap", "neg", "abs", "not", "sign", "extend", "divzero", "clamp", "sem", "not_result", "skip"])
+SKIP = set(["lane", "lane_dest", "lanes", "lanes", "replicate", "swz", "widen", "swap", "neg", "abs", "not", "sign", "extend", "divzero", "clamp", "sem", "not_result", "skip"])
 
 TEMPLATE = """
 #ifndef _BI_BUILDER_H_
