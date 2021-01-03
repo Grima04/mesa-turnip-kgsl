@@ -161,7 +161,7 @@ static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
             return r300screen->caps.dxtc_swizzle;
 
         /* We don't support color clamping on r500, so that we can use color
-         * intepolators for generic varyings. */
+         * interpolators for generic varyings. */
         case PIPE_CAP_VERTEX_COLOR_CLAMPED:
             return !is_r500;
 
