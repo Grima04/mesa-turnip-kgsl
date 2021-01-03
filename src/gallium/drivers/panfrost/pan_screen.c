@@ -158,6 +158,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
         case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
         case PIPE_CAP_CS_DERIVED_SYSTEM_VALUES_SUPPORTED:
+        case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
+        case PIPE_CAP_TEXTURE_BUFFER_SAMPLER:
                 return 1;
 
         case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
@@ -186,10 +188,13 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_CUBE_MAP_ARRAY:
         case PIPE_CAP_COMPUTE:
                 return is_deqp;
-        case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
-                return is_deqp ? 65536 : 0;
 
-        case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
+        case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+                return 65536;
+
+        case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
+                return 16;
+
         case PIPE_CAP_QUERY_TIMESTAMP:
                 return is_gl3;
 
