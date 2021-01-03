@@ -900,6 +900,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
          * are the exceptions that need to handle swizzles specially. */
 
         switch (instr->op) {
+        case nir_op_pack_32_2x16:
         case nir_op_vec2:
         case nir_op_vec3:
         case nir_op_vec4: {
@@ -925,6 +926,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         case nir_op_vec16:
                 unreachable("should've been lowered");
 
+        case nir_op_unpack_32_2x16:
         case nir_op_unpack_64_2x32_split_x:
                 bi_mov_i32_to(b, dst, bi_src_index(&instr->src[0].src));
                 return;
