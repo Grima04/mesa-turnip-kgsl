@@ -199,6 +199,10 @@ static const struct test {
 	INSTR_5XX(c6ea0008_14002600, "ldgb.untyped.4d.s32.3 r2.x, g[0], r0.x, r5.x"), /* ldgb.a.untyped.1dtype.s32.3 r2.x, g[r0.x], r5.x, 0 */
 	INSTR_5XX(c6ea0204_1401a600, "ldgb.untyped.4d.s32.3 r1.x, g[1], r1.z, r5.x"), /* ldgb.a.untyped.1dtype.s32.3 r1.x, g[r1.z], r5.x, 1 */
 
+	/* stgb */
+	INSTR_5XX(c7220028_0480000d, "stgb.untyped.1d.f32.1 g[0], r1.z, 4, r10.x"), /* stgb.untyped.1d.1 g[r10.x], r1.z, 4, r0.x */
+	INSTR_5XX(c7260023_02800009, "stgb.untyped.1d.u32.1 g[0], r1.x, 2, r8.w"),  /* stgb.untyped.1d.1 g[r8.w], r1.x, 2, r0.x */
+
 	/* discard stuff */
 	INSTR_6XX(42b400f8_20010004, "cmps.s.eq p0.x, r1.x, 1"),
 	INSTR_6XX(02800000_00000000, "kill p0.x"),
