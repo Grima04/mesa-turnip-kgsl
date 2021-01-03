@@ -134,7 +134,7 @@ void
 panfrost_new_texture(const struct panfrost_device *dev,
                      const struct pan_image_layout *layout,
                      void *out,
-                     uint16_t width, uint16_t height,
+                     unsigned width, uint16_t height,
                      uint16_t depth, uint16_t array_size,
                      enum pipe_format format,
                      enum mali_texture_dimension dim,
