@@ -1011,7 +1011,7 @@ mir_ra(compiler_context *ctx)
         int iter_count = 1000; /* max iterations */
 
         /* Number of 128-bit slots in memory we've spilled into */
-        unsigned spill_count = 0;
+        unsigned spill_count = DIV_ROUND_UP(ctx->tls_size, 16);
 
 
         mir_create_pipeline_registers(ctx);
@@ -1054,7 +1054,7 @@ mir_ra(compiler_context *ctx)
         /* Report spilling information. spill_count is in 128-bit slots (vec4 x
          * fp32), but tls_size is in bytes, so multiply by 16 */
 
-        ctx->tls_size += spill_count * 16;
+        ctx->tls_size = spill_count * 16;
 
         install_registers(ctx, l);
 
