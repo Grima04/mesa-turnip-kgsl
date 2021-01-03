@@ -1055,17 +1055,27 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         enum mali_texture_dimension type =
                 panfrost_translate_texture_dimension(so->base.target);
 
+        bool is_buffer = (so->base.target == PIPE_BUFFER);
+
+        unsigned first_level = is_buffer ? 0 : so->base.u.tex.first_level;
+        unsigned last_level = is_buffer ? 0 : so->base.u.tex.last_level;
+        unsigned first_layer = is_buffer ? 0 : so->base.u.tex.first_layer;
+        unsigned last_layer = is_buffer ? 0 : so->base.u.tex.last_layer;
+
         unsigned size =
                 (is_bifrost ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
-                panfrost_estimate_texture_payload_size(so->base.u.tex.first_level,
-                                                       so->base.u.tex.last_level,
-                                                       so->base.u.tex.first_layer,
-                                                       so->base.u.tex.last_layer,
+                panfrost_estimate_texture_payload_size(first_level, last_level,
+                                                       first_layer, last_layer,
                                                        texture->nr_samples,
                                                        type,
                                                        prsrc->layout.modifier);
 
         so->bo = panfrost_bo_create(device, size, 0);
+
+        unsigned width = is_buffer ?
+                (so->base.u.buf.size / util_format_get_blocksize(so->base.format)) :
+                texture->width0;
+        unsigned offset = is_buffer ? so->base.u.buf.offset : 0;
 
         struct panfrost_ptr payload = so->bo->ptr;
         void *tex = is_bifrost ? &so->bifrost_descriptor : so->bo->ptr.cpu;
@@ -1076,16 +1086,15 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         }
 
         panfrost_new_texture(device, &prsrc->layout, tex,
-                             texture->width0, texture->height0,
+                             width, texture->height0,
                              depth, array_size,
                              format, type,
-                             so->base.u.tex.first_level,
-                             so->base.u.tex.last_level,
-                             so->base.u.tex.first_layer,
-                             so->base.u.tex.last_layer,
+                             first_level, last_level,
+                             first_layer, last_layer,
                              texture->nr_samples,
                              user_swizzle,
-                             prsrc->bo->ptr.gpu, &payload);
+                             prsrc->bo->ptr.gpu + offset,
+                             &payload);
 }
 
 static struct pipe_sampler_view *
