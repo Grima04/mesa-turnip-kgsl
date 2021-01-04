@@ -239,7 +239,6 @@ st_convert_sampler_from_unit(const struct st_context *st,
 
    texobj = ctx->Texture.Unit[texUnit]._Current;
    assert(texobj);
-   assert(texobj->Target != GL_TEXTURE_BUFFER);
 
    msamp = _mesa_get_samplerobj(ctx, texUnit);
 
@@ -289,7 +288,8 @@ update_shader_samplers(struct st_context *st,
        * states that are NULL.
        */
       if (samplers_used & 1 &&
-          ctx->Texture.Unit[tex_unit]._Current->Target != GL_TEXTURE_BUFFER) {
+          (ctx->Texture.Unit[tex_unit]._Current->Target != GL_TEXTURE_BUFFER ||
+           st->texture_buffer_sampler)) {
          st_convert_sampler_from_unit(st, sampler, tex_unit);
          states[unit] = sampler;
       } else {
