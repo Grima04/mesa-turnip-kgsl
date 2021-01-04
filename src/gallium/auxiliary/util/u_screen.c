@@ -148,6 +148,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
 
    case PIPE_CAP_BUFFER_SAMPLER_VIEW_RGBA_ONLY:
    case PIPE_CAP_TGSI_TEXCOORD:
+   case PIPE_CAP_TEXTURE_BUFFER_SAMPLER:
       return 0;
 
    case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:

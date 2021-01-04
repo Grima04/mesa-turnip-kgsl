@@ -685,6 +685,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       !!(screen->get_param(screen, PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK) &
          (PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_NV50 |
           PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_R600));
+   st->texture_buffer_sampler =
+      screen->get_param(screen, PIPE_CAP_TEXTURE_BUFFER_SAMPLER);
    st->has_time_elapsed =
       screen->get_param(screen, PIPE_CAP_QUERY_TIME_ELAPSED);
    st->has_half_float_packing =

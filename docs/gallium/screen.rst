@@ -165,6 +165,9 @@ The integer capabilities:
   TEXCOORD semantic.
   Also, TGSI_SEMANTIC_PCOORD becomes available, which labels a fragment shader
   input that will always be replaced with sprite coordinates.
+* ``PIPE_CAP_TEXTURE_BUFFER_SAMPLER``: Whether a sampler should still
+  be used for PIPE_BUFFER resources (normally a sampler is only used
+  if the texture target is PIPE_TEXTURE_*).
 * ``PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER``: Whether it is preferable
   to use a blit to implement a texture transfer which needs format conversions
   and swizzling in gallium frontends. Generally, all hardware drivers with
