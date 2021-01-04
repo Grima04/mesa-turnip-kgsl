@@ -490,12 +490,6 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
-   unsigned main_mask;
-   if (util_format_is_depth_or_stencil(info->dst.format))
-      main_mask = PIPE_MASK_Z;
-   else
-      main_mask = PIPE_MASK_RGBA;
-
    float src_z_step = (float)info->src.box.depth / (float)info->dst.box.depth;
 
    /* There is no interpolation to the pixel center during rendering, so
@@ -505,7 +499,12 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    if (info->src.resource->target == PIPE_TEXTURE_3D)
       depth_center_offset = 0.5 / info->dst.box.depth * info->src.box.depth;
 
-   if (info->mask & main_mask) {
+   /* Perform a blit for each aspect requested by the caller. PIPE_MASK_R is
+    * used to represent the color aspect. */
+   unsigned aspect_mask = info->mask & (PIPE_MASK_R | PIPE_MASK_Z);
+   while (aspect_mask) {
+      unsigned aspect = 1 << u_bit_scan(&aspect_mask);
+
       for (int slice = 0; slice < info->dst.box.depth; slice++) {
          unsigned dst_z = info->dst.box.z + slice;
          float src_z = info->src.box.z + slice * src_z_step +
@@ -525,6 +524,12 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
          iris_batch_sync_region_end(batch);
       }
+
+      tex_cache_flush_hack(batch, src_fmt.fmt, src_res->surf.format);
+
+      iris_resource_finish_write(ice, dst_res, info->dst.level,
+                                 info->dst.box.z, info->dst.box.depth,
+                                 dst_aux_usage);
    }
 
    struct iris_resource *stc_dst = NULL;
@@ -582,13 +587,6 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    }
 
    blorp_batch_finish(&blorp_batch);
-
-   tex_cache_flush_hack(batch, src_fmt.fmt, src_res->surf.format);
-
-   if (info->mask & main_mask) {
-      iris_resource_finish_write(ice, dst_res, info->dst.level, info->dst.box.z,
-                                 info->dst.box.depth, dst_aux_usage);
-   }
 
    if (stc_dst) {
       iris_resource_finish_write(ice, stc_dst, info->dst.level, info->dst.box.z,
