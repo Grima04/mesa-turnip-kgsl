@@ -429,47 +429,53 @@ zink_get_shader_param(struct pipe_screen *pscreen,
          return INT_MAX;
       return 0;
 
-   case PIPE_SHADER_CAP_MAX_INPUTS:
+   case PIPE_SHADER_CAP_MAX_INPUTS: {
+      uint32_t max = 0;
       switch (shader) {
       case PIPE_SHADER_VERTEX:
-         return MIN2(screen->info.props.limits.maxVertexInputAttributes,
-                     PIPE_MAX_SHADER_INPUTS);
+         max = MIN2(screen->info.props.limits.maxVertexInputAttributes, PIPE_MAX_ATTRIBS);
+         break;
       case PIPE_SHADER_TESS_CTRL:
-         return MIN2(screen->info.props.limits.maxTessellationControlPerVertexInputComponents / 4,
-                     PIPE_MAX_SHADER_INPUTS);
+         max = screen->info.props.limits.maxTessellationControlPerVertexInputComponents / 4;
+         break;
       case PIPE_SHADER_TESS_EVAL:
-         return MIN2(screen->info.props.limits.maxTessellationEvaluationInputComponents / 4,
-                     PIPE_MAX_SHADER_INPUTS);
+         max = screen->info.props.limits.maxTessellationEvaluationInputComponents / 4;
+         break;
       case PIPE_SHADER_GEOMETRY:
-         return MIN2(screen->info.props.limits.maxGeometryInputComponents,
-                     PIPE_MAX_SHADER_INPUTS);
+         max = screen->info.props.limits.maxGeometryInputComponents;
+         break;
       case PIPE_SHADER_FRAGMENT:
-         return MIN2(screen->info.props.limits.maxFragmentInputComponents / 4,
-                     PIPE_MAX_SHADER_INPUTS);
+         max = screen->info.props.limits.maxFragmentInputComponents / 4;
+         break;
       default:
          return 0; /* unsupported stage */
       }
+      return MIN2(max, 64); // prevent overflowing struct shader_info::inputs_read
+   }
 
-   case PIPE_SHADER_CAP_MAX_OUTPUTS:
+   case PIPE_SHADER_CAP_MAX_OUTPUTS: {
+      uint32_t max = 0;
       switch (shader) {
       case PIPE_SHADER_VERTEX:
-         return MIN2(screen->info.props.limits.maxVertexOutputComponents / 4,
-                     PIPE_MAX_SHADER_OUTPUTS);
+         max = screen->info.props.limits.maxVertexOutputComponents / 4;
+         break;
       case PIPE_SHADER_TESS_CTRL:
-         return MIN2(screen->info.props.limits.maxTessellationControlPerVertexOutputComponents / 4,
-                     PIPE_MAX_SHADER_OUTPUTS);
+         max = screen->info.props.limits.maxTessellationControlPerVertexOutputComponents / 4;
+         break;
       case PIPE_SHADER_TESS_EVAL:
-         return MIN2(screen->info.props.limits.maxTessellationEvaluationOutputComponents / 4,
-                     PIPE_MAX_SHADER_OUTPUTS);
+         max = screen->info.props.limits.maxTessellationEvaluationOutputComponents / 4;
+         break;
       case PIPE_SHADER_GEOMETRY:
-         return MIN2(screen->info.props.limits.maxGeometryOutputComponents / 4,
-                     PIPE_MAX_SHADER_OUTPUTS);
+         max = screen->info.props.limits.maxGeometryOutputComponents / 4;
+         break;
       case PIPE_SHADER_FRAGMENT:
-         return MIN2(screen->info.props.limits.maxColorAttachments,
-                PIPE_MAX_SHADER_OUTPUTS);
+         max = screen->info.props.limits.maxColorAttachments;
+         break;
       default:
          return 0; /* unsupported stage */
       }
+      return MIN2(max, 64); // prevent overflowing struct shader_info::outputs_read/written
+   }
 
    case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
       switch (shader) {
