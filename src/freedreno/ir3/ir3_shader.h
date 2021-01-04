@@ -977,6 +977,8 @@ ir3_find_output_regid(const struct ir3_shader_variant *so, unsigned slot)
 	return regid(63, 0);
 }
 
+void ir3_link_stream_out(struct ir3_shader_linkage *l, const struct ir3_shader_variant *v);
+
 #define VARYING_SLOT_GS_HEADER_IR3			(VARYING_SLOT_MAX + 0)
 #define VARYING_SLOT_GS_VERTEX_FLAGS_IR3	(VARYING_SLOT_MAX + 1)
 #define VARYING_SLOT_TCS_HEADER_IR3			(VARYING_SLOT_MAX + 2)

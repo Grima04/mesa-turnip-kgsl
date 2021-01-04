@@ -607,54 +607,6 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
    tu_cs_emit(cs, COND(primid_passthru, A6XX_VFD_CONTROL_6_PRIMID_PASSTHRU)); /* VFD_CONTROL_6 */
 }
 
-/* Add any missing varyings needed for stream-out. Otherwise varyings not
- * used by fragment shader will be stripped out.
- */
-static void
-tu6_link_streamout(struct ir3_shader_linkage *l,
-                     const struct ir3_shader_variant *v)
-{
-   const struct ir3_stream_output_info *info = &v->shader->stream_output;
-
-   /*
-    * First, any stream-out varyings not already in linkage map (ie. also
-    * consumed by frag shader) need to be added:
-    */
-   for (unsigned i = 0; i < info->num_outputs; i++) {
-      const struct ir3_stream_output *out = &info->output[i];
-      unsigned compmask =
-                  (1 << (out->num_components + out->start_component)) - 1;
-      unsigned k = out->register_index;
-      unsigned idx, nextloc = 0;
-
-      /* psize/pos need to be the last entries in linkage map, and will
-       * get added link_stream_out, so skip over them:
-       */
-      if (v->outputs[k].slot == VARYING_SLOT_PSIZ ||
-            v->outputs[k].slot == VARYING_SLOT_POS)
-         continue;
-
-      for (idx = 0; idx < l->cnt; idx++) {
-         if (l->var[idx].regid == v->outputs[k].regid)
-            break;
-         nextloc = MAX2(nextloc, l->var[idx].loc + 4);
-      }
-
-      /* add if not already in linkage map: */
-      if (idx == l->cnt)
-         ir3_link_add(l, v->outputs[k].regid, compmask, nextloc);
-
-      /* expand component-mask if needed, ie streaming out all components
-       * but frag shader doesn't consume all components:
-       */
-      if (compmask & ~l->var[idx].compmask) {
-         l->var[idx].compmask |= compmask;
-         l->max_loc = MAX2(l->max_loc, l->var[idx].loc +
-                           util_last_bit(l->var[idx].compmask));
-      }
-   }
-}
-
 static void
 tu6_setup_streamout(struct tu_cs *cs,
                     const struct ir3_shader_variant *v,
@@ -888,7 +840,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       ir3_link_shaders(&linkage, last_shader, fs, true);
 
    if (last_shader->shader->stream_output.num_outputs)
-      tu6_link_streamout(&linkage, last_shader);
+      ir3_link_stream_out(&linkage, last_shader);
 
    /* We do this after linking shaders in order to know whether PrimID
     * passthrough needs to be enabled.

@@ -142,52 +142,6 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_RELOC(ring, so->bo, 0, 0, 0);
 }
 
-/* Add any missing varyings needed for stream-out.  Otherwise varyings not
- * used by fragment shader will be stripped out.
- */
-static void
-link_stream_out(struct ir3_shader_linkage *l, const struct ir3_shader_variant *v)
-{
-	const struct ir3_stream_output_info *strmout = &v->shader->stream_output;
-
-	/*
-	 * First, any stream-out varyings not already in linkage map (ie. also
-	 * consumed by frag shader) need to be added:
-	 */
-	for (unsigned i = 0; i < strmout->num_outputs; i++) {
-		const struct ir3_stream_output *out = &strmout->output[i];
-		unsigned k = out->register_index;
-		unsigned compmask =
-			(1 << (out->num_components + out->start_component)) - 1;
-		unsigned idx, nextloc = 0;
-
-		/* psize/pos need to be the last entries in linkage map, and will
-		 * get added link_stream_out, so skip over them:
-		 */
-		if ((v->outputs[k].slot == VARYING_SLOT_PSIZ) ||
-				(v->outputs[k].slot == VARYING_SLOT_POS))
-			continue;
-
-		for (idx = 0; idx < l->cnt; idx++) {
-			if (l->var[idx].regid == v->outputs[k].regid)
-				break;
-			nextloc = MAX2(nextloc, l->var[idx].loc + 4);
-		}
-
-		/* add if not already in linkage map: */
-		if (idx == l->cnt)
-			ir3_link_add(l, v->outputs[k].regid, compmask, nextloc);
-
-		/* expand component-mask if needed, ie streaming out all components
-		 * but frag shader doesn't consume all components:
-		 */
-		if (compmask & ~l->var[idx].compmask) {
-			l->var[idx].compmask |= compmask;
-			l->max_loc = MAX2(l->max_loc,
-				l->var[idx].loc + util_last_bit(l->var[idx].compmask));
-		}
-	}
-}
 
 static void
 setup_stream_out(struct fd6_program_state *state, const struct ir3_shader_variant *v,
@@ -540,7 +494,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 	OUT_RING(ring, ~l.varmask[3]);  /* VPC_VAR[3].DISABLE */
 
 	/* Add stream out outputs after computing the VPC_VAR_DISABLE bitmask. */
-	link_stream_out(&l, last_shader);
+	ir3_link_stream_out(&l, last_shader);
 
 	if (VALIDREG(layer_regid)) {
 		layer_loc = l.max_loc;
