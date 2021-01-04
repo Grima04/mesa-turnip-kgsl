@@ -137,28 +137,46 @@ const char *TexInstruction::opname(Opcode op)
 
 
 
-static bool lower_coord_shift_normalized(nir_builder& b, nir_tex_instr *tex)
+static bool lower_coord_shift_normalized(nir_builder *b, nir_tex_instr *tex)
 {
-   b.cursor = nir_before_instr(&tex->instr);
+   b->cursor = nir_before_instr(&tex->instr);
 
-   nir_ssa_def * size = nir_i2f32(&b, nir_get_texture_size(&b, tex));
-   nir_ssa_def *scale = nir_frcp(&b, size);
+   nir_ssa_def * size = nir_i2f32(b, nir_get_texture_size(b, tex));
+   nir_ssa_def *scale = nir_frcp(b, size);
 
    int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
-   nir_ssa_def *corr = nir_fadd(&b,
-                                nir_fmul(&b, nir_imm_float(&b, -0.5f), scale),
-                                tex->src[coord_index].src.ssa);
+   nir_ssa_def *corr = nullptr;
+   if (unlikely(tex->array_is_lowered_cube)) {
+      auto corr2 = nir_fadd(b, nir_channels(b, tex->src[coord_index].src.ssa, 3),
+                            nir_fmul(b, nir_imm_float(b, -0.5f), scale));
+      corr = nir_vec3(b, nir_channel(b, corr2, 0), nir_channel(b, corr2, 1),
+                      nir_channel(
+                         b, tex->src[coord_index].src.ssa, 2));
+   } else {
+      corr = nir_fadd(b,
+                      nir_fmul(b, nir_imm_float(b, -0.5f), scale),
+                      tex->src[coord_index].src.ssa);
+   }
+
    nir_instr_rewrite_src(&tex->instr, &tex->src[coord_index].src,
                          nir_src_for_ssa(corr));
    return true;
 }
 
-static bool lower_coord_shift_unnormalized(nir_builder& b, nir_tex_instr *tex)
+static bool lower_coord_shift_unnormalized(nir_builder *b, nir_tex_instr *tex)
 {
-   b.cursor = nir_before_instr(&tex->instr);
+   b->cursor = nir_before_instr(&tex->instr);
    int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
-   nir_ssa_def *corr = nir_fadd(&b, tex->src[coord_index].src.ssa,
-                                nir_imm_float(&b, -0.5f));
+   nir_ssa_def *corr = nullptr;
+   if (unlikely(tex->array_is_lowered_cube)) {
+      auto corr2 = nir_fadd(b, nir_channels(b, tex->src[coord_index].src.ssa, 3),
+                            nir_imm_float(b, -0.5f));
+      corr = nir_vec3(b, nir_channel(b, corr2, 0), nir_channel(b, corr2, 1),
+                      nir_channel(b, tex->src[coord_index].src.ssa, 2));
+   } else {
+      corr = nir_fadd(b, tex->src[coord_index].src.ssa,
+                      nir_imm_float(b, -0.5f));
+   }
    nir_instr_rewrite_src(&tex->instr, &tex->src[coord_index].src,
                          nir_src_for_ssa(corr));
    return true;
@@ -179,9 +197,9 @@ r600_nir_lower_int_tg4_impl(nir_function_impl *impl)
                 tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE) {
                if (nir_alu_type_get_base_type(tex->dest_type) != nir_type_float) {
                   if (tex->sampler_dim != GLSL_SAMPLER_DIM_RECT)
-                     lower_coord_shift_normalized(b, tex);
+                     lower_coord_shift_normalized(&b, tex);
                   else
-                     lower_coord_shift_unnormalized(b, tex);
+                     lower_coord_shift_unnormalized(&b, tex);
                   progress = true;
                }
             }
@@ -333,8 +351,9 @@ r600_nir_lower_cube_to_2darray_filer(const nir_instr *instr, const void *_option
    case nir_texop_tg4:
    case nir_texop_txd:
       return true;
+   default:
+      return false;
    }
-   return false;
 }
 
 static nir_ssa_def *
