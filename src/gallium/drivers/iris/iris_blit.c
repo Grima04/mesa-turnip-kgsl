@@ -334,6 +334,18 @@ iris_resource_blorp_write_aux_usage(struct iris_context *ice,
    }
 }
 
+static struct iris_resource *
+iris_resource_for_aspect(struct pipe_resource *p_res, unsigned pipe_mask)
+{
+   if (pipe_mask == PIPE_MASK_S) {
+      struct iris_resource *junk, *s_res;
+      iris_get_depth_stencil_resources(p_res, &junk, &s_res);
+      return s_res;
+   } else {
+      return (struct iris_resource *)p_res;
+   }
+}
+
 /**
  * The pipe->blit() driver hook.
  *
@@ -348,8 +360,6 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    enum blorp_batch_flags blorp_flags = 0;
-   struct iris_resource *src_res = (void *) info->src.resource;
-   struct iris_resource *dst_res = (void *) info->dst.resource;
 
    /* We don't support color masking. */
    assert((info->mask & PIPE_MASK_RGBA) == PIPE_MASK_RGBA ||
@@ -384,6 +394,11 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
          return;
    }
 
+   struct iris_resource *src_res =
+      iris_resource_for_aspect(info->src.resource, info->mask);
+   struct iris_resource *dst_res =
+      iris_resource_for_aspect(info->dst.resource, info->mask);
+
    if (iris_resource_unfinished_aux_import(src_res))
       iris_resource_finish_aux_import(ctx->screen, src_res);
    if (iris_resource_unfinished_aux_import(dst_res))
@@ -415,10 +430,10 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    struct blorp_surf src_surf, dst_surf;
    iris_blorp_surf_for_resource(&screen->isl_dev,  &src_surf,
-                                info->src.resource, src_aux_usage,
+                                &src_res->base, src_aux_usage,
                                 info->src.level, false);
    iris_blorp_surf_for_resource(&screen->isl_dev, &dst_surf,
-                                info->dst.resource, dst_aux_usage,
+                                &dst_res->base, dst_aux_usage,
                                 info->dst.level, true);
 
    iris_resource_prepare_access(ice, dst_res, info->dst.level, 1,
