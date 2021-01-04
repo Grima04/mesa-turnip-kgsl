@@ -1633,11 +1633,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_fsat: {
-                bi_instr *I = (sz == 32) ?
-                        bi_fadd_f32_to(b, dst, s0, bi_zero(), BI_ROUND_NONE) :
-                        bi_fma_v2f16_to(b, dst, s0, bi_zero(), bi_zero(),
-                                        BI_ROUND_NONE);
-
+                bi_instr *I = bi_fadd_to(b, sz, dst, s0, bi_zero(), BI_ROUND_NONE);
                 I->clamp = BI_CLAMP_CLAMP_0_1;
                 break;
         }
