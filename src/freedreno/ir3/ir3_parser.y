@@ -905,6 +905,7 @@ cat6_dim:          '.' T_1D  { instr->cat6.d = 1; }
 
 cat6_type:         '.' type  { instr->cat6.type = $2; }
 cat6_offset:       offset    { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
+|                  '+' reg
 cat6_dst_offset:   offset    { instr->cat6.dst_offset = $1; }
 |                  '+' reg   { instr->flags |= IR3_INSTR_G; }
 

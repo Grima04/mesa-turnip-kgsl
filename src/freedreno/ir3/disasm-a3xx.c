@@ -957,6 +957,9 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		fprintf(ctx->out, ".%d", cat6->ldgb.type_size + 1);
 		fprintf(ctx->out, ".%c", ss);
 		break;
+	case OPC_LDG:
+		fprintf(ctx->out, ".%s", type[cat6->type]);
+		break;
 	default:
 		dst.im = cat6->g && !cat6->dst_off;
 		if (dst.im)

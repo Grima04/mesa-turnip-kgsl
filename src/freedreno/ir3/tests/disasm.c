@@ -141,6 +141,12 @@ static const struct test {
 	INSTR_6XX(c0ca0500_03800042, "stg.s32 g[r0.z], r8.y, 3"),
 	INSTR_6XX(c0ca0531_03800242, "stg.s32 g[r0.z+305], r8.y, 3"),
 
+	INSTR_6XX(c0020011_04c08023, "ldg.f32 r4.y, g[r0.z+r4.y], 4"), /* ldg.a.f32 r4.y, g[r0.z+(r4.y<<2)], 4 */
+	INSTR_6XX(c0060006_01c18017, "ldg.u32 r1.z, g[r1.z+r2.w], 1"), /* ldg.a.u32 r1.z, g[r1.z+(r2.w<<2)], 1 */
+	INSTR_6XX(c0060006_0181800f, "ldg.u32 r1.z, g[r1.z+7], 1"),
+	INSTR_6XX(c0060006_01818001, "ldg.u32 r1.z, g[r1.z], 1"),
+	INSTR_6XX(c0060003_0180c269, "ldg.u32 r0.w, g[r0.w+308], 1"),
+
 	/* TODO: We don't support disasm of stc yet and produce a stgb instead
 	 * (same as their disasm does for other families.  They're used as part
 	 * uniforms setup, followed by a shpe and then a load of the constant that
