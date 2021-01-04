@@ -6335,7 +6335,7 @@ texture_buffer_range(struct gl_context *ctx,
 
    _mesa_lock_texture(ctx, texObj);
    {
-      _mesa_reference_buffer_object(ctx, &texObj->BufferObject, bufObj);
+      _mesa_reference_buffer_object_shared(ctx, &texObj->BufferObject, bufObj);
       texObj->BufferObjectFormat = internalFormat;
       texObj->_BufferObjectFormat = format;
       texObj->BufferOffset = offset;

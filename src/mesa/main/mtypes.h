@@ -1402,6 +1402,34 @@ struct gl_buffer_object
    GLint RefCount;
    GLuint Name;
    GLchar *Label;       /**< GL_KHR_debug */
+
+   /**
+    * The context that holds a global buffer reference for the lifetime of
+    * the GL buffer ID to skip refcounting for all its private bind points.
+    * Other contexts must still do refcounting as usual. Shared binding points
+    * like TBO within gl_texture_object are always refcounted.
+    *
+    * Implementation details:
+    * - Only the context that creates the buffer ("creating context") skips
+    *   refcounting.
+    * - Only buffers represented by an OpenGL buffer ID skip refcounting.
+    *   Other internal buffers don't. (glthread requires refcounting for
+    *   internal buffers, etc.)
+    * - glDeleteBuffers removes the global buffer reference and increments
+    *   RefCount for all private bind points where the deleted buffer is bound
+    *   (e.g. unbound VAOs that are not changed by glDeleteBuffers),
+    *   effectively enabling refcounting for that context. This is the main
+    *   point where the global buffer reference is removed.
+    * - glDeleteBuffers called from a different context adds the buffer into
+    *   the ZombieBufferObjects list, which is a way to notify the creating
+    *   context that it should remove its global buffer reference to allow
+    *   freeing the buffer. The creating context walks over that list in a few
+    *   GL functions.
+    * - xxxDestroyContext walks over all buffers and removes its global
+    *   reference from those buffers that it created.
+    */
+   struct gl_context *Ctx;
+
    GLenum16 Usage;      /**< GL_STREAM_DRAW_ARB, GL_STREAM_READ_ARB, etc. */
    GLbitfield StorageFlags; /**< GL_MAP_PERSISTENT_BIT, etc. */
    GLsizeiptrARB Size;  /**< Size of buffer storage in bytes */
@@ -3400,6 +3428,19 @@ struct gl_shared_state
    struct ati_fragment_shader *DefaultFragmentShader;
 
    struct _mesa_HashTable *BufferObjects;
+
+   /* Buffer objects released by a different context than the one that
+    * created them. Since the creating context holds one global buffer
+    * reference for each buffer it created and skips reference counting,
+    * deleting a buffer by another context can't touch the buffer reference
+    * held by the context that created it. Only the creating context can
+    * remove its global buffer reference.
+    *
+    * This list contains all buffers that were deleted by a different context
+    * than the one that created them. This list should be probed by all
+    * contexts regularly and remove references of those buffers that they own.
+    */
+   struct set *ZombieBufferObjects;
 
    /** Table of both gl_shader and gl_shader_program objects */
    struct _mesa_HashTable *ShaderObjects;

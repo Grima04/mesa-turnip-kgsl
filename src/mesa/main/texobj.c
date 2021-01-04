@@ -447,7 +447,7 @@ _mesa_delete_texture_object(struct gl_context *ctx,
    /* Delete all texture/image handles. */
    _mesa_delete_texture_handles(ctx, texObj);
 
-   _mesa_reference_buffer_object(ctx, &texObj->BufferObject, NULL);
+   _mesa_reference_buffer_object_shared(ctx, &texObj->BufferObject, NULL);
 
    /* destroy the mutex -- it may have allocated memory (eg on bsd) */
    simple_mtx_destroy(&texObj->Mutex);

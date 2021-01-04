@@ -1346,7 +1346,6 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
    _mesa_reference_vao(ctx, &ctx->Array._DrawVAO, NULL);
 
    _mesa_free_attrib_data(ctx);
-   _mesa_free_buffer_objects(ctx);
    _mesa_free_eval_data( ctx );
    _mesa_free_texture_data( ctx );
    _mesa_free_image_textures(ctx);
@@ -1366,6 +1365,11 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
    _mesa_reference_buffer_object(ctx, &ctx->Unpack.BufferObj, NULL);
    _mesa_reference_buffer_object(ctx, &ctx->DefaultPacking.BufferObj, NULL);
    _mesa_reference_buffer_object(ctx, &ctx->Array.ArrayBufferObj, NULL);
+
+   /* This must be called after all buffers are unbound because global buffer
+    * references that this context holds will be removed.
+    */
+   _mesa_free_buffer_objects(ctx);
 
    /* free dispatch tables */
    free(ctx->BeginEnd);
