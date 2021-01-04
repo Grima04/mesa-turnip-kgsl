@@ -436,7 +436,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    if (abs(info->dst.box.width) == abs(info->src.box.width) &&
        abs(info->dst.box.height) == abs(info->src.box.height)) {
-      if (src_surf.surf->samples > 1 && dst_surf.surf->samples <= 1) {
+      if (info->src.resource->nr_samples > 1 &&
+          info->dst.resource->nr_samples <= 1) {
          /* The OpenGL ES 3.2 specification, section 16.2.1, says:
           *
           *    "If the read framebuffer is multisampled (its effective
@@ -501,7 +502,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
     * add the 0.5 offset ourselves here.
     */
    float depth_center_offset = 0;
-   if (src_res->surf.dim == ISL_SURF_DIM_3D)
+   if (info->src.resource->target == PIPE_TEXTURE_3D)
       depth_center_offset = 0.5 / info->dst.box.depth * info->src.box.depth;
 
    if (info->mask & main_mask) {
