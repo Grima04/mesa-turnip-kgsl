@@ -133,6 +133,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_blend_const_color_rgba:
    case nir_intrinsic_load_blend_const_color_aaaa8888_unorm:
    case nir_intrinsic_load_blend_const_color_rgba8888_unorm:
+   case nir_intrinsic_load_line_width:
+   case nir_intrinsic_load_aa_line_width:
       is_divergent = false;
       break;
 
@@ -299,7 +301,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_quad_swizzle_amd:
    case nir_intrinsic_masked_swizzle_amd:
    case nir_intrinsic_is_sparse_texels_resident:
-   case nir_intrinsic_sparse_residency_code_and: {
+   case nir_intrinsic_sparse_residency_code_and:
+   case nir_intrinsic_get_ubo_size: {
       unsigned num_srcs = nir_intrinsic_infos[instr->intrinsic].num_srcs;
       for (unsigned i = 0; i < num_srcs; i++) {
          if (instr->src[i].ssa->divergent) {
