@@ -733,6 +733,25 @@ choose_drm_format_mod(const struct anv_physical_device *device,
       return NULL;
 }
 
+static VkImageUsageFlags
+anv_image_create_usage(const VkImageCreateInfo *pCreateInfo,
+                       VkImageUsageFlags usage)
+{
+   /* Add TRANSFER_SRC usage for multisample attachment images. This is
+    * because we might internally use the TRANSFER_SRC layout on them for
+    * blorp operations associated with resolving those into other attachments
+    * at the end of a subpass.
+    *
+    * Without this additional usage, we compute an incorrect AUX state in
+    * anv_layout_to_aux_state().
+    */
+   if (pCreateInfo->samples > VK_SAMPLE_COUNT_1_BIT &&
+       (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
+      usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+   return usage;
+}
+
 VkResult
 anv_image_create(VkDevice _device,
                  const struct anv_image_create_info *create_info,
@@ -782,7 +801,7 @@ anv_image_create(VkDevice _device,
    image->levels = pCreateInfo->mipLevels;
    image->array_size = pCreateInfo->arrayLayers;
    image->samples = pCreateInfo->samples;
-   image->usage = pCreateInfo->usage;
+   image->usage = anv_image_create_usage(pCreateInfo, pCreateInfo->usage);
    image->create_flags = pCreateInfo->flags;
    image->tiling = pCreateInfo->tiling;
    image->disjoint = pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT;
@@ -795,8 +814,11 @@ anv_image_create(VkDevice _device,
       const VkImageStencilUsageCreateInfoEXT *stencil_usage_info =
          vk_find_struct_const(pCreateInfo->pNext,
                               IMAGE_STENCIL_USAGE_CREATE_INFO_EXT);
-      if (stencil_usage_info)
-         image->stencil_usage = stencil_usage_info->stencilUsage;
+      if (stencil_usage_info) {
+         image->stencil_usage =
+            anv_image_create_usage(pCreateInfo,
+                                   stencil_usage_info->stencilUsage);
+      }
    }
 
    /* In case of external format, We don't know format yet,
