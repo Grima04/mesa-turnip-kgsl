@@ -24,6 +24,7 @@
 #include "spirv_builder.h"
 
 #include "util/macros.h"
+#include "util/set.h"
 #include "util/ralloc.h"
 #include "util/u_bitcast.h"
 #include "util/u_memory.h"
@@ -91,9 +92,11 @@ spirv_buffer_emit_string(struct spirv_buffer *b, void *mem_ctx,
 void
 spirv_builder_emit_cap(struct spirv_builder *b, SpvCapability cap)
 {
-   spirv_buffer_prepare(&b->capabilities, b->mem_ctx, 2);
-   spirv_buffer_emit_word(&b->capabilities, SpvOpCapability | (2 << 16));
-   spirv_buffer_emit_word(&b->capabilities, cap);
+   if (!b->caps)
+      b->caps = _mesa_set_create_u32_keys(b->mem_ctx);
+
+   assert(b->caps);
+   _mesa_set_add(b->caps, (void*)(uintptr_t)cap);
 }
 
 void
@@ -1283,8 +1286,8 @@ size_t
 spirv_builder_get_num_words(struct spirv_builder *b)
 {
    const size_t header_size = 5;
-   return header_size +
-          b->capabilities.num_words +
+   const size_t caps_size = b->caps ? b->caps->entries * 2 : 0;
+   return header_size + caps_size +
           b->extensions.num_words +
           b->imports.num_words +
           b->memory_model.num_words +
@@ -1309,8 +1312,14 @@ spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
    words[written++] = b->prev_id + 1;
    words[written++] = 0;
 
+   if (b->caps) {
+      set_foreach(b->caps, entry) {
+         words[written++] = SpvOpCapability | (2 << 16);
+         words[written++] = (uintptr_t)entry->key;
+      }
+   }
+
    const struct spirv_buffer *buffers[] = {
-      &b->capabilities,
       &b->extensions,
       &b->imports,
       &b->memory_model,

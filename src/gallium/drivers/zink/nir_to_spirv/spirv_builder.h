@@ -32,6 +32,7 @@
 #include <stdlib.h>
 
 struct hash_table;
+struct set;
 
 struct spirv_buffer {
    uint32_t *words;
@@ -41,7 +42,8 @@ struct spirv_buffer {
 struct spirv_builder {
    void *mem_ctx;
 
-   struct spirv_buffer capabilities;
+   struct set *caps;
+
    struct spirv_buffer extensions;
    struct spirv_buffer imports;
    struct spirv_buffer memory_model;
