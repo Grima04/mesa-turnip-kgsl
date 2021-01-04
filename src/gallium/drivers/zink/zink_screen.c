@@ -237,10 +237,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
       return screen->info.props.limits.maxGeometryTotalOutputComponents;
 
-#if 0 /* TODO: Enable me. Enables ARB_texture_gather */
    case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
       return 4;
-#endif
 
    case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
       return screen->info.props.limits.minTexelGatherOffset;
