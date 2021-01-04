@@ -7691,7 +7691,7 @@
     <immediate name="sr_count" size="4" pseudo="true"/>
   </ins>
 
-  <ins name="+TEXS_2D.f16" staging="w=4" mask="0xfc000" exact="0xd8000" message="tex">
+  <ins name="+TEXS_2D.f16" staging="w=2" mask="0xfc000" exact="0xd8000" message="tex">
     <src start="0"/>
     <src start="3"/>
     <immediate name="texture_index" start="6" size="3"/>
@@ -7703,7 +7703,7 @@
     </mod>
   </ins>
 
-  <ins name="+TEXS_2D.f32" staging="w=2" mask="0xfc000" exact="0x58000" message="tex">
+  <ins name="+TEXS_2D.f32" staging="w=4" mask="0xfc000" exact="0x58000" message="tex">
     <src start="0"/>
     <src start="3"/>
     <immediate name="texture_index" start="6" size="3"/>
