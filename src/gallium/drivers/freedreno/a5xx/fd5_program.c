@@ -367,14 +367,14 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	struct ir3_shader_linkage l = {0};
 	ir3_link_shaders(&l, s[VS].v, s[FS].v, true);
 
-	if (!emit->binning_pass)
-		ir3_link_stream_out(&l, s[VS].v);
-
 	OUT_PKT4(ring, REG_A5XX_VPC_VAR_DISABLE(0), 4);
 	OUT_RING(ring, ~l.varmask[0]);  /* VPC_VAR[0].DISABLE */
 	OUT_RING(ring, ~l.varmask[1]);  /* VPC_VAR[1].DISABLE */
 	OUT_RING(ring, ~l.varmask[2]);  /* VPC_VAR[2].DISABLE */
 	OUT_RING(ring, ~l.varmask[3]);  /* VPC_VAR[3].DISABLE */
+
+	if (!emit->binning_pass)
+		ir3_link_stream_out(&l, s[VS].v);
 
 	/* a5xx appends pos/psize to end of the linkage map: */
 	if (pos_regid != regid(63,0))
