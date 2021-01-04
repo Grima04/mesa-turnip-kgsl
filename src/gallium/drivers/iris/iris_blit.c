@@ -346,6 +346,18 @@ iris_resource_for_aspect(struct pipe_resource *p_res, unsigned pipe_mask)
    }
 }
 
+static enum pipe_format
+pipe_format_for_aspect(enum pipe_format format, unsigned pipe_mask)
+{
+   if (pipe_mask == PIPE_MASK_S) {
+      return util_format_stencil_only(format);
+   } else if (pipe_mask == PIPE_MASK_Z) {
+      return util_format_get_depth_only(format);
+   } else {
+      return format;
+   }
+}
+
 /**
  * The pipe->blit() driver hook.
  *
@@ -464,14 +476,18 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       struct iris_resource *dst_res =
          iris_resource_for_aspect(info->dst.resource, aspect);
 
+      enum pipe_format src_pfmt =
+         pipe_format_for_aspect(info->src.format, aspect);
+      enum pipe_format dst_pfmt =
+         pipe_format_for_aspect(info->dst.format, aspect);
+
       if (iris_resource_unfinished_aux_import(src_res))
          iris_resource_finish_aux_import(ctx->screen, src_res);
       if (iris_resource_unfinished_aux_import(dst_res))
          iris_resource_finish_aux_import(ctx->screen, dst_res);
 
       struct iris_format_info src_fmt =
-         iris_format_for_usage(devinfo, info->src.format,
-                               ISL_SURF_USAGE_TEXTURE_BIT);
+         iris_format_for_usage(devinfo, src_pfmt, ISL_SURF_USAGE_TEXTURE_BIT);
       enum isl_aux_usage src_aux_usage =
          iris_resource_texture_aux_usage(ice, src_res, src_fmt.fmt);
 
@@ -482,7 +498,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                    IRIS_DOMAIN_OTHER_READ);
 
       struct iris_format_info dst_fmt =
-         iris_format_for_usage(devinfo, info->dst.format,
+         iris_format_for_usage(devinfo, dst_pfmt,
                                ISL_SURF_USAGE_RENDER_TARGET_BIT);
       enum isl_aux_usage dst_aux_usage =
          iris_resource_blorp_write_aux_usage(ice, dst_res, dst_fmt.fmt);
