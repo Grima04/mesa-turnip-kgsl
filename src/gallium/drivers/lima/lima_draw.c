@@ -1027,7 +1027,7 @@ lima_draw_vbo_update(struct pipe_context *pctx,
    if ((ctx->dirty & LIMA_CONTEXT_DIRTY_CONST_BUFF &&
         ctx->const_buffer[PIPE_SHADER_VERTEX].dirty) ||
        ctx->dirty & LIMA_CONTEXT_DIRTY_VIEWPORT ||
-       ctx->dirty & LIMA_CONTEXT_DIRTY_SHADER_VERT) {
+       ctx->dirty & LIMA_CONTEXT_DIRTY_COMPILED_VS) {
       lima_update_gp_uniform(ctx);
       ctx->const_buffer[PIPE_SHADER_VERTEX].dirty = false;
    }
@@ -1153,7 +1153,7 @@ lima_draw_vbo(struct pipe_context *pctx,
 
    struct lima_context *ctx = lima_context(pctx);
 
-   if (!ctx->vs || !ctx->fs) {
+   if (!ctx->bind_fs || !ctx->bind_vs) {
       debug_warn_once("no shader, skip draw\n");
       return;
    }
@@ -1162,10 +1162,11 @@ lima_draw_vbo(struct pipe_context *pctx,
    if (lima_is_scissor_zero(ctx))
       return;
 
-   if (!lima_update_vs_state(ctx) || !lima_update_fs_state(ctx))
+   if (!lima_update_fs_state(ctx) || !lima_update_vs_state(ctx))
       return;
 
    struct lima_job *job = lima_job_get(ctx);
+   job->pp_max_stack_size = MAX2(job->pp_max_stack_size, ctx->fs->stack_size);
 
    lima_dump_command_stream_print(
       job->dump, ctx->vs->bo->map, ctx->vs->shader_size, false,

@@ -487,6 +487,12 @@ bool gpir_compile_nir(struct lima_vs_shader_state *prog, struct nir_shader *nir,
    if (!gpir_codegen_prog(comp))
       goto err_out0;
 
+   /* initialize to support accumulating below */
+   nir_foreach_shader_out_variable(var, nir) {
+      struct lima_varying_info *v = prog->varying + var->data.driver_location;
+      v->components = 0;
+   }
+
    nir_foreach_shader_out_variable(var, nir) {
       bool varying = true;
       switch (var->data.location) {
