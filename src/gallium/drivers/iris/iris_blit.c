@@ -410,12 +410,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    enum isl_aux_usage src_aux_usage =
       iris_resource_texture_aux_usage(ice, src_res, src_fmt.fmt);
 
-   bool src_clear_supported = isl_aux_usage_has_fast_clears(src_aux_usage) &&
-                              src_res->surf.format == src_fmt.fmt;
-
-   iris_resource_prepare_access(ice, src_res, info->src.level, 1,
-                                info->src.box.z, info->src.box.depth,
-                                src_aux_usage, src_clear_supported);
+   iris_resource_prepare_texture(ice, src_res, src_fmt.fmt, info->src.level,
+                                 1, info->src.box.z, info->src.box.depth);
    iris_emit_buffer_barrier_for(batch, src_res->bo, IRIS_DOMAIN_OTHER_READ);
 
    struct iris_format_info dst_fmt =
