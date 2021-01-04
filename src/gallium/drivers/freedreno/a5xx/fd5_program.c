@@ -367,8 +367,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	struct ir3_shader_linkage l = {0};
 	ir3_link_shaders(&l, s[VS].v, s[FS].v, true);
 
-	if ((s[VS].v->shader->stream_output.num_outputs > 0) &&
-			!emit->binning_pass)
+	if (!emit->binning_pass)
 		ir3_link_stream_out(&l, s[VS].v);
 
 	OUT_PKT4(ring, REG_A5XX_VPC_VAR_DISABLE(0), 4);
