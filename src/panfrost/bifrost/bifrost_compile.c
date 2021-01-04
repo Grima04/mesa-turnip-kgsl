@@ -516,6 +516,32 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
                         BI_SEG_UBO);
 }
 
+static bi_index
+bi_addr_high(nir_src *src)
+{
+	return (nir_src_bit_size(*src) == 64) ?
+		bi_word(bi_src_index(src), 1) : bi_zero();
+}
+
+static void
+bi_emit_load(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
+{
+        bi_load_to(b, instr->num_components * nir_dest_bit_size(instr->dest),
+                   bi_dest_index(&instr->dest),
+                   bi_src_index(&instr->src[0]), bi_addr_high(&instr->src[0]),
+                   seg);
+}
+
+static void
+bi_emit_store(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
+{
+        bi_store_to(b, instr->num_components * nir_src_bit_size(instr->src[0]),
+                    bi_null(),
+                    bi_src_index(&instr->src[0]),
+                    bi_src_index(&instr->src[1]), bi_addr_high(&instr->src[1]),
+                    seg);
+}
+
 static void
 bi_load_sysval(bi_builder *b, nir_instr *instr,
                 unsigned nr_components, unsigned offset)
@@ -603,6 +629,31 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_ubo:
                 bi_emit_load_ubo(b, instr);
+                break;
+
+        case nir_intrinsic_load_global:
+        case nir_intrinsic_load_global_constant:
+                bi_emit_load(b, instr, BI_SEG_NONE);
+                break;
+
+        case nir_intrinsic_store_global:
+                bi_emit_store(b, instr, BI_SEG_NONE);
+                break;
+
+        case nir_intrinsic_load_scratch:
+                bi_emit_load(b, instr, BI_SEG_TL);
+                break;
+
+        case nir_intrinsic_store_scratch:
+                bi_emit_store(b, instr, BI_SEG_TL);
+                break;
+
+        case nir_intrinsic_load_shared:
+                bi_emit_load(b, instr, BI_SEG_WLS);
+                break;
+
+        case nir_intrinsic_store_shared:
+                bi_emit_store(b, instr, BI_SEG_WLS);
                 break;
 
         case nir_intrinsic_load_frag_coord:
