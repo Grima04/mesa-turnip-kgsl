@@ -136,6 +136,10 @@ static const struct test {
 	INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x"),
 	/* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
 	INSTR_6XX(c0d20906_02800004, "stg.f32 g[r1.x+r1.z], r0.z, 2"), /* stg.a.f32 g[r1.x+(r1.z<<2)], r0.z, 2 */
+	INSTR_6XX(c0da052e_01800042, "stg.s32 g[r0.z+r11.z], r8.y, 1"), /* stg.a.s32 g[r0.z+(r11.z<<2)], r8.y, 1 */
+	INSTR_6XX(c0ca0505_03800042, "stg.s32 g[r0.z+5], r8.y, 3"),
+	INSTR_6XX(c0ca0500_03800042, "stg.s32 g[r0.z], r8.y, 3"),
+	INSTR_6XX(c0ca0531_03800242, "stg.s32 g[r0.z+305], r8.y, 3"),
 
 	/* TODO: We don't support disasm of stc yet and produce a stgb instead
 	 * (same as their disasm does for other families.  They're used as part

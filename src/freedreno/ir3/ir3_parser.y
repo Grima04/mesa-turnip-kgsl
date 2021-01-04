@@ -905,11 +905,9 @@ cat6_dim:          '.' T_1D  { instr->cat6.d = 1; }
 
 cat6_type:         '.' type  { instr->cat6.type = $2; }
 cat6_offset:       offset    { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
-// TODO in at least some cases (like stg) the dst_offset can actually be a
-//      GPR.. but cleaning that up w/ the existing struct based instruction
-//      encoding is messy, so for now just use cat6.dst_offset like the
-//      nir->ir3 frontend does
 cat6_dst_offset:   offset    { instr->cat6.dst_offset = $1; }
+|                  '+' reg   { instr->flags |= IR3_INSTR_G; }
+
 cat6_immed:        integer   { instr->cat6.iim_val = $1; }
 
 cat6_load:         T_OP_LDG  { new_instr(OPC_LDG); }  cat6_type dst_reg ',' 'g' '[' reg cat6_offset ']' ',' immediate
@@ -923,7 +921,15 @@ cat6_load:         T_OP_LDG  { new_instr(OPC_LDG); }  cat6_type dst_reg ',' 'g' 
 // TODO some of the cat6 instructions have different syntax for a6xx..
 //|                  T_OP_LDIB { new_instr(OPC_LDIB); } cat6_type dst_reg cat6_offset ',' reg ',' cat6_immed
 
-cat6_store:        T_OP_STG  { new_instr(OPC_STG); dummy_dst(); }  cat6_type 'g' '[' reg cat6_dst_offset ']' ',' reg ',' immediate
+cat6_store:        T_OP_STG  { new_instr(OPC_STG); dummy_dst(); }  cat6_type 'g' '[' reg cat6_dst_offset ']' ',' reg ',' immediate {
+                       /* fixup src order, the offset reg is expected last currently */
+                       if (instr->flags & IR3_INSTR_G) {
+                           struct ir3_register *offset = instr->regs[2];
+                           instr->regs[2] = instr->regs[3];
+                           instr->regs[3] = instr->regs[4];
+                           instr->regs[4] = offset;
+                       }
+                   }
 |                  T_OP_STP  { new_instr(OPC_STP); dummy_dst(); }  cat6_type 'p' '[' reg cat6_dst_offset ']' ',' reg ',' immediate
 |                  T_OP_STL  { new_instr(OPC_STL); dummy_dst(); }  cat6_type 'l' '[' reg cat6_dst_offset ']' ',' reg ',' immediate
 |                  T_OP_STLW { new_instr(OPC_STLW); dummy_dst(); } cat6_type 'l' '[' reg cat6_dst_offset ']' ',' reg ',' immediate
