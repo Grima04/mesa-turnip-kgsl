@@ -81,7 +81,7 @@ glcpp = executable(
 
 # FIXME: these fail on windows due to whitespace differences
 if with_any_opengl and with_tests and host_machine.system() != 'windows'
-  modes = ['unix', 'windows', 'oldmac', 'bizarro']
+  modes = ['unix', 'oldmac', 'bizarro']
   if dep_valgrind.found()
     modes += ['valgrind']
   endif
