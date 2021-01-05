@@ -217,6 +217,8 @@ hgl_st_manager_get_param(struct st_manager *smapi, enum st_manager_param param)
 }
 
 
+static uint32_t hgl_fb_ID = 0;
+
 /**
  * Create new framebuffer
  */
@@ -254,6 +256,7 @@ hgl_create_st_framebuffer(struct hgl_context* context)
 
 	p_atomic_set(&buffer->stfbi->stamp, 1);
 	buffer->stfbi->st_manager_private = (void*)buffer;
+	buffer->stfbi->ID = p_atomic_inc_return(&hgl_fb_ID);
 	buffer->stfbi->state_manager = context->manager;
 
 	return buffer;
