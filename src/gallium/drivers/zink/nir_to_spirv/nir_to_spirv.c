@@ -2171,7 +2171,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    assert(tex->texture_index == tex->sampler_index);
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
-         const_offset = 0, sample = 0, tex_offset = 0;
+         const_offset = 0, offset = 0, sample = 0, tex_offset = 0;
    unsigned coord_components = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -2191,8 +2191,10 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          break;
 
       case nir_tex_src_offset:
-         assert(nir_src_is_const(tex->src[i].src));
-         const_offset = get_src_int(ctx, &tex->src[i].src);
+         if (nir_src_is_const(tex->src[i].src))
+            const_offset = get_src_int(ctx, &tex->src[i].src);
+         else
+            offset = get_src_int(ctx, &tex->src[i].src);
          break;
 
       case nir_tex_src_bias:
@@ -2329,6 +2331,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       actual_dest_type = spirv_builder_type_float(&ctx->builder, 32);
 
    SpvId result;
+   if (offset)
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageGatherExtended);
    if (tex->op == nir_texop_txf ||
        tex->op == nir_texop_txf_ms ||
        tex->op == nir_texop_tg4) {
@@ -2339,17 +2343,17 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
             spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageGatherExtended);
          result = spirv_builder_emit_image_gather(&ctx->builder, dest_type,
                                                  load, coord, emit_uint_const(ctx, 32, tex->component),
-                                                 lod, sample, const_offset, dref);
+                                                 lod, sample, const_offset, offset, dref);
       } else
          result = spirv_builder_emit_image_fetch(&ctx->builder, dest_type,
-                                                 image, coord, lod, sample, const_offset);
+                                                 image, coord, lod, sample, const_offset, offset);
    } else {
       result = spirv_builder_emit_image_sample(&ctx->builder,
                                                actual_dest_type, load,
                                                coord,
                                                proj != 0,
                                                lod, bias, dref, dx, dy,
-                                               const_offset);
+                                               const_offset, offset);
    }
 
    spirv_builder_emit_decoration(&ctx->builder, result,
