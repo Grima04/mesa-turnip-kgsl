@@ -41,18 +41,15 @@
  */
 
 static nir_ssa_def *
-convert_instr(nir_builder *bld, nir_alu_instr *alu)
+convert_instr(nir_builder *bld, nir_op op,
+      nir_ssa_def *numer, nir_ssa_def *denom)
 {
-   nir_ssa_def *numer, *denom, *af, *bf, *a, *b, *q, *r, *rt;
-   nir_op op = alu->op;
+   nir_ssa_def *af, *bf, *a, *b, *q, *r, *rt;
    bool is_signed;
 
    is_signed = (op == nir_op_idiv ||
                 op == nir_op_imod ||
                 op == nir_op_irem);
-
-   numer = nir_ssa_for_alu_src(bld, alu, 0);
-   denom = nir_ssa_for_alu_src(bld, alu, 1);
 
    if (is_signed) {
       af = nir_i2f32(bld, numer);
@@ -192,12 +189,9 @@ emit_idiv(nir_builder *bld, nir_ssa_def *numer, nir_ssa_def *denom, nir_op op)
 }
 
 static nir_ssa_def *
-convert_instr_precise(nir_builder *bld, nir_alu_instr *alu)
+convert_instr_precise(nir_builder *bld, nir_op op,
+      nir_ssa_def *numer, nir_ssa_def *denom)
 {
-   nir_op op = alu->op;
-   nir_ssa_def *numer = nir_ssa_for_alu_src(bld, alu, 0);
-   nir_ssa_def *denom = nir_ssa_for_alu_src(bld, alu, 1);
-
    if (op == nir_op_udiv || op == nir_op_umod)
       return emit_udiv(bld, numer, denom, op == nir_op_umod);
    else
@@ -208,11 +202,15 @@ static nir_ssa_def *
 lower_idiv(nir_builder *b, nir_instr *instr, void *_data)
 {
    enum nir_lower_idiv_path *path = _data;
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+   nir_ssa_def *numer = nir_ssa_for_alu_src(b, alu, 0);
+   nir_ssa_def *denom = nir_ssa_for_alu_src(b, alu, 1);
 
    if (*path == nir_lower_idiv_precise)
-      return convert_instr_precise(b, nir_instr_as_alu(instr));
+      return convert_instr_precise(b, alu->op, numer, denom);
    else
-      return convert_instr(b, nir_instr_as_alu(instr));
+      return convert_instr(b, alu->op, numer, denom);
 }
 
 static bool
