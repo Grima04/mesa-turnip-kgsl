@@ -44,7 +44,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
                         /* Mark all registers live after the instruction as
                          * interfering with the destination */
 
-                        for (unsigned d = 0; d < ARRAY_SIZE(ins->dest); ++d) {
+                        bi_foreach_dest(ins, d) {
                                 if (bi_get_node(ins->dest[d]) >= node_count)
                                         continue;
 
