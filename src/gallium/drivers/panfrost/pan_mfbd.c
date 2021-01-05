@@ -136,6 +136,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                          struct MALI_RENDER_TARGET *rt)
 {
         struct panfrost_device *dev = pan_device(surf->context->screen);
+        bool is_bifrost = dev->quirks & IS_BIFROST;
         unsigned version = dev->gpu_id >> 12;
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
         unsigned level = surf->u.tex.level;
@@ -182,14 +183,17 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
         } else if (drm_is_afbc(rsrc->layout.modifier)) {
                 const struct panfrost_slice *slice = &rsrc->layout.slices[level];
 
-                if (version >= 7) {
+                if (version >= 7)
                         rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_AFBC;
+                else
+                        rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
+
+                if (is_bifrost) {
                         rt->afbc.row_stride = slice->afbc.row_stride /
                                               AFBC_HEADER_BYTES_PER_TILE;
                         rt->bifrost_afbc.afbc_wide_block_enable =
                                 panfrost_block_dim(rsrc->layout.modifier, true, 0) > 16;
                 } else {
-                        rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
                         rt->afbc.chunk_size = 9;
                         rt->midgard_afbc.sparse = true;
                         rt->afbc.body_size = slice->afbc.body_size;
@@ -256,6 +260,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                                   struct MALI_ZS_CRC_EXTENSION *ext)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+        bool is_bifrost = dev->quirks & IS_BIFROST;
         unsigned version = dev->gpu_id >> 12;
 
         /* Checksumming only works with a single render target */
@@ -307,8 +312,12 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                                            &ext->zs_afbc_header,
                                            &ext->zs_afbc_body);
 
-                if (version >= 7) {
+                if (version >= 7)
                         ext->zs_block_format_v7 = MALI_BLOCK_FORMAT_V7_AFBC;
+                else
+                        ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
+
+                if (is_bifrost) {
                         ext->zs_afbc_row_stride = slice->afbc.row_stride /
                                                   AFBC_HEADER_BYTES_PER_TILE;
 		} else {
