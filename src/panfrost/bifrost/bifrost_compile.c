@@ -2137,6 +2137,8 @@ bi_optimize_nir(nir_shader *nir)
                 .lower_txd = true,
         };
 
+        NIR_PASS(progress, nir, pan_nir_lower_64bit_intrin);
+
         NIR_PASS(progress, nir, nir_lower_int64);
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
