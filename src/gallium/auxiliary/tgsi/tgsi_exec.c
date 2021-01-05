@@ -3897,12 +3897,26 @@ exec_load_img(struct tgsi_exec_machine *mach,
 }
 
 static void
-exec_load_buf(struct tgsi_exec_machine *mach,
-              const struct tgsi_full_instruction *inst)
+exec_load_membuf(struct tgsi_exec_machine *mach,
+                 const struct tgsi_full_instruction *inst)
 {
    uint32_t unit = fetch_sampler_unit(mach, inst, 0);
+
    uint32_t size;
-   char *ptr = mach->Buffer->lookup(mach->Buffer, unit, &size);
+   char *ptr;
+   switch (inst->Src[0].Register.File) {
+   case TGSI_FILE_MEMORY:
+      ptr = mach->LocalMem;
+      size = mach->LocalMemSize;
+      break;
+
+   case TGSI_FILE_BUFFER:
+      ptr = mach->Buffer->lookup(mach->Buffer, unit, &size);
+      break;
+
+   default:
+      unreachable("unsupported TGSI_OPCODE_LOAD file");
+   }
 
    union tgsi_exec_channel offset;
    IFETCH(&offset, 1, TGSI_CHAN_X);
@@ -3927,47 +3941,13 @@ exec_load_buf(struct tgsi_exec_machine *mach,
 }
 
 static void
-exec_load_mem(struct tgsi_exec_machine *mach,
-              const struct tgsi_full_instruction *inst)
-{
-   union tgsi_exec_channel r[4];
-   uint chan;
-   char *ptr = mach->LocalMem;
-   uint32_t offset;
-   int j;
-
-   IFETCH(&r[0], 1, TGSI_CHAN_X);
-   if (r[0].u[0] >= mach->LocalMemSize)
-      return;
-
-   offset = r[0].u[0];
-   ptr += offset;
-
-   for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-      for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-         if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
-            memcpy(&r[chan].u[j], ptr + (4 * chan), 4);
-         }
-      }
-   }
-
-   for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-      if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
-         store_dest(mach, &r[chan], &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
-      }
-   }
-}
-
-static void
 exec_load(struct tgsi_exec_machine *mach,
           const struct tgsi_full_instruction *inst)
 {
    if (inst->Src[0].Register.File == TGSI_FILE_IMAGE)
       exec_load_img(mach, inst);
-   else if (inst->Src[0].Register.File == TGSI_FILE_BUFFER)
-      exec_load_buf(mach, inst);
-   else if (inst->Src[0].Register.File == TGSI_FILE_MEMORY)
-      exec_load_mem(mach, inst);
+   else
+      exec_load_membuf(mach, inst);
 }
 
 static uint
