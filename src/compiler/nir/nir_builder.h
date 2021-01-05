@@ -1664,18 +1664,29 @@ nir_scoped_memory_barrier(nir_builder *b,
 }
 
 static inline nir_ssa_def *
+nir_type_convert(nir_builder *b,
+                    nir_ssa_def *src,
+                    nir_alu_type src_type,
+                    nir_alu_type dest_type)
+{
+   assert(nir_alu_type_get_type_size(src_type) == 0 ||
+          nir_alu_type_get_type_size(src_type) == src->bit_size);
+
+   src_type = (nir_alu_type) (src_type | src->bit_size);
+
+   nir_op opcode =
+      nir_type_conversion_op(src_type, dest_type, nir_rounding_mode_undef);
+
+   return nir_build_alu(b, opcode, src, NULL, NULL, NULL);
+}
+
+static inline nir_ssa_def *
 nir_convert_to_bit_size(nir_builder *b,
                     nir_ssa_def *src,
                     nir_alu_type type,
                     unsigned bit_size)
 {
-   nir_alu_type base_type = nir_alu_type_get_base_type(type);
-   nir_alu_type dst_type = (nir_alu_type)(bit_size | base_type);
-
-   nir_op opcode =
-      nir_type_conversion_op(type, dst_type, nir_rounding_mode_undef);
-
-   return nir_build_alu(b, opcode, src, NULL, NULL, NULL);
+   return nir_type_convert(b, src, type, (nir_alu_type) (type | bit_size));
 }
 
 static inline nir_ssa_def *
