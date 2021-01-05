@@ -80,6 +80,7 @@ struct zink_program {
    struct zink_descriptor_set *last_set[ZINK_DESCRIPTOR_TYPES];
 
    VkPipelineLayout layout;
+   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
 };
 
 struct zink_gfx_program {

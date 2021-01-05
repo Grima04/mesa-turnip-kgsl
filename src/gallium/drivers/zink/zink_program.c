@@ -123,13 +123,10 @@ create_gfx_pipeline_layout(VkDevice dev, struct zink_gfx_program *prog)
 
    VkDescriptorSetLayout layouts[ZINK_DESCRIPTOR_TYPES];
    unsigned num_layouts = 0;
-   unsigned num_descriptors = zink_program_num_descriptors(&prog->base);
-   if (num_descriptors) {
-      for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-         if (prog->base.pool[i]) {
-            layouts[num_layouts] = prog->base.pool[i]->dsl;
-            num_layouts++;
-         }
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
+      if (prog->base.dsl[i]) {
+         layouts[num_layouts] = prog->base.dsl[i];
+         num_layouts++;
       }
    }
 
@@ -164,13 +161,10 @@ create_compute_pipeline_layout(VkDevice dev, struct zink_compute_program *comp)
 
    VkDescriptorSetLayout layouts[ZINK_DESCRIPTOR_TYPES];
    unsigned num_layouts = 0;
-   unsigned num_descriptors = zink_program_num_descriptors(&comp->base);
-   if (num_descriptors) {
-      for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-         if (comp->base.pool[i]) {
-            layouts[num_layouts] = comp->base.pool[i]->dsl;
-            num_layouts++;
-         }
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
+      if (comp->base.dsl[i]) {
+         layouts[num_layouts] = comp->base.dsl[i];
+         num_layouts++;
       }
    }
 
@@ -844,7 +838,7 @@ zink_program_num_descriptors(const struct zink_program *pg)
 {
    unsigned num_descriptors = 0;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
-      num_descriptors += pg->pool[i] ? pg->pool[i]->key.num_descriptors : 0;
+      num_descriptors += pg->pool[i] ? pg->pool[i]->key.layout->num_descriptors : 0;
    return num_descriptors;
 }
 

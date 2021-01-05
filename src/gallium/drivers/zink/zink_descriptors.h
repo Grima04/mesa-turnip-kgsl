@@ -81,10 +81,14 @@ struct zink_descriptor_barrier {
    VkPipelineStageFlagBits stage;
 };
 
-struct zink_descriptor_pool_key {
-   unsigned num_type_sizes;
+struct zink_descriptor_layout_key {
    unsigned num_descriptors;
    VkDescriptorSetLayoutBinding *bindings;
+};
+
+struct zink_descriptor_pool_key {
+   struct zink_descriptor_layout_key *layout;
+   unsigned num_type_sizes;
    VkDescriptorPoolSize *sizes;
 };
 
@@ -95,7 +99,6 @@ struct zink_descriptor_pool {
    struct hash_table *free_desc_sets;
    struct util_dynarray alloc_desc_sets;
    VkDescriptorPool descpool;
-   VkDescriptorSetLayout dsl;
    struct zink_descriptor_pool_key key;
    unsigned num_resources;
    unsigned num_sets_allocated;
@@ -137,6 +140,12 @@ zink_descriptor_set_refs_clear(struct zink_descriptor_refs *refs, void *ptr);
 
 void
 zink_descriptor_set_recycle(struct zink_descriptor_set *zds);
+
+bool
+zink_descriptor_layouts_init(struct zink_context *ctx);
+
+void
+zink_descriptor_layouts_deinit(struct zink_context *ctx);
 
 bool
 zink_descriptor_program_init(struct zink_context *ctx,

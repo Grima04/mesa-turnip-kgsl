@@ -159,6 +159,8 @@ struct zink_context {
    struct zink_rasterizer_state *rast_state;
    struct zink_depth_stencil_alpha_state *dsa_state;
 
+   struct hash_table desc_set_layouts[ZINK_DESCRIPTOR_TYPES];
+
    struct zink_shader *gfx_stages[ZINK_SHADER_COUNT];
    struct zink_gfx_pipeline_state gfx_pipeline_state;
    enum pipe_prim_type gfx_prim_mode;
