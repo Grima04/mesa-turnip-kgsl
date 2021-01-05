@@ -669,7 +669,7 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
                                 SpvId dref,
                                 SpvId dx,
                                 SpvId dy,
-                                SpvId offset)
+                                SpvId const_offset)
 {
    SpvId result = spirv_builder_new_id(b);
 
@@ -699,9 +699,9 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
       extra_operands[++num_extra_operands] = dy;
       operand_mask |= SpvImageOperandsGradMask;
    }
-   if (offset) {
-      extra_operands[++num_extra_operands] = offset;
-      operand_mask |= SpvImageOperandsOffsetMask;
+   if (const_offset) {
+      extra_operands[++num_extra_operands] = const_offset;
+      operand_mask |= SpvImageOperandsConstOffsetMask;
    }
 
    /* finalize num_extra_operands / extra_operands */
@@ -744,7 +744,7 @@ spirv_builder_emit_image_gather(struct spirv_builder *b,
                                SpvId component,
                                SpvId lod,
                                SpvId sample,
-                               SpvId offset,
+                               SpvId const_offset,
                                SpvId dref)
 {
    SpvId result = spirv_builder_new_id(b);
@@ -761,9 +761,9 @@ spirv_builder_emit_image_gather(struct spirv_builder *b,
       extra_operands[++num_extra_operands] = sample;
       operand_mask |= SpvImageOperandsSampleMask;
    }
-   if (offset) {
-      extra_operands[++num_extra_operands] = offset;
-      operand_mask |= SpvImageOperandsOffsetMask;
+   if (const_offset) {
+      extra_operands[++num_extra_operands] = const_offset;
+      operand_mask |= SpvImageOperandsConstOffsetMask;
    }
    if (dref)
       op = SpvOpImageDrefGather;
@@ -796,7 +796,7 @@ spirv_builder_emit_image_fetch(struct spirv_builder *b,
                                SpvId coordinate,
                                SpvId lod,
                                SpvId sample,
-                               SpvId offset)
+                               SpvId const_offset)
 {
    SpvId result = spirv_builder_new_id(b);
 
@@ -811,9 +811,9 @@ spirv_builder_emit_image_fetch(struct spirv_builder *b,
       extra_operands[++num_extra_operands] = sample;
       operand_mask |= SpvImageOperandsSampleMask;
    }
-   if (offset) {
-      extra_operands[++num_extra_operands] = offset;
-      operand_mask |= SpvImageOperandsOffsetMask;
+   if (const_offset) {
+      extra_operands[++num_extra_operands] = const_offset;
+      operand_mask |= SpvImageOperandsConstOffsetMask;
    }
 
    /* finalize num_extra_operands / extra_operands */
