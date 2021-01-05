@@ -1014,13 +1014,15 @@ static inline bool is_cat6_legacy(instr_t *instr, unsigned gpu_id)
 {
 	instr_cat6_a6xx_t *cat6 = &instr->cat6_a6xx;
 
+	if (gpu_id < 600)
+		return true;
+
 	/* At least one of these two bits is pad in all the possible
 	 * "legacy" cat6 encodings, and a analysis of all the pre-a6xx
 	 * cmdstream traces I have indicates that the pad bit is zero
 	 * in all cases.  So we can use this to detect new encoding:
 	 */
 	if ((cat6->pad3 & 0x4) && (cat6->pad5 & 0x2)) {
-		ir3_assert(gpu_id >= 600);
 		ir3_assert(instr->cat6.opc == 0);
 		return false;
 	}
