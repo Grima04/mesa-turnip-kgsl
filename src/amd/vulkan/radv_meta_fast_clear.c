@@ -744,7 +744,8 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 
 	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
 
-	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
+	if ((decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) ||
+	    (!(radv_image_has_fmask(image) && !image->tc_compatible_cmask))) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
 							image->fce_pred_offset;
 		pred_offset += 8 * subresourceRange->baseMipLevel;
@@ -758,7 +759,8 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 	radv_process_color_image(cmd_buffer, image, subresourceRange,
 				 decompress_dcc);
 
-	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
+	if ((decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) ||
+	    (!(radv_image_has_fmask(image) && !image->tc_compatible_cmask))) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
 							image->fce_pred_offset;
 		pred_offset += 8 * subresourceRange->baseMipLevel;
