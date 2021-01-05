@@ -935,7 +935,7 @@ cat6_store:        T_OP_STG  { new_instr(OPC_STG); dummy_dst(); }  cat6_type 'g'
 |                  T_OP_STL  { new_instr(OPC_STL); dummy_dst(); }  cat6_type 'l' '[' reg cat6_dst_offset ']' ',' reg ',' immediate
 |                  T_OP_STLW { new_instr(OPC_STLW); dummy_dst(); } cat6_type 'l' '[' reg cat6_dst_offset ']' ',' reg ',' immediate
 
-cat6_storeib:      T_OP_STIB { new_instr(OPC_STIB); dummy_dst(); } cat6_typed cat6_dim cat6_type '.' cat6_immed'g' '[' immediate ']' '+' reg ',' reg
+cat6_storeib:      T_OP_STIB { new_instr(OPC_STIB); dummy_dst(); } cat6_typed cat6_dim cat6_type '.' cat6_immed'g' '[' immediate ']' ',' reg ',' reg ',' reg
 
 cat6_prefetch:     T_OP_PREFETCH { new_instr(OPC_PREFETCH); new_reg(0,0); /* dummy dst */ } 'g' '[' reg cat6_offset ']' ',' cat6_immed
 
