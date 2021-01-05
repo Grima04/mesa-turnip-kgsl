@@ -1423,44 +1423,11 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       break;
 
    case nir_op_fdph:
-      unreachable("should already be lowered away");
-
    case nir_op_seq:
    case nir_op_sne:
    case nir_op_slt:
-   case nir_op_sge: {
-      assert(nir_op_infos[alu->op].num_inputs == 2);
-      int num_components = nir_dest_num_components(alu->dest.dest);
-      SpvId bool_type = get_bvec_type(ctx, num_components);
-
-      SpvId zero = emit_float_const(ctx, bit_size, 0.0f);
-      SpvId one = emit_float_const(ctx, bit_size, 1.0f);
-      if (num_components > 1) {
-         SpvId zero_comps[num_components], one_comps[num_components];
-         for (int i = 0; i < num_components; i++) {
-            zero_comps[i] = zero;
-            one_comps[i] = one;
-         }
-
-         zero = spirv_builder_const_composite(&ctx->builder, dest_type,
-                                              zero_comps, num_components);
-         one = spirv_builder_const_composite(&ctx->builder, dest_type,
-                                             one_comps, num_components);
-      }
-
-      SpvOp op;
-      switch (alu->op) {
-      case nir_op_seq: op = SpvOpFOrdEqual; break;
-      case nir_op_sne: op = SpvOpFOrdNotEqual; break;
-      case nir_op_slt: op = SpvOpFOrdLessThan; break;
-      case nir_op_sge: op = SpvOpFOrdGreaterThanEqual; break;
-      default: unreachable("unexpected op");
-      }
-
-      result = emit_binop(ctx, op, bool_type, src[0], src[1]);
-      result = emit_select(ctx, dest_type, result, one, zero);
-      }
-      break;
+   case nir_op_sge:
+      unreachable("should already be lowered away");
 
    case nir_op_flrp:
       assert(nir_op_infos[alu->op].num_inputs == 3);
