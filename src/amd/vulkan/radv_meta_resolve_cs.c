@@ -860,6 +860,23 @@ void radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	radv_meta_restore(&saved_state, cmd_buffer);
+
+	if (radv_layout_dcc_compressed(cmd_buffer->device, dest_image,
+				       dest_image_layout, false, queue_mask)) {
+
+		cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
+			                        RADV_CMD_FLAG_INV_VCACHE;
+
+		VkImageSubresourceRange range = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = region->dstSubresource.mipLevel,
+			.levelCount = 1,
+			.baseArrayLayer = dest_base_layer,
+			.layerCount = region->dstSubresource.layerCount,
+		};
+
+		radv_initialize_dcc(cmd_buffer, dest_image, &range, 0xffffffff);
+	}
 }
 
 /**
