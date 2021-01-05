@@ -3903,7 +3903,7 @@ exec_load_membuf(struct tgsi_exec_machine *mach,
    uint32_t unit = fetch_sampler_unit(mach, inst, 0);
 
    uint32_t size;
-   char *ptr;
+   const char *ptr;
    switch (inst->Src[0].Register.File) {
    case TGSI_FILE_MEMORY:
       ptr = mach->LocalMem;
@@ -3912,6 +3912,16 @@ exec_load_membuf(struct tgsi_exec_machine *mach,
 
    case TGSI_FILE_BUFFER:
       ptr = mach->Buffer->lookup(mach->Buffer, unit, &size);
+      break;
+
+   case TGSI_FILE_CONSTANT:
+      if (unit < ARRAY_SIZE(mach->Consts)) {
+         ptr = mach->Consts[unit];
+         size = mach->ConstsSize[unit];
+      } else {
+         ptr = NULL;
+         size = 0;
+      }
       break;
 
    default:
