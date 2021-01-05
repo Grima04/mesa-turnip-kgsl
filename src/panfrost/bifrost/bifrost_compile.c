@@ -62,15 +62,6 @@ int bifrost_debug = 0;
 			fprintf(stderr, "%s:%d: "fmt, \
 				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
-static inline bi_builder
-bi_init_builder(bi_context *ctx)
-{
-        return (bi_builder) {
-                .shader = ctx,
-                .cursor = bi_after_block(ctx->current_block)
-        };
-}
-
 static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
 
 static void
@@ -1904,7 +1895,7 @@ emit_block(bi_context *ctx, nir_block *block)
         list_addtail(&ctx->current_block->base.link, &ctx->blocks);
         list_inithead(&ctx->current_block->base.instructions);
 
-        bi_builder _b = bi_init_builder(ctx);
+        bi_builder _b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
 
         nir_foreach_instr(instr, block) {
                 bi_emit_instr(&_b, instr);
@@ -1938,7 +1929,7 @@ emit_if(bi_context *ctx, nir_if *nif)
         bi_block *before_block = ctx->current_block;
 
         /* Speculatively emit the branch, but we can't fill it in until later */
-        bi_builder _b = bi_init_builder(ctx);
+        bi_builder _b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
         bi_instr *then_branch = bi_branch(&_b, &nif->condition, true);
 
         /* Emit the two subblocks. */
@@ -1992,7 +1983,7 @@ emit_loop(bi_context *ctx, nir_loop *nloop)
         emit_cf_list(ctx, &nloop->body);
 
         /* Branch back to loop back */
-        bi_builder _b = bi_init_builder(ctx);
+        bi_builder _b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
         bi_jump(&_b, ctx->continue_block);
         pan_block_add_successor(&start_block->base, &ctx->continue_block->base);
         pan_block_add_successor(&ctx->current_block->base, &ctx->continue_block->base);
@@ -2129,7 +2120,7 @@ bi_lower_constant(bi_builder *b, bi_instr *ins, unsigned s, uint32_t *accum, uns
 static void
 bi_lower_fau(bi_context *ctx, bi_block *block)
 {
-        bi_builder b = bi_init_builder(ctx);
+        bi_builder b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
 
         bi_foreach_instr_in_block_safe(block, _ins) {
                 bi_instr *ins = (bi_instr *) _ins;

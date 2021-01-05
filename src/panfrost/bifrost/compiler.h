@@ -844,6 +844,15 @@ typedef struct {
     bi_cursor cursor;
 } bi_builder;
 
+static inline bi_builder
+bi_init_builder(bi_context *ctx, bi_cursor cursor)
+{
+        return (bi_builder) {
+                .shader = ctx,
+                .cursor = cursor
+        };
+}
+
 /* Insert an instruction at the cursor and move the cursor */
 
 static inline void
