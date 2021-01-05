@@ -2135,7 +2135,7 @@ radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t level_count = radv_get_levelCount(image, range);
 	uint32_t count = 2 * level_count;
 
-	assert(radv_dcc_enabled(image, range->baseMipLevel));
+	assert(image->fce_pred_offset != 0);
 
 	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
 	radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) |
@@ -6210,12 +6210,12 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 		}
 
 		radv_initialize_dcc(cmd_buffer, image, range, value);
-
-		radv_update_fce_metadata(cmd_buffer, image, range, false);
 	}
 
 	if (radv_image_has_cmask(image) ||
 	    radv_dcc_enabled(image, range->baseMipLevel)) {
+		radv_update_fce_metadata(cmd_buffer, image, range, false);
+
 		uint32_t color_values[2] = {0};
 		radv_set_color_clear_metadata(cmd_buffer, image, range,
 					      color_values);
