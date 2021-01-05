@@ -40,25 +40,16 @@
  * AMDGPU target. It should handle 32-bit idiv/irem/imod/udiv/umod exactly.
  */
 
-static bool
+static nir_ssa_def *
 convert_instr(nir_builder *bld, nir_alu_instr *alu)
 {
    nir_ssa_def *numer, *denom, *af, *bf, *a, *b, *q, *r, *rt;
    nir_op op = alu->op;
    bool is_signed;
 
-   if ((op != nir_op_idiv) &&
-       (op != nir_op_udiv) &&
-       (op != nir_op_imod) &&
-       (op != nir_op_umod) &&
-       (op != nir_op_irem))
-      return false;
-
    is_signed = (op == nir_op_idiv ||
                 op == nir_op_imod ||
                 op == nir_op_irem);
-
-   bld->cursor = nir_before_instr(&alu->instr);
 
    numer = nir_ssa_for_alu_src(bld, alu, 0);
    denom = nir_ssa_for_alu_src(bld, alu, 1);
@@ -128,10 +119,7 @@ convert_instr(nir_builder *bld, nir_alu_instr *alu)
       }
    }
 
-   assert(alu->dest.dest.is_ssa);
-   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, q);
-
-   return true;
+   return q;
 }
 
 /* ported from LLVM's AMDGPUTargetLowering::LowerUDIVREM */
@@ -203,70 +191,58 @@ emit_idiv(nir_builder *bld, nir_ssa_def *numer, nir_ssa_def *denom, nir_op op)
    }
 }
 
-static bool
+static nir_ssa_def *
 convert_instr_precise(nir_builder *bld, nir_alu_instr *alu)
 {
    nir_op op = alu->op;
+   nir_ssa_def *numer = nir_ssa_for_alu_src(bld, alu, 0);
+   nir_ssa_def *denom = nir_ssa_for_alu_src(bld, alu, 1);
 
-   if ((op != nir_op_idiv) &&
-       (op != nir_op_imod) &&
-       (op != nir_op_irem) &&
-       (op != nir_op_udiv) &&
-       (op != nir_op_umod))
+   if (op == nir_op_udiv || op == nir_op_umod)
+      return emit_udiv(bld, numer, denom, op == nir_op_umod);
+   else
+      return emit_idiv(bld, numer, denom, op);
+}
+
+static nir_ssa_def *
+lower_idiv(nir_builder *b, nir_instr *instr, void *_data)
+{
+   enum nir_lower_idiv_path *path = _data;
+
+   if (*path == nir_lower_idiv_precise)
+      return convert_instr_precise(b, nir_instr_as_alu(instr));
+   else
+      return convert_instr(b, nir_instr_as_alu(instr));
+}
+
+static bool
+inst_is_idiv(const nir_instr *instr, UNUSED const void *_state)
+{
+   if (instr->type != nir_instr_type_alu)
       return false;
+
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
 
    if (alu->dest.dest.ssa.bit_size != 32)
       return false;
 
-   bld->cursor = nir_before_instr(&alu->instr);
-
-   nir_ssa_def *numer = nir_ssa_for_alu_src(bld, alu, 0);
-   nir_ssa_def *denom = nir_ssa_for_alu_src(bld, alu, 1);
-
-   nir_ssa_def *res = NULL;
-
-   if (op == nir_op_udiv || op == nir_op_umod)
-      res = emit_udiv(bld, numer, denom, op == nir_op_umod);
-   else
-      res = emit_idiv(bld, numer, denom, op);
-
-   assert(alu->dest.dest.is_ssa);
-   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, res);
-
-   return true;
-}
-
-static bool
-convert_impl(nir_function_impl *impl, enum nir_lower_idiv_path path)
-{
-   nir_builder b;
-   nir_builder_init(&b, impl);
-   bool progress = false;
-
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type == nir_instr_type_alu && path == nir_lower_idiv_precise)
-            progress |= convert_instr_precise(&b, nir_instr_as_alu(instr));
-         else if (instr->type == nir_instr_type_alu)
-            progress |= convert_instr(&b, nir_instr_as_alu(instr));
-      }
+   switch (alu->op) {
+   case nir_op_idiv:
+   case nir_op_udiv:
+   case nir_op_imod:
+   case nir_op_umod:
+   case nir_op_irem:
+      return true;
+   default:
+      return false;
    }
-
-   nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
-
-   return progress;
 }
 
 bool
 nir_lower_idiv(nir_shader *shader, enum nir_lower_idiv_path path)
 {
-   bool progress = false;
-
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= convert_impl(function->impl, path);
-   }
-
-   return progress;
+   return nir_shader_lower_instructions(shader,
+         inst_is_idiv,
+         lower_idiv,
+         &path);
 }
