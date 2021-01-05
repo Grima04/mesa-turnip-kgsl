@@ -193,12 +193,10 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (pCreateInfo->arrayLayers > 1 && pCreateInfo->mipLevels > 1)
 		return false;
 
-	/* FIXME: DCC for MSAA with 4x and 8x samples doesn't work yet, while
-	 * 2x can be enabled with an option.
-	 */
-	if (pCreateInfo->samples > 2 ||
-	    (pCreateInfo->samples == 2 &&
-	     !device->physical_device->dcc_msaa_allowed))
+	/* TODO: Fix and enable DCC MSAA on older chips. */
+	if (pCreateInfo->samples > 1 &&
+	    !device->physical_device->dcc_msaa_allowed &&
+	     device->physical_device->rad_info.chip_class < GFX10)
 		return false;
 
 	/* Determine if the formats are DCC compatible. */
