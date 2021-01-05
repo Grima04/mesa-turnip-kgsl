@@ -2206,7 +2206,7 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer,
 	VkFormat format = image->vk_format;
 	VkClearValue internal_clear_value;
 
-        if (image->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
+        if (ranges->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
                 internal_clear_value.color = clear_value->color;
         else
                 internal_clear_value.depthStencil = clear_value->depthStencil;
