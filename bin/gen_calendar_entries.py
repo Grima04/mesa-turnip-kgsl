@@ -41,6 +41,13 @@ if typing.TYPE_CHECKING:
 
         manager: str
 
+    class FinalArguments(Protocol):
+        """Typing information for release command arguments."""
+
+        series: str
+        manager: str
+        zero_released: bool
+
     class ExtendArguments(Protocol):
         """Typing information for extend command arguments."""
 
@@ -89,7 +96,6 @@ def _calculate_release_start(major: str, minor: str) -> datetime.date:
     return quarter.replace(day=quarter.day + 14)
 
 
-
 def release_candidate(args: RCArguments) -> None:
     """Add release candidate entries."""
     with VERSION.open('r') as f:
@@ -111,6 +117,50 @@ def release_candidate(args: RCArguments) -> None:
         writer.writerow([None, date.isoformat(), f'{major}.{minor}.0-rc4', args.manager, OR_FINAL.format(f'{major}.{minor}')])
 
     commit(f'docs: Add calendar entries for {major}.{minor} release candidates.')
+
+
+def _calculate_next_release_date(next_is_zero: bool) -> datetime.date:
+    """Calculate the date of the next release.
+
+    If the next is .0, we have the release in seven days, if the next is .1,
+    then it's in 14
+    """
+    date = datetime.date.today()
+    day = date.isoweekday()
+    if day < 3:
+        delta = 3 - day
+    elif day > 3:
+        # this will walk back into the previous month, it's much simpler to
+        # duplicate the 14 than handle the calculations for the month and year
+        # changing.
+        delta = (3 - day)
+    else:
+        delta = 0
+    delta += 7
+    if not next_is_zero:
+        delta += 7
+    return date + datetime.timedelta(days=delta)
+
+
+def final_release(args: FinalArguments) -> None:
+    """Add final release entries."""
+    data = read_calendar()
+    date = _calculate_next_release_date(not args.zero_released)
+
+    with CALENDAR_CSV.open('w') as f:
+        writer = csv.writer(f)
+        writer.writerows(data)
+
+        base = 1 if args.zero_released else 0
+
+        writer.writerow([args.series, date.isoformat(), f'{args.series}.{base}', args.manager])
+        for row in range(base + 1, 3):
+            date = date + datetime.timedelta(days=14)
+            writer.writerow([None, date.isoformat(), f'{args.series}.{row}', args.manager])
+        date = date + datetime.timedelta(days=14)
+        writer.writerow([None, date.isoformat(), f'{args.series}.3', args.manager, LAST_RELEASE.format(args.series)])
+
+    commit(f'docs: Add calendar entries for {args.series} release.')
 
 
 def extend(args: ExtendArguments) -> None:
@@ -183,6 +233,12 @@ def main() -> None:
     rc = sub.add_parser('release-candidate', aliases=['rc'], help='Generate calendar entries for a release candidate.')
     rc.add_argument('manager', help="the name of the person managing the release.")
     rc.set_defaults(func=release_candidate)
+
+    fr = sub.add_parser('release', help='Generate calendar entries for a final release.')
+    fr.add_argument('manager', help="the name of the person managing the release.")
+    fr.add_argument('series', help='The series to extend, such as "29.3" or "30.0".')
+    fr.add_argument('--zero-released', action='store_true', help='The .0 release was today, the next release is .1')
+    fr.set_defaults(func=final_release)
 
     ex = sub.add_parser('extend', help='Generate additional entries for a release.')
     ex.add_argument('series', help='The series to extend, such as "29.3" or "30.0".')

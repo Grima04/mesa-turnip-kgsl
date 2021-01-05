@@ -26,6 +26,7 @@ from unittest import mock
 import argparse
 import csv
 import contextlib
+import datetime
 import tempfile
 import os
 import pathlib
@@ -75,6 +76,73 @@ class TestReleaseStart:
         assert d.day == 13
         assert d.month == 1
         assert d.year == 2021
+
+
+class TestNextReleaseDate:
+
+    @contextlib.contextmanager
+    def _patch_date(date: datetime.date) -> typing.Iterator[None]:
+        mdate = mock.Mock()
+        mdate.today = mock.Mock(return_value=date)
+        with mock.patch('bin.gen_calendar_entries.datetime.date', mdate):
+            yield
+
+    class TestIsWeds:
+
+        @pytest.fixture(scope='class', autouse=True)
+        def data(self) -> None:
+            date = datetime.date(2021, 1, 6)
+            with TestNextReleaseDate._patch_date(date):
+                yield
+
+        @pytest.mark.parametrize(
+            'is_zero, expected',
+            [
+                (True, 13),
+                (False, 20),
+            ],
+        )
+        def test(self, is_zero: bool, expected: int) -> None:
+            date = gen_calendar_entries._calculate_next_release_date(is_zero)
+            assert date.day == expected
+
+    class TestBeforeWeds:
+
+        @pytest.fixture(scope='class', autouse=True)
+        def data(self) -> None:
+            date = datetime.date(2021, 1, 5)
+            with TestNextReleaseDate._patch_date(date):
+                yield
+
+        @pytest.mark.parametrize(
+            'is_zero, expected',
+            [
+                (True, 13),
+                (False, 20),
+            ],
+        )
+        def test(self, is_zero: bool, expected: int) -> None:
+            date = gen_calendar_entries._calculate_next_release_date(is_zero)
+            assert date.day == expected
+
+    class TestAfterWeds:
+
+        @pytest.fixture(scope='class', autouse=True)
+        def data(self) -> None:
+            date = datetime.date(2021, 1, 8)
+            with TestNextReleaseDate._patch_date(date):
+                yield
+
+        @pytest.mark.parametrize(
+            'is_zero, expected',
+            [
+                (True, 13),
+                (False, 20),
+            ],
+        )
+        def test(self, is_zero: bool, expected: int) -> None:
+            date = gen_calendar_entries._calculate_next_release_date(is_zero)
+            assert date.day == expected
 
 
 class TestRC:
@@ -193,5 +261,59 @@ class TestExtend:
             ('', '2021-01-27', '21.0.0-rc3', 'Dylan Baker', ''),
             ('', '2021-02-03', '21.0.0-rc4', 'Dylan Baker', gen_calendar_entries.OR_FINAL.format('21.0')),
         ])
+
+        assert actual == expected
+
+
+class TestFinal:
+
+    @pytest.fixture(autouse=True, scope='class')
+    def _patch_date(self) -> typing.Iterator[None]:
+        mdate = mock.Mock()
+        mdate.today = mock.Mock(return_value=datetime.date(2021, 1, 6))
+        with mock.patch('bin.gen_calendar_entries.datetime.date', mdate):
+            yield
+
+    ORIGINAL_DATA = [
+        ('20.3', '2021-01-13', '20.3.3', 'Dylan Baker', ''),
+        ('',     '2021-01-27', '20.3.4', 'Dylan Baker', 'Last planned release of the 20.3.x series'),
+    ]
+
+    @pytest.fixture(autouse=True)
+    def csv(self) -> None:
+        """inject our test data.."""
+        with mock_csv(self.ORIGINAL_DATA):
+            yield
+
+    def test_zero_released(self) -> None:
+        args: gen_calendar_entries.FinalArguments = argparse.Namespace()
+        args.manager = "Dylan Baker"
+        args.zero_released = True
+        args.series = '21.0'
+        gen_calendar_entries.final_release(args)
+
+        expected = self.ORIGINAL_DATA.copy()
+        expected.append(('21.0', '2021-01-20', f'21.0.1', 'Dylan Baker'))
+        expected.append((    '', '2021-02-03', f'21.0.2', 'Dylan Baker'))
+        expected.append((    '', '2021-02-17', f'21.0.3', 'Dylan Baker', gen_calendar_entries.LAST_RELEASE.format(args.series)))
+
+        actual = gen_calendar_entries.read_calendar()
+
+        assert actual == expected
+
+    def test_zero_not_released(self) -> None:
+        args: gen_calendar_entries.FinalArguments = argparse.Namespace()
+        args.manager = "Dylan Baker"
+        args.zero_released = False
+        args.series = '21.0'
+        gen_calendar_entries.final_release(args)
+
+        expected = self.ORIGINAL_DATA.copy()
+        expected.append(('21.0', '2021-01-13', f'21.0.0', 'Dylan Baker'))
+        expected.append((    '', '2021-01-27', f'21.0.1', 'Dylan Baker'))
+        expected.append((    '', '2021-02-10', f'21.0.2', 'Dylan Baker'))
+        expected.append((    '', '2021-02-24', f'21.0.3', 'Dylan Baker', gen_calendar_entries.LAST_RELEASE.format(args.series)))
+
+        actual = gen_calendar_entries.read_calendar()
 
         assert actual == expected
