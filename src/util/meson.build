@@ -185,6 +185,10 @@ if with_platform_android
   )
 endif
 
+if with_platform_haiku
+  deps_for_libmesa_util += dep_network
+endif
+
 _libmesa_util = static_library(
   'mesa_util',
   [files_mesa_util, files_debug_stack, format_srgb],

@@ -448,7 +448,7 @@ endif
 
 # Android uses emutls for versions <= P/28. For USE_ELF_TLS we need ELF TLS.
 use_elf_tls = false
-if not ['windows', 'freebsd', 'openbsd'].contains(host_machine.system()) and (not with_platform_android or get_option('platform-sdk-version') >= 29)
+if not ['windows', 'freebsd', 'openbsd', 'haiku'].contains(host_machine.system()) and (not with_platform_android or get_option('platform-sdk-version') >= 29)
   pre_args += '-DUSE_ELF_TLS'
   use_elf_tls = true
 endif
@@ -1417,6 +1417,10 @@ endif
 # this only exists on linux so either this is linux and it will be found, or
 # it's not linux and wont
 dep_m = cc.find_library('m', required : false)
+
+if with_platform_haiku
+  dep_network = cc.find_library('network')
+endif
 
 # Check for libdrm. Various drivers have different libdrm version requirements,
 # but we always want to use the same version for all libdrm modules. That means
