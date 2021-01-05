@@ -792,12 +792,14 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 		}
 	}
 
-	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
+	if (image->fce_pred_offset != 0) {
 		/* Clear the image's fast-clear eliminate predicate because
 		 * FMASK and DCC also imply a fast-clear eliminate.
 		 */
 		radv_update_fce_metadata(cmd_buffer, image, subresourceRange, false);
+	}
 
+	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
 		/* Mark the image as being decompressed. */
 		if (decompress_dcc)
 			radv_update_dcc_metadata(cmd_buffer, image, subresourceRange, false);
