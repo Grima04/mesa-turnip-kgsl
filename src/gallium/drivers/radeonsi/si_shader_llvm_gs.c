@@ -114,6 +114,9 @@ static LLVMValueRef si_nir_load_input_gs(struct ac_shader_abi *abi,
 /* Pass GS inputs from ES to GS on GFX9. */
 static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 {
+   if (!ctx->shader->is_monolithic)
+      ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
+
    LLVMValueRef ret = ctx->return_value;
 
    ret = si_insert_input_ptr(ctx, ret, ctx->other_const_and_shader_buffers, 0);
@@ -596,13 +599,6 @@ void si_llvm_build_gs_prolog(struct si_shader_context *ctx, union si_shader_part
    /* Create the function. */
    si_llvm_create_func(ctx, "gs_prolog", returns, num_sgprs + num_vgprs, 0);
    func = ctx->main_fn;
-
-   /* Set the full EXEC mask for the prolog, because we are only fiddling
-    * with registers here. The main shader part will set the correct EXEC
-    * mask.
-    */
-   if (ctx->screen->info.chip_class >= GFX9 && !key->gs_prolog.is_monolithic)
-      ac_init_exec_full_mask(&ctx->ac);
 
    /* Copy inputs to outputs. This should be no-op, as the registers match,
     * but it will prevent the compiler from overwriting them unintentionally.

@@ -1884,7 +1884,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
 
          /* The LS output / HS input layout can be communicated
           * directly instead of via user SGPRs for merged LS-HS.
-          * The LS VGPR fix prefers this too.
+          * This also enables jumping over the VS prolog for HS-only waves.
           */
          key->opt.prefer_mono = 1;
          key->opt.same_patch_vertices = sctx->same_patch_vertices;
@@ -1924,23 +1924,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          if (stages_key.u.ngg)
             si_shader_selector_key_hw_vs(sctx, sel, key);
 
-         /* Merged ES-GS can have unbalanced wave usage.
-          *
-          * ES threads are per-vertex, while GS threads are
-          * per-primitive. So without any amplification, there
-          * are fewer GS threads than ES threads, which can result
-          * in empty (no-op) GS waves. With too much amplification,
-          * there are more GS threads than ES threads, which
-          * can result in empty (no-op) ES waves.
-          *
-          * Non-monolithic shaders are implemented by setting EXEC
-          * at the beginning of shader parts, and don't jump to
-          * the end if EXEC is 0.
-          *
-          * Monolithic shaders use conditional blocks, so they can
-          * jump and skip empty waves of ES or GS. So set this to
-          * always use optimized variants, which are monolithic.
-          */
+         /* This enables jumping over the VS prolog for GS-only waves. */
          key->opt.prefer_mono = 1;
       }
       key->part.gs.prolog.tri_strip_adj_fix = sctx->gs_tri_strip_adj_fix;

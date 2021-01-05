@@ -846,7 +846,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
 
    if (key->vs_prolog.num_merged_next_stage_vgprs) {
       if (!key->vs_prolog.is_monolithic)
-         si_init_exec_from_input(ctx, merged_wave_info, 0);
+         ac_init_exec_full_mask(&ctx->ac);
 
       if (key->vs_prolog.as_ls && ctx->screen->info.has_ls_vgpr_init_bug) {
          /* If there are no HS threads, SPI loads the LS VGPRs

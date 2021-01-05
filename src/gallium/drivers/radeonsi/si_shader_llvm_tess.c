@@ -922,6 +922,9 @@ static void si_llvm_emit_tcs_epilogue(struct ac_shader_abi *abi, unsigned max_ou
 /* Pass TCS inputs from LS to TCS on GFX9. */
 static void si_set_ls_return_value_for_tcs(struct si_shader_context *ctx)
 {
+   if (!ctx->shader->is_monolithic)
+      ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
+
    LLVMValueRef ret = ctx->return_value;
 
    ret = si_insert_input_ptr(ctx, ret, ctx->other_const_and_shader_buffers, 0);

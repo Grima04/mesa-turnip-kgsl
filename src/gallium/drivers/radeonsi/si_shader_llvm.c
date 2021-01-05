@@ -348,7 +348,8 @@ void si_llvm_declare_esgs_ring(struct si_shader_context *ctx)
    LLVMSetAlignment(ctx->esgs_ring, 64 * 1024);
 }
 
-void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg param, unsigned bitoffset)
+static void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg param,
+                                    unsigned bitoffset)
 {
    LLVMValueRef args[] = {
       ac_get_arg(&ctx->ac, param),
@@ -910,101 +911,91 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       }
    }
 
-   /* For GFX9 merged shaders:
-    * - Set EXEC for the first shader. If the prolog is present, set
-    *   EXEC there instead.
-    * - Add a barrier before the second shader.
-    * - In the second shader, reset EXEC to ~0 and wrap the main part in
-    *   an if-statement. This is required for correctness in geometry
-    *   shaders, to ensure that empty GS waves do not send GS_EMIT and
-    *   GS_CUT messages.
-    *
-    * For monolithic merged shaders, the first shader is wrapped in an
-    * if-block together with its prolog in si_build_wrapper_function.
-    *
-    * NGG vertex and tess eval shaders running as the last
-    * vertex/geometry stage handle execution explicitly using
-    * if-statements.
-    */
-   if (ctx->screen->info.chip_class >= GFX9) {
-      if (!shader->is_monolithic && (shader->key.as_es || shader->key.as_ls) &&
+   /* For merged shaders (VS-TCS, VS-GS, TES-GS): */
+   if (ctx->screen->info.chip_class >= GFX9 && si_is_merged_shader(shader)) {
+      LLVMValueRef thread_enabled = NULL;
+
+      /* TES is special because it has only 1 shader part if NGG shader culling is disabled,
+       * and therefore it doesn't use the wrapper function.
+       */
+      bool no_wrapper_func = ctx->stage == MESA_SHADER_TESS_EVAL && !shader->key.as_es &&
+                             !shader->key.opt.ngg_culling;
+
+      /* Set EXEC = ~0 before the first shader. If the prolog is present, EXEC is set there
+       * instead. For monolithic shaders, the wrapper function does this.
+       */
+      if ((!shader->is_monolithic || no_wrapper_func) &&
           (ctx->stage == MESA_SHADER_TESS_EVAL ||
            (ctx->stage == MESA_SHADER_VERTEX &&
-            !si_vs_needs_prolog(sel, &shader->key.part.vs.prolog, &shader->key, ngg_cull_shader)))) {
-         si_init_exec_from_input(ctx, ctx->args.merged_wave_info, 0);
-      } else if (ctx->stage == MESA_SHADER_TESS_CTRL || ctx->stage == MESA_SHADER_GEOMETRY ||
+            !si_vs_needs_prolog(sel, &shader->key.part.vs.prolog, &shader->key, ngg_cull_shader))))
+         ac_init_exec_full_mask(&ctx->ac);
+
+      /* NGG VS and NGG TES: Send gs_alloc_req and the prim export at the beginning to decrease
+       * register usage.
+       */
+      if ((ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL) &&
+          shader->key.as_ngg && !shader->key.as_es && !shader->key.opt.ngg_culling) {
+         gfx10_ngg_build_sendmsg_gs_alloc_req(ctx);
+
+         /* Build the primitive export at the beginning
+          * of the shader if possible.
+          */
+         if (gfx10_ngg_export_prim_early(shader))
+            gfx10_ngg_build_export_prim(ctx, NULL, NULL);
+      }
+
+      /* NGG GS: Initialize LDS and insert s_barrier, which must not be inside the if statement. */
+      if (ctx->stage == MESA_SHADER_GEOMETRY && shader->key.as_ngg)
+         gfx10_ngg_gs_emit_prologue(ctx);
+
+      if (ctx->stage == MESA_SHADER_GEOMETRY ||
+          (ctx->stage == MESA_SHADER_TESS_CTRL && !shader->is_monolithic)) {
+         /* Wrap both shaders in an if statement according to the number of enabled threads
+          * there. For monolithic TCS, the if statement is inserted by the wrapper function,
+          * not here.
+          */
+         thread_enabled = si_is_gs_thread(ctx); /* 2nd shader: thread enabled bool */
+      } else if (((shader->key.as_ls || shader->key.as_es) && !shader->is_monolithic) ||
                  (shader->key.as_ngg && !shader->key.as_es)) {
-         LLVMValueRef thread_enabled = NULL;
-         bool nested_barrier;
+         /* This is NGG VS or NGG TES or VS before GS or TES before GS or VS before TCS.
+          * For monolithic LS (VS before TCS) and ES (VS before GS and TES before GS),
+          * the if statement is inserted by the wrapper function.
+          */
+         thread_enabled = si_is_es_thread(ctx); /* 1st shader: thread enabled bool */
+      }
 
-         if (!shader->is_monolithic || (ctx->stage == MESA_SHADER_TESS_EVAL && shader->key.as_ngg &&
-                                        !shader->key.as_es && !shader->key.opt.ngg_culling))
-            ac_init_exec_full_mask(&ctx->ac);
+      if (thread_enabled) {
+         ctx->merged_wrap_if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
+         ctx->merged_wrap_if_label = 11500;
+         ac_build_ifcc(&ctx->ac, thread_enabled, ctx->merged_wrap_if_label);
+      }
 
-         if ((ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL) &&
-             shader->key.as_ngg && !shader->key.as_es && !shader->key.opt.ngg_culling) {
-            gfx10_ngg_build_sendmsg_gs_alloc_req(ctx);
-
-            /* Build the primitive export at the beginning
-             * of the shader if possible.
-             */
-            if (gfx10_ngg_export_prim_early(shader))
-               gfx10_ngg_build_export_prim(ctx, NULL, NULL);
-         }
-
-         if (ctx->stage == MESA_SHADER_TESS_CTRL) {
-            /* We need the barrier only if TCS inputs are read from LDS. */
-            nested_barrier =
-               !shader->key.opt.same_patch_vertices ||
-               shader->selector->info.base.inputs_read &
-               ~shader->selector->tcs_vgpr_only_inputs;
-
-            /* The wrapper inserts the conditional for monolithic shaders,
-             * and if this is a monolithic shader, we are already inside
-             * the conditional, so don't insert it.
-             */
-            if (!shader->is_monolithic)
-               thread_enabled = si_is_gs_thread(ctx); /* 2nd shader thread really */
-         } else if (ctx->stage == MESA_SHADER_GEOMETRY) {
-            if (shader->key.as_ngg) {
-               gfx10_ngg_gs_emit_prologue(ctx);
-               nested_barrier = false;
-            } else {
-               nested_barrier = true;
-            }
-
-            thread_enabled = si_is_gs_thread(ctx);
-         } else {
-            thread_enabled = si_is_es_thread(ctx);
-            nested_barrier = false;
-         }
-
-         if (thread_enabled) {
-            ctx->merged_wrap_if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
-            ctx->merged_wrap_if_label = 11500;
-            ac_build_ifcc(&ctx->ac, thread_enabled, ctx->merged_wrap_if_label);
-         }
-
-         if (nested_barrier) {
-            /* Execute a barrier before the second shader in
-             * a merged shader.
-             *
-             * Execute the barrier inside the conditional block,
-             * so that empty waves can jump directly to s_endpgm,
-             * which will also signal the barrier.
-             *
-             * This is possible in gfx9, because an empty wave
-             * for the second shader does not participate in
-             * the epilogue. With NGG, empty waves may still
-             * be required to export data (e.g. GS output vertices),
-             * so we cannot let them exit early.
-             *
-             * If the shader is TCS and the TCS epilog is present
-             * and contains a barrier, it will wait there and then
-             * reach s_endpgm.
-             */
-            si_llvm_emit_barrier(ctx);
-         }
+      /* Execute a barrier before the second shader in
+       * a merged shader.
+       *
+       * Execute the barrier inside the conditional block,
+       * so that empty waves can jump directly to s_endpgm,
+       * which will also signal the barrier.
+       *
+       * This is possible in gfx9, because an empty wave
+       * for the second shader does not participate in
+       * the epilogue. With NGG, empty waves may still
+       * be required to export data (e.g. GS output vertices),
+       * so we cannot let them exit early.
+       *
+       * If the shader is TCS and the TCS epilog is present
+       * and contains a barrier, it will wait there and then
+       * reach s_endpgm.
+       */
+      if (ctx->stage == MESA_SHADER_TESS_CTRL) {
+         /* We need the barrier only if TCS inputs are read from LDS. */
+         if (!shader->key.opt.same_patch_vertices ||
+             shader->selector->info.base.inputs_read &
+             ~shader->selector->tcs_vgpr_only_inputs)
+            ac_build_s_barrier(&ctx->ac);
+      } else if (ctx->stage == MESA_SHADER_GEOMETRY && !shader->key.as_ngg) {
+         /* gfx10_ngg_gs_emit_prologue inserts the barrier for NGG. */
+         ac_build_s_barrier(&ctx->ac);
       }
    }
 
@@ -1200,7 +1191,6 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          union si_shader_part_key gs_prolog_key;
          memset(&gs_prolog_key, 0, sizeof(gs_prolog_key));
          gs_prolog_key.gs_prolog.states = shader->key.part.gs.prolog;
-         gs_prolog_key.gs_prolog.is_monolithic = true;
          gs_prolog_key.gs_prolog.as_ngg = shader->key.as_ngg;
          si_llvm_build_gs_prolog(&ctx, &gs_prolog_key);
          gs_prolog = ctx.main_fn;
