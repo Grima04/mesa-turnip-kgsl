@@ -254,6 +254,7 @@ hgl_create_st_framebuffer(struct hgl_context* context)
 
 	p_atomic_set(&buffer->stfbi->stamp, 1);
 	buffer->stfbi->st_manager_private = (void*)buffer;
+	buffer->stfbi->state_manager = context->manager;
 
 	return buffer;
 }
