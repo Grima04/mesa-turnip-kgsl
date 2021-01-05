@@ -998,11 +998,19 @@ cat6_bindless_ibo_opc_2src: T_OP_ATOMIC_B_ADD        { new_instr(OPC_ATOMIC_ADD)
 |                  T_OP_ATOMIC_B_AND        { new_instr(OPC_ATOMIC_AND)->flags  |= IR3_INSTR_G; dummy_dst(); }
 |                  T_OP_ATOMIC_B_OR         { new_instr(OPC_ATOMIC_OR)->flags   |= IR3_INSTR_G; dummy_dst(); }
 |                  T_OP_ATOMIC_B_XOR        { new_instr(OPC_ATOMIC_XOR)->flags  |= IR3_INSTR_G; dummy_dst(); }
+|                  T_OP_LDIB_B              { new_instr(OPC_LDIB); }
+|                  T_OP_STIB_B              { new_instr(OPC_STIB); dummy_dst(); }
 
 cat6_bindless_ibo: cat6_bindless_ibo_opc_1src cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed
 |                  cat6_bindless_ibo_opc_2src cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed ',' cat6_reg_or_immed {
                        /* TODO cleanup ir3 src order: */
-                       swap(instr->regs[1], instr->regs[3]);
+                       if (is_atomic(instr->opc)) {
+                           swap(instr->regs[1], instr->regs[3]);
+                       } else if (instr->opc == OPC_LDIB) {
+                           swap(instr->regs[1], instr->regs[2]);
+                       } else if (instr->opc == OPC_STIB) {
+                           swap(instr->regs[1], instr->regs[3]);
+                       }
                    }
 
 cat6_bindless_ldc_opc: T_OP_LDC  { new_instr(OPC_LDC); }

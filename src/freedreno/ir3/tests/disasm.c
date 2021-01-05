@@ -165,9 +165,18 @@ static const struct test {
 	/* INSTR_6XX(c7060020_03800000, "stc c[32], r0.x, 3"), */
 
 	/* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
-	INSTR_6XX(c0260200_03676100, "stib.b.untyped.1d.u32.3.imm.base0 r0.x, r0.w, 1", .parse_fail=true), /* stib.untyped.u32.1d.3.mode4.base0 r0.x, r0.w, 1 */
+	INSTR_6XX(c0260200_03676100, "stib.b.untyped.1d.u32.3.imm.base0 r0.x, r0.w, 1"), /* stib.untyped.u32.1d.3.mode4.base0 r0.x, r0.w, 1 */
+#if 0
+	/* TODO blob sometimes/frequently sets b0, although there does not seem
+	 * to be an obvious pattern and our encoding never sets it.  AFAICT it
+	 * is a dontcare bit
+	 */
 	/* dEQP-VK.texture.filtering.cube.formats.a8b8g8r8_srgb_nearest_mipmap_nearest.txt */
-	INSTR_6XX(c0220200_0361b801, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1", .parse_fail=true), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
+	INSTR_6XX(c0220200_0361b801, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1"), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
+#else
+	/* dEQP-VK.texture.filtering.cube.formats.a8b8g8r8_srgb_nearest_mipmap_nearest.txt */
+	INSTR_6XX(c0220200_0361b800, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1"), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
+#endif
 
 	/* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
 	INSTR_6XX(c2c21100_04800006, "stlw.f32 l[r2.x], r0.w, 4"),
