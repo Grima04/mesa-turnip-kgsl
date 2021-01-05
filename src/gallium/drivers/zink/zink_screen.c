@@ -528,7 +528,8 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       return 32; /* arbitrary */
 
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
-      return 0;
+      /* TODO: this limitation is dumb, and will need some fixes in mesa */
+      return MIN2(screen->info.props.limits.maxPerStageDescriptorStorageBuffers, PIPE_MAX_SHADER_BUFFERS);
 
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
       return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
