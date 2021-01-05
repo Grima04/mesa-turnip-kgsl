@@ -1879,7 +1879,6 @@ struct radv_image {
 	 * of the actual surface formats.
 	 */
 	VkFormat vk_format;
-	VkImageAspectFlags aspects;
 	VkImageUsageFlags usage; /**< Superset of VkImageCreateInfo::usage. */
 	struct ac_surf_info info;
 	VkImageTiling tiling; /** VkImageCreateInfo::tiling */
