@@ -3507,19 +3507,43 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
-update_uniform_state(struct v3dv_cmd_buffer *cmd_buffer)
+update_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
+                     uint32_t dirty_uniform_state)
 {
+   /* We need to update uniform streams if any piece of state that is passed
+    * to the shader as a uniform may have changed.
+    *
+    * If only descriptor sets are dirty then we can safely ignore updates
+    * for shader stages that don't access descriptors.
+    */
+
    struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    assert(pipeline);
 
-   cmd_buffer->state.uniforms.fs =
-      v3dv_write_uniforms(cmd_buffer, pipeline->fs);
+   const bool dirty_descriptors_only =
+      (cmd_buffer->state.dirty & dirty_uniform_state) ==
+      V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
 
-   cmd_buffer->state.uniforms.vs =
-      v3dv_write_uniforms(cmd_buffer, pipeline->vs);
+   const bool needs_fs_update =
+      !dirty_descriptors_only ||
+      (pipeline->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
 
-   cmd_buffer->state.uniforms.vs_bin =
-      v3dv_write_uniforms(cmd_buffer, pipeline->vs_bin);
+   if (needs_fs_update) {
+      cmd_buffer->state.uniforms.fs =
+         v3dv_write_uniforms(cmd_buffer, pipeline->fs);
+   }
+
+   const bool needs_vs_update =
+      !dirty_descriptors_only ||
+      (pipeline->layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT);
+
+   if (needs_vs_update) {
+      cmd_buffer->state.uniforms.vs =
+         v3dv_write_uniforms(cmd_buffer, pipeline->vs);
+
+      cmd_buffer->state.uniforms.vs_bin =
+         v3dv_write_uniforms(cmd_buffer, pipeline->vs_bin);
+   }
 }
 
 static void
@@ -4066,14 +4090,16 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
     */
    uint32_t *dirty = &cmd_buffer->state.dirty;
 
-   const bool dirty_uniforms = *dirty & (V3DV_CMD_DIRTY_PIPELINE |
-                                         V3DV_CMD_DIRTY_PUSH_CONSTANTS |
-                                         V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
-                                         V3DV_CMD_DIRTY_VIEWPORT);
-   if (dirty_uniforms)
-      update_uniform_state(cmd_buffer);
+   const uint32_t dirty_uniform_state =
+      *dirty & (V3DV_CMD_DIRTY_PIPELINE |
+                V3DV_CMD_DIRTY_PUSH_CONSTANTS |
+                V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
+                V3DV_CMD_DIRTY_VIEWPORT);
 
-   if (dirty_uniforms || (*dirty & V3DV_CMD_DIRTY_VERTEX_BUFFER))
+   if (dirty_uniform_state)
+      update_uniform_state(cmd_buffer, dirty_uniform_state);
+
+   if (dirty_uniform_state || (*dirty & V3DV_CMD_DIRTY_VERTEX_BUFFER))
       emit_gl_shader_state(cmd_buffer);
 
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE)) {

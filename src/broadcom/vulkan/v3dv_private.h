@@ -1548,8 +1548,11 @@ struct v3dv_pipeline_layout {
    } set[MAX_SETS];
 
    uint32_t num_sets;
-   uint32_t dynamic_offset_count;
 
+   /* Shader stages that are declared to use descriptors from this layout */
+   uint32_t shader_stages;
+
+   uint32_t dynamic_offset_count;
    uint32_t push_constant_size;
 };
 
