@@ -41,13 +41,17 @@
 #include "ir3_assembler.h"
 #include "ir3_shader.h"
 
-#define INSTR_5XX(i, d) { .gpu_id = 540, .instr = #i, .expected = d }
-#define INSTR_6XX(i, d) { .gpu_id = 630, .instr = #i, .expected = d }
+#define INSTR_5XX(i, d, ...) { .gpu_id = 540, .instr = #i, .expected = d, __VA_ARGS__ }
+#define INSTR_6XX(i, d, ...) { .gpu_id = 630, .instr = #i, .expected = d, __VA_ARGS__ }
 
 static const struct test {
 	int gpu_id;
 	const char *instr;
 	const char *expected;
+	/**
+	 * Do we expect asm parse fail (ie. for things not (yet) supported by ir3_parser.y)
+	 */
+	bool parse_fail;
 } tests[] = {
 	/* cat0 */
 	INSTR_6XX(00000000_00000000, "nop"),
@@ -133,7 +137,7 @@ static const struct test {
 
 	/* cat6 */
 
-	INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x"),
+	INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x", .parse_fail=true),
 	/* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
 	INSTR_6XX(c0d20906_02800004, "stg.f32 g[r1.x+r1.z], r0.z, 2"), /* stg.a.f32 g[r1.x+(r1.z<<2)], r0.z, 2 */
 	INSTR_6XX(c0da052e_01800042, "stg.s32 g[r0.z+r11.z], r8.y, 1"), /* stg.a.s32 g[r0.z+(r11.z<<2)], r8.y, 1 */
@@ -158,9 +162,9 @@ static const struct test {
 	/* INSTR_6XX(c7060020_03800000, "stc c[32], r0.x, 3"), */
 
 	/* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
-	INSTR_6XX(c0260200_03676100, "stib.b.untyped.1d.u32.3.imm.base0 r0.x, r0.w, 1"), /* stib.untyped.u32.1d.3.mode4.base0 r0.x, r0.w, 1 */
+	INSTR_6XX(c0260200_03676100, "stib.b.untyped.1d.u32.3.imm.base0 r0.x, r0.w, 1", .parse_fail=true), /* stib.untyped.u32.1d.3.mode4.base0 r0.x, r0.w, 1 */
 	/* dEQP-VK.texture.filtering.cube.formats.a8b8g8r8_srgb_nearest_mipmap_nearest.txt */
-	INSTR_6XX(c0220200_0361b801, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1"), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
+	INSTR_6XX(c0220200_0361b801, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1", .parse_fail=true), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
 
 	/* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
 	INSTR_6XX(c2c21100_04800006, "stlw.f32 l[r2.x], r0.w, 4"),
@@ -285,7 +289,7 @@ static const struct test {
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.uniform.fragment.sampler2d (looks like maybe the compiler didn't figure out */
 	INSTR_6XX(a0c81f07_0100000b, "sam.s2en (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode0 (f32)(xyzw)r1.w, r1.y, hr2.x */
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.dynamically_uniform.fragment.sampler2d */
-	INSTR_6XX(a0c81f07_8100000b, "sam.s2en.uniform (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode4 (f32)(xyzw)r1.w, r1.y, hr2.x */
+	INSTR_6XX(a0c81f07_8100000b, "sam.s2en.uniform (f32)(xyzw)r1.w, r1.y, hr2.x", .parse_fail=true), /* sam.s2en.mode4 (f32)(xyzw)r1.w, r1.y, hr2.x */
 
 	/* Custom test since we've never seen the blob emit these. */
 	INSTR_6XX(c0260004_00490000, "getspid.u32 r1.x"),
@@ -359,12 +363,20 @@ main(int argc, char **argv)
 		struct ir3_shader *shader = ir3_parse_asm(compilers[gen], &info, fasm);
 		fclose(fasm);
 		if (!shader) {
-			printf("FAIL: assembler failed\n");
+			printf("FAIL: %sexpected assembler fail\n", test->parse_fail ? "" : "un");
 			asm_fails++;
-			/* Until the assembler is more complete, don't count this as
-			 * a failure, but skip checking that assembled binary matches.
+			/* If this is an instruction that the asm parser is not expected
+			 * to handle, don't count it as a fail.
 			 */
+			if (!test->parse_fail)
+				retval = 1;
 			continue;
+		} else if (test->parse_fail) {
+			/* If asm parse starts passing, and we don't expect that, flag
+			 * it as a fail so we don't forget to update the test vector:
+			 */
+			printf("FAIL: unexpected parse success, please remove '.parse_fail=true'\n");
+			retval = 1;
 		}
 
 		struct ir3_shader_variant *v = shader->variants;
@@ -385,6 +397,12 @@ main(int argc, char **argv)
 		printf("%d/%d assembler fails\n", asm_fails, (int)ARRAY_SIZE(tests));
 	if (encode_fails)
 		printf("%d/%d encode fails\n", encode_fails, (int)ARRAY_SIZE(tests));
+
+	if (retval) {
+		printf("FAILED!\n");
+	} else {
+		printf("PASSED!\n");
+	}
 
 	for (unsigned i = 0; i < ARRAY_SIZE(compilers); i++) {
 		if (!compilers[i])
