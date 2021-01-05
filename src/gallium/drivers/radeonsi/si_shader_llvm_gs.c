@@ -135,11 +135,7 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
       ret = si_insert_input_ptr(ctx, ret, ctx->vs_state_bits, 8 + SI_SGPR_VS_STATE_BITS);
    }
 
-   unsigned vgpr;
-   if (ctx->stage == MESA_SHADER_VERTEX)
-      vgpr = 8 + GFX9_VSGS_NUM_USER_SGPR;
-   else
-      vgpr = 8 + GFX9_TESGS_NUM_USER_SGPR;
+   unsigned vgpr = 8 + SI_NUM_VS_STATE_RESOURCE_SGPRS;
 
    ret = si_insert_input_ret_float(ctx, ret, ctx->gs_vtx01_offset, vgpr++);
    ret = si_insert_input_ret_float(ctx, ret, ctx->gs_vtx23_offset, vgpr++);
@@ -576,10 +572,8 @@ void si_llvm_build_gs_prolog(struct si_shader_context *ctx, union si_shader_part
    memset(&ctx->args, 0, sizeof(ctx->args));
 
    if (ctx->screen->info.chip_class >= GFX9) {
-      if (key->gs_prolog.states.gfx9_prev_is_vs)
-         num_sgprs = 8 + GFX9_VSGS_NUM_USER_SGPR;
-      else
-         num_sgprs = 8 + GFX9_TESGS_NUM_USER_SGPR;
+      /* Other user SGPRs are not needed by GS. */
+      num_sgprs = 8 + SI_NUM_VS_STATE_RESOURCE_SGPRS;
       num_vgprs = 5; /* ES inputs are not needed by GS */
    } else {
       num_sgprs = GFX6_GS_NUM_USER_SGPR + 2;

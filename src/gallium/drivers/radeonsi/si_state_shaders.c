@@ -1915,7 +1915,6 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          } else {
             si_shader_selector_key_vs(sctx, sctx->vs_shader.cso, key, &key->part.gs.vs_prolog);
             key->part.gs.es = sctx->vs_shader.cso;
-            key->part.gs.prolog.gfx9_prev_is_vs = 1;
          }
 
          key->as_ngg = stages_key.u.ngg;

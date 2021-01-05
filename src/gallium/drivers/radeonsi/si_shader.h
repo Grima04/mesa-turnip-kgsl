@@ -534,7 +534,6 @@ struct si_tcs_epilog_bits {
 
 struct si_gs_prolog_bits {
    unsigned tri_strip_adj_fix : 1;
-   unsigned gfx9_prev_is_vs : 1;
 };
 
 /* Common PS bits between the shader key and the prolog key. */

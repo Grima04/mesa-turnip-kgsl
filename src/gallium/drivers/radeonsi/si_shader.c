@@ -536,9 +536,11 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
             declare_vs_specific_input_sgprs(ctx);
       } else {
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tes_offchip_addr);
-         /* Declare as many input SGPRs as the VS has. */
+
+         if (ctx->stage == MESA_SHADER_TESS_EVAL) {
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tes_offchip_addr);
+         }
       }
 
       if (ctx->stage == MESA_SHADER_VERTEX)
@@ -561,19 +563,21 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
           (ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL)) {
          unsigned num_user_sgprs, num_vgprs;
 
-         if (ctx->stage == MESA_SHADER_VERTEX) {
+         if (ctx->stage == MESA_SHADER_VERTEX && ngg_cull_shader) {
             /* For the NGG cull shader, add 1 SGPR to hold
              * the vertex buffer pointer.
              */
-            num_user_sgprs = GFX9_VSGS_NUM_USER_SGPR + ngg_cull_shader;
+            num_user_sgprs = GFX9_VSGS_NUM_USER_SGPR + 1;
 
-            if (ngg_cull_shader && shader->selector->num_vbos_in_user_sgprs) {
-               assert(num_user_sgprs <= 8 + SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
+            if (shader->selector->num_vbos_in_user_sgprs) {
+               assert(num_user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
                num_user_sgprs =
                   SI_SGPR_VS_VB_DESCRIPTOR_FIRST + shader->selector->num_vbos_in_user_sgprs * 4;
             }
-         } else {
+         } else if (ctx->stage == MESA_SHADER_TESS_EVAL && ngg_cull_shader) {
             num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
+         } else {
+            num_user_sgprs = SI_NUM_VS_STATE_RESOURCE_SGPRS;
          }
 
          /* The NGG cull shader has to return all 9 VGPRs.
@@ -1206,7 +1210,6 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       }
       fprintf(f, "  part.gs.prolog.tri_strip_adj_fix = %u\n",
               key->part.gs.prolog.tri_strip_adj_fix);
-      fprintf(f, "  part.gs.prolog.gfx9_prev_is_vs = %u\n", key->part.gs.prolog.gfx9_prev_is_vs);
       fprintf(f, "  as_ngg = %u\n", key->as_ngg);
       break;
 
