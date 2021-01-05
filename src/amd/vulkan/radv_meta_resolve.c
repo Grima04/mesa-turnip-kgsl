@@ -362,6 +362,19 @@ static void radv_pick_resolve_method_images(struct radv_device *device,
 	                                                   cmd_buffer->queue_family_index);
 
 	if (vk_format_is_color(src_format)) {
+		/* Using the fragment resolve path is currently a hint to
+		 * avoid decompressing DCC for partial resolves and
+		 * re-initialize it after resolving using compute.
+		 * TODO: Add support for layered and int to the fragment path.
+		 */
+		if (radv_layout_dcc_compressed(device, dest_image, dest_image_layout,
+		                               dest_render_loop, queue_mask)) {
+			*method = RESOLVE_FRAGMENT;
+		} else if (dest_image->planes[0].surface.micro_tile_mode !=
+		           src_image->planes[0].surface.micro_tile_mode) {
+			*method = RESOLVE_COMPUTE;
+		}
+
 		if (src_format == VK_FORMAT_R16G16_UNORM ||
 		    src_format == VK_FORMAT_R16G16_SNORM)
 			*method = RESOLVE_COMPUTE;
@@ -370,14 +383,6 @@ static void radv_pick_resolve_method_images(struct radv_device *device,
 		else if (src_image->info.array_size > 1 ||
 			 dest_image->info.array_size > 1)
 			*method = RESOLVE_COMPUTE;
-
-		if (radv_layout_dcc_compressed(device, dest_image, dest_image_layout,
-		                               dest_render_loop, queue_mask)) {
-			*method = RESOLVE_FRAGMENT;
-		} else if (dest_image->planes[0].surface.micro_tile_mode !=
-		           src_image->planes[0].surface.micro_tile_mode) {
-			*method = RESOLVE_COMPUTE;
-		}
 	} else {
 		if (src_image->info.array_size > 1 ||
 		    dest_image->info.array_size > 1)
