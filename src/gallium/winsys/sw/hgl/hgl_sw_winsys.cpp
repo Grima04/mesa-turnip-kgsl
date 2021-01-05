@@ -37,9 +37,10 @@
 #include "frontend/api.h"
 #include "frontend/sw_winsys.h"
 
-#include "bitmap_wrapper.h"
 #include "hgl_sw_winsys.h"
 
+#include <Bitmap.h>
+#include <OS.h>
 
 #ifdef DEBUG
 #   define TRACE(x...) printf("hgl:winsys: " x)
@@ -63,6 +64,7 @@ struct haiku_displaytarget
 	unsigned size;
 
 	void* data;
+	BBitmap* bitmap;
 };
 
 
@@ -126,10 +128,18 @@ hgl_winsys_displaytarget_create(struct sw_winsys* winsys,
 	haikuDisplayTarget->stride = align(formatStride, alignment);
 	haikuDisplayTarget->size = haikuDisplayTarget->stride * blockSize;
 
-	haikuDisplayTarget->data
-		= align_malloc(haikuDisplayTarget->size, alignment);
+	if (textureUsage & PIPE_BIND_DISPLAY_TARGET) {
+		haikuDisplayTarget->data = NULL;
+		haikuDisplayTarget->bitmap = new BBitmap(
+			BRect(0, 0, width - 1, height - 1),
+			haikuDisplayTarget->colorSpace,
+			haikuDisplayTarget->stride);
+	} else {
+		haikuDisplayTarget->data
+			= align_malloc(haikuDisplayTarget->size, alignment);
 
-	assert(haikuDisplayTarget->data);
+		haikuDisplayTarget->bitmap = NULL;
+	}
 
 	*stride = haikuDisplayTarget->stride;
 
@@ -150,6 +160,9 @@ hgl_winsys_displaytarget_destroy(struct sw_winsys* winsys,
 
 	if (haikuDisplayTarget->data != NULL)
 		align_free(haikuDisplayTarget->data);
+
+	if (haikuDisplayTarget->bitmap != NULL)
+		delete haikuDisplayTarget->bitmap;
 
 	FREE(haikuDisplayTarget);
 }
@@ -179,13 +192,16 @@ hgl_winsys_displaytarget_map(struct sw_winsys* winsys,
 	struct haiku_displaytarget* haikuDisplayTarget
 		= hgl_sw_displaytarget(displayTarget);
 
+	if (haikuDisplayTarget->bitmap != NULL)
+		return haikuDisplayTarget->bitmap->Bits();
+
 	return haikuDisplayTarget->data;
 }
 
 
 static void
 hgl_winsys_displaytarget_unmap(struct sw_winsys* winsys,
-	struct sw_displaytarget* disptarget)
+	struct sw_displaytarget* displayTarget)
 {
 	return;
 }
@@ -198,19 +214,11 @@ hgl_winsys_displaytarget_display(struct sw_winsys* winsys,
 {
 	assert(contextPrivate);
 
-	Bitmap* bitmap = (Bitmap*)contextPrivate;
-
 	struct haiku_displaytarget* haikuDisplayTarget
 		= hgl_sw_displaytarget(displayTarget);
 
-	import_bitmap_bits(bitmap, haikuDisplayTarget->data,
-		haikuDisplayTarget->size, haikuDisplayTarget->stride,
-		haikuDisplayTarget->colorSpace);
-
-	// Dump the rendered bitmap to disk for debugging
-	//dump_bitmap(bitmap);
-
-	return;
+	HGLWinsysContext *context = (HGLWinsysContext*)contextPrivate;
+	context->Display(haikuDisplayTarget->bitmap, NULL);
 }
 
 
@@ -221,7 +229,7 @@ hgl_create_sw_winsys()
 
 	if (!winsys)
 		return NULL;
-	
+
 	// Attach winsys hooks for Haiku
 	winsys->destroy = hgl_winsys_destroy;
 	winsys->is_displaytarget_format_supported

@@ -21,7 +21,7 @@
 libgl = shared_library(
   'GL',
   files(
-    'GLView.cpp', 'GLRenderer.cpp', 'GLRendererRoster.cpp', 'GLDispatcher.cpp',
+    'GLView.cpp', 'GLRenderer.cpp', 'GLRendererRoster.cpp',
   ),
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
   include_directories : [
