@@ -432,7 +432,7 @@ if _egl == 'auto'
     with_dri and with_shared_glapi
   )
 elif _egl == 'enabled'
-  if not with_dri
+  if not with_dri and not with_platform_haiku
     error('EGL requires dri')
   elif not with_shared_glapi
     error('EGL requires shared-glapi')
