@@ -25,13 +25,28 @@ from __future__ import annotations
 from unittest import mock
 import argparse
 import csv
+import contextlib
 import tempfile
 import os
 import pathlib
+import typing
 
 import pytest
 
 from . import gen_calendar_entries
+
+
+@contextlib.contextmanager
+def mock_csv(data: typing.List[gen_calendar_entries.CalendarRowType]) -> typing.Iterator[None]:
+    """Replace the actual CSV data with our test data."""
+    with tempfile.TemporaryDirectory() as d:
+        c = os.path.join(d, 'calendar.csv')
+        with open(c, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerows(data)
+
+        with mock.patch('bin.gen_calendar_entries.CALENDAR_CSV', pathlib.Path(c)):
+            yield
 
 
 @pytest.fixture(autouse=True, scope='module')
@@ -81,19 +96,13 @@ class TestRC:
                 yield
 
     @pytest.fixture(autouse=True)
-    def mock_data(self) -> None:
+    def csv(self) -> None:
         """inject our test data.."""
-        with tempfile.TemporaryDirectory() as d:
-            c = os.path.join(d, 'calendar.csv')
-            with open(c, 'w') as f:
-                writer = csv.writer(f)
-                writer.writerows(self.ORIGINAL_DATA)
-
-            with mock.patch('bin.gen_calendar_entries.CALENDAR_CSV', pathlib.Path(c)):
-                yield
+        with mock_csv(self.ORIGINAL_DATA):
+            yield
 
     def test_basic(self) -> None:
-        args = argparse.Namespace()
+        args: gen_calendar_entries.RCArguments = argparse.Namespace()
         args.manager = "Dylan Baker"
         gen_calendar_entries.release_candidate(args)
 
@@ -104,5 +113,85 @@ class TestRC:
         expected.append((    '', '2021-02-03', f'21.0.0-rc4', 'Dylan Baker', 'Or 21.0.0 final.'))
 
         actual = gen_calendar_entries.read_calendar()
+
+        assert actual == expected
+
+
+class TestExtend:
+
+    def test_one_release(self) -> None:
+        data = [
+            ('20.3', '2021-01-13', '20.3.3', 'Dylan Baker', ''),
+            ('',     '2021-01-27', '20.3.4', 'Dylan Baker', 'This is the last planned release of the 20.3.x series.'),
+        ]
+
+        args: gen_calendar_entries.ExtendArguments = argparse.Namespace()
+        args.series = '20.3'
+        args.count = 2
+
+        with mock_csv(data):
+            gen_calendar_entries.extend(args)
+            actual = gen_calendar_entries.read_calendar()
+
+        expected = [
+            data[0],
+            ('', '2021-01-27', '20.3.4', 'Dylan Baker', ''),
+            ('', '2021-02-10', '20.3.5', 'Dylan Baker', ''),
+            ('', '2021-02-24', '20.3.6', 'Dylan Baker', 'This is the last planned release of the 20.3.x series.'),
+        ]
+
+        assert actual == expected
+    def test_one_release(self) -> None:
+        data = [
+            ('20.3', '2021-01-13', '20.3.3', 'Dylan Baker', ''),
+            ('',     '2021-01-27', '20.3.4', 'Dylan Baker', 'This is the last planned release of the 20.3.x series.'),
+            ('21.0', '2021-01-13', '21.0.1', 'Dylan Baker', ''),
+            ('',     '2021-01-27', '21.0.2', 'Dylan Baker', ''),
+            ('',     '2021-02-10', '21.0.3', 'Dylan Baker', ''),
+            ('',     '2021-02-24', '21.0.4', 'Dylan Baker', 'This is the last planned release of the 21.0.x series.'),
+        ]
+
+        args: gen_calendar_entries.ExtendArguments = argparse.Namespace()
+        args.series = '21.0'
+        args.count = 1
+
+        with mock_csv(data):
+            gen_calendar_entries.extend(args)
+            actual = gen_calendar_entries.read_calendar()
+
+        expected = data.copy()
+        d = list(data[-1])
+        d[-1] = ''
+        expected[-1] = tuple(d)
+        expected.extend([
+            ('',     '2021-03-10', '21.0.5', 'Dylan Baker', 'This is the last planned release of the 21.0.x series.'),
+        ])
+
+        assert actual == expected
+
+    def test_rc(self) -> None:
+        data = [
+            ('20.3', '2021-01-13', '20.3.3', 'Dylan Baker', ''),
+            ('',     '2021-01-27', '20.3.4', 'Dylan Baker', 'This is the last planned release of the 20.3.x series.'),
+            ('21.0', '2021-01-13', '21.0.0-rc1', 'Dylan Baker', ''),
+            ('',     '2021-01-20', '21.0.0-rc2', 'Dylan Baker', gen_calendar_entries.OR_FINAL.format('21.0')),
+        ]
+
+        args: gen_calendar_entries.ExtendArguments = argparse.Namespace()
+        args.series = '21.0'
+        args.count = 2
+
+        with mock_csv(data):
+            gen_calendar_entries.extend(args)
+            actual = gen_calendar_entries.read_calendar()
+
+        expected = data.copy()
+        d = list(expected[-1])
+        d[-1] = ''
+        expected[-1] = tuple(d)
+        expected.extend([
+            ('', '2021-01-27', '21.0.0-rc3', 'Dylan Baker', ''),
+            ('', '2021-02-03', '21.0.0-rc4', 'Dylan Baker', gen_calendar_entries.OR_FINAL.format('21.0')),
+        ])
 
         assert actual == expected

@@ -113,6 +113,69 @@ def release_candidate(args: RCArguments) -> None:
     commit(f'docs: Add calendar entries for {major}.{minor} release candidates.')
 
 
+def extend(args: ExtendArguments) -> None:
+    """Extend a release."""
+    @contextlib.contextmanager
+    def write_existing(writer: _csv._writer, current: typing.List[CalendarRowType]) -> typing.Iterator[CalendarRowType]:
+        """Write the orinal file, yield to insert new entries.
+
+        This is a bit clever, basically what happens it writes out the
+        original csv file until it reaches the start of the release after the
+        one we're appending, then it yields the last row. When control is
+        returned it writes out the rest of the original calendar data.
+        """
+        last_row: typing.Optional[CalendarRowType] = None
+        in_wanted = False
+        for row in current:
+            if in_wanted and row[0]:
+                in_wanted = False
+                assert last_row is not None
+                yield last_row
+            if row[0] == args.series:
+                in_wanted = True
+            if in_wanted and len(row) >= 5 and row[4] in {LAST_RELEASE.format(args.series), OR_FINAL.format(args.series)}:
+                # If this was the last planned release and we're adding more,
+                # then we need to remove that message and add it elsewhere
+                r = list(row)
+                r[4] = None
+                # Mypy can't figure this out…
+                row = typing.cast('CalendarRowType', tuple(r))
+            last_row = row
+            writer.writerow(row)
+        # If this is the only entry we can hit a case where the contextmanager
+        # hasn't yielded
+        if in_wanted:
+            yield row
+
+    current = read_calendar()
+
+    with CALENDAR_CSV.open('w') as f:
+        writer = csv.writer(f)
+        with write_existing(writer, current) as row:
+            # Get rid of -rcX as well
+            if '-rc' in row[2]:
+                first_point = int(row[2].split('rc')[-1]) + 1
+                template = '{}.0-rc{}'
+                days = 7
+            else:
+                first_point = int(row[2].split('-')[0].split('.')[-1]) + 1
+                template = '{}.{}'
+                days = 14
+
+            date = datetime.date.fromisoformat(row[1])
+            for i in range(first_point, first_point + args.count):
+                date = date + datetime.timedelta(days=days)
+                r = [None, date.isoformat(), template.format(args.series, i), row[3], None]
+                if i == first_point + args.count - 1:
+                    if days == 14:
+                        r[4] = LAST_RELEASE.format(args.series)
+                    else:
+                        r[4] = OR_FINAL.format(args.series)
+                writer.writerow(r)
+
+    commit(f'docs: Extend calendar entries for {args.series} by {args.count} releases.')
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers()
@@ -120,6 +183,11 @@ def main() -> None:
     rc = sub.add_parser('release-candidate', aliases=['rc'], help='Generate calendar entries for a release candidate.')
     rc.add_argument('manager', help="the name of the person managing the release.")
     rc.set_defaults(func=release_candidate)
+
+    ex = sub.add_parser('extend', help='Generate additional entries for a release.')
+    ex.add_argument('series', help='The series to extend, such as "29.3" or "30.0".')
+    ex.add_argument('count', type=int, help='The number of new entries to add.')
+    ex.set_defaults(func=extend)
 
     args = parser.parse_args()
     args.func(args)
