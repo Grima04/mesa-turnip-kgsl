@@ -1678,10 +1678,10 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 	cmask_clear_value = radv_get_cmask_fast_clear_value(iview->image);
 
 	/* clear cmask buffer */
+	bool need_decompress_pass = false;
 	if (radv_dcc_enabled(iview->image, iview->base_mip)) {
 		uint32_t reset_value;
 		bool can_avoid_fast_clear_elim;
-		bool need_decompress_pass = false;
 
 		vi_get_fast_clear_parameters(cmd_buffer->device,
 					     iview->image->vk_format,
@@ -1701,17 +1701,21 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 
 		flush_bits |= radv_clear_dcc(cmd_buffer, iview->image, &range,
 					     reset_value);
-
-		radv_update_fce_metadata(cmd_buffer, iview->image, &range,
-					 need_decompress_pass);
 	} else {
 		flush_bits = radv_clear_cmask(cmd_buffer, iview->image,
 					      &range, cmask_clear_value);
+
+		/* Fast clearing with CMASK should always be eliminated. */
+		need_decompress_pass = true;
 	}
 
 	if (post_flush) {
 		*post_flush |= flush_bits;
 	}
+
+	/* Update the FCE predicate to perform a fast-clear eliminate. */
+	radv_update_fce_metadata(cmd_buffer, iview->image, &range,
+				 need_decompress_pass);
 
 	radv_update_color_clear_metadata(cmd_buffer, iview, subpass_att,
 					 clear_color);
