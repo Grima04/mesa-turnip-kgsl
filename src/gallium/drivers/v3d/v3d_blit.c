@@ -124,16 +124,16 @@ v3d_stencil_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
         if (src->separate_stencil) {
                 src = src->separate_stencil;
-                src_format = PIPE_FORMAT_R8_UNORM;
+                src_format = PIPE_FORMAT_R8_UINT;
         } else {
-                src_format = PIPE_FORMAT_RGBA8888_UNORM;
+                src_format = PIPE_FORMAT_RGBA8888_UINT;
         }
 
         if (dst->separate_stencil) {
                 dst = dst->separate_stencil;
-                dst_format = PIPE_FORMAT_R8_UNORM;
+                dst_format = PIPE_FORMAT_R8_UINT;
         } else {
-                dst_format = PIPE_FORMAT_RGBA8888_UNORM;
+                dst_format = PIPE_FORMAT_RGBA8888_UINT;
         }
 
         /* Initialize the surface. */
