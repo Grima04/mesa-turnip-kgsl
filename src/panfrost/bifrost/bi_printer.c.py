@@ -152,7 +152,13 @@ bi_${mod}_as_str(enum bi_${mod} ${mod})
 void
 bi_print_instr(bi_instr *I, FILE *fp)
 {
-    bi_print_index(fp, I->dest[0]);
+    bi_foreach_dest(I, d) {
+        if (bi_is_null(I->dest[d])) break;
+        if (d > 0) fprintf(fp, ", ");
+
+        bi_print_index(fp, I->dest[d]);
+    }
+
     fprintf(fp, " = %s", bi_opcode_props[I->op].name);
 
     switch (I->op) {
