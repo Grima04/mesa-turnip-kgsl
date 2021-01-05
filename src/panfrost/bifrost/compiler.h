@@ -676,6 +676,9 @@ bi_node_to_index(unsigned node, unsigned node_count)
 #define bi_foreach_src(ins, v) \
         for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
 
+#define bi_foreach_dest(ins, v) \
+        for (unsigned v = 0; v < ARRAY_SIZE(ins->dest); ++v)
+
 static inline bi_instr *
 bi_prev_op(bi_instr *ins)
 {
