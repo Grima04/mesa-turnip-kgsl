@@ -107,21 +107,23 @@ bi_allocate_registers(bi_context *ctx, bool *success)
         }
 
         bi_foreach_instr_global(ctx, ins) {
-                unsigned dest = bi_get_node(ins->dest[0]);
+                bi_foreach_dest(ins, d) {
+                        unsigned dest = bi_get_node(ins->dest[d]);
 
-                /* Blend shaders expect the src colour to be in r0-r3 */
-                if (ins->op == BI_OPCODE_BLEND && !ctx->is_blend) {
-                        unsigned node = bi_get_node(ins->src[0]);
-                        assert(node < node_count);
-                        l->solutions[node] = 0;
+                        /* Blend shaders expect the src colour to be in r0-r3 */
+                        if (ins->op == BI_OPCODE_BLEND && !ctx->is_blend) {
+                                unsigned node = bi_get_node(ins->src[0]);
+                                assert(node < node_count);
+                                l->solutions[node] = 0;
+                        }
+
+                        if (dest >= node_count)
+                                continue;
+
+                        l->class[dest] = BI_REG_CLASS_WORK;
+                        lcra_set_alignment(l, dest, 2, 16); /* 2^2 = 4 */
+                        lcra_restrict_range(l, dest, 4);
                 }
-
-                if (dest >= node_count)
-                        continue;
-
-                l->class[dest] = BI_REG_CLASS_WORK;
-                lcra_set_alignment(l, dest, 2, 16); /* 2^2 = 4 */
-                lcra_restrict_range(l, dest, 4);
 
         }
 
@@ -171,7 +173,8 @@ static void
 bi_install_registers(bi_context *ctx, struct lcra_state *l)
 {
         bi_foreach_instr_global(ctx, ins) {
-                ins->dest[0] = bi_reg_from_index(ctx, l, ins->dest[0]);
+                bi_foreach_dest(ins, d)
+                        ins->dest[d] = bi_reg_from_index(ctx, l, ins->dest[d]);
 
                 bi_foreach_src(ins, s)
                         ins->src[s] = bi_reg_from_index(ctx, l, ins->src[s]);
