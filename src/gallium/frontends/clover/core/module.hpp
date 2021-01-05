@@ -153,6 +153,7 @@ namespace clover {
          std::vector<argument> args;
       };
 
+      module() : printf_strings_in_buffer(0) { }
       void serialize(std::ostream &os) const;
       static module deserialize(std::istream &is);
       size_t size() const;
