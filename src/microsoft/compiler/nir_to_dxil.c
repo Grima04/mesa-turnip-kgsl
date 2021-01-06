@@ -73,7 +73,6 @@ nir_options = {
    .lower_negate = true,
    .lower_ffma16 = true,
    .lower_ffma32 = true,
-   .lower_ffma64 = true,
    .lower_isign = true,
    .lower_fsign = true,
    .lower_iabs = true,
