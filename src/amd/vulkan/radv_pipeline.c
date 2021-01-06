@@ -2330,6 +2330,10 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 		ordered_shaders[shader_count++] = shaders[MESA_SHADER_COMPUTE];
 	}
 
+	bool has_geom_tess = shaders[MESA_SHADER_GEOMETRY] || shaders[MESA_SHADER_TESS_CTRL];
+	bool merged_gs = shaders[MESA_SHADER_GEOMETRY] &&
+			 pipeline->device->physical_device->rad_info.chip_class >= GFX9;
+
 	if (!optimize_conservatively && shader_count > 1) {
 		unsigned first = ordered_shaders[shader_count - 1]->info.stage;
 		unsigned last = ordered_shaders[0]->info.stage;
@@ -2401,6 +2405,18 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 
 		nir_compact_varyings(ordered_shaders[i],
 				     ordered_shaders[i - 1], true);
+
+		if (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_CTRL ||
+		    (ordered_shaders[i]->info.stage == MESA_SHADER_VERTEX && has_geom_tess) ||
+		    (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_EVAL && merged_gs)) {
+			nir_lower_io_to_vector(ordered_shaders[i], nir_var_shader_out);
+			nir_opt_combine_stores(ordered_shaders[i], nir_var_shader_out);
+		}
+		if (ordered_shaders[i - 1]->info.stage == MESA_SHADER_GEOMETRY ||
+		    ordered_shaders[i - 1]->info.stage == MESA_SHADER_TESS_CTRL ||
+		    ordered_shaders[i - 1]->info.stage == MESA_SHADER_TESS_EVAL) {
+			nir_lower_io_to_vector(ordered_shaders[i - 1], nir_var_shader_in);
+		}
 
 		if (progress) {
 			if (nir_lower_global_vars_to_local(ordered_shaders[i])) {
