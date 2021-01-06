@@ -207,7 +207,7 @@ enum dxil_intr {
    DXIL_INTR_UMAX = 39,
    DXIL_INTR_UMIN = 40,
 
-   DXIL_INTR_FFMA = 46,
+   DXIL_INTR_FMA = 47,
 
    DXIL_INTR_CREATE_HANDLE = 57,
    DXIL_INTR_CBUFFER_LOAD_LEGACY = 59,
@@ -1956,7 +1956,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_fsqrt: return emit_unary_intin(ctx, alu, DXIL_INTR_SQRT, src[0]);
    case nir_op_fmax: return emit_binary_intin(ctx, alu, DXIL_INTR_FMAX, src[0], src[1]);
    case nir_op_fmin: return emit_binary_intin(ctx, alu, DXIL_INTR_FMIN, src[0], src[1]);
-   case nir_op_ffma: return emit_tertiary_intin(ctx, alu, DXIL_INTR_FFMA, src[0], src[1], src[2]);
+   case nir_op_ffma: return emit_tertiary_intin(ctx, alu, DXIL_INTR_FMA, src[0], src[1], src[2]);
 
    case nir_op_unpack_half_2x16_split_x: return emit_f16tof32(ctx, alu, src[0]);
    case nir_op_pack_half_2x16_split: return emit_f32tof16(ctx, alu, src[0]);
