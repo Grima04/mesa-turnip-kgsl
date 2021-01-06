@@ -536,9 +536,11 @@ bi_pack_tuple(bi_clause *clause, bi_tuple *tuple, bi_tuple *prev, bool first_tup
 
 static unsigned
 bi_pack_constants(bi_context *ctx, bi_clause *clause,
-                unsigned index,
+                unsigned word_idx, bool ec0_packed,
                 struct util_dynarray *emission)
 {
+        unsigned index = (word_idx << 1) + ec0_packed;
+
         /* After these two, are we done? Determines tag */
         bool done = clause->constant_count <= (index + 2);
 
@@ -581,7 +583,7 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
         uint64_t hi = clause->constants[index + 0] >> 60ull;
 
         struct bifrost_fmt_constant quad = {
-                .pos = pos[clause->tuple_count - 1][index], /* TODO */
+                .pos = pos[clause->tuple_count - 1][word_idx], /* TODO */
                 .tag = done ? BIFROST_FMTC_FINAL : BIFROST_FMTC_CONSTANTS,
                 .imm_1 = clause->constants[index + 0] >> 4,
                 .imm_2 = ((hi < 8) ? (hi << 60ull) : 0) >> 4,
@@ -815,26 +817,58 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
                                 &clause->tuples[prev], i == 0, stage);
         }
 
-        assert(clause->tuple_count == 1);
+        bool ec0_packed =
+                (clause->tuple_count == 3) ||
+                (clause->tuple_count == 5) ||
+                (clause->tuple_count == 6) ||
+                (clause->tuple_count == 8);
 
-        /* State for packing constants throughout */
-        unsigned constant_index = 0;
+        if (ec0_packed)
+                clause->constant_count = MAX2(clause->constant_count, 1);
 
-        struct bifrost_fmt1 quad_1 = {
-                .tag = clause->constant_count ? BIFROST_FMT1_CONSTANTS : BIFROST_FMT1_FINAL,
-                .header = bi_pack_header(clause, next_1, next_2, tdd),
-                .ins_1 = ins[0].lo,
-                .ins_2 = ins[0].hi & ((1 << 11) - 1),
-                .ins_0 = (ins[0].hi >> 11) & 0b111,
+        unsigned constant_quads =
+                DIV_ROUND_UP(clause->constant_count - (ec0_packed ? 1 : 0), 2);
+
+        uint64_t header = bi_pack_header(clause, next_1, next_2, tdd);
+        uint64_t ec0 = (clause->constants[0] >> 4);
+        unsigned m0 = 0; /* TODO: set me so we don't break branches */
+
+        unsigned counts[8] = {
+                1, 2, 3, 3, 4, 5, 5, 6
         };
 
-        util_dynarray_append(emission, struct bifrost_fmt1, quad_1);
+        unsigned indices[8][6] = {
+                { 1 },
+                { 0, 2 },
+                { 0, 3, 4 },
+                { 0, 3, 6 },
+                { 0, 3, 7, 8 },
+                { 0, 3, 5, 9, 10 },
+                { 0, 3, 5, 9, 11 },
+                { 0, 3, 5, 9, 12, 13 },
+        };
+
+        unsigned count = counts[clause->tuple_count - 1];
+
+        for (unsigned pos = 0; pos < count; ++pos) {
+                ASSERTED unsigned idx = indices[clause->tuple_count - 1][pos];
+                assert(bi_clause_formats[idx].pos == pos);
+                assert((bi_clause_formats[idx].tag_1 == BI_CLAUSE_SUBWORD_Z) ==
+                                (pos == count - 1));
+
+                /* Whether to end the clause immediately after the last tuple */
+                bool z = (constant_quads == 0);
+
+                bi_pack_format(emission, indices[clause->tuple_count - 1][pos],
+                                ins, clause->tuple_count, header, ec0, m0,
+                                z);
+        }
 
         /* Pack the remaining constants */
 
-        while (constant_index < clause->constant_count) {
-                constant_index += bi_pack_constants(ctx, clause,
-                                constant_index, emission);
+        for (unsigned pos = 0; pos < constant_quads; ++pos) {
+                bi_pack_constants(ctx, clause, pos, ec0_packed,
+                                emission);
         }
 }
 
