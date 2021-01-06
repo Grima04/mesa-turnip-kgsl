@@ -624,6 +624,32 @@ bi_count_succ_reads(bi_index t0, bi_index t1,
         return reads;
 }
 
+/* Not all instructions can read from the staging passthrough (as determined by
+ * reads_t), check if a given pair of instructions has such a restriction. Note
+ * we also use this mechanism to prevent data races around staging register
+ * reads, so we allow the input source to potentially be vector-valued */
+
+static bool
+bi_has_staging_passthrough_hazard(bi_index fma, bi_instr *add)
+{
+        bi_foreach_src(add, s) {
+                bi_index src = add->src[s];
+                unsigned count = bi_count_read_registers(add, s);
+
+                if (!bi_is_equiv(fma, src))
+                        continue;
+
+                /* fma \in [src, src + src_count) */
+                if (!(fma.offset >= src.offset && fma.offset < src.offset + count))
+                        continue;
+
+                if (!bi_reads_t(add, s))
+                        return true;
+        }
+
+        return false;
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
