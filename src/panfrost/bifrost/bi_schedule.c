@@ -136,6 +136,25 @@ bi_lower_cubeface(bi_context *ctx,
         return cubeface1;
 }
 
+/* Flatten linked list to array for O(1) indexing */
+
+static bi_instr **
+bi_flatten_block(bi_block *block, unsigned *len)
+{
+        if (list_is_empty(&block->base.instructions))
+                return NULL;
+
+        *len = list_length(&block->base.instructions);
+        bi_instr **instructions = malloc(sizeof(bi_instr *) * (*len));
+
+        unsigned i = 0;
+
+        bi_foreach_instr_in_block(block, ins)
+                instructions[i++] = ins;
+
+        return instructions;
+}
+
 /* Determines messsage type by checking the table and a few special cases. Only
  * case missing is tilebuffer instructions that access depth/stencil, which
  * require a Z_STENCIL message (to implement
