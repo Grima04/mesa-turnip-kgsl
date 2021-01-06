@@ -1203,6 +1203,230 @@ bi_apply_constant_modifiers(struct bi_const_state *consts,
         return constant_count;
 }
 
+/* Schedule a single clause. If no instructions remain, return NULL. */
+
+static bi_clause *
+bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st)
+{
+        struct bi_clause_state clause_state = { 0 };
+        bi_clause *clause = rzalloc(ctx, bi_clause);
+        bi_tuple *tuple = NULL;
+
+        const unsigned max_tuples = ARRAY_SIZE(clause->tuples);
+
+        /* TODO: Decide flow control better */
+        clause->flow_control = BIFROST_FLOW_NBTB;
+
+        /* The last clause can only write one instruction, so initialize that */
+        struct bi_reg_state reg_state = {};
+        bi_index prev_reads[5] = { bi_null() };
+        unsigned nr_prev_reads = 0;
+
+        do {
+                struct bi_tuple_state tuple_state = {
+                        .last = (clause->tuple_count == 0),
+                        .reg = reg_state,
+                        .nr_prev_reads = nr_prev_reads,
+                        .prev = tuple,
+                        .pcrel_idx = ~0,
+                };
+
+                assert(nr_prev_reads < ARRAY_SIZE(prev_reads));
+                memcpy(tuple_state.prev_reads, prev_reads, sizeof(prev_reads));
+
+                unsigned idx = max_tuples - clause->tuple_count - 1;
+
+                tuple = &clause->tuples[idx];
+
+                /* Since we schedule backwards, we schedule ADD first */
+                tuple_state.add = bi_take_instr(ctx, st, &clause_state, &tuple_state, false);
+                tuple->fma = bi_take_instr(ctx, st, &clause_state, &tuple_state, true);
+                tuple->add = tuple_state.add;
+
+                /* We may have a message, but only one per clause */
+                if (tuple->add) {
+                        enum bifrost_message_type msg =
+                                bi_message_type_for_instr(tuple->add);
+                        assert(!(msg && clause->message_type));
+
+                        if (!clause->message_type) {
+                                clause->message_type = msg;
+                                clause_state.message = true;
+                        }
+
+                        if (tuple->add->op == BI_OPCODE_ATEST)
+                                clause->dependencies |= (1 << 6);
+
+                        if (tuple->add->op == BI_OPCODE_BLEND)
+                                clause->dependencies |= (1 << 6) | (1 << 7);
+                }
+
+                clause_state.consts[idx] = bi_get_const_state(&tuple_state);
+
+                /* Before merging constants, eliminate zeroes, otherwise the
+                 * merging will fight over the #0 that never gets read (and is
+                 * never marked as read by update_fau) */
+                if (tuple->fma && bi_reads_zero(tuple->fma))
+                        bi_rewrite_zero(tuple->fma, true);
+
+                /* Rewrite away FAU, constant write is deferred */
+                if (!tuple_state.constant_count) {
+                        tuple->fau_idx = tuple_state.fau;
+                        bi_rewrite_fau_to_pass(tuple);
+                }
+
+                /* Use passthrough register for cross-stage accesses. Since
+                 * there are just FMA and ADD stages, that means we rewrite to
+                 * passthrough the sources of the ADD that read from the
+                 * destination of the FMA */
+
+                if (tuple->fma) {
+                        bi_use_passthrough(tuple->add, tuple->fma->dest[0],
+                                        BIFROST_SRC_STAGE, false);
+                }
+
+                if (tuple->add || tuple->fma)
+                        clause->tuple_count++;
+                else
+                        break;
+
+                /* Adding enough tuple might overflow constants */
+                if (!bi_space_for_more_constants(&clause_state))
+                        break;
+
+                /* Link through the register state */
+                STATIC_ASSERT(sizeof(prev_reads) == sizeof(tuple_state.reg.reads));
+                memcpy(prev_reads, tuple_state.reg.reads, sizeof(prev_reads));
+                nr_prev_reads = tuple_state.reg.nr_reads;
+                clause_state.tuple_count++;
+        } while(clause->tuple_count < 8);
+
+        /* Don't schedule an empty clause */
+        if (!clause->tuple_count)
+                return NULL;
+
+        /* Before merging, rewrite away any tuples that read only zero */
+        for (unsigned i = max_tuples - clause->tuple_count; i < max_tuples; ++i) {
+                bi_tuple *tuple = &clause->tuples[i];
+                struct bi_const_state *st = &clause_state.consts[i];
+
+                if (st->constant_count == 0 || st->constants[0] || st->constants[1] || st->pcrel)
+                        continue;
+
+                bi_foreach_instr_in_tuple(tuple, ins)
+                        bi_rewrite_zero(ins, false);
+
+                /* Constant has been demoted to FAU, so don't pack it separately */
+                st->constant_count = 0;
+
+                /* Default */
+                assert(tuple->fau_idx == BIR_FAU_ZERO);
+        }
+
+        uint64_t constant_pairs[8] = { 0 };
+        unsigned pcrel_idx = ~0;
+        unsigned constant_words =
+                bi_merge_constants(clause_state.consts, constant_pairs, &pcrel_idx);
+
+        constant_words = bi_apply_constant_modifiers(clause_state.consts,
+                        constant_pairs, &pcrel_idx, clause->tuple_count,
+                        constant_words);
+
+        clause->pcrel_idx = pcrel_idx;
+
+        for (unsigned i = max_tuples - clause->tuple_count; i < max_tuples; ++i) {
+                bi_tuple *tuple = &clause->tuples[i];
+
+                /* If no constants, leave FAU as it is, possibly defaulting to 0 */
+                if (clause_state.consts[i].constant_count == 0)
+                        continue;
+
+                /* FAU is already handled */
+                assert(!tuple->fau_idx);
+
+                unsigned word_idx = clause_state.consts[i].word_idx;
+                assert(word_idx <= 8);
+
+                /* We could try to merge regardless of bottom bits as well, but
+                 * that's probably diminishing returns */
+                uint64_t pair = constant_pairs[word_idx];
+                unsigned lo = pair & 0xF;
+
+                tuple->fau_idx = bi_constant_field(word_idx) | lo;
+                bi_rewrite_constants_to_pass(tuple, pair, word_idx == pcrel_idx);
+        }
+
+        clause->constant_count = constant_words;
+        memcpy(clause->constants, constant_pairs, sizeof(constant_pairs));
+
+        /* Branches must be last, so this can be factored out */
+        bi_instr *last = clause->tuples[max_tuples - 1].add;
+        clause->next_clause_prefetch = !last || (last->op != BI_OPCODE_JUMP);
+        clause->block = block;
+
+        /* TODO: scoreboard assignment post-sched */
+        clause->dependencies |= (1 << 0);
+
+        /* We emit in reverse and emitted to the back of the tuples array, so
+         * move it up front for easy indexing */
+        memmove(clause->tuples,
+                       clause->tuples + (max_tuples - clause->tuple_count),
+                       clause->tuple_count * sizeof(clause->tuples[0]));
+
+        /* Use passthrough register for cross-tuple accesses. Note this is
+         * after the memmove, so this is forwards. Skip the first tuple since
+         * there is nothing before it to passthrough */
+
+        for (unsigned t = 1; t < clause->tuple_count; ++t)
+                bi_rewrite_passthrough(clause->tuples[t - 1], clause->tuples[t]);
+
+        return clause;
+}
+
+static void
+bi_schedule_block(bi_context *ctx, bi_block *block)
+{
+        list_inithead(&block->clauses);
+
+        /* Copy list to dynamic array */
+        struct bi_worklist st = bi_initialize_worklist(block);
+
+        if (!st.count) {
+                bi_free_worklist(st);
+                return;
+        }
+
+        /* Schedule as many clauses as needed to fill the block */
+        bi_clause *u = NULL;
+        while((u = bi_schedule_clause(ctx, block, st)))
+                list_add(&u->link, &block->clauses);
+
+        /* Back-to-back bit affects only the last clause of a block,
+         * the rest are implicitly true */
+        if (!list_is_empty(&block->clauses)) {
+                bi_clause *last_clause = list_last_entry(&block->clauses, bi_clause, link);
+                if (!bi_back_to_back(block))
+                        last_clause->flow_control = BIFROST_FLOW_NBTB_UNCONDITIONAL;
+        }
+
+        block->scheduled = true;
+
+#ifndef NDEBUG
+        unsigned i;
+        bool incomplete = false;
+
+        BITSET_FOREACH_SET(i, st.worklist, st.count) {
+                bi_print_instr(st.instructions[i], stderr);
+                incomplete = true;
+        }
+
+        if (incomplete)
+                unreachable("The above instructions failed to schedule.");
+#endif
+
+        bi_free_worklist(st);
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
