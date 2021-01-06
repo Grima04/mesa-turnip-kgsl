@@ -748,6 +748,11 @@ signed bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target);
 
 void bi_pack(bi_context *ctx, struct util_dynarray *emission);
 
+struct bi_packed_tuple {
+        uint64_t lo;
+        uint64_t hi;
+};
+
 unsigned bi_pack_fma(bi_instr *I,
                 enum bifrost_packed_src src0,
                 enum bifrost_packed_src src1,

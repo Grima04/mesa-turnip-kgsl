@@ -389,11 +389,6 @@ bi_pack_registers(bi_registers regs)
         return packed;
 }
 
-struct bi_packed_tuple {
-        uint64_t lo;
-        uint64_t hi;
-};
-
 /* We must ensure slot 1 > slot 0 for the 63-x trick to function, so we fix
  * this up at pack time. (Scheduling doesn't care.) */
 
