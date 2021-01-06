@@ -541,14 +541,22 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
 {
         /* After these two, are we done? Determines tag */
         bool done = clause->constant_count <= (index + 2);
-        ASSERTED bool only = clause->constant_count <= (index + 1);
 
         /* Is the constant we're packing for a branch? */
         bool branches = clause->branch_constant && done;
 
-        /* TODO: Pos */
-        assert(index == 0 && clause->tuple_count == 1);
-        assert(only);
+        /* Indexed first by tuple count and second by constant word number,
+         * indicates the position in the clause */
+        unsigned pos[8][3] = {
+                { 0 },
+                { 1 },
+                { 3 },
+                { 2, 5 },
+                { 4, 8 },
+                { 7, 11, 14 },
+                { 6, 10, 13 },
+                { 9, 12 }
+        };
 
         /* Compute branch offset instead of a dummy 0 */
         if (branches) {
@@ -573,7 +581,7 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
         uint64_t hi = clause->constants[index + 0] >> 60ull;
 
         struct bifrost_fmt_constant quad = {
-                .pos = 0, /* TODO */
+                .pos = pos[clause->tuple_count - 1][index], /* TODO */
                 .tag = done ? BIFROST_FMTC_FINAL : BIFROST_FMTC_CONSTANTS,
                 .imm_1 = clause->constants[index + 0] >> 4,
                 .imm_2 = ((hi < 8) ? (hi << 60ull) : 0) >> 4,
