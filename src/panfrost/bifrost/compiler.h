@@ -637,6 +637,9 @@ bi_node_to_index(unsigned node, unsigned node_count)
 #define bi_foreach_clause_in_block(block, v) \
         list_for_each_entry(bi_clause, v, &(block)->clauses, link)
 
+#define bi_foreach_clause_in_block_rev(block, v) \
+        list_for_each_entry_rev(bi_clause, v, &(block)->clauses, link)
+
 #define bi_foreach_clause_in_block_safe(block, v) \
         list_for_each_entry_safe(bi_clause, v, &(block)->clauses, link)
 
