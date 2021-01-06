@@ -27,6 +27,92 @@
 #include "compiler.h"
 #include "bi_builder.h"
 
+/* Arguments common to worklist, passed by value for convenience */
+
+struct bi_worklist {
+        /* # of instructions in the block */
+        unsigned count;
+
+        /* Instructions in the block */
+        bi_instr **instructions;
+
+        /* Bitset of instructions in the block ready for scheduling */
+        BITSET_WORD *worklist;
+};
+
+/* State of a single tuple and clause under construction */
+
+struct bi_reg_state {
+        /* Number of register writes */
+        unsigned nr_writes;
+
+        /* Register reads, expressed as (equivalence classes of)
+         * sources. Only 3 reads are allowed, but up to 2 may spill as
+         * "forced" for the next scheduled tuple, provided such a tuple
+         * can be constructed */
+        bi_index reads[5];
+        unsigned nr_reads;
+
+        /* The previous tuple scheduled (= the next tuple executed in the
+         * program) may require certain writes, in order to bypass the register
+         * file and use a temporary passthrough for the value. Up to 2 such
+         * constraints are architecturally satisfiable */
+        unsigned forced_count;
+        bi_index forceds[2];
+};
+
+struct bi_tuple_state {
+        /* Is this the last tuple in the clause */
+        bool last;
+
+        /* Scheduled ADD instruction, or null if none */
+        bi_instr *add;
+
+        /* Reads for previous (succeeding) tuple */
+        bi_index prev_reads[5];
+        unsigned nr_prev_reads;
+        bi_tuple *prev;
+
+        /* Register slot state for current tuple */
+        struct bi_reg_state reg;
+
+        /* Constants are shared in the tuple. If constant_count is nonzero, it
+         * is a size for constant count. Otherwise, fau is the slot read from
+         * FAU, or zero if none is assigned. Ordinarily FAU slot 0 reads zero,
+         * but within a tuple, that should be encoded as constant_count != 0
+         * and constants[0] = constants[1] = 0 */
+        unsigned constant_count;
+
+        union {
+                uint32_t constants[2];
+                enum bir_fau fau;
+        };
+
+        unsigned pcrel_idx;
+};
+
+struct bi_const_state {
+        unsigned constant_count;
+        bool pcrel; /* applies to first const */
+        uint32_t constants[2];
+
+        /* Index of the constant into the clause */
+        unsigned word_idx;
+};
+
+struct bi_clause_state {
+        /* Has a message-passing instruction already been assigned? */
+        bool message;
+
+        /* Indices already read, this needs to be tracked to avoid hazards
+         * around message-passing instructions */
+        unsigned read_count;
+        bi_index reads[BI_MAX_SRCS * 16];
+
+        unsigned tuple_count;
+        struct bi_const_state consts[8];
+};
+
 /* Determines messsage type by checking the table and a few special cases. Only
  * case missing is tilebuffer instructions that access depth/stencil, which
  * require a Z_STENCIL message (to implement
