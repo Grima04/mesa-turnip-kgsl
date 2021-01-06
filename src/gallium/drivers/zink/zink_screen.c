@@ -44,6 +44,8 @@
 #include "util/u_transfer_helper.h"
 #include "util/xmlconfig.h"
 
+#include "util/u_cpu_detect.h"
+
 #include "frontend/sw_winsys.h"
 
 static const struct debug_named_value
@@ -1372,6 +1374,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    struct zink_screen *screen = rzalloc(NULL, struct zink_screen);
    if (!screen)
       return NULL;
+
+   util_cpu_detect();
 
    zink_debug = debug_get_option_zink_debug();
 
