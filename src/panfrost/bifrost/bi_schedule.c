@@ -677,6 +677,94 @@ bi_writes_reg(bi_instr *instr)
                  !bi_opcode_props[instr->op].sr_write);
 }
 
+/* Instruction placement entails two questions: what subset of instructions in
+ * the block can legally be scheduled? and of those which is the best? That is,
+ * we seek to maximize a cost function on a subset of the worklist satisfying a
+ * particular predicate. The necessary predicate is determined entirely by
+ * Bifrost's architectural limitations and is described in the accompanying
+ * whitepaper. The cost function is a heuristic. */
+
+static bool
+bi_instr_schedulable(bi_instr *instr,
+                struct bi_clause_state *clause,
+                struct bi_tuple_state *tuple,
+                bool fma)
+{
+        /* The units must match */
+        if ((fma && !bi_can_fma(instr)) || (!fma && !bi_can_add(instr)))
+                return false;
+
+        /* There can only be one message-passing instruction per clause */
+        if (bi_must_message(instr) && clause->message)
+                return false;
+
+        /* Some instructions have placement requirements */
+        if (bi_must_last(instr) && !tuple->last)
+                return false;
+
+        /* Message-passing instructions are not guaranteed write within the
+         * same clause (most likely they will not), so if a later instruction
+         * in the clause reads from the destination, the message-passing
+         * instruction can't be scheduled */
+        if (bi_opcode_props[instr->op].sr_write) {
+                for (unsigned i = 0; i < clause->read_count; ++i) {
+                        if (bi_is_equiv(instr->dest[0], clause->reads[i]))
+                                return false;
+                }
+        }
+
+        /* If FAU is already assigned, we may not disrupt that. Do a
+         * non-disruptive test update */
+        if (!bi_update_fau(clause, tuple, instr, fma, false))
+                return false;
+
+        /* If this choice of FMA would force a staging passthrough, the ADD
+         * instruction must support such a passthrough */
+        if (tuple->add && bi_has_staging_passthrough_hazard(instr->dest[0], tuple->add))
+                return false;
+
+        /* If this choice of destination would force a cross-tuple passthrough, the next tuple must support that */
+        if (tuple->prev && bi_has_cross_passthrough_hazard(tuple->prev, instr))
+                return false;
+
+        /* Register file writes are limited, TODO don't count tempable things */
+        unsigned total_writes = tuple->reg.nr_writes;
+
+        if (bi_writes_reg(instr))
+                total_writes++;
+
+        /* Last tuple in a clause can only write a single value */
+        if (tuple->last && total_writes > 1)
+                return false;
+
+        /* Register file reads are limited, so count unique */
+
+        unsigned unique_new_srcs = 0;
+
+        bi_foreach_src(instr, s) {
+                if (bi_tuple_is_new_src(instr, &tuple->reg, s))
+                        unique_new_srcs++;
+        }
+
+        unsigned total_srcs = tuple->reg.nr_reads + unique_new_srcs;
+
+        /* TODO: spill to moves */
+        if (total_srcs > 3)
+                return false;
+
+        /* Count effective reads for the successor */
+        unsigned succ_reads = bi_count_succ_reads(instr->dest[0],
+                        tuple->add ? tuple->add->dest[0] : bi_null(),
+                        tuple->prev_reads, tuple->nr_prev_reads);
+
+        /* Successor must satisfy R+W <= 4, so we require W <= 4-R */
+        if (total_writes > MAX2(4 - (signed) succ_reads, 0))
+                return false;
+
+        return true;
+}
+
+
 #ifndef NDEBUG
 
 static bi_builder *
