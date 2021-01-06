@@ -598,6 +598,15 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
         return 2;
 }
 
+static inline uint8_t
+bi_pack_literal(enum bi_clause_subword literal)
+{
+        assert(literal >= BI_CLAUSE_SUBWORD_LITERAL_0);
+        assert(literal <= BI_CLAUSE_SUBWORD_LITERAL_7);
+
+        return (literal - BI_CLAUSE_SUBWORD_LITERAL_0);
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
