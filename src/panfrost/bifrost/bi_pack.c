@@ -269,40 +269,6 @@ bi_flip_slots(bi_registers *regs)
 
 }
 
-/* Lower CUBEFACE2 to a CUBEFACE1/CUBEFACE2. This is a hack so the scheduler
- * doesn't have to worry about this while we're just packing singletons */
-
-static void
-bi_lower_cubeface2(bi_context *ctx, bi_tuple *tuple)
-{
-        bi_instr *old = tuple->add;
-
-        /* Filter for +CUBEFACE2 */
-        if (!old || old->op != BI_OPCODE_CUBEFACE2)
-                return;
-
-        /* This won't be used once we emit non-singletons, for now this is just
-         * a fact of our scheduler and allows us to clobber FMA */
-        assert(!tuple->fma);
-
-        /* Construct an FMA op */
-        bi_instr *new = rzalloc(ctx, bi_instr);
-        new->op = BI_OPCODE_CUBEFACE1;
-        /* no dest, just a temporary */
-        new->src[0] = old->src[0];
-        new->src[1] = old->src[1];
-        new->src[2] = old->src[2];
-
-        /* Emit the instruction */
-        list_addtail(&new->link, &old->link);
-        tuple->fma = new;
-
-        /* Now replace the sources of the CUBEFACE2 with a single passthrough
-         * from the CUBEFACE1 (and a side-channel) */
-        old->src[0] = bi_passthrough(BIFROST_SRC_STAGE);
-        old->src[1] = old->src[2] = bi_null();
-}
-
 static inline enum bifrost_packed_src
 bi_get_src_slot(bi_registers *regs, unsigned reg)
 {
