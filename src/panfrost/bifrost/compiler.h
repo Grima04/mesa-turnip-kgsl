@@ -807,6 +807,21 @@ bi_last_instr_in_clause(bi_clause *clause)
         return bundle.add ?: bundle.fma;
 }
 
+/* Implemented by expanding bi_foreach_instr_in_block_from(_rev) with the start
+ * (end) of the clause and adding a condition for the clause boundary */
+
+#define bi_foreach_instr_in_clause(block, clause, pos) \
+   for (bi_instr *pos = LIST_ENTRY(bi_instr, bi_first_instr_in_clause(clause), link); \
+	(&pos->link != &(block)->base.instructions) \
+                && (pos != bi_next_op(bi_last_instr_in_clause(clause))); \
+	pos = LIST_ENTRY(bi_instr, pos->link.next, link))
+
+#define bi_foreach_instr_in_clause_rev(block, clause, pos) \
+   for (bi_instr *pos = LIST_ENTRY(bi_instr, bi_last_instr_in_clause(clause), link); \
+	(&pos->link != &(block)->base.instructions) \
+	        && pos != bi_prev_op(bi_first_instr_in_clause(clause)); \
+	pos = LIST_ENTRY(bi_instr, pos->link.prev, link))
+
 static inline bi_cursor
 bi_before_clause(bi_clause *clause)
 {
