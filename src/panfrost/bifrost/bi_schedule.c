@@ -591,6 +591,39 @@ bi_tuple_is_new_src(bi_instr *instr, struct bi_reg_state *reg, unsigned src_idx)
         return true;
 }
 
+/* Given two tuples in source order, count the number of register reads of the
+ * successor, determined as the number of unique words accessed that aren't
+ * written by the predecessor (since those are tempable).
+ */
+
+static unsigned
+bi_count_succ_reads(bi_index t0, bi_index t1,
+                bi_index *succ_reads, unsigned nr_succ_reads)
+{
+        unsigned reads = 0;
+
+        for (unsigned i = 0; i < nr_succ_reads; ++i) {
+                bool unique = true;
+
+                for (unsigned j = 0; j < i; ++j)
+                        if (bi_is_word_equiv(succ_reads[i], succ_reads[j]))
+                                unique = false;
+
+                if (!unique)
+                        continue;
+
+                if (bi_is_word_equiv(succ_reads[i], t0))
+                        continue;
+
+                if (bi_is_word_equiv(succ_reads[i], t1))
+                        continue;
+
+                reads++;
+        }
+
+        return reads;
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
