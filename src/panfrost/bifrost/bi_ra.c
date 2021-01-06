@@ -30,6 +30,45 @@
 #include "util/u_memory.h"
 
 static void
+bi_mark_interference(bi_block *block, bi_clause *clause, struct lcra_state *l, uint16_t *live, unsigned node_count, bool is_blend)
+{
+        bi_foreach_instr_in_clause_rev(block, clause, ins) {
+                /* Mark all registers live after the instruction as
+                 * interfering with the destination */
+
+                bi_foreach_dest(ins, d) {
+                        if (bi_get_node(ins->dest[d]) >= node_count)
+                                continue;
+
+                        for (unsigned i = 1; i < node_count; ++i) {
+                                if (live[i]) {
+                                        lcra_add_node_interference(l, bi_get_node(ins->dest[d]),
+                                                        bi_writemask(ins), i, live[i]);
+                                }
+                        }
+                }
+
+                if (!is_blend && ins->op == BI_OPCODE_BLEND) {
+                        /* Add blend shader interference: blend shaders might
+                         * clobber r0-r15. */
+                        for (unsigned i = 1; i < node_count; ++i) {
+                                if (!live[i])
+                                        continue;
+
+                                for (unsigned j = 0; j < 4; j++) {
+                                        lcra_add_node_interference(l, node_count + j,
+                                                                   0xFFFF,
+                                                                   i, live[i]);
+                                }
+                        }
+                }
+
+                /* Update live_in */
+                bi_liveness_ins_update(live, ins, node_count);
+        }
+}
+
+static void
 bi_compute_interference(bi_context *ctx, struct lcra_state *l)
 {
         unsigned node_count = bi_max_temp(ctx);
@@ -40,37 +79,8 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
                 bi_block *blk = (bi_block *) _blk;
                 uint16_t *live = mem_dup(_blk->live_out, node_count * sizeof(uint16_t));
 
-                bi_foreach_instr_in_block_rev(blk, ins) {
-                        /* Mark all registers live after the instruction as
-                         * interfering with the destination */
-
-                        bi_foreach_dest(ins, d) {
-                                if (bi_get_node(ins->dest[d]) >= node_count)
-                                        continue;
-
-                                for (unsigned i = 0; i < node_count; ++i) {
-                                        if (live[i])
-                                                lcra_add_node_interference(l, bi_get_node(ins->dest[d]), bi_writemask(ins), i, live[i]);
-                                }
-                        }
-
-                        if (!ctx->is_blend && ins->op == BI_OPCODE_BLEND) {
-                                /* Add blend shader interference: blend shaders might
-                                 * clobber r0-r15. */
-                                for (unsigned i = 0; i < node_count; ++i) {
-                                        if (!live[i])
-                                                continue;
-
-                                        for (unsigned j = 0; j < 4; j++) {
-                                                lcra_add_node_interference(l, node_count + j,
-                                                                           0xFFFF,
-                                                                           i, live[i]);
-                                        }
-                                }
-                        }
-
-                        /* Update live_in */
-                        bi_liveness_ins_update(live, ins, node_count);
+                bi_foreach_clause_in_block_rev(blk, clause) {
+                        bi_mark_interference(blk, clause, l, live, node_count, ctx->is_blend);
                 }
 
                 free(live);
