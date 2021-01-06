@@ -124,8 +124,9 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
       return 4;
    case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
-   case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
       return 64;
+   case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
+      return 4;
    case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
    case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
       return 1024;
