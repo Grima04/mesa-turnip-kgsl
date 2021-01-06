@@ -729,6 +729,35 @@ bi_pack_subwords_56(enum bi_clause_subword t,
         }
 }
 
+static uint16_t
+bi_pack_subword(enum bi_clause_subword t, unsigned format,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count,
+                uint64_t header, uint64_t ec0, unsigned m0,
+                unsigned tuple_subword)
+{
+        switch (t) {
+        case BI_CLAUSE_SUBWORD_HEADER:
+                return header >> 30;
+        case BI_CLAUSE_SUBWORD_M:
+                return m0;
+        case BI_CLAUSE_SUBWORD_CONSTANT:
+                return (format == 5 || format == 10) ?
+                        (ec0 & ((1 << 15) - 1)) :
+                        (ec0 >> (15 + 30));
+        case BI_CLAUSE_SUBWORD_UPPER_23:
+                return (bi_clause_upper(2, tuples, tuple_count) << 12) |
+                        (bi_clause_upper(3, tuples, tuple_count) << 9);
+        case BI_CLAUSE_SUBWORD_UPPER_56:
+                return (bi_clause_upper(5, tuples, tuple_count) << 12) |
+                        (bi_clause_upper(6, tuples, tuple_count) << 9);
+        case BI_CLAUSE_SUBWORD_UPPER_0 ... BI_CLAUSE_SUBWORD_UPPER_7:
+                return bi_pack_upper(t, tuples, tuple_count) << 12;
+        default:
+                return bi_pack_tuple_bits(t, tuples, tuple_count, tuple_subword * 15, 15);
+        }
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
