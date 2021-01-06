@@ -94,6 +94,9 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
    unsigned min_index = info->index_bounds_valid ? info->min_index : 0;
    unsigned max_index = info->index_bounds_valid ? info->max_index : ~0;
 
+   if (!info->instance_count)
+      return;
+
    ib.index_size_shift = util_logbase2(index_size);
 
    /* Single draw or a fallback for user indices. */
@@ -101,6 +104,9 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
        (info->index_size && info->has_user_indices &&
         !ctx->Const.MultiDrawWithUserIndices)) {
       for (unsigned i = 0; i < num_draws; i++) {
+         if (!draws[i].count)
+            continue;
+
          if (index_size) {
             ib.count = draws[i].count;
 
@@ -136,19 +142,24 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
 
    struct _mesa_prim *prim;
    unsigned max_count = 0;
+   unsigned num_prims = 0;
 
    ALLOC_PRIMS(prim, num_draws, "DrawGallium");
 
    for (unsigned i = 0; i < num_draws; i++) {
-      prim[i].mode = info->mode;
-      prim[i].begin = 1;
-      prim[i].end = 1;
-      prim[i].start = draws[i].start;
-      prim[i].count = draws[i].count;
-      prim[i].basevertex = info->index_size ? info->index_bias : 0;
-      prim[i].draw_id = info->drawid + (info->increment_draw_id ? i : 0);
+      if (!draws[i].count)
+         continue;
 
-      max_count = MAX2(max_count, prim[i].count);
+      prim[num_prims].mode = info->mode;
+      prim[num_prims].begin = 1;
+      prim[num_prims].end = 1;
+      prim[num_prims].start = draws[i].start;
+      prim[num_prims].count = draws[i].count;
+      prim[num_prims].basevertex = info->index_size ? info->index_bias : 0;
+      prim[num_prims].draw_id = info->drawid + (info->increment_draw_id ? i : 0);
+
+      max_count = MAX2(max_count, prim[num_prims].count);
+      num_prims++;
    }
 
    if (info->index_size) {
@@ -164,7 +175,7 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
       }
    }
 
-   ctx->Driver.Draw(ctx, prim, num_draws, index_size ? &ib : NULL,
+   ctx->Driver.Draw(ctx, prim, num_prims, index_size ? &ib : NULL,
                     info->index_bounds_valid, info->primitive_restart,
                     info->restart_index, min_index, max_index,
                     info->instance_count, info->start_instance);
