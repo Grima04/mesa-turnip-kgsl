@@ -1797,21 +1797,18 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         bi_f16_to_s32_to(b, dst, s0, BI_ROUND_RTZ);
                 break;
 
+        /* Note 32-bit sources => no vectorization, so 32-bit works */
         case nir_op_f2u16:
-                if (src_sz == 32) {
-                        bi_mkvec_v2i16_to(b, dst,
-                                        bi_f32_to_u32(b, s0, BI_ROUND_RTZ),
-                                        bi_imm_u16(0));
-                } else
+                if (src_sz == 32)
+                        bi_f32_to_u32_to(b, dst, s0, BI_ROUND_RTZ);
+                else
                         bi_v2f16_to_v2u16_to(b, dst, s0, BI_ROUND_RTZ);
                 break;
 
         case nir_op_f2i16:
-                if (src_sz == 32) {
-                        bi_mkvec_v2i16_to(b, dst,
-                                        bi_f32_to_s32(b, s0, BI_ROUND_RTZ),
-                                        bi_imm_u16(0));
-                } else
+                if (src_sz == 32)
+                        bi_f32_to_s32_to(b, dst, s0, BI_ROUND_RTZ);
+                else
                         bi_v2f16_to_v2s16_to(b, dst, s0, BI_ROUND_RTZ);
                 break;
 
