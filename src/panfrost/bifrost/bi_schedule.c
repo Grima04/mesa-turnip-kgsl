@@ -113,6 +113,29 @@ struct bi_clause_state {
         struct bi_const_state consts[8];
 };
 
+/* Scheduler pseudoinstruction lowerings to enable instruction pairings.
+ * Currently only support CUBEFACE -> *CUBEFACE1/+CUBEFACE2
+ */
+
+static bi_instr *
+bi_lower_cubeface(bi_context *ctx,
+                struct bi_clause_state *clause, struct bi_tuple_state *tuple)
+{
+        bi_instr *pinstr = tuple->add;
+        bi_builder b = bi_init_builder(ctx, bi_before_instr(pinstr));
+        bi_instr *cubeface1 = bi_cubeface1_to(&b, pinstr->dest[0],
+                        pinstr->src[0], pinstr->src[1], pinstr->src[2]);
+
+        pinstr->op = BI_OPCODE_CUBEFACE2;
+        pinstr->dest[0] = pinstr->dest[1];
+        pinstr->dest[1] = bi_null();
+        pinstr->src[0] = cubeface1->dest[0];
+        pinstr->src[1] = bi_null();
+        pinstr->src[2] = bi_null();
+
+        return cubeface1;
+}
+
 /* Determines messsage type by checking the table and a few special cases. Only
  * case missing is tilebuffer instructions that access depth/stencil, which
  * require a Z_STENCIL message (to implement
