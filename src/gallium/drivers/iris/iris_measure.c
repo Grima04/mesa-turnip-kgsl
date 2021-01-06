@@ -347,7 +347,6 @@ iris_measure_gather(struct iris_context *ice)
          list_first_entry(&measure_device->queued_snapshots,
                           struct iris_measure_batch, link);
 
-      assert(measure->base.submitted == true);
       if (!iris_measure_ready(measure)) {
          /* command buffer has begun execution on the gpu, but has not
           * completed.
@@ -375,7 +374,6 @@ iris_measure_gather(struct iris_context *ice)
       iris_bo_unmap(measure->bo);
       measure->base.index = 0;
       measure->base.frame = 0;
-      measure->base.submitted = false;
       iris_destroy_batch_measure(measure);
    }
 
@@ -426,7 +424,6 @@ iris_measure_batch_end(struct iris_context *ice, struct iris_batch *batch)
    /* enqueue snapshot for gathering */
    pthread_mutex_lock(&measure_device->mutex);
    list_addtail(&iris_measure_batch->link, &measure_device->queued_snapshots);
-   measure_batch->submitted = true;
    batch->measure = NULL;
    pthread_mutex_unlock(&measure_device->mutex);
    /* init new measure_batch */
@@ -448,15 +445,6 @@ iris_measure_frame_end(struct iris_context *ice)
 
    if (!config)
       return;
-   /* check that the snapshots were submitted */
-   for (int i = 0; i < IRIS_BATCH_COUNT; ++i) {
-      struct intel_measure_batch *measure_batch =
-         &ice->batches[i].measure->base;
-
-      if (measure_batch != NULL) {
-         assert(measure_batch->submitted || measure_batch->index == 0);
-      }
-   }
 
    /* increment frame counter */
    intel_measure_frame_transition(p_atomic_inc_return(&measure_device->frame));

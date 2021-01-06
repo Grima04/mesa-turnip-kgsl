@@ -139,7 +139,6 @@ struct intel_measure_batch {
    unsigned index;
    unsigned frame, batch_count, event_count;
    uintptr_t framebuffer;
-   bool submitted;
    struct intel_measure_snapshot snapshots[0];
 };
 

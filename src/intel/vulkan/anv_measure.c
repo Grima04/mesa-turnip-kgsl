@@ -154,7 +154,6 @@ anv_measure_gather(struct anv_device *device)
          list_first_entry(&measure_device->queued_snapshots,
                           struct anv_measure_batch, link);
 
-      assert(measure->base.submitted == true);
       if (!anv_measure_ready(device, measure)) {
          /* command buffer has begun execution on the gpu, but has not
           * completed.
@@ -183,7 +182,6 @@ anv_measure_gather(struct anv_device *device)
       anv_gem_munmap(device, map, measure->base.index * sizeof(uint64_t));
       measure->base.index = 0;
       measure->base.frame = 0;
-      measure->base.submitted = false;
    }
 
    intel_measure_print(measure_device, &device->info);
@@ -366,16 +364,11 @@ anv_measure_reset(struct anv_cmd_buffer *cmd_buffer)
       return anv_measure_init(cmd_buffer);
    }
 
-   if (measure->base.submitted) {
-      /* This snapshot was submitted, but was never gathered after rendering.
-       * Since the client is resetting the command buffer, rendering is
-       * certainly complete.
-       */
-      assert (anv_measure_ready(device, measure));
-      anv_measure_gather(device);
-   }
+   /* it is possible that the command buffer contains snapshots that have not
+    * yet been processed
+    */
+   anv_measure_gather(device);
 
-   assert(!measure->base.submitted);
    assert(cmd_buffer->device != NULL);
 
    measure->base.index = 0;
@@ -405,15 +398,10 @@ anv_measure_destroy(struct anv_cmd_buffer *cmd_buffer)
    if (measure == NULL)
       return;
 
-   if (measure->base.submitted) {
-      /* This snapshot was submitted, but was never gathered after rendering.
-       * Since the client is destroying the command buffer, rendering is
-       * certainly complete.
-       */
-      assert(anv_measure_ready(device, measure));
-      anv_measure_gather(device);
-      assert(!measure->base.submitted);
-   }
+   /* it is possible that the command buffer contains snapshots that have not
+    * yet been processed
+    */
+   anv_measure_gather(device);
 
    anv_device_release_bo(device, measure->bo);
    vk_free(&cmd_buffer->pool->alloc, measure);
@@ -455,7 +443,6 @@ _anv_measure_submit(struct anv_cmd_buffer *cmd_buffer)
       return;
    if (measure == NULL)
       return;
-   assert(measure->base.submitted == false);
 
    if (measure->base.index == 0)
       /* no snapshots were started */
@@ -469,10 +456,6 @@ _anv_measure_submit(struct anv_cmd_buffer *cmd_buffer)
       anv_measure_end_snapshot(cmd_buffer, measure->base.event_count);
       measure->base.event_count = 0;
    }
-
-   /* verify that snapshots are submitted once */
-   assert(measure->base.submitted == false);
-   measure->base.submitted = true;
 
    /* add to the list of submitted snapshots */
    pthread_mutex_lock(&measure_device->mutex);
