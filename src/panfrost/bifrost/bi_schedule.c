@@ -558,6 +558,39 @@ bi_update_fau(struct bi_clause_state *clause,
         return true;
 }
 
+/* Given an in-progress tuple, a candidate new instruction to add to the tuple,
+ * and a source (index) from that candidate, determine whether this source is
+ * "new", in the sense of requiring an additional read slot. That is, checks
+ * whether the specified source reads from the register file via a read slot
+ * (determined by its type and placement) and whether the source was already
+ * specified by a prior read slot (to avoid double counting) */
+
+static bool
+bi_tuple_is_new_src(bi_instr *instr, struct bi_reg_state *reg, unsigned src_idx)
+{
+        bi_index src = instr->src[src_idx];
+
+        /* Only consider sources which come from the register file */
+        if (!(src.type == BI_INDEX_NORMAL || src.type == BI_INDEX_REGISTER))
+                return false;
+
+        /* Staging register reads bypass the usual register file mechanism */
+        if (src_idx == 0 && bi_opcode_props[instr->op].sr_read)
+                return false;
+
+        /* If a source is already read in the tuple, it is already counted */
+        for (unsigned t = 0; t < reg->nr_reads; ++t)
+                if (bi_is_word_equiv(src, reg->reads[t]))
+                        return false;
+
+        /* If a source is read in _this instruction_, it is already counted */
+        for (unsigned t = 0; t < src_idx; ++t)
+                if (bi_is_word_equiv(src, instr->src[t]))
+                        return false;
+
+        return true;
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
