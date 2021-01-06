@@ -355,13 +355,18 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                                 nir_var_shader_out, nir_intrinsic_base(instr));
         assert(var);
 
+        /* Emit ATEST if we have to, note ATEST requires a floating-point alpha
+         * value, but render target #0 might not be floating point. However the
+         * alpha value is only used for alpha-to-coverage, a stage which is
+         * skipped for pure integer framebuffers, so the issue is moot. */
         if (!b->shader->emitted_atest && !b->shader->is_blend) {
                 nir_alu_type T = nir_intrinsic_src_type(instr);
-                assert(T == nir_type_float16 || T == nir_type_float32);
 
                 bi_index rgba = bi_src_index(&instr->src[0]);
-                bi_index alpha = (T == nir_type_float32) ? bi_word(rgba, 3) :
-                        bi_half(bi_word(rgba, 1), true) ;
+                bi_index alpha =
+                        (T == nir_type_float16) ? bi_half(bi_word(rgba, 1), true) :
+                        (T == nir_type_float32) ? bi_word(rgba, 3) :
+                        bi_dontcare();
 
                 bi_atest_to(b, bi_register(60), bi_register(60), alpha);
                 b->shader->emitted_atest = true;
