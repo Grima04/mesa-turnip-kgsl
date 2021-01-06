@@ -2401,6 +2401,9 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          struct pipe_resource *buffer = NULL;
          unsigned offset;
 
+         if (!size)
+            return;
+
          /* This must be done before adding draw_vbo, because it could generate
           * e.g. transfer_unmap and flush partially-uninitialized draw_vbo
           * to the driver if it was done afterwards.
@@ -2444,6 +2447,9 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
       /* Get the total count. */
       for (unsigned i = 0; i < num_draws; i++)
          total_count += draws[i].count;
+
+      if (!total_count)
+         return;
 
       /* Allocate space for all index buffers.
        *
