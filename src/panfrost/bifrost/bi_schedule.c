@@ -666,6 +666,17 @@ bi_has_cross_passthrough_hazard(bi_tuple *succ, bi_instr *ins)
         return false;
 }
 
+/* Is a register written other than the staging mechanism? ATEST is special,
+ * writing to both a staging register and a regular register (fixed packing)*/
+
+static bool
+bi_writes_reg(bi_instr *instr)
+{
+        return (instr->op == BI_OPCODE_ATEST) ||
+                (!bi_is_null(instr->dest[0]) &&
+                 !bi_opcode_props[instr->op].sr_write);
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
