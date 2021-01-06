@@ -650,6 +650,22 @@ bi_has_staging_passthrough_hazard(bi_index fma, bi_instr *add)
         return false;
 }
 
+/* Likewise for cross-tuple passthrough (reads_temps) */
+
+static bool
+bi_has_cross_passthrough_hazard(bi_tuple *succ, bi_instr *ins)
+{
+        bi_foreach_instr_in_tuple(succ, pins) {
+                bi_foreach_src(pins, s) {
+                        if (bi_is_word_equiv(ins->dest[0], pins->src[s]) &&
+                                        !bi_reads_temps(pins, s))
+                                return true;
+                }
+        }
+
+        return false;
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
