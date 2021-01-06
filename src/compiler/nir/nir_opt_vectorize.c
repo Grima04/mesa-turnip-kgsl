@@ -375,7 +375,7 @@ vec_instr_set_add_or_rewrite(struct nir_shader *nir, struct set *instr_set,
                                                old_instr, instr);
       if (new_instr) {
          if (instr_can_rewrite(new_instr, nir->options->vectorize_vec2_16bit) &&
-             (!filter || filter(instr, data)))
+             (!filter || filter(new_instr, data)))
             _mesa_set_add(instr_set, new_instr);
          return true;
       }
