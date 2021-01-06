@@ -1107,7 +1107,12 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
         case nir_op_i2i8:
         case nir_op_u2u8:
-                unreachable("should've been lowered");
+                /* No vectorization in this part of the loop, so downcasts are
+                 * a noop. When vectorization support lands, some case
+                 * handlingg will be needed, but for the scalar case this is
+                 * optimal as it can be copypropped away */
+                bi_mov_i32_to(b, dst, s0);
+                break;
 
         case nir_op_fround_even:
         case nir_op_fceil:
