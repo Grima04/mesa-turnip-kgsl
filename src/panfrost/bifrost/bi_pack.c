@@ -708,7 +708,10 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
                  * the last clause of the block (the clause with the branch) */
 
                 bi_clause *succ_clause = block->base.successors[1] ?
-                        bi_next_clause(ctx, block->base.successors[0], NULL) : NULL;
+                        bi_next_clause(ctx, block->base.successors[1], NULL) : NULL;
+
+                if (!succ_clause && block->base.successors[0])
+                        succ_clause = bi_next_clause(ctx, block->base.successors[0], NULL);
 
                 bi_foreach_clause_in_block(block, clause) {
                         bool is_last = clause->link.next == &block->clauses;
