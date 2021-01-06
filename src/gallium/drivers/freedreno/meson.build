@@ -301,6 +301,7 @@ gmemtool = executable(
   dependencies : [
     idep_nir,
     idep_mesautil,
+    idep_u_tracepoints,
   ],
   link_with : [
     libfreedreno,
