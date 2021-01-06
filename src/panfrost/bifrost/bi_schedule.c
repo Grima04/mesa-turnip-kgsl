@@ -155,6 +155,38 @@ bi_flatten_block(bi_block *block, unsigned *len)
         return instructions;
 }
 
+/* The worklist would track instructions without outstanding dependencies. For
+ * debug, force in-order scheduling (no dependency graph is constructed).
+ */
+
+static struct bi_worklist
+bi_initialize_worklist(bi_block *block)
+{
+        struct bi_worklist st = { };
+        st.instructions = bi_flatten_block(block, &st.count);
+
+        if (st.count) {
+                st.worklist = calloc(BITSET_WORDS(st.count), sizeof(BITSET_WORD));
+                BITSET_SET(st.worklist, st.count - 1);
+        }
+
+        return st;
+}
+
+static void
+bi_free_worklist(struct bi_worklist st)
+{
+        free(st.instructions);
+        free(st.worklist);
+}
+
+static void
+bi_update_worklist(struct bi_worklist st, unsigned idx)
+{
+        if (idx >= 1)
+                BITSET_SET(st.worklist, idx - 1);
+}
+
 /* Determines messsage type by checking the table and a few special cases. Only
  * case missing is tilebuffer instructions that access depth/stencil, which
  * require a Z_STENCIL message (to implement
