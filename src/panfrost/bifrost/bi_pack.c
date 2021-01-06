@@ -631,6 +631,43 @@ bi_pack_upper(enum bi_clause_subword upper,
                         tuple_count);
 }
 
+static inline uint64_t
+bi_pack_tuple_bits(enum bi_clause_subword idx,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count,
+                unsigned offset, unsigned nbits)
+{
+        assert(idx >= BI_CLAUSE_SUBWORD_TUPLE_0);
+        assert(idx <= BI_CLAUSE_SUBWORD_TUPLE_7);
+
+        unsigned val = (idx - BI_CLAUSE_SUBWORD_TUPLE_0);
+        assert(val < tuple_count);
+
+        struct bi_packed_tuple tuple = tuples[val];
+
+        assert(offset + nbits < 78);
+        assert(nbits <= 64);
+
+        /* (X >> start) & m
+         * = (((hi << 64) | lo) >> start) & m
+         * = (((hi << 64) >> start) | (lo >> start)) & m
+         * = { ((hi << (64 - start)) | (lo >> start)) & m if start <= 64
+         *   { ((hi >> (start - 64)) | (lo >> start)) & m if start >= 64
+         * = { ((hi << (64 - start)) & m) | ((lo >> start) & m) if start <= 64
+         *   { ((hi >> (start - 64)) & m) | ((lo >> start) & m) if start >= 64
+         *
+         * By setting m = 2^64 - 1, we justify doing the respective shifts as
+         * 64-bit integers. Zero special cased to avoid undefined behaviour.
+         */
+
+        uint64_t lo = (tuple.lo >> offset);
+        uint64_t hi = (offset == 0) ? 0
+                : (offset > 64) ? (tuple.hi >> (offset - 64))
+                : (tuple.hi << (64 - offset));
+
+        return (lo | hi) & ((1ULL << nbits) - 1);
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
