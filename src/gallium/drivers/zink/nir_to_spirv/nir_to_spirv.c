@@ -1435,16 +1435,6 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
                                   src[0], src[1], src[2]);
       break;
 
-   case nir_op_fcsel:
-      result = emit_binop(ctx, SpvOpFOrdGreaterThan,
-                          get_bvec_type(ctx, num_components),
-                          src[0],
-                          get_fvec_constant(ctx,
-                                            nir_src_bit_size(alu->src[0].src),
-                                            num_components, 0));
-      result = emit_select(ctx, dest_type, result, src[1], src[2]);
-      break;
-
    case nir_op_bcsel:
       assert(nir_op_infos[alu->op].num_inputs == 3);
       result = emit_select(ctx, dest_type, src[0], src[1], src[2]);
