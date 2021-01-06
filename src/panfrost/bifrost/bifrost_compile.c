@@ -208,7 +208,7 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
         /* Ignored for non-conditional center and retrieve modes (use an
          * efficient encoding), otherwise R61 for sample mask XXX RA */
 
-        bi_index src0 = (sample == BI_SAMPLE_CENTER) ? bi_passthrough(BIFROST_SRC_FAU_HI) :
+        bi_index src0 = (sample == BI_SAMPLE_CENTER) ? bi_dontcare() :
                 bi_register(61);
 
         nir_src *offset = nir_get_io_offset_src(instr);

@@ -150,6 +150,13 @@ bi_passthrough(enum bifrost_packed_src value)
         };
 }
 
+/* Read back power-efficent garbage, TODO maybe merge with null? */
+static inline bi_index
+bi_dontcare()
+{
+        return bi_passthrough(BIFROST_SRC_FAU_HI);
+}
+
 /* Extracts a word from a vectored index */
 static inline bi_index
 bi_word(bi_index idx, unsigned component)
