@@ -897,6 +897,14 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 			fmask_state[5] = 0;
 			fmask_state[6] = S_00A018_META_PIPE_ALIGNED(1);
 			fmask_state[7] = 0;
+
+			if (radv_image_is_tc_compat_cmask(image)) {
+				va = gpu_address + image->offset + image->planes[0].surface.cmask_offset;
+
+				fmask_state[6] |= S_00A018_COMPRESSION_EN(1);
+				fmask_state[6] |= S_00A018_META_DATA_ADDRESS_LO(va >> 8);
+				fmask_state[7] |= va >> 16;
+			}
 		} else
 			memset(fmask_state, 0, 8 * 4);
 	}
