@@ -698,6 +698,18 @@ bi_pack_sync(enum bi_clause_subword t1,
         return sync;
 }
 
+static inline uint64_t
+bi_pack_t_ec(enum bi_clause_subword word,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count,
+                uint64_t ec0)
+{
+        if (word == BI_CLAUSE_SUBWORD_CONSTANT)
+                return ec0;
+        else
+                return bi_pack_tuple_bits(word, tuples, tuple_count, 0, 60);
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
