@@ -607,6 +607,30 @@ bi_pack_literal(enum bi_clause_subword literal)
         return (literal - BI_CLAUSE_SUBWORD_LITERAL_0);
 }
 
+static inline uint8_t
+bi_clause_upper(unsigned val,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count)
+{
+        assert(val < tuple_count);
+
+        /* top 3-bits of 78-bits is tuple >> 75 == (tuple >> 64) >> 11 */
+        struct bi_packed_tuple tuple = tuples[val];
+        return (tuple.hi >> 11);
+}
+
+static inline uint8_t
+bi_pack_upper(enum bi_clause_subword upper,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count)
+{
+        assert(upper >= BI_CLAUSE_SUBWORD_UPPER_0);
+        assert(upper <= BI_CLAUSE_SUBWORD_UPPER_7);
+
+        return bi_clause_upper(upper - BI_CLAUSE_SUBWORD_UPPER_0, tuples,
+                        tuple_count);
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
