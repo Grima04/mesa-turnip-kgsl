@@ -843,6 +843,53 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
         return instr;
 }
 
+/* Variant of bi_rewrite_index_src_single that uses word-equivalence, rewriting
+ * to a passthrough register. If except_zero is true, the zeroth (first) source
+ * is skipped, so staging register reads are not accidentally encoded as
+ * passthrough (which is impossible) */
+
+static void
+bi_use_passthrough(bi_instr *ins, bi_index old,
+                enum bifrost_packed_src new,
+                bool except_zero)
+{
+        /* Optional for convenience */
+        if (!ins || bi_is_null(old))
+                return;
+
+        bi_foreach_src(ins, i) {
+                if (i == 0 && except_zero)
+                        continue;
+
+                if (bi_is_word_equiv(ins->src[i], old)) {
+                        ins->src[i].type = BI_INDEX_PASS;
+                        ins->src[i].value = new;
+                        ins->src[i].reg = false;
+                        ins->src[i].offset = 0;
+                }
+        }
+}
+
+/* Rewrites an adjacent pair of tuples _prec_eding and _succ_eding to use
+ * intertuple passthroughs where necessary. Passthroughs are allowed as a
+ * post-condition of scheduling. */
+
+static void
+bi_rewrite_passthrough(bi_tuple prec, bi_tuple succ)
+{
+        bool sr_read = succ.add ? bi_opcode_props[succ.add->op].sr_read : false;
+
+        if (prec.fma) {
+                bi_use_passthrough(succ.fma, prec.fma->dest[0], BIFROST_SRC_PASS_FMA, false);
+                bi_use_passthrough(succ.add, prec.fma->dest[0], BIFROST_SRC_PASS_FMA, sr_read);
+        }
+
+        if (prec.add) {
+                bi_use_passthrough(succ.fma, prec.add->dest[0], BIFROST_SRC_PASS_ADD, false);
+                bi_use_passthrough(succ.add, prec.add->dest[0], BIFROST_SRC_PASS_ADD, sr_read);
+        }
+}
+
 
 #ifndef NDEBUG
 
