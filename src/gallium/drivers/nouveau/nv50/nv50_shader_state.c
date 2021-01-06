@@ -696,11 +696,17 @@ nv50_stream_output_validate(struct nv50_context *nv50)
 
       const unsigned n = nv50->screen->base.class_3d >= NVA0_3D_CLASS ? 4 : 3;
 
-      if (n == 4 && !targ->clean)
-         nv84_hw_query_fifo_wait(push, nv50_query(targ->pq));
+      uint32_t so_used = 0;
+
+      if (!targ->clean) {
+         if (n == 4)
+            nv84_hw_query_fifo_wait(push, nv50_query(targ->pq));
+         else
+            so_used = nv50->so_used[i];
+      }
       BEGIN_NV04(push, NV50_3D(STRMOUT_ADDRESS_HIGH(i)), n);
-      PUSH_DATAh(push, buf->address + targ->pipe.buffer_offset);
-      PUSH_DATA (push, buf->address + targ->pipe.buffer_offset);
+      PUSH_DATAh(push, buf->address + targ->pipe.buffer_offset + so_used);
+      PUSH_DATA (push, buf->address + targ->pipe.buffer_offset + so_used);
       PUSH_DATA (push, so->num_attribs[i]);
       if (n == 4) {
          PUSH_DATA(push, targ->pipe.buffer_size);
@@ -714,9 +720,10 @@ nv50_stream_output_validate(struct nv50_context *nv50)
             targ->clean = false;
          }
       } else {
-         const unsigned limit = targ->pipe.buffer_size /
+         const unsigned limit = (targ->pipe.buffer_size - so_used) /
             (so->stride[i] * nv50->state.prim_size);
          prims = MIN2(prims, limit);
+         targ->clean = false;
       }
       targ->stride = so->stride[i];
       BCTX_REFN(nv50->bufctx_3d, 3D_SO, buf, WR);

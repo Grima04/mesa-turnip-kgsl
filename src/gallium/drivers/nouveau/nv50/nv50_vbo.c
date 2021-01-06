@@ -23,6 +23,7 @@
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
 #include "util/u_inlines.h"
+#include "util/u_prim.h"
 #include "util/format/u_format.h"
 #include "translate/translate.h"
 
@@ -843,6 +844,18 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       nv50->state.mul_zero_wins = nv50->vertprog->mul_zero_wins;
       BEGIN_NV04(push, NV50_3D(UNK1690), 1);
       PUSH_DATA (push, 0x00010000 * !!nv50->state.mul_zero_wins);
+   }
+
+   /* Make starting/pausing streamout work pre-NVA0 enough for ES3.0. This
+    * means counting vertices in a vertex shader when it has so outputs.
+    */
+   if (nv50->screen->base.class_3d < NVA0_3D_CLASS &&
+       nv50->vertprog->pipe.stream_output.num_outputs) {
+      for (int i = 0; i < nv50->num_so_targets; i++) {
+         nv50->so_used[i] += info->instance_count *
+            u_stream_outputs_for_vertices(info->mode, draws[0].count) *
+            nv50->vertprog->pipe.stream_output.stride[i] * 4;
+      }
    }
 
    if (nv50->vbo_fifo) {

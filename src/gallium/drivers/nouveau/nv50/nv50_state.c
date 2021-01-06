@@ -1207,8 +1207,10 @@ nv50_set_stream_output_targets(struct pipe_context *pipe,
          serialize = false;
       }
 
-      if (targets[i] && !append)
+      if (targets[i] && !append) {
          nv50_so_target(targets[i])->clean = true;
+         nv50->so_used[i] = 0;
+      }
 
       pipe_so_target_reference(&nv50->so_target[i], targets[i]);
    }
