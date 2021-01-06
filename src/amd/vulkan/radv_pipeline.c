@@ -2410,6 +2410,8 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 		    (ordered_shaders[i]->info.stage == MESA_SHADER_VERTEX && has_geom_tess) ||
 		    (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_EVAL && merged_gs)) {
 			nir_lower_io_to_vector(ordered_shaders[i], nir_var_shader_out);
+			if (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_CTRL)
+				nir_vectorize_tess_levels(ordered_shaders[i]);
 			nir_opt_combine_stores(ordered_shaders[i], nir_var_shader_out);
 		}
 		if (ordered_shaders[i - 1]->info.stage == MESA_SHADER_GEOMETRY ||
