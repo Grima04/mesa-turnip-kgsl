@@ -797,6 +797,52 @@ bi_choose_index(struct bi_worklist st,
         return best_idx;
 }
 
+static void
+bi_pop_instr(struct bi_clause_state *clause, struct bi_tuple_state *tuple,
+                bi_instr *instr, bool fma)
+{
+        bi_update_fau(clause, tuple, instr, fma, true);
+
+        /* TODO: maybe opt a bit? or maybe doesn't matter */
+        assert(clause->read_count + BI_MAX_SRCS <= ARRAY_SIZE(clause->reads));
+        memcpy(clause->reads + clause->read_count, instr->src, sizeof(instr->src));
+        clause->read_count += BI_MAX_SRCS;
+
+        if (bi_writes_reg(instr))
+                tuple->reg.nr_writes++;
+
+        bi_foreach_src(instr, s) {
+                if (bi_tuple_is_new_src(instr, &tuple->reg, s))
+                        tuple->reg.reads[tuple->reg.nr_reads++] = instr->src[s];
+        }
+}
+
+/* Choose the best instruction and pop it off the worklist. Returns NULL if no
+ * instruction is available. This function is destructive. */
+
+static bi_instr *
+bi_take_instr(bi_context *ctx, struct bi_worklist st,
+                struct bi_clause_state *clause,
+                struct bi_tuple_state *tuple,
+                bool fma)
+{
+        if (tuple->add && tuple->add->op == BI_OPCODE_CUBEFACE)
+                return bi_lower_cubeface(ctx, clause, tuple);
+
+        unsigned idx = bi_choose_index(st, clause, tuple, fma);
+
+        if (idx >= st.count)
+                return NULL;
+
+        /* Update state to reflect taking the instruction */
+        bi_instr *instr = st.instructions[idx];
+        BITSET_CLEAR(st.worklist, idx);
+        bi_update_worklist(st, idx);
+        bi_pop_instr(clause, tuple, instr, fma);
+
+        return instr;
+}
+
 
 #ifndef NDEBUG
 
