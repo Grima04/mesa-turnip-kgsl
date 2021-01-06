@@ -753,6 +753,14 @@ struct bi_packed_tuple {
         uint64_t hi;
 };
 
+void
+bi_pack_format(struct util_dynarray *emission,
+                unsigned index,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count,
+                uint64_t header, uint64_t ec0,
+                unsigned m0, bool z);
+
 unsigned bi_pack_fma(bi_instr *I,
                 enum bifrost_packed_src src0,
                 enum bifrost_packed_src src1,

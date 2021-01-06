@@ -758,6 +758,38 @@ bi_pack_subword(enum bi_clause_subword t, unsigned format,
         }
 }
 
+/* EC0 is 60-bits (bottom 4 already shifted off) */
+void
+bi_pack_format(struct util_dynarray *emission,
+                unsigned index,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count,
+                uint64_t header, uint64_t ec0,
+                unsigned m0, bool z)
+{
+        struct bi_clause_format format = bi_clause_formats[index];
+
+        uint8_t sync = bi_pack_sync(format.tag_1, format.tag_2, format.tag_3,
+                        tuples, tuple_count, z);
+
+        uint64_t s0_s3 = bi_pack_t_ec(format.s0_s3, tuples, tuple_count, ec0);
+
+        uint16_t s4 = bi_pack_subword(format.s4, format.format, tuples, tuple_count, header, ec0, m0, 4);
+
+        uint32_t s5_s6 = bi_pack_subwords_56(format.s5_s6,
+                        tuples, tuple_count, header, ec0,
+                        (format.format == 2 || format.format == 7) ? 0 : 3);
+
+        uint64_t s7 = bi_pack_subword(format.s7, format.format, tuples, tuple_count, header, ec0, m0, 2);
+
+        /* Now that subwords are packed, split into 64-bit halves and emit */
+        uint64_t lo = sync | ((s0_s3 & ((1ull << 56) - 1)) << 8);
+        uint64_t hi = (s0_s3 >> 56) | ((uint64_t) s4 << 4) | ((uint64_t) s5_s6 << 19) | ((uint64_t) s7 << 49);
+
+        util_dynarray_append(emission, uint64_t, lo);
+        util_dynarray_append(emission, uint64_t, hi);
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
