@@ -764,6 +764,39 @@ bi_instr_schedulable(bi_instr *instr,
         return true;
 }
 
+static signed
+bi_instr_cost(bi_instr *instr)
+{
+        /* TODO: stub */
+        return 0;
+}
+
+static unsigned
+bi_choose_index(struct bi_worklist st,
+                struct bi_clause_state *clause,
+                struct bi_tuple_state *tuple,
+                bool fma)
+{
+        unsigned i, best_idx = ~0;
+        signed best_cost = INT_MAX;
+
+        BITSET_FOREACH_SET(i, st.worklist, st.count) {
+                bi_instr *instr = st.instructions[i];
+
+                if (!bi_instr_schedulable(instr, clause, tuple, fma))
+                        continue;
+
+                signed cost = bi_instr_cost(instr);
+
+                if (cost <= best_cost) {
+                        best_idx = i;
+                        best_cost = cost;
+                }
+        }
+
+        return best_idx;
+}
+
 
 #ifndef NDEBUG
 
