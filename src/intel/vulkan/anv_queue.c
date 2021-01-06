@@ -32,6 +32,7 @@
 #include "util/os_file.h"
 
 #include "anv_private.h"
+#include "anv_measure.h"
 #include "vk_util.h"
 
 #include "genxml/gen7_pack.h"
@@ -1269,6 +1270,7 @@ VkResult anv_QueueSubmit(
                          pSubmits[i].pCommandBuffers[j]);
          assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
          assert(!anv_batch_has_error(&cmd_buffer->batch));
+         anv_measure_submit(cmd_buffer);
 
          /* Fence for this execbuf.  NULL for all but the last one */
          VkFence execbuf_fence =

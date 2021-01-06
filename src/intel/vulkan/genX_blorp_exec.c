@@ -24,6 +24,7 @@
 #include <assert.h>
 
 #include "anv_private.h"
+#include "anv_measure.h"
 
 /* These are defined in anv_private.h and blorp_genX_exec.h */
 #undef __gen_address_type
@@ -34,7 +35,13 @@
 #include "blorp/blorp_genX_exec.h"
 
 static void blorp_measure_start(struct blorp_batch *_batch,
-                                const struct blorp_params *params) { }
+                                const struct blorp_params *params)
+{
+   struct anv_cmd_buffer *cmd_buffer = _batch->driver_batch;
+   anv_measure_snapshot(cmd_buffer,
+                        params->snapshot_type,
+                        NULL, 0);
+}
 
 static void *
 blorp_emit_dwords(struct blorp_batch *batch, unsigned n)

@@ -25,6 +25,7 @@
 #include <stdbool.h>
 
 #include "anv_private.h"
+#include "anv_measure.h"
 #include "vk_format_info.h"
 #include "vk_util.h"
 #include "util/fast_idiv_by_const.h"
@@ -1766,6 +1767,8 @@ genX(EndCommandBuffer)(
 
    if (anv_batch_has_error(&cmd_buffer->batch))
       return cmd_buffer->batch.status;
+
+   anv_measure_endcommandbuffer(cmd_buffer);
 
    /* We want every command buffer to start with the PMA fix in a known state,
     * so we disable it at the end of the command buffer.
@@ -3777,6 +3780,14 @@ void genX(CmdDraw)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
+   const uint32_t count = (vertexCount *
+                           instanceCount *
+                           (pipeline->use_primitive_replication ?
+                            1 : anv_subpass_view_count(cmd_buffer->state.subpass)));
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw", count);
+
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
    if (cmd_buffer->state.conditional_render_enabled)
@@ -3827,6 +3838,15 @@ void genX(CmdDrawIndexed)(
 
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
+
+   const uint32_t count = (indexCount *
+                           instanceCount *
+                           (pipeline->use_primitive_replication ?
+                            1 : anv_subpass_view_count(cmd_buffer->state.subpass)));
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw indexed",
+                        count);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -3892,6 +3912,11 @@ void genX(CmdDrawIndirectByteCountEXT)(
 
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
+
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw indirect byte count",
+                        instanceCount);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4658,6 +4683,13 @@ void genX(CmdDispatchBase)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_COMPUTE,
+                        "compute",
+                        groupCountX * groupCountY * groupCountZ *
+                        prog_data->local_size[0] * prog_data->local_size[1] *
+                        prog_data->local_size[2]);
+
    if (prog_data->uses_num_work_groups) {
       struct anv_state state =
          anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, 12, 4);
@@ -4709,6 +4741,11 @@ void genX(CmdDispatchIndirect)(
                          "vkCmdDispatchIndirect") != VK_SUCCESS)
       return;
 #endif
+
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_COMPUTE,
+                        "compute indirect",
+                        0);
 
    if (prog_data->uses_num_work_groups) {
       cmd_buffer->state.compute.num_workgroups = addr;
@@ -6084,6 +6121,8 @@ void genX(CmdBeginRenderPass)(
    cmd_buffer->state.framebuffer = framebuffer;
    cmd_buffer->state.pass = pass;
    cmd_buffer->state.render_area = pRenderPassBegin->renderArea;
+
+   anv_measure_beginrenderpass(cmd_buffer);
 
    result = genX(cmd_buffer_setup_attachments)(cmd_buffer, pass,
                                                framebuffer,

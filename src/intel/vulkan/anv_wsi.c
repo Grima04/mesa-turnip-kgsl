@@ -22,6 +22,7 @@
  */
 
 #include "anv_private.h"
+#include "anv_measure.h"
 #include "wsi_common.h"
 #include "vk_format_info.h"
 #include "vk_util.h"
@@ -280,6 +281,7 @@ VkResult anv_AcquireNextImage2KHR(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
 
+   anv_measure_acquire(device);
    return wsi_common_acquire_next_image2(&device->physical->wsi_device,
                                          _device, pAcquireInfo, pImageIndex);
 }

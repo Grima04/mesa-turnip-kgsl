@@ -32,6 +32,7 @@
 #include <xf86drm.h>
 
 #include "anv_private.h"
+#include "anv_measure.h"
 #include "util/debug.h"
 #include "util/build_id.h"
 #include "util/disk_cache.h"
@@ -377,8 +378,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
    }
 
    struct anv_physical_device *device =
-      vk_alloc(&instance->vk.alloc, sizeof(*device), 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (device == NULL) {
       result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       goto fail_fd;
@@ -604,6 +605,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    device->perf = anv_get_perf(&device->info, fd);
 
+   anv_measure_device_init(device);
+
    anv_physical_device_get_supported_extensions(device,
                                                 &device->vk.supported_extensions);
 
@@ -634,6 +637,7 @@ static void
 anv_physical_device_destroy(struct anv_physical_device *device)
 {
    anv_finish_wsi(device);
+   anv_measure_device_destroy(device);
    free(device->engine_info);
    anv_physical_device_free_disk_cache(device);
    ralloc_free(device->compiler);
