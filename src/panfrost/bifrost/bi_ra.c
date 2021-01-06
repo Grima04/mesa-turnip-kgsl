@@ -266,11 +266,14 @@ bi_spill_dest(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
 {
         b->cursor = bi_after_clause(clause);
 
-        bi_instr *st = bi_store_to(b, channels * 32, bi_null(),
-                        temp, bi_imm_u32(offset), bi_zero(), BI_SEG_TL);
+        /* setup FAU as [offset][0] */
+        bi_instr *st = bi_store_to(b, channels * 32, bi_null(), temp,
+                        bi_passthrough(BIFROST_SRC_FAU_LO),
+                        bi_passthrough(BIFROST_SRC_FAU_HI),
+                        BI_SEG_TL);
 
         bi_clause *singleton = bi_singleton(b->shader, st, block, 0, (1 << 0),
-                        true);
+                        offset, true);
 
         list_add(&singleton->link, &clause->link);
         b->shader->spills++;
@@ -281,12 +284,14 @@ bi_fill_src(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
                 bi_clause *clause, bi_block *block, unsigned channels)
 {
         b->cursor = bi_before_clause(clause);
-        bi_instr *ld = bi_load_to(b, channels * 32, temp, bi_imm_u32(offset),
-                        bi_zero(), BI_SEG_TL);
+        bi_instr *ld = bi_load_to(b, channels * 32, temp,
+                        bi_passthrough(BIFROST_SRC_FAU_LO),
+                        bi_passthrough(BIFROST_SRC_FAU_HI),
+                        BI_SEG_TL);
         ld->no_spill = true;
 
         bi_clause *singleton = bi_singleton(b->shader, ld, block, 0,
-                        (1 << 0), true);
+                        (1 << 0), offset, true);
 
         list_addtail(&singleton->link, &clause->link);
         b->shader->fills++;

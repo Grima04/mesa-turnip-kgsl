@@ -743,6 +743,7 @@ bi_singleton(void *memctx, bi_instr *ins,
                 bi_block *block,
                 unsigned scoreboard_id,
                 unsigned dependencies,
+                uint64_t combined_constant,
                 bool osrb);
 
 /* Liveness */

@@ -463,7 +463,7 @@ static struct bi_packed_tuple
 bi_pack_tuple(bi_clause *clause, bi_tuple *tuple, bi_tuple *prev, bool first_tuple, gl_shader_stage stage)
 {
         bi_assign_slots(tuple, prev);
-        bi_assign_fau_idx(clause, tuple);
+        tuple->regs.fau_idx = tuple->fau_idx;
         tuple->regs.first_instruction = first_tuple;
 
         bi_flip_slots(&tuple->regs);
@@ -509,36 +509,54 @@ bi_pack_tuple(bi_clause *clause, bi_tuple *tuple, bi_tuple *prev, bool first_tup
         return packed;
 }
 
-/* Packs the next two constants as a dedicated constant quadword at the end of
- * the clause, returning the number packed. There are two cases to consider:
- *
- * Case #1: Branching is not used. For a single constant copy the upper nibble
- * over, easy.
- *
- * Case #2: Branching is used. For a single constant, it suffices to set the
- * upper nibble to 4 and leave the latter constant 0, which matches what the
- * blob does.
- *
- * Extending to multiple constants is considerably more tricky and left for
- * future work.
+/* A block contains at most one PC-relative constant, from a terminal branch.
+ * Find the last instruction and if it is a relative branch, fix up the
+ * PC-relative constant to contain the absolute offset. This occurs at pack
+ * time instead of schedule time because the number of quadwords between each
+ * block is not known until after all other passes have finished.
  */
 
-static unsigned
-bi_pack_constants(bi_context *ctx, bi_clause *clause,
-                unsigned word_idx, bool ec0_packed,
+static void
+bi_assign_branch_offset(bi_context *ctx, bi_block *block)
+{
+        if (list_is_empty(&block->clauses))
+                return;
+
+        bi_clause *clause = list_last_entry(&block->clauses, bi_clause, link);
+        bi_instr *br = bi_last_instr_in_clause(clause);
+
+        if (!br->branch_target)
+                return;
+
+        /* Put it in the high place */
+        int32_t qwords = bi_block_offset(ctx, clause, br->branch_target);
+        int32_t bytes = qwords * 16;
+
+        /* Copy so we can toy with the sign without undefined behaviour */
+        uint32_t raw = 0;
+        memcpy(&raw, &bytes, sizeof(raw));
+
+        /* Clear off top bits for A1/B1 bits */
+        raw &= ~0xF0000000;
+
+        /* Put in top 32-bits */
+        assert(clause->pcrel_idx < 8);
+        clause->constants[clause->pcrel_idx] |= ((uint64_t) raw) << 32ull;
+}
+
+static void
+bi_pack_constants(unsigned tuple_count, uint64_t *constants,
+                unsigned word_idx, unsigned constant_words, bool ec0_packed,
                 struct util_dynarray *emission)
 {
         unsigned index = (word_idx << 1) + ec0_packed;
 
-        /* After these two, are we done? Determines tag */
-        bool done = clause->constant_count <= (index + 2);
-
-        /* Is the constant we're packing for a branch? */
-        bool branches = clause->branch_constant && done;
+        /* Do more constants follow */
+        bool more = (word_idx + 1) < constant_words;
 
         /* Indexed first by tuple count and second by constant word number,
          * indicates the position in the clause */
-        unsigned pos[8][3] = {
+        unsigned pos_lookup[8][3] = {
                 { 0 },
                 { 1 },
                 { 3 },
@@ -549,57 +567,20 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
                 { 9, 12 }
         };
 
-        /* Compute branch offset instead of a dummy 0 */
-        bool terminal_branch = true;
-
-        if (branches) {
-                bi_instr *br = clause->tuples[clause->tuple_count - 1].add;
-                assert(br && br->branch_target);
-
-                if (!bi_is_terminal_block(br->branch_target)) {
-                        /* Put it in the high place */
-                        int32_t qwords = bi_block_offset(ctx, clause, br->branch_target);
-                        int32_t bytes = qwords * 16;
-
-                        /* Copy so we get proper sign behaviour */
-                        uint32_t raw = 0;
-                        memcpy(&raw, &bytes, sizeof(raw));
-
-                        /* Clear off top bits for the magic bits */
-                        raw &= ~0xF0000000;
-                        terminal_branch = false;
-
-                        /* Put in top 32-bits */
-                        clause->constants[index + 0] = ((uint64_t) raw) << 32ull;
-		}
-        }
-
-        uint64_t hi = clause->constants[index + 0] >> 60ull;
+        /* Compute the pos, and check everything is reasonable */
+        assert((tuple_count - 1) < 8);
+        assert(word_idx < 3);
+        unsigned pos = pos_lookup[tuple_count - 1][word_idx];
+        assert(pos != 0 || (tuple_count == 1 && word_idx == 0));
 
         struct bifrost_fmt_constant quad = {
-                .pos = pos[clause->tuple_count - 1][word_idx], /* TODO */
-                .tag = done ? BIFROST_FMTC_FINAL : BIFROST_FMTC_CONSTANTS,
-                .imm_1 = clause->constants[index + 0] >> 4,
-                .imm_2 = ((hi < 8) ? (hi << 60ull) : 0) >> 4,
+                .pos = pos,
+                .tag = more ? BIFROST_FMTC_CONSTANTS : BIFROST_FMTC_FINAL,
+                .imm_1 = constants[index + 0] >> 4,
+                .imm_2 = constants[index + 1] >> 4,
         };
 
-        if (branches && !terminal_branch) {
-                /* Branch offsets are less than 60-bits so this should work at
-                 * least for now */
-                quad.imm_1 |= (4ull << 60ull) >> 4;
-                assert (hi == 0);
-        }
-
-        /* XXX: On G71, Connor observed that the difference of the top 4 bits
-         * of the second constant with the first must be less than 8, otherwise
-         * we have to swap them. On G52, I'm able to reproduce a similar issue
-         * but with a different workaround (modeled above with a single
-         * constant, unclear how to workaround for multiple constants.) Further
-         * investigation needed. Possibly an errata. XXX */
-
         util_dynarray_append(emission, struct bifrost_fmt_constant, quad);
-
-        return 2;
 }
 
 static inline uint8_t
@@ -800,9 +781,6 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 struct util_dynarray *emission, gl_shader_stage stage,
                 bool tdd)
 {
-        /* TODO After the deadline lowering */
-        bi_lower_cubeface2(ctx, &clause->tuples[0]);
-
         struct bi_packed_tuple ins[8] = { 0 };
 
         for (unsigned i = 0; i < clause->tuple_count; ++i) {
@@ -857,8 +835,8 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
         /* Pack the remaining constants */
 
         for (unsigned pos = 0; pos < constant_quads; ++pos) {
-                bi_pack_constants(ctx, clause, pos, ec0_packed,
-                                emission);
+                bi_pack_constants(clause->tuple_count, clause->constants,
+                                pos, constant_quads, ec0_packed, emission);
         }
 }
 
@@ -908,6 +886,8 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
 
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
+
+                bi_assign_branch_offset(ctx, block);
 
                 /* Passthrough the first clause of where we're branching to for
                  * the last clause of the block (the clause with the branch) */

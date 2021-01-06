@@ -1669,22 +1669,17 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
                     bi_index *face, bi_index *s, bi_index *t)
 {
         /* Compute max { |x|, |y|, |z| } */
-        bi_index cubeface1 = bi_cubeface1(b, coord,
+        bi_instr *cubeface = bi_cubeface_to(b, bi_temp(b->shader), coord,
                         bi_word(coord, 1), bi_word(coord, 2));
-
-        /* Calculate packed exponent / face / infinity. In reality this reads
-         * the destination from cubeface1 but that's handled by lowering */
-        bi_instr *cubeface2 = bi_cubeface1_to(b, bi_temp(b->shader), coord,
-                        bi_word(coord, 1), bi_word(coord, 2));
-        cubeface2->op = BI_OPCODE_CUBEFACE2; /* XXX: DEEP VOODOO */
+        cubeface->dest[1] = bi_temp(b->shader);
 
         /* Select coordinates */
 
         bi_index ssel = bi_cube_ssel(b, bi_word(coord, 2), coord,
-                        cubeface2->dest[0]);
+                        cubeface->dest[1]);
 
         bi_index tsel = bi_cube_tsel(b, bi_word(coord, 1), bi_word(coord, 2),
-                        cubeface2->dest[0]);
+                        cubeface->dest[1]);
 
         /* The OpenGL ES specification requires us to transform an input vector
          * (x, y, z) to the coordinate, given the selected S/T:
@@ -1700,7 +1695,7 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
          * Take the reciprocal of max{x, y, z}
          */
 
-        bi_index rcp = bi_frcp_f32(b, cubeface1);
+        bi_index rcp = bi_frcp_f32(b, cubeface->dest[0]);
 
         /* Calculate 0.5 * (1.0 / max{x, y, z}) */
         bi_index fma1 = bi_fma_f32(b, rcp, bi_imm_f32(0.5f), bi_zero(),
@@ -1722,7 +1717,7 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
          * because the TEXS_CUBE and TEXC instructions expect the face index to
          * be at this position.
          */
-        *face = cubeface2->dest[0];
+        *face = cubeface->dest[1];
 }
 
 /* Emits a cube map descriptor, returning lower 32-bits and putting upper
