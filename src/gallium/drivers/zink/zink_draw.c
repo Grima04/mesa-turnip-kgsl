@@ -224,6 +224,9 @@ zink_draw_vbo(struct pipe_context *pctx,
       return;
    }
 
+   if (!dindirect && (!draws[0].count || !dinfo->instance_count))
+      return;
+
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_rasterizer_state *rast_state = ctx->rast_state;

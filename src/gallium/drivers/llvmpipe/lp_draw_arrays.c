@@ -67,6 +67,9 @@ llvmpipe_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       return;
    }
 
+   if (!indirect && (!draws[0].count || !info->instance_count))
+      return;
+
    struct llvmpipe_context *lp = llvmpipe_context(pipe);
    struct draw_context *draw = lp->draw;
    const void *mapped_indices = NULL;

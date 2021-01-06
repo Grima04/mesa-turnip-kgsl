@@ -864,6 +864,9 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
       return;
    }
 
+   if (!indirect && (!draws[0].count || !dinfo->instance_count))
+      return;
+
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
    struct virgl_indexbuf ib = {};

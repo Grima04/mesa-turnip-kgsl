@@ -62,6 +62,9 @@ tegra_draw_vbo(struct pipe_context *pcontext,
       return;
    }
 
+   if (!pindirect && (!draws[0].count || !pinfo->instance_count))
+      return;
+
    struct tegra_context *context = to_tegra_context(pcontext);
    struct pipe_draw_indirect_info indirect;
    struct pipe_draw_info info;

@@ -437,6 +437,9 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       return;
    }
 
+   if (!indirect && (!draws[0].count || !dinfo->instance_count))
+      return;
+
    struct d3d12_context *ctx = d3d12_context(pctx);
    struct d3d12_batch *batch;
    struct pipe_resource *index_buffer = NULL;

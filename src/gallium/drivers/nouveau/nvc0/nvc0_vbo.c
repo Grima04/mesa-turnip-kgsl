@@ -938,6 +938,9 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       return;
    }
 
+   if (!indirect && (!draws[0].count || !info->instance_count))
+      return;
+
    struct nvc0_context *nvc0 = nvc0_context(pipe);
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
    struct nvc0_screen *screen = nvc0->screen;

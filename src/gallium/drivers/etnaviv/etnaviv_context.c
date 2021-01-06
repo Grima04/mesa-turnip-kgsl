@@ -239,6 +239,9 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       return;
    }
 
+   if (!indirect && (!draws[0].count || !info->instance_count))
+      return;
+
    struct etna_context *ctx = etna_context(pctx);
    struct etna_screen *screen = ctx->screen;
    struct pipe_framebuffer_state *pfb = &ctx->framebuffer_s;

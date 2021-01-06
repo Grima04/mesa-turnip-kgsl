@@ -75,6 +75,9 @@ softpipe_draw_vbo(struct pipe_context *pipe,
       return;
    }
 
+   if (!indirect && (!draws[0].count || !info->instance_count))
+      return;
+
    struct softpipe_context *sp = softpipe_context(pipe);
    struct draw_context *draw = sp->draw;
    const void *mapped_indices = NULL;

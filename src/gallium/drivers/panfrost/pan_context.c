@@ -468,6 +468,9 @@ panfrost_draw_vbo(
            return;
 	}
 
+        if (!indirect && (!draws[0].count || !info->instance_count))
+           return;
+
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *device = pan_device(ctx->base.screen);
 

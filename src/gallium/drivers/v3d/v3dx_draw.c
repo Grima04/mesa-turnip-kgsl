@@ -1108,6 +1108,9 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
            return;
 	}
 
+        if (!indirect && (!draws[0].count || !info->instance_count))
+           return;
+
         struct v3d_context *v3d = v3d_context(pctx);
 
         if (!indirect &&

@@ -560,6 +560,9 @@ nv30_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       return;
    }
 
+   if (!indirect && (!draws[0].count || !info->instance_count))
+      return;
+
    struct nv30_context *nv30 = nv30_context(pipe);
    struct nouveau_pushbuf *push = nv30->base.pushbuf;
    int i;

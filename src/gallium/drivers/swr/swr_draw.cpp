@@ -53,6 +53,9 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       return;
    }
 
+   if (!indirect && (!draws[0].count || !info->instance_count))
+      return;
+
    struct swr_context *ctx = swr_context(pipe);
 
    if (!indirect &&

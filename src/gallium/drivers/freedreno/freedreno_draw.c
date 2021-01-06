@@ -227,6 +227,9 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
            return;
 	}
 
+        if (!indirect && (!draws[0].count || !info->instance_count))
+           return;
+
 	struct fd_context *ctx = fd_context(pctx);
 
 	/* for debugging problems with indirect draw, it is convenient

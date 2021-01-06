@@ -303,6 +303,9 @@ vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
            return;
 	}
 
+        if (!indirect && (!draws[0].count || !info->instance_count))
+           return;
+
         struct vc4_context *vc4 = vc4_context(pctx);
         struct pipe_draw_info local_info;
 
