@@ -238,7 +238,10 @@ prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
       /* Get index bounds for user buffers. */
       if (!info->index_bounds_valid &&
           st->draw_needs_minmax_index) {
-         vbo_get_minmax_indices_gallium(ctx, info, draws, num_draws);
+         /* Return if this fails, which means all draws have count == 0. */
+         if (!vbo_get_minmax_indices_gallium(ctx, info, draws, num_draws))
+            return false;
+
          info->index_bounds_valid = true;
       }
 

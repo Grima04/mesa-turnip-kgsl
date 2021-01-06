@@ -398,7 +398,7 @@ vbo_get_minmax_indices(struct gl_context *ctx,
 /**
  * Same as vbo_get_minmax_index, but using gallium draw structures.
  */
-void
+bool
 vbo_get_minmax_indices_gallium(struct gl_context *ctx,
                                struct pipe_draw_info *info,
                                const struct pipe_draw_start_count *draws,
@@ -417,6 +417,9 @@ vbo_get_minmax_indices_gallium(struct gl_context *ctx,
          i++;
       }
 
+      if (!draw.count)
+         continue;
+
       unsigned tmp_min, tmp_max;
       vbo_get_minmax_index(ctx, info->has_user_indices ?
                               NULL : info->index.gl_bo,
@@ -428,4 +431,6 @@ vbo_get_minmax_indices_gallium(struct gl_context *ctx,
       info->min_index = MIN2(info->min_index, tmp_min);
       info->max_index = MAX2(info->max_index, tmp_max);
    }
+
+   return info->min_index <= info->max_index;
 }

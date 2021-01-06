@@ -256,7 +256,7 @@ vbo_get_minmax_indices(struct gl_context *ctx, const struct _mesa_prim *prim,
                        bool primitive_restart,
                        unsigned restart_index);
 
-void
+bool
 vbo_get_minmax_indices_gallium(struct gl_context *ctx,
                                struct pipe_draw_info *info,
                                const struct pipe_draw_start_count *draws,
