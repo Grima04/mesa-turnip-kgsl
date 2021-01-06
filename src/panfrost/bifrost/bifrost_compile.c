@@ -726,7 +726,10 @@ bi_alu_src_index(nir_alu_src src, unsigned comps)
                 unsigned c1 = (comps > 1) ? src.swizzle[1] & 1 : c0;
                 idx.swizzle = BI_SWIZZLE_H00 + c1 + (c0 << 1);
         } else if (bitsize == 8) {
-                unreachable("8-bit handling todo");
+                /* 8-bit vectors not yet supported */
+                assert(comps == 1 && "8-bit vectors not supported");
+                assert(src.swizzle[0] == 0 && "8-bit vectors not supported");
+                idx.swizzle = BI_SWIZZLE_B0000;
         }
 
         return idx;
