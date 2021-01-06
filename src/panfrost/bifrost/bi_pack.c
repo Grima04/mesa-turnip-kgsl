@@ -668,6 +668,36 @@ bi_pack_tuple_bits(enum bi_clause_subword idx,
         return (lo | hi) & ((1ULL << nbits) - 1);
 }
 
+static inline uint16_t
+bi_pack_lu(enum bi_clause_subword word,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count)
+{
+        return (word >= BI_CLAUSE_SUBWORD_UPPER_0) ?
+                bi_pack_upper(word, tuples, tuple_count) :
+                bi_pack_literal(word);
+}
+
+static uint8_t
+bi_pack_sync(enum bi_clause_subword t1,
+                enum bi_clause_subword t2,
+                enum bi_clause_subword t3,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count,
+                bool z)
+{
+        uint8_t sync =
+                (bi_pack_lu(t3, tuples, tuple_count) << 0) |
+                (bi_pack_lu(t2, tuples, tuple_count) << 3);
+
+        if (t1 == BI_CLAUSE_SUBWORD_Z)
+                sync |= z << 6;
+        else
+                sync |= bi_pack_literal(t1) << 6;
+
+        return sync;
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
