@@ -1150,6 +1150,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    zink_screen_resource_init(&screen->base);
    zink_screen_fence_init(&screen->base);
 
+   zink_screen_init_compiler(screen);
+
    slab_create_parent(&screen->transfer_pool, sizeof(struct zink_transfer), 16);
 
    return screen;

@@ -29,6 +29,7 @@
 
 #include "pipe/p_screen.h"
 #include "util/slab.h"
+#include "compiler/nir/nir.h"
 
 #include <vulkan/vulkan.h>
 
@@ -59,6 +60,7 @@ struct zink_screen {
    VkPhysicalDevice pdev;
 
    struct zink_device_info info;
+   struct nir_shader_compiler_options nir_options;
 
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;

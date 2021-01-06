@@ -201,47 +201,36 @@ lower_64bit_vertex_attribs(nir_shader *shader)
    return nir_shader_instructions_pass(shader, lower_64bit_vertex_attribs_instr, nir_metadata_dominance, NULL);
 }
 
-static const struct nir_shader_compiler_options nir_options = {
-   .lower_ffma16 = true,
-   .lower_ffma32 = true,
-   .lower_ffma64 = true,
-   .lower_scmp = true,
-   .lower_fdph = true,
-   .lower_flrp32 = true,
-   .lower_fpow = true,
-   .lower_fsat = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_mul_high = true,
-   .lower_rotate = true,
-   .lower_uadd_carry = true,
-   .lower_pack_64_2x32_split = true,
-   .lower_unpack_64_2x32_split = true,
-   .use_scoped_barrier = true,
-   .lower_int64_options = ~0,
-   .lower_doubles_options = ~nir_lower_fp64_full_software,
-};
+void
+zink_screen_init_compiler(struct zink_screen *screen)
+{
+   static const struct nir_shader_compiler_options
+   default_options = {
+      .lower_ffma16 = true,
+      .lower_ffma32 = true,
+      .lower_ffma64 = true,
+      .lower_scmp = true,
+      .lower_fdph = true,
+      .lower_flrp32 = true,
+      .lower_fpow = true,
+      .lower_fsat = true,
+      .lower_extract_byte = true,
+      .lower_extract_word = true,
+      .lower_mul_high = true,
+      .lower_rotate = true,
+      .lower_uadd_carry = true,
+      .lower_pack_64_2x32_split = true,
+      .lower_unpack_64_2x32_split = true,
+      .use_scoped_barrier = true,
+      .lower_int64_options = ~0,
+      .lower_doubles_options = ~nir_lower_fp64_full_software,
+   };
 
-static const struct nir_shader_compiler_options softfp_nir_options = {
-   .lower_ffma16 = true,
-   .lower_ffma32 = true,
-   .lower_ffma64 = true,
-   .lower_scmp = true,
-   .lower_fdph = true,
-   .lower_flrp32 = true,
-   .lower_fpow = true,
-   .lower_fsat = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_mul_high = true,
-   .lower_rotate = true,
-   .lower_uadd_carry = true,
-   .lower_pack_64_2x32_split = true,
-   .lower_unpack_64_2x32_split = true,
-   .use_scoped_barrier = true,
-   .lower_int64_options = ~0,
-   .lower_doubles_options = ~0,
-};
+   screen->nir_options = default_options;
+
+   if (!screen->info.feats.features.shaderFloat64)
+      screen->nir_options.lower_doubles_options = ~0;
+}
 
 const void *
 zink_get_compiler_options(struct pipe_screen *pscreen,
@@ -249,11 +238,7 @@ zink_get_compiler_options(struct pipe_screen *pscreen,
                           enum pipe_shader_type shader)
 {
    assert(ir == PIPE_SHADER_IR_NIR);
-   struct zink_screen *screen = zink_screen(pscreen);
-   /* do we actually want this? fails a lot and not just from bugs I've added */
-   if (!screen->info.feats.features.shaderFloat64)
-      return &softfp_nir_options;
-   return &nir_options;
+   return &zink_screen(pscreen)->nir_options;
 }
 
 struct nir_shader *
@@ -579,7 +564,7 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
    ret->shader_id = 0; //special value for internal shaders
    ret->programs = _mesa_pointer_set_create(NULL);
 
-   nir_shader *nir = nir_shader_create(NULL, MESA_SHADER_TESS_CTRL, &nir_options, NULL);
+   nir_shader *nir = nir_shader_create(NULL, MESA_SHADER_TESS_CTRL, &zink_screen(ctx->base.screen)->nir_options, NULL);
    nir_function *fn = nir_function_create(nir, "main");
    fn->is_entrypoint = true;
    nir_function_impl *impl = nir_function_impl_create(fn);
