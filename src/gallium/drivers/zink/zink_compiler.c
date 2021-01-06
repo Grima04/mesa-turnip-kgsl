@@ -244,14 +244,14 @@ static const struct nir_shader_compiler_options softfp_nir_options = {
 };
 
 const void *
-zink_get_compiler_options(struct pipe_screen *screen,
+zink_get_compiler_options(struct pipe_screen *pscreen,
                           enum pipe_shader_ir ir,
                           enum pipe_shader_type shader)
 {
    assert(ir == PIPE_SHADER_IR_NIR);
-   struct zink_screen *zscreen = zink_screen(screen);
+   struct zink_screen *screen = zink_screen(pscreen);
    /* do we actually want this? fails a lot and not just from bugs I've added */
-   if (!zscreen->info.feats.features.shaderFloat64)
+   if (!screen->info.feats.features.shaderFloat64)
       return &softfp_nir_options;
    return &nir_options;
 }
