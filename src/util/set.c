@@ -116,6 +116,27 @@ entry_is_present(struct set_entry *entry)
    return entry->key != NULL && entry->key != deleted_key;
 }
 
+bool
+_mesa_set_init(struct set *ht, void *mem_ctx,
+                 uint32_t (*key_hash_function)(const void *key),
+                 bool (*key_equals_function)(const void *a,
+                                             const void *b))
+{
+   ht->size_index = 0;
+   ht->size = hash_sizes[ht->size_index].size;
+   ht->rehash = hash_sizes[ht->size_index].rehash;
+   ht->size_magic = hash_sizes[ht->size_index].size_magic;
+   ht->rehash_magic = hash_sizes[ht->size_index].rehash_magic;
+   ht->max_entries = hash_sizes[ht->size_index].max_entries;
+   ht->key_hash_function = key_hash_function;
+   ht->key_equals_function = key_equals_function;
+   ht->table = rzalloc_array(mem_ctx, struct set_entry, ht->size);
+   ht->entries = 0;
+   ht->deleted_entries = 0;
+
+   return ht->table != NULL;
+}
+
 struct set *
 _mesa_set_create(void *mem_ctx,
                  uint32_t (*key_hash_function)(const void *key),
@@ -128,19 +149,7 @@ _mesa_set_create(void *mem_ctx,
    if (ht == NULL)
       return NULL;
 
-   ht->size_index = 0;
-   ht->size = hash_sizes[ht->size_index].size;
-   ht->rehash = hash_sizes[ht->size_index].rehash;
-   ht->size_magic = hash_sizes[ht->size_index].size_magic;
-   ht->rehash_magic = hash_sizes[ht->size_index].rehash_magic;
-   ht->max_entries = hash_sizes[ht->size_index].max_entries;
-   ht->key_hash_function = key_hash_function;
-   ht->key_equals_function = key_equals_function;
-   ht->table = rzalloc_array(ht, struct set_entry, ht->size);
-   ht->entries = 0;
-   ht->deleted_entries = 0;
-
-   if (ht->table == NULL) {
+   if (!_mesa_set_init(ht, ht, key_hash_function, key_equals_function)) {
       ralloc_free(ht);
       return NULL;
    }
@@ -333,7 +342,7 @@ set_rehash(struct set *ht, unsigned new_size_index)
    if (new_size_index >= ARRAY_SIZE(hash_sizes))
       return;
 
-   table = rzalloc_array(ht, struct set_entry,
+   table = rzalloc_array(ralloc_parent(ht->table), struct set_entry,
                          hash_sizes[new_size_index].size);
    if (table == NULL)
       return;
