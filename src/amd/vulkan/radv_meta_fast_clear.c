@@ -825,11 +825,8 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_image_view store_iview = {0};
 	struct radv_device *device = cmd_buffer->device;
 
-	/* This assumes the image is 2d with 1 layer */
-	struct radv_cmd_state *state = &cmd_buffer->state;
-
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
-			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
+					RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 
 	if (!cmd_buffer->device->meta_state.fast_clear_flush.cmask_eliminate_pipeline) {
 		VkResult ret = radv_device_init_meta_fast_clear_flush_state_internal(cmd_buffer->device);
@@ -933,12 +930,11 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 	/* Mark this image as actually being decompressed. */
 	radv_update_dcc_metadata(cmd_buffer, image, subresourceRange, false);
 
-	/* The fill buffer below does its own saving */
 	radv_meta_restore(&saved_state, cmd_buffer);
 
-	state->flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-			     RADV_CMD_FLAG_INV_VCACHE;
-
+	/* Make sure the image is decompressed before fixup up DCC. */
+	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
+					RADV_CMD_FLAG_INV_VCACHE;
 
 	/* Initialize the DCC metadata as "fully expanded". */
 	radv_initialize_dcc(cmd_buffer, image, subresourceRange, 0xffffffff);
