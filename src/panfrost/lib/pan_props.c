@@ -91,7 +91,13 @@ panfrost_query_core_count(int fd)
         unsigned mask = panfrost_query_raw(fd,
                         DRM_PANFROST_PARAM_SHADER_PRESENT, false, 0xffff);
 
-        return util_bitcount(mask);
+        /* Some cores might be absent. For TLS computation purposes, we care
+         * about the greatest ID + 1, which equals the core count if all cores
+         * are present, but allocates space for absent cores if needed.
+         * util_last_bit is defined to return the greatest bit set + 1, which
+         * is exactly what we need. */
+
+        return util_last_bit(mask);
 }
 
 /* Architectural maximums, since this register may be not implemented
