@@ -29,6 +29,29 @@
 #include "panfrost/util/lcra.h"
 #include "util/u_memory.h"
 
+/* A clause may contain 1 message-passing instruction writing to a staging
+ * register. No instruction following it in the clause may access that staging
+ * register to prevent data races. Scheduling ensures this is possible but RA
+ * needs to preserve this. The simplest solution is forcing the staging
+ * register live in _all_ words at the end (and consequently throughout) the
+ * clause, addressing corner cases where a single component is masked out */
+
+static void
+bi_mark_sr_live(bi_block *block, bi_clause *clause, unsigned node_count, uint16_t *live)
+{
+        bi_foreach_instr_in_clause(block, clause, ins) {
+                if (!bi_opcode_props[ins->op].sr_write) continue;
+
+                bi_foreach_dest(ins, d) {
+                        unsigned node = bi_get_node(ins->dest[d]);
+                        if (node < node_count)
+                                live[node] = bi_writemask(ins);
+                }
+
+                break;
+        }
+}
+
 static void
 bi_mark_interference(bi_block *block, bi_clause *clause, struct lcra_state *l, uint16_t *live, unsigned node_count, bool is_blend)
 {
@@ -80,6 +103,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
                 uint16_t *live = mem_dup(_blk->live_out, node_count * sizeof(uint16_t));
 
                 bi_foreach_clause_in_block_rev(blk, clause) {
+                        bi_mark_sr_live(blk, clause, node_count, live);
                         bi_mark_interference(blk, clause, l, live, node_count, ctx->is_blend);
                 }
 
@@ -330,9 +354,17 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
                                                 clause, block, channels);
                         }
 
-                        if (bi_clause_mark_fill(ctx, block, clause, index, &tmp)) {
-                                bi_fill_src(&_b, index, tmp, offset,
-                                                clause, block, channels);
+                        /* For SSA form, if we write/spill, there was no prior
+                         * contents to fill, so don't waste time reading
+                         * garbage */
+
+                        bool should_fill = !local_channels || index.reg;
+                        should_fill &= bi_clause_mark_fill(ctx, block, clause,
+                                        index, &tmp);
+
+                        if (should_fill) {
+                                bi_fill_src(&_b, index, tmp, offset, clause,
+                                                block, channels);
                         }
                 }
         }
