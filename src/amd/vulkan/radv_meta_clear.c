@@ -1401,6 +1401,7 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 	       const VkImageSubresourceRange *range, uint32_t value)
 {
 	uint32_t level_count = radv_get_levelCount(image, range);
+	uint32_t layer_count = radv_get_layerCount(image, range);
 	uint32_t flush_bits = 0;
 
 	/* Mark the image as being compressed. */
@@ -1414,7 +1415,9 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
 			/* Mipmap levels aren't implemented. */
 			assert(level == 0);
-			size = image->planes[0].surface.dcc_size;
+
+			offset += image->planes[0].surface.dcc_slice_size * range->baseArrayLayer;
+			size = image->planes[0].surface.dcc_slice_size * layer_count;
 		} else {
 			const struct legacy_surf_level *surf_level =
 				&image->planes[0].surface.u.legacy.level[level];
