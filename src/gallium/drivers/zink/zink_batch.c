@@ -27,6 +27,9 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
+   if (vkResetCommandPool(screen->dev, bs->cmdpool, 0) != VK_SUCCESS)
+      debug_printf("vkResetCommandPool failed\n");
+
    zink_fence_clear_resources(screen, &bs->fence);
 
    set_foreach(bs->active_queries, entry) {
@@ -291,10 +294,6 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    batch->state = get_batch_state(ctx, batch);
    assert(batch->state);
 
-   if (!fresh) {
-      if (vkResetCommandPool(screen->dev, batch->state->cmdpool, 0) != VK_SUCCESS)
-         debug_printf("vkResetCommandPool failed\n");
-   }
    batch->has_work = false;
 }
 
