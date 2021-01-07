@@ -699,13 +699,12 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
          */
         assert(0);
 
-#if 0
-        assert(ins->blend_location < ARRAY_SIZE(ctx->blend_ret_offsets));
-        assert(!ctx->blend_ret_offsets[ins->blend_location]);
-        ctx->blend_ret_offsets[ins->blend_location] =
+        unsigned loc = bundle->regs.fau_idx - BIR_FAU_BLEND_0;
+        assert(loc < ARRAY_SIZE(ctx->blend_ret_offsets));
+        assert(!ctx->blend_ret_offsets[loc]);
+        ctx->blend_ret_offsets[loc] =
                 util_dynarray_num_elements(emission, uint8_t);
-        assert(!(ctx->blend_ret_offsets[ins->blend_location] & 0x7));
-#endif
+        assert(!(ctx->blend_ret_offsets[loc] & 0x7));
 }
 
 void
