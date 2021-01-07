@@ -143,12 +143,16 @@ TEST(set, search_or_add)
    _mesa_set_add(s, &b);
    EXPECT_EQ(s->entries, 2);
 
-   struct set_entry *entry = _mesa_set_search_or_add(s, &c);
+   bool found = false;
+   struct set_entry *entry = _mesa_set_search_or_add(s, &c, &found);
    EXPECT_EQ(entry->key, (void *)&b);
+   EXPECT_EQ(found, true);
    EXPECT_EQ(s->entries, 2);
 
-   struct set_entry *entry3 = _mesa_set_search_or_add(s, &d);
+   found = false;
+   struct set_entry *entry3 = _mesa_set_search_or_add(s, &d, &found);
    EXPECT_EQ(entry3->key, &d);
+   EXPECT_EQ(found, false);
    EXPECT_EQ(s->entries, 3);
 
    _mesa_set_destroy(s, NULL);

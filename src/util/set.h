@@ -81,10 +81,10 @@ struct set_entry *
 _mesa_set_add_pre_hashed(struct set *set, uint32_t hash, const void *key);
 
 struct set_entry *
-_mesa_set_search_or_add(struct set *set, const void *key);
+_mesa_set_search_or_add(struct set *set, const void *key, bool *found);
 struct set_entry *
 _mesa_set_search_or_add_pre_hashed(struct set *set, uint32_t hash,
-                                   const void *key);
+                                   const void *key, bool *found);
 
 struct set_entry *
 _mesa_set_search(const struct set *set, const void *key);

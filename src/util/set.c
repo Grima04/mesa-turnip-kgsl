@@ -510,15 +510,15 @@ _mesa_set_search_and_add_pre_hashed(struct set *set, uint32_t hash,
 }
 
 struct set_entry *
-_mesa_set_search_or_add(struct set *set, const void *key)
+_mesa_set_search_or_add(struct set *set, const void *key, bool *found)
 {
    assert(set->key_hash_function);
-   return set_search_or_add(set, set->key_hash_function(key), key, NULL);
+   return set_search_or_add(set, set->key_hash_function(key), key, found);
 }
 
 struct set_entry *
 _mesa_set_search_or_add_pre_hashed(struct set *set, uint32_t hash,
-                                   const void *key)
+                                   const void *key, bool *found)
 {
    assert(set->key_hash_function == NULL ||
           hash == set->key_hash_function(key));
