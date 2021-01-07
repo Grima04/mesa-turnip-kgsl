@@ -2554,6 +2554,12 @@ nir_to_tgsi(struct nir_shader *s,
    };
    NIR_PASS_V(s, nir_lower_tex, &lower_tex_options);
 
+   if (!original_options->lower_uniforms_to_ubo) {
+      NIR_PASS_V(s, nir_lower_uniforms_to_ubo,
+                 screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS) ?
+                 4 : 16);
+   }
+
    /* Do lowering so we can directly translate f64/i64 NIR ALU ops to TGSI --
     * TGSI stores up to a vec2 in each slot, so to avoid a whole bunch of op
     * duplication logic we just make it so that we only see vec2s.
