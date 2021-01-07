@@ -238,6 +238,7 @@
 # rules duplication manually
 .windows-build-rules:
   rules:
+    - *ignore_scheduled_pipelines
     - changes: 
         *mesa_core_file_list
       when: on_success
