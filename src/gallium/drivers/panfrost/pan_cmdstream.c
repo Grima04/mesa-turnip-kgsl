@@ -762,6 +762,14 @@ static void panfrost_upload_txs_sysval(struct panfrost_batch *batch,
         struct pipe_sampler_view *tex = &ctx->sampler_views[st][texidx]->base;
 
         assert(dim);
+
+        if (tex->target == PIPE_BUFFER) {
+                assert(dim == 1);
+                uniform->i[0] =
+                        tex->u.buf.size / util_format_get_blocksize(tex->format);
+                return;
+        }
+
         uniform->i[0] = u_minify(tex->texture->width0, tex->u.tex.first_level);
 
         if (dim > 1)
