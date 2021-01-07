@@ -388,9 +388,21 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
 
                 unsigned rt = loc == FRAG_RESULT_COLOR ? 0 :
                         (loc - FRAG_RESULT_DATA0);
+                bi_index color = bi_src_index(&instr->src[0]);
 
-                bi_emit_blend_op(b, bi_src_index(&instr->src[0]),
-                                nir_intrinsic_src_type(instr), rt);
+                /* Explicit copy since BLEND inputs are precoloured to R0-R3,
+                 * TODO: maybe schedule around this or implement in RA as a
+                 * spill */
+                if (rt > 0) {
+                        bi_index srcs[4] = { color, color, color, color };
+                        unsigned channels[4] = { 0, 1, 2, 3 };
+                        color = bi_temp(b->shader);
+                        bi_make_vec_to(b, color, srcs, channels,
+                                       nir_src_num_components(instr->src[0]),
+                                       nir_alu_type_get_type_size(nir_intrinsic_src_type(instr)));
+                }
+
+                bi_emit_blend_op(b, color, nir_intrinsic_src_type(instr), rt);
         }
 
         if (b->shader->is_blend) {
