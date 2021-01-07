@@ -740,12 +740,27 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
                            const VkImageSubresourceRange *subresourceRange,
                            bool decompress_dcc)
 {
+	bool use_predication = false;
 	bool old_predicating = false;
 
 	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
 
 	if ((decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) ||
 	    (!(radv_image_has_fmask(image) && !image->tc_compatible_cmask))) {
+		use_predication = true;
+	}
+
+	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel) &&
+	    (image->info.array_size != radv_get_layerCount(image, subresourceRange) ||
+	    subresourceRange->baseArrayLayer != 0)) {
+		/* Only use predication if the image has DCC with mipmaps or
+		 * if the range of layers covers the whole image because the
+		 * predication is based on mip level.
+		 */
+		use_predication = false;
+	}
+
+	if (use_predication) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
 							image->fce_pred_offset;
 		pred_offset += 8 * subresourceRange->baseMipLevel;
@@ -759,8 +774,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 	radv_process_color_image(cmd_buffer, image, subresourceRange,
 				 decompress_dcc);
 
-	if ((decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) ||
-	    (!(radv_image_has_fmask(image) && !image->tc_compatible_cmask))) {
+	if (use_predication) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
 							image->fce_pred_offset;
 		pred_offset += 8 * subresourceRange->baseMipLevel;
