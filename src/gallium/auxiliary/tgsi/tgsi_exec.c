@@ -3594,12 +3594,8 @@ fetch_double_channel(struct tgsi_exec_machine *mach,
       chan->u[i][0] = src[0].u[i];
       chan->u[i][1] = src[1].u[i];
    }
-   if (reg->Register.Absolute) {
-      micro_dabs(chan, chan);
-   }
-   if (reg->Register.Negate) {
-      micro_dneg(chan, chan);
-   }
+   assert(!reg->Register.Absolute);
+   assert(!reg->Register.Negate);
 }
 
 static void
