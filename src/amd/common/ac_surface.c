@@ -1844,6 +1844,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->u.gfx9.dcc_block_height = dout.compressBlkHeight;
          surf->u.gfx9.dcc_block_depth = dout.compressBlkDepth;
          surf->dcc_size = dout.dccRamSize;
+         surf->dcc_slice_size = dout.dccRamSliceSize;
          surf->dcc_alignment = dout.dccRamBaseAlign;
          surf->num_dcc_levels = in->numMipLevels;
 
