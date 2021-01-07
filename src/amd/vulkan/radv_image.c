@@ -179,8 +179,13 @@ radv_use_dcc_for_image(struct radv_device *device,
 		return false;
 
 	/* TODO: Enable DCC for mipmaps on GFX9+. */
-	if ((pCreateInfo->arrayLayers > 1 || pCreateInfo->mipLevels > 1) &&
+	if (pCreateInfo->mipLevels > 1 &&
 	    device->physical_device->rad_info.chip_class >= GFX9)
+		return false;
+
+	/* FIXME: Fix DCC+layers on GFX9. */
+	if (pCreateInfo->arrayLayers > 1 &&
+	    device->physical_device->rad_info.chip_class == GFX9)
 		return false;
 
 	/* Do not enable DCC for mipmapped arrays because performance is worse. */
