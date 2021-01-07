@@ -4937,11 +4937,12 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          static const unsigned swizzle_normal[4] = {0, 1, 2, 3};
          static const unsigned swizzle_post_shuffle[4] = {2, 1, 0, 3};
          const unsigned *swizzle = post_shuffle ? swizzle_post_shuffle : swizzle_normal;
+         unsigned num_components = instr->dest.ssa.num_components;
 
-         aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, dst.size(), 1)};
+         aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
          std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
          unsigned num_temp = 0;
-         for (unsigned i = 0; i < dst.size(); i++) {
+         for (unsigned i = 0; i < num_components; i++) {
             unsigned idx = i + component;
             if (swizzle[idx] < num_channels && channels[swizzle[idx]].id()) {
                Temp channel = channels[swizzle[idx]];
@@ -4961,9 +4962,9 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          }
          vec->definitions[0] = Definition(dst);
          ctx->block->instructions.emplace_back(std::move(vec));
-         emit_split_vector(ctx, dst, dst.size());
+         emit_split_vector(ctx, dst, num_components);
 
-         if (num_temp == dst.size())
+         if (num_temp == num_components)
             ctx->allocated_vec.emplace(dst.id(), elems);
       }
    } else if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
