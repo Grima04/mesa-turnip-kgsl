@@ -991,64 +991,6 @@ radv_is_fast_clear_stencil_allowed(VkClearDepthStencilValue value)
 	return value.stencil == 0;
 }
 
-/**
- * Determine if the given image can be fast cleared.
- */
-static bool
-radv_image_can_fast_clear(struct radv_device *device,  struct radv_image *image)
-{
-	if (device->instance->debug_flags & RADV_DEBUG_NO_FAST_CLEARS)
-		return false;
-
-	if (vk_format_is_color(image->vk_format)) {
-		if (!radv_image_has_cmask(image) && !radv_image_has_dcc(image))
-			return false;
-
-		/* RB+ doesn't work with CMASK fast clear on Stoney. */
-		if (!radv_image_has_dcc(image) &&
-		    device->physical_device->rad_info.family == CHIP_STONEY)
-			return false;
-	} else {
-		if (!radv_image_has_htile(image))
-			return false;
-	}
-
-	/* Do not fast clears 3D images. */
-	if (image->type == VK_IMAGE_TYPE_3D)
-		return false;
-
-	return true;
-}
-
-/**
- * Determine if the given image view can be fast cleared.
- */
-static bool
-radv_image_view_can_fast_clear(struct radv_device *device,
-			       const struct radv_image_view *iview)
-{
-	struct radv_image *image;
-
-	if (!iview)
-		return false;
-	image = iview->image;
-
-	/* Only fast clear if the image itself can be fast cleared. */
-	if (!radv_image_can_fast_clear(device, image))
-		return false;
-
-	/* Only fast clear if all layers are bound. */
-	if (iview->base_layer > 0 ||
-	    iview->layer_count != image->info.array_size)
-		return false;
-
-	/* Only fast clear if the view covers the whole image. */
-	if (!radv_image_extent_compare(image, &iview->extent))
-		return false;
-
-	return true;
-}
-
 static bool
 radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 			  const struct radv_image_view *iview,
@@ -1059,7 +1001,7 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 			  const VkClearDepthStencilValue clear_value,
 			  uint32_t view_mask)
 {
-	if (!radv_image_view_can_fast_clear(cmd_buffer->device, iview))
+	if (!iview->support_fast_clear)
 		return false;
 
 	if (!radv_layout_is_htile_compressed(cmd_buffer->device, iview->image, image_layout, in_render_loop,
@@ -1629,7 +1571,7 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 {
 	uint32_t clear_color[2];
 
-	if (!radv_image_view_can_fast_clear(cmd_buffer->device, iview))
+	if (!iview->support_fast_clear)
 		return false;
 
 	if (!radv_layout_can_fast_clear(cmd_buffer->device, iview->image, image_layout, in_render_loop,

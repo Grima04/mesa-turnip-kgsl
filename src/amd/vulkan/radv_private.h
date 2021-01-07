@@ -2170,6 +2170,9 @@ struct radv_image_view {
 	uint32_t level_count;
 	VkExtent3D extent; /**< Extent of VkImageViewCreateInfo::baseMipLevel. */
 
+	/* Whether the image iview supports fast clear. */
+	bool support_fast_clear;
+
 	union radv_descriptor descriptor;
 
 	/* Descriptor for use as a storage image as opposed to a sampled image.
