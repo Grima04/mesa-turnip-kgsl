@@ -1,10 +1,18 @@
 # This file list source dependencies to avoid creating/running jobs
 # those outcome cannot be changed by the modifications from a branch.
 
+# Generic rule to not run the job during scheduled pipelines
+# ----------------------------------------------------------
+.scheduled_pipelines-rules:
+  rules: &ignore_scheduled_pipelines
+    if: '$CI_PIPELINE_SOURCE == "schedule"'
+    when: never
+
 # Mesa core source file dependencies
 # ----------------------------------
 .mesa-rules:
   rules:
+    - *ignore_scheduled_pipelines
     - changes: &mesa_core_file_list
       - .gitlab-ci.yml
       - .gitlab-ci/**/*
@@ -29,6 +37,7 @@
 # -------------------------------------
 .gallium-rules:
   rules:
+    - *ignore_scheduled_pipelines
     - changes: &gallium_core_file_list
       - src/gallium/*
       - src/gallium/auxiliary/**/*
@@ -38,13 +47,6 @@
       - src/gallium/targets/**/*
       - src/gallium/tests/**/*
       - src/gallium/winsys/*
-
-# Generic rule to not run the job during scheduled pipelines
-# ----------------------------------------------------------
-.scheduled_pipelines-rules:
-  rules: &ignore_scheduled_pipelines
-    if: '$CI_PIPELINE_SOURCE == "schedule"'
-    when: never
 
 .softpipe-rules:
   stage: software-renderer
