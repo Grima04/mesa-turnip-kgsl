@@ -452,7 +452,7 @@ st_ReadPixels(struct gl_context *ctx, GLint x, GLint y,
 
    /* Convert the source format to what is expected by ReadPixels
     * and see if it's supported. */
-   src_format = util_format_linear(src->format);
+   src_format = util_format_linear(strb->Base.Format);
    src_format = util_format_luminance_to_red(src_format);
    src_format = util_format_intensity_to_red(src_format);
 
