@@ -2137,10 +2137,13 @@ ntt_emit_block(struct ntt_compile *c, nir_block *block)
    /* Set up the if condition for ntt_emit_if(), which we have to do before
     * freeing up the temps (the "if" is treated as inside the block for liveness
     * purposes, despite not being an instruction)
+    *
+    * Note that, while IF and UIF are supposed to look at only .x, virglrenderer
+    * looks at all of .xyzw.  No harm in working around the bug.
     */
    nir_if *nif = nir_block_get_following_if(block);
    if (nif)
-      c->if_cond = ntt_get_src(c, nif->condition);
+      c->if_cond = ureg_scalar(ntt_get_src(c, nif->condition), TGSI_SWIZZLE_X);
 
    /* Free up any SSA temps that are unused at the end of the block. */
    unsigned index;
