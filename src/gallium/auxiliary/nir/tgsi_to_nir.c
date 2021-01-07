@@ -897,10 +897,8 @@ ttn_get_src(struct ttn_compile *c, struct tgsi_full_src_register *tgsi_fsrc,
       def = nir_bitcast_vector(b, def, 64);
 
    if (tgsi_src->Absolute) {
-      if (src_is_float)
-         def = nir_fabs(b, def);
-      else
-         def = nir_iabs(b, def);
+      assert(src_is_float);
+      def = nir_fabs(b, def);
    }
 
    if (tgsi_src->Negate) {

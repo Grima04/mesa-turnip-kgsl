@@ -1713,11 +1713,8 @@ fetch_source(const struct tgsi_exec_machine *mach,
    fetch_source_d(mach, chan, reg, chan_index);
 
    if (reg->Register.Absolute) {
-      if (src_datatype == TGSI_EXEC_DATA_FLOAT) {
-         micro_abs(chan, chan);
-      } else {
-         micro_iabs(chan, chan);
-      }
+      assert(src_datatype == TGSI_EXEC_DATA_FLOAT);
+      micro_abs(chan, chan);
    }
 
    if (reg->Register.Negate) {
