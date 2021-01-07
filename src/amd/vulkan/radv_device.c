@@ -619,6 +619,14 @@ radv_handle_per_app_options(struct radv_instance *instance,
 			/* Fix various artifacts in Detroit: Become Human */
 			instance->debug_flags |= RADV_DEBUG_ZERO_VRAM |
 			                         RADV_DEBUG_DISCARD_TO_DEMOTE;
+
+			/* Fix rendering issues in Detroit: Become Human
+			 * because the game uses render loops (it
+			 * samples/renders from/to the same depth/stencil
+			 * texture inside the same draw) without input
+			 * attachments and that is invalid Vulkan usage.
+			 */
+			instance->disable_tc_compat_htile_in_general = true;
 		}
 	}
 

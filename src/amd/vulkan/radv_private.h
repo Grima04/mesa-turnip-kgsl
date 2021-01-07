@@ -360,6 +360,7 @@ struct radv_instance {
 	 * Workarounds for game bugs.
 	 */
 	bool enable_mrt_output_nan_fixup;
+	bool disable_tc_compat_htile_in_general;
 };
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);

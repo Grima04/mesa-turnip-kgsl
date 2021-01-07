@@ -1841,7 +1841,8 @@ bool radv_layout_is_htile_compressed(const struct radv_device *device,
 		 */
 		if (radv_image_is_tc_compat_htile(image) &&
 		    queue_mask & (1u << RADV_QUEUE_GENERAL) &&
-		    !in_render_loop) {
+		    !in_render_loop &&
+		    !device->instance->disable_tc_compat_htile_in_general) {
 			/* GFX10+ supports compressed writes to HTILE. */
 			return device->physical_device->rad_info.chip_class >= GFX10 ||
 			       !(image->usage & VK_IMAGE_USAGE_STORAGE_BIT);
