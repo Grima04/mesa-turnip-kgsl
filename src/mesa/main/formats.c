@@ -430,16 +430,22 @@ _mesa_array_format_flip_channels(mesa_array_format format)
    unreachable("Invalid array format");
 }
 
-uint32_t
-_mesa_format_to_array_format(mesa_format format)
+static uint32_t
+_mesa_format_info_to_array_format(const struct mesa_format_info *info)
 {
-   const struct mesa_format_info *info = _mesa_get_format_info(format);
 #if UTIL_ARCH_BIG_ENDIAN
    if (info->ArrayFormat && info->Layout == MESA_FORMAT_LAYOUT_PACKED)
       return _mesa_array_format_flip_channels(info->ArrayFormat);
    else
 #endif
       return info->ArrayFormat;
+}
+
+uint32_t
+_mesa_format_to_array_format(mesa_format format)
+{
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
+   return _mesa_format_info_to_array_format(info);
 }
 
 static struct hash_table *format_array_format_table;
@@ -483,12 +489,7 @@ format_array_format_table_init(void)
       if (_mesa_is_format_srgb(f))
          continue;
 
-#if UTIL_ARCH_LITTLE_ENDIAN
-         array_format = info->ArrayFormat;
-#else
-         array_format = _mesa_array_format_flip_channels(info->ArrayFormat);
-#endif
-
+      array_format = _mesa_format_info_to_array_format(info);
       _mesa_hash_table_insert_pre_hashed(format_array_format_table,
                                          array_format,
                                          (void *)(intptr_t)array_format,
