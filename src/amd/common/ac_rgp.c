@@ -35,7 +35,6 @@
 
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
 
 #define SQTT_FILE_MAGIC_NUMBER  0x50303042
 #define SQTT_FILE_VERSION_MAJOR 1
