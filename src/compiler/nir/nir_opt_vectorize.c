@@ -158,7 +158,7 @@ instr_can_rewrite(nir_instr *instr, bool vectorize_16bit)
           * outside of max_components: these should better be scalarized */
          uint32_t mask = vectorize_16bit ? ~1 : ~3;
          for (unsigned j = 0; j < alu->dest.dest.ssa.num_components; j++) {
-            if ((alu->src[i].swizzle[0] & mask) != (alu->src[i].swizzle[i] & mask))
+            if ((alu->src[i].swizzle[0] & mask) != (alu->src[i].swizzle[j] & mask))
                return false;
          }
       }
