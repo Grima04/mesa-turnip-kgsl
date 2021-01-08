@@ -3291,7 +3291,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			NIR_PASS_V(nir[i], nir_lower_memory_model);
 
 			bool lower_to_scalar = false;
-			bool lower_pack = false;
+
 			nir_load_store_vectorize_options vectorize_opts = {
 				.modes = nir_var_mem_ssbo | nir_var_mem_ubo |
 					 nir_var_mem_push_const | nir_var_mem_shared |
@@ -3309,7 +3309,6 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 			if (nir_opt_load_store_vectorize(nir[i], &vectorize_opts)) {
 				lower_to_scalar = true;
-				lower_pack = true;
 			}
 
 			/* do this again since information such as outputs_read can be out-of-date */
@@ -3321,8 +3320,6 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 			if (lower_to_scalar)
 				nir_lower_alu_to_scalar(nir[i], NULL, NULL);
-			if (lower_pack)
-				nir_lower_pack(nir[i]);
 
 			/* lower ALU operations */
 			/* TODO: Some 64-bit tests crash inside LLVM. */
