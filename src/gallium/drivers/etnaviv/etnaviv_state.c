@@ -610,6 +610,14 @@ etna_vertex_elements_state_bind(struct pipe_context *pctx, void *ve)
    ctx->dirty |= ETNA_DIRTY_VERTEX_ELEMENTS;
 }
 
+static void
+etna_set_stream_output_targets(struct pipe_context *pctx,
+      unsigned num_targets, struct pipe_stream_output_target **targets,
+      const unsigned *offsets)
+{
+   /* stub */
+}
+
 static bool
 etna_update_ts_config(struct etna_context *ctx)
 {
@@ -809,4 +817,6 @@ etna_state_init(struct pipe_context *pctx)
    pctx->create_vertex_elements_state = etna_vertex_elements_state_create;
    pctx->delete_vertex_elements_state = etna_vertex_elements_state_delete;
    pctx->bind_vertex_elements_state = etna_vertex_elements_state_bind;
+
+   pctx->set_stream_output_targets = etna_set_stream_output_targets;
 }
