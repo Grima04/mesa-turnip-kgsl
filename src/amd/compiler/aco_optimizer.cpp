@@ -2524,7 +2524,8 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       /* Applying two sgprs require making it VOP3, so don't do it unless it's
        * definitively beneficial.
        * TODO: this is too conservative because later the use count could be reduced to 1 */
-      if (num_sgprs && ctx.uses[sgpr_info_id] > 1 && !instr->isVOP3() && !instr->isSDWA())
+      if (num_sgprs && ctx.uses[sgpr_info_id] > 1 &&
+          !instr->isVOP3() && !instr->isSDWA() && instr->format != Format::VOP3P)
          break;
 
       Temp sgpr = ctx.info[sgpr_info_id].temp;
@@ -2532,7 +2533,8 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       if (new_sgpr && num_sgprs >= max_sgprs)
          continue;
 
-      if (sgpr_idx == 0 || instr->isVOP3() || instr->isSDWA()) {
+      if (sgpr_idx == 0 || instr->isVOP3() ||
+          instr->isSDWA() || instr->format == Format::VOP3P) {
          instr->operands[sgpr_idx] = Operand(sgpr);
       } else if (can_swap_operands(instr)) {
          instr->operands[sgpr_idx] = instr->operands[0];
