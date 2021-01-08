@@ -32,28 +32,45 @@
 static void
 bi_compute_interference(bi_context *ctx, struct lcra_state *l)
 {
+        unsigned node_count = bi_max_temp(ctx);
+
         bi_compute_liveness(ctx);
 
         bi_foreach_block(ctx, _blk) {
                 bi_block *blk = (bi_block *) _blk;
-                uint16_t *live = mem_dup(_blk->live_out, l->node_count * sizeof(uint16_t));
+                uint16_t *live = mem_dup(_blk->live_out, node_count * sizeof(uint16_t));
 
                 bi_foreach_instr_in_block_rev(blk, ins) {
                         /* Mark all registers live after the instruction as
                          * interfering with the destination */
 
                         for (unsigned d = 0; d < ARRAY_SIZE(ins->dest); ++d) {
-                                if (bi_get_node(ins->dest[d]) >= l->node_count)
+                                if (bi_get_node(ins->dest[d]) >= node_count)
                                         continue;
 
-                                for (unsigned i = 1; i < l->node_count; ++i) {
+                                for (unsigned i = 1; i < node_count; ++i) {
                                         if (live[i])
                                                 lcra_add_node_interference(l, bi_get_node(ins->dest[d]), bi_writemask(ins), i, live[i]);
                                 }
                         }
 
+                        if (!ctx->is_blend && ins->op == BI_OPCODE_BLEND) {
+                                /* Add blend shader interference: blend shaders might
+                                 * clobber r0-r15. */
+                                for (unsigned i = 1; i < node_count; ++i) {
+                                        if (!live[i])
+                                                continue;
+
+                                        for (unsigned j = 0; j < 4; j++) {
+                                                lcra_add_node_interference(l, node_count + j,
+                                                                           0xFFFF,
+                                                                           i, live[i]);
+                                        }
+                                }
+                        }
+
                         /* Update live_in */
-                        bi_liveness_ins_update(live, ins, l->node_count);
+                        bi_liveness_ins_update(live, ins, node_count);
                 }
 
                 free(live);
@@ -69,8 +86,15 @@ bi_allocate_registers(bi_context *ctx, bool *success)
 {
         unsigned node_count = bi_max_temp(ctx);
 
+        /* We need 4 hidden nodes to encode interference caused by non-terminal
+         * BLEND (blend shaders are allowed to use r0-r16).
+         */
         struct lcra_state *l =
-                lcra_alloc_equations(node_count, 1);
+                lcra_alloc_equations(node_count + 4, 1);
+
+        /* Preset solutions for the blend shader pseudo nodes */
+        for (unsigned i = 0; i < 4; i++)
+                l->solutions[node_count + i] = i * 16;
 
         if (ctx->is_blend) {
                 /* R0-R3 are reserved for the blend input */
@@ -109,16 +133,17 @@ bi_allocate_registers(bi_context *ctx, bool *success)
 }
 
 static bi_index
-bi_reg_from_index(struct lcra_state *l, bi_index index)
+bi_reg_from_index(bi_context *ctx, struct lcra_state *l, bi_index index)
 {
         /* Offsets can only be applied when we register allocated an index, or
          * alternatively for FAU's encoding */
 
         ASSERTED bool is_offset = (index.offset > 0) &&
                 (index.type != BI_INDEX_FAU);
+        unsigned node_count = bi_max_temp(ctx);
 
         /* Did we run RA for this index at all */
-        if (bi_get_node(index) >= l->node_count) {
+        if (bi_get_node(index) >= node_count) {
                 assert(!is_offset);
                 return index;
         }
@@ -146,10 +171,10 @@ static void
 bi_install_registers(bi_context *ctx, struct lcra_state *l)
 {
         bi_foreach_instr_global(ctx, ins) {
-                ins->dest[0] = bi_reg_from_index(l, ins->dest[0]);
+                ins->dest[0] = bi_reg_from_index(ctx, l, ins->dest[0]);
 
                 bi_foreach_src(ins, s)
-                        ins->src[s] = bi_reg_from_index(l, ins->src[s]);
+                        ins->src[s] = bi_reg_from_index(ctx, l, ins->src[s]);
         }
 }
 
@@ -195,7 +220,8 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
                 }
         }
 
-        for (unsigned i = PAN_IS_REG; i < l->node_count; i += 2)
+        unsigned node_count = bi_max_temp(ctx);
+        for (unsigned i = PAN_IS_REG; i < node_count; i += 2)
                 lcra_set_node_spill_cost(l, i, -1);
 
         return lcra_get_best_spill_node(l);
