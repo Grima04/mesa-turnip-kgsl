@@ -709,6 +709,12 @@ iris_resource_prepare_access(struct iris_context *ice,
          const enum isl_aux_op aux_op =
             isl_aux_prepare_access(aux_state, aux_usage, fast_clear_supported);
 
+         /* Prepare the aux buffer for a conditional or unconditional access.
+          * A conditional access is handled by assuming that the access will
+          * not evaluate to a no-op. If the access does in fact occur, the aux
+          * will be in the required state. If it does not, no data is lost
+          * because the aux_op performed is lossless.
+          */
          if (aux_op == ISL_AUX_OP_NONE) {
             /* Nothing to do here. */
          } else if (isl_aux_usage_has_mcs(res->aux.usage)) {
@@ -746,8 +752,18 @@ iris_resource_finish_write(struct iris_context *ice,
       const uint32_t layer = start_layer + a;
       const enum isl_aux_state aux_state =
          iris_resource_get_aux_state(res, level, layer);
+
+      /* Transition the aux state for a conditional or unconditional write. A
+       * conditional write is handled by assuming that the write applies to
+       * only part of the render target. This prevents the new state from
+       * losing the types of compression that might exist in the current state
+       * (e.g. CLEAR). If the write evaluates to a no-op, the state will still
+       * be able to communicate when resolves are necessary (but it may
+       * falsely communicate this as well).
+       */
       const enum isl_aux_state new_aux_state =
          isl_aux_state_transition_write(aux_state, aux_usage, false);
+
       iris_resource_set_aux_state(ice, res, level, layer, 1, new_aux_state);
    }
 }
