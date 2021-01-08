@@ -80,7 +80,7 @@ srcs_equal(const nir_src *src1, const nir_src *src2)
    assert(src2->is_ssa);
 
    return src1->ssa == src2->ssa ||
-      nir_src_is_const(*src1) == nir_src_is_const(*src2);
+          (nir_src_is_const(*src1) && nir_src_is_const(*src2));
 }
 
 static bool
