@@ -1240,12 +1240,14 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_mov: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (src.bytes() != dst.bytes())
-         unreachable("wrong src or dst register class for nir_op_mov");
-      if (src.type() == RegType::vgpr && dst.type() == RegType::sgpr)
+      if (src.type() == RegType::vgpr && dst.type() == RegType::sgpr) {
+         /* use size() instead of bytes() for 8/16-bit */
+         assert(src.size() == dst.size() && "wrong src or dst register class for nir_op_mov");
          bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), src);
-      else
+      } else {
+         assert(src.bytes() == dst.bytes() && "wrong src or dst register class for nir_op_mov");
          bld.copy(Definition(dst), src);
+      }
       break;
    }
    case nir_op_inot: {
