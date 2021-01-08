@@ -116,7 +116,7 @@ bi_allocate_registers(bi_context *ctx, bool *success)
                         l->solutions[node] = 0;
                 }
 
-                if (!dest || (dest >= node_count))
+                if (dest >= node_count)
                         continue;
 
                 l->class[dest] = BI_REG_CLASS_WORK;
