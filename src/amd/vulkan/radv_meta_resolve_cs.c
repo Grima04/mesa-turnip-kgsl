@@ -982,29 +982,18 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
 	                                RADV_CMD_FLAG_INV_VCACHE;
 
 	if (radv_image_has_htile(dst_image)) {
-		if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
-			VkImageSubresourceRange range = {0};
-			range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-			range.baseMipLevel = dst_iview->base_mip;
-			range.levelCount = 1;
-			range.baseArrayLayer = dst_iview->base_layer;
-			range.layerCount = layer_count;
+		VkImageSubresourceRange range = {0};
+		range.aspectMask = aspects;
+		range.baseMipLevel = dst_iview->base_mip;
+		range.levelCount = 1;
+		range.baseArrayLayer = dst_iview->base_layer;
+		range.layerCount = layer_count;
 
-			uint32_t clear_value = 0xfffc000f;
+		uint32_t htile_value =
+			radv_get_htile_initial_value(cmd_buffer->device, dst_image);
 
-			if (vk_format_is_stencil(dst_image->vk_format) &&
-			    subpass->stencil_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
-				/* Only clear the stencil part of the HTILE
-				 * buffer if it's resolved, otherwise this
-				 * might break if the stencil has been cleared.
-				 */
-				clear_value = 0xfffff3ff;
-			}
-
-			cmd_buffer->state.flush_bits |=
-				radv_clear_htile(cmd_buffer, dst_image, &range,
-						 clear_value);
-		}
+		cmd_buffer->state.flush_bits |=
+			radv_clear_htile(cmd_buffer, dst_image, &range, htile_value);
 	}
 
 	radv_meta_restore(&saved_state, cmd_buffer);
