@@ -768,6 +768,30 @@ void radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer,
 	radv_decompress_resolve_src(cmd_buffer, src_image, src_image_layout,
 				    region);
 
+	/* For partial resolves, DCC should be decompressed before resolving
+	 * because the metadata is re-initialized to the uncompressed after.
+	 */
+	uint32_t queue_mask = radv_image_queue_family_mask(dest_image,
+	                                                   cmd_buffer->queue_family_index,
+	                                                   cmd_buffer->queue_family_index);
+
+	if (radv_layout_dcc_compressed(cmd_buffer->device, dest_image,
+				       dest_image_layout, false, queue_mask) &&
+	    (region->dstOffset.x ||
+	     region->dstOffset.y ||
+	     region->dstOffset.z ||
+	     region->extent.width != dest_image->info.width ||
+	     region->extent.height != dest_image->info.height ||
+	     region->extent.depth != dest_image->info.depth)) {
+		radv_decompress_dcc(cmd_buffer, dest_image, &(VkImageSubresourceRange) {
+					.aspectMask = region->dstSubresource.aspectMask,
+					.baseMipLevel = region->dstSubresource.mipLevel,
+					.levelCount = 1,
+					.baseArrayLayer = region->dstSubresource.baseArrayLayer,
+					.layerCount = region->dstSubresource.layerCount,
+				    });
+	}
+
 	radv_meta_save(&saved_state, cmd_buffer,
 		       RADV_META_SAVE_COMPUTE_PIPELINE |
 		       RADV_META_SAVE_CONSTANTS |
