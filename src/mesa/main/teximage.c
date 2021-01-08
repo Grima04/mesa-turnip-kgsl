@@ -6735,8 +6735,8 @@ texture_image_multisample(struct gl_context *ctx, GLuint dims,
    bool dsa = strstr(func, "ture") ? true : false;
 
    if (MESA_VERBOSE & (VERBOSE_API|VERBOSE_TEXTURE)) {
-      _mesa_debug(ctx, "%s(target=%s, samples=%d)\n", func,
-                  _mesa_enum_to_string(target), samples);
+      _mesa_debug(ctx, "%s(target=%s, samples=%d, internalformat=%s)\n", func,
+                  _mesa_enum_to_string(target), samples, _mesa_enum_to_string(internalformat));
    }
 
    if (!((ctx->Extensions.ARB_texture_multisample
