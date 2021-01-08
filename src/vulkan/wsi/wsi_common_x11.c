@@ -249,6 +249,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
 
    free(dri3_reply);
    free(pres_reply);
+   free(randr_reply);
    free(amd_reply);
    free(nv_reply);
 
