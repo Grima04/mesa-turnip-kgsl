@@ -212,25 +212,24 @@ class Opcode(object):
       self.operand_size = op_dtype_sizes.get(op_dtype, 32)
       self.definition_size = def_dtype_sizes.get(def_dtype, self.operand_size)
 
-      # exceptions
-      if self.operand_size == 16 and op_dtype != 'f16':
-         self.operand_size = 16
+      # exceptions for operands:
+      if 'sad_' in name:
+        self.operand_size = 0
+      elif name in ['v_mad_u64_u32', 'v_mad_i64_i32']:
+        self.operand_size = 0
       elif self.operand_size == 24:
         self.operand_size = 32
-      elif name in ['s_sext_i32_i8', 's_sext_i32_i16', 'v_msad_u8', 'v_cvt_pk_u16_u32', 'v_cvt_pk_i16_i32']:
-         self.operand_size = 32
-      elif name in ['v_qsad_pk_u16_u8', 'v_mqsad_pk_u16_u8', 'v_mqsad_u32_u8']:
-         self.definition_size = 0
-         self.operand_size = 0
-      elif name in ['v_mad_u64_u32', 'v_mad_i64_i32']:
-         self.operand_size = 0
-      elif '_pk' in name or name in ['v_lerp_u8', 'v_sad_u8', 'v_sad_u16',
-                                      'v_cvt_f32_ubyte0', 'v_cvt_f32_ubyte1',
-                                      'v_cvt_f32_ubyte2', 'v_cvt_f32_ubyte3']:
-         self.operand_size = 32
-         self.definition_size = 32
-      elif '_pknorm_' in name:
-         self.definition_size = 32
+      elif op_dtype == 'u8' or op_dtype == 'i8':
+        self.operand_size = 32
+      elif name in ['v_cvt_f32_ubyte0', 'v_cvt_f32_ubyte1',
+                    'v_cvt_f32_ubyte2', 'v_cvt_f32_ubyte3']:
+        self.operand_size = 32
+
+      # exceptions for definitions:
+      if 'sad_' in name:
+        self.definition_size = 0
+      elif '_pk' in name:
+        self.definition_size = 32
 
 
 # global dictionary of opcodes
