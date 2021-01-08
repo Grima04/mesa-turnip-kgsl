@@ -811,14 +811,7 @@ t4					write SP_VS_OBJ_START_LO (a81c)
 							:0:0007:0010[00000000x_00000000x] nop
 							:0:0008:0011[00000000x_00000000x] nop
 							:0:0009:0012[00000000x_00000000x] nop
-							Register Stats:
-							- used (half): 8-23 (cnt=16, max=23)
-							- used (full): 4-11 (cnt=8, max=11)
-							- input (half): 8-19 (cnt=12, max=19)
-							- input (full): 4-9 (cnt=6, max=9)
-							- output (half): 16-23 (cnt=8, max=23)  (estimated)
-							- output (full): 8-11 (cnt=4, max=11)  (estimated)
-
+							Stats:
 							- shaderdb: 13 instr, 7 nops, 6 non-nops, 0 mov, 0 cov
 							- shaderdb: 0 last-baryf, 0 half, 3 full, 2 constlen
 							- shaderdb: 8 cat0, 0 cat1, 1 cat2, 4 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -838,14 +831,7 @@ t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						:0:0007:0010[00000000x_00000000x] nop
 						:0:0008:0011[00000000x_00000000x] nop
 						:0:0009:0012[00000000x_00000000x] nop
-						Register Stats:
-						- used (half): 8-23 (cnt=16, max=23)
-						- used (full): 4-11 (cnt=8, max=11)
-						- input (half): 8-19 (cnt=12, max=19)
-						- input (full): 4-9 (cnt=6, max=9)
-						- output (half): 16-23 (cnt=8, max=23)  (estimated)
-						- output (full): 8-11 (cnt=4, max=11)  (estimated)
-
+						Stats:
 						- shaderdb: 13 instr, 7 nops, 6 non-nops, 0 mov, 0 cov
 						- shaderdb: 0 last-baryf, 0 half, 3 full, 2 constlen
 						- shaderdb: 8 cat0, 0 cat1, 1 cat2, 4 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -903,14 +889,7 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							:0:0006:0006[00000000x_00000000x] nop
 							:0:0007:0007[00000000x_00000000x] nop
 							:0:0008:0008[00000000x_00000000x] nop
-							Register Stats:
-							- used (half): 0-1 4-11 (cnt=10, max=11)
-							- used (full): 0 2-5 (cnt=5, max=5)
-							- input (half): 0-1 (cnt=2, max=1)
-							- input (full): 0 (cnt=1, max=0)
-							- output (half): 4-11 (cnt=8, max=11)  (estimated)
-							- output (full): 2-5 (cnt=4, max=5)  (estimated)
-
+							Stats:
 							- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
 							- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 							- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -929,14 +908,7 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						:0:0006:0006[00000000x_00000000x] nop
 						:0:0007:0007[00000000x_00000000x] nop
 						:0:0008:0008[00000000x_00000000x] nop
-						Register Stats:
-						- used (half): 0-1 4-11 (cnt=10, max=11)
-						- used (full): 0 2-5 (cnt=5, max=5)
-						- input (half): 0-1 (cnt=2, max=1)
-						- input (full): 0 (cnt=1, max=0)
-						- output (half): 4-11 (cnt=8, max=11)  (estimated)
-						- output (full): 2-5 (cnt=4, max=5)  (estimated)
-
+						Stats:
 						- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
 						- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 						- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -1497,14 +1469,7 @@ t7			opcode: CP_DRAW_INDIRECT_MULTI (2a) (12 dwords)
 				:0:0007:0010[00000000x_00000000x] nop
 				:0:0008:0011[00000000x_00000000x] nop
 				:0:0009:0012[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): 8-23 (cnt=16, max=23)
-				- used (full): 4-11 (cnt=8, max=11)
-				- input (half): 8-19 (cnt=12, max=19)
-				- input (full): 4-9 (cnt=6, max=9)
-				- output (half): 16-23 (cnt=8, max=23)  (estimated)
-				- output (full): 8-11 (cnt=4, max=11)  (estimated)
-
+				Stats:
 				- shaderdb: 13 instr, 7 nops, 6 non-nops, 0 mov, 0 cov
 				- shaderdb: 0 last-baryf, 0 half, 3 full, 2 constlen
 				- shaderdb: 8 cat0, 0 cat1, 1 cat2, 4 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -1532,14 +1497,7 @@ t7			opcode: CP_DRAW_INDIRECT_MULTI (2a) (12 dwords)
 				:0:0006:0006[00000000x_00000000x] nop
 				:0:0007:0007[00000000x_00000000x] nop
 				:0:0008:0008[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): 0-1 4-11 (cnt=10, max=11)
-				- used (full): 0 2-5 (cnt=5, max=5)
-				- input (half): 0-1 (cnt=2, max=1)
-				- input (full): 0 (cnt=1, max=0)
-				- output (half): 4-11 (cnt=8, max=11)  (estimated)
-				- output (full): 2-5 (cnt=4, max=5)  (estimated)
-
+				Stats:
 				- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
 				- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7

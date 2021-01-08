@@ -634,14 +634,7 @@ t4					write SP_VS_OBJ_START_LO (a81c)
 							:0:0002:0002[00000000x_00000000x] nop
 							:0:0003:0003[00000000x_00000000x] nop
 							:0:0004:0004[00000000x_00000000x] nop
-							Register Stats:
-							- used (half): (cnt=0, max=0)
-							- used (full): (cnt=0, max=0)
-							- input (half): (cnt=0, max=0)
-							- input (full): (cnt=0, max=0)
-							- output (half): (cnt=0, max=0)  (estimated)
-							- output (full): (cnt=0, max=0)  (estimated)
-
+							Stats:
 							- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
 							- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 							- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -656,14 +649,7 @@ t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						:0:0002:0002[00000000x_00000000x] nop
 						:0:0003:0003[00000000x_00000000x] nop
 						:0:0004:0004[00000000x_00000000x] nop
-						Register Stats:
-						- used (half): (cnt=0, max=0)
-						- used (full): (cnt=0, max=0)
-						- input (half): (cnt=0, max=0)
-						- input (full): (cnt=0, max=0)
-						- output (half): (cnt=0, max=0)  (estimated)
-						- output (full): (cnt=0, max=0)  (estimated)
-
+						Stats:
 						- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
 						- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 						- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -1104,14 +1090,7 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				:0:0002:0002[00000000x_00000000x] nop
 				:0:0003:0003[00000000x_00000000x] nop
 				:0:0004:0004[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): (cnt=0, max=0)
-				- input (half): (cnt=0, max=0)
-				- input (full): (cnt=0, max=0)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
 				- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -1949,14 +1928,7 @@ t4					write SP_VS_OBJ_START_LO (a81c)
 							:0:0002:0002[00000000x_00000000x] nop
 							:0:0003:0003[00000000x_00000000x] nop
 							:0:0004:0004[00000000x_00000000x] nop
-							Register Stats:
-							- used (half): (cnt=0, max=0)
-							- used (full): (cnt=0, max=0)
-							- input (half): (cnt=0, max=0)
-							- input (full): (cnt=0, max=0)
-							- output (half): (cnt=0, max=0)  (estimated)
-							- output (full): (cnt=0, max=0)  (estimated)
-
+							Stats:
 							- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
 							- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 							- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -1971,14 +1943,7 @@ t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						:0:0002:0002[00000000x_00000000x] nop
 						:0:0003:0003[00000000x_00000000x] nop
 						:0:0004:0004[00000000x_00000000x] nop
-						Register Stats:
-						- used (half): (cnt=0, max=0)
-						- used (full): (cnt=0, max=0)
-						- input (half): (cnt=0, max=0)
-						- input (full): (cnt=0, max=0)
-						- output (half): (cnt=0, max=0)  (estimated)
-						- output (full): (cnt=0, max=0)  (estimated)
-
+						Stats:
 						- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
 						- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 						- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -2260,12 +2225,12 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							:0:0171:0249[00000200x_00000000x] (rpt2)nop
 							:2:0172:0252[42bb08f8x_20820008x] (nop3) cmps.s.ge p0.x, r2.x, 130
 							:0:0173:0256[00000200x_00000000x] (rpt2)nop
-							:0:0174:0259[00800000x_00000464x] br p0.x, #1124
+							:0:0174:0259[00800000x_00000464x] br p0.x, #l1298
 							:1:0175:0260[280cc008x_00000003x] (jp)mov.u32u32 r2.x, r0.w
 							:0:0176:0261[00000200x_00000000x] (rpt2)nop
 							:2:0177:0264[40b808f8x_0008106ex] (nop3) cmps.f.lt p0.x, c27.z, r2.x
 							:0:0178:0268[00000200x_00000000x] (rpt2)nop
-							:0:0179:0271[00800000x_0000045fx] br p0.x, #1119
+							:0:0179:0271[00800000x_0000045fx] br p0.x, #l1298
 							:1:0180:0272[280cc012x_00000004x] (jp)mov.u32u32 r4.z, r1.x
 							:1:0181:0273[200cc018x_00000004x] mov.u32u32 r6.x, r1.x
 							:1:0182:0274[200cc019x_00000004x] mov.u32u32 r6.y, r1.x
@@ -2617,7 +2582,7 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							:2:0528:0937[40580023x_10700023x] (nop2) max.f r8.w, r8.w, c28.x
 							:2:0529:0940[40700026x_103e0025x] mul.f r9.z, r9.y, c15.z
 							:2:0530:0941[40300023x_10290023x] min.f r8.w, r8.w, c10.y
-							:0:0531:0942[00900000x_000002cdx] br !p0.x, #717
+							:0:0531:0942[00900000x_000002cdx] br !p0.x, #l1248
 							:2:0532:0943[48100028x_10550019x] (jp)add.f r10.x, r6.y, c21.y
 							:2:0533:0944[40700029x_10270019x] mul.f r10.y, r6.y, c9.w
 							:2:0534:0945[40100019x_10590019x] add.f r6.y, r6.y, c22.y
@@ -3333,7 +3298,8 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							:2:1244:2198[40700808x_0010001ax] (nop1) mul.f r2.x, r6.z, r4.x
 							:2:1245:2200[40700009x_00180029x] mul.f r2.y, r10.y, r6.x
 							:2:1246:2201[4070000ax_0012001dx] mul.f r2.z, r7.y, r4.z
-							:0:1247:2202[01000000x_0000000ex] jump #14
+							:0:1247:2202[01000000x_0000000ex] jump #l1261
+							:1:1248:2203[284cc007x_00000000x] l1248:
 							:1:1248:2203[284cc007x_00000000x] (jp)mov.u32u32 r1.w, 0
 							:0:1249:2204[00000200x_00000000x] (rpt2)nop
 							:1:1250:2207[200cc010x_00000007x] mov.u32u32 r4.x, r1.w
@@ -3347,6 +3313,7 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							:1:1258:2223[200cc010x_00000009x] mov.u32u32 r4.x, r2.y
 							:0:1259:2224[00000200x_00000000x] (rpt2)nop
 							:1:1260:2227[200cc008x_00000010x] mov.u32u32 r2.x, r4.x
+							:1:1261:2228[280cc012x_00000004x] l1261:
 							:1:1261:2228[280cc012x_00000004x] (jp)mov.u32u32 r4.z, r1.x
 							:1:1262:2229[200cc019x_00000009x] mov.u32u32 r6.y, r2.y
 							:1:1263:2230[200cc01ax_0000000ax] mov.u32u32 r6.z, r2.z
@@ -3383,7 +3350,8 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							:1:1294:2266[200cc024x_0000000bx] mov.u32u32 r9.x, r2.w
 							:2:1295:2267[42180006x_20010023x] (nop2) add.u r1.z, r8.w, 1
 							:1:1296:2270[200cc005x_00000024x] mov.u32u32 r1.y, r9.x
-							:0:1297:2271[01000000x_fffffb99x] jump #-1127
+							:0:1297:2271[01000000x_fffffb99x] jump #l170
+							:2:1298:2272[48500401x_00010001x] l1298:
 							:2:1298:2272[48500401x_00010001x] (jp)(sat)max.f r0.y, r0.y, r0.y
 							:2:1299:2273[40500402x_00020002x] (sat)max.f r0.z, r0.z, r0.z
 							:2:1300:2274[40100003x_400e1022x] add.f r0.w, c8.z, (neg)r3.z
@@ -3492,14 +3460,7 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							:0:1403:2411[00000000x_00000000x] nop
 							:0:1404:2412[00000000x_00000000x] nop
 							:0:1405:2413[00000000x_00000000x] nop
-							Register Stats:
-							- used (half): 0-147 (cnt=148, max=147)
-							- used (full): 0-73 (cnt=74, max=73)
-							- input (half): 38-41 (cnt=4, max=41)
-							- input (full): 19-20 (cnt=2, max=20)
-							- output (half): 8-15 (cnt=8, max=15)  (estimated)
-							- output (full): 4-7 (cnt=4, max=7)  (estimated)
-
+							Stats:
 							- shaderdb: 2414 instr, 1114 nops, 1300 non-nops, 46 mov, 2 cov
 							- shaderdb: 0 last-baryf, 0 half, 19 full, 29 constlen
 							- shaderdb: 1120 cat0, 48 cat1, 551 cat2, 512 cat3, 183 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -3683,12 +3644,12 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						:0:0171:0249[00000200x_00000000x] (rpt2)nop
 						:2:0172:0252[42bb08f8x_20820008x] (nop3) cmps.s.ge p0.x, r2.x, 130
 						:0:0173:0256[00000200x_00000000x] (rpt2)nop
-						:0:0174:0259[00800000x_00000464x] br p0.x, #1124
+						:0:0174:0259[00800000x_00000464x] br p0.x, #l1298
 						:1:0175:0260[280cc008x_00000003x] (jp)mov.u32u32 r2.x, r0.w
 						:0:0176:0261[00000200x_00000000x] (rpt2)nop
 						:2:0177:0264[40b808f8x_0008106ex] (nop3) cmps.f.lt p0.x, c27.z, r2.x
 						:0:0178:0268[00000200x_00000000x] (rpt2)nop
-						:0:0179:0271[00800000x_0000045fx] br p0.x, #1119
+						:0:0179:0271[00800000x_0000045fx] br p0.x, #l1298
 						:1:0180:0272[280cc012x_00000004x] (jp)mov.u32u32 r4.z, r1.x
 						:1:0181:0273[200cc018x_00000004x] mov.u32u32 r6.x, r1.x
 						:1:0182:0274[200cc019x_00000004x] mov.u32u32 r6.y, r1.x
@@ -4040,7 +4001,7 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						:2:0528:0937[40580023x_10700023x] (nop2) max.f r8.w, r8.w, c28.x
 						:2:0529:0940[40700026x_103e0025x] mul.f r9.z, r9.y, c15.z
 						:2:0530:0941[40300023x_10290023x] min.f r8.w, r8.w, c10.y
-						:0:0531:0942[00900000x_000002cdx] br !p0.x, #717
+						:0:0531:0942[00900000x_000002cdx] br !p0.x, #l1248
 						:2:0532:0943[48100028x_10550019x] (jp)add.f r10.x, r6.y, c21.y
 						:2:0533:0944[40700029x_10270019x] mul.f r10.y, r6.y, c9.w
 						:2:0534:0945[40100019x_10590019x] add.f r6.y, r6.y, c22.y
@@ -4756,7 +4717,8 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						:2:1244:2198[40700808x_0010001ax] (nop1) mul.f r2.x, r6.z, r4.x
 						:2:1245:2200[40700009x_00180029x] mul.f r2.y, r10.y, r6.x
 						:2:1246:2201[4070000ax_0012001dx] mul.f r2.z, r7.y, r4.z
-						:0:1247:2202[01000000x_0000000ex] jump #14
+						:0:1247:2202[01000000x_0000000ex] jump #l1261
+						:1:1248:2203[284cc007x_00000000x] l1248:
 						:1:1248:2203[284cc007x_00000000x] (jp)mov.u32u32 r1.w, 0
 						:0:1249:2204[00000200x_00000000x] (rpt2)nop
 						:1:1250:2207[200cc010x_00000007x] mov.u32u32 r4.x, r1.w
@@ -4770,6 +4732,7 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						:1:1258:2223[200cc010x_00000009x] mov.u32u32 r4.x, r2.y
 						:0:1259:2224[00000200x_00000000x] (rpt2)nop
 						:1:1260:2227[200cc008x_00000010x] mov.u32u32 r2.x, r4.x
+						:1:1261:2228[280cc012x_00000004x] l1261:
 						:1:1261:2228[280cc012x_00000004x] (jp)mov.u32u32 r4.z, r1.x
 						:1:1262:2229[200cc019x_00000009x] mov.u32u32 r6.y, r2.y
 						:1:1263:2230[200cc01ax_0000000ax] mov.u32u32 r6.z, r2.z
@@ -4806,7 +4769,8 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						:1:1294:2266[200cc024x_0000000bx] mov.u32u32 r9.x, r2.w
 						:2:1295:2267[42180006x_20010023x] (nop2) add.u r1.z, r8.w, 1
 						:1:1296:2270[200cc005x_00000024x] mov.u32u32 r1.y, r9.x
-						:0:1297:2271[01000000x_fffffb99x] jump #-1127
+						:0:1297:2271[01000000x_fffffb99x] jump #l170
+						:2:1298:2272[48500401x_00010001x] l1298:
 						:2:1298:2272[48500401x_00010001x] (jp)(sat)max.f r0.y, r0.y, r0.y
 						:2:1299:2273[40500402x_00020002x] (sat)max.f r0.z, r0.z, r0.z
 						:2:1300:2274[40100003x_400e1022x] add.f r0.w, c8.z, (neg)r3.z
@@ -4915,14 +4879,7 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						:0:1403:2411[00000000x_00000000x] nop
 						:0:1404:2412[00000000x_00000000x] nop
 						:0:1405:2413[00000000x_00000000x] nop
-						Register Stats:
-						- used (half): 0-147 (cnt=148, max=147)
-						- used (full): 0-73 (cnt=74, max=73)
-						- input (half): 38-41 (cnt=4, max=41)
-						- input (full): 19-20 (cnt=2, max=20)
-						- output (half): 8-15 (cnt=8, max=15)  (estimated)
-						- output (full): 4-7 (cnt=4, max=7)  (estimated)
-
+						Stats:
 						- shaderdb: 2414 instr, 1114 nops, 1300 non-nops, 46 mov, 2 cov
 						- shaderdb: 0 last-baryf, 0 half, 19 full, 29 constlen
 						- shaderdb: 1120 cat0, 48 cat1, 551 cat2, 512 cat3, 183 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -5329,14 +5286,7 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				:0:0002:0002[00000000x_00000000x] nop
 				:0:0003:0003[00000000x_00000000x] nop
 				:0:0004:0004[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): (cnt=0, max=0)
-				- input (half): (cnt=0, max=0)
-				- input (full): (cnt=0, max=0)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
 				- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -5535,12 +5485,12 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				:0:0171:0249[00000200x_00000000x] (rpt2)nop
 				:2:0172:0252[42bb08f8x_20820008x] (nop3) cmps.s.ge p0.x, r2.x, 130
 				:0:0173:0256[00000200x_00000000x] (rpt2)nop
-				:0:0174:0259[00800000x_00000464x] br p0.x, #1124
+				:0:0174:0259[00800000x_00000464x] br p0.x, #l1298
 				:1:0175:0260[280cc008x_00000003x] (jp)mov.u32u32 r2.x, r0.w
 				:0:0176:0261[00000200x_00000000x] (rpt2)nop
 				:2:0177:0264[40b808f8x_0008106ex] (nop3) cmps.f.lt p0.x, c27.z, r2.x
 				:0:0178:0268[00000200x_00000000x] (rpt2)nop
-				:0:0179:0271[00800000x_0000045fx] br p0.x, #1119
+				:0:0179:0271[00800000x_0000045fx] br p0.x, #l1298
 				:1:0180:0272[280cc012x_00000004x] (jp)mov.u32u32 r4.z, r1.x
 				:1:0181:0273[200cc018x_00000004x] mov.u32u32 r6.x, r1.x
 				:1:0182:0274[200cc019x_00000004x] mov.u32u32 r6.y, r1.x
@@ -5892,7 +5842,7 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				:2:0528:0937[40580023x_10700023x] (nop2) max.f r8.w, r8.w, c28.x
 				:2:0529:0940[40700026x_103e0025x] mul.f r9.z, r9.y, c15.z
 				:2:0530:0941[40300023x_10290023x] min.f r8.w, r8.w, c10.y
-				:0:0531:0942[00900000x_000002cdx] br !p0.x, #717
+				:0:0531:0942[00900000x_000002cdx] br !p0.x, #l1248
 				:2:0532:0943[48100028x_10550019x] (jp)add.f r10.x, r6.y, c21.y
 				:2:0533:0944[40700029x_10270019x] mul.f r10.y, r6.y, c9.w
 				:2:0534:0945[40100019x_10590019x] add.f r6.y, r6.y, c22.y
@@ -6608,7 +6558,8 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				:2:1244:2198[40700808x_0010001ax] (nop1) mul.f r2.x, r6.z, r4.x
 				:2:1245:2200[40700009x_00180029x] mul.f r2.y, r10.y, r6.x
 				:2:1246:2201[4070000ax_0012001dx] mul.f r2.z, r7.y, r4.z
-				:0:1247:2202[01000000x_0000000ex] jump #14
+				:0:1247:2202[01000000x_0000000ex] jump #l1261
+				:1:1248:2203[284cc007x_00000000x] l1248:
 				:1:1248:2203[284cc007x_00000000x] (jp)mov.u32u32 r1.w, 0
 				:0:1249:2204[00000200x_00000000x] (rpt2)nop
 				:1:1250:2207[200cc010x_00000007x] mov.u32u32 r4.x, r1.w
@@ -6622,6 +6573,7 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				:1:1258:2223[200cc010x_00000009x] mov.u32u32 r4.x, r2.y
 				:0:1259:2224[00000200x_00000000x] (rpt2)nop
 				:1:1260:2227[200cc008x_00000010x] mov.u32u32 r2.x, r4.x
+				:1:1261:2228[280cc012x_00000004x] l1261:
 				:1:1261:2228[280cc012x_00000004x] (jp)mov.u32u32 r4.z, r1.x
 				:1:1262:2229[200cc019x_00000009x] mov.u32u32 r6.y, r2.y
 				:1:1263:2230[200cc01ax_0000000ax] mov.u32u32 r6.z, r2.z
@@ -6658,7 +6610,8 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				:1:1294:2266[200cc024x_0000000bx] mov.u32u32 r9.x, r2.w
 				:2:1295:2267[42180006x_20010023x] (nop2) add.u r1.z, r8.w, 1
 				:1:1296:2270[200cc005x_00000024x] mov.u32u32 r1.y, r9.x
-				:0:1297:2271[01000000x_fffffb99x] jump #-1127
+				:0:1297:2271[01000000x_fffffb99x] jump #l170
+				:2:1298:2272[48500401x_00010001x] l1298:
 				:2:1298:2272[48500401x_00010001x] (jp)(sat)max.f r0.y, r0.y, r0.y
 				:2:1299:2273[40500402x_00020002x] (sat)max.f r0.z, r0.z, r0.z
 				:2:1300:2274[40100003x_400e1022x] add.f r0.w, c8.z, (neg)r3.z
@@ -6767,14 +6720,7 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				:0:1403:2411[00000000x_00000000x] nop
 				:0:1404:2412[00000000x_00000000x] nop
 				:0:1405:2413[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): 0-147 (cnt=148, max=147)
-				- used (full): 0-73 (cnt=74, max=73)
-				- input (half): 38-41 (cnt=4, max=41)
-				- input (full): 19-20 (cnt=2, max=20)
-				- output (half): 8-15 (cnt=8, max=15)  (estimated)
-				- output (full): 4-7 (cnt=4, max=7)  (estimated)
-
+				Stats:
 				- shaderdb: 2414 instr, 1114 nops, 1300 non-nops, 46 mov, 2 cov
 				- shaderdb: 0 last-baryf, 0 half, 19 full, 29 constlen
 				- shaderdb: 1120 cat0, 48 cat1, 551 cat2, 512 cat3, 183 cat4, 0 cat5, 0 cat6, 0 cat7

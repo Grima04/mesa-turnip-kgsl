@@ -424,14 +424,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0002:0002[00000000x_00000000x] nop
 				:0:0003:0003[00000000x_00000000x] nop
 				:0:0004:0004[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): (cnt=0, max=0)
-				- input (half): (cnt=0, max=0)
-				- input (full): (cnt=0, max=0)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
 				- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -450,14 +443,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0006:0006[00000000x_00000000x] nop
 				:0:0007:0007[00000000x_00000000x] nop
 				:0:0008:0008[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-3 (cnt=4, max=3)
-				- input (half): (cnt=0, max=0)
-				- input (full): (cnt=0, max=0)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 0-3 (cnt=4, max=3)  (estimated)
-
+				Stats:
 				- shaderdb: 9 instr, 4 nops, 5 non-nops, 4 mov, 0 cov
 				- shaderdb: 0 last-baryf, 0 half, 1 full, 1 constlen
 				- shaderdb: 5 cat0, 4 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -1038,14 +1024,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0058:0071[00000000x_00000000x] nop
 				:0:0059:0072[00000000x_00000000x] nop
 				:0:0060:0073[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-13 (cnt=14, max=13)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-5 (cnt=4, max=5)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 6-13 (cnt=8, max=13)  (estimated)
-
+				Stats:
 				- shaderdb: 74 instr, 27 nops, 47 non-nops, 7 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 4 full, 13 constlen
 				- shaderdb: 28 cat0, 8 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -1080,14 +1059,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0008:0008[00000000x_00000000x] nop
 				:0:0009:0009[00000000x_00000000x] nop
 				:0:0010:0010[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-3 (cnt=4, max=3)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0-3 (cnt=4, max=3)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 11 instr, 5 nops, 6 non-nops, 0 mov, 0 cov
 				- shaderdb: 5 last-baryf, 0 half, 1 full, 0 constlen
 				- shaderdb: 6 cat0, 0 cat1, 1 cat2, 0 cat3, 0 cat4, 0 cat5, 4 cat6, 0 cat7
@@ -1670,14 +1642,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0053:0064[00000000x_00000000x] nop
 				:0:0054:0065[00000000x_00000000x] nop
 				:0:0055:0066[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-8 10-17 (cnt=17, max=17)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-8 (cnt=7, max=8)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 10-17 (cnt=8, max=17)  (estimated)
-
+				Stats:
 				- shaderdb: 67 instr, 23 nops, 44 non-nops, 4 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 5 full, 13 constlen
 				- shaderdb: 24 cat0, 5 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -1711,14 +1676,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0008:0008[00000000x_00000000x] nop
 				:0:0009:0009[00000000x_00000000x] nop
 				:0:0010:0010[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-3 (cnt=4, max=3)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0-3 (cnt=4, max=3)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 11 instr, 5 nops, 6 non-nops, 0 mov, 0 cov
 				- shaderdb: 5 last-baryf, 0 half, 1 full, 0 constlen
 				- shaderdb: 6 cat0, 0 cat1, 1 cat2, 0 cat3, 0 cat4, 0 cat5, 4 cat6, 0 cat7
@@ -2103,14 +2061,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0053:0064[00000000x_00000000x] nop
 				:0:0054:0065[00000000x_00000000x] nop
 				:0:0055:0066[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-8 10-17 (cnt=17, max=17)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-8 (cnt=7, max=8)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 10-17 (cnt=8, max=17)  (estimated)
-
+				Stats:
 				- shaderdb: 67 instr, 23 nops, 44 non-nops, 4 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 5 full, 13 constlen
 				- shaderdb: 24 cat0, 5 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -2142,14 +2093,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0006:0006[00000000x_00000000x] nop
 				:0:0007:0007[00000000x_00000000x] nop
 				:0:0008:0008[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0 2-5 (cnt=5, max=5)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0 (cnt=1, max=0)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 2-5 (cnt=4, max=5)  (estimated)
-
+				Stats:
 				- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
 				- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -2497,14 +2441,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0058:0071[00000000x_00000000x] nop
 				:0:0059:0072[00000000x_00000000x] nop
 				:0:0060:0073[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-13 (cnt=14, max=13)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-5 (cnt=4, max=5)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 6-13 (cnt=8, max=13)  (estimated)
-
+				Stats:
 				- shaderdb: 74 instr, 27 nops, 47 non-nops, 7 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 4 full, 13 constlen
 				- shaderdb: 28 cat0, 8 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -2539,14 +2476,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0008:0008[00000000x_00000000x] nop
 				:0:0009:0009[00000000x_00000000x] nop
 				:0:0010:0010[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-3 (cnt=4, max=3)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0-3 (cnt=4, max=3)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 11 instr, 5 nops, 6 non-nops, 0 mov, 0 cov
 				- shaderdb: 5 last-baryf, 0 half, 1 full, 0 constlen
 				- shaderdb: 6 cat0, 0 cat1, 1 cat2, 0 cat3, 0 cat4, 0 cat5, 4 cat6, 0 cat7
@@ -3052,14 +2982,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0053:0064[00000000x_00000000x] nop
 				:0:0054:0065[00000000x_00000000x] nop
 				:0:0055:0066[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-8 10-17 (cnt=17, max=17)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-8 (cnt=7, max=8)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 10-17 (cnt=8, max=17)  (estimated)
-
+				Stats:
 				- shaderdb: 67 instr, 23 nops, 44 non-nops, 4 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 5 full, 13 constlen
 				- shaderdb: 24 cat0, 5 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -3093,14 +3016,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0008:0008[00000000x_00000000x] nop
 				:0:0009:0009[00000000x_00000000x] nop
 				:0:0010:0010[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-3 (cnt=4, max=3)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0-3 (cnt=4, max=3)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 11 instr, 5 nops, 6 non-nops, 0 mov, 0 cov
 				- shaderdb: 5 last-baryf, 0 half, 1 full, 0 constlen
 				- shaderdb: 6 cat0, 0 cat1, 1 cat2, 0 cat3, 0 cat4, 0 cat5, 4 cat6, 0 cat7
@@ -3485,14 +3401,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0053:0064[00000000x_00000000x] nop
 				:0:0054:0065[00000000x_00000000x] nop
 				:0:0055:0066[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-8 10-17 (cnt=17, max=17)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-8 (cnt=7, max=8)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 10-17 (cnt=8, max=17)  (estimated)
-
+				Stats:
 				- shaderdb: 67 instr, 23 nops, 44 non-nops, 4 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 5 full, 13 constlen
 				- shaderdb: 24 cat0, 5 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -3524,14 +3433,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0006:0006[00000000x_00000000x] nop
 				:0:0007:0007[00000000x_00000000x] nop
 				:0:0008:0008[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0 2-5 (cnt=5, max=5)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0 (cnt=1, max=0)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 2-5 (cnt=4, max=5)  (estimated)
-
+				Stats:
 				- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
 				- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -3879,14 +3781,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0058:0071[00000000x_00000000x] nop
 				:0:0059:0072[00000000x_00000000x] nop
 				:0:0060:0073[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-13 (cnt=14, max=13)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-5 (cnt=4, max=5)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 6-13 (cnt=8, max=13)  (estimated)
-
+				Stats:
 				- shaderdb: 74 instr, 27 nops, 47 non-nops, 7 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 4 full, 13 constlen
 				- shaderdb: 28 cat0, 8 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -3921,14 +3816,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0008:0008[00000000x_00000000x] nop
 				:0:0009:0009[00000000x_00000000x] nop
 				:0:0010:0010[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-3 (cnt=4, max=3)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0-3 (cnt=4, max=3)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 11 instr, 5 nops, 6 non-nops, 0 mov, 0 cov
 				- shaderdb: 5 last-baryf, 0 half, 1 full, 0 constlen
 				- shaderdb: 6 cat0, 0 cat1, 1 cat2, 0 cat3, 0 cat4, 0 cat5, 4 cat6, 0 cat7
@@ -4434,14 +4322,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0053:0064[00000000x_00000000x] nop
 				:0:0054:0065[00000000x_00000000x] nop
 				:0:0055:0066[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-8 10-17 (cnt=17, max=17)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-8 (cnt=7, max=8)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 10-17 (cnt=8, max=17)  (estimated)
-
+				Stats:
 				- shaderdb: 67 instr, 23 nops, 44 non-nops, 4 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 5 full, 13 constlen
 				- shaderdb: 24 cat0, 5 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -4475,14 +4356,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0008:0008[00000000x_00000000x] nop
 				:0:0009:0009[00000000x_00000000x] nop
 				:0:0010:0010[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-3 (cnt=4, max=3)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0-3 (cnt=4, max=3)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): (cnt=0, max=0)  (estimated)
-
+				Stats:
 				- shaderdb: 11 instr, 5 nops, 6 non-nops, 0 mov, 0 cov
 				- shaderdb: 5 last-baryf, 0 half, 1 full, 0 constlen
 				- shaderdb: 6 cat0, 0 cat1, 1 cat2, 0 cat3, 0 cat4, 0 cat5, 4 cat6, 0 cat7
@@ -4867,14 +4741,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (131 dwords)
 				:0:0053:0064[00000000x_00000000x] nop
 				:0:0054:0065[00000000x_00000000x] nop
 				:0:0055:0066[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0-8 10-17 (cnt=17, max=17)
-				- input (half): (cnt=0, max=0)
-				- input (full): 2-8 (cnt=7, max=8)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 10-17 (cnt=8, max=17)  (estimated)
-
+				Stats:
 				- shaderdb: 67 instr, 23 nops, 44 non-nops, 4 mov, 1 cov
 				- shaderdb: 0 last-baryf, 0 half, 5 full, 13 constlen
 				- shaderdb: 24 cat0, 5 cat1, 15 cat2, 22 cat3, 1 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -4906,14 +4773,7 @@ t3			opcode: CP_LOAD_STATE4 (30) (35 dwords)
 				:0:0006:0006[00000000x_00000000x] nop
 				:0:0007:0007[00000000x_00000000x] nop
 				:0:0008:0008[00000000x_00000000x] nop
-				Register Stats:
-				- used (half): (cnt=0, max=0)
-				- used (full): 0 2-5 (cnt=5, max=5)
-				- input (half): (cnt=0, max=0)
-				- input (full): 0 (cnt=1, max=0)
-				- output (half): (cnt=0, max=0)  (estimated)
-				- output (full): 2-5 (cnt=4, max=5)  (estimated)
-
+				Stats:
 				- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
 				- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -5211,14 +5071,7 @@ t3		opcode: CP_LOAD_STATE4 (30) (35 dwords)
 			:0:0002:0002[00000000x_00000000x] nop
 			:0:0003:0003[00000000x_00000000x] nop
 			:0:0004:0004[00000000x_00000000x] nop
-			Register Stats:
-			- used (half): (cnt=0, max=0)
-			- used (full): (cnt=0, max=0)
-			- input (half): (cnt=0, max=0)
-			- input (full): (cnt=0, max=0)
-			- output (half): (cnt=0, max=0)  (estimated)
-			- output (full): (cnt=0, max=0)  (estimated)
-
+			Stats:
 			- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
 			- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 			- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
@@ -5237,14 +5090,7 @@ t3		opcode: CP_LOAD_STATE4 (30) (35 dwords)
 			:0:0006:0006[00000000x_00000000x] nop
 			:0:0007:0007[00000000x_00000000x] nop
 			:0:0008:0008[00000000x_00000000x] nop
-			Register Stats:
-			- used (half): (cnt=0, max=0)
-			- used (full): 0-3 (cnt=4, max=3)
-			- input (half): (cnt=0, max=0)
-			- input (full): (cnt=0, max=0)
-			- output (half): (cnt=0, max=0)  (estimated)
-			- output (full): 0-3 (cnt=4, max=3)  (estimated)
-
+			Stats:
 			- shaderdb: 9 instr, 4 nops, 5 non-nops, 4 mov, 0 cov
 			- shaderdb: 0 last-baryf, 0 half, 1 full, 1 constlen
 			- shaderdb: 5 cat0, 4 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
