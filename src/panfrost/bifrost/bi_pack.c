@@ -480,32 +480,32 @@ bi_get_src_new(bi_instr *ins, bi_registers *regs, unsigned s)
 }
 
 static struct bi_packed_bundle
-bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle, gl_shader_stage stage)
+bi_pack_bundle(bi_clause *clause, bi_bundle *bundle, bi_bundle *prev, bool first_bundle, gl_shader_stage stage)
 {
-        bi_assign_slots(&bundle, &prev);
-        bi_assign_fau_idx(clause, &bundle);
-        bundle.regs.first_instruction = first_bundle;
+        bi_assign_slots(bundle, prev);
+        bi_assign_fau_idx(clause, bundle);
+        bundle->regs.first_instruction = first_bundle;
 
-        bi_flip_slots(&bundle.regs);
+        bi_flip_slots(&bundle->regs);
 
-        bool sr_read = bundle.add &&
-                bi_opcode_props[(bundle.add)->op].sr_read;
+        bool sr_read = bundle->add &&
+                bi_opcode_props[(bundle->add)->op].sr_read;
 
-        uint64_t reg = bi_pack_registers(bundle.regs);
-        uint64_t fma = bi_pack_fma(bundle.fma,
-                        bi_get_src_new(bundle.fma, &bundle.regs, 0),
-                        bi_get_src_new(bundle.fma, &bundle.regs, 1),
-                        bi_get_src_new(bundle.fma, &bundle.regs, 2),
-                        bi_get_src_new(bundle.fma, &bundle.regs, 3));
+        uint64_t reg = bi_pack_registers(bundle->regs);
+        uint64_t fma = bi_pack_fma(bundle->fma,
+                        bi_get_src_new(bundle->fma, &bundle->regs, 0),
+                        bi_get_src_new(bundle->fma, &bundle->regs, 1),
+                        bi_get_src_new(bundle->fma, &bundle->regs, 2),
+                        bi_get_src_new(bundle->fma, &bundle->regs, 3));
 
-        uint64_t add = bi_pack_add(bundle.add,
-                        bi_get_src_new(bundle.add, &bundle.regs, sr_read + 0),
-                        bi_get_src_new(bundle.add, &bundle.regs, sr_read + 1),
-                        bi_get_src_new(bundle.add, &bundle.regs, sr_read + 2),
+        uint64_t add = bi_pack_add(bundle->add,
+                        bi_get_src_new(bundle->add, &bundle->regs, sr_read + 0),
+                        bi_get_src_new(bundle->add, &bundle->regs, sr_read + 1),
+                        bi_get_src_new(bundle->add, &bundle->regs, sr_read + 2),
                         0);
 
-        if (bundle.add) {
-                bi_instr *add = bundle.add;
+        if (bundle->add) {
+                bi_instr *add = bundle->add;
 
                 bool sr_write = bi_opcode_props[add->op].sr_write;
 
@@ -616,7 +616,7 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
         /* TODO After the deadline lowering */
         bi_lower_cubeface2(ctx, &clause->bundles[0]);
 
-        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true, stage);
+        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, &clause->bundles[0], &clause->bundles[0], true, stage);
         assert(clause->bundle_count == 1);
 
         /* State for packing constants throughout */
