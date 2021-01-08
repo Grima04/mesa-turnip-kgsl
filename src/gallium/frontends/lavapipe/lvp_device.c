@@ -52,8 +52,6 @@ lvp_physical_device_init(struct lvp_physical_device *device,
    if (!device->pscreen)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   fprintf(stderr, "WARNING: lavapipe is not a conformant vulkan implementation, testing use only.\n");
-
    device->max_images = device->pscreen->get_shader_param(device->pscreen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_MAX_SHADER_IMAGES);
    lvp_physical_device_get_supported_extensions(device, &device->supported_extensions);
    result = lvp_init_wsi(device);
@@ -880,6 +878,8 @@ VkResult lvp_CreateDevice(
    const VkAllocationCallbacks*                pAllocator,
    VkDevice*                                   pDevice)
 {
+   fprintf(stderr, "WARNING: lavapipe is not a conformant vulkan implementation, testing use only.\n");
+
    LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
    struct lvp_device *device;
 
