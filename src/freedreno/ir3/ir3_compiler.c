@@ -50,8 +50,10 @@ static const struct debug_named_value shader_debug_options[] = {
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(ir3_shader_debug, "IR3_SHADER_DEBUG", shader_debug_options, 0)
+DEBUG_GET_ONCE_OPTION(ir3_shader_override_path, "IR3_SHADER_OVERRIDE_PATH", NULL)
 
 enum ir3_shader_debug ir3_shader_debug = 0;
+const char *ir3_shader_override_path = NULL;
 
 void
 ir3_compiler_destroy(struct ir3_compiler *compiler)
@@ -66,6 +68,12 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id)
 	struct ir3_compiler *compiler = rzalloc(NULL, struct ir3_compiler);
 
 	ir3_shader_debug = debug_get_option_ir3_shader_debug();
+	ir3_shader_override_path =
+		!__check_suid() ? debug_get_option_ir3_shader_override_path() : NULL;
+
+	if (ir3_shader_override_path) {
+		ir3_shader_debug |= IR3_DBG_NOCACHE;
+	}
 
 	compiler->dev = dev;
 	compiler->gpu_id = gpu_id;
