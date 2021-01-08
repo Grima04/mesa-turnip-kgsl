@@ -21,6 +21,7 @@ apt-get install -y --no-remove \
         libffi-dev:$arch \
         libstdc++6:$arch \
         libtinfo-dev:$arch \
+        libvulkan-dev:$arch \
         libx11-dev:$arch \
         libx11-xcb-dev:$arch \
         libxcb-dri2-0-dev:$arch \

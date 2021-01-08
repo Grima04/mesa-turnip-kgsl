@@ -260,7 +260,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &x86_build-base "2020-12-17-use-ephemeral"
+    MESA_IMAGE_TAG: &x86_build-base "2021-01-08-more-vulkan-cross"
 
 .use-x86_build-base:
   extends:
@@ -291,7 +291,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &i386_build "2020-12-23-opengl"
+    MESA_IMAGE_TAG: &i386_build "2021-01-08-more-vulkan-cross"
 
 .use-i386_build:
   variables:
@@ -305,7 +305,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &ppc64el_build "2020-12-23-opengl"
+    MESA_IMAGE_TAG: &ppc64el_build "2021-01-08-more-vulkan-cross"
 
 .use-ppc64el_build:
   variables:
@@ -319,7 +319,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &s390x_build "2020-12-23-opengl"
+    MESA_IMAGE_TAG: &s390x_build "2021-01-08-more-vulkan-cross"
 
 .use-s390x_build:
   variables:
@@ -915,8 +915,9 @@ meson-i386:
     - .use-i386_build
   variables:
     CROSS: i386
-    VULKAN_DRIVERS: intel,amd
-    GALLIUM_DRIVERS: "iris,r300,radeonsi,swrast,virgl"
+    VULKAN_DRIVERS: intel,amd,swrast
+    GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink"
+    DRI_DRIVERS: "i915,i965,r100,r200,nouveau"
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
       -D vulkan-device-select-layer=true
@@ -932,7 +933,8 @@ meson-s390x:
     CROSS: s390x
     EXTRA_OPTION: >
       -D werror=true
-    GALLIUM_DRIVERS: "swrast"
+    GALLIUM_DRIVERS: "swrast,zink"
+    VULKAN_DRIVERS: "swrast"
 
 meson-ppc64el:
   extends:
@@ -940,9 +942,10 @@ meson-ppc64el:
     - .use-ppc64el_build
   variables:
     CROSS: ppc64el
-    EXTRA_OPTION: ""
-    GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl"
-    VULKAN_DRIVERS: "amd"
+    EXTRA_OPTION: >
+      -D werror=true
+    GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl,zink"
+    VULKAN_DRIVERS: "amd,swrast"
 
 meson-mingw32-x86_64:
   extends: .meson-build
