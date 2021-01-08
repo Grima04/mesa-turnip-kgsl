@@ -872,7 +872,7 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
 
 		VkImageResolve2KHR region = {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR,
-			.extent = (VkExtent3D){ fb->width, fb->height, 0 },
+			.extent = (VkExtent3D){ fb->width, fb->height, 1 },
 			.srcSubresource = (VkImageSubresourceLayers) {
 				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 				.mipLevel = src_iview->base_mip,
