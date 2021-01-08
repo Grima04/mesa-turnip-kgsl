@@ -324,6 +324,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                         panfrost_format_to_bifrost_blend(dev, format_desc, true);
                                 cfg.bifrost.internal.fixed_function.conversion.register_format =
                                         fs->blend_types[i];
+                                cfg.bifrost.internal.fixed_function.rt = i;
                         }
                 }
         }
