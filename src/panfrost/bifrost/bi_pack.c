@@ -692,12 +692,6 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
         if (!ins || ins->op != BI_OPCODE_BLEND)
                 return;
 
-        /* We don't support non-terminal blend instructions yet.
-         * That would requires fixing blend shaders to restore the registers
-         * they use before jumping back to the fragment shader, which is
-         * currently not supported.
-         */
-        assert(0);
 
         unsigned loc = bundle->regs.fau_idx - BIR_FAU_BLEND_0;
         assert(loc < ARRAY_SIZE(ctx->blend_ret_offsets));
