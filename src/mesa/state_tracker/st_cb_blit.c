@@ -170,7 +170,7 @@ st_BlitFramebuffer(struct gl_context *ctx,
       st_window_rectangles_to_blit(ctx, &blit);
 
    blit.filter = pFilter;
-   blit.render_condition_enable = TRUE;
+   blit.render_condition_enable = st->has_conditional_render;
    blit.alpha_blend = FALSE;
 
    if (mask & GL_COLOR_BUFFER_BIT) {
