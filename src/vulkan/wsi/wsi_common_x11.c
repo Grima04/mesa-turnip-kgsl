@@ -236,9 +236,9 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
 #endif
 
    if (randr_reply && randr_reply->present != 0)
-   {
       wsi_conn->is_xwayland = wsi_x11_detect_xwayland(conn);
-   }
+   else
+      wsi_conn->is_xwayland = false;
 
    wsi_conn->has_dri3_modifiers = has_dri3_v1_2 && has_present_v1_2;
    wsi_conn->is_proprietary_x11 = false;
