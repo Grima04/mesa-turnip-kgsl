@@ -115,13 +115,14 @@ test-docs-mr:
     - test-docs
   needs:
     - sanity
+  artifacts:
+    expose_as: 'Documentation preview'
+    paths:
+    - public
   rules:
-    - if: *is-pre-merge-for-marge
-      changes: *docs-or-ci
-      when: on_success
     - if: *is-pre-merge
       changes: *docs-or-ci
-      when: manual
+      when: on_success
     # Other cases default to never
 
 # When to automatically run the CI
