@@ -88,7 +88,7 @@ bi_print_index(FILE *fp, bi_index index)
     else if (index.type == BI_INDEX_NORMAL && index.reg)
         fprintf(fp, "r%u", index.value);
     else if (index.type == BI_INDEX_NORMAL)
-        fprintf(fp, "%u", index.value - 1);
+        fprintf(fp, "%u", index.value);
     else
         unreachable("Invalid index");
 
