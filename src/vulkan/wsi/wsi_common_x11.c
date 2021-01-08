@@ -1060,7 +1060,7 @@ x11_present_to_x11_dri3(struct x11_swapchain *chain, uint32_t image_index,
    int64_t remainder = 0;
 
    struct wsi_x11_connection *wsi_conn =
-      wsi_x11_connection_create((struct wsi_device*)chain->base.wsi, chain->conn);
+      wsi_x11_get_connection((struct wsi_device*)chain->base.wsi, chain->conn);
    if (!wsi_conn)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
