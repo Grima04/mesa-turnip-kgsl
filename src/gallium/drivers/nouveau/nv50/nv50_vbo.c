@@ -189,9 +189,10 @@ nv50_user_vbuf_range(struct nv50_context *nv50, unsigned vbi,
 {
    assert(vbi < PIPE_MAX_ATTRIBS);
    if (unlikely(nv50->vertex->instance_bufs & (1 << vbi))) {
-      /* TODO: use min and max instance divisor to get a proper range */
-      *base = 0;
-      *size = nv50->vtxbuf[vbi].buffer.resource->width0;
+      const uint32_t div = nv50->vertex->min_instance_div[vbi];
+      *base = nv50->instance_off * nv50->vtxbuf[vbi].stride;
+      *size = (nv50->instance_max / div) * nv50->vtxbuf[vbi].stride +
+         nv50->vertex->vb_access_size[vbi];
    } else {
       /* NOTE: if there are user buffers, we *must* have index bounds */
       assert(nv50->vb_elt_limit != ~0);
