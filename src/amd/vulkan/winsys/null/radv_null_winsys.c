@@ -131,6 +131,7 @@ static void radv_null_winsys_query_info(struct radeon_winsys *rws,
 	info->max_render_backends = gpu_info[info->family].num_render_backends;
 
 	info->has_dedicated_vram = gpu_info[info->family].has_dedicated_vram;
+	info->has_packed_math_16bit = info->chip_class >= GFX9;
 }
 
 static void radv_null_winsys_destroy(struct radeon_winsys *rws)
