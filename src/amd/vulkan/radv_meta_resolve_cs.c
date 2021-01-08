@@ -981,7 +981,14 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
 	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
 	                                RADV_CMD_FLAG_INV_VCACHE;
 
-	if (radv_image_has_htile(dst_image)) {
+	VkImageLayout layout =
+		cmd_buffer->state.attachments[dest_att.attachment].current_layout;
+	uint32_t queue_mask = radv_image_queue_family_mask(dst_image,
+							   cmd_buffer->queue_family_index,
+							   cmd_buffer->queue_family_index);
+
+	if (radv_layout_is_htile_compressed(cmd_buffer->device, dst_image,
+					    layout, false, queue_mask)) {
 		VkImageSubresourceRange range = {0};
 		range.aspectMask = aspects;
 		range.baseMipLevel = dst_iview->base_mip;
