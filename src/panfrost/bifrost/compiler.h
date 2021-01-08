@@ -749,6 +749,7 @@ void bi_invalidate_liveness(bi_context *ctx);
 bool bi_can_insert_tuple(bi_clause *clause, bool constant);
 unsigned bi_clause_quadwords(bi_clause *clause);
 signed bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target);
+bool bi_ec0_packed(unsigned tuple_count);
 
 static inline bool
 bi_is_terminal_block(bi_block *block)

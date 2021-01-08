@@ -822,11 +822,7 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
                                 &clause->tuples[prev], i == 0, stage);
         }
 
-        bool ec0_packed =
-                (clause->tuple_count == 3) ||
-                (clause->tuple_count == 5) ||
-                (clause->tuple_count == 6) ||
-                (clause->tuple_count == 8);
+        bool ec0_packed = bi_ec0_packed(clause->tuple_count);
 
         if (ec0_packed)
                 clause->constant_count = MAX2(clause->constant_count, 1);

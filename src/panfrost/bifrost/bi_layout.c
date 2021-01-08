@@ -50,6 +50,17 @@ bi_can_insert_tuple(bi_clause *clause, bool constant)
         return (constant_count + tuple_count) <= 13;
 }
 
+/* Is embedded constant 0 packed for free in a clause with this many tuples? */
+
+bool
+bi_ec0_packed(unsigned tuple_count)
+{
+        return (tuple_count == 3) ||
+                (tuple_count == 5) ||
+                (tuple_count == 6) ||
+                (tuple_count == 8);
+}
+
 /* Helper to calculate the number of quadwords in a clause. This is a function
  * of the number of instructions and constants; it doesn't require actually
  * packing, which is useful for branch offsets.
