@@ -62,6 +62,7 @@ EXTENSIONS = [
     Extension("VK_KHR_maintenance1",
         required=True),
     Extension("VK_KHR_maintenance2"),
+    Extension("VK_KHR_maintenance3"),
     Extension("VK_KHR_external_memory"),
     Extension("VK_KHR_external_memory_fd"),
     Extension("VK_EXT_provoking_vertex",

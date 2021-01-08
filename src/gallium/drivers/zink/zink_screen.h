@@ -116,6 +116,8 @@ struct zink_screen {
 
    PFN_vkWaitSemaphores vk_WaitSemaphores;
 
+   PFN_vkGetDescriptorSetLayoutSupport vk_GetDescriptorSetLayoutSupport;
+
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
    PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;
    PFN_vkCmdEndConditionalRenderingEXT vk_CmdEndConditionalRenderingEXT;

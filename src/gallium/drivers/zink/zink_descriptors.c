@@ -191,6 +191,17 @@ descriptor_layout_create(struct zink_screen *screen, VkDescriptorSetLayoutBindin
    dcslci.flags = 0;
    dcslci.bindingCount = num_bindings;
    dcslci.pBindings = bindings;
+   VkDescriptorSetLayoutSupport supp;
+   supp.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT;
+   supp.pNext = NULL;
+   supp.supported = VK_FALSE;
+   if (screen->vk_GetDescriptorSetLayoutSupport) {
+      screen->vk_GetDescriptorSetLayoutSupport(screen->dev, &dcslci, &supp);
+      if (supp.supported == VK_FALSE) {
+         debug_printf("vkGetDescriptorSetLayoutSupport claims layout is unsupported\n");
+         return VK_NULL_HANDLE;
+      }
+   }
    if (vkCreateDescriptorSetLayout(screen->dev, &dcslci, 0, &dsl) != VK_SUCCESS)
       debug_printf("vkCreateDescriptorSetLayout failed\n");
    return dsl;
