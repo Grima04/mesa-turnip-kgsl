@@ -142,5 +142,9 @@ void si_pm4_reset_emitted(struct si_context *sctx, bool first_cs)
    }
 
    memset(&sctx->emitted, 0, sizeof(sctx->emitted));
-   sctx->dirty_states |= u_bit_consecutive(0, SI_NUM_STATES);
+
+   for (unsigned i = 0; i < SI_NUM_STATES; i++) {
+      if (sctx->queued.array[i])
+         sctx->dirty_states |= BITFIELD_BIT(i);
+   }
 }
