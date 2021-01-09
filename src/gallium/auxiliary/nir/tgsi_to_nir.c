@@ -1955,6 +1955,8 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_U64MUL] = nir_op_imul,
    [TGSI_OPCODE_U64DIV] = nir_op_udiv,
    [TGSI_OPCODE_U64SNE] = nir_op_ine,
+   [TGSI_OPCODE_I64NEG] = nir_op_ineg,
+   [TGSI_OPCODE_I64ABS] = nir_op_iabs,
 };
 
 static void
