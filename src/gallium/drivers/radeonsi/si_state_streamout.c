@@ -221,6 +221,8 @@ static void gfx10_emit_streamout_begin(struct si_context *sctx)
          last_target = i;
    }
 
+   radeon_begin(cs);
+
    for (unsigned i = 0; i < sctx->streamout.num_targets; i++) {
       if (!t[i])
          continue;
@@ -246,6 +248,7 @@ static void gfx10_emit_streamout_begin(struct si_context *sctx)
       radeon_emit(cs, 0);
       radeon_emit(cs, S_414_BYTE_COUNT_GFX9(4) | S_414_DISABLE_WR_CONFIRM_GFX9(i != last_target));
    }
+   radeon_end();
 
    sctx->streamout.begin_emitted = true;
 }
@@ -275,6 +278,8 @@ static void si_flush_vgt_streamout(struct si_context *sctx)
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned reg_strmout_cntl;
 
+   radeon_begin(cs);
+
    /* The register is at different places on different ASICs. */
    if (sctx->chip_class >= GFX7) {
       reg_strmout_cntl = R_0300FC_CP_STRMOUT_CNTL;
@@ -295,6 +300,7 @@ static void si_flush_vgt_streamout(struct si_context *sctx)
    radeon_emit(cs, S_0084FC_OFFSET_UPDATE_DONE(1)); /* reference value */
    radeon_emit(cs, S_0084FC_OFFSET_UPDATE_DONE(1)); /* mask */
    radeon_emit(cs, 4);                              /* poll interval */
+   radeon_end();
 }
 
 static void si_emit_streamout_begin(struct si_context *sctx)
@@ -305,6 +311,8 @@ static void si_emit_streamout_begin(struct si_context *sctx)
    unsigned i;
 
    si_flush_vgt_streamout(sctx);
+
+   radeon_begin(cs);
 
    for (i = 0; i < sctx->streamout.num_targets; i++) {
       if (!t[i])
@@ -344,6 +352,7 @@ static void si_emit_streamout_begin(struct si_context *sctx)
          radeon_emit(cs, 0);                          /* unused */
       }
    }
+   radeon_end();
 
    sctx->streamout.begin_emitted = true;
 }
@@ -361,6 +370,8 @@ void si_emit_streamout_end(struct si_context *sctx)
    uint64_t va;
 
    si_flush_vgt_streamout(sctx);
+
+   radeon_begin(cs);
 
    for (i = 0; i < sctx->streamout.num_targets; i++) {
       if (!t[i])
@@ -383,10 +394,10 @@ void si_emit_streamout_end(struct si_context *sctx)
        * buffer bound. This ensures that the primitives-emitted query
        * won't increment. */
       radeon_set_context_reg(cs, R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16 * i, 0);
-      sctx->context_roll = true;
 
       t[i]->buf_filled_size_valid = true;
    }
+   radeon_end_update_context_roll(sctx);
 
    sctx->streamout.begin_emitted = false;
 }
@@ -402,6 +413,7 @@ static void si_emit_streamout_enable(struct si_context *sctx)
 {
    assert(!sctx->screen->use_ngg_streamout);
 
+   radeon_begin(&sctx->gfx_cs);
    radeon_set_context_reg_seq(&sctx->gfx_cs, R_028B94_VGT_STRMOUT_CONFIG, 2);
    radeon_emit(&sctx->gfx_cs, S_028B94_STREAMOUT_0_EN(si_get_strmout_en(sctx)) |
                                 S_028B94_RAST_STREAM(0) |
@@ -410,6 +422,7 @@ static void si_emit_streamout_enable(struct si_context *sctx)
                                 S_028B94_STREAMOUT_3_EN(si_get_strmout_en(sctx)));
    radeon_emit(&sctx->gfx_cs,
                sctx->streamout.hw_enabled_mask & sctx->streamout.enabled_stream_buffers_mask);
+   radeon_end();
 }
 
 static void si_set_streamout_enable(struct si_context *sctx, bool enable)

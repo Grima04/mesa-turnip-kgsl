@@ -116,7 +116,9 @@ void si_pm4_emit(struct si_context *sctx, struct si_pm4_state *state)
                                 RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
    }
 
+   radeon_begin(cs);
    radeon_emit_array(cs, state->pm4, state->ndw);
+   radeon_end();
 
    if (state->atom.emit)
       state->atom.emit(sctx);

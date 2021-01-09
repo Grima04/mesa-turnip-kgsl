@@ -25,6 +25,7 @@
  */
 
 #include "si_query.h"
+#include "si_build_pm4.h"
 
 #include "amd/common/sid.h"
 #include "si_pipe.h"
@@ -771,10 +772,12 @@ static unsigned event_type_for_stream(unsigned stream)
 
 static void emit_sample_streamout(struct radeon_cmdbuf *cs, uint64_t va, unsigned stream)
 {
+   radeon_begin(cs);
    radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
    radeon_emit(cs, EVENT_TYPE(event_type_for_stream(stream)) | EVENT_INDEX(3));
    radeon_emit(cs, va);
    radeon_emit(cs, va >> 32);
+   radeon_end();
 }
 
 static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_hw *query,
@@ -785,12 +788,15 @@ static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_h
    switch (query->b.type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
-   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
+      radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
+      radeon_end();
       break;
+   }
    case PIPE_QUERY_PRIMITIVES_EMITTED:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_SO_STATISTICS:
@@ -805,12 +811,15 @@ static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_h
       si_cp_release_mem(sctx, cs, V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
                         EOP_DATA_SEL_TIMESTAMP, NULL, va, 0, query->b.type);
       break;
-   case PIPE_QUERY_PIPELINE_STATISTICS:
+   case PIPE_QUERY_PIPELINE_STATISTICS: {
+      radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_SAMPLE_PIPELINESTAT) | EVENT_INDEX(2));
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
+      radeon_end();
       break;
+   }
    default:
       assert(0);
    }
@@ -846,15 +855,18 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw
    switch (query->b.type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
-   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
       va += 8;
+      radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
+      radeon_end();
 
       fence_va = va + sctx->screen->info.max_render_backends * 16 - 8;
       break;
+   }
    case PIPE_QUERY_PRIMITIVES_EMITTED:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_SO_STATISTICS:
@@ -879,10 +891,12 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw
       unsigned sample_size = (query->result_size - 8) / 2;
 
       va += sample_size;
+      radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_SAMPLE_PIPELINESTAT) | EVENT_INDEX(2));
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
+      radeon_end();
 
       fence_va = va + sample_size;
       break;
@@ -934,6 +948,8 @@ static void emit_set_predicate(struct si_context *ctx, struct si_resource *buf, 
 {
    struct radeon_cmdbuf *cs = &ctx->gfx_cs;
 
+   radeon_begin(cs);
+
    if (ctx->chip_class >= GFX9) {
       radeon_emit(cs, PKT3(PKT3_SET_PREDICATION, 2, 0));
       radeon_emit(cs, op);
@@ -944,6 +960,8 @@ static void emit_set_predicate(struct si_context *ctx, struct si_resource *buf, 
       radeon_emit(cs, va);
       radeon_emit(cs, op | ((va >> 32) & 0xFF));
    }
+   radeon_end();
+
    radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, buf, RADEON_USAGE_READ, RADEON_PRIO_QUERY);
 }
 

@@ -35,22 +35,6 @@ static void
 si_emit_spi_config_cntl(struct si_context* sctx,
                         struct radeon_cmdbuf *cs, bool enable);
 
-static inline void
-radeon_set_privileged_config_reg(struct radeon_cmdbuf *cs,
-                                 unsigned reg,
-                                 unsigned value)
-{
-   assert(reg < CIK_UCONFIG_REG_OFFSET);
-
-   radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-   radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) |
-               COPY_DATA_DST_SEL(COPY_DATA_PERF));
-   radeon_emit(cs, value);
-   radeon_emit(cs, 0); /* unused */
-   radeon_emit(cs, reg >> 2);
-   radeon_emit(cs, 0); /* unused */
-}
-
 static bool
 si_thread_trace_init_bo(struct si_context *sctx)
 {
@@ -88,6 +72,8 @@ si_emit_thread_trace_start(struct si_context* sctx,
    struct si_screen *sscreen = sctx->screen;
    uint32_t shifted_size = sctx->thread_trace->buffer_size >> SQTT_BUFFER_ALIGN_SHIFT;
    unsigned max_se = sscreen->info.max_se;
+
+   radeon_begin(cs);
 
    for (unsigned se = 0; se < max_se; se++) {
       uint64_t va = sctx->ws->buffer_get_virtual_address(sctx->thread_trace->bo);
@@ -220,6 +206,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_START) | EVENT_INDEX(0));
    }
+   radeon_end();
 }
 
 static const uint32_t gfx9_thread_trace_info_regs[] =
@@ -258,6 +245,8 @@ si_copy_thread_trace_info_regs(struct si_context* sctx,
    uint64_t va = sctx->ws->buffer_get_virtual_address(sctx->thread_trace->bo);
    uint64_t info_va = ac_thread_trace_get_info_va(va, se_index);
 
+   radeon_begin(cs);
+
    /* Copy back the info struct one DWORD at a time. */
    for (unsigned i = 0; i < 3; i++) {
       radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
@@ -269,6 +258,7 @@ si_copy_thread_trace_info_regs(struct si_context* sctx,
       radeon_emit(cs, (info_va + i * 4));
       radeon_emit(cs, (info_va + i * 4) >> 32);
    }
+   radeon_end();
 }
 
 
@@ -279,6 +269,8 @@ si_emit_thread_trace_stop(struct si_context *sctx,
                           uint32_t queue_family_index)
 {
    unsigned max_se = sctx->screen->info.max_se;
+
+   radeon_begin(cs);
 
    /* Stop the thread trace with a different event based on the queue. */
    if (queue_family_index == RING_COMPUTE) {
@@ -291,8 +283,11 @@ si_emit_thread_trace_stop(struct si_context *sctx,
 
    radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
    radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_FINISH) | EVENT_INDEX(0));
+   radeon_end();
 
    for (unsigned se = 0; se < max_se; se++) {
+      radeon_begin(cs);
+
       /* Target SEi and SH0. */
       radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
                              S_030800_SE_INDEX(se) |
@@ -335,21 +330,26 @@ si_emit_thread_trace_stop(struct si_context *sctx,
          radeon_emit(cs, S_030CE8_BUSY(1)); /* mask */
          radeon_emit(cs, 4); /* poll interval */
       }
+      radeon_end();
 
       si_copy_thread_trace_info_regs(sctx, cs, se);
    }
 
    /* Restore global broadcasting. */
+   radeon_begin_again(cs);
    radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
                           S_030800_SE_BROADCAST_WRITES(1) |
                              S_030800_SH_BROADCAST_WRITES(1) |
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
+   radeon_end();
 }
 
 static void
 si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf *cs)
 {
    struct radeon_winsys *ws = sctx->ws;
+
+   radeon_begin(cs);
 
    switch (family) {
       case RING_GFX:
@@ -361,7 +361,8 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
          radeon_emit(cs, PKT3(PKT3_NOP, 0, 0));
          radeon_emit(cs, 0);
          break;
-      }
+   }
+   radeon_end();
 
    ws->cs_add_buffer(cs,
                      sctx->thread_trace->bo,
@@ -390,6 +391,9 @@ static void
 si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *cs)
 {
    struct radeon_winsys *ws = sctx->ws;
+
+   radeon_begin(cs);
+
    switch (family) {
       case RING_GFX:
          radeon_emit(sctx->thread_trace->stop_cs[family], PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
@@ -401,6 +405,8 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
          radeon_emit(sctx->thread_trace->stop_cs[family], 0);
          break;
    }
+   radeon_end();
+
    ws->cs_add_buffer(cs,
                      sctx->thread_trace->bo,
                      RADEON_USAGE_READWRITE,
@@ -643,6 +649,8 @@ si_emit_thread_trace_userdata(struct si_context* sctx,
 {
    const uint32_t *dwords = (uint32_t *)data;
 
+   radeon_begin(cs);
+
    while (num_dwords > 0) {
       uint32_t count = MIN2(num_dwords, 2);
 
@@ -655,12 +663,15 @@ si_emit_thread_trace_userdata(struct si_context* sctx,
       dwords += count;
       num_dwords -= count;
    }
+   radeon_end();
 }
 
 static void
 si_emit_spi_config_cntl(struct si_context* sctx,
            struct radeon_cmdbuf *cs, bool enable)
 {
+   radeon_begin(cs);
+
    if (sctx->chip_class >= GFX9) {
       uint32_t spi_config_cntl = S_031100_GPR_WRITE_PRIORITY(0x2c688) |
                                  S_031100_EXP_PRIORITY_ORDER(3) |
@@ -677,6 +688,7 @@ si_emit_spi_config_cntl(struct si_context* sctx,
                                        S_009100_ENABLE_SQG_TOP_EVENTS(enable) |
                                        S_009100_ENABLE_SQG_BOP_EVENTS(enable));
    }
+   radeon_end();
 }
 
 void

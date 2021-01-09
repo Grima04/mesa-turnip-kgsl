@@ -566,11 +566,10 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 static void si_emit_shader_es(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.es->shader;
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
-
    if (!shader)
       return;
 
+   radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
                               SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
                               shader->selector->esgs_itemsize / 4);
@@ -583,9 +582,7 @@ static void si_emit_shader_es(struct si_context *sctx)
       radeon_opt_set_context_reg(sctx, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL,
                                  SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL,
                                  shader->vgt_vertex_reuse_block_cntl);
-
-   if (initial_cdw != sctx->gfx_cs.current.cdw)
-      sctx->context_roll = true;
+   radeon_end_update_context_roll(sctx);
 }
 
 static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
@@ -729,10 +726,10 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
 static void si_emit_shader_gs(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.gs->shader;
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
-
    if (!shader)
       return;
+
+   radeon_begin(&sctx->gfx_cs);
 
    /* R_028A60_VGT_GSVS_RING_OFFSET_1, R_028A64_VGT_GSVS_RING_OFFSET_2
     * R_028A68_VGT_GSVS_RING_OFFSET_3 */
@@ -782,9 +779,7 @@ static void si_emit_shader_gs(struct si_context *sctx)
                                     SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL,
                                     shader->vgt_vertex_reuse_block_cntl);
    }
-
-   if (initial_cdw != sctx->gfx_cs.current.cdw)
-      sctx->context_roll = true;
+   radeon_end_update_context_roll(sctx);
 }
 
 static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
@@ -931,6 +926,8 @@ static void gfx10_emit_ge_pc_alloc(struct si_context *sctx, unsigned value)
        sctx->tracked_regs.reg_value[reg] != value) {
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
+      radeon_begin(cs);
+
       if (sctx->chip_class == GFX10) {
          /* SQ_NON_EVENT must be emitted before GE_PC_ALLOC is written. */
          radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
@@ -938,6 +935,7 @@ static void gfx10_emit_ge_pc_alloc(struct si_context *sctx, unsigned value)
       }
 
       radeon_set_uconfig_reg(cs, R_030980_GE_PC_ALLOC, value);
+      radeon_end();
 
       sctx->tracked_regs.reg_saved |= 0x1ull << reg;
       sctx->tracked_regs.reg_value[reg] = value;
@@ -945,9 +943,9 @@ static void gfx10_emit_ge_pc_alloc(struct si_context *sctx, unsigned value)
 }
 
 /* Common tail code for NGG primitive shaders. */
-static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader *shader,
-                                       unsigned initial_cdw)
+static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader *shader)
 {
+   radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP,
                               SI_TRACKED_GE_MAX_OUTPUT_PER_SUBGROUP,
                               shader->ctx_reg.ngg.ge_max_output_per_subgroup);
@@ -975,9 +973,7 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
    radeon_opt_set_context_reg_rmw(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
                                   SI_TRACKED_PA_CL_VS_OUT_CNTL__VS, shader->pa_cl_vs_out_cntl,
                                   SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
-
-   if (initial_cdw != sctx->gfx_cs.current.cdw)
-      sctx->context_roll = true;
+   radeon_end_update_context_roll(sctx);
 
    /* GE_PC_ALLOC is not a context register, so it doesn't cause a context roll. */
    gfx10_emit_ge_pc_alloc(sctx, shader->ctx_reg.ngg.ge_pc_alloc);
@@ -986,56 +982,55 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
 static void gfx10_emit_shader_ngg_notess_nogs(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.gs->shader;
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
-
    if (!shader)
       return;
 
-   gfx10_emit_shader_ngg_tail(sctx, shader, initial_cdw);
+   gfx10_emit_shader_ngg_tail(sctx, shader);
 }
 
 static void gfx10_emit_shader_ngg_tess_nogs(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.gs->shader;
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
-
    if (!shader)
       return;
 
+   radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
                               shader->vgt_tf_param);
+   radeon_end_update_context_roll(sctx);
 
-   gfx10_emit_shader_ngg_tail(sctx, shader, initial_cdw);
+   gfx10_emit_shader_ngg_tail(sctx, shader);
 }
 
 static void gfx10_emit_shader_ngg_notess_gs(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.gs->shader;
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
-
    if (!shader)
       return;
 
+   radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_028B38_VGT_GS_MAX_VERT_OUT, SI_TRACKED_VGT_GS_MAX_VERT_OUT,
                               shader->ctx_reg.ngg.vgt_gs_max_vert_out);
+   radeon_end_update_context_roll(sctx);
 
-   gfx10_emit_shader_ngg_tail(sctx, shader, initial_cdw);
+   gfx10_emit_shader_ngg_tail(sctx, shader);
 }
 
 static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.gs->shader;
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
 
    if (!shader)
       return;
 
+   radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_028B38_VGT_GS_MAX_VERT_OUT, SI_TRACKED_VGT_GS_MAX_VERT_OUT,
                               shader->ctx_reg.ngg.vgt_gs_max_vert_out);
    radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
                               shader->vgt_tf_param);
+   radeon_end_update_context_roll(sctx);
 
-   gfx10_emit_shader_ngg_tail(sctx, shader, initial_cdw);
+   gfx10_emit_shader_ngg_tail(sctx, shader);
 }
 
 unsigned si_get_input_prim(const struct si_shader_selector *gs)
@@ -1308,11 +1303,10 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 static void si_emit_shader_vs(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.vs->shader;
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
-
    if (!shader)
       return;
 
+   radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_028A40_VGT_GS_MODE, SI_TRACKED_VGT_GS_MODE,
                               shader->ctx_reg.vs.vgt_gs_mode);
    radeon_opt_set_context_reg(sctx, R_028A84_VGT_PRIMITIVEID_EN, SI_TRACKED_VGT_PRIMITIVEID_EN,
@@ -1356,9 +1350,7 @@ static void si_emit_shader_vs(struct si_context *sctx)
                                      SI_TRACKED_PA_CL_VS_OUT_CNTL__VS, shader->pa_cl_vs_out_cntl,
                                      SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
    }
-
-   if (initial_cdw != sctx->gfx_cs.current.cdw)
-      sctx->context_roll = true;
+   radeon_end_update_context_roll(sctx);
 
    /* GE_PC_ALLOC is not a context register, so it doesn't cause a context roll. */
    if (sctx->chip_class >= GFX10)
@@ -1536,11 +1528,10 @@ static unsigned si_get_spi_shader_col_format(struct si_shader *shader)
 static void si_emit_shader_ps(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.ps->shader;
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
-
    if (!shader)
       return;
 
+   radeon_begin(&sctx->gfx_cs);
    /* R_0286CC_SPI_PS_INPUT_ENA, R_0286D0_SPI_PS_INPUT_ADDR*/
    radeon_opt_set_context_reg2(sctx, R_0286CC_SPI_PS_INPUT_ENA, SI_TRACKED_SPI_PS_INPUT_ENA,
                                shader->ctx_reg.ps.spi_ps_input_ena,
@@ -1558,9 +1549,7 @@ static void si_emit_shader_ps(struct si_context *sctx)
 
    radeon_opt_set_context_reg(sctx, R_02823C_CB_SHADER_MASK, SI_TRACKED_CB_SHADER_MASK,
                               shader->ctx_reg.ps.cb_shader_mask);
-
-   if (initial_cdw != sctx->gfx_cs.current.cdw)
-      sctx->context_roll = true;
+   radeon_end_update_context_roll(sctx);
 }
 
 static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
@@ -3371,12 +3360,10 @@ static void si_emit_spi_map(struct si_context *sctx)
    /* R_028644_SPI_PS_INPUT_CNTL_0 */
    /* Dota 2: Only ~16% of SPI map updates set different values. */
    /* Talos: Only ~9% of SPI map updates set different values. */
-   unsigned initial_cdw = sctx->gfx_cs.current.cdw;
+   radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_regn(sctx, R_028644_SPI_PS_INPUT_CNTL_0, spi_ps_input_cntl,
                                sctx->tracked_regs.spi_ps_input_cntl, num_interp);
-
-   if (initial_cdw != sctx->gfx_cs.current.cdw)
-      sctx->context_roll = true;
+   radeon_end_update_context_roll(sctx);
 }
 
 /**
@@ -3405,6 +3392,8 @@ static void si_cs_preamble_add_vgt_flush(struct si_context *sctx)
  */
 static void si_emit_vgt_flush(struct radeon_cmdbuf *cs)
 {
+   radeon_begin(cs);
+
    /* This is required before VGT_FLUSH. */
    radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
    radeon_emit(cs, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
@@ -3412,6 +3401,7 @@ static void si_emit_vgt_flush(struct radeon_cmdbuf *cs)
    /* VGT_FLUSH is required even if VGT is idle. It resets VGT pointers. */
    radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
    radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+   radeon_end();
 }
 
 /* Initialize state related to ESGS / GSVS ring buffers */
@@ -3505,6 +3495,8 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
 
       si_emit_vgt_flush(cs);
 
+      radeon_begin(cs);
+
       /* Set the GS registers. */
       if (sctx->esgs_ring) {
          assert(sctx->chip_class <= GFX8);
@@ -3515,6 +3507,7 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
          radeon_set_uconfig_reg(cs, R_030904_VGT_GSVS_RING_SIZE,
                                 sctx->gsvs_ring->width0 / 256);
       }
+      radeon_end();
       return true;
    }
 
@@ -3789,6 +3782,7 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
       si_emit_vgt_flush(cs);
 
       /* Set tessellation registers. */
+      radeon_begin(cs);
       radeon_set_uconfig_reg(cs, R_030938_VGT_TF_RING_SIZE,
                              S_030938_SIZE(sctx->screen->tess_factor_ring_size / 4));
       radeon_set_uconfig_reg(cs, R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
@@ -3801,6 +3795,7 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
       }
       radeon_set_uconfig_reg(cs, R_03093C_VGT_HS_OFFCHIP_PARAM,
                              sctx->screen->vgt_hs_offchip_param);
+      radeon_end();
       return;
    }
 
@@ -4153,7 +4148,9 @@ static void si_emit_scratch_state(struct si_context *sctx)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
+   radeon_begin(cs);
    radeon_set_context_reg(cs, R_0286E8_SPI_TMPRING_SIZE, sctx->spi_tmpring_size);
+   radeon_end();
 
    if (sctx->scratch_buffer) {
       radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->scratch_buffer, RADEON_USAGE_READWRITE,

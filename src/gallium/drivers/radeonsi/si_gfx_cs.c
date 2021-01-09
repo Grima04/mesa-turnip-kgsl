@@ -110,8 +110,10 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 
       /* Make sure compute shaders are idle before leaving the IB, so that
        * the next IB doesn't overwrite GDS that might be in use. */
+      radeon_begin(compute_cs);
       radeon_emit(compute_cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(compute_cs, EVENT_TYPE(V_028A90_CS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+      radeon_end();
 
       /* Save the GDS prim restart counter if needed. */
       if (ctx->preserve_prim_restart_gds_at_flush) {
@@ -559,6 +561,8 @@ void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, uns
 
    assert(sctx->chip_class <= GFX9);
 
+   radeon_begin(cs);
+
    if (sctx->chip_class == GFX9 || compute_ib) {
       /* Flush caches and wait for the caches to assert idle. */
       radeon_emit(cs, PKT3(PKT3_ACQUIRE_MEM, 5, 0));
@@ -576,6 +580,7 @@ void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, uns
       radeon_emit(cs, 0);             /* CP_COHER_BASE */
       radeon_emit(cs, 0x0000000A);    /* POLL_INTERVAL */
    }
+   radeon_end();
 
    /* ACQUIRE_MEM has an implicit context roll if the current context
     * is busy. */
@@ -598,6 +603,8 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
 
    /* We don't need these. */
    assert(!(flags & (SI_CONTEXT_VGT_STREAMOUT_SYNC | SI_CONTEXT_FLUSH_AND_INV_DB_META)));
+
+   radeon_begin(cs);
 
    if (flags & SI_CONTEXT_VGT_FLUSH) {
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
@@ -686,6 +693,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
       ctx->num_cs_flushes++;
       ctx->compute_is_busy = false;
    }
+   radeon_end();
 
    if (cb_db_event) {
       struct si_resource* wait_mem_scratch = unlikely(ctx->ws->cs_is_secure(cs)) ?
@@ -729,6 +737,8 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
       si_cp_wait_mem(ctx, cs, va, ctx->wait_mem_number, 0xffffffff, WAIT_REG_MEM_EQUAL);
    }
 
+   radeon_begin_again(cs);
+
    /* Ignore fields that only modify the behavior of other fields. */
    if (gcr_cntl & C_586_GL1_RANGE & C_586_GL2_RANGE & C_586_SEQ) {
       /* Flush caches and wait for the caches to assert idle.
@@ -757,6 +767,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_PIPELINESTAT_STOP) | EVENT_INDEX(0));
    }
+   radeon_end();
 
    ctx->flags = 0;
 }
@@ -820,6 +831,8 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
          cp_coher_cntl |= S_0085F0_DB_ACTION_ENA(1) | S_0085F0_DB_DEST_BASE_ENA(1);
    }
 
+   radeon_begin(cs);
+
    if (flags & SI_CONTEXT_FLUSH_AND_INV_CB) {
       /* Flush CMASK/FMASK/DCC. SURFACE_SYNC will wait for idle. */
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
@@ -867,6 +880,8 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_STREAMOUT_SYNC) | EVENT_INDEX(0));
    }
+
+   radeon_end();
 
    /* GFX9: Wait for idle if we're flushing CB or DB. ACQUIRE_MEM doesn't
     * wait for idle on GFX9. We have to use a TS event.
@@ -934,8 +949,10 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
    if (sctx->has_graphics &&
        (cp_coher_cntl || (flags & (SI_CONTEXT_CS_PARTIAL_FLUSH | SI_CONTEXT_INV_VCACHE |
                                    SI_CONTEXT_INV_L2 | SI_CONTEXT_WB_L2)))) {
+      radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
       radeon_emit(cs, 0);
+      radeon_end();
    }
 
    /* GFX6-GFX8 only:
@@ -988,11 +1005,15 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
       si_prim_discard_signal_next_compute_ib_start(sctx);
 
    if (flags & SI_CONTEXT_START_PIPELINE_STATS) {
+      radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_PIPELINESTAT_START) | EVENT_INDEX(0));
+      radeon_end();
    } else if (flags & SI_CONTEXT_STOP_PIPELINE_STATS) {
+      radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_PIPELINESTAT_STOP) | EVENT_INDEX(0));
+      radeon_end();
    }
 
    sctx->flags = 0;

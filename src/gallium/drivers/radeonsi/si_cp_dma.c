@@ -24,6 +24,7 @@
 
 #include "si_pipe.h"
 #include "sid.h"
+#include "si_build_pm4.h"
 
 /* Set this if you want the ME to wait until CP DMA is done.
  * It should be set on the last CP DMA packet. */
@@ -102,6 +103,8 @@ static void si_emit_cp_dma(struct si_context *sctx, struct radeon_cmdbuf *cs, ui
          S_411_SRC_SEL(V_411_SRC_ADDR_TC_L2) | S_500_SRC_CACHE_POLICY(cache_policy == L2_STREAM);
    }
 
+   radeon_begin(cs);
+
    if (sctx->chip_class >= GFX7) {
       radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, 0));
       radeon_emit(cs, header);
@@ -130,6 +133,7 @@ static void si_emit_cp_dma(struct si_context *sctx, struct radeon_cmdbuf *cs, ui
       radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
       radeon_emit(cs, 0);
    }
+   radeon_end();
 }
 
 void si_cp_dma_wait_for_idle(struct si_context *sctx, struct radeon_cmdbuf *cs)
@@ -428,6 +432,7 @@ void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
    }
 
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+   radeon_begin(cs);
    radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, 0));
    radeon_emit(cs, header);
    radeon_emit(cs, address);       /* SRC_ADDR_LO [31:0] */
@@ -435,6 +440,7 @@ void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
    radeon_emit(cs, address);       /* DST_ADDR_LO [31:0] */
    radeon_emit(cs, address >> 32); /* DST_ADDR_HI [31:0] */
    radeon_emit(cs, command);
+   radeon_end();
 }
 
 void si_test_gds(struct si_context *sctx)
@@ -495,11 +501,13 @@ void si_cp_write_data(struct si_context *sctx, struct si_resource *buf, unsigned
    radeon_add_to_buffer_list(sctx, cs, buf, RADEON_USAGE_WRITE, RADEON_PRIO_CP_DMA);
    uint64_t va = buf->gpu_address + offset;
 
+   radeon_begin(cs);
    radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + size / 4, 0));
    radeon_emit(cs, S_370_DST_SEL(dst_sel) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(engine));
    radeon_emit(cs, va);
    radeon_emit(cs, va >> 32);
    radeon_emit_array(cs, (const uint32_t *)data, size / 4);
+   radeon_end();
 }
 
 void si_cp_copy_data(struct si_context *sctx, struct radeon_cmdbuf *cs, unsigned dst_sel,
@@ -517,10 +525,12 @@ void si_cp_copy_data(struct si_context *sctx, struct radeon_cmdbuf *cs, unsigned
    uint64_t dst_va = (dst ? dst->gpu_address : 0ull) + dst_offset;
    uint64_t src_va = (src ? src->gpu_address : 0ull) + src_offset;
 
+   radeon_begin(cs);
    radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
    radeon_emit(cs, COPY_DATA_SRC_SEL(src_sel) | COPY_DATA_DST_SEL(dst_sel) | COPY_DATA_WR_CONFIRM);
    radeon_emit(cs, src_va);
    radeon_emit(cs, src_va >> 32);
    radeon_emit(cs, dst_va);
    radeon_emit(cs, dst_va >> 32);
+   radeon_end();
 }
