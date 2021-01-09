@@ -75,12 +75,17 @@ static void si_prefetch_VBO_descriptors(struct si_context *sctx)
                             sctx->vertex_elements->vb_desc_list_alloc_size);
 }
 
+enum si_L2_prefetch_mode {
+   PREFETCH_BEFORE_DRAW = 1,
+   PREFETCH_AFTER_DRAW,
+   PREFETCH_ALL,
+};
+
 /**
  * Prefetch shaders and VBO descriptors.
- *
- * \param VS_ONLY   Whether only the the API VS and VBO descriptors should be prefetched.
  */
-template<chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG, bool VS_ONLY>
+template<chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
+         si_L2_prefetch_mode mode>
 static void si_emit_prefetch_L2(struct si_context *sctx)
 {
    unsigned mask = sctx->prefetch_L2_mask;
@@ -93,14 +98,14 @@ static void si_emit_prefetch_L2(struct si_context *sctx)
    if (GFX_VERSION >= GFX9) {
       /* Choose the right spot for the VBO prefetch. */
       if (HAS_TESS) {
-         if (mask & SI_PREFETCH_HS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.hs);
-         if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
-            si_prefetch_VBO_descriptors(sctx);
+         if (mode != PREFETCH_AFTER_DRAW) {
+            if (mask & SI_PREFETCH_HS)
+               si_prefetch_shader_async(sctx, sctx->queued.named.hs);
+            if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
+               si_prefetch_VBO_descriptors(sctx);
 
-         if (VS_ONLY) {
-            sctx->prefetch_L2_mask &= ~(SI_PREFETCH_HS | SI_PREFETCH_VBO_DESCRIPTORS);
-            return;
+            if (mode == PREFETCH_BEFORE_DRAW)
+               return;
          }
 
          if ((HAS_GS || NGG) && mask & SI_PREFETCH_GS)
@@ -108,41 +113,41 @@ static void si_emit_prefetch_L2(struct si_context *sctx)
          if (!NGG && mask & SI_PREFETCH_VS)
             si_prefetch_shader_async(sctx, sctx->queued.named.vs);
       } else if (HAS_GS || NGG) {
-         if (mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.gs);
-         if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
-            si_prefetch_VBO_descriptors(sctx);
+         if (mode != PREFETCH_AFTER_DRAW) {
+            if (mask & SI_PREFETCH_GS)
+               si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+            if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
+               si_prefetch_VBO_descriptors(sctx);
 
-         if (VS_ONLY) {
-            sctx->prefetch_L2_mask &= ~(SI_PREFETCH_GS | SI_PREFETCH_VBO_DESCRIPTORS);
-            return;
+            if (mode == PREFETCH_BEFORE_DRAW)
+               return;
          }
 
          if (!NGG && mask & SI_PREFETCH_VS)
             si_prefetch_shader_async(sctx, sctx->queued.named.vs);
       } else {
-         if (mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.vs);
-         if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
-            si_prefetch_VBO_descriptors(sctx);
+         if (mode != PREFETCH_AFTER_DRAW) {
+            if (mask & SI_PREFETCH_VS)
+               si_prefetch_shader_async(sctx, sctx->queued.named.vs);
+            if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
+               si_prefetch_VBO_descriptors(sctx);
 
-         if (VS_ONLY) {
-            sctx->prefetch_L2_mask &= ~(SI_PREFETCH_VS | SI_PREFETCH_VBO_DESCRIPTORS);
-            return;
+            if (mode == PREFETCH_BEFORE_DRAW)
+               return;
          }
       }
    } else {
       /* GFX6-GFX8 */
       /* Choose the right spot for the VBO prefetch. */
       if (HAS_TESS) {
-         if (mask & SI_PREFETCH_LS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.ls);
-         if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
-            si_prefetch_VBO_descriptors(sctx);
+         if (mode != PREFETCH_AFTER_DRAW) {
+            if (mask & SI_PREFETCH_LS)
+               si_prefetch_shader_async(sctx, sctx->queued.named.ls);
+            if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
+               si_prefetch_VBO_descriptors(sctx);
 
-         if (VS_ONLY) {
-            sctx->prefetch_L2_mask &= ~(SI_PREFETCH_LS | SI_PREFETCH_VBO_DESCRIPTORS);
-            return;
+            if (mode == PREFETCH_BEFORE_DRAW)
+               return;
          }
 
          if (mask & SI_PREFETCH_HS)
@@ -154,14 +159,14 @@ static void si_emit_prefetch_L2(struct si_context *sctx)
          if (mask & SI_PREFETCH_VS)
             si_prefetch_shader_async(sctx, sctx->queued.named.vs);
       } else if (HAS_GS) {
-         if (mask & SI_PREFETCH_ES)
-            si_prefetch_shader_async(sctx, sctx->queued.named.es);
-         if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
-            si_prefetch_VBO_descriptors(sctx);
+         if (mode != PREFETCH_AFTER_DRAW) {
+            if (mask & SI_PREFETCH_ES)
+               si_prefetch_shader_async(sctx, sctx->queued.named.es);
+            if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
+               si_prefetch_VBO_descriptors(sctx);
 
-         if (VS_ONLY) {
-            sctx->prefetch_L2_mask &= ~(SI_PREFETCH_ES | SI_PREFETCH_VBO_DESCRIPTORS);
-            return;
+            if (mode == PREFETCH_BEFORE_DRAW)
+               return;
          }
 
          if (mask & SI_PREFETCH_GS)
@@ -169,14 +174,14 @@ static void si_emit_prefetch_L2(struct si_context *sctx)
          if (mask & SI_PREFETCH_VS)
             si_prefetch_shader_async(sctx, sctx->queued.named.vs);
       } else {
-         if (mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.vs);
-         if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
-            si_prefetch_VBO_descriptors(sctx);
+         if (mode != PREFETCH_AFTER_DRAW) {
+            if (mask & SI_PREFETCH_VS)
+               si_prefetch_shader_async(sctx, sctx->queued.named.vs);
+            if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
+               si_prefetch_VBO_descriptors(sctx);
 
-         if (VS_ONLY) {
-            sctx->prefetch_L2_mask &= ~(SI_PREFETCH_VS | SI_PREFETCH_VBO_DESCRIPTORS);
-            return;
+            if (mode == PREFETCH_BEFORE_DRAW)
+               return;
          }
       }
    }
@@ -184,6 +189,7 @@ static void si_emit_prefetch_L2(struct si_context *sctx)
    if (mask & SI_PREFETCH_PS)
       si_prefetch_shader_async(sctx, sctx->queued.named.ps);
 
+   /* This must be cleared only when AFTER_DRAW is true. */
    sctx->prefetch_L2_mask = 0;
 }
 
@@ -2104,7 +2110,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
       /* Start prefetches after the draw has been started. Both will run
        * in parallel, but starting the draw first is more important.
        */
-      si_emit_prefetch_L2<GFX_VERSION, HAS_TESS, HAS_GS, NGG, false>(sctx);
+      si_emit_prefetch_L2<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_ALL>(sctx);
    } else {
       /* If we don't wait for idle, start prefetches first, then set
        * states, and draw at the end.
@@ -2113,7 +2119,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
          sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
 
       /* Only prefetch the API VS and VBO descriptors. */
-      si_emit_prefetch_L2<GFX_VERSION, HAS_TESS, HAS_GS, NGG, true>(sctx);
+      si_emit_prefetch_L2<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_BEFORE_DRAW>(sctx);
 
       si_emit_all_states<GFX_VERSION, HAS_TESS, HAS_GS, NGG>
             (sctx, info, indirect, prim, instance_count, min_direct_count,
@@ -2134,7 +2140,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
 
       /* Prefetch the remaining shaders after the draw has been
        * started. */
-      si_emit_prefetch_L2<GFX_VERSION, HAS_TESS, HAS_GS, NGG, false>(sctx);
+      si_emit_prefetch_L2<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_AFTER_DRAW>(sctx);
    }
 
    /* Clear the context roll flag after the draw call.
