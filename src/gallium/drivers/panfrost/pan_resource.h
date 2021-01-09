@@ -58,7 +58,7 @@ struct panfrost_resource {
         /* Whether the modifier can be changed */
         bool modifier_constant;
 
-        /* Is transaciton elimination enabled? */
+        /* Is transaction elimination enabled? */
         bool checksummed;
 
         /* The CRC BO can be allocated separately */

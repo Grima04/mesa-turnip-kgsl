@@ -233,7 +233,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
         struct panfrost_blend_state *blend = ctx->blend;
         struct panfrost_blend_rt *rt = &blend->rt[rti];
 
-        /* First, we'll try fixed function, matching equationn and constant */
+        /* First, we'll try fixed function, matching equation and constant */
         if (rt->has_fixed_function && panfrost_can_fixed_blend(fmt)) {
                 float constant = 0.0;
 

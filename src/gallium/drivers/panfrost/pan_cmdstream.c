@@ -1449,7 +1449,7 @@ enum pan_special_varying {
         PAN_VARY_MAX,
 };
 
-/* Given a varying, figure out which index it correpsonds to */
+/* Given a varying, figure out which index it corresponds to */
 
 static inline unsigned
 pan_varying_index(unsigned present, enum pan_special_varying v)

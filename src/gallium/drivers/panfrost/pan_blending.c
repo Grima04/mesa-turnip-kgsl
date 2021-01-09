@@ -267,7 +267,7 @@ panfrost_blend_constant_mask(const struct pipe_rt_blend_state *blend)
 /* Create the descriptor for a fixed blend mode given the corresponding Gallium
  * state, if possible. Return true and write out the blend descriptor into
  * blend_equation. If it is not possible with the fixed function
- * representating, return false to handle degenerate cases with a blend shader
+ * representation, return false to handle degenerate cases with a blend shader
  */
 
 bool
