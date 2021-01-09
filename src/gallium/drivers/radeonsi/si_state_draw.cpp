@@ -1717,13 +1717,12 @@ static void si_draw_vbo(struct pipe_context *ctx,
 
    if (GFX_VERSION <= GFX9 && HAS_GS) {
       /* Determine whether the GS triangle strip adjacency fix should
-       * be applied. Rotate every other triangle if
-       * - triangle strips with adjacency are fed to the GS and
-       * - primitive restart is disabled (the rotation doesn't help
-       *   when the restart occurs after an odd number of triangles).
+       * be applied. Rotate every other triangle if triangle strips with
+       * adjacency are fed to the GS. This doesn't work if primitive
+       * restart occurs after an odd number of triangles.
        */
       bool gs_tri_strip_adj_fix =
-         !HAS_TESS && prim == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY && !primitive_restart;
+         !HAS_TESS && prim == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
 
       if (gs_tri_strip_adj_fix != sctx->gs_tri_strip_adj_fix) {
          sctx->gs_tri_strip_adj_fix = gs_tri_strip_adj_fix;
