@@ -1530,8 +1530,8 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
          unsigned i = u_bit_scan(&mask);
          struct si_pm4_state *state = sctx->queued.array[i];
 
-         if (!state || sctx->emitted.array[i] == state)
-            continue;
+         /* All places should unset dirty_states if this doesn't pass. */
+         assert(state && state != sctx->emitted.array[i]);
 
          si_pm4_emit(sctx, state);
          sctx->emitted.array[i] = state;
