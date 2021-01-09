@@ -778,6 +778,7 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
    }
 }
 
+template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG>
 ALWAYS_INLINE
 static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
 {
@@ -796,23 +797,23 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
       /* For the API vertex shader (VS_STATE_INDEXED, LS_OUT_*). */
-      radeon_set_sh_reg(
-         cs, sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX] + SI_SGPR_VS_STATE_BITS * 4,
-         sctx->current_vs_state);
+      unsigned vs_base = si_get_user_data_base(GFX_VERSION, HAS_TESS, HAS_GS, NGG,
+                                               PIPE_SHADER_VERTEX);
+      radeon_set_sh_reg(cs, vs_base + SI_SGPR_VS_STATE_BITS * 4,
+                        sctx->current_vs_state);
 
       /* Set CLAMP_VERTEX_COLOR and OUTPRIM in the last stage
        * before the rasterizer.
        *
        * For TES or the GS copy shader without NGG:
        */
-      if (sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX] != R_00B130_SPI_SHADER_USER_DATA_VS_0) {
+      if (vs_base != R_00B130_SPI_SHADER_USER_DATA_VS_0) {
          radeon_set_sh_reg(cs, R_00B130_SPI_SHADER_USER_DATA_VS_0 + SI_SGPR_VS_STATE_BITS * 4,
                            sctx->current_vs_state);
       }
 
       /* For NGG: */
-      if (sctx->screen->use_ngg &&
-          sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX] != R_00B230_SPI_SHADER_USER_DATA_GS_0) {
+      if (GFX_VERSION >= GFX10 && vs_base != R_00B230_SPI_SHADER_USER_DATA_GS_0) {
          radeon_set_sh_reg(cs, R_00B230_SPI_SHADER_USER_DATA_GS_0 + SI_SGPR_VS_STATE_BITS * 4,
                            sctx->current_vs_state);
       }
@@ -1503,7 +1504,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
    sctx->dirty_states = 0;
 
    /* Emit draw states. */
-   si_emit_vs_state(sctx, info->index_size);
+   si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, info->index_size);
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG>
          (sctx, indirect, prim, num_patches, instance_count, info->vertices_per_patch,
           primitive_restart, info->restart_index, min_vertex_count);
