@@ -91,12 +91,13 @@ struct disasm_ctx {
 	/* current instruction repeat indx/offset (for --expand): */
 	unsigned repeatidx;
 
+	int sfu_delay;
+
 	/* tracking for register usage */
 	struct {
 		regmask_t used;
 		regmask_t rbw;      /* read before write */
 		regmask_t war;      /* write after read */
-		unsigned max_const;
 	} regs;
 };
 
@@ -260,14 +261,13 @@ static void print_reg_stats(struct disasm_ctx *ctx)
 	fprintf(ctx->out, "%s- input (full):", levels[ctx->level]);
 	print_regs(ctx, &ctx->regs.rbw, true);
 	fprintf(ctx->out, "\n");
-	fprintf(ctx->out, "%s- max const: %u\n", levels[ctx->level], ctx->regs.max_const);
-	fprintf(ctx->out, "\n");
 	fprintf(ctx->out, "%s- output (half):", levels[ctx->level]);
 	print_regs(ctx, &ctx->regs.war, false);
 	fprintf(ctx->out, "  (estimated)\n");
 	fprintf(ctx->out, "%s- output (full):", levels[ctx->level]);
 	print_regs(ctx, &ctx->regs.war, true);
 	fprintf(ctx->out, "  (estimated)\n");
+	fprintf(ctx->out, "\n");
 
 	/* convert to vec4, which is the granularity that registers are
 	 * assigned to shader:
@@ -275,15 +275,21 @@ static void print_reg_stats(struct disasm_ctx *ctx)
 	fullreg = (fullreg + 3) / 4;
 	halfreg = ctx->regs.used.mergedregs ? 0 : (halfreg + 3) / 4;
 
-	// Note this count of instructions includes rptN, which matches
-	// up to how mesa prints this:
-	fprintf(ctx->out, "%s- shaderdb: %d instructions, %d nops, %d non-nops, "
-			"(%d instlen), %u last-baryf, %d half, %d full\n",
-			levels[ctx->level], ctx->stats->instructions, ctx->stats->nops,
-			ctx->stats->instructions - ctx->stats->nops, ctx->stats->instlen,
-			ctx->stats->last_baryf, halfreg, fullreg);
-	fprintf(ctx->out, "%s- shaderdb: %u cat0, %u cat1, %u cat2, %u cat3, "
-			"%u cat4, %u cat5, %u cat6, %u cat7\n",
+	fprintf(ctx->out, "%s- shaderdb: %u instr, %u nops, %u non-nops, %u mov, %u cov\n",
+			levels[ctx->level],
+			ctx->stats->instructions,
+			ctx->stats->nops,
+			ctx->stats->instructions - ctx->stats->nops,
+			ctx->stats->mov_count, ctx->stats->cov_count);
+
+	fprintf(ctx->out, "%s- shaderdb: %u last-baryf, %d half, %d full, %u constlen\n",
+			levels[ctx->level],
+			ctx->stats->last_baryf,
+			halfreg,
+			fullreg,
+			ctx->stats->constlen);
+
+	fprintf(ctx->out, "%s- shaderdb: %u cat0, %u cat1, %u cat2, %u cat3, %u cat4, %u cat5, %u cat6, %u cat7\n",
 			levels[ctx->level],
 			ctx->stats->instrs_per_cat[0],
 			ctx->stats->instrs_per_cat[1],
@@ -293,8 +299,12 @@ static void print_reg_stats(struct disasm_ctx *ctx)
 			ctx->stats->instrs_per_cat[5],
 			ctx->stats->instrs_per_cat[6],
 			ctx->stats->instrs_per_cat[7]);
-	fprintf(ctx->out, "%s- shaderdb: %d (ss), %d (sy)\n", levels[ctx->level],
-			ctx->stats->ss, ctx->stats->sy);
+
+	fprintf(ctx->out, "%s- shaderdb: %u sstall, %u (ss), %u (sy)\n",
+			levels[ctx->level],
+			ctx->stats->sstall,
+			ctx->stats->ss,
+			ctx->stats->sy);
 }
 
 static void process_reg_dst(struct disasm_ctx *ctx)
@@ -364,19 +374,11 @@ static void print_src(struct disasm_ctx *ctx, struct reginfo *info)
 				break;
 		}
 	} else if (info->c) {
-		int i, num = regidx(reg);
-		for (i = 0; i <= ctx->repeat; i++) {
-			unsigned src = num + i;
-
-			ctx->regs.max_const = MAX2(ctx->regs.max_const, src);
-
-			if (!info->r)
-				break;
-		}
-
-		unsigned max = (num + ctx->repeat + 1 + 3) / 4;
-		if (max > ctx->stats->constlen)
-			ctx->stats->constlen = max;
+		unsigned num = regidx(reg);
+		if (info->r)
+			num += ctx->repeat;
+		num = DIV_ROUND_UP(num, 4);
+		ctx->stats->constlen = MAX2(ctx->stats->constlen, num);
 	}
 
 	if (info->r)
@@ -1639,6 +1641,8 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 	if (instr->ss && ((instr->opc_cat <= 4) || (instr->opc_cat == 7))) {
 		fprintf(ctx->out, "(ss)");
 		ctx->stats->ss++;
+		ctx->stats->sstall += ctx->sfu_delay;
+		ctx->sfu_delay = 0;
 	}
 	if (instr->jmp_tgt)
 		fprintf(ctx->out, "(jp)");
@@ -1659,6 +1663,13 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 
 	if (instr->ul && ((2 <= instr->opc_cat) && (instr->opc_cat <= 4)))
 		fprintf(ctx->out, "(ul)");
+
+	if (instr->opc_cat == 4) {
+		ctx->sfu_delay = 10;
+	} else {
+		int n = MIN2(ctx->sfu_delay, 1 + ctx->repeat + nop);
+		ctx->sfu_delay -= n;
+	}
 
 	ctx->stats->instructions += nop;
 	ctx->stats->nops += nop;

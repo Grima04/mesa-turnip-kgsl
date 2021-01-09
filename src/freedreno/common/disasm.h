@@ -44,6 +44,7 @@ struct shader_stats {
 	int nops;
 	int ss, sy;
 	int constlen;
+	uint16_t sstall;
 	uint16_t mov_count;
 	uint16_t cov_count;
 	uint16_t last_baryf;
