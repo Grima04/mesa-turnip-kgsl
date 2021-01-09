@@ -126,20 +126,11 @@ static bool si_query_sw_begin(struct si_context *sctx, struct si_query *squery)
    case SI_QUERY_DECOMPRESS_CALLS:
       query->begin_result = sctx->num_decompress_calls;
       break;
-   case SI_QUERY_MRT_DRAW_CALLS:
-      query->begin_result = sctx->num_mrt_draw_calls;
-      break;
    case SI_QUERY_PRIM_RESTART_CALLS:
       query->begin_result = sctx->num_prim_restart_calls;
       break;
-   case SI_QUERY_SPILL_DRAW_CALLS:
-      query->begin_result = sctx->num_spill_draw_calls;
-      break;
    case SI_QUERY_COMPUTE_CALLS:
       query->begin_result = sctx->num_compute_calls;
-      break;
-   case SI_QUERY_SPILL_COMPUTE_CALLS:
-      query->begin_result = sctx->num_spill_compute_calls;
       break;
    case SI_QUERY_CP_DMA_CALLS:
       query->begin_result = sctx->num_cp_dma_calls;
@@ -301,20 +292,11 @@ static bool si_query_sw_end(struct si_context *sctx, struct si_query *squery)
    case SI_QUERY_DECOMPRESS_CALLS:
       query->end_result = sctx->num_decompress_calls;
       break;
-   case SI_QUERY_MRT_DRAW_CALLS:
-      query->end_result = sctx->num_mrt_draw_calls;
-      break;
    case SI_QUERY_PRIM_RESTART_CALLS:
       query->end_result = sctx->num_prim_restart_calls;
       break;
-   case SI_QUERY_SPILL_DRAW_CALLS:
-      query->end_result = sctx->num_spill_draw_calls;
-      break;
    case SI_QUERY_COMPUTE_CALLS:
       query->end_result = sctx->num_compute_calls;
-      break;
-   case SI_QUERY_SPILL_COMPUTE_CALLS:
-      query->end_result = sctx->num_spill_compute_calls;
       break;
    case SI_QUERY_CP_DMA_CALLS:
       query->end_result = sctx->num_cp_dma_calls;
@@ -1670,11 +1652,8 @@ static struct pipe_driver_query_info si_driver_query_list[] = {
    X("num-shaders-created", NUM_SHADERS_CREATED, UINT64, CUMULATIVE),
    X("draw-calls", DRAW_CALLS, UINT64, AVERAGE),
    X("decompress-calls", DECOMPRESS_CALLS, UINT64, AVERAGE),
-   X("MRT-draw-calls", MRT_DRAW_CALLS, UINT64, AVERAGE),
    X("prim-restart-calls", PRIM_RESTART_CALLS, UINT64, AVERAGE),
-   X("spill-draw-calls", SPILL_DRAW_CALLS, UINT64, AVERAGE),
    X("compute-calls", COMPUTE_CALLS, UINT64, AVERAGE),
-   X("spill-compute-calls", SPILL_COMPUTE_CALLS, UINT64, AVERAGE),
    X("cp-dma-calls", CP_DMA_CALLS, UINT64, AVERAGE),
    X("num-vs-flushes", NUM_VS_FLUSHES, UINT64, AVERAGE),
    X("num-ps-flushes", NUM_PS_FLUSHES, UINT64, AVERAGE),

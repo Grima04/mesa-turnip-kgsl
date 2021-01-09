@@ -914,8 +914,6 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
 
    sctx->compute_is_busy = true;
    sctx->num_compute_calls++;
-   if (sctx->cs_shader_state.uses_scratch)
-      sctx->num_spill_compute_calls++;
 
    if (cs_regalloc_hang)
       sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
