@@ -730,7 +730,7 @@ static unsigned si_conv_prim_to_gs_out(unsigned mode)
 }
 
 /* rast_prim is the primitive type after GS. */
-template<si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
+template<chip_class GFX_VERSION, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
 static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
@@ -758,7 +758,7 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       sctx->last_gs_out_prim = gs_out_prim;
    }
 
-   if (initial_cdw != cs->current.cdw)
+   if (GFX_VERSION == GFX9 && initial_cdw != cs->current.cdw)
       sctx->context_roll = true;
 
    if (NGG) {
@@ -945,7 +945,8 @@ static void si_emit_draw_registers(struct si_context *sctx,
    if (si_prim_restart_index_changed(sctx, primitive_restart, restart_index)) {
       radeon_set_context_reg(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, restart_index);
       sctx->last_restart_index = restart_index;
-      sctx->context_roll = true;
+      if (GFX_VERSION == GFX9)
+         sctx->context_roll = true;
    }
 }
 
@@ -1476,7 +1477,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 {
    unsigned num_patches = 0;
 
-   si_emit_rasterizer_prim_state<HAS_GS, NGG>(sctx);
+   si_emit_rasterizer_prim_state<GFX_VERSION, HAS_GS, NGG>(sctx);
    if (HAS_TESS)
       si_emit_derived_tess_state(sctx, info->vertices_per_patch, &num_patches);
 
