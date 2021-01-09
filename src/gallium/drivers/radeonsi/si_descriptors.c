@@ -1915,43 +1915,19 @@ static void si_set_user_data_base(struct si_context *sctx, unsigned shader, uint
  */
 void si_shader_change_notify(struct si_context *sctx)
 {
-   /* VS can be bound as VS, ES, or LS. */
-   if (sctx->tes_shader.cso) {
-      if (sctx->chip_class >= GFX10) {
-         si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B430_SPI_SHADER_USER_DATA_HS_0);
-      } else if (sctx->chip_class == GFX9) {
-         si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B430_SPI_SHADER_USER_DATA_LS_0);
-      } else {
-         si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B530_SPI_SHADER_USER_DATA_LS_0);
-      }
-   } else if (sctx->chip_class >= GFX10) {
-      if (sctx->ngg || sctx->gs_shader.cso) {
-         si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B230_SPI_SHADER_USER_DATA_GS_0);
-      } else {
-         si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B130_SPI_SHADER_USER_DATA_VS_0);
-      }
-   } else if (sctx->gs_shader.cso) {
-      si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B330_SPI_SHADER_USER_DATA_ES_0);
-   } else {
-      si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B130_SPI_SHADER_USER_DATA_VS_0);
-   }
+   si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
+                         si_get_user_data_base(sctx->chip_class,
+                                               sctx->tes_shader.cso ? TESS_ON : TESS_OFF,
+                                               sctx->gs_shader.cso ? GS_ON : GS_OFF,
+                                               sctx->ngg ? NGG_ON : NGG_OFF,
+                                               PIPE_SHADER_VERTEX));
 
-   /* TES can be bound as ES, VS, or not bound. */
-   if (sctx->tes_shader.cso) {
-      if (sctx->chip_class >= GFX10) {
-         if (sctx->ngg || sctx->gs_shader.cso) {
-            si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL, R_00B230_SPI_SHADER_USER_DATA_GS_0);
-         } else {
-            si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL, R_00B130_SPI_SHADER_USER_DATA_VS_0);
-         }
-      } else if (sctx->gs_shader.cso) {
-         si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL, R_00B330_SPI_SHADER_USER_DATA_ES_0);
-      } else {
-         si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL, R_00B130_SPI_SHADER_USER_DATA_VS_0);
-      }
-   } else {
-      si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL, 0);
-   }
+   si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL,
+                         si_get_user_data_base(sctx->chip_class,
+                                               sctx->tes_shader.cso ? TESS_ON : TESS_OFF,
+                                               sctx->gs_shader.cso ? GS_ON : GS_OFF,
+                                               sctx->ngg ? NGG_ON : NGG_OFF,
+                                               PIPE_SHADER_TESS_EVAL));
 }
 
 static void si_emit_shader_pointer_head(struct radeon_cmdbuf *cs, unsigned sh_offset,
@@ -2631,20 +2607,15 @@ void si_init_all_descriptors(struct si_context *sctx)
    sctx->atoms.s.shader_pointers.emit = si_emit_graphics_shader_pointers;
 
    /* Set default and immutable mappings. */
-   if (sctx->ngg) {
-      assert(sctx->chip_class >= GFX10);
-      si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B230_SPI_SHADER_USER_DATA_GS_0);
-   } else {
-      si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B130_SPI_SHADER_USER_DATA_VS_0);
-   }
-
-   if (sctx->chip_class == GFX9) {
-      si_set_user_data_base(sctx, PIPE_SHADER_TESS_CTRL, R_00B430_SPI_SHADER_USER_DATA_LS_0);
-      si_set_user_data_base(sctx, PIPE_SHADER_GEOMETRY, R_00B330_SPI_SHADER_USER_DATA_ES_0);
-   } else {
-      si_set_user_data_base(sctx, PIPE_SHADER_TESS_CTRL, R_00B430_SPI_SHADER_USER_DATA_HS_0);
-      si_set_user_data_base(sctx, PIPE_SHADER_GEOMETRY, R_00B230_SPI_SHADER_USER_DATA_GS_0);
-   }
+   si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
+                         si_get_user_data_base(sctx->chip_class, TESS_OFF, GS_OFF,
+                                               sctx->ngg, PIPE_SHADER_VERTEX));
+   si_set_user_data_base(sctx, PIPE_SHADER_TESS_CTRL,
+                         si_get_user_data_base(sctx->chip_class, TESS_OFF, GS_OFF,
+                                               NGG_OFF, PIPE_SHADER_TESS_CTRL));
+   si_set_user_data_base(sctx, PIPE_SHADER_GEOMETRY,
+                         si_get_user_data_base(sctx->chip_class, TESS_OFF, GS_OFF,
+                                               NGG_OFF, PIPE_SHADER_GEOMETRY));
    si_set_user_data_base(sctx, PIPE_SHADER_FRAGMENT, R_00B030_SPI_SHADER_USER_DATA_PS_0);
 }
 

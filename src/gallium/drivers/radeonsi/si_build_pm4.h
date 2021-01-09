@@ -283,4 +283,71 @@ static inline void radeon_opt_set_context_regn(struct si_context *sctx, unsigned
    }
 }
 
+/* This should be evaluated at compile time if all parameters are constants. */
+static ALWAYS_INLINE unsigned
+si_get_user_data_base(enum chip_class chip_class, enum si_has_tess has_tess,
+                      enum si_has_gs has_gs, enum si_has_ngg ngg,
+                      enum pipe_shader_type shader)
+{
+   switch (shader) {
+   case PIPE_SHADER_VERTEX:
+      /* VS can be bound as VS, ES, or LS. */
+      if (has_tess) {
+         if (chip_class >= GFX10) {
+            return R_00B430_SPI_SHADER_USER_DATA_HS_0;
+         } else if (chip_class == GFX9) {
+            return R_00B430_SPI_SHADER_USER_DATA_LS_0;
+         } else {
+            return R_00B530_SPI_SHADER_USER_DATA_LS_0;
+         }
+      } else if (chip_class >= GFX10) {
+         if (ngg || has_gs) {
+            return R_00B230_SPI_SHADER_USER_DATA_GS_0;
+         } else {
+            return R_00B130_SPI_SHADER_USER_DATA_VS_0;
+         }
+      } else if (has_gs) {
+         return R_00B330_SPI_SHADER_USER_DATA_ES_0;
+      } else {
+         return R_00B130_SPI_SHADER_USER_DATA_VS_0;
+      }
+
+   case PIPE_SHADER_TESS_CTRL:
+      if (chip_class == GFX9) {
+         return R_00B430_SPI_SHADER_USER_DATA_LS_0;
+      } else {
+         return R_00B430_SPI_SHADER_USER_DATA_HS_0;
+      }
+
+   case PIPE_SHADER_TESS_EVAL:
+      /* TES can be bound as ES, VS, or not bound. */
+      if (has_tess) {
+         if (chip_class >= GFX10) {
+            if (ngg || has_gs) {
+               return R_00B230_SPI_SHADER_USER_DATA_GS_0;
+            } else {
+               return R_00B130_SPI_SHADER_USER_DATA_VS_0;
+            }
+         } else if (has_gs) {
+            return R_00B330_SPI_SHADER_USER_DATA_ES_0;
+         } else {
+            return R_00B130_SPI_SHADER_USER_DATA_VS_0;
+         }
+      } else {
+         return 0;
+      }
+
+   case PIPE_SHADER_GEOMETRY:
+      if (chip_class == GFX9) {
+         return R_00B330_SPI_SHADER_USER_DATA_ES_0;
+      } else {
+         return R_00B230_SPI_SHADER_USER_DATA_GS_0;
+      }
+
+   default:
+      assert(0);
+      return 0;
+   }
+}
+
 #endif
