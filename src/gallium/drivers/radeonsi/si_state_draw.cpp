@@ -730,7 +730,7 @@ static unsigned si_conv_prim_to_gs_out(unsigned mode)
 }
 
 /* rast_prim is the primitive type after GS. */
-template<chip_class GFX_VERSION, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
+template<chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
 static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
@@ -762,7 +762,7 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       sctx->context_roll = true;
 
    if (NGG) {
-      struct si_shader *hw_vs = si_get_vs(sctx)->current;
+      struct si_shader *hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
 
       if (hw_vs->uses_vs_state_provoking_vertex) {
          unsigned vtx_index = rs->flatshade_first ? 0 : gs_out_prim;
@@ -874,7 +874,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
                    S_03096C_VERT_GRP_SIZE(0) |
                    S_03096C_BREAK_WAVE_AT_EOI(key.u.tess_uses_prim_id);
       } else {
-         ge_cntl = si_get_vs(sctx)->current->ge_cntl;
+         ge_cntl = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ge_cntl;
       }
    } else {
       unsigned primgroup_size;
@@ -1478,7 +1478,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 {
    unsigned num_patches = 0;
 
-   si_emit_rasterizer_prim_state<GFX_VERSION, HAS_GS, NGG>(sctx);
+   si_emit_rasterizer_prim_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx);
    if (HAS_TESS)
       si_emit_derived_tess_state(sctx, info->vertices_per_patch, &num_patches);
 
@@ -1898,7 +1898,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
    if (GFX_VERSION >= GFX10) {
       struct si_shader_selector *hw_vs;
       if (NGG && !dispatch_prim_discard_cs && rast_prim == PIPE_PRIM_TRIANGLES &&
-          (hw_vs = si_get_vs(sctx)->cso) &&
+          (hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->cso) &&
           (total_direct_count > hw_vs->ngg_cull_vert_threshold ||
            (!index_size &&
             total_direct_count > hw_vs->ngg_cull_nonindexed_fast_launch_vert_threshold &&
@@ -1971,7 +1971,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
        * This is the setting that is used by the draw.
        */
       if (GFX_VERSION >= GFX10) {
-         uint8_t ngg_culling = si_get_vs(sctx)->current->key.opt.ngg_culling;
+         uint8_t ngg_culling = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->key.opt.ngg_culling;
          if (GFX_VERSION == GFX10 &&
              !(old_ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL) &&
              ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)

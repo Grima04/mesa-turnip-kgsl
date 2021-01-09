@@ -1678,14 +1678,22 @@ static inline void si_mark_atom_dirty(struct si_context *sctx, struct si_atom *a
    si_set_atom_dirty(sctx, atom, true);
 }
 
-static inline struct si_shader_ctx_state *si_get_vs(struct si_context *sctx)
+/* This should be evaluated at compile time if all parameters except sctx are constants. */
+static ALWAYS_INLINE struct si_shader_ctx_state *
+si_get_vs_inline(struct si_context *sctx, enum si_has_tess has_tess, enum si_has_gs has_gs)
 {
-   if (sctx->gs_shader.cso)
+   if (has_gs)
       return &sctx->gs_shader;
-   if (sctx->tes_shader.cso)
+   if (has_tess)
       return &sctx->tes_shader;
 
    return &sctx->vs_shader;
+}
+
+static inline struct si_shader_ctx_state *si_get_vs(struct si_context *sctx)
+{
+   return si_get_vs_inline(sctx, sctx->tes_shader.cso ? TESS_ON : TESS_OFF,
+                           sctx->gs_shader.cso ? GS_ON : GS_OFF);
 }
 
 static inline struct si_shader_info *si_get_vs_info(struct si_context *sctx)
