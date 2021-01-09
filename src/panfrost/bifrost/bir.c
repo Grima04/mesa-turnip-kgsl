@@ -128,3 +128,27 @@ bi_writemask(bi_instr *ins)
         unsigned shift = ins->dest[0].offset * 4; /* 32-bit words */
         return (mask << shift);
 }
+
+bi_clause *
+bi_next_clause(bi_context *ctx, pan_block *block, bi_clause *clause)
+{
+        /* Try the first clause in this block if we're starting from scratch */
+        if (!clause && !list_is_empty(&((bi_block *) block)->clauses))
+                return list_first_entry(&((bi_block *) block)->clauses, bi_clause, link);
+
+        /* Try the next clause in this block */
+        if (clause && clause->link.next != &((bi_block *) block)->clauses)
+                return list_first_entry(&(clause->link), bi_clause, link);
+
+        /* Try the next block, or the one after that if it's empty, etc .*/
+        pan_block *next_block = pan_next_block(block);
+
+        bi_foreach_block_from(ctx, next_block, block) {
+                bi_block *blk = (bi_block *) block;
+
+                if (!list_is_empty(&blk->clauses))
+                        return list_first_entry(&(blk->clauses), bi_clause, link);
+        }
+
+        return NULL;
+}
