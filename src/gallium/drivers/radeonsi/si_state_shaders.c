@@ -3337,13 +3337,19 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
 static void si_emit_spi_map(struct si_context *sctx)
 {
    struct si_shader *ps = sctx->ps_shader.current;
-   struct si_shader *vs = si_get_vs_state(sctx);
+   struct si_shader *vs;
    struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;
    unsigned i, num_interp, num_written = 0;
    unsigned spi_ps_input_cntl[32];
 
    if (!ps || !ps->selector->info.num_inputs)
       return;
+
+   /* With legacy GS, only the GS copy shader contains information about param exports. */
+   if (sctx->gs_shader.cso && !sctx->ngg)
+      vs = sctx->gs_shader.cso->gs_copy_shader;
+   else
+      vs = si_get_vs(sctx)->current;
 
    num_interp = si_get_ps_num_interp(ps);
    assert(num_interp > 0);
