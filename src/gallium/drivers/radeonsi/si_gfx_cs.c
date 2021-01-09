@@ -443,7 +443,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       ctx->prefetch_L2_mask |= SI_PREFETCH_VS;
    if (ctx->queued.named.ps)
       ctx->prefetch_L2_mask |= SI_PREFETCH_PS;
-   if (ctx->vb_descriptors_buffer && ctx->vertex_elements)
+   if (ctx->vb_descriptors_buffer)
       ctx->prefetch_L2_mask |= SI_PREFETCH_VBO_DESCRIPTORS;
 
    /* CLEAR_STATE disables all colorbuffers, so only enable bound ones. */

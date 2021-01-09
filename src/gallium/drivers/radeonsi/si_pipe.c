@@ -255,6 +255,8 @@ static void si_destroy_context(struct pipe_context *context)
       sctx->b.delete_compute_state(&sctx->b, sctx->cs_dcc_decompress);
    if (sctx->cs_dcc_retile)
       sctx->b.delete_compute_state(&sctx->b, sctx->cs_dcc_retile);
+   if (sctx->no_velems_state)
+      sctx->b.delete_vertex_elements_state(&sctx->b, sctx->no_velems_state);
 
    for (unsigned i = 0; i < ARRAY_SIZE(sctx->cs_fmask_expand); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(sctx->cs_fmask_expand[i]); j++) {
@@ -579,6 +581,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
 
       sctx->noop_dsa = util_blitter_get_noop_dsa_state(sctx->blitter);
       sctx->queued.named.dsa = sctx->noop_dsa;
+
+      sctx->no_velems_state = sctx->b.create_vertex_elements_state(&sctx->b, 0, NULL);
+      sctx->vertex_elements = sctx->no_velems_state;
 
       sctx->discard_rasterizer_state = util_blitter_get_discard_rasterizer_state(sctx->blitter);
       sctx->queued.named.rasterizer = sctx->discard_rasterizer_state;

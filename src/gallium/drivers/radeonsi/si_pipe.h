@@ -941,6 +941,7 @@ struct si_context {
    struct blitter_context *blitter;
    void *noop_blend;
    void *noop_dsa;
+   void *no_velems_state;
    void *discard_rasterizer_state;
    void *custom_dsa_flush;
    void *custom_blend_resolve;

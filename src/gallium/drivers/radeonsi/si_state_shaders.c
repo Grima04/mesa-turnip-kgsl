@@ -1744,7 +1744,7 @@ static unsigned si_get_alpha_test_func(struct si_context *sctx)
 void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selector *vs,
                                struct si_shader_key *key, struct si_vs_prolog_bits *prolog_key)
 {
-   if (!sctx->vertex_elements || vs->info.base.vs.blit_sgprs_amd)
+   if (vs->info.base.vs.blit_sgprs_amd)
       return;
 
    struct si_vertex_elements *elts = sctx->vertex_elements;

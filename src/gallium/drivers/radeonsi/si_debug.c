@@ -807,7 +807,7 @@ static void si_dump_descriptors(struct si_context *sctx, gl_shader_stage stage,
    }
 
    if (stage == MESA_SHADER_VERTEX && sctx->vb_descriptors_buffer &&
-       sctx->vb_descriptors_gpu_list && sctx->vertex_elements) {
+       sctx->vb_descriptors_gpu_list) {
       assert(info); /* only CS may not have an info struct */
       struct si_descriptors desc = {};
 

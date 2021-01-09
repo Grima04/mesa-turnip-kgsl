@@ -4770,8 +4770,11 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
    struct si_vertex_elements *old = sctx->vertex_elements;
    struct si_vertex_elements *v = (struct si_vertex_elements *)state;
 
+   if (!v)
+      v = sctx->no_velems_state;
+
    sctx->vertex_elements = v;
-   sctx->num_vertex_elements = v ? v->count : 0;
+   sctx->num_vertex_elements = v->count;
 
    if (sctx->num_vertex_elements) {
       sctx->vertex_buffers_dirty = true;
@@ -4780,24 +4783,24 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
       sctx->vertex_buffer_user_sgprs_dirty = false;
    }
 
-   if (v && (!old || old->count != v->count ||
-             old->uses_instance_divisors != v->uses_instance_divisors ||
-             /* we don't check which divisors changed */
-             v->uses_instance_divisors ||
-             (old->vb_alignment_check_mask ^ v->vb_alignment_check_mask) &
-                sctx->vertex_buffer_unaligned ||
-             ((v->vb_alignment_check_mask & sctx->vertex_buffer_unaligned) &&
-              memcmp(old->vertex_buffer_index, v->vertex_buffer_index,
-                     sizeof(v->vertex_buffer_index[0]) * v->count)) ||
-             /* fix_fetch_{always,opencode,unaligned} and hw_load_is_dword are
-              * functions of fix_fetch and the src_offset alignment.
-              * If they change and fix_fetch doesn't, it must be due to different
-              * src_offset alignment, which is reflected in fix_fetch_opencode. */
-             old->fix_fetch_opencode != v->fix_fetch_opencode ||
-             memcmp(old->fix_fetch, v->fix_fetch, sizeof(v->fix_fetch[0]) * v->count)))
+   if (old->count != v->count ||
+       old->uses_instance_divisors != v->uses_instance_divisors ||
+       /* we don't check which divisors changed */
+       v->uses_instance_divisors ||
+       (old->vb_alignment_check_mask ^ v->vb_alignment_check_mask) &
+       sctx->vertex_buffer_unaligned ||
+       ((v->vb_alignment_check_mask & sctx->vertex_buffer_unaligned) &&
+        memcmp(old->vertex_buffer_index, v->vertex_buffer_index,
+               sizeof(v->vertex_buffer_index[0]) * v->count)) ||
+       /* fix_fetch_{always,opencode,unaligned} and hw_load_is_dword are
+        * functions of fix_fetch and the src_offset alignment.
+        * If they change and fix_fetch doesn't, it must be due to different
+        * src_offset alignment, which is reflected in fix_fetch_opencode. */
+       old->fix_fetch_opencode != v->fix_fetch_opencode ||
+       memcmp(old->fix_fetch, v->fix_fetch, sizeof(v->fix_fetch[0]) * v->count))
       sctx->do_update_shaders = true;
 
-   if (v && v->instance_divisor_is_fetched) {
+   if (v->instance_divisor_is_fetched) {
       struct pipe_constant_buffer cb;
 
       cb.buffer = &v->instance_divisor_factor_buffer->b.b;
@@ -4813,10 +4816,9 @@ static void si_delete_vertex_element(struct pipe_context *ctx, void *state)
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_vertex_elements *v = (struct si_vertex_elements *)state;
 
-   if (sctx->vertex_elements == state) {
-      sctx->vertex_elements = NULL;
-      sctx->num_vertex_elements = 0;
-   }
+   if (sctx->vertex_elements == state)
+      si_bind_vertex_elements(ctx, sctx->no_velems_state);
+
    si_resource_reference(&v->instance_divisor_factor_buffer, NULL);
    FREE(state);
 }
@@ -4865,8 +4867,8 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
     * whether buffers are at least dword-aligned, since that should always
     * be the case in well-behaved applications anyway.
     */
-   if (sctx->vertex_elements && (sctx->vertex_elements->vb_alignment_check_mask &
-                                 (unaligned | orig_unaligned) & updated_mask))
+   if ((sctx->vertex_elements->vb_alignment_check_mask &
+        (unaligned | orig_unaligned) & updated_mask))
       sctx->do_update_shaders = true;
 }
 

@@ -68,7 +68,7 @@ static void si_prefetch_shader_async(struct si_context *sctx, struct si_pm4_stat
 
 static void si_prefetch_VBO_descriptors(struct si_context *sctx)
 {
-   if (!sctx->vertex_elements || !sctx->vertex_elements->vb_desc_list_alloc_size)
+   if (!sctx->vertex_elements->vb_desc_list_alloc_size)
       return;
 
    si_cp_dma_prefetch(sctx, &sctx->vb_descriptors_buffer->b.b, sctx->vb_descriptors_offset,
