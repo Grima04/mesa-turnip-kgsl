@@ -478,7 +478,10 @@ struct si_buffer_resources {
 #define si_pm4_bind_state(sctx, member, value)                                                     \
    do {                                                                                            \
       (sctx)->queued.named.member = (value);                                                       \
-      (sctx)->dirty_states |= SI_STATE_BIT(member);                                                \
+      if (value && value != (sctx)->emitted.named.member)                                          \
+         (sctx)->dirty_states |= SI_STATE_BIT(member);                                             \
+      else                                                                                         \
+         (sctx)->dirty_states &= ~SI_STATE_BIT(member);                                            \
    } while (0)
 
 #define si_pm4_delete_state(sctx, member, value)                                                   \
