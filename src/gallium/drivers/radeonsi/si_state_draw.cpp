@@ -762,7 +762,7 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       sctx->context_roll = true;
 
    if (NGG) {
-      struct si_shader *hw_vs = si_get_vs_state(sctx);
+      struct si_shader *hw_vs = si_get_vs(sctx)->current;
 
       if (hw_vs->uses_vs_state_provoking_vertex) {
          unsigned vtx_index = rs->flatshade_first ? 0 : gs_out_prim;
@@ -873,7 +873,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
                    S_03096C_VERT_GRP_SIZE(0) |
                    S_03096C_BREAK_WAVE_AT_EOI(key.u.tess_uses_prim_id);
       } else {
-         ge_cntl = si_get_vs_state(sctx)->ge_cntl;
+         ge_cntl = si_get_vs(sctx)->current->ge_cntl;
       }
    } else {
       unsigned primgroup_size;

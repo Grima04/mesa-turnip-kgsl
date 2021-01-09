@@ -2984,7 +2984,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *old_hw_vs = si_get_vs(sctx)->cso;
-   struct si_shader *old_hw_vs_variant = si_get_vs_state(sctx);
+   struct si_shader *old_hw_vs_variant = si_get_vs(sctx)->current;
    struct si_shader_selector *sel = state;
 
    if (sctx->vs_shader.cso == sel)
@@ -3003,7 +3003,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    si_update_vs_viewport_state(sctx);
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
-                       si_get_vs_state(sctx));
+                       si_get_vs(sctx)->current);
 }
 
 static void si_update_tess_uses_prim_id(struct si_context *sctx)
@@ -3058,7 +3058,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *old_hw_vs = si_get_vs(sctx)->cso;
-   struct si_shader *old_hw_vs_variant = si_get_vs_state(sctx);
+   struct si_shader *old_hw_vs_variant = si_get_vs(sctx)->current;
    struct si_shader_selector *sel = state;
    bool enable_changed = !!sctx->gs_shader.cso != !!sel;
    bool ngg_changed;
@@ -3084,7 +3084,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
    si_update_vs_viewport_state(sctx);
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
-                       si_get_vs_state(sctx));
+                       si_get_vs(sctx)->current);
 }
 
 static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
@@ -3110,7 +3110,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *old_hw_vs = si_get_vs(sctx)->cso;
-   struct si_shader *old_hw_vs_variant = si_get_vs_state(sctx);
+   struct si_shader *old_hw_vs_variant = si_get_vs(sctx)->current;
    struct si_shader_selector *sel = state;
    bool enable_changed = !!sctx->tes_shader.cso != !!sel;
 
@@ -3134,7 +3134,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    si_update_vs_viewport_state(sctx);
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
-                       si_get_vs_state(sctx));
+                       si_get_vs(sctx)->current);
 }
 
 static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
@@ -3906,7 +3906,7 @@ bool si_update_shaders(struct si_context *sctx)
    struct pipe_context *ctx = (struct pipe_context *)sctx;
    struct si_compiler_ctx_state compiler_state;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-   struct si_shader *old_vs = si_get_vs_state(sctx);
+   struct si_shader *old_vs = si_get_vs(sctx)->current;
    unsigned old_kill_clip_distances = old_vs ? old_vs->key.opt.kill_clip_distances : 0;
    struct si_shader *old_ps = sctx->ps_shader.current;
    union si_vgt_stages_key key;
@@ -4038,7 +4038,7 @@ bool si_update_shaders(struct si_context *sctx)
 
    si_update_vgt_shader_config(sctx, key);
 
-   if (old_kill_clip_distances != si_get_vs_state(sctx)->key.opt.kill_clip_distances)
+   if (old_kill_clip_distances != si_get_vs(sctx)->current->key.opt.kill_clip_distances)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 
    if (sctx->ps_shader.cso) {
