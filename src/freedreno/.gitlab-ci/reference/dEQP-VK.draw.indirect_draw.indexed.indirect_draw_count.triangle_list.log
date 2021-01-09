@@ -816,13 +816,13 @@ t4					write SP_VS_OBJ_START_LO (a81c)
 							- used (full): 4-11 (cnt=8, max=11)
 							- input (half): 8-19 (cnt=12, max=19)
 							- input (full): 4-9 (cnt=6, max=9)
-							- max const: 5
-
 							- output (half): 16-23 (cnt=8, max=23)  (estimated)
 							- output (full): 8-11 (cnt=4, max=11)  (estimated)
-							- shaderdb: 13 instructions, 7 nops, 6 non-nops, (10 instlen), 0 last-baryf, 0 half, 3 full
+
+							- shaderdb: 13 instr, 7 nops, 6 non-nops, 0 mov, 0 cov
+							- shaderdb: 0 last-baryf, 0 half, 3 full, 2 constlen
 							- shaderdb: 8 cat0, 0 cat1, 1 cat2, 4 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-							- shaderdb: 0 (ss), 0 (sy)
+							- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 00000000010541a4:					0000: 48a81c02 01054000 00000000
 t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						{ DST_OFF = 0 | STATE_TYPE = ST6_SHADER | STATE_SRC = SS6_INDIRECT | STATE_BLOCK = SB6_VS_SHADER | NUM_UNIT = 1 }
@@ -843,13 +843,13 @@ t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						- used (full): 4-11 (cnt=8, max=11)
 						- input (half): 8-19 (cnt=12, max=19)
 						- input (full): 4-9 (cnt=6, max=9)
-						- max const: 5
-
 						- output (half): 16-23 (cnt=8, max=23)  (estimated)
 						- output (full): 8-11 (cnt=4, max=11)  (estimated)
-						- shaderdb: 13 instructions, 7 nops, 6 non-nops, (10 instlen), 0 last-baryf, 0 half, 3 full
+
+						- shaderdb: 13 instr, 7 nops, 6 non-nops, 0 mov, 0 cov
+						- shaderdb: 0 last-baryf, 0 half, 3 full, 2 constlen
 						- shaderdb: 8 cat0, 0 cat1, 1 cat2, 4 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-						- shaderdb: 0 (ss), 0 (sy)
+						- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 00000000010541b0:					0000: 70328003 00620000 01054000 00000000
 t7					opcode: CP_LOAD_STATE6_GEOM (32) (8 dwords)
 						{ DST_OFF = 1 | STATE_TYPE = ST6_CONSTANTS | STATE_SRC = SS6_DIRECT | STATE_BLOCK = SB6_VS_SHADER | NUM_UNIT = 1 }
@@ -908,13 +908,13 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							- used (full): 0 2-5 (cnt=5, max=5)
 							- input (half): 0-1 (cnt=2, max=1)
 							- input (full): 0 (cnt=1, max=0)
-							- max const: 0
-
 							- output (half): 4-11 (cnt=8, max=11)  (estimated)
 							- output (full): 2-5 (cnt=4, max=5)  (estimated)
-							- shaderdb: 9 instructions, 4 nops, 5 non-nops, (9 instlen), 3 last-baryf, 0 half, 2 full
+
+							- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
+							- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 							- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-							- shaderdb: 0 (ss), 0 (sy)
+							- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 000000000105422c:					0000: 40a98302 01054080 00000000
 t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						{ DST_OFF = 0 | STATE_TYPE = ST6_SHADER | STATE_SRC = SS6_INDIRECT | STATE_BLOCK = SB6_FS_SHADER | NUM_UNIT = 1 }
@@ -934,13 +934,13 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						- used (full): 0 2-5 (cnt=5, max=5)
 						- input (half): 0-1 (cnt=2, max=1)
 						- input (full): 0 (cnt=1, max=0)
-						- max const: 0
-
 						- output (half): 4-11 (cnt=8, max=11)  (estimated)
 						- output (full): 2-5 (cnt=4, max=5)  (estimated)
-						- shaderdb: 9 instructions, 4 nops, 5 non-nops, (9 instlen), 3 last-baryf, 0 half, 2 full
+
+						- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
+						- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 						- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-						- shaderdb: 0 (ss), 0 (sy)
+						- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 0000000001054238:					0000: 70348003 00720000 01054080 00000000
 t4					write SP_CS_CONFIG (a9bb)
 						SP_CS_CONFIG: { NTEX = 0 | NSAMP = 0 | NIBO = 0 }
@@ -1502,13 +1502,13 @@ t7			opcode: CP_DRAW_INDIRECT_MULTI (2a) (12 dwords)
 				- used (full): 4-11 (cnt=8, max=11)
 				- input (half): 8-19 (cnt=12, max=19)
 				- input (full): 4-9 (cnt=6, max=9)
-				- max const: 5
-
 				- output (half): 16-23 (cnt=8, max=23)  (estimated)
 				- output (full): 8-11 (cnt=4, max=11)  (estimated)
-				- shaderdb: 13 instructions, 7 nops, 6 non-nops, (10 instlen), 0 last-baryf, 0 half, 3 full
+
+				- shaderdb: 13 instr, 7 nops, 6 non-nops, 0 mov, 0 cov
+				- shaderdb: 0 last-baryf, 0 half, 3 full, 2 constlen
 				- shaderdb: 8 cat0, 0 cat1, 1 cat2, 4 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-				- shaderdb: 0 (ss), 0 (sy)
+				- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 !+	00000100			SP_VS_CONFIG: { ENABLED | NTEX = 0 | NSAMP = 0 | NIBO = 0 }
 !+	00000001			SP_VS_INSTRLEN: 1
  +	00000000			SP_HS_WAVE_INPUT_SIZE: 0
@@ -1537,13 +1537,13 @@ t7			opcode: CP_DRAW_INDIRECT_MULTI (2a) (12 dwords)
 				- used (full): 0 2-5 (cnt=5, max=5)
 				- input (half): 0-1 (cnt=2, max=1)
 				- input (full): 0 (cnt=1, max=0)
-				- max const: 0
-
 				- output (half): 4-11 (cnt=8, max=11)  (estimated)
 				- output (full): 2-5 (cnt=4, max=5)  (estimated)
-				- shaderdb: 9 instructions, 4 nops, 5 non-nops, (9 instlen), 3 last-baryf, 0 half, 2 full
+
+				- shaderdb: 9 instr, 4 nops, 5 non-nops, 0 mov, 0 cov
+				- shaderdb: 3 last-baryf, 0 half, 2 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 4 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-				- shaderdb: 0 (ss), 0 (sy)
+				- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 !+	00000100			SP_BLEND_CNTL: { UNK8 }
  +	00000000			SP_SRGB_CNTL: { 0 }
 !+	0000000f			SP_FS_RENDER_COMPONENTS: { RT0 = 0xf | RT1 = 0 | RT2 = 0 | RT3 = 0 | RT4 = 0 | RT5 = 0 | RT6 = 0 | RT7 = 0 }

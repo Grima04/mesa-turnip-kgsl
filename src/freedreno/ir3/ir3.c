@@ -1002,7 +1002,7 @@ ir3_collect_info(struct ir3_shader_variant *v)
 	info->sizedwords = info->size / 4;
 
 	foreach_block (block, &shader->block_list) {
-		unsigned sfu_delay = 0;
+		int sfu_delay = 0;
 
 		foreach_instr (instr, &block->instr_list) {
 
@@ -1050,6 +1050,7 @@ ir3_collect_info(struct ir3_shader_variant *v)
 			if (instr->flags & IR3_INSTR_SS) {
 				info->ss++;
 				info->sstall += sfu_delay;
+				sfu_delay = 0;
 			}
 
 			if (instr->flags & IR3_INSTR_SY)
@@ -1057,8 +1058,9 @@ ir3_collect_info(struct ir3_shader_variant *v)
 
 			if (is_sfu(instr)) {
 				sfu_delay = 10;
-			} else if (sfu_delay > 0) {
-				sfu_delay--;
+			} else {
+				int n = MIN2(sfu_delay, 1 + instr->repeat + instr->nop);
+				sfu_delay -= n;
 			}
 		}
 	}

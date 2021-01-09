@@ -639,13 +639,13 @@ t4					write SP_VS_OBJ_START_LO (a81c)
 							- used (full): (cnt=0, max=0)
 							- input (half): (cnt=0, max=0)
 							- input (full): (cnt=0, max=0)
-							- max const: 0
-
 							- output (half): (cnt=0, max=0)  (estimated)
 							- output (full): (cnt=0, max=0)  (estimated)
-							- shaderdb: 5 instructions, 4 nops, 1 non-nops, (5 instlen), 0 last-baryf, 0 half, 0 full
+
+							- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
+							- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 							- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-							- shaderdb: 0 (ss), 0 (sy)
+							- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 0000000001121038:					0000: 48a81c02 01011000 00000000
 t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						{ DST_OFF = 0 | STATE_TYPE = ST6_SHADER | STATE_SRC = SS6_INDIRECT | STATE_BLOCK = SB6_VS_SHADER | NUM_UNIT = 1 }
@@ -661,13 +661,13 @@ t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						- used (full): (cnt=0, max=0)
 						- input (half): (cnt=0, max=0)
 						- input (full): (cnt=0, max=0)
-						- max const: 0
-
 						- output (half): (cnt=0, max=0)  (estimated)
 						- output (full): (cnt=0, max=0)  (estimated)
-						- shaderdb: 5 instructions, 4 nops, 1 non-nops, (5 instlen), 0 last-baryf, 0 half, 0 full
+
+						- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
+						- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 						- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-						- shaderdb: 0 (ss), 0 (sy)
+						- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 0000000001121044:					0000: 70328003 00620000 01011000 00000000
 t4					write VPC_VAR[0].DISABLE (9212)
 						VPC_VAR[0].DISABLE: 0xffffffff
@@ -1109,13 +1109,13 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				- used (full): (cnt=0, max=0)
 				- input (half): (cnt=0, max=0)
 				- input (full): (cnt=0, max=0)
-				- max const: 0
-
 				- output (half): (cnt=0, max=0)  (estimated)
 				- output (full): (cnt=0, max=0)  (estimated)
-				- shaderdb: 5 instructions, 4 nops, 1 non-nops, (5 instlen), 0 last-baryf, 0 half, 0 full
+
+				- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
+				- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-				- shaderdb: 0 (ss), 0 (sy)
+				- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 !+	00000100			SP_VS_CONFIG: { ENABLED | NTEX = 0 | NSAMP = 0 | NIBO = 0 }
 !+	00000001			SP_VS_INSTRLEN: 1
  +	00000000			SP_HS_WAVE_INPUT_SIZE: 0
@@ -1954,13 +1954,13 @@ t4					write SP_VS_OBJ_START_LO (a81c)
 							- used (full): (cnt=0, max=0)
 							- input (half): (cnt=0, max=0)
 							- input (full): (cnt=0, max=0)
-							- max const: 0
-
 							- output (half): (cnt=0, max=0)  (estimated)
 							- output (full): (cnt=0, max=0)  (estimated)
-							- shaderdb: 5 instructions, 4 nops, 1 non-nops, (5 instlen), 0 last-baryf, 0 half, 0 full
+
+							- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
+							- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 							- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-							- shaderdb: 0 (ss), 0 (sy)
+							- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 0000000001120038:					0000: 48a81c02 01012000 00000000
 t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						{ DST_OFF = 0 | STATE_TYPE = ST6_SHADER | STATE_SRC = SS6_INDIRECT | STATE_BLOCK = SB6_VS_SHADER | NUM_UNIT = 1 }
@@ -1976,13 +1976,13 @@ t7					opcode: CP_LOAD_STATE6_GEOM (32) (4 dwords)
 						- used (full): (cnt=0, max=0)
 						- input (half): (cnt=0, max=0)
 						- input (full): (cnt=0, max=0)
-						- max const: 0
-
 						- output (half): (cnt=0, max=0)  (estimated)
 						- output (full): (cnt=0, max=0)  (estimated)
-						- shaderdb: 5 instructions, 4 nops, 1 non-nops, (5 instlen), 0 last-baryf, 0 half, 0 full
+
+						- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
+						- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 						- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-						- shaderdb: 0 (ss), 0 (sy)
+						- shaderdb: 0 sstall, 0 (ss), 0 (sy)
 0000000001120044:					0000: 70328003 00620000 01012000 00000000
 t4					write VPC_VAR[0].DISABLE (9212)
 						VPC_VAR[0].DISABLE: 0xffffffff
@@ -3497,13 +3497,13 @@ t4					write SP_FS_OBJ_START_LO (a983)
 							- used (full): 0-73 (cnt=74, max=73)
 							- input (half): 38-41 (cnt=4, max=41)
 							- input (full): 19-20 (cnt=2, max=20)
-							- max const: 113
-
 							- output (half): 8-15 (cnt=8, max=15)  (estimated)
 							- output (full): 4-7 (cnt=4, max=7)  (estimated)
-							- shaderdb: 2414 instructions, 1114 nops, 1300 non-nops, (1406 instlen), 0 last-baryf, 0 half, 19 full
+
+							- shaderdb: 2414 instr, 1114 nops, 1300 non-nops, 46 mov, 2 cov
+							- shaderdb: 0 last-baryf, 0 half, 19 full, 29 constlen
 							- shaderdb: 1120 cat0, 48 cat1, 551 cat2, 512 cat3, 183 cat4, 0 cat5, 0 cat6, 0 cat7
-							- shaderdb: 140 (ss), 0 (sy)
+							- shaderdb: 1326 sstall, 140 (ss), 0 (sy)
 0000000001120158:					0000: 40a98302 01013000 00000000
 t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						{ DST_OFF = 0 | STATE_TYPE = ST6_SHADER | STATE_SRC = SS6_INDIRECT | STATE_BLOCK = SB6_FS_SHADER | NUM_UNIT = 88 }
@@ -4920,13 +4920,13 @@ t7					opcode: CP_LOAD_STATE6_FRAG (34) (4 dwords)
 						- used (full): 0-73 (cnt=74, max=73)
 						- input (half): 38-41 (cnt=4, max=41)
 						- input (full): 19-20 (cnt=2, max=20)
-						- max const: 113
-
 						- output (half): 8-15 (cnt=8, max=15)  (estimated)
 						- output (full): 4-7 (cnt=4, max=7)  (estimated)
-						- shaderdb: 2414 instructions, 1114 nops, 1300 non-nops, (1406 instlen), 0 last-baryf, 0 half, 19 full
+
+						- shaderdb: 2414 instr, 1114 nops, 1300 non-nops, 46 mov, 2 cov
+						- shaderdb: 0 last-baryf, 0 half, 19 full, 29 constlen
 						- shaderdb: 1120 cat0, 48 cat1, 551 cat2, 512 cat3, 183 cat4, 0 cat5, 0 cat6, 0 cat7
-						- shaderdb: 140 (ss), 0 (sy)
+						- shaderdb: 1326 sstall, 140 (ss), 0 (sy)
 0000000001120164:					0000: 70348003 16320000 01013000 00000000
 t4					write VFD_CONTROL_1 (a001)
 						VFD_CONTROL_1: { REGID4VTX = r63.x | REGID4INST = r63.x | REGID4PRIMID = r63.x | REGID4VIEWID = r63.x }
@@ -5334,13 +5334,13 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				- used (full): (cnt=0, max=0)
 				- input (half): (cnt=0, max=0)
 				- input (full): (cnt=0, max=0)
-				- max const: 0
-
 				- output (half): (cnt=0, max=0)  (estimated)
 				- output (full): (cnt=0, max=0)  (estimated)
-				- shaderdb: 5 instructions, 4 nops, 1 non-nops, (5 instlen), 0 last-baryf, 0 half, 0 full
+
+				- shaderdb: 5 instr, 4 nops, 1 non-nops, 0 mov, 0 cov
+				- shaderdb: 0 last-baryf, 0 half, 0 full, 0 constlen
 				- shaderdb: 5 cat0, 0 cat1, 0 cat2, 0 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
-				- shaderdb: 0 (ss), 0 (sy)
+				- shaderdb: 0 sstall, 0 (ss), 0 (sy)
  +	00000100			SP_VS_CONFIG: { ENABLED | NTEX = 0 | NSAMP = 0 | NIBO = 0 }
  +	00000001			SP_VS_INSTRLEN: 1
  +	00000000			SP_HS_WAVE_INPUT_SIZE: 0
@@ -6772,13 +6772,13 @@ t7			opcode: CP_DRAW_INDX_OFFSET (38) (4 dwords)
 				- used (full): 0-73 (cnt=74, max=73)
 				- input (half): 38-41 (cnt=4, max=41)
 				- input (full): 19-20 (cnt=2, max=20)
-				- max const: 113
-
 				- output (half): 8-15 (cnt=8, max=15)  (estimated)
 				- output (full): 4-7 (cnt=4, max=7)  (estimated)
-				- shaderdb: 2414 instructions, 1114 nops, 1300 non-nops, (1406 instlen), 0 last-baryf, 0 half, 19 full
+
+				- shaderdb: 2414 instr, 1114 nops, 1300 non-nops, 46 mov, 2 cov
+				- shaderdb: 0 last-baryf, 0 half, 19 full, 29 constlen
 				- shaderdb: 1120 cat0, 48 cat1, 551 cat2, 512 cat3, 183 cat4, 0 cat5, 0 cat6, 0 cat7
-				- shaderdb: 140 (ss), 0 (sy)
+				- shaderdb: 1326 sstall, 140 (ss), 0 (sy)
 !+	00000100			SP_BLEND_CNTL: { UNK8 }
  +	fcfcfc00			SP_FS_OUTPUT_CNTL0: { DEPTH_REGID = r63.x | SAMPMASK_REGID = r63.x | STENCILREF_REGID = r63.x }
 !+	00000001			SP_FS_OUTPUT_CNTL1: { MRT = 1 }
