@@ -1022,24 +1022,19 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       if (index_size != sctx->last_index_size || sctx->shadowed_regs) {
          unsigned index_type;
 
-         /* index type */
-         switch (index_size) {
-         case 1:
-            index_type = V_028A7C_VGT_INDEX_8;
-            break;
-         case 2:
-            index_type =
-               V_028A7C_VGT_INDEX_16 |
-               (SI_BIG_ENDIAN && GFX_VERSION <= GFX7 ? V_028A7C_VGT_DMA_SWAP_16_BIT : 0);
-            break;
-         case 4:
-            index_type =
-               V_028A7C_VGT_INDEX_32 |
-               (SI_BIG_ENDIAN && GFX_VERSION <= GFX7 ? V_028A7C_VGT_DMA_SWAP_32_BIT : 0);
-            break;
-         default:
-            assert(!"unreachable");
-            return;
+         /* Index type computation. When we look at how we need to translate index_size,
+          * we can see that we just need 2 shifts to get the hw value.
+          *
+          * 1 = 001b --> 10b = 2
+          * 2 = 010b --> 00b = 0
+          * 4 = 100b --> 01b = 1
+          */
+         index_type = ((index_size >> 2) | (index_size << 1)) & 0x3;
+
+         if (GFX_VERSION <= GFX7 && SI_BIG_ENDIAN) {
+            /* GFX7 doesn't support ubyte indices. */
+            index_type |= index_size == 2 ? V_028A7C_VGT_DMA_SWAP_16_BIT
+                                          : V_028A7C_VGT_DMA_SWAP_32_BIT;
          }
 
          if (GFX_VERSION >= GFX9) {
