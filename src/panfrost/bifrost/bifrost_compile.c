@@ -2384,6 +2384,15 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         util_dynarray_init(&program->compiled, NULL);
         bi_pack(ctx, &program->compiled);
 
+        /* If we need to wait for ATEST or BLEND in the first clause, pass the
+         * corresponding bits through to the renderer state descriptor */
+        pan_block *first_block = list_first_entry(&ctx->blocks, pan_block, link);
+        bi_clause *first_clause = bi_next_clause(ctx, first_block, NULL);
+
+        unsigned first_deps = first_clause->dependencies;
+        program->wait_6 = (first_deps & (1 << 6));
+        program->wait_7 = (first_deps & (1 << 7));
+
         memcpy(program->blend_ret_offsets, ctx->blend_ret_offsets, sizeof(program->blend_ret_offsets));
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
