@@ -2115,8 +2115,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
 
    /* Workaround for a VGT hang when streamout is enabled.
     * It must be done after drawing. */
-   if ((GFX_VERSION == GFX7 || GFX_VERSION == GFX8) &&
-       (sctx->family == CHIP_HAWAII || sctx->family == CHIP_TONGA || sctx->family == CHIP_FIJI) &&
+   if (((GFX_VERSION == GFX7 && sctx->family == CHIP_HAWAII) ||
+        (GFX_VERSION == GFX8 && (sctx->family == CHIP_TONGA || sctx->family == CHIP_FIJI))) &&
        si_get_strmout_en(sctx)) {
       sctx->flags |= SI_CONTEXT_VGT_STREAMOUT_SYNC;
    }
