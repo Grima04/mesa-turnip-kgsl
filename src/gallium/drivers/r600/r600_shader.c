@@ -11134,6 +11134,76 @@ static int egcm_u64add(struct r600_shader_ctx *ctx)
 	return 0;
 }
 
+
+static int egcm_i64neg(struct r600_shader_ctx *ctx)
+{
+	struct tgsi_full_instruction *inst = &ctx->parse.FullToken.FullInstruction;
+	struct r600_bytecode_alu alu;
+	int r;
+	int treg = ctx->temp_reg;
+	const int op = ALU_OP2_SUB_INT;
+	const int opc = ALU_OP2_SUBB_UINT;
+
+	memset(&alu, 0, sizeof(struct r600_bytecode_alu));
+	alu.op = op;            ;
+	alu.dst.sel = treg;
+	alu.dst.chan = 0;
+	alu.dst.write = 1;
+	alu.src[0].sel = V_SQ_ALU_SRC_0;
+	r600_bytecode_src(&alu.src[1], &ctx->src[0], 0);
+	alu.src[1].neg = 0;
+	r = r600_bytecode_add_alu(ctx->bc, &alu);
+	if (r)
+		return r;
+
+	memset(&alu, 0, sizeof(struct r600_bytecode_alu));
+	alu.op = op;
+	alu.dst.sel = treg;
+	alu.dst.chan = 1;
+	alu.dst.write = 1;
+	alu.src[0].sel = V_SQ_ALU_SRC_0;
+	r600_bytecode_src(&alu.src[1], &ctx->src[0], 1);
+	alu.src[1].neg = 0;
+	r = r600_bytecode_add_alu(ctx->bc, &alu);
+	if (r)
+		return r;
+
+	memset(&alu, 0, sizeof(struct r600_bytecode_alu));
+	alu.op = opc              ;
+	alu.dst.sel = treg;
+	alu.dst.chan = 2;
+	alu.dst.write = 1;
+	alu.last = 1;
+	alu.src[0].sel = V_SQ_ALU_SRC_0;
+	r600_bytecode_src(&alu.src[1], &ctx->src[0], 0);
+	alu.src[1].neg = 0;
+	r = r600_bytecode_add_alu(ctx->bc, &alu);
+	if (r)
+		return r;
+
+	memset(&alu, 0, sizeof(struct r600_bytecode_alu));
+	alu.op = op;
+	tgsi_dst(ctx, &inst->Dst[0], 1, &alu.dst);
+	alu.src[0].sel = treg;
+	alu.src[0].chan = 1;
+	alu.src[1].sel = treg;
+	alu.src[1].chan = 2;
+	alu.last = 1;
+	r = r600_bytecode_add_alu(ctx->bc, &alu);
+	if (r)
+		return r;
+	memset(&alu, 0, sizeof(struct r600_bytecode_alu));
+	alu.op = ALU_OP1_MOV;
+	tgsi_dst(ctx, &inst->Dst[0], 0, &alu.dst);
+	alu.src[0].sel = treg;
+	alu.src[0].chan = 0;
+	alu.last = 1;
+	r = r600_bytecode_add_alu(ctx->bc, &alu);
+	if (r)
+		return r;
+	return 0;
+}
+
 /* result.y = mul_high a, b
    result.x = mul a,b
    result.y += a.x * b.y + a.y * b.x;
@@ -12091,6 +12161,7 @@ static const struct r600_shader_tgsi_instruction eg_shader_tgsi_instruction[] = 
 	[TGSI_OPCODE_U64ADD]    = { ALU_OP0_NOP, egcm_u64add },
 	[TGSI_OPCODE_U64MUL]    = { ALU_OP0_NOP, egcm_u64mul },
 	[TGSI_OPCODE_U64DIV]    = { ALU_OP0_NOP, egcm_u64div },
+	[TGSI_OPCODE_I64NEG]    = { ALU_OP0_NOP, egcm_i64neg },
 	[TGSI_OPCODE_LAST]	= { ALU_OP0_NOP, tgsi_unsupported},
 };
 
@@ -12317,5 +12388,6 @@ static const struct r600_shader_tgsi_instruction cm_shader_tgsi_instruction[] = 
 	[TGSI_OPCODE_U64ADD]    = { ALU_OP0_NOP, egcm_u64add },
 	[TGSI_OPCODE_U64MUL]    = { ALU_OP0_NOP, egcm_u64mul },
 	[TGSI_OPCODE_U64DIV]    = { ALU_OP0_NOP, egcm_u64div },
+	[TGSI_OPCODE_I64NEG]    = { ALU_OP0_NOP, egcm_i64neg },
 	[TGSI_OPCODE_LAST]	= { ALU_OP0_NOP, tgsi_unsupported},
 };
