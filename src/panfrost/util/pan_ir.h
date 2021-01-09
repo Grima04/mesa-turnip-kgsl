@@ -108,6 +108,10 @@ typedef struct {
          * (register spilling), or zero if no spilling is used */
         unsigned tls_size;
 
+        /* For Bifrost, should the program wait on dependency slots 6/7 before
+         * starting? For ATEST/BLEND in the first clause, which can occur with
+         * extremely simple shaders */
+        bool wait_6, wait_7;
 } panfrost_program;
 
 struct panfrost_compile_inputs {

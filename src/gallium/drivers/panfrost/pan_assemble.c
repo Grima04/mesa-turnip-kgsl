@@ -62,9 +62,9 @@ pan_prepare_midgard_props(struct panfrost_shader_state *state,
 
 static void
 pan_prepare_bifrost_props(struct panfrost_shader_state *state,
+                          panfrost_program *program,
                           gl_shader_stage stage)
 {
-
         switch (stage) {
         case MESA_SHADER_VERTEX:
                 pan_prepare(&state->properties, RENDERER_PROPERTIES);
@@ -91,6 +91,8 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                 }
                 state->properties.uniform_buffer_count = state->ubo_count;
                 state->properties.bifrost.shader_modifies_coverage = state->can_discard;
+                state->properties.bifrost.shader_wait_dependency_6 = program->wait_6;
+                state->properties.bifrost.shader_wait_dependency_7 = program->wait_7;
 
                 pan_prepare(&state->preload, PRELOAD);
                 state->preload.uniform_count = state->uniform_count;
@@ -420,7 +422,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->shader.sampler_count = s->info.num_textures;
 
         if (dev->quirks & IS_BIFROST)
-                pan_prepare_bifrost_props(state, stage);
+                pan_prepare_bifrost_props(state, program, stage);
         else
                 pan_prepare_midgard_props(state, stage);
 
