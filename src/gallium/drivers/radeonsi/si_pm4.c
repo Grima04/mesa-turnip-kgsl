@@ -99,8 +99,14 @@ void si_pm4_free_state(struct si_context *sctx, struct si_pm4_state *state, unsi
    if (!state)
       return;
 
-   if (idx != ~0 && sctx->emitted.array[idx] == state) {
-      sctx->emitted.array[idx] = NULL;
+   if (idx != ~0) {
+      if (sctx->emitted.array[idx] == state)
+         sctx->emitted.array[idx] = NULL;
+
+      if (sctx->queued.array[idx] == state) {
+         sctx->queued.array[idx] = NULL;
+         sctx->dirty_states &= ~BITFIELD_BIT(idx);
+      }
    }
 
    si_pm4_clear_state(state);

@@ -485,12 +485,7 @@ struct si_buffer_resources {
    } while (0)
 
 #define si_pm4_delete_state(sctx, member, value)                                                   \
-   do {                                                                                            \
-      if ((sctx)->queued.named.member == (value)) {                                                \
-         (sctx)->queued.named.member = NULL;                                                       \
-      }                                                                                            \
-      si_pm4_free_state(sctx, (struct si_pm4_state *)(value), SI_STATE_IDX(member));               \
-   } while (0)
+   si_pm4_free_state(sctx, (struct si_pm4_state *)(value), SI_STATE_IDX(member))
 
 /* si_descriptors.c */
 void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture *tex,
