@@ -1273,12 +1273,14 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    UNOP(nir_op_f2u32, SpvOpConvertFToU)
    UNOP(nir_op_i2f32, SpvOpConvertSToF)
    UNOP(nir_op_u2f32, SpvOpConvertUToF)
+   UNOP(nir_op_i2i32, SpvOpSConvert)
    UNOP(nir_op_u2u32, SpvOpUConvert)
    UNOP(nir_op_f2f32, SpvOpFConvert)
    UNOP(nir_op_f2i64, SpvOpConvertFToS)
    UNOP(nir_op_f2u64, SpvOpConvertFToU)
    UNOP(nir_op_u2f64, SpvOpConvertUToF)
    UNOP(nir_op_i2f64, SpvOpConvertSToF)
+   UNOP(nir_op_i2i64, SpvOpSConvert)
    UNOP(nir_op_u2u64, SpvOpUConvert)
    UNOP(nir_op_f2f64, SpvOpFConvert)
    UNOP(nir_op_bitfield_reverse, SpvOpBitReverse)
@@ -1293,10 +1295,11 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       break;
 
    case nir_op_b2i32:
+   case nir_op_b2i64:
       assert(nir_op_infos[alu->op].num_inputs == 1);
       result = emit_select(ctx, dest_type, src[0],
-                           get_ivec_constant(ctx, 32, num_components, 1),
-                           get_ivec_constant(ctx, 32, num_components, 0));
+                           get_ivec_constant(ctx, bit_size, num_components, 1),
+                           get_ivec_constant(ctx, bit_size, num_components, 0));
       break;
 
    case nir_op_b2f32:
