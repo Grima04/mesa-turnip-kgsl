@@ -1653,10 +1653,45 @@ static void si_draw_vbo(struct pipe_context *ctx,
                         const struct pipe_draw_start_count *draws,
                         unsigned num_draws)
 {
+   /* Keep code that uses the least number of local variables as close to the beginning
+    * of this function as possible to minimize register pressure.
+    *
+    * It doesn't matter where we return due to invalid parameters because such cases
+    * shouldn't occur in practice.
+    */
    struct si_context *sctx = (struct si_context *)ctx;
+
+   /* Recompute and re-emit the texture resource states if needed. */
+   unsigned dirty_tex_counter = p_atomic_read(&sctx->screen->dirty_tex_counter);
+   if (unlikely(dirty_tex_counter != sctx->last_dirty_tex_counter)) {
+      sctx->last_dirty_tex_counter = dirty_tex_counter;
+      sctx->framebuffer.dirty_cbufs |= ((1 << sctx->framebuffer.state.nr_cbufs) - 1);
+      sctx->framebuffer.dirty_zsbuf = true;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
+      si_update_all_texture_descriptors(sctx);
+   }
+
+   unsigned dirty_buf_counter = p_atomic_read(&sctx->screen->dirty_buf_counter);
+   if (unlikely(dirty_buf_counter != sctx->last_dirty_buf_counter)) {
+      sctx->last_dirty_buf_counter = dirty_buf_counter;
+      /* Rebind all buffers unconditionally. */
+      si_rebind_buffer(sctx, NULL);
+   }
+
+   si_decompress_textures(sctx, u_bit_consecutive(0, SI_NUM_GRAPHICS_SHADERS));
+   si_need_gfx_cs_space(sctx, num_draws);
+
+   /* If we're using a secure context, determine if cs must be secure or not */
+   if (GFX_VERSION >= GFX9 && unlikely(radeon_uses_secure_bos(sctx->ws))) {
+      bool secure = si_gfx_resources_check_encrypted(sctx);
+      if (secure != sctx->ws->cs_is_secure(&sctx->gfx_cs)) {
+         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW |
+                               RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
+      }
+   }
+
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    struct pipe_resource *indexbuf = info->index.resource;
-   unsigned dirty_tex_counter, dirty_buf_counter;
    enum pipe_prim_type rast_prim, prim = info->mode;
    unsigned index_size = info->index_size;
    unsigned index_offset = indirect && indirect->buffer ? draws[0].start * index_size : 0;
@@ -1679,25 +1714,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
       assert(0);
       return;
    }
-
-   /* Recompute and re-emit the texture resource states if needed. */
-   dirty_tex_counter = p_atomic_read(&sctx->screen->dirty_tex_counter);
-   if (unlikely(dirty_tex_counter != sctx->last_dirty_tex_counter)) {
-      sctx->last_dirty_tex_counter = dirty_tex_counter;
-      sctx->framebuffer.dirty_cbufs |= ((1 << sctx->framebuffer.state.nr_cbufs) - 1);
-      sctx->framebuffer.dirty_zsbuf = true;
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
-      si_update_all_texture_descriptors(sctx);
-   }
-
-   dirty_buf_counter = p_atomic_read(&sctx->screen->dirty_buf_counter);
-   if (unlikely(dirty_buf_counter != sctx->last_dirty_buf_counter)) {
-      sctx->last_dirty_buf_counter = dirty_buf_counter;
-      /* Rebind all buffers unconditionally. */
-      si_rebind_buffer(sctx, NULL);
-   }
-
-   si_decompress_textures(sctx, u_bit_consecutive(0, SI_NUM_GRAPHICS_SHADERS));
 
    /* Set the rasterization primitive type.
     *
@@ -2029,20 +2045,12 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
    }
 
-   si_need_gfx_cs_space(sctx, num_draws);
-
-   /* If we're using a secure context, determine if cs must be secure or not */
-   if (GFX_VERSION >= GFX9 && unlikely(radeon_uses_secure_bos(sctx->ws))) {
-      bool secure = si_gfx_resources_check_encrypted(sctx);
-      if (secure != sctx->ws->cs_is_secure(&sctx->gfx_cs)) {
-         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW |
-                               RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
-      }
-   }
-
    /* Since we've called si_context_add_resource_size for vertex buffers,
     * this must be called after si_need_cs_space, because we must let
     * need_cs_space flush before we add buffers to the buffer list.
+    *
+    * This must be done after si_update_shaders because si_update_shaders can
+    * flush the CS when enabling tess and GS rings.
     */
    if (sctx->bo_list_add_all_gfx_resources)
       si_gfx_resources_add_all_to_bo_list(sctx);
