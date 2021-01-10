@@ -222,11 +222,14 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_pack_64_2x32_split = true,
       .lower_unpack_64_2x32_split = true,
       .use_scoped_barrier = true,
-      .lower_int64_options = ~0,
+      .lower_int64_options = 0,
       .lower_doubles_options = ~nir_lower_fp64_full_software,
    };
 
    screen->nir_options = default_options;
+
+   if (!screen->info.feats.features.shaderInt64)
+      screen->nir_options.lower_int64_options = ~0;
 
    if (!screen->info.feats.features.shaderFloat64)
       screen->nir_options.lower_doubles_options = ~0;
