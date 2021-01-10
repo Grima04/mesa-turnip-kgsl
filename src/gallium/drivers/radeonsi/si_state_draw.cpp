@@ -1484,24 +1484,30 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 
    /* Emit state atoms. */
    unsigned mask = sctx->dirty_atoms & ~skip_atom_mask;
-   while (mask)
-      sctx->atoms.array[u_bit_scan(&mask)].emit(sctx);
+   if (mask) {
+      do {
+         sctx->atoms.array[u_bit_scan(&mask)].emit(sctx);
+      } while (mask);
 
-   sctx->dirty_atoms &= skip_atom_mask;
+      sctx->dirty_atoms &= skip_atom_mask;
+   }
 
    /* Emit states. */
    mask = sctx->dirty_states;
-   while (mask) {
-      unsigned i = u_bit_scan(&mask);
-      struct si_pm4_state *state = sctx->queued.array[i];
+   if (mask) {
+      do {
+         unsigned i = u_bit_scan(&mask);
+         struct si_pm4_state *state = sctx->queued.array[i];
 
-      if (!state || sctx->emitted.array[i] == state)
-         continue;
+         if (!state || sctx->emitted.array[i] == state)
+            continue;
 
-      si_pm4_emit(sctx, state);
-      sctx->emitted.array[i] = state;
+         si_pm4_emit(sctx, state);
+         sctx->emitted.array[i] = state;
+      } while (mask);
+
+      sctx->dirty_states = 0;
    }
-   sctx->dirty_states = 0;
 
    /* Emit draw states. */
    si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, info->index_size);
