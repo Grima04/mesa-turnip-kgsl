@@ -1339,7 +1339,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    ac_print_shadowed_regs(&sscreen->info);
 
-   STATIC_ASSERT(sizeof(union si_vgt_stages_key) == 4);
+   STATIC_ASSERT(sizeof(union si_vgt_stages_key) == 1);
    return &sscreen->b;
 }
 

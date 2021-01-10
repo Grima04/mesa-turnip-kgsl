@@ -820,30 +820,30 @@ struct si_shader_ctx_state {
 union si_vgt_param_key {
    struct {
 #if UTIL_ARCH_LITTLE_ENDIAN
-      unsigned prim : 4;
-      unsigned uses_instancing : 1;
-      unsigned multi_instances_smaller_than_primgroup : 1;
-      unsigned primitive_restart : 1;
-      unsigned count_from_stream_output : 1;
-      unsigned line_stipple_enabled : 1;
-      unsigned uses_tess : 1;
-      unsigned tess_uses_prim_id : 1;
-      unsigned uses_gs : 1;
-      unsigned _pad : 32 - SI_NUM_VGT_PARAM_KEY_BITS;
+      uint16_t prim : 4;
+      uint16_t uses_instancing : 1;
+      uint16_t multi_instances_smaller_than_primgroup : 1;
+      uint16_t primitive_restart : 1;
+      uint16_t count_from_stream_output : 1;
+      uint16_t line_stipple_enabled : 1;
+      uint16_t uses_tess : 1;
+      uint16_t tess_uses_prim_id : 1;
+      uint16_t uses_gs : 1;
+      uint16_t _pad : 16 - SI_NUM_VGT_PARAM_KEY_BITS;
 #else /* UTIL_ARCH_BIG_ENDIAN */
-      unsigned _pad : 32 - SI_NUM_VGT_PARAM_KEY_BITS;
-      unsigned uses_gs : 1;
-      unsigned tess_uses_prim_id : 1;
-      unsigned uses_tess : 1;
-      unsigned line_stipple_enabled : 1;
-      unsigned count_from_stream_output : 1;
-      unsigned primitive_restart : 1;
-      unsigned multi_instances_smaller_than_primgroup : 1;
-      unsigned uses_instancing : 1;
-      unsigned prim : 4;
+      uint16_t _pad : 16 - SI_NUM_VGT_PARAM_KEY_BITS;
+      uint16_t uses_gs : 1;
+      uint16_t tess_uses_prim_id : 1;
+      uint16_t uses_tess : 1;
+      uint16_t line_stipple_enabled : 1;
+      uint16_t count_from_stream_output : 1;
+      uint16_t primitive_restart : 1;
+      uint16_t multi_instances_smaller_than_primgroup : 1;
+      uint16_t uses_instancing : 1;
+      uint16_t prim : 4;
 #endif
    } u;
-   uint32_t index;
+   uint16_t index;
 };
 
 #define SI_NUM_VGT_STAGES_KEY_BITS 6
@@ -855,24 +855,24 @@ union si_vgt_param_key {
 union si_vgt_stages_key {
    struct {
 #if UTIL_ARCH_LITTLE_ENDIAN
-      unsigned tess : 1;
-      unsigned gs : 1;
-      unsigned ngg_gs_fast_launch : 1;
-      unsigned ngg_passthrough : 1;
-      unsigned ngg : 1;       /* gfx10+ */
-      unsigned streamout : 1; /* only used with NGG */
-      unsigned _pad : 32 - SI_NUM_VGT_STAGES_KEY_BITS;
+      uint8_t tess : 1;
+      uint8_t gs : 1;
+      uint8_t ngg_gs_fast_launch : 1;
+      uint8_t ngg_passthrough : 1;
+      uint8_t ngg : 1;       /* gfx10+ */
+      uint8_t streamout : 1; /* only used with NGG */
+      uint8_t _pad : 8 - SI_NUM_VGT_STAGES_KEY_BITS;
 #else /* UTIL_ARCH_BIG_ENDIAN */
-      unsigned _pad : 32 - SI_NUM_VGT_STAGES_KEY_BITS;
-      unsigned streamout : 1;
-      unsigned ngg : 1;
-      unsigned ngg_passthrough : 1;
-      unsigned ngg_gs_fast_launch : 1;
-      unsigned gs : 1;
-      unsigned tess : 1;
+      uint8_t _pad : 8 - SI_NUM_VGT_STAGES_KEY_BITS;
+      uint8_t streamout : 1;
+      uint8_t ngg : 1;
+      uint8_t ngg_passthrough : 1;
+      uint8_t ngg_gs_fast_launch : 1;
+      uint8_t gs : 1;
+      uint8_t tess : 1;
 #endif
    } u;
-   uint32_t index;
+   uint8_t index;
 };
 
 struct si_texture_handle {

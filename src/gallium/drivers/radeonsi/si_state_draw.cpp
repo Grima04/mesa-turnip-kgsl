@@ -480,7 +480,7 @@ static unsigned si_num_prims_for_vertices(enum pipe_prim_type prim,
 
 static unsigned si_get_init_multi_vgt_param(struct si_screen *sscreen, union si_vgt_param_key *key)
 {
-   STATIC_ASSERT(sizeof(union si_vgt_param_key) == 4);
+   STATIC_ASSERT(sizeof(union si_vgt_param_key) == 2);
    unsigned max_primgroup_in_wave = 2;
 
    /* SWITCH_ON_EOP(0) is always preferable. */
