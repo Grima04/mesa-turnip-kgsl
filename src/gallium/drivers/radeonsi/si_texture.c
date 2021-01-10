@@ -2476,13 +2476,20 @@ void si_init_screen_texture_functions(struct si_screen *sscreen)
    sscreen->b.resource_get_param = si_resource_get_param;
    sscreen->b.resource_get_info = si_texture_get_info;
    sscreen->b.resource_from_memobj = si_resource_from_memobj;
-   sscreen->b.resource_create_with_modifiers = si_texture_create_with_modifiers;
    sscreen->b.memobj_create_from_handle = si_memobj_from_handle;
    sscreen->b.memobj_destroy = si_memobj_destroy;
    sscreen->b.check_resource_capability = si_check_resource_capability;
-   sscreen->b.query_dmabuf_modifiers = si_query_dmabuf_modifiers;
-   sscreen->b.is_dmabuf_modifier_supported = si_is_dmabuf_modifier_supported;
-   sscreen->b.get_dmabuf_modifier_planes = si_get_dmabuf_modifier_planes;
+
+   /* By not setting it the frontend will fall back to non-modifier create,
+    * which works around some applications using modifiers that are not
+    * allowed in combination with lack of error reporting in
+    * gbm_dri_surface_create */
+   if (sscreen->info.chip_class >= GFX9 && sscreen->info.kernel_has_modifiers) {
+      sscreen->b.resource_create_with_modifiers = si_texture_create_with_modifiers;
+      sscreen->b.query_dmabuf_modifiers = si_query_dmabuf_modifiers;
+      sscreen->b.is_dmabuf_modifier_supported = si_is_dmabuf_modifier_supported;
+      sscreen->b.get_dmabuf_modifier_planes = si_get_dmabuf_modifier_planes;
+   }
 }
 
 void si_init_context_texture_functions(struct si_context *sctx)

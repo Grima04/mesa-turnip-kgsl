@@ -672,7 +672,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_read_registers_query = true;
    info->has_scheduled_fence_dependency = info->drm_minor >= 28;
    info->mid_command_buffer_preemption_enabled = amdinfo->ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
-	info->has_tmz_support = has_tmz_support(dev, info, amdinfo);
+   info->has_tmz_support = has_tmz_support(dev, info, amdinfo);
+   info->kernel_has_modifiers = info->chip_class >= GFX9 && info->drm_minor >= 40;
 
    info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
    info->max_render_backends = amdinfo->rb_pipes;

@@ -161,6 +161,7 @@ struct radeon_info {
    /* Whether SR-IOV is enabled or amdgpu.mcbp=1 was set on the kernel command line. */
    bool mid_command_buffer_preemption_enabled;
    bool has_tmz_support;
+   bool kernel_has_modifiers;
 
    /* Shader cores. */
    uint32_t cu_mask[4][2];
