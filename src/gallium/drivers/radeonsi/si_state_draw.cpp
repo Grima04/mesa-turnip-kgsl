@@ -1690,58 +1690,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
    }
 
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-   struct pipe_resource *indexbuf = info->index.resource;
-   enum pipe_prim_type rast_prim, prim = info->mode;
-   unsigned index_size = info->index_size;
-   unsigned index_offset = indirect && indirect->buffer ? draws[0].start * index_size : 0;
-   unsigned instance_count = info->instance_count;
-   bool primitive_restart =
-      info->primitive_restart &&
-      (!sctx->screen->options.prim_restart_tri_strips_only ||
-       (prim != PIPE_PRIM_TRIANGLE_STRIP && prim != PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY));
-
-   /* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
-    * no workaround for indirect draws, but we can at least skip
-    * direct draws.
-    */
-   if (GFX_VERSION <= GFX7 && unlikely(!indirect && !instance_count))
-      return;
-
-   struct si_shader_selector *vs = sctx->vs_shader.cso;
-   if (unlikely(!vs || sctx->num_vertex_elements < vs->num_vs_inputs ||
-                !sctx->ps_shader.cso || (HAS_TESS != (prim == PIPE_PRIM_PATCHES)))) {
-      assert(0);
-      return;
-   }
-
-   /* Set the rasterization primitive type.
-    *
-    * This must be done after si_decompress_textures, which can call
-    * draw_vbo recursively, and before si_update_shaders, which uses
-    * current_rast_prim for this draw_vbo call. */
-   if (HAS_GS) {
-      /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      rast_prim = sctx->gs_shader.cso->rast_prim;
-   } else if (HAS_TESS) {
-      /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      rast_prim = sctx->tes_shader.cso->rast_prim;
-   } else if (util_rast_prim_is_triangles(prim)) {
-      rast_prim = PIPE_PRIM_TRIANGLES;
-   } else {
-      /* Only possibilities, POINTS, LINE*, RECTANGLES */
-      rast_prim = prim;
-   }
-
-   if (rast_prim != sctx->current_rast_prim) {
-      if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
-          util_prim_is_points_or_lines(rast_prim))
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
-
-      sctx->current_rast_prim = rast_prim;
-      sctx->do_update_shaders = true;
-   }
-
    if (HAS_TESS) {
       struct si_shader_selector *tcs = sctx->tcs_shader.cso;
 
@@ -1773,6 +1721,23 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
    }
 
+   enum pipe_prim_type prim = info->mode;
+   unsigned instance_count = info->instance_count;
+
+   /* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
+    * no workaround for indirect draws, but we can at least skip
+    * direct draws.
+    */
+   if (GFX_VERSION <= GFX7 && unlikely(!indirect && !instance_count))
+      return;
+
+   struct si_shader_selector *vs = sctx->vs_shader.cso;
+   if (unlikely(!vs || sctx->num_vertex_elements < vs->num_vs_inputs ||
+                !sctx->ps_shader.cso || (HAS_TESS != (prim == PIPE_PRIM_PATCHES)))) {
+      assert(0);
+      return;
+   }
+
    if (GFX_VERSION <= GFX9 && HAS_GS) {
       /* Determine whether the GS triangle strip adjacency fix should
        * be applied. Rotate every other triangle if triangle strips with
@@ -1787,6 +1752,10 @@ static void si_draw_vbo(struct pipe_context *ctx,
          sctx->do_update_shaders = true;
       }
    }
+
+   struct pipe_resource *indexbuf = info->index.resource;
+   unsigned index_size = info->index_size;
+   unsigned index_offset = indirect && indirect->buffer ? draws[0].start * index_size : 0;
 
    if (index_size) {
       /* Translate or upload, if needed. */
@@ -1834,9 +1803,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
    }
 
-   bool dispatch_prim_discard_cs = false;
-   bool prim_discard_cs_instancing = false;
-   unsigned original_index_size = index_size;
    unsigned min_direct_count = 0;
    unsigned total_direct_count = 0;
 
@@ -1868,6 +1834,15 @@ static void si_draw_vbo(struct pipe_context *ctx,
          min_direct_count = MIN2(min_direct_count, count);
       }
    }
+
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+   bool primitive_restart =
+      info->primitive_restart &&
+      (!sctx->screen->options.prim_restart_tri_strips_only ||
+       (prim != PIPE_PRIM_TRIANGLE_STRIP && prim != PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY));
+   bool dispatch_prim_discard_cs = false;
+   bool prim_discard_cs_instancing = false;
+   unsigned original_index_size = index_size;
 
    /* Determine if we can use the primitive discard compute shader. */
    if (ALLOW_PRIM_DISCARD_CS && !HAS_TESS && !HAS_GS &&
@@ -1948,6 +1923,35 @@ static void si_draw_vbo(struct pipe_context *ctx,
    if (ALLOW_PRIM_DISCARD_CS &&
        prim_discard_cs_instancing != sctx->prim_discard_cs_instancing) {
       sctx->prim_discard_cs_instancing = prim_discard_cs_instancing;
+      sctx->do_update_shaders = true;
+   }
+
+   /* Set the rasterization primitive type.
+    *
+    * This must be done after si_decompress_textures, which can call
+    * draw_vbo recursively, and before si_update_shaders, which uses
+    * current_rast_prim for this draw_vbo call. */
+   enum pipe_prim_type rast_prim;
+
+   if (HAS_GS) {
+      /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
+      rast_prim = sctx->gs_shader.cso->rast_prim;
+   } else if (HAS_TESS) {
+      /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
+      rast_prim = sctx->tes_shader.cso->rast_prim;
+   } else if (util_rast_prim_is_triangles(prim)) {
+      rast_prim = PIPE_PRIM_TRIANGLES;
+   } else {
+      /* Only possibilities, POINTS, LINE*, RECTANGLES */
+      rast_prim = prim;
+   }
+
+   if (rast_prim != sctx->current_rast_prim) {
+      if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
+          util_prim_is_points_or_lines(rast_prim))
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
+
+      sctx->current_rast_prim = rast_prim;
       sctx->do_update_shaders = true;
    }
 
@@ -2055,6 +2059,9 @@ static void si_draw_vbo(struct pipe_context *ctx,
    if (sctx->bo_list_add_all_gfx_resources)
       si_gfx_resources_add_all_to_bo_list(sctx);
 
+   /* Graphics shader descriptors must be uploaded after si_update_shaders because
+    * it binds tess and GS ring buffers.
+    */
    if (unlikely(!si_upload_graphics_shader_descriptors(sctx) ||
                 !si_upload_vertex_buffer_descriptors<GFX_VERSION>(sctx))) {
       DRAW_CLEANUP;
