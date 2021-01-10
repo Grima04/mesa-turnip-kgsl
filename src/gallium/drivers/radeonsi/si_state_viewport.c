@@ -50,7 +50,7 @@ void si_get_small_prim_cull_info(struct si_context *sctx, struct si_small_prim_c
     * bounding box, so min becomes max, which breaks small primitive
     * culling.
     */
-   if (sctx->viewports.y_inverted) {
+   if (sctx->viewport0_y_inverted) {
       info.scale[1] = -info.scale[1];
       info.translate[1] = -info.translate[1];
    }
@@ -471,7 +471,7 @@ static void si_set_viewport_states(struct pipe_context *pctx, unsigned start_slo
    }
 
    if (start_slot == 0) {
-      ctx->viewports.y_inverted =
+      ctx->viewport0_y_inverted =
          -state->scale[1] + state->translate[1] > state->scale[1] + state->translate[1];
 
       /* NGG cull state uses the viewport and quant mode. */

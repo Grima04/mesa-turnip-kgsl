@@ -754,7 +754,6 @@ struct si_signed_scissor {
 struct si_viewports {
    struct pipe_viewport_state states[SI_MAX_VIEWPORTS];
    struct si_signed_scissor as_scissor[SI_MAX_VIEWPORTS];
-   bool y_inverted;
 };
 
 struct si_streamout_target {
@@ -1025,6 +1024,7 @@ struct si_context {
    struct si_stencil_ref stencil_ref;
    bool blend_color_any_nonzeros:1;
    bool clip_state_any_nonzeros:1;
+   bool viewport0_y_inverted;
    struct pipe_scissor_state scissors[SI_MAX_VIEWPORTS];
    struct si_streamout streamout;
    struct si_viewports viewports;

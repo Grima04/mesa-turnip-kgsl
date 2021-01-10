@@ -1947,9 +1947,9 @@ static void si_draw_vbo(struct pipe_context *ctx,
             if (!rs->polygon_mode_enabled)
                ngg_culling |= SI_NGG_CULL_VIEW_SMALLPRIMS;
 
-            if (sctx->viewports.y_inverted ? rs->cull_back : rs->cull_front)
+            if (sctx->viewport0_y_inverted ? rs->cull_back : rs->cull_front)
                ngg_culling |= SI_NGG_CULL_FRONT_FACE;
-            if (sctx->viewports.y_inverted ? rs->cull_front : rs->cull_back)
+            if (sctx->viewport0_y_inverted ? rs->cull_front : rs->cull_back)
                ngg_culling |= SI_NGG_CULL_BACK_FACE;
          }
 

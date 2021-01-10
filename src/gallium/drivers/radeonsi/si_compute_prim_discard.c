@@ -874,8 +874,8 @@ static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
       key.opt.cs_cull_front = 1;
       key.opt.cs_cull_back = 1;
    } else {
-      key.opt.cs_cull_front = sctx->viewports.y_inverted ? rs->cull_back : rs->cull_front;
-      key.opt.cs_cull_back = sctx->viewports.y_inverted ? rs->cull_front : rs->cull_back;
+      key.opt.cs_cull_front = sctx->viewport0_y_inverted ? rs->cull_back : rs->cull_front;
+      key.opt.cs_cull_back = sctx->viewport0_y_inverted ? rs->cull_front : rs->cull_back;
    }
 
    if (!rs->depth_clamp_any && CULL_Z) {
