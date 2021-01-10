@@ -1262,7 +1262,7 @@ struct si_context {
    struct pipe_query *render_cond;
    unsigned render_cond_mode;
    bool render_cond_invert;
-   bool render_cond_force_off; /* for u_blitter */
+   bool render_cond_enabled; /* for u_blitter */
 
    /* Shader-based queries. */
    struct list_head shader_query_buffers;

@@ -1073,7 +1073,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    }
 
    unsigned sh_base_reg = sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX];
-   bool render_cond_bit = sctx->render_cond && !sctx->render_cond_force_off;
+   bool render_cond_bit = sctx->render_cond_enabled;
 
    if (indirect) {
       assert(num_draws == 1);

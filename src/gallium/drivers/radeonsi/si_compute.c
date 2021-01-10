@@ -740,7 +740,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
 {
    struct si_screen *sscreen = sctx->screen;
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   bool render_cond_bit = sctx->render_cond && !sctx->render_cond_force_off;
+   bool render_cond_bit = sctx->render_cond_enabled;
    unsigned threads_per_threadgroup = info->block[0] * info->block[1] * info->block[2];
    unsigned waves_per_threadgroup =
       DIV_ROUND_UP(threads_per_threadgroup, sscreen->compute_wave_size);

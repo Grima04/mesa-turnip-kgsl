@@ -1605,8 +1605,8 @@ static void si_render_condition(struct pipe_context *ctx, struct pipe_query *que
       }
 
       if (needs_workaround && !squery->workaround_buf) {
-         bool old_force_off = sctx->render_cond_force_off;
-         sctx->render_cond_force_off = true;
+         bool old_render_cond_enabled = sctx->render_cond_enabled;
+         sctx->render_cond_enabled = false;
 
          u_suballocator_alloc(&sctx->allocator_zeroed_memory, 8, 8, &squery->workaround_offset,
                               (struct pipe_resource **)&squery->workaround_buf);
@@ -1623,13 +1623,14 @@ static void si_render_condition(struct pipe_context *ctx, struct pipe_query *que
           * so set it here. */
          sctx->flags |= sctx->screen->barrier_flags.L2_to_cp | SI_CONTEXT_FLUSH_FOR_RENDER_COND;
 
-         sctx->render_cond_force_off = old_force_off;
+         sctx->render_cond_enabled = old_render_cond_enabled;
       }
    }
 
    sctx->render_cond = query;
    sctx->render_cond_invert = condition;
    sctx->render_cond_mode = mode;
+   sctx->render_cond_enabled = query;
 
    si_set_atom_dirty(sctx, atom, query != NULL);
 }

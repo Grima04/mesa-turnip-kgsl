@@ -74,7 +74,7 @@ void si_blitter_begin(struct si_context *sctx, enum si_blitter_op op)
    }
 
    if (op & SI_DISABLE_RENDER_COND)
-      sctx->render_cond_force_off = true;
+      sctx->render_cond_enabled = false;
 
    if (sctx->screen->dpbb_allowed) {
       sctx->dpbb_force_off = true;
@@ -93,7 +93,7 @@ void si_blitter_end(struct si_context *sctx)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
    }
 
-   sctx->render_cond_force_off = false;
+   sctx->render_cond_enabled = sctx->render_cond;
 
    /* Restore shader pointers because the VS blit shader changed all
     * non-global VS user SGPRs. */
