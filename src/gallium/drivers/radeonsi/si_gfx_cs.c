@@ -472,7 +472,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       /* These don't add any buffers, so skip them with shadowing. */
       si_mark_atom_dirty(ctx, &ctx->atoms.s.clip_regs);
       /* CLEAR_STATE sets zeros. */
-      if (!has_clear_state || ctx->clip_state.any_nonzeros)
+      if (!has_clear_state || ctx->clip_state_any_nonzeros)
          si_mark_atom_dirty(ctx, &ctx->atoms.s.clip_state);
       ctx->sample_locs_num_samples = 0;
       si_mark_atom_dirty(ctx, &ctx->atoms.s.msaa_sample_locs);
@@ -482,7 +482,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
          si_mark_atom_dirty(ctx, &ctx->atoms.s.sample_mask);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.cb_render_state);
       /* CLEAR_STATE sets zeros. */
-      if (!has_clear_state || ctx->blend_color.any_nonzeros)
+      if (!has_clear_state || ctx->blend_color_any_nonzeros)
          si_mark_atom_dirty(ctx, &ctx->atoms.s.blend_color);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.db_render_state);
       if (ctx->chip_class >= GFX9)

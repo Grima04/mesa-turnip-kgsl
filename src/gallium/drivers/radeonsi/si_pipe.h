@@ -662,11 +662,6 @@ struct si_screen {
    unsigned ge_wave_size;
 };
 
-struct si_blend_color {
-   struct pipe_blend_color state;
-   bool any_nonzeros;
-};
-
 struct si_sampler_view {
    struct pipe_sampler_view base;
    /* [0..7] = image descriptor
@@ -760,11 +755,6 @@ struct si_viewports {
    struct pipe_viewport_state states[SI_MAX_VIEWPORTS];
    struct si_signed_scissor as_scissor[SI_MAX_VIEWPORTS];
    bool y_inverted;
-};
-
-struct si_clip_state {
-   struct pipe_clip_state state;
-   bool any_nonzeros;
 };
 
 struct si_streamout_target {
@@ -1029,10 +1019,12 @@ struct si_context {
    unsigned sample_locs_num_samples;
    uint16_t sample_mask;
    unsigned last_cb_target_mask;
-   struct si_blend_color blend_color;
-   struct si_clip_state clip_state;
+   struct pipe_blend_color blend_color;
+   struct pipe_clip_state clip_state;
    struct si_shader_data shader_pointers;
    struct si_stencil_ref stencil_ref;
+   bool blend_color_any_nonzeros:1;
+   bool clip_state_any_nonzeros:1;
    struct pipe_scissor_state scissors[SI_MAX_VIEWPORTS];
    struct si_streamout streamout;
    struct si_viewports viewports;

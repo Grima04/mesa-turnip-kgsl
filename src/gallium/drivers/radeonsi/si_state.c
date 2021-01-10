@@ -681,8 +681,8 @@ static void si_set_blend_color(struct pipe_context *ctx, const struct pipe_blend
    struct si_context *sctx = (struct si_context *)ctx;
    static const struct pipe_blend_color zeros;
 
-   sctx->blend_color.state = *state;
-   sctx->blend_color.any_nonzeros = memcmp(state, &zeros, sizeof(*state)) != 0;
+   sctx->blend_color = *state;
+   sctx->blend_color_any_nonzeros = memcmp(state, &zeros, sizeof(*state)) != 0;
    si_mark_atom_dirty(sctx, &sctx->atoms.s.blend_color);
 }
 
@@ -692,7 +692,7 @@ static void si_emit_blend_color(struct si_context *sctx)
 
    radeon_begin(cs);
    radeon_set_context_reg_seq(cs, R_028414_CB_BLEND_RED, 4);
-   radeon_emit_array(cs, (uint32_t *)sctx->blend_color.state.color, 4);
+   radeon_emit_array(cs, (uint32_t *)sctx->blend_color.color, 4);
    radeon_end();
 }
 
@@ -706,11 +706,11 @@ static void si_set_clip_state(struct pipe_context *ctx, const struct pipe_clip_s
    struct pipe_constant_buffer cb;
    static const struct pipe_clip_state zeros;
 
-   if (memcmp(&sctx->clip_state.state, state, sizeof(*state)) == 0)
+   if (memcmp(&sctx->clip_state, state, sizeof(*state)) == 0)
       return;
 
-   sctx->clip_state.state = *state;
-   sctx->clip_state.any_nonzeros = memcmp(state, &zeros, sizeof(*state)) != 0;
+   sctx->clip_state = *state;
+   sctx->clip_state_any_nonzeros = memcmp(state, &zeros, sizeof(*state)) != 0;
    si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_state);
 
    cb.buffer = NULL;
@@ -726,7 +726,7 @@ static void si_emit_clip_state(struct si_context *sctx)
 
    radeon_begin(cs);
    radeon_set_context_reg_seq(cs, R_0285BC_PA_CL_UCP_0_X, 6 * 4);
-   radeon_emit_array(cs, (uint32_t *)sctx->clip_state.state.ucp, 6 * 4);
+   radeon_emit_array(cs, (uint32_t *)sctx->clip_state.ucp, 6 * 4);
    radeon_end();
 }
 
