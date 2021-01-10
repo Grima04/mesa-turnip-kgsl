@@ -80,10 +80,14 @@ void si_blitter_begin(struct si_context *sctx, enum si_blitter_op op)
       sctx->dpbb_force_off = true;
       si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
    }
+
+   sctx->blitter_running = true;
 }
 
 void si_blitter_end(struct si_context *sctx)
 {
+   sctx->blitter_running = false;
+
    if (sctx->screen->dpbb_allowed) {
       sctx->dpbb_force_off = false;
       si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
@@ -723,7 +727,7 @@ void si_decompress_textures(struct si_context *sctx, unsigned shader_mask)
 {
    unsigned compressed_colortex_counter, mask;
 
-   if (sctx->blitter->running)
+   if (sctx->blitter_running)
       return;
 
    /* Update the compressed_colortex_mask if necessary. */

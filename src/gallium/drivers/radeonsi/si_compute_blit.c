@@ -79,8 +79,7 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
       sctx->render_cond_force_off = true;
 
    /* Skip decompression to prevent infinite recursion. */
-   if (sctx->blitter)
-      sctx->blitter->running = true;
+   sctx->blitter_running = true;
 
    /* Dispatch compute. */
    sctx->b.launch_grid(&sctx->b, info);
@@ -89,8 +88,7 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
    sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
    sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
    sctx->render_cond_force_off = false;
-   if (sctx->blitter)
-      sctx->blitter->running = false;
+   sctx->blitter_running = false;
 
    /* Restore the original compute shader. */
    sctx->b.bind_compute_state(&sctx->b, restore_cs);

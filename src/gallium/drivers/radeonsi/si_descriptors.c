@@ -859,7 +859,7 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx)
    struct pipe_surface *surf = NULL;
 
    /* si_texture_disable_dcc can get us here again. */
-   if (sctx->blitter->running)
+   if (sctx->blitter_running)
       return;
 
    /* See whether FBFETCH is used and color buffer 0 is set. */

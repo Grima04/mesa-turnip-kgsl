@@ -4518,7 +4518,7 @@ static void si_emit_sample_mask(struct si_context *sctx)
     * this for us.
     */
    assert(mask == 0xffff || sctx->framebuffer.nr_samples > 1 ||
-          (mask & 1 && sctx->blitter->running));
+          (mask & 1 && sctx->blitter_running));
 
    radeon_begin(cs);
    radeon_set_context_reg_seq(cs, R_028C38_PA_SC_AA_MASK_X0Y0_X1Y0, 2);
