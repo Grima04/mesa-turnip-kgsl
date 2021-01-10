@@ -833,8 +833,8 @@ static void si_query_memory_info(struct pipe_screen *screen, struct pipe_memory_
    struct radeon_winsys *ws = sscreen->ws;
    unsigned vram_usage, gtt_usage;
 
-   info->total_device_memory = sscreen->info.vram_size / 1024;
-   info->total_staging_memory = sscreen->info.gart_size / 1024;
+   info->total_device_memory = sscreen->info.vram_size_kb;
+   info->total_staging_memory = sscreen->info.gart_size_kb;
 
    /* The real TTM memory usage is somewhat random, because:
     *

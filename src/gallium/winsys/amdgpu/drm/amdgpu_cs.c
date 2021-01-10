@@ -505,9 +505,9 @@ amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs *ac
    cs->buffer_indices_hashlist[hash] = idx;
 
    if (bo->base.placement & RADEON_DOMAIN_VRAM)
-      rcs->used_vram += bo->base.size;
+      rcs->used_vram_kb += bo->base.size / 1024;
    else if (bo->base.placement & RADEON_DOMAIN_GTT)
-      rcs->used_gart += bo->base.size;
+      rcs->used_gart_kb += bo->base.size / 1024;
 
    return idx;
 }
@@ -610,9 +610,9 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
 
    list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->u.sparse.backing, list) {
       if (bo->base.placement & RADEON_DOMAIN_VRAM)
-         rcs->used_vram += backing->bo->base.size;
+         rcs->used_vram_kb += backing->bo->base.size / 1024;
       else if (bo->base.placement & RADEON_DOMAIN_GTT)
-         rcs->used_gart += backing->bo->base.size;
+         rcs->used_gart_kb += backing->bo->base.size / 1024;
    }
 
    simple_mtx_unlock(&bo->lock);
@@ -1878,8 +1878,8 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
                            RADEON_PRIO_IB1);
    }
 
-   rcs->used_gart = 0;
-   rcs->used_vram = 0;
+   rcs->used_gart_kb = 0;
+   rcs->used_vram_kb = 0;
 
    if (cs->ring_type == RING_GFX)
       ws->num_gfx_IBs++;

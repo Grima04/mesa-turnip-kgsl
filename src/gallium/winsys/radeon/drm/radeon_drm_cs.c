@@ -391,9 +391,9 @@ static unsigned radeon_drm_cs_add_buffer(struct radeon_cmdbuf *rcs,
    cs->csc->relocs_bo[index].u.real.priority_usage |= 1u << priority;
 
    if (added_domains & RADEON_DOMAIN_VRAM)
-      rcs->used_vram += bo->base.size;
+      rcs->used_vram_kb += bo->base.size / 1024;
    else if (added_domains & RADEON_DOMAIN_GTT)
-      rcs->used_gart += bo->base.size;
+      rcs->used_gart_kb += bo->base.size / 1024;
 
    return index;
 }
@@ -410,8 +410,8 @@ static bool radeon_drm_cs_validate(struct radeon_cmdbuf *rcs)
 {
    struct radeon_drm_cs *cs = radeon_drm_cs(rcs);
    bool status =
-         rcs->used_gart < cs->ws->info.gart_size * 0.8 &&
-         rcs->used_vram < cs->ws->info.vram_size * 0.8;
+         rcs->used_gart_kb < cs->ws->info.gart_size_kb * 0.8 &&
+         rcs->used_vram_kb < cs->ws->info.vram_size_kb * 0.8;
 
    if (status) {
       cs->csc->num_validated_relocs = cs->csc->num_relocs;
@@ -433,8 +433,8 @@ static bool radeon_drm_cs_validate(struct radeon_cmdbuf *rcs)
                       RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
       } else {
          radeon_cs_context_cleanup(cs->csc);
-         rcs->used_vram = 0;
-         rcs->used_gart = 0;
+         rcs->used_vram_kb = 0;
+         rcs->used_gart_kb = 0;
 
          assert(rcs->current.cdw == 0);
          if (rcs->current.cdw != 0) {
@@ -712,8 +712,8 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
    /* Prepare a new CS. */
    rcs->current.buf = cs->csc->buf;
    rcs->current.cdw = 0;
-   rcs->used_vram = 0;
-   rcs->used_gart = 0;
+   rcs->used_vram_kb = 0;
+   rcs->used_gart_kb = 0;
 
    if (cs->ring_type == RING_GFX)
       cs->ws->num_gfx_IBs++;

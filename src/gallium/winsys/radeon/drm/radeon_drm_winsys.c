@@ -368,6 +368,9 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
    if (ws->info.drm_minor < 49)
       ws->info.vram_vis_size = MIN2(ws->info.vram_vis_size, 256*1024*1024);
 
+   ws->info.gart_size_kb = DIV_ROUND_UP(ws->info.gart_size, 1024);
+   ws->info.vram_size_kb = DIV_ROUND_UP(ws->info.vram_size, 1024);
+
    /* Radeon allocates all buffers contiguously, which makes large allocations
     * unlikely to succeed. */
    if (ws->info.has_dedicated_vram)

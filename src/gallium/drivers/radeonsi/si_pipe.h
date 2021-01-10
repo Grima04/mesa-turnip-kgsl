@@ -284,8 +284,8 @@ struct si_resource {
    struct pb_buffer *buf;
    uint64_t gpu_address;
    /* Memory usage if the buffer placement is optimal. */
-   uint64_t vram_usage;
-   uint64_t gart_usage;
+   uint32_t vram_usage_kb;
+   uint32_t gart_usage_kb;
 
    /* Resource properties. */
    uint64_t bo_size;
@@ -977,8 +977,8 @@ struct si_context {
    unsigned last_num_draw_calls;
    unsigned flags; /* flush flags */
    /* Current unaccounted memory usage. */
-   uint64_t vram;
-   uint64_t gtt;
+   uint32_t vram_kb;
+   uint32_t gtt_kb;
 
    /* Compute-based primitive discard. */
    unsigned prim_discard_vertex_count_threshold;
@@ -1635,8 +1635,8 @@ static inline void si_context_add_resource_size(struct si_context *sctx, struct 
 {
    if (r) {
       /* Add memory usage for need_gfx_cs_space */
-      sctx->vram += si_resource(r)->vram_usage;
-      sctx->gtt += si_resource(r)->gart_usage;
+      sctx->vram_kb += si_resource(r)->vram_usage_kb;
+      sctx->gtt_kb += si_resource(r)->gart_usage_kb;
    }
 }
 
@@ -1864,17 +1864,17 @@ static inline bool util_rast_prim_is_triangles(unsigned prim)
  * \param gtt       GTT memory size not added to the buffer list yet
  */
 static inline bool radeon_cs_memory_below_limit(struct si_screen *screen, struct radeon_cmdbuf *cs,
-                                                uint64_t vram, uint64_t gtt)
+                                                uint32_t vram_kb, uint32_t gtt_kb)
 {
-   vram += cs->used_vram;
-   gtt += cs->used_gart;
+   vram_kb += cs->used_vram_kb;
+   gtt_kb += cs->used_gart_kb;
 
    /* Anything that goes above the VRAM size should go to GTT. */
-   if (vram > screen->info.vram_size)
-      gtt += vram - screen->info.vram_size;
+   if (vram_kb > screen->info.vram_size_kb)
+      gtt_kb += vram_kb - screen->info.vram_size_kb;
 
-   /* Now we just need to check if we have enough GTT. */
-   return gtt < screen->info.gart_size * 0.7;
+   /* Now we just need to check if we have enough GTT (the limit is 75% of max). */
+   return gtt_kb < screen->info.gart_size_kb / 4 * 3;
 }
 
 /**
@@ -1918,8 +1918,8 @@ static inline void radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sc
                                                            bool check_mem)
 {
    if (check_mem &&
-       !radeon_cs_memory_below_limit(sctx->screen, &sctx->gfx_cs, sctx->vram + bo->vram_usage,
-                                     sctx->gtt + bo->gart_usage))
+       !radeon_cs_memory_below_limit(sctx->screen, &sctx->gfx_cs, sctx->vram_kb + bo->vram_usage_kb,
+                                     sctx->gtt_kb + bo->gart_usage_kb))
       si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 
    radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, bo, usage, priority);
