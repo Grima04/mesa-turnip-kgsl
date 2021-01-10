@@ -36,6 +36,24 @@
 
 namespace r600 {
 
+class NirLowerInstruction {
+public:
+	NirLowerInstruction();
+
+	bool run(nir_shader *shader);
+
+private:
+	bool run(nir_instr *instr);
+
+	virtual bool filter(const nir_instr *instr) const = 0;
+	virtual nir_ssa_def *lower(nir_instr *instr) = 0;
+protected:
+	nir_builder *b;
+
+        static nir_ssa_def *progress_keep;
+        static nir_ssa_def *progress_replace;
+};
+
 bool r600_nir_lower_pack_unpack_2x16(nir_shader *shader);
 
 bool r600_lower_scratch_addresses(nir_shader *shader);
