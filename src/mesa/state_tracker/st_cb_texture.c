@@ -1313,6 +1313,8 @@ try_pbo_upload_common(struct gl_context *ctx,
          goto fail;
 
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, &sampler_view);
+      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
+         MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], 1);
 
       pipe_sampler_view_reference(&sampler_view, NULL);
    }
@@ -1348,6 +1350,15 @@ try_pbo_upload_common(struct gl_context *ctx,
 
 fail:
    cso_restore_state(cso);
+
+   /* Unbind all because st/mesa won't do it if the current shader doesn't
+    * use them.
+    */
+   static struct pipe_sampler_view *null[PIPE_MAX_SAMPLERS];
+   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0,
+                           st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
+                           null);
+   st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
    st->dirty |= ST_NEW_VERTEX_ARRAYS |
                 ST_NEW_FS_CONSTANTS |

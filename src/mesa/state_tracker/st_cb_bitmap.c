@@ -248,6 +248,8 @@ setup_render_state(struct gl_context *ctx,
              sizeof(sampler_views));
       sampler_views[fpv->bitmap_sampler] = sv;
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num, sampler_views);
+      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
+         MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], num);
    }
 
    /* viewport state: viewport matching window dims */
@@ -270,8 +272,18 @@ restore_render_state(struct gl_context *ctx)
 {
    struct st_context *st = st_context(ctx);
    struct cso_context *cso = st->cso_context;
+   struct pipe_context *pipe = st->pipe;
 
    cso_restore_state(cso);
+
+   /* Unbind all because st/mesa won't do it if the current shader doesn't
+    * use them.
+    */
+   static struct pipe_sampler_view *null[PIPE_MAX_SAMPLERS];
+   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0,
+                           st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
+                           null);
+   st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
    st->dirty |= ST_NEW_VERTEX_ARRAYS |
                 ST_NEW_FS_SAMPLER_VIEWS;
@@ -763,6 +775,8 @@ st_DrawAtlasBitmaps(struct gl_context *ctx,
    u_upload_unmap(pipe->stream_uploader);
 
    cso_set_vertex_buffers(st->cso_context, 0, 1, &vb);
+   st->last_num_vbuffers = MAX2(st->last_num_vbuffers, 1);
+
    cso_draw_arrays(st->cso_context, PIPE_PRIM_QUADS, 0, num_verts);
 
 out:

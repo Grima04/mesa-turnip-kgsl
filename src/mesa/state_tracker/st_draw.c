@@ -543,6 +543,7 @@ st_draw_quad(struct st_context *st,
    u_upload_unmap(st->pipe->stream_uploader);
 
    cso_set_vertex_buffers(st->cso_context, 0, 1, &vb);
+   st->last_num_vbuffers = MAX2(st->last_num_vbuffers, 1);
 
    if (num_instances > 1) {
       cso_draw_arrays_instanced(st->cso_context, PIPE_PRIM_TRIANGLE_FAN, 0, 4,

@@ -882,9 +882,13 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
       if (sv[1])
          sampler_views[fpv->pixelmap_sampler] = sv[1];
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num, sampler_views);
+      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
+         MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], num);
    } else {
       /* drawing a depth/stencil image */
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_sampler_view, sv);
+      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
+         MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], num_sampler_view);
    }
 
    /* viewport state: viewport matching window dims */
@@ -932,6 +936,15 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
 
    /* restore state */
    cso_restore_state(cso);
+
+   /* Unbind all because st/mesa won't do it if the current shader doesn't
+    * use them.
+    */
+   static struct pipe_sampler_view *null[PIPE_MAX_SAMPLERS];
+   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0,
+                           st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
+                           null);
+   st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
    st->dirty |= ST_NEW_VERTEX_ARRAYS |
                 ST_NEW_FS_SAMPLER_VIEWS;
