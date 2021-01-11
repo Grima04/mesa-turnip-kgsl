@@ -2193,6 +2193,9 @@ ntt_emit_impl(struct ntt_compile *c, nir_function_impl *impl)
 
    ntt_setup_registers(c, &impl->registers);
    ntt_emit_cf_list(c, &impl->body);
+
+   ralloc_free(c->liveness);
+   c->liveness = NULL;
 }
 
 static int
