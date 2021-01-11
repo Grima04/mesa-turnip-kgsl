@@ -4784,6 +4784,7 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
    if (sctx->num_vertex_elements) {
       sctx->vertex_buffers_dirty = true;
    } else {
+      sctx->vertex_buffers_dirty = false;
       sctx->vertex_buffer_pointer_dirty = false;
       sctx->vertex_buffer_user_sgprs_dirty = false;
    }
@@ -4862,7 +4863,8 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
       for (i = 0; i < count; i++)
          pipe_resource_reference(&dst[i].buffer.resource, NULL);
    }
-   sctx->vertex_buffers_dirty = true;
+
+   sctx->vertex_buffers_dirty = sctx->num_vertex_elements > 0;
    sctx->vertex_buffer_unaligned = (orig_unaligned & ~updated_mask) | unaligned;
 
    /* Check whether alignment may have changed in a way that requires
