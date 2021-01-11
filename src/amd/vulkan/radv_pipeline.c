@@ -3367,9 +3367,11 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				}
 
 				if (nir_lower_bit_size(nir[i], lower_bit_size_callback, device)) {
-					nir_lower_idiv(nir[i], nir_lower_idiv_precise);
-					nir_opt_constant_folding(nir[i]);
-					nir_opt_dce(nir[i]);
+					// TODO: lower idiv beforehand
+					if (nir_lower_idiv(nir[i], nir_lower_idiv_precise))
+						NIR_PASS_V(nir[i], nir_opt_algebraic_late); /* needed for removing ineg again */
+					NIR_PASS_V(nir[i], nir_opt_constant_folding);
+					NIR_PASS_V(nir[i], nir_opt_dce);
 				}
 
 				if (device->physical_device->rad_info.chip_class >= GFX8)
