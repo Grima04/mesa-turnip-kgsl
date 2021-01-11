@@ -61,6 +61,7 @@ void vbo_save_destroy( struct gl_context *ctx )
 
    if (save->prim_store) {
       if ( --save->prim_store->refcount == 0 ) {
+         free(save->prim_store->prims);
          free(save->prim_store);
          save->prim_store = NULL;
       }
