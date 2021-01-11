@@ -99,7 +99,6 @@ extern "C" {
 #define SI_CONTEXT_VGT_FLUSH          (1 << 15)
 #define SI_CONTEXT_VGT_STREAMOUT_SYNC (1 << 16)
 
-#define SI_PREFETCH_VBO_DESCRIPTORS (1 << 0)
 #define SI_PREFETCH_LS              (1 << 1)
 #define SI_PREFETCH_HS              (1 << 2)
 #define SI_PREFETCH_ES              (1 << 3)
