@@ -48,8 +48,6 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd
                 .dependency_slot = clause->scoreboard_id,
                 .message_type = clause->message_type,
                 .next_message_type = next_1 ? next_1->message_type : 0,
-                .suppress_inf = true,
-                .suppress_nan = true,
         };
 
         uint64_t u = 0;
