@@ -534,7 +534,6 @@ panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource
 
         switch (pres->base.target) {
         case PIPE_TEXTURE_2D:
-        case PIPE_TEXTURE_2D_ARRAY:
         case PIPE_TEXTURE_RECT:
                 break;
 
@@ -544,7 +543,12 @@ panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource
                 if (dev->arch < 7)
                         return false;
 
-                break;
+                /* fallthrough */
+        case PIPE_TEXTURE_2D_ARRAY:
+                /* Both 3D and 2D arrays are having issues on dEQP-GLES3, hide
+                 * support until these bugs can be sorted so we don't introduce
+                 * flakes */
+                return false;
 
         default:
                 return false;
