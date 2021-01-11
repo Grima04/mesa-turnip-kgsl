@@ -1738,6 +1738,7 @@ public:
    bool xnack_enabled = false;
    bool sram_ecc_enabled = false;
    bool has_fast_fma32 = false;
+   bool early_rast = false; /* whether rasterization can start as soon as the 1st DONE pos export */
 
    bool needs_vcc = false;
    bool needs_flat_scr = false;

@@ -366,6 +366,15 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
       pos_written |= 1 << 3;
 
    outinfo->pos_exports = util_bitcount(pos_written);
+
+   /* GFX10+ early rasterization:
+    * When there are no param exports in an NGG (or legacy VS) shader,
+    * RADV sets NO_PC_EXPORT=1, which means the HW will start clipping and rasterization
+    * as soon as it encounters a DONE pos export. When this happens, PS waves can launch
+    * before the NGG (or VS) waves finish.
+    */
+   ctx->program->early_rast = ctx->program->chip_class >= GFX10 &&
+                              outinfo->param_exports == 0;
 }
 
 void
