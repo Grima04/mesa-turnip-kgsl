@@ -3331,7 +3331,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 			/* TODO: Implement nir_op_uadd_sat with LLVM. */
 			if (!radv_use_llvm_for_stage(device, i))
-				nir_opt_idiv_const(nir[i], 32);
+				nir_opt_idiv_const(nir[i], 8);
 			nir_lower_idiv(nir[i], nir_lower_idiv_precise);
 
 			/* optimize the lowered ALU operations */
