@@ -515,6 +515,10 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_GETSPID
 %token <tok> T_OP_GETWID
 
+/* category 7: */
+%token <tok> T_OP_BAR
+%token <tok> T_OP_FENCE
+
 /* type qualifiers: */
 %token <tok> T_TYPE_F16
 %token <tok> T_TYPE_F32
@@ -666,6 +670,7 @@ instr:             iflags cat0_instr
 |                  iflags cat4_instr
 |                  iflags cat5_instr { fixup_cat5_s2en(); }
 |                  iflags cat6_instr
+|                  iflags cat7_instr
 
 cat0_src1:         '!' T_P0        { instr->cat0.inv1 = true; instr->cat0.comp1 = $2 >> 1; }
 |                  T_P0            { instr->cat0.comp1 = $1 >> 1; }
@@ -1036,6 +1041,19 @@ cat6_instr:        cat6_load
 |                  cat6_bindless_ldc
 |                  cat6_bindless_ibo
 |                  cat6_todo
+
+cat7_scope:        '.' 'w'  { instr->cat7.w = true; }
+|                  '.' 'r'  { instr->cat7.r = true; }
+|                  '.' 'l'  { instr->cat7.l = true; }
+|                  '.' 'g'  { instr->cat7.g = true; }
+
+cat7_scopes:
+|                  cat7_scope cat7_scopes
+
+cat7_barrier:      T_OP_BAR                { new_instr(OPC_BAR); } cat7_scopes
+|                  T_OP_FENCE              { new_instr(OPC_FENCE); } cat7_scopes
+
+cat7_instr:        cat7_barrier
 
 reg:               T_REGISTER     { $$ = new_reg($1, 0); }
 |                  T_A0           { $$ = new_reg((61 << 3), IR3_REG_HALF); }

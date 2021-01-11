@@ -308,6 +308,13 @@ static const struct test {
 	/* Custom test since we've never seen the blob emit these. */
 	INSTR_6XX(c0260004_00490000, "getspid.u32 r1.x"),
 	INSTR_6XX(c0260005_00494000, "getwid.u32 r1.y"),
+
+	/* cat7 */
+
+	/* dEQP-VK.compute.basic.ssbo_local_barrier_single_invocation */
+	INSTR_6XX(e0fa0000_00000000, "fence.g.l.r.w"),
+	INSTR_6XX(e09a0000_00000000, "fence.r.w"),
+	INSTR_6XX(f0420000_00000000, "(sy)bar.g"),
 };
 
 static void

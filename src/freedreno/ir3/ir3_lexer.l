@@ -335,6 +335,10 @@ static int parse_w(const char *str)
 "getspid"                         return TOKEN(T_OP_GETSPID);
 "getwid"                          return TOKEN(T_OP_GETWID);
 
+                                  /* category 7: */
+"bar"                             return TOKEN(T_OP_BAR);
+"fence"                           return TOKEN(T_OP_FENCE);
+
 "f16"                             return TOKEN(T_TYPE_F16);
 "f32"                             return TOKEN(T_TYPE_F32);
 "u16"                             return TOKEN(T_TYPE_U16);
@@ -386,6 +390,7 @@ static int parse_w(const char *str)
 "hc"                              return TOKEN(T_HC);
 "hr"                              return TOKEN(T_HR);
 "g"                               return 'g';
+"w"                               return 'w';
 "l"                               return 'l';
 "<"                               return '<';
 ">"                               return '>';
