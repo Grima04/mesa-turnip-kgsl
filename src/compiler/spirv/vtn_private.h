@@ -648,6 +648,7 @@ struct vtn_builder {
 
    const uint32_t *spirv;
    size_t spirv_word_count;
+   uint32_t version;
 
    nir_shader *shader;
    struct spirv_to_nir_options *options;
