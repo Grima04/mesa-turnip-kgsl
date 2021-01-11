@@ -505,8 +505,10 @@ st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
    gl_shader_stage stage = nir->info.stage;
    enum pipe_shader_type sh = pipe_shader_type_from_mesa(stage);
 
-   if (ST_DEBUG & DEBUG_PRINT_IR)
+   if (ST_DEBUG & DEBUG_PRINT_IR) {
+      fprintf(stderr, "NIR before handing off to driver:\n");
       nir_print_shader(nir, stderr);
+   }
 
    if (PIPE_SHADER_IR_NIR !=
        screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR)) {
@@ -518,6 +520,12 @@ st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
 
       state->type = PIPE_SHADER_IR_TGSI;
       state->tokens = nir_to_tgsi(nir, screen);
+
+      if (ST_DEBUG & DEBUG_PRINT_IR) {
+         fprintf(stderr, "TGSI for driver after nir-to-tgsi:\n");
+         tgsi_dump(state->tokens, 0);
+         fprintf(stderr, "\n");
+      }
    }
 
    struct pipe_shader_state *shader;
