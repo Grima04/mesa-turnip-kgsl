@@ -581,7 +581,6 @@ struct ir3 * ir3_create(struct ir3_compiler *compiler, struct ir3_shader_variant
 void ir3_destroy(struct ir3 *shader);
 
 void ir3_collect_info(struct ir3_shader_variant *v);
-void * ir3_assemble(struct ir3_shader_variant *v);
 void * ir3_alloc(struct ir3 *shader, int sz);
 
 struct ir3_block * ir3_block_create(struct ir3 *shader);
