@@ -881,8 +881,8 @@ lp_build_depth_stencil_test(struct gallivm_state *gallivm,
 
    /* Sanity checking */
    {
-      const unsigned z_swizzle = format_desc->swizzle[0];
-      const unsigned s_swizzle = format_desc->swizzle[1];
+      ASSERTED const unsigned z_swizzle = format_desc->swizzle[0];
+      ASSERTED const unsigned s_swizzle = format_desc->swizzle[1];
 
       assert(z_swizzle != PIPE_SWIZZLE_NONE ||
              s_swizzle != PIPE_SWIZZLE_NONE);
