@@ -1330,13 +1330,16 @@ void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
    *sctx->last_pkt3_write_data = PKT3(PKT3_NOP, 3, 0);
 }
 
-template <chip_class GFX_VERSION> ALWAYS_INLINE
+template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
 static bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 {
+   unsigned count = sctx->num_vertex_elements;
+   bool pointer_dirty, user_sgprs_dirty;
+
+   assert(count <= SI_MAX_ATTRIBS);
+
    if (sctx->vertex_buffers_dirty) {
-      unsigned count = sctx->num_vertex_elements;
       assert(count);
-      assert(count <= SI_MAX_ATTRIBS);
 
       struct si_vertex_elements *velems = sctx->vertex_elements;
       unsigned alloc_size = velems->vb_desc_list_alloc_size;
@@ -1359,11 +1362,9 @@ static bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
          sctx->vb_descriptors_gpu_list = ptr;
          radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->vb_descriptors_buffer,
                                    RADEON_USAGE_READ, RADEON_PRIO_DESCRIPTORS);
-         sctx->vertex_buffer_pointer_dirty = true;
          sctx->prefetch_L2_mask |= SI_PREFETCH_VBO_DESCRIPTORS;
       } else {
          si_resource_reference(&sctx->vb_descriptors_buffer, NULL);
-         sctx->vertex_buffer_pointer_dirty = false;
          sctx->prefetch_L2_mask &= ~SI_PREFETCH_VBO_DESCRIPTORS;
       }
 
@@ -1422,13 +1423,52 @@ static bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
          }
       }
 
-      /* Don't flush the const cache. It would have a very negative effect
-       * on performance (confirmed by testing). New descriptors are always
-       * uploaded to a fresh new buffer, so I don't think flushing the const
-       * cache is needed. */
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
-      sctx->vertex_buffer_user_sgprs_dirty = num_vbos_in_user_sgprs > 0;
       sctx->vertex_buffers_dirty = false;
+
+      pointer_dirty = alloc_size != 0;
+      user_sgprs_dirty = num_vbos_in_user_sgprs > 0;
+   } else {
+      pointer_dirty = sctx->vertex_buffer_pointer_dirty;
+      user_sgprs_dirty = sctx->vertex_buffer_user_sgprs_dirty;
+   }
+
+   if (pointer_dirty || user_sgprs_dirty) {
+      struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+      unsigned num_vbos_in_user_sgprs = sctx->screen->num_vbos_in_user_sgprs;
+      unsigned sh_base = si_get_user_data_base(GFX_VERSION, HAS_TESS, HAS_GS, NGG,
+                                               PIPE_SHADER_VERTEX);
+      assert(count);
+
+      radeon_begin(cs);
+
+      /* Set the pointer to vertex buffer descriptors. */
+      if (pointer_dirty && count > num_vbos_in_user_sgprs) {
+         /* Find the location of the VB descriptor pointer. */
+         unsigned sh_dw_offset = SI_VS_NUM_USER_SGPR;
+         if (GFX_VERSION >= GFX9) {
+            if (HAS_TESS)
+               sh_dw_offset = GFX9_TCS_NUM_USER_SGPR;
+            else if (HAS_GS)
+               sh_dw_offset = GFX9_VSGS_NUM_USER_SGPR;
+         }
+
+         radeon_set_sh_reg(cs, sh_base + sh_dw_offset * 4,
+                           sctx->vb_descriptors_buffer->gpu_address +
+                           sctx->vb_descriptors_offset);
+         sctx->vertex_buffer_pointer_dirty = false;
+      }
+
+      /* Set VB descriptors in user SGPRs. */
+      if (user_sgprs_dirty) {
+         assert(num_vbos_in_user_sgprs);
+
+         unsigned num_sgprs = MIN2(count, num_vbos_in_user_sgprs) * 4;
+
+         radeon_set_sh_reg_seq(cs, sh_base + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4, num_sgprs);
+         radeon_emit_array(cs, sctx->vb_descriptor_user_sgprs, num_sgprs);
+         sctx->vertex_buffer_user_sgprs_dirty = false;
+      }
+      radeon_end();
    }
 
    return true;
@@ -2062,8 +2102,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
    /* Graphics shader descriptors must be uploaded after si_update_shaders because
     * it binds tess and GS ring buffers.
     */
-   if (unlikely(!si_upload_graphics_shader_descriptors(sctx) ||
-                !si_upload_vertex_buffer_descriptors<GFX_VERSION>(sctx))) {
+   if (unlikely(!si_upload_graphics_shader_descriptors(sctx))) {
       DRAW_CLEANUP;
       return;
    }
@@ -2103,6 +2142,12 @@ static void si_draw_vbo(struct pipe_context *ctx,
       sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
       /* <-- CUs are idle here. */
 
+      /* This uploads VBO descriptors and sets user SGPRs. */
+      if (unlikely((!si_upload_vertex_buffer_descriptors<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx)))) {
+         DRAW_CLEANUP;
+         return;
+      }
+
       if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
          sctx->atoms.s.render_cond.emit(sctx);
          sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
@@ -2135,6 +2180,12 @@ static void si_draw_vbo(struct pipe_context *ctx,
 
       /* Only prefetch the API VS and VBO descriptors. */
       si_emit_prefetch_L2<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_BEFORE_DRAW>(sctx);
+
+      /* This uploads VBO descriptors and sets user SGPRs. */
+      if (unlikely((!si_upload_vertex_buffer_descriptors<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx)))) {
+         DRAW_CLEANUP;
+         return;
+      }
 
       si_emit_all_states<GFX_VERSION, HAS_TESS, HAS_GS, NGG>
             (sctx, info, indirect, prim, instance_count, min_direct_count,

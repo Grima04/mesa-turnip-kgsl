@@ -2021,36 +2021,9 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
                                        sh_base[PIPE_SHADER_TESS_CTRL]);
    si_emit_consecutive_shader_pointers(sctx, SI_DESCS_SHADER_MASK(GEOMETRY),
                                        sh_base[PIPE_SHADER_GEOMETRY]);
+   radeon_end();
 
    sctx->shader_pointers_dirty &= ~u_bit_consecutive(SI_DESCS_INTERNAL, SI_DESCS_FIRST_COMPUTE);
-
-   if (sctx->vertex_buffer_pointer_dirty && sctx->num_vertex_elements) {
-      /* Find the location of the VB descriptor pointer. */
-      unsigned sh_dw_offset = SI_VS_NUM_USER_SGPR;
-      if (sctx->chip_class >= GFX9) {
-         if (sctx->tes_shader.cso)
-            sh_dw_offset = GFX9_TCS_NUM_USER_SGPR;
-         else if (sctx->gs_shader.cso)
-            sh_dw_offset = GFX9_VSGS_NUM_USER_SGPR;
-      }
-
-      unsigned sh_offset = sh_base[PIPE_SHADER_VERTEX] + sh_dw_offset * 4;
-      radeon_set_sh_reg_seq(cs, sh_offset, 1);
-      radeon_emit_32bit_pointer(
-         sctx->screen, cs, sctx->vb_descriptors_buffer->gpu_address + sctx->vb_descriptors_offset);
-      sctx->vertex_buffer_pointer_dirty = false;
-   }
-
-   if (sctx->vertex_buffer_user_sgprs_dirty && sctx->num_vertex_elements &&
-       sctx->screen->num_vbos_in_user_sgprs) {
-      unsigned num_desc = MIN2(sctx->num_vertex_elements, sctx->screen->num_vbos_in_user_sgprs);
-      unsigned sh_offset = sh_base[PIPE_SHADER_VERTEX] + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4;
-
-      radeon_set_sh_reg_seq(cs, sh_offset, num_desc * 4);
-      radeon_emit_array(cs, sctx->vb_descriptor_user_sgprs, num_desc * 4);
-      sctx->vertex_buffer_user_sgprs_dirty = false;
-   }
-   radeon_end();
 
    if (sctx->graphics_bindless_pointer_dirty) {
       si_emit_global_shader_pointers(sctx, &sctx->bindless_descriptors);
