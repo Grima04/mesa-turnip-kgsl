@@ -145,7 +145,7 @@ bi_reg_fmt_for_nir(nir_alu_type T)
  * immediate to be used (which applies even if _IMM can't be used) */
 
 static bool
-bi_is_intr_immediate(nir_intrinsic_instr *instr, unsigned *immediate)
+bi_is_intr_immediate(nir_intrinsic_instr *instr, unsigned *immediate, unsigned max)
 {
         nir_src *offset = nir_get_io_offset_src(instr);
 
@@ -153,7 +153,7 @@ bi_is_intr_immediate(nir_intrinsic_instr *instr, unsigned *immediate)
                 return false;
 
         *immediate = nir_intrinsic_base(instr) + nir_src_as_uint(*offset);
-        return (*immediate) < 20;
+        return (*immediate) < max;
 }
 
 static void
@@ -165,7 +165,7 @@ bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
         unsigned imm_index = 0;
         unsigned base = nir_intrinsic_base(instr);
         bool constant = nir_src_is_const(*offset);
-        bool immediate = bi_is_intr_immediate(instr, &imm_index);
+        bool immediate = bi_is_intr_immediate(instr, &imm_index, 16);
 
         if (immediate) {
                 bi_ld_attr_imm_to(b, bi_dest_index(&instr->dest),
@@ -213,7 +213,7 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
 
         nir_src *offset = nir_get_io_offset_src(instr);
         unsigned imm_index = 0;
-        bool immediate = bi_is_intr_immediate(instr, &imm_index);
+        bool immediate = bi_is_intr_immediate(instr, &imm_index, 20);
 
         if (immediate && smooth) {
                 bi_ld_var_imm_to(b, bi_dest_index(&instr->dest),
@@ -426,7 +426,7 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 
         nir_src *offset = nir_get_io_offset_src(instr);
         unsigned imm_index = 0;
-        bool immediate = bi_is_intr_immediate(instr, &imm_index);
+        bool immediate = bi_is_intr_immediate(instr, &imm_index, 16);
 
         bi_index address = immediate ?
                 bi_lea_attr_imm(b,
