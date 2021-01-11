@@ -745,6 +745,9 @@ st_create_vp_variant(struct st_context *st,
       else
          vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
 
+      if (state.type == PIPE_SHADER_IR_TGSI)
+         tgsi_free_tokens(state.tokens);
+
       return vpv;
    }
 
@@ -1350,6 +1353,9 @@ st_create_fp_variant(struct st_context *st,
 
       variant->base.driver_shader = pipe->create_fs_state(pipe, &state);
       variant->key = *key;
+
+      if (state.type == PIPE_SHADER_IR_TGSI)
+         tgsi_free_tokens(state.tokens);
 
       return variant;
    }
