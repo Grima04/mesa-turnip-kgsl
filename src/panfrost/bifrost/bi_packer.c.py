@@ -272,6 +272,7 @@ def pack_variant(opname, states):
 
     for (name, pos, width) in st[1].get("immediates", []):
         common_body.append('unsigned {} = I->{};'.format(name, name))
+        common_body.append('assert({} < {});'.format(name, hex(1 << width)))
 
         for st in pack_exprs:
             st.append('({} << {})'.format(name, pos))
