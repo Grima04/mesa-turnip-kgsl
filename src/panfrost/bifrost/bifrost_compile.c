@@ -1625,7 +1625,8 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
 }
 
 /* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D (or cube
- * map, TODO) textures. Anything else needs a complete texture op. */
+ * map, TODO) textures with sufficiently small immediate indices. Anything else
+ * needs a complete texture op. */
 
 static bool
 bi_is_simple_tex(nir_tex_instr *instr)
@@ -1638,6 +1639,10 @@ bi_is_simple_tex(nir_tex_instr *instr)
                     instr->src[i].src_type != nir_tex_src_coord)
                         return false;
         }
+
+        /* Indices need to fit in 3 bits */
+        if (MAX2(instr->sampler_index, instr->texture_index) >= (1 << 3))
+                return false;
 
         int lod_idx = nir_tex_instr_src_index(instr, nir_tex_src_lod);
         if (lod_idx < 0)
