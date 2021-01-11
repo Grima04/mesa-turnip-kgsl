@@ -1036,20 +1036,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x08A6" name="CP_CONTEXT_SWITCH_PRIV_SECURE_RESTORE_ADDR_HI"/>
 	<reg32 offset="0x08A7" name="CP_CONTEXT_SWITCH_NON_PRIV_RESTORE_ADDR_LO"/>
 	<reg32 offset="0x08A8" name="CP_CONTEXT_SWITCH_NON_PRIV_RESTORE_ADDR_HI"/>
-	<reg32 offset="0x08D0" name="CP_PERFCTR_CP_SEL_0"/>
-	<reg32 offset="0x08D1" name="CP_PERFCTR_CP_SEL_1"/>
-	<reg32 offset="0x08D2" name="CP_PERFCTR_CP_SEL_2"/>
-	<reg32 offset="0x08D3" name="CP_PERFCTR_CP_SEL_3"/>
-	<reg32 offset="0x08D4" name="CP_PERFCTR_CP_SEL_4"/>
-	<reg32 offset="0x08D5" name="CP_PERFCTR_CP_SEL_5"/>
-	<reg32 offset="0x08D6" name="CP_PERFCTR_CP_SEL_6"/>
-	<reg32 offset="0x08D7" name="CP_PERFCTR_CP_SEL_7"/>
-	<reg32 offset="0x08D8" name="CP_PERFCTR_CP_SEL_8"/>
-	<reg32 offset="0x08D9" name="CP_PERFCTR_CP_SEL_9"/>
-	<reg32 offset="0x08DA" name="CP_PERFCTR_CP_SEL_10"/>
-	<reg32 offset="0x08DB" name="CP_PERFCTR_CP_SEL_11"/>
-	<reg32 offset="0x08DC" name="CP_PERFCTR_CP_SEL_12"/>
-	<reg32 offset="0x08DD" name="CP_PERFCTR_CP_SEL_13"/>
+	<array offset="0x08D0" name="CP_PERFCTR_CP_SEL" stride="1" length="14"/>
 	<reg32 offset="0x0900" name="CP_CRASH_SCRIPT_BASE_LO"/>
 	<reg32 offset="0x0901" name="CP_CRASH_SCRIPT_BASE_HI"/>
 	<reg32 offset="0x0902" name="CP_CRASH_DUMP_CNTL"/>
@@ -1139,256 +1126,22 @@ to upconvert to 32b float internally?
 		<bitfield pos="24" name="SMMU_STALLED_ON_FAULT" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x0215" name="RBBM_VBIF_GX_RESET_STATUS"/>
-	<reg32 offset="0x0400" name="RBBM_PERFCTR_CP_0_LO"/>
-	<reg32 offset="0x0401" name="RBBM_PERFCTR_CP_0_HI"/>
-	<reg32 offset="0x0402" name="RBBM_PERFCTR_CP_1_LO"/>
-	<reg32 offset="0x0403" name="RBBM_PERFCTR_CP_1_HI"/>
-	<reg32 offset="0x0404" name="RBBM_PERFCTR_CP_2_LO"/>
-	<reg32 offset="0x0405" name="RBBM_PERFCTR_CP_2_HI"/>
-	<reg32 offset="0x0406" name="RBBM_PERFCTR_CP_3_LO"/>
-	<reg32 offset="0x0407" name="RBBM_PERFCTR_CP_3_HI"/>
-	<reg32 offset="0x0408" name="RBBM_PERFCTR_CP_4_LO"/>
-	<reg32 offset="0x0409" name="RBBM_PERFCTR_CP_4_HI"/>
-	<reg32 offset="0x040a" name="RBBM_PERFCTR_CP_5_LO"/>
-	<reg32 offset="0x040b" name="RBBM_PERFCTR_CP_5_HI"/>
-	<reg32 offset="0x040c" name="RBBM_PERFCTR_CP_6_LO"/>
-	<reg32 offset="0x040d" name="RBBM_PERFCTR_CP_6_HI"/>
-	<reg32 offset="0x040e" name="RBBM_PERFCTR_CP_7_LO"/>
-	<reg32 offset="0x040f" name="RBBM_PERFCTR_CP_7_HI"/>
-	<reg32 offset="0x0410" name="RBBM_PERFCTR_CP_8_LO"/>
-	<reg32 offset="0x0411" name="RBBM_PERFCTR_CP_8_HI"/>
-	<reg32 offset="0x0412" name="RBBM_PERFCTR_CP_9_LO"/>
-	<reg32 offset="0x0413" name="RBBM_PERFCTR_CP_9_HI"/>
-	<reg32 offset="0x0414" name="RBBM_PERFCTR_CP_10_LO"/>
-	<reg32 offset="0x0415" name="RBBM_PERFCTR_CP_10_HI"/>
-	<reg32 offset="0x0416" name="RBBM_PERFCTR_CP_11_LO"/>
-	<reg32 offset="0x0417" name="RBBM_PERFCTR_CP_11_HI"/>
-	<reg32 offset="0x0418" name="RBBM_PERFCTR_CP_12_LO"/>
-	<reg32 offset="0x0419" name="RBBM_PERFCTR_CP_12_HI"/>
-	<reg32 offset="0x041a" name="RBBM_PERFCTR_CP_13_LO"/>
-	<reg32 offset="0x041b" name="RBBM_PERFCTR_CP_13_HI"/>
-	<reg32 offset="0x041c" name="RBBM_PERFCTR_RBBM_0_LO"/>
-	<reg32 offset="0x041d" name="RBBM_PERFCTR_RBBM_0_HI"/>
-	<reg32 offset="0x041e" name="RBBM_PERFCTR_RBBM_1_LO"/>
-	<reg32 offset="0x041f" name="RBBM_PERFCTR_RBBM_1_HI"/>
-	<reg32 offset="0x0420" name="RBBM_PERFCTR_RBBM_2_LO"/>
-	<reg32 offset="0x0421" name="RBBM_PERFCTR_RBBM_2_HI"/>
-	<reg32 offset="0x0422" name="RBBM_PERFCTR_RBBM_3_LO"/>
-	<reg32 offset="0x0423" name="RBBM_PERFCTR_RBBM_3_HI"/>
-	<reg32 offset="0x0424" name="RBBM_PERFCTR_PC_0_LO"/>
-	<reg32 offset="0x0425" name="RBBM_PERFCTR_PC_0_HI"/>
-	<reg32 offset="0x0426" name="RBBM_PERFCTR_PC_1_LO"/>
-	<reg32 offset="0x0427" name="RBBM_PERFCTR_PC_1_HI"/>
-	<reg32 offset="0x0428" name="RBBM_PERFCTR_PC_2_LO"/>
-	<reg32 offset="0x0429" name="RBBM_PERFCTR_PC_2_HI"/>
-	<reg32 offset="0x042a" name="RBBM_PERFCTR_PC_3_LO"/>
-	<reg32 offset="0x042b" name="RBBM_PERFCTR_PC_3_HI"/>
-	<reg32 offset="0x042c" name="RBBM_PERFCTR_PC_4_LO"/>
-	<reg32 offset="0x042d" name="RBBM_PERFCTR_PC_4_HI"/>
-	<reg32 offset="0x042e" name="RBBM_PERFCTR_PC_5_LO"/>
-	<reg32 offset="0x042f" name="RBBM_PERFCTR_PC_5_HI"/>
-	<reg32 offset="0x0430" name="RBBM_PERFCTR_PC_6_LO"/>
-	<reg32 offset="0x0431" name="RBBM_PERFCTR_PC_6_HI"/>
-	<reg32 offset="0x0432" name="RBBM_PERFCTR_PC_7_LO"/>
-	<reg32 offset="0x0433" name="RBBM_PERFCTR_PC_7_HI"/>
-	<reg32 offset="0x0434" name="RBBM_PERFCTR_VFD_0_LO"/>
-	<reg32 offset="0x0435" name="RBBM_PERFCTR_VFD_0_HI"/>
-	<reg32 offset="0x0436" name="RBBM_PERFCTR_VFD_1_LO"/>
-	<reg32 offset="0x0437" name="RBBM_PERFCTR_VFD_1_HI"/>
-	<reg32 offset="0x0438" name="RBBM_PERFCTR_VFD_2_LO"/>
-	<reg32 offset="0x0439" name="RBBM_PERFCTR_VFD_2_HI"/>
-	<reg32 offset="0x043a" name="RBBM_PERFCTR_VFD_3_LO"/>
-	<reg32 offset="0x043b" name="RBBM_PERFCTR_VFD_3_HI"/>
-	<reg32 offset="0x043c" name="RBBM_PERFCTR_VFD_4_LO"/>
-	<reg32 offset="0x043d" name="RBBM_PERFCTR_VFD_4_HI"/>
-	<reg32 offset="0x043e" name="RBBM_PERFCTR_VFD_5_LO"/>
-	<reg32 offset="0x043f" name="RBBM_PERFCTR_VFD_5_HI"/>
-	<reg32 offset="0x0440" name="RBBM_PERFCTR_VFD_6_LO"/>
-	<reg32 offset="0x0441" name="RBBM_PERFCTR_VFD_6_HI"/>
-	<reg32 offset="0x0442" name="RBBM_PERFCTR_VFD_7_LO"/>
-	<reg32 offset="0x0443" name="RBBM_PERFCTR_VFD_7_HI"/>
-	<reg32 offset="0x0444" name="RBBM_PERFCTR_HLSQ_0_LO"/>
-	<reg32 offset="0x0445" name="RBBM_PERFCTR_HLSQ_0_HI"/>
-	<reg32 offset="0x0446" name="RBBM_PERFCTR_HLSQ_1_LO"/>
-	<reg32 offset="0x0447" name="RBBM_PERFCTR_HLSQ_1_HI"/>
-	<reg32 offset="0x0448" name="RBBM_PERFCTR_HLSQ_2_LO"/>
-	<reg32 offset="0x0449" name="RBBM_PERFCTR_HLSQ_2_HI"/>
-	<reg32 offset="0x044a" name="RBBM_PERFCTR_HLSQ_3_LO"/>
-	<reg32 offset="0x044b" name="RBBM_PERFCTR_HLSQ_3_HI"/>
-	<reg32 offset="0x044c" name="RBBM_PERFCTR_HLSQ_4_LO"/>
-	<reg32 offset="0x044d" name="RBBM_PERFCTR_HLSQ_4_HI"/>
-	<reg32 offset="0x044e" name="RBBM_PERFCTR_HLSQ_5_LO"/>
-	<reg32 offset="0x044f" name="RBBM_PERFCTR_HLSQ_5_HI"/>
-	<reg32 offset="0x0450" name="RBBM_PERFCTR_VPC_0_LO"/>
-	<reg32 offset="0x0451" name="RBBM_PERFCTR_VPC_0_HI"/>
-	<reg32 offset="0x0452" name="RBBM_PERFCTR_VPC_1_LO"/>
-	<reg32 offset="0x0453" name="RBBM_PERFCTR_VPC_1_HI"/>
-	<reg32 offset="0x0454" name="RBBM_PERFCTR_VPC_2_LO"/>
-	<reg32 offset="0x0455" name="RBBM_PERFCTR_VPC_2_HI"/>
-	<reg32 offset="0x0456" name="RBBM_PERFCTR_VPC_3_LO"/>
-	<reg32 offset="0x0457" name="RBBM_PERFCTR_VPC_3_HI"/>
-	<reg32 offset="0x0458" name="RBBM_PERFCTR_VPC_4_LO"/>
-	<reg32 offset="0x0459" name="RBBM_PERFCTR_VPC_4_HI"/>
-	<reg32 offset="0x045a" name="RBBM_PERFCTR_VPC_5_LO"/>
-	<reg32 offset="0x045b" name="RBBM_PERFCTR_VPC_5_HI"/>
-	<reg32 offset="0x045c" name="RBBM_PERFCTR_CCU_0_LO"/>
-	<reg32 offset="0x045d" name="RBBM_PERFCTR_CCU_0_HI"/>
-	<reg32 offset="0x045e" name="RBBM_PERFCTR_CCU_1_LO"/>
-	<reg32 offset="0x045f" name="RBBM_PERFCTR_CCU_1_HI"/>
-	<reg32 offset="0x0460" name="RBBM_PERFCTR_CCU_2_LO"/>
-	<reg32 offset="0x0461" name="RBBM_PERFCTR_CCU_2_HI"/>
-	<reg32 offset="0x0462" name="RBBM_PERFCTR_CCU_3_LO"/>
-	<reg32 offset="0x0463" name="RBBM_PERFCTR_CCU_3_HI"/>
-	<reg32 offset="0x0464" name="RBBM_PERFCTR_CCU_4_LO"/>
-	<reg32 offset="0x0465" name="RBBM_PERFCTR_CCU_4_HI"/>
-	<reg32 offset="0x0466" name="RBBM_PERFCTR_TSE_0_LO"/>
-	<reg32 offset="0x0467" name="RBBM_PERFCTR_TSE_0_HI"/>
-	<reg32 offset="0x0468" name="RBBM_PERFCTR_TSE_1_LO"/>
-	<reg32 offset="0x0469" name="RBBM_PERFCTR_TSE_1_HI"/>
-	<reg32 offset="0x046a" name="RBBM_PERFCTR_TSE_2_LO"/>
-	<reg32 offset="0x046b" name="RBBM_PERFCTR_TSE_2_HI"/>
-	<reg32 offset="0x046c" name="RBBM_PERFCTR_TSE_3_LO"/>
-	<reg32 offset="0x046d" name="RBBM_PERFCTR_TSE_3_HI"/>
-	<reg32 offset="0x046e" name="RBBM_PERFCTR_RAS_0_LO"/>
-	<reg32 offset="0x046f" name="RBBM_PERFCTR_RAS_0_HI"/>
-	<reg32 offset="0x0470" name="RBBM_PERFCTR_RAS_1_LO"/>
-	<reg32 offset="0x0471" name="RBBM_PERFCTR_RAS_1_HI"/>
-	<reg32 offset="0x0472" name="RBBM_PERFCTR_RAS_2_LO"/>
-	<reg32 offset="0x0473" name="RBBM_PERFCTR_RAS_2_HI"/>
-	<reg32 offset="0x0474" name="RBBM_PERFCTR_RAS_3_LO"/>
-	<reg32 offset="0x0475" name="RBBM_PERFCTR_RAS_3_HI"/>
-	<reg32 offset="0x0476" name="RBBM_PERFCTR_UCHE_0_LO"/>
-	<reg32 offset="0x0477" name="RBBM_PERFCTR_UCHE_0_HI"/>
-	<reg32 offset="0x0478" name="RBBM_PERFCTR_UCHE_1_LO"/>
-	<reg32 offset="0x0479" name="RBBM_PERFCTR_UCHE_1_HI"/>
-	<reg32 offset="0x047a" name="RBBM_PERFCTR_UCHE_2_LO"/>
-	<reg32 offset="0x047b" name="RBBM_PERFCTR_UCHE_2_HI"/>
-	<reg32 offset="0x047c" name="RBBM_PERFCTR_UCHE_3_LO"/>
-	<reg32 offset="0x047d" name="RBBM_PERFCTR_UCHE_3_HI"/>
-	<reg32 offset="0x047e" name="RBBM_PERFCTR_UCHE_4_LO"/>
-	<reg32 offset="0x047f" name="RBBM_PERFCTR_UCHE_4_HI"/>
-	<reg32 offset="0x0480" name="RBBM_PERFCTR_UCHE_5_LO"/>
-	<reg32 offset="0x0481" name="RBBM_PERFCTR_UCHE_5_HI"/>
-	<reg32 offset="0x0482" name="RBBM_PERFCTR_UCHE_6_LO"/>
-	<reg32 offset="0x0483" name="RBBM_PERFCTR_UCHE_6_HI"/>
-	<reg32 offset="0x0484" name="RBBM_PERFCTR_UCHE_7_LO"/>
-	<reg32 offset="0x0485" name="RBBM_PERFCTR_UCHE_7_HI"/>
-	<reg32 offset="0x0486" name="RBBM_PERFCTR_UCHE_8_LO"/>
-	<reg32 offset="0x0487" name="RBBM_PERFCTR_UCHE_8_HI"/>
-	<reg32 offset="0x0488" name="RBBM_PERFCTR_UCHE_9_LO"/>
-	<reg32 offset="0x0489" name="RBBM_PERFCTR_UCHE_9_HI"/>
-	<reg32 offset="0x048a" name="RBBM_PERFCTR_UCHE_10_LO"/>
-	<reg32 offset="0x048b" name="RBBM_PERFCTR_UCHE_10_HI"/>
-	<reg32 offset="0x048c" name="RBBM_PERFCTR_UCHE_11_LO"/>
-	<reg32 offset="0x048d" name="RBBM_PERFCTR_UCHE_11_HI"/>
-	<reg32 offset="0x048e" name="RBBM_PERFCTR_TP_0_LO"/>
-	<reg32 offset="0x048f" name="RBBM_PERFCTR_TP_0_HI"/>
-	<reg32 offset="0x0490" name="RBBM_PERFCTR_TP_1_LO"/>
-	<reg32 offset="0x0491" name="RBBM_PERFCTR_TP_1_HI"/>
-	<reg32 offset="0x0492" name="RBBM_PERFCTR_TP_2_LO"/>
-	<reg32 offset="0x0493" name="RBBM_PERFCTR_TP_2_HI"/>
-	<reg32 offset="0x0494" name="RBBM_PERFCTR_TP_3_LO"/>
-	<reg32 offset="0x0495" name="RBBM_PERFCTR_TP_3_HI"/>
-	<reg32 offset="0x0496" name="RBBM_PERFCTR_TP_4_LO"/>
-	<reg32 offset="0x0497" name="RBBM_PERFCTR_TP_4_HI"/>
-	<reg32 offset="0x0498" name="RBBM_PERFCTR_TP_5_LO"/>
-	<reg32 offset="0x0499" name="RBBM_PERFCTR_TP_5_HI"/>
-	<reg32 offset="0x049a" name="RBBM_PERFCTR_TP_6_LO"/>
-	<reg32 offset="0x049b" name="RBBM_PERFCTR_TP_6_HI"/>
-	<reg32 offset="0x049c" name="RBBM_PERFCTR_TP_7_LO"/>
-	<reg32 offset="0x049d" name="RBBM_PERFCTR_TP_7_HI"/>
-	<reg32 offset="0x049e" name="RBBM_PERFCTR_TP_8_LO"/>
-	<reg32 offset="0x049f" name="RBBM_PERFCTR_TP_8_HI"/>
-	<reg32 offset="0x04a0" name="RBBM_PERFCTR_TP_9_LO"/>
-	<reg32 offset="0x04a1" name="RBBM_PERFCTR_TP_9_HI"/>
-	<reg32 offset="0x04a2" name="RBBM_PERFCTR_TP_10_LO"/>
-	<reg32 offset="0x04a3" name="RBBM_PERFCTR_TP_10_HI"/>
-	<reg32 offset="0x04a4" name="RBBM_PERFCTR_TP_11_LO"/>
-	<reg32 offset="0x04a5" name="RBBM_PERFCTR_TP_11_HI"/>
-	<reg32 offset="0x04a6" name="RBBM_PERFCTR_SP_0_LO"/>
-	<reg32 offset="0x04a7" name="RBBM_PERFCTR_SP_0_HI"/>
-	<reg32 offset="0x04a8" name="RBBM_PERFCTR_SP_1_LO"/>
-	<reg32 offset="0x04a9" name="RBBM_PERFCTR_SP_1_HI"/>
-	<reg32 offset="0x04aa" name="RBBM_PERFCTR_SP_2_LO"/>
-	<reg32 offset="0x04ab" name="RBBM_PERFCTR_SP_2_HI"/>
-	<reg32 offset="0x04ac" name="RBBM_PERFCTR_SP_3_LO"/>
-	<reg32 offset="0x04ad" name="RBBM_PERFCTR_SP_3_HI"/>
-	<reg32 offset="0x04ae" name="RBBM_PERFCTR_SP_4_LO"/>
-	<reg32 offset="0x04af" name="RBBM_PERFCTR_SP_4_HI"/>
-	<reg32 offset="0x04b0" name="RBBM_PERFCTR_SP_5_LO"/>
-	<reg32 offset="0x04b1" name="RBBM_PERFCTR_SP_5_HI"/>
-	<reg32 offset="0x04b2" name="RBBM_PERFCTR_SP_6_LO"/>
-	<reg32 offset="0x04b3" name="RBBM_PERFCTR_SP_6_HI"/>
-	<reg32 offset="0x04b4" name="RBBM_PERFCTR_SP_7_LO"/>
-	<reg32 offset="0x04b5" name="RBBM_PERFCTR_SP_7_HI"/>
-	<reg32 offset="0x04b6" name="RBBM_PERFCTR_SP_8_LO"/>
-	<reg32 offset="0x04b7" name="RBBM_PERFCTR_SP_8_HI"/>
-	<reg32 offset="0x04b8" name="RBBM_PERFCTR_SP_9_LO"/>
-	<reg32 offset="0x04b9" name="RBBM_PERFCTR_SP_9_HI"/>
-	<reg32 offset="0x04ba" name="RBBM_PERFCTR_SP_10_LO"/>
-	<reg32 offset="0x04bb" name="RBBM_PERFCTR_SP_10_HI"/>
-	<reg32 offset="0x04bc" name="RBBM_PERFCTR_SP_11_LO"/>
-	<reg32 offset="0x04bd" name="RBBM_PERFCTR_SP_11_HI"/>
-	<reg32 offset="0x04be" name="RBBM_PERFCTR_SP_12_LO"/>
-	<reg32 offset="0x04bf" name="RBBM_PERFCTR_SP_12_HI"/>
-	<reg32 offset="0x04c0" name="RBBM_PERFCTR_SP_13_LO"/>
-	<reg32 offset="0x04c1" name="RBBM_PERFCTR_SP_13_HI"/>
-	<reg32 offset="0x04c2" name="RBBM_PERFCTR_SP_14_LO"/>
-	<reg32 offset="0x04c3" name="RBBM_PERFCTR_SP_14_HI"/>
-	<reg32 offset="0x04c4" name="RBBM_PERFCTR_SP_15_LO"/>
-	<reg32 offset="0x04c5" name="RBBM_PERFCTR_SP_15_HI"/>
-	<reg32 offset="0x04c6" name="RBBM_PERFCTR_SP_16_LO"/>
-	<reg32 offset="0x04c7" name="RBBM_PERFCTR_SP_16_HI"/>
-	<reg32 offset="0x04c8" name="RBBM_PERFCTR_SP_17_LO"/>
-	<reg32 offset="0x04c9" name="RBBM_PERFCTR_SP_17_HI"/>
-	<reg32 offset="0x04ca" name="RBBM_PERFCTR_SP_18_LO"/>
-	<reg32 offset="0x04cb" name="RBBM_PERFCTR_SP_18_HI"/>
-	<reg32 offset="0x04cc" name="RBBM_PERFCTR_SP_19_LO"/>
-	<reg32 offset="0x04cd" name="RBBM_PERFCTR_SP_19_HI"/>
-	<reg32 offset="0x04ce" name="RBBM_PERFCTR_SP_20_LO"/>
-	<reg32 offset="0x04cf" name="RBBM_PERFCTR_SP_20_HI"/>
-	<reg32 offset="0x04d0" name="RBBM_PERFCTR_SP_21_LO"/>
-	<reg32 offset="0x04d1" name="RBBM_PERFCTR_SP_21_HI"/>
-	<reg32 offset="0x04d2" name="RBBM_PERFCTR_SP_22_LO"/>
-	<reg32 offset="0x04d3" name="RBBM_PERFCTR_SP_22_HI"/>
-	<reg32 offset="0x04d4" name="RBBM_PERFCTR_SP_23_LO"/>
-	<reg32 offset="0x04d5" name="RBBM_PERFCTR_SP_23_HI"/>
-	<reg32 offset="0x04d6" name="RBBM_PERFCTR_RB_0_LO"/>
-	<reg32 offset="0x04d7" name="RBBM_PERFCTR_RB_0_HI"/>
-	<reg32 offset="0x04d8" name="RBBM_PERFCTR_RB_1_LO"/>
-	<reg32 offset="0x04d9" name="RBBM_PERFCTR_RB_1_HI"/>
-	<reg32 offset="0x04da" name="RBBM_PERFCTR_RB_2_LO"/>
-	<reg32 offset="0x04db" name="RBBM_PERFCTR_RB_2_HI"/>
-	<reg32 offset="0x04dc" name="RBBM_PERFCTR_RB_3_LO"/>
-	<reg32 offset="0x04dd" name="RBBM_PERFCTR_RB_3_HI"/>
-	<reg32 offset="0x04de" name="RBBM_PERFCTR_RB_4_LO"/>
-	<reg32 offset="0x04df" name="RBBM_PERFCTR_RB_4_HI"/>
-	<reg32 offset="0x04e0" name="RBBM_PERFCTR_RB_5_LO"/>
-	<reg32 offset="0x04e1" name="RBBM_PERFCTR_RB_5_HI"/>
-	<reg32 offset="0x04e2" name="RBBM_PERFCTR_RB_6_LO"/>
-	<reg32 offset="0x04e3" name="RBBM_PERFCTR_RB_6_HI"/>
-	<reg32 offset="0x04e4" name="RBBM_PERFCTR_RB_7_LO"/>
-	<reg32 offset="0x04e5" name="RBBM_PERFCTR_RB_7_HI"/>
-	<reg32 offset="0x04e6" name="RBBM_PERFCTR_VSC_0_LO"/>
-	<reg32 offset="0x04e7" name="RBBM_PERFCTR_VSC_0_HI"/>
-	<reg32 offset="0x04e8" name="RBBM_PERFCTR_VSC_1_LO"/>
-	<reg32 offset="0x04e9" name="RBBM_PERFCTR_VSC_1_HI"/>
-	<reg32 offset="0x04ea" name="RBBM_PERFCTR_LRZ_0_LO"/>
-	<reg32 offset="0x04eb" name="RBBM_PERFCTR_LRZ_0_HI"/>
-	<reg32 offset="0x04ec" name="RBBM_PERFCTR_LRZ_1_LO"/>
-	<reg32 offset="0x04ed" name="RBBM_PERFCTR_LRZ_1_HI"/>
-	<reg32 offset="0x04ee" name="RBBM_PERFCTR_LRZ_2_LO"/>
-	<reg32 offset="0x04ef" name="RBBM_PERFCTR_LRZ_2_HI"/>
-	<reg32 offset="0x04f0" name="RBBM_PERFCTR_LRZ_3_LO"/>
-	<reg32 offset="0x04f1" name="RBBM_PERFCTR_LRZ_3_HI"/>
-	<reg32 offset="0x04f2" name="RBBM_PERFCTR_CMP_0_LO"/>
-	<reg32 offset="0x04f3" name="RBBM_PERFCTR_CMP_0_HI"/>
-	<reg32 offset="0x04f4" name="RBBM_PERFCTR_CMP_1_LO"/>
-	<reg32 offset="0x04f5" name="RBBM_PERFCTR_CMP_1_HI"/>
-	<reg32 offset="0x04f6" name="RBBM_PERFCTR_CMP_2_LO"/>
-	<reg32 offset="0x04f7" name="RBBM_PERFCTR_CMP_2_HI"/>
-	<reg32 offset="0x04f8" name="RBBM_PERFCTR_CMP_3_LO"/>
-	<reg32 offset="0x04f9" name="RBBM_PERFCTR_CMP_3_HI"/>
+	<array offset="0x0400" name="RBBM_PERFCTR_CP" stride="2" length="14"/>
+	<array offset="0x041c" name="RBBM_PERFCTR_RBBM" stride="2" length="4"/>
+	<array offset="0x0424" name="RBBM_PERFCTR_PC" stride="2" length="8"/>
+	<array offset="0x0434" name="RBBM_PERFCTR_VFD" stride="2" length="8"/>
+	<array offset="0x0444" name="RBBM_PERFCTR_HLSQ" stride="2" length="6"/>
+	<array offset="0x0450" name="RBBM_PERFCTR_VPC" stride="2" length="6"/>
+	<array offset="0x045c" name="RBBM_PERFCTR_CCU" stride="2" length="5"/>
+	<array offset="0x0466" name="RBBM_PERFCTR_TSE" stride="2" length="4"/>
+	<array offset="0x046e" name="RBBM_PERFCTR_RAS" stride="2" length="4"/>
+	<array offset="0x0476" name="RBBM_PERFCTR_UCHE" stride="2" length="12"/>
+	<array offset="0x048e" name="RBBM_PERFCTR_TP" stride="2" length="12"/>
+	<array offset="0x04a6" name="RBBM_PERFCTR_SP" stride="2" length="24"/>
+	<array offset="0x04d6" name="RBBM_PERFCTR_RB" stride="2" length="8"/>
+	<array offset="0x04e6" name="RBBM_PERFCTR_VSC" stride="2" length="2"/>
+	<array offset="0x04ea" name="RBBM_PERFCTR_LRZ" stride="2" length="4"/>
+	<array offset="0x04f2" name="RBBM_PERFCTR_CMP" stride="2" length="4"/>
 	<reg32 offset="0x0500" name="RBBM_PERFCTR_CNTL"/>
 	<reg32 offset="0x0501" name="RBBM_PERFCTR_LOAD_CMD0"/>
 	<reg32 offset="0x0502" name="RBBM_PERFCTR_LOAD_CMD1"/>
@@ -1396,10 +1149,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0504" name="RBBM_PERFCTR_LOAD_CMD3"/>
 	<reg32 offset="0x0505" name="RBBM_PERFCTR_LOAD_VALUE_LO"/>
 	<reg32 offset="0x0506" name="RBBM_PERFCTR_LOAD_VALUE_HI"/>
-	<reg32 offset="0x0507" name="RBBM_PERFCTR_RBBM_SEL_0"/>
-	<reg32 offset="0x0508" name="RBBM_PERFCTR_RBBM_SEL_1"/>
-	<reg32 offset="0x0509" name="RBBM_PERFCTR_RBBM_SEL_2"/>
-	<reg32 offset="0x050A" name="RBBM_PERFCTR_RBBM_SEL_3"/>
+	<array offset="0x0507" name="RBBM_PERFCTR_RBBM_SEL" stride="1" length="4"/>
 	<reg32 offset="0x050B" name="RBBM_PERFCTR_GPU_BUSY_MASKED"/>
 	<reg32 offset="0x0533" name="RBBM_ISDB_CNT"/>
 
@@ -1607,26 +1357,11 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0x062f" name="DBGC_CFG_DBGBUS_TRACE_BUF1"/>
 	<reg32 offset="0x0630" name="DBGC_CFG_DBGBUS_TRACE_BUF2"/>
-	<reg32 offset="0x0CD8" name="VSC_PERFCTR_VSC_SEL_0"/>
-	<reg32 offset="0x0CD9" name="VSC_PERFCTR_VSC_SEL_1"/>
+	<array offset="0x0CD8" name="VSC_PERFCTR_VSC_SEL" stride="1" length="2"/>
 	<reg32 offset="0xBE05" name="HLSQ_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
-	<reg32 offset="0xBE10" name="HLSQ_PERFCTR_HLSQ_SEL_0"/>
-	<reg32 offset="0xBE11" name="HLSQ_PERFCTR_HLSQ_SEL_1"/>
-	<reg32 offset="0xBE12" name="HLSQ_PERFCTR_HLSQ_SEL_2"/>
-	<reg32 offset="0xBE13" name="HLSQ_PERFCTR_HLSQ_SEL_3"/>
-	<reg32 offset="0xBE14" name="HLSQ_PERFCTR_HLSQ_SEL_4"/>
-	<reg32 offset="0xBE15" name="HLSQ_PERFCTR_HLSQ_SEL_5"/>
 	<reg32 offset="0xC800" name="HLSQ_DBG_AHB_READ_APERTURE"/>
 	<reg32 offset="0xD000" name="HLSQ_DBG_READ_SEL"/>
 	<reg32 offset="0xA601" name="VFD_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
-	<reg32 offset="0xA610" name="VFD_PERFCTR_VFD_SEL_0"/>
-	<reg32 offset="0xA611" name="VFD_PERFCTR_VFD_SEL_1"/>
-	<reg32 offset="0xA612" name="VFD_PERFCTR_VFD_SEL_2"/>
-	<reg32 offset="0xA613" name="VFD_PERFCTR_VFD_SEL_3"/>
-	<reg32 offset="0xA614" name="VFD_PERFCTR_VFD_SEL_4"/>
-	<reg32 offset="0xA615" name="VFD_PERFCTR_VFD_SEL_5"/>
-	<reg32 offset="0xA616" name="VFD_PERFCTR_VFD_SEL_6"/>
-	<reg32 offset="0xA617" name="VFD_PERFCTR_VFD_SEL_7"/>
 	<reg32 offset="0x0E00" name="UCHE_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0E01" name="UCHE_MODE_CNTL"/>
 	<reg32 offset="0x0E05" name="UCHE_WRITE_RANGE_MAX_LO"/>
@@ -1644,44 +1379,9 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0E19" name="UCHE_CLIENT_PF">
 		<bitfield high="7" low="0" name="PERFSEL"/>
 	</reg32>
-	<reg32 offset="0x0E1C" name="UCHE_PERFCTR_UCHE_SEL_0"/>
-	<reg32 offset="0x0E1D" name="UCHE_PERFCTR_UCHE_SEL_1"/>
-	<reg32 offset="0x0E1E" name="UCHE_PERFCTR_UCHE_SEL_2"/>
-	<reg32 offset="0x0E1F" name="UCHE_PERFCTR_UCHE_SEL_3"/>
-	<reg32 offset="0x0E20" name="UCHE_PERFCTR_UCHE_SEL_4"/>
-	<reg32 offset="0x0E21" name="UCHE_PERFCTR_UCHE_SEL_5"/>
-	<reg32 offset="0x0E22" name="UCHE_PERFCTR_UCHE_SEL_6"/>
-	<reg32 offset="0x0E23" name="UCHE_PERFCTR_UCHE_SEL_7"/>
-	<reg32 offset="0x0E24" name="UCHE_PERFCTR_UCHE_SEL_8"/>
-	<reg32 offset="0x0E25" name="UCHE_PERFCTR_UCHE_SEL_9"/>
-	<reg32 offset="0x0E26" name="UCHE_PERFCTR_UCHE_SEL_10"/>
-	<reg32 offset="0x0E27" name="UCHE_PERFCTR_UCHE_SEL_11"/>
+	<array offset="0x0E1C" name="UCHE_PERFCTR_UCHE_SEL" stride="1" length="12"/>
 	<reg32 offset="0xAE01" name="SP_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0xAE02" name="SP_NC_MODE_CNTL"/>
-	<reg32 offset="0xAE10" name="SP_PERFCTR_SP_SEL_0"/>
-	<reg32 offset="0xAE11" name="SP_PERFCTR_SP_SEL_1"/>
-	<reg32 offset="0xAE12" name="SP_PERFCTR_SP_SEL_2"/>
-	<reg32 offset="0xAE13" name="SP_PERFCTR_SP_SEL_3"/>
-	<reg32 offset="0xAE14" name="SP_PERFCTR_SP_SEL_4"/>
-	<reg32 offset="0xAE15" name="SP_PERFCTR_SP_SEL_5"/>
-	<reg32 offset="0xAE16" name="SP_PERFCTR_SP_SEL_6"/>
-	<reg32 offset="0xAE17" name="SP_PERFCTR_SP_SEL_7"/>
-	<reg32 offset="0xAE18" name="SP_PERFCTR_SP_SEL_8"/>
-	<reg32 offset="0xAE19" name="SP_PERFCTR_SP_SEL_9"/>
-	<reg32 offset="0xAE1A" name="SP_PERFCTR_SP_SEL_10"/>
-	<reg32 offset="0xAE1B" name="SP_PERFCTR_SP_SEL_11"/>
-	<reg32 offset="0xAE1C" name="SP_PERFCTR_SP_SEL_12"/>
-	<reg32 offset="0xAE1D" name="SP_PERFCTR_SP_SEL_13"/>
-	<reg32 offset="0xAE1E" name="SP_PERFCTR_SP_SEL_14"/>
-	<reg32 offset="0xAE1F" name="SP_PERFCTR_SP_SEL_15"/>
-	<reg32 offset="0xAE20" name="SP_PERFCTR_SP_SEL_16"/>
-	<reg32 offset="0xAE21" name="SP_PERFCTR_SP_SEL_17"/>
-	<reg32 offset="0xAE22" name="SP_PERFCTR_SP_SEL_18"/>
-	<reg32 offset="0xAE23" name="SP_PERFCTR_SP_SEL_19"/>
-	<reg32 offset="0xAE24" name="SP_PERFCTR_SP_SEL_20"/>
-	<reg32 offset="0xAE25" name="SP_PERFCTR_SP_SEL_21"/>
-	<reg32 offset="0xAE26" name="SP_PERFCTR_SP_SEL_22"/>
-	<reg32 offset="0xAE27" name="SP_PERFCTR_SP_SEL_23"/>
 	<reg32 offset="0xB601" name="TPL1_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0xB604" name="TPL1_NC_MODE_CNTL"/>
 	<reg32 offset="0xB608" name="TPL1_BICUBIC_WEIGHTS_TABLE_0"/>
@@ -1689,18 +1389,6 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xB60A" name="TPL1_BICUBIC_WEIGHTS_TABLE_2"/>
 	<reg32 offset="0xB60B" name="TPL1_BICUBIC_WEIGHTS_TABLE_3"/>
 	<reg32 offset="0xB60C" name="TPL1_BICUBIC_WEIGHTS_TABLE_4"/>
-	<reg32 offset="0xB610" name="TPL1_PERFCTR_TP_SEL_0"/>
-	<reg32 offset="0xB611" name="TPL1_PERFCTR_TP_SEL_1"/>
-	<reg32 offset="0xB612" name="TPL1_PERFCTR_TP_SEL_2"/>
-	<reg32 offset="0xB613" name="TPL1_PERFCTR_TP_SEL_3"/>
-	<reg32 offset="0xB614" name="TPL1_PERFCTR_TP_SEL_4"/>
-	<reg32 offset="0xB615" name="TPL1_PERFCTR_TP_SEL_5"/>
-	<reg32 offset="0xB616" name="TPL1_PERFCTR_TP_SEL_6"/>
-	<reg32 offset="0xB617" name="TPL1_PERFCTR_TP_SEL_7"/>
-	<reg32 offset="0xB618" name="TPL1_PERFCTR_TP_SEL_8"/>
-	<reg32 offset="0xB619" name="TPL1_PERFCTR_TP_SEL_9"/>
-	<reg32 offset="0xB61A" name="TPL1_PERFCTR_TP_SEL_10"/>
-	<reg32 offset="0xB61B" name="TPL1_PERFCTR_TP_SEL_11"/>
 	<reg32 offset="0x3000" name="VBIF_VERSION"/>
 	<reg32 offset="0x3001" name="VBIF_CLKON">
 		<bitfield pos="1" name="FORCE_ON_TESTBUS" type="boolean"/>
@@ -2141,18 +1829,9 @@ to upconvert to 32b float internally?
 	<!-- always 0x880 ? (and 0 in a640/a650 traces?) -->
 	<reg32 offset="0x8600" name="GRAS_UNKNOWN_8600" low="0" high="12" />
 	<reg32 offset="0x8601" name="GRAS_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
-	<reg32 offset="0x8610" name="GRAS_PERFCTR_TSE_SEL_0"/>
-	<reg32 offset="0x8611" name="GRAS_PERFCTR_TSE_SEL_1"/>
-	<reg32 offset="0x8612" name="GRAS_PERFCTR_TSE_SEL_2"/>
-	<reg32 offset="0x8613" name="GRAS_PERFCTR_TSE_SEL_3"/>
-	<reg32 offset="0x8614" name="GRAS_PERFCTR_RAS_SEL_0"/>
-	<reg32 offset="0x8615" name="GRAS_PERFCTR_RAS_SEL_1"/>
-	<reg32 offset="0x8616" name="GRAS_PERFCTR_RAS_SEL_2"/>
-	<reg32 offset="0x8617" name="GRAS_PERFCTR_RAS_SEL_3"/>
-	<reg32 offset="0x8618" name="GRAS_PERFCTR_LRZ_SEL_0"/>
-	<reg32 offset="0x8619" name="GRAS_PERFCTR_LRZ_SEL_1"/>
-	<reg32 offset="0x861A" name="GRAS_PERFCTR_LRZ_SEL_2"/>
-	<reg32 offset="0x861B" name="GRAS_PERFCTR_LRZ_SEL_3"/>
+	<array offset="0x8610" name="GRAS_PERFCTR_TSE_SEL" stride="1" length="4"/>
+	<array offset="0x8614" name="GRAS_PERFCTR_RAS_SEL" stride="1" length="4"/>
+	<array offset="0x8618" name="GRAS_PERFCTR_LRZ_SEL" stride="1" length="4"/>
 
 	<!-- note 0x8620-0x87ff are not all invalid
 	(in particular, 0x8631/0x8632 have 0x3fff3fff mask and would be xy coords)
@@ -2610,28 +2289,14 @@ to upconvert to 32b float internally?
 		<bitfield name="UNK12" low="12" high="13"/>
 	</reg32>
 	<!-- 0x8e09-0x8e0f invalid -->
-	<reg32 offset="0x8e10" name="RB_PERFCTR_RB_SEL_0"/>
-	<reg32 offset="0x8e11" name="RB_PERFCTR_RB_SEL_1"/>
-	<reg32 offset="0x8e12" name="RB_PERFCTR_RB_SEL_2"/>
-	<reg32 offset="0x8e13" name="RB_PERFCTR_RB_SEL_3"/>
-	<reg32 offset="0x8e14" name="RB_PERFCTR_RB_SEL_4"/>
-	<reg32 offset="0x8e15" name="RB_PERFCTR_RB_SEL_5"/>
-	<reg32 offset="0x8e16" name="RB_PERFCTR_RB_SEL_6"/>
-	<reg32 offset="0x8e17" name="RB_PERFCTR_RB_SEL_7"/>
-	<reg32 offset="0x8e18" name="RB_PERFCTR_CCU_SEL_0"/>
-	<reg32 offset="0x8e19" name="RB_PERFCTR_CCU_SEL_1"/>
-	<reg32 offset="0x8e1a" name="RB_PERFCTR_CCU_SEL_2"/>
-	<reg32 offset="0x8e1b" name="RB_PERFCTR_CCU_SEL_3"/>
-	<reg32 offset="0x8e1c" name="RB_PERFCTR_CCU_SEL_4"/>
+	<array offset="0x8e10" name="RB_PERFCTR_RB_SEL" stride="1" length="8"/>
+	<array offset="0x8e18" name="RB_PERFCTR_CCU_SEL" stride="1" length="5"/>
 	<!-- 0x8e1d-0x8e1f invalid -->
 	<!-- 0x8e20-0x8e25 more perfcntr sel? -->
 	<!-- 0x8e26-0x8e27 invalid -->
 	<reg32 offset="0x8e28" name="RB_UNKNOWN_8E28" low="0" high="10"/>
 	<!-- 0x8e29-0x8e2b invalid -->
-	<reg32 offset="0x8e2c" name="RB_PERFCTR_CMP_SEL_0"/>
-	<reg32 offset="0x8e2d" name="RB_PERFCTR_CMP_SEL_1"/>
-	<reg32 offset="0x8e2e" name="RB_PERFCTR_CMP_SEL_2"/>
-	<reg32 offset="0x8e2f" name="RB_PERFCTR_CMP_SEL_3"/>
+	<array offset="0x8e2c" name="RB_PERFCTR_CMP_SEL" stride="1" length="4"/>
 	<reg32 offset="0x8e3b" name="RB_RB_SUB_BLOCK_SEL_CNTL_HOST"/>
 	<reg32 offset="0x8e3d" name="RB_RB_SUB_BLOCK_SEL_CNTL_CD"/>
 	<!-- 0x8e3e-0x8e4f invalid -->
@@ -2816,12 +2481,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x9601" name="VPC_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<reg32 offset="0x9602" name="VPC_UNKNOWN_9602" pos="0"/> <!-- always 0x0 ? -->
 	<reg32 offset="0x9603" name="VPC_UNKNOWN_9603" low="0" high="26"/>
-	<reg32 offset="0x9604" name="VPC_PERFCTR_VPC_SEL_0"/>
-	<reg32 offset="0x9605" name="VPC_PERFCTR_VPC_SEL_1"/>
-	<reg32 offset="0x9606" name="VPC_PERFCTR_VPC_SEL_2"/>
-	<reg32 offset="0x9607" name="VPC_PERFCTR_VPC_SEL_3"/>
-	<reg32 offset="0x9608" name="VPC_PERFCTR_VPC_SEL_4"/>
-	<reg32 offset="0x9609" name="VPC_PERFCTR_VPC_SEL_5"/>
+	<array offset="0x9604" name="VPC_PERFCTR_VPC_SEL" stride="1" length="6"/>
 	<!-- 0x960a-0x9623 invalid -->
 	<!-- TODO: regs from 0x9624-0x963a -->
 	<!-- 0x963b-0x97ff invalid -->
@@ -2976,14 +2636,7 @@ to upconvert to 32b float internally?
 	<reg64 offset="0x9e12" name="PC_BIN_PRIM_STRM" type="waddress" align="32"/>
 	<reg64 offset="0x9e14" name="PC_BIN_DRAW_STRM" type="waddress" align="32"/>
 
-	<reg32 offset="0x9e34" name="PC_PERFCTR_PC_SEL_0"/>
-	<reg32 offset="0x9e35" name="PC_PERFCTR_PC_SEL_1"/>
-	<reg32 offset="0x9e36" name="PC_PERFCTR_PC_SEL_2"/>
-	<reg32 offset="0x9e37" name="PC_PERFCTR_PC_SEL_3"/>
-	<reg32 offset="0x9e38" name="PC_PERFCTR_PC_SEL_4"/>
-	<reg32 offset="0x9e39" name="PC_PERFCTR_PC_SEL_5"/>
-	<reg32 offset="0x9e3a" name="PC_PERFCTR_PC_SEL_6"/>
-	<reg32 offset="0x9e3b" name="PC_PERFCTR_PC_SEL_7"/>
+	<array offset="0x9e34" name="PC_PERFCTR_PC_SEL" stride="1" length="8"/>
 
 	<!-- always 0x0 -->
 	<reg32 offset="0x9e72" name="PC_UNKNOWN_9E72"/>
@@ -3074,6 +2727,7 @@ to upconvert to 32b float internally?
 		<value value="0" name="THREAD64"/>
 		<value value="1" name="THREAD128"/>
 	</enum>
+	<array offset="0xa610" name="VFD_PERFCTR_VFD_SEL" stride="1" length="8"/>
 
 	<bitset name="a6xx_sp_xs_ctrl_reg0" inline="yes">
 		<!--
@@ -3552,9 +3206,18 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xae03" name="SP_UNKNOWN_AE03"/>
 	<reg32 offset="0xae04" name="SP_UNKNOWN_AE04"/>
-
-	<!-- always 0x3f ? -->
-	<reg32 offset="0xae0f" name="SP_UNKNOWN_AE0F"/>
+	<reg32 offset="0xae0f" name="SP_PERFCTR_ENABLE">
+		<!-- some perfcntrs are affected by a per-stage enable bit
+		     (PERF_SP_ALU_WORKING_CYCLES for example)
+		     TODO: verify position of HS/DS/GS bits -->
+		<bitfield name="VS" pos="0" type="boolean"/>
+		<bitfield name="HS" pos="1" type="boolean"/>
+		<bitfield name="DS" pos="2" type="boolean"/>
+		<bitfield name="GS" pos="3" type="boolean"/>
+		<bitfield name="FS" pos="4" type="boolean"/>
+		<bitfield name="CS" pos="5" type="boolean"/>
+	</reg32>
+	<array offset="0xae10" name="SP_PERFCTR_SP_SEL" stride="1" length="24"/>
 
 	<!--
 	The downstream kernel calls the debug cluster of registers
@@ -3616,6 +3279,7 @@ to upconvert to 32b float internally?
 
 	<!-- always 0x44 ? -->
 	<reg32 offset="0xb605" name="SP_UNKNOWN_B605"/>
+	<array offset="0xb610" name="TPL1_PERFCTR_TP_SEL" stride="1" length="12"/>
 
 	<bitset name="a6xx_hlsq_xs_cntl" inline="yes">
 		<bitfield name="CONSTLEN" low="0" high="7" shr="2" type="uint"/>
@@ -3800,6 +3464,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xbe01" name="HLSQ_UNKNOWN_BE01"/>
 	<!-- always 0x0 ? -->
 	<reg32 offset="0xbe04" name="HLSQ_UNKNOWN_BE04"/>
+	<array offset="0xbe10" name="HLSQ_PERFCTR_HLSQ_SEL" stride="1" length="6"/>
 
 	<!--
 		These special registers signal the beginning/end of an event
