@@ -1001,7 +1001,7 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 			  const VkClearDepthStencilValue clear_value,
 			  uint32_t view_mask)
 {
-	if (!iview->support_fast_clear)
+	if (!iview || !iview->support_fast_clear)
 		return false;
 
 	if (!radv_layout_is_htile_compressed(cmd_buffer->device, iview->image, image_layout, in_render_loop,
@@ -1571,7 +1571,7 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 {
 	uint32_t clear_color[2];
 
-	if (!iview->support_fast_clear)
+	if (!iview || !iview->support_fast_clear)
 		return false;
 
 	if (!radv_layout_can_fast_clear(cmd_buffer->device, iview->image, image_layout, in_render_loop,
