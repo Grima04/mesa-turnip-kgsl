@@ -165,13 +165,13 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
 	OUT_RING(ring, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
 			       A6XX_HLSQ_CS_CNTL_1_THREADSIZE(THREAD128));
 
-	OUT_PKT4(ring, REG_A6XX_SP_CS_OBJ_START_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_SP_CS_OBJ_START, 2);
 	OUT_RELOC(ring, v->bo, 0, 0, 0);   /* SP_CS_OBJ_START_LO/HI */
 
 	OUT_PKT4(ring, REG_A6XX_SP_CS_INSTRLEN, 1);
 	OUT_RING(ring, v->instrlen);
 
-	OUT_PKT4(ring, REG_A6XX_SP_CS_OBJ_START_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_SP_CS_OBJ_START, 2);
 	OUT_RELOC(ring, v->bo, 0, 0, 0);
 
 	OUT_PKT7(ring, CP_LOAD_STATE6_FRAG, 3);
@@ -291,7 +291,7 @@ cs_ibo_emit(struct fd_ringbuffer *ring, struct fd_submit *submit,
 		CP_LOAD_STATE6_0_NUM_UNIT(kernel->num_bufs));
 	OUT_RB(ring, state);
 
-	OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_SP_CS_IBO, 2);
 	OUT_RB(ring, state);
 
 	OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_COUNT, 1);

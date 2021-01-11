@@ -166,7 +166,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 		OUT_REG(ring, A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = fmt));
 
-		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE_LO, 3);
+		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE, 3);
 		fd6_emit_flag_reference(ring, rsc,
 				zsbuf->u.tex.level, zsbuf->u.tex.first_layer);
 
@@ -175,10 +175,9 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 				A6XX_GRAS_LRZ_BUFFER_BASE(.bo = rsc->lrz),
 				A6XX_GRAS_LRZ_BUFFER_PITCH(.pitch = rsc->lrz_pitch),
 				// XXX a6xx seems to use a different buffer here.. not sure what for..
-				A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO(0),
-				A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_HI(0));
+				A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE());
 		} else {
-			OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE_LO, 5);
+			OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE, 5);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);     /* GRAS_LRZ_BUFFER_PITCH */
@@ -217,7 +216,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 		OUT_REG(ring, A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = DEPTH6_NONE));
 
-		OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE_LO, 5);
+		OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE, 5);
 		OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_LO */
 		OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_HI */
 		OUT_RING(ring, 0x00000000);    /* GRAS_LRZ_BUFFER_PITCH */
@@ -877,7 +876,7 @@ emit_blit(struct fd_batch *batch,
 	OUT_REG(ring, A6XX_RB_BLIT_BASE_GMEM(.dword = base));
 
 	if (ubwc_enabled) {
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_FLAG_DST_LO, 3);
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_FLAG_DST, 3);
 		fd6_emit_flag_reference(ring, rsc,
 				psurf->u.tex.level, psurf->u.tex.first_layer);
 	}
@@ -1403,7 +1402,7 @@ setup_tess_buffers(struct fd_batch *batch, struct fd_ringbuffer *ring)
 			batch->tessparam_size,
 			DRM_FREEDRENO_GEM_TYPE_KMEM, "tessparam");
 
-	OUT_PKT4(ring, REG_A6XX_PC_TESSFACTOR_ADDR_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_PC_TESSFACTOR_ADDR, 2);
 	OUT_RELOC(ring, batch->tessfactor_bo, 0, 0, 0);
 
 	batch->tess_addrs_constobj->cur = batch->tess_addrs_constobj->start;

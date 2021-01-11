@@ -67,7 +67,7 @@ occlusion_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_CONTROL, 1);
 	OUT_RING(ring, A6XX_RB_SAMPLE_COUNT_CONTROL_COPY);
 
-	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_ADDR_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_ADDR, 2);
 	OUT_RELOC(ring, query_sample(aq, start));
 
 	fd6_event_write(batch, ring, ZPASS_DONE, false);
@@ -91,7 +91,7 @@ occlusion_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_CONTROL, 1);
 	OUT_RING(ring, A6XX_RB_SAMPLE_COUNT_CONTROL_COPY);
 
-	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_ADDR_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_ADDR, 2);
 	OUT_RELOC(ring, query_sample(aq, stop));
 
 	fd6_event_write(batch, ring, ZPASS_DONE, false);
@@ -399,7 +399,7 @@ primitives_emitted_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 	struct fd_ringbuffer *ring = batch->draw;
 
 	fd_wfi(batch, ring);
-	OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_COUNTS_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_COUNTS, 2);
 	primitives_relocw(ring, aq, start[0]);
 
 	fd6_event_write(batch, ring, WRITE_PRIMITIVE_COUNTS, false);
@@ -413,7 +413,7 @@ primitives_emitted_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 
 	fd_wfi(batch, ring);
 
-	OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_COUNTS_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_COUNTS, 2);
 	primitives_relocw(ring, aq, stop[0]);
 	fd6_event_write(batch, ring, WRITE_PRIMITIVE_COUNTS, false);
 

@@ -237,7 +237,7 @@ emit_border_color(struct fd_context *ctx, struct fd_ringbuffer *ring)
 	setup_border_colors(&ctx->tex[PIPE_SHADER_FRAGMENT],
 			&entries[ctx->tex[PIPE_SHADER_VERTEX].num_samplers]);
 
-	OUT_PKT4(ring, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR_LO, 2);
+	OUT_PKT4(ring, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR, 2);
 	OUT_RELOC(ring, fd_resource(fd6_ctx->border_color_buf)->bo, off, 0, 0);
 
 	u_upload_unmap(fd6_ctx->border_color_uploader);
@@ -296,43 +296,43 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 	case PIPE_SHADER_VERTEX:
 		sb = SB6_VS_TEX;
 		opcode = CP_LOAD_STATE6_GEOM;
-		tex_samp_reg = REG_A6XX_SP_VS_TEX_SAMP_LO;
-		tex_const_reg = REG_A6XX_SP_VS_TEX_CONST_LO;
+		tex_samp_reg = REG_A6XX_SP_VS_TEX_SAMP;
+		tex_const_reg = REG_A6XX_SP_VS_TEX_CONST;
 		tex_count_reg = REG_A6XX_SP_VS_TEX_COUNT;
 		break;
 	case PIPE_SHADER_TESS_CTRL:
 		sb = SB6_HS_TEX;
 		opcode = CP_LOAD_STATE6_GEOM;
-		tex_samp_reg = REG_A6XX_SP_HS_TEX_SAMP_LO;
-		tex_const_reg = REG_A6XX_SP_HS_TEX_CONST_LO;
+		tex_samp_reg = REG_A6XX_SP_HS_TEX_SAMP;
+		tex_const_reg = REG_A6XX_SP_HS_TEX_CONST;
 		tex_count_reg = REG_A6XX_SP_HS_TEX_COUNT;
 		break;
 	case PIPE_SHADER_TESS_EVAL:
 		sb = SB6_DS_TEX;
 		opcode = CP_LOAD_STATE6_GEOM;
-		tex_samp_reg = REG_A6XX_SP_DS_TEX_SAMP_LO;
-		tex_const_reg = REG_A6XX_SP_DS_TEX_CONST_LO;
+		tex_samp_reg = REG_A6XX_SP_DS_TEX_SAMP;
+		tex_const_reg = REG_A6XX_SP_DS_TEX_CONST;
 		tex_count_reg = REG_A6XX_SP_DS_TEX_COUNT;
 		break;
 	case PIPE_SHADER_GEOMETRY:
 		sb = SB6_GS_TEX;
 		opcode = CP_LOAD_STATE6_GEOM;
-		tex_samp_reg = REG_A6XX_SP_GS_TEX_SAMP_LO;
-		tex_const_reg = REG_A6XX_SP_GS_TEX_CONST_LO;
+		tex_samp_reg = REG_A6XX_SP_GS_TEX_SAMP;
+		tex_const_reg = REG_A6XX_SP_GS_TEX_CONST;
 		tex_count_reg = REG_A6XX_SP_GS_TEX_COUNT;
 		break;
 	case PIPE_SHADER_FRAGMENT:
 		sb = SB6_FS_TEX;
 		opcode = CP_LOAD_STATE6_FRAG;
-		tex_samp_reg = REG_A6XX_SP_FS_TEX_SAMP_LO;
-		tex_const_reg = REG_A6XX_SP_FS_TEX_CONST_LO;
+		tex_samp_reg = REG_A6XX_SP_FS_TEX_SAMP;
+		tex_const_reg = REG_A6XX_SP_FS_TEX_CONST;
 		tex_count_reg = REG_A6XX_SP_FS_TEX_COUNT;
 		break;
 	case PIPE_SHADER_COMPUTE:
 		sb = SB6_CS_TEX;
 		opcode = CP_LOAD_STATE6_FRAG;
-		tex_samp_reg = REG_A6XX_SP_CS_TEX_SAMP_LO;
-		tex_const_reg = REG_A6XX_SP_CS_TEX_CONST_LO;
+		tex_samp_reg = REG_A6XX_SP_CS_TEX_SAMP;
+		tex_const_reg = REG_A6XX_SP_CS_TEX_CONST;
 		tex_count_reg = REG_A6XX_SP_CS_TEX_COUNT;
 		break;
 	default:
@@ -748,7 +748,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 
 		target->stride = info->stride[i];
 
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_BASE_LO(i), 3);
+		OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_BASE(i), 3);
 		/* VPC_SO[i].BUFFER_BASE_LO: */
 		OUT_RELOC(ring, fd_resource(target->base.buffer)->bo, 0, 0, 0);
 		OUT_RING(ring, target->base.buffer_size + target->base.buffer_offset);
@@ -773,7 +773,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 		}
 
 		// After a draw HW would write the new offset to offset_bo
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_FLUSH_BASE_LO(i), 2);
+		OUT_PKT4(ring, REG_A6XX_VPC_SO_FLUSH_BASE(i), 2);
 		OUT_RELOC(ring, offset_bo, 0, 0, 0);
 
 		so->reset &= ~(1 << i);
@@ -1086,7 +1086,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 			CP_LOAD_STATE6_0_NUM_UNIT(ir3_shader_nibo(fs)));
 		OUT_RB(obj, state);
 
-		OUT_PKT4(obj, REG_A6XX_SP_IBO_LO, 2);
+		OUT_PKT4(obj, REG_A6XX_SP_IBO, 2);
 		OUT_RB(obj, state);
 
 		/* TODO if we used CP_SET_DRAW_STATE for compute shaders, we could
@@ -1176,7 +1176,7 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			CP_LOAD_STATE6_0_NUM_UNIT(ir3_shader_nibo(cp)));
 		OUT_RB(ring, state);
 
-		OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_LO, 2);
+		OUT_PKT4(ring, REG_A6XX_SP_CS_IBO, 2);
 		OUT_RB(ring, state);
 
 		OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_COUNT, 1);

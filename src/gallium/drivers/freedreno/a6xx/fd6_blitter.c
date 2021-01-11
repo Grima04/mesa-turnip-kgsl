@@ -562,7 +562,7 @@ emit_blit_dst(struct fd_ringbuffer *ring, struct pipe_resource *prsc, enum pipe_
 	OUT_RING(ring, 0x00000000);
 
 	if (ubwc_enabled) {
-		OUT_PKT4(ring, REG_A6XX_RB_2D_DST_FLAGS_LO, 6);
+		OUT_PKT4(ring, REG_A6XX_RB_2D_DST_FLAGS, 6);
 		fd6_emit_flag_reference(ring, dst, level, layer);
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
@@ -614,7 +614,7 @@ emit_blit_src(struct fd_ringbuffer *ring, const struct pipe_blit_info *info, uns
 	OUT_RING(ring, 0x00000000);
 
 	if (subwc_enabled) {
-		OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_FLAGS_LO, 6);
+		OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_FLAGS, 6);
 		fd6_emit_flag_reference(ring, src, info->src.level, layer);
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
