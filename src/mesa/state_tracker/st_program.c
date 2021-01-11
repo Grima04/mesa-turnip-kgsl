@@ -40,6 +40,7 @@
 #include "program/prog_to_nir.h"
 #include "program/programopt.h"
 
+#include "compiler/glsl/gl_nir.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_serialize.h"
 #include "draw/draw_context.h"
@@ -509,6 +510,12 @@ st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
 
    if (PIPE_SHADER_IR_NIR !=
        screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR)) {
+      /* u_screen.c defaults to images as deref enabled for some reason (which
+       * is what radeonsi wants), but nir-to-tgsi requires lowered images.
+       */
+      if (screen->get_param(screen, PIPE_CAP_NIR_IMAGES_AS_DEREF))
+         NIR_PASS_V(nir, gl_nir_lower_images, false);
+
       state->type = PIPE_SHADER_IR_TGSI;
       state->tokens = nir_to_tgsi(nir, screen);
    }
