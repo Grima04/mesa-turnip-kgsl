@@ -244,7 +244,7 @@ class Array(object):
 		self.length = int(attrs["length"], 0)
 
 	def dump(self):
-		print("static inline uint32_t REG_%s_%s(uint32_t i0) { return 0x%08x + 0x%x*i0; }\n" % (self.domain, self.name, self.offset, self.stride))
+		print("#define REG_%s_%s(i0) (0x%08x + 0x%x*(i0))\n" % (self.domain, self.name, self.offset, self.stride))
 
 	def dump_pack_struct(self):
 		pass
