@@ -1631,7 +1631,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
     * no workaround for indirect draws, but we can at least skip
     * direct draws.
     */
-   if (unlikely(!indirect && !instance_count))
+   if (GFX_VERSION <= GFX7 && unlikely(!indirect && !instance_count))
       return;
 
    struct si_shader_selector *vs = sctx->vs_shader.cso;
