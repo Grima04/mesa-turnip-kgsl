@@ -101,9 +101,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         /* Don't expose MRT related CAPs on GPUs that don't implement them */
         bool has_mrt = !(dev->quirks & MIDGARD_SFBD);
 
-        /* Bifrost is WIP. No MRT support yet. */
+        /* Bifrost is WIP */
         bool is_bifrost = (dev->quirks & IS_BIFROST);
-        has_mrt &= !is_bifrost || is_deqp;
 
         switch (param) {
         case PIPE_CAP_NPOT_TEXTURES:
@@ -124,7 +123,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return has_mrt ? 8 : 1;
 
         case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
-                return 1;
+                return is_bifrost ? 0 : 1;
 
         case PIPE_CAP_SAMPLE_SHADING:
                 /* WIP */
@@ -138,11 +137,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_ANISOTROPIC_FILTER:
                 return !!(dev->quirks & HAS_ANISOTROPIC);
 
-        /* ES3 features unsupported on Bifrost */
         case PIPE_CAP_TGSI_INSTANCEID:
         case PIPE_CAP_TEXTURE_MULTISAMPLE:
         case PIPE_CAP_SURFACE_SAMPLE_COUNT:
-                return !is_bifrost || is_deqp;
+                return true;
 
         case PIPE_CAP_SAMPLER_VIEW_TARGET:
         case PIPE_CAP_TEXTURE_SWIZZLE:
@@ -163,22 +161,22 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
-                return (is_bifrost && !is_deqp) ? 0 : 4;
+                return 4;
         case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
         case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
-                return (is_bifrost && !is_deqp) ? 0 : 64;
+                return 64;
         case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
         case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
-                return (is_bifrost && !is_deqp) ? 0 : 1;
+                return 1;
 
         case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
-                return (is_bifrost && !is_deqp) ? 0 : 256;
+                return 256;
 
         case PIPE_CAP_GLSL_FEATURE_LEVEL:
         case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-                return is_gl3 ? 330 : (is_bifrost && !is_deqp) ? 120 : 140;
+                return is_gl3 ? 330 : 140;
         case PIPE_CAP_ESSL_FEATURE_LEVEL:
-                return (is_bifrost && !is_deqp) ? 120 : 300;
+                return 300;
 
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
                 return 16;
@@ -202,7 +200,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
                 return 4096;
         case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
-                return (is_bifrost && !is_deqp) ? 0 : 13;
+                return 13;
         case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
                 return 13;
 
@@ -224,7 +222,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_SEAMLESS_CUBE_MAP:
         case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
-                return !is_bifrost || is_deqp;
+                return true;
 
         case PIPE_CAP_MAX_VERTEX_ELEMENT_SRC_OFFSET:
                 return 0xffff;
@@ -254,8 +252,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         }
 
         case PIPE_CAP_SHADER_STENCIL_EXPORT:
-                return !is_bifrost || is_deqp;
-
         case PIPE_CAP_CONDITIONAL_RENDER:
         case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
                 return true;
@@ -330,7 +326,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
-                return (is_bifrost && !is_deqp) ? 0 : 1;
+                return 1;
         case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
                 return 0;
 
@@ -442,8 +438,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                               unsigned bind)
 {
         struct panfrost_device *dev = pan_device(screen);
-        bool is_bifrost = (dev->quirks & IS_BIFROST);
-        bool is_deqp = dev->debug & PAN_DBG_DEQP;
         const struct util_format_description *format_desc;
 
         assert(target == PIPE_BUFFER ||
@@ -469,10 +463,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return false;
 
         if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
-                return false;
-
-        /* Don't advertise multisampling on Bifrost yet */
-        if ((is_bifrost && !is_deqp) && sample_count > 1)
                 return false;
 
         /* Z16 causes dEQP failures on t720 */
