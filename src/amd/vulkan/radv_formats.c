@@ -1284,6 +1284,10 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 	}
 
 	if (info->flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) {
+		/* Sparse textures are only supported on GFX8+. */
+		if (physical_device->rad_info.chip_class < GFX8)
+			goto unsupported;
+
 		if (desc->plane_count > 1 || info->type != VK_IMAGE_TYPE_2D ||
 		    info->tiling != VK_IMAGE_TILING_OPTIMAL ||
 		    vk_format_is_depth_or_stencil(format))
