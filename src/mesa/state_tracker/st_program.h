@@ -357,6 +357,9 @@ st_serialize_nir(struct st_program *stp);
 extern void
 st_finalize_program(struct st_context *st, struct gl_program *prog);
 
+struct pipe_shader_state *
+st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state);
+
 #ifdef __cplusplus
 }
 #endif

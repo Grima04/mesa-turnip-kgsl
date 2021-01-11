@@ -490,6 +490,58 @@ st_translate_stream_output_info(struct gl_program *prog)
 }
 
 /**
+ * Creates a driver shader from a NIR shader.  Takes ownership of the
+ * passed nir_shader.
+ */
+struct pipe_shader_state *
+st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
+{
+   struct pipe_context *pipe = st->pipe;
+   struct pipe_screen *screen = st->screen;
+
+   assert(state->type == PIPE_SHADER_IR_NIR);
+   nir_shader *nir = state->ir.nir;
+   gl_shader_stage stage = nir->info.stage;
+   enum pipe_shader_type sh = pipe_shader_type_from_mesa(stage);
+
+   if (ST_DEBUG & DEBUG_PRINT_IR)
+      nir_print_shader(nir, stderr);
+
+   if (PIPE_SHADER_IR_NIR !=
+       screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR)) {
+      state->type = PIPE_SHADER_IR_TGSI;
+      state->tokens = nir_to_tgsi(nir, screen);
+   }
+
+   struct pipe_shader_state *shader;
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      shader = pipe->create_vs_state(pipe, state);
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      shader = pipe->create_tcs_state(pipe, state);
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      shader = pipe->create_tes_state(pipe, state);
+      break;
+   case MESA_SHADER_GEOMETRY:
+      shader = pipe->create_gs_state(pipe, state);
+      break;
+   case MESA_SHADER_FRAGMENT:
+      shader = pipe->create_fs_state(pipe, state);
+      break;
+   default:
+      unreachable("unsupported shader stage");
+      return NULL;
+   }
+
+   if (state->type == PIPE_SHADER_IR_TGSI)
+      tgsi_free_tokens(state->tokens);
+
+   return shader;
+}
+
+/**
  * Translate a vertex program.
  */
 bool
@@ -726,27 +778,10 @@ st_create_vp_variant(struct st_context *st,
                                 nir_shader_get_entrypoint(state.ir.nir));
       }
 
-      if (ST_DEBUG & DEBUG_PRINT_IR)
-         nir_print_shader(state.ir.nir, stderr);
-
-      /* If the driver wants TGSI, then translate before handing off. */
-
-      if (st->pipe->screen->get_shader_param(st->pipe->screen,
-                                             PIPE_SHADER_VERTEX,
-                                             PIPE_SHADER_CAP_PREFERRED_IR) !=
-          PIPE_SHADER_IR_NIR) {
-         nir_shader *s = state.ir.nir;
-         state.tokens = nir_to_tgsi(s, st->pipe->screen);
-         state.type = PIPE_SHADER_IR_TGSI;
-      }
-
       if (key->is_draw_shader)
          vpv->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
       else
-         vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
-
-      if (state.type == PIPE_SHADER_IR_TGSI)
-         tgsi_free_tokens(state.tokens);
+         vpv->base.driver_shader = st_create_nir_shader(st, &state);
 
       return vpv;
    }
@@ -1337,24 +1372,8 @@ st_create_fp_variant(struct st_context *st,
             screen->finalize_nir(screen, state.ir.nir, false);
       }
 
-      if (ST_DEBUG & DEBUG_PRINT_IR)
-         nir_print_shader(state.ir.nir, stderr);
-
-      /* If the driver wants TGSI, then translate before handing off. */
-      if (st->pipe->screen->get_shader_param(st->pipe->screen,
-                                             PIPE_SHADER_FRAGMENT,
-                                             PIPE_SHADER_CAP_PREFERRED_IR) !=
-          PIPE_SHADER_IR_NIR) {
-         nir_shader *s = state.ir.nir;
-         state.tokens = nir_to_tgsi(s, st->pipe->screen);
-         state.type = PIPE_SHADER_IR_TGSI;
-      }
-
-      variant->base.driver_shader = pipe->create_fs_state(pipe, &state);
+      variant->base.driver_shader = st_create_nir_shader(st, &state);
       variant->key = *key;
-
-      if (state.type == PIPE_SHADER_IR_TGSI)
-         tgsi_free_tokens(state.tokens);
 
       return variant;
    }
