@@ -79,7 +79,6 @@ st_nir_finish_builtin_shader(struct st_context *st,
        screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR)) {
       state.type = PIPE_SHADER_IR_TGSI;
       state.tokens = nir_to_tgsi(nir, screen);
-      ralloc_free(nir);
    }
 
    struct pipe_shader_state *shader;

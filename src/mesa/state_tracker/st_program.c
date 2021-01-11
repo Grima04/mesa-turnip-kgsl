@@ -730,6 +730,7 @@ st_create_vp_variant(struct st_context *st,
          nir_print_shader(state.ir.nir, stderr);
 
       /* If the driver wants TGSI, then translate before handing off. */
+
       if (st->pipe->screen->get_shader_param(st->pipe->screen,
                                              PIPE_SHADER_VERTEX,
                                              PIPE_SHADER_CAP_PREFERRED_IR) !=
@@ -737,7 +738,6 @@ st_create_vp_variant(struct st_context *st,
          nir_shader *s = state.ir.nir;
          state.tokens = nir_to_tgsi(s, st->pipe->screen);
          state.type = PIPE_SHADER_IR_TGSI;
-         ralloc_free(s);
       }
 
       if (key->is_draw_shader)
@@ -1348,7 +1348,6 @@ st_create_fp_variant(struct st_context *st,
          nir_shader *s = state.ir.nir;
          state.tokens = nir_to_tgsi(s, st->pipe->screen);
          state.type = PIPE_SHADER_IR_TGSI;
-         ralloc_free(s);
       }
 
       variant->base.driver_shader = pipe->create_fs_state(pipe, &state);
