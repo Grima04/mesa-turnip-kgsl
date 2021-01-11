@@ -1217,25 +1217,66 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          ctx->block->instructions.emplace_back(std::move(vec));
          ctx->allocated_vec.emplace(dst.id(), elems);
       } else {
-         // TODO: that is a bit suboptimal..
+         bool use_s_pack = ctx->program->chip_class >= GFX9;
          Temp mask = bld.copy(bld.def(s1), Operand((1u << instr->dest.dest.ssa.bit_size) - 1));
-         for (unsigned i = 0; i < num - 1; ++i)
-            if (((i+1) * instr->dest.dest.ssa.bit_size) % 32)
+
+         std::array<Temp,NIR_MAX_VEC_COMPONENTS> packed;
+         uint32_t const_vals[NIR_MAX_VEC_COMPONENTS] = {};
+         for (unsigned i = 0; i < num; i++) {
+            unsigned packed_size = use_s_pack ? 16 : 32;
+            unsigned idx = i * instr->dest.dest.ssa.bit_size / packed_size;
+            unsigned offset = i * instr->dest.dest.ssa.bit_size % packed_size;
+            if (nir_src_is_const(instr->src[i].src)) {
+               const_vals[idx] |= nir_src_as_uint(instr->src[i].src) << offset;
+               continue;
+            }
+
+            if (offset != packed_size - instr->dest.dest.ssa.bit_size)
                elems[i] = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), elems[i], mask);
-         for (unsigned i = 0; i < num; ++i) {
-            unsigned bit = i * instr->dest.dest.ssa.bit_size;
-            if (bit % 32 == 0) {
-               elems[bit / 32] = elems[i];
-            } else {
+
+            if (offset)
                elems[i] = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
-                                   elems[i], Operand((i * instr->dest.dest.ssa.bit_size) % 32));
-               elems[bit / 32] = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc), elems[bit / 32], elems[i]);
+                                   elems[i], Operand(offset));
+
+            if (packed[idx].id())
+               packed[idx] = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc),
+                                      elems[i], packed[idx]);
+            else
+               packed[idx] = elems[i];
+         }
+
+         if (use_s_pack) {
+            for (unsigned i = 0; i < dst.size(); i++) {
+               bool same = !!packed[i*2].id() == !!packed[i*2+1].id();
+
+               if (packed[i*2].id() && packed[i*2+1].id())
+                  packed[i] = bld.sop2(aco_opcode::s_pack_ll_b32_b16, bld.def(s1), packed[i*2], packed[i*2+1]);
+               else if (packed[i*2+1].id())
+                  packed[i] = bld.sop2(aco_opcode::s_pack_ll_b32_b16, bld.def(s1), Operand(const_vals[i * 2]), packed[i*2+1]);
+               else if (packed[i*2].id())
+                  packed[i] = bld.sop2(aco_opcode::s_pack_ll_b32_b16, bld.def(s1), packed[i*2], Operand(const_vals[i * 2 + 1]));
+
+               if (same)
+                  const_vals[i] = const_vals[i*2] | (const_vals[i*2+1] << 16);
+               else
+                  const_vals[i] = 0;
             }
          }
+
+         for (unsigned i = 0; i < dst.size(); i++) {
+            if (const_vals[i] && packed[i].id())
+               packed[i] = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc),
+                                    Operand(const_vals[i]), packed[i]);
+            else if (!packed[i].id())
+               packed[i] = bld.copy(bld.def(s1), Operand(const_vals[i]));
+         }
+
          if (dst.size() == 1)
-            bld.copy(Definition(dst), elems[0]);
+            bld.copy(Definition(dst), packed[0]);
+         else if (dst.size() == 2)
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), packed[0], packed[1]);
          else
-            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), elems[0], elems[1]);
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), packed[0], packed[1], packed[2]);
       }
       break;
    }
