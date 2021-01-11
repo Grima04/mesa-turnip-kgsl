@@ -361,7 +361,7 @@ compile_setupinst(struct st_translate *t,
       nir_tex_instr *tex = nir_tex_instr_create(t->b->shader, 3);
       tex->op = nir_texop_tex;
       tex->sampler_dim = glsl_get_sampler_dim(tex_var->type);
-      tex->dest_type = nir_type_float;
+      tex->dest_type = nir_type_float32;
       tex->coord_components =
          glsl_get_sampler_dim_coordinate_components(tex->sampler_dim);
 
