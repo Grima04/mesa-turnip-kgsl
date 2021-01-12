@@ -1192,8 +1192,8 @@ static void si_set_inlinable_constants(struct pipe_context *ctx,
    struct si_context *sctx = (struct si_context *)ctx;
 
    memcpy(sctx->inlinable_uniforms[shader], values, num_values * 4);
-   sctx->inlinable_uniforms_dirty_mask |= 1 << shader;
    sctx->inlinable_uniforms_valid_mask |= 1 << shader;
+   sctx->do_update_shaders = true;
 }
 
 void si_get_pipe_constant_buffer(struct si_context *sctx, uint shader, uint slot,

@@ -2969,11 +2969,6 @@ static void si_update_common_shader_state(struct si_context *sctx, struct si_sha
                                 si_shader_uses_bindless_images(sctx->tcs_shader.cso) ||
                                 si_shader_uses_bindless_images(sctx->tes_shader.cso);
 
-   if (sel && sel->info.base.num_inlinable_uniforms)
-      sctx->shader_has_inlinable_uniforms_mask |= 1 << type;
-   else
-      sctx->shader_has_inlinable_uniforms_mask &= ~(1 << type);
-
    /* Invalidate inlinable uniforms. */
    sctx->inlinable_uniforms_valid_mask &= ~(1 << type);
 
