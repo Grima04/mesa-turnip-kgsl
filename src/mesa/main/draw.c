@@ -91,11 +91,25 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
 {
    struct _mesa_index_buffer ib;
    unsigned index_size = info->index_size;
-   unsigned min_index = info->index_bounds_valid ? info->min_index : 0;
-   unsigned max_index = info->index_bounds_valid ? info->max_index : ~0;
+   unsigned min_index = 0, max_index = ~0u;
+   bool index_bounds_valid = false;
 
    if (!info->instance_count)
       return;
+
+   if (index_size) {
+      if (info->index_bounds_valid) {
+         min_index = info->min_index;
+         max_index = info->max_index;
+         index_bounds_valid = true;
+      }
+   } else {
+      /* The index_bounds_valid field and min/max_index are not used for
+       * non-indexed draw calls (they are undefined), but classic drivers
+       * need the index bounds. They will be computed manually.
+       */
+      index_bounds_valid = true;
+   }
 
    ib.index_size_shift = util_logbase2(index_size);
 
@@ -132,8 +146,13 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
          prim.basevertex = index_size ? info->index_bias : 0;
          prim.draw_id = info->drawid + (info->increment_draw_id ? i : 0);
 
+         if (!index_size) {
+            min_index = draws[i].start;
+            max_index = draws[i].start + draws[i].count - 1;
+         }
+
          ctx->Driver.Draw(ctx, &prim, 1, index_size ? &ib : NULL,
-                          info->index_bounds_valid, info->primitive_restart,
+                          index_bounds_valid, info->primitive_restart,
                           info->restart_index, min_index, max_index,
                           info->instance_count, info->start_instance);
       }
@@ -146,6 +165,9 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
 
    ALLOC_PRIMS(prim, num_draws, "DrawGallium");
 
+   min_index = ~0u;
+   max_index = 0;
+
    for (unsigned i = 0; i < num_draws; i++) {
       if (!draws[i].count)
          continue;
@@ -157,6 +179,11 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
       prim[num_prims].count = draws[i].count;
       prim[num_prims].basevertex = info->index_size ? info->index_bias : 0;
       prim[num_prims].draw_id = info->drawid + (info->increment_draw_id ? i : 0);
+
+      if (!index_size) {
+         min_index = MIN2(min_index, draws[i].start);
+         max_index = MAX2(max_index, draws[i].start + draws[i].count - 1);
+      }
 
       max_count = MAX2(max_count, prim[num_prims].count);
       num_prims++;
@@ -176,7 +203,7 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
    }
 
    ctx->Driver.Draw(ctx, prim, num_prims, index_size ? &ib : NULL,
-                    info->index_bounds_valid, info->primitive_restart,
+                    index_bounds_valid, info->primitive_restart,
                     info->restart_index, min_index, max_index,
                     info->instance_count, info->start_instance);
    FREE_PRIMS(prim, num_draws);
