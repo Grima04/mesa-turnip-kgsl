@@ -37,12 +37,11 @@ zink_fence_clear_resources(struct zink_screen *screen, struct zink_fence *fence)
 {
    simple_mtx_lock(&fence->resource_mtx);
    /* unref all used resources */
-   set_foreach(fence->resources, entry) {
+   set_foreach_remove(fence->resources, entry) {
       struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
       zink_batch_usage_unset(&obj->reads, fence->batch_id);
       zink_batch_usage_unset(&obj->writes, fence->batch_id);
       zink_resource_object_reference(screen, &obj, NULL);
-      _mesa_set_remove(fence->resources, entry);
    }
    simple_mtx_unlock(&fence->resource_mtx);
 }

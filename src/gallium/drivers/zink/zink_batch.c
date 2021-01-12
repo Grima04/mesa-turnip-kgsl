@@ -32,23 +32,20 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    zink_fence_clear_resources(screen, &bs->fence);
 
-   set_foreach(bs->active_queries, entry) {
+   set_foreach_remove(bs->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
       zink_prune_query(screen, query);
-      _mesa_set_remove(bs->active_queries, entry);
    }
 
-   set_foreach(bs->surfaces, entry) {
+   set_foreach_remove(bs->surfaces, entry) {
       struct zink_surface *surf = (struct zink_surface *)entry->key;
       zink_batch_usage_unset(&surf->batch_uses, bs->fence.batch_id);
       zink_surface_reference(screen, &surf, NULL);
-      _mesa_set_remove(bs->surfaces, entry);
    }
-   set_foreach(bs->bufferviews, entry) {
+   set_foreach_remove(bs->bufferviews, entry) {
       struct zink_buffer_view *buffer_view = (struct zink_buffer_view *)entry->key;
       zink_batch_usage_unset(&buffer_view->batch_uses, bs->fence.batch_id);
       zink_buffer_view_reference(screen, &buffer_view, NULL);
-      _mesa_set_remove(bs->bufferviews, entry);
    }
 
    util_dynarray_foreach(&bs->zombie_samplers, VkSampler, samp) {
@@ -68,7 +65,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       _mesa_set_remove(bs->desc_sets, entry);
    }
 
-   set_foreach(bs->programs, entry) {
+   set_foreach_remove(bs->programs, entry) {
       struct zink_program *pg = (struct zink_program*)entry->key;
       if (pg->is_compute) {
          struct zink_compute_program *comp = (struct zink_compute_program*)pg;
@@ -81,7 +78,6 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
          if (zink_gfx_program_reference(screen, &prog, NULL) && in_use)
             ctx->curr_program = NULL;
       }
-      _mesa_set_remove(bs->programs, entry);
    }
 
    set_foreach(bs->fbs, entry) {
