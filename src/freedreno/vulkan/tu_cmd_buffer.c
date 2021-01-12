@@ -3786,7 +3786,8 @@ struct tu_dispatch_info
 };
 
 static void
-tu_emit_compute_driver_params(struct tu_cs *cs, struct tu_pipeline *pipeline,
+tu_emit_compute_driver_params(struct tu_cmd_buffer *cmd,
+                              struct tu_cs *cs, struct tu_pipeline *pipeline,
                               const struct tu_dispatch_info *info)
 {
    gl_shader_stage type = MESA_SHADER_COMPUTE;
@@ -3821,8 +3822,38 @@ tu_emit_compute_driver_params(struct tu_cs *cs, struct tu_pipeline *pipeline,
       uint32_t i;
       for (i = 0; i < num_consts; i++)
          tu_cs_emit(cs, driver_params[i]);
+   } else if (!(info->indirect_offset & 0xf)) {
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(offset) |
+                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                  CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
+                  CP_LOAD_STATE6_0_NUM_UNIT(1));
+      tu_cs_emit_qw(cs, tu_buffer_iova(info->indirect) + info->indirect_offset);
    } else {
-      tu_finishme("Indirect driver params");
+      /* Vulkan guarantees only 4 byte alignment for indirect_offset.
+       * However, CP_LOAD_STATE.EXT_SRC_ADDR needs 16 byte alignment.
+       */
+
+      uint64_t indirect_iova = tu_buffer_iova(info->indirect) + info->indirect_offset;
+
+      for (uint32_t i = 0; i < 3; i++) {
+         tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 5);
+         tu_cs_emit(cs, 0);
+         tu_cs_emit_qw(cs, global_iova(cmd, cs_indirect_xyz[i]));
+         tu_cs_emit_qw(cs, indirect_iova + i * 4);
+      }
+
+      tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
+
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(offset) |
+                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                  CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
+                  CP_LOAD_STATE6_0_NUM_UNIT(1));
+      tu_cs_emit_qw(cs, global_iova(cmd, cs_indirect_xyz[0]));
    }
 }
 
@@ -3844,7 +3875,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    tu_cs_emit_state_ib(cs,
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_COMPUTE));
 
-   tu_emit_compute_driver_params(cs, pipeline, info);
+   tu_emit_compute_driver_params(cmd, cs, pipeline, info);
 
    if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD)
       tu_cs_emit_state_ib(cs, pipeline->load_state);

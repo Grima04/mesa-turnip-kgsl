@@ -339,6 +339,8 @@ struct tu6_global
       uint32_t pad[7];
    } flush_base[4];
 
+   ALIGN16 uint32_t cs_indirect_xyz[3];
+
    /* note: larger global bo will be used for customBorderColors */
    struct bcolor_entry bcolor_builtin[TU_BORDER_COLOR_BUILTIN], bcolor[];
 };
