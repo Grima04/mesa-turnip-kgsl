@@ -211,6 +211,14 @@ _mesa_set_destroy(struct set *ht, void (*delete_function)(struct set_entry *entr
    ralloc_free(ht);
 }
 
+
+static void
+set_clear_fast(struct set *ht)
+{
+   memset(ht->table, 0, sizeof(struct set_entry) * hash_sizes[ht->size_index].size);
+   ht->entries = ht->deleted_entries = 0;
+}
+
 /**
  * Clears all values from the given set.
  *
@@ -225,15 +233,17 @@ _mesa_set_clear(struct set *set, void (*delete_function)(struct set_entry *entry
 
    struct set_entry *entry;
 
-   for (entry = set->table; entry != set->table + set->size; entry++) {
-      if (entry_is_present(entry) && delete_function != NULL)
-         delete_function(entry);
+   if (delete_function) {
+      for (entry = set->table; entry != set->table + set->size; entry++) {
+         if (entry_is_present(entry))
+            delete_function(entry);
 
-      entry->key = NULL;
-   }
-
-   set->entries = 0;
-   set->deleted_entries = 0;
+         entry->key = NULL;
+      }
+      set->entries = 0;
+      set->deleted_entries = 0;
+   } else
+      set_clear_fast(set);
 }
 
 /**
@@ -313,6 +323,12 @@ set_rehash(struct set *ht, unsigned new_size_index)
 {
    struct set old_ht;
    struct set_entry *table;
+
+   if (ht->size_index == new_size_index && ht->deleted_entries == ht->max_entries) {
+      set_clear_fast(ht);
+      assert(!ht->entries);
+      return;
+   }
 
    if (new_size_index >= ARRAY_SIZE(hash_sizes))
       return;

@@ -51,6 +51,13 @@ TEST(set, basic)
    entry = _mesa_set_search(s, a);
    EXPECT_FALSE(entry);
 
+   _mesa_set_clear(s, NULL);
+   EXPECT_EQ(s->entries, 0);
+   EXPECT_EQ(s->deleted_entries, 0);
+   set_foreach(s, he) {
+      GTEST_FAIL();
+   }
+
    _mesa_set_destroy(s, NULL);
 }
 
