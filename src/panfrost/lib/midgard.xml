@@ -904,6 +904,7 @@
     <field name="Stencil front" size="32" start="10:0" type="Stencil"/>
     <field name="Stencil back" size="32" start="11:0" type="Stencil"/>
     <field name="Preload" size="32" start="12:0" type="Preload"/>
+    <field name="Alpha reference" size="32" start="12:0" type="float"/>
     <field name="Thread Balancing" size="16" start="13:0" type="uint"/>
     <field name="SFBD Blend Shader" size="64" start="14:0" type="address"/>
     <field name="SFBD Blend Equation" size="32" start="14:0" type="Blend Equation"/>
