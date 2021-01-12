@@ -99,6 +99,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_vote_all:
    case nir_intrinsic_vote_feq:
    case nir_intrinsic_vote_ieq:
+   case nir_intrinsic_load_push_constant:
    case nir_intrinsic_load_work_dim:
    case nir_intrinsic_load_work_group_id:
    case nir_intrinsic_load_num_work_groups:
@@ -275,7 +276,6 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_global:
    case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_uniform:
-   case nir_intrinsic_load_push_constant:
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_sample_pos_from_id:
    case nir_intrinsic_load_kernel_input:
