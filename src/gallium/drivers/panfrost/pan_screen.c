@@ -267,7 +267,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_VARYINGS:
                 return 16;
 
+        /* Removed in v6 (Bifrost) */
         case PIPE_CAP_ALPHA_TEST:
+                return dev->arch <= 5;
+
         case PIPE_CAP_FLATSHADE:
         case PIPE_CAP_TWO_SIDED_COLOR:
         case PIPE_CAP_CLIP_PLANES:

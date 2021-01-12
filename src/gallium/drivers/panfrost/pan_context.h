@@ -282,6 +282,7 @@ struct panfrost_vertex_state {
 
 struct panfrost_zsa_state {
         struct pipe_depth_stencil_alpha_state base;
+        enum mali_func alpha_func;
 
         /* Precomputed stencil state */
         struct MALI_STENCIL stencil_front;

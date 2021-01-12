@@ -542,7 +542,7 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         state->stencil_mask_misc.stencil_mask_back = zsa->stencil_mask_back;
         state->stencil_mask_misc.stencil_enable = zsa->base.stencil[0].enabled;
         state->stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
-        state->stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
+        state->stencil_mask_misc.alpha_test_compare_function = zsa->alpha_func;
         state->stencil_mask_misc.depth_range_1 = rast->offset_tri;
         state->stencil_mask_misc.depth_range_2 = rast->offset_tri;
         state->stencil_mask_misc.single_sampled_lines = !rast->multisample;
@@ -554,6 +554,10 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         state->stencil_back = zsa->stencil_back;
         state->stencil_front.reference_value = ctx->stencil_ref.ref_value[0];
         state->stencil_back.reference_value = ctx->stencil_ref.ref_value[back_enab ? 1 : 0];
+
+        /* v6+ fits register preload here, no alpha testing */
+        if (dev->arch <= 5)
+                state->alpha_reference = zsa->base.alpha_ref_value;
 }
 
 
