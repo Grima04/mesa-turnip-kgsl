@@ -929,9 +929,13 @@ panfrost_ptr_map(struct pipe_context *pctx,
         /* We don't have s/w routines for AFBC, so use a staging texture */
         if (drm_is_afbc(rsrc->layout.modifier)) {
                 struct panfrost_resource *staging = pan_alloc_staging(ctx, rsrc, level, box);
+
+                /* Staging resources have one LOD: level 0. Query the strides
+                 * on this LOD.
+                 */
                 transfer->base.stride = staging->layout.slices[0].line_stride;
                 transfer->base.layer_stride =
-                        panfrost_get_layer_stride(&staging->layout, level);
+                        panfrost_get_layer_stride(&staging->layout, 0);
 
                 transfer->staging.rsrc = &staging->base;
 
