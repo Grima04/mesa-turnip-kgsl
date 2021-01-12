@@ -431,8 +431,8 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
 
    /* if the resource already has usage of any sort set for this batch, we can skip hashing */
-   if (!zink_batch_usage_matches(&res->obj->reads, batch->state->fence.batch_id) &&
-       !zink_batch_usage_matches(&res->obj->writes, batch->state->fence.batch_id)) {
+   if (res->obj->reads.usage != batch->state->fence.batch_id &&
+       res->obj->writes.usage != batch->state->fence.batch_id) {
       bool found = false;
       _mesa_set_search_and_add(batch->state->fence.resources, res->obj, &found);
       if (!found) {
@@ -450,13 +450,17 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
       }
        }
    if (write) {
-      if (stencil)
-         zink_batch_usage_set(&stencil->obj->writes, batch->state->fence.batch_id);
-      zink_batch_usage_set(&res->obj->writes, batch->state->fence.batch_id);
+      if (res->obj->writes.usage != batch->state->fence.batch_id) {
+         if (stencil)
+            zink_batch_usage_set(&stencil->obj->writes, batch->state->fence.batch_id);
+         zink_batch_usage_set(&res->obj->writes, batch->state->fence.batch_id);
+      }
    } else {
-      if (stencil)
-         zink_batch_usage_set(&stencil->obj->reads, batch->state->fence.batch_id);
-      zink_batch_usage_set(&res->obj->reads, batch->state->fence.batch_id);
+      if (res->obj->reads.usage != batch->state->fence.batch_id) {
+         if (stencil)
+            zink_batch_usage_set(&stencil->obj->reads, batch->state->fence.batch_id);
+         zink_batch_usage_set(&res->obj->reads, batch->state->fence.batch_id);
+      }
    }
    /* multiple array entries are fine */
    if (res->obj->persistent_maps)
@@ -469,7 +473,7 @@ static bool
 ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage *u)
 {
    bool found = false;
-   if (zink_batch_usage_matches(u, batch->state->fence.batch_id))
+   if (u->usage == batch->state->fence.batch_id)
       return false;
    _mesa_set_search_and_add(s, ptr, &found);
    assert(!found);
