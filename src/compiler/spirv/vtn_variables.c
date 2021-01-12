@@ -1787,14 +1787,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       }
       b->shader->info.num_ssbos++;
       break;
-   case vtn_variable_mode_uniform:
-      if (without_array->base_type == vtn_base_type_image) {
-         if (glsl_type_is_image(without_array->glsl_image))
-            b->shader->info.num_images++;
-         else if (glsl_type_is_sampler(without_array->glsl_image))
-            b->shader->info.num_textures++;
-      }
-      break;
    case vtn_variable_mode_push_constant:
       b->shader->num_uniforms =
          glsl_get_explicit_size(without_array->type, false);
