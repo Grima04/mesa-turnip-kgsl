@@ -515,6 +515,8 @@ schedule_node::set_latency_gen7(bool is_haswell)
          case GEN9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP:
          case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP:
          case GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP:
+         case GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP:
+         case GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP:
             /* See also GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP */
             latency = 14000;
             break;

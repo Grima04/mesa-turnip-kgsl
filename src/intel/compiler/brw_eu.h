@@ -894,9 +894,12 @@ brw_dp_a64_untyped_atomic_desc(const struct gen_device_info *devinfo,
 {
    assert(exec_size == 8);
    assert(devinfo->gen >= 8);
-   assert(bit_size == 32 || bit_size == 64);
+   assert(bit_size == 16 || bit_size == 32 || bit_size == 64);
+   assert(devinfo->gen >= 12 || bit_size >= 32);
 
-   const unsigned msg_type = GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP;
+   const unsigned msg_type = bit_size == 16 ?
+      GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP :
+      GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP;
 
    const unsigned msg_control =
       SET_BITS(atomic_op, 3, 0) |
@@ -910,14 +913,19 @@ brw_dp_a64_untyped_atomic_desc(const struct gen_device_info *devinfo,
 static inline uint32_t
 brw_dp_a64_untyped_atomic_float_desc(const struct gen_device_info *devinfo,
                                      ASSERTED unsigned exec_size,
+                                     unsigned bit_size,
                                      unsigned atomic_op,
                                      bool response_expected)
 {
    assert(exec_size == 8);
    assert(devinfo->gen >= 9);
+   assert(bit_size == 16 || bit_size == 32);
+   assert(devinfo->gen >= 12 || bit_size == 32);
 
    assert(exec_size > 0);
-   const unsigned msg_type = GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP;
+   const unsigned msg_type = bit_size == 32 ?
+      GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP :
+      GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP;
 
    const unsigned msg_control =
       SET_BITS(atomic_op, 1, 0) |
