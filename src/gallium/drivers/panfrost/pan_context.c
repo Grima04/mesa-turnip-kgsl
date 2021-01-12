@@ -330,6 +330,14 @@ panfrost_emit_primitive_size(struct panfrost_context *ctx,
         }
 }
 
+static bool
+panfrost_is_implicit_prim_restart(const struct pipe_draw_info *info)
+{
+        unsigned implicit_index = (1 << (info->index_size * 8)) - 1;
+        bool implicit = info->restart_index == implicit_index;
+        return info->primitive_restart && implicit;
+}
+
 static void
 panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                          const struct pipe_draw_info *info,
@@ -369,8 +377,13 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 else
                         cfg.first_provoking_vertex = rast->flatshade_first;
 
-                if (info->primitive_restart)
+                if (panfrost_is_implicit_prim_restart(info)) {
                         cfg.primitive_restart = MALI_PRIMITIVE_RESTART_IMPLICIT;
+                } else if (info->primitive_restart) {
+                        cfg.primitive_restart = MALI_PRIMITIVE_RESTART_EXPLICIT;
+                        cfg.primitive_restart_index = info->restart_index;
+                }
+
                 cfg.job_task_split = 6;
 
                 if (info->index_size) {
@@ -485,15 +498,6 @@ panfrost_draw_vbo(
                 return;
 
         int mode = info->mode;
-
-        /* Fallback unsupported restart index */
-        unsigned primitive_index = (1 << (info->index_size * 8)) - 1;
-
-        if (info->primitive_restart && info->index_size
-            && info->restart_index != primitive_index) {
-                util_draw_vbo_without_prim_restart(pipe, info, indirect, &draws[0]);
-                return;
-        }
 
         /* Fallback for unsupported modes */
 
