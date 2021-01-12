@@ -708,6 +708,9 @@ struct vtn_builder {
    struct vtn_value *workgroup_size_builtin;
    bool variable_pointers;
 
+   uint32_t *interface_ids;
+   size_t interface_ids_count;
+
    struct vtn_function *func;
    struct list_head functions;
 
@@ -1001,5 +1004,17 @@ SpvMemorySemanticsMask vtn_mode_to_memory_semantics(enum vtn_variable_mode mode)
 
 void vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
                              SpvMemorySemanticsMask semantics);
+
+static inline int
+cmp_uint32_t(const void *pa, const void *pb)
+{
+   uint32_t a = *((const uint32_t *)pa);
+   uint32_t b = *((const uint32_t *)pb);
+   if (a < b)
+      return -1;
+   if (a > b)
+      return 1;
+   return 0;
+}
 
 #endif /* _VTN_PRIVATE_H_ */

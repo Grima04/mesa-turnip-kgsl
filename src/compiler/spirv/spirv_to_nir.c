@@ -4188,6 +4188,13 @@ vtn_handle_entry_point(struct vtn_builder *b, const uint32_t *w,
 
    vtn_assert(b->entry_point == NULL);
    b->entry_point = entry_point;
+
+   /* Entry points enumerate which I/O variables are used. */
+   size_t start = 3 + name_words;
+   b->interface_ids_count = count - start;
+   b->interface_ids = ralloc_array(b, uint32_t, b->interface_ids_count);
+   memcpy(b->interface_ids, &w[start], b->interface_ids_count * 4);
+   qsort(b->interface_ids, b->interface_ids_count, 4, cmp_uint32_t);
 }
 
 static bool
@@ -5966,27 +5973,21 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    nir_lower_goto_ifs(b->shader);
 
    /* A SPIR-V module can have multiple shaders stages and also multiple
-    * shaders of the same stage.  Global variables are declared per-module, so
-    * they are all collected when parsing a single shader.  These dead
-    * variables can result in invalid NIR, e.g.
+    * shaders of the same stage.  Global variables are declared per-module.
     *
-    * - TCS outputs must be per-vertex arrays (or decorated 'patch'), while VS
-    *   output variables wouldn't be;
-    * - Two vertex shaders have two different typed blocks associated to the
-    *   same Binding.
-    *
-    * Before cleaning the dead variables, we must lower any constant
-    * initializers on outputs so nir_remove_dead_variables sees that they're
-    * written to.
+    * For I/O storage classes, OpEntryPoint will list the variables used, so
+    * only valid ones are created.  Remove dead variables to clean up the
+    * remaining ones.
     */
    if (!options->create_library) {
-      nir_lower_variable_initializers(b->shader, nir_var_shader_out |
-                                                 nir_var_system_value);
       const nir_remove_dead_variables_options dead_opts = {
          .can_remove_var = can_remove,
          .can_remove_var_data = b->vars_used_indirectly,
       };
-      nir_remove_dead_variables(b->shader, ~nir_var_function_temp,
+      nir_remove_dead_variables(b->shader, ~(nir_var_function_temp |
+                                             nir_var_shader_out |
+                                             nir_var_shader_in |
+                                             nir_var_system_value),
                                 b->vars_used_indirectly ? &dead_opts : NULL);
    }
 
