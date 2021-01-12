@@ -53,14 +53,10 @@ struct wqm_ctx {
    std::vector<uint16_t> defined_in;
    std::vector<bool> needs_wqm;
    std::vector<bool> branch_wqm; /* true if the branch condition in this block should be in wqm */
-   bool loop;
-   bool wqm;
    wqm_ctx(Program* program_) : program(program_),
                                defined_in(program->peekAllocationId(), 0xFFFF),
                                needs_wqm(program->peekAllocationId()),
-                               branch_wqm(program->blocks.size()),
-                               loop(false),
-                               wqm(false)
+                               branch_wqm(program->blocks.size())
    {
       for (unsigned i = 0; i < program->blocks.size(); i++)
          worklist.insert(i);
@@ -144,22 +140,6 @@ void get_block_needs(wqm_ctx &ctx, exec_ctx &exec_ctx, Block* block)
 
    std::vector<WQMState> instr_needs(block->instructions.size());
 
-   if (block->kind & block_kind_top_level) {
-      if (ctx.loop && ctx.wqm) {
-         unsigned block_idx = block->index + 1;
-         while (!(ctx.program->blocks[block_idx].kind & block_kind_top_level)) {
-            /* flag all break conditions as WQM:
-             * the conditions might be computed outside the nested CF */
-            if (ctx.program->blocks[block_idx].kind & block_kind_break)
-               mark_block_wqm(ctx, block_idx);
-            block_idx++;
-         }
-      }
-
-      ctx.loop = false;
-      ctx.wqm = false;
-   }
-
    for (int i = block->instructions.size() - 1; i >= 0; --i) {
       aco_ptr<Instruction>& instr = block->instructions[i];
 
@@ -219,10 +199,7 @@ void get_block_needs(wqm_ctx &ctx, exec_ctx &exec_ctx, Block* block)
    if (info.block_needs & WQM && !(block->kind & block_kind_top_level)) {
       for (unsigned pred_idx : block->logical_preds)
          mark_block_wqm(ctx, pred_idx);
-      ctx.wqm = true;
    }
-   if (block->kind & block_kind_loop_header)
-      ctx.loop = true;
 }
 
 void handle_exact_loops(wqm_ctx& ctx, exec_ctx& exec_ctx, unsigned preheader)
