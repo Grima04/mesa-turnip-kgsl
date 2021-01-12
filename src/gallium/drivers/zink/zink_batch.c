@@ -465,10 +465,9 @@ void
 zink_batch_reference_program(struct zink_batch *batch,
                              struct zink_program *pg)
 {
-   bool found = false;
-   _mesa_set_search_and_add(batch->state->programs, pg, &found);
-   if (!found)
-      pipe_reference(NULL, &pg->reference);
+   if (!ptr_add_usage(batch, batch->state->programs, pg, &pg->batch_uses))
+      return;
+   pipe_reference(NULL, &pg->reference);
    batch->has_work = true;
 }
 

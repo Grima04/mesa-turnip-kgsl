@@ -69,6 +69,7 @@ struct zink_shader_cache {
 
 struct zink_program {
    struct pipe_reference reference;
+   struct zink_batch_usage batch_uses;
    bool is_compute;
 
    struct zink_descriptor_pool *pool[ZINK_DESCRIPTOR_TYPES];
