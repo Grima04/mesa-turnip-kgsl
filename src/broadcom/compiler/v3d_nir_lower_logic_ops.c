@@ -281,7 +281,7 @@ v3d_nir_emit_logic_op(struct v3d_compile *c, nir_builder *b,
 }
 
 static void
-v3d_emit_ms_output(struct v3d_compile *c, nir_builder *b,
+v3d_emit_ms_output(nir_builder *b,
                    nir_ssa_def *color, nir_src *offset,
                    nir_alu_type type, int rt, int sample)
 {
@@ -307,7 +307,7 @@ v3d_nir_lower_logic_op_instr(struct v3d_compile *c,
                         nir_ssa_def *sample =
                                 v3d_nir_emit_logic_op(c, b, frag_color, rt, i);
 
-                        v3d_emit_ms_output(c, b, sample, offset, type, rt, i);
+                        v3d_emit_ms_output(b, sample, offset, type, rt, i);
                 }
 
                 nir_instr_remove(&intr->instr);
