@@ -633,6 +633,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
    RegClass rc = info.rc;
 
    DefInfo new_info = info;
+   new_info.rc = RegClass(rc.type(), size);
    for (unsigned new_stride = 16; new_stride > stride; new_stride /= 2) {
       if (size % new_stride)
          continue;
@@ -643,8 +644,6 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
    }
 
    if (stride == 1) {
-      info.rc = RegClass(rc.type(), size);
-
       /* best fit algorithm: find the smallest gap to fit in the variable */
       unsigned best_pos = 0xFFFF;
       unsigned gap_size = 0xFFFF;
