@@ -147,7 +147,7 @@ v3d_nir_unpack_and_swizzle(nir_builder *b, nir_ssa_def *packed,
 static nir_ssa_def *
 pack_unorm_rgb10a2(nir_builder *b, nir_ssa_def *c)
 {
-        const unsigned bits[4] = { 10, 10, 10, 2 };
+        static const unsigned bits[4] = { 10, 10, 10, 2 };
         nir_ssa_def *unorm = nir_format_float_to_unorm(b, c, bits);
 
         nir_ssa_def *chans[4];
@@ -168,7 +168,7 @@ pack_unorm_rgb10a2(nir_builder *b, nir_ssa_def *c)
 static nir_ssa_def *
 unpack_unorm_rgb10a2(nir_builder *b, nir_ssa_def *c)
 {
-        const unsigned bits[4] = { 10, 10, 10, 2 };
+        static const unsigned bits[4] = { 10, 10, 10, 2 };
         const unsigned masks[4] = { BITFIELD_MASK(bits[0]),
                                     BITFIELD_MASK(bits[1]),
                                     BITFIELD_MASK(bits[2]),
@@ -239,7 +239,7 @@ v3d_emit_logic_op_unorm(struct v3d_compile *c, nir_builder *b,
                         int rt, int sample,
                         nir_pack_func pack_func, nir_unpack_func unpack_func)
 {
-        const uint8_t src_swz[4] = { 0, 1, 2, 3 };
+        static const uint8_t src_swz[4] = { 0, 1, 2, 3 };
         nir_ssa_def *packed_src =
                 v3d_nir_swizzle_and_pack(b, src_chans, src_swz, pack_func);
 
