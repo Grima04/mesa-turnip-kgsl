@@ -58,6 +58,20 @@ TEST(set, basic)
       GTEST_FAIL();
    }
 
+   _mesa_set_add(s, a);
+   _mesa_set_add(s, b);
+   EXPECT_EQ(s->entries, 2);
+   unsigned count = s->entries;
+   set_foreach_remove(s, he) {
+      EXPECT_TRUE(he->key == a || he->key == b);
+      EXPECT_EQ(s->entries, count--);
+      EXPECT_EQ(s->deleted_entries, 0);
+   }
+   EXPECT_EQ(s->entries, 0);
+   set_foreach(s, he) {
+      GTEST_FAIL();
+   }
+
    _mesa_set_destroy(s, NULL);
 }
 
