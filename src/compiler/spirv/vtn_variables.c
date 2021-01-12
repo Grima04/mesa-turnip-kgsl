@@ -1767,7 +1767,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_ubo:
       /* There's no other way to get vtn_variable_mode_ubo */
       vtn_assert(without_array->block);
-      b->shader->info.num_ubos++;
       break;
    case vtn_variable_mode_ssbo:
       if (storage_class == SpvStorageClassStorageBuffer &&
@@ -1785,11 +1784,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                      "have a struct type with the Block decoration");
          }
       }
-      b->shader->info.num_ssbos++;
-      break;
-   case vtn_variable_mode_push_constant:
-      b->shader->num_uniforms =
-         glsl_get_explicit_size(without_array->type, false);
       break;
 
    case vtn_variable_mode_generic:

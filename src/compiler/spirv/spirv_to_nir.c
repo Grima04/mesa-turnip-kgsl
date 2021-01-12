@@ -5991,6 +5991,22 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
                                 b->vars_used_indirectly ? &dead_opts : NULL);
    }
 
+   nir_foreach_variable_in_shader(var, b->shader) {
+      switch (var->data.mode) {
+      case nir_var_mem_ubo:
+         b->shader->info.num_ubos++;
+         break;
+      case nir_var_mem_ssbo:
+         b->shader->info.num_ssbos++;
+         break;
+      case nir_var_mem_push_const:
+         vtn_assert(b->shader->num_uniforms == 0);
+         b->shader->num_uniforms =
+            glsl_get_explicit_size(glsl_without_array(var->type), false);
+         break;
+      }
+   }
+
    /* We sometimes generate bogus derefs that, while never used, give the
     * validator a bit of heartburn.  Run dead code to get rid of them.
     */
