@@ -554,6 +554,12 @@ optimizations.extend([
    (('fmin', ('fmin', a, b), b), ('fmin', a, b)),
    (('umin', ('umin', a, b), b), ('umin', a, b)),
    (('imin', ('imin', a, b), b), ('imin', a, b)),
+   (('fmax', ('fmax', ('fmax', a, b), c), a), ('fmax', ('fmax', a, b), c)),
+   (('umax', ('umax', ('umax', a, b), c), a), ('umax', ('umax', a, b), c)),
+   (('imax', ('imax', ('imax', a, b), c), a), ('imax', ('imax', a, b), c)),
+   (('fmin', ('fmin', ('fmin', a, b), c), a), ('fmin', ('fmin', a, b), c)),
+   (('umin', ('umin', ('umin', a, b), c), a), ('umin', ('umin', a, b), c)),
+   (('imin', ('imin', ('imin', a, b), c), a), ('imin', ('imin', a, b), c)),
 ])
 
 # Integer sizes
