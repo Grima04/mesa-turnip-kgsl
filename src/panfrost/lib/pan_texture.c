@@ -220,14 +220,19 @@ panfrost_texture_num_elements(
  * as an allocation amount */
 
 unsigned
-panfrost_estimate_texture_payload_size(
-                unsigned first_level, unsigned last_level,
-                unsigned first_layer, unsigned last_layer,
-                unsigned nr_samples,
-                enum mali_texture_dimension dim, uint64_t modifier)
+panfrost_estimate_texture_payload_size(const struct panfrost_device *dev,
+                                       unsigned first_level,
+                                       unsigned last_level,
+                                       unsigned first_layer,
+                                       unsigned last_layer,
+                                       unsigned nr_samples,
+                                       enum mali_texture_dimension dim,
+                                       uint64_t modifier)
 {
+        bool is_bifrost = dev->quirks & IS_BIFROST;
         /* Assume worst case */
-        unsigned manual_stride = (modifier == DRM_FORMAT_MOD_LINEAR);
+        unsigned manual_stride = is_bifrost ||
+                                 (modifier == DRM_FORMAT_MOD_LINEAR);
 
         unsigned elements = panfrost_texture_num_elements(
                         first_level, last_level,

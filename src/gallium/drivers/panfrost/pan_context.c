@@ -1064,7 +1064,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
 
         unsigned size =
                 (is_bifrost ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
-                panfrost_estimate_texture_payload_size(first_level, last_level,
+                panfrost_estimate_texture_payload_size(device,
+                                                       first_level, last_level,
                                                        first_layer, last_layer,
                                                        texture->nr_samples,
                                                        type,
