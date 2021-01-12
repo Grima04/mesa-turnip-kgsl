@@ -426,9 +426,10 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    /* u_transfer_helper unrefs the stencil buffer when the depth buffer is unrefed,
     * so we add an extra ref here to the stencil buffer to compensate
     */
-   struct zink_resource *stencil;
+   struct zink_resource *stencil = NULL;
 
-   zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
+   if (!res->obj->is_buffer && res->aspect == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
 
    /* if the resource already has usage of any sort set for this batch, we can skip hashing */
    if (res->obj->reads.usage != batch->state->fence.batch_id &&
