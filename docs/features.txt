@@ -69,17 +69,17 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
 (*) freedreno (a2xx-a4xx), llvmpipe, softpipe, and swr have fake Multisample anti-aliasing support
 
 
-GL 3.1, GLSL 1.40 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12
+GL 3.1, GLSL 1.40 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12, panfrost
 
   Forward compatible context support/deprecations       DONE
-  GL_ARB_draw_instanced (Instanced drawing)             DONE (panfrost, v3d)
-  GL_ARB_copy_buffer (Buffer copying)                   DONE (panfrost, v3d, vc4)
-  GL_NV_primitive_restart (Primitive restart)           DONE (panfrost)
-  16 vertex texture image units                         DONE (panfrost)
+  GL_ARB_draw_instanced (Instanced drawing)             DONE (v3d)
+  GL_ARB_copy_buffer (Buffer copying)                   DONE (v3d, vc4)
+  GL_NV_primitive_restart (Primitive restart)           DONE ()
+  16 vertex texture image units                         DONE ()
   GL_ARB_texture_buffer_object (Texture buffer objs)    DONE ()
-  GL_ARB_texture_rectangle (Rectangular textures)       DONE (panfrost, v3d, vc4)
-  GL_ARB_uniform_buffer_object (Uniform buffer objs)    DONE (panfrost, v3d)
-  GL_EXT_texture_snorm (Signed normalized textures)     DONE (panfrost, v3d)
+  GL_ARB_texture_rectangle (Rectangular textures)       DONE (v3d, vc4)
+  GL_ARB_uniform_buffer_object (Uniform buffer objs)    DONE (v3d)
+  GL_EXT_texture_snorm (Signed normalized textures)     DONE (v3d)
 
 
 GL 3.2, GLSL 1.50 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink, d3d12
