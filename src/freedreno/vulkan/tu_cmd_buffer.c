@@ -3799,17 +3799,16 @@ tu_emit_compute_driver_params(struct tu_cs *cs, struct tu_pipeline *pipeline,
       return;
 
    if (!info->indirect) {
-      uint32_t driver_params[IR3_DP_CS_COUNT] = {
+      uint32_t driver_params[4] = {
          [IR3_DP_NUM_WORK_GROUPS_X] = info->blocks[0],
          [IR3_DP_NUM_WORK_GROUPS_Y] = info->blocks[1],
          [IR3_DP_NUM_WORK_GROUPS_Z] = info->blocks[2],
-         [IR3_DP_LOCAL_GROUP_SIZE_X] = pipeline->compute.local_size[0],
-         [IR3_DP_LOCAL_GROUP_SIZE_Y] = pipeline->compute.local_size[1],
-         [IR3_DP_LOCAL_GROUP_SIZE_Z] = pipeline->compute.local_size[2],
       };
 
       uint32_t num_consts = MIN2(const_state->num_driver_params,
                                  (link->constlen - offset) * 4);
+      assert(num_consts <= ARRAY_SIZE(driver_params));
+
       /* push constants */
       tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + num_consts);
       tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(offset) |
