@@ -277,7 +277,7 @@ v3d_tfu(struct pipe_context *pctx,
         }
 
         uint32_t dst_offset = (dst->bo->offset +
-                               v3d_layer_offset(pdst, src_level, dst_layer));
+                               v3d_layer_offset(pdst, base_level, dst_layer));
         tfu.ioa |= dst_offset;
         if (last_level != base_level)
                 tfu.ioa |= V3D_TFU_IOA_DIMTW;
