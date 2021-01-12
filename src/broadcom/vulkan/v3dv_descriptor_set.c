@@ -411,6 +411,7 @@ v3dv_CreateDescriptorPool(VkDevice _device,
    uint32_t bo_size = 0;
    uint32_t descriptor_count = 0;
 
+   assert(pCreateInfo->poolSizeCount > 0);
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
       /* Verify supported descriptor type */
       switch(pCreateInfo->pPoolSizes[i].type) {
@@ -431,6 +432,7 @@ v3dv_CreateDescriptorPool(VkDevice _device,
          break;
       }
 
+      assert(pCreateInfo->pPoolSizes[i].descriptorCount > 0);
       descriptor_count += pCreateInfo->pPoolSizes[i].descriptorCount;
       bo_size += descriptor_bo_size(pCreateInfo->pPoolSizes[i].type) *
          pCreateInfo->pPoolSizes[i].descriptorCount;
