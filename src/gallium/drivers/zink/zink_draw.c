@@ -370,7 +370,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             assert(ctx->ssbos[i][index].buffer_size <= screen->info.props.limits.maxStorageBufferRange);
             assert(ctx->ssbos[i][index].buffer);
             struct zink_resource *res = zink_resource(ctx->ssbos[i][index].buffer);
-            if (ctx->writable_ssbos & (1 << index))
+            if (ctx->writable_ssbos[i] & (1 << index))
                write_desc_resources[num_wds] = res;
             else
                read_desc_resources[num_wds] = res;

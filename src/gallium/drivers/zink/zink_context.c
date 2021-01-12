@@ -600,8 +600,8 @@ zink_set_shader_buffers(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
 
    unsigned modified_bits = u_bit_consecutive(start_slot, count);
-   ctx->writable_ssbos &= ~modified_bits;
-   ctx->writable_ssbos |= writable_bitmask << start_slot;
+   ctx->writable_ssbos[p_stage] &= ~modified_bits;
+   ctx->writable_ssbos[p_stage] |= writable_bitmask << start_slot;
 
    for (unsigned i = 0; i < count; i++) {
       struct pipe_shader_buffer *ssbo = &ctx->ssbos[p_stage][start_slot + i];

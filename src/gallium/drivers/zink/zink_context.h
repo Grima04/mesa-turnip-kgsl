@@ -107,7 +107,7 @@ struct zink_context {
 
    struct pipe_constant_buffer ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_shader_buffer ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
-   uint32_t writable_ssbos;
+   uint32_t writable_ssbos[PIPE_SHADER_TYPES];
    struct zink_image_view image_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
    struct pipe_framebuffer_state fb_state;
 
