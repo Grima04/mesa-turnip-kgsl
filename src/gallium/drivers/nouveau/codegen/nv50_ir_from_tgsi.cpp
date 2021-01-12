@@ -1180,6 +1180,7 @@ void Source::scanProperty(const struct tgsi_full_property *prop)
    case TGSI_PROPERTY_FS_COORD_PIXEL_CENTER:
    case TGSI_PROPERTY_FS_DEPTH_LAYOUT:
    case TGSI_PROPERTY_GS_INPUT_PRIM:
+   case TGSI_PROPERTY_FS_BLEND_EQUATION_ADVANCED:
       // we don't care
       break;
    case TGSI_PROPERTY_VS_PROHIBIT_UCPS:
