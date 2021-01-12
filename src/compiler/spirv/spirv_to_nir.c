@@ -4189,7 +4189,7 @@ vtn_handle_entry_point(struct vtn_builder *b, const uint32_t *w,
    vtn_assert(b->entry_point == NULL);
    b->entry_point = entry_point;
 
-   /* Entry points enumerate which I/O variables are used. */
+   /* Entry points enumerate which global variables are used. */
    size_t start = 3 + name_words;
    b->interface_ids_count = count - start;
    b->interface_ids = ralloc_array(b, uint32_t, b->interface_ids_count);
@@ -5753,7 +5753,7 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
    b->value_id_bound = value_id_bound;
    b->values = rzalloc_array(b, struct vtn_value, value_id_bound);
 
-   if (b->options->environment == NIR_SPIRV_VULKAN)
+   if (b->options->environment == NIR_SPIRV_VULKAN && b->version < 0x10400)
       b->vars_used_indirectly = _mesa_pointer_set_create(b);
 
    return b;
@@ -5975,11 +5975,12 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    /* A SPIR-V module can have multiple shaders stages and also multiple
     * shaders of the same stage.  Global variables are declared per-module.
     *
-    * For I/O storage classes, OpEntryPoint will list the variables used, so
-    * only valid ones are created.  Remove dead variables to clean up the
-    * remaining ones.
+    * Starting in SPIR-V 1.4 the list of global variables is part of
+    * OpEntryPoint, so only valid ones will be created.  Previous versions
+    * only have Input and Output variables listed, so remove dead variables to
+    * clean up the remaining ones.
     */
-   if (!options->create_library) {
+   if (!options->create_library && b->version < 0x10400) {
       const nir_remove_dead_variables_options dead_opts = {
          .can_remove_var = can_remove,
          .can_remove_var_data = b->vars_used_indirectly,
