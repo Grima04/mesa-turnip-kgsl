@@ -147,7 +147,6 @@ static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors
       si_resource_reference(&desc->buffer, NULL);
       desc->gpu_list = NULL;
       desc->gpu_address = si_desc_extract_buffer_address(descriptor);
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
       return true;
    }
 
@@ -174,8 +173,6 @@ static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors
    assert(desc->buffer->flags & RADEON_FLAG_32BIT);
    assert((desc->buffer->gpu_address >> 32) == sctx->screen->info.address32_hi);
    assert((desc->gpu_address >> 32) == sctx->screen->info.address32_hi);
-
-   si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
    return true;
 }
 
@@ -2196,6 +2193,7 @@ static unsigned si_create_bindless_descriptor(struct si_context *sctx, uint32_t 
    /* Make sure to re-emit the shader pointers for all stages. */
    sctx->graphics_bindless_pointer_dirty = true;
    sctx->compute_bindless_pointer_dirty = true;
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
 
    return desc_slot;
 }
@@ -2631,6 +2629,7 @@ static bool si_upload_shader_descriptors(struct si_context *sctx, unsigned mask)
 
       sctx->descriptors_dirty &= ~dirty;
       sctx->shader_pointers_dirty |= dirty;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
    }
 
    si_upload_bindless_descriptors(sctx);
