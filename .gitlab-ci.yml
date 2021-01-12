@@ -1136,7 +1136,7 @@ virgl-traces:
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"
 
-.arm64-a630-traces:
+arm64-a630-traces:
   extends:
     - .piglit-traces-test
     - .arm64-a630-test
@@ -1385,42 +1385,42 @@ virgl-gles31-on-gles:
   script:
     - ./install/bare-metal/cros-servo.sh
 
-.arm64_a630_gles2:
+arm64_a630_gles2:
   extends:
     - .baremetal-deqp-test
     - .arm64-a630-test
   variables:
     DEQP_VER: gles2
 
-.arm64_a630_gles31:
+arm64_a630_gles31:
   extends:
     - .baremetal-deqp-test
     - .arm64-a630-test
   variables:
     DEQP_VER: gles31
 
-.arm64_a630_gles3:
+arm64_a630_gles3:
   extends:
     - .baremetal-deqp-test
     - .arm64-a630-test
   variables:
     DEQP_VER: gles3
 
-.arm64_a630_gl:
+arm64_a630_gl:
   extends:
     - .baremetal-deqp-test
     - .arm64-a630-test
   variables:
     DEQP_VER: gl33
 
-.arm64_a630_gles_others:
+arm64_a630_gles_others:
   extends:
     - .baremetal-deqp-test
     - .arm64-a630-test
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/bare-metal/arm64_a630_gles_others.sh"
 
-.arm64_a630_vk:
+arm64_a630_vk:
   extends:
     - .baremetal-deqp-test-freedreno-vk
     - .arm64-a630-test
@@ -1436,7 +1436,7 @@ virgl-gles31-on-gles:
 # Do a separate sysmem pass over the testcases that really affect sysmem
 # rendering.  This is currently very flaky, leave it as an option for devs
 # to click play on in their branches.
-.arm64_a630_vk_sysmem:
+arm64_a630_vk_sysmem:
   extends:
     - .baremetal-deqp-test-freedreno-vk
     - .arm64-a630-test
@@ -1495,7 +1495,7 @@ virgl-gles31-on-gles:
     PIGLIT_PLATFORM: gbm
 
 # Takes ~20 minutes, so manual-only until we can sort out runtime.
-.arm64_a630_piglit_gl:
+arm64_a630_piglit_gl:
   extends:
     - .arm64_a630_piglit
     - .test-manual
@@ -1503,7 +1503,7 @@ virgl-gles31-on-gles:
     PIGLIT_PROFILES: quick_gl
     PIGLIT_RESULTS: freedreno-a630-gl
 
-.arm64_a630_piglit_shader:
+arm64_a630_piglit_shader:
   extends:
     - .arm64_a630_piglit
   variables:
@@ -1567,7 +1567,7 @@ virgl-gles31-on-gles:
     GPU_VERSION: freedreno-a307
     DEQP_EXPECTED_RENDERER: FD307
 
-.arm64_a306_gles2:
+arm64_a306_gles2:
   extends:
     - .baremetal-deqp-test
     - .arm64-a306-test
@@ -1575,7 +1575,7 @@ virgl-gles31-on-gles:
     DEQP_VER: gles2
 
 # Fractional run, single threaded, due to flaky results
-.arm64_a306_gles3:
+arm64_a306_gles3:
   extends:
     - .baremetal-deqp-test
     - .arm64-a306-test
@@ -1586,7 +1586,7 @@ virgl-gles31-on-gles:
 
 # Fractional runs with debug options.  Note that since we're not
 # hitting the iommu faults, we can run in parallel (derive from gles2, not gles3).
-.arm64_a306_gles3_options:
+arm64_a306_gles3_options:
   extends:
     - .baremetal-deqp-test
     - .arm64-a306-test
@@ -1611,7 +1611,7 @@ virgl-gles31-on-gles:
   tags:
     - google-freedreno-db820c
 
-.arm64_a530_gles2:
+arm64_a530_gles2:
   extends:
     - .baremetal-deqp-test
     - .arm64-a530-test
@@ -1619,7 +1619,7 @@ virgl-gles31-on-gles:
     DEQP_VER: gles2
   parallel: 2
 
-.arm64_a530_gles3:
+arm64_a530_gles3:
   extends:
     - .baremetal-deqp-test
     - .arm64-a530-test
@@ -1627,9 +1627,9 @@ virgl-gles31-on-gles:
     DEQP_VER: gles3
     DEQP_FRACTION: 40
 
-.arm64_a530_gles31:
+arm64_a530_gles31:
   extends:
-    - .arm64_a530_gles3
+    - arm64_a530_gles3
   variables:
     DEQP_VER: gles31
     DEQP_FRACTION: 10
@@ -1680,7 +1680,7 @@ virgl-gles31-on-gles:
     PIGLIT_PLATFORM: gbm
 
 # Takes ~25 minutes, so manual-only until we can sort out runtime.
-.arm64_a530_piglit_gl:
+arm64_a530_piglit_gl:
   extends:
     - .arm64_a530_piglit
     - .test-manual
@@ -1688,7 +1688,7 @@ virgl-gles31-on-gles:
     PIGLIT_PROFILES: quick_gl
     PIGLIT_RESULTS: freedreno-a530-gl
 
-.arm64_a530_piglit_shader:
+arm64_a530_piglit_shader:
   extends:
     - .arm64_a530_piglit
   variables:
