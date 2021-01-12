@@ -1412,12 +1412,16 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 		uint32_t level = range->baseMipLevel + l;
 		uint64_t size;
 
-		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
 			/* Mipmap levels aren't implemented. */
 			assert(level == 0);
 
 			offset += image->planes[0].surface.dcc_slice_size * range->baseArrayLayer;
 			size = image->planes[0].surface.dcc_slice_size * layer_count;
+		} else if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
+			/* Mipmap levels and layers aren't implemented. */
+			assert(level == 0);
+			size = image->planes[0].surface.dcc_size;
 		} else {
 			const struct legacy_surf_level *surf_level =
 				&image->planes[0].surface.u.legacy.level[level];
