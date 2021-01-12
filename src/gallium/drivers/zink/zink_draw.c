@@ -309,14 +309,14 @@ zink_draw_vbo(struct pipe_context *pctx,
        }
    }
 
-   VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   struct zink_resource *write_desc_resources[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SAMPLERS];
+   struct zink_resource *write_desc_resources[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SAMPLERS];
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS];
-   VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * PIPE_MAX_SAMPLERS];
    VkBufferView buffer_view[] = {VK_NULL_HANDLE};
    int num_wds = 0, num_buffer_info = 0, num_image_info = 0;
 
-   struct zink_resource *transitions[PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct zink_resource *transitions[PIPE_SHADER_TYPES * PIPE_MAX_SAMPLERS];
    int num_transitions = 0;
 
    for (int i = 0; i < ARRAY_SIZE(ctx->gfx_stages); i++) {

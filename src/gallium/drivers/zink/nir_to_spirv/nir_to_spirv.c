@@ -547,7 +547,7 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
       unreachable("not supported");
    } else {
       uint32_t stage_offset = (uint32_t)stage * (PIPE_MAX_CONSTANT_BUFFERS +
-                                                 PIPE_MAX_SHADER_SAMPLER_VIEWS);
+                                                 PIPE_MAX_SAMPLERS);
 
       switch (type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -556,7 +556,7 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
 
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-         assert(index < PIPE_MAX_SHADER_SAMPLER_VIEWS);
+         assert(index < PIPE_MAX_SAMPLERS);
          return stage_offset + PIPE_MAX_CONSTANT_BUFFERS + index;
 
       default:
