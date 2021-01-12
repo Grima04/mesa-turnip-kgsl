@@ -58,6 +58,6 @@ meson _build --native-file=native.file \
 cd _build
 meson configure
 ninja
-LC_ALL=C.UTF-8 ninja test
+LC_ALL=C.UTF-8 meson test --num-processes ${FDO_CI_CONCURRENT:-4}
 ninja install
 cd ..
