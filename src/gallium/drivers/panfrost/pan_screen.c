@@ -123,7 +123,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return has_mrt ? 8 : 1;
 
         case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
-                return is_bifrost ? 0 : 1;
+                return 1;
 
         case PIPE_CAP_SAMPLE_SHADING:
                 /* WIP */

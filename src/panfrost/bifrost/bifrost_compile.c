@@ -302,15 +302,20 @@ bi_emit_load_blend_input(bi_builder *b, nir_intrinsic_instr *instr)
 {
         ASSERTED nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
 
-        /* We don't support dual-source blending yet. */
-        assert(sem.location == VARYING_SLOT_COL0);
-
-        /* Source color is passed through r0-r3.  TODO: Precolour instead */
+        /* Source color is passed through r0-r3, or r4-r7 for the second
+         * source when dual-source blending.  TODO: Precolour instead */
         bi_index srcs[] = {
                 bi_register(0), bi_register(1), bi_register(2), bi_register(3)
         };
+        bi_index srcs2[] = {
+                bi_register(4), bi_register(5), bi_register(6), bi_register(7)
+        };
 
-        bi_make_vec_to(b, bi_dest_index(&instr->dest), srcs, NULL, 4, 32);
+        bool second_source = (sem.location == VARYING_SLOT_VAR0);
+
+        bi_make_vec_to(b, bi_dest_index(&instr->dest),
+                       second_source ? srcs2 : srcs,
+                       NULL, 4, 32);
 }
 
 static void
@@ -354,6 +359,18 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 nir_find_variable_with_driver_location(b->shader->nir,
                                 nir_var_shader_out, nir_intrinsic_base(instr));
         assert(var);
+
+        /* Dual-source blending is implemented by putting the color in
+         * registers r4-r7. */
+        if (var->data.index) {
+                bi_index color = bi_src_index(&instr->src[0]);
+                unsigned count = nir_src_num_components(instr->src[0]);
+
+                for (unsigned i = 0; i < count; ++i)
+                        bi_mov_i32_to(b, bi_register(4 + i),
+                                      bi_word(color, i));
+                return;
+        }
 
         /* Emit ATEST if we have to, note ATEST requires a floating-point alpha
          * value, but render target #0 might not be floating point. However the
