@@ -525,6 +525,27 @@ void _mesa_hash_table_remove_key(struct hash_table *ht,
 }
 
 /**
+ * This function is an iterator over the hash_table when no deleted entries are present.
+ *
+ * Pass in NULL for the first entry, as in the start of a for loop.
+ */
+struct hash_entry *
+_mesa_hash_table_next_entry_unsafe(const struct hash_table *ht, struct hash_entry *entry)
+{
+   assert(!ht->deleted_entries);
+   if (!ht->entries)
+      return NULL;
+   if (entry == NULL)
+      entry = ht->table;
+   else
+      entry = entry + 1;
+   if (entry != ht->table + ht->size)
+      return entry->key ? entry : _mesa_hash_table_next_entry_unsafe(ht, entry);
+
+   return NULL;
+}
+
+/**
  * This function is an iterator over the hash table.
  *
  * Pass in NULL for the first entry, as in the start of a for loop.  Note that

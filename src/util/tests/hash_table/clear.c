@@ -93,6 +93,16 @@ int main()
       assert(0);
    }
 
+   for (i = 0; i < SIZE; ++i) {
+      flags[i] = false;
+      _mesa_hash_table_insert(ht, make_key(i), &flags[i]);
+   }
+   hash_table_foreach_remove(ht, entry) {
+      assert(key_id(entry->key) < SIZE);
+   }
+   assert(!ht->entries);
+   assert(!ht->deleted_entries);
+
    _mesa_hash_table_destroy(ht, NULL);
 
    return 0;
