@@ -362,7 +362,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    unsigned num_vs_params = 0;
    unsigned param_vertex_id, param_instance_id;
 
-   vs_params[num_vs_params++] = LLVMGetUndef(LLVMTypeOf(LLVMGetParam(vs, 0))); /* RW_BUFFERS */
+   vs_params[num_vs_params++] = LLVMGetUndef(LLVMTypeOf(LLVMGetParam(vs, 0))); /* INTERNAL RESOURCES */
    vs_params[num_vs_params++] = LLVMGetUndef(LLVMTypeOf(LLVMGetParam(vs, 1))); /* BINDLESS */
    vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_const_desc);
    vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_sampler_desc);

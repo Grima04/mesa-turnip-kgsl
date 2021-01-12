@@ -383,7 +383,7 @@ enum
 
    GFX10_GS_QUERY_BUF,
 
-   SI_NUM_RW_BUFFERS,
+   SI_NUM_INTERNAL_BINDINGS,
 };
 
 /* Indices into sctx->descriptors, laid out so that gfx and compute pipelines
@@ -404,7 +404,7 @@ enum
    SI_NUM_SHADER_DESCS,
 };
 
-#define SI_DESCS_RW_BUFFERS    0
+#define SI_DESCS_INTERNAL      0
 #define SI_DESCS_FIRST_SHADER  1
 #define SI_DESCS_FIRST_COMPUTE (SI_DESCS_FIRST_SHADER + PIPE_SHADER_COMPUTE * SI_NUM_SHADER_DESCS)
 #define SI_NUM_DESCS           (SI_DESCS_FIRST_SHADER + SI_NUM_SHADERS * SI_NUM_SHADER_DESCS)
@@ -520,9 +520,10 @@ void si_shader_change_notify(struct si_context *sctx);
 void si_update_needs_color_decompress_masks(struct si_context *sctx);
 void si_emit_graphics_shader_pointers(struct si_context *sctx);
 void si_emit_compute_shader_pointers(struct si_context *sctx);
-void si_set_rw_buffer(struct si_context *sctx, uint slot, const struct pipe_constant_buffer *input);
-void si_set_rw_shader_buffer(struct si_context *sctx, uint slot,
-                             const struct pipe_shader_buffer *sbuffer);
+void si_set_internal_const_buffer(struct si_context *sctx, uint slot,
+                                  const struct pipe_constant_buffer *input);
+void si_set_internal_shader_buffer(struct si_context *sctx, uint slot,
+                                   const struct pipe_shader_buffer *sbuffer);
 void si_set_active_descriptors(struct si_context *sctx, unsigned desc_idx,
                                uint64_t new_active_mask);
 void si_set_active_descriptors_for_shader(struct si_context *sctx, struct si_shader_selector *sel);

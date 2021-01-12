@@ -166,7 +166,7 @@ struct si_context;
 /* SGPR user data indices */
 enum
 {
-   SI_SGPR_RW_BUFFERS, /* rings (& stream-out, VS only) */
+   SI_SGPR_INTERNAL_BINDINGS,
    SI_SGPR_BINDLESS_SAMPLERS_AND_IMAGES,
    SI_SGPR_CONST_AND_SHADER_BUFFERS, /* or just a constant buffer 0 pointer */
    SI_SGPR_SAMPLERS_AND_IMAGES,

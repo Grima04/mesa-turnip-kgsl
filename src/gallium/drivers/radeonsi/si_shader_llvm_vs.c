@@ -328,7 +328,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
        * enabled buffer. */
       LLVMValueRef so_write_offset[4] = {};
       LLVMValueRef so_buffers[4];
-      LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
+      LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
 
       for (i = 0; i < 4; i++) {
          if (!so->stride[i])
@@ -369,7 +369,7 @@ static void si_llvm_emit_clipvertex(struct si_shader_context *ctx, struct ac_exp
    unsigned chan;
    unsigned const_chan;
    LLVMValueRef base_elt;
-   LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
+   LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
    LLVMValueRef constbuf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_CLIP_PLANES, 0);
    LLVMValueRef const_resource = ac_build_load_to_sgpr(&ctx->ac, ptr, constbuf_index);
    unsigned clipdist_mask = ctx->shader->selector->clipdist_mask &
@@ -1009,7 +1009,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
    LLVMValueRef instance_divisor_constbuf = NULL;
 
    if (key->vs_prolog.states.instance_divisor_is_fetched) {
-      LLVMValueRef list = si_prolog_get_rw_buffers(ctx);
+      LLVMValueRef list = si_prolog_get_internal_bindings(ctx);
       LLVMValueRef buf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_INSTANCE_DIVISORS, 0);
       instance_divisor_constbuf = ac_build_load_to_sgpr(&ctx->ac, list, buf_index);
    }

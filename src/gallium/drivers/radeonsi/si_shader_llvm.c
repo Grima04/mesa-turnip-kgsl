@@ -305,12 +305,12 @@ LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret
    return LLVMBuildInsertValue(builder, ret, ptr, return_index, "");
 }
 
-LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx)
+LLVMValueRef si_prolog_get_internal_bindings(struct si_shader_context *ctx)
 {
    LLVMValueRef ptr[2], list;
    bool merged_shader = si_is_merged_shader(ctx->shader);
 
-   ptr[0] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_RW_BUFFERS);
+   ptr[0] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_INTERNAL_BINDINGS);
    list =
       LLVMBuildIntToPtr(ctx->ac.builder, ptr[0], ac_array_in_const32_addr_space(ctx->ac.v4i32), "");
    return list;

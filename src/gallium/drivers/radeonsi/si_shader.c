@@ -252,7 +252,7 @@ static void declare_per_stage_desc_pointers(struct si_shader_context *ctx, bool 
 
 static void declare_global_desc_pointers(struct si_shader_context *ctx)
 {
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->rw_buffers);
+   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->internal_bindings);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_IMAGE_PTR,
               &ctx->bindless_samplers_and_images);
 }
@@ -495,7 +495,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
          /* TCS return values are inputs to the TCS epilog.
           *
           * param_tcs_offchip_offset, param_tcs_factor_offset,
-          * param_tcs_offchip_layout, and param_rw_buffers
+          * param_tcs_offchip_layout, and internal_bindings
           * should be passed to the epilog.
           */
          for (i = 0; i <= 8 + GFX9_SGPR_TCS_OUT_LAYOUT; i++)

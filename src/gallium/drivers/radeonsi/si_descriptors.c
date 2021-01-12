@@ -853,8 +853,8 @@ static void si_images_update_needs_color_decompress_mask(struct si_images *image
 
 void si_update_ps_colorbuf0_slot(struct si_context *sctx)
 {
-   struct si_buffer_resources *buffers = &sctx->rw_buffers;
-   struct si_descriptors *descs = &sctx->descriptors[SI_DESCS_RW_BUFFERS];
+   struct si_buffer_resources *buffers = &sctx->internal_bindings;
+   struct si_descriptors *descs = &sctx->descriptors[SI_DESCS_INTERNAL];
    unsigned slot = SI_PS_IMAGE_COLORBUF0;
    struct pipe_surface *surf = NULL;
 
@@ -916,7 +916,7 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx)
       buffers->enabled_mask &= ~(1llu << slot);
    }
 
-   sctx->descriptors_dirty |= 1u << SI_DESCS_RW_BUFFERS;
+   sctx->descriptors_dirty |= 1u << SI_DESCS_INTERNAL;
 }
 
 /* SAMPLER STATES */
@@ -1300,15 +1300,16 @@ void si_get_shader_buffers(struct si_context *sctx, enum pipe_shader_type shader
 
 /* RING BUFFERS */
 
-void si_set_rw_buffer(struct si_context *sctx, uint slot, const struct pipe_constant_buffer *input)
+void si_set_internal_const_buffer(struct si_context *sctx, uint slot,
+                                  const struct pipe_constant_buffer *input)
 {
-   si_set_constant_buffer(sctx, &sctx->rw_buffers, SI_DESCS_RW_BUFFERS, slot, input);
+   si_set_constant_buffer(sctx, &sctx->internal_bindings, SI_DESCS_INTERNAL, slot, input);
 }
 
-void si_set_rw_shader_buffer(struct si_context *sctx, uint slot,
-                             const struct pipe_shader_buffer *sbuffer)
+void si_set_internal_shader_buffer(struct si_context *sctx, uint slot,
+                                   const struct pipe_shader_buffer *sbuffer)
 {
-   si_set_shader_buffer(sctx, &sctx->rw_buffers, SI_DESCS_RW_BUFFERS, slot, sbuffer, true,
+   si_set_shader_buffer(sctx, &sctx->internal_bindings, SI_DESCS_INTERNAL, slot, sbuffer, true,
                         RADEON_PRIO_SHADER_RW_BUFFER);
 }
 
@@ -1316,8 +1317,8 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
                         unsigned stride, unsigned num_records, bool add_tid, bool swizzle,
                         unsigned element_size, unsigned index_stride, uint64_t offset)
 {
-   struct si_buffer_resources *buffers = &sctx->rw_buffers;
-   struct si_descriptors *descs = &sctx->descriptors[SI_DESCS_RW_BUFFERS];
+   struct si_buffer_resources *buffers = &sctx->internal_bindings;
+   struct si_descriptors *descs = &sctx->descriptors[SI_DESCS_INTERNAL];
 
    /* The stride field in the resource descriptor has 14 bits */
    assert(stride < (1 << 14));
@@ -1402,7 +1403,7 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
       buffers->enabled_mask &= ~(1llu << slot);
    }
 
-   sctx->descriptors_dirty |= 1u << SI_DESCS_RW_BUFFERS;
+   sctx->descriptors_dirty |= 1u << SI_DESCS_INTERNAL;
 }
 
 /* INTERNAL CONST BUFFERS */
@@ -1420,7 +1421,7 @@ static void si_set_polygon_stipple(struct pipe_context *ctx, const struct pipe_p
    cb.user_buffer = stipple;
    cb.buffer_size = sizeof(stipple);
 
-   si_set_rw_buffer(sctx, SI_PS_CONST_POLY_STIPPLE, &cb);
+   si_set_internal_const_buffer(sctx, SI_PS_CONST_POLY_STIPPLE, &cb);
 }
 
 /* TEXTURE METADATA ENABLE/DISABLE */
@@ -1548,15 +1549,15 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
    /* Streamout buffers. (other internal buffers can't be invalidated) */
    if (!buffer || buffer->bind_history & PIPE_BIND_STREAM_OUTPUT) {
       for (i = SI_VS_STREAMOUT_BUF0; i <= SI_VS_STREAMOUT_BUF3; i++) {
-         struct si_buffer_resources *buffers = &sctx->rw_buffers;
-         struct si_descriptors *descs = &sctx->descriptors[SI_DESCS_RW_BUFFERS];
+         struct si_buffer_resources *buffers = &sctx->internal_bindings;
+         struct si_descriptors *descs = &sctx->descriptors[SI_DESCS_INTERNAL];
          struct pipe_resource *buffer = buffers->buffers[i];
 
          if (!buffer || (buf && buffer != buf))
             continue;
 
          si_set_buf_desc_address(si_resource(buffer), buffers->offsets[i], descs->list + i * 4);
-         sctx->descriptors_dirty |= 1u << SI_DESCS_RW_BUFFERS;
+         sctx->descriptors_dirty |= 1u << SI_DESCS_INTERNAL;
 
          radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer), RADEON_USAGE_WRITE,
                                                  RADEON_PRIO_SHADER_RW_BUFFER, true);
@@ -1992,8 +1993,8 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
 {
    uint32_t *sh_base = sctx->shader_pointers.sh_base;
 
-   if (sctx->shader_pointers_dirty & (1 << SI_DESCS_RW_BUFFERS)) {
-      si_emit_global_shader_pointers(sctx, &sctx->descriptors[SI_DESCS_RW_BUFFERS]);
+   if (sctx->shader_pointers_dirty & (1 << SI_DESCS_INTERNAL)) {
+      si_emit_global_shader_pointers(sctx, &sctx->descriptors[SI_DESCS_INTERNAL]);
    }
 
    radeon_begin(&sctx->gfx_cs);
@@ -2008,7 +2009,7 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
    si_emit_consecutive_shader_pointers(sctx, SI_DESCS_SHADER_MASK(GEOMETRY),
                                        sh_base[PIPE_SHADER_GEOMETRY]);
 
-   sctx->shader_pointers_dirty &= ~u_bit_consecutive(SI_DESCS_RW_BUFFERS, SI_DESCS_FIRST_COMPUTE);
+   sctx->shader_pointers_dirty &= ~u_bit_consecutive(SI_DESCS_INTERNAL, SI_DESCS_FIRST_COMPUTE);
 
    if (sctx->vertex_buffer_pointer_dirty && sctx->num_vertex_elements) {
       /* Find the location of the VB descriptor pointer. */
@@ -2550,12 +2551,12 @@ void si_init_all_descriptors(struct si_context *sctx)
          memcpy(desc->list + j * 8, null_texture_descriptor, 8 * 4);
    }
 
-   si_init_buffer_resources(&sctx->rw_buffers, &sctx->descriptors[SI_DESCS_RW_BUFFERS],
-                            SI_NUM_RW_BUFFERS, SI_SGPR_RW_BUFFERS,
+   si_init_buffer_resources(&sctx->internal_bindings, &sctx->descriptors[SI_DESCS_INTERNAL],
+                            SI_NUM_INTERNAL_BINDINGS, SI_SGPR_INTERNAL_BINDINGS,
                             /* The second priority is used by
                              * const buffers in RW buffer slots. */
                             RADEON_PRIO_SHADER_RINGS, RADEON_PRIO_CONST_BUFFER);
-   sctx->descriptors[SI_DESCS_RW_BUFFERS].num_active_slots = SI_NUM_RW_BUFFERS;
+   sctx->descriptors[SI_DESCS_INTERNAL].num_active_slots = SI_NUM_INTERNAL_BINDINGS;
 
    /* Initialize an array of 1024 bindless descriptors, when the limit is
     * reached, just make it larger and re-upload the whole array.
@@ -2629,7 +2630,7 @@ bool si_upload_graphics_shader_descriptors(struct si_context *sctx)
 
 bool si_upload_compute_shader_descriptors(struct si_context *sctx)
 {
-   /* Does not update rw_buffers as that is not needed for compute shaders
+   /* This does not update internal bindings as that is not needed for compute shaders
     * and the input buffer is using the same SGPR's anyway.
     */
    const unsigned mask =
@@ -2647,7 +2648,7 @@ void si_release_all_descriptors(struct si_context *sctx)
       si_release_sampler_views(&sctx->samplers[i]);
       si_release_image_views(&sctx->images[i]);
    }
-   si_release_buffer_resources(&sctx->rw_buffers, &sctx->descriptors[SI_DESCS_RW_BUFFERS]);
+   si_release_buffer_resources(&sctx->internal_bindings, &sctx->descriptors[SI_DESCS_INTERNAL]);
    for (i = 0; i < SI_NUM_VERTEX_BUFFERS; i++)
       pipe_vertex_buffer_unreference(&sctx->vertex_buffer[i]);
 
@@ -2683,7 +2684,7 @@ bool si_gfx_resources_check_encrypted(struct si_context *sctx)
       use_encrypted_bo |= si_image_views_check_encrypted(sctx, &sctx->images[i],
                                           u_bit_consecutive(0, current_shader[i]->cso->info.base.num_images));
    }
-   use_encrypted_bo |= si_buffer_resources_check_encrypted(sctx, &sctx->rw_buffers);
+   use_encrypted_bo |= si_buffer_resources_check_encrypted(sctx, &sctx->internal_bindings);
 
    struct si_state_blend *blend = sctx->queued.named.blend;
    for (int i = 0; i < sctx->framebuffer.state.nr_cbufs && !use_encrypted_bo; i++) {
@@ -2739,7 +2740,7 @@ void si_gfx_resources_add_all_to_bo_list(struct si_context *sctx)
       si_sampler_views_begin_new_cs(sctx, &sctx->samplers[i]);
       si_image_views_begin_new_cs(sctx, &sctx->images[i]);
    }
-   si_buffer_resources_begin_new_cs(sctx, &sctx->rw_buffers);
+   si_buffer_resources_begin_new_cs(sctx, &sctx->internal_bindings);
    si_vertex_buffers_begin_new_cs(sctx);
 
    if (sctx->bo_list_add_all_resident_resources)
@@ -2761,7 +2762,7 @@ bool si_compute_resources_check_encrypted(struct si_context *sctx)
    return si_buffer_resources_check_encrypted(sctx, &sctx->const_and_shader_buffers[sh]) ||
           si_sampler_views_check_encrypted(sctx, &sctx->samplers[sh], info->base.textures_used) ||
           si_image_views_check_encrypted(sctx, &sctx->images[sh], u_bit_consecutive(0, info->base.num_images)) ||
-          si_buffer_resources_check_encrypted(sctx, &sctx->rw_buffers);
+          si_buffer_resources_check_encrypted(sctx, &sctx->internal_bindings);
 }
 
 void si_compute_resources_add_all_to_bo_list(struct si_context *sctx)
@@ -2771,7 +2772,7 @@ void si_compute_resources_add_all_to_bo_list(struct si_context *sctx)
    si_buffer_resources_begin_new_cs(sctx, &sctx->const_and_shader_buffers[sh]);
    si_sampler_views_begin_new_cs(sctx, &sctx->samplers[sh]);
    si_image_views_begin_new_cs(sctx, &sctx->images[sh]);
-   si_buffer_resources_begin_new_cs(sctx, &sctx->rw_buffers);
+   si_buffer_resources_begin_new_cs(sctx, &sctx->internal_bindings);
 
    if (sctx->bo_list_add_all_resident_resources)
       si_resident_buffers_add_all_to_bo_list(sctx);

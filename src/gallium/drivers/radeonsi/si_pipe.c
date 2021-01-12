@@ -656,11 +656,11 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
          }
       }
 
-      si_set_rw_buffer(sctx, SI_HS_CONST_DEFAULT_TESS_LEVELS, &sctx->null_const_buf);
-      si_set_rw_buffer(sctx, SI_VS_CONST_INSTANCE_DIVISORS, &sctx->null_const_buf);
-      si_set_rw_buffer(sctx, SI_VS_CONST_CLIP_PLANES, &sctx->null_const_buf);
-      si_set_rw_buffer(sctx, SI_PS_CONST_POLY_STIPPLE, &sctx->null_const_buf);
-      si_set_rw_buffer(sctx, SI_PS_CONST_SAMPLE_POSITIONS, &sctx->null_const_buf);
+      si_set_internal_const_buffer(sctx, SI_HS_CONST_DEFAULT_TESS_LEVELS, &sctx->null_const_buf);
+      si_set_internal_const_buffer(sctx, SI_VS_CONST_INSTANCE_DIVISORS, &sctx->null_const_buf);
+      si_set_internal_const_buffer(sctx, SI_VS_CONST_CLIP_PLANES, &sctx->null_const_buf);
+      si_set_internal_const_buffer(sctx, SI_PS_CONST_POLY_STIPPLE, &sctx->null_const_buf);
+      si_set_internal_const_buffer(sctx, SI_PS_CONST_SAMPLE_POSITIONS, &sctx->null_const_buf);
    }
 
    uint64_t max_threads_per_block;

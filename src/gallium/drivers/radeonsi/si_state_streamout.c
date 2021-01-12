@@ -197,14 +197,14 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
             sbuf.buffer_size = targets[i]->buffer_offset + targets[i]->buffer_size;
          }
 
-         si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, &sbuf);
+         si_set_internal_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, &sbuf);
          si_resource(targets[i]->buffer)->bind_history |= PIPE_BIND_STREAM_OUTPUT;
       } else {
-         si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
+         si_set_internal_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
       }
    }
    for (; i < old_num_targets; i++)
-      si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
+      si_set_internal_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
 
    if (wait_now)
       sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
