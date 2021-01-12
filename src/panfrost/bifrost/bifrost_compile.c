@@ -47,6 +47,10 @@ static const struct debug_named_value bifrost_debug_options[] = {
 
 DEBUG_GET_ONCE_FLAGS_OPTION(bifrost_debug, "BIFROST_MESA_DEBUG", bifrost_debug_options, 0)
 
+/* How many bytes are prefetched by the Bifrost shader core. Past the end of
+ * the shader, this range must contain valid instructions or zero. */
+#define BIFROST_SHADER_PREFETCH 96
+
 /* TODO: This is not thread safe!! */
 static unsigned SHADER_DB_COUNT = 0;
 
