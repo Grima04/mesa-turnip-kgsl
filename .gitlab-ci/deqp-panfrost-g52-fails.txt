@@ -4,7 +4,6 @@ dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8,Fail
 dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_linear_out_of_bounds_blit_to_default,Fail
 dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_linear_scale_blit_to_default,Fail
 dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_nearest_scale_blit_to_default,Fail
-dEQP-GLES3.functional.transform_feedback.array_element.interleaved.triangles.mediump_mat2x4,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.9,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.points.1,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.points.3,Fail

@@ -13,3 +13,6 @@ dEQP-GLES[0-9]*.functional.flush_finish.*
 # reasons. This needs to be sorted out asap to avoid creating flakes in the near
 # future, which would be a Very Bad Thing.
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_loop_read_vertex
+
+# This test seems to pass/fail randomly, skip it for now.
+dEQP-GLES3.functional.transform_feedback.array_element.interleaved.triangles.mediump_mat2x4
