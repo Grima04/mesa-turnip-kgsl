@@ -151,8 +151,16 @@ panfrost_afbc_format_needs_fixup(const struct panfrost_device *dev,
         const struct util_format_description *desc =
                 util_format_description(format);
 
+        unsigned nr_channels = desc->nr_channels;
+
+        /* rgb1 is a valid component order, don't test channel 3 in that
+         * case.
+         */
+        if (nr_channels == 4 && desc->swizzle[3] == PIPE_SWIZZLE_1)
+                nr_channels = 3;
+
         bool identity_swizzle = true;
-        for (unsigned c = 0; c < desc->nr_channels; c++) {
+        for (unsigned c = 0; c < nr_channels; c++) {
                 if (desc->swizzle[c] != c) {
                         identity_swizzle = false;
                         break;
