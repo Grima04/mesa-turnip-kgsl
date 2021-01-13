@@ -445,19 +445,26 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
         nir_alu_type T = nir_intrinsic_src_type(instr);
         enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
 
-        nir_src *offset = nir_get_io_offset_src(instr);
         unsigned imm_index = 0;
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 16);
 
-        bi_index address = immediate ?
-                bi_lea_attr_imm(b,
-                                bi_register(61), /* TODO RA */
-                                bi_register(62), /* TODO RA */
-                                regfmt, imm_index) :
-                bi_lea_attr(b,
-                                bi_register(61), /* TODO RA */
-                                bi_register(62), /* TODO RA */
-                                bi_src_index(offset), regfmt);
+        bi_index address;
+        if (immediate) {
+                address = bi_lea_attr_imm(b,
+                                          bi_register(61), /* TODO RA */
+                                          bi_register(62), /* TODO RA */
+                                          regfmt, imm_index);
+        } else {
+                bi_index idx =
+                        bi_iadd_u32(b,
+                                    bi_src_index(nir_get_io_offset_src(instr)),
+                                    bi_imm_u32(nir_intrinsic_base(instr)),
+                                    false);
+                address = bi_lea_attr(b,
+                                      bi_register(61), /* TODO RA */
+                                      bi_register(62), /* TODO RA */
+                                      idx, regfmt);
+        }
 
         /* Only look at the total components needed. In effect, we fill in all
          * the intermediate "holes" in the write mask, since we can't mask off

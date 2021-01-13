@@ -1,5 +1,0 @@
-dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.9,Fail
-dEQP-GLES3.functional.transform_feedback.random.interleaved.points.1,Fail
-dEQP-GLES3.functional.transform_feedback.random.interleaved.points.3,Fail
-dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.5,Fail
-dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.9,Fail
