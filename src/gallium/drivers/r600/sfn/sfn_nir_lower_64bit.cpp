@@ -202,7 +202,7 @@ LowerSplit64BitVar::split_double_store_deref(nir_intrinsic_instr *intr)
    else if (deref->deref_type == nir_deref_type_array)
       return split_store_deref_array(intr, deref);
    else {
-      assert(0 && "only splitting of stores to vars and arrays is supported");
+      unreachable("only splitting of stores to vars and arrays is supported");
    }
 }
 
@@ -215,7 +215,7 @@ LowerSplit64BitVar::split_double_load_deref(nir_intrinsic_instr *intr)
    else if (deref->deref_type == nir_deref_type_array)
       return split_load_deref_array(intr, deref->arr.index);
    else {
-      assert(0 && "only splitting of loads from vars and arrays is supported");
+      unreachable(0 && "only splitting of loads from vars and arrays is supported");
    }
    m_old_stores.push_back(&intr->instr);
 }
