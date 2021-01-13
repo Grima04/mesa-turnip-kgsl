@@ -183,7 +183,11 @@ _util_queue_fence_wait_timeout(struct util_queue_fence *fence,
    if (rel > 0) {
       struct timespec ts;
 
+#ifdef HAVE_TIMESPEC_GET
       timespec_get(&ts, TIME_UTC);
+#else
+      clock_gettime(CLOCK_REALTIME, &ts);
+#endif
 
       ts.tv_sec += abs_timeout / (1000*1000*1000);
       ts.tv_nsec += abs_timeout % (1000*1000*1000);
