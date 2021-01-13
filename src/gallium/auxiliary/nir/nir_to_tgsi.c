@@ -2215,6 +2215,22 @@ ntt_should_vectorize_instr(const nir_instr *instr, void *data)
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
+   switch (alu->op) {
+   case nir_op_ibitfield_extract:
+   case nir_op_ubitfield_extract:
+   case nir_op_bitfield_insert:
+      /* virglrenderer only looks at the .x channel of the offset/bits operands
+       * when translating to GLSL.  tgsi.rst doesn't seem to require scalar
+       * offset/bits operands.
+       *
+       * https://gitlab.freedesktop.org/virgl/virglrenderer/-/issues/195
+       */
+      return false;
+
+   default:
+      break;
+   }
+
    unsigned num_components = alu->dest.dest.ssa.num_components;
 
    int src_bit_size = nir_src_bit_size(alu->src[0].src);
