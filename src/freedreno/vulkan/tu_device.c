@@ -909,6 +909,24 @@ tu_get_system_heap_size()
    return available_ram;
 }
 
+static VkDeviceSize
+tu_get_budget_memory(struct tu_physical_device *physical_device)
+{
+   uint64_t heap_size = physical_device->heap.size;
+   uint64_t heap_used = physical_device->heap.used;
+   uint64_t sys_available;
+   ASSERTED bool has_available_memory =
+      os_get_available_system_memory(&sys_available);
+   assert(has_available_memory);
+
+   /*
+    * Let's not incite the app to starve the system: report at most 90% of
+    * available system memory.
+    */
+   uint64_t heap_available = sys_available * 9 / 10;
+   return MIN2(heap_size, heap_used + heap_available);
+}
+
 void
 tu_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice pdev,
                                       VkPhysicalDeviceMemoryProperties2 *props2)
@@ -926,6 +944,29 @@ tu_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice pdev,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    props->memoryTypes[0].heapIndex = 0;
+
+   vk_foreach_struct(ext, props2->pNext)
+   {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
+         VkPhysicalDeviceMemoryBudgetPropertiesEXT *memory_budget_props =
+            (VkPhysicalDeviceMemoryBudgetPropertiesEXT *) ext;
+         memory_budget_props->heapUsage[0] = physical_device->heap.used;
+         memory_budget_props->heapBudget[0] = tu_get_budget_memory(physical_device);
+
+         /* The heapBudget and heapUsage values must be zero for array elements
+          * greater than or equal to VkPhysicalDeviceMemoryProperties::memoryHeapCount
+          */
+         for (unsigned i = 1; i < VK_MAX_MEMORY_HEAPS; i++) {
+            memory_budget_props->heapBudget[i] = 0u;
+            memory_budget_props->heapUsage[i] = 0u;
+         }
+         break;
+      }
+      default:
+         break;
+      }
+   }
 }
 
 static VkResult
