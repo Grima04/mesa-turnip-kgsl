@@ -25,11 +25,6 @@ dEQP-VK.image.subresource_layout.2d_array.all_levels.r8_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.2_levels.r16g16_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.2_levels.r8g8b8a8_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.4_levels.r8g8_snorm,Fail
-dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_local.image.guard_local.image.frag,Crash
-dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_local.buffer.guard_local.image.comp,Crash
-dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.device.payload_local.buffer.guard_local.image.comp,Crash
-dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_local.image.guard_local.image.comp,Crash
-dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_local.image.comp,Crash
 dEQP-VK.multiview.masks.max_multi_view_view_count,Fail
 dEQP-VK.multiview.renderpass2.masks.max_multi_view_view_count,Fail
 dEQP-VK.pipeline.extended_dynamic_state.after_pipelines.depth_compare_greater_equal_greater,Fail
