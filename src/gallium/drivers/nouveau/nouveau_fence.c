@@ -120,7 +120,10 @@ nouveau_fence_cleanup(struct nouveau_screen *screen)
    }
    screen->fence.head = NULL;
    screen->fence.tail = NULL;
-   nouveau_fence_ref(NULL, &screen->fence.current);
+   if (screen->fence.current) {
+      nouveau_fence_trigger_work(screen->fence.current);
+      nouveau_fence_ref(NULL, &screen->fence.current);
+   }
 }
 
 void
