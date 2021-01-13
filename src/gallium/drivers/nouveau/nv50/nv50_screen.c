@@ -164,6 +164,8 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 16;
    case PIPE_CAP_GL_BEGIN_END_BUFFER_SIZE:
       return 512 * 1024; /* TODO: Investigate tuning this */
+   case PIPE_CAP_MAX_TEXTURE_MB:
+      return 0; /* TODO: use 1/2 of VRAM for this? */
 
    /* supported caps */
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
@@ -357,6 +359,16 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PSIZ_CLAMPED:
    case PIPE_CAP_VIEWPORT_SWIZZLE:
    case PIPE_CAP_VIEWPORT_MASK:
+   case PIPE_CAP_TEXTURE_BUFFER_SAMPLER:
+   case PIPE_CAP_PREFER_REAL_BUFFER_IN_CONSTBUF0:
+   case PIPE_CAP_MAP_UNSYNCHRONIZED_THREAD_SAFE: /* when we fix MT stuff */
+   case PIPE_CAP_ALPHA_TO_COVERAGE_DITHER_CONTROL:
+   case PIPE_CAP_SHADER_ATOMIC_INT64:
+   case PIPE_CAP_GLSL_ZERO_INIT:
+   case PIPE_CAP_BLEND_EQUATION_ADVANCED:
+   case PIPE_CAP_NO_CLIP_ON_COPY_TEX:
+   case PIPE_CAP_CLEAR_SCISSORED: /* TODO */
+   case PIPE_CAP_DEVICE_PROTECTED_CONTENT:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:
