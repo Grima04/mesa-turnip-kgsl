@@ -242,6 +242,10 @@ tu_enumerate_devices(struct tu_instance *instance)
    device->gmem_size = info.gmem_sizebytes;
    device->gmem_base = gmem_iova;
 
+   device->heap.size = tu_get_system_heap_size();
+   device->heap.used = 0u;
+   device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
    if (tu_physical_device_init(device, instance) != VK_SUCCESS)
       goto fail;
 

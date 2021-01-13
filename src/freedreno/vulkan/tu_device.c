@@ -889,7 +889,7 @@ tu_GetPhysicalDeviceQueueFamilyProperties2(
    }
 }
 
-static uint64_t
+uint64_t
 tu_get_system_heap_size()
 {
    struct sysinfo info;
@@ -913,11 +913,12 @@ void
 tu_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice pdev,
                                       VkPhysicalDeviceMemoryProperties2 *props2)
 {
-   VkPhysicalDeviceMemoryProperties *props = &props2->memoryProperties;
+   TU_FROM_HANDLE(tu_physical_device, physical_device, pdev);
 
+   VkPhysicalDeviceMemoryProperties *props = &props2->memoryProperties;
    props->memoryHeapCount = 1;
-   props->memoryHeaps[0].size = tu_get_system_heap_size();
-   props->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+   props->memoryHeaps[0].size = physical_device->heap.size;
+   props->memoryHeaps[0].flags = physical_device->heap.flags;
 
    props->memoryTypeCount = 1;
    props->memoryTypes[0].propertyFlags =
@@ -1428,6 +1429,11 @@ tu_AllocateMemory(VkDevice _device,
       return VK_SUCCESS;
    }
 
+   struct tu_memory_heap *mem_heap = &device->physical_device->heap;
+   uint64_t mem_heap_used = p_atomic_read(&mem_heap->used);
+   if (mem_heap_used > mem_heap->size)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
    mem = vk_object_alloc(&device->vk, pAllocator, sizeof(*mem),
                          VK_OBJECT_TYPE_DEVICE_MEMORY);
    if (mem == NULL)
@@ -1460,6 +1466,17 @@ tu_AllocateMemory(VkDevice _device,
          tu_bo_init_new(device, &mem->bo, pAllocateInfo->allocationSize, false);
    }
 
+
+   if (result == VK_SUCCESS) {
+      mem_heap_used = p_atomic_add_return(&mem_heap->used, mem->bo.size);
+      if (mem_heap_used > mem_heap->size) {
+         p_atomic_add(&mem_heap->used, -mem->bo.size);
+         tu_bo_finish(device, &mem->bo);
+         result = vk_errorf(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                            "Out of heap memory");
+      }
+   }
+
    if (result != VK_SUCCESS) {
       vk_object_free(&device->vk, pAllocator, mem);
       return result;
@@ -1481,6 +1498,7 @@ tu_FreeMemory(VkDevice _device,
    if (mem == NULL)
       return;
 
+   p_atomic_add(&device->physical_device->heap.used, -mem->bo.size);
    tu_bo_finish(device, &mem->bo);
    vk_object_free(&device->vk, pAllocator, mem);
 }

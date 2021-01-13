@@ -393,6 +393,10 @@ tu_drm_device_init(struct tu_physical_device *device,
       goto fail;
    }
 
+   device->heap.size = tu_get_system_heap_size();
+   device->heap.used = 0u;
+   device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
    return tu_physical_device_init(device, instance);
 
 fail:
