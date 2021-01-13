@@ -150,7 +150,7 @@ EXTENSIONS = [
     Extension('VK_EXT_private_data',                      1, True),
     Extension('VK_EXT_queue_family_foreign',              1, True),
     Extension('VK_EXT_robustness2',                       1, True),
-    Extension('VK_EXT_sample_locations',                  1, True),
+    Extension('VK_EXT_sample_locations',                  1, 'device->rad_info.chip_class < GFX10'),
     Extension('VK_EXT_sampler_filter_minmax',             2, True),
     Extension('VK_EXT_scalar_block_layout',               1, 'device->rad_info.chip_class >= GFX7'),
     Extension('VK_EXT_shader_atomic_float',               1, True),
