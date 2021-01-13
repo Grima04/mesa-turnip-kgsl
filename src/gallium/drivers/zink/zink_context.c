@@ -618,13 +618,17 @@ zink_set_tess_state(struct pipe_context *pctx,
 static uint32_t
 hash_render_pass_state(const void *key)
 {
-   return _mesa_hash_data(key, sizeof(struct zink_render_pass_state));
+   struct zink_render_pass_state* s = (struct zink_render_pass_state*)key;
+   return _mesa_hash_data(key, offsetof(struct zink_render_pass_state, rts) + sizeof(s->rts[0]) * s->num_rts);
 }
 
 static bool
 equals_render_pass_state(const void *a, const void *b)
 {
-   return memcmp(a, b, sizeof(struct zink_render_pass_state)) == 0;
+   const struct zink_render_pass_state *s_a = a, *s_b = b;
+   if (s_a->num_rts != s_b->num_rts)
+      return false;
+   return memcmp(a, b, offsetof(struct zink_render_pass_state, rts) + sizeof(s_a->rts[0]) * s_a->num_rts) == 0;
 }
 
 static struct zink_render_pass *
@@ -644,6 +648,7 @@ get_render_pass(struct zink_context *ctx)
          state.rts[i].format = VK_FORMAT_R8_UINT;
          state.rts[i].samples = MAX2(fb->samples, 1);
       }
+      state.num_rts++;
    }
    state.num_cbufs = fb->nr_cbufs;
 
@@ -651,6 +656,7 @@ get_render_pass(struct zink_context *ctx)
       struct zink_resource *zsbuf = zink_resource(fb->zsbuf->texture);
       state.rts[fb->nr_cbufs].format = zsbuf->format;
       state.rts[fb->nr_cbufs].samples = zsbuf->base.nr_samples > 0 ? zsbuf->base.nr_samples : VK_SAMPLE_COUNT_1_BIT;
+      state.num_rts++;
    }
    state.have_zsbuf = fb->zsbuf != NULL;
 

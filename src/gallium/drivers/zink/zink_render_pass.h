@@ -40,6 +40,7 @@ struct zink_render_pass_state {
    uint8_t num_cbufs : 4; /* PIPE_MAX_COLOR_BUFS = 8 */
    uint8_t have_zsbuf : 1;
    struct zink_rt_attrib rts[PIPE_MAX_COLOR_BUFS + 1];
+   unsigned num_rts;
 };
 
 struct zink_render_pass {
