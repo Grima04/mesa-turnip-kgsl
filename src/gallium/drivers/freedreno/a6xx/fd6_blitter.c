@@ -256,9 +256,6 @@ emit_blit_setup(struct fd_ringbuffer *ring,
 	bool is_srgb = util_format_is_srgb(pfmt);
 	enum a6xx_2d_ifmt ifmt = fd6_ifmt(fmt);
 
-	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
-
 	if (is_srgb) {
 		assert(ifmt == R2D_UNORM8);
 		ifmt = R2D_UNORM8_SRGB;
@@ -787,6 +784,77 @@ fd6_clear_surface(struct fd_context *ctx,
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, 0);             /* RB_UNKNOWN_8E04 */
 	}
+}
+
+void
+fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
+		uint32_t base, struct pipe_surface *psurf)
+{
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
+	uint64_t gmem_base = batch->ctx->screen->gmem_base + base;
+	uint32_t gmem_pitch = gmem->bin_w * batch->framebuffer.samples *
+			util_format_get_blocksize(psurf->format);
+
+	OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
+	OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(0) | A6XX_GRAS_2D_DST_TL_Y(0));
+	OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(psurf->width - 1) |
+			A6XX_GRAS_2D_DST_BR_Y(psurf->height - 1));
+
+	OUT_PKT4(ring, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X(0));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X(psurf->width - 1));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y(0));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y(psurf->height - 1));
+
+	/* Enable scissor bit, which will take into account the window scissor
+	 * which is set per-tile
+	 */
+	emit_blit_setup(ring, psurf->format, true, NULL);
+
+	/* We shouldn't be using GMEM in the layered rendering case: */
+	assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
+
+	emit_blit_dst(ring, psurf->texture, psurf->format, psurf->u.tex.level,
+			psurf->u.tex.first_layer);
+
+	enum a6xx_format sfmt = fd6_pipe2color(psurf->format);
+	enum a3xx_msaa_samples samples = fd_msaa_samples(batch->framebuffer.samples);
+
+	OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 10);
+	OUT_RING(ring, A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(sfmt) |
+			A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(TILE6_2) |
+			A6XX_SP_PS_2D_SRC_INFO_SAMPLES(samples) |
+			COND(samples > MSAA_ONE, A6XX_SP_PS_2D_SRC_INFO_SAMPLES_AVERAGE) |
+			COND(util_format_is_srgb(psurf->format), A6XX_SP_PS_2D_SRC_INFO_SRGB) |
+			A6XX_SP_PS_2D_SRC_INFO_UNK20 |
+			A6XX_SP_PS_2D_SRC_INFO_UNK22);
+	OUT_RING(ring, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(psurf->width) |
+			A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(psurf->height));
+	OUT_RING(ring, gmem_base);                   /* SP_PS_2D_SRC_LO */
+	OUT_RING(ring, gmem_base >> 32);             /* SP_PS_2D_SRC_HI */
+	OUT_RING(ring, A6XX_SP_PS_2D_SRC_PITCH_PITCH(gmem_pitch));
+	OUT_RING(ring, 0x00000000);
+	OUT_RING(ring, 0x00000000);
+	OUT_RING(ring, 0x00000000);
+	OUT_RING(ring, 0x00000000);
+	OUT_RING(ring, 0x00000000);
+
+	/* sync GMEM writes with CACHE. */
+	fd6_cache_inv(batch, ring);
+
+	/* Wait for CACHE_INVALIDATE to land */
+	fd_wfi(batch, ring);
+
+	OUT_PKT7(ring, CP_BLIT, 1);
+	OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));
+
+	OUT_WFI5(ring);
+
+	/* CP_BLIT writes to the CCU, unlike CP_EVENT_WRITE::BLIT which writes to
+	 * sysmem, and we generally assume that GMEM renderpasses leave their
+	 * results in sysmem, so we need to flush manually here.
+	 */
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
 }
 
 static bool

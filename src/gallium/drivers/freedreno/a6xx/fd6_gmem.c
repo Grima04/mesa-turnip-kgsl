@@ -1129,6 +1129,47 @@ fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 	trace_end_clear_restore(&batch->trace);
 }
 
+static bool
+blit_can_resolve(enum pipe_format format)
+{
+	const struct util_format_description *desc = util_format_description(format);
+
+	/* blit event can only do resolve for simple cases:
+	 * averaging samples as unsigned integers or choosing only one sample
+	 */
+	if (util_format_is_snorm(format) || util_format_is_srgb(format))
+		return false;
+
+	/* can't do formats with larger channel sizes
+	 * note: this includes all float formats
+	 * note2: single channel integer formats seem OK
+	 */
+	if (desc->channel[0].size > 10)
+		return false;
+
+	switch (format) {
+	/* for unknown reasons blit event can't msaa resolve these formats when tiled
+	 * likely related to these formats having different layout from other cpp=2 formats
+	 */
+	case PIPE_FORMAT_R8G8_UNORM:
+	case PIPE_FORMAT_R8G8_UINT:
+	case PIPE_FORMAT_R8G8_SINT:
+	/* TODO: this one should be able to work? */
+	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+		return false;
+	default:
+		break;
+	}
+
+	return true;
+}
+
+static bool
+needs_resolve(struct pipe_surface *psurf)
+{
+	return psurf->nr_samples && (psurf->nr_samples != psurf->texture->nr_samples);
+}
+
 static void
 emit_resolve_blit(struct fd_batch *batch,
 				  struct fd_ringbuffer *ring,
@@ -1141,6 +1182,18 @@ emit_resolve_blit(struct fd_batch *batch,
 
 	if (!fd_resource(psurf->texture)->valid)
 		return;
+
+	/* if we need to resolve, but cannot with BLIT event, we instead need
+	 * to generate per-tile CP_BLIT (r2d) commands:
+	 *
+	 * The separate-stencil is a special case, we might need to use CP_BLIT
+	 * for depth, but we can still resolve stencil with a BLIT event
+	 */
+	if (needs_resolve(psurf) && !blit_can_resolve(psurf->format) &&
+			(buffer != FD_BUFFER_STENCIL)) {
+		fd6_resolve_tile(batch, ring, base, psurf);
+		return;
+	}
 
 	switch (buffer) {
 	case FD_BUFFER_COLOR:
