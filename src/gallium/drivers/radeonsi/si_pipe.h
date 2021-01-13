@@ -1492,6 +1492,7 @@ void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 /* si_perfcounters.c */
 void si_init_perfcounters(struct si_screen *screen);
 void si_destroy_perfcounters(struct si_screen *screen);
+void si_inhibit_clockgating(struct si_context *sctx, struct radeon_cmdbuf *cs, bool inhibit);
 
 /* si_query.c */
 void si_init_screen_query_functions(struct si_screen *sscreen);

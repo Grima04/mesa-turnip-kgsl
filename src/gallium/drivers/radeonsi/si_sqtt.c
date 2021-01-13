@@ -378,6 +378,8 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
       SI_CONTEXT_INV_L2;
    sctx->emit_cache_flush(sctx, cs);
 
+   si_inhibit_clockgating(sctx, cs, true);
+
    /* Enable SQG events that collects thread trace data. */
    si_emit_spi_config_cntl(sctx, cs, true);
 
@@ -418,6 +420,8 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
 
    /* Restore previous state by disabling SQG events. */
    si_emit_spi_config_cntl(sctx, cs, false);
+
+   si_inhibit_clockgating(sctx, cs, false);
 }
 
 
