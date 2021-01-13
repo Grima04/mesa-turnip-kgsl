@@ -1871,6 +1871,9 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
           * - Flush TC L2 after rendering.
           */
          for (unsigned i = 0; i < in->numMipLevels; i++) {
+            surf->u.gfx9.dcc_levels[i].offset = meta_mip_info[i].offset;
+            surf->u.gfx9.dcc_levels[i].size = meta_mip_info[i].sliceSize;
+
             if (meta_mip_info[i].inMiptail) {
                /* GFX10 can only compress the first level
                 * in the mip tail.
