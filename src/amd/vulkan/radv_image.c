@@ -178,6 +178,12 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (!radv_image_use_fast_clear_for_image(device, image))
 		return false;
 
+	/* FIXME: DCC for 3D images with mimaps are broken on GFX10+. */
+        if (pCreateInfo->mipLevels > 1 &&
+           pCreateInfo->imageType == VK_IMAGE_TYPE_3D &&
+           device->physical_device->rad_info.chip_class >= GFX10)
+                return false;
+
 	/* TODO: Enable DCC for mipmaps on GFX9+. */
 	if (pCreateInfo->mipLevels > 1 &&
 	    device->physical_device->rad_info.chip_class >= GFX9)
