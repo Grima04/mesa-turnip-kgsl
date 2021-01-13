@@ -2551,10 +2551,18 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       (x2 % phys_dev->info.gmem_align_w && x2 != iview->extent.width) ||
       y1 % phys_dev->info.gmem_align_h || (y2 % phys_dev->info.gmem_align_h && need_y2_align);
 
+   /* D32_SFLOAT_S8_UINT is quite special format: it has two planes,
+    * one for depth and other for stencil. When resolving a MSAA
+    * D32_SFLOAT_S8_UINT to S8_UINT, we need to take that into account.
+    */
+   bool resolve_d32s8_s8 =
+      src->format == VK_FORMAT_D32_SFLOAT_S8_UINT &&
+      dst->format == VK_FORMAT_S8_UINT;
+
    /* use fast path when render area is aligned, except for unsupported resolve cases */
    if (!unaligned && (a == gmem_a || blit_can_resolve(dst->format))) {
       if (dst->store)
-         tu_emit_blit(cmd, cs, iview, src, true, false);
+         tu_emit_blit(cmd, cs, iview, src, true, resolve_d32s8_s8);
       if (dst->store_stencil)
          tu_emit_blit(cmd, cs, iview, src, true, true);
       return;
@@ -2575,7 +2583,7 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       format = VK_FORMAT_D32_SFLOAT;
 
    if (dst->store) {
-      store_cp_blit(cmd, cs, iview, src->samples, false, format,
+      store_cp_blit(cmd, cs, iview, src->samples, resolve_d32s8_s8, format,
                     src->gmem_offset, src->cpp);
    }
    if (dst->store_stencil) {
