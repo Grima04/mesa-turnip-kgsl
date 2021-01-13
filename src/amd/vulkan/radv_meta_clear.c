@@ -1413,11 +1413,10 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 		uint64_t size;
 
 		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
-			/* Mipmap levels aren't implemented. */
-			assert(level == 0);
-
-			offset += image->planes[0].surface.dcc_slice_size * range->baseArrayLayer;
-			size = image->planes[0].surface.dcc_slice_size * layer_count;
+			/* DCC for mipmaps+layers is currently disabled. */
+			offset += image->planes[0].surface.dcc_slice_size * range->baseArrayLayer +
+				  image->planes[0].surface.u.gfx9.dcc_levels[level].offset;
+			size = image->planes[0].surface.u.gfx9.dcc_levels[level].size * layer_count;
 		} else if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
 			/* Mipmap levels and layers aren't implemented. */
 			assert(level == 0);
