@@ -514,6 +514,12 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		           nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
 			   NULL);
 
+		/* Variables can make nir_propagate_invariant more conservative
+		 * than it needs to be.
+		 */
+		NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+		NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+
 		if (device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM &&
 		    stage != MESA_SHADER_FRAGMENT) {
 			mark_geom_invariant(nir);
