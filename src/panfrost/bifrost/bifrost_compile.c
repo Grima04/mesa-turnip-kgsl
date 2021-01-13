@@ -740,7 +740,7 @@ bi_alu_src_index(nir_alu_src src, unsigned comps)
         assert(idx.swizzle == BI_SWIZZLE_H01);
 
         /* Bigger vectors should have been lowered */
-        assert(comps <= (1 << bitsize));
+        assert(comps <= (1 << subword_shift));
 
         if (bitsize == 16) {
                 unsigned c0 = src.swizzle[0] & 1;
