@@ -2049,6 +2049,9 @@ typedef struct {
    /* gather component selector */
    unsigned component : 2;
 
+   /* Validation needs to know this for gradient component count */
+   unsigned array_is_lowered_cube : 1;
+
    /* gather offsets */
    int8_t tg4_offsets[4][2];
 
@@ -2268,7 +2271,8 @@ nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src)
 
    if (instr->src[src].src_type == nir_tex_src_ddx ||
        instr->src[src].src_type == nir_tex_src_ddy) {
-      if (instr->is_array)
+
+      if (instr->is_array && !instr->array_is_lowered_cube)
          return instr->coord_components - 1;
       else
          return instr->coord_components;
