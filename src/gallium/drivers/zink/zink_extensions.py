@@ -1,13 +1,51 @@
+class Version:
+    driver_version  : (1,0,0)
+    struct_version  : (1,0)
+
+    def __init__(self, version, struct):
+        self.device_version = version
+        self.struct_version = struct
+
+    # e.g. "VM_MAKE_VERSION(1,2,0)"
+    def version(self):
+        return ("VK_MAKE_VERSION("
+               + str(self.device_version[0])
+               + ","
+               + str(self.device_version[1])
+               + ","
+               + str(self.device_version[2])
+               + ")")
+
+    # e.g. "10"
+    def struct(self):
+        return (str(self.struct_version[0])+str(self.struct_version[1]))
+
+    # the sType of the extension's struct
+    # e.g. VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT
+    # for VK_EXT_transform_feedback and struct="FEATURES"
+    def stype(self, struct: str):
+        return ("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_"
+                + str(self.struct_version[0]) + "_" + str(self.struct_version[1])
+                + '_' + struct)
+
 class Extension:
     name           : str   = None
     alias          : str   = None
     is_required    : bool  = False
+    enable_conds   : [str] = None
+
+    # these are specific to zink_device_info.py:
     has_properties : bool  = False
     has_features   : bool  = False
-    enable_conds   : [str] = None
     guard          : bool  = False
 
-    def __init__(self, name, alias="", required=False, properties=False, features=False, conditions=None, guard=False):
+    # these are specific to zink_instance.py:
+    core_since     : Version = None
+    instance_funcs : [str]   = None
+
+    def __init__(self, name, alias="", required=False, properties=False,
+                 features=False, conditions=None, guard=False, core_since=None,
+                 functions=None):
         self.name = name
         self.alias = alias
         self.is_required = required
@@ -15,6 +53,8 @@ class Extension:
         self.has_features = features
         self.enable_conds = conditions
         self.guard = guard
+        self.core_since = core_since
+        self.instance_funcs = functions
 
         if alias == "" and (properties == True or features == True):
             raise RuntimeError("alias must be available when properties and/or features are used")
@@ -60,37 +100,6 @@ class Extension:
     # e.g. EXT in VK_EXT_robustness2
     def vendor(self):
         return self.name.split('_')[1]
-
-
-class Version:
-    driver_version  : (1,0,0)
-    struct_version  : (1,0)
-
-    def __init__(self, version, struct):
-        self.device_version = version
-        self.struct_version = struct
-
-    # e.g. "VM_MAKE_VERSION(1,2,0)"
-    def version(self):
-        return ("VK_MAKE_VERSION("
-               + str(self.device_version[0])
-               + ","
-               + str(self.device_version[1])
-               + ","
-               + str(self.device_version[2])
-               + ")")
-
-    # e.g. "10"
-    def struct(self):
-        return (str(self.struct_version[0])+str(self.struct_version[1]))
-
-    # the sType of the extension's struct
-    # e.g. VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT
-    # for VK_EXT_transform_feedback and struct="FEATURES"
-    def stype(self, struct: str):
-        return ("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_"
-                + str(self.struct_version[0]) + "_" + str(self.struct_version[1])
-                + '_' + struct)
 
 # Type aliases
 Layer = Extension
