@@ -179,11 +179,6 @@ spec/!opengl 1.0/gl-1.0-edgeflag: crash
 spec/!opengl 1.0/gl-1.0-edgeflag-quads: crash
 spec/!opengl 1.0/gl-1.0-no-op-paths: fail
 spec/!opengl 1.0/gl-1.0-ortho-pos: fail
-spec/!opengl 1.0/gl-1.0-rendermode-feedback/gl_2d: crash
-spec/!opengl 1.0/gl-1.0-rendermode-feedback/gl_3d: notrun
-spec/!opengl 1.0/gl-1.0-rendermode-feedback/gl_3d_color: notrun
-spec/!opengl 1.0/gl-1.0-rendermode-feedback/gl_3d_color_texture: notrun
-spec/!opengl 1.0/gl-1.0-rendermode-feedback/gl_4d_color_texture: notrun
 spec/!opengl 1.0/gl-1.0-scissor-copypixels: fail
 spec/!opengl 1.0/gl-1.0-scissor-offscreen: fail
 spec/!opengl 1.0/gl-1.0-spot-light: fail
@@ -256,11 +251,6 @@ spec/!opengl 1.1/draw-pixels samples=4: skip
 spec/!opengl 1.1/draw-pixels samples=6: skip
 spec/!opengl 1.1/draw-pixels samples=8: skip
 spec/!opengl 1.1/gl-1.1-xor-copypixels: fail
-spec/!opengl 1.1/gl_select - alpha-test enabled: crash
-spec/!opengl 1.1/gl_select - depth-test enabled: crash
-spec/!opengl 1.1/gl_select - no test function: crash
-spec/!opengl 1.1/gl_select - scissor-test enabled: crash
-spec/!opengl 1.1/gl_select - stencil-test enabled: crash
 spec/!opengl 1.1/linestipple/factor 2x: fail
 spec/!opengl 1.1/linestipple/factor 3x: fail
 spec/!opengl 1.1/linestipple/line loop: fail
@@ -516,6 +506,7 @@ spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
 spec/!opengl 2.1/pbo/test_polygon_stip: fail
 spec/!opengl 2.1/polygon-stipple-fs: fail
 spec/!opengl 3.0/clearbuffer-depth: fail
+spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
 spec/!opengl 3.0/clearbuffer-stencil: fail
 spec/!opengl 3.0/viewport-clamp: crash
 spec/!opengl 3.1/minmax: fail
@@ -1907,7 +1898,6 @@ spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 2d: fail
 spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 2d_projvec4: fail
 spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 2dshadow: fail
 spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 3d: fail
-spec/glsl-1.30/execution/clipping/clip-plane-transformation pos: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texture() 1d: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texture() 1darray: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texture() 1darrayshadow: fail
@@ -2059,7 +2049,6 @@ spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8 1
 spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8 1 1: skip
 spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 9: skip
 spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control-error: skip
-spec/nv_conditional_render/copypixels: fail
 spec/nv_conditional_render/copyteximage: fail
 spec/nv_conditional_render/copytexsubimage: fail
 spec/nv_copy_depth_to_color/nv_copy_depth_to_color: crash
@@ -2180,10 +2169,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    16347
-       fail:      498
-      crash:       34
-       skip:     1605
+       pass:    16395
+       fail:      491
+      crash:       28
+       skip:     1606
     timeout:        0
        warn:        0
  incomplete:        0
@@ -2192,4 +2181,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    18531
+      total:    18563

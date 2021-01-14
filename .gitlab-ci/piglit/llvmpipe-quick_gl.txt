@@ -387,6 +387,7 @@ spec/!opengl 2.0/vertex-program-two-side/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/tes-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
+spec/!opengl 3.0/clearbuffer-depth-cs-probe: fail
 spec/!opengl 3.1/draw-buffers-errors: skip
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/layered-rendering/clear-color-mismatched-layer-count: fail
@@ -1661,8 +1662,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23099
-       fail:      197
+       pass:    23132
+       fail:      198
       crash:        1
        skip:     1438
     timeout:        0
@@ -1673,4 +1674,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    24759
+      total:    24793
