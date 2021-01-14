@@ -28,5 +28,6 @@ dEQP-GLES3.functional.occlusion_query.stencil_clear,Fail
 dEQP-GLES3.functional.shaders.derivate.dfdx.fbo_msaa4.vec3_mediump,Fail
 dEQP-GLES3.functional.shaders.derivate.dfdy.fbo_msaa4.vec4_highp,Fail
 dEQP-GLES3.functional.shaders.derivate.fwidth.fbo_msaa2.float_mediump,Fail
+dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler3d_float_vertex
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.lines.8,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.triangles.3,Fail
