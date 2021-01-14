@@ -1278,12 +1278,8 @@
       <value name="Disable" value="1"/>
       <value name="hashing 32x32" value="3"/>
     </field>
-    <field name="Subslice Hashing Mode" start="34" end="35" type="uint">
-      <value name="hashing 8x8" value="0"/>
-      <value name="hashing 16x4" value="1"/>
-      <value name="hashing 8x4" value="2"/>
-      <value name="hashing 16x16" value="3"/>
-    </field>
+    <field name="3D Scoreboard Hashing Mode" start="36" end="36" type="bool"/>
+    <field name="Subslice Hashing Table Enable" start="37" end="37" type="bool"/>
     <field name="Slice Hashing Table Enable" start="38" end="38" type="bool"/>
     <field name="Mask" start="48" end="63" type="mbo"/>
   </instruction>
