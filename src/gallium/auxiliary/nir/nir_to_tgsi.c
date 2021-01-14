@@ -1371,7 +1371,7 @@ static void
 ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
 {
    unsigned op;
-   struct ureg_src srcs[3];
+   struct ureg_src srcs[4];
    int num_src = 0;
    enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
    bool is_array = nir_intrinsic_image_array(instr);
