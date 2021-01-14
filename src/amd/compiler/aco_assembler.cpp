@@ -428,6 +428,15 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::MIMG: {
+      unsigned use_nsa = false;
+      unsigned addr_dwords = instr->operands.size() - 3;
+      for (unsigned i = 1; i < addr_dwords; i++) {
+         if (instr->operands[3 + i].physReg() != instr->operands[3].physReg().advance(i * 4))
+            use_nsa = true;
+      }
+      assert(!use_nsa || ctx.chip_class >= GFX10);
+      unsigned nsa_dwords = use_nsa ? DIV_ROUND_UP(addr_dwords - 1, 4) : 0;
+
       MIMG_instruction* mimg = static_cast<MIMG_instruction*>(instr);
       uint32_t encoding = (0b111100 << 26);
       encoding |= mimg->slc ? 1 << 25 : 0;
@@ -443,6 +452,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          encoding |= mimg->da ? 1 << 14 : 0;
       } else {
          encoding |= mimg->r128 ? 1 << 15 : 0; /* GFX10: A16 moved to 2nd word, R128 replaces it in 1st word */
+         encoding |= nsa_dwords << 1;
          encoding |= mimg->dim << 3; /* GFX10: dimensionality instead of declare array */
          encoding |= mimg->dlc ? 1 << 7 : 0;
       }
@@ -465,6 +475,13 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       }
 
       out.push_back(encoding);
+
+      if (nsa_dwords) {
+         out.resize(out.size() + nsa_dwords);
+         std::vector<uint32_t>::iterator nsa = std::prev(out.end(), nsa_dwords);
+         for (unsigned i = 0; i < addr_dwords - 1; i++)
+            nsa[i / 4] |= (0xFF & instr->operands[4 + i].physReg().reg()) << (i % 4 * 8);
+      }
       break;
    }
    case Format::FLAT:

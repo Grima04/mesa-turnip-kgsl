@@ -436,7 +436,7 @@ bool validate_ir(Program* program)
             break;
          }
          case Format::MIMG: {
-            check(instr->operands.size() == 4, "MIMG instructions must have 4 operands", instr.get());
+            check(instr->operands.size() >= 4, "MIMG instructions must have at least 4 operands", instr.get());
             check(instr->operands[0].hasRegClass() && (instr->operands[0].regClass() == s4 || instr->operands[0].regClass() == s8),
                   "MIMG operands[0] (resource constant) must be in 4 or 8 SGPRs", instr.get());
             if (instr->operands[1].hasRegClass())
@@ -447,8 +447,15 @@ bool validate_ir(Program* program)
                check(instr->definitions.empty() || (instr->definitions[0].regClass() == instr->operands[2].regClass() || is_cmpswap),
                      "MIMG operands[2] (VDATA) must be the same as definitions[0] for atomics and TFE/LWE loads", instr.get());
             }
-            check(instr->operands[3].hasRegClass() && instr->operands[3].regClass().type() == RegType::vgpr,
-                  "MIMG operands[3] (VADDR) must be VGPR", instr.get());
+            check(instr->operands.size() == 4 || program->chip_class >= GFX10, "NSA is only supported on GFX10+", instr.get());
+            for (unsigned i = 3; i < instr->operands.size(); i++) {
+               if (instr->operands.size() == 4) {
+                  check(instr->operands[i].hasRegClass() && instr->operands[i].regClass().type() == RegType::vgpr,
+                        "MIMG operands[3] (VADDR) must be VGPR", instr.get());
+               } else {
+                  check(instr->operands[i].regClass() == v1, "MIMG VADDR must be v1 if NSA is used", instr.get());
+               }
+            }
             check(instr->definitions.empty() || (instr->definitions[0].isTemp() && instr->definitions[0].regClass().type() == RegType::vgpr),
                   "MIMG definitions[0] (VDATA) must be VGPR", instr.get());
             break;

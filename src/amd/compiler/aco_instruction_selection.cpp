@@ -5841,38 +5841,52 @@ static MIMG_instruction *emit_mimg(Builder& bld, aco_opcode op,
                                    Definition dst,
                                    Temp rsrc,
                                    Operand samp,
-                                   const std::vector<Temp>& coords,
+                                   std::vector<Temp> coords,
                                    unsigned num_wqm_coords=0,
                                    Operand vdata=Operand(v1))
 {
-   Temp coord = coords[0];
-   if (coords.size() > 1) {
-      coord = bld.tmp(RegType::vgpr, coords.size());
+   if (bld.program->chip_class < GFX10) {
+      Temp coord = coords[0];
+      if (coords.size() > 1) {
+         coord = bld.tmp(RegType::vgpr, coords.size());
 
-      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
-      for (unsigned i = 0; i < coords.size(); i++)
-         vec->operands[i] = Operand(coords[i]);
-      vec->definitions[0] = Definition(coord);
-      bld.insert(std::move(vec));
-   } else if (coord.type() == RegType::sgpr) {
-      coord = bld.copy(bld.def(v1), coord);
-   }
+         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
+         for (unsigned i = 0; i < coords.size(); i++)
+            vec->operands[i] = Operand(coords[i]);
+         vec->definitions[0] = Definition(coord);
+         bld.insert(std::move(vec));
+      } else if (coord.type() == RegType::sgpr) {
+         coord = bld.copy(bld.def(v1), coord);
+      }
 
-   if (num_wqm_coords) {
-      /* We don't need the bias, sample index, compare value or offset to be
-       * computed in WQM but if the p_create_vector copies the coordinates, then it
-       * needs to be in WQM. */
-      coord = emit_wqm(bld, coord, bld.tmp(coord.regClass()), true);
+      if (num_wqm_coords) {
+         /* We don't need the bias, sample index, compare value or offset to be
+          * computed in WQM but if the p_create_vector copies the coordinates, then it
+          * needs to be in WQM. */
+         coord = emit_wqm(bld, coord, bld.tmp(coord.regClass()), true);
+      }
+
+      coords[0] = coord;
+      coords.resize(1);
+   } else {
+      for (unsigned i = 0; i < num_wqm_coords; i++)
+         coords[i] = emit_wqm(bld, coords[i], bld.tmp(coords[i].regClass()), true);
+
+      for (Temp& coord : coords) {
+         if (coord.type() == RegType::sgpr)
+            coord = bld.copy(bld.def(v1), coord);
+      }
    }
 
    aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(
-      op, Format::MIMG, 4, dst.isTemp())};
+      op, Format::MIMG, 3 + coords.size(), dst.isTemp())};
    if (dst.isTemp())
       mimg->definitions[0] = dst;
    mimg->operands[0] = Operand(rsrc);
    mimg->operands[1] = samp;
    mimg->operands[2] = vdata;
-   mimg->operands[3] = Operand(coord);
+   for (unsigned i = 0; i < coords.size(); i++)
+      mimg->operands[3 + i] = Operand(coords[i]);
 
    MIMG_instruction *res = mimg.get();
    bld.insert(std::move(mimg));
