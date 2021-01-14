@@ -670,7 +670,6 @@ compile_vertex_list(struct gl_context *ctx)
       int available = save->previous_ib ? (save->previous_ib->Size / 4 - save->ib_first_free_index) : 0;
       if (available >= max_indices_count) {
          indices_offset = save->ib_first_free_index;
-         node->min_index = node->max_index = indices_offset;
       }
       int size = max_indices_count * sizeof(uint32_t);
       uint32_t* indices = (uint32_t*) malloc(size);
