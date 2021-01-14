@@ -850,10 +850,10 @@ void gen(Instruction* instr, wait_ctx& ctx)
          insert_wait_entry(ctx, instr->operands[3], event_vmem_gpr_lock);
       } else if (ctx.chip_class == GFX6 &&
                  instr->format == Format::MIMG &&
-                 instr->operands.size() >= 4) {
+                 !instr->operands[2].isUndefined()) {
          ctx.exp_cnt++;
          update_counters(ctx, event_vmem_gpr_lock);
-         insert_wait_entry(ctx, instr->operands[3], event_vmem_gpr_lock);
+         insert_wait_entry(ctx, instr->operands[2], event_vmem_gpr_lock);
       }
 
       break;

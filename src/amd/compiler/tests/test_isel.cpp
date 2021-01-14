@@ -149,13 +149,13 @@ BEGIN_TEST(isel.sparse.clause)
          };
          void main() {
             //>> v5: (noCSE)%zero0 = p_create_vector 0, 0, 0, 0, 0
-            //>> v5: %_ = image_sample_lz_o %_, %_, %_, %zero0 dmask:xyzw 2d tfe storage: semantics: scope:invocation
+            //>> v5: %_ = image_sample_lz_o %_, %_, %zero0, %_ dmask:xyzw 2d tfe storage: semantics: scope:invocation
             //>> v5: (noCSE)%zero1 = p_create_vector 0, 0, 0, 0, 0
-            //>> v5: %_ = image_sample_lz_o %_, %_, %_, %zero1 dmask:xyzw 2d tfe storage: semantics: scope:invocation
+            //>> v5: %_ = image_sample_lz_o %_, %_, %zero1, %_ dmask:xyzw 2d tfe storage: semantics: scope:invocation
             //>> v5: (noCSE)%zero2 = p_create_vector 0, 0, 0, 0, 0
-            //>> v5: %_ = image_sample_lz_o %_, %_, %_, %zero2 dmask:xyzw 2d tfe storage: semantics: scope:invocation
+            //>> v5: %_ = image_sample_lz_o %_, %_, %zero2, %_ dmask:xyzw 2d tfe storage: semantics: scope:invocation
             //>> v5: (noCSE)%zero3 = p_create_vector 0, 0, 0, 0, 0
-            //>> v5: %_ = image_sample_lz_o %_, %_, %_, %zero3 dmask:xyzw 2d tfe storage: semantics: scope:invocation
+            //>> v5: %_ = image_sample_lz_o %_, %_, %zero3, %_ dmask:xyzw 2d tfe storage: semantics: scope:invocation
             //>> s_clause 0x3
             //! image_sample_lz_o v#_, v[#_:#_], @s256(img), @s128(samp) dmask:0xf dim:SQ_RSRC_IMG_2D tfe
             //! image_sample_lz_o v#_, v[#_:#_], @s256(img), @s128(samp) dmask:0xf dim:SQ_RSRC_IMG_2D tfe

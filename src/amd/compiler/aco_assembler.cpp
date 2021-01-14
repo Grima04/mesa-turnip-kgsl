@@ -448,11 +448,11 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       }
       encoding |= (0xF & mimg->dmask) << 8;
       out.push_back(encoding);
-      encoding = (0xFF & instr->operands[2].physReg()); /* VADDR */
+      encoding = (0xFF & instr->operands[3].physReg()); /* VADDR */
       if (!instr->definitions.empty()) {
          encoding |= (0xFF & instr->definitions[0].physReg()) << 8; /* VDATA */
-      } else if (instr->operands.size() >= 4) {
-         encoding |= (0xFF & instr->operands[3].physReg()) << 8; /* VDATA */
+      } else if (!instr->operands[2].isUndefined()) {
+         encoding |= (0xFF & instr->operands[2].physReg()) << 8; /* VDATA */
       }
       encoding |= (0x1F & (instr->operands[0].physReg() >> 2)) << 16; /* T# (resource) */
       if (!instr->operands[1].isUndefined())

@@ -5866,14 +5866,13 @@ static MIMG_instruction *emit_mimg(Builder& bld, aco_opcode op,
    }
 
    aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(
-      op, Format::MIMG, 3 + !vdata.isUndefined(), dst.isTemp())};
+      op, Format::MIMG, 4, dst.isTemp())};
    if (dst.isTemp())
       mimg->definitions[0] = dst;
    mimg->operands[0] = Operand(rsrc);
    mimg->operands[1] = samp;
-   mimg->operands[2] = Operand(coord);
-   if (!vdata.isUndefined())
-      mimg->operands[3] = vdata;
+   mimg->operands[2] = vdata;
+   mimg->operands[3] = Operand(coord);
 
    MIMG_instruction *res = mimg.get();
    bld.insert(std::move(mimg));

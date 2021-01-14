@@ -211,7 +211,7 @@ bool validate_ir(Program* program)
                bool can_be_undef = is_phi(instr) || instr->format == Format::EXP ||
                                    instr->format == Format::PSEUDO_REDUCTION ||
                                    instr->opcode == aco_opcode::p_create_vector ||
-                                   (flat && i == 1) || (instr->format == Format::MIMG && i == 1) ||
+                                   (flat && i == 1) || (instr->format == Format::MIMG && (i == 1 || i == 2)) ||
                                    ((instr->format == Format::MUBUF || instr->format == Format::MTBUF) && i == 1);
                check(can_be_undef, "Undefs can only be used in certain operands", instr.get());
             } else {
@@ -436,20 +436,19 @@ bool validate_ir(Program* program)
             break;
          }
          case Format::MIMG: {
-            check(instr->operands.size() >= 3, "MIMG instructions must have 3 or 4 operands", instr.get());
-            check(instr->operands.size() <= 4, "MIMG instructions must have 3 or 4 operands", instr.get());
+            check(instr->operands.size() == 4, "MIMG instructions must have 4 operands", instr.get());
             check(instr->operands[0].hasRegClass() && (instr->operands[0].regClass() == s4 || instr->operands[0].regClass() == s8),
                   "MIMG operands[0] (resource constant) must be in 4 or 8 SGPRs", instr.get());
             if (instr->operands[1].hasRegClass())
                check(instr->operands[1].regClass() == s4, "MIMG operands[1] (sampler constant) must be 4 SGPRs", instr.get());
-            if (instr->operands.size() >= 4) {
+            if (!instr->operands[2].isUndefined()) {
                bool is_cmpswap = instr->opcode == aco_opcode::image_atomic_cmpswap ||
                                  instr->opcode == aco_opcode::image_atomic_fcmpswap;
-               check(instr->definitions.empty() || (instr->definitions[0].regClass() == instr->operands[3].regClass() || is_cmpswap),
-                     "MIMG operands[3] (VDATA) must be the same as definitions[0] for atomics and TFE/LWE loads", instr.get());
+               check(instr->definitions.empty() || (instr->definitions[0].regClass() == instr->operands[2].regClass() || is_cmpswap),
+                     "MIMG operands[2] (VDATA) must be the same as definitions[0] for atomics and TFE/LWE loads", instr.get());
             }
-            check(instr->operands[2].hasRegClass() && instr->operands[2].regClass().type() == RegType::vgpr,
-                  "MIMG operands[2] (VADDR) must be VGPR", instr.get());
+            check(instr->operands[3].hasRegClass() && instr->operands[3].regClass().type() == RegType::vgpr,
+                  "MIMG operands[3] (VADDR) must be VGPR", instr.get());
             check(instr->definitions.empty() || (instr->definitions[0].isTemp() && instr->definitions[0].regClass().type() == RegType::vgpr),
                   "MIMG definitions[0] (VDATA) must be VGPR", instr.get());
             break;
