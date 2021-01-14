@@ -449,7 +449,6 @@ struct si_shader_selector {
    ubyte num_vbos_in_user_sgprs;
    unsigned pa_cl_vs_out_cntl;
    unsigned ngg_cull_vert_threshold; /* UINT32_MAX = disabled */
-   unsigned ngg_cull_nonindexed_fast_launch_vert_threshold; /* UINT32_MAX = disabled */
    ubyte clipdist_mask;
    ubyte culldist_mask;
    enum pipe_prim_type rast_prim;
