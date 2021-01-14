@@ -437,6 +437,21 @@ ntt_get_alu_src(struct ntt_compile *c, nir_alu_instr *instr, int i)
    return usrc;
 }
 
+/* Reswizzles a source so that the unset channels in the write mask still refer
+ * to one of the channels present in the write mask.
+ */
+static struct ureg_src
+ntt_swizzle_for_write_mask(struct ureg_src src, uint32_t write_mask)
+{
+   assert(write_mask);
+   int first_chan = ffs(write_mask) - 1;
+   return ureg_swizzle(src,
+                       (write_mask & TGSI_WRITEMASK_X) ? TGSI_SWIZZLE_X : first_chan,
+                       (write_mask & TGSI_WRITEMASK_Y) ? TGSI_SWIZZLE_Y : first_chan,
+                       (write_mask & TGSI_WRITEMASK_Z) ? TGSI_SWIZZLE_Z : first_chan,
+                       (write_mask & TGSI_WRITEMASK_W) ? TGSI_SWIZZLE_W : first_chan);
+}
+
 static struct ureg_dst *
 ntt_get_ssa_def_decl(struct ntt_compile *c, nir_ssa_def *ssa)
 {
@@ -1530,7 +1545,16 @@ ntt_emit_load_sysval(struct ntt_compile *c, nir_intrinsic_instr *instr)
 {
    gl_system_value sysval = nir_system_value_from_intrinsic(instr->intrinsic);
    enum tgsi_semantic semantic = tgsi_get_sysval_semantic(sysval);
-   ntt_store(c, &instr->dest, ureg_DECL_system_value(c->ureg, semantic, 0));
+   struct ureg_src sv = ureg_DECL_system_value(c->ureg, semantic, 0);
+
+   /* virglrenderer doesn't like references to channels of the sysval that
+    * aren't defined, even if they aren't really read.  (GLSL compile fails on
+    * gl_NumWorkGroups.w, for example).
+    */
+   uint32_t write_mask = BITSET_MASK(nir_dest_num_components(instr->dest));
+   sv = ntt_swizzle_for_write_mask(sv, write_mask);
+
+   ntt_store(c, &instr->dest, sv);
 }
 
 static void
