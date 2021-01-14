@@ -18,7 +18,9 @@ if [ -n "$CROSS" ]; then
 else
     STRIP="strip"
 fi
-find install -name \*.so -exec $STRIP {} \;
+if [ -z "$ARTIFACTS_DEBUG_SYMBOLS"]; then
+    find install -name \*.so -exec $STRIP {} \;
+fi
 
 # Test runs don't pull down the git tree, so put the dEQP helper
 # script and associated bits there.

@@ -32,6 +32,7 @@ apt-get dist-upgrade -y
 apt-get install -y --no-remove \
       git \
       git-lfs \
+      libasan5 \
       libexpat1 \
       libllvm10 \
       libllvm9 \

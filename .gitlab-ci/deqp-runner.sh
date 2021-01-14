@@ -189,13 +189,17 @@ check_renderer() {
     # debug.
     # export EGL_LOG_LEVEL=debug
     VERSION=`echo $DEQP_VER | tr '[a-z]' '[A-Z]'`
+    export LD_PRELOAD=$TEST_LD_PRELOAD
     $DEQP $DEQP_OPTIONS --deqp-case=$SUITE-$VERSION.info.\* --deqp-log-filename=$RESULTS/deqp-info.qpa
+    export LD_PRELOAD=
     parse_renderer
 }
 
 check_vk_device_name() {
     echo "Capturing device info for VK driver sanity checks"
+    export LD_PRELOAD=$TEST_LD_PRELOAD
     $DEQP $DEQP_OPTIONS --deqp-case=dEQP-VK.info.device --deqp-log-filename=$RESULTS/deqp-info.qpa
+    export LD_PRELOAD=
     DEVICENAME=`grep deviceName $RESULTS/deqp-info.qpa | sed 's|deviceName: ||g'`
     echo "deviceName: $DEVICENAME"
     if [ -n "$DEQP_EXPECTED_RENDERER" -a "x$DEVICENAME" != "x$DEQP_EXPECTED_RENDERER" ]; then
@@ -241,9 +245,12 @@ fi
 RESULTS_CSV=$RESULTS/results.csv
 FAILURES_CSV=$RESULTS/failures.csv
 
+export LD_PRELOAD=$TEST_LD_PRELOAD
+
 run_cts $DEQP /tmp/case-list.txt $RESULTS_CSV
 DEQP_EXITCODE=$?
 
+export LD_PRELOAD=
 quiet report_load
 
 # Remove all but the first 50 individual XML files uploaded as artifacts, to

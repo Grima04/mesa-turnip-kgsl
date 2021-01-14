@@ -346,7 +346,7 @@ android_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-base "2020-12-17-install-ci-fairy"
+    MESA_IMAGE_TAG: &x86_test-base "2020-01-14-asan"
 
 .use-x86_test-base:
   extends:
@@ -362,13 +362,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2020-01-13-piglit"
+    MESA_IMAGE_TAG: &x86_test-gl "2020-01-14-asan"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2020-01-13-piglit"
+    MESA_IMAGE_TAG: &x86_test-vk "2020-01-14-asan"
 
 # Debian 10 based ARM build image
 arm_build:
@@ -607,6 +607,7 @@ meson-testing-asan:
     EXTRA_OPTION: >
       -D b_sanitize=address
     UPLOAD_FOR_LAVA: ""
+    ARTIFACTS_DEBUG_SYMBOLS: 1
 
 meson-clover-testing:
   extends:
@@ -1234,6 +1235,17 @@ softpipe-gles31:
   variables:
     DEQP_VER: gles31
   extends: softpipe-gles2
+
+softpipe-asan-gles31:
+  variables:
+    GPU_VERSION: softpipe-asan
+    DEQP_FRACTION: 10
+    DEQP_VER: gles31
+    TEST_LD_PRELOAD: libasan.so.5
+  extends: softpipe-gles2
+  needs:
+    - x86_test-gl
+    - meson-testing-asan
 
 softpipe-piglit-quick:
   extends:
