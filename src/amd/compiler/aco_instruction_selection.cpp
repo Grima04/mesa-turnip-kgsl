@@ -5837,6 +5837,49 @@ static int image_type_to_components_count(enum glsl_sampler_dim dim, bool array)
 }
 
 
+static MIMG_instruction *emit_mimg(Builder& bld, aco_opcode op,
+                                   Definition dst,
+                                   Temp rsrc,
+                                   Operand samp,
+                                   const std::vector<Temp>& coords,
+                                   unsigned num_wqm_coords=0,
+                                   Operand vdata=Operand(v1))
+{
+   Temp coord = coords[0];
+   if (coords.size() > 1) {
+      coord = bld.tmp(RegType::vgpr, coords.size());
+
+      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
+      for (unsigned i = 0; i < coords.size(); i++)
+         vec->operands[i] = Operand(coords[i]);
+      vec->definitions[0] = Definition(coord);
+      bld.insert(std::move(vec));
+   } else if (coord.type() == RegType::sgpr) {
+      coord = bld.copy(bld.def(v1), coord);
+   }
+
+   if (num_wqm_coords) {
+      /* We don't need the bias, sample index, compare value or offset to be
+       * computed in WQM but if the p_create_vector copies the coordinates, then it
+       * needs to be in WQM. */
+      coord = emit_wqm(bld, coord, bld.tmp(coord.regClass()), true);
+   }
+
+   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(
+      op, Format::MIMG, 3 + !vdata.isUndefined(), dst.isTemp())};
+   if (dst.isTemp())
+      mimg->definitions[0] = dst;
+   mimg->operands[0] = Operand(rsrc);
+   mimg->operands[1] = samp;
+   mimg->operands[2] = Operand(coord);
+   if (!vdata.isUndefined())
+      mimg->operands[3] = vdata;
+
+   MIMG_instruction *res = mimg.get();
+   bld.insert(std::move(mimg));
+   return res;
+}
+
 /* Adjust the sample index according to FMASK.
  *
  * For uncompressed MSAA surfaces, FMASK should return 0x76543210,
@@ -5859,20 +5902,15 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, std::vec
                   ? ac_get_sampler_dim(ctx->options->chip_class, GLSL_SAMPLER_DIM_2D, da)
                   : 0;
 
-   Temp coord = da ? bld.pseudo(aco_opcode::p_create_vector, bld.def(v3), coords[0], coords[1], coords[2]) :
-                     bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), coords[0], coords[1]);
-   aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(aco_opcode::image_load, Format::MIMG, 3, 1)};
-   load->operands[0] = Operand(fmask_desc_ptr);
-   load->operands[1] = Operand(s4); /* no sampler */
-   load->operands[2] = Operand(coord);
-   load->definitions[0] = Definition(fmask);
+   MIMG_instruction *load = emit_mimg(bld, aco_opcode::image_load,
+                                      Definition(fmask), fmask_desc_ptr,
+                                      Operand(s4), coords);
    load->glc = false;
    load->dlc = false;
    load->dmask = 0x1;
    load->unrm = true;
    load->da = da;
    load->dim = dim;
-   ctx->block->instructions.emplace_back(std::move(load));
 
    Operand sample_index4;
    if (sample_index.isConstant()) {
@@ -5909,7 +5947,7 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, std::vec
    return bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), sample_index_v, final_sample, compare);
 }
 
-static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr, const struct glsl_type *type)
+static std::vector<Temp> get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr, const struct glsl_type *type)
 {
 
    Temp src0 = get_ssa_temp(ctx, instr->src[1].ssa);
@@ -5963,13 +6001,7 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
          coords.emplace_back(get_ssa_temp(ctx, instr->src[lod_index].ssa));
    }
 
-   aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
-   for (unsigned i = 0; i < coords.size(); i++)
-      vec->operands[i] = Operand(coords[i]);
-   Temp res = ctx->program->allocateTmp(RegClass(RegType::vgpr, coords.size()));
-   vec->definitions[0] = Definition(res);
-   ctx->block->instructions.emplace_back(std::move(vec));
-   return res;
+   return coords;
 }
 
 
@@ -6081,16 +6113,14 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
          load->operands[3] = emit_tfe_init(bld, tmp);
       ctx->block->instructions.emplace_back(std::move(load));
    } else {
-      Temp coords = get_image_coords(ctx, instr, type);
+      std::vector<Temp> coords = get_image_coords(ctx, instr, type);
 
       bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
       aco_opcode opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
 
-      aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3 + is_sparse, 1)};
-      load->operands[0] = Operand(resource);
-      load->operands[1] = Operand(s4); /* no sampler */
-      load->operands[2] = Operand(coords);
-      load->definitions[0] = Definition(tmp);
+      Operand vdata = is_sparse ? emit_tfe_init(bld, tmp) : Operand(v1);
+      MIMG_instruction *load = emit_mimg(bld, opcode, Definition(tmp), resource,
+                                         Operand(s4), coords, 0, vdata);
       load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
       load->dlc = load->glc && ctx->options->chip_class >= GFX10;
       load->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
@@ -6099,9 +6129,6 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
       load->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
       load->sync = sync;
       load->tfe = is_sparse;
-      if (load->tfe)
-         load->operands[3] = emit_tfe_init(bld, tmp);
-      ctx->block->instructions.emplace_back(std::move(load));
    }
 
    if (is_sparse && instr->dest.ssa.bit_size == 64) {
@@ -6167,17 +6194,15 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 
    assert(data.type() == RegType::vgpr);
-   Temp coords = get_image_coords(ctx, instr, type);
+   std::vector<Temp> coords = get_image_coords(ctx, instr, type);
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
 
    bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
    aco_opcode opcode = level_zero ? aco_opcode::image_store : aco_opcode::image_store_mip;
 
-   aco_ptr<MIMG_instruction> store{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 4, 0)};
-   store->operands[0] = Operand(resource);
-   store->operands[1] = Operand(s4); /* no sampler */
-   store->operands[2] = Operand(coords);
-   store->operands[3] = Operand(data);
+   Builder bld(ctx->program, ctx->block);
+   MIMG_instruction *store = emit_mimg(bld, opcode, Definition(), resource,
+                                       Operand(s4), coords, 0, Operand(data));
    store->glc = glc;
    store->dlc = false;
    store->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
@@ -6187,7 +6212,6 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    store->disable_wqm = true;
    store->sync = sync;
    ctx->program->needs_exact = true;
-   ctx->block->instructions.emplace_back(std::move(store));
    return;
 }
 
@@ -6299,15 +6323,11 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       return;
    }
 
-   Temp coords = get_image_coords(ctx, instr, type);
+   std::vector<Temp> coords = get_image_coords(ctx, instr, type);
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
-   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(image_op, Format::MIMG, 4, return_previous ? 1 : 0)};
-   mimg->operands[0] = Operand(resource);
-   mimg->operands[1] = Operand(s4); /* no sampler */
-   mimg->operands[2] = Operand(coords);
-   mimg->operands[3] = Operand(data);
-   if (return_previous)
-      mimg->definitions[0] = Definition(dst);
+   Definition def = return_previous ? Definition(dst) : Definition();
+   MIMG_instruction *mimg = emit_mimg(bld, image_op, def, resource,
+                                      Operand(s4), coords, 0, Operand(data));
    mimg->glc = return_previous;
    mimg->dlc = false; /* Not needed for atomics */
    mimg->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
@@ -6317,7 +6337,6 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    mimg->disable_wqm = true;
    mimg->sync = sync;
    ctx->program->needs_exact = true;
-   ctx->block->instructions.emplace_back(std::move(mimg));
    return;
 }
 
@@ -6365,30 +6384,26 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
 
    /* LOD */
    assert(nir_src_as_uint(instr->src[1]) == 0);
-   Temp lod = bld.copy(bld.def(v1), Operand(0u));
+   std::vector<Temp> lod{bld.copy(bld.def(v1), Operand(0u))};
 
    /* Resource */
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, NULL, true, false);
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
-   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 3, 1)};
-   mimg->operands[0] = Operand(resource);
-   mimg->operands[1] = Operand(s4); /* no sampler */
-   mimg->operands[2] = Operand(lod);
+   MIMG_instruction *mimg = emit_mimg(bld, aco_opcode::image_get_resinfo,
+                                      Definition(dst), resource, Operand(s4), lod);
    uint8_t& dmask = mimg->dmask;
    mimg->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    mimg->dmask = (1 << instr->dest.ssa.num_components) - 1;
    mimg->da = glsl_sampler_type_is_array(type);
-   Definition& def = mimg->definitions[0];
-   ctx->block->instructions.emplace_back(std::move(mimg));
 
    if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_CUBE &&
        glsl_sampler_type_is_array(type)) {
 
       assert(instr->dest.ssa.num_components == 3);
       Temp tmp = ctx->program->allocateTmp(v3);
-      def = Definition(tmp);
+      mimg->definitions[0] = Definition(tmp);
       emit_split_vector(ctx, tmp, 3);
 
       /* divide 3rd value by 6 by multiplying with magic number */
@@ -6404,10 +6419,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
               glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_1D &&
               glsl_sampler_type_is_array(type)) {
       assert(instr->dest.ssa.num_components == 2);
-      def = Definition(dst);
       dmask = 0x5;
-   } else {
-      def = Definition(dst);
    }
 
    emit_split_vector(ctx, dst, instr->dest.ssa.num_components);
@@ -9145,7 +9157,6 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       tmp_dst = bld.tmp(RegClass(RegType::vgpr, util_bitcount(dmask)));
    }
 
-   aco_ptr<MIMG_instruction> tex;
    if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
       if (!has_lod)
          lod = bld.copy(bld.def(v1), Operand(0u));
@@ -9157,10 +9168,9 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       if (tmp_dst.id() == dst.id() && div_by_6)
          tmp_dst = bld.tmp(tmp_dst.regClass());
 
-      tex.reset(create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 3, 1));
-      tex->operands[0] = Operand(resource);
-      tex->operands[1] = Operand(s4); /* no sampler */
-      tex->operands[2] = Operand(as_vgpr(ctx,lod));
+      MIMG_instruction *tex = emit_mimg(bld, aco_opcode::image_get_resinfo,
+                                        Definition(tmp_dst), resource, Operand(s4),
+                                        std::vector<Temp>{lod});
       if (ctx->options->chip_class == GFX9 &&
           instr->op == nir_texop_txs &&
           instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
@@ -9172,9 +9182,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          tex->dmask = dmask;
       }
       tex->da = da;
-      tex->definitions[0] = Definition(tmp_dst);
       tex->dim = dim;
-      ctx->block->instructions.emplace_back(std::move(tex));
 
       if (div_by_6) {
          /* divide 3rd value by 6 by multiplying with magic number */
@@ -9197,16 +9205,14 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    Temp tg4_compare_cube_wa64 = Temp();
 
    if (tg4_integer_workarounds) {
-      tex.reset(create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 3, 1));
-      tex->operands[0] = Operand(resource);
-      tex->operands[1] = Operand(s4); /* no sampler */
-      tex->operands[2] = bld.copy(bld.def(v1), Operand(0u));
+      Temp tg4_lod = bld.copy(bld.def(v1), Operand(0u));
+      Temp size = bld.tmp(v2);
+      MIMG_instruction *tex = emit_mimg(bld, aco_opcode::image_get_resinfo,
+                                        Definition(size), resource, Operand(s4),
+                                        std::vector<Temp>{tg4_lod});
       tex->dim = dim;
       tex->dmask = 0x3;
       tex->da = da;
-      Temp size = bld.tmp(v2);
-      tex->definitions[0] = Definition(size);
-      ctx->block->instructions.emplace_back(std::move(tex));
       emit_split_vector(ctx, size, size.size());
 
       Temp half_texel[2];
@@ -9329,13 +9335,6 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    if (has_clamped_lod)
       args.emplace_back(clamped_lod);
 
-   Temp arg = bld.tmp(RegClass(RegType::vgpr, args.size()));
-   aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, args.size(), 1)};
-   vec->definitions[0] = Definition(arg);
-   for (unsigned i = 0; i < args.size(); i++)
-      vec->operands[i] = Operand(args[i]);
-   ctx->block->instructions.emplace_back(std::move(vec));
-
 
    if (instr->op == nir_texop_txf ||
        instr->op == nir_texop_txf_ms ||
@@ -9343,19 +9342,14 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
        instr->op == nir_texop_fragment_fetch ||
        instr->op == nir_texop_fragment_mask_fetch) {
       aco_opcode op = level_zero || instr->sampler_dim == GLSL_SAMPLER_DIM_MS || instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS ? aco_opcode::image_load : aco_opcode::image_load_mip;
-      tex.reset(create_instruction<MIMG_instruction>(op, Format::MIMG, 3 + instr->is_sparse, 1));
-      tex->operands[0] = Operand(resource);
-      tex->operands[1] = Operand(s4); /* no sampler */
-      tex->operands[2] = Operand(arg);
+      Operand vdata = instr->is_sparse ? emit_tfe_init(bld, tmp_dst) : Operand(v1);
+      MIMG_instruction *tex = emit_mimg(bld, op, Definition(tmp_dst), resource,
+                                        Operand(s4), args, 0, vdata);
       tex->dim = dim;
       tex->dmask = dmask & 0xf;
       tex->unrm = true;
       tex->da = da;
       tex->tfe = instr->is_sparse;
-      tex->definitions[0] = Definition(tmp_dst);
-      if (tex->tfe)
-         tex->operands[3] = emit_tfe_init(bld, tmp_dst);
-      ctx->block->instructions.emplace_back(std::move(tex));
 
       if (instr->op == nir_texop_samples_identical) {
          assert(dmask == 1 && dst.regClass() == bld.lm);
@@ -9478,27 +9472,19 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       opcode = aco_opcode::image_get_lod;
    }
 
-   /* we don't need the bias, sample index, compare value or offset to be
-    * computed in WQM but if the p_create_vector copies the coordinates, then it
-    * needs to be in WQM */
-   if (ctx->stage == fragment_fs &&
-       !has_derivs && !has_lod && !level_zero &&
-       instr->sampler_dim != GLSL_SAMPLER_DIM_MS &&
-       instr->sampler_dim != GLSL_SAMPLER_DIM_SUBPASS_MS)
-      arg = emit_wqm(bld, arg, bld.tmp(arg.regClass()), true);
+   bool implicit_derivs = bld.program->stage == fragment_fs &&
+                          !has_derivs && !has_lod && !level_zero &&
+                          instr->sampler_dim != GLSL_SAMPLER_DIM_MS &&
+                          instr->sampler_dim != GLSL_SAMPLER_DIM_SUBPASS_MS;
 
-   tex.reset(create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3 + instr->is_sparse, 1));
-   tex->operands[0] = Operand(resource);
-   tex->operands[1] = Operand(sampler);
-   tex->operands[2] = Operand(arg);
+   Operand vdata = instr->is_sparse ? emit_tfe_init(bld, tmp_dst) : Operand(v1);
+   unsigned num_wqm_coords = implicit_derivs ? args.size() : 0;
+   MIMG_instruction *tex = emit_mimg(bld, opcode, Definition(tmp_dst), resource,
+                                     Operand(sampler), args, num_wqm_coords, vdata);
    tex->dim = dim;
    tex->dmask = dmask & 0xf;
    tex->da = da;
    tex->tfe = instr->is_sparse;
-   tex->definitions[0] = Definition(tmp_dst);
-   if (tex->tfe)
-      tex->operands[3] = emit_tfe_init(bld, tmp_dst);
-   ctx->block->instructions.emplace_back(std::move(tex));
 
    if (tg4_integer_cube_workaround) {
       assert(tmp_dst.id() != dst.id());
