@@ -2806,8 +2806,24 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          else if (sscreen->options.shader_culling ||
                   sscreen->info.chip_class == GFX10_3 ||
                   (sscreen->info.chip_class == GFX10 &&
-                   sscreen->info.is_pro_graphics))
-            sel->ngg_cull_vert_threshold = 1500; /* vertex count must be more than this */
+                   sscreen->info.is_pro_graphics)) {
+            /* Rough estimates. */
+            switch (sctx->family) {
+            case CHIP_NAVI10:
+            case CHIP_NAVI12:
+            case CHIP_SIENNA_CICHLID:
+               sel->ngg_cull_vert_threshold = 511;
+               break;
+            case CHIP_NAVI14:
+            case CHIP_NAVY_FLOUNDER:
+            case CHIP_DIMGREY_CAVEFISH:
+            case CHIP_VANGOGH:
+               sel->ngg_cull_vert_threshold = 255;
+               break;
+            default:
+               assert(!sscreen->use_ngg_culling);
+            }
+         }
       } else if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
          if (sel->rast_prim == PIPE_PRIM_TRIANGLES &&
              (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL) ||
