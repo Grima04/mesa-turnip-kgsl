@@ -348,7 +348,6 @@ panfrost_is_implicit_prim_restart(const struct pipe_draw_info *info)
 static void
 panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                          const struct pipe_draw_info *info,
-                         const struct pipe_draw_indirect_info *indirect,
                          const struct pipe_draw_start_count *draw,
                          void *invocation_template,
                          mali_ptr shared_mem, mali_ptr indices,
@@ -392,15 +391,11 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 
                 cfg.job_task_split = 6;
 
+                cfg.index_count = draw->count;
                 if (info->index_size) {
                         cfg.index_type = panfrost_translate_index_size(info->index_size);
                         cfg.indices = indices;
                         cfg.base_vertex_offset = info->index_bias - ctx->offset_start;
-                        cfg.index_count = draw->count;
-                } else {
-                        cfg.index_count = indirect && indirect->count_from_stream_output ?
-                                          pan_so_target(indirect->count_from_stream_output)->offset :
-                                          ctx->vertex_count;
                 }
         }
 
@@ -471,38 +466,16 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 }
 
 static void
-panfrost_draw_vbo(
-        struct pipe_context *pipe,
-        const struct pipe_draw_info *info,
-      const struct pipe_draw_indirect_info *indirect,
-      const struct pipe_draw_start_count *draws,
-      unsigned num_draws)
+panfrost_direct_draw(struct panfrost_context *ctx,
+                     const struct pipe_draw_info *info,
+                     const struct pipe_draw_start_count *draw)
 {
-	if (num_draws > 1) {
-           struct pipe_draw_info tmp_info = *info;
+        if (!draw->count || !info->instance_count)
+                return;
 
-           for (unsigned i = 0; i < num_draws; i++) {
-              panfrost_draw_vbo(pipe, &tmp_info, indirect, &draws[i], 1);
-              if (tmp_info.increment_draw_id)
-                 tmp_info.drawid++;
-           }
-           return;
-	}
-
-        if (!indirect && (!draws[0].count || !info->instance_count))
-           return;
-
-        struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *device = pan_device(ctx->base.screen);
 
         if (!panfrost_render_condition_check(ctx))
-                return;
-
-        /* First of all, check the scissor to see if anything is drawn at all.
-         * If it's not, we drop the draw (mostly a conformance issue;
-         * well-behaved apps shouldn't hit this) */
-
-        if (panfrost_scissor_culls_everything(ctx))
                 return;
 
         int mode = info->mode;
@@ -512,13 +485,13 @@ panfrost_draw_vbo(
         assert(ctx->rasterizer != NULL);
 
         if (!(ctx->draw_modes & (1 << mode))) {
-                if (draws[0].count < 4) {
+                if (draw->count < 4) {
                         /* Degenerate case? */
                         return;
                 }
 
                 util_primconvert_save_rasterizer_state(ctx->primconvert, &ctx->rasterizer->base);
-                util_primconvert_draw_vbo(ctx->primconvert, info, &draws[0]);
+                util_primconvert_draw_vbo(ctx->primconvert, info, draw);
                 return;
         }
 
@@ -533,7 +506,7 @@ panfrost_draw_vbo(
         panfrost_batch_set_requirements(batch);
 
         /* Take into account a negative bias */
-        ctx->vertex_count = draws[0].count + (info->index_size ? abs(info->index_bias) : 0);
+        ctx->vertex_count = draw->count + (info->index_size ? abs(info->index_bias) : 0);
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
 
@@ -556,7 +529,7 @@ panfrost_draw_vbo(
         mali_ptr indices = 0;
 
         if (info->index_size) {
-                indices = panfrost_get_index_buffer_bounded(ctx, info, &draws[0],
+                indices = panfrost_get_index_buffer_bounded(ctx, info, draw,
                                                             &min_index,
                                                             &max_index);
 
@@ -564,7 +537,7 @@ panfrost_draw_vbo(
                 vertex_count = max_index - min_index + 1;
                 ctx->offset_start = min_index + info->index_bias;
         } else {
-                ctx->offset_start = draws[0].start;
+                ctx->offset_start = draw->start;
         }
 
         /* Encode the padded vertex count */
@@ -574,7 +547,7 @@ panfrost_draw_vbo(
         else
                 ctx->padded_count = vertex_count;
 
-        panfrost_statistics_record(ctx, info, &draws[0]);
+        panfrost_statistics_record(ctx, info, draw);
 
         struct mali_invocation_packed invocation;
         panfrost_pack_work_groups_compute(&invocation,
@@ -593,7 +566,7 @@ panfrost_draw_vbo(
         /* Fire off the draw itself */
         panfrost_draw_emit_vertex(batch, info, &invocation, shared_mem,
                                   vs_vary, varyings, vertex.cpu);
-        panfrost_draw_emit_tiler(batch, info, indirect, &draws[0], &invocation, shared_mem, indices,
+        panfrost_draw_emit_tiler(batch, info, draw, &invocation, shared_mem, indices,
                                  fs_vary, varyings, pos, psiz, tiler.cpu);
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
 
@@ -602,6 +575,58 @@ panfrost_draw_vbo(
 
         /* Increment transform feedback offsets */
         panfrost_update_streamout_offsets(ctx);
+}
+
+static void
+panfrost_indirect_draw(struct panfrost_context *ctx,
+                       const struct pipe_draw_info *info,
+                       const struct pipe_draw_indirect_info *indirect,
+                       const struct pipe_draw_start_count *draw)
+{
+        if (indirect->count_from_stream_output) {
+                struct pipe_draw_start_count tmp_draw = *draw;
+                struct panfrost_streamout_target *so =
+                        pan_so_target(indirect->count_from_stream_output);
+
+                tmp_draw.start = 0;
+                tmp_draw.count = so->offset;
+                panfrost_direct_draw(ctx, info, &tmp_draw);
+                return;
+        }
+
+        assert(0);
+}
+
+static void
+panfrost_draw_vbo(struct pipe_context *pipe,
+                  const struct pipe_draw_info *info,
+                  const struct pipe_draw_indirect_info *indirect,
+                  const struct pipe_draw_start_count *draws,
+                  unsigned num_draws)
+{
+        struct panfrost_context *ctx = pan_context(pipe);
+
+        /* First of all, check the scissor to see if anything is drawn at all.
+         * If it's not, we drop the draw (mostly a conformance issue;
+         * well-behaved apps shouldn't hit this) */
+
+        if (panfrost_scissor_culls_everything(ctx))
+                return;
+
+        if (indirect) {
+                assert(num_draws == 1);
+                panfrost_indirect_draw(ctx, info, indirect, &draws[0]);
+                return;
+        }
+
+        struct pipe_draw_info tmp_info = *info;
+
+        for (unsigned i = 0; i < num_draws; i++) {
+                panfrost_direct_draw(ctx, &tmp_info, &draws[i]);
+                if (tmp_info.increment_draw_id)
+                       tmp_info.drawid++;
+        }
+
 }
 
 /* CSO state */
