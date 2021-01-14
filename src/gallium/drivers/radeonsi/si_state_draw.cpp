@@ -1847,7 +1847,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
    }
 
    /* Determine if we can use the primitive discard compute shader. */
-   if (ALLOW_PRIM_DISCARD_CS &&
+   if (ALLOW_PRIM_DISCARD_CS && !HAS_TESS && !HAS_GS &&
        (total_direct_count > sctx->prim_discard_vertex_count_threshold
            ? (sctx->compute_num_verts_rejected += total_direct_count, true)
            : /* Add, then return true. */
@@ -2089,7 +2089,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets<GFX_VERSION, NGG, ALLOW_PRIM_DISCARD_CS>
+      si_emit_draw_packets<GFX_VERSION, NGG,
+                           !HAS_TESS && !HAS_GS ? PRIM_DISCARD_CS_OFF : ALLOW_PRIM_DISCARD_CS>
             (sctx, info, indirect, draws, num_draws, indexbuf, index_size,
              index_offset, instance_count, dispatch_prim_discard_cs,
              original_index_size);
@@ -2120,7 +2121,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets<GFX_VERSION, NGG, ALLOW_PRIM_DISCARD_CS>
+      si_emit_draw_packets<GFX_VERSION, NGG,
+                           !HAS_TESS && !HAS_GS ? PRIM_DISCARD_CS_OFF : ALLOW_PRIM_DISCARD_CS>
             (sctx, info, indirect, draws, num_draws, indexbuf, index_size,
              index_offset, instance_count,
              dispatch_prim_discard_cs, original_index_size);
