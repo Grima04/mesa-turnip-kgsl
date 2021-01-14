@@ -802,14 +802,53 @@ iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
 }
 #endif
 
+/**
+ * Compute an \p n x \p m pixel hashing table usable as slice, subslice or
+ * pixel pipe hashing table.  The resulting table is the cyclic repetition of
+ * a fixed pattern with periodicity equal to \p period.
+ *
+ * If \p index is specified to be equal to \p period, a 2-way hashing table
+ * will be generated such that indices 0 and 1 are returned for the following
+ * fractions of entries respectively:
+ *
+ *   p_0 = ceil(period / 2) / period
+ *   p_1 = floor(period / 2) / period
+ *
+ * If \p index is even and less than \p period, a 3-way hashing table will be
+ * generated such that indices 0, 1 and 2 are returned for the following
+ * fractions of entries:
+ *
+ *   p_0 = (ceil(period / 2) - 1) / period
+ *   p_1 = floor(period / 2) / period
+ *   p_2 = 1 / period
+ *
+ * The equations above apply if \p flip is equal to 0, if it is equal to 1 p_0
+ * and p_1 will be swapped for the result.  Note that in the context of pixel
+ * pipe hashing this can be always 0 on Gen12 platforms, since the hardware
+ * transparently remaps logical indices found on the table to physical pixel
+ * pipe indices from the highest to lowest EU count.
+ */
+UNUSED static void
+calculate_pixel_hashing_table(unsigned n, unsigned m,
+                              unsigned period, unsigned index, bool flip,
+                              uint32_t *p)
+{
+   for (unsigned i = 0; i < n; i++) {
+      for (unsigned j = 0; j < m; j++) {
+         const unsigned k = (i + j) % period;
+         p[j + m * i] = (k == index ? 2 : (k & 1) ^ flip);
+      }
+   }
+}
+
 #if GEN_GEN == 11
 static void
 iris_upload_slice_hashing_state(struct iris_batch *batch)
 {
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
-   int subslices_delta =
-      devinfo->ppipe_subslices[0] - devinfo->ppipe_subslices[1];
-   if (subslices_delta == 0)
+   assert(devinfo->ppipe_subslices[2] == 0);
+
+   if (devinfo->ppipe_subslices[0] == devinfo->ppipe_subslices[1])
       return;
 
    struct iris_context *ice = batch->ice;
@@ -823,51 +862,11 @@ iris_upload_slice_hashing_state(struct iris_batch *batch)
                    size, 64, &hash_address);
    pipe_resource_reference(&tmp, NULL);
 
-   struct GENX(SLICE_HASH_TABLE) table0 = {
-      .Entry = {
-         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
-         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
-         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
-         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
-         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
-         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
-         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
-         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
-         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
-         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
-         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
-         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
-         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
-         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
-         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
-         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 }
-      }
-   };
+   const bool flip = devinfo->ppipe_subslices[0] < devinfo->ppipe_subslices[1];
+   struct GENX(SLICE_HASH_TABLE) table;
+   calculate_pixel_hashing_table(16, 16, 3, 3, flip, table.Entry[0]);
 
-   struct GENX(SLICE_HASH_TABLE) table1 = {
-      .Entry = {
-         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
-         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
-         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
-         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
-         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
-         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
-         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
-         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
-         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
-         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
-         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
-         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
-         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
-         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
-         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
-         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 }
-      }
-   };
-
-   const struct GENX(SLICE_HASH_TABLE) *table =
-      subslices_delta < 0 ? &table0 : &table1;
-   GENX(SLICE_HASH_TABLE_pack)(NULL, map, table);
+   GENX(SLICE_HASH_TABLE_pack)(NULL, map, &table);
 
    iris_emit_cmd(batch, GENX(3DSTATE_SLICE_TABLE_STATE_POINTERS), ptr) {
       ptr.SliceHashStatePointerValid = true;
