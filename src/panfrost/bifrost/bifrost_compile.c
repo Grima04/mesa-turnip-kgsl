@@ -2135,7 +2135,7 @@ bifrost_nir_lower_i8_fragout_impl(struct nir_builder *b,
         nir_alu_type type =
                 nir_alu_type_get_base_type(nir_intrinsic_src_type(intr));
 
-        assert(type == nir_type_int || nir_type_uint);
+        assert(type == nir_type_int || type == nir_type_uint);
 
         b->cursor = nir_before_instr(instr);
         nir_ssa_def *cast = type == nir_type_int ?
