@@ -2566,6 +2566,36 @@
     <field name="Last Pixel Enable" start="127" end="127" type="bool"/>
   </instruction>
 
+  <instruction name="3DSTATE_SUBSLICE_HASH_TABLE" bias="2" length="14">
+    <field name="DWord Length" start="0" end="7" type="uint" default="12"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="31"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="1"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <group count="8" start="32" size="2">
+      <field name="Slice Hash Control" start="0" end="1" type="uint">
+        <value name="COMPUTED" value="0"/>
+        <value name="UNBALANCED_TABLE_0" value="1"/>
+        <value name="TABLE_0" value="2"/>
+        <value name="TABLE_1" value="3"/>
+      </field>
+    </group>
+    <field name="Slice Table Mode" start="62" end="63" type="uint">
+      <value name="SINGLE_TABLE" value="0"/>
+      <value name="DUAL_TABLE" value="1"/>
+    </field>
+    <group count="8" start="64" size="16">
+      <group count="16" start="0" size="1">
+        <field name="Two Way Table Entry" start="0" end="0" type="uint"/>
+      </group>
+    </group>
+    <group count="8" start="192" size="32">
+      <group count="16" start="0" size="2">
+        <field name="Three Way Table Entry" start="0" end="1" type="uint"/>
+      </group>
+    </group>
+  </instruction>
+
   <instruction name="3DSTATE_SLICE_TABLE_STATE_POINTERS" bias="2" length="2">
     <field name="DWord Length" start="0" end="7" type="uint" default="0"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="32"/>
