@@ -131,7 +131,7 @@ panfrost_clear(
 {
         struct panfrost_context *ctx = pan_context(pipe);
 
-        if (!pan_render_condition_check(pipe))
+        if (!panfrost_render_condition_check(ctx))
                 return;
 
         /* TODO: panfrost_get_fresh_batch_for_fbo() instantiates a new batch if
@@ -496,7 +496,7 @@ panfrost_draw_vbo(
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *device = pan_device(ctx->base.screen);
 
-        if (!pan_render_condition_check(pipe))
+        if (!panfrost_render_condition_check(ctx))
                 return;
 
         /* First of all, check the scissor to see if anything is drawn at all.
@@ -1559,6 +1559,25 @@ panfrost_get_query_result(struct pipe_context *pipe,
         }
 
         return true;
+}
+
+bool
+panfrost_render_condition_check(struct panfrost_context *ctx)
+{
+	if (!ctx->cond_query)
+		return true;
+
+	union pipe_query_result res = { 0 };
+	bool wait =
+		ctx->cond_mode != PIPE_RENDER_COND_NO_WAIT &&
+		ctx->cond_mode != PIPE_RENDER_COND_BY_REGION_NO_WAIT;
+
+        struct pipe_query *pq = (struct pipe_query *)ctx->cond_query;
+
+        if (panfrost_get_query_result(&ctx->base, pq, wait, &res))
+                return res.u64 != ctx->cond_cond;
+
+	return true;
 }
 
 static struct pipe_stream_output_target *
