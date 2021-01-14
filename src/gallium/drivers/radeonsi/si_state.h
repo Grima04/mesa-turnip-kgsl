@@ -75,6 +75,8 @@ struct si_state_rasterizer {
    unsigned pa_cl_clip_cntl;
    float line_width;
    float max_point_size;
+   unsigned ngg_cull_flags : 8;
+   unsigned ngg_cull_flags_y_inverted : 8;
    unsigned sprite_coord_enable : 8;
    unsigned clip_plane_enable : 8;
    unsigned half_pixel_center : 1;

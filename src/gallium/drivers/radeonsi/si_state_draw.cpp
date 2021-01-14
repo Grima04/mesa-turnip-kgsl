@@ -1985,23 +1985,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
             total_direct_count > hw_vs->ngg_cull_nonindexed_fast_launch_vert_threshold &&
             prim & ((1 << PIPE_PRIM_TRIANGLES) |
                     (1 << PIPE_PRIM_TRIANGLE_STRIP))))) {
-         uint8_t ngg_culling = 0;
-
-         if (rs->rasterizer_discard) {
-            ngg_culling |= SI_NGG_CULL_FRONT_FACE | SI_NGG_CULL_BACK_FACE;
-         } else {
-            /* Polygon mode can't use view and small primitive culling,
-             * because it draws points or lines where the culling depends
-             * on the point or line width.
-             */
-            if (!rs->polygon_mode_enabled)
-               ngg_culling |= SI_NGG_CULL_VIEW_SMALLPRIMS;
-
-            if (sctx->viewport0_y_inverted ? rs->cull_back : rs->cull_front)
-               ngg_culling |= SI_NGG_CULL_FRONT_FACE;
-            if (sctx->viewport0_y_inverted ? rs->cull_front : rs->cull_back)
-               ngg_culling |= SI_NGG_CULL_BACK_FACE;
-         }
+         uint8_t ngg_culling = sctx->viewport0_y_inverted ? rs->ngg_cull_flags_y_inverted :
+                                                            rs->ngg_cull_flags;
 
          /* Use NGG fast launch for certain primitive types.
           * A draw must have at least 1 full primitive.

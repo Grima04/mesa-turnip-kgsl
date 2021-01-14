@@ -881,6 +881,30 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                          S_028810_DX_RASTERIZATION_KILL(state->rasterizer_discard) |
                          S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 
+   if (rs->rasterizer_discard) {
+      rs->ngg_cull_flags = SI_NGG_CULL_FRONT_FACE | SI_NGG_CULL_BACK_FACE;
+      rs->ngg_cull_flags_y_inverted = rs->ngg_cull_flags;
+   } else {
+      /* Polygon mode can't use view and small primitive culling,
+       * because it draws points or lines where the culling depends
+       * on the point or line width.
+       */
+      if (!rs->polygon_mode_enabled) {
+         rs->ngg_cull_flags |= SI_NGG_CULL_VIEW_SMALLPRIMS;
+         rs->ngg_cull_flags_y_inverted |= SI_NGG_CULL_VIEW_SMALLPRIMS;
+      }
+
+      if (rs->cull_front) {
+         rs->ngg_cull_flags |= SI_NGG_CULL_FRONT_FACE;
+         rs->ngg_cull_flags_y_inverted |= SI_NGG_CULL_BACK_FACE;
+      }
+
+      if (rs->cull_back) {
+         rs->ngg_cull_flags |= SI_NGG_CULL_BACK_FACE;
+         rs->ngg_cull_flags_y_inverted |= SI_NGG_CULL_FRONT_FACE;
+      }
+   }
+
    si_pm4_set_reg(
       pm4, R_0286D4_SPI_INTERP_CONTROL_0,
       S_0286D4_FLAT_SHADE_ENA(1) | S_0286D4_PNT_SPRITE_ENA(state->point_quad_rasterization) |
