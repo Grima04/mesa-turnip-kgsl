@@ -989,6 +989,18 @@ ntt_ureg_src_dimension_indirect(struct ntt_compile *c, struct ureg_src usrc,
    }
 }
 
+static struct ureg_dst
+ntt_ureg_dst_dimension_indirect(struct ntt_compile *c, struct ureg_dst udst,
+                                nir_src src)
+{
+   if (nir_src_is_const(src)) {
+      return ureg_dst_dimension(udst, nir_src_as_uint(src));
+   } else {
+      return ureg_dst_dimension_indirect(udst,
+                                         ntt_reladdr(c, ntt_get_src(c, src)),
+                                         0);
+   }
+}
 /* Some load operations in NIR will have a fractional offset that we need to
  * swizzle down before storing to the result register.
  */
@@ -1483,7 +1495,12 @@ ntt_emit_store_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
                                     invariant);
    }
 
-   out = ntt_ureg_dst_indirect(c, out, instr->src[1]);
+   if (instr->intrinsic == nir_intrinsic_store_per_vertex_output) {
+      out = ntt_ureg_dst_indirect(c, out, instr->src[2]);
+      out = ntt_ureg_dst_dimension_indirect(c, out, instr->src[1]);
+   } else {
+      out = ntt_ureg_dst_indirect(c, out, instr->src[1]);
+   }
 
    unsigned write_mask = nir_intrinsic_write_mask(instr);
 
@@ -1564,6 +1581,7 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
       break;
 
    case nir_intrinsic_store_output:
+   case nir_intrinsic_store_per_vertex_output:
       ntt_emit_store_output(c, instr);
       break;
 
