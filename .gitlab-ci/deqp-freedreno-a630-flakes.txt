@@ -22,9 +22,6 @@ dEQP-GLES31.functional.ssbo.atomic.compswap.lowp_uint
 dEQP-GLES31.functional.ssbo.atomic.compswap.mediump_int
 dEQP-GLES31.functional.ssbo.atomic.compswap.mediump_uint
 
-# Non-sysmem flakes
-dEQP-VK.pipeline.spec_constant.compute.composite.matrix.mat3x2
-
 # Fails NIR_VALIDATE so probably flaky
 dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_local.buffer.comp
 
@@ -39,5 +36,3 @@ dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 dEQP-VK.subgroups.quad.framebuffer.subgroupquadswapvertical_ivec2_tess_eval
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_snorm.r32_sfloat.general_optimal_nearest
 dEQP-GLES31.functional.tessellation.invariance.primitive_set.quads_equal_spacing_cw
-dEQP-GLES31.functional.ssbo.layout.3_level_unsized_array.std140.mat2
-dEQP-GLES31.functional.draw_indirect.compute_interop.large.drawelements_combined_grid_1200x1200_drawcount_8
