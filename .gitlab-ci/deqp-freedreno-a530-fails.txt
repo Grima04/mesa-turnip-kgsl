@@ -39,7 +39,10 @@ dEQP-GLES31.functional.image_load_store.cube.load_store.rgba32i_single_layer,Fai
 dEQP-GLES31.functional.image_load_store.cube.load_store.rgba8_snorm_single_layer,Fail
 dEQP-GLES31.functional.image_load_store.early_fragment_tests.early_fragment_tests_stencil_fbo,Crash
 dEQP-GLES31.functional.separate_shader.random.59,Fail
+dEQP-GLES31.functional.separate_shader.random.69,Fail
 dEQP-GLES31.functional.separate_shader.random.79,Fail
+dEQP-GLES31.functional.separate_shader.random.99,Fail
+dEQP-GLES31.functional.separate_shader.random.119,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.compressed_rgba8_etc2_eac.nearest_size_tile_multiple,Fail
 dEQP-GLES31.functional.texture.texture_buffer.modify.bufferdata.buffer_size_131071,Fail
 dEQP-GLES31.functional.texture.texture_buffer.render.as_index_array_as_fragment_texture.offset_7_alignments,Fail
