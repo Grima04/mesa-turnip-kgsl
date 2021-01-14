@@ -1055,6 +1055,8 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    if (gs) {
       uint32_t vertices_out, invocations, output, vec4_size;
+      uint32_t prev_stage_output_size = ds ? ds->output_size : vs->output_size;
+
       /* this detects the tu_clear_blit path, which doesn't set ->nir */
       if (gs->shader->nir) {
          if (hs) {
@@ -1067,7 +1069,7 @@ tu6_emit_vpc(struct tu_cs *cs,
          invocations = gs->shader->nir->info.gs.invocations - 1;
          /* Size of per-primitive alloction in ldlw memory in vec4s. */
          vec4_size = gs->shader->nir->info.gs.vertices_in *
-                     DIV_ROUND_UP(vs->output_size, 4);
+                     DIV_ROUND_UP(prev_stage_output_size, 4);
       } else {
          vertices_out = 3;
          output = TESS_CW_TRIS;
@@ -1091,7 +1093,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);
-      tu_cs_emit(cs, vs->output_size);
+      tu_cs_emit(cs, prev_stage_output_size);
    }
 }
 
