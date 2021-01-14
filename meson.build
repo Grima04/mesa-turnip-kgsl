@@ -1735,7 +1735,11 @@ elif _libunwind == 'false'
   warning('libunwind option "false" deprecated, please use "disabled" instead.')
 endif
 if _libunwind != 'disabled' and not with_platform_android
-  dep_unwind = dependency('libunwind', required : _libunwind == 'enabled')
+  if host_machine.system() == 'darwin'
+    dep_unwind = meson.get_compiler('c').find_library('System')
+  else
+    dep_unwind = dependency('libunwind', required : _libunwind == 'enabled')
+  endif
   if dep_unwind.found()
     pre_args += '-DHAVE_LIBUNWIND'
   endif
