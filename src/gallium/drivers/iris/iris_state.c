@@ -843,7 +843,7 @@ calculate_pixel_hashing_table(unsigned n, unsigned m,
 
 #if GEN_GEN == 11
 static void
-iris_upload_slice_hashing_state(struct iris_batch *batch)
+gen11_upload_pixel_hashing_tables(struct iris_batch *batch)
 {
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    assert(devinfo->ppipe_subslices[2] == 0);
@@ -875,6 +875,53 @@ iris_upload_slice_hashing_state(struct iris_batch *batch)
 
    iris_emit_cmd(batch, GENX(3DSTATE_3D_MODE), mode) {
       mode.SliceHashingTableEnable = true;
+   }
+}
+#elif GEN_VERSIONx10 == 120
+static void
+gen12_upload_pixel_hashing_tables(struct iris_batch *batch)
+{
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   /* For each n calculate ppipes_of[n], equal to the number of pixel pipes
+    * present with n active dual subslices.
+    */
+   unsigned ppipes_of[3] = {};
+
+   for (unsigned n = 0; n < ARRAY_SIZE(ppipes_of); n++) {
+      for (unsigned p = 0; p < ARRAY_SIZE(devinfo->ppipe_subslices); p++)
+         ppipes_of[n] += (devinfo->ppipe_subslices[p] == n);
+   }
+
+   /* Gen12 has three pixel pipes. */
+   assert(ppipes_of[0] + ppipes_of[1] + ppipes_of[2] == 3);
+
+   if (ppipes_of[2] == 3 || ppipes_of[0] == 2) {
+      /* All three pixel pipes have the maximum number of active dual
+       * subslices, or there is only one active pixel pipe: Nothing to do.
+       */
+      return;
+   }
+
+   iris_emit_cmd(batch, GENX(3DSTATE_SUBSLICE_HASH_TABLE), p) {
+      p.SliceHashControl[0] = TABLE_0;
+
+      if (ppipes_of[2] == 2 && ppipes_of[0] == 1)
+         calculate_pixel_hashing_table(8, 16, 2, 2, 0, p.TwoWayTableEntry[0]);
+      else if (ppipes_of[2] == 1 && ppipes_of[1] == 1 && ppipes_of[0] == 1)
+         calculate_pixel_hashing_table(8, 16, 3, 3, 0, p.TwoWayTableEntry[0]);
+
+      if (ppipes_of[2] == 2 && ppipes_of[1] == 1)
+         calculate_pixel_hashing_table(8, 16, 5, 4, 0, p.ThreeWayTableEntry[0]);
+      else if (ppipes_of[2] == 2 && ppipes_of[0] == 1)
+         calculate_pixel_hashing_table(8, 16, 2, 2, 0, p.ThreeWayTableEntry[0]);
+      else if (ppipes_of[2] == 1 && ppipes_of[1] == 1 && ppipes_of[0] == 1)
+         calculate_pixel_hashing_table(8, 16, 3, 3, 0, p.ThreeWayTableEntry[0]);
+      else
+         unreachable("Illegal fusing.");
+   }
+
+   iris_emit_cmd(batch, GENX(3DSTATE_3D_MODE), p) {
+      p.SubsliceHashingTableEnable = true;
    }
 }
 #endif
@@ -1002,7 +1049,11 @@ iris_init_render_context(struct iris_batch *batch)
       iris_emit_lri(batch, CACHE_MODE_0, reg_val);
    }
 
-   iris_upload_slice_hashing_state(batch);
+   gen11_upload_pixel_hashing_tables(batch);
+#endif
+
+#if GEN_VERSIONx10 == 120
+   gen12_upload_pixel_hashing_tables(batch);
 #endif
 
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
