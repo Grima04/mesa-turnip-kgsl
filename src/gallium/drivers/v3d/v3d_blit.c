@@ -233,16 +233,11 @@ v3d_tfu(struct pipe_context *pctx,
         int msaa_scale = pdst->nr_samples > 1 ? 2 : 1;
         int width = u_minify(pdst->width0, base_level) * msaa_scale;
         int height = u_minify(pdst->height0, base_level) * msaa_scale;
+        enum pipe_format pformat;
 
         if (psrc->format != pdst->format)
                 return false;
         if (psrc->nr_samples != pdst->nr_samples)
-                return false;
-
-        uint32_t tex_format = v3d_get_tex_format(&screen->devinfo,
-                                                 pdst->format);
-
-        if (!v3d_tfu_supports_tex_format(&screen->devinfo, tex_format, for_mipmap))
                 return false;
 
         if (pdst->target != PIPE_TEXTURE_2D || psrc->target != PIPE_TEXTURE_2D)
@@ -251,6 +246,31 @@ v3d_tfu(struct pipe_context *pctx,
         /* Can't write to raster. */
         if (dst_base_slice->tiling == VC5_TILING_RASTER)
                 return false;
+
+        /* When using TFU for blit, we are doing exact copies (both input and
+         * output format must be the same, no scaling, etc), so there is no
+         * pixel format conversions. Thus we can rewrite the format to use one
+         * that is TFU compatible based on its texel size.
+         */
+        if (for_mipmap) {
+                pformat = pdst->format;
+        } else {
+                switch (dst->cpp) {
+                case 16: pformat = PIPE_FORMAT_R32G32B32A32_FLOAT;   break;
+                case 8:  pformat = PIPE_FORMAT_R16G16B16A16_FLOAT;   break;
+                case 4:  pformat = PIPE_FORMAT_R32_FLOAT;            break;
+                case 2:  pformat = PIPE_FORMAT_R16_FLOAT;            break;
+                case 1:  pformat = PIPE_FORMAT_R8_UNORM;             break;
+                default: unreachable("unsupported format bit-size"); break;
+                };
+        }
+
+        uint32_t tex_format = v3d_get_tex_format(&screen->devinfo, pformat);
+
+        if (!v3d_tfu_supports_tex_format(&screen->devinfo, tex_format, for_mipmap)) {
+                assert(for_mipmap);
+                return false;
+        }
 
         v3d_flush_jobs_writing_resource(v3d, psrc, V3D_FLUSH_DEFAULT, false);
         v3d_flush_jobs_reading_resource(v3d, pdst, V3D_FLUSH_DEFAULT, false);
