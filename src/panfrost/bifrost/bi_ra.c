@@ -48,7 +48,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
                                 if (bi_get_node(ins->dest[d]) >= node_count)
                                         continue;
 
-                                for (unsigned i = 1; i < node_count; ++i) {
+                                for (unsigned i = 0; i < node_count; ++i) {
                                         if (live[i])
                                                 lcra_add_node_interference(l, bi_get_node(ins->dest[d]), bi_writemask(ins), i, live[i]);
                                 }
@@ -57,7 +57,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
                         if (!ctx->is_blend && ins->op == BI_OPCODE_BLEND) {
                                 /* Add blend shader interference: blend shaders might
                                  * clobber r0-r15. */
-                                for (unsigned i = 1; i < node_count; ++i) {
+                                for (unsigned i = 0; i < node_count; ++i) {
                                         if (!live[i])
                                                 continue;
 
