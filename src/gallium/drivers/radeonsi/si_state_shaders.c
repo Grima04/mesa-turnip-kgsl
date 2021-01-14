@@ -2942,6 +2942,30 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 }
 
+static void si_update_rasterized_prim(struct si_context *sctx)
+{
+   enum pipe_prim_type rast_prim;
+
+   if (sctx->gs_shader.cso) {
+      /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
+      rast_prim = sctx->gs_shader.cso->rast_prim;
+   } else if (sctx->tes_shader.cso) {
+      /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
+      rast_prim = sctx->tes_shader.cso->rast_prim;
+   } else {
+      /* Determined by draw calls. */
+      return;
+   }
+
+   if (rast_prim != sctx->current_rast_prim) {
+      if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
+          util_prim_is_points_or_lines(rast_prim))
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
+
+      sctx->current_rast_prim = rast_prim;
+   }
+}
+
 static void si_update_common_shader_state(struct si_context *sctx, struct si_shader_selector *sel,
                                           enum pipe_shader_type type)
 {
@@ -2988,6 +3012,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
                        si_get_vs(sctx)->current);
+   si_update_rasterized_prim(sctx);
 }
 
 static void si_update_tess_uses_prim_id(struct si_context *sctx)
@@ -3069,6 +3094,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
                        si_get_vs(sctx)->current);
+   si_update_rasterized_prim(sctx);
 }
 
 static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
@@ -3119,6 +3145,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
                        si_get_vs(sctx)->current);
+   si_update_rasterized_prim(sctx);
 }
 
 static void si_bind_ps_shader(struct pipe_context *ctx, void *state)

@@ -1949,36 +1949,33 @@ static void si_draw_vbo(struct pipe_context *ctx,
     *
     * This must be done after si_decompress_textures, which can call
     * draw_vbo recursively, and before si_update_shaders, which uses
-    * current_rast_prim for this draw_vbo call. */
-   enum pipe_prim_type rast_prim;
+    * current_rast_prim for this draw_vbo call.
+    */
+   if (!HAS_GS && !HAS_TESS) {
+      enum pipe_prim_type rast_prim;
 
-   if (HAS_GS) {
-      /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      rast_prim = sctx->gs_shader.cso->rast_prim;
-   } else if (HAS_TESS) {
-      /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      rast_prim = sctx->tes_shader.cso->rast_prim;
-   } else if (util_rast_prim_is_triangles(prim)) {
-      rast_prim = PIPE_PRIM_TRIANGLES;
-   } else {
-      /* Only possibilities, POINTS, LINE*, RECTANGLES */
-      rast_prim = prim;
-   }
+      if (util_rast_prim_is_triangles(prim)) {
+         rast_prim = PIPE_PRIM_TRIANGLES;
+      } else {
+         /* Only possibilities, POINTS, LINE*, RECTANGLES */
+         rast_prim = prim;
+      }
 
-   if (rast_prim != sctx->current_rast_prim) {
-      if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
-          util_prim_is_points_or_lines(rast_prim))
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
+      if (rast_prim != sctx->current_rast_prim) {
+         if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
+             util_prim_is_points_or_lines(rast_prim))
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
 
-      sctx->current_rast_prim = rast_prim;
-      sctx->do_update_shaders = true;
+         sctx->current_rast_prim = rast_prim;
+         sctx->do_update_shaders = true;
+      }
    }
 
    /* Update NGG culling settings. */
    uint8_t old_ngg_culling = sctx->ngg_culling;
    if (GFX_VERSION >= GFX10) {
       struct si_shader_selector *hw_vs;
-      if (NGG && !dispatch_prim_discard_cs && rast_prim == PIPE_PRIM_TRIANGLES &&
+      if (NGG && !dispatch_prim_discard_cs && sctx->current_rast_prim == PIPE_PRIM_TRIANGLES &&
           (hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->cso) &&
           (total_direct_count > hw_vs->ngg_cull_vert_threshold ||
            (!index_size &&
