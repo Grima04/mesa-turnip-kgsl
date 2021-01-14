@@ -338,6 +338,8 @@ iris_memobj_create_from_handle(struct pipe_screen *pscreen,
 
    memobj->b.dedicated = dedicated;
    memobj->bo = bo;
+   memobj->format = whandle->format;
+   memobj->stride = whandle->stride;
 
    iris_bo_reference(memobj->bo);
 
@@ -1212,6 +1214,32 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 fail:
    iris_resource_destroy(pscreen, &res->base.b);
    return NULL;
+}
+
+static struct pipe_resource *
+iris_resource_from_memobj(struct pipe_screen *pscreen,
+                          const struct pipe_resource *templ,
+                          struct pipe_memory_object *pmemobj,
+                          uint64_t offset)
+{
+   struct iris_screen *screen = (struct iris_screen *)pscreen;
+   struct iris_memory_object *memobj = (struct iris_memory_object *)pmemobj;
+   struct iris_resource *res = iris_alloc_resource(pscreen, templ);
+
+   if (!res)
+      return NULL;
+
+   if (templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY) {
+      UNUSED const bool isl_surf_created_successfully =
+         iris_resource_configure_main(screen, res, templ, DRM_FORMAT_MOD_INVALID, 0);
+      assert(isl_surf_created_successfully);
+   }
+
+   res->bo = memobj->bo;
+   res->offset = offset;
+   res->external_format = memobj->format;
+
+   return &res->base.b;
 }
 
 static void
@@ -2347,6 +2375,7 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_create = u_transfer_helper_resource_create;
    pscreen->resource_from_user_memory = iris_resource_from_user_memory;
    pscreen->resource_from_handle = iris_resource_from_handle;
+   pscreen->resource_from_memobj = iris_resource_from_memobj;
    pscreen->resource_get_handle = iris_resource_get_handle;
    pscreen->resource_get_param = iris_resource_get_param;
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;

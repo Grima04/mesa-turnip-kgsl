@@ -283,6 +283,8 @@ struct iris_transfer {
 struct iris_memory_object {
    struct pipe_memory_object b;
    struct iris_bo *bo;
+   uint64_t format;
+   unsigned stride;
 };
 
 /**
