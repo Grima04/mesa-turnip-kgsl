@@ -9491,7 +9491,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
                           instr->sampler_dim != GLSL_SAMPLER_DIM_SUBPASS_MS;
 
    Operand vdata = instr->is_sparse ? emit_tfe_init(bld, tmp_dst) : Operand(v1);
-   unsigned num_wqm_coords = implicit_derivs ? args.size() : 0;
+   unsigned num_wqm_coords = implicit_derivs ? coords.size() : 0;
    MIMG_instruction *tex = emit_mimg(bld, opcode, Definition(tmp_dst), resource,
                                      Operand(sampler), args, num_wqm_coords, vdata);
    tex->dim = dim;
