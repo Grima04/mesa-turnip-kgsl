@@ -120,30 +120,31 @@ static bool
 wsi_x11_detect_xwayland(xcb_connection_t *conn)
 {
    xcb_randr_query_version_cookie_t ver_cookie =
-      xcb_randr_query_version_unchecked(conn, 1, 2);
+      xcb_randr_query_version_unchecked(conn, 1, 3);
    xcb_randr_query_version_reply_t *ver_reply =
       xcb_randr_query_version_reply(conn, ver_cookie, NULL);
-   bool has_randr_v1_2 = ver_reply && (ver_reply->major_version > 1 ||
-                                       ver_reply->minor_version >= 2);
+   bool has_randr_v1_3 = ver_reply && (ver_reply->major_version > 1 ||
+                                       ver_reply->minor_version >= 3);
    free(ver_reply);
 
-   if (!has_randr_v1_2)
+   if (!has_randr_v1_3)
       return false;
 
    const xcb_setup_t *setup = xcb_get_setup(conn);
    xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
 
-   xcb_randr_get_screen_resources_cookie_t gsr_cookie =
-      xcb_randr_get_screen_resources_unchecked(conn, iter.data->root);
-   xcb_randr_get_screen_resources_reply_t *gsr_reply =
-      xcb_randr_get_screen_resources_reply(conn, gsr_cookie, NULL);
+   xcb_randr_get_screen_resources_current_cookie_t gsr_cookie =
+      xcb_randr_get_screen_resources_current_unchecked(conn, iter.data->root);
+   xcb_randr_get_screen_resources_current_reply_t *gsr_reply =
+      xcb_randr_get_screen_resources_current_reply(conn, gsr_cookie, NULL);
 
    if (!gsr_reply || gsr_reply->num_outputs == 0) {
       free(gsr_reply);
       return false;
    }
 
-   xcb_randr_output_t *randr_outputs = xcb_randr_get_screen_resources_outputs(gsr_reply);
+   xcb_randr_output_t *randr_outputs =
+      xcb_randr_get_screen_resources_current_outputs(gsr_reply);
    xcb_randr_get_output_info_cookie_t goi_cookie =
       xcb_randr_get_output_info(conn, randr_outputs[0], gsr_reply->config_timestamp);
    free(gsr_reply);
