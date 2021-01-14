@@ -2436,7 +2436,7 @@ nvc0_hw_sm_begin_query(struct nvc0_context *nvc0, struct nvc0_hw_query *hq)
       }
 
       /* Oddly-enough, the signal id depends on the slot selected on Fermi but
-       * not on Kepler. Fortunately, the signal ids are just offseted by the
+       * not on Kepler. Fortunately, the signal ids are just offsetted by the
        * slot id! */
       mask_sel |= c;
       mask_sel |= (c << 8);
