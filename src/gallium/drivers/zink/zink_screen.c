@@ -113,8 +113,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
              screen->vk_CmdDrawIndexedIndirectCount;
 
    case PIPE_CAP_START_INSTANCE:
-      return screen->loader_version >= VK_MAKE_VERSION(1,1,0) &&
-             screen->info.feats11.shaderDrawParameters;
+      return screen->info.feats11.shaderDrawParameters;
 
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
       return screen->info.have_EXT_vertex_attribute_divisor;
@@ -407,8 +406,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_TESS_CTRL:
       case PIPE_SHADER_TESS_EVAL:
          if (screen->info.feats.features.tessellationShader &&
-             (screen->instance_info.have_KHR_maintenance2 ||
-              VK_MAKE_VERSION(1,1,0) <= screen->loader_version))
+             screen->instance_info.have_KHR_maintenance2)
             return INT_MAX;
          break;
 
