@@ -25,6 +25,7 @@
 
 from mako.template import Template
 from os import path
+from xml.etree import ElementTree
 from zink_extensions import Extension,Layer,Version
 import sys
 
@@ -41,16 +42,12 @@ import sys
 #               will be added by the codegen accordingly.
 EXTENSIONS = [
     Extension("VK_EXT_debug_utils"),
-    Extension("VK_KHR_maintenance2",
-        core_since=Version((1, 1, 0))),
+    Extension("VK_KHR_maintenance2"),
     Extension("VK_KHR_get_physical_device_properties2",
-        core_since=Version((1, 1, 0)),
         functions=["GetPhysicalDeviceFeatures2", "GetPhysicalDeviceProperties2"]),
     Extension("VK_KHR_draw_indirect_count",
-        core_since=Version((1, 2, 0)),
         functions=["CmdDrawIndexedIndirectCount", "CmdDrawIndirectCount"]),
-    Extension("VK_KHR_external_memory_capabilities",
-        core_since=Version((1, 1, 0))),
+    Extension("VK_KHR_external_memory_capabilities"),
     Extension("VK_MVK_moltenvk"),
 ]
 
@@ -277,20 +274,59 @@ def replace_code(code: str, replacement: dict):
     return code
 
 
+# Parses e.g. "VK_VERSION_x_y" to integer tuple (x, y)
+# For any erroneous inputs, None is returned
+def parse_promotedto(promotedto: str):
+   result = None
+
+   if promotedto and promotedto.startswith("VK_VERSION_"):
+      (major, minor) = promotedto.split('_')[-2:]
+      result = (int(major), int(minor))
+
+   return result
+
+def parse_vkxml(path: str):
+    vkxml = ElementTree.parse(path)
+    all_extensions = dict()
+
+    for ext in vkxml.findall("extensions/extension"):
+        name = ext.get("name")
+        promotedto = parse_promotedto(ext.get("promotedto"))
+        
+        if not name:
+            print("found malformed extension entry in vk.xml")
+            exit(1)
+
+        all_extensions[name] = promotedto
+
+    return all_extensions
+
 if __name__ == "__main__":
     try:
         header_path = sys.argv[1]
         impl_path = sys.argv[2]
+        vkxml_path = sys.argv[3]
 
         header_path = path.abspath(header_path)
         impl_path = path.abspath(impl_path)
+        vkxml_path = path.abspath(vkxml_path)
     except:
-        print("usage: %s <path to .h> <path to .c>" % sys.argv[0])
+        print("usage: %s <path to .h> <path to .c> <path to vk.xml>" % sys.argv[0])
         exit(1)
+
+    all_extensions = parse_vkxml(vkxml_path)
 
     extensions = EXTENSIONS
     layers = LAYERS
     replacement = REPLACEMENTS
+
+    for ext in extensions:
+        if ext.name not in all_extensions:
+            print("the extension {} is not registered in vk.xml - a typo?".format(ext.name))
+            exit(1)
+        
+        if all_extensions[ext.name] is not None:
+            ext.core_since = Version((*all_extensions[ext.name], 0))
 
     with open(header_path, "w") as header_file:
         header = Template(header_code).render(extensions=extensions, layers=layers).strip()
