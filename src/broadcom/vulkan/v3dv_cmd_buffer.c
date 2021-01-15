@@ -3118,7 +3118,7 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
                        struct v3dv_pipeline *pipeline)
 {
    assert(pipeline && !(pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
-   if (cmd_buffer->state.pipeline == pipeline)
+   if (cmd_buffer->state.gfx.pipeline == pipeline)
       return;
 
    /* Enable always flush if we are blending to sRGB render targets. This
@@ -3140,7 +3140,7 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
                  "uses sRGB blending\n", cmd_buffer->state.subpass_idx);
    }
 
-   cmd_buffer->state.pipeline = pipeline;
+   cmd_buffer->state.gfx.pipeline = pipeline;
 
    cmd_buffer_bind_pipeline_static_state(cmd_buffer, &pipeline->dynamic_state);
 
@@ -3153,11 +3153,11 @@ bind_compute_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
 {
    assert(pipeline && pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT);
 
-   if (cmd_buffer->state.pipeline == pipeline)
+   if (cmd_buffer->state.compute.pipeline == pipeline)
       return;
 
-   cmd_buffer->state.pipeline = pipeline;
-   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
+   cmd_buffer->state.compute.pipeline = pipeline;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_COMPUTE_PIPELINE;
 }
 
 void
@@ -3410,7 +3410,7 @@ emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    struct v3dv_dynamic_state *dynamic_state = &cmd_buffer->state.dynamic;
 
    const uint32_t dynamic_stencil_states = V3DV_DYNAMIC_STENCIL_COMPARE_MASK |
@@ -3463,7 +3463,7 @@ emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
 static void
 emit_depth_bias(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
    if (!pipeline->depth_bias.enabled)
@@ -3505,7 +3505,7 @@ emit_line_width(struct v3dv_cmd_buffer *cmd_buffer)
 static void
 emit_sample_state(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
    struct v3dv_job *job = cmd_buffer->state.job;
@@ -3526,7 +3526,7 @@ emit_blend(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
    const uint32_t blend_packets_size =
@@ -3664,7 +3664,7 @@ static void
 emit_varyings_state(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
 
    struct v3d_fs_prog_data *prog_data_fs =
       pipeline->fs->current_variant->prog_data.fs;
@@ -3709,7 +3709,7 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
    job_update_ez_state(job, pipeline, cmd_buffer);
@@ -3725,8 +3725,8 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
-update_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
-                     uint32_t dirty_uniform_state)
+update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
+                         uint32_t dirty_uniform_state)
 {
    /* We need to update uniform streams if any piece of state that is passed
     * to the shader as a uniform may have changed.
@@ -3735,7 +3735,7 @@ update_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
     * for shader stages that don't access descriptors.
     */
 
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
    const bool dirty_descriptors_only =
@@ -3771,7 +3771,7 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
    assert(job);
 
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   struct v3dv_pipeline *pipeline = state->pipeline;
+   struct v3dv_pipeline *pipeline = state->gfx.pipeline;
    assert(pipeline);
 
    /* Update the cache dirty flag based on the shader progs data */
@@ -3987,18 +3987,19 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
       memcpy(&state->meta.render_area, &state->render_area, sizeof(VkRect2D));
    }
 
-   state->meta.pipeline = v3dv_pipeline_to_handle(state->pipeline);
+   /* We expect that meta operations are graphics-only, so we only take into
+    * account the graphics pipeline, and the graphics state
+    */
+   state->meta.gfx.pipeline = state->gfx.pipeline;
    memcpy(&state->meta.dynamic, &state->dynamic, sizeof(state->dynamic));
 
-   /* We expect that meta operations are graphics-only and won't alter
-    * compute state.
-    */
    struct v3dv_descriptor_state *gfx_descriptor_state =
-      &state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS];
+      &cmd_buffer->state.gfx.descriptor_state;
+
    if (push_descriptor_state) {
       if (gfx_descriptor_state->valid != 0) {
-         memcpy(&state->meta.descriptor_state, gfx_descriptor_state,
-                sizeof(state->descriptor_state));
+         memcpy(&state->meta.gfx.descriptor_state, gfx_descriptor_state,
+                sizeof(state->gfx.descriptor_state));
       }
       state->meta.has_descriptor_state = true;
    } else {
@@ -4048,16 +4049,15 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
       state->subpass_idx = -1;
    }
 
-   if (state->meta.pipeline != VK_NULL_HANDLE) {
-      struct v3dv_pipeline *pipeline =
-            v3dv_pipeline_from_handle(state->meta.pipeline);
+   if (state->meta.gfx.pipeline != NULL) {
+      struct v3dv_pipeline *pipeline = state->meta.gfx.pipeline;
       VkPipelineBindPoint pipeline_binding =
          v3dv_pipeline_get_binding_point(pipeline);
       v3dv_CmdBindPipeline(v3dv_cmd_buffer_to_handle(cmd_buffer),
                            pipeline_binding,
-                           state->meta.pipeline);
+                           v3dv_pipeline_to_handle(state->meta.gfx.pipeline));
    } else {
-      state->pipeline = VK_NULL_HANDLE;
+      state->gfx.pipeline = NULL;
    }
 
    if (dirty_dynamic_state) {
@@ -4066,19 +4066,18 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    if (state->meta.has_descriptor_state) {
-      if (state->meta.descriptor_state.valid != 0) {
-         memcpy(&state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS],
-                &state->meta.descriptor_state,
-                sizeof(state->descriptor_state));
+      if (state->meta.gfx.descriptor_state.valid != 0) {
+         memcpy(&state->gfx.descriptor_state, &state->meta.gfx.descriptor_state,
+                sizeof(state->gfx.descriptor_state));
       } else {
-         state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS].valid = 0;
+         state->gfx.descriptor_state.valid = 0;
       }
    }
 
    memcpy(cmd_buffer->push_constants_data, state->meta.push_constants,
           sizeof(state->meta.push_constants));
 
-   state->meta.pipeline = VK_NULL_HANDLE;
+   state->meta.gfx.pipeline = NULL;
    state->meta.framebuffer = VK_NULL_HANDLE;
    state->meta.pass = VK_NULL_HANDLE;
    state->meta.subpass_idx = -1;
@@ -4125,7 +4124,7 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
    assert(job);
 
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   struct v3dv_pipeline *pipeline = state->pipeline;
+   struct v3dv_pipeline *pipeline = state->gfx.pipeline;
 
    assert(pipeline);
 
@@ -4232,7 +4231,7 @@ cmd_buffer_restart_job_for_msaa_if_needed(struct v3dv_cmd_buffer *cmd_buffer)
    /* We only need to restart the frame if the pipeline requires MSAA but
     * our frame tiling didn't enable it.
     */
-   if (!cmd_buffer->state.pipeline->msaa ||
+   if (!cmd_buffer->state.gfx.pipeline->msaa ||
        cmd_buffer->state.job->frame_tiling.msaa) {
       return;
    }
@@ -4277,8 +4276,8 @@ cmd_buffer_restart_job_for_msaa_if_needed(struct v3dv_cmd_buffer *cmd_buffer)
 static void
 cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   assert(cmd_buffer->state.pipeline);
-   assert(!(cmd_buffer->state.pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
+   assert(cmd_buffer->state.gfx.pipeline);
+   assert(!(cmd_buffer->state.gfx.pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
 
    /* If we emitted a pipeline barrier right before this draw we won't have
     * an active job. In that case, create a new job continuing the current
@@ -4315,7 +4314,7 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
                 V3DV_CMD_DIRTY_VIEWPORT);
 
    if (dirty_uniform_state)
-      update_uniform_state(cmd_buffer, dirty_uniform_state);
+      update_gfx_uniform_state(cmd_buffer, dirty_uniform_state);
 
    if (dirty_uniform_state || (*dirty & V3DV_CMD_DIRTY_VERTEX_BUFFER))
       emit_gl_shader_state(cmd_buffer);
@@ -4398,7 +4397,7 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   const struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
    uint8_t index_type = ffs(cmd_buffer->state.index_buffer.index_size) - 1;
    uint32_t index_offset = firstIndex * cmd_buffer->state.index_buffer.index_size;
@@ -4461,7 +4460,7 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   const struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
 
    v3dv_cl_ensure_space_with_branch(
@@ -4496,7 +4495,7 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   const struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
    uint8_t index_type = ffs(cmd_buffer->state.index_buffer.index_size) - 1;
 
@@ -4736,7 +4735,9 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    assert(firstSet + descriptorSetCount <= MAX_SETS);
 
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state[pipelineBindPoint];
+      pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE ?
+      &cmd_buffer->state.compute.descriptor_state :
+      &cmd_buffer->state.gfx.descriptor_state;
 
    bool descriptor_state_changed = false;
    for (uint32_t i = 0; i < descriptorSetCount; i++) {
@@ -5113,11 +5114,11 @@ v3dv_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
 static void
 cmd_buffer_emit_pre_dispatch(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   assert(cmd_buffer->state.pipeline);
-   assert(cmd_buffer->state.pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT);
+   assert(cmd_buffer->state.compute.pipeline);
+   assert(cmd_buffer->state.compute.pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT);
 
    uint32_t *dirty = &cmd_buffer->state.dirty;
-   *dirty &= ~(V3DV_CMD_DIRTY_PIPELINE |
+   *dirty &= ~(V3DV_CMD_DIRTY_COMPUTE_PIPELINE |
                V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS);
 }
 
@@ -5189,7 +5190,7 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
                           uint32_t **wg_uniform_offsets_out,
                           uint32_t *wg_size_out)
 {
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
    assert(pipeline && pipeline->cs && pipeline->cs->nir);
 
    struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->vk.alloc,

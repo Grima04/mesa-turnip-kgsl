@@ -40,10 +40,11 @@
  * we need to rely on a UBO.
  */
 static void
-check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
+check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
+                         struct v3dv_pipeline *pipeline)
 {
    if (!(cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PUSH_CONSTANTS) ||
-       cmd_buffer->state.pipeline->layout->push_constant_size == 0)
+       pipeline->layout->push_constant_size == 0)
       return;
 
    if (cmd_buffer->push_constants_resource.bo == NULL) {
@@ -92,7 +93,7 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t texture_idx = v3d_unit_data_get_unit(data);
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
+      v3dv_cmd_buffer_get_descriptor_state(cmd_buffer, pipeline);
 
    /* We need to ensure that the texture bo is added to the job */
    struct v3dv_bo *texture_bo =
@@ -123,7 +124,7 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t sampler_idx = v3d_unit_data_get_unit(data);
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
+      v3dv_cmd_buffer_get_descriptor_state(cmd_buffer, pipeline);
 
    assert(sampler_idx != V3DV_NO_SAMPLER_16BIT_IDX &&
           sampler_idx != V3DV_NO_SAMPLER_32BIT_IDX);
@@ -162,7 +163,7 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
+      v3dv_cmd_buffer_get_descriptor_state(cmd_buffer, pipeline);
 
    struct v3dv_descriptor_map *map =
       content == QUNIFORM_UBO_ADDR || content == QUNIFORM_GET_UBO_SIZE ?
@@ -183,7 +184,7 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
        * updated. It already take into account it is should do the
        * update or not
        */
-      check_push_constants_ubo(cmd_buffer);
+      check_push_constants_ubo(cmd_buffer, pipeline);
 
       struct v3dv_cl_reloc *resource =
          &cmd_buffer->push_constants_resource;
@@ -280,7 +281,7 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
 {
    uint32_t texture_idx = v3d_unit_data_get_unit(data);
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
+      v3dv_cmd_buffer_get_descriptor_state(cmd_buffer, pipeline);
 
    struct v3dv_descriptor *descriptor =
       v3dv_descriptor_map_get_descriptor(descriptor_state,
