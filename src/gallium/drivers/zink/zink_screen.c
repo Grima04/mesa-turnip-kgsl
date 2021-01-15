@@ -828,41 +828,6 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
 }
 
 static bool
-load_instance_extensions(struct zink_screen *screen)
-{
-   if (zink_debug & ZINK_DEBUG_VALIDATION) {
-      printf("zink: Loader %d.%d.%d \n", VK_VERSION_MAJOR(screen->loader_version), VK_VERSION_MINOR(screen->loader_version), VK_VERSION_PATCH(screen->loader_version));
-   }
-
-   if (screen->instance_info.have_KHR_get_physical_device_properties2 &&
-       !(VK_MAKE_VERSION(1,1,0) <= screen->loader_version)) {
-      // Not Vk 1.1+ so if VK_KHR_get_physical_device_properties2 the use it
-      GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceFeatures2KHR);
-      GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceProperties2KHR);
-      screen->vk_GetPhysicalDeviceFeatures2 = vk_GetPhysicalDeviceFeatures2KHR;
-      screen->vk_GetPhysicalDeviceProperties2 = vk_GetPhysicalDeviceProperties2KHR;
-   } else if (VK_MAKE_VERSION(1,1,0) <= screen->loader_version) {
-      // Get Vk 1.1+ Instance functions
-      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceFeatures2);
-      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceProperties2);
-   }
-
-   if (screen->instance_info.have_KHR_draw_indirect_count &&
-       !(VK_MAKE_VERSION(1,1,0) <= screen->loader_version)) {
-      GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, CmdDrawIndirectCountKHR);
-      GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, CmdDrawIndexedIndirectCountKHR);
-      screen->vk_CmdDrawIndirectCount = vk_CmdDrawIndirectCountKHR;
-      screen->vk_CmdDrawIndexedIndirectCount = vk_CmdDrawIndexedIndirectCountKHR;
-   } else if (VK_MAKE_VERSION(1,2,0) <= screen->loader_version) {
-      // Get Vk 1.1+ Instance functions
-      GET_PROC_ADDR_INSTANCE(CmdDrawIndirectCount);
-      GET_PROC_ADDR_INSTANCE(CmdDrawIndexedIndirectCount);
-   }
-
-   return true;
-}
-
-static bool
 load_device_extensions(struct zink_screen *screen)
 {
    if (screen->info.have_EXT_transform_feedback) {
@@ -1094,7 +1059,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!screen->instance)
       goto fail;
 
-   if (!load_instance_extensions(screen))
+   if (!zink_load_instance_extensions(screen))
       goto fail;
 
    if (screen->instance_info.have_EXT_debug_utils && !create_debug(screen))
