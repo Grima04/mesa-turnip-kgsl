@@ -341,6 +341,7 @@ static void bind_inputs(struct gl_context *ctx,
 /* Translate indices to GLuints and store in VB->Elts.
  */
 static void bind_indices(struct gl_context *ctx,
+                         unsigned start,
                          const struct _mesa_index_buffer *ib,
                          struct gl_buffer_object **bo,
                          GLuint *nr_bo)
@@ -376,21 +377,23 @@ static void bind_indices(struct gl_context *ctx,
       VB->Elts = (GLuint *) ptr;
    }
    else {
-      GLuint *elts = (GLuint *)get_space(ctx, ib->count * sizeof(GLuint));
+      GLuint *elts = (GLuint *)get_space(ctx, (start + ib->count) * sizeof(GLuint));
       VB->Elts = elts;
 
+      elts += start;
+
       if (ib->index_size_shift == 2) {
-         const GLuint *in = (GLuint *)ptr;
+         const GLuint *in = (GLuint *)ptr + start;
          for (i = 0; i < ib->count; i++)
             *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
       }
       else if (ib->index_size_shift == 1) {
-         const GLushort *in = (GLushort *)ptr;
+         const GLushort *in = (GLushort *)ptr + start;
          for (i = 0; i < ib->count; i++)
             *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
       }
       else {
-         const GLubyte *in = (GLubyte *)ptr;
+         const GLubyte *in = (GLubyte *)ptr + start;
          for (i = 0; i < ib->count; i++)
             *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
       }
@@ -505,7 +508,8 @@ void _tnl_draw_prims(struct gl_context *ctx,
           */
          for (this_nr_prims = 1; i + this_nr_prims < nr_prims;
               this_nr_prims++) {
-            if (prim[i].basevertex != prim[i + this_nr_prims].basevertex)
+            if (prim[i].basevertex != prim[i + this_nr_prims].basevertex ||
+                prim[i].start != prim[i + this_nr_prims].start)
                break;
          }
 
@@ -517,7 +521,7 @@ void _tnl_draw_prims(struct gl_context *ctx,
             bind_prims(ctx, &prim[i], this_nr_prims);
             bind_inputs(ctx, arrays, max_index + prim[i].basevertex + 1,
                         bo, &nr_bo);
-            bind_indices(ctx, ib, bo, &nr_bo);
+            bind_indices(ctx, prim[i].start, ib, bo, &nr_bo);
 
             tnl->CurInstance = inst;
             TNL_CONTEXT(ctx)->Driver.RunPipeline(ctx);
