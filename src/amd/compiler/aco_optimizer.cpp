@@ -1388,7 +1388,6 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
           instr->operands[1].isTemp() && ctx.info[instr->operands[1].tempId()].is_vcc())
          ctx.info[instr->definitions[0].tempId()].set_temp(ctx.info[instr->operands[1].tempId()].temp);
       break;
-   case aco_opcode::p_phi:
    case aco_opcode::p_linear_phi: {
       /* lower_bool_phis() can create phis like this */
       bool all_same_temp = instr->operands[0].isTemp();
