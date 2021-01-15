@@ -1196,8 +1196,12 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_fexp2: {
-                /* TODO G71 */
                 assert(sz == 32); /* should've been lowered */
+
+                if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS) {
+                        bi_lower_fexp2_32(b, dst, s0);
+                        break;
+                }
 
                 /* multiply by 1.0 * 2*24 */
                 bi_index scale = bi_fma_rscale_f32(b, s0, bi_imm_f32(1.0f),
@@ -1209,8 +1213,13 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         }
 
         case nir_op_flog2: {
-                /* TODO G71 */
                 assert(sz == 32); /* should've been lowered */
+
+                if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS) {
+                        bi_lower_flog2_32(b, dst, s0);
+                        break;
+                }
+
                 bi_index frexp = bi_frexpe_f32(b, s0, true, false);
                 bi_index frexpi = bi_s32_to_f32(b, frexp, BI_ROUND_RTZ);
                 bi_index add = bi_fadd_lscale_f32(b, bi_imm_f32(-1.0f), s0);
@@ -1494,11 +1503,17 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_frsq:
-                bi_frsq_to(b, sz, dst, s0);
+                if (sz == 32 && b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS)
+                        bi_lower_frsq_32(b, dst, s0);
+                else
+                        bi_frsq_to(b, sz, dst, s0);
                 break;
 
         case nir_op_frcp:
-                bi_frcp_to(b, sz, dst, s0);
+                if (sz == 32 && b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS)
+                        bi_lower_frcp_32(b, dst, s0);
+                else
+                        bi_frcp_to(b, sz, dst, s0);
                 break;
 
         default:
