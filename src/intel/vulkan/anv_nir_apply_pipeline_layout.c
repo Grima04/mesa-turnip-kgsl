@@ -40,6 +40,7 @@ struct apply_pipeline_layout_state {
    const struct anv_pipeline_layout *layout;
    bool add_bounds_checks;
    nir_address_format ssbo_addr_format;
+   nir_address_format ubo_addr_format;
 
    /* Place to flag lowered instructions so we don't lower them twice */
    struct set *lowered_instrs;
@@ -387,7 +388,7 @@ desc_addr_format(VkDescriptorType desc_type,
 {
    return (desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
            desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) ?
-           state->ssbo_addr_format : nir_address_format_32bit_index_offset;
+           state->ssbo_addr_format : state->ubo_addr_format;
 }
 
 static bool
@@ -529,7 +530,7 @@ build_ssbo_descriptor_load(nir_builder *b, const VkDescriptorType desc_type,
                            struct apply_pipeline_layout_state *state)
 {
    nir_ssa_def *desc_offset, *array_index;
-   switch (state->ssbo_addr_format) {
+   switch (desc_addr_format(desc_type, state)) {
    case nir_address_format_64bit_bounded_global:
       /* See also lower_res_index_intrinsic() */
       desc_offset = nir_channel(b, index, 0);
@@ -611,8 +612,8 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
         desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)) {
       desc = build_ssbo_descriptor_load(b, desc_type, index, state);
 
-      /* We want nir_address_format_64bit_global */
-      if (!state->add_bounds_checks)
+      nir_address_format addr_format = desc_addr_format(desc_type, state);
+      if (addr_format == nir_address_format_64bit_global)
          desc = nir_pack_64_2x32(b, nir_channels(b, desc, 0x3));
 
       if (state->has_dynamic_buffers) {
@@ -621,7 +622,7 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
           * dynamic offset.
           */
          nir_ssa_def *desc_offset, *array_index;
-         switch (state->ssbo_addr_format) {
+         switch (addr_format) {
          case nir_address_format_64bit_bounded_global:
             /* See also lower_res_index_intrinsic() */
             desc_offset = nir_channel(b, index, 0);
@@ -657,7 +658,7 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
             nir_bcsel(b, nir_ieq_imm(b, dyn_offset_base, 0xff),
                          nir_imm_int(b, 0), dyn_load);
 
-         switch (state->ssbo_addr_format) {
+         switch (addr_format) {
          case nir_address_format_64bit_bounded_global: {
             /* The dynamic offset gets added to the base pointer so that we
              * have a sliding window range.
@@ -1174,6 +1175,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       .layout = layout,
       .add_bounds_checks = robust_buffer_access,
       .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_buffer_access),
+      .ubo_addr_format = nir_address_format_32bit_index_offset,
       .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
    };
 
