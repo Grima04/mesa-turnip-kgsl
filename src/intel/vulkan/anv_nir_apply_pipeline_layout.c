@@ -681,6 +681,12 @@ try_lower_direct_buffer_intrinsic(nir_builder *b,
 
       /* Rewrite to 32bit_index_offset whenever we can */
       addr_format = nir_address_format_32bit_index_offset;
+   } else {
+      assert(nir_deref_mode_is(deref, nir_var_mem_ubo));
+
+      /* Rewrite to 32bit_index_offset whenever we can */
+      if (descriptor_has_bti(desc, state))
+         addr_format = nir_address_format_32bit_index_offset;
    }
 
    nir_ssa_def *addr =
@@ -1294,7 +1300,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       .layout = layout,
       .add_bounds_checks = robust_buffer_access,
       .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_buffer_access),
-      .ubo_addr_format = nir_address_format_32bit_index_offset,
+      .ubo_addr_format = anv_nir_ubo_addr_format(pdevice, robust_buffer_access),
       .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
    };
 

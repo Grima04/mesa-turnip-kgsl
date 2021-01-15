@@ -172,7 +172,8 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .vk_memory_model_device_scope = true,
          .workgroup_memory_explicit_layout = true,
       },
-      .ubo_addr_format = nir_address_format_32bit_index_offset,
+      .ubo_addr_format =
+         anv_nir_ubo_addr_format(pdevice, device->robust_buffer_access),
       .ssbo_addr_format =
           anv_nir_ssbo_addr_format(pdevice, device->robust_buffer_access),
       .phys_ssbo_addr_format = nir_address_format_64bit_global,
@@ -735,12 +736,20 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                                  layout, nir, &stage->bind_map);
 
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
-              nir_address_format_32bit_index_offset);
+              anv_nir_ubo_addr_format(pdevice,
+                 pipeline->device->robust_buffer_access));
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ssbo,
               anv_nir_ssbo_addr_format(pdevice,
                  pipeline->device->robust_buffer_access));
 
+   /* First run copy-prop to get rid of all of the vec() that address
+    * calculations often create and then constant-fold so that, when we
+    * get to anv_nir_lower_ubo_loads, we can detect constant offsets.
+    */
+   NIR_PASS_V(nir, nir_copy_prop);
    NIR_PASS_V(nir, nir_opt_constant_folding);
+
+   NIR_PASS_V(nir, anv_nir_lower_ubo_loads);
 
    /* We don't support non-uniform UBOs and non-uniform SSBO access is
     * handled naturally by falling back to A64 messages.
