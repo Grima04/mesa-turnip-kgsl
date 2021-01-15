@@ -494,7 +494,7 @@ void _tnl_draw_prims(struct gl_context *ctx,
        * one for the index buffer.
        */
       struct gl_buffer_object *bo[VERT_ATTRIB_MAX + 1];
-      GLuint nr_bo = 0;
+      GLuint nr_bo;
       GLuint inst;
 
       assert(num_instances > 0);
@@ -517,6 +517,7 @@ void _tnl_draw_prims(struct gl_context *ctx,
           * They will need to be unmapped below.
           */
          for (inst = 0; inst < num_instances; inst++) {
+            nr_bo = 0;
 
             bind_prims(ctx, &prim[i], this_nr_prims);
             bind_inputs(ctx, arrays, max_index + prim[i].basevertex + 1,
