@@ -688,7 +688,7 @@ compile_vertex_list(struct gl_context *ctx)
             continue;
          }
 
-         /* Line strips get converted to lines */
+         /* Line strips may get converted to lines */
          if (mode == GL_LINE_STRIP)
             mode = GL_LINES;
 
@@ -739,6 +739,9 @@ compile_vertex_list(struct gl_context *ctx)
                }
             }
          } else {
+            /* We didn't convert to LINES, so restore the original mode */
+            mode = original_prims[i].mode;
+
             for (unsigned j = 0; j < vertex_count; j++) {
                indices[idx++] = original_prims[i].start + j;
             }
