@@ -676,8 +676,7 @@ BEGIN_TEST(optimize.const_comparison_ordering)
    writeout(9, bld.sop2(aco_opcode::s_or_b64, bld.def(bld.lm), bld.def(s1, scc), src0, src1));
 
    /* bit sizes */
-   //! v2b: %b16 = p_extract_vector %b, 0
-   //! s2: %res10 = v_cmp_nge_f16 4.0, %b16
+   //! s2: %res10 = v_cmp_nge_f16 4.0, %b
    //! p_unit_test 10, %res10
    Temp input1_16 = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), inputs[1], Operand(0u));
    writeout(10, bld.sop2(aco_opcode::s_or_b64, bld.def(bld.lm), bld.def(s1, scc),

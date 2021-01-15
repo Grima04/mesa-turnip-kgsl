@@ -1224,42 +1224,37 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       const unsigned index = instr->operands[1].constantValue();
       const unsigned dst_offset = index * instr->definitions[0].bytes();
 
-      if (info.is_constant_or_literal(32)) {
-         uint32_t mask = u_bit_consecutive(0, instr->definitions[0].bytes() * 8u);
-         ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, (info.val >> (dst_offset * 8u)) & mask);
-         break;
-      } else if (!info.is_vec()) {
-         break;
-      }
+      if (info.is_vec()) {
+         /* check if we index directly into a vector element */
+         Instruction* vec = info.instr;
+         unsigned offset = 0;
 
-      /* check if we index directly into a vector element */
-      Instruction* vec = info.instr;
-      unsigned offset = 0;
-
-      for (const Operand& op : vec->operands) {
-         if (offset < dst_offset) {
-            offset += op.bytes();
-            continue;
-         } else if (offset != dst_offset || op.bytes() != instr->definitions[0].bytes()) {
+         for (const Operand& op : vec->operands) {
+            if (offset < dst_offset) {
+               offset += op.bytes();
+               continue;
+            } else if (offset != dst_offset || op.bytes() != instr->definitions[0].bytes()) {
+               break;
+            }
+            instr->operands[0] = op;
             break;
          }
-
-         /* convert this extract into a copy instruction */
-         instr->opcode = aco_opcode::p_parallelcopy;
-         instr->operands.pop_back();
-         instr->operands[0] = op;
-
-         if (op.isConstant()) {
-            ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, op.constantValue64());
-         } else if (op.isUndefined()) {
-            ctx.info[instr->definitions[0].tempId()].set_undefined();
-         } else {
-            assert(op.isTemp());
-            ctx.info[instr->definitions[0].tempId()].set_temp(op.getTemp());
-         }
-         break;
+      } else if (info.is_constant_or_literal(32)) {
+         /* propagate constants */
+         uint32_t mask = u_bit_consecutive(0, instr->definitions[0].bytes() * 8u);
+         uint32_t val = (info.val >> (dst_offset * 8u)) & mask;
+         instr->operands[0] = Operand::get_const(ctx.program->chip_class, val, instr->definitions[0].bytes());;
+      } else if (index == 0 && instr->operands[0].size() == instr->definitions[0].size()) {
+         ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
       }
-      break;
+
+      if (instr->operands[0].bytes() != instr->definitions[0].bytes())
+         break;
+
+      /* convert this extract into a copy instruction */
+      instr->opcode = aco_opcode::p_parallelcopy;
+      instr->operands.pop_back();
+      FALLTHROUGH;
    }
    case aco_opcode::p_parallelcopy: /* propagate */
       if (instr->operands[0].isTemp() && ctx.info[instr->operands[0].tempId()].is_vec() &&
