@@ -30,7 +30,7 @@ from zink_extensions import Extension,Version
 import sys
 
 # constructor: 
-#     Extensions(name, alias="", required=False, properties=False, features=False, conditions=None, guard=False)
+#     Extension(name, alias="", required=False, properties=False, features=False, conditions=None, guard=False)
 # The attributes:
 #  - required: the generated code debug_prints "ZINK: {name} required!" and
 #              returns NULL if the extension is unavailable.

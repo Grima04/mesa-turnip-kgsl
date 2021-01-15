@@ -1,8 +1,44 @@
+# Copyright © 2020 Hoe Hao Cheng
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice (including the next
+# paragraph) shall be included in all copies or substantial portions of the
+# Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.
+# 
+# Authors:
+#    Hoe Hao Cheng <haochengho12907@gmail.com>
+#
+
 from mako.template import Template
 from os import path
 from zink_extensions import Extension,Layer,Version
 import sys
 
+# constructor: Extension(name, core_since=None, functions=[])
+# The attributes:
+#  - core_since: the Vulkan version where this extension is promoted to core.
+#                When screen->loader_version is greater than or equal to this
+#                instance_info.have_{name} is set to true unconditionally. This
+#                is done because loading extensions that are promoted to core is
+#                considered to be an error.
+#
+#  - functions: functions which are added by the extension. The function names
+#               should not include the "vk" prefix and the vendor suffix - these
+#               will be added by the codegen accordingly.
 EXTENSIONS = [
     Extension("VK_EXT_debug_utils"),
     Extension("VK_KHR_maintenance2",
@@ -18,6 +54,7 @@ EXTENSIONS = [
     Extension("VK_MVK_moltenvk"),
 ]
 
+# constructor: Layer(name, conditions=[])
 LAYERS = [
     # if we have debug_util, allow a validation layer to be added.
     Layer("VK_LAYER_KHRONOS_validation",
