@@ -1251,7 +1251,14 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_intrinsic_load_deref:
       switch (mode) {
       case nir_var_mem_ubo:
-         op = nir_intrinsic_load_ubo;
+         if (addr_format == nir_address_format_64bit_global_32bit_offset)
+            op = nir_intrinsic_load_global_constant_offset;
+         else if (addr_format == nir_address_format_64bit_bounded_global)
+            op = nir_intrinsic_load_global_constant_bounded;
+         else if (addr_format_is_global(addr_format, mode))
+            op = nir_intrinsic_load_global_constant;
+         else
+            op = nir_intrinsic_load_ubo;
          break;
       case nir_var_mem_ssbo:
          if (addr_format_is_global(addr_format, mode))
@@ -1323,7 +1330,18 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, op);
 
-   if (addr_format_is_global(addr_format, mode)) {
+   if (op == nir_intrinsic_load_global_constant_offset) {
+      assert(addr_format == nir_address_format_64bit_global_32bit_offset);
+      load->src[0] = nir_src_for_ssa(
+         nir_pack_64_2x32(b, nir_channels(b, addr, 0x3)));
+      load->src[1] = nir_src_for_ssa(nir_channel(b, addr, 3));
+   } else if (op == nir_intrinsic_load_global_constant_bounded) {
+      assert(addr_format == nir_address_format_64bit_bounded_global);
+      load->src[0] = nir_src_for_ssa(
+         nir_pack_64_2x32(b, nir_channels(b, addr, 0x3)));
+      load->src[1] = nir_src_for_ssa(nir_channel(b, addr, 3));
+      load->src[2] = nir_src_for_ssa(nir_channel(b, addr, 2));
+   } else if (addr_format_is_global(addr_format, mode)) {
       load->src[0] = nir_src_for_ssa(addr_to_global(b, addr, addr_format));
    } else if (addr_format_is_offset(addr_format, mode)) {
       assert(addr->num_components == 1);
@@ -1372,8 +1390,12 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(bit_size % 8 == 0);
 
    nir_ssa_def *result;
-   if (addr_format_needs_bounds_check(addr_format)) {
-      /* The Vulkan spec for robustBufferAccess gives us quite a few options
+   if (addr_format_needs_bounds_check(addr_format) &&
+       op != nir_intrinsic_load_global_constant_bounded) {
+      /* We don't need to bounds-check global_constant_bounded because bounds
+       * checking is handled by the intrinsic itself.
+       *
+       * The Vulkan spec for robustBufferAccess gives us quite a few options
        * as to what we can do with an OOB read.  Unfortunately, returning
        * undefined values isn't one of them so we return an actual zero.
        */

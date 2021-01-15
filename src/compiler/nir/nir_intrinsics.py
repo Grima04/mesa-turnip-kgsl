@@ -937,6 +937,12 @@ load("global", [1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
 # src[] = { address }.
 load("global_constant", [1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET],
      [CAN_ELIMINATE, CAN_REORDER])
+# src[] = { base_address, offset }.
+load("global_constant_offset", [1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET],
+     [CAN_ELIMINATE, CAN_REORDER])
+# src[] = { base_address, offset, bound }.
+load("global_constant_bounded", [1, 1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET],
+     [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { address }.
 load("kernel_input", [1], [BASE, RANGE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { offset }.
