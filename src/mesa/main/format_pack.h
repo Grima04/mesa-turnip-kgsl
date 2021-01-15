@@ -70,9 +70,12 @@ extern void
 _mesa_pack_ubyte_rgba_row(mesa_format format, uint32_t n,
                           const uint8_t src[][4], void *dst);
 
-extern void
+static inline void
 _mesa_pack_uint_rgba_row(mesa_format format, uint32_t n,
-                         const uint32_t src[][4], void *dst);
+                         const uint32_t src[][4], void *dst)
+{
+   util_format_pack_rgba(format, dst, src, n);
+}
 
 extern void
 _mesa_pack_ubyte_rgba_rect(mesa_format format, uint32_t width, uint32_t height,

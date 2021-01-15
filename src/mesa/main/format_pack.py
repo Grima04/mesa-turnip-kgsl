@@ -160,59 +160,6 @@ pack_ubyte_r11g11b10_float(const uint8_t src[4], void *dst)
    *d = float3_to_r11g11b10f(rgb);
 }
 
-/* uint packing functions */
-
-%for f in rgb_formats:
-   %if not f.is_int():
-      <% continue %>
-   %elif f.is_normalized():
-      <% continue %>
-   %elif f.is_compressed():
-      <% continue %>
-   %endif
-
-static inline void
-pack_uint_${f.short_name()}(const uint32_t src[4], void *dst)
-{
-   %for (i, c) in enumerate(f.channels):
-      <% i = f.swizzle.inverse()[i] %>
-      %if c.type == 'x':
-         <% continue %>
-      %endif
-
-      ${c.datatype()} ${c.name} =
-      %if c.type == parser.SIGNED:
-         _mesa_signed_to_signed(src[${i}], ${c.size});
-      %elif c.type == parser.UNSIGNED:
-         _mesa_unsigned_to_unsigned(src[${i}], ${c.size});
-      %else:
-         assert(!"Invalid type: only integer types are allowed");
-      %endif
-   %endfor
-
-   %if f.layout == parser.ARRAY:
-      ${f.datatype()} *d = (${f.datatype()} *)dst;
-      %for (i, c) in enumerate(f.channels):
-         %if c.type == 'x':
-            <% continue %>
-         %endif
-         d[${i}] = ${c.name};
-      %endfor
-   %elif f.layout == parser.PACKED:
-      ${f.datatype()} d = 0;
-      %for (i, c) in enumerate(f.channels):
-         %if c.type == 'x':
-            <% continue %>
-         %endif
-         d |= PACK(${c.name}, ${c.shift}, ${c.size});
-      %endfor
-      (*(${f.datatype()} *)dst) = d;
-   %else:
-      <% assert False %>
-   %endif
-}
-%endfor
-
 
 /**
  * Pack a row of uint8_t rgba[4] values to the destination.
@@ -242,37 +189,6 @@ _mesa_pack_ubyte_rgba_row(mesa_format format, uint32_t n,
    }
 }
 
-/**
- * Pack a row of uint32_t rgba[4] values to the destination.
- */
-void
-_mesa_pack_uint_rgba_row(mesa_format format, uint32_t n,
-                          const uint32_t src[][4], void *dst)
-{
-   uint32_t i;
-   uint8_t *d = dst;
-
-   switch (format) {
-%for f in rgb_formats:
-   %if not f.is_int():
-      <% continue %>
-   %elif f.is_normalized():
-      <% continue %>
-   %elif f.is_compressed():
-      <% continue %>
-   %endif
-
-   case ${f.name}:
-      for (i = 0; i < n; ++i) {
-         pack_uint_${f.short_name()}(src[i], d);
-         d += ${f.block_size() // 8};
-      }
-      break;
-%endfor
-   default:
-      assert(!"Invalid format");
-   }
-}
 
 /**
  * Pack a 2D image of ubyte RGBA pixels in the given format.
