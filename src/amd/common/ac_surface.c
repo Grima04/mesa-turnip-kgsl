@@ -1684,8 +1684,12 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
       }
 
       for (unsigned i = 0; i < in->numMipLevels; i++) {
-         surf->u.gfx9.prt_level_offset[i] = mip_info[i].offset;
-         surf->u.gfx9.prt_level_pitch[i] = mip_info[i].pitch;
+         surf->u.gfx9.prt_level_offset[i] = mip_info[i].macroBlockOffset + mip_info[i].mipTailOffset;
+
+         if (info->chip_class >= GFX10)
+            surf->u.gfx9.prt_level_pitch[i] = mip_info[i].pitch;
+         else
+            surf->u.gfx9.prt_level_pitch[i] = out.mipChainPitch;
       }
    }
 
