@@ -162,7 +162,7 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
 {
    ppir_dest *dest = ppir_node_get_dest(node);
 
-   if (ppir_node_has_single_succ(node)) {
+   if (ppir_node_has_single_succ(node) && dest->type == ppir_target_ssa) {
       ppir_node *succ = ppir_node_first_succ(node);
       dest->type = ppir_target_pipeline;
       dest->pipeline = ppir_pipeline_reg_sampler;
