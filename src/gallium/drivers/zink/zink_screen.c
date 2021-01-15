@@ -834,7 +834,8 @@ load_instance_extensions(struct zink_screen *screen)
       printf("zink: Loader %d.%d.%d \n", VK_VERSION_MAJOR(screen->loader_version), VK_VERSION_MINOR(screen->loader_version), VK_VERSION_PATCH(screen->loader_version));
    }
 
-   if (screen->instance_info.have_KHR_get_physical_device_properties2) {
+   if (screen->instance_info.have_KHR_get_physical_device_properties2 &&
+       !(VK_MAKE_VERSION(1,1,0) <= screen->loader_version)) {
       // Not Vk 1.1+ so if VK_KHR_get_physical_device_properties2 the use it
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceFeatures2KHR);
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetPhysicalDeviceProperties2KHR);
@@ -846,7 +847,8 @@ load_instance_extensions(struct zink_screen *screen)
       GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceProperties2);
    }
 
-   if (screen->instance_info.have_KHR_draw_indirect_count) {
+   if (screen->instance_info.have_KHR_draw_indirect_count &&
+       !(VK_MAKE_VERSION(1,1,0) <= screen->loader_version)) {
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, CmdDrawIndirectCountKHR);
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, CmdDrawIndexedIndirectCountKHR);
       screen->vk_CmdDrawIndirectCount = vk_CmdDrawIndirectCountKHR;

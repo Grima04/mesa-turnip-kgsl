@@ -1,14 +1,20 @@
 from mako.template import Template
 from os import path
-from zink_extensions import Extension,Layer
+from zink_extensions import Extension,Layer,Version
 import sys
 
 EXTENSIONS = [
     Extension("VK_EXT_debug_utils"),
-    Extension("VK_KHR_maintenance2"),
-    Extension("VK_KHR_get_physical_device_properties2"),
-    Extension("VK_KHR_draw_indirect_count"),
-    Extension("VK_KHR_external_memory_capabilities"),
+    Extension("VK_KHR_maintenance2",
+        core_since=Version((1, 1, 0))),
+    Extension("VK_KHR_get_physical_device_properties2",
+        core_since=Version((1, 1, 0)),
+        functions=["GetPhysicalDeviceFeatures2", "GetPhysicalDeviceProperties2"]),
+    Extension("VK_KHR_draw_indirect_count",
+        core_since=Version((1, 2, 0)),
+        functions=["CmdDrawIndexedIndirectCount", "CmdDrawIndirectCount"]),
+    Extension("VK_KHR_external_memory_capabilities",
+        core_since=Version((1, 1, 0))),
     Extension("VK_MVK_moltenvk"),
 ]
 
@@ -89,12 +95,23 @@ zink_create_instance(struct zink_screen *screen)
        if (extension_props) {
            if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props) == VK_SUCCESS) {
               for (uint32_t i = 0; i < extension_count; i++) {
-%for ext in extensions:
-                 if (!strcmp(extension_props[i].extensionName, ${ext.extension_name_literal()})) {
+        %for ext in extensions:
+            %if not ext.core_since:
+                if (!strcmp(extension_props[i].extensionName, ${ext.extension_name_literal()})) {
                     have_${ext.name_with_vendor()} = true;
                     extensions[num_extensions++] = ${ext.extension_name_literal()};
+                }
+            %else:
+                if (screen->loader_version < ${ext.core_since.version()}) {
+                   if (!strcmp(extension_props[i].extensionName, ${ext.extension_name_literal()})) {
+                        have_${ext.name_with_vendor()} = true;
+                        extensions[num_extensions++] = ${ext.extension_name_literal()};
+                   }
+                 } else {
+                    have_${ext.name_with_vendor()} = true;
                  }
-%endfor
+            %endif
+        %endfor
               }
            }
        free(extension_props);
