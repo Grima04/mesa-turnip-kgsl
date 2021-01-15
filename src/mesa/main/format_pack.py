@@ -293,47 +293,6 @@ pack_float_r11g11b10_float(const float src[4], void *dst)
    *d = float3_to_r11g11b10f(src);
 }
 
-/**
- * Return a function that can pack a uint8_t rgba[4] color.
- */
-mesa_pack_ubyte_rgba_func
-_mesa_get_pack_ubyte_rgba_function(mesa_format format)
-{
-   switch (format) {
-%for f in rgb_formats:
-   %if f.is_compressed():
-      <% continue %>
-   %endif
-
-   case ${f.name}:
-      return pack_ubyte_${f.short_name()};
-%endfor
-   default:
-      return NULL;
-   }
-}
-
-/**
- * Return a function that can pack a float rgba[4] color.
- */
-mesa_pack_float_rgba_func
-_mesa_get_pack_float_rgba_function(mesa_format format)
-{
-   switch (format) {
-%for f in rgb_formats:
-   %if f.is_compressed():
-      <% continue %>
-   %elif f.is_int() and not f.is_normalized():
-      <% continue %>
-   %endif
-
-   case ${f.name}:
-      return pack_float_${f.short_name()};
-%endfor
-   default:
-      return NULL;
-   }
-}
 
 /**
  * Pack a row of uint8_t rgba[4] values to the destination.
