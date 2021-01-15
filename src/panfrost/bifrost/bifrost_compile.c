@@ -974,6 +974,21 @@ bi_fmul_f32(bi_builder *b, bi_index s0, bi_index s1)
         return bi_fma_f32(b, s0, s1, bi_imm_f32(-0.0f), BI_ROUND_NONE);
 }
 
+/* Approximate with FRCP_APPROX.f32 and apply a single iteration of
+ * Newton-Raphson to improve precision */
+
+static void
+bi_lower_frcp_32(bi_builder *b, bi_index dst, bi_index s0)
+{
+        bi_index x1 = bi_frcp_approx_f32(b, s0);
+        bi_index m  = bi_frexpm_f32(b, s0, false, false);
+        bi_index e  = bi_frexpe_f32(b, bi_neg(s0), false, false);
+        bi_index t1 = bi_fma_rscale_f32(b, m, bi_neg(x1), bi_imm_f32(1.0),
+                        bi_zero(), BI_ROUND_NONE, BI_SPECIAL_N);
+        bi_fma_rscale_f32_to(b, dst, t1, x1, x1, e,
+                        BI_ROUND_NONE, BI_SPECIAL_NONE);
+}
+
 static void
 bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 {
