@@ -56,11 +56,19 @@ static inline VkDescriptorType
 zink_sampler_type(const struct glsl_type *type)
 {
    assert(glsl_type_is_sampler(type));
-   if (glsl_get_sampler_dim(type) < GLSL_SAMPLER_DIM_BUF || glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS)
+   switch (glsl_get_sampler_dim(type)) {
+   case GLSL_SAMPLER_DIM_1D:
+   case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_3D:
+   case GLSL_SAMPLER_DIM_CUBE:
+   case GLSL_SAMPLER_DIM_RECT:
+   case GLSL_SAMPLER_DIM_MS:
       return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-   if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF)
+   case GLSL_SAMPLER_DIM_BUF:
       return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-   unreachable("unimplemented");
+   default:
+      unreachable("unimplemented");
+   }
    return 0;
 }
 
@@ -68,11 +76,19 @@ static inline VkDescriptorType
 zink_image_type(const struct glsl_type *type)
 {
    assert(glsl_type_is_image(type));
-   if (glsl_get_sampler_dim(type) < GLSL_SAMPLER_DIM_BUF || glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS)
+   switch (glsl_get_sampler_dim(type)) {
+   case GLSL_SAMPLER_DIM_1D:
+   case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_3D:
+   case GLSL_SAMPLER_DIM_CUBE:
+   case GLSL_SAMPLER_DIM_RECT:
+   case GLSL_SAMPLER_DIM_MS:
       return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-   if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF)
+   case GLSL_SAMPLER_DIM_BUF:
       return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-   unreachable("unimplemented");
+   default:
+      unreachable("unimplemented");
+   }
    return 0;
 }
 
