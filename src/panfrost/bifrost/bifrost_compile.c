@@ -1002,6 +1002,40 @@ bi_lower_frsq_32(bi_builder *b, bi_index dst, bi_index s0)
                         BI_ROUND_NONE, BI_SPECIAL_N);
 }
 
+/* More complex transcendentals, see
+ * https://gitlab.freedesktop.org/panfrost/mali-isa-docs/-/blob/master/Bifrost.adoc
+ * for documentation */
+
+static void
+bi_lower_fexp2_32(bi_builder *b, bi_index dst, bi_index s0)
+{
+        bi_index t1 = bi_temp(b->shader);
+        bi_instr *t1_instr = bi_fadd_f32_to(b, t1,
+                        s0, bi_imm_u32(0x49400000), BI_ROUND_NONE);
+        t1_instr->clamp = BI_CLAMP_CLAMP_0_INF;
+
+        bi_index t2 = bi_fadd_f32(b, t1, bi_imm_u32(0xc9400000), BI_ROUND_NONE);
+
+        bi_instr *a2 = bi_fadd_f32_to(b, bi_temp(b->shader),
+                        s0, bi_neg(t2), BI_ROUND_NONE);
+        a2->clamp = BI_CLAMP_CLAMP_M1_1;
+
+        bi_index a1t = bi_fexp_table_u4(b, t1, BI_ADJ_NONE);
+        bi_index t3 = bi_isub_u32(b, t1, bi_imm_u32(0x49400000), false);
+        bi_index a1i = bi_arshift_i32(b, t3, bi_null(), bi_imm_u8(4));
+        bi_index p1 = bi_fma_f32(b, a2->dest[0], bi_imm_u32(0x3d635635),
+                        bi_imm_u32(0x3e75fffa), BI_ROUND_NONE);
+        bi_index p2 = bi_fma_f32(b, p1, a2->dest[0],
+                        bi_imm_u32(0x3f317218), BI_ROUND_NONE);
+        bi_index p3 = bi_fmul_f32(b, a2->dest[0], p2);
+        bi_instr *x = bi_fma_rscale_f32_to(b, bi_temp(b->shader),
+                        p3, a1t, a1t, a1i, BI_ROUND_NONE, BI_SPECIAL_NONE);
+        x->clamp = BI_CLAMP_CLAMP_0_INF;
+
+        bi_instr *max = bi_fmax_f32_to(b, dst, x->dest[0], s0);
+        max->sem = BI_SEM_NAN_PROPAGATE;
+}
+
 static void
 bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 {
