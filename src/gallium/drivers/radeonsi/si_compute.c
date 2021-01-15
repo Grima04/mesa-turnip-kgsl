@@ -749,6 +749,12 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
    if (sctx->chip_class >= GFX10 && waves_per_threadgroup == 1)
       threadgroups_per_cu = 2;
 
+   if (unlikely(sctx->thread_trace_enabled)) {
+      si_write_event_with_dims_marker(sctx, &sctx->gfx_cs,
+                                      info->indirect ? EventCmdDispatchIndirect : EventCmdDispatch,
+                                      info->grid[0], info->grid[1], info->grid[2]);
+   }
+
    radeon_begin(cs);
    radeon_set_sh_reg(
       cs, R_00B854_COMPUTE_RESOURCE_LIMITS,

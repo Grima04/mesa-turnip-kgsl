@@ -1148,6 +1148,9 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       return;
    }
 
+   if (unlikely(sctx->thread_trace_enabled))
+      sctx->sqtt_next_event = EventCmdCopyImage;
+
    /* Using compute for copying to a linear texture in GTT is much faster than
     * going through RBs (render backends). This improves DRI PRIME performance.
     */
@@ -1168,6 +1171,9 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                          info->dst.format);
    si_decompress_subresource(ctx, info->src.resource, PIPE_MASK_RGBAZS, info->src.level,
                              info->src.box.z, info->src.box.z + info->src.box.depth - 1);
+
+   if (unlikely(sctx->thread_trace_enabled))
+      sctx->sqtt_next_event = EventCmdBlitImage;
 
    si_blitter_begin(sctx, SI_BLIT | (info->render_condition_enable ? 0 : SI_DISABLE_RENDER_COND));
    util_blitter_blit(sctx->blitter, info);

@@ -661,6 +661,13 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
          sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_DB;
    }
 
+   if (unlikely(sctx->thread_trace_enabled)) {
+      if (buffers & PIPE_CLEAR_COLOR)
+         sctx->sqtt_next_event = EventCmdClearColorImage;
+      else if (buffers & PIPE_CLEAR_DEPTHSTENCIL)
+         sctx->sqtt_next_event = EventCmdClearDepthStencilImage;
+   }
+
    si_blitter_begin(sctx, SI_CLEAR);
    util_blitter_clear(sctx->blitter, fb->width, fb->height, util_framebuffer_get_num_layers(fb),
                       buffers, color, depth, stencil, sctx->framebuffer.nr_samples > 1);

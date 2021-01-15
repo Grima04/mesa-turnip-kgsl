@@ -571,6 +571,8 @@ si_init_thread_trace(struct si_context *sctx)
 
    si_thread_trace_init_cs(sctx);
 
+   sctx->sqtt_next_event = EventInvalid;
+
    return true;
 }
 
@@ -691,6 +693,7 @@ si_emit_spi_config_cntl(struct si_context* sctx,
    radeon_end();
 }
 
+static uint32_t num_events = 0;
 void
 si_sqtt_write_event_marker(struct si_context* sctx, struct radeon_cmdbuf *rcs,
                            enum rgp_sqtt_marker_event_type api_type,
@@ -698,11 +701,10 @@ si_sqtt_write_event_marker(struct si_context* sctx, struct radeon_cmdbuf *rcs,
                            uint32_t instance_offset_user_data,
                            uint32_t draw_index_user_data)
 {
-   static uint32_t num_events = 0;
    struct rgp_sqtt_marker_event marker = {0};
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_EVENT;
-   marker.api_type = api_type;
+   marker.api_type = api_type == EventInvalid ? EventCmdDraw : api_type;
    marker.cmd_id = num_events++;
    marker.cb_id = 0;
 
@@ -720,4 +722,27 @@ si_sqtt_write_event_marker(struct si_context* sctx, struct radeon_cmdbuf *rcs,
    marker.draw_index_reg_idx = draw_index_user_data;
 
    si_emit_thread_trace_userdata(sctx, rcs, &marker, sizeof(marker) / 4);
+
+   sctx->sqtt_next_event = EventInvalid;
+}
+
+void
+si_write_event_with_dims_marker(struct si_context* sctx, struct radeon_cmdbuf *rcs,
+                                enum rgp_sqtt_marker_event_type api_type,
+                                uint32_t x, uint32_t y, uint32_t z)
+{
+   struct rgp_sqtt_marker_event_with_dims marker = {0};
+
+   marker.event.identifier = RGP_SQTT_MARKER_IDENTIFIER_EVENT;
+   marker.event.api_type = api_type;
+   marker.event.cmd_id = num_events++;
+   marker.event.cb_id = 0;
+   marker.event.has_thread_dims = 1;
+
+   marker.thread_x = x;
+   marker.thread_y = y;
+   marker.thread_z = z;
+
+   si_emit_thread_trace_userdata(sctx, rcs, &marker, sizeof(marker) / 4);
+   sctx->sqtt_next_event = EventInvalid;
 }

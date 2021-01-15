@@ -991,7 +991,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    if (unlikely(sctx->thread_trace_enabled)) {
-      si_sqtt_write_event_marker(sctx, &sctx->gfx_cs, EventCmdDraw,
+      si_sqtt_write_event_marker(sctx, &sctx->gfx_cs, sctx->sqtt_next_event,
                                  UINT_MAX, UINT_MAX, UINT_MAX);
    }
 

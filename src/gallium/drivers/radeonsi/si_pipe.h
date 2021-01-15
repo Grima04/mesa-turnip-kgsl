@@ -1292,6 +1292,7 @@ struct si_context {
    /* SQTT */
    struct ac_thread_trace_data *thread_trace;
    struct pipe_fence_handle *last_sqtt_fence;
+   enum rgp_sqtt_marker_event_type sqtt_next_event;
    bool thread_trace_enabled;
 };
 
@@ -1564,6 +1565,10 @@ void si_sqtt_write_event_marker(struct si_context* sctx, struct radeon_cmdbuf *r
                                 uint32_t vertex_offset_user_data,
                                 uint32_t instance_offset_user_data,
                                 uint32_t draw_index_user_data);
+void
+si_write_event_with_dims_marker(struct si_context* sctx, struct radeon_cmdbuf *rcs,
+                                enum rgp_sqtt_marker_event_type api_type,
+                                uint32_t x, uint32_t y, uint32_t z);
 bool si_init_thread_trace(struct si_context *sctx);
 void si_destroy_thread_trace(struct si_context *sctx);
 void si_handle_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs);
