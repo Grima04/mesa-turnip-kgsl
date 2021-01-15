@@ -1,10 +1,14 @@
 class Version:
-    driver_version  : (1,0,0)
+    device_version  : (1,0,0)
     struct_version  : (1,0)
 
-    def __init__(self, version, struct):
+    def __init__(self, version, struct=()):
         self.device_version = version
-        self.struct_version = struct
+
+        if not struct:
+            self.struct_version = (version[0], version[1])
+        else:
+            self.struct_version = struct
 
     # e.g. "VM_MAKE_VERSION(1,2,0)"
     def version(self):
