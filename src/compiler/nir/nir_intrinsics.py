@@ -1191,9 +1191,11 @@ image("store_raw_intel", src_comp=[1, 0])
 
 # Intrinsic to load a block of at least 32B of constant data from a 64-bit
 # global memory address.  The memory address must be uniform and 32B-aligned.
-# src[] = { address }.
-intrinsic("load_global_const_block_intel", src_comp=[1], dest_comp=0, bit_sizes=[32],
-          indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
+# The second source is a predicate which indicates whether or not to actually
+# do the load.
+# src[] = { address, predicate }.
+intrinsic("load_global_const_block_intel", src_comp=[1, 1], dest_comp=0,
+          bit_sizes=[32], indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # Number of data items being operated on for a SIMD program.
 system_value("simd_width_intel", 1)

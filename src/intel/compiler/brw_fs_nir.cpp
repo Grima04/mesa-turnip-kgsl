@@ -4665,12 +4665,43 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       assert(instr->num_components == 8 || instr->num_components == 16);
 
       const fs_builder ubld = bld.exec_all().group(instr->num_components, 0);
-      fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-      ubld.emit(SHADER_OPCODE_A64_OWORD_BLOCK_READ_LOGICAL,
-                tmp,
-                bld.emit_uniformize(get_nir_src(instr->src[0])), /* Address */
-                fs_reg(), /* No source data */
-                brw_imm_ud(instr->num_components));
+      fs_reg load_val;
+
+      bool is_pred_const = nir_src_is_const(instr->src[1]);
+      if (is_pred_const && nir_src_as_uint(instr->src[1]) == 0) {
+         /* In this case, we don't want the UBO load at all.  We really
+          * shouldn't get here but it's possible.
+          */
+         load_val = brw_imm_ud(0);
+      } else {
+         /* The uniform process may stomp the flag so do this first */
+         fs_reg addr = bld.emit_uniformize(get_nir_src(instr->src[0]));
+
+         load_val = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+
+         /* If the predicate is constant and we got here, then it's non-zero
+          * and we don't need the predicate at all.
+          */
+         if (!is_pred_const) {
+            /* Load the predicate */
+            fs_reg pred = bld.emit_uniformize(get_nir_src(instr->src[1]));
+            fs_inst *mov = ubld.MOV(bld.null_reg_d(), pred);
+            mov->conditional_mod = BRW_CONDITIONAL_NZ;
+
+            /* Stomp the destination with 0 if we're OOB */
+            mov = ubld.MOV(load_val, brw_imm_ud(0));
+            mov->predicate = BRW_PREDICATE_NORMAL;
+            mov->predicate_inverse = true;
+         }
+
+         fs_inst *load = ubld.emit(SHADER_OPCODE_A64_OWORD_BLOCK_READ_LOGICAL,
+                                   load_val, addr,
+                                   fs_reg(), /* No source data */
+                                   brw_imm_ud(instr->num_components));
+
+         if (!is_pred_const)
+            load->predicate = BRW_PREDICATE_NORMAL;
+      }
 
       /* From the HW perspective, we just did a single SIMD16 instruction
        * which loaded a dword in each SIMD channel.  From NIR's perspective,
@@ -4681,7 +4712,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        */
       for (unsigned i = 0; i < instr->num_components; i++) {
          bld.MOV(retype(offset(dest, bld, i), BRW_REGISTER_TYPE_UD),
-                 component(tmp, i));
+                 component(load_val, i));
       }
       break;
    }
