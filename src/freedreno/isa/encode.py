@@ -345,7 +345,7 @@ struct bitset_params;
 static uint64_t
 pack_field(unsigned low, unsigned high, uint64_t val)
 {
-   val &= ((1ul << (1 + high - low)) - 1);
+   val &= ((UINT64_C(1) << (1 + high - low)) - 1);
    return val << low;
 }
 
