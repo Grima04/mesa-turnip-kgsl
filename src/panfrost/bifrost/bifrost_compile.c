@@ -1037,6 +1037,40 @@ bi_lower_fexp2_32(bi_builder *b, bi_index dst, bi_index s0)
 }
 
 static void
+bi_lower_flog2_32(bi_builder *b, bi_index dst, bi_index s0)
+{
+        /* s0 = a1 * 2^e, with a1 in [0.75, 1.5) */
+        bi_index a1 = bi_frexpm_f32(b, s0, true, false);
+        bi_index ei = bi_frexpe_f32(b, s0, true, false);
+        bi_index ef = bi_s32_to_f32(b, ei, BI_ROUND_RTZ);
+
+        /* xt estimates -log(r1), a coarse approximation of log(a1) */
+        bi_index r1 = bi_flog_table_f32(b, s0, BI_MODE_RED, BI_PRECISION_NONE);
+        bi_index xt = bi_flog_table_f32(b, s0, BI_MODE_BASE2, BI_PRECISION_NONE);
+
+        /* log(s0) = log(a1 * 2^e) = e + log(a1) = e + log(a1 * r1) -
+         * log(r1), so let x1 = e - log(r1) ~= e + xt and x2 = log(a1 * r1),
+         * and then log(s0) = x1 + x2 */
+        bi_index x1 = bi_fadd_f32(b, ef, xt, BI_ROUND_NONE);
+
+        /* Since a1 * r1 is close to 1, x2 = log(a1 * r1) may be computed by
+         * polynomial approximation around 1. The series is expressed around
+         * 1, so set y = (a1 * r1) - 1.0 */
+        bi_index y = bi_fma_f32(b, a1, r1, bi_imm_f32(-1.0), BI_ROUND_NONE);
+
+        /* x2 = log_2(1 + y) = log_e(1 + y) * (1/log_e(2)), so approximate
+         * log_e(1 + y) by the Taylor series (lower precision than the blob):
+         * y - y^2/2 + O(y^3) = y(1 - y/2) + O(y^3) */
+        bi_index loge = bi_fmul_f32(b, y,
+                bi_fma_f32(b, y, bi_imm_f32(-0.5), bi_imm_f32(1.0), BI_ROUND_NONE));
+
+        bi_index x2 = bi_fmul_f32(b, loge, bi_imm_f32(1.0 / logf(2.0)));
+
+        /* log(s0) = x1 + x2 */
+        bi_fadd_f32_to(b, dst, x1, x2, BI_ROUND_NONE);
+}
+
+static void
 bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 {
         bi_index dst = bi_dest_index(&instr->dest.dest);
