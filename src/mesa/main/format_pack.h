@@ -27,6 +27,7 @@
 #define FORMAT_PACK_H
 
 
+#include "util/format/u_format.h"
 #include "formats.h"
 
 #ifdef __cplusplus
@@ -58,9 +59,12 @@ extern mesa_pack_ubyte_stencil_func
 _mesa_get_pack_ubyte_stencil_func(mesa_format format);
 
 
-extern void
+static inline void
 _mesa_pack_float_rgba_row(mesa_format format, uint32_t n,
-                          const float src[][4], void *dst);
+                          const float src[][4], void *dst)
+{
+   util_format_pack_rgba(format, dst, src, n);
+}
 
 extern void
 _mesa_pack_ubyte_rgba_row(mesa_format format, uint32_t n,
