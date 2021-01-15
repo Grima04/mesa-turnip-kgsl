@@ -990,6 +990,19 @@ bi_lower_frcp_32(bi_builder *b, bi_index dst, bi_index s0)
 }
 
 static void
+bi_lower_frsq_32(bi_builder *b, bi_index dst, bi_index s0)
+{
+        bi_index x1 = bi_frsq_approx_f32(b, s0);
+        bi_index m  = bi_frexpm_f32(b, s0, false, true);
+        bi_index e  = bi_frexpe_f32(b, bi_neg(s0), false, true);
+        bi_index t1 = bi_fmul_f32(b, x1, x1);
+        bi_index t2 = bi_fma_rscale_f32(b, m, bi_neg(t1), bi_imm_f32(1.0),
+                        bi_imm_u32(-1), BI_ROUND_NONE, BI_SPECIAL_N);
+        bi_fma_rscale_f32_to(b, dst, t2, x1, x1, e,
+                        BI_ROUND_NONE, BI_SPECIAL_N);
+}
+
+static void
 bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 {
         bi_index dst = bi_dest_index(&instr->dest.dest);
