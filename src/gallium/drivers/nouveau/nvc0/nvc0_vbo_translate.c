@@ -561,13 +561,14 @@ nvc0_push_vbo(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
 {
    struct push_context ctx;
    unsigned i, index_size;
+   unsigned index_bias = info->index_size ? info->index_bias : 0;
    unsigned inst_count = info->instance_count;
    unsigned vert_count = draw->count;
    unsigned prim;
 
    nvc0_push_context_init(nvc0, &ctx);
 
-   nvc0_vertex_configure_translate(nvc0, info->index_bias);
+   nvc0_vertex_configure_translate(nvc0, index_bias);
 
    if (nvc0->state.index_bias) {
       /* this is already taken care of by translate */
@@ -576,7 +577,7 @@ nvc0_push_vbo(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
    }
 
    if (unlikely(ctx.edgeflag.enabled))
-      nvc0_push_map_edgeflag(&ctx, nvc0, info->index_bias);
+      nvc0_push_map_edgeflag(&ctx, nvc0, index_bias);
 
    ctx.prim_restart = info->primitive_restart;
    ctx.restart_index = info->restart_index;
