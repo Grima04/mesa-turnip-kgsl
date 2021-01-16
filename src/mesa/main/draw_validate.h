@@ -27,8 +27,7 @@
 #ifndef API_VALIDATE_H
 #define API_VALIDATE_H
 
-#include <stdbool.h>
-#include "glheader.h"
+#include "mtypes.h"
 
 struct gl_buffer_object;
 struct gl_context;
@@ -37,9 +36,6 @@ struct gl_transform_feedback_object;
 
 extern GLboolean
 _mesa_valid_to_render(struct gl_context *ctx, const char *where);
-
-extern bool
-_mesa_is_valid_prim_mode(const struct gl_context *ctx, GLenum mode);
 
 extern GLboolean
 _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name);
@@ -130,5 +126,18 @@ _mesa_validate_MultiDrawElementsIndirectCount(struct gl_context *ctx,
                                               GLintptr drawcount,
                                               GLsizei maxdrawcount,
                                               GLsizei stride);
+
+/**
+ * Is 'mode' a valid value for glBegin(), glDrawArrays(), glDrawElements(),
+ * etc?  The set of legal values depends on whether geometry shaders/programs
+ * are supported.
+ * Note: This may be called during display list compilation.
+ */
+static inline bool
+_mesa_is_valid_prim_mode(const struct gl_context *ctx, GLenum mode)
+{
+   /* All primitive types are less than 32, which allows us to use a mask. */
+   return mode < 32 && (1u << mode) & ctx->SupportedPrimMask;
+}
 
 #endif

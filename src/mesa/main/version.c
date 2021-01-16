@@ -676,6 +676,32 @@ _mesa_compute_version(struct gl_context *ctx)
 done:
    if (ctx->API == API_OPENGL_COMPAT && ctx->Version >= 31)
       ctx->Extensions.ARB_compatibility = GL_TRUE;
+
+   /* Precompute valid primitive types for faster draw time validation. */
+   /* All primitive type enums are less than 32, so we can use the shift. */
+   ctx->SupportedPrimMask = (1 << GL_POINTS) |
+                           (1 << GL_LINES) |
+                           (1 << GL_LINE_LOOP) |
+                           (1 << GL_LINE_STRIP) |
+                           (1 << GL_TRIANGLES) |
+                           (1 << GL_TRIANGLE_STRIP) |
+                           (1 << GL_TRIANGLE_FAN);
+
+   if (ctx->API == API_OPENGL_COMPAT) {
+      ctx->SupportedPrimMask |= (1 << GL_QUADS) |
+                               (1 << GL_QUAD_STRIP) |
+                               (1 << GL_POLYGON);
+   }
+
+   if (_mesa_has_geometry_shaders(ctx)) {
+      ctx->SupportedPrimMask |= (1 << GL_LINES_ADJACENCY) |
+                               (1 << GL_LINE_STRIP_ADJACENCY) |
+                               (1 << GL_TRIANGLES_ADJACENCY) |
+                               (1 << GL_TRIANGLE_STRIP_ADJACENCY);
+   }
+
+   if (_mesa_has_tessellation(ctx))
+      ctx->SupportedPrimMask |= 1 << GL_PATCHES;
 }
 
 

@@ -5220,6 +5220,13 @@ struct gl_context
    /** Core/Driver constants */
    struct gl_constants Const;
 
+   /**
+    * Bitmask of valid primitive types supported by this context type,
+    * GL version, and extensions, not taking current states into account.
+    * Current states can further reduce the final bitmask at draw time.
+    */
+   GLbitfield SupportedPrimMask;
+
    /** \name The various 4x4 matrix stacks */
    /*@{*/
    struct gl_matrix_stack ModelviewMatrixStack;

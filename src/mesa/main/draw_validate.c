@@ -350,37 +350,6 @@ check_valid_to_render(struct gl_context *ctx, const char *function)
    return true;
 }
 
-
-/**
- * Is 'mode' a valid value for glBegin(), glDrawArrays(), glDrawElements(),
- * etc?  The set of legal values depends on whether geometry shaders/programs
- * are supported.
- * Note: This may be called during display list compilation.
- */
-bool
-_mesa_is_valid_prim_mode(const struct gl_context *ctx, GLenum mode)
-{
-   /* The overwhelmingly common case is (mode <= GL_TRIANGLE_FAN).  Test that
-    * first and exit.  You would think that a switch-statement would be the
-    * right approach, but at least GCC 4.7.2 generates some pretty dire code
-    * for the common case.
-    */
-   if (likely(mode <= GL_TRIANGLE_FAN))
-      return true;
-
-   if (mode <= GL_POLYGON)
-      return (ctx->API == API_OPENGL_COMPAT);
-
-   if (mode <= GL_TRIANGLE_STRIP_ADJACENCY)
-      return _mesa_has_geometry_shaders(ctx);
-
-   if (mode == GL_PATCHES)
-      return _mesa_has_tessellation(ctx);
-
-   return false;
-}
-
-
 /**
  * Is 'mode' a valid value for glBegin(), glDrawArrays(), glDrawElements(),
  * etc?  Also, do additional checking related to transformation feedback.
