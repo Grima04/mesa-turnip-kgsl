@@ -636,17 +636,21 @@ _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
 static bool
 valid_elements_type(struct gl_context *ctx, GLenum type, const char *name)
 {
-   switch (type) {
-   case GL_UNSIGNED_BYTE:
-   case GL_UNSIGNED_SHORT:
-   case GL_UNSIGNED_INT:
-      return true;
-
-   default:
+   /* GL_UNSIGNED_BYTE  = 0x1401
+    * GL_UNSIGNED_SHORT = 0x1403
+    * GL_UNSIGNED_INT   = 0x1405
+    *
+    * The trick is that bit 1 and bit 2 mean USHORT and UINT, respectively.
+    * After clearing those two bits (with ~6), we should get UBYTE.
+    * Both bits can't be set, because the enum would be greater than UINT.
+    */
+   if (!(type <= GL_UNSIGNED_INT && (type & ~6) == GL_UNSIGNED_BYTE)) {
       _mesa_error(ctx, GL_INVALID_ENUM, "%s(type = %s)", name,
                   _mesa_enum_to_string(type));
       return false;
    }
+
+   return true;
 }
 
 static bool
