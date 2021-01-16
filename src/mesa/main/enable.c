@@ -34,6 +34,7 @@
 #include "clip.h"
 #include "context.h"
 #include "debug_output.h"
+#include "draw_validate.h"
 #include "enable.h"
 #include "errors.h"
 #include "light.h"
@@ -607,6 +608,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          ctx->NewDriverState |=
             ctx->DriverFlags.NewIntelConservativeRasterization;
          ctx->IntelConservativeRasterization = state;
+         _mesa_update_valid_to_render_state(ctx);
          break;
       case GL_CONSERVATIVE_RASTERIZATION_NV:
          if (!_mesa_has_NV_conservative_raster(ctx))

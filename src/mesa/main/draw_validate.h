@@ -127,6 +127,9 @@ _mesa_validate_MultiDrawElementsIndirectCount(struct gl_context *ctx,
                                               GLsizei maxdrawcount,
                                               GLsizei stride);
 
+extern void
+_mesa_update_valid_to_render_state(struct gl_context *ctx);
+
 /**
  * Is 'mode' a valid value for glBegin(), glDrawArrays(), glDrawElements(),
  * etc?  The set of legal values depends on whether geometry shaders/programs

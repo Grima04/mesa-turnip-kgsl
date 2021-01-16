@@ -34,6 +34,7 @@
 #include <stdbool.h>
 #include "main/glheader.h"
 #include "main/context.h"
+#include "main/draw_validate.h"
 #include "main/enums.h"
 #include "main/hash.h"
 #include "main/mtypes.h"
@@ -537,6 +538,7 @@ _mesa_bind_pipeline(struct gl_context *ctx,
       _mesa_update_vertex_processing_mode(ctx);
       _mesa_update_allow_draw_out_of_order(ctx);
       _mesa_update_primitive_id_is_unused(ctx);
+      _mesa_update_valid_to_render_state(ctx);
    }
 }
 

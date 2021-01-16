@@ -33,6 +33,7 @@
 
 #include "buffers.h"
 #include "context.h"
+#include "draw_validate.h"
 #include "hash.h"
 #include "macros.h"
 #include "mtypes.h"
@@ -483,6 +484,7 @@ begin_transform_feedback(struct gl_context *ctx, GLenum mode, bool no_error)
 
    assert(ctx->Driver.BeginTransformFeedback);
    ctx->Driver.BeginTransformFeedback(ctx, mode, obj);
+   _mesa_update_valid_to_render_state(ctx);
 }
 
 
@@ -516,6 +518,7 @@ end_transform_feedback(struct gl_context *ctx,
    ctx->TransformFeedback.CurrentObject->Active = GL_FALSE;
    ctx->TransformFeedback.CurrentObject->Paused = GL_FALSE;
    ctx->TransformFeedback.CurrentObject->EndedAnytime = GL_TRUE;
+   _mesa_update_valid_to_render_state(ctx);
 }
 
 
@@ -1256,6 +1259,7 @@ pause_transform_feedback(struct gl_context *ctx,
    ctx->Driver.PauseTransformFeedback(ctx, obj);
 
    obj->Paused = GL_TRUE;
+   _mesa_update_valid_to_render_state(ctx);
 }
 
 
@@ -1300,6 +1304,7 @@ resume_transform_feedback(struct gl_context *ctx,
 
    assert(ctx->Driver.ResumeTransformFeedback);
    ctx->Driver.ResumeTransformFeedback(ctx, obj);
+   _mesa_update_valid_to_render_state(ctx);
 }
 
 

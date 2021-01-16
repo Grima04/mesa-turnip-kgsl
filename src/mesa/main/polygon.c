@@ -31,6 +31,7 @@
 #include "glheader.h"
 
 #include "context.h"
+#include "draw_validate.h"
 #include "image.h"
 #include "enums.h"
 #include "pack.h"
@@ -222,6 +223,9 @@ polygon_mode(struct gl_context *ctx, GLenum face, GLenum mode, bool no_error)
 
    if (ctx->Driver.PolygonMode)
       ctx->Driver.PolygonMode(ctx, face, mode);
+
+   if (ctx->Extensions.INTEL_conservative_rasterization)
+      _mesa_update_valid_to_render_state(ctx);
 }
 
 

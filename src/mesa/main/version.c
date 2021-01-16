@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include "context.h"
+#include "draw_validate.h"
 
 #include "util/os_misc.h"
 #include "util/simple_mtx.h"
@@ -702,6 +703,9 @@ done:
 
    if (_mesa_has_tessellation(ctx))
       ctx->SupportedPrimMask |= 1 << GL_PATCHES;
+
+   /* First time initialization. */
+   _mesa_update_valid_to_render_state(ctx);
 }
 
 

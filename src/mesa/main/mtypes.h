@@ -5227,6 +5227,13 @@ struct gl_context
     */
    GLbitfield SupportedPrimMask;
 
+   /**
+    * Bitmask of valid primitive types depending on current states (such as
+    * shaders). This is 0 if the current states should result in
+    * GL_INVALID_OPERATION in draw calls.
+    */
+   GLbitfield ValidPrimMask;
+
    /** \name The various 4x4 matrix stacks */
    /*@{*/
    struct gl_matrix_stack ModelviewMatrixStack;

@@ -351,20 +351,121 @@ check_valid_to_render(struct gl_context *ctx, const char *function)
 }
 
 /**
- * Is 'mode' a valid value for glBegin(), glDrawArrays(), glDrawElements(),
- * etc?  Also, do additional checking related to transformation feedback.
- * Note: this function cannot be called during glNewList(GL_COMPILE) because
- * this code depends on current transform feedback state.
- * Also, do additional checking related to tessellation shaders.
+ * Compute the bitmask of allowed primitive types (ValidPrimMask) depending
+ * on shaders and current states. This is used by draw validation.
+ *
+ * If some combinations of shaders and states are invalid, ValidPrimMask is
+ * set to 0, which will always set GL_INVALID_OPERATION in draw calls
+ * except for invalid enums, which will set GL_INVALID_ENUM, minimizing
+ * the number of gl_context variables that have to be read by draw calls.
  */
-GLboolean
-_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
+void
+_mesa_update_valid_to_render_state(struct gl_context *ctx)
 {
-   bool valid_enum = _mesa_is_valid_prim_mode(ctx, mode);
+   struct gl_pipeline_object *shader = ctx->_Shader;
+   unsigned mask = ctx->SupportedPrimMask;
 
-   if (!valid_enum) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "%s(mode=%x)", name, mode);
-      return GL_FALSE;
+   if (_mesa_is_no_error_enabled(ctx)) {
+      ctx->ValidPrimMask = mask;
+      return;
+   }
+
+   /* Start with an empty mask and set this to the trimmed mask at the end. */
+   ctx->ValidPrimMask = 0;
+
+   /* From GL_INTEL_conservative_rasterization spec:
+    *
+    * The conservative rasterization option applies only to polygons with
+    * PolygonMode state set to FILL. Draw requests for polygons with different
+    * PolygonMode setting or for other primitive types (points/lines) generate
+    * INVALID_OPERATION error.
+    */
+   if (ctx->IntelConservativeRasterization) {
+      if (ctx->Polygon.FrontMode != GL_FILL ||
+          ctx->Polygon.BackMode != GL_FILL) {
+         return;
+      } else {
+         mask &= (1 << GL_TRIANGLES) |
+                 (1 << GL_TRIANGLE_STRIP) |
+                 (1 << GL_TRIANGLE_FAN) |
+                 (1 << GL_QUADS) |
+                 (1 << GL_QUAD_STRIP) |
+                 (1 << GL_POLYGON) |
+                 (1 << GL_TRIANGLES_ADJACENCY) |
+                 (1 << GL_TRIANGLE_STRIP_ADJACENCY);
+      }
+   }
+
+   /* From the GL_EXT_transform_feedback spec:
+    *
+    *     "The error INVALID_OPERATION is generated if Begin, or any command
+    *      that performs an explicit Begin, is called when:
+    *
+    *      * a geometry shader is not active and <mode> does not match the
+    *        allowed begin modes for the current transform feedback state as
+    *        given by table X.1.
+    *
+    *      * a geometry shader is active and the output primitive type of the
+    *        geometry shader does not match the allowed begin modes for the
+    *        current transform feedback state as given by table X.1.
+    *
+    */
+   if (_mesa_is_xfb_active_and_unpaused(ctx)) {
+      if(shader->CurrentProgram[MESA_SHADER_GEOMETRY]) {
+         switch (shader->CurrentProgram[MESA_SHADER_GEOMETRY]->
+                    info.gs.output_primitive) {
+         case GL_POINTS:
+            if (ctx->TransformFeedback.Mode != GL_POINTS)
+               mask = 0;
+            break;
+         case GL_LINE_STRIP:
+            if (ctx->TransformFeedback.Mode != GL_LINES)
+               mask = 0;
+            break;
+         case GL_TRIANGLE_STRIP:
+            if (ctx->TransformFeedback.Mode != GL_TRIANGLES)
+               mask = 0;
+            break;
+         default:
+            mask = 0;
+         }
+      }
+      else if (shader->CurrentProgram[MESA_SHADER_TESS_EVAL]) {
+         struct gl_program *tes =
+            shader->CurrentProgram[MESA_SHADER_TESS_EVAL];
+         if (tes->info.tess.point_mode) {
+            if (ctx->TransformFeedback.Mode != GL_POINTS)
+               mask = 0;
+         } else if (tes->info.tess.primitive_mode == GL_ISOLINES) {
+            if (ctx->TransformFeedback.Mode != GL_LINES)
+               mask = 0;
+         } else {
+            if (ctx->TransformFeedback.Mode != GL_TRIANGLES)
+               mask = 0;
+         }
+      }
+      else {
+         switch (ctx->TransformFeedback.Mode) {
+         case GL_POINTS:
+            mask &= 1 << GL_POINTS;
+            break;
+         case GL_LINES:
+            mask &= (1 << GL_LINES) |
+                    (1 << GL_LINE_LOOP) |
+                    (1 << GL_LINE_STRIP);
+            break;
+         case GL_TRIANGLES:
+            /* TODO: This doesn't look right, but it matches the original code. */
+            mask &= ~((1 << GL_POINTS) |
+                      (1 << GL_LINES) |
+                      (1 << GL_LINE_LOOP) |
+                      (1 << GL_LINE_STRIP));
+            break;
+         }
+      }
+
+      if (!mask)
+         return;
    }
 
    /* From the OpenGL 4.5 specification, section 11.3.1:
@@ -395,62 +496,51 @@ _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
     * the draw primitive mode, the tessellation evaluation shader primitive
     * mode should be used for the checking.
    */
-   if (ctx->_Shader->CurrentProgram[MESA_SHADER_GEOMETRY]) {
+   if (shader->CurrentProgram[MESA_SHADER_GEOMETRY]) {
       const GLenum geom_mode =
-         ctx->_Shader->CurrentProgram[MESA_SHADER_GEOMETRY]->
+         shader->CurrentProgram[MESA_SHADER_GEOMETRY]->
             info.gs.input_primitive;
       struct gl_program *tes =
-         ctx->_Shader->CurrentProgram[MESA_SHADER_TESS_EVAL];
-      GLenum mode_before_gs = mode;
+         shader->CurrentProgram[MESA_SHADER_TESS_EVAL];
 
       if (tes) {
+         bool valid;
+
          if (tes->info.tess.point_mode)
-            mode_before_gs = GL_POINTS;
+            valid = geom_mode == GL_POINTS;
          else if (tes->info.tess.primitive_mode == GL_ISOLINES)
-            mode_before_gs = GL_LINES;
+            valid = geom_mode == GL_LINES;
          else
             /* the GL_QUADS mode generates triangles too */
-            mode_before_gs = GL_TRIANGLES;
-      }
+            valid = geom_mode == GL_TRIANGLES;
 
-      switch (mode_before_gs) {
-      case GL_POINTS:
-         valid_enum = (geom_mode == GL_POINTS);
-         break;
-      case GL_LINES:
-      case GL_LINE_LOOP:
-      case GL_LINE_STRIP:
-         valid_enum = (geom_mode == GL_LINES);
-         break;
-      case GL_TRIANGLES:
-      case GL_TRIANGLE_STRIP:
-      case GL_TRIANGLE_FAN:
-         valid_enum = (geom_mode == GL_TRIANGLES);
-         break;
-      case GL_QUADS:
-      case GL_QUAD_STRIP:
-      case GL_POLYGON:
-         valid_enum = false;
-         break;
-      case GL_LINES_ADJACENCY:
-      case GL_LINE_STRIP_ADJACENCY:
-         valid_enum = (geom_mode == GL_LINES_ADJACENCY);
-         break;
-      case GL_TRIANGLES_ADJACENCY:
-      case GL_TRIANGLE_STRIP_ADJACENCY:
-         valid_enum = (geom_mode == GL_TRIANGLES_ADJACENCY);
-         break;
-      default:
-         valid_enum = false;
-         break;
-      }
-      if (!valid_enum) {
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                     "%s(mode=%s vs geometry shader input %s)",
-                     name,
-                     _mesa_lookup_prim_by_nr(mode_before_gs),
-                     _mesa_lookup_prim_by_nr(geom_mode));
-         return GL_FALSE;
+         /* TES and GS use incompatible primitive types. Discard all draws. */
+         if (!valid)
+            return;
+      } else {
+         switch (geom_mode) {
+         case GL_POINTS:
+            mask &= 1 << GL_POINTS;
+            break;
+         case GL_LINES:
+            mask &= (1 << GL_LINES) |
+                    (1 << GL_LINE_LOOP) |
+                    (1 << GL_LINE_STRIP);
+            break;
+         case GL_TRIANGLES:
+            mask &= (1 << GL_TRIANGLES) |
+                    (1 << GL_TRIANGLE_STRIP) |
+                    (1 << GL_TRIANGLE_FAN);
+            break;
+         case GL_LINES_ADJACENCY:
+            mask &= (1 << GL_LINES_ADJACENCY) |
+                    (1 << GL_LINE_STRIP_ADJACENCY);
+            break;
+         case GL_TRIANGLES_ADJACENCY:
+            mask &= (1 << GL_TRIANGLES_ADJACENCY) |
+                    (1 << GL_TRIANGLE_STRIP_ADJACENCY);
+            break;
+         }
       }
    }
 
@@ -468,133 +558,40 @@ _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
     *      PATCHES."
     *
     */
-   if (ctx->_Shader->CurrentProgram[MESA_SHADER_TESS_EVAL] ||
-       ctx->_Shader->CurrentProgram[MESA_SHADER_TESS_CTRL]) {
-      if (mode != GL_PATCHES) {
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                     "only GL_PATCHES valid with tessellation");
-         return GL_FALSE;
-      }
+   if (shader->CurrentProgram[MESA_SHADER_TESS_EVAL] ||
+       shader->CurrentProgram[MESA_SHADER_TESS_CTRL]) {
+      mask &= 1 << GL_PATCHES;
    }
    else {
-      if (mode == GL_PATCHES) {
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                     "GL_PATCHES only valid with tessellation");
-         return GL_FALSE;
-      }
+      mask &= ~(1 << GL_PATCHES);
    }
 
-   /* From the GL_EXT_transform_feedback spec:
-    *
-    *     "The error INVALID_OPERATION is generated if Begin, or any command
-    *      that performs an explicit Begin, is called when:
-    *
-    *      * a geometry shader is not active and <mode> does not match the
-    *        allowed begin modes for the current transform feedback state as
-    *        given by table X.1.
-    *
-    *      * a geometry shader is active and the output primitive type of the
-    *        geometry shader does not match the allowed begin modes for the
-    *        current transform feedback state as given by table X.1.
-    *
-    */
-   if (_mesa_is_xfb_active_and_unpaused(ctx)) {
-      GLboolean pass = GL_TRUE;
+   ctx->ValidPrimMask = mask;
+}
 
-      if(ctx->_Shader->CurrentProgram[MESA_SHADER_GEOMETRY]) {
-         switch (ctx->_Shader->CurrentProgram[MESA_SHADER_GEOMETRY]->
-                    info.gs.output_primitive) {
-         case GL_POINTS:
-            pass = ctx->TransformFeedback.Mode == GL_POINTS;
-            break;
-         case GL_LINE_STRIP:
-            pass = ctx->TransformFeedback.Mode == GL_LINES;
-            break;
-         case GL_TRIANGLE_STRIP:
-            pass = ctx->TransformFeedback.Mode == GL_TRIANGLES;
-            break;
-         default:
-            pass = GL_FALSE;
-         }
-      }
-      else if (ctx->_Shader->CurrentProgram[MESA_SHADER_TESS_EVAL]) {
-         struct gl_program *tes =
-            ctx->_Shader->CurrentProgram[MESA_SHADER_TESS_EVAL];
-         if (tes->info.tess.point_mode)
-            pass = ctx->TransformFeedback.Mode == GL_POINTS;
-         else if (tes->info.tess.primitive_mode == GL_ISOLINES)
-            pass = ctx->TransformFeedback.Mode == GL_LINES;
-         else
-            pass = ctx->TransformFeedback.Mode == GL_TRIANGLES;
-      }
-      else {
-         switch (mode) {
-         case GL_POINTS:
-            pass = ctx->TransformFeedback.Mode == GL_POINTS;
-            break;
-         case GL_LINES:
-         case GL_LINE_STRIP:
-         case GL_LINE_LOOP:
-            pass = ctx->TransformFeedback.Mode == GL_LINES;
-            break;
-         default:
-            pass = ctx->TransformFeedback.Mode == GL_TRIANGLES;
-            break;
-         }
-      }
-      if (!pass) {
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                         "%s(mode=%s vs transform feedback %s)",
-                         name,
-                         _mesa_lookup_prim_by_nr(mode),
-                         _mesa_lookup_prim_by_nr(ctx->TransformFeedback.Mode));
-         return GL_FALSE;
-      }
+/**
+ * Is 'mode' a valid value for glBegin(), glDrawArrays(), glDrawElements(),
+ * etc?  Also, do additional checking related to transformation feedback.
+ * Note: this function cannot be called during glNewList(GL_COMPILE) because
+ * this code depends on current transform feedback state.
+ * Also, do additional checking related to tessellation shaders.
+ */
+GLboolean
+_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
+{
+   /* All primitive type enums are less than 32, so we can use the shift. */
+   if (mode >= 32 || !((1u << mode) & ctx->ValidPrimMask)) {
+      /* If the primitive type is not in SupportedPrimMask, set GL_INVALID_ENUM,
+       * else set GL_INVALID_OPERATION.
+       */
+      _mesa_error(ctx,
+                  mode >= 32 || !((1u << mode) & ctx->SupportedPrimMask) ?
+                     GL_INVALID_ENUM : GL_INVALID_OPERATION,
+                  "%s(mode=%x)", name, mode);
+      return false;
    }
 
-   /* From GL_INTEL_conservative_rasterization spec:
-    *
-    * The conservative rasterization option applies only to polygons with
-    * PolygonMode state set to FILL. Draw requests for polygons with different
-    * PolygonMode setting or for other primitive types (points/lines) generate
-    * INVALID_OPERATION error.
-    */
-   if (ctx->IntelConservativeRasterization) {
-      GLboolean pass = GL_TRUE;
-
-      switch (mode) {
-      case GL_POINTS:
-      case GL_LINES:
-      case GL_LINE_LOOP:
-      case GL_LINE_STRIP:
-      case GL_LINES_ADJACENCY:
-      case GL_LINE_STRIP_ADJACENCY:
-         pass = GL_FALSE;
-         break;
-      case GL_TRIANGLES:
-      case GL_TRIANGLE_STRIP:
-      case GL_TRIANGLE_FAN:
-      case GL_QUADS:
-      case GL_QUAD_STRIP:
-      case GL_POLYGON:
-      case GL_TRIANGLES_ADJACENCY:
-      case GL_TRIANGLE_STRIP_ADJACENCY:
-         if (ctx->Polygon.FrontMode != GL_FILL ||
-             ctx->Polygon.BackMode != GL_FILL)
-            pass = GL_FALSE;
-         break;
-      default:
-         pass = GL_FALSE;
-      }
-      if (!pass) {
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                     "mode=%s invalid with GL_INTEL_conservative_rasterization",
-                     _mesa_lookup_prim_by_nr(mode));
-         return GL_FALSE;
-      }
-   }
-
-   return GL_TRUE;
+   return true;
 }
 
 /**
