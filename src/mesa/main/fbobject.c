@@ -36,6 +36,7 @@
 #include "buffers.h"
 #include "context.h"
 #include "debug_output.h"
+#include "draw_validate.h"
 #include "enums.h"
 #include "fbobject.h"
 #include "formats.h"
@@ -3137,6 +3138,7 @@ _mesa_bind_framebuffers(struct gl_context *ctx,
 
       _mesa_reference_framebuffer(&ctx->DrawBuffer, newDrawFb);
       _mesa_update_allow_draw_out_of_order(ctx);
+      _mesa_update_valid_to_render_state(ctx);
    }
 
    if ((bindDrawBuf || bindReadBuf) && ctx->Driver.BindFramebuffer) {

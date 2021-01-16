@@ -440,6 +440,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
                ctx->PopAttribState |= GL_ENABLE_BIT;
                ctx->Color.BlendEnabled = newEnabled;
                _mesa_update_allow_draw_out_of_order(ctx);
+               _mesa_update_valid_to_render_state(ctx);
             }
          }
          break;
@@ -1403,6 +1404,7 @@ _mesa_set_enablei(struct gl_context *ctx, GLenum cap,
          ctx->PopAttribState |= GL_ENABLE_BIT;
          ctx->Color.BlendEnabled = enabled;
          _mesa_update_allow_draw_out_of_order(ctx);
+         _mesa_update_valid_to_render_state(ctx);
       }
       break;
    case GL_SCISSOR_TEST:

@@ -93,6 +93,7 @@
 #include "debug_output.h"
 #include "depth.h"
 #include "dlist.h"
+#include "draw_validate.h"
 #include "eval.h"
 #include "extensions.h"
 #include "fbobject.h"
@@ -1745,6 +1746,7 @@ _mesa_make_current( struct gl_context *newCtx,
              */
             _mesa_update_draw_buffers(newCtx);
             _mesa_update_allow_draw_out_of_order(newCtx);
+            _mesa_update_valid_to_render_state(newCtx);
          }
          if (!newCtx->ReadBuffer || _mesa_is_winsys_fbo(newCtx->ReadBuffer)) {
             _mesa_reference_framebuffer(&newCtx->ReadBuffer, readBuffer);
