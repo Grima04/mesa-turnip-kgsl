@@ -1520,7 +1520,8 @@ radv_image_create(VkDevice _device,
 		                     EXTERNAL_MEMORY_IMAGE_CREATE_INFO) ;
 
 	image->shareable = external_info;
-	if (!vk_format_is_depth_or_stencil(format) && !image->shareable) {
+	if (!vk_format_is_depth_or_stencil(format) && !image->shareable &&
+	    !(image->flags & VK_IMAGE_CREATE_SPARSE_ALIASED_BIT)) {
 		image->info.surf_index = &device->image_mrt_offset_counter;
 	}
 
