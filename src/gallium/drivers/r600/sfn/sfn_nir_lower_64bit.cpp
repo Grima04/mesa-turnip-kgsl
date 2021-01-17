@@ -967,7 +967,6 @@ public:
 
    StoreCombos m_stores;
    nir_shader *sh;
-   nir_builder b;
 };
 
 StoreMerger::StoreMerger(nir_shader *shader):
