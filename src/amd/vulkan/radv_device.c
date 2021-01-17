@@ -38,6 +38,7 @@
 #include "radv_shader.h"
 #include "radv_cs.h"
 #include "util/disk_cache.h"
+#include "vk_deferred_operation.h"
 #include "vk_util.h"
 #include <xf86drm.h>
 #include <amdgpu.h>
@@ -8363,3 +8364,42 @@ void radv_GetPrivateDataEXT(
 	vk_object_base_get_private_data(&device->vk, objectType, objectHandle,
 					privateDataSlot, pData);
 }
+
+VkResult radv_CreateDeferredOperationKHR(VkDevice _device,
+                                         const VkAllocationCallbacks* pAllocator,
+                                         VkDeferredOperationKHR* pDeferredOperation)
+{
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	return vk_create_deferred_operation(&device->vk, pAllocator,
+	                                    pDeferredOperation);
+}
+
+void radv_DestroyDeferredOperationKHR(VkDevice _device,
+                                      VkDeferredOperationKHR operation,
+                                      const VkAllocationCallbacks* pAllocator)
+{
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	vk_destroy_deferred_operation(&device->vk, operation, pAllocator);
+}
+
+uint32_t radv_GetDeferredOperationMaxConcurrencyKHR(VkDevice _device,
+                                                    VkDeferredOperationKHR operation)
+{
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	return vk_get_deferred_operation_max_concurrency(&device->vk, operation);
+}
+
+VkResult radv_GetDeferredOperationResultKHR(VkDevice _device,
+                                            VkDeferredOperationKHR operation)
+{
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	return vk_get_deferred_operation_result(&device->vk, operation);
+}
+
+VkResult radv_DeferredOperationJoinKHR(VkDevice _device,
+                                       VkDeferredOperationKHR operation)
+{
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	return vk_deferred_operation_join(&device->vk, operation);
+}
+
