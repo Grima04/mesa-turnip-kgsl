@@ -829,7 +829,7 @@ llvmpipe_update_cs(struct llvmpipe_context *lp)
          }
 
          /*
-          * We need to re-check lp->nr_cs_variants because an arbitrarliy large
+          * We need to re-check lp->nr_cs_variants because an arbitrarily large
           * number of shader variants (potentially all of them) could be
           * pending for destruction on flush.
           */

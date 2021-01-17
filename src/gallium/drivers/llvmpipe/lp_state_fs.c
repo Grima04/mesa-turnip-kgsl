@@ -2355,7 +2355,7 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
          continue;
       }
 
-      /* Ensure we havn't already found all channels */
+      /* Ensure we haven't already found all channels */
       if (dst_channels >= out_format_desc->nr_channels) {
          continue;
       }
