@@ -1164,6 +1164,17 @@ void ShaderFromNirProcessor::append_block(int nesting_change)
    m_output.push_back(InstructionBlock(m_nesting_depth, m_block_number++));
 }
 
+void ShaderFromNirProcessor::get_array_info(r600_shader& shader) const
+{
+   shader.num_arrays = m_reg_arrays.size();
+   shader.arrays = (r600_shader_array *)calloc(shader.num_arrays, sizeof(r600_shader_array));
+   for (int i = 0; i < shader.num_arrays; ++i) {
+      shader.arrays[i].comp_mask = m_reg_arrays[i]->mask();
+      shader.arrays[i].gpr_start = m_reg_arrays[i]->sel();
+      shader.arrays[i].gpr_count = m_reg_arrays[i]->size();
+   }
+}
+
 void ShaderFromNirProcessor::finalize()
 {
    do_finalize();

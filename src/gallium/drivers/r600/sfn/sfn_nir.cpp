@@ -240,6 +240,9 @@ bool ShaderFromNir::lower(const nir_shader *shader, r600_pipe_shader *pipe_shade
       sfn_log << SfnLog::trans << "Merge registers\n";
       impl->remap_registers();
    }
+
+   impl->get_array_info(pipe_shader->shader);
+
    sfn_log << SfnLog::trans << "Finished translating to R600 IR\n";
    return true;
 }
