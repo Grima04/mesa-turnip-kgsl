@@ -168,6 +168,13 @@ static void remap_shader_info(r600_shader& sh_info,
                               std::vector<rename_reg_pair>& map,
                               UNUSED ValueMap& values)
 {
+   for (unsigned i = 0; i < sh_info.num_arrays; ++i) {
+      auto new_index = map[sh_info.arrays[i].gpr_start];
+      if (new_index.valid)
+         sh_info.arrays[i].gpr_start = new_index.new_reg;
+      map[sh_info.arrays[i].gpr_start].used = true;
+   }
+
    for (unsigned i = 0; i < sh_info.ninput; ++i) {
       sfn_log << SfnLog::merge << "Input " << i << " gpr:" << sh_info.input[i].gpr
               << " of map.size()\n";
@@ -1167,11 +1174,14 @@ void ShaderFromNirProcessor::append_block(int nesting_change)
 void ShaderFromNirProcessor::get_array_info(r600_shader& shader) const
 {
    shader.num_arrays = m_reg_arrays.size();
-   shader.arrays = (r600_shader_array *)calloc(shader.num_arrays, sizeof(r600_shader_array));
-   for (int i = 0; i < shader.num_arrays; ++i) {
-      shader.arrays[i].comp_mask = m_reg_arrays[i]->mask();
-      shader.arrays[i].gpr_start = m_reg_arrays[i]->sel();
-      shader.arrays[i].gpr_count = m_reg_arrays[i]->size();
+   if (shader.num_arrays) {
+      shader.arrays = (r600_shader_array *)calloc(shader.num_arrays, sizeof(r600_shader_array));
+      for (unsigned i = 0; i < shader.num_arrays; ++i) {
+         shader.arrays[i].comp_mask = m_reg_arrays[i]->mask();
+         shader.arrays[i].gpr_start = m_reg_arrays[i]->sel();
+         shader.arrays[i].gpr_count = m_reg_arrays[i]->size();
+      }
+      shader.indirect_files |= (1 << TGSI_FILE_TEMPORARY);
    }
 }
 
