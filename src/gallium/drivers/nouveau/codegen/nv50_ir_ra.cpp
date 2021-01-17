@@ -251,6 +251,7 @@ private:
 
    class InsertConstraintsPass : public Pass {
    public:
+      InsertConstraintsPass() : targ(NULL) { }
       bool exec(Function *func);
    private:
       virtual bool visit(BasicBlock *);
