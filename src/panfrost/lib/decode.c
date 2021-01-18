@@ -802,25 +802,10 @@ pandecode_vertex_tiler_postfix_pre(
                 struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(p->state);
                 uint32_t *cl = pandecode_fetch_gpu_mem(smem, p->state, MALI_RENDERER_STATE_LENGTH);
 
-                /* Disassemble ahead-of-time to get stats. Initialize with
-                 * stats for the missing-shader case so we get validation
-                 * there, too */
-
-                struct midgard_disasm_stats info = {
-                        .texture_count = 0,
-                        .sampler_count = 0,
-                        .attribute_count = 0,
-                        .varying_count = 0,
-                        .work_count = 1,
-
-                        .uniform_count = -128,
-                        .uniform_buffer_count = 0
-                };
-
                 pan_unpack(cl, RENDERER_STATE, state);
 
                 if (state.shader.shader & ~0xF)
-                        info = pandecode_shader_disassemble(state.shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
+                        pandecode_shader_disassemble(state.shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
 
                 DUMP_UNPACKED(RENDERER_STATE, state, "State:\n");
                 pandecode_indent++;
