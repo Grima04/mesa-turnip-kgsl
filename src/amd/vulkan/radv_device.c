@@ -7332,6 +7332,8 @@ VkResult radv_CreateFramebuffer(
 	framebuffer->width = pCreateInfo->width;
 	framebuffer->height = pCreateInfo->height;
 	framebuffer->layers = pCreateInfo->layers;
+	framebuffer->imageless = !!imageless_create_info;
+
 	if (imageless_create_info) {
 		for (unsigned i = 0; i < imageless_create_info->attachmentImageInfoCount; ++i) {
 			const VkFramebufferAttachmentImageInfo *attachment =

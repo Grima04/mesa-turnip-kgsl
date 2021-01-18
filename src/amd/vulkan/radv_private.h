@@ -2326,6 +2326,8 @@ struct radv_framebuffer {
 	uint32_t                                     height;
 	uint32_t                                     layers;
 
+	bool                                         imageless;
+
 	uint32_t                                     attachment_count;
 	struct radv_image_view                       *attachments[0];
 };
