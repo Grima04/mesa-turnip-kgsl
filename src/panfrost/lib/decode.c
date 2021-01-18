@@ -37,14 +37,6 @@
 #include "midgard/disassemble.h"
 #include "bifrost/disassemble.h"
 
-#define MEMORY_PROP_DIR(obj, p) {\
-        if (obj.p) { \
-                char *a = pointer_as_memory_reference(obj.p); \
-                pandecode_prop("%s = %s", #p, a); \
-                free(a); \
-        } \
-}
-
 #define DUMP_UNPACKED(T, var, ...) { \
         pandecode_log(__VA_ARGS__); \
         pan_print(pandecode_dump_stream, T, var, (pandecode_indent + 1) * 2); \
@@ -177,61 +169,12 @@ pandecode_validate_buffer(mali_ptr addr, size_t sz)
 static void
 pandecode_midgard_tiler_descriptor(
                 const struct mali_midgard_tiler_packed *tp,
-                const struct mali_midgard_tiler_weights_packed *wp,
-                unsigned width,
-                unsigned height,
-                bool is_fragment,
-                bool has_hierarchy)
+                const struct mali_midgard_tiler_weights_packed *wp)
 {
         pan_unpack(tp, MIDGARD_TILER, t);
         DUMP_UNPACKED(MIDGARD_TILER, t, "Tiler:\n");
 
-        MEMORY_PROP_DIR(t, polygon_list);
-
-        /* The tiler heap has a start and end specified -- it should be
-         * identical to what we have in the BO. The exception is if tiling is
-         * disabled. */
-
-        MEMORY_PROP_DIR(t, heap_start);
-        assert(t.heap_end >= t.heap_start);
-
-        unsigned heap_size = t.heap_end - t.heap_start;
-
-        /* Tiling is enabled with a special flag */
-        unsigned hierarchy_mask = t.hierarchy_mask & MALI_MIDGARD_TILER_HIERARCHY_MASK;
-        unsigned tiler_flags = t.hierarchy_mask ^ hierarchy_mask;
-
-        bool tiling_enabled = hierarchy_mask;
-
-        if (tiling_enabled) {
-                /* We should also have no other flags */
-                if (tiler_flags)
-                        pandecode_msg("XXX: unexpected tiler %X\n", tiler_flags);
-        } else {
-                /* When tiling is disabled, we should have that flag and no others */
-
-                if (tiler_flags != MALI_MIDGARD_TILER_DISABLED) {
-                        pandecode_msg("XXX: unexpected tiler flag %X, expected MALI_MIDGARD_TILER_DISABLED\n",
-                                        tiler_flags);
-                }
-
-                /* We should also have an empty heap */
-                if (heap_size) {
-                        pandecode_msg("XXX: tiler heap size %d given, expected empty\n",
-                                        heap_size);
-                }
-
-                /* Disabled tiling is used only for clear-only jobs, which are
-                 * purely FRAGMENT, so we should never see this for
-                 * non-FRAGMENT descriptors. */
-
-                if (!is_fragment)
-                        pandecode_msg("XXX: tiler disabled for non-FRAGMENT job\n");
-        }
-
-        /* We've never seen weights used in practice, but we know from the
-         * kernel these fields is there */
-
+        /* We've never seen weights used in practice, but they exist */
         pan_unpack(wp, MIDGARD_TILER_WEIGHTS, w);
         bool nonzero_weights = false;
 
@@ -279,8 +222,7 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
         const void *t = pan_section_ptr(s, SINGLE_TARGET_FRAMEBUFFER, TILER);
         const void *w = pan_section_ptr(s, SINGLE_TARGET_FRAMEBUFFER, TILER_WEIGHTS);
 
-        bool has_hierarchy = !(gpu_id == 0x0720 || gpu_id == 0x0820 || gpu_id == 0x0830);
-        pandecode_midgard_tiler_descriptor(t, w, p.bound_max_x + 1, p.bound_max_y + 1, is_fragment, has_hierarchy);
+        pandecode_midgard_tiler_descriptor(t, w);
 
         pandecode_indent--;
 
@@ -384,7 +326,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                 } else {
                         const void *t = pan_section_ptr(fb, MULTI_TARGET_FRAMEBUFFER, TILER);
                         const void *w = pan_section_ptr(fb, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS);
-                        pandecode_midgard_tiler_descriptor(t, w, params.width, params.height, is_fragment, true);
+                        pandecode_midgard_tiler_descriptor(t, w);
                 }
 	} else {
                 pandecode_msg("XXX: skipping compute MFBD, fixme\n");
