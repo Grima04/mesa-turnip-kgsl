@@ -610,11 +610,11 @@ zink_set_sampler_views(struct pipe_context *pctx,
                        struct pipe_sampler_view **views)
 {
    struct zink_context *ctx = zink_context(pctx);
-   assert(views);
    for (unsigned i = 0; i < num_views; ++i) {
+      struct pipe_sampler_view *pview = views ? views[i] : NULL;
       pipe_sampler_view_reference(
          &ctx->image_views[shader_type][start_slot + i],
-         views[i]);
+         pview);
    }
    ctx->num_image_views[shader_type] = start_slot + num_views;
 }
