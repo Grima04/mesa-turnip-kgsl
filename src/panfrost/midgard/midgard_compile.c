@@ -3173,10 +3173,8 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         program->tls_size = ctx->tls_size;
 
         if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
-                disassemble_midgard(stdout,
-                                    program->compiled.data,
-                                    program->compiled.size,
-                                    inputs->gpu_id, ctx->stage);
+                disassemble_midgard(stdout, program->compiled.data,
+                                    program->compiled.size, inputs->gpu_id);
         }
 
         if ((midgard_debug & MIDGARD_DBG_SHADERDB || inputs->shaderdb) &&
