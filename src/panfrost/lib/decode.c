@@ -37,8 +37,6 @@
 #include "midgard/disassemble.h"
 #include "bifrost/disassemble.h"
 
-#include "pan_encoder.h"
-
 #define MEMORY_PROP(obj, p) {\
         if (obj->p) { \
                 char *a = pointer_as_memory_reference(obj->p); \
