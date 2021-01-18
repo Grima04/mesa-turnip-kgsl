@@ -761,37 +761,6 @@ pandecode_bifrost_texture(
         pandecode_indent--;
 }
 
-/* For shader properties like texture_count, we have a claimed property in the shader_meta, and the actual Truth from static analysis (this may just be an upper limit). We validate accordingly */
-
-static void
-pandecode_shader_prop(const char *name, unsigned claim, signed truth, bool fuzzy)
-{
-        /* Nothing to do */
-        if (claim == truth)
-                return;
-
-        if (fuzzy && (truth < 0))
-                pandecode_msg("XXX: fuzzy %s, claimed %d, expected %d\n", name, claim, truth);
-
-        if ((truth >= 0) && !fuzzy) {
-                pandecode_msg("%s: expected %s = %d, claimed %u\n",
-                                (truth < claim) ? "warn" : "XXX",
-                                name, truth, claim);
-        } else if ((claim > -truth) && !fuzzy) {
-                pandecode_msg("XXX: expected %s <= %u, claimed %u\n",
-                                name, -truth, claim);
-        } else if (fuzzy && (claim < truth))
-                pandecode_msg("XXX: expected %s >= %u, claimed %u\n",
-                                name, truth, claim);
-
-        pandecode_log(".%s = %" PRId16, name, claim);
-
-        if (fuzzy)
-                pandecode_log_cont(" /* %u used */", truth);
-
-        pandecode_log_cont(",\n");
-}
-
 static void
 pandecode_blend_shader_disassemble(mali_ptr shader, int job_no, int job_type,
                                    bool is_bifrost, unsigned gpu_id)
@@ -941,11 +910,6 @@ pandecode_vertex_tiler_postfix_pre(
                         uniform_count = state.preload.uniform_count;
                 else
                         uniform_count = state.properties.midgard.uniform_count;
-
-                pandecode_shader_prop("texture_count", texture_count, info.texture_count, false);
-                pandecode_shader_prop("sampler_count", sampler_count, info.sampler_count, false);
-                pandecode_shader_prop("attribute_count", attribute_count, info.attribute_count, false);
-                pandecode_shader_prop("varying_count", varying_count, info.varying_count, false);
 
                 if (is_bifrost)
                         DUMP_UNPACKED(PRELOAD, state.preload, "Preload:\n");
