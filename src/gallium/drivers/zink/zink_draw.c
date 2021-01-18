@@ -268,14 +268,89 @@ restart_supported(enum pipe_prim_type mode)
     return mode == PIPE_PRIM_LINE_STRIP || mode == PIPE_PRIM_TRIANGLE_STRIP || mode == PIPE_PRIM_TRIANGLE_FAN;
 }
 
-static void
+ALWAYS_INLINE static void
 update_drawid(struct zink_context *ctx, unsigned draw_id)
 {
-   struct zink_batch *batch = &ctx->batch;
-   if (ctx->drawid_broken) {
-      vkCmdPushConstants(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_VERTEX_BIT,
-                         offsetof(struct zink_gfx_push_constant, draw_id), sizeof(unsigned),
-                         &draw_id);
+   vkCmdPushConstants(ctx->batch.state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_VERTEX_BIT,
+                      offsetof(struct zink_gfx_push_constant, draw_id), sizeof(unsigned),
+                      &draw_id);
+}
+
+ALWAYS_INLINE static void
+draw_indexed_need_index_buffer_unref(struct zink_context *ctx,
+             const struct pipe_draw_info *dinfo,
+             const struct pipe_draw_start_count_bias *draws,
+             unsigned num_draws,
+             unsigned draw_id,
+             bool needs_drawid)
+{
+   VkCommandBuffer cmdbuf = ctx->batch.state->cmdbuf;
+   if (dinfo->increment_draw_id && needs_drawid) {
+      for (unsigned i = 0; i < num_draws; i++) {
+         update_drawid(ctx, draw_id);
+         vkCmdDrawIndexed(cmdbuf,
+            draws[i].count, dinfo->instance_count,
+            0, draws[i].index_bias, dinfo->start_instance);
+         draw_id++;
+      }
+   } else {
+      if (needs_drawid)
+         update_drawid(ctx, draw_id);
+      for (unsigned i = 0; i < num_draws; i++)
+         vkCmdDrawIndexed(cmdbuf,
+            draws[i].count, dinfo->instance_count,
+            0, draws[i].index_bias, dinfo->start_instance);
+
+   }
+}
+
+ALWAYS_INLINE static void
+draw_indexed(struct zink_context *ctx,
+             const struct pipe_draw_info *dinfo,
+             const struct pipe_draw_start_count_bias *draws,
+             unsigned num_draws,
+             unsigned draw_id,
+             bool needs_drawid)
+{
+   VkCommandBuffer cmdbuf = ctx->batch.state->cmdbuf;
+   if (dinfo->increment_draw_id && needs_drawid) {
+      for (unsigned i = 0; i < num_draws; i++) {
+         update_drawid(ctx, draw_id);
+         vkCmdDrawIndexed(cmdbuf,
+            draws[i].count, dinfo->instance_count,
+            draws[i].start, draws[i].index_bias, dinfo->start_instance);
+         draw_id++;
+      }
+   } else {
+      if (needs_drawid)
+         update_drawid(ctx, draw_id);
+      for (unsigned i = 0; i < num_draws; i++)
+         vkCmdDrawIndexed(cmdbuf,
+            draws[i].count, dinfo->instance_count,
+            draws[i].start, draws[i].index_bias, dinfo->start_instance);
+   }
+}
+
+ALWAYS_INLINE static void
+draw(struct zink_context *ctx,
+     const struct pipe_draw_info *dinfo,
+     const struct pipe_draw_start_count_bias *draws,
+     unsigned num_draws,
+     unsigned draw_id,
+     bool needs_drawid)
+{
+   VkCommandBuffer cmdbuf = ctx->batch.state->cmdbuf;
+   if (dinfo->increment_draw_id && needs_drawid) {
+      for (unsigned i = 0; i < num_draws; i++) {
+         update_drawid(ctx, draw_id);
+         vkCmdDraw(cmdbuf, draws[i].count, dinfo->instance_count, draws[i].start, dinfo->start_instance);
+         draw_id++;
+      }
+   } else {
+      if (needs_drawid)
+         update_drawid(ctx, draw_id);
+      for (unsigned i = 0; i < num_draws; i++)
+         vkCmdDraw(cmdbuf, draws[i].count, dinfo->instance_count, draws[i].start, dinfo->start_instance);
    }
 }
 
@@ -551,6 +626,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
 
    unsigned draw_id = drawid_offset;
+   bool needs_drawid = ctx->drawid_broken;
    if (dinfo->index_size > 0) {
       VkIndexType index_type;
       unsigned index_size = dinfo->index_size;
@@ -576,7 +652,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       zink_batch_reference_resource_rw(batch, res, false);
       if (dindirect && dindirect->buffer) {
          assert(num_draws == 1);
-         update_drawid(ctx, draw_id);
+         if (needs_drawid)
+            update_drawid(ctx, draw_id);
          struct zink_resource *indirect = zink_resource(dindirect->buffer);
          zink_batch_reference_resource_rw(batch, indirect, false);
          if (dindirect->indirect_draw_count) {
@@ -588,18 +665,15 @@ zink_draw_vbo(struct pipe_context *pctx,
          } else
             vkCmdDrawIndexedIndirect(batch->state->cmdbuf, indirect->obj->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
       } else {
-         for (unsigned i = 0; i < num_draws; i++) {
-            update_drawid(ctx, draw_id);
-            vkCmdDrawIndexed(batch->state->cmdbuf,
-               draws[i].count, dinfo->instance_count,
-               need_index_buffer_unref ? 0 : draws[i].start, draws[i].index_bias, dinfo->start_instance);
-            if (dinfo->increment_draw_id)
-               draw_id++;
-        }
+         if (need_index_buffer_unref)
+            draw_indexed_need_index_buffer_unref(ctx, dinfo, draws, num_draws, draw_id, needs_drawid);
+         else
+            draw_indexed(ctx, dinfo, draws, num_draws, draw_id, needs_drawid);
       }
    } else {
       if (so_target && screen->info.tf_props.transformFeedbackDraw) {
-         update_drawid(ctx, draw_id);
+         if (needs_drawid)
+            update_drawid(ctx, draw_id);
          zink_batch_reference_resource_rw(batch, zink_resource(so_target->base.buffer), false);
          zink_batch_reference_resource_rw(batch, zink_resource(so_target->counter_buffer), true);
          screen->vk_CmdDrawIndirectByteCountEXT(batch->state->cmdbuf, dinfo->instance_count, dinfo->start_instance,
@@ -607,7 +681,8 @@ zink_draw_vbo(struct pipe_context *pctx,
                                        MIN2(so_target->stride, screen->info.tf_props.maxTransformFeedbackBufferDataStride));
       } else if (dindirect && dindirect->buffer) {
          assert(num_draws == 1);
-         update_drawid(ctx, draw_id);
+         if (needs_drawid)
+            update_drawid(ctx, draw_id);
          struct zink_resource *indirect = zink_resource(dindirect->buffer);
          zink_batch_reference_resource_rw(batch, indirect, false);
          if (dindirect->indirect_draw_count) {
@@ -619,12 +694,7 @@ zink_draw_vbo(struct pipe_context *pctx,
          } else
             vkCmdDrawIndirect(batch->state->cmdbuf, indirect->obj->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
       } else {
-         for (unsigned i = 0; i < num_draws; i++) {
-            update_drawid(ctx, draw_id);
-            vkCmdDraw(batch->state->cmdbuf, draws[i].count, dinfo->instance_count, draws[i].start, dinfo->start_instance);
-            if (dinfo->increment_draw_id)
-               draw_id++;
-         }
+         draw(ctx, dinfo, draws, num_draws, draw_id, needs_drawid);
       }
    }
 
