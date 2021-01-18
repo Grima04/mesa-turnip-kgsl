@@ -567,45 +567,33 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                         case 0x7: {
                                 /* Format 12 */
                                 unsigned pos = tag & 0xf;
-                                // note that `pos' encodes both the total number of
-                                // instructions and the position in the constant stream,
-                                // presumably because decoded constants and instructions
-                                // share a buffer in the decoder, but we only care about
-                                // the position in the constant stream; the total number of
-                                // instructions is redundant.
-                                unsigned const_idx = 0;
-                                switch (pos) {
-                                case 0:
-                                case 1:
-                                case 2:
-                                case 6:
-                                        const_idx = 0;
-                                        break;
-                                case 3:
-                                case 4:
-                                case 7:
-                                case 9:
-                                        const_idx = 1;
-                                        break;
-                                case 5:
-                                case 0xa:
-                                        const_idx = 2;
-                                        break;
-                                case 8:
-                                case 0xb:
-                                case 0xc:
-                                        const_idx = 3;
-                                        break;
-                                case 0xd:
-                                        const_idx = 4;
-                                        break;
-                                case 0xe:
-                                        const_idx = 5;
-                                        break;
-                                default:
-                                        fprintf(fp, "# unknown pos 0x%x\n", pos);
-                                        break;
-                                }
+
+                                struct {
+                                        unsigned const_idx;
+                                        unsigned nr_tuples;
+                                } pos_table[0x10] = {
+                                        { 0, 1 },
+                                        { 0, 2 },
+                                        { 0, 4 },
+                                        { 1, 3 },
+                                        { 1, 5 },
+                                        { 2, 4 },
+                                        { 0, 7 },
+                                        { 1, 6 },
+                                        { 3, 5 },
+                                        { 1, 8 },
+                                        { 2, 7 },
+                                        { 3, 6 },
+                                        { 3, 8 },
+                                        { 4, 7 },
+                                        { 5, 6 },
+                                        { ~0, ~0 }
+                                };
+
+                                ASSERTED bool valid_count = pos_table[pos].nr_tuples == num_instrs;
+                                assert(valid_count && "INSTR_INVALID_ENC");
+
+                                unsigned const_idx = pos_table[pos].const_idx;
 
                                 if (num_consts < const_idx + 2)
                                         num_consts = const_idx + 2;
