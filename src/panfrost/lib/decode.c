@@ -198,26 +198,6 @@ pandecode_midgard_tiler_descriptor(
 
         MEMORY_PROP_DIR(t, polygon_list);
 
-        /* The body is offset from the base of the polygon list */
-        //assert(t->polygon_list_body > t->polygon_list);
-        unsigned body_offset = t.polygon_list_body - t.polygon_list;
-
-        /* It needs to fit inside the reported size */
-        //assert(t->polygon_list_size >= body_offset);
-
-        /* Now that we've sanity checked, we'll try to calculate the sizes
-         * ourselves for comparison */
-
-        unsigned ref_header = panfrost_tiler_header_size(width, height, t.hierarchy_mask, has_hierarchy);
-        unsigned ref_size = panfrost_tiler_full_size(width, height, t.hierarchy_mask, has_hierarchy);
-
-        if (!((ref_header == body_offset) && (ref_size == t.polygon_list_size))) {
-                pandecode_msg("XXX: bad polygon list size (expected %d / 0x%x)\n",
-                                ref_header, ref_size);
-                pandecode_prop("polygon_list_size = 0x%x", t.polygon_list_size);
-                pandecode_msg("body offset %d\n", body_offset);
-        }
-
         /* The tiler heap has a start and end specified -- it should be
          * identical to what we have in the BO. The exception is if tiling is
          * disabled. */
