@@ -71,20 +71,17 @@ FILE *pandecode_dump_stream;
  *
  * Raw: for raw messages to be printed as is.
  * Message: for helpful information to be commented out in replays.
- * Property: for properties of a struct
  *
- * Use one of pandecode_log, pandecode_msg, or pandecode_prop as syntax sugar.
+ * Use one of pandecode_log or pandecode_msg as syntax sugar.
  */
 
 enum pandecode_log_type {
         PANDECODE_RAW,
         PANDECODE_MESSAGE,
-        PANDECODE_PROPERTY
 };
 
 #define pandecode_log(...)  pandecode_log_typed(PANDECODE_RAW,      __VA_ARGS__)
 #define pandecode_msg(...)  pandecode_log_typed(PANDECODE_MESSAGE,  __VA_ARGS__)
-#define pandecode_prop(...) pandecode_log_typed(PANDECODE_PROPERTY, __VA_ARGS__)
 
 unsigned pandecode_indent = 0;
 
@@ -104,15 +101,10 @@ pandecode_log_typed(enum pandecode_log_type type, const char *format, ...)
 
         if (type == PANDECODE_MESSAGE)
                 fprintf(pandecode_dump_stream, "// ");
-        else if (type == PANDECODE_PROPERTY)
-                fprintf(pandecode_dump_stream, ".");
 
         va_start(ap, format);
         vfprintf(pandecode_dump_stream, format, ap);
         va_end(ap);
-
-        if (type == PANDECODE_PROPERTY)
-                fprintf(pandecode_dump_stream, ",\n");
 }
 
 static void
@@ -953,7 +945,7 @@ pandecode_bifrost_tiler(mali_ptr gpu_va, int job_no)
             t.hierarchy_mask != 0x28 &&
             t.hierarchy_mask != 0x50 &&
             t.hierarchy_mask != 0xa0)
-                pandecode_prop("XXX: Unexpected hierarchy_mask (not 0xa, 0x14, 0x28, 0x50 or 0xa0)!");
+                pandecode_msg("XXX: Unexpected hierarchy_mask (not 0xa, 0x14, 0x28, 0x50 or 0xa0)!");
 
         pandecode_indent--;
 }
