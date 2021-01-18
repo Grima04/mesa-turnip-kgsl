@@ -179,8 +179,8 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		pipe_shader_type_from_mesa(sel->nir->info.stage);
 	
 	bool dump = r600_can_dump_shader(&rctx->screen->b, processor);
-	unsigned use_sb = !(rctx->screen->b.debug_flags & DBG_NO_SB) &&
-		!(rscreen->b.debug_flags & DBG_NIR);
+	unsigned use_sb = !(rctx->screen->b.debug_flags & DBG_NO_SB) /*&&
+		!(rscreen->b.debug_flags & DBG_NIR)*/;
 	unsigned sb_disasm;
 	unsigned export_shader;
 	
