@@ -37,14 +37,6 @@
 #include "midgard/disassemble.h"
 #include "bifrost/disassemble.h"
 
-#define MEMORY_PROP(obj, p) {\
-        if (obj->p) { \
-                char *a = pointer_as_memory_reference(obj->p); \
-                pandecode_prop("%s = %s", #p, a); \
-                free(a); \
-        } \
-}
-
 #define MEMORY_PROP_DIR(obj, p) {\
         if (obj.p) { \
                 char *a = pointer_as_memory_reference(obj.p); \
