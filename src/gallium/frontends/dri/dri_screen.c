@@ -276,7 +276,9 @@ dri_fill_in_modes(struct dri_screen *screen)
       /* Expose only BGRA ordering if the loader doesn't support RGBA ordering. */
       if (!allow_rgba_ordering &&
           (mesa_formats[format] == MESA_FORMAT_R8G8B8A8_UNORM ||
-           mesa_formats[format] == MESA_FORMAT_R8G8B8X8_UNORM))
+           mesa_formats[format] == MESA_FORMAT_R8G8B8X8_UNORM ||
+           mesa_formats[format] == MESA_FORMAT_R8G8B8A8_SRGB  ||
+           mesa_formats[format] == MESA_FORMAT_R8G8B8X8_SRGB))
          continue;
 
       if (!allow_rgb10 &&
