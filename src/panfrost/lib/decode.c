@@ -31,8 +31,6 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include "decode.h"
-#include "util/macros.h"
-#include "util/u_math.h"
 
 #include "midgard/disassemble.h"
 #include "bifrost/disassemble.h"
