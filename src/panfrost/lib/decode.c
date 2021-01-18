@@ -470,19 +470,6 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
         pandecode_log("\n");
 }
 
-static mali_ptr
-pandecode_shader_address(const char *name, mali_ptr ptr)
-{
-        /* TODO: Decode flags */
-        mali_ptr shader_ptr = ptr & ~15;
-
-        char *a = pointer_as_memory_reference(shader_ptr);
-        pandecode_prop("%s = (%s) | %d", name, a, (int) (ptr & 15));
-        free(a);
-
-        return shader_ptr;
-}
-
 /* Decodes a Bifrost blend constant. See the notes in bifrost_blend_rt */
 
 static mali_ptr
@@ -964,18 +951,6 @@ pandecode_vertex_tiler_postfix_pre(
                         DUMP_UNPACKED(PRELOAD, state.preload, "Preload:\n");
 
                 if (!is_bifrost) {
-                        /* TODO: Blend shaders routing/disasm */
-                        pandecode_log("SFBD Blend:\n");
-                        pandecode_indent++;
-                        if (state.multisample_misc.sfbd_blend_shader) {
-                                pandecode_shader_address("Shader", state.sfbd_blend_shader);
-                        } else {
-                                DUMP_UNPACKED(BLEND_EQUATION, state.sfbd_blend_equation, "Equation:\n");
-                                pandecode_prop("Constant = %f", state.sfbd_blend_constant);
-                        }
-                        pandecode_indent--;
-                        pandecode_log("\n");
-
                         mali_ptr shader = state.sfbd_blend_shader & ~0xF;
                         if (state.multisample_misc.sfbd_blend_shader && shader)
                                 pandecode_blend_shader_disassemble(shader, job_no, job_type, false, gpu_id);
