@@ -1353,18 +1353,11 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		*sqtt_flush_bits |= RGP_FLUSH_CS_PARTIAL_FLUSH;
 	}
 
-	if (chip_class == GFX9 &&
-	    (flush_cb_db || (flush_bits & RADV_CMD_FLAG_INV_L2_METADATA))) {
+	if (chip_class == GFX9 && flush_cb_db) {
 		unsigned cb_db_event, tc_flags;
 
 		/* Set the CB/DB flush event. */
-		if (flush_cb_db) {
-			cb_db_event = V_028A90_CACHE_FLUSH_AND_INV_TS_EVENT;
-		} else {
-			/* Besides the CB the only other thing writing HTILE
-			 * or DCC metadata are our meta compute shaders. */
-			cb_db_event = V_028A90_CS_DONE;
-		}
+		cb_db_event = V_028A90_CACHE_FLUSH_AND_INV_TS_EVENT;
 
 		/* These are the only allowed combinations. If you need to
 		 * do multiple operations at once, do them separately.
@@ -1378,12 +1371,11 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		 * TC    | TC_MD         = writeback & invalidate L2 metadata (DCC, etc.)
 		 * TCL1                  = invalidate L1
 		 */
-		tc_flags = 0;
+		tc_flags = EVENT_TC_ACTION_ENA |
+			   EVENT_TC_MD_ACTION_ENA;
 
-		if (flush_cb_db) {
-			*sqtt_flush_bits |= RGP_FLUSH_FLUSH_CB | RGP_FLUSH_INVAL_CB |
-			                    RGP_FLUSH_FLUSH_DB | RGP_FLUSH_INVAL_DB;
-		}
+		*sqtt_flush_bits |= RGP_FLUSH_FLUSH_CB | RGP_FLUSH_INVAL_CB |
+			            RGP_FLUSH_FLUSH_DB | RGP_FLUSH_INVAL_DB;
 
 		/* Ideally flush TC together with CB/DB. */
 		if (flush_bits & RADV_CMD_FLAG_INV_L2) {
@@ -1398,9 +1390,6 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 					 RADV_CMD_FLAG_INV_VCACHE);
 
 			*sqtt_flush_bits |= RGP_FLUSH_INVAL_L2;
-		} else if (flush_bits & RADV_CMD_FLAG_INV_L2_METADATA) {
-			tc_flags = EVENT_TC_ACTION_ENA |
-			           EVENT_TC_MD_ACTION_ENA;
 		}
 
 		assert(flush_cnt);
