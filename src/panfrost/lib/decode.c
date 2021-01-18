@@ -552,7 +552,7 @@ bits(u32 word, u32 lo, u32 hi)
 }
 
 static void
-pandecode_invocation(const void *i, bool graphics)
+pandecode_invocation(const void *i)
 {
         /* Decode invocation_count. See the comment before the definition of
          * invocation_count for an explanation.
@@ -567,26 +567,11 @@ pandecode_invocation(const void *i, bool graphics)
         unsigned groups_y = bits(invocation.invocations, invocation.workgroups_y_shift, invocation.workgroups_z_shift) + 1;
         unsigned groups_z = bits(invocation.invocations, invocation.workgroups_z_shift, 32) + 1;
 
-        /* Even though we have this decoded, we want to ensure that the
-         * representation is "unique" so we don't lose anything by printing only
-         * the final result. More specifically, we need to check that we were
-         * passed something in canonical form, since the definition per the
-         * hardware is inherently not unique. How? Well, take the resulting
-         * decode and pack it ourselves! If it is bit exact with what we
-         * decoded, we're good to go. */
-
-        struct mali_invocation_packed ref;
-        panfrost_pack_work_groups_compute(&ref, groups_x, groups_y, groups_z, size_x, size_y, size_z, graphics);
-
-        if (memcmp(&ref, i, sizeof(ref))) {
-                pandecode_msg("XXX: non-canonical workgroups packing\n");
-                DUMP_UNPACKED(INVOCATION, invocation, "Invocation:\n")
-        }
-
-        /* Regardless, print the decode */
         pandecode_log("Invocation (%d, %d, %d) x (%d, %d, %d)\n",
                       size_x, size_y, size_z,
                       groups_x, groups_y, groups_z);
+
+        DUMP_UNPACKED(INVOCATION, invocation, "Invocation:\n")
 }
 
 static void
@@ -1144,8 +1129,7 @@ pandecode_vertex_compute_geometry_job(const struct MALI_JOB_HEADER *h,
 
         pandecode_log("Vertex Job Payload:\n");
         pandecode_indent++;
-        pandecode_invocation(pan_section_ptr(p, COMPUTE_JOB, INVOCATION),
-                             h->type != MALI_JOB_TYPE_COMPUTE);
+        pandecode_invocation(pan_section_ptr(p, COMPUTE_JOB, INVOCATION));
         DUMP_SECTION(COMPUTE_JOB, PARAMETERS, p, "Vertex Job Parameters:\n");
         DUMP_UNPACKED(DRAW, draw, "Draw:\n");
         pandecode_indent--;
@@ -1166,7 +1150,7 @@ pandecode_tiler_job_bfr(const struct MALI_JOB_HEADER *h,
         pandecode_indent++;
         pandecode_bifrost_tiler(tiler_ptr.address, job_no);
 
-        pandecode_invocation(pan_section_ptr(p, BIFROST_TILER_JOB, INVOCATION), true);
+        pandecode_invocation(pan_section_ptr(p, BIFROST_TILER_JOB, INVOCATION));
         pandecode_primitive(pan_section_ptr(p, BIFROST_TILER_JOB, PRIMITIVE));
 
         /* TODO: gl_PointSize on Bifrost */
@@ -1188,7 +1172,7 @@ pandecode_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
 
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
-        pandecode_invocation(pan_section_ptr(p, MIDGARD_TILER_JOB, INVOCATION), true);
+        pandecode_invocation(pan_section_ptr(p, MIDGARD_TILER_JOB, INVOCATION));
         pandecode_primitive(pan_section_ptr(p, MIDGARD_TILER_JOB, PRIMITIVE));
         DUMP_UNPACKED(DRAW, draw, "Draw:\n");
 
