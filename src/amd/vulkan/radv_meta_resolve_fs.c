@@ -1198,18 +1198,25 @@ radv_depth_stencil_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer,
 	barrier.dst_access_mask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
 	radv_subpass_barrier(cmd_buffer, &barrier);
 
-	radv_decompress_resolve_subpass_src(cmd_buffer);
+	struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
+	struct radv_image_view *src_iview =
+		cmd_buffer->state.attachments[src_att.attachment].iview;
+	struct radv_image *src_image = src_iview->image;
+
+	VkImageResolve2KHR region = {0};
+	region.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR;
+	region.srcSubresource.aspectMask = aspects;
+	region.srcSubresource.mipLevel = 0;
+	region.srcSubresource.baseArrayLayer = 0;
+	region.srcSubresource.layerCount = 1;
+
+	radv_decompress_resolve_src(cmd_buffer, src_image, src_att.layout, &region);
 
 	radv_meta_save(&saved_state, cmd_buffer,
 		       RADV_META_SAVE_GRAPHICS_PIPELINE |
 		       RADV_META_SAVE_DESCRIPTORS);
 
-	struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
 	struct radv_subpass_attachment dst_att = *subpass->ds_resolve_attachment;
-
-	struct radv_image_view *src_iview =
-		cmd_buffer->state.attachments[src_att.attachment].iview;
-	struct radv_image *src_image = src_iview->image;
 	struct radv_image_view *dst_iview =
 		cmd_buffer->state.attachments[dst_att.attachment].iview;
 
