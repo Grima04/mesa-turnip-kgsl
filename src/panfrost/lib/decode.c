@@ -1043,33 +1043,6 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
                 expected_tag |= (MALI_POSITIVE(info.rt_count) << 2);
         }
 
-        /* Extract tile coordinates */
-
-        unsigned min_x = s.bound_min_x << MALI_TILE_SHIFT;
-        unsigned min_y = s.bound_min_y << MALI_TILE_SHIFT;
-        unsigned max_x = s.bound_max_x << MALI_TILE_SHIFT;
-        unsigned max_y = s.bound_max_y << MALI_TILE_SHIFT;
-
-        /* Validate the coordinates are well-ordered */
-
-        if (min_x > max_x)
-                pandecode_msg("XXX: misordered X coordinates (%u > %u)\n", min_x, max_x);
-
-        if (min_y > max_y)
-                pandecode_msg("XXX: misordered X coordinates (%u > %u)\n", min_x, max_x);
-
-        /* Validate the coordinates fit inside the framebuffer. We use floor,
-         * rather than ceil, for the max coordinates, since the tile
-         * coordinates for something like an 800x600 framebuffer will actually
-         * resolve to 800x608, which would otherwise trigger a Y-overflow */
-
-        if (max_x + 1 > info.width)
-                pandecode_msg("XXX: tile coordinates overflow in X direction\n");
-
-        if (max_y + 1 > info.height)
-                pandecode_msg("XXX: tile coordinates overflow in Y direction\n");
-
-        /* After validation, we print */
         DUMP_UNPACKED(FRAGMENT_JOB_PAYLOAD, s, "Fragment Job Payload:\n");
 
         /* The FBD is a tagged pointer */
