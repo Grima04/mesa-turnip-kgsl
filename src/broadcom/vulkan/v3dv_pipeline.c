@@ -747,7 +747,7 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
               struct v3dv_pipeline *pipeline,
               const struct v3dv_pipeline_layout *layout)
 {
-   uint8_t return_size;
+   uint8_t return_size = 0;
 
    int texture_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);

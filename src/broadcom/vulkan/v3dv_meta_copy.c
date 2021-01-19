@@ -4987,6 +4987,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 {
    bool handled = true;
    VkResult result;
+   uint32_t dirty_dynamic_state = 0;
 
    /* We don't support rendering to linear depth/stencil, this should have
     * been rewritten to a compatible color blit by the caller.
@@ -5087,7 +5088,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
    uint32_t min_dst_layer;
    uint32_t max_dst_layer;
-   bool dst_mirror_z;
+   bool dst_mirror_z = false;
    if (dst->type != VK_IMAGE_TYPE_3D) {
       min_dst_layer = region.dstSubresource.baseArrayLayer;
       max_dst_layer = min_dst_layer + region.dstSubresource.layerCount;
@@ -5099,7 +5100,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
    uint32_t min_src_layer;
    uint32_t max_src_layer;
-   bool src_mirror_z;
+   bool src_mirror_z = false;
    if (src->type != VK_IMAGE_TYPE_3D) {
       min_src_layer = region.srcSubresource.baseArrayLayer;
       max_src_layer = min_src_layer + region.srcSubresource.layerCount;
@@ -5212,14 +5213,13 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    };
    v3dv_CmdSetScissor(_cmd_buffer, 0, 1, &scissor);
 
-   bool can_skip_tlb_load;
+   bool can_skip_tlb_load = false;
    const VkRect2D render_area = {
       .offset = { dst_x, dst_y },
       .extent = { dst_w, dst_h },
    };
 
    /* Record per-layer commands */
-   uint32_t dirty_dynamic_state = 0;
    VkImageAspectFlags aspects = region.dstSubresource.aspectMask;
    for (uint32_t i = 0; i < layer_count; i++) {
       /* Setup framebuffer */
