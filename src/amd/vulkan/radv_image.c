@@ -284,9 +284,6 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device,
 	if (radv_image_has_dcc(image))
 		return false;
 
-	if (!radv_image_has_cmask(image))
-		return false;
-
 	return true;
 }
 
