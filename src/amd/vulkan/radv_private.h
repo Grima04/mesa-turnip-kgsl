@@ -252,18 +252,6 @@ void radv_logi_v(const char *format, va_list va);
 } while (0)
 #endif
 
-#define stub_return(v)					\
-	do {						\
-		radv_finishme("stub %s", __func__);	\
-		return (v);				\
-	} while (0)
-
-#define stub()						\
-	do {						\
-		radv_finishme("stub %s", __func__);	\
-		return;					\
-	} while (0)
-
 int radv_get_instance_entrypoint_index(const char *name);
 int radv_get_device_entrypoint_index(const char *name);
 int radv_get_physical_device_entrypoint_index(const char *name);
