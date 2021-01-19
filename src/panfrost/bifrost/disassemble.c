@@ -186,11 +186,8 @@ static void dump_regs(FILE *fp, struct bifrost_regs srcs, bool first)
         else if (ctrl.slot23.slot3 == BIFROST_OP_WRITE_HI)
                 fprintf(fp, "slot 3: r%d (write hi %s) ", srcs.reg3, slot3_fma);
 
-        if (srcs.fau_idx) {
-                if (srcs.fau_idx & 0x80) {
-                        fprintf(fp, "uniform: u%d", (srcs.fau_idx & 0x7f) * 2);
-                }
-        }
+        if (srcs.fau_idx)
+                fprintf(fp, "fau %X ", srcs.fau_idx);
 
         fprintf(fp, "\n");
 }
