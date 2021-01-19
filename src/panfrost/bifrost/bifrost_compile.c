@@ -2386,7 +2386,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
         memcpy(program->blend_ret_offsets, ctx->blend_ret_offsets, sizeof(program->blend_ret_offsets));
 
-        if (bifrost_debug & BIFROST_DBG_SHADERS && !nir->info.internal) {
+        if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
                 disassemble_bifrost(stdout, program->compiled.data,
                                 program->compiled.size,
                                 bifrost_debug & BIFROST_DBG_VERBOSE);
@@ -2399,7 +2399,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         program->tls_size = ctx->tls_size;
 
         if ((bifrost_debug & BIFROST_DBG_SHADERDB || inputs->shaderdb) &&
-            !nir->info.internal) {
+            !skip_internal) {
                 bi_print_stats(ctx, stderr);
         }
 
