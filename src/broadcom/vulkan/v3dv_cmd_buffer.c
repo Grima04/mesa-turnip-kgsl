@@ -1504,6 +1504,47 @@ check_needs_load(const struct v3dv_cmd_buffer_state *state,
           !state->tile_aligned_render_area;
 }
 
+static bool
+check_needs_clear(const struct v3dv_cmd_buffer_state *state,
+                  VkImageAspectFlags aspect,
+                  uint32_t att_first_subpass_idx,
+                  VkAttachmentLoadOp load_op,
+                  bool do_clear_with_draw)
+{
+   /* We call this with image->aspects & aspect, so 0 means the aspect we are
+    * testing does not exist in the image.
+    */
+   if (!aspect)
+      return false;
+
+   /* If the aspect needs to be cleared with a draw call then we won't emit
+    * the clear here.
+    */
+   if (do_clear_with_draw)
+      return false;
+
+   /* If this is resuming a subpass started with another job, then attachment
+    * load operations don't apply.
+    */
+   if (state->job->is_subpass_continue)
+      return false;
+
+   /* If the render area is not aligned to tile boudaries we can't use the
+    * TLB for a clear.
+    */
+   if (!state->tile_aligned_render_area)
+      return false;
+
+   /* If this job is running in a subpass other than the first subpass in
+    * which this attachment is used then attachment load operations don't apply.
+    */
+   if (state->job->first_subpass != att_first_subpass_idx)
+      return false;
+
+   /* The attachment load operation must be CLEAR */
+   return load_op == VK_ATTACHMENT_LOAD_OP_CLEAR;
+}
+
 static void
 cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
                                   struct v3dv_cl *cl,
@@ -1669,20 +1710,18 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
 
       /* Only clear once on the first subpass that uses the attachment */
       bool needs_depth_clear =
-         (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
-         state->tile_aligned_render_area &&
-         state->job->first_subpass == ds_attachment->first_subpass &&
-         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         !state->job->is_subpass_continue &&
-         !subpass->do_depth_clear_with_draw;
+         check_needs_clear(state,
+                           aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+                           ds_attachment->first_subpass,
+                           ds_attachment->desc.loadOp,
+                           subpass->do_depth_clear_with_draw);
 
       bool needs_stencil_clear =
-         (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
-         state->tile_aligned_render_area &&
-         state->job->first_subpass == ds_attachment->first_subpass &&
-         ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         !state->job->is_subpass_continue &&
-         !subpass->do_stencil_clear_with_draw;
+         check_needs_clear(state,
+                           aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
+                           ds_attachment->first_subpass,
+                           ds_attachment->desc.stencilLoadOp,
+                           subpass->do_stencil_clear_with_draw);
 
       /* Skip the last store if it is not required */
       bool needs_depth_store =
@@ -1736,10 +1775,11 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
 
       /* Only clear once on the first subpass that uses the attachment */
       bool needs_clear =
-         state->tile_aligned_render_area &&
-         state->job->first_subpass == attachment->first_subpass &&
-         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         !state->job->is_subpass_continue;
+         check_needs_clear(state,
+                           VK_IMAGE_ASPECT_COLOR_BIT,
+                           attachment->first_subpass,
+                           attachment->desc.loadOp,
+                           false);
 
       /* Skip the last store if it is not required  */
       bool needs_store =
