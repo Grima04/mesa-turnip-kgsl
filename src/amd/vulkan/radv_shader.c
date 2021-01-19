@@ -1420,6 +1420,20 @@ shader_variant_compile(struct radv_device *device,
 	options->debug.func = radv_compiler_debug;
 	options->debug.private_data = &debug_data;
 
+	switch (device->force_vrs) {
+	case RADV_FORCE_VRS_2x2:
+		options->force_vrs_rates = (1u << 2) | (1u << 4);
+		break;
+	case RADV_FORCE_VRS_2x1:
+		options->force_vrs_rates = (0u << 2) | (1u << 4);
+		break;
+	case RADV_FORCE_VRS_1x2:
+		options->force_vrs_rates = (1u << 2) | (0u << 4);
+		break;
+	default:
+		break;
+	}
+
 	struct radv_shader_args args = {0};
 	args.options = options;
 	args.shader_info = info;

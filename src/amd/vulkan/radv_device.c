@@ -2861,7 +2861,8 @@ VkResult radv_CreateDevice(
 	device->robust_buffer_access2 = robust_buffer_access2;
 
 	device->adjust_frag_coord_z = (vrs_enabled ||
-				       device->vk.enabled_extensions.KHR_fragment_shading_rate) &&
+				       device->vk.enabled_extensions.KHR_fragment_shading_rate ||
+				       device->force_vrs != RADV_FORCE_VRS_NONE) &&
 				      (device->physical_device->rad_info.family == CHIP_SIENNA_CICHLID ||
 				       device->physical_device->rad_info.family == CHIP_NAVY_FLOUNDER ||
 				       device->physical_device->rad_info.family == CHIP_VANGOGH);
@@ -3011,6 +3012,24 @@ VkResult radv_CreateDevice(
 
 		if (!radv_trap_handler_init(device))
 			goto fail;
+	}
+
+	if (getenv("RADV_FORCE_VRS")) {
+		const char *vrs_rates = getenv("RADV_FORCE_VRS");
+
+		if (device->physical_device->rad_info.chip_class < GFX10_3)
+			fprintf(stderr, "radv: VRS is only supported on RDNA2+\n");
+		else if (device->physical_device->use_llvm)
+			fprintf(stderr, "radv: Forcing VRS rates is only supported with ACO\n");
+		else if (!strcmp(vrs_rates, "2x2"))
+			device->force_vrs = RADV_FORCE_VRS_2x2;
+		else if (!strcmp(vrs_rates, "2x1"))
+			device->force_vrs = RADV_FORCE_VRS_2x1;
+		else if (!strcmp(vrs_rates, "1x2"))
+			device->force_vrs = RADV_FORCE_VRS_1x2;
+		else
+			fprintf(stderr, "radv: Invalid VRS rates specified "
+					"(valid values are 2x2, 2x1 and 1x2)\n");
 	}
 
 	device->keep_shader_info = keep_shader_info;

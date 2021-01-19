@@ -10289,6 +10289,31 @@ static void export_vs_psiz_layer_viewport_vrs(isel_context *ctx, int *next_pos)
 
       exp->operands[1] = Operand(out);
       exp->enabled_mask |= 0x2;
+   } else if (ctx->options->force_vrs_rates) {
+      /* Bits [2:3] = VRS rate X
+       * Bits [4:5] = VRS rate Y
+       *
+       * The range is [-2, 1]. Values:
+       *   1: 2x coarser shading rate in that direction.
+       *   0: normal shading rate
+       *  -1: 2x finer shading rate (sample shading, not directional)
+       *  -2: 4x finer shading rate (sample shading, not directional)
+       *
+       * Sample shading can't go above 8 samples, so both numbers can't be -2
+       * at the same time.
+       */
+      Builder bld(ctx->program, ctx->block);
+      Temp rates = bld.copy(bld.def(v1), Operand((unsigned)ctx->options->force_vrs_rates));
+
+      /* If Pos.W != 1 (typical for non-GUI elements), use 2x2 coarse shading. */
+      Temp cond = bld.vopc(aco_opcode::v_cmp_neq_f32, bld.def(bld.lm),
+                           Operand(0x3f800000u),
+                           Operand(ctx->outputs.temps[VARYING_SLOT_POS + 3]));
+      rates = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                       bld.copy(bld.def(v1), Operand(0u)), rates, cond);
+
+      exp->operands[1] = Operand(rates);
+      exp->enabled_mask |= 0x2;
    }
 
    exp->valid_mask = ctx->options->chip_class == GFX10 && *next_pos == 0;
@@ -10354,8 +10379,11 @@ static void create_vs_exports(isel_context *ctx)
    /* the order these position exports are created is important */
    int next_pos = 0;
    export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
+
+   bool writes_primitive_shading_rate = outinfo->writes_primitive_shading_rate ||
+                                        ctx->options->force_vrs_rates;
    if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_viewport_index ||
-       outinfo->writes_primitive_shading_rate) {
+       writes_primitive_shading_rate) {
       export_vs_psiz_layer_viewport_vrs(ctx, &next_pos);
    }
    if (ctx->num_clip_distances + ctx->num_cull_distances > 0)

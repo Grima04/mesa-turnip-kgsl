@@ -142,6 +142,7 @@ struct radv_nir_compiler_options {
 	const struct radeon_info *info;
 	uint32_t tess_offchip_block_dw_size;
 	uint32_t address32_hi;
+	uint8_t force_vrs_rates;
 
 	struct {
 		void (*func)(void *private_data,

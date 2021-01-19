@@ -622,6 +622,12 @@ RADV driver environment variables
 
 ``RADV_FORCE_FAMILY``
    create a null device to compile shaders without a AMD GPU (e.g. vega10)
+
+``RADV_FORCE_VRS``
+   allow to force per-pipeline vertex VRS rates on GFX10.3+. This is only
+   forced for pipelines that don't explicitely use VRS or flat shading.
+   The supported values are 2x2, 1x2 and 2x1. Only for testing purposes.
+
 ``RADV_PERFTEST``
    a comma-separated list of named flags, which do various things:
 

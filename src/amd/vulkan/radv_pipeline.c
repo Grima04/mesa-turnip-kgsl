@@ -227,6 +227,12 @@ static uint32_t get_hash_flags(const struct radv_device *device, bool stats)
 		hash_flags |= RADV_HASH_SHADER_INVARIANT_GEOM;
 	if (stats)
 		hash_flags |= RADV_HASH_SHADER_KEEP_STATISTICS;
+	if (device->force_vrs != RADV_FORCE_VRS_2x2)
+		hash_flags |= RADV_HASH_SHADER_FORCE_VRS_2x2;
+	if (device->force_vrs != RADV_FORCE_VRS_2x1)
+		hash_flags |= RADV_HASH_SHADER_FORCE_VRS_2x1;
+	if (device->force_vrs != RADV_FORCE_VRS_1x2)
+		hash_flags |= RADV_HASH_SHADER_FORCE_VRS_1x2;
 	return hash_flags;
 }
 
@@ -4438,10 +4444,13 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	clip_dist_mask = outinfo->clip_dist_mask;
 	cull_dist_mask = outinfo->cull_dist_mask;
 	total_mask = clip_dist_mask | cull_dist_mask;
+
+	bool writes_primitive_shading_rate = outinfo->writes_primitive_shading_rate ||
+					     pipeline->device->force_vrs != RADV_FORCE_VRS_NONE;
 	bool misc_vec_ena = outinfo->writes_pointsize ||
 		outinfo->writes_layer ||
 		outinfo->writes_viewport_index ||
-		outinfo->writes_primitive_shading_rate;
+		writes_primitive_shading_rate;
 	unsigned spi_vs_out_config, nparams;
 
 	/* VS is required to export at least one param. */
@@ -4470,7 +4479,7 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_USE_VTX_POINT_SIZE(outinfo->writes_pointsize) |
 	                       S_02881C_USE_VTX_RENDER_TARGET_INDX(outinfo->writes_layer) |
 	                       S_02881C_USE_VTX_VIEWPORT_INDX(outinfo->writes_viewport_index) |
-			       S_02881C_USE_VTX_VRS_RATE(outinfo->writes_primitive_shading_rate) |
+			       S_02881C_USE_VTX_VRS_RATE(writes_primitive_shading_rate) |
 	                       S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
@@ -4545,10 +4554,13 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	clip_dist_mask = outinfo->clip_dist_mask;
 	cull_dist_mask = outinfo->cull_dist_mask;
 	total_mask = clip_dist_mask | cull_dist_mask;
+
+	bool writes_primitive_shading_rate = outinfo->writes_primitive_shading_rate ||
+					     pipeline->device->force_vrs != RADV_FORCE_VRS_NONE;
 	bool misc_vec_ena = outinfo->writes_pointsize ||
 		outinfo->writes_layer ||
 		outinfo->writes_viewport_index ||
-		outinfo->writes_primitive_shading_rate;
+		writes_primitive_shading_rate;
 	bool es_enable_prim_id = outinfo->export_prim_id ||
 				 (es && es->info.uses_prim_id);
 	bool break_wave_at_eoi = false;
@@ -4586,7 +4598,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_USE_VTX_POINT_SIZE(outinfo->writes_pointsize) |
 	                       S_02881C_USE_VTX_RENDER_TARGET_INDX(outinfo->writes_layer) |
 	                       S_02881C_USE_VTX_VIEWPORT_INDX(outinfo->writes_viewport_index) |
-			       S_02881C_USE_VTX_VRS_RATE(outinfo->writes_primitive_shading_rate) |
+			       S_02881C_USE_VTX_VRS_RATE(writes_primitive_shading_rate) |
 	                       S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
@@ -5332,6 +5344,20 @@ gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
 		 */
 		mode = V_028064_VRS_COMB_MODE_OVERRIDE;
 		rate_x = rate_y = 1;
+	} else if (pipeline->device->force_vrs != RADV_FORCE_VRS_NONE) {
+		/* Force enable vertex VRS if requested by the user. */
+		radeon_set_context_reg(ctx_cs, R_028848_PA_CL_VRS_CNTL,
+				       S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE) |
+				       S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE));
+
+		/* If the shader is using discard, turn off coarse shading
+		 * because discard at 2x2 pixel granularity degrades quality
+		 * too much. MIN allows sample shading but not coarse shading.
+		 */
+		struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
+
+		mode = ps->info.ps.can_discard ? V_028064_VRS_COMB_MODE_MIN
+					       : V_028064_VRS_COMB_MODE_PASSTHRU;
 	}
 
 	radeon_set_context_reg(ctx_cs, R_028A98_VGT_DRAW_PAYLOAD_CNTL,

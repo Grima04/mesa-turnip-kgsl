@@ -328,8 +328,10 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
 
    outinfo->param_exports = 0;
    int pos_written = 0x1;
+   bool writes_primitive_shading_rate = outinfo->writes_primitive_shading_rate ||
+                                        ctx->options->force_vrs_rates;
    if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer ||
-       outinfo->writes_primitive_shading_rate)
+       writes_primitive_shading_rate)
       pos_written |= 1 << 1;
 
    uint64_t mask = nir->info.outputs_written;
