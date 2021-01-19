@@ -3501,8 +3501,9 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
-      config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
-      config.early_z_enable = config.early_z_updates_enable;
+      config.early_z_enable = job->ez_state != VC5_EZ_DISABLED;
+      config.early_z_updates_enable = config.early_z_enable &&
+                                      pipeline->z_updates_enable;
    }
 }
 

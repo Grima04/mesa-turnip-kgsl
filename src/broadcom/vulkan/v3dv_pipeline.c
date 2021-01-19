@@ -2334,6 +2334,8 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
 
       config.stencil_enable =
          ds_info ? ds_info->stencilTestEnable && has_ds_attachment: false;
+
+      pipeline->z_updates_enable = config.z_updates_enable;
    };
 }
 

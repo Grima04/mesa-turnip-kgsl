@@ -1652,6 +1652,9 @@ struct v3dv_pipeline {
 
    struct v3dv_pipeline_layout *layout;
 
+   /* Whether this pipeline enables depth writes */
+   bool z_updates_enable;
+
    enum v3dv_ez_state ez_state;
 
    bool msaa;
