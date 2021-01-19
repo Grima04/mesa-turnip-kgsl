@@ -920,6 +920,21 @@ test_attachment_completeness(const struct gl_context *ctx, GLenum format,
          att->Complete = GL_FALSE;
          return;
       }
+
+      /* Mutable non base level texture as framebuffer attachment
+       * must be mipmap complete.
+       */
+      if (texImage->Level > texObj->Attrib.BaseLevel &&
+          !texObj->_MipmapComplete) {
+         /* Test if texture has become mipmap complete meanwhile. */
+         _mesa_test_texobj_completeness(ctx, att->Texture);
+         if (!texObj->_MipmapComplete) {
+            att_incomplete("texture attachment not mipmap complete");
+            att->Complete = GL_FALSE;
+            return;
+         }
+      }
+
       if (texImage->Width < 1 || texImage->Height < 1) {
          att_incomplete("teximage width/height=0");
          att->Complete = GL_FALSE;
