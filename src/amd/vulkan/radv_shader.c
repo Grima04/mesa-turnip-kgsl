@@ -1578,6 +1578,8 @@ radv_get_max_waves(struct radv_device *device,
 
 	if (conf->num_vgprs) {
 		unsigned vgprs = align(conf->num_vgprs, wave_size == 32 ? 8 : 4);
+		if (chip_class >= GFX10_3)
+		   vgprs = align(vgprs, wave_size == 32 ? 16 : 8);
 		max_simd_waves =
 			MIN2(max_simd_waves,
 			     device->physical_device->rad_info.num_physical_wave64_vgprs_per_simd / vgprs);
