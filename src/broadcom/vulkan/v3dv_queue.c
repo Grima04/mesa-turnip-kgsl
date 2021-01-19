@@ -169,8 +169,7 @@ handle_reset_query_cpu_job(struct v3dv_job *job)
       query->maybe_available = false;
       switch (info->pool->query_type) {
       case VK_QUERY_TYPE_OCCLUSION: {
-         const uint64_t infinite = 0xffffffffffffffffull;
-         v3dv_bo_wait(job->device, query->bo, infinite);
+         v3dv_bo_wait(job->device, query->bo, PIPE_TIMEOUT_INFINITE);
          uint32_t *counter = (uint32_t *) query->bo->map;
          *counter = 0;
          break;
@@ -466,8 +465,7 @@ handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
 
    /* Make sure the GPU is no longer using the indirect buffer*/
    assert(info->buffer && info->buffer->mem && info->buffer->mem->bo);
-   const uint64_t infinite = 0xffffffffffffffffull;
-   v3dv_bo_wait(queue->device, info->buffer->mem->bo, infinite);
+   v3dv_bo_wait(queue->device, info->buffer->mem->bo, PIPE_TIMEOUT_INFINITE);
 
    /* Map the indirect buffer and read the dispatch parameters */
    assert(info->buffer && info->buffer->mem && info->buffer->mem->bo);

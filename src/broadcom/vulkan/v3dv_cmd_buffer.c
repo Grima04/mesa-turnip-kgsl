@@ -4949,8 +4949,7 @@ v3dv_cmd_buffer_rewrite_indirect_csd_job(
       /* Make sure the GPU is not currently accessing the indirect CL for this
        * job, since we are about to overwrite some of the uniform data.
        */
-      const uint64_t infinite = 0xffffffffffffffffull;
-      v3dv_bo_wait(job->device, job->indirect.bo, infinite);
+      v3dv_bo_wait(job->device, job->indirect.bo, PIPE_TIMEOUT_INFINITE);
 
       for (uint32_t i = 0; i < 3; i++) {
          if (info->wg_uniform_offsets[i]) {
