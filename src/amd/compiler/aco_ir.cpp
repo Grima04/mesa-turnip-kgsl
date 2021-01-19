@@ -99,10 +99,12 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
    program->has_16bank_lds = family == CHIP_KABINI || family == CHIP_STONEY;
 
    program->vgpr_limit = 256;
+   program->physical_vgprs = 256;
    program->vgpr_alloc_granule = 3;
 
    if (chip_class >= GFX10) {
       program->physical_sgprs = 2560; /* doesn't matter as long as it's at least 128 * 20 */
+      program->physical_vgprs = 512;
       program->sgpr_alloc_granule = 127;
       program->sgpr_limit = 106;
       if (chip_class >= GFX10_3)

@@ -314,7 +314,7 @@ uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t max_waves)
 
 uint16_t get_addr_vgpr_from_waves(Program *program, uint16_t max_waves)
 {
-    uint16_t vgprs = 256 / max_waves & ~program->vgpr_alloc_granule;
+    uint16_t vgprs = program->physical_vgprs / max_waves & ~program->vgpr_alloc_granule;
     return std::min(vgprs, program->vgpr_limit);
 }
 
@@ -325,7 +325,7 @@ void calc_min_waves(Program* program)
    if (program->wave_size == 32)
       waves_per_workgroup = DIV_ROUND_UP(waves_per_workgroup, 2);
 
-   unsigned simd_per_cu = 4; /* TODO: different on Navi */
+   unsigned simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
    bool wgp = program->chip_class >= GFX10; /* assume WGP is used on Navi */
    unsigned simd_per_cu_wgp = wgp ? simd_per_cu * 2 : simd_per_cu;
 
@@ -334,11 +334,12 @@ void calc_min_waves(Program* program)
 
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
 {
-   /* TODO: max_waves_per_simd, simd_per_cu and the number of physical vgprs for Navi */
-   unsigned max_waves_per_simd = 10;
-   if ((program->family >= CHIP_POLARIS10 && program->family <= CHIP_VEGAM) || program->chip_class >= GFX10_3)
+   unsigned max_waves_per_simd = program->chip_class == GFX10 ? 20 : 10;
+   if (program->chip_class >= GFX10_3)
+      max_waves_per_simd = 16;
+   else if (program->family >= CHIP_POLARIS10 && program->family <= CHIP_VEGAM)
       max_waves_per_simd = 8;
-   unsigned simd_per_cu = 4;
+   unsigned simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
 
    bool wgp = program->chip_class >= GFX10; /* assume WGP is used on Navi */
    unsigned simd_per_cu_wgp = wgp ? simd_per_cu * 2 : simd_per_cu;
@@ -350,7 +351,7 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
       program->max_reg_demand = new_demand;
    } else {
       program->num_waves = program->physical_sgprs / get_sgpr_alloc(program, new_demand.sgpr);
-      program->num_waves = std::min<uint16_t>(program->num_waves, 256 / get_vgpr_alloc(program, new_demand.vgpr));
+      program->num_waves = std::min<uint16_t>(program->num_waves, program->physical_vgprs / get_vgpr_alloc(program, new_demand.vgpr));
       program->max_waves = max_waves_per_simd;
 
       /* adjust max_waves for workgroup and LDS limits */

@@ -1735,6 +1735,7 @@ public:
    uint16_t vgpr_limit;
    uint16_t sgpr_limit;
    uint16_t physical_sgprs;
+   uint16_t physical_vgprs;
    uint16_t sgpr_alloc_granule; /* minus one. must be power of two */
    uint16_t vgpr_alloc_granule; /* minus one. must be power of two */
    unsigned workgroup_size; /* if known; otherwise UINT_MAX */

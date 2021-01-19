@@ -902,20 +902,25 @@ void schedule_program(Program *program, live& live_vars)
    /* Allowing the scheduler to reduce the number of waves to as low as 5
     * improves performance of Thrones of Britannia significantly and doesn't
     * seem to hurt anything else. */
-   if (program->num_waves <= 5)
+   //TODO: account for possible uneven num_waves on GFX10+
+   unsigned wave_fac = program->physical_vgprs / 256;
+   if (program->num_waves <= 5 * wave_fac)
       ctx.num_waves = program->num_waves;
    else if (demand.vgpr >= 29)
-      ctx.num_waves = 5;
+      ctx.num_waves = 5 * wave_fac;
    else if (demand.vgpr >= 25)
-      ctx.num_waves = 6;
+      ctx.num_waves = 6 * wave_fac;
    else
-      ctx.num_waves = 7;
+      ctx.num_waves = 7 * wave_fac;
    ctx.num_waves = std::max<uint16_t>(ctx.num_waves, program->min_waves);
    ctx.num_waves = std::min<uint16_t>(ctx.num_waves, program->num_waves);
 
+   /* VMEM_MAX_MOVES and such assume pre-GFX10 wave count */
+   ctx.num_waves = std::max<uint16_t>(ctx.num_waves / wave_fac, 1);
+
    assert(ctx.num_waves > 0);
-   ctx.mv.max_registers = { int16_t(get_addr_vgpr_from_waves(program, ctx.num_waves) - 2),
-                            int16_t(get_addr_sgpr_from_waves(program, ctx.num_waves))};
+   ctx.mv.max_registers = { int16_t(get_addr_vgpr_from_waves(program, ctx.num_waves * wave_fac) - 2),
+                            int16_t(get_addr_sgpr_from_waves(program, ctx.num_waves * wave_fac))};
 
    for (Block& block : program->blocks)
       schedule_block(ctx, program, &block, live_vars);
