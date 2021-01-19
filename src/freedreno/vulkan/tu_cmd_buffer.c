@@ -3234,6 +3234,77 @@ tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
    return VK_SUCCESS;
 }
 
+static void
+tu6_lrz_depth_mode(struct A6XX_GRAS_LRZ_CNTL *gras_lrz_cntl,
+                   VkCompareOp depthCompareOp,
+                   bool *invalidate_lrz)
+{
+   /* LRZ does not support some depth modes.
+    *
+    * The HW has a flag for GREATER and GREATER_OR_EQUAL modes which is used
+    * in freedreno, however there are some dEQP-VK tests that fail if we use here.
+    * Furthermore, blob disables LRZ on these comparison opcodes too.
+    *
+    * TODO: investigate if we can enable GREATER flag here.
+    */
+   switch (depthCompareOp) {
+   case VK_COMPARE_OP_ALWAYS:
+   case VK_COMPARE_OP_NOT_EQUAL:
+   case VK_COMPARE_OP_GREATER:
+   case VK_COMPARE_OP_GREATER_OR_EQUAL:
+      *invalidate_lrz = true;
+      gras_lrz_cntl->lrz_write = false;
+      break;
+   case VK_COMPARE_OP_EQUAL:
+   case VK_COMPARE_OP_NEVER:
+      gras_lrz_cntl->lrz_write = false;
+      break;
+   case VK_COMPARE_OP_LESS:
+   case VK_COMPARE_OP_LESS_OR_EQUAL:
+      break;
+   default:
+      unreachable("bad VK_COMPARE_OP value or uninitialized");
+      break;
+   };
+}
+
+static struct A6XX_GRAS_LRZ_CNTL
+tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
+                        const uint32_t a)
+{
+   struct tu_pipeline *pipeline = cmd->state.pipeline;
+   struct A6XX_GRAS_LRZ_CNTL gras_lrz_cntl = { 0 };
+   bool invalidate_lrz = pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_LRZ;
+   bool force_disable_write = pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_WRITE;
+
+   gras_lrz_cntl.enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_ENABLE;
+   gras_lrz_cntl.lrz_write = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
+   gras_lrz_cntl.z_test_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
+
+   VkCompareOp depth_compare_op = (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT;
+   tu6_lrz_depth_mode(&gras_lrz_cntl, depth_compare_op, &invalidate_lrz);
+
+   /* Invalidate LRZ and disable write if stencil test is enabled */
+   bool stencil_test_enable = cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE;
+   if (stencil_test_enable) {
+      force_disable_write = true;
+      invalidate_lrz = true;
+   }
+
+   if (force_disable_write)
+      gras_lrz_cntl.lrz_write = false;
+
+   if (invalidate_lrz) {
+      cmd->state.lrz.valid = false;
+   }
+
+   /* In case no depth attachment or invalid, we clear the gras_lrz_cntl register */
+   if (a == VK_ATTACHMENT_UNUSED || !cmd->state.lrz.valid)
+      memset(&gras_lrz_cntl, 0, sizeof(gras_lrz_cntl));
+
+   return gras_lrz_cntl;
+}
+
 static struct tu_draw_state
 tu6_build_lrz(struct tu_cmd_buffer *cmd)
 {
@@ -3241,38 +3312,15 @@ tu6_build_lrz(struct tu_cmd_buffer *cmd)
    struct tu_cs lrz_cs;
    struct tu_draw_state ds = tu_cs_draw_state(&cmd->sub_cs, &lrz_cs, 4);
 
-   if (cmd->state.pipeline->lrz.invalidate) {
-      /* LRZ is not valid for next draw commands, so don't use it until cleared */
-      cmd->state.lrz.valid = false;
-   }
-
-   if (a == VK_ATTACHMENT_UNUSED || !cmd->state.lrz.valid) {
-      tu_cs_emit_regs(&lrz_cs, A6XX_GRAS_LRZ_CNTL(0));
-      tu_cs_emit_regs(&lrz_cs, A6XX_RB_LRZ_CNTL(0));
-      return ds;
-   }
-
-   /* Disable LRZ writes when blend is enabled, since the
-    * resulting pixel value from the blend-draw
-    * depends on an earlier draw, which LRZ in the draw pass
-    * could early-reject if the previous blend-enabled draw wrote LRZ.
-    *
-    * TODO: We need to disable LRZ writes only for the binning pass.
-    * Therefore, we need to emit it in a separate draw state. We keep
-    * it disabled for sysmem path as well for the moment.
-    */
-   bool lrz_write = cmd->state.pipeline->lrz.write;
-   if (cmd->state.pipeline->lrz.blend_disable_write)
-      lrz_write = false;
+   struct A6XX_GRAS_LRZ_CNTL gras_lrz_cntl = tu6_calculate_lrz_state(cmd, a);
 
    tu_cs_emit_regs(&lrz_cs, A6XX_GRAS_LRZ_CNTL(
-      .enable = cmd->state.pipeline->lrz.enable,
-      .greater = cmd->state.pipeline->lrz.greater,
-      .lrz_write = lrz_write,
-      .z_test_enable = cmd->state.pipeline->lrz.z_test_enable,
-   ));
+      .enable = gras_lrz_cntl.enable,
+      .greater = gras_lrz_cntl.greater,
+      .lrz_write = gras_lrz_cntl.lrz_write,
+      .z_test_enable = gras_lrz_cntl.z_test_enable));
+   tu_cs_emit_regs(&lrz_cs, A6XX_RB_LRZ_CNTL(.enable = gras_lrz_cntl.enable));
 
-   tu_cs_emit_regs(&lrz_cs, A6XX_RB_LRZ_CNTL(.enable = cmd->state.pipeline->lrz.enable));
    return ds;
 }
 

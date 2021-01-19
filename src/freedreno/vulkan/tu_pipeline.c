@@ -2717,55 +2717,13 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
                                               .bfref = ds_info->back.reference & 0xff));
    }
 
-   if (ds_info->depthTestEnable) {
-      pipeline->lrz.write = ds_info->depthWriteEnable;
-      pipeline->lrz.invalidate = false;
-      pipeline->lrz.z_test_enable = true;
-
-      /* LRZ does not support some depth modes.
-       *
-       * The HW has a flag for GREATER and GREATER_OR_EQUAL modes which is used
-       * in freedreno, however there are some dEQP-VK tests that fail if we use here.
-       * Furthermore, blob disables LRZ on these comparison opcodes too.
-       *
-       * TODO: investigate if we can enable GREATER flag here.
-       */
-      switch(ds_info->depthCompareOp) {
-      case VK_COMPARE_OP_ALWAYS:
-      case VK_COMPARE_OP_NOT_EQUAL:
-      case VK_COMPARE_OP_GREATER:
-      case VK_COMPARE_OP_GREATER_OR_EQUAL:
-         pipeline->lrz.invalidate = true;
-         pipeline->lrz.write = false;
-         break;
-      case VK_COMPARE_OP_EQUAL:
-      case VK_COMPARE_OP_NEVER:
-         pipeline->lrz.enable = true;
-         pipeline->lrz.write = false;
-         break;
-      case VK_COMPARE_OP_LESS:
-      case VK_COMPARE_OP_LESS_OR_EQUAL:
-         pipeline->lrz.enable = true;
-         break;
-      default:
-         unreachable("bad VK_COMPARE_OP value");
-         break;
-      };
-   }
-
-   if (ds_info->stencilTestEnable) {
-      pipeline->lrz.write = false;
-      pipeline->lrz.invalidate = true;
-   }
-
    if (builder->shaders[MESA_SHADER_FRAGMENT]) {
       const struct ir3_shader_variant *fs = &builder->shaders[MESA_SHADER_FRAGMENT]->ir3_shader->variants[0];
       if (fs->has_kill || fs->no_earlyz || fs->writes_pos) {
-         pipeline->lrz.write = false;
+         pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
       }
       if (fs->no_earlyz || fs->writes_pos) {
-         pipeline->lrz.enable = false;
-         pipeline->lrz.z_test_enable = false;
+         pipeline->lrz.force_disable_mask = TU_LRZ_FORCE_DISABLE_LRZ;
       }
    }
 }
@@ -2825,9 +2783,13 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
           * From the PoV of LRZ, having masked color channels is
           * the same as having blend enabled, in that the draw will
           * care about the fragments from an earlier draw.
+          *
+          * TODO: We need to disable LRZ writes only for the binning pass.
+          * Therefore, we need to emit it in a separate draw state. We keep
+          * it disabled for sysmem path as well for the moment.
           */
          if (blendAttachment.blendEnable || blendAttachment.colorWriteMask != 0xf) {
-            pipeline->lrz.blend_disable_write = true;
+            pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
          }
       }
    }
