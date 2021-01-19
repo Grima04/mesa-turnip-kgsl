@@ -313,7 +313,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2021-02-19-strace"
+    MESA_IMAGE_TAG: &x86_build "2021-04-08-libdrm"
 
 .use-x86_build:
   extends:
@@ -330,7 +330,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &i386_build "2021-02-08-container-reorg"
+    MESA_IMAGE_TAG: &i386_build "2021-04-08-libdrm"
 
 .use-i386_build:
   extends:
@@ -347,7 +347,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &ppc64el_build "2021-02-08-container-reorg"
+    MESA_IMAGE_TAG: &ppc64el_build "2021-04-08-libdrm"
 
 .use-ppc64el_build:
   extends:
@@ -364,7 +364,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &s390x_build "2021-02-08-container-reorg"
+    MESA_IMAGE_TAG: &s390x_build "2021-04-08-libdrm"
 
 .use-s390x_build:
   extends:
@@ -381,7 +381,7 @@ android_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &android_build "2021-02-08-container-reorg"
+    MESA_IMAGE_TAG: &android_build "2021-04-08-libdrm"
 
 .use-android_build:
   extends:
@@ -413,13 +413,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-03-31-piglit"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-04-08-libdrm"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-03-31-piglit"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-04-08-libdrm"
 
 # Debian 10 based ARM build image
 arm_build:
@@ -427,7 +427,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    MESA_IMAGE_TAG: &arm_build "2021-04-07-lavacli-1-1"
+    MESA_IMAGE_TAG: &arm_build "2021-04-08-libdrm"
 
 .use-arm_build:
   extends:
@@ -448,7 +448,7 @@ kernel+rootfs_arm64-baremetal:
   variables:
     DEBIAN_ARCH: "arm64"
     KERNEL_URL: "https://github.com/anholt/linux/archive/mesa-ci-2021-02-17-5.11.tar.gz"
-    MESA_ROOTFS_TAG: &arm-baremetal "2021-03-31-piglit"
+    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-08-libdrm"
     MINIO_SUFFIX: "baremetal"
 
 # Kernel & rootfs for armhf baremetal testing
