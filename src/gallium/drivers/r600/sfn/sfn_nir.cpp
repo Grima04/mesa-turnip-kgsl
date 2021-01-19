@@ -993,49 +993,50 @@ int r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sel->nir, r600_lower_fs_out_to_vector);
    }
 
-   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
-       sel->nir->info.stage == MESA_SHADER_TESS_EVAL ||
-       (sel->nir->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
-      auto prim_type = sel->nir->info.stage == MESA_SHADER_TESS_EVAL ?
-                          sel->nir->info.tess.primitive_mode: key->tcs.prim_mode;
-      NIR_PASS_V(sel->nir, r600_lower_tess_io, static_cast<pipe_prim_type>(prim_type));
+	auto sh = nir_shader_clone(sel->nir, sel->nir);
+
+   if (sh->info.stage == MESA_SHADER_TESS_CTRL ||
+       sh->info.stage == MESA_SHADER_TESS_EVAL ||
+       (sh->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
+      auto prim_type = sh->info.stage == MESA_SHADER_TESS_EVAL ?
+                          sh->info.tess.primitive_mode: key->tcs.prim_mode;
+      NIR_PASS_V(sh, r600_lower_tess_io, static_cast<pipe_prim_type>(prim_type));
    }
 
-   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL)
-      NIR_PASS_V(sel->nir, r600_append_tcs_TF_emission,
+   if (sh->info.stage == MESA_SHADER_TESS_CTRL)
+      NIR_PASS_V(sh, r600_append_tcs_TF_emission,
                  (pipe_prim_type)key->tcs.prim_mode);
 
-   NIR_PASS_V(sel->nir, nir_lower_ubo_vec4);
+   NIR_PASS_V(sh, nir_lower_ubo_vec4);
    if (lower_64bit)
-      NIR_PASS_V(sel->nir, r600::r600_nir_64_to_vec2);
+      NIR_PASS_V(sh, r600::r600_nir_64_to_vec2);
 
    /* Lower to scalar to let some optimization work out better */
-   while(optimize_once(sel->nir, false));
+   while(optimize_once(sh, false));
 
-   NIR_PASS_V(sel->nir, r600::r600_merge_vec2_stores);
+   NIR_PASS_V(sh, r600::r600_merge_vec2_stores);
 
-   NIR_PASS_V(sel->nir, nir_remove_dead_variables, nir_var_shader_in, NULL);
-   NIR_PASS_V(sel->nir, nir_remove_dead_variables,  nir_var_shader_out, NULL);
+   NIR_PASS_V(sh, nir_remove_dead_variables, nir_var_shader_in, NULL);
+   NIR_PASS_V(sh, nir_remove_dead_variables,  nir_var_shader_out, NULL);
 
 
-   NIR_PASS_V(sel->nir, nir_lower_vars_to_scratch,
+   NIR_PASS_V(sh, nir_lower_vars_to_scratch,
               nir_var_function_temp,
               40,
               r600_get_natural_size_align_bytes);
 
-   while (optimize_once(sel->nir, true));
+   while (optimize_once(sh, true));
 
-   auto sh = nir_shader_clone(sel->nir, sel->nir);
-   NIR_PASS_V(sel->nir, nir_lower_bool_to_int32);
+   NIR_PASS_V(sh, nir_lower_bool_to_int32);
    NIR_PASS_V(sh, nir_opt_algebraic_late);
 
-   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT)
+   if (sh->info.stage == MESA_SHADER_FRAGMENT)
       r600::sort_fsoutput(sh);
 
    NIR_PASS_V(sh, nir_lower_locals_to_regs);
 
-   //NIR_PASS_V(sel->nir, nir_opt_algebraic);
-   //NIR_PASS_V(sel->nir, nir_copy_prop);
+   //NIR_PASS_V(sh, nir_opt_algebraic);
+   //NIR_PASS_V(sh, nir_copy_prop);
    NIR_PASS_V(sh, nir_lower_to_source_mods,
 	      (nir_lower_to_source_mods_flags)(nir_lower_float_source_mods |
 					       nir_lower_64bit_source_mods));
@@ -1052,16 +1053,16 @@ int r600_shader_from_nir(struct r600_context *rctx,
    }
 
    memset(&pipeshader->shader, 0, sizeof(r600_shader));
-   pipeshader->scratch_space_needed = sel->nir->scratch_size;
+   pipeshader->scratch_space_needed = sh->scratch_size;
 
-   if (sel->nir->info.stage == MESA_SHADER_TESS_EVAL ||
-       sel->nir->info.stage == MESA_SHADER_VERTEX ||
-       sel->nir->info.stage == MESA_SHADER_GEOMETRY) {
-      pipeshader->shader.clip_dist_write |= ((1 << sel->nir->info.clip_distance_array_size) - 1);
-      pipeshader->shader.cull_dist_write = ((1 << sel->nir->info.cull_distance_array_size) - 1)
-                                           << sel->nir->info.clip_distance_array_size;
-      pipeshader->shader.cc_dist_mask = (1 <<  (sel->nir->info.cull_distance_array_size +
-                                                sel->nir->info.clip_distance_array_size)) - 1;
+   if (sh->info.stage == MESA_SHADER_TESS_EVAL ||
+       sh->info.stage == MESA_SHADER_VERTEX ||
+       sh->info.stage == MESA_SHADER_GEOMETRY) {
+      pipeshader->shader.clip_dist_write |= ((1 << sh->info.clip_distance_array_size) - 1);
+      pipeshader->shader.cull_dist_write = ((1 << sh->info.cull_distance_array_size) - 1)
+                                           << sh->info.clip_distance_array_size;
+      pipeshader->shader.cc_dist_mask = (1 <<  (sh->info.cull_distance_array_size +
+                                                sh->info.clip_distance_array_size)) - 1;
    }
 
    struct r600_shader* gs_shader = nullptr;
@@ -1073,13 +1074,13 @@ int r600_shader_from_nir(struct r600_context *rctx,
    if (!r || rctx->screen->b.debug_flags & DBG_ALL_SHADERS) {
       static int shnr = 0;
 
-      snprintf(filename, 4000, "nir-%s_%d.inc", sel->nir->info.name, shnr++);
+      snprintf(filename, 4000, "nir-%s_%d.inc", sh->info.name, shnr++);
 
       if (access(filename, F_OK) == -1) {
          FILE *f = fopen(filename, "w");
 
          if (f) {
-            fprintf(f, "const char *shader_blob_%s = {\nR\"(", sel->nir->info.name);
+            fprintf(f, "const char *shader_blob_%s = {\nR\"(", sh->info.name);
             nir_print_shader(sh, f);
             fprintf(f, ")\";\n");
             fclose(f);
@@ -1107,7 +1108,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
       return -1;
    }
 
-   if (sel->nir->info.stage == MESA_SHADER_GEOMETRY) {
+   if (sh->info.stage == MESA_SHADER_GEOMETRY) {
       r600::sfn_log << r600::SfnLog::shader_info << "Geometry shader, create copy shader\n";
       generate_gs_copy_shader(rctx, pipeshader, &sel->so);
       assert(pipeshader->gs_copy_shader);
