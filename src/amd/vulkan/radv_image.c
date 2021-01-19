@@ -273,6 +273,14 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device,
 	if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT)
 		return false;
 
+	/* Do not enable TC-compatible if the image isn't readable by a shader
+	 * because no texture fetches will happen.
+	 */
+	if (!(image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+			      VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+			      VK_IMAGE_USAGE_TRANSFER_SRC_BIT)))
+		return false;
+
 	if (radv_image_has_dcc(image))
 		return false;
 
