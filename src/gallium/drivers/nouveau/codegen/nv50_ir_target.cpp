@@ -183,7 +183,8 @@ void Target::destroy(Target *targ)
    delete targ;
 }
 
-CodeEmitter::CodeEmitter(const Target *target) : targ(target), fixupInfo(NULL)
+CodeEmitter::CodeEmitter(const Target *target) : targ(target), code(NULL),
+   codeSize(0), codeSizeLimit(0), relocInfo(NULL), fixupInfo(NULL)
 {
 }
 
