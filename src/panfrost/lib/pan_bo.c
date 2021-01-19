@@ -364,7 +364,7 @@ panfrost_bo_create(struct panfrost_device *dev, size_t size,
         assert(size > 0);
 
         /* To maximize BO cache usage, don't allocate tiny BOs */
-        size = MAX2(size, 4096);
+        size = ALIGN_POT(size, 4096);
 
         /* GROWABLE BOs cannot be mmapped */
         if (flags & PAN_BO_GROWABLE)
