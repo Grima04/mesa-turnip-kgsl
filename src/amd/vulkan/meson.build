@@ -97,7 +97,6 @@ libradv_files = files(
   'radv_sqtt.c',
   'radv_query.c',
   'radv_util.c',
-  'radv_util.h',
   'radv_wsi.c',
   'si_cmd_buffer.c',
   'vk_format.h',

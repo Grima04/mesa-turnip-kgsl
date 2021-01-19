@@ -31,7 +31,6 @@
 #include "radv_shader.h"
 #include "radv_cs.h"
 #include "sid.h"
-#include "radv_util.h"
 
 static void
 si_write_harvested_raster_configs(struct radv_physical_device *physical_device,
