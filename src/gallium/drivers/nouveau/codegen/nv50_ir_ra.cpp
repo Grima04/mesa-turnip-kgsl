@@ -224,7 +224,7 @@ RegisterSet::release(DataFile f, int32_t reg, unsigned int size)
 class RegAlloc
 {
 public:
-   RegAlloc(Program *program) : prog(program), sequence(0) { }
+   RegAlloc(Program *program) : prog(program), func(NULL), sequence(0) { }
 
    bool exec();
    bool execFunc();
