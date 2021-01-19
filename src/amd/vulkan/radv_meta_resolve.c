@@ -378,6 +378,10 @@ static void radv_pick_resolve_method_images(struct radv_device *device,
 			*method = RESOLVE_FRAGMENT;
 		} else if (dest_image->planes[0].surface.micro_tile_mode !=
 		           src_image->planes[0].surface.micro_tile_mode) {
+			/* The micro tile mode only needs to match for the HW
+			 * resolve path which is the default path for non-DCC
+			 * resolves.
+			 */
 			*method = RESOLVE_COMPUTE;
 		}
 
