@@ -381,8 +381,12 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                         (T == nir_type_float32) ? bi_word(rgba, 3) :
                         bi_dontcare();
 
-                bi_atest_to(b, bi_register(60), bi_register(60), alpha);
+                bi_instr *atest = bi_atest_to(b, bi_register(60),
+                                bi_register(60), alpha);
                 b->shader->emitted_atest = true;
+
+                /* Pseudo-source to encode in the tuple */
+                atest->src[2] = bi_fau(BIR_FAU_ATEST_PARAM, false);
         }
 
         if (emit_zs) {
