@@ -281,7 +281,8 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device,
 			      VK_IMAGE_USAGE_TRANSFER_SRC_BIT)))
 		return false;
 
-	if (radv_image_has_dcc(image))
+	/* If the image doesn't have FMASK, it can't be fetchable. */
+	if (!radv_image_has_fmask(image))
 		return false;
 
 	return true;
