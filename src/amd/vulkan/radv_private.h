@@ -1904,7 +1904,6 @@ struct radv_image {
 	/* Set when bound */
 	struct radeon_winsys_bo *bo;
 	VkDeviceSize offset;
-	bool tc_compatible_htile;
 	bool tc_compatible_cmask;
 
 	uint64_t clear_value_offset;
@@ -2031,7 +2030,8 @@ radv_htile_enabled(const struct radv_image *image, unsigned level)
 static inline bool
 radv_image_is_tc_compat_htile(const struct radv_image *image)
 {
-	return radv_image_has_htile(image) && image->tc_compatible_htile;
+	return radv_image_has_htile(image) &&
+	       (image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE);
 }
 
 /**

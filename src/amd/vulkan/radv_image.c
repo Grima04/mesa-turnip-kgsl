@@ -1308,7 +1308,7 @@ radv_image_reset_layout(struct radv_image *image)
 	image->size = 0;
 	image->alignment = 1;
 
-	image->tc_compatible_cmask = image->tc_compatible_htile = 0;
+	image->tc_compatible_cmask = 0;
 	image->fce_pred_offset = image->dcc_pred_offset = 0;
 	image->clear_value_offset = image->tc_compat_zrange_offset = 0;
 
@@ -1380,9 +1380,6 @@ radv_image_create_layout(struct radv_device *device,
 
 	image->tc_compatible_cmask = radv_image_has_cmask(image) &&
 	                             radv_use_tc_compat_cmask_for_image(device, image);
-
-	image->tc_compatible_htile = radv_image_has_htile(image) &&
-	                             image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
 
 	radv_image_alloc_values(device, image);
 
