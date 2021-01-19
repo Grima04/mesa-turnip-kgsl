@@ -481,9 +481,6 @@ static void radv_process_depth_stencil(struct radv_cmd_buffer *cmd_buffer,
 	VkCommandBuffer cmd_buffer_h = radv_cmd_buffer_to_handle(cmd_buffer);
 	VkPipeline *pipeline;
 
-	if (!radv_image_has_htile(image))
-		return;
-
 	radv_meta_save(&saved_state, cmd_buffer,
 		       RADV_META_SAVE_GRAPHICS_PIPELINE |
 		       RADV_META_SAVE_SAMPLE_LOCATIONS |
