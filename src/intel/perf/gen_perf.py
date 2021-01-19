@@ -361,6 +361,39 @@ def output_units(unit):
     return unit.replace(' ', '_').upper()
 
 
+# should a unit be visible in description?
+units_map = {
+    "bytes" : True,
+    "cycles" : True,
+    "eu atomic requests to l3 cache lines" : False,
+    "eu bytes per l3 cache line" : False,
+    "eu requests to l3 cache lines" : False,
+    "eu sends to l3 cache lines" : False,
+    "events" : True,
+    "hz" : True,
+    "messages" : True,
+    "ns" : True,
+    "number" : False,
+    "percent" : True,
+    "pixels" : True,
+    "texels" : True,
+    "threads" : True,
+    "us" : True,
+    "utilization" : False,
+    }
+
+
+def desc_units(unit):
+    val = units_map.get(unit)
+    if val is None:
+        raise Exception("Unknown unit: " + unit)
+    if val == False:
+        return ""
+    if unit == 'hz':
+        unit = 'Hz'
+    return " Unit: " + unit + "."
+
+
 def output_counter_report(set, counter, current_offset):
     data_type = counter.get('data_type')
     data_type_uc = data_type.upper()
@@ -385,7 +418,7 @@ def output_counter_report(set, counter, current_offset):
     c("counter = &query->counters[query->n_counters++];\n")
     c("counter->oa_counter_read_" + data_type + " = " + set.read_funcs[counter.get('symbol_name')] + ";\n")
     c("counter->name = \"" + counter.get('name') + "\";\n")
-    c("counter->desc = \"" + counter.get('description') + "\";\n")
+    c("counter->desc = \"" + counter.get('description') + desc_units(counter.get('units')) + "\";\n")
     c("counter->symbol_name = \"" + counter.get('symbol_name') + "\";\n")
     c("counter->category = \"" + counter.get('mdapi_group') + "\";\n")
     c("counter->type = GEN_PERF_COUNTER_TYPE_" + semantic_type_uc + ";\n")
