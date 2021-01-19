@@ -540,8 +540,6 @@ void radv_DestroyPipelineLayout(
 	vk_free2(&device->vk.alloc, pAllocator, pipeline_layout);
 }
 
-#define EMPTY 1
-
 static VkResult
 radv_descriptor_set_create(struct radv_device *device,
 			   struct radv_descriptor_pool *pool,
