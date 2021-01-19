@@ -38,7 +38,3 @@ dEQP-VK.spirv_assembly.instruction.graphics.opquantize.negative_too_small_tesse,
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_inf_tesse,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_carry_to_exponent_tesse,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_negative_round_up_or_round_down_tesse,Fail
-dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_even_spacing_ccw,Fail
-dEQP-VK.tessellation.invariance.outer_triangle_set.quads_fractional_odd_spacing,Fail
-dEQP-VK.tessellation.invariance.primitive_set.isolines_fractional_odd_spacing_ccw,Fail
-dEQP-VK.tessellation.invariance.primitive_set.quads_fractional_odd_spacing_cw,Fail

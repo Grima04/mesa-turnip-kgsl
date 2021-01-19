@@ -26,3 +26,6 @@ dEQP-VK.geometry.layered.cube_array.64_64_12.readback
 
 # Crashes likely caused by https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2701
 dEQP-VK.synchronization.cross_instance.*binary_semaphore_fence_fd
+
+# Timeouts, passes otherwise
+dEQP-VK.tessellation.invariance.outer_triangle_set.quads_fractional_odd_spacing

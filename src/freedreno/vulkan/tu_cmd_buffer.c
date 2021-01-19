@@ -3182,10 +3182,18 @@ tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
    if (result != VK_SUCCESS)
       return result;
 
+   const struct tu_program_descriptor_linkage *hs_link =
+      &pipeline->program.link[MESA_SHADER_TESS_CTRL];
+   bool hs_uses_bo = pipeline->tess.hs_bo_regid < hs_link->constlen;
+
+   const struct tu_program_descriptor_linkage *ds_link =
+      &pipeline->program.link[MESA_SHADER_TESS_EVAL];
+   bool ds_uses_bo = pipeline->tess.ds_bo_regid < ds_link->constlen;
+
    uint64_t tess_factor_size = get_tess_factor_bo_size(pipeline, draw_count);
    uint64_t tess_param_size = get_tess_param_bo_size(pipeline, draw_count);
    uint64_t tess_bo_size =  tess_factor_size + tess_param_size;
-   if (tess_bo_size > 0) {
+   if ((hs_uses_bo || ds_uses_bo) && tess_bo_size > 0) {
       struct tu_bo *tess_bo;
       result = tu_get_scratch_bo(cmd->device, tess_bo_size, &tess_bo);
       if (result != VK_SUCCESS)
@@ -3194,27 +3202,31 @@ tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
       uint64_t tess_factor_iova = tess_bo->iova;
       uint64_t tess_param_iova = tess_factor_iova + tess_factor_size;
 
-      tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
-      tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(pipeline->tess.hs_bo_regid) |
-            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-            CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-            CP_LOAD_STATE6_0_STATE_BLOCK(SB6_HS_SHADER) |
-            CP_LOAD_STATE6_0_NUM_UNIT(1));
-      tu_cs_emit(&cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-      tu_cs_emit(&cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-      tu_cs_emit_qw(&cs, tess_param_iova);
-      tu_cs_emit_qw(&cs, tess_factor_iova);
+      if (hs_uses_bo) {
+         tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
+         tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(pipeline->tess.hs_bo_regid) |
+               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+               CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+               CP_LOAD_STATE6_0_STATE_BLOCK(SB6_HS_SHADER) |
+               CP_LOAD_STATE6_0_NUM_UNIT(1));
+         tu_cs_emit(&cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+         tu_cs_emit(&cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+         tu_cs_emit_qw(&cs, tess_param_iova);
+         tu_cs_emit_qw(&cs, tess_factor_iova);
+      }
 
-      tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
-      tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(pipeline->tess.ds_bo_regid) |
-            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-            CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-            CP_LOAD_STATE6_0_STATE_BLOCK(SB6_DS_SHADER) |
-            CP_LOAD_STATE6_0_NUM_UNIT(1));
-      tu_cs_emit(&cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-      tu_cs_emit(&cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-      tu_cs_emit_qw(&cs, tess_param_iova);
-      tu_cs_emit_qw(&cs, tess_factor_iova);
+      if (ds_uses_bo) {
+         tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
+         tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(pipeline->tess.ds_bo_regid) |
+               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+               CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+               CP_LOAD_STATE6_0_STATE_BLOCK(SB6_DS_SHADER) |
+               CP_LOAD_STATE6_0_NUM_UNIT(1));
+         tu_cs_emit(&cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+         tu_cs_emit(&cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+         tu_cs_emit_qw(&cs, tess_param_iova);
+         tu_cs_emit_qw(&cs, tess_factor_iova);
+      }
 
       *factor_iova = tess_factor_iova;
    }
