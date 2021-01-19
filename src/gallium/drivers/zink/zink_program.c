@@ -884,6 +884,9 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
                       struct zink_gfx_pipeline_state *state,
                       enum pipe_prim_type mode)
 {
+   if (!state->dirty && !state->combined_dirty && !state->vertex_state_dirty && mode == state->mode)
+      return state->pipeline;
+
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkPrimitiveTopology vkmode = primitive_topology(mode);
    assert(vkmode <= ARRAY_SIZE(prog->pipelines));
@@ -935,7 +938,10 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       assert(entry);
    }
 
-   return ((struct gfx_pipeline_cache_entry *)(entry->data))->pipeline;
+   struct gfx_pipeline_cache_entry *cache_entry = entry->data;
+   state->pipeline = cache_entry->pipeline;
+   state->mode = mode;
+   return state->pipeline;
 }
 
 VkPipeline
@@ -945,6 +951,8 @@ zink_get_compute_pipeline(struct zink_screen *screen,
 {
    struct hash_entry *entry = NULL;
 
+   if (!state->dirty)
+      return state->pipeline;
    if (state->dirty) {
       state->hash = hash_compute_pipeline_state(state);
       state->dirty = false;
@@ -968,7 +976,9 @@ zink_get_compute_pipeline(struct zink_screen *screen,
       assert(entry);
    }
 
-   return ((struct compute_pipeline_cache_entry *)(entry->data))->pipeline;
+   struct compute_pipeline_cache_entry *cache_entry = entry->data;
+   state->pipeline = cache_entry->pipeline;
+   return state->pipeline;
 }
 
 

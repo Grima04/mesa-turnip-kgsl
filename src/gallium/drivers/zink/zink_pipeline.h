@@ -74,6 +74,9 @@ struct zink_gfx_pipeline_state {
    uint32_t vertex_buffers_enabled_mask;
    uint32_t vertex_strides[PIPE_MAX_ATTRIBS];
    bool have_EXT_extended_dynamic_state;
+
+   VkPipeline pipeline;
+   enum pipe_prim_type mode;
 };
 
 struct zink_compute_pipeline_state {
@@ -83,6 +86,8 @@ struct zink_compute_pipeline_state {
    bool dirty;
    bool use_local_size;
    uint32_t local_size[3];
+
+   VkPipeline pipeline;
 };
 
 VkPipeline
