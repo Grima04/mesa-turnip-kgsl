@@ -43,7 +43,7 @@ struct ra_ctx;
 unsigned get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, unsigned idx, RegClass rc);
 void add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, unsigned byte, RegClass rc);
 std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, const aco_ptr<Instruction>& instr, RegClass rc);
-void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg, bool is_partial);
+void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg);
 
 struct assignment {
    PhysReg reg;
@@ -601,17 +601,16 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
    return std::make_pair(4u, bytes_written);
 }
 
-void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg, bool is_partial)
+void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
 {
    RegClass rc = instr->definitions[idx].regClass();
    chip_class chip = program->chip_class;
 
-   instr->definitions[idx].setFixed(reg);
-
    if (instr->format == Format::PSEUDO) {
       return;
    } else if (can_use_SDWA(chip, instr)) {
-      if (reg.byte() || (is_partial && chip < GFX10))
+      unsigned def_size = instr_info.definition_size[(int)instr->opcode];
+      if (reg.byte() || chip < GFX10 || def_size > rc.bytes() * 8u)
          convert_to_SDWA(chip, instr);
       return;
    } else if (reg.byte() && rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, -1, reg.byte() / 2)) {
@@ -2287,9 +2286,11 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                Temp tmp = definition->getTemp();
                if (definition->regClass().is_subdword() && definition->bytes() < 4) {
                   PhysReg reg = get_reg(ctx, register_file, tmp, parallelcopy, instr);
-                  bool partial = !(tmp.bytes() <= 4 && reg.byte() == 0 && !register_file.test(reg, 4));
-                  add_subdword_definition(program, instr, i, reg, partial);
-                  definition = &instr->definitions[i]; /* add_subdword_definition can invalidate the reference */
+                  definition->setFixed(reg);
+                  if (reg.byte() || register_file.test(reg, 4)) {
+                     add_subdword_definition(program, instr, i, reg);
+                     definition = &instr->definitions[i]; /* add_subdword_definition can invalidate the reference */
+                  }
                } else {
                   definition->setFixed(get_reg(ctx, register_file, tmp, parallelcopy, instr));
                }
