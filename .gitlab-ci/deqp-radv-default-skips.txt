@@ -4,3 +4,6 @@ dEQP-VK.info.device_extensions
 # Exclude WSI related tests.
 dEQP-VK.image.swapchain_mutable.*
 dEQP-VK.wsi.*
+
+# Exclude this test which timeout most of the time.
+dEQP-VK.memory.pipeline_barrier.transfer_src_transfer_dst.1048576
