@@ -289,7 +289,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       dindirect && dindirect->count_from_stream_output ?
          zink_so_target(dindirect->count_from_stream_output) : NULL;
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
-   VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
+   VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS];
    bool need_index_buffer_unref = false;
 
    /* check memory usage and flush/stall as needed to avoid oom */
@@ -412,7 +412,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       zink_descriptors_update(ctx, screen, false);
 
    struct zink_batch *batch = zink_batch_rp(ctx);
-   VkViewport viewports[PIPE_MAX_VIEWPORTS] = {};
+   VkViewport viewports[PIPE_MAX_VIEWPORTS];
    for (unsigned i = 0; i < ctx->vp_state.num_viewports; i++) {
       VkViewport viewport = {
          ctx->vp_state.viewport_states[i].translate[0] - ctx->vp_state.viewport_states[i].scale[0],
