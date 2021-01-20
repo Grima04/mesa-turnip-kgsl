@@ -613,8 +613,6 @@ v3d_update_compiled_fs(struct v3d_context *v3d, uint8_t prim_mode)
                          PIPE_SPRITE_COORD_UPPER_LEFT);
         }
 
-        key->shade_model_flat = v3d->rasterizer->base.flatshade;
-
         struct v3d_compiled_shader *old_fs = v3d->prog.fs;
         v3d->prog.fs = v3d_get_compiled_shader(v3d, &key->base, sizeof(*key));
         if (v3d->prog.fs == old_fs)

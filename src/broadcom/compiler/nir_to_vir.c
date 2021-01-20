@@ -955,28 +955,6 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
         struct qreg result;
         switch (var->data.interpolation) {
         case INTERP_MODE_NONE:
-                /* If a gl_FrontColor or gl_BackColor input has no interp
-                 * qualifier, then if we're using glShadeModel(GL_FLAT) it
-                 * needs to be flat shaded.
-                 */
-                switch (var->data.location + array_index) {
-                case VARYING_SLOT_COL0:
-                case VARYING_SLOT_COL1:
-                case VARYING_SLOT_BFC0:
-                case VARYING_SLOT_BFC1:
-                        if (c->fs_key->shade_model_flat) {
-                                BITSET_SET(c->flat_shade_flags, i);
-                                vir_MOV_dest(c, c->undef, vary);
-                                result = vir_MOV(c, r5);
-                        } else {
-                                result = vir_FADD(c, vir_FMUL(c, vary,
-                                                              c->payload_w), r5);
-                        }
-                        goto done;
-                default:
-                        break;
-                }
-                /* FALLTHROUGH */
         case INTERP_MODE_SMOOTH:
                 if (var->data.centroid) {
                         BITSET_SET(c->centroid_flags, i);
@@ -1002,7 +980,6 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                 unreachable("Bad interp mode");
         }
 
-done:
         if (input_idx >= 0)
                 c->inputs[input_idx] = result;
         return result;

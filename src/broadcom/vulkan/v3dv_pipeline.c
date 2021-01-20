@@ -1188,9 +1188,6 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
          key->point_coord_upper_left = true;
       }
    }
-
-   /* FIXME: ditto, although for flat lighting. Again, neet to confirm.*/
-   key->shade_model_flat = false;
 }
 
 static void
