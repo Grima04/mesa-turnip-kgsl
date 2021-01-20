@@ -266,6 +266,15 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
 
+   for (unsigned i = 0; i < ctx->element_state->hw_state.num_bindings; i++) {
+      unsigned binding = ctx->element_state->binding_map[i];
+      const struct pipe_vertex_buffer *vb = ctx->buffers + binding;
+      if (ctx->gfx_pipeline_state.bindings[i].stride != vb->stride) {
+         ctx->gfx_pipeline_state.bindings[i].stride = vb->stride;
+         ctx->gfx_pipeline_state.dirty = true;
+      }
+   }
+
    VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
                                                &ctx->gfx_pipeline_state,
                                                dinfo->mode);
