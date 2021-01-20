@@ -18,7 +18,7 @@ for driver in freedreno intel v3d; do
 done
 
 # Run shader-db over a number of supported chipsets for nouveau
-for chipset in 40 a3 c0 e4 f0 134; do
+for chipset in 40 a3 c0 e4 f0 134 162; do
     echo "Running drm-shim for nouveau - $chipset"
     env LD_PRELOAD=$LIBDIR/libnouveau_noop_drm_shim.so \
         NOUVEAU_CHIPSET=${chipset} \
