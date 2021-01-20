@@ -3518,6 +3518,12 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    cmd_buffer->state.gfx.vb_dirty &= ~vb_emit;
 
+   uint32_t descriptors_dirty = cmd_buffer->state.descriptors_dirty &
+                                pipeline->active_stages;
+   if (!cmd_buffer->state.gfx.dirty && !descriptors_dirty &&
+       !cmd_buffer->state.push_constants_dirty)
+      return;
+
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_XFB_ENABLE) ||
        (GEN_GEN == 7 && (cmd_buffer->state.gfx.dirty &
                          ANV_CMD_DIRTY_PIPELINE))) {
@@ -3593,9 +3599,6 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 #endif
-
-   uint32_t descriptors_dirty = cmd_buffer->state.descriptors_dirty &
-                                pipeline->active_stages;
 
    /* Render targets live in the same binding table as fragment descriptors */
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_RENDER_TARGETS)
