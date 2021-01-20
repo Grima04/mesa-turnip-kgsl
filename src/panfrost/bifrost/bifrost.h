@@ -35,6 +35,7 @@
 #define BIFROST_DBG_SHADERDB    0x0004
 #define BIFROST_DBG_VERBOSE     0x0008
 #define BIFROST_DBG_INTERNAL    0x0010
+#define BIFROST_DBG_NOSCHED     0x0020
 
 extern int bifrost_debug;
 

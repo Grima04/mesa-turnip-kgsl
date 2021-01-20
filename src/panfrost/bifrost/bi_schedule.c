@@ -761,6 +761,12 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
                 struct bi_tuple_state *tuple,
                 bool fma)
 {
+#ifndef NDEBUG
+        /* Don't pair instructions if debugging */
+        if ((bifrost_debug & BIFROST_DBG_NOSCHED) && tuple->add)
+                return NULL;
+#endif
+
         if (tuple->add && tuple->add->op == BI_OPCODE_CUBEFACE)
                 return bi_lower_cubeface(ctx, clause, tuple);
 
@@ -1228,6 +1234,12 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st)
                 /* Adding enough tuple might overflow constants */
                 if (!bi_space_for_more_constants(&clause_state))
                         break;
+
+#ifndef NDEBUG
+                /* Don't schedule more than 1 tuple if debugging */
+                if (bifrost_debug & BIFROST_DBG_NOSCHED)
+                        break;
+#endif
 
                 /* Link through the register state */
                 STATIC_ASSERT(sizeof(prev_reads) == sizeof(tuple_state.reg.reads));
