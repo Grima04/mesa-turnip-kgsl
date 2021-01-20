@@ -348,7 +348,6 @@ struct vc4_vs_key {
         enum pipe_format attr_formats[8];
         bool is_coord;
         bool per_vertex_point_size;
-        bool clamp_color;
 };
 
 /** A basic block of QIR intructions. */
