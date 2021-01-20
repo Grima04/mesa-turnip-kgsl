@@ -64,6 +64,9 @@ EXTENSIONS = [
     Extension("VK_KHR_external_memory"),
     Extension("VK_KHR_external_memory_fd"),
     Extension("VK_KHR_vulkan_memory_model"),
+    Extension("VK_KHR_driver_properties",
+        alias="driver",
+        properties=True),
     Extension("VK_EXT_conditional_rendering",
         alias="cond_render", 
         features=True, 
@@ -134,7 +137,9 @@ VERSIONS = [
 # There exists some inconsistencies regarding the enum constants, fix them.
 # This is basically generated_code.replace(key, value).
 REPLACEMENTS = {
-    "ROBUSTNESS2": "ROBUSTNESS_2"
+    "ROBUSTNESS2": "ROBUSTNESS_2",
+    "PropertiesProperties": "Properties",
+    "PROPERTIES_PROPERTIES": "PROPERTIES",
 }
 
 
