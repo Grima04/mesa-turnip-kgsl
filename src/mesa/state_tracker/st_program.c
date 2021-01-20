@@ -847,6 +847,21 @@ st_create_vp_variant(struct st_context *st,
    return vpv;
 }
 
+static void
+st_add_variant(struct st_variant **list, struct st_variant *v)
+{
+   struct st_variant *first = *list;
+
+   /* Make sure that the default variant stays the first in the list, and insert
+    * any later variants in as the second entry.
+    */
+   if (first) {
+      v->next = first->next;
+      first->next = v;
+   } else {
+      *list = v;
+   }
+}
 
 /**
  * Find/create a vertex program variant.
@@ -881,9 +896,7 @@ st_get_vp_variant(struct st_context *st,
             vpv->vert_attrib_mask |= 1u << attr;
          }
 
-         /* insert into list */
-         vpv->base.next = stp->variants;
-         stp->variants = &vpv->base;
+         st_add_variant(&stp->variants, &vpv->base);
       }
    }
 
@@ -1547,25 +1560,7 @@ st_get_fp_variant(struct st_context *st,
       if (fpv) {
          fpv->base.st = key->st;
 
-         if (key->bitmap || key->drawpixels) {
-            /* Regular variants should always come before the
-             * bitmap & drawpixels variants, (unless there
-             * are no regular variants) so that
-             * st_update_fp can take a fast path when
-             * shader_has_one_variant is set.
-             */
-            if (!stfp->variants) {
-               stfp->variants = &fpv->base;
-            } else {
-               /* insert into list after the first one */
-               fpv->base.next = stfp->variants->next;
-               stfp->variants->next = &fpv->base;
-            }
-         } else {
-            /* insert into list */
-            fpv->base.next = stfp->variants;
-            stfp->variants = &fpv->base;
-         }
+         st_add_variant(&stfp->variants, &fpv->base);
       }
    }
 
@@ -1829,9 +1824,7 @@ st_get_common_variant(struct st_context *st,
          st_common_variant(v)->key = *key;
          v->st = key->st;
 
-         /* insert into list */
-         v->next = prog->variants;
-         prog->variants = v;
+         st_add_variant(&prog->variants, v);
       }
    }
 
