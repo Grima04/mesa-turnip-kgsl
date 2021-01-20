@@ -1100,13 +1100,6 @@ static uint32_t si_translate_stencil_op(int s_op)
    return 0;
 }
 
-static bool si_dsa_writes_stencil(const struct pipe_stencil_state *s)
-{
-   return s->enabled && s->writemask &&
-          (s->fail_op != PIPE_STENCIL_OP_KEEP || s->zfail_op != PIPE_STENCIL_OP_KEEP ||
-           s->zpass_op != PIPE_STENCIL_OP_KEEP);
-}
-
 static bool si_order_invariant_stencil_op(enum pipe_stencil_op op)
 {
    /* REPLACE is normally order invariant, except when the stencil
@@ -1194,8 +1187,7 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    dsa->depth_write_enabled = state->depth_enabled && state->depth_writemask;
    dsa->stencil_enabled = state->stencil[0].enabled;
    dsa->stencil_write_enabled =
-      state->stencil[0].enabled &&
-      (si_dsa_writes_stencil(&state->stencil[0]) || si_dsa_writes_stencil(&state->stencil[1]));
+      (util_writes_stencil(&state->stencil[0]) || util_writes_stencil(&state->stencil[1]));
    dsa->db_can_write = dsa->depth_write_enabled || dsa->stencil_write_enabled;
 
    bool zfunc_is_ordered =
