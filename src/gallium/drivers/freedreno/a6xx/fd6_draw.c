@@ -311,7 +311,8 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		ctx->last.restart_index = restart_index;
 	}
 
-	fd6_emit_state(ring, &emit);
+	if (emit.dirty)
+		fd6_emit_state(ring, &emit);
 
 	/* for debug after a lock up, write a unique counter value
 	 * to scratch7 for each draw, to make it easier to match up
