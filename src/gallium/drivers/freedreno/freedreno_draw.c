@@ -59,23 +59,11 @@ resource_written(struct fd_batch *batch, struct pipe_resource *prsc)
 }
 
 static void
-batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
-                    const struct pipe_draw_indirect_info *indirect)
+batch_draw_tracking_for_dirty_bits(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	unsigned buffers = 0, restore_buffers = 0;
-
-	/* NOTE: needs to be before resource_written(batch->query_buf), otherwise
-	 * query_buf may not be created yet.
-	 */
-	fd_batch_set_stage(batch, FD_STAGE_DRAW);
-
-	/*
-	 * Figure out the buffers/features we need:
-	 */
-
-	fd_screen_lock(ctx->screen);
 
 	if (ctx->dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_ZSA)) {
 		if (fd_depth_enabled(ctx)) {
@@ -176,14 +164,6 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 		}
 	}
 
-	/* Mark index buffer as being read */
-	if (info->index_size)
-		resource_read(batch, info->index.resource);
-
-	/* Mark indirect draw buffer as being read */
-	if (indirect && indirect->buffer)
-		resource_read(batch, indirect->buffer);
-
 	/* Mark textures as being read */
 	if (ctx->dirty_shader[PIPE_SHADER_VERTEX] & FD_DIRTY_SHADER_TEX) {
 		foreach_bit (i, ctx->tex[PIPE_SHADER_VERTEX].valid_textures)
@@ -202,17 +182,46 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 				resource_written(batch, ctx->streamout.targets[i]->buffer);
 	}
 
+	/* any buffers that haven't been cleared yet, we need to restore: */
+	batch->restore |= restore_buffers & (FD_BUFFER_ALL & ~batch->invalidated);
+	/* and any buffers used, need to be resolved: */
+	batch->resolve |= buffers;
+}
+
+static void
+batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
+                    const struct pipe_draw_indirect_info *indirect)
+{
+	struct fd_context *ctx = batch->ctx;
+
+	/* NOTE: needs to be before resource_written(batch->query_buf), otherwise
+	 * query_buf may not be created yet.
+	 */
+	fd_batch_set_stage(batch, FD_STAGE_DRAW);
+
+	/*
+	 * Figure out the buffers/features we need:
+	 */
+
+	fd_screen_lock(ctx->screen);
+
+	if (ctx->dirty)
+		batch_draw_tracking_for_dirty_bits(batch);
+
+	/* Mark index buffer as being read */
+	if (info->index_size)
+		resource_read(batch, info->index.resource);
+
+	/* Mark indirect draw buffer as being read */
+	if (indirect && indirect->buffer)
+		resource_read(batch, indirect->buffer);
+
 	resource_written(batch, batch->query_buf);
 
 	list_for_each_entry(struct fd_acc_query, aq, &ctx->acc_active_queries, node)
 		resource_written(batch, aq->prsc);
 
 	fd_screen_unlock(ctx->screen);
-
-	/* any buffers that haven't been cleared yet, we need to restore: */
-	batch->restore |= restore_buffers & (FD_BUFFER_ALL & ~batch->invalidated);
-	/* and any buffers used, need to be resolved: */
-	batch->resolve |= buffers;
 }
 
 static void
