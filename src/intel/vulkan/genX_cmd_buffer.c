@@ -3594,9 +3594,12 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 #endif
 
+   uint32_t descriptors_dirty = cmd_buffer->state.descriptors_dirty &
+                                pipeline->active_stages;
+
    /* Render targets live in the same binding table as fragment descriptors */
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_RENDER_TARGETS)
-      cmd_buffer->state.descriptors_dirty |= VK_SHADER_STAGE_FRAGMENT_BIT;
+      descriptors_dirty |= VK_SHADER_STAGE_FRAGMENT_BIT;
 
    /* We emit the binding tables and sampler tables first, then emit push
     * constants and then finally emit binding table and sampler table
@@ -3606,10 +3609,10 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
     * 3DSTATE_BINDING_TABLE_POINTER_* for the push constants to take effect.
     */
    uint32_t dirty = 0;
-   if (cmd_buffer->state.descriptors_dirty) {
+   if (descriptors_dirty) {
       dirty = flush_descriptor_sets(cmd_buffer,
                                     &cmd_buffer->state.gfx.base,
-                                    cmd_buffer->state.descriptors_dirty,
+                                    descriptors_dirty,
                                     pipeline->shaders,
                                     ARRAY_SIZE(pipeline->shaders));
       cmd_buffer->state.descriptors_dirty &= ~dirty;
