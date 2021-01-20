@@ -60,7 +60,7 @@ enum {
 /**
  * Representation of the instruction's microcode encoding format
  * Note: Some Vector ALU Formats can be combined, such that:
- * - VOP2* | VOP3A represents a VOP2 instruction in VOP3A encoding
+ * - VOP2* | VOP3 represents a VOP2 instruction in VOP3 encoding
  * - VOP2* | DPP represents a VOP2 instruction with data parallel primitive.
  * - VOP2* | SDWA represents a VOP2 instruction with sub-dword addressing.
  *
@@ -101,8 +101,6 @@ enum class Format : std::uint16_t {
    VOP2 = 1 << 9,
    VOPC = 1 << 10,
    VOP3 = 1 << 11,
-   VOP3A = 1 << 11,
-   VOP3B = 1 << 11,
    /* Vector Parameter Interpolation Format */
    VINTRP = 1 << 12,
    DPP = 1 << 13,
@@ -1001,8 +999,7 @@ struct Instruction {
       return ((uint16_t) format & (uint16_t) Format::VOP1) == (uint16_t) Format::VOP1
           || ((uint16_t) format & (uint16_t) Format::VOP2) == (uint16_t) Format::VOP2
           || ((uint16_t) format & (uint16_t) Format::VOPC) == (uint16_t) Format::VOPC
-          || ((uint16_t) format & (uint16_t) Format::VOP3A) == (uint16_t) Format::VOP3A
-          || ((uint16_t) format & (uint16_t) Format::VOP3B) == (uint16_t) Format::VOP3B
+          || ((uint16_t) format & (uint16_t) Format::VOP3) == (uint16_t) Format::VOP3
           || format == Format::VOP3P;
    }
 
@@ -1029,8 +1026,7 @@ struct Instruction {
 
    constexpr bool isVOP3() const noexcept
    {
-      return ((uint16_t) format & (uint16_t) Format::VOP3A) ||
-             ((uint16_t) format & (uint16_t) Format::VOP3B);
+      return (uint16_t) format & (uint16_t) Format::VOP3;
    }
 
    constexpr bool isSDWA() const noexcept
@@ -1114,7 +1110,7 @@ struct VOPC_instruction : public Instruction {
 };
 static_assert(sizeof(VOPC_instruction) == sizeof(Instruction) + 0, "Unexpected padding");
 
-struct VOP3A_instruction : public Instruction {
+struct VOP3_instruction : public Instruction {
    bool abs[3];
    bool neg[3];
    uint8_t opsel : 4;
@@ -1123,7 +1119,7 @@ struct VOP3A_instruction : public Instruction {
    uint8_t padding0 : 1;
    uint8_t padding1;
 };
-static_assert(sizeof(VOP3A_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+static_assert(sizeof(VOP3_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
 struct VOP3P_instruction : public Instruction {
    bool neg_lo[3];
@@ -1450,7 +1446,7 @@ constexpr bool Instruction::usesModifiers() const noexcept
       }
       return vop3p->opsel_lo || vop3p->clamp;
    } else if (isVOP3()) {
-      const VOP3A_instruction *vop3 = static_cast<const VOP3A_instruction*>(this);
+      const VOP3_instruction *vop3 = static_cast<const VOP3_instruction*>(this);
       for (unsigned i = 0; i < operands.size(); i++) {
          if (vop3->abs[i] || vop3->neg[i])
             return true;

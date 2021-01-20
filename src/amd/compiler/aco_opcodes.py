@@ -53,8 +53,7 @@ class Format(Enum):
    VOP1 = 1 << 8
    VOP2 = 1 << 9
    VOPC = 1 << 10
-   VOP3A = 1 << 11
-   VOP3B = 1 << 11
+   VOP3 = 1 << 11
    VINTRP = 1 << 12
    DPP = 1 << 13
    SDWA = 1 << 14
@@ -1082,7 +1081,7 @@ VOP3 = {
    (   -1,    -1,    -1,    -1, 0x140, "v_fma_legacy_f32", True, True), #GFX10.3+
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name, in_mod, out_mod) in VOP3:
-   opcode(name, gfx7, gfx9, gfx10, Format.VOP3A, in_mod, out_mod)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOP3, in_mod, out_mod)
 
 
 # DS instructions: 3 inputs (1 addr, 2 data), 1 output

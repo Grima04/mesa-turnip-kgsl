@@ -588,7 +588,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
    }
    }
    if (instr->isVOP3()) {
-      const VOP3A_instruction* vop3 = static_cast<const VOP3A_instruction*>(instr);
+      const VOP3_instruction* vop3 = static_cast<const VOP3_instruction*>(instr);
       switch (vop3->omod) {
       case 1:
          fprintf(output, " *2");
@@ -693,8 +693,8 @@ void aco_print_instr(const Instruction *instr, FILE *output)
       bool *const neg = (bool *)alloca(instr->operands.size() * sizeof(bool));
       bool *const opsel = (bool *)alloca(instr->operands.size() * sizeof(bool));
       uint8_t *const sel = (uint8_t *)alloca(instr->operands.size() * sizeof(uint8_t));
-      if ((int)instr->format & (int)Format::VOP3A) {
-         const VOP3A_instruction* vop3 = static_cast<const VOP3A_instruction*>(instr);
+      if ((int)instr->format & (int)Format::VOP3) {
+         const VOP3_instruction* vop3 = static_cast<const VOP3_instruction*>(instr);
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = vop3->abs[i];
             neg[i] = vop3->neg[i];

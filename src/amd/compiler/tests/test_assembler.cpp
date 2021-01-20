@@ -235,7 +235,7 @@ BEGIN_TEST(assembler.v_add3)
 
       //~gfx9>> v_add3_u32 v0, 0, 0, 0 ; d1ff0000 02010080
       //~gfx10>> v_add3_u32 v0, 0, 0, 0 ; d76d0000 02010080
-      aco_ptr<VOP3A_instruction> add3{create_instruction<VOP3A_instruction>(aco_opcode::v_add3_u32, Format::VOP3A, 3, 1)};
+      aco_ptr<VOP3_instruction> add3{create_instruction<VOP3_instruction>(aco_opcode::v_add3_u32, Format::VOP3, 3, 1)};
       add3->operands[0] = Operand(0u);
       add3->operands[1] = Operand(0u);
       add3->operands[2] = Operand(0u);
@@ -253,7 +253,7 @@ BEGIN_TEST(assembler.v_add3_clamp)
 
       //~gfx9>> integer addition + clamp ; d1ff8000 02010080
       //~gfx10>> integer addition + clamp ; d76d8000 02010080
-      aco_ptr<VOP3A_instruction> add3{create_instruction<VOP3A_instruction>(aco_opcode::v_add3_u32, Format::VOP3A, 3, 1)};
+      aco_ptr<VOP3_instruction> add3{create_instruction<VOP3_instruction>(aco_opcode::v_add3_u32, Format::VOP3, 3, 1)};
       add3->operands[0] = Operand(0u);
       add3->operands[1] = Operand(0u);
       add3->operands[2] = Operand(0u);

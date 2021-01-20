@@ -646,7 +646,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
                                          Definition(PhysReg{vtmp+i}, v1),
                                          Operand(PhysReg{tmp+i}, v1),
                                          Operand(0xffffffffu), Operand(0xffffffffu)).instr;
-            static_cast<VOP3A_instruction*>(perm)->opsel = 1; /* FI (Fetch Inactive) */
+            static_cast<VOP3_instruction*>(perm)->opsel = 1; /* FI (Fetch Inactive) */
          }
          bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(UINT64_MAX));
 
@@ -757,7 +757,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
                                          Definition(PhysReg{vtmp+i}, v1),
                                          Operand(PhysReg{tmp+i}, v1),
                                          Operand(0xffffffffu), Operand(0xffffffffu)).instr;
-            static_cast<VOP3A_instruction*>(perm)->opsel = 1; /* FI (Fetch Inactive) */
+            static_cast<VOP3_instruction*>(perm)->opsel = 1; /* FI (Fetch Inactive) */
          }
          emit_op(ctx, tmp, tmp, vtmp, PhysReg{0}, reduce_op, src.size());
 
@@ -1052,12 +1052,12 @@ void copy_constant(lower_context *ctx, Builder& bld, Definition dst, Operand op)
          if (dst.physReg().byte() == 2) {
             Operand def_lo(dst.physReg().advance(-2), v2b);
             Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, def_lo, op);
-            static_cast<VOP3A_instruction*>(instr)->opsel = 0;
+            static_cast<VOP3_instruction*>(instr)->opsel = 0;
          } else {
             assert(dst.physReg().byte() == 0);
             Operand def_hi(dst.physReg().advance(2), v2b);
             Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, op, def_hi);
-            static_cast<VOP3A_instruction*>(instr)->opsel = 2;
+            static_cast<VOP3_instruction*>(instr)->opsel = 2;
          }
       } else {
          uint32_t offset = dst.physReg().byte() * 8u;
@@ -1251,7 +1251,7 @@ void do_pack_2x16(lower_context *ctx, Builder& bld, Definition def, Operand lo, 
    if (can_use_pack) {
       Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, lo, hi);
       /* opsel: 0 = select low half, 1 = select high half. [0] = src0, [1] = src1 */
-      static_cast<VOP3A_instruction*>(instr)->opsel = hi.physReg().byte() | (lo.physReg().byte() >> 1);
+      static_cast<VOP3_instruction*>(instr)->opsel = hi.physReg().byte() | (lo.physReg().byte() >> 1);
       return;
    }
 

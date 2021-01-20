@@ -136,7 +136,7 @@ bool validate_ir(Program* program)
                   base_format == Format::VOP1 ||
                   base_format == Format::VOPC ||
                   base_format == Format::VINTRP,
-                  "Format cannot have VOP3A/VOP3B applied", instr.get());
+                  "Format cannot have VOP3/VOP3B applied", instr.get());
          }
 
          /* check SDWA */
@@ -188,7 +188,7 @@ bool validate_ir(Program* program)
 
          /* check opsel */
          if (instr->isVOP3()) {
-            VOP3A_instruction *vop3 = static_cast<VOP3A_instruction*>(instr.get());
+            VOP3_instruction *vop3 = static_cast<VOP3_instruction*>(instr.get());
             check(vop3->opsel == 0 || program->chip_class >= GFX9, "Opsel is only supported on GFX9+", instr.get());
 
             for (unsigned i = 0; i < 3; i++) {

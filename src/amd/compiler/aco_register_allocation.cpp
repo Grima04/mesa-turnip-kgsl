@@ -503,7 +503,7 @@ void add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx
          update_phi_map(ctx, tmp.get(), instr.get());
       return;
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, idx, byte / 2)) {
-      VOP3A_instruction* vop3 = static_cast<VOP3A_instruction *>(instr.get());
+      VOP3_instruction* vop3 = static_cast<VOP3_instruction *>(instr.get());
       vop3->opsel |= (byte / 2) << idx;
       return;
    } else if (instr->format == Format::VOP3P && byte == 2) {
@@ -614,7 +614,7 @@ void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsi
          convert_to_SDWA(chip, instr);
       return;
    } else if (reg.byte() && rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, -1, reg.byte() / 2)) {
-      VOP3A_instruction *vop3 = static_cast<VOP3A_instruction *>(instr.get());
+      VOP3_instruction *vop3 = static_cast<VOP3_instruction *>(instr.get());
       if (reg.byte() == 2)
          vop3->opsel |= (1 << 3); /* dst in high half */
       return;
@@ -2478,7 +2478,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             /* change the instruction to VOP3 to enable an arbitrary register pair as dst */
             aco_ptr<Instruction> tmp = std::move(instr);
             Format format = asVOP3(tmp->format);
-            instr.reset(create_instruction<VOP3A_instruction>(tmp->opcode, format, tmp->operands.size(), tmp->definitions.size()));
+            instr.reset(create_instruction<VOP3_instruction>(tmp->opcode, format, tmp->operands.size(), tmp->definitions.size()));
             std::copy(tmp->operands.begin(), tmp->operands.end(), instr->operands.begin());
             std::copy(tmp->definitions.begin(), tmp->definitions.end(), instr->definitions.begin());
             update_phi_map(ctx, tmp.get(), instr.get());

@@ -81,7 +81,7 @@ struct InstrHash {
    std::size_t operator()(Instruction* instr) const
    {
       if (instr->isVOP3())
-         return hash_murmur_32<VOP3A_instruction>(instr);
+         return hash_murmur_32<VOP3_instruction>(instr);
 
       if (instr->isDPP())
          return hash_murmur_32<DPP_instruction>(instr);
@@ -178,8 +178,8 @@ struct InstrPred {
          return false;
 
       if (a->isVOP3()) {
-         VOP3A_instruction* a3 = static_cast<VOP3A_instruction*>(a);
-         VOP3A_instruction* b3 = static_cast<VOP3A_instruction*>(b);
+         VOP3_instruction* a3 = static_cast<VOP3_instruction*>(a);
+         VOP3_instruction* b3 = static_cast<VOP3_instruction*>(b);
          for (unsigned i = 0; i < 3; i++) {
             if (a3->abs[i] != b3->abs[i] ||
                 a3->neg[i] != b3->neg[i])

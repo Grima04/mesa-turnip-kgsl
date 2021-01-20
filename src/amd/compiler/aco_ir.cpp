@@ -170,7 +170,7 @@ bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
       return true;
 
    if (instr->isVOP3()) {
-      VOP3A_instruction *vop3 = static_cast<VOP3A_instruction*>(instr.get());
+      VOP3_instruction *vop3 = static_cast<VOP3_instruction*>(instr.get());
       if (instr->format == Format::VOP3)
          return false;
       if (vop3->clamp && instr->format == asVOP3(Format::VOPC) && chip != GFX8)
@@ -235,7 +235,7 @@ aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& inst
    SDWA_instruction *sdwa = static_cast<SDWA_instruction*>(instr.get());
 
    if (tmp->isVOP3()) {
-      VOP3A_instruction *vop3 = static_cast<VOP3A_instruction*>(tmp.get());
+      VOP3_instruction *vop3 = static_cast<VOP3_instruction*>(tmp.get());
       memcpy(sdwa->neg, vop3->neg, sizeof(sdwa->neg));
       memcpy(sdwa->abs, vop3->abs, sizeof(sdwa->abs));
       sdwa->omod = vop3->omod;

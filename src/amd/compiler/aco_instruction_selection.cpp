@@ -1224,7 +1224,7 @@ Temp emit_floor_f64(isel_context *ctx, Builder& bld, Definition dst, Temp val)
    Temp v = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), dst0, dst1);
 
    Instruction* add = bld.vop3(aco_opcode::v_add_f64, Definition(dst), src0, v);
-   static_cast<VOP3A_instruction*>(add)->neg[1] = true;
+   static_cast<VOP3_instruction*>(add)->neg[1] = true;
 
    return add->definitions[0].getTemp();
 }
@@ -1692,10 +1692,10 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
                std::swap(src0, src1);
             add_instr = bld.vop2_e64(aco_opcode::v_add_u16, Definition(dst), src0, as_vgpr(ctx, src1)).instr;
          }
-         static_cast<VOP3A_instruction*>(add_instr)->clamp = 1;
+         static_cast<VOP3_instruction*>(add_instr)->clamp = 1;
       } else if (dst.regClass() == v1) {
          if (ctx->options->chip_class >= GFX9) {
-            aco_ptr<VOP3A_instruction> add{create_instruction<VOP3A_instruction>(aco_opcode::v_add_u32, asVOP3(Format::VOP2), 2, 1)};
+            aco_ptr<VOP3_instruction> add{create_instruction<VOP3_instruction>(aco_opcode::v_add_u32, asVOP3(Format::VOP2), 2, 1)};
             add->operands[0] = Operand(src0);
             add->operands[1] = Operand(src1);
             add->definitions[0] = Definition(dst);
@@ -1965,7 +1965,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       } else if (dst.regClass() == v2) {
          Instruction* add = bld.vop3(aco_opcode::v_add_f64, Definition(dst),
                                      as_vgpr(ctx, src0), as_vgpr(ctx, src1));
-         VOP3A_instruction* sub = static_cast<VOP3A_instruction*>(add);
+         VOP3_instruction* sub = static_cast<VOP3_instruction*>(add);
          sub->neg[1] = true;
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
@@ -2115,7 +2115,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          // TODO: confirm that this holds under any circumstances
       } else if (dst.regClass() == v2) {
          Instruction* add = bld.vop3(aco_opcode::v_add_f64, Definition(dst), src, Operand(0u));
-         VOP3A_instruction* vop3 = static_cast<VOP3A_instruction*>(add);
+         VOP3_instruction* vop3 = static_cast<VOP3_instruction*>(add);
          vop3->clamp = true;
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
@@ -2255,12 +2255,12 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
             Temp bfi = bld.vop3(aco_opcode::v_bfi_b32, bld.def(v1), bitmask, bld.copy(bld.def(v1), Operand(0x43300000u)), as_vgpr(ctx, src0_hi));
             Temp tmp = bld.vop3(aco_opcode::v_add_f64, bld.def(v2), src0, bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), Operand(0u), bfi));
             Instruction *sub = bld.vop3(aco_opcode::v_add_f64, bld.def(v2), tmp, bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), Operand(0u), bfi));
-            static_cast<VOP3A_instruction*>(sub)->neg[1] = true;
+            static_cast<VOP3_instruction*>(sub)->neg[1] = true;
             tmp = sub->definitions[0].getTemp();
 
             Temp v = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), Operand(-1u), Operand(0x432fffffu));
             Instruction* vop3 = bld.vopc_e64(aco_opcode::v_cmp_gt_f64, bld.hint_vcc(bld.def(bld.lm)), src0, v);
-            static_cast<VOP3A_instruction*>(vop3)->abs[0] = true;
+            static_cast<VOP3_instruction*>(vop3)->abs[0] = true;
             Temp cond = vop3->definitions[0].getTemp();
 
             Temp tmp_lo = bld.tmp(v1), tmp_hi = bld.tmp(v1);
@@ -2926,7 +2926,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          f32 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), f16);
          Temp smallest = bld.copy(bld.def(s1), Operand(0x38800000u));
          Instruction* vop3 = bld.vopc_e64(aco_opcode::v_cmp_nlt_f32, bld.hint_vcc(bld.def(bld.lm)), f32, smallest);
-         static_cast<VOP3A_instruction*>(vop3)->abs[0] = true;
+         static_cast<VOP3_instruction*>(vop3)->abs[0] = true;
          cmp_res = vop3->definitions[0].getTemp();
       }
 
@@ -8847,7 +8847,7 @@ void prepare_cube_coords(isel_context *ctx, std::vector<Temp>& coords, Temp* ddx
 
    ma = bld.vop3(aco_opcode::v_cubema_f32, bld.def(v1), coords[0], coords[1], coords[2]);
 
-   aco_ptr<VOP3A_instruction> vop3a{create_instruction<VOP3A_instruction>(aco_opcode::v_rcp_f32, asVOP3(Format::VOP1), 1, 1)};
+   aco_ptr<VOP3_instruction> vop3a{create_instruction<VOP3_instruction>(aco_opcode::v_rcp_f32, asVOP3(Format::VOP1), 1, 1)};
    vop3a->operands[0] = Operand(ma);
    vop3a->abs[0] = true;
    Temp invma = bld.tmp(v1);
