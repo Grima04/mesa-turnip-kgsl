@@ -330,7 +330,6 @@ struct vc4_fs_key {
         bool is_points;
         bool is_lines;
         bool point_coord_upper_left;
-        bool light_twoside;
         bool msaa;
         bool sample_coverage;
         bool sample_alpha_to_coverage;

@@ -2298,9 +2298,6 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         NIR_PASS_V(c->s, nir_lower_tex, &tex_options);
 
-        if (c->fs_key && c->fs_key->light_twoside)
-                NIR_PASS_V(c->s, nir_lower_two_sided_color, true);
-
         if (c->vs_key && c->vs_key->clamp_color)
                 NIR_PASS_V(c->s, nir_lower_clamp_color_outputs);
 
@@ -2752,7 +2749,6 @@ vc4_update_compiled_fs(struct vc4_context *vc4, uint8_t prim_mode)
         }
 
         key->ubo_1_size = vc4->constbuf[PIPE_SHADER_FRAGMENT].cb[1].buffer_size;
-        key->light_twoside = vc4->rasterizer->base.light_twoside;
 
         struct vc4_compiled_shader *old_fs = vc4->prog.fs;
         vc4->prog.fs = vc4_get_compiled_shader(vc4, QSTAGE_FRAG, &key->base);
