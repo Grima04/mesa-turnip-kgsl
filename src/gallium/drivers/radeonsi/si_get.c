@@ -517,9 +517,17 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
       case PIPE_VIDEO_CAP_NPOT_TEXTURES:
          return 1;
       case PIPE_VIDEO_CAP_MAX_WIDTH:
-         return (sscreen->info.family < CHIP_TONGA) ? 2048 : 4096;
+         if (codec != PIPE_VIDEO_FORMAT_UNKNOWN &&
+               sscreen->info.enc_caps.codec_info[codec - 1].valid)
+            return sscreen->info.enc_caps.codec_info[codec - 1].max_width;
+         else
+            return (sscreen->info.family < CHIP_TONGA) ? 2048 : 4096;
       case PIPE_VIDEO_CAP_MAX_HEIGHT:
-         return (sscreen->info.family < CHIP_TONGA) ? 1152 : 2304;
+         if (codec != PIPE_VIDEO_FORMAT_UNKNOWN &&
+               sscreen->info.enc_caps.codec_info[codec - 1].valid)
+            return sscreen->info.enc_caps.codec_info[codec - 1].max_height;
+         else
+            return (sscreen->info.family < CHIP_TONGA) ? 1152 : 2304;
       case PIPE_VIDEO_CAP_PREFERED_FORMAT:
          return PIPE_FORMAT_NV12;
       case PIPE_VIDEO_CAP_PREFERS_INTERLACED:
@@ -583,26 +591,34 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
    case PIPE_VIDEO_CAP_NPOT_TEXTURES:
       return 1;
    case PIPE_VIDEO_CAP_MAX_WIDTH:
-      switch (codec) {
-      case PIPE_VIDEO_FORMAT_HEVC:
-      case PIPE_VIDEO_FORMAT_VP9:
-      case PIPE_VIDEO_FORMAT_AV1:
-         return (sscreen->info.family < CHIP_RENOIR)
-                   ? ((sscreen->info.family < CHIP_TONGA) ? 2048 : 4096)
-                   : 8192;
-      default:
-         return (sscreen->info.family < CHIP_TONGA) ? 2048 : 4096;
+      if (codec != PIPE_VIDEO_FORMAT_UNKNOWN &&
+            sscreen->info.dec_caps.codec_info[codec - 1].valid) {
+         return sscreen->info.dec_caps.codec_info[codec - 1].max_width;
+      } else {
+         switch (codec) {
+         case PIPE_VIDEO_FORMAT_HEVC:
+         case PIPE_VIDEO_FORMAT_VP9:
+         case PIPE_VIDEO_FORMAT_AV1:
+            return (sscreen->info.family < CHIP_RENOIR) ?
+               ((sscreen->info.family < CHIP_TONGA) ? 2048 : 4096) : 8192;
+         default:
+            return (sscreen->info.family < CHIP_TONGA) ? 2048 : 4096;
+         }
       }
    case PIPE_VIDEO_CAP_MAX_HEIGHT:
-      switch (codec) {
-      case PIPE_VIDEO_FORMAT_HEVC:
-      case PIPE_VIDEO_FORMAT_VP9:
-      case PIPE_VIDEO_FORMAT_AV1:
-         return (sscreen->info.family < CHIP_RENOIR)
-                   ? ((sscreen->info.family < CHIP_TONGA) ? 1152 : 4096)
-                   : 4352;
-      default:
-         return (sscreen->info.family < CHIP_TONGA) ? 1152 : 4096;
+      if (codec != PIPE_VIDEO_FORMAT_UNKNOWN &&
+            sscreen->info.dec_caps.codec_info[codec - 1].valid) {
+         return sscreen->info.dec_caps.codec_info[codec - 1].max_height;
+      } else {
+         switch (codec) {
+         case PIPE_VIDEO_FORMAT_HEVC:
+         case PIPE_VIDEO_FORMAT_VP9:
+         case PIPE_VIDEO_FORMAT_AV1:
+            return (sscreen->info.family < CHIP_RENOIR) ?
+               ((sscreen->info.family < CHIP_TONGA) ? 1152 : 4096) : 4352;
+         default:
+            return (sscreen->info.family < CHIP_TONGA) ? 1152 : 4096;
+         }
       }
    case PIPE_VIDEO_CAP_PREFERED_FORMAT:
       if (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
@@ -623,31 +639,39 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
    case PIPE_VIDEO_CAP_SUPPORTS_PROGRESSIVE:
       return true;
    case PIPE_VIDEO_CAP_MAX_LEVEL:
-      switch (profile) {
-      case PIPE_VIDEO_PROFILE_MPEG1:
-         return 0;
-      case PIPE_VIDEO_PROFILE_MPEG2_SIMPLE:
-      case PIPE_VIDEO_PROFILE_MPEG2_MAIN:
-         return 3;
-      case PIPE_VIDEO_PROFILE_MPEG4_SIMPLE:
-         return 3;
-      case PIPE_VIDEO_PROFILE_MPEG4_ADVANCED_SIMPLE:
-         return 5;
-      case PIPE_VIDEO_PROFILE_VC1_SIMPLE:
-         return 1;
-      case PIPE_VIDEO_PROFILE_VC1_MAIN:
-         return 2;
-      case PIPE_VIDEO_PROFILE_VC1_ADVANCED:
-         return 4;
-      case PIPE_VIDEO_PROFILE_MPEG4_AVC_BASELINE:
-      case PIPE_VIDEO_PROFILE_MPEG4_AVC_MAIN:
-      case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH:
-         return (sscreen->info.family < CHIP_TONGA) ? 41 : 52;
-      case PIPE_VIDEO_PROFILE_HEVC_MAIN:
-      case PIPE_VIDEO_PROFILE_HEVC_MAIN_10:
-         return 186;
-      default:
-         return 0;
+      if ((profile == PIPE_VIDEO_PROFILE_MPEG2_SIMPLE ||
+           profile == PIPE_VIDEO_PROFILE_MPEG2_MAIN ||
+           profile == PIPE_VIDEO_PROFILE_MPEG4_ADVANCED_SIMPLE ||
+           profile == PIPE_VIDEO_PROFILE_VC1_ADVANCED) &&
+          sscreen->info.dec_caps.codec_info[codec - 1].valid) {
+         return sscreen->info.dec_caps.codec_info[codec - 1].max_level;
+      } else {
+         switch (profile) {
+         case PIPE_VIDEO_PROFILE_MPEG1:
+            return 0;
+         case PIPE_VIDEO_PROFILE_MPEG2_SIMPLE:
+         case PIPE_VIDEO_PROFILE_MPEG2_MAIN:
+            return 3;
+         case PIPE_VIDEO_PROFILE_MPEG4_SIMPLE:
+            return 3;
+         case PIPE_VIDEO_PROFILE_MPEG4_ADVANCED_SIMPLE:
+            return 5;
+         case PIPE_VIDEO_PROFILE_VC1_SIMPLE:
+            return 1;
+         case PIPE_VIDEO_PROFILE_VC1_MAIN:
+            return 2;
+         case PIPE_VIDEO_PROFILE_VC1_ADVANCED:
+            return 4;
+         case PIPE_VIDEO_PROFILE_MPEG4_AVC_BASELINE:
+         case PIPE_VIDEO_PROFILE_MPEG4_AVC_MAIN:
+         case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH:
+            return (sscreen->info.family < CHIP_TONGA) ? 41 : 52;
+         case PIPE_VIDEO_PROFILE_HEVC_MAIN:
+         case PIPE_VIDEO_PROFILE_HEVC_MAIN_10:
+            return 186;
+         default:
+            return 0;
+         }
       }
    default:
       return 0;
