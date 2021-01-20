@@ -385,7 +385,6 @@ struct v3d_fs_key {
         bool is_lines;
         bool line_smoothing;
         bool point_coord_upper_left;
-        bool light_twoside;
         bool msaa;
         bool sample_coverage;
         bool sample_alpha_to_coverage;

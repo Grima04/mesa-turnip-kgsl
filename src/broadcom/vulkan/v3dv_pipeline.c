@@ -1192,12 +1192,6 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
       }
    }
 
-   /* FIXME: we understand that this is used on GL to configure fixed-function
-    * two side lighting support, and not make sense for Vulkan. Need to
-    * confirm though.
-    */
-   key->light_twoside = false;
-
    /* FIXME: ditto, although for flat lighting. Again, neet to confirm.*/
    key->shade_model_flat = false;
 }
