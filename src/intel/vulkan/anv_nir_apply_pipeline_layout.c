@@ -426,8 +426,11 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_ssa_def *index;
    nir_address_format addr_format = desc_addr_format(desc_type, state);
    switch (addr_format) {
-   case nir_address_format_64bit_global:
+   case nir_address_format_64bit_global_32bit_offset:
    case nir_address_format_64bit_bounded_global: {
+      assert(intrin->dest.ssa.num_components == 4);
+      assert(intrin->dest.ssa.bit_size == 32);
+
       /* We store the descriptor offset as 16.8.8 where the top 16 bits are
        * the offset into the descriptor set, the next 8 are the binding table
        * index of the descriptor buffer, and the bottom 8 bits are the offset
@@ -446,26 +449,10 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
          (uint32_t)state->set[set].desc_offset << 8 |
          dynamic_offset_index;
 
-      switch (addr_format) {
-      case nir_address_format_64bit_bounded_global:
-         assert(intrin->dest.ssa.num_components == 4);
-         assert(intrin->dest.ssa.bit_size == 32);
-         index = nir_vec4(b, nir_imm_int(b, desc_offset),
-                             nir_ssa_for_src(b, intrin->src[0], 1),
-                             nir_imm_int(b, array_size - 1),
-                             nir_ssa_undef(b, 1, 32));
-         break;
-
-      case nir_address_format_64bit_global:
-         assert(intrin->dest.ssa.num_components == 1);
-         assert(intrin->dest.ssa.bit_size == 64);
-         index = nir_pack_64_2x32_split(b, nir_imm_int(b, desc_offset),
-                                           nir_ssa_for_src(b, intrin->src[0], 1));
-         break;
-
-      default:
-         unreachable("Unsupported address format");
-      }
+      index = nir_vec4(b, nir_imm_int(b, desc_offset),
+                          nir_ssa_for_src(b, intrin->src[0], 1),
+                          nir_imm_int(b, array_size - 1),
+                          nir_ssa_undef(b, 1, 32));
       break;
    }
 
@@ -520,16 +507,6 @@ lower_res_reindex_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                               nir_ssa_undef(b, 1, 32));
       break;
 
-   case nir_address_format_64bit_global: {
-      /* See also lower_res_index_intrinsic() */
-      assert(intrin->dest.ssa.num_components == 1);
-      assert(intrin->dest.ssa.bit_size == 64);
-      nir_ssa_def *base = nir_unpack_64_2x32_split_x(b, old_index);
-      nir_ssa_def *arr_idx = nir_unpack_64_2x32_split_y(b, old_index);
-      new_index = nir_pack_64_2x32_split(b, base, nir_iadd(b, arr_idx, offset));
-      break;
-   }
-
    case nir_address_format_32bit_index_offset:
       assert(intrin->dest.ssa.num_components == 2);
       assert(intrin->dest.ssa.bit_size == 32);
@@ -553,24 +530,13 @@ build_ssbo_descriptor_load(nir_builder *b, const VkDescriptorType desc_type,
                            nir_ssa_def *index,
                            struct apply_pipeline_layout_state *state)
 {
-   nir_ssa_def *desc_offset, *array_index;
-   switch (desc_addr_format(desc_type, state)) {
-   case nir_address_format_64bit_bounded_global:
-      /* See also lower_res_index_intrinsic() */
-      desc_offset = nir_channel(b, index, 0);
-      array_index = nir_umin(b, nir_channel(b, index, 1),
-                                nir_channel(b, index, 2));
-      break;
+   ASSERTED nir_address_format addr_format = desc_addr_format(desc_type, state);
+   assert(addr_format == nir_address_format_64bit_global_32bit_offset ||
+          addr_format == nir_address_format_64bit_bounded_global);
 
-   case nir_address_format_64bit_global:
-      /* See also lower_res_index_intrinsic() */
-      desc_offset = nir_unpack_64_2x32_split_x(b, index);
-      array_index = nir_unpack_64_2x32_split_y(b, index);
-      break;
-
-   default:
-      unreachable("Unhandled address format for SSBO");
-   }
+   nir_ssa_def *desc_offset = nir_channel(b, index, 0);
+   nir_ssa_def *array_index = nir_umin(b, nir_channel(b, index, 1),
+                                          nir_channel(b, index, 2));
 
    /* The desc_offset is actually 16.8.8 */
    nir_ssa_def *desc_buffer_index =
@@ -633,36 +599,18 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_ssa_def *desc;
    nir_address_format addr_format = desc_addr_format(desc_type, state);
    switch (addr_format) {
-   case nir_address_format_64bit_global:
+   case nir_address_format_64bit_global_32bit_offset:
    case nir_address_format_64bit_bounded_global: {
       desc = build_ssbo_descriptor_load(b,desc_type, index, state);
-
-      if (addr_format == nir_address_format_64bit_global)
-         desc = nir_pack_64_2x32(b, nir_channels(b, desc, 0x3));
 
       if (state->has_dynamic_buffers) {
          /* This shader has dynamic offsets and we have no way of knowing
           * (save from the dynamic offset base index) if this buffer has a
           * dynamic offset.
           */
-         nir_ssa_def *desc_offset, *array_index;
-         switch (addr_format) {
-         case nir_address_format_64bit_bounded_global:
-            /* See also lower_res_index_intrinsic() */
-            desc_offset = nir_channel(b, index, 0);
-            array_index = nir_umin(b, nir_channel(b, index, 1),
-                                      nir_channel(b, index, 2));
-            break;
-
-         case nir_address_format_64bit_global:
-            /* See also lower_res_index_intrinsic() */
-            desc_offset = nir_unpack_64_2x32_split_x(b, index);
-            array_index = nir_unpack_64_2x32_split_y(b, index);
-            break;
-
-         default:
-            unreachable("Unhandled address format for SSBO");
-         }
+         nir_ssa_def *desc_offset = nir_channel(b, index, 0);
+         nir_ssa_def *array_index = nir_umin(b, nir_channel(b, index, 1),
+                                                nir_channel(b, index, 2));
 
          nir_ssa_def *dyn_offset_base =
             nir_extract_u8(b, desc_offset, nir_imm_int(b, 0));
@@ -682,28 +630,16 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
             nir_bcsel(b, nir_ieq_imm(b, dyn_offset_base, 0xff),
                          nir_imm_int(b, 0), dyn_load);
 
-         switch (addr_format) {
-         case nir_address_format_64bit_bounded_global: {
-            /* The dynamic offset gets added to the base pointer so that we
-             * have a sliding window range.
-             */
-            nir_ssa_def *base_ptr =
-               nir_pack_64_2x32(b, nir_channels(b, desc, 0x3));
-            base_ptr = nir_iadd(b, base_ptr, nir_u2u64(b, dynamic_offset));
-            desc = nir_vec4(b, nir_unpack_64_2x32_split_x(b, base_ptr),
-                               nir_unpack_64_2x32_split_y(b, base_ptr),
-                               nir_channel(b, desc, 2),
-                               nir_channel(b, desc, 3));
-            break;
-         }
-
-         case nir_address_format_64bit_global:
-            desc = nir_iadd(b, desc, nir_u2u64(b, dynamic_offset));
-            break;
-
-         default:
-            unreachable("Unhandled address format for SSBO");
-         }
+         /* The dynamic offset gets added to the base pointer so that we
+          * have a sliding window range.
+          */
+         nir_ssa_def *base_ptr =
+            nir_pack_64_2x32(b, nir_channels(b, desc, 0x3));
+         base_ptr = nir_iadd(b, base_ptr, nir_u2u64(b, dynamic_offset));
+         desc = nir_vec4(b, nir_unpack_64_2x32_split_x(b, base_ptr),
+                            nir_unpack_64_2x32_split_y(b, base_ptr),
+                            nir_channel(b, desc, 2),
+                            nir_channel(b, desc, 3));
       }
       break;
    }

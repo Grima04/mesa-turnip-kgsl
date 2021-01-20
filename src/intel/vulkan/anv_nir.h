@@ -48,7 +48,7 @@ anv_nir_ssbo_addr_format(const struct anv_physical_device *pdevice,
       if (robust_buffer_access)
          return nir_address_format_64bit_bounded_global;
       else
-         return nir_address_format_64bit_global;
+         return nir_address_format_64bit_global_32bit_offset;
    } else {
       return nir_address_format_32bit_index_offset;
    }
