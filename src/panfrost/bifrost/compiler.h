@@ -689,6 +689,7 @@ pan_next_block(pan_block *block)
 /* BIR manipulation */
 
 bool bi_has_arg(bi_instr *ins, bi_index arg);
+unsigned bi_count_read_registers(bi_instr *ins, unsigned src);
 uint16_t bi_bytemask_of_read_components(bi_instr *ins, bi_index node);
 unsigned bi_writemask(bi_instr *ins);
 

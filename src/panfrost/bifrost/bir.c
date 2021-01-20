@@ -83,24 +83,25 @@ bi_count_staging_registers(bi_instr *ins)
         unreachable("Invalid sr_count");
 }
 
+unsigned
+bi_count_read_registers(bi_instr *ins, unsigned s)
+{
+        if (s == 0 && bi_opcode_props[ins->op].sr_read)
+                return bi_count_staging_registers(ins);
+        else
+                return 1;
+}
+
 uint16_t
 bi_bytemask_of_read_components(bi_instr *ins, bi_index node)
 {
         uint16_t mask = 0x0;
-        bool reads_sr = bi_opcode_props[ins->op].sr_read;
 
         bi_foreach_src(ins, s) {
                 if (!bi_is_equiv(ins->src[s], node)) continue;
 
-                /* assume we read a scalar */
-                unsigned rmask = 0xF;
-
-                if (s == 0 && reads_sr) {
-                        /* Override for a staging register */
-                        unsigned count = bi_count_staging_registers(ins);
-                        rmask = (1 << (count * 4)) - 1;
-                }
-
+                unsigned count = bi_count_read_registers(ins, s);
+                unsigned rmask = (1 << (4 * count)) - 1;
                 mask |= (rmask << (4 * node.offset));
         }
 
