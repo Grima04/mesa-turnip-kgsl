@@ -49,6 +49,7 @@ struct fd6_zsa_stateobj {
 	uint32_t rb_stencilwrmask;
 
 	struct fd6_lrz_state lrz;
+	bool writes_zs;     /* writes depth and/or stencil */
 	bool invalidate_lrz;
 	bool alpha_test;
 

@@ -593,7 +593,7 @@ compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid)
 			fs->writes_stencilref) {
 		return A6XX_LATE_Z;
 	} else if ((fs->has_kill || zsa->alpha_test) &&
-			(zsa->base.depth_writemask || !pfb->zsbuf)) {
+			(zsa->writes_zs || !pfb->zsbuf)) {
 		/* Slightly odd, but seems like the hw wants us to select
 		 * LATE_Z mode if there is no depth buffer + discard.  Either
 		 * that, or when occlusion query is enabled.  See:
