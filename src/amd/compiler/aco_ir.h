@@ -1126,32 +1126,17 @@ struct Instruction {
 
    constexpr bool isVALU() const noexcept
    {
-      return ((uint16_t) format & (uint16_t) Format::VOP1) == (uint16_t) Format::VOP1
-          || ((uint16_t) format & (uint16_t) Format::VOP2) == (uint16_t) Format::VOP2
-          || ((uint16_t) format & (uint16_t) Format::VOPC) == (uint16_t) Format::VOPC
-          || ((uint16_t) format & (uint16_t) Format::VOP3) == (uint16_t) Format::VOP3
-          || format == Format::VOP3P;
+      return isVOP1() || isVOP2() || isVOPC() || isVOP3() || isVOP3P();
    }
 
    constexpr bool isSALU() const noexcept
    {
-      return format == Format::SOP1 ||
-             format == Format::SOP2 ||
-             format == Format::SOPC ||
-             format == Format::SOPK ||
-             format == Format::SOPP;
+      return isSOP1() || isSOP2() || isSOPC() || isSOPK() || isSOPP();
    }
 
    constexpr bool isVMEM() const noexcept
    {
-      return format == Format::MTBUF ||
-             format == Format::MUBUF ||
-             format == Format::MIMG;
-   }
-
-   constexpr bool isFlatOrGlobal() const noexcept
-   {
-      return format == Format::FLAT || format == Format::GLOBAL;
+      return isMTBUF() || isMUBUF() || isMIMG();
    }
 };
 static_assert(sizeof(Instruction) == 16, "Unexpected padding");
@@ -1538,7 +1523,7 @@ constexpr bool Instruction::usesModifiers() const noexcept
    if (isDPP() || isSDWA())
       return true;
 
-   if (format == Format::VOP3P) {
+   if (isVOP3P()) {
       const VOP3P_instruction *vop3p = this->vop3p();
       for (unsigned i = 0; i < operands.size(); i++) {
          if (vop3p->neg_lo[i] || vop3p->neg_hi[i])

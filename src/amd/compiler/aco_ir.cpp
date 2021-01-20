@@ -206,7 +206,7 @@ bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
       return false;
 
    //TODO: return true if we know we will use vcc
-   if ((unsigned)instr->format & (unsigned)Format::VOPC)
+   if (instr->isVOPC())
       return false;
    if (instr->operands.size() >= 3 && !is_mac)
       return false;
@@ -411,12 +411,12 @@ uint32_t get_reduction_identity(ReduceOp op, unsigned idx)
 bool needs_exec_mask(const Instruction* instr) {
    if (instr->isSALU())
       return instr->reads_exec();
-   if (instr->format == Format::SMEM || instr->isSALU())
+   if (instr->isSMEM() || instr->isSALU())
       return false;
-   if (instr->format == Format::PSEUDO_BARRIER)
+   if (instr->isBarrier())
       return false;
 
-   if (instr->format == Format::PSEUDO) {
+   if (instr->isPseudo()) {
       switch (instr->opcode) {
       case aco_opcode::p_create_vector:
       case aco_opcode::p_extract_vector:

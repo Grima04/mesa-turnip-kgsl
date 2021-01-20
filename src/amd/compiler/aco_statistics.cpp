@@ -46,7 +46,7 @@ void collect_preasm_stats(Program *program)
       program->statistics[statistic_instructions] += block.instructions.size();
 
       for (aco_ptr<Instruction>& instr : block.instructions) {
-         if (instr->format == Format::SOPP && instr->sopp()->block != -1)
+         if (instr->isSOPP() && instr->sopp()->block != -1)
             program->statistics[statistic_branches]++;
 
          if (instr->opcode == aco_opcode::p_constaddr)
@@ -59,7 +59,7 @@ void collect_preasm_stats(Program *program)
             vmem_clause_res.clear();
          }
 
-         if (instr->format == Format::SMEM && !instr->operands.empty()) {
+         if (instr->isSMEM() && !instr->operands.empty()) {
             if (instr->operands[0].size() == 2)
                smem_clause_res.insert(Temp(0, s2));
             else

@@ -493,7 +493,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       if (ctx.chip_class <= GFX9) {
          assert(flat->offset <= 0x1fff);
          encoding |= flat->offset & 0x1fff;
-      } else if (instr->format == Format::FLAT) {
+      } else if (instr->isFlat()) {
          /* GFX10 has a 12-bit immediate OFFSET field,
           * but it has a hw bug: it ignores the offset, called FlatSegmentOffsetBug
           */
@@ -502,9 +502,9 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          assert(flat->offset <= 0xfff);
          encoding |= flat->offset & 0xfff;
       }
-      if (instr->format == Format::SCRATCH)
+      if (instr->isScratch())
          encoding |= 1 << 14;
-      else if (instr->format == Format::GLOBAL)
+      else if (instr->isGlobal())
          encoding |= 2 << 14;
       encoding |= flat->lds ? 1 << 13 : 0;
       encoding |= flat->glc ? 1 << 16 : 0;
@@ -563,19 +563,19 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          unreachable("Pseudo instructions should be lowered before assembly.");
       break;
    default:
-      if ((uint16_t) instr->format & (uint16_t) Format::VOP3) {
+      if (instr->isVOP3()) {
          VOP3_instruction* vop3 = instr->vop3();
 
-         if ((uint16_t) instr->format & (uint16_t) Format::VOP2) {
+         if (instr->isVOP2()) {
             opcode = opcode + 0x100;
-         } else if ((uint16_t) instr->format & (uint16_t) Format::VOP1) {
+         } else if (instr->isVOP1()) {
             if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9)
                opcode = opcode + 0x140;
             else
                opcode = opcode + 0x180;
-         } else if ((uint16_t) instr->format & (uint16_t) Format::VOPC) {
+         } else if (instr->isVOPC()) {
             opcode = opcode + 0x0;
-         } else if ((uint16_t) instr->format & (uint16_t) Format::VINTRP) {
+         } else if (instr->isVINTRP()) {
             opcode = opcode + 0x270;
          }
 
@@ -614,7 +614,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
             encoding |= vop3->neg[i] << (29+i);
          out.push_back(encoding);
 
-      } else if (instr->format == Format::VOP3P) {
+      } else if (instr->isVOP3P()) {
          VOP3P_instruction* vop3 = instr->vop3p();
 
          uint32_t encoding;
@@ -675,7 +675,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
 
          uint32_t encoding = 0;
 
-         if ((uint16_t)instr->format & (uint16_t)Format::VOPC) {
+         if (instr->isVOPC()) {
             if (instr->definitions[0].physReg() != vcc) {
                encoding |= instr->definitions[0].physReg() << 8;
                encoding |= 1 << 15;
@@ -749,7 +749,7 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
       std::vector<aco_ptr<Instruction>>::reverse_iterator it = block.instructions.rbegin();
       while ( it != block.instructions.rend())
       {
-         if ((*it)->format == Format::EXP) {
+         if ((*it)->isEXP()) {
             Export_instruction* exp = (*it)->exp();
             if (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG) {
                if (exp->dest >= V_008DFC_SQ_EXP_POS && exp->dest <= (V_008DFC_SQ_EXP_POS + 3)) {

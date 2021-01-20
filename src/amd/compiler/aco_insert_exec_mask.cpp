@@ -97,16 +97,16 @@ struct exec_ctx {
 };
 
 bool needs_exact(aco_ptr<Instruction>& instr) {
-   if (instr->format == Format::MUBUF) {
+   if (instr->isMUBUF()) {
       return instr->mubuf()->disable_wqm;
-   } else if (instr->format == Format::MTBUF) {
+   } else if (instr->isMTBUF()) {
       return instr->mtbuf()->disable_wqm;
-   } else if (instr->format == Format::MIMG) {
+   } else if (instr->isMIMG()) {
       return instr->mimg()->disable_wqm;
-   } else if (instr->format == Format::FLAT || instr->format == Format::GLOBAL) {
+   } else if (instr->isFlatLike()) {
       return instr->flatlike()->disable_wqm;
    } else {
-      return instr->format == Format::EXP;
+      return instr->isEXP();
    }
 }
 
@@ -190,7 +190,7 @@ void get_block_needs(wqm_ctx &ctx, exec_ctx &exec_ctx, Block* block)
          }
       }
 
-      if (instr->format == Format::PSEUDO_BRANCH && ctx.branch_wqm[block->index]) {
+      if (instr->isBranch() && ctx.branch_wqm[block->index]) {
          needs = WQM;
          propagate_wqm = true;
       }
@@ -854,7 +854,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
 
    if (block->kind & block_kind_discard) {
 
-      assert(block->instructions.back()->format == Format::PSEUDO_BRANCH);
+      assert(block->instructions.back()->isBranch());
       aco_ptr<Instruction> branch = std::move(block->instructions.back());
       block->instructions.pop_back();
 

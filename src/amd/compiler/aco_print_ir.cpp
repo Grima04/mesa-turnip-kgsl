@@ -640,7 +640,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
          fprintf(output, " bank_mask:0x%.1x", dpp->bank_mask);
       if (dpp->bound_ctrl)
          fprintf(output, " bound_ctrl:1");
-   } else if ((int)instr->format & (int)Format::SDWA) {
+   } else if (instr->isSDWA()) {
       const SDWA_instruction* sdwa = instr->sdwa();
       switch (sdwa->omod) {
       case 1:
@@ -692,7 +692,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
       bool *const neg = (bool *)alloca(instr->operands.size() * sizeof(bool));
       bool *const opsel = (bool *)alloca(instr->operands.size() * sizeof(bool));
       uint8_t *const sel = (uint8_t *)alloca(instr->operands.size() * sizeof(uint8_t));
-      if ((int)instr->format & (int)Format::VOP3) {
+      if (instr->isVOP3()) {
          const VOP3_instruction* vop3 = instr->vop3();
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = vop3->abs[i];
@@ -755,7 +755,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
          if (abs[i])
             fprintf(output, "|");
 
-         if (instr->format == Format::VOP3P) {
+         if (instr->isVOP3P()) {
             const VOP3P_instruction* vop3 = instr->vop3p();
             if ((vop3->opsel_lo & (1 << i)) || !(vop3->opsel_hi & (1 << i))) {
                fprintf(output, ".%c%c",

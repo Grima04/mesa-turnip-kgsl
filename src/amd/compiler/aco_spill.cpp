@@ -246,10 +246,10 @@ bool should_rematerialize(aco_ptr<Instruction>& instr)
    if (instr->format != Format::VOP1 && instr->format != Format::SOP1 && instr->format != Format::PSEUDO && instr->format != Format::SOPK)
       return false;
    /* TODO: pseudo-instruction rematerialization is only supported for p_create_vector/p_parallelcopy */
-   if (instr->format == Format::PSEUDO && instr->opcode != aco_opcode::p_create_vector &&
+   if (instr->isPseudo() && instr->opcode != aco_opcode::p_create_vector &&
        instr->opcode != aco_opcode::p_parallelcopy)
       return false;
-   if (instr->format == Format::SOPK && instr->opcode != aco_opcode::s_movk_i32)
+   if (instr->isSOPK() && instr->opcode != aco_opcode::s_movk_i32)
       return false;
 
    for (const Operand& op : instr->operands) {
@@ -270,18 +270,18 @@ aco_ptr<Instruction> do_reload(spill_ctx& ctx, Temp tmp, Temp new_name, uint32_t
    std::map<Temp, remat_info>::iterator remat = ctx.remat.find(tmp);
    if (remat != ctx.remat.end()) {
       Instruction *instr = remat->second.instr;
-      assert((instr->format == Format::VOP1 || instr->format == Format::SOP1 || instr->format == Format::PSEUDO || instr->format == Format::SOPK) && "unsupported");
+      assert((instr->isVOP1() || instr->isSOP1() || instr->isPseudo() || instr->isSOPK()) && "unsupported");
       assert((instr->format != Format::PSEUDO || instr->opcode == aco_opcode::p_create_vector || instr->opcode == aco_opcode::p_parallelcopy) && "unsupported");
       assert(instr->definitions.size() == 1 && "unsupported");
 
       aco_ptr<Instruction> res;
-      if (instr->format == Format::VOP1) {
+      if (instr->isVOP1()) {
          res.reset(create_instruction<VOP1_instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
-      } else if (instr->format == Format::SOP1) {
+      } else if (instr->isSOP1()) {
          res.reset(create_instruction<SOP1_instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
-      } else if (instr->format == Format::PSEUDO) {
+      } else if (instr->isPseudo()) {
          res.reset(create_instruction<Pseudo_instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
-      } else if (instr->format == Format::SOPK) {
+      } else if (instr->isSOPK()) {
          res.reset(create_instruction<SOPK_instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
          res->sopk()->imm = instr->sopk()->imm;
       }

@@ -174,7 +174,7 @@ struct InstrPred {
          return a->pass_flags == b->pass_flags;
 
       /* The results of VOPC depend on the exec mask if used for subgroup operations. */
-      if ((uint32_t) a->format & (uint32_t) Format::VOPC && a->pass_flags != b->pass_flags)
+      if (a->isVOPC() && a->pass_flags != b->pass_flags)
          return false;
 
       if (a->isVOP3()) {

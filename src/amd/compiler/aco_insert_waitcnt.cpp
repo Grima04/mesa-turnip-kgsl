@@ -416,16 +416,14 @@ wait_imm check_instr(Instruction* instr, wait_ctx& ctx)
             continue;
 
          /* Vector Memory reads and writes return in the order they were issued */
-         bool has_sampler = instr->format == Format::MIMG && !instr->operands[1].isUndefined() && instr->operands[1].regClass() == s4;
+         bool has_sampler = instr->isMIMG() && !instr->operands[1].isUndefined() && instr->operands[1].regClass() == s4;
          if (instr->isVMEM() && ((it->second.events & vm_events) == event_vmem) &&
              it->second.has_vmem_nosampler == !has_sampler && it->second.has_vmem_sampler == has_sampler)
             continue;
 
          /* LDS reads and writes return in the order they were issued. same for GDS */
-         if (instr->format == Format::DS) {
-            if ((it->second.events & lgkm_events) == (instr->ds()->gds ? event_gds : event_lds))
-               continue;
-         }
+         if (instr->isDS() && (it->second.events & lgkm_events) == (instr->ds()->gds ? event_gds : event_lds))
+            continue;
 
          wait.combine(it->second.imm);
       }
@@ -515,7 +513,7 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
       imm.lgkm = 0;
    }
 
-   if (ctx.chip_class >= GFX10 && instr->format == Format::SMEM) {
+   if (ctx.chip_class >= GFX10 && instr->isSMEM()) {
       /* GFX10: A store followed by a load at the same address causes a problem because
        * the load doesn't load the correct values unless we wait for the store first.
        * This is NOT mitigated by an s_nop.
@@ -832,7 +830,7 @@ void gen(Instruction* instr, wait_ctx& ctx)
       wait_event ev = !instr->definitions.empty() || ctx.chip_class < GFX10 ? event_vmem : event_vmem_store;
       update_counters(ctx, ev, get_sync_info(instr));
 
-      bool has_sampler = instr->format == Format::MIMG && !instr->operands[1].isUndefined() && instr->operands[1].regClass() == s4;
+      bool has_sampler = instr->isMIMG() && !instr->operands[1].isUndefined() && instr->operands[1].regClass() == s4;
 
       if (!instr->definitions.empty())
          insert_wait_entry(ctx, instr->definitions[0], ev, has_sampler);
@@ -844,7 +842,7 @@ void gen(Instruction* instr, wait_ctx& ctx)
          update_counters(ctx, event_vmem_gpr_lock);
          insert_wait_entry(ctx, instr->operands[3], event_vmem_gpr_lock);
       } else if (ctx.chip_class == GFX6 &&
-                 instr->format == Format::MIMG &&
+                 instr->isMIMG() &&
                  !instr->operands[2].isUndefined()) {
          ctx.exp_cnt++;
          update_counters(ctx, event_vmem_gpr_lock);

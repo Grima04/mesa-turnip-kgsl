@@ -96,7 +96,7 @@ void insert_parallelcopies(ssa_elimination_ctx& ctx)
       Block& block = ctx.program->blocks[entry.first];
       std::vector<aco_ptr<Instruction>>::iterator it = block.instructions.end();
       --it;
-      assert((*it)->format == Format::PSEUDO_BRANCH);
+      assert((*it)->isBranch());
       aco_ptr<Pseudo_instruction> pc{create_instruction<Pseudo_instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, entry.second.size(), entry.second.size())};
       unsigned i = 0;
       for (std::pair<Definition, Operand>& pair : entry.second)
@@ -179,7 +179,7 @@ void try_remove_invert_block(ssa_elimination_ctx& ctx, Block* block)
       ctx.program->blocks[succ_idx].linear_preds[i] = pred->index;
 
       Pseudo_branch_instruction *branch = pred->instructions.back()->branch();
-      assert(branch->format == Format::PSEUDO_BRANCH);
+      assert(branch->isBranch());
       branch->target[0] = succ_idx;
       branch->target[1] = succ_idx;
    }

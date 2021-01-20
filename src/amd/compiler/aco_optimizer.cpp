@@ -605,7 +605,7 @@ bool can_use_VOP3(opt_ctx& ctx, const aco_ptr<Instruction>& instr)
    if (instr->isVOP3())
       return true;
 
-   if (instr->format == Format::VOP3P)
+   if (instr->isVOP3P())
       return false;
 
    if (instr->operands.size() && instr->operands[0].isLiteral() && ctx.program->chip_class < GFX10)
@@ -854,7 +854,7 @@ bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp
 
 unsigned get_operand_size(aco_ptr<Instruction>& instr, unsigned index)
 {
-   if (instr->format == Format::PSEUDO)
+   if (instr->isPseudo())
       return instr->operands[index].bytes() * 8u;
    else if (instr->opcode == aco_opcode::v_mad_u64_u32 || instr->opcode == aco_opcode::v_mad_i64_i32)
       return index == 2 ? 64 : 32;
@@ -878,7 +878,7 @@ bool fixed_to_exec(Operand op)
 
 void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 {
-   if (instr->isSALU() || instr->isVALU() || instr->format == Format::PSEUDO) {
+   if (instr->isSALU() || instr->isVALU() || instr->isPseudo()) {
       ASSERTED bool all_const = false;
       for (Operand& op : instr->operands)
          all_const = all_const && (!op.isTemp() || ctx.info[op.tempId()].is_constant_or_literal(32));
@@ -906,7 +906,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
 
       /* PSEUDO: propagate temporaries */
-      if (instr->format == Format::PSEUDO) {
+      if (instr->isPseudo()) {
          while (info.is_temp()) {
             pseudo_propagate_temp(ctx, instr, info.temp, i);
             info = ctx.info[info.temp.id()];
@@ -914,9 +914,9 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
 
       /* SALU / PSEUDO: propagate inline constants */
-      if (instr->isSALU() || instr->format == Format::PSEUDO) {
+      if (instr->isSALU() || instr->isPseudo()) {
          unsigned bits = get_operand_size(instr, i);
-         if ((info.is_constant(bits) || (info.is_literal(bits) && instr->format == Format::PSEUDO)) &&
+         if ((info.is_constant(bits) || (info.is_literal(bits) && instr->isPseudo())) &&
              !instr->operands[i].isFixed() && alu_can_accept_constant(instr->opcode, i)) {
             instr->operands[i] = get_constant_op(ctx, info, bits);
             continue;
@@ -980,7 +980,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
              (!instr->isSDWA() || ctx.program->chip_class >= GFX9)) {
             Operand op = get_constant_op(ctx, info, bits);
             perfwarn(ctx.program, instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
-            if (i == 0 || instr->isSDWA() || instr->format == Format::VOP3P ||
+            if (i == 0 || instr->isSDWA() || instr->isVOP3P() ||
                 instr->opcode == aco_opcode::v_readlane_b32 ||
                 instr->opcode == aco_opcode::v_writelane_b32) {
                instr->operands[i] = op;
@@ -998,7 +998,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
 
       /* MUBUF: propagate constants and combine additions */
-      else if (instr->format == Format::MUBUF) {
+      else if (instr->isMUBUF()) {
          MUBUF_instruction *mubuf = instr->mubuf();
          Temp base;
          uint32_t offset;
@@ -1039,7 +1039,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
 
       /* DS: combine additions */
-      else if (instr->format == Format::DS) {
+      else if (instr->isDS()) {
 
          DS_instruction *ds = instr->ds();
          Temp base;
@@ -1071,7 +1071,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
 
       /* SMEM: propagate constants and combine additions */
-      else if (instr->format == Format::SMEM) {
+      else if (instr->isSMEM()) {
 
          SMEM_instruction *smem = instr->smem();
          Temp base;
@@ -1114,7 +1114,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          }
       }
 
-      else if (instr->format == Format::PSEUDO_BRANCH) {
+      else if (instr->isBranch()) {
          if (ctx.info[instr->operands[0].tempId()].is_scc_invert()) {
             /* Flip the branch instruction to get rid of the scc_invert instruction */
             instr->opcode = instr->opcode == aco_opcode::p_cbranch_z ? aco_opcode::p_cbranch_nz : aco_opcode::p_cbranch_z;
@@ -1127,11 +1127,11 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    if (instr->definitions.empty())
       return;
 
-   if ((uint16_t) instr->format & (uint16_t) Format::VOPC) {
+   if (instr->isVOPC()) {
       ctx.info[instr->definitions[0].tempId()].set_vopc(instr.get());
       return;
    }
-   if (instr->format == Format::VOP3P) {
+   if (instr->isVOP3P()) {
       ctx.info[instr->definitions[0].tempId()].set_vop3p(instr.get());
       return;
    }
@@ -2567,7 +2567,7 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
          continue;
 
       if (sgpr_idx == 0 || instr->isVOP3() ||
-          instr->isSDWA() || instr->format == Format::VOP3P) {
+          instr->isSDWA() || instr->isVOP3P()) {
          instr->operands[sgpr_idx] = Operand(sgpr);
       } else if (can_swap_operands(instr)) {
          instr->operands[sgpr_idx] = instr->operands[0];
@@ -2873,7 +2873,7 @@ void combine_vop3p(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
 
       /* turn packed mul+add into v_pk_fma_f16 */
-      assert(mul_instr->format == Format::VOP3P);
+      assert(mul_instr->isVOP3P());
       aco_ptr<VOP3P_instruction> fma{create_instruction<VOP3P_instruction>(aco_opcode::v_pk_fma_f16, Format::VOP3P, 3, 1)};
       VOP3P_instruction* mul = mul_instr->vop3p();
       for (unsigned i = 0; i < 2; i++) {
@@ -2913,7 +2913,7 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
       while (apply_omod_clamp(ctx, block, instr)) ;
    }
 
-   if (instr->format == Format::VOP3P)
+   if (instr->isVOP3P())
       return combine_vop3p(ctx, block, instr);
 
    if (ctx.info[instr->definitions[0].tempId()].is_vcc_hint()) {
@@ -3393,7 +3393,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    }
 
    /* Mark SCC needed, so the uniform boolean transformation won't swap the definitions when it isn't beneficial */
-   if (instr->format == Format::PSEUDO_BRANCH &&
+   if (instr->isBranch() &&
        instr->operands.size() &&
        instr->operands[0].isTemp() &&
        instr->operands[0].isFixed() &&
@@ -3440,7 +3440,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 
    if (instr->isSDWA() || instr->isDPP() ||
        (instr->isVOP3() && ctx.program->chip_class < GFX10) ||
-       (instr->format == Format::VOP3P && ctx.program->chip_class < GFX10))
+       (instr->isVOP3P() && ctx.program->chip_class < GFX10))
       return; /* some encodings can't ever take literals */
 
    /* we do not apply the literals yet as we don't know if it is profitable */
@@ -3452,7 +3452,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    unsigned num_operands = 1;
    if (instr->isSALU() ||
        (ctx.program->chip_class >= GFX10 &&
-        (can_use_VOP3(ctx, instr) || instr->format == Format::VOP3P)))
+        (can_use_VOP3(ctx, instr) || instr->isVOP3P())))
       num_operands = instr->operands.size();
    /* catch VOP2 with a 3rd SGPR operand (e.g. v_cndmask_b32, v_addc_co_u32) */
    else if (instr->isVALU() && instr->operands.size() >= 3)

@@ -1809,7 +1809,7 @@ void lower_to_hw_instr(Program* program)
       for (size_t instr_idx = 0; instr_idx < block->instructions.size(); instr_idx++) {
          aco_ptr<Instruction>& instr = block->instructions[instr_idx];
          aco_ptr<Instruction> mov;
-         if (instr->format == Format::PSEUDO && instr->opcode != aco_opcode::p_unit_test) {
+         if (instr->isPseudo() && instr->opcode != aco_opcode::p_unit_test) {
             Pseudo_instruction *pi = instr->pseudo();
 
             switch (instr->opcode)
@@ -1982,7 +1982,7 @@ void lower_to_hw_instr(Program* program)
             default:
                break;
             }
-         } else if (instr->format == Format::PSEUDO_BRANCH) {
+         } else if (instr->isBranch()) {
             Pseudo_branch_instruction* branch = instr->branch();
             uint32_t target = branch->target[0];
 
@@ -2002,7 +2002,7 @@ void lower_to_hw_instr(Program* program)
                }
 
                for (aco_ptr<Instruction>& inst : program->blocks[i].instructions) {
-                  if (inst->format == Format::SOPP) {
+                  if (inst->isSOPP()) {
                      can_remove = false;
                   } else if (inst->isSALU()) {
                      num_scalar++;
@@ -2054,7 +2054,7 @@ void lower_to_hw_instr(Program* program)
                   unreachable("Unknown Pseudo branch instruction!");
             }
 
-         } else if (instr->format == Format::PSEUDO_REDUCTION) {
+         } else if (instr->isReduction()) {
             Pseudo_reduction_instruction* reduce = instr->reduction();
             emit_reduction(&ctx, reduce->opcode, reduce->reduce_op, reduce->cluster_size,
                            reduce->operands[1].physReg(), // tmp
@@ -2062,7 +2062,7 @@ void lower_to_hw_instr(Program* program)
                            reduce->operands[2].physReg(), // vtmp
                            reduce->definitions[2].physReg(), // sitmp
                            reduce->operands[0], reduce->definitions[0]);
-         } else if (instr->format == Format::PSEUDO_BARRIER) {
+         } else if (instr->isBarrier()) {
             Pseudo_barrier_instruction* barrier = instr->barrier();
 
             /* Anything larger than a workgroup isn't possible. Anything

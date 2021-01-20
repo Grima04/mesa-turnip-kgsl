@@ -427,7 +427,7 @@ unsigned get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>
    /* v_readfirstlane_b32 cannot use SDWA */
    if (instr->opcode == aco_opcode::p_as_uniform)
       return 4;
-   if (instr->format == Format::PSEUDO && chip >= GFX8)
+   if (instr->isPseudo() && chip >= GFX8)
       return rc.bytes() % 2 == 0 ? 2 : 1;
 
    if (instr->opcode == aco_opcode::v_cvt_f32_ubyte0) {
@@ -436,7 +436,7 @@ unsigned get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>
       return rc.bytes() % 2 == 0 ? 2 : 1;
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, idx, 1)) {
       return 2;
-   } else if (instr->format == Format::VOP3P) {
+   } else if (instr->isVOP3P()) {
       return 2;
    }
 
@@ -476,7 +476,7 @@ void update_phi_map(ra_ctx& ctx, Instruction *old, Instruction *instr)
 void add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, unsigned byte, RegClass rc)
 {
    chip_class chip = ctx.program->chip_class;
-   if (instr->format == Format::PSEUDO || byte == 0)
+   if (instr->isPseudo() || byte == 0)
       return;
 
    assert(rc.bytes() <= 2);
@@ -505,7 +505,7 @@ void add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, idx, byte / 2)) {
       instr->vop3()->opsel |= (byte / 2) << idx;
       return;
-   } else if (instr->format == Format::VOP3P && byte == 2) {
+   } else if (instr->isVOP3P() && byte == 2) {
       VOP3P_instruction* vop3p = instr->vop3p();
       assert(!(vop3p->opsel_lo & (1 << idx)));
       vop3p->opsel_lo |= 1 << idx;
@@ -549,9 +549,9 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
 {
    chip_class chip = program->chip_class;
 
-   if (instr->format == Format::PSEUDO && chip >= GFX8)
+   if (instr->isPseudo() && chip >= GFX8)
       return std::make_pair(rc.bytes() % 2 == 0 ? 2 : 1, rc.bytes());
-   else if (instr->format == Format::PSEUDO)
+   else if (instr->isPseudo())
       return std::make_pair(4, rc.size() * 4u);
 
    unsigned bytes_written = chip >= GFX10 ? rc.bytes() : 4u;
@@ -605,7 +605,7 @@ void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsi
    RegClass rc = instr->definitions[idx].regClass();
    chip_class chip = program->chip_class;
 
-   if (instr->format == Format::PSEUDO) {
+   if (instr->isPseudo()) {
       return;
    } else if (can_use_SDWA(chip, instr)) {
       unsigned def_size = instr_info.definition_size[(int)instr->opcode];
@@ -2154,9 +2154,9 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             else
                get_reg_for_operand(ctx, register_file, parallelcopy, instr, operand, i);
 
-            if (instr->format == Format::EXP ||
+            if (instr->isEXP() ||
                 (instr->isVMEM() && i == 3 && ctx.program->chip_class == GFX6) ||
-                (instr->format == Format::DS && instr->ds()->gds)) {
+                (instr->isDS() && instr->ds()->gds)) {
                for (unsigned j = 0; j < operand.size(); j++)
                   ctx.war_hint.set(operand.physReg().reg() + j);
             }
@@ -2230,11 +2230,11 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
          } else if (instr->opcode == aco_opcode::s_addk_i32 ||
                     instr->opcode == aco_opcode::s_mulk_i32) {
             instr->definitions[0].setFixed(instr->operands[0].physReg());
-         } else if (instr->format == Format::MUBUF &&
+         } else if (instr->isMUBUF() &&
                     instr->definitions.size() == 1 &&
                     instr->operands.size() == 4) {
             instr->definitions[0].setFixed(instr->operands[3].physReg());
-         } else if (instr->format == Format::MIMG &&
+         } else if (instr->isMIMG() &&
                     instr->definitions.size() == 1 &&
                     !instr->operands[2].isUndefined()) {
             instr->definitions[0].setFixed(instr->operands[2].physReg());

@@ -180,7 +180,7 @@ void insert_parallelcopies(cssa_ctx& ctx)
       Block& block = ctx.program->blocks[entry.first];
       std::vector<aco_ptr<Instruction>>::iterator it = block.instructions.end();
       --it;
-      assert((*it)->format == Format::PSEUDO_BRANCH);
+      assert((*it)->isBranch());
 
       Builder bld(ctx.program);
       bld.reset(&block.instructions, it);
