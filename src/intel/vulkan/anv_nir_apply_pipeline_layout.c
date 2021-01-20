@@ -821,11 +821,11 @@ lower_load_constant(nir_intrinsic_instr *intrin,
          nir_load_reloc_const_intel(b, ANV_SHADER_RELOC_CONST_DATA_ADDR_LOW),
          nir_load_reloc_const_intel(b, ANV_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
 
-      data = nir_load_global(b, nir_iadd(b, const_data_base_addr,
-                                            nir_u2u64(b, offset)),
-                             load_align,
-                             intrin->dest.ssa.num_components,
-                             intrin->dest.ssa.bit_size);
+      data = nir_load_global_constant(b, nir_iadd(b, const_data_base_addr,
+                                                     nir_u2u64(b, offset)),
+                                      load_align,
+                                      intrin->dest.ssa.num_components,
+                                      intrin->dest.ssa.bit_size);
    } else {
       nir_ssa_def *index = nir_imm_int(b, state->constants_offset);
 
