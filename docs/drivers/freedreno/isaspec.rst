@@ -9,8 +9,8 @@ underlying instruction encoding to simplify dealing with instruction
 encoding differences between generations of GPU.
 
 Benefits of a formal ISA description, compared to hand-coded assemblers
-and disassemblers, include easier detection of new bit combintions that
-were not seen before in previous generations due to more rigerous
+and disassemblers, include easier detection of new bit combinations that
+were not seen before in previous generations due to more rigorous
 description of bits that are expect to be '0' or '1' or 'x' (dontcare)
 and verification that different encodings don't have conflicting bits
 (ie. that the specification cannot result in more than one valid
