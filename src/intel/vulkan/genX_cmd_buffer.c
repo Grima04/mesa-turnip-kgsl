@@ -2863,10 +2863,10 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
 static uint32_t
 flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
                       struct anv_cmd_pipeline_state *pipe_state,
+                      const VkShaderStageFlags dirty,
                       struct anv_shader_bin **shaders,
                       uint32_t num_shaders)
 {
-   const VkShaderStageFlags dirty = cmd_buffer->state.descriptors_dirty;
    VkShaderStageFlags flushed = 0;
 
    VkResult result = VK_SUCCESS;
@@ -2928,8 +2928,6 @@ flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
          flushed |= mesa_to_vk_shader_stage(stage);
       }
    }
-
-   cmd_buffer->state.descriptors_dirty &= ~flushed;
 
    return flushed;
 }
@@ -3611,8 +3609,10 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.descriptors_dirty) {
       dirty = flush_descriptor_sets(cmd_buffer,
                                     &cmd_buffer->state.gfx.base,
+                                    cmd_buffer->state.descriptors_dirty,
                                     pipeline->shaders,
                                     ARRAY_SIZE(pipeline->shaders));
+      cmd_buffer->state.descriptors_dirty &= ~dirty;
    }
 
    if (dirty || cmd_buffer->state.push_constants_dirty) {
@@ -4424,7 +4424,9 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.compute.pipeline_dirty) {
       flush_descriptor_sets(cmd_buffer,
                             &cmd_buffer->state.compute.base,
+                            VK_SHADER_STAGE_COMPUTE_BIT,
                             &pipeline->cs, 1);
+      cmd_buffer->state.descriptors_dirty &= ~VK_SHADER_STAGE_COMPUTE_BIT;
 
 #if GEN_GEN <= 12 && !GEN_IS_GEN12HP
       uint32_t iface_desc_data_dw[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
