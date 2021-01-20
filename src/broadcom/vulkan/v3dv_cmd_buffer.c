@@ -1739,7 +1739,8 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       &state->pass->subpasses[state->subpass_idx];
 
    bool has_stores = false;
-   bool use_global_clear = false;
+   bool use_global_zs_clear = false;
+   bool use_global_rt_clear = false;
 
    /* FIXME: separate stencil */
    uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
@@ -1793,19 +1794,26 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
                            ds_attachment->desc.stencilStoreOp);
 
       /* GFXH-1689: The per-buffer store command's clear buffer bit is broken
-       * for depth/stencil.  In addition, the clear packet's Z/S bit is broken,
-       * but the RTs bit ends up clearing Z/S.
+       * for depth/stencil.
+       *
+       * There used to be some confusion regarding the Clear Tile Buffers
+       * Z/S bit also being broken, but we confirmed with Broadcom that this
+       * is not the case, it was just that some other hardware bugs (that we
+       * need to work around, such as GFXH-1461) could cause this bit to behave
+       * incorrectly.
+       *
+       * There used to be another issue where the RTs bit in the Clear Tile
+       * Buffers packet also cleared Z/S, but Broadcom confirmed this is
+       * fixed since V3D 4.1.
        *
        * So if we have to emit a clear of depth or stencil we don't use
-       * per-buffer clears, not even for color, since we will have to emit
-       * a clear command for all tile buffers (including color) to handle
-       * the depth/stencil clears.
+       * the per-buffer store clear bit, even if we need to store the buffers,
+       * instead we always have to use the Clear Tile Buffers Z/S bit.
        *
-       * Note that this bug is not reproduced in the simulator, where
-       * using the clear buffer bit in depth/stencil stores seems to work
-       * correctly.
+       * Note that GFXH-1689 is not reproduced in the simulator, where
+       * using the clear buffer bit in depth/stencil stores works fine.
        */
-      use_global_clear = needs_depth_clear || needs_stencil_clear;
+      use_global_zs_clear = needs_depth_clear || needs_stencil_clear;
       if (needs_depth_store || needs_stencil_store) {
          const uint32_t zs_buffer =
             v3dv_zs_buffer(needs_depth_store, needs_stencil_store);
@@ -1875,11 +1883,11 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            attachment_idx, layer,
                                            RENDER_TARGET_0 + i,
-                                           needs_clear && !use_global_clear,
+                                           needs_clear && !use_global_rt_clear,
                                            false);
          has_stores = true;
       } else if (needs_clear) {
-         use_global_clear = true;
+         use_global_rt_clear = true;
       }
    }
 
@@ -1893,10 +1901,10 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
    /* If we have any depth/stencil clears we can't use the per-buffer clear
     * bit and instead we have to emit a single clear of all tile buffers.
     */
-   if (use_global_clear) {
+   if (use_global_zs_clear || use_global_rt_clear) {
       cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
-         clear.clear_z_stencil_buffer = true;
-         clear.clear_all_render_targets = true;
+         clear.clear_z_stencil_buffer = use_global_zs_clear;
+         clear.clear_all_render_targets = use_global_rt_clear;
       }
    }
 }
