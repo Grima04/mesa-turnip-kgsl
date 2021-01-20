@@ -1566,6 +1566,35 @@ check_needs_clear(const struct v3dv_cmd_buffer_state *state,
    return load_op == VK_ATTACHMENT_LOAD_OP_CLEAR;
 }
 
+static bool
+check_needs_store(const struct v3dv_cmd_buffer_state *state,
+                  VkImageAspectFlags aspect,
+                  uint32_t att_last_subpass_idx,
+                  VkAttachmentStoreOp store_op)
+{
+   /* We call this with image->aspects & aspect, so 0 means the aspect we are
+    * testing does not exist in the image.
+    */
+   if (!aspect)
+       return false;
+
+   /* Attachment store operations only apply on the last subpass where the
+    * attachment is used, in other subpasses we always need to store.
+    */
+   if (state->subpass_idx < att_last_subpass_idx)
+      return true;
+
+   /* Attachment store operations only apply on the last job we emit on the the
+    * last subpass where the attachment is used, otherwise we always need to
+    * store.
+    */
+   if (!state->job->is_subpass_finish)
+      return true;
+
+   /* The attachment store operation must be STORE */
+   return store_op == VK_ATTACHMENT_STORE_OP_STORE;
+}
+
 static void
 cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
                                   struct v3dv_cl *cl,
@@ -1752,16 +1781,16 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
 
       /* Skip the last store if it is not required */
       bool needs_depth_store =
-         (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
-         (state->subpass_idx < ds_attachment->last_subpass ||
-          ds_attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
-          !state->job->is_subpass_finish);
+         check_needs_store(state,
+                           aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+                           ds_attachment->last_subpass,
+                           ds_attachment->desc.storeOp);
 
       bool needs_stencil_store =
-         (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
-         (state->subpass_idx < ds_attachment->last_subpass ||
-          ds_attachment->desc.stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE ||
-          !state->job->is_subpass_finish);
+         check_needs_store(state,
+                           aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
+                           ds_attachment->last_subpass,
+                           ds_attachment->desc.stencilStoreOp);
 
       /* GFXH-1689: The per-buffer store command's clear buffer bit is broken
        * for depth/stencil.  In addition, the clear packet's Z/S bit is broken,
@@ -1810,9 +1839,10 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
 
       /* Skip the last store if it is not required  */
       bool needs_store =
-         state->subpass_idx < attachment->last_subpass ||
-         attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
-         !state->job->is_subpass_finish;
+         check_needs_store(state,
+                           VK_IMAGE_ASPECT_COLOR_BIT,
+                           attachment->last_subpass,
+                           attachment->desc.storeOp);
 
       /* If we need to resolve this attachment emit that store first. Notice
        * that we must not request a tile buffer clear here in that case, since
