@@ -109,7 +109,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::SOPK: {
-      SOPK_instruction *sopk = static_cast<SOPK_instruction*>(instr);
+      SOPK_instruction *sopk = instr->sopk();
 
       if (instr->opcode == aco_opcode::s_subvector_loop_begin) {
          assert(ctx.chip_class >= GFX10);
@@ -157,7 +157,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::SOPP: {
-      SOPP_instruction* sopp = static_cast<SOPP_instruction*>(instr);
+      SOPP_instruction* sopp = instr->sopp();
       uint32_t encoding = (0b101111111 << 23);
       encoding |= opcode << 16;
       encoding |= (uint16_t) sopp->imm;
@@ -169,7 +169,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::SMEM: {
-      SMEM_instruction* smem = static_cast<SMEM_instruction*>(instr);
+      SMEM_instruction* smem = instr->smem();
       bool soe = instr->operands.size() >= (!instr->definitions.empty() ? 3 : 4);
       bool is_load = !instr->definitions.empty();
       uint32_t encoding = 0;
@@ -284,7 +284,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::VINTRP: {
-      Interp_instruction* interp = static_cast<Interp_instruction*>(instr);
+      Interp_instruction* interp = instr->vintrp();
       uint32_t encoding = 0;
 
       if (instr->opcode == aco_opcode::v_interp_p1ll_f16 ||
@@ -334,7 +334,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::DS: {
-      DS_instruction* ds = static_cast<DS_instruction*>(instr);
+      DS_instruction* ds = instr->ds();
       uint32_t encoding = (0b110110 << 26);
       if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
          encoding |= opcode << 17;
@@ -358,7 +358,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::MUBUF: {
-      MUBUF_instruction* mubuf = static_cast<MUBUF_instruction*>(instr);
+      MUBUF_instruction* mubuf = instr->mubuf();
       uint32_t encoding = (0b111000 << 26);
       encoding |= opcode << 18;
       encoding |= (mubuf->lds ? 1 : 0) << 16;
@@ -390,7 +390,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::MTBUF: {
-      MTBUF_instruction* mtbuf = static_cast<MTBUF_instruction*>(instr);
+      MTBUF_instruction* mtbuf = instr->mtbuf();
 
       uint32_t img_format = ac_get_tbuffer_format(ctx.chip_class, mtbuf->dfmt, mtbuf->nfmt);
       uint32_t encoding = (0b111010 << 26);
@@ -437,7 +437,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       assert(!use_nsa || ctx.chip_class >= GFX10);
       unsigned nsa_dwords = use_nsa ? DIV_ROUND_UP(addr_dwords - 1, 4) : 0;
 
-      MIMG_instruction* mimg = static_cast<MIMG_instruction*>(instr);
+      MIMG_instruction* mimg = instr->mimg();
       uint32_t encoding = (0b111100 << 26);
       encoding |= mimg->slc ? 1 << 25 : 0;
       encoding |= opcode << 18;
@@ -487,7 +487,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
    case Format::FLAT:
    case Format::SCRATCH:
    case Format::GLOBAL: {
-      FLAT_instruction *flat = static_cast<FLAT_instruction*>(instr);
+      FLAT_instruction *flat = instr->flatlike();
       uint32_t encoding = (0b110111 << 26);
       encoding |= opcode << 18;
       if (ctx.chip_class <= GFX9) {
@@ -536,7 +536,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::EXP: {
-      Export_instruction* exp = static_cast<Export_instruction*>(instr);
+      Export_instruction* exp = instr->exp();
       uint32_t encoding;
       if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
          encoding = (0b110001 << 26);
@@ -564,7 +564,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    default:
       if ((uint16_t) instr->format & (uint16_t) Format::VOP3) {
-         VOP3_instruction* vop3 = static_cast<VOP3_instruction*>(instr);
+         VOP3_instruction* vop3 = instr->vop3();
 
          if ((uint16_t) instr->format & (uint16_t) Format::VOP2) {
             opcode = opcode + 0x100;
@@ -615,7 +615,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          out.push_back(encoding);
 
       } else if (instr->format == Format::VOP3P) {
-         VOP3P_instruction* vop3 = static_cast<VOP3P_instruction*>(instr);
+         VOP3P_instruction* vop3 = instr->vop3p();
 
          uint32_t encoding;
          if (ctx.chip_class == GFX9) {
@@ -644,12 +644,13 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
 
       } else if (instr->isDPP()){
          assert(ctx.chip_class >= GFX8);
+         DPP_instruction* dpp = instr->dpp();
+
          /* first emit the instruction without the DPP operand */
          Operand dpp_op = instr->operands[0];
          instr->operands[0] = Operand(PhysReg{250}, v1);
          instr->format = (Format) ((uint16_t) instr->format & ~(uint16_t)Format::DPP);
          emit_instruction(ctx, out, instr);
-         DPP_instruction* dpp = static_cast<DPP_instruction*>(instr);
          uint32_t encoding = (0xF & dpp->row_mask) << 28;
          encoding |= (0xF & dpp->bank_mask) << 24;
          encoding |= dpp->abs[1] << 23;
@@ -664,13 +665,14 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          out.push_back(encoding);
          return;
       } else if (instr->isSDWA()) {
+         SDWA_instruction* sdwa = instr->sdwa();
+
          /* first emit the instruction without the SDWA operand */
          Operand sdwa_op = instr->operands[0];
          instr->operands[0] = Operand(PhysReg{249}, v1);
          instr->format = (Format) ((uint16_t) instr->format & ~(uint16_t)Format::SDWA);
          emit_instruction(ctx, out, instr);
 
-         SDWA_instruction* sdwa = static_cast<SDWA_instruction*>(instr);
          uint32_t encoding = 0;
 
          if ((uint16_t)instr->format & (uint16_t)Format::VOPC) {
@@ -748,7 +750,7 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
       while ( it != block.instructions.rend())
       {
          if ((*it)->format == Format::EXP) {
-            Export_instruction* exp = static_cast<Export_instruction*>((*it).get());
+            Export_instruction* exp = (*it)->exp();
             if (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG) {
                if (exp->dest >= V_008DFC_SQ_EXP_POS && exp->dest <= (V_008DFC_SQ_EXP_POS + 3)) {
                   exp->done = true;

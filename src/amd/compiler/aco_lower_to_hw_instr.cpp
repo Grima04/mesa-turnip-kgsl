@@ -646,7 +646,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
                                          Definition(PhysReg{vtmp+i}, v1),
                                          Operand(PhysReg{tmp+i}, v1),
                                          Operand(0xffffffffu), Operand(0xffffffffu)).instr;
-            static_cast<VOP3_instruction*>(perm)->opsel = 1; /* FI (Fetch Inactive) */
+            perm->vop3()->opsel = 1; /* FI (Fetch Inactive) */
          }
          bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(UINT64_MAX));
 
@@ -757,7 +757,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
                                          Definition(PhysReg{vtmp+i}, v1),
                                          Operand(PhysReg{tmp+i}, v1),
                                          Operand(0xffffffffu), Operand(0xffffffffu)).instr;
-            static_cast<VOP3_instruction*>(perm)->opsel = 1; /* FI (Fetch Inactive) */
+            perm->vop3()->opsel = 1; /* FI (Fetch Inactive) */
          }
          emit_op(ctx, tmp, tmp, vtmp, PhysReg{0}, reduce_op, src.size());
 
@@ -1052,12 +1052,12 @@ void copy_constant(lower_context *ctx, Builder& bld, Definition dst, Operand op)
          if (dst.physReg().byte() == 2) {
             Operand def_lo(dst.physReg().advance(-2), v2b);
             Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, def_lo, op);
-            static_cast<VOP3_instruction*>(instr)->opsel = 0;
+            instr->vop3()->opsel = 0;
          } else {
             assert(dst.physReg().byte() == 0);
             Operand def_hi(dst.physReg().advance(2), v2b);
             Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, op, def_hi);
-            static_cast<VOP3_instruction*>(instr)->opsel = 2;
+            instr->vop3()->opsel = 2;
          }
       } else {
          uint32_t offset = dst.physReg().byte() * 8u;
@@ -1251,7 +1251,7 @@ void do_pack_2x16(lower_context *ctx, Builder& bld, Definition def, Operand lo, 
    if (can_use_pack) {
       Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, lo, hi);
       /* opsel: 0 = select low half, 1 = select high half. [0] = src0, [1] = src1 */
-      static_cast<VOP3_instruction*>(instr)->opsel = hi.physReg().byte() | (lo.physReg().byte() >> 1);
+      instr->vop3()->opsel = hi.physReg().byte() | (lo.physReg().byte() >> 1);
       return;
    }
 
@@ -1810,7 +1810,7 @@ void lower_to_hw_instr(Program* program)
          aco_ptr<Instruction>& instr = block->instructions[instr_idx];
          aco_ptr<Instruction> mov;
          if (instr->format == Format::PSEUDO && instr->opcode != aco_opcode::p_unit_test) {
-            Pseudo_instruction *pi = (Pseudo_instruction*)instr.get();
+            Pseudo_instruction *pi = instr->pseudo();
 
             switch (instr->opcode)
             {
@@ -1897,7 +1897,7 @@ void lower_to_hw_instr(Program* program)
                          instr2->opcode == aco_opcode::p_logical_end)
                         continue;
                      else if (instr2->opcode == aco_opcode::exp &&
-                              static_cast<Export_instruction *>(instr2.get())->dest == null_exp_dest)
+                              instr2->exp()->dest == null_exp_dest)
                         continue;
                      else if (instr2->opcode == aco_opcode::p_parallelcopy &&
                          instr2->definitions[0].isFixed() &&
@@ -1983,7 +1983,7 @@ void lower_to_hw_instr(Program* program)
                break;
             }
          } else if (instr->format == Format::PSEUDO_BRANCH) {
-            Pseudo_branch_instruction* branch = static_cast<Pseudo_branch_instruction*>(instr.get());
+            Pseudo_branch_instruction* branch = instr->branch();
             uint32_t target = branch->target[0];
 
             /* check if all blocks from current to target are empty */
@@ -2055,7 +2055,7 @@ void lower_to_hw_instr(Program* program)
             }
 
          } else if (instr->format == Format::PSEUDO_REDUCTION) {
-            Pseudo_reduction_instruction* reduce = static_cast<Pseudo_reduction_instruction*>(instr.get());
+            Pseudo_reduction_instruction* reduce = instr->reduction();
             emit_reduction(&ctx, reduce->opcode, reduce->reduce_op, reduce->cluster_size,
                            reduce->operands[1].physReg(), // tmp
                            reduce->definitions[1].physReg(), // stmp
@@ -2063,7 +2063,7 @@ void lower_to_hw_instr(Program* program)
                            reduce->definitions[2].physReg(), // sitmp
                            reduce->operands[0], reduce->definitions[0]);
          } else if (instr->format == Format::PSEUDO_BARRIER) {
-            Pseudo_barrier_instruction* barrier = static_cast<Pseudo_barrier_instruction*>(instr.get());
+            Pseudo_barrier_instruction* barrier = instr->barrier();
 
             /* Anything larger than a workgroup isn't possible. Anything
              * smaller requires no instructions and this pseudo instruction

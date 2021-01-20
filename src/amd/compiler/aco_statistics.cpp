@@ -46,7 +46,7 @@ void collect_preasm_stats(Program *program)
       program->statistics[statistic_instructions] += block.instructions.size();
 
       for (aco_ptr<Instruction>& instr : block.instructions) {
-         if (instr->format == Format::SOPP && static_cast<SOPP_instruction*>(instr.get())->block != -1)
+         if (instr->format == Format::SOPP && instr->sopp()->block != -1)
             program->statistics[statistic_branches]++;
 
          if (instr->opcode == aco_opcode::p_constaddr)

@@ -423,8 +423,7 @@ wait_imm check_instr(Instruction* instr, wait_ctx& ctx)
 
          /* LDS reads and writes return in the order they were issued. same for GDS */
          if (instr->format == Format::DS) {
-            bool gds = static_cast<DS_instruction*>(instr)->gds;
-            if ((it->second.events & lgkm_events) == (gds ? event_gds : event_lds))
+            if ((it->second.events & lgkm_events) == (instr->ds()->gds ? event_gds : event_lds))
                continue;
          }
 
@@ -440,10 +439,10 @@ wait_imm parse_wait_instr(wait_ctx& ctx, Instruction *instr)
    if (instr->opcode == aco_opcode::s_waitcnt_vscnt &&
        instr->definitions[0].physReg() == sgpr_null) {
       wait_imm imm;
-      imm.vs = std::min<uint8_t>(imm.vs, static_cast<SOPK_instruction*>(instr)->imm);
+      imm.vs = std::min<uint8_t>(imm.vs, instr->sopk()->imm);
       return imm;
    } else if (instr->opcode == aco_opcode::s_waitcnt) {
-      return wait_imm(ctx.chip_class, static_cast<SOPP_instruction*>(instr)->imm);
+      return wait_imm(ctx.chip_class, instr->sopp()->imm);
    }
    return wait_imm();
 }
@@ -523,20 +522,16 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
        *
        * TODO: Refine this when we have proper alias analysis.
        */
-      SMEM_instruction *smem = static_cast<SMEM_instruction *>(instr);
       if (ctx.pending_s_buffer_store &&
-          !smem->definitions.empty() &&
-          !smem->sync.can_reorder()) {
+          !instr->smem()->definitions.empty() &&
+          !instr->smem()->sync.can_reorder()) {
          imm.lgkm = 0;
       }
    }
 
-   if (ctx.program->early_rast &&
-       instr->opcode == aco_opcode::exp) {
-
-      Export_instruction *exp = static_cast<Export_instruction *>(instr);
-      if (exp->dest >= V_008DFC_SQ_EXP_POS &&
-          exp->dest < V_008DFC_SQ_EXP_PRIM) {
+   if (ctx.program->early_rast && instr->opcode == aco_opcode::exp) {
+      if (instr->exp()->dest >= V_008DFC_SQ_EXP_POS &&
+          instr->exp()->dest < V_008DFC_SQ_EXP_PRIM) {
 
          /* With early_rast, the HW will start clipping and rasterization after the 1st DONE pos export.
           * Wait for all stores (and atomics) to complete, so PS can read them.
@@ -550,7 +545,7 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
    }
 
    if (instr->opcode == aco_opcode::p_barrier)
-      imm.combine(perform_barrier(ctx, static_cast<Pseudo_barrier_instruction *>(instr)->sync, semantic_acqrel));
+      imm.combine(perform_barrier(ctx, instr->barrier()->sync, semantic_acqrel));
    else
       imm.combine(perform_barrier(ctx, sync_info, semantic_release));
 
@@ -767,7 +762,7 @@ void gen(Instruction* instr, wait_ctx& ctx)
 {
    switch (instr->format) {
    case Format::EXP: {
-      Export_instruction* exp_instr = static_cast<Export_instruction*>(instr);
+      Export_instruction* exp_instr = instr->exp();
 
       wait_event ev;
       if (exp_instr->dest <= 9)
@@ -792,7 +787,7 @@ void gen(Instruction* instr, wait_ctx& ctx)
       break;
    }
    case Format::FLAT: {
-      FLAT_instruction *flat = static_cast<FLAT_instruction*>(instr);
+      FLAT_instruction *flat = instr->flat();
       if (ctx.chip_class < GFX10 && !instr->definitions.empty())
          update_counters_for_flat_load(ctx, flat->sync);
       else
@@ -803,7 +798,7 @@ void gen(Instruction* instr, wait_ctx& ctx)
       break;
    }
    case Format::SMEM: {
-      SMEM_instruction *smem = static_cast<SMEM_instruction*>(instr);
+      SMEM_instruction *smem = instr->smem();
       update_counters(ctx, event_smem, smem->sync);
 
       if (!instr->definitions.empty())
@@ -815,7 +810,7 @@ void gen(Instruction* instr, wait_ctx& ctx)
       break;
    }
    case Format::DS: {
-      DS_instruction *ds = static_cast<DS_instruction*>(instr);
+      DS_instruction *ds = instr->ds();
       update_counters(ctx, ds->gds ? event_gds : event_lds, ds->sync);
       if (ds->gds)
          update_counters(ctx, event_gds_gpr_lock);

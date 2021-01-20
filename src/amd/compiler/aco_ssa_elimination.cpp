@@ -178,7 +178,7 @@ void try_remove_invert_block(ssa_elimination_ctx& ctx, Block* block)
       pred->linear_succs[0] = succ_idx;
       ctx.program->blocks[succ_idx].linear_preds[i] = pred->index;
 
-      Pseudo_branch_instruction *branch = static_cast<Pseudo_branch_instruction*>(pred->instructions.back().get());
+      Pseudo_branch_instruction *branch = pred->instructions.back()->branch();
       assert(branch->format == Format::PSEUDO_BRANCH);
       branch->target[0] = succ_idx;
       branch->target[1] = succ_idx;
@@ -196,7 +196,7 @@ void try_remove_simple_block(ssa_elimination_ctx& ctx, Block* block)
 
    Block& pred = ctx.program->blocks[block->linear_preds[0]];
    Block& succ = ctx.program->blocks[block->linear_succs[0]];
-   Pseudo_branch_instruction* branch = static_cast<Pseudo_branch_instruction*>(pred.instructions.back().get());
+   Pseudo_branch_instruction* branch = pred.instructions.back()->branch();
    if (branch->opcode == aco_opcode::p_branch) {
       branch->target[0] = succ.index;
       branch->target[1] = succ.index;

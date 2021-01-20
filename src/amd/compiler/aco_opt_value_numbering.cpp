@@ -178,8 +178,8 @@ struct InstrPred {
          return false;
 
       if (a->isVOP3()) {
-         VOP3_instruction* a3 = static_cast<VOP3_instruction*>(a);
-         VOP3_instruction* b3 = static_cast<VOP3_instruction*>(b);
+         VOP3_instruction* a3 = a->vop3();
+         VOP3_instruction* b3 = b->vop3();
          for (unsigned i = 0; i < 3; i++) {
             if (a3->abs[i] != b3->abs[i] ||
                 a3->neg[i] != b3->neg[i])
@@ -190,8 +190,8 @@ struct InstrPred {
                 a3->opsel == b3->opsel;
       }
       if (a->isDPP()) {
-         DPP_instruction* aDPP = static_cast<DPP_instruction*>(a);
-         DPP_instruction* bDPP = static_cast<DPP_instruction*>(b);
+         DPP_instruction* aDPP = a->dpp();
+         DPP_instruction* bDPP = b->dpp();
          return aDPP->pass_flags == bDPP->pass_flags &&
                 aDPP->dpp_ctrl == bDPP->dpp_ctrl &&
                 aDPP->bank_mask == bDPP->bank_mask &&
@@ -203,8 +203,8 @@ struct InstrPred {
                 aDPP->neg[1] == bDPP->neg[1];
       }
       if (a->isSDWA()) {
-         SDWA_instruction* aSDWA = static_cast<SDWA_instruction*>(a);
-         SDWA_instruction* bSDWA = static_cast<SDWA_instruction*>(b);
+         SDWA_instruction* aSDWA = a->sdwa();
+         SDWA_instruction* bSDWA = b->sdwa();
          return aSDWA->sel[0] == bSDWA->sel[0] &&
                 aSDWA->sel[1] == bSDWA->sel[1] &&
                 aSDWA->dst_sel == bSDWA->dst_sel &&
@@ -221,13 +221,13 @@ struct InstrPred {
          case Format::SOPK: {
             if (a->opcode == aco_opcode::s_getreg_b32)
                return false;
-            SOPK_instruction* aK = static_cast<SOPK_instruction*>(a);
-            SOPK_instruction* bK = static_cast<SOPK_instruction*>(b);
+            SOPK_instruction* aK = a->sopk();
+            SOPK_instruction* bK = b->sopk();
             return aK->imm == bK->imm;
          }
          case Format::SMEM: {
-            SMEM_instruction* aS = static_cast<SMEM_instruction*>(a);
-            SMEM_instruction* bS = static_cast<SMEM_instruction*>(b);
+            SMEM_instruction* aS = a->smem();
+            SMEM_instruction* bS = b->smem();
             /* isel shouldn't be creating situations where this assertion fails */
             assert(aS->prevent_overflow == bS->prevent_overflow);
             return aS->sync.can_reorder() && bS->sync.can_reorder() &&
@@ -236,8 +236,8 @@ struct InstrPred {
                    aS->prevent_overflow == bS->prevent_overflow;
          }
          case Format::VINTRP: {
-            Interp_instruction* aI = static_cast<Interp_instruction*>(a);
-            Interp_instruction* bI = static_cast<Interp_instruction*>(b);
+            Interp_instruction* aI = a->vintrp();
+            Interp_instruction* bI = b->vintrp();
             if (aI->attribute != bI->attribute)
                return false;
             if (aI->component != bI->component)
@@ -245,8 +245,8 @@ struct InstrPred {
             return true;
          }
          case Format::VOP3P: {
-            VOP3P_instruction* a3P = static_cast<VOP3P_instruction*>(a);
-            VOP3P_instruction* b3P = static_cast<VOP3P_instruction*>(b);
+            VOP3P_instruction* a3P = a->vop3p();
+            VOP3P_instruction* b3P = b->vop3p();
             for (unsigned i = 0; i < 3; i++) {
                if (a3P->neg_lo[i] != b3P->neg_lo[i] ||
                    a3P->neg_hi[i] != b3P->neg_hi[i])
@@ -257,15 +257,15 @@ struct InstrPred {
                    a3P->clamp == b3P->clamp;
          }
          case Format::PSEUDO_REDUCTION: {
-            Pseudo_reduction_instruction *aR = static_cast<Pseudo_reduction_instruction*>(a);
-            Pseudo_reduction_instruction *bR = static_cast<Pseudo_reduction_instruction*>(b);
+            Pseudo_reduction_instruction *aR = a->reduction();
+            Pseudo_reduction_instruction *bR = b->reduction();
             return aR->pass_flags == bR->pass_flags &&
                    aR->reduce_op == bR->reduce_op &&
                    aR->cluster_size == bR->cluster_size;
          }
          case Format::MTBUF: {
-            MTBUF_instruction* aM = static_cast<MTBUF_instruction *>(a);
-            MTBUF_instruction* bM = static_cast<MTBUF_instruction *>(b);
+            MTBUF_instruction* aM = a->mtbuf();
+            MTBUF_instruction* bM = b->mtbuf();
             return aM->sync.can_reorder() && bM->sync.can_reorder() &&
                    aM->sync == bM->sync &&
                    aM->dfmt == bM->dfmt &&
@@ -280,8 +280,8 @@ struct InstrPred {
                    aM->disable_wqm == bM->disable_wqm;
          }
          case Format::MUBUF: {
-            MUBUF_instruction* aM = static_cast<MUBUF_instruction *>(a);
-            MUBUF_instruction* bM = static_cast<MUBUF_instruction *>(b);
+            MUBUF_instruction* aM = a->mubuf();
+            MUBUF_instruction* bM = b->mubuf();
             return aM->sync.can_reorder() && bM->sync.can_reorder() &&
                    aM->sync == bM->sync &&
                    aM->offset == bM->offset &&
@@ -308,8 +308,8 @@ struct InstrPred {
                 a->opcode != aco_opcode::ds_permute_b32 &&
                 a->opcode != aco_opcode::ds_swizzle_b32)
                return false;
-            DS_instruction* aD = static_cast<DS_instruction *>(a);
-            DS_instruction* bD = static_cast<DS_instruction *>(b);
+            DS_instruction* aD = a->ds();
+            DS_instruction* bD = b->ds();
             return aD->sync.can_reorder() && bD->sync.can_reorder() &&
                    aD->sync == bD->sync &&
                    aD->pass_flags == bD->pass_flags &&
@@ -318,8 +318,8 @@ struct InstrPred {
                    aD->offset1 == bD->offset1;
          }
          case Format::MIMG: {
-            MIMG_instruction* aM = static_cast<MIMG_instruction*>(a);
-            MIMG_instruction* bM = static_cast<MIMG_instruction*>(b);
+            MIMG_instruction* aM = a->mimg();
+            MIMG_instruction* bM = b->mimg();
             return aM->sync.can_reorder() && bM->sync.can_reorder() &&
                    aM->sync == bM->sync &&
                    aM->dmask == bM->dmask &&

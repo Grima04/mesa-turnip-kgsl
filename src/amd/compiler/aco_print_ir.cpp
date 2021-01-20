@@ -273,13 +273,12 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
 {
    switch (instr->format) {
    case Format::SOPK: {
-      const SOPK_instruction* sopk = static_cast<const SOPK_instruction*>(instr);
+      const SOPK_instruction* sopk = instr->sopk();
       fprintf(output, " imm:%d", sopk->imm & 0x8000 ? (sopk->imm - 65536) : sopk->imm);
       break;
    }
    case Format::SOPP: {
-      const SOPP_instruction* sopp = static_cast<const SOPP_instruction*>(instr);
-      uint16_t imm = sopp->imm;
+      uint16_t imm = instr->sopp()->imm;
       switch (instr->opcode) {
       case aco_opcode::s_waitcnt: {
          /* we usually should check the chip class for vmcnt/lgkm, but
@@ -341,12 +340,12 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
          break;
       }
       }
-      if (sopp->block != -1)
-         fprintf(output, " block:BB%d", sopp->block);
+      if (instr->sopp()->block != -1)
+         fprintf(output, " block:BB%d", instr->sopp()->block);
       break;
    }
    case Format::SMEM: {
-      const SMEM_instruction* smem = static_cast<const SMEM_instruction*>(instr);
+      const SMEM_instruction* smem = instr->smem();
       if (smem->glc)
          fprintf(output, " glc");
       if (smem->dlc)
@@ -357,12 +356,12 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       break;
    }
    case Format::VINTRP: {
-      const Interp_instruction* vintrp = static_cast<const Interp_instruction*>(instr);
+      const Interp_instruction* vintrp = instr->vintrp();
       fprintf(output, " attr%d.%c", vintrp->attribute, "xyzw"[vintrp->component]);
       break;
    }
    case Format::DS: {
-      const DS_instruction* ds = static_cast<const DS_instruction*>(instr);
+      const DS_instruction* ds = instr->ds();
       if (ds->offset0)
          fprintf(output, " offset0:%u", ds->offset0);
       if (ds->offset1)
@@ -373,7 +372,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       break;
    }
    case Format::MUBUF: {
-      const MUBUF_instruction* mubuf = static_cast<const MUBUF_instruction*>(instr);
+      const MUBUF_instruction* mubuf = instr->mubuf();
       if (mubuf->offset)
          fprintf(output, " offset:%u", mubuf->offset);
       if (mubuf->offen)
@@ -398,7 +397,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       break;
    }
    case Format::MIMG: {
-      const MIMG_instruction* mimg = static_cast<const MIMG_instruction*>(instr);
+      const MIMG_instruction* mimg = instr->mimg();
       unsigned identity_dmask = !instr->definitions.empty() ?
                                 (1 << instr->definitions[0].size()) - 1 :
                                 0xf;
@@ -458,7 +457,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       break;
    }
    case Format::EXP: {
-      const Export_instruction* exp = static_cast<const Export_instruction*>(instr);
+      const Export_instruction* exp = instr->exp();
       unsigned identity_mask = exp->compressed ? 0x5 : 0xf;
       if ((exp->enabled_mask & identity_mask) != identity_mask)
          fprintf(output, " en:%c%c%c%c",
@@ -486,7 +485,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       break;
    }
    case Format::PSEUDO_BRANCH: {
-      const Pseudo_branch_instruction* branch = static_cast<const Pseudo_branch_instruction*>(instr);
+      const Pseudo_branch_instruction* branch = instr->branch();
       /* Note: BB0 cannot be a branch target */
       if (branch->target[0] != 0)
          fprintf(output, " BB%d", branch->target[0]);
@@ -495,14 +494,14 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       break;
    }
    case Format::PSEUDO_REDUCTION: {
-      const Pseudo_reduction_instruction* reduce = static_cast<const Pseudo_reduction_instruction*>(instr);
+      const Pseudo_reduction_instruction* reduce = instr->reduction();
       fprintf(output, " op:%s", reduce_ops[reduce->reduce_op]);
       if (reduce->cluster_size)
          fprintf(output, " cluster_size:%u", reduce->cluster_size);
       break;
    }
    case Format::PSEUDO_BARRIER: {
-      const Pseudo_barrier_instruction* barrier = static_cast<const Pseudo_barrier_instruction*>(instr);
+      const Pseudo_barrier_instruction* barrier = instr->barrier();
       print_sync(barrier->sync, output);
       print_scope(barrier->exec_scope, output, "exec_scope");
       break;
@@ -510,7 +509,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
    case Format::FLAT:
    case Format::GLOBAL:
    case Format::SCRATCH: {
-      const FLAT_instruction* flat = static_cast<const FLAT_instruction*>(instr);
+      const FLAT_instruction* flat = instr->flatlike();
       if (flat->offset)
          fprintf(output, " offset:%u", flat->offset);
       if (flat->glc)
@@ -529,7 +528,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       break;
    }
    case Format::MTBUF: {
-      const MTBUF_instruction* mtbuf = static_cast<const MTBUF_instruction*>(instr);
+      const MTBUF_instruction* mtbuf = instr->mtbuf();
       fprintf(output, " dfmt:");
       switch (mtbuf->dfmt) {
       case V_008F0C_BUF_DATA_FORMAT_8: fprintf(output, "8"); break;
@@ -579,7 +578,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       break;
    }
    case Format::VOP3P: {
-      if (static_cast<const VOP3P_instruction*>(instr)->clamp)
+      if (instr->vop3p()->clamp)
          fprintf(output, " clamp");
       break;
    }
@@ -588,7 +587,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
    }
    }
    if (instr->isVOP3()) {
-      const VOP3_instruction* vop3 = static_cast<const VOP3_instruction*>(instr);
+      const VOP3_instruction* vop3 = instr->vop3();
       switch (vop3->omod) {
       case 1:
          fprintf(output, " *2");
@@ -605,7 +604,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       if (vop3->opsel & (1 << 3))
          fprintf(output, " opsel_hi");
    } else if (instr->isDPP()) {
-      const DPP_instruction* dpp = static_cast<const DPP_instruction*>(instr);
+      const DPP_instruction* dpp = instr->dpp();
       if (dpp->dpp_ctrl <= 0xff) {
          fprintf(output, " quad_perm:[%d,%d,%d,%d]",
                  dpp->dpp_ctrl & 0x3, (dpp->dpp_ctrl >> 2) & 0x3,
@@ -642,7 +641,7 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
       if (dpp->bound_ctrl)
          fprintf(output, " bound_ctrl:1");
    } else if ((int)instr->format & (int)Format::SDWA) {
-      const SDWA_instruction* sdwa = static_cast<const SDWA_instruction*>(instr);
+      const SDWA_instruction* sdwa = instr->sdwa();
       switch (sdwa->omod) {
       case 1:
          fprintf(output, " *2");
@@ -694,7 +693,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
       bool *const opsel = (bool *)alloca(instr->operands.size() * sizeof(bool));
       uint8_t *const sel = (uint8_t *)alloca(instr->operands.size() * sizeof(uint8_t));
       if ((int)instr->format & (int)Format::VOP3) {
-         const VOP3_instruction* vop3 = static_cast<const VOP3_instruction*>(instr);
+         const VOP3_instruction* vop3 = instr->vop3();
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = vop3->abs[i];
             neg[i] = vop3->neg[i];
@@ -702,7 +701,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
             sel[i] = sdwa_udword;
          }
       } else if (instr->isDPP()) {
-         const DPP_instruction* dpp = static_cast<const DPP_instruction*>(instr);
+         const DPP_instruction* dpp = instr->dpp();
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = i < 2 ? dpp->abs[i] : false;
             neg[i] = i < 2 ? dpp->neg[i] : false;
@@ -710,7 +709,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
             sel[i] = sdwa_udword;
          }
       } else if (instr->isSDWA()) {
-         const SDWA_instruction* sdwa = static_cast<const SDWA_instruction*>(instr);
+         const SDWA_instruction* sdwa = instr->sdwa();
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = i < 2 ? sdwa->abs[i] : false;
             neg[i] = i < 2 ? sdwa->neg[i] : false;
@@ -757,7 +756,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
             fprintf(output, "|");
 
          if (instr->format == Format::VOP3P) {
-            const VOP3P_instruction* vop3 = static_cast<const VOP3P_instruction*>(instr);
+            const VOP3P_instruction* vop3 = instr->vop3p();
             if ((vop3->opsel_lo & (1 << i)) || !(vop3->opsel_hi & (1 << i))) {
                fprintf(output, ".%c%c",
                        vop3->opsel_lo & (1 << i) ? 'y' : 'x',

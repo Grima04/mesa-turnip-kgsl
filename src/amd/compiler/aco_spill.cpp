@@ -283,7 +283,7 @@ aco_ptr<Instruction> do_reload(spill_ctx& ctx, Temp tmp, Temp new_name, uint32_t
          res.reset(create_instruction<Pseudo_instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
       } else if (instr->format == Format::SOPK) {
          res.reset(create_instruction<SOPK_instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
-         static_cast<SOPK_instruction*>(res.get())->imm = static_cast<SOPK_instruction*>(instr)->imm;
+         res->sopk()->imm = instr->sopk()->imm;
       }
       for (unsigned i = 0; i < instr->operands.size(); i++) {
          res->operands[i] = instr->operands[i];
@@ -1589,11 +1589,11 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                   bld.insert(split);
                   for (unsigned i = 0; i < temp.size(); i++) {
                      Instruction *instr = bld.mubuf(opcode, scratch_rsrc, Operand(v1), scratch_offset, split->definitions[i].getTemp(), offset + i * 4, false, true);
-                     static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_vgpr_spill, semantic_private);
+                     instr->mubuf()->sync = memory_sync_info(storage_vgpr_spill, semantic_private);
                   }
                } else {
                   Instruction *instr = bld.mubuf(opcode, scratch_rsrc, Operand(v1), scratch_offset, temp, offset, false, true);
-                  static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_vgpr_spill, semantic_private);
+                  instr->mubuf()->sync = memory_sync_info(storage_vgpr_spill, semantic_private);
                }
             } else {
                ctx.program->config->spilled_sgprs += (*it)->operands[0].size();
@@ -1658,12 +1658,12 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                      Temp tmp = bld.tmp(v1);
                      vec->operands[i] = Operand(tmp);
                      Instruction *instr = bld.mubuf(opcode, Definition(tmp), scratch_rsrc, Operand(v1), scratch_offset, offset + i * 4, false, true);
-                     static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_vgpr_spill, semantic_private);
+                     instr->mubuf()->sync = memory_sync_info(storage_vgpr_spill, semantic_private);
                   }
                   bld.insert(vec);
                } else {
                   Instruction *instr = bld.mubuf(opcode, def, scratch_rsrc, Operand(v1), scratch_offset, offset, false, true);
-                  static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_vgpr_spill, semantic_private);
+                  instr->mubuf()->sync = memory_sync_info(storage_vgpr_spill, semantic_private);
                }
             } else {
                uint32_t spill_slot = slots[spill_id];

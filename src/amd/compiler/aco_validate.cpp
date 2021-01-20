@@ -148,7 +148,7 @@ bool validate_ir(Program* program)
 
             check(program->chip_class >= GFX8, "SDWA is GFX8+ only", instr.get());
 
-            SDWA_instruction *sdwa = static_cast<SDWA_instruction*>(instr.get());
+            SDWA_instruction *sdwa = instr->sdwa();
             check(sdwa->omod == 0 || program->chip_class >= GFX9, "SDWA omod only supported on GFX9+", instr.get());
             if (base_format == Format::VOPC) {
                check(sdwa->clamp == false || program->chip_class == GFX8, "SDWA VOPC clamp only supported on GFX8", instr.get());
@@ -188,7 +188,7 @@ bool validate_ir(Program* program)
 
          /* check opsel */
          if (instr->isVOP3()) {
-            VOP3_instruction *vop3 = static_cast<VOP3_instruction*>(instr.get());
+            VOP3_instruction *vop3 = instr->vop3();
             check(vop3->opsel == 0 || program->chip_class >= GFX9, "Opsel is only supported on GFX9+", instr.get());
 
             for (unsigned i = 0; i < 3; i++) {
@@ -381,9 +381,7 @@ bool validate_ir(Program* program)
             for (const Operand &op : instr->operands)
                check(op.regClass().type() == RegType::vgpr, "All operands of PSEUDO_REDUCTION instructions must be in VGPRs.", instr.get());
 
-            unsigned cluster_size = static_cast<Pseudo_reduction_instruction *>(instr.get())->cluster_size;
-
-            if (instr->opcode == aco_opcode::p_reduce && cluster_size == program->wave_size)
+            if (instr->opcode == aco_opcode::p_reduce && instr->reduction()->cluster_size == program->wave_size)
                check(instr->definitions[0].regClass().type() == RegType::sgpr, "The result of unclustered reductions must go into an SGPR.", instr.get());
             else
                check(instr->definitions[0].regClass().type() == RegType::vgpr, "The result of scans and clustered reductions must go into a VGPR.", instr.get());
@@ -555,7 +553,7 @@ bool validate_subdword_operand(chip_class chip, const aco_ptr<Instruction>& inst
       return byte == 0;
    if (instr->format == Format::PSEUDO && chip >= GFX8)
       return true;
-   if (instr->isSDWA() && (static_cast<SDWA_instruction *>(instr.get())->sel[index] & sdwa_asuint) == (sdwa_isra | op.bytes()))
+   if (instr->isSDWA() && (instr->sdwa()->sel[index] & sdwa_asuint) == (sdwa_isra | op.bytes()))
       return true;
    if (byte == 2 && can_use_opsel(chip, instr->opcode, index, 1))
       return true;
@@ -605,7 +603,7 @@ bool validate_subdword_definition(chip_class chip, const aco_ptr<Instruction>& i
 
    if (instr->format == Format::PSEUDO && chip >= GFX8)
       return true;
-   if (instr->isSDWA() && static_cast<SDWA_instruction *>(instr.get())->dst_sel == (sdwa_isra | def.bytes()))
+   if (instr->isSDWA() && instr->sdwa()->dst_sel == (sdwa_isra | def.bytes()))
       return true;
    if (byte == 2 && can_use_opsel(chip, instr->opcode, -1, 1))
       return true;
@@ -636,7 +634,7 @@ unsigned get_subdword_bytes_written(Program *program, const aco_ptr<Instruction>
 
    if (instr->format == Format::PSEUDO)
       return chip >= GFX8 ? def.bytes() : def.size() * 4u;
-   if (instr->isSDWA() && static_cast<SDWA_instruction *>(instr.get())->dst_sel == (sdwa_isra | def.bytes()))
+   if (instr->isSDWA() && instr->sdwa()->dst_sel == (sdwa_isra | def.bytes()))
       return def.bytes();
 
    switch (instr->opcode) {

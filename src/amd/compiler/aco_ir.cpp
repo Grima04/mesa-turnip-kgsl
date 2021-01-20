@@ -140,19 +140,19 @@ memory_sync_info get_sync_info(const Instruction* instr)
 {
    switch (instr->format) {
    case Format::SMEM:
-      return static_cast<const SMEM_instruction*>(instr)->sync;
+      return instr->smem()->sync;
    case Format::MUBUF:
-      return static_cast<const MUBUF_instruction*>(instr)->sync;
+      return instr->mubuf()->sync;
    case Format::MIMG:
-      return static_cast<const MIMG_instruction*>(instr)->sync;
+      return instr->mimg()->sync;
    case Format::MTBUF:
-      return static_cast<const MTBUF_instruction*>(instr)->sync;
+      return instr->mtbuf()->sync;
    case Format::FLAT:
    case Format::GLOBAL:
    case Format::SCRATCH:
-      return static_cast<const FLAT_instruction*>(instr)->sync;
+      return instr->flatlike()->sync;
    case Format::DS:
-      return static_cast<const DS_instruction*>(instr)->sync;
+      return instr->ds()->sync;
    default:
       return memory_sync_info();
    }
@@ -170,7 +170,7 @@ bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
       return true;
 
    if (instr->isVOP3()) {
-      VOP3_instruction *vop3 = static_cast<VOP3_instruction*>(instr.get());
+      VOP3_instruction *vop3 = instr->vop3();
       if (instr->format == Format::VOP3)
          return false;
       if (vop3->clamp && instr->format == asVOP3(Format::VOPC) && chip != GFX8)
@@ -232,10 +232,10 @@ aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& inst
    std::copy(tmp->operands.cbegin(), tmp->operands.cend(), instr->operands.begin());
    std::copy(tmp->definitions.cbegin(), tmp->definitions.cend(), instr->definitions.begin());
 
-   SDWA_instruction *sdwa = static_cast<SDWA_instruction*>(instr.get());
+   SDWA_instruction *sdwa = instr->sdwa();
 
    if (tmp->isVOP3()) {
-      VOP3_instruction *vop3 = static_cast<VOP3_instruction*>(tmp.get());
+      VOP3_instruction *vop3 = tmp->vop3();
       memcpy(sdwa->neg, vop3->neg, sizeof(sdwa->neg));
       memcpy(sdwa->abs, vop3->abs, sizeof(sdwa->abs));
       sdwa->omod = vop3->omod;

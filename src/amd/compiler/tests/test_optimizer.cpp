@@ -735,7 +735,7 @@ BEGIN_TEST(optimize.add3)
    //! v1: %res1 = v_add_u32 %a, %tmp1
    //! p_unit_test 1, %res1
    tmp = bld.vop2_e64(aco_opcode::v_add_u32, bld.def(v1), inputs[1], inputs[2]);
-   static_cast<VOP3_instruction *>(tmp.instr)->clamp = true;
+   tmp.instr->vop3()->clamp = true;
    writeout(1, bld.vop2(aco_opcode::v_add_u32, bld.def(v1), inputs[0], tmp));
 
    //! v1: %tmp2 = v_add_u32 %b, %c
@@ -743,7 +743,7 @@ BEGIN_TEST(optimize.add3)
    //! p_unit_test 2, %res2
    tmp = bld.vop2(aco_opcode::v_add_u32, bld.def(v1), inputs[1], inputs[2]);
    tmp = bld.vop2_e64(aco_opcode::v_add_u32, bld.def(v1), inputs[0], tmp);
-   static_cast<VOP3_instruction *>(tmp.instr)->clamp = true;
+   tmp.instr->vop3()->clamp = true;
    writeout(2, tmp);
 
    finish_opt_test();

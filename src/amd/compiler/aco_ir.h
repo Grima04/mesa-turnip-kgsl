@@ -1539,7 +1539,7 @@ constexpr bool Instruction::usesModifiers() const noexcept
       return true;
 
    if (format == Format::VOP3P) {
-      const VOP3P_instruction *vop3p = static_cast<const VOP3P_instruction*>(this);
+      const VOP3P_instruction *vop3p = this->vop3p();
       for (unsigned i = 0; i < operands.size(); i++) {
          if (vop3p->neg_lo[i] || vop3p->neg_hi[i])
             return true;
@@ -1550,7 +1550,7 @@ constexpr bool Instruction::usesModifiers() const noexcept
       }
       return vop3p->opsel_lo || vop3p->clamp;
    } else if (isVOP3()) {
-      const VOP3_instruction *vop3 = static_cast<const VOP3_instruction*>(this);
+      const VOP3_instruction *vop3 = this->vop3();
       for (unsigned i = 0; i < operands.size(); i++) {
          if (vop3->abs[i] || vop3->neg[i])
             return true;

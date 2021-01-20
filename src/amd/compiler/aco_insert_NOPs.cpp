@@ -180,7 +180,7 @@ struct NOP_ctx_gfx10 {
 int get_wait_states(aco_ptr<Instruction>& instr)
 {
    if (instr->opcode == aco_opcode::s_nop)
-      return static_cast<SOPP_instruction*>(instr.get())->imm + 1;
+      return instr->sopp()->imm + 1;
    else if (instr->opcode == aco_opcode::p_constaddr)
       return 3; /* lowered to 3 instructions in the assembler */
    else
@@ -351,7 +351,7 @@ void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &c
 
       if (instr->opcode == aco_opcode::s_sendmsg || instr->opcode == aco_opcode::s_ttracedata)
          NOPs = MAX2(NOPs, ctx.salu_wr_m0_then_gds_msg_ttrace);
-   } else if (instr->format == Format::DS && static_cast<DS_instruction *>(instr.get())->gds) {
+   } else if (instr->format == Format::DS && instr->ds()->gds) {
       NOPs = MAX2(NOPs, ctx.salu_wr_m0_then_gds_msg_ttrace);
    } else if (instr->isVALU() || instr->format == Format::VINTRP) {
       for (Operand op : instr->operands) {
@@ -407,7 +407,7 @@ void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &c
 
    if (program->chip_class == GFX9) {
       bool lds_scratch_global = (instr->format == Format::SCRATCH || instr->format == Format::GLOBAL) &&
-                                static_cast<FLAT_instruction *>(instr.get())->lds;
+                                instr->flatlike()->lds;
       if (instr->format == Format::VINTRP ||
           instr->opcode == aco_opcode::ds_read_addtid_b32 ||
           instr->opcode == aco_opcode::ds_write_addtid_b32 ||
@@ -480,7 +480,7 @@ void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &c
             ctx.salu_wr_m0_then_moverel = 1;
          }
       } else if (instr->opcode == aco_opcode::s_setreg_b32 || instr->opcode == aco_opcode::s_setreg_imm32_b32) {
-         SOPK_instruction *sopk = static_cast<SOPK_instruction *>(instr.get());
+         SOPK_instruction *sopk = instr->sopk();
          unsigned offset = (sopk->imm >> 6) & 0x1f;
          unsigned size = ((sopk->imm >> 11) & 0x1f) + 1;
          unsigned reg = sopk->imm & 0x3f;
@@ -604,14 +604,13 @@ void handle_instruction_gfx10(Program *program, Block *cur_block, NOP_ctx_gfx10 
    } else if (instr->isSALU() || instr->format == Format::SMEM) {
       if (instr->opcode == aco_opcode::s_waitcnt) {
          /* Hazard is mitigated by "s_waitcnt vmcnt(0)" */
-         uint16_t imm = static_cast<SOPP_instruction*>(instr.get())->imm;
+         uint16_t imm = instr->sopp()->imm;
          unsigned vmcnt = (imm & 0xF) | ((imm & (0x3 << 14)) >> 10);
          if (vmcnt == 0)
             ctx.sgprs_read_by_VMEM.reset();
       } else if (instr->opcode == aco_opcode::s_waitcnt_depctr) {
          /* Hazard is mitigated by a s_waitcnt_depctr with a magic imm */
-         const SOPP_instruction *sopp = static_cast<const SOPP_instruction *>(instr.get());
-         if (sopp->imm == 0xffe3)
+         if (instr->sopp()->imm == 0xffe3)
             ctx.sgprs_read_by_VMEM.reset();
       }
 
@@ -669,8 +668,7 @@ void handle_instruction_gfx10(Program *program, Block *cur_block, NOP_ctx_gfx10 
       }
    } else if (instr->opcode == aco_opcode::s_waitcnt_depctr) {
       /* s_waitcnt_depctr can mitigate the problem if it has a magic imm */
-      const SOPP_instruction *sopp = static_cast<const SOPP_instruction *>(instr.get());
-      if ((sopp->imm & 0xfffe) == 0xfffe)
+      if ((instr->sopp()->imm & 0xfffe) == 0xfffe)
          ctx.has_nonVALU_exec_read = false;
    }
 
@@ -697,7 +695,7 @@ void handle_instruction_gfx10(Program *program, Block *cur_block, NOP_ctx_gfx10 
          ctx.sgprs_read_by_SMEM.reset();
       } else {
          /* Reducing lgkmcnt count to 0 always mitigates the hazard. */
-         const SOPP_instruction *sopp = static_cast<const SOPP_instruction *>(instr.get());
+         const SOPP_instruction *sopp = instr->sopp();
          if (sopp->opcode == aco_opcode::s_waitcnt_lgkmcnt) {
             if (sopp->imm == 0 && sopp->definitions[0].physReg() == sgpr_null)
                ctx.sgprs_read_by_SMEM.reset();
@@ -727,7 +725,7 @@ void handle_instruction_gfx10(Program *program, Block *cur_block, NOP_ctx_gfx10 
       ctx.has_branch_after_DS = ctx.has_DS;
    } else if (instr->opcode == aco_opcode::s_waitcnt_vscnt) {
       /* Only s_waitcnt_vscnt can mitigate the hazard */
-      const SOPK_instruction *sopk = static_cast<const SOPK_instruction *>(instr.get());
+      const SOPK_instruction *sopk = instr->sopk();
       if (sopk->definitions[0].physReg() == sgpr_null && sopk->imm == 0)
          ctx.has_VMEM = ctx.has_branch_after_VMEM = ctx.has_DS = ctx.has_branch_after_DS = false;
    }
