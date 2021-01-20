@@ -896,6 +896,9 @@ struct v3dv_job {
    enum v3dv_ez_state ez_state;
    enum v3dv_ez_state first_ez_state;
 
+   /* If this job has been configured to use early Z/S clear */
+   bool early_zs_clear;
+
    /* Number of draw calls recorded into the job */
    uint32_t draw_count;
 

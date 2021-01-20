@@ -1809,11 +1809,14 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
        * So if we have to emit a clear of depth or stencil we don't use
        * the per-buffer store clear bit, even if we need to store the buffers,
        * instead we always have to use the Clear Tile Buffers Z/S bit.
+       * If we have configured the job to do early Z/S clearing, then we
+       * don't want to emit any Clear Tile Buffers command at all here.
        *
        * Note that GFXH-1689 is not reproduced in the simulator, where
        * using the clear buffer bit in depth/stencil stores works fine.
        */
-      use_global_zs_clear = needs_depth_clear || needs_stencil_clear;
+      use_global_zs_clear = !state->job->early_zs_clear &&
+                            (needs_depth_clear || needs_stencil_clear);
       if (needs_depth_store || needs_stencil_store) {
          const uint32_t zs_buffer =
             v3dv_zs_buffer(needs_depth_store, needs_stencil_store);
@@ -2016,7 +2019,7 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
       }
       if (i == 0 && cmd_buffer->state.tile_aligned_render_area) {
          cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
-            clear.clear_z_stencil_buffer = true;
+            clear.clear_z_stencil_buffer = !job->early_zs_clear;
             clear.clear_all_render_targets = true;
          }
       }
@@ -2125,6 +2128,7 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
     * Z_STENCIL_CLEAR_VALUES must be last. The ones in between are optional
     * updates to the previous HW state.
     */
+   bool do_early_zs_clear = false;
    const uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
       config.image_width_pixels = framebuffer->width;
@@ -2156,10 +2160,62 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
                                 needs_depth_load,
                                 &config.early_z_disable,
                                 &config.early_z_test_and_update_direction);
+
+         /* Early-Z/S clear can be enabled if the job is clearing and not
+          * storing (or loading) depth. If a stencil aspect is also present
+          * we have the same requirements for it, however, in this case we
+          * can accept stencil loadOp DONT_CARE as well, so instead of
+          * checking that stencil is cleared we check that is not loaded.
+          *
+          * Early-Z/S clearing is independent of Early Z/S testing, so it is
+          * possible to enable one but not the other so long as their
+          * respective requirements are met.
+          */
+         bool needs_depth_clear =
+            check_needs_clear(state,
+                              ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+                              ds_attachment->first_subpass,
+                              ds_attachment->desc.loadOp,
+                              subpass->do_depth_clear_with_draw);
+
+         /* Sanity check: can't be loading and clearing */
+         assert(!needs_depth_clear || !needs_depth_load);
+
+         bool needs_depth_store =
+            check_needs_store(state,
+                              ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+                              ds_attachment->last_subpass,
+                              ds_attachment->desc.storeOp);
+
+         do_early_zs_clear = needs_depth_clear && !needs_depth_store;
+         if (do_early_zs_clear &&
+             vk_format_has_stencil(ds_attachment->desc.format)) {
+            bool needs_stencil_load =
+               check_needs_load(state,
+                                ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
+                                ds_attachment->first_subpass,
+                                ds_attachment->desc.stencilLoadOp);
+
+            bool needs_stencil_store =
+               check_needs_store(state,
+                                 ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
+                                 ds_attachment->last_subpass,
+                                 ds_attachment->desc.stencilStoreOp);
+
+            do_early_zs_clear = !needs_stencil_load && !needs_stencil_store;
+         }
+
+         config.early_depth_stencil_clear = do_early_zs_clear;
       } else {
          config.early_z_disable = true;
       }
    }
+
+   /* If we enabled early Z/S clear, then we can't emit any "Clear Tile Buffers"
+    * commands with the Z/S bit set, so keep track of whether we enabled this
+    * in the job so we can skip these later.
+    */
+   job->early_zs_clear = do_early_zs_clear;
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
