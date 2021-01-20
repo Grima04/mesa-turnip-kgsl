@@ -417,32 +417,32 @@ we DO NOT WANT implementations of these extensions for Mesa.
   GL_ARB_shadow_ambient                                 Superseded by GL_ARB_fragment_program
   GL_ARB_vertex_blend                                   Superseded by GL_ARB_vertex_program
 
-Vulkan 1.0 -- all DONE: anv, radv, tu, v3dv
+Vulkan 1.0 -- all DONE: anv, lvp, radv, tu, v3dv
 
 Vulkan 1.1 -- all DONE: anv, radv
 
   VK_KHR_16bit_storage                                  DONE (anv/gen8+, radv)
-  VK_KHR_bind_memory2                                   DONE (anv, radv, tu)
-  VK_KHR_dedicated_allocation                           DONE (anv, radv, tu)
-  VK_KHR_descriptor_update_template                     DONE (anv, radv)
-  VK_KHR_device_group                                   DONE (tu)
-  VK_KHR_device_group_creation                          DONE (tu)
-  VK_KHR_external_fence                                 DONE (anv, radv, tu)
-  VK_KHR_external_fence_capabilities                    DONE (anv, radv)
-  VK_KHR_external_memory                                DONE (anv, radv, tu, v3dv)
-  VK_KHR_external_memory_capabilities                   DONE (anv, radv, tu, v3dv)
-  VK_KHR_external_semaphore                             DONE (anv, radv, tu)
-  VK_KHR_external_semaphore_capabilities                DONE (anv, radv, tu)
-  VK_KHR_get_memory_requirements2                       DONE (anv, radv, tu)
-  VK_KHR_get_physical_device_properties2                DONE (anv, radv, tu, v3dv)
-  VK_KHR_maintenance1                                   DONE (anv, radv, v3dv)
+  VK_KHR_bind_memory2                                   DONE (anv, lvp, radv, tu)
+  VK_KHR_dedicated_allocation                           DONE (anv, lvp, radv, tu)
+  VK_KHR_descriptor_update_template                     DONE (anv, lvp, radv)
+  VK_KHR_device_group                                   DONE (lvp, tu)
+  VK_KHR_device_group_creation                          DONE (lvp, tu)
+  VK_KHR_external_fence                                 DONE (anv, lvp, radv, tu)
+  VK_KHR_external_fence_capabilities                    DONE (anv, lvp, radv)
+  VK_KHR_external_memory                                DONE (anv, lvp, radv, tu, v3dv)
+  VK_KHR_external_memory_capabilities                   DONE (anv, lvp, radv, tu, v3dv)
+  VK_KHR_external_semaphore                             DONE (anv, lvp, radv, tu)
+  VK_KHR_external_semaphore_capabilities                DONE (anv, lvp, radv, tu)
+  VK_KHR_get_memory_requirements2                       DONE (anv, lvp, radv, tu)
+  VK_KHR_get_physical_device_properties2                DONE (anv, lvp, radv, tu, v3dv)
+  VK_KHR_maintenance1                                   DONE (anv, lvp, radv, v3dv)
   VK_KHR_maintenance2                                   DONE (anv, radv, tu)
   VK_KHR_maintenance3                                   DONE (anv, radv, tu)
   VK_KHR_multiview                                      DONE (anv, radv, tu)
-  VK_KHR_relaxed_block_layout                           DONE (anv, radv)
+  VK_KHR_relaxed_block_layout                           DONE (anv, lvp, radv)
   VK_KHR_sampler_ycbcr_conversion                       DONE (anv, radv, tu)
-  VK_KHR_shader_draw_parameters                         DONE (anv, radv, tu)
-  VK_KHR_storage_buffer_storage_class                   DONE (anv, radv)
+  VK_KHR_shader_draw_parameters                         DONE (anv, lvp, radv, tu)
+  VK_KHR_storage_buffer_storage_class                   DONE (anv, lvp, radv)
   VK_KHR_variable_pointers                              DONE (anv, radv, tu)
 
 Vulkan 1.2 -- all DONE: anv
@@ -451,11 +451,11 @@ Vulkan 1.2 -- all DONE: anv
   VK_KHR_buffer_device_address                          DONE (anv/gen8+, radv)
   VK_KHR_create_renderpass2                             DONE (anv, radv, tu)
   VK_KHR_depth_stencil_resolve                          DONE (anv, radv, tu)
-  VK_KHR_draw_indirect_count                            DONE (anv, radv, tu)
-  VK_KHR_driver_properties                              DONE (anv, radv)
+  VK_KHR_draw_indirect_count                            DONE (anv, lvp, radv, tu)
+  VK_KHR_driver_properties                              DONE (anv, lvp, radv)
   VK_KHR_image_format_list                              DONE (anv, radv, tu)
   VK_KHR_imageless_framebuffer                          DONE (anv, radv)
-  VK_KHR_sampler_mirror_clamp_to_edge                   DONE (anv, radv, tu)
+  VK_KHR_sampler_mirror_clamp_to_edge                   DONE (anv, lvp, radv, tu)
   VK_KHR_separate_depth_stencil_layouts                 DONE (anv, radv)
   VK_KHR_shader_atomic_int64                            DONE (anv/gen9+, radv)
   VK_KHR_shader_float16_int8                            DONE (anv/gen8+, radv)
@@ -476,7 +476,7 @@ Khronos extensions that are not part of any Vulkan version:
 
   VK_KHR_android_surface                                not started
   VK_KHR_copy_commands2                                 DONE (anv, radv)
-  VK_KHR_display                                        DONE (anv, radv, tu, v3dv)
+  VK_KHR_display                                        DONE (anv, lvp, radv, tu, v3dv)
   VK_KHR_display_swapchain                              not started
   VK_KHR_external_fence_fd                              DONE (anv, radv, tu)
   VK_KHR_external_fence_win32                           not started
@@ -485,26 +485,26 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_external_semaphore_fd                          DONE (anv, radv, tu)
   VK_KHR_external_semaphore_win32                       not started
   VK_KHR_fragment_shading_rate                          not started
-  VK_KHR_get_display_properties2                        DONE (anv, radv, tu)
-  VK_KHR_get_surface_capabilities2                      DONE (anv, radv, tu)
-  VK_KHR_incremental_present                            DONE (anv, radv, tu)
+  VK_KHR_get_display_properties2                        DONE (anv, lvp, radv, tu)
+  VK_KHR_get_surface_capabilities2                      DONE (anv, lvp, radv, tu)
+  VK_KHR_incremental_present                            DONE (anv, lvp, radv, tu)
   VK_KHR_performance_query                              DONE (anv/gen8+, tu)
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv)
-  VK_KHR_push_descriptor                                DONE (anv, radv, tu)
+  VK_KHR_push_descriptor                                DONE (anv, lvp, radv, tu)
   VK_EXT_sample_locations                               DONE (anv, radv, tu/a650)
   VK_KHR_shader_clock                                   DONE (anv, radv)
   VK_KHR_shader_non_semantic_info                       DONE (anv, radv)
   VK_KHR_shader_terminate_invocation                    DONE (anv, radv)
   VK_KHR_shared_presentable_image                       not started
-  VK_KHR_surface                                        DONE (anv, radv, tu, v3dv)
-  VK_KHR_surface_protected_capabilities                 DONE (anv, radv)
-  VK_KHR_swapchain                                      DONE (anv, radv, tu, v3dv)
+  VK_KHR_surface                                        DONE (anv, lvp, radv, tu, v3dv)
+  VK_KHR_surface_protected_capabilities                 DONE (anv, lvp, radv)
+  VK_KHR_swapchain                                      DONE (anv, lvp, radv, tu, v3dv)
   VK_KHR_swapchain_mutable_format                       DONE (anv, radv)
-  VK_KHR_wayland_surface                                DONE (anv, radv, tu, v3dv)
+  VK_KHR_wayland_surface                                DONE (anv, lvp, radv, tu, v3dv)
   VK_KHR_win32_keyed_mutex                              not started
   VK_KHR_win32_surface                                  not started
-  VK_KHR_xcb_surface                                    DONE (anv, radv, tu, v3dv)
-  VK_KHR_xlib_surface                                   DONE (anv, radv, tu, v3dv)
+  VK_KHR_xcb_surface                                    DONE (anv, lvp, radv, tu, v3dv)
+  VK_KHR_xlib_surface                                   DONE (anv, lvp, radv, tu, v3dv)
 
 
 OpenCL 1.0 -- all DONE:
