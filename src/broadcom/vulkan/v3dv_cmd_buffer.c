@@ -1495,13 +1495,34 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
 
 static bool
 check_needs_load(const struct v3dv_cmd_buffer_state *state,
+                 VkImageAspectFlags aspect,
                  uint32_t att_first_subpass_idx,
                  VkAttachmentLoadOp load_op)
 {
-   return state->job->first_subpass > att_first_subpass_idx ||
-          state->job->is_subpass_continue ||
-          load_op == VK_ATTACHMENT_LOAD_OP_LOAD ||
-          !state->tile_aligned_render_area;
+   /* We call this with image->aspects & aspect, so 0 means the aspect we are
+    * testing does not exist in the image.
+    */
+   if (!aspect)
+      return false;
+
+   /* Attachment load operations apply on the first subpass that uses the
+    * attachment, otherwise we always need to load.
+    */
+   if (state->job->first_subpass > att_first_subpass_idx)
+      return true;
+
+   /* If the job is continuing a subpass started in another job, we always
+    * need to load.
+    */
+   if (state->job->is_subpass_continue)
+      return true;
+
+   /* If the area is not aligned to tile boundaries, we always need to load */
+   if (!state->tile_aligned_render_area)
+      return true;
+
+   /* The attachment load operations must be LOAD */
+   return load_op == VK_ATTACHMENT_LOAD_OP_LOAD;
 }
 
 static bool
@@ -1583,6 +1604,7 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
        * render area for any such tiles.
        */
       bool needs_load = check_needs_load(state,
+                                         VK_IMAGE_ASPECT_COLOR_BIT,
                                          attachment->first_subpass,
                                          attachment->desc.loadOp);
       if (needs_load) {
@@ -1597,14 +1619,19 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       const struct v3dv_render_pass_attachment *ds_attachment =
          &state->pass->attachments[ds_attachment_idx];
 
+      const VkImageAspectFlags ds_aspects =
+         vk_format_aspects(ds_attachment->desc.format);
+
       const bool needs_depth_load =
-         vk_format_has_depth(ds_attachment->desc.format) &&
-         check_needs_load(state, ds_attachment->first_subpass,
+         check_needs_load(state,
+                          ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+                          ds_attachment->first_subpass,
                           ds_attachment->desc.loadOp);
 
       const bool needs_stencil_load =
-         vk_format_has_stencil(ds_attachment->desc.format) &&
-         check_needs_load(state, ds_attachment->first_subpass,
+         check_needs_load(state,
+                          ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
+                          ds_attachment->first_subpass,
                           ds_attachment->desc.stencilLoadOp);
 
       if (needs_depth_load || needs_stencil_load) {
@@ -2073,10 +2100,17 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
             framebuffer->attachments[ds_attachment_idx];
          config.internal_depth_type = iview->internal_type;
 
+         struct v3dv_render_pass_attachment *ds_attachment =
+            &pass->attachments[ds_attachment_idx];
+
+         const VkImageAspectFlags ds_aspects =
+            vk_format_aspects(ds_attachment->desc.format);
+
          bool needs_depth_load =
             check_needs_load(state,
-                             pass->attachments[ds_attachment_idx].first_subpass,
-                             pass->attachments[ds_attachment_idx].desc.loadOp);
+                             ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+                             ds_attachment->first_subpass,
+                             ds_attachment->desc.loadOp);
 
          set_rcl_early_z_config(job,
                                 framebuffer->width,
