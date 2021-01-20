@@ -1106,9 +1106,6 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
    key->is_lines = (topology >= PIPE_PRIM_LINES &&
                     topology <= PIPE_PRIM_LINE_STRIP);
 
-   /* Vulkan doesn't appear to specify (anv does the same) */
-   key->clamp_color = false;
-
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       pCreateInfo->pColorBlendState;
 
@@ -1205,9 +1202,6 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
 
    const bool rba = p_stage->pipeline->device->features.robustBufferAccess;
    pipeline_populate_v3d_key(&key->base, p_stage, 0, rba);
-
-   /* Vulkan doesn't appear to specify (anv does the same) */
-   key->clamp_color = false;
 
    /* Vulkan specifies a point size per vertex, so true for if the prim are
     * points, like on ES2)
