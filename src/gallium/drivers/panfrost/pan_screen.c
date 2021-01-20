@@ -66,6 +66,7 @@ static const struct debug_named_value panfrost_debug_options[] = {
         {"nofp16",     PAN_DBG_NOFP16,     "Disable 16-bit support"},
         {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},
         {"noafbc",    PAN_DBG_NO_AFBC,  "Disable AFBC support"},
+        {"nocrc",     PAN_DBG_NO_CRC,   "Disable transaction elimination"},
         DEBUG_NAMED_VALUE_END
 };
 

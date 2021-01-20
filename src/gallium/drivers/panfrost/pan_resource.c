@@ -634,7 +634,8 @@ panfrost_should_checksum(const struct panfrost_device *dev, const struct panfros
 
         return pres->base.bind & PIPE_BIND_RENDER_TARGET &&
                 panfrost_is_2d(pres) &&
-                bytes_per_pixel <= bytes_per_pixel_max;
+                bytes_per_pixel <= bytes_per_pixel_max &&
+                !(dev->debug & PAN_DBG_NO_CRC);
 }
 
 static void
