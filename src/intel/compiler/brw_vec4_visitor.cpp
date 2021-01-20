@@ -827,7 +827,7 @@ vec4_visitor::is_high_sampler(src_reg sampler)
 void
 vec4_visitor::emit_texture(ir_texture_opcode op,
                            dst_reg dest,
-                           const glsl_type *dest_type,
+                           int dest_components,
                            src_reg coordinate,
                            int coord_components,
                            src_reg shadow_comparator,
@@ -964,7 +964,7 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
 	    emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_YW), lod2));
 	    inst->mlen++;
 
-	    if (dest_type->vector_elements == 3 || shadow_comparator.file != BAD_FILE) {
+	    if (dest_components == 3 || shadow_comparator.file != BAD_FILE) {
 	       lod.swizzle = BRW_SWIZZLE_ZZZZ;
 	       lod2.swizzle = BRW_SWIZZLE_ZZZZ;
 	       emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_X), lod));

@@ -1482,42 +1482,6 @@ brw_type_for_nir_type(const struct gen_device_info *devinfo, nir_alu_type type)
    return BRW_REGISTER_TYPE_F;
 }
 
-/* Returns the glsl_base_type corresponding to a nir_alu_type.
- * This is used by both brw_vec4_nir and brw_fs_nir.
- */
-enum glsl_base_type
-brw_glsl_base_type_for_nir_type(nir_alu_type type)
-{
-   switch (type) {
-   case nir_type_float:
-   case nir_type_float32:
-      return GLSL_TYPE_FLOAT;
-
-   case nir_type_float16:
-      return GLSL_TYPE_FLOAT16;
-
-   case nir_type_float64:
-      return GLSL_TYPE_DOUBLE;
-
-   case nir_type_int:
-   case nir_type_int32:
-      return GLSL_TYPE_INT;
-
-   case nir_type_uint:
-   case nir_type_uint32:
-      return GLSL_TYPE_UINT;
-
-   case nir_type_int16:
-      return GLSL_TYPE_INT16;
-
-   case nir_type_uint16:
-      return GLSL_TYPE_UINT16;
-
-   default:
-      unreachable("bad type");
-   }
-}
-
 nir_shader *
 brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compiler,
                                const nir_shader_compiler_options *options,

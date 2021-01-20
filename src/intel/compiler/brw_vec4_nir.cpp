@@ -1950,14 +1950,6 @@ ir_texture_opcode_for_nir_texop(nir_texop texop)
    return op;
 }
 
-static const glsl_type *
-glsl_type_for_nir_alu_type(nir_alu_type alu_type,
-                           unsigned components)
-{
-   return glsl_type::get_instance(brw_glsl_base_type_for_nir_type(alu_type),
-                                  components, 1);
-}
-
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
@@ -1973,9 +1965,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    src_reg sample_index;
    src_reg mcs;
 
-   const glsl_type *dest_type =
-      glsl_type_for_nir_alu_type(instr->dest_type,
-                                 nir_tex_instr_dest_size(instr));
    dst_reg dest = get_nir_dest(instr->dest, instr->dest_type);
 
    /* The hardware requires a LOD for buffer textures */
@@ -2102,7 +2091,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    ir_texture_opcode op = ir_texture_opcode_for_nir_texop(instr->op);
 
-   emit_texture(op, dest, dest_type, coordinate, instr->coord_components,
+   emit_texture(op, dest, nir_tex_instr_dest_size(instr),
+                coordinate, instr->coord_components,
                 shadow_comparator,
                 lod, lod2, sample_index,
                 constant_offset, offset_value, mcs,
