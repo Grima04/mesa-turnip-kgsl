@@ -2048,8 +2048,10 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    UNUSED const struct gen_device_info *devinfo = &cmd_buffer->device->info;
    enum anv_pipe_bits bits = cmd_buffer->state.pending_pipe_bits;
 
-   if (cmd_buffer->device->physical->always_flush_cache)
+   if (unlikely(cmd_buffer->device->physical->always_flush_cache))
       bits |= ANV_PIPE_FLUSH_BITS | ANV_PIPE_INVALIDATE_BITS;
+   else if (bits == 0)
+      return;
 
    /*
     * From Sandybridge PRM, volume 2, "1.7.2 End-of-Pipe Synchronization":
