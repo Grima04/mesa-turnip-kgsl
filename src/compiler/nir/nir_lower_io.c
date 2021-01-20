@@ -786,6 +786,7 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
       assert(offset->bit_size == 32);
       return nir_u2u64(b, nir_iadd(b, nir_u2u32(b, addr), offset));
 
+   case nir_address_format_64bit_global_32bit_offset:
    case nir_address_format_64bit_bounded_global:
       assert(addr->num_components == 4);
       assert(addr->bit_size == offset->bit_size);
@@ -1008,6 +1009,7 @@ addr_format_is_global(nir_address_format addr_format,
 
    return addr_format == nir_address_format_32bit_global ||
           addr_format == nir_address_format_64bit_global ||
+          addr_format == nir_address_format_64bit_global_32bit_offset ||
           addr_format == nir_address_format_64bit_bounded_global;
 }
 
@@ -1033,6 +1035,7 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
       assert(addr->num_components == 1);
       return addr;
 
+   case nir_address_format_64bit_global_32bit_offset:
    case nir_address_format_64bit_bounded_global:
       assert(addr->num_components == 4);
       return nir_iadd(b, nir_pack_64_2x32(b, nir_channels(b, addr, 0x3)),
@@ -2507,6 +2510,7 @@ nir_address_format_null_value(nir_address_format addr_format)
    const static nir_const_value null_values[][NIR_MAX_VEC_COMPONENTS] = {
       [nir_address_format_32bit_global] = {{0}},
       [nir_address_format_64bit_global] = {{0}},
+      [nir_address_format_64bit_global_32bit_offset] = {{0}},
       [nir_address_format_64bit_bounded_global] = {{0}},
       [nir_address_format_32bit_index_offset] = {{.u32 = ~0}, {.u32 = ~0}},
       [nir_address_format_32bit_index_offset_pack64] = {{.u64 = ~0ull}},
@@ -2534,6 +2538,10 @@ nir_build_addr_ieq(nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
    case nir_address_format_32bit_offset:
    case nir_address_format_62bit_generic:
       return nir_ball_iequal(b, addr0, addr1);
+
+   case nir_address_format_64bit_global_32bit_offset:
+      return nir_ball_iequal(b, nir_channels(b, addr0, 0xb),
+                                nir_channels(b, addr1, 0xb));
 
    case nir_address_format_32bit_offset_as_64bit:
       assert(addr0->num_components == 1 && addr1->num_components == 1);
@@ -2569,6 +2577,7 @@ nir_build_addr_isub(nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
       assert(addr1->num_components == 1);
       return nir_u2u64(b, nir_isub(b, nir_u2u32(b, addr0), nir_u2u32(b, addr1)));
 
+   case nir_address_format_64bit_global_32bit_offset:
    case nir_address_format_64bit_bounded_global:
       return nir_isub(b, addr_to_global(b, addr0, addr_format),
                          addr_to_global(b, addr1, addr_format));

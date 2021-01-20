@@ -4409,6 +4409,17 @@ typedef enum {
    nir_address_format_64bit_global,
 
    /**
+    * An address format which is a 64-bit global base address and a 32-bit
+    * offset.
+    *
+    * The address is comprised as a 32-bit vec4 where .xy are a uint64_t base
+    * address stored with the low bits in .x and high bits in .y, .z is
+    * undefined, and .w is an offset.  This is intended to match
+    * 64bit_bounded_global but without the bounds checking.
+    */
+   nir_address_format_64bit_global_32bit_offset,
+
+   /**
     * An address format which is a bounds-checked 64-bit global GPU address.
     *
     * The address is comprised as a 32-bit vec4 where .xy are a uint64_t base
@@ -4482,6 +4493,7 @@ nir_address_format_bit_size(nir_address_format addr_format)
    switch (addr_format) {
    case nir_address_format_32bit_global:              return 32;
    case nir_address_format_64bit_global:              return 64;
+   case nir_address_format_64bit_global_32bit_offset: return 32;
    case nir_address_format_64bit_bounded_global:      return 32;
    case nir_address_format_32bit_index_offset:        return 32;
    case nir_address_format_32bit_index_offset_pack64: return 64;
@@ -4500,6 +4512,7 @@ nir_address_format_num_components(nir_address_format addr_format)
    switch (addr_format) {
    case nir_address_format_32bit_global:              return 1;
    case nir_address_format_64bit_global:              return 1;
+   case nir_address_format_64bit_global_32bit_offset: return 4;
    case nir_address_format_64bit_bounded_global:      return 4;
    case nir_address_format_32bit_index_offset:        return 2;
    case nir_address_format_32bit_index_offset_pack64: return 1;
