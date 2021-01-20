@@ -340,6 +340,10 @@ def generate(env):
         cppdefines += ['NDEBUG']
     if env['build'] == 'profile':
         cppdefines += ['PROFILE']
+
+    if check_functions(env, ['timespec_get']):
+        cppdefines += ['HAVE_TIMESPEC_GET']
+
     if env['platform'] in ('posix', 'linux', 'freebsd', 'darwin'):
         cppdefines += [
             '_POSIX_SOURCE',
@@ -373,9 +377,6 @@ def generate(env):
 
         if check_functions(env, ['random_r']):
             cppdefines += ['HAVE_RANDOM_R']
-
-        if check_functions(env, ['timespec_get']):
-            cppdefines += ['HAVE_TIMESPEC_GET']
 
         if check_header(env, 'sys/shm.h'):
             cppdefines += ['HAVE_SYS_SHM_H']
