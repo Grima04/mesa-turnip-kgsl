@@ -2035,8 +2035,6 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
       st_serialize_nir(st_program(prog));
    }
 
-   /* Create Gallium shaders now instead of on demand. */
-   if (ST_DEBUG & DEBUG_PRECOMPILE ||
-       st->shader_has_one_variant[prog->info.stage])
-      st_precompile_shader_variant(st, prog);
+   /* Always create the default variant of the program. */
+   st_precompile_shader_variant(st, prog);
 }
