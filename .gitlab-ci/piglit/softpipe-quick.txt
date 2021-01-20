@@ -448,14 +448,6 @@ spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-min3-uvec4-uvec4-
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-min3-vec2-vec2-vec2: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-min3-vec3-vec3-vec3: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-min3-vec4-vec4-vec4: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/fs-max3-int-int-int: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/fs-max3-vec2-vec2-vec2: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/fs-mid3-ivec4-ivec4-ivec4: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/fs-min3-int-int-int: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/fs-min3-uvec2-uvec2-uvec2: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/gs-min3-int-int-int: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/gs-min3-ivec2-ivec2-ivec2: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/gs-min3-vec2-vec2-vec2: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-max3-float-float-float: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-max3-int-int-int: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-max3-ivec2-ivec2-ivec2: skip
@@ -492,9 +484,6 @@ spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-uvec4-uvec4
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec2-vec2-vec2: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec3-vec3-vec3: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec4-vec4-vec4: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/vs-mid3-int-int-int: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/vs-mid3-uvec2-uvec2-uvec2: skip
-spec/amd_shader_trinary_minmax/execution/built-in-functions/vs-mid3-vec3-vec3-vec3: skip
 spec/apple_object_purgeable/object_purgeable-api-pbo: skip
 spec/apple_object_purgeable/object_purgeable-api-texture: skip
 spec/apple_object_purgeable/object_purgeable-api-vbo: skip
@@ -612,7 +601,6 @@ spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifi
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_interface: crash
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_named_interface: crash
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_struct: crash
-spec/arb_enhanced_layouts/execution/component-layout/vs-fs: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-load-output: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-load-output-indirect: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-tes-fs: skip
@@ -2704,13 +2692,8 @@ spec/ext_window_rectangles/render_gles3: skip
 spec/glsl-1.10/execution/fs-dfdx-accuracy: warn
 spec/glsl-1.10/execution/fs-dfdy-accuracy: warn
 spec/glsl-1.10/execution/gl_lightsource_indirect: crash
-spec/glsl-1.10/execution/glsl-fs-inline-explosion: crash
-spec/glsl-1.10/execution/glsl-vs-inline-explosion: crash
-spec/glsl-1.10/execution/loops/glsl-fs-unroll-explosion: crash
-spec/glsl-1.10/execution/loops/glsl-vs-unroll-explosion: crash
 spec/glsl-1.10/preprocessor/extension-defined-test: skip
 spec/glsl-1.10/preprocessor/extension-if-1: skip
-spec/glsl-1.10/preprocessor/ifndef: skip
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1d: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1darray: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1darrayshadow: fail
@@ -3075,10 +3058,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    26844
+       pass:    26857
        fail:      400
-      crash:       42
-       skip:     2603
+      crash:       38
+       skip:     2590
     timeout:        0
        warn:        4
  incomplete:        0
@@ -3087,4 +3070,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    29918
+      total:    29914

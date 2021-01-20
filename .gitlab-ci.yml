@@ -1246,7 +1246,6 @@ softpipe-piglit-quick:
     # triangle-rasterization skipped due to flakes thanks to it using a time-based random seed.
     # glx-multithread-texture is flaky, undiagnosed
     PIGLIT_OPTIONS: >
-      --process-isolation false
       -x rasterpos
       -x triangle-rasterization
       -x glx-multithread-texture
@@ -1460,7 +1459,6 @@ arm64_a630_vk_sysmem:
     # Known flakes in the list are between "arb_blend_func_extended" and
     # "varray-disabled"
     PIGLIT_OPTIONS: >-
-      --process-isolation false
       -x arb_blend_func_extended-fbo-extended-blend-pattern_gles2
       -x clear-accum
       -x copypixels-sync
@@ -1638,6 +1636,7 @@ arm64_a530_gles31:
   extends:
     - .piglit-test
     - .arm64-a530-test
+    - .test-manual
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
     # SMP is disabled in the current kernels for db820c.
@@ -1650,7 +1649,6 @@ arm64_a530_gles31:
     #
     # Check fastboot.sh for more piglit tests being excluded!
     PIGLIT_OPTIONS: >-
-      --process-isolation false
       -x atomic_counters
       -x gl-1.0-blend-func
       -x glsl-1.30@execution@clipping
@@ -1683,7 +1681,6 @@ arm64_a530_gles31:
 arm64_a530_piglit_gl:
   extends:
     - .arm64_a530_piglit
-    - .test-manual
   variables:
     PIGLIT_PROFILES: quick_gl
     PIGLIT_RESULTS: freedreno-a530-gl
