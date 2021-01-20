@@ -763,6 +763,26 @@ util_logicop_reads_dest(enum pipe_logicop op)
    unreachable("bad logicop");
 }
 
+static inline bool
+util_writes_stencil(const struct pipe_stencil_state *s)
+{
+   return s->enabled && s->writemask &&
+        ((s->fail_op != PIPE_STENCIL_OP_KEEP) ||
+         (s->zpass_op != PIPE_STENCIL_OP_KEEP) ||
+         (s->zfail_op != PIPE_STENCIL_OP_KEEP));
+}
+
+static inline bool
+util_writes_depth_stencil(const struct pipe_depth_stencil_alpha_state *zsa)
+{
+   if (zsa->depth_enabled && zsa->depth_writemask &&
+       (zsa->depth_func != PIPE_FUNC_NEVER))
+      return true;
+
+   return util_writes_stencil(&zsa->stencil[0]) ||
+          util_writes_stencil(&zsa->stencil[1]);
+}
+
 static inline struct pipe_context *
 pipe_create_multimedia_context(struct pipe_screen *screen)
 {
