@@ -230,11 +230,11 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: e5d2b54f49ba1c24279d5ff84e0f002b
-# Fails trying to use a GLX symbol
+# Unstable results
 #  - path: itoral-gl-terrain-demo/demo.trace
 #    expectations:
 #      - device: freedreno-a630
-#        checksum: 0
+#        checksum: 9571117bf4eab6fe29b12f6c3d42d865
   - path: neverball/neverball.trace
     expectations:
       - device: freedreno-a630
@@ -251,10 +251,32 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: f6661ed4de9e0a444c6338ebd0cd3768
+  - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: 5f3fff8969813a5fc5d8d95b4d4c5755
   - path: xonotic/xonotic-keybench-high.trace
     expectations:
       - device: freedreno-a630
         checksum: 0efd30250af93d0b5f03eeabd079e8ee
+  - path: valve/counterstrike.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: 5a11d791a5a718d4aa6c84b416b9f2b6
+#  Disabled because it takes 500s to replay
+#  - path: valve/counterstrike-source.trace
+#    expectations:
+#      - device: freedreno-a630
+#        checksum: 4b707f385256b380c936186db8c251cb
+  - path: valve/half-life-2.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: 8f5929c82e7d990e8c3d2bea14688224
+#  Disabled because it takes 1340s to replay.
+#  - path: valve/portal-2.trace
+#   expectations:
+#       - device: freedreno-a630
+#        checksum: a3a9e158ccf7fa5ba978e045505a060e
 # Throws errors on freedreno
 #  - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
 #    expectations:
