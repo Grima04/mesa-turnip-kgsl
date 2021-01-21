@@ -648,8 +648,8 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
          --plane;
       }
 
-         res = si_resource(resource);
-         tex = (struct si_texture *)resource;
+      res = si_resource(resource);
+      tex = (struct si_texture *)resource;
 
       /* This is not supported now, but it might be required for OpenCL
        * interop in the future.
