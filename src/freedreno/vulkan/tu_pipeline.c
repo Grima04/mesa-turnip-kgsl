@@ -2708,8 +2708,9 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
    }
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_STENCIL_WRITE_MASK, 2)) {
-      tu_cs_emit_regs(&cs, A6XX_RB_STENCILWRMASK(.wrmask = ds_info->front.writeMask & 0xff,
-                                                 .bfwrmask = ds_info->back.writeMask & 0xff));
+      update_stencil_mask(&pipeline->stencil_wrmask,  VK_STENCIL_FACE_FRONT_BIT, ds_info->front.writeMask);
+      update_stencil_mask(&pipeline->stencil_wrmask,  VK_STENCIL_FACE_BACK_BIT, ds_info->back.writeMask);
+      tu_cs_emit_regs(&cs, A6XX_RB_STENCILWRMASK(.dword = pipeline->stencil_wrmask));
    }
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_STENCIL_REFERENCE, 2)) {

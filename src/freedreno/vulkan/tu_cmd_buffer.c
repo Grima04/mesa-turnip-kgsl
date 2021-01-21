@@ -2250,7 +2250,7 @@ tu_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
                    A6XX_RB_Z_BOUNDS_MAX(maxDepthBounds));
 }
 
-static void
+void
 update_stencil_mask(uint32_t *value, VkStencilFaceFlags face, uint32_t mask)
 {
    if (face & VK_STENCIL_FACE_FRONT_BIT)
@@ -2283,6 +2283,8 @@ tu_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
    update_stencil_mask(&cmd->state.dynamic_stencil_wrmask, faceMask, writeMask);
 
    tu_cs_emit_regs(&cs, A6XX_RB_STENCILWRMASK(.dword = cmd->state.dynamic_stencil_wrmask));
+
+   cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
 }
 
 void
@@ -3353,6 +3355,64 @@ tu6_lrz_depth_mode(struct A6XX_GRAS_LRZ_CNTL *gras_lrz_cntl,
    return lrz_direction;
 }
 
+/* update lrz state based on stencil-test func:
+ *
+ * Conceptually the order of the pipeline is:
+ *
+ *
+ *   FS -> Alpha-Test  ->  Stencil-Test  ->  Depth-Test
+ *                              |                |
+ *                       if wrmask != 0     if wrmask != 0
+ *                              |                |
+ *                              v                v
+ *                        Stencil-Write      Depth-Write
+ *
+ * Because Stencil-Test can have side effects (Stencil-Write) prior
+ * to depth test, in this case we potentially need to disable early
+ * lrz-test. See:
+ *
+ * https://www.khronos.org/opengl/wiki/Per-Sample_Processing
+ */
+static void
+tu6_lrz_stencil_op(struct A6XX_GRAS_LRZ_CNTL *gras_lrz_cntl,
+                   VkCompareOp func,
+                   bool stencil_write,
+                   bool *invalidate_lrz)
+{
+   switch (func) {
+   case VK_COMPARE_OP_ALWAYS:
+      /* nothing to do for LRZ, but for stencil test when stencil-
+       * write is enabled, we need to disable lrz-test, since
+       * conceptually stencil test and write happens before depth-test.
+       */
+      if (stencil_write) {
+         gras_lrz_cntl->enable = false;
+         gras_lrz_cntl->z_test_enable = false;
+         *invalidate_lrz = true;
+      }
+      break;
+   case VK_COMPARE_OP_NEVER:
+      /* fragment never passes, disable lrz_write for this draw. */
+      gras_lrz_cntl->lrz_write = false;
+      break;
+   default:
+      /* whether the fragment passes or not depends on result
+       * of stencil test, which we cannot know when doing binning
+       * pass.
+       */
+      gras_lrz_cntl->lrz_write = false;
+      /* similarly to the VK_COMPARE_OP_ALWAYS case, if there are side-
+       * effects from stencil test we need to disable lrz-test.
+       */
+      if (stencil_write) {
+         gras_lrz_cntl->enable = false;
+         gras_lrz_cntl->z_test_enable = false;
+         *invalidate_lrz = true;
+      }
+      break;
+   }
+}
+
 static struct A6XX_GRAS_LRZ_CNTL
 tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
                         const uint32_t a)
@@ -3383,8 +3443,27 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    /* Invalidate LRZ and disable write if stencil test is enabled */
    bool stencil_test_enable = cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE;
    if (stencil_test_enable) {
-      force_disable_write = true;
-      invalidate_lrz = true;
+      bool stencil_front_writemask =
+         (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
+         (cmd->state.dynamic_stencil_wrmask & 0xff) :
+         (pipeline->stencil_wrmask & 0xff);
+
+      bool stencil_back_writemask =
+         (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
+         ((cmd->state.dynamic_stencil_wrmask & 0xff00) >> 8) :
+         (pipeline->stencil_wrmask & 0xff00) >> 8;
+
+      VkCompareOp stencil_front_compare_op =
+         (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FUNC__MASK) >> A6XX_RB_STENCIL_CONTROL_FUNC__SHIFT;
+
+      VkCompareOp stencil_back_compare_op =
+         (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FUNC_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_FUNC_BF__SHIFT;
+
+      tu6_lrz_stencil_op(&gras_lrz_cntl, stencil_front_compare_op,
+                         stencil_front_writemask, &invalidate_lrz);
+
+      tu6_lrz_stencil_op(&gras_lrz_cntl, stencil_back_compare_op,
+                         stencil_back_writemask, &invalidate_lrz);
    }
 
    if (force_disable_write)
