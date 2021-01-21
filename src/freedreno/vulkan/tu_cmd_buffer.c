@@ -2956,6 +2956,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
           (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT))) {
          cmd->state.lrz.image = image;
          cmd->state.lrz.valid = true;
+         cmd->state.lrz.prev_direction = TU_LRZ_UNKNOWN;
 
          tu6_clear_lrz(cmd, &cmd->cs, image, &pRenderPassBegin->pClearValues[a]);
          tu6_emit_event_write(cmd, &cmd->cs, PC_CCU_FLUSH_COLOR_TS);
@@ -3317,24 +3318,17 @@ tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
    return VK_SUCCESS;
 }
 
-static void
+static enum tu_lrz_direction
 tu6_lrz_depth_mode(struct A6XX_GRAS_LRZ_CNTL *gras_lrz_cntl,
                    VkCompareOp depthCompareOp,
                    bool *invalidate_lrz)
 {
-   /* LRZ does not support some depth modes.
-    *
-    * The HW has a flag for GREATER and GREATER_OR_EQUAL modes which is used
-    * in freedreno, however there are some dEQP-VK tests that fail if we use here.
-    * Furthermore, blob disables LRZ on these comparison opcodes too.
-    *
-    * TODO: investigate if we can enable GREATER flag here.
-    */
+   enum tu_lrz_direction lrz_direction = TU_LRZ_UNKNOWN;
+
+   /* LRZ does not support some depth modes. */
    switch (depthCompareOp) {
    case VK_COMPARE_OP_ALWAYS:
    case VK_COMPARE_OP_NOT_EQUAL:
-   case VK_COMPARE_OP_GREATER:
-   case VK_COMPARE_OP_GREATER_OR_EQUAL:
       *invalidate_lrz = true;
       gras_lrz_cntl->lrz_write = false;
       break;
@@ -3342,13 +3336,21 @@ tu6_lrz_depth_mode(struct A6XX_GRAS_LRZ_CNTL *gras_lrz_cntl,
    case VK_COMPARE_OP_NEVER:
       gras_lrz_cntl->lrz_write = false;
       break;
+   case VK_COMPARE_OP_GREATER:
+   case VK_COMPARE_OP_GREATER_OR_EQUAL:
+      lrz_direction = TU_LRZ_GREATER;
+      gras_lrz_cntl->greater = true;
+      break;
    case VK_COMPARE_OP_LESS:
    case VK_COMPARE_OP_LESS_OR_EQUAL:
+      lrz_direction = TU_LRZ_LESS;
       break;
    default:
       unreachable("bad VK_COMPARE_OP value or uninitialized");
       break;
    };
+
+   return lrz_direction;
 }
 
 static struct A6XX_GRAS_LRZ_CNTL
@@ -3359,6 +3361,7 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    struct A6XX_GRAS_LRZ_CNTL gras_lrz_cntl = { 0 };
    bool invalidate_lrz = pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_LRZ;
    bool force_disable_write = pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_WRITE;
+   enum tu_lrz_direction lrz_direction = TU_LRZ_UNKNOWN;
 
    gras_lrz_cntl.enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_ENABLE;
    gras_lrz_cntl.lrz_write = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
@@ -3366,7 +3369,16 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    gras_lrz_cntl.z_bounds_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE;
 
    VkCompareOp depth_compare_op = (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT;
-   tu6_lrz_depth_mode(&gras_lrz_cntl, depth_compare_op, &invalidate_lrz);
+   lrz_direction = tu6_lrz_depth_mode(&gras_lrz_cntl, depth_compare_op, &invalidate_lrz);
+
+   /* LRZ doesn't transition properly between GREATER* and LESS* depth compare ops */
+   if (cmd->state.lrz.prev_direction != TU_LRZ_UNKNOWN &&
+       lrz_direction != TU_LRZ_UNKNOWN &&
+       cmd->state.lrz.prev_direction != lrz_direction) {
+      invalidate_lrz = true;
+   }
+
+   cmd->state.lrz.prev_direction = lrz_direction;
 
    /* Invalidate LRZ and disable write if stencil test is enabled */
    bool stencil_test_enable = cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE;

@@ -841,6 +841,14 @@ enum tu_lrz_force_disable_mask {
    TU_LRZ_FORCE_DISABLE_WRITE = 1 << 1,
 };
 
+enum tu_lrz_direction {
+   TU_LRZ_UNKNOWN,
+   /* Depth func less/less-than: */
+   TU_LRZ_LESS,
+   /* Depth func greater/greater-than: */
+   TU_LRZ_GREATER,
+};
+
 struct tu_lrz_pipeline
 {
    uint32_t force_disable_mask;
@@ -852,6 +860,7 @@ struct tu_lrz_state
    struct tu_image *image;
    bool valid : 1;
    struct tu_draw_state state;
+   enum tu_lrz_direction prev_direction;
 };
 
 struct tu_cmd_state
