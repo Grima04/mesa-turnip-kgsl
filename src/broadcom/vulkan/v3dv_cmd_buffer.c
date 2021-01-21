@@ -2060,12 +2060,18 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
 
 static void
 set_rcl_early_z_config(struct v3dv_job *job,
-                       uint32_t fb_width,
-                       uint32_t fb_height,
-                       bool needs_depth_load,
                        bool *early_z_disable,
                        uint32_t *early_z_test_and_update_direction)
 {
+   /* If this is true then we have not emitted any draw calls in this job
+    * and we don't get any benefits form early Z.
+    */
+   if (!job->decided_global_ez_enable) {
+      assert(job->draw_count == 0);
+      *early_z_disable = true;
+      return;
+   }
+
    switch (job->first_ez_state) {
    case VC5_EZ_UNDECIDED:
    case VC5_EZ_LT_LE:
@@ -2079,16 +2085,6 @@ set_rcl_early_z_config(struct v3dv_job *job,
    case VC5_EZ_DISABLED:
       *early_z_disable = true;
       break;
-   }
-
-   /* GFXH-1918: the early-z buffer may load incorrect depth values
-    * if the frame has odd width or height.
-    */
-   if (*early_z_disable == false && needs_depth_load &&
-       ((fb_width % 2) != 0 || (fb_height % 2) != 0)) {
-      perf_debug("Loading depth aspect for framebuffer with odd width "
-                 "or height disables early-Z tests.\n");
-      *early_z_disable = true;
    }
 }
 
@@ -2142,22 +2138,7 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
             framebuffer->attachments[ds_attachment_idx];
          config.internal_depth_type = iview->internal_type;
 
-         struct v3dv_render_pass_attachment *ds_attachment =
-            &pass->attachments[ds_attachment_idx];
-
-         const VkImageAspectFlags ds_aspects =
-            vk_format_aspects(ds_attachment->desc.format);
-
-         bool needs_depth_load =
-            check_needs_load(state,
-                             ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
-                             ds_attachment->first_subpass,
-                             ds_attachment->desc.loadOp);
-
          set_rcl_early_z_config(job,
-                                framebuffer->width,
-                                framebuffer->height,
-                                needs_depth_load,
                                 &config.early_z_disable,
                                 &config.early_z_test_and_update_direction);
 
@@ -2171,15 +2152,18 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
           * possible to enable one but not the other so long as their
           * respective requirements are met.
           */
+         struct v3dv_render_pass_attachment *ds_attachment =
+            &pass->attachments[ds_attachment_idx];
+
+         const VkImageAspectFlags ds_aspects =
+            vk_format_aspects(ds_attachment->desc.format);
+
          bool needs_depth_clear =
             check_needs_clear(state,
                               ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
                               ds_attachment->first_subpass,
                               ds_attachment->desc.loadOp,
                               subpass->do_depth_clear_with_draw);
-
-         /* Sanity check: can't be loading and clearing */
-         assert(!needs_depth_clear || !needs_depth_load);
 
          bool needs_depth_store =
             check_needs_store(state,
@@ -3011,22 +2995,91 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
 static void
 job_update_ez_state(struct v3dv_job *job,
                     struct v3dv_pipeline *pipeline,
-                    struct v3dv_cmd_buffer_state *state)
+                    struct v3dv_cmd_buffer *cmd_buffer)
 {
-   /* If we don't have a depth attachment at all, disable */
-   if (!state->pass) {
+   /* If first_ez_state is VC5_EZ_DISABLED it means that we have already
+    * determined that we should disable EZ completely for all draw calls in
+    * this job. This will cause us to disable EZ for the entire job in the
+    * Tile Rendering Mode RCL packet and when we do that we need to make sure
+    * we never emit a draw call in the job with EZ enabled in the CFG_BITS
+    * packet, so ez_state must also be VC5_EZ_DISABLED;
+    */
+   if (job->first_ez_state == VC5_EZ_DISABLED) {
+      assert(job->ez_state = VC5_EZ_DISABLED);
+      return;
+   }
+
+   /* This is part of the pre draw call handling, so we should be inside a
+    * render pass.
+    */
+   assert(cmd_buffer->state.pass);
+
+   /* If this is the first time we update EZ state for this job we first check
+    * if there is anything that requires disabling it completely for the entire
+    * job (based on state that is not related to the current draw call and
+    * pipeline state).
+    */
+   if (!job->decided_global_ez_enable) {
+      job->decided_global_ez_enable = true;
+
+      struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+      assert(state->subpass_idx < state->pass->subpass_count);
+      struct v3dv_subpass *subpass = &state->pass->subpasses[state->subpass_idx];
+      if (subpass->ds_attachment.attachment == VK_ATTACHMENT_UNUSED) {
+         job->first_ez_state = VC5_EZ_DISABLED;
+         job->ez_state = VC5_EZ_DISABLED;
+         return;
+      }
+
+      /* GFXH-1918: the early-z buffer may load incorrect depth values
+       * if the frame has odd width or height.
+       *
+       * So we need to disable EZ in this case.
+       */
+      const struct v3dv_render_pass_attachment *ds_attachment =
+         &state->pass->attachments[subpass->ds_attachment.attachment];
+
+      const VkImageAspectFlags ds_aspects =
+         vk_format_aspects(ds_attachment->desc.format);
+
+      bool needs_depth_load =
+         check_needs_load(state,
+                          ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+                          ds_attachment->first_subpass,
+                          ds_attachment->desc.loadOp);
+
+      if (needs_depth_load) {
+         struct v3dv_framebuffer *fb = state->framebuffer;
+
+         if (!fb) {
+            assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+            perf_debug("Loading depth aspect in a secondary command buffer "
+                       "without framebuffer info disables early-z tests.\n");
+            job->first_ez_state = VC5_EZ_DISABLED;
+            job->ez_state = VC5_EZ_DISABLED;
+            return;
+         }
+
+         if (((fb->width % 2) != 0 || (fb->height % 2) != 0)) {
+            perf_debug("Loading depth aspect for framebuffer with odd width "
+                       "or height disables early-Z tests.\n");
+            job->first_ez_state = VC5_EZ_DISABLED;
+            job->ez_state = VC5_EZ_DISABLED;
+            return;
+         }
+      }
+   }
+
+   /* Otherwise, we can decide to selectively enable or disable EZ for draw
+    * calls using the CFG_BITS packet based on the bound pipeline state.
+    */
+
+   /* If the FS writes Z, then it may update against the chosen EZ direction */
+   if (pipeline->fs->current_variant->prog_data.fs->writes_z) {
       job->ez_state = VC5_EZ_DISABLED;
       return;
    }
 
-   assert(state->subpass_idx < state->pass->subpass_count);
-   struct v3dv_subpass *subpass = &state->pass->subpasses[state->subpass_idx];
-   if (subpass->ds_attachment.attachment == VK_ATTACHMENT_UNUSED) {
-      job->ez_state = VC5_EZ_DISABLED;
-      return;
-   }
-
-   /* Otherwise, look at the curently bound pipeline state */
    switch (pipeline->ez_state) {
    case VC5_EZ_UNDECIDED:
       /* If the pipeline didn't pick a direction but didn't disable, then go
@@ -3053,10 +3106,6 @@ job_update_ez_state(struct v3dv_job *job,
       job->ez_state = VC5_EZ_DISABLED;
       break;
    }
-
-   /* If the FS writes Z, then it may update against the chosen EZ direction */
-   if (pipeline->fs->current_variant->prog_data.fs->writes_z)
-      job->ez_state = VC5_EZ_DISABLED;
 
    if (job->first_ez_state == VC5_EZ_UNDECIDED &&
        job->ez_state != VC5_EZ_DISABLED) {
@@ -3663,7 +3712,7 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    assert(pipeline);
 
-   job_update_ez_state(job, pipeline, &cmd_buffer->state);
+   job_update_ez_state(job, pipeline, cmd_buffer);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(CFG_BITS));
    v3dv_return_if_oom(cmd_buffer, NULL);
