@@ -140,19 +140,19 @@ memory_sync_info get_sync_info(const Instruction* instr)
 {
    switch (instr->format) {
    case Format::SMEM:
-      return instr->smem()->sync;
+      return instr->smem().sync;
    case Format::MUBUF:
-      return instr->mubuf()->sync;
+      return instr->mubuf().sync;
    case Format::MIMG:
-      return instr->mimg()->sync;
+      return instr->mimg().sync;
    case Format::MTBUF:
-      return instr->mtbuf()->sync;
+      return instr->mtbuf().sync;
    case Format::FLAT:
    case Format::GLOBAL:
    case Format::SCRATCH:
-      return instr->flatlike()->sync;
+      return instr->flatlike().sync;
    case Format::DS:
-      return instr->ds()->sync;
+      return instr->ds().sync;
    default:
       return memory_sync_info();
    }
@@ -170,12 +170,12 @@ bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
       return true;
 
    if (instr->isVOP3()) {
-      VOP3_instruction *vop3 = instr->vop3();
+      VOP3_instruction& vop3 = instr->vop3();
       if (instr->format == Format::VOP3)
          return false;
-      if (vop3->clamp && instr->format == asVOP3(Format::VOPC) && chip != GFX8)
+      if (vop3.clamp && instr->format == asVOP3(Format::VOPC) && chip != GFX8)
          return false;
-      if (vop3->omod && chip < GFX9)
+      if (vop3.omod && chip < GFX9)
          return false;
 
       //TODO: return true if we know we will use vcc
@@ -232,14 +232,14 @@ aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& inst
    std::copy(tmp->operands.cbegin(), tmp->operands.cend(), instr->operands.begin());
    std::copy(tmp->definitions.cbegin(), tmp->definitions.cend(), instr->definitions.begin());
 
-   SDWA_instruction *sdwa = instr->sdwa();
+   SDWA_instruction& sdwa = instr->sdwa();
 
    if (tmp->isVOP3()) {
-      VOP3_instruction *vop3 = tmp->vop3();
-      memcpy(sdwa->neg, vop3->neg, sizeof(sdwa->neg));
-      memcpy(sdwa->abs, vop3->abs, sizeof(sdwa->abs));
-      sdwa->omod = vop3->omod;
-      sdwa->clamp = vop3->clamp;
+      VOP3_instruction& vop3 = tmp->vop3();
+      memcpy(sdwa.neg, vop3.neg, sizeof(sdwa.neg));
+      memcpy(sdwa.abs, vop3.abs, sizeof(sdwa.abs));
+      sdwa.omod = vop3.omod;
+      sdwa.clamp = vop3.clamp;
    }
 
    for (unsigned i = 0; i < instr->operands.size(); i++) {
@@ -249,27 +249,27 @@ aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& inst
 
       switch (instr->operands[i].bytes()) {
       case 1:
-         sdwa->sel[i] = sdwa_ubyte;
+         sdwa.sel[i] = sdwa_ubyte;
          break;
       case 2:
-         sdwa->sel[i] = sdwa_uword;
+         sdwa.sel[i] = sdwa_uword;
          break;
       case 4:
-         sdwa->sel[i] = sdwa_udword;
+         sdwa.sel[i] = sdwa_udword;
          break;
       }
    }
    switch (instr->definitions[0].bytes()) {
    case 1:
-      sdwa->dst_sel = sdwa_ubyte;
-      sdwa->dst_preserve = true;
+      sdwa.dst_sel = sdwa_ubyte;
+      sdwa.dst_preserve = true;
       break;
    case 2:
-      sdwa->dst_sel = sdwa_uword;
-      sdwa->dst_preserve = true;
+      sdwa.dst_sel = sdwa_uword;
+      sdwa.dst_preserve = true;
       break;
    case 4:
-      sdwa->dst_sel = sdwa_udword;
+      sdwa.dst_sel = sdwa_udword;
       break;
    }
 

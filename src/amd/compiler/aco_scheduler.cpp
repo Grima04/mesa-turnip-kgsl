@@ -320,7 +320,7 @@ void MoveState::upwards_skip()
 bool is_gs_or_done_sendmsg(const Instruction *instr)
 {
    if (instr->opcode == aco_opcode::s_sendmsg) {
-      uint16_t imm = instr->sopp()->imm;
+      uint16_t imm = instr->sopp().imm;
       return (imm & sendmsg_id_mask) == _sendmsg_gs ||
              (imm & sendmsg_id_mask) == _sendmsg_gs_done;
    }
@@ -330,7 +330,7 @@ bool is_gs_or_done_sendmsg(const Instruction *instr)
 bool is_done_sendmsg(const Instruction *instr)
 {
    if (instr->opcode == aco_opcode::s_sendmsg)
-      return (instr->sopp()->imm & sendmsg_id_mask) == _sendmsg_gs_done;
+      return (instr->sopp().imm & sendmsg_id_mask) == _sendmsg_gs_done;
    return false;
 }
 
@@ -380,14 +380,14 @@ void add_memory_event(memory_event_set *set, Instruction *instr, memory_sync_inf
 {
    set->has_control_barrier |= is_done_sendmsg(instr);
    if (instr->opcode == aco_opcode::p_barrier) {
-      Pseudo_barrier_instruction *bar = instr->barrier();
-      if (bar->sync.semantics & semantic_acquire)
-         set->bar_acquire |= bar->sync.storage;
-      if (bar->sync.semantics & semantic_release)
-         set->bar_release |= bar->sync.storage;
-      set->bar_classes |= bar->sync.storage;
+      Pseudo_barrier_instruction& bar = instr->barrier();
+      if (bar.sync.semantics & semantic_acquire)
+         set->bar_acquire |= bar.sync.storage;
+      if (bar.sync.semantics & semantic_release)
+         set->bar_release |= bar.sync.storage;
+      set->bar_classes |= bar.sync.storage;
 
-      set->has_control_barrier |= bar->exec_scope > scope_invocation;
+      set->has_control_barrier |= bar.exec_scope > scope_invocation;
    }
 
    if (!sync->storage)
@@ -857,7 +857,7 @@ void schedule_block(sched_ctx& ctx, Program *program, Block* block, live& live_v
       Instruction* current = block->instructions[idx].get();
 
       if (block->kind & block_kind_export_end && current->isEXP()) {
-         unsigned target = current->exp()->dest;
+         unsigned target = current->exp().dest;
          if (target >= V_008DFC_SQ_EXP_POS && target < V_008DFC_SQ_EXP_PRIM) {
             ctx.mv.current = current;
             schedule_position_export(ctx, block, live_vars.register_demand[block->index], current, idx);

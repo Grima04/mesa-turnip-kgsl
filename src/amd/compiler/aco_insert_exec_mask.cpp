@@ -98,13 +98,13 @@ struct exec_ctx {
 
 bool needs_exact(aco_ptr<Instruction>& instr) {
    if (instr->isMUBUF()) {
-      return instr->mubuf()->disable_wqm;
+      return instr->mubuf().disable_wqm;
    } else if (instr->isMTBUF()) {
-      return instr->mtbuf()->disable_wqm;
+      return instr->mtbuf().disable_wqm;
    } else if (instr->isMIMG()) {
-      return instr->mimg()->disable_wqm;
+      return instr->mimg().disable_wqm;
    } else if (instr->isFlatLike()) {
-      return instr->flatlike()->disable_wqm;
+      return instr->flatlike().disable_wqm;
    } else {
       return instr->isEXP();
    }
@@ -908,12 +908,12 @@ void add_branch_code(exec_ctx& ctx, Block* block)
    }
 
    if (block->kind & block_kind_uniform) {
-      Pseudo_branch_instruction* branch = block->instructions.back()->branch();
-      if (branch->opcode == aco_opcode::p_branch) {
-         branch->target[0] = block->linear_succs[0];
+      Pseudo_branch_instruction& branch = block->instructions.back()->branch();
+      if (branch.opcode == aco_opcode::p_branch) {
+         branch.target[0] = block->linear_succs[0];
       } else {
-         branch->target[0] = block->linear_succs[1];
-         branch->target[1] = block->linear_succs[0];
+         branch.target[0] = block->linear_succs[1];
+         branch.target[1] = block->linear_succs[0];
       }
       return;
    }

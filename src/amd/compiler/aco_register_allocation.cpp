@@ -503,13 +503,13 @@ void add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx
          update_phi_map(ctx, tmp.get(), instr.get());
       return;
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, idx, byte / 2)) {
-      instr->vop3()->opsel |= (byte / 2) << idx;
+      instr->vop3().opsel |= (byte / 2) << idx;
       return;
    } else if (instr->isVOP3P() && byte == 2) {
-      VOP3P_instruction* vop3p = instr->vop3p();
-      assert(!(vop3p->opsel_lo & (1 << idx)));
-      vop3p->opsel_lo |= 1 << idx;
-      vop3p->opsel_hi |= 1 << idx;
+      VOP3P_instruction& vop3p = instr->vop3p();
+      assert(!(vop3p.opsel_lo & (1 << idx)));
+      vop3p.opsel_lo |= 1 << idx;
+      vop3p.opsel_hi |= 1 << idx;
       return;
    }
 
@@ -613,9 +613,9 @@ void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsi
          convert_to_SDWA(chip, instr);
       return;
    } else if (reg.byte() && rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, -1, reg.byte() / 2)) {
-      VOP3_instruction *vop3 = instr->vop3();
+      VOP3_instruction& vop3 = instr->vop3();
       if (reg.byte() == 2)
-         vop3->opsel |= (1 << 3); /* dst in high half */
+         vop3.opsel |= (1 << 3); /* dst in high half */
       return;
    }
 
@@ -1569,7 +1569,7 @@ void handle_pseudo(ra_ctx& ctx,
       return;
 
    if (reg_file[scc]) {
-      instr->pseudo()->tmp_in_scc = true;
+      instr->pseudo().tmp_in_scc = true;
 
       int reg = ctx.max_used_sgpr;
       for (; reg >= 0 && reg_file[PhysReg{(unsigned)reg}]; reg--)
@@ -1585,9 +1585,9 @@ void handle_pseudo(ra_ctx& ctx,
       }
 
       adjust_max_used_regs(ctx, s1, reg);
-      instr->pseudo()->scratch_sgpr = PhysReg{(unsigned)reg};
+      instr->pseudo().scratch_sgpr = PhysReg{(unsigned)reg};
    } else {
-      instr->pseudo()->tmp_in_scc = false;
+      instr->pseudo().tmp_in_scc = false;
    }
 }
 
@@ -2156,7 +2156,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
 
             if (instr->isEXP() ||
                 (instr->isVMEM() && i == 3 && ctx.program->chip_class == GFX6) ||
-                (instr->isDS() && instr->ds()->gds)) {
+                (instr->isDS() && instr->ds().gds)) {
                for (unsigned j = 0; j < operand.size(); j++)
                   ctx.war_hint.set(operand.physReg().reg() + j);
             }

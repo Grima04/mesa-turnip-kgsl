@@ -1030,93 +1030,93 @@ struct Instruction {
       return false;
    }
 
-   Pseudo_instruction *pseudo() noexcept {assert(isPseudo()); return (Pseudo_instruction *)this;}
-   const Pseudo_instruction *pseudo() const noexcept {assert(isPseudo()); return (Pseudo_instruction *)this;}
+   Pseudo_instruction& pseudo() noexcept {assert(isPseudo()); return *(Pseudo_instruction *)this;}
+   const Pseudo_instruction& pseudo() const noexcept {assert(isPseudo()); return *(Pseudo_instruction *)this;}
    constexpr bool isPseudo() const noexcept {return format == Format::PSEUDO;}
-   SOP1_instruction *sop1() noexcept {assert(isSOP1()); return (SOP1_instruction *)this;}
-   const SOP1_instruction *sop1() const noexcept {assert(isSOP1()); return (SOP1_instruction *)this;}
+   SOP1_instruction& sop1() noexcept {assert(isSOP1()); return *(SOP1_instruction *)this;}
+   const SOP1_instruction& sop1() const noexcept {assert(isSOP1()); return *(SOP1_instruction *)this;}
    constexpr bool isSOP1() const noexcept {return format == Format::SOP1;}
-   SOP2_instruction *sop2() noexcept {assert(isSOP2()); return (SOP2_instruction *)this;}
-   const SOP2_instruction *sop2() const noexcept {assert(isSOP2()); return (SOP2_instruction *)this;}
+   SOP2_instruction& sop2() noexcept {assert(isSOP2()); return *(SOP2_instruction *)this;}
+   const SOP2_instruction& sop2() const noexcept {assert(isSOP2()); return *(SOP2_instruction *)this;}
    constexpr bool isSOP2() const noexcept {return format == Format::SOP2;}
-   SOPK_instruction *sopk() noexcept {assert(isSOPK()); return (SOPK_instruction *)this;}
-   const SOPK_instruction *sopk() const noexcept {assert(isSOPK()); return (SOPK_instruction *)this;}
+   SOPK_instruction& sopk() noexcept {assert(isSOPK()); return *(SOPK_instruction *)this;}
+   const SOPK_instruction& sopk() const noexcept {assert(isSOPK()); return *(SOPK_instruction *)this;}
    constexpr bool isSOPK() const noexcept {return format == Format::SOPK;}
-   SOPP_instruction *sopp() noexcept {assert(isSOPP()); return (SOPP_instruction *)this;}
-   const SOPP_instruction *sopp() const noexcept {assert(isSOPP()); return (SOPP_instruction *)this;}
+   SOPP_instruction& sopp() noexcept {assert(isSOPP()); return *(SOPP_instruction *)this;}
+   const SOPP_instruction& sopp() const noexcept {assert(isSOPP()); return *(SOPP_instruction *)this;}
    constexpr bool isSOPP() const noexcept {return format == Format::SOPP;}
-   SOPC_instruction *sopc() noexcept {assert(isSOPC()); return (SOPC_instruction *)this;}
-   const SOPC_instruction *sopc() const noexcept {assert(isSOPC()); return (SOPC_instruction *)this;}
+   SOPC_instruction& sopc() noexcept {assert(isSOPC()); return *(SOPC_instruction *)this;}
+   const SOPC_instruction& sopc() const noexcept {assert(isSOPC()); return *(SOPC_instruction *)this;}
    constexpr bool isSOPC() const noexcept {return format == Format::SOPC;}
-   SMEM_instruction *smem() noexcept {assert(isSMEM()); return (SMEM_instruction *)this;}
-   const SMEM_instruction *smem() const noexcept {assert(isSMEM()); return (SMEM_instruction *)this;}
+   SMEM_instruction& smem() noexcept {assert(isSMEM()); return *(SMEM_instruction *)this;}
+   const SMEM_instruction& smem() const noexcept {assert(isSMEM()); return *(SMEM_instruction *)this;}
    constexpr bool isSMEM() const noexcept {return format == Format::SMEM;}
-   DS_instruction *ds() noexcept {assert(isDS()); return (DS_instruction *)this;}
-   const DS_instruction *ds() const noexcept {assert(isDS()); return (DS_instruction *)this;}
+   DS_instruction& ds() noexcept {assert(isDS()); return *(DS_instruction *)this;}
+   const DS_instruction& ds() const noexcept {assert(isDS()); return *(DS_instruction *)this;}
    constexpr bool isDS() const noexcept {return format == Format::DS;}
-   MTBUF_instruction *mtbuf() noexcept {assert(isMTBUF()); return (MTBUF_instruction *)this;}
-   const MTBUF_instruction *mtbuf() const noexcept {assert(isMTBUF()); return (MTBUF_instruction *)this;}
+   MTBUF_instruction& mtbuf() noexcept {assert(isMTBUF()); return *(MTBUF_instruction *)this;}
+   const MTBUF_instruction& mtbuf() const noexcept {assert(isMTBUF()); return *(MTBUF_instruction *)this;}
    constexpr bool isMTBUF() const noexcept {return format == Format::MTBUF;}
-   MUBUF_instruction *mubuf() noexcept {assert(isMUBUF()); return (MUBUF_instruction *)this;}
-   const MUBUF_instruction *mubuf() const noexcept {assert(isMUBUF()); return (MUBUF_instruction *)this;}
+   MUBUF_instruction& mubuf() noexcept {assert(isMUBUF()); return *(MUBUF_instruction *)this;}
+   const MUBUF_instruction& mubuf() const noexcept {assert(isMUBUF()); return *(MUBUF_instruction *)this;}
    constexpr bool isMUBUF() const noexcept {return format == Format::MUBUF;}
-   MIMG_instruction *mimg() noexcept {assert(isMIMG()); return (MIMG_instruction *)this;}
-   const MIMG_instruction *mimg() const noexcept {assert(isMIMG()); return (MIMG_instruction *)this;}
+   MIMG_instruction& mimg() noexcept {assert(isMIMG()); return *(MIMG_instruction *)this;}
+   const MIMG_instruction& mimg() const noexcept {assert(isMIMG()); return *(MIMG_instruction *)this;}
    constexpr bool isMIMG() const noexcept {return format == Format::MIMG;}
-   Export_instruction *exp() noexcept {assert(isEXP()); return (Export_instruction *)this;}
-   const Export_instruction *exp() const noexcept {assert(isEXP()); return (Export_instruction *)this;}
+   Export_instruction& exp() noexcept {assert(isEXP()); return *(Export_instruction *)this;}
+   const Export_instruction& exp() const noexcept {assert(isEXP()); return *(Export_instruction *)this;}
    constexpr bool isEXP() const noexcept {return format == Format::EXP;}
-   FLAT_instruction *flat() noexcept {assert(isFlat()); return (FLAT_instruction *)this;}
-   const FLAT_instruction *flat() const noexcept {assert(isFlat()); return (FLAT_instruction *)this;}
+   FLAT_instruction& flat() noexcept {assert(isFlat()); return *(FLAT_instruction *)this;}
+   const FLAT_instruction& flat() const noexcept {assert(isFlat()); return *(FLAT_instruction *)this;}
    constexpr bool isFlat() const noexcept {return format == Format::FLAT;}
-   FLAT_instruction *global() noexcept {assert(isGlobal()); return (FLAT_instruction *)this;}
-   const FLAT_instruction *global() const noexcept {assert(isGlobal()); return (FLAT_instruction *)this;}
+   FLAT_instruction& global() noexcept {assert(isGlobal()); return *(FLAT_instruction *)this;}
+   const FLAT_instruction& global() const noexcept {assert(isGlobal()); return *(FLAT_instruction *)this;}
    constexpr bool isGlobal() const noexcept {return format == Format::GLOBAL;}
-   FLAT_instruction *scratch() noexcept {assert(isScratch()); return (FLAT_instruction *)this;}
-   const FLAT_instruction *scratch() const noexcept {assert(isScratch()); return (FLAT_instruction *)this;}
+   FLAT_instruction& scratch() noexcept {assert(isScratch()); return *(FLAT_instruction *)this;}
+   const FLAT_instruction& scratch() const noexcept {assert(isScratch()); return *(FLAT_instruction *)this;}
    constexpr bool isScratch() const noexcept {return format == Format::SCRATCH;}
-   Pseudo_branch_instruction *branch() noexcept {assert(isBranch()); return (Pseudo_branch_instruction *)this;}
-   const Pseudo_branch_instruction *branch() const noexcept {assert(isBranch()); return (Pseudo_branch_instruction *)this;}
+   Pseudo_branch_instruction& branch() noexcept {assert(isBranch()); return *(Pseudo_branch_instruction *)this;}
+   const Pseudo_branch_instruction& branch() const noexcept {assert(isBranch()); return *(Pseudo_branch_instruction *)this;}
    constexpr bool isBranch() const noexcept {return format == Format::PSEUDO_BRANCH;}
-   Pseudo_barrier_instruction *barrier() noexcept {assert(isBarrier()); return (Pseudo_barrier_instruction *)this;}
-   const Pseudo_barrier_instruction *barrier() const noexcept {assert(isBarrier()); return (Pseudo_barrier_instruction *)this;}
+   Pseudo_barrier_instruction& barrier() noexcept {assert(isBarrier()); return *(Pseudo_barrier_instruction *)this;}
+   const Pseudo_barrier_instruction& barrier() const noexcept {assert(isBarrier()); return *(Pseudo_barrier_instruction *)this;}
    constexpr bool isBarrier() const noexcept {return format == Format::PSEUDO_BARRIER;}
-   Pseudo_reduction_instruction *reduction() noexcept {assert(isReduction()); return (Pseudo_reduction_instruction *)this;}
-   const Pseudo_reduction_instruction *reduction() const noexcept {assert(isReduction()); return (Pseudo_reduction_instruction *)this;}
+   Pseudo_reduction_instruction& reduction() noexcept {assert(isReduction()); return *(Pseudo_reduction_instruction *)this;}
+   const Pseudo_reduction_instruction& reduction() const noexcept {assert(isReduction()); return *(Pseudo_reduction_instruction *)this;}
    constexpr bool isReduction() const noexcept {return format == Format::PSEUDO_REDUCTION;}
-   VOP3P_instruction *vop3p() noexcept {assert(isVOP3P()); return (VOP3P_instruction *)this;}
-   const VOP3P_instruction *vop3p() const noexcept {assert(isVOP3P()); return (VOP3P_instruction *)this;}
+   VOP3P_instruction& vop3p() noexcept {assert(isVOP3P()); return *(VOP3P_instruction *)this;}
+   const VOP3P_instruction& vop3p() const noexcept {assert(isVOP3P()); return *(VOP3P_instruction *)this;}
    constexpr bool isVOP3P() const noexcept {return format == Format::VOP3P;}
-   VOP1_instruction *vop1() noexcept {assert(isVOP1()); return (VOP1_instruction *)this;}
-   const VOP1_instruction *vop1() const noexcept {assert(isVOP1()); return (VOP1_instruction *)this;}
+   VOP1_instruction& vop1() noexcept {assert(isVOP1()); return *(VOP1_instruction *)this;}
+   const VOP1_instruction& vop1() const noexcept {assert(isVOP1()); return *(VOP1_instruction *)this;}
    constexpr bool isVOP1() const noexcept {return (uint16_t)format & (uint16_t)Format::VOP1;}
-   VOP2_instruction *vop2() noexcept {assert(isVOP2()); return (VOP2_instruction *)this;}
-   const VOP2_instruction *vop2() const noexcept {assert(isVOP2()); return (VOP2_instruction *)this;}
+   VOP2_instruction& vop2() noexcept {assert(isVOP2()); return *(VOP2_instruction *)this;}
+   const VOP2_instruction& vop2() const noexcept {assert(isVOP2()); return *(VOP2_instruction *)this;}
    constexpr bool isVOP2() const noexcept {return (uint16_t)format & (uint16_t)Format::VOP2;}
-   VOPC_instruction *vopc() noexcept {assert(isVOPC()); return (VOPC_instruction *)this;}
-   const VOPC_instruction *vopc() const noexcept {assert(isVOPC()); return (VOPC_instruction *)this;}
+   VOPC_instruction& vopc() noexcept {assert(isVOPC()); return *(VOPC_instruction *)this;}
+   const VOPC_instruction& vopc() const noexcept {assert(isVOPC()); return *(VOPC_instruction *)this;}
    constexpr bool isVOPC() const noexcept {return (uint16_t)format & (uint16_t)Format::VOPC;}
-   VOP3_instruction *vop3() noexcept {assert(isVOP3()); return (VOP3_instruction *)this;}
-   const VOP3_instruction *vop3() const noexcept {assert(isVOP3()); return (VOP3_instruction *)this;}
+   VOP3_instruction& vop3() noexcept {assert(isVOP3()); return *(VOP3_instruction *)this;}
+   const VOP3_instruction& vop3() const noexcept {assert(isVOP3()); return *(VOP3_instruction *)this;}
    constexpr bool isVOP3() const noexcept {return (uint16_t)format & (uint16_t)Format::VOP3;}
-   Interp_instruction *vintrp() noexcept {assert(isVINTRP()); return (Interp_instruction *)this;}
-   const Interp_instruction *vintrp() const noexcept {assert(isVINTRP()); return (Interp_instruction *)this;}
+   Interp_instruction& vintrp() noexcept {assert(isVINTRP()); return *(Interp_instruction *)this;}
+   const Interp_instruction& vintrp() const noexcept {assert(isVINTRP()); return *(Interp_instruction *)this;}
    constexpr bool isVINTRP() const noexcept {return (uint16_t)format & (uint16_t)Format::VINTRP;}
-   DPP_instruction *dpp() noexcept {assert(isDPP()); return (DPP_instruction *)this;}
-   const DPP_instruction *dpp() const noexcept {assert(isDPP()); return (DPP_instruction *)this;}
+   DPP_instruction& dpp() noexcept {assert(isDPP()); return *(DPP_instruction *)this;}
+   const DPP_instruction& dpp() const noexcept {assert(isDPP()); return *(DPP_instruction *)this;}
    constexpr bool isDPP() const noexcept {return (uint16_t)format & (uint16_t)Format::DPP;}
-   SDWA_instruction *sdwa() noexcept {assert(isSDWA()); return (SDWA_instruction *)this;}
-   const SDWA_instruction *sdwa() const noexcept {assert(isSDWA()); return (SDWA_instruction *)this;}
+   SDWA_instruction& sdwa() noexcept {assert(isSDWA()); return *(SDWA_instruction *)this;}
+   const SDWA_instruction& sdwa() const noexcept {assert(isSDWA()); return *(SDWA_instruction *)this;}
    constexpr bool isSDWA() const noexcept {return (uint16_t)format & (uint16_t)Format::SDWA;}
 
-   FLAT_instruction *flatlike()
+   FLAT_instruction& flatlike()
    {
-      return (FLAT_instruction *)this;
+      return *(FLAT_instruction *)this;
    }
 
-   const FLAT_instruction *flatlike() const
+   const FLAT_instruction& flatlike() const
    {
-      return (FLAT_instruction *)this;
+      return *(FLAT_instruction *)this;
    }
 
    constexpr bool isFlatLike() const noexcept
@@ -1524,23 +1524,23 @@ constexpr bool Instruction::usesModifiers() const noexcept
       return true;
 
    if (isVOP3P()) {
-      const VOP3P_instruction *vop3p = this->vop3p();
+      const VOP3P_instruction& vop3p = this->vop3p();
       for (unsigned i = 0; i < operands.size(); i++) {
-         if (vop3p->neg_lo[i] || vop3p->neg_hi[i])
+         if (vop3p.neg_lo[i] || vop3p.neg_hi[i])
             return true;
 
          /* opsel_hi must be 1 to not be considered a modifier - even for constants */
-         if (!(vop3p->opsel_hi & (1 << i)))
+         if (!(vop3p.opsel_hi & (1 << i)))
             return true;
       }
-      return vop3p->opsel_lo || vop3p->clamp;
+      return vop3p.opsel_lo || vop3p.clamp;
    } else if (isVOP3()) {
-      const VOP3_instruction *vop3 = this->vop3();
+      const VOP3_instruction& vop3 = this->vop3();
       for (unsigned i = 0; i < operands.size(); i++) {
-         if (vop3->abs[i] || vop3->neg[i])
+         if (vop3.abs[i] || vop3.neg[i])
             return true;
       }
-      return vop3->opsel || vop3->clamp || vop3->omod;
+      return vop3.opsel || vop3.clamp || vop3.omod;
    }
    return false;
 }
