@@ -279,6 +279,11 @@ dump_pc_imm(FILE *fp, uint64_t imm, enum bi_constmod mod, bool high32)
 
         if (mod == BI_CONSTMOD_PC_LO && high32)
                 fprintf(fp, " >> 32");
+
+        /* While technically in spec, referencing the current clause as (pc +
+         * 0) likely indicates an unintended infinite loop  */
+        if (offs == 0)
+                fprintf(fp, " /* XXX: likely an infinite loop */");
 }
 
 /* Convert an index to an embedded constant in FAU-RAM to the index of the
