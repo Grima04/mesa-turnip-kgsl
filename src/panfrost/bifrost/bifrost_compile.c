@@ -2281,6 +2281,28 @@ bifrost_nir_lower_i8_fragout(nir_shader *shader)
                         NULL);
 }
 
+/* Dead code elimination for branches at the end of a block - only one branch
+ * per block is legal semantically, but unreachable jumps can be generated */
+
+static void
+bi_cull_dead_branch(bi_block *block)
+{
+        bool branched = false;
+        ASSERTED bool was_jump = false;
+
+        bi_foreach_instr_in_block_safe(block, ins) {
+                if (!ins->branch_target) continue;
+
+                if (branched) {
+                        assert(was_jump);
+                        bi_remove_instruction(ins);
+                }
+
+                branched = true;
+                was_jump = ins->op == BI_OPCODE_JUMP;
+        }
+}
+
 panfrost_program *
 bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                            const struct panfrost_compile_inputs *inputs)
@@ -2356,6 +2378,8 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 /* Name blocks now that we're done emitting so the order is
                  * consistent */
                 block->base.name = block_source_count++;
+
+                bi_cull_dead_branch(block);
         }
 
         bool progress = false;
