@@ -358,6 +358,19 @@ radv_emit_spi_config_cntl(struct radv_device *device,
 }
 
 static void
+radv_emit_inhibit_clockgating(struct radv_device *device,
+			      struct radeon_cmdbuf *cs, bool inhibit)
+{
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_uconfig_reg(cs, R_037390_RLC_PERFMON_CLK_CNTL,
+				       S_037390_PERFMON_CLOCK_STATE(inhibit));
+	} else if (device->physical_device->rad_info.chip_class >= GFX8) {
+		radeon_set_uconfig_reg(cs, R_0372FC_RLC_PERFMON_CLK_CNTL,
+				       S_0372FC_PERFMON_CLOCK_STATE(inhibit));
+	}
+}
+
+static void
 radv_emit_wait_for_idle(struct radv_device *device,
 			struct radeon_cmdbuf *cs, int family)
 {
@@ -407,6 +420,11 @@ radv_thread_trace_init_cs(struct radv_device *device)
 					device->thread_trace.start_cs[family],
 					family);
 
+		/* Disable clock gating before starting SQTT. */
+		radv_emit_inhibit_clockgating(device,
+					      device->thread_trace.start_cs[family],
+					      true);
+
 		/* Enable SQG events that collects thread trace data. */
 		radv_emit_spi_config_cntl(device,
 					  device->thread_trace.start_cs[family],
@@ -455,6 +473,11 @@ radv_thread_trace_init_cs(struct radv_device *device)
 		radv_emit_spi_config_cntl(device,
 					  device->thread_trace.stop_cs[family],
 					  false);
+
+		/* Restore previous state by re-enabling clock gating. */
+		radv_emit_inhibit_clockgating(device,
+					      device->thread_trace.stop_cs[family],
+					      false);
 
 		result = ws->cs_finalize(device->thread_trace.stop_cs[family]);
 		if (result != VK_SUCCESS)
