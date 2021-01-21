@@ -550,9 +550,21 @@ panfrost_direct_draw(struct panfrost_context *ctx,
         panfrost_statistics_record(ctx, info, draw);
 
         struct mali_invocation_packed invocation;
-        panfrost_pack_work_groups_compute(&invocation,
-                                          1, vertex_count, info->instance_count,
-                                          1, 1, 1, true);
+        if (info->instance_count > 1) {
+                panfrost_pack_work_groups_compute(&invocation,
+                                                  1, vertex_count, info->instance_count,
+                                                  1, 1, 1, true);
+        } else {
+                pan_pack(&invocation, INVOCATION, cfg) {
+                        cfg.invocations = MALI_POSITIVE(vertex_count);
+                        cfg.size_y_shift = 0;
+                        cfg.size_z_shift = 0;
+                        cfg.workgroups_x_shift = 0;
+                        cfg.workgroups_y_shift = 0;
+                        cfg.workgroups_z_shift = 32;
+                        cfg.unknown_shift = 2;
+                }
+        }
 
         /* Emit all sort of descriptors. */
         mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;
