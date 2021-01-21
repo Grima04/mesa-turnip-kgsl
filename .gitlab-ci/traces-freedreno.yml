@@ -1,5 +1,5 @@
 traces-db:
-  download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
+  download-url: "http://10.42.0.1:8888/cache/?uri=https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
   - path: 0ad/0ad.trace
