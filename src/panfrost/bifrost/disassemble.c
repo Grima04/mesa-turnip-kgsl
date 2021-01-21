@@ -242,6 +242,11 @@ static void dump_const_imm(FILE *fp, uint32_t imm)
 static void
 dump_pc_imm(FILE *fp, uint64_t imm, enum bi_constmod mod, bool high32)
 {
+        if (mod == BI_CONSTMOD_PC_HI && !high32) {
+                dump_const_imm(fp, imm);
+                return;
+        }
+
         /* 60-bit sign-extend */
         uint64_t zx64 = (imm << 4);
         int64_t sx64 = zx64;
@@ -254,24 +259,26 @@ dump_pc_imm(FILE *fp, uint64_t imm, enum bi_constmod mod, bool high32)
         sx32[0] >>= 4;
         sx32[1] >>= 4;
 
+        int64_t offs = 0;
+
         switch (mod) {
         case BI_CONSTMOD_PC_LO:
-                fprintf(fp, "(pc + %" PRId64 ")%s",
-                        sx64,
-                        high32 ? " >> 32" : "");
+                offs = sx64;
                 break;
         case BI_CONSTMOD_PC_HI:
-                if (high32)
-                        fprintf(fp, "(pc + %d)", sx32[1]);
-                else
-                        dump_const_imm(fp, imm);
+                offs = sx32[1];
                 break;
         case BI_CONSTMOD_PC_LO_HI:
-                fprintf(fp, "(pc + %d)", sx32[high32]);
+                offs = sx32[high32];
                 break;
         default:
                 unreachable("Invalid PC modifier");
         }
+
+        fprintf(fp, "(pc + %" PRId64 ")", offs);
+
+        if (mod == BI_CONSTMOD_PC_LO && high32)
+                fprintf(fp, " >> 32");
 }
 
 /* Convert an index to an embedded constant in FAU-RAM to the index of the
