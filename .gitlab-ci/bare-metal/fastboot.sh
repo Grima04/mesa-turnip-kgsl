@@ -100,6 +100,7 @@ else
   cat $BM_KERNEL $BM_DTB > Image.gz-dtb
 fi
 
+mkdir -p artifacts
 abootimg \
   --create artifacts/fastboot.img \
   -k Image.gz-dtb \

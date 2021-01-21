@@ -79,5 +79,5 @@ set -x
 
 # Add the Mesa drivers we built, and make a consistent symlink to them.
 mkdir -p $rootfs_dst/$CI_PROJECT_DIR
-tar -C $rootfs_dst/$CI_PROJECT_DIR/ -xf $CI_PROJECT_DIR/artifacts/install.tar
+rsync -aH --delete $CI_PROJECT_DIR/install/ $rootfs_dst/$CI_PROJECT_DIR/install/
 ln -sf $CI_PROJECT_DIR/install $rootfs_dst/install

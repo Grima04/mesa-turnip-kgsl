@@ -1537,6 +1537,14 @@ arm64_a630_piglit_shader:
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   stage: test
+  variables:
+    DRIVER_URL: https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-arm64.tar.gz
+  before_script:
+    # Use this instead of gitlab's artifacts download because it hits packet.net
+    # instead of fd.o.  Set FDO_HTTP_CACHE_URI to an http cache for your test lab to
+    # improve it even more (see https://docs.mesa3d.org/ci/bare-metal.html for
+    # setup).
+    - wget ${FDO_HTTP_CACHE_URI:-}${DRIVER_URL} -S --progress=dot:giga -O- | tar -xz
   artifacts:
     when: always
     name: "mesa_${CI_JOB_NAME}"
@@ -1560,7 +1568,8 @@ arm64_a630_piglit_shader:
     - ./install/bare-metal/fastboot.sh
   needs:
     - arm64_test
-    - meson-arm64
+    - job: meson-arm64
+      artifacts: false
   tags:
     - google-freedreno-db410c
 
@@ -1726,10 +1735,12 @@ arm64_a530_piglit_shader:
     BM_ROOTFS_EXTRA: /modules/armhf
     GPU_VERSION: vc4-rpi3
     DEQP_EXPECTED_RENDERER: VC4
+    DRIVER_URL: https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-armhf.tar.gz
   script:
     - ./install/bare-metal/poe-powered.sh
   needs:
-    - armhf_test
+    - job: armhf_test
+      artifacts: false
     - meson-armhf
   tags:
     - igalia-rpi3
