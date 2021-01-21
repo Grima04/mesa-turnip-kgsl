@@ -883,7 +883,8 @@ NVC0LegalizePostRA::visit(BasicBlock *bb)
    return true;
 }
 
-NVC0LoweringPass::NVC0LoweringPass(Program *prog) : targ(prog->getTarget())
+NVC0LoweringPass::NVC0LoweringPass(Program *prog) : targ(prog->getTarget()),
+   gpEmitAddress(NULL)
 {
    bld.setProgram(prog);
 }
