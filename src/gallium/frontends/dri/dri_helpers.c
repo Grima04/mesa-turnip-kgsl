@@ -560,6 +560,9 @@ dri2_get_mapping_by_fourcc(int fourcc)
 const struct dri2_format_mapping *
 dri2_get_mapping_by_format(int format)
 {
+   if (format == __DRI_IMAGE_FORMAT_NONE)
+      return NULL;
+
    for (unsigned i = 0; i < ARRAY_SIZE(dri2_format_table); i++) {
       if (dri2_format_table[i].dri_format == format)
          return &dri2_format_table[i];
