@@ -983,7 +983,10 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                 bo_handles[submit.bo_handle_count++] = dev->tiler_heap->gem_handle;
 
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
-        ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+        if (ctx->is_noop)
+                ret = 0;
+        else
+                ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
         free(bo_handles);
 
         if (ret) {

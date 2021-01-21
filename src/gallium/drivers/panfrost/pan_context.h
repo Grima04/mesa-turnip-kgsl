@@ -181,6 +181,8 @@ struct panfrost_context {
         struct panfrost_query *cond_query;
         bool cond_cond;
         enum pipe_render_cond_flag cond_mode;
+
+        bool is_noop;
 };
 
 /* Corresponds to the CSO */

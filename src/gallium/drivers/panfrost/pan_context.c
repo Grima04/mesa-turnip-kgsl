@@ -185,6 +185,14 @@ panfrost_texture_barrier(struct pipe_context *pipe, unsigned flags)
         panfrost_flush_all_batches(ctx);
 }
 
+static void
+panfrost_set_frontend_noop(struct pipe_context *pipe, bool enable)
+{
+        struct panfrost_context *ctx = pan_context(pipe);
+        panfrost_flush_all_batches(ctx);
+        ctx->is_noop = enable;
+}
+
 #define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_DRAW_MODE_##c;
 
 static int
@@ -1583,6 +1591,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->clear = panfrost_clear;
         gallium->draw_vbo = panfrost_draw_vbo;
         gallium->texture_barrier = panfrost_texture_barrier;
+        gallium->set_frontend_noop = panfrost_set_frontend_noop;
 
         gallium->set_vertex_buffers = panfrost_set_vertex_buffers;
         gallium->set_constant_buffer = panfrost_set_constant_buffer;
