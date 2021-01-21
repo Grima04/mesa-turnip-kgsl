@@ -150,7 +150,7 @@ get_used_bindings(UNUSED nir_builder *_b, nir_instr *instr, void *_state)
    return false;
 }
 
-static bool
+static nir_intrinsic_instr *
 find_descriptor_for_index_src(nir_src src,
                               struct apply_pipeline_layout_state *state)
 {
@@ -160,7 +160,16 @@ find_descriptor_for_index_src(nir_src src,
       intrin = nir_src_as_intrinsic(intrin->src[0]);
 
    if (!intrin || intrin->intrinsic != nir_intrinsic_vulkan_resource_index)
-      return false;
+      return NULL;
+
+   return intrin;
+}
+
+static bool
+descriptor_has_bti(nir_intrinsic_instr *intrin,
+                   struct apply_pipeline_layout_state *state)
+{
+   assert(intrin->intrinsic == nir_intrinsic_vulkan_resource_index);
 
    uint32_t set = nir_intrinsic_desc_set(intrin);
    uint32_t binding = nir_intrinsic_binding(intrin);
@@ -170,7 +179,7 @@ find_descriptor_for_index_src(nir_src src,
    return surface_index < MAX_BINDING_TABLE_SIZE;
 }
 
-static bool
+static nir_intrinsic_instr *
 nir_deref_find_descriptor(nir_deref_instr *deref,
                           struct apply_pipeline_layout_state *state)
 {
@@ -270,7 +279,8 @@ try_lower_direct_buffer_intrinsic(nir_builder *b,
    if (nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM)
       return false;
 
-   if (!nir_deref_find_descriptor(deref, state))
+   nir_intrinsic_instr *desc = nir_deref_find_descriptor(deref, state);
+   if (desc == NULL || !descriptor_has_bti(desc, state))
       return false;
 
    nir_ssa_def *addr = build_index_offset_for_deref(b, deref, state);
@@ -314,7 +324,9 @@ lower_direct_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
       /* The get_ssbo_size intrinsic always just takes a
        * index/reindex intrinsic.
        */
-      if (!find_descriptor_for_index_src(intrin->src[0], state))
+      nir_intrinsic_instr *desc =
+         find_descriptor_for_index_src(intrin->src[0], state);
+      if (desc == NULL || !descriptor_has_bti(desc, state))
          return false;
 
       nir_ssa_def *index =
