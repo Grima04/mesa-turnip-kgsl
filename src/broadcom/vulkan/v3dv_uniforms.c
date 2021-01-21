@@ -185,7 +185,7 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
        */
       check_push_constants_ubo(cmd_buffer);
 
-      struct v3dv_resource *resource =
+      struct v3dv_cl_reloc *resource =
          &cmd_buffer->push_constants_resource;
       assert(resource->bo);
 

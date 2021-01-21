@@ -1133,16 +1133,6 @@ struct v3dv_combined_image_sampler_descriptor {
    uint8_t sampler_state[cl_aligned_packet_length(SAMPLER_STATE, 32)];
 };
 
-/* Aux struct as it is really common to have a pair bo/address. Called
- * resource because it is really likely that we would need something like that
- * if we work on reuse the same bo at different points (like the shader
- * assembly).
- */
-struct v3dv_resource {
-   struct v3dv_bo *bo;
-   uint32_t offset;
-};
-
 struct v3dv_query {
    bool maybe_available;
    union {
@@ -1198,7 +1188,7 @@ struct v3dv_cmd_buffer {
    struct v3dv_cmd_buffer_state state;
 
    uint32_t push_constants_data[MAX_PUSH_CONSTANTS_SIZE / 4];
-   struct v3dv_resource push_constants_resource;
+   struct v3dv_cl_reloc push_constants_resource;
 
    /* Collection of Vulkan objects created internally by the driver (typically
     * during recording of meta operations) that are part of the command buffer
