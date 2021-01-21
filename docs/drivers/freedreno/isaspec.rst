@@ -54,7 +54,7 @@ instruction.  Deciding which instruction a bitpattern is amounts to:
    m = (val & bitsets[n]->mask) & ~bitsets[n]->dontcare;
 
    if (m == bitsets[n]->match) {
-      ... we've found the instruction description ...
+      /* we've found the instruction description */
    }
 
 For example, the starting point to decode an ir3 instruction is a 64b
