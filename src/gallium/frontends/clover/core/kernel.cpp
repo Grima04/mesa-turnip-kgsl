@@ -453,6 +453,9 @@ void
 kernel::scalar_argument::unbind(exec_context &ctx) {
 }
 
+kernel::global_argument::global_argument() : buf(nullptr), svm(nullptr) {
+}
+
 void
 kernel::global_argument::set(size_t size, const void *value) {
    if (size != sizeof(cl_mem))
