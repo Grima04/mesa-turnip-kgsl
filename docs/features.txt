@@ -150,19 +150,19 @@ GL 4.1, GLSL 4.10 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virg
   GL_ARB_viewport_array                                 DONE (i965, nv50, softpipe, swr)
 
 
-GL 4.2, GLSL 4.20 -- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virgl
+GL 4.2, GLSL 4.20 -- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virgl, zink
 
   GL_ARB_texture_compression_bptc                       DONE (freedreno, i965, softpipe, swr, zink, panfrost/if SoC supports)
   GL_ARB_compressed_texture_pixel_storage               DONE (all drivers)
   GL_ARB_shader_atomic_counters                         DONE (freedreno/a5xx+, i965, softpipe, v3d)
   GL_ARB_texture_storage                                DONE (all drivers)
-  GL_ARB_transform_feedback_instanced                   DONE (freedreno, i965, nv50, softpipe, swr, v3d, zink)
-  GL_ARB_base_instance                                  DONE (freedreno, i965, nv50, softpipe, swr, v3d, zink)
+  GL_ARB_transform_feedback_instanced                   DONE (freedreno, i965, nv50, softpipe, swr, v3d)
+  GL_ARB_base_instance                                  DONE (freedreno, i965, nv50, softpipe, swr, v3d)
   GL_ARB_shader_image_load_store                        DONE (freedreno/a5xx+, i965, softpipe, v3d)
   GL_ARB_conservative_depth                             DONE (all drivers that support GLSL 1.30)
   GL_ARB_shading_language_420pack                       DONE (all drivers that support GLSL 1.30)
   GL_ARB_shading_language_packing                       DONE (all drivers)
-  GL_ARB_internalformat_query                           DONE (freedreno, i965, nv50, softpipe, swr, v3d, vc4, zink, panfrost, d3d12)
+  GL_ARB_internalformat_query                           DONE (freedreno, i965, nv50, softpipe, swr, v3d, vc4, panfrost, d3d12)
   GL_ARB_map_buffer_alignment                           DONE (all drivers)
 
 
