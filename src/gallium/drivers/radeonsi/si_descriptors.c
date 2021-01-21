@@ -296,7 +296,7 @@ static void si_set_buf_desc_address(struct si_resource *buf, uint64_t offset, ui
 void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture *tex,
                                     const struct legacy_surf_level *base_level_info,
                                     unsigned base_level, unsigned first_level, unsigned block_width,
-                                    bool is_stencil, bool force_dcc_off, uint32_t *state)
+                                    bool is_stencil, uint16_t access, uint32_t *state)
 {
    uint64_t va, meta_va = 0;
 
@@ -330,7 +330,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
    if (sscreen->info.chip_class >= GFX8) {
       state[6] &= C_008F28_COMPRESSION_EN;
 
-      if (!force_dcc_off && vi_dcc_enabled(tex, first_level)) {
+      if (!(access & SI_IMAGE_ACCESS_DCC_OFF) && vi_dcc_enabled(tex, first_level)) {
          meta_va =
             (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.dcc_offset;
 
@@ -363,7 +363,8 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
          state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode);
       }
 
-      state[6] &= C_00A018_META_DATA_ADDRESS_LO & C_00A018_META_PIPE_ALIGNED;
+      state[6] &= C_00A018_META_DATA_ADDRESS_LO & C_00A018_META_PIPE_ALIGNED &
+                  C_00A018_WRITE_COMPRESS_ENABLE;
 
       if (meta_va) {
          struct gfx9_surf_meta_flags meta = {
@@ -375,7 +376,8 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
             meta = tex->surface.u.gfx9.dcc;
 
          state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
-                     S_00A018_META_DATA_ADDRESS_LO(meta_va >> 8);
+                     S_00A018_META_DATA_ADDRESS_LO(meta_va >> 8) |
+                     S_00A018_WRITE_COMPRESS_ENABLE((access & SI_IMAGE_ACCESS_DCC_WRITE) != 0);
       }
 
       state[7] = meta_va >> 16;
@@ -465,7 +467,7 @@ static void si_set_sampler_view_desc(struct si_context *sctx, struct si_sampler_
 
       si_set_mutable_tex_desc_fields(sctx->screen, tex, sview->base_level_info, sview->base_level,
                                      sview->base.u.tex.first_level, sview->block_width,
-                                     is_separate_stencil, false, desc);
+                                     is_separate_stencil, 0, desc);
    }
 
    if (!is_buffer && tex->surface.fmask_size) {
@@ -716,7 +718,7 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
 
       if (uses_dcc && !skip_decompress &&
           !(access & SI_IMAGE_ACCESS_DCC_OFF) &&
-          (access & PIPE_IMAGE_ACCESS_WRITE ||
+          ((!(access & SI_IMAGE_ACCESS_DCC_WRITE) && (access & PIPE_IMAGE_ACCESS_WRITE)) ||
            !vi_dcc_formats_compatible(screen, res->b.b.format, view->format))) {
          /* If DCC can't be disabled, at least decompress it.
           * The decompression is relatively cheap if the surface
@@ -751,8 +753,8 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
          screen, tex, false, res->b.b.target, view->format, swizzle, hw_level, hw_level,
          view->u.tex.first_layer, view->u.tex.last_layer, width, height, depth, desc, fmask_desc);
       si_set_mutable_tex_desc_fields(screen, tex, &tex->surface.u.legacy.level[level], level, level,
-                                     util_format_get_blockwidth(view->format), false,
-                                     view->access & SI_IMAGE_ACCESS_DCC_OFF, desc);
+                                     util_format_get_blockwidth(view->format),
+                                     false, view->access, desc);
    }
 }
 

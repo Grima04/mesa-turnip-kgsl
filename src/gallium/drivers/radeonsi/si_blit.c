@@ -852,11 +852,10 @@ static void si_use_compute_copy_for_float_formats(struct si_context *sctx,
     * lost so we need to disable DCC as well.
     *
     * This makes KHR-GL45.texture_view.view_classes pass on gfx9.
-    * gfx10 has the same issue, but the test doesn't use a large enough texture
-    * to enable DCC and fail, so it always passes.
     */
    if (vi_dcc_enabled(tex, level) &&
-       util_format_is_float(texture->format)) {
+       util_format_is_float(texture->format) &&
+       sctx->chip_class < GFX10) {
       si_texture_disable_dcc(sctx, tex);
    }
 }
@@ -885,7 +884,8 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
 
    if (!util_format_is_compressed(src->format) && !util_format_is_compressed(dst->format) &&
        !util_format_is_depth_or_stencil(src->format) && src->nr_samples <= 1 &&
-       !vi_dcc_enabled(sdst, dst_level) &&
+       /* DCC compression from image store is enabled for GFX10+. */
+       (!vi_dcc_enabled(sdst, dst_level) || sctx->chip_class >= GFX10) &&
        !(dst->target != src->target &&
          (src->target == PIPE_TEXTURE_1D_ARRAY || dst->target == PIPE_TEXTURE_1D_ARRAY))) {
       si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,

@@ -537,6 +537,8 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    if (is_dcc_decompress)
       image[1].access |= SI_IMAGE_ACCESS_DCC_OFF;
+   else if (sctx->chip_class >= GFX10)
+      image[1].access |= SI_IMAGE_ACCESS_DCC_WRITE;
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, 0, image);
 
