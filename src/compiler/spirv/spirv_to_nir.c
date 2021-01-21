@@ -5976,14 +5976,16 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
     * initializers on outputs so nir_remove_dead_variables sees that they're
     * written to.
     */
-   nir_lower_variable_initializers(b->shader, nir_var_shader_out |
-                                              nir_var_system_value);
-   const nir_remove_dead_variables_options dead_opts = {
-      .can_remove_var = can_remove,
-      .can_remove_var_data = b->vars_used_indirectly,
-   };
-   nir_remove_dead_variables(b->shader, ~nir_var_function_temp,
-                             b->vars_used_indirectly ? &dead_opts : NULL);
+   if (!options->create_library) {
+      nir_lower_variable_initializers(b->shader, nir_var_shader_out |
+                                                 nir_var_system_value);
+      const nir_remove_dead_variables_options dead_opts = {
+         .can_remove_var = can_remove,
+         .can_remove_var_data = b->vars_used_indirectly,
+      };
+      nir_remove_dead_variables(b->shader, ~nir_var_function_temp,
+                                b->vars_used_indirectly ? &dead_opts : NULL);
+   }
 
    /* We sometimes generate bogus derefs that, while never used, give the
     * validator a bit of heartburn.  Run dead code to get rid of them.
