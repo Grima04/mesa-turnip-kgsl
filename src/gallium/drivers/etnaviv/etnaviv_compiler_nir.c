@@ -1073,6 +1073,15 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    v->ps_color_out_reg = 0; /* 0 for shader that doesn't write fragcolor.. */
    v->ps_depth_out_reg = -1;
 
+   /*
+    * Lower glTexCoord, fixes e.g. neverball point sprite (exit cylinder stars)
+    * and gl4es pointsprite.trace apitrace
+    */
+   if (s->info.stage == MESA_SHADER_FRAGMENT && v->key.sprite_coord_enable) {
+      NIR_PASS_V(s, nir_lower_texcoord_replace, v->key.sprite_coord_enable,
+                 false, v->key.sprite_coord_yinvert);
+   }
+
    /* setup input linking */
    struct etna_shader_io_file *sf = &v->infile;
    if (s->info.stage == MESA_SHADER_VERTEX) {
@@ -1241,7 +1250,7 @@ etna_link_shader_nir(struct etna_shader_link_info *info,
       varying->use[2] = VARYING_COMPONENT_USE_UNUSED;
       varying->use[3] = VARYING_COMPONENT_USE_UNUSED;
 
-      /* point coord is an input to the PS without matching VS output,
+      /* point/tex coord is an input to the PS without matching VS output,
        * so it gets a varying slot without being assigned a VS register.
        */
       if (fsio->slot == VARYING_SLOT_PNTC) {
@@ -1249,6 +1258,13 @@ etna_link_shader_nir(struct etna_shader_link_info *info,
          varying->use[1] = VARYING_COMPONENT_USE_POINTCOORD_Y;
 
          info->pcoord_varying_comp_ofs = comp_ofs;
+      } else if (util_varying_is_point_coord(fsio->slot, fs->key.sprite_coord_enable)) {
+         /*
+	  * Do nothing, TexCoord is lowered to PointCoord above
+	  * and the TexCoord here is just a remnant. This needs
+	  * to be removed with some nir_remove_dead_variables(),
+	  * but that one removes all FS inputs ... why?
+	  */
       } else {
          if (vsio == NULL) { /* not found -- link error */
             BUG("Semantic value not found in vertex shader outputs\n");

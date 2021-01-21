@@ -308,6 +308,8 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    struct etna_shader_key key = {
       .front_ccw = ctx->rasterizer->front_ccw,
+      .sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
+      .sprite_coord_yinvert = !!ctx->rasterizer->sprite_coord_mode,
    };
 
    if (pfb->cbufs[0])
