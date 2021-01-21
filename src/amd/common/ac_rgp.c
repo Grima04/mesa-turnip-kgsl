@@ -54,7 +54,7 @@ enum sqtt_version
    SQTT_VERSION_2_1 = 0x4, /* GFX7 */
    SQTT_VERSION_2_2 = 0x5, /* GFX8 */
    SQTT_VERSION_2_3 = 0x6, /* GFX9 */
-   SQTT_VERSION_2_4 = 0x7  /* GFX10 */
+   SQTT_VERSION_2_4 = 0x7  /* GFX10+ */
 };
 
 /**
@@ -222,6 +222,7 @@ enum sqtt_gfxip_level
    SQTT_GFXIP_LEVEL_GFXIP_8_1 = 0x4,
    SQTT_GFXIP_LEVEL_GFXIP_9 = 0x5,
    SQTT_GFXIP_LEVEL_GFXIP_10_1 = 0x7,
+   SQTT_GFXIP_LEVEL_GFXIP_10_3 = 0x9,
 };
 
 enum sqtt_memory_type
@@ -304,6 +305,8 @@ static enum sqtt_gfxip_level ac_chip_class_to_sqtt_gfxip_level(enum chip_class c
       return SQTT_GFXIP_LEVEL_GFXIP_9;
    case GFX10:
       return SQTT_GFXIP_LEVEL_GFXIP_10_1;
+   case GFX10_3:
+      return SQTT_GFXIP_LEVEL_GFXIP_10_3;
    default:
       unreachable("Invalid chip class");
    }
@@ -533,6 +536,8 @@ static enum sqtt_version ac_chip_class_to_sqtt_version(enum chip_class chip_clas
    case GFX9:
       return SQTT_VERSION_2_3;
    case GFX10:
+      return SQTT_VERSION_2_4;
+   case GFX10_3:
       return SQTT_VERSION_2_4;
    default:
       unreachable("Invalid chip class");
