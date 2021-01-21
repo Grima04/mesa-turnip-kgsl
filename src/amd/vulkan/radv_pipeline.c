@@ -3181,10 +3181,10 @@ opt_vectorize_callback(const nir_instr *instr, void *_)
    case nir_op_imax:
    case nir_op_umin:
    case nir_op_umax:
-   case nir_op_ishl:
-   case nir_op_ishr:
-   case nir_op_ushr:
       return true;
+   case nir_op_ishl: /* TODO: in NIR, these have 32bit shift operands */
+   case nir_op_ishr: /* while Radeon needs 16bit operands when vectorized */
+   case nir_op_ushr:
    default:
       return false;
    }
