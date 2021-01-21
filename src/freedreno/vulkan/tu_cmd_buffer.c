@@ -3333,13 +3333,14 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 {
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
    VkResult result;
+   bool dirty_lrz = cmd->state.dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_RB_DEPTH_CNTL | TU_CMD_DIRTY_RB_STENCIL_CNTL);
 
    struct tu_descriptor_state *descriptors_state =
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
 
    tu_emit_cache_flush_renderpass(cmd, cs);
 
-   if (cmd->state.dirty & TU_CMD_DIRTY_LRZ)
+   if (dirty_lrz)
       cmd->state.lrz.state = tu6_build_lrz(cmd);
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0(
@@ -3455,7 +3456,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 5 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
-         ((cmd->state.dirty & TU_CMD_DIRTY_LRZ) ? 1 : 0) +
+         (dirty_lrz ? 1 : 0) +
          1; /* vs_params */
 
       if ((cmd->state.dirty & TU_CMD_DIRTY_VB_STRIDE) &&
@@ -3487,7 +3488,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       }
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
 
-      if (cmd->state.dirty & TU_CMD_DIRTY_LRZ)
+      if (dirty_lrz)
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ, cmd->state.lrz.state);
    }
 
