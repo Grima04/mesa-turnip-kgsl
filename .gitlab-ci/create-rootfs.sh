@@ -76,6 +76,8 @@ apt-get -y install --no-install-recommends \
     sntp \
     strace \
     wget \
+    xinit \
+    xserver-xorg-core \
     xz-utils
 
 if [ -n "$INCLUDE_PIGLIT" ]; then

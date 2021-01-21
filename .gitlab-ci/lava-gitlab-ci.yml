@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-01-13-piglit"
+  DISTRIBUTION_TAG: "2021-01-26-xserver"
 
 .kernel+rootfs:
   stage: container-2
