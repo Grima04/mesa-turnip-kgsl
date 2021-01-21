@@ -285,6 +285,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_PSIZ_CLAMPED:
                 return 1;
 
+        case PIPE_CAP_NIR_IMAGES_AS_DEREF:
+                return 0;
+
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
         }
@@ -383,8 +386,11 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 32;
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
-        case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
                 return is_deqp ? 8 : 0;
+
+        case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
+                return is_bifrost ? 0 : PIPE_MAX_SHADER_IMAGES;
+
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
                 return 0;
