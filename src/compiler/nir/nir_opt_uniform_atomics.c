@@ -128,13 +128,11 @@ get_dim(nir_ssa_scalar scalar)
 static unsigned
 match_invocation_comparison(nir_ssa_scalar scalar)
 {
-   if (!nir_ssa_scalar_is_alu(scalar))
-      return 0;
-
-   if (nir_ssa_scalar_alu_op(scalar) == nir_op_iand) {
+   bool is_alu = nir_ssa_scalar_is_alu(scalar);
+   if (is_alu && nir_ssa_scalar_alu_op(scalar) == nir_op_iand) {
       return match_invocation_comparison(nir_ssa_scalar_chase_alu_src(scalar, 0)) |
              match_invocation_comparison(nir_ssa_scalar_chase_alu_src(scalar, 1));
-   } else if (nir_ssa_scalar_alu_op(scalar) == nir_op_ieq) {
+   } else if (is_alu && nir_ssa_scalar_alu_op(scalar) == nir_op_ieq) {
       if (!nir_ssa_scalar_chase_alu_src(scalar, 0).def->divergent)
          return get_dim(nir_ssa_scalar_chase_alu_src(scalar, 1));
       if (!nir_ssa_scalar_chase_alu_src(scalar, 1).def->divergent)
