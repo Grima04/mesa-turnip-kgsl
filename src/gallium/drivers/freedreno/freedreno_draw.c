@@ -105,25 +105,26 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 		}
 	}
 
+	if (ctx->dirty & FD_DIRTY_FRAMEBUFFER)  {
+		for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
+			struct pipe_resource *surf;
 
-	for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
-		struct pipe_resource *surf;
+			if (!pfb->cbufs[i])
+				continue;
 
-		if (!pfb->cbufs[i])
-			continue;
+			surf = pfb->cbufs[i]->texture;
 
-		surf = pfb->cbufs[i]->texture;
+			if (fd_resource(surf)->valid) {
+				restore_buffers |= PIPE_CLEAR_COLOR0 << i;
+			} else {
+				batch->invalidated |= PIPE_CLEAR_COLOR0 << i;
+			}
 
-		if (fd_resource(surf)->valid) {
-			restore_buffers |= PIPE_CLEAR_COLOR0 << i;
-		} else {
-			batch->invalidated |= PIPE_CLEAR_COLOR0 << i;
+			buffers |= PIPE_CLEAR_COLOR0 << i;
+
+			if (ctx->dirty & FD_DIRTY_FRAMEBUFFER)
+				resource_written(batch, pfb->cbufs[i]->texture);
 		}
-
-		buffers |= PIPE_CLEAR_COLOR0 << i;
-
-		if (ctx->dirty & FD_DIRTY_FRAMEBUFFER)
-			resource_written(batch, pfb->cbufs[i]->texture);
 	}
 
 	if (ctx->dirty & FD_DIRTY_BLEND) {
