@@ -454,6 +454,7 @@ fd_alloc_staging(struct fd_context *ctx, struct fd_resource *rsc,
 	}
 	tmpl.last_level = 0;
 	tmpl.bind |= PIPE_BIND_LINEAR;
+	tmpl.usage = PIPE_USAGE_STAGING;
 
 	struct pipe_resource *pstaging =
 		pctx->screen->resource_create(pctx->screen, &tmpl);
@@ -911,8 +912,13 @@ fd_resource_allocate_and_resolve(struct pipe_screen *pscreen,
 	 PIPE_BIND_DISPLAY_TARGET)
 
 	bool linear = drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count);
-	if (tmpl->bind & LINEAR)
+	if (linear) {
+		perf_debug("%"PRSC_FMT": linear: DRM_FORMAT_MOD_LINEAR requested!", PRSC_ARGS(prsc));
+	} else if (tmpl->bind & LINEAR) {
+		if (tmpl->usage != PIPE_USAGE_STAGING)
+			perf_debug("%"PRSC_FMT": linear: LINEAR bind requested!", PRSC_ARGS(prsc));
 		linear = true;
+	}
 
 	if (fd_mesa_debug & FD_DBG_NOTILE)
 		linear = true;
@@ -925,11 +931,20 @@ fd_resource_allocate_and_resolve(struct pipe_screen *pscreen,
 	 * except we don't have a format modifier for tiled.  (We probably
 	 * should.)
 	 */
-	bool allow_ubwc = drm_find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count);
-	if (tmpl->bind & PIPE_BIND_SHARED) {
-		allow_ubwc = drm_find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count);
+	bool allow_ubwc = false;
+	if (!linear) {
+		allow_ubwc = drm_find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count);
 		if (!allow_ubwc) {
-			linear = true;
+			perf_debug("%"PRSC_FMT": not UBWC: DRM_FORMAT_MOD_INVALID not requested!",
+					PRSC_ARGS(prsc));
+		}
+		if (tmpl->bind & PIPE_BIND_SHARED) {
+			allow_ubwc = drm_find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count);
+			if (!allow_ubwc) {
+				perf_debug("%"PRSC_FMT": not UBWC: shared and DRM_FORMAT_MOD_QCOM_COMPRESSED not requested!",
+						PRSC_ARGS(prsc));
+				linear = true;
+			}
 		}
 	}
 

@@ -101,7 +101,7 @@ extern bool fd_binning_enabled;
 				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
 #define perf_debug_ctx(ctx, ...) do { \
-		perf_warn(__VA_ARGS__); \
+		perf_debug(__VA_ARGS__); \
 		pipe_debug_message(&(ctx)->debug, PERF_INFO, __VA_ARGS__); \
 	} while(0)
 
