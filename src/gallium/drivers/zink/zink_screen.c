@@ -250,7 +250,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.props.limits.maxViewports;
 
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
-      return screen->info.feats.features.shaderStorageImageExtendedFormats;
+      return screen->info.feats.features.shaderStorageImageExtendedFormats &&
+             screen->info.feats.features.shaderStorageImageReadWithoutFormat &&
+             screen->info.feats.features.shaderStorageImageWriteWithoutFormat;
 
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
       return 1;
