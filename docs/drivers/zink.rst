@@ -80,7 +80,7 @@ For OpenGL 3.3 support, the following additional ``VkPhysicalDeviceFeatures``
 are required to be supported, although some of these might not actually get
 verified:
 
-* ``VkPhysicalDeviceFeatures``
+* ``VkPhysicalDeviceFeatures``:
 
   * ``occlusionQueryPrecise``
 
