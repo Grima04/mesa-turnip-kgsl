@@ -295,7 +295,7 @@ typedef struct gpir_instr {
     *       alu_num_slot_needed_by_max +
     *       max(alu_num_unscheduled_next_max - alu_max_allowed_next_max, 0)
     * (2) alu_non_cplx_slot_free >= alu_num_slot_needed_by_max +
-    *       alu_num_slot_neede_by_non_cplx_store
+    *       alu_num_slot_needed_by_non_cplx_store
     *
     * alu_max_allowed_next_max is normally 5 (since there can be at most 5 max
     * nodes for the next instruction) but when there is a complex1 node in
