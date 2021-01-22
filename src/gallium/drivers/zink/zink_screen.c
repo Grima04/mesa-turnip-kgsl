@@ -183,7 +183,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.have_EXT_transform_feedback ? screen->info.tf_props.maxTransformFeedbackBuffers : 0;
    case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
    case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
-      return 1;
+      return screen->info.have_EXT_transform_feedback;
 
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
       return screen->info.props.limits.maxImageArrayLayers;
