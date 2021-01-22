@@ -49,11 +49,18 @@ Here's a list of those requirements:
 OpenGL 3.0
 ^^^^^^^^^^
 
-For OpenGL 3.0 support, the following additional device extensions are
-required to be exposed and fully supported:
 
-* `VK_EXT_transform_feedback`_
-* `VK_EXT_conditional_rendering`_
+For OpenGL 3.0 support, the following additional requirements needs to be
+supported:
+
+* ``VkPhysicalDeviceFeatures``:
+
+  * ``independentBlend``
+
+* Device extensions:
+
+  * `VK_EXT_transform_feedback`_
+  * `VK_EXT_conditional_rendering`_
 
 
 OpenGL 3.1
