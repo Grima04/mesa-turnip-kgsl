@@ -1458,7 +1458,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->shaderSharedFloat64AtomicAdd = false;
 			features->shaderImageFloat32Atomics = true;
 			features->shaderImageFloat32AtomicAdd = false;
-			features->sparseImageFloat32Atomics = false;
+			features->sparseImageFloat32Atomics = true;
 			features->sparseImageFloat32AtomicAdd = false;
 			break;
 		}
@@ -1479,7 +1479,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT *features =
 				(VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT *)ext;
 			features->shaderImageInt64Atomics = LLVM_VERSION_MAJOR >= 11 || !pdevice->use_llvm;
-			features->sparseImageInt64Atomics = false;
+			features->sparseImageInt64Atomics = LLVM_VERSION_MAJOR >= 11 || !pdevice->use_llvm;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
