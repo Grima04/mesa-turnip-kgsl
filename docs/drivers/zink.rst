@@ -85,9 +85,8 @@ verified:
 OpenGL 3.3
 ^^^^^^^^^^
 
-For OpenGL 3.3 support, the following additional ``VkPhysicalDeviceFeatures``
-are required to be supported, although some of these might not actually get
-verified:
+For OpenGL 3.3 support, the following additional requirements needs to be
+supported, although some of these might not actually get verified:
 
 * ``VkPhysicalDeviceFeatures``:
 
