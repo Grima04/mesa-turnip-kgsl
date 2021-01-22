@@ -4487,26 +4487,6 @@ void *anv_resolve_device_entrypoint(const struct gen_device_info *devinfo,
 void *anv_lookup_entrypoint(const struct gen_device_info *devinfo,
                             const char *name);
 
-void anv_dump_image_to_ppm(struct anv_device *device,
-                           struct anv_image *image, unsigned miplevel,
-                           unsigned array_layer, VkImageAspectFlagBits aspect,
-                           const char *filename);
-
-enum anv_dump_action {
-   ANV_DUMP_FRAMEBUFFERS_BIT = 0x1,
-};
-
-#ifdef DEBUG
-PUBLIC
-#endif
-void anv_dump_start(struct anv_device *device, enum anv_dump_action actions);
-#ifdef DEBUG
-PUBLIC
-#endif
-void anv_dump_finish(void);
-
-void anv_dump_add_attachments(struct anv_cmd_buffer *cmd_buffer);
-
 static inline uint32_t
 anv_get_subpass_id(const struct anv_cmd_state * const cmd_state)
 {

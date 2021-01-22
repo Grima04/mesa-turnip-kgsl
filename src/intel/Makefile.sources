@@ -264,7 +264,6 @@ VULKAN_FILES := \
 	vulkan/anv_cmd_buffer.c \
 	vulkan/anv_descriptor_set.c \
 	vulkan/anv_device.c \
-	vulkan/anv_dump.c \
 	vulkan/anv_formats.c \
 	vulkan/anv_genX.h \
 	vulkan/anv_image.c \

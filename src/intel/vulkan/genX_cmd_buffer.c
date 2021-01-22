@@ -6143,10 +6143,6 @@ void genX(CmdEndRenderPass)(
 
    cmd_buffer->state.hiz_enabled = false;
 
-#ifndef NDEBUG
-   anv_dump_add_attachments(cmd_buffer);
-#endif
-
    /* Remove references to render pass specific state. This enables us to
     * detect whether or not we're in a renderpass.
     */
