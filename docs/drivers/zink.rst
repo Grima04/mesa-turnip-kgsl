@@ -119,6 +119,15 @@ supported:
    * ```VK_FORMAT_R32G32B32_SINT```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
    * ```VK_FORMAT_R32G32B32_UINT```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
 
+OpenGL 4.1
+^^^^^^^^^^
+
+For OpenGL 4.1 support, the following additional ``VkPhysicalDeviceLimits``
+are required:
+
+* `maxImageDimension2D` ≥ 16384
+* `maxViewports` ≥ 16
+
 Debugging
 ---------
 
