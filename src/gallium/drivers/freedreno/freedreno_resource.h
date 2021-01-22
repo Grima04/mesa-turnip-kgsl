@@ -28,6 +28,7 @@
 #define FREEDRENO_RESOURCE_H_
 
 #include "util/list.h"
+#include "util/u_dump.h"
 #include "util/u_range.h"
 #include "util/u_transfer_helper.h"
 #include "util/simple_mtx.h"
@@ -35,6 +36,17 @@
 #include "freedreno_batch.h"
 #include "freedreno_util.h"
 #include "freedreno/fdl/freedreno_layout.h"
+
+
+#define PRSC_FMT \
+	"p: target=%s, format=%s, %ux%ux%u, " \
+	"array_size=%u, last_level=%u, " \
+	"nr_samples=%u, usage=%u, bind=%x, flags=%x"
+#define PRSC_ARGS(p) \
+	(p), util_str_tex_target((p)->target, true), util_format_short_name((p)->format), \
+	(p)->width0, (p)->height0, (p)->depth0, (p)->array_size, (p)->last_level, \
+	(p)->nr_samples, (p)->usage, (p)->bind, (p)->flags
+
 
 enum fd_lrz_direction {
 	FD_LRZ_UNKNOWN,
