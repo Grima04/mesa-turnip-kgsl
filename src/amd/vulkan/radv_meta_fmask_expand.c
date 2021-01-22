@@ -135,7 +135,7 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 				     .viewType = radv_meta_get_view_type(image),
 				     .format = vk_format_no_srgb(image->vk_format),
 				     .subresourceRange = {
-					     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+					     .aspectMask = subresourceRange->aspectMask,
 					     .baseMipLevel = 0,
 					     .levelCount = 1,
 					     .baseArrayLayer = subresourceRange->baseArrayLayer,
