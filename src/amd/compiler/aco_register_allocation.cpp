@@ -1778,7 +1778,7 @@ void try_remove_trivial_phi(ra_ctx& ctx, Temp temp)
          assert(t == same || op.physReg() == def.physReg());
          continue;
       }
-      if (same != Temp())
+      if (same != Temp() || op.physReg() != def.physReg())
          return;
 
       same = t;
