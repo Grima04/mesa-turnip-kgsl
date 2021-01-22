@@ -153,8 +153,10 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->timestamp_valid_bits > 0;
 
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
-   case PIPE_CAP_SAMPLE_SHADING:
       return 1;
+
+   case PIPE_CAP_SAMPLE_SHADING:
+      return screen->info.feats.features.sampleRateShading;
 
    case PIPE_CAP_TEXTURE_SWIZZLE:
       return 1;
