@@ -6612,14 +6612,28 @@ static void write_event(struct radv_cmd_buffer *cmd_buffer,
 		VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
 		VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
+	/* Flags that only require signaling post PS. */
+	VkPipelineStageFlags post_ps_flags =
+		post_index_fetch_flags |
+		VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+		VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+		VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+		VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
+		VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT |
+		VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
+		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+	/* Flags that only require signaling post CS. */
+	VkPipelineStageFlags post_cs_flags =
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
 	/* Make sure CP DMA is idle because the driver might have performed a
 	 * DMA operation for copying or filling buffers/images.
 	 */
 	if (stageMask & (VK_PIPELINE_STAGE_TRANSFER_BIT |
 			 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT))
 		si_cp_dma_wait_for_idle(cmd_buffer);
-
-	/* TODO: Emit EOS events for syncing PS/CS stages. */
 
 	if (!(stageMask & ~top_of_pipe_flags)) {
 		/* Just need to sync the PFP engine. */
@@ -6640,12 +6654,23 @@ static void write_event(struct radv_cmd_buffer *cmd_buffer,
 		radeon_emit(cs, va >> 32);
 		radeon_emit(cs, value);
 	} else {
-		/* Otherwise, sync all prior GPU work using an EOP event. */
+		unsigned event_type;
+
+		if (!(stageMask & ~post_ps_flags)) {
+			/* Sync previous fragment shaders. */
+			event_type = V_028A90_PS_DONE;
+		} else if (!(stageMask & ~post_cs_flags)) {
+			/* Sync previous compute shaders. */
+			event_type = V_028A90_CS_DONE;
+		} else {
+			/* Otherwise, sync all prior GPU work. */
+			event_type = V_028A90_BOTTOM_OF_PIPE_TS;
+		}
+
 		si_cs_emit_write_event_eop(cs,
 					   cmd_buffer->device->physical_device->rad_info.chip_class,
 					   radv_cmd_buffer_uses_mec(cmd_buffer),
-					   V_028A90_BOTTOM_OF_PIPE_TS, 0,
-					   EOP_DST_SEL_MEM,
+					   event_type, 0, EOP_DST_SEL_MEM,
 					   EOP_DATA_SEL_VALUE_32BIT, va, value,
 					   cmd_buffer->gfx9_eop_bug_va);
 	}
