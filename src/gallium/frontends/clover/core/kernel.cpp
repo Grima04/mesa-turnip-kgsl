@@ -632,6 +632,9 @@ void
 kernel::image_wr_argument::unbind(exec_context &ctx) {
 }
 
+kernel::sampler_argument::sampler_argument() : s(nullptr), st(nullptr) {
+}
+
 void
 kernel::sampler_argument::set(size_t size, const void *value) {
    if (!value)

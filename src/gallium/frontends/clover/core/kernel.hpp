@@ -235,6 +235,8 @@ namespace clover {
 
       class sampler_argument : public argument {
       public:
+         sampler_argument();
+
          virtual void set(size_t size, const void *value);
          virtual void bind(exec_context &ctx,
                            const module::argument &marg);
