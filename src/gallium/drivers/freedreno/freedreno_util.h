@@ -68,7 +68,7 @@ enum fd_debug_flag {
 	FD_DBG_NOSCIS       = BITFIELD_BIT(4),
 	FD_DBG_DIRECT       = BITFIELD_BIT(5),
 	FD_DBG_NOBYPASS     = BITFIELD_BIT(6),
-	/* BIT(7) */
+	FD_DBG_PERF         = BITFIELD_BIT(7),
 	FD_DBG_NOBIN        = BITFIELD_BIT(8),
 	FD_DBG_NOGMEM       = BITFIELD_BIT(9),
 	/* BIT(10) */
@@ -99,6 +99,16 @@ extern bool fd_binning_enabled;
 		do { if (fd_mesa_debug & FD_DBG_MSGS) \
 			mesa_logd("%s:%d: "fmt, \
 				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
+
+#define perf_debug_ctx(ctx, ...) do { \
+		perf_warn(__VA_ARGS__); \
+		pipe_debug_message(&(ctx)->debug, PERF_INFO, __VA_ARGS__); \
+	} while(0)
+
+#define perf_debug(...) do { \
+		if (unlikely(fd_mesa_debug & FD_DBG_PERF)) \
+			mesa_logw(__VA_ARGS__); \
+	} while(0)
 
 /* for conditionally setting boolean flag(s): */
 #define COND(bool, val) ((bool) ? (val) : 0)
