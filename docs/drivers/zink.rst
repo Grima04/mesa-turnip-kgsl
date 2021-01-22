@@ -128,6 +128,23 @@ are required:
 * `maxImageDimension2D` ≥ 16384
 * `maxViewports` ≥ 16
 
+OpenGL 4.2
+^^^^^^^^^^
+
+For OpenGL 4.2 support, Vulkan 1.1 is required, plus the following additional
+requirements needs to be supported:
+
+* ``VkPhysicalDeviceVulkan11Features``:
+
+  * ``shaderDrawParameters``
+
+* Formats features:
+
+   * ```VK_FORMAT_BC7_UNORM_BLOCK```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
+   * ```VK_FORMAT_BC7_SRGB_BLOCK```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
+   * ```VK_FORMAT_BC6H_SFLOAT_BLOCK```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
+   * ```VK_FORMAT_BC6H_UFLOAT_BLOCK```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
+
 Debugging
 ---------
 
