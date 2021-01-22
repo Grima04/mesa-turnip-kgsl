@@ -96,6 +96,29 @@ supported, although some of these might not actually get verified:
 
   * `VK_EXT_vertex_attribute_divisor`_
 
+OpenGL 4.0
+^^^^^^^^^^
+
+For OpenGL 4.0 support, the following additional requirements needs to be
+supported:
+
+* ``VkPhysicalDeviceFeatures``:
+
+  * ``sampleRateShading``
+  * ``tessellationShader``
+  * ``imageCubeArray``
+
+* Device extensions:
+
+  * `VK_KHR_maintenance2`_
+  * `VK_KHR_vulkan_memory_model`
+
+* Formats features:
+
+   * ```VK_FORMAT_R32G32B32_SFLOAT```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
+   * ```VK_FORMAT_R32G32B32_SINT```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
+   * ```VK_FORMAT_R32G32B32_UINT```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
+
 Debugging
 ---------
 
@@ -142,3 +165,5 @@ questions, don't hesitate to visit `#zink on FreeNode
 .. _VK_EXT_transform_feedback: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_transform_feedback.html
 .. _VK_EXT_conditional_rendering: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_conditional_rendering.html
 .. _VK_EXT_vertex_attribute_divisor: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_vertex_attribute_divisor.html
+.. _VK_KHR_maintenance2: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_maintenance2.html
+.. _VK_KHR_vulkan_memory_model: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_vulkan_memory_model.html
