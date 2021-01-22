@@ -30,10 +30,10 @@ static nir_shader *
 build_fmask_expand_compute_shader(struct radv_device *device, int samples)
 {
 	const struct glsl_type *type =
-		glsl_sampler_type(GLSL_SAMPLER_DIM_MS, false, false,
+		glsl_sampler_type(GLSL_SAMPLER_DIM_MS, false, true,
 				  GLSL_TYPE_FLOAT);
 	const struct glsl_type *img_type =
-		glsl_image_type(GLSL_SAMPLER_DIM_MS, false,
+		glsl_image_type(GLSL_SAMPLER_DIM_MS, true,
 				  GLSL_TYPE_FLOAT);
 
 	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "meta_fmask_expand_cs-%d", samples);
@@ -60,9 +60,14 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
 						b.shader->info.cs.local_size[2], 0);
 
 	nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+	nir_ssa_def *layer_id = nir_channel(&b, wg_id, 2);
 
 	nir_ssa_def *input_img_deref = &nir_build_deref_var(&b, input_img)->dest.ssa;
 	nir_ssa_def *output_img_deref = &nir_build_deref_var(&b, output_img)->dest.ssa;
+
+	nir_ssa_def *tex_coord = nir_vec3(&b, nir_channel(&b, global_id, 0),
+					      nir_channel(&b, global_id, 1),
+					      layer_id);
 
 	nir_tex_instr *tex_instr[8];
 	for (uint32_t i = 0; i < samples; i++) {
@@ -72,23 +77,28 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
 		tex->sampler_dim = GLSL_SAMPLER_DIM_MS;
 		tex->op = nir_texop_txf_ms;
 		tex->src[0].src_type = nir_tex_src_coord;
-		tex->src[0].src = nir_src_for_ssa(nir_channels(&b, global_id, 0x3));
+		tex->src[0].src = nir_src_for_ssa(tex_coord);
 		tex->src[1].src_type = nir_tex_src_ms_index;
 		tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, i));
 		tex->src[2].src_type = nir_tex_src_texture_deref;
 		tex->src[2].src = nir_src_for_ssa(input_img_deref);
 		tex->dest_type = nir_type_float;
-		tex->is_array = false;
-		tex->coord_components = 2;
+		tex->is_array = true;
+		tex->coord_components = 3;
 
 		nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");
 		nir_builder_instr_insert(&b, &tex->instr);
 	}
 
+	nir_ssa_def *img_coord = nir_vec4(&b, nir_channel(&b, tex_coord, 0),
+					  nir_channel(&b, tex_coord, 1),
+					  nir_channel(&b, tex_coord, 2),
+					  nir_imm_int(&b, 0));
+
 	for (uint32_t i = 0; i < samples; i++) {
 		nir_ssa_def *outval = &tex_instr[i]->dest.ssa;
 
-		nir_image_deref_store(&b, output_img_deref, global_id, nir_imm_int(&b, i),
+		nir_image_deref_store(&b, output_img_deref, img_coord, nir_imm_int(&b, i),
 		                      outval, nir_imm_int(&b, 0));
 	}
 
@@ -104,6 +114,8 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_meta_saved_state saved_state;
 	const uint32_t samples = image->info.samples;
 	const uint32_t samples_log2 = ffs(samples) - 1;
+	unsigned layer_count = radv_get_layerCount(image, subresourceRange);
+	struct radv_image_view iview;
 
 	radv_meta_save(&saved_state, cmd_buffer,
 		       RADV_META_SAVE_COMPUTE_PIPELINE |
@@ -116,48 +128,44 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 
 	cmd_buffer->state.flush_bits |= radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, image);
 
-	for (unsigned l = 0; l < radv_get_layerCount(image, subresourceRange); l++) {
-		struct radv_image_view iview;
+	radv_image_view_init(&iview, device,
+			     &(VkImageViewCreateInfo) {
+				     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+				     .image = radv_image_to_handle(image),
+				     .viewType = radv_meta_get_view_type(image),
+				     .format = vk_format_no_srgb(image->vk_format),
+				     .subresourceRange = {
+					     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+					     .baseMipLevel = 0,
+					     .levelCount = 1,
+					     .baseArrayLayer = subresourceRange->baseArrayLayer,
+					     .layerCount = layer_count,
+				     },
+			     }, NULL);
 
-		radv_image_view_init(&iview, device,
-				     &(VkImageViewCreateInfo) {
-					     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-					     .image = radv_image_to_handle(image),
-					     .viewType = radv_meta_get_view_type(image),
-					     .format = vk_format_no_srgb(image->vk_format),
-					     .subresourceRange = {
-						     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-						     .baseMipLevel = 0,
-						     .levelCount = 1,
-						     .baseArrayLayer = subresourceRange->baseArrayLayer + l,
-						     .layerCount = 1,
-					     },
-				     }, NULL);
-
-		radv_meta_push_descriptor_set(cmd_buffer,
-					      VK_PIPELINE_BIND_POINT_COMPUTE,
-					      cmd_buffer->device->meta_state.fmask_expand.p_layout,
-					      0, /* set */
-					      1, /* descriptorWriteCount */
-					      (VkWriteDescriptorSet[]) {
-					      {
-						      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-						      .dstBinding = 0,
-						      .dstArrayElement = 0,
-						      .descriptorCount = 1,
-						      .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-						      .pImageInfo = (VkDescriptorImageInfo[]) {
-							      {
-								      .sampler = VK_NULL_HANDLE,
-								      .imageView = radv_image_view_to_handle(&iview),
-								      .imageLayout = VK_IMAGE_LAYOUT_GENERAL
-							      },
-						      }
+	radv_meta_push_descriptor_set(cmd_buffer,
+				      VK_PIPELINE_BIND_POINT_COMPUTE,
+				      cmd_buffer->device->meta_state.fmask_expand.p_layout,
+				      0, /* set */
+				      1, /* descriptorWriteCount */
+				      (VkWriteDescriptorSet[]) {
+				      {
+					      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+					      .dstBinding = 0,
+					      .dstArrayElement = 0,
+					      .descriptorCount = 1,
+					      .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+					      .pImageInfo = (VkDescriptorImageInfo[]) {
+						      {
+							      .sampler = VK_NULL_HANDLE,
+							      .imageView = radv_image_view_to_handle(&iview),
+							      .imageLayout = VK_IMAGE_LAYOUT_GENERAL
+						      },
 					      }
-					      });
+				      }
+				      });
 
-		radv_unaligned_dispatch(cmd_buffer, image->info.width, image->info.height, 1);
-	}
+	radv_unaligned_dispatch(cmd_buffer, image->info.width, image->info.height, layer_count);
 
 	radv_meta_restore(&saved_state, cmd_buffer);
 
