@@ -28,6 +28,8 @@ Here's a list of those requirements:
 * ``VkPhysicalDeviceFeatures``:
 
   * ``logicOp``
+  * ``depthClamp``
+  * ``depthBiasClamp``
   * ``fillModeNonSolid``
   * ``wideLines``
   * ``largePoints``
