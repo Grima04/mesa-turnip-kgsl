@@ -37,8 +37,8 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
 				  GLSL_TYPE_FLOAT);
 
 	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "meta_fmask_expand_cs-%d", samples);
-	b.shader->info.cs.local_size[0] = 16;
-	b.shader->info.cs.local_size[1] = 16;
+	b.shader->info.cs.local_size[0] = 8;
+	b.shader->info.cs.local_size[1] = 8;
 	b.shader->info.cs.local_size[2] = 1;
 
 	nir_variable *input_img = nir_variable_create(b.shader, nir_var_uniform,
