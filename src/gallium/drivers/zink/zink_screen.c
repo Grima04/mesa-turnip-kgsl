@@ -111,8 +111,10 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
    case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
-   case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
       return 1;
+
+   case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
+      return screen->info.feats.features.robustBufferAccess;
 
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
