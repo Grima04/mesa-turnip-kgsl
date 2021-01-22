@@ -989,26 +989,54 @@ void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs,
 		if (!is_gfx8_mec)
 			radeon_emit(cs, 0); /* unused */
 	} else {
-		if (chip_class == GFX7 ||
-		    chip_class == GFX8) {
-			/* Two EOP events are required to make all engines go idle
-			 * (and optional cache flushes executed) before the timestamp
-			 * is written.
-			 */
+		/* On GFX6, EOS events are always emitted with EVENT_WRITE_EOS.
+		 * On GFX7+, EOS events are emitted with EVENT_WRITE_EOS on
+		 * the graphics queue, and with RELEASE_MEM on the compute
+		 * queue.
+		 */
+		if (event == V_028B9C_CS_DONE || event == V_028B9C_PS_DONE) {
+			assert(event_flags == 0 &&
+			       dst_sel == EOP_DST_SEL_MEM &&
+			       data_sel == EOP_DATA_SEL_VALUE_32BIT);
+
+			if (is_mec) {
+				radeon_emit(cs, PKT3(PKT3_RELEASE_MEM, 5, false));
+				radeon_emit(cs, op);
+				radeon_emit(cs, sel);
+				radeon_emit(cs, va);            /* address lo */
+				radeon_emit(cs, va >> 32);      /* address hi */
+				radeon_emit(cs, new_fence);     /* immediate data lo */
+				radeon_emit(cs, 0);		/* immediate data hi */
+			} else {
+				radeon_emit(cs, PKT3(PKT3_EVENT_WRITE_EOS, 3, false));
+				radeon_emit(cs, op);
+				radeon_emit(cs, va);
+				radeon_emit(cs, ((va >> 32) & 0xffff) |
+						EOS_DATA_SEL(EOS_DATA_SEL_VALUE_32BIT));
+				radeon_emit(cs, new_fence);
+			}
+		} else {
+			if (chip_class == GFX7 ||
+			    chip_class == GFX8) {
+				/* Two EOP events are required to make all
+				 * engines go idle (and optional cache flushes
+				 * executed) before the timestamp is written.
+				 */
+				radeon_emit(cs, PKT3(PKT3_EVENT_WRITE_EOP, 4, false));
+				radeon_emit(cs, op);
+				radeon_emit(cs, va);
+				radeon_emit(cs, ((va >> 32) & 0xffff) | sel);
+				radeon_emit(cs, 0); /* immediate data */
+				radeon_emit(cs, 0); /* unused */
+			}
+
 			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE_EOP, 4, false));
 			radeon_emit(cs, op);
 			radeon_emit(cs, va);
 			radeon_emit(cs, ((va >> 32) & 0xffff) | sel);
-			radeon_emit(cs, 0); /* immediate data */
+			radeon_emit(cs, new_fence); /* immediate data */
 			radeon_emit(cs, 0); /* unused */
 		}
-
-		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE_EOP, 4, false));
-		radeon_emit(cs, op);
-		radeon_emit(cs, va);
-		radeon_emit(cs, ((va >> 32) & 0xffff) | sel);
-		radeon_emit(cs, new_fence); /* immediate data */
-		radeon_emit(cs, 0); /* unused */
 	}
 }
 
