@@ -62,6 +62,7 @@ struct pb_slab_entry
    struct list_head head;
    struct pb_slab *slab; /* the slab that contains this buffer */
    unsigned group_index; /* index into pb_slabs::groups */
+   unsigned entry_size;
 };
 
 /* Descriptor of a slab from which many entries are carved out.

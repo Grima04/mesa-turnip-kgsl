@@ -223,6 +223,10 @@ static uint64_t amdgpu_query_value(struct radeon_winsys *rws,
       return ws->mapped_vram;
    case RADEON_MAPPED_GTT:
       return ws->mapped_gtt;
+   case RADEON_SLAB_WASTED_VRAM:
+      return ws->slab_wasted_vram;
+   case RADEON_SLAB_WASTED_GTT:
+      return ws->slab_wasted_gtt;
    case RADEON_BUFFER_WAIT_TIME_NS:
       return ws->buffer_wait_time;
    case RADEON_NUM_MAPPED_BUFFERS:

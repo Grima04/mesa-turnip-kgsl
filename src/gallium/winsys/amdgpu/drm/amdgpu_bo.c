@@ -647,6 +647,15 @@ static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size,
    return NULL;
 }
 
+static unsigned get_slab_wasted_size(struct amdgpu_winsys_bo *bo)
+{
+   assert(bo->base.size <= bo->u.slab.entry.entry_size);
+   assert(bo->base.size < bo->base.alignment ||
+          bo->base.size < 1 << bo->ws->bo_slabs[0].min_order ||
+          bo->base.size > bo->u.slab.entry.entry_size / 2);
+   return bo->u.slab.entry.entry_size - bo->base.size;
+}
+
 static void amdgpu_bo_slab_destroy(struct pb_buffer *_buf)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
@@ -661,6 +670,11 @@ static void amdgpu_bo_slab_destroy(struct pb_buffer *_buf)
       pb_slab_free(get_slabs(bo->ws,
                              bo->base.size,
                              0), &bo->u.slab.entry);
+
+   if (bo->base.placement & RADEON_DOMAIN_VRAM)
+      bo->ws->slab_wasted_vram -= get_slab_wasted_size(bo);
+   else
+      bo->ws->slab_wasted_gtt -= get_slab_wasted_size(bo);
 }
 
 static const struct pb_vtbl amdgpu_winsys_bo_slab_vtbl = {
@@ -737,6 +751,7 @@ static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
       bo->unique_id = base_id + i;
       bo->u.slab.entry.slab = &slab->base;
       bo->u.slab.entry.group_index = group_index;
+      bo->u.slab.entry.entry_size = entry_size;
 
       if (slab->buffer->bo) {
          /* The slab is not suballocated. */
@@ -1331,8 +1346,13 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
          return NULL;
 
       bo = container_of(entry, struct amdgpu_winsys_bo, u.slab.entry);
-
       pipe_reference_init(&bo->base.reference, 1);
+      bo->base.size = size;
+
+      if (domain & RADEON_DOMAIN_VRAM)
+         ws->slab_wasted_vram += get_slab_wasted_size(bo);
+      else
+         ws->slab_wasted_gtt += get_slab_wasted_size(bo);
 
       return &bo->base;
    }

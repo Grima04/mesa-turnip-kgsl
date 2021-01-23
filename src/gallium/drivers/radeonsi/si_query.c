@@ -77,6 +77,10 @@ static enum radeon_value_id winsys_id_from_type(unsigned type)
       return RADEON_MAPPED_VRAM;
    case SI_QUERY_MAPPED_GTT:
       return RADEON_MAPPED_GTT;
+   case SI_QUERY_SLAB_WASTED_VRAM:
+      return RADEON_SLAB_WASTED_VRAM;
+   case SI_QUERY_SLAB_WASTED_GTT:
+      return RADEON_SLAB_WASTED_GTT;
    case SI_QUERY_BUFFER_WAIT_TIME:
       return RADEON_BUFFER_WAIT_TIME_NS;
    case SI_QUERY_NUM_MAPPED_BUFFERS:
@@ -173,6 +177,8 @@ static bool si_query_sw_begin(struct si_context *sctx, struct si_query *squery)
    case SI_QUERY_REQUESTED_GTT:
    case SI_QUERY_MAPPED_VRAM:
    case SI_QUERY_MAPPED_GTT:
+   case SI_QUERY_SLAB_WASTED_VRAM:
+   case SI_QUERY_SLAB_WASTED_GTT:
    case SI_QUERY_VRAM_USAGE:
    case SI_QUERY_VRAM_VIS_USAGE:
    case SI_QUERY_GTT_USAGE:
@@ -339,6 +345,8 @@ static bool si_query_sw_end(struct si_context *sctx, struct si_query *squery)
    case SI_QUERY_REQUESTED_GTT:
    case SI_QUERY_MAPPED_VRAM:
    case SI_QUERY_MAPPED_GTT:
+   case SI_QUERY_SLAB_WASTED_VRAM:
+   case SI_QUERY_SLAB_WASTED_GTT:
    case SI_QUERY_VRAM_USAGE:
    case SI_QUERY_VRAM_VIS_USAGE:
    case SI_QUERY_GTT_USAGE:
@@ -1691,6 +1699,8 @@ static struct pipe_driver_query_info si_driver_query_list[] = {
    X("requested-GTT", REQUESTED_GTT, BYTES, AVERAGE),
    X("mapped-VRAM", MAPPED_VRAM, BYTES, AVERAGE),
    X("mapped-GTT", MAPPED_GTT, BYTES, AVERAGE),
+   X("slab-wasted-VRAM", SLAB_WASTED_VRAM, BYTES, AVERAGE),
+   X("slab-wasted-GTT", SLAB_WASTED_GTT, BYTES, AVERAGE),
    X("buffer-wait-time", BUFFER_WAIT_TIME, MICROSECONDS, CUMULATIVE),
    X("num-mapped-buffers", NUM_MAPPED_BUFFERS, UINT64, AVERAGE),
    X("num-GFX-IBs", NUM_GFX_IBS, UINT64, AVERAGE),
@@ -1804,11 +1814,13 @@ static int si_get_driver_query_info(struct pipe_screen *screen, unsigned index,
    case SI_QUERY_REQUESTED_VRAM:
    case SI_QUERY_VRAM_USAGE:
    case SI_QUERY_MAPPED_VRAM:
+   case SI_QUERY_SLAB_WASTED_VRAM:
       info->max_value.u64 = sscreen->info.vram_size;
       break;
    case SI_QUERY_REQUESTED_GTT:
    case SI_QUERY_GTT_USAGE:
    case SI_QUERY_MAPPED_GTT:
+   case SI_QUERY_SLAB_WASTED_GTT:
       info->max_value.u64 = sscreen->info.gart_size;
       break;
    case SI_QUERY_GPU_TEMPERATURE:
