@@ -385,7 +385,6 @@ tu_physical_device_get_format_properties(
       optimal |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-                 VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT |
                  VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT |
                  VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
@@ -401,8 +400,12 @@ tu_physical_device_get_format_properties(
       if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED)
          optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT;
 
-      if (physical_device->vk.supported_extensions.EXT_filter_cubic)
-         optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT;
+      if (!vk_format_is_int(format)) {
+         optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+
+         if (physical_device->vk.supported_extensions.EXT_filter_cubic)
+            optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT;
+      }
    }
 
    if (native_fmt.supported & FMT_COLOR) {
