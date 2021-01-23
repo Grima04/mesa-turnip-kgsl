@@ -42,6 +42,8 @@ struct vk_object_base {
    VK_LOADER_DATA _loader_data;
    VkObjectType type;
 
+   struct vk_device *device;
+
    /* For VK_EXT_private_data */
    struct util_sparse_array private_data;
 };

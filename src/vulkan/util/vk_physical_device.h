@@ -40,6 +40,9 @@ struct vk_physical_device {
    struct vk_physical_device_dispatch_table dispatch_table;
 };
 
+VK_DEFINE_HANDLE_CASTS(vk_physical_device, base, VkPhysicalDevice,
+                       VK_OBJECT_TYPE_PHYSICAL_DEVICE)
+
 VkResult MUST_CHECK
 vk_physical_device_init(struct vk_physical_device *physical_device,
                         struct vk_instance *instance,

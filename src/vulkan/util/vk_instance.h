@@ -49,6 +49,9 @@ struct vk_instance {
    struct vk_instance_dispatch_table dispatch_table;
 };
 
+VK_DEFINE_HANDLE_CASTS(vk_instance, base, VkInstance,
+                       VK_OBJECT_TYPE_INSTANCE)
+
 VkResult MUST_CHECK
 vk_instance_init(struct vk_instance *instance,
                  const struct vk_instance_extension_table *supported_extensions,

@@ -29,12 +29,13 @@
 #include "util/ralloc.h"
 
 void
-vk_object_base_init(UNUSED struct vk_device *device,
+vk_object_base_init(struct vk_device *device,
                     struct vk_object_base *base,
                     UNUSED VkObjectType obj_type)
 {
    base->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    base->type = obj_type;
+   base->device = device;
    util_sparse_array_init(&base->private_data, sizeof(uint64_t), 8);
 }
 

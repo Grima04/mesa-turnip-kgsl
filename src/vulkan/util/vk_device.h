@@ -49,6 +49,9 @@ struct vk_device {
 #endif
 };
 
+VK_DEFINE_HANDLE_CASTS(vk_device, base, VkDevice,
+                       VK_OBJECT_TYPE_DEVICE)
+
 VkResult MUST_CHECK
 vk_device_init(struct vk_device *device,
                struct vk_physical_device *physical_device,
