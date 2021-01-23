@@ -1842,17 +1842,10 @@ tu6_rb_mrt_blend_control(const VkPipelineColorBlendAttachmentState *att,
 static uint32_t
 tu6_rb_mrt_control(const VkPipelineColorBlendAttachmentState *att,
                    uint32_t rb_mrt_control_rop,
-                   bool is_int,
                    bool has_alpha)
 {
    uint32_t rb_mrt_control =
       A6XX_RB_MRT_CONTROL_COMPONENT_ENABLE(att->colorWriteMask);
-
-   /* ignore blending and logic op for integer attachments */
-   if (is_int) {
-      rb_mrt_control |= A6XX_RB_MRT_CONTROL_ROP_CODE(ROP_COPY);
-      return rb_mrt_control;
-   }
 
    rb_mrt_control |= rb_mrt_control_rop;
 
@@ -1891,11 +1884,10 @@ tu6_emit_rb_mrt_controls(struct tu_cs *cs,
       uint32_t rb_mrt_control = 0;
       uint32_t rb_mrt_blend_control = 0;
       if (format != VK_FORMAT_UNDEFINED) {
-         const bool is_int = vk_format_is_int(format);
          const bool has_alpha = vk_format_has_alpha(format);
 
          rb_mrt_control =
-            tu6_rb_mrt_control(att, rb_mrt_control_rop, is_int, has_alpha);
+            tu6_rb_mrt_control(att, rb_mrt_control_rop, has_alpha);
          rb_mrt_blend_control = tu6_rb_mrt_blend_control(att, has_alpha);
 
          if (att->blendEnable || rop_reads_dst)
