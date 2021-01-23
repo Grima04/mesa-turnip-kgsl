@@ -21,14 +21,17 @@
 anv_extensions_py = files('anv_extensions.py')
 
 anv_entrypoints = custom_target(
-  'anv_entrypoints.[ch]',
-  input : ['anv_entrypoints_gen.py', vk_api_xml],
+  'anv_entrypoints',
+  input : [vk_entrypoints_gen, vk_api_xml],
   output : ['anv_entrypoints.h', 'anv_entrypoints.c'],
   command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@',
-    '--outdir', meson.current_build_dir(),
+    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
+    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv',
+    '--device-prefix', 'gen7', '--device-prefix', 'gen75',
+    '--device-prefix', 'gen8', '--device-prefix', 'gen9',
+    '--device-prefix', 'gen11', '--device-prefix', 'gen12',
+    '--device-prefix', 'gen125',
   ],
-  depend_files : anv_extensions_py,
 )
 
 anv_extensions_c = custom_target(

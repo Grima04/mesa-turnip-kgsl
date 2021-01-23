@@ -63,6 +63,8 @@
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
 #include "vk_device.h"
+#include "vk_instance.h"
+#include "vk_physical_device.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -1063,7 +1065,7 @@ struct anv_memory_heap {
 };
 
 struct anv_physical_device {
-    struct vk_object_base                       base;
+    struct vk_physical_device                   vk;
 
     /* Link in anv_instance::physical_devices */
     struct list_head                            link;
@@ -1135,8 +1137,6 @@ struct anv_physical_device {
 
     bool                                        always_flush_cache;
 
-    struct vk_device_extension_table            supported_extensions;
-
     uint32_t                                    eu_total;
     uint32_t                                    subslice_total;
 
@@ -1174,16 +1174,7 @@ struct anv_app_info {
 };
 
 struct anv_instance {
-    struct vk_object_base                       base;
-
-    VkAllocationCallbacks                       alloc;
-
-    struct anv_app_info                         app_info;
-
-    struct vk_instance_extension_table          enabled_extensions;
-    struct anv_instance_dispatch_table          dispatch;
-    struct anv_physical_device_dispatch_table   physical_device_dispatch;
-    struct anv_device_dispatch_table            device_dispatch;
+    struct vk_instance                          vk;
 
     bool                                        physical_devices_enumerated;
     struct list_head                            physical_devices;
@@ -1381,8 +1372,6 @@ struct anv_device {
     bool                                        can_chain_batches;
     bool                                        robust_buffer_access;
     bool                                        has_thread_submit;
-    struct vk_device_extension_table            enabled_extensions;
-    struct anv_device_dispatch_table            dispatch;
 
     pthread_mutex_t                             vma_mutex;
     struct util_vma_heap                        vma_lo;
@@ -4515,10 +4504,8 @@ anv_device_entrypoint_is_enabled(int index, uint32_t core_version,
                                  const struct vk_instance_extension_table *instance,
                                  const struct vk_device_extension_table *device);
 
-void *anv_resolve_device_entrypoint(const struct gen_device_info *devinfo,
-                                    uint32_t index);
-void *anv_lookup_entrypoint(const struct gen_device_info *devinfo,
-                            const char *name);
+const struct vk_device_dispatch_table *
+anv_get_device_dispatch_table(const struct gen_device_info *devinfo);
 
 static inline uint32_t
 anv_get_subpass_id(const struct anv_cmd_state * const cmd_state)
@@ -4556,8 +4543,8 @@ void anv_perf_write_pass_results(struct gen_perf_config *perf,
 VK_DEFINE_HANDLE_CASTS(anv_cmd_buffer, base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
 VK_DEFINE_HANDLE_CASTS(anv_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
-VK_DEFINE_HANDLE_CASTS(anv_instance, base, VkInstance, VK_OBJECT_TYPE_INSTANCE)
-VK_DEFINE_HANDLE_CASTS(anv_physical_device, base, VkPhysicalDevice,
+VK_DEFINE_HANDLE_CASTS(anv_instance, vk.base, VkInstance, VK_OBJECT_TYPE_INSTANCE)
+VK_DEFINE_HANDLE_CASTS(anv_physical_device, vk.base, VkPhysicalDevice,
                        VK_OBJECT_TYPE_PHYSICAL_DEVICE)
 VK_DEFINE_HANDLE_CASTS(anv_queue, base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 

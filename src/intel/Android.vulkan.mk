@@ -23,7 +23,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 include $(LOCAL_PATH)/Makefile.sources
 
-ANV_ENTRYPOINTS_GEN_SCRIPT := $(LOCAL_PATH)/vulkan/anv_entrypoints_gen.py
+VK_ENTRYPOINTS_GEN_SCRIPT := $(MESA_TOP)/src/vulkan/util/vk_entrypoints_gen.py
 ANV_EXTENSIONS_GEN_SCRIPT := $(LOCAL_PATH)/vulkan/anv_extensions_gen.py
 ANV_EXTENSIONS_SCRIPT := $(LOCAL_PATH)/vulkan/anv_extensions.py
 VULKAN_API_XML := $(MESA_TOP)/src/vulkan/registry/vk.xml
@@ -237,20 +237,22 @@ LOCAL_STATIC_LIBRARIES := \
 	libmesa_vulkan_util \
 	libmesa_util
 
-# The rule generates both C and H files, but due to some strange
-# reason generating the files once leads to link-time issues.
-# Work around create them here as well - we're safe from race
-# conditions since they are stored in another location.
-
 LOCAL_GENERATED_SOURCES := $(addprefix $(intermediates)/,$(VULKAN_GENERATED_FILES))
 
-$(intermediates)/vulkan/anv_entrypoints.c: $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
-					   $(ANV_EXTENSIONS_SCRIPT) \
+ANV_VK_ENTRYPOINTS_GEN_ARGS= \
+	--proto --weak --prefix anv \
+	--device-prefix gen7 --device-prefix gen75 \
+	--device-prefix gen8 --device-prefix gen9 \
+	--device-prefix gen11 --device-prefix gen12 \
+	--device-prefix gen125
+
+$(intermediates)/vulkan/anv_entrypoints.c: $(VK_ENTRYPOINTS_GEN_SCRIPT) \
 					   $(VULKAN_API_XML)
 	@mkdir -p $(dir $@)
-	$(MESA_PYTHON2) $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
+	$(MESA_PYTHON2) $(VK_ENTRYPOINTS_GEN_SCRIPT) \
 		--xml $(VULKAN_API_XML) \
-		--outdir $(dir $@)
+		$(ANV_VK_ENTRYPOINTS_GEN_ARGS) \
+		--out-c $@ --out-h $(dir $@)/anv_entrypoints.h
 
 $(intermediates)/vulkan/anv_entrypoints.h: $(intermediates)/vulkan/anv_entrypoints.c
 

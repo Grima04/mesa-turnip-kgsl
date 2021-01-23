@@ -746,7 +746,7 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
        * default ones will be used either at device initialization time or
        * through 3DSTATE_MULTISAMPLE on Gen7/7.5 by passing NULL locations.
        */
-      if (pipeline->base.device->enabled_extensions.EXT_sample_locations) {
+      if (pipeline->base.device->vk.enabled_extensions.EXT_sample_locations) {
 #if GEN_GEN >= 8
          genX(emit_sample_pattern)(&pipeline->base.batch,
                                    pipeline->dynamic_state.sample_locations.samples,

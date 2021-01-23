@@ -1277,7 +1277,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
       goto fail;
 
    bool ahw_supported =
-      physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer;
+      physical_device->vk.supported_extensions.ANDROID_external_memory_android_hardware_buffer;
 
    if (ahw_supported && android_usage) {
       android_usage->androidHardwareBufferUsage =
@@ -1494,7 +1494,7 @@ void anv_GetPhysicalDeviceExternalBufferProperties(
       pExternalBufferProperties->externalMemoryProperties = userptr_props;
       return;
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
-      if (physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer) {
+      if (physical_device->vk.supported_extensions.ANDROID_external_memory_android_hardware_buffer) {
          pExternalBufferProperties->externalMemoryProperties = android_buffer_props;
          return;
       }
