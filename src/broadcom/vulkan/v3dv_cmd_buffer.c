@@ -3005,7 +3005,7 @@ job_update_ez_state(struct v3dv_job *job,
     * packet, so ez_state must also be VC5_EZ_DISABLED;
     */
    if (job->first_ez_state == VC5_EZ_DISABLED) {
-      assert(job->ez_state = VC5_EZ_DISABLED);
+      assert(job->ez_state == VC5_EZ_DISABLED);
       return;
    }
 
