@@ -206,7 +206,7 @@ fail:
    return NULL;
 }
 
-static bool
+static inline bool
 find_unused_state(struct hash_entry *entry)
 {
    struct zink_fence *fence = entry->data;
@@ -225,10 +225,13 @@ get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
    if (util_dynarray_num_elements(&ctx->free_batch_states, struct zink_batch_state*))
       bs = util_dynarray_pop(&ctx->free_batch_states, struct zink_batch_state*);
    if (!bs) {
-      struct hash_entry *he = _mesa_hash_table_random_entry(&ctx->batch_states, find_unused_state);
-      if (he) { //there may not be any entries available
-         bs = he->data;
-         _mesa_hash_table_remove(&ctx->batch_states, he);
+      hash_table_foreach(&ctx->batch_states, he) {
+         struct zink_fence *fence = he->data;
+         if (zink_screen_check_last_finished(zink_screen(ctx->base.screen), fence->batch_id) || find_unused_state(he)) {
+            bs = he->data;
+            _mesa_hash_table_remove(&ctx->batch_states, he);
+            break;
+         }
       }
    }
    simple_mtx_unlock(&ctx->batch_mtx);
