@@ -38,10 +38,10 @@ files_vulkan_util = files(
 vk_dispatch_table = custom_target(
   'vk_dispatch_table',
   input : ['vk_dispatch_table_gen.py', vk_api_xml],
-  output : ['vk_dispatch_table.h'],
+  output : ['vk_dispatch_table.c', 'vk_dispatch_table.h'],
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@',
-    '--out-h', '@OUTPUT0@'
+    '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@'
   ],
 )
 
@@ -77,7 +77,7 @@ libvulkan_util = static_library(
 )
 
 idep_vulkan_util_headers = declare_dependency(
-  sources : [vk_dispatch_table[0], vk_enum_to_str[1], vk_extensions[1]],
+  sources : [vk_dispatch_table[1], vk_enum_to_str[1], vk_extensions[1]],
   include_directories : include_directories('.')
 )
 

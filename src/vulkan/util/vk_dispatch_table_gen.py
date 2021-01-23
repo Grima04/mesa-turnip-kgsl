@@ -95,11 +95,69 @@ ${dispatch_table('instance', instance_entrypoints)}
 ${dispatch_table('physical_device', physical_device_entrypoints)}
 ${dispatch_table('device', device_entrypoints)}
 
+void
+vk_instance_dispatch_table_load(struct vk_instance_dispatch_table *table,
+                                PFN_vkGetInstanceProcAddr gpa,
+                                VkInstance instance);
+void
+vk_physical_device_dispatch_table_load(struct vk_physical_device_dispatch_table *table,
+                                       PFN_vkGetInstanceProcAddr gpa,
+                                       VkInstance instance);
+void
+vk_device_dispatch_table_load(struct vk_device_dispatch_table *table,
+                              PFN_vkGetDeviceProcAddr gpa,
+                              VkDevice device);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* VK_DISPATCH_TABLE_H */
+""", output_encoding='utf-8')
+
+TEMPLATE_C = Template(COPYRIGHT + """\
+/* This file generated from ${filename}, don't edit directly. */
+
+#include "vk_dispatch_table.h"
+
+<%def name="load_dispatch_table(type, VkType, ProcAddr, entrypoints)">
+void
+vk_${type}_dispatch_table_load(struct vk_${type}_dispatch_table *table,
+                               PFN_vk${ProcAddr} gpa,
+                               ${VkType} obj)
+{
+% if type != 'physical_device':
+    table->${ProcAddr} = gpa;
+% endif
+% for e in entrypoints:
+  % if e.alias or e.name == '${ProcAddr}':
+    <% continue %>
+  % endif
+  % if e.guard is not None:
+#ifdef ${e.guard}
+  % endif
+    table->${e.name} = (PFN_vk${e.name}) gpa(obj, "vk${e.name}");
+  % for a in e.aliases:
+    if (table->${e.name} == NULL) {
+        table->${e.name} = (PFN_vk${e.name}) gpa(obj, "vk${a.name}");
+    }
+  % endfor
+  % if e.guard is not None:
+#endif
+  % endif
+% endfor
+}
+</%def>
+
+${load_dispatch_table('instance', 'VkInstance', 'GetInstanceProcAddr',
+                      instance_entrypoints)}
+
+${load_dispatch_table('physical_device', 'VkInstance', 'GetInstanceProcAddr',
+                      physical_device_entrypoints)}
+
+${load_dispatch_table('device', 'VkDevice', 'GetDeviceProcAddr',
+                      device_entrypoints)}
+
 """, output_encoding='utf-8')
 
 EntrypointParam = namedtuple('EntrypointParam', 'type name decl')
@@ -237,6 +295,7 @@ def get_entrypoints_defines(doc):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--out-c', help='Output C file.')
     parser.add_argument('--out-h', help='Output H file.')
     parser.add_argument('--xml',
                         help='Vulkan API XML file.',
@@ -280,6 +339,11 @@ def main():
         if args.out_h:
             with open(args.out_h, 'wb') as f:
                 f.write(TEMPLATE_H.render(instance_entrypoints=instance_entrypoints,
+                                          physical_device_entrypoints=physical_device_entrypoints,
+                                          device_entrypoints=device_entrypoints,
+                                          filename=os.path.basename(__file__)))
+            with open(args.out_c, 'wb') as f:
+                f.write(TEMPLATE_C.render(instance_entrypoints=instance_entrypoints,
                                           physical_device_entrypoints=physical_device_entrypoints,
                                           device_entrypoints=device_entrypoints,
                                           filename=os.path.basename(__file__)))

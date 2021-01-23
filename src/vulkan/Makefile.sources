@@ -40,6 +40,7 @@ VULKAN_UTIL_FILES := \
 VULKAN_UTIL_GENERATED_FILES := \
 	util/vk_enum_to_str.c \
 	util/vk_enum_to_str.h \
+	util/vk_dispatch_table.c \
 	util/vk_dispatch_table.h \
 	util/vk_extensions.c \
 	util/vk_extensions.h
