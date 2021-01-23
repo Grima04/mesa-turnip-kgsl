@@ -62,6 +62,19 @@ vk_instance_init(struct vk_instance *instance,
 void
 vk_instance_finish(struct vk_instance *instance);
 
+PFN_vkVoidFunction
+vk_instance_get_proc_addr(const struct vk_instance *instance,
+                          const struct vk_instance_entrypoint_table *entrypoints,
+                          const char *name);
+
+PFN_vkVoidFunction
+vk_instance_get_proc_addr_unchecked(const struct vk_instance *instance,
+                                    const char *name);
+
+PFN_vkVoidFunction
+vk_instance_get_physical_device_proc_addr(const struct vk_instance *instance,
+                                          const char *name);
+
 #ifdef __cplusplus
 }
 #endif

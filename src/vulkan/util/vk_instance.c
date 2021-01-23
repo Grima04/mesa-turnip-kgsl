@@ -88,3 +88,99 @@ vk_instance_finish(struct vk_instance *instance)
    vk_free(&instance->alloc, (char *)instance->app_info.engine_name);
    vk_object_base_finish(&instance->base);
 }
+
+PFN_vkVoidFunction
+vk_instance_get_proc_addr(const struct vk_instance *instance,
+                          const struct vk_instance_entrypoint_table *entrypoints,
+                          const char *name)
+{
+   PFN_vkVoidFunction func;
+
+   /* The Vulkan 1.0 spec for vkGetInstanceProcAddr has a table of exactly
+    * when we have to return valid function pointers, NULL, or it's left
+    * undefined.  See the table for exact details.
+    */
+   if (name == NULL)
+      return NULL;
+
+#define LOOKUP_VK_ENTRYPOINT(entrypoint) \
+   if (strcmp(name, "vk" #entrypoint) == 0) \
+      return (PFN_vkVoidFunction)entrypoints->entrypoint
+
+   LOOKUP_VK_ENTRYPOINT(EnumerateInstanceExtensionProperties);
+   LOOKUP_VK_ENTRYPOINT(EnumerateInstanceLayerProperties);
+   LOOKUP_VK_ENTRYPOINT(EnumerateInstanceVersion);
+   LOOKUP_VK_ENTRYPOINT(CreateInstance);
+
+   /* GetInstanceProcAddr() can also be called with a NULL instance.
+    * See https://gitlab.khronos.org/vulkan/vulkan/issues/2057
+    */
+   LOOKUP_VK_ENTRYPOINT(GetInstanceProcAddr);
+
+#undef LOOKUP_VK_ENTRYPOINT
+
+   if (instance == NULL)
+      return NULL;
+
+   func = vk_instance_dispatch_table_get_if_supported(&instance->dispatch_table,
+                                                      name,
+                                                      instance->app_info.api_version,
+                                                      &instance->enabled_extensions);
+   if (func != NULL)
+      return func;
+
+   func = vk_physical_device_dispatch_table_get_if_supported(&vk_physical_device_trampolines,
+                                                             name,
+                                                             instance->app_info.api_version,
+                                                             &instance->enabled_extensions);
+   if (func != NULL)
+      return func;
+
+   func = vk_device_dispatch_table_get_if_supported(&vk_device_trampolines,
+                                                    name,
+                                                    instance->app_info.api_version,
+                                                    &instance->enabled_extensions,
+                                                    NULL);
+   if (func != NULL)
+      return func;
+
+   return NULL;
+}
+
+PFN_vkVoidFunction
+vk_instance_get_proc_addr_unchecked(const struct vk_instance *instance,
+                                    const char *name)
+{
+   PFN_vkVoidFunction func;
+
+   if (instance == NULL || name == NULL)
+      return NULL;
+
+   func = vk_instance_dispatch_table_get(&instance->dispatch_table, name);
+   if (func != NULL)
+      return func;
+
+   func = vk_physical_device_dispatch_table_get(
+      &vk_physical_device_trampolines, name);
+   if (func != NULL)
+      return func;
+
+   func = vk_device_dispatch_table_get(&vk_device_trampolines, name);
+   if (func != NULL)
+      return func;
+
+   return NULL;
+}
+
+PFN_vkVoidFunction
+vk_instance_get_physical_device_proc_addr(const struct vk_instance *instance,
+                                          const char *name)
+{
+   if (instance == NULL || name == NULL)
+      return NULL;
+
+   return vk_physical_device_dispatch_table_get_if_supported(&vk_physical_device_trampolines,
+                                                             name,
+                                                             instance->app_info.api_version,
+                                                             &instance->enabled_extensions);
+}

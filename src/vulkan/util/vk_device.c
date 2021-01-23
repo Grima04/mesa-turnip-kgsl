@@ -23,6 +23,7 @@
 
 #include "vk_device.h"
 
+#include "vk_instance.h"
 #include "vk_physical_device.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
@@ -88,4 +89,19 @@ vk_device_finish(UNUSED struct vk_device *device)
 #endif /* ANDROID */
 
    vk_object_base_finish(&device->base);
+}
+
+PFN_vkVoidFunction
+vk_device_get_proc_addr(const struct vk_device *device,
+                        const char *name)
+{
+   if (device == NULL || name == NULL)
+      return NULL;
+
+   struct vk_instance *instance = device->physical->instance;
+   return vk_device_dispatch_table_get_if_supported(&device->dispatch_table,
+                                                    name,
+                                                    instance->app_info.api_version,
+                                                    &instance->enabled_extensions,
+                                                    &device->enabled_extensions);
 }

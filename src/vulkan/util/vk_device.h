@@ -63,6 +63,10 @@ vk_device_init(struct vk_device *device,
 void
 vk_device_finish(struct vk_device *device);
 
+PFN_vkVoidFunction
+vk_device_get_proc_addr(const struct vk_device *device,
+                        const char *name);
+
 #ifdef __cplusplus
 }
 #endif
