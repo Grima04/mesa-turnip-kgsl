@@ -49,4 +49,6 @@ if __name__ == '__main__':
         "perf/gen_perf.h"
     ]
 
-    gen_extensions('anv', args.xml_files, API_VERSIONS, MAX_API_VERSION, EXTENSIONS, args.out_c, args.out_h, includes)
+    gen_extensions('anv', args.xml_files, API_VERSIONS, MAX_API_VERSION,
+                   EXTENSIONS, args.out_c, args.out_h, includes,
+                   type_prefix='vk')

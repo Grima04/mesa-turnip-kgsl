@@ -382,7 +382,7 @@ const struct anv_physical_device_dispatch_table anv_physical_device_dispatch_tab
  */
 bool
 anv_instance_entrypoint_is_enabled(int index, uint32_t core_version,
-                                   const struct anv_instance_extension_table *instance)
+                                   const struct vk_instance_extension_table *instance)
 {
    switch (index) {
 % for e in instance_entrypoints:
@@ -416,7 +416,7 @@ anv_instance_entrypoint_is_enabled(int index, uint32_t core_version,
  */
 bool
 anv_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                          const struct anv_instance_extension_table *instance)
+                                          const struct vk_instance_extension_table *instance)
 {
    switch (index) {
 % for e in physical_device_entrypoints:
@@ -450,8 +450,8 @@ anv_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
  */
 bool
 anv_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                 const struct anv_instance_extension_table *instance,
-                                 const struct anv_device_extension_table *device)
+                                 const struct vk_instance_extension_table *instance,
+                                 const struct vk_device_extension_table *device)
 {
    switch (index) {
 % for e in device_entrypoints:

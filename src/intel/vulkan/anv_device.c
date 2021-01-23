@@ -668,10 +668,10 @@ VkResult anv_EnumerateInstanceExtensionProperties(
 {
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
 
-   for (int i = 0; i < ANV_INSTANCE_EXTENSION_COUNT; i++) {
+   for (int i = 0; i < VK_INSTANCE_EXTENSION_COUNT; i++) {
       if (anv_instance_extensions_supported.extensions[i]) {
          vk_outarray_append(&out, prop) {
-            *prop = anv_instance_extensions[i];
+            *prop = vk_instance_extensions[i];
          }
       }
    }
@@ -702,16 +702,16 @@ VkResult anv_CreateInstance(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
 
-   struct anv_instance_extension_table enabled_extensions = {};
+   struct vk_instance_extension_table enabled_extensions = {};
    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
       int idx;
-      for (idx = 0; idx < ANV_INSTANCE_EXTENSION_COUNT; idx++) {
+      for (idx = 0; idx < VK_INSTANCE_EXTENSION_COUNT; idx++) {
          if (strcmp(pCreateInfo->ppEnabledExtensionNames[i],
-                    anv_instance_extensions[idx].extensionName) == 0)
+                    vk_instance_extensions[idx].extensionName) == 0)
             break;
       }
 
-      if (idx >= ANV_INSTANCE_EXTENSION_COUNT)
+      if (idx >= VK_INSTANCE_EXTENSION_COUNT)
          return vk_error(VK_ERROR_EXTENSION_NOT_PRESENT);
 
       if (!anv_instance_extensions_supported.extensions[idx])
@@ -2609,10 +2609,10 @@ VkResult anv_EnumerateDeviceExtensionProperties(
    ANV_FROM_HANDLE(anv_physical_device, device, physicalDevice);
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
 
-   for (int i = 0; i < ANV_DEVICE_EXTENSION_COUNT; i++) {
+   for (int i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
       if (device->supported_extensions.extensions[i]) {
          vk_outarray_append(&out, prop) {
-            *prop = anv_device_extensions[i];
+            *prop = vk_device_extensions[i];
          }
       }
    }
@@ -2786,16 +2786,16 @@ VkResult anv_CreateDevice(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
 
-   struct anv_device_extension_table enabled_extensions = { };
+   struct vk_device_extension_table enabled_extensions = { };
    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
       int idx;
-      for (idx = 0; idx < ANV_DEVICE_EXTENSION_COUNT; idx++) {
+      for (idx = 0; idx < VK_DEVICE_EXTENSION_COUNT; idx++) {
          if (strcmp(pCreateInfo->ppEnabledExtensionNames[i],
-                    anv_device_extensions[idx].extensionName) == 0)
+                    vk_device_extensions[idx].extensionName) == 0)
             break;
       }
 
-      if (idx >= ANV_DEVICE_EXTENSION_COUNT)
+      if (idx >= VK_DEVICE_EXTENSION_COUNT)
          return vk_error(VK_ERROR_EXTENSION_NOT_PRESENT);
 
       if (!physical_device->supported_extensions.extensions[idx])
