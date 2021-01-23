@@ -168,7 +168,6 @@ create_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
    return layout;
 }
 
- 
 static void
 shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
                   struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
@@ -178,6 +177,19 @@ shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
 
    vs_key->shader_id = zs->shader_id;
    vs_key->clip_halfz = ctx->rast_state->base.clip_halfz;
+   switch (zs->nir->info.stage) {
+   case MESA_SHADER_VERTEX:
+      vs_key->last_vertex_stage = !shaders[PIPE_SHADER_TESS_EVAL] && !shaders[PIPE_SHADER_GEOMETRY];
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      vs_key->last_vertex_stage = !shaders[PIPE_SHADER_GEOMETRY];
+      break;
+   case MESA_SHADER_GEOMETRY:
+      vs_key->last_vertex_stage = true;
+      break;
+   default:
+      unreachable("impossible case");
+   }
 }
 
 static void
@@ -332,8 +344,6 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
       enum pipe_shader_type type = pipe_shader_type_from_mesa(i);
       if (dirty[i]) {
          struct zink_shader_module *zm;
-         dirty[i]->has_geometry_shader = dirty[MESA_SHADER_GEOMETRY] || stages[PIPE_SHADER_GEOMETRY];
-         dirty[i]->has_tess_shader = dirty[MESA_SHADER_TESS_EVAL] || stages[PIPE_SHADER_TESS_EVAL];
          zm = get_shader_module_for_stage(ctx, dirty[i], prog);
          zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], zm);
          /* we probably need a new pipeline when we switch shader modules */

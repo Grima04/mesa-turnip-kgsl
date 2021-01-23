@@ -73,8 +73,6 @@ struct zink_shader {
    size_t num_bindings;
    struct set *programs;
 
-   bool has_tess_shader; // vertex shaders need to know if a tesseval shader exists
-   bool has_geometry_shader; // vertex shaders need to know if a geometry shader exists
    union {
       struct zink_shader *generated; // a generated shader that this shader "owns"
       bool is_generated; // if this is a driver-created shader (e.g., tcs)

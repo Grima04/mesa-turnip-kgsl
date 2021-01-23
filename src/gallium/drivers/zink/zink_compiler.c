@@ -314,17 +314,6 @@ update_so_info(struct zink_shader *sh,
    }
 }
 
-static bool
-last_vertex_stage(struct zink_shader *zs)
-{
-   assert(zs->nir->info.stage != MESA_SHADER_FRAGMENT);
-   if (zs->has_geometry_shader)
-      return zs->nir->info.stage == MESA_SHADER_GEOMETRY;
-   if (zs->has_tess_shader)
-      return zs->nir->info.stage == MESA_SHADER_TESS_EVAL;
-   return true;
-}
-
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct zink_shader_key *key,
                     unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
@@ -333,8 +322,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
    void *streamout = NULL;
    nir_shader *nir = zs->nir;
    /* TODO: use a separate mem ctx here for ralloc */
-   if (zs->nir->info.stage != MESA_SHADER_FRAGMENT) {
-      if (last_vertex_stage(zs)) {
+   if (zs->nir->info.stage < MESA_SHADER_FRAGMENT) {
+      if (zink_vs_key(key)->last_vertex_stage) {
          if (zs->streamout.so_info_slots)
             streamout = &zs->streamout;
 
@@ -343,7 +332,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
             NIR_PASS_V(nir, nir_lower_clip_halfz);
          }
       }
-   } else {
+   } else if (zs->nir->info.stage == MESA_SHADER_FRAGMENT) {
       if (!zink_fs_key(key)->samples &&
           nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
          nir = nir_shader_clone(NULL, zs->nir);
