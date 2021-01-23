@@ -1056,6 +1056,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       int index = tu_get_device_extension_index(ext_name);
       if (index < 0 ||
           !physical_device->supported_extensions.extensions[index]) {
+         vk_device_finish(&device->vk);
          vk_free(&device->vk.alloc, device);
          return vk_startup_errorf(physical_device->instance,
                                   VK_ERROR_EXTENSION_NOT_PRESENT,
@@ -1225,6 +1226,7 @@ fail_queues:
          vk_free(&device->vk.alloc, device->queues[i]);
    }
 
+   vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
    return result;
 }
@@ -1262,6 +1264,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    vk_free(&device->vk.alloc, device->bo_list);
    vk_free(&device->vk.alloc, device->bo_idx);
+   vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 }
 
