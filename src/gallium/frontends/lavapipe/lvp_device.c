@@ -937,7 +937,7 @@ VkResult lvp_CreateDevice(
    if (!device)
       return vk_error(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = vk_device_init(&device->vk, pCreateInfo,
+   VkResult result = vk_device_init(&device->vk, NULL, NULL, pCreateInfo,
                                     &physical_device->instance->alloc,
                                     pAllocator);
    if (result != VK_SUCCESS) {

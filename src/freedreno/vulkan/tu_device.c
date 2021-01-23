@@ -1041,7 +1041,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (!device)
       return vk_startup_errorf(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY, "OOM");
 
-   result = vk_device_init(&device->vk, pCreateInfo,
+   result = vk_device_init(&device->vk, NULL, NULL, pCreateInfo,
          &physical_device->instance->alloc, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);

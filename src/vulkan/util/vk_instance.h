@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Intel Corporation
+ * Copyright © 2021 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,8 +20,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-#ifndef VK_DEVICE_H
-#define VK_DEVICE_H
+#ifndef VK_INSTANCE_H
+#define VK_INSTANCE_H
 
 #include "vk_dispatch_table.h"
 #include "vk_extensions.h"
@@ -31,37 +31,36 @@
 extern "C" {
 #endif
 
-struct vk_device {
+struct vk_app_info {
+   const char*        app_name;
+   uint32_t           app_version;
+   const char*        engine_name;
+   uint32_t           engine_version;
+   uint32_t           api_version;
+};
+
+struct vk_instance {
    struct vk_object_base base;
    VkAllocationCallbacks alloc;
-   struct vk_physical_device *physical;
 
-   struct vk_device_extension_table enabled_extensions;
+   struct vk_app_info app_info;
+   struct vk_instance_extension_table enabled_extensions;
 
-   struct vk_device_dispatch_table dispatch_table;
-
-   /* For VK_EXT_private_data */
-   uint32_t private_data_next_index;
-
-#ifdef ANDROID
-   mtx_t swapchain_private_mtx;
-   struct hash_table *swapchain_private;
-#endif
+   struct vk_instance_dispatch_table dispatch_table;
 };
 
 VkResult MUST_CHECK
-vk_device_init(struct vk_device *device,
-               struct vk_physical_device *physical_device,
-               const struct vk_device_dispatch_table *dispatch_table,
-               const VkDeviceCreateInfo *pCreateInfo,
-               const VkAllocationCallbacks *instance_alloc,
-               const VkAllocationCallbacks *device_alloc);
+vk_instance_init(struct vk_instance *instance,
+                 const struct vk_instance_extension_table *supported_extensions,
+                 const struct vk_instance_dispatch_table *dispatch_table,
+                 const VkInstanceCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *alloc);
 
 void
-vk_device_finish(struct vk_device *device);
+vk_instance_finish(struct vk_instance *instance);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* VK_DEVICE_H */
+#endif /* VK_INSTANCE_H */

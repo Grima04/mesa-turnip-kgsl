@@ -29,8 +29,12 @@ files_vulkan_util = files(
   'vk_device.c',
   'vk_device.h',
   'vk_format.c',
+  'vk_instance.c',
+  'vk_instance.h',
   'vk_object.c',
   'vk_object.h',
+  'vk_physical_device.c',
+  'vk_physical_device.h',
   'vk_util.c',
   'vk_util.h',
 )

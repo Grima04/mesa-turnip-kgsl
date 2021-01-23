@@ -53,6 +53,7 @@ VULKAN_COMMON_HEADER_LIBRARIES := \
 endif
 
 ANV_STATIC_LIBRARIES := \
+	libmesa_vulkan_util \
 	libmesa_vulkan_common \
 	libmesa_genxml \
 	libmesa_nir
