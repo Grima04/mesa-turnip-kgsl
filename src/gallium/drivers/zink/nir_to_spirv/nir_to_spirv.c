@@ -1249,7 +1249,7 @@ emit_so_outputs(struct ntv_context *ctx,
       while (!output)
          output = ctx->outputs[location--];
       location++;
-      assert(orig_location - location < 4);
+      assert(orig_location - location < 8);
       SpvId output_type = ctx->so_output_types[location];
       const struct glsl_type *out_type = ctx->so_output_gl_types[location];
 
