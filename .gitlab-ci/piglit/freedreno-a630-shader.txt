@@ -1001,7 +1001,6 @@ spec/glsl-1.50/execution/variable-indexing/gs-input-array-vec3-index-rd: crash
 spec/glsl-1.50/execution/variable-indexing/gs-input-array-vec4-index-rd: fail
 spec/glsl-1.50/execution/variable-indexing/gs-output-array-vec3-index-wr: fail
 spec/glsl-1.50/execution/variable-indexing/gs-output-array-vec4-index-wr: crash
-spec/glsl-1.50/execution/variable-indexing/vs-output-array-vec2-index-wr-before-gs: fail
 spec/glsl-1.50/execution/variable-indexing/vs-output-array-vec3-index-wr-before-gs: fail
 spec/glsl-1.50/execution/variable-indexing/vs-output-array-vec4-index-wr-before-gs: fail
 spec/glsl-es-3.10/execution/cs-image-atomic-if-else-2: fail
@@ -1129,7 +1128,7 @@ summary:
        name:  results
        ----  --------
        pass:     8878
-       fail:       33
+       fail:       32
       crash:       95
        skip:      997
     timeout:        0
@@ -1140,4 +1139,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    10005
+      total:    10004
