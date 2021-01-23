@@ -947,6 +947,7 @@ VkResult lvp_CreateDevice(
       const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
       int index = lvp_get_device_extension_index(ext_name);
       if (index < 0 || !physical_device->supported_extensions.extensions[index]) {
+         vk_device_finish(&device->vk);
          vk_free(&device->vk.alloc, device);
          return vk_error(physical_device->instance, VK_ERROR_EXTENSION_NOT_PRESENT);
       }
@@ -973,6 +974,7 @@ void lvp_DestroyDevice(
    LVP_FROM_HANDLE(lvp_device, device, _device);
 
    lvp_queue_finish(&device->queue);
+   vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 }
 
