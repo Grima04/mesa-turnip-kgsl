@@ -226,6 +226,7 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_doubles_options = ~nir_lower_fp64_full_software,
       .has_fsub = true,
       .has_isub = true,
+      .lower_mul_2x32_64 = true,
    };
 
    screen->nir_options = default_options;
