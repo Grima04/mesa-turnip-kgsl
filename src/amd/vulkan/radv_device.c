@@ -2810,6 +2810,7 @@ VkResult radv_CreateDevice(
 		const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
 		int index = radv_get_device_extension_index(ext_name);
 		if (index < 0 || !physical_device->supported_extensions.extensions[index]) {
+			vk_device_finish(&device->vk);
 			vk_free(&device->vk.alloc, device);
 			return vk_error(physical_device->instance, VK_ERROR_EXTENSION_NOT_PRESENT);
 		}
@@ -3080,6 +3081,7 @@ fail:
 			vk_free(&device->vk.alloc, device->queues[i]);
 	}
 
+	vk_device_finish(&device->vk);
 	vk_free(&device->vk.alloc, device);
 	return result;
 }
@@ -3124,6 +3126,7 @@ void radv_DestroyDevice(
 	free(device->thread_trace.trigger_file);
 	radv_thread_trace_finish(device);
 
+	vk_device_finish(&device->vk);
 	vk_free(&device->vk.alloc, device);
 }
 
