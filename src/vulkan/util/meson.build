@@ -45,9 +45,20 @@ vk_enum_to_str = custom_target(
   ],
 )
 
+vk_extensions = custom_target(
+  'vk_extensions',
+  input : ['vk_extensions_gen.py', vk_api_xml],
+  output : ['vk_extensions.c', 'vk_extensions.h'],
+  command : [
+    prog_python, '@INPUT0@', '--xml', '@INPUT1@',
+    '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@'
+  ],
+  dependencies : ['vk_extensions.py'],
+)
+
 libvulkan_util = static_library(
   'vulkan_util',
-  [files_vulkan_util, vk_enum_to_str],
+  [files_vulkan_util, vk_enum_to_str, vk_extensions],
   include_directories : [inc_include, inc_src, inc_gallium],
   dependencies : [vulkan_wsi_deps, idep_mesautil],
   c_args : [vulkan_wsi_args],
@@ -56,7 +67,7 @@ libvulkan_util = static_library(
 )
 
 idep_vulkan_util_headers = declare_dependency(
-  sources : vk_enum_to_str[1],
+  sources : [vk_enum_to_str[1], vk_extensions[1]],
   include_directories : include_directories('.')
 )
 

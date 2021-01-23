@@ -63,6 +63,43 @@ class VkVersion:
 
         return self.__int_ver() > other.__int_ver()
 
+# Sort the extension list the way we expect: KHR, then EXT, then vendors
+# alphabetically. For digits, read them as a whole number sort that.
+# eg.: VK_KHR_8bit_storage < VK_KHR_16bit_storage < VK_EXT_acquire_xlib_display
+def extension_order(ext):
+    order = []
+    for substring in re.split('(KHR|EXT|[0-9]+)', ext.name):
+        if substring == 'KHR':
+            order.append(1)
+        if substring == 'EXT':
+            order.append(2)
+        elif substring.isdigit():
+            order.append(int(substring))
+        else:
+            order.append(substring)
+    return order
+
+def get_all_exts_from_xml(xml):
+    """ Get a list of all Vulkan extensions. """
+
+    xml = et.parse(xml)
+
+    extensions = []
+    for ext_elem in xml.findall('.extensions/extension'):
+        supported = ext_elem.attrib['supported'] == 'vulkan'
+        name = ext_elem.attrib['name']
+        if not supported and name != 'VK_ANDROID_native_buffer':
+            continue
+        version = None
+        for enum_elem in ext_elem.findall('.require/enum'):
+            if enum_elem.attrib['name'].endswith('_SPEC_VERSION'):
+                assert version is None
+                version = int(enum_elem.attrib['value'])
+        ext = Extension(name, version, True)
+        extensions.append(Extension(name, version, True))
+
+    return sorted(extensions, key=extension_order)
+
 def init_exts_from_xml(xml, extensions, platform_defines):
     """ Walk the Vulkan XML and fill out extra extension information. """
 

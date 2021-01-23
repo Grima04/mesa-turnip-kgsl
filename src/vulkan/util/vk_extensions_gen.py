@@ -35,10 +35,15 @@ _TEMPLATE_H = Template(COPYRIGHT + """
 #ifndef ${driver.upper()}_EXTENSIONS_H
 #define ${driver.upper()}_EXTENSIONS_H
 
+#include <stdbool.h>
+
 %for include in includes:
 #include "${include}"
 %endfor
 
+%if type_prefix == 'vk' and driver != 'vk':
+#include "vk_extensions.h"
+%else:
 #define ${driver.upper()}_INSTANCE_EXTENSION_COUNT ${len(instance_extensions)}
 
 extern const VkExtensionProperties ${driver}_instance_extensions[];
@@ -53,8 +58,6 @@ struct ${driver}_instance_extension_table {
       };
    };
 };
-
-extern const struct ${driver}_instance_extension_table ${driver}_instance_extensions_supported;
 
 
 #define ${driver.upper()}_DEVICE_EXTENSION_COUNT ${len(device_extensions)}
@@ -71,19 +74,45 @@ struct ${driver}_device_extension_table {
       };
    };
 };
+%endif
 
 struct ${driver}_physical_device;
 
+%if driver != 'vk':
+extern const struct ${type_prefix}_instance_extension_table ${driver}_instance_extensions_supported;
+
 void
 ${driver}_physical_device_get_supported_extensions(const struct ${driver}_physical_device *device,
-                                             struct ${driver}_device_extension_table *extensions);
+                                             struct ${type_prefix}_device_extension_table *extensions);
+%endif
 
 #endif /* ${driver.upper()}_EXTENSIONS_H */
 """)
 
 _TEMPLATE_C = Template(COPYRIGHT + """
+%if driver == 'vk':
+#include "vk_object.h"
+%else:
 #include "${driver}_private.h"
+%endif
 
+#include "${driver}_extensions.h"
+
+%if type_prefix != 'vk' or driver == 'vk':
+const VkExtensionProperties ${driver}_instance_extensions[${driver.upper()}_INSTANCE_EXTENSION_COUNT] = {
+%for ext in instance_extensions:
+   {"${ext.name}", ${ext.ext_version}},
+%endfor
+};
+
+const VkExtensionProperties ${driver}_device_extensions[${driver.upper()}_DEVICE_EXTENSION_COUNT] = {
+%for ext in device_extensions:
+   {"${ext.name}", ${ext.ext_version}},
+%endfor
+};
+%endif
+
+%if driver != 'vk':
 #include "vk_util.h"
 
 /* Convert the VK_USE_PLATFORM_* defines to booleans */
@@ -119,13 +148,7 @@ VkResult ${driver}_EnumerateInstanceVersion(
     return VK_SUCCESS;
 }
 
-const VkExtensionProperties ${driver}_instance_extensions[${driver.upper()}_INSTANCE_EXTENSION_COUNT] = {
-%for ext in instance_extensions:
-   {"${ext.name}", ${ext.ext_version}},
-%endfor
-};
-
-const struct ${driver}_instance_extension_table ${driver}_instance_extensions_supported = {
+const struct ${type_prefix}_instance_extension_table ${driver}_instance_extensions_supported = {
 %for ext in instance_extensions:
    .${ext.name[3:]} = ${get_extension_condition(ext.name, ext.enable)},
 %endfor
@@ -149,25 +172,21 @@ ${driver}_physical_device_api_version(struct ${driver}_physical_device *device)
     return version;
 }
 
-const VkExtensionProperties ${driver}_device_extensions[${driver.upper()}_DEVICE_EXTENSION_COUNT] = {
-%for ext in device_extensions:
-   {"${ext.name}", ${ext.ext_version}},
-%endfor
-};
-
 void
 ${driver}_physical_device_get_supported_extensions(const struct ${driver}_physical_device *device,
-                                                   struct ${driver}_device_extension_table *extensions)
+                                                   struct ${type_prefix}_device_extension_table *extensions)
 {
-   *extensions = (struct ${driver}_device_extension_table) {
+   *extensions = (struct ${type_prefix}_device_extension_table) {
 %for ext in device_extensions:
       .${ext.name[3:]} = ${get_extension_condition(ext.name, ext.enable)},
 %endfor
    };
 }
+%endif
 """)
 
-def gen_extensions(driver, xml_files, api_versions, max_api_version, extensions, out_c, out_h, includes = []):
+def gen_extensions(driver, xml_files, api_versions, max_api_version,
+                   extensions, out_c, out_h, includes = [], type_prefix = None):
     platform_defines = []
     for filename in xml_files:
         init_exts_from_xml(filename, extensions, platform_defines)
@@ -175,8 +194,12 @@ def gen_extensions(driver, xml_files, api_versions, max_api_version, extensions,
     for ext in extensions:
         assert ext.type == 'instance' or ext.type == 'device'
 
+    if type_prefix is None:
+        type_prefix = driver
+
     template_env = {
         'driver': driver,
+        'type_prefix': type_prefix,
         'API_VERSIONS': api_versions,
         'MAX_API_VERSION': max_api_version,
         'instance_extensions': [e for e in extensions if e.type == 'instance'],
@@ -193,3 +216,22 @@ def gen_extensions(driver, xml_files, api_versions, max_api_version, extensions,
     if out_c:
         with open(out_c, 'w') as f:
             f.write(_TEMPLATE_C.render(**template_env))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--out-c', help='Output C file.')
+    parser.add_argument('--out-h', help='Output H file.')
+    parser.add_argument('--xml',
+                        help='Vulkan API XML file.',
+                        required=True,
+                        action='append',
+                        dest='xml_files')
+    args = parser.parse_args()
+
+    extensions = []
+    for filename in args.xml_files:
+        extensions += get_all_exts_from_xml(filename)
+
+    gen_extensions('vk', args.xml_files, None, None,
+                   extensions, args.out_c, args.out_h, [])
