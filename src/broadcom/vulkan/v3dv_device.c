@@ -1623,6 +1623,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    return VK_SUCCESS;
 
 fail:
+   vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 
    return result;
@@ -1646,6 +1647,7 @@ v3dv_DestroyDevice(VkDevice _device,
     */
    v3dv_bo_cache_destroy(device);
 
+   vk_device_finish(&device->vk);
    vk_free2(&default_alloc, pAllocator, device);
 }
 
