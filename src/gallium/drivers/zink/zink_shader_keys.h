@@ -66,6 +66,7 @@ struct zink_shader_key {
    struct zink_shader_key_base base;
    unsigned inline_uniforms:1;
    uint32_t size;
+   bool is_default_variant;
 };
 
 static inline const struct zink_fs_key *

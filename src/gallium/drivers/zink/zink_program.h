@@ -86,6 +86,8 @@ struct zink_gfx_program {
    struct zink_program base;
 
    struct zink_shader_module *modules[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
+
+   struct zink_shader_module *default_variants[ZINK_SHADER_COUNT][2]; //[default, no streamout]
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
    struct zink_shader_cache *shader_cache;
    unsigned char shader_slot_map[VARYING_SLOT_MAX];

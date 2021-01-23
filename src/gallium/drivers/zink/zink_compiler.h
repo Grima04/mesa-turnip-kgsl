@@ -41,6 +41,7 @@ struct pipe_screen;
 struct zink_context;
 struct zink_screen;
 struct zink_shader_key;
+struct zink_shader_module;
 struct zink_gfx_program;
 
 struct nir_shader_compiler_options;
