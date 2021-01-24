@@ -56,7 +56,7 @@ MAX_API_VERSION = None # Computed later
 # the those extension strings, then tests dEQP-VK.api.info.instance.extensions
 # and dEQP-VK.api.info.device fail due to the duplicated strings.
 EXTENSIONS = [
-    Extension('VK_ANDROID_native_buffer',                 5, False),
+    Extension('VK_KHR_8bit_storage',                      1, False),
     Extension('VK_KHR_16bit_storage',                     1, False),
     Extension('VK_KHR_bind_memory2',                      1, True),
     Extension('VK_KHR_create_renderpass2',                1, False),
@@ -65,6 +65,7 @@ EXTENSIONS = [
     Extension('VK_KHR_descriptor_update_template',        1, True),
     Extension('VK_KHR_device_group',                      1, True),
     Extension('VK_KHR_device_group_creation',             1, True),
+    Extension('VK_KHR_display',                          23, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_KHR_draw_indirect_count',               1, True),
     Extension('VK_KHR_driver_properties',                 1, True),
     Extension('VK_KHR_external_fence',                    1, True),
@@ -86,6 +87,7 @@ EXTENSIONS = [
     Extension('VK_KHR_maintenance1',                      1, True),
     Extension('VK_KHR_maintenance2',                      1, False),
     Extension('VK_KHR_maintenance3',                      1, False),
+    Extension('VK_KHR_multiview',                         1, False),
     Extension('VK_KHR_pipeline_executable_properties',    1, False),
     Extension('VK_KHR_push_descriptor',                   1, True),
     Extension('VK_KHR_relaxed_block_layout',              1, True),
@@ -103,22 +105,19 @@ EXTENSIONS = [
     Extension('VK_KHR_wayland_surface',                   6, 'VK_USE_PLATFORM_WAYLAND_KHR'),
     Extension('VK_KHR_xcb_surface',                       6, 'VK_USE_PLATFORM_XCB_KHR'),
     Extension('VK_KHR_xlib_surface',                      6, 'VK_USE_PLATFORM_XLIB_KHR'),
-    Extension('VK_KHR_multiview',                         1, False),
-    Extension('VK_KHR_display',                          23, 'VK_USE_PLATFORM_DISPLAY_KHR'),
-    Extension('VK_KHR_8bit_storage',                      1, False),
-    Extension('VK_EXT_direct_mode_display',               1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_EXT_acquire_xlib_display',              1, 'VK_USE_PLATFORM_XLIB_XRANDR_EXT'),
     Extension('VK_EXT_buffer_device_address',             1, False),
     Extension('VK_EXT_calibrated_timestamps',             1, False),
     Extension('VK_EXT_conditional_rendering',             1, True),
     Extension('VK_EXT_conservative_rasterization',        1, False),
-    Extension('VK_EXT_display_surface_counter',           1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
-    Extension('VK_EXT_display_control',                   1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_EXT_debug_report',                      9, True),
     Extension('VK_EXT_depth_clip_enable',                 1, False),
     Extension('VK_EXT_depth_range_unrestricted',          1, False),
     Extension('VK_EXT_descriptor_indexing',               2, False),
+    Extension('VK_EXT_direct_mode_display',               1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_EXT_discard_rectangles',                1, False),
+    Extension('VK_EXT_display_control',                   1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
+    Extension('VK_EXT_display_surface_counter',           1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_EXT_external_memory_dma_buf',           1, True),
     Extension('VK_EXT_external_memory_host',              1, False),
     Extension('VK_EXT_global_priority',                   1, False),
@@ -135,16 +134,37 @@ EXTENSIONS = [
     Extension('VK_EXT_sample_locations',                  1, False),
     Extension('VK_EXT_sampler_filter_minmax',             1, False),
     Extension('VK_EXT_scalar_block_layout',               1, False),
-    Extension('VK_EXT_shader_viewport_index_layer',       1, False),
     Extension('VK_EXT_shader_stencil_export',             1, True),
     Extension('VK_EXT_shader_subgroup_ballot',            1, False),
     Extension('VK_EXT_shader_subgroup_vote',              1, False),
+    Extension('VK_EXT_shader_viewport_index_layer',       1, False),
     Extension('VK_EXT_transform_feedback',                1, True),
     Extension('VK_EXT_vertex_attribute_divisor',          3, True),
     Extension('VK_EXT_ycbcr_image_arrays',                1, False),
+    Extension('VK_ANDROID_native_buffer',                 5, False),
     Extension('VK_GOOGLE_decorate_string',                1, True),
     Extension('VK_GOOGLE_hlsl_functionality1',            1, True),
 ]
+
+# Sort the extension list the way we expect: KHR, then EXT, then vendors
+# alphabetically. For digits, read them as a whole number sort that.
+# eg.: VK_KHR_8bit_storage < VK_KHR_16bit_storage < VK_EXT_acquire_xlib_display
+def extension_order(ext):
+    order = []
+    for substring in re.split('(KHR|EXT|[0-9]+)', ext.name):
+        if substring == 'KHR':
+            order.append(1)
+        if substring == 'EXT':
+            order.append(2)
+        elif substring.isdigit():
+            order.append(int(substring))
+        else:
+            order.append(substring)
+    return order
+for i in range(len(EXTENSIONS) - 1):
+    if extension_order(EXTENSIONS[i + 1]) < extension_order(EXTENSIONS[i]):
+        print(EXTENSIONS[i + 1].name + ' should come before ' + EXTENSIONS[i].name)
+        exit(1)
 
 MAX_API_VERSION = VkVersion('0.0.0')
 for version in API_VERSIONS:
