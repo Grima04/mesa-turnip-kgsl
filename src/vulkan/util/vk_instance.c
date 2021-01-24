@@ -24,6 +24,7 @@
 #include "vk_instance.h"
 
 #include "vk_alloc.h"
+#include "vk_common_entrypoints.h"
 
 VkResult
 vk_instance_init(struct vk_instance *instance,
@@ -75,8 +76,13 @@ vk_instance_init(struct vk_instance *instance,
       }
    }
 
-   if (dispatch_table != NULL)
+   if (dispatch_table != NULL) {
       instance->dispatch_table = *dispatch_table;
+
+      /* Add common entrypoints without overwriting driver-provided ones. */
+      vk_instance_dispatch_table_from_entrypoints(
+         &instance->dispatch_table, &vk_common_instance_entrypoints, false);
+   }
 
    return VK_SUCCESS;
 }

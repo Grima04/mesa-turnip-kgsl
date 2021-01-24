@@ -23,6 +23,8 @@
 
 #include "vk_physical_device.h"
 
+#include "vk_common_entrypoints.h"
+
 VkResult
 vk_physical_device_init(struct vk_physical_device *pdevice,
                         struct vk_instance *instance,
@@ -36,8 +38,13 @@ vk_physical_device_init(struct vk_physical_device *pdevice,
    if (supported_extensions != NULL)
       pdevice->supported_extensions = *supported_extensions;
 
-   if (dispatch_table != NULL)
+   if (dispatch_table != NULL) {
       pdevice->dispatch_table = *dispatch_table;
+
+      /* Add common entrypoints without overwriting driver-provided ones. */
+      vk_physical_device_dispatch_table_from_entrypoints(
+         &pdevice->dispatch_table, &vk_common_physical_device_entrypoints, false);
+   }
 
    return VK_SUCCESS;
 }

@@ -40,6 +40,16 @@ files_vulkan_util = files(
   'vk_util.h',
 )
 
+vk_common_entrypoints = custom_target(
+  'vk_common_entrypoints',
+  input : [vk_entrypoints_gen, vk_api_xml],
+  output : ['vk_common_entrypoints.h', 'vk_common_entrypoints.c'],
+  command : [
+    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
+    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'vk_common',
+  ],
+)
+
 vk_dispatch_table = custom_target(
   'vk_dispatch_table',
   input : ['vk_dispatch_table_gen.py', vk_api_xml],
@@ -73,7 +83,8 @@ vk_extensions = custom_target(
 
 libvulkan_util = static_library(
   'vulkan_util',
-  [files_vulkan_util, vk_dispatch_table, vk_enum_to_str, vk_extensions],
+  [files_vulkan_util, vk_common_entrypoints, vk_dispatch_table,
+   vk_enum_to_str, vk_extensions],
   include_directories : [inc_include, inc_src, inc_gallium],
   dependencies : [vulkan_wsi_deps, idep_mesautil],
   c_args : [vulkan_wsi_args],
@@ -87,6 +98,8 @@ idep_vulkan_util_headers = declare_dependency(
 )
 
 idep_vulkan_util = declare_dependency(
-  link_with : libvulkan_util,
+  # Instruct users of this library to link with --whole-archive.  Otherwise,
+  # our weak function overloads may not resolve properly.
+  link_whole : libvulkan_util,
   dependencies : idep_vulkan_util_headers
 )

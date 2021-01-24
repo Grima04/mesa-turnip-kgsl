@@ -23,6 +23,7 @@
 
 #include "vk_device.h"
 
+#include "vk_common_entrypoints.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
 #include "util/hash_table.h"
@@ -45,8 +46,13 @@ vk_device_init(struct vk_device *device,
 
    device->physical = physical_device;
 
-   if (dispatch_table != NULL)
+   if (dispatch_table != NULL) {
       device->dispatch_table = *dispatch_table;
+
+      /* Add common entrypoints without overwriting driver-provided ones. */
+      vk_device_dispatch_table_from_entrypoints(
+         &device->dispatch_table, &vk_common_device_entrypoints, false);
+   }
 
    if (physical_device != NULL) {
       for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
