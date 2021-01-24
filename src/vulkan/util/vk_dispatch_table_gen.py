@@ -91,6 +91,20 @@ struct vk_${type}_dispatch_table {
   % endif
 % endfor
 };
+
+struct vk_${type}_entrypoint_table {
+% for e in entrypoints:
+  % if e.guard is not None:
+#ifdef ${e.guard}
+  % endif
+    PFN_vk${e.name} ${e.name};
+  % if e.guard is not None:
+#else
+    PFN_vkVoidFunction ${e.name};
+# endif
+  % endif
+% endfor
+};
 </%def>
 
 ${dispatch_table('instance', instance_entrypoints)}
@@ -109,6 +123,21 @@ void
 vk_device_dispatch_table_load(struct vk_device_dispatch_table *table,
                               PFN_vkGetDeviceProcAddr gpa,
                               VkDevice device);
+
+void vk_instance_dispatch_table_from_entrypoints(
+    struct vk_instance_dispatch_table *dispatch_table,
+    const struct vk_instance_entrypoint_table *entrypoint_table,
+    bool overwrite);
+
+void vk_physical_device_dispatch_table_from_entrypoints(
+    struct vk_physical_device_dispatch_table *dispatch_table,
+    const struct vk_physical_device_entrypoint_table *entrypoint_table,
+    bool overwrite);
+
+void vk_device_dispatch_table_from_entrypoints(
+    struct vk_device_dispatch_table *dispatch_table,
+    const struct vk_device_entrypoint_table *entrypoint_table,
+    bool overwrite);
 
 PFN_vkVoidFunction
 vk_instance_dispatch_table_get(const struct vk_instance_dispatch_table *table,
@@ -394,6 +423,38 @@ vk_device_entrypoint_is_enabled(int index, uint32_t core_version,
       return false;
    }
 }
+
+<%def name="dispatch_table_from_entrypoints(type)">
+void vk_${type}_dispatch_table_from_entrypoints(
+    struct vk_${type}_dispatch_table *dispatch_table,
+    const struct vk_${type}_entrypoint_table *entrypoint_table,
+    bool overwrite)
+{
+    PFN_vkVoidFunction *disp = (PFN_vkVoidFunction *)dispatch_table;
+    PFN_vkVoidFunction *entry = (PFN_vkVoidFunction *)entrypoint_table;
+
+    if (overwrite) {
+        memset(dispatch_table, 0, sizeof(*dispatch_table));
+        for (unsigned i = 0; i < ARRAY_SIZE(${type}_compaction_table); i++) {
+            if (entry[i] == NULL)
+                continue;
+            unsigned disp_index = ${type}_compaction_table[i];
+            assert(disp[disp_index] == NULL);
+            disp[disp_index] = entry[i];
+        }
+    } else {
+        for (unsigned i = 0; i < ARRAY_SIZE(${type}_compaction_table); i++) {
+            unsigned disp_index = ${type}_compaction_table[i];
+            if (disp[disp_index] == NULL)
+                disp[disp_index] = entry[i];
+        }
+    }
+}
+</%def>
+
+${dispatch_table_from_entrypoints('instance')}
+${dispatch_table_from_entrypoints('physical_device')}
+${dispatch_table_from_entrypoints('device')}
 
 <%def name="lookup_funcs(type)">
 static PFN_vkVoidFunction
