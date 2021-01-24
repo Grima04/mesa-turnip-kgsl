@@ -462,8 +462,10 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 {
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
 
+   const struct anv_surface *surface = &image->planes[plane].surface;
    uint64_t base_address =
-      anv_address_physical(image->planes[plane].address);
+      anv_address_physical(anv_address_add(image->planes[plane].address,
+                                           surface->offset));
 
    const struct isl_surf *isl_surf = &image->planes[plane].surface.isl;
    uint64_t format_bits = gen_aux_map_format_bits_for_isl_surf(isl_surf);
