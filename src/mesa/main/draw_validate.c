@@ -239,7 +239,8 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
  * Check if OK to draw arrays/elements.
  */
 static bool
-check_valid_to_render(struct gl_context *ctx, const char *function)
+check_valid_to_render(struct gl_context *ctx, bool uses_vao,
+                      const char *function)
 {
    if (!_mesa_valid_to_render(ctx, function)) {
       return false;
@@ -257,7 +258,8 @@ check_valid_to_render(struct gl_context *ctx, const char *function)
     * buffers. No other functions list such an error, thus it's not required
     * to report INVALID_OPERATION for draw calls with mapped buffers.
     */
-   if (!ctx->Const.AllowMappedBuffersDuringExecution &&
+   if (uses_vao &&
+       !ctx->Const.AllowMappedBuffersDuringExecution &&
        !_mesa_all_buffers_are_unmapped(ctx->Array.VAO)) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "%s(vertex buffers are mapped)", function);
@@ -577,8 +579,15 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
  * Also, do additional checking related to tessellation shaders.
  */
 GLboolean
-_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
+_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, bool uses_vao,
+                      const char *name)
 {
+   /* This might update ValidPrimMask, so it must be done before ValidPrimMask
+    * is checked.
+    */
+   if (!check_valid_to_render(ctx, uses_vao, name))
+      return false;
+
    /* All primitive type enums are less than 32, so we can use the shift. */
    if (mode >= 32 || !((1u << mode) & ctx->ValidPrimMask)) {
       /* If the primitive type is not in SupportedPrimMask, set GL_INVALID_ENUM,
@@ -663,14 +672,11 @@ validate_DrawElements_common(struct gl_context *ctx,
       return false;
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, caller)) {
+   if (!_mesa_valid_prim_mode(ctx, mode, true, caller)) {
       return false;
    }
 
    if (!valid_elements_type(ctx, type, caller))
-      return false;
-
-   if (!check_valid_to_render(ctx, caller))
       return false;
 
    return true;
@@ -732,14 +738,11 @@ _mesa_validate_MultiDrawElements(struct gl_context *ctx,
       }
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, "glMultiDrawElements")) {
+   if (!_mesa_valid_prim_mode(ctx, mode, true, "glMultiDrawElements")) {
       return GL_FALSE;
    }
 
    if (!valid_elements_type(ctx, type, "glMultiDrawElements"))
-      return GL_FALSE;
-
-   if (!check_valid_to_render(ctx, "glMultiDrawElements"))
       return GL_FALSE;
 
    /* Not using a VBO for indices, so avoid NULL pointer derefs later.
@@ -884,10 +887,7 @@ validate_draw_arrays(struct gl_context *ctx, const char *func,
       return false;
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, func))
-      return false;
-
-   if (!check_valid_to_render(ctx, func))
+   if (!_mesa_valid_prim_mode(ctx, mode, true, func))
       return false;
 
    if (need_xfb_remaining_prims_check(ctx)) {
@@ -953,10 +953,7 @@ _mesa_validate_MultiDrawArrays(struct gl_context *ctx, GLenum mode,
 {
    int i;
 
-   if (!_mesa_valid_prim_mode(ctx, mode, "glMultiDrawArrays"))
-      return false;
-
-   if (!check_valid_to_render(ctx, "glMultiDrawArrays"))
+   if (!_mesa_valid_prim_mode(ctx, mode, true, "glMultiDrawArrays"))
       return false;
 
    if (primcount < 0) {
@@ -1017,7 +1014,7 @@ _mesa_validate_DrawTransformFeedback(struct gl_context *ctx,
                                      GLuint stream,
                                      GLsizei numInstances)
 {
-   if (!_mesa_valid_prim_mode(ctx, mode, "glDrawTransformFeedback*(mode)")) {
+   if (!_mesa_valid_prim_mode(ctx, mode, true, "glDrawTransformFeedback*(mode)")) {
       return GL_FALSE;
    }
 
@@ -1051,10 +1048,6 @@ _mesa_validate_DrawTransformFeedback(struct gl_context *ctx,
          _mesa_error(ctx, GL_INVALID_VALUE,
                      "glDrawTransformFeedback*Instanced(numInstances=%d)",
                      numInstances);
-      return GL_FALSE;
-   }
-
-   if (!check_valid_to_render(ctx, "glDrawTransformFeedback*")) {
       return GL_FALSE;
    }
 
@@ -1095,7 +1088,7 @@ valid_draw_indirect(struct gl_context *ctx,
       return GL_FALSE;
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, name))
+   if (!_mesa_valid_prim_mode(ctx, mode, true, name))
       return GL_FALSE;
 
    /* OpenGL ES 3.1 specification, section 10.5:
@@ -1153,9 +1146,6 @@ valid_draw_indirect(struct gl_context *ctx,
                   "%s(DRAW_INDIRECT_BUFFER too small)", name);
       return GL_FALSE;
    }
-
-   if (!check_valid_to_render(ctx, name))
-      return GL_FALSE;
 
    return GL_TRUE;
 }

@@ -38,7 +38,8 @@ extern GLboolean
 _mesa_valid_to_render(struct gl_context *ctx, const char *where);
 
 extern GLboolean
-_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name);
+_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, bool uses_vao,
+                      const char *name);
 
 extern GLboolean
 _mesa_valid_draw_indirect_multi(struct gl_context *ctx, GLsizei primcount,

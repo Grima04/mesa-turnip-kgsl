@@ -822,11 +822,7 @@ vbo_exec_Begin(GLenum mode)
       return;
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, "glBegin")) {
-      return;
-   }
-
-   if (!_mesa_valid_to_render(ctx, "glBegin")) {
+   if (!_mesa_valid_prim_mode(ctx, mode, false, "glBegin")) {
       return;
    }
 
