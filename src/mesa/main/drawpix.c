@@ -72,10 +72,8 @@ _mesa_DrawPixels( GLsizei width, GLsizei height,
     */
    _mesa_set_vp_override(ctx, GL_TRUE);
 
-   /* Note: this call does state validation */
-   if (!_mesa_valid_to_render(ctx, "glDrawPixels")) {
-      goto end;      /* the error code was recorded */
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
 
    if (!ctx->DrawPixValid) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "glDrawPixels");
@@ -243,10 +241,8 @@ _mesa_CopyPixels( GLint srcx, GLint srcy, GLsizei width, GLsizei height,
     */
    _mesa_set_vp_override(ctx, GL_TRUE);
 
-   /* Note: this call does state validation */
-   if (!_mesa_valid_to_render(ctx, "glCopyPixels")) {
-      goto end;      /* the error code was recorded */
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
 
    if (!ctx->DrawPixValid) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "glCopyPixels");
@@ -331,11 +327,8 @@ _mesa_Bitmap( GLsizei width, GLsizei height,
       return;    /* do nothing */
    }
 
-   /* Note: this call does state validation */
-   if (!_mesa_valid_to_render(ctx, "glBitmap")) {
-      /* the error code was recorded */
-      return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
 
    if (!ctx->DrawPixValid) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "glBitmap");

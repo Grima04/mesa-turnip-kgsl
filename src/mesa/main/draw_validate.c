@@ -39,25 +39,6 @@
 
 
 /**
- * Prior to drawing anything with glBegin, glDrawArrays, etc. this function
- * is called to see if it's valid to render.  This involves checking that
- * the current shader is valid and the framebuffer is complete.
- * It also check the current pipeline object is valid if any.
- * If an error is detected it'll be recorded here.
- * \return GL_TRUE if OK to render, GL_FALSE if not
- */
-GLboolean
-_mesa_valid_to_render(struct gl_context *ctx, const char *where)
-{
-   /* This depends on having up to date derived state (shaders) */
-   if (ctx->NewState)
-      _mesa_update_state(ctx);
-
-   return GL_TRUE;
-}
-
-
-/**
  * Compute the bitmask of allowed primitive types (ValidPrimMask) depending
  * on shaders and current states. This is used by draw validation.
  *
@@ -524,8 +505,8 @@ _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, bool uses_vao,
    /* This might update ValidPrimMask, so it must be done before ValidPrimMask
     * is checked.
     */
-   if (!_mesa_valid_to_render(ctx, name))
-      return false;
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
 
    /* All primitive type enums are less than 32, so we can use the shift. */
    if (mode >= 32 || !((1u << mode) & ctx->ValidPrimMask)) {

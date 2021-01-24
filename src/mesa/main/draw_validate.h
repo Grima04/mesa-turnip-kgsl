@@ -39,9 +39,6 @@ struct gl_transform_feedback_object;
 
 
 extern GLboolean
-_mesa_valid_to_render(struct gl_context *ctx, const char *where);
-
-extern GLboolean
 _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, bool uses_vao,
                       const char *name);
 
