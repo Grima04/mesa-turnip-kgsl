@@ -42,11 +42,14 @@ struct vk_device {
 #endif
 };
 
-void vk_device_init(struct vk_device *device,
-                    const VkDeviceCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *instance_alloc,
-                    const VkAllocationCallbacks *device_alloc);
-void vk_device_finish(struct vk_device *device);
+VkResult MUST_CHECK
+vk_device_init(struct vk_device *device,
+               const VkDeviceCreateInfo *pCreateInfo,
+               const VkAllocationCallbacks *instance_alloc,
+               const VkAllocationCallbacks *device_alloc);
+
+void
+vk_device_finish(struct vk_device *device);
 
 #ifdef __cplusplus
 }

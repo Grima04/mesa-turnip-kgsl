@@ -1579,8 +1579,12 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    if (!device)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_device_init(&device->vk, pCreateInfo,
-                  &physical_device->instance->alloc, pAllocator);
+   result = vk_device_init(&device->vk, pCreateInfo,
+                           &physical_device->instance->alloc, pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free(&device->vk.alloc, device);
+      return vk_error(instance, result);
+   }
 
    device->instance = instance;
    device->pdevice = physical_device;
