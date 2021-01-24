@@ -1003,6 +1003,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		if (blend->use_dual_src_blend)
 			mrt_components |= 0xf << 4;
 
+		mrt_components &= prog->mrt_components;
+
 		OUT_REG(ring, A6XX_SP_FS_RENDER_COMPONENTS(.dword = mrt_components));
 		OUT_REG(ring, A6XX_RB_RENDER_COMPONENTS(.dword = mrt_components));
 

@@ -49,6 +49,13 @@ struct fd6_program_state {
 	struct fd_ringbuffer *binning_stateobj;
 	struct fd_ringbuffer *streamout_stateobj;
 	struct fd_ringbuffer *stateobj;
+
+	/**
+	 * Output components from frag shader.  It is possible to have
+	 * a fragment shader that only writes a subset of the bound
+	 * render targets.
+	 */
+	uint32_t mrt_components;
 };
 
 static inline struct fd6_program_state *

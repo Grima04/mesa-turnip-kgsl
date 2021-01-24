@@ -786,6 +786,14 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 	for (i = 0; i < 8; i++) {
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_REG_REGID(color_regid[i]) |
 				COND(color_regid[i] & HALF_REG_ID, A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION));
+		if (VALIDREG(color_regid[i])) {
+			state->mrt_components |= 0xf << (i * 4);
+		}
+	}
+
+	/* dual source blending has an extra fs output in the 2nd slot */
+	if (fs_has_dual_src_color) {
+		state->mrt_components |= 0xf << 4;
 	}
 
 	OUT_PKT4(ring, REG_A6XX_VPC_VS_PACK, 1);
