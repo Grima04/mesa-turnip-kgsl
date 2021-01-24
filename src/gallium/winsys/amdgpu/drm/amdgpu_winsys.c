@@ -445,8 +445,8 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
                     (aws->info.vram_size + aws->info.gart_size) / 8,
                     amdgpu_bo_destroy, amdgpu_bo_can_reclaim);
 
-      unsigned min_slab_order = 9;  /* 512 bytes */
-      unsigned max_slab_order = 18; /* 256 KB - higher numbers increase memory usage */
+      unsigned min_slab_order = 8;  /* 256 bytes */
+      unsigned max_slab_order = 20; /* 1 MB (slab size = 2 MB) */
       unsigned num_slab_orders_per_allocator = (max_slab_order - min_slab_order) /
                                                NUM_SLAB_ALLOCATORS;
 
