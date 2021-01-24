@@ -115,6 +115,7 @@ struct amdgpu_winsys_bo {
 
 struct amdgpu_slab {
    struct pb_slab base;
+   unsigned entry_size;
    struct amdgpu_winsys_bo *buffer;
    struct amdgpu_winsys_bo *entries;
 };

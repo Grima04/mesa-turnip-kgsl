@@ -682,12 +682,24 @@ static const struct pb_vtbl amdgpu_winsys_bo_slab_vtbl = {
    /* other functions are never called */
 };
 
-static unsigned get_slab_entry_alignment(struct amdgpu_winsys *ws, unsigned size)
+/* Return the power of two size of a slab entry matching the input size. */
+static unsigned get_slab_pot_entry_size(struct amdgpu_winsys *ws, unsigned size)
 {
    unsigned entry_size = util_next_power_of_two(size);
    unsigned min_entry_size = 1 << ws->bo_slabs[0].min_order;
 
    return MAX2(entry_size, min_entry_size);
+}
+
+/* Return the slab entry alignment. */
+static unsigned get_slab_entry_alignment(struct amdgpu_winsys *ws, unsigned size)
+{
+   unsigned entry_size = get_slab_pot_entry_size(ws, size);
+
+   if (size <= entry_size * 3 / 4)
+      return entry_size / 4;
+
+   return entry_size;
 }
 
 static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
@@ -719,6 +731,21 @@ static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
          /* The slab size is twice the size of the largest possible entry. */
          slab_size = max_entry_size * 2;
 
+         if (!util_is_power_of_two_nonzero(entry_size)) {
+            assert(util_is_power_of_two_nonzero(entry_size * 4 / 3));
+
+            /* If the entry size is 3/4 of a power of two, we would waste space and not gain
+             * anything if we allocated only twice the power of two for the backing buffer:
+             *   2 * 3/4 = 1.5 usable with buffer size 2
+             *
+             * Allocating 5 times the entry size leads us to the next power of two and results
+             * in a much better memory utilization:
+             *   5 * 3/4 = 3.75 usable with buffer size 4
+             */
+            if (entry_size * 5 > slab_size)
+               slab_size = util_next_power_of_two(entry_size * 5);
+         }
+
          /* The largest slab should have the same size as the PTE fragment
           * size to get faster address translation.
           */
@@ -736,8 +763,11 @@ static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
    if (!slab->buffer)
       goto fail;
 
-   slab->base.num_entries = slab->buffer->base.size / entry_size;
+   slab_size = slab->buffer->base.size;
+
+   slab->base.num_entries = slab_size / entry_size;
    slab->base.num_free = slab->base.num_entries;
+   slab->entry_size = entry_size;
    slab->entries = CALLOC(slab->base.num_entries, sizeof(*slab->entries));
    if (!slab->entries)
       goto fail_buffer;
@@ -773,6 +803,13 @@ static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
       list_addtail(&bo->u.slab.entry.head, &slab->base.free);
    }
 
+   /* Wasted alignment due to slabs with 3/4 allocations being aligned to a power of two. */
+   assert(slab->base.num_entries * entry_size <= slab_size);
+   if (domains & RADEON_DOMAIN_VRAM)
+      ws->slab_wasted_vram += slab_size - slab->base.num_entries * entry_size;
+   else
+      ws->slab_wasted_gtt += slab_size - slab->base.num_entries * entry_size;
+
    return &slab->base;
 
 fail_buffer:
@@ -799,6 +836,14 @@ struct pb_slab *amdgpu_bo_slab_alloc_normal(void *priv, unsigned heap,
 void amdgpu_bo_slab_free(void *priv, struct pb_slab *pslab)
 {
    struct amdgpu_slab *slab = amdgpu_slab(pslab);
+   struct amdgpu_winsys *ws = slab->buffer->ws;
+   unsigned slab_size = slab->buffer->base.size;
+
+   assert(slab->base.num_entries * slab->entry_size <= slab_size);
+   if (slab->buffer->base.placement & RADEON_DOMAIN_VRAM)
+      ws->slab_wasted_vram -= slab_size - slab->base.num_entries * slab->entry_size;
+   else
+      ws->slab_wasted_gtt -= slab_size - slab->base.num_entries * slab->entry_size;
 
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
       amdgpu_bo_remove_fences(&slab->entries[i]);
@@ -1347,8 +1392,19 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
       if (size < alignment && alignment <= 4 * 1024)
          alloc_size = alignment;
 
-      if (alignment > get_slab_entry_alignment(ws, size))
-         goto no_slab; /* can't fulfil alignment requirements */
+      if (alignment > get_slab_entry_alignment(ws, alloc_size)) {
+         /* 3/4 allocations can return too small alignment. Try again with a power of two
+          * allocation size.
+          */
+         unsigned pot_size = get_slab_pot_entry_size(ws, alloc_size);
+
+         if (alignment <= pot_size) {
+            /* This size works but wastes some memory to fulfil the alignment. */
+            alloc_size = pot_size;
+         } else {
+            goto no_slab; /* can't fulfil alignment requirements */
+         }
+      }
 
       struct pb_slabs *slabs = get_slabs(ws, alloc_size, flags);
       entry = pb_slab_alloc(slabs, alloc_size, heap);
