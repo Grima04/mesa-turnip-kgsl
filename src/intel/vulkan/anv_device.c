@@ -2479,26 +2479,6 @@ anv_device_init_trivial_batch(struct anv_device *device)
    return VK_SUCCESS;
 }
 
-VkResult anv_EnumerateDeviceExtensionProperties(
-    VkPhysicalDevice                            physicalDevice,
-    const char*                                 pLayerName,
-    uint32_t*                                   pPropertyCount,
-    VkExtensionProperties*                      pProperties)
-{
-   ANV_FROM_HANDLE(anv_physical_device, device, physicalDevice);
-   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
-
-   for (int i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
-      if (device->vk.supported_extensions.extensions[i]) {
-         vk_outarray_append(&out, prop) {
-            *prop = vk_device_extensions[i];
-         }
-      }
-   }
-
-   return vk_outarray_status(&out);
-}
-
 static int
 vk_priority_to_gen(int priority)
 {
@@ -3156,37 +3136,6 @@ VkResult anv_EnumerateInstanceLayerProperties(
 
    /* None supported at this time */
    return vk_error(VK_ERROR_LAYER_NOT_PRESENT);
-}
-
-VkResult anv_EnumerateDeviceLayerProperties(
-    VkPhysicalDevice                            physicalDevice,
-    uint32_t*                                   pPropertyCount,
-    VkLayerProperties*                          pProperties)
-{
-   if (pProperties == NULL) {
-      *pPropertyCount = 0;
-      return VK_SUCCESS;
-   }
-
-   /* None supported at this time */
-   return vk_error(VK_ERROR_LAYER_NOT_PRESENT);
-}
-
-void anv_GetDeviceQueue(
-    VkDevice                                    _device,
-    uint32_t                                    queueFamilyIndex,
-    uint32_t                                    queueIndex,
-    VkQueue*                                    pQueue)
-{
-   const VkDeviceQueueInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-      .pNext = NULL,
-      .flags = 0,
-      .queueFamilyIndex = queueFamilyIndex,
-      .queueIndex = queueIndex,
-   };
-
-   anv_GetDeviceQueue2(_device, &info, pQueue);
 }
 
 void anv_GetDeviceQueue2(
@@ -3947,22 +3896,6 @@ VkResult anv_InvalidateMappedMemoryRanges(
    return VK_SUCCESS;
 }
 
-void anv_GetBufferMemoryRequirements(
-    VkDevice                                    device,
-    VkBuffer                                    buffer,
-    VkMemoryRequirements*                       pMemoryRequirements)
-{
-   VkBufferMemoryRequirementsInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
-      .buffer = buffer,
-   };
-   VkMemoryRequirements2 reqs = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
-   };
-   anv_GetBufferMemoryRequirements2(device, &info, &reqs);
-   *pMemoryRequirements = reqs.memoryRequirements;
-}
-
 void anv_GetBufferMemoryRequirements2(
     VkDevice                                    _device,
     const VkBufferMemoryRequirementsInfo2*      pInfo,
@@ -4015,22 +3948,6 @@ void anv_GetBufferMemoryRequirements2(
          break;
       }
    }
-}
-
-void anv_GetImageMemoryRequirements(
-    VkDevice                                    device,
-    VkImage                                     image,
-    VkMemoryRequirements*                       pMemoryRequirements)
-{
-   VkImageMemoryRequirementsInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-      .image = image,
-   };
-   VkMemoryRequirements2 reqs = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
-   };
-   anv_GetImageMemoryRequirements2(device, &info, &reqs);
-   *pMemoryRequirements = reqs.memoryRequirements;
 }
 
 void anv_GetImageMemoryRequirements2(
@@ -4159,23 +4076,6 @@ anv_bind_buffer_memory(const VkBindBufferMemoryInfo *pBindInfo)
    } else {
       buffer->address = ANV_NULL_ADDRESS;
    }
-}
-
-VkResult anv_BindBufferMemory(
-    VkDevice                                    device,
-    VkBuffer                                    buffer,
-    VkDeviceMemory                              memory,
-    VkDeviceSize                                memoryOffset)
-{
-   anv_bind_buffer_memory(
-      &(VkBindBufferMemoryInfo) {
-         .sType         = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-         .buffer        = buffer,
-         .memory        = memory,
-         .memoryOffset  = memoryOffset,
-      });
-
-   return VK_SUCCESS;
 }
 
 VkResult anv_BindBufferMemory2(

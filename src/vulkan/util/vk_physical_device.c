@@ -24,6 +24,7 @@
 #include "vk_physical_device.h"
 
 #include "vk_common_entrypoints.h"
+#include "vk_util.h"
 
 VkResult
 vk_physical_device_init(struct vk_physical_device *pdevice,
@@ -53,4 +54,38 @@ void
 vk_physical_device_finish(struct vk_physical_device *physical_device)
 {
    vk_object_base_finish(&physical_device->base);
+}
+
+VkResult
+vk_common_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
+                                         uint32_t *pPropertyCount,
+                                         VkLayerProperties *pProperties)
+{
+   if (pProperties == NULL) {
+      *pPropertyCount = 0;
+      return VK_SUCCESS;
+   }
+
+   /* None supported at this time */
+   return VK_ERROR_LAYER_NOT_PRESENT;
+}
+
+VkResult
+vk_common_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
+                                             const char *pLayerName,
+                                             uint32_t *pPropertyCount,
+                                             VkExtensionProperties *pProperties)
+{
+   VK_FROM_HANDLE(vk_physical_device, pdevice, physicalDevice);
+   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+
+   for (int i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
+      if (pdevice->supported_extensions.extensions[i]) {
+         vk_outarray_append(&out, prop) {
+            *prop = vk_device_extensions[i];
+         }
+      }
+   }
+
+   return vk_outarray_status(&out);
 }

@@ -1089,29 +1089,6 @@ resolve_ahw_image(struct anv_device *device,
 #endif
 }
 
-VkResult anv_BindImageMemory(
-    VkDevice                                    _device,
-    VkImage                                     _image,
-    VkDeviceMemory                              _memory,
-    VkDeviceSize                                memoryOffset)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_device_memory, mem, _memory);
-   ANV_FROM_HANDLE(anv_image, image, _image);
-
-   if (mem->ahw)
-      resolve_ahw_image(device, image, mem);
-
-   uint32_t aspect_bit;
-   anv_foreach_image_aspect_bit(aspect_bit, image, image->aspects) {
-      uint32_t plane =
-         anv_image_aspect_to_plane(image->aspects, 1UL << aspect_bit);
-      anv_image_bind_memory_plane(device, image, plane, mem, memoryOffset);
-   }
-
-   return VK_SUCCESS;
-}
-
 VkResult anv_BindImageMemory2(
     VkDevice                                    _device,
     uint32_t                                    bindInfoCount,

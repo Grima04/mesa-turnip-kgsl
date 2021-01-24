@@ -119,3 +119,96 @@ vk_common_GetDeviceProcAddr(VkDevice _device,
    VK_FROM_HANDLE(vk_device, device, _device);
    return vk_device_get_proc_addr(device, pName);
 }
+
+void
+vk_common_GetDeviceQueue(VkDevice _device,
+                         uint32_t queueFamilyIndex,
+                         uint32_t queueIndex,
+                         VkQueue *pQueue)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+
+   const VkDeviceQueueInfo2 info = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+      .pNext = NULL,
+      .flags = 0,
+      .queueFamilyIndex = queueFamilyIndex,
+      .queueIndex = queueIndex,
+   };
+
+   device->dispatch_table.GetDeviceQueue2(_device, &info, pQueue);
+}
+
+void
+vk_common_GetBufferMemoryRequirements(VkDevice _device,
+                                      VkBuffer buffer,
+                                      VkMemoryRequirements *pMemoryRequirements)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+
+   VkBufferMemoryRequirementsInfo2 info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+      .buffer = buffer,
+   };
+   VkMemoryRequirements2 reqs = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+   };
+   device->dispatch_table.GetBufferMemoryRequirements2(_device, &info, &reqs);
+
+   *pMemoryRequirements = reqs.memoryRequirements;
+}
+
+VkResult
+vk_common_BindBufferMemory(VkDevice _device,
+                           VkBuffer buffer,
+                           VkDeviceMemory memory,
+                           VkDeviceSize memoryOffset)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+
+   VkBindBufferMemoryInfo bind = {
+      .sType         = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
+      .buffer        = buffer,
+      .memory        = memory,
+      .memoryOffset  = memoryOffset,
+   };
+
+   return device->dispatch_table.BindBufferMemory2(_device, 1, &bind);
+}
+
+void
+vk_common_GetImageMemoryRequirements(VkDevice _device,
+                                     VkImage image,
+                                     VkMemoryRequirements *pMemoryRequirements)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+
+   VkImageMemoryRequirementsInfo2 info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+      .image = image,
+   };
+   VkMemoryRequirements2 reqs = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+   };
+   device->dispatch_table.GetImageMemoryRequirements2(_device, &info, &reqs);
+
+   *pMemoryRequirements = reqs.memoryRequirements;
+}
+
+VkResult
+vk_common_BindImageMemory(VkDevice _device,
+                          VkImage image,
+                          VkDeviceMemory memory,
+                          VkDeviceSize memoryOffset)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+
+   VkBindImageMemoryInfo bind = {
+      .sType         = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
+      .image         = image,
+      .memory        = memory,
+      .memoryOffset  = memoryOffset,
+   };
+
+   return device->dispatch_table.BindImageMemory2(_device, 1, &bind);
+}
