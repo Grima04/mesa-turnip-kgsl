@@ -78,14 +78,12 @@ const char *lvp_get_physical_device_entry_name(int index);
 const char *lvp_get_device_entry_name(int index);
 
 bool lvp_instance_entrypoint_is_enabled(int index, uint32_t core_version,
-                                         const struct lvp_instance_extension_table *instance);
+                                         const struct vk_instance_extension_table *instance);
 bool lvp_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                                const struct lvp_instance_extension_table *instance);
+                                                const struct vk_instance_extension_table *instance);
 bool lvp_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                       const struct lvp_instance_extension_table *instance,
-                                       const struct lvp_device_extension_table *device);
-
-void *lvp_lookup_entrypoint(const char *name);
+                                       const struct vk_instance_extension_table *instance,
+                                       const struct vk_device_extension_table *device);
 
 #define LVP_DEFINE_HANDLE_CASTS(__lvp_type, __VkType)                      \
                                                                            \
@@ -211,7 +209,6 @@ struct lvp_physical_device {
    uint32_t max_images;
 
    struct wsi_device                       wsi_device;
-   struct lvp_device_extension_table supported_extensions;
 };
 
 struct lvp_instance {
@@ -225,17 +222,12 @@ struct lvp_instance {
 
    struct pipe_loader_device *devs;
    int num_devices;
-
-   struct lvp_instance_extension_table enabled_extensions;
-   struct lvp_instance_dispatch_table dispatch;
-   struct lvp_physical_device_dispatch_table physical_device_dispatch;
-   struct lvp_device_dispatch_table device_dispatch;
 };
 
 VkResult lvp_init_wsi(struct lvp_physical_device *physical_device);
 void lvp_finish_wsi(struct lvp_physical_device *physical_device);
 
-bool lvp_instance_extension_supported(const char *name);
+extern const struct vk_instance_extension_table lvp_instance_extensions_supported;
 uint32_t lvp_physical_device_api_version(struct lvp_physical_device *dev);
 bool lvp_physical_device_extension_supported(struct lvp_physical_device *dev,
                                               const char *name);
@@ -275,8 +267,6 @@ struct lvp_device {
    struct pipe_screen *pscreen;
 
    mtx_t fence_lock;
-   struct lvp_device_extension_table enabled_extensions;
-   struct lvp_device_dispatch_table dispatch;
 };
 
 void lvp_device_get_cache_uuid(void *uuid);

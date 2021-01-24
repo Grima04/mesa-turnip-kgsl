@@ -45,8 +45,11 @@ lvp_physical_device_init(struct lvp_physical_device *device,
 {
    VkResult result;
 
+   struct vk_physical_device_dispatch_table dispatch_table;
+   vk_physical_device_dispatch_table_from_entrypoints(
+      &dispatch_table, &lvp_physical_device_entrypoints, true);
    result = vk_physical_device_init(&device->vk, &instance->vk,
-                                    NULL, NULL);
+                                    NULL, &dispatch_table);
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
       goto fail;
@@ -58,7 +61,7 @@ lvp_physical_device_init(struct lvp_physical_device *device,
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    device->max_images = device->pscreen->get_shader_param(device->pscreen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_MAX_SHADER_IMAGES);
-   lvp_physical_device_get_supported_extensions(device, &device->supported_extensions);
+   lvp_physical_device_get_supported_extensions(device, &device->vk.supported_extensions);
    result = lvp_init_wsi(device);
    if (result != VK_SUCCESS) {
       vk_physical_device_finish(&device->vk);
@@ -132,9 +135,13 @@ VkResult lvp_CreateInstance(
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   struct vk_instance_dispatch_table dispatch_table;
+   vk_instance_dispatch_table_from_entrypoints(
+      &dispatch_table, &lvp_instance_entrypoints, true);
 
    result = vk_instance_init(&instance->vk,
-                             NULL, NULL,
+                             &lvp_instance_extensions_supported,
+                             &dispatch_table,
                              pCreateInfo,
                              pAllocator);
    if (result != VK_SUCCESS) {
@@ -144,65 +151,6 @@ VkResult lvp_CreateInstance(
 
    instance->apiVersion = client_version;
    instance->physicalDeviceCount = -1;
-
-   for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
-      int idx;
-      for (idx = 0; idx < LVP_INSTANCE_EXTENSION_COUNT; idx++) {
-         if (!strcmp(pCreateInfo->ppEnabledExtensionNames[i],
-                     lvp_instance_extensions[idx].extensionName))
-            break;
-      }
-
-      if (idx >= LVP_INSTANCE_EXTENSION_COUNT ||
-          !lvp_instance_extensions_supported.extensions[idx]) {
-         vk_free2(&default_alloc, pAllocator, instance);
-         return vk_error(instance, VK_ERROR_EXTENSION_NOT_PRESENT);
-      }
-      instance->enabled_extensions.extensions[idx] = true;
-   }
-
-   bool unchecked = instance->debug_flags & LVP_DEBUG_ALL_ENTRYPOINTS;
-   for (unsigned i = 0; i < ARRAY_SIZE(instance->dispatch.entrypoints); i++) {
-      /* Vulkan requires that entrypoints for extensions which have
-       * not been enabled must not be advertised.
-       */
-      if (!unchecked &&
-          !lvp_instance_entrypoint_is_enabled(i, instance->apiVersion,
-                                              &instance->enabled_extensions)) {
-         instance->dispatch.entrypoints[i] = NULL;
-      } else {
-         instance->dispatch.entrypoints[i] =
-            lvp_instance_dispatch_table.entrypoints[i];
-      }
-   }
-
-   for (unsigned i = 0; i < ARRAY_SIZE(instance->physical_device_dispatch.entrypoints); i++) {
-      /* Vulkan requires that entrypoints for extensions which have
-       * not been enabled must not be advertised.
-       */
-      if (!unchecked &&
-          !lvp_physical_device_entrypoint_is_enabled(i, instance->apiVersion,
-                                                     &instance->enabled_extensions)) {
-         instance->physical_device_dispatch.entrypoints[i] = NULL;
-      } else {
-         instance->physical_device_dispatch.entrypoints[i] =
-            lvp_physical_device_dispatch_table.entrypoints[i];
-      }
-   }
-
-   for (unsigned i = 0; i < ARRAY_SIZE(instance->device_dispatch.entrypoints); i++) {
-      /* Vulkan requires that entrypoints for extensions which have
-       * not been enabled must not be advertised.
-       */
-      if (!unchecked &&
-          !lvp_device_entrypoint_is_enabled(i, instance->apiVersion,
-                                            &instance->enabled_extensions, NULL)) {
-         instance->device_dispatch.entrypoints[i] = NULL;
-      } else {
-         instance->device_dispatch.entrypoints[i] =
-            lvp_device_dispatch_table.entrypoints[i];
-      }
-   }
 
    //   _mesa_locale_init();
    glsl_type_singleton_init_or_ref();
@@ -725,46 +673,9 @@ PFN_vkVoidFunction lvp_GetInstanceProcAddr(
    const char*                                 pName)
 {
    LVP_FROM_HANDLE(lvp_instance, instance, _instance);
-
-   /* The Vulkan 1.0 spec for vkGetInstanceProcAddr has a table of exactly
-    * when we have to return valid function pointers, NULL, or it's left
-    * undefined.  See the table for exact details.
-    */
-   if (pName == NULL)
-      return NULL;
-
-#define LOOKUP_LVP_ENTRYPOINT(entrypoint)               \
-   if (strcmp(pName, "vk" #entrypoint) == 0)            \
-      return (PFN_vkVoidFunction)lvp_##entrypoint
-
-   LOOKUP_LVP_ENTRYPOINT(EnumerateInstanceExtensionProperties);
-   LOOKUP_LVP_ENTRYPOINT(EnumerateInstanceLayerProperties);
-   LOOKUP_LVP_ENTRYPOINT(EnumerateInstanceVersion);
-   LOOKUP_LVP_ENTRYPOINT(CreateInstance);
-
-   /* GetInstanceProcAddr() can also be called with a NULL instance.
-    * See https://gitlab.khronos.org/vulkan/vulkan/issues/2057
-    */
-   LOOKUP_LVP_ENTRYPOINT(GetInstanceProcAddr);
-
-#undef LOOKUP_LVP_ENTRYPOINT
-
-   if (instance == NULL)
-      return NULL;
-
-   int idx = lvp_get_instance_entrypoint_index(pName);
-   if (idx >= 0)
-      return instance->dispatch.entrypoints[idx];
-
-   idx = lvp_get_physical_device_entrypoint_index(pName);
-   if (idx >= 0)
-      return instance->physical_device_dispatch.entrypoints[idx];
-
-   idx = lvp_get_device_entrypoint_index(pName);
-   if (idx >= 0)
-      return instance->device_dispatch.entrypoints[idx];
-
-   return NULL;
+   return vk_instance_get_proc_addr(&instance->vk,
+                                    &lvp_instance_entrypoints,
+                                    pName);
 }
 
 /* The loader wants us to expose a second GetInstanceProcAddr function
@@ -794,30 +705,7 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
    const char*                                 pName)
 {
    LVP_FROM_HANDLE(lvp_instance, instance, _instance);
-
-   if (!pName || !instance)
-      return NULL;
-
-   int idx = lvp_get_physical_device_entrypoint_index(pName);
-   if (idx < 0)
-      return NULL;
-
-   return instance->physical_device_dispatch.entrypoints[idx];
-}
-
-PFN_vkVoidFunction lvp_GetDeviceProcAddr(
-   VkDevice                                    _device,
-   const char*                                 pName)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   if (!device || !pName)
-      return NULL;
-
-   int idx = lvp_get_device_entrypoint_index(pName);
-   if (idx < 0)
-      return NULL;
-
-   return device->dispatch.entrypoints[idx];
+   return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
 }
 
 static int queue_thread(void *data)
@@ -883,42 +771,6 @@ lvp_queue_finish(struct lvp_queue *queue)
    queue->ctx->destroy(queue->ctx);
 }
 
-static int lvp_get_device_extension_index(const char *name)
-{
-   for (unsigned i = 0; i < LVP_DEVICE_EXTENSION_COUNT; ++i) {
-      if (strcmp(name, lvp_device_extensions[i].extensionName) == 0)
-         return i;
-   }
-   return -1;
-}
-
-static void
-lvp_device_init_dispatch(struct lvp_device *device)
-{
-   const struct lvp_instance *instance = (struct lvp_instance *)device->physical_device->vk.instance;
-   const struct lvp_device_dispatch_table *dispatch_table_layer = NULL;
-   bool unchecked = instance->debug_flags & LVP_DEBUG_ALL_ENTRYPOINTS;
-
-   for (unsigned i = 0; i < ARRAY_SIZE(device->dispatch.entrypoints); i++) {
-      /* Vulkan requires that entrypoints for extensions which have not been
-       * enabled must not be advertised.
-       */
-      if (!unchecked &&
-          !lvp_device_entrypoint_is_enabled(i, instance->apiVersion,
-                                            &instance->enabled_extensions,
-                                            &device->enabled_extensions)) {
-         device->dispatch.entrypoints[i] = NULL;
-      } else if (dispatch_table_layer &&
-                 dispatch_table_layer->entrypoints[i]) {
-         device->dispatch.entrypoints[i] =
-            dispatch_table_layer->entrypoints[i];
-      } else {
-         device->dispatch.entrypoints[i] =
-            lvp_device_dispatch_table.entrypoints[i];
-      }
-   }
-}
-
 VkResult lvp_CreateDevice(
    VkPhysicalDevice                            physicalDevice,
    const VkDeviceCreateInfo*                   pCreateInfo,
@@ -952,7 +804,12 @@ VkResult lvp_CreateDevice(
    if (!device)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = vk_device_init(&device->vk, NULL, NULL, pCreateInfo,
+   struct vk_device_dispatch_table dispatch_table;
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table,
+      &lvp_device_entrypoints, true);
+   VkResult result = vk_device_init(&device->vk,
+                                    &physical_device->vk,
+                                    &dispatch_table, pCreateInfo,
                                     &physical_device->vk.instance->alloc,
                                     pAllocator);
    if (result != VK_SUCCESS) {
@@ -962,19 +819,6 @@ VkResult lvp_CreateDevice(
 
    device->instance = (struct lvp_instance *)physical_device->vk.instance;
    device->physical_device = physical_device;
-
-   for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
-      const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
-      int index = lvp_get_device_extension_index(ext_name);
-      if (index < 0 || !physical_device->supported_extensions.extensions[index]) {
-         vk_device_finish(&device->vk);
-         vk_free(&device->vk.alloc, device);
-         return vk_error(instance, VK_ERROR_EXTENSION_NOT_PRESENT);
-      }
-
-      device->enabled_extensions.extensions[index] = true;
-   }
-   lvp_device_init_dispatch(device);
 
    mtx_init(&device->fence_lock, mtx_plain);
    device->pscreen = physical_device->pscreen;
@@ -1005,33 +849,14 @@ VkResult lvp_EnumerateInstanceExtensionProperties(
 {
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
 
-   for (int i = 0; i < LVP_INSTANCE_EXTENSION_COUNT; i++) {
+   for (int i = 0; i < VK_INSTANCE_EXTENSION_COUNT; i++) {
       if (lvp_instance_extensions_supported.extensions[i]) {
          vk_outarray_append(&out, prop) {
-            *prop = lvp_instance_extensions[i];
+            *prop = vk_instance_extensions[i];
          }
       }
    }
 
-   return vk_outarray_status(&out);
-}
-
-VkResult lvp_EnumerateDeviceExtensionProperties(
-   VkPhysicalDevice                            physicalDevice,
-   const char*                                 pLayerName,
-   uint32_t*                                   pPropertyCount,
-   VkExtensionProperties*                      pProperties)
-{
-   LVP_FROM_HANDLE(lvp_physical_device, device, physicalDevice);
-   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
-
-   for (int i = 0; i < LVP_DEVICE_EXTENSION_COUNT; i++) {
-      if (device->supported_extensions.extensions[i]) {
-         vk_outarray_append(&out, prop) {
-            *prop = lvp_device_extensions[i];
-         }
-      }
-   }
    return vk_outarray_status(&out);
 }
 
