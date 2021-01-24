@@ -120,6 +120,18 @@ VkResult lvp_GetPhysicalDeviceSurfaceFormatsKHR(
                                          pSurfaceFormats);
 }
 
+VkResult lvp_GetPhysicalDeviceSurfaceFormats2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
+    uint32_t*                                   pSurfaceFormatCount,
+    VkSurfaceFormat2KHR*                        pSurfaceFormats)
+{
+   LVP_FROM_HANDLE(lvp_physical_device, device, physicalDevice);
+
+   return wsi_common_get_surface_formats2(&device->wsi_device, pSurfaceInfo,
+                                          pSurfaceFormatCount, pSurfaceFormats);
+}
+
 VkResult lvp_GetPhysicalDeviceSurfacePresentModesKHR(
    VkPhysicalDevice                            physicalDevice,
    VkSurfaceKHR                                surface,
