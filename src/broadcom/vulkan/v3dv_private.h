@@ -36,7 +36,7 @@
 #include <vulkan/vk_icd.h>
 #include <vk_enum_to_str.h>
 
-#include "vk_object.h"
+#include "vk_device.h"
 
 #include <xf86drm.h>
 

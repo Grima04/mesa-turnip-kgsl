@@ -52,8 +52,8 @@
 #include "util/macros.h"
 #include "util/u_atomic.h"
 #include "vk_alloc.h"
-#include "vk_object.h"
 #include "vk_debug_report.h"
+#include "vk_device.h"
 #include "wsi_common.h"
 
 #include "ir3/ir3_compiler.h"

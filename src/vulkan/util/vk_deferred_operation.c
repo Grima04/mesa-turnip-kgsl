@@ -24,6 +24,7 @@
 #include "vk_deferred_operation.h"
 
 #include "vk_alloc.h"
+#include "vk_device.h"
 
 VkResult
 vk_create_deferred_operation(struct vk_device *device,

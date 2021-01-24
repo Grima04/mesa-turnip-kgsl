@@ -62,7 +62,7 @@
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
-#include "vk_object.h"
+#include "vk_device.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;

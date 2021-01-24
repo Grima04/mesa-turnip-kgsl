@@ -52,7 +52,7 @@ typedef uint32_t xcb_window_t;
 
 #include "lvp_extensions.h"
 #include "lvp_entrypoints.h"
-#include "vk_object.h"
+#include "vk_device.h"
 
 #include "wsi_common.h"
 

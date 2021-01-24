@@ -66,26 +66,6 @@ vk_object_base_from_u64_handle(uint64_t handle, VkObjectType obj_type)
    return base;
 }
 
-
-struct vk_device {
-   struct vk_object_base base;
-   VkAllocationCallbacks alloc;
-
-   /* For VK_EXT_private_data */
-   uint32_t private_data_next_index;
-
-#ifdef ANDROID
-   mtx_t swapchain_private_mtx;
-   struct hash_table *swapchain_private;
-#endif
-};
-
-void vk_device_init(struct vk_device *device,
-                    const VkDeviceCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *instance_alloc,
-                    const VkAllocationCallbacks *device_alloc);
-void vk_device_finish(struct vk_device *device);
-
 #define VK_DEFINE_HANDLE_CASTS(__driver_type, __base, __VkType, __VK_TYPE) \
    static inline struct __driver_type *                                    \
    __driver_type ## _from_handle(__VkType _handle)                         \

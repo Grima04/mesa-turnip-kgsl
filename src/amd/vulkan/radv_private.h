@@ -55,7 +55,7 @@
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
-#include "vk_object.h"
+#include "vk_device.h"
 #include "vk_format.h"
 
 #include "radv_radeon_winsys.h"

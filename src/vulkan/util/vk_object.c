@@ -24,6 +24,7 @@
 #include "vk_object.h"
 
 #include "vk_alloc.h"
+#include "vk_device.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
 
@@ -41,40 +42,6 @@ void
 vk_object_base_finish(struct vk_object_base *base)
 {
    util_sparse_array_finish(&base->private_data);
-}
-
-void
-vk_device_init(struct vk_device *device,
-               UNUSED const VkDeviceCreateInfo *pCreateInfo,
-               const VkAllocationCallbacks *instance_alloc,
-               const VkAllocationCallbacks *device_alloc)
-{
-   vk_object_base_init(device, &device->base, VK_OBJECT_TYPE_DEVICE);
-   if (device_alloc)
-      device->alloc = *device_alloc;
-   else
-      device->alloc = *instance_alloc;
-
-   p_atomic_set(&device->private_data_next_index, 0);
-
-#ifdef ANDROID
-   mtx_init(&device->swapchain_private_mtx, mtx_plain);
-   device->swapchain_private = NULL;
-#endif /* ANDROID */
-}
-
-void
-vk_device_finish(UNUSED struct vk_device *device)
-{
-#ifdef ANDROID
-   if (device->swapchain_private) {
-      hash_table_foreach(device->swapchain_private, entry)
-         util_sparse_array_finish(entry->data);
-      ralloc_free(device->swapchain_private);
-   }
-#endif /* ANDROID */
-
-   vk_object_base_finish(&device->base);
 }
 
 void *
