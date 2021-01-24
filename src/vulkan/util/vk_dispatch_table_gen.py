@@ -806,21 +806,10 @@ def get_entrypoints_defines(doc):
 
     return entrypoints_to_defines
 
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--out-c', help='Output C file.')
-    parser.add_argument('--out-h', help='Output H file.')
-    parser.add_argument('--xml',
-                        help='Vulkan API XML file.',
-                        required=True,
-                        action='append',
-                        dest='xml_files')
-    args = parser.parse_args()
-
+def get_entrypoints_from_xml(xml_files):
     entrypoints = []
 
-    for filename in args.xml_files:
+    for filename in xml_files:
         doc = et.parse(filename)
         entrypoints += get_entrypoints(doc, get_entrypoints_defines(doc))
 
@@ -835,6 +824,21 @@ def main():
         EntrypointParam('VkDeviceMemory', 'pMem', 'VkDeviceMemory* pMem'),
         EntrypointParam('VkImage', 'pImage', 'VkImage* pImage')
     ]))
+
+    return entrypoints
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--out-c', help='Output C file.')
+    parser.add_argument('--out-h', help='Output H file.')
+    parser.add_argument('--xml',
+                        help='Vulkan API XML file.',
+                        required=True,
+                        action='append',
+                        dest='xml_files')
+    args = parser.parse_args()
+
+    entrypoints = get_entrypoints_from_xml(args.xml_files)
 
     device_entrypoints = []
     physical_device_entrypoints = []
