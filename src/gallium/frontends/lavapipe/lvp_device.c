@@ -44,8 +44,13 @@ lvp_physical_device_init(struct lvp_physical_device *device,
                          struct pipe_loader_device *pld)
 {
    VkResult result;
-   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
-   device->instance = instance;
+
+   result = vk_physical_device_init(&device->vk, &instance->vk,
+                                    NULL, NULL);
+   if (result != VK_SUCCESS) {
+      vk_error(instance, result);
+      goto fail;
+   }
    device->pld = pld;
 
    device->pscreen = pipe_loader_create_screen(device->pld);
@@ -56,6 +61,7 @@ lvp_physical_device_init(struct lvp_physical_device *device,
    lvp_physical_device_get_supported_extensions(device, &device->supported_extensions);
    result = lvp_init_wsi(device);
    if (result != VK_SUCCESS) {
+      vk_physical_device_finish(&device->vk);
       vk_error(instance, result);
       goto fail;
    }
@@ -70,6 +76,7 @@ lvp_physical_device_finish(struct lvp_physical_device *device)
 {
    lvp_finish_wsi(device);
    device->pscreen->destroy(device->pscreen);
+   vk_physical_device_finish(&device->vk);
 }
 
 static void *
@@ -105,6 +112,7 @@ VkResult lvp_CreateInstance(
    VkInstance*                                 pInstance)
 {
    struct lvp_instance *instance;
+   VkResult result;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
 
@@ -116,17 +124,23 @@ VkResult lvp_CreateInstance(
       client_version = VK_API_VERSION_1_0;
    }
 
-   instance = vk_zalloc2(&default_alloc, pAllocator, sizeof(*instance), 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (pAllocator == NULL)
+      pAllocator = &default_alloc;
+
+   instance = vk_zalloc(pAllocator, sizeof(*instance), 8,
+                        VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(NULL, &instance->base, VK_OBJECT_TYPE_INSTANCE);
 
-   if (pAllocator)
-      instance->alloc = *pAllocator;
-   else
-      instance->alloc = default_alloc;
+   result = vk_instance_init(&instance->vk,
+                             NULL, NULL,
+                             pCreateInfo,
+                             pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free(pAllocator, instance);
+      return vk_error(instance, result);
+   }
 
    instance->apiVersion = client_version;
    instance->physicalDeviceCount = -1;
@@ -214,8 +228,8 @@ void lvp_DestroyInstance(
 
    pipe_loader_release(&instance->devs, instance->num_devices);
 
-   vk_object_base_finish(&instance->base);
-   vk_free(&instance->alloc, instance);
+   vk_instance_finish(&instance->vk);
+   vk_free(&instance->vk.alloc, instance);
 }
 
 static void lvp_get_image(struct dri_drawable *dri_drawable,
@@ -881,7 +895,7 @@ static int lvp_get_device_extension_index(const char *name)
 static void
 lvp_device_init_dispatch(struct lvp_device *device)
 {
-   const struct lvp_instance *instance = device->physical_device->instance;
+   const struct lvp_instance *instance = (struct lvp_instance *)device->physical_device->vk.instance;
    const struct lvp_device_dispatch_table *dispatch_table_layer = NULL;
    bool unchecked = instance->debug_flags & LVP_DEBUG_ALL_ENTRYPOINTS;
 
@@ -915,6 +929,7 @@ VkResult lvp_CreateDevice(
 
    LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
    struct lvp_device *device;
+   struct lvp_instance *instance = (struct lvp_instance *)physical_device->vk.instance;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
 
@@ -927,25 +942,25 @@ VkResult lvp_CreateDevice(
       unsigned num_features = sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32);
       for (uint32_t i = 0; i < num_features; i++) {
          if (enabled_feature[i] && !supported_feature[i])
-            return vk_error(physical_device->instance, VK_ERROR_FEATURE_NOT_PRESENT);
+            return vk_error(instance, VK_ERROR_FEATURE_NOT_PRESENT);
       }
    }
 
-   device = vk_zalloc2(&physical_device->instance->alloc, pAllocator,
+   device = vk_zalloc2(&physical_device->vk.instance->alloc, pAllocator,
                        sizeof(*device), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)
-      return vk_error(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result = vk_device_init(&device->vk, NULL, NULL, pCreateInfo,
-                                    &physical_device->instance->alloc,
+                                    &physical_device->vk.instance->alloc,
                                     pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
-      return vk_error(physical_device->instance, result);
+      return vk_error(instance, result);
    }
 
-   device->instance = physical_device->instance;
+   device->instance = (struct lvp_instance *)physical_device->vk.instance;
    device->physical_device = physical_device;
 
    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
@@ -954,7 +969,7 @@ VkResult lvp_CreateDevice(
       if (index < 0 || !physical_device->supported_extensions.extensions[index]) {
          vk_device_finish(&device->vk);
          vk_free(&device->vk.alloc, device);
-         return vk_error(physical_device->instance, VK_ERROR_EXTENSION_NOT_PRESENT);
+         return vk_error(instance, VK_ERROR_EXTENSION_NOT_PRESENT);
       }
 
       device->enabled_extensions.extensions[index] = true;

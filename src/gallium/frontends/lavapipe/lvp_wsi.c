@@ -35,7 +35,7 @@ lvp_init_wsi(struct lvp_physical_device *physical_device)
    return wsi_device_init(&physical_device->wsi_device,
                           lvp_physical_device_to_handle(physical_device),
                           lvp_wsi_proc_addr,
-                          &physical_device->instance->alloc,
+                          &physical_device->vk.instance->alloc,
                           -1, NULL, true);
 }
 
@@ -43,7 +43,7 @@ void
 lvp_finish_wsi(struct lvp_physical_device *physical_device)
 {
    wsi_device_finish(&physical_device->wsi_device,
-                     &physical_device->instance->alloc);
+                     &physical_device->vk.instance->alloc);
 }
 
 void lvp_DestroySurfaceKHR(
@@ -54,7 +54,7 @@ void lvp_DestroySurfaceKHR(
    LVP_FROM_HANDLE(lvp_instance, instance, _instance);
    ICD_FROM_HANDLE(VkIcdSurfaceBase, surface, _surface);
 
-   vk_free2(&instance->alloc, pAllocator, surface);
+   vk_free2(&instance->vk.alloc, pAllocator, surface);
 }
 
 VkResult lvp_GetPhysicalDeviceSurfaceSupportKHR(

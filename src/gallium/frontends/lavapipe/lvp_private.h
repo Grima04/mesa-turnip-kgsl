@@ -53,6 +53,8 @@ typedef uint32_t xcb_window_t;
 #include "lvp_extensions.h"
 #include "lvp_entrypoints.h"
 #include "vk_device.h"
+#include "vk_instance.h"
+#include "vk_physical_device.h"
 
 #include "wsi_common.h"
 
@@ -202,8 +204,7 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
         __tmp &= ~(1 << (stage)))
 
 struct lvp_physical_device {
-   VK_LOADER_DATA                              _loader_data;
-   struct lvp_instance *                       instance;
+   struct vk_physical_device vk;
 
    struct pipe_loader_device *pld;
    struct pipe_screen *pscreen;
@@ -214,9 +215,7 @@ struct lvp_physical_device {
 };
 
 struct lvp_instance {
-   struct vk_object_base base;
-
-   VkAllocationCallbacks alloc;
+   struct vk_instance vk;
 
    uint32_t apiVersion;
    int physicalDeviceCount;
