@@ -553,7 +553,7 @@ add_shadow_surface(struct anv_device *device,
                    uint32_t stride,
                    VkImageUsageFlags vk_plane_usage)
 {
-   bool ok;
+   ASSERTED bool ok;
 
    ok = isl_surf_init(&device->isl_dev,
                       &image->planes[plane].shadow_surface.isl,

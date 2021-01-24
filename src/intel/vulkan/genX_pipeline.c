@@ -2354,7 +2354,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
 
    const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
 
-   const struct anv_shader_bin *cs_bin = pipeline->cs;
+   const UNUSED struct anv_shader_bin *cs_bin = pipeline->cs;
    const struct gen_device_info *devinfo = &device->info;
 
    anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
