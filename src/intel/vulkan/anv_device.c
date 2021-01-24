@@ -2357,14 +2357,6 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
    return anv_GetInstanceProcAddr(instance, pName);
 }
 
-PFN_vkVoidFunction anv_GetDeviceProcAddr(
-    VkDevice                                    _device,
-    const char*                                 pName)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   return vk_device_get_proc_addr(&device->vk, pName);
-}
-
 /* With version 4+ of the loader interface the ICD should expose
  * vk_icdGetPhysicalDeviceProcAddr()
  */

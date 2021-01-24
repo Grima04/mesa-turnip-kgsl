@@ -111,3 +111,11 @@ vk_device_get_proc_addr(const struct vk_device *device,
                                                     &instance->enabled_extensions,
                                                     &device->enabled_extensions);
 }
+
+PFN_vkVoidFunction
+vk_common_GetDeviceProcAddr(VkDevice _device,
+                            const char *pName)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+   return vk_device_get_proc_addr(device, pName);
+}
