@@ -4609,6 +4609,38 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
                                VkPerformanceConfigurationINTEL,
                                VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL)
 
+#define anv_genX(devinfo, thing) ({             \
+   __typeof(&gen9_##thing) genX_thing;          \
+   switch ((devinfo)->gen) {                    \
+   case 7:                                      \
+      if ((devinfo)->is_haswell) {              \
+         genX_thing = &gen75_##thing;           \
+      } else {                                  \
+         genX_thing = &gen7_##thing;            \
+      }                                         \
+      break;                                    \
+   case 8:                                      \
+      genX_thing = &gen8_##thing;               \
+      break;                                    \
+   case 9:                                      \
+      genX_thing = &gen9_##thing;               \
+      break;                                    \
+   case 11:                                     \
+      genX_thing = &gen11_##thing;              \
+      break;                                    \
+   case 12:                                     \
+      if (gen_device_info_is_12hp(devinfo)) {   \
+         genX_thing = &gen125_##thing;          \
+      } else {                                  \
+         genX_thing = &gen12_##thing;           \
+      }                                         \
+      break;                                    \
+   default:                                     \
+      assert(!"Unknown hardware generation");   \
+   }                                            \
+   genX_thing;                                  \
+})
+
 /* Gen-specific function declarations */
 #ifdef genX
 #  include "anv_genX.h"

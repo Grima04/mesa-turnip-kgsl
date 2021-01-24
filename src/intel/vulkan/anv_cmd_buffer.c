@@ -384,41 +384,11 @@ VkResult anv_ResetCommandBuffer(
    return anv_cmd_buffer_reset(cmd_buffer);
 }
 
-#define anv_genX_call(devinfo, func, ...)          \
-   switch ((devinfo)->gen) {                       \
-   case 7:                                         \
-      if ((devinfo)->is_haswell) {                 \
-         gen75_##func(__VA_ARGS__);                \
-      } else {                                     \
-         gen7_##func(__VA_ARGS__);                 \
-      }                                            \
-      break;                                       \
-   case 8:                                         \
-      gen8_##func(__VA_ARGS__);                    \
-      break;                                       \
-   case 9:                                         \
-      gen9_##func(__VA_ARGS__);                    \
-      break;                                       \
-   case 11:                                        \
-      gen11_##func(__VA_ARGS__);                   \
-      break;                                       \
-   case 12:                                        \
-      if (gen_device_info_is_12hp(devinfo)) {      \
-         gen125_##func(__VA_ARGS__);               \
-      } else {                                     \
-         gen12_##func(__VA_ARGS__);                \
-      }                                            \
-      break;                                       \
-   default:                                        \
-      assert(!"Unknown hardware generation");      \
-   }
-
 void
 anv_cmd_buffer_emit_state_base_address(struct anv_cmd_buffer *cmd_buffer)
 {
-   anv_genX_call(&cmd_buffer->device->info,
-                 cmd_buffer_emit_state_base_address,
-                 cmd_buffer);
+   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   anv_genX(devinfo, cmd_buffer_emit_state_base_address)(cmd_buffer);
 }
 
 void
@@ -430,18 +400,18 @@ anv_cmd_buffer_mark_image_written(struct anv_cmd_buffer *cmd_buffer,
                                   uint32_t base_layer,
                                   uint32_t layer_count)
 {
-   anv_genX_call(&cmd_buffer->device->info,
-                 cmd_buffer_mark_image_written,
-                 cmd_buffer, image, aspect, aux_usage,
-                 level, base_layer, layer_count);
+   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   anv_genX(devinfo, cmd_buffer_mark_image_written)(cmd_buffer, image,
+                                                    aspect, aux_usage,
+                                                    level, base_layer,
+                                                    layer_count);
 }
 
 void
 anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer)
 {
-   anv_genX_call(&cmd_buffer->device->info,
-                 cmd_emit_conditional_render_predicate,
-                 cmd_buffer);
+   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   anv_genX(devinfo, cmd_emit_conditional_render_predicate)(cmd_buffer);
 }
 
 static bool

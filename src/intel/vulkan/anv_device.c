@@ -3151,33 +3151,7 @@ VkResult anv_CreateDevice(
 
    anv_scratch_pool_init(device, &device->scratch_pool);
 
-   switch (device->info.gen) {
-   case 7:
-      if (!device->info.is_haswell)
-         result = gen7_init_device_state(device);
-      else
-         result = gen75_init_device_state(device);
-      break;
-   case 8:
-      result = gen8_init_device_state(device);
-      break;
-   case 9:
-      result = gen9_init_device_state(device);
-      break;
-   case 11:
-      result = gen11_init_device_state(device);
-      break;
-   case 12:
-      if (gen_device_info_is_12hp(&device->info))
-         result = gen125_init_device_state(device);
-      else
-         result = gen12_init_device_state(device);
-      break;
-   default:
-      /* Shouldn't get here as we don't create physical devices for any other
-       * gens. */
-      unreachable("unhandled gen");
-   }
+   result = anv_genX(&device->info, init_device_state)(device);
    if (result != VK_SUCCESS)
       goto fail_clear_value_bo;
 
