@@ -24,6 +24,7 @@
 #include "vk_object.h"
 
 #include "vk_alloc.h"
+#include "vk_common_entrypoints.h"
 #include "vk_device.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
@@ -229,4 +230,50 @@ vk_object_base_get_private_data(struct vk_device *device,
    } else {
       *pData = 0;
    }
+}
+
+VkResult
+vk_common_CreatePrivateDataSlotEXT(VkDevice _device,
+                                   const VkPrivateDataSlotCreateInfoEXT *pCreateInfo,
+                                   const VkAllocationCallbacks *pAllocator,
+                                   VkPrivateDataSlotEXT *pPrivateDataSlot)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+   return vk_private_data_slot_create(device, pCreateInfo, pAllocator,
+                                      pPrivateDataSlot);
+}
+
+void
+vk_common_DestroyPrivateDataSlotEXT(VkDevice _device,
+                                    VkPrivateDataSlotEXT privateDataSlot,
+                                    const VkAllocationCallbacks *pAllocator)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+   vk_private_data_slot_destroy(device, privateDataSlot, pAllocator);
+}
+
+VkResult
+vk_common_SetPrivateDataEXT(VkDevice _device,
+                            VkObjectType objectType,
+                            uint64_t objectHandle,
+                            VkPrivateDataSlotEXT privateDataSlot,
+                            uint64_t data)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+   return vk_object_base_set_private_data(device,
+                                          objectType, objectHandle,
+                                          privateDataSlot, data);
+}
+
+void
+vk_common_GetPrivateDataEXT(VkDevice _device,
+                            VkObjectType objectType,
+                            uint64_t objectHandle,
+                            VkPrivateDataSlotEXT privateDataSlot,
+                            uint64_t *pData)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+   vk_object_base_get_private_data(device,
+                                   objectType, objectHandle,
+                                   privateDataSlot, pData);
 }
