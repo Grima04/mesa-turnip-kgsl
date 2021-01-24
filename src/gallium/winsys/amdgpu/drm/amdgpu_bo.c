@@ -682,6 +682,14 @@ static const struct pb_vtbl amdgpu_winsys_bo_slab_vtbl = {
    /* other functions are never called */
 };
 
+static unsigned get_slab_entry_alignment(struct amdgpu_winsys *ws, unsigned size)
+{
+   unsigned entry_size = util_next_power_of_two(size);
+   unsigned min_entry_size = 1 << ws->bo_slabs[0].min_order;
+
+   return MAX2(entry_size, min_entry_size);
+}
+
 static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
                                             unsigned entry_size,
                                             unsigned group_index,
@@ -742,7 +750,7 @@ static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
       struct amdgpu_winsys_bo *bo = &slab->entries[i];
 
       simple_mtx_init(&bo->lock, mtx_plain);
-      bo->base.alignment = entry_size;
+      bo->base.alignment = get_slab_entry_alignment(ws, entry_size);
       bo->base.size = entry_size;
       bo->base.vtbl = &amdgpu_winsys_bo_slab_vtbl;
       bo->ws = ws;
@@ -1324,23 +1332,31 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
 
    /* Sub-allocate small buffers from slabs. */
    if (!(flags & (RADEON_FLAG_NO_SUBALLOC | RADEON_FLAG_SPARSE)) &&
-       size <= max_slab_entry_size &&
-       /* The alignment must be at most the size of the smallest slab entry or
-        * the next power of two. */
-       alignment <= MAX2(1 << slabs[0].min_order, util_next_power_of_two(size))) {
+       size <= max_slab_entry_size) {
       struct pb_slab_entry *entry;
       int heap = radeon_get_heap_index(domain, flags);
 
       if (heap < 0 || heap >= RADEON_MAX_SLAB_HEAPS)
          goto no_slab;
 
-      struct pb_slabs *slabs = get_slabs(ws, size, flags);
-      entry = pb_slab_alloc(slabs, size, heap);
+      unsigned alloc_size = size;
+
+      /* Always use slabs for sizes less than 4 KB because the kernel aligns
+       * everything to 4 KB.
+       */
+      if (size < alignment && alignment <= 4 * 1024)
+         alloc_size = alignment;
+
+      if (alignment > get_slab_entry_alignment(ws, size))
+         goto no_slab; /* can't fulfil alignment requirements */
+
+      struct pb_slabs *slabs = get_slabs(ws, alloc_size, flags);
+      entry = pb_slab_alloc(slabs, alloc_size, heap);
       if (!entry) {
          /* Clean up buffer managers and try again. */
          amdgpu_clean_up_buffer_managers(ws);
 
-         entry = pb_slab_alloc(slabs, size, heap);
+         entry = pb_slab_alloc(slabs, alloc_size, heap);
       }
       if (!entry)
          return NULL;
@@ -1348,6 +1364,7 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
       bo = container_of(entry, struct amdgpu_winsys_bo, u.slab.entry);
       pipe_reference_init(&bo->base.reference, 1);
       bo->base.size = size;
+      assert(alignment <= bo->base.alignment);
 
       if (domain & RADEON_DOMAIN_VRAM)
          ws->slab_wasted_vram += get_slab_wasted_size(bo);
