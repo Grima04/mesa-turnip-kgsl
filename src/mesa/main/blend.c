@@ -32,6 +32,7 @@
 #include "glheader.h"
 #include "blend.h"
 #include "context.h"
+#include "draw_validate.h"
 #include "enums.h"
 #include "macros.h"
 #include "mtypes.h"
@@ -170,11 +171,16 @@ blend_factor_is_dual_src(GLenum factor)
 static void
 update_uses_dual_src(struct gl_context *ctx, int buf)
 {
-   ctx->Color.Blend[buf]._UsesDualSrc =
+   bool uses_dual_src =
       (blend_factor_is_dual_src(ctx->Color.Blend[buf].SrcRGB) ||
        blend_factor_is_dual_src(ctx->Color.Blend[buf].DstRGB) ||
        blend_factor_is_dual_src(ctx->Color.Blend[buf].SrcA) ||
        blend_factor_is_dual_src(ctx->Color.Blend[buf].DstA));
+
+   if (ctx->Color.Blend[buf]._UsesDualSrc != uses_dual_src) {
+      ctx->Color.Blend[buf]._UsesDualSrc = uses_dual_src;
+      _mesa_update_valid_to_render_state(ctx);
+   }
 }
 
 
@@ -497,6 +503,16 @@ advanced_blend_mode(const struct gl_context *ctx, GLenum mode)
           advanced_blend_mode_from_gl_enum(mode) : BLEND_NONE;
 }
 
+static void
+set_advanced_blend_mode(struct gl_context *ctx,
+                        enum gl_advanced_blend_mode advanced_mode)
+{
+   if (ctx->Color._AdvancedBlendMode != advanced_mode) {
+      ctx->Color._AdvancedBlendMode = advanced_mode;
+      _mesa_update_valid_to_render_state(ctx);
+   }
+}
+
 /* This is really an extension function! */
 void GLAPIENTRY
 _mesa_BlendEquation( GLenum mode )
@@ -546,7 +562,7 @@ _mesa_BlendEquation( GLenum mode )
       ctx->Color.Blend[buf].EquationA = mode;
    }
    ctx->Color._BlendEquationPerBuffer = GL_FALSE;
-   ctx->Color._AdvancedBlendMode = advanced_mode;
+   set_advanced_blend_mode(ctx, advanced_mode);
 
    if (ctx->Driver.BlendEquationSeparate)
       ctx->Driver.BlendEquationSeparate(ctx, mode, mode);
@@ -571,7 +587,7 @@ blend_equationi(struct gl_context *ctx, GLuint buf, GLenum mode,
    ctx->Color._BlendEquationPerBuffer = GL_TRUE;
 
    if (buf == 0)
-      ctx->Color._AdvancedBlendMode = advanced_mode;
+      set_advanced_blend_mode(ctx, advanced_mode);
 }
 
 
@@ -670,7 +686,7 @@ blend_equation_separate(struct gl_context *ctx, GLenum modeRGB, GLenum modeA,
       ctx->Color.Blend[buf].EquationA = modeA;
    }
    ctx->Color._BlendEquationPerBuffer = GL_FALSE;
-   ctx->Color._AdvancedBlendMode = BLEND_NONE;
+   set_advanced_blend_mode(ctx, BLEND_NONE);
 
    if (ctx->Driver.BlendEquationSeparate)
       ctx->Driver.BlendEquationSeparate(ctx, modeRGB, modeA);
@@ -729,7 +745,7 @@ blend_equation_separatei(struct gl_context *ctx, GLuint buf, GLenum modeRGB,
    ctx->Color.Blend[buf].EquationRGB = modeRGB;
    ctx->Color.Blend[buf].EquationA = modeA;
    ctx->Color._BlendEquationPerBuffer = GL_TRUE;
-   ctx->Color._AdvancedBlendMode = BLEND_NONE;
+   set_advanced_blend_mode(ctx, BLEND_NONE);
 }
 
 
