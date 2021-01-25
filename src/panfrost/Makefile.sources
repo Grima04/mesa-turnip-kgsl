@@ -39,6 +39,8 @@ lib_FILES := \
         lib/pan_device.h \
         lib/pan_encoder.h \
         lib/pan_format.c \
+        lib/pan_indirect_draw.c \
+        lib/pan_indirect_draw.h \
         lib/pan_invocation.c \
         lib/pan_pool.c \
         lib/pan_pool.h \

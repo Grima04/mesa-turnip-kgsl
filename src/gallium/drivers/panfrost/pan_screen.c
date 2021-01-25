@@ -49,6 +49,7 @@
 #include "pan_resource.h"
 #include "pan_public.h"
 #include "pan_util.h"
+#include "pan_indirect_draw.h"
 #include "decode.h"
 
 #include "pan_context.h"
