@@ -389,59 +389,6 @@ check_draw_arrays_data(struct gl_context *ctx, GLint start, GLsizei count)
 
 
 /**
- * Check if we should skip the draw call even after validation was successful.
- */
-static bool
-skip_validated_draw(struct gl_context *ctx)
-{
-   switch (ctx->API) {
-   case API_OPENGLES2:
-      /* For ES2, we can draw if we have a vertex program/shader). */
-      return ctx->VertexProgram._Current == NULL;
-
-   case API_OPENGLES:
-      /* For OpenGL ES, only draw if we have vertex positions
-       */
-      if (!(ctx->Array.VAO->Enabled & VERT_BIT_POS))
-         return true;
-      break;
-
-   case API_OPENGL_CORE:
-      /* Section 7.3 (Program Objects) of the OpenGL 4.5 Core Profile spec
-       * says:
-       *
-       *     "If there is no active program for the vertex or fragment shader
-       *     stages, the results of vertex and/or fragment processing will be
-       *     undefined. However, this is not an error."
-       *
-       * The fragment shader is not tested here because other state (e.g.,
-       * GL_RASTERIZER_DISCARD) affects whether or not we actually care.
-       */
-      return ctx->VertexProgram._Current == NULL;
-
-   case API_OPENGL_COMPAT:
-      if (ctx->VertexProgram._Current != NULL) {
-         /* Draw regardless of whether or not we have any vertex arrays.
-          * (Ex: could draw a point using a constant vertex pos)
-          */
-         return false;
-      } else {
-         /* Draw if we have vertex positions (GL_VERTEX_ARRAY or generic
-          * array [0]).
-          */
-         return !(ctx->Array.VAO->Enabled & (VERT_BIT_POS|VERT_BIT_GENERIC0));
-      }
-      break;
-
-   default:
-      unreachable("Invalid API value in check_valid_to_render()");
-   }
-
-   return false;
-}
-
-
-/**
  * Print info/data for glDrawArrays(), for debugging.
  */
 static void
@@ -561,9 +508,6 @@ static void
 _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
                   GLsizei count, GLuint numInstances, GLuint baseInstance)
 {
-   if (skip_validated_draw(ctx))
-      return;
-
    /* OpenGL 4.5 says that primitive restart is ignored with non-indexed
     * draws.
     */
@@ -890,9 +834,6 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
          return;
    }
 
-   if (skip_validated_draw(ctx))
-      return;
-
    struct pipe_draw_info info;
    struct pipe_draw_start_count *draw;
 
@@ -988,25 +929,6 @@ dump_element_buffer(struct gl_context *ctx, GLenum type)
 #endif
 
 
-static bool
-skip_draw_elements(struct gl_context *ctx, GLsizei count,
-                   const GLvoid *indices)
-{
-   if (count == 0)
-      return true;
-
-   /* Not using a VBO for indices, so avoid NULL pointer derefs later.
-    */
-   if (!ctx->Array.VAO->IndexBufferObj && indices == NULL)
-      return true;
-
-   if (skip_validated_draw(ctx))
-      return true;
-
-   return false;
-}
-
-
 /**
  * Inner support for both _mesa_DrawElements and _mesa_DrawRangeElements.
  * Do the rendering for a glDrawElements or glDrawRangeElements call after
@@ -1021,9 +943,6 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
                                   GLint basevertex, GLuint numInstances,
                                   GLuint baseInstance)
 {
-   if (skip_draw_elements(ctx, count, indices))
-      return;
-
    if (!index_bounds_valid) {
       assert(start == 0u);
       assert(end == ~0u);
@@ -1530,9 +1449,6 @@ _mesa_MultiDrawElementsEXT(GLenum mode, const GLsizei *count, GLenum type,
                                          primcount))
       return;
 
-   if (skip_validated_draw(ctx))
-      return;
-
    _mesa_validated_multidrawelements(ctx, mode, count, type, indices, primcount,
                                      NULL);
 }
@@ -1558,9 +1474,6 @@ _mesa_MultiDrawElementsBaseVertex(GLenum mode,
                                             primcount))
          return;
    }
-
-   if (skip_validated_draw(ctx))
-      return;
 
    _mesa_validated_multidrawelements(ctx, mode, count, type, indices, primcount,
                                      basevertex);
@@ -1602,9 +1515,6 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
       _mesa_draw_arrays(ctx, mode, 0, n, numInstances, 0);
       return;
    }
-
-   if (skip_validated_draw(ctx))
-      return;
 
    /* Maybe we should do some primitive splitting for primitive restart
     * (like in DrawArrays), but we have no way to know how many vertices
@@ -1761,9 +1671,6 @@ _mesa_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
          return;
    }
 
-   if (skip_validated_draw(ctx))
-      return;
-
    _mesa_validated_multidrawarraysindirect(ctx, mode, (GLintptr)indirect,
                                            0, 1, 16, NULL);
 }
@@ -1822,9 +1729,6 @@ _mesa_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect)
       if (!_mesa_validate_DrawElementsIndirect(ctx, mode, type, indirect))
          return;
    }
-
-   if (skip_validated_draw(ctx))
-      return;
 
    _mesa_validated_multidrawelementsindirect(ctx, mode, type,
                                              (GLintptr)indirect, 0,
@@ -1885,9 +1789,6 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
                                                   primcount, stride))
          return;
    }
-
-   if (skip_validated_draw(ctx))
-      return;
 
    _mesa_validated_multidrawarraysindirect(ctx, mode, (GLintptr)indirect, 0,
                                            primcount, stride, NULL);
@@ -1959,9 +1860,6 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
          return;
    }
 
-   if (skip_validated_draw(ctx))
-      return;
-
    _mesa_validated_multidrawelementsindirect(ctx, mode, type,
                                              (GLintptr)indirect, 0, primcount,
                                              stride, NULL);
@@ -1992,9 +1890,6 @@ _mesa_MultiDrawArraysIndirectCountARB(GLenum mode, GLintptr indirect,
                                                        maxdrawcount, stride))
          return;
    }
-
-   if (skip_validated_draw(ctx))
-      return;
 
    _mesa_validated_multidrawarraysindirect(ctx, mode, indirect,
                                            drawcount_offset, maxdrawcount,
@@ -2027,9 +1922,6 @@ _mesa_MultiDrawElementsIndirectCountARB(GLenum mode, GLenum type,
                                                          maxdrawcount, stride))
          return;
    }
-
-   if (skip_validated_draw(ctx))
-      return;
 
    _mesa_validated_multidrawelementsindirect(ctx, mode, type, indirect,
                                              drawcount_offset, maxdrawcount,
