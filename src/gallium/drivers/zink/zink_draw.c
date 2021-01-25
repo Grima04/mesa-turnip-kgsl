@@ -257,7 +257,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       return;
    }
    if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
-      ctx->gfx_pipeline_state.hash = 0;
+      ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
    struct zink_gfx_program *gfx_program = get_gfx_program(ctx);
    if (!gfx_program)
