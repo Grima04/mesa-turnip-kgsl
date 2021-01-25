@@ -732,13 +732,12 @@ _mesa_DrawArrays(GLenum mode, GLint start, GLsizei count)
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawArrays(ctx, mode, count))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawArrays(ctx, mode, count))
+      return;
 
    if (0)
       check_draw_arrays_data(ctx, start, count);
@@ -763,14 +762,13 @@ _mesa_DrawArraysInstancedARB(GLenum mode, GLint start, GLsizei count,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawArraysInstanced(ctx, mode, start, count,
-                                              numInstances))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawArraysInstanced(ctx, mode, start, count,
+                                           numInstances))
+      return;
 
    if (0)
       check_draw_arrays_data(ctx, start, count);
@@ -795,14 +793,13 @@ _mesa_DrawArraysInstancedBaseInstance(GLenum mode, GLint first,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawArraysInstanced(ctx, mode, first, count,
-                                              numInstances))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawArraysInstanced(ctx, mode, first, count,
+                                           numInstances))
+      return;
 
    if (0)
       check_draw_arrays_data(ctx, first, count);
@@ -826,13 +823,12 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_MultiDrawArrays(ctx, mode, count, primcount))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_MultiDrawArrays(ctx, mode, count, primcount))
+      return;
 
    struct pipe_draw_info info;
    struct pipe_draw_start_count *draw;
@@ -1042,14 +1038,13 @@ _mesa_DrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawRangeElements(ctx, mode, start, end, count,
-                                            type, indices))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawRangeElements(ctx, mode, start, end, count,
+                                         type, indices))
+      return;
 
    if ((int) end + basevertex < 0 || start + basevertex >= max_element) {
       /* The application requested we draw using a range of indices that's
@@ -1138,13 +1133,12 @@ _mesa_DrawElements(GLenum mode, GLsizei count, GLenum type,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawElements(ctx, mode, count, type, indices))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawElements(ctx, mode, count, type, indices))
+      return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
                                      count, type, indices, 0, 1, 0);
@@ -1163,13 +1157,12 @@ _mesa_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawElements(ctx, mode, count, type, indices))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawElements(ctx, mode, count, type, indices))
+      return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
                                      count, type, indices, basevertex, 1, 0);
@@ -1188,14 +1181,13 @@ _mesa_DrawElementsInstancedARB(GLenum mode, GLsizei count, GLenum type,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                                indices, numInstances))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
+                                             indices, numInstances))
+      return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
                                      count, type, indices, 0, numInstances, 0);
@@ -1216,14 +1208,13 @@ _mesa_DrawElementsInstancedBaseVertex(GLenum mode, GLsizei count,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                                indices, numInstances))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
+                                             indices, numInstances))
+      return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
                                      count, type, indices,
@@ -1246,14 +1237,13 @@ _mesa_DrawElementsInstancedBaseInstance(GLenum mode, GLsizei count,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                                indices, numInstances))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
+                                             indices, numInstances))
+      return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
                                      count, type, indices, 0, numInstances,
@@ -1278,14 +1268,13 @@ _mesa_DrawElementsInstancedBaseVertexBaseInstance(GLenum mode,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                                indices, numInstances))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
+                                             indices, numInstances))
+      return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
                                      count, type, indices, basevertex,
@@ -1445,7 +1434,11 @@ _mesa_MultiDrawElementsEXT(GLenum mode, const GLsizei *count, GLenum type,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (!_mesa_validate_MultiDrawElements(ctx, mode, count, type, indices,
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_MultiDrawElements(ctx, mode, count, type, indices,
                                          primcount))
       return;
 
@@ -1466,14 +1459,13 @@ _mesa_MultiDrawElementsBaseVertex(GLenum mode,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_MultiDrawElements(ctx, mode, count, type, indices,
-                                            primcount))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_MultiDrawElements(ctx, mode, count, type, indices,
+                                         primcount))
+      return;
 
    _mesa_validated_multidrawelements(ctx, mode, count, type, indices, primcount,
                                      basevertex);
@@ -1497,15 +1489,13 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawTransformFeedback(ctx, mode, obj, stream,
-                                                numInstances)) {
-         return;
-      }
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawTransformFeedback(ctx, mode, obj, stream,
+                                             numInstances))
+      return;
 
    if (ctx->Driver.GetTransformFeedbackVertexCount &&
        (ctx->Const.AlwaysUseGetTransformFeedbackVertexCount ||
@@ -1663,13 +1653,12 @@ _mesa_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawArraysIndirect(ctx, mode, indirect))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawArraysIndirect(ctx, mode, indirect))
+      return;
 
    _mesa_validated_multidrawarraysindirect(ctx, mode, (GLintptr)indirect,
                                            0, 1, 16, NULL);
@@ -1722,13 +1711,12 @@ _mesa_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect)
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_DrawElementsIndirect(ctx, mode, type, indirect))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawElementsIndirect(ctx, mode, type, indirect))
+      return;
 
    _mesa_validated_multidrawelementsindirect(ctx, mode, type,
                                              (GLintptr)indirect, 0,
@@ -1781,14 +1769,13 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_MultiDrawArraysIndirect(ctx, mode, indirect,
-                                                  primcount, stride))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_MultiDrawArraysIndirect(ctx, mode, indirect,
+                                               primcount, stride))
+      return;
 
    _mesa_validated_multidrawarraysindirect(ctx, mode, (GLintptr)indirect, 0,
                                            primcount, stride, NULL);
@@ -1851,14 +1838,13 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_MultiDrawElementsIndirect(ctx, mode, type, indirect,
-                                                    primcount, stride))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_MultiDrawElementsIndirect(ctx, mode, type, indirect,
+                                                 primcount, stride))
+      return;
 
    _mesa_validated_multidrawelementsindirect(ctx, mode, type,
                                              (GLintptr)indirect, 0, primcount,
@@ -1880,16 +1866,14 @@ _mesa_MultiDrawArraysIndirectCountARB(GLenum mode, GLintptr indirect,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_MultiDrawArraysIndirectCount(ctx, mode,
-                                                       indirect,
-                                                       drawcount_offset,
-                                                       maxdrawcount, stride))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_MultiDrawArraysIndirectCount(ctx, mode, indirect,
+                                                    drawcount_offset,
+                                                    maxdrawcount, stride))
+      return;
 
    _mesa_validated_multidrawarraysindirect(ctx, mode, indirect,
                                            drawcount_offset, maxdrawcount,
@@ -1912,16 +1896,15 @@ _mesa_MultiDrawElementsIndirectCountARB(GLenum mode, GLenum type,
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
-   if (_mesa_is_no_error_enabled(ctx)) {
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-   } else {
-      if (!_mesa_validate_MultiDrawElementsIndirectCount(ctx, mode, type,
-                                                         indirect,
-                                                         drawcount_offset,
-                                                         maxdrawcount, stride))
-         return;
-   }
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_MultiDrawElementsIndirectCount(ctx, mode, type,
+                                                      indirect,
+                                                      drawcount_offset,
+                                                      maxdrawcount, stride))
+      return;
 
    _mesa_validated_multidrawelementsindirect(ctx, mode, type, indirect,
                                              drawcount_offset, maxdrawcount,

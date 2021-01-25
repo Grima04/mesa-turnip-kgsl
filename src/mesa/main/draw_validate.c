@@ -505,12 +505,6 @@ _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, bool uses_vao,
       return false;
    }
 
-   /* This might update ValidPrimMask, so it must be done before ValidPrimMask
-    * is checked.
-    */
-   if (ctx->NewState)
-      _mesa_update_state(ctx);
-
    /* All primitive type enums are less than 32, so we can use the shift. */
    if (mode >= 32 || !((1u << mode) & ctx->ValidPrimMask)) {
       /* If the primitive type is not in SupportedPrimMask, set GL_INVALID_ENUM,
