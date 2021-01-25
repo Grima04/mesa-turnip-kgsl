@@ -308,14 +308,18 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx)
          * Note that it's perfectly fine to re-use a batch with an
          * existing clear, we'll just update it with the new clear request.
          */
-        if (!batch->scoreboard.first_job)
+        if (!batch->scoreboard.first_job) {
+                ctx->batch = batch;
                 return batch;
+        }
 
         /* Otherwise, we need to freeze the existing one and instantiate a new
          * one.
          */
         panfrost_freeze_batch(batch);
-        return panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
+        batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
+        ctx->batch = batch;
+        return batch;
 }
 
 static void
