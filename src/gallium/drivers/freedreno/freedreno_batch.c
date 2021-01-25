@@ -451,14 +451,20 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
 {
 	fd_screen_assert_locked(batch->ctx->screen);
 
+	DBG("%p: write %p", batch, rsc);
+
+	/* Must do this before the early out, so we unset a previous resource
+	 * invalidate (which may have left the write_batch state in place).
+	 */
+	rsc->valid = true;
+
+	if (rsc->write_batch == batch)
+		return;
+
 	fd_batch_write_prep(batch, rsc);
 
 	if (rsc->stencil)
 		fd_batch_resource_write(batch, rsc->stencil);
-
-	DBG("%p: write %p", batch, rsc);
-
-	rsc->valid = true;
 
 	/* note, invalidate write batch, to avoid further writes to rsc
 	 * resulting in a write-after-read hazard.
@@ -468,7 +474,7 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
 		struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
 		struct fd_batch *dep;
 
-		if (rsc->write_batch && rsc->write_batch != batch)
+		if (rsc->write_batch)
 			flush_write_batch(rsc);
 
 		foreach_batch(dep, cache, rsc->batch_mask) {
