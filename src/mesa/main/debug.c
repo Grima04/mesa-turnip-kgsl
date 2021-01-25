@@ -155,7 +155,6 @@ set_verbose_flags(const char *str)
       { "list",      VERBOSE_DISPLAY_LIST },
       { "lighting",  VERBOSE_LIGHTING },
       { "disassem",  VERBOSE_DISASSEM },
-      { "draw",      VERBOSE_DRAW },
       { "swap",      VERBOSE_SWAPBUFFERS }
    };
    GLuint i;

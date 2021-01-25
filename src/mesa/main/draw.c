@@ -784,11 +784,6 @@ void GLAPIENTRY
 _mesa_DrawArrays(GLenum mode, GLint start, GLsizei count)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawArrays(%s, %d, %d)\n",
-                  _mesa_enum_to_string(mode), start, count);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -820,11 +815,6 @@ _mesa_DrawArraysInstancedARB(GLenum mode, GLint start, GLsizei count,
                              GLsizei numInstances)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawArraysInstanced(%s, %d, %d, %d)\n",
-                  _mesa_enum_to_string(mode), start, count, numInstances);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -857,13 +847,6 @@ _mesa_DrawArraysInstancedBaseInstance(GLenum mode, GLint first,
                                       GLuint baseInstance)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx,
-                  "glDrawArraysInstancedBaseInstance(%s, %d, %d, %d, %d)\n",
-                  _mesa_enum_to_string(mode), first, count,
-                  numInstances, baseInstance);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -895,13 +878,6 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
                       const GLsizei *count, GLsizei primcount)
 {
    GET_CURRENT_CONTEXT(ctx);
-   GLint i;
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx,
-                  "glMultiDrawArrays(%s, %p, %p, %d)\n",
-                  _mesa_enum_to_string(mode), first, count, primcount);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -937,7 +913,7 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
    info.instance_count = 1;
    info.drawid = 0;
 
-   for (i = 0; i < primcount; i++) {
+   for (int i = 0; i < primcount; i++) {
       draw[i].start = first[i];
       draw[i].count = count[i];
    }
@@ -1143,13 +1119,6 @@ _mesa_DrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end,
    GLuint max_element = 2 * 1000 * 1000 * 1000; /* just a big number */
 
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx,
-                  "glDrawRangeElementsBaseVertex(%s, %u, %u, %d, %s, %p, %d)\n",
-                  _mesa_enum_to_string(mode), start, end, count,
-                  _mesa_enum_to_string(type), indices, basevertex);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1233,14 +1202,6 @@ void GLAPIENTRY
 _mesa_DrawRangeElements(GLenum mode, GLuint start, GLuint end,
                         GLsizei count, GLenum type, const GLvoid * indices)
 {
-   if (MESA_VERBOSE & VERBOSE_DRAW) {
-      GET_CURRENT_CONTEXT(ctx);
-      _mesa_debug(ctx,
-                  "glDrawRangeElements(%s, %u, %u, %d, %s, %p)\n",
-                  _mesa_enum_to_string(mode), start, end, count,
-                  _mesa_enum_to_string(type), indices);
-   }
-
    _mesa_DrawRangeElementsBaseVertex(mode, start, end, count, type,
                                      indices, 0);
 }
@@ -1254,12 +1215,6 @@ _mesa_DrawElements(GLenum mode, GLsizei count, GLenum type,
                    const GLvoid * indices)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawElements(%s, %u, %s, %p)\n",
-                  _mesa_enum_to_string(mode), count,
-                  _mesa_enum_to_string(type), indices);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1285,12 +1240,6 @@ _mesa_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
                              const GLvoid * indices, GLint basevertex)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawElements(%s, %u, %s, %p)\n",
-                  _mesa_enum_to_string(mode), count,
-                  _mesa_enum_to_string(type), indices);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1316,12 +1265,6 @@ _mesa_DrawElementsInstancedARB(GLenum mode, GLsizei count, GLenum type,
                                const GLvoid * indices, GLsizei numInstances)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawElements(%s, %u, %s, %p)\n",
-                  _mesa_enum_to_string(mode), count,
-                  _mesa_enum_to_string(type), indices);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1350,15 +1293,6 @@ _mesa_DrawElementsInstancedBaseVertex(GLenum mode, GLsizei count,
                                       GLint basevertex)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx,
-                  "glDrawElementsInstancedBaseVertex"
-                  "(%s, %d, %s, %p, %d; %d)\n",
-                  _mesa_enum_to_string(mode), count,
-                  _mesa_enum_to_string(type), indices,
-                  numInstances, basevertex);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1389,15 +1323,6 @@ _mesa_DrawElementsInstancedBaseInstance(GLenum mode, GLsizei count,
                                         GLuint baseInstance)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx,
-                  "glDrawElementsInstancedBaseInstance"
-                  "(%s, %d, %s, %p, %d, %d)\n",
-                  _mesa_enum_to_string(mode), count,
-                  _mesa_enum_to_string(type), indices,
-                  numInstances, baseInstance);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1430,15 +1355,6 @@ _mesa_DrawElementsInstancedBaseVertexBaseInstance(GLenum mode,
                                                   GLuint baseInstance)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx,
-                  "glDrawElementsInstancedBaseVertexBaseInstance"
-                  "(%s, %d, %s, %p, %d, %d, %d)\n",
-                  _mesa_enum_to_string(mode), count,
-                  _mesa_enum_to_string(type), indices,
-                  numInstances, basevertex, baseInstance);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1606,7 +1522,6 @@ _mesa_MultiDrawElementsEXT(GLenum mode, const GLsizei *count, GLenum type,
                            const GLvoid * const *indices, GLsizei primcount)
 {
    GET_CURRENT_CONTEXT(ctx);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1631,7 +1546,6 @@ _mesa_MultiDrawElementsBaseVertex(GLenum mode,
                                   const GLsizei *basevertex)
 {
    GET_CURRENT_CONTEXT(ctx);
-
    FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
@@ -1719,10 +1633,6 @@ _mesa_DrawTransformFeedback(GLenum mode, GLuint name)
    struct gl_transform_feedback_object *obj =
       _mesa_lookup_transform_feedback_object(ctx, name);
 
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawTransformFeedback(%s, %d)\n",
-                  _mesa_enum_to_string(mode), name);
-
    _mesa_draw_transform_feedback(ctx, mode, obj, 0, 1);
 }
 
@@ -1733,10 +1643,6 @@ _mesa_DrawTransformFeedbackStream(GLenum mode, GLuint name, GLuint stream)
    GET_CURRENT_CONTEXT(ctx);
    struct gl_transform_feedback_object *obj =
       _mesa_lookup_transform_feedback_object(ctx, name);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawTransformFeedbackStream(%s, %u, %u)\n",
-                  _mesa_enum_to_string(mode), name, stream);
 
    _mesa_draw_transform_feedback(ctx, mode, obj, stream, 1);
 }
@@ -1750,10 +1656,6 @@ _mesa_DrawTransformFeedbackInstanced(GLenum mode, GLuint name,
    struct gl_transform_feedback_object *obj =
       _mesa_lookup_transform_feedback_object(ctx, name);
 
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawTransformFeedbackInstanced(%s, %d)\n",
-                  _mesa_enum_to_string(mode), name);
-
    _mesa_draw_transform_feedback(ctx, mode, obj, 0, primcount);
 }
 
@@ -1766,11 +1668,6 @@ _mesa_DrawTransformFeedbackStreamInstanced(GLenum mode, GLuint name,
    GET_CURRENT_CONTEXT(ctx);
    struct gl_transform_feedback_object *obj =
       _mesa_lookup_transform_feedback_object(ctx, name);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawTransformFeedbackStreamInstanced"
-                  "(%s, %u, %u, %i)\n",
-                  _mesa_enum_to_string(mode), name, stream, primcount);
 
    _mesa_draw_transform_feedback(ctx, mode, obj, stream, primcount);
 }
@@ -1835,10 +1732,6 @@ _mesa_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawArraysIndirect(%s, %p)\n",
-                  _mesa_enum_to_string(mode), indirect);
-
    /* From the ARB_draw_indirect spec:
     *
     *    "Initially zero is bound to DRAW_INDIRECT_BUFFER. In the
@@ -1880,11 +1773,6 @@ void GLAPIENTRY
 _mesa_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glDrawElementsIndirect(%s, %s, %p)\n",
-                  _mesa_enum_to_string(mode),
-                  _mesa_enum_to_string(type), indirect);
 
    /* From the ARB_draw_indirect spec:
     *
@@ -1950,10 +1838,6 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glMultiDrawArraysIndirect(%s, %p, %i, %i)\n",
-                  _mesa_enum_to_string(mode), indirect, primcount, stride);
-
    /* If <stride> is zero, the array elements are treated as tightly packed. */
    if (stride == 0)
       stride = sizeof(DrawArraysIndirectCommand);
@@ -2017,15 +1901,9 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glMultiDrawElementsIndirect(%s, %s, %p, %i, %i)\n",
-                  _mesa_enum_to_string(mode),
-                  _mesa_enum_to_string(type), indirect, primcount, stride);
-
    /* If <stride> is zero, the array elements are treated as tightly packed. */
    if (stride == 0)
       stride = sizeof(DrawElementsIndirectCommand);
-
 
    /* From the ARB_draw_indirect spec:
     *
@@ -2096,19 +1974,11 @@ _mesa_MultiDrawArraysIndirectCountARB(GLenum mode, GLintptr indirect,
                                       GLsizei maxdrawcount, GLsizei stride)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glMultiDrawArraysIndirectCountARB"
-                  "(%s, %lx, %lx, %i, %i)\n",
-                  _mesa_enum_to_string(mode),
-                  (unsigned long) indirect, (unsigned long) drawcount_offset,
-                  maxdrawcount, stride);
+   FLUSH_FOR_DRAW(ctx);
 
    /* If <stride> is zero, the array elements are treated as tightly packed. */
    if (stride == 0)
       stride = 4 * sizeof(GLuint);      /* sizeof(DrawArraysIndirectCommand) */
-
-   FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
@@ -2139,19 +2009,11 @@ _mesa_MultiDrawElementsIndirectCountARB(GLenum mode, GLenum type,
                                         GLsizei maxdrawcount, GLsizei stride)
 {
    GET_CURRENT_CONTEXT(ctx);
-
-   if (MESA_VERBOSE & VERBOSE_DRAW)
-      _mesa_debug(ctx, "glMultiDrawElementsIndirectCountARB"
-                  "(%s, %s, %lx, %lx, %i, %i)\n",
-                  _mesa_enum_to_string(mode), _mesa_enum_to_string(type),
-                  (unsigned long) indirect, (unsigned long) drawcount_offset,
-                  maxdrawcount, stride);
+   FLUSH_FOR_DRAW(ctx);
 
    /* If <stride> is zero, the array elements are treated as tightly packed. */
    if (stride == 0)
       stride = 5 * sizeof(GLuint);      /* sizeof(DrawElementsIndirectCommand) */
-
-   FLUSH_FOR_DRAW(ctx);
 
    _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
 
