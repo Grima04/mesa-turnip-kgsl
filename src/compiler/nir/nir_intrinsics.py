@@ -213,6 +213,12 @@ index("nir_alu_type", "dest_type")
 # The swizzle mask for quad_swizzle_amd & masked_swizzle_amd
 index("unsigned", "swizzle_mask")
 
+# Whether the load_buffer_amd/store_buffer_amd is swizzled
+index("bool", "is_swizzled")
+
+# The SLC ("system level coherent") bit of load_buffer_amd/store_buffer_amd
+index("bool", "slc_amd")
+
 # Separate source/dest access flags for copies
 index("enum gl_access_qualifier", "dst_access")
 index("enum gl_access_qualifier", "src_access")
@@ -1127,6 +1133,13 @@ intrinsic("load_local_shared_r600", src_comp=[0], dest_comp=0, indices = [], fla
 
 store("local_shared_r600", [1], [WRITE_MASK])
 store("tf_r600", [])
+
+# AMD GCN/RDNA specific intrinsics
+
+# src[] = { descriptor, base address, scalar offset }
+intrinsic("load_buffer_amd", src_comp=[4, 1, 1], dest_comp=0, indices=[BASE, IS_SWIZZLED, SLC_AMD, MEMORY_MODES], flags=[CAN_ELIMINATE])
+# src[] = { store value, descriptor, base address, scalar offset }
+intrinsic("store_buffer_amd", src_comp=[0, 4, 1, 1], indices=[BASE, WRITE_MASK, IS_SWIZZLED, SLC_AMD, MEMORY_MODES])
 
 # V3D-specific instrinc for tile buffer color reads.
 #
