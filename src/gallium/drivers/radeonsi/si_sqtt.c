@@ -50,7 +50,7 @@ si_thread_trace_init_bo(struct si_context *sctx)
    /* Compute total size of the thread trace BO for 4 SEs. */
    size = align64(sizeof(struct ac_thread_trace_info) * 4,
                   1 << SQTT_BUFFER_ALIGN_SHIFT);
-   size += sctx->thread_trace->buffer_size * 4;
+   size += sctx->thread_trace->buffer_size * 4ll;
 
    sctx->thread_trace->bo =
       ws->buffer_create(ws, size, 4096,
