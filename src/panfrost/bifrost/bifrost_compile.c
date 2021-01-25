@@ -1513,6 +1513,10 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         bi_frcp_to(b, sz, dst, s0);
                 break;
 
+        case nir_op_uclz:
+                bi_clz_to(b, sz, dst, s0, false);
+                break;
+
         default:
                 fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
                 unreachable("Unknown ALU op");
