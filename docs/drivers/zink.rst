@@ -131,7 +131,7 @@ are required:
 OpenGL 4.2
 ^^^^^^^^^^
 
-For OpenGL 4.2 support, Vulkan 1.1 is required, plus the following additional
+For OpenGL 4.2 support, Vulkan 1.2 is required, plus the following additional
 requirements needs to be supported:
 
 * ``VkPhysicalDeviceVulkan11Features``:
