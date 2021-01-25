@@ -202,6 +202,7 @@ st_convert_sampler(const struct st_context *st,
                             &sampler->border_color,
                             texBaseFormat, is_integer);
       }
+      sampler->border_color_is_integer = is_integer;
    }
 
    sampler->max_anisotropy = (msamp->Attrib.MaxAnisotropy == 1.0 ?
