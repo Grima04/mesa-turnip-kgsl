@@ -1375,7 +1375,7 @@ get_external_image_format_properties(struct radv_physical_device *physical_devic
 		}
 		break;
 	case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
-		if (!physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer)
+		if (!physical_device->vk.supported_extensions.ANDROID_external_memory_android_hardware_buffer)
 			break;
 
 		if (!radv_android_gralloc_supports_format(pImageFormatInfo->format,
@@ -1460,7 +1460,7 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 		}
 	}
 
-	bool ahb_supported = physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer;
+	bool ahb_supported = physical_device->vk.supported_extensions.ANDROID_external_memory_android_hardware_buffer;
 	if (android_usage && ahb_supported) {
 #if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
 		android_usage->androidHardwareBufferUsage =

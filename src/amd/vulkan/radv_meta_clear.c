@@ -722,7 +722,7 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer,
 {
 	bool fast = depth_view_can_fast_clear(cmd_buffer, iview, aspects, layout,
 	                                      in_render_loop, clear_rect, clear_value);
-	bool unrestricted = cmd_buffer->device->enabled_extensions.EXT_depth_range_unrestricted;
+	bool unrestricted = cmd_buffer->device->vk.enabled_extensions.EXT_depth_range_unrestricted;
 	int index = DEPTH_CLEAR_SLOW;
 	VkPipeline *pipeline;
 
@@ -807,7 +807,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (!(aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
 		clear_value.depth = 1.0f;
 
-	if (cmd_buffer->device->enabled_extensions.EXT_depth_range_unrestricted) {
+	if (cmd_buffer->device->vk.enabled_extensions.EXT_depth_range_unrestricted) {
 		radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
 				      device->meta_state.clear_depth_unrestricted_p_layout,
 				      VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4,

@@ -262,16 +262,6 @@ const char *radv_get_instance_entry_name(int index);
 const char *radv_get_physical_device_entry_name(int index);
 const char *radv_get_device_entry_name(int index);
 
-bool radv_instance_entrypoint_is_enabled(int index, uint32_t core_version,
-					 const struct radv_instance_extension_table *instance);
-bool radv_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
-						const struct radv_instance_extension_table *instance);
-bool radv_device_entrypoint_is_enabled(int index, uint32_t core_version,
-				       const struct radv_instance_extension_table *instance,
-				       const struct radv_device_extension_table *device);
-
-void *radv_lookup_entrypoint(const char *name);
-
 struct radv_physical_device {
 	struct vk_physical_device                   vk;
 
@@ -323,8 +313,6 @@ struct radv_physical_device {
 #ifndef _WIN32
 	drmPciBusInfo bus_info;
 #endif
-
-	struct radv_device_extension_table supported_extensions;
 };
 
 struct radv_instance {
@@ -336,11 +324,6 @@ struct radv_instance {
 	uint64_t perftest_flags;
 
 	struct vk_debug_report_instance             debug_report_callbacks;
-
-	struct radv_instance_extension_table enabled_extensions;
-	struct radv_instance_dispatch_table          dispatch;
-	struct radv_physical_device_dispatch_table   physical_device_dispatch;
-	struct radv_device_dispatch_table            device_dispatch;
 
 	bool                                        physical_devices_enumerated;
 	struct list_head                            physical_devices;
@@ -357,11 +340,7 @@ struct radv_instance {
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);
 void radv_finish_wsi(struct radv_physical_device *physical_device);
-
-bool radv_instance_extension_supported(const char *name);
 uint32_t radv_physical_device_api_version(struct radv_physical_device *dev);
-bool radv_physical_device_extension_supported(struct radv_physical_device *dev,
-					      const char *name);
 
 struct cache_entry;
 
@@ -814,9 +793,6 @@ struct radv_device {
 
 	/* For detecting VM faults reported by dmesg. */
 	uint64_t dmesg_timestamp;
-
-	struct radv_device_extension_table enabled_extensions;
-	struct radv_device_dispatch_table dispatch;
 
 	/* Whether the app has enabled the robustBufferAccess/robustBufferAccess2 features. */
 	bool robust_buffer_access;

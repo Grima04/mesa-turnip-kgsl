@@ -32,7 +32,8 @@
 static PFN_vkVoidFunction
 radv_wsi_proc_addr(VkPhysicalDevice physicalDevice, const char *pName)
 {
-	return radv_lookup_entrypoint(pName);
+	RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
+	return vk_instance_get_proc_addr_unchecked(&pdevice->instance->vk, pName);
 }
 
 static void

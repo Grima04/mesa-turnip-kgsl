@@ -19,14 +19,14 @@
 # SOFTWARE.
 
 radv_entrypoints = custom_target(
-  'radv_entrypoints.[ch]',
-  input : ['radv_entrypoints_gen.py', vk_api_xml],
+  'radv_entrypoints',
+  input : [vk_entrypoints_gen, vk_api_xml],
   output : ['radv_entrypoints.h', 'radv_entrypoints.c'],
   command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--outdir',
-    meson.current_build_dir()
+    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
+    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'radv',
+    '--device-prefix', 'sqtt',
   ],
-  depend_files : files('radv_extensions.py'),
 )
 
 radv_extensions_c = custom_target(
