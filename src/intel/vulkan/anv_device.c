@@ -477,6 +477,64 @@ anv_physical_device_free_disk_cache(struct anv_physical_device *device)
 #endif
 }
 
+/* The ANV_QUEUE_OVERRIDE environment variable is a comma separated list of
+ * queue overrides.
+ *
+ * To override the number queues:
+ *  * "gc" is for graphics queues with compute support
+ *  * "g" is for graphics queues with no compute support
+ *  * "c" is for compute queues with no graphics support
+ *
+ * For example, ANV_QUEUE_OVERRIDE=gc=2,c=1 would override the number of
+ * advertised queues to be 2 queues with graphics+compute support, and 1 queue
+ * with compute-only support.
+ *
+ * ANV_QUEUE_OVERRIDE=c=1 would override the number of advertised queues to
+ * include 1 queue with compute-only support, but it will not change the
+ * number of graphics+compute queues.
+ *
+ * ANV_QUEUE_OVERRIDE=gc=0,c=1 would override the number of advertised queues
+ * to include 1 queue with compute-only support, and it would override the
+ * number of graphics+compute queues to be 0.
+ */
+static void
+anv_override_engine_counts(int *gc_count, int *g_count, int *c_count)
+{
+   int gc_override = -1;
+   int g_override = -1;
+   int c_override = -1;
+   char *env = getenv("ANV_QUEUE_OVERRIDE");
+
+   if (env == NULL)
+      return;
+
+   env = strdup(env);
+   char *save = NULL;
+   char *next = strtok_r(env, ",", &save);
+   while (next != NULL) {
+      if (strncmp(next, "gc=", 3) == 0) {
+         gc_override = strtol(next + 3, NULL, 0);
+      } else if (strncmp(next, "g=", 2) == 0) {
+         g_override = strtol(next + 2, NULL, 0);
+      } else if (strncmp(next, "c=", 2) == 0) {
+         c_override = strtol(next + 2, NULL, 0);
+      } else {
+         mesa_logw("Ignoring unsupported ANV_QUEUE_OVERRIDE token: %s", next);
+      }
+      next = strtok_r(NULL, ",", &save);
+   }
+   free(env);
+   if (gc_override >= 0)
+      *gc_count = gc_override;
+   if (g_override >= 0)
+      *g_count = g_override;
+   if (*g_count > 0 && *gc_count <= 0 && (gc_override >= 0 || g_override >= 0))
+      mesa_logw("ANV_QUEUE_OVERRIDE: gc=0 with g > 0 violates the "
+                "Vulkan specification");
+   if (c_override >= 0)
+      *c_count = c_override;
+}
+
 static void
 anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
 {
@@ -487,6 +545,8 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
          anv_gem_count_engines(pdevice->engine_info, I915_ENGINE_CLASS_RENDER);
       int g_count = 0;
       int c_count = 0;
+
+      anv_override_engine_counts(&gc_count, &g_count, &c_count);
 
       if (gc_count > 0) {
          pdevice->queue.families[family_count++] = (struct anv_queue_family) {
