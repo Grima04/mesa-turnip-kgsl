@@ -682,12 +682,13 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
 
    /* May shuffle the position and generic0 bits around, filter out unwanted */
    const GLbitfield enabled = filter & _mesa_get_vao_vp_inputs(vao);
-   if (ctx->Array._DrawVAOEnabledAttribs != enabled)
+   if (ctx->Array._DrawVAOEnabledAttribs != enabled) {
+      ctx->Array._DrawVAOEnabledAttribs = enabled;
       new_array = true;
+   }
 
    if (new_array)
       ctx->NewDriverState |= ctx->DriverFlags.NewArray;
 
-   ctx->Array._DrawVAOEnabledAttribs = enabled;
    set_varying_vp_inputs(ctx, enabled);
 }
