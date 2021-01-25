@@ -56,12 +56,14 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
 
    if (_mesa_is_no_error_enabled(ctx)) {
       ctx->ValidPrimMask = mask;
+      ctx->ValidPrimMaskIndexed = mask;
       ctx->DrawPixValid = drawpix_valid;
       return;
    }
 
    /* Start with an empty mask and set this to the trimmed mask at the end. */
    ctx->ValidPrimMask = 0;
+   ctx->ValidPrimMaskIndexed = 0;
    ctx->DrawPixValid = false;
 
    /* The default error is GL_INVALID_OPERATION if mode is a valid enum.
@@ -472,6 +474,7 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
 #endif
 
    ctx->ValidPrimMask = mask;
+   ctx->ValidPrimMaskIndexed = mask;
 }
 
 /**
@@ -481,11 +484,12 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
  * this code depends on current transform feedback state.
  * Also, do additional checking related to tessellation shaders.
  */
-GLboolean
-_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
+static bool
+valid_prim_mode_custom(struct gl_context *ctx, GLenum mode,
+                       GLbitfield valid_prim_mask, const char *name)
 {
    /* All primitive type enums are less than 32, so we can use the shift. */
-   if (mode >= 32 || !((1u << mode) & ctx->ValidPrimMask)) {
+   if (mode >= 32 || !((1u << mode) & valid_prim_mask)) {
       /* If the primitive type is not in SupportedPrimMask, set GL_INVALID_ENUM,
        * else set DrawGLError (e.g. GL_INVALID_OPERATION).
        */
@@ -497,6 +501,18 @@ _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
    }
 
    return true;
+}
+
+GLboolean
+_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
+{
+   return valid_prim_mode_custom(ctx, mode, ctx->ValidPrimMask, name);
+}
+
+static bool
+valid_prim_mode_indexed(struct gl_context *ctx, GLenum mode, const char *name)
+{
+   return valid_prim_mode_custom(ctx, mode, ctx->ValidPrimMaskIndexed, name);
 }
 
 /**
@@ -568,7 +584,7 @@ validate_DrawElements_common(struct gl_context *ctx,
       return false;
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, caller)) {
+   if (!valid_prim_mode_indexed(ctx, mode, caller)) {
       return false;
    }
 
@@ -634,7 +650,7 @@ _mesa_validate_MultiDrawElements(struct gl_context *ctx,
       }
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, "glMultiDrawElements")) {
+   if (!valid_prim_mode_indexed(ctx, mode, "glMultiDrawElements")) {
       return GL_FALSE;
    }
 
