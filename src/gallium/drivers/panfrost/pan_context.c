@@ -290,7 +290,9 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                           const struct pipe_draw_info *info,
                           void *invocation_template,
                           mali_ptr shared_mem, mali_ptr vs_vary,
-                          mali_ptr varyings, void *job)
+                          mali_ptr varyings,
+                          mali_ptr attribs, mali_ptr attrib_bufs,
+                          void *job)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *device = pan_device(ctx->base.screen);
@@ -308,7 +310,8 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                 if (!pan_is_bifrost(device))
                         cfg.texture_descriptor_is_64b = true;
                 cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
-                cfg.attributes = panfrost_emit_vertex_data(batch, &cfg.attribute_buffers);
+                cfg.attributes = attribs;
+                cfg.attribute_buffers = attrib_bufs;
                 cfg.varyings = vs_vary;
                 cfg.varying_buffers = vs_vary ? varyings : 0;
                 cfg.thread_storage = shared_mem;
@@ -390,7 +393,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 
                 cfg.job_task_split = 6;
 
-                cfg.index_count = draw->count;
+                cfg.index_count = ctx->indirect_draw ? 1 : draw->count;
                 if (info->index_size) {
                         cfg.index_type = panfrost_translate_index_size(info->index_size);
                         cfg.indices = indices;
@@ -505,6 +508,7 @@ panfrost_direct_draw(struct panfrost_context *ctx,
         panfrost_batch_set_requirements(batch);
 
         /* Take into account a negative bias */
+        ctx->indirect_draw = false;
         ctx->vertex_count = draw->count + (info->index_size ? abs(info->index_bias) : 0);
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
@@ -556,11 +560,14 @@ panfrost_direct_draw(struct panfrost_context *ctx,
                                          ctx->padded_count *
                                          ctx->instance_count,
                                          &vs_vary, &fs_vary, &varyings,
-                                         &pos, &psiz);
+                                         NULL, &pos, &psiz);
+
+        mali_ptr attribs, attrib_bufs;
+        attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
 
         /* Fire off the draw itself */
         panfrost_draw_emit_vertex(batch, info, &invocation, shared_mem,
-                                  vs_vary, varyings, vertex.cpu);
+                                  vs_vary, varyings, attribs, attrib_bufs, vertex.cpu);
         panfrost_draw_emit_tiler(batch, info, draw, &invocation, shared_mem, indices,
                                  fs_vary, varyings, pos, psiz, tiler.cpu);
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);

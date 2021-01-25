@@ -82,6 +82,7 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  mali_ptr *vs_attribs,
                                  mali_ptr *fs_attribs,
                                  mali_ptr *buffers,
+                                 unsigned *buffer_count,
                                  mali_ptr *position,
                                  mali_ptr *psiz);
 
