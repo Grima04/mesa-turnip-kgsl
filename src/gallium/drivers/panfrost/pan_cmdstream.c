@@ -2237,11 +2237,14 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
 
         unsigned vertex = panfrost_add_job(&batch->pool, &batch->scoreboard,
                                            MALI_JOB_TYPE_VERTEX, false, false,
-                                           0, 0, vertex_job, false);
+                                           ctx->indirect_draw ?
+                                           batch->indirect_draw_job_id : 0,
+                                           0, vertex_job, false);
 
         if (ctx->rasterizer->base.rasterizer_discard)
                 return;
 
-        panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER,
-                         false, false, vertex, 0, tiler_job, false);
+        panfrost_add_job(&batch->pool, &batch->scoreboard,
+                         MALI_JOB_TYPE_TILER, false, false,
+                         vertex, 0, tiler_job, false);
 }

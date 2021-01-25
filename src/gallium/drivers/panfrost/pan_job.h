@@ -125,6 +125,10 @@ struct panfrost_batch {
 
         /* Batch dependencies */
         struct util_dynarray dependencies;
+
+        /* Indirect draw data */
+        struct panfrost_ptr indirect_draw_ctx;
+        unsigned indirect_draw_job_id;
 };
 
 /* Functions for managing the above */

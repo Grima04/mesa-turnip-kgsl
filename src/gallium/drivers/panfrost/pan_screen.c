@@ -301,6 +301,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_SHAREABLE_SHADERS:
                 return 0;
 
+        case PIPE_CAP_DRAW_INDIRECT:
+                return is_deqp;
+
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
         }
@@ -686,6 +689,7 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
         struct panfrost_device *dev = pan_device(pscreen);
 
+        panfrost_cleanup_indirect_draw_shaders(dev);
         pan_blend_shaders_cleanup(dev);
 
         if (dev->ro)
@@ -860,6 +864,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         panfrost_resource_screen_init(&screen->base);
         panfrost_init_blit_shaders(dev);
         pan_blend_shaders_init(dev);
+        panfrost_init_indirect_draw_shaders(dev);
 
         return &screen->base;
 }
