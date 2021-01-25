@@ -32,7 +32,7 @@ class PoERun:
     def __init__(self, args):
         self.powerup = args.powerup
         self.powerdown = args.powerdown
-        self.ser = SerialBuffer(args.dev, "results/serial-output.txt", "", 60)
+        self.ser = SerialBuffer(args.dev, "results/serial-output.txt", "", args.timeout)
 
     def logged_system(self, cmd):
         print("Running '{}'".format(cmd))
@@ -77,6 +77,8 @@ def main():
     parser.add_argument('--dev', type=str, help='Serial device to monitor', required=True)
     parser.add_argument('--powerup', type=str, help='shell command for rebooting', required=True)
     parser.add_argument('--powerdown', type=str, help='shell command for powering off', required=True)
+    parser.add_argument('--timeout', type=int, default=60,
+                        help='time in seconds to wait for activity', required=False)
     args = parser.parse_args()
 
     poe = PoERun(args)

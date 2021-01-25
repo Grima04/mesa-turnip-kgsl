@@ -100,7 +100,8 @@ while [ $((ATTEMPTS--)) -gt 0 ]; do
   python3 $BM/poe_run.py \
           --dev="$BM_SERIAL" \
           --powerup="$BM_POWERUP" \
-          --powerdown="$BM_POWERDOWN"
+          --powerdown="$BM_POWERDOWN" \
+          --timeout="${BM_POE_TIMEOUT:-60}"
   ret=$?
 
   if [ $ret -eq 2 ]; then
