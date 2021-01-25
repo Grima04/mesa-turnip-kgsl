@@ -427,7 +427,6 @@ flush_write_batch(struct fd_resource *rsc)
 	fd_batch_flush(b);
 	fd_screen_lock(b->ctx->screen);
 
-	fd_bc_invalidate_batch(b, false);
 	fd_batch_reference_locked(&b, NULL);
 }
 
