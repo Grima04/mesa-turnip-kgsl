@@ -567,14 +567,14 @@ radv_dump_app_info(struct radv_device *device, FILE *f)
 {
 	struct radv_instance *instance = device->instance;
 
-	fprintf(f, "Application name: %s\n", instance->applicationName);
-	fprintf(f, "Application version: %d\n", instance->applicationVersion);
-	fprintf(f, "Engine name: %s\n", instance->engineName);
-	fprintf(f, "Engine version: %d\n", instance->engineVersion);
+	fprintf(f, "Application name: %s\n", instance->vk.app_info.app_name);
+	fprintf(f, "Application version: %d\n", instance->vk.app_info.app_version);
+	fprintf(f, "Engine name: %s\n", instance->vk.app_info.engine_name);
+	fprintf(f, "Engine version: %d\n", instance->vk.app_info.engine_version);
 	fprintf(f, "API version: %d.%d.%d\n",
-		VK_VERSION_MAJOR(instance->apiVersion),
-		VK_VERSION_MINOR(instance->apiVersion),
-		VK_VERSION_PATCH(instance->apiVersion));
+		VK_VERSION_MAJOR(instance->vk.app_info.api_version),
+		VK_VERSION_MINOR(instance->vk.app_info.api_version),
+		VK_VERSION_PATCH(instance->vk.app_info.api_version));
 
 	radv_dump_enabled_options(device, f);
 }

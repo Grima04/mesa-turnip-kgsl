@@ -55,7 +55,7 @@ radv_init_wsi(struct radv_physical_device *physical_device)
 	VkResult result =  wsi_device_init(&physical_device->wsi_device,
 					   radv_physical_device_to_handle(physical_device),
 					   radv_wsi_proc_addr,
-					   &physical_device->instance->alloc,
+					   &physical_device->instance->vk.alloc,
 					   physical_device->master_fd,
 					   &physical_device->instance->dri_options,
 					   false);
@@ -70,7 +70,7 @@ void
 radv_finish_wsi(struct radv_physical_device *physical_device)
 {
 	wsi_device_finish(&physical_device->wsi_device,
-			  &physical_device->instance->alloc);
+			  &physical_device->instance->vk.alloc);
 }
 
 void radv_DestroySurfaceKHR(
@@ -81,7 +81,7 @@ void radv_DestroySurfaceKHR(
 	RADV_FROM_HANDLE(radv_instance, instance, _instance);
 	ICD_FROM_HANDLE(VkIcdSurfaceBase, surface, _surface);
 
-	vk_free2(&instance->alloc, pAllocator, surface);
+	vk_free2(&instance->vk.alloc, pAllocator, surface);
 }
 
 VkResult radv_GetPhysicalDeviceSurfaceSupportKHR(
