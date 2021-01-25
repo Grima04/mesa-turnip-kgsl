@@ -1517,6 +1517,10 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_clz_to(b, sz, dst, s0, false);
                 break;
 
+        case nir_op_bit_count:
+                bi_popcount_i32_to(b, dst, s0);
+                break;
+
         default:
                 fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
                 unreachable("Unknown ALU op");
