@@ -239,6 +239,12 @@ _mesa_target_allows_setting_sampler_parameters(GLenum target)
 }
 
 
+static inline GLboolean
+is_wrap_gl_clamp(GLint param)
+{
+   return param == GL_CLAMP || param == GL_MIRROR_CLAMP_EXT;
+}
+
 /**
  * Set an integer-valued texture parameter
  * \return GL_TRUE if legal AND the value changed, GL_FALSE otherwise
@@ -317,6 +323,8 @@ set_tex_parameteri(struct gl_context *ctx,
          return GL_FALSE;
       if (validate_texture_wrap_mode(ctx, texObj->Target, params[0])) {
          flush(ctx);
+         if (is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapS) != is_wrap_gl_clamp(params[0]))
+            ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
          texObj->Sampler.Attrib.WrapS = params[0];
          return GL_TRUE;
       }
@@ -330,6 +338,8 @@ set_tex_parameteri(struct gl_context *ctx,
          return GL_FALSE;
       if (validate_texture_wrap_mode(ctx, texObj->Target, params[0])) {
          flush(ctx);
+         if (is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapT) != is_wrap_gl_clamp(params[0]))
+            ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
          texObj->Sampler.Attrib.WrapT = params[0];
          return GL_TRUE;
       }
@@ -343,6 +353,8 @@ set_tex_parameteri(struct gl_context *ctx,
          return GL_FALSE;
       if (validate_texture_wrap_mode(ctx, texObj->Target, params[0])) {
          flush(ctx);
+         if (is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapR) != is_wrap_gl_clamp(params[0]))
+            ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
          texObj->Sampler.Attrib.WrapR = params[0];
          return GL_TRUE;
       }

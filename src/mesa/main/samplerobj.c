@@ -536,6 +536,12 @@ _mesa_set_sampler_wrap(struct gl_context *ctx, struct gl_sampler_object *samp,
 #define INVALID_PNAME 0x101
 #define INVALID_VALUE 0x102
 
+static inline GLboolean
+is_wrap_gl_clamp(GLint param)
+{
+   return param == GL_CLAMP || param == GL_MIRROR_CLAMP_EXT;
+}
+
 static GLuint
 set_sampler_wrap_s(struct gl_context *ctx, struct gl_sampler_object *samp,
                    GLint param)
@@ -544,6 +550,8 @@ set_sampler_wrap_s(struct gl_context *ctx, struct gl_sampler_object *samp,
       return GL_FALSE;
    if (validate_texture_wrap_mode(ctx, param)) {
       flush(ctx);
+      if (is_wrap_gl_clamp(samp->Attrib.WrapS) != is_wrap_gl_clamp(param))
+         ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
       samp->Attrib.WrapS = param;
       return GL_TRUE;
    }
@@ -559,6 +567,8 @@ set_sampler_wrap_t(struct gl_context *ctx, struct gl_sampler_object *samp,
       return GL_FALSE;
    if (validate_texture_wrap_mode(ctx, param)) {
       flush(ctx);
+      if (is_wrap_gl_clamp(samp->Attrib.WrapT) != is_wrap_gl_clamp(param))
+         ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
       samp->Attrib.WrapT = param;
       return GL_TRUE;
    }
@@ -574,6 +584,8 @@ set_sampler_wrap_r(struct gl_context *ctx, struct gl_sampler_object *samp,
       return GL_FALSE;
    if (validate_texture_wrap_mode(ctx, param)) {
       flush(ctx);
+      if (is_wrap_gl_clamp(samp->Attrib.WrapR) != is_wrap_gl_clamp(param))
+         ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
       samp->Attrib.WrapR = param;
       return GL_TRUE;
    }

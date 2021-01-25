@@ -4879,6 +4879,9 @@ struct gl_driver_flags
 
    /** Programmable sample location state for gl_context::DrawBuffer */
    uint64_t NewSampleLocations;
+
+   /** For GL_CLAMP emulation */
+   uint64_t NewSamplersWithClamp;
 };
 
 struct gl_buffer_binding

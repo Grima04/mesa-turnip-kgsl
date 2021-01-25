@@ -783,6 +783,15 @@ st_create_vp_variant(struct st_context *st,
          finalize = true;
       }
 
+      if (st->emulate_gl_clamp &&
+          (key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2])) {
+         nir_lower_tex_options tex_opts = {0};
+         tex_opts.saturate_s = key->gl_clamp[0];
+         tex_opts.saturate_t = key->gl_clamp[1];
+         tex_opts.saturate_r = key->gl_clamp[2];
+         NIR_PASS_V(state.ir.nir, nir_lower_tex, &tex_opts);
+      }
+
       if (finalize || !st->allow_st_finalize_nir_twice) {
          st_finalize_nir(st, &stvp->Base, stvp->shader_program, state.ir.nir,
                          true, false);
@@ -1307,6 +1316,16 @@ st_create_fp_variant(struct st_context *st,
          bool point_coord_is_sysval = st->ctx->Const.GLSLPointCoordIsSysVal;
          NIR_PASS_V(state.ir.nir, nir_lower_texcoord_replace,
                     key->lower_texcoord_replace, point_coord_is_sysval);
+         finalize = true;
+      }
+
+      if (st->emulate_gl_clamp &&
+          (key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2])) {
+         nir_lower_tex_options tex_opts = {0};
+         tex_opts.saturate_s = key->gl_clamp[0];
+         tex_opts.saturate_t = key->gl_clamp[1];
+         tex_opts.saturate_r = key->gl_clamp[2];
+         NIR_PASS_V(state.ir.nir, nir_lower_tex, &tex_opts);
          finalize = true;
       }
 

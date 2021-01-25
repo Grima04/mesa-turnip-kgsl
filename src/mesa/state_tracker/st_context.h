@@ -182,6 +182,7 @@ struct st_context
 
    boolean needs_texcoord_semantic;
    boolean apply_texture_swizzle_to_border_color;
+   boolean emulate_gl_clamp;
    boolean texture_buffer_sampler;
 
    /* On old libGL's for linux we need to invalidate the drawables

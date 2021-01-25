@@ -46,6 +46,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 0;
 
    case PIPE_CAP_GRAPHICS:
+   case PIPE_CAP_GL_CLAMP:
    case PIPE_CAP_MAX_RENDER_TARGETS:
       return 1;
 

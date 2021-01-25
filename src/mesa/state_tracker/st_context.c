@@ -574,6 +574,12 @@ st_init_driver_flags(struct st_context *st)
    f->NewNvConservativeRasterization = ST_NEW_RASTERIZER;
    f->NewNvConservativeRasterizationParams = ST_NEW_RASTERIZER;
    f->NewIntelConservativeRasterization = ST_NEW_RASTERIZER;
+
+   if (st->emulate_gl_clamp)
+      f->NewSamplersWithClamp = ST_NEW_SAMPLERS |
+                                ST_NEW_VS_STATE | ST_NEW_TCS_STATE |
+                                ST_NEW_TES_STATE | ST_NEW_GS_STATE |
+                                ST_NEW_FS_STATE | ST_NEW_CS_STATE;
 }
 
 
@@ -690,6 +696,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       !!(screen->get_param(screen, PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK) &
          (PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_NV50 |
           PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_R600));
+   st->emulate_gl_clamp =
+      !screen->get_param(screen, PIPE_CAP_GL_CLAMP);
    st->texture_buffer_sampler =
       screen->get_param(screen, PIPE_CAP_TEXTURE_BUFFER_SAMPLER);
    st->has_time_elapsed =

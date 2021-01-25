@@ -151,6 +151,9 @@ struct st_fp_variant_key
    uint8_t texture_index[MAX_NUM_FRAGMENT_REGISTERS_ATI];
 
    struct st_external_sampler_key external;
+
+   /* bitmask of sampler units; PIPE_CAP_GL_CLAMP */
+   uint32_t gl_clamp[3];
 };
 
 /**
@@ -209,6 +212,9 @@ struct st_common_variant_key
     * not for the driver.
     */
    bool is_draw_shader;
+
+   /* bitmask of sampler units; PIPE_CAP_GL_CLAMP */
+   uint32_t gl_clamp[3];
 };
 
 

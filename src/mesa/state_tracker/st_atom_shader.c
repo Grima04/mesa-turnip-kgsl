@@ -73,6 +73,45 @@ get_texture_index(struct gl_context *ctx, const unsigned unit)
 }
 
 
+static inline GLboolean
+is_wrap_gl_clamp(GLint param)
+{
+   return param == GL_CLAMP || param == GL_MIRROR_CLAMP_EXT;
+}
+
+static void
+update_gl_clamp(struct st_context *st, struct gl_program *prog, uint32_t *gl_clamp)
+{
+   if (!st->emulate_gl_clamp)
+      return;
+
+   gl_clamp[0] = gl_clamp[1] = gl_clamp[2] = 0;
+   GLbitfield samplers_used = prog->SamplersUsed;
+   unsigned unit;
+   /* same as st_atom_sampler.c */
+   for (unit = 0; samplers_used; unit++, samplers_used >>= 1) {
+      unsigned tex_unit = prog->SamplerUnits[unit];
+      if (samplers_used & 1 &&
+          (st->ctx->Texture.Unit[tex_unit]._Current->Target != GL_TEXTURE_BUFFER ||
+           st->texture_buffer_sampler)) {
+         const struct gl_texture_object *texobj;
+         struct gl_context *ctx = st->ctx;
+         const struct gl_sampler_object *msamp;
+
+         texobj = ctx->Texture.Unit[tex_unit]._Current;
+         assert(texobj);
+
+         msamp = _mesa_get_samplerobj(ctx, tex_unit);
+         if (is_wrap_gl_clamp(msamp->Attrib.WrapS))
+            gl_clamp[0] |= BITFIELD64_BIT(unit);
+         if (is_wrap_gl_clamp(msamp->Attrib.WrapT))
+            gl_clamp[1] |= BITFIELD64_BIT(unit);
+         if (is_wrap_gl_clamp(msamp->Attrib.WrapR))
+            gl_clamp[2] |= BITFIELD64_BIT(unit);
+      }
+   }
+}
+
 /**
  * Update fragment program state/atom.  This involves translating the
  * Mesa fragment program into a gallium fragment program and binding it.
@@ -143,6 +182,7 @@ st_update_fp( struct st_context *st )
       }
 
       key.external = st_get_external_sampler_key(st, &stfp->Base);
+      update_gl_clamp(st, st->ctx->FragmentProgram._Current, key.gl_clamp);
 
       simple_mtx_lock(&st->ctx->Shared->Mutex);
       shader = st_get_fp_variant(st, stfp, &key)->base.driver_shader;
@@ -218,6 +258,8 @@ st_update_vp( struct st_context *st )
             key.lower_ucp = st->ctx->Transform.ClipPlanesEnabled;
       }
 
+      update_gl_clamp(st, st->ctx->VertexProgram._Current, key.gl_clamp);
+
       simple_mtx_lock(&st->ctx->Shared->Mutex);
       st->vp_variant = st_get_vp_variant(st, stvp, &key);
       simple_mtx_unlock(&st->ctx->Shared->Mutex);
@@ -282,6 +324,8 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
                              !st_point_size_per_vertex(st->ctx);
 
    }
+
+   update_gl_clamp(st, prog, key.gl_clamp);
 
    simple_mtx_lock(&st->ctx->Shared->Mutex);
    void *result = st_get_common_variant(st, stp, &key)->driver_shader;
