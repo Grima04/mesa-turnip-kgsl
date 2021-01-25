@@ -528,21 +528,20 @@ anv_queue_init(struct anv_device *device, struct anv_queue *queue)
 void
 anv_queue_finish(struct anv_queue *queue)
 {
+   if (queue->device->has_thread_submit) {
+      pthread_mutex_lock(&queue->mutex);
+      pthread_cond_broadcast(&queue->cond);
+      queue->quit = true;
+      pthread_mutex_unlock(&queue->mutex);
+
+      void *ret;
+      pthread_join(queue->thread, &ret);
+
+      pthread_cond_destroy(&queue->cond);
+      pthread_mutex_destroy(&queue->mutex);
+   }
+
    vk_object_base_finish(&queue->base);
-
-   if (!queue->device->has_thread_submit)
-      return;
-
-   pthread_mutex_lock(&queue->mutex);
-   pthread_cond_broadcast(&queue->cond);
-   queue->quit = true;
-   pthread_mutex_unlock(&queue->mutex);
-
-   void *ret;
-   pthread_join(queue->thread, &ret);
-
-   pthread_cond_destroy(&queue->cond);
-   pthread_mutex_destroy(&queue->mutex);
 }
 
 static VkResult
