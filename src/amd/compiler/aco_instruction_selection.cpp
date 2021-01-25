@@ -5845,7 +5845,7 @@ static MIMG_instruction *emit_mimg(Builder& bld, aco_opcode op,
                                    Temp rsrc,
                                    Operand samp,
                                    std::vector<Temp> coords,
-                                   unsigned num_wqm_coords=0,
+                                   unsigned wqm_mask=0,
                                    Operand vdata=Operand(v1))
 {
    if (bld.program->chip_class < GFX10) {
@@ -5862,7 +5862,7 @@ static MIMG_instruction *emit_mimg(Builder& bld, aco_opcode op,
          coord = bld.copy(bld.def(v1), coord);
       }
 
-      if (num_wqm_coords) {
+      if (wqm_mask) {
          /* We don't need the bias, sample index, compare value or offset to be
           * computed in WQM but if the p_create_vector copies the coordinates, then it
           * needs to be in WQM. */
@@ -5872,8 +5872,10 @@ static MIMG_instruction *emit_mimg(Builder& bld, aco_opcode op,
       coords[0] = coord;
       coords.resize(1);
    } else {
-      for (unsigned i = 0; i < num_wqm_coords; i++)
-         coords[i] = emit_wqm(bld, coords[i], bld.tmp(coords[i].regClass()), true);
+      for (unsigned i = 0; i < coords.size(); i++) {
+         if (wqm_mask & (1u << i))
+            coords[i] = emit_wqm(bld, coords[i], bld.tmp(coords[i].regClass()), true);
+      }
 
       for (Temp& coord : coords) {
          if (coord.type() == RegType::sgpr)
@@ -9333,8 +9335,11 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 
    /* gather MIMG address components */
    std::vector<Temp> args;
-   if (has_offset)
+   unsigned wqm_mask = 0;
+   if (has_offset) {
+      wqm_mask |= u_bit_consecutive(args.size(), 1);
       args.emplace_back(offset);
+   }
    if (has_bias)
       args.emplace_back(bias);
    if (has_compare)
@@ -9342,7 +9347,9 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    if (has_derivs)
       args.insert(args.end(), derivs.begin(), derivs.end());
 
+   wqm_mask |= u_bit_consecutive(args.size(), coords.size());
    args.insert(args.end(), coords.begin(), coords.end());
+
    if (has_sample_index)
       args.emplace_back(sample_index);
    if (has_lod)
@@ -9493,9 +9500,8 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
                           instr->sampler_dim != GLSL_SAMPLER_DIM_SUBPASS_MS;
 
    Operand vdata = instr->is_sparse ? emit_tfe_init(bld, tmp_dst) : Operand(v1);
-   unsigned num_wqm_coords = implicit_derivs ? coords.size() : 0;
    MIMG_instruction *tex = emit_mimg(bld, opcode, Definition(tmp_dst), resource,
-                                     Operand(sampler), args, num_wqm_coords, vdata);
+                                     Operand(sampler), args, implicit_derivs ? wqm_mask : 0, vdata);
    tex->dim = dim;
    tex->dmask = dmask & 0xf;
    tex->da = da;
