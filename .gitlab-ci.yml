@@ -9,7 +9,7 @@ variables:
 
 include:
   - project: 'freedesktop/ci-templates'
-    ref: 43ac932d5b8ebf43040d302de3c6e734df178384
+    ref: 79c325922670137e8f0a4dc5f6f097e0eb57c1af
     file:
       - '/templates/ci-fairy.yml'
   - project: 'freedesktop/ci-templates'
