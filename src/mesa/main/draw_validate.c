@@ -482,29 +482,8 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
  * Also, do additional checking related to tessellation shaders.
  */
 GLboolean
-_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, bool uses_vao,
-                      const char *name)
+_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, const char *name)
 {
-   /* Section 6.3.2 from the GL 4.5:
-    * "Any GL command which attempts to read from, write to, or change
-    *  the state of a buffer object may generate an INVALID_OPERATION error if
-    *  all or part of the buffer object is mapped ... However, only commands
-    *  which explicitly describe this error are required to do so. If an error
-    *  is not generated, such commands will have undefined results and may
-    *  result in GL interruption or termination."
-    *
-    * Only some buffer API functions require INVALID_OPERATION with mapped
-    * buffers. No other functions list such an error, thus it's not required
-    * to report INVALID_OPERATION for draw calls with mapped buffers.
-    */
-   if (uses_vao &&
-       !ctx->Const.AllowMappedBuffersDuringExecution &&
-       !_mesa_all_buffers_are_unmapped(ctx->Array.VAO)) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "%s(vertex buffers are mapped)", name);
-      return false;
-   }
-
    /* All primitive type enums are less than 32, so we can use the shift. */
    if (mode >= 32 || !((1u << mode) & ctx->ValidPrimMask)) {
       /* If the primitive type is not in SupportedPrimMask, set GL_INVALID_ENUM,
@@ -589,7 +568,7 @@ validate_DrawElements_common(struct gl_context *ctx,
       return false;
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, true, caller)) {
+   if (!_mesa_valid_prim_mode(ctx, mode, caller)) {
       return false;
    }
 
@@ -655,7 +634,7 @@ _mesa_validate_MultiDrawElements(struct gl_context *ctx,
       }
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, true, "glMultiDrawElements")) {
+   if (!_mesa_valid_prim_mode(ctx, mode, "glMultiDrawElements")) {
       return GL_FALSE;
    }
 
@@ -804,7 +783,7 @@ validate_draw_arrays(struct gl_context *ctx, const char *func,
       return false;
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, true, func))
+   if (!_mesa_valid_prim_mode(ctx, mode, func))
       return false;
 
    if (need_xfb_remaining_prims_check(ctx)) {
@@ -870,7 +849,7 @@ _mesa_validate_MultiDrawArrays(struct gl_context *ctx, GLenum mode,
 {
    int i;
 
-   if (!_mesa_valid_prim_mode(ctx, mode, true, "glMultiDrawArrays"))
+   if (!_mesa_valid_prim_mode(ctx, mode, "glMultiDrawArrays"))
       return false;
 
    if (primcount < 0) {
@@ -931,7 +910,7 @@ _mesa_validate_DrawTransformFeedback(struct gl_context *ctx,
                                      GLuint stream,
                                      GLsizei numInstances)
 {
-   if (!_mesa_valid_prim_mode(ctx, mode, true, "glDrawTransformFeedback*(mode)")) {
+   if (!_mesa_valid_prim_mode(ctx, mode, "glDrawTransformFeedback*(mode)")) {
       return GL_FALSE;
    }
 
@@ -1005,7 +984,7 @@ valid_draw_indirect(struct gl_context *ctx,
       return GL_FALSE;
    }
 
-   if (!_mesa_valid_prim_mode(ctx, mode, true, name))
+   if (!_mesa_valid_prim_mode(ctx, mode, name))
       return GL_FALSE;
 
    /* OpenGL ES 3.1 specification, section 10.5:
