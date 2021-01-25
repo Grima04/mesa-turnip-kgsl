@@ -830,6 +830,9 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
        !_mesa_validate_MultiDrawArrays(ctx, mode, count, primcount))
       return;
 
+   if (primcount == 0)
+      return;
+
    struct pipe_draw_info info;
    struct pipe_draw_start_count *draw;
 
