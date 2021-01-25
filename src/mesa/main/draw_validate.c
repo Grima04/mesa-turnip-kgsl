@@ -573,13 +573,12 @@ valid_elements_type(struct gl_context *ctx, GLenum type, const char *name)
 }
 
 static bool
-validate_DrawElements_common(struct gl_context *ctx,
-                             GLenum mode, GLsizei count, GLenum type,
-                             const GLvoid *indices,
-                             const char *caller)
+validate_DrawElements_common(struct gl_context *ctx, GLenum mode,
+                             GLsizei count, GLsizei numInstances, GLenum type,
+                             const GLvoid *indices, const char *caller)
 {
-   if (count < 0) {
-      _mesa_error(ctx, GL_INVALID_VALUE, "%s(count)", caller);
+   if (count < 0 || numInstances < 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(count or numInstances)", caller);
       return false;
    }
 
@@ -603,7 +602,7 @@ _mesa_validate_DrawElements(struct gl_context *ctx,
                             GLenum mode, GLsizei count, GLenum type,
                             const GLvoid *indices)
 {
-   return validate_DrawElements_common(ctx, mode, count, type, indices,
+   return validate_DrawElements_common(ctx, mode, count, 1, type, indices,
                                        "glDrawElements");
 }
 
@@ -685,7 +684,7 @@ _mesa_validate_DrawRangeElements(struct gl_context *ctx, GLenum mode,
       return GL_FALSE;
    }
 
-   return validate_DrawElements_common(ctx, mode, count, type, indices,
+   return validate_DrawElements_common(ctx, mode, count, 1, type, indices,
                                        "glDrawRangeElements");
 }
 
@@ -793,8 +792,8 @@ static bool
 validate_draw_arrays(struct gl_context *ctx, const char *func,
                      GLenum mode, GLsizei count, GLsizei numInstances)
 {
-   if (count < 0) {
-      _mesa_error(ctx, GL_INVALID_VALUE, "%s(count)", func);
+   if (count < 0 || numInstances < 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(count or numInstances)", func);
       return false;
    }
 
@@ -838,13 +837,8 @@ _mesa_validate_DrawArraysInstanced(struct gl_context *ctx, GLenum mode, GLint fi
       return GL_FALSE;
    }
 
-   if (numInstances < 0) {
-      _mesa_error(ctx, GL_INVALID_VALUE,
-                  "glDrawArraysInstanced(numInstances=%d)", numInstances);
-      return GL_FALSE;
-   }
-
-   return validate_draw_arrays(ctx, "glDrawArraysInstanced", mode, count, 1);
+   return validate_draw_arrays(ctx, "glDrawArraysInstanced", mode, count,
+                               numInstances);
 }
 
 
@@ -902,14 +896,8 @@ _mesa_validate_DrawElementsInstanced(struct gl_context *ctx,
                                      GLenum mode, GLsizei count, GLenum type,
                                      const GLvoid *indices, GLsizei numInstances)
 {
-   if (numInstances < 0) {
-      _mesa_error(ctx, GL_INVALID_VALUE,
-                  "glDrawElementsInstanced(numInstances=%d)", numInstances);
-      return GL_FALSE;
-   }
-
-   return validate_DrawElements_common(ctx, mode, count, type, indices,
-                                       "glDrawElementsInstanced");
+   return validate_DrawElements_common(ctx, mode, count, numInstances, type,
+                                       indices, "glDrawElementsInstanced");
 }
 
 
