@@ -561,23 +561,28 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
         };
 
         /* Compute branch offset instead of a dummy 0 */
+        bool terminal_branch = true;
+
         if (branches) {
                 bi_instr *br = clause->tuples[clause->tuple_count - 1].add;
                 assert(br && br->branch_target);
 
-                /* Put it in the high place */
-                int32_t qwords = bi_block_offset(ctx, clause, br->branch_target);
-                int32_t bytes = qwords * 16;
+                if (!bi_is_terminal_block(ctx, br->branch_target)) {
+                        /* Put it in the high place */
+                        int32_t qwords = bi_block_offset(ctx, clause, br->branch_target);
+                        int32_t bytes = qwords * 16;
 
-                /* Copy so we get proper sign behaviour */
-                uint32_t raw = 0;
-                memcpy(&raw, &bytes, sizeof(raw));
+                        /* Copy so we get proper sign behaviour */
+                        uint32_t raw = 0;
+                        memcpy(&raw, &bytes, sizeof(raw));
 
-                /* Clear off top bits for the magic bits */
-                raw &= ~0xF0000000;
+                        /* Clear off top bits for the magic bits */
+                        raw &= ~0xF0000000;
+                        terminal_branch = false;
 
-                /* Put in top 32-bits */
-                clause->constants[index + 0] = ((uint64_t) raw) << 32ull;
+                        /* Put in top 32-bits */
+                        clause->constants[index + 0] = ((uint64_t) raw) << 32ull;
+		}
         }
 
         uint64_t hi = clause->constants[index + 0] >> 60ull;
@@ -589,7 +594,7 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
                 .imm_2 = ((hi < 8) ? (hi << 60ull) : 0) >> 4,
         };
 
-        if (branches) {
+        if (branches && !terminal_branch) {
                 /* Branch offsets are less than 60-bits so this should work at
                  * least for now */
                 quad.imm_1 |= (4ull << 60ull) >> 4;
