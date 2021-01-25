@@ -1551,6 +1551,8 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
          }
       }
    } else {
+      int chosen_register_pressure_benefit = 0;
+
       /* Before register allocation, we don't care about the latencies of
        * instructions.  All we care about is reducing live intervals of
        * variables so that we can avoid register spilling, or get SIMD16
@@ -1562,6 +1564,8 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
 
          if (!chosen) {
             chosen = n;
+            chosen_register_pressure_benefit =
+                  get_register_pressure_benefit(chosen->inst);
             continue;
          }
 
@@ -1569,12 +1573,11 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
           * so immediately.
           */
          int register_pressure_benefit = get_register_pressure_benefit(n->inst);
-         int chosen_register_pressure_benefit =
-            get_register_pressure_benefit(chosen->inst);
 
          if (register_pressure_benefit > 0 &&
              register_pressure_benefit > chosen_register_pressure_benefit) {
             chosen = n;
+            chosen_register_pressure_benefit = register_pressure_benefit;
             continue;
          } else if (chosen_register_pressure_benefit > 0 &&
                     (register_pressure_benefit <
@@ -1592,6 +1595,7 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
              */
             if (n->cand_generation > chosen->cand_generation) {
                chosen = n;
+               chosen_register_pressure_benefit = register_pressure_benefit;
                continue;
             } else if (n->cand_generation < chosen->cand_generation) {
                continue;
@@ -1614,6 +1618,7 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
                if (inst->size_written <= 4 * inst->exec_size &&
                    chosen_inst->size_written > 4 * chosen_inst->exec_size) {
                   chosen = n;
+                  chosen_register_pressure_benefit = register_pressure_benefit;
                   continue;
                } else if (inst->size_written > chosen_inst->size_written) {
                   continue;
@@ -1629,6 +1634,7 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
           */
          if (n->delay > chosen->delay) {
             chosen = n;
+            chosen_register_pressure_benefit = register_pressure_benefit;
             continue;
          } else if (n->delay < chosen->delay) {
             continue;
@@ -1638,6 +1644,7 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
           */
          if (exit_unblocked_time(n) < exit_unblocked_time(chosen)) {
             chosen = n;
+            chosen_register_pressure_benefit = register_pressure_benefit;
             continue;
          } else if (exit_unblocked_time(n) > exit_unblocked_time(chosen)) {
             continue;
