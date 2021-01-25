@@ -149,8 +149,11 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define pan_print(fp, T, var, indent)                   \\
         MALI_ ## T ## _print(fp, &(var), indent)
 
+#define pan_section_offset(A, S) \\
+        MALI_ ## A ## _SECTION_ ## S ## _OFFSET
+
 #define pan_section_ptr(base, A, S) \\
-        ((void *)((uint8_t *)(base) + MALI_ ## A ## _SECTION_ ## S ## _OFFSET))
+        ((void *)((uint8_t *)(base) + pan_section_offset(A, S)))
 
 #define pan_section_pack(dst, A, S, name)                                                         \\
    for (MALI_ ## A ## _SECTION_ ## S ## _TYPE name = { MALI_ ## A ## _SECTION_ ## S ## _header }, \\
