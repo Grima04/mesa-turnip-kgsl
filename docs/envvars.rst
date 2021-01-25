@@ -552,8 +552,6 @@ RADV driver environment variables
       enable LLVM compiler backend
    ``allbos``
       force all allocated buffers to be referenced in submissions
-   ``allentrypoints``
-      enable all device/instance entrypoints
    ``checkir``
       validate the LLVM IR before LLVM compiles the shader
    ``errors``

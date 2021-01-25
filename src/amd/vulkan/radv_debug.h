@@ -51,7 +51,7 @@ enum {
 	RADV_DEBUG_NOTHREADLLVM      = 1u << 20,
 	RADV_DEBUG_NOBINNING         = 1u << 21,
 	RADV_DEBUG_NO_NGG            = 1u << 22,
-	RADV_DEBUG_ALL_ENTRYPOINTS   = 1u << 23,
+        /* spare 1u << 23 */
 	RADV_DEBUG_DUMP_META_SHADERS = 1u << 24,
 	RADV_DEBUG_NO_MEMORY_CACHE   = 1u << 25,
 	RADV_DEBUG_DISCARD_TO_DEMOTE = 1u << 26,

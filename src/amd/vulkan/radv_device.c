@@ -555,7 +555,6 @@ static const struct debug_control radv_debug_options[] = {
 	{"nothreadllvm", RADV_DEBUG_NOTHREADLLVM},
 	{"nobinning", RADV_DEBUG_NOBINNING},
 	{"nongg", RADV_DEBUG_NO_NGG},
-	{"allentrypoints", RADV_DEBUG_ALL_ENTRYPOINTS},
 	{"metashaders", RADV_DEBUG_DUMP_META_SHADERS},
 	{"nomemorycache", RADV_DEBUG_NO_MEMORY_CACHE},
 	{"discardtodemote", RADV_DEBUG_DISCARD_TO_DEMOTE},
@@ -769,14 +768,11 @@ VkResult radv_CreateInstance(
 		instance->enabled_extensions.extensions[idx] = true;
 	}
 
-	bool unchecked = instance->debug_flags & RADV_DEBUG_ALL_ENTRYPOINTS;
-
 	for (unsigned i = 0; i < ARRAY_SIZE(instance->dispatch.entrypoints); i++) {
 		/* Vulkan requires that entrypoints for extensions which have
 		 * not been enabled must not be advertised.
 		 */
-		if (!unchecked &&
-		    !radv_instance_entrypoint_is_enabled(i, instance->apiVersion,
+		if (!radv_instance_entrypoint_is_enabled(i, instance->apiVersion,
 							 &instance->enabled_extensions)) {
 			instance->dispatch.entrypoints[i] = NULL;
 		} else {
@@ -789,8 +785,7 @@ VkResult radv_CreateInstance(
 		/* Vulkan requires that entrypoints for extensions which have
 		 * not been enabled must not be advertised.
 		 */
-		if (!unchecked &&
-		    !radv_physical_device_entrypoint_is_enabled(i, instance->apiVersion,
+		if (!radv_physical_device_entrypoint_is_enabled(i, instance->apiVersion,
 								&instance->enabled_extensions)) {
 			instance->physical_device_dispatch.entrypoints[i] = NULL;
 		} else {
@@ -803,8 +798,7 @@ VkResult radv_CreateInstance(
 		/* Vulkan requires that entrypoints for extensions which have
 		 * not been enabled must not be advertised.
 		 */
-		if (!unchecked &&
-		    !radv_device_entrypoint_is_enabled(i, instance->apiVersion,
+		if (!radv_device_entrypoint_is_enabled(i, instance->apiVersion,
 						       &instance->enabled_extensions, NULL)) {
 			instance->device_dispatch.entrypoints[i] = NULL;
 		} else {
@@ -2631,7 +2625,6 @@ radv_device_init_dispatch(struct radv_device *device)
 {
 	const struct radv_instance *instance = device->physical_device->instance;
 	const struct radv_device_dispatch_table *dispatch_table_layer = NULL;
-	bool unchecked = instance->debug_flags & RADV_DEBUG_ALL_ENTRYPOINTS;
 
 	if (radv_thread_trace_enabled()) {
 		/* Use device entrypoints from the SQTT layer if enabled. */
@@ -2642,8 +2635,7 @@ radv_device_init_dispatch(struct radv_device *device)
 		/* Vulkan requires that entrypoints for extensions which have not been
 		 * enabled must not be advertised.
 		 */
-		if (!unchecked &&
-		    !radv_device_entrypoint_is_enabled(i, instance->apiVersion,
+		if (!radv_device_entrypoint_is_enabled(i, instance->apiVersion,
 						       &instance->enabled_extensions,
 						       &device->enabled_extensions)) {
 			device->dispatch.entrypoints[i] = NULL;
