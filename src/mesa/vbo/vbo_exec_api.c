@@ -825,7 +825,9 @@ vbo_exec_Begin(GLenum mode)
    if (ctx->NewState)
       _mesa_update_state(ctx);
 
-   if (!_mesa_valid_prim_mode(ctx, mode, "glBegin")) {
+   GLenum error = _mesa_valid_prim_mode(ctx, mode);
+   if (error != GL_NO_ERROR) {
+      _mesa_error(ctx, error, "glBegin");
       return;
    }
 
