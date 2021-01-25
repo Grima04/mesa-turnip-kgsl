@@ -28,8 +28,8 @@ stages:
   - build-misc
   - amd
   - arm
+  - broadcom
   - freedreno
-  - raspberrypi
   - software-renderer
   - layered-backends
   - deploy
