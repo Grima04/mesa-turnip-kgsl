@@ -1127,6 +1127,7 @@ brwCreateContext(gl_api api,
 
    ctx->VertexProgram._MaintainTnlProgram = true;
    ctx->FragmentProgram._MaintainTexEnvProgram = true;
+   _mesa_reset_vertex_processing_mode(ctx);
 
    brw_draw_init( brw );
 

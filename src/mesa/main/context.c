@@ -1247,6 +1247,7 @@ _mesa_initialize_context(struct gl_context *ctx,
    if (ctx->VertexProgram._MaintainTnlProgram) {
       /* this is required... */
       ctx->FragmentProgram._MaintainTexEnvProgram = GL_TRUE;
+      _mesa_reset_vertex_processing_mode(ctx);
    }
 
    /* Mesa core handles all the formats that mesa core knows about.
@@ -1287,6 +1288,7 @@ _mesa_initialize_context(struct gl_context *ctx,
    case API_OPENGLES2:
       ctx->FragmentProgram._MaintainTexEnvProgram = GL_TRUE;
       ctx->VertexProgram._MaintainTnlProgram = GL_TRUE;
+      _mesa_reset_vertex_processing_mode(ctx);
       break;
    }
 

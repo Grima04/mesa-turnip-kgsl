@@ -2382,6 +2382,8 @@ struct gl_vertex_program_state
 
    GLboolean _Overriden;
 
+   bool _VPModeOptimizesConstantAttribs;
+
    /**
     * If we have a vertex program, a TNL program or no program at all.
     * Note that this value should be kept up to date all the time,

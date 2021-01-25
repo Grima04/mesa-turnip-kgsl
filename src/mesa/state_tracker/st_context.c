@@ -33,6 +33,7 @@
 #include "main/glthread.h"
 #include "main/samplerobj.h"
 #include "main/shaderobj.h"
+#include "main/state.h"
 #include "main/version.h"
 #include "main/vtxfmt.h"
 #include "main/hash.h"
@@ -649,6 +650,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
     */
    ctx->FragmentProgram._MaintainTexEnvProgram = GL_TRUE;
    ctx->VertexProgram._MaintainTnlProgram = GL_TRUE;
+   _mesa_reset_vertex_processing_mode(ctx);
 
    if (no_error)
       ctx->Const.ContextFlags |= GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR;

@@ -35,6 +35,7 @@
 #include "main/hash.h"
 #include "main/macros.h"
 #include "main/shaderobj.h"
+#include "main/state.h"
 #include "program.h"
 #include "prog_cache.h"
 #include "prog_parameter.h"
@@ -100,7 +101,7 @@ _mesa_init_program(struct gl_context *ctx)
                            ctx->Shared->DefaultFragmentProgram);
    assert(ctx->FragmentProgram.Current);
    ctx->FragmentProgram.Cache = _mesa_new_program_cache();
-   ctx->VertexProgram._VPMode = VP_MODE_FF;
+   _mesa_reset_vertex_processing_mode(ctx);
 
    /* XXX probably move this stuff */
    ctx->ATIFragmentShader.Enabled = GL_FALSE;

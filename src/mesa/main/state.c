@@ -571,19 +571,8 @@ _mesa_update_state( struct gl_context *ctx )
 static void
 set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs)
 {
-   /*
-    * The gl_context::varying_vp_inputs value is only used when in
-    * VP_MODE_FF mode.
-    */
-   if (VP_MODE_FF != ctx->VertexProgram._VPMode)
-      return;
-
-   /* Only fixed-func generated programs ever uses varying_vp_inputs. */
-   if (!ctx->VertexProgram._MaintainTnlProgram &&
-       !ctx->FragmentProgram._MaintainTexEnvProgram)
-      return;
-
-   if (ctx->varying_vp_inputs != varying_inputs) {
+   if (ctx->VertexProgram._VPModeOptimizesConstantAttribs &&
+       ctx->varying_vp_inputs != varying_inputs) {
       ctx->varying_vp_inputs = varying_inputs;
       ctx->NewState |= _NEW_VARYING_VP_INPUTS;
    }
@@ -622,6 +611,14 @@ set_vertex_processing_mode(struct gl_context *ctx, gl_vertex_processing_mode m)
    /* Finally memorize the value */
    ctx->VertexProgram._VPMode = m;
 
+   /* The gl_context::varying_vp_inputs value is only used when in
+    * VP_MODE_FF mode and the fixed-func pipeline is emulated by shaders.
+    */
+   ctx->VertexProgram._VPModeOptimizesConstantAttribs =
+      m == VP_MODE_FF &&
+      ctx->VertexProgram._MaintainTnlProgram &&
+      ctx->FragmentProgram._MaintainTexEnvProgram;
+
    /* Since we only track the varying inputs while being in fixed function
     * vertex processing mode, we may need to recheck for the
     * _NEW_VARYING_VP_INPUTS bit.
@@ -648,6 +645,13 @@ _mesa_update_vertex_processing_mode(struct gl_context *ctx)
       set_vertex_processing_mode(ctx, VP_MODE_FF);
 }
 
+
+void
+_mesa_reset_vertex_processing_mode(struct gl_context *ctx)
+{
+   ctx->VertexProgram._VPMode = -1; /* force the update */
+   _mesa_update_vertex_processing_mode(ctx);
+}
 
 /**
  * Set the _DrawVAO and the net enabled arrays.

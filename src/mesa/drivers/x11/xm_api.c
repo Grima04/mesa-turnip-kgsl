@@ -71,6 +71,7 @@
 #include "main/framebuffer.h"
 #include "main/macros.h"
 #include "main/renderbuffer.h"
+#include "main/state.h"
 #include "main/teximage.h"
 #include "main/version.h"
 #include "main/vtxfmt.h"
@@ -920,6 +921,7 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list )
    if (0) {
       mesaCtx->VertexProgram._MaintainTnlProgram = GL_TRUE;
       mesaCtx->FragmentProgram._MaintainTexEnvProgram = GL_TRUE;
+      _mesa_reset_vertex_processing_mode(ctx);
    }
 
    _mesa_enable_sw_extensions(mesaCtx);
