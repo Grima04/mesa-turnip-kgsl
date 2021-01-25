@@ -798,9 +798,6 @@ validate_draw_arrays(struct gl_context *ctx, const char *func,
       xfb_obj->GlesRemainingPrims -= prim_count;
    }
 
-   if (count == 0)
-      return false;
-
    return true;
 }
 
@@ -826,10 +823,9 @@ _mesa_validate_DrawArraysInstanced(struct gl_context *ctx, GLenum mode, GLint fi
       return GL_FALSE;
    }
 
-   if (numInstances <= 0) {
-      if (numInstances < 0)
-         _mesa_error(ctx, GL_INVALID_VALUE,
-                     "glDrawArraysInstanced(numInstances=%d)", numInstances);
+   if (numInstances < 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE,
+                  "glDrawArraysInstanced(numInstances=%d)", numInstances);
       return GL_FALSE;
    }
 
@@ -898,8 +894,7 @@ _mesa_validate_DrawElementsInstanced(struct gl_context *ctx,
    }
 
    return validate_DrawElements_common(ctx, mode, count, type, indices,
-                                       "glDrawElementsInstanced")
-      && (numInstances > 0);
+                                       "glDrawElementsInstanced");
 }
 
 
@@ -939,11 +934,10 @@ _mesa_validate_DrawTransformFeedback(struct gl_context *ctx,
       return GL_FALSE;
    }
 
-   if (numInstances <= 0) {
-      if (numInstances < 0)
-         _mesa_error(ctx, GL_INVALID_VALUE,
-                     "glDrawTransformFeedback*Instanced(numInstances=%d)",
-                     numInstances);
+   if (numInstances < 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE,
+                  "glDrawTransformFeedback*Instanced(numInstances=%d)",
+                  numInstances);
       return GL_FALSE;
    }
 
