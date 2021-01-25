@@ -43,6 +43,7 @@
 #endif
 
 struct fd_resource;
+struct fd_batch_key;
 
 /* A batch tracks everything about a cmdstream batch/submit, including the
  * ringbuffers used for binning, draw, and gmem cmds, list of associated
@@ -229,7 +230,7 @@ struct fd_batch {
 	struct set *resources;
 
 	/** key in batch-cache (if not null): */
-	const void *key;
+	const struct fd_batch_key *key;
 	uint32_t hash;
 
 	/** set of dependent batches.. holds refs to dependent batches: */
