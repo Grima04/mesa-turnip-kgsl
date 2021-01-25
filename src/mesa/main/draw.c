@@ -457,48 +457,6 @@ print_draw_arrays(struct gl_context *ctx,
 
 
 /**
- * Return a filter mask for the net enabled vao arrays.
- * This is to mask out arrays that would otherwise supersed required current
- * values for the fixed function shaders for example.
- */
-static GLbitfield
-enabled_filter(const struct gl_context *ctx)
-{
-   switch (ctx->VertexProgram._VPMode) {
-   case VP_MODE_FF:
-      /* When no vertex program is active (or the vertex program is generated
-       * from fixed-function state).  We put the material values into the
-       * generic slots.  Since the vao has no material arrays, mute these
-       * slots from the enabled arrays so that the current material values
-       * are pulled instead of the vao arrays.
-       */
-      return VERT_BIT_FF_ALL;
-
-   case VP_MODE_SHADER:
-      /* There are no shaders in OpenGL ES 1.x, so this code path should be
-       * impossible to reach.  The meta code is careful to not use shaders in
-       * ES1.
-       */
-      assert(ctx->API != API_OPENGLES);
-
-      /* Other parts of the code assume that inputs[VERT_ATTRIB_POS] through
-       * inputs[VERT_ATTRIB_FF_MAX] will be non-NULL.  However, in OpenGL
-       * ES 2.0+ or OpenGL core profile, none of these arrays should ever
-       * be enabled.
-       */
-      if (ctx->API != API_OPENGL_COMPAT)
-         return VERT_BIT_GENERIC_ALL;
-
-      return VERT_BIT_ALL;
-
-   default:
-      assert(0);
-      return 0;
-   }
-}
-
-
-/**
  * Helper function called by the other DrawArrays() functions below.
  * This is where we handle primitive restart for drawing non-indexed
  * arrays.  If primitive restart is enabled, it typically means
@@ -730,7 +688,8 @@ _mesa_DrawArrays(GLenum mode, GLint start, GLsizei count)
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -760,7 +719,8 @@ _mesa_DrawArraysInstancedARB(GLenum mode, GLint start, GLsizei count,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -791,7 +751,8 @@ _mesa_DrawArraysInstancedBaseInstance(GLenum mode, GLint first,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -821,7 +782,8 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1039,7 +1001,8 @@ _mesa_DrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1134,7 +1097,8 @@ _mesa_DrawElements(GLenum mode, GLsizei count, GLenum type,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1158,7 +1122,8 @@ _mesa_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1182,7 +1147,8 @@ _mesa_DrawElementsInstancedARB(GLenum mode, GLsizei count, GLenum type,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1209,7 +1175,8 @@ _mesa_DrawElementsInstancedBaseVertex(GLenum mode, GLsizei count,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1238,7 +1205,8 @@ _mesa_DrawElementsInstancedBaseInstance(GLenum mode, GLsizei count,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1269,7 +1237,8 @@ _mesa_DrawElementsInstancedBaseVertexBaseInstance(GLenum mode,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1435,7 +1404,8 @@ _mesa_MultiDrawElementsEXT(GLenum mode, const GLsizei *count, GLenum type,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1460,7 +1430,8 @@ _mesa_MultiDrawElementsBaseVertex(GLenum mode,
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1490,7 +1461,8 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
 {
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1654,7 +1626,8 @@ _mesa_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
 
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1712,7 +1685,8 @@ _mesa_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect)
 
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1770,7 +1744,8 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
 
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1839,7 +1814,8 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
 
    FLUSH_FOR_DRAW(ctx);
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1867,7 +1843,8 @@ _mesa_MultiDrawArraysIndirectCountARB(GLenum mode, GLintptr indirect,
    if (stride == 0)
       stride = 4 * sizeof(GLuint);      /* sizeof(DrawArraysIndirectCommand) */
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -1897,7 +1874,8 @@ _mesa_MultiDrawElementsIndirectCountARB(GLenum mode, GLenum type,
    if (stride == 0)
       stride = 5 * sizeof(GLuint);      /* sizeof(DrawElementsIndirectCommand) */
 
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO, enabled_filter(ctx));
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);

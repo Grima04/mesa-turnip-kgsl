@@ -2399,6 +2399,7 @@ struct gl_vertex_program_state
    gl_vertex_processing_mode _VPMode;
 
    GLbitfield _VaryingInputs;  /**< mask of VERT_BIT_* flags */
+   GLbitfield _VPModeInputFilter;
 };
 
 /**

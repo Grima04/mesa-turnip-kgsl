@@ -619,6 +619,43 @@ set_vertex_processing_mode(struct gl_context *ctx, gl_vertex_processing_mode m)
       ctx->VertexProgram._MaintainTnlProgram &&
       ctx->FragmentProgram._MaintainTexEnvProgram;
 
+   /* Set a filter mask for the net enabled vao arrays.
+    * This is to mask out arrays that would otherwise supersede required current
+    * values for the fixed function shaders for example.
+    */
+   switch (m) {
+   case VP_MODE_FF:
+      /* When no vertex program is active (or the vertex program is generated
+       * from fixed-function state).  We put the material values into the
+       * generic slots.  Since the vao has no material arrays, mute these
+       * slots from the enabled arrays so that the current material values
+       * are pulled instead of the vao arrays.
+       */
+      ctx->VertexProgram._VPModeInputFilter = VERT_BIT_FF_ALL;
+      break;
+
+   case VP_MODE_SHADER:
+      /* There are no shaders in OpenGL ES 1.x, so this code path should be
+       * impossible to reach.  The meta code is careful to not use shaders in
+       * ES1.
+       */
+      assert(ctx->API != API_OPENGLES);
+
+      /* Other parts of the code assume that inputs[VERT_ATTRIB_POS] through
+       * inputs[VERT_ATTRIB_FF_MAX] will be non-NULL.  However, in OpenGL
+       * ES 2.0+ or OpenGL core profile, none of these arrays should ever
+       * be enabled.
+       */
+      if (ctx->API == API_OPENGL_COMPAT)
+         ctx->VertexProgram._VPModeInputFilter = VERT_BIT_ALL;
+      else
+         ctx->VertexProgram._VPModeInputFilter = VERT_BIT_GENERIC_ALL;
+      break;
+
+   default:
+      assert(0);
+   }
+
    /* Since we only track the varying inputs while being in fixed function
     * vertex processing mode, we may need to recheck for the
     * _NEW_VARYING_VP_INPUTS bit.
