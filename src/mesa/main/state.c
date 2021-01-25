@@ -572,8 +572,8 @@ static void
 set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs)
 {
    if (ctx->VertexProgram._VPModeOptimizesConstantAttribs &&
-       ctx->varying_vp_inputs != varying_inputs) {
-      ctx->varying_vp_inputs = varying_inputs;
+       ctx->VertexProgram._VaryingInputs != varying_inputs) {
+      ctx->VertexProgram._VaryingInputs = varying_inputs;
       ctx->NewState |= _NEW_VARYING_VP_INPUTS;
    }
 }
@@ -611,7 +611,7 @@ set_vertex_processing_mode(struct gl_context *ctx, gl_vertex_processing_mode m)
    /* Finally memorize the value */
    ctx->VertexProgram._VPMode = m;
 
-   /* The gl_context::varying_vp_inputs value is only used when in
+   /* The gl_context::VertexProgram._VaryingInputs value is only used when in
     * VP_MODE_FF mode and the fixed-func pipeline is emulated by shaders.
     */
    ctx->VertexProgram._VPModeOptimizesConstantAttribs =

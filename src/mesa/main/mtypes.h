@@ -2394,6 +2394,8 @@ struct gl_vertex_program_state
     * vertex program which are heavyweight already.
     */
    gl_vertex_processing_mode _VPMode;
+
+   GLbitfield _VaryingInputs;  /**< mask of VERT_BIT_* flags */
 };
 
 /**
@@ -4651,7 +4653,7 @@ struct gl_matrix_stack
 /* gap */
 #define _NEW_FRAG_CLAMP        (1u << 29)
 /* gap, re-use for core Mesa state only; use ctx->DriverFlags otherwise */
-#define _NEW_VARYING_VP_INPUTS (1u << 31) /**< gl_context::varying_vp_inputs */
+#define _NEW_VARYING_VP_INPUTS (1u << 31) /**< gl_context::VertexProgram._VaryingInputs */
 #define _NEW_ALL ~0
 /*@}*/
 
@@ -5464,8 +5466,6 @@ struct gl_context
    GLboolean _AllowDrawOutOfOrder;
    /* Is gl_PrimitiveID unused by the current shaders? */
    bool _PrimitiveIDIsUnused;
-
-   GLbitfield varying_vp_inputs;  /**< mask of VERT_BIT_* flags */
 
    /** \name Derived state */
    GLbitfield _ImageTransferState;/**< bitwise-or of IMAGE_*_BIT flags */

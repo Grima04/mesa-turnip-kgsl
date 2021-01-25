@@ -163,7 +163,7 @@ static void make_state_key( struct gl_context *ctx, struct state_key *key )
    key->need_eye_coords = ctx->_NeedEyeCoords;
 
    key->fragprog_inputs_read = fp->info.inputs_read;
-   key->varying_vp_inputs = ctx->varying_vp_inputs;
+   key->varying_vp_inputs = ctx->VertexProgram._VaryingInputs;
 
    if (ctx->RenderMode == GL_FEEDBACK) {
       /* make sure the vertprog emits color and tex0 */
@@ -1659,7 +1659,7 @@ _mesa_get_fixed_func_vertex_program(struct gl_context *ctx)
    struct gl_program *prog;
    struct state_key key;
 
-   /* We only update ctx->varying_vp_inputs when in VP_MODE_FF _VPMode */
+   /* We only update ctx->VertexProgram._VaryingInputs when in VP_MODE_FF _VPMode */
    assert(VP_MODE_FF == ctx->VertexProgram._VPMode);
 
    /* Grab all the relevant state and put it in a single structure:
