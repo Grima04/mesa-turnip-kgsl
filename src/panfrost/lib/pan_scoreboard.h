@@ -59,7 +59,7 @@ panfrost_add_job(
                 struct pan_pool *pool,
                 struct pan_scoreboard *scoreboard,
                 enum mali_job_type type,
-                bool barrier,
+                bool barrier, bool suppress_prefetch,
                 unsigned local_dep,
                 const struct panfrost_ptr *job,
                 bool inject);

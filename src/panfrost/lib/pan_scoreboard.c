@@ -110,7 +110,7 @@ panfrost_add_job(
                 struct pan_pool *pool,
                 struct pan_scoreboard *scoreboard,
                 enum mali_job_type type,
-                bool barrier,
+                bool barrier, bool suppress_prefetch,
                 unsigned local_dep,
                 const struct panfrost_ptr *job,
                 bool inject)
@@ -137,6 +137,7 @@ panfrost_add_job(
         pan_pack(job->cpu, JOB_HEADER, header) {
                 header.type = type;
                 header.barrier = barrier;
+                header.suppress_prefetch = suppress_prefetch;
                 header.index = index;
                 header.dependency_1 = local_dep;
                 header.dependency_2 = global_dep;

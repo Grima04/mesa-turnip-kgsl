@@ -160,7 +160,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         pan_section_pack(t.cpu, COMPUTE_JOB, DRAW_PADDING, cfg);
 
         panfrost_add_job(&batch->pool, &batch->scoreboard,
-                         MALI_JOB_TYPE_COMPUTE, true, 0, &t, true);
+                         MALI_JOB_TYPE_COMPUTE, true, false, 0, &t, true);
         panfrost_flush_all_batches(ctx);
 }
 

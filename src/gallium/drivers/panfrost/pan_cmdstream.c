@@ -2220,11 +2220,13 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
 
         /* If rasterizer discard is enable, only submit the vertex */
 
-        unsigned vertex = panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
-                                           vertex_job, false);
+        unsigned vertex = panfrost_add_job(&batch->pool, &batch->scoreboard,
+                                           MALI_JOB_TYPE_VERTEX, false, false,
+                                           0, vertex_job, false);
 
         if (ctx->rasterizer->base.rasterizer_discard)
                 return;
 
-        panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false, vertex, tiler_job, false);
+        panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER,
+                         false, false, vertex, tiler_job, false);
 }
