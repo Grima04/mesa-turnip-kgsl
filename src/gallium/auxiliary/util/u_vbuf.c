@@ -1487,10 +1487,13 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
          new_draw.count = end_vertex - new_draw.start;
          new_info.instance_count = end_instance - new_info.start_instance;
 
-         if (new_draw.start == ~0u || !new_draw.count || !new_info.instance_count)
+         if (new_draw.start == ~0u)
             goto cleanup;
       }
    }
+
+   if (!new_draw.count || !new_info.instance_count)
+      goto cleanup;
 
    if (new_info.index_size) {
       /* See if anything needs to be done for per-vertex attribs. */
