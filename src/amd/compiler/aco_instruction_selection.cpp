@@ -7444,18 +7444,17 @@ Temp emit_boolean_reduce(isel_context *ctx, nir_op op, unsigned cluster_size, Te
       if (cluster_mask != 0xffffffff)
          tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(cluster_mask), tmp);
 
-      Definition cmp_def = Definition();
       if (op == nir_op_iand) {
-         cmp_def = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm), Operand(cluster_mask), tmp).def(0);
+         return bld.vopc(aco_opcode::v_cmp_eq_u32, bld.hint_vcc(bld.lm), Operand(cluster_mask), tmp);
       } else if (op == nir_op_ior) {
-         cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), tmp).def(0);
+         return bld.vopc(aco_opcode::v_cmp_lg_u32, bld.hint_vcc(bld.lm), Operand(0u), tmp);
       } else if (op == nir_op_ixor) {
          tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(1u),
                         bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), tmp, Operand(0u)));
-         cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), tmp).def(0);
+         return bld.vopc(aco_opcode::v_cmp_lg_u32, bld.hint_vcc(bld.lm), Operand(0u), tmp);
       }
-      cmp_def.setHint(vcc);
-      return cmp_def.getTemp();
+      assert(false);
+      return Temp();
    }
 }
 
@@ -7475,16 +7474,16 @@ Temp emit_boolean_exclusive_scan(isel_context *ctx, nir_op op, Temp src)
 
    Temp mbcnt = emit_mbcnt(ctx, bld.tmp(v1), Operand(tmp));
 
-   Definition cmp_def = Definition();
    if (op == nir_op_iand)
-      cmp_def = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm), Operand(0u), mbcnt).def(0);
+      return bld.vopc(aco_opcode::v_cmp_eq_u32, bld.hint_vcc(bld.lm), Operand(0u), mbcnt);
    else if (op == nir_op_ior)
-      cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), mbcnt).def(0);
+      return bld.vopc(aco_opcode::v_cmp_lg_u32, bld.hint_vcc(bld.lm), Operand(0u), mbcnt);
    else if (op == nir_op_ixor)
-      cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u),
-                         bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(1u), mbcnt)).def(0);
-   cmp_def.setHint(vcc);
-   return cmp_def.getTemp();
+      return bld.vopc(aco_opcode::v_cmp_lg_u32, bld.hint_vcc(bld.lm), Operand(0u),
+                      bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(1u), mbcnt));
+
+   assert(false);
+   return Temp();
 }
 
 Temp emit_boolean_inclusive_scan(isel_context *ctx, nir_op op, Temp src)
