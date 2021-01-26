@@ -941,7 +941,7 @@ struct anv_queue_family {
    enum drm_i915_gem_engine_class engine_class;
 };
 
-#define ANV_MAX_QUEUE_FAMILIES 1
+#define ANV_MAX_QUEUE_FAMILIES 3
 
 struct anv_memory_type {
    /* Standard bits passed on to the client */

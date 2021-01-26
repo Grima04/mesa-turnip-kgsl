@@ -483,21 +483,40 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
    uint32_t family_count = 0;
 
    if (pdevice->engine_info) {
-      int render_count = anv_gem_count_engines(pdevice->engine_info,
-                                               I915_ENGINE_CLASS_RENDER);
-      if (render_count > 0) {
+      int gc_count =
+         anv_gem_count_engines(pdevice->engine_info, I915_ENGINE_CLASS_RENDER);
+      int g_count = 0;
+      int c_count = 0;
+
+      if (gc_count > 0) {
          pdevice->queue.families[family_count++] = (struct anv_queue_family) {
             .queueFlags = VK_QUEUE_GRAPHICS_BIT |
                           VK_QUEUE_COMPUTE_BIT |
                           VK_QUEUE_TRANSFER_BIT,
-            .queueCount = render_count,
+            .queueCount = gc_count,
+            .engine_class = I915_ENGINE_CLASS_RENDER,
+         };
+      }
+      if (g_count > 0) {
+         pdevice->queue.families[family_count++] = (struct anv_queue_family) {
+            .queueFlags = VK_QUEUE_GRAPHICS_BIT |
+                          VK_QUEUE_TRANSFER_BIT,
+            .queueCount = g_count,
+            .engine_class = I915_ENGINE_CLASS_RENDER,
+         };
+      }
+      if (c_count > 0) {
+         pdevice->queue.families[family_count++] = (struct anv_queue_family) {
+            .queueFlags = VK_QUEUE_COMPUTE_BIT |
+                          VK_QUEUE_TRANSFER_BIT,
+            .queueCount = c_count,
             .engine_class = I915_ENGINE_CLASS_RENDER,
          };
       }
       /* Increase count below when other families are added as a reminder to
        * increase the ANV_MAX_QUEUE_FAMILIES value.
        */
-      STATIC_ASSERT(ANV_MAX_QUEUE_FAMILIES >= 1);
+      STATIC_ASSERT(ANV_MAX_QUEUE_FAMILIES >= 3);
    } else {
       /* Default to a single render queue */
       pdevice->queue.families[family_count++] = (struct anv_queue_family) {
