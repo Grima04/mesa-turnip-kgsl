@@ -1030,7 +1030,7 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
    LLVMValueRef flt_width_vec;
    LLVMValueRef flt_height_vec;
    LLVMValueRef flt_depth_vec;
-   LLVMValueRef fall_off[4], have_corners;
+   LLVMValueRef fall_off[4] = { 0 }, have_corners = NULL;
    LLVMValueRef z1 = NULL;
    LLVMValueRef z00 = NULL, z01 = NULL, z10 = NULL, z11 = NULL;
    LLVMValueRef x00 = NULL, x01 = NULL, x10 = NULL, x11 = NULL;
@@ -1400,7 +1400,7 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
        * another branch (with corner condition though edge would work
        * as well) here.
        */
-      if (accurate_cube_corners) {
+      if (have_corners && accurate_cube_corners) {
          LLVMValueRef c00, c01, c10, c11, c00f, c01f, c10f, c11f;
          LLVMValueRef have_corner, one_third;
 
@@ -1655,7 +1655,7 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
          }
       }
 
-      if (accurate_cube_corners) {
+      if (have_corners && accurate_cube_corners) {
          LLVMBuildStore(builder, colors0[0], colorss[0]);
          LLVMBuildStore(builder, colors0[1], colorss[1]);
          LLVMBuildStore(builder, colors0[2], colorss[2]);
