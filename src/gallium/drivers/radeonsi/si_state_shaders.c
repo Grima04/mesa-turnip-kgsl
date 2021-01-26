@@ -3906,7 +3906,9 @@ static struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen,
    if (key.u.ngg) {
       stages |= S_028B54_PRIMGEN_EN(1) | S_028B54_GS_FAST_LAUNCH(key.u.ngg_gs_fast_launch) |
                 S_028B54_NGG_WAVE_ID_EN(key.u.streamout) |
-                S_028B54_PRIMGEN_PASSTHRU_EN(key.u.ngg_passthrough);
+                S_028B54_PRIMGEN_PASSTHRU_EN(key.u.ngg_passthrough) |
+                S_028B54_PRIMGEN_PASSTHRU_NO_MSG(key.u.ngg_passthrough &&
+                                                 screen->info.family >= CHIP_DIMGREY_CAVEFISH);
    } else if (key.u.gs)
       stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
 

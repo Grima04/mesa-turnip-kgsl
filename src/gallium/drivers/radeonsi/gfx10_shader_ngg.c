@@ -131,6 +131,11 @@ bool gfx10_ngg_export_prim_early(struct si_shader *shader)
 
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx)
 {
+   /* Newer chips can use PRIMGEN_PASSTHRU_NO_MSG to skip gs_alloc_req for NGG passthrough. */
+   if (gfx10_is_ngg_passthrough(ctx->shader) &&
+       ctx->screen->info.family >= CHIP_DIMGREY_CAVEFISH)
+      return;
+
    ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx), ngg_get_vtx_cnt(ctx),
                                  ngg_get_prim_cnt(ctx));
 }
