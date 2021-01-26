@@ -58,14 +58,6 @@ extern void
 _mesa_reset_vertex_processing_mode(struct gl_context *ctx);
 
 
-/**
- * Set the _DrawVAO and the net enabled arrays.
- */
-void
-_mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
-                   GLbitfield filter);
-
-
 static inline bool
 _mesa_ati_fragment_shader_enabled(const struct gl_context *ctx)
 {

@@ -39,7 +39,7 @@ extern "C" {
 #endif
 
 struct gl_context;
-
+struct gl_vertex_array_object;
 struct _mesa_prim
 {
    GLubyte mode;    /**< GL_POINTS, GL_LINES, GL_QUAD_STRIP, etc */
@@ -76,6 +76,16 @@ struct _mesa_index_buffer
    const void *ptr;
 };
 
+
+void
+_mesa_set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs);
+
+/**
+ * Set the _DrawVAO and the net enabled arrays.
+ */
+void
+_mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
+                   GLbitfield filter);
 
 void
 _mesa_draw_gallium_fallback(struct gl_context *ctx,
