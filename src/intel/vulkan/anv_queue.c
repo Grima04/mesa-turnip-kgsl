@@ -488,10 +488,15 @@ VkResult
 anv_queue_init(struct anv_device *device, struct anv_queue *queue,
                const VkDeviceQueueCreateInfo *pCreateInfo)
 {
+   struct anv_physical_device *pdevice = device->physical;
    VkResult result;
 
    queue->device = device;
    queue->flags = pCreateInfo->flags;
+
+   assert(pCreateInfo->queueFamilyIndex < pdevice->queue.family_count);
+   queue->family = &pdevice->queue.families[pCreateInfo->queueFamilyIndex];
+
    queue->lost = false;
    queue->quit = false;
 

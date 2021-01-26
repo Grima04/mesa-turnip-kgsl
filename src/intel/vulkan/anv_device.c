@@ -296,6 +296,19 @@ anv_physical_device_free_disk_cache(struct anv_physical_device *device)
 #endif
 }
 
+static void
+anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
+{
+   pdevice->queue.family_count = 1;
+   pdevice->queue.families[0] = (struct anv_queue_family) {
+      .queueFlags = VK_QUEUE_GRAPHICS_BIT |
+                    VK_QUEUE_COMPUTE_BIT |
+                    VK_QUEUE_TRANSFER_BIT,
+      .queueCount = 1,
+      .engine_class = I915_ENGINE_CLASS_RENDER,
+   };
+}
+
 static VkResult
 anv_physical_device_try_create(struct anv_instance *instance,
                                drmDevicePtr drm_device,
@@ -549,6 +562,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
       }
    }
    device->master_fd = master_fd;
+
+   anv_physical_device_init_queue_families(device);
 
    result = anv_init_wsi(device);
    if (result != VK_SUCCESS)
@@ -2193,13 +2208,8 @@ void anv_GetPhysicalDeviceProperties2(
 #undef CORE_PROPERTY
 }
 
-/* We support exactly one queue family. */
 static const VkQueueFamilyProperties
-anv_queue_family_properties = {
-   .queueFlags = VK_QUEUE_GRAPHICS_BIT |
-                 VK_QUEUE_COMPUTE_BIT |
-                 VK_QUEUE_TRANSFER_BIT,
-   .queueCount = 1,
+anv_queue_family_properties_template = {
    .timestampValidBits = 36, /* XXX: Real value here */
    .minImageTransferGranularity = { 1, 1, 1 },
 };
@@ -2209,10 +2219,16 @@ void anv_GetPhysicalDeviceQueueFamilyProperties(
     uint32_t*                                   pCount,
     VkQueueFamilyProperties*                    pQueueFamilyProperties)
 {
+   ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
    VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pCount);
 
-   vk_outarray_append(&out, p) {
-      *p = anv_queue_family_properties;
+   for (uint32_t i = 0; i < pdevice->queue.family_count; i++) {
+      struct anv_queue_family *queue_family = &pdevice->queue.families[i];
+      vk_outarray_append(&out, p) {
+         *p = anv_queue_family_properties_template;
+         p->queueFlags = queue_family->queueFlags;
+         p->queueCount = queue_family->queueCount;
+      }
    }
 }
 
@@ -2221,14 +2237,19 @@ void anv_GetPhysicalDeviceQueueFamilyProperties2(
     uint32_t*                                   pQueueFamilyPropertyCount,
     VkQueueFamilyProperties2*                   pQueueFamilyProperties)
 {
-
+   ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
    VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
 
-   vk_outarray_append(&out, p) {
-      p->queueFamilyProperties = anv_queue_family_properties;
+   for (uint32_t i = 0; i < pdevice->queue.family_count; i++) {
+      struct anv_queue_family *queue_family = &pdevice->queue.families[i];
+      vk_outarray_append(&out, p) {
+         p->queueFamilyProperties = anv_queue_family_properties_template;
+         p->queueFamilyProperties.queueFlags = queue_family->queueFlags;
+         p->queueFamilyProperties.queueCount = queue_family->queueCount;
 
-      vk_foreach_struct(s, p->pNext) {
-         anv_debug_ignored_stype(s->sType);
+         vk_foreach_struct(s, p->pNext) {
+            anv_debug_ignored_stype(s->sType);
+         }
       }
    }
 }

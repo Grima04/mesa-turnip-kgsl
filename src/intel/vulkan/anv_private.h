@@ -1033,6 +1033,17 @@ struct anv_bo_cache {
 VkResult anv_bo_cache_init(struct anv_bo_cache *cache);
 void anv_bo_cache_finish(struct anv_bo_cache *cache);
 
+struct anv_queue_family {
+   /* Standard bits passed on to the client */
+   VkQueueFlags   queueFlags;
+   uint32_t       queueCount;
+
+   /* Driver internal information */
+   enum drm_i915_gem_engine_class engine_class;
+};
+
+#define ANV_MAX_QUEUE_FAMILIES 1
+
 struct anv_memory_type {
    /* Standard bits passed on to the client */
    VkMemoryPropertyFlags   propertyFlags;
@@ -1128,6 +1139,11 @@ struct anv_physical_device {
 
     uint32_t                                    eu_total;
     uint32_t                                    subslice_total;
+
+    struct {
+      uint32_t                                  family_count;
+      struct anv_queue_family                   families[ANV_MAX_QUEUE_FAMILIES];
+    } queue;
 
     struct {
       uint32_t                                  type_count;
@@ -1240,11 +1256,12 @@ struct anv_queue_submit {
 };
 
 struct anv_queue {
-    struct vk_object_base                       base;
+   struct vk_object_base                     base;
 
    struct anv_device *                       device;
 
    VkDeviceQueueCreateFlags                  flags;
+   struct anv_queue_family *                 family;
 
    /* Set once from the device api calls. */
    bool                                      lost_signaled;
