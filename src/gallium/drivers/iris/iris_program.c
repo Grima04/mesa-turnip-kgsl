@@ -1074,6 +1074,25 @@ iris_debug_recompile(struct iris_context *ice,
    brw_debug_key_recompile(c, &ice->dbg, info->stage, &old_key.base, key);
 }
 
+static void
+check_urb_size(struct iris_context *ice,
+               unsigned needed_size,
+               gl_shader_stage stage)
+{
+   unsigned last_allocated_size = ice->shaders.urb.size[stage];
+
+   /* If the last URB allocation wasn't large enough for our needs,
+    * flag it as needing to be reconfigured.  Otherwise, we can use
+    * the existing config.  However, if the URB is constrained, and
+    * we can shrink our size for this stage, we may be able to gain
+    * extra concurrency by reconfiguring it to be smaller.  Do so.
+    */
+   if (last_allocated_size < needed_size ||
+       (ice->shaders.urb.constrained && last_allocated_size > needed_size)) {
+      ice->state.dirty |= IRIS_DIRTY_URB;
+   }
+}
+
 /**
  * Get the shader for the last enabled geometry stage.
  *
@@ -1202,7 +1221,8 @@ iris_update_compiled_vs(struct iris_context *ice)
       shs->sysvals_need_upload = true;
 
       const struct brw_vs_prog_data *vs_prog_data =
-            (void *) shader->prog_data;
+         (void *) shader->prog_data;
+      const struct brw_vue_prog_data *vue_prog_data = &vs_prog_data->base;
       const bool uses_draw_params = vs_prog_data->uses_firstvertex ||
                                     vs_prog_data->uses_baseinstance;
       const bool uses_derived_draw_params = vs_prog_data->uses_drawid ||
@@ -1221,6 +1241,8 @@ iris_update_compiled_vs(struct iris_context *ice)
       ice->state.vs_uses_derived_draw_params = uses_derived_draw_params;
       ice->state.vs_needs_sgvs_element = needs_sgvs_element;
       ice->state.vs_needs_edge_flag = ish->needs_edge_flag;
+
+      check_urb_size(ice, vue_prog_data->urb_entry_size, MESA_SHADER_VERTEX);
    }
 }
 
@@ -1414,6 +1436,9 @@ iris_update_compiled_tcs(struct iris_context *ice)
                                 IRIS_STAGE_DIRTY_BINDINGS_TCS |
                                 IRIS_STAGE_DIRTY_CONSTANTS_TCS;
       shs->sysvals_need_upload = true;
+
+      const struct brw_vue_prog_data *prog_data = (void *) shader->prog_data;
+      check_urb_size(ice, prog_data->urb_entry_size, MESA_SHADER_TESS_CTRL);
    }
 }
 
@@ -1525,6 +1550,9 @@ iris_update_compiled_tes(struct iris_context *ice)
                                 IRIS_STAGE_DIRTY_BINDINGS_TES |
                                 IRIS_STAGE_DIRTY_CONSTANTS_TES;
       shs->sysvals_need_upload = true;
+
+      const struct brw_vue_prog_data *prog_data = (void *) shader->prog_data;
+      check_urb_size(ice, prog_data->urb_entry_size, MESA_SHADER_TESS_EVAL);
    }
 
    /* TODO: Could compare and avoid flagging this. */
@@ -1644,6 +1672,10 @@ iris_update_compiled_gs(struct iris_context *ice)
                                 IRIS_STAGE_DIRTY_BINDINGS_GS |
                                 IRIS_STAGE_DIRTY_CONSTANTS_GS;
       shs->sysvals_need_upload = true;
+
+      unsigned urb_entry_size = shader ?
+         ((struct brw_vue_prog_data *) shader->prog_data)->urb_entry_size : 0;
+      check_urb_size(ice, urb_entry_size, MESA_SHADER_GEOMETRY);
    }
 }
 
@@ -1827,18 +1859,6 @@ iris_update_pull_constant_descriptors(struct iris_context *ice,
 }
 
 /**
- * Get the prog_data for a given stage, or NULL if the stage is disabled.
- */
-static struct brw_vue_prog_data *
-get_vue_prog_data(struct iris_context *ice, gl_shader_stage stage)
-{
-   if (!ice->shaders.prog[stage])
-      return NULL;
-
-   return (void *) ice->shaders.prog[stage]->prog_data;
-}
-
-/**
  * Update the current shader variants for the given state.
  *
  * This should be called on every draw call to ensure that the correct
@@ -1848,7 +1868,6 @@ get_vue_prog_data(struct iris_context *ice, gl_shader_stage stage)
 void
 iris_update_compiled_shaders(struct iris_context *ice)
 {
-   const uint64_t dirty = ice->state.dirty;
    const uint64_t stage_dirty = ice->state.stage_dirty;
 
    if (stage_dirty & (IRIS_STAGE_DIRTY_UNCOMPILED_TCS |
@@ -1865,6 +1884,9 @@ iris_update_compiled_shaders(struct iris_context *ice)
              IRIS_STAGE_DIRTY_TCS | IRIS_STAGE_DIRTY_TES |
              IRIS_STAGE_DIRTY_BINDINGS_TCS | IRIS_STAGE_DIRTY_BINDINGS_TES |
              IRIS_STAGE_DIRTY_CONSTANTS_TCS | IRIS_STAGE_DIRTY_CONSTANTS_TES;
+
+          if (ice->shaders.urb.constrained)
+             ice->state.dirty |= IRIS_DIRTY_URB;
        }
    }
 
@@ -1921,29 +1943,6 @@ iris_update_compiled_shaders(struct iris_context *ice)
 
    if (stage_dirty & IRIS_STAGE_DIRTY_UNCOMPILED_FS)
       iris_update_compiled_fs(ice);
-
-   /* Changing shader interfaces may require a URB configuration. */
-   if (!(dirty & IRIS_DIRTY_URB)) {
-      for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-         struct brw_vue_prog_data *prog_data = get_vue_prog_data(ice, i);
-
-         unsigned needed_size = prog_data ? prog_data->urb_entry_size : 0;
-         unsigned last_allocated_size = ice->shaders.urb.size[i];
-
-         /* If the last URB allocation wasn't large enough for our needs,
-          * flag it as needing to be reconfigured.  Otherwise, we can use
-          * the existing config.  However, if the URB is constrained, and
-          * we can shrink our size for this stage, we may be able to gain
-          * extra concurrency by reconfiguring it to be smaller.  Do so.
-          */
-         if (last_allocated_size < needed_size ||
-             (ice->shaders.urb.constrained &&
-              last_allocated_size > needed_size)) {
-            ice->state.dirty |= IRIS_DIRTY_URB;
-            break;
-         }
-      }
-   }
 
    for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_FRAGMENT; i++) {
       if (ice->state.stage_dirty & (IRIS_STAGE_DIRTY_CONSTANTS_VS << i))
