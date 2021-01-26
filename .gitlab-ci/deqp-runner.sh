@@ -34,7 +34,7 @@ INSTALL=`pwd`/install
 # Set up the driver environment.
 export LD_LIBRARY_PATH=`pwd`/install/lib/
 export EGL_PLATFORM=surfaceless
-export VK_ICD_FILENAMES=`pwd`/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.`uname -m`.json
+export VK_ICD_FILENAMES=`pwd`/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.${VK_CPU:-`uname -m`}.json
 
 # the runner was failing to look for libkms in /usr/local/lib for some reason
 # I never figured out.

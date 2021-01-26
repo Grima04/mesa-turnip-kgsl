@@ -69,6 +69,7 @@ for var in \
     PIGLIT_REPLAY_UPLOAD_TO_MINIO \
     PIGLIT_RESULTS \
     TU_DEBUG \
+    VK_CPU \
     VK_DRIVER \
     ; do
   if [ -n "${!var+x}" ]; then
