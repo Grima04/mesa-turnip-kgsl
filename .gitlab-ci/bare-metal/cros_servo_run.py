@@ -120,6 +120,19 @@ class CrosServoRun:
                 print("Detected cheza power management bus error, restarting run...")
                 return 2
 
+            # These HFI response errors started appearing with the introduction
+            # of piglit runs.  CosmicPenguin says:
+            #
+            # "message ID 106 isn't a thing, so likely what happened is that we
+            # got confused when parsing the HFI queue.  If it happened on only
+            # one run, then memory corruption could be a possible clue"
+            #
+            # Given that it seems to trigger randomly near a GPU fault and then
+            # break many tests after that, just restart the whole run.
+            if re.search("a6xx_hfi_send_msg.*Unexpected message id .* on the response queue", line):
+                print("Detected cheza power management bus error, restarting run...")
+                return 2
+
             result = re.search("bare-metal result: (\S*)", line)
             if result:
                 if result.group(1) == "pass":
