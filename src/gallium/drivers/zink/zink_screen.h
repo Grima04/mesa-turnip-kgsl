@@ -197,6 +197,12 @@ zink_screen(struct pipe_screen *pipe)
    return (struct zink_screen *)pipe;
 }
 
+
+struct mem_cache_entry {
+   VkDeviceMemory mem;
+   void *map;
+};
+
 VkFormat
 zink_get_format(struct zink_screen *screen, enum pipe_format format);
 

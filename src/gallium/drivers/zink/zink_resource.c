@@ -125,8 +125,9 @@ cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
          util_dynarray_init(array, screen->resource_mem_cache);
          _mesa_hash_table_insert_pre_hashed(screen->resource_mem_cache, obj->mem_hash, mkey, array);
       }
-      if (util_dynarray_num_elements(array, VkDeviceMemory) < 5) {
-         util_dynarray_append(array, VkDeviceMemory, obj->mem);
+      if (util_dynarray_num_elements(array, struct mem_cache_entry) < 5) {
+         struct mem_cache_entry mc = { obj->mem, obj->map };
+         util_dynarray_append(array, struct mem_cache_entry, mc);
          simple_mtx_unlock(&screen->mem_cache_mtx);
          return;
       }
@@ -138,7 +139,6 @@ cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
 void
 zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_object *obj)
 {
-   assert(!obj->map_count);
    if (obj->is_buffer) {
       if (obj->sbuffer)
          vkDestroyBuffer(screen->dev, obj->sbuffer, NULL);
@@ -146,7 +146,6 @@ zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_ob
    } else {
       vkDestroyImage(screen->dev, obj->image, NULL);
    }
-   simple_mtx_destroy(&obj->map_mtx);
 
    zink_descriptor_set_refs_clear(&obj->desc_set_refs, obj);
    cache_or_free_mem(screen, obj);
@@ -363,7 +362,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    pipe_reference_init(&obj->reference, 1);
    util_dynarray_init(&obj->desc_set_refs.refs, NULL);
-   simple_mtx_init(&obj->map_mtx, mtx_plain);
    if (templ->target == PIPE_BUFFER) {
       VkBufferCreateInfo bci = create_bci(screen, templ, templ->bind);
 
@@ -503,8 +501,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->resource_mem_cache, obj->mem_hash, &obj->mkey);
 
       struct util_dynarray *array = he ? (void*)he->data : NULL;
-      if (array && util_dynarray_num_elements(array, VkDeviceMemory)) {
-         obj->mem = util_dynarray_pop(array, VkDeviceMemory);
+      if (array && util_dynarray_num_elements(array, struct mem_cache_entry)) {
+         struct mem_cache_entry mc = util_dynarray_pop(array, struct mem_cache_entry);
+         obj->mem = mc.mem;
+         obj->map = mc.map;
       }
       simple_mtx_unlock(&screen->mem_cache_mtx);
    }
@@ -776,26 +776,19 @@ get_most_recent_access(struct zink_resource *res, enum zink_resource_access flag
 static void *
 map_resource(struct zink_screen *screen, struct zink_resource *res)
 {
-   simple_mtx_lock(&res->obj->map_mtx);
    VkResult result = VK_SUCCESS;
-   if (!res->obj->map_count)
-      result = vkMapMemory(screen->dev, res->obj->mem, res->obj->offset,
-                           res->obj->size, 0, &res->obj->map);
-   res->obj->map_count++;
-   simple_mtx_unlock(&res->obj->map_mtx);
+   if (res->obj->map)
+      return res->obj->map;
+   result = vkMapMemory(screen->dev, res->obj->mem, res->obj->offset,
+                        res->obj->size, 0, &res->obj->map);
    return result == VK_SUCCESS ? res->obj->map : NULL;
 }
 
 static void
 unmap_resource(struct zink_screen *screen, struct zink_resource *res)
 {
-   simple_mtx_lock(&res->obj->map_mtx);
-   res->obj->map_count--;
-   if (!res->obj->map_count) {
-      res->obj->map = NULL;
-      vkUnmapMemory(screen->dev, res->obj->mem);
-   }
-   simple_mtx_unlock(&res->obj->map_mtx);
+   res->obj->map = NULL;
+   vkUnmapMemory(screen->dev, res->obj->mem);
 }
 
 static void *
@@ -804,6 +797,9 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    void *ptr = NULL;
+
+   if (res->base.is_user_ptr)
+      usage |= PIPE_MAP_PERSISTENT;
 
    /* See if the buffer range being mapped has never been initialized,
     * in which case it can be mapped unsynchronized. */
@@ -859,10 +855,6 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
                      (struct pipe_resource **)&trans->staging_res, (void **)&ptr);
          res = zink_resource(trans->staging_res);
          trans->offset = offset;
-         /* replacing existing map, still need to increment refcount for tracking since
-          * unmaps will still occur
-          */
-         p_atomic_inc(&res->obj->map_count);
          res->obj->map = ptr;
       } else {
          /* At this point, the buffer is always idle (we checked it above). */
@@ -1091,9 +1083,7 @@ zink_transfer_unmap(struct pipe_context *pctx,
       zink_transfer_flush_region(pctx, ptrans, &ptrans->box);
    }
 
-   if (trans->staging_res) {
-      unmap_resource(screen, zink_resource(trans->staging_res));
-   } else
+   if (trans->base.b.usage & PIPE_MAP_ONCE && !trans->staging_res)
       unmap_resource(screen, res);
    if ((trans->base.b.usage & PIPE_MAP_PERSISTENT) && !(trans->base.b.usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps--;

@@ -903,8 +903,9 @@ static void
 resource_cache_entry_destroy(struct zink_screen *screen, struct hash_entry *he)
 {
    struct util_dynarray *array = (void*)he->data;
-   util_dynarray_foreach(array, VkDeviceMemory, mem)
-      vkFreeMemory(screen->dev, *mem, NULL);
+   util_dynarray_foreach(array, struct mem_cache_entry, mc) {
+      vkFreeMemory(screen->dev, mc->mem, NULL);
+   }
    util_dynarray_fini(array);
 }
 
