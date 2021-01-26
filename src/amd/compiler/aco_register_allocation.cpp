@@ -355,8 +355,7 @@ private:
 
 
 /* helper function for debugging */
-#if 0
-void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
+UNUSED void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
 {
    unsigned max = vgprs ? ctx.program->max_reg_demand.vgpr : ctx.program->max_reg_demand.sgpr;
    PhysRegInterval regs { vgprs ? PhysReg{256} : PhysReg{0}, max };
@@ -418,7 +417,6 @@ void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
    else if (prev)
       printf("]\n");
 }
-#endif
 
 
 unsigned get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, unsigned idx, RegClass rc)
