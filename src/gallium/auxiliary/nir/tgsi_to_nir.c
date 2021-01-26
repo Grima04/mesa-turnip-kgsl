@@ -1709,6 +1709,8 @@ ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       case TGSI_OPCODE_STORE:
          op = nir_intrinsic_store_ssbo;
          break;
+      default:
+         unreachable("unexpected buffer opcode");
       }
 
       add_ssbo_var(c, resource_index);
@@ -1738,6 +1740,8 @@ ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       case TGSI_OPCODE_STORE:
          op = nir_intrinsic_image_deref_store;
          break;
+      default:
+         unreachable("unexpected file opcode");
       }
 
       instr = nir_intrinsic_instr_create(b->shader, op);
