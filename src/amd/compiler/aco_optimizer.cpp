@@ -2674,7 +2674,7 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          return false;
    }
 
-   std::swap(instr->definitions[0], def_info.instr->definitions[0]);
+   instr->definitions[0].swapTemp(def_info.instr->definitions[0]);
    ctx.info[instr->definitions[0].tempId()].label &= label_clamp;
    ctx.uses[def_info.instr->definitions[0].tempId()]--;
 
@@ -2806,7 +2806,7 @@ void combine_vop3p(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          VOP3P_instruction* candidate = &ctx.info[instr->operands[0].tempId()].instr->vop3p();
          candidate->clamp = true;
          propagate_swizzles(candidate, vop3p->opsel_lo, vop3p->opsel_hi);
-         std::swap(instr->definitions[0], candidate->definitions[0]);
+         instr->definitions[0].swapTemp(candidate->definitions[0]);
          ctx.info[candidate->definitions[0].tempId()].instr = candidate;
          ctx.uses[instr->definitions[0].tempId()]--;
          return;

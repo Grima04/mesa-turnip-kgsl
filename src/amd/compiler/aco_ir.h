@@ -884,6 +884,10 @@ public:
       temp = t;
    }
 
+   void swapTemp(Definition& other) noexcept {
+      std::swap(temp, other.temp);
+   }
+
    constexpr RegClass regClass() const noexcept
    {
       return temp.regClass();
