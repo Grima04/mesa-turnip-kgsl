@@ -168,7 +168,7 @@ blend_factor_is_dual_src(GLenum factor)
 	   factor == GL_ONE_MINUS_SRC1_ALPHA);
 }
 
-static void
+static bool
 update_uses_dual_src(struct gl_context *ctx, int buf)
 {
    bool uses_dual_src =
@@ -177,10 +177,14 @@ update_uses_dual_src(struct gl_context *ctx, int buf)
        blend_factor_is_dual_src(ctx->Color.Blend[buf].SrcA) ||
        blend_factor_is_dual_src(ctx->Color.Blend[buf].DstA));
 
-   if (ctx->Color.Blend[buf]._UsesDualSrc != uses_dual_src) {
-      ctx->Color.Blend[buf]._UsesDualSrc = uses_dual_src;
-      _mesa_update_valid_to_render_state(ctx);
+   if (((ctx->Color._BlendUsesDualSrc >> buf) & 0x1) != uses_dual_src) {
+      if (uses_dual_src)
+         ctx->Color._BlendUsesDualSrc |= 1 << buf;
+      else
+         ctx->Color._BlendUsesDualSrc &= ~(1 << buf);
+      return true; /* changed state */
    }
+   return false; /* no change */
 }
 
 
@@ -247,10 +251,16 @@ blend_func_separate(struct gl_context *ctx,
       ctx->Color.Blend[buf].DstA = dfactorA;
    }
 
+   GLbitfield old_blend_uses_dual_src = ctx->Color._BlendUsesDualSrc;
    update_uses_dual_src(ctx, 0);
-   for (unsigned buf = 1; buf < numBuffers; buf++) {
-      ctx->Color.Blend[buf]._UsesDualSrc = ctx->Color.Blend[0]._UsesDualSrc;
-   }
+   /* We have to replicate the bit to all color buffers. */
+   if (ctx->Color._BlendUsesDualSrc & 0x1)
+      ctx->Color._BlendUsesDualSrc |= BITFIELD_RANGE(1, numBuffers - 1);
+   else
+      ctx->Color._BlendUsesDualSrc = 0;
+
+   if (ctx->Color._BlendUsesDualSrc != old_blend_uses_dual_src)
+      _mesa_update_valid_to_render_state(ctx);
 
    ctx->Color._BlendFuncPerBuffer = GL_FALSE;
 
@@ -404,7 +414,8 @@ blend_func_separatei(GLuint buf, GLenum sfactorRGB, GLenum dfactorRGB,
    ctx->Color.Blend[buf].DstRGB = dfactorRGB;
    ctx->Color.Blend[buf].SrcA = sfactorA;
    ctx->Color.Blend[buf].DstA = dfactorA;
-   update_uses_dual_src(ctx, buf);
+   if (update_uses_dual_src(ctx, buf))
+      _mesa_update_valid_to_render_state(ctx);
    ctx->Color._BlendFuncPerBuffer = GL_TRUE;
 }
 

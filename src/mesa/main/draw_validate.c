@@ -96,11 +96,14 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
     *     has more than the value of MAX_DUAL_SOURCE_DRAW_BUFFERS-1 active
     *     color attachements."
     */
-   for (unsigned i = ctx->Const.MaxDualSourceDrawBuffers;
-	i < ctx->DrawBuffer->_NumColorDrawBuffers; i++) {
-      if (ctx->Color.Blend[i]._UsesDualSrc)
-         return;
-   }
+   unsigned max_dual_source_buffers = ctx->Const.MaxDualSourceDrawBuffers;
+   unsigned num_color_buffers = ctx->DrawBuffer->_NumColorDrawBuffers;
+
+   if (num_color_buffers > max_dual_source_buffers &&
+       ctx->Color._BlendUsesDualSrc &
+       BITFIELD_RANGE(max_dual_source_buffers,
+                      num_color_buffers - max_dual_source_buffers))
+      return;
 
    if (ctx->Color.BlendEnabled &&
        ctx->Color._AdvancedBlendMode != BLEND_NONE) {
@@ -119,7 +122,7 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
       if (ctx->DrawBuffer->ColorDrawBuffer[0] == GL_FRONT_AND_BACK)
          return;
 
-      for (unsigned i = 1; i < ctx->DrawBuffer->_NumColorDrawBuffers; i++) {
+      for (unsigned i = 1; i < num_color_buffers; i++) {
          if (ctx->DrawBuffer->ColorDrawBuffer[i] != GL_NONE)
             return;
       }

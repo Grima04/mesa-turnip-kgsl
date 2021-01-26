@@ -1942,7 +1942,7 @@ genX(upload_wm)(struct brw_context *brw)
 #if GEN_GEN == 6
       wm.DualSourceBlendEnable =
          wm_prog_data->dual_src_blend && (ctx->Color.BlendEnabled & 1) &&
-         ctx->Color.Blend[0]._UsesDualSrc;
+         ctx->Color._BlendUsesDualSrc & 0x1;
       wm.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
       wm.NumberofSFOutputAttributes = wm_prog_data->num_varying_inputs;
 
@@ -2885,7 +2885,7 @@ set_blend_entry_bits(struct brw_context *brw, BLEND_ENTRY_GENXML *entry, int i,
        * We override SRC1_ALPHA to ONE and ONE_MINUS_SRC1_ALPHA to ZERO,
        * and leave it enabled anyway.
        */
-      if (GEN_GEN >= 6 && ctx->Color.Blend[i]._UsesDualSrc && alpha_to_one) {
+      if (GEN_GEN >= 6 && ctx->Color._BlendUsesDualSrc & (1 << i) && alpha_to_one) {
          srcRGB = fix_dual_blend_alpha_to_one(srcRGB);
          srcA = fix_dual_blend_alpha_to_one(srcA);
          dstRGB = fix_dual_blend_alpha_to_one(dstRGB);
@@ -2910,7 +2910,7 @@ set_blend_entry_bits(struct brw_context *brw, BLEND_ENTRY_GENXML *entry, int i,
        * so we just disable the blending to prevent possible issues.
        */
       entry->ColorBufferBlendEnable =
-         !ctx->Color.Blend[0]._UsesDualSrc || wm_prog_data->dual_src_blend;
+         !(ctx->Color._BlendUsesDualSrc & 0x1) || wm_prog_data->dual_src_blend;
 
       entry->DestinationBlendFactor = blend_factor(dstRGB);
       entry->SourceBlendFactor = blend_factor(srcRGB);
@@ -3926,7 +3926,7 @@ genX(upload_ps)(struct brw_context *brw)
        */
       ps.DualSourceBlendEnable = prog_data->dual_src_blend &&
                                  (ctx->Color.BlendEnabled & 1) &&
-                                 ctx->Color.Blend[0]._UsesDualSrc;
+                                 ctx->Color._BlendUsesDualSrc & 0x1;
 
       /* BRW_NEW_FS_PROG_DATA */
       ps.AttributeEnable = (prog_data->num_varying_inputs != 0);
@@ -4818,7 +4818,7 @@ genX(upload_ps_blend)(struct brw_context *brw)
          /* Alpha to One doesn't work with Dual Color Blending.  Override
           * SRC1_ALPHA to ONE and ONE_MINUS_SRC1_ALPHA to ZERO.
           */
-         if (alpha_to_one && color->Blend[0]._UsesDualSrc) {
+         if (alpha_to_one && color->_BlendUsesDualSrc & 0x1) {
             srcRGB = fix_dual_blend_alpha_to_one(srcRGB);
             srcA = fix_dual_blend_alpha_to_one(srcA);
             dstRGB = fix_dual_blend_alpha_to_one(dstRGB);
@@ -4843,7 +4843,7 @@ genX(upload_ps_blend)(struct brw_context *brw)
           * so we just disable the blending to prevent possible issues.
           */
          pb.ColorBufferBlendEnable =
-            !color->Blend[0]._UsesDualSrc || wm_prog_data->dual_src_blend;
+            !(color->_BlendUsesDualSrc & 0x1) || wm_prog_data->dual_src_blend;
          pb.SourceAlphaBlendFactor = brw_translate_blend_factor(srcA);
          pb.DestinationAlphaBlendFactor = brw_translate_blend_factor(dstA);
          pb.SourceBlendFactor = brw_translate_blend_factor(srcRGB);

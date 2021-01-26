@@ -480,7 +480,7 @@ brw_wm_populate_key(struct brw_context *brw, struct brw_wm_prog_key *key)
 
    /* _NEW_COLOR */
    key->force_dual_color_blend = brw->dual_color_blend_by_location &&
-      (ctx->Color.BlendEnabled & 1) && ctx->Color.Blend[0]._UsesDualSrc;
+      (ctx->Color.BlendEnabled & 1) && ctx->Color._BlendUsesDualSrc & 0x1;
 
    /* _NEW_MULTISAMPLE, _NEW_BUFFERS */
    key->alpha_to_coverage =  _mesa_is_alpha_to_coverage_enabled(ctx);
