@@ -376,7 +376,7 @@ void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
    unsigned prev = 0;
    bool char_select = false;
    for (unsigned i = lb; i < ub; i++) {
-      if (reg_file[i] == 0xFFFF) {
+      if (reg_file[i] == 0xFFFFFFFF) {
          printf("~");
       } else if (reg_file[i]) {
          if (reg_file[i] != prev) {
@@ -403,7 +403,7 @@ void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
          else if (prev)
             printf("]\n");
          prev = reg_file[i];
-         if (prev && prev != 0xFFFF) {
+         if (prev && prev != 0xFFFFFFFF) {
             if (ctx.orig_names.count(reg_file[i]) && ctx.orig_names[reg_file[i]].id() != reg_file[i])
                printf("%%%u (was %%%d) = %c[%d", reg_file[i], ctx.orig_names[reg_file[i]].id(), reg_char, i - lb);
             else
