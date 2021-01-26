@@ -675,6 +675,7 @@ static const struct gen_device_info gen_device_info_kbl_gt1 = {
     * leading to some vertices to go missing if we use too much URB.
     */
    .urb.max_entries[MESA_SHADER_VERTEX] = 928,
+   .urb.max_entries[MESA_SHADER_GEOMETRY] = 256,
    .simulator_id = 16,
 };
 
