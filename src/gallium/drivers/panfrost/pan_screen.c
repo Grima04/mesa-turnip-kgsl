@@ -44,6 +44,7 @@
 #include "drm-uapi/panfrost_drm.h"
 
 #include "pan_bo.h"
+#include "pan_shader.h"
 #include "pan_screen.h"
 #include "pan_resource.h"
 #include "pan_public.h"
@@ -51,8 +52,6 @@
 #include "decode.h"
 
 #include "pan_context.h"
-#include "midgard/midgard_compile.h"
-#include "bifrost/bifrost_compile.h"
 #include "panfrost-quirks.h"
 
 static const struct debug_named_value panfrost_debug_options[] = {
@@ -764,10 +763,7 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
                                      enum pipe_shader_ir ir,
                                      enum pipe_shader_type shader)
 {
-        if (pan_is_bifrost(pan_device(pscreen)))
-                return &bifrost_nir_options;
-        else
-                return &midgard_nir_options;
+        return panfrost_get_shader_options(pan_device(pscreen));
 }
 
 struct pipe_screen *

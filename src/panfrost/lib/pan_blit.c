@@ -28,11 +28,10 @@
 #include <stdio.h>
 #include "pan_encoder.h"
 #include "pan_pool.h"
+#include "pan_shader.h"
 #include "pan_scoreboard.h"
 #include "pan_texture.h"
 #include "panfrost-quirks.h"
-#include "../midgard/midgard_compile.h"
-#include "../bifrost/bifrost_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "util/u_math.h"
 
@@ -107,12 +106,8 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
                 .gpu_id = dev->gpu_id,
         };
 
-        panfrost_program *program;
-
-        if (pan_is_bifrost(dev))
-                program = bifrost_compile_shader_nir(NULL, shader, &inputs);
-        else
-                program = midgard_compile_shader_nir(NULL, shader, &inputs);
+        panfrost_program *program =
+                panfrost_compile_shader(dev, NULL, shader, &inputs);
 
         ralloc_free(shader);
         return program;

@@ -28,13 +28,12 @@
 #include <string.h>
 #include "pan_bo.h"
 #include "pan_context.h"
+#include "pan_shader.h"
 #include "pan_util.h"
 #include "panfrost-quirks.h"
 
 #include "compiler/nir/nir.h"
 #include "nir/tgsi_to_nir.h"
-#include "midgard/midgard_compile.h"
-#include "bifrost/bifrost_compile.h"
 #include "util/u_dynarray.h"
 #include "util/u_upload_mgr.h"
 
@@ -274,10 +273,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         panfrost_program *program;
 
-        if (pan_is_bifrost(dev))
-                program = bifrost_compile_shader_nir(NULL, s, &inputs);
-        else
-                program = midgard_compile_shader_nir(NULL, s, &inputs);
+        program = panfrost_compile_shader(dev, NULL, s, &inputs);
 
         /* Prepare the compiled binary for upload */
         mali_ptr shader = 0;
