@@ -265,9 +265,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 const_offset = 0;
         } else if (instr->intrinsic == nir_intrinsic_load_ubo) {
                 uint32_t index = nir_src_as_uint(instr->src[0]);
-		/* On OpenGL QUNIFORM_UBO_ADDR takes a UBO index
-		 * shifted up by 1 (0 is gallium's constant buffer 0).
-		 */
+                /* On OpenGL QUNIFORM_UBO_ADDR takes a UBO index
+                 * shifted up by 1 (0 is gallium's constant buffer 0).
+                 */
                 if (c->key->environment == V3D_ENVIRONMENT_OPENGL)
                         index++;
 
