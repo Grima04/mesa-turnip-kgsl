@@ -5594,13 +5594,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          assert(size[i] != 0);
       }
 
+      bool constrained;
       unsigned entries[4], start[4];
       gen_get_urb_config(&batch->screen->devinfo,
                          batch->screen->l3_config_3d,
                          ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
                          ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL,
                          size, entries, start,
-                         &ice->state.urb_deref_block_size);
+                         &ice->state.urb_deref_block_size,
+                         &constrained);
 
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
          iris_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {
