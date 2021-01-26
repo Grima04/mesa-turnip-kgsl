@@ -1490,6 +1490,9 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
          if (new_draw.start == ~0u || !new_draw.count || !new_info.instance_count)
             goto cleanup;
       }
+   } else {
+      if ((!indirect && !new_draw.count) || !new_info.instance_count)
+         goto cleanup;
    }
 
    if (new_info.index_size) {
