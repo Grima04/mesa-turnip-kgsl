@@ -1652,7 +1652,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          int location = var->data.location;
 
          struct gl_uniform_block *blocks;
-         int num_blocks;
+         int num_blocks = 0;
          int buffer_block_index = -1;
          if (!prog->data->spirv && state.var_is_in_block) {
             /* If the uniform is inside a uniform block determine its block index by
