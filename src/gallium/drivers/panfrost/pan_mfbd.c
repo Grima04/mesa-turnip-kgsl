@@ -136,7 +136,6 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                          struct MALI_RENDER_TARGET *rt)
 {
         struct panfrost_device *dev = pan_device(surf->context->screen);
-        bool is_bifrost = dev->quirks & IS_BIFROST;
         unsigned version = dev->gpu_id >> 12;
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
         unsigned level = surf->u.tex.level;
@@ -188,7 +187,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                 else
                         rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
 
-                if (is_bifrost) {
+                if (pan_is_bifrost(dev)) {
                         rt->afbc.row_stride = slice->afbc.row_stride /
                                               AFBC_HEADER_BYTES_PER_TILE;
                         rt->bifrost_afbc.afbc_wide_block_enable =
@@ -261,7 +260,6 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                                   struct panfrost_slice **checksum_slice)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-        bool is_bifrost = dev->quirks & IS_BIFROST;
         unsigned version = dev->gpu_id >> 12;
 
         /* Checksumming only works with a single render target */
@@ -320,7 +318,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 else
                         ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
 
-                if (is_bifrost) {
+                if (pan_is_bifrost(dev)) {
                         ext->zs_afbc_row_stride = slice->afbc.row_stride /
                                                   AFBC_HEADER_BYTES_PER_TILE;
 		} else {
@@ -520,7 +518,7 @@ panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 
         panfrost_mfbd_emit_local_storage(batch, fb);
 
-        if (dev->quirks & IS_BIFROST)
+        if (pan_is_bifrost(dev))
                 return;
 
         pan_section_pack(fb, MULTI_TARGET_FRAMEBUFFER, PARAMETERS, params) {
@@ -611,7 +609,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 }
         }
 
-        if (dev->quirks & IS_BIFROST)
+        if (pan_is_bifrost(dev))
                 panfrost_mfbd_emit_bifrost_parameters(batch, fb);
         else
                 panfrost_mfbd_emit_local_storage(batch, fb);
@@ -665,7 +663,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 }
         }
 
-        if (dev->quirks & IS_BIFROST)
+        if (pan_is_bifrost(dev))
                 panfrost_mfbd_emit_bifrost_tiler(batch, fb, vertex_count);
         else
                 panfrost_mfbd_emit_midgard_tiler(batch, fb, vertex_count);

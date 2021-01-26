@@ -734,7 +734,7 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
          * full framebuffer descriptor on Midgard) */
 
         if (!batch->framebuffer.gpu) {
-                unsigned size = (dev->quirks & IS_BIFROST) ?
+                unsigned size = pan_is_bifrost(dev) ?
                         MALI_LOCAL_STORAGE_LENGTH :
                         (dev->quirks & MIDGARD_SFBD) ?
                         MALI_SINGLE_TARGET_FRAMEBUFFER_LENGTH :
@@ -743,7 +743,7 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
                 batch->framebuffer = panfrost_pool_alloc_aligned(&batch->pool, size, 64);
 
                 /* Tag the pointer */
-                if (!(dev->quirks & (MIDGARD_SFBD | IS_BIFROST)))
+                if (!pan_is_bifrost(dev) && !(dev->quirks & MIDGARD_SFBD))
                         batch->framebuffer.gpu |= MALI_FBD_TAG_IS_MFBD;
         }
 
@@ -862,7 +862,7 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
         }
 
         unsigned vertex_count = rsrc->damage.inverted_len * 6;
-        if (batch->pool.dev->quirks & IS_BIFROST) {
+        if (pan_is_bifrost(batch->pool.dev)) {
                 mali_ptr tiler =
                         panfrost_batch_get_bifrost_tiler(batch, vertex_count);
                 panfrost_load_bifrost(&batch->pool, &batch->scoreboard,
@@ -1004,7 +1004,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 
                 /* Trace gets priority over sync */
                 bool minimal = !(dev->debug & PAN_DBG_TRACE);
-                pandecode_jc(submit.jc, dev->quirks & IS_BIFROST, dev->gpu_id, minimal);
+                pandecode_jc(submit.jc, pan_is_bifrost(dev), dev->gpu_id, minimal);
         }
 
         return 0;

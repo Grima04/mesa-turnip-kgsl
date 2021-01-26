@@ -137,7 +137,7 @@ pan_upload_shader_descriptor(struct panfrost_context *ctx,
                 cfg.shader = state->shader;
                 cfg.properties = state->properties;
 
-                if (dev->quirks & IS_BIFROST)
+                if (pan_is_bifrost(dev))
                         cfg.preload = state->preload;
         }
 
@@ -274,7 +274,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         panfrost_program *program;
 
-        if (dev->quirks & IS_BIFROST)
+        if (pan_is_bifrost(dev))
                 program = bifrost_compile_shader_nir(NULL, s, &inputs);
         else
                 program = midgard_compile_shader_nir(NULL, s, &inputs);
@@ -292,7 +292,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         /* Midgard needs the first tag on the bottom nibble */
 
-        if (!(dev->quirks & IS_BIFROST)) {
+        if (!pan_is_bifrost(dev)) {
                 /* If size = 0, we tag as "end-of-shader" */
 
                 if (size)
@@ -379,7 +379,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->uniform_count = MIN2(s->num_uniforms + program->sysval_count, program->uniform_cutoff);
         state->work_reg_count = program->work_register_count;
 
-        if (dev->quirks & IS_BIFROST)
+        if (pan_is_bifrost(dev))
                 for (unsigned i = 0; i < ARRAY_SIZE(state->blend_types); i++)
                         state->blend_types[i] = bifrost_blend_type_from_nir(program->blend_types[i]);
 
@@ -409,7 +409,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
          * "no uniform, no UBO" case though, otherwise sysval passed through
          * uniforms won't work correctly.
          */
-        if (dev->quirks & IS_BIFROST)
+        if (pan_is_bifrost(dev))
                 state->ubo_count = MAX2(s->info.num_ubos, 1);
         else
                 state->ubo_count = s->info.num_ubos + 1;
@@ -421,7 +421,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->shader.texture_count = s->info.num_textures;
         state->shader.sampler_count = s->info.num_textures;
 
-        if (dev->quirks & IS_BIFROST)
+        if (pan_is_bifrost(dev))
                 pan_prepare_bifrost_props(state, program, stage);
         else
                 pan_prepare_midgard_props(state, stage);

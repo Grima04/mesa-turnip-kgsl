@@ -65,8 +65,8 @@ panfrost_create_compute_state(
                 blob_reader_init(&reader, hdr->blob, hdr->num_bytes);
 
                 const struct nir_shader_compiler_options *options =
-                        (dev->quirks & IS_BIFROST) ? &bifrost_nir_options
-                                                   : &midgard_nir_options;
+                        pan_is_bifrost(dev) ?
+                        &bifrost_nir_options : &midgard_nir_options;
 
                 so->cbase.prog = nir_deserialize(NULL, options, &reader);
                 so->cbase.ir_type = PIPE_SHADER_IR_NIR;
@@ -150,7 +150,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         pan_section_pack(t.cpu, COMPUTE_JOB, DRAW, cfg) {
                 cfg.draw_descriptor_is_64b = true;
-                if (!(dev->quirks & IS_BIFROST))
+                if (!pan_is_bifrost(dev))
                         cfg.texture_descriptor_is_64b = true;
                 cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
                 cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_COMPUTE);

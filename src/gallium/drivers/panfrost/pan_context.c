@@ -307,7 +307,7 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
 
         pan_section_pack(job, COMPUTE_JOB, DRAW, cfg) {
                 cfg.draw_descriptor_is_64b = true;
-                if (!(device->quirks & IS_BIFROST))
+                if (!pan_is_bifrost(device))
                         cfg.texture_descriptor_is_64b = true;
                 cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
                 cfg.attributes = panfrost_emit_vertex_data(batch, &cfg.attribute_buffers);
@@ -359,14 +359,13 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
         struct panfrost_device *device = pan_device(ctx->base.screen);
-        bool is_bifrost = device->quirks & IS_BIFROST;
 
-        void *section = is_bifrost ?
+        void *section = pan_is_bifrost(device) ?
                         pan_section_ptr(job, BIFROST_TILER_JOB, INVOCATION) :
                         pan_section_ptr(job, MIDGARD_TILER_JOB, INVOCATION);
         memcpy(section, invocation_template, MALI_INVOCATION_LENGTH);
 
-        section = is_bifrost ?
+        section = pan_is_bifrost(device) ?
                   pan_section_ptr(job, BIFROST_TILER_JOB, PRIMITIVE) :
                   pan_section_ptr(job, MIDGARD_TILER_JOB, PRIMITIVE);
         pan_pack(section, PRIMITIVE, cfg) {
@@ -407,11 +406,11 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
         }
 
         bool points = info->mode == PIPE_PRIM_POINTS;
-        void *prim_size = is_bifrost ?
+        void *prim_size = pan_is_bifrost(device) ?
                           pan_section_ptr(job, BIFROST_TILER_JOB, PRIMITIVE_SIZE) :
                           pan_section_ptr(job, MIDGARD_TILER_JOB, PRIMITIVE_SIZE);
 
-        if (is_bifrost) {
+        if (pan_is_bifrost(device)) {
                 panfrost_emit_primitive_size(ctx, points, psiz, prim_size);
                 pan_section_pack(job, BIFROST_TILER_JOB, TILER, cfg) {
                         cfg.address = panfrost_batch_get_bifrost_tiler(batch, ~0);
@@ -419,13 +418,13 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 pan_section_pack(job, BIFROST_TILER_JOB, PADDING, padding) {}
         }
 
-        section = is_bifrost ?
+        section = pan_is_bifrost(device) ?
                   pan_section_ptr(job, BIFROST_TILER_JOB, DRAW) :
                   pan_section_ptr(job, MIDGARD_TILER_JOB, DRAW);
         pan_pack(section, DRAW, cfg) {
                 cfg.four_components_per_vertex = true;
                 cfg.draw_descriptor_is_64b = true;
-                if (!(device->quirks & IS_BIFROST))
+                if (!pan_is_bifrost(device))
                         cfg.texture_descriptor_is_64b = true;
                 cfg.front_face_ccw = rast->front_ccw;
                 cfg.cull_front_face = rast->cull_face & PIPE_FACE_FRONT;
@@ -447,7 +446,8 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                     info->mode == PIPE_PRIM_LINE_STRIP) {
                         /* The logic is inverted on bifrost. */
                         cfg.flat_shading_vertex =
-                                is_bifrost ? rast->flatshade_first : !rast->flatshade_first;
+                                pan_is_bifrost(device) ?
+                                rast->flatshade_first : !rast->flatshade_first;
                 }
 
                 pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_FRAGMENT);
@@ -465,7 +465,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 }
         }
 
-        if (!is_bifrost)
+        if (!pan_is_bifrost(device))
                 panfrost_emit_primitive_size(ctx, points, psiz, prim_size);
         else
                 pan_section_pack(job, BIFROST_TILER_JOB, DRAW_PADDING, cfg);
@@ -538,10 +538,9 @@ panfrost_draw_vbo(
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
 
-        bool is_bifrost = device->quirks & IS_BIFROST;
         struct panfrost_ptr tiler =
                 panfrost_pool_alloc_aligned(&batch->pool,
-                                            is_bifrost ?
+                                            pan_is_bifrost(device) ?
                                             MALI_BIFROST_TILER_JOB_LENGTH :
                                             MALI_MIDGARD_TILER_JOB_LENGTH,
                                             64);
@@ -787,7 +786,7 @@ panfrost_create_sampler_state(
 
         so->base = *cso;
 
-        if (device->quirks & IS_BIFROST)
+        if (pan_is_bifrost(device))
                 panfrost_sampler_desc_init_bifrost(cso, (struct mali_bifrost_sampler_packed *) &so->hw);
         else
                 panfrost_sampler_desc_init(cso, &so->hw);
@@ -1063,7 +1062,6 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 struct pipe_resource *texture)
 {
         struct panfrost_device *device = pan_device(pctx->screen);
-        bool is_bifrost = device->quirks & IS_BIFROST;
         struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
         enum pipe_format format = so->base.format;
         assert(prsrc->bo);
@@ -1127,7 +1125,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         unsigned last_layer = is_buffer ? 0 : so->base.u.tex.last_layer;
 
         unsigned size =
-                (is_bifrost ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
+                (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
                 panfrost_estimate_texture_payload_size(device,
                                                        first_level, last_level,
                                                        first_layer, last_layer,
@@ -1143,9 +1141,10 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         unsigned offset = is_buffer ? so->base.u.buf.offset : 0;
 
         struct panfrost_ptr payload = so->bo->ptr;
-        void *tex = is_bifrost ? &so->bifrost_descriptor : so->bo->ptr.cpu;
+        void *tex = pan_is_bifrost(device) ?
+                    &so->bifrost_descriptor : so->bo->ptr.cpu;
 
-        if (!is_bifrost) {
+        if (!pan_is_bifrost(device)) {
                 payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
                 payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
         }
@@ -1538,7 +1537,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
                         for (int i = 0; i < dev->core_count; ++i)
                                 passed += result[i];
 
-                        if (!(dev->quirks & IS_BIFROST) && !query->msaa)
+                        if (!pan_is_bifrost(dev) && !query->msaa)
                                 passed /= 4;
 
                         vresult->u64 = passed;
@@ -1716,7 +1715,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         ctx->draw_modes = (1 << (PIPE_PRIM_QUADS + 1)) - 1;
 
-        if (!(dev->quirks & IS_BIFROST)) {
+        if (!pan_is_bifrost(dev)) {
                 ctx->draw_modes |= (1 << PIPE_PRIM_QUAD_STRIP);
                 ctx->draw_modes |= (1 << PIPE_PRIM_POLYGON);
         }

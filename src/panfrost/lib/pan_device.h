@@ -168,4 +168,10 @@ pan_lookup_bo(struct panfrost_device *dev, uint32_t gem_handle)
         return util_sparse_array_get(&dev->bo_map, gem_handle);
 }
 
+static inline bool
+pan_is_bifrost(const struct panfrost_device *dev)
+{
+        return dev->arch >= 6 && dev->arch <= 7;
+}
+
 #endif

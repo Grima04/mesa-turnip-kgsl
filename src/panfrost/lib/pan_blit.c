@@ -109,7 +109,7 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
 
         panfrost_program *program;
 
-        if (dev->quirks & IS_BIFROST)
+        if (pan_is_bifrost(dev))
                 program = bifrost_compile_shader_nir(NULL, shader, &inputs);
         else
                 program = midgard_compile_shader_nir(NULL, shader, &inputs);
@@ -124,7 +124,6 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
 void
 panfrost_init_blit_shaders(struct panfrost_device *dev)
 {
-        bool is_bifrost = !!(dev->quirks & IS_BIFROST);
         static const struct {
                 gl_frag_result loc;
                 unsigned types;
@@ -156,7 +155,7 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
         unsigned offset = 0;
         unsigned total_size = (FRAG_RESULT_DATA7 * PAN_BLIT_NUM_TYPES) * (8 * 16) * 2;
 
-        if (is_bifrost)
+        if (pan_is_bifrost(dev))
                 total_size *= 4;
 
         dev->blit_shaders.bo = panfrost_bo_create(dev, total_size, PAN_BO_EXECUTE);
@@ -189,7 +188,8 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
                                 if (rt >= 0 && rt < 8 && program->blend_ret_offsets[rt])
                                         shader->blend_ret_addr = program->blend_ret_offsets[rt] + shader->shader;
 
-                                offset += ALIGN_POT(program->compiled.size, is_bifrost ? 128 : 64);
+                                offset += ALIGN_POT(program->compiled.size,
+                                                    pan_is_bifrost(dev) ? 128 : 64);
                                 ralloc_free(program);
                         }
                 }
@@ -258,11 +258,10 @@ panfrost_load_prepare_rsd(struct pan_pool *pool, struct MALI_RENDERER_STATE *sta
 
 static void
 panfrost_load_emit_varying(struct pan_pool *pool, struct MALI_DRAW *draw,
-                          mali_ptr coordinates, unsigned vertex_count,
-                          bool is_bifrost)
+                          mali_ptr coordinates, unsigned vertex_count)
 {
         /* Bifrost needs an empty desc to mark end of prefetching */
-        bool padding_buffer = is_bifrost;
+        bool padding_buffer = pan_is_bifrost(pool->dev);
 
         struct panfrost_ptr varying =
                 panfrost_pool_alloc(pool, MALI_ATTRIBUTE_LENGTH);
@@ -283,7 +282,7 @@ panfrost_load_emit_varying(struct pan_pool *pool, struct MALI_DRAW *draw,
 
         pan_pack(varying.cpu, ATTRIBUTE, cfg) {
                 cfg.buffer_index = 0;
-                cfg.offset_enable = !is_bifrost;
+                cfg.offset_enable = !pan_is_bifrost(pool->dev);
                 cfg.format = pool->dev->formats[PIPE_FORMAT_R32G32_FLOAT].hw;
         }
 
@@ -453,7 +452,7 @@ panfrost_load_midg(struct pan_pool *pool,
                 cfg.draw_descriptor_is_64b = true;
                 cfg.four_components_per_vertex = true;
 
-                panfrost_load_emit_varying(pool, &cfg, coordinates, vertex_count, false);
+                panfrost_load_emit_varying(pool, &cfg, coordinates, vertex_count);
                 midgard_load_emit_texture(pool, &cfg, image);
                 panfrost_load_emit_viewport(pool, &cfg, image);
                 cfg.fbd = fbd;
@@ -644,7 +643,7 @@ panfrost_load_bifrost(struct pan_pool *pool,
                 cfg.four_components_per_vertex = true;
                 cfg.draw_descriptor_is_64b = true;
 
-                panfrost_load_emit_varying(pool, &cfg, coordinates, vertex_count, true);
+                panfrost_load_emit_varying(pool, &cfg, coordinates, vertex_count);
                 bifrost_load_emit_texture(pool, &cfg, image);
                 panfrost_load_emit_viewport(pool, &cfg, image);
                 cfg.thread_storage = thread_storage;
