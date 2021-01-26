@@ -1473,8 +1473,12 @@ arm64_a630_vk_sysmem:
     #
     # vs-output-array-vec2-index-wr-before-gs is skipped because it causes
     # a flood of GPU hangs and makes the rest of the job flakey
+    #
+    # vs-clip-vertex-enables skipped because it seems to be flaky in parallel with
+    # other tests (reliably fails on its own)
     PIGLIT_OPTIONS: >-
       -x vs-output-array-vec2-index-wr-before-gs
+      -x vs-clip-vertex-enables
       -x arb_blend_func_extended-fbo-extended-blend-pattern_gles2
       -x clear-accum
       -x copypixels-sync
