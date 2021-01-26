@@ -608,6 +608,12 @@ struct iris_context {
       struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
       struct iris_compiled_shader *prog[MESA_SHADER_STAGES];
       struct brw_vue_map *last_vue_map;
+      struct {
+         unsigned size[4];
+         unsigned entries[4];
+         unsigned start[4];
+         bool constrained;
+      } urb;
 
       /** List of shader variants whose deletion has been deferred for now */
       struct list_head deleted_variants[MESA_SHADER_STAGES];

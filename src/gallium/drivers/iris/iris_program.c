@@ -1851,12 +1851,6 @@ iris_update_compiled_shaders(struct iris_context *ice)
    const uint64_t dirty = ice->state.dirty;
    const uint64_t stage_dirty = ice->state.stage_dirty;
 
-   struct brw_vue_prog_data *old_prog_datas[4];
-   if (!(dirty & IRIS_DIRTY_URB)) {
-      for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++)
-         old_prog_datas[i] = get_vue_prog_data(ice, i);
-   }
-
    if (stage_dirty & (IRIS_STAGE_DIRTY_UNCOMPILED_TCS |
                       IRIS_STAGE_DIRTY_UNCOMPILED_TES)) {
        struct iris_uncompiled_shader *tes =
@@ -1931,10 +1925,20 @@ iris_update_compiled_shaders(struct iris_context *ice)
    /* Changing shader interfaces may require a URB configuration. */
    if (!(dirty & IRIS_DIRTY_URB)) {
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-         struct brw_vue_prog_data *old = old_prog_datas[i];
-         struct brw_vue_prog_data *new = get_vue_prog_data(ice, i);
-         if (!!old != !!new ||
-             (new && new->urb_entry_size != old->urb_entry_size)) {
+         struct brw_vue_prog_data *prog_data = get_vue_prog_data(ice, i);
+
+         unsigned needed_size = prog_data ? prog_data->urb_entry_size : 0;
+         unsigned last_allocated_size = ice->shaders.urb.size[i];
+
+         /* If the last URB allocation wasn't large enough for our needs,
+          * flag it as needing to be reconfigured.  Otherwise, we can use
+          * the existing config.  However, if the URB is constrained, and
+          * we can shrink our size for this stage, we may be able to gain
+          * extra concurrency by reconfiguring it to be smaller.  Do so.
+          */
+         if (last_allocated_size < needed_size ||
+             (ice->shaders.urb.constrained &&
+              last_allocated_size > needed_size)) {
             ice->state.dirty |= IRIS_DIRTY_URB;
             break;
          }
