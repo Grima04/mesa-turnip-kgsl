@@ -135,6 +135,769 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
 }
 
 
+/**
+ * Is 'mode' a valid value for glBegin(), glDrawArrays(), glDrawElements(),
+ * etc?  Also, do additional checking related to transformation feedback.
+ * Note: this function cannot be called during glNewList(GL_COMPILE) because
+ * this code depends on current transform feedback state.
+ * Also, do additional checking related to tessellation shaders.
+ */
+static GLenum
+valid_prim_mode_custom(struct gl_context *ctx, GLenum mode,
+                       GLbitfield valid_prim_mask)
+{
+   /* All primitive type enums are less than 32, so we can use the shift. */
+   if (mode >= 32 || !((1u << mode) & valid_prim_mask)) {
+      /* If the primitive type is not in SupportedPrimMask, set GL_INVALID_ENUM,
+       * else set DrawGLError (e.g. GL_INVALID_OPERATION).
+       */
+      return mode >= 32 || !((1u << mode) & ctx->SupportedPrimMask) ?
+               GL_INVALID_ENUM : ctx->DrawGLError;
+   }
+
+   return GL_NO_ERROR;
+}
+
+GLenum
+_mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode)
+{
+   return valid_prim_mode_custom(ctx, mode, ctx->ValidPrimMask);
+}
+
+static GLenum
+valid_prim_mode_indexed(struct gl_context *ctx, GLenum mode)
+{
+   return valid_prim_mode_custom(ctx, mode, ctx->ValidPrimMaskIndexed);
+}
+
+/**
+ * Verify that the element type is valid.
+ *
+ * Generates \c GL_INVALID_ENUM and returns \c false if it is not.
+ */
+static GLenum
+valid_elements_type(struct gl_context *ctx, GLenum type)
+{
+   /* GL_UNSIGNED_BYTE  = 0x1401
+    * GL_UNSIGNED_SHORT = 0x1403
+    * GL_UNSIGNED_INT   = 0x1405
+    *
+    * The trick is that bit 1 and bit 2 mean USHORT and UINT, respectively.
+    * After clearing those two bits (with ~6), we should get UBYTE.
+    * Both bits can't be set, because the enum would be greater than UINT.
+    */
+   if (!(type <= GL_UNSIGNED_INT && (type & ~6) == GL_UNSIGNED_BYTE))
+      return GL_INVALID_ENUM;
+
+   return GL_NO_ERROR;
+}
+
+static GLenum
+validate_DrawElements_common(struct gl_context *ctx, GLenum mode,
+                             GLsizei count, GLsizei numInstances, GLenum type,
+                             const GLvoid *indices)
+{
+   if (count < 0 || numInstances < 0)
+      return GL_INVALID_VALUE;
+
+   GLenum error = valid_prim_mode_indexed(ctx, mode);
+   if (error)
+      return error;
+
+   return valid_elements_type(ctx, type);
+}
+
+/**
+ * Error checking for glDrawElements().  Includes parameter checking
+ * and VBO bounds checking.
+ * \return GL_TRUE if OK to render, GL_FALSE if error found
+ */
+static GLboolean
+_mesa_validate_DrawElements(struct gl_context *ctx,
+                            GLenum mode, GLsizei count, GLenum type,
+                            const GLvoid *indices)
+{
+   GLenum error = validate_DrawElements_common(ctx, mode, count, 1, type,
+                                               indices);
+   if (error)
+      _mesa_error(ctx, error, "glDrawElements");
+
+   return !error;
+}
+
+
+/**
+ * Error checking for glMultiDrawElements().  Includes parameter checking
+ * and VBO bounds checking.
+ * \return GL_TRUE if OK to render, GL_FALSE if error found
+ */
+static GLboolean
+_mesa_validate_MultiDrawElements(struct gl_context *ctx,
+                                 GLenum mode, const GLsizei *count,
+                                 GLenum type, const GLvoid * const *indices,
+                                 GLsizei primcount)
+{
+   GLenum error;
+
+   /*
+    * Section 2.3.1 (Errors) of the OpenGL 4.5 (Core Profile) spec says:
+    *
+    *    "If a negative number is provided where an argument of type sizei or
+    *     sizeiptr is specified, an INVALID_VALUE error is generated."
+    *
+    * and in the same section:
+    *
+    *    "In other cases, there are no side effects unless otherwise noted;
+    *     the command which generates the error is ignored so that it has no
+    *     effect on GL state or framebuffer contents."
+    *
+    * Hence, check both primcount and all the count[i].
+    */
+   if (primcount < 0) {
+      error = GL_INVALID_VALUE;
+   } else {
+      error = valid_prim_mode_indexed(ctx, mode);
+
+      if (!error) {
+         error = valid_elements_type(ctx, type);
+
+         if (!error) {
+            for (int i = 0; i < primcount; i++) {
+               if (count[i] < 0) {
+                  error = GL_INVALID_VALUE;
+                  break;
+               }
+            }
+         }
+      }
+   }
+
+   if (error)
+      _mesa_error(ctx, error, "glMultiDrawElements");
+
+   /* Not using a VBO for indices, so avoid NULL pointer derefs later.
+    */
+   if (!ctx->Array.VAO->IndexBufferObj) {
+      for (int i = 0; i < primcount; i++) {
+         if (!indices[i])
+            return GL_FALSE;
+      }
+   }
+
+   return !error;
+}
+
+
+/**
+ * Error checking for glDrawRangeElements().  Includes parameter checking
+ * and VBO bounds checking.
+ * \return GL_TRUE if OK to render, GL_FALSE if error found
+ */
+static GLboolean
+_mesa_validate_DrawRangeElements(struct gl_context *ctx, GLenum mode,
+                                 GLuint start, GLuint end,
+                                 GLsizei count, GLenum type,
+                                 const GLvoid *indices)
+{
+   GLenum error;
+
+   if (end < start) {
+      error = GL_INVALID_VALUE;
+   } else {
+      error = validate_DrawElements_common(ctx, mode, count, 1, type, indices);
+   }
+
+   if (error)
+      _mesa_error(ctx, error, "glDrawRangeElements");
+
+   return !error;
+}
+
+
+static bool
+need_xfb_remaining_prims_check(const struct gl_context *ctx)
+{
+   /* From the GLES3 specification, section 2.14.2 (Transform Feedback
+    * Primitive Capture):
+    *
+    *   The error INVALID_OPERATION is generated by DrawArrays and
+    *   DrawArraysInstanced if recording the vertices of a primitive to the
+    *   buffer objects being used for transform feedback purposes would result
+    *   in either exceeding the limits of any buffer object’s size, or in
+    *   exceeding the end position offset + size − 1, as set by
+    *   BindBufferRange.
+    *
+    * This is in contrast to the behaviour of desktop GL, where the extra
+    * primitives are silently dropped from the transform feedback buffer.
+    *
+    * This text is removed in ES 3.2, presumably because it's not really
+    * implementable with geometry and tessellation shaders.  In fact,
+    * the OES_geometry_shader spec says:
+    *
+    *    "(13) Does this extension change how transform feedback operates
+    *     compared to unextended OpenGL ES 3.0 or 3.1?
+    *
+    *     RESOLVED: Yes. Because dynamic geometry amplification in a geometry
+    *     shader can make it difficult if not impossible to predict the amount
+    *     of geometry that may be generated in advance of executing the shader,
+    *     the draw-time error for transform feedback buffer overflow conditions
+    *     is removed and replaced with the GL behavior (primitives are not
+    *     written and the corresponding counter is not updated)..."
+    */
+   return _mesa_is_gles3(ctx) && _mesa_is_xfb_active_and_unpaused(ctx) &&
+          !_mesa_has_OES_geometry_shader(ctx) &&
+          !_mesa_has_OES_tessellation_shader(ctx);
+}
+
+
+/**
+ * Figure out the number of transform feedback primitives that will be output
+ * considering the drawing mode, number of vertices, and instance count,
+ * assuming that no geometry shading is done and primitive restart is not
+ * used.
+ *
+ * This is used by driver back-ends in implementing the PRIMITIVES_GENERATED
+ * and TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN queries.  It is also used to
+ * pre-validate draw calls in GLES3 (where draw calls only succeed if there is
+ * enough room in the transform feedback buffer for the result).
+ */
+static size_t
+count_tessellated_primitives(GLenum mode, GLuint count, GLuint num_instances)
+{
+   size_t num_primitives;
+   switch (mode) {
+   case GL_POINTS:
+      num_primitives = count;
+      break;
+   case GL_LINE_STRIP:
+      num_primitives = count >= 2 ? count - 1 : 0;
+      break;
+   case GL_LINE_LOOP:
+      num_primitives = count >= 2 ? count : 0;
+      break;
+   case GL_LINES:
+      num_primitives = count / 2;
+      break;
+   case GL_TRIANGLE_STRIP:
+   case GL_TRIANGLE_FAN:
+   case GL_POLYGON:
+      num_primitives = count >= 3 ? count - 2 : 0;
+      break;
+   case GL_TRIANGLES:
+      num_primitives = count / 3;
+      break;
+   case GL_QUAD_STRIP:
+      num_primitives = count >= 4 ? ((count / 2) - 1) * 2 : 0;
+      break;
+   case GL_QUADS:
+      num_primitives = (count / 4) * 2;
+      break;
+   case GL_LINES_ADJACENCY:
+      num_primitives = count / 4;
+      break;
+   case GL_LINE_STRIP_ADJACENCY:
+      num_primitives = count >= 4 ? count - 3 : 0;
+      break;
+   case GL_TRIANGLES_ADJACENCY:
+      num_primitives = count / 6;
+      break;
+   case GL_TRIANGLE_STRIP_ADJACENCY:
+      num_primitives = count >= 6 ? (count - 4) / 2 : 0;
+      break;
+   default:
+      assert(!"Unexpected primitive type in count_tessellated_primitives");
+      num_primitives = 0;
+      break;
+   }
+   return num_primitives * num_instances;
+}
+
+
+static GLenum
+validate_draw_arrays(struct gl_context *ctx,
+                     GLenum mode, GLsizei count, GLsizei numInstances)
+{
+   if (count < 0 || numInstances < 0)
+      return GL_INVALID_VALUE;
+
+   GLenum error = _mesa_valid_prim_mode(ctx, mode);
+   if (error)
+      return error;
+
+   if (need_xfb_remaining_prims_check(ctx)) {
+      struct gl_transform_feedback_object *xfb_obj
+         = ctx->TransformFeedback.CurrentObject;
+      size_t prim_count = count_tessellated_primitives(mode, count, numInstances);
+      if (xfb_obj->GlesRemainingPrims < prim_count)
+         return GL_INVALID_OPERATION;
+
+      xfb_obj->GlesRemainingPrims -= prim_count;
+   }
+
+   return GL_NO_ERROR;
+}
+
+/**
+ * Called from the tnl module to error check the function parameters and
+ * verify that we really can draw something.
+ * \return GL_TRUE if OK to render, GL_FALSE if error found
+ */
+static GLboolean
+_mesa_validate_DrawArrays(struct gl_context *ctx, GLenum mode, GLsizei count)
+{
+   GLenum error = validate_draw_arrays(ctx, mode, count, 1);
+
+   if (error)
+      _mesa_error(ctx, error, "glDrawArrays");
+
+   if (count == 0)
+      return false;
+
+   return !error;
+}
+
+
+static GLboolean
+_mesa_validate_DrawArraysInstanced(struct gl_context *ctx, GLenum mode, GLint first,
+                                   GLsizei count, GLsizei numInstances)
+{
+   GLenum error;
+
+   if (first < 0) {
+      error = GL_INVALID_VALUE;
+   } else {
+      error = validate_draw_arrays(ctx, mode, count, numInstances);
+   }
+
+   if (error)
+      _mesa_error(ctx, error, "glDrawArraysInstanced");
+
+   return !error;
+}
+
+
+/**
+ * Called to error check the function parameters.
+ *
+ * Note that glMultiDrawArrays is not part of GLES, so there's limited scope
+ * for sharing code with the validation of glDrawArrays.
+ */
+static bool
+_mesa_validate_MultiDrawArrays(struct gl_context *ctx, GLenum mode,
+                               const GLsizei *count, GLsizei primcount)
+{
+   GLenum error;
+
+   if (primcount < 0) {
+      error = GL_INVALID_VALUE;
+   } else {
+      error = _mesa_valid_prim_mode(ctx, mode);
+
+      if (!error) {
+         for (int i = 0; i < primcount; ++i) {
+            if (count[i] < 0) {
+               error = GL_INVALID_VALUE;
+               break;
+            }
+         }
+
+         if (!error) {
+            if (need_xfb_remaining_prims_check(ctx)) {
+               struct gl_transform_feedback_object *xfb_obj
+                  = ctx->TransformFeedback.CurrentObject;
+               size_t xfb_prim_count = 0;
+
+               for (int i = 0; i < primcount; ++i) {
+                  xfb_prim_count +=
+                     count_tessellated_primitives(mode, count[i], 1);
+               }
+
+               if (xfb_obj->GlesRemainingPrims < xfb_prim_count) {
+                  error = GL_INVALID_OPERATION;
+               } else {
+                  xfb_obj->GlesRemainingPrims -= xfb_prim_count;
+               }
+            }
+         }
+      }
+   }
+
+   if (error)
+      _mesa_error(ctx, error, "glMultiDrawArrays");
+
+   return !error;
+}
+
+
+static GLboolean
+_mesa_validate_DrawElementsInstanced(struct gl_context *ctx,
+                                     GLenum mode, GLsizei count, GLenum type,
+                                     const GLvoid *indices, GLsizei numInstances)
+{
+   GLenum error =
+      validate_DrawElements_common(ctx, mode, count, numInstances, type,
+                                   indices);
+
+   if (error)
+      _mesa_error(ctx, error, "glDrawElementsInstanced");
+
+   return !error;
+}
+
+
+static GLboolean
+_mesa_validate_DrawTransformFeedback(struct gl_context *ctx,
+                                     GLenum mode,
+                                     struct gl_transform_feedback_object *obj,
+                                     GLuint stream,
+                                     GLsizei numInstances)
+{
+   GLenum error;
+
+   /* From the GL 4.5 specification, page 429:
+    * "An INVALID_VALUE error is generated if id is not the name of a
+    *  transform feedback object."
+    */
+   if (!obj || !obj->EverBound || stream >= ctx->Const.MaxVertexStreams ||
+       numInstances < 0) {
+      error = GL_INVALID_VALUE;
+   } else {
+      error = _mesa_valid_prim_mode(ctx, mode);
+
+      if (!error) {
+         if (!obj->EndedAnytime)
+            error = GL_INVALID_OPERATION;
+      }
+   }
+
+   if (error)
+      _mesa_error(ctx, error, "glDrawTransformFeedback*");
+
+   return !error;
+}
+
+static GLenum
+valid_draw_indirect(struct gl_context *ctx,
+                    GLenum mode, const GLvoid *indirect,
+                    GLsizei size)
+{
+   const uint64_t end = (uint64_t) (uintptr_t) indirect + size;
+
+   /* OpenGL ES 3.1 spec. section 10.5:
+    *
+    *      "DrawArraysIndirect requires that all data sourced for the
+    *      command, including the DrawArraysIndirectCommand
+    *      structure,  be in buffer objects,  and may not be called when
+    *      the default vertex array object is bound."
+    */
+   if (ctx->API != API_OPENGL_COMPAT &&
+       ctx->Array.VAO == ctx->Array.DefaultVAO)
+      return GL_INVALID_OPERATION;
+
+   /* From OpenGL ES 3.1 spec. section 10.5:
+    *     "An INVALID_OPERATION error is generated if zero is bound to
+    *     VERTEX_ARRAY_BINDING, DRAW_INDIRECT_BUFFER or to any enabled
+    *     vertex array."
+    *
+    * Here we check that for each enabled vertex array we have a vertex
+    * buffer bound.
+    */
+   if (_mesa_is_gles31(ctx) &&
+       ctx->Array.VAO->Enabled & ~ctx->Array.VAO->VertexAttribBufferMask)
+      return GL_INVALID_OPERATION;
+
+   GLenum error = _mesa_valid_prim_mode(ctx, mode);
+   if (error)
+      return error;
+
+   /* OpenGL ES 3.1 specification, section 10.5:
+    *
+    *      "An INVALID_OPERATION error is generated if
+    *      transform feedback is active and not paused."
+    *
+    * The OES_geometry_shader spec says:
+    *
+    *    On p. 250 in the errors section for the DrawArraysIndirect command,
+    *    and on p. 254 in the errors section for the DrawElementsIndirect
+    *    command, delete the errors which state:
+    *
+    *    "An INVALID_OPERATION error is generated if transform feedback is
+    *    active and not paused."
+    *
+    *    (thus allowing transform feedback to work with indirect draw commands).
+    */
+   if (_mesa_is_gles31(ctx) && !ctx->Extensions.OES_geometry_shader &&
+       _mesa_is_xfb_active_and_unpaused(ctx))
+      return GL_INVALID_OPERATION;
+
+   /* From OpenGL version 4.4. section 10.5
+    * and OpenGL ES 3.1, section 10.6:
+    *
+    *      "An INVALID_VALUE error is generated if indirect is not a
+    *       multiple of the size, in basic machine units, of uint."
+    */
+   if ((GLsizeiptr)indirect & (sizeof(GLuint) - 1))
+      return GL_INVALID_VALUE;
+
+   if (!ctx->DrawIndirectBuffer)
+      return GL_INVALID_OPERATION;
+
+   if (_mesa_check_disallowed_mapping(ctx->DrawIndirectBuffer))
+      return GL_INVALID_OPERATION;
+
+   /* From the ARB_draw_indirect specification:
+    * "An INVALID_OPERATION error is generated if the commands source data
+    *  beyond the end of the buffer object [...]"
+    */
+   if (ctx->DrawIndirectBuffer->Size < end)
+      return GL_INVALID_OPERATION;
+
+   return GL_NO_ERROR;
+}
+
+static inline GLenum
+valid_draw_indirect_elements(struct gl_context *ctx,
+                             GLenum mode, GLenum type, const GLvoid *indirect,
+                             GLsizeiptr size)
+{
+   GLenum error = valid_elements_type(ctx, type);
+   if (error)
+      return error;
+
+   /*
+    * Unlike regular DrawElementsInstancedBaseVertex commands, the indices
+    * may not come from a client array and must come from an index buffer.
+    * If no element array buffer is bound, an INVALID_OPERATION error is
+    * generated.
+    */
+   if (!ctx->Array.VAO->IndexBufferObj)
+      return GL_INVALID_OPERATION;
+
+   return valid_draw_indirect(ctx, mode, indirect, size);
+}
+
+static GLboolean
+_mesa_valid_draw_indirect_multi(struct gl_context *ctx,
+                                GLsizei primcount, GLsizei stride,
+                                const char *name)
+{
+
+   /* From the ARB_multi_draw_indirect specification:
+    * "INVALID_VALUE is generated by MultiDrawArraysIndirect or
+    *  MultiDrawElementsIndirect if <primcount> is negative."
+    *
+    * "<primcount> must be positive, otherwise an INVALID_VALUE error will
+    *  be generated."
+    */
+   if (primcount < 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(primcount < 0)", name);
+      return GL_FALSE;
+   }
+
+
+   /* From the ARB_multi_draw_indirect specification:
+    * "<stride> must be a multiple of four, otherwise an INVALID_VALUE
+    *  error is generated."
+    */
+   if (stride % 4) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(stride %% 4)", name);
+      return GL_FALSE;
+   }
+
+   return GL_TRUE;
+}
+
+static GLboolean
+_mesa_validate_DrawArraysIndirect(struct gl_context *ctx,
+                                  GLenum mode,
+                                  const GLvoid *indirect)
+{
+   const unsigned drawArraysNumParams = 4;
+   GLenum error =
+      valid_draw_indirect(ctx, mode, indirect,
+                          drawArraysNumParams * sizeof(GLuint));
+
+   if (error)
+      _mesa_error(ctx, error, "glDrawArraysIndirect");
+
+   return !error;
+}
+
+static GLboolean
+_mesa_validate_DrawElementsIndirect(struct gl_context *ctx,
+                                    GLenum mode, GLenum type,
+                                    const GLvoid *indirect)
+{
+   const unsigned drawElementsNumParams = 5;
+   GLenum error = valid_draw_indirect_elements(ctx, mode, type, indirect,
+                                               drawElementsNumParams *
+                                               sizeof(GLuint));
+   if (error)
+      _mesa_error(ctx, error, "glDrawElementsIndirect");
+
+   return !error;
+}
+
+static GLboolean
+_mesa_validate_MultiDrawArraysIndirect(struct gl_context *ctx,
+                                       GLenum mode,
+                                       const GLvoid *indirect,
+                                       GLsizei primcount, GLsizei stride)
+{
+   GLsizeiptr size = 0;
+   const unsigned drawArraysNumParams = 4;
+
+   /* caller has converted stride==0 to drawArraysNumParams * sizeof(GLuint) */
+   assert(stride != 0);
+
+   if (!_mesa_valid_draw_indirect_multi(ctx, primcount, stride,
+                                        "glMultiDrawArraysIndirect"))
+      return GL_FALSE;
+
+   /* number of bytes of the indirect buffer which will be read */
+   size = primcount
+      ? (primcount - 1) * stride + drawArraysNumParams * sizeof(GLuint)
+      : 0;
+
+   GLenum error = valid_draw_indirect(ctx, mode, indirect, size);
+   if (error)
+      _mesa_error(ctx, error, "glMultiDrawArraysIndirect");
+
+   return !error;
+}
+
+static GLboolean
+_mesa_validate_MultiDrawElementsIndirect(struct gl_context *ctx,
+                                         GLenum mode, GLenum type,
+                                         const GLvoid *indirect,
+                                         GLsizei primcount, GLsizei stride)
+{
+   GLsizeiptr size = 0;
+   const unsigned drawElementsNumParams = 5;
+
+   /* caller has converted stride==0 to drawElementsNumParams * sizeof(GLuint) */
+   assert(stride != 0);
+
+   if (!_mesa_valid_draw_indirect_multi(ctx, primcount, stride,
+                                        "glMultiDrawElementsIndirect"))
+      return GL_FALSE;
+
+   /* number of bytes of the indirect buffer which will be read */
+   size = primcount
+      ? (primcount - 1) * stride + drawElementsNumParams * sizeof(GLuint)
+      : 0;
+
+   GLenum error = valid_draw_indirect_elements(ctx, mode, type, indirect,
+                                               size);
+   if (error)
+      _mesa_error(ctx, error, "glMultiDrawElementsIndirect");
+
+   return !error;
+}
+
+static GLenum
+valid_draw_indirect_parameters(struct gl_context *ctx,
+                               GLintptr drawcount)
+{
+   /* From the ARB_indirect_parameters specification:
+    * "INVALID_VALUE is generated by MultiDrawArraysIndirectCountARB or
+    *  MultiDrawElementsIndirectCountARB if <drawcount> is not a multiple of
+    *  four."
+    */
+   if (drawcount & 3)
+      return GL_INVALID_VALUE;
+
+   /* From the ARB_indirect_parameters specification:
+    * "INVALID_OPERATION is generated by MultiDrawArraysIndirectCountARB or
+    *  MultiDrawElementsIndirectCountARB if no buffer is bound to the
+    *  PARAMETER_BUFFER_ARB binding point."
+    */
+   if (!ctx->ParameterBuffer)
+      return GL_INVALID_OPERATION;
+
+   if (_mesa_check_disallowed_mapping(ctx->ParameterBuffer))
+      return GL_INVALID_OPERATION;
+
+   /* From the ARB_indirect_parameters specification:
+    * "INVALID_OPERATION is generated by MultiDrawArraysIndirectCountARB or
+    *  MultiDrawElementsIndirectCountARB if reading a <sizei> typed value
+    *  from the buffer bound to the PARAMETER_BUFFER_ARB target at the offset
+    *  specified by <drawcount> would result in an out-of-bounds access."
+    */
+   if (ctx->ParameterBuffer->Size < drawcount + sizeof(GLsizei))
+      return GL_INVALID_OPERATION;
+
+   return GL_NO_ERROR;
+}
+
+static GLboolean
+_mesa_validate_MultiDrawArraysIndirectCount(struct gl_context *ctx,
+                                            GLenum mode,
+                                            GLintptr indirect,
+                                            GLintptr drawcount,
+                                            GLsizei maxdrawcount,
+                                            GLsizei stride)
+{
+   GLsizeiptr size = 0;
+   const unsigned drawArraysNumParams = 4;
+
+   /* caller has converted stride==0 to drawArraysNumParams * sizeof(GLuint) */
+   assert(stride != 0);
+
+   if (!_mesa_valid_draw_indirect_multi(ctx, maxdrawcount, stride,
+                                        "glMultiDrawArraysIndirectCountARB"))
+      return GL_FALSE;
+
+   /* number of bytes of the indirect buffer which will be read */
+   size = maxdrawcount
+      ? (maxdrawcount - 1) * stride + drawArraysNumParams * sizeof(GLuint)
+      : 0;
+
+   GLenum error = valid_draw_indirect(ctx, mode, (void *)indirect, size);
+   if (!error)
+      error = valid_draw_indirect_parameters(ctx, drawcount);
+
+   if (error)
+      _mesa_error(ctx, error, "glMultiDrawArraysIndirectCountARB");
+
+   return !error;
+}
+
+static GLboolean
+_mesa_validate_MultiDrawElementsIndirectCount(struct gl_context *ctx,
+                                              GLenum mode, GLenum type,
+                                              GLintptr indirect,
+                                              GLintptr drawcount,
+                                              GLsizei maxdrawcount,
+                                              GLsizei stride)
+{
+   GLsizeiptr size = 0;
+   const unsigned drawElementsNumParams = 5;
+
+   /* caller has converted stride==0 to drawElementsNumParams * sizeof(GLuint) */
+   assert(stride != 0);
+
+   if (!_mesa_valid_draw_indirect_multi(ctx, maxdrawcount, stride,
+                                        "glMultiDrawElementsIndirectCountARB"))
+      return GL_FALSE;
+
+   /* number of bytes of the indirect buffer which will be read */
+   size = maxdrawcount
+      ? (maxdrawcount - 1) * stride + drawElementsNumParams * sizeof(GLuint)
+      : 0;
+
+   GLenum error = valid_draw_indirect_elements(ctx, mode, type,
+                                               (void *)indirect, size);
+   if (!error)
+      error = valid_draw_indirect_parameters(ctx, drawcount);
+
+   if (error)
+      _mesa_error(ctx, error, "glMultiDrawElementsIndirectCountARB");
+
+   return !error;
+}
+
+
 #define MAX_ALLOCA_PRIMS(prim) (50000 / sizeof(*prim))
 
 /* Use calloc for large allocations and alloca for small allocations. */
