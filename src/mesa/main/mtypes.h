@@ -1658,6 +1658,9 @@ struct gl_vertex_array_object
    /** Denotes the way the position/generic0 attribute is mapped */
    gl_attribute_map_mode _AttributeMapMode;
 
+   /** "Enabled" with the position/generic0 attribute aliasing resolved */
+   GLbitfield _EnabledWithMapMode;
+
    /** Mask of VERT_BIT_* values indicating changed/dirty arrays */
    GLbitfield NewArrays;
 

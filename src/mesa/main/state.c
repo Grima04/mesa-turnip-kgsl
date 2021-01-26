@@ -680,8 +680,11 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
       new_array = true;
    }
 
-   /* May shuffle the position and generic0 bits around, filter out unwanted */
-   const GLbitfield enabled = filter & _mesa_get_vao_vp_inputs(vao);
+   assert(vao->_EnabledWithMapMode ==
+          _mesa_vao_enable_to_vp_inputs(vao->_AttributeMapMode, vao->Enabled));
+
+   /* Filter out unwanted arrays. */
+   const GLbitfield enabled = filter & vao->_EnabledWithMapMode;
    if (ctx->Array._DrawVAOEnabledAttribs != enabled) {
       ctx->Array._DrawVAOEnabledAttribs = enabled;
       new_array = true;
