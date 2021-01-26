@@ -2167,7 +2167,7 @@ AlgebraicOpt::handleCVT_EXTBF(Instruction *cvt)
    Instruction *insn = cvt->getSrc(0)->getInsn();
    ImmediateValue imm;
    Value *arg = NULL;
-   unsigned width, offset;
+   unsigned width, offset = 0;
    if ((cvt->sType != TYPE_U32 && cvt->sType != TYPE_S32) || !insn)
       return;
    if (insn->op == OP_EXTBF && insn->src(1).getImmediate(imm)) {
@@ -2199,7 +2199,7 @@ AlgebraicOpt::handleCVT_EXTBF(Instruction *cvt)
 
       arg = insn->getSrc(!s);
       Instruction *shift = arg->getInsn();
-      offset = 0;
+
       if (shift && shift->op == OP_SHR &&
           shift->sType == cvt->sType &&
           shift->src(1).getImmediate(imm) &&
