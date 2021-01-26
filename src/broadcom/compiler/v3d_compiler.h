@@ -566,6 +566,24 @@ struct v3d_compile {
         struct qinst **defs;
         uint32_t defs_array_size;
 
+        /* TMU pipelining tracking */
+        struct {
+                /* NIR registers that have been updated with a TMU operation
+                 * that has not been flushed yet.
+                 */
+                struct set *outstanding_regs;
+
+                uint32_t input_fifo_size;
+                uint32_t config_fifo_size;
+                uint32_t output_fifo_size;
+
+                struct {
+                        nir_dest *dest;
+                        uint32_t num_components;
+                } flush[8]; /* 16 entries / 2 threads for input/output fifos */
+                uint32_t flush_count;
+        } tmu;
+
         /**
          * Inputs to the shader, arranged by TGSI declaration order.
          *
@@ -918,6 +936,7 @@ uint8_t vir_channels_written(struct qinst *inst);
 struct qreg ntq_get_src(struct v3d_compile *c, nir_src src, int i);
 void ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                     struct qreg result);
+void ntq_flush_tmu(struct v3d_compile *c);
 void vir_emit_thrsw(struct v3d_compile *c);
 
 void vir_dump(struct v3d_compile *c);

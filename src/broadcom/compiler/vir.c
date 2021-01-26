@@ -539,6 +539,8 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->def_ht = _mesa_hash_table_create(c, _mesa_hash_pointer,
                                             _mesa_key_pointer_equal);
 
+        c->tmu.outstanding_regs = _mesa_pointer_set_create(c);
+
         return c;
 }
 

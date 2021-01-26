@@ -33,6 +33,9 @@
 void
 v3d33_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 {
+        /* FIXME: allow tex pipelining */
+        ntq_flush_tmu(c);
+
         unsigned unit = instr->texture_index;
 
         struct V3D33_TEXTURE_UNIFORM_PARAMETER_0_CFG_MODE1 p0_unpacked = {

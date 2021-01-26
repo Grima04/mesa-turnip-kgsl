@@ -61,6 +61,9 @@ static const struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked_default = {
 void
 v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 {
+        /* FIXME: allow tex pipelining */
+        ntq_flush_tmu(c);
+
         unsigned texture_idx = instr->texture_index;
         unsigned sampler_idx = instr->sampler_index;
 
@@ -343,6 +346,9 @@ void
 v3d40_vir_emit_image_load_store(struct v3d_compile *c,
                                 nir_intrinsic_instr *instr)
 {
+        /* FIXME: allow image load/store pipelining */
+        ntq_flush_tmu(c);
+
         unsigned format = nir_intrinsic_format(instr);
         unsigned unit = nir_src_as_uint(instr->src[0]);
         int tmu_writes = 0;
