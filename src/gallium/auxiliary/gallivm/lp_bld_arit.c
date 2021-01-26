@@ -2037,6 +2037,8 @@ lp_build_round_arch(struct lp_build_context *bld,
       case LP_BUILD_ROUND_TRUNCATE:
          intrinsic_root = "llvm.trunc";
          break;
+      default:
+         unreachable("unhandled lp_build_round_mode");
       }
 
       lp_format_intrinsic(intrinsic, sizeof intrinsic, intrinsic_root, bld->vec_type);
