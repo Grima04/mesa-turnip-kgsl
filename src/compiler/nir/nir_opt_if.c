@@ -788,7 +788,7 @@ nir_block_ends_in_continue(nir_block *block)
 static bool
 opt_if_loop_last_continue(nir_loop *loop, bool aggressive_last_continue)
 {
-   nir_if *nif;
+   nir_if *nif = NULL;
    bool then_ends_in_continue = false;
    bool else_ends_in_continue = false;
 
@@ -824,7 +824,7 @@ opt_if_loop_last_continue(nir_loop *loop, bool aggressive_last_continue)
    }
 
    /* If we didn't find an if to optimise return */
-   if (!then_ends_in_continue && !else_ends_in_continue)
+   if (!nif || (!then_ends_in_continue && !else_ends_in_continue))
       return false;
 
    /* If there is nothing after the if-statement we bail */
