@@ -429,7 +429,7 @@ struct iris_binding_table {
  * (iris_uncompiled_shader), due to state-based recompiles (brw_*_prog_key).
  */
 struct iris_compiled_shader {
-   struct list_head link;
+   struct pipe_reference ref;
 
    /** Reference to the uploaded assembly. */
    struct iris_state_ref assembly;
@@ -614,9 +614,6 @@ struct iris_context {
          unsigned start[4];
          bool constrained;
       } urb;
-
-      /** List of shader variants whose deletion has been deferred for now */
-      struct list_head deleted_variants[MESA_SHADER_STAGES];
 
       struct u_upload_mgr *uploader;
       struct hash_table *cache;
@@ -911,8 +908,20 @@ struct iris_compiled_shader *iris_upload_shader(struct iris_context *ice,
 const void *iris_find_previous_compile(const struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);
-void iris_delete_shader_variants(struct iris_context *ice,
-                                 struct iris_uncompiled_shader *ish);
+void iris_delete_shader_variant(struct iris_compiled_shader *shader);
+
+static inline void
+iris_shader_variant_reference(struct iris_compiled_shader **dst,
+                              struct iris_compiled_shader *src)
+{
+   struct iris_compiled_shader *old_dst = *dst;
+
+   if (pipe_reference(old_dst ? &old_dst->ref: NULL, src ? &src->ref : NULL))
+      iris_delete_shader_variant(old_dst);
+
+   *dst = src;
+}
+
 bool iris_blorp_lookup_shader(struct blorp_batch *blorp_batch,
                               const void *key,
                               uint32_t key_size,

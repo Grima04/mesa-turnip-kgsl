@@ -1213,7 +1213,8 @@ iris_update_compiled_vs(struct iris_context *ice)
       shader = iris_compile_vs(ice, ish, &key);
 
    if (old != shader) {
-      ice->shaders.prog[IRIS_CACHE_VS] = shader;
+      iris_shader_variant_reference(&ice->shaders.prog[MESA_SHADER_VERTEX],
+                                    shader);
       ice->state.dirty |= IRIS_DIRTY_VF_SGVS;
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_VS |
                                 IRIS_STAGE_DIRTY_BINDINGS_VS |
@@ -1411,7 +1412,8 @@ iris_update_compiled_tcs(struct iris_context *ice)
       shader = iris_compile_tcs(ice, tcs, &key);
 
    if (old != shader) {
-      ice->shaders.prog[IRIS_CACHE_TCS] = shader;
+      iris_shader_variant_reference(&ice->shaders.prog[MESA_SHADER_TESS_CTRL],
+                                    shader);
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_TCS |
                                 IRIS_STAGE_DIRTY_BINDINGS_TCS |
                                 IRIS_STAGE_DIRTY_CONSTANTS_TCS;
@@ -1525,7 +1527,8 @@ iris_update_compiled_tes(struct iris_context *ice)
       shader = iris_compile_tes(ice, ish, &key);
 
    if (old != shader) {
-      ice->shaders.prog[IRIS_CACHE_TES] = shader;
+      iris_shader_variant_reference(&ice->shaders.prog[MESA_SHADER_TESS_EVAL],
+                                    shader);
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_TES |
                                 IRIS_STAGE_DIRTY_BINDINGS_TES |
                                 IRIS_STAGE_DIRTY_CONSTANTS_TES;
@@ -1647,7 +1650,8 @@ iris_update_compiled_gs(struct iris_context *ice)
    }
 
    if (old != shader) {
-      ice->shaders.prog[IRIS_CACHE_GS] = shader;
+      iris_shader_variant_reference(&ice->shaders.prog[MESA_SHADER_GEOMETRY],
+                                    shader);
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_GS |
                                 IRIS_STAGE_DIRTY_BINDINGS_GS |
                                 IRIS_STAGE_DIRTY_CONSTANTS_GS;
@@ -1763,7 +1767,8 @@ iris_update_compiled_fs(struct iris_context *ice)
    if (old != shader) {
       // XXX: only need to flag CLIP if barycentric has NONPERSPECTIVE
       // toggles.  might be able to avoid flagging SBE too.
-      ice->shaders.prog[IRIS_CACHE_FS] = shader;
+      iris_shader_variant_reference(&ice->shaders.prog[MESA_SHADER_FRAGMENT],
+                                    shader);
       ice->state.dirty |= IRIS_DIRTY_WM |
                           IRIS_DIRTY_CLIP |
                           IRIS_DIRTY_SBE;
@@ -1858,8 +1863,8 @@ iris_update_compiled_shaders(struct iris_context *ice)
           iris_update_compiled_tcs(ice);
           iris_update_compiled_tes(ice);
        } else {
-          ice->shaders.prog[IRIS_CACHE_TCS] = NULL;
-          ice->shaders.prog[IRIS_CACHE_TES] = NULL;
+         iris_shader_variant_reference(&ice->shaders.prog[MESA_SHADER_TESS_CTRL], NULL);
+         iris_shader_variant_reference(&ice->shaders.prog[MESA_SHADER_TESS_EVAL], NULL);
           ice->state.stage_dirty |=
              IRIS_STAGE_DIRTY_TCS | IRIS_STAGE_DIRTY_TES |
              IRIS_STAGE_DIRTY_BINDINGS_TCS | IRIS_STAGE_DIRTY_BINDINGS_TES |
@@ -2005,7 +2010,8 @@ iris_update_compiled_cs(struct iris_context *ice)
       shader = iris_compile_cs(ice, ish, &key);
 
    if (old != shader) {
-      ice->shaders.prog[IRIS_CACHE_CS] = shader;
+      iris_shader_variant_reference(&ice->shaders.prog[MESA_SHADER_COMPUTE],
+                                    shader);
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_CS |
                                 IRIS_STAGE_DIRTY_BINDINGS_CS |
                                 IRIS_STAGE_DIRTY_CONSTANTS_CS;
@@ -2408,8 +2414,6 @@ iris_delete_shader_state(struct pipe_context *ctx, void *state, gl_shader_stage 
       ice->shaders.uncompiled[stage] = NULL;
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_UNCOMPILED_VS << stage;
    }
-
-   iris_delete_shader_variants(ice, ish);
 
    ralloc_free(ish->nir);
    free(ish);
