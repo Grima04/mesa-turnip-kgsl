@@ -1525,6 +1525,18 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_bitrev_i32_to(b, dst, s0);
                 break;
 
+        case nir_op_ufind_msb: {
+                bi_index clz = bi_clz(b, src_sz, s0, false);
+
+                if (sz == 8)
+                        clz = bi_byte(clz, 0);
+                else if (sz == 16)
+                        clz = bi_half(clz, false);
+
+                bi_isub_u32_to(b, dst, bi_imm_u32(src_sz - 1), clz, false);
+                break;
+        }
+
         default:
                 fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
                 unreachable("Unknown ALU op");
