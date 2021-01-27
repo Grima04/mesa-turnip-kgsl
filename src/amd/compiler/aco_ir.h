@@ -233,6 +233,25 @@ struct float_mode {
    }
 };
 
+struct wait_imm {
+   static const uint8_t unset_counter = 0xff;
+
+   uint8_t vm;
+   uint8_t exp;
+   uint8_t lgkm;
+   uint8_t vs;
+
+   wait_imm();
+   wait_imm(uint16_t vm_, uint16_t exp_, uint16_t lgkm_, uint16_t vs_);
+   wait_imm(enum chip_class chip, uint16_t packed);
+
+   uint16_t pack(enum chip_class chip) const;
+
+   bool combine(const wait_imm& other);
+
+   bool empty() const;
+};
+
 constexpr Format asVOP3(Format format) {
    return (Format) ((uint32_t) Format::VOP3 | (uint32_t) format);
 };
