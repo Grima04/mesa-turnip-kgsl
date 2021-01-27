@@ -673,7 +673,7 @@ static void si_delete_blend_state(struct pipe_context *ctx, void *state)
    if (sctx->queued.named.blend == state)
       si_bind_blend_state(ctx, sctx->noop_blend);
 
-   si_pm4_delete_state(sctx, blend, (struct si_state_blend *)state);
+   si_pm4_free_state(sctx, (struct si_pm4_state*)state, SI_STATE_IDX(blend));
 }
 
 static void si_set_blend_color(struct pipe_context *ctx, const struct pipe_blend_color *state)
@@ -1040,7 +1040,7 @@ static void si_delete_rs_state(struct pipe_context *ctx, void *state)
       si_bind_rs_state(ctx, sctx->discard_rasterizer_state);
 
    FREE(rs->pm4_poly_offset);
-   si_pm4_delete_state(sctx, rasterizer, rs);
+   si_pm4_free_state(sctx, &rs->pm4, SI_STATE_IDX(rasterizer));
 }
 
 /*
@@ -1265,7 +1265,7 @@ static void si_delete_dsa_state(struct pipe_context *ctx, void *state)
    if (sctx->queued.named.dsa == state)
       si_bind_dsa_state(ctx, sctx->noop_dsa);
 
-   si_pm4_delete_state(sctx, dsa, (struct si_state_dsa *)state);
+   si_pm4_free_state(sctx, (struct si_pm4_state*)state, SI_STATE_IDX(dsa));
 }
 
 static void *si_create_db_flush_dsa(struct si_context *sctx)

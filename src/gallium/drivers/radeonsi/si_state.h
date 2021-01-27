@@ -484,9 +484,6 @@ struct si_buffer_resources {
          (sctx)->dirty_states &= ~SI_STATE_BIT(member);                                            \
    } while (0)
 
-#define si_pm4_delete_state(sctx, member, value)                                                   \
-   si_pm4_free_state(sctx, (struct si_pm4_state *)(value), SI_STATE_IDX(member))
-
 /* si_descriptors.c */
 void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture *tex,
                                     const struct legacy_surf_level *base_level_info,

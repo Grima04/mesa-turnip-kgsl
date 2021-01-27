@@ -3169,37 +3169,37 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
       case MESA_SHADER_VERTEX:
          if (shader->key.as_ls) {
             assert(sctx->chip_class <= GFX8);
-            si_pm4_delete_state(sctx, ls, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(ls));
          } else if (shader->key.as_es) {
             assert(sctx->chip_class <= GFX8);
-            si_pm4_delete_state(sctx, es, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(es));
          } else if (shader->key.as_ngg) {
-            si_pm4_delete_state(sctx, gs, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(gs));
          } else {
-            si_pm4_delete_state(sctx, vs, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(vs));
          }
          break;
       case MESA_SHADER_TESS_CTRL:
-         si_pm4_delete_state(sctx, hs, shader->pm4);
+         si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(hs));
          break;
       case MESA_SHADER_TESS_EVAL:
          if (shader->key.as_es) {
             assert(sctx->chip_class <= GFX8);
-            si_pm4_delete_state(sctx, es, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(es));
          } else if (shader->key.as_ngg) {
-            si_pm4_delete_state(sctx, gs, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(gs));
          } else {
-            si_pm4_delete_state(sctx, vs, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(vs));
          }
          break;
       case MESA_SHADER_GEOMETRY:
          if (shader->is_gs_copy_shader)
-            si_pm4_delete_state(sctx, vs, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(vs));
          else
-            si_pm4_delete_state(sctx, gs, shader->pm4);
+            si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(gs));
          break;
       case MESA_SHADER_FRAGMENT:
-         si_pm4_delete_state(sctx, ps, shader->pm4);
+         si_pm4_free_state(sctx, shader->pm4, SI_STATE_IDX(ps));
          break;
       default:;
       }

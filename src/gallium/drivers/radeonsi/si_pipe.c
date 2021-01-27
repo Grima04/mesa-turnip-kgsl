@@ -213,7 +213,7 @@ static void si_destroy_context(struct pipe_context *context)
    if (sctx->cs_preamble_gs_rings)
       si_pm4_free_state(sctx, sctx->cs_preamble_gs_rings, ~0);
    for (i = 0; i < ARRAY_SIZE(sctx->vgt_shader_config); i++)
-      si_pm4_delete_state(sctx, vgt_shader_config, sctx->vgt_shader_config[i]);
+      si_pm4_free_state(sctx, sctx->vgt_shader_config[i], SI_STATE_IDX(vgt_shader_config));
 
    if (sctx->fixed_func_tcs_shader.cso)
       sctx->b.delete_tcs_state(&sctx->b, sctx->fixed_func_tcs_shader.cso);
