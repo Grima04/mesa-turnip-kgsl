@@ -102,6 +102,7 @@ util_FILES := \
         util/pan_ir.h \
         util/pan_liveness.c \
         util/pan_lower_framebuffer.c \
+        util/pan_lower_helper_invocation.c \
         util/pan_lower_writeout.c \
         util/pan_lower_64bit_intrin.c \
         util/pan_sysval.c \
