@@ -456,7 +456,7 @@ windows_build_vs2019:
   stage: container
   variables:
     GIT_STRATEGY: fetch # we do actually need the full repository though
-  timeout: 2h # LLVM + piglit takes ages
+  timeout: 2h 30m # LLVM + piglit takes ages
   tags:
     - windows
     - shell
