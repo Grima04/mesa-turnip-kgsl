@@ -809,6 +809,11 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                                 bi_imm_f32(b->shader->blend_constants[3]));
                 break;
 
+	case nir_intrinsic_load_sample_mask_in:
+                /* r61[0:15] contains the coverage bitmap */
+                bi_u16_to_u32_to(b, dst, bi_half(bi_register(61), false));
+                break;
+
         case nir_intrinsic_load_sample_id: {
                 /* r61[16:23] contains the sampleID, mask it out. Upper bits
                  * seem to read garbage (despite being architecturally defined
