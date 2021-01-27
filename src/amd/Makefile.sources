@@ -48,6 +48,7 @@ AMD_COMMON_FILES = \
 	common/ac_surface.h \
 	common/ac_rgp.c \
 	common/ac_rgp.h \
+	common/ac_rgp_elf_object_pack.c \
 	common/ac_rtld.c \
 	common/ac_rtld.h \
 	common/ac_shader_args.c \
