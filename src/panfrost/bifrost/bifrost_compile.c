@@ -1805,8 +1805,9 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                 desc.lod_or_fetch = BIFROST_LOD_MODE_COMPUTE;
                 break;
         case BIFROST_TEX_OP_FETCH:
-                /* TODO: gathers */
-                desc.lod_or_fetch = BIFROST_TEXTURE_FETCH_TEXEL;
+                desc.lod_or_fetch = instr->op == nir_texop_tg4 ?
+                        BIFROST_TEXTURE_FETCH_GATHER4_R + instr->component :
+                        BIFROST_TEXTURE_FETCH_TEXEL;
                 break;
         default:
                 unreachable("texture op unsupported");
@@ -2021,6 +2022,7 @@ bi_emit_tex(bi_builder *b, nir_tex_instr *instr)
         case nir_texop_txb:
         case nir_texop_txf:
         case nir_texop_txf_ms:
+        case nir_texop_tg4:
                 break;
         default:
                 unreachable("Invalid texture operation");
@@ -2286,6 +2288,7 @@ bi_optimize_nir(nir_shader *nir)
                 .lower_txs_lod = true,
                 .lower_txp = ~0,
                 .lower_tex_without_implicit_lod = true,
+                .lower_tg4_broadcom_swizzle = true,
                 .lower_txd = true,
         };
 
