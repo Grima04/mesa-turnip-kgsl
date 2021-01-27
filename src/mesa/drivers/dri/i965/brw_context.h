@@ -813,8 +813,6 @@ struct brw_context
    bool disable_throttling;
    bool precompile;
    bool dual_color_blend_by_location;
-
-   driOptionCache optionCache;
    /** @} */
 
    GLuint primitive; /**< Hardware primitive, such as _3DPRIM_TRILIST. */
