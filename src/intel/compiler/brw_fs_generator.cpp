@@ -331,7 +331,8 @@ fs_generator::generate_send(fs_inst *inst,
    uint32_t desc_imm = inst->desc |
       brw_message_desc(devinfo, inst->mlen, rlen, inst->header_size);
 
-   uint32_t ex_desc_imm = brw_message_ex_desc(devinfo, inst->ex_mlen);
+   uint32_t ex_desc_imm = inst->ex_desc |
+      brw_message_ex_desc(devinfo, inst->ex_mlen);
 
    if (ex_desc.file != BRW_IMMEDIATE_VALUE || ex_desc.ud || ex_desc_imm) {
       /* If we have any sort of extended descriptor, then we need SENDS.  This

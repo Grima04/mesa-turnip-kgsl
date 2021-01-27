@@ -2730,7 +2730,8 @@ brw_send_indirect_split_message(struct brw_codegen *p,
    }
 
    if (ex_desc.file == BRW_IMMEDIATE_VALUE &&
-       (devinfo->gen >= 12 || (ex_desc.ud & INTEL_MASK(15, 12)) == 0)) {
+       (devinfo->gen >= 12 ||
+        ((ex_desc.ud | ex_desc_imm) & INTEL_MASK(15, 12)) == 0)) {
       ex_desc.ud |= ex_desc_imm;
    } else {
       const struct tgl_swsb swsb = brw_get_default_swsb(p);

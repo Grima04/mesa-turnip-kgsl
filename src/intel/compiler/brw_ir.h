@@ -152,6 +152,7 @@ struct backend_instruction {
    uint8_t target; /**< MRT target. */
    uint8_t sfid; /**< SFID for SEND instructions */
    uint32_t desc; /**< SEND[S] message descriptor immediate */
+   uint32_t ex_desc; /**< SEND[S] extended message descriptor immediate */
    unsigned size_written; /**< Data written to the destination register in bytes. */
 
    enum opcode opcode; /* BRW_OPCODE_* or FS_OPCODE_* */

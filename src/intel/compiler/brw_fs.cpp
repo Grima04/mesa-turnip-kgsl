@@ -4647,7 +4647,6 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       load->dst = payload;
 
       uint32_t msg_ctl = brw_fb_write_msg_control(inst, prog_data);
-      uint32_t ex_desc = 0;
 
       inst->desc =
          (inst->group / 16) << 11 | /* rt slot group */
@@ -4655,6 +4654,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
                            GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE,
                            inst->last_rt, false);
 
+      uint32_t ex_desc = 0;
       if (devinfo->gen >= 11) {
          /* Set the "Render Target Index" and "Src0 Alpha Present" fields
           * in the extended message descriptor, in lieu of using a header.
@@ -4664,12 +4664,13 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
          if (key->nr_color_regions == 0)
             ex_desc |= 1 << 20; /* Null Render Target */
       }
+      inst->ex_desc = ex_desc;
 
       inst->opcode = SHADER_OPCODE_SEND;
       inst->resize_sources(3);
       inst->sfid = GEN6_SFID_DATAPORT_RENDER_CACHE;
-      inst->src[0] = brw_imm_ud(inst->desc);
-      inst->src[1] = brw_imm_ud(ex_desc);
+      inst->src[0] = brw_imm_ud(0);
+      inst->src[1] = brw_imm_ud(0);
       inst->src[2] = payload;
       inst->mlen = regs_written(load);
       inst->ex_mlen = 0;
