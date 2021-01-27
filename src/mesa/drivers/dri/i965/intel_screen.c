@@ -2492,6 +2492,16 @@ set_max_gl_versions(struct intel_screen *screen)
    default:
       unreachable("unrecognized intel_screen::gen");
    }
+
+   /* OpenGL 3.3+ requires GL_ARB_blend_func_extended.  Don't advertise those
+    * versions if driconf disables the extension.
+    */
+   if (driQueryOptionb(&screen->optionCache, "disable_blend_func_extended")) {
+      dri_screen->max_gl_core_version =
+         MIN2(32, dri_screen->max_gl_core_version);
+      dri_screen->max_gl_compat_version =
+         MIN2(32, dri_screen->max_gl_compat_version);
+   }
 }
 
 static void
