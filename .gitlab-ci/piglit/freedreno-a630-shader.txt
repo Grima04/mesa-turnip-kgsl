@@ -931,9 +931,7 @@ spec/glsl-1.10/execution/fs-dfdy-accuracy: warn
 spec/glsl-1.10/execution/vsfs-unused-array-member: crash
 spec/glsl-1.10/preprocessor/extension-defined-test: skip
 spec/glsl-1.10/preprocessor/extension-if-1: skip
-spec/glsl-1.20/execution/clipping/fixed-clip-enables: fail
 spec/glsl-1.30/execution/clipping/vs-clip-distance-deadcode: crash
-spec/glsl-1.30/execution/clipping/vs-clip-distance-enables: fail
 spec/glsl-1.30/execution/fs-large-local-array-vec2: crash
 spec/glsl-1.30/execution/fs-large-local-array-vec3: crash
 spec/glsl-1.30/execution/fs-large-local-array-vec4: crash
@@ -1127,7 +1125,7 @@ summary:
        name:  results
        ----  --------
        pass:     8878
-       fail:       31
+       fail:       29
       crash:       95
        skip:      997
     timeout:        0
@@ -1138,4 +1136,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    10003
+      total:    10001
