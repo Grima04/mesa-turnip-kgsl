@@ -1787,18 +1787,6 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
         /* TODO: support more with other encodings */
         assert(instr->sampler_index < 16);
 
-        /* TODO: support more ops */
-        switch (instr->op) {
-        case nir_texop_tex:
-        case nir_texop_txl:
-        case nir_texop_txb:
-        case nir_texop_txf:
-        case nir_texop_txf_ms:
-                break;
-        default:
-                unreachable("Unsupported texture op");
-        }
-
         struct bifrost_texture_operation desc = {
                 .sampler_index_or_mode = instr->sampler_index,
                 .index = instr->texture_index,
