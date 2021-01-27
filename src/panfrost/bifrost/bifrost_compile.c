@@ -809,10 +809,12 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                                 bi_imm_f32(b->shader->blend_constants[3]));
                 break;
 
-	case nir_intrinsic_load_sample_id: {
-                /* r61[16:23] contains the sampleID, mask it out */
+        case nir_intrinsic_load_sample_id: {
+                /* r61[16:23] contains the sampleID, mask it out. Upper bits
+                 * seem to read garbage (despite being architecturally defined
+                 * as zero), so use a 5-bit mask instead of 8-bits */
 
-                bi_rshift_and_i32_to(b, dst, bi_register(61), bi_imm_u32(0xff),
+                bi_rshift_and_i32_to(b, dst, bi_register(61), bi_imm_u32(0x1f),
                                 bi_imm_u8(16));
                 break;
         }
