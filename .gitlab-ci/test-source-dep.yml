@@ -76,6 +76,7 @@
       when: on_success
     - changes: &llvmpipe_file_list
       - src/gallium/drivers/llvmpipe/**/*
+      - src/gallium/frontends/lavapipe/**/*
       - src/gallium/winsys/sw/**/*
       when: on_success
     - when: never
