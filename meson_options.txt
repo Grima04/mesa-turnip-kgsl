@@ -349,6 +349,12 @@ option(
   description : 'Build unit tests. Currently this will build *all* unit tests except the ACO tests, which may build more than expected.'
 )
 option(
+  'enable-glcpp-tests',
+  type : 'boolean',
+  value : true,
+  description : 'Build glcpp unit tests. These are flaky on CI.'
+)
+option(
   'build-aco-tests',
   type : 'boolean',
   value : false,
