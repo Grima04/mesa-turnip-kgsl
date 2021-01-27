@@ -592,8 +592,10 @@ print_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_dest_override override
                 if (a) {
                         char c = alphabet[i / skip];
 
-                        if (uppercase)
+                        if (uppercase) {
                                 c = toupper(c);
+                                assert(c == 'X' || c == 'Y');
+                        }
 
                         fprintf(fp, "%c", c);
                 }
