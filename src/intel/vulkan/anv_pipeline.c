@@ -113,7 +113,7 @@ static void anv_spirv_nir_debug(void *private_data,
 
    snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s", (unsigned long) spirv_offset, message);
 
-   vk_debug_report(&instance->debug_report_callbacks,
+   vk_debug_report(&instance->vk.debug_report,
                    vk_flags[level],
                    VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
                    (uint64_t) (uintptr_t) debug_data->module,
@@ -1404,7 +1404,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
           */
          assert(found < __builtin_popcount(pipeline->active_stages));
 
-         vk_debug_report(&pipeline->base.device->physical->instance->debug_report_callbacks,
+         vk_debug_report(&pipeline->base.device->physical->instance->vk.debug_report,
                          VK_DEBUG_REPORT_WARNING_BIT_EXT |
                          VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
                          VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT,

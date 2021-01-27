@@ -64,7 +64,7 @@ __anv_perf_warn(struct anv_device *device, const void *object,
 
    snprintf(report, sizeof(report), "%s: %s", file, buffer);
 
-   vk_debug_report(&device->physical->instance->debug_report_callbacks,
+   vk_debug_report(&device->physical->instance->vk.debug_report,
                    VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
                    type,
                    (uint64_t) (uintptr_t) object,
@@ -96,7 +96,7 @@ __vk_errorv(struct anv_instance *instance, const void *object,
    }
 
    if (instance) {
-      vk_debug_report(&instance->debug_report_callbacks,
+      vk_debug_report(&instance->vk.debug_report,
                       VK_DEBUG_REPORT_ERROR_BIT_EXT,
                       type,
                       (uint64_t) (uintptr_t) object,

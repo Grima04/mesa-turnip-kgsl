@@ -1181,8 +1181,6 @@ struct anv_instance {
 
     bool                                        pipeline_cache_enabled;
 
-    struct vk_debug_report_instance             debug_report_callbacks;
-
     struct driOptionCache                       dri_options;
     struct driOptionCache                       available_dri_options;
 };

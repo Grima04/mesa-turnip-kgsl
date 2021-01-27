@@ -83,7 +83,7 @@ compiler_debug_log(void *data, const char *fmt, ...)
    struct anv_device *device = (struct anv_device *)data;
    struct anv_instance *instance = device->physical->instance;
 
-   if (list_is_empty(&instance->debug_report_callbacks.callbacks))
+   if (list_is_empty(&instance->vk.debug_report.callbacks))
       return;
 
    va_list args;
@@ -91,7 +91,7 @@ compiler_debug_log(void *data, const char *fmt, ...)
    (void) vsnprintf(str, MAX_DEBUG_MESSAGE_LENGTH, fmt, args);
    va_end(args);
 
-   vk_debug_report(&instance->debug_report_callbacks,
+   vk_debug_report(&instance->vk.debug_report,
                    VK_DEBUG_REPORT_DEBUG_BIT_EXT,
                    VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT,
                    0, 0, 0, "anv", str);
@@ -738,13 +738,6 @@ VkResult anv_CreateInstance(
    instance->physical_devices_enumerated = false;
    list_inithead(&instance->physical_devices);
 
-   result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
-   if (result != VK_SUCCESS) {
-      vk_instance_finish(&instance->vk);
-      vk_free(pAllocator, instance);
-      return vk_error(result);
-   }
-
    instance->pipeline_cache_enabled =
       env_var_as_boolean("ANV_ENABLE_PIPELINE_CACHE", true);
 
@@ -773,8 +766,6 @@ void anv_DestroyInstance(
       anv_physical_device_destroy(pdevice);
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
-
-   vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
 
    glsl_type_singleton_decref();
 
@@ -2371,44 +2362,6 @@ PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(
 {
    ANV_FROM_HANDLE(anv_instance, instance, _instance);
    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
-}
-
-
-VkResult
-anv_CreateDebugReportCallbackEXT(VkInstance _instance,
-                                 const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                 const VkAllocationCallbacks* pAllocator,
-                                 VkDebugReportCallbackEXT* pCallback)
-{
-   ANV_FROM_HANDLE(anv_instance, instance, _instance);
-   return vk_create_debug_report_callback(&instance->debug_report_callbacks,
-                                          pCreateInfo, pAllocator, &instance->vk.alloc,
-                                          pCallback);
-}
-
-void
-anv_DestroyDebugReportCallbackEXT(VkInstance _instance,
-                                  VkDebugReportCallbackEXT _callback,
-                                  const VkAllocationCallbacks* pAllocator)
-{
-   ANV_FROM_HANDLE(anv_instance, instance, _instance);
-   vk_destroy_debug_report_callback(&instance->debug_report_callbacks,
-                                    _callback, pAllocator, &instance->vk.alloc);
-}
-
-void
-anv_DebugReportMessageEXT(VkInstance _instance,
-                          VkDebugReportFlagsEXT flags,
-                          VkDebugReportObjectTypeEXT objectType,
-                          uint64_t object,
-                          size_t location,
-                          int32_t messageCode,
-                          const char* pLayerPrefix,
-                          const char* pMessage)
-{
-   ANV_FROM_HANDLE(anv_instance, instance, _instance);
-   vk_debug_report(&instance->debug_report_callbacks, flags, objectType,
-                   object, location, messageCode, pLayerPrefix, pMessage);
 }
 
 static struct anv_state
