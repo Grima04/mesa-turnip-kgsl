@@ -1220,16 +1220,17 @@ iris_update_compiled_vs(struct iris_context *ice)
                                 IRIS_STAGE_DIRTY_CONSTANTS_VS;
       shs->sysvals_need_upload = true;
 
-      const struct brw_vs_prog_data *vs_prog_data =
-         (void *) shader->prog_data;
-      const struct brw_vue_prog_data *vue_prog_data = &vs_prog_data->base;
-      const bool uses_draw_params = vs_prog_data->uses_firstvertex ||
-                                    vs_prog_data->uses_baseinstance;
-      const bool uses_derived_draw_params = vs_prog_data->uses_drawid ||
-                                            vs_prog_data->uses_is_indexed_draw;
+      const struct shader_info *info = &ish->nir->info;
+      const bool uses_draw_params =
+         BITSET_TEST(info->system_values_read, SYSTEM_VALUE_FIRST_VERTEX) ||
+         BITSET_TEST(info->system_values_read, SYSTEM_VALUE_BASE_INSTANCE);
+      const bool uses_derived_draw_params =
+         BITSET_TEST(info->system_values_read, SYSTEM_VALUE_DRAW_ID) ||
+         BITSET_TEST(info->system_values_read, SYSTEM_VALUE_IS_INDEXED_DRAW);
       const bool needs_sgvs_element = uses_draw_params ||
-                                      vs_prog_data->uses_instanceid ||
-                                      vs_prog_data->uses_vertexid;
+         BITSET_TEST(info->system_values_read, SYSTEM_VALUE_INSTANCE_ID) ||
+         BITSET_TEST(info->system_values_read,
+                     SYSTEM_VALUE_VERTEX_ID_ZERO_BASE);
 
       if (ice->state.vs_uses_draw_params != uses_draw_params ||
           ice->state.vs_uses_derived_draw_params != uses_derived_draw_params ||
@@ -1242,6 +1243,8 @@ iris_update_compiled_vs(struct iris_context *ice)
       ice->state.vs_needs_sgvs_element = needs_sgvs_element;
       ice->state.vs_needs_edge_flag = ish->needs_edge_flag;
 
+      const struct brw_vue_prog_data *vue_prog_data =
+         (void *) shader->prog_data;
       check_urb_size(ice, vue_prog_data->urb_entry_size, MESA_SHADER_VERTEX);
    }
 }
