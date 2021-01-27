@@ -48,6 +48,7 @@ meson _build --native-file=native.file \
       -D libdir=lib \
       -D buildtype=${BUILDTYPE:-debug} \
       -D build-tests=true \
+      -D enable-glcpp-tests=false \
       -D libunwind=${UNWIND} \
       ${DRI_LOADERS} \
       -D dri-drivers=${DRI_DRIVERS:-[]} \
