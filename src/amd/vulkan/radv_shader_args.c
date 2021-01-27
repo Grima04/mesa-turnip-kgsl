@@ -108,11 +108,13 @@ static bool needs_view_index_sgpr(struct radv_shader_args *args,
 static uint8_t
 count_vs_user_sgprs(struct radv_shader_args *args)
 {
-	uint8_t count = 2;
+	uint8_t count = 1; /* vertex offset */
 
 	if (args->shader_info->vs.has_vertex_buffers)
 		count++;
 	if (args->shader_info->vs.needs_draw_id)
+		count++;
+	if (args->shader_info->vs.needs_base_instance)
 		count++;
 
 	return count;
@@ -286,7 +288,9 @@ declare_vs_specific_input_sgprs(struct radv_shader_args *args,
 		if (args->shader_info->vs.needs_draw_id) {
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
 		}
-		ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
+		if (args->shader_info->vs.needs_base_instance) {
+			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
+		}
 	}
 }
 
