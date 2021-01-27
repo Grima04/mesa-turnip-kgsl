@@ -560,10 +560,14 @@ si_init_thread_trace(struct si_context *sctx)
    sctx->thread_trace->buffer_size = debug_get_num_option("AMD_THREAD_TRACE_BUFFER_SIZE", 1024) * 1024;
    sctx->thread_trace->start_frame = 10;
 
-   const char *trigger_file = getenv("AMD_THREAD_TRACE_TRIGGER");
-   if (trigger_file) {
-      sctx->thread_trace->trigger_file = strdup(trigger_file);
-      sctx->thread_trace->start_frame = -1;
+   const char *trigger = getenv("AMD_THREAD_TRACE_TRIGGER");
+   if (trigger) {
+      sctx->thread_trace->start_frame = atoi(trigger);
+      if (sctx->thread_trace->start_frame <= 0) {
+         /* This isn't a frame number, must be a file */
+         sctx->thread_trace->trigger_file = strdup(trigger);
+         sctx->thread_trace->start_frame = -1;
+      }
    }
 
    if (!si_thread_trace_init_bo(sctx))
