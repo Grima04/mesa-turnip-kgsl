@@ -37,6 +37,8 @@
 #include <vk_enum_to_str.h>
 
 #include "vk_device.h"
+#include "vk_instance.h"
+#include "vk_physical_device.h"
 
 #include <xf86drm.h>
 
@@ -125,7 +127,7 @@ struct v3dv_instance;
 struct v3d_simulator_file;
 
 struct v3dv_physical_device {
-   struct vk_object_base base;
+   struct vk_physical_device vk;
 
    struct v3dv_instance *instance;
 
@@ -184,9 +186,7 @@ struct v3dv_app_info {
 };
 
 struct v3dv_instance {
-   struct vk_object_base base;
-
-   VkAllocationCallbacks alloc;
+   struct vk_instance vk;
 
    struct v3dv_app_info app_info;
 

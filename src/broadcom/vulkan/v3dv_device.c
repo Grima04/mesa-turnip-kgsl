@@ -138,17 +138,21 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       enabled_extensions.extensions[idx] = true;
    }
 
+   if (pAllocator == NULL)
+      pAllocator = &default_alloc;
+
    instance = vk_alloc2(&default_alloc, pAllocator, sizeof(*instance), 8,
                         VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(NULL, &instance->base, VK_OBJECT_TYPE_INSTANCE);
+   result = vk_instance_init(&instance->vk, NULL, NULL,
+                             pCreateInfo, pAllocator);
 
-   if (pAllocator)
-      instance->alloc = *pAllocator;
-   else
-      instance->alloc = default_alloc;
+   if (result != VK_SUCCESS) {
+      vk_free(pAllocator, instance);
+      return vk_error(instance, result);
+   }
 
    v3d_process_debug_variable();
 
@@ -157,12 +161,12 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       const VkApplicationInfo *app = pCreateInfo->pApplicationInfo;
 
       instance->app_info.app_name =
-         vk_strdup(&instance->alloc, app->pApplicationName,
+         vk_strdup(&instance->vk.alloc, app->pApplicationName,
                    VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
       instance->app_info.app_version = app->applicationVersion;
 
       instance->app_info.engine_name =
-         vk_strdup(&instance->alloc, app->pEngineName,
+         vk_strdup(&instance->vk.alloc, app->pEngineName,
                    VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
       instance->app_info.engine_version = app->engineVersion;
 
@@ -222,7 +226,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
    if (result != VK_SUCCESS) {
-      vk_object_base_finish(&instance->base);
+      vk_instance_finish(&instance->vk);
       vk_free2(&default_alloc, pAllocator, instance);
       return vk_error(NULL, result);
    }
@@ -284,7 +288,7 @@ physical_device_finish(struct v3dv_physical_device *device)
    v3d_simulator_destroy(device->sim_file);
 #endif
 
-   vk_object_base_finish(&device->base);
+   vk_physical_device_finish(&device->vk);
    mtx_destroy(&device->mutex);
 }
 
@@ -303,8 +307,8 @@ v3dv_DestroyInstance(VkInstance _instance,
       physical_device_finish(&instance->physicalDevice);
    }
 
-   vk_free(&instance->alloc, (char *)instance->app_info.app_name);
-   vk_free(&instance->alloc, (char *)instance->app_info.engine_name);
+   vk_free(&instance->vk.alloc, (char *)instance->app_info.app_name);
+   vk_free(&instance->vk.alloc, (char *)instance->app_info.engine_name);
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
@@ -312,8 +316,8 @@ v3dv_DestroyInstance(VkInstance _instance,
 
    glsl_type_singleton_decref();
 
-   vk_object_base_finish(&instance->base);
-   vk_free(&instance->alloc, instance);
+   vk_instance_finish(&instance->vk);
+   vk_free(&instance->vk.alloc, instance);
 }
 
 static uint64_t
@@ -694,14 +698,19 @@ physical_device_init(struct v3dv_physical_device *device,
    VkResult result = VK_SUCCESS;
    int32_t master_fd = -1;
 
-   vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
+   result = vk_physical_device_init(&device->vk, &instance->vk, NULL, NULL);
+
+   if (result != VK_SUCCESS)
+      goto fail;
    device->instance = instance;
 
    assert(drm_render_device);
    const char *path = drm_render_device->nodes[DRM_NODE_RENDER];
    int32_t render_fd = open(path, O_RDWR | O_CLOEXEC);
-   if (render_fd < 0)
-      return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+   if (render_fd < 0) {
+      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      goto fail;
+   }
 
    /* If we are running on VK_KHR_display we need to acquire the master
     * display device now for the v3dv_wsi_init() call below. For anything else
@@ -786,6 +795,8 @@ physical_device_init(struct v3dv_physical_device *device,
    return VK_SUCCESS;
 
 fail:
+   vk_physical_device_finish(&device->vk);
+
    if (render_fd >= 0)
       close(render_fd);
    if (master_fd >= 0)
@@ -1573,14 +1584,14 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
          return vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
    }
 
-   device = vk_zalloc2(&physical_device->instance->alloc, pAllocator,
+   device = vk_zalloc2(&physical_device->instance->vk.alloc, pAllocator,
                        sizeof(*device), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = vk_device_init(&device->vk, NULL, NULL, pCreateInfo,
-                           &physical_device->instance->alloc, pAllocator);
+                           &physical_device->instance->vk.alloc, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
       return vk_error(instance, result);
@@ -1592,7 +1603,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    if (pAllocator)
       device->vk.alloc = *pAllocator;
    else
-      device->vk.alloc = physical_device->instance->alloc;
+      device->vk.alloc = physical_device->instance->vk.alloc;
 
    pthread_mutex_init(&device->mutex, NULL);
 
@@ -1684,7 +1695,7 @@ v3dv_CreateDebugReportCallbackEXT(VkInstance _instance,
 {
    V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
    return vk_create_debug_report_callback(&instance->debug_report_callbacks,
-                                          pCreateInfo, pAllocator, &instance->alloc,
+                                          pCreateInfo, pAllocator, &instance->vk.alloc,
                                           pCallback);
 }
 
@@ -1695,7 +1706,7 @@ v3dv_DestroyDebugReportCallbackEXT(VkInstance _instance,
 {
    V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
    vk_destroy_debug_report_callback(&instance->debug_report_callbacks,
-                                    _callback, pAllocator, &instance->alloc);
+                                    _callback, pAllocator, &instance->vk.alloc);
 }
 
 static VkResult
