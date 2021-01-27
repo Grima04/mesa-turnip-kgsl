@@ -19,14 +19,13 @@
 # SOFTWARE.
 
 v3dv_entrypoints = custom_target(
-  'v3dv_entrypoints.[ch]',
-  input : ['v3dv_entrypoints_gen.py', vk_api_xml],
+  'v3dv_entrypoints',
+  input : [vk_entrypoints_gen, vk_api_xml],
   output : ['v3dv_entrypoints.h', 'v3dv_entrypoints.c'],
   command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--outdir',
-    meson.current_build_dir()
+    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
+    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'v3dv',
   ],
-  depend_files : files('v3dv_extensions.py'),
 )
 
 v3dv_extensions_c = custom_target(

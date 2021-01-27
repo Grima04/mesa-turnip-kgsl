@@ -32,8 +32,18 @@
 static PFN_vkVoidFunction
 v3dv_wsi_proc_addr(VkPhysicalDevice physicalDevice, const char *pName)
 {
-   V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
-   return v3dv_lookup_entrypoint(&physical_device->devinfo, pName);
+   V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physicalDevice);
+   PFN_vkVoidFunction func;
+
+   func = vk_instance_dispatch_table_get(&pdevice->vk.instance->dispatch_table, pName);
+   if (func != NULL)
+      return func;
+
+   func = vk_physical_device_dispatch_table_get(&pdevice->vk.dispatch_table, pName);
+   if (func != NULL)
+      return func;
+
+   return vk_device_dispatch_table_get(&vk_device_trampolines, pName);
 }
 
 VkResult
