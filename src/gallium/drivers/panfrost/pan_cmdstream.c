@@ -908,7 +908,11 @@ static void
 panfrost_upload_sample_positions_sysval(struct panfrost_batch *batch,
                                 struct sysval_uniform *uniform)
 {
-        uniform->du[0] = panfrost_emit_sample_locations(batch);
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+
+        unsigned samples = util_framebuffer_get_num_samples(&batch->key);
+        uniform->du[0] = panfrost_sample_positions(dev, panfrost_sample_pattern(samples));
 }
 
 static void
@@ -2119,62 +2123,4 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                 return;
 
         panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false, vertex, tiler_job, false);
-}
-
-/* TODO: stop hardcoding this */
-mali_ptr
-panfrost_emit_sample_locations(struct panfrost_batch *batch)
-{
-        uint16_t locations[] = {
-            128, 128,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            0, 256,
-            128, 128,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-        };
-
-        return panfrost_pool_upload_aligned(&batch->pool, locations, 96 * sizeof(uint16_t), 64);
 }

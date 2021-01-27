@@ -492,8 +492,11 @@ panfrost_mfbd_emit_midgard_tiler(struct panfrost_batch *batch, void *fb,
 static void
 panfrost_mfbd_emit_bifrost_parameters(struct panfrost_batch *batch, void *fb)
 {
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+
         pan_section_pack(fb, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, params) {
-                params.sample_locations = panfrost_emit_sample_locations(batch);
+                unsigned samples = util_framebuffer_get_num_samples(&batch->key);
+                params.sample_locations = panfrost_sample_positions(dev, panfrost_sample_pattern(samples));
         }
 }
 

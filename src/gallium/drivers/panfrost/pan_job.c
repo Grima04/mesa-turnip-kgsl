@@ -975,7 +975,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 
         bo_handles = calloc(panfrost_pool_num_bos(&batch->pool) +
                             panfrost_pool_num_bos(&batch->invisible_pool) +
-                            batch->bos->entries + 1,
+                            batch->bos->entries + 2,
                             sizeof(*bo_handles));
         assert(bo_handles);
 
@@ -993,6 +993,9 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
          */
         if (batch->scoreboard.first_tiler)
                 bo_handles[submit.bo_handle_count++] = dev->tiler_heap->gem_handle;
+
+        /* Always used on Bifrost, occassionally used on Midgard */
+        bo_handles[submit.bo_handle_count++] = dev->sample_positions->gem_handle;
 
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
         if (ctx->is_noop)
