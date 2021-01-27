@@ -44,7 +44,7 @@ v3dv_wsi_init(struct v3dv_physical_device *physical_device)
    result = wsi_device_init(&physical_device->wsi_device,
                             v3dv_physical_device_to_handle(physical_device),
                             v3dv_wsi_proc_addr,
-                            &physical_device->instance->vk.alloc,
+                            &physical_device->vk.instance->alloc,
                             physical_device->master_fd, NULL, false);
 
    if (result != VK_SUCCESS)
@@ -59,7 +59,7 @@ void
 v3dv_wsi_finish(struct v3dv_physical_device *physical_device)
 {
    wsi_device_finish(&physical_device->wsi_device,
-                     &physical_device->instance->vk.alloc);
+                     &physical_device->vk.instance->alloc);
 }
 
 void v3dv_DestroySurfaceKHR(

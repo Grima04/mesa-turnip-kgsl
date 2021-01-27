@@ -618,14 +618,14 @@ init_uuids(struct v3dv_physical_device *device)
    const struct build_id_note *note =
       build_id_find_nhdr_for_addr(init_uuids);
    if (!note) {
-      return vk_errorf(device->instance,
+      return vk_errorf((struct v3dv_instance*) device->vk.instance,
                        VK_ERROR_INITIALIZATION_FAILED,
                        "Failed to find build-id");
    }
 
    unsigned build_id_len = build_id_length(note);
    if (build_id_len < 20) {
-      return vk_errorf(device->instance,
+      return vk_errorf((struct v3dv_instance*) device->vk.instance,
                        VK_ERROR_INITIALIZATION_FAILED,
                        "build-id too short.  It needs to be a SHA");
    }
@@ -679,7 +679,6 @@ physical_device_init(struct v3dv_physical_device *device,
 
    if (result != VK_SUCCESS)
       goto fail;
-   device->instance = instance;
 
    assert(drm_render_device);
    const char *path = drm_render_device->nodes[DRM_NODE_RENDER];
@@ -1446,7 +1445,8 @@ v3dv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
       return VK_SUCCESS;
    }
 
-   return vk_error(physical_device->instance, VK_ERROR_LAYER_NOT_PRESENT);
+   return vk_error((struct v3dv_instance*) physical_device->vk.instance,
+                   VK_ERROR_LAYER_NOT_PRESENT);
 }
 
 static VkResult
@@ -1514,7 +1514,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
                   VkDevice *pDevice)
 {
    V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
-   struct v3dv_instance *instance = physical_device->instance;
+   struct v3dv_instance *instance = (struct v3dv_instance*) physical_device->vk.instance;
    VkResult result;
    struct v3dv_device *device;
 
@@ -1561,14 +1561,14 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
          return vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
    }
 
-   device = vk_zalloc2(&physical_device->instance->vk.alloc, pAllocator,
+   device = vk_zalloc2(&physical_device->vk.instance->alloc, pAllocator,
                        sizeof(*device), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = vk_device_init(&device->vk, NULL, NULL, pCreateInfo,
-                           &physical_device->instance->vk.alloc, pAllocator);
+                           &physical_device->vk.instance->alloc, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
       return vk_error(instance, result);
@@ -1580,7 +1580,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    if (pAllocator)
       device->vk.alloc = *pAllocator;
    else
-      device->vk.alloc = physical_device->instance->vk.alloc;
+      device->vk.alloc = physical_device->vk.instance->alloc;
 
    pthread_mutex_init(&device->mutex, NULL);
 

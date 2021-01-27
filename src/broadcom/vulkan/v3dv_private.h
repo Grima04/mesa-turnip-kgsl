@@ -129,8 +129,6 @@ struct v3d_simulator_file;
 struct v3dv_physical_device {
    struct vk_physical_device vk;
 
-   struct v3dv_instance *instance;
-
    struct v3dv_device_extension_table supported_extensions;
    struct v3dv_physical_device_dispatch_table dispatch;
 
