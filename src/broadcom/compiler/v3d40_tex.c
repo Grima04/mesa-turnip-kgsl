@@ -39,7 +39,8 @@ vir_TMU_WRITE(struct v3d_compile *c, enum v3d_qpu_waddr waddr, struct qreg val,
          */
         vir_MOV_dest(c, vir_reg(QFILE_MAGIC, waddr), val);
 
-        (*tmu_writes)++;
+        if (tmu_writes)
+                (*tmu_writes)++;
 }
 
 static void
@@ -58,124 +59,184 @@ static const struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked_default = {
         .op = V3D_TMU_OP_REGULAR,
 };
 
+/**
+ * If 'tmu_writes' is not NULL, then it just counts required register writes,
+ * otherwise, it emits the actual register writes.
+ *
+ * It is important to notice that emitting register writes for the current
+ * TMU operation may trigger a TMU flush, since it is possible that any
+ * of the inputs required for the register writes is the result of a pending
+ * TMU operation. If that happens we need to make sure that it doesn't happen
+ * in the middle of the TMU register writes for the current TMU operation,
+ * which is why we always call ntq_get_src() even if we are only interested in
+ * register write counts.
+ */
+static void
+handle_tex_src(struct v3d_compile *c,
+               nir_tex_instr *instr,
+               unsigned src_idx,
+               unsigned non_array_components,
+               struct V3D41_TMU_CONFIG_PARAMETER_2 *p2_unpacked,
+               struct qreg *s_out,
+               unsigned *tmu_writes)
+{
+        /* Either we are calling this just to count required TMU writes, or we
+         * are calling this to emit the actual TMU writes.
+         */
+        assert(tmu_writes || (s_out && p2_unpacked));
+
+        struct qreg s;
+        switch (instr->src[src_idx].src_type) {
+        case nir_tex_src_coord:
+                /* S triggers the lookup, so save it for the end. */
+                s = ntq_get_src(c, instr->src[src_idx].src, 0);
+                if (tmu_writes)
+                        (*tmu_writes)++;
+                else
+                        *s_out = s;
+
+                if (non_array_components > 1) {
+                        struct qreg src =
+                                ntq_get_src(c, instr->src[src_idx].src, 1);
+                        if (tmu_writes)
+                                (*tmu_writes)++;
+                        else
+                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUT, src, NULL);
+                }
+
+                if (non_array_components > 2) {
+                        struct qreg src =
+                                ntq_get_src(c, instr->src[src_idx].src, 2);
+                        if (tmu_writes)
+                                (*tmu_writes)++;
+                        else
+                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUR, src, NULL);
+                }
+
+                if (instr->is_array) {
+                        struct qreg src =
+                                ntq_get_src(c, instr->src[src_idx].src,
+                                            instr->coord_components - 1);
+                        if (tmu_writes)
+                                (*tmu_writes)++;
+                        else
+                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUI, src, NULL);
+                }
+                break;
+
+        case nir_tex_src_bias: {
+                struct qreg src = ntq_get_src(c, instr->src[src_idx].src, 0);
+                if (tmu_writes)
+                        (*tmu_writes)++;
+                else
+                        vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUB, src, NULL);
+                break;
+        }
+
+        case nir_tex_src_lod: {
+                struct qreg src = ntq_get_src(c, instr->src[src_idx].src, 0);
+                if (tmu_writes) {
+                        (*tmu_writes)++;
+                } else {
+                         vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUB, src, NULL);
+
+                         /* With texel fetch automatic LOD is already disabled,
+                          * and disable_autolod must not be enabled. For
+                          * non-cubes we can use the register TMUSLOD, that
+                          * implicitly sets disable_autolod.
+                          */
+                          if (instr->op != nir_texop_txf &&
+                              instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+                                  p2_unpacked->disable_autolod = true;
+                          }
+               }
+               break;
+        }
+
+        case nir_tex_src_comparator: {
+                struct qreg src = ntq_get_src(c, instr->src[src_idx].src, 0);
+                if (tmu_writes)
+                        (*tmu_writes)++;
+                else
+                        vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUDREF, src , NULL);
+                break;
+        }
+
+        case nir_tex_src_offset: {
+                bool is_const_offset = nir_src_is_const(instr->src[src_idx].src);
+                if (is_const_offset) {
+                        if (!tmu_writes) {
+                                p2_unpacked->offset_s =
+                                        nir_src_comp_as_int(instr->src[src_idx].src, 0);
+                                if (non_array_components >= 2)
+                                        p2_unpacked->offset_t =
+                                                nir_src_comp_as_int(instr->src[src_idx].src, 1);
+                                if (non_array_components >= 3)
+                                        p2_unpacked->offset_r =
+                                                nir_src_comp_as_int(instr->src[src_idx].src, 2);
+                        }
+                } else {
+                        struct qreg src_0 =
+                                ntq_get_src(c, instr->src[src_idx].src, 0);
+                        struct qreg src_1 =
+                                ntq_get_src(c, instr->src[src_idx].src, 1);
+                        if (!tmu_writes) {
+                                struct qreg mask = vir_uniform_ui(c, 0xf);
+                                struct qreg x, y, offset;
+
+                                x = vir_AND(c, src_0, mask);
+                                y = vir_AND(c, src_1, mask);
+                                offset = vir_OR(c, x,
+                                                vir_SHL(c, y, vir_uniform_ui(c, 4)));
+
+                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUOFF, offset, NULL);
+                        } else {
+                                (*tmu_writes)++;
+                        }
+                }
+                break;
+        }
+
+        default:
+                unreachable("unknown texture source");
+        }
+}
+
+static void
+vir_tex_handle_srcs(struct v3d_compile *c,
+                    nir_tex_instr *instr,
+                    struct V3D41_TMU_CONFIG_PARAMETER_2 *p2_unpacked,
+                    struct qreg *s,
+                    unsigned *tmu_writes)
+{
+        unsigned non_array_components = instr->op != nir_texop_lod ?
+                instr->coord_components - instr->is_array :
+                instr->coord_components;
+
+        for (unsigned i = 0; i < instr->num_srcs; i++) {
+                handle_tex_src(c, instr, i, non_array_components,
+                               p2_unpacked, s, tmu_writes);
+        }
+}
+
+static unsigned
+get_required_tmu_writes(struct v3d_compile *c, nir_tex_instr *instr)
+{
+        unsigned tmu_writes = 0;
+        vir_tex_handle_srcs(c, instr, NULL, NULL, &tmu_writes);
+        return tmu_writes;
+}
+
 void
 v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 {
-        /* FIXME: allow tex pipelining */
-        ntq_flush_tmu(c);
+        assert(instr->op != nir_texop_lod || c->devinfo->ver >= 42);
 
         unsigned texture_idx = instr->texture_index;
         unsigned sampler_idx = instr->sampler_index;
 
-        int tmu_writes = 0;
-
         struct V3D41_TMU_CONFIG_PARAMETER_0 p0_unpacked = {
         };
-
-        assert(instr->op != nir_texop_lod || c->devinfo->ver >= 42);
-
-        struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked = {
-                .op = V3D_TMU_OP_REGULAR,
-
-                .gather_mode = instr->op == nir_texop_tg4,
-                .gather_component = instr->component,
-
-                .coefficient_mode = instr->op == nir_texop_txd,
-
-                .disable_autolod = instr->op == nir_texop_tg4
-        };
-
-        int non_array_components =
-           instr->op != nir_texop_lod ?
-           instr->coord_components - instr->is_array :
-           instr->coord_components;
-
-        struct qreg s;
-
-        for (unsigned i = 0; i < instr->num_srcs; i++) {
-                switch (instr->src[i].src_type) {
-                case nir_tex_src_coord:
-                        /* S triggers the lookup, so save it for the end. */
-                        s = ntq_get_src(c, instr->src[i].src, 0);
-
-                        if (non_array_components > 1) {
-                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUT,
-                                              ntq_get_src(c, instr->src[i].src,
-                                                          1), &tmu_writes);
-                        }
-                        if (non_array_components > 2) {
-                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUR,
-                                              ntq_get_src(c, instr->src[i].src,
-                                                          2), &tmu_writes);
-                        }
-
-                        if (instr->is_array) {
-                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUI,
-                                              ntq_get_src(c, instr->src[i].src,
-                                                          instr->coord_components - 1),
-                                              &tmu_writes);
-                        }
-                        break;
-
-                case nir_tex_src_bias:
-                        vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUB,
-                                      ntq_get_src(c, instr->src[i].src, 0),
-                                      &tmu_writes);
-                        break;
-
-                case nir_tex_src_lod:
-                        vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUB,
-                                      ntq_get_src(c, instr->src[i].src, 0),
-                                      &tmu_writes);
-
-                        /* With texel fetch automatic LOD is already disabled,
-                         * and disable_autolod must not be enabled. For
-                         * non-cubes we can use the register TMUSLOD, that
-                         * implicitly sets disable_autolod.
-                         */
-                        if (instr->op != nir_texop_txf &&
-                            instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
-                                p2_unpacked.disable_autolod = true;
-                        }
-                        break;
-
-                case nir_tex_src_comparator:
-                        vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUDREF,
-                                      ntq_get_src(c, instr->src[i].src, 0),
-                                      &tmu_writes);
-                        break;
-
-                case nir_tex_src_offset: {
-                        if (nir_src_is_const(instr->src[i].src)) {
-                                p2_unpacked.offset_s = nir_src_comp_as_int(instr->src[i].src, 0);
-                                if (non_array_components >= 2)
-                                        p2_unpacked.offset_t =
-                                                nir_src_comp_as_int(instr->src[i].src, 1);
-                                if (non_array_components >= 3)
-                                        p2_unpacked.offset_r =
-                                                nir_src_comp_as_int(instr->src[i].src, 2);
-                        } else {
-                                struct qreg mask = vir_uniform_ui(c, 0xf);
-                                struct qreg x, y, offset;
-
-                                x = vir_AND(c, ntq_get_src(c, instr->src[i].src,
-                                                           0), mask);
-                                y = vir_AND(c, ntq_get_src(c, instr->src[i].src,
-                                                           1), mask);
-                                offset = vir_OR(c, x,
-                                                vir_SHL(c, y,
-                                                        vir_uniform_ui(c, 4)));
-
-                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUOFF,
-                                              offset, &tmu_writes);
-                        }
-                        break;
-                }
-
-                default:
-                        unreachable("unknown texture source");
-                }
-        }
 
         /* Limit the number of channels returned to both how many the NIR
          * instruction writes and how many the instruction could produce.
@@ -184,8 +245,35 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 instr->dest.is_ssa ?
                 nir_ssa_def_components_read(&instr->dest.ssa) :
                 (1 << instr->dest.reg.reg->num_components) - 1;
-
         assert(p0_unpacked.return_words_of_texture_data != 0);
+
+        struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked = {
+                .op = V3D_TMU_OP_REGULAR,
+                .gather_mode = instr->op == nir_texop_tg4,
+                .gather_component = instr->component,
+                .coefficient_mode = instr->op == nir_texop_txd,
+                .disable_autolod = instr->op == nir_texop_tg4
+        };
+
+        const unsigned tmu_writes = get_required_tmu_writes(c, instr);
+
+        /* The input FIFO has 16 slots across all threads so if we require
+         * more than that we need to lower thread count.
+         */
+        while (tmu_writes > 16 / c->threads)
+                c->threads /= 2;
+
+       /* If pipelining this TMU operation would overflow TMU fifos, we need
+        * to flush any outstanding TMU operations.
+        */
+        const unsigned dest_components =
+           util_bitcount(p0_unpacked.return_words_of_texture_data);
+        if (ntq_tmu_fifo_overflow(c, dest_components, tmu_writes))
+                ntq_flush_tmu(c);
+
+        /* Process tex sources emitting corresponding TMU writes */
+        struct qreg s = { };
+        vir_tex_handle_srcs(c, instr, &p2_unpacked, &s, NULL);
 
         uint32_t p0_packed;
         V3D41_TMU_CONFIG_PARAMETER_0_pack(NULL,
@@ -216,15 +304,15 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
          * itself, we still need to add the sampler configuration
          * parameter if the output is 32 bit
          */
-        bool output_type_32_bit = (c->key->sampler[sampler_idx].return_size == 32 &&
-                                   !instr->is_shadow);
+        bool output_type_32_bit =
+                c->key->sampler[sampler_idx].return_size == 32 &&
+                !instr->is_shadow;
 
-        /*
-         * p1 is optional, but we can skip it only if p2 can be skipped too
-         */
+        /* p1 is optional, but we can skip it only if p2 can be skipped too */
         bool needs_p2_config =
                 (instr->op == nir_texop_lod ||
-                 memcmp(&p2_unpacked, &p2_unpacked_default, sizeof(p2_unpacked)) != 0);
+                 memcmp(&p2_unpacked, &p2_unpacked_default,
+                        sizeof(p2_unpacked)) != 0);
 
         /* To handle the cases were we can't just use p1_unpacked_default */
         bool non_default_p1_config = nir_tex_instr_need_sampler(instr) ||
@@ -285,29 +373,21 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         if (needs_p2_config)
                 vir_WRTMUC(c, QUNIFORM_CONSTANT, p2_packed);
 
+        /* Emit retiring TMU write */
         if (instr->op == nir_texop_txf) {
                 assert(instr->sampler_dim != GLSL_SAMPLER_DIM_CUBE);
-                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSF, s, &tmu_writes);
+                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSF, s, NULL);
         } else if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
-                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSCM, s, &tmu_writes);
+                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSCM, s, NULL);
         } else if (instr->op == nir_texop_txl) {
-                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSLOD, s, &tmu_writes);
+                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSLOD, s, NULL);
         } else {
-                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUS, s, &tmu_writes);
+                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUS, s, NULL);
         }
 
-        vir_emit_thrsw(c);
-
-        /* The input FIFO has 16 slots across all threads, so make sure we
-         * don't overfill our allocation.
-         */
-        while (tmu_writes > 16 / c->threads)
-                c->threads /= 2;
-
-        for (int i = 0; i < 4; i++) {
-                if (p0_unpacked.return_words_of_texture_data & (1 << i))
-                        ntq_store_dest(c, &instr->dest, i, vir_LDTMU(c));
-        }
+        ntq_add_pending_tmu_flush(c, &instr->dest,
+                                  p0_unpacked.return_words_of_texture_data,
+                                  tmu_writes);
 }
 
 static uint32_t

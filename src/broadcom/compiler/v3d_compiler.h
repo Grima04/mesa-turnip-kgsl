@@ -579,7 +579,8 @@ struct v3d_compile {
 
                 struct {
                         nir_dest *dest;
-                        uint32_t num_components;
+                        uint8_t num_components;
+                        uint8_t component_mask;
                 } flush[8]; /* 16 entries / 2 threads for input/output fifos */
                 uint32_t flush_count;
         } tmu;
@@ -936,6 +937,9 @@ uint8_t vir_channels_written(struct qinst *inst);
 struct qreg ntq_get_src(struct v3d_compile *c, nir_src src, int i);
 void ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                     struct qreg result);
+bool ntq_tmu_fifo_overflow(struct v3d_compile *c, uint32_t components, uint32_t writes);
+void ntq_add_pending_tmu_flush(struct v3d_compile *c, nir_dest *dest,
+                               uint32_t component_mask, uint32_t tmu_writes);
 void ntq_flush_tmu(struct v3d_compile *c);
 void vir_emit_thrsw(struct v3d_compile *c);
 
