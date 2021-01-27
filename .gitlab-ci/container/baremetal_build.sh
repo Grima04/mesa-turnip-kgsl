@@ -47,7 +47,7 @@ mkdir /var/cache/apt/archives/$arch
 
 ############### Create cross-files
 
-. .gitlab-ci/create-cross-file.sh $arch
+. .gitlab-ci/container/create-cross-file.sh $arch
 
 . .gitlab-ci/container/container_pre_build.sh
 

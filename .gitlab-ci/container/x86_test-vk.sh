@@ -114,27 +114,27 @@ wine \
 
 ############### Build piglit
 
-PIGLIT_BUILD_TARGETS="piglit_replayer" . .gitlab-ci/build-piglit.sh
+PIGLIT_BUILD_TARGETS="piglit_replayer" . .gitlab-ci/container/build-piglit.sh
 
 ############### Build dEQP runner (and install rust temporarily for it)
-. .gitlab-ci/build-rust.sh
-. .gitlab-ci/build-deqp-runner.sh
+. .gitlab-ci/container/build-rust.sh
+. .gitlab-ci/container/build-deqp-runner.sh
 rm -rf /root/.rustup /root/.cargo
 
 ############### Build Fossilize
 
-. .gitlab-ci/build-fossilize.sh
+. .gitlab-ci/container/build-fossilize.sh
 
 ############### Build dEQP VK
-. .gitlab-ci/build-deqp.sh
+. .gitlab-ci/container/build-deqp.sh
 
 ############### Build gfxreconstruct
 
-. .gitlab-ci/build-gfxreconstruct.sh
+. .gitlab-ci/container/build-gfxreconstruct.sh
 
 ############### Build VulkanTools
 
-. .gitlab-ci/build-vulkantools.sh
+. .gitlab-ci/container/build-vulkantools.sh
 
 ############### Uninstall the build software
 

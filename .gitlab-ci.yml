@@ -261,7 +261,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &x86_build-base "2021-01-08-more-vulkan-cross"
+    MESA_IMAGE_TAG: &x86_build-base "2021-02-08-container-reorg"
 
 .use-x86_build-base:
   extends:
@@ -278,7 +278,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2021-02-02-procps"
+    MESA_IMAGE_TAG: &x86_build "2021-02-08-container-reorg"
 
 .use-x86_build:
   variables:
@@ -292,7 +292,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &i386_build "2021-01-08-more-vulkan-cross"
+    MESA_IMAGE_TAG: &i386_build "2021-02-08-container-reorg"
 
 .use-i386_build:
   variables:
@@ -306,7 +306,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &ppc64el_build "2021-01-08-more-vulkan-cross"
+    MESA_IMAGE_TAG: &ppc64el_build "2021-02-08-container-reorg"
 
 .use-ppc64el_build:
   variables:
@@ -320,7 +320,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &s390x_build "2021-01-08-more-vulkan-cross"
+    MESA_IMAGE_TAG: &s390x_build "2021-02-08-container-reorg"
 
 .use-s390x_build:
   variables:
@@ -334,7 +334,7 @@ android_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &android_build "2020-12-17-use-ephemeral"
+    MESA_IMAGE_TAG: &android_build "2021-02-08-container-reorg"
 
 .use-android_build:
   variables:
@@ -347,7 +347,7 @@ android_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-base "2021-01-14-asan"
+    MESA_IMAGE_TAG: &x86_test-base "2021-02-08-container-reorg"
 
 .use-x86_test-base:
   extends:
@@ -363,13 +363,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-02-05-runner"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-02-08-container-reorg"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-02-05-runner"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-02-08-container-reorg"
 
 # Debian 10 based ARM build image
 arm_build:
@@ -377,7 +377,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    MESA_IMAGE_TAG: &arm_build "2020-12-23-opengl"
+    MESA_IMAGE_TAG: &arm_build "2021-02-08-container-reorg"
 
 .use-arm_build:
   variables:
@@ -392,7 +392,7 @@ arm_test-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &arm_test-base "2021-01-21-noexpect"
+    MESA_IMAGE_TAG: &arm_test-base "2021-02-08-container-reorg"
 
 .use-arm_test-base:
   extends:
@@ -409,7 +409,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &arm64_test "2021-02-01-runner"
+    MESA_IMAGE_TAG: &arm64_test "2021-02-08-container-reorg"
 
 .use-arm64_test:
   variables:
@@ -423,7 +423,7 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &armhf_test "2021-02-01-runner"
+    MESA_IMAGE_TAG: &armhf_test "2021-02-08-container-reorg"
 
 .use-armhf_test:
   variables:

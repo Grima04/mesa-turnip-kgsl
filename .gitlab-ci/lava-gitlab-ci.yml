@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2021-02-01-runner"
+  DISTRIBUTION_TAG: "2021-02-08-subdir-move"
 
 .kernel+rootfs:
   stage: container-2

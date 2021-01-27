@@ -65,6 +65,6 @@ arch=armhf
 
 # dependencies where we want a specific version
 EXTRA_MESON_ARGS=
-. .gitlab-ci/build-libdrm.sh
+. .gitlab-ci/container/build-libdrm.sh
 
 . .gitlab-ci/container/container_post_build.sh
