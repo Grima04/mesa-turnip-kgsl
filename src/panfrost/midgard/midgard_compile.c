@@ -319,6 +319,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
         NIR_PASS(progress, nir, midgard_nir_lower_image_bitsize);
         NIR_PASS(progress, nir, midgard_nir_lower_helper_writes);
         NIR_PASS(progress, nir, pan_lower_helper_invocation);
+        NIR_PASS(progress, nir, pan_lower_sample_pos);
 
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
 
@@ -1962,6 +1963,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_ssbo_address:
         case nir_intrinsic_load_work_dim:
                 emit_sysval_read(ctx, &instr->instr, 1, 0);
+                break;
+
+        case nir_intrinsic_load_sample_positions_pan:
+                emit_sysval_read(ctx, &instr->instr, 2, 0);
                 break;
 
         case nir_intrinsic_get_ssbo_size:

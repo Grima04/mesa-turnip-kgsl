@@ -2547,6 +2547,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                         glsl_type_size, 0);
         NIR_PASS_V(nir, nir_lower_ssbo);
         NIR_PASS_V(nir, pan_nir_lower_zs_store);
+        NIR_PASS_V(nir, pan_lower_sample_pos);
         NIR_PASS_V(nir, bifrost_nir_lower_i8_fragout);
         // TODO: re-enable when fp16 is flipped on
         // NIR_PASS_V(nir, nir_lower_mediump_outputs);

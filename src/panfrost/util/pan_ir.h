@@ -284,5 +284,6 @@ bool pan_nir_lower_zs_store(nir_shader *nir);
 bool pan_nir_lower_64bit_intrin(nir_shader *shader);
 
 bool pan_lower_helper_invocation(nir_shader *shader);
+bool pan_lower_sample_pos(nir_shader *shader);
 
 #endif
