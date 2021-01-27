@@ -501,6 +501,100 @@ static void ac_sqtt_fill_api_info(struct sqtt_file_chunk_api_info *chunk)
    chunk->instruction_trace_mode = SQTT_INSTRUCTION_TRACE_DISABLED;
 }
 
+struct sqtt_code_object_database_record {
+   uint32_t size;
+};
+
+struct sqtt_file_chunk_code_object_database {
+   struct sqtt_file_chunk_header header;
+   uint32_t offset;
+   uint32_t flags;
+   uint32_t size;
+   uint32_t record_count;
+};
+
+static void
+ac_sqtt_fill_code_object(struct rgp_code_object *rgp_code_object,
+                         struct sqtt_file_chunk_code_object_database *chunk,
+                         size_t file_offset, uint32_t chunk_size)
+{
+   chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_CODE_OBJECT_DATABASE;
+   chunk->header.chunk_id.index = 0;
+   chunk->header.major_version = 0;
+   chunk->header.minor_version = 0;
+   chunk->header.size_in_bytes = chunk_size;
+   chunk->offset = file_offset;
+   chunk->flags = 0;
+   chunk->size = chunk_size;
+   chunk->record_count = rgp_code_object->record_count;
+}
+
+struct sqtt_code_object_loader_events_record {
+   uint32_t loader_event_type;
+   uint32_t reserved;
+   uint64_t base_address;
+   uint64_t code_object_hash[2];
+   uint64_t time_stamp;
+};
+
+struct sqtt_file_chunk_code_object_loader_events {
+   struct sqtt_file_chunk_header header;
+   uint32_t offset;
+   uint32_t flags;
+   uint32_t record_size;
+   uint32_t record_count;
+};
+
+static void
+ac_sqtt_fill_loader_events(struct rgp_loader_events *rgp_loader_events,
+                           struct sqtt_file_chunk_code_object_loader_events *chunk,
+                           size_t file_offset)
+{
+   chunk->header.chunk_id.type =
+                               SQTT_FILE_CHUNK_TYPE_CODE_OBJECT_LOADER_EVENTS;
+   chunk->header.chunk_id.index = 0;
+   chunk->header.major_version = 1;
+   chunk->header.minor_version = 0;
+   chunk->header.size_in_bytes = (rgp_loader_events->record_count *
+                                 sizeof(struct sqtt_code_object_loader_events_record)) +
+                                 sizeof(*chunk);
+   chunk->offset = file_offset;
+   chunk->flags = 0;
+   chunk->record_size = sizeof(struct sqtt_code_object_loader_events_record);
+   chunk->record_count = rgp_loader_events->record_count;
+}
+struct sqtt_pso_correlation_record {
+   uint64_t api_pso_hash;
+   uint64_t pipeline_hash[2];
+   char api_level_obj_name[64];
+};
+
+struct sqtt_file_chunk_pso_correlation {
+   struct sqtt_file_chunk_header header;
+   uint32_t offset;
+   uint32_t flags;
+   uint32_t record_size;
+   uint32_t record_count;
+};
+
+static void
+ac_sqtt_fill_pso_correlation(struct rgp_pso_correlation *rgp_pso_correlation,
+                             struct sqtt_file_chunk_pso_correlation *chunk,
+                             size_t file_offset)
+{
+   chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_PSO_CORRELATION;
+   chunk->header.chunk_id.index = 0;
+   chunk->header.major_version = 0;
+   chunk->header.minor_version = 0;
+   chunk->header.size_in_bytes = (rgp_pso_correlation->record_count *
+                                 sizeof(struct sqtt_pso_correlation_record)) +
+                                 sizeof(*chunk);
+   chunk->offset = file_offset;
+   chunk->flags = 0;
+   chunk->record_size = sizeof(struct sqtt_pso_correlation_record);
+   chunk->record_count = rgp_pso_correlation->record_count;
+}
+
 /**
  * SQTT desc info.
  */
@@ -596,6 +690,12 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
    struct sqtt_file_chunk_api_info api_info = {0};
    struct sqtt_file_header header = {0};
    size_t file_offset = 0;
+   struct rgp_code_object *rgp_code_object =
+                                          &thread_trace_data->rgp_code_object;
+   struct rgp_loader_events *rgp_loader_events =
+                                        &thread_trace_data->rgp_loader_events;
+   struct rgp_pso_correlation *rgp_pso_correlation =
+                                      &thread_trace_data->rgp_pso_correlation;
 
    /* SQTT header file. */
    ac_sqtt_fill_header(&header);
@@ -616,6 +716,72 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
    ac_sqtt_fill_api_info(&api_info);
    file_offset += sizeof(api_info);
    fwrite(&api_info, sizeof(api_info), 1, output);
+
+    /* SQTT code object database chunk. */
+   if (rgp_code_object->record_count) {
+      size_t file_code_object_offset = file_offset;
+      struct sqtt_file_chunk_code_object_database code_object;
+      struct sqtt_code_object_database_record code_object_record;
+      uint32_t elf_size_calc = 0;
+
+      fseek(output, sizeof(struct sqtt_file_chunk_code_object_database), SEEK_CUR);
+      file_offset += sizeof(struct sqtt_file_chunk_code_object_database);
+      list_for_each_entry_safe(struct rgp_code_object_record, record,
+                               &rgp_code_object->record, list) {
+         fseek(output, sizeof(struct sqtt_code_object_database_record), SEEK_CUR);
+         ac_rgp_file_write_elf_object(output, file_offset +
+                                      sizeof(struct sqtt_code_object_database_record),
+                                      record, &elf_size_calc);
+         code_object_record.size = elf_size_calc;
+         fseek(output, file_offset, SEEK_SET);
+         fwrite(&code_object_record, sizeof(struct sqtt_code_object_database_record),
+                1, output);
+         file_offset += (sizeof(struct sqtt_code_object_database_record) +
+                         elf_size_calc);
+         fseek(output, file_offset, SEEK_SET);
+      }
+      ac_sqtt_fill_code_object(rgp_code_object, &code_object,
+                               file_code_object_offset,
+                               file_offset - file_code_object_offset);
+      fseek(output, file_code_object_offset, SEEK_SET);
+      fwrite(&code_object, sizeof(struct sqtt_file_chunk_code_object_database), 1, output);
+      fseek(output, file_offset, SEEK_SET);
+   }
+
+   /* SQTT code object loader events chunk. */
+   if (rgp_loader_events->record_count) {
+      struct sqtt_file_chunk_code_object_loader_events loader_events;
+
+      ac_sqtt_fill_loader_events(rgp_loader_events, &loader_events,
+                                 file_offset);
+      fwrite(&loader_events, sizeof(struct sqtt_file_chunk_code_object_loader_events),
+             1, output);
+      file_offset += sizeof(struct sqtt_file_chunk_code_object_loader_events);
+      list_for_each_entry_safe(struct rgp_loader_events_record, record,
+                               &rgp_loader_events->record, list) {
+         fwrite(record, sizeof(struct sqtt_code_object_loader_events_record), 1, output);
+      }
+      file_offset += (rgp_loader_events->record_count *
+                      sizeof(struct sqtt_code_object_loader_events_record));
+   }
+
+   /* SQTT pso correlation chunk. */
+   if (rgp_pso_correlation->record_count) {
+      struct sqtt_file_chunk_pso_correlation pso_correlation;
+
+      ac_sqtt_fill_pso_correlation(rgp_pso_correlation,
+                                   &pso_correlation, file_offset);
+      fwrite(&pso_correlation, sizeof(struct sqtt_file_chunk_pso_correlation), 1,
+             output);
+      file_offset += sizeof(struct sqtt_file_chunk_pso_correlation);
+      list_for_each_entry_safe(struct rgp_pso_correlation_record, record,
+                               &rgp_pso_correlation->record, list) {
+         fwrite(record, sizeof(struct sqtt_pso_correlation_record),
+                1, output);
+      }
+      file_offset += (rgp_pso_correlation->record_count *
+                      sizeof(struct sqtt_pso_correlation_record));
+   }
 
    if (thread_trace) {
       for (unsigned i = 0; i < thread_trace->num_traces; i++) {
