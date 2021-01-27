@@ -270,6 +270,7 @@ struct radv_shader_info {
 		bool tcs_in_out_eq;
 		uint64_t tcs_temp_only_input_mask;
 		uint8_t num_linked_outputs;
+		bool needs_base_instance;
 	} vs;
 	struct {
 		uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
