@@ -161,14 +161,24 @@ if with_tools.contains('intel-ui')
   )
 endif
 
+bison_command = []
+if yacc_is_bison
+  bison_command = [
+    prog_bison, '@INPUT@', '--defines=@OUTPUT1@',
+    '--output=@OUTPUT0@'
+  ]
+else
+  bison_command = [
+    prog_bison, '-H', '@OUTPUT1@',
+    '-o', '@OUTPUT0@', '@INPUT@'
+  ]
+endif
+
 i965_gram_tab = custom_target(
   'i965_gram.tab.[ch]',
   input : 'i965_gram.y',
   output : ['i965_gram.tab.c', 'i965_gram.tab.h'],
-  command : [
-    prog_bison, '@INPUT@', '--defines=@OUTPUT1@',
-    '--output=@OUTPUT0@'
-  ]
+  command : bison_command
 )
 
 i965_lex_yy_c = custom_target(

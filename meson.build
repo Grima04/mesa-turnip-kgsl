@@ -1724,6 +1724,8 @@ else
   asan_c_args = ['-DBUILT_WITH_ASAN=0']
 endif
 
+yacc_is_bison = true
+
 if build_machine.system() == 'windows'
   # Prefer the winflexbison versions, they're much easier to install and have
   # better windows support.
@@ -1746,7 +1748,12 @@ if build_machine.system() == 'windows'
     prog_bison = find_program('bison', 'yacc', required : with_any_opengl)
   endif
 else
-  prog_bison = find_program('bison', required : with_any_opengl)
+  prog_bison = find_program('bison', required : false)
+
+  if not prog_bison.found()
+    prog_bison = find_program('byacc', required : with_any_opengl)
+    yacc_is_bison = false
+  endif
 
   # Disable deprecated keyword warnings, since we have to use them for
   # old-bison compat.  See discussion in

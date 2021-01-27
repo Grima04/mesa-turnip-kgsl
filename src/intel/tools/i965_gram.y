@@ -28,6 +28,14 @@
 #include <strings.h>
 #include "i965_asm.h"
 
+#undef yyerror
+#ifdef YYBYACC
+struct YYLTYPE;
+void yyerror (struct YYLTYPE *, char *);
+#else
+void yyerror (char *);
+#endif
+
 #undef ALIGN16
 
 #define YYLTYPE YYLTYPE
@@ -467,11 +475,11 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 %token <llint> LONG
 %token NULL_TOKEN
 
-%precedence SUBREGNUM
+%nonassoc SUBREGNUM
 %left PLUS MINUS
-%precedence DOT
-%precedence EMPTYEXECSIZE
-%precedence LPAREN
+%nonassoc DOT
+%nonassoc EMPTYEXECSIZE
+%nonassoc LPAREN
 
 %type <integer> execsize simple_int exp
 %type <llint> exp2
@@ -1470,7 +1478,7 @@ simple_int:
 
 rellocation:
 	relativelocation
-	| %empty { $$ = 0; }
+	| /* empty */ { $$ = 0; }
 	;
 
 relativelocation:
@@ -1482,7 +1490,7 @@ relativelocation:
 
 jumplabel:
 	JUMP_LABEL	{ $$ = $1; }
-	| %empty	{ $$ = NULL; }
+	| /* empty */	{ $$ = NULL; }
 	;
 
 jumplabeltarget:
@@ -1778,7 +1786,7 @@ exp:
 
 subregnum:
 	DOT exp 		        { $$ = $2; }
-	| %empty %prec SUBREGNUM 	{ $$ = 0; }
+	| /* empty */ %prec SUBREGNUM 	{ $$ = 0; }
 	;
 
 directgenreg:
@@ -2001,7 +2009,7 @@ immval:
 
 /* Regions */
 dstregion:
-	%empty
+	/* empty */
 	{
 		$$ = BRW_HORIZONTAL_STRIDE_1;
 	}
@@ -2020,7 +2028,7 @@ indirectregion:
 	;
 
 region:
-	%empty
+	/* empty */
 	{
 		$$ = stride($$, 0, 1, 0);
 	}
@@ -2111,7 +2119,7 @@ imm_type:
 	;
 
 writemask:
-	%empty
+	/* empty */
 	{
 		$$ = WRITEMASK_XYZW;
 	}
@@ -2122,27 +2130,27 @@ writemask:
 	;
 
 writemask_x:
-	%empty 	{ $$ = 0; }
+	/* empty */ 	{ $$ = 0; }
 	| X 	{ $$ = 1 << BRW_CHANNEL_X; }
 	;
 
 writemask_y:
-	%empty 	{ $$ = 0; }
+	/* empty */ 	{ $$ = 0; }
 	| Y 	{ $$ = 1 << BRW_CHANNEL_Y; }
 	;
 
 writemask_z:
-	%empty 	{ $$ = 0; }
+	/* empty */ 	{ $$ = 0; }
 	| Z 	{ $$ = 1 << BRW_CHANNEL_Z; }
 	;
 
 writemask_w:
-	%empty 	{ $$ = 0; }
+	/* empty */ 	{ $$ = 0; }
 	| W 	{ $$ = 1 << BRW_CHANNEL_W; }
 	;
 
 swizzle:
-	%empty
+	/* empty */
 	{
 		$$ = BRW_SWIZZLE_NOOP;
 	}
@@ -2165,7 +2173,7 @@ chansel:
 
 /* Instruction prediction and modifiers */
 predicate:
-	%empty
+	/* empty */
 	{
 		brw_push_insn_state(p);
 		brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
@@ -2182,13 +2190,13 @@ predicate:
 	;
 
 predstate:
-	%empty 	        { $$ = 0; }
+	/* empty */     { $$ = 0; }
 	| PLUS 	        { $$ = 0; }
 	| MINUS 	{ $$ = 1; }
 	;
 
 predctrl:
-	%empty 	        { $$ = BRW_PREDICATE_NORMAL; }
+	/* empty */ 	{ $$ = BRW_PREDICATE_NORMAL; }
 	| DOT X 	{ $$ = BRW_PREDICATE_ALIGN16_REPLICATE_X; }
 	| DOT Y 	{ $$ = BRW_PREDICATE_ALIGN16_REPLICATE_Y; }
 	| DOT Z 	{ $$ = BRW_PREDICATE_ALIGN16_REPLICATE_Z; }
@@ -2209,12 +2217,12 @@ predctrl:
 
 /* Source Modification */
 negate:
-	%empty 	        { $$ = 0; }
+	/* empty */	{ $$ = 0; }
 	| MINUS 	{ $$ = 1; }
 	;
 
 abs:
-	%empty 	{ $$ = 0; }
+	/* empty */ 	{ $$ = 0; }
 	| ABS 	{ $$ = 1; }
 	;
 
@@ -2235,7 +2243,7 @@ cond_mod:
 	;
 
 condModifiers:
-	%empty 	{ $$ = BRW_CONDITIONAL_NONE; }
+	/* empty */ 	{ $$ = BRW_CONDITIONAL_NONE; }
 	| ZERO
 	| EQUAL
 	| NOT_ZERO
@@ -2250,13 +2258,13 @@ condModifiers:
 	;
 
 saturate:
-	%empty 		{ $$ = BRW_INSTRUCTION_NORMAL; }
+	/* empty */ 	{ $$ = BRW_INSTRUCTION_NORMAL; }
 	| SATURATE 	{ $$ = BRW_INSTRUCTION_SATURATE; }
 	;
 
 /* Execution size */
 execsize:
-	%empty %prec EMPTYEXECSIZE
+	/* empty */ %prec EMPTYEXECSIZE
 	{
 		$$ = 0;
 	}
@@ -2271,7 +2279,7 @@ execsize:
 
 /* Instruction options */
 instoptions:
-	%empty
+	/* empty */
 	{
 		memset(&$$, 0, sizeof($$));
 	}
@@ -2295,7 +2303,7 @@ instoption_list:
 		$$ = $1;
 		add_instruction_option(&$$, $2);
 	}
-	| %empty
+	| /* empty */
 	{
 		memset(&$$, 0, sizeof($$));
 	}
@@ -2334,8 +2342,13 @@ instoption:
 
 extern int yylineno;
 
+#ifdef YYBYACC
+void
+yyerror(YYLTYPE *ltype, char *msg)
+#else
 void
 yyerror(char *msg)
+#endif
 {
 	fprintf(stderr, "%s: %d: %s at \"%s\"\n",
 	        input_filename, yylineno, msg, lex_text());
