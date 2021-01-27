@@ -23,6 +23,7 @@
 #ifndef VK_INSTANCE_H
 #define VK_INSTANCE_H
 
+#include "vk_debug_report.h"
 #include "vk_dispatch_table.h"
 #include "vk_extensions.h"
 #include "vk_object.h"
@@ -47,6 +48,8 @@ struct vk_instance {
    struct vk_instance_extension_table enabled_extensions;
 
    struct vk_instance_dispatch_table dispatch_table;
+
+   struct vk_debug_report_instance debug_report;
 };
 
 VK_DEFINE_HANDLE_CASTS(vk_instance, base, VkInstance,

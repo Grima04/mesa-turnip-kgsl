@@ -84,12 +84,13 @@ vk_instance_init(struct vk_instance *instance,
          &instance->dispatch_table, &vk_common_instance_entrypoints, false);
    }
 
-   return VK_SUCCESS;
+   return vk_debug_report_instance_init(&instance->debug_report);
 }
 
 void
 vk_instance_finish(struct vk_instance *instance)
 {
+   vk_debug_report_instance_destroy(&instance->debug_report);
    vk_free(&instance->alloc, (char *)instance->app_info.app_name);
    vk_free(&instance->alloc, (char *)instance->app_info.engine_name);
    vk_object_base_finish(&instance->base);

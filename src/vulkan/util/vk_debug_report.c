@@ -24,6 +24,8 @@
 #include "vk_debug_report.h"
 
 #include "vk_alloc.h"
+#include "vk_common_entrypoints.h"
+#include "vk_instance.h"
 #include "vk_util.h"
 
 VkResult vk_debug_report_instance_init(struct vk_debug_report_instance *instance)
@@ -122,4 +124,42 @@ vk_debug_report(struct vk_debug_report_instance *instance,
    }
 
    mtx_unlock(&instance->callbacks_mutex);
+}
+
+VkResult
+vk_common_CreateDebugReportCallbackEXT(VkInstance _instance,
+                                       const VkDebugReportCallbackCreateInfoEXT *pCreateInfo,
+                                       const VkAllocationCallbacks *pAllocator,
+                                       VkDebugReportCallbackEXT *pCallback)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   return vk_create_debug_report_callback(&instance->debug_report,
+                                          pCreateInfo, pAllocator,
+                                          &instance->alloc,
+                                          pCallback);
+}
+
+void
+vk_common_DestroyDebugReportCallbackEXT(VkInstance _instance,
+                                        VkDebugReportCallbackEXT callback,
+                                        const VkAllocationCallbacks *pAllocator)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   vk_destroy_debug_report_callback(&instance->debug_report, callback,
+                                    pAllocator, &instance->alloc);
+}
+
+void
+vk_common_DebugReportMessageEXT(VkInstance _instance,
+                                VkDebugReportFlagsEXT flags,
+                                VkDebugReportObjectTypeEXT objectType,
+                                uint64_t object,
+                                size_t location,
+                                int32_t messageCode,
+                                const char* pLayerPrefix,
+                                const char* pMessage)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   vk_debug_report(&instance->debug_report, flags, objectType,
+                   object, location, messageCode, pLayerPrefix, pMessage);
 }
