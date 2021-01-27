@@ -386,6 +386,9 @@ static void si_emit_string_marker(struct pipe_context *ctx, const char *string, 
 
    dd_parse_apitrace_marker(string, len, &sctx->apitrace_call_number);
 
+   if (sctx->thread_trace_enabled)
+      si_write_user_event(sctx, &sctx->gfx_cs, UserEventTrigger, string, len);
+
    if (sctx->log)
       u_log_printf(sctx->log, "\nString marker: %*s\n", len, string);
 }

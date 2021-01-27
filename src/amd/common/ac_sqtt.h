@@ -418,4 +418,35 @@ struct rgp_sqtt_marker_layout_transition {
 static_assert(sizeof(struct rgp_sqtt_marker_layout_transition) == 8,
               "rgp_sqtt_marker_layout_transition doesn't match RGP spec");
 
+
+/**
+ * "User Event" RGP SQTT instrumentation marker (Table 8)
+ */
+struct rgp_sqtt_marker_user_event {
+   union {
+      struct {
+         uint32_t identifier : 4;
+         uint32_t reserved0 : 8;
+         uint32_t data_type : 8;
+         uint32_t reserved1 : 12;
+      };
+      uint32_t dword01;
+   };
+};
+struct rgp_sqtt_marker_user_event_with_length {
+   struct rgp_sqtt_marker_user_event user_event;
+   uint32_t length;
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_user_event) == 4,
+              "rgp_sqtt_marker_user_event doesn't match RGP spec");
+
+enum rgp_sqtt_marker_user_event_type
+{
+   UserEventTrigger = 0,
+   UserEventPop,
+   UserEventPush,
+   UserEventObjectName,
+};
+
 #endif
