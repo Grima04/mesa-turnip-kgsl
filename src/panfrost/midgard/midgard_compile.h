@@ -51,6 +51,7 @@ static const nir_shader_compiler_options midgard_nir_options = {
         .lower_isign = true,
         .lower_fpow = true,
         .lower_find_lsb = true,
+        .lower_ifind_msb = true,
         .lower_fdph = true,
 
         .lower_wpos_pntc = true,
@@ -59,6 +60,10 @@ static const nir_shader_compiler_options midgard_nir_options = {
          * eventually */
         .lower_fsign = true,
 
+        .lower_bit_count = true,
+        .lower_bitfield_reverse = true,
+        .lower_bitfield_insert_to_shifts = true,
+        .lower_bitfield_extract_to_shifts = true,
         .lower_extract_byte = true,
         .lower_extract_word = true,
         .lower_rotate = true,
