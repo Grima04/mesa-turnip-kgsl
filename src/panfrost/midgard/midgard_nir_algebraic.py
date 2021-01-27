@@ -71,6 +71,12 @@ algebraic_late = [
     (('fmul', a, 2.0), ('fadd', a, a))
 ]
 
+# Size conversion is redundant to Midgard but needed for NIR, and writing this
+# lowering in MIR would be painful without a competent builder, so eat the
+# extra instruction
+for sz in ('8', '16', '32'):
+    converted = ('u2u32', a) if sz != '32' else a
+    algebraic_late += [(('ufind_msb', 'a@' + sz), ('isub', 31, ('uclz', converted)))]
 
 # Midgard is able to type convert down by only one "step" per instruction; if
 # NIR wants more than one step, we need to break up into multiple instructions.
