@@ -379,7 +379,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 32;
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
-                return is_deqp ? 8 : 0;
+                return is_deqp ? 16 : 0;
 
         case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
                 return (pan_is_bifrost(dev) && !is_deqp) ? 0 : PIPE_MAX_SHADER_IMAGES;
