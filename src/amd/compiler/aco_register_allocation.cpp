@@ -196,6 +196,14 @@ uint32_t get_stride(RegClass rc) {
     }
 }
 
+PhysRegInterval get_reg_bounds(Program* program, RegType type) {
+   if (type == RegType::vgpr) {
+      return { PhysReg { 256 }, (unsigned)program->max_reg_demand.vgpr };
+   } else {
+      return { PhysReg { 0 }, (unsigned)program->max_reg_demand.sgpr };
+   }
+}
+
 struct DefInfo {
    PhysRegInterval bounds;
    uint8_t size;
@@ -206,11 +214,7 @@ struct DefInfo {
       size = rc.size();
       stride = get_stride(rc);
 
-      if (rc.type() == RegType::vgpr) {
-         bounds = { PhysReg { 256 }, (unsigned)ctx.program->max_reg_demand.vgpr };
-      } else {
-         bounds = { PhysReg { 0 }, (unsigned)ctx.program->max_reg_demand.sgpr };
-      }
+      bounds = get_reg_bounds(ctx.program, rc.type());
 
       if (rc.is_subdword() && operand >= 0) {
          /* stride in bytes */
@@ -1206,18 +1210,11 @@ bool get_reg_specified(ra_ctx& ctx,
    if (!rc.is_subdword() && reg.byte())
       return false;
 
-   const uint32_t stride = get_stride(rc);
-   PhysRegInterval bounds;
-
-   if (rc.type() == RegType::vgpr) {
-      bounds = { PhysReg { 256 }, (unsigned)ctx.program->max_reg_demand.vgpr };
-   } else {
-      bounds = { PhysReg { 0 }, (unsigned)ctx.program->max_reg_demand.sgpr };
-      if (reg % stride != 0)
+   if (rc.type() == RegType::sgpr && reg % get_stride(rc) != 0)
          return false;
-   }
 
    PhysRegInterval reg_win = { reg, rc.size() };
+   PhysRegInterval bounds = get_reg_bounds(ctx.program, rc.type());
    if (!bounds.contains(reg_win))
       return false;
 
@@ -1389,12 +1386,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    uint32_t size = rc.size();
    uint32_t bytes = rc.bytes();
    uint32_t stride = get_stride(rc);
-   PhysRegInterval bounds;
-   if (rc.type() == RegType::vgpr) {
-      bounds = { PhysReg { 256 }, (unsigned)ctx.program->max_reg_demand.vgpr };
-   } else {
-      bounds = { PhysReg { 0 }, (unsigned)ctx.program->max_reg_demand.sgpr };
-   }
+   PhysRegInterval bounds = get_reg_bounds(ctx.program, rc.type());
 
    //TODO: improve p_create_vector for sub-dword vectors
 
