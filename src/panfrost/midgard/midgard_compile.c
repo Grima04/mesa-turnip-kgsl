@@ -733,6 +733,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(imul, imul);
                 ALU_CASE(imul_high, imul);
                 ALU_CASE(umul_high, imul);
+                ALU_CASE(uclz, iclz);
 
                 /* Zero shoved as second-arg */
                 ALU_CASE(iabs, iabsdiff);
