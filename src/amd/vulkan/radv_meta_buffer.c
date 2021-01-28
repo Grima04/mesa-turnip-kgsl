@@ -351,17 +351,38 @@ static void copy_buffer_shader(struct radv_cmd_buffer *cmd_buffer,
 	radv_meta_restore(&saved_state, cmd_buffer);
 }
 
+static bool
+radv_prefer_compute_dma(const struct radv_device *device,
+			uint64_t size,
+			struct radeon_winsys_bo *src_bo,
+			struct radeon_winsys_bo *dst_bo)
+{
+	bool use_compute = size >= RADV_BUFFER_OPS_CS_THRESHOLD;
+
+	if (device->physical_device->rad_info.chip_class >= GFX10 &&
+	    device->physical_device->rad_info.has_dedicated_vram) {
+		if ((src_bo && !(src_bo->initial_domain & RADEON_DOMAIN_VRAM)) ||
+		    !(dst_bo->initial_domain & RADEON_DOMAIN_VRAM)) {
+			/* Prefer CP DMA for GTT on dGPUS due to slow PCIe. */
+			use_compute = false;
+		}
+	}
+
+	return use_compute;
+}
+
 uint32_t radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer,
                           const struct radv_image *image,
                           struct radeon_winsys_bo *bo,
                           uint64_t offset, uint64_t size, uint32_t value)
 {
+	bool use_compute = radv_prefer_compute_dma(cmd_buffer->device, size, NULL, bo);
 	uint32_t flush_bits = 0;
 
 	assert(!(offset & 3));
 	assert(!(size & 3));
 
-	if (size >= RADV_BUFFER_OPS_CS_THRESHOLD) {
+	if (use_compute) {
 		cmd_buffer->state.flush_bits |=
 			radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, image);
 
@@ -387,7 +408,10 @@ void radv_copy_buffer(struct radv_cmd_buffer *cmd_buffer,
 		      uint64_t src_offset, uint64_t dst_offset,
 		      uint64_t size)
 {
-	if (size >= RADV_BUFFER_OPS_CS_THRESHOLD && !(size & 3) && !(src_offset & 3) && !(dst_offset & 3))
+	bool use_compute = !(size & 3) && !(src_offset & 3) && !(dst_offset & 3) &&
+			   radv_prefer_compute_dma(cmd_buffer->device, size, src_bo, dst_bo);
+
+	if (use_compute)
 		copy_buffer_shader(cmd_buffer, src_bo, dst_bo,
 				   src_offset, dst_offset, size);
 	else if (size) {
