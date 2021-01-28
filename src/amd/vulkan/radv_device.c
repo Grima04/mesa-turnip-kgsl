@@ -8186,51 +8186,6 @@ VkResult radv_GetPhysicalDeviceFragmentShadingRatesKHR(
 	return vk_outarray_status(&out);
 }
 
-VkResult radv_CreatePrivateDataSlotEXT(
-    VkDevice                                    _device,
-    const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkPrivateDataSlotEXT*                       pPrivateDataSlot)
-{
-	RADV_FROM_HANDLE(radv_device, device, _device);
-	return vk_private_data_slot_create(&device->vk, pCreateInfo, pAllocator,
-					   pPrivateDataSlot);
-}
-
-void radv_DestroyPrivateDataSlotEXT(
-    VkDevice                                    _device,
-    VkPrivateDataSlotEXT                        privateDataSlot,
-    const VkAllocationCallbacks*                pAllocator)
-{
-	RADV_FROM_HANDLE(radv_device, device, _device);
-	vk_private_data_slot_destroy(&device->vk, privateDataSlot, pAllocator);
-}
-
-VkResult radv_SetPrivateDataEXT(
-    VkDevice                                    _device,
-    VkObjectType                                objectType,
-    uint64_t                                    objectHandle,
-    VkPrivateDataSlotEXT                        privateDataSlot,
-    uint64_t                                    data)
-{
-	RADV_FROM_HANDLE(radv_device, device, _device);
-	return vk_object_base_set_private_data(&device->vk, objectType,
-					       objectHandle, privateDataSlot,
-					       data);
-}
-
-void radv_GetPrivateDataEXT(
-    VkDevice                                    _device,
-    VkObjectType                                objectType,
-    uint64_t                                    objectHandle,
-    VkPrivateDataSlotEXT                        privateDataSlot,
-    uint64_t*                                   pData)
-{
-	RADV_FROM_HANDLE(radv_device, device, _device);
-	vk_object_base_get_private_data(&device->vk, objectType, objectHandle,
-					privateDataSlot, pData);
-}
-
 VkResult radv_CreateDeferredOperationKHR(VkDevice _device,
                                          const VkAllocationCallbacks* pAllocator,
                                          VkDeferredOperationKHR* pDeferredOperation)
