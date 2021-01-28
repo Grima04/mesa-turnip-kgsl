@@ -914,10 +914,12 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
         assert(!(ctx->blend_ret_offsets[loc] & 0x7));
 }
 
-void
+unsigned
 bi_pack(bi_context *ctx, struct util_dynarray *emission)
 {
         bool tdd = bi_terminate_discarded_threads(ctx);
+
+        unsigned previous_size = emission->size;
 
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
@@ -937,12 +939,16 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
                         bi_clause *next = bi_next_clause(ctx, _block, clause);
                         bi_clause *next_2 = is_last ? succ_clause : NULL;
 
+                        previous_size = emission->size;
+
                         bi_pack_clause(ctx, clause, next, next_2, emission, ctx->stage, tdd);
 
                         if (!is_last)
                                 bi_collect_blend_ret_addr(ctx, emission, clause);
                 }
         }
+
+        return emission->size - previous_size;
 }
 
 #ifndef NDEBUG

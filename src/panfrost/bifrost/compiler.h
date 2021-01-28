@@ -761,7 +761,8 @@ bi_is_terminal_block(bi_context *ctx, bi_block *block)
 
 /* Code emit */
 
-void bi_pack(bi_context *ctx, struct util_dynarray *emission);
+/* Returns the size of the final clause */
+unsigned bi_pack(bi_context *ctx, struct util_dynarray *emission);
 
 struct bi_packed_tuple {
         uint64_t lo;
