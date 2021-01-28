@@ -443,15 +443,56 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
 
         struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked = { 0 };
 
+        /* Limit the number of channels returned to both how many the NIR
+         * instruction writes and how many the instruction could produce.
+         */
+        uint32_t instr_return_channels = nir_intrinsic_dest_components(instr);
+        if (!p1_unpacked.output_type_32_bit)
+                instr_return_channels = (instr_return_channels + 1) / 2;
+
+        p0_unpacked.return_words_of_texture_data =
+                (1 << instr_return_channels) - 1;
+
         p2_unpacked.op = v3d40_image_load_store_tmu_op(instr);
 
         /* If we were able to replace atomic_add for an inc/dec, then we
          * need/can to do things slightly different, like not loading the
          * amount to add/sub, as that is implicit.
          */
-        bool atomic_add_replaced = (instr->intrinsic == nir_intrinsic_image_atomic_add &&
-                                    (p2_unpacked.op == V3D_TMU_OP_WRITE_AND_READ_INC ||
-                                     p2_unpacked.op == V3D_TMU_OP_WRITE_OR_READ_DEC));
+        bool atomic_add_replaced =
+                (instr->intrinsic == nir_intrinsic_image_atomic_add &&
+                 (p2_unpacked.op == V3D_TMU_OP_WRITE_AND_READ_INC ||
+                  p2_unpacked.op == V3D_TMU_OP_WRITE_OR_READ_DEC));
+
+        uint32_t p0_packed;
+        V3D41_TMU_CONFIG_PARAMETER_0_pack(NULL,
+                                          (uint8_t *)&p0_packed,
+                                          &p0_unpacked);
+
+        /* Load unit number into the high bits of the texture or sampler
+         * address field, which will be be used by the driver to decide which
+         * texture to put in the actual address field.
+         */
+        p0_packed |= unit << 24;
+
+        uint32_t p1_packed;
+        V3D41_TMU_CONFIG_PARAMETER_1_pack(NULL,
+                                          (uint8_t *)&p1_packed,
+                                          &p1_unpacked);
+
+        uint32_t p2_packed;
+        V3D41_TMU_CONFIG_PARAMETER_2_pack(NULL,
+                                          (uint8_t *)&p2_packed,
+                                          &p2_unpacked);
+
+        if (instr->intrinsic != nir_intrinsic_image_load)
+                c->tmu_dirty_rcl = true;
+
+        vir_WRTMUC(c, QUNIFORM_IMAGE_TMU_CONFIG_P0, p0_packed);
+        if (memcmp(&p1_unpacked, &p1_unpacked_default, sizeof(p1_unpacked)) != 0)
+                vir_WRTMUC(c, QUNIFORM_CONSTANT, p1_packed);
+        if (memcmp(&p2_unpacked, &p2_unpacked_default, sizeof(p2_unpacked)) != 0)
+                vir_WRTMUC(c, QUNIFORM_CONSTANT, p2_packed);
 
         bool is_1d = false;
         switch (nir_intrinsic_image_dim(instr)) {
@@ -485,43 +526,6 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
                               ntq_get_src(c, instr->src[1],
                                           is_1d ? 1 : 2), &tmu_writes);
         }
-
-        /* Limit the number of channels returned to both how many the NIR
-         * instruction writes and how many the instruction could produce.
-         */
-        uint32_t instr_return_channels = nir_intrinsic_dest_components(instr);
-        if (!p1_unpacked.output_type_32_bit)
-                instr_return_channels = (instr_return_channels + 1) / 2;
-
-        p0_unpacked.return_words_of_texture_data =
-                (1 << instr_return_channels) - 1;
-
-        uint32_t p0_packed;
-        V3D41_TMU_CONFIG_PARAMETER_0_pack(NULL,
-                                          (uint8_t *)&p0_packed,
-                                          &p0_unpacked);
-
-        uint32_t p1_packed;
-        V3D41_TMU_CONFIG_PARAMETER_1_pack(NULL,
-                                          (uint8_t *)&p1_packed,
-                                          &p1_unpacked);
-
-        uint32_t p2_packed;
-        V3D41_TMU_CONFIG_PARAMETER_2_pack(NULL,
-                                          (uint8_t *)&p2_packed,
-                                          &p2_unpacked);
-
-        /* Load unit number into the high bits of the texture or sampler
-         * address field, which will be be used by the driver to decide which
-         * texture to put in the actual address field.
-         */
-        p0_packed |= unit << 24;
-
-        vir_WRTMUC(c, QUNIFORM_IMAGE_TMU_CONFIG_P0, p0_packed);
-        if (memcmp(&p1_unpacked, &p1_unpacked_default, sizeof(p1_unpacked)) != 0)
-                vir_WRTMUC(c, QUNIFORM_CONSTANT, p1_packed);
-        if (memcmp(&p2_unpacked, &p2_unpacked_default, sizeof(p2_unpacked)) != 0)
-                vir_WRTMUC(c, QUNIFORM_CONSTANT, p2_packed);
 
         /* Emit the data writes for atomics or image store. */
         if (instr->intrinsic != nir_intrinsic_image_load &&
@@ -573,7 +577,4 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
 
         if (nir_intrinsic_dest_components(instr) == 0)
                 vir_TMUWT(c);
-
-        if (instr->intrinsic != nir_intrinsic_image_load)
-                c->tmu_dirty_rcl = true;
 }
