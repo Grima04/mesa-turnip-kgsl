@@ -1022,6 +1022,7 @@ if cc.get_id() == 'msvc'
                '/wd4624',  # destructor was implicitly defined as deleted [from LLVM]
                '/wd4309',  # 'initializing': truncation of constant value
                '/wd4838',  # conversion from 'int' to 'const char' requires a narrowing conversion
+               '/wd5105',  # macro expansion producing 'defined' has undefined behavior (winbase.h, need Windows SDK upgrade)
                '/we4020',  # Error when passing the wrong number of parameters
                '/we4024',  # Error when passing different type of parameter
               ]
