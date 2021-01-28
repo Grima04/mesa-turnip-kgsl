@@ -52,7 +52,6 @@ struct radv_amdgpu_winsys_bo {
 		/* physical bo */
 		struct {
 			amdgpu_bo_handle bo;
-			enum radeon_bo_domain initial_domain;
 			bool is_shared;
 			uint32_t bo_handle;
 			struct list_head global_list_item;

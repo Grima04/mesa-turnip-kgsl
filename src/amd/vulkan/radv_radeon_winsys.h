@@ -165,6 +165,7 @@ struct radeon_winsys_bo {
 	uint64_t va;
 	bool is_local;
 	bool vram_no_cpu_access;
+	enum radeon_bo_domain initial_domain;
 };
 struct radv_winsys_sem_counts {
 	uint32_t syncobj_count;
