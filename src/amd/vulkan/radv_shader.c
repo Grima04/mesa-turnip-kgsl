@@ -1602,7 +1602,7 @@ radv_get_max_waves(struct radv_device *device,
 
 	unsigned max_lds_per_simd = info->lds_size_per_workgroup / simd_per_workgroup;
 	if (lds_per_wave)
-		max_simd_waves = MIN2(max_simd_waves, max_lds_per_simd / lds_per_wave);
+		max_simd_waves = MIN2(max_simd_waves, DIV_ROUND_UP(max_lds_per_simd, lds_per_wave));
 
 	return chip_class >= GFX10 ? max_simd_waves * (wave_size / 32) : max_simd_waves;
 }
