@@ -45,7 +45,8 @@
 #include "util/u_framebuffer.h"
 #include "util/u_helpers.h"
 #include "util/u_inlines.h"
-
+#include "util/u_thread.h"
+#include "util/u_cpu_detect.h"
 #include "nir.h"
 
 #include "util/u_memory.h"
@@ -375,6 +376,23 @@ zink_set_device_reset_callback(struct pipe_context *pctx,
       ctx->reset = *cb;
    else
       memset(&ctx->reset, 0, sizeof(ctx->reset));
+}
+
+static void
+zink_set_context_param(struct pipe_context *pctx, enum pipe_context_param param,
+                       unsigned value)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   switch (param) {
+   case PIPE_CONTEXT_PARAM_PIN_THREADS_TO_L3_CACHE:
+      util_set_thread_affinity(ctx->batch.flush_queue.threads[0],
+                               util_get_cpu_caps()->L3_affinity_mask[value],
+                               NULL, util_get_cpu_caps()->num_cpu_mask_bits);
+      break;
+   default:
+      break;
+   }
 }
 
 static VkSamplerMipmapMode
@@ -2713,6 +2731,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    if (tc && (struct zink_context*)tc != ctx) {
       tc->bytes_mapped_limit = screen->total_mem / 4;
+      ctx->base.set_context_param = zink_set_context_param;
    }
 
    return (struct pipe_context*)tc;
