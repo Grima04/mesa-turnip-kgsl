@@ -4428,6 +4428,12 @@ void radv_CmdBindPipeline(
 			return;
 		radv_mark_descriptor_sets_dirty(cmd_buffer, pipelineBindPoint);
 
+		bool vtx_emit_count_changed = !pipeline ||
+					      !cmd_buffer->state.pipeline ||
+					      cmd_buffer->state.pipeline->graphics.vtx_emit_num !=
+					      pipeline->graphics.vtx_emit_num ||
+					      cmd_buffer->state.pipeline->graphics.vtx_base_sgpr !=
+					      pipeline->graphics.vtx_base_sgpr;
 		cmd_buffer->state.pipeline = pipeline;
 		if (!pipeline)
 			break;
@@ -4436,9 +4442,11 @@ void radv_CmdBindPipeline(
 		cmd_buffer->push_constant_stages |= pipeline->active_stages;
 
 		/* the new vertex shader might not have the same user regs */
-		cmd_buffer->state.last_first_instance = -1;
-		cmd_buffer->state.last_vertex_offset = -1;
-		cmd_buffer->state.last_drawid = -1;
+		if (vtx_emit_count_changed) {
+			cmd_buffer->state.last_first_instance = -1;
+			cmd_buffer->state.last_vertex_offset = -1;
+			cmd_buffer->state.last_drawid = -1;
+		}
 
 		/* Prefetch all pipeline shaders at first draw time. */
 		cmd_buffer->state.prefetch_L2_mask |= RADV_PREFETCH_SHADERS;
