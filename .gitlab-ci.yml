@@ -1389,7 +1389,6 @@ virgl-gles31-on-gles:
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     GPU_VERSION: freedreno-a630
     BM_DTB: /lava-files/db820c.dtb
-    GIT_STRATEGY: none
     DEQP_EXPECTED_RENDERER: FD630
   tags:
     - google-freedreno-cheza
