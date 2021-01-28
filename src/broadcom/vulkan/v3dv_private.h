@@ -178,8 +178,6 @@ struct v3dv_instance {
    int physicalDeviceCount;
    struct v3dv_physical_device physicalDevice;
 
-   struct vk_debug_report_instance debug_report_callbacks;
-
    bool pipeline_cache_enabled;
    bool default_pipeline_cache_enabled;
 };
