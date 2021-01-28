@@ -1752,7 +1752,7 @@ vtn_get_call_payload_for_location(struct vtn_builder *b, uint32_t location_id)
 static void
 vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                     struct vtn_type *ptr_type, SpvStorageClass storage_class,
-                    nir_constant *const_initializer, nir_variable *var_initializer)
+                    struct vtn_value *initializer)
 {
    vtn_assert(ptr_type->base_type == vtn_base_type_pointer);
    struct vtn_type *type = ptr_type->deref;
@@ -1976,14 +1976,20 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       unreachable("Should have been caught before");
    }
 
-   /* We can only have one type of initializer */
-   assert(!(const_initializer && var_initializer));
-   if (const_initializer) {
-      var->var->constant_initializer =
-         nir_constant_clone(const_initializer, var->var);
+   if (initializer) {
+      switch (initializer->value_type) {
+      case vtn_value_type_constant:
+         var->var->constant_initializer =
+            nir_constant_clone(initializer->constant, var->var);
+         break;
+      case vtn_value_type_pointer:
+         var->var->pointer_initializer = initializer->pointer->var->var;
+         break;
+      default:
+         vtn_fail("SPIR-V variable initializer %u must be constant or pointer",
+                  vtn_id_for_value(b, initializer));
+      }
    }
-   if (var_initializer)
-      var->var->pointer_initializer = var_initializer;
 
    if (var->mode == vtn_variable_mode_uniform ||
        var->mode == vtn_variable_mode_ssbo) {
@@ -2220,24 +2226,9 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_pointer);
 
       SpvStorageClass storage_class = w[3];
-      nir_constant *const_initializer = NULL;
-      nir_variable *var_initializer = NULL;
-      if (count > 4) {
-         struct vtn_value *init = vtn_untyped_value(b, w[4]);
-         switch (init->value_type) {
-         case vtn_value_type_constant:
-            const_initializer = init->constant;
-            break;
-         case vtn_value_type_pointer:
-            var_initializer = init->pointer->var->var;
-            break;
-         default:
-            vtn_fail("SPIR-V variable initializer %u must be constant or pointer",
-               w[4]);
-         }
-      }
+      struct vtn_value *initializer = count > 4 ? vtn_untyped_value(b, w[4]) : NULL;
 
-      vtn_create_variable(b, val, ptr_type, storage_class, const_initializer, var_initializer);
+      vtn_create_variable(b, val, ptr_type, storage_class, initializer);
 
       break;
    }
@@ -2257,7 +2248,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       ptr_type->type = nir_address_format_to_glsl_type(
          vtn_mode_to_address_format(b, vtn_variable_mode_function));
 
-      vtn_create_variable(b, val, ptr_type, ptr_type->storage_class, NULL, NULL);
+      vtn_create_variable(b, val, ptr_type, ptr_type->storage_class, NULL);
 
       nir_variable *nir_var = val->pointer->var->var;
       nir_var->data.sampler.is_inline_sampler = true;

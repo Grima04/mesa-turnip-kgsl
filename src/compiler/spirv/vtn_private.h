@@ -750,6 +750,15 @@ vtn_untyped_value(struct vtn_builder *b, uint32_t value_id)
    return &b->values[value_id];
 }
 
+static inline uint32_t
+vtn_id_for_value(struct vtn_builder *b, struct vtn_value *value)
+{
+   vtn_fail_if(value <= b->values, "vtn_value pointer outside the range of valid values");
+   uint32_t value_id = value - b->values;
+   vtn_fail_if(value_id >= b->value_id_bound, "vtn_value pointer outside the range of valid values");
+   return value_id;
+}
+
 /* Consider not using this function directly and instead use
  * vtn_push_ssa/vtn_push_pointer so that appropriate applying of
  * decorations is handled by common code.
