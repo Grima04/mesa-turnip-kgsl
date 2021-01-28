@@ -112,7 +112,7 @@ static bool
 do_futex_fence_wait(struct util_queue_fence *fence,
                     bool timeout, int64_t abs_timeout)
 {
-   uint32_t v = fence->val;
+   uint32_t v = p_atomic_read_relaxed(&fence->val);
    struct timespec ts;
    ts.tv_sec = abs_timeout / (1000*1000*1000);
    ts.tv_nsec = abs_timeout % (1000*1000*1000);
@@ -130,7 +130,7 @@ do_futex_fence_wait(struct util_queue_fence *fence,
             return false;
       }
 
-      v = fence->val;
+      v = p_atomic_read_relaxed(&fence->val);
    }
 
    return true;
