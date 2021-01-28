@@ -393,8 +393,8 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device,
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i)
 		if (variants[i])
 			size += binaries[i]->total_size;
-	size = align(size, alignof(struct cache_entry));
-
+	const size_t size_without_align = size;
+	size = align(size_without_align, alignof(struct cache_entry));
 
 	entry = vk_alloc(&cache->alloc, size, 8,
 			   VK_SYSTEM_ALLOCATION_SCOPE_CACHE);
@@ -417,6 +417,11 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device,
 		memcpy(p, binaries[i], binaries[i]->total_size);
 		p += binaries[i]->total_size;
 	}
+
+	// Make valgrind happy by filling the alignment hole at the end.
+	assert((void*)p == (void*)entry + size_without_align);
+	assert(sizeof(*entry) + ((void*)p - (void*)entry->code) == size_without_align);
+	memset((void*)entry + size_without_align, 0, size - size_without_align);
 
 	/* Always add cache items to disk. This will allow collection of
 	 * compiled shaders by third parties such as steam, even if the app
