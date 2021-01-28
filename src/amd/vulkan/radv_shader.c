@@ -1599,7 +1599,11 @@ radv_get_max_waves(struct radv_device *device,
 			     device->physical_device->rad_info.num_physical_wave64_vgprs_per_simd / vgprs);
 	}
 
-	unsigned max_lds_per_simd = device->physical_device->rad_info.lds_size_per_workgroup / device->physical_device->rad_info.num_simd_per_compute_unit;
+	unsigned simd_per_workgroup = device->physical_device->rad_info.num_simd_per_compute_unit;
+	if (chip_class >= GFX10)
+		simd_per_workgroup *= 2; /* like lds_size_per_workgroup, assume WGP on GFX10+ */
+
+	unsigned max_lds_per_simd = device->physical_device->rad_info.lds_size_per_workgroup / simd_per_workgroup;
 	if (lds_per_wave)
 		max_simd_waves = MIN2(max_simd_waves, max_lds_per_simd / lds_per_wave);
 
