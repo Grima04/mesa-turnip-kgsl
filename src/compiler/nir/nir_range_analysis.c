@@ -289,6 +289,11 @@ analyze_constant(const struct nir_alu_instr *instr, unsigned src,
       }                                                       \
    } while (false)
 
+#else
+#define ASSERT_TABLE_IS_COMMUTATIVE(t)
+#define ASSERT_TABLE_IS_DIAGONAL(t)
+#endif /* !defined(NDEBUG) */
+
 static enum ssa_ranges
 union_ranges(enum ssa_ranges a, enum ssa_ranges b)
 {
@@ -309,6 +314,7 @@ union_ranges(enum ssa_ranges a, enum ssa_ranges b)
    return union_table[a][b];
 }
 
+#ifndef NDEBUG
 /* Verify that the 'unknown' entry in each row (or column) of the table is the
  * union of all the other values in the row (or column).
  */
@@ -406,14 +412,12 @@ union_ranges(enum ssa_ranges a, enum ssa_ranges b)
    } while (false)
 
 #else
-#define ASSERT_TABLE_IS_COMMUTATIVE(t)
-#define ASSERT_TABLE_IS_DIAGONAL(t)
 #define ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(t)
 #define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_1_SOURCE(t)
 #define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(t)
 #define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(t)
 #define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_2_SOURCE(t)
-#endif
+#endif /* !defined(NDEBUG) */
 
 /**
  * Analyze an expression to determine the range of its result
@@ -809,6 +813,17 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(table);
 
       r.range = table[left.range][right.range];
+
+      /* Recall that when either value is NaN, fmax will pick the other value.
+       * This means the result range of the fmax will either be the "ideal"
+       * result range (calculated above) or the range of the non-NaN value.
+       */
+      if (!left.is_a_number)
+         r.range = union_ranges(r.range, right.range);
+
+      if (!right.is_a_number)
+         r.range = union_ranges(r.range, left.range);
+
       break;
    }
 
@@ -884,6 +899,17 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(table);
 
       r.range = table[left.range][right.range];
+
+      /* Recall that when either value is NaN, fmin will pick the other value.
+       * This means the result range of the fmin will either be the "ideal"
+       * result range (calculated above) or the range of the non-NaN value.
+       */
+      if (!left.is_a_number)
+         r.range = union_ranges(r.range, right.range);
+
+      if (!right.is_a_number)
+         r.range = union_ranges(r.range, left.range);
+
       break;
    }
 
@@ -955,8 +981,10 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
          break;
 
       case gt_zero:
-         /* The fsat doesn't add any information in this case. */
-         r.range = left.range;
+         /* fsat is equivalent to fmin(fmax(X, 0.0), 1.0), so if X is not a
+          * number, the result will be 0.
+          */
+         r.range = left.is_a_number ? gt_zero : ge_zero;
          r.is_integral = left.is_integral;
          break;
 
