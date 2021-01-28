@@ -2752,7 +2752,8 @@ iris_set_shader_images(struct pipe_context *ctx,
    struct brw_image_param *image_params = genx->shaders[stage].image_param;
 #endif
 
-   shs->bound_image_views &= ~u_bit_consecutive(start_slot, count);
+   shs->bound_image_views &=
+      ~u_bit_consecutive(start_slot, count + unbind_num_trailing_slots);
 
    for (unsigned i = 0; i < count; i++) {
       struct iris_image_view *iv = &shs->image[start_slot + i];
@@ -2864,7 +2865,8 @@ iris_set_sampler_views(struct pipe_context *ctx,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    unsigned i;
 
-   shs->bound_sampler_views &= ~u_bit_consecutive(start, count);
+   shs->bound_sampler_views &=
+      ~u_bit_consecutive(start, count + unbind_num_trailing_slots);
 
    for (i = 0; i < count; i++) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
@@ -3441,7 +3443,8 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct iris_genx_state *genx = ice->state.genx;
 
-   ice->state.bound_vertex_buffers &= ~u_bit_consecutive64(start_slot, count);
+   ice->state.bound_vertex_buffers &=
+      ~u_bit_consecutive64(start_slot, count + unbind_num_trailing_slots);
 
    for (unsigned i = 0; i < count; i++) {
       const struct pipe_vertex_buffer *buffer = buffers ? &buffers[i] : NULL;
