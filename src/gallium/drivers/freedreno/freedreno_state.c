@@ -255,6 +255,7 @@ fd_set_framebuffer_state(struct pipe_context *pctx,
 
 		fd_batch_reference(&ctx->batch, NULL);
 		fd_context_all_dirty(ctx);
+		ctx->update_active_queries = true;
 
 		if (old_batch && old_batch->blit && !old_batch->back_blit) {
 			/* for blits, there is not really much point in hanging on
