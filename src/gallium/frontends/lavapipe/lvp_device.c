@@ -1224,23 +1224,6 @@ VkResult lvp_BindBufferMemory2(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult lvp_BindBufferMemory(
-   VkDevice                                    _device,
-   VkBuffer                                    _buffer,
-   VkDeviceMemory                              _memory,
-   VkDeviceSize                                memoryOffset)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_device_memory, mem, _memory);
-   LVP_FROM_HANDLE(lvp_buffer, buffer, _buffer);
-
-   device->pscreen->resource_bind_backing(device->pscreen,
-                                          buffer->bo,
-                                          mem->pmem,
-                                          memoryOffset);
-   return VK_SUCCESS;
-}
-
 VkResult lvp_BindImageMemory2(VkDevice _device,
                               uint32_t bindInfoCount,
                               const VkBindImageMemoryInfo *pBindInfos)
@@ -1255,23 +1238,6 @@ VkResult lvp_BindImageMemory2(VkDevice _device,
                                              mem->pmem,
                                              pBindInfos[i].memoryOffset);
    }
-   return VK_SUCCESS;
-}
-
-VkResult lvp_BindImageMemory(
-   VkDevice                                    _device,
-   VkImage                                     _image,
-   VkDeviceMemory                              _memory,
-   VkDeviceSize                                memoryOffset)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_device_memory, mem, _memory);
-   LVP_FROM_HANDLE(lvp_image, image, _image);
-
-   device->pscreen->resource_bind_backing(device->pscreen,
-                                          image->bo,
-                                          mem->pmem,
-                                          memoryOffset);
    return VK_SUCCESS;
 }
 

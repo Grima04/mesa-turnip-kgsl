@@ -236,18 +236,6 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
    return;
 }
 
-void lvp_GetPhysicalDeviceFormatProperties(
-    VkPhysicalDevice                            physicalDevice,
-    VkFormat                                    format,
-    VkFormatProperties*                         pFormatProperties)
-{
-   LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
-
-   lvp_physical_device_get_format_properties(physical_device,
-                                             format,
-                                             pFormatProperties);
-}
-
 void lvp_GetPhysicalDeviceFormatProperties2(
         VkPhysicalDevice                            physicalDevice,
         VkFormat                                    format,
@@ -380,31 +368,6 @@ static VkResult lvp_get_image_format_properties(struct lvp_physical_device *phys
    };
 
    return VK_ERROR_FORMAT_NOT_SUPPORTED;
-}
-
-VkResult lvp_GetPhysicalDeviceImageFormatProperties(
-    VkPhysicalDevice                            physicalDevice,
-    VkFormat                                    format,
-    VkImageType                                 type,
-    VkImageTiling                               tiling,
-    VkImageUsageFlags                           usage,
-    VkImageCreateFlags                          createFlags,
-    VkImageFormatProperties*                    pImageFormatProperties)
-{
-   LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
-
-   const VkPhysicalDeviceImageFormatInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
-      .pNext = NULL,
-      .format = format,
-      .type = type,
-      .tiling = tiling,
-      .usage = usage,
-      .flags = createFlags,
-   };
-
-   return lvp_get_image_format_properties(physical_device, &info,
-                                           pImageFormatProperties);
 }
 
 VkResult lvp_GetPhysicalDeviceImageFormatProperties2(
