@@ -983,9 +983,11 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
-      VkPhysicalDeviceFeatures supported_features;
-      tu_GetPhysicalDeviceFeatures(physicalDevice, &supported_features);
-      VkBool32 *supported_feature = (VkBool32 *) &supported_features;
+      VkPhysicalDeviceFeatures2 supported_features = {
+         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+      };
+      tu_GetPhysicalDeviceFeatures2(physicalDevice, &supported_features);
+      VkBool32 *supported_feature = (VkBool32 *) &supported_features.features;
       VkBool32 *enabled_feature = (VkBool32 *) pCreateInfo->pEnabledFeatures;
       unsigned num_features =
          sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32);

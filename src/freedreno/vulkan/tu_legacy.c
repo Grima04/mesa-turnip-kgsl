@@ -14,26 +14,6 @@
 #include "vk_util.h"
 
 void
-tu_GetPhysicalDeviceFeatures(VkPhysicalDevice pdev, VkPhysicalDeviceFeatures *features)
-{
-   VkPhysicalDeviceFeatures2 features2;
-   features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-   features2.pNext = NULL;
-   tu_GetPhysicalDeviceFeatures2(pdev, &features2);
-   *features = features2.features;
-}
-
-void
-tu_GetPhysicalDeviceProperties(VkPhysicalDevice pdev, VkPhysicalDeviceProperties *props)
-{
-   VkPhysicalDeviceProperties2 props2;
-   props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-   props2.pNext = NULL;
-   tu_GetPhysicalDeviceProperties2(pdev, &props2);
-   *props = props2.properties;
-}
-
-void
 tu_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice pdev,
                                           uint32_t *count,
                                           VkQueueFamilyProperties *props)
@@ -49,46 +29,6 @@ tu_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice pdev,
    tu_GetPhysicalDeviceQueueFamilyProperties2(pdev, count, props2);
    for (uint32_t i = 0; i < *count; i++)
       props[i] = props2[i].queueFamilyProperties;
-}
-
-void
-tu_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice pdev, VkPhysicalDeviceMemoryProperties *props)
-{
-   VkPhysicalDeviceMemoryProperties2 props2;
-   props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
-   props2.pNext = NULL;
-   tu_GetPhysicalDeviceMemoryProperties2(pdev, &props2);
-   *props = props2.memoryProperties;
-}
-
-void
-tu_GetPhysicalDeviceFormatProperties(VkPhysicalDevice pdev, VkFormat format, VkFormatProperties *props)
-{
-   VkFormatProperties2 props2 = { .sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-   tu_GetPhysicalDeviceFormatProperties2(pdev, format, &props2);
-   *props = props2.formatProperties;
-}
-
-VkResult
-tu_GetPhysicalDeviceImageFormatProperties(VkPhysicalDevice pdev,
-                                          VkFormat format,
-                                          VkImageType type,
-                                          VkImageTiling tiling,
-                                          VkImageUsageFlags usage,
-                                          VkImageCreateFlags flags,
-                                          VkImageFormatProperties *props)
-{
-   VkImageFormatProperties2 props2 = { .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2 };
-   VkResult result = tu_GetPhysicalDeviceImageFormatProperties2(pdev, &(VkPhysicalDeviceImageFormatInfo2) {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
-      .format = format,
-      .type = type,
-      .tiling = tiling,
-      .usage = usage,
-      .flags = flags
-   }, &props2);
-   *props = props2.imageFormatProperties;
-   return result;
 }
 
 void
@@ -124,38 +64,6 @@ tu_GetPhysicalDeviceSparseImageFormatProperties(VkPhysicalDevice pdev,
 }
 
 void
-tu_GetDeviceQueue(VkDevice device, uint32_t queueFamilyIndex, uint32_t queueIndex, VkQueue *pQueue)
-{
-   tu_GetDeviceQueue2(device, &(VkDeviceQueueInfo2) {
-      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-      .queueFamilyIndex = queueFamilyIndex,
-      .queueIndex = queueIndex
-   }, pQueue);
-}
-
-void
-tu_GetBufferMemoryRequirements(VkDevice device, VkBuffer buffer, VkMemoryRequirements *reqs)
-{
-   VkMemoryRequirements2 reqs2 = { .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-   tu_GetBufferMemoryRequirements2(device, &(VkBufferMemoryRequirementsInfo2) {
-      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
-      .buffer = buffer
-   }, &reqs2);
-   *reqs = reqs2.memoryRequirements;
-}
-
-void
-tu_GetImageMemoryRequirements(VkDevice device, VkImage image, VkMemoryRequirements *reqs)
-{
-   VkMemoryRequirements2 reqs2 = { .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-   tu_GetImageMemoryRequirements2(device, &(VkImageMemoryRequirementsInfo2) {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-      .image = image
-   }, &reqs2);
-   *reqs = reqs2.memoryRequirements;
-}
-
-void
 tu_GetImageSparseMemoryRequirements(VkDevice device,
                                     VkImage image,
                                     uint32_t *count,
@@ -177,28 +85,6 @@ tu_GetImageSparseMemoryRequirements(VkDevice device,
    tu_GetImageSparseMemoryRequirements2(device, &info, count, reqs2);
    for (uint32_t i = 0; i < *count; i++)
       reqs[i] = reqs2[i].memoryRequirements;
-}
-
-VkResult
-tu_BindBufferMemory(VkDevice device, VkBuffer buffer, VkDeviceMemory memory, VkDeviceSize offset)
-{
-   return tu_BindBufferMemory2(device, 1, &(VkBindBufferMemoryInfo) {
-      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-      .buffer = buffer,
-      .memory = memory,
-      .memoryOffset = offset
-   });
-}
-
-VkResult
-tu_BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize offset)
-{
-   return tu_BindImageMemory2(device, 1, &(VkBindImageMemoryInfo) {
-      .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
-      .image = image,
-      .memory = memory,
-      .memoryOffset = offset
-   });
 }
 
 static void
