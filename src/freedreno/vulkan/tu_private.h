@@ -228,8 +228,6 @@ struct tu_instance
    struct tu_physical_device physical_devices[TU_MAX_DRM_DEVICES];
 
    enum tu_debug_flags debug_flags;
-
-   struct vk_debug_report_instance debug_report_callbacks;
 };
 
 VkResult

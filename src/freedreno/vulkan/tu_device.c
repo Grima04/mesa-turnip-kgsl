@@ -256,13 +256,6 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (instance->debug_flags & TU_DEBUG_STARTUP)
       mesa_logi("Created an instance");
 
-   result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
-   if (result != VK_SUCCESS) {
-      vk_instance_finish(&instance->vk);
-      vk_free(pAllocator, instance);
-      return vk_startup_errorf(instance, result, "debug_report setup failure");
-   }
-
    glsl_type_singleton_init_or_ref();
 
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
@@ -288,8 +281,6 @@ tu_DestroyInstance(VkInstance _instance,
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
    glsl_type_singleton_decref();
-
-   vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);
@@ -2020,44 +2011,6 @@ tu_GetPhysicalDeviceExternalFenceProperties(
    pExternalFenceProperties->exportFromImportedHandleTypes = 0;
    pExternalFenceProperties->compatibleHandleTypes = 0;
    pExternalFenceProperties->externalFenceFeatures = 0;
-}
-
-VkResult
-tu_CreateDebugReportCallbackEXT(
-   VkInstance _instance,
-   const VkDebugReportCallbackCreateInfoEXT *pCreateInfo,
-   const VkAllocationCallbacks *pAllocator,
-   VkDebugReportCallbackEXT *pCallback)
-{
-   TU_FROM_HANDLE(tu_instance, instance, _instance);
-   return vk_create_debug_report_callback(&instance->debug_report_callbacks,
-                                          pCreateInfo, pAllocator,
-                                          &instance->alloc, pCallback);
-}
-
-void
-tu_DestroyDebugReportCallbackEXT(VkInstance _instance,
-                                 VkDebugReportCallbackEXT _callback,
-                                 const VkAllocationCallbacks *pAllocator)
-{
-   TU_FROM_HANDLE(tu_instance, instance, _instance);
-   vk_destroy_debug_report_callback(&instance->debug_report_callbacks,
-                                    _callback, pAllocator, &instance->alloc);
-}
-
-void
-tu_DebugReportMessageEXT(VkInstance _instance,
-                         VkDebugReportFlagsEXT flags,
-                         VkDebugReportObjectTypeEXT objectType,
-                         uint64_t object,
-                         size_t location,
-                         int32_t messageCode,
-                         const char *pLayerPrefix,
-                         const char *pMessage)
-{
-   TU_FROM_HANDLE(tu_instance, instance, _instance);
-   vk_debug_report(&instance->debug_report_callbacks, flags, objectType,
-                   object, location, messageCode, pLayerPrefix, pMessage);
 }
 
 void
