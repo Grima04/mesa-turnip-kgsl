@@ -123,6 +123,8 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
       program->sgpr_limit = 104;
    }
 
+   program->wgp_mode = chip_class >= GFX10; /* assume WGP is used on Navi */
+
    program->next_fp_mode.preserve_signed_zero_inf_nan32 = false;
    program->next_fp_mode.preserve_signed_zero_inf_nan16_64 = false;
    program->next_fp_mode.must_flush_denorms32 = false;

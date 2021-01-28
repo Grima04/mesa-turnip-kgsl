@@ -461,8 +461,8 @@ wait_imm perform_barrier(wait_ctx& ctx, memory_sync_info sync, unsigned semantic
          if (bar_scope_lds <= subgroup_scope)
             events &= ~event_lds;
 
-         /* in non-WGP, the L1/L0 cache keeps all memory operations in-order for the same workgroup */
-         if (ctx.chip_class < GFX10 && sync.scope <= scope_workgroup)
+         /* in non-WGP, the L1 (L0 on GFX10+) cache keeps all memory operations in-order for the same workgroup */
+         if (!ctx.program->wgp_mode && sync.scope <= scope_workgroup)
             events &= ~(event_vmem | event_vmem_store | event_smem);
 
          if (events)

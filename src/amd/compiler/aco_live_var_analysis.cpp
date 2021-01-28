@@ -315,8 +315,7 @@ void calc_min_waves(Program* program)
    unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
 
    unsigned simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
-   bool wgp = program->chip_class >= GFX10; /* assume WGP is used on Navi */
-   unsigned simd_per_cu_wgp = wgp ? simd_per_cu * 2 : simd_per_cu;
+   unsigned simd_per_cu_wgp = program->wgp_mode ? simd_per_cu * 2 : simd_per_cu;
 
    program->min_waves = DIV_ROUND_UP(waves_per_workgroup, simd_per_cu_wgp);
 }
@@ -333,9 +332,8 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
 
    unsigned simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
 
-   bool wgp = program->chip_class >= GFX10; /* assume WGP is used on Navi */
-   unsigned simd_per_cu_wgp = wgp ? simd_per_cu * 2 : simd_per_cu;
-   unsigned lds_limit = wgp ? program->lds_limit * 2 : program->lds_limit;
+   unsigned simd_per_cu_wgp = program->wgp_mode ? simd_per_cu * 2 : simd_per_cu;
+   unsigned lds_limit = program->wgp_mode ? program->lds_limit * 2 : program->lds_limit;
 
    assert(program->min_waves >= 1);
    uint16_t sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
