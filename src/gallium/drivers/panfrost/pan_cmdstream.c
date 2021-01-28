@@ -1359,7 +1359,8 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
          * Also, we allocate more memory than what's needed here if either instancing
          * is enabled or images are present, this can be improved. */
         unsigned bufs_per_attrib = (ctx->instance_count > 1 || nr_images > 0) ? 2 : 1;
-        unsigned nr_bufs = (vs->attribute_count + 1) * bufs_per_attrib;
+        unsigned nr_bufs = (vs->attribute_count * bufs_per_attrib) +
+                           (pan_is_bifrost(dev) ? 1 : 0);
 
         struct panfrost_ptr S = panfrost_pool_alloc_aligned(&batch->pool,
                         MALI_ATTRIBUTE_BUFFER_LENGTH * nr_bufs,
