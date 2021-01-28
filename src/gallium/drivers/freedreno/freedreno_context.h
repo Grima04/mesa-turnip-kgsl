@@ -172,24 +172,6 @@ enum fd_dirty_shader_state {
 	FD_DIRTY_SHADER_IMAGE = BIT(4),
 };
 
-/* Bitmask of stages in rendering that a particular query is active.
- * Queries will be automatically started/stopped (generating additional
- * fd_hw_sample_period's) on entrance/exit from stages that are
- * applicable to the query.
- *
- * NOTE: set the stage to NULL at end of IB to ensure no query is still
- * active.  Things aren't going to work out the way you want if a query
- * is active across IB's (or between tile IB and draw IB)
- */
-enum fd_render_stage {
-	FD_STAGE_NULL     = 0x00,
-	FD_STAGE_DRAW     = 0x01,
-	FD_STAGE_CLEAR    = 0x02,
-	/* used for driver internal draws (ie. util_blitter_blit()): */
-	FD_STAGE_BLIT     = 0x04,
-	FD_STAGE_ALL      = 0xff,
-};
-
 #define MAX_HW_SAMPLE_PROVIDERS 7
 struct fd_hw_sample_provider;
 struct fd_hw_sample;
@@ -241,8 +223,8 @@ struct fd_context {
 	struct list_head acc_active_queries;
 	/*@}*/
 
-	/* Whether we need to walk the acc_active_queries next fd_set_stage() to
-	 * update active queries (even if stage doesn't change).
+	/* Whether we need to recheck the active_queries list next
+	 * fd_batch_update_queries().
 	 */
 	bool update_active_queries;
 
@@ -436,7 +418,7 @@ struct fd_context {
 	void (*query_prepare)(struct fd_batch *batch, uint32_t num_tiles);
 	void (*query_prepare_tile)(struct fd_batch *batch, uint32_t n,
 			struct fd_ringbuffer *ring);
-	void (*query_set_stage)(struct fd_batch *batch, enum fd_render_stage stage);
+	void (*query_update_batch)(struct fd_batch *batch, bool disable_all);
 
 	/* blitter: */
 	bool (*blit)(struct fd_context *ctx, const struct pipe_blit_info *info);

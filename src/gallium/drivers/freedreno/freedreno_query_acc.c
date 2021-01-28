@@ -235,16 +235,16 @@ fd_acc_create_query(struct fd_context *ctx, unsigned query_type,
  * batch reordering).
  */
 void
-fd_acc_query_set_stage(struct fd_batch *batch, enum fd_render_stage stage)
+fd_acc_query_update_batch(struct fd_batch *batch, bool disable_all)
 {
 	struct fd_context *ctx = batch->ctx;
 
-	if (stage != batch->stage || ctx->update_active_queries) {
+	if (disable_all || ctx->update_active_queries) {
 		struct fd_acc_query *aq;
 		LIST_FOR_EACH_ENTRY(aq, &ctx->acc_active_queries, node) {
 			bool batch_change = aq->batch != batch;
 			bool was_active = aq->batch != NULL;
-			bool now_active = stage != FD_STAGE_NULL &&
+			bool now_active = !disable_all &&
 				(ctx->active_queries || aq->provider->always);
 
 			if (was_active && (!now_active || batch_change))

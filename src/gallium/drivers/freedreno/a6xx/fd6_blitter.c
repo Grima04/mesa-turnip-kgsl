@@ -885,7 +885,7 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	 */
 	fd_fence_ref(&ctx->last_fence, NULL);
 
-	fd_batch_set_stage(batch, FD_STAGE_BLIT);
+	fd_batch_update_queries(batch);
 
 	emit_setup(batch);
 
@@ -917,6 +917,11 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	fd_batch_flush(batch);
 	fd_batch_reference(&batch, NULL);
+
+	/* Acc query state will have been dirtied by our fd_batch_update_queries, so
+	 * the ctx->batch may need to turn its queries back on.
+	 */
+	ctx->update_active_queries = true;
 
 	return true;
 }

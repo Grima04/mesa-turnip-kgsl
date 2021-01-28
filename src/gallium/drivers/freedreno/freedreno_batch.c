@@ -91,7 +91,6 @@ batch_init(struct fd_batch *batch)
 	batch->num_bins_per_pipe = 0;
 	batch->prim_strm_bits = 0;
 	batch->draw_strm_bits = 0;
-	batch->stage = FD_STAGE_NULL;
 
 	fd_reset_wfi(batch);
 
@@ -343,7 +342,7 @@ batch_flush(struct fd_batch *batch)
 	/* close out the draw cmds by making sure any active queries are
 	 * paused:
 	 */
-	fd_batch_set_stage(batch, FD_STAGE_NULL);
+	fd_batch_finish_queries(batch);
 
 	batch_flush_reset_dependencies(batch, true);
 

@@ -197,7 +197,7 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 	/* NOTE: needs to be before resource_written(batch->query_buf), otherwise
 	 * query_buf may not be created yet.
 	 */
-	fd_batch_set_stage(batch, FD_STAGE_DRAW);
+	fd_batch_update_queries(batch);
 
 	/*
 	 * Figure out the buffers/features we need:
@@ -473,7 +473,7 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 	bool fallback = true;
 
 	if (ctx->clear) {
-		fd_batch_set_stage(batch, FD_STAGE_CLEAR);
+		fd_batch_update_queries(batch);
 
 		if (ctx->clear(ctx, buffers, color, depth, stencil)) {
 			if (fd_mesa_debug & FD_DBG_DCLEAR)

@@ -77,8 +77,7 @@ default_src_texture(struct pipe_sampler_view *src_templ,
 }
 
 static void
-fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond, bool discard,
-		enum fd_render_stage stage)
+fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond, bool discard)
 {
 	fd_fence_ref(&ctx->last_fence, NULL);
 
@@ -112,7 +111,7 @@ fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond, bool discard,
 			ctx->cond_query, ctx->cond_cond, ctx->cond_mode);
 
 	if (ctx->batch)
-		fd_batch_set_stage(ctx->batch, stage);
+		fd_batch_update_queries(ctx->batch);
 
 	ctx->in_discard_blit = discard;
 }
@@ -140,7 +139,7 @@ fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 				info->dst.box.height, info->dst.box.depth);
 	}
 
-	fd_blitter_pipe_begin(ctx, info->render_condition_enable, discard, FD_STAGE_BLIT);
+	fd_blitter_pipe_begin(ctx, info->render_condition_enable, discard);
 
 	/* Initialize the surface. */
 	default_dst_texture(&dst_templ, dst, info->dst.level,
@@ -181,7 +180,7 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 	/* Note: don't use discard=true, if there was something to
 	 * discard, that would have been already handled in fd_clear().
 	 */
-	fd_blitter_pipe_begin(ctx, false, false, FD_STAGE_CLEAR);
+	fd_blitter_pipe_begin(ctx, false, false);
 
 	util_blitter_common_clear_setup(blitter, pfb->width, pfb->height,
 			buffers, NULL, NULL);
@@ -313,7 +312,7 @@ fd_blitter_pipe_copy_region(struct fd_context *ctx,
 		return false;
 
 	/* TODO we could discard if dst box covers dst level fully.. */
-	fd_blitter_pipe_begin(ctx, false, false, FD_STAGE_BLIT);
+	fd_blitter_pipe_begin(ctx, false, false);
 	util_blitter_copy_texture(ctx->blitter,
 			dst, dst_level, dstx, dsty, dstz,
 			src, src_level, src_box);

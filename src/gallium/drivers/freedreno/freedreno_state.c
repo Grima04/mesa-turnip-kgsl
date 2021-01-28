@@ -251,7 +251,7 @@ fd_set_framebuffer_state(struct pipe_context *pctx,
 		fd_batch_reference(&old_batch, ctx->batch);
 
 		if (likely(old_batch))
-			fd_batch_set_stage(old_batch, FD_STAGE_NULL);
+			fd_batch_finish_queries(old_batch);
 
 		fd_batch_reference(&ctx->batch, NULL);
 		fd_context_all_dirty(ctx);

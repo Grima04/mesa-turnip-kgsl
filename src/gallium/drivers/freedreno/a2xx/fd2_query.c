@@ -238,7 +238,7 @@ fd2_query_context_init(struct pipe_context *pctx)
 	struct fd_context *ctx = fd_context(pctx);
 
 	ctx->create_query = fd_acc_create_query;
-	ctx->query_set_stage = fd_acc_query_set_stage;
+	ctx->query_update_batch = fd_acc_query_update_batch;
 
 	pctx->create_batch_query = fd2_create_batch_query;
 }

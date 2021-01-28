@@ -385,15 +385,15 @@ fd_hw_query_prepare_tile(struct fd_batch *batch, uint32_t n,
 }
 
 void
-fd_hw_query_set_stage(struct fd_batch *batch, enum fd_render_stage stage)
+fd_hw_query_update_batch(struct fd_batch *batch, bool disable_all)
 {
 	struct fd_context *ctx = batch->ctx;
 
-	if (stage != batch->stage || ctx->update_active_queries) {
+	if (disable_all || ctx->update_active_queries) {
 		struct fd_hw_query *hq;
 		LIST_FOR_EACH_ENTRY(hq, &batch->ctx->hw_active_queries, list) {
 			bool was_active = query_active_in_batch(batch, hq);
-			bool now_active = stage != FD_STAGE_NULL &&
+			bool now_active = !disable_all &&
 				(ctx->active_queries || hq->provider->always);
 
 			if (now_active && !was_active)
