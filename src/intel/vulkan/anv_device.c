@@ -3948,12 +3948,28 @@ VkResult anv_InvalidateMappedMemoryRanges(
 }
 
 void anv_GetBufferMemoryRequirements(
-    VkDevice                                    _device,
-    VkBuffer                                    _buffer,
+    VkDevice                                    device,
+    VkBuffer                                    buffer,
     VkMemoryRequirements*                       pMemoryRequirements)
 {
-   ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
+   VkBufferMemoryRequirementsInfo2 info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+      .buffer = buffer,
+   };
+   VkMemoryRequirements2 reqs = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+   };
+   anv_GetBufferMemoryRequirements2(device, &info, &reqs);
+   *pMemoryRequirements = reqs.memoryRequirements;
+}
+
+void anv_GetBufferMemoryRequirements2(
+    VkDevice                                    _device,
+    const VkBufferMemoryRequirementsInfo2*      pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
    ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
 
    /* The Vulkan spec (git aaed022) says:
     *
@@ -3970,8 +3986,8 @@ void anv_GetBufferMemoryRequirements(
    if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
       alignment = MAX2(alignment, ANV_UBO_ALIGNMENT);
 
-   pMemoryRequirements->size = buffer->size;
-   pMemoryRequirements->alignment = alignment;
+   pMemoryRequirements->memoryRequirements.size = buffer->size;
+   pMemoryRequirements->memoryRequirements.alignment = alignment;
 
    /* Storage and Uniform buffers should have their size aligned to
     * 32-bits to avoid boundary checks when last DWord is not complete.
@@ -3981,18 +3997,9 @@ void anv_GetBufferMemoryRequirements(
    if (device->robust_buffer_access &&
        (buffer->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ||
         buffer->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
-      pMemoryRequirements->size = align_u64(buffer->size, 4);
+      pMemoryRequirements->memoryRequirements.size = align_u64(buffer->size, 4);
 
-   pMemoryRequirements->memoryTypeBits = memory_types;
-}
-
-void anv_GetBufferMemoryRequirements2(
-    VkDevice                                    _device,
-    const VkBufferMemoryRequirementsInfo2*      pInfo,
-    VkMemoryRequirements2*                      pMemoryRequirements)
-{
-   anv_GetBufferMemoryRequirements(_device, pInfo->buffer,
-                                   &pMemoryRequirements->memoryRequirements);
+   pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext) {
       switch (ext->sType) {
@@ -4011,12 +4018,28 @@ void anv_GetBufferMemoryRequirements2(
 }
 
 void anv_GetImageMemoryRequirements(
-    VkDevice                                    _device,
-    VkImage                                     _image,
+    VkDevice                                    device,
+    VkImage                                     image,
     VkMemoryRequirements*                       pMemoryRequirements)
 {
-   ANV_FROM_HANDLE(anv_image, image, _image);
+   VkImageMemoryRequirementsInfo2 info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+      .image = image,
+   };
+   VkMemoryRequirements2 reqs = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+   };
+   anv_GetImageMemoryRequirements2(device, &info, &reqs);
+   *pMemoryRequirements = reqs.memoryRequirements;
+}
+
+void anv_GetImageMemoryRequirements2(
+    VkDevice                                    _device,
+    const VkImageMemoryRequirementsInfo2*       pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
    ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(anv_image, image, pInfo->image);
 
    /* The Vulkan spec (git aaed022) says:
     *
@@ -4029,21 +4052,9 @@ void anv_GetImageMemoryRequirements(
     */
    uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
 
-   pMemoryRequirements->size = image->size;
-   pMemoryRequirements->alignment = image->alignment;
-   pMemoryRequirements->memoryTypeBits = memory_types;
-}
-
-void anv_GetImageMemoryRequirements2(
-    VkDevice                                    _device,
-    const VkImageMemoryRequirementsInfo2*       pInfo,
-    VkMemoryRequirements2*                      pMemoryRequirements)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_image, image, pInfo->image);
-
-   anv_GetImageMemoryRequirements(_device, pInfo->image,
-                                  &pMemoryRequirements->memoryRequirements);
+   pMemoryRequirements->memoryRequirements.size = image->size;
+   pMemoryRequirements->memoryRequirements.alignment = image->alignment;
+   pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
 
    vk_foreach_struct_const(ext, pInfo->pNext) {
       switch (ext->sType) {
