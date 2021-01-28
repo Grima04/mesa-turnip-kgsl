@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+vk_extensions_gen = files('vk_extensions_gen.py')
+
 files_vulkan_util = files(
   'vk_alloc.h',
   'vk_debug_report.c',

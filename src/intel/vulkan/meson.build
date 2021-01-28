@@ -39,7 +39,7 @@ anv_extensions_c = custom_target(
     prog_python, '@INPUT0@', '--xml', '@INPUT1@',
     '--out-c', '@OUTPUT@',
   ],
-  depend_files : anv_extensions_py,
+  depend_files : [anv_extensions_py, vk_extensions_gen],
 )
 
 anv_extensions_h = custom_target(

@@ -37,6 +37,7 @@ radv_extensions_c = custom_target(
     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--out-c', '@OUTPUT0@',
     '--out-h', '@OUTPUT1@'
   ],
+  depend_files : vk_extensions_gen,
 )
 
 amd_vk_format_table_c = custom_target(

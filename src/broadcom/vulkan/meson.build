@@ -37,7 +37,7 @@ v3dv_extensions_c = custom_target(
     prog_python, '@INPUT0@', '--xml', '@INPUT1@',
     '--out-c', '@OUTPUT@',
   ],
-  depend_files : files('v3dv_extensions.py'),
+  depend_files : [files('v3dv_extensions.py'), vk_extensions_gen],
 )
 
 v3dv_extensions_h = custom_target(
@@ -48,7 +48,7 @@ v3dv_extensions_h = custom_target(
     prog_python, '@INPUT0@', '--xml', '@INPUT1@',
     '--out-h', '@OUTPUT@',
   ],
-  depend_files : files('v3dv_extensions.py'),
+  depend_files : [files('v3dv_extensions.py'), vk_extensions_gen],
 )
 
 libv3dv_files = files(
