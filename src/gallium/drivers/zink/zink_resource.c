@@ -172,14 +172,20 @@ get_memory_type_index(struct zink_screen *screen,
                       const VkMemoryRequirements *reqs,
                       VkMemoryPropertyFlags props)
 {
+   int32_t idx = -1;
    for (uint32_t i = 0u; i < VK_MAX_MEMORY_TYPES; i++) {
       if (((reqs->memoryTypeBits >> i) & 1) == 1) {
          if ((screen->info.mem_props.memoryTypes[i].propertyFlags & props) == props) {
-            return i;
-            break;
+            if (!(props & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) &&
+                screen->info.mem_props.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) {
+               idx = i;
+            } else
+               return i;
          }
       }
    }
+   if (idx >= 0)
+      return idx;
 
    unreachable("Unsupported memory-type");
    return 0;
