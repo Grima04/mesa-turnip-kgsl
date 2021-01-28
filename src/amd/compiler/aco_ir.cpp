@@ -93,36 +93,68 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
    program->wave_size = info->wave_size;
    program->lane_mask = program->wave_size == 32 ? s1 : s2;
 
-   program->lds_encoding_granule = chip_class >= GFX7 ? 512 : 256;
-   program->lds_alloc_granule = chip_class >= GFX10_3 ? 1024 : program->lds_encoding_granule;
-   program->lds_limit = chip_class >= GFX7 ? 65536 : 32768;
+   program->dev.lds_encoding_granule = chip_class >= GFX7 ? 512 : 256;
+   program->dev.lds_alloc_granule = chip_class >= GFX10_3 ? 1024 : program->dev.lds_encoding_granule;
+   program->dev.lds_limit = chip_class >= GFX7 ? 65536 : 32768;
    /* apparently gfx702 also has 16-bank LDS but I can't find a family for that */
-   program->has_16bank_lds = family == CHIP_KABINI || family == CHIP_STONEY;
+   program->dev.has_16bank_lds = family == CHIP_KABINI || family == CHIP_STONEY;
 
-   program->vgpr_limit = 256;
-   program->physical_vgprs = 256;
-   program->vgpr_alloc_granule = 4;
+   program->dev.vgpr_limit = 256;
+   program->dev.physical_vgprs = 256;
+   program->dev.vgpr_alloc_granule = 4;
 
    if (chip_class >= GFX10) {
-      program->physical_sgprs = 5120; /* doesn't matter as long as it's at least 128 * 40 */
-      program->physical_vgprs = program->wave_size == 32 ? 1024 : 512;
-      program->sgpr_alloc_granule = 128;
-      program->sgpr_limit = 108; /* includes VCC, which can be treated as s[106-107] on GFX10+ */
+      program->dev.physical_sgprs = 5120; /* doesn't matter as long as it's at least 128 * 40 */
+      program->dev.physical_vgprs = program->wave_size == 32 ? 1024 : 512;
+      program->dev.sgpr_alloc_granule = 128;
+      program->dev.sgpr_limit = 108; /* includes VCC, which can be treated as s[106-107] on GFX10+ */
       if (chip_class >= GFX10_3)
-         program->vgpr_alloc_granule = program->wave_size == 32 ? 16 : 8;
+         program->dev.vgpr_alloc_granule = program->wave_size == 32 ? 16 : 8;
       else
-         program->vgpr_alloc_granule = program->wave_size == 32 ? 8 : 4;
+         program->dev.vgpr_alloc_granule = program->wave_size == 32 ? 8 : 4;
    } else if (program->chip_class >= GFX8) {
-      program->physical_sgprs = 800;
-      program->sgpr_alloc_granule = 16;
-      program->sgpr_limit = 102;
+      program->dev.physical_sgprs = 800;
+      program->dev.sgpr_alloc_granule = 16;
+      program->dev.sgpr_limit = 102;
       if (family == CHIP_TONGA || family == CHIP_ICELAND)
-         program->sgpr_alloc_granule = 96; /* workaround hardware bug */
+         program->dev.sgpr_alloc_granule = 96; /* workaround hardware bug */
    } else {
-      program->physical_sgprs = 512;
-      program->sgpr_alloc_granule = 8;
-      program->sgpr_limit = 104;
+      program->dev.physical_sgprs = 512;
+      program->dev.sgpr_alloc_granule = 8;
+      program->dev.sgpr_limit = 104;
    }
+
+   program->dev.max_wave64_per_simd = 10;
+   if (program->chip_class >= GFX10_3)
+      program->dev.max_wave64_per_simd = 16;
+   else if (program->chip_class == GFX10)
+      program->dev.max_wave64_per_simd = 20;
+   else if (program->family >= CHIP_POLARIS10 && program->family <= CHIP_VEGAM)
+      program->dev.max_wave64_per_simd = 8;
+
+   program->dev.simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
+
+   switch (program->family) {
+   /* GFX8 APUs */
+   case CHIP_CARRIZO:
+   case CHIP_STONEY:
+   /* GFX9 APUS */
+   case CHIP_RAVEN:
+   case CHIP_RAVEN2:
+   case CHIP_RENOIR:
+      program->dev.xnack_enabled = true;
+      break;
+   default:
+      break;
+   }
+
+   program->dev.sram_ecc_enabled = program->family == CHIP_ARCTURUS;
+   /* apparently gfx702 also has fast v_fma_f32 but I can't find a family for that */
+   program->dev.has_fast_fma32 = program->chip_class >= GFX9;
+   if (program->family == CHIP_TAHITI ||
+       program->family == CHIP_CARRIZO ||
+       program->family == CHIP_HAWAII)
+      program->dev.has_fast_fma32 = true;
 
    program->wgp_mode = wgp_mode;
 

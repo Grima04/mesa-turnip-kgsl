@@ -398,7 +398,7 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    if (ctx->stage == vertex_ngg && ctx->args->options->key.vs_common_out.export_prim_id) {
       /* We need to store the primitive IDs in LDS */
       unsigned lds_size = ctx->program->info->ngg_info.esgs_ring_size;
-      ctx->program->config->lds_size = DIV_ROUND_UP(lds_size, ctx->program->lds_encoding_granule);
+      ctx->program->config->lds_size = DIV_ROUND_UP(lds_size, ctx->program->dev.lds_encoding_granule);
    }
 }
 
@@ -423,7 +423,7 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       unsigned total_lds_bytes = esgs_ring_bytes + ngg_emit_bytes + ngg_gs_scratch_bytes;
       assert(total_lds_bytes >= ctx->ngg_gs_emit_addr);
       assert(total_lds_bytes >= ctx->ngg_gs_scratch_addr);
-      ctx->program->config->lds_size = DIV_ROUND_UP(total_lds_bytes, ctx->program->lds_encoding_granule);
+      ctx->program->config->lds_size = DIV_ROUND_UP(total_lds_bytes, ctx->program->dev.lds_encoding_granule);
 
       /* Make sure we have enough room for emitted GS vertices */
       if (nir->info.gs.vertices_out)
@@ -487,7 +487,7 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
 
    ctx->args->shader_info->tcs.num_patches = ctx->tcs_num_patches;
    ctx->args->shader_info->tcs.num_lds_blocks = lds_size;
-   ctx->program->config->lds_size = DIV_ROUND_UP(lds_size, ctx->program->lds_encoding_granule);
+   ctx->program->config->lds_size = DIV_ROUND_UP(lds_size, ctx->program->dev.lds_encoding_granule);
 }
 
 void
@@ -518,7 +518,7 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       break;
    }
    case MESA_SHADER_COMPUTE: {
-      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.cs.shared_size, ctx->program->lds_encoding_granule);
+      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.cs.shared_size, ctx->program->dev.lds_encoding_granule);
       break;
    }
    case MESA_SHADER_VERTEX: {
@@ -541,7 +541,7 @@ setup_variables(isel_context *ctx, nir_shader *nir)
    }
 
    /* Make sure we fit the available LDS space. */
-   assert((ctx->program->config->lds_size * ctx->program->lds_encoding_granule) <= ctx->program->lds_limit);
+   assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) <= ctx->program->dev.lds_limit);
 }
 
 void
@@ -555,24 +555,6 @@ setup_nir(isel_context *ctx, nir_shader *nir)
 
    nir_function_impl *func = nir_shader_get_entrypoint(nir);
    nir_index_ssa_defs(func);
-}
-
-void
-setup_xnack(Program *program)
-{
-   switch (program->family) {
-   /* GFX8 APUs */
-   case CHIP_CARRIZO:
-   case CHIP_STONEY:
-   /* GFX9 APUS */
-   case CHIP_RAVEN:
-   case CHIP_RAVEN2:
-   case CHIP_RENOIR:
-      program->xnack_enabled = true;
-      break;
-   default:
-      break;
-   }
 }
 
 } /* end namespace */
@@ -1197,13 +1179,6 @@ setup_isel_context(Program* program,
    ctx.block = ctx.program->create_and_insert_block();
    ctx.block->loop_nest_depth = 0;
    ctx.block->kind = block_kind_top_level;
-
-   setup_xnack(program);
-   program->sram_ecc_enabled = args->options->family == CHIP_ARCTURUS;
-   /* apparently gfx702 also has fast v_fma_f32 but I can't find a family for that */
-   program->has_fast_fma32 = program->chip_class >= GFX9;
-   if (args->options->family == CHIP_TAHITI || args->options->family == CHIP_CARRIZO || args->options->family == CHIP_HAWAII)
-      program->has_fast_fma32 = true;
 
    return ctx;
 }

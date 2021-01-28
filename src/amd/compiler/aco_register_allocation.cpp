@@ -592,7 +592,7 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
    case aco_opcode::global_load_short_d16:
    case aco_opcode::ds_read_u8_d16:
    case aco_opcode::ds_read_u16_d16:
-      if (chip >= GFX9 && !program->sram_ecc_enabled)
+      if (chip >= GFX9 && !program->dev.sram_ecc_enabled)
          return std::make_pair(2u, 2u);
       else
          return std::make_pair(2u, 4u);

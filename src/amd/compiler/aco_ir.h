@@ -1794,6 +1794,24 @@ enum statistic {
    num_statistics
 };
 
+struct DeviceInfo {
+   uint16_t lds_encoding_granule;
+   uint16_t lds_alloc_granule;
+   uint32_t lds_limit; /* in bytes */
+   bool has_16bank_lds;
+   uint16_t physical_sgprs;
+   uint16_t physical_vgprs;
+   uint16_t vgpr_limit;
+   uint16_t sgpr_limit;
+   uint16_t sgpr_alloc_granule;
+   uint16_t vgpr_alloc_granule; /* must be power of two */
+   unsigned max_wave64_per_simd;
+   unsigned simd_per_cu;
+   bool has_fast_fma32 = false;
+   bool xnack_enabled = false;
+   bool sram_ecc_enabled = false;
+};
+
 class Program final {
 public:
    float_mode next_fp_mode;
@@ -1806,6 +1824,7 @@ public:
    struct radv_shader_info *info;
    enum chip_class chip_class;
    enum radeon_family family;
+   DeviceInfo dev;
    unsigned wave_size;
    RegClass lane_mask;
    Stage stage;
@@ -1817,22 +1836,8 @@ public:
    Temp scratch_offset;
 
    uint16_t min_waves = 0;
-   uint16_t lds_encoding_granule;
-   uint16_t lds_alloc_granule;
-   uint32_t lds_limit; /* in bytes */
-   bool has_16bank_lds;
-   uint16_t vgpr_limit;
-   uint16_t sgpr_limit;
-   uint16_t physical_sgprs;
-   uint16_t physical_vgprs;
-   uint16_t sgpr_alloc_granule;
-   uint16_t vgpr_alloc_granule; /* must be power of two */
    unsigned workgroup_size; /* if known; otherwise UINT_MAX */
    bool wgp_mode;
-
-   bool xnack_enabled = false;
-   bool sram_ecc_enabled = false;
-   bool has_fast_fma32 = false;
    bool early_rast = false; /* whether rasterization can start as soon as the 1st DONE pos export */
 
    bool needs_vcc = false;

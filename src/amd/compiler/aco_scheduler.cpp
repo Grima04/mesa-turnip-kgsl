@@ -902,7 +902,7 @@ void schedule_program(Program *program, live& live_vars)
     * improves performance of Thrones of Britannia significantly and doesn't
     * seem to hurt anything else. */
    //TODO: account for possible uneven num_waves on GFX10+
-   unsigned wave_fac = program->physical_vgprs / 256;
+   unsigned wave_fac = program->dev.physical_vgprs / 256;
    if (program->num_waves <= 5 * wave_fac)
       ctx.num_waves = program->num_waves;
    else if (demand.vgpr >= 29)

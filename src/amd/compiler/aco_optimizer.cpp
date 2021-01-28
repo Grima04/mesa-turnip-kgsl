@@ -3011,7 +3011,7 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
                               (block.fp_mode.denorm16_64 != 0 || ctx.program->chip_class >= GFX10);
       if (need_fma && instr->definitions[0].isPrecise())
          return;
-      if (need_fma && mad32 && !ctx.program->has_fast_fma32)
+      if (need_fma && mad32 && !ctx.program->dev.has_fast_fma32)
          return;
 
       Instruction* mul_instr = nullptr;

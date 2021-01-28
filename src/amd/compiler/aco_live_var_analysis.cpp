@@ -253,19 +253,19 @@ uint16_t get_extra_sgprs(Program *program)
 {
    if (program->chip_class >= GFX10) {
       assert(!program->needs_flat_scr);
-      assert(!program->xnack_enabled);
+      assert(!program->dev.xnack_enabled);
       return 0;
    } else if (program->chip_class >= GFX8) {
       if (program->needs_flat_scr)
          return 6;
-      else if (program->xnack_enabled)
+      else if (program->dev.xnack_enabled)
          return 4;
       else if (program->needs_vcc)
          return 2;
       else
          return 0;
    } else {
-      assert(!program->xnack_enabled);
+      assert(!program->dev.xnack_enabled);
       if (program->needs_flat_scr)
          return 4;
       else if (program->needs_vcc)
@@ -278,14 +278,14 @@ uint16_t get_extra_sgprs(Program *program)
 uint16_t get_sgpr_alloc(Program *program, uint16_t addressable_sgprs)
 {
    uint16_t sgprs = addressable_sgprs + get_extra_sgprs(program);
-   uint16_t granule = program->sgpr_alloc_granule;
+   uint16_t granule = program->dev.sgpr_alloc_granule;
    return ALIGN_NPOT(std::max(sgprs, granule), granule);
 }
 
 uint16_t get_vgpr_alloc(Program *program, uint16_t addressable_vgprs)
 {
-   assert(addressable_vgprs <= program->vgpr_limit);
-   uint16_t granule = program->vgpr_alloc_granule;
+   assert(addressable_vgprs <= program->dev.vgpr_limit);
+   uint16_t granule = program->dev.vgpr_alloc_granule;
    return align(std::max(addressable_vgprs, granule), granule);
 }
 
@@ -297,43 +297,31 @@ unsigned round_down(unsigned a, unsigned b)
 uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t waves)
 {
    /* it's not possible to allocate more than 128 SGPRs */
-   uint16_t sgprs = std::min(program->physical_sgprs / waves, 128);
-   sgprs = round_down(sgprs, program->sgpr_alloc_granule);
+   uint16_t sgprs = std::min(program->dev.physical_sgprs / waves, 128);
+   sgprs = round_down(sgprs, program->dev.sgpr_alloc_granule);
    sgprs -= get_extra_sgprs(program);
-   return std::min(sgprs, program->sgpr_limit);
+   return std::min(sgprs, program->dev.sgpr_limit);
 }
 
 uint16_t get_addr_vgpr_from_waves(Program *program, uint16_t waves)
 {
-   uint16_t vgprs = program->physical_vgprs / waves & ~(program->vgpr_alloc_granule - 1);
+   uint16_t vgprs = program->dev.physical_vgprs / waves & ~(program->dev.vgpr_alloc_granule - 1);
    vgprs -= program->config->num_shared_vgprs / 2;
-   return std::min(vgprs, program->vgpr_limit);
+   return std::min(vgprs, program->dev.vgpr_limit);
 }
 
 void calc_min_waves(Program* program)
 {
    unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
-
-   unsigned simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
-   unsigned simd_per_cu_wgp = program->wgp_mode ? simd_per_cu * 2 : simd_per_cu;
-
+   unsigned simd_per_cu_wgp = program->dev.simd_per_cu * (program->wgp_mode ? 2 : 1);
    program->min_waves = DIV_ROUND_UP(waves_per_workgroup, simd_per_cu_wgp);
 }
 
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
 {
-   unsigned max_waves_per_simd = program->chip_class == GFX10 ? 20 : 10;
-   if (program->chip_class >= GFX10_3)
-      max_waves_per_simd = 16;
-   else if (program->family >= CHIP_POLARIS10 && program->family <= CHIP_VEGAM)
-      max_waves_per_simd = 8;
-   if (program->wave_size == 32)
-      max_waves_per_simd *= 2;
-
-   unsigned simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
-
-   unsigned simd_per_cu_wgp = program->wgp_mode ? simd_per_cu * 2 : simd_per_cu;
-   unsigned lds_limit = program->wgp_mode ? program->lds_limit * 2 : program->lds_limit;
+   unsigned max_waves_per_simd = program->dev.max_wave64_per_simd * (64 / program->wave_size);
+   unsigned simd_per_cu_wgp = program->dev.simd_per_cu * (program->wgp_mode ? 2 : 1);
+   unsigned lds_limit = program->wgp_mode ? program->dev.lds_limit * 2 : program->dev.lds_limit;
 
    assert(program->min_waves >= 1);
    uint16_t sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
@@ -344,17 +332,17 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
       program->num_waves = 0;
       program->max_reg_demand = new_demand;
    } else {
-      program->num_waves = program->physical_sgprs / get_sgpr_alloc(program, new_demand.sgpr);
+      program->num_waves = program->dev.physical_sgprs / get_sgpr_alloc(program, new_demand.sgpr);
       uint16_t vgpr_demand = get_vgpr_alloc(program, new_demand.vgpr) + program->config->num_shared_vgprs / 2;
-      program->num_waves = std::min<uint16_t>(program->num_waves, program->physical_vgprs / vgpr_demand);
+      program->num_waves = std::min<uint16_t>(program->num_waves, program->dev.physical_vgprs / vgpr_demand);
       program->max_waves = max_waves_per_simd;
 
       /* adjust max_waves for workgroup and LDS limits */
       unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
       unsigned workgroups_per_cu_wgp = max_waves_per_simd * simd_per_cu_wgp / waves_per_workgroup;
       if (program->config->lds_size) {
-         unsigned lds = program->config->lds_size * program->lds_encoding_granule;
-         lds = align(lds, program->lds_alloc_granule);
+         unsigned lds = program->config->lds_size * program->dev.lds_encoding_granule;
+         lds = align(lds, program->dev.lds_alloc_granule);
          workgroups_per_cu_wgp = std::min(workgroups_per_cu_wgp, lds_limit / lds);
       }
       if (waves_per_workgroup > 1 && program->chip_class < GFX10)

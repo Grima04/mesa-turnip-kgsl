@@ -294,7 +294,7 @@ void handle_smem_clause_hazards(Program *program, NOP_ctx_gfx6 &ctx,
        * instructions may use the same address. */
       if (ctx.smem_write || instr->definitions.empty() || instr_info.is_atomic[(unsigned)instr->opcode]) {
          *NOPs = 1;
-      } else if (program->xnack_enabled) {
+      } else if (program->dev.xnack_enabled) {
          for (Operand op : instr->operands) {
             if (!op.isConstant() && test_bitset_range(ctx.smem_clause_write, op.physReg(), op.size())) {
                *NOPs = 1;
@@ -433,7 +433,7 @@ void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &c
       ctx.smem_clause = false;
       ctx.smem_write = false;
 
-      if (program->xnack_enabled) {
+      if (program->dev.xnack_enabled) {
          BITSET_ZERO(ctx.smem_clause_read_write);
          BITSET_ZERO(ctx.smem_clause_write);
       }
@@ -445,7 +445,7 @@ void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &c
       } else {
          ctx.smem_clause = true;
 
-         if (program->xnack_enabled) {
+         if (program->dev.xnack_enabled) {
             for (Operand op : instr->operands) {
                if (!op.isConstant()) {
                   set_bitset_range(ctx.smem_clause_read_write, op.physReg(), op.size());

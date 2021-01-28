@@ -207,7 +207,7 @@ static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data
 
       /* We need one pair of shared VGPRs:
        * Note, that these have twice the allocation granularity of normal VGPRs */
-      ctx->program->config->num_shared_vgprs = 2 * ctx->program->vgpr_alloc_granule;
+      ctx->program->config->num_shared_vgprs = 2 * ctx->program->dev.vgpr_alloc_granule;
 
       return bld.pseudo(aco_opcode::p_bpermute, bld.def(v1), bld.def(s2), bld.def(s1, scc), index_x4, input_data, same_half);
    } else {
@@ -4637,7 +4637,7 @@ void emit_interp_instr(isel_context *ctx, unsigned idx, unsigned component, Temp
    Builder bld(ctx->program, ctx->block);
 
    if (dst.regClass() == v2b) {
-      if (ctx->program->has_16bank_lds) {
+      if (ctx->program->dev.has_16bank_lds) {
          assert(ctx->options->chip_class <= GFX8);
          Builder::Result interp_p1 =
             bld.vintrp(aco_opcode::v_interp_mov_f32, bld.def(v1),
@@ -4663,7 +4663,7 @@ void emit_interp_instr(isel_context *ctx, unsigned idx, unsigned component, Temp
          bld.vintrp(aco_opcode::v_interp_p1_f32, bld.def(v1), coord1,
                     bld.m0(prim_mask), idx, component);
 
-      if (ctx->program->has_16bank_lds)
+      if (ctx->program->dev.has_16bank_lds)
          interp_p1.instr->operands[0].setLateKill(true);
 
       bld.vintrp(aco_opcode::v_interp_p2_f32, Definition(dst), coord2,

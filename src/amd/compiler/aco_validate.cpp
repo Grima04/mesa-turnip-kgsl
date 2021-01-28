@@ -654,7 +654,7 @@ unsigned get_subdword_bytes_written(Program *program, const aco_ptr<Instruction>
    case aco_opcode::global_load_short_d16_hi:
    case aco_opcode::ds_read_u8_d16_hi:
    case aco_opcode::ds_read_u16_d16_hi:
-      return program->sram_ecc_enabled ? 4 : 2;
+      return program->dev.sram_ecc_enabled ? 4 : 2;
    case aco_opcode::v_mad_f16:
    case aco_opcode::v_mad_u16:
    case aco_opcode::v_mad_i16:
