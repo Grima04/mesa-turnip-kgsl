@@ -313,9 +313,6 @@ uint16_t get_addr_vgpr_from_waves(Program *program, uint16_t waves)
 void calc_min_waves(Program* program)
 {
    unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
-   /* currently min_waves is in wave64 waves */
-   if (program->wave_size == 32)
-      waves_per_workgroup = DIV_ROUND_UP(waves_per_workgroup, 2);
 
    unsigned simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
    bool wgp = program->chip_class >= GFX10; /* assume WGP is used on Navi */
@@ -331,6 +328,9 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
       max_waves_per_simd = 16;
    else if (program->family >= CHIP_POLARIS10 && program->family <= CHIP_VEGAM)
       max_waves_per_simd = 8;
+   if (program->wave_size == 32)
+      max_waves_per_simd *= 2;
+
    unsigned simd_per_cu = program->chip_class >= GFX10 ? 2 : 4;
 
    bool wgp = program->chip_class >= GFX10; /* assume WGP is used on Navi */
