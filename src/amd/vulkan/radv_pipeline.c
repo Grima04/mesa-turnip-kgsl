@@ -3081,8 +3081,10 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
 		FALLTHROUGH;
 	case nir_intrinsic_load_shared:
 	case nir_intrinsic_store_shared:
-		if (bit_size * num_components > 64) /* 96 and 128 bit loads require 128 bit alignment and are split otherwise */
+		if (bit_size * num_components == 96) /* 96 bit loads require 128 bit alignment and are split otherwise */
 			return align % 16 == 0;
+		else if (bit_size * num_components == 128) /* 128 bit loads require 64 bit alignment and are split otherwise */
+			return align % 8 == 0;
 		else
 			return align % (bit_size == 8 ? 2 : 4) == 0;
 	default:
