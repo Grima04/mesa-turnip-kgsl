@@ -401,7 +401,7 @@ tu_physical_device_get_format_properties(
       if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED)
          optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT;
 
-      if (physical_device->supported_extensions.EXT_filter_cubic)
+      if (physical_device->vk.supported_extensions.EXT_filter_cubic)
          optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT;
    }
 

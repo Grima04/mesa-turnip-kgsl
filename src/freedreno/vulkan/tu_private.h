@@ -54,6 +54,10 @@
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
 #include "vk_device.h"
+#include "vk_dispatch_table.h"
+#include "vk_extensions.h"
+#include "vk_instance.h"
+#include "vk_physical_device.h"
 #include "wsi_common.h"
 
 #include "ir3/ir3_compiler.h"
@@ -170,18 +174,9 @@ __tu_finishme(const char *file, int line, const char *format, ...)
       tu_finishme("stub %s", __func__);                                      \
    } while (0)
 
-void *
-tu_lookup_entrypoint_unchecked(const char *name);
-void *
-tu_lookup_entrypoint_checked(
-   const char *name,
-   uint32_t core_version,
-   const struct tu_instance_extension_table *instance,
-   const struct tu_device_extension_table *device);
-
 struct tu_physical_device
 {
-   struct vk_object_base base;
+   struct vk_physical_device vk;
 
    struct tu_instance *instance;
 
@@ -208,8 +203,6 @@ struct tu_physical_device
     * the pipeline cache defined by apps.
     */
    struct disk_cache *disk_cache;
-
-   struct tu_device_extension_table supported_extensions;
 };
 
 enum tu_debug_flags
@@ -228,9 +221,7 @@ enum tu_debug_flags
 
 struct tu_instance
 {
-   struct vk_object_base base;
-
-   VkAllocationCallbacks alloc;
+   struct vk_instance vk;
 
    uint32_t api_version;
    int physical_device_count;
@@ -239,8 +230,6 @@ struct tu_instance
    enum tu_debug_flags debug_flags;
 
    struct vk_debug_report_instance debug_report_callbacks;
-
-   struct tu_instance_extension_table enabled_extensions;
 };
 
 VkResult
@@ -381,8 +370,6 @@ struct tu_device
    } scratch_bos[48 - MIN_SCRATCH_BO_SIZE_LOG2];
 
    struct tu_bo global_bo;
-
-   struct tu_device_extension_table enabled_extensions;
 
    uint32_t vsc_draw_strm_pitch;
    uint32_t vsc_prim_strm_pitch;

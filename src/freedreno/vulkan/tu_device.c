@@ -87,12 +87,12 @@ tu_physical_device_init(struct tu_physical_device *device,
    default:
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "device %s is unsupported", device->name);
-      goto fail;
+      goto fail_fds;
    }
    if (tu_device_get_cache_uuid(device->gpu_id, device->cache_uuid)) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "cannot generate UUID");
-      goto fail;
+      goto fail_fds;
    }
 
    /* The gpu id is already embedded in the uuid so we just pass "tu"
@@ -108,19 +108,32 @@ tu_physical_device_init(struct tu_physical_device *device,
    fd_get_driver_uuid(device->driver_uuid);
    fd_get_device_uuid(device->device_uuid, device->gpu_id);
 
-   tu_physical_device_get_supported_extensions(device, &device->supported_extensions);
+   struct vk_device_extension_table supported_extensions;
+   tu_physical_device_get_supported_extensions(device, &supported_extensions);
+
+   struct vk_physical_device_dispatch_table dispatch_table;
+   vk_physical_device_dispatch_table_from_entrypoints(
+      &dispatch_table, &tu_physical_device_entrypoints, true);
+
+   result = vk_physical_device_init(&device->vk, &instance->vk,
+                                    &supported_extensions,
+                                    &dispatch_table);
+   if (result != VK_SUCCESS)
+      goto fail_fds;
 
 #if TU_HAS_SURFACE
    result = tu_wsi_init(device);
    if (result != VK_SUCCESS) {
       vk_startup_errorf(instance, result, "WSI init failure");
-      goto fail;
+      goto fail_vk_pd_init;
    }
 #endif
 
    return VK_SUCCESS;
 
-fail:
+fail_vk_pd_init:
+   vk_physical_device_finish(&device->vk);
+fail_fds:
    close(device->local_fd);
    if (device->master_fd != -1)
       close(device->master_fd);
@@ -139,7 +152,7 @@ tu_physical_device_finish(struct tu_physical_device *device)
    if (device->master_fd != -1)
       close(device->master_fd);
 
-   vk_object_base_finish(&device->base);
+   vk_physical_device_finish(&device->vk);
 }
 
 static VKAPI_ATTR void *
@@ -195,16 +208,6 @@ tu_get_debug_option_name(int id)
    return tu_debug_options[id].string;
 }
 
-static int
-tu_get_instance_extension_index(const char *name)
-{
-   for (unsigned i = 0; i < TU_INSTANCE_EXTENSION_COUNT; ++i) {
-      if (strcmp(name, tu_instance_extensions[i].extensionName) == 0)
-         return i;
-   }
-   return -1;
-}
-
 VkResult
 tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
@@ -215,28 +218,28 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
 
-   uint32_t client_version;
-   if (pCreateInfo->pApplicationInfo &&
-       pCreateInfo->pApplicationInfo->apiVersion != 0) {
-      client_version = pCreateInfo->pApplicationInfo->apiVersion;
-   } else {
-      tu_EnumerateInstanceVersion(&client_version);
-   }
+   if (pAllocator == NULL)
+      pAllocator = &default_alloc;
 
-   instance = vk_zalloc2(&default_alloc, pAllocator, sizeof(*instance), 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   instance = vk_zalloc(pAllocator, sizeof(*instance), 8,
+                        VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(NULL, &instance->base, VK_OBJECT_TYPE_INSTANCE);
+   struct vk_instance_dispatch_table dispatch_table;
+   vk_instance_dispatch_table_from_entrypoints(
+      &dispatch_table, &tu_instance_entrypoints, true);
 
-   if (pAllocator)
-      instance->alloc = *pAllocator;
-   else
-      instance->alloc = default_alloc;
+   result = vk_instance_init(&instance->vk,
+                             &tu_instance_extensions_supported,
+                             &dispatch_table,
+                             pCreateInfo, pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free(pAllocator, instance);
+      return vk_error(NULL, result);
+   }
 
-   instance->api_version = client_version;
    instance->physical_device_count = -1;
 
    instance->debug_flags =
@@ -253,24 +256,10 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (instance->debug_flags & TU_DEBUG_STARTUP)
       mesa_logi("Created an instance");
 
-   for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
-      const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
-      int index = tu_get_instance_extension_index(ext_name);
-
-      if (index < 0 || !tu_instance_extensions_supported.extensions[index]) {
-         vk_object_base_finish(&instance->base);
-         vk_free2(&default_alloc, pAllocator, instance);
-         return vk_startup_errorf(instance, VK_ERROR_EXTENSION_NOT_PRESENT,
-                                  "Missing %s", ext_name);
-      }
-
-      instance->enabled_extensions.extensions[index] = true;
-   }
-
    result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
    if (result != VK_SUCCESS) {
-      vk_object_base_finish(&instance->base);
-      vk_free2(&default_alloc, pAllocator, instance);
+      vk_instance_finish(&instance->vk);
+      vk_free(pAllocator, instance);
       return vk_startup_errorf(instance, result, "debug_report setup failure");
    }
 
@@ -302,8 +291,8 @@ tu_DestroyInstance(VkInstance _instance,
 
    vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
 
-   vk_object_base_finish(&instance->base);
-   vk_free(&instance->alloc, instance);
+   vk_instance_finish(&instance->vk);
+   vk_free(&instance->vk.alloc, instance);
 }
 
 VkResult
@@ -827,7 +816,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceSampleLocationsPropertiesEXT *properties =
             (VkPhysicalDeviceSampleLocationsPropertiesEXT *)ext;
          properties->sampleLocationSampleCounts = 0;
-         if (pdevice->supported_extensions.EXT_sample_locations) {
+         if (pdevice->vk.supported_extensions.EXT_sample_locations) {
             properties->sampleLocationSampleCounts =
                VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
          }
@@ -980,16 +969,6 @@ tu_queue_finish(struct tu_queue *queue)
    tu_drm_submitqueue_close(queue->device, queue->msm_queue_id);
 }
 
-static int
-tu_get_device_extension_index(const char *name)
-{
-   for (unsigned i = 0; i < TU_DEVICE_EXTENSION_COUNT; ++i) {
-      if (strcmp(name, tu_device_extensions[i].extensionName) == 0)
-         return i;
-   }
-   return -1;
-}
-
 VkResult
 tu_CreateDevice(VkPhysicalDevice physicalDevice,
                 const VkDeviceCreateInfo *pCreateInfo,
@@ -1036,13 +1015,19 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       }
    }
 
-   device = vk_zalloc2(&physical_device->instance->alloc, pAllocator,
+   device = vk_zalloc2(&physical_device->instance->vk.alloc, pAllocator,
                        sizeof(*device), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)
       return vk_startup_errorf(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY, "OOM");
 
-   result = vk_device_init(&device->vk, NULL, NULL, pCreateInfo,
-         &physical_device->instance->alloc, pAllocator);
+   struct vk_device_dispatch_table dispatch_table;
+   vk_device_dispatch_table_from_entrypoints(
+      &dispatch_table, &tu_device_entrypoints, true);
+
+   result = vk_device_init(&device->vk, &physical_device->vk,
+                           &dispatch_table, pCreateInfo,
+                           &physical_device->instance->vk.alloc,
+                           pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
       return vk_startup_errorf(physical_device->instance, result,
@@ -1055,21 +1040,6 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->_lost = false;
 
    mtx_init(&device->bo_mutex, mtx_plain);
-
-   for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
-      const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
-      int index = tu_get_device_extension_index(ext_name);
-      if (index < 0 ||
-          !physical_device->supported_extensions.extensions[index]) {
-         vk_device_finish(&device->vk);
-         vk_free(&device->vk.alloc, device);
-         return vk_startup_errorf(physical_device->instance,
-                                  VK_ERROR_EXTENSION_NOT_PRESENT,
-                                  "Missing device extension '%s'", ext_name);
-      }
-
-      device->enabled_extensions.extensions[index] = true;
-   }
 
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_create =
@@ -1347,15 +1317,6 @@ tu_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
    return VK_SUCCESS;
 }
 
-VkResult
-tu_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
-                                  uint32_t *pPropertyCount,
-                                  VkLayerProperties *pProperties)
-{
-   *pPropertyCount = 0;
-   return VK_SUCCESS;
-}
-
 void
 tu_GetDeviceQueue2(VkDevice _device,
                    const VkDeviceQueueInfo2 *pQueueInfo,
@@ -1434,32 +1395,9 @@ tu_EnumerateInstanceExtensionProperties(const char *pLayerName,
    if (pLayerName)
       return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 
-   for (int i = 0; i < TU_INSTANCE_EXTENSION_COUNT; i++) {
+   for (int i = 0; i < VK_INSTANCE_EXTENSION_COUNT; i++) {
       if (tu_instance_extensions_supported.extensions[i]) {
-         vk_outarray_append(&out, prop) { *prop = tu_instance_extensions[i]; }
-      }
-   }
-
-   return vk_outarray_status(&out);
-}
-
-VkResult
-tu_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
-                                      const char *pLayerName,
-                                      uint32_t *pPropertyCount,
-                                      VkExtensionProperties *pProperties)
-{
-   /* We spport no lyaers */
-   TU_FROM_HANDLE(tu_physical_device, device, physicalDevice);
-   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
-
-   /* We spport no lyaers */
-   if (pLayerName)
-      return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
-
-   for (int i = 0; i < TU_DEVICE_EXTENSION_COUNT; i++) {
-      if (device->supported_extensions.extensions[i]) {
-         vk_outarray_append(&out, prop) { *prop = tu_device_extensions[i]; }
+         vk_outarray_append(&out, prop) { *prop = vk_instance_extensions[i]; }
       }
    }
 
@@ -1470,10 +1408,9 @@ PFN_vkVoidFunction
 tu_GetInstanceProcAddr(VkInstance _instance, const char *pName)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
-
-   return tu_lookup_entrypoint_checked(
-      pName, instance ? instance->api_version : 0,
-      instance ? &instance->enabled_extensions : NULL, NULL);
+   return vk_instance_get_proc_addr(&instance->vk,
+                                    &tu_instance_entrypoints,
+                                    pName);
 }
 
 /* The loader wants us to expose a second GetInstanceProcAddr function
@@ -1488,16 +1425,6 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
 {
    return tu_GetInstanceProcAddr(instance, pName);
-}
-
-PFN_vkVoidFunction
-tu_GetDeviceProcAddr(VkDevice _device, const char *pName)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-
-   return tu_lookup_entrypoint_checked(pName, device->instance->api_version,
-                                       &device->instance->enabled_extensions,
-                                       &device->enabled_extensions);
 }
 
 VkResult
@@ -2154,7 +2081,7 @@ void tu_GetPhysicalDeviceMultisamplePropertiesEXT(
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
 
-   if (samples <= VK_SAMPLE_COUNT_4_BIT && pdevice->supported_extensions.EXT_sample_locations)
+   if (samples <= VK_SAMPLE_COUNT_4_BIT && pdevice->vk.supported_extensions.EXT_sample_locations)
       pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){ 1, 1 };
    else
       pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){ 0, 0 };

@@ -118,4 +118,5 @@ if __name__ == '__main__':
                         dest='xml_files')
     args = parser.parse_args()
 
-    gen_extensions('tu', args.xml_files, API_VERSIONS, MAX_API_VERSION, EXTENSIONS, args.out_c, args.out_h)
+    gen_extensions('tu', args.xml_files, API_VERSIONS, MAX_API_VERSION,
+                   EXTENSIONS, args.out_c, args.out_h, type_prefix='vk')
