@@ -48,9 +48,9 @@ static const struct debug_named_value bifrost_debug_options[] = {
 
 DEBUG_GET_ONCE_FLAGS_OPTION(bifrost_debug, "BIFROST_MESA_DEBUG", bifrost_debug_options, 0)
 
-/* How many bytes are prefetched by the Bifrost shader core. Past the end of
- * the shader, this range must contain valid instructions or zero. */
-#define BIFROST_SHADER_PREFETCH 96
+/* How many bytes are prefetched by the Bifrost shader core. From the final
+ * clause of the shader, this range must be valid instructions or zero. */
+#define BIFROST_SHADER_PREFETCH 128
 
 /* TODO: This is not thread safe!! */
 static unsigned SHADER_DB_COUNT = 0;
@@ -2610,7 +2610,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 bi_print_shader(ctx, stdout);
 
         util_dynarray_init(&program->compiled, NULL);
-        bi_pack(ctx, &program->compiled);
+        unsigned final_clause = bi_pack(ctx, &program->compiled);
 
         /* If we need to wait for ATEST or BLEND in the first clause, pass the
          * corresponding bits through to the renderer state descriptor */
@@ -2630,8 +2630,10 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         }
 
         /* Pad the shader with enough zero bytes to trick the prefetcher */
-        memset(util_dynarray_grow(&program->compiled, uint8_t, BIFROST_SHADER_PREFETCH),
-               0, BIFROST_SHADER_PREFETCH);
+        unsigned prefetch_size = BIFROST_SHADER_PREFETCH - final_clause;
+
+        memset(util_dynarray_grow(&program->compiled, uint8_t, prefetch_size),
+               0, prefetch_size);
 
         program->tls_size = ctx->tls_size;
 
