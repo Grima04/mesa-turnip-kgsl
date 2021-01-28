@@ -91,7 +91,7 @@ compiler_debug_log(void *data, const char *fmt, ...)
    (void) vsnprintf(str, MAX_DEBUG_MESSAGE_LENGTH, fmt, args);
    va_end(args);
 
-   vk_debug_report(&instance->vk.debug_report,
+   vk_debug_report(&instance->vk,
                    VK_DEBUG_REPORT_DEBUG_BIT_EXT,
                    NULL, 0, 0, "anv", str);
 }

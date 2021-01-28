@@ -84,13 +84,18 @@ vk_instance_init(struct vk_instance *instance,
          &instance->dispatch_table, &vk_common_instance_entrypoints, false);
    }
 
-   return vk_debug_report_instance_init(&instance->debug_report);
+   if (mtx_init(&instance->debug_report.callbacks_mutex, mtx_plain) != 0)
+      return VK_ERROR_INITIALIZATION_FAILED;
+
+   list_inithead(&instance->debug_report.callbacks);
+
+   return VK_SUCCESS;
 }
 
 void
 vk_instance_finish(struct vk_instance *instance)
 {
-   vk_debug_report_instance_destroy(&instance->debug_report);
+   mtx_destroy(&instance->debug_report.callbacks_mutex);
    vk_free(&instance->alloc, (char *)instance->app_info.app_name);
    vk_free(&instance->alloc, (char *)instance->app_info.engine_name);
    vk_object_base_finish(&instance->base);

@@ -1231,7 +1231,7 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
            is_dual_src_blend_factor(a->dstColorBlendFactor) ||
            is_dual_src_blend_factor(a->srcAlphaBlendFactor) ||
            is_dual_src_blend_factor(a->dstAlphaBlendFactor))) {
-         vk_debug_report(&device->physical->instance->vk.debug_report,
+         vk_debug_report(&device->physical->instance->vk,
                          VK_DEBUG_REPORT_WARNING_BIT_EXT,
                          &device->vk.base, 0, 0, "anv",
                          "Enabled dual-src blend factors without writing both targets "

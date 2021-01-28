@@ -26,52 +26,23 @@
 #ifndef VK_DEBUG_REPORT_H
 #define VK_DEBUG_REPORT_H
 
-#include "vk_object.h"
+#include "vk_instance.h"
 
-#include "c11/threads.h"
-#include "util/list.h"
-#include <vulkan/vulkan.h>
-
-struct vk_debug_report_callback {
-   struct vk_object_base                        base;
-
-   /* Link in the 'callbacks' list in anv_instance struct. */
-   struct list_head                             link;
-   VkDebugReportFlagsEXT                        flags;
-   PFN_vkDebugReportCallbackEXT                 callback;
-   void *                                       data;
-};
-
-VK_DEFINE_HANDLE_CASTS(vk_debug_report_callback, base, VkDebugReportCallbackEXT,
-                       VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT)
-
-struct vk_debug_report_instance {
-   /* VK_EXT_debug_report debug callbacks */
-   mtx_t                                       callbacks_mutex;
-   struct list_head                            callbacks;
-};
-
-VkResult vk_debug_report_instance_init(struct vk_debug_report_instance *instance);
-void vk_debug_report_instance_destroy(struct vk_debug_report_instance *instance);
-
-VkResult
-vk_create_debug_report_callback(struct vk_debug_report_instance *instance,
-                                const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                const VkAllocationCallbacks* pAllocator,
-                                const VkAllocationCallbacks* instance_allocator,
-                                VkDebugReportCallbackEXT* pCallback);
-void
-vk_destroy_debug_report_callback(struct vk_debug_report_instance *instance,
-                                 VkDebugReportCallbackEXT _callback,
-                                 const VkAllocationCallbacks* pAllocator,
-                                 const VkAllocationCallbacks* instance_allocator);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void
-vk_debug_report(struct vk_debug_report_instance *instance,
+vk_debug_report(struct vk_instance *instance,
                 VkDebugReportFlagsEXT flags,
                 const struct vk_object_base *object,
                 size_t location,
                 int32_t messageCode,
                 const char* pLayerPrefix,
                 const char *pMessage);
+
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* VK_DEBUG_REPORT_H */
