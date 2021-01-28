@@ -722,7 +722,11 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     * LDS is 128KB in WGP mode and 64KB in CU mode. Assume the WGP mode is used.
     */
    info->lds_size_per_workgroup = info->chip_class >= GFX10 ? 128 * 1024 : 64 * 1024;
-   info->lds_granularity = info->chip_class >= GFX7 ? 128 * 4 : 64 * 4;
+   /* lds_encode_granularity is the block size used for encoding registers.
+    * lds_alloc_granularity is what the hardware will align the LDS size to.
+    */
+   info->lds_encode_granularity = info->chip_class >= GFX7 ? 128 * 4 : 64 * 4;
+   info->lds_alloc_granularity = info->chip_class >= GFX10_3 ? 256 * 4 : info->lds_encode_granularity;
 
    assert(util_is_power_of_two_or_zero(dma.available_rings + 1));
    assert(util_is_power_of_two_or_zero(compute.available_rings + 1));
@@ -1058,7 +1062,8 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    tcc_harvested = %u\n", info->tcc_harvested);
    fprintf(f, "    pc_lines = %u\n", info->pc_lines);
    fprintf(f, "    lds_size_per_workgroup = %u\n", info->lds_size_per_workgroup);
-   fprintf(f, "    lds_granularity = %i\n", info->lds_granularity);
+   fprintf(f, "    lds_alloc_granularity = %i\n", info->lds_alloc_granularity);
+   fprintf(f, "    lds_encode_granularity = %i\n", info->lds_encode_granularity);
    fprintf(f, "    max_memory_clock = %i\n", info->max_memory_clock);
    fprintf(f, "    ce_ram_size = %i\n", info->ce_ram_size);
    fprintf(f, "    l1_cache_size = %i\n", info->l1_cache_size);
