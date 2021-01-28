@@ -60,6 +60,9 @@ vk_create_debug_report_callback(struct vk_debug_report_instance *instance,
    if (!cb)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
+   vk_object_base_init(NULL, &cb->base,
+                       VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT);
+
    cb->flags = pCreateInfo->flags;
    cb->callback = pCreateInfo->pfnCallback;
    cb->data = pCreateInfo->pUserData;
@@ -68,7 +71,7 @@ vk_create_debug_report_callback(struct vk_debug_report_instance *instance,
    list_addtail(&cb->link, &instance->callbacks);
    mtx_unlock(&instance->callbacks_mutex);
 
-   *pCallback = (VkDebugReportCallbackEXT)(uintptr_t)cb;
+   *pCallback = vk_debug_report_callback_to_handle(cb);
 
    return VK_SUCCESS;
 }
@@ -79,19 +82,19 @@ vk_destroy_debug_report_callback(struct vk_debug_report_instance *instance,
                                  const VkAllocationCallbacks* pAllocator,
                                  const VkAllocationCallbacks* instance_allocator)
 {
-   if (_callback == VK_NULL_HANDLE)
-      return;
+   VK_FROM_HANDLE(vk_debug_report_callback, callback, _callback);
 
-   struct vk_debug_report_callback *callback =
-            (struct vk_debug_report_callback *)(uintptr_t)_callback;
+   if (callback == NULL)
+      return;
 
    /* Remove from list and destroy given callback. */
    mtx_lock(&instance->callbacks_mutex);
    list_del(&callback->link);
    vk_free2(instance_allocator, pAllocator, callback);
    mtx_unlock(&instance->callbacks_mutex);
-}
 
+   vk_object_base_finish(&callback->base);
+}
 
 void
 vk_debug_report(struct vk_debug_report_instance *instance,

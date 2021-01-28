@@ -26,17 +26,24 @@
 #ifndef VK_DEBUG_REPORT_H
 #define VK_DEBUG_REPORT_H
 
+#include "vk_object.h"
+
 #include "c11/threads.h"
 #include "util/list.h"
 #include <vulkan/vulkan.h>
 
 struct vk_debug_report_callback {
+   struct vk_object_base                        base;
+
    /* Link in the 'callbacks' list in anv_instance struct. */
    struct list_head                             link;
    VkDebugReportFlagsEXT                        flags;
    PFN_vkDebugReportCallbackEXT                 callback;
    void *                                       data;
 };
+
+VK_DEFINE_HANDLE_CASTS(vk_debug_report_callback, base, VkDebugReportCallbackEXT,
+                       VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT)
 
 struct vk_debug_report_instance {
    /* VK_EXT_debug_report debug callbacks */
