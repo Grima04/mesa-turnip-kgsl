@@ -323,8 +323,6 @@ struct radv_instance {
 	uint64_t debug_flags;
 	uint64_t perftest_flags;
 
-	struct vk_debug_report_instance             debug_report_callbacks;
-
 	bool                                        physical_devices_enumerated;
 	struct list_head                            physical_devices;
 

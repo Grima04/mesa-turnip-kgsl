@@ -287,7 +287,7 @@ static void radv_spirv_nir_debug(void *private_data,
 	snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s",
 		 (unsigned long)spirv_offset, message);
 
-	vk_debug_report(&instance->debug_report_callbacks,
+	vk_debug_report(&instance->vk.debug_report,
 			vk_flags[level],
 			VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
 			(uint64_t)(uintptr_t)debug_data->module,
@@ -309,7 +309,7 @@ static void radv_compiler_debug(void *private_data,
 	/* VK_DEBUG_REPORT_DEBUG_BIT_EXT specifies diagnostic information
 	 * from the implementation and layers.
 	 */
-	vk_debug_report(&instance->debug_report_callbacks,
+	vk_debug_report(&instance->vk.debug_report,
 			vk_flags[level] | VK_DEBUG_REPORT_DEBUG_BIT_EXT,
 			VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
 			(uint64_t)(uintptr_t)debug_data->module,

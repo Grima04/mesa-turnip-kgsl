@@ -755,13 +755,6 @@ VkResult radv_CreateInstance(
 	instance->physical_devices_enumerated = false;
 	list_inithead(&instance->physical_devices);
 
-	result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
-	if (result != VK_SUCCESS) {
-		vk_instance_finish(&instance->vk);
-		vk_free2(&default_alloc, pAllocator, instance);
-		return vk_error(instance, result);
-	}
-
 	glsl_type_singleton_init_or_ref();
 
 	VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
@@ -794,8 +787,6 @@ void radv_DestroyInstance(
 
 	driDestroyOptionCache(&instance->dri_options);
 	driDestroyOptionInfo(&instance->available_dri_options);
-
-	vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
 
 	vk_instance_finish(&instance->vk);
 	vk_free(&instance->vk.alloc, instance);
@@ -7947,43 +7938,6 @@ void radv_GetPhysicalDeviceExternalFenceProperties(
 		pExternalFenceProperties->compatibleHandleTypes = 0;
 		pExternalFenceProperties->externalFenceFeatures = 0;
 	}
-}
-
-VkResult
-radv_CreateDebugReportCallbackEXT(VkInstance _instance,
-                                 const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                 const VkAllocationCallbacks* pAllocator,
-                                 VkDebugReportCallbackEXT* pCallback)
-{
-	RADV_FROM_HANDLE(radv_instance, instance, _instance);
-	return vk_create_debug_report_callback(&instance->debug_report_callbacks,
-	                                       pCreateInfo, pAllocator, &instance->vk.alloc,
-	                                       pCallback);
-}
-
-void
-radv_DestroyDebugReportCallbackEXT(VkInstance _instance,
-                                  VkDebugReportCallbackEXT _callback,
-                                  const VkAllocationCallbacks* pAllocator)
-{
-	RADV_FROM_HANDLE(radv_instance, instance, _instance);
-	vk_destroy_debug_report_callback(&instance->debug_report_callbacks,
-	                                 _callback, pAllocator, &instance->vk.alloc);
-}
-
-void
-radv_DebugReportMessageEXT(VkInstance _instance,
-                          VkDebugReportFlagsEXT flags,
-                          VkDebugReportObjectTypeEXT objectType,
-                          uint64_t object,
-                          size_t location,
-                          int32_t messageCode,
-                          const char* pLayerPrefix,
-                          const char* pMessage)
-{
-	RADV_FROM_HANDLE(radv_instance, instance, _instance);
-	vk_debug_report(&instance->debug_report_callbacks, flags, objectType,
-	                object, location, messageCode, pLayerPrefix, pMessage);
 }
 
 void
