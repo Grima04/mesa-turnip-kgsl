@@ -986,7 +986,8 @@ anv_get_image_format_properties(
        * non-mipmapped single-sample) 2D images.
        */
       if (info->type != VK_IMAGE_TYPE_2D) {
-         vk_errorfi(instance, physical_device, VK_ERROR_FORMAT_NOT_SUPPORTED,
+         vk_errorfi(instance, &physical_device->vk.base,
+                    VK_ERROR_FORMAT_NOT_SUPPORTED,
                     "VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT "
                     "requires VK_IMAGE_TYPE_2D");
          goto unsupported;
@@ -1364,7 +1365,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
           * and therefore requires explicit memory layout.
           */
          if (!tiling_has_explicit_layout) {
-            result = vk_errorfi(instance, physical_device,
+            result = vk_errorfi(instance, &physical_device->vk.base,
                                 VK_ERROR_FORMAT_NOT_SUPPORTED,
                                 "VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT "
                                 "requires VK_IMAGE_TILING_LINEAR or "
@@ -1384,7 +1385,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
           * and therefore requires explicit memory layout.
           */
          if (!tiling_has_explicit_layout) {
-            result = vk_errorfi(instance, physical_device,
+            result = vk_errorfi(instance, &physical_device->vk.base,
                                 VK_ERROR_FORMAT_NOT_SUPPORTED,
                                 "VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT "
                                 "requires VK_IMAGE_TILING_LINEAR or "
@@ -1414,7 +1415,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
           *    vkGetPhysicalDeviceImageFormatProperties2 returns
           *    VK_ERROR_FORMAT_NOT_SUPPORTED.
           */
-         result = vk_errorfi(physical_device->instance, physical_device,
+         result = vk_errorfi(instance, &physical_device->vk.base,
                              VK_ERROR_FORMAT_NOT_SUPPORTED,
                              "unsupported VkExternalMemoryTypeFlagBits 0x%x",
                              external_info->handleType);

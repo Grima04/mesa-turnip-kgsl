@@ -367,7 +367,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
    if (isl_color_value_requires_conversion(clear_color,
                                            &iview->image->planes[0].surface.isl,
                                            &iview->planes[0].isl)) {
-      anv_perf_warn(device, iview,
+      anv_perf_warn(device, &iview->base,
                     "Cannot fast-clear to colors which would require "
                     "format conversion on resolve");
       return false;
@@ -382,7 +382,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
     */
    if (iview->planes[0].isl.base_level > 0 ||
        iview->planes[0].isl.base_array_layer > 0) {
-      anv_perf_warn(device, iview->image,
+      anv_perf_warn(device, &iview->image->base,
                     "Rendering with multi-lod or multi-layer framebuffer "
                     "with LOAD_OP_LOAD and baseMipLevel > 0 or "
                     "baseArrayLayer > 0.  Not fast clearing.");
@@ -390,7 +390,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
    }
 
    if (num_layers > 1) {
-      anv_perf_warn(device, iview->image,
+      anv_perf_warn(device, &iview->image->base,
                     "Rendering to a multi-layer framebuffer with "
                     "LOAD_OP_CLEAR.  Only fast-clearing the first slice");
    }
@@ -1258,7 +1258,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
          }
       } else {
          if (image->samples == 4 || image->samples == 16) {
-            anv_perf_warn(cmd_buffer->device, image,
+            anv_perf_warn(cmd_buffer->device, &image->base,
                           "Doing a potentially unnecessary fast-clear to "
                           "define an MCS buffer.");
          }
@@ -4507,7 +4507,7 @@ verify_cmd_parser(const struct anv_device *device,
                   const char *function)
 {
    if (device->physical->cmd_parser_version < required_version) {
-      return vk_errorf(device, device->physical,
+      return vk_errorf(device, &device->physical->vk.base,
                        VK_ERROR_FEATURE_NOT_PRESENT,
                        "cmd parser version %d is required for %s",
                        required_version, function);

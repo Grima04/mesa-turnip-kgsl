@@ -208,7 +208,7 @@ anv_state_table_expand_range(struct anv_state_table *table, uint32_t size)
    map = mmap(NULL, size, PROT_READ | PROT_WRITE,
               MAP_SHARED | MAP_POPULATE, table->fd, 0);
    if (map == MAP_FAILED) {
-      return vk_errorf(table->device, table->device,
+      return vk_errorf(table->device, &table->device->vk.base,
                        VK_ERROR_OUT_OF_HOST_MEMORY, "mmap failed: %m");
    }
 
@@ -520,7 +520,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
                        MAP_SHARED | MAP_POPULATE, pool->fd,
                        BLOCK_POOL_MEMFD_CENTER - center_bo_offset);
       if (map == MAP_FAILED)
-         return vk_errorf(pool->device, pool->device,
+         return vk_errorf(pool->device, &pool->device->vk.base,
                           VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
 
       struct anv_bo *new_bo;

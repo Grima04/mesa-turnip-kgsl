@@ -3134,8 +3134,7 @@ _anv_device_report_lost(struct anv_device *device)
    for (uint32_t i = 0; i < device->queue_count; i++) {
       struct anv_queue *queue = &device->queues[i];
       if (queue->lost) {
-         __vk_errorf(device->physical->instance, device,
-                     VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
+         __vk_errorf(device->physical->instance, &device->vk.base,
                      VK_ERROR_DEVICE_LOST,
                      queue->error_file, queue->error_line,
                      "%s", queue->error_msg);
@@ -3158,8 +3157,7 @@ _anv_device_set_lost(struct anv_device *device,
    device->lost_reported = true;
 
    va_start(ap, msg);
-   err = __vk_errorv(device->physical->instance, device,
-                     VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
+   err = __vk_errorv(device->physical->instance, &device->vk.base,
                      VK_ERROR_DEVICE_LOST, file, line, msg, ap);
    va_end(ap);
 
@@ -3515,7 +3513,8 @@ VkResult anv_AllocateMemory(
        * this sort of attack but only if it can trust the buffer size.
        */
       if (mem->bo->size < aligned_alloc_size) {
-         result = vk_errorf(device, device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         result = vk_errorf(device, &device->vk.base,
+                            VK_ERROR_INVALID_EXTERNAL_HANDLE,
                             "aligned allocationSize too large for "
                             "VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT: "
                             "%"PRIu64"B > %"PRIu64"B",
@@ -3581,7 +3580,8 @@ VkResult anv_AllocateMemory(
                                       i915_tiling);
          if (ret) {
             anv_device_release_bo(device, mem->bo);
-            result = vk_errorf(device, device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+            result = vk_errorf(device, &device->vk.base,
+                               VK_ERROR_OUT_OF_DEVICE_MEMORY,
                                "failed to set BO tiling: %m");
             goto fail;
          }
@@ -3593,7 +3593,8 @@ VkResult anv_AllocateMemory(
    if (mem_heap_used > mem_heap->size) {
       p_atomic_add(&mem_heap->used, -mem->bo->size);
       anv_device_release_bo(device, mem->bo);
-      result = vk_errorf(device, device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+      result = vk_errorf(device, &device->vk.base,
+                         VK_ERROR_OUT_OF_DEVICE_MEMORY,
                          "Out of heap memory");
       goto fail;
    }
