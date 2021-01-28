@@ -1372,11 +1372,6 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         struct mali_attribute_buffer_packed *bufs =
                 (struct mali_attribute_buffer_packed *) S.cpu;
 
-        /* Determine (n + 1)'th index to suppress prefetch on Bifrost */
-        unsigned last = (nr_images + vs->attribute_count) *
-                        ((ctx->instance_count > 1) ? 2 : 1);
-        memset(bufs + last, 0, sizeof(*bufs));
-
         struct mali_attribute_packed *out =
                 (struct mali_attribute_packed *) T.cpu;
 
