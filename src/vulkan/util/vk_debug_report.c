@@ -96,15 +96,15 @@ vk_destroy_debug_report_callback(struct vk_debug_report_instance *instance,
    vk_object_base_finish(&callback->base);
 }
 
-void
-vk_debug_report(struct vk_debug_report_instance *instance,
-                VkDebugReportFlagsEXT flags,
-                VkDebugReportObjectTypeEXT object_type,
-                uint64_t handle,
-                size_t location,
-                int32_t messageCode,
-                const char* pLayerPrefix,
-                const char *pMessage)
+static void
+debug_report(struct vk_debug_report_instance *instance,
+             VkDebugReportFlagsEXT flags,
+             VkDebugReportObjectTypeEXT object_type,
+             uint64_t handle,
+             size_t location,
+             int32_t messageCode,
+             const char* pLayerPrefix,
+             const char *pMessage)
 {
    /* Allow NULL for convinience, return if no callbacks registered. */
    if (!instance || list_is_empty(&instance->callbacks))
@@ -127,6 +127,21 @@ vk_debug_report(struct vk_debug_report_instance *instance,
    }
 
    mtx_unlock(&instance->callbacks_mutex);
+}
+
+void
+vk_debug_report(struct vk_debug_report_instance *instance,
+                VkDebugReportFlagsEXT flags,
+                const struct vk_object_base *object,
+                size_t location,
+                int32_t messageCode,
+                const char* pLayerPrefix,
+                const char *pMessage)
+{
+   VkDebugReportObjectTypeEXT object_type =
+      object ? object->type : VK_OBJECT_TYPE_UNKNOWN;
+   debug_report(instance, flags, object_type, (uint64_t)(uintptr_t)object,
+                location, messageCode, pLayerPrefix, pMessage);
 }
 
 VkResult
@@ -163,6 +178,6 @@ vk_common_DebugReportMessageEXT(VkInstance _instance,
                                 const char* pMessage)
 {
    VK_FROM_HANDLE(vk_instance, instance, _instance);
-   vk_debug_report(&instance->debug_report, flags, objectType,
-                   object, location, messageCode, pLayerPrefix, pMessage);
+   debug_report(&instance->debug_report, flags, objectType,
+                object, location, messageCode, pLayerPrefix, pMessage);
 }

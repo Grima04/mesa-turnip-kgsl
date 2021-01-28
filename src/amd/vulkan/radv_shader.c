@@ -287,11 +287,8 @@ static void radv_spirv_nir_debug(void *private_data,
 	snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s",
 		 (unsigned long)spirv_offset, message);
 
-	vk_debug_report(&instance->vk.debug_report,
-			vk_flags[level],
-			VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
-			(uint64_t)(uintptr_t)debug_data->module,
-			0, 0, "radv", buffer);
+	vk_debug_report(&instance->vk.debug_report, vk_flags[level],
+			&debug_data->module->base, 0, 0, "radv", buffer);
 }
 
 static void radv_compiler_debug(void *private_data,
@@ -311,9 +308,7 @@ static void radv_compiler_debug(void *private_data,
 	 */
 	vk_debug_report(&instance->vk.debug_report,
 			vk_flags[level] | VK_DEBUG_REPORT_DEBUG_BIT_EXT,
-			VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
-			(uint64_t)(uintptr_t)debug_data->module,
-			0, 0, "radv", message);
+			&debug_data->module->base, 0, 0, "radv", message);
 }
 
 static void

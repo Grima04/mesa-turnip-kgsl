@@ -64,11 +64,9 @@ __anv_perf_warn(struct anv_device *device,
 
    snprintf(report, sizeof(report), "%s: %s", file, buffer);
 
-   VkObjectType object_type = object ? object->type : VK_OBJECT_TYPE_UNKNOWN;
    vk_debug_report(&device->physical->instance->vk.debug_report,
                    VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
-                   object_type, (uint64_t)(uintptr_t)object,
-                   line, 0, "anv", report);
+                   object, line, 0, "anv", report);
 
    mesa_logw("%s:%d: PERF: %s", file, line, buffer);
 }
@@ -93,11 +91,9 @@ __vk_errorv(struct anv_instance *instance,
    }
 
    if (instance) {
-      VkObjectType object_type = object ? object->type : VK_OBJECT_TYPE_UNKNOWN;
       vk_debug_report(&instance->vk.debug_report,
                       VK_DEBUG_REPORT_ERROR_BIT_EXT,
-                      object_type, (uint64_t)(uintptr_t)object,
-                      line, 0, "anv", report);
+                      object, line, 0, "anv", report);
    }
 
    mesa_loge("%s", report);

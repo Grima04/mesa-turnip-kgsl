@@ -93,8 +93,7 @@ compiler_debug_log(void *data, const char *fmt, ...)
 
    vk_debug_report(&instance->vk.debug_report,
                    VK_DEBUG_REPORT_DEBUG_BIT_EXT,
-                   VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT,
-                   0, 0, 0, "anv", str);
+                   NULL, 0, 0, "anv", str);
 }
 
 static void
