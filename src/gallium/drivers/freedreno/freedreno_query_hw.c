@@ -71,11 +71,11 @@ clear_sample_cache(struct fd_batch *batch)
 }
 
 static bool
-is_active(struct fd_hw_query *hq, enum fd_render_stage stage)
+query_active_in_batch(struct fd_batch *batch, struct fd_hw_query *hq)
 {
-	return !!(hq->provider->active & stage);
+	int idx = pidx(hq->provider->query_type);
+	return batch->query_providers_active & (1 << idx);
 }
-
 
 static void
 resume_query(struct fd_batch *batch, struct fd_hw_query *hq,
@@ -86,6 +86,7 @@ resume_query(struct fd_batch *batch, struct fd_hw_query *hq,
 	assert(idx >= 0);   /* query never would have been created otherwise */
 	assert(!hq->period);
 	batch->query_providers_used |= (1 << idx);
+	batch->query_providers_active |= (1 << idx);
 	hq->period = slab_alloc_st(&batch->ctx->sample_period_pool);
 	list_inithead(&hq->period->list);
 	hq->period->start = get_sample(batch, ring, hq->base.type);
@@ -101,7 +102,8 @@ pause_query(struct fd_batch *batch, struct fd_hw_query *hq,
 	DBG("%p", hq);
 	assert(idx >= 0);   /* query never would have been created otherwise */
 	assert(hq->period && !hq->period->end);
-	assert(batch->query_providers_used & (1 << idx));
+	assert(query_active_in_batch(batch, hq));
+	batch->query_providers_active &= ~(1 << idx);
 	hq->period->end = get_sample(batch, ring, hq->base.type);
 	list_addtail(&hq->period->list, &hq->periods);
 	hq->period = NULL;
@@ -143,7 +145,7 @@ fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
 	/* begin_query() should clear previous results: */
 	destroy_periods(ctx, hq);
 
-	if (batch && is_active(hq, batch->stage))
+	if (batch && (ctx->active_queries || hq->provider->always))
 		resume_query(batch, hq, batch->draw);
 
 	/* add to active list: */
@@ -162,7 +164,7 @@ fd_hw_end_query(struct fd_context *ctx, struct fd_query *q)
 
 	DBG("%p", q);
 
-	if (batch && is_active(hq, batch->stage))
+	if (batch && (ctx->active_queries || hq->provider->always))
 		pause_query(batch, hq, batch->draw);
 
 	/* remove from active list: */
@@ -385,20 +387,14 @@ fd_hw_query_prepare_tile(struct fd_batch *batch, uint32_t n,
 void
 fd_hw_query_set_stage(struct fd_batch *batch, enum fd_render_stage stage)
 {
-	/* special case: internal blits (like mipmap level generation)
-	 * go through normal draw path (via util_blitter_blit()).. but
-	 * we need to ignore the FD_STAGE_DRAW which will be set, so we
-	 * don't enable queries which should be paused during internal
-	 * blits:
-	 */
-	if (batch->stage == FD_STAGE_BLIT && stage != FD_STAGE_NULL)
-		stage = FD_STAGE_BLIT;
+	struct fd_context *ctx = batch->ctx;
 
-	if (stage != batch->stage) {
+	if (stage != batch->stage || ctx->update_active_queries) {
 		struct fd_hw_query *hq;
 		LIST_FOR_EACH_ENTRY(hq, &batch->ctx->hw_active_queries, list) {
-			bool was_active = is_active(hq, batch->stage);
-			bool now_active = is_active(hq, stage);
+			bool was_active = query_active_in_batch(batch, hq);
+			bool now_active = stage != FD_STAGE_NULL &&
+				(ctx->active_queries || hq->provider->always);
 
 			if (now_active && !was_active)
 				resume_query(batch, hq, batch->draw);

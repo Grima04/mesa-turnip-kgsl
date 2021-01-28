@@ -240,28 +240,25 @@ timestamp_accumulate_result(struct fd_context *ctx,
 
 static const struct fd_hw_sample_provider occlusion_counter = {
 		.query_type = PIPE_QUERY_OCCLUSION_COUNTER,
-		.active = FD_STAGE_DRAW,
 		.get_sample = occlusion_get_sample,
 		.accumulate_result = occlusion_counter_accumulate_result,
 };
 
 static const struct fd_hw_sample_provider occlusion_predicate = {
 		.query_type = PIPE_QUERY_OCCLUSION_PREDICATE,
-		.active = FD_STAGE_DRAW,
 		.get_sample = occlusion_get_sample,
 		.accumulate_result = occlusion_predicate_accumulate_result,
 };
 
 static const struct fd_hw_sample_provider occlusion_predicate_conservative = {
 		.query_type = PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE,
-		.active = FD_STAGE_DRAW,
 		.get_sample = occlusion_get_sample,
 		.accumulate_result = occlusion_predicate_accumulate_result,
 };
 
 static const struct fd_hw_sample_provider time_elapsed = {
 		.query_type = PIPE_QUERY_TIME_ELAPSED,
-		.active = FD_STAGE_ALL,
+		.always = true,
 		.enable = time_elapsed_enable,
 		.get_sample = time_elapsed_get_sample,
 		.accumulate_result = time_elapsed_accumulate_result,
@@ -275,7 +272,7 @@ static const struct fd_hw_sample_provider time_elapsed = {
  */
 static const struct fd_hw_sample_provider timestamp = {
 		.query_type = PIPE_QUERY_TIMESTAMP,
-		.active = FD_STAGE_ALL,
+		.always = true,
 		.enable = time_elapsed_enable,
 		.get_sample = time_elapsed_get_sample,
 		.accumulate_result = timestamp_accumulate_result,

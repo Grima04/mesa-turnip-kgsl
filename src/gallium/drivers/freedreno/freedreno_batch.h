@@ -210,6 +210,9 @@ struct fd_batch {
 	/* which sample providers were used in the current batch: */
 	uint32_t query_providers_used;
 
+	/* which sample providers are currently enabled in the batch: */
+	uint32_t query_providers_active;
+
 	/* tracking for current stage, to know when to start/stop
 	 * any active queries:
 	 */
