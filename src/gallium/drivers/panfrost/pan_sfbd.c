@@ -240,11 +240,12 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 if (batch->key.zsbuf)
                         panfrost_sfbd_set_zsbuf(&params, batch->key.zsbuf);
 
-                if (batch->requirements & PAN_REQ_MSAA) {
-                        /* Only 4x MSAA supported right now. */
-                        params.sample_count = 4;
-                        params.msaa = MALI_MSAA_MULTIPLE;
-                }
+                params.sample_count = util_framebuffer_get_num_samples(&batch->key);
+
+                /* XXX: different behaviour from MFBD and probably wrong... */
+                params.msaa = (params.sample_count > 1) ?
+                        MALI_MSAA_MULTIPLE :
+                        MALI_MSAA_SINGLE;
         }
         panfrost_emit_sfdb_tiler(batch, sfbd, has_draws);
         pan_section_pack(sfbd, SINGLE_TARGET_FRAMEBUFFER, PADDING_2, padding) {}
