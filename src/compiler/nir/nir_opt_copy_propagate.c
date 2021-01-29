@@ -99,7 +99,8 @@ copy_prop_src(nir_src *src, nir_instr *parent_instr, nir_if *parent_if,
 {
    assert(src->is_ssa);
 
-   nir_instr *src_instr = src->ssa->parent_instr;
+   nir_ssa_def *original_ssa = src->ssa;
+   nir_instr *src_instr = original_ssa->parent_instr;
    nir_ssa_def *copy_def;
    if (src_instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu_instr = nir_instr_as_alu(src_instr);
@@ -121,6 +122,9 @@ copy_prop_src(nir_src *src, nir_instr *parent_instr, nir_if *parent_if,
       nir_if_rewrite_condition(parent_if, nir_src_for_ssa(copy_def));
    }
 
+   if (nir_ssa_def_is_unused(original_ssa))
+      nir_instr_remove(src_instr);
+
    return true;
 }
 
@@ -130,7 +134,8 @@ copy_prop_alu_src(nir_alu_instr *parent_alu_instr, unsigned index)
    nir_alu_src *src = &parent_alu_instr->src[index];
    assert(src->src.is_ssa);
 
-   nir_instr *src_instr =  src->src.ssa->parent_instr;
+   nir_ssa_def *original_ssa = src->src.ssa;
+   nir_instr *src_instr = original_ssa->parent_instr;
    if (src_instr->type != nir_instr_type_alu)
       return false;
 
@@ -168,6 +173,9 @@ copy_prop_alu_src(nir_alu_instr *parent_alu_instr, unsigned index)
 
    nir_instr_rewrite_src(&parent_alu_instr->instr, &src->src,
                          nir_src_for_ssa(def));
+
+   if (nir_ssa_def_is_unused(original_ssa))
+      nir_instr_remove(src_instr);
 
    return true;
 }
