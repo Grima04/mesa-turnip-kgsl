@@ -2701,8 +2701,8 @@ VkResult radv_CreateDevice(
 							  &radv_device_entrypoints, true);
 	}
 
-	result = vk_device_init(&device->vk, &physical_device->vk, &dispatch_table, pCreateInfo,
-				&physical_device->instance->vk.alloc, pAllocator);
+	result = vk_device_init(&device->vk, &physical_device->vk,
+				&dispatch_table, pCreateInfo, pAllocator);
 	if (result != VK_SUCCESS) {
 		vk_free(&device->vk.alloc, device);
 		return result;

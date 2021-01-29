@@ -2660,8 +2660,7 @@ VkResult anv_CreateDevice(
       &anv_device_entrypoints, false);
 
    result = vk_device_init(&device->vk, &physical_device->vk,
-                           &dispatch_table, pCreateInfo,
-                           &physical_device->instance->vk.alloc, pAllocator);
+                           &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_error(result);
       goto fail_alloc;

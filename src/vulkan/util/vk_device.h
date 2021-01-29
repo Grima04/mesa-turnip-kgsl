@@ -57,8 +57,7 @@ vk_device_init(struct vk_device *device,
                struct vk_physical_device *physical_device,
                const struct vk_device_dispatch_table *dispatch_table,
                const VkDeviceCreateInfo *pCreateInfo,
-               const VkAllocationCallbacks *instance_alloc,
-               const VkAllocationCallbacks *device_alloc);
+               const VkAllocationCallbacks *alloc);
 
 void
 vk_device_finish(struct vk_device *device);

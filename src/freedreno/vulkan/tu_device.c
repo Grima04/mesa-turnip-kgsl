@@ -1018,9 +1018,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       &dispatch_table, &tu_device_entrypoints, true);
 
    result = vk_device_init(&device->vk, &physical_device->vk,
-                           &dispatch_table, pCreateInfo,
-                           &physical_device->instance->vk.alloc,
-                           pAllocator);
+                           &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
       return vk_startup_errorf(physical_device->instance, result,

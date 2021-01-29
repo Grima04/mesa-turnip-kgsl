@@ -34,43 +34,38 @@ vk_device_init(struct vk_device *device,
                struct vk_physical_device *physical_device,
                const struct vk_device_dispatch_table *dispatch_table,
                const VkDeviceCreateInfo *pCreateInfo,
-               const VkAllocationCallbacks *instance_alloc,
-               const VkAllocationCallbacks *device_alloc)
+               const VkAllocationCallbacks *alloc)
 {
    memset(device, 0, sizeof(*device));
    vk_object_base_init(device, &device->base, VK_OBJECT_TYPE_DEVICE);
-   if (device_alloc)
-      device->alloc = *device_alloc;
+   if (alloc != NULL)
+      device->alloc = *alloc;
    else
-      device->alloc = *instance_alloc;
+      device->alloc = physical_device->instance->alloc;
 
    device->physical = physical_device;
 
-   if (dispatch_table != NULL) {
-      device->dispatch_table = *dispatch_table;
+   device->dispatch_table = *dispatch_table;
 
-      /* Add common entrypoints without overwriting driver-provided ones. */
-      vk_device_dispatch_table_from_entrypoints(
-         &device->dispatch_table, &vk_common_device_entrypoints, false);
-   }
+   /* Add common entrypoints without overwriting driver-provided ones. */
+   vk_device_dispatch_table_from_entrypoints(
+      &device->dispatch_table, &vk_common_device_entrypoints, false);
 
-   if (physical_device != NULL) {
-      for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
-         int idx;
-         for (idx = 0; idx < VK_DEVICE_EXTENSION_COUNT; idx++) {
-            if (strcmp(pCreateInfo->ppEnabledExtensionNames[i],
-                       vk_device_extensions[idx].extensionName) == 0)
-               break;
-         }
-
-         if (idx >= VK_DEVICE_EXTENSION_COUNT)
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
-
-         if (!physical_device->supported_extensions.extensions[idx])
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
-
-         device->enabled_extensions.extensions[idx] = true;
+   for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
+      int idx;
+      for (idx = 0; idx < VK_DEVICE_EXTENSION_COUNT; idx++) {
+         if (strcmp(pCreateInfo->ppEnabledExtensionNames[i],
+                    vk_device_extensions[idx].extensionName) == 0)
+            break;
       }
+
+      if (idx >= VK_DEVICE_EXTENSION_COUNT)
+         return VK_ERROR_EXTENSION_NOT_PRESENT;
+
+      if (!physical_device->supported_extensions.extensions[idx])
+         return VK_ERROR_EXTENSION_NOT_PRESENT;
+
+      device->enabled_extensions.extensions[idx] = true;
    }
 
    p_atomic_set(&device->private_data_next_index, 0);

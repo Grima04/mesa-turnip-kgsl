@@ -810,7 +810,6 @@ VkResult lvp_CreateDevice(
    VkResult result = vk_device_init(&device->vk,
                                     &physical_device->vk,
                                     &dispatch_table, pCreateInfo,
-                                    &physical_device->vk.instance->alloc,
                                     pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);

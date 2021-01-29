@@ -1394,8 +1394,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
                                              &v3dv_device_entrypoints, true);
    result = vk_device_init(&device->vk, &physical_device->vk,
-                           &dispatch_table, pCreateInfo,
-                           &physical_device->vk.instance->alloc, pAllocator);
+                           &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
       return vk_error(instance, result);

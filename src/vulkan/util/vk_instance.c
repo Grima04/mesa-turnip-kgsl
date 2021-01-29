@@ -57,32 +57,28 @@ vk_instance_init(struct vk_instance *instance,
    if (instance->app_info.api_version == 0)
       instance->app_info.api_version = VK_API_VERSION_1_0;
 
-   if (supported_extensions != NULL) {
-      for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
-         int idx;
-         for (idx = 0; idx < VK_INSTANCE_EXTENSION_COUNT; idx++) {
-            if (strcmp(pCreateInfo->ppEnabledExtensionNames[i],
-                       vk_instance_extensions[idx].extensionName) == 0)
-               break;
-         }
-
-         if (idx >= VK_INSTANCE_EXTENSION_COUNT)
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
-
-         if (!supported_extensions->extensions[idx])
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
-
-         instance->enabled_extensions.extensions[idx] = true;
+   for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
+      int idx;
+      for (idx = 0; idx < VK_INSTANCE_EXTENSION_COUNT; idx++) {
+         if (strcmp(pCreateInfo->ppEnabledExtensionNames[i],
+                    vk_instance_extensions[idx].extensionName) == 0)
+            break;
       }
+
+      if (idx >= VK_INSTANCE_EXTENSION_COUNT)
+         return VK_ERROR_EXTENSION_NOT_PRESENT;
+
+      if (!supported_extensions->extensions[idx])
+         return VK_ERROR_EXTENSION_NOT_PRESENT;
+
+      instance->enabled_extensions.extensions[idx] = true;
    }
 
-   if (dispatch_table != NULL) {
-      instance->dispatch_table = *dispatch_table;
+   instance->dispatch_table = *dispatch_table;
 
-      /* Add common entrypoints without overwriting driver-provided ones. */
-      vk_instance_dispatch_table_from_entrypoints(
-         &instance->dispatch_table, &vk_common_instance_entrypoints, false);
-   }
+   /* Add common entrypoints without overwriting driver-provided ones. */
+   vk_instance_dispatch_table_from_entrypoints(
+      &instance->dispatch_table, &vk_common_instance_entrypoints, false);
 
    if (mtx_init(&instance->debug_report.callbacks_mutex, mtx_plain) != 0)
       return VK_ERROR_INITIALIZATION_FAILED;
