@@ -565,13 +565,8 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 
         struct panfrost_slice *checksum_slice = NULL;
 
-        if (zs_crc_ext) {
-                if (batch->key.zsbuf &&
-                    MAX2(batch->key.zsbuf->nr_samples, batch->key.zsbuf->nr_samples) > 1)
-                        batch->requirements |= PAN_REQ_MSAA;
-
+        if (zs_crc_ext)
                 panfrost_mfbd_emit_zs_crc_ext(batch, zs_crc_ext, &checksum_slice);
-        }
 
         /* We always upload at least one dummy GL_NONE render target */
 
@@ -593,9 +588,6 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 
                 if (surf) {
                         unsigned samples = MAX2(surf->nr_samples, surf->texture->nr_samples);
-
-                        if (samples > 1)
-                                batch->requirements |= PAN_REQ_MSAA;
 
                         rt_offset += pan_bytes_per_pixel_tib(surf->format) * tib_size *
                                 MAX2(samples, 1);
