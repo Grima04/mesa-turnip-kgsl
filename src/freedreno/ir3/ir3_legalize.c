@@ -97,8 +97,8 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 	bool mergedregs = ctx->so->mergedregs;
 
 	/* our input state is the OR of all predecessor blocks' state: */
-	set_foreach(block->predecessors, entry) {
-		struct ir3_block *predecessor = (struct ir3_block *)entry->key;
+	for (unsigned i = 0; i < block->predecessors_count; i++) {
+		struct ir3_block *predecessor = block->predecessors[i];
 		struct ir3_legalize_block_data *pbd = predecessor->data;
 		struct ir3_legalize_state *pstate = &pbd->state;
 
@@ -480,7 +480,7 @@ remove_unused_block(struct ir3_block *old_target)
 	for (unsigned i = 0; i < ARRAY_SIZE(old_target->successors); i++) {
 		if (old_target->successors[i]) {
 			struct ir3_block *succ = old_target->successors[i];
-			_mesa_set_remove_key(succ->predecessors, old_target);
+			ir3_block_remove_predecessor(succ, old_target);
 		}
 	}
 }
@@ -500,13 +500,12 @@ retarget_jump(struct ir3_instruction *instr, struct ir3_block *new_target)
 	}
 
 	/* update new target's predecessors: */
-	_mesa_set_add(new_target->predecessors, cur_block);
+	ir3_block_add_predecessor(new_target, cur_block);
 
 	/* and remove old_target's predecessor: */
-	debug_assert(_mesa_set_search(old_target->predecessors, cur_block));
-	_mesa_set_remove_key(old_target->predecessors, cur_block);
+	ir3_block_remove_predecessor(old_target, cur_block);
 
-	if (old_target->predecessors->entries == 0)
+	if (old_target->predecessors_count == 0)
 		remove_unused_block(old_target);
 
 	instr->cat0.target = new_target;
@@ -588,17 +587,17 @@ static void
 mark_xvergence_points(struct ir3 *ir)
 {
 	foreach_block (block, &ir->block_list) {
-		if (block->predecessors->entries > 1) {
+		if (block->predecessors_count > 1) {
 			/* if a block has more than one possible predecessor, then
 			 * the first instruction is a convergence point.
 			 */
 			mark_jp(block);
-		} else if (block->predecessors->entries == 1) {
+		} else if (block->predecessors_count == 1) {
 			/* If a block has one predecessor, which has multiple possible
 			 * successors, it is a divergence point.
 			 */
-			set_foreach(block->predecessors, entry) {
-				struct ir3_block *predecessor = (struct ir3_block *)entry->key;
+			for (unsigned i = 0; i < block->predecessors_count; i++) {
+				struct ir3_block *predecessor = block->predecessors[i];
 				if (predecessor->successors[1]) {
 					mark_jp(block);
 				}

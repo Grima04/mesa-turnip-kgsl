@@ -355,16 +355,12 @@ print_block(struct ir3_block *block, int lvl)
 {
 	tab(lvl); printf("block%u {\n", block_id(block));
 
-	/* computerator (ir3 assembler) doesn't really use blocks for flow
-	 * control, so block->predecessors will be null.
-	 */
-	if (block->predecessors && block->predecessors->entries > 0) {
-		unsigned i = 0;
+	if (block->predecessors_count > 0) {
 		tab(lvl+1);
 		printf("pred: ");
-		set_foreach (block->predecessors, entry) {
-			struct ir3_block *pred = (struct ir3_block *)entry->key;
-			if (i++)
+		for (unsigned i = 0; i < block->predecessors_count; i++) {
+			struct ir3_block *pred = block->predecessors[i];
+			if (i != 0)
 				printf(", ");
 			printf("block%u", block_id(pred));
 		}

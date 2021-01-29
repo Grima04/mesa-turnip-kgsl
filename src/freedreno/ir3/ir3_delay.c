@@ -149,8 +149,8 @@ distance(struct ir3_block *block, struct ir3_instruction *instr,
 		/* (ab)use block->data to prevent recursion: */
 		block->data = block;
 
-		set_foreach (block->predecessors, entry) {
-			struct ir3_block *pred = (struct ir3_block *)entry->key;
+		for (unsigned i = 0; i < block->predecessors_count; i++) {
+			struct ir3_block *pred = block->predecessors[i];
 			unsigned n;
 
 			n = distance(pred, instr, min, pred);
@@ -288,8 +288,8 @@ delay_calc_array(struct ir3_block *block, unsigned array_id,
 	/* (ab)use block->data to prevent recursion: */
 	block->data = block;
 
-	set_foreach (block->predecessors, entry) {
-		struct ir3_block *pred = (struct ir3_block *)entry->key;
+	for (unsigned i = 0; i < block->predecessors_count; i++) {
+		struct ir3_block *pred = block->predecessors[i];
 		unsigned delay =
 			delay_calc_array(pred, array_id, consumer, srcn, soft, pred, maxd);
 

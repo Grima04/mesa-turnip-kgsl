@@ -352,8 +352,39 @@ struct ir3_block * ir3_block_create(struct ir3 *shader)
 	block->shader = shader;
 	list_inithead(&block->node);
 	list_inithead(&block->instr_list);
-	block->predecessors = _mesa_pointer_set_create(block);
 	return block;
+}
+
+
+void ir3_block_add_predecessor(struct ir3_block *block, struct ir3_block *pred)
+{
+	array_insert(block, block->predecessors, pred);
+}
+
+void ir3_block_remove_predecessor(struct ir3_block *block, struct ir3_block *pred)
+{
+	for (unsigned i = 0; i < block->predecessors_count; i++) {
+		if (block->predecessors[i] == pred) {
+			if (i < block->predecessors_count - 1) {
+				block->predecessors[i] =
+					block->predecessors[block->predecessors_count - 1];
+			}
+
+			block->predecessors_count--;
+			return;
+		}
+	}
+}
+
+unsigned ir3_block_get_pred_index(struct ir3_block *block, struct ir3_block *pred)
+{
+	for (unsigned i = 0; i < block->predecessors_count; i++) {
+		if (block->predecessors[i] == pred) {
+			return i;
+		}
+	}
+
+	unreachable("ir3_block_get_pred_index() invalid predecessor");
 }
 
 static struct ir3_instruction *instr_create(struct ir3_block *block, int nreg)

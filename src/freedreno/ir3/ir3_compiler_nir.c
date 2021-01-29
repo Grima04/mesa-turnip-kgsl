@@ -2959,7 +2959,7 @@ setup_predecessors(struct ir3 *ir)
 	foreach_block(block, &ir->block_list) {
 		for (int i = 0; i < ARRAY_SIZE(block->successors); i++) {
 			if (block->successors[i])
-				_mesa_set_add(block->successors[i]->predecessors, block);
+				ir3_block_add_predecessor(block->successors[i], block);
 		}
 	}
 }

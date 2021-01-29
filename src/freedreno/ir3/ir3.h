@@ -550,7 +550,7 @@ struct ir3_block {
 	struct ir3_instruction *condition;
 	struct ir3_block *successors[2];
 
-	struct set *predecessors;     /* set of ir3_block */
+	DECLARE_ARRAY(struct ir3_block *, predecessors);
 
 	uint16_t start_ip, end_ip;
 
@@ -578,6 +578,10 @@ block_id(struct ir3_block *block)
 	return (uint32_t)(unsigned long)block;
 #endif
 }
+
+void ir3_block_add_predecessor(struct ir3_block *block, struct ir3_block *pred);
+void ir3_block_remove_predecessor(struct ir3_block *block, struct ir3_block *pred);
+unsigned ir3_block_get_pred_index(struct ir3_block *block, struct ir3_block *pred);
 
 struct ir3_shader_variant;
 
