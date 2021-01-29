@@ -141,6 +141,7 @@ struct intel_measure_device {
 };
 
 struct intel_measure_batch {
+   struct list_head link;
    unsigned index;
    unsigned frame, batch_count, event_count;
    uintptr_t framebuffer;
@@ -157,11 +158,8 @@ void intel_measure_frame_transition(unsigned frame);
 
 bool intel_measure_ready(struct intel_measure_batch *batch);
 
-void intel_measure_push_result(struct intel_measure_device *device,
-                               struct intel_measure_batch *batch);
-
 struct gen_device_info;
-void intel_measure_print(struct intel_measure_device *device,
-                         struct gen_device_info *info);
+void intel_measure_gather(struct intel_measure_device *device,
+                          struct gen_device_info *info);
 
 #endif /* INTEL_MEASURE_H */

@@ -32,7 +32,6 @@
 
 struct anv_measure_batch {
    struct anv_bo *bo;
-   struct list_head link;
    struct intel_measure_batch base;
 };
 
@@ -67,11 +66,6 @@ anv_measure_device_init(struct anv_physical_device *device)
 
    /* initialise list of measure structures that await rendering */
    struct intel_measure_device *measure_device = &device->measure_device;
-   pthread_mutex_init(&measure_device->mutex, NULL);
-   list_inithead(&measure_device->queued_snapshots);
-
-   measure_device->frame = 0;
-
    intel_measure_init(measure_device);
    struct intel_measure_config *config = measure_device->config;
    if (config == NULL)
@@ -128,46 +122,7 @@ anv_measure_init(struct anv_cmd_buffer *cmd_buffer)
    measure->base.timestamps = measure->bo->map;
    assert(result == VK_SUCCESS);
 
-   list_inithead(&measure->link);
-
    cmd_buffer->measure = measure;
-}
-
-/**
- * Collect snapshots from completed command buffers and submit them to
- * intel_measure for printing.
- */
-static void
-anv_measure_gather(struct anv_device *device)
-{
-   struct intel_measure_device *measure_device = &device->physical->measure_device;
-
-   pthread_mutex_lock(&measure_device->mutex);
-
-   /* iterate snapshots and collect if ready */
-   while (!list_is_empty(&measure_device->queued_snapshots)) {
-      struct anv_measure_batch *measure =
-         list_first_entry(&measure_device->queued_snapshots,
-                          struct anv_measure_batch, link);
-
-      if (!intel_measure_ready(&measure->base)) {
-         /* command buffer has begun execution on the gpu, but has not
-          * completed.
-          */
-         break;
-      }
-
-      list_del(&measure->link);
-      assert(measure->base.index % 2 == 0);
-
-      intel_measure_push_result(measure_device, &measure->base);
-
-      measure->base.index = 0;
-      measure->base.frame = 0;
-   }
-
-   intel_measure_print(measure_device, &device->info);
-   pthread_mutex_unlock(&measure_device->mutex);
 }
 
 static void
@@ -359,7 +314,8 @@ anv_measure_reset(struct anv_cmd_buffer *cmd_buffer)
    /* it is possible that the command buffer contains snapshots that have not
     * yet been processed
     */
-   anv_measure_gather(device);
+   intel_measure_gather(&device->physical->measure_device,
+                        &device->info);
 
    assert(cmd_buffer->device != NULL);
 
@@ -367,7 +323,7 @@ anv_measure_reset(struct anv_cmd_buffer *cmd_buffer)
    measure->base.framebuffer = 0;
    measure->base.frame = 0;
    measure->base.event_count = 0;
-   list_inithead(&measure->link);
+   list_inithead(&measure->base.link);
 
    anv_device_release_bo(device, measure->bo);
    VkResult result =
@@ -386,6 +342,7 @@ anv_measure_destroy(struct anv_cmd_buffer *cmd_buffer)
    struct intel_measure_config *config = config_from_command_buffer(cmd_buffer);
    struct anv_measure_batch *measure = cmd_buffer->measure;
    struct anv_device *device = cmd_buffer->device;
+   struct anv_physical_device *physical = device->physical;
 
    if (!config)
       return;
@@ -395,7 +352,7 @@ anv_measure_destroy(struct anv_cmd_buffer *cmd_buffer)
    /* it is possible that the command buffer contains snapshots that have not
     * yet been processed
     */
-   anv_measure_gather(device);
+   intel_measure_gather(&physical->measure_device, &physical->info);
 
    anv_device_release_bo(device, measure->bo);
    vk_free(&cmd_buffer->pool->alloc, measure);
@@ -453,7 +410,7 @@ _anv_measure_submit(struct anv_cmd_buffer *cmd_buffer)
 
    /* add to the list of submitted snapshots */
    pthread_mutex_lock(&measure_device->mutex);
-   list_addtail(&measure->link, &measure_device->queued_snapshots);
+   list_addtail(&measure->base.link, &measure_device->queued_snapshots);
    pthread_mutex_unlock(&measure_device->mutex);
 }
 
@@ -474,7 +431,7 @@ anv_measure_acquire(struct anv_device *device)
    intel_measure_frame_transition(p_atomic_inc_return(&measure_device->frame));
 
    /* iterate the queued snapshots and publish those that finished */
-   anv_measure_gather(device);
+   intel_measure_gather(measure_device, &device->physical->info);
 }
 
 void

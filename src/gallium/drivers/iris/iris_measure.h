@@ -30,7 +30,6 @@ struct iris_screen;
 
 struct iris_measure_batch {
    struct iris_bo *bo;
-   struct list_head link;
    struct intel_measure_batch base;
 };
 

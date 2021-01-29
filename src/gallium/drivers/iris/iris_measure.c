@@ -42,9 +42,6 @@ iris_init_screen_measure(struct iris_screen *screen)
    if (config == NULL)
       return;
 
-   list_inithead(&measure_device->queued_snapshots);
-   pthread_mutex_init(&measure_device->mutex, NULL);
-
    /* the final member of intel_measure_ringbuffer is a zero-length array of
     * intel_measure_buffered_result objects.  Allocate additional space for
     * the buffered objects based on the run-time configurable buffer_size
@@ -325,60 +322,24 @@ _iris_measure_snapshot(struct iris_context *ice,
    }
 }
 
-static void
-iris_measure_gather(struct iris_context *ice)
-{
-   struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
-   struct intel_measure_device *measure_device = &screen->measure;
-
-   /* gather snapshots */
-   pthread_mutex_lock(&measure_device->mutex);
-
-   /* iterate snapshots and collect if ready */
-   while (!list_is_empty(&measure_device->queued_snapshots)) {
-      struct iris_measure_batch *measure =
-         list_first_entry(&measure_device->queued_snapshots,
-                          struct iris_measure_batch, link);
-
-      if (!intel_measure_ready(&measure->base)) {
-         /* batch has not completed execution */
-         break;
-      }
-
-      list_del(&measure->link);
-      assert(measure->bo);
-      assert(measure->base.index % 2 == 0);
-
-      intel_measure_push_result(measure_device, &measure->base);
-
-      /* iris_bo_unmap(measure->bo); */
-      measure->base.index = 0;
-      measure->base.frame = 0;
-      iris_destroy_batch_measure(measure);
-   }
-
-   intel_measure_print(measure_device, &screen->devinfo);
-   pthread_mutex_unlock(&measure_device->mutex);
-}
-
-
 void
 iris_destroy_ctx_measure(struct iris_context *ice)
 {
    /* All outstanding snapshots must be collected before the context is
     * destroyed.
     */
-   iris_measure_gather(ice);
+   struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
+   intel_measure_gather(&screen->measure, &screen->devinfo);
 }
 
 void
 iris_measure_batch_end(struct iris_context *ice, struct iris_batch *batch)
 {
    const struct intel_measure_config *config = config_from_context(ice);
+   struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
    struct iris_measure_batch *iris_measure_batch = batch->measure;
    struct intel_measure_batch *measure_batch = &iris_measure_batch->base;
-   struct intel_measure_device *measure_device =
-      &((struct iris_screen *) ice->ctx.screen)->measure;
+   struct intel_measure_device *measure_device = &screen->measure;
 
    if (!config)
       return;
@@ -403,7 +364,7 @@ iris_measure_batch_end(struct iris_context *ice, struct iris_batch *batch)
 
    /* enqueue snapshot for gathering */
    pthread_mutex_lock(&measure_device->mutex);
-   list_addtail(&iris_measure_batch->link, &measure_device->queued_snapshots);
+   list_addtail(&iris_measure_batch->base.link, &measure_device->queued_snapshots);
    batch->measure = NULL;
    pthread_mutex_unlock(&measure_device->mutex);
    /* init new measure_batch */
@@ -411,7 +372,7 @@ iris_measure_batch_end(struct iris_context *ice, struct iris_batch *batch)
 
    static int interval = 0;
    if (++interval > 10) {
-      iris_measure_gather(ice);
+      intel_measure_gather(measure_device, &screen->devinfo);
       interval = 0;
    }
 }
@@ -429,5 +390,5 @@ iris_measure_frame_end(struct iris_context *ice)
    /* increment frame counter */
    intel_measure_frame_transition(p_atomic_inc_return(&measure_device->frame));
 
-   iris_measure_gather(ice);
+   intel_measure_gather(measure_device, &screen->devinfo);
 }

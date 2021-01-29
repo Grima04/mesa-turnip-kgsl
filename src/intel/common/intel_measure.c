@@ -56,10 +56,10 @@ void
 intel_measure_init(struct intel_measure_device *device)
 {
    static bool once = false;
+   const char *env = getenv("INTEL_MEASURE");
    if (unlikely(!once)) {
       once = true;
       memset(&config, 0, sizeof(struct intel_measure_config));
-      const char *env = getenv("INTEL_MEASURE");
       if (!env)
          return;
 
@@ -209,7 +209,11 @@ intel_measure_init(struct intel_measure_device *device)
    }
 
    device->config = NULL;
-   if (getenv("INTEL_MEASURE"))
+   device->frame = 0;
+   pthread_mutex_init(&device->mutex, NULL);
+   list_inithead(&device->queued_snapshots);
+
+   if (env)
       device->config = &config;
 }
 
@@ -389,7 +393,7 @@ intel_measure_ready(struct intel_measure_batch *batch)
  * Depending on configuration, snapshot data may need to be collated before
  * writing to the output file.
  */
-void
+static void
 intel_measure_push_result(struct intel_measure_device *device,
                           struct intel_measure_batch *batch)
 {
@@ -446,7 +450,6 @@ intel_measure_push_result(struct intel_measure_device *device,
       buffered_result->snapshot.event_count = end->event_count;
    }
 }
-
 
 static unsigned
 ringbuffer_size(const struct intel_measure_ringbuffer *rb)
@@ -604,7 +607,7 @@ print_combined_results(struct intel_measure_device *measure_device,
 /**
  * Empty the ringbuffer of events that can be printed.
  */
-void
+static void
 intel_measure_print(struct intel_measure_device *device,
                     struct gen_device_info *info)
 {
@@ -614,5 +617,44 @@ intel_measure_print(struct intel_measure_device *device,
          break;
       print_combined_results(device, events_to_combine, info);
    }
+}
+
+/**
+ * Collect snapshots from completed command buffers and submit them to
+ * intel_measure for printing.
+ */
+void
+intel_measure_gather(struct intel_measure_device *measure_device,
+                     struct gen_device_info *info)
+{
+   pthread_mutex_lock(&measure_device->mutex);
+
+   /* Iterate snapshots and collect if ready.  Each snapshot queue will be
+    * in-order, but we must determine which queue has the oldest batch.
+    */
+   /* iterate snapshots and collect if ready */
+   while (!list_is_empty(&measure_device->queued_snapshots)) {
+      struct intel_measure_batch *batch =
+         list_first_entry(&measure_device->queued_snapshots,
+                          struct intel_measure_batch, link);
+
+      if (!intel_measure_ready(batch)) {
+         /* command buffer has begun execution on the gpu, but has not
+          * completed.
+          */
+         break;
+      }
+
+      list_del(&batch->link);
+      assert(batch->index % 2 == 0);
+
+      intel_measure_push_result(measure_device, batch);
+
+      batch->index = 0;
+      batch->frame = 0;
+   }
+
+   intel_measure_print(measure_device, info);
+   pthread_mutex_unlock(&measure_device->mutex);
 }
 
