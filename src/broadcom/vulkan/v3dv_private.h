@@ -177,18 +177,8 @@ void v3dv_meta_blit_finish(struct v3dv_device *device);
 void v3dv_meta_texel_buffer_copy_init(struct v3dv_device *device);
 void v3dv_meta_texel_buffer_copy_finish(struct v3dv_device *device);
 
-struct v3dv_app_info {
-   const char *app_name;
-   uint32_t app_version;
-   const char *engine_name;
-   uint32_t engine_version;
-   uint32_t api_version;
-};
-
 struct v3dv_instance {
    struct vk_instance vk;
-
-   struct v3dv_app_info app_info;
 
    struct v3dv_instance_extension_table enabled_extensions;
    struct v3dv_instance_dispatch_table dispatch;

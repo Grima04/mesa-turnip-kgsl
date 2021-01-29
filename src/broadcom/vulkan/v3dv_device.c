@@ -156,26 +156,6 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    v3d_process_debug_variable();
 
-   instance->app_info = (struct v3dv_app_info) { .api_version = 0 };
-   if (pCreateInfo->pApplicationInfo) {
-      const VkApplicationInfo *app = pCreateInfo->pApplicationInfo;
-
-      instance->app_info.app_name =
-         vk_strdup(&instance->vk.alloc, app->pApplicationName,
-                   VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-      instance->app_info.app_version = app->applicationVersion;
-
-      instance->app_info.engine_name =
-         vk_strdup(&instance->vk.alloc, app->pEngineName,
-                   VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-      instance->app_info.engine_version = app->engineVersion;
-
-      instance->app_info.api_version = app->apiVersion;
-   }
-
-   if (instance->app_info.api_version == 0)
-      instance->app_info.api_version = VK_API_VERSION_1_0;
-
    instance->enabled_extensions = enabled_extensions;
 
    for (unsigned i = 0; i < ARRAY_SIZE(instance->dispatch.entrypoints); i++) {
@@ -183,7 +163,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
        * enabled must not be advertised.
        */
       if (!v3dv_instance_entrypoint_is_enabled(i,
-                                              instance->app_info.api_version,
+                                              instance->vk.app_info.api_version,
                                               &instance->enabled_extensions)) {
          instance->dispatch.entrypoints[i] = NULL;
       } else {
@@ -198,7 +178,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
        * enabled must not be advertised.
        */
       if (!v3dv_physical_device_entrypoint_is_enabled(i,
-                                                     instance->app_info.api_version,
+                                                     instance->vk.app_info.api_version,
                                                      &instance->enabled_extensions)) {
          pdevice->dispatch.entrypoints[i] = NULL;
       } else {
@@ -212,7 +192,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
        * enabled must not be advertised.
        */
       if (!v3dv_device_entrypoint_is_enabled(i,
-                                            instance->app_info.api_version,
+                                            instance->vk.app_info.api_version,
                                             &instance->enabled_extensions,
                                             NULL)) {
          instance->device_dispatch.entrypoints[i] = NULL;
@@ -306,9 +286,6 @@ v3dv_DestroyInstance(VkInstance _instance,
       assert(instance->physicalDeviceCount == 1);
       physical_device_finish(&instance->physicalDevice);
    }
-
-   vk_free(&instance->vk.alloc, (char *)instance->app_info.app_name);
-   vk_free(&instance->vk.alloc, (char *)instance->app_info.engine_name);
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
@@ -1501,7 +1478,7 @@ init_device_dispatch(struct v3dv_device *device)
       /* Vulkan requires that entrypoints for extensions which have not been
        * enabled must not be advertised.
        */
-      if (!v3dv_device_entrypoint_is_enabled(i, device->instance->app_info.api_version,
+      if (!v3dv_device_entrypoint_is_enabled(i, device->instance->vk.app_info.api_version,
                                              &device->instance->enabled_extensions,
                                              &device->enabled_extensions)) {
          device->dispatch.entrypoints[i] = NULL;
