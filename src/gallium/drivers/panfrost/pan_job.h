@@ -48,8 +48,7 @@ struct panfrost_batch_fence {
         struct panfrost_batch *batch;
 };
 
-#define PAN_REQ_MSAA            (1 << 0)
-#define PAN_REQ_DEPTH_WRITE     (1 << 1)
+#define PAN_REQ_DEPTH_WRITE     (1 << 0)
 
 /* A panfrost_batch corresponds to a bound FBO we're rendering to,
  * collecting over multiple draws. */
