@@ -45,12 +45,15 @@ if (!$?) {
 
 Get-Date
 Write-Host "Cloning LLVM master"
-git clone -b master --depth=1 https://github.com/llvm/llvm-project llvm-project
+git clone -b release/12.x --depth=1 https://github.com/llvm/llvm-project llvm-project
 if (!$?) {
   Write-Host "Failed to clone LLVM repository"
   Exit 1
 }
 
+# ideally we need to use a tag here instead of master
+# but as of today, SPIRV-LLVM-Translator doesn't have
+# a tag matching LLVM 12.0.0, which is not yet out TBH
 Get-Date
 Write-Host "Cloning SPIRV-LLVM-Translator"
 git clone -b master https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/SPIRV-LLVM-Translator
