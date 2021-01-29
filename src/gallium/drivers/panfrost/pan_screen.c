@@ -467,12 +467,23 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (!format_desc)
                 return false;
 
-        /* MSAA 4x supported, but no more. Technically some revisions of the
-         * hardware can go up to 16x but we don't support higher modes yet.
-         * MSAA 2x is notably not supported and gets rounded up to MSAA 4x. */
+        /* MSAA 2x gets rounded up to 4x. MSAA 8x/16x only supported on v5+.
+         * TODO: Advertise on v5 */
 
-        if (!(sample_count == 0 || sample_count == 1 || sample_count == 4))
+        switch (sample_count) {
+        case 0:
+        case 1:
+        case 4:
+                break;
+        case 8:
+        case 16:
+                if (dev->arch < 6)
+                        return false;
+                else
+                        break;
+        default:
                 return false;
+        }
 
         if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
                 return false;
