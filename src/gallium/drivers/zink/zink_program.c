@@ -214,6 +214,7 @@ shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
    switch (zs->nir->info.stage) {
    case MESA_SHADER_VERTEX:
       vs_key->last_vertex_stage = !shaders[PIPE_SHADER_TESS_EVAL] && !shaders[PIPE_SHADER_GEOMETRY];
+      vs_key->push_drawid = ctx->drawid_broken;
       break;
    case MESA_SHADER_TESS_EVAL:
       vs_key->last_vertex_stage = !shaders[PIPE_SHADER_GEOMETRY];

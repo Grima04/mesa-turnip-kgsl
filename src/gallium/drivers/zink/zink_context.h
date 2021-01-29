@@ -156,6 +156,8 @@ struct zink_context {
    float line_width;
    float blend_constants[4];
 
+   bool drawid_broken;
+
    struct pipe_stencil_ref stencil_ref;
 
    union {

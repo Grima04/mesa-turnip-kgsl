@@ -29,6 +29,7 @@
 struct zink_vs_key {
    unsigned shader_id;
    bool clip_halfz;
+   bool push_drawid;
    bool last_vertex_stage;
 };
 
