@@ -31,6 +31,7 @@
 
 #include <assert.h>
 #include "c11_compat.h"
+#include "ac_rgp.h"
 
 struct radeon_cmdbuf;
 struct radeon_info;
@@ -44,6 +45,10 @@ struct ac_thread_trace_data {
    uint32_t buffer_size;
    int start_frame;
    char *trigger_file;
+
+   struct rgp_code_object rgp_code_object;
+   struct rgp_loader_events rgp_loader_events;
+   struct rgp_pso_correlation rgp_pso_correlation;
 };
 
 #define SQTT_BUFFER_ALIGN_SHIFT 12
