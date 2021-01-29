@@ -272,6 +272,56 @@ lower_basevertex(nir_shader *shader)
    return progress;
 }
 
+
+static bool
+lower_drawid_instr(nir_intrinsic_instr *instr, nir_builder *b)
+{
+   if (instr->intrinsic != nir_intrinsic_load_draw_id)
+      return false;
+
+   b->cursor = nir_before_instr(&instr->instr);
+   nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
+   load->src[0] = nir_src_for_ssa(nir_imm_int(b, 1));
+   nir_intrinsic_set_range(load, 4);
+   load->num_components = 1;
+   nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, "draw_id");
+   nir_builder_instr_insert(b, &load->instr);
+
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(&load->dest.ssa));
+
+   return true;
+}
+
+static bool
+lower_drawid(nir_shader *shader)
+{
+   bool progress = false;
+
+   if (shader->info.stage != MESA_SHADER_VERTEX)
+      return false;
+
+   if (!BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_DRAW_ID))
+      return false;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl) {
+         nir_builder builder;
+         nir_builder_init(&builder, function->impl);
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr_safe(instr, block) {
+               if (instr->type == nir_instr_type_intrinsic)
+                  progress |= lower_drawid_instr(nir_instr_as_intrinsic(instr),
+                                                     &builder);
+            }
+         }
+
+         nir_metadata_preserve(function->impl, nir_metadata_dominance);
+      }
+   }
+
+   return progress;
+}
+
 void
 zink_screen_init_compiler(struct zink_screen *screen)
 {
@@ -404,6 +454,11 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
          if (!zink_vs_key(key)->clip_halfz) {
             nir = nir_shader_clone(NULL, zs->nir);
             NIR_PASS_V(nir, nir_lower_clip_halfz);
+         }
+         if (zink_vs_key(key)->push_drawid) {
+            if (nir == zs->nir)
+               nir = nir_shader_clone(NULL, zs->nir);
+            NIR_PASS_V(nir, lower_drawid);
          }
       }
    } else if (zs->nir->info.stage == MESA_SHADER_FRAGMENT) {
