@@ -1026,12 +1026,14 @@ st_create_context(gl_api api, struct pipe_context *pipe,
    if (pipe->set_context_param)
       funcs.PinDriverToL3Cache = st_pin_driver_to_l3_cache;
 
-   ctx = calloc(1, sizeof(struct gl_context));
+   /* gl_context must be 16-byte aligned due to the alignment on GLmatrix. */
+   ctx = align_malloc(sizeof(struct gl_context), 16);
    if (!ctx)
       return NULL;
+   memset(ctx, 0, sizeof(*ctx));
 
    if (!_mesa_initialize_context(ctx, api, visual, shareCtx, &funcs)) {
-      free(ctx);
+      align_free(ctx);
       return NULL;
    }
 
@@ -1164,7 +1166,7 @@ st_destroy_context(struct st_context *st)
 
    _mesa_destroy_debug_output(ctx);
 
-   free(ctx);
+   align_free(ctx);
 
    if (save_ctx == ctx) {
       /* unbind the context we just deleted */
