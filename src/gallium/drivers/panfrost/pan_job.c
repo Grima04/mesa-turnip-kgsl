@@ -35,6 +35,7 @@
 #include "util/format/u_format.h"
 #include "util/u_pack_color.h"
 #include "util/rounding.h"
+#include "util/u_framebuffer.h"
 #include "pan_util.h"
 #include "pan_blending.h"
 #include "pan_cmdstream.h"
@@ -700,6 +701,10 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
                 tiler.fb_width = batch->key.width;
                 tiler.fb_height = batch->key.height;
                 tiler.heap = heap;
+
+                /* Must match framebuffer descriptor */
+                unsigned samples = util_framebuffer_get_num_samples(&batch->key);
+                tiler.sample_pattern = panfrost_sample_pattern(samples);
         }
 
         batch->tiler_meta = t.gpu;
