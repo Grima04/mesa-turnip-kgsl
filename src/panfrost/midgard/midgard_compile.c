@@ -1740,9 +1740,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
         }
 
-        /* Artefact of load_interpolated_input. TODO: other barycentric modes */
+        /* Handled together with load_interpolated_input */
         case nir_intrinsic_load_barycentric_pixel:
         case nir_intrinsic_load_barycentric_centroid:
+        case nir_intrinsic_load_barycentric_sample:
                 break;
 
         /* Reads 128-bit value raw off the tilebuffer during blending, tasty */
