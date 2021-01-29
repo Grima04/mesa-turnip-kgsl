@@ -32,6 +32,7 @@ apt-get install -y --no-remove \
       liblua5.3-dev \
       libxml2-dev \
       ocl-icd-opencl-dev \
+      time \
       wine-development \
       wine32-development
 

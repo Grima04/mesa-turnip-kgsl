@@ -59,6 +59,6 @@ meson _build --native-file=native.file \
 cd _build
 meson configure
 ninja
-LC_ALL=C.UTF-8 meson test --num-processes ${FDO_CI_CONCURRENT:-4}
+LC_ALL=C.UTF-8 meson test --num-processes ${FDO_CI_CONCURRENT:-4} --wrapper=$PWD/../.gitlab-ci/meson/test-wrapper.sh
 ninja install
 cd ..
