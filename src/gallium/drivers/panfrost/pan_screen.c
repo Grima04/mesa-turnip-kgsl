@@ -776,9 +776,10 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 return NULL;
 
         struct panfrost_device *dev = pan_device(&screen->base);
-        panfrost_open_device(screen, fd, dev);
 
+        /* Debug must be set first for pandecode to work correctly */
         dev->debug = debug_get_flags_option("PAN_MESA_DEBUG", panfrost_debug_options, 0);
+        panfrost_open_device(screen, fd, dev);
 
         if (dev->debug & PAN_DBG_NO_AFBC)
                 dev->quirks |= MIDGARD_NO_AFBC;
@@ -811,9 +812,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 panfrost_destroy_screen(&(screen->base));
                 return NULL;
         }
-
-        if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
-                pandecode_initialize(!(dev->debug & PAN_DBG_TRACE));
 
         screen->base.destroy = panfrost_destroy_screen;
 

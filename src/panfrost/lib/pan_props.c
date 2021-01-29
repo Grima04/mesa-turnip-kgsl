@@ -36,6 +36,8 @@
 #include "panfrost-quirks.h"
 #include "pan_bo.h"
 #include "pan_texture.h"
+#include "wrap.h"
+#include "pan_util.h"
 
 /* Abstraction over the raw drm_panfrost_get_param ioctl for fetching
  * information about devices */
@@ -246,6 +248,10 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
 
         for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
                 list_inithead(&dev->bo_cache.buckets[i]);
+
+        /* Initialize pandecode before we start allocating */
+        if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
+                pandecode_initialize(!(dev->debug & PAN_DBG_TRACE));
 
         /* Tiler heap is internally required by the tiler, which can only be
          * active for a single job chain at once, so a single heap can be
