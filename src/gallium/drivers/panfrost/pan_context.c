@@ -1340,6 +1340,17 @@ panfrost_set_min_samples(struct pipe_context *pipe,
         ctx->min_samples = min_samples;
 }
 
+static void
+panfrost_get_sample_position(struct pipe_context *context,
+                             unsigned sample_count,
+                             unsigned sample_index,
+                             float *out_value)
+{
+        panfrost_query_sample_position(
+                        panfrost_sample_pattern(sample_count),
+                        sample_index,
+                        out_value);
+}
 
 static void
 panfrost_set_clip_state(struct pipe_context *pipe,
@@ -1701,6 +1712,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         gallium->set_sample_mask = panfrost_set_sample_mask;
         gallium->set_min_samples = panfrost_set_min_samples;
+        gallium->get_sample_position = panfrost_get_sample_position;
 
         gallium->set_clip_state = panfrost_set_clip_state;
         gallium->set_viewport_states = panfrost_set_viewport_states;

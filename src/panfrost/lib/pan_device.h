@@ -182,6 +182,11 @@ panfrost_upload_sample_positions(struct panfrost_device *dev);
 mali_ptr
 panfrost_sample_positions(struct panfrost_device *dev,
                 enum mali_sample_pattern pattern);
+void
+panfrost_query_sample_position(
+                enum mali_sample_pattern pattern,
+                unsigned sample_idx,
+                float *out);
 
 static inline struct panfrost_bo *
 pan_lookup_bo(struct panfrost_device *dev, uint32_t gem_handle)
