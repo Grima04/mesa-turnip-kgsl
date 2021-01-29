@@ -628,11 +628,8 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 
                 params.color_buffer_allocation = internal_cbuf_size;
 
-                if (batch->requirements & PAN_REQ_MSAA) {
-                        /* MSAA 4x */
-                        params.sample_count = 4;
-                        params.sample_pattern = MALI_SAMPLE_PATTERN_ROTATED_4X_GRID;
-                }
+                params.sample_count = util_framebuffer_get_num_samples(&batch->key);
+                params.sample_pattern = panfrost_sample_pattern(params.sample_count);
 
                 if (batch->key.zsbuf &&
                     ((batch->clear | batch->draws) & PIPE_CLEAR_DEPTHSTENCIL)) {
