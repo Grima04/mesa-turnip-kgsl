@@ -59,7 +59,8 @@ pan_prepare_midgard_props(struct panfrost_shader_state *state,
 static void
 pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                           panfrost_program *program,
-                          gl_shader_stage stage)
+                          gl_shader_stage stage,
+                          shader_info *info)
 {
         unsigned fau_count = DIV_ROUND_UP(program->push.count, 2);
 
@@ -97,6 +98,15 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                 state->preload.fragment.fragment_position = state->reads_frag_coord;
                 state->preload.fragment.coverage = true;
                 state->preload.fragment.primitive_flags = state->reads_face;
+
+                /* Contains sample ID and sample mask. Sample position and
+                 * helper invocation are expressed in terms of the above, so
+                 * preload for those too */
+                state->preload.fragment.sample_mask_id =
+                        BITSET_TEST(info->system_values_read, SYSTEM_VALUE_SAMPLE_ID) ||
+                        BITSET_TEST(info->system_values_read, SYSTEM_VALUE_SAMPLE_POS) ||
+                        BITSET_TEST(info->system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN) ||
+                        BITSET_TEST(info->system_values_read, SYSTEM_VALUE_HELPER_INVOCATION);
                 break;
         case MESA_SHADER_COMPUTE:
                 pan_prepare(&state->properties, RENDERER_PROPERTIES);
@@ -406,7 +416,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->shader.sampler_count = s->info.num_textures;
 
         if (pan_is_bifrost(dev))
-                pan_prepare_bifrost_props(state, program, stage);
+                pan_prepare_bifrost_props(state, program, stage, &s->info);
         else
                 pan_prepare_midgard_props(state, program, stage);
 
