@@ -40,6 +40,7 @@ lib_FILES := \
         lib/pan_pool.h \
         lib/pan_props.c \
         lib/pan_sampler.c \
+        lib/pan_samples.c \
         lib/pan_shader.h \
         lib/pan_scoreboard.c \
         lib/pan_scoreboard.h \

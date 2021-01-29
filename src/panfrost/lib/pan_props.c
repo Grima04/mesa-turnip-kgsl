@@ -255,6 +255,9 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
                         PAN_BO_INVISIBLE | PAN_BO_GROWABLE);
 
         pthread_mutex_init(&dev->submit_lock, NULL);
+
+        /* Done once on init */
+        panfrost_upload_sample_positions(dev);
 }
 
 void

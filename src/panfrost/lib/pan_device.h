@@ -159,6 +159,12 @@ struct panfrost_device {
          * we end up with tiler heap corruption.
          */
         pthread_mutex_t submit_lock;
+
+        /* Sample positions are preloaded into a write-once constant buffer,
+         * such that they can be referenced fore free later. Needed
+         * unconditionally on Bifrost, and useful for sharing with Midgard */
+
+        struct panfrost_bo *sample_positions;
 };
 
 void
@@ -169,6 +175,13 @@ panfrost_close_device(struct panfrost_device *dev);
 
 bool
 panfrost_supports_compressed_format(struct panfrost_device *dev, unsigned fmt);
+
+void
+panfrost_upload_sample_positions(struct panfrost_device *dev);
+
+mali_ptr
+panfrost_sample_positions(struct panfrost_device *dev,
+                enum mali_sample_pattern pattern);
 
 static inline struct panfrost_bo *
 pan_lookup_bo(struct panfrost_device *dev, uint32_t gem_handle)

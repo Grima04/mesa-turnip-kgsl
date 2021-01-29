@@ -29,6 +29,7 @@ libpanfrost_lib_files = files(
   'pan_format.c',
   'pan_invocation.c',
   'pan_sampler.c',
+  'pan_samples.c',
   'pan_tiler.c',
   'pan_texture.c',
   'pan_scoreboard.c',
