@@ -552,17 +552,6 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 rts = fb + MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH;
         }
 
-        /* When scanning out, the depth buffer is immediately invalidated, so
-         * we don't need to waste bandwidth writing it out. This can improve
-         * performance substantially (Z24X8_UNORM 1080p @ 60fps is 475 MB/s of
-         * memory bandwidth!).
-         *
-         * The exception is ReadPixels, but this is not supported on GLES so we
-         * can safely ignore it. */
-
-        if (panfrost_batch_is_scanout(batch))
-                batch->requirements &= ~PAN_REQ_DEPTH_WRITE;
-
         struct panfrost_slice *checksum_slice = NULL;
 
         if (zs_crc_ext)

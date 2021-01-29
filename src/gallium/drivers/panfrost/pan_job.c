@@ -1216,10 +1216,8 @@ panfrost_batch_set_requirements(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
 
-        if (ctx->depth_stencil && ctx->depth_stencil->base.depth_writemask) {
-                batch->requirements |= PAN_REQ_DEPTH_WRITE;
+        if (ctx->depth_stencil && ctx->depth_stencil->base.depth_writemask)
                 batch->draws |= PIPE_CLEAR_DEPTH;
-        }
 
         if (ctx->depth_stencil && ctx->depth_stencil->base.stencil[0].enabled)
                 batch->draws |= PIPE_CLEAR_STENCIL;

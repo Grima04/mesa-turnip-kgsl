@@ -48,8 +48,6 @@ struct panfrost_batch_fence {
         struct panfrost_batch *batch;
 };
 
-#define PAN_REQ_DEPTH_WRITE     (1 << 0)
-
 /* A panfrost_batch corresponds to a bound FBO we're rendering to,
  * collecting over multiple draws. */
 
@@ -80,10 +78,6 @@ struct panfrost_batch {
 
         /* Amount of shared memory needed per workgroup (for compute) */
         unsigned shared_size;
-
-        /* Whether this job uses the corresponding requirement (PAN_REQ_*
-         * bitmask) */
-        unsigned requirements;
 
         /* The bounding box covered by this job, taking scissors into account.
          * Basically, the bounding box we have to run fragment shaders for */
