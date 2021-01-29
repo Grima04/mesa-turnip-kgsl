@@ -900,6 +900,17 @@ panfrost_upload_work_dim_sysval(struct panfrost_batch *batch,
         uniform->u[0] = ctx->compute_grid->work_dim;
 }
 
+/* Sample positions are pushed in a Bifrost specific format on Bifrost. On
+ * Midgard, we emulate the Bifrost path with some extra arithmetic in the
+ * shader, to keep the code as unified as possible. */
+
+static void
+panfrost_upload_sample_positions_sysval(struct panfrost_batch *batch,
+                                struct sysval_uniform *uniform)
+{
+        uniform->du[0] = panfrost_emit_sample_locations(batch);
+}
+
 static void
 panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                         struct panfrost_shader_state *ss,
@@ -951,6 +962,11 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                                                           PAN_SYSVAL_ID(sysval),
                                                           &uniforms[i]);
                         break;
+                case PAN_SYSVAL_SAMPLE_POSITIONS:
+                        panfrost_upload_sample_positions_sysval(batch,
+                                                        &uniforms[i]);
+                        break;
+
                 default:
                         assert(0);
                 }
