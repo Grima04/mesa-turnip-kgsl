@@ -361,7 +361,9 @@ radv_handle_thread_trace(VkQueue _queue)
 		radv_QueueWaitIdle(_queue);
 
 		if (radv_get_thread_trace(queue, &thread_trace))
-			ac_dump_thread_trace(&queue->device->physical_device->rad_info, &thread_trace);
+			ac_dump_thread_trace(&queue->device->physical_device->rad_info,
+					     &thread_trace,
+					     &queue->device->thread_trace);
 	} else {
 		bool frame_trigger = num_frames == queue->device->thread_trace.start_frame;
 		bool file_trigger = false;

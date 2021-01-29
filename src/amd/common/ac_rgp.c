@@ -587,7 +587,9 @@ static void ac_sqtt_fill_sqtt_data(struct sqtt_file_chunk_sqtt_data *chunk, int3
 }
 
 static void ac_sqtt_dump_data(struct radeon_info *rad_info,
-                              const struct ac_thread_trace *thread_trace, FILE *output)
+                              const struct ac_thread_trace *thread_trace,
+                              struct ac_thread_trace_data *thread_trace_data,
+                              FILE *output)
 {
    struct sqtt_file_chunk_asic_info asic_info = {0};
    struct sqtt_file_chunk_cpu_info cpu_info = {0};
@@ -640,7 +642,9 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
    }
 }
 
-int ac_dump_thread_trace(struct radeon_info *info, const struct ac_thread_trace *thread_trace)
+int ac_dump_thread_trace(struct radeon_info *info,
+                         const struct ac_thread_trace *thread_trace,
+                         struct ac_thread_trace_data *thread_trace_data)
 {
    char filename[2048];
    struct tm now;
@@ -658,7 +662,7 @@ int ac_dump_thread_trace(struct radeon_info *info, const struct ac_thread_trace 
    if (!f)
       return -1;
 
-   ac_sqtt_dump_data(info, thread_trace, f);
+   ac_sqtt_dump_data(info, thread_trace, thread_trace_data, f);
 
    fprintf(stderr, "Thread trace capture saved to '%s'\n", filename);
 

@@ -105,9 +105,6 @@ struct rgp_pso_correlation {
    simple_mtx_t lock;
 };
 
-int
-ac_dump_thread_trace(struct radeon_info *info,
-                     const struct ac_thread_trace *thread_trace);
 void
 ac_rgp_file_write_elf_object(FILE *output, size_t file_elf_start,
                              struct rgp_code_object_record *record,

@@ -638,7 +638,7 @@ si_handle_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs)
       /* Wait for SQTT to finish and read back the bo */
       if (sctx->ws->fence_wait(sctx->ws, sctx->last_sqtt_fence, PIPE_TIMEOUT_INFINITE) &&
           si_get_thread_trace(sctx, &thread_trace)) {
-         ac_dump_thread_trace(&sctx->screen->info, &thread_trace);
+         ac_dump_thread_trace(&sctx->screen->info, &thread_trace, sctx->thread_trace);
       } else {
          fprintf(stderr, "Failed to read the trace\n");
       }
