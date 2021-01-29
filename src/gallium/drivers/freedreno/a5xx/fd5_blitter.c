@@ -442,6 +442,8 @@ fd5_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
 
+	fd_batch_update_queries(batch);
+
 	emit_setup(batch->draw);
 
 	if ((info->src.resource->target == PIPE_BUFFER) &&
@@ -461,6 +463,11 @@ fd5_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	fd_batch_flush(batch);
 	fd_batch_reference(&batch, NULL);
+
+	/* Acc query state will have been dirtied by our fd_batch_update_queries, so
+	 * the ctx->batch may need to turn its queries back on.
+	 */
+	ctx->update_active_queries = true;
 
 	return true;
 }
