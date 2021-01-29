@@ -38,6 +38,23 @@
 
 #include "util/u_memory.h"
 
+static void
+create_vs_pushconst(nir_shader *nir)
+{
+   nir_variable *vs_pushconst;
+   /* create compatible layout for the ntv push constant loader */
+   struct glsl_struct_field *fields = rzalloc_array(nir, struct glsl_struct_field, 2);
+   fields[0].type = glsl_array_type(glsl_uint_type(), 1, 0);
+   fields[0].name = ralloc_asprintf(nir, "draw_mode_is_indexed");
+   fields[0].offset = offsetof(struct zink_push_constant, draw_mode_is_indexed);
+   fields[1].type = glsl_array_type(glsl_uint_type(), 1, 0);
+   fields[1].name = ralloc_asprintf(nir, "draw_id");
+   fields[1].offset = offsetof(struct zink_push_constant, draw_id);
+   vs_pushconst = nir_variable_create(nir, nir_var_mem_push_const,
+                                                 glsl_struct_type(fields, 2, "struct", false), "vs_pushconst");
+   vs_pushconst->data.location = INT_MAX; //doesn't really matter
+}
+
 static bool
 lower_discard_if_instr(nir_intrinsic_instr *instr, nir_builder *b)
 {
@@ -204,30 +221,10 @@ lower_64bit_vertex_attribs(nir_shader *shader)
 static bool
 lower_basevertex_instr(nir_intrinsic_instr *instr, nir_builder *b)
 {
-   nir_variable *vs_pushconst = NULL;
-
    if (instr->intrinsic != nir_intrinsic_load_base_vertex)
       return false;
 
-   nir_foreach_shader_in_variable(var, b->shader) {
-      if (var->data.location == INT_MAX) {
-         vs_pushconst = var;
-         break;
-      }
-   }
    b->cursor = nir_after_instr(&instr->instr);
-
-   if (!vs_pushconst) {
-      /* create compatible layout for the ntv push constant loader */
-      struct glsl_struct_field *fields = rzalloc_array(b->shader, struct glsl_struct_field, 1);
-      fields[0].type = glsl_array_type(glsl_uint_type(), 1, 0);
-      fields[0].name = ralloc_asprintf(b->shader, "draw_mode_is_indexed");
-      fields[0].offset = offsetof(struct zink_push_constant, draw_mode_is_indexed);
-      vs_pushconst = nir_variable_create(b->shader, nir_var_mem_push_const,
-                                                    glsl_struct_type(fields, 1, "struct", false), "vs_pushconst");
-      vs_pushconst->data.location = INT_MAX; //doesn't really matter
-   }
-
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
    load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
    nir_intrinsic_set_range(load, 4);
@@ -495,6 +492,9 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       tex_opts.lower_tg4_offsets = true;
       NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
    }
+
+   if (nir->info.stage == MESA_SHADER_VERTEX)
+      create_vs_pushconst(nir);
 
    /* only do uniforms -> ubo if we have uniforms, otherwise we're just
     * screwing with the bindings for no reason
