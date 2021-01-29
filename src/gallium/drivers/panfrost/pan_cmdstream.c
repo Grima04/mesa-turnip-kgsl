@@ -916,6 +916,14 @@ panfrost_upload_sample_positions_sysval(struct panfrost_batch *batch,
 }
 
 static void
+panfrost_upload_multisampled_sysval(struct panfrost_batch *batch,
+                                struct sysval_uniform *uniform)
+{
+        unsigned samples = util_framebuffer_get_num_samples(&batch->key);
+        uniform->u[0] = samples > 1;
+}
+
+static void
 panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                         struct panfrost_shader_state *ss,
                         enum pipe_shader_type st)
@@ -970,7 +978,10 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                         panfrost_upload_sample_positions_sysval(batch,
                                                         &uniforms[i]);
                         break;
-
+                case PAN_SYSVAL_MULTISAMPLED:
+                        panfrost_upload_multisampled_sysval(batch,
+                                                               &uniforms[i]);
+                        break;
                 default:
                         assert(0);
                 }
