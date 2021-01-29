@@ -25,6 +25,7 @@
  */
 
 #include "pan_ir.h"
+#include "compiler/nir/nir_builder.h"
 
 /* TODO: ssbo_size */
 static int
@@ -125,39 +126,29 @@ panfrost_sysval_for_instr(nir_instr *instr, nir_dest *dest)
         return sysval;
 }
 
-static void
-panfrost_nir_assign_sysval_body(struct panfrost_sysvals *ctx, nir_instr *instr)
+unsigned
+pan_lookup_sysval(struct panfrost_sysvals *ctx, int sysval)
 {
-        int sysval = panfrost_sysval_for_instr(instr, NULL);
-        if (sysval < 0)
-                return;
+        /* Try to lookup */
 
-        /* We have a sysval load; check if it's already been assigned */
+        void *cached = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);
 
-        if (_mesa_hash_table_u64_search(ctx->sysval_to_id, sysval))
-                return;
+        if (cached)
+                return ((uintptr_t) cached) - 1;
 
-        /* It hasn't -- so assign it now! */
+        /* Else assign */
 
         unsigned id = ctx->sysval_count++;
         assert(id < MAX_SYSVAL_COUNT);
         _mesa_hash_table_u64_insert(ctx->sysval_to_id, sysval, (void *) ((uintptr_t) id + 1));
         ctx->sysvals[id] = sysval;
+
+        return id;
 }
 
 void
-panfrost_nir_assign_sysvals(struct panfrost_sysvals *ctx, void *memctx, nir_shader *shader)
+panfrost_init_sysvals(struct panfrost_sysvals *ctx, void *memctx)
 {
         ctx->sysval_count = 0;
         ctx->sysval_to_id = _mesa_hash_table_u64_create(memctx);
-
-        nir_foreach_function(function, shader) {
-                if (!function->impl) continue;
-
-                nir_foreach_block(block, function->impl) {
-                        nir_foreach_instr_safe(instr, block) {
-                                panfrost_nir_assign_sysval_body(ctx, instr);
-                        }
-                }
-        }
 }

@@ -2460,6 +2460,8 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         bifrost_debug = debug_get_option_bifrost_debug();
 
         bi_context *ctx = rzalloc(NULL, bi_context);
+        panfrost_init_sysvals(&ctx->sysvals, ctx);
+
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
         ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
@@ -2505,9 +2507,6 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 nir_print_shader(nir, stdout);
         }
 
-        panfrost_nir_assign_sysvals(&ctx->sysvals, ctx, nir);
-        program->sysval_count = ctx->sysvals.sysval_count;
-        memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
         ctx->blend_types = program->blend_types;
         ctx->tls_size = nir->scratch_size;
 
@@ -2570,6 +2569,8 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         program->wait_7 = (first_deps & (1 << 7));
 
         memcpy(program->blend_ret_offsets, ctx->blend_ret_offsets, sizeof(program->blend_ret_offsets));
+        program->sysval_count = ctx->sysvals.sysval_count;
+        memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
                 disassemble_bifrost(stdout, program->compiled.data,

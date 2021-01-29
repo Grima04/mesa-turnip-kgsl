@@ -1442,12 +1442,8 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
 
         /* Figure out which uniform this is */
         int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
-        void *val = _mesa_hash_table_u64_search(ctx->sysvals.sysval_to_id, sysval);
-
         unsigned dest = nir_dest_index(&nir_dest);
-
-        /* Sysvals are prefix uniforms */
-        unsigned uniform = ((uintptr_t) val) - 1;
+        unsigned uniform = pan_lookup_sysval(&ctx->sysvals, sysval);
 
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
@@ -2981,6 +2977,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
         /* TODO: Bound against what? */
         compiler_context *ctx = rzalloc(NULL, compiler_context);
+        panfrost_init_sysvals(&ctx->sysvals, ctx);
 
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
@@ -3051,12 +3048,6 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 nir_print_shader(nir, stdout);
         }
 
-        /* Assign sysvals and counts, now that we're sure
-         * (post-optimisation) */
-
-        panfrost_nir_assign_sysvals(&ctx->sysvals, ctx, nir);
-        program->sysval_count = ctx->sysvals.sysval_count;
-        memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
         ctx->tls_size = nir->scratch_size;
 
         nir_foreach_function(func, nir) {
@@ -3180,6 +3171,9 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         program->uniform_cutoff = ctx->uniform_cutoff;
 
         program->tls_size = ctx->tls_size;
+
+        program->sysval_count = ctx->sysvals.sysval_count;
+        memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
 
         if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
                 disassemble_midgard(stdout, program->compiled.data,

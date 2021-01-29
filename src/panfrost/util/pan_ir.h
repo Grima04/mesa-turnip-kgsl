@@ -105,7 +105,10 @@ unsigned
 pan_lookup_pushed_ubo(struct panfrost_ubo_push *push, unsigned ubo, unsigned offs);
 
 void
-panfrost_nir_assign_sysvals(struct panfrost_sysvals *ctx, void *memctx, nir_shader *shader);
+panfrost_init_sysvals(struct panfrost_sysvals *ctx, void *memctx);
+
+unsigned
+pan_lookup_sysval(struct panfrost_sysvals *ctx, int sysval);
 
 int
 panfrost_sysval_for_instr(nir_instr *instr, nir_dest *dest);
