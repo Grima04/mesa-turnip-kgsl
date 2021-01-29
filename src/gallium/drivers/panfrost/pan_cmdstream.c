@@ -989,55 +989,39 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 return 0;
 
         struct panfrost_constant_buffer *buf = &ctx->constant_buffer[stage];
-
         struct panfrost_shader_state *ss = &all->variants[all->active_variant];
-
-        /* Uniforms are implicitly UBO #0 */
-        bool has_uniforms = buf->enabled_mask & (1 << 0);
 
         /* Allocate room for the sysval and the uniforms */
         size_t sys_size = sizeof(float) * 4 * ss->sysval_count;
-        size_t uniform_size = has_uniforms ? (buf->cb[0].buffer_size) : 0;
-        size_t size = sys_size + uniform_size;
         struct panfrost_ptr transfer =
-                panfrost_pool_alloc_aligned(&batch->pool, size, 16);
+                panfrost_pool_alloc_aligned(&batch->pool, sys_size, 16);
 
         /* Upload sysvals requested by the shader */
         panfrost_upload_sysvals(batch, transfer.cpu, ss, stage);
 
-        /* Upload uniforms */
-        if (has_uniforms && uniform_size) {
-                const void *cpu = panfrost_map_constant_buffer_cpu(ctx, buf, 0);
-                memcpy(transfer.cpu + sys_size, cpu, uniform_size);
-        }
+        /* Next up, attach UBOs. UBO count includes gaps but no sysval UBO */
+        struct panfrost_shader_state *shader = panfrost_get_shader_state(ctx, stage);
+        unsigned ubo_count = shader->ubo_count - (sys_size ? 1 : 0);
 
-        /* Next up, attach UBOs. UBO #0 is the uniforms we just
-         * uploaded, so it's always included. The count is the highest UBO
-         * addressable -- gaps are included. */
-
-        unsigned ubo_count = 32 - __builtin_clz(buf->enabled_mask | 1);
-
-        size_t sz = MALI_UNIFORM_BUFFER_LENGTH * ubo_count;
+        size_t sz = MALI_UNIFORM_BUFFER_LENGTH * (ubo_count + 1);
         struct panfrost_ptr ubos =
                 panfrost_pool_alloc_aligned(&batch->pool, sz,
                                 MALI_UNIFORM_BUFFER_LENGTH);
 
         uint64_t *ubo_ptr = (uint64_t *) ubos.cpu;
 
-        /* Upload uniforms as a UBO */
+        /* Upload sysval as a final UBO */
 
-        if (size) {
-                pan_pack(ubo_ptr, UNIFORM_BUFFER, cfg) {
-                        cfg.entries = DIV_ROUND_UP(size, 16);
+        if (sys_size) {
+                pan_pack(ubo_ptr + ubo_count, UNIFORM_BUFFER, cfg) {
+                        cfg.entries = DIV_ROUND_UP(sys_size, 16);
                         cfg.pointer = transfer.gpu;
                 }
-        } else {
-                *ubo_ptr = 0;
         }
 
         /* The rest are honest-to-goodness UBOs */
 
-        for (unsigned ubo = 1; ubo < ubo_count; ++ubo) {
+        for (unsigned ubo = 0; ubo < ubo_count; ++ubo) {
                 size_t usz = buf->cb[ubo].buffer_size;
                 bool enabled = buf->enabled_mask & (1 << ubo);
                 bool empty = usz == 0;

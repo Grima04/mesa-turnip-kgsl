@@ -1451,7 +1451,8 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
 
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
-                emit_ubo_read(ctx, instr, dest, (uniform * 16) + offset, NULL, 0, 0);
+                emit_ubo_read(ctx, instr, dest, (uniform * 16) + offset, NULL, 0,
+                                ctx->nir->info.num_ubos);
 
         ins->mask = mask_of(nr_components);
 }
@@ -1708,7 +1709,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(&instr->dest);
 
                 if (is_kernel) {
-                        emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysvals.sysval_count * 16) + offset, indirect_offset, 0, 0);
+                        emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, 0);
                 } else if (is_ubo) {
                         nir_src index = instr->src[0];
 
@@ -1716,10 +1717,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         assert(nir_src_is_const(index));
 
                         uint32_t uindex = nir_src_as_uint(index);
-
-                        if (uindex == 0)
-                                offset += ctx->sysvals.sysval_count * 16;
-
                         emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, uindex);
                 } else if (is_global || is_shared || is_scratch) {
                         unsigned seg = is_global ? LDST_GLOBAL : (is_shared ? LDST_SHARED : LDST_SCRATCH);

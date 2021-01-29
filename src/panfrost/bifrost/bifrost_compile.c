@@ -489,27 +489,8 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
 
         bool offset_is_const = nir_src_is_const(*offset);
         bi_index dyn_offset = bi_src_index(offset);
-        uint32_t const_offset = 0;
-
+        uint32_t const_offset = offset_is_const ? nir_src_as_uint(*offset) : 0;
         bool kernel_input = (instr->intrinsic == nir_intrinsic_load_kernel_input);
-
-        /* We may need to offset UBO loads by however many sysvals we have */
-        unsigned sysval_offset = 16 * b->shader->sysvals.sysval_count;
-
-        if (nir_src_is_const(*offset))
-                const_offset = nir_src_as_uint(*offset);
-
-        if ((kernel_input ||
-             (nir_src_is_const(instr->src[0]) &&
-              nir_src_as_uint(instr->src[0]) == 0)) &&
-            b->shader->sysvals.sysval_count) {
-                if (offset_is_const) {
-                        const_offset += sysval_offset;
-                } else {
-                        dyn_offset = bi_iadd_u32(b, dyn_offset,
-                                        bi_imm_u32(sysval_offset), false);
-                }
-        }
 
         bi_load_to(b, instr->num_components * 32,
                         bi_dest_index(&instr->dest), offset_is_const ?
@@ -635,7 +616,8 @@ bi_load_sysval(bi_builder *b, nir_instr *instr,
         unsigned idx = (uniform * 16) + offset;
 
         bi_load_to(b, nr_components * 32, bi_dest_index(&nir_dest),
-                        bi_imm_u32(idx), bi_zero(), BI_SEG_UBO);
+                        bi_imm_u32(idx),
+                        bi_imm_u32(b->shader->nir->info.num_ubos), BI_SEG_UBO);
 }
 
 /* gl_FragCoord.xy = u16_to_f32(R59.xy) + 0.5
