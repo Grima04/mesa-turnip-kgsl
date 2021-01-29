@@ -53,6 +53,7 @@ enum {
         PAN_SYSVAL_LOCAL_GROUP_SIZE = 8,
         PAN_SYSVAL_WORK_DIM = 9,
         PAN_SYSVAL_IMAGE_SIZE = 10,
+        PAN_SYSVAL_SAMPLE_POSITIONS = 11,
 };
 
 #define PAN_TXS_SYSVAL_ID(texidx, dim, is_array)          \
