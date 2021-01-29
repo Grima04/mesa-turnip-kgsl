@@ -619,6 +619,22 @@ zink_set_shader_buffers(struct pipe_context *pctx,
 }
 
 static void
+unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsigned slot)
+{
+   struct zink_image_view *image_view = &ctx->image_views[stage][slot];
+   if (!image_view->base.resource)
+      return;
+
+   if (image_view->base.resource->target == PIPE_BUFFER)
+      vkDestroyBufferView(zink_screen(ctx->base.screen)->dev, image_view->buffer_view, NULL);
+   else
+      pipe_surface_reference((struct pipe_surface**)&image_view->surface, NULL);
+   pipe_resource_reference(&image_view->base.resource, NULL);
+   image_view->base.resource = NULL;
+   image_view->surface = NULL;
+}
+
+static void
 zink_set_shader_images(struct pipe_context *pctx,
                        enum pipe_shader_type p_stage,
                        unsigned start_slot, unsigned count,
@@ -645,29 +661,12 @@ zink_set_shader_images(struct pipe_context *pctx,
             image_view->surface = zink_surface(pctx->create_surface(pctx, &res->base, &tmpl));
             assert(image_view->surface);
          }
-      } else if (image_view->base.resource) {
-         if (image_view->base.resource->target == PIPE_BUFFER)
-            vkDestroyBufferView(zink_screen(pctx->screen)->dev, image_view->buffer_view, NULL);
-         else
-            pipe_surface_reference((struct pipe_surface**)&image_view->surface, NULL);
-         pipe_resource_reference(&image_view->base.resource, NULL);
-         image_view->base.resource = NULL;
-         image_view->surface = NULL;
-      }
+      } else if (image_view->base.resource)
+         unbind_shader_image(ctx, p_stage, start_slot + i);
    }
 
-   for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
-      struct zink_image_view *image_view = &ctx->image_views[p_stage][start_slot + count + i];
-      if (image_view->base.resource) {
-         if (image_view->base.resource->target == PIPE_BUFFER)
-            vkDestroyBufferView(zink_screen(pctx->screen)->dev, image_view->buffer_view, NULL);
-         else
-            pipe_surface_reference((struct pipe_surface**)&image_view->surface, NULL);
-         pipe_resource_reference(&image_view->base.resource, NULL);
-         image_view->base.resource = NULL;
-         image_view->surface = NULL;
-      }
-   }
+   for (unsigned i = 0; i < unbind_num_trailing_slots; i++)
+      unbind_shader_image(ctx, p_stage, start_slot + count + i);
 }
 
 static void
