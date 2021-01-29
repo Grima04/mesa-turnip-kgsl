@@ -216,6 +216,7 @@ struct panfrost_shader_state {
 
         /* Non-descript information */
         unsigned work_reg_count;
+        bool sample_shading;
         bool can_discard;
         bool writes_point_size;
         bool writes_depth;

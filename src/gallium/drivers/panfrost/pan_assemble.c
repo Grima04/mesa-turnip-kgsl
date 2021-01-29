@@ -350,6 +350,9 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
                 state->outputs_read = outputs_read >> FRAG_RESULT_DATA0;
 
+                /* EXT_shader_framebuffer_fetch requires per-sample */
+                state->sample_shading = outputs_read;
+
                 /* List of reasons we need to execute frag shaders when things
                  * are masked off */
 

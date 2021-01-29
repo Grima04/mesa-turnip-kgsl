@@ -527,9 +527,9 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         state->multisample_misc.multisample_enable = msaa;
         state->multisample_misc.sample_mask = (msaa ? ctx->sample_mask : ~0) & 0xFFFF;
 
-        /* EXT_shader_framebuffer_fetch requires per-sample */
-        bool per_sample = ctx->min_samples > 1 || fs->outputs_read;
-        state->multisample_misc.evaluate_per_sample = msaa && per_sample;
+        state->multisample_misc.evaluate_per_sample =
+                msaa && (ctx->min_samples > 1 || fs->sample_shading);
+
         state->multisample_misc.depth_function = zsa->base.depth_enabled ?
                 panfrost_translate_compare_func(zsa->base.depth_func) :
                 MALI_FUNC_ALWAYS;
