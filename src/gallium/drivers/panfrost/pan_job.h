@@ -197,9 +197,6 @@ panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
                                     unsigned minx, unsigned miny,
                                     unsigned maxx, unsigned maxy);
 
-bool
-panfrost_batch_is_scanout(struct panfrost_batch *batch);
-
 mali_ptr
 panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_count);
 

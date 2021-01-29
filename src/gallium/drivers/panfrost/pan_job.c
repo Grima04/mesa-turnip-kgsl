@@ -1401,24 +1401,6 @@ panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
         batch->maxy = MIN2(batch->maxy, maxy);
 }
 
-/* Are we currently rendering to the dev (rather than an FBO)? */
-
-bool
-panfrost_batch_is_scanout(struct panfrost_batch *batch)
-{
-        /* If there is no color buffer, it's an FBO */
-        if (batch->key.nr_cbufs != 1)
-                return false;
-
-        /* If we're too early that no framebuffer was sent, it's scanout */
-        if (!batch->key.cbufs[0])
-                return true;
-
-        return batch->key.cbufs[0]->texture->bind & PIPE_BIND_DISPLAY_TARGET ||
-               batch->key.cbufs[0]->texture->bind & PIPE_BIND_SCANOUT ||
-               batch->key.cbufs[0]->texture->bind & PIPE_BIND_SHARED;
-}
-
 void
 panfrost_batch_init(struct panfrost_context *ctx)
 {
