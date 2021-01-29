@@ -83,6 +83,7 @@ dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide,Fail
+dEQP-GLES3.functional.texture.specification.basic_copytexsubimage2d.cube_alpha,Fail
 dEQP-GLES31.functional.atomic_counter.dec.1_counter_100_calls_10_threads,Crash
 dEQP-GLES31.functional.atomic_counter.dec.1_counter_100_calls_1_thread,Crash
 dEQP-GLES31.functional.atomic_counter.dec.1_counter_1_call_10_threads,Crash

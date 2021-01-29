@@ -362,13 +362,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-01-14-asan"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-02-05-runner"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-01-14-asan"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-02-05-runner"
 
 # Debian 10 based ARM build image
 arm_build:
@@ -408,7 +408,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &arm64_test "2021-01-29-xserver"
+    MESA_IMAGE_TAG: &arm64_test "2021-02-01-runner"
 
 .use-arm64_test:
   variables:
@@ -422,7 +422,7 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &armhf_test "2021-01-29-xserver"
+    MESA_IMAGE_TAG: &armhf_test "2021-02-01-runner"
 
 .use-armhf_test:
   variables:
@@ -1753,6 +1753,9 @@ vc4-rpi3-gles2:armhf:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_VER: gles2
+    # The vc4s are so slow that it takes about a minute to get through the
+    # default 500 tests in a group, triggering the serial watchdog.
+    DEQP_RUNNER_OPTIONS: "--tests-per-group 250"
 
 .vc4-rpi3-piglit:armhf:
   extends:
