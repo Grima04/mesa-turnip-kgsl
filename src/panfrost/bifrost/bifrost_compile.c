@@ -291,6 +291,36 @@ bi_make_vec_to(bi_builder *b, bi_index final_dst,
         }
 }
 
+static bi_instr *
+bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
+                unsigned nr_components, unsigned offset)
+{
+        unsigned uniform = pan_lookup_sysval(&b->shader->sysvals, sysval);
+        unsigned idx = (uniform * 16) + offset;
+
+        return bi_load_to(b, nr_components * 32, dest,
+                        bi_imm_u32(idx),
+                        bi_imm_u32(b->shader->nir->info.num_ubos), BI_SEG_UBO);
+}
+
+static void
+bi_load_sysval_nir(bi_builder *b, nir_intrinsic_instr *intr,
+                unsigned nr_components, unsigned offset)
+{
+        bi_load_sysval_to(b, bi_dest_index(&intr->dest),
+                        panfrost_sysval_for_instr(&intr->instr, NULL),
+                        nr_components, offset);
+}
+
+static bi_index
+bi_load_sysval(bi_builder *b, int sysval,
+                unsigned nr_components, unsigned offset)
+{
+        bi_index tmp = bi_temp(b->shader);
+        bi_load_sysval_to(b, tmp, sysval, nr_components, offset);
+        return tmp;
+}
+
 static void
 bi_emit_load_blend_input(bi_builder *b, nir_intrinsic_instr *instr)
 {
@@ -612,25 +642,6 @@ bi_emit_acmpxchg(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
         bi_make_vec_to(b, bi_dest_index(&instr->dest), inout_words, NULL, sz / 32, 32);
 }
 
-static void
-bi_load_sysval(bi_builder *b, nir_instr *instr,
-                unsigned nr_components, unsigned offset)
-{
-        nir_dest nir_dest;
-
-        /* Figure out which uniform this is */
-        int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
-        void *val = _mesa_hash_table_u64_search(b->shader->sysvals.sysval_to_id, sysval);
-
-        /* Sysvals are prefix uniforms */
-        unsigned uniform = ((uintptr_t) val) - 1;
-        unsigned idx = (uniform * 16) + offset;
-
-        bi_load_to(b, nr_components * 32, bi_dest_index(&nir_dest),
-                        bi_imm_u32(idx),
-                        bi_imm_u32(b->shader->nir->info.num_ubos), BI_SEG_UBO);
-}
-
 /* gl_FragCoord.xy = u16_to_f32(R59.xy) + 0.5
  * gl_FragCoord.z = ld_vary(fragz)
  * gl_FragCoord.w = ld_vary(fragw)
@@ -771,15 +782,15 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ssbo_address:
-                bi_load_sysval(b, &instr->instr, 2, 0);
+                bi_load_sysval_nir(b, instr, 2, 0);
                 break;
 
         case nir_intrinsic_load_work_dim:
-                bi_load_sysval(b, &instr->instr, 1, 0);
+                bi_load_sysval_nir(b, instr, 1, 0);
                 break;
 
         case nir_intrinsic_get_ssbo_size:
-                bi_load_sysval(b, &instr->instr, 1, 8);
+                bi_load_sysval_nir(b, instr, 1, 8);
                 break;
 
         case nir_intrinsic_load_viewport_scale:
@@ -787,7 +798,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_num_work_groups:
         case nir_intrinsic_load_sampler_lod_parameters_pan:
         case nir_intrinsic_load_local_group_size:
-                bi_load_sysval(b, &instr->instr, 3, 0);
+                bi_load_sysval_nir(b, instr, 3, 0);
                 break;
         case nir_intrinsic_load_blend_const_color_r_float:
                 bi_mov_i32_to(b, dst,
@@ -2053,7 +2064,9 @@ bi_emit_tex(bi_builder *b, nir_tex_instr *instr)
 {
         switch (instr->op) {
         case nir_texop_txs:
-                bi_load_sysval(b, &instr->instr, 4, 0);
+                bi_load_sysval_to(b, bi_dest_index(&instr->dest),
+                                panfrost_sysval_for_instr(&instr->instr, NULL),
+                                4, 0);
                 return;
         case nir_texop_tex:
         case nir_texop_txl:
