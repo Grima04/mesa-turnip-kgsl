@@ -511,16 +511,27 @@ vk_format_get_plane_height(VkFormat format, unsigned plane,
 static inline VkFormat
 vk_format_get_plane_format(VkFormat format, unsigned plane_id)
 {
-	const struct vk_format_description *desc = vk_format_description(format);
+	assert(plane_id < vk_format_get_plane_count(format));
 
-	if (desc->layout != VK_FORMAT_LAYOUT_MULTIPLANE) {
-		assert(plane_id == 0);
+	switch(format) {
+	case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+	case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
+	case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+		return VK_FORMAT_R8_UNORM;
+	case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+	case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
+		return plane_id ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8_UNORM;
+	case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
+	case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
+	case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+		return VK_FORMAT_R16_UNORM;
+	case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
+	case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
+		return plane_id ? VK_FORMAT_R16G16_UNORM : VK_FORMAT_R16_UNORM;
+	default:
+		assert(vk_format_get_plane_count(format) == 1);
 		return format;
 	}
-
-	assert(plane_id < desc->plane_count);
-
-	return desc->plane_formats[plane_id];
 }
 
 
