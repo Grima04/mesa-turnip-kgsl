@@ -85,7 +85,7 @@ resume_query(struct fd_batch *batch, struct fd_hw_query *hq,
 	DBG("%p", hq);
 	assert(idx >= 0);   /* query never would have been created otherwise */
 	assert(!hq->period);
-	batch->active_providers |= (1 << idx);
+	batch->query_providers_used |= (1 << idx);
 	hq->period = slab_alloc_st(&batch->ctx->sample_period_pool);
 	list_inithead(&hq->period->list);
 	hq->period->start = get_sample(batch, ring, hq->base.type);
@@ -101,7 +101,7 @@ pause_query(struct fd_batch *batch, struct fd_hw_query *hq,
 	DBG("%p", hq);
 	assert(idx >= 0);   /* query never would have been created otherwise */
 	assert(hq->period && !hq->period->end);
-	assert(batch->active_providers & (1 << idx));
+	assert(batch->query_providers_used & (1 << idx));
 	hq->period->end = get_sample(batch, ring, hq->base.type);
 	list_addtail(&hq->period->list, &hq->periods);
 	hq->period = NULL;
@@ -418,13 +418,13 @@ fd_hw_query_enable(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
 	struct fd_context *ctx = batch->ctx;
 	for (int idx = 0; idx < MAX_HW_SAMPLE_PROVIDERS; idx++) {
-		if (batch->active_providers & (1 << idx)) {
+		if (batch->query_providers_used & (1 << idx)) {
 			assert(ctx->hw_sample_providers[idx]);
 			if (ctx->hw_sample_providers[idx]->enable)
 				ctx->hw_sample_providers[idx]->enable(ctx, ring);
 		}
 	}
-	batch->active_providers = 0;  /* clear it for next frame */
+	batch->query_providers_used = 0;  /* clear it for next frame */
 }
 
 void
