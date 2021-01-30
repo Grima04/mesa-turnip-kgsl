@@ -61,7 +61,7 @@
 #include "common/freedreno_uuid.h"
 
 #include "ir3/ir3_nir.h"
-#include "ir3/ir3_compiler.h"
+#include "ir3/ir3_gallium.h"
 #include "a2xx/ir2.h"
 
 static const struct debug_named_value fd_debug_options[] = {
@@ -165,7 +165,7 @@ fd_screen_destroy(struct pipe_screen *pscreen)
 	u_transfer_helper_destroy(pscreen->transfer_helper);
 
 	if (screen->compiler)
-		ir3_compiler_destroy(screen->compiler);
+		ir3_screen_fini(pscreen);
 
 	ralloc_free(screen->live_batches);
 

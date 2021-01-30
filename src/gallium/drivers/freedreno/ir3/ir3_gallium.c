@@ -399,3 +399,12 @@ ir3_screen_init(struct pipe_screen *pscreen)
 
 	pscreen->finalize_nir = ir3_screen_finalize_nir;
 }
+
+void
+ir3_screen_fini(struct pipe_screen *pscreen)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+
+	ir3_compiler_destroy(screen->compiler);
+	screen->compiler = NULL;
+}
