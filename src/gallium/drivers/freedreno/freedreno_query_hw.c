@@ -420,7 +420,6 @@ fd_hw_query_enable(struct fd_batch *batch, struct fd_ringbuffer *ring)
 				ctx->hw_sample_providers[idx]->enable(ctx, ring);
 		}
 	}
-	batch->query_providers_used = 0;  /* clear it for next frame */
 }
 
 void
