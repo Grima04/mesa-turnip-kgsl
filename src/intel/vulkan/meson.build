@@ -58,14 +58,15 @@ anv_extensions_h = custom_target(
 
 intel_icd = custom_target(
   'intel_icd',
-  input : 'anv_icd.py',
+  input : ['anv_icd.py', vk_api_xml],
   output : 'intel_icd.@0@.json'.format(host_machine.cpu()),
   command : [
-    prog_python, '@INPUT@',
-    '--lib-path', join_paths(get_option('prefix'), get_option('libdir')),
+    prog_python, '@INPUT0@',
+    '--api-version', '1.2', '--xml', '@INPUT1@',
+    '--lib-path', join_paths(get_option('prefix'), get_option('libdir'),
+                             'libvulkan_intel.so'),
     '--out', '@OUTPUT@',
   ],
-  depend_files : anv_extensions_py,
   build_by_default : true,
   install_dir : with_vulkan_icd_dir,
   install : true,

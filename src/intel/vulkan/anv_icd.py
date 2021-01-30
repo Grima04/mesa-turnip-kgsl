@@ -20,29 +20,59 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import argparse
 import json
 import os.path
-import argparse
+import re
+import xml.etree.ElementTree as et
 
-from anv_extensions import MAX_API_VERSION
+def get_xml_patch_version(xml_file):
+    xml = et.parse(xml_file)
+    for d in xml.findall('.types/type'):
+        if d.get('category', None) != 'define':
+            continue
+
+        name = d.find('.name')
+        if name.text != 'VK_HEADER_VERSION':
+            continue;
+
+        return name.tail.strip()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--out', help='Output json file.', required=True)
-    parser.add_argument('--lib-path', help='Path to libvulkan_intel.so')
+    parser.add_argument('--api-version', required=True,
+                        help='Vulkan API version.')
+    parser.add_argument('--xml', required=False,
+                        help='Vulkan registry XML for patch version')
+    parser.add_argument('--lib-path', required=True,
+                        help='Path to installed library')
+    parser.add_argument('--out', required=False,
+                        help='Output json file.')
     args = parser.parse_args()
 
-    path = 'libvulkan_intel.so'
-    if args.lib_path:
-        path = os.path.join(args.lib_path, path)
+    version = args.api_version
+    if args.xml:
+        re.match(r'\d+\.\d+', version)
+        version = version + '.' + get_xml_patch_version(args.xml)
+    else:
+        re.match(r'\d+\.\d+\.\d+', version)
 
     json_data = {
         'file_format_version': '1.0.0',
         'ICD': {
-            'library_path': path,
-            'api_version': str(MAX_API_VERSION),
+            'library_path': args.lib_path,
+            'api_version': version,
         },
     }
 
-    with open(args.out, 'w') as f:
-        json.dump(json_data, f, indent=4, sort_keys=True, separators=(',', ': '))
+    json_params = {
+        'indent': 4,
+        'sort_keys': True,
+        'separators': (',', ': '),
+    }
+
+    if args.out:
+        with open(args.out, 'w') as f:
+            json.dump(json_data, f, **json_params)
+    else:
+        print(json.dumps(json_data, **json_params))
