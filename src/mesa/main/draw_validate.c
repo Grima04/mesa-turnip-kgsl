@@ -160,16 +160,6 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
       }
    }
 
-   /* A pipeline object is bound */
-   if (ctx->_Shader->Name && !ctx->_Shader->Validated) {
-      if (!_mesa_validate_program_pipeline(ctx, ctx->_Shader)) {
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                     "glValidateProgramPipeline failed to validate the "
-                     "pipeline");
-         return GL_FALSE;
-      }
-   }
-
    /* If a program is active and SSO not in use, check if validation of
     * samplers succeeded for the active program. */
    if (ctx->_Shader->ActiveProgram && ctx->_Shader != ctx->Pipeline.Current) {
@@ -261,7 +251,10 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
    ctx->ValidPrimMask = 0;
    ctx->DrawPixValid = false;
 
-   /* TODO: insert code here */
+   /* A pipeline object is bound */
+   if (shader->Name && !shader->Validated &&
+       !_mesa_validate_program_pipeline(ctx, shader))
+      return;
 
    /* DrawPixels/CopyPixels/Bitmap is valid after this point. */
    ctx->DrawPixValid = true;

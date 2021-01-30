@@ -1394,6 +1394,7 @@ link_program(struct gl_context *ctx, struct gl_shader_program *shProg,
    }
 
    _mesa_update_vertex_processing_mode(ctx);
+   _mesa_update_valid_to_render_state(ctx);
 
    shProg->BinaryRetrievableHint = shProg->BinaryRetrievableHintPending;
 
@@ -1489,6 +1490,7 @@ _mesa_active_program(struct gl_context *ctx, struct gl_shader_program *shProg,
 
    if (ctx->Shader.ActiveProgram != shProg) {
       _mesa_reference_shader_program(ctx, &ctx->Shader.ActiveProgram, shProg);
+      _mesa_update_valid_to_render_state(ctx);
    }
 }
 

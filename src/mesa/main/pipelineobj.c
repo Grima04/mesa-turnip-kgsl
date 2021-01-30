@@ -254,6 +254,9 @@ use_program_stages(struct gl_context *ctx, struct gl_shader_program *shProg,
       use_program_stage(ctx, GL_COMPUTE_SHADER, shProg, pipe);
 
    pipe->Validated = pipe->UserValidated = false;
+
+   if (pipe == ctx->_Shader)
+      _mesa_update_valid_to_render_state(ctx);
 }
 
 void GLAPIENTRY
@@ -408,6 +411,8 @@ active_shader_program(struct gl_context *ctx, GLuint pipeline, GLuint program,
    }
 
    _mesa_reference_shader_program(ctx, &pipe->ActiveProgram, shProg);
+   if (pipe == ctx->_Shader)
+      _mesa_update_valid_to_render_state(ctx);
 }
 
 void GLAPIENTRY

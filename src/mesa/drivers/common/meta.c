@@ -42,6 +42,7 @@
 #include "main/clear.h"
 #include "main/condrender.h"
 #include "main/draw.h"
+#include "main/draw_validate.h"
 #include "main/depth.h"
 #include "main/enable.h"
 #include "main/fbobject.h"
@@ -1033,6 +1034,7 @@ _mesa_meta_end(struct gl_context *ctx)
       }
 
       _mesa_update_vertex_processing_mode(ctx);
+      _mesa_update_valid_to_render_state(ctx);
    }
 
    if (state & MESA_META_STENCIL_TEST) {
