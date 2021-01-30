@@ -41,16 +41,14 @@ _TEMPLATE_H = Template(COPYRIGHT + """
 #include "${include}"
 %endfor
 
-%if type_prefix == 'vk' and driver != 'vk':
-#include "vk_extensions.h"
-%else:
-#define ${driver.upper()}_INSTANCE_EXTENSION_COUNT ${len(instance_extensions)}
+%if driver == 'vk':
+#define VK_INSTANCE_EXTENSION_COUNT ${len(instance_extensions)}
 
-extern const VkExtensionProperties ${driver}_instance_extensions[];
+extern const VkExtensionProperties vk_instance_extensions[];
 
-struct ${driver}_instance_extension_table {
+struct vk_instance_extension_table {
    union {
-      bool extensions[${driver.upper()}_INSTANCE_EXTENSION_COUNT];
+      bool extensions[VK_INSTANCE_EXTENSION_COUNT];
       struct {
 %for ext in instance_extensions:
          bool ${ext.name[3:]};
@@ -60,13 +58,13 @@ struct ${driver}_instance_extension_table {
 };
 
 
-#define ${driver.upper()}_DEVICE_EXTENSION_COUNT ${len(device_extensions)}
+#define VK_DEVICE_EXTENSION_COUNT ${len(device_extensions)}
 
-extern const VkExtensionProperties ${driver}_device_extensions[];
+extern const VkExtensionProperties vk_device_extensions[];
 
-struct ${driver}_device_extension_table {
+struct vk_device_extension_table {
    union {
-      bool extensions[${driver.upper()}_DEVICE_EXTENSION_COUNT];
+      bool extensions[VK_DEVICE_EXTENSION_COUNT];
       struct {
 %for ext in device_extensions:
         bool ${ext.name[3:]};
@@ -74,16 +72,18 @@ struct ${driver}_device_extension_table {
       };
    };
 };
+%else:
+#include "vk_extensions.h"
 %endif
 
 struct ${driver}_physical_device;
 
 %if driver != 'vk':
-extern const struct ${type_prefix}_instance_extension_table ${driver}_instance_extensions_supported;
+extern const struct vk_instance_extension_table ${driver}_instance_extensions_supported;
 
 void
 ${driver}_physical_device_get_supported_extensions(const struct ${driver}_physical_device *device,
-                                             struct ${type_prefix}_device_extension_table *extensions);
+                                             struct vk_device_extension_table *extensions);
 %endif
 
 #endif /* ${driver.upper()}_EXTENSIONS_H */
@@ -98,7 +98,7 @@ _TEMPLATE_C = Template(COPYRIGHT + """
 
 #include "${driver}_extensions.h"
 
-%if type_prefix != 'vk' or driver == 'vk':
+%if driver == 'vk':
 const VkExtensionProperties ${driver}_instance_extensions[${driver.upper()}_INSTANCE_EXTENSION_COUNT] = {
 %for ext in instance_extensions:
    {"${ext.name}", ${ext.ext_version}},
@@ -148,7 +148,7 @@ VkResult ${driver}_EnumerateInstanceVersion(
     return VK_SUCCESS;
 }
 
-const struct ${type_prefix}_instance_extension_table ${driver}_instance_extensions_supported = {
+const struct vk_instance_extension_table ${driver}_instance_extensions_supported = {
 %for ext in instance_extensions:
    .${ext.name[3:]} = ${get_extension_condition(ext.name, ext.enable)},
 %endfor
@@ -174,9 +174,9 @@ ${driver}_physical_device_api_version(struct ${driver}_physical_device *device)
 
 void
 ${driver}_physical_device_get_supported_extensions(const struct ${driver}_physical_device *device,
-                                                   struct ${type_prefix}_device_extension_table *extensions)
+                                                   struct vk_device_extension_table *extensions)
 {
-   *extensions = (struct ${type_prefix}_device_extension_table) {
+   *extensions = (struct vk_device_extension_table) {
 %for ext in device_extensions:
       .${ext.name[3:]} = ${get_extension_condition(ext.name, ext.enable)},
 %endfor
@@ -186,7 +186,7 @@ ${driver}_physical_device_get_supported_extensions(const struct ${driver}_physic
 """)
 
 def gen_extensions(driver, xml_files, api_versions, max_api_version,
-                   extensions, out_c, out_h, includes = [], type_prefix = None):
+                   extensions, out_c, out_h, includes = []):
     platform_defines = []
     for filename in xml_files:
         init_exts_from_xml(filename, extensions, platform_defines)
@@ -194,12 +194,8 @@ def gen_extensions(driver, xml_files, api_versions, max_api_version,
     for ext in extensions:
         assert ext.type == 'instance' or ext.type == 'device'
 
-    if type_prefix is None:
-        type_prefix = driver
-
     template_env = {
         'driver': driver,
-        'type_prefix': type_prefix,
         'API_VERSIONS': api_versions,
         'MAX_API_VERSION': max_api_version,
         'instance_extensions': [e for e in extensions if e.type == 'instance'],

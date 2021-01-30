@@ -49,4 +49,4 @@ if __name__ == '__main__':
     ]
 
     gen_extensions('v3dv', args.xml_files, API_VERSIONS, MAX_API_VERSION,
-                   EXTENSIONS, args.out_c, args.out_h, type_prefix='vk')
+                   EXTENSIONS, args.out_c, args.out_h)

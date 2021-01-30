@@ -119,4 +119,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     gen_extensions('tu', args.xml_files, API_VERSIONS, MAX_API_VERSION,
-                   EXTENSIONS, args.out_c, args.out_h, type_prefix='vk')
+                   EXTENSIONS, args.out_c, args.out_h)
