@@ -82,8 +82,11 @@ implicit_downsampled_coords(struct ycbcr_state *state,
 	const struct radv_sampler_ycbcr_conversion *conversion = state->conversion;
 	nir_ssa_def *image_size = NULL;
 	nir_ssa_def *comp[4] = { NULL, };
-	const struct vk_format_description *fmt_desc = vk_format_description(state->conversion->format);
-	const unsigned divisors[2] = {fmt_desc->width_divisor, fmt_desc->height_divisor};
+	enum pipe_video_chroma_format chroma_format = pipe_format_to_chroma_format(vk_format_to_pipe_format(state->conversion->format));
+	const unsigned divisors[2] = {
+		chroma_format <= PIPE_VIDEO_CHROMA_FORMAT_422 ? 2 : 1,
+		chroma_format <= PIPE_VIDEO_CHROMA_FORMAT_420 ? 2 : 1
+	};
 
 	for (int c = 0; c < old_coords->num_components; c++) {
 		if (c < ARRAY_SIZE(divisors) && divisors[c] > 1 &&
