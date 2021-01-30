@@ -821,7 +821,7 @@ nir_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr)
       if (instr->type == nir_instr_type_alu && nir_instr_as_alu(instr)->exact)
          nir_instr_as_alu(match)->exact = true;
 
-      nir_ssa_def_rewrite_uses(def, nir_src_for_ssa(new_def));
+      nir_ssa_def_rewrite_uses_ssa(def, new_def);
       return true;
    }
 

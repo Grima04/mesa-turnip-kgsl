@@ -1604,15 +1604,28 @@ nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
 }
 
 void
-nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_src new_src)
+nir_ssa_def_rewrite_uses_ssa(nir_ssa_def *def, nir_ssa_def *new_ssa)
 {
-   assert(!new_src.is_ssa || def != new_src.ssa);
-
+   assert(def != new_ssa);
    nir_foreach_use_safe(use_src, def)
-      nir_instr_rewrite_src(use_src->parent_instr, use_src, new_src);
+      nir_instr_rewrite_src_ssa(use_src->parent_instr, use_src, new_ssa);
 
    nir_foreach_if_use_safe(use_src, def)
-      nir_if_rewrite_condition(use_src->parent_if, new_src);
+      nir_if_rewrite_condition_ssa(use_src->parent_if, use_src, new_ssa);
+}
+
+void
+nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_src new_src)
+{
+   if (new_src.is_ssa) {
+      nir_ssa_def_rewrite_uses_ssa(def, new_src.ssa);
+   } else {
+      nir_foreach_use_safe(use_src, def)
+         nir_instr_rewrite_src(use_src->parent_instr, use_src, new_src);
+
+      nir_foreach_if_use_safe(use_src, def)
+         nir_if_rewrite_condition(use_src->parent_if, new_src);
+   }
 }
 
 static bool
