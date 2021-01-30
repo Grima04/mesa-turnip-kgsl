@@ -393,5 +393,9 @@ ir3_prog_init(struct pipe_context *pctx)
 void
 ir3_screen_init(struct pipe_screen *pscreen)
 {
+	struct fd_screen *screen = fd_screen(pscreen);
+
+	screen->compiler = ir3_compiler_create(screen->dev, screen->gpu_id);
+
 	pscreen->finalize_nir = ir3_screen_finalize_nir;
 }
