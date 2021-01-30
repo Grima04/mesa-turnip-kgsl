@@ -6848,7 +6848,7 @@ radv_initialise_color_surface(struct radv_device *device,
 			      struct radv_color_buffer_info *cb,
 			      struct radv_image_view *iview)
 {
-	const struct vk_format_description *desc;
+	const struct util_format_description *desc;
 	unsigned ntype, format, swap, endian;
 	unsigned blend_clamp = 0, blend_bypass = 0;
 	uint64_t va;

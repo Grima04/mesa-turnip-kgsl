@@ -1528,12 +1528,12 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 
 	*reset_value = RADV_DCC_CLEAR_REG;
 
-	const struct vk_format_description *desc = vk_format_description(view_format);
+	const struct util_format_description *desc = vk_format_description(view_format);
 	if (view_format == VK_FORMAT_B10G11R11_UFLOAT_PACK32 ||
 	    view_format == VK_FORMAT_R5G6B5_UNORM_PACK16 ||
 	    view_format == VK_FORMAT_B5G6R5_UNORM_PACK16)
 		extra_channel = -1;
-	else if (desc->layout == VK_FORMAT_LAYOUT_PLAIN) {
+	else if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN) {
 		if (vi_alpha_is_on_msb(device, view_format))
 			extra_channel = desc->nr_channels - 1;
 		else
@@ -1548,7 +1548,7 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 			continue;
 
 		if (desc->channel[i].pure_integer &&
-		    desc->channel[i].type == VK_FORMAT_TYPE_SIGNED) {
+		    desc->channel[i].type == UTIL_FORMAT_TYPE_SIGNED) {
 			/* Use the maximum value for clamping the clear color. */
 			int max = u_bit_consecutive(0, desc->channel[i].size - 1);
 
@@ -1556,7 +1556,7 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 			if (clear_value->int32[i] != 0 && MIN2(clear_value->int32[i], max) != max)
 				return;
 		} else if (desc->channel[i].pure_integer &&
-			   desc->channel[i].type == VK_FORMAT_TYPE_UNSIGNED) {
+			   desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED) {
 			/* Use the maximum value for clamping the clear color. */
 			unsigned max = u_bit_consecutive(0, desc->channel[i].size);
 

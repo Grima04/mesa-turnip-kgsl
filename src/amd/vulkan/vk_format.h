@@ -138,7 +138,7 @@ struct vk_format_description
 
 	unsigned char swizzle[4];
 
-	enum vk_format_colorspace colorspace;
+	enum util_format_colorspace colorspace;
 
 	unsigned plane_count:2;
 	unsigned width_divisor:2;
@@ -148,15 +148,10 @@ struct vk_format_description
 
 extern const struct vk_format_description vk_format_description_table[];
 
-/* Silence warnings triggered by sharing function/struct names */
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#endif
-const struct vk_format_description *vk_format_description(VkFormat format);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+static inline const struct util_format_description *vk_format_description(VkFormat format)
+{
+	return util_format_description(vk_format_to_pipe_format(format));
+}
 
 /**
  * Return total bits needed for the pixel format per block.
@@ -266,16 +261,16 @@ vk_format_is_subsampled(VkFormat format)
 }
 
 static inline bool
-vk_format_has_depth(const struct vk_format_description *desc)
+vk_format_has_depth(const struct util_format_description *desc)
 {
-	return desc->colorspace == VK_FORMAT_COLORSPACE_ZS &&
+	return desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS &&
 		desc->swizzle[0] != PIPE_SWIZZLE_NONE;
 }
 
 static inline bool
-vk_format_has_stencil(const struct vk_format_description *desc)
+vk_format_has_stencil(const struct util_format_description *desc)
 {
-	return desc->colorspace == VK_FORMAT_COLORSPACE_ZS &&
+	return desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS &&
 		desc->swizzle[1] != PIPE_SWIZZLE_NONE;
 }
 
@@ -418,11 +413,11 @@ vk_format_stencil_only(VkFormat format)
 
 static inline unsigned
 vk_format_get_component_bits(VkFormat format,
-			     enum vk_format_colorspace colorspace,
+			     enum util_format_colorspace colorspace,
 			     unsigned component)
 {
-	const struct vk_format_description *desc = vk_format_description(format);
-	enum vk_format_colorspace desc_colorspace;
+	const struct util_format_description *desc = vk_format_description(format);
+	enum util_format_colorspace desc_colorspace;
 
 	assert(format);
 	if (!format) {
@@ -432,11 +427,11 @@ vk_format_get_component_bits(VkFormat format,
 	assert(component < 4);
 
 	/* Treat RGB and SRGB as equivalent. */
-	if (colorspace == VK_FORMAT_COLORSPACE_SRGB) {
-		colorspace = VK_FORMAT_COLORSPACE_RGB;
+	if (colorspace == UTIL_FORMAT_COLORSPACE_SRGB) {
+		colorspace = UTIL_FORMAT_COLORSPACE_RGB;
 	}
-	if (desc->colorspace == VK_FORMAT_COLORSPACE_SRGB) {
-		desc_colorspace = VK_FORMAT_COLORSPACE_RGB;
+	if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) {
+		desc_colorspace = UTIL_FORMAT_COLORSPACE_RGB;
 	} else {
 		desc_colorspace = desc->colorspace;
 	}

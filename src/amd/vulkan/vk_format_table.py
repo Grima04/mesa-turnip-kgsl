@@ -147,8 +147,8 @@ def write_format_table(formats):
         print("};")
         print()
 
-    print("const struct vk_format_description *")
-    print("vk_format_description(VkFormat format)")
+    print("static const struct vk_format_description *")
+    print("vk_format_description_legacy(VkFormat format)")
     print("{")
     print("   switch (format) {")
     for format in formats:

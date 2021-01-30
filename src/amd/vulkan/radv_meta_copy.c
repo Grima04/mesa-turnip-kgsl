@@ -27,7 +27,7 @@
 static VkExtent3D
 meta_image_block_size(const struct radv_image *image)
 {
-	const struct vk_format_description *desc = vk_format_description(image->vk_format);
+	const struct util_format_description *desc = vk_format_description(image->vk_format);
 	return (VkExtent3D) { desc->block.width, desc->block.height, 1 };
 }
 

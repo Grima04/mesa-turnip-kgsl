@@ -442,7 +442,7 @@ radv_get_surface_flags(struct radv_device *device,
 	uint64_t flags;
 	unsigned array_mode = radv_choose_tiling(device, pCreateInfo, image_format);
 	VkFormat format = vk_format_get_plane_format(image_format, plane_id);
-	const struct vk_format_description *desc = vk_format_description(format);
+	const struct util_format_description *desc = vk_format_description(format);
 	bool is_depth, is_stencil;
 
 	is_depth = vk_format_has_depth(desc);
@@ -535,10 +535,10 @@ static unsigned radv_map_swizzle(unsigned swizzle)
 }
 
 static void
-radv_compose_swizzle(const struct vk_format_description *desc,
+radv_compose_swizzle(const struct util_format_description *desc,
 		     const VkComponentMapping *mapping, enum pipe_swizzle swizzle[4])
 {
-	if (desc->format == VK_FORMAT_R64_UINT || desc->format == VK_FORMAT_R64_SINT) {
+	if (desc->format == PIPE_FORMAT_R64_UINT || desc->format == PIPE_FORMAT_R64_SINT) {
 		/* 64-bit formats only support storage images and storage images
 		 * require identity component mappings. We use 32-bit
 		 * instructions to access 64-bit images, so we need a special
@@ -555,7 +555,7 @@ radv_compose_swizzle(const struct vk_format_description *desc,
 	} else if (!mapping) {
 		for (unsigned i = 0; i < 4; i++)
 			swizzle[i] = desc->swizzle[i];
-	} else if (desc->colorspace == VK_FORMAT_COLORSPACE_ZS) {
+	} else if (desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS) {
 		const unsigned char swizzle_xxxx[4] = {
 			PIPE_SWIZZLE_X, PIPE_SWIZZLE_0, PIPE_SWIZZLE_0, PIPE_SWIZZLE_1
 		};
@@ -573,7 +573,7 @@ radv_make_buffer_descriptor(struct radv_device *device,
 			    unsigned range,
 			    uint32_t *state)
 {
-	const struct vk_format_description *desc;
+	const struct util_format_description *desc;
 	unsigned stride;
 	uint64_t gpu_address = radv_buffer_get_va(buffer->bo);
 	uint64_t va = gpu_address + buffer->offset;
@@ -803,7 +803,7 @@ static unsigned gfx9_border_color_swizzle(const enum pipe_swizzle swizzle[4])
 
 bool vi_alpha_is_on_msb(struct radv_device *device, VkFormat format)
 {
-	const struct vk_format_description *desc = vk_format_description(format);
+	const struct util_format_description *desc = vk_format_description(format);
 
 	if (device->physical_device->rad_info.chip_class >= GFX10 && desc->nr_channels == 1)
 		return desc->swizzle[3] == PIPE_SWIZZLE_X;
@@ -826,7 +826,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 			   uint32_t *state,
 			   uint32_t *fmask_state)
 {
-	const struct vk_format_description *desc;
+	const struct util_format_description *desc;
 	enum pipe_swizzle swizzle[4];
 	unsigned img_format;
 	unsigned type;
@@ -956,7 +956,7 @@ si_make_texture_descriptor(struct radv_device *device,
 			   uint32_t *state,
 			   uint32_t *fmask_state)
 {
-	const struct vk_format_description *desc;
+	const struct util_format_description *desc;
 	enum pipe_swizzle swizzle[4];
 	int first_non_void;
 	unsigned num_format, data_format, type;
@@ -1466,7 +1466,7 @@ radv_image_print_info(struct radv_device *device, struct radv_image *image)
 	for (unsigned i = 0; i < image->plane_count; ++i) {
 		const struct radv_image_plane *plane = &image->planes[i];
 		const struct radeon_surf *surf = &plane->surface;
-		const struct vk_format_description *desc =
+		const struct util_format_description *desc =
 			vk_format_description(plane->format);
 		uint64_t offset = ac_surface_get_plane_offset(device->physical_device->rad_info.chip_class,
 		                                              &plane->surface, 0, 0);

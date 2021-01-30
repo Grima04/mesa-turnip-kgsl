@@ -288,7 +288,7 @@ try_lower_tex_ycbcr(const struct radv_pipeline_layout *layout,
 	nir_ssa_def *result = build_swizzled_components(builder, format, ycbcr_sampler->components, plane_values);
 	if (state.conversion->ycbcr_model != VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY) {
 		VkFormat first_format = vk_format_get_plane_format(format, 0);
-		uint32_t bits = vk_format_get_component_bits(first_format, VK_FORMAT_COLORSPACE_RGB, PIPE_SWIZZLE_X);
+		uint32_t bits = vk_format_get_component_bits(first_format, UTIL_FORMAT_COLORSPACE_RGB, PIPE_SWIZZLE_X);
 		/* TODO: swizzle and bpcs */
 		uint32_t bpcs[3] = {bits, bits, bits};
 		result = nir_convert_ycbcr_to_rgb(builder,
