@@ -218,13 +218,14 @@ void ShaderInputVarying::update_mask(int additional_comps)
 void ShaderInputVarying::evaluate_spi_sid()
 {
    switch (name()) {
-   case TGSI_SEMANTIC_POSITION:
    case TGSI_SEMANTIC_PSIZE:
    case TGSI_SEMANTIC_EDGEFLAG:
    case TGSI_SEMANTIC_FACE:
    case TGSI_SEMANTIC_SAMPLEMASK:
       assert(0 && "System value used as varying");
       break;
+   case TGSI_SEMANTIC_POSITION:
+      m_spi_sid = 0;
    case TGSI_SEMANTIC_GENERIC:
    case TGSI_SEMANTIC_TEXCOORD:
    case TGSI_SEMANTIC_PCOORD:
@@ -384,6 +385,9 @@ void ShaderIO::update_lds_pos()
          continue;
 
       auto& v = static_cast<ShaderInputVarying&>(*i);
+      if (v.name() == TGSI_SEMANTIC_POSITION)
+         continue;
+
       if (m_ldspos[v.location()] < 0) {
          ++m_lds_pos;
          m_ldspos[v.location()] = m_lds_pos;

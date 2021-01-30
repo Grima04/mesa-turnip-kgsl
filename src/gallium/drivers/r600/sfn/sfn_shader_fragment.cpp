@@ -122,6 +122,11 @@ bool FragmentShaderFromNir::process_load_input(nir_intrinsic_instr *instr,
 
    if (location == VARYING_SLOT_POS) {
       m_sv_values.set(es_pos);
+      m_pos_input = new ShaderInputVarying(name, sid, nir_intrinsic_base(instr) + index->u32,
+                                               nir_intrinsic_component(instr),
+                                               nir_dest_num_components(instr->dest),
+                                               TGSI_INTERPOLATE_LINEAR, TGSI_INTERPOLATE_LOC_CENTER);
+      m_shaderio.add_input(m_pos_input);
       return true;
    }
 
@@ -308,7 +313,8 @@ bool FragmentShaderFromNir::do_allocate_reserved_registers()
 
    if (m_sv_values.test(es_pos)) {
       m_frag_pos_index = m_reserved_registers++;
-      m_shaderio.add_input(new ShaderInputSystemValue(TGSI_SEMANTIC_POSITION, m_frag_pos_index));
+      assert(m_pos_input);
+      m_pos_input->set_gpr(m_frag_pos_index);
    }
 
    // handle system values
@@ -961,9 +967,10 @@ void FragmentShaderFromNir::do_finalize()
 
    sfn_log << SfnLog::io << "Have " << sh_info().ninput << " inputs\n";
    for (size_t i = 0; i < sh_info().ninput; ++i) {
-      int ij_idx = (m_shaderio.input(i).ij_index() < 6 &&
-                    m_shaderio.input(i).ij_index() >= 0) ? m_shaderio.input(i).ij_index() : 0;
-      m_shaderio.input(i).set_ioinfo(sh_info().input[i], m_interpolator[ij_idx].ij_index);
+      ShaderInput& input = m_shaderio.input(i);
+      int ij_idx = (input.ij_index() < 6 &&
+                    input.ij_index() >= 0) ? input.ij_index() : 0;
+      input.set_ioinfo(sh_info().input[i], m_interpolator[ij_idx].ij_index);
    }
 
    sh_info().two_side = m_shaderio.two_sided();
