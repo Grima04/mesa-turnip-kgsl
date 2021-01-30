@@ -58,7 +58,7 @@ anv_extensions_h = custom_target(
 
 intel_icd = custom_target(
   'intel_icd',
-  input : ['anv_icd.py', vk_api_xml],
+  input : [vk_icd_gen, vk_api_xml],
   output : 'intel_icd.@0@.json'.format(host_machine.cpu()),
   command : [
     prog_python, '@INPUT0@',

@@ -20,6 +20,7 @@
 
 vk_entrypoints_gen = files('vk_entrypoints_gen.py')
 vk_extensions_gen = files('vk_extensions_gen.py')
+vk_icd_gen = files('vk_icd_gen.py')
 
 files_vulkan_util = files(
   'vk_alloc.h',
