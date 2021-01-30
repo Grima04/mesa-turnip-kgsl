@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-anv_extensions_py = files('anv_extensions.py')
-
 anv_entrypoints = custom_target(
   'anv_entrypoints',
   input : [vk_entrypoints_gen, vk_api_xml],
@@ -32,28 +30,6 @@ anv_entrypoints = custom_target(
     '--device-prefix', 'gen11', '--device-prefix', 'gen12',
     '--device-prefix', 'gen125',
   ],
-)
-
-anv_extensions_c = custom_target(
-  'anv_extensions.c',
-  input : ['anv_extensions_gen.py', vk_api_xml],
-  output : 'anv_extensions.c',
-  command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@',
-    '--out-c', '@OUTPUT@',
-  ],
-  depend_files : [anv_extensions_py, vk_extensions_gen],
-)
-
-anv_extensions_h = custom_target(
-  'anv_extensions.h',
-  input : ['anv_extensions_gen.py', vk_api_xml],
-  output : 'anv_extensions.h',
-  command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@',
-    '--out-h', '@OUTPUT@',
-  ],
-  depend_files : anv_extensions_py,
 )
 
 intel_icd = custom_target(
@@ -88,7 +64,7 @@ foreach g : [['70', ['gen7_cmd_buffer.c']], ['75', ['gen7_cmd_buffer.c']],
   _gen = g[0]
   libanv_gen_libs += static_library(
     'anv_gen@0@'.format(_gen),
-    [anv_gen_files, g[1], anv_entrypoints[0], anv_extensions_h],
+    [anv_gen_files, g[1], anv_entrypoints[0]],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler, inc_intel, inc_vulkan_wsi,
     ],
@@ -181,7 +157,7 @@ endif
 libanv_common = static_library(
   'anv_common',
   [
-    libanv_files, anv_entrypoints, anv_extensions_c, anv_extensions_h, sha1_h,
+    libanv_files, anv_entrypoints, sha1_h,
     gen_xml_pack,
   ],
   include_directories : [
@@ -195,7 +171,7 @@ libanv_common = static_library(
 
 libvulkan_intel = shared_library(
   'vulkan_intel',
-  [files('anv_gem.c'), anv_entrypoints[0], anv_extensions_h],
+  [files('anv_gem.c'), anv_entrypoints[0]],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler, inc_vulkan_wsi,
   ],
@@ -230,7 +206,7 @@ endif
 if with_tests
   libvulkan_intel_test = static_library(
     'vulkan_intel_test',
-    [files('anv_gem_stubs.c'), anv_entrypoints[0], anv_extensions_h],
+    [files('anv_gem_stubs.c'), anv_entrypoints[0]],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler, inc_vulkan_wsi,
     ],
@@ -254,7 +230,7 @@ if with_tests
       'anv_@0@'.format(t),
       executable(
         t,
-        ['tests/@0@.c'.format(t), anv_entrypoints[0], anv_extensions_h],
+        ['tests/@0@.c'.format(t), anv_entrypoints[0]],
         c_args : [ c_sse2_args ],
         link_with : libvulkan_intel_test,
         dependencies : [dep_libdrm, dep_thread, dep_m, dep_valgrind, idep_vulkan_util, ],

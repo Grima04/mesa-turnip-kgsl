@@ -91,7 +91,6 @@ struct gen_perf_query_result;
 
 #include "anv_android.h"
 #include "anv_entrypoints.h"
-#include "anv_extensions.h"
 #include "isl/isl.h"
 
 #include "dev/gen_debug.h"
@@ -1093,11 +1092,6 @@ struct anv_instance {
 
 VkResult anv_init_wsi(struct anv_physical_device *physical_device);
 void anv_finish_wsi(struct anv_physical_device *physical_device);
-
-extern const struct vk_instance_extension_table anv_instance_extensions_supported;
-uint32_t anv_physical_device_api_version(struct anv_physical_device *dev);
-bool anv_physical_device_extension_supported(struct anv_physical_device *dev,
-                                             const char *name);
 
 struct anv_queue_submit {
    struct anv_cmd_buffer *                   cmd_buffer;

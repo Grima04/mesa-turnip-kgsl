@@ -49,6 +49,7 @@
 #include "common/gen_defines.h"
 #include "common/gen_uuid.h"
 #include "compiler/glsl_types.h"
+#include "perf/gen_perf.h"
 
 #include "genxml/gen7_pack.h"
 
@@ -132,6 +133,186 @@ anv_compute_heap_size(int fd, uint64_t gtt_size)
    uint64_t available_gtt = gtt_size * 3 / 4;
 
    return MIN2(available_ram, available_gtt);
+}
+
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
+    defined(VK_USE_PLATFORM_XCB_KHR) || \
+    defined(VK_USE_PLATFORM_XLIB_KHR) || \
+    defined(VK_USE_PLATFORM_DISPLAY_KHR)
+#define ANV_USE_WSI_PLATFORM
+#endif
+
+#ifdef ANDROID
+#define ANV_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+#else
+#define ANV_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
+#endif
+
+VkResult anv_EnumerateInstanceVersion(
+    uint32_t*                                   pApiVersion)
+{
+    *pApiVersion = ANV_API_VERSION;
+    return VK_SUCCESS;
+}
+
+static const struct vk_instance_extension_table instance_extensions = {
+   .KHR_device_group_creation                = true,
+   .KHR_external_fence_capabilities          = true,
+   .KHR_external_memory_capabilities         = true,
+   .KHR_external_semaphore_capabilities      = true,
+   .KHR_get_physical_device_properties2      = true,
+   .EXT_debug_report                         = true,
+
+#ifdef ANV_USE_WSI_PLATFORM
+   .KHR_get_surface_capabilities2            = true,
+   .KHR_surface                              = true,
+   .KHR_surface_protected_capabilities       = true,
+#endif
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+   .KHR_wayland_surface                      = true,
+#endif
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   .KHR_xcb_surface                          = true,
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+   .KHR_xlib_surface                         = true,
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_XRANDR_EXT
+   .EXT_acquire_xlib_display                 = true,
+#endif
+#ifdef VK_USE_PLATFORM_DISPLAY_KHR
+   .KHR_display                              = true,
+   .KHR_get_display_properties2              = true,
+   .EXT_direct_mode_display                  = true,
+   .EXT_display_surface_counter              = true,
+#endif
+};
+
+static void
+get_device_extensions(const struct anv_physical_device *device,
+                      struct vk_device_extension_table *ext)
+{
+   *ext = (struct vk_device_extension_table) {
+      .KHR_8bit_storage                      = device->info.gen >= 8,
+      .KHR_16bit_storage                     = device->info.gen >= 8,
+      .KHR_bind_memory2                      = true,
+      .KHR_buffer_device_address             = device->has_a64_buffer_access,
+      .KHR_copy_commands2                    = true,
+      .KHR_create_renderpass2                = true,
+      .KHR_dedicated_allocation              = true,
+      .KHR_deferred_host_operations          = true,
+      .KHR_depth_stencil_resolve             = true,
+      .KHR_descriptor_update_template        = true,
+      .KHR_device_group                      = true,
+      .KHR_draw_indirect_count               = true,
+      .KHR_driver_properties                 = true,
+      .KHR_external_fence                    = device->has_syncobj_wait,
+      .KHR_external_fence_fd                 = device->has_syncobj_wait,
+      .KHR_external_memory                   = true,
+      .KHR_external_memory_fd                = true,
+      .KHR_external_semaphore                = true,
+      .KHR_external_semaphore_fd             = true,
+      .KHR_get_memory_requirements2          = true,
+      .KHR_image_format_list                 = true,
+      .KHR_imageless_framebuffer             = true,
+#ifdef ANV_USE_WSI_PLATFORM
+      .KHR_incremental_present               = true,
+#endif
+      .KHR_maintenance1                      = true,
+      .KHR_maintenance2                      = true,
+      .KHR_maintenance3                      = true,
+      .KHR_multiview                         = true,
+      .KHR_performance_query =
+         device->use_softpin && device->perf &&
+         (device->perf->i915_perf_version >= 3 ||
+          INTEL_DEBUG & DEBUG_NO_OACONFIG) &&
+         device->use_call_secondary,
+      .KHR_pipeline_executable_properties    = true,
+      .KHR_push_descriptor                   = true,
+      .KHR_relaxed_block_layout              = true,
+      .KHR_sampler_mirror_clamp_to_edge      = true,
+      .KHR_sampler_ycbcr_conversion          = true,
+      .KHR_separate_depth_stencil_layouts    = true,
+      .KHR_shader_atomic_int64               = device->info.gen >= 9 &&
+                                               device->use_softpin,
+      .KHR_shader_clock                      = true,
+      .KHR_shader_draw_parameters            = true,
+      .KHR_shader_float16_int8               = device->info.gen >= 8,
+      .KHR_shader_float_controls             = device->info.gen >= 8,
+      .KHR_shader_non_semantic_info          = true,
+      .KHR_shader_subgroup_extended_types    = device->info.gen >= 8,
+      .KHR_shader_terminate_invocation       = true,
+      .KHR_spirv_1_4                         = true,
+      .KHR_storage_buffer_storage_class      = true,
+#ifdef ANV_USE_WSI_PLATFORM
+      .KHR_swapchain                         = true,
+      .KHR_swapchain_mutable_format          = true,
+#endif
+      .KHR_timeline_semaphore                = true,
+      .KHR_uniform_buffer_standard_layout    = true,
+      .KHR_variable_pointers                 = true,
+      .KHR_vulkan_memory_model               = true,
+      .KHR_workgroup_memory_explicit_layout  = true,
+      .KHR_zero_initialize_workgroup_memory  = true,
+      .EXT_4444_formats                      = true,
+      .EXT_buffer_device_address             = device->has_a64_buffer_access,
+      .EXT_calibrated_timestamps             = device->has_reg_timestamp,
+      .EXT_conditional_rendering             = device->info.gen >= 8 ||
+                                               device->info.is_haswell,
+      .EXT_custom_border_color               = device->info.gen >= 8,
+      .EXT_depth_clip_enable                 = true,
+      .EXT_descriptor_indexing               = device->has_a64_buffer_access &&
+                                               device->has_bindless_images,
+#ifdef VK_USE_PLATFORM_DISPLAY_KHR
+      .EXT_display_control                   = true,
+#endif
+      .EXT_extended_dynamic_state            = true,
+      .EXT_external_memory_dma_buf           = true,
+      .EXT_external_memory_host              = true,
+      .EXT_fragment_shader_interlock         = device->info.gen >= 9,
+      .EXT_global_priority                   = device->has_context_priority,
+      .EXT_host_query_reset                  = true,
+      .EXT_image_robustness                  = true,
+      .EXT_index_type_uint8                  = true,
+      .EXT_inline_uniform_block              = true,
+      .EXT_line_rasterization                = true,
+      .EXT_memory_budget                     = device->has_mem_available,
+      .EXT_pci_bus_info                      = true,
+      .EXT_pipeline_creation_cache_control   = true,
+      .EXT_pipeline_creation_feedback        = true,
+      .EXT_post_depth_coverage               = device->info.gen >= 9,
+      .EXT_private_data                      = true,
+#ifdef ANDROID
+      .EXT_queue_family_foreign              = ANDROID,
+#endif
+      .EXT_robustness2                       = true,
+      .EXT_sample_locations                  = true,
+      .EXT_sampler_filter_minmax             = device->info.gen >= 9,
+      .EXT_scalar_block_layout               = true,
+      .EXT_separate_stencil_usage            = true,
+      .EXT_shader_atomic_float               = true,
+      .EXT_shader_demote_to_helper_invocation = true,
+      .EXT_shader_stencil_export             = device->info.gen >= 9,
+      .EXT_shader_subgroup_ballot            = true,
+      .EXT_shader_subgroup_vote              = true,
+      .EXT_shader_viewport_index_layer       = true,
+      .EXT_subgroup_size_control             = true,
+      .EXT_texel_buffer_alignment            = true,
+      .EXT_transform_feedback                = true,
+      .EXT_vertex_attribute_divisor          = true,
+      .EXT_ycbcr_image_arrays                = true,
+#ifdef ANDROID
+      .ANDROID_external_memory_android_hardware_buffer = true,
+      .ANDROID_native_buffer                 = true,
+#endif
+      .GOOGLE_decorate_string                = true,
+      .GOOGLE_hlsl_functionality1            = true,
+      .GOOGLE_user_type                      = true,
+      .INTEL_performance_query               = device->perf &&
+                                               device->perf->i915_perf_version >= 3,
+      .INTEL_shader_integer_functions2       = device->info.gen >= 8,
+      .NV_compute_shader_derivatives         = true,
+   };
 }
 
 static VkResult
@@ -607,9 +788,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    anv_measure_device_init(device);
 
-   anv_physical_device_get_supported_extensions(device,
-                                                &device->vk.supported_extensions);
-
+   get_device_extensions(device, &device->vk.supported_extensions);
 
    device->local_fd = fd;
 
@@ -685,7 +864,7 @@ VkResult anv_EnumerateInstanceExtensionProperties(
       return vk_error(VK_ERROR_LAYER_NOT_PRESENT);
 
    return vk_enumerate_instance_extension_properties(
-      &anv_instance_extensions_supported, pPropertyCount, pProperties);
+      &instance_extensions, pPropertyCount, pProperties);
 }
 
 static void
@@ -723,10 +902,8 @@ VkResult anv_CreateInstance(
    vk_instance_dispatch_table_from_entrypoints(
       &dispatch_table, &anv_instance_entrypoints, true);
 
-   result = vk_instance_init(&instance->vk,
-                             &anv_instance_extensions_supported,
-                             &dispatch_table,
-                             pCreateInfo, pAllocator);
+   result = vk_instance_init(&instance->vk, &instance_extensions,
+                             &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(pAllocator, instance);
       return vk_error(result);
@@ -1623,7 +1800,7 @@ void anv_GetPhysicalDeviceProperties(
    };
 
    *pProperties = (VkPhysicalDeviceProperties) {
-      .apiVersion = anv_physical_device_api_version(pdevice),
+      .apiVersion = ANV_API_VERSION,
       .driverVersion = vk_get_driver_version(),
       .vendorID = 0x8086,
       .deviceID = pdevice->info.chipset_id,

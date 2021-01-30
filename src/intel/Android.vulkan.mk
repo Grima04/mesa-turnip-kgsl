@@ -24,8 +24,6 @@ include $(CLEAR_VARS)
 include $(LOCAL_PATH)/Makefile.sources
 
 VK_ENTRYPOINTS_GEN_SCRIPT := $(MESA_TOP)/src/vulkan/util/vk_entrypoints_gen.py
-ANV_EXTENSIONS_GEN_SCRIPT := $(LOCAL_PATH)/vulkan/anv_extensions_gen.py
-ANV_EXTENSIONS_SCRIPT := $(LOCAL_PATH)/vulkan/anv_extensions.py
 VULKAN_API_XML := $(MESA_TOP)/src/vulkan/registry/vk.xml
 
 VULKAN_COMMON_INCLUDES := \
@@ -255,22 +253,6 @@ $(intermediates)/vulkan/anv_entrypoints.c: $(VK_ENTRYPOINTS_GEN_SCRIPT) \
 		--out-c $@ --out-h $(dir $@)/anv_entrypoints.h
 
 $(intermediates)/vulkan/anv_entrypoints.h: $(intermediates)/vulkan/anv_entrypoints.c
-
-$(intermediates)/vulkan/anv_extensions.c: $(ANV_EXTENSIONS_GEN_SCRIPT) \
-					  $(ANV_EXTENSIONS_SCRIPT) \
-					  $(VULKAN_API_XML)
-	@mkdir -p $(dir $@)
-	$(MESA_PYTHON2) $(ANV_EXTENSIONS_GEN_SCRIPT) \
-		--xml $(VULKAN_API_XML) \
-		--out-c $@
-
-$(intermediates)/vulkan/anv_extensions.h: $(ANV_EXTENSIONS_GEN_SCRIPT) \
-					   $(ANV_EXTENSIONS_SCRIPT) \
-					   $(VULKAN_API_XML)
-	@mkdir -p $(dir $@)
-	$(MESA_PYTHON2) $(ANV_EXTENSIONS_GEN_SCRIPT) \
-		--xml $(VULKAN_API_XML) \
-		--out-h $@
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
 LOCAL_HEADER_LIBRARIES += $(VULKAN_COMMON_HEADER_LIBRARIES)
