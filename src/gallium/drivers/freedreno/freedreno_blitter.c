@@ -238,13 +238,13 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 
 	struct pipe_draw_info info = {
 		.mode = PIPE_PRIM_MAX,    /* maps to DI_PT_RECTLIST */
-                .index_bounds_valid = true,
+		.index_bounds_valid = true,
 		.max_index = 1,
 		.instance_count = MAX2(1, pfb->layers),
 	};
-        struct pipe_draw_start_count draw = {
-                .count = 2,
-        };
+	struct pipe_draw_start_count draw = {
+		.count = 2,
+	};
 	pctx->draw_vbo(pctx, &info, NULL, &draw, 1);
 
 	/* We expect that this should not have triggered a change in pfb: */

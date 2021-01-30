@@ -225,6 +225,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		ir3_shader_variant(shader, key, false, debug);
 	}
 
+	/* For vertex shaders, also compile initial binning pass shader: */
 	if (nir->info.stage == MESA_SHADER_VERTEX) {
 		key.safe_constlen = false;
 		v = ir3_shader_variant(shader, key, true, debug);

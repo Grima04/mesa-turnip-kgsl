@@ -235,18 +235,18 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
             unsigned num_draws)
 {
 	if (num_draws > 1) {
-           struct pipe_draw_info tmp_info = *info;
+		struct pipe_draw_info tmp_info = *info;
 
-           for (unsigned i = 0; i < num_draws; i++) {
-              fd_draw_vbo(pctx, &tmp_info, indirect, &draws[i], 1);
-              if (tmp_info.increment_draw_id)
-                 tmp_info.drawid++;
-           }
-           return;
+		for (unsigned i = 0; i < num_draws; i++) {
+			fd_draw_vbo(pctx, &tmp_info, indirect, &draws[i], 1);
+			if (tmp_info.increment_draw_id)
+				tmp_info.drawid++;
+		}
+		return;
 	}
 
-        if (!indirect && (!draws[0].count || !info->instance_count))
-           return;
+	if (!indirect && (!draws[0].count || !info->instance_count))
+		return;
 
 	struct fd_context *ctx = fd_context(pctx);
 
@@ -285,7 +285,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	if (info->index_size) {
 		if (info->has_user_indices) {
 			if (!util_upload_index_buffer(pctx, info, &draws[0],
-                                                      &indexbuf, &index_offset, 4))
+					&indexbuf, &index_offset, 4))
 				return;
 			new_info = *info;
 			new_info.index.resource = indexbuf;

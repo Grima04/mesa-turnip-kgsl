@@ -71,7 +71,7 @@ static void
 draw_emit_indirect(struct fd_ringbuffer *ring,
 				   struct CP_DRAW_INDX_OFFSET_0 *draw0,
 				   const struct pipe_draw_info *info,
-                   const struct pipe_draw_indirect_info *indirect,
+				   const struct pipe_draw_indirect_info *indirect,
 				   unsigned index_offset)
 {
 	struct fd_resource *ind = fd_resource(indirect->buffer);
@@ -101,7 +101,7 @@ static void
 draw_emit(struct fd_ringbuffer *ring,
 		  struct CP_DRAW_INDX_OFFSET_0 *draw0,
 		  const struct pipe_draw_info *info,
-                  const struct pipe_draw_start_count *draw,
+		  const struct pipe_draw_start_count *draw,
 		  unsigned index_offset)
 {
 	if (info->index_size) {
@@ -176,8 +176,8 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.ctx = ctx,
 		.vtx  = &ctx->vtx,
 		.info = info,
-                .indirect = indirect,
-                .draw = draw,
+		.indirect = indirect,
+		.draw = draw,
 		.key = {
 			.vs = ctx->prog.vs,
 			.gs = ctx->prog.gs,
