@@ -182,8 +182,8 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_b32all_fequal4: return emit_any_all_fcomp(instr, op2_sete, 4, true);
 
    case nir_op_ffma: return emit_alu_op3(instr, op3_muladd_ieee);
-   case nir_op_b32csel: return emit_alu_op3(instr, op3_cnde,  {0, 2, 1});
-   case nir_op_bcsel: return emit_alu_op3(instr, op3_cnde,  {0, 2, 1});
+   case nir_op_b32csel: return emit_alu_op3(instr, op3_cnde_int,  {0, 2, 1});
+   case nir_op_bcsel: return emit_alu_op3(instr, op3_cnde_int,  {0, 2, 1});
    case nir_op_vec2: return emit_create_vec(instr, 2);
    case nir_op_vec3: return emit_create_vec(instr, 3);
    case nir_op_vec4: return emit_create_vec(instr, 4);
