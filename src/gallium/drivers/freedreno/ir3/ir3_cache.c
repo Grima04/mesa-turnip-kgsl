@@ -97,11 +97,11 @@ ir3_cache_lookup(struct ir3_cache *cache, const struct ir3_cache_key *key,
 		debug_assert(key->ds);
 
 	struct ir3_shader *shaders[MESA_SHADER_STAGES] = {
-		[MESA_SHADER_VERTEX] = key->vs,
-		[MESA_SHADER_TESS_CTRL] = key->hs,
-		[MESA_SHADER_TESS_EVAL] = key->ds,
-		[MESA_SHADER_GEOMETRY] = key->gs,
-		[MESA_SHADER_FRAGMENT] = key->fs,
+		[MESA_SHADER_VERTEX]    = ir3_get_shader(key->vs),
+		[MESA_SHADER_TESS_CTRL] = ir3_get_shader(key->hs),
+		[MESA_SHADER_TESS_EVAL] = ir3_get_shader(key->ds),
+		[MESA_SHADER_GEOMETRY]  = ir3_get_shader(key->gs),
+		[MESA_SHADER_FRAGMENT]  = ir3_get_shader(key->fs),
 	};
 
 	struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
@@ -119,7 +119,8 @@ ir3_cache_lookup(struct ir3_cache *cache, const struct ir3_cache_key *key,
 		}
 	}
 
-	uint32_t safe_constlens = ir3_trim_constlen(variants, key->vs->compiler);
+	struct ir3_compiler *compiler = shaders[MESA_SHADER_VERTEX]->compiler;
+	uint32_t safe_constlens = ir3_trim_constlen(variants, compiler);
 	shader_key.safe_constlen = true;
 
 	for (gl_shader_stage stage = MESA_SHADER_VERTEX;
@@ -136,7 +137,7 @@ ir3_cache_lookup(struct ir3_cache *cache, const struct ir3_cache_key *key,
 
 	if (ir3_has_binning_vs(&key->key)) {
 		shader_key.safe_constlen = !!(safe_constlens & (1 << MESA_SHADER_VERTEX));
-		bs = ir3_shader_variant(key->vs, key->key, true, debug);
+		bs = ir3_shader_variant(shaders[MESA_SHADER_VERTEX], key->key, true, debug);
 		if (!bs)
 			return NULL;
 	} else {

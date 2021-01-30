@@ -43,6 +43,16 @@
 #include "ir3/ir3_compiler.h"
 #include "ir3/ir3_nir.h"
 
+/**
+ * The hardware cso for shader state
+ *
+ * Initially just a container for the ir3_shader, but this is where we'll
+ * plumb in async compile.
+ */
+struct ir3_shader_state {
+	struct ir3_shader *shader;
+};
+
 static void
 dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug)
 {
@@ -246,7 +256,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 /* a bit annoying that compute-shader and normal shader state objects
  * aren't a bit more aligned.
  */
-static struct ir3_shader *
+static struct ir3_shader_state *
 ir3_shader_create_compute(struct ir3_compiler *compiler,
 		const struct pipe_compute_state *cso,
 		struct pipe_debug_callback *debug,
@@ -275,7 +285,10 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 
 	shader->initial_variants_done = true;
 
-	return shader;
+	struct ir3_shader_state *hwcso = calloc(1, sizeof(*hwcso));
+	hwcso->shader = shader;
+
+	return hwcso;
 }
 
 void *
@@ -304,13 +317,18 @@ ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_stat
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct ir3_compiler *compiler = ctx->screen->compiler;
-	return ir3_shader_create(compiler, cso, &ctx->debug, pctx->screen);
+	struct ir3_shader_state *hwcso = calloc(1, sizeof(*hwcso));
+
+	hwcso->shader = ir3_shader_create(compiler, cso, &ctx->debug, pctx->screen);
+
+	return hwcso;
 }
 
 void
-ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso)
+ir3_shader_state_delete(struct pipe_context *pctx, void *_hwcso)
 {
-	struct ir3_shader *so = hwcso;
+	struct ir3_shader_state *hwcso = _hwcso;
+	struct ir3_shader *so = hwcso->shader;
 
 	/* free the uploaded shaders, since this is handled outside of the
 	 * shared ir3 code (ie. not used by turnip):
@@ -326,6 +344,23 @@ ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso)
 	}
 
 	ir3_shader_destroy(so);
+	free(hwcso);
+}
+
+struct ir3_shader *
+ir3_get_shader(struct ir3_shader_state *hwcso)
+{
+	if (!hwcso)
+		return NULL;
+	return hwcso->shader;
+}
+
+struct shader_info *
+ir3_get_shader_info(struct ir3_shader_state *hwcso)
+{
+	if (!hwcso)
+		return NULL;
+	return &hwcso->shader->nir->info;
 }
 
 static void

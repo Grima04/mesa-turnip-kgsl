@@ -72,7 +72,7 @@ static inline const struct ir3_shader_variant *
 fd4_emit_get_vp(struct fd4_emit *emit)
 {
 	if (!emit->vs) {
-		struct ir3_shader *shader = emit->prog->vs;
+		struct ir3_shader *shader = ir3_get_shader(emit->prog->vs);
 		emit->vs = ir3_shader_variant(shader, emit->key,
 				emit->binning_pass, emit->debug);
 	}
@@ -88,7 +88,7 @@ fd4_emit_get_fp(struct fd4_emit *emit)
 			static const struct ir3_shader_variant binning_fs = {};
 			emit->fs = &binning_fs;
 		} else {
-			struct ir3_shader *shader = emit->prog->fs;
+			struct ir3_shader *shader = ir3_get_shader(emit->prog->fs);
 			emit->fs = ir3_shader_variant(shader, emit->key,
 					false, emit->debug);
 		}
