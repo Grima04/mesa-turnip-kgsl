@@ -277,8 +277,6 @@ vk_format_aspects(VkFormat format)
 static inline enum vk_swizzle
 radv_swizzle_conv(VkComponentSwizzle component, const unsigned char chan[4], VkComponentSwizzle vk_swiz)
 {
-	int x;
-
 	if (vk_swiz == VK_COMPONENT_SWIZZLE_IDENTITY)
 		vk_swiz = component;
 	switch (vk_swiz) {
@@ -287,25 +285,10 @@ radv_swizzle_conv(VkComponentSwizzle component, const unsigned char chan[4], VkC
 	case VK_COMPONENT_SWIZZLE_ONE:
 		return VK_SWIZZLE_1;
 	case VK_COMPONENT_SWIZZLE_R:
-		for (x = 0; x < 4; x++)
-			if (chan[x] == 0)
-				return (enum vk_swizzle)x;
-		return VK_SWIZZLE_0;
 	case VK_COMPONENT_SWIZZLE_G:
-		for (x = 0; x < 4; x++)
-			if (chan[x] == 1)
-				return (enum vk_swizzle)x;
-		return VK_SWIZZLE_0;
 	case VK_COMPONENT_SWIZZLE_B:
-		for (x = 0; x < 4; x++)
-			if (chan[x] == 2)
-				return (enum vk_swizzle)x;
-		return VK_SWIZZLE_0;
 	case VK_COMPONENT_SWIZZLE_A:
-		for (x = 0; x < 4; x++)
-			if (chan[x] == 3)
-				return (enum vk_swizzle)x;
-		return VK_SWIZZLE_1;
+		return (enum vk_swizzle)chan[vk_swiz - VK_COMPONENT_SWIZZLE_R];
 	default:
 		unreachable("Illegal swizzle");
 	}

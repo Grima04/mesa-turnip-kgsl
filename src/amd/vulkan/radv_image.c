@@ -556,7 +556,9 @@ radv_compose_swizzle(const struct vk_format_description *desc,
 		for (unsigned i = 0; i < 4; i++)
 			swizzle[i] = desc->swizzle[i];
 	} else if (desc->colorspace == VK_FORMAT_COLORSPACE_ZS) {
-		const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
+		const unsigned char swizzle_xxxx[4] = {
+			VK_SWIZZLE_X, VK_SWIZZLE_0, VK_SWIZZLE_0, VK_SWIZZLE_1
+		};
 		vk_format_compose_swizzles(mapping, swizzle_xxxx, swizzle);
 	} else {
 		vk_format_compose_swizzles(mapping, desc->swizzle, swizzle);

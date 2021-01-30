@@ -160,6 +160,8 @@ dEQP-VK.drm_format_modifiers.export_import.r8g8b8a8_snorm,Fail
 dEQP-VK.drm_format_modifiers.export_import.r8g8b8a8_srgb,Fail
 dEQP-VK.drm_format_modifiers.export_import.r8g8b8a8_uint,Fail
 dEQP-VK.drm_format_modifiers.export_import.r8g8b8a8_unorm,Fail
+dEQP-VK.drm_format_modifiers.export_import.b4g4r4a4_unorm_pack16,Fail
+dEQP-VK.drm_format_modifiers.export_import.b5g5r5a1_unorm_pack16,Fail
 
 # Fixed by ffd6cbac3 ("Fix validation of DRM modifier compatibility with image properties")
 dEQP-VK.drm_format_modifiers.create_list_modifiers.r16g16b16_sfloat,Crash
