@@ -77,6 +77,11 @@ _mesa_DrawPixels( GLsizei width, GLsizei height,
       goto end;      /* the error code was recorded */
    }
 
+   if (!ctx->DrawPixValid) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glDrawPixels");
+      goto end;
+   }
+
    /* GL 3.0 introduced a new restriction on glDrawPixels() over what was in
     * GL_EXT_texture_integer.  From section 3.7.4 ("Rasterization of Pixel
     * Rectangles) on page 151 of the GL 3.0 specification:
@@ -243,6 +248,11 @@ _mesa_CopyPixels( GLint srcx, GLint srcy, GLsizei width, GLsizei height,
       goto end;      /* the error code was recorded */
    }
 
+   if (!ctx->DrawPixValid) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glCopyPixels");
+      goto end;
+   }
+
    /* Check read buffer's status (draw buffer was already checked) */
    if (ctx->ReadBuffer->_Status != GL_FRAMEBUFFER_COMPLETE_EXT) {
       _mesa_error(ctx, GL_INVALID_FRAMEBUFFER_OPERATION_EXT,
@@ -324,6 +334,11 @@ _mesa_Bitmap( GLsizei width, GLsizei height,
    /* Note: this call does state validation */
    if (!_mesa_valid_to_render(ctx, "glBitmap")) {
       /* the error code was recorded */
+      return;
+   }
+
+   if (!ctx->DrawPixValid) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glBitmap");
       return;
    }
 

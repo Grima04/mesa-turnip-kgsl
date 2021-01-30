@@ -5234,6 +5234,11 @@ struct gl_context
     */
    GLbitfield ValidPrimMask;
 
+   /**
+    * Whether DrawPixels/CopyPixels/Bitmap are valid to render.
+    */
+   bool DrawPixValid;
+
    /** \name The various 4x4 matrix stacks */
    /*@{*/
    struct gl_matrix_stack ModelviewMatrixStack;

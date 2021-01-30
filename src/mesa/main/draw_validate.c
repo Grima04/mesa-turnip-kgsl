@@ -249,14 +249,22 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
 {
    struct gl_pipeline_object *shader = ctx->_Shader;
    unsigned mask = ctx->SupportedPrimMask;
+   bool drawpix_valid = true;
 
    if (_mesa_is_no_error_enabled(ctx)) {
       ctx->ValidPrimMask = mask;
+      ctx->DrawPixValid = drawpix_valid;
       return;
    }
 
    /* Start with an empty mask and set this to the trimmed mask at the end. */
    ctx->ValidPrimMask = 0;
+   ctx->DrawPixValid = false;
+
+   /* TODO: insert code here */
+
+   /* DrawPixels/CopyPixels/Bitmap is valid after this point. */
+   ctx->DrawPixValid = true;
 
    /* Section 11.2 (Tessellation) of the ES 3.2 spec says:
     *
