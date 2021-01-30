@@ -71,6 +71,12 @@ vk_instance_init(struct vk_instance *instance,
 void
 vk_instance_finish(struct vk_instance *instance);
 
+VkResult
+vk_enumerate_instance_extension_properties(
+    const struct vk_instance_extension_table *supported_extensions,
+    uint32_t *pPropertyCount,
+    VkExtensionProperties *pProperties);
+
 PFN_vkVoidFunction
 vk_instance_get_proc_addr(const struct vk_instance *instance,
                           const struct vk_instance_entrypoint_table *entrypoints,

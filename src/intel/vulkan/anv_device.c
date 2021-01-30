@@ -681,17 +681,11 @@ VkResult anv_EnumerateInstanceExtensionProperties(
     uint32_t*                                   pPropertyCount,
     VkExtensionProperties*                      pProperties)
 {
-   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+   if (pLayerName)
+      return vk_error(VK_ERROR_LAYER_NOT_PRESENT);
 
-   for (int i = 0; i < VK_INSTANCE_EXTENSION_COUNT; i++) {
-      if (anv_instance_extensions_supported.extensions[i]) {
-         vk_outarray_append(&out, prop) {
-            *prop = vk_instance_extensions[i];
-         }
-      }
-   }
-
-   return vk_outarray_status(&out);
+   return vk_enumerate_instance_extension_properties(
+      &anv_instance_extensions_supported, pPropertyCount, pProperties);
 }
 
 static void

@@ -25,6 +25,7 @@
 
 #include "vk_alloc.h"
 #include "vk_common_entrypoints.h"
+#include "vk_util.h"
 
 VkResult
 vk_instance_init(struct vk_instance *instance,
@@ -95,6 +96,26 @@ vk_instance_finish(struct vk_instance *instance)
    vk_free(&instance->alloc, (char *)instance->app_info.app_name);
    vk_free(&instance->alloc, (char *)instance->app_info.engine_name);
    vk_object_base_finish(&instance->base);
+}
+
+VkResult
+vk_enumerate_instance_extension_properties(
+    const struct vk_instance_extension_table *supported_extensions,
+    uint32_t *pPropertyCount,
+    VkExtensionProperties *pProperties)
+{
+   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+
+   for (int i = 0; i < VK_INSTANCE_EXTENSION_COUNT; i++) {
+      if (!supported_extensions->extensions[i])
+         continue;
+
+      vk_outarray_append(&out, prop) {
+         *prop = vk_instance_extensions[i];
+      }
+   }
+
+   return vk_outarray_status(&out);
 }
 
 PFN_vkVoidFunction
