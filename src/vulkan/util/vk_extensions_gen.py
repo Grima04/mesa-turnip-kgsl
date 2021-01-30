@@ -78,7 +78,12 @@ struct vk_device_extension_table {
 
 struct ${driver}_physical_device;
 
-%if driver != 'vk':
+%if driver == 'vk':
+#ifdef ANDROID
+extern const struct vk_instance_extension_table vk_android_allowed_instance_extensions;
+extern const struct vk_device_extension_table vk_android_allowed_device_extensions;
+#endif
+%else:
 extern const struct vk_instance_extension_table ${driver}_instance_extensions_supported;
 
 void
@@ -110,6 +115,20 @@ const VkExtensionProperties ${driver}_device_extensions[${driver.upper()}_DEVICE
    {"${ext.name}", ${ext.ext_version}},
 %endfor
 };
+
+#ifdef ANDROID
+const struct vk_instance_extension_table vk_android_allowed_instance_extensions = {
+%for ext in instance_extensions:
+   .${ext.name[3:]} = ${ext.c_android_condition()},
+%endfor
+};
+
+extern const struct vk_device_extension_table vk_android_allowed_device_extensions = {
+%for ext in device_extensions:
+   .${ext.name[3:]} = ${ext.c_android_condition()},
+%endfor
+};
+#endif
 %endif
 
 %if driver != 'vk':
@@ -150,7 +169,7 @@ VkResult ${driver}_EnumerateInstanceVersion(
 
 const struct vk_instance_extension_table ${driver}_instance_extensions_supported = {
 %for ext in instance_extensions:
-   .${ext.name[3:]} = ${get_extension_condition(ext.name, ext.enable)},
+   .${ext.name[3:]} = ${ext.enable},
 %endfor
 };
 
@@ -178,7 +197,7 @@ ${driver}_physical_device_get_supported_extensions(const struct ${driver}_physic
 {
    *extensions = (struct vk_device_extension_table) {
 %for ext in device_extensions:
-      .${ext.name[3:]} = ${get_extension_condition(ext.name, ext.enable)},
+      .${ext.name[3:]} = ${ext.enable},
 %endfor
    };
 }
@@ -201,7 +220,6 @@ def gen_extensions(driver, xml_files, api_versions, max_api_version,
         'instance_extensions': [e for e in extensions if e.type == 'instance'],
         'device_extensions': [e for e in extensions if e.type == 'device'],
         'platform_defines': platform_defines,
-        'get_extension_condition': get_extension_condition,
         'includes': includes,
     }
 

@@ -16,6 +16,17 @@ class Extension:
         self.ext_version = int(ext_version)
         self.enable = _bool_to_c_expr(enable)
 
+    def c_android_condition(self):
+        # if it's an EXT or vendor extension, it's allowed
+        if not self.name.startswith(ANDROID_EXTENSION_WHITELIST_PREFIXES):
+            return 'true'
+
+        allowed_version = ALLOWED_ANDROID_VERSION.get(self.name, None)
+        if allowed_version is None:
+            return 'false'
+
+        return 'ANDROID_API_LEVEL >= %d' % (allowed_version)
+
 class ApiVersion:
     def __init__(self, version, enable):
         self.version = version
@@ -124,7 +135,7 @@ def init_exts_from_xml(xml, extensions, platform_defines):
 
 # Mapping between extension name and the android version in which the extension
 # was whitelisted in Android CTS.
-allowed_android_version = {
+ALLOWED_ANDROID_VERSION = {
     # Allowed Instance KHR Extensions
     "VK_KHR_surface": 26,
     "VK_KHR_display": 26,
@@ -195,19 +206,9 @@ allowed_android_version = {
 
 # Extensions with these prefixes are checked in Android CTS, and thus must be
 # whitelisted per the preceding dict.
-android_extension_whitelist_prefixes = (
+ANDROID_EXTENSION_WHITELIST_PREFIXES = (
     "VK_KHX",
     "VK_KHR",
     "VK_GOOGLE",
     "VK_ANDROID"
 )
-
-def get_extension_condition(ext_name, condition):
-    """ If |ext_name| is an extension that Android CTS cares about, prepend
-        a condition to ensure that the extension is only enabled for Android
-        versions in which the extension is whitelisted in CTS. """
-    if not ext_name.startswith(android_extension_whitelist_prefixes):
-        return condition
-    allowed_version = allowed_android_version.get(ext_name, 9999)
-    return "(!ANDROID || ANDROID_API_LEVEL >= %d) && (%s)" % (allowed_version,
-                                                              condition)

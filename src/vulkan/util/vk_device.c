@@ -65,6 +65,11 @@ vk_device_init(struct vk_device *device,
       if (!physical_device->supported_extensions.extensions[idx])
          return VK_ERROR_EXTENSION_NOT_PRESENT;
 
+#ifdef ANDROID
+      if (!vk_android_allowed_device_extensions.extensions[idx])
+         return VK_ERROR_EXTENSION_NOT_PRESENT;
+#endif
+
       device->enabled_extensions.extensions[idx] = true;
    }
 

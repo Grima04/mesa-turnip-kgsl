@@ -72,6 +72,11 @@ vk_instance_init(struct vk_instance *instance,
       if (!supported_extensions->extensions[idx])
          return VK_ERROR_EXTENSION_NOT_PRESENT;
 
+#ifdef ANDROID
+      if (!vk_android_allowed_instance_extensions.extensions[idx])
+         return VK_ERROR_EXTENSION_NOT_PRESENT;
+#endif
+
       instance->enabled_extensions.extensions[idx] = true;
    }
 
@@ -109,6 +114,11 @@ vk_enumerate_instance_extension_properties(
    for (int i = 0; i < VK_INSTANCE_EXTENSION_COUNT; i++) {
       if (!supported_extensions->extensions[i])
          continue;
+
+#ifdef ANDROID
+      if (!vk_android_allowed_instance_extensions.extensions[i])
+         continue;
+#endif
 
       vk_outarray_append(&out, prop) {
          *prop = vk_instance_extensions[i];

@@ -78,10 +78,16 @@ vk_common_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
 
    for (int i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
-      if (pdevice->supported_extensions.extensions[i]) {
-         vk_outarray_append(&out, prop) {
-            *prop = vk_device_extensions[i];
-         }
+      if (!pdevice->supported_extensions.extensions[i])
+         continue;
+
+#ifdef ANDROID
+      if (!vk_android_allowed_device_extensions.extensions[i])
+         continue;
+#endif
+
+      vk_outarray_append(&out, prop) {
+         *prop = vk_device_extensions[i];
       }
    }
 
