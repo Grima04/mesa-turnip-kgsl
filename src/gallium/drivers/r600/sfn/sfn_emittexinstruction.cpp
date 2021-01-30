@@ -516,6 +516,9 @@ bool EmitTexInstruction::emit_tex_txf(nir_tex_instr* instr, TexInputs& src)
          ir->set_flag(alu_last_instr);
    }
 
+   if (instr->is_array)
+      tex_ir->set_flag(TexInstruction::z_unnormalized);
+
    emit_instruction(tex_ir);
    return true;
 }
@@ -532,6 +535,7 @@ bool EmitTexInstruction::emit_tex_lod(nir_tex_instr* instr, TexInputs& src)
                                  sampler.id + R600_MAX_CONST_BUFFERS, src.sampler_offset);
    irt->set_dest_swizzle({1,0,7,7});
    emit_instruction(irt);
+
    return true;
 
 }
