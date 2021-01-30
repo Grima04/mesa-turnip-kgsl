@@ -1542,9 +1542,9 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 		return;
 
 	for (int i = 0; i < 4; i++) {
-		int index = desc->swizzle[i] - VK_SWIZZLE_X;
-		if (desc->swizzle[i] < VK_SWIZZLE_X ||
-		    desc->swizzle[i] > VK_SWIZZLE_W)
+		int index = desc->swizzle[i] - PIPE_SWIZZLE_X;
+		if (desc->swizzle[i] < PIPE_SWIZZLE_X ||
+		    desc->swizzle[i] > PIPE_SWIZZLE_W)
 			continue;
 
 		if (desc->channel[i].pure_integer &&
@@ -1586,9 +1586,9 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 
 	for (int i = 0; i < 4; ++i)
 		if (values[i] != main_value &&
-		    desc->swizzle[i] - VK_SWIZZLE_X != extra_channel &&
-		    desc->swizzle[i] >= VK_SWIZZLE_X &&
-		    desc->swizzle[i] <= VK_SWIZZLE_W)
+		    desc->swizzle[i] - PIPE_SWIZZLE_X != extra_channel &&
+		    desc->swizzle[i] >= PIPE_SWIZZLE_X &&
+		    desc->swizzle[i] <= PIPE_SWIZZLE_W)
 			return;
 
 	*can_avoid_fast_clear_elim = true;

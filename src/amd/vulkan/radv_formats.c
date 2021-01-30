@@ -947,7 +947,7 @@ unsigned radv_translate_colorswap(VkFormat format, bool do_endian_swap)
 {
 	const struct vk_format_description *desc = vk_format_description(format);
 
-#define HAS_SWIZZLE(chan,swz) (desc->swizzle[chan] == VK_SWIZZLE_##swz)
+#define HAS_SWIZZLE(chan,swz) (desc->swizzle[chan] == PIPE_SWIZZLE_##swz)
 
 	if (format == VK_FORMAT_B10G11R11_UFLOAT_PACK32)
 		return V_028C70_SWAP_STD;
@@ -2000,8 +2000,8 @@ bool radv_dcc_formats_compatible(VkFormat format1,
 
         /* Swizzles must be the same. */
         for (i = 0; i < desc1->nr_channels; i++)
-                if (desc1->swizzle[i] <= VK_SWIZZLE_W &&
-                    desc2->swizzle[i] <= VK_SWIZZLE_W &&
+                if (desc1->swizzle[i] <= PIPE_SWIZZLE_W &&
+                    desc2->swizzle[i] <= PIPE_SWIZZLE_W &&
                     desc1->swizzle[i] != desc2->swizzle[i])
                         return false;
 

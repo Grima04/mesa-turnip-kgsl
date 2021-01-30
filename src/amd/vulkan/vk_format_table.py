@@ -67,13 +67,13 @@ def bool_map(value):
 
 
 swizzle_map = {
-    SWIZZLE_X:    "VK_SWIZZLE_X",
-    SWIZZLE_Y:    "VK_SWIZZLE_Y",
-    SWIZZLE_Z:    "VK_SWIZZLE_Z",
-    SWIZZLE_W:    "VK_SWIZZLE_W",
-    SWIZZLE_0:    "VK_SWIZZLE_0",
-    SWIZZLE_1:    "VK_SWIZZLE_1",
-    SWIZZLE_NONE: "VK_SWIZZLE_NONE",
+    SWIZZLE_X:    "PIPE_SWIZZLE_X",
+    SWIZZLE_Y:    "PIPE_SWIZZLE_Y",
+    SWIZZLE_Z:    "PIPE_SWIZZLE_Z",
+    SWIZZLE_W:    "PIPE_SWIZZLE_W",
+    SWIZZLE_0:    "PIPE_SWIZZLE_0",
+    SWIZZLE_1:    "PIPE_SWIZZLE_1",
+    SWIZZLE_NONE: "PIPE_SWIZZLE_NONE",
 }
 
 def print_channels(format, func):

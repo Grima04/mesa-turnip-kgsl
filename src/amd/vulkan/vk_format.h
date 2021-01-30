@@ -198,17 +198,6 @@ vk_format_get_first_non_void_channel(VkFormat format)
 	return util_format_get_first_non_void_channel(vk_format_to_pipe_format(format));
 }
 
-enum vk_swizzle {
-	VK_SWIZZLE_X,
-	VK_SWIZZLE_Y,
-	VK_SWIZZLE_Z,
-	VK_SWIZZLE_W,
-	VK_SWIZZLE_0,
-	VK_SWIZZLE_1,
-	VK_SWIZZLE_NONE,
-	VK_SWIZZLE_MAX, /**< Number of enums counter (must be last) */
-};
-
 static inline VkImageAspectFlags
 vk_format_aspects(VkFormat format)
 {
@@ -234,21 +223,21 @@ vk_format_aspects(VkFormat format)
 	}
 }
 
-static inline enum vk_swizzle
+static inline enum pipe_swizzle
 radv_swizzle_conv(VkComponentSwizzle component, const unsigned char chan[4], VkComponentSwizzle vk_swiz)
 {
 	if (vk_swiz == VK_COMPONENT_SWIZZLE_IDENTITY)
 		vk_swiz = component;
 	switch (vk_swiz) {
 	case VK_COMPONENT_SWIZZLE_ZERO:
-		return VK_SWIZZLE_0;
+		return PIPE_SWIZZLE_0;
 	case VK_COMPONENT_SWIZZLE_ONE:
-		return VK_SWIZZLE_1;
+		return PIPE_SWIZZLE_1;
 	case VK_COMPONENT_SWIZZLE_R:
 	case VK_COMPONENT_SWIZZLE_G:
 	case VK_COMPONENT_SWIZZLE_B:
 	case VK_COMPONENT_SWIZZLE_A:
-		return (enum vk_swizzle)chan[vk_swiz - VK_COMPONENT_SWIZZLE_R];
+		return (enum pipe_swizzle)chan[vk_swiz - VK_COMPONENT_SWIZZLE_R];
 	default:
 		unreachable("Illegal swizzle");
 	}
@@ -256,7 +245,7 @@ radv_swizzle_conv(VkComponentSwizzle component, const unsigned char chan[4], VkC
 
 static inline void vk_format_compose_swizzles(const VkComponentMapping *mapping,
 					      const unsigned char swz[4],
-					      enum vk_swizzle dst[4])
+					      enum pipe_swizzle dst[4])
 {
 	dst[0] = radv_swizzle_conv(VK_COMPONENT_SWIZZLE_R, swz, mapping->r);
 	dst[1] = radv_swizzle_conv(VK_COMPONENT_SWIZZLE_G, swz, mapping->g);
@@ -280,14 +269,14 @@ static inline bool
 vk_format_has_depth(const struct vk_format_description *desc)
 {
 	return desc->colorspace == VK_FORMAT_COLORSPACE_ZS &&
-		desc->swizzle[0] != VK_SWIZZLE_NONE;
+		desc->swizzle[0] != PIPE_SWIZZLE_NONE;
 }
 
 static inline bool
 vk_format_has_stencil(const struct vk_format_description *desc)
 {
 	return desc->colorspace == VK_FORMAT_COLORSPACE_ZS &&
-		desc->swizzle[1] != VK_SWIZZLE_NONE;
+		desc->swizzle[1] != PIPE_SWIZZLE_NONE;
 }
 
 static inline bool
@@ -457,13 +446,13 @@ vk_format_get_component_bits(VkFormat format,
 	}
 
 	switch (desc->swizzle[component]) {
-	case VK_SWIZZLE_X:
+	case PIPE_SWIZZLE_X:
 		return desc->channel[0].size;
-	case VK_SWIZZLE_Y:
+	case PIPE_SWIZZLE_Y:
 		return desc->channel[1].size;
-	case VK_SWIZZLE_Z:
+	case PIPE_SWIZZLE_Z:
 		return desc->channel[2].size;
-	case VK_SWIZZLE_W:
+	case PIPE_SWIZZLE_W:
 		return desc->channel[3].size;
 	default:
 		return 0;

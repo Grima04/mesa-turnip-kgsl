@@ -519,24 +519,24 @@ si_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool st
 static unsigned radv_map_swizzle(unsigned swizzle)
 {
 	switch (swizzle) {
-	case VK_SWIZZLE_Y:
+	case PIPE_SWIZZLE_Y:
 		return V_008F0C_SQ_SEL_Y;
-	case VK_SWIZZLE_Z:
+	case PIPE_SWIZZLE_Z:
 		return V_008F0C_SQ_SEL_Z;
-	case VK_SWIZZLE_W:
+	case PIPE_SWIZZLE_W:
 		return V_008F0C_SQ_SEL_W;
-	case VK_SWIZZLE_0:
+	case PIPE_SWIZZLE_0:
 		return V_008F0C_SQ_SEL_0;
-	case VK_SWIZZLE_1:
+	case PIPE_SWIZZLE_1:
 		return V_008F0C_SQ_SEL_1;
-	default: /* VK_SWIZZLE_X */
+	default: /* PIPE_SWIZZLE_X */
 		return V_008F0C_SQ_SEL_X;
 	}
 }
 
 static void
 radv_compose_swizzle(const struct vk_format_description *desc,
-		     const VkComponentMapping *mapping, enum vk_swizzle swizzle[4])
+		     const VkComponentMapping *mapping, enum pipe_swizzle swizzle[4])
 {
 	if (desc->format == VK_FORMAT_R64_UINT || desc->format == VK_FORMAT_R64_SINT) {
 		/* 64-bit formats only support storage images and storage images
@@ -548,16 +548,16 @@ radv_compose_swizzle(const struct vk_format_description *desc,
 		 * by loads to create the w component, which has to be 0 for
 		 * NULL descriptors.
 		 */
-		swizzle[0] = VK_SWIZZLE_X;
-		swizzle[1] = VK_SWIZZLE_Y;
-		swizzle[2] = VK_SWIZZLE_1;
-		swizzle[3] = VK_SWIZZLE_0;
+		swizzle[0] = PIPE_SWIZZLE_X;
+		swizzle[1] = PIPE_SWIZZLE_Y;
+		swizzle[2] = PIPE_SWIZZLE_1;
+		swizzle[3] = PIPE_SWIZZLE_0;
 	} else if (!mapping) {
 		for (unsigned i = 0; i < 4; i++)
 			swizzle[i] = desc->swizzle[i];
 	} else if (desc->colorspace == VK_FORMAT_COLORSPACE_ZS) {
 		const unsigned char swizzle_xxxx[4] = {
-			VK_SWIZZLE_X, VK_SWIZZLE_0, VK_SWIZZLE_0, VK_SWIZZLE_1
+			PIPE_SWIZZLE_X, PIPE_SWIZZLE_0, PIPE_SWIZZLE_0, PIPE_SWIZZLE_1
 		};
 		vk_format_compose_swizzles(mapping, swizzle_xxxx, swizzle);
 	} else {
@@ -579,7 +579,7 @@ radv_make_buffer_descriptor(struct radv_device *device,
 	uint64_t va = gpu_address + buffer->offset;
 	unsigned num_format, data_format;
 	int first_non_void;
-	enum vk_swizzle swizzle[4];
+	enum pipe_swizzle swizzle[4];
 	desc = vk_format_description(vk_format);
 	first_non_void = vk_format_get_first_non_void_channel(vk_format);
 	stride = desc->block.bits / 8;
@@ -772,29 +772,29 @@ static unsigned radv_tex_dim(VkImageType image_type, VkImageViewType view_type,
 	}
 }
 
-static unsigned gfx9_border_color_swizzle(const enum vk_swizzle swizzle[4])
+static unsigned gfx9_border_color_swizzle(const enum pipe_swizzle swizzle[4])
 {
 	unsigned bc_swizzle = V_008F20_BC_SWIZZLE_XYZW;
 
-	if (swizzle[3] == VK_SWIZZLE_X) {
+	if (swizzle[3] == PIPE_SWIZZLE_X) {
 		/* For the pre-defined border color values (white, opaque
 		 * black, transparent black), the only thing that matters is
 		 * that the alpha channel winds up in the correct place
 		 * (because the RGB channels are all the same) so either of
 		 * these enumerations will work.
 		 */
-		if (swizzle[2] == VK_SWIZZLE_Y)
+		if (swizzle[2] == PIPE_SWIZZLE_Y)
 			bc_swizzle = V_008F20_BC_SWIZZLE_WZYX;
 		else
 			bc_swizzle = V_008F20_BC_SWIZZLE_WXYZ;
-	} else if (swizzle[0] == VK_SWIZZLE_X) {
-		if (swizzle[1] == VK_SWIZZLE_Y)
+	} else if (swizzle[0] == PIPE_SWIZZLE_X) {
+		if (swizzle[1] == PIPE_SWIZZLE_Y)
 			bc_swizzle = V_008F20_BC_SWIZZLE_XYZW;
 		else
 			bc_swizzle = V_008F20_BC_SWIZZLE_XWYZ;
-	} else if (swizzle[1] == VK_SWIZZLE_X) {
+	} else if (swizzle[1] == PIPE_SWIZZLE_X) {
 		bc_swizzle = V_008F20_BC_SWIZZLE_YXWZ;
-	} else if (swizzle[2] == VK_SWIZZLE_X) {
+	} else if (swizzle[2] == PIPE_SWIZZLE_X) {
 		bc_swizzle = V_008F20_BC_SWIZZLE_ZYXW;
 	}
 
@@ -806,7 +806,7 @@ bool vi_alpha_is_on_msb(struct radv_device *device, VkFormat format)
 	const struct vk_format_description *desc = vk_format_description(format);
 
 	if (device->physical_device->rad_info.chip_class >= GFX10 && desc->nr_channels == 1)
-		return desc->swizzle[3] == VK_SWIZZLE_X;
+		return desc->swizzle[3] == PIPE_SWIZZLE_X;
 
 	return radv_translate_colorswap(format, false) <= 1;
 }
@@ -827,7 +827,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 			   uint32_t *fmask_state)
 {
 	const struct vk_format_description *desc;
-	enum vk_swizzle swizzle[4];
+	enum pipe_swizzle swizzle[4];
 	unsigned img_format;
 	unsigned type;
 
@@ -957,7 +957,7 @@ si_make_texture_descriptor(struct radv_device *device,
 			   uint32_t *fmask_state)
 {
 	const struct vk_format_description *desc;
-	enum vk_swizzle swizzle[4];
+	enum pipe_swizzle swizzle[4];
 	int first_non_void;
 	unsigned num_format, data_format, type;
 

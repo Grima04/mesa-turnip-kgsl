@@ -6860,7 +6860,7 @@ radv_initialise_color_surface(struct radv_device *device,
 	memset(cb, 0, sizeof(*cb));
 
 	/* Intensity is implemented as Red, so treat it that way. */
-	cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1(desc->swizzle[3] == VK_SWIZZLE_1);
+	cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1(desc->swizzle[3] == PIPE_SWIZZLE_1);
 
 	va = radv_buffer_get_va(iview->bo) + iview->image->offset;
 

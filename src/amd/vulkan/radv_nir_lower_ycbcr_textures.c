@@ -190,7 +190,7 @@ build_swizzled_components(nir_builder *builder,
                           nir_ssa_def **plane_values)
 {
 	struct swizzle_info plane_swizzle = get_plane_swizzles(format);
-	enum vk_swizzle swizzles[4];
+	enum pipe_swizzle swizzles[4];
 	nir_ssa_def *values[4];
 
 	vk_format_compose_swizzles(&mapping, (const unsigned char[4]){0,1,2,3}, swizzles);
@@ -200,20 +200,20 @@ build_swizzled_components(nir_builder *builder,
 
 	for (unsigned i = 0; i < 4; ++i) {
 		switch(swizzles[i]) {
-		case VK_SWIZZLE_X:
-		case VK_SWIZZLE_Y:
-		case VK_SWIZZLE_Z:
-		case VK_SWIZZLE_W: {
-			unsigned channel = swizzles[i] - VK_SWIZZLE_X;
+		case PIPE_SWIZZLE_X:
+		case PIPE_SWIZZLE_Y:
+		case PIPE_SWIZZLE_Z:
+		case PIPE_SWIZZLE_W: {
+			unsigned channel = swizzles[i] - PIPE_SWIZZLE_X;
 			values[i] = nir_channel(builder,
 			                        plane_values[plane_swizzle.plane[channel]],
 			                        plane_swizzle.swizzle[channel]);
 			break;
 		}
-		case VK_SWIZZLE_0:
+		case PIPE_SWIZZLE_0:
 			values[i] = zero;
 			break;
-		case VK_SWIZZLE_1:
+		case PIPE_SWIZZLE_1:
 			values[i] = one;
 			break;
 		default:
@@ -285,7 +285,7 @@ try_lower_tex_ycbcr(const struct radv_pipeline_layout *layout,
 	nir_ssa_def *result = build_swizzled_components(builder, format, ycbcr_sampler->components, plane_values);
 	if (state.conversion->ycbcr_model != VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY) {
 		VkFormat first_format = vk_format_get_plane_format(format, 0);
-		uint32_t bits = vk_format_get_component_bits(first_format, VK_FORMAT_COLORSPACE_RGB, VK_SWIZZLE_X);
+		uint32_t bits = vk_format_get_component_bits(first_format, VK_FORMAT_COLORSPACE_RGB, PIPE_SWIZZLE_X);
 		/* TODO: swizzle and bpcs */
 		uint32_t bpcs[3] = {bits, bits, bits};
 		result = nir_convert_ycbcr_to_rgb(builder,
