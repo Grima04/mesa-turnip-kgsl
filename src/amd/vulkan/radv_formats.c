@@ -43,7 +43,7 @@ uint32_t radv_translate_buffer_dataformat(const struct vk_format_description *de
 	unsigned type;
 	int i;
 
-	assert(desc->layout != VK_FORMAT_LAYOUT_MULTIPLANE);
+	assert(util_format_get_num_planes(desc->format) == 1);
 
 	if (desc->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32)
 		return V_008F0C_BUF_DATA_FORMAT_10_11_11;
@@ -119,7 +119,7 @@ uint32_t radv_translate_buffer_dataformat(const struct vk_format_description *de
 uint32_t radv_translate_buffer_numformat(const struct vk_format_description *desc,
 					 int first_non_void)
 {
-	assert(desc->layout != VK_FORMAT_LAYOUT_MULTIPLANE);
+	assert(util_format_get_num_planes(desc->format) == 1);
 
 	if (desc->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32)
 		return V_008F0C_BUF_NUM_FORMAT_FLOAT;
@@ -671,7 +671,7 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
 		return;
 	}
 
-	if (desc->layout == VK_FORMAT_LAYOUT_MULTIPLANE ||
+	if (vk_format_get_plane_count(format) > 1 ||
 	    desc->layout == VK_FORMAT_LAYOUT_SUBSAMPLED) {
 		uint32_t tiling = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
 		                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
