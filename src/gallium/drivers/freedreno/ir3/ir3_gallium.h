@@ -31,11 +31,6 @@
 #include "pipe/p_screen.h"
 #include "ir3/ir3_shader.h"
 
-struct ir3_shader * ir3_shader_create(struct ir3_compiler *compiler,
-		const struct pipe_shader_state *cso,
-		struct pipe_debug_callback *debug,
-		struct pipe_screen *screen);
-
 /**
  * The ir3 hwcso type, use ir3_get_shader() to dereference the
  * underlying ir3_shader

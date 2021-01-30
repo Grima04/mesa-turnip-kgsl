@@ -168,28 +168,13 @@ copy_stream_out(struct ir3_stream_output_info *i,
 	}
 }
 
-struct ir3_shader *
-ir3_shader_create(struct ir3_compiler *compiler,
-		const struct pipe_shader_state *cso,
-		struct pipe_debug_callback *debug,
-		struct pipe_screen *screen)
+static void
+create_initial_variants(struct ir3_shader_state *hwcso,
+		struct pipe_debug_callback *debug)
 {
-	nir_shader *nir;
-	if (cso->type == PIPE_SHADER_IR_NIR) {
-		/* we take ownership of the reference: */
-		nir = cso->ir.nir;
-	} else {
-		debug_assert(cso->type == PIPE_SHADER_IR_TGSI);
-		if (ir3_shader_debug & IR3_DBG_DISASM) {
-			tgsi_dump(cso->tokens, 0);
-		}
-		nir = tgsi_to_nir(cso->tokens, screen, false);
-	}
-
-	struct ir3_stream_output_info stream_output = {};
-	copy_stream_out(&stream_output, &cso->stream_output);
-
-	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, 0, &stream_output);
+	struct ir3_shader *shader = hwcso->shader;
+	struct ir3_compiler *compiler = shader->compiler;
+	nir_shader *nir = shader->nir;
 
 	/* Compile standard variants immediately to try to avoid draw-time stalls
 	 * to run the compiler.
@@ -228,7 +213,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 	key.safe_constlen = false;
 	struct ir3_shader_variant *v = ir3_shader_variant(shader, key, false, debug);
 	if (!v)
-		return NULL;
+		return;
 
 	if (v->constlen > compiler->max_const_safe) {
 		key.safe_constlen = true;
@@ -240,7 +225,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		key.safe_constlen = false;
 		v = ir3_shader_variant(shader, key, true, debug);
 		if (!v)
-			return NULL;
+			return;
 
 		if (v->constlen > compiler->max_const_safe) {
 			key.safe_constlen = true;
@@ -249,8 +234,6 @@ ir3_shader_create(struct ir3_compiler *compiler,
 	}
 
 	shader->initial_variants_done = true;
-
-	return shader;
 }
 
 /* a bit annoying that compute-shader and normal shader state objects
@@ -319,7 +302,38 @@ ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_stat
 	struct ir3_compiler *compiler = ctx->screen->compiler;
 	struct ir3_shader_state *hwcso = calloc(1, sizeof(*hwcso));
 
-	hwcso->shader = ir3_shader_create(compiler, cso, &ctx->debug, pctx->screen);
+	/*
+	 * Convert to nir (if necessary):
+	 */
+
+	nir_shader *nir;
+	if (cso->type == PIPE_SHADER_IR_NIR) {
+		/* we take ownership of the reference: */
+		nir = cso->ir.nir;
+	} else {
+		debug_assert(cso->type == PIPE_SHADER_IR_TGSI);
+		if (ir3_shader_debug & IR3_DBG_DISASM) {
+			tgsi_dump(cso->tokens, 0);
+		}
+		nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
+	}
+
+	/*
+	 * Create ir3_shader:
+	 *
+	 * This part is cheap, it doesn't compile initial variants
+	 */
+
+	struct ir3_stream_output_info stream_output = {};
+	copy_stream_out(&stream_output, &cso->stream_output);
+
+	hwcso->shader = ir3_shader_from_nir(compiler, nir, 0, &stream_output);
+
+	/*
+	 * Create initial variants to avoid draw-time stalls:
+	 */
+
+	create_initial_variants(hwcso, &ctx->debug);
 
 	return hwcso;
 }
