@@ -171,7 +171,3 @@ dEQP-VK.drm_format_modifiers.create_list_modifiers.r16g16b16_sscaled,Crash
 dEQP-VK.drm_format_modifiers.create_list_modifiers.r16g16b16_uint,Crash
 dEQP-VK.drm_format_modifiers.create_list_modifiers.r16g16b16_unorm,Crash
 dEQP-VK.drm_format_modifiers.create_list_modifiers.r16g16b16_uscaled,Crash
-dEQP-VK.drm_format_modifiers.create_list_modifiers.r64g64b64_sint,Crash
-dEQP-VK.drm_format_modifiers.create_list_modifiers.r64g64b64_uint,Crash
-dEQP-VK.drm_format_modifiers.create_list_modifiers.r64g64b64a64_sint,Crash
-dEQP-VK.drm_format_modifiers.create_list_modifiers.r64g64b64a64_uint,Crash
