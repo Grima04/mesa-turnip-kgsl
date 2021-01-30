@@ -32,8 +32,6 @@ sys.path.append(VULKAN_UTIL)
 
 from vk_extensions import *
 
-API_PATCH_VERSION = 145
-
 # Supported API versions.  Each one is the maximum patch version for the given
 # version.  Version come in increasing order and each version is available if
 # it's provided "enable" condition is true and all previous versions are
@@ -204,6 +202,5 @@ for i in range(len(EXTENSIONS) - 1):
 MAX_API_VERSION = VkVersion('0.0.0')
 for version in API_VERSIONS:
     version.version = VkVersion(version.version)
-    version.version.patch = API_PATCH_VERSION
     assert version.version > MAX_API_VERSION
     MAX_API_VERSION = version.version

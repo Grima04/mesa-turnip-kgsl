@@ -25,7 +25,9 @@ COPYRIGHT = """\
 """
 
 import os.path
+import re
 import sys
+import xml.etree.ElementTree as et
 
 from anv_extensions import *
 
@@ -33,6 +35,18 @@ VULKAN_UTIL = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../vul
 sys.path.append(VULKAN_UTIL)
 
 from vk_extensions_gen import *
+
+def get_xml_patch_version(xml_file):
+    xml = et.parse(xml_file)
+    for d in xml.findall('.types/type'):
+        if d.get('category', None) != 'define':
+            continue
+
+        name = d.find('.name')
+        if name.text != 'VK_HEADER_VERSION':
+            continue;
+
+        return name.tail.strip()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -49,5 +63,8 @@ if __name__ == '__main__':
         "perf/gen_perf.h"
     ]
 
-    gen_extensions('anv', args.xml_files, API_VERSIONS, MAX_API_VERSION,
+    max_version = MAX_API_VERSION
+    max_version.patch = int(get_xml_patch_version(args.xml_files[0]))
+
+    gen_extensions('anv', args.xml_files, API_VERSIONS, max_version,
                    EXTENSIONS, args.out_c, args.out_h, includes)
