@@ -445,8 +445,8 @@ radv_get_surface_flags(struct radv_device *device,
 	const struct util_format_description *desc = vk_format_description(format);
 	bool is_depth, is_stencil;
 
-	is_depth = vk_format_has_depth(desc);
-	is_stencil = vk_format_has_stencil(desc);
+	is_depth = util_format_has_depth(desc);
+	is_stencil = util_format_has_stencil(desc);
 
 	flags = RADEON_SURF_SET(array_mode, MODE);
 

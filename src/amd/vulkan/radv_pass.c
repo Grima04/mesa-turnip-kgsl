@@ -545,7 +545,7 @@ static VkImageLayout
 stencil_desc_layout(const VkAttachmentDescription2KHR *att_desc, bool final)
 {
 	const struct util_format_description *desc = vk_format_description(att_desc->format);
-	if (!vk_format_has_stencil(desc))
+	if (!util_format_has_stencil(desc))
 		return VK_IMAGE_LAYOUT_UNDEFINED;
 
 	const VkImageLayout main_layout =

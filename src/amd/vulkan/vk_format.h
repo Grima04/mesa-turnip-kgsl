@@ -145,20 +145,6 @@ vk_format_is_subsampled(VkFormat format)
 }
 
 static inline bool
-vk_format_has_depth(const struct util_format_description *desc)
-{
-	return desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS &&
-		desc->swizzle[0] != PIPE_SWIZZLE_NONE;
-}
-
-static inline bool
-vk_format_has_stencil(const struct util_format_description *desc)
-{
-	return desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS &&
-		desc->swizzle[1] != PIPE_SWIZZLE_NONE;
-}
-
-static inline bool
 vk_format_is_depth_or_stencil(VkFormat format)
 {
 	const struct util_format_description *desc = util_format_description(vk_format_to_pipe_format(format));
