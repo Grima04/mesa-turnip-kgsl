@@ -35,6 +35,7 @@
 #include "pipe/p_screen.h"
 #include "util/debug.h"
 #include "util/u_memory.h"
+#include "util/u_queue.h"
 #include "util/slab.h"
 #include "util/simple_mtx.h"
 #include "renderonly/renderonly.h"
@@ -87,6 +88,7 @@ struct fd_screen {
 	struct pipe_driver_query_info *perfcntr_queries;
 
 	void *compiler;          /* currently unused for a2xx */
+	struct util_queue compile_queue; /* currently unused for a2xx */
 
 	struct fd_device *dev;
 

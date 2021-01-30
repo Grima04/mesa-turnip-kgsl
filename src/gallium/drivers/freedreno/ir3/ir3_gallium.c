@@ -51,7 +51,24 @@
  */
 struct ir3_shader_state {
 	struct ir3_shader *shader;
+
+	/* Fence signalled when async compile is completed: */
+	struct util_queue_fence ready;
 };
+
+/**
+ * Should initial variants be compiled synchronously?
+ *
+ * The only case where pipe_debug_message() is used in the initial-variants
+ * path is with FD_MESA_DEBUG=shaderdb.  So if either debug is disabled (ie.
+ * debug.debug_message==NULL), or shaderdb stats are not enabled, we can
+ * compile the initial shader variant asynchronously.
+ */
+static bool
+initial_variants_synchronous(struct fd_context *ctx)
+{
+	return unlikely(ctx->debug.debug_message && (fd_mesa_debug & FD_DBG_SHADERDB));
+}
 
 static void
 dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug)
@@ -236,6 +253,27 @@ create_initial_variants(struct ir3_shader_state *hwcso,
 	shader->initial_variants_done = true;
 }
 
+static void
+create_initial_variants_async(void *job, int thread_index)
+{
+	struct ir3_shader_state *hwcso = job;
+	struct pipe_debug_callback debug = {};
+
+	create_initial_variants(hwcso, &debug);
+}
+
+static void
+create_initial_compute_variants_async(void *job, int thread_index)
+{
+	struct ir3_shader_state *hwcso = job;
+	struct ir3_shader *shader = hwcso->shader;
+	struct pipe_debug_callback debug = {};
+	static struct ir3_shader_key key; /* static is implicitly zeroed */
+
+	ir3_shader_variant(shader, key, false, &debug);
+	shader->initial_variants_done = true;
+}
+
 /* a bit annoying that compute-shader and normal shader state objects
  * aren't a bit more aligned.
  */
@@ -271,18 +309,26 @@ ir3_shader_compute_state_create(struct pipe_context *pctx,
 	}
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, 0, NULL);
+	struct ir3_shader_state *hwcso = calloc(1, sizeof(*hwcso));
+
+	util_queue_fence_init(&hwcso->ready);
+	hwcso->shader = shader;
 
 	/* Immediately compile a standard variant.  We have so few variants in our
 	 * shaders, that doing so almost eliminates draw-time recompiles.  (This
 	 * is also how we get data from shader-db's ./run)
 	 */
-	static struct ir3_shader_key key; /* static is implicitly zeroed */
-	ir3_shader_variant(shader, key, false, &ctx->debug);
 
-	shader->initial_variants_done = true;
-
-	struct ir3_shader_state *hwcso = calloc(1, sizeof(*hwcso));
-	hwcso->shader = shader;
+	if (initial_variants_synchronous(ctx)) {
+		static struct ir3_shader_key key; /* static is implicitly zeroed */
+		ir3_shader_variant(shader, key, false, &ctx->debug);
+		shader->initial_variants_done = true;
+	} else {
+		struct fd_screen *screen = ctx->screen;
+		util_queue_add_job(&screen->compile_queue, hwcso,
+				&hwcso->ready, create_initial_compute_variants_async,
+				NULL, 0);
+	}
 
 	return hwcso;
 }
@@ -322,10 +368,20 @@ ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_stat
 	hwcso->shader = ir3_shader_from_nir(compiler, nir, 0, &stream_output);
 
 	/*
-	 * Create initial variants to avoid draw-time stalls:
+	 * Create initial variants to avoid draw-time stalls.  This is
+	 * normally done asynchronously, unless debug is enabled (which
+	 * will be the case for shader-db)
 	 */
 
-	create_initial_variants(hwcso, &ctx->debug);
+	util_queue_fence_init(&hwcso->ready);
+
+	if (initial_variants_synchronous(ctx)) {
+		create_initial_variants(hwcso, &ctx->debug);
+	} else {
+		util_queue_add_job(&ctx->screen->compile_queue, hwcso,
+				&hwcso->ready, create_initial_variants_async,
+				NULL, 0);
+	}
 
 	return hwcso;
 }
@@ -333,8 +389,17 @@ ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_stat
 void
 ir3_shader_state_delete(struct pipe_context *pctx, void *_hwcso)
 {
+	struct fd_screen *screen = fd_context(pctx)->screen;
 	struct ir3_shader_state *hwcso = _hwcso;
 	struct ir3_shader *so = hwcso->shader;
+
+	/* util_queue_drop_job() guarantees that either:
+	 *  1) job did not execute
+	 *  2) job completed
+	 *
+	 * In either case the fence is signaled
+	 */
+	util_queue_drop_job(&screen->compile_queue, &hwcso->ready);
 
 	/* free the uploaded shaders, since this is handled outside of the
 	 * shared ir3 code (ie. not used by turnip):
@@ -350,6 +415,7 @@ ir3_shader_state_delete(struct pipe_context *pctx, void *_hwcso)
 	}
 
 	ir3_shader_destroy(so);
+	util_queue_fence_destroy(&hwcso->ready);
 	free(hwcso);
 }
 
@@ -358,6 +424,7 @@ ir3_get_shader(struct ir3_shader_state *hwcso)
 {
 	if (!hwcso)
 		return NULL;
+	util_queue_fence_wait(&hwcso->ready);
 	return hwcso->shader;
 }
 
@@ -375,6 +442,26 @@ ir3_screen_finalize_nir(struct pipe_screen *pscreen, void *nir, bool optimize)
 	struct fd_screen *screen = fd_screen(pscreen);
 
 	ir3_finalize_nir(screen->compiler, nir);
+}
+
+static void
+ir3_set_max_shader_compiler_threads(struct pipe_screen *pscreen, unsigned max_threads)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+
+	/* This function doesn't allow a greater number of threads than
+	 * the queue had at its creation.
+	 */
+	util_queue_adjust_num_threads(&screen->compile_queue, max_threads);
+}
+
+static bool
+ir3_is_parallel_shader_compilation_finished(struct pipe_screen *pscreen,
+		void *shader, enum pipe_shader_type shader_type)
+{
+	struct ir3_shader_state *hwcso = (struct ir3_shader_state *)shader;
+
+	return util_queue_fence_is_signalled(&hwcso->ready);
 }
 
 void
@@ -403,7 +490,23 @@ ir3_screen_init(struct pipe_screen *pscreen)
 
 	screen->compiler = ir3_compiler_create(screen->dev, screen->gpu_id);
 
+	/* TODO do we want to limit things to # of fast cores, or just limit
+	 * based on total # of both big and little cores.  The little cores
+	 * tend to be in-order and probably much slower for compiling than
+	 * big cores.  OTOH if they are sitting idle, maybe it is useful to
+	 * use them?
+	 */
+	unsigned num_threads = sysconf(_SC_NPROCESSORS_ONLN) - 1;
+
+	util_queue_init(&screen->compile_queue, "ir3q", 64, num_threads,
+			UTIL_QUEUE_INIT_RESIZE_IF_FULL |
+			UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY);
+
 	pscreen->finalize_nir = ir3_screen_finalize_nir;
+	pscreen->set_max_shader_compiler_threads =
+			ir3_set_max_shader_compiler_threads;
+	pscreen->is_parallel_shader_compilation_finished =
+			ir3_is_parallel_shader_compilation_finished;
 }
 
 void
@@ -411,6 +514,7 @@ ir3_screen_fini(struct pipe_screen *pscreen)
 {
 	struct fd_screen *screen = fd_screen(pscreen);
 
+	util_queue_destroy(&screen->compile_queue);
 	ir3_compiler_destroy(screen->compiler);
 	screen->compiler = NULL;
 }
