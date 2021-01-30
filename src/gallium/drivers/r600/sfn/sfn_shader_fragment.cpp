@@ -195,11 +195,22 @@ bool FragmentShaderFromNir::process_load_input(nir_intrinsic_instr *instr,
 
    switch (name) {
    case TGSI_SEMANTIC_COLOR: {
-      m_shaderio.add_input(new ShaderInputColor(name, sid,
-                                                nir_intrinsic_base(instr) + index->u32,
-                                                nir_intrinsic_component(instr),
-                                                nir_dest_num_components(instr->dest),
-                                                tgsi_interpolate, tgsi_loc));
+      auto input = m_shaderio.find_varying(name, sid);
+      if (!input) {
+         m_shaderio.add_input(new ShaderInputColor(name, sid,
+                                                   nir_intrinsic_base(instr) + index->u32,
+                                                   nir_intrinsic_component(instr),
+                                                   nir_dest_num_components(instr->dest),
+                                                   tgsi_interpolate, tgsi_loc));
+      }  else {
+         if (uses_interpol_at_centroid)
+            input->set_uses_interpolate_at_centroid();
+
+         auto varying = static_cast<ShaderInputVarying&>(*input);
+         varying.update_mask(nir_dest_num_components(instr->dest),
+                             nir_intrinsic_component(instr));
+      }
+
       m_need_back_color = m_two_sided_color;
       return true;
    }
@@ -214,14 +225,20 @@ bool FragmentShaderFromNir::process_load_input(nir_intrinsic_instr *instr,
    case TGSI_SEMANTIC_PCOORD:
    case TGSI_SEMANTIC_VIEWPORT_INDEX:
    case TGSI_SEMANTIC_CLIPDIST: {
-      auto varying = m_shaderio.find_varying(name, sid, nir_intrinsic_component(instr));
-      if (!varying) {
+      auto input = m_shaderio.find_varying(name, sid);
+      if (!input) {
          m_shaderio.add_input(new ShaderInputVarying(name, sid, nir_intrinsic_base(instr) + index->u32,
                                                      nir_intrinsic_component(instr),
                                                      nir_dest_num_components(instr->dest),
                                                      tgsi_interpolate, tgsi_loc));
-      } else if (uses_interpol_at_centroid)
-         varying->set_uses_interpolate_at_centroid();
+      } else {
+         if (uses_interpol_at_centroid)
+            input->set_uses_interpolate_at_centroid();
+
+         auto varying = static_cast<ShaderInputVarying&>(*input);
+         varying.update_mask(nir_dest_num_components(instr->dest),
+                             nir_intrinsic_component(instr));
+      }
 
       return true;
    }

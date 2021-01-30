@@ -121,7 +121,7 @@ ShaderInputVarying::ShaderInputVarying(tgsi_semantic _name, int sid, unsigned dr
    m_interpolate_loc(interp_loc),
    m_ij_index(-10),
    m_lds_pos(0),
-   m_mask((1 << components) - 1)
+   m_mask(((1 << components) - 1) << frac)
 {
    evaluate_spi_sid();
 
@@ -141,7 +141,7 @@ ShaderInputVarying::ShaderInputVarying(tgsi_semantic _name, int sid, nir_variabl
    m_sid(sid),
    m_ij_index(-10),
    m_lds_pos(0),
-   m_mask((1 << input->type->components()) - 1)
+   m_mask(((1 << input->type->components()) - 1) << input->data.location_frac)
 {
    sfn_log << SfnLog::io << __func__
            << "name:" << _name
@@ -210,9 +210,9 @@ bool ShaderInputVarying::is_varying() const
    return true;
 }
 
-void ShaderInputVarying::update_mask(int additional_comps)
+void ShaderInputVarying::update_mask(int additional_comps, int frac)
 {
-   m_mask |= additional_comps;
+   m_mask |= ((1 << additional_comps) - 1) << frac;
 }
 
 void ShaderInputVarying::evaluate_spi_sid()
@@ -226,6 +226,7 @@ void ShaderInputVarying::evaluate_spi_sid()
       break;
    case TGSI_SEMANTIC_POSITION:
       m_spi_sid = 0;
+      break;
    case TGSI_SEMANTIC_GENERIC:
    case TGSI_SEMANTIC_TEXCOORD:
    case TGSI_SEMANTIC_PCOORD:
@@ -322,13 +323,13 @@ size_t ShaderIO::add_input(ShaderInput *input)
    return m_inputs.size() - 1;
 }
 
-PShaderInput ShaderIO::find_varying(tgsi_semantic name, int sid, int frac)
+PShaderInput ShaderIO::find_varying(tgsi_semantic name, int sid)
 {
    for (auto& a : m_inputs) {
       if (a->name() == name) {
          assert(a->is_varying());
          auto& v = static_cast<ShaderInputVarying&>(*a);
-         if (v.sid() == sid && (v.location_frac() == frac))
+         if (v.sid() == sid)
             return a;
       }
    }
