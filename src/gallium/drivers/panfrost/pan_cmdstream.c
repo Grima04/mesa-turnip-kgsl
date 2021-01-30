@@ -1326,6 +1326,11 @@ panfrost_emit_image_attribs(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_shader_state *shader = panfrost_get_shader_state(ctx, type);
 
+        if (!shader->attribute_count) {
+                *buffers = 0;
+                return 0;
+        }
+
         /* Images always need a MALI_ATTRIBUTE_BUFFER_CONTINUATION_3D */
         unsigned attrib_buf_size = MALI_ATTRIBUTE_BUFFER_LENGTH +
                                    MALI_ATTRIBUTE_BUFFER_CONTINUATION_3D_LENGTH;
@@ -1361,6 +1366,11 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         unsigned bufs_per_attrib = (ctx->instance_count > 1 || nr_images > 0) ? 2 : 1;
         unsigned nr_bufs = (vs->attribute_count * bufs_per_attrib) +
                            (pan_is_bifrost(dev) ? 1 : 0);
+
+        if (!nr_bufs) {
+                *buffers = 0;
+                return 0;
+        }
 
         struct panfrost_ptr S = panfrost_pool_alloc_aligned(&batch->pool,
                         MALI_ATTRIBUTE_BUFFER_LENGTH * nr_bufs,
