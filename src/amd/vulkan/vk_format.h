@@ -576,6 +576,20 @@ vk_format_get_plane_count(VkFormat format)
 	return desc->plane_count;
 }
 
+static inline unsigned
+vk_format_get_plane_width(VkFormat format, unsigned plane,
+                          unsigned width)
+{
+	return util_format_get_plane_width(vk_format_to_pipe_format(format), plane, width);
+}
+
+static inline unsigned
+vk_format_get_plane_height(VkFormat format, unsigned plane,
+                          unsigned height)
+{
+	return util_format_get_plane_height(vk_format_to_pipe_format(format), plane, height);
+}
+
 static inline VkFormat
 vk_format_get_plane_format(VkFormat format, unsigned plane_id)
 {

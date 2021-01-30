@@ -1372,14 +1372,8 @@ radv_image_create_layout(struct radv_device *device,
 		uint64_t offset;
 		unsigned stride;
 
-		if (plane) {
-			const struct vk_format_description *desc = vk_format_description(image->vk_format);
-			assert(info.width % desc->width_divisor == 0);
-			assert(info.height % desc->height_divisor == 0);
-
-			info.width /= desc->width_divisor;
-			info.height /= desc->height_divisor;
-		}
+		info.width = vk_format_get_plane_width(image->vk_format, plane, info.width);
+		info.height = vk_format_get_plane_height(image->vk_format, plane, info.height);
 
 		if (create_info.no_metadata_planes || image->plane_count > 1) {
 			image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC |
@@ -1684,7 +1678,6 @@ radv_image_view_make_descriptor(struct radv_image_view *iview,
 {
 	struct radv_image *image = iview->image;
 	struct radv_image_plane *plane = &image->planes[plane_id];
-	const struct vk_format_description *format_desc = vk_format_description(image->vk_format);
 	bool is_stencil = iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT;
 	uint32_t blk_w;
 	union radv_descriptor *descriptor;
@@ -1709,8 +1702,8 @@ radv_image_view_make_descriptor(struct radv_image_view *iview,
 				     hw_level, hw_level + iview->level_count - 1,
 				     iview->base_layer,
 				     iview->base_layer + iview->layer_count - 1,
-				     iview->extent.width  / (plane_id ? format_desc->width_divisor : 1),
-				     iview->extent.height  / (plane_id ? format_desc->height_divisor : 1),
+				     vk_format_get_plane_width(image->vk_format, plane_id, iview->extent.width),
+				     vk_format_get_plane_height(image->vk_format, plane_id, iview->extent.height),
 				     iview->extent.depth,
 				     descriptor->plane_descriptors[descriptor_plane_id],
 				     descriptor_plane_id ? NULL : descriptor->fmask_descriptor);

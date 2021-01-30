@@ -7041,12 +7041,12 @@ radv_initialise_color_surface(struct radv_device *device,
 	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
-		const struct vk_format_description *format_desc = vk_format_description(iview->image->vk_format);
-
 		unsigned mip0_depth = iview->image->type == VK_IMAGE_TYPE_3D ?
 		  (iview->extent.depth - 1) : (iview->image->info.array_size - 1);
-		unsigned width = iview->extent.width / (iview->plane_id ? format_desc->width_divisor : 1);
-		unsigned height = iview->extent.height / (iview->plane_id ? format_desc->height_divisor : 1);
+		unsigned width = vk_format_get_plane_width(iview->image->vk_format,
+							   iview->plane_id, iview->extent.width);
+		unsigned height = vk_format_get_plane_height(iview->image->vk_format,
+							     iview->plane_id, iview->extent.height);
 
 		if (device->physical_device->rad_info.chip_class >= GFX10) {
 			cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX10(iview->base_mip);
