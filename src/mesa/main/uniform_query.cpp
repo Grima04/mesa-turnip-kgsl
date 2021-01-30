@@ -29,6 +29,7 @@
 #include <math.h>
 
 #include "main/context.h"
+#include "main/draw_validate.h"
 #include "main/shaderapi.h"
 #include "main/shaderobj.h"
 #include "main/uniforms.h"
@@ -1255,6 +1256,7 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
        * FLUSH_VERTICES above.
        */
       bool flushed = false;
+      bool any_changed = false;
 
       shProg->SamplersValidated = GL_TRUE;
 
@@ -1303,8 +1305,12 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
             _mesa_update_shader_textures_used(shProg, prog);
             if (ctx->Driver.SamplerUniformChange)
                ctx->Driver.SamplerUniformChange(ctx, prog->Target, prog);
+            any_changed = true;
          }
       }
+
+      if (any_changed)
+         _mesa_update_valid_to_render_state(ctx);
    }
 
    /* If the uniform is an image, update the mapping from image

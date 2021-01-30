@@ -160,17 +160,6 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
       }
    }
 
-   /* If a program is active and SSO not in use, check if validation of
-    * samplers succeeded for the active program. */
-   if (ctx->_Shader->ActiveProgram && ctx->_Shader != ctx->Pipeline.Current) {
-      char errMsg[100];
-      if (!_mesa_sampler_uniforms_are_valid(ctx->_Shader->ActiveProgram,
-                                            errMsg, 100)) {
-         _mesa_error(ctx, GL_INVALID_OPERATION, "%s", errMsg);
-         return GL_FALSE;
-      }
-   }
-
    if (ctx->DrawBuffer->_Status != GL_FRAMEBUFFER_COMPLETE_EXT) {
       _mesa_error(ctx, GL_INVALID_FRAMEBUFFER_OPERATION_EXT,
                   "%s(incomplete framebuffer)", where);
@@ -254,6 +243,12 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
    /* A pipeline object is bound */
    if (shader->Name && !shader->Validated &&
        !_mesa_validate_program_pipeline(ctx, shader))
+      return;
+
+   /* If a program is active and SSO not in use, check if validation of
+    * samplers succeeded for the active program. */
+   if (shader->ActiveProgram && shader != ctx->Pipeline.Current &&
+       !_mesa_sampler_uniforms_are_valid(shader->ActiveProgram, NULL, 0))
       return;
 
    /* DrawPixels/CopyPixels/Bitmap is valid after this point. */

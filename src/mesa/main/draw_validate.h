@@ -29,6 +29,10 @@
 
 #include "mtypes.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct gl_buffer_object;
 struct gl_context;
 struct gl_transform_feedback_object;
@@ -143,5 +147,9 @@ _mesa_is_valid_prim_mode(const struct gl_context *ctx, GLenum mode)
    /* All primitive types are less than 32, which allows us to use a mask. */
    return mode < 32 && (1u << mode) & ctx->SupportedPrimMask;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
