@@ -1013,7 +1013,7 @@ validate_uniform(GLint location, GLsizei count, const GLvoid *values,
       /* We need to reset the validate flag on changes to samplers in case
        * two different sampler types are set to the same texture unit.
        */
-      ctx->_Shader->Validated = GL_FALSE;
+      ctx->_Shader->Validated = ctx->_Shader->UserValidated = GL_FALSE;
    }
 
    if (uni->type->is_image()) {

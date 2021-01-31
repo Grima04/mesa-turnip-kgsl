@@ -253,7 +253,7 @@ use_program_stages(struct gl_context *ctx, struct gl_shader_program *shProg,
    if ((stages & GL_COMPUTE_SHADER_BIT) != 0)
       use_program_stage(ctx, GL_COMPUTE_SHADER, shProg, pipe);
 
-   pipe->Validated = false;
+   pipe->Validated = pipe->UserValidated = false;
 }
 
 void GLAPIENTRY
@@ -734,7 +734,7 @@ _mesa_GetProgramPipelineiv(GLuint pipeline, GLenum pname, GLint *params)
          strlen(pipe->InfoLog) + 1 : 0;
       return;
    case GL_VALIDATE_STATUS:
-      *params = pipe->Validated;
+      *params = pipe->UserValidated;
       return;
    case GL_VERTEX_SHADER:
       *params = pipe->CurrentProgram[MESA_SHADER_VERTEX]
@@ -1055,6 +1055,7 @@ _mesa_ValidateProgramPipeline(GLuint pipeline)
    }
 
    _mesa_validate_program_pipeline(ctx, pipe);
+   pipe->UserValidated = pipe->Validated;
 }
 
 void GLAPIENTRY

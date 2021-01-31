@@ -3236,6 +3236,7 @@ struct gl_pipeline_object
    GLbitfield Flags;         /**< Mask of GLSL_x flags */
    GLboolean EverBound;      /**< Has the pipeline object been created */
    GLboolean Validated;      /**< Pipeline Validation status */
+   GLboolean UserValidated;  /**< Validation status initiated by the user */
 
    GLchar *InfoLog;
 };
