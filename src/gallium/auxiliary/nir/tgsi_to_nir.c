@@ -2383,6 +2383,9 @@ ttn_compile_init(const void *tgsi_tokens,
          if (s->info.stage == MESA_SHADER_COMPUTE)
             s->info.cs.user_data_components_amd = value;
          break;
+      case TGSI_PROPERTY_NUM_CLIPDIST_ENABLED:
+         s->info.clip_distance_array_size = value;
+         break;
       default:
          if (value) {
             fprintf(stderr, "tgsi_to_nir: unhandled TGSI property %u = %u\n",
