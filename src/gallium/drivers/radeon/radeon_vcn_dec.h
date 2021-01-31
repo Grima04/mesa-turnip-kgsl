@@ -115,6 +115,7 @@
 #define RDECODE_MESSAGE_MPEG4_ASP_VLD                       0x0000000B
 #define RDECODE_MESSAGE_HEVC                                0x0000000D
 #define RDECODE_MESSAGE_VP9                                 0x0000000E
+#define RDECODE_MESSAGE_DYNAMIC_DPB                         0x00000010
 #define RDECODE_MESSAGE_AV1                                 0x00000011
 
 #define RDECODE_FEEDBACK_PROFILING                          0x00000001
@@ -444,6 +445,24 @@ typedef struct rvcn_dec_message_drm_s {
    unsigned int	drm_cntl;
    unsigned int	drm_reserved;
 } rvcn_dec_message_drm_t;
+
+typedef struct rvcn_dec_message_dynamic_dpb_s {
+   unsigned int dpbConfigFlags;
+   unsigned int dpbLumaPitch;
+   unsigned int dpbLumaAlignedHeight;
+   unsigned int dpbLumaAlignedSize;
+   unsigned int dpbChromaPitch;
+   unsigned int dpbChromaAlignedHeight;
+   unsigned int dpbChromaAlignedSize;
+
+   unsigned char dpbArraySize;
+   unsigned char dpbCurArraySlice;
+   unsigned char dpbRefArraySlice[16];
+   unsigned char dpbReserved0[2];
+
+   unsigned int dpbCurrOffset;
+   unsigned int dpbAddrOffset[16];
+} rvcn_dec_message_dynamic_dpb_t;
 
 typedef struct {
    unsigned short viewOrderIndex;
