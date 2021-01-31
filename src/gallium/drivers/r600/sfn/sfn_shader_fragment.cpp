@@ -943,7 +943,8 @@ bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_i
         out_var->data.location <= FRAG_RESULT_DATA7)) {
       for (int k = 0 ; k < outputs; ++k) {
 
-         unsigned location = (m_dual_source_blend ? out_var->data.index : out_var->data.driver_location) + k - m_depth_exports;
+         unsigned location = (m_dual_source_blend && (out_var->data.location == FRAG_RESULT_COLOR)
+                             ? out_var->data.index : out_var->data.driver_location) + k - m_depth_exports;
 
          sfn_log << SfnLog::io << "Pixel output " << out_var->name << " at loc:" << location << "\n";
 
