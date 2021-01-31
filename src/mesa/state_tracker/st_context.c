@@ -1050,7 +1050,8 @@ st_create_context(gl_api api, struct pipe_context *pipe,
 
    st = st_create_context_priv(ctx, pipe, options, no_error);
    if (!st) {
-      _mesa_destroy_context(ctx);
+      _mesa_free_context_data(ctx, true);
+      align_free(ctx);
    }
 
    return st;
