@@ -160,6 +160,10 @@ _mesa_FrontFace(GLenum mode)
 static ALWAYS_INLINE void
 polygon_mode(struct gl_context *ctx, GLenum face, GLenum mode, bool no_error)
 {
+   bool old_mode_has_fill_rectangle =
+      ctx->Polygon.FrontMode == GL_FILL_RECTANGLE_NV ||
+      ctx->Polygon.BackMode == GL_FILL_RECTANGLE_NV;
+
    if (MESA_VERBOSE & VERBOSE_API)
       _mesa_debug(ctx, "glPolygonMode %s %s\n",
                   _mesa_enum_to_string(face),
@@ -224,7 +228,8 @@ polygon_mode(struct gl_context *ctx, GLenum face, GLenum mode, bool no_error)
    if (ctx->Driver.PolygonMode)
       ctx->Driver.PolygonMode(ctx, face, mode);
 
-   if (ctx->Extensions.INTEL_conservative_rasterization)
+   if (ctx->Extensions.INTEL_conservative_rasterization ||
+       (mode == GL_FILL_RECTANGLE_NV || old_mode_has_fill_rectangle))
       _mesa_update_valid_to_render_state(ctx);
 }
 
