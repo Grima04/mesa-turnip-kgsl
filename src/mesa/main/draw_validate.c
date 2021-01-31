@@ -183,33 +183,6 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
       return GL_FALSE;
    }
 
-#ifdef DEBUG
-   if (ctx->_Shader->Flags & GLSL_LOG) {
-      struct gl_program **prog = ctx->_Shader->CurrentProgram;
-
-      for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-	 if (prog[i] == NULL || prog[i]->_Used)
-	    continue;
-
-	 /* This is the first time this shader is being used.
-	  * Append shader's constants/uniforms to log file.
-	  *
-	  * Only log data for the program target that matches the shader
-	  * target.  It's possible to have a program bound to the vertex
-	  * shader target that also supplied a fragment shader.  If that
-	  * program isn't also bound to the fragment shader target we don't
-	  * want to log its fragment data.
-	  */
-	 _mesa_append_uniforms_to_file(prog[i]);
-      }
-
-      for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-	 if (prog[i] != NULL)
-	    prog[i]->_Used = GL_TRUE;
-      }
-   }
-#endif
-
    return GL_TRUE;
 }
 
@@ -520,6 +493,33 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
    else {
       mask &= ~(1 << GL_PATCHES);
    }
+
+#ifdef DEBUG
+   if (shader->Flags & GLSL_LOG) {
+      struct gl_program **prog = shader->CurrentProgram;
+
+      for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+	 if (prog[i] == NULL || prog[i]->_Used)
+	    continue;
+
+	 /* This is the first time this shader is being used.
+	  * Append shader's constants/uniforms to log file.
+	  *
+	  * Only log data for the program target that matches the shader
+	  * target.  It's possible to have a program bound to the vertex
+	  * shader target that also supplied a fragment shader.  If that
+	  * program isn't also bound to the fragment shader target we don't
+	  * want to log its fragment data.
+	  */
+	 _mesa_append_uniforms_to_file(prog[i]);
+      }
+
+      for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+	 if (prog[i] != NULL)
+	    prog[i]->_Used = GL_TRUE;
+      }
+   }
+#endif
 
    ctx->ValidPrimMask = mask;
 }
