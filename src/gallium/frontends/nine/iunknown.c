@@ -22,7 +22,7 @@
 
 #include "iunknown.h"
 #include "util/u_atomic.h"
-#include "util/u_hash_table.h"
+#include "util/hash_table.h"
 
 #include "nine_helpers.h"
 #include "nine_pdata.h"
@@ -72,10 +72,8 @@ NineUnknown_dtor( struct NineUnknown *This )
     if (This->refs && This->device) /* Possible only if early exit after a ctor failed */
         (void) NineUnknown_Release(NineUnknown(This->device));
 
-    if (This->pdata) {
-        util_hash_table_foreach(This->pdata, ht_guid_delete, NULL);
-        _mesa_hash_table_destroy(This->pdata, NULL);
-    }
+    if (This->pdata)
+        _mesa_hash_table_destroy(This->pdata, ht_guid_delete);
 
     FREE(This);
 }
@@ -235,6 +233,7 @@ NineUnknown_GetPrivateData( struct NineUnknown *This,
                             void *pData,
                             DWORD *pSizeOfData )
 {
+    struct hash_entry *entry;
     struct pheader *header;
     DWORD sizeofdata;
     char guid_str[64];
@@ -245,8 +244,10 @@ NineUnknown_GetPrivateData( struct NineUnknown *This,
 
     (void)guid_str;
 
-    header = util_hash_table_get(This->pdata, refguid);
-    if (!header) { DBG("Returning D3DERR_NOTFOUND\n"); return D3DERR_NOTFOUND; }
+    entry = _mesa_hash_table_search(This->pdata, refguid);
+    if (!entry) { DBG("Returning D3DERR_NOTFOUND\n"); return D3DERR_NOTFOUND; }
+
+    header = entry->data;
 
     user_assert(pSizeOfData, E_POINTER);
     sizeofdata = *pSizeOfData;
@@ -274,22 +275,22 @@ HRESULT NINE_WINAPI
 NineUnknown_FreePrivateData( struct NineUnknown *This,
                              REFGUID refguid )
 {
-    struct pheader *header;
+    struct hash_entry *entry;
     char guid_str[64];
 
     DBG("This=%p GUID=%s\n", This, GUID_sprintf(guid_str, refguid));
 
     (void)guid_str;
 
-    header = util_hash_table_get(This->pdata, refguid);
-    if (!header) {
+    entry = _mesa_hash_table_search(This->pdata, refguid);
+    if (!entry) {
         DBG("Nothing to free\n");
         return D3DERR_NOTFOUND;
     }
 
-    DBG("Freeing %p\n", header);
-    ht_guid_delete(NULL, header, NULL);
-    _mesa_hash_table_remove_key(This->pdata, refguid);
+    DBG("Freeing %p\n", entry->data);
+    ht_guid_delete(entry);
+    _mesa_hash_table_remove(This->pdata, entry);
 
     return D3D_OK;
 }
