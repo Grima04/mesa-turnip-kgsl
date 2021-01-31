@@ -129,37 +129,6 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
    if (ctx->NewState)
       _mesa_update_state(ctx);
 
-   if (ctx->API == API_OPENGL_COMPAT) {
-      /* Any shader stages that are not supplied by the GLSL shader and have
-       * assembly shaders enabled must now be validated.
-       */
-      if (!ctx->_Shader->CurrentProgram[MESA_SHADER_VERTEX] &&
-          ctx->VertexProgram.Enabled &&
-          !_mesa_arb_vertex_program_enabled(ctx)) {
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                     "%s(vertex program not valid)", where);
-         return GL_FALSE;
-      }
-
-      if (!ctx->_Shader->CurrentProgram[MESA_SHADER_FRAGMENT]) {
-         if (ctx->FragmentProgram.Enabled &&
-             !_mesa_arb_fragment_program_enabled(ctx)) {
-            _mesa_error(ctx, GL_INVALID_OPERATION,
-                        "%s(fragment program not valid)", where);
-            return GL_FALSE;
-         }
-
-         /* If drawing to integer-valued color buffers, there must be an
-          * active fragment shader (GL_EXT_texture_integer).
-          */
-         if (ctx->DrawBuffer && ctx->DrawBuffer->_IntegerBuffers) {
-            _mesa_error(ctx, GL_INVALID_OPERATION,
-                        "%s(integer format but no fragment shader)", where);
-            return GL_FALSE;
-         }
-      }
-   }
-
    if (!check_blend_func_error(ctx)) {
       return GL_FALSE;
    }
@@ -229,6 +198,20 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
    if (shader->ActiveProgram && shader != ctx->Pipeline.Current &&
        !_mesa_sampler_uniforms_are_valid(shader->ActiveProgram, NULL, 0))
       return;
+
+   if (ctx->API == API_OPENGL_COMPAT) {
+      if (!shader->CurrentProgram[MESA_SHADER_FRAGMENT]) {
+         if (ctx->FragmentProgram.Enabled &&
+             !_mesa_arb_fragment_program_enabled(ctx))
+            return;
+
+         /* If drawing to integer-valued color buffers, there must be an
+          * active fragment shader (GL_EXT_texture_integer).
+          */
+         if (ctx->DrawBuffer->_IntegerBuffers)
+            return;
+      }
+   }
 
    /* DrawPixels/CopyPixels/Bitmap is valid after this point. */
    ctx->DrawPixValid = true;
@@ -300,7 +283,14 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
       break;
 
    case API_OPENGLES:
+      break;
+
    case API_OPENGL_COMPAT:
+      /* Check invalid ARB vertex programs. */
+      if (!shader->CurrentProgram[MESA_SHADER_VERTEX] &&
+          ctx->VertexProgram.Enabled &&
+          !_mesa_arb_vertex_program_enabled(ctx))
+         return;
       break;
 
    default:

@@ -1093,6 +1093,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          FLUSH_VERTICES(ctx, _NEW_PROGRAM, GL_ENABLE_BIT);
          ctx->VertexProgram.Enabled = state;
          _mesa_update_vertex_processing_mode(ctx);
+         _mesa_update_valid_to_render_state(ctx);
          break;
       case GL_VERTEX_PROGRAM_POINT_SIZE_ARB:
          /* This was added with ARB_vertex_program, but it is also used with
@@ -1148,6 +1149,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             return;
          FLUSH_VERTICES(ctx, _NEW_PROGRAM, GL_ENABLE_BIT);
          ctx->FragmentProgram.Enabled = state;
+         _mesa_update_valid_to_render_state(ctx);
          break;
 
       /* GL_EXT_depth_bounds_test */

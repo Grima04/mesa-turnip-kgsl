@@ -31,6 +31,7 @@
 
 #include "main/glheader.h"
 #include "main/context.h"
+#include "main/draw_validate.h"
 #include "main/hash.h"
 
 #include "main/macros.h"
@@ -148,6 +149,7 @@ _mesa_BindProgramARB(GLenum target, GLuint id)
    }
 
    _mesa_update_vertex_processing_mode(ctx);
+   _mesa_update_valid_to_render_state(ctx);
 
    /* Never null pointers */
    assert(ctx->VertexProgram.Current);
@@ -411,6 +413,7 @@ set_program_string(struct gl_program *prog, GLenum target, GLenum format, GLsize
    }
 
    _mesa_update_vertex_processing_mode(ctx);
+   _mesa_update_valid_to_render_state(ctx);
 
    if (ctx->_Shader->Flags & GLSL_DUMP) {
       const char *shader_type =
