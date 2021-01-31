@@ -893,7 +893,7 @@ bool ShaderFromNirProcessor::emit_load_ubo_vec4(nir_intrinsic_instr* instr)
       FetchInstruction *ir;
       if (bufid) {
          ir = new FetchInstruction(vc_fetch, no_index_offset, trgt, addr, 0,
-                                              1, nullptr, bim_none);
+                                              1 + bufid->u32, nullptr, bim_none);
       } else {
          PValue bufid = from_nir(instr->src[0], 0, 0);
          ir = new FetchInstruction(vc_fetch, no_index_offset, trgt, addr, 0,
