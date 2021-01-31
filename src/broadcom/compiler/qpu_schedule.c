@@ -687,6 +687,112 @@ qpu_compatible_peripheral_access(const struct v3d_device_info *devinfo,
         return false;
 }
 
+/* Compute a bitmask of which rf registers are used between
+ * the two instructions.
+ */
+static uint64_t
+qpu_raddrs_used(const struct v3d_qpu_instr *a,
+                const struct v3d_qpu_instr *b)
+{
+        assert(a->type == V3D_QPU_INSTR_TYPE_ALU);
+        assert(b->type == V3D_QPU_INSTR_TYPE_ALU);
+
+        uint64_t raddrs_used = 0;
+        if (v3d_qpu_uses_mux(a, V3D_QPU_MUX_A))
+                raddrs_used |= (1ll << a->raddr_a);
+        if (!a->sig.small_imm && v3d_qpu_uses_mux(a, V3D_QPU_MUX_B))
+                raddrs_used |= (1ll << a->raddr_b);
+        if (v3d_qpu_uses_mux(b, V3D_QPU_MUX_A))
+                raddrs_used |= (1ll << b->raddr_a);
+        if (!b->sig.small_imm && v3d_qpu_uses_mux(b, V3D_QPU_MUX_B))
+                raddrs_used |= (1ll << b->raddr_b);
+
+        return raddrs_used;
+}
+
+/* Take two instructions and attempt to merge their raddr fields
+ * into one merged instruction. Returns false if the two instructions
+ * access more than two different rf registers between them, or more
+ * than one rf register and one small immediate.
+ */
+static bool
+qpu_merge_raddrs(struct v3d_qpu_instr *result,
+                 const struct v3d_qpu_instr *add_instr,
+                 const struct v3d_qpu_instr *mul_instr)
+{
+        uint64_t raddrs_used = qpu_raddrs_used(add_instr, mul_instr);
+        int naddrs = util_bitcount64(raddrs_used);
+
+        if (naddrs > 2)
+                return false;
+
+        if ((add_instr->sig.small_imm || mul_instr->sig.small_imm)) {
+                if (naddrs > 1)
+                        return false;
+
+                if (add_instr->sig.small_imm && mul_instr->sig.small_imm)
+                        if (add_instr->raddr_b != mul_instr->raddr_b)
+                                return false;
+
+                result->sig.small_imm = true;
+                result->raddr_b = add_instr->sig.small_imm ?
+                        add_instr->raddr_b : mul_instr->raddr_b;
+        }
+
+        if (naddrs == 0)
+                return true;
+
+        int raddr_a = ffsll(raddrs_used) - 1;
+        raddrs_used &= ~(1ll << raddr_a);
+        result->raddr_a = raddr_a;
+
+        if (!result->sig.small_imm) {
+                if (v3d_qpu_uses_mux(add_instr, V3D_QPU_MUX_B) &&
+                    raddr_a == add_instr->raddr_b) {
+                        if (add_instr->alu.add.a == V3D_QPU_MUX_B)
+                                result->alu.add.a = V3D_QPU_MUX_A;
+                        if (add_instr->alu.add.b == V3D_QPU_MUX_B &&
+                            v3d_qpu_add_op_num_src(add_instr->alu.add.op) > 1) {
+                                result->alu.add.b = V3D_QPU_MUX_A;
+                        }
+                }
+                if (v3d_qpu_uses_mux(mul_instr, V3D_QPU_MUX_B) &&
+                    raddr_a == mul_instr->raddr_b) {
+                        if (mul_instr->alu.mul.a == V3D_QPU_MUX_B)
+                                result->alu.mul.a = V3D_QPU_MUX_A;
+                        if (mul_instr->alu.mul.b == V3D_QPU_MUX_B &&
+                            v3d_qpu_mul_op_num_src(mul_instr->alu.mul.op) > 1) {
+                                result->alu.mul.b = V3D_QPU_MUX_A;
+                        }
+                }
+        }
+        if (!raddrs_used)
+                return true;
+
+        int raddr_b = ffsll(raddrs_used) - 1;
+        result->raddr_b = raddr_b;
+        if (v3d_qpu_uses_mux(add_instr, V3D_QPU_MUX_A) &&
+            raddr_b == add_instr->raddr_a) {
+                if (add_instr->alu.add.a == V3D_QPU_MUX_A)
+                        result->alu.add.a = V3D_QPU_MUX_B;
+                if (add_instr->alu.add.b == V3D_QPU_MUX_A &&
+                    v3d_qpu_add_op_num_src(add_instr->alu.add.op) > 1) {
+                        result->alu.add.b = V3D_QPU_MUX_B;
+                }
+        }
+        if (v3d_qpu_uses_mux(mul_instr, V3D_QPU_MUX_A) &&
+            raddr_b == mul_instr->raddr_a) {
+                if (mul_instr->alu.mul.a == V3D_QPU_MUX_A)
+                        result->alu.mul.a = V3D_QPU_MUX_B;
+                if (mul_instr->alu.mul.b == V3D_QPU_MUX_A &&
+                    v3d_qpu_add_op_num_src(mul_instr->alu.mul.op) > 1) {
+                        result->alu.mul.b = V3D_QPU_MUX_B;
+                }
+        }
+
+        return true;
+}
+
 static bool
 qpu_merge_inst(const struct v3d_device_info *devinfo,
                struct v3d_qpu_instr *result,
@@ -702,6 +808,7 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
                 return false;
 
         struct v3d_qpu_instr merge = *a;
+        const struct v3d_qpu_instr *add_instr = NULL, *mul_instr = NULL;
 
         if (b->alu.add.op != V3D_QPU_A_NOP) {
                 if (a->alu.add.op != V3D_QPU_A_NOP)
@@ -711,6 +818,9 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
                 merge.flags.ac = b->flags.ac;
                 merge.flags.apf = b->flags.apf;
                 merge.flags.auf = b->flags.auf;
+
+                add_instr = b;
+                mul_instr = a;
         }
 
         if (b->alu.mul.op != V3D_QPU_M_NOP) {
@@ -721,23 +831,14 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
                 merge.flags.mc = b->flags.mc;
                 merge.flags.mpf = b->flags.mpf;
                 merge.flags.muf = b->flags.muf;
+
+                mul_instr = b;
+                add_instr = a;
         }
 
-        if (v3d_qpu_uses_mux(b, V3D_QPU_MUX_A)) {
-                if (v3d_qpu_uses_mux(a, V3D_QPU_MUX_A) &&
-                    a->raddr_a != b->raddr_a) {
+        if (add_instr && mul_instr &&
+            !qpu_merge_raddrs(&merge, add_instr, mul_instr)) {
                         return false;
-                }
-                merge.raddr_a = b->raddr_a;
-        }
-
-        if (v3d_qpu_uses_mux(b, V3D_QPU_MUX_B)) {
-                if (v3d_qpu_uses_mux(a, V3D_QPU_MUX_B) &&
-                    (a->raddr_b != b->raddr_b ||
-                     a->sig.small_imm != b->sig.small_imm)) {
-                        return false;
-                }
-                merge.raddr_b = b->raddr_b;
         }
 
         merge.sig.thrsw |= b->sig.thrsw;
