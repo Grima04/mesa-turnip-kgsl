@@ -160,12 +160,6 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
       }
    }
 
-   if (ctx->DrawBuffer->_Status != GL_FRAMEBUFFER_COMPLETE_EXT) {
-      _mesa_error(ctx, GL_INVALID_FRAMEBUFFER_OPERATION_EXT,
-                  "%s(incomplete framebuffer)", where);
-      return GL_FALSE;
-   }
-
    if (!check_blend_func_error(ctx)) {
       return GL_FALSE;
    }
@@ -212,6 +206,18 @@ _mesa_update_valid_to_render_state(struct gl_context *ctx)
    /* Start with an empty mask and set this to the trimmed mask at the end. */
    ctx->ValidPrimMask = 0;
    ctx->DrawPixValid = false;
+
+   /* The default error is GL_INVALID_OPERATION if mode is a valid enum.
+    * It can be overriden by following code if we should return a different
+    * error.
+    */
+   ctx->DrawGLError = GL_INVALID_OPERATION;
+
+   if (!ctx->DrawBuffer ||
+       ctx->DrawBuffer->_Status != GL_FRAMEBUFFER_COMPLETE_EXT) {
+      ctx->DrawGLError = GL_INVALID_FRAMEBUFFER_OPERATION;
+      return;
+   }
 
    /* A pipeline object is bound */
    if (shader->Name && !shader->Validated &&
@@ -564,11 +570,11 @@ _mesa_valid_prim_mode(struct gl_context *ctx, GLenum mode, bool uses_vao,
    /* All primitive type enums are less than 32, so we can use the shift. */
    if (mode >= 32 || !((1u << mode) & ctx->ValidPrimMask)) {
       /* If the primitive type is not in SupportedPrimMask, set GL_INVALID_ENUM,
-       * else set GL_INVALID_OPERATION.
+       * else set DrawGLError (e.g. GL_INVALID_OPERATION).
        */
       _mesa_error(ctx,
                   mode >= 32 || !((1u << mode) & ctx->SupportedPrimMask) ?
-                     GL_INVALID_ENUM : GL_INVALID_OPERATION,
+                     GL_INVALID_ENUM : ctx->DrawGLError,
                   "%s(mode=%x)", name, mode);
       return false;
    }

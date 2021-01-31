@@ -717,6 +717,8 @@ fbo_incomplete(struct gl_context *ctx, const char *msg, int index)
    if (MESA_DEBUG_FLAGS & DEBUG_INCOMPLETE_FBO) {
       _mesa_debug(NULL, "FBO Incomplete: %s [%d]\n", msg, index);
    }
+
+   _mesa_update_valid_to_render_state(ctx);
 }
 
 

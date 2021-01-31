@@ -5235,6 +5235,8 @@ struct gl_context
     */
    GLbitfield ValidPrimMask;
 
+   GLenum16 DrawGLError; /**< GL error to return from draw calls */
+
    /**
     * Whether DrawPixels/CopyPixels/Bitmap are valid to render.
     */
