@@ -414,6 +414,11 @@ ttn_emit_declaration(struct ttn_compile *c)
                   var->data.location = FRAG_RESULT_STENCIL;
                   var->type = glsl_int_type();
                   break;
+               case TGSI_SEMANTIC_SAMPLEMASK:
+                  var->data.location = FRAG_RESULT_SAMPLE_MASK;
+                  var->type = glsl_int_type();
+                  break;
+
                default:
                   fprintf(stderr, "Bad TGSI semantic: %d/%d\n",
                           decl->Semantic.Name, decl->Semantic.Index);
@@ -2227,6 +2232,8 @@ ttn_add_output_stores(struct ttn_compile *c)
             store_value = nir_channel(b, store_value, 2);
          else if (var->data.location == FRAG_RESULT_STENCIL)
             store_value = nir_channel(b, store_value, 1);
+         else if (var->data.location == FRAG_RESULT_SAMPLE_MASK)
+            store_value = nir_channel(b, store_value, 0);
       } else {
          /* FOGC and PSIZ are scalar values */
          if (var->data.location == VARYING_SLOT_FOGC ||
