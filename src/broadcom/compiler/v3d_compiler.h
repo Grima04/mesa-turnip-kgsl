@@ -627,6 +627,12 @@ struct v3d_compile {
          */
         bool fallback_scheduler;
 
+        /* Disable TMU pipelining. This may increase the chances of being able
+         * to compile shaders with high register pressure that require to emit
+         * TMU spills.
+         */
+        bool disable_tmu_pipelining;
+
         /* State for whether we're executing on each channel currently.  0 if
          * yes, otherwise a block number + 1 that the channel jumped to.
          */

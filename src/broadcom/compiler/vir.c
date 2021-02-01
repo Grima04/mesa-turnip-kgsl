@@ -512,6 +512,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                                       void *debug_output_data),
                  void *debug_output_data,
                  int program_id, int variant_id,
+                 bool disable_tmu_pipelining,
                  bool fallback_scheduler)
 {
         struct v3d_compile *c = rzalloc(NULL, struct v3d_compile);
@@ -526,6 +527,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->debug_output_data = debug_output_data;
         c->compilation_result = V3D_COMPILATION_SUCCEEDED;
         c->fallback_scheduler = fallback_scheduler;
+        c->disable_tmu_pipelining = disable_tmu_pipelining;
 
         s = nir_shader_clone(c, s);
         c->s = s;
@@ -1237,22 +1239,32 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
 {
         struct v3d_compile *c;
 
-        for (int i = 0; true; i++) {
+        static const char *strategies[] = {
+                "default",
+                "disable TMU pipelining",
+                "fallback scheduler"
+        };
+
+        for (int i = 0; i < ARRAY_SIZE(strategies); i++) {
                 c = vir_compile_init(compiler, key, s,
                                      debug_output, debug_output_data,
                                      program_id, variant_id,
-                                     i > 0 /* fallback_scheduler */);
+                                     i > 0, /* Disable TMU pipelining */
+                                     i > 1  /* Fallback_scheduler */);
 
                 v3d_attempt_compile(c);
 
-                if (i > 0 ||
+                if (i >= ARRAY_SIZE(strategies) - 1 ||
                     c->compilation_result !=
-                    V3D_COMPILATION_FAILED_REGISTER_ALLOCATION)
+                    V3D_COMPILATION_FAILED_REGISTER_ALLOCATION) {
                         break;
+                }
 
+                /* Fallback strategy */
                 char *debug_msg;
                 int ret = asprintf(&debug_msg,
-                                   "Using fallback scheduler for %s",
+                                   "Falling back to strategy '%s' for %s",
+                                   strategies[i + 1],
                                    vir_get_stage_name(c));
 
                 if (ret >= 0) {
