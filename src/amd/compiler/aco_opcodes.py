@@ -288,6 +288,8 @@ opcode("p_exit_early_if")
 # simulates proper bpermute behavior when it's unsupported, eg. GFX10 wave64
 opcode("p_bpermute")
 
+opcode("p_constaddr")
+
 # SOP2 instructions: 2 scalar inputs, 1 scalar output (+optional scc)
 SOP2 = {
   # GFX6, GFX7, GFX8, GFX9, GFX10, name
@@ -344,6 +346,8 @@ SOP2 = {
    (  -1,   -1,   -1, 0x34, 0x34, "s_pack_hh_b32_b16"),
    (  -1,   -1,   -1, 0x2c, 0x35, "s_mul_hi_u32"),
    (  -1,   -1,   -1, 0x2d, 0x36, "s_mul_hi_i32"),
+   # actually a pseudo-instruction. it's lowered to SALU during assembly though, so it's useful to identify it as a SOP2.
+   (  -1,   -1,   -1,   -1,   -1, "p_constaddr_addlo"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOP2:
     opcode(name, gfx7, gfx9, gfx10, Format.SOP2)
@@ -457,7 +461,7 @@ SOP1 = {
    (  -1,   -1,   -1,   -1, 0x47, "s_andn2_wrexec_b32"),
    (  -1,   -1,   -1,   -1, 0x49, "s_movrelsd_2_b32"),
    # actually a pseudo-instruction. it's lowered to SALU during assembly though, so it's useful to identify it as a SOP1.
-   (  -1,   -1,   -1,   -1,   -1, "p_constaddr"),
+   (  -1,   -1,   -1,   -1,   -1, "p_constaddr_getpc"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOP1:
    opcode(name, gfx7, gfx9, gfx10, Format.SOP1)

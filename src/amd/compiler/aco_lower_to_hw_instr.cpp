@@ -1979,6 +1979,17 @@ void lower_to_hw_instr(Program* program)
                   unreachable("Current hardware supports ds_bpermute, don't emit p_bpermute.");
                break;
             }
+            case aco_opcode::p_constaddr:
+            {
+               unsigned id = instr->definitions[0].tempId();
+               PhysReg reg = instr->definitions[0].physReg();
+               bld.sop1(aco_opcode::p_constaddr_getpc, instr->definitions[0], Operand(id));
+               bld.sop2(aco_opcode::p_constaddr_addlo, Definition(reg, s1), bld.def(s1, scc),
+                        Operand(reg, s1), Operand(id));
+               bld.sop2(aco_opcode::s_addc_u32, Definition(reg.advance(4), s1), bld.def(s1, scc),
+                        Operand(reg.advance(4), s1), Operand(0u), Operand(scc, s1));
+               break;
+            }
             default:
                break;
             }
