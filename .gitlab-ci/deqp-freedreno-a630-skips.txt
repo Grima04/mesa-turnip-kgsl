@@ -29,3 +29,7 @@ dEQP-VK.synchronization.cross_instance.*binary_semaphore_fence_fd
 
 # Timeouts, passes otherwise
 dEQP-VK.tessellation.invariance.outer_triangle_set.quads_fractional_odd_spacing
+dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_even_spacing
+
+dEQP-VK.spirv_assembly.instruction.compute.spirv_ids_abuse.lots_ids
+dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_tessc

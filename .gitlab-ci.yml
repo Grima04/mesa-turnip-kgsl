@@ -1436,7 +1436,7 @@ arm64_a630_vk:
     - .arm64-a630-test
   parallel: 2
   variables:
-    DEQP_FRACTION: 10
+    DEQP_FRACTION: 4
     # Force binning in the main run, which makes sure we render at
     # least 2 bins.  This is the path that impacts the most different
     # features.  However, we end up with flaky results in
