@@ -1091,7 +1091,7 @@ _mesa_ClampColor(GLenum target, GLenum clamp)
    case GL_CLAMP_VERTEX_COLOR_ARB:
       if (ctx->API == API_OPENGL_CORE)
          goto invalid_enum;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT | GL_ENABLE_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_STATE, GL_LIGHTING_BIT | GL_ENABLE_BIT);
       ctx->Light.ClampVertexColor = clamp;
       _mesa_update_clamp_vertex_color(ctx, ctx->DrawBuffer);
       break;

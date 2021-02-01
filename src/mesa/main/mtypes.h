@@ -4631,10 +4631,10 @@ struct gl_matrix_stack
 #define _NEW_TEXTURE_MATRIX    (1u << 2)   /**< gl_context::TextureMatrix */
 #define _NEW_COLOR             (1u << 3)   /**< gl_context::Color */
 #define _NEW_DEPTH             (1u << 4)   /**< gl_context::Depth */
-/* gap */
+#define _NEW_LIGHT_FF_PROGRAM  (1u << 5)   /**< gl_context::Light */
 #define _NEW_FOG               (1u << 6)   /**< gl_context::Fog */
 #define _NEW_HINT              (1u << 7)   /**< gl_context::Hint */
-#define _NEW_LIGHT             (1u << 8)   /**< gl_context::Light */
+#define _NEW_LIGHT_CONSTANTS   (1u << 8)   /**< gl_context::Light */
 #define _NEW_LINE              (1u << 9)   /**< gl_context::Line */
 #define _NEW_PIXEL             (1u << 10)  /**< gl_context::Pixel */
 #define _NEW_POINT             (1u << 11)  /**< gl_context::Point */
@@ -4646,7 +4646,7 @@ struct gl_matrix_stack
 #define _NEW_TRANSFORM         (1u << 17)  /**< gl_context::Transform */
 #define _NEW_VIEWPORT          (1u << 18)  /**< gl_context::Viewport */
 #define _NEW_TEXTURE_STATE     (1u << 19)  /**< gl_context::Texture (states only) */
-/* gap */
+#define _NEW_LIGHT_STATE       (1u << 20)  /**< gl_context::Light */
 #define _NEW_RENDERMODE        (1u << 21)  /**< gl_context::RenderMode, etc */
 #define _NEW_BUFFERS           (1u << 22)  /**< gl_context::Visual, DrawBuffer, */
 #define _NEW_CURRENT_ATTRIB    (1u << 23)  /**< gl_context::Current */
@@ -4666,9 +4666,14 @@ struct gl_matrix_stack
  * Composite state flags
  */
 /*@{*/
+#define _NEW_LIGHT     (_NEW_LIGHT_FF_PROGRAM | /* fixed-func programs */ \
+                        _NEW_LIGHT_CONSTANTS |  /* state parameters */ \
+                        _NEW_LIGHT_STATE)       /* rasterizer state */
+
 #define _NEW_TEXTURE   (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE)
 
-#define _MESA_NEW_NEED_EYE_COORDS         (_NEW_LIGHT |		\
+#define _MESA_NEW_NEED_EYE_COORDS         (_NEW_LIGHT_FF_PROGRAM | \
+                                           _NEW_LIGHT_CONSTANTS | \
                                            _NEW_TEXTURE_STATE |	\
                                            _NEW_POINT |		\
                                            _NEW_PROGRAM |	\

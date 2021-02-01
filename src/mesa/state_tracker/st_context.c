@@ -223,11 +223,11 @@ st_invalidate_state(struct gl_context *ctx)
          st->dirty |= ST_NEW_FS_STATE;
    }
 
-   if (new_state & (_NEW_LIGHT |
+   if (new_state & (_NEW_LIGHT_STATE |
                     _NEW_POINT))
       st->dirty |= ST_NEW_RASTERIZER;
 
-   if ((new_state & _NEW_LIGHT) &&
+   if ((new_state & _NEW_LIGHT_STATE) &&
        (st->lower_flatshade || st->lower_two_sided_color))
       st->dirty |= ST_NEW_FS_STATE;
 
@@ -255,7 +255,7 @@ st_invalidate_state(struct gl_context *ctx)
    }
 
    /* Update the vertex shader if ctx->Light._ClampVertexColor was changed. */
-   if (st->clamp_vert_color_in_shader && (new_state & _NEW_LIGHT)) {
+   if (st->clamp_vert_color_in_shader && (new_state & _NEW_LIGHT_STATE)) {
       st->dirty |= ST_NEW_VS_STATE;
       if (st->ctx->API == API_OPENGL_COMPAT && ctx->Version >= 32) {
          st->dirty |= ST_NEW_GS_STATE | ST_NEW_TES_STATE;

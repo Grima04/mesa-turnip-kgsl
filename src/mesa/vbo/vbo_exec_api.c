@@ -225,8 +225,13 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
           */
          if (i >= VBO_ATTRIB_MAT_FRONT_AMBIENT &&
              i <= VBO_ATTRIB_MAT_BACK_INDEXES) {
-            ctx->NewState |= _NEW_LIGHT;
+            ctx->NewState |= _NEW_LIGHT_CONSTANTS;
             ctx->PopAttribState |= GL_LIGHTING_BIT;
+
+            /* The fixed-func vertex program uses this. */
+            if (i == VBO_ATTRIB_MAT_FRONT_SHININESS ||
+                i == VBO_ATTRIB_MAT_BACK_SHININESS)
+               ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
          }
 
          ctx->NewState |= _NEW_CURRENT_ATTRIB;

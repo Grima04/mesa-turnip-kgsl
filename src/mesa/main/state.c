@@ -462,7 +462,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
       if (new_state & (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE | _NEW_PROGRAM))
          _mesa_update_texture_state(ctx);
 
-      if (new_state & _NEW_LIGHT)
+      if (new_state & (_NEW_LIGHT_FF_PROGRAM | _NEW_LIGHT_CONSTANTS))
          _mesa_update_lighting(ctx);
 
       if (new_state & _NEW_PIXEL)
@@ -488,14 +488,15 @@ _mesa_update_state_locked( struct gl_context *ctx )
 
       if (ctx->FragmentProgram._UsesTexEnvProgram) {
          prog_flags |= _NEW_BUFFERS | _NEW_TEXTURE_OBJECT | _NEW_FOG |
-                       _NEW_VARYING_VP_INPUTS | _NEW_LIGHT | _NEW_POINT |
-                       _NEW_RENDERMODE | _NEW_COLOR | _NEW_TEXTURE_STATE;
+                       _NEW_VARYING_VP_INPUTS | _NEW_LIGHT_FF_PROGRAM |
+                       _NEW_POINT | _NEW_RENDERMODE | _NEW_COLOR |
+                       _NEW_TEXTURE_STATE;
       }
 
       if (ctx->VertexProgram._UsesTnlProgram) {
          prog_flags |= _NEW_VARYING_VP_INPUTS | _NEW_TEXTURE_OBJECT |
                        _NEW_TEXTURE_MATRIX | _NEW_TRANSFORM | _NEW_POINT |
-                       _NEW_FOG | _NEW_LIGHT | _NEW_TEXTURE_STATE |
+                       _NEW_FOG | _NEW_LIGHT_FF_PROGRAM | _NEW_TEXTURE_STATE |
                        _MESA_NEW_NEED_EYE_COORDS;
       }
 

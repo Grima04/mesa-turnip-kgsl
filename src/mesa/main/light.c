@@ -51,7 +51,7 @@ _mesa_ShadeModel( GLenum mode )
       return;
    }
 
-   FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+   FLUSH_VERTICES(ctx, _NEW_LIGHT_STATE, GL_LIGHTING_BIT);
    ctx->Light.ShadeModel = mode;
 
    if (ctx->Driver.ShadeModel)
@@ -84,7 +84,7 @@ _mesa_ProvokingVertex(GLenum mode)
       return;
    }
 
-   FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+   FLUSH_VERTICES(ctx, _NEW_LIGHT_STATE, GL_LIGHTING_BIT);
    ctx->Light.ProvokingVertex = mode;
 }
 
@@ -110,31 +110,40 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
    case GL_AMBIENT:
       if (TEST_EQ_4V(lu->Ambient, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
       COPY_4V( lu->Ambient, params );
       break;
    case GL_DIFFUSE:
       if (TEST_EQ_4V(lu->Diffuse, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
       COPY_4V( lu->Diffuse, params );
       break;
    case GL_SPECULAR:
       if (TEST_EQ_4V(lu->Specular, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
       COPY_4V( lu->Specular, params );
       break;
    case GL_POSITION: {
       /* NOTE: position has already been transformed by ModelView! */
       if (TEST_EQ_4V(lu->EyePosition, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
+
+      bool old_positional = lu->EyePosition[3] != 0.0f;
+      bool positional = params[3] != 0.0f;
       COPY_4V(lu->EyePosition, params);
-      if (lu->EyePosition[3] != 0.0F)
-	 light->_Flags |= LIGHT_POSITIONAL;
-      else
-	 light->_Flags &= ~LIGHT_POSITIONAL;
+
+      if (positional != old_positional) {
+         if (positional)
+            light->_Flags |= LIGHT_POSITIONAL;
+         else
+            light->_Flags &= ~LIGHT_POSITIONAL;
+
+         /* Used by fixed-func vertex program. */
+         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+      }
 
       static const GLfloat eye_z[] = {0, 0, 1};
       GLfloat p[3];
@@ -154,7 +163,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
       /* NOTE: Direction already transformed by inverse ModelView! */
       if (TEST_EQ_3V(lu->SpotDirection, params))
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
       COPY_3V(lu->SpotDirection, params);
       break;
    case GL_SPOT_EXPONENT:
@@ -162,44 +171,81 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
       assert(params[0] <= ctx->Const.MaxSpotExponent);
       if (lu->SpotExponent == params[0])
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
       lu->SpotExponent = params[0];
       break;
-   case GL_SPOT_CUTOFF:
+   case GL_SPOT_CUTOFF: {
       assert(params[0] == 180.0F || (params[0] >= 0.0F && params[0] <= 90.0F));
       if (lu->SpotCutoff == params[0])
          return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
+
+      bool old_is_180 = lu->SpotCutoff == 180.0f;
+      bool is_180 = params[0] == 180.0f;
       lu->SpotCutoff = params[0];
       lu->_CosCutoff = (cosf(lu->SpotCutoff * M_PI / 180.0));
       if (lu->_CosCutoff < 0)
          lu->_CosCutoff = 0;
-      if (lu->SpotCutoff != 180.0F)
-         light->_Flags |= LIGHT_SPOT;
-      else
-         light->_Flags &= ~LIGHT_SPOT;
+
+      if (is_180 != old_is_180) {
+         if (!is_180)
+            light->_Flags |= LIGHT_SPOT;
+         else
+            light->_Flags &= ~LIGHT_SPOT;
+
+         /* Used by fixed-func vertex program. */
+         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+      }
       break;
-   case GL_CONSTANT_ATTENUATION:
+   }
+   case GL_CONSTANT_ATTENUATION: {
       assert(params[0] >= 0.0F);
       if (lu->ConstantAttenuation == params[0])
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
+
+      bool old_is_one = lu->ConstantAttenuation == 1.0f;
+      bool is_one = params[0] == 1.0f;
       lu->ConstantAttenuation = params[0];
+
+      if (old_is_one != is_one) {
+         /* Used by fixed-func vertex program. */
+         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+      }
       break;
-   case GL_LINEAR_ATTENUATION:
+   }
+   case GL_LINEAR_ATTENUATION: {
       assert(params[0] >= 0.0F);
       if (lu->LinearAttenuation == params[0])
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
+
+      bool old_is_zero = lu->LinearAttenuation == 0.0f;
+      bool is_zero = params[0] == 0.0f;
       lu->LinearAttenuation = params[0];
+
+      if (old_is_zero != is_zero) {
+         /* Used by fixed-func vertex program. */
+         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+      }
       break;
-   case GL_QUADRATIC_ATTENUATION:
+   }
+   case GL_QUADRATIC_ATTENUATION: {
       assert(params[0] >= 0.0F);
       if (lu->QuadraticAttenuation == params[0])
 	 return;
-      FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+      FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
+
+      bool old_is_zero = lu->QuadraticAttenuation == 0.0f;
+      bool is_zero = params[0] == 0.0f;
       lu->QuadraticAttenuation = params[0];
+
+      if (old_is_zero != is_zero) {
+         /* Used by fixed-func vertex program. */
+         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+      }
       break;
+   }
    default:
       unreachable("Unexpected pname in _mesa_light()");
    }
@@ -461,7 +507,7 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
       case GL_LIGHT_MODEL_AMBIENT:
          if (TEST_EQ_4V( ctx->Light.Model.Ambient, params ))
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS, GL_LIGHTING_BIT);
          COPY_4V( ctx->Light.Model.Ambient, params );
          break;
       case GL_LIGHT_MODEL_LOCAL_VIEWER:
@@ -470,14 +516,16 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
          newbool = (params[0] != 0.0F);
 	 if (ctx->Light.Model.LocalViewer == newbool)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM,
+                        GL_LIGHTING_BIT);
 	 ctx->Light.Model.LocalViewer = newbool;
          break;
       case GL_LIGHT_MODEL_TWO_SIDE:
          newbool = (params[0] != 0.0F);
 	 if (ctx->Light.Model.TwoSide == newbool)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM |
+                        _NEW_LIGHT_STATE, GL_LIGHTING_BIT);
 	 ctx->Light.Model.TwoSide = newbool;
          break;
       case GL_LIGHT_MODEL_COLOR_CONTROL:
@@ -494,7 +542,8 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
          }
 	 if (ctx->Light.Model.ColorControl == newenum)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM,
+                        GL_LIGHTING_BIT);
 	 ctx->Light.Model.ColorControl = newenum;
          break;
       default:
@@ -763,13 +812,14 @@ _mesa_ColorMaterial( GLenum face, GLenum mode )
        ctx->Light.ColorMaterialMode == mode)
       return;
 
-   FLUSH_VERTICES(ctx, _NEW_LIGHT, GL_LIGHTING_BIT);
+   FLUSH_VERTICES(ctx, 0, GL_LIGHTING_BIT);
    ctx->Light._ColorMaterialBitmask = bitmask;
    ctx->Light.ColorMaterialFace = face;
    ctx->Light.ColorMaterialMode = mode;
 
    if (ctx->Light.ColorMaterialEnabled) {
-      FLUSH_CURRENT( ctx, 0 );
+      /* Used by fixed-func vertex program. */
+      FLUSH_CURRENT(ctx, _NEW_LIGHT_FF_PROGRAM);
       _mesa_update_color_material(ctx,ctx->Current.Attrib[VERT_ATTRIB_COLOR0]);
    }
 
@@ -957,10 +1007,10 @@ _mesa_update_lighting( struct gl_context *ctx )
  * Update state derived from light position, spot direction.
  * Called upon:
  *   _NEW_MODELVIEW
- *   _NEW_LIGHT
+ *   _NEW_LIGHT_CONSTANTS
  *   _TNL_NEW_NEED_EYE_COORDS
  *
- * Update on (_NEW_MODELVIEW | _NEW_LIGHT) when lighting is enabled.
+ * Update on (_NEW_MODELVIEW | _NEW_LIGHT_CONSTANTS) when lighting is enabled.
  * Also update on lighting space changes.
  */
 static void
@@ -1110,7 +1160,7 @@ _mesa_update_tnl_spaces( struct gl_context *ctx, GLuint new_state )
       if (new_state2 & _NEW_MODELVIEW)
 	 update_modelview_scale(ctx);
 
-      if (new_state2 & (_NEW_LIGHT|_NEW_MODELVIEW))
+      if (new_state2 & (_NEW_LIGHT_CONSTANTS | _NEW_MODELVIEW))
 	 compute_light_positions( ctx );
    }
 }

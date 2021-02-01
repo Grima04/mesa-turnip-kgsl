@@ -53,7 +53,8 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
    while (mask) {
       const int i = u_bit_scan(&mask);
       const struct gl_array_attributes *attrib = &vao->VertexAttrib[i];
-      struct gl_array_attributes *currval = &vbo->current[shift + i];
+      unsigned current_index = shift + i;
+      struct gl_array_attributes *currval = &vbo->current[current_index];
       const GLubyte size = attrib->Format.Size;
       const GLenum16 type = attrib->Format.Type;
       fi_type tmp[8];
@@ -73,6 +74,11 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
          memcpy((fi_type*)currval->Ptr, tmp, 4 * sizeof(GLfloat) * dmul);
 
          vbo_set_vertex_format(&currval->Format, size, type);
+
+         /* The fixed-func vertex program uses this. */
+         if (current_index == VBO_ATTRIB_MAT_FRONT_SHININESS ||
+             current_index == VBO_ATTRIB_MAT_BACK_SHININESS)
+            ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
 
          ctx->NewState |= state;
          ctx->PopAttribState |= pop_state;
@@ -99,7 +105,7 @@ playback_copy_to_current(struct gl_context *ctx,
             _NEW_CURRENT_ATTRIB, GL_CURRENT_BIT, 0, &data);
    /* Copy materials */
    copy_vao(ctx, node->VAO[VP_MODE_FF], VERT_BIT_MAT_ALL,
-            _NEW_CURRENT_ATTRIB | _NEW_LIGHT,
+            _NEW_CURRENT_ATTRIB | _NEW_LIGHT_CONSTANTS,
             GL_CURRENT_BIT | GL_LIGHTING_BIT,
             VBO_MATERIAL_SHIFT, &data);
 

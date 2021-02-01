@@ -147,7 +147,7 @@ st_update_fp( struct st_context *st )
       if (st->lower_alpha_test && _mesa_is_alpha_test_enabled(st->ctx))
          key.lower_alpha_func = st->ctx->Color.AlphaFunc;
 
-      /* _NEW_LIGHT | _NEW_PROGRAM */
+      /* _NEW_LIGHT_STATE | _NEW_PROGRAM */
       key.lower_two_sided_color = st->lower_two_sided_color &&
          _mesa_vertex_program_two_side_enabled(st->ctx);
 

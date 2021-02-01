@@ -693,7 +693,7 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
    case STATE_LIGHTPROD:
    case STATE_LIGHTMODEL_SCENECOLOR:
       /* these can be effected by glColor when colormaterial mode is used */
-      return _NEW_LIGHT | _NEW_CURRENT_ATTRIB;
+      return _NEW_LIGHT_CONSTANTS | _NEW_CURRENT_ATTRIB;
 
    case STATE_LIGHT:
    case STATE_LIGHT_ARRAY:
@@ -702,7 +702,7 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
    case STATE_LIGHT_POSITION:
    case STATE_LIGHT_POSITION_NORMALIZED:
    case STATE_LIGHT_HALF_VECTOR:
-      return _NEW_LIGHT;
+      return _NEW_LIGHT_CONSTANTS;
 
    case STATE_TEXGEN:
       return _NEW_TEXTURE_STATE;
@@ -775,7 +775,7 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
    case STATE_CURRENT_ATTRIB:
       return _NEW_CURRENT_ATTRIB;
    case STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED:
-      return _NEW_CURRENT_ATTRIB | _NEW_LIGHT | _NEW_BUFFERS;
+      return _NEW_CURRENT_ATTRIB | _NEW_LIGHT_STATE | _NEW_BUFFERS;
 
    case STATE_POINT_SIZE_CLAMPED:
       return _NEW_POINT | _NEW_MULTISAMPLE;
