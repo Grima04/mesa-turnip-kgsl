@@ -4657,7 +4657,7 @@ struct gl_matrix_stack
 #define _NEW_FF_VERT_PROGRAM   (1u << 28)
 #define _NEW_FRAG_CLAMP        (1u << 29)
 #define _NEW_MATERIAL          (1u << 30)  /**< gl_context::Light.Material */
-#define _NEW_VARYING_VP_INPUTS (1u << 31) /**< gl_context::VertexProgram._VaryingInputs */
+#define _NEW_FF_FRAG_PROGRAM   (1u << 31)
 #define _NEW_ALL ~0
 /*@}*/
 

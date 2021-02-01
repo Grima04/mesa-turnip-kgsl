@@ -179,7 +179,6 @@ static GLbitfield filter_fp_input_mask( GLbitfield fp_inputs,
       /* Fixed function vertex logic */
       GLbitfield possible_inputs = 0;
 
-      /* _NEW_VARYING_VP_INPUTS */
       GLbitfield varying_inputs = ctx->VertexProgram._VaryingInputs;
       /* We only update ctx->VertexProgram._VaryingInputs when in VP_MODE_FF _VPMode */
       assert(VP_MODE_FF == ctx->VertexProgram._VPMode);

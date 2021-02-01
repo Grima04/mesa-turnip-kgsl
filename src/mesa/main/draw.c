@@ -86,7 +86,7 @@ _mesa_set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs)
    if (ctx->VertexProgram._VPModeOptimizesConstantAttribs &&
        ctx->VertexProgram._VaryingInputs != varying_inputs) {
       ctx->VertexProgram._VaryingInputs = varying_inputs;
-      ctx->NewState |= _NEW_VARYING_VP_INPUTS;
+      ctx->NewState |= _NEW_FF_VERT_PROGRAM | _NEW_FF_FRAG_PROGRAM;
    }
 }
 

@@ -491,16 +491,14 @@ _mesa_update_state_locked( struct gl_context *ctx )
 
       if (ctx->FragmentProgram._UsesTexEnvProgram) {
          prog_flags |= _NEW_BUFFERS | _NEW_TEXTURE_OBJECT | _NEW_FOG |
-                       _NEW_VARYING_VP_INPUTS | _NEW_LIGHT_FF_PROGRAM |
-                       _NEW_POINT | _NEW_RENDERMODE | _NEW_COLOR |
-                       _NEW_TEXTURE_STATE;
+                       _NEW_FF_FRAG_PROGRAM | _NEW_POINT | _NEW_RENDERMODE |
+                       _NEW_COLOR | _NEW_TEXTURE_STATE | _NEW_LIGHT_FF_PROGRAM;
       }
 
       if (ctx->VertexProgram._UsesTnlProgram) {
-         prog_flags |= _NEW_VARYING_VP_INPUTS | _NEW_TEXTURE_OBJECT |
+         prog_flags |= _NEW_FF_VERT_PROGRAM | _NEW_TEXTURE_OBJECT |
                        _NEW_TEXTURE_MATRIX | _NEW_TRANSFORM | _NEW_POINT |
-                       _NEW_FOG | _NEW_LIGHT_FF_PROGRAM | _NEW_TEXTURE_STATE |
-                       _NEW_FF_VERT_PROGRAM;
+                       _NEW_FOG | _NEW_LIGHT_FF_PROGRAM | _NEW_TEXTURE_STATE;
       }
 
       if (new_state & prog_flags) {
@@ -624,8 +622,8 @@ set_vertex_processing_mode(struct gl_context *ctx, gl_vertex_processing_mode m)
    }
 
    /* Since we only track the varying inputs while being in fixed function
-    * vertex processing mode, we may need to recheck for the
-    * _NEW_VARYING_VP_INPUTS bit.
+    * vertex processing mode, we may need to update fixed-func shaders
+    * for zero-stride vertex attribs.
     */
    _mesa_set_varying_vp_inputs(ctx, ctx->Array._DrawVAOEnabledAttribs);
 }
