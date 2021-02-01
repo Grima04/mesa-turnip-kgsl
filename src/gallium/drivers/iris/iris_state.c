@@ -2430,7 +2430,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
                          struct pipe_resource *tex,
                          const struct pipe_sampler_view *tmpl)
 {
-   struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_sampler_view *isv = calloc(1, sizeof(struct iris_sampler_view));
@@ -2513,8 +2512,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
                                 ISL_SURF_USAGE_TEXTURE_BIT);
    }
 
-   upload_surface_states(ice->state.surface_uploader, &isv->surface_state);
-
    return &isv->base;
 }
 
@@ -2540,7 +2537,6 @@ iris_create_surface(struct pipe_context *ctx,
                     struct pipe_resource *tex,
                     const struct pipe_surface *tmpl)
 {
-   struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
@@ -2657,13 +2653,6 @@ iris_create_surface(struct pipe_context *ctx,
 #endif
       }
 
-      upload_surface_states(ice->state.surface_uploader, &surf->surface_state);
-
-#if GEN_GEN == 8
-      upload_surface_states(ice->state.surface_uploader,
-                            &surf->surface_state_read);
-#endif
-
       return psurf;
    }
 
@@ -2744,8 +2733,6 @@ iris_create_surface(struct pipe_context *ctx,
    };
 
    isl_surf_fill_state_s(&screen->isl_dev, surf->surface_state.cpu, &f);
-
-   upload_surface_states(ice->state.surface_uploader, &surf->surface_state);
 
    return psurf;
 }
@@ -4819,6 +4806,16 @@ use_surface(struct iris_context *ice,
    struct iris_resource *res = (void *) p_surf->texture;
    uint32_t offset = 0;
 
+   if (GEN_GEN == 8 && is_read_surface && !surf->surface_state_read.ref.res) {
+      upload_surface_states(ice->state.surface_uploader,
+                            &surf->surface_state_read);
+   }
+
+   if (!surf->surface_state.ref.res) {
+      upload_surface_states(ice->state.surface_uploader,
+                            &surf->surface_state);
+   }
+
    if (res->aux.bo) {
       iris_use_pinned_bo(batch, res->aux.bo, writeable, access);
       if (res->aux.clear_color_bo)
@@ -4861,6 +4858,9 @@ use_sampler_view(struct iris_context *ice,
 {
    enum isl_aux_usage aux_usage =
       iris_resource_texture_aux_usage(ice, isv->res, isv->view.format);
+
+   if (!isv->surface_state.ref.res)
+      upload_surface_states(ice->state.surface_uploader, &isv->surface_state);
 
    if (isv->res->aux.bo) {
       iris_use_pinned_bo(batch, isv->res->aux.bo,
