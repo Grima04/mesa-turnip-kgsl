@@ -37,10 +37,6 @@
 #include "fd6_emit.h"
 #include "fd6_pack.h"
 
-struct fd6_compute_stateobj {
-	struct ir3_shader *shader;
-};
-
 
 static void *
 fd6_create_compute_state(struct pipe_context *pctx,
@@ -60,17 +56,7 @@ fd6_create_compute_state(struct pipe_context *pctx,
 	}
 
 	struct ir3_compiler *compiler = ctx->screen->compiler;
-	struct fd6_compute_stateobj *so = CALLOC_STRUCT(fd6_compute_stateobj);
-	so->shader = ir3_shader_create_compute(compiler, cso, &ctx->debug, pctx->screen);
-	return so;
-}
-
-static void
-fd6_delete_compute_state(struct pipe_context *pctx, void *hwcso)
-{
-	struct fd6_compute_stateobj *so = hwcso;
-	ir3_shader_state_delete(pctx, so->shader);
-	free(so);
+	return ir3_shader_create_compute(compiler, cso, &ctx->debug, pctx->screen);
 }
 
 /* maybe move to fd6_program? */
@@ -136,13 +122,12 @@ cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 static void
 fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 {
-	struct fd6_compute_stateobj *so = ctx->compute;
 	struct ir3_shader_key key = {};
 	struct ir3_shader_variant *v;
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 	unsigned nglobal = 0;
 
-	v = ir3_shader_variant(so->shader, key, false, &ctx->debug);
+	v = ir3_shader_variant(ctx->compute, key, false, &ctx->debug);
 	if (!v)
 		return;
 
@@ -226,5 +211,5 @@ fd6_compute_init(struct pipe_context *pctx)
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->launch_grid = fd6_launch_grid;
 	pctx->create_compute_state = fd6_create_compute_state;
-	pctx->delete_compute_state = fd6_delete_compute_state;
+	pctx->delete_compute_state = ir3_shader_state_delete;
 }
