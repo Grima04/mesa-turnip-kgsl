@@ -468,7 +468,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
       if (new_state & _NEW_PIXEL)
          _mesa_update_pixel( ctx );
 
-      /* ctx->_NeedEyeCoords is now up to date.
+      /* ctx->_NeedEyeCoords is determined here.
        *
        * If the truth value of this variable has changed, update for the
        * new lighting space and recompute the positions of lights and the
@@ -477,8 +477,11 @@ _mesa_update_state_locked( struct gl_context *ctx )
        * If the lighting space hasn't changed, may still need to recompute
        * light positions & normal transforms for other reasons.
        */
-      if (new_state & _MESA_NEW_NEED_EYE_COORDS)
-         _mesa_update_tnl_spaces( ctx, new_state );
+      if (new_state & (_NEW_LIGHT_FF_PROGRAM | _NEW_LIGHT_CONSTANTS |
+                       _NEW_TEXTURE_STATE | _NEW_POINT | _NEW_MODELVIEW)) {
+         if (_mesa_update_tnl_spaces(ctx, new_state))
+            new_state |= _NEW_FF_VERT_PROGRAM;
+      }
 
       if (new_state & _NEW_PROGRAM)
          update_fixed_func_program_usage(ctx);
@@ -497,7 +500,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
          prog_flags |= _NEW_VARYING_VP_INPUTS | _NEW_TEXTURE_OBJECT |
                        _NEW_TEXTURE_MATRIX | _NEW_TRANSFORM | _NEW_POINT |
                        _NEW_FOG | _NEW_LIGHT_FF_PROGRAM | _NEW_TEXTURE_STATE |
-                       _MESA_NEW_NEED_EYE_COORDS;
+                       _NEW_FF_VERT_PROGRAM;
       }
 
       if (new_state & prog_flags) {

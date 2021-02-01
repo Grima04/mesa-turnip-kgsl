@@ -1120,8 +1120,10 @@ update_modelview_scale( struct gl_context *ctx )
 
 /**
  * Bring up to date any state that relies on _NeedEyeCoords.
+ *
+ * Return true if ctx->_NeedEyeCoords has been changed.
  */
-void
+bool
 _mesa_update_tnl_spaces( struct gl_context *ctx, GLuint new_state )
 {
    const GLuint oldneedeyecoords = ctx->_NeedEyeCoords;
@@ -1150,6 +1152,7 @@ _mesa_update_tnl_spaces( struct gl_context *ctx, GLuint new_state )
 
       if (ctx->Driver.LightingSpaceChange)
 	 ctx->Driver.LightingSpaceChange( ctx );
+      return true;
    }
    else {
       GLuint new_state2 = ctx->NewState;
@@ -1162,6 +1165,8 @@ _mesa_update_tnl_spaces( struct gl_context *ctx, GLuint new_state )
 
       if (new_state2 & (_NEW_LIGHT_CONSTANTS | _NEW_MODELVIEW))
 	 compute_light_positions( ctx );
+
+      return false;
    }
 }
 
@@ -1174,9 +1179,7 @@ void
 _mesa_allow_light_in_model( struct gl_context *ctx, GLboolean flag )
 {
    ctx->_ForceEyeCoords = !flag;
-   ctx->NewState |= _NEW_POINT;	/* one of the bits from
-				 * _MESA_NEW_NEED_EYE_COORDS.
-				 */
+   ctx->NewState |= _NEW_POINT; /* for _mesa_update_tnl_spaces */
 }
 
 

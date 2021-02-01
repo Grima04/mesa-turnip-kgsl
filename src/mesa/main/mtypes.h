@@ -4654,7 +4654,7 @@ struct gl_matrix_stack
 #define _NEW_TRACK_MATRIX      (1u << 25)  /**< gl_context::VertexProgram */
 #define _NEW_PROGRAM           (1u << 26)  /**< New program/shader state */
 #define _NEW_PROGRAM_CONSTANTS (1u << 27)
-/* gap */
+#define _NEW_FF_VERT_PROGRAM   (1u << 28)
 #define _NEW_FRAG_CLAMP        (1u << 29)
 /* gap, re-use for core Mesa state only; use ctx->DriverFlags otherwise */
 #define _NEW_VARYING_VP_INPUTS (1u << 31) /**< gl_context::VertexProgram._VaryingInputs */
@@ -4663,7 +4663,7 @@ struct gl_matrix_stack
 
 
 /**
- * Composite state flags
+ * Composite state flags, deprecated and inefficient, do not use.
  */
 /*@{*/
 #define _NEW_LIGHT     (_NEW_LIGHT_FF_PROGRAM | /* fixed-func programs */ \
