@@ -494,7 +494,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Light.ColorMaterialEnabled == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM,
+         FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_FF_VERT_PROGRAM,
                         GL_LIGHTING_BIT | GL_ENABLE_BIT);
          FLUSH_CURRENT(ctx, 0);
          ctx->Light.ColorMaterialEnabled = state;
@@ -554,7 +554,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Light.Light[cap-GL_LIGHT0].Enabled == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM,
+         FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_FF_VERT_PROGRAM,
                         GL_LIGHTING_BIT | GL_ENABLE_BIT);
          ctx->Light.Light[cap-GL_LIGHT0].Enabled = state;
          if (state) {
@@ -569,8 +569,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Light.Enabled == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM |
-                        _NEW_LIGHT_STATE, GL_LIGHTING_BIT | GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_FF_VERT_PROGRAM |
+                        _NEW_FF_FRAG_PROGRAM | _NEW_LIGHT_STATE,
+                        GL_LIGHTING_BIT | GL_ENABLE_BIT);
          ctx->Light.Enabled = state;
          break;
       case GL_LINE_SMOOTH:

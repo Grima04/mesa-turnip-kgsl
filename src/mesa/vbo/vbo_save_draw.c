@@ -78,7 +78,7 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
          /* The fixed-func vertex program uses this. */
          if (current_index == VBO_ATTRIB_MAT_FRONT_SHININESS ||
              current_index == VBO_ATTRIB_MAT_BACK_SHININESS)
-            ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+            ctx->NewState |= _NEW_FF_VERT_PROGRAM;
 
          ctx->NewState |= state;
          ctx->PopAttribState |= pop_state;

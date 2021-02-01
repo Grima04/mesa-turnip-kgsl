@@ -1003,7 +1003,7 @@ _mesa_PopAttrib(void)
                            (GLfloat) attr->Light.Model.ColorControl);
       } else {
          /* Fast path for other drivers. */
-         ctx->NewState |= _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM;
+         ctx->NewState |= _NEW_LIGHT_CONSTANTS | _NEW_FF_VERT_PROGRAM;
 
          memcpy(ctx->Light.LightSource, attr->Light.LightSource,
                 sizeof(attr->Light.LightSource));
@@ -1021,7 +1021,7 @@ _mesa_PopAttrib(void)
                       attr->Light.ColorMaterialEnabled, GL_COLOR_MATERIAL);
       /* Materials - they might be used by current attribs. */
       /* Shininess material is used by the fixed-func vertex program. */
-      ctx->NewState |= _NEW_MATERIAL | _NEW_CURRENT_ATTRIB | _NEW_LIGHT_FF_PROGRAM;
+      ctx->NewState |= _NEW_MATERIAL | _NEW_CURRENT_ATTRIB | _NEW_FF_VERT_PROGRAM;
       memcpy(&ctx->Light.Material, &attr->Light.Material,
              sizeof(struct gl_material));
       if (ctx->Extensions.ARB_color_buffer_float) {

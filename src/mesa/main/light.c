@@ -142,7 +142,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
             light->_Flags &= ~LIGHT_POSITIONAL;
 
          /* Used by fixed-func vertex program. */
-         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+         ctx->NewState |= _NEW_FF_VERT_PROGRAM;
       }
 
       static const GLfloat eye_z[] = {0, 0, 1};
@@ -194,7 +194,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
             light->_Flags &= ~LIGHT_SPOT;
 
          /* Used by fixed-func vertex program. */
-         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+         ctx->NewState |= _NEW_FF_VERT_PROGRAM;
       }
       break;
    }
@@ -210,7 +210,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
 
       if (old_is_one != is_one) {
          /* Used by fixed-func vertex program. */
-         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+         ctx->NewState |= _NEW_FF_VERT_PROGRAM;
       }
       break;
    }
@@ -226,7 +226,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
 
       if (old_is_zero != is_zero) {
          /* Used by fixed-func vertex program. */
-         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+         ctx->NewState |= _NEW_FF_VERT_PROGRAM;
       }
       break;
    }
@@ -242,7 +242,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
 
       if (old_is_zero != is_zero) {
          /* Used by fixed-func vertex program. */
-         ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+         ctx->NewState |= _NEW_FF_VERT_PROGRAM;
       }
       break;
    }
@@ -516,7 +516,7 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
          newbool = (params[0] != 0.0F);
 	 if (ctx->Light.Model.LocalViewer == newbool)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM,
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_FF_VERT_PROGRAM,
                         GL_LIGHTING_BIT);
 	 ctx->Light.Model.LocalViewer = newbool;
          break;
@@ -524,7 +524,7 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
          newbool = (params[0] != 0.0F);
 	 if (ctx->Light.Model.TwoSide == newbool)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM |
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_FF_VERT_PROGRAM |
                         _NEW_LIGHT_STATE, GL_LIGHTING_BIT);
 	 ctx->Light.Model.TwoSide = newbool;
          break;
@@ -542,8 +542,8 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
          }
 	 if (ctx->Light.Model.ColorControl == newenum)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_LIGHT_FF_PROGRAM,
-                        GL_LIGHTING_BIT);
+	 FLUSH_VERTICES(ctx, _NEW_LIGHT_CONSTANTS | _NEW_FF_VERT_PROGRAM |
+                        _NEW_FF_FRAG_PROGRAM, GL_LIGHTING_BIT);
 	 ctx->Light.Model.ColorControl = newenum;
          break;
       default:
@@ -817,7 +817,7 @@ _mesa_ColorMaterial( GLenum face, GLenum mode )
 
    if (ctx->Light.ColorMaterialEnabled) {
       /* Used by fixed-func vertex program. */
-      FLUSH_CURRENT(ctx, _NEW_LIGHT_FF_PROGRAM);
+      FLUSH_CURRENT(ctx, _NEW_FF_VERT_PROGRAM);
       _mesa_update_color_material(ctx,ctx->Current.Attrib[VERT_ATTRIB_COLOR0]);
    }
 

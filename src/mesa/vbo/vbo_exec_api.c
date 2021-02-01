@@ -228,7 +228,7 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
             /* The fixed-func vertex program uses this. */
             if (i == VBO_ATTRIB_MAT_FRONT_SHININESS ||
                 i == VBO_ATTRIB_MAT_BACK_SHININESS)
-               ctx->NewState |= _NEW_LIGHT_FF_PROGRAM;
+               ctx->NewState |= _NEW_FF_VERT_PROGRAM;
          }
 
          ctx->NewState |= _NEW_CURRENT_ATTRIB;

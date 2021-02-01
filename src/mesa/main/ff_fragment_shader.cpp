@@ -204,7 +204,6 @@ static GLbitfield filter_fp_input_mask( GLbitfield fp_inputs,
       /* First look at what values may be computed by the generated
        * vertex program:
        */
-      /* _NEW_LIGHT_FF_PROGRAM */
       if (ctx->Light.Enabled) {
          possible_inputs |= VARYING_BIT_COL0;
 
@@ -304,7 +303,7 @@ static GLuint make_state_key( struct gl_context *ctx,  struct state_key *key )
 
    key->nr_enabled_units = i + 1;
 
-   /* _NEW_LIGHT_FF_PROGRAM | _NEW_FOG */
+   /* _NEW_FOG */
    if (texenv_doing_secondary_color(ctx)) {
       key->separate_specular = 1;
       inputs_referenced |= VARYING_BIT_COL1;

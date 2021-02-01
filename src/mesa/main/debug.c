@@ -73,7 +73,7 @@ void
 _mesa_print_state( const char *msg, GLuint state )
 {
    _mesa_debug(NULL,
-	   "%s: (0x%x) %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
+	   "%s: (0x%x) %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
 	   msg,
 	   state,
 	   (state & _NEW_MODELVIEW)       ? "ctx->ModelView, " : "",
@@ -83,7 +83,6 @@ _mesa_print_state( const char *msg, GLuint state )
 	   (state & _NEW_DEPTH)           ? "ctx->Depth, " : "",
 	   (state & _NEW_FOG)             ? "ctx->Fog, " : "",
 	   (state & _NEW_HINT)            ? "ctx->Hint, " : "",
-           (state & _NEW_LIGHT_FF_PROGRAM)? "ctx->Light(FFProgram), " : "",
 	   (state & _NEW_LIGHT_CONSTANTS) ? "ctx->Light(Constants), " : "",
            (state & _NEW_LIGHT_STATE)     ? "ctx->Light(State), " : "",
 	   (state & _NEW_LINE)            ? "ctx->Line, " : "",
