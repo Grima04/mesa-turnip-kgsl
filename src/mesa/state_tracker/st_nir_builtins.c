@@ -53,6 +53,11 @@ st_nir_finish_builtin_shader(struct st_context *st,
       NIR_PASS_V(nir, nir_lower_io_to_scalar_early, mask);
    }
 
+   if (st->lower_rect_tex) {
+      const struct nir_lower_tex_options opts = { .lower_rect = true, };
+      NIR_PASS_V(nir, nir_lower_tex, &opts);
+   }
+
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    st_nir_assign_vs_in_locations(nir);

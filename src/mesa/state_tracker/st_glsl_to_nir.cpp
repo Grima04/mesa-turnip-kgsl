@@ -1026,6 +1026,14 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
 
+   if (st->lower_rect_tex) {
+      struct nir_lower_tex_options opts = { 0 };
+
+      opts.lower_rect = true;
+
+      NIR_PASS_V(nir, nir_lower_tex, &opts);
+   }
+
    st_nir_assign_varying_locations(st, nir);
    st_nir_assign_uniform_locations(st->ctx, prog, nir);
 
