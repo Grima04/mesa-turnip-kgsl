@@ -1604,15 +1604,14 @@ arm64_a306_gles2:
   variables:
     DEQP_VER: gles2
 
-# Fractional run, single threaded, due to flaky results
 arm64_a306_gles3:
   extends:
     - .baremetal-deqp-test
     - .arm64-a306-test
+  parallel: 3
   variables:
     DEQP_VER: gles3
-    DEQP_PARALLEL: 1
-    DEQP_FRACTION: 25
+    DEQP_FRACTION: 2
 
 # Fractional runs with debug options.  Note that since we're not
 # hitting the iommu faults, we can run in parallel (derive from gles2, not gles3).
