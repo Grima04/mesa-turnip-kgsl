@@ -945,26 +945,6 @@ update_projection( struct gl_context *ctx )
 
 
 /**
- * Calculate the combined modelview-projection matrix.
- *
- * \param ctx GL context.
- *
- * Multiplies the top matrices of the projection and model view stacks into
- * __struct gl_contextRec::_ModelProjectMatrix via _math_matrix_mul_matrix()
- * and analyzes the resulting matrix via _math_matrix_analyse().
- */
-static void
-calculate_model_project_matrix( struct gl_context *ctx )
-{
-   _math_matrix_mul_matrix( &ctx->_ModelProjectMatrix,
-                            ctx->ProjectionMatrixStack.Top,
-                            ctx->ModelviewMatrixStack.Top );
-
-   _math_matrix_analyse( &ctx->_ModelProjectMatrix );
-}
-
-
-/**
  * Updates the combined modelview-projection matrix.
  *
  * \param ctx GL context.
@@ -983,10 +963,10 @@ void _mesa_update_modelview_project( struct gl_context *ctx, GLuint new_state )
    if (new_state & _NEW_PROJECTION)
       update_projection( ctx );
 
-   /* Keep ModelviewProject up to date always to allow tnl
-    * implementations that go model->clip even when eye is required.
-    */
-   calculate_model_project_matrix(ctx);
+   /* Calculate ModelViewMatrix * ProjectionMatrix. */
+   _math_matrix_mul_matrix(&ctx->_ModelProjectMatrix,
+                           ctx->ProjectionMatrixStack.Top,
+                           ctx->ModelviewMatrixStack.Top);
 }
 
 /*@}*/
