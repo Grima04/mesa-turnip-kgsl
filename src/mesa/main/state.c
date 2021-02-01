@@ -462,7 +462,8 @@ _mesa_update_state_locked( struct gl_context *ctx )
       if (new_state & (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE | _NEW_PROGRAM))
          _mesa_update_texture_state(ctx);
 
-      if (new_state & (_NEW_LIGHT_FF_PROGRAM | _NEW_LIGHT_CONSTANTS))
+      if (new_state & (_NEW_LIGHT_FF_PROGRAM | _NEW_LIGHT_CONSTANTS |
+                       _NEW_MATERIAL))
          _mesa_update_lighting(ctx);
 
       if (new_state & _NEW_PIXEL)

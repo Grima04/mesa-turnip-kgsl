@@ -903,8 +903,8 @@ _mesa_PopAttrib(void)
    if (mask & GL_CURRENT_BIT) {
       memcpy(&ctx->Current, &attr->Current,
              sizeof(struct gl_current_attrib));
-      /* Set _NEW_LIGHT_CONSTANTS because current attribs may reference materials. */
-      ctx->NewState |= _NEW_CURRENT_ATTRIB | _NEW_LIGHT_CONSTANTS;
+      /* Set _NEW_MATERIAL because current attribs may reference materials. */
+      ctx->NewState |= _NEW_CURRENT_ATTRIB | _NEW_MATERIAL;
    }
 
    if (mask & GL_DEPTH_BUFFER_BIT) {
@@ -1021,7 +1021,7 @@ _mesa_PopAttrib(void)
                       attr->Light.ColorMaterialEnabled, GL_COLOR_MATERIAL);
       /* Materials - they might be used by current attribs. */
       /* Shininess material is used by the fixed-func vertex program. */
-      ctx->NewState |= _NEW_CURRENT_ATTRIB | _NEW_LIGHT_FF_PROGRAM;
+      ctx->NewState |= _NEW_MATERIAL | _NEW_CURRENT_ATTRIB | _NEW_LIGHT_FF_PROGRAM;
       memcpy(&ctx->Light.Material, &attr->Light.Material,
              sizeof(struct gl_material));
       if (ctx->Extensions.ARB_color_buffer_float) {

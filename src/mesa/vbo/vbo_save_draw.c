@@ -105,7 +105,7 @@ playback_copy_to_current(struct gl_context *ctx,
             _NEW_CURRENT_ATTRIB, GL_CURRENT_BIT, 0, &data);
    /* Copy materials */
    copy_vao(ctx, node->VAO[VP_MODE_FF], VERT_BIT_MAT_ALL,
-            _NEW_CURRENT_ATTRIB | _NEW_LIGHT_CONSTANTS,
+            _NEW_CURRENT_ATTRIB | _NEW_MATERIAL,
             GL_CURRENT_BIT | GL_LIGHTING_BIT,
             VBO_MATERIAL_SHIFT, &data);
 

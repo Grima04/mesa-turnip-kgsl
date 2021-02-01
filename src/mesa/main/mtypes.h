@@ -4656,7 +4656,7 @@ struct gl_matrix_stack
 #define _NEW_PROGRAM_CONSTANTS (1u << 27)
 #define _NEW_FF_VERT_PROGRAM   (1u << 28)
 #define _NEW_FRAG_CLAMP        (1u << 29)
-/* gap, re-use for core Mesa state only; use ctx->DriverFlags otherwise */
+#define _NEW_MATERIAL          (1u << 30)  /**< gl_context::Light.Material */
 #define _NEW_VARYING_VP_INPUTS (1u << 31) /**< gl_context::VertexProgram._VaryingInputs */
 #define _NEW_ALL ~0
 /*@}*/
@@ -4668,7 +4668,8 @@ struct gl_matrix_stack
 /*@{*/
 #define _NEW_LIGHT     (_NEW_LIGHT_FF_PROGRAM | /* fixed-func programs */ \
                         _NEW_LIGHT_CONSTANTS |  /* state parameters */ \
-                        _NEW_LIGHT_STATE)       /* rasterizer state */
+                        _NEW_LIGHT_STATE |      /* rasterizer state */ \
+                        _NEW_MATERIAL)          /* light materials */
 
 #define _NEW_TEXTURE   (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE)
 

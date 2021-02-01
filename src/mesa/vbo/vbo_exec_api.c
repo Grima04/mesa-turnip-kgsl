@@ -220,12 +220,9 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
                                exec->vtx.attr[i].size / dmul,
                                exec->vtx.attr[i].type);
 
-         /* This triggers rather too much recalculation of Mesa state
-          * that doesn't get used (eg light positions).
-          */
          if (i >= VBO_ATTRIB_MAT_FRONT_AMBIENT &&
              i <= VBO_ATTRIB_MAT_BACK_INDEXES) {
-            ctx->NewState |= _NEW_LIGHT_CONSTANTS;
+            ctx->NewState |= _NEW_MATERIAL;
             ctx->PopAttribState |= GL_LIGHTING_BIT;
 
             /* The fixed-func vertex program uses this. */
