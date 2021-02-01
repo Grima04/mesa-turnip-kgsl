@@ -215,6 +215,27 @@ lower_rect(nir_builder *b, nir_tex_instr *tex)
 }
 
 static void
+lower_rect_tex_scale(nir_builder *b, nir_tex_instr *tex)
+{
+   b->cursor = nir_before_instr(&tex->instr);
+
+   nir_ssa_def *idx = nir_imm_int(b, tex->texture_index);
+   nir_ssa_def *scale = nir_build_load_texture_rect_scaling(b, 32, idx);
+
+   /* Walk through the sources normalizing the requested arguments. */
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      if (tex->src[i].src_type != nir_tex_src_coord)
+         continue;
+
+      nir_ssa_def *coords =
+         nir_ssa_for_src(b, tex->src[i].src, tex->coord_components);
+      nir_instr_rewrite_src(&tex->instr,
+                            &tex->src[i].src,
+                            nir_src_for_ssa(nir_fmul(b, coords, scale)));
+   }
+}
+
+static void
 lower_implicit_lod(nir_builder *b, nir_tex_instr *tex)
 {
    assert(tex->op == nir_texop_tex || tex->op == nir_texop_txb);
@@ -1090,7 +1111,8 @@ nir_lower_txs_lod(nir_builder *b, nir_tex_instr *tex)
 
 static bool
 nir_lower_tex_block(nir_block *block, nir_builder *b,
-                    const nir_lower_tex_options *options)
+                    const nir_lower_tex_options *options,
+                    const struct nir_shader_compiler_options *compiler_options)
 {
    bool progress = false;
 
@@ -1127,7 +1149,12 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
 
       if ((tex->sampler_dim == GLSL_SAMPLER_DIM_RECT) && options->lower_rect &&
           tex->op != nir_texop_txf && !nir_tex_instr_is_query(tex)) {
-         lower_rect(b, tex);
+
+         if (compiler_options->has_txs)
+            lower_rect(b, tex);
+         else
+            lower_rect_tex_scale(b, tex);
+
          progress = true;
       }
 
@@ -1269,14 +1296,15 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
 
 static bool
 nir_lower_tex_impl(nir_function_impl *impl,
-                   const nir_lower_tex_options *options)
+                   const nir_lower_tex_options *options,
+                   const struct nir_shader_compiler_options *compiler_options)
 {
    bool progress = false;
    nir_builder builder;
    nir_builder_init(&builder, impl);
 
    nir_foreach_block(block, impl) {
-      progress |= nir_lower_tex_block(block, &builder, options);
+      progress |= nir_lower_tex_block(block, &builder, options, compiler_options);
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
@@ -1291,7 +1319,7 @@ nir_lower_tex(nir_shader *shader, const nir_lower_tex_options *options)
 
    nir_foreach_function(function, shader) {
       if (function->impl)
-         progress |= nir_lower_tex_impl(function->impl, options);
+         progress |= nir_lower_tex_impl(function->impl, options, shader->options);
    }
 
    return progress;
