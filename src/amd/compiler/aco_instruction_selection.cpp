@@ -6897,6 +6897,49 @@ void visit_global_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 }
 
+void visit_load_buffer(isel_context *ctx, nir_intrinsic_instr *intrin)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   Temp dst = get_ssa_temp(ctx, &intrin->dest.ssa);
+   Temp descriptor = bld.as_uniform(get_ssa_temp(ctx, intrin->src[0].ssa));
+   Temp v_offset = as_vgpr(ctx, get_ssa_temp(ctx, intrin->src[1].ssa));
+   Temp s_offset = bld.as_uniform(get_ssa_temp(ctx, intrin->src[2].ssa));
+
+   bool swizzled = nir_intrinsic_is_swizzled(intrin);
+   bool reorder = nir_intrinsic_can_reorder(intrin);
+   bool slc = nir_intrinsic_slc_amd(intrin);
+
+   unsigned const_offset = nir_intrinsic_base(intrin);
+   unsigned elem_size_bytes = intrin->dest.ssa.bit_size / 8u;
+   unsigned num_components = intrin->dest.ssa.num_components;
+   unsigned swizzle_element_size = swizzled ? (ctx->program->chip_class <= GFX8 ? 4 : 16) : 0;
+
+   load_vmem_mubuf(ctx, dst, descriptor, v_offset, s_offset, const_offset,
+                   elem_size_bytes, num_components, swizzle_element_size, !swizzled, reorder, slc);
+}
+
+void visit_store_buffer(isel_context *ctx, nir_intrinsic_instr *intrin)
+{
+   Temp store_src = get_ssa_temp(ctx, intrin->src[0].ssa);
+   Temp descriptor = get_ssa_temp(ctx, intrin->src[1].ssa);
+   Temp v_offset = get_ssa_temp(ctx, intrin->src[2].ssa);
+   Temp s_offset = get_ssa_temp(ctx, intrin->src[3].ssa);
+
+   bool swizzled = nir_intrinsic_is_swizzled(intrin);
+   bool slc = nir_intrinsic_slc_amd(intrin);
+
+   unsigned const_offset = nir_intrinsic_base(intrin);
+   unsigned write_mask = nir_intrinsic_write_mask(intrin);
+   unsigned elem_size_bytes = intrin->src[0].ssa->bit_size / 8u;
+
+   nir_variable_mode mem_mode = nir_intrinsic_memory_modes(intrin);
+   memory_sync_info sync(mem_mode == nir_var_shader_out ? storage_vmem_output : storage_none);
+
+   store_vmem_mubuf(ctx, store_src, descriptor, v_offset, s_offset, const_offset,
+                    elem_size_bytes, write_mask, !swizzled, sync, slc);
+}
+
 sync_scope translate_nir_scope(nir_scope scope)
 {
    switch (scope) {
@@ -8060,6 +8103,12 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    case nir_intrinsic_load_global:
       visit_load_global(ctx, instr);
+      break;
+   case nir_intrinsic_load_buffer_amd:
+      visit_load_buffer(ctx, instr);
+      break;
+   case nir_intrinsic_store_buffer_amd:
+      visit_store_buffer(ctx, instr);
       break;
    case nir_intrinsic_store_global:
       visit_store_global(ctx, instr);
