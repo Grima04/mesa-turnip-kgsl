@@ -38,6 +38,7 @@
 void
 _mesa_update_clip_plane(struct gl_context *ctx, GLuint plane)
 {
+   /* make sure the inverse is up to date */
    if (_math_matrix_is_dirty(ctx->ProjectionMatrixStack.Top))
       _math_matrix_analyse( ctx->ProjectionMatrixStack.Top );
 

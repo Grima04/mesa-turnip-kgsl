@@ -275,7 +275,8 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       return;
    }
    case STATE_PROJECTION_MATRIX_INVERSE: {
-      const GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
+      GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
+      _math_matrix_analyse(matrix); /* make sure the inverse is up to date */
       copy_matrix(value, matrix->inv, state[2], state[3]);
       return;
    }
@@ -285,7 +286,8 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       return;
    }
    case STATE_PROJECTION_MATRIX_INVTRANS: {
-      const GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
+      GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
+      _math_matrix_analyse(matrix); /* make sure the inverse is up to date */
       copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
       return;
    }

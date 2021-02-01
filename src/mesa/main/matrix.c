@@ -914,8 +914,7 @@ _mesa_MatrixMultTransposedEXT( GLenum matrixMode, const GLdouble *m )
  *
  * \param ctx GL context.
  *
- * Calls _math_matrix_analyse() with the top-matrix of the projection matrix
- * stack, and recomputes user clip positions if necessary.
+ * Recomputes user clip positions if necessary.
  *
  * \note This routine references __struct gl_contextRec::Tranform attribute
  * values to compute userclip positions in clip space, but is only called on
@@ -925,20 +924,22 @@ _mesa_MatrixMultTransposedEXT( GLenum matrixMode, const GLdouble *m )
 static void
 update_projection( struct gl_context *ctx )
 {
-   GLbitfield mask;
-
-   _math_matrix_analyse( ctx->ProjectionMatrixStack.Top );
-
    /* Recompute clip plane positions in clipspace.  This is also done
     * in _mesa_ClipPlane().
     */
-   mask = ctx->Transform.ClipPlanesEnabled;
-   while (mask) {
-      const int p = u_bit_scan(&mask);
+   GLbitfield mask = ctx->Transform.ClipPlanesEnabled;
 
-      _mesa_transform_vector( ctx->Transform._ClipUserPlane[p],
-                              ctx->Transform.EyeUserPlane[p],
-                              ctx->ProjectionMatrixStack.Top->inv );
+   if (mask) {
+      /* make sure the inverse is up to date */
+      _math_matrix_analyse(ctx->ProjectionMatrixStack.Top);
+
+      do {
+         const int p = u_bit_scan(&mask);
+
+         _mesa_transform_vector(ctx->Transform._ClipUserPlane[p],
+                                ctx->Transform.EyeUserPlane[p],
+                                ctx->ProjectionMatrixStack.Top->inv);
+      } while (mask);
    }
 }
 
