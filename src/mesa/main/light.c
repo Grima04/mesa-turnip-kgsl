@@ -783,8 +783,6 @@ _mesa_update_color_material( struct gl_context *ctx, const GLfloat color[4] )
 
       COPY_4FV( mat->Attrib[i], color );
    }
-
-   _mesa_update_material( ctx, bitmask );
 }
 
 
@@ -978,7 +976,11 @@ _mesa_update_lighting( struct gl_context *ctx )
     */
    if (ctx->Light._NeedVertices)
       ctx->Light._NeedEyeCoords = GL_TRUE;
+}
 
+void
+_mesa_update_light_materials(struct gl_context *ctx)
+{
    /* Precompute some shading values.  Although we reference
     * Light.Material here, we can get away without flushing
     * FLUSH_UPDATE_CURRENT, as when any outstanding material changes

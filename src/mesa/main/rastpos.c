@@ -35,6 +35,7 @@
 #include "mtypes.h"
 #include "rastpos.h"
 #include "state.h"
+#include "main/light.h"
 #include "main/viewport.h"
 #include "util/bitscan.h"
 
@@ -144,6 +145,8 @@ shade_rastpos(struct gl_context *ctx,
    /*const*/ GLfloat (*base)[3] = ctx->Light._BaseColor;
    GLbitfield mask;
    GLfloat diffuseColor[4], specularColor[4];  /* for RGB mode only */
+
+   _mesa_update_light_materials(ctx);
 
    COPY_3V(diffuseColor, base[0]);
    diffuseColor[3] = CLAMP(

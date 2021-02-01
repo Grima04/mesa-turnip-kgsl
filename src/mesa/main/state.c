@@ -462,8 +462,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
       if (new_state & (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE | _NEW_PROGRAM))
          _mesa_update_texture_state(ctx);
 
-      if (new_state & (_NEW_LIGHT_FF_PROGRAM | _NEW_LIGHT_CONSTANTS |
-                       _NEW_MATERIAL))
+      if (new_state & _NEW_LIGHT_CONSTANTS)
          _mesa_update_lighting(ctx);
 
       if (new_state & _NEW_PIXEL)
@@ -478,8 +477,8 @@ _mesa_update_state_locked( struct gl_context *ctx )
        * If the lighting space hasn't changed, may still need to recompute
        * light positions & normal transforms for other reasons.
        */
-      if (new_state & (_NEW_LIGHT_FF_PROGRAM | _NEW_LIGHT_CONSTANTS |
-                       _NEW_TEXTURE_STATE | _NEW_POINT | _NEW_MODELVIEW)) {
+      if (new_state & (_NEW_LIGHT_CONSTANTS | _NEW_TEXTURE_STATE |
+                       _NEW_POINT | _NEW_MODELVIEW)) {
          if (_mesa_update_tnl_spaces(ctx, new_state))
             new_state |= _NEW_FF_VERT_PROGRAM;
       }

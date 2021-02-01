@@ -92,7 +92,7 @@ extern GLuint _mesa_material_bitmask( struct gl_context *ctx,
                                       const char * );
 
 extern void _mesa_update_lighting( struct gl_context *ctx );
-
+extern void _mesa_update_light_materials(struct gl_context *ctx);
 extern bool _mesa_update_tnl_spaces( struct gl_context *ctx, GLuint new_state );
 
 extern void _mesa_update_material( struct gl_context *ctx,
