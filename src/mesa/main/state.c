@@ -452,28 +452,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
    /* Handle Core and Compatibility contexts separately. */
    if (ctx->API == API_OPENGL_COMPAT ||
        ctx->API == API_OPENGLES) {
-      GLbitfield prog_flags = _NEW_PROGRAM;
-
-      if (new_state & _NEW_PROGRAM)
-         update_fixed_func_program_usage(ctx);
-
-      /* Determine which states affect fixed-func vertex/fragment program. */
-      if (ctx->FragmentProgram._UsesTexEnvProgram) {
-         prog_flags |= (_NEW_BUFFERS | _NEW_TEXTURE_OBJECT | _NEW_FOG |
-                        _NEW_VARYING_VP_INPUTS | _NEW_LIGHT | _NEW_POINT |
-                        _NEW_RENDERMODE | _NEW_COLOR | _NEW_TEXTURE_STATE);
-      }
-
-      if (ctx->VertexProgram._UsesTnlProgram) {
-         prog_flags |= (_NEW_VARYING_VP_INPUTS | _NEW_TEXTURE_OBJECT |
-                        _NEW_TEXTURE_MATRIX | _NEW_TRANSFORM | _NEW_POINT |
-                        _NEW_FOG | _NEW_LIGHT | _NEW_TEXTURE_STATE |
-                        _MESA_NEW_NEED_EYE_COORDS);
-      }
-
-      /*
-       * Now update derived state info
-       */
+      /* Update derived state. */
       if (new_state & (_NEW_MODELVIEW|_NEW_PROJECTION))
          _mesa_update_modelview_project( ctx, new_state );
 
@@ -500,6 +479,25 @@ _mesa_update_state_locked( struct gl_context *ctx )
        */
       if (new_state & _MESA_NEW_NEED_EYE_COORDS)
          _mesa_update_tnl_spaces( ctx, new_state );
+
+      if (new_state & _NEW_PROGRAM)
+         update_fixed_func_program_usage(ctx);
+
+      /* Determine which states affect fixed-func vertex/fragment program. */
+      GLbitfield prog_flags = _NEW_PROGRAM;
+
+      if (ctx->FragmentProgram._UsesTexEnvProgram) {
+         prog_flags |= _NEW_BUFFERS | _NEW_TEXTURE_OBJECT | _NEW_FOG |
+                       _NEW_VARYING_VP_INPUTS | _NEW_LIGHT | _NEW_POINT |
+                       _NEW_RENDERMODE | _NEW_COLOR | _NEW_TEXTURE_STATE;
+      }
+
+      if (ctx->VertexProgram._UsesTnlProgram) {
+         prog_flags |= _NEW_VARYING_VP_INPUTS | _NEW_TEXTURE_OBJECT |
+                       _NEW_TEXTURE_MATRIX | _NEW_TRANSFORM | _NEW_POINT |
+                       _NEW_FOG | _NEW_LIGHT | _NEW_TEXTURE_STATE |
+                       _MESA_NEW_NEED_EYE_COORDS;
+      }
 
       if (new_state & prog_flags) {
          /* When we generate programs from fixed-function vertex/fragment state
