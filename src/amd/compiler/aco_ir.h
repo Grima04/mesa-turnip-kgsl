@@ -1904,7 +1904,7 @@ void init();
 
 void init_program(Program *program, Stage stage, struct radv_shader_info *info,
                   enum chip_class chip_class, enum radeon_family family,
-                  ac_shader_config *config);
+                  bool wgp_mode, ac_shader_config *config);
 
 void select_program(Program *program,
                     unsigned shader_count,

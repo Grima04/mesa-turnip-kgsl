@@ -60,7 +60,7 @@ void init()
 
 void init_program(Program *program, Stage stage, struct radv_shader_info *info,
                   enum chip_class chip_class, enum radeon_family family,
-                  ac_shader_config *config)
+                  bool wgp_mode, ac_shader_config *config)
 {
    program->stage = stage;
    program->config = config;
@@ -123,7 +123,7 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
       program->sgpr_limit = 104;
    }
 
-   program->wgp_mode = chip_class >= GFX10; /* assume WGP is used on Navi */
+   program->wgp_mode = wgp_mode;
 
    program->next_fp_mode.preserve_signed_zero_inf_nan32 = false;
    program->next_fp_mode.preserve_signed_zero_inf_nan16_64 = false;

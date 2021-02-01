@@ -12246,7 +12246,7 @@ void select_trap_handler_shader(Program *program, struct nir_shader *shader,
    assert(args->options->chip_class == GFX8);
 
    init_program(program, compute_cs, args->shader_info,
-                args->options->chip_class, args->options->family, config);
+                args->options->chip_class, args->options->family, args->options->wgp_mode, config);
 
    isel_context ctx = {};
    ctx.program = program;

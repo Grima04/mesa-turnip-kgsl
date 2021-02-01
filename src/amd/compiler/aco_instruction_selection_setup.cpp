@@ -1123,7 +1123,7 @@ setup_isel_context(Program* program,
       unreachable("Shader stage not implemented");
 
    init_program(program, Stage { hw_stage, sw_stage }, args->shader_info,
-                args->options->chip_class, args->options->family, config);
+                args->options->chip_class, args->options->family, args->options->wgp_mode, config);
 
    isel_context ctx = {};
    ctx.program = program;
