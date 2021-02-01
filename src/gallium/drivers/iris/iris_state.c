@@ -4819,16 +4819,6 @@ use_surface(struct iris_context *ice,
    struct iris_resource *res = (void *) p_surf->texture;
    uint32_t offset = 0;
 
-   iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture),
-                      writeable, access);
-   if (GEN_GEN == 8 && is_read_surface) {
-      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state_read.ref.res), false,
-                         IRIS_DOMAIN_NONE);
-   } else {
-      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.ref.res), false,
-                         IRIS_DOMAIN_NONE);
-   }
-
    if (res->aux.bo) {
       iris_use_pinned_bo(batch, res->aux.bo, writeable, access);
       if (res->aux.clear_color_bo)
@@ -4844,6 +4834,16 @@ use_surface(struct iris_context *ice,
          }
          surf->clear_color = res->aux.clear_color;
       }
+   }
+
+   iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture),
+                      writeable, access);
+   if (GEN_GEN == 8 && is_read_surface) {
+      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state_read.ref.res), false,
+                         IRIS_DOMAIN_NONE);
+   } else {
+      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.ref.res), false,
+                         IRIS_DOMAIN_NONE);
    }
 
    offset = (GEN_GEN == 8 && is_read_surface)
@@ -4862,10 +4862,6 @@ use_sampler_view(struct iris_context *ice,
    enum isl_aux_usage aux_usage =
       iris_resource_texture_aux_usage(ice, isv->res, isv->view.format);
 
-   iris_use_pinned_bo(batch, isv->res->bo, false, IRIS_DOMAIN_OTHER_READ);
-   iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.ref.res), false,
-                      IRIS_DOMAIN_NONE);
-
    if (isv->res->aux.bo) {
       iris_use_pinned_bo(batch, isv->res->aux.bo,
                          false, IRIS_DOMAIN_OTHER_READ);
@@ -4879,6 +4875,10 @@ use_sampler_view(struct iris_context *ice,
          isv->clear_color = isv->res->aux.clear_color;
       }
    }
+
+   iris_use_pinned_bo(batch, isv->res->bo, false, IRIS_DOMAIN_OTHER_READ);
+   iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.ref.res), false,
+                      IRIS_DOMAIN_NONE);
 
    return isv->surface_state.ref.offset +
           surf_state_offset_for_aux(isv->res, isv->res->aux.sampler_usages,
