@@ -104,6 +104,7 @@ nir_options = {
    .vertex_id_zero_based = true,
    .lower_base_vertex = true,
    .has_cs_global_id = true,
+   .has_txs = true,
 };
 
 const nir_shader_compiler_options*

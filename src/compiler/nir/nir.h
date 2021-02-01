@@ -3387,6 +3387,10 @@ typedef struct nir_shader_compiler_options {
     * iadd(x, ineg(y)). If true, driver should call nir_opt_algebraic_late(). */
    bool has_isub;
 
+   /** Backend supports txs, if not nir_lower_tex(..) uses txs-free variants
+    * for rect texture lowering. */
+   bool has_txs;
+
    /* Whether to generate only scoped_barrier intrinsics instead of the set of
     * memory and control barrier intrinsics based on GLSL.
     */
