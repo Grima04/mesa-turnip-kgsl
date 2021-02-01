@@ -51,7 +51,7 @@ kernel+rootfs_armhf:
     DISTRIBUTION_TAG: *distribution-tag-arm
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"
-    FIXED_ENV_VARS: "CI_PIPELINE_ID=${CI_PIPELINE_ID} CI_JOB_ID=${CI_JOB_ID} CI_PAGES_DOMAIN=${CI_PAGES_DOMAIN} CI_PROJECT_NAME=${CI_PROJECT_NAME} CI_PROJECT_PATH=${CI_PROJECT_PATH} CI_PROJECT_ROOT_NAMESPACE=${CI_PROJECT_ROOT_NAMESPACE} CI_JOB_JWT=${CI_JOB_JWT} CI_SERVER_URL=${CI_SERVER_URL} DRIVER_NAME=${DRIVER_NAME} FDO_UPSTREAM_REPO=${FDO_UPSTREAM_REPO} PIGLIT_NO_WINDOW=1 PIGLIT_REPLAY_UPLOAD_TO_MINIO=1 MINIO_HOST=${MINIO_HOST}"
+    FIXED_ENV_VARS: "CI_PIPELINE_ID=${CI_PIPELINE_ID} CI_JOB_ID=${CI_JOB_ID} CI_PAGES_DOMAIN=${CI_PAGES_DOMAIN} CI_PROJECT_NAME=${CI_PROJECT_NAME} CI_PROJECT_PATH=${CI_PROJECT_PATH} CI_PROJECT_ROOT_NAMESPACE=${CI_PROJECT_ROOT_NAMESPACE} CI_JOB_JWT=${CI_JOB_JWT} CI_SERVER_URL=${CI_SERVER_URL} DRIVER_NAME=${DRIVER_NAME} FDO_UPSTREAM_REPO=${FDO_UPSTREAM_REPO} PIGLIT_NO_WINDOW=1 PIGLIT_REPLAY_UPLOAD_TO_MINIO=1 MINIO_HOST=${MINIO_HOST} LAVA_TEST_SCRIPT=${LAVA_TEST_SCRIPT} TEST_SUITE=${TEST_SUITE}"
     DEQP_VERSION: gles2
     ARTIFACTS_PREFIX: "https://${MINIO_HOST}/mesa-lava/"
     MESA_ROOTFS_TAG: *lava-rootfs
@@ -66,7 +66,7 @@ kernel+rootfs_armhf:
       fi
     - >
       artifacts/generate_lava.py \
-        --template artifacts/lava-${TEST_SUITE}.yml.jinja2 \
+        --template artifacts/lava.yml.jinja2 \
         --pipeline-info "$CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
         --base-artifacts-url ${ARTIFACTS_URL} \
         --mesa-url ${MESA_URL} \
@@ -81,13 +81,13 @@ kernel+rootfs_armhf:
         --lava-tags "${LAVA_TAGS}" \
         --ci-node-index "${CI_NODE_INDEX}" \
         --ci-node-total "${CI_NODE_TOTAL}"
-    - lava_job_id=`lavacli jobs submit lava-${TEST_SUITE}.yml` || lavacli jobs submit lava-${TEST_SUITE}.yml
+    - lava_job_id=`lavacli jobs submit lava.yml` || lavacli jobs submit lava.yml
     - echo $lava_job_id
     - rm -rf artifacts/*
-    - cp lava-${TEST_SUITE}.yml artifacts/.
-    - lavacli jobs logs $lava_job_id | tee artifacts/lava-${TEST_SUITE}-$lava_job_id.log
+    - cp lava.yml artifacts/.
+    - lavacli jobs logs $lava_job_id | tee artifacts/lava-$lava_job_id.log
     - lavacli jobs show $lava_job_id
-    - result=`lavacli results $lava_job_id 0_${TEST_SUITE} ${TEST_SUITE} | head -1`
+    - result=`lavacli results $lava_job_id 0_mesa mesa | head -1`
     - echo $result
     - '[[ "$result" == "pass" ]]'
   artifacts:
@@ -103,6 +103,7 @@ kernel+rootfs_armhf:
     KERNEL_IMAGE_TYPE: "type:\ zimage"
     BOOT_METHOD: u-boot
     TEST_SUITE: "deqp"
+    LAVA_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
     - .lava-test
     - .use-arm_build
@@ -117,6 +118,7 @@ kernel+rootfs_armhf:
     KERNEL_IMAGE_TYPE: "type:\ image"
     BOOT_METHOD: u-boot
     TEST_SUITE: "deqp"
+    LAVA_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
     - .lava-test
     - .use-arm_build
@@ -134,6 +136,7 @@ kernel+rootfs_armhf:
     KERNEL_IMAGE_TYPE: "type:\ zimage"
     BOOT_METHOD: u-boot
     TEST_SUITE: "deqp"
+    LAVA_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
     - .use-x86_build-base # for same $MESA_BASE_TAG as in kernel+rootfs_amd64
     - .use-arm_build # ARM because it must match the architecture of the runner
@@ -154,6 +157,7 @@ kernel+rootfs_armhf:
 .lava-piglit:
   variables:
     TEST_SUITE: "piglit"
+    LAVA_TEST_SCRIPT: "/install/piglit/run.sh"
 
 .lava-piglit-traces:amd64:
   extends:
