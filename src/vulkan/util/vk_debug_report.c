@@ -40,7 +40,7 @@ struct vk_debug_report_callback {
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(vk_debug_report_callback, base,
                                VkDebugReportCallbackEXT,
-                               VK_OBJECT_TYPE_INSTANCE)
+                               VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT)
 
 VkResult
 vk_common_CreateDebugReportCallbackEXT(VkInstance _instance,

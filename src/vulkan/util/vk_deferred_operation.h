@@ -40,28 +40,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vk_deferred_operation, base,
                                VkDeferredOperationKHR,
                                VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR)
 
-VkResult
-vk_create_deferred_operation(struct vk_device *device,
-                             const VkAllocationCallbacks *pAllocator,
-                             VkDeferredOperationKHR *pDeferredOperation);
-
-void
-vk_destroy_deferred_operation(struct vk_device *device,
-                              VkDeferredOperationKHR operation,
-                              const VkAllocationCallbacks *pAllocator);
-
-uint32_t
-vk_get_deferred_operation_max_concurrency(struct vk_device *device,
-                                          VkDeferredOperationKHR operation);
-
-VkResult
-vk_get_deferred_operation_result(struct vk_device *device,
-                                 VkDeferredOperationKHR operation);
-
-VkResult
-vk_deferred_operation_join(struct vk_device *device,
-                           VkDeferredOperationKHR operation);
-
 #ifdef __cplusplus
 }
 #endif
