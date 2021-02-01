@@ -879,7 +879,7 @@ fix_missing_textures_for_atifs(struct gl_context *ctx,
  *
  * \param ctx GL context.
  */
-void
+GLbitfield
 _mesa_update_texture_state(struct gl_context *ctx)
 {
    struct gl_program *prog[MESA_SHADER_STAGES];
@@ -896,6 +896,10 @@ _mesa_update_texture_state(struct gl_context *ctx)
 
    /* TODO: only set this if there are actual changes */
    ctx->NewState |= _NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE;
+
+   GLbitfield old_enabled_coord_units = ctx->Texture._EnabledCoordUnits;
+   GLbitfield old_texgen_enabled = ctx->Texture._TexGenEnabled;
+   GLbitfield old_texmat_enabled = ctx->Texture._TexMatEnabled;
 
    ctx->Texture._GenFlags = 0x0;
    ctx->Texture._TexMatEnabled = 0x0;
@@ -935,6 +939,16 @@ _mesa_update_texture_state(struct gl_context *ctx)
 
    if (!prog[MESA_SHADER_FRAGMENT] || !prog[MESA_SHADER_VERTEX])
       update_texgen(ctx);
+
+   GLbitfield new_state = 0;
+
+   if (old_enabled_coord_units != ctx->Texture._EnabledCoordUnits ||
+       old_texgen_enabled != ctx->Texture._TexGenEnabled ||
+       old_texmat_enabled != ctx->Texture._TexMatEnabled) {
+      new_state |= _NEW_FF_VERT_PROGRAM | _NEW_FF_FRAG_PROGRAM;
+   }
+
+   return new_state;
 }
 
 

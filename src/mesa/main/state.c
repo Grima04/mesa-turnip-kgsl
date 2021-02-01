@@ -460,7 +460,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
          _mesa_update_texture_matrices(ctx);
 
       if (new_state & (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE | _NEW_PROGRAM))
-         _mesa_update_texture_state(ctx);
+         new_state |= _mesa_update_texture_state(ctx);
 
       if (new_state & _NEW_LIGHT_CONSTANTS)
          _mesa_update_lighting(ctx);
@@ -496,9 +496,8 @@ _mesa_update_state_locked( struct gl_context *ctx )
       }
 
       if (ctx->VertexProgram._UsesTnlProgram) {
-         prog_flags |= _NEW_FF_VERT_PROGRAM | _NEW_TEXTURE_OBJECT |
-                       _NEW_TEXTURE_MATRIX | _NEW_TRANSFORM | _NEW_POINT |
-                       _NEW_FOG | _NEW_TEXTURE_STATE;
+         prog_flags |= _NEW_FF_VERT_PROGRAM | _NEW_TEXTURE_MATRIX |
+                       _NEW_TRANSFORM | _NEW_POINT | _NEW_FOG;
       }
 
       if (new_state & prog_flags) {

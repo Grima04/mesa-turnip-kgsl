@@ -1206,7 +1206,8 @@ _mesa_PopAttrib(void)
 
    if (mask & GL_TEXTURE_BIT) {
       pop_texture_group(ctx, &attr->Texture);
-      ctx->NewState |= _NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE;
+      ctx->NewState |= _NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE |
+                       _NEW_FF_VERT_PROGRAM | _NEW_FF_FRAG_PROGRAM;
    }
 
    if (mask & GL_VIEWPORT_BIT) {

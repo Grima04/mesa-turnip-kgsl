@@ -129,7 +129,8 @@ texgenfv( GLuint texunitIndex, GLenum coord, GLenum pname,
             return;
          }
 
-         FLUSH_VERTICES(ctx, _NEW_TEXTURE_STATE, GL_TEXTURE_BIT);
+         FLUSH_VERTICES(ctx, _NEW_TEXTURE_STATE | _NEW_FF_VERT_PROGRAM,
+                        GL_TEXTURE_BIT);
          texgen->Mode = mode;
          texgen->_ModeBit = bit;
       }

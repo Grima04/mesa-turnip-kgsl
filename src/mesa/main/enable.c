@@ -936,7 +936,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
                   newenabled |= coordBit;
                if (texUnit->TexGenEnabled == newenabled)
                   return;
-               FLUSH_VERTICES(ctx, _NEW_TEXTURE_STATE,
+               FLUSH_VERTICES(ctx, _NEW_TEXTURE_STATE | _NEW_FF_VERT_PROGRAM |
+                              _NEW_FF_FRAG_PROGRAM,
                               GL_TEXTURE_BIT | GL_ENABLE_BIT);
                texUnit->TexGenEnabled = newenabled;
             }
@@ -958,7 +959,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
                   newenabled |= STR_BITS;
                if (texUnit->TexGenEnabled == newenabled)
                   return;
-               FLUSH_VERTICES(ctx, _NEW_TEXTURE_STATE, 0);
+               FLUSH_VERTICES(ctx, _NEW_TEXTURE_STATE | _NEW_FF_VERT_PROGRAM |
+                              _NEW_FF_FRAG_PROGRAM, 0);
                texUnit->TexGenEnabled = newenabled;
             }
          }

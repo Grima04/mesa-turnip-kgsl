@@ -192,7 +192,6 @@ static GLbitfield filter_fp_input_mask( GLbitfield fp_inputs,
          possible_inputs = VARYING_BITS_TEX_ANY;
       }
       else {
-         /* _NEW_TEXTURE_STATE */
          const GLbitfield possible_tex_inputs =
                ctx->Texture._TexGenEnabled |
                ctx->Texture._TexMatEnabled |

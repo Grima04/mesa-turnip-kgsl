@@ -4672,7 +4672,8 @@ struct gl_matrix_stack
                         _NEW_FF_VERT_PROGRAM | \
                         _NEW_FF_FRAG_PROGRAM)
 
-#define _NEW_TEXTURE   (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE)
+#define _NEW_TEXTURE   (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE | \
+                        _NEW_FF_VERT_PROGRAM | _NEW_FF_FRAG_PROGRAM)
 
 #define _MESA_NEW_NEED_EYE_COORDS         (_NEW_FF_VERT_PROGRAM | \
                                            _NEW_FF_FRAG_PROGRAM | \
