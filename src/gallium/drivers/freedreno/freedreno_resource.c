@@ -346,6 +346,10 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 		blit.src.field = (val);      \
 	} while (0)
 
+	/* Disable occlusion queries during shadow blits. */
+	bool saved_active_queries = ctx->active_queries;
+	pctx->set_active_query_state(pctx, false);
+
 	/* blit the other levels in their entirety: */
 	for (unsigned l = 0; l <= prsc->last_level; l++) {
 		if (box && l == level)
@@ -396,6 +400,8 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 			unreachable("TODO");
 		}
 	}
+
+	pctx->set_active_query_state(pctx, saved_active_queries);
 
 	ctx->in_shadow = false;
 
