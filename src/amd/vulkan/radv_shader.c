@@ -1034,8 +1034,7 @@ static void radv_postprocess_config(const struct radv_device *device,
 				     S_00B02C_EXCP_EN(excp_en);
 		break;
 	case MESA_SHADER_GEOMETRY:
-		config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
-				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
+		config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		config_out->rsrc2 |= S_00B22C_SHARED_VGPR_CNT(num_shared_vgpr_blocks) |
 				     S_00B22C_EXCP_EN(excp_en);
 		break;
@@ -1092,7 +1091,7 @@ static void radv_postprocess_config(const struct radv_device *device,
 		 * disable exactly 1 CU per SA for GS.
 		 */
 		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt) |
-				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class == GFX10);
+				     S_00B228_WGP_MODE(pdevice->rad_info.chip_class == GFX10);
 		config_out->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
 				     S_00B22C_LDS_SIZE(config_in->lds_size) |
 				     S_00B22C_OC_LDS_EN(es_stage == MESA_SHADER_TESS_EVAL);
@@ -1127,7 +1126,8 @@ static void radv_postprocess_config(const struct radv_device *device,
 			gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 		}
 
-		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
+		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt) |
+				     S_00B228_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
 		config_out->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
 		                         S_00B22C_OC_LDS_EN(es_type == MESA_SHADER_TESS_EVAL);
 	} else if (pdevice->rad_info.chip_class >= GFX9 &&
