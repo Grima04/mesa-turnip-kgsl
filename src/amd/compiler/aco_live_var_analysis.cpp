@@ -250,7 +250,7 @@ uint16_t get_extra_sgprs(Program *program)
    if (program->chip_class >= GFX10) {
       assert(!program->needs_flat_scr);
       assert(!program->xnack_enabled);
-      return 2;
+      return 0;
    } else if (program->chip_class >= GFX8) {
       if (program->needs_flat_scr)
          return 6;
