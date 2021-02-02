@@ -1128,8 +1128,8 @@ void radv_GetPhysicalDeviceFormatProperties(
 }
 
 static const struct ac_modifier_options radv_modifier_options = {
-	.dcc = false,
-	.dcc_retile = false,
+	.dcc = true,
+	.dcc_retile = true,
 };
 
 static VkFormatFeatureFlags
@@ -1151,7 +1151,10 @@ radv_get_modifier_flags(struct radv_physical_device *dev,
 		return 0;
 
 	if (ac_modifier_has_dcc(modifier)) {
-		features &= ~VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+		features &= ~(VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
+	                      VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+	                      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
+	                      VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
 
 		if (dev->instance->debug_flags & (RADV_DEBUG_NO_DCC | RADV_DEBUG_NO_DISPLAY_DCC))
 			return 0;
