@@ -65,7 +65,7 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
       assert(elem->instance_divisor <= screen->info.vdiv_props.maxVertexAttribDivisor);
 
       ves->hw_state.attribs[i].binding = binding;
-      ves->hw_state.attribs[i].location = i; // TODO: unsure
+      ves->hw_state.attribs[i].location = i;
       ves->hw_state.attribs[i].format = zink_get_format(screen,
                                                         elem->src_format);
       assert(ves->hw_state.attribs[i].format != VK_FORMAT_UNDEFINED);
