@@ -950,9 +950,9 @@ zink_transfer_map(struct pipe_context *pctx,
 
          struct pipe_resource templ = *pres;
          templ.format = format;
-         templ.usage = PIPE_USAGE_STAGING;
+         templ.usage = usage & PIPE_MAP_READ ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
          templ.target = PIPE_BUFFER;
-         templ.bind = 0;
+         templ.bind = PIPE_BIND_LINEAR;
          templ.width0 = trans->base.b.layer_stride * box->depth;
          templ.height0 = templ.depth0 = 0;
          templ.last_level = 0;
