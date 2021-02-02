@@ -100,27 +100,28 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
 
    program->vgpr_limit = 256;
    program->physical_vgprs = 256;
-   program->vgpr_alloc_granule = 3;
+   program->vgpr_alloc_granule = 4;
 
    if (chip_class >= GFX10) {
       program->physical_sgprs = 2560; /* doesn't matter as long as it's at least 128 * 20 */
       program->physical_vgprs = 512;
-      program->sgpr_alloc_granule = 127;
+      program->sgpr_alloc_granule = 128;
       program->sgpr_limit = 106;
       if (chip_class >= GFX10_3)
-         program->vgpr_alloc_granule = program->wave_size == 32 ? 15 : 7;
+         program->vgpr_alloc_granule = program->wave_size == 32 ? 16 : 8;
       else
-         program->vgpr_alloc_granule = program->wave_size == 32 ? 7 : 3;
+         program->vgpr_alloc_granule = program->wave_size == 32 ? 8 : 4;
    } else if (program->chip_class >= GFX8) {
       program->physical_sgprs = 800;
-      program->sgpr_alloc_granule = 15;
-      if (family == CHIP_TONGA || family == CHIP_ICELAND)
+      program->sgpr_alloc_granule = 16;
+      program->sgpr_limit = 102;
+      if (family == CHIP_TONGA || family == CHIP_ICELAND) {
+         program->sgpr_alloc_granule = 96;
          program->sgpr_limit = 94; /* workaround hardware bug */
-      else
-         program->sgpr_limit = 102;
+      }
    } else {
       program->physical_sgprs = 512;
-      program->sgpr_alloc_granule = 7;
+      program->sgpr_alloc_granule = 8;
       program->sgpr_limit = 104;
    }
 

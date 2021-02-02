@@ -273,30 +273,30 @@ uint16_t get_extra_sgprs(Program *program)
 
 uint16_t get_sgpr_alloc(Program *program, uint16_t addressable_sgprs)
 {
-   assert(addressable_sgprs <= program->sgpr_limit);
    uint16_t sgprs = addressable_sgprs + get_extra_sgprs(program);
-   uint16_t granule = program->sgpr_alloc_granule + 1;
-   return align(std::max(sgprs, granule), granule);
+   uint16_t granule = program->sgpr_alloc_granule;
+   return ALIGN_NPOT(std::max(sgprs, granule), granule);
 }
 
 uint16_t get_vgpr_alloc(Program *program, uint16_t addressable_vgprs)
 {
    assert(addressable_vgprs <= program->vgpr_limit);
-   uint16_t granule = program->vgpr_alloc_granule + 1;
+   uint16_t granule = program->vgpr_alloc_granule;
    return align(std::max(addressable_vgprs, granule), granule);
 }
 
 uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t max_waves)
 {
-    uint16_t sgprs = program->physical_sgprs / max_waves & ~program->sgpr_alloc_granule;
-    sgprs -= get_extra_sgprs(program);
-    return std::min(sgprs, program->sgpr_limit);
+   uint16_t sgprs = (program->physical_sgprs / max_waves) - program->sgpr_alloc_granule + 1;
+   sgprs = get_sgpr_alloc(program, sgprs);
+   sgprs -= get_extra_sgprs(program);
+   return std::min(sgprs, program->sgpr_limit);
 }
 
 uint16_t get_addr_vgpr_from_waves(Program *program, uint16_t max_waves)
 {
-    uint16_t vgprs = program->physical_vgprs / max_waves & ~program->vgpr_alloc_granule;
-    return std::min(vgprs, program->vgpr_limit);
+   uint16_t vgprs = program->physical_vgprs / max_waves & ~(program->vgpr_alloc_granule - 1);
+   return std::min(vgprs, program->vgpr_limit);
 }
 
 void calc_min_waves(Program* program)
