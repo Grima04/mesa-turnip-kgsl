@@ -2163,8 +2163,12 @@ late_optimizations = [
    #      a != -b      false            false       true     true
    (('flt',                        ('fadd(is_used_once)', a, b),  0.0), ('flt',          a, ('fneg', b))),
    (('flt', ('fneg(is_used_once)', ('fadd(is_used_once)', a, b)), 0.0), ('flt', ('fneg', a),         b)),
+   (('flt', 0.0,                        ('fadd(is_used_once)', a, b) ), ('flt', ('fneg', a),         b)),
+   (('flt', 0.0, ('fneg(is_used_once)', ('fadd(is_used_once)', a, b))), ('flt',          a, ('fneg', b))),
    (('~fge',                        ('fadd(is_used_once)', a, b),  0.0), ('fge',          a, ('fneg', b))),
    (('~fge', ('fneg(is_used_once)', ('fadd(is_used_once)', a, b)), 0.0), ('fge', ('fneg', a),         b)),
+   (('~fge', 0.0,                        ('fadd(is_used_once)', a, b) ), ('fge', ('fneg', a),         b)),
+   (('~fge', 0.0, ('fneg(is_used_once)', ('fadd(is_used_once)', a, b))), ('fge',          a, ('fneg', b))),
    (('~feq', ('fadd(is_used_once)', a, b), 0.0), ('feq', a, ('fneg', b))),
    (('~fneu', ('fadd(is_used_once)', a, b), 0.0), ('fneu', a, ('fneg', b))),
 
@@ -2173,6 +2177,8 @@ late_optimizations = [
    # result if b is NaN. Therefore, the replacements are exact.
    (('fge',                        ('fadd(is_used_once)', 'a(is_finite)', b),  0.0), ('fge',          a, ('fneg', b))),
    (('fge', ('fneg(is_used_once)', ('fadd(is_used_once)', 'a(is_finite)', b)), 0.0), ('fge', ('fneg', a),         b)),
+   (('fge', 0.0,                        ('fadd(is_used_once)', 'a(is_finite)', b) ), ('fge', ('fneg', a),         b)),
+   (('fge', 0.0, ('fneg(is_used_once)', ('fadd(is_used_once)', 'a(is_finite)', b))), ('fge',          a, ('fneg', b))),
    (('feq',  ('fadd(is_used_once)', 'a(is_finite)', b), 0.0), ('feq',  a, ('fneg', b))),
    (('fneu', ('fadd(is_used_once)', 'a(is_finite)', b), 0.0), ('fneu', a, ('fneg', b))),
 
