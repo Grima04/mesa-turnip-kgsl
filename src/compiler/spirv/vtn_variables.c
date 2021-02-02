@@ -1977,8 +1977,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    }
 
    if (initializer) {
-      switch (var->mode) {
-      case vtn_variable_mode_workgroup:
+      switch (storage_class) {
+      case SpvStorageClassWorkgroup:
          /* VK_KHR_zero_initialize_workgroup_memory. */
          vtn_fail_if(b->options->environment != NIR_SPIRV_VULKAN,
                      "Only Vulkan supports variable initializer "
@@ -1992,9 +1992,57 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                      vtn_id_for_value(b, initializer));
          b->shader->info.cs.zero_initialize_shared_memory = true;
          break;
-      default:
-         /* Nothing to check. */
+
+      case SpvStorageClassUniformConstant:
+         vtn_fail_if(b->options->environment != NIR_SPIRV_OPENGL &&
+                     b->options->environment != NIR_SPIRV_OPENCL,
+                     "Only OpenGL and OpenCL support variable initializer "
+                     "for UniformConstant variable %u\n",
+                     vtn_id_for_value(b, val));
+         vtn_fail_if(initializer->value_type != vtn_value_type_constant,
+                     "UniformConstant variable %u can only have a constant "
+                     "initializer, but have %u instead",
+                     vtn_id_for_value(b, val),
+                     vtn_id_for_value(b, initializer));
          break;
+
+      case SpvStorageClassOutput:
+      case SpvStorageClassPrivate:
+         vtn_assert(b->options->environment != NIR_SPIRV_OPENCL);
+         /* These can have any initializer. */
+         break;
+
+      case SpvStorageClassFunction:
+         /* These can have any initializer. */
+         break;
+
+      case SpvStorageClassCrossWorkgroup:
+         vtn_assert(b->options->environment == NIR_SPIRV_OPENCL);
+         vtn_fail("Initializer for CrossWorkgroup variable %u "
+                  "not yet supported in Mesa.",
+                  vtn_id_for_value(b, val));
+         break;
+
+      default: {
+         const enum nir_spirv_execution_environment env =
+            b->options->environment;
+         const char *env_name =
+            env == NIR_SPIRV_VULKAN ? "Vulkan" :
+            env == NIR_SPIRV_OPENCL ? "OpenCL" :
+            env == NIR_SPIRV_OPENGL ? "OpenGL" :
+            NULL;
+         vtn_assert(env_name);
+         vtn_fail("In %s, any OpVariable with an Initializer operand "
+                  "must have %s%s%s, or Function as "
+                  "its Storage Class operand.  Variable %u has an "
+                  "Initializer but its Storage Class is %s.",
+                  env_name,
+                  env == NIR_SPIRV_VULKAN ? "Private, Output, Workgroup" : "",
+                  env == NIR_SPIRV_OPENCL ? "CrossWorkgroup, UniformConstant" : "",
+                  env == NIR_SPIRV_OPENGL ? "Private, Output, UniformConstant" : "",
+                  vtn_id_for_value(b, val),
+                  spirv_storageclass_to_string(storage_class));
+         }
       }
 
       switch (initializer->value_type) {
