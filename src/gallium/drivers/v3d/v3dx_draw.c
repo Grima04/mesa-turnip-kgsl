@@ -676,8 +676,14 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
         }
         job->tmu_dirty_rcl |= v3d->prog.fs->prog_data.fs->base.tmu_dirty_rcl;
 
-        /* See GFXH-930 workaround below */
-        uint32_t num_elements_to_emit = MAX2(vtx->num_elements, 1);
+        uint32_t num_elements_to_emit = 0;
+        for (int i = 0; i < vtx->num_elements; i++) {
+                struct pipe_vertex_element *elem = &vtx->pipe[i];
+                struct pipe_vertex_buffer *vb =
+                        &vertexbuf->vb[elem->vertex_buffer_index];
+                if (vb->buffer.resource)
+                        num_elements_to_emit++;
+        }
 
         uint32_t shader_state_record_length =
                 cl_packet_length(GL_SHADER_STATE_RECORD);
@@ -690,10 +696,11 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
         }
 #endif
 
+        /* See GFXH-930 workaround below */
         uint32_t shader_rec_offset =
                     v3d_cl_ensure_space(&job->indirect,
                                     shader_state_record_length +
-                                    num_elements_to_emit *
+                                    MAX2(num_elements_to_emit, 1) *
                                     cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD),
                                     32);
 
@@ -888,6 +895,9 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         &vertexbuf->vb[elem->vertex_buffer_index];
                 struct v3d_resource *rsc = v3d_resource(vb->buffer.resource);
 
+                if (!rsc)
+                        continue;
+
                 const uint32_t size =
                         cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD);
                 cl_emit_with_prepacked(&job->indirect,
@@ -922,7 +932,7 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 STATIC_ASSERT(sizeof(vtx->attrs) >= V3D_MAX_VS_INPUTS / 4 * size);
         }
 
-        if (vtx->num_elements == 0) {
+        if (num_elements_to_emit == 0) {
                 /* GFXH-930: At least one attribute must be enabled and read
                  * by CS and VS.  If we have no attributes being consumed by
                  * the shader, set up a dummy to be loaded into the VPM.
@@ -938,6 +948,7 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         attr.number_of_values_read_by_coordinate_shader = 1;
                         attr.number_of_values_read_by_vertex_shader = 1;
                 }
+                num_elements_to_emit = 1;
         }
 
         cl_emit(&job->bcl, VCM_CACHE_SIZE, vcm) {
