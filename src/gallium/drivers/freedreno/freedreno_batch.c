@@ -525,6 +525,13 @@ fd_batch_check_size(struct fd_batch *batch)
 		return;
 	}
 
+	/* Place a reasonable upper bound on prim/draw stream buffer size: */
+	const unsigned limit_bits = 8 * 8 * 1024 * 1024;
+	if ((batch->prim_strm_bits > limit_bits) || (batch->draw_strm_bits > limit_bits)) {
+		fd_batch_flush(batch);
+		return;
+	}
+
 	if (fd_device_version(batch->ctx->screen->dev) >= FD_VERSION_UNLIMITED_CMDS)
 		return;
 
