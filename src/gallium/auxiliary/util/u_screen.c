@@ -35,6 +35,8 @@ int
 u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
                                  enum pipe_cap param)
 {
+   assert(param < PIPE_CAP_LAST);
+
    /* Let's keep these sorted by position in p_defines.h. */
    switch (param) {
    case PIPE_CAP_NPOT_TEXTURES:
