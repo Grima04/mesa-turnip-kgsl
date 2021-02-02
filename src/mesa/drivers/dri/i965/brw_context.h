@@ -1250,6 +1250,7 @@ struct brw_context
 
    __DRIcontext *driContext;
    struct intel_screen *screen;
+   void *mem_ctx;
 };
 
 /* brw_clear.c */
