@@ -3484,10 +3484,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    case MESA_SHADER_TESS_EVAL:
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                    get_primitive_mode(s->info.tess.primitive_mode));
-      if (s->info.tess.ccw)
-         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeVertexOrderCcw);
-      else
-         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeVertexOrderCw);
+      spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
+                                   s->info.tess.ccw ? SpvExecutionModeVertexOrderCcw
+                                                    : SpvExecutionModeVertexOrderCw);
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                    get_spacing(s->info.tess.spacing));
       if (s->info.tess.point_mode)
