@@ -990,7 +990,7 @@ static void radv_postprocess_config(const struct radv_device *device,
 					     S_00B12C_EXCP_EN(excp_en);
 		}
 		config_out->rsrc1 |= S_00B428_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
-				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
+				     S_00B428_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
 		config_out->rsrc2 |= S_00B42C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
 		break;
 	case MESA_SHADER_VERTEX:
