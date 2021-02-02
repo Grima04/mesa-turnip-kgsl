@@ -1278,6 +1278,23 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 vir_compile_destroy(c);
         }
 
+        if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF) &&
+            c->compilation_result !=
+            V3D_COMPILATION_FAILED_REGISTER_ALLOCATION &&
+            c->spills > 0) {
+                char *debug_msg;
+                int ret = asprintf(&debug_msg,
+                                   "Compiled %s with %d spills and %d fills",
+                                   vir_get_stage_name(c),
+                                   c->spills, c->fills);
+                fprintf(stderr, "%s\n", debug_msg);
+
+                if (ret >= 0) {
+                        c->debug_output(debug_msg, c->debug_output_data);
+                        free(debug_msg);
+                }
+        }
+
         struct v3d_prog_data *prog_data;
 
         prog_data = rzalloc_size(NULL, v3d_prog_data_size(c->s->info.stage));
