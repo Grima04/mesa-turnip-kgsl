@@ -2478,6 +2478,7 @@ VkResult radv_bo_list_add(struct radv_device *device,
 	}
 
 	bo_list->list.bos[bo_list->list.count++] = bo;
+	bo->use_global_list = true;
 	u_rwlock_wrunlock(&bo_list->rwlock);
 	return VK_SUCCESS;
 }
@@ -2499,6 +2500,7 @@ void radv_bo_list_remove(struct radv_device *device,
 	for(unsigned i = bo_list->list.count; i-- > 0;) {
 		if (bo_list->list.bos[i] == bo) {
 			bo_list->list.bos[i] = bo_list->list.bos[bo_list->list.count - 1];
+			bo->use_global_list = false;
 			--bo_list->list.count;
 			break;
 		}

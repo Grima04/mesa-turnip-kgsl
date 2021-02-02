@@ -159,6 +159,7 @@ struct radeon_winsys_bo {
 	uint64_t va;
 	bool is_local;
 	bool vram_no_cpu_access;
+	bool use_global_list;
 	enum radeon_bo_domain initial_domain;
 };
 struct radv_winsys_sem_counts {
@@ -369,7 +370,7 @@ static inline void radv_cs_add_buffer(struct radeon_winsys *ws,
 				      struct radeon_cmdbuf *cs,
 				      struct radeon_winsys_bo *bo)
 {
-	if (bo->is_local)
+	if (bo->use_global_list)
 		return;
 
 	ws->cs_add_buffer(cs, bo);
