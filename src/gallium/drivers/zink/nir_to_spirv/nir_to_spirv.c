@@ -445,8 +445,10 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
       }
       if (var->data.centroid)
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationCentroid);
-      else if (var->data.sample)
+      else if (var->data.sample) {
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleRateShading);
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationSample);
+      }
    } else if (ctx->stage < MESA_SHADER_FRAGMENT) {
       switch (slot) {
       HANDLE_EMIT_BUILTIN(POS, Position);
@@ -556,8 +558,10 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
             spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
          }
       }
-      if (var->data.sample)
+      if (var->data.sample) {
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleRateShading);
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationSample);
+      }
    }
 
    if (var->data.location_frac)
@@ -2490,10 +2494,12 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_load_sample_id:
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleRateShading);
       emit_load_uint_input(ctx, intr, &ctx->sample_id_var, "gl_SampleId", SpvBuiltInSampleId);
       break;
 
    case nir_intrinsic_load_sample_pos:
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleRateShading);
       emit_load_vec_input(ctx, intr, &ctx->sample_pos_var, "gl_SamplePosition", SpvBuiltInSamplePosition, nir_type_float);
       break;
 
@@ -3342,10 +3348,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilityMultiViewport);
    }
 
-   // TODO: only enable when needed
-   if (s->info.stage == MESA_SHADER_FRAGMENT) {
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleRateShading);
-   }
    if (s->info.stage == MESA_SHADER_FRAGMENT || s->info.num_images) {
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampled1D);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImage1D);
