@@ -187,11 +187,7 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
        */
       GLfloat *current = (GLfloat *)vbo->current[i].Ptr;
       fi_type tmp[8]; /* space for doubles */
-      int dmul = 1;
-
-      if (exec->vtx.attr[i].type == GL_DOUBLE ||
-          exec->vtx.attr[i].type == GL_UNSIGNED_INT64_ARB)
-         dmul = 2;
+      int dmul_shift = 0;
 
       assert(exec->vtx.attr[i].size);
 
@@ -199,6 +195,7 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
           exec->vtx.attr[i].type == GL_UNSIGNED_INT64_ARB) {
          memset(tmp, 0, sizeof(tmp));
          memcpy(tmp, exec->vtx.attrptr[i], exec->vtx.attr[i].size * sizeof(GLfloat));
+         dmul_shift = 1;
       } else {
          COPY_CLEAN_4V_TYPE_AS_UNION(tmp,
                                      exec->vtx.attr[i].size,
@@ -206,22 +203,10 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
                                      exec->vtx.attr[i].type);
       }
 
-      if (exec->vtx.attr[i].type != vbo->current[i].Format.Type ||
-          memcmp(current, tmp, 4 * sizeof(GLfloat) * dmul) != 0) {
-         memcpy(current, tmp, 4 * sizeof(GLfloat) * dmul);
+      if (memcmp(current, tmp, 4 * sizeof(GLfloat) << dmul_shift) != 0) {
+         memcpy(current, tmp, 4 * sizeof(GLfloat) << dmul_shift);
 
-         /* Given that we explicitly state size here, there is no need
-          * for the COPY_CLEAN above, could just copy 16 bytes and be
-          * done.  The only problem is when Mesa accesses ctx->Current
-          * directly.
-          */
-         /* Size here is in components - not bytes */
-         vbo_set_vertex_format(&vbo->current[i].Format,
-                               exec->vtx.attr[i].size / dmul,
-                               exec->vtx.attr[i].type);
-
-         if (i >= VBO_ATTRIB_MAT_FRONT_AMBIENT &&
-             i <= VBO_ATTRIB_MAT_BACK_INDEXES) {
+         if (i >= VBO_ATTRIB_MAT_FRONT_AMBIENT) {
             ctx->NewState |= _NEW_MATERIAL;
             ctx->PopAttribState |= GL_LIGHTING_BIT;
 
@@ -233,6 +218,19 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
 
          ctx->NewState |= _NEW_CURRENT_ATTRIB;
          ctx->PopAttribState |= GL_CURRENT_BIT;
+      }
+
+      /* Given that we explicitly state size here, there is no need
+       * for the COPY_CLEAN above, could just copy 16 bytes and be
+       * done.  The only problem is when Mesa accesses ctx->Current
+       * directly.
+       */
+      /* Size here is in components - not bytes */
+      if (exec->vtx.attr[i].type != vbo->current[i].Format.Type ||
+          (exec->vtx.attr[i].size >> dmul_shift) != vbo->current[i].Format.Size) {
+         vbo_set_vertex_format(&vbo->current[i].Format,
+                               exec->vtx.attr[i].size >> dmul_shift,
+                               exec->vtx.attr[i].type);
       }
    }
 

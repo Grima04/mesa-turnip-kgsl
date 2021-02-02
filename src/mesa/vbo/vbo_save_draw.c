@@ -58,22 +58,18 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
       const GLubyte size = attrib->Format.Size;
       const GLenum16 type = attrib->Format.Type;
       fi_type tmp[8];
-      int dmul = 1;
+      int dmul_shift = 0;
 
       if (type == GL_DOUBLE ||
-          type == GL_UNSIGNED_INT64_ARB)
-         dmul = 2;
-
-      if (dmul == 2)
-         memcpy(tmp, *data, size * dmul * sizeof(GLfloat));
-      else
+          type == GL_UNSIGNED_INT64_ARB) {
+         dmul_shift = 1;
+         memcpy(tmp, *data, size * 2 * sizeof(GLfloat));
+      } else {
          COPY_CLEAN_4V_TYPE_AS_UNION(tmp, size, *data, type);
+      }
 
-      if (type != currval->Format.Type ||
-          memcmp(currval->Ptr, tmp, 4 * sizeof(GLfloat) * dmul) != 0) {
-         memcpy((fi_type*)currval->Ptr, tmp, 4 * sizeof(GLfloat) * dmul);
-
-         vbo_set_vertex_format(&currval->Format, size, type);
+      if (memcmp(currval->Ptr, tmp, 4 * sizeof(GLfloat) << dmul_shift) != 0) {
+         memcpy((fi_type*)currval->Ptr, tmp, 4 * sizeof(GLfloat) << dmul_shift);
 
          /* The fixed-func vertex program uses this. */
          if (current_index == VBO_ATTRIB_MAT_FRONT_SHININESS ||
@@ -83,6 +79,10 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
          ctx->NewState |= state;
          ctx->PopAttribState |= pop_state;
       }
+
+      if (type != currval->Format.Type ||
+          (size >> dmul_shift) != currval->Format.Size)
+         vbo_set_vertex_format(&currval->Format, size >> dmul_shift, type);
 
       *data += size;
    }
