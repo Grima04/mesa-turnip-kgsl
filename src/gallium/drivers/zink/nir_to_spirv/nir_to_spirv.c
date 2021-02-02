@@ -3348,8 +3348,12 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilityMultiViewport);
    }
 
-   if (s->info.stage == MESA_SHADER_FRAGMENT || s->info.num_images) {
+   if (s->info.num_textures) {
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampled1D);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
+   }
+
+   if (s->info.num_images) {
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImage1D);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityStorageImageExtendedFormats);
