@@ -1519,6 +1519,21 @@ get_dest_type(struct ntv_context *ctx, nir_dest *dest, nir_alu_type type)
    }
 }
 
+static bool
+needs_derivative_control(nir_alu_instr *alu)
+{
+   switch (alu->op) {
+   case nir_op_fddx_coarse:
+   case nir_op_fddx_fine:
+   case nir_op_fddy_coarse:
+   case nir_op_fddy_fine:
+      return true;
+
+   default:
+      return false;
+   }
+}
+
 static void
 emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 {
@@ -1533,6 +1548,9 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
                                    nir_op_infos[alu->op].output_type);
    unsigned bit_size = nir_dest_bit_size(alu->dest.dest);
    unsigned num_components = nir_dest_num_components(alu->dest.dest);
+
+   if (needs_derivative_control(alu))
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityDerivativeControl);
 
    SpvId result = 0;
    switch (alu->op) {
@@ -3326,7 +3344,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    // TODO: only enable when needed
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityDerivativeControl);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleRateShading);
    }
    if (s->info.stage == MESA_SHADER_FRAGMENT || s->info.num_images) {
