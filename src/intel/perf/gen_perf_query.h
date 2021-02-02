@@ -36,6 +36,7 @@ struct gen_perf_context *gen_perf_new_context(void *parent);
 
 void gen_perf_init_context(struct gen_perf_context *perf_ctx,
                            struct gen_perf_config *perf_cfg,
+                           void * mem_ctx, /* ralloc context */
                            void * ctx,  /* driver context (eg, brw_context) */
                            void * bufmgr,  /* eg brw_bufmgr */
                            const struct gen_device_info *devinfo,

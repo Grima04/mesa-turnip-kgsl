@@ -252,6 +252,7 @@ struct gen_perf_query_object
 struct gen_perf_context {
    struct gen_perf_config *perf;
 
+   void * mem_ctx; /* ralloc context */
    void * ctx;  /* driver context (eg, brw_context) */
    void * bufmgr;
    const struct gen_device_info *devinfo;
@@ -568,6 +569,7 @@ gen_perf_config(struct gen_perf_context *ctx)
 void
 gen_perf_init_context(struct gen_perf_context *perf_ctx,
                       struct gen_perf_config *perf_cfg,
+                      void * mem_ctx, /* ralloc context */
                       void * ctx,  /* driver context (eg, brw_context) */
                       void * bufmgr,  /* eg brw_bufmgr */
                       const struct gen_device_info *devinfo,
@@ -575,6 +577,7 @@ gen_perf_init_context(struct gen_perf_context *perf_ctx,
                       int drm_fd)
 {
    perf_ctx->perf = perf_cfg;
+   perf_ctx->mem_ctx = mem_ctx;
    perf_ctx->ctx = ctx;
    perf_ctx->bufmgr = bufmgr;
    perf_ctx->drm_fd = drm_fd;
@@ -582,7 +585,7 @@ gen_perf_init_context(struct gen_perf_context *perf_ctx,
    perf_ctx->devinfo = devinfo;
 
    perf_ctx->unaccumulated =
-      ralloc_array(ctx, struct gen_perf_query_object *, 2);
+      ralloc_array(mem_ctx, struct gen_perf_query_object *, 2);
    perf_ctx->unaccumulated_elements = 0;
    perf_ctx->unaccumulated_array_size = 2;
 
@@ -617,7 +620,7 @@ add_to_unaccumulated_query_list(struct gen_perf_context *perf_ctx,
    {
       perf_ctx->unaccumulated_array_size *= 1.5;
       perf_ctx->unaccumulated =
-         reralloc(perf_ctx->ctx, perf_ctx->unaccumulated,
+         reralloc(perf_ctx->mem_ctx, perf_ctx->unaccumulated,
                   struct gen_perf_query_object *,
                   perf_ctx->unaccumulated_array_size);
    }

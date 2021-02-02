@@ -504,7 +504,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
    perf_cfg->vtbl.bo_wait_rendering = (bo_wait_rendering_t)brw_bo_wait_rendering;
    perf_cfg->vtbl.bo_busy = (bo_busy_t)brw_bo_busy;
 
-   gen_perf_init_context(perf_ctx, perf_cfg, brw, brw->bufmgr, devinfo,
+   gen_perf_init_context(perf_ctx, perf_cfg, brw, brw, brw->bufmgr, devinfo,
                          brw->hw_ctx, brw->screen->fd);
    gen_perf_init_metrics(perf_cfg, devinfo, brw->screen->fd,
                          true /* pipeline stats */);
