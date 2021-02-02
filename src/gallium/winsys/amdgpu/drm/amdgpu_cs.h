@@ -208,7 +208,7 @@ static inline void amdgpu_fence_reference(struct pipe_fence_handle **dst,
    *adst = asrc;
 }
 
-int amdgpu_lookup_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo);
+int amdgpu_lookup_buffer_any_type(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo);
 
 static inline struct amdgpu_cs *
 amdgpu_cs(struct radeon_cmdbuf *rcs)
@@ -227,7 +227,7 @@ amdgpu_bo_is_referenced_by_cs(struct amdgpu_cs *cs,
 {
    int num_refs = bo->num_cs_references;
    return num_refs == bo->ws->num_cs ||
-         (num_refs && amdgpu_lookup_buffer(cs->csc, bo) != -1);
+         (num_refs && amdgpu_lookup_buffer_any_type(cs->csc, bo) != -1);
 }
 
 static inline bool
@@ -241,7 +241,7 @@ amdgpu_bo_is_referenced_by_cs_with_usage(struct amdgpu_cs *cs,
    if (!bo->num_cs_references)
       return false;
 
-   index = amdgpu_lookup_buffer(cs->csc, bo);
+   index = amdgpu_lookup_buffer_any_type(cs->csc, bo);
    if (index == -1)
       return false;
 
