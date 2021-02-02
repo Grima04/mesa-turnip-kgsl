@@ -44,15 +44,6 @@ void gen_perf_init_context(struct gen_perf_context *perf_ctx,
 
 const struct gen_perf_query_info* gen_perf_query_info(const struct gen_perf_query_object *);
 
-
-void gen_perf_init_context(struct gen_perf_context *perf_ctx,
-                           struct gen_perf_config *perf_cfg,
-                           void * ctx,  /* driver context (eg, brw_context) */
-                           void * bufmgr,  /* eg brw_bufmgr */
-                           const struct gen_device_info *devinfo,
-                           uint32_t hw_ctx,
-                           int drm_fd);
-
 struct gen_perf_config *gen_perf_config(struct gen_perf_context *ctx);
 
 int gen_perf_active_queries(struct gen_perf_context *perf_ctx,
