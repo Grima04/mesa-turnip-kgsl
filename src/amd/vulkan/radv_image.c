@@ -1377,7 +1377,7 @@ radv_image_create_layout(struct radv_device *device,
 	if (result != VK_SUCCESS)
 		return result;
 
-	assert(!mod_info || mod_info->drmFormatModifierPlaneCount == image->plane_count);
+	assert(!mod_info || mod_info->drmFormatModifierPlaneCount >= image->plane_count);
 
 	radv_image_reset_layout(image);
 
