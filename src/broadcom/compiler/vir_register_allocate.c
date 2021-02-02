@@ -737,9 +737,12 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
                                 break;
 
                         /* Don't emit spills using the TMU until we've dropped
-                         * thread count first.
+                         * thread count first. Also, don't spill if we have
+                         * enabled TMU pipelining, as that can make TMU spilling
+                         * pretty terrible.
                          */
-                        if (is_uniform || thread_index == 0) {
+                        if (is_uniform ||
+                            (thread_index == 0 && c->disable_tmu_pipelining)) {
                                 v3d_spill_reg(c, map[node].temp);
 
                                 /* Ask the outer loop to call back in. */
