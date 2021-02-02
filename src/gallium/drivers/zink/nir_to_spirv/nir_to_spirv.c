@@ -3370,7 +3370,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    ctx.shader_slot_map = shader_slot_map;
    ctx.shader_slots_reserved = *shader_slots_reserved;
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
-   spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageGLSL, 450);
+   spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageUnknown, 0);
 
    if (s->info.stage == MESA_SHADER_TESS_CTRL || s->info.num_images) {
       /* this is required for correct barrier and io semantics */
