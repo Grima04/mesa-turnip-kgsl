@@ -71,7 +71,7 @@ static int is_64b(void)
 }
 
 
-static int draws[3];
+static int draws[4];
 static struct {
 	uint64_t base;
 	uint32_t size;   /* in dwords */
@@ -2656,6 +2656,7 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
 		return;
 	}
 
+	assert(ib < ARRAY_SIZE(draws));
 	draws[ib] = 0;
 
 	while (dwords_left > 0) {
