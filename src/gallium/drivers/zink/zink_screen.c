@@ -403,7 +403,7 @@ zink_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
    }
 
    /* should only get here on unhandled cases */
-   return 0.0;
+   return 0.0f;
 }
 
 static int
