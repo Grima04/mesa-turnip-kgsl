@@ -119,6 +119,9 @@ public:
 
    void replace_values(const ValueSet& candidates, PValue new_value) override;
 
+   bool accept(InstructionVisitor& visitor) override {return visitor.visit(*this);}
+   bool accept(ConstInstructionVisitor& visitor) const override {return visitor.visit(*this);}
+
 private:
 
    bool is_equal_to(const Instruction& lhs) const override;
