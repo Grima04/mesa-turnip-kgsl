@@ -80,7 +80,7 @@ vk_extensions = custom_target(
     prog_python, '@INPUT0@', '--xml', '@INPUT1@',
     '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@'
   ],
-  dependencies : ['vk_extensions.py'],
+  depend_files : files('vk_extensions.py'),
 )
 
 libvulkan_util = static_library(
