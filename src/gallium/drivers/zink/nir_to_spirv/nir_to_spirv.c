@@ -3311,6 +3311,21 @@ get_primitive_mode(uint16_t primitive_mode)
    }
 }
 
+static SpvExecutionMode
+get_spacing(enum gl_tess_spacing spacing)
+{
+   switch (spacing) {
+   case TESS_SPACING_EQUAL:
+      return SpvExecutionModeSpacingEqual;
+   case TESS_SPACING_FRACTIONAL_ODD:
+      return SpvExecutionModeSpacingFractionalOdd;
+   case TESS_SPACING_FRACTIONAL_EVEN:
+      return SpvExecutionModeSpacingFractionalEven;
+   default:
+      unreachable("unknown tess spacing!");
+   }
+}
+
 struct spirv_shader *
 nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
              unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
@@ -3473,19 +3488,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeVertexOrderCcw);
       else
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeVertexOrderCw);
-      switch (s->info.tess.spacing) {
-      case TESS_SPACING_EQUAL:
-         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeSpacingEqual);
-         break;
-      case TESS_SPACING_FRACTIONAL_ODD:
-         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeSpacingFractionalOdd);
-         break;
-      case TESS_SPACING_FRACTIONAL_EVEN:
-         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeSpacingFractionalEven);
-         break;
-      default:
-         unreachable("unknown tess spacing!");
-      }
+      spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
+                                   get_spacing(s->info.tess.spacing));
       if (s->info.tess.point_mode)
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModePointMode);
       break;
