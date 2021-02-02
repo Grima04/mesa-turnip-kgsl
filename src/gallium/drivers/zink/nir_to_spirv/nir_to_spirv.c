@@ -3299,6 +3299,18 @@ get_depth_layout_mode(enum gl_frag_depth_layout depth_layout)
    }
 }
 
+static SpvExecutionMode
+get_primitive_mode(uint16_t primitive_mode)
+{
+   switch (primitive_mode) {
+   case GL_TRIANGLES: return SpvExecutionModeTriangles;
+   case GL_QUADS: return SpvExecutionModeQuads;
+   case GL_ISOLINES: return SpvExecutionModeIsolines;
+   default:
+      unreachable("unknown tess prim type!");
+   }
+}
+
 struct spirv_shader *
 nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
              unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
@@ -3455,19 +3467,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
       spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point, SpvExecutionModeOutputVertices, s->info.tess.tcs_vertices_out);
       break;
    case MESA_SHADER_TESS_EVAL:
-      switch (s->info.tess.primitive_mode) {
-      case GL_TRIANGLES:
-         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeTriangles);
-         break;
-      case GL_QUADS:
-         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeQuads);
-         break;
-      case GL_ISOLINES:
-         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeIsolines);
-         break;
-      default:
-         unreachable("unknown tess prim type!");
-      }
+      spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
+                                   get_primitive_mode(s->info.tess.primitive_mode));
       if (s->info.tess.ccw)
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeVertexOrderCcw);
       else
