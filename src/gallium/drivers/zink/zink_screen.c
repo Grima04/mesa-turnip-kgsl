@@ -378,13 +378,19 @@ zink_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
    switch (param) {
    case PIPE_CAPF_MAX_LINE_WIDTH:
    case PIPE_CAPF_MAX_LINE_WIDTH_AA:
+      if (!screen->info.feats.features.wideLines)
+         return 1.0f;
       return screen->info.props.limits.lineWidthRange[1];
 
    case PIPE_CAPF_MAX_POINT_WIDTH:
    case PIPE_CAPF_MAX_POINT_WIDTH_AA:
+      if (!screen->info.feats.features.largePoints)
+         return 1.0f;
       return screen->info.props.limits.pointSizeRange[1];
 
    case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:
+      if (!screen->info.feats.features.samplerAnisotropy)
+         return 1.0f;
       return screen->info.props.limits.maxSamplerAnisotropy;
 
    case PIPE_CAPF_MAX_TEXTURE_LOD_BIAS:
