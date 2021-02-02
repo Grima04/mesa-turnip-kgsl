@@ -195,7 +195,7 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (device->instance->debug_flags & RADV_DEBUG_NO_DCC)
 		return false;
 
-	if (image->shareable)
+	if (image->shareable && image->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
 		return false;
 
 	/* TODO: Enable DCC for storage images. */
@@ -209,7 +209,8 @@ radv_use_dcc_for_image(struct radv_device *device,
 	    vk_format_get_plane_count(format) > 1)
 		return false;
 
-	if (!radv_image_use_fast_clear_for_image(device, image))
+	if (!radv_image_use_fast_clear_for_image(device, image) &&
+	    image->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
 		return false;
 
 	/* Do not enable DCC for mipmapped arrays because performance is worse. */
