@@ -509,7 +509,7 @@ gcm_replace_def_with_undef(nir_ssa_def *def, void *void_state)
 {
    struct gcm_state *state = void_state;
 
-   if (list_is_empty(&def->uses) && list_is_empty(&def->if_uses))
+   if (nir_ssa_def_is_unused(def))
       return true;
 
    nir_ssa_undef_instr *undef =

@@ -3945,6 +3945,12 @@ void nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_src new_src,
 
 nir_component_mask_t nir_ssa_def_components_read(const nir_ssa_def *def);
 
+static inline bool
+nir_ssa_def_is_unused(nir_ssa_def *ssa)
+{
+   return list_is_empty(&ssa->uses) && list_is_empty(&ssa->if_uses);
+}
+
 
 /** Returns the next block, disregarding structure
  *

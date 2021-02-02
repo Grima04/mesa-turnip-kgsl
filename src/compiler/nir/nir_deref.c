@@ -110,7 +110,7 @@ nir_deref_instr_remove_if_unused(nir_deref_instr *instr)
    for (nir_deref_instr *d = instr; d; d = nir_deref_instr_parent(d)) {
       /* If anyone is using this deref, leave it alone */
       assert(d->dest.is_ssa);
-      if (!list_is_empty(&d->dest.ssa.uses))
+      if (!nir_ssa_def_is_unused(&d->dest.ssa))
          break;
 
       nir_instr_remove(&d->instr);

@@ -548,7 +548,7 @@ rewrite_ssa_def(nir_ssa_def *def, void *void_state)
    }
 
    nir_ssa_def_rewrite_uses(def, nir_src_for_reg(reg));
-   assert(list_is_empty(&def->uses) && list_is_empty(&def->if_uses));
+   assert(nir_ssa_def_is_unused(def));
 
    if (def->parent_instr->type == nir_instr_type_ssa_undef) {
       /* If it's an ssa_undef instruction, remove it since we know we just got

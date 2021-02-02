@@ -242,8 +242,7 @@ optimize_and_rewrite_atomic(nir_builder *b, nir_intrinsic_instr *intrin)
    }
 
    ASSERTED bool original_result_divergent = intrin->dest.ssa.divergent;
-   bool return_prev = !list_is_empty(&intrin->dest.ssa.uses) ||
-                      !list_is_empty(&intrin->dest.ssa.if_uses);
+   bool return_prev = !nir_ssa_def_is_unused(&intrin->dest.ssa);
 
    nir_ssa_def old_result = intrin->dest.ssa;
    list_replace(&intrin->dest.ssa.uses, &old_result.uses);
