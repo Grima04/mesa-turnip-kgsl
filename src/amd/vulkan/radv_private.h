@@ -1504,17 +1504,13 @@ void si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer);
 void radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer);
 bool
 radv_cmd_buffer_upload_alloc(struct radv_cmd_buffer *cmd_buffer,
-			     unsigned size,
-			     unsigned alignment,
-			     unsigned *out_offset,
-			     void **ptr);
+			     unsigned size, unsigned *out_offset, void **ptr);
 void
 radv_cmd_buffer_set_subpass(struct radv_cmd_buffer *cmd_buffer,
 			    const struct radv_subpass *subpass);
 bool
 radv_cmd_buffer_upload_data(struct radv_cmd_buffer *cmd_buffer,
-			    unsigned size, unsigned alignmnet,
-			    const void *data, unsigned *out_offset);
+			    unsigned size, const void *data, unsigned *out_offset);
 
 void radv_cmd_buffer_clear_subpass(struct radv_cmd_buffer *cmd_buffer);
 void radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer);

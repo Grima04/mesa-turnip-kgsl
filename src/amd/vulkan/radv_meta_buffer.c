@@ -546,7 +546,7 @@ void radv_CmdUpdateBuffer(
 			radv_cmd_buffer_trace_emit(cmd_buffer);
 	} else {
 		uint32_t buf_offset;
-		radv_cmd_buffer_upload_data(cmd_buffer, dataSize, 32, pData, &buf_offset);
+		radv_cmd_buffer_upload_data(cmd_buffer, dataSize, pData, &buf_offset);
 		radv_copy_buffer(cmd_buffer, cmd_buffer->upload.upload_bo, dst_buffer->bo,
 				 buf_offset, dstOffset + dst_buffer->offset, dataSize);
 	}
