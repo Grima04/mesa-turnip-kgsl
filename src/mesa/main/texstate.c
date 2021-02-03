@@ -903,6 +903,7 @@ _mesa_update_texture_state(struct gl_context *ctx)
    /* TODO: only set this if there are actual changes */
    ctx->NewState |= _NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE;
 
+   GLbitfield old_genflags = ctx->Texture._GenFlags;
    GLbitfield old_enabled_coord_units = ctx->Texture._EnabledCoordUnits;
    GLbitfield old_texgen_enabled = ctx->Texture._TexGenEnabled;
    GLbitfield old_texmat_enabled = ctx->Texture._TexMatEnabled;
@@ -953,6 +954,9 @@ _mesa_update_texture_state(struct gl_context *ctx)
        old_texmat_enabled != ctx->Texture._TexMatEnabled) {
       new_state |= _NEW_FF_VERT_PROGRAM | _NEW_FF_FRAG_PROGRAM;
    }
+
+   if (old_genflags != ctx->Texture._GenFlags)
+      new_state |= _NEW_TNL_SPACES;
 
    return new_state;
 }

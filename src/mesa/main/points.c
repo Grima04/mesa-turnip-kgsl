@@ -130,7 +130,8 @@ _mesa_PointParameterfv( GLenum pname, const GLfloat *params)
       case GL_DISTANCE_ATTENUATION_EXT:
          if (TEST_EQ_3V(ctx->Point.Params, params))
             return;
-         FLUSH_VERTICES(ctx, _NEW_POINT | _NEW_FF_VERT_PROGRAM, GL_POINT_BIT);
+         FLUSH_VERTICES(ctx, _NEW_POINT | _NEW_FF_VERT_PROGRAM |
+                        _NEW_TNL_SPACES, GL_POINT_BIT);
          COPY_3V(ctx->Point.Params, params);
          ctx->Point._Attenuated = (ctx->Point.Params[0] != 1.0F ||
                                    ctx->Point.Params[1] != 0.0F ||

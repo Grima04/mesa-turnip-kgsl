@@ -949,14 +949,17 @@ _mesa_GetMaterialiv( GLenum face, GLenum pname, GLint *params )
  * Also, precompute some lighting values such as the products of light
  * source and material ambient, diffuse and specular coefficients.
  */
-void
+GLbitfield
 _mesa_update_lighting( struct gl_context *ctx )
 {
    GLbitfield flags = 0;
+   bool old_need_eye_coords = ctx->Light._NeedEyeCoords;
    ctx->Light._NeedEyeCoords = GL_FALSE;
 
-   if (!ctx->Light.Enabled)
-      return;
+   if (!ctx->Light.Enabled) {
+      return old_need_eye_coords != ctx->Light._NeedEyeCoords ?
+                                       _NEW_TNL_SPACES : 0;
+   }
 
    GLbitfield mask = ctx->Light._EnabledLights;
    while (mask) {
@@ -979,6 +982,9 @@ _mesa_update_lighting( struct gl_context *ctx )
     */
    if (ctx->Light._NeedVertices)
       ctx->Light._NeedEyeCoords = GL_TRUE;
+
+   return old_need_eye_coords != ctx->Light._NeedEyeCoords ?
+                                    _NEW_TNL_SPACES : 0;
 }
 
 void
@@ -1184,7 +1190,7 @@ void
 _mesa_allow_light_in_model( struct gl_context *ctx, GLboolean flag )
 {
    ctx->_ForceEyeCoords = !flag;
-   ctx->NewState |= _NEW_POINT; /* for _mesa_update_tnl_spaces */
+   ctx->NewState |= _NEW_TNL_SPACES;
 }
 
 

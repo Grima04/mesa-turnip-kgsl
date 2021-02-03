@@ -4631,7 +4631,7 @@ struct gl_matrix_stack
 #define _NEW_TEXTURE_MATRIX    (1u << 2)   /**< gl_context::TextureMatrix */
 #define _NEW_COLOR             (1u << 3)   /**< gl_context::Color */
 #define _NEW_DEPTH             (1u << 4)   /**< gl_context::Depth */
-/* gap */
+#define _NEW_TNL_SPACES        (1u << 5)  /**< _mesa_update_tnl_spaces */
 #define _NEW_FOG               (1u << 6)   /**< gl_context::Fog */
 #define _NEW_HINT              (1u << 7)   /**< gl_context::Hint */
 #define _NEW_LIGHT_CONSTANTS   (1u << 8)   /**< gl_context::Light */
