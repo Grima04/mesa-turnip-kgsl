@@ -1296,17 +1296,26 @@ getparam_topology(struct gen_device_info *devinfo, int fd)
 {
    int slice_mask = 0;
    if (!getparam(fd, I915_PARAM_SLICE_MASK, &slice_mask))
-      return false;
+      goto maybe_warn;
 
    int n_eus;
    if (!getparam(fd, I915_PARAM_EU_TOTAL, &n_eus))
-      return false;
+      goto maybe_warn;
 
    int subslice_mask = 0;
    if (!getparam(fd, I915_PARAM_SUBSLICE_MASK, &subslice_mask))
-      return false;
+      goto maybe_warn;
 
    return update_from_masks(devinfo, slice_mask, subslice_mask, n_eus);
+
+ maybe_warn:
+   /* Only with Gen8+ are we starting to see devices with fusing that can only
+    * be detected at runtime.
+    */
+   if (devinfo->gen >= 8)
+      fprintf(stderr, "Kernel 4.1 required to properly query GPU properties.\n");
+
+   return false;
 }
 
 /**
@@ -1437,9 +1446,10 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
    if (getparam(fd, I915_PARAM_CS_TIMESTAMP_FREQUENCY,
                 &timestamp_frequency))
       devinfo->timestamp_frequency = timestamp_frequency;
-   else if (devinfo->gen >= 10)
-      /* gen10 and later requires the timestamp_frequency to be updated */
+   else if (devinfo->gen >= 10) {
+      fprintf(stderr, "Kernel 4.15 required to read the CS timestamp frequency.\n");
       return false;
+   }
 
    if (!getparam(fd, I915_PARAM_REVISION, &devinfo->revision))
       devinfo->revision = 0;
