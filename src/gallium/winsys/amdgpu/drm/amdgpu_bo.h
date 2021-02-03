@@ -66,6 +66,11 @@ struct amdgpu_winsys_bo {
          void *cpu_ptr; /* for user_ptr and permanent maps */
          uint32_t kms_handle;
          int map_count;
+
+         /* Whether buffer_get_handle or buffer_from_handle has been called,
+          * it can only transition from false to true. Protected by lock.
+          */
+         bool is_shared;
       } real;
       struct {
          struct pb_slab_entry entry;
@@ -89,11 +94,6 @@ struct amdgpu_winsys_bo {
    amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
    bool is_user_ptr;
    bool use_reusable_pool;
-
-   /* Whether buffer_get_handle or buffer_from_handle has been called,
-    * it can only transition from false to true. Protected by lock.
-    */
-   bool is_shared;
 
    uint32_t unique_id;
    uint64_t va;

@@ -66,9 +66,12 @@ static bool amdgpu_bo_wait(struct pb_buffer *_buf, uint64_t timeout,
          return false;
    }
 
-   simple_mtx_lock(&bo->lock);
-   bool is_shared = bo->is_shared;
-   simple_mtx_unlock(&bo->lock);
+   bool is_shared = false;
+   if (bo->bo) {
+      simple_mtx_lock(&bo->lock);
+      is_shared = bo->u.real.is_shared;
+      simple_mtx_unlock(&bo->lock);
+   }
 
    if (is_shared) {
       /* We can't use user fences for shared buffers, because user fences
@@ -1584,7 +1587,7 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    bo->base.placement = initial;
    bo->base.usage = flags;
    bo->unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
-   bo->is_shared = true;
+   bo->u.real.is_shared = true;
 
    if (bo->base.placement & RADEON_DOMAIN_VRAM)
       ws->allocated_vram += align64(bo->base.size, ws->info.gart_page_size);
@@ -1636,7 +1639,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
          whandle->handle = bo->u.real.kms_handle;
 
          simple_mtx_lock(&bo->lock);
-         bool is_shared = bo->is_shared;
+         bool is_shared = bo->u.real.is_shared;
          simple_mtx_unlock(&bo->lock);
 
          if (is_shared)
@@ -1686,7 +1689,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
    simple_mtx_lock(&bo->lock);
-   bo->is_shared = true;
+   bo->u.real.is_shared = true;
    simple_mtx_unlock(&bo->lock);
    return true;
 }
