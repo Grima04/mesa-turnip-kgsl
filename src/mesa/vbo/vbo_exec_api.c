@@ -178,6 +178,7 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
    struct gl_context *ctx = gl_context_from_vbo_exec(exec);
    struct vbo_context *vbo = vbo_context(ctx);
    GLbitfield64 enabled = exec->vtx.enabled & (~BITFIELD64_BIT(VBO_ATTRIB_POS));
+   bool color0_changed = false;
 
    while (enabled) {
       const int i = u_bit_scan64(&enabled);
@@ -205,6 +206,9 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
 
       if (memcmp(current, tmp, 4 * sizeof(GLfloat) << dmul_shift) != 0) {
          memcpy(current, tmp, 4 * sizeof(GLfloat) << dmul_shift);
+
+         if (i == VBO_ATTRIB_COLOR0)
+            color0_changed = true;
 
          if (i >= VBO_ATTRIB_MAT_FRONT_AMBIENT) {
             ctx->NewState |= _NEW_MATERIAL;
@@ -234,10 +238,7 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
       }
    }
 
-   /* Colormaterial -- this kindof sucks.
-    */
-   if (ctx->Light.ColorMaterialEnabled &&
-       exec->vtx.attr[VBO_ATTRIB_COLOR0].size) {
+   if (color0_changed && ctx->Light.ColorMaterialEnabled) {
       _mesa_update_color_material(ctx,
                                   ctx->Current.Attrib[VBO_ATTRIB_COLOR0]);
    }

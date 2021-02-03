@@ -45,7 +45,7 @@
 static void
 copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
          GLbitfield mask, GLbitfield state, GLbitfield pop_state,
-         int shift, fi_type **data)
+         int shift, fi_type **data, bool *color0_changed)
 {
    struct vbo_context *vbo = vbo_context(ctx);
 
@@ -70,6 +70,9 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
 
       if (memcmp(currval->Ptr, tmp, 4 * sizeof(GLfloat) << dmul_shift) != 0) {
          memcpy((fi_type*)currval->Ptr, tmp, 4 * sizeof(GLfloat) << dmul_shift);
+
+         if (current_index == VBO_ATTRIB_COLOR0)
+            *color0_changed = true;
 
          /* The fixed-func vertex program uses this. */
          if (current_index == VBO_ATTRIB_MAT_FRONT_SHININESS ||
@@ -100,18 +103,18 @@ playback_copy_to_current(struct gl_context *ctx,
       return;
 
    fi_type *data = node->current_data;
+   bool color0_changed = false;
+
    /* Copy conventional attribs and generics except pos */
    copy_vao(ctx, node->VAO[VP_MODE_SHADER], ~VERT_BIT_POS & VERT_BIT_ALL,
-            _NEW_CURRENT_ATTRIB, GL_CURRENT_BIT, 0, &data);
+            _NEW_CURRENT_ATTRIB, GL_CURRENT_BIT, 0, &data, &color0_changed);
    /* Copy materials */
    copy_vao(ctx, node->VAO[VP_MODE_FF], VERT_BIT_MAT_ALL,
             _NEW_CURRENT_ATTRIB | _NEW_MATERIAL,
             GL_CURRENT_BIT | GL_LIGHTING_BIT,
-            VBO_MATERIAL_SHIFT, &data);
+            VBO_MATERIAL_SHIFT, &data, &color0_changed);
 
-   /* Colormaterial -- this kindof sucks.
-    */
-   if (ctx->Light.ColorMaterialEnabled) {
+   if (color0_changed && ctx->Light.ColorMaterialEnabled) {
       _mesa_update_color_material(ctx, ctx->Current.Attrib[VBO_ATTRIB_COLOR0]);
    }
 
