@@ -291,14 +291,18 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    if (templ->usage == PIPE_USAGE_STAGING)
       ici.tiling = VK_IMAGE_TILING_LINEAR;
 
+   VkFormatProperties props = screen->format_props[templ->format];
+   VkFormatFeatureFlags feats = ici.tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
    /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
-   ici.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-               VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-               VK_IMAGE_USAGE_SAMPLED_BIT;
+   if (feats & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
+      ici.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+   if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
+      ici.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+   if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+      ici.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
    if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
        (bind & PIPE_BIND_SHADER_IMAGE)) {
-      VkFormatProperties props = screen->format_props[templ->format];
       if ((ici.tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
           (ici.tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
          ici.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
