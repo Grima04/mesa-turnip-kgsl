@@ -875,6 +875,9 @@ void aco_print_block(const Block* block, FILE *output, unsigned flags)
    fprintf(output, "*/\n");
    for (auto const& instr : block->instructions) {
       fprintf(output, "\t");
+      if (flags & print_perf_info)
+         fprintf(output, "(%3u clk)   ", instr->pass_flags);
+
       aco_print_instr(instr.get(), output, flags);
       fprintf(output, "\n");
    }

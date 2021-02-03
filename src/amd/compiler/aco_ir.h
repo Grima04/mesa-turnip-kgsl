@@ -55,6 +55,7 @@ enum {
    DEBUG_NO_VN = 0x10,
    DEBUG_NO_OPT = 0x20,
    DEBUG_NO_SCHED = 0x40,
+   DEBUG_PERF_INFO = 0x80,
 };
 
 /**
@@ -2012,6 +2013,7 @@ void collect_postasm_stats(Program *program, const std::vector<uint32_t>& code);
 
 enum print_flags {
    print_no_ssa = 0x1,
+   print_perf_info = 0x2,
 };
 
 void aco_print_operand(const Operand *operand, FILE *output, unsigned flags=0);

@@ -167,7 +167,7 @@ void aco_compile_shader(unsigned shader_count,
    if (program->chip_class >= GFX10)
       aco::form_hard_clauses(program.get());
 
-   if (program->collect_statistics)
+   if (program->collect_statistics || (aco::debug_flags & aco::DEBUG_PERF_INFO))
       aco::collect_preasm_stats(program.get());
 
    /* Assembly */
