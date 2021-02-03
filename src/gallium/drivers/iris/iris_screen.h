@@ -110,7 +110,7 @@ struct iris_vtable {
                                      uint32_t report_id);
 
    unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
-   void (*store_derived_program_state)(struct iris_context *ice,
+   void (*store_derived_program_state)(const struct gen_device_info *devinfo,
                                        enum iris_program_cache_id cache_id,
                                        struct iris_compiled_shader *shader);
    uint32_t *(*create_so_decl_list)(const struct pipe_stream_output_info *sol,

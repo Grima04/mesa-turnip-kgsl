@@ -124,6 +124,7 @@ iris_upload_shader(struct iris_context *ice,
    struct hash_table *cache = ice->shaders.cache;
    void *mem_ctx = ish ? NULL : (void *) cache;
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_compiled_shader *shader =
       rzalloc_size(mem_ctx, sizeof(struct iris_compiled_shader) +
                    screen->vtbl.derived_program_state_size(cache_id));
@@ -170,7 +171,7 @@ iris_upload_shader(struct iris_context *ice,
    ralloc_steal(shader, shader->system_values);
 
    /* Store the 3DSTATE shader packets and other derived state. */
-   screen->vtbl.store_derived_program_state(ice, cache_id, shader);
+   screen->vtbl.store_derived_program_state(devinfo, cache_id, shader);
 
    if (ish) {
       assert(key_size <= sizeof(union iris_any_prog_key));
