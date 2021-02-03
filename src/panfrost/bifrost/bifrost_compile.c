@@ -2406,7 +2406,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         pan_block *first_block = list_first_entry(&ctx->blocks, pan_block, link);
         bi_clause *first_clause = bi_next_clause(ctx, first_block, NULL);
 
-        unsigned first_deps = first_clause->dependencies;
+        unsigned first_deps = first_clause ? first_clause->dependencies : 0;
         program->wait_6 = (first_deps & (1 << 6));
         program->wait_7 = (first_deps & (1 << 7));
 
