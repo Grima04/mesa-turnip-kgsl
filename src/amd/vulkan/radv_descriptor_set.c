@@ -710,7 +710,7 @@ static void radv_destroy_descriptor_pool(struct radv_device *device,
 	}
 
 	if (pool->bo)
-		device->ws->buffer_destroy(pool->bo);
+		device->ws->buffer_destroy(device->ws, pool->bo);
 	if (pool->host_bo)
 		vk_free2(&device->vk.alloc, pAllocator, pool->host_bo);
 

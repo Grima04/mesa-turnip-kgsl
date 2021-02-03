@@ -539,7 +539,7 @@ radv_thread_trace_finish(struct radv_device *device)
 	struct radeon_winsys *ws = device->ws;
 
 	if (unlikely(device->thread_trace.bo))
-		ws->buffer_destroy(device->thread_trace.bo);
+		ws->buffer_destroy(ws, device->thread_trace.bo);
 
 	for (unsigned i = 0; i < 2; i++) {
 		if (device->thread_trace.start_cs[i])

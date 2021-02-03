@@ -41,7 +41,8 @@
 #include "util/u_math.h"
 #include "util/os_time.h"
 
-static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo);
+static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws,
+					  struct radeon_winsys_bo *_bo);
 
 static int
 radv_amdgpu_bo_va_op(struct radv_amdgpu_winsys *ws,
@@ -73,21 +74,22 @@ radv_amdgpu_bo_va_op(struct radv_amdgpu_winsys *ws,
 }
 
 static void
-radv_amdgpu_winsys_virtual_map(struct radv_amdgpu_winsys_bo *bo,
+radv_amdgpu_winsys_virtual_map(struct radv_amdgpu_winsys *ws,
+			       struct radv_amdgpu_winsys_bo *bo,
                                const struct radv_amdgpu_map_range *range)
 {
 	uint64_t internal_flags = 0;
 	assert(range->size);
 
 	if (!range->bo) {
-		if (!bo->ws->info.has_sparse_vm_mappings)
+		if (!ws->info.has_sparse_vm_mappings)
 			return;
 
 		internal_flags |= AMDGPU_VM_PAGE_PRT;
 	} else
 		p_atomic_inc(&range->bo->ref_count);
 
-	int r = radv_amdgpu_bo_va_op(bo->ws, range->bo ? range->bo->bo : NULL,
+	int r = radv_amdgpu_bo_va_op(ws, range->bo ? range->bo->bo : NULL,
 				     range->bo_offset, range->size,
 				     range->offset + bo->base.va, 0,
 				     internal_flags, AMDGPU_VA_OP_MAP);
@@ -96,14 +98,15 @@ radv_amdgpu_winsys_virtual_map(struct radv_amdgpu_winsys_bo *bo,
 }
 
 static void
-radv_amdgpu_winsys_virtual_unmap(struct radv_amdgpu_winsys_bo *bo,
+radv_amdgpu_winsys_virtual_unmap(struct radv_amdgpu_winsys *ws,
+				 struct radv_amdgpu_winsys_bo *bo,
                                  const struct radv_amdgpu_map_range *range)
 {
 	uint64_t internal_flags = 0;
 	assert(range->size);
 
 	if (!range->bo) {
-		if(!bo->ws->info.has_sparse_vm_mappings)
+		if(!ws->info.has_sparse_vm_mappings)
 			return;
 
 		/* Even though this is an unmap, if we don't set this flag,
@@ -111,7 +114,7 @@ radv_amdgpu_winsys_virtual_unmap(struct radv_amdgpu_winsys_bo *bo,
 		internal_flags |= AMDGPU_VM_PAGE_PRT;
 	}
 
-	int r = radv_amdgpu_bo_va_op(bo->ws, range->bo ? range->bo->bo : NULL,
+	int r = radv_amdgpu_bo_va_op(ws, range->bo ? range->bo->bo : NULL,
 				     range->bo_offset, range->size,
 				     range->offset + bo->base.va, 0, internal_flags,
 				     AMDGPU_VA_OP_UNMAP);
@@ -119,7 +122,7 @@ radv_amdgpu_winsys_virtual_unmap(struct radv_amdgpu_winsys_bo *bo,
 		abort();
 
 	if (range->bo)
-		radv_amdgpu_winsys_bo_destroy((struct radeon_winsys_bo *)range->bo);
+		ws->base.buffer_destroy(&ws->base, (struct radeon_winsys_bo *)range->bo);
 }
 
 static int bo_comparator(const void *ap, const void *bp) {
@@ -159,10 +162,12 @@ radv_amdgpu_winsys_rebuild_bo_list(struct radv_amdgpu_winsys_bo *bo)
 }
 
 static VkResult
-radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
+radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys *_ws,
+				   struct radeon_winsys_bo *_parent,
                                    uint64_t offset, uint64_t size,
                                    struct radeon_winsys_bo *_bo, uint64_t bo_offset)
 {
+	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	struct radv_amdgpu_winsys_bo *parent = (struct radv_amdgpu_winsys_bo *)_parent;
 	struct radv_amdgpu_winsys_bo *bo = (struct radv_amdgpu_winsys_bo*)_bo;
 	int range_count_delta, new_idx;
@@ -227,7 +232,7 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
 
 	/* Any range between first and last is going to be entirely covered by the new range so just unmap them. */
 	for (int i = first + 1; i < last; ++i)
-		radv_amdgpu_winsys_virtual_unmap(parent, parent->ranges + i);
+		radv_amdgpu_winsys_virtual_unmap(ws, parent, parent->ranges + i);
 
 	/* If the first/last range are not left alone we unmap then and optionally map
 	 * them again after modifications. Not that this implicitly can do the splitting
@@ -236,24 +241,24 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
 	new_last = parent->ranges[last];
 
 	if (parent->ranges[first].offset + parent->ranges[first].size > offset || remove_first) {
-		radv_amdgpu_winsys_virtual_unmap(parent, parent->ranges + first);
+		radv_amdgpu_winsys_virtual_unmap(ws, parent, parent->ranges + first);
 		unmapped_first = true;
 
 		if (!remove_first) {
 			new_first.size = offset - new_first.offset;
-			radv_amdgpu_winsys_virtual_map(parent, &new_first);
+			radv_amdgpu_winsys_virtual_map(ws, parent, &new_first);
 		}
 	}
 
 	if (parent->ranges[last].offset < offset + size || remove_last) {
 		if (first != last || !unmapped_first)
-			radv_amdgpu_winsys_virtual_unmap(parent, parent->ranges + last);
+			radv_amdgpu_winsys_virtual_unmap(ws, parent, parent->ranges + last);
 
 		if (!remove_last) {
 			new_last.size -= offset + size - new_last.offset;
 			new_last.bo_offset += (offset + size - new_last.offset);
 			new_last.offset = offset + size;
-			radv_amdgpu_winsys_virtual_map(parent, &new_last);
+			radv_amdgpu_winsys_virtual_map(ws, parent, &new_last);
 		}
 	}
 
@@ -273,7 +278,7 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
 	parent->ranges[new_idx].bo = bo;
 	parent->ranges[new_idx].bo_offset = bo_offset;
 
-	radv_amdgpu_winsys_virtual_map(parent, parent->ranges + new_idx);
+	radv_amdgpu_winsys_virtual_map(ws, parent, parent->ranges + new_idx);
 
 	parent->range_count += range_count_delta;
 
@@ -293,13 +298,13 @@ struct radv_amdgpu_winsys_bo_log {
 	uint8_t destroyed : 1;
 };
 
-static void radv_amdgpu_log_bo(struct radv_amdgpu_winsys_bo *bo,
+static void radv_amdgpu_log_bo(struct radv_amdgpu_winsys *ws,
+			       struct radv_amdgpu_winsys_bo *bo,
 			       bool destroyed)
 {
-	struct radv_amdgpu_winsys *ws = bo->ws;
 	struct radv_amdgpu_winsys_bo_log *bo_log = NULL;
 
-	if (!bo->ws->debug_log_bos)
+	if (!ws->debug_log_bos)
 		return;
 
 	bo_log = malloc(sizeof(*bo_log));
@@ -317,10 +322,9 @@ static void radv_amdgpu_log_bo(struct radv_amdgpu_winsys_bo *bo,
 	u_rwlock_wrunlock(&ws->log_bo_list_lock);
 }
 
-static int radv_amdgpu_global_bo_list_add(struct radv_amdgpu_winsys_bo *bo)
+static int radv_amdgpu_global_bo_list_add(struct radv_amdgpu_winsys *ws,
+					  struct radv_amdgpu_winsys_bo *bo)
 {
-	struct radv_amdgpu_winsys *ws = bo->ws;
-
 	if (!ws->debug_all_bos)
 		return VK_SUCCESS;
 
@@ -343,10 +347,9 @@ static int radv_amdgpu_global_bo_list_add(struct radv_amdgpu_winsys_bo *bo)
 	return VK_SUCCESS;
 }
 
-static void radv_amdgpu_global_bo_list_del(struct radv_amdgpu_winsys_bo *bo)
+static void radv_amdgpu_global_bo_list_del(struct radv_amdgpu_winsys *ws,
+					   struct radv_amdgpu_winsys_bo *bo)
 {
-	struct radv_amdgpu_winsys *ws = bo->ws;
-
 	if (!ws->debug_all_bos)
 		return;
 
@@ -361,25 +364,26 @@ static void radv_amdgpu_global_bo_list_del(struct radv_amdgpu_winsys_bo *bo)
 	u_rwlock_wrunlock(&ws->global_bo_list.lock);
 }
 
-static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo)
+static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws,
+					  struct radeon_winsys_bo *_bo)
 {
+	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	struct radv_amdgpu_winsys_bo *bo = radv_amdgpu_winsys_bo(_bo);
-	struct radv_amdgpu_winsys *ws = bo->ws;
 
 	if (p_atomic_dec_return(&bo->ref_count))
 		return;
 
-	radv_amdgpu_log_bo(bo, true);
+	radv_amdgpu_log_bo(ws, bo, true);
 
 	if (bo->is_virtual) {
 		for (uint32_t i = 0; i < bo->range_count; ++i) {
-			radv_amdgpu_winsys_virtual_unmap(bo, bo->ranges + i);
+			radv_amdgpu_winsys_virtual_unmap(ws, bo, bo->ranges + i);
 		}
 		free(bo->bos);
 		free(bo->ranges);
 	} else {
-		radv_amdgpu_global_bo_list_del(bo);
-		radv_amdgpu_bo_va_op(bo->ws, bo->bo, 0, bo->size, bo->base.va,
+		radv_amdgpu_global_bo_list_del(ws, bo);
+		radv_amdgpu_bo_va_op(ws, bo->bo, 0, bo->size, bo->base.va,
 				     0, 0, AMDGPU_VA_OP_UNMAP);
 		amdgpu_bo_free(bo->bo);
 	}
@@ -437,7 +441,6 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 	bo->base.va = va;
 	bo->va_handle = va_handle;
 	bo->size = size;
-	bo->ws = ws;
 	bo->is_virtual = !!(flags & RADEON_FLAG_VIRTUAL);
 	bo->ref_count = 1;
 
@@ -455,8 +458,8 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 		bo->ranges[0].bo = NULL;
 		bo->ranges[0].bo_offset = 0;
 
-		radv_amdgpu_winsys_virtual_map(bo, bo->ranges);
-		radv_amdgpu_log_bo(bo, false);
+		radv_amdgpu_winsys_virtual_map(ws, bo, bo->ranges);
+		radv_amdgpu_log_bo(ws, bo, false);
 
 		return (struct radeon_winsys_bo *)bo;
 	}
@@ -559,8 +562,8 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 		p_atomic_add(&ws->allocated_gtt,
 			     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_global_bo_list_add(bo);
-	radv_amdgpu_log_bo(bo, false);
+	radv_amdgpu_global_bo_list_add(ws, bo);
+	radv_amdgpu_log_bo(ws, bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
 error_va_map:
@@ -657,7 +660,6 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws,
 	bo->va_handle = va_handle;
 	bo->size = size;
 	bo->ref_count = 1;
-	bo->ws = ws;
 	bo->bo = buf_handle;
 	bo->base.initial_domain = RADEON_DOMAIN_GTT;
 	bo->priority = priority;
@@ -668,8 +670,8 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws,
 	p_atomic_add(&ws->allocated_gtt,
 		     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_global_bo_list_add(bo);
-	radv_amdgpu_log_bo(bo, false);
+	radv_amdgpu_global_bo_list_add(ws, bo);
+	radv_amdgpu_log_bo(ws, bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
 
@@ -736,7 +738,6 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
 	bo->base.initial_domain = initial;
 	bo->size = result.alloc_size;
 	bo->is_shared = true;
-	bo->ws = ws;
 	bo->priority = priority;
 	bo->ref_count = 1;
 
@@ -750,8 +751,8 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
 		p_atomic_add(&ws->allocated_gtt,
 			     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_global_bo_list_add(bo);
-	radv_amdgpu_log_bo(bo, false);
+	radv_amdgpu_global_bo_list_add(ws, bo);
+	radv_amdgpu_log_bo(ws, bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
 error_va_map:
@@ -859,14 +860,16 @@ static unsigned radv_eg_tile_split_rev(unsigned eg_tile_split)
 }
 
 static void
-radv_amdgpu_winsys_bo_set_metadata(struct radeon_winsys_bo *_bo,
+radv_amdgpu_winsys_bo_set_metadata(struct radeon_winsys *_ws,
+				   struct radeon_winsys_bo *_bo,
 				   struct radeon_bo_metadata *md)
 {
+	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	struct radv_amdgpu_winsys_bo *bo = radv_amdgpu_winsys_bo(_bo);
 	struct amdgpu_bo_metadata metadata = {0};
 	uint64_t tiling_flags = 0;
 
-	if (bo->ws->info.chip_class >= GFX9) {
+	if (ws->info.chip_class >= GFX9) {
 		tiling_flags |= AMDGPU_TILING_SET(SWIZZLE_MODE, md->u.gfx9.swizzle_mode);
 		tiling_flags |= AMDGPU_TILING_SET(SCANOUT, md->u.gfx9.scanout);
 	} else {
@@ -899,9 +902,11 @@ radv_amdgpu_winsys_bo_set_metadata(struct radeon_winsys_bo *_bo,
 }
 
 static void
-radv_amdgpu_winsys_bo_get_metadata(struct radeon_winsys_bo *_bo,
+radv_amdgpu_winsys_bo_get_metadata(struct radeon_winsys *_ws,
+				   struct radeon_winsys_bo *_bo,
                                    struct radeon_bo_metadata *md)
 {
+	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	struct radv_amdgpu_winsys_bo *bo = radv_amdgpu_winsys_bo(_bo);
 	struct amdgpu_bo_info info = {0};
 
@@ -911,7 +916,7 @@ radv_amdgpu_winsys_bo_get_metadata(struct radeon_winsys_bo *_bo,
 
 	uint64_t tiling_flags = info.metadata.tiling_info;
 
-	if (bo->ws->info.chip_class >= GFX9) {
+	if (ws->info.chip_class >= GFX9) {
 		md->u.gfx9.swizzle_mode = AMDGPU_TILING_GET(tiling_flags, SWIZZLE_MODE);
 		md->u.gfx9.scanout = AMDGPU_TILING_GET(tiling_flags, SCANOUT);
 	} else {

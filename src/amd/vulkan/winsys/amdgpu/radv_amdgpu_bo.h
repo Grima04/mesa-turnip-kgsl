@@ -43,7 +43,6 @@ struct radv_amdgpu_winsys_bo {
 	struct radeon_winsys_bo base;
 	amdgpu_va_handle va_handle;
 	uint64_t size;
-	struct radv_amdgpu_winsys *ws;
 	bool is_virtual;
 	uint8_t priority;
 	int ref_count;

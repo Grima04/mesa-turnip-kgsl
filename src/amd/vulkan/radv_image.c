@@ -1447,7 +1447,7 @@ radv_destroy_image(struct radv_device *device,
 		   struct radv_image *image)
 {
 	if ((image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) && image->bo)
-		device->ws->buffer_destroy(image->bo);
+		device->ws->buffer_destroy(device->ws, image->bo);
 
 	if (image->owned_memory != VK_NULL_HANDLE) {
 		RADV_FROM_HANDLE(radv_device_memory, mem, image->owned_memory);

@@ -231,7 +231,8 @@ struct radeon_winsys {
 						  enum radeon_bo_flag flags,
 						  unsigned priority);
 
-	void (*buffer_destroy)(struct radeon_winsys_bo *bo);
+	void (*buffer_destroy)(struct radeon_winsys *ws,
+			       struct radeon_winsys_bo *bo);
 	void *(*buffer_map)(struct radeon_winsys_bo *bo);
 
 	struct radeon_winsys_bo *(*buffer_from_ptr)(struct radeon_winsys *ws,
@@ -254,12 +255,15 @@ struct radeon_winsys {
 
 	void (*buffer_unmap)(struct radeon_winsys_bo *bo);
 
-	void (*buffer_set_metadata)(struct radeon_winsys_bo *bo,
+	void (*buffer_set_metadata)(struct radeon_winsys *ws,
+				    struct radeon_winsys_bo *bo,
 				    struct radeon_bo_metadata *md);
-	void (*buffer_get_metadata)(struct radeon_winsys_bo *bo,
+	void (*buffer_get_metadata)(struct radeon_winsys *ws,
+				    struct radeon_winsys_bo *bo,
 				    struct radeon_bo_metadata *md);
 
-	VkResult (*buffer_virtual_bind)(struct radeon_winsys_bo *parent,
+	VkResult (*buffer_virtual_bind)(struct radeon_winsys *ws,
+					struct radeon_winsys_bo *parent,
 					uint64_t offset, uint64_t size,
 					struct radeon_winsys_bo *bo, uint64_t bo_offset);
 	VkResult (*ctx_create)(struct radeon_winsys *ws,

@@ -1006,7 +1006,7 @@ radv_destroy_query_pool(struct radv_device *device,
 			struct radv_query_pool *pool)
 {
 	if (pool->bo)
-		device->ws->buffer_destroy(pool->bo);
+		device->ws->buffer_destroy(device->ws, pool->bo);
 	vk_object_base_finish(&pool->base);
 	vk_free2(&device->vk.alloc, pAllocator, pool);
 }

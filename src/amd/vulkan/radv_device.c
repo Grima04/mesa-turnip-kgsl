@@ -2426,21 +2426,21 @@ radv_queue_finish(struct radv_queue *queue)
 	if (queue->continue_preamble_cs)
 		queue->device->ws->cs_destroy(queue->continue_preamble_cs);
 	if (queue->descriptor_bo)
-		queue->device->ws->buffer_destroy(queue->descriptor_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, queue->descriptor_bo);
 	if (queue->scratch_bo)
-		queue->device->ws->buffer_destroy(queue->scratch_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, queue->scratch_bo);
 	if (queue->esgs_ring_bo)
-		queue->device->ws->buffer_destroy(queue->esgs_ring_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, queue->esgs_ring_bo);
 	if (queue->gsvs_ring_bo)
-		queue->device->ws->buffer_destroy(queue->gsvs_ring_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, queue->gsvs_ring_bo);
 	if (queue->tess_rings_bo)
-		queue->device->ws->buffer_destroy(queue->tess_rings_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, queue->tess_rings_bo);
 	if (queue->gds_bo)
-		queue->device->ws->buffer_destroy(queue->gds_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, queue->gds_bo);
 	if (queue->gds_oa_bo)
-		queue->device->ws->buffer_destroy(queue->gds_oa_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, queue->gds_oa_bo);
 	if (queue->compute_scratch_bo)
-		queue->device->ws->buffer_destroy(queue->compute_scratch_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, queue->compute_scratch_bo);
 
 	vk_object_base_finish(&queue->base);
 }
@@ -2594,7 +2594,7 @@ static VkResult radv_device_init_border_color(struct radv_device *device)
 static void radv_device_finish_border_color(struct radv_device *device)
 {
 	if (device->border_color_data.bo) {
-		device->ws->buffer_destroy(device->border_color_data.bo);
+		device->ws->buffer_destroy(device->ws, device->border_color_data.bo);
 
 		mtx_destroy(&device->border_color_data.mutex);
 	}
@@ -2966,10 +2966,10 @@ fail:
 	radv_trap_handler_finish(device);
 
 	if (device->trace_bo)
-		device->ws->buffer_destroy(device->trace_bo);
+		device->ws->buffer_destroy(device->ws, device->trace_bo);
 
 	if (device->gfx_init)
-		device->ws->buffer_destroy(device->gfx_init);
+		device->ws->buffer_destroy(device->ws, device->gfx_init);
 
 	radv_device_finish_border_color(device);
 
@@ -2995,10 +2995,10 @@ void radv_DestroyDevice(
 		return;
 
 	if (device->trace_bo)
-		device->ws->buffer_destroy(device->trace_bo);
+		device->ws->buffer_destroy(device->ws, device->trace_bo);
 
 	if (device->gfx_init)
-		device->ws->buffer_destroy(device->gfx_init);
+		device->ws->buffer_destroy(device->ws, device->gfx_init);
 
 	radv_device_finish_border_color(device);
 
@@ -3904,7 +3904,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 
 	if (scratch_bo != queue->scratch_bo) {
 		if (queue->scratch_bo)
-			queue->device->ws->buffer_destroy(queue->scratch_bo);
+			queue->device->ws->buffer_destroy(queue->device->ws, queue->scratch_bo);
 		queue->scratch_bo = scratch_bo;
 	}
 	queue->scratch_size_per_wave = scratch_size_per_wave;
@@ -3912,7 +3912,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 
 	if (compute_scratch_bo != queue->compute_scratch_bo) {
 		if (queue->compute_scratch_bo)
-			queue->device->ws->buffer_destroy(queue->compute_scratch_bo);
+			queue->device->ws->buffer_destroy(queue->device->ws, queue->compute_scratch_bo);
 		queue->compute_scratch_bo = compute_scratch_bo;
 	}
 	queue->compute_scratch_size_per_wave = compute_scratch_size_per_wave;
@@ -3920,14 +3920,14 @@ radv_get_preamble_cs(struct radv_queue *queue,
 
 	if (esgs_ring_bo != queue->esgs_ring_bo) {
 		if (queue->esgs_ring_bo)
-			queue->device->ws->buffer_destroy(queue->esgs_ring_bo);
+			queue->device->ws->buffer_destroy(queue->device->ws, queue->esgs_ring_bo);
 		queue->esgs_ring_bo = esgs_ring_bo;
 		queue->esgs_ring_size = esgs_ring_size;
 	}
 
 	if (gsvs_ring_bo != queue->gsvs_ring_bo) {
 		if (queue->gsvs_ring_bo)
-			queue->device->ws->buffer_destroy(queue->gsvs_ring_bo);
+			queue->device->ws->buffer_destroy(queue->device->ws, queue->gsvs_ring_bo);
 		queue->gsvs_ring_bo = gsvs_ring_bo;
 		queue->gsvs_ring_size = gsvs_ring_size;
 	}
@@ -3949,7 +3949,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 
 	if (descriptor_bo != queue->descriptor_bo) {
 		if (queue->descriptor_bo)
-			queue->device->ws->buffer_destroy(queue->descriptor_bo);
+			queue->device->ws->buffer_destroy(queue->device->ws, queue->descriptor_bo);
 
 		queue->descriptor_bo = descriptor_bo;
 	}
@@ -3968,21 +3968,21 @@ fail:
 		if (dest_cs[i])
 			queue->device->ws->cs_destroy(dest_cs[i]);
 	if (descriptor_bo && descriptor_bo != queue->descriptor_bo)
-		queue->device->ws->buffer_destroy(descriptor_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, descriptor_bo);
 	if (scratch_bo && scratch_bo != queue->scratch_bo)
-		queue->device->ws->buffer_destroy(scratch_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, scratch_bo);
 	if (compute_scratch_bo && compute_scratch_bo != queue->compute_scratch_bo)
-		queue->device->ws->buffer_destroy(compute_scratch_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, compute_scratch_bo);
 	if (esgs_ring_bo && esgs_ring_bo != queue->esgs_ring_bo)
-		queue->device->ws->buffer_destroy(esgs_ring_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, esgs_ring_bo);
 	if (gsvs_ring_bo && gsvs_ring_bo != queue->gsvs_ring_bo)
-		queue->device->ws->buffer_destroy(gsvs_ring_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, gsvs_ring_bo);
 	if (tess_rings_bo && tess_rings_bo != queue->tess_rings_bo)
-		queue->device->ws->buffer_destroy(tess_rings_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, tess_rings_bo);
 	if (gds_bo && gds_bo != queue->gds_bo)
-		queue->device->ws->buffer_destroy(gds_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, gds_bo);
 	if (gds_oa_bo && gds_oa_bo != queue->gds_oa_bo)
-		queue->device->ws->buffer_destroy(gds_oa_bo);
+		queue->device->ws->buffer_destroy(queue->device->ws, gds_oa_bo);
 
 	return vk_error(queue->device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 }
@@ -4199,7 +4199,8 @@ radv_sparse_buffer_bind_memory(struct radv_device *device,
 		if (bind->pBinds[i].memory != VK_NULL_HANDLE)
 			mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
 
-		result = device->ws->buffer_virtual_bind(buffer->bo,
+		result = device->ws->buffer_virtual_bind(device->ws,
+							 buffer->bo,
 							 bind->pBinds[i].resourceOffset,
 							 bind->pBinds[i].size,
 							 mem ? mem->bo : NULL,
@@ -4224,7 +4225,8 @@ radv_sparse_image_opaque_bind_memory(struct radv_device *device,
 		if (bind->pBinds[i].memory != VK_NULL_HANDLE)
 			mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
 
-		result = device->ws->buffer_virtual_bind(image->bo,
+		result = device->ws->buffer_virtual_bind(device->ws,
+							 image->bo,
 							 bind->pBinds[i].resourceOffset,
 							 bind->pBinds[i].size,
 							 mem ? mem->bo : NULL,
@@ -4287,7 +4289,8 @@ radv_sparse_image_bind_memory(struct radv_device *device,
 			                                       surface->prt_tile_height);
 
 			uint32_t size = aligned_extent_width * aligned_extent_height * bs;
-			result = device->ws->buffer_virtual_bind(image->bo,
+			result = device->ws->buffer_virtual_bind(device->ws,
+								 image->bo,
 			                                         offset,
 			                                         size,
 			                                         mem ? mem->bo : NULL,
@@ -4299,7 +4302,8 @@ radv_sparse_image_bind_memory(struct radv_device *device,
 			uint32_t mem_increment = aligned_extent_width * bs;
 			uint32_t size = mem_increment * surface->prt_tile_height;
 			for (unsigned y = 0; y < bind_extent.height; y += surface->prt_tile_height) {
-				result = device->ws->buffer_virtual_bind(image->bo,
+				result = device->ws->buffer_virtual_bind(device->ws,
+									 image->bo,
 				                                         offset + img_increment * y,
 				                                         size,
 				                                         mem ? mem->bo : NULL,
@@ -5179,7 +5183,7 @@ bool radv_get_memory_fd(struct radv_device *device,
 	if (memory->image && memory->image->offset == 0) {
 		struct radeon_bo_metadata metadata;
 		radv_init_metadata(device, memory->image, &metadata);
-		device->ws->buffer_set_metadata(memory->bo, &metadata);
+		device->ws->buffer_set_metadata(device->ws, memory->bo, &metadata);
 	}
 
 	return device->ws->buffer_get_fd(device->ws, memory->bo,
@@ -5208,7 +5212,7 @@ radv_free_memory(struct radv_device *device,
 		}
 
 		radv_bo_list_remove(device, mem->bo);
-		device->ws->buffer_destroy(mem->bo);
+		device->ws->buffer_destroy(device->ws, mem->bo);
 		mem->bo = NULL;
 	}
 
@@ -5313,7 +5317,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		    mem->image->info.samples == 1 &&
 		    mem->image->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
 			struct radeon_bo_metadata metadata;
-			device->ws->buffer_get_metadata(mem->bo, &metadata);
+			device->ws->buffer_get_metadata(device->ws, mem->bo, &metadata);
 
 			struct radv_image_create_info create_info = {
 				.no_metadata_planes = true,
@@ -5326,7 +5330,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 			result = radv_image_create_layout(device, create_info, NULL,
 			                                  mem->image);
 			if (result != VK_SUCCESS) {
-				device->ws->buffer_destroy(mem->bo);
+				device->ws->buffer_destroy(device->ws, mem->bo);
 				goto fail;
 			}
 		}
@@ -6456,7 +6460,7 @@ static void radv_destroy_event(struct radv_device *device,
                                struct radv_event *event)
 {
 	if (event->bo)
-		device->ws->buffer_destroy(event->bo);
+		device->ws->buffer_destroy(device->ws, event->bo);
 
 	vk_object_base_finish(&event->base);
 	vk_free2(&device->vk.alloc, pAllocator, event);
@@ -6553,7 +6557,7 @@ radv_destroy_buffer(struct radv_device *device,
 		    struct radv_buffer *buffer)
 {
 	if ((buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) && buffer->bo)
-		device->ws->buffer_destroy(buffer->bo);
+		device->ws->buffer_destroy(device->ws, buffer->bo);
 
 	vk_object_base_finish(&buffer->base);
 	vk_free2(&device->vk.alloc, pAllocator, buffer);

@@ -638,7 +638,7 @@ cik_create_gfx_config(struct radv_device *device)
 
 	void *map = device->ws->buffer_map(device->gfx_init);
 	if (!map) {
-		device->ws->buffer_destroy(device->gfx_init);
+		device->ws->buffer_destroy(device->ws, device->gfx_init);
 		device->gfx_init = NULL;
 		goto fail;
 	}

@@ -873,7 +873,7 @@ radv_trap_handler_finish(struct radv_device *device)
 		radv_shader_variant_destroy(device, device->trap_handler_shader);
 
 	if (unlikely(device->tma_bo))
-		ws->buffer_destroy(device->tma_bo);
+		ws->buffer_destroy(ws, device->tma_bo);
 }
 
 static struct radv_shader_variant *

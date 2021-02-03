@@ -358,13 +358,13 @@ radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 
 	list_for_each_entry_safe(struct radv_cmd_buffer_upload, up,
 				 &cmd_buffer->upload.list, list) {
-		cmd_buffer->device->ws->buffer_destroy(up->upload_bo);
+		cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, up->upload_bo);
 		list_del(&up->list);
 		free(up);
 	}
 
 	if (cmd_buffer->upload.upload_bo)
-		cmd_buffer->device->ws->buffer_destroy(cmd_buffer->upload.upload_bo);
+		cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, cmd_buffer->upload.upload_bo);
 
 	if (cmd_buffer->cs)
 		cmd_buffer->device->ws->cs_destroy(cmd_buffer->cs);
@@ -421,7 +421,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 
 	list_for_each_entry_safe(struct radv_cmd_buffer_upload, up,
 				 &cmd_buffer->upload.list, list) {
-		cmd_buffer->device->ws->buffer_destroy(up->upload_bo);
+		cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, up->upload_bo);
 		list_del(&up->list);
 		free(up);
 	}
@@ -525,7 +525,7 @@ radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer,
 
 		if (!upload) {
 			cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
-			device->ws->buffer_destroy(bo);
+			device->ws->buffer_destroy(device->ws, bo);
 			return false;
 		}
 

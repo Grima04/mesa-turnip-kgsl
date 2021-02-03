@@ -857,7 +857,7 @@ radv_alloc_shader_memory(struct radv_device *device,
 
 	slab->ptr = (char*)device->ws->buffer_map(slab->bo);
 	if (!slab->ptr) {
-		device->ws->buffer_destroy(slab->bo);
+		device->ws->buffer_destroy(device->ws, slab->bo);
 		free(slab);
 		return NULL;
 	}
@@ -878,7 +878,7 @@ void
 radv_destroy_shader_slabs(struct radv_device *device)
 {
 	list_for_each_entry_safe(struct radv_shader_slab, slab, &device->shader_slabs, slabs) {
-		device->ws->buffer_destroy(slab->bo);
+		device->ws->buffer_destroy(device->ws, slab->bo);
 		free(slab);
 	}
 	mtx_destroy(&device->shader_slab_mutex);

@@ -280,12 +280,12 @@ static void radv_amdgpu_cs_destroy(struct radeon_cmdbuf *rcs)
 	struct radv_amdgpu_cs *cs = radv_amdgpu_cs(rcs);
 
 	if (cs->ib_buffer)
-		cs->ws->base.buffer_destroy(cs->ib_buffer);
+		cs->ws->base.buffer_destroy(&cs->ws->base, cs->ib_buffer);
 	else
 		free(cs->base.buf);
 
 	for (unsigned i = 0; i < cs->num_old_ib_buffers; ++i)
-		cs->ws->base.buffer_destroy(cs->old_ib_buffers[i]);
+		cs->ws->base.buffer_destroy(&cs->ws->base, cs->old_ib_buffers[i]);
 
 	for (unsigned i = 0; i < cs->num_old_cs_buffers; ++i) {
 		free(cs->old_cs_buffers[i].buf);
@@ -336,7 +336,7 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws,
 
 		cs->ib_mapped = ws->buffer_map(cs->ib_buffer);
 		if (!cs->ib_mapped) {
-			ws->buffer_destroy(cs->ib_buffer);
+			ws->buffer_destroy(ws, cs->ib_buffer);
 			free(cs);
 			return NULL;
 		}
@@ -465,7 +465,7 @@ static void radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 
 	cs->ib_mapped = cs->ws->base.buffer_map(cs->ib_buffer);
 	if (!cs->ib_mapped) {
-		cs->ws->base.buffer_destroy(cs->ib_buffer);
+		cs->ws->base.buffer_destroy(&cs->ws->base, cs->ib_buffer);
 		cs->base.cdw = 0;
 
 		/* VK_ERROR_MEMORY_MAP_FAILED is not valid for vkEndCommandBuffer. */
@@ -528,7 +528,7 @@ static void radv_amdgpu_cs_reset(struct radeon_cmdbuf *_cs)
 		cs->ws->base.cs_add_buffer(&cs->base, cs->ib_buffer);
 
 		for (unsigned i = 0; i < cs->num_old_ib_buffers; ++i)
-			cs->ws->base.buffer_destroy(cs->old_ib_buffers[i]);
+			cs->ws->base.buffer_destroy(&cs->ws->base, cs->old_ib_buffers[i]);
 
 		cs->num_old_ib_buffers = 0;
 		cs->ib.ib_mc_address = radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va;
@@ -1239,7 +1239,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 			u_rwlock_rdunlock(&aws->global_bo_list.lock);
 
 		for (unsigned j = 0; j < number_of_ibs; j++) {
-			ws->buffer_destroy(bos[j]);
+			ws->buffer_destroy(ws, bos[j]);
 		}
 
 		free(ibs);
@@ -1403,7 +1403,7 @@ static VkResult radv_amdgpu_ctx_create(struct radeon_winsys *_ws,
 	return VK_SUCCESS;
 
 fail_map:
-	ws->base.buffer_destroy(ctx->fence_bo);
+	ws->base.buffer_destroy(&ws->base, ctx->fence_bo);
 fail_alloc:
 	amdgpu_cs_ctx_free(ctx->ctx);
 fail_create:
@@ -1414,7 +1414,7 @@ fail_create:
 static void radv_amdgpu_ctx_destroy(struct radeon_winsys_ctx *rwctx)
 {
 	struct radv_amdgpu_ctx *ctx = (struct radv_amdgpu_ctx *)rwctx;
-	ctx->ws->base.buffer_destroy(ctx->fence_bo);
+	ctx->ws->base.buffer_destroy(&ctx->ws->base, ctx->fence_bo);
 	amdgpu_cs_ctx_free(ctx->ctx);
 	FREE(ctx);
 }
