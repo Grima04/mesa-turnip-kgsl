@@ -446,7 +446,12 @@ void vk_${type}_dispatch_table_from_entrypoints(
     if (overwrite) {
         memset(dispatch_table, 0, sizeof(*dispatch_table));
         for (unsigned i = 0; i < ARRAY_SIZE(${type}_compaction_table); i++) {
+#ifdef _MSC_VER
+            const uintptr_t zero = 0;
+            if (entry[i] == NULL || memcmp(entry[i], &zero, sizeof(zero)) == 0)
+#else
             if (entry[i] == NULL)
+#endif
                 continue;
             unsigned disp_index = ${type}_compaction_table[i];
             assert(disp[disp_index] == NULL);
@@ -559,7 +564,11 @@ ${e.prefixed_name('vk_tramp')}(${e.decl_params()})
 {
     <% assert e.params[0].type == 'VkPhysicalDevice' %>
     VK_FROM_HANDLE(vk_physical_device, vk_physical_device, ${e.params[0].name});
+  % if e.return_type == 'void':
+    vk_physical_device->dispatch_table.${e.name}(${e.call_params()});
+  % else:
     return vk_physical_device->dispatch_table.${e.name}(${e.call_params()});
+  % endif
 }
   % if e.guard is not None:
 #endif
@@ -593,10 +602,18 @@ ${e.prefixed_name('vk_tramp')}(${e.decl_params()})
 {
   % if e.params[0].type == 'VkDevice':
     VK_FROM_HANDLE(vk_device, vk_device, ${e.params[0].name});
+    % if e.return_type == 'void':
+    vk_device->dispatch_table.${e.name}(${e.call_params()});
+    % else:
     return vk_device->dispatch_table.${e.name}(${e.call_params()});
+    % endif
   % elif e.params[0].type in ('VkCommandBuffer', 'VkQueue'):
     struct vk_object_base *vk_object = (struct vk_object_base *)${e.params[0].name};
+    % if e.return_type == 'void':
+    vk_object->device->dispatch_table.${e.name}(${e.call_params()});
+    % else:
     return vk_object->device->dispatch_table.${e.name}(${e.call_params()});
+    % endif
   % else:
     assert(!"Unhandled device child trampoline case: ${e.params[0].type}");
   % endif
