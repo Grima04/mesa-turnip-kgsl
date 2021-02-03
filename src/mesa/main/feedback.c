@@ -416,7 +416,8 @@ _mesa_RenderMode( GLenum mode )
    if (MESA_VERBOSE & VERBOSE_API)
       _mesa_debug(ctx, "glRenderMode %s\n", _mesa_enum_to_string(mode));
 
-   FLUSH_VERTICES(ctx, _NEW_RENDERMODE, 0);
+   FLUSH_VERTICES(ctx, _NEW_RENDERMODE | _NEW_FF_VERT_PROGRAM |
+                  _NEW_FF_FRAG_PROGRAM, 0);
 
    switch (ctx->RenderMode) {
       case GL_RENDER:
