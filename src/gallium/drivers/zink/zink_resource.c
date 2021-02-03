@@ -429,7 +429,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       }
 
       vkGetImageMemoryRequirements(screen->dev, obj->image, &reqs);
-      if (templ->usage == PIPE_USAGE_STAGING)
+      if (templ->usage == PIPE_USAGE_STAGING && ici.tiling == VK_IMAGE_TILING_LINEAR)
         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
       else
         flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
