@@ -839,8 +839,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    slab_create_parent(&screen->transfer_pool,
                       sizeof(struct iris_transfer), 64);
 
-   screen->subslice_total =
-      iris_getparam_integer(screen->fd, I915_PARAM_SUBSLICE_TOTAL);
+   screen->subslice_total = gen_device_info_subslice_total(&screen->devinfo);
    assert(screen->subslice_total >= 1);
 
    iris_detect_kernel_features(screen);
