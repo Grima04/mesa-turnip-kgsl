@@ -237,7 +237,7 @@ static void amdgpu_bo_destroy_or_cache(struct pb_buffer *_buf)
 
    assert(bo->bo); /* slab buffers have a separate vtbl */
 
-   if (bo->use_reusable_pool)
+   if (bo->u.real.use_reusable_pool)
       pb_cache_add_buffer(bo->cache_entry);
    else
       amdgpu_bo_destroy(_buf);
@@ -502,7 +502,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    }
 
    if (init_pb_cache) {
-      bo->use_reusable_pool = true;
+      bo->u.real.use_reusable_pool = true;
       pb_cache_init_entry(&ws->bo_cache, bo->cache_entry, &bo->base,
                           heap);
    }
@@ -1629,7 +1629,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
    if (!bo->bo)
       return false;
 
-   bo->use_reusable_pool = false;
+   bo->u.real.use_reusable_pool = false;
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_SHARED:

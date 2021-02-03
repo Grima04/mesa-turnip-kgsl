@@ -68,6 +68,7 @@ struct amdgpu_winsys_bo {
          int map_count;
 
          bool is_user_ptr;
+         bool use_reusable_pool;
 
          /* Whether buffer_get_handle or buffer_from_handle has been called,
           * it can only transition from false to true. Protected by lock.
@@ -94,7 +95,6 @@ struct amdgpu_winsys_bo {
    struct amdgpu_winsys *ws;
 
    amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
-   bool use_reusable_pool;
 
    uint32_t unique_id;
    uint64_t va;
