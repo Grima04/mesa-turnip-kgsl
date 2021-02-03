@@ -107,6 +107,29 @@ enum class Format : std::uint16_t {
    SDWA = 1 << 14,
 };
 
+enum class instr_class : uint8_t {
+   valu32 = 0,
+   valu_convert32 = 1,
+   valu64 = 2,
+   valu_quarter_rate32 = 3,
+   valu_fma = 4,
+   valu_transcendental32 = 5,
+   valu_double = 6,
+   valu_double_add = 7,
+   valu_double_convert = 8,
+   valu_double_transcendental = 9,
+   salu = 10,
+   smem = 11,
+   barrier = 12,
+   branch = 13,
+   sendmsg = 14,
+   ds = 15,
+   exp = 16,
+   vmem = 17,
+   waitcnt = 18,
+   other = 19,
+};
+
 enum storage_class : uint8_t {
    storage_none = 0x0, /* no synchronization and can be reordered around aliasing stores */
    storage_buffer = 0x1, /* SSBOs and global memory */
@@ -2025,6 +2048,7 @@ typedef struct {
    /* sizes used for input/output modifiers and constants */
    const unsigned operand_size[static_cast<int>(aco_opcode::num_opcodes)];
    const unsigned definition_size[static_cast<int>(aco_opcode::num_opcodes)];
+   const instr_class classes[static_cast<int>(aco_opcode::num_opcodes)];
 } Info;
 
 extern const Info instr_info;
