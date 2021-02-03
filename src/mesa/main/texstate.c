@@ -387,10 +387,11 @@ _mesa_ClientActiveTexture(GLenum texture)
  *
  * \param ctx GL context.
  */
-void
+GLbitfield
 _mesa_update_texture_matrices(struct gl_context *ctx)
 {
    GLuint u;
+   GLbitfield old_texmat_enabled = ctx->Texture._TexMatEnabled;
 
    ctx->Texture._TexMatEnabled = 0x0;
 
@@ -404,6 +405,11 @@ _mesa_update_texture_matrices(struct gl_context *ctx)
 	    ctx->Texture._TexMatEnabled |= ENABLE_TEXMAT(u);
       }
    }
+
+   if (old_texmat_enabled != ctx->Texture._TexMatEnabled)
+      return _NEW_FF_VERT_PROGRAM | _NEW_FF_FRAG_PROGRAM;
+
+   return 0;
 }
 
 
