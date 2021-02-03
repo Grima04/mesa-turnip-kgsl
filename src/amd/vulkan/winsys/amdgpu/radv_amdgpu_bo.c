@@ -317,6 +317,50 @@ static void radv_amdgpu_log_bo(struct radv_amdgpu_winsys_bo *bo,
 	u_rwlock_wrunlock(&ws->log_bo_list_lock);
 }
 
+static int radv_amdgpu_global_bo_list_add(struct radv_amdgpu_winsys_bo *bo)
+{
+	struct radv_amdgpu_winsys *ws = bo->ws;
+
+	if (!ws->debug_all_bos)
+		return VK_SUCCESS;
+
+	u_rwlock_wrlock(&ws->global_bo_list.lock);
+	if (ws->global_bo_list.count == ws->global_bo_list.capacity) {
+		unsigned capacity = MAX2(4, ws->global_bo_list.capacity * 2);
+		void *data = realloc(ws->global_bo_list.bos,
+				     capacity * sizeof(struct radv_amdgpu_winsys_bo *));
+		if (!data) {
+			u_rwlock_wrunlock(&ws->global_bo_list.lock);
+			return VK_ERROR_OUT_OF_HOST_MEMORY;
+		}
+
+		ws->global_bo_list.bos = (struct radv_amdgpu_winsys_bo **)data;
+		ws->global_bo_list.capacity = capacity;
+	}
+
+	ws->global_bo_list.bos[ws->global_bo_list.count++] = bo;
+	u_rwlock_wrunlock(&ws->global_bo_list.lock);
+	return VK_SUCCESS;
+}
+
+static void radv_amdgpu_global_bo_list_del(struct radv_amdgpu_winsys_bo *bo)
+{
+	struct radv_amdgpu_winsys *ws = bo->ws;
+
+	if (!ws->debug_all_bos)
+		return;
+
+	u_rwlock_wrlock(&ws->global_bo_list.lock);
+	for(unsigned i = ws->global_bo_list.count; i-- > 0;) {
+		if (ws->global_bo_list.bos[i] == bo) {
+			ws->global_bo_list.bos[i] = ws->global_bo_list.bos[ws->global_bo_list.count - 1];
+			--ws->global_bo_list.count;
+			break;
+		}
+	}
+	u_rwlock_wrunlock(&ws->global_bo_list.lock);
+}
+
 static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo)
 {
 	struct radv_amdgpu_winsys_bo *bo = radv_amdgpu_winsys_bo(_bo);
@@ -334,12 +378,7 @@ static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo)
 		free(bo->bos);
 		free(bo->ranges);
 	} else {
-		if (bo->ws->debug_all_bos) {
-			u_rwlock_wrlock(&bo->ws->global_bo_list_lock);
-			list_del(&bo->global_list_item);
-			bo->ws->num_buffers--;
-			u_rwlock_wrunlock(&bo->ws->global_bo_list_lock);
-		}
+		radv_amdgpu_global_bo_list_del(bo);
 		radv_amdgpu_bo_va_op(bo->ws, bo->bo, 0, bo->size, bo->base.va,
 				     0, 0, AMDGPU_VA_OP_UNMAP);
 		amdgpu_bo_free(bo->bo);
@@ -361,18 +400,6 @@ static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo)
 
 	amdgpu_va_range_free(bo->va_handle);
 	FREE(bo);
-}
-
-static void radv_amdgpu_add_buffer_to_global_list(struct radv_amdgpu_winsys_bo *bo)
-{
-	struct radv_amdgpu_winsys *ws = bo->ws;
-
-	if (bo->ws->debug_all_bos) {
-		u_rwlock_wrlock(&ws->global_bo_list_lock);
-		list_addtail(&bo->global_list_item, &ws->global_bo_list);
-		ws->num_buffers++;
-		u_rwlock_wrunlock(&ws->global_bo_list_lock);
-	}
 }
 
 static struct radeon_winsys_bo *
@@ -532,7 +559,7 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 		p_atomic_add(&ws->allocated_gtt,
 			     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_add_buffer_to_global_list(bo);
+	radv_amdgpu_global_bo_list_add(bo);
 	radv_amdgpu_log_bo(bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
@@ -641,7 +668,7 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws,
 	p_atomic_add(&ws->allocated_gtt,
 		     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_add_buffer_to_global_list(bo);
+	radv_amdgpu_global_bo_list_add(bo);
 	radv_amdgpu_log_bo(bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
@@ -723,7 +750,7 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
 		p_atomic_add(&ws->allocated_gtt,
 			     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_add_buffer_to_global_list(bo);
+	radv_amdgpu_global_bo_list_add(bo);
 	radv_amdgpu_log_bo(bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
@@ -938,28 +965,29 @@ static void radv_amdgpu_dump_bo_ranges(struct radeon_winsys *_ws, FILE *file)
 {
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	if (ws->debug_all_bos) {
-		struct radv_amdgpu_winsys_bo *bo;
 		struct radv_amdgpu_winsys_bo **bos = NULL;
 		int i = 0;
 
-		u_rwlock_rdlock(&ws->global_bo_list_lock);
-		bos = malloc(sizeof(*bos) * ws->num_buffers);
+		u_rwlock_rdlock(&ws->global_bo_list.lock);
+		bos = malloc(sizeof(*bos) * ws->global_bo_list.count);
 		if (!bos) {
-			u_rwlock_rdunlock(&ws->global_bo_list_lock);
+			u_rwlock_rdunlock(&ws->global_bo_list.lock);
 			fprintf(file, "  Failed to allocate memory to sort VA ranges for dumping\n");
 			return;
 		}
-		LIST_FOR_EACH_ENTRY(bo, &ws->global_bo_list, global_list_item) {
-			bos[i++] = bo;
+
+		for (i = 0; i < ws->global_bo_list.count; i++) {
+			bos[i] = ws->global_bo_list.bos[i];
 		}
-		qsort(bos, ws->num_buffers, sizeof(bos[0]), radv_amdgpu_bo_va_compare);
-		for (i = 0; i < ws->num_buffers; ++i) {
+		qsort(bos, ws->global_bo_list.count, sizeof(bos[0]), radv_amdgpu_bo_va_compare);
+
+		for (i = 0; i < ws->global_bo_list.count; ++i) {
 			fprintf(file, "  VA=%.16llx-%.16llx, handle=%d%s\n",
 			        (long long)bos[i]->base.va, (long long)(bos[i]->base.va + bos[i]->size),
 				bos[i]->bo_handle, bos[i]->is_virtual ? " sparse" : "");
 		}
 		free(bos);
-		u_rwlock_rdunlock(&ws->global_bo_list_lock);
+		u_rwlock_rdunlock(&ws->global_bo_list.lock);
 	} else
 		fprintf(file, "  To get BO VA ranges, please specify RADV_DEBUG=allbos\n");
 }

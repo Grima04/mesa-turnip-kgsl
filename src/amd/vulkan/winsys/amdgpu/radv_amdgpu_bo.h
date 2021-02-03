@@ -54,7 +54,6 @@ struct radv_amdgpu_winsys_bo {
 			amdgpu_bo_handle bo;
 			bool is_shared;
 			uint32_t bo_handle;
-			struct list_head global_list_item;
 		};
 		/* virtual bo */
 		struct {
