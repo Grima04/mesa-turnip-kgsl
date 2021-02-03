@@ -1420,7 +1420,6 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
 
          cs->real_buffers[idx].usage = buffer->usage & ~RADEON_USAGE_SYNCHRONIZED;
          cs->real_buffers[idx].u.real.priority_usage = buffer->u.real.priority_usage;
-         p_atomic_inc(&backing->bo->num_active_ioctls);
       }
 
       simple_mtx_unlock(&bo->lock);
@@ -1440,6 +1439,7 @@ static void amdgpu_cs_submit_ib(void *job, int thread_index)
    bool has_user_fence = amdgpu_cs_has_user_fence(cs);
    bool use_bo_list_create = ws->info.drm_minor < 27;
    struct drm_amdgpu_bo_list_in bo_list_in;
+   unsigned initial_num_real_buffers = cs->num_real_buffers;
 
 #if DEBUG
    /* Prepare the buffer list. */
@@ -1721,7 +1721,8 @@ cleanup:
 
    cs->error_code = r;
 
-   for (i = 0; i < cs->num_real_buffers; i++)
+   /* Only decrement num_active_ioctls for those buffers where we incremented it. */
+   for (i = 0; i < initial_num_real_buffers; i++)
       p_atomic_dec(&cs->real_buffers[i].bo->num_active_ioctls);
    for (i = 0; i < cs->num_slab_buffers; i++)
       p_atomic_dec(&cs->slab_buffers[i].bo->num_active_ioctls);
