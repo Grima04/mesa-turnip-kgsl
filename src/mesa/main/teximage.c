@@ -42,6 +42,7 @@
 #include "macros.h"
 #include "mipmap.h"
 #include "multisample.h"
+#include "pixel.h"
 #include "pixelstore.h"
 #include "state.h"
 #include "texcompress.h"
@@ -3127,7 +3128,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
       }
 
       if (ctx->NewState & _NEW_PIXEL)
-         _mesa_update_state(ctx);
+         _mesa_update_pixel(ctx);
 
       _mesa_lock_texture(ctx, texObj);
       {
@@ -3423,9 +3424,6 @@ egl_image_target_texture(struct gl_context *ctx,
       return;
    }
 
-   if (ctx->NewState & _NEW_PIXEL)
-      _mesa_update_state(ctx);
-
    _mesa_lock_texture(ctx, texObj);
 
    if (texObj->Immutable) {
@@ -3565,7 +3563,7 @@ texture_sub_image(struct gl_context *ctx, GLuint dims,
    FLUSH_VERTICES(ctx, 0, 0);
 
    if (ctx->NewState & _NEW_PIXEL)
-      _mesa_update_state(ctx);
+      _mesa_update_pixel(ctx);
 
    _mesa_lock_texture(ctx, texObj);
    {
@@ -4248,6 +4246,9 @@ copy_texture_sub_image_err(struct gl_context *ctx, GLuint dims,
                   _mesa_enum_to_string(target),
                   level, xoffset, yoffset, zoffset, x, y, width, height);
 
+   if (ctx->NewState & _NEW_PIXEL)
+      _mesa_update_pixel(ctx);
+
    if (ctx->NewState & NEW_COPY_TEX_STATE)
       _mesa_update_state(ctx);
 
@@ -4270,6 +4271,9 @@ copy_texture_sub_image_no_error(struct gl_context *ctx, GLuint dims,
                                 GLint x, GLint y, GLsizei width, GLsizei height)
 {
    FLUSH_VERTICES(ctx, 0, 0);
+
+   if (ctx->NewState & _NEW_PIXEL)
+      _mesa_update_pixel(ctx);
 
    if (ctx->NewState & NEW_COPY_TEX_STATE)
       _mesa_update_state(ctx);
@@ -4299,6 +4303,9 @@ copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texO
                   _mesa_enum_to_string(target), level,
                   _mesa_enum_to_string(internalFormat),
                   x, y, width, height, border);
+
+   if (ctx->NewState & _NEW_PIXEL)
+      _mesa_update_pixel(ctx);
 
    if (ctx->NewState & NEW_COPY_TEX_STATE)
       _mesa_update_state(ctx);

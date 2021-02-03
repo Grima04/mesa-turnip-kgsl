@@ -36,6 +36,7 @@
 #include "mtypes.h"
 #include "pack.h"
 #include "pbo.h"
+#include "pixel.h"
 #include "state.h"
 #include "glformats.h"
 #include "fbobject.h"
@@ -1047,6 +1048,9 @@ read_pixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format,
                    "glReadPixels(width=%d height=%d)", width, height );
       return;
    }
+
+   if (ctx->NewState & _NEW_PIXEL)
+      _mesa_update_pixel(ctx);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);

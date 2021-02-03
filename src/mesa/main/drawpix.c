@@ -32,6 +32,7 @@
 #include "framebuffer.h"
 #include "image.h"
 #include "pbo.h"
+#include "pixel.h"
 #include "state.h"
 #include "glformats.h"
 #include "fbobject.h"
@@ -71,6 +72,9 @@ _mesa_DrawPixels( GLsizei width, GLsizei height,
     * its own.  Note: this may dirty some state.
     */
    _mesa_set_vp_override(ctx, GL_TRUE);
+
+   if (ctx->NewState & _NEW_PIXEL)
+      _mesa_update_pixel(ctx);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
@@ -241,6 +245,9 @@ _mesa_CopyPixels( GLint srcx, GLint srcy, GLsizei width, GLsizei height,
     */
    _mesa_set_vp_override(ctx, GL_TRUE);
 
+   if (ctx->NewState & _NEW_PIXEL)
+      _mesa_update_pixel(ctx);
+
    if (ctx->NewState)
       _mesa_update_state(ctx);
 
@@ -326,6 +333,9 @@ _mesa_Bitmap( GLsizei width, GLsizei height,
    if (!ctx->Current.RasterPosValid) {
       return;    /* do nothing */
    }
+
+   if (ctx->NewState & _NEW_PIXEL)
+      _mesa_update_pixel(ctx);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);

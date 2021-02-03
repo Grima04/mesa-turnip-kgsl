@@ -465,9 +465,6 @@ _mesa_update_state_locked( struct gl_context *ctx )
       if (new_state & _NEW_LIGHT_CONSTANTS)
          _mesa_update_lighting(ctx);
 
-      if (new_state & _NEW_PIXEL)
-         _mesa_update_pixel( ctx );
-
       /* ctx->_NeedEyeCoords is determined here.
        *
        * If the truth value of this variable has changed, update for the
