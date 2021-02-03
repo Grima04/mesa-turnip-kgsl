@@ -174,8 +174,8 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
 
    assert(bo->bo && "must not be called for slab entries");
 
-   if (!bo->is_user_ptr && bo->cpu_ptr) {
-      bo->cpu_ptr = NULL;
+   if (!bo->is_user_ptr && bo->u.real.cpu_ptr) {
+      bo->u.real.cpu_ptr = NULL;
       amdgpu_bo_unmap(&bo->base);
    }
    assert(bo->is_user_ptr || bo->u.real.map_count == 0);
@@ -378,24 +378,24 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
 
    if (usage & RADEON_MAP_TEMPORARY) {
       if (real->is_user_ptr) {
-         cpu = real->cpu_ptr;
+         cpu = real->u.real.cpu_ptr;
       } else {
          if (!amdgpu_bo_do_map(real, &cpu))
             return NULL;
       }
    } else {
-      cpu = p_atomic_read(&real->cpu_ptr);
+      cpu = p_atomic_read(&real->u.real.cpu_ptr);
       if (!cpu) {
          simple_mtx_lock(&real->lock);
          /* Must re-check due to the possibility of a race. Re-check need not
           * be atomic thanks to the lock. */
-         cpu = real->cpu_ptr;
+         cpu = real->u.real.cpu_ptr;
          if (!cpu) {
             if (!amdgpu_bo_do_map(real, &cpu)) {
                simple_mtx_unlock(&real->lock);
                return NULL;
             }
-            p_atomic_set(&real->cpu_ptr, cpu);
+            p_atomic_set(&real->u.real.cpu_ptr, cpu);
          }
          simple_mtx_unlock(&real->lock);
       }
@@ -417,7 +417,7 @@ void amdgpu_bo_unmap(struct pb_buffer *buf)
    real = bo->bo ? bo : bo->u.slab.real;
    assert(real->u.real.map_count != 0 && "too many unmaps");
    if (p_atomic_dec_zero(&real->u.real.map_count)) {
-      assert(!real->cpu_ptr &&
+      assert(!real->u.real.cpu_ptr &&
              "too many unmaps or forgot RADEON_MAP_TEMPORARY flag");
 
       if (real->base.placement & RADEON_DOMAIN_VRAM)
@@ -1729,7 +1729,7 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
     bo->base.size = size;
     bo->base.vtbl = &amdgpu_winsys_bo_vtbl;
     bo->ws = ws;
-    bo->cpu_ptr = pointer;
+    bo->u.real.cpu_ptr = pointer;
     bo->va = va;
     bo->u.real.va_handle = va_handle;
     bo->base.placement = RADEON_DOMAIN_GTT;

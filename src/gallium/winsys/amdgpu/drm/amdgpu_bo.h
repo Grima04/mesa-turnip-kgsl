@@ -63,6 +63,7 @@ struct amdgpu_winsys_bo {
 #if DEBUG
          struct list_head global_list_item;
 #endif
+         void *cpu_ptr; /* for user_ptr and permanent maps */
          uint32_t kms_handle;
          int map_count;
       } real;
@@ -84,7 +85,6 @@ struct amdgpu_winsys_bo {
    } u;
 
    struct amdgpu_winsys *ws;
-   void *cpu_ptr; /* for user_ptr and permanent maps */
 
    amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
    bool is_user_ptr;
