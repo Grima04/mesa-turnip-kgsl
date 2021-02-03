@@ -490,12 +490,14 @@ _mesa_texenvfv_indexed( struct gl_context* ctx, GLuint texunit, GLenum target,
          if (iparam0 == GL_TRUE) {
             if (ctx->Point.CoordReplace & (1u << texunit))
                return;
-            FLUSH_VERTICES(ctx, _NEW_POINT, GL_POINT_BIT);
+            FLUSH_VERTICES(ctx, _NEW_POINT | _NEW_FF_VERT_PROGRAM,
+                           GL_POINT_BIT);
             ctx->Point.CoordReplace |= (1u << texunit);
          } else if (iparam0 == GL_FALSE) {
             if (~(ctx->Point.CoordReplace) & (1u << texunit))
                return;
-            FLUSH_VERTICES(ctx, _NEW_POINT, GL_POINT_BIT);
+            FLUSH_VERTICES(ctx, _NEW_POINT | _NEW_FF_VERT_PROGRAM,
+                           GL_POINT_BIT);
             ctx->Point.CoordReplace &= ~(1u << texunit);
          } else {
             _mesa_error( ctx, GL_INVALID_VALUE, "glTexEnv(param=0x%x)", iparam0);

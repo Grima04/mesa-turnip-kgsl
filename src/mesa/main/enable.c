@@ -1089,7 +1089,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Point.PointSprite == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_POINT, GL_POINT_BIT | GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, _NEW_POINT | _NEW_FF_VERT_PROGRAM |
+                        _NEW_FF_FRAG_PROGRAM, GL_POINT_BIT | GL_ENABLE_BIT);
          ctx->Point.PointSprite = state;
          break;
 

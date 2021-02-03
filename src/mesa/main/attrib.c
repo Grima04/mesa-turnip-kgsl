@@ -1049,7 +1049,7 @@ _mesa_PopAttrib(void)
       }
       if (ctx->Extensions.ARB_point_sprite) {
          if (ctx->Point.CoordReplace != attr->Point.CoordReplace) {
-            ctx->NewState |= _NEW_POINT;
+            ctx->NewState |= _NEW_POINT | _NEW_FF_VERT_PROGRAM;
             ctx->Point.CoordReplace = attr->Point.CoordReplace;
 
             if (ctx->Driver.TexEnv) {
