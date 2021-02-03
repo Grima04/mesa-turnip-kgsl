@@ -724,7 +724,7 @@ Bug fixes:
 -  incomplete texture objects could cause a segfault
 -  glDrawPixels with GL_COMPILE_AND_EXECUTE caused infinite loop
 -  flat-shaded quads in a strip were miscolored if clipped
--  mipmapped triangle lod computation now works correctly
+-  mipmapped triangle LOD computation now works correctly
 -  fixed a few under/overflow bugs in triangle rasterizer
 -  glArrayElement() assigned bad normal if normal array disabled
 -  changed argument to glXReleaseBuffersMESA()
