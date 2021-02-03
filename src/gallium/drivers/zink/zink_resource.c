@@ -374,6 +374,13 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (optimal_tiling)
          *optimal_tiling = ici.tiling != VK_IMAGE_TILING_LINEAR;
 
+      VkImageFormatProperties image_props;
+      if (vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici.format, ici.imageType,
+                                                   ici.tiling, ici.usage, ici.flags, &image_props) != VK_SUCCESS) {
+         FREE(obj);
+         return NULL;
+      }
+
       struct wsi_image_create_info image_wsi_info = {
          VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
          NULL,
