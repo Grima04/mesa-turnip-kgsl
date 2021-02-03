@@ -2003,7 +2003,7 @@ lower_explicit_io_mode_check(nir_builder *b, nir_intrinsic_instr *intrin,
       /* If the address format is always global, then the driver can use
        * global addresses regardless of the mode.  In that case, don't create
        * a check, just whack the intrinsic to addr_mode_is and delegate to the
-       * driver lowering that.
+       * driver lowering.
        */
       intrin->intrinsic = nir_intrinsic_addr_mode_is;
       return;
@@ -2138,8 +2138,8 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
  * the deref chain.
  *
  * This pass is also capable of handling OpenCL generic pointers.  If the
- * address mode is global, it will lowering any ambiguous (more than one mode)
- * access to global and passing through the deref_mode_is run-time checks as
+ * address mode is global, it will lower any ambiguous (more than one mode)
+ * access to global and pass through the deref_mode_is run-time checks as
  * addr_mode_is.  This assumes the driver has somehow mapped shared and
  * scratch memory to the global address space.  For other modes such as
  * 62bit_generic, there is an enum embedded in the address and we lower
