@@ -4,10 +4,9 @@ KHR-GL33.transform_feedback.api_errors_test,Fail
 KHR-GL33.transform_feedback.capture_vertex_interleaved_test,Fail
 KHR-GL33.transform_feedback.capture_vertex_separate_test,Fail
 KHR-GL33.transform_feedback.discard_vertex_test,Fail
-KHR-GL33.transform_feedback.draw_xfb_feedbackk_test,Crash
-KHR-GL33.transform_feedback.draw_xfb_instanced_test,Crash
-KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test,Crash
-KHR-GL33.transform_feedback.draw_xfb_test,Crash
+KHR-GL33.transform_feedback.draw_xfb_feedbackk_test,Fail
+KHR-GL33.transform_feedback.draw_xfb_instanced_test,Fail
+KHR-GL33.transform_feedback.draw_xfb_test,Fail
 KHR-GL33.transform_feedback.query_vertex_interleaved_test,Fail
 KHR-GL33.transform_feedback.query_vertex_separate_test,Fail
 KHR-GL33.cull_distance.coverage,Fail
