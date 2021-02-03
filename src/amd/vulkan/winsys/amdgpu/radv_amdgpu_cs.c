@@ -667,9 +667,6 @@ static void radv_amdgpu_cs_add_buffer(struct radeon_cmdbuf *_cs,
 		return;
 	}
 
-	if (bo->base.is_local)
-		return;
-
 	radv_amdgpu_cs_add_buffer_internal(cs, bo->bo_handle, bo->priority);
 }
 
