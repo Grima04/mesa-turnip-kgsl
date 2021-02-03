@@ -109,7 +109,7 @@ vk_enumerate_instance_extension_properties(
     uint32_t *pPropertyCount,
     VkExtensionProperties *pProperties)
 {
-   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkExtensionProperties, out, pProperties, pPropertyCount);
 
    for (int i = 0; i < VK_INSTANCE_EXTENSION_COUNT; i++) {
       if (!supported_extensions->extensions[i])
@@ -120,7 +120,7 @@ vk_enumerate_instance_extension_properties(
          continue;
 #endif
 
-      vk_outarray_append(&out, prop) {
+      vk_outarray_append_typed(VkExtensionProperties, &out, prop) {
          *prop = vk_instance_extensions[i];
       }
    }

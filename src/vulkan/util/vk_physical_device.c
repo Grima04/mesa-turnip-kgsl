@@ -75,7 +75,7 @@ vk_common_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
                                              VkExtensionProperties *pProperties)
 {
    VK_FROM_HANDLE(vk_physical_device, pdevice, physicalDevice);
-   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkExtensionProperties, out, pProperties, pPropertyCount);
 
    for (int i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
       if (!pdevice->supported_extensions.extensions[i])
@@ -86,7 +86,7 @@ vk_common_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
          continue;
 #endif
 
-      vk_outarray_append(&out, prop) {
+      vk_outarray_append_typed(VkExtensionProperties, &out, prop) {
          *prop = vk_device_extensions[i];
       }
    }
