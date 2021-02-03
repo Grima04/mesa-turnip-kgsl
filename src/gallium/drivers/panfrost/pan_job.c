@@ -982,9 +982,12 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         panfrost_pool_get_bo_handles(&batch->invisible_pool, bo_handles + submit.bo_handle_count);
         submit.bo_handle_count += panfrost_pool_num_bos(&batch->invisible_pool);
 
-        /* Used by all tiler jobs, and occasionally by fragment jobs.
-         * (XXX: skip for compute-only) */
-        bo_handles[submit.bo_handle_count++] = dev->tiler_heap->gem_handle;
+        /* Add the tiler heap to the list of accessed BOs if the batch has at
+         * least one tiler job. Tiler heap is written by tiler jobs and read
+         * by fragment jobs (the polygon list is coming from this heap).
+         */
+        if (batch->scoreboard.first_tiler)
+                bo_handles[submit.bo_handle_count++] = dev->tiler_heap->gem_handle;
 
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
         if (ctx->is_noop)
