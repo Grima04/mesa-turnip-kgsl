@@ -41,8 +41,6 @@ static const std::array<aco_compiler_statistic_info, aco::num_statistics> statis
    ret[aco::statistic_inv_throughput] = aco_compiler_statistic_info{"Inverse Throughput", "Estimated busy cycles to execute one wave"};
    ret[aco::statistic_vmem_clauses] = aco_compiler_statistic_info{"VMEM Clause", "Number of VMEM clauses (includes 1-sized clauses)"};
    ret[aco::statistic_smem_clauses] = aco_compiler_statistic_info{"SMEM Clause", "Number of SMEM clauses (includes 1-sized clauses)"};
-   ret[aco::statistic_vmem_score] = aco_compiler_statistic_info{"VMEM Score", "Average VMEM def-use distances"};
-   ret[aco::statistic_smem_score] = aco_compiler_statistic_info{"SMEM Score", "Average SMEM def-use distances"};
    ret[aco::statistic_sgpr_presched] = aco_compiler_statistic_info{"Pre-Sched SGPRs", "SGPR usage before scheduling"};
    ret[aco::statistic_vgpr_presched] = aco_compiler_statistic_info{"Pre-Sched VGPRs", "VGPR usage before scheduling"};
    return ret;

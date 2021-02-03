@@ -108,21 +108,6 @@ uint8_t get_counters_for_event(wait_event ev)
    }
 }
 
-uint16_t get_events_for_counter(counter_type ctr)
-{
-   switch (ctr) {
-   case counter_exp:
-      return exp_events;
-   case counter_lgkm:
-      return lgkm_events;
-   case counter_vm:
-      return vm_events;
-   case counter_vs:
-      return vs_events;
-   }
-   return 0;
-}
-
 struct wait_entry {
    wait_imm imm;
    uint16_t events; /* use wait_event notion */
@@ -207,13 +192,6 @@ struct wait_ctx {
 
    std::map<PhysReg,wait_entry> gpr_map;
 
-   /* used for vmem/smem scores */
-   bool collect_statistics;
-   Instruction *gen_instr;
-   std::map<Instruction *, unsigned> unwaited_instrs[num_counters];
-   std::map<PhysReg,std::set<Instruction *>> reg_instrs[num_counters];
-   std::vector<unsigned> wait_distances[num_events];
-
    wait_ctx() {}
    wait_ctx(Program *program_)
            : program(program_),
@@ -222,8 +200,7 @@ struct wait_ctx {
              max_exp_cnt(6),
              max_lgkm_cnt(program_->chip_class >= GFX10 ? 62 : 14),
              max_vs_cnt(program_->chip_class >= GFX10 ? 62 : 0),
-             unordered_events(event_smem | (program_->chip_class < GFX10 ? event_flat : 0)),
-             collect_statistics(program_->collect_statistics) {}
+             unordered_events(event_smem | (program_->chip_class < GFX10 ? event_flat : 0)) {}
 
    bool join(const wait_ctx* other, bool logical)
    {
@@ -262,55 +239,11 @@ struct wait_ctx {
          barrier_events[i] |= other->barrier_events[i];
       }
 
-      /* these are used for statistics, so don't update "changed" */
-      for (unsigned i = 0; i < num_counters; i++) {
-         for (const auto& instr : other->unwaited_instrs[i]) {
-            using iterator = std::map<Instruction *, unsigned>::iterator;
-            const std::pair<iterator, bool> insert_pair = unwaited_instrs[i].insert(instr);
-            if (!insert_pair.second) {
-               const iterator pos = insert_pair.first;
-               pos->second = std::min(pos->second, instr.second);
-            }
-         }
-         for (const auto& instr_pair : other->reg_instrs[i]) {
-            const PhysReg reg = instr_pair.first;
-            const std::set<Instruction *>& instrs = instr_pair.second;
-            reg_instrs[i][reg].insert(instrs.begin(), instrs.end());
-         }
-      }
-
       return changed;
    }
 
    void wait_and_remove_from_entry(PhysReg reg, wait_entry& entry, counter_type counter) {
-      if (collect_statistics && (entry.counters & counter)) {
-         unsigned counter_idx = ffs(counter) - 1;
-         for (Instruction *instr : reg_instrs[counter_idx][reg]) {
-            auto pos = unwaited_instrs[counter_idx].find(instr);
-            if (pos == unwaited_instrs[counter_idx].end())
-               continue;
-
-            unsigned distance = pos->second;
-            unsigned events = entry.events & get_events_for_counter(counter);
-            while (events) {
-               unsigned event_idx = u_bit_scan(&events);
-               wait_distances[event_idx].push_back(distance);
-            }
-
-            unwaited_instrs[counter_idx].erase(pos);
-         }
-         reg_instrs[counter_idx][reg].clear();
-      }
-
       entry.remove_counter(counter);
-   }
-
-   void advance_unwaited_instrs()
-   {
-      for (unsigned i = 0; i < num_counters; i++) {
-         for (std::pair<Instruction * const, unsigned>& instr : unwaited_instrs[i])
-            instr.second++;
-      }
    }
 };
 
@@ -661,16 +594,6 @@ void insert_wait_entry(wait_ctx& ctx, PhysReg reg, RegClass rc, wait_event event
       if (!it.second)
          it.first->second.join(new_entry);
    }
-
-   if (ctx.collect_statistics) {
-      unsigned counters_todo = counters;
-      while (counters_todo) {
-         unsigned i = u_bit_scan(&counters_todo);
-         ctx.unwaited_instrs[i].insert(std::make_pair(ctx.gen_instr, 0u));
-         for (unsigned j = 0; j < rc.size(); j++)
-            ctx.reg_instrs[i][PhysReg{reg.reg()+j}].insert(ctx.gen_instr);
-      }
-   }
 }
 
 void insert_wait_entry(wait_ctx& ctx, Operand op, wait_event event, bool has_sampler=false)
@@ -819,7 +742,6 @@ void handle_block(Program *program, Block& block, wait_ctx& ctx)
       memory_sync_info sync_info = get_sync_info(instr.get());
       queued_imm.combine(kill(instr.get(), ctx, sync_info));
 
-      ctx.gen_instr = instr.get();
       gen(instr.get(), ctx);
 
       if (instr->format != Format::PSEUDO_BARRIER && !is_wait) {
@@ -830,9 +752,6 @@ void handle_block(Program *program, Block& block, wait_ctx& ctx)
          new_instructions.emplace_back(std::move(instr));
 
          queued_imm.combine(perform_barrier(ctx, sync_info, semantic_acquire));
-
-         if (ctx.collect_statistics)
-            ctx.advance_unwaited_instrs();
       }
    }
 
@@ -843,51 +762,6 @@ void handle_block(Program *program, Block& block, wait_ctx& ctx)
 }
 
 } /* end namespace */
-
-static uint32_t calculate_score(std::vector<wait_ctx> &ctx_vec, uint32_t event_mask)
-{
-   double result = 0.0;
-   unsigned num_waits = 0;
-   while (event_mask) {
-      unsigned event_index = u_bit_scan(&event_mask);
-      for (const wait_ctx &ctx : ctx_vec) {
-         for (unsigned dist : ctx.wait_distances[event_index]) {
-            double score = dist;
-            /* for many events, excessive distances provide little benefit, so
-             * decrease the score in that case. */
-            double threshold = INFINITY;
-            double inv_strength = 0.000001;
-            switch (1 << event_index) {
-            case event_smem:
-               threshold = 70.0;
-               inv_strength = 75.0;
-               break;
-            case event_vmem:
-            case event_vmem_store:
-            case event_flat:
-               threshold = 230.0;
-               inv_strength = 150.0;
-               break;
-            case event_lds:
-               threshold = 16.0;
-               break;
-            default:
-               break;
-            }
-            if (score > threshold) {
-               score -= threshold;
-               score = threshold + score / (1.0 + score / inv_strength);
-            }
-
-            /* we don't want increases in high scores to hide decreases in low scores,
-             * so raise to the power of 0.1 before averaging. */
-            result += pow(score, 0.1);
-            num_waits++;
-         }
-      }
-   }
-   return round(pow(result / num_waits, 10.0) * 10.0);
-}
 
 void insert_wait_states(Program* program)
 {
@@ -941,13 +815,6 @@ void insert_wait_states(Program* program)
       handle_block(program, current, ctx);
 
       out_ctx[current.index] = std::move(ctx);
-   }
-
-   if (program->collect_statistics) {
-      program->statistics[statistic_vmem_score] =
-         calculate_score(out_ctx, event_vmem | event_flat | event_vmem_store);
-      program->statistics[statistic_smem_score] =
-         calculate_score(out_ctx, event_smem);
    }
 }
 

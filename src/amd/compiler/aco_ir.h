@@ -1833,8 +1833,6 @@ enum statistic {
    statistic_inv_throughput,
    statistic_vmem_clauses,
    statistic_smem_clauses,
-   statistic_vmem_score,
-   statistic_smem_score,
    statistic_sgpr_presched,
    statistic_vgpr_presched,
    num_statistics
