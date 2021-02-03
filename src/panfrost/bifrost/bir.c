@@ -152,3 +152,36 @@ bi_next_clause(bi_context *ctx, pan_block *block, bi_clause *clause)
 
         return NULL;
 }
+
+/* Does an instruction have a side effect not captured by its register
+ * destination? Applies to certain message-passing instructions only, used in
+ * dead code elimation */
+
+bool
+bi_side_effects(enum bi_opcode op)
+{
+        switch (bi_opcode_props[op].message) {
+        case BIFROST_MESSAGE_NONE:
+        case BIFROST_MESSAGE_VARYING:
+        case BIFROST_MESSAGE_ATTRIBUTE:
+        case BIFROST_MESSAGE_TEX:
+        case BIFROST_MESSAGE_VARTEX:
+        case BIFROST_MESSAGE_LOAD:
+        case BIFROST_MESSAGE_64BIT:
+                return false;
+
+        case BIFROST_MESSAGE_STORE:
+        case BIFROST_MESSAGE_ATOMIC:
+        case BIFROST_MESSAGE_BARRIER:
+        case BIFROST_MESSAGE_BLEND:
+        case BIFROST_MESSAGE_Z_STENCIL:
+        case BIFROST_MESSAGE_ATEST:
+        case BIFROST_MESSAGE_JOB:
+                return true;
+
+        case BIFROST_MESSAGE_TILE:
+                return (op != BI_OPCODE_LD_TILE);
+        }
+
+        unreachable("Invalid message type");
+}
