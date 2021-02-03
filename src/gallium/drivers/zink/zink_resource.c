@@ -313,6 +313,16 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
 
    if (bind & PIPE_BIND_DEPTH_STENCIL)
       ici.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+   /* this is unlikely to occur and has been included for completeness */
+   else if (bind & PIPE_BIND_SAMPLER_VIEW && !(ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
+      if (feats & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+         ici.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      else {
+         if (ici.tiling != VK_IMAGE_TILING_LINEAR)
+            /* gotta populate this thing somehow */
+            return create_ici(screen, templ, bind | PIPE_BIND_LINEAR);
+      }
+   }
 
    if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
       ici.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
