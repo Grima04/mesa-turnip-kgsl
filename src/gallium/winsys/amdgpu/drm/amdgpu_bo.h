@@ -89,6 +89,12 @@ struct amdgpu_winsys_bo {
    amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
    bool is_user_ptr;
    bool use_reusable_pool;
+
+   /* Whether buffer_get_handle or buffer_from_handle has been called,
+    * it can only transition from false to true. Protected by lock.
+    */
+   bool is_shared;
+
    uint32_t unique_id;
    uint64_t va;
    simple_mtx_t lock;
@@ -96,11 +102,6 @@ struct amdgpu_winsys_bo {
    /* how many command streams, which are being emitted in a separate
     * thread, is this bo referenced in? */
    volatile int num_active_ioctls;
-
-   /* whether buffer_get_handle or buffer_from_handle was called,
-    * it can only transition from false to true
-    */
-   volatile int is_shared; /* bool (int for atomicity) */
 
    /* Fences for buffer synchronization. */
    unsigned num_fences;

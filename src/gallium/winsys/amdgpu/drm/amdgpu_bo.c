@@ -52,7 +52,7 @@ static bool amdgpu_bo_wait(struct pb_buffer *_buf, uint64_t timeout,
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
    struct amdgpu_winsys *ws = bo->ws;
-   int64_t abs_timeout;
+   int64_t abs_timeout = 0;
 
    if (timeout == 0) {
       if (p_atomic_read(&bo->num_active_ioctls))
@@ -66,7 +66,11 @@ static bool amdgpu_bo_wait(struct pb_buffer *_buf, uint64_t timeout,
          return false;
    }
 
-   if (bo->is_shared) {
+   simple_mtx_lock(&bo->lock);
+   bool is_shared = bo->is_shared;
+   simple_mtx_unlock(&bo->lock);
+
+   if (is_shared) {
       /* We can't use user fences for shared buffers, because user fences
        * are local to this process only. If we want to wait for all buffer
        * uses in all processes, we have to use amdgpu_bo_wait_for_idle.
@@ -1631,7 +1635,11 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
       if (sws->fd == ws->fd) {
          whandle->handle = bo->u.real.kms_handle;
 
-         if (bo->is_shared)
+         simple_mtx_lock(&bo->lock);
+         bool is_shared = bo->is_shared;
+         simple_mtx_unlock(&bo->lock);
+
+         if (is_shared)
             return true;
 
          goto hash_table_set;
@@ -1677,7 +1685,9 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
    _mesa_hash_table_insert(ws->bo_export_table, bo->bo, bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
+   simple_mtx_lock(&bo->lock);
    bo->is_shared = true;
+   simple_mtx_unlock(&bo->lock);
    return true;
 }
 
