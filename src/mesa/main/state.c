@@ -435,12 +435,16 @@ _mesa_update_state_locked( struct gl_context *ctx )
 {
    GLbitfield new_state = ctx->NewState;
    GLbitfield new_prog_state = 0x0;
-   const GLbitfield computed_states = ~(_NEW_CURRENT_ATTRIB | _NEW_LINE);
+   const GLbitfield checked_states =
+      _NEW_BUFFERS | _NEW_MODELVIEW | _NEW_PROJECTION | _NEW_TEXTURE_MATRIX |
+      _NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE | _NEW_PROGRAM |
+      _NEW_LIGHT_CONSTANTS | _NEW_POINT | _NEW_FF_VERT_PROGRAM |
+      _NEW_FF_FRAG_PROGRAM | _NEW_TNL_SPACES;
 
    /* we can skip a bunch of state validation checks if the dirty
     * state matches one or more bits in 'computed_states'.
     */
-   if ((new_state & computed_states) == 0)
+   if (!(new_state & checked_states))
       goto out;
 
    if (MESA_VERBOSE & VERBOSE_STATE)
