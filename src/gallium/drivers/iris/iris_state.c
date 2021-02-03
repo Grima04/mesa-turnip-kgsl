@@ -7204,8 +7204,24 @@ iris_rebind_buffer(struct iris_context *ice,
     */
 
    if (res->bind_history & PIPE_BIND_STREAM_OUTPUT) {
-      /* XXX: be careful about resetting vs appending... */
-      assert(false);
+      uint32_t *so_buffers = genx->so_buffers;
+      for (unsigned i = 0; i < 4; i++,
+           so_buffers += GENX(3DSTATE_SO_BUFFER_length)) {
+
+         /* There are no other fields in bits 127:64 */
+         uint64_t *addr = (uint64_t *) &so_buffers[2];
+         STATIC_ASSERT(GENX(3DSTATE_SO_BUFFER_SurfaceBaseAddress_start) == 66);
+         STATIC_ASSERT(GENX(3DSTATE_SO_BUFFER_SurfaceBaseAddress_bits) == 46);
+
+         struct pipe_stream_output_target *tgt = ice->state.so_target[i];
+         if (tgt) {
+            struct iris_bo *bo = iris_resource_bo(tgt->buffer);
+            if (*addr != bo->gtt_offset + tgt->buffer_offset) {
+               *addr = bo->gtt_offset + tgt->buffer_offset;
+               ice->state.dirty |= IRIS_DIRTY_SO_BUFFERS;
+            }
+         }
+      }
    }
 
    for (int s = MESA_SHADER_VERTEX; s < MESA_SHADER_STAGES; s++) {

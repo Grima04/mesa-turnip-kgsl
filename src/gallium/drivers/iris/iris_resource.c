@@ -1359,10 +1359,6 @@ iris_invalidate_resource(struct pipe_context *ctx,
    if (res->bo->userptr)
       return;
 
-   // XXX: We should support this.
-   if (res->bind_history & PIPE_BIND_STREAM_OUTPUT)
-      return;
-
    struct iris_bo *old_bo = res->bo;
    struct iris_bo *new_bo =
       iris_bo_alloc(screen->bufmgr, res->bo->name, resource->width0,
