@@ -574,6 +574,7 @@ radv_descriptor_set_create(struct radv_device *device,
 
 		set = (struct radv_descriptor_set*)pool->host_memory_ptr;
 		pool->host_memory_ptr += mem_size;
+		memset(set->descriptors, 0, sizeof(struct radeon_winsys_bo *) * buffer_count);
 	} else {
 		set = vk_alloc2(&device->vk.alloc, NULL, mem_size, 8,
 		                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
