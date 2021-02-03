@@ -1553,7 +1553,7 @@ tu_GetBufferMemoryRequirements2(
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
       .memoryTypeBits = 1,
       .alignment = 64,
-      .size = align64(buffer->size, 64),
+      .size = MAX2(align64(buffer->size, 64), buffer->size),
    };
 }
 
