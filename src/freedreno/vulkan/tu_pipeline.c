@@ -2324,12 +2324,12 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
    const VkPipelineDynamicStateCreateInfo *dynamic_info =
       builder->create_info->pDynamicState;
 
-   if (!dynamic_info)
-      return;
-
    pipeline->gras_su_cntl_mask = ~0u;
    pipeline->rb_depth_cntl_mask = ~0u;
    pipeline->rb_stencil_cntl_mask = ~0u;
+
+   if (!dynamic_info)
+      return;
 
    for (uint32_t i = 0; i < dynamic_info->dynamicStateCount; i++) {
       VkDynamicState state = dynamic_info->pDynamicStates[i];
