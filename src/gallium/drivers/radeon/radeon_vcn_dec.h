@@ -1085,6 +1085,11 @@ struct radeon_decoder {
       unsigned cntl;
    } reg;
    struct jpeg_params jpg;
+   enum {
+      DPB_MAX_RES = 0,
+      DPB_DYNAMIC_TIER_1,
+   } dpb_type;
+
    void (*send_cmd)(struct radeon_decoder *dec, struct pipe_video_buffer *target,
                     struct pipe_picture_desc *picture);
 };
