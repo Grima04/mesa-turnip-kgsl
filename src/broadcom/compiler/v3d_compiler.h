@@ -42,6 +42,25 @@
 #include "qpu/qpu_instr.h"
 #include "pipe/p_state.h"
 
+/**
+ * Maximum number of outstanding TMU operations we can queue for execution.
+ *
+ * This is mostly limited by the size of the TMU fifos. The Input and Config
+ * fifos can stall, but we prefer that than injecting TMU flushes manually
+ * in the driver, so we can ignore these, but we can't overflow the Output fifo,
+ * which has 16 / threads per-thread entries, meaning that the maximum number
+ * of outstanding LDTMUs we can ever have is 8, for a 2-way threaded shader.
+ * This means that at most we can have 8 outstanding TMU loads, if each load
+ * is just one component.
+ *
+ * NOTE: we could actually have a larger value here because TMU stores don't
+ * consume any entries in the Output fifo (so we could have any number of
+ * outstanding stores) and the driver keeps track of used Output fifo entries
+ * and will flush if we ever needs more than 8, but since loads are much more
+ * common than stores, it is probably not worth it.
+ */
+#define MAX_TMU_QUEUE_SIZE 8
+
 struct nir_builder;
 
 struct v3d_fs_inputs {
@@ -573,15 +592,13 @@ struct v3d_compile {
                  */
                 struct set *outstanding_regs;
 
-                uint32_t input_fifo_size;
-                uint32_t config_fifo_size;
                 uint32_t output_fifo_size;
 
                 struct {
                         nir_dest *dest;
                         uint8_t num_components;
                         uint8_t component_mask;
-                } flush[8]; /* 16 entries / 2 threads for input/output fifos */
+                } flush[MAX_TMU_QUEUE_SIZE];
                 uint32_t flush_count;
         } tmu;
 
@@ -943,9 +960,9 @@ uint8_t vir_channels_written(struct qinst *inst);
 struct qreg ntq_get_src(struct v3d_compile *c, nir_src src, int i);
 void ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                     struct qreg result);
-bool ntq_tmu_fifo_overflow(struct v3d_compile *c, uint32_t components, uint32_t writes);
+bool ntq_tmu_fifo_overflow(struct v3d_compile *c, uint32_t components);
 void ntq_add_pending_tmu_flush(struct v3d_compile *c, nir_dest *dest,
-                               uint32_t component_mask, uint32_t tmu_writes);
+                               uint32_t component_mask);
 void ntq_flush_tmu(struct v3d_compile *c);
 void vir_emit_thrsw(struct v3d_compile *c);
 

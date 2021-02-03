@@ -262,7 +262,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         */
         const unsigned dest_components =
            util_bitcount(p0_unpacked.return_words_of_texture_data);
-        if (ntq_tmu_fifo_overflow(c, dest_components, tmu_writes))
+        if (ntq_tmu_fifo_overflow(c, dest_components))
                 ntq_flush_tmu(c);
 
         /* Process tex sources emitting corresponding TMU writes */
@@ -380,8 +380,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         }
 
         ntq_add_pending_tmu_flush(c, &instr->dest,
-                                  p0_unpacked.return_words_of_texture_data,
-                                  tmu_writes);
+                                  p0_unpacked.return_words_of_texture_data);
 }
 
 static uint32_t
@@ -591,7 +590,7 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
        /* If pipelining this TMU operation would overflow TMU fifos, we need
         * to flush any outstanding TMU operations.
         */
-        if (ntq_tmu_fifo_overflow(c, instr_return_channels, tmu_writes))
+        if (ntq_tmu_fifo_overflow(c, instr_return_channels))
                 ntq_flush_tmu(c);
 
         vir_WRTMUC(c, QUNIFORM_IMAGE_TMU_CONFIG_P0, p0_packed);
@@ -603,6 +602,5 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
         vir_image_emit_register_writes(c, instr, atomic_add_replaced, NULL);
 
         ntq_add_pending_tmu_flush(c, &instr->dest,
-                                  p0_unpacked.return_words_of_texture_data,
-                                  tmu_writes);
+                                  p0_unpacked.return_words_of_texture_data);
 }
