@@ -99,9 +99,16 @@ idep_vulkan_util_headers = declare_dependency(
   include_directories : include_directories('.')
 )
 
-idep_vulkan_util = declare_dependency(
-  # Instruct users of this library to link with --whole-archive.  Otherwise,
-  # our weak function overloads may not resolve properly.
-  link_whole : libvulkan_util,
-  dependencies : idep_vulkan_util_headers
-)
+if with_platform_windows
+  idep_vulkan_util = declare_dependency(
+    link_with : libvulkan_util,
+    dependencies : idep_vulkan_util_headers
+  )
+else
+  idep_vulkan_util = declare_dependency(
+    # Instruct users of this library to link with --whole-archive.  Otherwise,
+    # our weak function overloads may not resolve properly.
+    link_whole : libvulkan_util,
+    dependencies : idep_vulkan_util_headers
+  )
+endif
