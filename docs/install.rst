@@ -38,7 +38,7 @@ Third party/extra tools.
 -  `Python <https://www.python.org/>`__ - Python 3.5 or newer is required.
 -  `Python Mako module <http://www.makotemplates.org/>`__ - Python Mako
    module is required. Version 0.8.0 or later should work.
--  lex / yacc - for building the Mesa IR and GLSL compiler.
+-  Lex / Yacc - for building the Mesa IR and GLSL compiler.
 
    On Linux systems, Flex and Bison versions 2.5.35 and 2.4.1,
    respectively, (or later) should work. On Windows with MinGW, install
