@@ -1614,8 +1614,8 @@ static void amdgpu_cs_submit_ib(void *job, int thread_index)
          chunks[num_chunks].chunk_data = (uintptr_t)&cs->ib[IB_PARALLEL_COMPUTE];
          num_chunks++;
 
-         r = amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
-                                   num_chunks, chunks, NULL);
+         r = acs->noop ? 0 : amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
+                                                   num_chunks, chunks, NULL);
          if (r)
             goto finalize;
 
@@ -1677,11 +1677,10 @@ static void amdgpu_cs_submit_ib(void *job, int thread_index)
 
       assert(num_chunks <= ARRAY_SIZE(chunks));
 
-      r = amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
-                                num_chunks, chunks, &seq_no);
+      r = acs->noop ? 0 : amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
+                                                num_chunks, chunks, &seq_no);
    }
 finalize:
-
    if (r) {
       if (r == -ENOMEM)
          fprintf(stderr, "amdgpu: Not enough memory for command submission.\n");
@@ -1693,7 +1692,7 @@ finalize:
 
       acs->ctx->num_rejected_cs++;
       ws->num_total_rejected_cs++;
-   } else {
+   } else if (!acs->noop) {
       /* Success. */
       uint64_t *user_fence = NULL;
 
@@ -1715,7 +1714,7 @@ finalize:
 cleanup:
    /* If there was an error, signal the fence, because it won't be signalled
     * by the hardware. */
-   if (r)
+   if (r || acs->noop)
       amdgpu_fence_signalled(cs->fence);
 
    cs->error_code = r;
@@ -1808,7 +1807,6 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    /* If the CS is not empty or overflowed.... */
    if (likely(radeon_emitted(rcs, 0) &&
        rcs->current.cdw <= rcs->current.max_dw &&
-       !cs->noop &&
        !(flags & RADEON_FLUSH_NOOP))) {
       struct amdgpu_cs_context *cur = cs->csc;
 
