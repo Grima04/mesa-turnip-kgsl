@@ -879,7 +879,6 @@ radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx,
 				     struct radeon_cmdbuf **cs_array,
 				     unsigned cs_count,
 				     struct radeon_cmdbuf *initial_preamble_cs,
-				     struct radeon_cmdbuf *continue_preamble_cs,
 				     struct radeon_winsys_fence *_fence)
 {
 	struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
@@ -969,7 +968,6 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 				      struct radeon_cmdbuf **cs_array,
 				      unsigned cs_count,
 				      struct radeon_cmdbuf *initial_preamble_cs,
-				      struct radeon_cmdbuf *continue_preamble_cs,
 				      struct radeon_winsys_fence *_fence)
 {
 	struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
@@ -1279,10 +1277,10 @@ static VkResult radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx,
 							     cs_count, initial_preamble_cs, continue_preamble_cs, _fence);
 	} else if (can_patch) {
 		result = radv_amdgpu_winsys_cs_submit_chained(_ctx, queue_idx, sem_info, bo_list, cs_array,
-							      cs_count, initial_preamble_cs, continue_preamble_cs, _fence);
+							      cs_count, initial_preamble_cs, _fence);
 	} else {
 		result = radv_amdgpu_winsys_cs_submit_fallback(_ctx, queue_idx, sem_info, bo_list, cs_array,
-							       cs_count, initial_preamble_cs, continue_preamble_cs, _fence);
+							       cs_count, initial_preamble_cs, _fence);
 	}
 
 	radv_amdgpu_signal_sems(ctx, cs->hw_ip, queue_idx, sem_info);
