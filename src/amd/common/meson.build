@@ -102,7 +102,7 @@ libamd_common = static_library(
 idep_amdgfxregs_h = declare_dependency(sources : [amdgfxregs_h])
 
 
-if with_tests
+if with_tests and not with_platform_windows
   test(
     'ac_surface_modifier_test',
     executable(
