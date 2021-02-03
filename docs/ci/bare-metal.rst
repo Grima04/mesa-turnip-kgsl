@@ -136,6 +136,7 @@ To improve the runtime for downloading traces during traces job runs, you will
 want a pass-through HTTP cache.  On your runner box, install nginx:
 
 .. code-block:: console
+
   sudo apt install nginx libnginx-mod-http-lua
 
 Add the server setup files:
@@ -152,6 +153,7 @@ your devices are on.
 Enable the site and restart nginx:
 
 .. code-block:: console
+
   sudo ln -s /etc/nginx/sites-available/fdo-cache /etc/nginx/sites-enabled/fdo-cache
   sudo service nginx restart
 
