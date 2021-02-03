@@ -832,23 +832,10 @@ anv_physical_device_try_create(struct anv_instance *instance,
       anv_gem_get_param(fd, I915_PARAM_MMAP_GTT_VERSION) >= 4;
 
    /* GENs prior to 8 do not support EU/Subslice info */
-   if (device->info.gen >= 8) {
-      device->subslice_total = anv_gem_get_param(fd, I915_PARAM_SUBSLICE_TOTAL);
-      device->eu_total = anv_gem_get_param(fd, I915_PARAM_EU_TOTAL);
+   device->subslice_total = gen_device_info_subslice_total(&device->info);
+   device->eu_total = gen_device_info_eu_total(&device->info);
 
-      /* Without this information, we cannot get the right Braswell
-       * brandstrings, and we have to use conservative numbers for GPGPU on
-       * many platforms, but otherwise, things will just work.
-       */
-      if (device->subslice_total < 1 || device->eu_total < 1) {
-         mesa_logw("Kernel 4.1 required to properly query GPU properties");
-      }
-   } else if (device->info.gen == 7) {
-      device->subslice_total = 1 << (device->info.gt - 1);
-   }
-
-   if (device->info.is_cherryview &&
-       device->subslice_total > 0 && device->eu_total > 0) {
+   if (device->info.is_cherryview) {
       /* Logical CS threads = EUs per subslice * num threads per EU */
       uint32_t max_cs_threads =
          device->eu_total / device->subslice_total * device->info.num_thread_per_eu;
