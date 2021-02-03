@@ -633,7 +633,7 @@ RADV driver environment variables
    ``dccmsaa``
       enable DCC for MSAA images
    ``dfsm``
-      enable dfsm
+      enable DFSM
    ``gewave32``
       enable wave32 for vertex/tess/geometry shaders (GFX10+)
    ``localbos``
