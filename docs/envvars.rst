@@ -454,7 +454,7 @@ Softpipe driver environment variables
    ``cs``
       Dump compute shader assembly to stderr
    ``no_rast``
-      rasterization is no-op'd. For profiling purposes.
+      rasterization is disabled. For profiling purposes.
    ``use_llvm``
       the softpipe driver will try to use LLVM JIT for vertex
       shading processing.
