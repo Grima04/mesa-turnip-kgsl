@@ -392,8 +392,23 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          *optimal_tiling = ici.tiling != VK_IMAGE_TILING_LINEAR;
 
       VkImageFormatProperties image_props;
-      if (vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici.format, ici.imageType,
-                                                   ici.tiling, ici.usage, ici.flags, &image_props) != VK_SUCCESS) {
+      VkResult ret;
+      if (screen->vk_GetPhysicalDeviceImageFormatProperties2) {
+         VkImageFormatProperties2 props2 = {};
+         props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
+         VkPhysicalDeviceImageFormatInfo2 info = {};
+         info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
+         info.format = ici.format;
+         info.type = ici.imageType;
+         info.tiling = ici.tiling;
+         info.usage = ici.usage;
+         info.flags = ici.flags;
+         ret = screen->vk_GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
+         image_props = props2.imageFormatProperties;
+      } else
+         ret = vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici.format, ici.imageType,
+                                                      ici.tiling, ici.usage, ici.flags, &image_props);
+      if (ret != VK_SUCCESS) {
          FREE(obj);
          return NULL;
       }
