@@ -577,7 +577,7 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
 
       if (block->kind & block_kind_merge)
          num_exec_masks--;
-      else if (block->kind & block_kind_top_level)
+      if (block->kind & block_kind_top_level)
          num_exec_masks = std::min(num_exec_masks, 2u);
 
       /* create phis for diverged exec masks */
@@ -602,12 +602,6 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
           block->instructions[i]->opcode == aco_opcode::p_linear_phi) {
       bld.insert(std::move(block->instructions[i]));
       i++;
-   }
-
-   if (block->kind & block_kind_top_level && ctx.info[idx].exec.size() == 3) {
-      assert(ctx.info[idx].exec.back().second == mask_type_exact);
-      assert(block->kind & block_kind_merge);
-      ctx.info[idx].exec.pop_back();
    }
 
    /* try to satisfy the block's needs */
