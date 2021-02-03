@@ -93,9 +93,6 @@ struct amdgpu_winsys_bo {
    uint64_t va;
    simple_mtx_t lock;
 
-   /* how many command streams is this bo referenced in? */
-   int num_cs_references;
-
    /* how many command streams, which are being emitted in a separate
     * thread, is this bo referenced in? */
    volatile int num_active_ioctls;

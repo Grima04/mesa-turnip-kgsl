@@ -489,7 +489,6 @@ amdgpu_do_add_real_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo 
 
    memset(buffer, 0, sizeof(*buffer));
    amdgpu_winsys_bo_reference(&buffer->bo, bo);
-   p_atomic_inc(&bo->num_cs_references);
    cs->num_real_buffers++;
 
    return idx;
@@ -560,7 +559,6 @@ static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
    memset(buffer, 0, sizeof(*buffer));
    amdgpu_winsys_bo_reference(&buffer->bo, bo);
    buffer->u.slab.real_idx = real_idx;
-   p_atomic_inc(&bo->num_cs_references);
    cs->num_slab_buffers++;
 
    hash = bo->unique_id & (ARRAY_SIZE(cs->buffer_indices_hashlist)-1);
@@ -604,7 +602,6 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
 
    memset(buffer, 0, sizeof(*buffer));
    amdgpu_winsys_bo_reference(&buffer->bo, bo);
-   p_atomic_inc(&bo->num_cs_references);
    cs->num_sparse_buffers++;
 
    hash = bo->unique_id & (ARRAY_SIZE(cs->buffer_indices_hashlist)-1);
@@ -914,15 +911,12 @@ static void amdgpu_cs_context_cleanup(struct amdgpu_cs_context *cs)
    unsigned i;
 
    for (i = 0; i < cs->num_real_buffers; i++) {
-      p_atomic_dec(&cs->real_buffers[i].bo->num_cs_references);
       amdgpu_winsys_bo_reference(&cs->real_buffers[i].bo, NULL);
    }
    for (i = 0; i < cs->num_slab_buffers; i++) {
-      p_atomic_dec(&cs->slab_buffers[i].bo->num_cs_references);
       amdgpu_winsys_bo_reference(&cs->slab_buffers[i].bo, NULL);
    }
    for (i = 0; i < cs->num_sparse_buffers; i++) {
-      p_atomic_dec(&cs->sparse_buffers[i].bo->num_cs_references);
       amdgpu_winsys_bo_reference(&cs->sparse_buffers[i].bo, NULL);
    }
    cleanup_fence_list(&cs->fence_dependencies);

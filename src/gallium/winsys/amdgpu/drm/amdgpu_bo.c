@@ -614,12 +614,6 @@ error_bo_alloc:
 
 bool amdgpu_bo_can_reclaim(struct pb_buffer *_buf)
 {
-   struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
-
-   if (amdgpu_bo_is_referenced_by_any_cs(bo)) {
-      return false;
-   }
-
    return amdgpu_bo_wait(_buf, 0, RADEON_USAGE_READWRITE);
 }
 
