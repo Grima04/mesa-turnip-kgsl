@@ -218,10 +218,10 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
             if (i == VBO_ATTRIB_MAT_FRONT_SHININESS ||
                 i == VBO_ATTRIB_MAT_BACK_SHININESS)
                ctx->NewState |= _NEW_FF_VERT_PROGRAM;
+         } else {
+            ctx->NewState |= _NEW_CURRENT_ATTRIB;
+            ctx->PopAttribState |= GL_CURRENT_BIT;
          }
-
-         ctx->NewState |= _NEW_CURRENT_ATTRIB;
-         ctx->PopAttribState |= GL_CURRENT_BIT;
       }
 
       /* Given that we explicitly state size here, there is no need

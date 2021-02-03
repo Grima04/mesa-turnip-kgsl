@@ -781,7 +781,10 @@ _mesa_update_color_material( struct gl_context *ctx, const GLfloat color[4] )
    while (bitmask) {
       const int i = u_bit_scan(&bitmask);
 
-      COPY_4FV( mat->Attrib[i], color );
+      if (memcmp(mat->Attrib[i], color, sizeof(mat->Attrib[i]))) {
+         COPY_4FV(mat->Attrib[i], color);
+         ctx->NewState |= _NEW_MATERIAL;
+      }
    }
 }
 

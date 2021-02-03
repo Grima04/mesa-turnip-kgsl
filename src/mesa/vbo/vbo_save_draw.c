@@ -110,8 +110,7 @@ playback_copy_to_current(struct gl_context *ctx,
             _NEW_CURRENT_ATTRIB, GL_CURRENT_BIT, 0, &data, &color0_changed);
    /* Copy materials */
    copy_vao(ctx, node->VAO[VP_MODE_FF], VERT_BIT_MAT_ALL,
-            _NEW_CURRENT_ATTRIB | _NEW_MATERIAL,
-            GL_CURRENT_BIT | GL_LIGHTING_BIT,
+            _NEW_MATERIAL, GL_LIGHTING_BIT,
             VBO_MATERIAL_SHIFT, &data, &color0_changed);
 
    if (color0_changed && ctx->Light.ColorMaterialEnabled) {
