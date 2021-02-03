@@ -106,8 +106,10 @@ _mesa_Fogfv( GLenum pname, const GLfloat *params )
 	    return;
 	 FLUSH_VERTICES(ctx, _NEW_FOG, GL_FOG_BIT);
 	 ctx->Fog.Mode = m;
-	 ctx->Fog._PackedEnabledMode = ctx->Fog.Enabled ?
-				       ctx->Fog._PackedMode : FOG_NONE;
+         if (ctx->Fog.Enabled) {
+            ctx->Fog._PackedEnabledMode = ctx->Fog._PackedMode;
+            ctx->NewState |= _NEW_FF_FRAG_PROGRAM;
+         }
 	 break;
       case GL_FOG_DENSITY:
 	 if (*params<0.0F) {
@@ -161,7 +163,7 @@ _mesa_Fogfv( GLenum pname, const GLfloat *params )
 	 }
 	 if (ctx->Fog.FogCoordinateSource == p)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_FOG, GL_FOG_BIT);
+	 FLUSH_VERTICES(ctx, _NEW_FOG | _NEW_FF_VERT_PROGRAM, GL_FOG_BIT);
 	 ctx->Fog.FogCoordinateSource = p;
 	 break;
       }
@@ -174,7 +176,7 @@ _mesa_Fogfv( GLenum pname, const GLfloat *params )
 	 }
 	 if (ctx->Fog.FogDistanceMode == p)
 	    return;
-	 FLUSH_VERTICES(ctx, _NEW_FOG, GL_FOG_BIT);
+	 FLUSH_VERTICES(ctx, _NEW_FOG | _NEW_FF_VERT_PROGRAM, GL_FOG_BIT);
 	 ctx->Fog.FogDistanceMode = p;
 	 break;
       }

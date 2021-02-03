@@ -538,7 +538,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Fog.Enabled == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_FOG, GL_FOG_BIT | GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, _NEW_FOG | _NEW_FF_FRAG_PROGRAM,
+                        GL_FOG_BIT | GL_ENABLE_BIT);
          ctx->Fog.Enabled = state;
          ctx->Fog._PackedEnabledMode = state ? ctx->Fog._PackedMode : FOG_NONE;
          break;
@@ -1007,7 +1008,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Fog.ColorSumEnabled == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_FOG, GL_FOG_BIT | GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, _NEW_FOG | _NEW_FF_FRAG_PROGRAM,
+                        GL_FOG_BIT | GL_ENABLE_BIT);
          ctx->Fog.ColorSumEnabled = state;
          break;
 
