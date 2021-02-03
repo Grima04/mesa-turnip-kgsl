@@ -1310,7 +1310,13 @@ populate_format_props(struct zink_screen *screen)
       VkFormat format = zink_get_format(screen, i);
       if (!format)
          continue;
-      vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &screen->format_props[i]);
+      if (screen->vk_GetPhysicalDeviceFormatProperties2) {
+         VkFormatProperties2 props = {};
+         props.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
+         screen->vk_GetPhysicalDeviceFormatProperties2(screen->pdev, format, &props);
+         screen->format_props[i] = props.formatProperties;
+      } else
+         vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &screen->format_props[i]);
    }
 }
 

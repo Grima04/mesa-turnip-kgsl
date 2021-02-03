@@ -104,6 +104,7 @@ struct zink_screen {
 
    PFN_vkGetPhysicalDeviceFeatures2 vk_GetPhysicalDeviceFeatures2;
    PFN_vkGetPhysicalDeviceProperties2 vk_GetPhysicalDeviceProperties2;
+   PFN_vkGetPhysicalDeviceFormatProperties2 vk_GetPhysicalDeviceFormatProperties2;
 
    PFN_vkCmdDrawIndirectCount vk_CmdDrawIndirectCount;
    PFN_vkCmdDrawIndexedIndirectCount vk_CmdDrawIndexedIndirectCount;

@@ -43,7 +43,7 @@ import sys
 EXTENSIONS = [
     Extension("VK_EXT_debug_utils"),
     Extension("VK_KHR_get_physical_device_properties2",
-        functions=["GetPhysicalDeviceFeatures2", "GetPhysicalDeviceProperties2"]),
+        functions=["GetPhysicalDeviceFeatures2", "GetPhysicalDeviceProperties2", "GetPhysicalDeviceFormatProperties2"]),
     Extension("VK_MVK_moltenvk",
         nonstandard=True),
 ]
