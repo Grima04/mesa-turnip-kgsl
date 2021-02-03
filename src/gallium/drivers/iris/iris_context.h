@@ -537,8 +537,8 @@ struct iris_stream_output_target {
    /** Stride (bytes-per-vertex) during this transform feedback operation */
    uint16_t stride;
 
-   /** Has 3DSTATE_SO_BUFFER actually been emitted, zeroing the offsets? */
-   bool zeroed;
+   /** Does the next 3DSTATE_SO_BUFFER need to zero the offsets? */
+   bool zero_offset;
 };
 
 /**

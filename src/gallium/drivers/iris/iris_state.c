@@ -3809,13 +3809,18 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
        */
       assert(offset == 0 || offset == 0xFFFFFFFF);
 
-      /* We might be called by Begin (offset = 0), Pause, then Resume
-       * (offset = 0xFFFFFFFF) before ever drawing (where these commands
-       * will actually be sent to the GPU).  In this case, we don't want
-       * to append - we still want to do our initial zeroing.
+      /* When we're first called with an offset of 0, we want the next
+       * 3DSTATE_SO_BUFFER packets to reset the offset to the beginning.
+       * Any further times we emit those packets, we want to use 0xFFFFFFFF
+       * to continue appending from the current offset.
+       *
+       * Note that we might be called by Begin (offset = 0), Pause, then
+       * Resume (offset = 0xFFFFFFFF) before ever drawing (where these
+       * commands will actually be sent to the GPU).  In this case, we
+       * don't want to append - we still want to do our initial zeroing.
        */
-      if (!tgt->zeroed)
-         offset = 0;
+      if (offset == 0)
+         tgt->zero_offset = true;
 
       iris_pack_command(GENX(3DSTATE_SO_BUFFER), so_buffers, sob) {
 #if GEN_GEN < 12
@@ -3833,10 +3838,10 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          sob.MOCS = iris_mocs(res->bo, &screen->isl_dev, 0);
 
          sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
-         sob.StreamOffset = offset;
          sob.StreamOutputBufferOffsetAddress =
             rw_bo(NULL, iris_resource_bo(tgt->offset.res)->gtt_offset +
                         tgt->offset.offset, IRIS_DOMAIN_OTHER_WRITE);
+         sob.StreamOffset = 0xFFFFFFFF; /* not offset, see above */
       }
    }
 
@@ -6000,17 +6005,33 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (ice->state.streamout_active) {
       if (dirty & IRIS_DIRTY_SO_BUFFERS) {
-         iris_batch_emit(batch, genx->so_buffers,
-                         4 * 4 * GENX(3DSTATE_SO_BUFFER_length));
          for (int i = 0; i < 4; i++) {
             struct iris_stream_output_target *tgt =
                (void *) ice->state.so_target[i];
+            const uint32_t dwords = GENX(3DSTATE_SO_BUFFER_length);
+            uint32_t *so_buffers = genx->so_buffers + i * dwords;
+            bool zero_offset = false;
+
             if (tgt) {
-               tgt->zeroed = true;
+               zero_offset = tgt->zero_offset;
                iris_use_pinned_bo(batch, iris_resource_bo(tgt->base.buffer),
                                   true, IRIS_DOMAIN_OTHER_WRITE);
                iris_use_pinned_bo(batch, iris_resource_bo(tgt->offset.res),
                                   true, IRIS_DOMAIN_OTHER_WRITE);
+            }
+
+            if (zero_offset) {
+               /* Skip the last DWord which contains "Stream Offset" of
+                * 0xFFFFFFFF and instead emit a dword of zero directly.
+                */
+               STATIC_ASSERT(GENX(3DSTATE_SO_BUFFER_StreamOffset_start) ==
+                             32 * (dwords - 1));
+               const uint32_t zero = 0;
+               iris_batch_emit(batch, so_buffers, 4 * (dwords - 1));
+               iris_batch_emit(batch, &zero, sizeof(zero));
+               tgt->zero_offset = false;
+            } else {
+               iris_batch_emit(batch, so_buffers, 4 * dwords);
             }
          }
       }
