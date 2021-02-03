@@ -2,11 +2,9 @@
 
 set -ex
 
-GFXRECONSTRUCT_VERSION=57c588c04af631d1d6d381a48e2b9283f9d9d528
+GFXRECONSTRUCT_VERSION=3738decc2f4f9ff183818e5ab213a75a79fb7ab1
 
-# Using the "dev" branch by now because it solves a crash and will allow us to
-# use the gfxreconstruct-info tool
-git clone https://github.com/LunarG/gfxreconstruct.git --single-branch -b dev --no-checkout /gfxreconstruct
+git clone https://github.com/LunarG/gfxreconstruct.git --single-branch -b master --no-checkout /gfxreconstruct
 pushd /gfxreconstruct
 git checkout "$GFXRECONSTRUCT_VERSION"
 git submodule update --init

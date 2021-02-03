@@ -53,6 +53,7 @@ apt-get install -y --no-remove \
       python \
       python3-mako \
       python3-numpy \
+      python3-packaging \
       python3-pil \
       python3-requests \
       python3-six \

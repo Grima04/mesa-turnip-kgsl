@@ -25,10 +25,6 @@ if [ "$VK_DRIVER" ]; then
     export VK_ICD_FILENAMES="$INSTALL/share/vulkan/icd.d/${VK_DRIVER}_icd.x86_64.json"
 
     if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
-        # Set environment for VulkanTools' VK_LAYER_LUNARG_screenshot layer.
-        export VK_LAYER_PATH="$VK_LAYER_PATH:/VulkanTools/build/etc/vulkan/explicit_layer.d"
-        export __LD_LIBRARY_PATH="$__LD_LIBRARY_PATH:/VulkanTools/build/lib"
-
         # Set environment for Wine.
         export WINEDEBUG="-all"
         export WINEPREFIX="/dxvk-wine64"

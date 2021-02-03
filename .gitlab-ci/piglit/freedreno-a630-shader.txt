@@ -84,6 +84,8 @@ spec/arb_bindless_texture/linker/global_bindless_sampler_and_bound_image: skip
 spec/arb_bindless_texture/linker/global_bindless_sampler_and_bound_sampler: skip
 spec/arb_bindless_texture/linker/global_bound_sampler_and_bound_image: skip
 spec/arb_compute_shader/execution/border-color: fail
+spec/arb_compute_shader/execution/min-dvec4-double-large-group-size: skip
+spec/arb_derivative_control/execution/derivatives-vs-flat-input: skip
 spec/arb_derivative_control/execution/dfdx-coarse: skip
 spec/arb_derivative_control/execution/dfdx-dfdy: skip
 spec/arb_derivative_control/execution/dfdx-fine: skip
@@ -967,7 +969,6 @@ spec/glsl-1.30/execution/interpolation/interpolation-flat-gl_frontsecondarycolor
 spec/glsl-1.30/execution/interpolation/interpolation-flat-gl_frontsecondarycolor-smooth-fixed: crash
 spec/glsl-1.30/execution/interpolation/interpolation-flat-gl_frontsecondarycolor-smooth-none: crash
 spec/glsl-1.30/execution/interpolation/interpolation-flat-gl_frontsecondarycolor-smooth-vertex: crash
-spec/glsl-1.40-compat/execution/built-in-constants: skip
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept: crash
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-reject: crash
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-different-from-position: crash
@@ -1124,10 +1125,10 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     8878
+       pass:     8880
        fail:       29
       crash:       95
-       skip:      997
+       skip:      998
     timeout:        0
        warn:        2
  incomplete:        0
@@ -1136,4 +1137,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    10001
+      total:    10004

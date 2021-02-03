@@ -2059,6 +2059,7 @@ spec/ext_gpu_shader5/preprocessor/disabled-undefined-es.geom: skip
 spec/ext_gpu_shader5/preprocessor/disabled-undefined-es.tesc: skip
 spec/ext_gpu_shader5/preprocessor/disabled-undefined-es.tese: skip
 spec/ext_gpu_shader5/preprocessor/disabled-undefined-es.vert: skip
+spec/ext_separate_shader_objects/compiler/3.00/redeclare_built-in_variable.vert: skip
 spec/ext_separate_shader_objects/preprocessor/disabled-defined-es.comp: skip
 spec/ext_separate_shader_objects/preprocessor/disabled-defined-es.frag: skip
 spec/ext_separate_shader_objects/preprocessor/disabled-defined-es.geom: skip
@@ -2430,6 +2431,32 @@ spec/nv_shader_atomic_float/compiler/shared-atomicadd-float-fail.comp: skip
 spec/nv_shader_atomic_float/compiler/shared-atomicexchange-float-fail.comp: skip
 spec/nv_shader_atomic_float/compiler/ssbo-atomicadd-float-fail.frag: skip
 spec/nv_shader_atomic_float/compiler/ssbo-atomicexchange-float-fail.frag: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicadd-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicand-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicand-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomiccompswap-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicexchange-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicmax-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicmax-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicmin-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicmin-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicor-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicor-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicxor-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/shared-atomicxor-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicadd-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicand-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicand-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomiccompswap-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicexchange-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicmax-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicmax-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicmin-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicmin-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicor-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicor-uint-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicxor-int-fail.comp: skip
+spec/nv_shader_atomic_int64/compiler/ssbo-atomicxor-uint-fail.comp: skip
 spec/nv_viewport_array2/compiler/viewport_relative-bad.vert: skip
 spec/nv_viewport_array2/compiler/viewport_relative.geom: skip
 spec/nv_viewport_array2/compiler/viewport_relative.tesc: skip
@@ -2578,7 +2605,7 @@ summary:
        pass:    12265
        fail:        4
       crash:        4
-       skip:     2566
+       skip:     2593
     timeout:        0
        warn:        0
  incomplete:        0
@@ -2587,4 +2614,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    14839
+      total:    14866

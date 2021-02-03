@@ -1,5 +1,5 @@
 variables:
-  MESA_LAVA_TAG: "2020-02-17-piglit-dependencies"
+  MESA_LAVA_TAG: "2020-02-17-gfxreconstruct-master"
 
 .kernel+rootfs:
   stage: container-2

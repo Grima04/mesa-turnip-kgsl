@@ -4407,6 +4407,7 @@ spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_null_pointer
 spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_ust_test: skip
 spec/egl_ext_client_extensions/conformance test 3: skip
 spec/egl_ext_image_dma_buf_import_modifiers/conformance: fail
+spec/egl_ext_protected_content/conformance: skip
 spec/egl_khr_create_context/3.2 core profile required: skip
 spec/egl_khr_create_context/default major version gl: skip
 spec/egl_khr_create_context/default major version gles: skip
@@ -4655,6 +4656,7 @@ spec/ext_framebuffer_object/fbo-storage-formats/gl_rg8: skip
 spec/ext_gpu_shader4/bindfragdatalocation mixed-int-float-fbo: skip
 spec/ext_gpu_shader4/bindfragdatalocation mixed-int-float-fbo int_second: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: fail
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export-tex: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-intel_external_sampler_only: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_ayuv: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_p010: fail
@@ -5421,8 +5423,7 @@ spec/intel_performance_query/intel_performance_query-issue_2235: fail
 spec/khr_parallel_shader_compile/basic_gles2: skip
 spec/khr_texture_compression_astc/array-gl: skip
 spec/khr_texture_compression_astc/array-gles: skip
-spec/khr_texture_compression_astc/basic-gl: fail
-spec/khr_texture_compression_astc/basic-gles: skip
+spec/khr_texture_compression_astc/basic-gles: fail
 spec/khr_texture_compression_astc/miptree-gl hdr/hdr: notrun
 spec/khr_texture_compression_astc/miptree-gl ldr/ldr: notrun
 spec/khr_texture_compression_astc/miptree-gl ldr/ldr profile: fail
@@ -5573,10 +5574,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:     2197
+       pass:     2198
        fail:      294
       crash:       50
-       skip:     5181
+       skip:     5182
     timeout:        0
        warn:        1
  incomplete:        2
@@ -5585,4 +5586,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     7769
+      total:     7771

@@ -17,6 +17,7 @@ STABLE_EPHEMERAL=" \
       libvulkan-dev \
       libwaffle-dev \
       libxcb-ewmh-dev \
+      libxcb-keysyms1-dev \
       libxkbcommon-dev \
       libxrandr-dev \
       libxrender-dev \
@@ -29,15 +30,9 @@ STABLE_EPHEMERAL=" \
       wget \
       "
 
-# Unfortunately, gfxreconstruct needs the -dev packages:
-# https://github.com/LunarG/gfxreconstruct/issues/402
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
-      libwayland-dev \
-      libx11-xcb-dev \
-      libxcb-keysyms1-dev \
       libxcb-shm0 \
-      libxcb1-dev \
       python3-lxml \
       python3-simplejson
 
@@ -131,10 +126,6 @@ rm -rf /root/.rustup /root/.cargo
 ############### Build gfxreconstruct
 
 . .gitlab-ci/container/build-gfxreconstruct.sh
-
-############### Build VulkanTools
-
-. .gitlab-ci/container/build-vulkantools.sh
 
 ############### Uninstall the build software
 

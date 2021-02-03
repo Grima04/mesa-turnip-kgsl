@@ -389,6 +389,10 @@ spec/!opengl 2.0/vertex-program-two-side/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
 spec/!opengl 3.0/clearbuffer-depth-cs-probe: fail
 spec/!opengl 3.1/draw-buffers-errors: skip
+spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims line cull-back pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/layered-rendering/clear-color-mismatched-layer-count: fail
 spec/!opengl es 2.0/invalid-es3-queries_gles2: skip
@@ -894,6 +898,7 @@ spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_msc_and_sbc_
 spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_null_pointers: skip
 spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_ust_test: skip
 spec/egl_ext_image_dma_buf_import_modifiers/conformance: skip
+spec/egl_ext_protected_content/conformance: skip
 spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_with_display_bound_in_other_thread: skip
 spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_wrong_display_same_thread: skip
 spec/egl_khr_gl_image/egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24: fail
@@ -1396,6 +1401,7 @@ spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=6 with gl_textu
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8: skip
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8 with gl_texture_2d_multisample_array: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export-tex: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-intel_external_sampler_only: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-invalid_attributes: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-invalid_hints: skip
@@ -1648,10 +1654,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23146
-       fail:      185
+       pass:    23142
+       fail:      189
       crash:        1
-       skip:     1437
+       skip:     1439
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1660,4 +1666,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    24793
+      total:    24795

@@ -378,6 +378,10 @@ spec/!opengl 3.0/gl30basic: fail
 spec/!opengl 3.0/minmax: fail
 spec/!opengl 3.1/minmax: fail
 spec/!opengl 3.1/vao-broken-attrib: crash
+spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims line cull-back pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/layered-rendering/clear-color-all-types 2d_multisample_array single_level: fail
 spec/!opengl 3.2/minmax: fail
@@ -547,6 +551,7 @@ spec/arb_buffer_storage/bufferstorage-persistent_gles3 read coherent client-stor
 spec/arb_clear_texture/arb_clear_texture-multisample: skip
 spec/arb_color_buffer_float/gl_rgba8_snorm-render: fail
 spec/arb_color_buffer_float/gl_rgba8_snorm-render-fog: fail
+spec/arb_compute_shader/execution/min-dvec4-double-large-group-size: skip
 spec/arb_compute_variable_group_size/errors: skip
 spec/arb_compute_variable_group_size/execution/basic-local-size: skip
 spec/arb_compute_variable_group_size/execution/fixed-local-size: skip
@@ -1854,6 +1859,7 @@ spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_msc_and_sbc_
 spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_null_pointers: skip
 spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_ust_test: skip
 spec/egl_ext_image_dma_buf_import_modifiers/conformance: skip
+spec/egl_ext_protected_content/conformance: skip
 spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_with_display_bound_in_other_thread: skip
 spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_wrong_display_same_thread: skip
 spec/egl_khr_gl_image/egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24: fail
@@ -2496,6 +2502,7 @@ spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8: skip
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8 with gl_texture_2d_multisample_array: skip
 spec/ext_framebuffer_object/fbo-blending-snorm: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export-tex: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-intel_external_sampler_only: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-invalid_attributes: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-invalid_hints: skip
@@ -3058,10 +3065,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    26857
-       fail:      400
+       pass:    26855
+       fail:      404
       crash:       38
-       skip:     2590
+       skip:     2593
     timeout:        0
        warn:        4
  incomplete:        0
@@ -3070,4 +3077,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    29914
+      total:    29919
