@@ -177,11 +177,11 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
 
    assert(bo->bo && "must not be called for slab entries");
 
-   if (!bo->is_user_ptr && bo->u.real.cpu_ptr) {
+   if (!bo->u.real.is_user_ptr && bo->u.real.cpu_ptr) {
       bo->u.real.cpu_ptr = NULL;
       amdgpu_bo_unmap(&bo->base);
    }
-   assert(bo->is_user_ptr || bo->u.real.map_count == 0);
+   assert(bo->u.real.is_user_ptr || bo->u.real.map_count == 0);
 
 #if DEBUG
    if (ws->debug_all_bos) {
@@ -256,7 +256,7 @@ static void amdgpu_clean_up_buffer_managers(struct amdgpu_winsys *ws)
 
 static bool amdgpu_bo_do_map(struct amdgpu_winsys_bo *bo, void **cpu)
 {
-   assert(!(bo->base.usage & RADEON_FLAG_SPARSE) && bo->bo && !bo->is_user_ptr);
+   assert(!(bo->base.usage & RADEON_FLAG_SPARSE) && bo->bo && !bo->u.real.is_user_ptr);
    int r = amdgpu_bo_cpu_map(bo->bo, cpu);
    if (r) {
       /* Clean up buffer managers and try again. */
@@ -380,7 +380,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
    }
 
    if (usage & RADEON_MAP_TEMPORARY) {
-      if (real->is_user_ptr) {
+      if (real->u.real.is_user_ptr) {
          cpu = real->u.real.cpu_ptr;
       } else {
          if (!amdgpu_bo_do_map(real, &cpu))
@@ -414,10 +414,11 @@ void amdgpu_bo_unmap(struct pb_buffer *buf)
 
    assert(!(bo->base.usage & RADEON_FLAG_SPARSE));
 
-   if (bo->is_user_ptr)
+   real = bo->bo ? bo : bo->u.slab.real;
+
+   if (real->u.real.is_user_ptr)
       return;
 
-   real = bo->bo ? bo : bo->u.slab.real;
    assert(real->u.real.map_count != 0 && "too many unmaps");
    if (p_atomic_dec_zero(&real->u.real.map_count)) {
       assert(!real->u.real.cpu_ptr &&
@@ -1724,7 +1725,7 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
         goto error_va_map;
 
     /* Initialize it. */
-    bo->is_user_ptr = true;
+    bo->u.real.is_user_ptr = true;
     pipe_reference_init(&bo->base.reference, 1);
     simple_mtx_init(&bo->lock, mtx_plain);
     bo->bo = buf_handle;
@@ -1759,7 +1760,9 @@ error:
 
 static bool amdgpu_bo_is_user_ptr(struct pb_buffer *buf)
 {
-   return ((struct amdgpu_winsys_bo*)buf)->is_user_ptr;
+   struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
+
+   return bo->bo ? bo->u.real.is_user_ptr : false;
 }
 
 static bool amdgpu_bo_is_suballocated(struct pb_buffer *buf)
