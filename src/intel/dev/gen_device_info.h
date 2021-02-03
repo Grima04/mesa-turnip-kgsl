@@ -308,6 +308,28 @@ gen_device_info_eu_available(const struct gen_device_info *devinfo,
    return (devinfo->eu_masks[subslice_offset + eu / 8] & (1U << eu % 8)) != 0;
 }
 
+static inline uint32_t
+gen_device_info_subslice_total(const struct gen_device_info *devinfo)
+{
+   uint32_t total = 0;
+
+   for (uint32_t i = 0; i < devinfo->num_slices; i++)
+      total += __builtin_popcount(devinfo->subslice_masks[i]);
+
+   return total;
+}
+
+static inline uint32_t
+gen_device_info_eu_total(const struct gen_device_info *devinfo)
+{
+   uint32_t total = 0;
+
+   for (uint32_t i = 0; i < ARRAY_SIZE(devinfo->eu_masks); i++)
+      total += __builtin_popcount(devinfo->eu_masks[i]);
+
+   return total;
+}
+
 static inline unsigned
 gen_device_info_num_dual_subslices(UNUSED const struct gen_device_info *devinfo)
 {
