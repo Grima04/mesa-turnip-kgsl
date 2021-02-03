@@ -69,7 +69,7 @@ Core Mesa environment variables
    specifies a file name for logging all errors, warnings, etc., rather
    than stderr
 ``MESA_TEX_PROG``
-   if set, implement conventional texture env modes with fragment
+   if set, implement conventional texture environment modes with fragment
    programs (intended for developers only)
 ``MESA_TNL_PROG``
    if set, implement conventional vertex transformation operations with
