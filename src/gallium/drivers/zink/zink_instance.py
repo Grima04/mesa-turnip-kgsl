@@ -42,7 +42,6 @@ import sys
 #               will be added by the codegen accordingly.
 EXTENSIONS = [
     Extension("VK_EXT_debug_utils"),
-    Extension("VK_KHR_maintenance2"),
     Extension("VK_KHR_get_physical_device_properties2",
         functions=["GetPhysicalDeviceFeatures2", "GetPhysicalDeviceProperties2"]),
     Extension("VK_KHR_draw_indirect_count",
