@@ -803,7 +803,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Transform.Normalize == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_TRANSFORM, GL_TRANSFORM_BIT | GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, _NEW_TRANSFORM | _NEW_FF_VERT_PROGRAM,
+                        GL_TRANSFORM_BIT | GL_ENABLE_BIT);
          ctx->Transform.Normalize = state;
          break;
       case GL_POINT_SMOOTH:
@@ -872,7 +873,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Transform.RescaleNormals == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_TRANSFORM, GL_TRANSFORM_BIT | GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, _NEW_TRANSFORM | _NEW_FF_VERT_PROGRAM,
+                        GL_TRANSFORM_BIT | GL_ENABLE_BIT);
          ctx->Transform.RescaleNormals = state;
          break;
       case GL_SCISSOR_TEST:

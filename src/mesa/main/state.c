@@ -492,10 +492,8 @@ _mesa_update_state_locked( struct gl_context *ctx )
                        _NEW_COLOR | _NEW_TEXTURE_STATE;
       }
 
-      if (ctx->VertexProgram._UsesTnlProgram) {
-         prog_flags |= _NEW_FF_VERT_PROGRAM | _NEW_TRANSFORM | _NEW_POINT |
-                       _NEW_FOG;
-      }
+      if (ctx->VertexProgram._UsesTnlProgram)
+         prog_flags |= _NEW_FF_VERT_PROGRAM | _NEW_POINT | _NEW_FOG;
 
       if (new_state & prog_flags) {
          /* When we generate programs from fixed-function vertex/fragment state
