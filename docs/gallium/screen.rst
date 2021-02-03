@@ -388,6 +388,10 @@ The integer capabilities:
   equal interpolation qualifiers.
   Components may overlap, notably when the gaps in an array of dvec3 are
   filled in.
+* ``PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME``: Whether GL_ARB_transform_feeddback2
+  is supported, including pausing/resuming queries and having
+  `count_from_stream_output` set on indirect draws to implement
+  glDrawTransformFeedback.  Required for OpenGL 4.0.
 * ``PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS``: Whether interleaved stream
   output mode is able to interleave across buffers. This is required for
   ARB_transform_feedback3.
