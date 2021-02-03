@@ -48,7 +48,7 @@ bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block, bool soft)
                 unsigned index = bi_get_node(ins->dest[0]);
 
                 if (index < temp_count && !live[index]) {
-                        if (soft)
+                        if (soft || bi_side_effects(ins->op))
                                 ins->dest[0] = bi_null();
                         else
                                 bi_remove_instruction(ins);
