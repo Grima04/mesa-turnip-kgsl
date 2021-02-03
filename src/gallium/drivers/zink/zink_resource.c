@@ -298,6 +298,13 @@ resource_create(struct pipe_screen *pscreen,
    mai.allocationSize = reqs.size;
    mai.memoryTypeIndex = get_memory_type_index(screen, &reqs, flags);
 
+   if (templ->target != PIPE_BUFFER) {
+      VkMemoryType mem_type =
+         screen->info.mem_props.memoryTypes[mai.memoryTypeIndex];
+      res->host_visible = mem_type.propertyFlags &
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+   }
+
    VkExportMemoryAllocateInfo emai = {};
    if (templ->bind & PIPE_BIND_SHARED) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
@@ -589,7 +596,7 @@ zink_transfer_map(struct pipe_context *pctx,
       trans->base.layer_stride = 0;
       ptr = ((uint8_t *)ptr) + box->x;
    } else {
-      if (res->optimal_tiling || (res->base.usage != PIPE_USAGE_STAGING)) {
+      if (res->optimal_tiling || !res->host_visible) {
          enum pipe_format format = pres->format;
          if (usage & PIPE_MAP_DEPTH_ONLY)
             format = util_format_get_depth_only(pres->format);

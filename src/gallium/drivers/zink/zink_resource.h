@@ -52,6 +52,7 @@ struct zink_resource {
          VkImageLayout layout;
          VkImageAspectFlags aspect;
          bool optimal_tiling;
+         bool host_visible;
       };
    };
    VkDeviceMemory mem;
