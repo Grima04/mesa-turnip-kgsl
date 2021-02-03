@@ -60,8 +60,8 @@ Third party/extra tools.
 ~~~~~~~~~~~~~~~~
 
 The requirements depends on the features selected at configure stage.
-Check/install the respective -devel package as prompted by the configure
-error message.
+Check/install the respective development package as prompted by the
+configure error message.
 
 Here are some common ways to retrieve most/all of the dependencies based
 on the packaging tool used by your distro.
