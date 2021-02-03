@@ -146,6 +146,16 @@ static GLenum
 valid_prim_mode_custom(struct gl_context *ctx, GLenum mode,
                        GLbitfield valid_prim_mask)
 {
+#if DEBUG
+   unsigned mask = ctx->ValidPrimMask;
+   unsigned mask_indexed = ctx->ValidPrimMaskIndexed;
+   bool drawpix_valid = ctx->DrawPixValid;
+   _mesa_update_valid_to_render_state(ctx);
+   assert(mask == ctx->ValidPrimMask &&
+          mask_indexed == ctx->ValidPrimMaskIndexed &&
+          drawpix_valid == ctx->DrawPixValid);
+#endif
+
    /* All primitive type enums are less than 32, so we can use the shift. */
    if (mode >= 32 || !((1u << mode) & valid_prim_mask)) {
       /* If the primitive type is not in SupportedPrimMask, set GL_INVALID_ENUM,
