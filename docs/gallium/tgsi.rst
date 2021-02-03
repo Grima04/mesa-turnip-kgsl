@@ -3445,7 +3445,7 @@ component is used.
 TGSI_SEMANTIC_WORK_DIM
 """"""""""""""""""""""
 
-For compute shaders started via opencl this retrieves the work_dim
+For compute shaders started via OpenCL this retrieves the work_dim
 parameter to the clEnqueueNDRangeKernel call with which the shader
 was started.
 
