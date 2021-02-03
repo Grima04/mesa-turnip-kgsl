@@ -417,7 +417,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          if (ctx->Color.AlphaEnabled == state)
             return;
          /* AlphaEnabled is used by the fixed-func fragment program */
-         FLUSH_VERTICES(ctx, _NEW_COLOR, GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, _NEW_COLOR | _NEW_FF_FRAG_PROGRAM,
+                        GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT);
          ctx->NewDriverState |= ctx->DriverFlags.NewAlphaTest;
          ctx->Color.AlphaEnabled = state;
          break;

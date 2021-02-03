@@ -487,7 +487,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
       GLbitfield prog_flags = _NEW_PROGRAM;
 
       if (ctx->FragmentProgram._UsesTexEnvProgram) {
-         prog_flags |= _NEW_BUFFERS | _NEW_TEXTURE_OBJECT | _NEW_COLOR |
+         prog_flags |= _NEW_BUFFERS | _NEW_TEXTURE_OBJECT |
                        _NEW_FF_FRAG_PROGRAM | _NEW_TEXTURE_STATE;
       }
 
