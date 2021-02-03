@@ -1872,62 +1872,6 @@ brw_destroy_buffer(__DRIdrawable *driDrawPriv)
     _mesa_reference_framebuffer(&fb, NULL);
 }
 
-static void
-brw_cs_timestamp_frequency(struct brw_screen *screen)
-{
-   /* We shouldn't need to update gen_device_info.timestamp_frequency prior to
-    * gen10, PCI-id is enough to figure it out.
-    */
-   assert(screen->devinfo.gen >= 10);
-
-   int ret, freq;
-
-   ret = brw_get_param(screen, I915_PARAM_CS_TIMESTAMP_FREQUENCY,
-                         &freq);
-   if (ret < 0) {
-      _mesa_warning(NULL,
-                    "Kernel 4.15 required to read the CS timestamp frequency.\n");
-      return;
-   }
-
-   screen->devinfo.timestamp_frequency = freq;
-}
-
-static void
-brw_detect_sseu(struct brw_screen *screen)
-{
-   assert(screen->devinfo.gen >= 8);
-   int ret;
-
-   screen->subslice_total = -1;
-   screen->eu_total = -1;
-
-   ret = brw_get_param(screen, I915_PARAM_SUBSLICE_TOTAL,
-                         &screen->subslice_total);
-   if (ret < 0 && ret != -EINVAL)
-      goto err_out;
-
-   ret = brw_get_param(screen,
-                         I915_PARAM_EU_TOTAL, &screen->eu_total);
-   if (ret < 0 && ret != -EINVAL)
-      goto err_out;
-
-   /* Without this information, we cannot get the right Braswell brandstrings,
-    * and we have to use conservative numbers for GPGPU on many platforms, but
-    * otherwise, things will just work.
-    */
-   if (screen->subslice_total < 1 || screen->eu_total < 1)
-      _mesa_warning(NULL,
-                    "Kernel 4.1 required to properly query GPU properties.\n");
-
-   return;
-
-err_out:
-   screen->subslice_total = -1;
-   screen->eu_total = -1;
-   _mesa_warning(NULL, "Failed to query GPU properties (%s).\n", strerror(-ret));
-}
-
 static bool
 brw_init_bufmgr(struct brw_screen *screen)
 {
@@ -2661,15 +2605,9 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
    isl_device_init(&screen->isl_dev, &screen->devinfo,
                    screen->hw_has_swizzling);
 
-   if (devinfo->gen >= 10)
-      brw_cs_timestamp_frequency(screen);
-
    /* GENs prior to 8 do not support EU/Subslice info */
-   if (devinfo->gen >= 8) {
-      brw_detect_sseu(screen);
-   } else if (devinfo->gen == 7) {
-      screen->subslice_total = 1 << (devinfo->gt - 1);
-   }
+   screen->subslice_total = gen_device_info_subslice_total(devinfo);
+   screen->eu_total = gen_device_info_eu_total(devinfo);
 
    /* Gen7-7.5 kernel requirements / command parser saga:
     *
