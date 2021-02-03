@@ -680,6 +680,39 @@ static void ac_sqtt_fill_sqtt_data(struct sqtt_file_chunk_sqtt_data *chunk, int3
    chunk->size = size;
 }
 
+/* Below values are from from llvm project
+ * llvm/include/llvm/BinaryFormat/ELF.h
+ */
+enum elf_gfxip_level
+{
+   EF_AMDGPU_MACH_AMDGCN_GFX600 = 0x020,
+   EF_AMDGPU_MACH_AMDGCN_GFX700 = 0x022,
+   EF_AMDGPU_MACH_AMDGCN_GFX801 = 0x028,
+   EF_AMDGPU_MACH_AMDGCN_GFX900 = 0x02c,
+   EF_AMDGPU_MACH_AMDGCN_GFX1010 = 0x033,
+   EF_AMDGPU_MACH_AMDGCN_GFX1030 = 0x036,
+};
+
+static enum elf_gfxip_level ac_chip_class_to_elf_gfxip_level(enum chip_class chip_class)
+{
+   switch (chip_class) {
+   case GFX6:
+      return EF_AMDGPU_MACH_AMDGCN_GFX600;
+   case GFX7:
+      return EF_AMDGPU_MACH_AMDGCN_GFX700;
+   case GFX8:
+      return EF_AMDGPU_MACH_AMDGCN_GFX801;
+   case GFX9:
+      return EF_AMDGPU_MACH_AMDGCN_GFX900;
+   case GFX10:
+      return EF_AMDGPU_MACH_AMDGCN_GFX1010;
+   case GFX10_3:
+      return EF_AMDGPU_MACH_AMDGCN_GFX1030;
+   default:
+      unreachable("Invalid chip class");
+   }
+}
+
 static void ac_sqtt_dump_data(struct radeon_info *rad_info,
                               const struct ac_thread_trace *thread_trace,
                               struct ac_thread_trace_data *thread_trace_data,
@@ -723,6 +756,7 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
       struct sqtt_file_chunk_code_object_database code_object;
       struct sqtt_code_object_database_record code_object_record;
       uint32_t elf_size_calc = 0;
+      uint flags = ac_chip_class_to_elf_gfxip_level(rad_info->chip_class);
 
       fseek(output, sizeof(struct sqtt_file_chunk_code_object_database), SEEK_CUR);
       file_offset += sizeof(struct sqtt_file_chunk_code_object_database);
@@ -731,7 +765,7 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
          fseek(output, sizeof(struct sqtt_code_object_database_record), SEEK_CUR);
          ac_rgp_file_write_elf_object(output, file_offset +
                                       sizeof(struct sqtt_code_object_database_record),
-                                      record, &elf_size_calc);
+                                      record, &elf_size_calc, flags);
          code_object_record.size = elf_size_calc;
          fseek(output, file_offset, SEEK_SET);
          fwrite(&code_object_record, sizeof(struct sqtt_code_object_database_record),
