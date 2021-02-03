@@ -573,6 +573,48 @@ bi_emit_axchg(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
         bi_make_vec_to(b, bi_dest_index(&instr->dest), inout_words, NULL, sz / 32, 32);
 }
 
+/* Exchanges the second staging register with memory if comparison with first
+ * staging register passes */
+
+static void
+bi_emit_acmpxchg(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
+{
+        assert(seg == BI_SEG_NONE || seg == BI_SEG_WLS);
+
+        bi_index addr = bi_src_index(&instr->src[0]);
+
+        /* hardware is swapped from NIR */
+        bi_index src0 = bi_src_index(&instr->src[2]);
+        bi_index src1 = bi_src_index(&instr->src[1]);
+
+        unsigned sz = nir_src_bit_size(instr->src[1]);
+        assert(sz == 32 || sz == 64);
+
+        bi_index data_words[] = {
+                bi_word(src0, 0),
+                sz == 32 ? bi_word(src1, 0) : bi_word(src0, 1),
+
+                /* 64-bit */
+                bi_word(src1, 0),
+                bi_word(src1, 1),
+        };
+
+        bi_index inout = bi_temp_reg(b->shader);
+        bi_make_vec_to(b, inout, data_words, NULL, 2 * (sz / 32), 32);
+
+        bi_acmpxchg_to(b, sz, inout, inout,
+                        bi_word(addr, 0),
+                        (seg == BI_SEG_NONE) ? bi_word(addr, 1) : bi_zero(),
+                        seg);
+
+        bi_index inout_words[] = {
+                bi_word(inout, 0),
+                bi_word(inout, 1),
+        };
+
+        bi_make_vec_to(b, bi_dest_index(&instr->dest), inout_words, NULL, sz / 32, 32);
+}
+
 static void
 bi_load_sysval(bi_builder *b, nir_instr *instr,
                 unsigned nr_components, unsigned offset)
@@ -694,6 +736,14 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_shared_atomic_exchange:
                 bi_emit_axchg(b, instr, BI_SEG_WLS);
+                break;
+
+        case nir_intrinsic_global_atomic_comp_swap:
+                bi_emit_acmpxchg(b, instr, BI_SEG_NONE);
+                break;
+
+        case nir_intrinsic_shared_atomic_comp_swap:
+                bi_emit_acmpxchg(b, instr, BI_SEG_WLS);
                 break;
 
         case nir_intrinsic_load_frag_coord:
