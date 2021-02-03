@@ -72,9 +72,6 @@ _mesa_copy_texture_state( const struct gl_context *src, struct gl_context *dst )
    assert(dst);
 
    dst->Texture.CurrentUnit = src->Texture.CurrentUnit;
-   dst->Texture._GenFlags = src->Texture._GenFlags;
-   dst->Texture._TexGenEnabled = src->Texture._TexGenEnabled;
-   dst->Texture._TexMatEnabled = src->Texture._TexMatEnabled;
 
    /* per-unit state */
    for (u = 0; u < src->Const.MaxCombinedTextureImageUnits; u++) {

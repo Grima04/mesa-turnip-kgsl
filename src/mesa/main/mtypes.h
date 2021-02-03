@@ -5107,8 +5107,6 @@ struct gl_texture_attrib_node
 {
    GLuint CurrentUnit;   /**< GL_ACTIVE_TEXTURE */
    GLuint NumTexSaved;
-   GLbitfield8 _TexGenEnabled;
-   GLbitfield8 _GenFlags;
    struct gl_fixedfunc_texture_unit FixedFuncUnit[MAX_TEXTURE_COORD_UNITS];
    GLfloat LodBias[MAX_TEXTURE_UNITS];
 

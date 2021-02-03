@@ -257,8 +257,6 @@ _mesa_PushAttrib(GLbitfield mask)
 
       /* copy/save the bulk of texture state here */
       head->Texture.CurrentUnit = ctx->Texture.CurrentUnit;
-      head->Texture._TexGenEnabled = ctx->Texture._TexGenEnabled;
-      head->Texture._GenFlags = ctx->Texture._GenFlags;
       memcpy(&head->Texture.FixedFuncUnit, &ctx->Texture.FixedFuncUnit,
              sizeof(ctx->Texture.FixedFuncUnit));
 
@@ -698,11 +696,6 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
       const struct gl_texture_object *src = &texstate->SavedDefaultObj[tex];
 
       copy_texture_attribs(dst, src, tex);
-   }
-
-   if (!ctx->Driver.TexEnv && !ctx->Driver.TexGen) {
-      ctx->Texture._TexGenEnabled = texstate->_TexGenEnabled;
-      ctx->Texture._GenFlags = texstate->_GenFlags;
    }
 
    _mesa_ActiveTexture(GL_TEXTURE0_ARB + texstate->CurrentUnit);
