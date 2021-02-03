@@ -1418,7 +1418,6 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
             return false;
          }
 
-         cs->real_buffers[idx].usage = buffer->usage & ~RADEON_USAGE_SYNCHRONIZED;
          cs->real_buffers[idx].u.real.priority_usage = buffer->u.real.priority_usage;
       }
 
