@@ -28,7 +28,7 @@
 #include <fcntl.h>
 
 #include "anv_private.h"
-#include "vk_format_info.h"
+#include "vk_format.h"
 
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"

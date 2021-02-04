@@ -1008,7 +1008,7 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
 	if (vkds) {
 		struct radv_render_pass_attachment *attachment =
 			pass->attachments + subpass->depth_stencil_attachment->attachment;
-		bool has_stencil = vk_format_is_stencil(attachment->format);
+		bool has_stencil = vk_format_has_stencil(attachment->format);
 		struct radv_dsa_order_invariance order_invariance[2];
 		struct radv_shader_variant *ps =
 			pipeline->shaders[MESA_SHADER_FRAGMENT];
@@ -1825,8 +1825,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
 	if (subpass->depth_stencil_attachment)
 		attachment = pass->attachments + subpass->depth_stencil_attachment->attachment;
 
-	bool has_depth_attachment = attachment && vk_format_is_depth(attachment->format);
-	bool has_stencil_attachment = attachment && vk_format_is_stencil(attachment->format);
+	bool has_depth_attachment = attachment && vk_format_has_depth(attachment->format);
+	bool has_stencil_attachment = attachment && vk_format_has_stencil(attachment->format);
 
 	if (ds_info) {
 		if (has_depth_attachment) {
@@ -3914,8 +3914,8 @@ radv_gfx9_compute_bin_size(const struct radv_pipeline *pipeline, const VkGraphic
 		struct radv_render_pass_attachment *attachment = pass->attachments + subpass->depth_stencil_attachment->attachment;
 
 		/* Coefficients taken from AMDVLK */
-		unsigned depth_coeff = vk_format_is_depth(attachment->format) ? 5 : 0;
-		unsigned stencil_coeff = vk_format_is_stencil(attachment->format) ? 1 : 0;
+		unsigned depth_coeff = vk_format_has_depth(attachment->format) ? 5 : 0;
+		unsigned stencil_coeff = vk_format_has_stencil(attachment->format) ? 1 : 0;
 		unsigned ds_bytes_per_pixel = 4 * (depth_coeff + stencil_coeff) * total_samples;
 
 		const struct radv_bin_size_entry *ds_entry = ds_size_table[log_num_rb_per_se][log_num_se];
@@ -4000,8 +4000,8 @@ radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline, const VkGraphi
 		struct radv_render_pass_attachment *attachment = pass->attachments + subpass->depth_stencil_attachment->attachment;
 
 		/* Coefficients taken from AMDVLK */
-		unsigned depth_coeff = vk_format_is_depth(attachment->format) ? 5 : 0;
-		unsigned stencil_coeff = vk_format_is_stencil(attachment->format) ? 1 : 0;
+		unsigned depth_coeff = vk_format_has_depth(attachment->format) ? 5 : 0;
+		unsigned stencil_coeff = vk_format_has_stencil(attachment->format) ? 1 : 0;
 		unsigned db_bytes_per_pixel = (depth_coeff + stencil_coeff) * total_samples;
 
 		const unsigned db_pixel_count_log = util_logbase2(db_tag_part / db_bytes_per_pixel);
@@ -4161,7 +4161,7 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 	if (subpass->depth_stencil_attachment)
 		attachment = pass->attachments + subpass->depth_stencil_attachment->attachment;
 
-	bool has_depth_attachment = attachment && vk_format_is_depth(attachment->format);
+	bool has_depth_attachment = attachment && vk_format_has_depth(attachment->format);
 
 	if (vkds && has_depth_attachment) {
 		/* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */

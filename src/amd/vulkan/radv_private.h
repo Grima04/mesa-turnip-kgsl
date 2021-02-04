@@ -2015,12 +2015,12 @@ radv_image_tile_stencil_disabled(const struct radv_device *device,
 				 const struct radv_image *image)
 {
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
-		return !vk_format_is_stencil(image->vk_format);
+		return !vk_format_has_stencil(image->vk_format);
 	} else {
 		/* Due to a hw bug, TILE_STENCIL_DISABLE must be set to 0 for
 		 * the TC-compat ZRANGE issue even if no stencil is used.
 		 */
-		return !vk_format_is_stencil(image->vk_format) &&
+		return !vk_format_has_stencil(image->vk_format) &&
 		       !radv_image_is_tc_compat_htile(image);
 	}
 }

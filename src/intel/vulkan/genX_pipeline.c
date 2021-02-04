@@ -30,7 +30,7 @@
 #include "common/gen_sample_positions.h"
 #include "nir/nir_xfb_info.h"
 #include "vk_util.h"
-#include "vk_format_info.h"
+#include "vk_format.h"
 
 static uint32_t
 vertex_element_comp_control(enum isl_format format, unsigned comp)

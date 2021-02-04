@@ -3281,7 +3281,7 @@ radv_image_is_pipe_misaligned(const struct radv_device *device,
 		if (rad_info->chip_class >= GFX10_3) {
 			log2_bpp_and_samples = log2_bpp + log2_samples;
 		} else {
-			if (vk_format_is_depth(image->vk_format) &&
+			if (vk_format_has_depth(image->vk_format) &&
 			    image->info.array_size >= 8) {
 				log2_bpp = 2;
 			}
@@ -3292,7 +3292,7 @@ radv_image_is_pipe_misaligned(const struct radv_device *device,
 		unsigned num_pipes = G_0098F8_NUM_PIPES(rad_info->gb_addr_config);
 		int overlap = MAX2(0, log2_bpp_and_samples + num_pipes - 8);
 
-		if (vk_format_is_depth(image->vk_format)) {
+		if (vk_format_has_depth(image->vk_format)) {
 			if (radv_image_is_tc_compat_htile(image) && overlap) {
 				return true;
 			}
@@ -3325,7 +3325,7 @@ radv_image_is_l2_coherent(const struct radv_device *device, const struct radv_im
 		if (image->info.samples == 1 &&
 		    (image->usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 				     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
-		    !vk_format_is_stencil(image->vk_format)) {
+		    !vk_format_has_stencil(image->vk_format)) {
 			/* Single-sample color and single-sample depth
 			 * (not stencil) are coherent with shaders on
 			 * GFX9.
@@ -6128,7 +6128,7 @@ static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
 
 	state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, htile_value);
 
-	if (vk_format_is_stencil(image->vk_format))
+	if (vk_format_has_stencil(image->vk_format))
 		aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
 	radv_set_ds_clear_metadata(cmd_buffer, image, range, value, aspects);
@@ -6444,7 +6444,7 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 		radv_image_queue_family_mask(image, dst_family,
 					     cmd_buffer->queue_family_index);
 
-	if (vk_format_is_depth(image->vk_format)) {
+	if (vk_format_has_depth(image->vk_format)) {
 		radv_handle_depth_image_transition(cmd_buffer, image,
 						   src_layout, src_render_loop,
 						   dst_layout, dst_render_loop,

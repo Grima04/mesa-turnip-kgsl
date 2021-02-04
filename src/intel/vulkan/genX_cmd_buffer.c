@@ -26,7 +26,7 @@
 
 #include "anv_private.h"
 #include "anv_measure.h"
-#include "vk_format_info.h"
+#include "vk_format.h"
 #include "vk_util.h"
 #include "util/fast_idiv_by_const.h"
 

@@ -34,7 +34,7 @@
 #include "vk_util.h"
 #include "util/u_math.h"
 
-#include "vk_format_info.h"
+#include "vk_format.h"
 
 static const enum isl_surf_dim
 vk_to_isl_surf_dim[] = {

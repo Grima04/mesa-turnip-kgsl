@@ -77,31 +77,6 @@ vk_format_get_first_non_void_channel(VkFormat format)
 	return util_format_get_first_non_void_channel(vk_format_to_pipe_format(format));
 }
 
-static inline VkImageAspectFlags
-vk_format_aspects(VkFormat format)
-{
-	switch (format) {
-	case VK_FORMAT_UNDEFINED:
-		return 0;
-
-	case VK_FORMAT_S8_UINT:
-		return VK_IMAGE_ASPECT_STENCIL_BIT;
-
-	case VK_FORMAT_D16_UNORM_S8_UINT:
-	case VK_FORMAT_D24_UNORM_S8_UINT:
-	case VK_FORMAT_D32_SFLOAT_S8_UINT:
-		return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-
-	case VK_FORMAT_D16_UNORM:
-	case VK_FORMAT_X8_D24_UNORM_PACK32:
-	case VK_FORMAT_D32_SFLOAT:
-		return VK_IMAGE_ASPECT_DEPTH_BIT;
-
-	default:
-		return VK_IMAGE_ASPECT_COLOR_BIT;
-	}
-}
-
 static inline enum pipe_swizzle
 radv_swizzle_conv(VkComponentSwizzle component, const unsigned char chan[4], VkComponentSwizzle vk_swiz)
 {
@@ -142,52 +117,6 @@ static inline bool
 vk_format_is_subsampled(VkFormat format)
 {
 	return util_format_is_subsampled_422(vk_format_to_pipe_format(format));
-}
-
-static inline bool
-vk_format_is_depth_or_stencil(VkFormat format)
-{
-	const struct util_format_description *desc = util_format_description(vk_format_to_pipe_format(format));
-
-	assert(desc);
-	if (!desc) {
-		return false;
-	}
-
-	return util_format_has_depth(desc) ||
-	       util_format_has_stencil(desc);
-}
-
-static inline bool
-vk_format_is_depth(VkFormat format)
-{
-	const struct util_format_description *desc = util_format_description(vk_format_to_pipe_format(format));
-
-	assert(desc);
-	if (!desc) {
-		return false;
-	}
-
-	return util_format_has_depth(desc);
-}
-
-static inline bool
-vk_format_is_stencil(VkFormat format)
-{
-	const struct util_format_description *desc = util_format_description(vk_format_to_pipe_format(format));
-
-	assert(desc);
-	if (!desc) {
-		return false;
-	}
-
-	return util_format_has_stencil(desc);
-}
-
-static inline bool
-vk_format_is_color(VkFormat format)
-{
-	return !vk_format_is_depth_or_stencil(format);
 }
 
 static inline VkFormat

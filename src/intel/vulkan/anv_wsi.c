@@ -24,7 +24,6 @@
 #include "anv_private.h"
 #include "anv_measure.h"
 #include "wsi_common.h"
-#include "vk_format_info.h"
 #include "vk_util.h"
 
 static PFN_vkVoidFunction

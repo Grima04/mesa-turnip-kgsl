@@ -22,7 +22,6 @@
 
 #include "anv_private.h"
 #include "wsi_common.h"
-#include "vk_format_info.h"
 #include "vk_util.h"
 #include "wsi_common_display.h"
 

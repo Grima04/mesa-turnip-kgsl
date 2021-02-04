@@ -30,7 +30,6 @@
 #include "anv_private.h"
 #include "anv_measure.h"
 
-#include "vk_format_info.h"
 #include "vk_util.h"
 
 /** \file anv_cmd_buffer.c

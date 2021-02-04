@@ -285,8 +285,7 @@ VULKAN_FILES := \
 	vulkan/anv_private.h \
 	vulkan/anv_queue.c \
 	vulkan/anv_util.c \
-	vulkan/anv_wsi.c \
-	vulkan/vk_format_info.h
+	vulkan/anv_wsi.c
 
 VULKAN_NON_ANDROID_FILES := \
 	vulkan/anv_android_stubs.c
