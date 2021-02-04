@@ -1496,3 +1496,169 @@ nir_addition_might_overflow(nir_shader *shader, struct hash_table *range_ht,
    return const_val + ub < const_val;
 }
 
+static uint64_t
+ssa_def_bits_used(nir_ssa_def *def, int recur)
+{
+   uint64_t bits_used = 0;
+   uint64_t all_bits = BITFIELD64_MASK(def->bit_size);
+
+   /* Limit recursion */
+   if (recur-- <= 0)
+      return all_bits;
+
+   nir_foreach_use(src, def) {
+      switch (src->parent_instr->type) {
+      case nir_instr_type_alu: {
+         nir_alu_instr *use_alu = nir_instr_as_alu(src->parent_instr);
+         unsigned src_idx = container_of(src, nir_alu_src, src) - use_alu->src;
+
+         switch (use_alu->op) {
+         case nir_op_u2u8:
+         case nir_op_i2i8:
+            bits_used |= 0xff;
+            break;
+
+         case nir_op_u2u16:
+         case nir_op_i2i16:
+            bits_used |= all_bits & 0xffff;
+            break;
+
+         case nir_op_u2u32:
+         case nir_op_i2i32:
+            bits_used |= all_bits & 0xffffffff;
+            break;
+
+         case nir_op_extract_u8:
+         case nir_op_extract_i8:
+            if (src_idx == 0 && nir_src_is_const(use_alu->src[1].src)) {
+               unsigned chunk = nir_src_as_uint(use_alu->src[1].src);
+               bits_used |= 0xffull << (chunk * 8);
+               break;
+            } else {
+               return all_bits;
+            }
+
+         case nir_op_extract_u16:
+         case nir_op_extract_i16:
+            if (src_idx == 0 && nir_src_is_const(use_alu->src[1].src)) {
+               unsigned chunk = nir_src_as_uint(use_alu->src[1].src);
+               bits_used |= 0xffffull << (chunk * 16);
+               break;
+            } else {
+               return all_bits;
+            }
+
+         case nir_op_ishl:
+         case nir_op_ishr:
+         case nir_op_ushr:
+            if (src_idx == 1) {
+               bits_used |= (nir_src_bit_size(use_alu->src[0].src) - 1);
+               break;
+            } else {
+               return all_bits;
+            }
+
+         case nir_op_iand:
+            assert(src_idx < 2);
+            if (nir_src_is_const(use_alu->src[1 - src_idx].src)) {
+               uint64_t u64 = nir_src_as_uint(use_alu->src[1 - src_idx].src);
+               bits_used |= u64;
+               break;
+            } else {
+               return all_bits;
+            }
+
+         case nir_op_ior:
+            assert(src_idx < 2);
+            if (nir_src_is_const(use_alu->src[1 - src_idx].src)) {
+               uint64_t u64 = nir_src_as_uint(use_alu->src[1 - src_idx].src);
+               bits_used |= all_bits & ~u64;
+               break;
+            } else {
+               return all_bits;
+            }
+
+         default:
+            /* We don't know what this op does */
+            return all_bits;
+         }
+         break;
+      }
+
+      case nir_instr_type_intrinsic: {
+         nir_intrinsic_instr *use_intrin =
+            nir_instr_as_intrinsic(src->parent_instr);
+         unsigned src_idx = src - use_intrin->src;
+
+         switch (use_intrin->intrinsic) {
+         case nir_intrinsic_read_invocation:
+         case nir_intrinsic_shuffle:
+         case nir_intrinsic_shuffle_up:
+         case nir_intrinsic_shuffle_down:
+         case nir_intrinsic_shuffle_xor:
+         case nir_intrinsic_quad_broadcast:
+         case nir_intrinsic_quad_swap_horizontal:
+         case nir_intrinsic_quad_swap_vertical:
+         case nir_intrinsic_quad_swap_diagonal:
+            if (src_idx == 0) {
+               assert(use_intrin->dest.is_ssa);
+               bits_used |= ssa_def_bits_used(&use_intrin->dest.ssa, recur);
+            } else {
+               if (use_intrin->intrinsic == nir_intrinsic_quad_broadcast) {
+                  bits_used |= 3;
+               } else {
+                  /* Subgroups larger than 128 are not a thing */
+                  bits_used |= 127;
+               }
+            }
+            break;
+
+         case nir_intrinsic_reduce:
+         case nir_intrinsic_inclusive_scan:
+         case nir_intrinsic_exclusive_scan:
+            assert(src_idx == 0);
+            switch (nir_intrinsic_reduction_op(use_intrin)) {
+            case nir_op_iadd:
+            case nir_op_imul:
+            case nir_op_ior:
+            case nir_op_iand:
+            case nir_op_ixor:
+               bits_used |= ssa_def_bits_used(&use_intrin->dest.ssa, recur);
+               break;
+
+            default:
+               return all_bits;
+            }
+            break;
+
+         default:
+            /* We don't know what this op does */
+            return all_bits;
+         }
+         break;
+      }
+
+      case nir_instr_type_phi: {
+         nir_phi_instr *use_phi = nir_instr_as_phi(src->parent_instr);
+         bits_used |= ssa_def_bits_used(&use_phi->dest.ssa, recur);
+         break;
+      }
+
+      default:
+         return all_bits;
+      }
+
+      /* If we've somehow shown that all our bits are used, we're done */
+      assert((bits_used & ~all_bits) == 0);
+      if (bits_used == all_bits)
+         return all_bits;
+   }
+
+   return bits_used;
+}
+
+uint64_t
+nir_ssa_def_bits_used(nir_ssa_def *def)
+{
+   return ssa_def_bits_used(def, 2);
+}
