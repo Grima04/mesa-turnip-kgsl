@@ -325,9 +325,6 @@ static void radv_amdgpu_log_bo(struct radv_amdgpu_winsys *ws,
 static int radv_amdgpu_global_bo_list_add(struct radv_amdgpu_winsys *ws,
 					  struct radv_amdgpu_winsys_bo *bo)
 {
-	if (!ws->debug_all_bos)
-		return VK_SUCCESS;
-
 	u_rwlock_wrlock(&ws->global_bo_list.lock);
 	if (ws->global_bo_list.count == ws->global_bo_list.capacity) {
 		unsigned capacity = MAX2(4, ws->global_bo_list.capacity * 2);
@@ -350,9 +347,6 @@ static int radv_amdgpu_global_bo_list_add(struct radv_amdgpu_winsys *ws,
 static void radv_amdgpu_global_bo_list_del(struct radv_amdgpu_winsys *ws,
 					   struct radv_amdgpu_winsys_bo *bo)
 {
-	if (!ws->debug_all_bos)
-		return;
-
 	u_rwlock_wrlock(&ws->global_bo_list.lock);
 	for(unsigned i = ws->global_bo_list.count; i-- > 0;) {
 		if (ws->global_bo_list.bos[i] == bo) {
@@ -382,7 +376,8 @@ static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws,
 		free(bo->bos);
 		free(bo->ranges);
 	} else {
-		radv_amdgpu_global_bo_list_del(ws, bo);
+		if (ws->debug_all_bos)
+			radv_amdgpu_global_bo_list_del(ws, bo);
 		radv_amdgpu_bo_va_op(ws, bo->bo, 0, bo->size, bo->base.va,
 				     0, 0, AMDGPU_VA_OP_UNMAP);
 		amdgpu_bo_free(bo->bo);
@@ -569,7 +564,8 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 		p_atomic_add(&ws->allocated_gtt,
 			     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_global_bo_list_add(ws, bo);
+	if (ws->debug_all_bos)
+		radv_amdgpu_global_bo_list_add(ws, bo);
 	radv_amdgpu_log_bo(ws, bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
@@ -678,7 +674,8 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws,
 	p_atomic_add(&ws->allocated_gtt,
 		     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_global_bo_list_add(ws, bo);
+	if (ws->debug_all_bos)
+		radv_amdgpu_global_bo_list_add(ws, bo);
 	radv_amdgpu_log_bo(ws, bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
@@ -760,7 +757,8 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
 		p_atomic_add(&ws->allocated_gtt,
 			     align64(bo->size, ws->info.gart_page_size));
 
-	radv_amdgpu_global_bo_list_add(ws, bo);
+	if (ws->debug_all_bos)
+		radv_amdgpu_global_bo_list_add(ws, bo);
 	radv_amdgpu_log_bo(ws, bo, false);
 
 	return (struct radeon_winsys_bo *)bo;
