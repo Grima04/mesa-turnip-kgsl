@@ -506,7 +506,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
    }
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
    struct spirv_shader *spirv = nir_to_spirv(nir, streamout, shader_slot_map, shader_slots_reserved);
-   assert(spirv);
+   if (!spirv)
+      goto done;
 
    if (zink_debug & ZINK_DEBUG_SPIRV) {
       char buf[256];
@@ -528,6 +529,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
    if (vkCreateShaderModule(screen->dev, &smci, NULL, &mod) != VK_SUCCESS)
       mod = VK_NULL_HANDLE;
 
+done:
    if (nir != zs->nir)
       ralloc_free(nir);
 
