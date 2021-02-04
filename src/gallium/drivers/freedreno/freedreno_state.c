@@ -331,7 +331,7 @@ fd_set_viewport_states(struct pipe_context *pctx,
 		swap(miny, maxy);
 	}
 
-	const float max_dims = is_a3xx(ctx->screen) ? 4096.f : 16384.f;
+	const float max_dims = ctx->screen->gpu_id >= 400 ? 16384.f : 4096.f;
 
 	/* Clamp, convert to integer and round up the max bounds. */
 	scissor->minx = CLAMP(minx, 0.f, max_dims);
