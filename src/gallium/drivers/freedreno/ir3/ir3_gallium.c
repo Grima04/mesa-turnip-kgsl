@@ -140,7 +140,7 @@ ir3_shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 	 */
 	ir3_key_clear_unused(&key, shader);
 
-	v = ir3_shader_get_variant(shader, &key, binning_pass, &created);
+	v = ir3_shader_get_variant(shader, &key, binning_pass, false, &created);
 
 	if (created) {
 		if (shader->initial_variants_done) {

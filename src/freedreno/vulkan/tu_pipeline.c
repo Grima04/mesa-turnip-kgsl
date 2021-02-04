@@ -2130,6 +2130,25 @@ tu_upload_variant(struct tu_pipeline *pipeline,
    return memory.iova;
 }
 
+static void
+tu_append_executable(struct tu_pipeline *pipeline, struct ir3_shader_variant *variant,
+                     char *nir_from_spirv)
+{
+   ralloc_steal(pipeline->executables_mem_ctx, variant->disasm_info.nir);
+   ralloc_steal(pipeline->executables_mem_ctx, variant->disasm_info.disasm);
+
+   struct tu_pipeline_executable exe = {
+      .stage = variant->shader->type,
+      .nir_from_spirv = nir_from_spirv,
+      .nir_final = variant->disasm_info.nir,
+      .disasm = variant->disasm_info.disasm,
+      .stats = variant->info,
+      .is_binning = variant->binning_pass,
+   };
+
+   util_dynarray_append(&pipeline->executables, struct tu_pipeline_executable, exe);
+}
+
 static VkResult
 tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
                                     struct tu_pipeline *pipeline)
@@ -2167,6 +2186,22 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
                                                            nir_options,
                                                            "noop_fs");
          nir[MESA_SHADER_FRAGMENT] = fs_b.shader;
+   }
+
+   const bool executable_info = builder->create_info->flags &
+      VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
+
+   char *nir_initial_disasm[ARRAY_SIZE(builder->shaders)] = { NULL };
+
+   if (executable_info) {
+      for (gl_shader_stage stage = MESA_SHADER_VERTEX;
+            stage < ARRAY_SIZE(nir); stage++) {
+         if (!nir[stage])
+            continue;
+
+         nir_initial_disasm[stage] =
+            nir_shader_as_str(nir[stage], pipeline->executables_mem_ctx);
+      }
    }
 
    /* TODO do intra-stage linking here */
@@ -2222,7 +2257,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       bool created;
       builder->variants[stage] =
          ir3_shader_get_variant(builder->shaders[stage]->ir3_shader,
-                                &key, false, &created);
+                                &key, false, executable_info, &created);
       if (!builder->variants[stage])
          return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
@@ -2240,7 +2275,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
          bool created;
          builder->variants[stage] =
             ir3_shader_get_variant(builder->shaders[stage]->ir3_shader,
-                                   &key, false, &created);
+                                   &key, false, executable_info, &created);
          if (!builder->variants[stage])
             return VK_ERROR_OUT_OF_HOST_MEMORY;
       }
@@ -2256,12 +2291,24 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       bool created;
       key.safe_constlen = !!(safe_constlens & (1 << MESA_SHADER_VERTEX));
       variant = ir3_shader_get_variant(vs->ir3_shader, &key,
-                                       true, &created);
+                                       true, executable_info, &created);
       if (!variant)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
    builder->binning_variant = variant;
+
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
+         stage < ARRAY_SIZE(nir); stage++) {
+      if (builder->variants[stage]) {
+         tu_append_executable(pipeline, builder->variants[stage],
+            nir_initial_disasm[stage]);
+      }
+   }
+
+   if (builder->binning_variant != builder->variants[MESA_SHADER_VERTEX]) {
+      tu_append_executable(pipeline, builder->binning_variant, NULL);
+   }
 
    return VK_SUCCESS;
 }
@@ -2800,6 +2847,8 @@ tu_pipeline_finish(struct tu_pipeline *pipeline,
                    const VkAllocationCallbacks *alloc)
 {
    tu_cs_finish(&pipeline->cs);
+
+   ralloc_free(pipeline->executables_mem_ctx);
 }
 
 static VkResult
@@ -2814,6 +2863,8 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    (*pipeline)->layout = builder->layout;
+   (*pipeline)->executables_mem_ctx = ralloc_context(NULL);
+   util_dynarray_init(&(*pipeline)->executables, (*pipeline)->executables_mem_ctx);
 
    /* compile and upload shaders */
    result = tu_pipeline_builder_compile_shaders(builder, *pipeline);
@@ -3020,9 +3071,18 @@ tu_compute_pipeline_create(VkDevice device,
 
    pipeline->layout = layout;
 
+   pipeline->executables_mem_ctx = ralloc_context(NULL);
+   util_dynarray_init(&pipeline->executables, pipeline->executables_mem_ctx);
+
    struct ir3_shader_key key = {};
 
    nir_shader *nir = tu_spirv_to_nir(dev, stage_info, MESA_SHADER_COMPUTE);
+
+   const bool executable_info = pCreateInfo->flags &
+      VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
+
+   char *nir_initial_disasm = executable_info ?
+      nir_shader_as_str(nir, pipeline->executables_mem_ctx) : NULL;
 
    struct tu_shader *shader =
       tu_shader_create(dev, nir, 0, layout, pAllocator);
@@ -3035,7 +3095,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    bool created;
    struct ir3_shader_variant *v =
-      ir3_shader_get_variant(shader->ir3_shader, &key, false, &created);
+      ir3_shader_get_variant(shader->ir3_shader, &key, false, executable_info, &created);
    if (!v) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;
@@ -3063,9 +3123,12 @@ tu_compute_pipeline_create(VkDevice device,
 
    tu6_emit_load_state(pipeline, true);
 
+   tu_append_executable(pipeline, v, nir_initial_disasm);
+
    tu_shader_destroy(dev, shader, pAllocator);
 
    *pPipeline = tu_pipeline_to_handle(pipeline);
+
    return VK_SUCCESS;
 
 fail:
@@ -3111,4 +3174,235 @@ tu_DestroyPipeline(VkDevice _device,
 
    tu_pipeline_finish(pipeline, dev, pAllocator);
    vk_object_free(&dev->vk, pAllocator, pipeline);
+}
+
+#define WRITE_STR(field, ...) ({                                \
+   memset(field, 0, sizeof(field));                             \
+   UNUSED int _i = snprintf(field, sizeof(field), __VA_ARGS__); \
+   assert(_i > 0 && _i < sizeof(field));                        \
+})
+
+static const struct tu_pipeline_executable *
+tu_pipeline_get_executable(struct tu_pipeline *pipeline, uint32_t index)
+{
+   assert(index < util_dynarray_num_elements(&pipeline->executables,
+                                             struct tu_pipeline_executable));
+   return util_dynarray_element(
+      &pipeline->executables, struct tu_pipeline_executable, index);
+}
+
+VkResult
+tu_GetPipelineExecutablePropertiesKHR(
+      VkDevice _device,
+      const VkPipelineInfoKHR* pPipelineInfo,
+      uint32_t* pExecutableCount,
+      VkPipelineExecutablePropertiesKHR* pProperties)
+{
+   TU_FROM_HANDLE(tu_device, dev, _device);
+   TU_FROM_HANDLE(tu_pipeline, pipeline, pPipelineInfo->pipeline);
+   VK_OUTARRAY_MAKE(out, pProperties, pExecutableCount);
+
+   util_dynarray_foreach (&pipeline->executables, struct tu_pipeline_executable, exe) {
+      vk_outarray_append(&out, props) {
+         gl_shader_stage stage = exe->stage;
+         props->stages = mesa_to_vk_shader_stage(stage);
+
+         if (!exe->is_binning)
+            WRITE_STR(props->name, "%s", _mesa_shader_stage_to_abbrev(stage));
+         else
+            WRITE_STR(props->name, "Binning VS");
+
+         WRITE_STR(props->description, "%s", _mesa_shader_stage_to_string(stage));
+
+         props->subgroupSize =
+            dev->compiler->threadsize_base * (exe->stats.double_threadsize ? 2 : 1);
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+
+VkResult
+tu_GetPipelineExecutableStatisticsKHR(
+      VkDevice _device,
+      const VkPipelineExecutableInfoKHR* pExecutableInfo,
+      uint32_t* pStatisticCount,
+      VkPipelineExecutableStatisticKHR* pStatistics)
+{
+   TU_FROM_HANDLE(tu_pipeline, pipeline, pExecutableInfo->pipeline);
+   VK_OUTARRAY_MAKE(out, pStatistics, pStatisticCount);
+
+   const struct tu_pipeline_executable *exe =
+      tu_pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Max Waves Per Core");
+      WRITE_STR(stat->description,
+                "Maximum number of simultaneous waves per core.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.max_waves;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Instruction Count");
+      WRITE_STR(stat->description,
+                "Total number of IR3 instructions in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.instrs_count;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "NOPs Count");
+      WRITE_STR(stat->description,
+                "Number of NOP instructions in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.nops_count;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "MOV Count");
+      WRITE_STR(stat->description,
+                "Number of MOV instructions in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.mov_count;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "COV Count");
+      WRITE_STR(stat->description,
+                "Number of COV instructions in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.cov_count;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Registers used");
+      WRITE_STR(stat->description,
+                "Number of registers used in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.max_reg + 1;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Half-registers used");
+      WRITE_STR(stat->description,
+                "Number of half-registers used in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.max_half_reg + 1;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Instructions with SS sync bit");
+      WRITE_STR(stat->description,
+                "SS bit is set for instructions which depend on a result "
+                "of \"long\" instructions to prevent RAW hazard.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.ss;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Instructions with SY sync bit");
+      WRITE_STR(stat->description,
+                "SY bit is set for instructions which depend on a result "
+                "of loads from global memory to prevent RAW hazard.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.sy;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Estimated cycles stalled on SS");
+      WRITE_STR(stat->description,
+                "A better metric to estimate the impact of SS syncs.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.sstall;
+   }
+
+   for (int i = 0; i < ARRAY_SIZE(exe->stats.instrs_per_cat); i++) {
+      vk_outarray_append(&out, stat) {
+         WRITE_STR(stat->name, "cat%d instructions", i);
+         WRITE_STR(stat->description,
+                  "Number of cat%d instructions.", i);
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = exe->stats.instrs_per_cat[i];
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+
+static bool
+write_ir_text(VkPipelineExecutableInternalRepresentationKHR* ir,
+              const char *data)
+{
+   ir->isText = VK_TRUE;
+
+   size_t data_len = strlen(data) + 1;
+
+   if (ir->pData == NULL) {
+      ir->dataSize = data_len;
+      return true;
+   }
+
+   strncpy(ir->pData, data, ir->dataSize);
+   if (ir->dataSize < data_len)
+      return false;
+
+   ir->dataSize = data_len;
+   return true;
+}
+
+VkResult
+tu_GetPipelineExecutableInternalRepresentationsKHR(
+    VkDevice _device,
+    const VkPipelineExecutableInfoKHR* pExecutableInfo,
+    uint32_t* pInternalRepresentationCount,
+    VkPipelineExecutableInternalRepresentationKHR* pInternalRepresentations)
+{
+   TU_FROM_HANDLE(tu_pipeline, pipeline, pExecutableInfo->pipeline);
+   VK_OUTARRAY_MAKE(out, pInternalRepresentations, pInternalRepresentationCount);
+   bool incomplete_text = false;
+
+   const struct tu_pipeline_executable *exe =
+      tu_pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
+
+   if (exe->nir_from_spirv) {
+      vk_outarray_append(&out, ir) {
+         WRITE_STR(ir->name, "NIR from SPIRV");
+         WRITE_STR(ir->description,
+                   "Initial NIR before any optimizations");
+
+         if (!write_ir_text(ir, exe->nir_from_spirv))
+            incomplete_text = true;
+      }
+   }
+
+   if (exe->nir_final) {
+      vk_outarray_append(&out, ir) {
+         WRITE_STR(ir->name, "Final NIR");
+         WRITE_STR(ir->description,
+                   "Final NIR before going into the back-end compiler");
+
+         if (!write_ir_text(ir, exe->nir_final))
+            incomplete_text = true;
+      }
+   }
+
+   if (exe->disasm) {
+      vk_outarray_append(&out, ir) {
+         WRITE_STR(ir->name, "IR3 Assembly");
+         WRITE_STR(ir->description,
+                   "Final IR3 assembly for the generated shader binary");
+
+         if (!write_ir_text(ir, exe->disasm))
+            incomplete_text = true;
+      }
+   }
+
+   return incomplete_text ? VK_INCOMPLETE : vk_outarray_status(&out);
 }

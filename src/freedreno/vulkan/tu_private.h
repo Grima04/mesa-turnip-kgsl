@@ -52,6 +52,7 @@
 #include "util/log.h"
 #include "util/macros.h"
 #include "util/u_atomic.h"
+#include "util/u_dynarray.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
 #include "vk_device.h"
@@ -1064,6 +1065,17 @@ struct tu_program_descriptor_linkage
    struct tu_push_constant_range push_consts;
 };
 
+struct tu_pipeline_executable {
+   gl_shader_stage stage;
+
+   struct ir3_info stats;
+   bool is_binning;
+
+   char *nir_from_spirv;
+   char *nir_final;
+   char *disasm;
+};
+
 struct tu_pipeline
 {
    struct vk_object_base base;
@@ -1130,6 +1142,10 @@ struct tu_pipeline
    } compute;
 
    struct tu_lrz_pipeline lrz;
+
+   void *executables_mem_ctx;
+   /* tu_pipeline_executable */
+   struct util_dynarray executables;
 };
 
 void

@@ -442,6 +442,12 @@ struct ir3_ibo_mapping {
 	uint8_t tex_base;   /* the number of real textures, ie. image/ssbo start here */
 };
 
+struct ir3_disasm_info {
+	bool write_disasm;
+	char *nir;
+	char *disasm;
+};
+
 /* Represents half register in regid */
 #define HALF_REG_ID    0x100
 
@@ -663,6 +669,8 @@ struct ir3_shader_variant {
 
 	uint16_t local_size[3];
 	bool local_size_variable;
+
+	struct ir3_disasm_info disasm_info;
 };
 
 static inline const char *
@@ -762,7 +770,7 @@ ir3_max_const(const struct ir3_shader_variant *v)
 
 void * ir3_shader_assemble(struct ir3_shader_variant *v);
 struct ir3_shader_variant * ir3_shader_get_variant(struct ir3_shader *shader,
-		const struct ir3_shader_key *key, bool binning_pass, bool *created);
+		const struct ir3_shader_key *key, bool binning_pass, bool keep_ir, bool *created);
 struct ir3_shader * ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 		unsigned reserved_user_consts, struct ir3_stream_output_info *stream_output);
 uint32_t ir3_trim_constlen(struct ir3_shader_variant **variants,
