@@ -2056,36 +2056,6 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
       /* this is a slight adjustment from the paper as we already have phi nodes:
        * We consider them incomplete phis and only handle the definition. */
 
-      /* handle fixed phi definitions */
-      for (instr_it = block.instructions.begin(); instr_it != block.instructions.end(); ++instr_it) {
-         aco_ptr<Instruction>& phi = *instr_it;
-         if (!is_phi(phi))
-            break;
-         Definition& definition = phi->definitions[0];
-         if (!definition.isFixed())
-            continue;
-
-         /* check if a dead exec mask phi is needed */
-         if (definition.isKill()) {
-            for (Operand& op : phi->operands) {
-               assert(op.isTemp());
-               if (!ctx.assignments[op.tempId()].assigned ||
-                   ctx.assignments[op.tempId()].reg != exec) {
-                   definition.setKill(false);
-                   break;
-               }
-            }
-         }
-
-         if (definition.isKill())
-            continue;
-
-         assert(definition.physReg() == exec);
-         assert(!register_file.test(definition.physReg(), definition.bytes()));
-         register_file.fill(definition);
-         ctx.assignments[definition.tempId()] = {definition.physReg(), definition.regClass()};
-      }
-
       /* look up the affinities */
       for (instr_it = block.instructions.begin(); instr_it != block.instructions.end(); ++instr_it) {
          aco_ptr<Instruction>& phi = *instr_it;

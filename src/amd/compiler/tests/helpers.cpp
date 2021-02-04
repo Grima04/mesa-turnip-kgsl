@@ -42,7 +42,6 @@ radv_shader_info info;
 std::unique_ptr<Program> program;
 Builder bld(NULL);
 Temp inputs[16];
-Temp exec_input;
 
 static VkInstance instance_cache[CHIP_LAST] = {VK_NULL_HANDLE};
 static VkDevice device_cache[CHIP_LAST] = {VK_NULL_HANDLE};
@@ -110,14 +109,12 @@ bool setup_cs(const char *input_spec, enum chip_class chip_class,
 
    if (input_spec) {
       unsigned num_inputs = DIV_ROUND_UP(strlen(input_spec), 3u);
-      aco_ptr<Instruction> startpgm{create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, num_inputs + 1)};
+      aco_ptr<Instruction> startpgm{create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, num_inputs)};
       for (unsigned i = 0; i < num_inputs; i++) {
          RegClass cls(input_spec[i * 3] == 'v' ? RegType::vgpr : RegType::sgpr, input_spec[i * 3 + 1] - '0');
          inputs[i] = bld.tmp(cls);
          startpgm->definitions[i] = Definition(inputs[i]);
       }
-      exec_input = bld.tmp(program->lane_mask);
-      startpgm->definitions[num_inputs] = bld.exec(Definition(exec_input));
       bld.insert(std::move(startpgm));
    }
 

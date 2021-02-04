@@ -1673,7 +1673,6 @@ struct Block {
    uint16_t kind = 0;
    int logical_idom = -1;
    int linear_idom = -1;
-   Temp live_out_exec = Temp();
 
    /* this information is needed for predecessors to blocks with phis when
     * moving out of ssa */

@@ -39,7 +39,7 @@ BEGIN_TEST(regalloc.subdword_alloc.reuse_16bit_operands)
       for (bool pessimistic : { false, true }) {
          const char* subvariant = pessimistic ? "/pessimistic" : "/optimistic";
 
-         //>> v1: %_:v[#a], s2: %_:exec = p_startpgm
+         //>> v1: %_:v[#a] = p_startpgm
          if (!setup_cs("v1", (chip_class)cc, CHIP_UNKNOWN, subvariant))
             return;
 
@@ -60,7 +60,7 @@ BEGIN_TEST(regalloc.subdword_alloc.reuse_16bit_operands)
 END_TEST
 
 BEGIN_TEST(regalloc.32bit_partial_write)
-   //>> v1: %_:v[0], s2: %_:exec = p_startpgm
+   //>> v1: %_:v[0] = p_startpgm
    if (!setup_cs("v1", GFX10))
       return;
 

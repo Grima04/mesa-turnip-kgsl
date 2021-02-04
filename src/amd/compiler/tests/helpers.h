@@ -64,7 +64,6 @@ extern ac_shader_config config;
 extern radv_shader_info info;
 extern std::unique_ptr<aco::Program> program;
 extern aco::Builder bld;
-extern aco::Temp exec_input;
 extern aco::Temp inputs[16];
 
 namespace aco {

@@ -189,8 +189,6 @@ void next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>&
                              block->logical_preds[i] :
                              block->linear_preds[i];
          if (instr->operands[i].isTemp()) {
-            if (instr->operands[i].getTemp() == ctx.program->blocks[pred_idx].live_out_exec)
-               continue;
             if (ctx.next_use_distances_end[pred_idx].find(instr->operands[i].getTemp()) == ctx.next_use_distances_end[pred_idx].end() ||
                 ctx.next_use_distances_end[pred_idx][instr->operands[i].getTemp()] != std::pair<uint32_t, uint32_t>{block_idx, 0})
                worklist.insert(pred_idx);
@@ -208,8 +206,6 @@ void next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>&
       uint32_t dom = pair.second.first;
       std::vector<unsigned>& preds = temp.is_linear() ? block->linear_preds : block->logical_preds;
       for (unsigned pred_idx : preds) {
-         if (temp == ctx.program->blocks[pred_idx].live_out_exec)
-            continue;
          if (ctx.program->blocks[pred_idx].loop_nest_depth > block->loop_nest_depth)
             distance += 0xFFFF;
          if (ctx.next_use_distances_end[pred_idx].find(temp) != ctx.next_use_distances_end[pred_idx].end()) {

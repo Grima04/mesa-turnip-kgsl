@@ -11152,7 +11152,7 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
       }
    }
 
-   aco_ptr<Pseudo_instruction> startpgm{create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, arg_count + 1)};
+   aco_ptr<Pseudo_instruction> startpgm{create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, arg_count)};
    for (unsigned i = 0, arg = 0; i < ctx->args->ac.arg_count; i++) {
       if (ctx->args->ac.args[i].skip)
          continue;
@@ -11167,7 +11167,6 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
       startpgm->definitions[arg].setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
       arg++;
    }
-   startpgm->definitions[arg_count] = Definition{ctx->program->allocateId(ctx->program->lane_mask), exec, ctx->program->lane_mask};
    Pseudo_instruction *instr = startpgm.get();
    ctx->block->instructions.push_back(std::move(startpgm));
 
@@ -11215,7 +11214,7 @@ void split_arguments(isel_context *ctx, Pseudo_instruction *startpgm)
    /* Split all arguments except for the first (ring_offsets) and the last
     * (exec) so that the dead channels don't stay live throughout the program.
     */
-   for (int i = 1; i < startpgm->definitions.size() - 1; i++) {
+   for (int i = 1; i < startpgm->definitions.size(); i++) {
       if (startpgm->definitions[i].regClass().size() > 1) {
          emit_split_vector(ctx, startpgm->definitions[i].getTemp(),
                            startpgm->definitions[i].regClass().size());
