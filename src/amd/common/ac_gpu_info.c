@@ -236,39 +236,6 @@ static uint64_t fix_vram_size(uint64_t size)
    return align64(size, 256 * 1024 * 1024);
 }
 
-static uint32_t get_l2_cache_size(enum radeon_family family)
-{
-   switch (family) {
-   case CHIP_KABINI:
-   case CHIP_STONEY:
-      return 128 * 1024;
-   case CHIP_OLAND:
-   case CHIP_HAINAN:
-   case CHIP_ICELAND:
-      return 256 * 1024;
-   case CHIP_PITCAIRN:
-   case CHIP_VERDE:
-   case CHIP_BONAIRE:
-   case CHIP_KAVERI:
-   case CHIP_POLARIS12:
-   case CHIP_CARRIZO:
-      return 512 * 1024;
-   case CHIP_TAHITI:
-   case CHIP_TONGA:
-      return 768 * 1024;
-      break;
-   case CHIP_HAWAII:
-   case CHIP_POLARIS11:
-      return 1024 * 1024;
-   case CHIP_FIJI:
-   case CHIP_POLARIS10:
-      return 2048 * 1024;
-      break;
-   default:
-      return 4096 * 1024;
-   }
-}
-
 static bool
 has_tmz_support(amdgpu_device_handle dev,
                 struct radeon_info *info,
@@ -628,9 +595,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->vram_bit_width = amdinfo->vram_bit_width;
    info->ce_ram_size = amdinfo->ce_ram_size;
 
-   info->l2_cache_size = get_l2_cache_size(info->family);
-   info->l1_cache_size = 16384;
-
    /* Set which chips have uncached device memory. */
    info->has_l2_uncached = info->chip_class >= GFX9;
 
@@ -711,6 +675,44 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->tcc_cache_line_size = 64;
       info->num_tcc_blocks = info->max_tcc_blocks;
    }
+
+   switch (info->family) {
+   case CHIP_KABINI:
+   case CHIP_STONEY:
+      info->l2_cache_size = 128 * 1024;
+      break;
+   case CHIP_OLAND:
+   case CHIP_HAINAN:
+   case CHIP_ICELAND:
+      info->l2_cache_size = 256 * 1024;
+      break;
+   case CHIP_PITCAIRN:
+   case CHIP_VERDE:
+   case CHIP_BONAIRE:
+   case CHIP_KAVERI:
+   case CHIP_POLARIS12:
+   case CHIP_CARRIZO:
+      info->l2_cache_size = 512 * 1024;
+      break;
+   case CHIP_TAHITI:
+   case CHIP_TONGA:
+      info->l2_cache_size = 768 * 1024;
+      break;
+   case CHIP_HAWAII:
+   case CHIP_POLARIS11:
+      info->l2_cache_size = 1024 * 1024;
+      break;
+   case CHIP_FIJI:
+   case CHIP_POLARIS10:
+      info->l2_cache_size = 2048 * 1024;
+      break;
+   default:
+      info->l2_cache_size = 4096 * 1024;
+      break;
+   }
+
+   info->l1_cache_size = 16384;
+
    info->mc_arb_ramcfg = amdinfo->mc_arb_ramcfg;
    info->gb_addr_config = amdinfo->gb_addr_cfg;
    if (info->chip_class >= GFX9) {
