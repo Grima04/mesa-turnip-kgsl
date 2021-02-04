@@ -2700,6 +2700,19 @@ nir_block_ends_in_jump(nir_block *block)
 #define nir_foreach_instr_reverse_safe(instr, block) \
    foreach_list_typed_reverse_safe(nir_instr, instr, node, &(block)->instr_list)
 
+static inline nir_phi_instr *
+nir_block_last_phi_instr(nir_block *block)
+{
+   nir_phi_instr *last_phi = NULL;
+   nir_foreach_instr(instr, block) {
+      if (instr->type == nir_instr_type_phi)
+         last_phi = nir_instr_as_phi(instr);
+      else
+         return last_phi;
+   }
+   return last_phi;
+}
+
 typedef enum {
    nir_selection_control_none = 0x0,
    nir_selection_control_flatten = 0x1,
@@ -3660,6 +3673,16 @@ nir_after_instr(nir_instr *instr)
    cursor.option = nir_cursor_after_instr;
    cursor.instr = instr;
    return cursor;
+}
+
+static inline nir_cursor
+nir_before_block_after_phis(nir_block *block)
+{
+   nir_phi_instr *last_phi = nir_block_last_phi_instr(block);
+   if (last_phi)
+      return nir_after_instr(&last_phi->instr);
+   else
+      return nir_before_block(block);
 }
 
 static inline nir_cursor
