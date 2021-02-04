@@ -681,13 +681,14 @@ lvp_pipeline_compile(struct lvp_pipeline *pipeline,
           stage == MESA_SHADER_TESS_EVAL) {
          xfb_info = nir_gather_xfb_info(pipeline->pipeline_nir[stage], NULL);
          if (xfb_info) {
-            unsigned num_outputs = 0;
             uint8_t output_mapping[VARYING_SLOT_TESS_MAX];
             memset(output_mapping, 0, sizeof(output_mapping));
 
-            for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-               if (pipeline->pipeline_nir[stage]->info.outputs_written & BITFIELD64_BIT(attr))
-                  output_mapping[attr] = num_outputs++;
+            nir_foreach_shader_out_variable(var, pipeline->pipeline_nir[stage]) {
+               unsigned slots = var->data.compact ? DIV_ROUND_UP(glsl_get_length(var->type), 4)
+                                                  : glsl_count_attribute_slots(var->type, false);
+               for (unsigned i = 0; i < slots; i++)
+                  output_mapping[var->data.location + i] = var->data.driver_location + i;
             }
 
             shstate.stream_output.num_outputs = xfb_info->output_count;
