@@ -239,6 +239,55 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    return bci;
 }
 
+static VkImageUsageFlags
+get_image_usage(struct zink_screen *screen, VkImageTiling tiling, const struct pipe_resource *templ, unsigned bind)
+{
+   VkFormatProperties props = screen->format_props[templ->format];
+   VkFormatFeatureFlags feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
+   VkImageUsageFlags usage = 0;
+   /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
+   if (feats & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
+      usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+   if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
+      usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+   if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+      usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+   if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
+       (bind & PIPE_BIND_SHADER_IMAGE)) {
+      if ((tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
+          (tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
+         usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+   }
+
+   if (bind & PIPE_BIND_RENDER_TARGET) {
+      if (feats & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+         usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      else
+         return 0;
+   }
+
+   if (bind & PIPE_BIND_DEPTH_STENCIL) {
+      if (feats & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+         usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      else
+         return 0;
+   /* this is unlikely to occur and has been included for completeness */
+   } else if (bind & PIPE_BIND_SAMPLER_VIEW && !(usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
+      if (feats & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+         usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      else
+         return 0;
+   }
+
+   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
+      usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+
+   if (bind & PIPE_BIND_STREAM_OUTPUT)
+      usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+   return usage;
+}
+
 static VkImageCreateInfo
 create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsigned bind)
 {
@@ -291,44 +340,12 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    if (templ->usage == PIPE_USAGE_STAGING)
       ici.tiling = VK_IMAGE_TILING_LINEAR;
 
-   VkFormatProperties props = screen->format_props[templ->format];
-   VkFormatFeatureFlags feats = ici.tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
-   /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
-   if (feats & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
-      ici.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-   if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
-      ici.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-   if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-      ici.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-
-   if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
-       (bind & PIPE_BIND_SHADER_IMAGE)) {
-      if ((ici.tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
-          (ici.tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
-         ici.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+   ici.usage = get_image_usage(screen, ici.tiling, templ, bind);
+   if (!ici.usage) {
+      assert(ici.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
+      ici.tiling = !ici.tiling;
+      ici.usage = get_image_usage(screen, ici.tiling, templ, bind);
    }
-
-   if (bind & PIPE_BIND_RENDER_TARGET)
-      ici.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-   if (bind & PIPE_BIND_DEPTH_STENCIL)
-      ici.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-   /* this is unlikely to occur and has been included for completeness */
-   else if (bind & PIPE_BIND_SAMPLER_VIEW && !(ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
-      if (feats & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
-         ici.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-      else {
-         if (ici.tiling != VK_IMAGE_TILING_LINEAR)
-            /* gotta populate this thing somehow */
-            return create_ici(screen, templ, bind | PIPE_BIND_LINEAR);
-      }
-   }
-
-   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
-      ici.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
-
-   if (bind & PIPE_BIND_STREAM_OUTPUT)
-      ici.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
