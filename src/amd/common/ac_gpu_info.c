@@ -929,10 +929,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       }
    }
 
-   /* The number of SDPs is the same as the number of TCCs for now. */
-   if (info->chip_class >= GFX10)
-      info->num_sdp_interfaces = info->num_tcc_blocks;
-
    if (info->chip_class >= GFX10_3)
       info->max_wave64_per_simd = 16;
    else if (info->chip_class == GFX10)
@@ -1062,7 +1058,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_dedicated_vram = %u\n", info->has_dedicated_vram);
    fprintf(f, "    all_vram_visible = %u\n", info->all_vram_visible);
    fprintf(f, "    smart_access_memory = %u\n", info->smart_access_memory);
-   fprintf(f, "    num_sdp_interfaces = %u\n", info->num_sdp_interfaces);
    fprintf(f, "    max_tcc_blocks = %i\n", info->max_tcc_blocks);
    fprintf(f, "    num_tcc_blocks = %i\n", info->num_tcc_blocks);
    fprintf(f, "    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);

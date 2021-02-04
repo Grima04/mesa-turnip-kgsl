@@ -104,7 +104,6 @@ struct radeon_info {
    bool smart_access_memory;
    bool has_l2_uncached;
    bool r600_has_virtual_memory;
-   uint32_t num_sdp_interfaces;
    uint32_t max_tcc_blocks;
    uint32_t num_tcc_blocks;
    uint32_t tcc_cache_line_size;

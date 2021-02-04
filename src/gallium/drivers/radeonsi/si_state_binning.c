@@ -310,7 +310,7 @@ static void gfx10_get_bin_sizes(struct si_context *sctx, unsigned cb_target_enab
    const unsigned FcReadTags = 44;
 
    const unsigned num_rbs = sctx->screen->info.max_render_backends;
-   const unsigned num_pipes = MAX2(num_rbs, sctx->screen->info.num_sdp_interfaces);
+   const unsigned num_pipes = MAX2(num_rbs, sctx->screen->info.num_tcc_blocks);
 
    const unsigned depthBinSizeTagPart =
       ((ZsNumTags * num_rbs / num_pipes) * (ZsTagSize * num_pipes));
