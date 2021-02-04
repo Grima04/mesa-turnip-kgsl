@@ -123,33 +123,41 @@ gdi_screen_create_by_name(HDC hDC, const char* driver, struct sw_winsys *winsys)
 static struct pipe_screen *
 gdi_screen_create(HDC hDC)
 {
-   const char *default_driver;
-   const char *driver;
-   struct pipe_screen *screen = NULL;
    struct sw_winsys *winsys;
 
    winsys = gdi_create_sw_winsys();
    if (!winsys)
-      return screen;
+      return NULL;
 
+   const char *const drivers[] = {
+      debug_get_option("GALLIUM_DRIVER", ""),
 #ifdef GALLIUM_D3D12
-   default_driver = "d3d12";
-#elif defined(GALLIUM_LLVMPIPE)
-   default_driver = "llvmpipe";
-#elif GALLIUM_SWR
-   default_driver = "swr";
-#elif defined(GALLIUM_SOFTPIPE)
-   default_driver = "softpipe";
-#else
-#error "no suitable default-driver"
+      "d3d12",
 #endif
+#if defined(GALLIUM_LLVMPIPE)
+      "llvmpipe",
+#endif
+#if GALLIUM_SWR
+      "swr",
+#endif
+#if defined(GALLIUM_SOFTPIPE)
+      "softpipe",
+#endif
+   };
+   
+   /* If the default driver screen creation fails, fall back to the next option in the
+    * sorted list. Don't do this if GALLIUM_DRIVER is specified.
+    */
+   for (unsigned i = 0; i < ARRAY_SIZE(drivers); ++i) {
+      struct pipe_screen* screen = gdi_screen_create_by_name(hDC, drivers[i], winsys);
+      if (screen)
+         return screen;
+      if (i == 0 && drivers[i][0] != '\0')
+         break;
+   }
 
-   driver = debug_get_option("GALLIUM_DRIVER", default_driver);
-   screen = gdi_screen_create_by_name(hDC, driver, winsys);
-   if (!screen)
-      winsys->destroy(winsys);
-
-   return screen;
+   winsys->destroy(winsys);
+   return NULL;
 }
 
 
