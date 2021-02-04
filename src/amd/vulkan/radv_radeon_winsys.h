@@ -65,12 +65,6 @@ enum radeon_bo_flag { /* bitfield */
 	RADEON_FLAG_ZERO_VRAM = (1 << 10),
 };
 
-enum radeon_bo_usage { /* bitfield */
-	RADEON_USAGE_READ = 2,
-	RADEON_USAGE_WRITE = 4,
-	RADEON_USAGE_READWRITE = RADEON_USAGE_READ | RADEON_USAGE_WRITE
-};
-
 enum radeon_ctx_priority {
 	RADEON_CTX_PRIORITY_INVALID = -1,
 	RADEON_CTX_PRIORITY_LOW = 0,
