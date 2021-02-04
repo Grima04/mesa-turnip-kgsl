@@ -677,37 +677,29 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    switch (info->family) {
-   case CHIP_KABINI:
-   case CHIP_STONEY:
-      info->l2_cache_size = 128 * 1024;
-      break;
-   case CHIP_OLAND:
-   case CHIP_HAINAN:
-   case CHIP_ICELAND:
-      info->l2_cache_size = 256 * 1024;
-      break;
+   case CHIP_TAHITI:
    case CHIP_PITCAIRN:
+   case CHIP_OLAND:
+   case CHIP_HAWAII:
+   case CHIP_KABINI:
+   case CHIP_TONGA:
+   case CHIP_STONEY:
+   case CHIP_RAVEN2:
+      info->l2_cache_size = info->num_tcc_blocks * 64 * 1024;
+      break;
    case CHIP_VERDE:
+   case CHIP_HAINAN:
    case CHIP_BONAIRE:
    case CHIP_KAVERI:
-   case CHIP_POLARIS12:
+   case CHIP_ICELAND:
    case CHIP_CARRIZO:
-      info->l2_cache_size = 512 * 1024;
-      break;
-   case CHIP_TAHITI:
-   case CHIP_TONGA:
-      info->l2_cache_size = 768 * 1024;
-      break;
-   case CHIP_HAWAII:
-   case CHIP_POLARIS11:
-      info->l2_cache_size = 1024 * 1024;
-      break;
    case CHIP_FIJI:
-   case CHIP_POLARIS10:
-      info->l2_cache_size = 2048 * 1024;
+   case CHIP_POLARIS12:
+   case CHIP_VEGAM:
+      info->l2_cache_size = info->num_tcc_blocks * 128 * 1024;
       break;
    default:
-      info->l2_cache_size = 4096 * 1024;
+      info->l2_cache_size = info->num_tcc_blocks * 256 * 1024;
       break;
    }
 
