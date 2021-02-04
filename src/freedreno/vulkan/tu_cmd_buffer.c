@@ -962,15 +962,10 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
     * only VS and GS are invalidated, as FS isn't emitted in binning pass,
     * and we don't use HW binning when tesselation is used
     */
-   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 6);
+   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
    tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
                   CP_SET_DRAW_STATE__0_DISABLE |
-                  CP_SET_DRAW_STATE__0_GROUP_ID(TU_DRAW_STATE_VS_CONST));
-   tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
-   tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
-   tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
-                  CP_SET_DRAW_STATE__0_DISABLE |
-                  CP_SET_DRAW_STATE__0_GROUP_ID(TU_DRAW_STATE_GS_CONST));
+                  CP_SET_DRAW_STATE__0_GROUP_ID(TU_DRAW_STATE_SHADER_GEOM_CONST));
    tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
    tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
 
@@ -3207,6 +3202,28 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 }
 
+static struct tu_draw_state
+tu6_emit_consts_geom(struct tu_cmd_buffer *cmd,
+                      const struct tu_pipeline *pipeline,
+                      struct tu_descriptor_state *descriptors_state)
+{
+   uint32_t dwords = 0;
+
+   for (uint32_t type = MESA_SHADER_VERTEX; type < MESA_SHADER_FRAGMENT; type++)
+      dwords += tu6_user_consts_size(pipeline, descriptors_state, type);
+
+   if (dwords == 0)
+      return (struct tu_draw_state) {};
+
+   struct tu_cs cs;
+   tu_cs_begin_sub_stream(&cmd->sub_cs, dwords, &cs);
+
+   for (uint32_t type = MESA_SHADER_VERTEX; type < MESA_SHADER_FRAGMENT; type++)
+      tu6_emit_user_consts(&cs, pipeline, descriptors_state, type, cmd->push_constants);
+
+   return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
+}
+
 static uint64_t
 get_tess_param_bo_size(const struct tu_pipeline *pipeline,
                        uint32_t draw_count)
@@ -3550,15 +3567,9 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    }
 
    if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
-      cmd->state.shader_const[MESA_SHADER_VERTEX] =
-         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_VERTEX);
-      cmd->state.shader_const[MESA_SHADER_TESS_CTRL] =
-         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_TESS_CTRL);
-      cmd->state.shader_const[MESA_SHADER_TESS_EVAL] =
-         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_TESS_EVAL);
-      cmd->state.shader_const[MESA_SHADER_GEOMETRY] =
-         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_GEOMETRY);
-      cmd->state.shader_const[MESA_SHADER_FRAGMENT] =
+      cmd->state.shader_const[0] =
+         tu6_emit_consts_geom(cmd, pipeline, descriptors_state);
+      cmd->state.shader_const[1] =
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
    }
 
@@ -3605,11 +3616,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VI_BINNING, pipeline->vi.binning_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_RAST, pipeline->rast_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_BLEND, pipeline->blend_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const[MESA_SHADER_VERTEX]);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_HS_CONST, cmd->state.shader_const[MESA_SHADER_TESS_CTRL]);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DS_CONST, cmd->state.shader_const[MESA_SHADER_TESS_EVAL]);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const[MESA_SHADER_GEOMETRY]);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const[MESA_SHADER_FRAGMENT]);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_SHADER_GEOM_CONST, cmd->state.shader_const[0]);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const[1]);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers);
@@ -3629,7 +3637,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       bool emit_binding_stride = false;
       uint32_t draw_state_count =
          has_tess +
-         ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 5 : 0) +
+         ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 2 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
          (dirty_lrz ? 1 : 0) +
@@ -3648,11 +3656,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       if (has_tess)
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_TESS, tess_consts);
       if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const[MESA_SHADER_VERTEX]);
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_HS_CONST, cmd->state.shader_const[MESA_SHADER_TESS_CTRL]);
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DS_CONST, cmd->state.shader_const[MESA_SHADER_TESS_EVAL]);
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const[MESA_SHADER_GEOMETRY]);
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const[MESA_SHADER_FRAGMENT]);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_SHADER_GEOM_CONST, cmd->state.shader_const[0]);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const[1]);
       }
       if (cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD)
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state);

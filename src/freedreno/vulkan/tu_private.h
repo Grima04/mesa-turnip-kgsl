@@ -479,10 +479,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_VI_BINNING,
    TU_DRAW_STATE_RAST,
    TU_DRAW_STATE_BLEND,
-   TU_DRAW_STATE_VS_CONST,
-   TU_DRAW_STATE_HS_CONST,
-   TU_DRAW_STATE_DS_CONST,
-   TU_DRAW_STATE_GS_CONST,
+   TU_DRAW_STATE_SHADER_GEOM_CONST,
    TU_DRAW_STATE_FS_CONST,
    TU_DRAW_STATE_DESC_SETS,
    TU_DRAW_STATE_DESC_SETS_LOAD,
@@ -894,7 +891,7 @@ struct tu_cmd_state
    /* saved states to re-emit in TU_CMD_DIRTY_DRAW_STATE case */
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
    struct tu_draw_state vertex_buffers;
-   struct tu_draw_state shader_const[MESA_SHADER_STAGES];
+   struct tu_draw_state shader_const[2];
    struct tu_draw_state desc_sets;
 
    struct tu_draw_state vs_params;
