@@ -52,7 +52,7 @@ void collect_phi_info(ssa_elimination_ctx& ctx)
          for (unsigned i = 0; i < phi->operands.size(); i++) {
             if (phi->operands[i].isUndefined())
                continue;
-            if (phi->operands[i].isTemp() && phi->operands[i].physReg() == phi->definitions[0].physReg())
+            if (phi->operands[i].physReg() == phi->definitions[0].physReg())
                continue;
 
             std::vector<unsigned>& preds = phi->opcode == aco_opcode::p_phi ? block.logical_preds : block.linear_preds;

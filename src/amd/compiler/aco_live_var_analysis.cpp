@@ -171,8 +171,12 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
       register_demand[phi_idx] = new_demand;
       Instruction *insn = block->instructions[phi_idx].get();
 
-      assert(is_phi(insn));
-      assert(insn->definitions.size() == 1 && insn->definitions[0].isTemp());
+      assert(is_phi(insn) && insn->definitions.size() == 1);
+      if (!insn->definitions[0].isTemp()) {
+         assert(insn->definitions[0].isFixed() && insn->definitions[0].physReg() == exec);
+         phi_idx--;
+         continue;
+      }
       Definition& definition = insn->definitions[0];
       if ((definition.isFixed() || definition.hasHint()) && definition.physReg() == vcc)
          program->needs_vcc = true;

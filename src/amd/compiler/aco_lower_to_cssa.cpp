@@ -77,8 +77,7 @@ bool collect_phi_info(cssa_ctx& ctx)
             } else if (op.isConstant()) {
                /* in theory, we could insert the definition there... */
                def_points[i] = 0;
-            } else {
-               assert(op.isTemp());
+            } else if (op.isTemp()) {
                unsigned pred = preds[i];
                do {
                   def_points[i] = pred;
@@ -87,6 +86,10 @@ bool collect_phi_info(cssa_ctx& ctx)
                          ctx.program->blocks[pred].linear_idom;
                } while (def_points[i] != pred &&
                         ctx.live_vars.live_out[pred].count(op.tempId()));
+            } else {
+               /* no need to insert a copy of the exec mask */
+               assert(op.isFixed() && op.physReg() == exec);
+               def_points[i] = preds[i];
             }
          }
 
