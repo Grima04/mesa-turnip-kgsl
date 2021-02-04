@@ -79,6 +79,48 @@ static boolean use_zink = FALSE;
 #endif
 
 static struct pipe_screen *
+gdi_screen_create_by_name(HDC hDC, const char* driver, struct sw_winsys *winsys)
+{
+   struct pipe_screen* screen = NULL;
+
+#ifdef GALLIUM_LLVMPIPE
+   if (strcmp(driver, "llvmpipe") == 0) {
+      screen = llvmpipe_create_screen(winsys);
+      if (screen)
+         use_llvmpipe = TRUE;
+   }
+#endif
+#ifdef GALLIUM_SWR
+   if (strcmp(driver, "swr") == 0) {
+      screen = swr_create_screen(winsys);
+      if (screen)
+         use_swr = TRUE;
+   }
+#endif
+#ifdef GALLIUM_D3D12
+   if (strcmp(driver, "d3d12") == 0) {
+      screen = d3d12_wgl_create_screen(winsys, hDC);
+      if (screen)
+         use_d3d12 = TRUE;
+   }
+#endif
+#ifdef GALLIUM_ZINK
+   if (strcmp(driver, "zink") == 0) {
+      screen = zink_create_screen(winsys);
+      if (screen)
+         use_zink = TRUE;
+   }
+#endif
+#ifdef GALLIUM_SOFTPIPE
+   if (strcmp(driver, "softpipe") == 0) {
+      screen = softpipe_create_screen(winsys);
+   }
+#endif
+
+   return screen;
+}
+
+static struct pipe_screen *
 gdi_screen_create(HDC hDC)
 {
    const char *default_driver;
@@ -87,8 +129,8 @@ gdi_screen_create(HDC hDC)
    struct sw_winsys *winsys;
 
    winsys = gdi_create_sw_winsys();
-   if(!winsys)
-      goto no_winsys;
+   if (!winsys)
+      return screen;
 
 #ifdef GALLIUM_D3D12
    default_driver = "d3d12";
@@ -103,50 +145,11 @@ gdi_screen_create(HDC hDC)
 #endif
 
    driver = debug_get_option("GALLIUM_DRIVER", default_driver);
-
-#ifdef GALLIUM_LLVMPIPE
-   if (strcmp(driver, "llvmpipe") == 0) {
-      screen = llvmpipe_create_screen( winsys );
-      if (screen)
-         use_llvmpipe = TRUE;
-   }
-#endif
-#ifdef GALLIUM_SWR
-   if (strcmp(driver, "swr") == 0) {
-      screen = swr_create_screen( winsys );
-      if (screen)
-         use_swr = TRUE;
-   }
-#endif
-#ifdef GALLIUM_D3D12
-   if (strcmp(driver, "d3d12") == 0) {
-      screen = d3d12_wgl_create_screen( winsys, hDC );
-      if (screen)
-         use_d3d12 = TRUE;
-   }
-#endif
-#ifdef GALLIUM_ZINK
-   if (strcmp(driver, "zink") == 0) {
-       screen = zink_create_screen( winsys );
-       if (screen)
-           use_zink = TRUE;
-   }
-#endif
-   (void) driver;
-
-#ifdef GALLIUM_SOFTPIPE
-   if (screen == NULL)
-      screen = softpipe_create_screen( winsys );
-#endif
+   screen = gdi_screen_create_by_name(hDC, driver, winsys);
    if (!screen)
-      goto no_screen;
+      winsys->destroy(winsys);
 
    return screen;
-   
-no_screen:
-   winsys->destroy(winsys);
-no_winsys:
-   return NULL;
 }
 
 
