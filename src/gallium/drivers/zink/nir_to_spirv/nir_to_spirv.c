@@ -73,9 +73,6 @@ struct ntv_context {
    bool block_started;
    SpvId loop_break, loop_cont;
 
-   unsigned char *shader_slot_map;
-   unsigned char shader_slots_reserved;
-
    SpvId front_face_var, instance_id_var, vertex_id_var,
          primitive_id_var, invocation_id_var, // geometry
          sample_mask_type, sample_id_var, sample_pos_var, sample_mask_in_var,
@@ -384,49 +381,11 @@ create_shared_block(struct ntv_context *ctx, unsigned shared_size)
    ctx->shared_block_var = spirv_builder_emit_var(&ctx->builder, ptr_type, SpvStorageClassWorkgroup);
 }
 
-static inline unsigned char
-reserve_slot(struct ntv_context *ctx, unsigned num_slots)
-{
-   /* TODO: this should actually be clamped to the limits value as in the table
-    * in 14.1.4 of the vulkan spec, though there's not really any recourse
-    * other than aborting if we do hit it...
-    */
-   assert(ctx->shader_slots_reserved + num_slots <= MAX_VARYING);
-   unsigned ret = ctx->shader_slots_reserved;
-   ctx->shader_slots_reserved += num_slots;
-   return ret;
-}
-
-static inline unsigned
-handle_slot(struct ntv_context *ctx, unsigned slot, unsigned num_slots)
-{
-   assert(num_slots);
-   if (ctx->shader_slot_map[slot] == SLOT_UNSET)
-      ctx->shader_slot_map[slot] = reserve_slot(ctx, num_slots);
-   slot = ctx->shader_slot_map[slot];
-   assert(slot < MAX_VARYING);
-   return slot;
-}
-
 #define HANDLE_EMIT_BUILTIN(SLOT, BUILTIN) \
       case VARYING_SLOT_##SLOT: \
          spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltIn##BUILTIN); \
          break
 
-
-static inline unsigned
-handle_handle_slot(struct ntv_context *ctx, struct nir_variable *var, bool output)
-{
-   if (var->data.patch) {
-      assert(var->data.location >= VARYING_SLOT_PATCH0);
-      return var->data.location - VARYING_SLOT_PATCH0;
-   } else if (var->data.location >= VARYING_SLOT_VAR0 &&
-              ((output && ctx->stage == MESA_SHADER_TESS_CTRL) ||
-              (!output && ctx->stage == MESA_SHADER_TESS_EVAL))) {
-      return var->data.location - VARYING_SLOT_VAR0;
-   }
-   return handle_slot(ctx, var->data.location, glsl_count_vec4_slots(var->type, false, false));
-}
 
 static SpvId
 input_var_init(struct ntv_context *ctx, struct nir_variable *var)
@@ -478,12 +437,11 @@ static void
 emit_input(struct ntv_context *ctx, struct nir_variable *var)
 {
    SpvId var_id = input_var_init(ctx, var);
-   unsigned slot = var->data.location;
    if (ctx->stage == MESA_SHADER_VERTEX)
       spirv_builder_emit_location(&ctx->builder, var_id,
                                   var->data.driver_location);
    else if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      switch (slot) {
+      switch (var->data.location) {
       HANDLE_EMIT_BUILTIN(POS, FragCoord);
       HANDLE_EMIT_BUILTIN(PNTC, PointCoord);
       HANDLE_EMIT_BUILTIN(LAYER, Layer);
@@ -494,9 +452,8 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
       HANDLE_EMIT_BUILTIN(FACE, FrontFacing);
 
       default:
-         slot = handle_slot(ctx, slot, glsl_count_vec4_slots(var->type, false, false));
-         assert(var->data.driver_location == slot);
-         spirv_builder_emit_location(&ctx->builder, var_id, slot);
+         spirv_builder_emit_location(&ctx->builder, var_id,
+                                     var->data.driver_location);
       }
       if (var->data.centroid)
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationCentroid);
@@ -505,7 +462,7 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationSample);
       }
    } else if (ctx->stage < MESA_SHADER_FRAGMENT) {
-      switch (slot) {
+      switch (var->data.location) {
       HANDLE_EMIT_BUILTIN(POS, Position);
       HANDLE_EMIT_BUILTIN(PSIZ, PointSize);
       HANDLE_EMIT_BUILTIN(LAYER, Layer);
@@ -521,9 +478,8 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
          break;
 
       default:
-         slot = handle_handle_slot(ctx, var, false);
-         assert(var->data.driver_location == slot);
-         spirv_builder_emit_location(&ctx->builder, var_id, slot);
+         spirv_builder_emit_location(&ctx->builder, var_id,
+                                     var->data.driver_location);
       }
    }
 
@@ -558,9 +514,8 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-   unsigned slot = var->data.location;
    if (ctx->stage != MESA_SHADER_FRAGMENT) {
-      switch (slot) {
+      switch (var->data.location) {
       HANDLE_EMIT_BUILTIN(POS, Position);
       HANDLE_EMIT_BUILTIN(PSIZ, PointSize);
       HANDLE_EMIT_BUILTIN(LAYER, Layer);
@@ -572,9 +527,8 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       HANDLE_EMIT_BUILTIN(TESS_LEVEL_INNER, TessLevelInner);
 
       default:
-         slot = handle_handle_slot(ctx, var, true);
-         assert(var->data.driver_location == slot);
-         spirv_builder_emit_location(&ctx->builder, var_id, slot);
+         spirv_builder_emit_location(&ctx->builder, var_id,
+                                     var->data.driver_location);
       }
       /* tcs can't do xfb */
       if (ctx->stage != MESA_SHADER_TESS_CTRL) {
@@ -606,7 +560,8 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
             break;
 
          default:
-            spirv_builder_emit_location(&ctx->builder, var_id, slot);
+            spirv_builder_emit_location(&ctx->builder, var_id,
+                                        var->data.location);
             spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
          }
       }
@@ -1212,7 +1167,7 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info,
        * outputs.
        */
       uint32_t location = first_so + i;
-      assert(location < VARYING_SLOT_VAR0 && ctx->shader_slot_map[location] == SLOT_UNSET);
+      assert(location < VARYING_SLOT_VAR0);
       spirv_builder_emit_location(&ctx->builder, var_id, location);
 
       /* note: gl_ClipDistance[4] can the 0-indexed member of VARYING_SLOT_CLIP_DIST1 here,
@@ -3465,8 +3420,7 @@ get_spacing(enum gl_tess_spacing spacing)
 }
 
 struct spirv_shader *
-nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
-             unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
+nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
 {
    struct spirv_shader *ret = NULL;
 
@@ -3540,11 +3494,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    ctx.stage = s->info.stage;
    ctx.so_info = so_info;
-   if (shader_slot_map) {
-      /* COMPUTE doesn't have this */
-      ctx.shader_slot_map = shader_slot_map;
-      ctx.shader_slots_reserved = *shader_slots_reserved;
-   }
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
    spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageUnknown, 0);
 
@@ -3789,8 +3738,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    assert(ret->num_words == num_words);
 
    ralloc_free(ctx.mem_ctx);
-   if (shader_slots_reserved)
-      *shader_slots_reserved = ctx.shader_slots_reserved;
 
    return ret;
 
