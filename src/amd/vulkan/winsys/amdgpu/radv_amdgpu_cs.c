@@ -712,7 +712,8 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws,
 			num_handles++;
 		}
 	} else if (count == 1 && !num_extra_bo && !extra_cs && !radv_bo_list &&
-	           !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers) {
+	           !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers &&
+		   !ws->global_bo_list.count) {
 		struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs*)cs_array[0];
 		if (cs->num_buffers == 0)
 			return VK_SUCCESS;
@@ -741,6 +742,8 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws,
 		if (radv_bo_list) {
 			total_buffer_count += radv_bo_list->count;
 		}
+
+		total_buffer_count += ws->global_bo_list.count;
 
 		if (total_buffer_count == 0)
 			return VK_SUCCESS;
@@ -820,6 +823,23 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws,
 					handles[num_handles].bo_priority = bo->priority;
 					++num_handles;
 				}
+			}
+		}
+
+		unsigned unique_bo_so_far = num_handles;
+		for (unsigned i = 0; i < ws->global_bo_list.count; ++i) {
+			struct radv_amdgpu_winsys_bo *bo = ws->global_bo_list.bos[i];
+			bool found = false;
+			for (unsigned j = 0; j < unique_bo_so_far; ++j) {
+				if (bo->bo_handle == handles[j].bo_handle) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				handles[num_handles].bo_handle = bo->bo_handle;
+				handles[num_handles].bo_priority = bo->priority;
+				++num_handles;
 			}
 		}
 	}
