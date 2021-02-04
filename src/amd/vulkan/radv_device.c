@@ -2438,77 +2438,6 @@ radv_queue_finish(struct radv_queue *queue)
 }
 
 static void
-radv_bo_list_init(struct radv_bo_list *bo_list)
-{
-	u_rwlock_init(&bo_list->rwlock);
-	bo_list->list.count = bo_list->capacity = 0;
-	bo_list->list.bos = NULL;
-}
-
-static void
-radv_bo_list_finish(struct radv_bo_list *bo_list)
-{
-	free(bo_list->list.bos);
-	u_rwlock_destroy(&bo_list->rwlock);
-}
-
-VkResult radv_bo_list_add(struct radv_device *device,
-			  struct radeon_winsys_bo *bo)
-{
-	struct radv_bo_list *bo_list = &device->bo_list;
-
-	if (bo->is_local)
-		return VK_SUCCESS;
-
-	if (unlikely(!device->use_global_bo_list))
-		return VK_SUCCESS;
-
-	u_rwlock_wrlock(&bo_list->rwlock);
-	if (bo_list->list.count == bo_list->capacity) {
-		unsigned capacity = MAX2(4, bo_list->capacity * 2);
-		void *data = realloc(bo_list->list.bos, capacity * sizeof(struct radeon_winsys_bo*));
-
-		if (!data) {
-			u_rwlock_wrunlock(&bo_list->rwlock);
-			return VK_ERROR_OUT_OF_HOST_MEMORY;
-		}
-
-		bo_list->list.bos = (struct radeon_winsys_bo**)data;
-		bo_list->capacity = capacity;
-	}
-
-	bo_list->list.bos[bo_list->list.count++] = bo;
-	bo->use_global_list = true;
-	u_rwlock_wrunlock(&bo_list->rwlock);
-	return VK_SUCCESS;
-}
-
-void radv_bo_list_remove(struct radv_device *device,
-			 struct radeon_winsys_bo *bo)
-{
-	struct radv_bo_list *bo_list = &device->bo_list;
-
-	if (bo->is_local)
-		return;
-
-	if (unlikely(!device->use_global_bo_list))
-		return;
-
-	u_rwlock_wrlock(&bo_list->rwlock);
-	/* Loop the list backwards so we find the most recently added
-	 * memory first. */
-	for(unsigned i = bo_list->list.count; i-- > 0;) {
-		if (bo_list->list.bos[i] == bo) {
-			bo_list->list.bos[i] = bo_list->list.bos[bo_list->list.count - 1];
-			bo->use_global_list = false;
-			--bo_list->list.count;
-			break;
-		}
-	}
-	u_rwlock_wrunlock(&bo_list->rwlock);
-}
-
-static void
 radv_device_init_gs_info(struct radv_device *device)
 {
 	device->gs_table_depth = ac_get_gs_table_depth(device->physical_device->rad_info.chip_class,
@@ -2739,8 +2668,6 @@ VkResult radv_CreateDevice(
 	device->overallocation_disallowed = overallocation_disallowed;
 	mtx_init(&device->overallocation_mutex, mtx_plain);
 
-	radv_bo_list_init(&device->bo_list);
-
 	/* Create one context per queue priority. */
 	for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
 		const VkDeviceQueueCreateInfo *queue_create = &pCreateInfo->pQueueCreateInfos[i];
@@ -2968,8 +2895,6 @@ fail_mem_cache:
 fail_meta:
 	radv_device_finish_meta(device);
 fail:
-	radv_bo_list_finish(&device->bo_list);
-
 	radv_thread_trace_finish(device);
 	free(device->thread_trace.trigger_file);
 
@@ -3041,7 +2966,6 @@ void radv_DestroyDevice(
 	radv_destroy_shader_slabs(device);
 
 	u_cnd_monotonic_destroy(&device->timeline_cond);
-	radv_bo_list_finish(&device->bo_list);
 
 	free(device->thread_trace.trigger_file);
 	radv_thread_trace_finish(device);
@@ -4707,7 +4631,7 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 		result = queue->device->ws->cs_submit(ctx, queue->queue_idx,
 						      &queue->device->empty_cs[queue->queue_family_index],
 						      1, NULL, NULL,
-						      &sem_info, NULL,
+						      &sem_info,
 						      false, base_fence);
 		if (result != VK_SUCCESS)
 			goto fail;
@@ -4728,8 +4652,6 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 
 		for (uint32_t j = 0; j < submission->cmd_buffer_count; j += advance) {
 			struct radeon_cmdbuf *initial_preamble = (do_flush && !j) ? initial_flush_preamble_cs : initial_preamble_cs;
-			const struct radv_winsys_bo_list *bo_list = NULL;
-
 			advance = MIN2(max_cs_submission,
 			               submission->cmd_buffer_count - j);
 
@@ -4739,19 +4661,10 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 			sem_info.cs_emit_wait = j == 0;
 			sem_info.cs_emit_signal = j + advance == submission->cmd_buffer_count;
 
-			if (unlikely(queue->device->use_global_bo_list)) {
-				u_rwlock_rdlock(&queue->device->bo_list.rwlock);
-				bo_list = &queue->device->bo_list.list;
-			}
-
 			result = queue->device->ws->cs_submit(ctx, queue->queue_idx, cs_array + j,
 							      advance, initial_preamble, continue_preamble_cs,
-							      &sem_info, bo_list,
+							      &sem_info,
 							      can_patch, base_fence);
-
-			if (unlikely(queue->device->use_global_bo_list))
-				u_rwlock_rdunlock(&queue->device->bo_list.rwlock);
-
 			if (result != VK_SUCCESS)
 				goto fail;
 
@@ -4979,7 +4892,7 @@ radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		return false;
 
 	result = queue->device->ws->cs_submit(ctx, queue->queue_idx, &cs, 1,
-					      NULL, NULL, &sem_info, NULL,
+					      NULL, NULL, &sem_info,
 					      false, NULL);
 	radv_free_sem_info(&sem_info);
 	if (result != VK_SUCCESS)
@@ -5232,7 +5145,8 @@ radv_free_memory(struct radv_device *device,
 			mtx_unlock(&device->overallocation_mutex);
 		}
 
-		radv_bo_list_remove(device, mem->bo);
+		if (device->use_global_bo_list)
+			device->ws->buffer_make_resident(device->ws, mem->bo, false);
 		device->ws->buffer_destroy(device->ws, mem->bo);
 		mem->bo = NULL;
 	}
@@ -5413,9 +5327,11 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 	}
 
 	if (!wsi_info) {
-		result = radv_bo_list_add(device, mem->bo);
-		if (result != VK_SUCCESS)
-			goto fail;
+		if (device->use_global_bo_list) {
+			result = device->ws->buffer_make_resident(device->ws, mem->bo, true);
+			if (result != VK_SUCCESS)
+				goto fail;
+		}
 	}
 
 	*pMem = radv_device_memory_to_handle(mem);

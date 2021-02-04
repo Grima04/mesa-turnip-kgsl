@@ -713,17 +713,6 @@ struct radv_queue {
 	bool cond_created;
 };
 
-struct radv_bo_list {
-	struct radv_winsys_bo_list list;
-	unsigned capacity;
-	struct u_rwlock rwlock;
-};
-
-VkResult radv_bo_list_add(struct radv_device *device,
-			  struct radeon_winsys_bo *bo);
-void radv_bo_list_remove(struct radv_device *device,
-			 struct radeon_winsys_bo *bo);
-
 #define RADV_BORDER_COLOR_COUNT       4096
 #define RADV_BORDER_COLOR_BUFFER_SIZE (sizeof(VkClearColorValue) * RADV_BORDER_COLOR_COUNT)
 
@@ -806,8 +795,6 @@ struct radv_device {
 
 	/* Whether the driver uses a global BO list. */
 	bool use_global_bo_list;
-
-	struct radv_bo_list bo_list;
 
 	/* Whether anisotropy is forced with RADV_TEX_ANISO (-1 is disabled). */
 	int force_aniso;

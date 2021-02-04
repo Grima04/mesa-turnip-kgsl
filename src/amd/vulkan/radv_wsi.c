@@ -44,10 +44,7 @@ radv_wsi_set_memory_ownership(VkDevice _device,
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_device_memory, mem, _mem);
 
-	if (ownership)
-		radv_bo_list_add(device, mem->bo);
-	else
-		radv_bo_list_remove(device, mem->bo);
+	device->ws->buffer_make_resident(device->ws, mem->bo, ownership);
 }
 
 VkResult

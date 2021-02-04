@@ -292,7 +292,6 @@ struct radeon_winsys {
 			      struct radeon_cmdbuf *initial_preamble_cs,
 			      struct radeon_cmdbuf *continue_preamble_cs,
 			      struct radv_winsys_sem_info *sem_info,
-			      const struct radv_winsys_bo_list *bo_list, /* optional */
 			      bool can_patch,
 			      struct radeon_winsys_fence *fence);
 
