@@ -2333,6 +2333,29 @@ late_optimizations = [
    (('ushr', a, 0), a),
 ]
 
+# A few more extract cases we'd rather leave late
+for N in [16, 32]:
+    aN = 'a@{0}'.format(N)
+    u2uM = 'u2u{0}'.format(M)
+    i2iM = 'i2i{0}'.format(M)
+
+    for x in ['u', 'i']:
+        x2xN = '{0}2{0}{1}'.format(x, N)
+        extract_x8 = 'extract_{0}8'.format(x)
+        extract_x16 = 'extract_{0}16'.format(x)
+
+        late_optimizations.extend([
+            ((x2xN, ('u2u8', aN)), (extract_x8, a, 0), '!options->lower_extract_byte'),
+            ((x2xN, ('i2i8', aN)), (extract_x8, a, 0), '!options->lower_extract_byte'),
+        ])
+
+        if N > 16:
+            late_optimizations.extend([
+                ((x2xN, ('u2u16', aN)), (extract_x16, a, 0), '!options->lower_extract_word'),
+                ((x2xN, ('i2i16', aN)), (extract_x16, a, 0), '!options->lower_extract_word'),
+            ])
+
+
 # Integer sizes
 for s in [8, 16, 32, 64]:
     late_optimizations.extend([
