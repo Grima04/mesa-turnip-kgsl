@@ -38,6 +38,7 @@ files_vulkan_util = files(
   'vk_object.h',
   'vk_physical_device.c',
   'vk_physical_device.h',
+  'vk_render_pass.c',
   'vk_util.c',
   'vk_util.h',
 )

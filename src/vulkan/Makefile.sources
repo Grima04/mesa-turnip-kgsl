@@ -39,6 +39,7 @@ VULKAN_UTIL_FILES := \
 	util/vk_object.h \
 	util/vk_physical_device.c \
 	util/vk_physical_device.h \
+	util/vk_render_pass.c \
 	util/vk_util.c \
 	util/vk_util.h
 
