@@ -37,6 +37,7 @@
 #include <windows.h>
 
 #include "util/u_debug.h"
+#include "util/debug.h"
 #include "stw_winsys.h"
 #include "stw_device.h"
 #include "gdi/gdi_sw_winsys.h"
@@ -124,6 +125,7 @@ static struct pipe_screen *
 gdi_screen_create(HDC hDC)
 {
    struct sw_winsys *winsys;
+   UNUSED bool sw_only = env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
 
    winsys = gdi_create_sw_winsys();
    if (!winsys)
@@ -132,7 +134,7 @@ gdi_screen_create(HDC hDC)
    const char *const drivers[] = {
       debug_get_option("GALLIUM_DRIVER", ""),
 #ifdef GALLIUM_D3D12
-      "d3d12",
+      sw_only ? "" : "d3d12",
 #endif
 #if defined(GALLIUM_LLVMPIPE)
       "llvmpipe",
