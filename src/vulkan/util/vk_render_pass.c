@@ -24,23 +24,35 @@
 #include "vk_alloc.h"
 #include "vk_common_entrypoints.h"
 #include "vk_device.h"
+#include "vk_format.h"
 #include "vk_util.h"
+
+#include "util/log.h"
 
 static void
 translate_references(VkAttachmentReference2 **reference_ptr,
+                     uint32_t reference_count,
                      const VkAttachmentReference *reference,
-                     uint32_t count)
+                     const VkRenderPassCreateInfo *pass_info,
+                     bool is_input_attachment)
 {
    VkAttachmentReference2 *reference2 = *reference_ptr;
-   *reference_ptr += count;
-   for (uint32_t i = 0; i < count; i++) {
+   *reference_ptr += reference_count;
+   for (uint32_t i = 0; i < reference_count; i++) {
       reference2[i] = (VkAttachmentReference2) {
          .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
          .pNext = NULL,
          .attachment = reference[i].attachment,
          .layout = reference[i].layout,
-         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
       };
+
+      if (is_input_attachment &&
+          reference2[i].attachment != VK_ATTACHMENT_UNUSED) {
+         assert(reference2[i].attachment < pass_info->attachmentCount);
+         const VkAttachmentDescription *att =
+            &pass_info->pAttachments[reference2[i].attachment];
+         reference2[i].aspectMask = vk_format_aspects(att->format);
+      }
    }
 }
 
@@ -80,10 +92,21 @@ vk_common_CreateRenderPass(VkDevice _device,
 
    VkAttachmentReference2 *reference_ptr = references;
 
-   VkRenderPassMultiviewCreateInfo *multiview_info = NULL;
+   const VkRenderPassMultiviewCreateInfo *multiview_info = NULL;
+   const VkRenderPassInputAttachmentAspectCreateInfo *aspect_info = NULL;
    vk_foreach_struct(ext, pCreateInfo->pNext) {
-      if (ext->sType == VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO) {
-         multiview_info = (VkRenderPassMultiviewCreateInfo*) ext;
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO:
+         aspect_info = (const VkRenderPassInputAttachmentAspectCreateInfo *)ext;
+         /* We don't care about this information */
+         break;
+
+      case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO:
+         multiview_info = (const VkRenderPassMultiviewCreateInfo*) ext;
+         break;
+
+      default:
+         mesa_logd("%s: ignored VkStructureType %u\n", __func__, ext->sType);
          break;
       }
    }
@@ -120,29 +143,48 @@ vk_common_CreateRenderPass(VkDevice _device,
 
       subpasses[i].pInputAttachments = reference_ptr;
       translate_references(&reference_ptr,
+                           subpasses[i].inputAttachmentCount,
                            pCreateInfo->pSubpasses[i].pInputAttachments,
-                           subpasses[i].inputAttachmentCount);
+                           pCreateInfo, true);
       subpasses[i].pColorAttachments = reference_ptr;
       translate_references(&reference_ptr,
+                           subpasses[i].colorAttachmentCount,
                            pCreateInfo->pSubpasses[i].pColorAttachments,
-                           subpasses[i].colorAttachmentCount);
+                           pCreateInfo, false);
       subpasses[i].pResolveAttachments = NULL;
       if (pCreateInfo->pSubpasses[i].pResolveAttachments) {
          subpasses[i].pResolveAttachments = reference_ptr;
          translate_references(&reference_ptr,
+                              subpasses[i].colorAttachmentCount,
                               pCreateInfo->pSubpasses[i].pResolveAttachments,
-                              subpasses[i].colorAttachmentCount);
+                              pCreateInfo, false);
       }
       subpasses[i].pDepthStencilAttachment = NULL;
       if (pCreateInfo->pSubpasses[i].pDepthStencilAttachment) {
          subpasses[i].pDepthStencilAttachment = reference_ptr;
-         translate_references(&reference_ptr,
+         translate_references(&reference_ptr, 1,
                               pCreateInfo->pSubpasses[i].pDepthStencilAttachment,
-                              1);
+                              pCreateInfo, false);
       }
    }
 
    assert(reference_ptr == references + reference_count);
+
+   if (aspect_info != NULL) {
+      for (uint32_t i = 0; i < aspect_info->aspectReferenceCount; i++) {
+         const VkInputAttachmentAspectReference *ref =
+            &aspect_info->pAspectReferences[i];
+
+         assert(ref->subpass < pCreateInfo->subpassCount);
+         VkSubpassDescription2 *subpass = &subpasses[ref->subpass];
+
+         assert(ref->inputAttachmentIndex < subpass->inputAttachmentCount);
+         VkAttachmentReference2 *att = (VkAttachmentReference2 *)
+            &subpass->pInputAttachments[ref->inputAttachmentIndex];
+
+         att->aspectMask = ref->aspectMask;
+      }
+   }
 
    for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
       dependencies[i] = (VkSubpassDependency2) {
