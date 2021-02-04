@@ -640,7 +640,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    /* convert the shader/memory clocks from KHz to MHz */
    info->max_shader_clock = amdinfo->max_engine_clk / 1000;
    info->max_memory_clock = amdinfo->max_memory_clk / 1000;
-   info->num_tcc_blocks = device_info.num_tcc_blocks;
+   info->max_tcc_blocks = device_info.num_tcc_blocks;
    info->max_se = amdinfo->num_shader_engines;
    info->max_sa_per_se = amdinfo->num_shader_arrays_per_engine;
    info->has_hw_decode = (uvd.available_rings != 0) || (vcn_dec.available_rings != 0) ||
@@ -704,7 +704,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          info->tcc_harvested = device_info.tcc_disabled_mask != 0;
       } else {
          /* This is a hack, but it's all we can do without a kernel upgrade. */
-         info->tcc_harvested = (info->vram_size / info->num_tcc_blocks) != 512 * 1024 * 1024;
+         info->tcc_harvested = (info->vram_size / info->max_tcc_blocks) != 512 * 1024 * 1024;
       }
    } else {
       info->tcc_cache_line_size = 64;
@@ -1061,7 +1061,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    all_vram_visible = %u\n", info->all_vram_visible);
    fprintf(f, "    smart_access_memory = %u\n", info->smart_access_memory);
    fprintf(f, "    num_sdp_interfaces = %u\n", info->num_sdp_interfaces);
-   fprintf(f, "    num_tcc_blocks = %i\n", info->num_tcc_blocks);
+   fprintf(f, "    max_tcc_blocks = %i\n", info->max_tcc_blocks);
    fprintf(f, "    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
    fprintf(f, "    tcc_harvested = %u\n", info->tcc_harvested);
    fprintf(f, "    pc_lines = %u\n", info->pc_lines);

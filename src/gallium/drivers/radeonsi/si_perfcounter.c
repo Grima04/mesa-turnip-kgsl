@@ -1504,7 +1504,7 @@ void si_init_perfcounters(struct si_screen *screen)
           !strcmp(block->b->b->name, "RMI"))
          block->num_instances = screen->info.max_se;
       else if (!strcmp(block->b->b->name, "TCC"))
-         block->num_instances = screen->info.num_tcc_blocks;
+         block->num_instances = screen->info.max_tcc_blocks;
       else if (!strcmp(block->b->b->name, "IA"))
          block->num_instances = MAX2(1, screen->info.max_se / 2);
       else if (!strcmp(block->b->b->name, "TA") ||
