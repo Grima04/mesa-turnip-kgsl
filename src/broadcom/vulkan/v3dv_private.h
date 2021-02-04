@@ -228,7 +228,8 @@ struct v3dv_queue {
 };
 
 #define V3DV_META_BLIT_CACHE_KEY_SIZE              (4 * sizeof(uint32_t))
-#define V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE (1 * sizeof(uint32_t))
+#define V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE (2 * sizeof(uint32_t) + \
+                                                    sizeof(VkComponentMapping))
 
 struct v3dv_meta_color_clear_pipeline {
    VkPipeline pipeline;

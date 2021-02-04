@@ -2965,6 +2965,8 @@ allocate_texel_buffer_copy_descriptor_set(struct v3dv_cmd_buffer *cmd_buffer,
 
 static void
 get_texel_buffer_copy_pipeline_cache_key(VkFormat format,
+                                         VkColorComponentFlags cmask,
+                                         VkComponentMapping *cswizzle,
                                          uint8_t *key)
 {
    memset(key, 0, V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE);
@@ -2973,6 +2975,12 @@ get_texel_buffer_copy_pipeline_cache_key(VkFormat format,
 
    *p = format;
    p++;
+
+   *p = cmask;
+   p++;
+
+   memcpy(p, cswizzle, sizeof(VkComponentMapping));
+   p += sizeof(VkComponentMapping) / sizeof(uint32_t);
 
    assert(((uint8_t*)p - key) == V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE);
 }
@@ -3028,8 +3036,29 @@ load_frag_coord(nir_builder *b)
    return nir_load_var(b, pos);
 }
 
+static uint32_t
+component_swizzle_to_nir_swizzle(VkComponentSwizzle comp, VkComponentSwizzle swz)
+{
+   if (swz == VK_COMPONENT_SWIZZLE_IDENTITY)
+      swz = comp;
+
+   switch (swz) {
+   case VK_COMPONENT_SWIZZLE_R:
+      return 0;
+   case VK_COMPONENT_SWIZZLE_G:
+      return 1;
+   case VK_COMPONENT_SWIZZLE_B:
+      return 2;
+   case VK_COMPONENT_SWIZZLE_A:
+      return 3;
+   default:
+      unreachable("Invalid swizzle");
+   };
+}
+
 static nir_shader *
-get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format)
+get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format,
+                         VkComponentMapping *cswizzle)
 {
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, options,
@@ -3103,7 +3132,17 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format)
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "texel buffer result");
    nir_builder_instr_insert(&b, &tex->instr);
 
-   nir_store_var(&b, fs_out_color, &tex->dest.ssa, 0xf);
+   uint32_t swiz[4];
+   swiz[0] =
+      component_swizzle_to_nir_swizzle(VK_COMPONENT_SWIZZLE_R, cswizzle->r);
+   swiz[1] =
+      component_swizzle_to_nir_swizzle(VK_COMPONENT_SWIZZLE_G, cswizzle->g);
+   swiz[2] =
+      component_swizzle_to_nir_swizzle(VK_COMPONENT_SWIZZLE_B, cswizzle->b);
+   swiz[3] =
+      component_swizzle_to_nir_swizzle(VK_COMPONENT_SWIZZLE_A, cswizzle->a);
+   nir_ssa_def *s = nir_swizzle(&b, &tex->dest.ssa, swiz, 4);
+   nir_store_var(&b, fs_out_color, s, 0xf);
 
    return b.shader;
 }
@@ -3111,6 +3150,8 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format)
 static bool
 create_texel_buffer_copy_pipeline(struct v3dv_device *device,
                                   VkFormat format,
+                                  VkColorComponentFlags cmask,
+                                  VkComponentMapping *cswizzle,
                                   VkRenderPass _pass,
                                   VkPipelineLayout pipeline_layout,
                                   VkPipeline *pipeline)
@@ -3120,7 +3161,7 @@ create_texel_buffer_copy_pipeline(struct v3dv_device *device,
    assert(vk_format_is_color(format));
 
    nir_shader *vs_nir = get_texel_buffer_copy_vs();
-   nir_shader *fs_nir = get_texel_buffer_copy_fs(device, format);
+   nir_shader *fs_nir = get_texel_buffer_copy_fs(device, format, cswizzle);
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -3135,10 +3176,7 @@ create_texel_buffer_copy_pipeline(struct v3dv_device *device,
    VkPipelineColorBlendAttachmentState blend_att_state[1] = { 0 };
    blend_att_state[0] = (VkPipelineColorBlendAttachmentState) {
       .blendEnable = false,
-      .colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                        VK_COLOR_COMPONENT_G_BIT |
-                        VK_COLOR_COMPONENT_B_BIT |
-                        VK_COLOR_COMPONENT_A_BIT,
+      .colorWriteMask = cmask,
    };
 
    const VkPipelineColorBlendStateCreateInfo cb_state = {
@@ -3172,13 +3210,15 @@ static bool
 get_copy_texel_buffer_pipeline(
    struct v3dv_device *device,
    VkFormat format,
+   VkColorComponentFlags cmask,
+   VkComponentMapping *cswizzle,
    VkImageType image_type,
    struct v3dv_meta_texel_buffer_copy_pipeline **pipeline)
 {
    bool ok = true;
 
    uint8_t key[V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE];
-   get_texel_buffer_copy_pipeline_cache_key(format, key);
+   get_texel_buffer_copy_pipeline_cache_key(format, cmask, cswizzle, key);
 
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
@@ -3204,8 +3244,7 @@ get_copy_texel_buffer_pipeline(
       goto fail;
 
    ok =
-      create_texel_buffer_copy_pipeline(device,
-                                        format,
+      create_texel_buffer_copy_pipeline(device, format, cmask, cswizzle,
                                         (*pipeline)->pass,
                                         device->meta.texel_buffer_copy.p_layout,
                                         &(*pipeline)->pipeline);
@@ -3243,19 +3282,27 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_buffer *buffer,
                          uint32_t buffer_bpp,
                          VkColorComponentFlags cmask,
+                         VkComponentMapping *cswizzle,
                          uint32_t region_count,
                          const VkBufferImageCopy *regions)
 {
    VkResult result;
    bool handled = false;
 
-   /* FIXME: we only handle exact copies for now. */
-   if (src_format != dst_format)
-      return handled;
+   assert(cswizzle);
 
-   VkFormat format = dst_format;
+   /* This is a copy path, so we don't handle format conversions. The only
+    * exception are stencil to D24S8 copies, which are handled as a color
+    * masked R8->RGBA8 copy.
+    */
+   assert(src_format == dst_format ||
+          (dst_format == VK_FORMAT_R8G8B8A8_UINT &&
+           src_format == VK_FORMAT_R8_UINT &&
+           cmask == VK_COLOR_COMPONENT_R_BIT));
 
-   /* FIXME: we only handle color copies for now. */
+   /* We only handle color copies. Callers can copy D/S aspects by using
+    * a compatible color format and maybe a cmask/cswizzle for D24 formats.
+    */
    if (aspect != VK_IMAGE_ASPECT_COLOR_BIT)
       return handled;
 
@@ -3263,7 +3310,6 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
    if (vk_format_is_compressed(image->vk_format))
       return handled;
 
-   /* FIXME: support partial color masks */
    const VkColorComponentFlags full_cmask = VK_COLOR_COMPONENT_R_BIT |
                                             VK_COLOR_COMPONENT_G_BIT |
                                             VK_COLOR_COMPONENT_B_BIT |
@@ -3271,16 +3317,13 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
    if (cmask == 0)
       cmask = full_cmask;
 
-   if (cmask != full_cmask)
-      return handled;
-
    /* The buffer needs to have VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
     * so we can bind it as a texel buffer. Otherwise, the buffer view
     * we create below won't setup the texture state that we need for this.
     */
    if (!(buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)) {
       if (v3dv_buffer_format_supports_features(
-            format, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
+            src_format, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
          buffer->usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
       } else {
          return handled;
@@ -3295,7 +3338,8 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
    /* Get the texel buffer copy pipeline */
    struct v3dv_meta_texel_buffer_copy_pipeline *pipeline = NULL;
    bool ok = get_copy_texel_buffer_pipeline(cmd_buffer->device,
-                                            format, image->type, &pipeline);
+                                            dst_format, cmask, cswizzle,
+                                            image->type, &pipeline);
    if (!ok)
       return handled;
    assert(pipeline && pipeline->pipeline && pipeline->pass);
@@ -3322,7 +3366,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
    VkBufferViewCreateInfo buffer_view_info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
       .buffer = v3dv_buffer_to_handle(buffer),
-      .format = format,
+      .format = src_format,
       .offset = 0,
       .range = VK_WHOLE_SIZE,
    };
@@ -3398,7 +3442,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
          .image = v3dv_image_to_handle(image),
          .viewType = v3dv_image_type_to_view_type(image->type),
-         .format = format,
+         .format = dst_format,
          .subresourceRange = {
             .aspectMask = aspect,
             .baseMipLevel = resource->mipLevel,
@@ -3455,6 +3499,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
             struct v3dv_render_pass *pipeline_pass =
                v3dv_render_pass_from_handle(pipeline->pass);
             can_skip_tlb_load =
+               cmask == full_cmask &&
                v3dv_subpass_area_is_tile_aligned(&render_area,
                                                  v3dv_framebuffer_from_handle(fb),
                                                  pipeline_pass, 0);
@@ -3753,6 +3798,14 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
     * the same (to avoid any format conversions), so we choose a canonical
     * format that matches the destination image bpp.
     */
+   VkComponentMapping ident_swizzle = {
+      .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+   };
+
+   VkComponentMapping cswizzle = ident_swizzle;
    VkColorComponentFlags cmask = 0; /* Write all components */
    VkFormat src_format;
    VkFormat dst_format;
@@ -3777,23 +3830,29 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
          assert(image->vk_format == VK_FORMAT_D32_SFLOAT ||
                 image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
                 image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32);
-         if (image->tiling != VK_IMAGE_TILING_LINEAR) {
-            src_format = image->vk_format;
-         } else {
-            src_format = VK_FORMAT_R8G8B8A8_UINT;
-            aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-            if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
-               cmask = VK_COLOR_COMPONENT_R_BIT |
-                       VK_COLOR_COMPONENT_G_BIT |
-                       VK_COLOR_COMPONENT_B_BIT;
-            }
-         }
+         src_format = VK_FORMAT_R8G8B8A8_UINT;
          dst_format = src_format;
+         aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+
+         /* For D24 formats, the Vulkan spec states that the depth component
+          * in the buffer is stored in the 24-LSB, but V3D wants it in the
+          * 24-MSB.
+          */
+         if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+             image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32) {
+            cmask = VK_COLOR_COMPONENT_G_BIT |
+                    VK_COLOR_COMPONENT_B_BIT |
+                    VK_COLOR_COMPONENT_A_BIT;
+            cswizzle.r = VK_COMPONENT_SWIZZLE_R;
+            cswizzle.g = VK_COMPONENT_SWIZZLE_R;
+            cswizzle.b = VK_COMPONENT_SWIZZLE_G;
+            cswizzle.a = VK_COMPONENT_SWIZZLE_B;
+         }
          break;
       case VK_IMAGE_ASPECT_STENCIL_BIT:
          /* Since we don't support separate stencil this is always a stencil
-          * copy to a combined depth/stencil image. Becasue we don't support
-          * separate stencil images, we upload the buffer data to a compatible
+          * copy to a combined depth/stencil image. Because we don't support
+          * separate stencil images, we interpret the buffer data as a
           * color R8UI image, and implement the blit as a compatible color
           * blit to an RGBA8UI destination masking out writes to components
           * GBA (which map to the D24 component of a S8D24 image).
@@ -3829,8 +3888,18 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
       return texel_buffer_shader_copy(cmd_buffer, aspect, image,
                                       dst_format, src_format,
                                       buffer, buf_bpp,
-                                      cmask, region_count, regions);
+                                      cmask, &cswizzle,
+                                      region_count, regions);
    } else {
+      /* This path doesn't know about source swizzling. It should be easy
+       * to add since it ends up using the blit shader interface, which
+       * has support for that, but we only require this for combined D/S
+       * copies and we can handle that with the texel buffer path, so
+       * there is really no need to support it here.
+       */
+      if (memcmp(&cswizzle, &ident_swizzle, sizeof(cswizzle)))
+         return false;
+
       bool handled = true;
       for (uint32_t i = 0; i < region_count; i++) {
          handled = copy_buffer_to_image_blit(cmd_buffer, aspect, image,
