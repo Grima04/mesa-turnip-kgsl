@@ -702,12 +702,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
       if (info->drm_minor >= 35) {
          info->tcc_harvested = device_info.tcc_disabled_mask != 0;
+         info->num_tcc_blocks = info->max_tcc_blocks - util_bitcount64(device_info.tcc_disabled_mask);
       } else {
          /* This is a hack, but it's all we can do without a kernel upgrade. */
          info->tcc_harvested = (info->vram_size / info->max_tcc_blocks) != 512 * 1024 * 1024;
       }
    } else {
       info->tcc_cache_line_size = 64;
+      info->num_tcc_blocks = info->max_tcc_blocks;
    }
    info->mc_arb_ramcfg = amdinfo->mc_arb_ramcfg;
    info->gb_addr_config = amdinfo->gb_addr_cfg;
@@ -929,7 +931,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    /* The number of SDPs is the same as the number of TCCs for now. */
    if (info->chip_class >= GFX10)
-      info->num_sdp_interfaces = device_info.num_tcc_blocks;
+      info->num_sdp_interfaces = info->num_tcc_blocks;
 
    if (info->chip_class >= GFX10_3)
       info->max_wave64_per_simd = 16;
@@ -1062,6 +1064,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    smart_access_memory = %u\n", info->smart_access_memory);
    fprintf(f, "    num_sdp_interfaces = %u\n", info->num_sdp_interfaces);
    fprintf(f, "    max_tcc_blocks = %i\n", info->max_tcc_blocks);
+   fprintf(f, "    num_tcc_blocks = %i\n", info->num_tcc_blocks);
    fprintf(f, "    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
    fprintf(f, "    tcc_harvested = %u\n", info->tcc_harvested);
    fprintf(f, "    pc_lines = %u\n", info->pc_lines);
