@@ -261,6 +261,11 @@ struct radeon_winsys {
 					struct radeon_winsys_bo *parent,
 					uint64_t offset, uint64_t size,
 					struct radeon_winsys_bo *bo, uint64_t bo_offset);
+
+	VkResult (*buffer_make_resident)(struct radeon_winsys *ws,
+					 struct radeon_winsys_bo *bo,
+					 bool resident);
+
 	VkResult (*ctx_create)(struct radeon_winsys *ws,
 	                       enum radeon_ctx_priority priority,
 	                       struct radeon_winsys_ctx **ctx);

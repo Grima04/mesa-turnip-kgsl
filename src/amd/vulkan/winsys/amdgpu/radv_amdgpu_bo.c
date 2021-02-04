@@ -950,6 +950,36 @@ radv_amdgpu_winsys_bo_get_metadata(struct radeon_winsys *_ws,
 	memcpy(md->metadata, info.metadata.umd_metadata, sizeof(md->metadata));
 }
 
+static VkResult
+radv_amdgpu_winsys_bo_make_resident(struct radeon_winsys *_ws,
+				    struct radeon_winsys_bo *_bo,
+				    bool resident)
+{
+	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
+	struct radv_amdgpu_winsys_bo *bo = radv_amdgpu_winsys_bo(_bo);
+	VkResult result = VK_SUCCESS;
+
+	/* Do not add the BO to the global list if it's a local BO because the
+	 * kernel maintains a list for us.
+	 */
+	if (bo->base.is_local)
+		return VK_SUCCESS;
+
+	/* Do not add the BO twice to the global list if the allbos debug
+	 * option is enabled.
+	 */
+	if (ws->debug_all_bos)
+		return VK_SUCCESS;
+
+	if (resident) {
+		result = radv_amdgpu_global_bo_list_add(ws, bo);
+	} else {
+		radv_amdgpu_global_bo_list_del(ws, bo);
+	}
+
+	return result;
+}
+
 static int radv_amdgpu_bo_va_compare(const void *a, const void *b)
 {
 	const struct radv_amdgpu_winsys_bo *bo_a = *(const struct radv_amdgpu_winsys_bo * const*)a;
@@ -1018,6 +1048,7 @@ void radv_amdgpu_bo_init_functions(struct radv_amdgpu_winsys *ws)
 	ws->base.buffer_get_metadata = radv_amdgpu_winsys_bo_get_metadata;
 	ws->base.buffer_virtual_bind = radv_amdgpu_winsys_bo_virtual_bind;
 	ws->base.buffer_get_flags_from_fd = radv_amdgpu_bo_get_flags_from_fd;
+	ws->base.buffer_make_resident = radv_amdgpu_winsys_bo_make_resident;
 	ws->base.dump_bo_ranges = radv_amdgpu_dump_bo_ranges;
 	ws->base.dump_bo_log = radv_amdgpu_dump_bo_log;
 }
