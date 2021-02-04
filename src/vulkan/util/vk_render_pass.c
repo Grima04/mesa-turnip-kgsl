@@ -136,6 +136,8 @@ vk_common_CreateRenderPass(VkDevice _device,
          .viewMask = 0,
          .inputAttachmentCount = pCreateInfo->pSubpasses[i].inputAttachmentCount,
          .colorAttachmentCount = pCreateInfo->pSubpasses[i].colorAttachmentCount,
+         .preserveAttachmentCount = pCreateInfo->pSubpasses[i].preserveAttachmentCount,
+         .pPreserveAttachments = pCreateInfo->pSubpasses[i].pPreserveAttachments,
       };
 
       if (multiview_info && multiview_info->subpassCount) {
