@@ -770,6 +770,13 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
       break;
    }
 
+   case nir_instr_type_phi: {
+      nir_phi_instr *phi = nir_instr_as_phi(instr);
+      if (devinfo->gen >= 11 && phi->dest.ssa.bit_size == 8)
+         return 16;
+      return 0;
+   }
+
    default:
       return 0;
    }
