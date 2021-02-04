@@ -737,6 +737,8 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 		if (!target)
 			continue;
 
+		target->stride = info->stride[i];
+
 		OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_BASE_LO(i), 3);
 		/* VPC_SO[i].BUFFER_BASE_LO: */
 		OUT_RELOC(ring, fd_resource(target->base.buffer)->bo, 0, 0, 0);

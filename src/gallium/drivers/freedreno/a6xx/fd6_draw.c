@@ -44,6 +44,30 @@
 #include "fd6_pack.h"
 
 static void
+draw_emit_xfb(struct fd_ringbuffer *ring,
+			  struct CP_DRAW_INDX_OFFSET_0 *draw0,
+			  const struct pipe_draw_info *info,
+              const struct pipe_draw_indirect_info *indirect)
+{
+	struct fd_stream_output_target *target = fd_stream_output_target(indirect->count_from_stream_output);
+	struct fd_resource *offset = fd_resource(target->offset_buf);
+
+	/* All known firmware versions do not wait for WFI's with CP_DRAW_AUTO.
+	 * Plus, for the common case where the counter buffer is written by
+	 * vkCmdEndTransformFeedback, we need to wait for the CP_WAIT_MEM_WRITES to
+	 * complete which means we need a WAIT_FOR_ME anyway.
+	 */
+	OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
+
+	OUT_PKT7(ring, CP_DRAW_AUTO, 6);
+	OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
+	OUT_RING(ring, info->instance_count);
+	OUT_RELOC(ring, offset->bo, 0, 0, 0);
+	OUT_RING(ring, 0); /* byte counter offset subtraced from the value read from above */
+	OUT_RING(ring, target->stride);
+}
+
+static void
 draw_emit_indirect(struct fd_ringbuffer *ring,
 				   struct CP_DRAW_INDX_OFFSET_0 *draw0,
 				   const struct pipe_draw_info *info,
@@ -240,7 +264,9 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 			.gs_enable = !!emit.key.gs,
 	};
 
-	if (info->index_size) {
+	if (indirect && indirect->count_from_stream_output) {
+		draw0.source_select=  DI_SRC_SEL_AUTO_XFB;
+	} else if (info->index_size) {
 		draw0.source_select = DI_SRC_SEL_DMA;
 		draw0.index_size = fd4_size2indextype(info->index_size);
 	} else {
@@ -322,8 +348,12 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	 */
 	emit_marker6(ring, 7);
 
-	if (indirect && indirect->buffer) {
-		draw_emit_indirect(ring, &draw0, info, indirect, index_offset);
+	if (indirect) {
+		if (indirect->count_from_stream_output) {
+			draw_emit_xfb(ring, &draw0, info, indirect);
+		} else {
+			draw_emit_indirect(ring, &draw0, info, indirect, index_offset);
+		}
 	} else {
 		draw_emit(ring, &draw0, info, draw, index_offset);
 	}

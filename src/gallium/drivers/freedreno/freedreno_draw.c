@@ -213,8 +213,12 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 		resource_read(batch, info->index.resource);
 
 	/* Mark indirect draw buffer as being read */
-	if (indirect && indirect->buffer)
-		resource_read(batch, indirect->buffer);
+	if (indirect) {
+		if (indirect->buffer)
+			resource_read(batch, indirect->buffer);
+		if (indirect->count_from_stream_output)
+			resource_read(batch, fd_stream_output_target(indirect->count_from_stream_output)->offset_buf);
+	}
 
 	resource_written(batch, batch->query_buf);
 

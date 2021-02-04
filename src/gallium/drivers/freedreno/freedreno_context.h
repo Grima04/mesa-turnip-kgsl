@@ -90,6 +90,8 @@ struct fd_vertex_stateobj {
 struct fd_stream_output_target {
 	struct pipe_stream_output_target base;
 	struct pipe_resource *offset_buf;
+	/* stride of the last stream out recorded to this target, for glDrawTransformFeedback(). */
+	uint32_t stride;
 };
 
 struct fd_streamout_stateobj {
