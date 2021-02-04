@@ -849,25 +849,18 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
    void *map = winsys->displaytarget_map(winsys, res->dt, 0);
 
    if (map) {
-      VkImageSubresource isr = {};
-      isr.aspectMask = res->aspect;
-      isr.mipLevel = level;
-      isr.arrayLayer = layer;
-      VkSubresourceLayout layout;
-      vkGetImageSubresourceLayout(screen->dev, res->image, &isr, &layout);
-
-      void *ptr;
-      VkResult result = vkMapMemory(screen->dev, res->mem, res->offset, res->size, 0, &ptr);
-      if (result != VK_SUCCESS) {
-         debug_printf("failed to map memory for display\n");
-         return;
+      struct pipe_transfer *transfer = NULL;
+      void *res_map = pipe_transfer_map(pcontext, pres, level, layer, PIPE_MAP_READ, 0, 0,
+                                        u_minify(pres->width0, level),
+                                        u_minify(pres->height0, level),
+                                        &transfer);
+      if (res_map) {
+         util_copy_rect((ubyte*)map, pres->format, res->dt_stride, 0, 0,
+                        transfer->box.width, transfer->box.height,
+                        (const ubyte*)res_map, transfer->stride, 0, 0);
+         pipe_transfer_unmap(pcontext, transfer);
       }
-      for (int i = 0; i < pres->height0; ++i) {
-         uint8_t *src = (uint8_t *)ptr + i * layout.rowPitch;
-         uint8_t *dst = (uint8_t *)map + i * res->dt_stride;
-         memcpy(dst, src, res->dt_stride);
-      }
-      vkUnmapMemory(screen->dev, res->mem);
+      winsys->displaytarget_unmap(winsys, res->dt);
    }
 
    winsys->displaytarget_unmap(winsys, res->dt);

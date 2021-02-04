@@ -217,9 +217,6 @@ resource_create(struct pipe_screen *pscreen,
           templ->target == PIPE_TEXTURE_CUBE_ARRAY)
          ici.arrayLayers *= 6;
 
-      if (screen->winsys && templ->bind & PIPE_BIND_DISPLAY_TARGET)
-         ici.tiling = VK_IMAGE_TILING_LINEAR;
-
       if (templ->bind & PIPE_BIND_SHARED) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
          emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
@@ -285,8 +282,7 @@ resource_create(struct pipe_screen *pscreen,
       res->aspect = aspect_from_format(templ->format);
 
       vkGetImageMemoryRequirements(screen->dev, res->image, &reqs);
-      if (templ->usage == PIPE_USAGE_STAGING ||
-          (screen->winsys && (templ->bind & PIPE_BIND_DISPLAY_TARGET)))
+      if (templ->usage == PIPE_USAGE_STAGING)
         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
       else
         flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
