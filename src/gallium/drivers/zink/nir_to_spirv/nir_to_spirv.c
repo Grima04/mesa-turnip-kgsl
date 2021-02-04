@@ -1184,7 +1184,8 @@ get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_c
 /* for streamout create new outputs, as streamout can be done on individual components,
    from complete outputs, so we just can't use the created packed outputs */
 static void
-emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
+emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info,
+             unsigned first_so)
 {
    unsigned output = 0;
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
@@ -1210,7 +1211,7 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
        * so we need to ensure that the new xfb location slot doesn't conflict with any previously-emitted
        * outputs.
        */
-      uint32_t location = ctx->shader_slots_reserved + output;
+      uint32_t location = first_so + i;
       assert(location < VARYING_SLOT_VAR0 && ctx->shader_slot_map[location] == SLOT_UNSET);
       spirv_builder_emit_location(&ctx->builder, var_id, location);
 
@@ -3618,12 +3619,20 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    nir_foreach_shader_in_variable(var, s)
       emit_input(&ctx, var);
 
-   nir_foreach_shader_out_variable(var, s)
+   int max_output = -1;
+   nir_foreach_shader_out_variable(var, s) {
+      /* ignore SPIR-V built-ins, tagged with a sentinel value */
+      if (var->data.driver_location != UINT_MAX) {
+         assert(var->data.driver_location < INT_MAX);
+         max_output = MAX2(max_output, (int)var->data.driver_location);
+      }
       emit_output(&ctx, var);
+   }
 
 
    if (so_info)
-      emit_so_info(&ctx, so_info);
+      emit_so_info(&ctx, so_info, max_output + 1);
+
    /* we have to reverse iterate to match what's done in zink_compiler.c */
    foreach_list_typed_reverse(nir_variable, var, node, &s->variables)
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |

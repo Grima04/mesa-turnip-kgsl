@@ -483,7 +483,8 @@ assign_io_locations(nir_shader *nir, unsigned char *shader_slot_map,
       case VARYING_SLOT_FACE:
       case VARYING_SLOT_TESS_LEVEL_OUTER:
       case VARYING_SLOT_TESS_LEVEL_INNER:
-         /* SPIR-V builtins, nothing to do */
+         /* use a sentinel value to avoid counting later */
+         var->data.driver_location = UINT_MAX;
          break;
 
       default:
