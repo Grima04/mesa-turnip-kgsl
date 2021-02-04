@@ -353,9 +353,7 @@ resource_create(struct pipe_screen *pscreen,
    else
       vkBindImageMemory(screen->dev, res->image, res->mem, res->offset);
 
-   if (screen->winsys && (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
-                                         PIPE_BIND_SCANOUT |
-                                         PIPE_BIND_SHARED))) {
+   if (screen->winsys && (templ->bind & PIPE_BIND_DISPLAY_TARGET)) {
       struct sw_winsys *winsys = screen->winsys;
       res->dt = winsys->displaytarget_create(screen->winsys,
                                              res->base.bind,
