@@ -337,6 +337,18 @@ is_only_used_as_float(nir_alu_instr *instr)
    return true;
 }
 
+static inline bool
+only_lower_8_bits_used(nir_alu_instr *instr)
+{
+   return (nir_ssa_def_bits_used(&instr->dest.dest.ssa) & ~0xffull) == 0;
+}
+
+static inline bool
+only_lower_16_bits_used(nir_alu_instr *instr)
+{
+   return (nir_ssa_def_bits_used(&instr->dest.dest.ssa) & ~0xffffull) == 0;
+}
+
 /**
  * Returns true if a NIR ALU src represents a constant integer
  * of either 32 or 64 bits, and the higher word (bit-size / 2)
