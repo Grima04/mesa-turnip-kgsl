@@ -217,15 +217,16 @@ resource_create(struct pipe_screen *pscreen,
           templ->target == PIPE_TEXTURE_CUBE_ARRAY)
          ici.arrayLayers *= 6;
 
-      if (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
-                         PIPE_BIND_SHARED)) {
+      if (screen->winsys && templ->bind & PIPE_BIND_DISPLAY_TARGET)
          ici.tiling = VK_IMAGE_TILING_LINEAR;
-      }
 
       if (templ->bind & PIPE_BIND_SHARED) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
          emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
          ici.pNext = &emici;
+
+         /* TODO: deal with DRM modifiers here */
+         ici.tiling = VK_IMAGE_TILING_LINEAR;
       }
 
       if (templ->usage == PIPE_USAGE_STAGING)
