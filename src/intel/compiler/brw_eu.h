@@ -555,20 +555,18 @@ brw_dp_write_desc(const struct intel_device_info *devinfo,
                   unsigned binding_table_index,
                   unsigned msg_control,
                   unsigned msg_type,
-                  unsigned last_render_target,
                   unsigned send_commit_msg)
 {
    assert(devinfo->ver <= 6 || !send_commit_msg);
-   if (devinfo->ver >= 6)
+   if (devinfo->ver >= 6) {
       return brw_dp_desc(devinfo, binding_table_index, msg_type, msg_control) |
-             SET_BITS(last_render_target, 12, 12) |
              SET_BITS(send_commit_msg, 17, 17);
-   else
+   } else {
       return (SET_BITS(binding_table_index, 7, 0) |
               SET_BITS(msg_control, 11, 8) |
-              SET_BITS(last_render_target, 11, 11) |
               SET_BITS(msg_type, 14, 12) |
               SET_BITS(send_commit_msg, 15, 15));
+   }
 }
 
 static inline unsigned
@@ -589,16 +587,6 @@ brw_dp_write_desc_msg_control(const struct intel_device_info *devinfo,
       return brw_dp_desc_msg_control(devinfo, desc);
    else
       return GET_BITS(desc, 11, 8);
-}
-
-static inline bool
-brw_dp_write_desc_last_render_target(const struct intel_device_info *devinfo,
-                                     uint32_t desc)
-{
-   if (devinfo->ver >= 6)
-      return GET_BITS(desc, 12, 12);
-   else
-      return GET_BITS(desc, 11, 11);
 }
 
 static inline bool
@@ -1023,6 +1011,130 @@ brw_dp_typed_surface_rw_desc(const struct intel_device_info *devinfo,
    }
 
    return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
+static inline uint32_t
+brw_fb_desc(const struct intel_device_info *devinfo,
+            unsigned binding_table_index,
+            unsigned msg_type,
+            unsigned msg_control)
+{
+   /* Prior to gen6, things are too inconsistent; use the fb_(read|write)_desc
+    * helpers instead.
+    */
+   assert(devinfo->ver >= 6);
+   const unsigned desc = SET_BITS(binding_table_index, 7, 0);
+   if (devinfo->ver >= 7) {
+      return (desc | SET_BITS(msg_control, 13, 8) |
+              SET_BITS(msg_type, 17, 14));
+   } else {
+      return (desc | SET_BITS(msg_control, 12, 8) |
+              SET_BITS(msg_type, 16, 13));
+   }
+}
+
+static inline unsigned
+brw_fb_desc_binding_table_index(UNUSED const struct intel_device_info *devinfo,
+                                uint32_t desc)
+{
+   return GET_BITS(desc, 7, 0);
+}
+
+static inline uint32_t
+brw_fb_desc_msg_control(const struct intel_device_info *devinfo, uint32_t desc)
+{
+   assert(devinfo->ver >= 6);
+   if (devinfo->ver >= 7)
+      return GET_BITS(desc, 13, 8);
+   else
+      return GET_BITS(desc, 12, 8);
+}
+
+static inline unsigned
+brw_fb_desc_msg_type(const struct intel_device_info *devinfo, uint32_t desc)
+{
+   assert(devinfo->ver >= 6);
+   if (devinfo->ver >= 7)
+      return GET_BITS(desc, 17, 14);
+   else
+      return GET_BITS(desc, 16, 13);
+}
+
+static inline uint32_t
+brw_fb_read_desc(const struct intel_device_info *devinfo,
+                 unsigned binding_table_index,
+                 unsigned msg_control,
+                 unsigned exec_size,
+                 bool per_sample)
+{
+   assert(devinfo->ver >= 9);
+   return brw_fb_desc(devinfo, binding_table_index,
+                      GFX9_DATAPORT_RC_RENDER_TARGET_READ, msg_control) |
+          SET_BITS(per_sample, 13, 13) |
+          SET_BITS(exec_size == 16, 8, 8) /* Render Target Message Subtype */;
+}
+
+static inline uint32_t
+brw_fb_write_desc(const struct intel_device_info *devinfo,
+                  unsigned binding_table_index,
+                  unsigned msg_control,
+                  bool last_render_target)
+{
+   const unsigned msg_type =
+      devinfo->ver >= 6 ?
+      GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE :
+      BRW_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE;
+
+   if (devinfo->ver >= 6) {
+      return brw_fb_desc(devinfo, binding_table_index, msg_type, msg_control) |
+             SET_BITS(last_render_target, 12, 12);
+   } else {
+      return (SET_BITS(binding_table_index, 7, 0) |
+              SET_BITS(msg_control, 11, 8) |
+              SET_BITS(last_render_target, 11, 11) |
+              SET_BITS(msg_type, 14, 12));
+   }
+}
+
+static inline unsigned
+brw_fb_write_desc_msg_type(const struct intel_device_info *devinfo,
+                           uint32_t desc)
+{
+   if (devinfo->ver >= 6)
+      return brw_fb_desc_msg_type(devinfo, desc);
+   else
+      return GET_BITS(desc, 14, 12);
+}
+
+static inline unsigned
+brw_fb_write_desc_msg_control(const struct intel_device_info *devinfo,
+                              uint32_t desc)
+{
+   if (devinfo->ver >= 6)
+      return brw_fb_desc_msg_control(devinfo, desc);
+   else
+      return GET_BITS(desc, 11, 8);
+}
+
+static inline bool
+brw_fb_write_desc_last_render_target(const struct intel_device_info *devinfo,
+                                     uint32_t desc)
+{
+   if (devinfo->ver >= 6)
+      return GET_BITS(desc, 12, 12);
+   else
+      return GET_BITS(desc, 11, 11);
+}
+
+static inline bool
+brw_fb_write_desc_write_commit(const struct intel_device_info *devinfo,
+                               uint32_t desc)
+{
+   assert(devinfo->ver <= 6);
+   if (devinfo->ver >= 6)
+      return GET_BITS(desc, 17, 17);
+   else
+      return GET_BITS(desc, 15, 15);
 }
 
 static inline uint32_t

@@ -2224,8 +2224,7 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
                    brw_message_desc(devinfo, mlen, send_commit_msg, true) |
                    brw_dp_write_desc(devinfo, brw_scratch_surface_idx(p),
                                      BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_regs * 8),
-                                     msg_type, 0, /* not a render target */
-                                     send_commit_msg));
+                                     msg_type, send_commit_msg));
    }
 }
 
@@ -2434,7 +2433,6 @@ brw_fb_WRITE(struct brw_codegen *p,
       (devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
        BRW_SFID_DATAPORT_WRITE);
    brw_inst *insn;
-   unsigned msg_type;
    struct brw_reg dest, src0;
 
    if (brw_get_default_exec_size(p) >= BRW_EXECUTE_16)
@@ -2453,14 +2451,10 @@ brw_fb_WRITE(struct brw_codegen *p,
    if (devinfo->ver >= 6) {
       /* headerless version, just submit color payload */
       src0 = payload;
-
-      msg_type = GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE;
    } else {
       assert(payload.file == BRW_MESSAGE_REGISTER_FILE);
       brw_inst_set_base_mrf(devinfo, insn, payload.nr);
       src0 = implied_header;
-
-      msg_type = BRW_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE;
    }
 
    brw_set_dest(p, insn, dest);
@@ -2468,9 +2462,8 @@ brw_fb_WRITE(struct brw_codegen *p,
    brw_set_desc(p, insn,
                 brw_message_desc(devinfo, msg_length, response_length,
                                  header_present) |
-                brw_dp_write_desc(devinfo, binding_table_index, msg_control,
-                                  msg_type, last_render_target,
-                                  0 /* send_commit_msg */));
+                brw_fb_write_desc(devinfo, binding_table_index, msg_control,
+                                  last_render_target));
    brw_inst_set_eot(devinfo, insn, eot);
 
    return insn;
@@ -2487,8 +2480,6 @@ gfx9_fb_READ(struct brw_codegen *p,
 {
    const struct intel_device_info *devinfo = p->devinfo;
    assert(devinfo->ver >= 9);
-   const unsigned msg_subtype =
-      brw_get_default_exec_size(p) == BRW_EXECUTE_16 ? 0 : 1;
    brw_inst *insn = next_insn(p, BRW_OPCODE_SENDC);
 
    brw_inst_set_sfid(devinfo, insn, GFX6_SFID_DATAPORT_RENDER_CACHE);
@@ -2497,10 +2488,8 @@ gfx9_fb_READ(struct brw_codegen *p,
    brw_set_desc(
       p, insn,
       brw_message_desc(devinfo, msg_length, response_length, true) |
-      brw_dp_read_desc(devinfo, binding_table_index,
-                       per_sample << 5 | msg_subtype,
-                       GFX9_DATAPORT_RC_RENDER_TARGET_READ,
-                       BRW_DATAPORT_READ_TARGET_RENDER_CACHE));
+      brw_fb_read_desc(devinfo, binding_table_index, 0 /* msg_control */,
+                       brw_get_default_exec_size(p), per_sample));
    brw_inst_set_rt_slot_group(devinfo, insn, brw_get_default_group(p) / 16);
 
    return insn;
@@ -3094,7 +3083,6 @@ brw_svb_write(struct brw_codegen *p,
                 brw_dp_write_desc(devinfo, binding_table_index,
                                   0, /* msg_control: ignored */
                                   GFX6_DATAPORT_WRITE_MESSAGE_STREAMED_VB_WRITE,
-                                  0, /* last_render_target: ignored */
                                   send_commit_msg)); /* send_commit_msg */
 }
 

@@ -1956,7 +1956,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
 
          case GFX6_SFID_DATAPORT_RENDER_CACHE: {
             /* aka BRW_SFID_DATAPORT_WRITE on Gfx4-5 */
-            unsigned msg_type = brw_dp_write_desc_msg_type(devinfo, imm_desc);
+            unsigned msg_type = brw_fb_write_desc_msg_type(devinfo, imm_desc);
 
             err |= control(file, "DP rc message type",
                            dp_rc_msg_type(devinfo), msg_type, &space);
@@ -1970,18 +1970,18 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                               brw_inst_rt_message_type(devinfo, inst), &space);
                if (devinfo->ver >= 6 && brw_inst_rt_slot_group(devinfo, inst))
                   string(file, " Hi");
-               if (brw_dp_write_desc_last_render_target(devinfo, imm_desc))
+               if (brw_fb_write_desc_last_render_target(devinfo, imm_desc))
                   string(file, " LastRT");
                if (devinfo->ver < 7 &&
-                   brw_dp_write_desc_write_commit(devinfo, imm_desc))
+                   brw_fb_write_desc_write_commit(devinfo, imm_desc))
                   string(file, " WriteCommit");
             } else {
                format(file, " MsgCtrl = 0x%u",
-                      brw_dp_write_desc_msg_control(devinfo, imm_desc));
+                      brw_fb_write_desc_msg_control(devinfo, imm_desc));
             }
 
             format(file, " Surface = %u",
-                   brw_dp_desc_binding_table_index(devinfo, imm_desc));
+                   brw_fb_desc_binding_table_index(devinfo, imm_desc));
             break;
          }
 
