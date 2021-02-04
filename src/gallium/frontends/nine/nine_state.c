@@ -317,6 +317,17 @@ nine_context_get_pipe_release( struct NineDevice9 *device )
     nine_csmt_resume(device);
 }
 
+bool
+nine_context_is_worker( struct NineDevice9 *device )
+{
+    struct csmt_context *ctx = device->csmt_ctx;
+
+    if (!device->csmt_active)
+        return false;
+
+    return u_thread_is_self(ctx->worker);
+}
+
 /* Nine state functions */
 
 /* Check if some states need to be set dirty */

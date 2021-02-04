@@ -672,4 +672,7 @@ nine_context_get_pipe_acquire( struct NineDevice9 *device );
 void
 nine_context_get_pipe_release( struct NineDevice9 *device );
 
+bool
+nine_context_is_worker( struct NineDevice9 *device );
+
 #endif /* _NINE_STATE_H_ */
