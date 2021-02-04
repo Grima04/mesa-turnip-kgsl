@@ -419,9 +419,9 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device,
 	}
 
 	// Make valgrind happy by filling the alignment hole at the end.
-	assert((void*)p == (void*)entry + size_without_align);
-	assert(sizeof(*entry) + ((void*)p - (void*)entry->code) == size_without_align);
-	memset((void*)entry + size_without_align, 0, size - size_without_align);
+	assert(p == (char*)entry + size_without_align);
+	assert(sizeof(*entry) + (p - entry->code) == size_without_align);
+	memset((char*)entry + size_without_align, 0, size - size_without_align);
 
 	/* Always add cache items to disk. This will allow collection of
 	 * compiled shaders by third parties such as steam, even if the app
