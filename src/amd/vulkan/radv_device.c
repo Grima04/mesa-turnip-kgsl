@@ -2376,21 +2376,15 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
 	queue->queue_idx = idx;
 	queue->priority = radv_get_queue_global_priority(global_priority);
 	queue->flags = flags;
+	queue->hw_ctx = device->hw_ctx[queue->priority];
 
 	vk_object_base_init(&device->vk, &queue->base, VK_OBJECT_TYPE_QUEUE);
-
-	VkResult result = device->ws->ctx_create(device->ws, queue->priority, &queue->hw_ctx);
-	if (result != VK_SUCCESS) {
-		vk_object_base_finish(&queue->base);
-		return vk_error(device->instance, result);
-	}
 
 	list_inithead(&queue->pending_submissions);
 	mtx_init(&queue->pending_mutex, mtx_plain);
 
 	mtx_init(&queue->thread_mutex, mtx_plain);
 	if (u_cnd_monotonic_init(&queue->thread_cond)) {
-		device->ws->ctx_destroy(queue->hw_ctx);
 		vk_object_base_finish(&queue->base);
 		return vk_error(device->instance, VK_ERROR_INITIALIZATION_FAILED);
 	}
@@ -2415,8 +2409,6 @@ radv_queue_finish(struct radv_queue *queue)
 
 		mtx_destroy(&queue->pending_mutex);
 		mtx_destroy(&queue->thread_mutex);
-
-		queue->device->ws->ctx_destroy(queue->hw_ctx);
 	}
 
 	if (queue->initial_full_flush_preamble_cs)
@@ -2747,6 +2739,22 @@ VkResult radv_CreateDevice(
 
 	radv_bo_list_init(&device->bo_list);
 
+	/* Create one context per queue priority. */
+	for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
+		const VkDeviceQueueCreateInfo *queue_create = &pCreateInfo->pQueueCreateInfos[i];
+		const VkDeviceQueueGlobalPriorityCreateInfoEXT *global_priority =
+			vk_find_struct_const(queue_create->pNext, DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT);
+		enum radeon_ctx_priority priority = radv_get_queue_global_priority(global_priority);
+
+		if (device->hw_ctx[priority])
+			continue;
+
+		result = device->ws->ctx_create(device->ws, priority,
+						&device->hw_ctx[priority]);
+		if (result != VK_SUCCESS)
+			goto fail;
+	}
+
 	for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
 		const VkDeviceQueueCreateInfo *queue_create = &pCreateInfo->pQueueCreateInfos[i];
 		uint32_t qfi = queue_create->queueFamilyIndex;
@@ -2980,6 +2988,11 @@ fail:
 			vk_free(&device->vk.alloc, device->queues[i]);
 	}
 
+	for (unsigned i = 0; i < RADV_NUM_HW_CTX; i++) {
+		if (device->hw_ctx[i])
+			device->ws->ctx_destroy(device->hw_ctx[i]);
+	}
+
 	vk_device_finish(&device->vk);
 	vk_free(&device->vk.alloc, device);
 	return result;
@@ -3010,6 +3023,12 @@ void radv_DestroyDevice(
 		if (device->empty_cs[i])
 			device->ws->cs_destroy(device->empty_cs[i]);
 	}
+
+	for (unsigned i = 0; i < RADV_NUM_HW_CTX; i++) {
+		if (device->hw_ctx[i])
+			device->ws->ctx_destroy(device->hw_ctx[i]);
+	}
+
 	radv_device_finish_meta(device);
 
 	VkPipelineCache pc = radv_pipeline_cache_to_handle(device->mem_cache);

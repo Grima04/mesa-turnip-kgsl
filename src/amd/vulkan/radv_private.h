@@ -663,6 +663,8 @@ struct radv_meta_state {
 
 #define RADV_MAX_QUEUE_FAMILIES 3
 
+#define RADV_NUM_HW_CTX (RADEON_CTX_PRIORITY_REALTIME + 1)
+
 struct radv_deferred_queue_submission;
 
 enum ring_type radv_queue_family_to_ring(int f);
@@ -742,6 +744,7 @@ struct radv_device {
 	struct radv_instance *                       instance;
 	struct radeon_winsys *ws;
 
+	struct radeon_winsys_ctx *hw_ctx[RADV_NUM_HW_CTX];
 	struct radv_meta_state                       meta_state;
 
 	struct radv_queue *queues[RADV_MAX_QUEUE_FAMILIES];
