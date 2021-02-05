@@ -689,7 +689,11 @@ zink_render_condition(struct pipe_context *pctx,
    VkQueryResultFlagBits flags = 0;
 
    if (query == NULL) {
-      zink_stop_conditional_render(ctx);
+      /* force conditional clears if they exist */
+      if (ctx->clears_enabled && !ctx->batch.in_rp)
+         zink_batch_rp(ctx);
+      if (ctx->batch.in_rp)
+         zink_stop_conditional_render(ctx);
       ctx->render_condition_active = false;
       ctx->render_condition.query = NULL;
       return;
@@ -725,7 +729,8 @@ zink_render_condition(struct pipe_context *pctx,
    ctx->render_condition.inverted = condition;
    ctx->render_condition_active = true;
    ctx->render_condition.query = query;
-   zink_start_conditional_render(ctx);
+   if (ctx->batch.in_rp)
+      zink_start_conditional_render(ctx);
 }
 
 static void

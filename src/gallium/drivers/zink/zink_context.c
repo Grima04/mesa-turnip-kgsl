@@ -1316,14 +1316,19 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    vkCmdBeginRenderPass(batch->state->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
    batch->in_rp = true;
 
+   if (ctx->render_condition.query)
+      zink_start_conditional_render(ctx);
    zink_clear_framebuffer(ctx, clear_buffers);
 }
 
 static void
 zink_end_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
-   if (batch->in_rp)
+   if (batch->in_rp) {
+      if (ctx->render_condition.query)
+         zink_stop_conditional_render(ctx);
       vkCmdEndRenderPass(batch->state->cmdbuf);
+   }
    batch->in_rp = false;
 }
 
