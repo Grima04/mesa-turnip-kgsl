@@ -106,7 +106,7 @@ else
     elif [ "x$PIGLIT_PLATFORM" = "xmixed_glx_egl" ]; then
         # It is assumed that you have already brought up your X server before
         # calling this script.
-        SANITY_MESA_VERSION_CMD="$SANITY_MESA_VERSION_CMD --platform glx --api gl --profile core"
+        SANITY_MESA_VERSION_CMD="$SANITY_MESA_VERSION_CMD --platform glx --api gl"
     else
         SANITY_MESA_VERSION_CMD="$SANITY_MESA_VERSION_CMD --platform glx --api gl --profile core"
         RUN_CMD_WRAPPER="xvfb-run --server-args=\"-noreset\" sh -c"
