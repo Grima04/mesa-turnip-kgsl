@@ -5443,6 +5443,7 @@ radv_pipeline_init_shader_stages_state(struct radv_pipeline *pipeline)
 		pipeline->graphics.vtx_base_sgpr = pipeline->user_data_0[MESA_SHADER_VERTEX];
 		pipeline->graphics.vtx_base_sgpr += loc->sgpr_idx * 4;
 		pipeline->graphics.vtx_emit_num = loc->num_sgprs;
+		pipeline->graphics.uses_drawid = radv_get_shader(pipeline, MESA_SHADER_VERTEX)->info.vs.needs_draw_id;
 	}
 }
 
