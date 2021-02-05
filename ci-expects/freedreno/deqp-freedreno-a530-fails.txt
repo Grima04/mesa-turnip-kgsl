@@ -14,7 +14,6 @@ dEQP-GLES3.functional.transform_feedback.array.interleaved.points.highp_mat3x2,F
 dEQP-GLES3.functional.transform_feedback.array.separate.lines.highp_mat3x4,Fail
 dEQP-GLES3.functional.transform_feedback.array.separate.points.lowp_mat2,Fail
 dEQP-GLES3.functional.transform_feedback.array.separate.points.mediump_uint,Fail
-dEQP-GLES3.functional.transform_feedback.array.separate.triangles.lowp_vec3,Fail
 dEQP-GLES3.functional.transform_feedback.array_element.interleaved.lines.highp_uvec4,Fail
 dEQP-GLES3.functional.transform_feedback.array_element.interleaved.points.highp_vec2,Fail
 dEQP-GLES3.functional.transform_feedback.array_element.interleaved.points.lowp_ivec3,Fail

@@ -66,12 +66,9 @@ a306_gles3_options:
   extends:
     - .freedreno-test
   variables:
-    BM_KERNEL: /lava-files/db820c-kernel
-    BM_DTB: /lava-files/db820c.dtb
-    # Disable SMP because only CPU 0 is at a freq higher than 19mhz on
-    # current upstream kernel.
-    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 nosmp"
-    FDO_CI_CONCURRENT: 1
+    BM_KERNEL: /lava-files/Image.gz
+    BM_DTB: /lava-files/apq8096-db820c.dtb
+    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
     GPU_VERSION: freedreno-a530
     DEQP_EXPECTED_RENDERER: FD530
   tags:
@@ -108,8 +105,6 @@ a530_gles31:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
     BM_START_XORG: 1
-    # SMP is disabled in the current kernels for db820c.
-    FDO_CI_CONCURRENT: 1
     # Excluding for flakes in multisample (MSAA fails covered well by deqp, we
     # can enable it once we stabilize that.) and other flakes from
     # atomic_counters through userclip in the list.

@@ -455,7 +455,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &arm64_test "2021-02-17-asan"
+    MESA_IMAGE_TAG: &arm64_test "2021-02-18-kernel"
 
 .use-arm64_test:
   extends:
@@ -472,7 +472,7 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &armhf_test "2021-02-17-asan"
+    MESA_IMAGE_TAG: &armhf_test "2021-02-18-kernel"
 
 .use-armhf_test:
   extends:

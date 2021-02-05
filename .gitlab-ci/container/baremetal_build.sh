@@ -52,7 +52,7 @@ mkdir /var/cache/apt/archives/$arch
 . .gitlab-ci/container/container_pre_build.sh
 
 ############### Create rootfs
-KERNEL_URL=https://github.com/austriancoder/linux/archive/mesa-ci-2021-02-15-5.11.tar.gz
+KERNEL_URL=https://github.com/anholt/linux/archive/mesa-ci-2021-02-17-5.11.tar.gz
 
 DEBIAN_ARCH=$arch . .gitlab-ci/container/lava_build.sh
 
