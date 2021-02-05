@@ -679,6 +679,8 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    case nir_intrinsic_memory_barrier_image:
    case nir_intrinsic_group_memory_barrier:
       return emit_barrier(instr);
+   case nir_intrinsic_memory_barrier_atomic_counter:
+      return true;
    case nir_intrinsic_shared_atomic_add:
    case nir_intrinsic_shared_atomic_and:
    case nir_intrinsic_shared_atomic_or:
