@@ -3597,6 +3597,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                           struct v3dv_buffer *buffer,
                           uint32_t buffer_bpp,
                           VkColorComponentFlags cmask,
+                          VkComponentMapping *cswizzle,
                           uint32_t region_count,
                           const VkBufferImageCopy *regions)
 {
@@ -3804,7 +3805,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          handled = blit_shader(cmd_buffer,
                                image, dst_format,
                                v3dv_image_from_handle(buffer_image), src_format,
-                               cmask, NULL,
+                               cmask, cswizzle,
                                &blit_region, VK_FILTER_NEAREST, true);
          if (!handled) {
             /* This is unexpected, we should have a supported blit spec */
@@ -3940,18 +3941,10 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
                                       cmask, &cswizzle,
                                       region_count, regions);
    } else {
-      /* This path doesn't know about source swizzling. It should be easy
-       * to add since it ends up using the blit shader interface, which
-       * has support for that, but we only require this for combined D/S
-       * copies and we can handle that with the texel buffer path, so
-       * there is really no need to support it here.
-       */
-      if (memcmp(&cswizzle, &ident_swizzle, sizeof(cswizzle)))
-         return false;
-
       return copy_buffer_to_image_blit(cmd_buffer, aspect, image,
                                        dst_format, src_format,
-                                       buffer, buf_bpp, cmask,
+                                       buffer, buf_bpp,
+                                       cmask, &cswizzle,
                                        region_count, regions);
    }
 }
