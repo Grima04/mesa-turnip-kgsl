@@ -108,11 +108,12 @@ static bool needs_view_index_sgpr(struct radv_shader_args *args,
 static uint8_t
 count_vs_user_sgprs(struct radv_shader_args *args)
 {
-	uint8_t count = 0;
+	uint8_t count = 2;
 
 	if (args->shader_info->vs.has_vertex_buffers)
 		count++;
-	count += args->shader_info->vs.needs_draw_id ? 3 : 2;
+	if (args->shader_info->vs.needs_draw_id)
+		count++;
 
 	return count;
 }
