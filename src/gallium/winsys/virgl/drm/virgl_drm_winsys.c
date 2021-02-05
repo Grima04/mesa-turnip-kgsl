@@ -563,7 +563,7 @@ virgl_drm_winsys_resource_set_type(struct virgl_winsys *qws,
 
    ret = drmIoctl(qdws->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &eb);
    if (ret == -1)
-      _debug_printf("failed to set resource type: %s", errno);
+      _debug_printf("failed to set resource type: %s", strerror(errno));
 
    mtx_unlock(&qdws->bo_handles_mutex);
 }
