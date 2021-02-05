@@ -5442,10 +5442,7 @@ radv_pipeline_init_shader_stages_state(struct radv_pipeline *pipeline)
 	if (loc->sgpr_idx != -1) {
 		pipeline->graphics.vtx_base_sgpr = pipeline->user_data_0[MESA_SHADER_VERTEX];
 		pipeline->graphics.vtx_base_sgpr += loc->sgpr_idx * 4;
-		if (radv_get_shader(pipeline, MESA_SHADER_VERTEX)->info.vs.needs_draw_id)
-			pipeline->graphics.vtx_emit_num = 3;
-		else
-			pipeline->graphics.vtx_emit_num = 2;
+		pipeline->graphics.vtx_emit_num = loc->num_sgprs;
 	}
 }
 
