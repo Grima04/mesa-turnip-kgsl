@@ -892,6 +892,7 @@ void schedule_program(Program *program, live& live_vars)
    RegisterDemand demand;
    for (Block& block : program->blocks)
       demand.update(block.register_demand);
+   demand.vgpr += program->config->num_shared_vgprs / 2;
 
    sched_ctx ctx;
    ctx.mv.depends_on.resize(program->peekAllocationId());

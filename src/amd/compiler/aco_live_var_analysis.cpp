@@ -302,6 +302,7 @@ uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t waves)
 uint16_t get_addr_vgpr_from_waves(Program *program, uint16_t waves)
 {
    uint16_t vgprs = program->physical_vgprs / waves & ~(program->vgpr_alloc_granule - 1);
+   vgprs -= program->config->num_shared_vgprs / 2;
    return std::min(vgprs, program->vgpr_limit);
 }
 
@@ -342,7 +343,8 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
       program->max_reg_demand = new_demand;
    } else {
       program->num_waves = program->physical_sgprs / get_sgpr_alloc(program, new_demand.sgpr);
-      program->num_waves = std::min<uint16_t>(program->num_waves, program->physical_vgprs / get_vgpr_alloc(program, new_demand.vgpr));
+      uint16_t vgpr_demand = get_vgpr_alloc(program, new_demand.vgpr) + program->config->num_shared_vgprs / 2;
+      program->num_waves = std::min<uint16_t>(program->num_waves, program->physical_vgprs / vgpr_demand);
       program->max_waves = max_waves_per_simd;
 
       /* adjust max_waves for workgroup and LDS limits */

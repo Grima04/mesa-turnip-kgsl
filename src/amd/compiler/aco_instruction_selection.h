@@ -60,7 +60,6 @@ struct isel_context {
    uint32_t first_temp_id;
    std::unordered_map<unsigned, std::array<Temp,NIR_MAX_VEC_COMPONENTS>> allocated_vec;
    Stage stage;
-   bool has_gfx10_wave64_bpermute = false;
    struct {
       bool has_branch;
       uint16_t loop_nest_depth = 0;

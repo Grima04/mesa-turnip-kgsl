@@ -192,14 +192,8 @@ static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data
 
       return bld.pseudo(aco_opcode::p_bpermute, bld.def(v1), bld.def(bld.lm), bld.def(bld.lm, vcc), index_op, input_data);
    } else if (ctx->options->chip_class >= GFX10 && ctx->program->wave_size == 64) {
-      /* GFX10 wave64 mode: emulate full-wave bpermute */
-      if (!ctx->has_gfx10_wave64_bpermute) {
-         ctx->has_gfx10_wave64_bpermute = true;
-         /* Shared VGPRs are allocated in groups of 8/16 */
-         ctx->program->config->num_shared_vgprs = ctx->program->chip_class >= GFX10_3 ? 16 : 8;
-         ctx->program->vgpr_limit -= ctx->program->chip_class >= GFX10_3 ? 8 : 4;
-      }
 
+      /* GFX10 wave64 mode: emulate full-wave bpermute */
       Temp index_is_lo = bld.vopc(aco_opcode::v_cmp_ge_u32, bld.def(bld.lm), Operand(31u), index);
       Builder::Result index_is_lo_split = bld.pseudo(aco_opcode::p_split_vector, bld.def(s1), bld.def(s1), index_is_lo);
       Temp index_is_lo_n1 = bld.sop1(aco_opcode::s_not_b32, bld.def(s1), bld.def(s1, scc), index_is_lo_split.def(1).getTemp());
@@ -210,6 +204,10 @@ static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data
       index_x4.setLateKill(true);
       input_data.setLateKill(true);
       same_half.setLateKill(true);
+
+      /* We need one pair of shared VGPRs:
+       * Note, that these have twice the allocation granularity of normal VGPRs */
+      ctx->program->config->num_shared_vgprs = 2 * ctx->program->vgpr_alloc_granule;
 
       return bld.pseudo(aco_opcode::p_bpermute, bld.def(v1), bld.def(s2), bld.def(s1, scc), index_x4, input_data, same_half);
    } else {
