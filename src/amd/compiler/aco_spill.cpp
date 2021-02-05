@@ -1774,14 +1774,16 @@ void spill(Program* program, live& live_vars)
 
    /* calculate target register demand */
    RegisterDemand register_target = program->max_reg_demand;
-   if (register_target.sgpr > program->sgpr_limit)
-      register_target.vgpr += (register_target.sgpr - program->sgpr_limit + program->wave_size - 1 + 32) / program->wave_size;
-   register_target.sgpr = program->sgpr_limit;
+   uint16_t sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
+   uint16_t vgpr_limit = get_addr_vgpr_from_waves(program, program->min_waves);
+   if (register_target.sgpr > sgpr_limit)
+      register_target.vgpr += (register_target.sgpr - sgpr_limit + program->wave_size - 1 + 32) / program->wave_size;
+   register_target.sgpr = sgpr_limit;
 
-   if (register_target.vgpr > program->vgpr_limit)
-      register_target.sgpr = program->sgpr_limit - 5;
+   if (register_target.vgpr > vgpr_limit)
+      register_target.sgpr = sgpr_limit - 5;
    int spills_to_vgpr = (program->max_reg_demand.sgpr - register_target.sgpr + program->wave_size - 1 + 32) / program->wave_size;
-   register_target.vgpr = program->vgpr_limit - spills_to_vgpr;
+   register_target.vgpr = vgpr_limit - spills_to_vgpr;
 
    /* initialize ctx */
    spill_ctx ctx(register_target, program, live_vars.register_demand);

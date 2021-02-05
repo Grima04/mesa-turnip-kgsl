@@ -1180,8 +1180,6 @@ setup_isel_context(Program* program,
    }
 
    calc_min_waves(program);
-   program->vgpr_limit = get_addr_vgpr_from_waves(program, program->min_waves);
-   program->sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
 
    unsigned scratch_size = 0;
    if (program->stage == gs_copy_vs) {

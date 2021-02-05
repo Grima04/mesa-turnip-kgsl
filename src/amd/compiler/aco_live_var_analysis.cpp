@@ -285,17 +285,23 @@ uint16_t get_vgpr_alloc(Program *program, uint16_t addressable_vgprs)
    return align(std::max(addressable_vgprs, granule), granule);
 }
 
-uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t max_waves)
+unsigned round_down(unsigned a, unsigned b)
 {
-   uint16_t sgprs = (program->physical_sgprs / max_waves) - program->sgpr_alloc_granule + 1;
-   sgprs = get_sgpr_alloc(program, sgprs);
+   return a - (a % b);
+}
+
+uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t waves)
+{
+   /* it's not possible to allocate more than 128 SGPRs */
+   uint16_t sgprs = std::min(program->physical_sgprs / waves, 128);
+   sgprs = round_down(sgprs, program->sgpr_alloc_granule);
    sgprs -= get_extra_sgprs(program);
    return std::min(sgprs, program->sgpr_limit);
 }
 
-uint16_t get_addr_vgpr_from_waves(Program *program, uint16_t max_waves)
+uint16_t get_addr_vgpr_from_waves(Program *program, uint16_t waves)
 {
-   uint16_t vgprs = program->physical_vgprs / max_waves & ~(program->vgpr_alloc_granule - 1);
+   uint16_t vgprs = program->physical_vgprs / waves & ~(program->vgpr_alloc_granule - 1);
    return std::min(vgprs, program->vgpr_limit);
 }
 
@@ -326,8 +332,12 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
    unsigned simd_per_cu_wgp = wgp ? simd_per_cu * 2 : simd_per_cu;
    unsigned lds_limit = wgp ? program->lds_limit * 2 : program->lds_limit;
 
+   assert(program->min_waves >= 1);
+   uint16_t sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
+   uint16_t vgpr_limit = get_addr_vgpr_from_waves(program, program->min_waves);
+
    /* this won't compile, register pressure reduction necessary */
-   if (new_demand.vgpr > program->vgpr_limit || new_demand.sgpr > program->sgpr_limit) {
+   if (new_demand.vgpr > vgpr_limit || new_demand.sgpr > sgpr_limit) {
       program->num_waves = 0;
       program->max_reg_demand = new_demand;
    } else {

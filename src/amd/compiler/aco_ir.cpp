@@ -115,10 +115,8 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
       program->physical_sgprs = 800;
       program->sgpr_alloc_granule = 16;
       program->sgpr_limit = 102;
-      if (family == CHIP_TONGA || family == CHIP_ICELAND) {
-         program->sgpr_alloc_granule = 96;
-         program->sgpr_limit = 94; /* workaround hardware bug */
-      }
+      if (family == CHIP_TONGA || family == CHIP_ICELAND)
+         program->sgpr_alloc_granule = 96; /* workaround hardware bug */
    } else {
       program->physical_sgprs = 512;
       program->sgpr_alloc_granule = 8;

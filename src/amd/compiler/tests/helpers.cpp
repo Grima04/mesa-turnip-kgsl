@@ -80,6 +80,8 @@ void create_program(enum chip_class chip_class, Stage stage, unsigned wave_size,
 
    program.reset(new Program);
    aco::init_program(program.get(), stage, &info, chip_class, family, &config);
+   program->workgroup_size = UINT_MAX;
+   calc_min_waves(program.get());
 
    program->debug.func = nullptr;
    program->debug.private_data = nullptr;
