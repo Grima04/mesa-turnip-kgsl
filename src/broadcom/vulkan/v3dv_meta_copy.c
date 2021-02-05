@@ -3584,6 +3584,10 @@ fail:
    return handled;
 }
 
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
 static bool
 copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                           VkImageAspectFlags aspect,
@@ -3593,172 +3597,220 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                           struct v3dv_buffer *buffer,
                           uint32_t buffer_bpp,
                           VkColorComponentFlags cmask,
-                          const VkBufferImageCopy *region)
+                          uint32_t region_count,
+                          const VkBufferImageCopy *regions)
 {
+   /* Since we can't sample linear images we need to upload the linear
+    * buffer to a tiled image that we can use as a blit source, which
+    * is slow.
+    */
    perf_debug("Falling back to blit path for buffer to image copy.\n");
-
-   /* Obtain the layer count */
-   uint32_t num_layers;
-   if (image->type != VK_IMAGE_TYPE_3D)
-      num_layers = region->imageSubresource.layerCount;
-   else
-      num_layers = region->imageExtent.depth;
-   assert(num_layers > 0);
-
-   /* Obtain the 2D buffer region spec */
-   uint32_t buf_width, buf_height;
-   if (region->bufferRowLength == 0)
-       buf_width = region->imageExtent.width;
-   else
-       buf_width = region->bufferRowLength;
-
-   if (region->bufferImageHeight == 0)
-       buf_height = region->imageExtent.height;
-   else
-       buf_height = region->bufferImageHeight;
-
-   /* If the image is compressed, the bpp refers to blocks, not pixels */
-   uint32_t block_width = vk_format_get_blockwidth(image->vk_format);
-   uint32_t block_height = vk_format_get_blockheight(image->vk_format);
-   buf_width = buf_width / block_width;
-   buf_height = buf_height / block_height;
-
-   /* We should have configured the blit to use a supported format  */
-   bool handled = true;
 
    struct v3dv_device *device = cmd_buffer->device;
    VkDevice _device = v3dv_device_to_handle(device);
-   for (uint32_t i = 0; i < num_layers; i++) {
-      /* Otherwise, since we can't sample linear images we need to upload the
-       * linear buffer to a tiled image that we can use as a blit source, which
-       * is slow.
-       */
-      VkImageCreateInfo image_info = {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-         .imageType = VK_IMAGE_TYPE_2D,
-         .format = src_format,
-         .extent = { buf_width, buf_height, 1 },
-         .mipLevels = 1,
-         .arrayLayers = 1,
-         .samples = VK_SAMPLE_COUNT_1_BIT,
-         .tiling = VK_IMAGE_TILING_OPTIMAL,
-         .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                  VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-         .queueFamilyIndexCount = 0,
-         .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
-      };
+   bool handled = true;
 
-      VkImage buffer_image;
-      VkResult result =
-         v3dv_CreateImage(_device, &image_info, &device->vk.alloc, &buffer_image);
-      if (result != VK_SUCCESS)
-         return handled;
+   /* Allocate memory for the tiled image. Since we copy layer by layer
+    * we allocate memory to hold a full layer, which is the worse case.
+    * For that we create a dummy image with that spec, get memory requirements
+    * for it and use that information to create the memory allocation.
+    * We will then reuse this memory store for all the regions we want to
+    * copy.
+    */
+   VkImage dummy_image;
+   VkImageCreateInfo dummy_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType = VK_IMAGE_TYPE_2D,
+      .format = src_format,
+      .extent = { image->extent.width, image->extent.height, 1 },
+      .mipLevels = 1,
+      .arrayLayers = 1,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .tiling = VK_IMAGE_TILING_OPTIMAL,
+      .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+               VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      .queueFamilyIndexCount = 0,
+      .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+   };
+   VkResult result =
+      v3dv_CreateImage(_device, &dummy_info, &device->vk.alloc, &dummy_image);
+   if (result != VK_SUCCESS)
+      return handled;
 
-      v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (uintptr_t)buffer_image,
-         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
+   VkMemoryRequirements reqs;
+   v3dv_GetImageMemoryRequirements(_device, dummy_image, &reqs);
+   v3dv_DestroyImage(_device, dummy_image, &device->vk.alloc);
 
-      /* Allocate and bind memory for the image */
-      VkDeviceMemory mem;
-      VkMemoryRequirements reqs;
-      v3dv_GetImageMemoryRequirements(_device, buffer_image, &reqs);
-      VkMemoryAllocateInfo alloc_info = {
-         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-         .allocationSize = reqs.size,
-         .memoryTypeIndex = 0,
-      };
-      result = v3dv_AllocateMemory(_device, &alloc_info, &device->vk.alloc, &mem);
-      if (result != VK_SUCCESS)
-         return handled;
+   VkDeviceMemory mem;
+   VkMemoryAllocateInfo alloc_info = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .allocationSize = reqs.size,
+      .memoryTypeIndex = 0,
+   };
+   result = v3dv_AllocateMemory(_device, &alloc_info, &device->vk.alloc, &mem);
+   if (result != VK_SUCCESS)
+      return handled;
 
-      v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (uintptr_t)mem,
-         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_FreeMemory);
+   v3dv_cmd_buffer_add_private_obj(
+      cmd_buffer, (uintptr_t)mem,
+      (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_FreeMemory);
 
-      result = v3dv_BindImageMemory(_device, buffer_image, mem, 0);
-      if (result != VK_SUCCESS)
-         return handled;
+   /* Obtain the layer count.
+    *
+    * If we are batching (region_count > 1) all our regions have the same
+    * image subresource so we can take this from the first region.
+    */
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D)
+      num_layers = regions[0].imageSubresource.layerCount;
+   else
+      num_layers = regions[0].imageExtent.depth;
+   assert(num_layers > 0);
 
-      /* Upload buffer contents for the selected layer */
-      const VkDeviceSize buf_offset_bytes =
-         region->bufferOffset + i * buf_height * buf_width * buffer_bpp;
-      const VkBufferImageCopy buffer_image_copy = {
-         .bufferOffset = buf_offset_bytes,
-         .bufferRowLength = region->bufferRowLength / block_width,
-         .bufferImageHeight = region->bufferImageHeight / block_height,
-         .imageSubresource = {
-            .aspectMask = aspect,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-         },
-         .imageOffset = { 0, 0, 0 },
-         .imageExtent = { buf_width, buf_height, 1 }
-      };
-      handled =
-         create_tiled_image_from_buffer(cmd_buffer,
-                                        v3dv_image_from_handle(buffer_image),
-                                        buffer, &buffer_image_copy);
-      if (!handled) {
-         /* This is unexpected, we should have setup the upload to be
-          * conformant to a TFU or TLB copy.
+   /* Sanity check: we can only batch multiple regions together if they have
+    * the same framebuffer (so the same layer).
+    */
+   assert(num_layers == 1 || region_count == 1);
+
+   const uint32_t block_width = vk_format_get_blockwidth(image->vk_format);
+   const uint32_t block_height = vk_format_get_blockheight(image->vk_format);
+
+   /* Copy regions by uploading each region to a temporary tiled image using
+    * the memory we have just allocated as storage.
+    */
+   for (uint32_t r = 0; r < region_count; r++) {
+      const VkBufferImageCopy *region = &regions[r];
+
+      /* Obtain the 2D buffer region spec */
+      uint32_t buf_width, buf_height;
+      if (region->bufferRowLength == 0)
+          buf_width = region->imageExtent.width;
+      else
+          buf_width = region->bufferRowLength;
+
+      if (region->bufferImageHeight == 0)
+          buf_height = region->imageExtent.height;
+      else
+          buf_height = region->bufferImageHeight;
+
+      /* If the image is compressed, the bpp refers to blocks, not pixels */
+      buf_width = buf_width / block_width;
+      buf_height = buf_height / block_height;
+
+      for (uint32_t i = 0; i < num_layers; i++) {
+         /* Create the tiled image */
+         VkImageCreateInfo image_info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = src_format,
+            .extent = { buf_width, buf_height, 1 },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                     VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+         };
+
+         VkImage buffer_image;
+         VkResult result =
+            v3dv_CreateImage(_device, &image_info, &device->vk.alloc,
+                             &buffer_image);
+         if (result != VK_SUCCESS)
+            return handled;
+
+         v3dv_cmd_buffer_add_private_obj(
+            cmd_buffer, (uintptr_t)buffer_image,
+            (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
+
+         result = v3dv_BindImageMemory(_device, buffer_image, mem, 0);
+         if (result != VK_SUCCESS)
+            return handled;
+
+         /* Upload buffer contents for the selected layer */
+         const VkDeviceSize buf_offset_bytes =
+            region->bufferOffset + i * buf_height * buf_width * buffer_bpp;
+         const VkBufferImageCopy buffer_image_copy = {
+            .bufferOffset = buf_offset_bytes,
+            .bufferRowLength = region->bufferRowLength / block_width,
+            .bufferImageHeight = region->bufferImageHeight / block_height,
+            .imageSubresource = {
+               .aspectMask = aspect,
+               .mipLevel = 0,
+               .baseArrayLayer = 0,
+               .layerCount = 1,
+            },
+            .imageOffset = { 0, 0, 0 },
+            .imageExtent = { buf_width, buf_height, 1 }
+         };
+         handled =
+            create_tiled_image_from_buffer(cmd_buffer,
+                                           v3dv_image_from_handle(buffer_image),
+                                           buffer, &buffer_image_copy);
+         if (!handled) {
+            /* This is unexpected, we should have setup the upload to be
+             * conformant to a TFU or TLB copy.
+             */
+            unreachable("Unable to copy buffer to image through TLB");
+            return false;
+         }
+
+         /* Blit-copy the requested image extent from the buffer image to the
+          * destination image.
+          *
+          * Since we are copying, the blit must use the same format on the
+          * destination and source images to avoid format conversions. The
+          * only exception is copying stencil, which we upload to a R8UI source
+          * image, but that we need to blit to a S8D24 destination (the only
+          * stencil format we support).
           */
-         unreachable("Unable to copy buffer to image through TLB");
-         return false;
-      }
-
-      /* Blit-copy the requested image extent from the buffer image to the
-       * destination image.
-       *
-       * Since we are copying, the blit must use the same format on the
-       * destination and source images to avoid format conversions. The
-       * only exception is copying stencil, which we upload to a R8UI source
-       * image, but that we need to blit to a S8D24 destination (the only
-       * stencil format we support).
-       */
-      const VkImageBlit blit_region = {
-         .srcSubresource = {
-            .aspectMask = aspect,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-         },
-         .srcOffsets = {
-            { 0, 0, 0 },
-            { region->imageExtent.width, region->imageExtent.height, 1 },
-         },
-         .dstSubresource = {
-            .aspectMask = aspect,
-            .mipLevel = region->imageSubresource.mipLevel,
-            .baseArrayLayer = region->imageSubresource.baseArrayLayer + i,
-            .layerCount = 1,
-         },
-         .dstOffsets = {
-            {
-               DIV_ROUND_UP(region->imageOffset.x, block_width),
-               DIV_ROUND_UP(region->imageOffset.y, block_height),
-               region->imageOffset.z + i,
+         const VkImageBlit blit_region = {
+            .srcSubresource = {
+               .aspectMask = aspect,
+               .mipLevel = 0,
+               .baseArrayLayer = 0,
+               .layerCount = 1,
             },
-            {
-               DIV_ROUND_UP(region->imageOffset.x + region->imageExtent.width,
-                            block_width),
-               DIV_ROUND_UP(region->imageOffset.y + region->imageExtent.height,
-                            block_height),
-               region->imageOffset.z + i + 1,
+            .srcOffsets = {
+               { 0, 0, 0 },
+               { region->imageExtent.width, region->imageExtent.height, 1 },
             },
-         },
-      };
+            .dstSubresource = {
+               .aspectMask = aspect,
+               .mipLevel = region->imageSubresource.mipLevel,
+               .baseArrayLayer = region->imageSubresource.baseArrayLayer + i,
+               .layerCount = 1,
+            },
+            .dstOffsets = {
+               {
+                  DIV_ROUND_UP(region->imageOffset.x, block_width),
+                  DIV_ROUND_UP(region->imageOffset.y, block_height),
+                  region->imageOffset.z + i,
+               },
+               {
+                  DIV_ROUND_UP(region->imageOffset.x + region->imageExtent.width,
+                               block_width),
+                  DIV_ROUND_UP(region->imageOffset.y + region->imageExtent.height,
+                               block_height),
+                  region->imageOffset.z + i + 1,
+               },
+            },
+         };
 
-      handled = blit_shader(cmd_buffer,
-                            image, dst_format,
-                            v3dv_image_from_handle(buffer_image), src_format,
-                            cmask, NULL,
-                            &blit_region, VK_FILTER_NEAREST, true);
-      if (!handled) {
-         /* This is unexpected, we should have a supported blit spec */
-         unreachable("Unable to blit buffer to destination image");
-         return false;
+         handled = blit_shader(cmd_buffer,
+                               image, dst_format,
+                               v3dv_image_from_handle(buffer_image), src_format,
+                               cmask, NULL,
+                               &blit_region, VK_FILTER_NEAREST, true);
+         if (!handled) {
+            /* This is unexpected, we should have a supported blit spec */
+            unreachable("Unable to blit buffer to destination image");
+            return false;
+         }
       }
    }
 
@@ -3777,9 +3829,6 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
                             const VkBufferImageCopy *regions,
                             bool use_texel_buffer)
 {
-   /* FIXME: we only support batching on the texel buffer path for now */
-   assert(region_count == 1 || use_texel_buffer);
-
    /* We can only call this with region_count > 1 if we can batch the regions
     * together, in which case they share the same image subresource, and so
     * the same aspect.
@@ -3900,16 +3949,10 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
       if (memcmp(&cswizzle, &ident_swizzle, sizeof(cswizzle)))
          return false;
 
-      bool handled = true;
-      for (uint32_t i = 0; i < region_count; i++) {
-         handled = copy_buffer_to_image_blit(cmd_buffer, aspect, image,
-                                             dst_format, src_format,
-                                             buffer, buf_bpp,
-                                             cmask, &regions[i]);
-         if (!handled)
-            break;
-      }
-      return handled;
+      return copy_buffer_to_image_blit(cmd_buffer, aspect, image,
+                                       dst_format, src_format,
+                                       buffer, buf_bpp, cmask,
+                                       region_count, regions);
    }
 }
 
@@ -3994,7 +4037,6 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
    assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
 
    uint32_t r = 0;
-
    while (r < regionCount) {
       /* The TFU and TLB paths can only copy one region at a time and the region
        * needs to start at the origin. We try these first for the common case
@@ -4033,13 +4075,13 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
        * slow it might not be worth it and we should instead put more effort
        * in handling more cases with the other paths.
        */
-      batch_size = 1;
-
-      if (copy_buffer_to_image_cpu(cmd_buffer, image, buffer, &pRegions[r]))
+      if (copy_buffer_to_image_cpu(cmd_buffer, image, buffer, &pRegions[r])) {
+         batch_size = 1;
          goto handled;
+      }
 
       if (copy_buffer_to_image_shader(cmd_buffer, image, buffer,
-                                      1, &pRegions[r], false)) {
+                                      batch_size, &pRegions[r], false)) {
          goto handled;
       }
 
