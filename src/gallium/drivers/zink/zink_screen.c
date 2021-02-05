@@ -1098,7 +1098,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       debug_printf("ZINK: failed to setup debug utils\n");
 
    screen->pdev = choose_pdev(screen->instance);
-   if (!screen->pdev)
+   if (screen->pdev == VK_NULL_HANDLE)
       goto fail;
 
    update_queue_props(screen);
