@@ -1157,6 +1157,8 @@ meson-mingw32-x86_64:
   script:
     - ./install/deqp-runner.sh
   artifacts:
+    exclude:
+      - results/*.shader_cache
     reports:
       junit: results/junit.xml
 
