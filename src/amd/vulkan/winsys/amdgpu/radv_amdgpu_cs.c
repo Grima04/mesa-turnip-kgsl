@@ -94,9 +94,6 @@ static int ring_to_hw_ip(enum ring_type ring)
 }
 
 struct radv_amdgpu_cs_request {
-	/** Specify flags with additional information */
-	uint64_t flags;
-
 	/** Specify HW IP block type to which to send the IB. */
 	unsigned ip_type;
 
@@ -114,18 +111,6 @@ struct radv_amdgpu_cs_request {
 	 */
 	struct drm_amdgpu_bo_list_entry *handles;
 	uint32_t num_handles;
-
-	/**
-	 * Number of dependencies this Command submission needs to
-	 * wait for before starting execution.
-	 */
-	uint32_t number_of_dependencies;
-
-	/**
-	 * Array of dependencies which need to be met before
-	 * execution can start.
-	 */
-	struct amdgpu_cs_fence *dependencies;
 
 	/** Number of IBs to submit in the field ibs. */
 	uint32_t number_of_ibs;
