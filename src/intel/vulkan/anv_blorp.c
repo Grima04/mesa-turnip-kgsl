@@ -217,7 +217,7 @@ get_blorp_surf_for_anv_image(const struct anv_device *device,
       (usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) ?
       ISL_SURF_USAGE_RENDER_TARGET_BIT : ISL_SURF_USAGE_TEXTURE_BIT;
 
-   const struct anv_surface *surface = &image->planes[plane].surface;
+   const struct anv_surface *surface = &image->planes[plane].primary_surface;
    *blorp_surf = (struct blorp_surf) {
       .surf = &surface->isl,
       .addr = {

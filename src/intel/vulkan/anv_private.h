@@ -3819,7 +3819,7 @@ struct anv_image {
       VkDeviceSize size;
       uint32_t alignment;
 
-      struct anv_surface surface;
+      struct anv_surface primary_surface;
 
       /**
        * A surface which shadows the main surface and may have different

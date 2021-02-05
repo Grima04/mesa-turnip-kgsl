@@ -3892,9 +3892,9 @@ VkResult anv_AllocateMemory(
        */
       if (image->needs_set_tiling) {
          const uint32_t i915_tiling =
-            isl_tiling_to_i915_tiling(image->planes[0].surface.isl.tiling);
+            isl_tiling_to_i915_tiling(image->planes[0].primary_surface.isl.tiling);
          int ret = anv_gem_set_tiling(device, mem->bo->gem_handle,
-                                      image->planes[0].surface.isl.row_pitch_B,
+                                      image->planes[0].primary_surface.isl.row_pitch_B,
                                       i915_tiling);
          if (ret) {
             anv_device_release_bo(device, mem->bo);

@@ -413,11 +413,11 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
 
       ok = isl_surf_get_hiz_surf(&device->isl_dev,
-                                 &image->planes[plane].surface.isl,
+                                 &image->planes[plane].primary_surface.isl,
                                  &image->planes[plane].aux_surface.isl);
       assert(ok);
       if (!isl_surf_supports_ccs(&device->isl_dev,
-                                 &image->planes[plane].surface.isl)) {
+                                 &image->planes[plane].primary_surface.isl)) {
          image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ;
       } else if (image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
                                  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) &&
@@ -443,7 +443,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
 
       if (!isl_surf_supports_ccs(&device->isl_dev,
-                                 &image->planes[plane].surface.isl))
+                                 &image->planes[plane].primary_surface.isl))
          return VK_SUCCESS;
 
       image->planes[plane].aux_usage = ISL_AUX_USAGE_STC_CCS;
@@ -493,7 +493,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
 
       ok = isl_surf_get_ccs_surf(&device->isl_dev,
-                                 &image->planes[plane].surface.isl,
+                                 &image->planes[plane].primary_surface.isl,
                                  &image->planes[plane].aux_surface.isl,
                                  NULL, 0);
       if (!ok)
@@ -532,7 +532,7 @@ add_aux_surface_if_supported(struct anv_device *device,
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->samples > 1) {
       assert(!(image->usage & VK_IMAGE_USAGE_STORAGE_BIT));
       ok = isl_surf_get_mcs_surf(&device->isl_dev,
-                                 &image->planes[plane].surface.isl,
+                                 &image->planes[plane].primary_surface.isl,
                                  &image->planes[plane].aux_surface.isl);
       if (!ok)
          return VK_SUCCESS;
@@ -595,7 +595,7 @@ add_primary_surface(struct anv_device *device,
 {
    bool ok;
 
-   struct anv_surface *anv_surf = &image->planes[plane].surface;
+   struct anv_surface *anv_surf = &image->planes[plane].primary_surface;
 
    ok = isl_surf_init(&device->isl_dev, &anv_surf->isl,
       .dim = vk_to_isl_surf_dim[image->type],
@@ -636,7 +636,7 @@ check_surfaces(const struct anv_image *image,
     * to the aux's offset.
     */
    uintmax_t plane_end = plane->offset + plane->size;
-   const struct anv_surface *primary_surface = &plane->surface;
+   const struct anv_surface *primary_surface = &plane->primary_surface;
    const struct anv_surface *aux_surface = &plane->aux_surface;
    uintmax_t last_surface_offset = MAX2(primary_surface->offset, aux_surface->offset);
    uintmax_t last_surface_size = aux_surface->isl.size_B > 0
@@ -1174,7 +1174,7 @@ void anv_GetImageSubresourceLayout(
    } else {
       uint32_t plane = anv_image_aspect_to_plane(image->aspects,
                                                  subresource->aspectMask);
-      surface = &image->planes[plane].surface;
+      surface = &image->planes[plane].primary_surface;
    }
 
    assert(__builtin_popcount(subresource->aspectMask) == 1);
@@ -1406,7 +1406,7 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    assert(aux_usage != ISL_AUX_USAGE_NONE);
 
    /* All images that use an auxiliary surface are required to be tiled. */
-   assert(image->planes[plane].surface.isl.tiling != ISL_TILING_LINEAR);
+   assert(image->planes[plane].primary_surface.isl.tiling != ISL_TILING_LINEAR);
 
    /* Handle a few special cases */
    switch (layout) {
@@ -1741,7 +1741,7 @@ anv_image_fill_surface_state(struct anv_device *device,
 {
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
 
-   const struct anv_surface *surface = &image->planes[plane].surface,
+   const struct anv_surface *surface = &image->planes[plane].primary_surface,
       *aux_surface = &image->planes[plane].aux_surface;
 
    struct isl_view view = *view_in;

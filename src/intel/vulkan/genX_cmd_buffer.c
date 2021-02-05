@@ -367,7 +367,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
     * format re-interpretation is for sRGB.
     */
    if (isl_color_value_requires_conversion(clear_color,
-                                           &iview->image->planes[0].surface.isl,
+                                           &iview->image->planes[0].primary_surface.isl,
                                            &iview->planes[0].isl)) {
       anv_perf_warn(device, &iview->base,
                     "Cannot fast-clear to colors which would require "
@@ -426,7 +426,7 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
                               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                               layout);
    if (!blorp_can_hiz_clear_depth(&device->info,
-                                  &iview->image->planes[0].surface.isl,
+                                  &iview->image->planes[0].primary_surface.isl,
                                   clear_aux_usage,
                                   iview->planes[0].isl.base_level,
                                   iview->planes[0].isl.base_array_layer,
@@ -464,12 +464,12 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 {
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
 
-   const struct anv_surface *surface = &image->planes[plane].surface;
+   const struct anv_surface *surface = &image->planes[plane].primary_surface;
    uint64_t base_address =
       anv_address_physical(anv_address_add(image->planes[plane].address,
                                            surface->offset));
 
-   const struct isl_surf *isl_surf = &image->planes[plane].surface.isl;
+   const struct isl_surf *isl_surf = &image->planes[plane].primary_surface.isl;
    uint64_t format_bits = gen_aux_map_format_bits_for_isl_surf(isl_surf);
 
    /* We're about to live-update the AUX-TT.  We really don't want anyone else
@@ -583,7 +583,7 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
     * largest portion of the specified range as it can.  For depth images,
     * that means the entire image because we don't support multi-LOD HiZ.
     */
-   assert(image->planes[0].surface.isl.levels == 1);
+   assert(image->planes[0].primary_surface.isl.levels == 1);
    if (will_full_fast_clear)
       return;
 
@@ -1151,9 +1151,9 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
        * we need to ensure the shadow copy is up-to-date.
        */
       assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-      assert(image->planes[plane].surface.isl.tiling == ISL_TILING_LINEAR);
+      assert(image->planes[plane].primary_surface.isl.tiling == ISL_TILING_LINEAR);
       assert(image->planes[plane].shadow_surface.isl.tiling != ISL_TILING_LINEAR);
-      assert(isl_format_is_compressed(image->planes[plane].surface.isl.format));
+      assert(isl_format_is_compressed(image->planes[plane].primary_surface.isl.format));
       assert(plane == 0);
       anv_image_copy_to_shadow(cmd_buffer, image,
                                VK_IMAGE_ASPECT_COLOR_BIT,
@@ -1164,7 +1164,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    if (base_layer >= anv_image_aux_layers(image, aspect, base_level))
       return;
 
-   assert(image->planes[plane].surface.isl.tiling != ISL_TILING_LINEAR);
+   assert(image->planes[plane].primary_surface.isl.tiling != ISL_TILING_LINEAR);
 
    if (initial_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
        initial_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
@@ -1244,7 +1244,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
             }
 
             anv_image_ccs_op(cmd_buffer, image,
-                             image->planes[plane].surface.isl.format,
+                             image->planes[plane].primary_surface.isl.format,
                              ISL_SWIZZLE_IDENTITY,
                              aspect, level, base_layer, level_layer_count,
                              ISL_AUX_OP_AMBIGUATE, NULL, false);
@@ -1270,7 +1270,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 
          assert(base_level == 0 && level_count == 1);
          anv_image_mcs_op(cmd_buffer, image,
-                          image->planes[plane].surface.isl.format,
+                          image->planes[plane].primary_surface.isl.format,
                           ISL_SWIZZLE_IDENTITY,
                           aspect, base_layer, layer_count,
                           ISL_AUX_OP_FAST_CLEAR, NULL, false);
@@ -1358,7 +1358,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 
          if (image->samples == 1) {
             anv_cmd_predicated_ccs_resolve(cmd_buffer, image,
-                                           image->planes[plane].surface.isl.format,
+                                           image->planes[plane].primary_surface.isl.format,
                                            ISL_SWIZZLE_IDENTITY,
                                            aspect, level, array_layer, resolve_op,
                                            final_fast_clear);
@@ -1372,7 +1372,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
                continue;
 
             anv_cmd_predicated_mcs_resolve(cmd_buffer, image,
-                                           image->planes[plane].surface.isl.format,
+                                           image->planes[plane].primary_surface.isl.format,
                                            ISL_SWIZZLE_IDENTITY,
                                            aspect, array_layer, resolve_op,
                                            final_fast_clear);
@@ -5204,7 +5204,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    if (image && (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
       uint32_t depth_plane =
          anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_DEPTH_BIT);
-      const struct anv_surface *surface = &image->planes[depth_plane].surface;
+      const struct anv_surface *surface = &image->planes[depth_plane].primary_surface;
 
       info.depth_surf = &surface->isl;
 
@@ -5239,7 +5239,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    if (image && (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT)) {
       uint32_t stencil_plane =
          anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_STENCIL_BIT);
-      const struct anv_surface *surface = &image->planes[stencil_plane].surface;
+      const struct anv_surface *surface = &image->planes[stencil_plane].primary_surface;
 
       info.stencil_surf = &surface->isl;
 
