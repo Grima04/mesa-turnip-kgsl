@@ -270,6 +270,8 @@ VULKAN_FILES := \
 	vulkan/anv_genX.h \
 	vulkan/anv_image.c \
 	vulkan/anv_intel.c \
+	vulkan/anv_measure.c \
+	vulkan/anv_measure.h \
 	vulkan/anv_nir.h \
 	vulkan/anv_nir_add_base_work_group_id.c \
 	vulkan/anv_nir_apply_pipeline_layout.c \
