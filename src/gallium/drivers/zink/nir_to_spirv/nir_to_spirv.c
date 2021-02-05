@@ -2557,6 +2557,12 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_interpolate(ctx, intr);
       break;
 
+   case nir_intrinsic_memory_barrier_buffer:
+      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeDevice,
+                                        SpvMemorySemanticsUniformMemoryMask |
+                                        SpvMemorySemanticsAcquireReleaseMask);
+      break;
+
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_umin:
    case nir_intrinsic_ssbo_atomic_imin:
