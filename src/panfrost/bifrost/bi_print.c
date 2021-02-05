@@ -101,6 +101,9 @@ bi_print_clause(bi_clause *clause, FILE *fp)
         if (clause->staging_barrier)
                 fprintf(fp, " osrb");
 
+        if (clause->pcrel_idx != ~0)
+                fprintf(fp, " pcrel(%u)", clause->pcrel_idx);
+
         fprintf(fp, "\n");
 
         for (unsigned i = 0; i < clause->tuple_count; ++i)

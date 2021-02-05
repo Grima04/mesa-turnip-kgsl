@@ -455,6 +455,9 @@ typedef struct {
         uint64_t constants[8];
         unsigned constant_count;
 
+        /* Index of a constant to be PC-relative */
+        unsigned pcrel_idx;
+
         /* Branches encode a constant offset relative to the program counter
          * with some magic flags. By convention, if there is a branch, its
          * constant will be last. Set this flag to indicate this is required.
