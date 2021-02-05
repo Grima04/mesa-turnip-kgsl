@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #define BIFROST_DBG_MSGS        0x0001
 #define BIFROST_DBG_SHADERS     0x0002
@@ -601,5 +602,19 @@ struct bi_constants {
         /* Associated modifier derived from M values */
         enum bi_constmod mods[6];
 };
+
+/* FAU selectors for constants are out-of-order, construct the top bits
+ * here given a embedded constant index in a clause */
+
+static inline unsigned
+bi_constant_field(unsigned idx)
+{
+        const unsigned values[] = {
+                4, 5, 6, 7, 2, 3
+        };
+
+        assert(idx <= 5);
+        return values[idx] << 4;
+}
 
 #endif

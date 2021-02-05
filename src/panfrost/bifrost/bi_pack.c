@@ -86,17 +86,6 @@ bi_lookup_constant(bi_clause *clause, uint32_t cons, bool *hi)
         unreachable("Invalid constant accessed");
 }
 
-static unsigned
-bi_constant_field(unsigned idx)
-{
-        assert(idx <= 5);
-
-        const unsigned values[] = {
-                4, 5, 6, 7, 2, 3
-        };
-
-        return values[idx] << 4;
-}
 
 static bool
 bi_assign_fau_idx_single(bi_registers *regs,
