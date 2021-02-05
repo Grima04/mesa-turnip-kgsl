@@ -1092,20 +1092,7 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
    if (stage->nir &&
        (pipeline->flags &
         VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR)) {
-      char *stream_data = NULL;
-      size_t stream_size = 0;
-      FILE *stream = open_memstream(&stream_data, &stream_size);
-
-      nir_print_shader(stage->nir, stream);
-
-      fclose(stream);
-
-      /* Copy it to a ralloc'd thing */
-      nir = ralloc_size(pipeline->mem_ctx, stream_size + 1);
-      memcpy(nir, stream_data, stream_size);
-      nir[stream_size] = 0;
-
-      free(stream_data);
+      nir = nir_shader_as_str(stage->nir, pipeline->mem_ctx);
    }
 
    char *disasm = NULL;

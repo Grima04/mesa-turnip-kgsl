@@ -28,6 +28,7 @@
 #include "nir.h"
 #include "compiler/shader_enums.h"
 #include "util/half_float.h"
+#include "util/memstream.h"
 #include "vulkan/vulkan_core.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1667,6 +1668,27 @@ nir_print_shader(nir_shader *shader, FILE *fp)
 {
    nir_print_shader_annotated(shader, fp, NULL);
    fflush(fp);
+}
+
+char *
+nir_shader_as_str(nir_shader *nir, void *mem_ctx)
+{
+   char *stream_data = NULL;
+   size_t stream_size = 0;
+   struct u_memstream mem;
+   if (u_memstream_open(&mem, &stream_data, &stream_size)) {
+      FILE *const stream = u_memstream_get(&mem);
+      nir_print_shader(nir, stream);
+      u_memstream_close(&mem);
+   }
+
+   char *str = ralloc_size(mem_ctx, stream_size + 1);
+   memcpy(str, stream_data, stream_size);
+   str[stream_size] = '\0';
+
+   free(stream_data);
+
+   return str;
 }
 
 void
