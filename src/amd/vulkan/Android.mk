@@ -81,7 +81,7 @@ LOCAL_GENERATED_SOURCES += $(intermediates)/radv_extensions.c
 LOCAL_GENERATED_SOURCES += $(intermediates)/radv_extensions.h
 LOCAL_GENERATED_SOURCES += $(intermediates)/vk_format_table.c
 
-RADV_ENTRYPOINTS_SCRIPT := $(MESA_TOP)/src/amd/vulkan/radv_entrypoints_gen.py
+RADV_ENTRYPOINTS_SCRIPT := $(MESA_TOP)/src/vulkan/util/vk_entrypoints_gen.py
 RADV_EXTENSIONS_SCRIPT := $(MESA_TOP)/src/amd/vulkan/radv_extensions.py
 VK_FORMAT_TABLE_SCRIPT := $(MESA_TOP)/src/amd/vulkan/vk_format_table.py
 VK_FORMAT_PARSE_SCRIPT := $(MESA_TOP)/src/amd/vulkan/vk_format_parse.py
@@ -90,12 +90,14 @@ vulkan_api_xml = $(MESA_TOP)/src/vulkan/registry/vk.xml
 vk_format_layout_csv = $(MESA_TOP)/src/amd/vulkan/vk_format_layout.csv
 
 $(intermediates)/radv_entrypoints.c: $(RADV_ENTRYPOINTS_SCRIPT) \
-					$(RADV_EXTENSIONS_SCRIPT) \
 					$(vulkan_api_xml)
 	@mkdir -p $(dir $@)
 	$(MESA_PYTHON2) $(RADV_ENTRYPOINTS_SCRIPT) \
 		--xml $(vulkan_api_xml) \
-		--outdir $(dir $@)
+		--proto --weak \
+		--out-c $@ \
+		--out-h $(addsuffix .h,$(basename $@)) \
+		--prefix radv --device-prefix sqtt
 
 $(intermediates)/radv_entrypoints.h: $(intermediates)/radv_entrypoints.c
 
