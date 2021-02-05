@@ -853,7 +853,7 @@ radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx,
 	struct radv_amdgpu_cs *cs0 = radv_amdgpu_cs(cs_array[0]);
 	struct radv_amdgpu_winsys *aws = cs0->ws;
 	struct drm_amdgpu_bo_list_entry *handles = NULL;
-	struct radv_amdgpu_cs_request request = {0};
+	struct radv_amdgpu_cs_request request;
 	struct amdgpu_cs_ib_info ibs[2];
 	unsigned number_of_ibs = 1;
 	unsigned num_handles = 0;
@@ -901,6 +901,7 @@ radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx,
 	}
 
 	request.ip_type = cs0->hw_ip;
+	request.ip_instance = 0;
 	request.ring = queue_idx;
 	request.number_of_ibs = number_of_ibs;
 	request.ibs = ibs;
@@ -939,7 +940,7 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 	struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
 	struct radv_amdgpu_fence *fence = (struct radv_amdgpu_fence *)_fence;
 	struct drm_amdgpu_bo_list_entry *handles = NULL;
-	struct radv_amdgpu_cs_request request = {0};
+	struct radv_amdgpu_cs_request request;
 	struct amdgpu_cs_ib_info *ibs;
 	struct radv_amdgpu_cs *cs0;
 	struct radv_amdgpu_winsys *aws;
@@ -988,6 +989,7 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 	}
 
 	request.ip_type = cs0->hw_ip;
+	request.ip_instance = 0;
 	request.ring = queue_idx;
 	request.handles = handles;
 	request.num_handles = num_handles;
@@ -1184,9 +1186,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 			return result;
 		}
 
-		memset(&request, 0, sizeof(request));
-
 		request.ip_type = cs0->hw_ip;
+		request.ip_instance = 0;
 		request.ring = queue_idx;
 		request.handles = handles;
 		request.num_handles = num_handles;
