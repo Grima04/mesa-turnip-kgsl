@@ -523,7 +523,7 @@ anv_image_from_gralloc(VkDevice device_h,
    assert(image->planes[0].address.offset == 0);
 
    image->planes[0].address.bo = bo;
-   image->planes[0].bo_is_owned = true;
+   image->from_gralloc = true;
 
    /* Don't clobber the out-parameter until success is certain. */
    *out_image_h = image_h;

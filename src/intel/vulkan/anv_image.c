@@ -978,11 +978,10 @@ anv_DestroyImage(VkDevice _device, VkImage _image,
    if (!image)
       return;
 
-   for (uint32_t p = 0; p < image->n_planes; ++p) {
-      if (image->planes[p].bo_is_owned) {
-         assert(image->planes[p].address.bo != NULL);
-         anv_device_release_bo(device, image->planes[p].address.bo);
-      }
+   if (image->from_gralloc) {
+      assert(image->n_planes == 1);
+      assert(image->planes[0].address.bo != NULL);
+      anv_device_release_bo(device, image->planes[0].address.bo);
    }
 
    vk_object_base_finish(&image->base);
@@ -995,7 +994,7 @@ static void anv_image_bind_memory_plane(struct anv_device *device,
                                         struct anv_device_memory *memory,
                                         uint32_t memory_offset)
 {
-   assert(!image->planes[plane].bo_is_owned);
+   assert(!image->from_gralloc);
 
    if (!memory) {
       image->planes[plane].address = ANV_NULL_ADDRESS;

@@ -3768,6 +3768,12 @@ struct anv_image {
    bool external_format;
 
    /**
+    * Image was imported from gralloc with VkNativeBufferANDROID. The gralloc bo
+    * must be released when the image is destroyed.
+    */
+   bool from_gralloc;
+
+   /**
     * Image subsurfaces
     *
     * For each foo, anv_image::planes[x].surface is valid if and only if
@@ -3841,11 +3847,6 @@ struct anv_image {
        * BO associated with this plane, set when bound.
        */
       struct anv_address address;
-
-      /**
-       * When destroying the image, also free the bo.
-       * */
-      bool bo_is_owned;
    } planes[3];
 };
 
