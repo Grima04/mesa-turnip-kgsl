@@ -710,11 +710,15 @@ choose_pdev(const VkInstance instance)
 {
    uint32_t i, pdev_count;
    VkPhysicalDevice *pdevs, pdev = NULL;
-   vkEnumeratePhysicalDevices(instance, &pdev_count, NULL);
+   VkResult result = vkEnumeratePhysicalDevices(instance, &pdev_count, NULL);
+   if (result != VK_SUCCESS)
+      return VK_NULL_HANDLE;
+
    assert(pdev_count > 0);
 
    pdevs = malloc(sizeof(*pdevs) * pdev_count);
-   vkEnumeratePhysicalDevices(instance, &pdev_count, pdevs);
+   result = vkEnumeratePhysicalDevices(instance, &pdev_count, pdevs);
+   assert(result == VK_SUCCESS);
    assert(pdev_count > 0);
 
    for (i = 0; i < pdev_count; ++i) {
