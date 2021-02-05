@@ -46,8 +46,9 @@ bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block, bool soft)
 
         bi_foreach_instr_in_block_safe_rev(block, ins) {
                 unsigned index = bi_get_node(ins->dest[0]);
+                bool index_live = (live[index] & bi_writemask(ins));
 
-                if (index < temp_count && !live[index]) {
+                if (index < temp_count && !index_live) {
                         if (soft || bi_side_effects(ins->op))
                                 ins->dest[0] = bi_null();
                         else
