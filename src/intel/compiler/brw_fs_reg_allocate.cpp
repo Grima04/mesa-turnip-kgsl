@@ -909,10 +909,9 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
          unspill_inst->send_is_volatile = true;
          unspill_inst->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
          unspill_inst->desc =
-            brw_dp_read_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
-                             BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8),
-                             BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ,
-                             BRW_DATAPORT_READ_TARGET_RENDER_CACHE);
+            brw_dp_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
+                        BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ,
+                        BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8));
       } else if (devinfo->ver >= 7 && spill_offset < (1 << 12) * REG_SIZE) {
          /* The Gfx7 descriptor-based offset is 12 bits of HWORD units.
           * Because the Gfx7-style scratch block read is hardwired to BTI 255,
@@ -966,10 +965,9 @@ fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
          spill_inst->send_is_volatile = false;
          spill_inst->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
          spill_inst->desc =
-            brw_dp_write_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
-                              BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8),
-                              GFX6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE,
-                              false /* send_commit_msg */);
+            brw_dp_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
+                        GFX6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE,
+                        BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8));
       } else {
          spill_inst = bld.emit(SHADER_OPCODE_GFX4_SCRATCH_WRITE,
                                bld.null_reg_f(), src);
