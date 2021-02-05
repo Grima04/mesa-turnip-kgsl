@@ -889,9 +889,28 @@ bool fixed_to_exec(Operand op)
    return op.isFixed() && op.physReg() == exec;
 }
 
-bool can_eliminate_fcanonicalize(aco_opcode op)
+bool does_fp_op_flush_denorms(opt_ctx &ctx, aco_opcode op)
 {
-   return instr_info.can_use_input_modifiers[(int)op] && op != aco_opcode::v_cndmask_b32;
+   if (ctx.program->chip_class <= GFX8) {
+      switch (op) {
+      case aco_opcode::v_min_f32:
+      case aco_opcode::v_max_f32:
+      case aco_opcode::v_med3_f32:
+      case aco_opcode::v_min3_f32:
+      case aco_opcode::v_max3_f32:
+      case aco_opcode::v_min_f16:
+      case aco_opcode::v_max_f16:
+         return false;
+      default:
+         break;
+      }
+   }
+   return op != aco_opcode::v_cndmask_b32;
+}
+
+bool can_eliminate_fcanonicalize(opt_ctx &ctx, aco_opcode op)
+{
+   return instr_info.can_use_input_modifiers[(int)op] && does_fp_op_flush_denorms(ctx, op);
 }
 
 void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
@@ -943,7 +962,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 
       /* VALU: propagate neg, abs & inline constants */
       else if (instr->isVALU()) {
-         bool is_fp = can_eliminate_fcanonicalize(instr->opcode);
+         bool is_fp = can_eliminate_fcanonicalize(ctx, instr->opcode);
          if ((info.is_temp() || (info.is_fcanonicalize() && is_fp)) && info.temp.type() == RegType::vgpr && valu_can_accept_vgpr(instr, i)) {
             instr->operands[i].setTemp(info.temp);
             info = ctx.info[info.temp.id()];
@@ -2555,7 +2574,7 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
             sgpr_ids[!!sgpr_ids[0]] = instr->operands[i].tempId();
       }
       ssa_info& info = ctx.info[instr->operands[i].tempId()];
-      if ((info.is_temp() || (info.is_fcanonicalize() && can_eliminate_fcanonicalize(instr->opcode))) &&
+      if ((info.is_temp() || (info.is_fcanonicalize() && can_eliminate_fcanonicalize(ctx, instr->opcode))) &&
           info.temp.type() == RegType::sgpr)
          operand_mask |= 1u << i;
    }
