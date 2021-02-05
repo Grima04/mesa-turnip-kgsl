@@ -804,10 +804,17 @@ anv_image_create(VkDevice _device,
    image->usage = anv_image_create_usage(pCreateInfo, pCreateInfo->usage);
    image->create_flags = pCreateInfo->flags;
    image->tiling = pCreateInfo->tiling;
-   image->disjoint = pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT;
    image->needs_set_tiling = wsi_info && wsi_info->scanout;
    image->drm_format_mod = isl_mod_info ? isl_mod_info->modifier :
                                           DRM_FORMAT_MOD_INVALID;
+
+   /* The Vulkan 1.2.165 glossary says:
+    *
+    *    A disjoint image consists of multiple disjoint planes, and is created
+    *    with the VK_IMAGE_CREATE_DISJOINT_BIT bit set.
+    */
+   image->disjoint = image->format->n_planes > 1 &&
+                     (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT);
 
    if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
       image->stencil_usage = pCreateInfo->usage;

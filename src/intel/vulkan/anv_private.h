@@ -3759,8 +3759,9 @@ struct anv_image {
    VkDeviceSize size;
    uint32_t alignment;
 
-   /* Whether the image is made of several underlying buffer objects rather a
-    * single one with different offsets.
+   /**
+    * Image has multi-planar format and was created with
+    * VK_IMAGE_CREATE_DISJOINT_BIT.
     */
    bool disjoint;
 
