@@ -3067,10 +3067,8 @@ brw_svb_write(struct brw_codegen *p,
               bool   send_commit_msg)
 {
    const struct intel_device_info *devinfo = p->devinfo;
-   const unsigned target_cache =
-      (devinfo->ver >= 7 ? GFX7_SFID_DATAPORT_DATA_CACHE :
-       devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
-       BRW_SFID_DATAPORT_WRITE);
+   assert(devinfo->ver == 6);
+   const unsigned target_cache = GFX6_SFID_DATAPORT_RENDER_CACHE;
    brw_inst *insn;
 
    gfx6_resolve_implied_move(p, &src0, msg_reg_nr);
