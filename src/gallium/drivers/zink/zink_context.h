@@ -212,6 +212,10 @@ struct zink_context {
    struct list_head suspended_queries;
    struct list_head primitives_generated_queries;
    bool queries_disabled, render_condition_active;
+   struct {
+      struct zink_query *query;
+      bool inverted;
+   } render_condition;
 
    struct pipe_resource *dummy_vertex_buffer;
    struct pipe_resource *dummy_xfb_buffer;

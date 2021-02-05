@@ -42,4 +42,9 @@ zink_prune_query(struct zink_screen *screen, struct zink_query *query);
 void
 zink_query_update_gs_states(struct zink_context *ctx);
 
+void
+zink_start_conditional_render(struct zink_context *ctx);
+
+void
+zink_stop_conditional_render(struct zink_context *ctx);
 #endif

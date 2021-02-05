@@ -40,6 +40,7 @@ struct zink_query {
    struct zink_batch_usage batch_id; //batch that the query was started in
 
    union pipe_query_result accumulated_result;
+   struct zink_resource *predicate;
 };
 
 static VkQueryPipelineStatisticFlags
@@ -204,6 +205,7 @@ destroy_query(struct zink_screen *screen, struct zink_query *query)
    for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool); i++)
       if (query->xfb_query_pool[i])
          vkDestroyQueryPool(screen->dev, query->xfb_query_pool[i], NULL);
+   pipe_resource_reference((struct pipe_resource**)&query->predicate, NULL);
    FREE(query);
 }
 
@@ -648,6 +650,31 @@ zink_set_active_query_state(struct pipe_context *pctx, bool enable)
       zink_resume_queries(ctx, batch);
 }
 
+void
+zink_start_conditional_render(struct zink_context *ctx)
+{
+   struct zink_batch *batch = &ctx->batch;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   VkConditionalRenderingFlagsEXT begin_flags = 0;
+   if (ctx->render_condition.inverted)
+      begin_flags = VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
+   VkConditionalRenderingBeginInfoEXT begin_info = {};
+   begin_info.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
+   begin_info.buffer = ctx->render_condition.query->predicate->obj->buffer;
+   begin_info.flags = begin_flags;
+   screen->vk_CmdBeginConditionalRenderingEXT(batch->state->cmdbuf, &begin_info);
+   zink_batch_reference_resource_rw(batch, ctx->render_condition.query->predicate, false);
+}
+
+void
+zink_stop_conditional_render(struct zink_context *ctx)
+{
+   struct zink_batch *batch = &ctx->batch;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   zink_clear_apply_conditionals(ctx);
+   screen->vk_CmdEndConditionalRenderingEXT(batch->state->cmdbuf);
+}
+
 static void
 zink_render_condition(struct pipe_context *pctx,
                       struct pipe_query *pquery,
@@ -655,33 +682,29 @@ zink_render_condition(struct pipe_context *pctx,
                       enum pipe_render_cond_flag mode)
 {
    struct zink_context *ctx = zink_context(pctx);
-   struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_query *query = (struct zink_query *)pquery;
-   struct zink_batch *batch = zink_batch_no_rp(ctx);
+   zink_batch_no_rp(ctx);
    VkQueryResultFlagBits flags = 0;
 
    if (query == NULL) {
-      zink_clear_apply_conditionals(ctx);
-      screen->vk_CmdEndConditionalRenderingEXT(batch->state->cmdbuf);
+      zink_stop_conditional_render(ctx);
       ctx->render_condition_active = false;
+      ctx->render_condition.query = NULL;
       return;
    }
 
-   struct pipe_resource *pres;
    struct zink_resource *res;
-   struct pipe_resource templ = {};
-   templ.width0 = 8;
-   templ.height0 = 1;
-   templ.depth0 = 1;
-   templ.format = PIPE_FORMAT_R8_UINT;
-   templ.target = PIPE_BUFFER;
+   if (!query->predicate) {
+      struct pipe_resource *pres;
 
-   /* need to create a vulkan buffer to copy the data into */
-   pres = pctx->screen->resource_create(pctx->screen, &templ);
-   if (!pres)
-      return;
+      /* need to create a vulkan buffer to copy the data into */
+      pres = pipe_buffer_create(pctx->screen, PIPE_BIND_QUERY_BUFFER, PIPE_USAGE_DEFAULT, sizeof(uint64_t));
+      if (!pres)
+         return;
 
-   res = (struct zink_resource *)pres;
+      query->predicate = zink_resource(pres);
+   }
+   res = query->predicate;
 
    if (mode == PIPE_RENDER_COND_WAIT || mode == PIPE_RENDER_COND_BY_REGION_WAIT)
       flags |= VK_QUERY_RESULT_WAIT_BIT;
@@ -691,25 +714,15 @@ zink_render_condition(struct pipe_context *pctx,
    if (query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
        !is_so_overflow_query(query)) {
       copy_results_to_buffer(ctx, query, res, 0, num_results, flags);
-      batch = &ctx->batch;
    } else {
       /* these need special handling */
-      force_cpu_read(ctx, pquery, true, PIPE_QUERY_TYPE_U32, pres, 0);
-      batch = &ctx->batch;
-      zink_batch_reference_resource_rw(batch, res, false);
+      force_cpu_read(ctx, pquery, true, PIPE_QUERY_TYPE_U32, &res->base, 0);
+      zink_batch_reference_resource_rw(&ctx->batch, res, false);
    }
-
-   VkConditionalRenderingFlagsEXT begin_flags = 0;
-   if (condition)
-      begin_flags = VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
-   VkConditionalRenderingBeginInfoEXT begin_info = {};
-   begin_info.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
-   begin_info.buffer = res->obj->buffer;
-   begin_info.flags = begin_flags;
-   screen->vk_CmdBeginConditionalRenderingEXT(batch->state->cmdbuf, &begin_info);
+   ctx->render_condition.inverted = condition;
    ctx->render_condition_active = true;
-
-   pipe_resource_reference(&pres, NULL);
+   ctx->render_condition.query = query;
+   zink_start_conditional_render(ctx);
 }
 
 static void
