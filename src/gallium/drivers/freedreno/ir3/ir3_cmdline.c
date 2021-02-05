@@ -231,18 +231,18 @@ load_spirv(const char *filename, const char *entry, gl_shader_stage stage)
 {
    const struct spirv_to_nir_options spirv_options = {
       /* these caps are just make-believe */
-      .caps =
-         {
-            .draw_parameters = true,
-            .float64 = true,
-            .image_read_without_format = true,
-            .image_write_without_format = true,
-            .int64 = true,
-            .variable_pointers = true,
-         },
+      .caps = {
+         .draw_parameters = true,
+         .float64 = true,
+         .image_read_without_format = true,
+         .image_write_without_format = true,
+         .int64 = true,
+         .variable_pointers = true,
+      },
       .debug = {
          .func = debug_func,
-      }};
+      }
+   };
    nir_shader *nir;
    void *buf;
    size_t size;
@@ -261,9 +261,9 @@ load_spirv(const char *filename, const char *entry, gl_shader_stage stage)
 static const char *shortopts = "g:hv";
 
 static const struct option longopts[] = {
-   {"gpu", required_argument, 0, 'g'},
-   {"help", no_argument, 0, 'h'},
-   {"verbose", no_argument, 0, 'v'},
+   {"gpu",     required_argument, 0, 'g'},
+   {"help",    no_argument,       0, 'h'},
+   {"verbose", no_argument,       0, 'v'},
 };
 
 static void

@@ -288,12 +288,12 @@ emit_blit_setup(struct fd_ringbuffer *ring, enum pipe_format pfmt,
          COND(util_format_is_pure_uint(pfmt), A6XX_SP_2D_DST_FORMAT_UINT) |
          COND(util_format_is_snorm(pfmt),
               A6XX_SP_2D_DST_FORMAT_SINT | A6XX_SP_2D_DST_FORMAT_NORM) |
-         COND(util_format_is_unorm(pfmt),
-              // TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about
-              // that
-              //						A6XX_SP_2D_DST_FORMAT_UINT
-              //|
-              A6XX_SP_2D_DST_FORMAT_NORM) |
+         COND(
+            util_format_is_unorm(pfmt),
+            // TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about
+            // that
+            //A6XX_SP_2D_DST_FORMAT_UINT |
+            A6XX_SP_2D_DST_FORMAT_NORM) |
          COND(is_srgb, A6XX_SP_2D_DST_FORMAT_SRGB) |
          A6XX_SP_2D_DST_FORMAT_MASK(0xf));
 
@@ -867,16 +867,15 @@ fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
    enum a3xx_msaa_samples samples = fd_msaa_samples(batch->framebuffer.samples);
 
    OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 10);
-   OUT_RING(
-      ring,
-      A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(sfmt) |
-         A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(TILE6_2) |
-         A6XX_SP_PS_2D_SRC_INFO_SAMPLES(samples) |
-         COND(samples > MSAA_ONE, A6XX_SP_PS_2D_SRC_INFO_SAMPLES_AVERAGE) |
-         COND(util_format_is_srgb(psurf->format), A6XX_SP_PS_2D_SRC_INFO_SRGB) |
-         A6XX_SP_PS_2D_SRC_INFO_UNK20 | A6XX_SP_PS_2D_SRC_INFO_UNK22);
+   OUT_RING(ring,
+            A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(sfmt) |
+            A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(TILE6_2) |
+            A6XX_SP_PS_2D_SRC_INFO_SAMPLES(samples) |
+            COND(samples > MSAA_ONE, A6XX_SP_PS_2D_SRC_INFO_SAMPLES_AVERAGE) |
+            COND(util_format_is_srgb(psurf->format), A6XX_SP_PS_2D_SRC_INFO_SRGB) |
+            A6XX_SP_PS_2D_SRC_INFO_UNK20 | A6XX_SP_PS_2D_SRC_INFO_UNK22);
    OUT_RING(ring, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(psurf->width) |
-                     A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(psurf->height));
+                  A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(psurf->height));
    OUT_RING(ring, gmem_base);       /* SP_PS_2D_SRC_LO */
    OUT_RING(ring, gmem_base >> 32); /* SP_PS_2D_SRC_HI */
    OUT_RING(ring, A6XX_SP_PS_2D_SRC_PITCH_PITCH(gmem_pitch));

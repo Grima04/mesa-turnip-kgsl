@@ -80,18 +80,16 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       .info = info,
       .indirect = indirect,
       .draw = draw,
-      .key =
-         {
-            .vs = ctx->prog.vs,
-            .fs = ctx->prog.fs,
-            .key =
-               {
-                  .rasterflat = ctx->rasterizer->flatshade,
-                  .has_per_samp = fd5_ctx->fastc_srgb || fd5_ctx->vastc_srgb,
-                  .vastc_srgb = fd5_ctx->vastc_srgb,
-                  .fastc_srgb = fd5_ctx->fastc_srgb,
-               },
+      .key = {
+         .vs = ctx->prog.vs,
+         .fs = ctx->prog.fs,
+         .key = {
+            .rasterflat = ctx->rasterizer->flatshade,
+            .has_per_samp = fd5_ctx->fastc_srgb || fd5_ctx->vastc_srgb,
+            .vastc_srgb = fd5_ctx->vastc_srgb,
+            .fastc_srgb = fd5_ctx->fastc_srgb,
          },
+      },
       .rasterflat = ctx->rasterizer->flatshade,
       .sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
       .sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,

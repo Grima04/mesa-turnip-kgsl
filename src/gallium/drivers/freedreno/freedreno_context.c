@@ -167,8 +167,10 @@ fd_memory_barrier(struct pipe_context *pctx, unsigned flags)
       return;
 
    fd_context_flush(pctx, NULL, 0);
+
    /* TODO do we need to check for persistently mapped buffers and
-    * fd_bo_cpu_prep()?? */
+    * fd_bo_cpu_prep()??
+    */
 }
 
 static void

@@ -90,8 +90,7 @@ struct fd_batch {
       FD_BUFFER_DEPTH = PIPE_CLEAR_DEPTH,
       FD_BUFFER_STENCIL = PIPE_CLEAR_STENCIL,
       FD_BUFFER_ALL = FD_BUFFER_COLOR | FD_BUFFER_DEPTH | FD_BUFFER_STENCIL,
-   } invalidated,
-      cleared, fast_cleared, restore, resolve;
+   } invalidated, cleared, fast_cleared, restore, resolve;
 
    /* is this a non-draw batch (ie compute/blit which has no pfb state)? */
    bool nondraw : 1;

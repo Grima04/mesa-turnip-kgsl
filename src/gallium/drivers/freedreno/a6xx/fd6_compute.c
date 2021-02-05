@@ -103,8 +103,7 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    struct fd_ringbuffer *ring = ctx->batch->draw;
    unsigned nglobal = 0;
 
-   v =
-      ir3_shader_variant(ir3_get_shader(ctx->compute), key, false, &ctx->debug);
+   v = ir3_shader_variant(ir3_get_shader(ctx->compute), key, false, &ctx->debug);
    if (!v)
       return;
 
@@ -141,9 +140,9 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    const unsigned work_dim = info->work_dim ? info->work_dim : 3;
    OUT_PKT4(ring, REG_A6XX_HLSQ_CS_NDRANGE_0, 7);
    OUT_RING(ring, A6XX_HLSQ_CS_NDRANGE_0_KERNELDIM(work_dim) |
-                     A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEX(local_size[0] - 1) |
-                     A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEY(local_size[1] - 1) |
-                     A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEZ(local_size[2] - 1));
+                  A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEX(local_size[0] - 1) |
+                  A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEY(local_size[1] - 1) |
+                  A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEZ(local_size[2] - 1));
    OUT_RING(ring,
             A6XX_HLSQ_CS_NDRANGE_1_GLOBALSIZE_X(local_size[0] * num_groups[0]));
    OUT_RING(ring, 0); /* HLSQ_CS_NDRANGE_2_GLOBALOFF_X */

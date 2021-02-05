@@ -94,14 +94,17 @@ struct gpu_info {
 
 /* keep sorted by gpu name: */
 static const struct gpu_info gpu_infos[] = {
-   {"a306", 307, 4, SZ_128K}, {"a405", 405, 4, SZ_256K},
-   {"a530", 530, 4, SZ_1M},   {"a618", 618, 1, SZ_512K},
-   {"a630", 630, 1, SZ_1M},   {"a650", 630, 1, SZ_1M + SZ_128K},
+   {"a306", 307, 4, SZ_128K},
+   {"a405", 405, 4, SZ_256K},
+   {"a530", 530, 4, SZ_1M},
+   {"a618", 618, 1, SZ_512K},
+   {"a630", 630, 1, SZ_1M},
+   {"a650", 630, 1, SZ_1M + SZ_128K},
 };
 
 static const struct option opts[] = {
-   {.name = "gpu", .has_arg = 1, NULL, 'g'},
-   {.name = "help", .has_arg = 0, NULL, 'h'},
+   {.name = "gpu",     .has_arg = 1, NULL, 'g'},
+   {.name = "help",    .has_arg = 0, NULL, 'h'},
    {.name = "verbose", .has_arg = 0, NULL, 'v'},
    {}};
 

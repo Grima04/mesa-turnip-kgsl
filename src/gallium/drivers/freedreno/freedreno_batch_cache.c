@@ -340,15 +340,15 @@ alloc_batch_locked(struct fd_batch_cache *cache, struct fd_context *ctx,
 
    while ((idx = ffs(~cache->batch_mask)) == 0) {
 #if 0
-		for (unsigned i = 0; i < ARRAY_SIZE(cache->batches); i++) {
-			batch = cache->batches[i];
-			debug_printf("%d: needs_flush=%d, depends:", batch->idx, batch->needs_flush);
-			set_foreach(batch->dependencies, entry) {
-				struct fd_batch *dep = (struct fd_batch *)entry->key;
-				debug_printf(" %d", dep->idx);
-			}
-			debug_printf("\n");
-		}
+      for (unsigned i = 0; i < ARRAY_SIZE(cache->batches); i++) {
+         batch = cache->batches[i];
+         debug_printf("%d: needs_flush=%d, depends:", batch->idx, batch->needs_flush);
+         set_foreach(batch->dependencies, entry) {
+            struct fd_batch *dep = (struct fd_batch *)entry->key;
+            debug_printf(" %d", dep->idx);
+         }
+         debug_printf("\n");
+      }
 #endif
       /* TODO: is LRU the better policy?  Or perhaps the batch that
        * depends on the fewest other batches?

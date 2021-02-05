@@ -92,8 +92,7 @@
 struct gmem_key {
    uint16_t minx, miny;
    uint16_t width, height;
-   uint8_t
-      gmem_page_align; /* alignment in multiples of 0x1000 to reduce key size */
+   uint8_t gmem_page_align; /* alignment in multiples of 0x1000 to reduce key size */
    uint8_t nr_cbufs;
    uint8_t cbuf_cpp[MAX_RENDER_TARGETS];
    uint8_t zsbuf_cpp[2];
@@ -460,8 +459,7 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
 {
    struct fd_screen *screen = batch->ctx->screen;
    struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-   bool has_zs =
-      pfb->zsbuf &&
+   bool has_zs = pfb->zsbuf &&
       !!(batch->gmem_reason & (FD_GMEM_DEPTH_ENABLED | FD_GMEM_STENCIL_ENABLED |
                                FD_GMEM_CLEARS_DEPTH_STENCIL));
    struct gmem_key *key = rzalloc(screen->gmem_cache.ht, struct gmem_key);

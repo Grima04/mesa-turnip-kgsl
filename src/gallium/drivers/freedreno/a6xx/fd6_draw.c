@@ -144,20 +144,17 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       .info = info,
       .indirect = indirect,
       .draw = draw,
-      .key =
-         {
-            .vs = ctx->prog.vs,
-            .gs = ctx->prog.gs,
-            .fs = ctx->prog.fs,
-            .key =
-               {
-                  .rasterflat = ctx->rasterizer->flatshade,
-                  .layer_zero = !gs_info ||
-                                !(gs_info->outputs_written & VARYING_BIT_LAYER),
-                  .sample_shading = (ctx->min_samples > 1),
-                  .msaa = (ctx->framebuffer.samples > 1),
-               },
+      .key = {
+         .vs = ctx->prog.vs,
+         .gs = ctx->prog.gs,
+         .fs = ctx->prog.fs,
+         .key = {
+            .rasterflat = ctx->rasterizer->flatshade,
+            .layer_zero = !gs_info || !(gs_info->outputs_written & VARYING_BIT_LAYER),
+            .sample_shading = (ctx->min_samples > 1),
+            .msaa = (ctx->framebuffer.samples > 1),
          },
+      },
       .rasterflat = ctx->rasterizer->flatshade,
       .sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
       .sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,

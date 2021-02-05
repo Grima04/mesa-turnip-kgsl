@@ -104,22 +104,21 @@ fd5_blend_state_create(struct pipe_context *pctx,
 
       if (rt->blend_enable) {
          so->rb_mrt[i].control |=
-            //					A5XX_RB_MRT_CONTROL_READ_DEST_ENABLE
-            //|
-            A5XX_RB_MRT_CONTROL_BLEND | A5XX_RB_MRT_CONTROL_BLEND2;
+//               A5XX_RB_MRT_CONTROL_READ_DEST_ENABLE |
+               A5XX_RB_MRT_CONTROL_BLEND | A5XX_RB_MRT_CONTROL_BLEND2;
          mrt_blend |= (1 << i);
          so->lrz_write = false;
       }
 
       if (reads_dest) {
-         //			so->rb_mrt[i].control |=
-         //A5XX_RB_MRT_CONTROL_READ_DEST_ENABLE;
+//         so->rb_mrt[i].control |=
+//               A5XX_RB_MRT_CONTROL_READ_DEST_ENABLE;
          mrt_blend |= (1 << i);
       }
 
-      //		if (cso->dither)
-      //			so->rb_mrt[i].buf_info |=
-      //A5XX_RB_MRT_BUF_INFO_DITHER_MODE(DITHER_ALWAYS);
+//      if (cso->dither)
+//         so->rb_mrt[i].buf_info |=
+//               A5XX_RB_MRT_BUF_INFO_DITHER_MODE(DITHER_ALWAYS);
    }
 
    so->rb_blend_cntl =

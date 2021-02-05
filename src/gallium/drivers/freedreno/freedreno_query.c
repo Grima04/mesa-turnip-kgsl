@@ -105,8 +105,7 @@ fd_render_condition(struct pipe_context *pctx, struct pipe_query *pq,
    ctx->cond_mode = mode;
 }
 
-#define _Q(_name, _query_type, _type, _result_type)                            \
-   {                                                                           \
+#define _Q(_name, _query_type, _type, _result_type) {                          \
       .name = _name, .query_type = _query_type,                                \
       .type = PIPE_DRIVER_QUERY_TYPE_##_type,                                  \
       .result_type = PIPE_DRIVER_QUERY_RESULT_TYPE_##_result_type,             \

@@ -106,11 +106,10 @@ fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       .info = info,
       .indirect = indirect,
       .draw = draw,
-      .key =
-         {
-            .vs = ctx->prog.vs,
-            .fs = ctx->prog.fs,
-         },
+      .key = {
+         .vs = ctx->prog.vs,
+         .fs = ctx->prog.fs,
+      },
       .rasterflat = ctx->rasterizer->flatshade,
       .sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
       .sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,

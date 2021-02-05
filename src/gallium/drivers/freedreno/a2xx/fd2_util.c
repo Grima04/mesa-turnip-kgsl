@@ -212,14 +212,12 @@ fd2_tex_swiz(enum pipe_format format, unsigned swizzle_r, unsigned swizzle_g,
              unsigned swizzle_b, unsigned swizzle_a)
 {
    const struct util_format_description *desc = util_format_description(format);
-   unsigned char swiz[4] =
-      {
-         swizzle_r,
-         swizzle_g,
-         swizzle_b,
-         swizzle_a,
-      },
-                 rswiz[4];
+   unsigned char swiz[4] = {
+      swizzle_r,
+      swizzle_g,
+      swizzle_b,
+      swizzle_a,
+   }, rswiz[4];
 
    util_format_compose_swizzles(desc->swizzle, swiz, rswiz);
 
