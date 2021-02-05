@@ -567,7 +567,7 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
                 bi_instr *br = clause->tuples[clause->tuple_count - 1].add;
                 assert(br && br->branch_target);
 
-                if (!bi_is_terminal_block(ctx, br->branch_target)) {
+                if (!bi_is_terminal_block(br->branch_target)) {
                         /* Put it in the high place */
                         int32_t qwords = bi_block_offset(ctx, clause, br->branch_target);
                         int32_t bytes = qwords * 16;

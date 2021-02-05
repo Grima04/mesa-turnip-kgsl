@@ -751,9 +751,8 @@ unsigned bi_clause_quadwords(bi_clause *clause);
 signed bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target);
 
 static inline bool
-bi_is_terminal_block(bi_context *ctx, bi_block *block)
+bi_is_terminal_block(bi_block *block)
 {
-
         return block->base.successors[0] == NULL &&
                block->base.successors[1] == NULL &&
                list_is_empty(&block->clauses);
