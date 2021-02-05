@@ -227,10 +227,14 @@ u_upload_alloc_buffer(struct u_upload_mgr *upload, unsigned min_size)
     * before the buffer is unreferenced.
     *
     * This technique can increase CPU performance by 10%.
+    *
+    * The caller of u_upload_alloc_buffer will consume min_size bytes,
+    * so init the buffer_private_refcount to 1 + size - min_size, instead
+    * of size to avoid overflowing reference.count when size is huge.
     */
-   assert(size < INT32_MAX / 2); /* prevent overflows of reference.count */
-   p_atomic_add(&upload->buffer->reference.count, size);
-   upload->buffer_private_refcount = size;
+   upload->buffer_private_refcount = 1 + (size - min_size);
+   assert(upload->buffer_private_refcount < INT32_MAX / 2);
+   p_atomic_add(&upload->buffer->reference.count, upload->buffer_private_refcount);
 
    /* Map the new buffer. */
    upload->map = pipe_buffer_map_range(upload->pipe, upload->buffer,
@@ -304,6 +308,7 @@ u_upload_alloc(struct u_upload_mgr *upload,
    if (*outbuf != upload->buffer) {
       pipe_resource_reference(outbuf, NULL);
       *outbuf = upload->buffer;
+      assert (upload->buffer_private_refcount > 0);
       upload->buffer_private_refcount--;
    }
 
