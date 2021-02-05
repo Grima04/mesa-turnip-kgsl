@@ -1091,10 +1091,16 @@ nv50_set_vertex_buffers(struct pipe_context *pipe,
                                  unbind_num_trailing_slots,
                                  take_ownership);
 
+   unsigned clear_mask = ~u_bit_consecutive(start_slot + count, unbind_num_trailing_slots);
+   nv50->vbo_user &= clear_mask;
+   nv50->vbo_constant &= clear_mask;
+   nv50->vtxbufs_coherent &= clear_mask;
+
    if (!vb) {
-      nv50->vbo_user &= ~(((1ull << count) - 1) << start_slot);
-      nv50->vbo_constant &= ~(((1ull << count) - 1) << start_slot);
-      nv50->vtxbufs_coherent &= ~(((1ull << count) - 1) << start_slot);
+      clear_mask = ~u_bit_consecutive(start_slot, count);
+      nv50->vbo_user &= clear_mask;
+      nv50->vbo_constant &= clear_mask;
+      nv50->vtxbufs_coherent &= clear_mask;
       return;
    }
 
