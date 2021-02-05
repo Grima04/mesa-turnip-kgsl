@@ -796,6 +796,7 @@ anv_image_create(VkDevice _device,
                                              pCreateInfo->extent);
    image->vk_format = pCreateInfo->format;
    image->format = anv_get_format(pCreateInfo->format);
+   image->n_planes = image->format->n_planes;
    image->aspects = vk_format_aspects(image->vk_format);
    image->levels = pCreateInfo->mipLevels;
    image->array_size = pCreateInfo->arrayLayers;
@@ -829,14 +830,9 @@ anv_image_create(VkDevice _device,
       return VK_SUCCESS;
    }
 
-   const struct anv_format *format = anv_get_format(image->vk_format);
-   assert(format != NULL);
-
    const isl_tiling_flags_t isl_tiling_flags =
       choose_isl_tiling_flags(&device->info, create_info, isl_mod_info,
                               image->needs_set_tiling);
-
-   image->n_planes = format->n_planes;
 
    const VkImageFormatListCreateInfoKHR *fmt_list =
       vk_find_struct_const(pCreateInfo->pNext,
