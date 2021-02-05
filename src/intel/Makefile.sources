@@ -27,7 +27,9 @@ COMMON_FILES = \
 	common/gen_sample_positions.c \
 	common/gen_sample_positions.h \
 	common/gen_uuid.c \
-	common/gen_uuid.h
+	common/gen_uuid.h \
+	common/intel_measure.c \
+	common/intel_measure.h
 
 COMPILER_FILES = \
 	compiler/brw_cfg.cpp \
