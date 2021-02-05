@@ -821,7 +821,7 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
 
         uint64_t header = bi_pack_header(clause, next_1, next_2, tdd);
         uint64_t ec0 = (clause->constants[0] >> 4);
-        unsigned m0 = 0; /* TODO: set me so we don't break branches */
+        unsigned m0 = (clause->pcrel_idx == 0) ? 4 : 0;
 
         unsigned counts[8] = {
                 1, 2, 3, 3, 4, 5, 5, 6
