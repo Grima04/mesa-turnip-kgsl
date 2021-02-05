@@ -511,11 +511,26 @@ anv_image_from_gralloc(VkDevice device_h,
    if (result != VK_SUCCESS)
       goto fail_create;
 
-   if (bo->size < image->size) {
+   VkImageMemoryRequirementsInfo2 mem_reqs_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+      .image = image_h,
+   };
+
+   VkMemoryRequirements2 mem_reqs = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+   };
+
+   anv_GetImageMemoryRequirements2(_device, &mem_reqs_info, &mem_reqs);
+
+   VkDeviceSize aligned_image_size =
+      align_u64(mem_reqs.memoryRequirements.size,
+                mem_reqs.memoryRequirements.alignment);
+
+   if (bo->size < aligned_image_size) {
       result = vk_errorf(device, device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                          "dma-buf from VkNativeBufferANDROID is too small for "
                          "VkImage: %"PRIu64"B < %"PRIu64"B",
-                         bo->size, image->size);
+                         bo->size, aligned_image_size);
       goto fail_size;
    }
 
