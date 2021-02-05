@@ -32,51 +32,53 @@ static bool bin_debug = false;
 /* NOTE, non-interesting gmem keys (ie. things that are small enough to fit
  * in a single bin) are commented out, but retained for posterity.
  */
+/* clang-format off */
 static const struct gmem_key keys[] = {
-	{ .minx=0, .miny=0, .width=1536, .height=2048, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {1,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	/* manhattan: */
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-//	{ .minx=0, .miny=0, .width=64, .height=64, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-//	{ .minx=0, .miny=0, .width=32, .height=32, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-//	{ .minx=0, .miny=0, .width=16, .height=16, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-//	{ .minx=0, .miny=0, .width=8, .height=8, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-//	{ .minx=0, .miny=0, .width=4, .height=4, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-//	{ .minx=0, .miny=0, .width=2, .height=2, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-//	{ .minx=0, .miny=0, .width=1, .height=1, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=4, .cbuf_cpp = {4,4,4,4,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-//	{ .minx=0, .miny=0, .width=64, .height=64, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=1024, .height=1024, .gmem_page_align=1, .nr_cbufs=0, .cbuf_cpp = {0,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=0, .cbuf_cpp = {0,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-	{ .minx=0, .miny=0, .width=960, .height=540, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=480, .height=270, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-//	{ .minx=0, .miny=0, .width=240, .height=135, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-//	{ .minx=0, .miny=0, .width=120, .height=67, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=1536, .height=2048, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {1,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   /* manhattan: */
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+// { .minx=0, .miny=0, .width=64, .height=64, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+// { .minx=0, .miny=0, .width=32, .height=32, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+// { .minx=0, .miny=0, .width=16, .height=16, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+// { .minx=0, .miny=0, .width=8, .height=8, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+// { .minx=0, .miny=0, .width=4, .height=4, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+// { .minx=0, .miny=0, .width=2, .height=2, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+// { .minx=0, .miny=0, .width=1, .height=1, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=4, .cbuf_cpp = {4,4,4,4,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+// { .minx=0, .miny=0, .width=64, .height=64, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=1024, .height=1024, .gmem_page_align=1, .nr_cbufs=0, .cbuf_cpp = {0,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=0, .cbuf_cpp = {0,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+   { .minx=0, .miny=0, .width=960, .height=540, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=480, .height=270, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+// { .minx=0, .miny=0, .width=240, .height=135, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+// { .minx=0, .miny=0, .width=120, .height=67, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
 
-	/* trex: */
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
-	{ .minx=0, .miny=0, .width=960, .height=540, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
-	{ .minx=0, .miny=0, .width=1024, .height=1024, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
-//	{ .minx=0, .miny=0, .width=64, .height=64, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   /* trex: */
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
+   { .minx=0, .miny=0, .width=960, .height=540, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
+   { .minx=0, .miny=0, .width=1024, .height=1024, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
+// { .minx=0, .miny=0, .width=64, .height=64, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
 
-	/* supertuxkart: */
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
-	{ .minx=0, .miny=0, .width=810, .height=810, .gmem_page_align=1, .nr_cbufs=2, .cbuf_cpp = {4,4,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-//	{ .minx=0, .miny=0, .width=405, .height=405, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=405, .height=405, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=810, .height=810, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-	{ .minx=0, .miny=0, .width=810, .height=810, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-	{ .minx=0, .miny=0, .width=810, .height=810, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=960, .height=540, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=960, .height=540, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=2, .cbuf_cpp = {4,4,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
-	{ .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+   /* supertuxkart: */
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {2,0,}},
+   { .minx=0, .miny=0, .width=810, .height=810, .gmem_page_align=1, .nr_cbufs=2, .cbuf_cpp = {4,4,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+// { .minx=0, .miny=0, .width=405, .height=405, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=405, .height=405, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=810, .height=810, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+   { .minx=0, .miny=0, .width=810, .height=810, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+   { .minx=0, .miny=0, .width=810, .height=810, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=960, .height=540, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {2,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=960, .height=540, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {0,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=2, .cbuf_cpp = {4,4,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {8,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
+   { .minx=0, .miny=0, .width=1920, .height=1080, .gmem_page_align=1, .nr_cbufs=1, .cbuf_cpp = {4,0,0,0,0,0,0,0,}, .zsbuf_cpp = {4,0,}},
 };
+/* clang-format on */
 
 struct gpu_info {
 	const char *name;

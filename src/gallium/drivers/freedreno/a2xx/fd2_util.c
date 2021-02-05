@@ -81,39 +81,42 @@ pipe2surface(enum pipe_format format, struct surface_format *fmt)
 	 */
 
 #define CASE(r, g, b, a) case (r | g << 8 | b << 16 | a << 24)
-	if (desc->channel[0].type == UTIL_FORMAT_TYPE_FLOAT) {
-		switch (channel_size) {
-		CASE(16,  0,  0,  0): return FMT_16_FLOAT;
-		CASE(16, 16,  0,  0): return FMT_16_16_FLOAT;
-		CASE(16, 16, 16,  0): return FMT_16_16_16_16_FLOAT; /* Note: only for vertex */
-		CASE(16, 16, 16, 16): return FMT_16_16_16_16_FLOAT;
-		CASE(32,  0,  0,  0): return FMT_32_FLOAT;
-		CASE(32, 32,  0,  0): return FMT_32_32_FLOAT;
-		CASE(32, 32, 32,  0): return FMT_32_32_32_FLOAT;
-		CASE(32, 32, 32, 32): return FMT_32_32_32_32_FLOAT;
-		}
-	} else {
-		switch (channel_size) {
-		CASE( 8,  0,  0,  0): return FMT_8;
-		CASE( 8,  8,  0,  0): return FMT_8_8;
-		CASE( 8,  8,  8,  0): return FMT_8_8_8_8; /* Note: only for vertex */
-		CASE( 8,  8,  8,  8): return FMT_8_8_8_8;
-		CASE(16,  0,  0,  0): return FMT_16;
-		CASE(16, 16,  0,  0): return FMT_16_16;
-		CASE(16, 16, 16,  0): return FMT_16_16_16_16; /* Note: only for vertex */
-		CASE(16, 16, 16, 16): return FMT_16_16_16_16;
-		CASE(32,  0,  0,  0): return FMT_32;
-		CASE(32, 32,  0,  0): return FMT_32_32;
-		CASE(32, 32, 32,  0): return FMT_32_32_32_32; /* Note: only for vertex */
-		CASE(32, 32, 32, 32): return FMT_32_32_32_32;
-		CASE( 4,  4,  4,  4): return FMT_4_4_4_4;
-		CASE( 5,  5,  5,  1): return FMT_1_5_5_5;
-		CASE( 5,  6,  5,  0): return FMT_5_6_5;
-		CASE(10, 10, 10,  2): return FMT_2_10_10_10;
-		CASE( 8, 24,  0,  0): return FMT_24_8;
-		CASE( 2,  3,  3,  0): return FMT_2_3_3; /* Note: R/B swapped */
-		}
-	}
+
+   /* clang-format off */
+   if (desc->channel[0].type == UTIL_FORMAT_TYPE_FLOAT) {
+      switch (channel_size) {
+      CASE(16,  0,  0,  0): return FMT_16_FLOAT;
+      CASE(16, 16,  0,  0): return FMT_16_16_FLOAT;
+      CASE(16, 16, 16,  0): return FMT_16_16_16_16_FLOAT; /* Note: only for vertex */
+      CASE(16, 16, 16, 16): return FMT_16_16_16_16_FLOAT;
+      CASE(32,  0,  0,  0): return FMT_32_FLOAT;
+      CASE(32, 32,  0,  0): return FMT_32_32_FLOAT;
+      CASE(32, 32, 32,  0): return FMT_32_32_32_FLOAT;
+      CASE(32, 32, 32, 32): return FMT_32_32_32_32_FLOAT;
+      }
+   } else {
+      switch (channel_size) {
+      CASE( 8,  0,  0,  0): return FMT_8;
+      CASE( 8,  8,  0,  0): return FMT_8_8;
+      CASE( 8,  8,  8,  0): return FMT_8_8_8_8; /* Note: only for vertex */
+      CASE( 8,  8,  8,  8): return FMT_8_8_8_8;
+      CASE(16,  0,  0,  0): return FMT_16;
+      CASE(16, 16,  0,  0): return FMT_16_16;
+      CASE(16, 16, 16,  0): return FMT_16_16_16_16; /* Note: only for vertex */
+      CASE(16, 16, 16, 16): return FMT_16_16_16_16;
+      CASE(32,  0,  0,  0): return FMT_32;
+      CASE(32, 32,  0,  0): return FMT_32_32;
+      CASE(32, 32, 32,  0): return FMT_32_32_32_32; /* Note: only for vertex */
+      CASE(32, 32, 32, 32): return FMT_32_32_32_32;
+      CASE( 4,  4,  4,  4): return FMT_4_4_4_4;
+      CASE( 5,  5,  5,  1): return FMT_1_5_5_5;
+      CASE( 5,  6,  5,  0): return FMT_5_6_5;
+      CASE(10, 10, 10,  2): return FMT_2_10_10_10;
+      CASE( 8, 24,  0,  0): return FMT_24_8;
+      CASE( 2,  3,  3,  0): return FMT_2_3_3; /* Note: R/B swapped */
+      }
+   }
+   /* clang-format on */
 #undef CASE
 
 	return ~0;

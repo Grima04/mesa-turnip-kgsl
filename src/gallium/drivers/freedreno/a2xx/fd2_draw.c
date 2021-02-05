@@ -183,15 +183,17 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 	 * 32766 works for all primitives (multiple of 2 and 3)
 	 */
 	if (pdraw->count > 32766) {
-		static const uint16_t step_tbl[PIPE_PRIM_MAX] = {
-			[0 ... PIPE_PRIM_MAX - 1]  = 32766,
-			[PIPE_PRIM_LINE_STRIP]     = 32765,
-			[PIPE_PRIM_TRIANGLE_STRIP] = 32764,
+      /* clang-format off */
+      static const uint16_t step_tbl[PIPE_PRIM_MAX] = {
+         [0 ... PIPE_PRIM_MAX - 1]  = 32766,
+         [PIPE_PRIM_LINE_STRIP]     = 32765,
+         [PIPE_PRIM_TRIANGLE_STRIP] = 32764,
 
-			/* needs more work */
-			[PIPE_PRIM_TRIANGLE_FAN]   = 0,
-			[PIPE_PRIM_LINE_LOOP]      = 0,
-		};
+         /* needs more work */
+         [PIPE_PRIM_TRIANGLE_FAN]   = 0,
+         [PIPE_PRIM_LINE_LOOP]      = 0,
+      };
+      /* clang-format on */
 
 		struct pipe_draw_start_count draw = *pdraw;
 		unsigned count = draw.count;

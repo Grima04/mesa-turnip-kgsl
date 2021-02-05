@@ -47,45 +47,50 @@ fd2_context_destroy(struct pipe_context *pctx)
 static struct pipe_resource *
 create_solid_vertexbuf(struct pipe_context *pctx)
 {
-	static const float init_shader_const[] = {
-			/* for clear/gmem2mem/mem2gmem (vertices): */
-			-1.000000, +1.000000, +1.000000,
-			+1.000000, +1.000000, +1.000000,
-			-1.000000, -1.000000, +1.000000,
-			/* for mem2gmem: (tex coords) */
-			+0.000000, +0.000000,
-			+1.000000, +0.000000,
-			+0.000000, +1.000000,
-			/* SCREEN_SCISSOR_BR value (must be at 60 byte offset in page) */
-			0.0,
-			/* zero indices dummy draw workaround (3 16-bit zeros) */
-			0.0, 0.0,
-	};
-	struct pipe_resource *prsc = pipe_buffer_create(pctx->screen,
+   /* clang-format off */
+   static const float init_shader_const[] = {
+      /* for clear/gmem2mem/mem2gmem (vertices): */
+      -1.000000, +1.000000, +1.000000,
+      +1.000000, +1.000000, +1.000000,
+      -1.000000, -1.000000, +1.000000,
+      /* for mem2gmem: (tex coords) */
+      +0.000000, +0.000000,
+      +1.000000, +0.000000,
+      +0.000000, +1.000000,
+      /* SCREEN_SCISSOR_BR value (must be at 60 byte offset in page) */
+      0.0,
+      /* zero indices dummy draw workaround (3 16-bit zeros) */
+      0.0, 0.0,
+   };
+   /* clang-format on */
+
+   struct pipe_resource *prsc = pipe_buffer_create(pctx->screen,
 			PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE, sizeof(init_shader_const));
 	pipe_buffer_write(pctx, prsc, 0,
 			sizeof(init_shader_const), init_shader_const);
 	return prsc;
 }
 
+/* clang-format off */
 static const uint8_t a22x_primtypes[PIPE_PRIM_MAX] = {
-		[PIPE_PRIM_POINTS]         = DI_PT_POINTLIST_PSIZE,
-		[PIPE_PRIM_LINES]          = DI_PT_LINELIST,
-		[PIPE_PRIM_LINE_STRIP]     = DI_PT_LINESTRIP,
-		[PIPE_PRIM_LINE_LOOP]      = DI_PT_LINELOOP,
-		[PIPE_PRIM_TRIANGLES]      = DI_PT_TRILIST,
-		[PIPE_PRIM_TRIANGLE_STRIP] = DI_PT_TRISTRIP,
-		[PIPE_PRIM_TRIANGLE_FAN]   = DI_PT_TRIFAN,
+   [PIPE_PRIM_POINTS]         = DI_PT_POINTLIST_PSIZE,
+   [PIPE_PRIM_LINES]          = DI_PT_LINELIST,
+   [PIPE_PRIM_LINE_STRIP]     = DI_PT_LINESTRIP,
+   [PIPE_PRIM_LINE_LOOP]      = DI_PT_LINELOOP,
+   [PIPE_PRIM_TRIANGLES]      = DI_PT_TRILIST,
+   [PIPE_PRIM_TRIANGLE_STRIP] = DI_PT_TRISTRIP,
+   [PIPE_PRIM_TRIANGLE_FAN]   = DI_PT_TRIFAN,
 };
 
 static const uint8_t a20x_primtypes[PIPE_PRIM_MAX] = {
-		[PIPE_PRIM_POINTS]         = DI_PT_POINTLIST_PSIZE,
-		[PIPE_PRIM_LINES]          = DI_PT_LINELIST,
-		[PIPE_PRIM_LINE_STRIP]     = DI_PT_LINESTRIP,
-		[PIPE_PRIM_TRIANGLES]      = DI_PT_TRILIST,
-		[PIPE_PRIM_TRIANGLE_STRIP] = DI_PT_TRISTRIP,
-		[PIPE_PRIM_TRIANGLE_FAN]   = DI_PT_TRIFAN,
+   [PIPE_PRIM_POINTS]         = DI_PT_POINTLIST_PSIZE,
+   [PIPE_PRIM_LINES]          = DI_PT_LINELIST,
+   [PIPE_PRIM_LINE_STRIP]     = DI_PT_LINESTRIP,
+   [PIPE_PRIM_TRIANGLES]      = DI_PT_TRILIST,
+   [PIPE_PRIM_TRIANGLE_STRIP] = DI_PT_TRISTRIP,
+   [PIPE_PRIM_TRIANGLE_FAN]   = DI_PT_TRIFAN,
 };
+/* clang-format on */
 
 struct pipe_context *
 fd2_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
