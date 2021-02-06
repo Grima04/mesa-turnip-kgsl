@@ -2242,7 +2242,7 @@ emit_cf_list(bi_context *ctx, struct exec_list *list)
 /* shader-db stuff */
 
 static void
-bi_print_stats(bi_context *ctx, FILE *fp)
+bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
 {
         unsigned nr_clauses = 0, nr_tuples = 0, nr_ins = 0;
 
@@ -2276,14 +2276,14 @@ bi_print_stats(bi_context *ctx, FILE *fp)
 
         fprintf(stderr, "shader%d:%s - %s shader: "
                         "%u inst, %u nops, %u clauses, "
-                        "%u threads, %u loops, "
+                        "%u quadwords, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
                         SHADER_DB_COUNT++,
                         ctx->nir->info.label ?: "",
                         ctx->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_nops, nr_clauses,
-                        nr_threads,
+                        size / 16, nr_threads,
                         ctx->loop_count,
                         ctx->spills, ctx->fills);
 }
@@ -2639,7 +2639,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
         if ((bifrost_debug & BIFROST_DBG_SHADERDB || inputs->shaderdb) &&
             !skip_internal) {
-                bi_print_stats(ctx, stderr);
+                bi_print_stats(ctx, program->compiled.size, stderr);
         }
 
         ralloc_free(ctx);
