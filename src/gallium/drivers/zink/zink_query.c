@@ -93,6 +93,14 @@ convert_query_type(unsigned query_type, bool *use_64bit, bool *precise)
 }
 
 static bool
+needs_stats_list(struct zink_query *query)
+{
+   return query->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+          query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE ||
+          query->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE;
+}
+
+static bool
 is_time_query(struct zink_query *query)
 {
    return query->type == PIPE_QUERY_TIMESTAMP || query->type == PIPE_QUERY_TIME_ELAPSED;
@@ -391,7 +399,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (!batch->active_queries)
       batch->active_queries = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    assert(batch->active_queries);
-   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   if (needs_stats_list(q))
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    p_atomic_inc(&q->fences);
    q->batch_id = batch->batch_id;
@@ -430,7 +438,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
                                        q->curr_query, q->index);
    if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT && !is_time_query(q))
       vkCmdEndQuery(batch->cmdbuf, q->query_pool, q->curr_query);
-   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   if (needs_stats_list(q))
       list_delinit(&q->stats_list);
    if (++q->curr_query == q->num_queries) {
       /* always reset on start; this ensures we can actually submit the batch that the current query is on */
@@ -446,7 +454,7 @@ zink_end_query(struct pipe_context *pctx,
    struct zink_query *query = (struct zink_query *)q;
    struct zink_batch *batch = zink_curr_batch(ctx);
 
-   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   if (needs_stats_list(query))
       list_delinit(&query->stats_list);
    if (query->active)
       end_query(ctx, batch, query);
