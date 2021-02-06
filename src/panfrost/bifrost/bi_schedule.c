@@ -951,6 +951,35 @@ bi_rewrite_constants_to_pass(bi_tuple *tuple, uint64_t constant, bool pcrel)
         }
 }
 
+/* Constructs a constant state given a tuple state. This has the
+ * postcondition that pcrel applies to the first constant by convention,
+ * and PC-relative constants will be #0 by convention here, so swap to
+ * match if needed */
+
+static struct bi_const_state
+bi_get_const_state(struct bi_tuple_state *tuple)
+{
+        struct bi_const_state consts = {
+                .constant_count = tuple->constant_count,
+                .constants[0] = tuple->constants[0],
+                .constants[1] = tuple->constants[1],
+                .pcrel = tuple->add && tuple->add->branch_target,
+        };
+
+        /* pcrel applies to the first constant by convention, and
+         * PC-relative constants will be #0 by convention here, so swap
+         * to match if needed */
+        if (consts.pcrel && consts.constants[0]) {
+                assert(consts.constant_count == 2);
+                assert(consts.constants[1] == 0);
+
+                consts.constants[1] = consts.constants[0];
+                consts.constants[0] = 0;
+        }
+
+        return consts;
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
