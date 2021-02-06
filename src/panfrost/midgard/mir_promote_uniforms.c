@@ -28,10 +28,9 @@
 #include "util/u_math.h"
 #include "util/u_memory.h"
 
-/* This pass promotes reads from uniforms from load/store ops to uniform
- * registers if it is beneficial to do so. Normally, this saves both
- * instructions and total register pressure, but it does take a toll on the
- * number of work registers that are available, so this is a balance.
+/* This pass promotes reads from UBOs to register-mapped uniforms.  This saves
+ * both instructions and work register pressure, but it reduces the work
+ * registers available, requiring a balance.
  *
  * We use a heuristic to determine the ideal count, implemented by
  * mir_work_heuristic, which returns the ideal number of work registers.
