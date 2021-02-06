@@ -42,14 +42,12 @@
 static inline unsigned
 bifrost_get_quirks(unsigned product_id)
 {
-        switch (product_id >> 12) {
-        case 6: /* 1st gen */
+        switch (product_id >> 8) {
+        case 0x62:
                 return BIFROST_NO_PRELOAD;
-
-        case 7: /* 2nd gen */
-        case 8: /* 3rd gen */
+        case 0x70:
+        case 0x72:
                 return 0;
-
         default:
                 unreachable("Unknown Bifrost GPU ID");
         }
