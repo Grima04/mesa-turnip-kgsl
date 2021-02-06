@@ -1136,6 +1136,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    min_wave64_vgpr_alloc = %i\n", info->min_wave64_vgpr_alloc);
    fprintf(f, "    max_vgpr_alloc = %i\n", info->max_vgpr_alloc);
    fprintf(f, "    wave64_vgpr_alloc_granularity = %i\n", info->wave64_vgpr_alloc_granularity);
+   fprintf(f, "    use_late_alloc = %i\n", info->use_late_alloc);
 
    fprintf(f, "Render backend info:\n");
    fprintf(f, "    pa_sc_tile_steering_override = 0x%x\n", info->pa_sc_tile_steering_override);
