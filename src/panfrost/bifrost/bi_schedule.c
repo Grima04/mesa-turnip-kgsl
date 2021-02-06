@@ -890,6 +890,32 @@ bi_rewrite_passthrough(bi_tuple prec, bi_tuple succ)
         }
 }
 
+static void
+bi_rewrite_fau_to_pass(bi_tuple *tuple)
+{
+        bi_foreach_instr_and_src_in_tuple(tuple, ins, s) {
+                if (ins->src[s].type != BI_INDEX_FAU) continue;
+
+                ins->src[s] = bi_passthrough(ins->src[s].offset ?
+                                BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
+        }
+}
+
+static void
+bi_rewrite_zero(bi_instr *ins, bool fma)
+{
+        bi_foreach_src(ins, s) {
+                bi_index src = ins->src[s];
+                unsigned swizzle = src.swizzle;
+
+                if (src.type == BI_INDEX_CONSTANT && src.value == 0) {
+                        assert(!src.abs && !src.neg);
+                        ins->src[s] = bi_passthrough(
+                                        fma ? BIFROST_SRC_STAGE : BIFROST_SRC_FAU_LO);
+                        ins->src[s].swizzle = swizzle;
+                }
+        }
+}
 
 #ifndef NDEBUG
 
