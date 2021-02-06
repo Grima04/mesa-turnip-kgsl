@@ -966,6 +966,14 @@ bi_cmpf_nir(nir_op op)
         }
 }
 
+/* Convenience for lowered transcendentals */
+
+static bi_index
+bi_fmul_f32(bi_builder *b, bi_index s0, bi_index s1)
+{
+        return bi_fma_f32(b, s0, s1, bi_imm_f32(-0.0f), BI_ROUND_NONE);
+}
+
 static void
 bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 {
