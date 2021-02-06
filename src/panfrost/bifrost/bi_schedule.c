@@ -452,6 +452,29 @@ bi_schedule(bi_context *ctx)
         }
 }
 
+/* Counts the number of 64-bit constants required by a clause. TODO: We
+ * might want to account for merging, right now we overestimate, but
+ * that's probably fine most of the time */
+
+static unsigned
+bi_nconstants(struct bi_clause_state *clause)
+{
+        unsigned count_32 = 0;
+
+        for (unsigned i = 0; i < ARRAY_SIZE(clause->consts); ++i)
+                count_32 += clause->consts[i].constant_count;
+
+        return DIV_ROUND_UP(count_32, 2);
+}
+
+/* Would there be space for constants if we added one tuple? */
+
+static bool
+bi_space_for_more_constants(struct bi_clause_state *clause)
+{
+        return (bi_nconstants(clause) < 13 - (clause->tuple_count + 1));
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
