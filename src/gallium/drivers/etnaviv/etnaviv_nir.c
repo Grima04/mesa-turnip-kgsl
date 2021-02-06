@@ -149,23 +149,6 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                }
             }
 
-            if (tex->sampler_dim == GLSL_SAMPLER_DIM_RECT) {
-               /* use a dummy load_uniform here to represent texcoord scale */
-               b.cursor = nir_before_instr(instr);
-               nir_intrinsic_instr *load =
-                  nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_uniform);
-               nir_intrinsic_set_base(load, ~tex->sampler_index);
-               load->num_components = 2;
-               load->src[0] = nir_src_for_ssa(nir_imm_float(&b, 0.0f));
-               nir_ssa_dest_init(&load->instr, &load->dest, 2, 32, NULL);
-               nir_intrinsic_set_dest_type(load, nir_type_float);
-
-               nir_builder_instr_insert(&b, &load->instr);
-
-               nir_ssa_def *new_coord = nir_fmul(&b, coord->ssa, &load->dest.ssa);
-               nir_instr_rewrite_src(&tex->instr, coord, nir_src_for_ssa(new_coord));
-            }
-
             /* pre HALTI5 needs texture sources in a single source */
 
             if (!lod_bias || v->shader->specs->halti >= 5)

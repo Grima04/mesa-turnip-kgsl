@@ -921,12 +921,8 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
                base += off[0].u32;
             nir_const_value value[4];
 
-            for (unsigned i = 0; i < intr->dest.ssa.num_components; i++) {
-               if (nir_intrinsic_base(intr) < 0)
-                  value[i] = TEXSCALE(~nir_intrinsic_base(intr), i);
-               else
-                  value[i] = UNIFORM(base * 4 + i);
-            }
+            for (unsigned i = 0; i < intr->dest.ssa.num_components; i++)
+               value[i] = UNIFORM(base * 4 + i);
 
             b.cursor = nir_after_instr(instr);
             nir_ssa_def *def = nir_build_imm(&b, intr->dest.ssa.num_components, 32, value);
