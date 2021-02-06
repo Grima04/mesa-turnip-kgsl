@@ -41,6 +41,7 @@ struct zink_query {
 
    union pipe_query_result accumulated_result;
    struct zink_resource *predicate;
+   bool predicate_dirty;
 };
 
 static VkQueryPipelineStatisticFlags
@@ -472,6 +473,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
 {
    VkQueryControlFlags flags = 0;
 
+   q->predicate_dirty = true;
    if (q->needs_reset)
       reset_pool(ctx, batch, q);
    assert(q->curr_query < q->num_queries);
@@ -693,7 +695,6 @@ zink_render_condition(struct pipe_context *pctx,
       return;
    }
 
-   struct zink_resource *res;
    if (!query->predicate) {
       struct pipe_resource *pres;
 
@@ -704,20 +705,22 @@ zink_render_condition(struct pipe_context *pctx,
 
       query->predicate = zink_resource(pres);
    }
-   res = query->predicate;
+   if (query->predicate_dirty) {
+      struct zink_resource *res = query->predicate;
 
-   if (mode == PIPE_RENDER_COND_WAIT || mode == PIPE_RENDER_COND_BY_REGION_WAIT)
-      flags |= VK_QUERY_RESULT_WAIT_BIT;
+      if (mode == PIPE_RENDER_COND_WAIT || mode == PIPE_RENDER_COND_BY_REGION_WAIT)
+         flags |= VK_QUERY_RESULT_WAIT_BIT;
 
-   flags |= VK_QUERY_RESULT_64_BIT;
-   int num_results = query->curr_query - query->last_start;
-   if (query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
-       !is_so_overflow_query(query)) {
-      copy_results_to_buffer(ctx, query, res, 0, num_results, flags);
-   } else {
-      /* these need special handling */
-      force_cpu_read(ctx, pquery, true, PIPE_QUERY_TYPE_U32, &res->base, 0);
-      zink_batch_reference_resource_rw(&ctx->batch, res, false);
+      flags |= VK_QUERY_RESULT_64_BIT;
+      int num_results = query->curr_query - query->last_start;
+      if (query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
+          !is_so_overflow_query(query)) {
+         copy_results_to_buffer(ctx, query, res, 0, num_results, flags);
+      } else {
+         /* these need special handling */
+         force_cpu_read(ctx, pquery, true, PIPE_QUERY_TYPE_U32, &res->base, 0);
+      }
+      query->predicate_dirty = false;
    }
    ctx->render_condition.inverted = condition;
    ctx->render_condition_active = true;
