@@ -2409,9 +2409,9 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                continue;
 
             /* find free reg */
-            if (definition->hasHint() && register_file[definition->physReg()] == 0)
+            if (definition->hasHint() && get_reg_specified(ctx, register_file, definition->regClass(), instr, definition->physReg())) {
                definition->setFixed(definition->physReg());
-            else if (instr->opcode == aco_opcode::p_split_vector) {
+            } else if (instr->opcode == aco_opcode::p_split_vector) {
                PhysReg reg = instr->operands[0].physReg();
                for (unsigned j = 0; j < i; j++)
                   reg.reg_b += instr->definitions[j].bytes();
