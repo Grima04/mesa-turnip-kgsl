@@ -43,6 +43,8 @@ static inline unsigned
 bifrost_get_quirks(unsigned product_id)
 {
         switch (product_id >> 8) {
+        case 0x60:
+                return BIFROST_NO_PRELOAD | BIFROST_NO_FP32_TRANSCENDENTALS;
         case 0x62:
                 return BIFROST_NO_PRELOAD;
         case 0x70:
