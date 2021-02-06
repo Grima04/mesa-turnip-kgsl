@@ -370,6 +370,15 @@ get_src(struct etna_compile *c, nir_src *src)
          return (hw_src) { .use = 1, .rgroup = INST_RGROUP_INTERNAL };
       case nir_intrinsic_load_frag_coord:
          return SRC_REG(0, INST_SWIZ_IDENTITY);
+      case nir_intrinsic_load_texture_rect_scaling: {
+         int sampler = nir_src_as_int(intr->src[0]);
+         nir_const_value values[] = {
+            TEXSCALE(sampler, 0),
+            TEXSCALE(sampler, 1),
+         };
+
+         return src_swizzle(const_src(c, values, 2), SWIZZLE(X,Y,X,X));
+      }
       default:
          compile_error(c, "Unhandled NIR intrinsic type: %s\n",
                        nir_intrinsic_infos[intr->intrinsic].name);
@@ -582,6 +591,7 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
       break;
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_instance_id:
+   case nir_intrinsic_load_texture_rect_scaling:
       break;
    default:
       compile_error(c, "Unhandled NIR intrinsic type: %s\n",
