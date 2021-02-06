@@ -198,7 +198,7 @@ if gallium_drivers.contains('auto')
       ]
     elif ['arm', 'aarch64'].contains(host_machine.cpu_family())
       gallium_drivers = [
-        'kmsro', 'v3d', 'vc4', 'freedreno', 'etnaviv', 'nouveau',
+        'v3d', 'vc4', 'freedreno', 'etnaviv', 'nouveau',
         'tegra', 'virgl', 'lima', 'panfrost', 'swrast'
       ]
     elif ['mips', 'mips64'].contains(host_machine.cpu_family())
@@ -216,7 +216,6 @@ if gallium_drivers.contains('auto')
           host_machine.system()))
   endif
 endif
-with_gallium_kmsro = gallium_drivers.contains('kmsro')
 with_gallium_radeonsi = gallium_drivers.contains('radeonsi')
 with_gallium_r300 = gallium_drivers.contains('r300')
 with_gallium_r600 = gallium_drivers.contains('r600')
@@ -238,6 +237,7 @@ with_gallium_zink = gallium_drivers.contains('zink')
 with_gallium_d3d12 = gallium_drivers.contains('d3d12')
 
 with_gallium = gallium_drivers.length() != 0
+with_gallium_kmsro = with_gallium_v3d or with_gallium_vc4 or with_gallium_etnaviv or with_gallium_panfrost or with_gallium_lima or with_gallium_freedreno
 
 if with_gallium and system_has_kms_drm
   _glx = get_option('glx')
@@ -285,9 +285,6 @@ if with_swrast_vk and not with_gallium_softpipe
 endif
 if with_dri_i915 and with_gallium_i915
   error('Only one i915 provider can be built')
-endif
-if with_gallium_kmsro and not (with_gallium_v3d or with_gallium_vc4 or with_gallium_etnaviv or with_gallium_freedreno or with_gallium_panfrost or with_gallium_lima)
-  error('kmsro driver requires one or more renderonly drivers (vc4, etnaviv, freedreno, panfrost, lima)')
 endif
 if with_gallium_tegra and not with_gallium_nouveau
   error('tegra driver requires nouveau driver')
