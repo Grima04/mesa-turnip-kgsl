@@ -81,6 +81,8 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
          pntc = nir_variable_create(b.shader, nir_var_shader_in,
                                     glsl_vec_type(2), "gl_PointCoord");
          pntc->data.location = VARYING_SLOT_PNTC;
+         pntc->data.driver_location = b.shader->num_inputs++;
+         b.shader->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_PNTC);
       }
 
       new_coord = nir_load_var(&b, pntc);
