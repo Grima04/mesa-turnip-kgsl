@@ -917,6 +917,40 @@ bi_rewrite_zero(bi_instr *ins, bool fma)
         }
 }
 
+/* Assumes #0 to {T, FAU} rewrite has already occurred */
+
+static void
+bi_rewrite_constants_to_pass(bi_tuple *tuple, uint64_t constant, bool pcrel)
+{
+        bi_foreach_instr_and_src_in_tuple(tuple, ins, s) {
+                if (ins->src[s].type != BI_INDEX_CONSTANT) continue;
+
+                uint32_t cons = ins->src[s].value;
+                unsigned swizzle = ins->src[s].swizzle;
+
+                ASSERTED bool lo = (cons == (constant & 0xffffffff));
+                bool hi = (cons == (constant >> 32ull));
+
+                /* PC offsets always live in the upper half, set to zero by
+                 * convention before pack time. (This is safe, since if you
+                 * wanted to compare against zero, you would use a BRANCHZ
+                 * instruction instead.) */
+                if (cons == 0 && ins->branch_target != NULL) {
+                        assert(pcrel);
+                        hi = true;
+                        lo = false;
+                } else if (pcrel) {
+                        hi = false;
+                }
+
+                assert(lo || hi);
+
+                ins->src[s] = bi_passthrough(hi ?
+                                BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
+                ins->src[s].swizzle = swizzle;
+        }
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
