@@ -774,7 +774,8 @@ nine_allocate(struct nine_allocator *allocator, unsigned size)
 
     /* Restrict to >= page_size to prevent having too much fragmentation, as the size of
      * allocations is rounded to the next page_size multiple. */
-    if (size >= allocator->page_size && nine_memfd_allocator(allocator, new_allocation, size)) {
+    if (size >= allocator->page_size && allocator->total_virtual_memory_limit >= 0 &&
+        nine_memfd_allocator(allocator, new_allocation, size)) {
         struct nine_memfd_file_region *region = new_allocation->memory.memfd.region;
         if (!region->zero_filled) {
             void *data = nine_get_pointer(allocator, new_allocation);
@@ -1005,7 +1006,7 @@ nine_wrap_external_pointer(struct nine_allocator* allocator, void* data)
 }
 
 struct nine_allocator *
-nine_allocator_create(struct NineDevice9 *device)
+nine_allocator_create(struct NineDevice9 *device, int memfd_virtualsizelimit)
 {
     struct nine_allocator* allocator = MALLOC(sizeof(struct nine_allocator));
 
@@ -1015,12 +1016,12 @@ nine_allocator_create(struct NineDevice9 *device)
     allocator->device = device;
     allocator->page_size = sysconf(_SC_PAGESIZE);
     assert(allocator->page_size == 4 << 10);
-    allocator->num_fd_max = MIN2(128, ulimit(__UL_GETOPENMAX));
+    allocator->num_fd_max = (memfd_virtualsizelimit >= 0) ? MIN2(128, ulimit(__UL_GETOPENMAX)) : 0;
     allocator->min_file_size = DIVUP(100 * (1 << 20), allocator->page_size) * allocator->page_size; /* 100MB files */
     allocator->total_allocations = 0;
     allocator->total_locked_memory = 0;
     allocator->total_virtual_memory = 0;
-    allocator->total_virtual_memory_limit = 512 << 20;
+    allocator->total_virtual_memory_limit = memfd_virtualsizelimit * (1 << 20);
     allocator->num_fd = 0;
 
     DBG("Allocator created (ps: %d; fm: %d)\n", allocator->page_size, allocator->num_fd_max);
@@ -1157,10 +1158,11 @@ nine_wrap_external_pointer(struct nine_allocator* allocator, void* data)
 }
 
 struct nine_allocator *
-nine_allocator_create(struct NineDevice9 *device)
+nine_allocator_create(struct NineDevice9 *device, int memfd_virtualsizelimit)
 {
     struct nine_allocator* allocator = MALLOC(sizeof(struct nine_allocator));
     (void)device;
+    (void)memfd_virtualsizelimit;
 
     if (!allocator)
         return NULL;

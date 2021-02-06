@@ -62,8 +62,12 @@ nine_suballocate(struct nine_allocator* allocator, struct nine_allocation *alloc
 struct nine_allocation *
 nine_wrap_external_pointer(struct nine_allocator* allocator, void* data);
 
+
+/* memfd_virtualsizelimit: Limit for the virtual memory usage (in MB)
+ * above which memfd files are unmapped (to reduce virtual memory usage).
+ * If negative, disables memfd usage. */
 struct nine_allocator *
-nine_allocator_create(struct NineDevice9 *device);
+nine_allocator_create(struct NineDevice9 *device, int memfd_virtualsizelimit);
 
 void
 nine_allocator_destroy(struct nine_allocator *allocator);
