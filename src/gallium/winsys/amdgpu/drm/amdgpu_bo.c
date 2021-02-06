@@ -968,7 +968,11 @@ sparse_backing_alloc(struct amdgpu_winsys_bo *bo, uint32_t *pstart_page, uint32_
 
       buf = amdgpu_bo_create(bo->ws, size, RADEON_SPARSE_PAGE_SIZE,
                              bo->base.placement,
-                             (bo->base.usage & ~RADEON_FLAG_SPARSE) | RADEON_FLAG_NO_SUBALLOC);
+                             (bo->base.usage & ~RADEON_FLAG_SPARSE &
+                              /* Set the interprocess sharing flag to disable pb_cache because
+                               * amdgpu_bo_wait doesn't wait for active CS jobs.
+                               */
+                              ~RADEON_FLAG_NO_INTERPROCESS_SHARING) | RADEON_FLAG_NO_SUBALLOC);
       if (!buf) {
          FREE(best_backing->chunks);
          FREE(best_backing);
