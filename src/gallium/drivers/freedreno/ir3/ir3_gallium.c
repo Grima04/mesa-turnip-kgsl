@@ -239,41 +239,6 @@ create_initial_variants(struct ir3_shader_state *hwcso,
 /* a bit annoying that compute-shader and normal shader state objects
  * aren't a bit more aligned.
  */
-static struct ir3_shader_state *
-ir3_shader_create_compute(struct ir3_compiler *compiler,
-		const struct pipe_compute_state *cso,
-		struct pipe_debug_callback *debug,
-		struct pipe_screen *screen)
-{
-	nir_shader *nir;
-	if (cso->ir_type == PIPE_SHADER_IR_NIR) {
-		/* we take ownership of the reference: */
-		nir = (nir_shader *)cso->prog;
-	} else {
-		debug_assert(cso->ir_type == PIPE_SHADER_IR_TGSI);
-		if (ir3_shader_debug & IR3_DBG_DISASM) {
-			tgsi_dump(cso->prog, 0);
-		}
-		nir = tgsi_to_nir(cso->prog, screen, false);
-	}
-
-	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, 0, NULL);
-
-	/* Immediately compile a standard variant.  We have so few variants in our
-	 * shaders, that doing so almost eliminates draw-time recompiles.  (This
-	 * is also how we get data from shader-db's ./run)
-	 */
-	static struct ir3_shader_key key; /* static is implicitly zeroed */
-	ir3_shader_variant(shader, key, false, debug);
-
-	shader->initial_variants_done = true;
-
-	struct ir3_shader_state *hwcso = calloc(1, sizeof(*hwcso));
-	hwcso->shader = shader;
-
-	return hwcso;
-}
-
 void *
 ir3_shader_compute_state_create(struct pipe_context *pctx,
 		const struct pipe_compute_state *cso)
@@ -292,7 +257,34 @@ ir3_shader_compute_state_create(struct pipe_context *pctx,
 	}
 
 	struct ir3_compiler *compiler = ctx->screen->compiler;
-	return ir3_shader_create_compute(compiler, cso, &ctx->debug, pctx->screen);
+	nir_shader *nir;
+
+	if (cso->ir_type == PIPE_SHADER_IR_NIR) {
+		/* we take ownership of the reference: */
+		nir = (nir_shader *)cso->prog;
+	} else {
+		debug_assert(cso->ir_type == PIPE_SHADER_IR_TGSI);
+		if (ir3_shader_debug & IR3_DBG_DISASM) {
+			tgsi_dump(cso->prog, 0);
+		}
+		nir = tgsi_to_nir(cso->prog, pctx->screen, false);
+	}
+
+	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, 0, NULL);
+
+	/* Immediately compile a standard variant.  We have so few variants in our
+	 * shaders, that doing so almost eliminates draw-time recompiles.  (This
+	 * is also how we get data from shader-db's ./run)
+	 */
+	static struct ir3_shader_key key; /* static is implicitly zeroed */
+	ir3_shader_variant(shader, key, false, &ctx->debug);
+
+	shader->initial_variants_done = true;
+
+	struct ir3_shader_state *hwcso = calloc(1, sizeof(*hwcso));
+	hwcso->shader = shader;
+
+	return hwcso;
 }
 
 void *
