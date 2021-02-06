@@ -1114,6 +1114,95 @@ bi_merge_constants(struct bi_const_state *consts, uint64_t *pairs, unsigned *pcr
         return bi_merge_singles(consts, 8, pairs, pair_count, pcrel_idx);
 }
 
+/* Swap two constants at word i and i+1 by swapping their actual positions and
+ * swapping all references so the meaning of the clause is preserved */
+
+static void
+bi_swap_constants(struct bi_const_state *consts, uint64_t *pairs, unsigned i)
+{
+        uint64_t tmp_pair = pairs[i + 0];
+        pairs[i + 0] = pairs[i + 1];
+        pairs[i + 1] = tmp_pair;
+
+        for (unsigned t = 0; t < 8; ++t) {
+                if (consts[t].word_idx == i)
+                        consts[t].word_idx = (i + 1);
+                else if (consts[t].word_idx == (i + 1))
+                        consts[t].word_idx = i;
+        }
+}
+
+/* Given merged constants, one of which might be PC-relative, fix up the M
+ * values so the PC-relative constant (if it exists) has the M1=4 modification
+ * and other constants are used as-is (which might require swapping) */
+
+static unsigned
+bi_apply_constant_modifiers(struct bi_const_state *consts,
+                uint64_t *pairs, unsigned *pcrel_idx,
+                unsigned tuple_count, unsigned constant_count)
+{
+        unsigned start = bi_ec0_packed(tuple_count) ? 1 : 0;
+
+        /* Clauses with these tuple counts lack an M field for the packed EC0,
+         * so EC0 cannot be PC-relative, which might require swapping (and
+         * possibly adding an unused constant) to fit */
+
+        if (*pcrel_idx == 0 && (tuple_count == 5 || tuple_count == 8)) {
+                constant_count = MAX2(constant_count, 2);
+                *pcrel_idx = 1;
+                bi_swap_constants(consts, pairs, 0);
+        }
+
+        /* EC0 might be packed free, after that constants are packed in pairs
+         * (with clause format 12), with M1 values computed from the pair */
+
+        for (unsigned i = start; i < constant_count; i += 2) {
+                bool swap = false;
+                bool last = (i + 1) == constant_count;
+
+                unsigned A1 = (pairs[i] >> 60);
+                unsigned B1 = (pairs[i + 1] >> 60);
+
+                if (*pcrel_idx == i || *pcrel_idx == (i + 1)) {
+                        /* PC-relative constant must be E0, not E1 */
+                        swap = (*pcrel_idx == (i + 1));
+
+                        /* Set M1 = 4 by noting (A - B) mod 16 = 4 is
+                         * equivalent to A = (B + 4) mod 16 and that we can
+                         * control A */
+                        unsigned B = swap ? A1 : B1;
+                        unsigned A = (B + 4) & 0xF;
+                        pairs[*pcrel_idx] |= ((uint64_t) A) << 60;
+
+                        /* Swapped if swap set, identity if swap not set */
+                        *pcrel_idx = i;
+                } else {
+                        /* Compute M1 value if we don't swap */
+                        unsigned M1 = (16 + A1 - B1) & 0xF;
+
+                        /* For M1 = 0 or M1 >= 8, the constants are unchanged,
+                         * we have 0 < (A1 - B1) % 16 < 8, which implies (B1 -
+                         * A1) % 16 >= 8, so swapping will let them be used
+                         * unchanged */
+                        swap = (M1 != 0) && (M1 < 8);
+
+                        /* However, we can't swap the last constant, so we
+                         * force M1 = 0 instead for this case */
+                        if (last && swap) {
+                                pairs[i + 1] |= pairs[i] & (0xfull << 60);
+                                swap = false;
+                        }
+                }
+
+                if (swap) {
+                        assert(!last);
+                        bi_swap_constants(consts, pairs, i);
+                }
+        }
+
+        return constant_count;
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
