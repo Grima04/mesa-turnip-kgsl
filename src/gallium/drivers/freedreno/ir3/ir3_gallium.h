@@ -35,15 +35,12 @@ struct ir3_shader * ir3_shader_create(struct ir3_compiler *compiler,
 		const struct pipe_shader_state *cso,
 		struct pipe_debug_callback *debug,
 		struct pipe_screen *screen);
-struct ir3_shader *
-ir3_shader_create_compute(struct ir3_compiler *compiler,
-		const struct pipe_compute_state *cso,
-		struct pipe_debug_callback *debug,
-		struct pipe_screen *screen);
 struct ir3_shader_variant * ir3_shader_variant(struct ir3_shader *shader,
 		struct ir3_shader_key key, bool binning_pass,
 		struct pipe_debug_callback *debug);
 
+void * ir3_shader_compute_state_create(struct pipe_context *pctx,
+		const struct pipe_compute_state *cso);
 void * ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_state *cso);
 void ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso);
 

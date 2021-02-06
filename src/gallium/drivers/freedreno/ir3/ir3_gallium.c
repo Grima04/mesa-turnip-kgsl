@@ -246,7 +246,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 /* a bit annoying that compute-shader and normal shader state objects
  * aren't a bit more aligned.
  */
-struct ir3_shader *
+static struct ir3_shader *
 ir3_shader_create_compute(struct ir3_compiler *compiler,
 		const struct pipe_compute_state *cso,
 		struct pipe_debug_callback *debug,
@@ -276,6 +276,27 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 	shader->initial_variants_done = true;
 
 	return shader;
+}
+
+void *
+ir3_shader_compute_state_create(struct pipe_context *pctx,
+		const struct pipe_compute_state *cso)
+{
+	struct fd_context *ctx = fd_context(pctx);
+
+	/* req_input_mem will only be non-zero for cl kernels (ie. clover).
+	 * This isn't a perfect test because I guess it is possible (but
+	 * uncommon) for none for the kernel parameters to be a global,
+	 * but ctx->set_global_bindings() can't fail, so this is the next
+	 * best place to fail if we need a newer version of kernel driver:
+	 */
+	if ((cso->req_input_mem > 0) &&
+			fd_device_version(ctx->dev) < FD_VERSION_BO_IOVA) {
+		return NULL;
+	}
+
+	struct ir3_compiler *compiler = ctx->screen->compiler;
+	return ir3_shader_create_compute(compiler, cso, &ctx->debug, pctx->screen);
 }
 
 void *

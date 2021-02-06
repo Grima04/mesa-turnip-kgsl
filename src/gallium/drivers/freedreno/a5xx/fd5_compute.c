@@ -33,27 +33,6 @@
 #include "fd5_emit.h"
 
 
-static void *
-fd5_create_compute_state(struct pipe_context *pctx,
-		const struct pipe_compute_state *cso)
-{
-	struct fd_context *ctx = fd_context(pctx);
-
-	/* req_input_mem will only be non-zero for cl kernels (ie. clover).
-	 * This isn't a perfect test because I guess it is possible (but
-	 * uncommon) for none for the kernel parameters to be a global,
-	 * but ctx->set_global_bindings() can't fail, so this is the next
-	 * best place to fail if we need a newer version of kernel driver:
-	 */
-	if ((cso->req_input_mem > 0) &&
-			fd_device_version(ctx->dev) < FD_VERSION_BO_IOVA) {
-		return NULL;
-	}
-
-	struct ir3_compiler *compiler = ctx->screen->compiler;
-	return ir3_shader_create_compute(compiler, cso, &ctx->debug, pctx->screen);
-}
-
 /* maybe move to fd5_program? */
 static void
 cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v,
@@ -216,6 +195,6 @@ fd5_compute_init(struct pipe_context *pctx)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->launch_grid = fd5_launch_grid;
-	pctx->create_compute_state = fd5_create_compute_state;
+	pctx->create_compute_state = ir3_shader_compute_state_create;
 	pctx->delete_compute_state = ir3_shader_state_delete;
 }
