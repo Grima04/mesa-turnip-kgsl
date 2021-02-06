@@ -236,7 +236,7 @@ NineDevice9_ctor( struct NineDevice9 *This,
     /* Create first, it messes up our state. */
     This->hud = hud_create(This->context.cso, NULL, NULL); /* NULL result is fine */
 
-    This->allocator = nine_allocator_create(This, 512);
+    This->allocator = nine_allocator_create(This, pCTX->memfd_virtualsizelimit);
 
     /* Available memory counter. Updated only for allocations with this device
      * instance. This is the Win 7 behavior.
