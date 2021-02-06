@@ -980,6 +980,140 @@ bi_get_const_state(struct bi_tuple_state *tuple)
         return consts;
 }
 
+/* Merges constants in a clause, satisfying the following rules, assuming no
+ * more than one tuple has pcrel:
+ *
+ * 1. If a tuple has two constants, they must be packed together. If one is
+ * pcrel, it must be the high constant to use the M1=4 modification [sx64(E0) +
+ * (PC << 32)]. Otherwise choose an arbitrary order.
+ *
+ * 4. If a tuple has one constant, it may be shared with an existing
+ * pair that already contains that constant, or it may be combined with another
+ * (distinct) tuple of a single constant.
+ *
+ * This gaurantees a packing is possible. The next routine handles modification
+ * related swapping, to satisfy format 12 and the lack of modification for
+ * tuple count 5/8 in EC0.
+ */
+
+static uint64_t
+bi_merge_u32(uint32_t c0, uint32_t c1, bool pcrel)
+{
+        /* At this point in the constant merge algorithm, pcrel constants are
+         * treated as zero, so pcrel implies at least one constants is zero */ 
+        assert(!pcrel || (c0 == 0 || c1 == 0));
+
+        /* Order: pcrel, maximum non-pcrel, minimum non-pcrel */
+        uint32_t hi = pcrel ? 0 : MAX2(c0, c1);
+        uint32_t lo = (c0 == hi) ? c1 : c0;
+
+        /* Merge in the selected order */
+        return lo | (((uint64_t) hi) << 32ull);
+}
+
+static unsigned
+bi_merge_pairs(struct bi_const_state *consts, unsigned tuple_count,
+                uint64_t *merged, unsigned *pcrel_pair)
+{
+        unsigned merge_count = 0;
+
+        for (unsigned t = 0; t < tuple_count; ++t) {
+                if (consts[t].constant_count != 2) continue;
+
+                unsigned idx = ~0;
+                uint64_t val = bi_merge_u32(consts[t].constants[0],
+                                consts[t].constants[1], consts[t].pcrel);
+
+                /* Skip the pcrel pair if assigned, because if one is assigned,
+                 * this one is not pcrel by uniqueness so it's a mismatch */
+                for (unsigned s = 0; s < merge_count; ++s) {
+                        if (merged[s] == val && (*pcrel_pair) != s) {
+                                idx = s;
+                                break;
+                        }
+                }
+
+                if (idx == ~0) {
+                        idx = merge_count++;
+                        merged[idx] = val;
+
+                        if (consts[t].pcrel)
+                                (*pcrel_pair) = idx;
+                }
+
+                consts[t].word_idx = idx;
+        }
+
+        return merge_count;
+}
+
+static unsigned
+bi_merge_singles(struct bi_const_state *consts, unsigned tuple_count,
+                uint64_t *pairs, unsigned pair_count, unsigned *pcrel_pair)
+{
+        bool pending = false, pending_pcrel = false;
+        uint32_t pending_single = 0;
+
+        for (unsigned t = 0; t < tuple_count; ++t) {
+                if (consts[t].constant_count != 1) continue;
+
+                uint32_t val = consts[t].constants[0];
+                unsigned idx = ~0;
+
+                /* Try to match, but don't match pcrel with non-pcrel, even
+                 * though we can merge a pcrel with a non-pcrel single */
+                for (unsigned i = 0; i < pair_count; ++i) {
+                        bool lo = ((pairs[i] & 0xffffffff) == val);
+                        bool hi = ((pairs[i] >> 32) == val);
+                        bool match = (lo || hi);
+                        match &= ((*pcrel_pair) != i);
+                        if (match && !consts[t].pcrel) {
+                                idx = i;
+                                break;
+                        }
+                }
+
+                if (idx == ~0) {
+                        idx = pair_count;
+
+                        if (pending && pending_single != val) {
+                                assert(!(pending_pcrel && consts[t].pcrel));
+                                bool pcrel = pending_pcrel || consts[t].pcrel;
+
+                                if (pcrel)
+                                        *pcrel_pair = idx;
+
+                                pairs[pair_count++] = bi_merge_u32(pending_single, val, pcrel);
+
+                                pending = pending_pcrel = false;
+                        } else {
+                                pending = true;
+                                pending_pcrel = consts[t].pcrel;
+                                pending_single = val;
+                        }
+                }
+
+                consts[t].word_idx = idx;
+        }
+
+        /* Shift so it works whether pending_pcrel is set or not */
+        if (pending) {
+                if (pending_pcrel)
+                        *pcrel_pair = pair_count;
+
+                pairs[pair_count++] = ((uint64_t) pending_single) << 32ull;
+        }
+
+        return pair_count;
+}
+
+static unsigned
+bi_merge_constants(struct bi_const_state *consts, uint64_t *pairs, unsigned *pcrel_idx)
+{
+        unsigned pair_count = bi_merge_pairs(consts, 8, pairs, pcrel_idx);
+        return bi_merge_singles(consts, 8, pairs, pair_count, pcrel_idx);
+}
+
 #ifndef NDEBUG
 
 static bi_builder *
