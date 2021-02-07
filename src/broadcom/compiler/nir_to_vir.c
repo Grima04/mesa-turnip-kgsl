@@ -3017,20 +3017,6 @@ ntq_activate_execute_for_block(struct v3d_compile *c)
 static void
 ntq_emit_uniform_if(struct v3d_compile *c, nir_if *if_stmt)
 {
-        /* If the if-statement's condition is only used once, emit it right before
-         * the if statement so as to use the resulting condition code directly.
-         * DCE will take care of the other comparison later.
-         */
-        bool condition_emitted = false;
-        enum v3d_qpu_cond cond;
-        if (if_stmt->condition.is_ssa && list_length(&if_stmt->condition.use_link) == 1) {
-                nir_instr *comparison = if_stmt->condition.ssa->parent_instr;
-                if (comparison->type == nir_instr_type_alu) {
-                        condition_emitted =
-                           ntq_emit_comparison(c, nir_instr_as_alu(comparison), &cond);
-                }
-        }
-
         nir_block *nir_else_block = nir_if_first_else_block(if_stmt);
         bool empty_else_block =
                 (nir_else_block == nir_if_last_else_block(if_stmt) &&
@@ -3044,11 +3030,8 @@ ntq_emit_uniform_if(struct v3d_compile *c, nir_if *if_stmt)
         else
                 else_block = vir_new_block(c);
 
-        /* Set up the flags for the IF condition (taking the THEN branch),
-         * if we haven't already done so.
-         */
-        if (!condition_emitted)
-                cond = ntq_emit_bool_to_cond(c, if_stmt->condition);
+        /* Set up the flags for the IF condition (taking the THEN branch). */
+        enum v3d_qpu_cond cond = ntq_emit_bool_to_cond(c, if_stmt->condition);
 
         /* Jump to ELSE. */
         struct qinst *branch = vir_BRANCH(c, cond == V3D_QPU_COND_IFA ?
