@@ -97,6 +97,12 @@ struct panfrost_ubo_push {
         struct panfrost_ubo_word words[PAN_MAX_PUSH];
 };
 
+/* Helper for searching the above. Note this is O(N) to the number of pushed
+ * constants, do not run in the draw call hot path */
+
+unsigned
+pan_lookup_pushed_ubo(struct panfrost_ubo_push *push, unsigned ubo, unsigned offs);
+
 void
 panfrost_nir_assign_sysvals(struct panfrost_sysvals *ctx, void *memctx, nir_shader *shader);
 

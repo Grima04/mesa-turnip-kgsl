@@ -1447,7 +1447,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 void
 midgard_schedule_program(compiler_context *ctx)
 {
-//        midgard_promote_uniforms(ctx);
+        midgard_promote_uniforms(ctx);
 
         /* Must be lowered right before scheduling */
         mir_squeeze_index(ctx);

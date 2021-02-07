@@ -977,6 +977,8 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
                                 midgard_instruction *before = ins;
 
                                 unsigned temp = make_compiler_temp(ctx);
+                                unsigned idx = (23 - SSA_REG_FROM_FIXED(ins->src[i])) * 4;
+                                assert(idx < ctx->push->count);
 
                                 midgard_instruction ld = {
                                         .type = TAG_LOAD_STORE_4,
@@ -987,11 +989,11 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
                                         .swizzle = SWIZZLE_IDENTITY_4,
                                         .op = midgard_op_ld_ubo_int4,
                                         .load_store = {
+                                                .arg_1 = ctx->push->words[idx].ubo,
                                                 .arg_2 = 0x1E,
                                         },
+                                        .constants.u32[0] = ctx->push->words[idx].offset
                                 };
-
-                                ld.constants.u32[0] = (23 - SSA_REG_FROM_FIXED(ins->src[i])) * 16;
 
                                 mir_insert_instruction_before_scheduled(ctx, block, before, ld);
 

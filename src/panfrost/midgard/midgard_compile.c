@@ -2986,6 +2986,8 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         ctx->stage = nir->info.stage;
         ctx->is_blend = inputs->is_blend;
         ctx->blend_rt = MIDGARD_COLOR_RT0 + inputs->blend.rt;
+        ctx->push = &program->push;
+
         if (inputs->is_blend) {
                 unsigned nr_samples = MAX2(inputs->blend.nr_samples, 1);
                 const struct util_format_description *desc =
