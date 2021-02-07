@@ -399,16 +399,12 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->attribute_count = attribute_count;
         state->varying_count = varying_count;
 
-        /* off-by-one for uniforms. Not needed on Bifrost since uniforms
-         * have been lowered to UBOs using nir_lower_uniforms_to_ubo() which
-         * already increments s->info.num_ubos. We do have to account for the
-         * "no uniform, no UBO" case though, otherwise sysval passed through
-         * uniforms won't work correctly.
+        /* Uniforms have been lowered to UBOs using nir_lower_uniforms_to_ubo()
+         * which already increments s->info.num_ubos. We do have to account for
+         * the "no uniform, no UBO" case though, otherwise sysval passed
+         * through uniforms won't work correctly.
          */
-        if (pan_is_bifrost(dev))
-                state->ubo_count = MAX2(s->info.num_ubos, 1);
-        else
-                state->ubo_count = s->info.num_ubos + 1;
+        state->ubo_count = MAX2(s->info.num_ubos, 1);
 
         /* Prepare the descriptors at compile-time */
         state->shader.shader = shader;

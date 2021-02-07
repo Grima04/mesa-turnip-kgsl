@@ -320,6 +320,15 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
 
+        /* Peephole select is more effective before lowering uniforms to UBO,
+         * so do a round of that, and then call lower_uniforms_to_ubo
+         * explicitly (instead of relying on the state tracker to do it). Note
+         * the state tracker does run peephole_select before lowering uniforms
+         * to UBO ordinarily, but it isn't as aggressive as we need. */
+
+        NIR_PASS(progress, nir, nir_opt_peephole_select, 64, false, true);
+        NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
+
         do {
                 progress = false;
 
@@ -1653,7 +1662,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
         }
 
-        case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_global:
         case nir_intrinsic_load_global_constant:
@@ -1662,7 +1670,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_input:
         case nir_intrinsic_load_kernel_input:
         case nir_intrinsic_load_interpolated_input: {
-                bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
                 bool is_global = instr->intrinsic == nir_intrinsic_load_global ||
                         instr->intrinsic == nir_intrinsic_load_global_constant;
@@ -1676,7 +1683,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 /* TODO: Infer type? Does it matter? */
                 nir_alu_type t =
                         (is_interp) ? nir_type_float :
-                        (is_uniform || is_flat) ? nir_intrinsic_dest_type(instr) :
+                        (is_flat) ? nir_intrinsic_dest_type(instr) :
                         nir_type_uint;
 
                 t = nir_alu_type_get_base_type(t);
@@ -1700,9 +1707,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 nir_intrinsic_component(instr) : 0;
                 reg = nir_dest_index(&instr->dest);
 
-                if (is_uniform && !ctx->is_blend) {
-                        emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysvals.sysval_count + offset) * 16, indirect_offset, 4, 0);
-                } else if (is_kernel) {
+                if (is_kernel) {
                         emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysvals.sysval_count * 16) + offset, indirect_offset, 0, 0);
                 } else if (is_ubo) {
                         nir_src index = instr->src[0];
@@ -1710,7 +1715,11 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         /* TODO: Is indirect block number possible? */
                         assert(nir_src_is_const(index));
 
-                        uint32_t uindex = nir_src_as_uint(index) + 1;
+                        uint32_t uindex = nir_src_as_uint(index);
+
+                        if (uindex == 0)
+                                offset += ctx->sysvals.sysval_count * 16;
+
                         emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, uindex);
                 } else if (is_global || is_shared || is_scratch) {
                         unsigned seg = is_global ? LDST_GLOBAL : (is_shared ? LDST_SHARED : LDST_SCRATCH);
