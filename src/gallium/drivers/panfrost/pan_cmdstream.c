@@ -1002,6 +1002,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         /* Next up, attach UBOs. UBO count includes gaps but no sysval UBO */
         struct panfrost_shader_state *shader = panfrost_get_shader_state(ctx, stage);
         unsigned ubo_count = shader->ubo_count - (sys_size ? 1 : 0);
+        unsigned sysval_ubo = sys_size ? ubo_count : ~0;
 
         size_t sz = MALI_UNIFORM_BUFFER_LENGTH * (ubo_count + 1);
         struct panfrost_ptr ubos =
@@ -1042,8 +1043,27 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 }
         }
 
-        if (ss->uniform_count)
-                *push_constants = transfer.gpu;
+        /* Copy push constants required by the shader */
+        struct panfrost_ptr push_transfer =
+                panfrost_pool_alloc_aligned(&batch->pool, ss->push.count * 4, 16);
+
+        uint32_t *push_cpu = (uint32_t *) push_transfer.cpu;
+        *push_constants = push_transfer.gpu;
+
+        for (unsigned i = 0; i < ss->push.count; ++i) {
+                struct panfrost_ubo_word src = ss->push.words[i];
+
+                /* Map the UBO, this should be cheap. However this is reading
+                 * from write-combine memory which is _very_ slow. It might pay
+                 * off to upload sysvals to a staging buffer on the CPU on the
+                 * assumption sysvals will get pushed (TODO) */
+
+                const void *mapped_ubo = (src.ubo == sysval_ubo) ? transfer.cpu :
+                        panfrost_map_constant_buffer_cpu(ctx, buf, src.ubo);
+
+                /* TODO: Is there any benefit to combining ranges */
+                memcpy(push_cpu + i, (uint8_t *) mapped_ubo + src.offset, 4);
+        }
 
         buf->dirty_mask = 0;
         return ubos.gpu;

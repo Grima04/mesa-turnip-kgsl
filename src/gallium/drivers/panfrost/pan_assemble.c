@@ -299,6 +299,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         state->sysval_count = program->sysval_count;
         memcpy(state->sysval, program->sysvals, sizeof(state->sysval[0]) * state->sysval_count);
+        memcpy(&state->push, &program->push, sizeof(program->push));
 
         bool vertex_id = BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_VERTEX_ID);
         bool instance_id = BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);

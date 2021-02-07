@@ -244,6 +244,8 @@ struct panfrost_shader_state {
         unsigned sysval_count;
         unsigned sysval[MAX_SYSVAL_COUNT];
 
+        struct panfrost_ubo_push push;
+
         /* Should we enable helper invocations */
         bool helper_invocations;
 
