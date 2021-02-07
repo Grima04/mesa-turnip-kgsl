@@ -704,6 +704,19 @@ nvc0_clear(struct pipe_context *pipe, unsigned buffers,
    if (!nvc0_state_validate_3d(nvc0, NVC0_NEW_3D_FRAMEBUFFER))
       return;
 
+   if (scissor_state) {
+      uint32_t minx = scissor_state->minx;
+      uint32_t maxx = MIN2(fb->width, scissor_state->maxx);
+      uint32_t miny = scissor_state->miny;
+      uint32_t maxy = MIN2(fb->height, scissor_state->maxy);
+      if (maxx <= minx || maxy <= miny)
+         return;
+
+      BEGIN_NVC0(push, NVC0_3D(SCREEN_SCISSOR_HORIZ), 2);
+      PUSH_DATA (push, minx | (maxx - minx) << 16);
+      PUSH_DATA (push, miny | (maxy - miny) << 16);
+   }
+
    if (buffers & PIPE_CLEAR_COLOR && fb->nr_cbufs) {
       BEGIN_NVC0(push, NVC0_3D(CLEAR_COLOR(0)), 4);
       PUSH_DATAf(push, color->f[0]);
@@ -760,6 +773,13 @@ nvc0_clear(struct pipe_context *pipe, unsigned buffers,
          PUSH_DATA (push, (i << 6) | 0x3c |
                     (j << NVC0_3D_CLEAR_BUFFERS_LAYER__SHIFT));
       }
+   }
+
+   /* restore screen scissor */
+   if (scissor_state) {
+      BEGIN_NVC0(push, NVC0_3D(SCREEN_SCISSOR_HORIZ), 2);
+      PUSH_DATA (push, fb->width << 16);
+      PUSH_DATA (push, fb->height << 16);
    }
 }
 

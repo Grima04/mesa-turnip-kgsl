@@ -238,6 +238,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TWO_SIDED_COLOR:
    case PIPE_CAP_CLIP_PLANES:
    case PIPE_CAP_PACKED_STREAM_OUTPUT:
+   case PIPE_CAP_CLEAR_SCISSORED:
       return 1;
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
       return 1; /* class_3d >= NVA0_3D_CLASS; */
@@ -368,7 +369,6 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GLSL_ZERO_INIT:
    case PIPE_CAP_BLEND_EQUATION_ADVANCED:
    case PIPE_CAP_NO_CLIP_ON_COPY_TEX:
-   case PIPE_CAP_CLEAR_SCISSORED: /* TODO */
    case PIPE_CAP_DEVICE_PROTECTED_CONTENT:
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;

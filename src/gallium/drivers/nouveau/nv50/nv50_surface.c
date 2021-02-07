@@ -538,6 +538,19 @@ nv50_clear(struct pipe_context *pipe, unsigned buffers, const struct pipe_scisso
    if (!nv50_state_validate_3d(nv50, NV50_NEW_3D_FRAMEBUFFER))
       return;
 
+   if (scissor_state) {
+      uint32_t minx = scissor_state->minx;
+      uint32_t maxx = MIN2(fb->width, scissor_state->maxx);
+      uint32_t miny = scissor_state->miny;
+      uint32_t maxy = MIN2(fb->height, scissor_state->maxy);
+      if (maxx <= minx || maxy <= miny)
+         return;
+
+      BEGIN_NV04(push, NV50_3D(SCREEN_SCISSOR_HORIZ), 2);
+      PUSH_DATA (push, minx | (maxx - minx) << 16);
+      PUSH_DATA (push, miny | (maxy - miny) << 16);
+   }
+
    /* We have to clear ALL of the layers, not up to the min number of layers
     * of any attachment. */
    BEGIN_NV04(push, NV50_3D(RT_ARRAY_MODE), 1);
@@ -602,6 +615,13 @@ nv50_clear(struct pipe_context *pipe, unsigned buffers, const struct pipe_scisso
    /* restore the array mode */
    BEGIN_NV04(push, NV50_3D(RT_ARRAY_MODE), 1);
    PUSH_DATA (push, nv50->rt_array_mode);
+
+   /* restore screen scissor */
+   if (scissor_state) {
+      BEGIN_NV04(push, NV50_3D(SCREEN_SCISSOR_HORIZ), 2);
+      PUSH_DATA (push, fb->width << 16);
+      PUSH_DATA (push, fb->height << 16);
+   }
 }
 
 static void
