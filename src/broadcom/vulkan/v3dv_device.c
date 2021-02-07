@@ -597,6 +597,7 @@ physical_device_init(struct v3dv_physical_device *device,
 {
    VkResult result = VK_SUCCESS;
    int32_t master_fd = -1;
+   int32_t render_fd = -1;
 
    struct vk_physical_device_dispatch_table dispatch_table;
    vk_physical_device_dispatch_table_from_entrypoints
@@ -610,7 +611,7 @@ physical_device_init(struct v3dv_physical_device *device,
 
    assert(drm_render_device);
    const char *path = drm_render_device->nodes[DRM_NODE_RENDER];
-   int32_t render_fd = open(path, O_RDWR | O_CLOEXEC);
+   render_fd = open(path, O_RDWR | O_CLOEXEC);
    if (render_fd < 0) {
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
       goto fail;
