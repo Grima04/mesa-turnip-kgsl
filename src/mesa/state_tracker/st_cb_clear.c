@@ -479,23 +479,27 @@ st_Clear(struct gl_context *ctx, GLbitfield mask)
       struct st_renderbuffer *strb = st_renderbuffer(depthRb);
 
       if (strb->surface && ctx->Depth.Mask) {
-         if (is_scissor_enabled(ctx, depthRb) ||
+         bool scissor = is_scissor_enabled(ctx, depthRb);
+         if ((scissor && !st->can_scissor_clear) ||
              is_window_rectangle_enabled(ctx))
             quad_buffers |= PIPE_CLEAR_DEPTH;
          else
             clear_buffers |= PIPE_CLEAR_DEPTH;
+         have_scissor_buffers |= scissor && st->can_scissor_clear;
       }
    }
    if (mask & BUFFER_BIT_STENCIL) {
       struct st_renderbuffer *strb = st_renderbuffer(stencilRb);
 
       if (strb->surface && !is_stencil_disabled(ctx, stencilRb)) {
-         if (is_scissor_enabled(ctx, stencilRb) ||
+         bool scissor = is_scissor_enabled(ctx, stencilRb);
+         if ((scissor && !st->can_scissor_clear) ||
              is_window_rectangle_enabled(ctx) ||
              is_stencil_masked(ctx, stencilRb))
             quad_buffers |= PIPE_CLEAR_STENCIL;
          else
             clear_buffers |= PIPE_CLEAR_STENCIL;
+         have_scissor_buffers |= scissor && st->can_scissor_clear;
       }
    }
 
