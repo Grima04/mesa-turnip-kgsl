@@ -1153,6 +1153,9 @@ emit_ubo_read(
                 ins.load_store.arg_2 = 0x1E;
         }
 
+        if (indirect_offset && indirect_offset->is_ssa && !indirect_shift)
+                mir_set_ubo_offset(&ins, indirect_offset, offset);
+
         ins.load_store.arg_1 = index;
 
         return emit_mir_instruction(ctx, ins);

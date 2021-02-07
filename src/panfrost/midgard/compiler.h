@@ -538,6 +538,7 @@ void mir_compute_temp_count(compiler_context *ctx);
 #define LDST_SCRATCH 0x2A
 
 void mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset, unsigned seg);
+void mir_set_ubo_offset(midgard_instruction *ins, nir_src *src, unsigned bias);
 
 /* 'Intrinsic' move for aliasing */
 
