@@ -370,6 +370,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_NO_CLIP_ON_COPY_TEX:
    case PIPE_CAP_CLEAR_SCISSORED: /* TODO */
    case PIPE_CAP_DEVICE_PROTECTED_CONTENT:
+   case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:
