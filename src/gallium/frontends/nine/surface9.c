@@ -149,7 +149,8 @@ NineSurface9_ctor( struct NineSurface9 *This,
                                                          TRUE);
     if (This->base.info.format != This->format_internal ||
         /* DYNAMIC Textures requires same stride as ram buffers.
-         * Do not use workaround by default as it eats more virtual space */
+         * The workaround stores a copy in RAM for locks. It eats more virtual space,
+         * but that is compensated by the use of shmem */
         (pParams->device->workarounds.dynamic_texture_workaround &&
          pDesc->Pool == D3DPOOL_DEFAULT && pDesc->Usage & D3DUSAGE_DYNAMIC)) {
         This->data_internal = nine_allocate(pParams->device->allocator,
