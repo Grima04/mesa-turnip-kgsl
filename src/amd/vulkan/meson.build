@@ -29,17 +29,6 @@ radv_entrypoints = custom_target(
   ],
 )
 
-radv_extensions_c = custom_target(
-  'radv_extensions.c',
-  input : ['radv_extensions.py', vk_api_xml],
-  output : ['radv_extensions.c', 'radv_extensions.h'],
-  command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--out-c', '@OUTPUT0@',
-    '--out-h', '@OUTPUT1@'
-  ],
-  depend_files : vk_extensions_gen,
-)
-
 amd_vk_format_table_c = custom_target(
   'amd_vk_format_table.c',
   input : ['vk_format_table.py', 'vk_format_layout.csv'],
@@ -171,7 +160,7 @@ endif
 
 libvulkan_radeon = shared_library(
   'vulkan_radeon',
-  [libradv_files, radv_entrypoints, radv_extensions_c, amd_vk_format_table_c, sha1_h],
+  [libradv_files, radv_entrypoints, amd_vk_format_table_c, sha1_h],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_amd, inc_amd_common, inc_amd_common_llvm, inc_compiler, inc_util, inc_vulkan_wsi,
   ],

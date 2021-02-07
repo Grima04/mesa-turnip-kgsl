@@ -69,7 +69,6 @@
 #include "ac_llvm_util.h"
 #include "radv_constants.h"
 #include "radv_descriptor_set.h"
-#include "radv_extensions.h"
 #include "sid.h"
 #include "ac_sqtt.h"
 
@@ -338,7 +337,6 @@ struct radv_instance {
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);
 void radv_finish_wsi(struct radv_physical_device *physical_device);
-uint32_t radv_physical_device_api_version(struct radv_physical_device *dev);
 
 struct cache_entry;
 
