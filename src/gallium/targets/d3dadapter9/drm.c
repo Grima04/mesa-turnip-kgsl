@@ -262,49 +262,21 @@ drm_create_adapter( int fd,
         }
     }
 
-    if (driCheckOption(&userInitOptions, "vblank_mode", DRI_ENUM))
-        ctx->base.vblank_mode = driQueryOptioni(&userInitOptions, "vblank_mode");
-    else
-        ctx->base.vblank_mode = 1;
+    ctx->base.vblank_mode = driQueryOptioni(&userInitOptions, "vblank_mode");
+    ctx->base.thread_submit = driQueryOptionb(&userInitOptions, "thread_submit"); /* TODO: default to TRUE if different_device */
+    override_vendorid = driQueryOptioni(&userInitOptions, "override_vendorid");
 
-    if (driCheckOption(&userInitOptions, "thread_submit", DRI_BOOL))
-        ctx->base.thread_submit = driQueryOptionb(&userInitOptions, "thread_submit");
-    else
-        ctx->base.thread_submit = different_device;
-
-    if (driCheckOption(&userInitOptions, "override_vendorid", DRI_INT)) {
-        override_vendorid = driQueryOptioni(&userInitOptions, "override_vendorid");
-    }
-
-    if (driCheckOption(&userInitOptions, "discard_delayed_release", DRI_BOOL))
-        ctx->base.discard_delayed_release = driQueryOptionb(&userInitOptions, "discard_delayed_release");
-    else
-        ctx->base.discard_delayed_release = TRUE;
-
-    if (driCheckOption(&userInitOptions, "tearfree_discard", DRI_BOOL))
-        ctx->base.tearfree_discard = driQueryOptionb(&userInitOptions, "tearfree_discard");
-    else
-        ctx->base.tearfree_discard = FALSE;
+    ctx->base.discard_delayed_release = driQueryOptionb(&userInitOptions, "discard_delayed_release");
+    ctx->base.tearfree_discard = driQueryOptionb(&userInitOptions, "tearfree_discard");
 
     if (ctx->base.tearfree_discard && !ctx->base.discard_delayed_release) {
         ERR("tearfree_discard requires discard_delayed_release\n");
         ctx->base.tearfree_discard = FALSE;
     }
 
-    if (driCheckOption(&userInitOptions, "csmt_force", DRI_INT))
-        ctx->base.csmt_force = driQueryOptioni(&userInitOptions, "csmt_force");
-    else
-        ctx->base.csmt_force = -1;
-
-    if (driCheckOption(&userInitOptions, "dynamic_texture_workaround", DRI_BOOL))
-        ctx->base.dynamic_texture_workaround = driQueryOptionb(&userInitOptions, "dynamic_texture_workaround");
-    else
-        ctx->base.dynamic_texture_workaround = FALSE;
-
-    if (driCheckOption(&userInitOptions, "shader_inline_constants", DRI_BOOL))
-        ctx->base.shader_inline_constants = driQueryOptionb(&userInitOptions, "shader_inline_constants");
-    else
-        ctx->base.shader_inline_constants = FALSE;
+    ctx->base.csmt_force = driQueryOptioni(&userInitOptions, "csmt_force");
+    ctx->base.dynamic_texture_workaround = driQueryOptionb(&userInitOptions, "dynamic_texture_workaround");
+    ctx->base.shader_inline_constants = driQueryOptionb(&userInitOptions, "shader_inline_constants");
 
     driDestroyOptionCache(&userInitOptions);
     driDestroyOptionInfo(&defaultInitOptions);
