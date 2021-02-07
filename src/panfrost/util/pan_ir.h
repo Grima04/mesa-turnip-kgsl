@@ -78,6 +78,25 @@ struct panfrost_sysvals {
         struct hash_table_u64 *sysval_to_id;
 };
 
+/* Technically Midgard could go up to 92 in a pathological case but we don't
+ * take advantage of that. Likewise Bifrost's FAU encoding can address 128
+ * words but actual implementations (G72, G76) are capped at 64 */
+
+#define PAN_MAX_PUSH 64
+
+/* Architectural invariants (Midgard and Bifrost): UBO must be <= 2^16 bytes so
+ * an offset to a word must be < 2^16. There are less than 2^8 UBOs */
+
+struct panfrost_ubo_word {
+        uint16_t ubo;
+        uint16_t offset;
+};
+
+struct panfrost_ubo_push {
+        unsigned count;
+        struct panfrost_ubo_word words[PAN_MAX_PUSH];
+};
+
 void
 panfrost_nir_assign_sysvals(struct panfrost_sysvals *ctx, void *memctx, nir_shader *shader);
 
@@ -99,6 +118,10 @@ typedef struct {
 
         unsigned sysval_count;
         unsigned sysvals[MAX_SYSVAL_COUNT];
+
+        /* UBOs to push to Register Mapped Uniforms (Midgard) or Fast Access
+         * Uniforms (Bifrost) */
+        struct panfrost_ubo_push push;
 
         int first_tag;
 
