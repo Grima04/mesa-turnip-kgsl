@@ -167,6 +167,14 @@ typedef enum
 const char *gl_vert_attrib_name(gl_vert_attrib attrib);
 
 /**
+ * Max number of texture coordinate units.  This mainly just applies to
+ * the fixed-function vertex code.  This will be difficult to raise above
+ * eight because of various vertex attribute bitvectors.
+ */
+#define MAX_TEXTURE_COORD_UNITS     8
+#define MAX_VERTEX_GENERIC_ATTRIBS  16
+
+/**
  * Symbolic constats to help iterating over
  * specific blocks of vertex attributes.
  *
