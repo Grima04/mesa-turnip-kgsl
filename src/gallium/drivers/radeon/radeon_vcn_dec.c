@@ -552,6 +552,15 @@ static rvcn_dec_message_vp9_t get_vp9_msg(struct radeon_decoder *dec,
       }
    }
 
+   if (dec->dpb_type == DPB_DYNAMIC_TIER_2) {
+      dec->ref_codec.bts = (pic->base.profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2) ?
+         CODEC_10_BITS : CODEC_8_BITS;
+      dec->ref_codec.index = result.curr_pic_idx;
+      dec->ref_codec.ref_size = 8;
+      memset(dec->ref_codec.ref_list, 0x7f, sizeof(dec->ref_codec.ref_list));
+      memcpy(dec->ref_codec.ref_list, result.ref_frame_map, sizeof(result.ref_frame_map));
+   }
+
    return result;
 }
 
@@ -943,6 +952,14 @@ static rvcn_dec_message_av1_t get_av1_msg(struct radeon_decoder *dec,
       result.tile_info[i].size = pic->slice_parameter.slice_data_size[i];
    }
 
+   if (dec->dpb_type == DPB_DYNAMIC_TIER_2) {
+      dec->ref_codec.bts = pic->picture_parameter.bit_depth_idx ? CODEC_10_BITS : CODEC_8_BITS;
+      dec->ref_codec.index = result.curr_pic_idx;
+      dec->ref_codec.ref_size = 8;
+      memset(dec->ref_codec.ref_list, 0x7f, sizeof(dec->ref_codec.ref_list));
+      memcpy(dec->ref_codec.ref_list, result.ref_frame_map, sizeof(result.ref_frame_map));
+   }
+
    return result;
 }
 
@@ -1308,6 +1325,99 @@ static void rvcn_dec_message_create(struct radeon_decoder *dec)
    create->height_in_samples = dec->base.height;
 }
 
+static unsigned rvcn_dec_dynamic_dpb_t2_message(struct radeon_decoder *dec, rvcn_dec_message_decode_t *decode,
+      rvcn_dec_message_dynamic_dpb_t2_t *dynamic_dpb_t2, unsigned db_alignment)
+{
+   struct rvcn_dec_dynamic_dpb_t2 *dpb = NULL;
+   unsigned width, height, size;
+   uint64_t addr;
+   int i;
+
+   width = align(decode->width_in_samples, db_alignment);
+   height = align(decode->height_in_samples, db_alignment);
+   size = align((width * height * 3) / 2, 256);
+   if (dec->ref_codec.bts == CODEC_10_BITS)
+      size = size * 3 / 2;
+
+   list_for_each_entry_safe(struct rvcn_dec_dynamic_dpb_t2, d, &dec->dpb_ref_list, list) {
+      for (i = 0; i < dec->ref_codec.ref_size; ++i) {
+         if ((dec->ref_codec.ref_list[i] != 0x7f) && (d->index == (dec->ref_codec.ref_list[i] & 0x7f))) {
+            addr = dec->ws->buffer_get_virtual_address(d->dpb.res->buf);
+            dynamic_dpb_t2->dpbAddrLo[i] = addr;
+            dynamic_dpb_t2->dpbAddrHi[i] = addr >> 32;
+            ++dynamic_dpb_t2->dpbArraySize;
+            break;
+         }
+      }
+      if (i == dec->ref_codec.ref_size) {
+         list_del(&d->list);
+         list_addtail(&d->list, &dec->dpb_unref_list);
+      }
+   }
+
+   list_for_each_entry_safe(struct rvcn_dec_dynamic_dpb_t2, d, &dec->dpb_ref_list, list) {
+      if (d->dpb.res->b.b.width0 * d->dpb.res->b.b.height0 == size && d->index == dec->ref_codec.index) {
+         dpb = d;
+         break;
+      }
+   }
+
+   if (!dpb) {
+      list_for_each_entry_safe(struct rvcn_dec_dynamic_dpb_t2, d, &dec->dpb_unref_list, list) {
+         if (d->dpb.res->b.b.width0 * d->dpb.res->b.b.height0 == size) {
+            d->index = dec->ref_codec.index;
+            list_del(&d->list);
+            list_addtail(&d->list, &dec->dpb_ref_list);
+            dpb = d;
+            break;
+         }
+      }
+   }
+
+   list_for_each_entry_safe(struct rvcn_dec_dynamic_dpb_t2, d, &dec->dpb_unref_list, list) {
+      list_del(&d->list);
+      si_vid_destroy_buffer(&d->dpb);
+      FREE(d);
+   }
+
+   if (!dpb) {
+      dpb = CALLOC_STRUCT(rvcn_dec_dynamic_dpb_t2);
+      if (!dpb)
+         return 1;
+      dpb->index = dec->ref_codec.index;
+      if (!si_vid_create_buffer(dec->screen, &dpb->dpb, size, PIPE_USAGE_DEFAULT)) {
+         RVID_ERR("Can't allocated dpb buffer.\n");
+         FREE(dpb);
+         return 1;
+      }
+      list_addtail(&dpb->list, &dec->dpb_ref_list);
+   }
+
+   dec->ws->cs_add_buffer(&dec->cs, dpb->dpb.res->buf,
+      RADEON_USAGE_READWRITE | RADEON_USAGE_SYNCHRONIZED, RADEON_DOMAIN_VRAM, 0);
+   addr = dec->ws->buffer_get_virtual_address(dpb->dpb.res->buf);
+   dynamic_dpb_t2->dpbCurrLo = addr;
+   dynamic_dpb_t2->dpbCurrHi = addr >> 32;
+
+   decode->decode_flags = 1;
+   dynamic_dpb_t2->dpbConfigFlags = 0;
+   dynamic_dpb_t2->dpbLumaPitch = align(decode->width_in_samples, db_alignment);
+   dynamic_dpb_t2->dpbLumaAlignedHeight = align(decode->height_in_samples, db_alignment);
+   dynamic_dpb_t2->dpbLumaAlignedSize = dynamic_dpb_t2->dpbLumaPitch *
+      dynamic_dpb_t2->dpbLumaAlignedHeight;
+   dynamic_dpb_t2->dpbChromaPitch = dynamic_dpb_t2->dpbLumaPitch >> 1;
+   dynamic_dpb_t2->dpbChromaAlignedHeight = dynamic_dpb_t2->dpbLumaAlignedHeight >> 1;
+   dynamic_dpb_t2->dpbChromaAlignedSize = dynamic_dpb_t2->dpbChromaPitch *
+      dynamic_dpb_t2->dpbChromaAlignedHeight * 2;
+
+   if (dec->ref_codec.bts == CODEC_10_BITS) {
+      dynamic_dpb_t2->dpbLumaAlignedSize = dynamic_dpb_t2->dpbLumaAlignedSize * 3 / 2;
+      dynamic_dpb_t2->dpbChromaAlignedSize = dynamic_dpb_t2->dpbChromaAlignedSize * 3 / 2;
+   }
+
+   return 0;
+}
+
 static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
                                                  struct pipe_video_buffer *target,
                                                  struct pipe_picture_desc *picture)
@@ -1328,6 +1438,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    void *codec;
    rvcn_dec_message_drm_t *drm = NULL;
    rvcn_dec_message_dynamic_dpb_t *dynamic_dpb = NULL;
+   rvcn_dec_message_dynamic_dpb_t2_t *dynamic_dpb_t2 = NULL;
    unsigned db_alignment;
 
    header = dec->msg;
@@ -1341,7 +1452,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       sizes += sizeof(rvcn_dec_message_index_t);
    }
 
-   if (dec->dpb_type == DPB_DYNAMIC_TIER_1) {
+   if (dec->dpb_type >= DPB_DYNAMIC_TIER_1) {
       index_dynamic_dpb = (void*)header + sizes;
       sizes += sizeof(rvcn_dec_message_index_t);
    }
@@ -1356,10 +1467,16 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       sizes += sizeof(rvcn_dec_message_drm_t);
    }
 
-   if (dec->dpb_type == DPB_DYNAMIC_TIER_1) {
+   if (dec->dpb_type >= DPB_DYNAMIC_TIER_1) {
       offset_dynamic_dpb = sizes;
-      dynamic_dpb = (void*)header + sizes;
-      sizes += sizeof(rvcn_dec_message_dynamic_dpb_t);
+      if (dec->dpb_type == DPB_DYNAMIC_TIER_1) {
+         dynamic_dpb = (void*)header + sizes;
+         sizes += sizeof(rvcn_dec_message_dynamic_dpb_t);
+      }
+      else if (dec->dpb_type == DPB_DYNAMIC_TIER_2) {
+         dynamic_dpb_t2 = (void*)header + sizes;
+         sizes += sizeof(rvcn_dec_message_dynamic_dpb_t2_t);
+      }
    }
 
    offset_codec = sizes;
@@ -1391,12 +1508,15 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       ++header->num_buffers;
    }
 
-   if (dec->dpb_type == DPB_DYNAMIC_TIER_1) {
+   if (dec->dpb_type >= DPB_DYNAMIC_TIER_1) {
       index_dynamic_dpb->message_id = RDECODE_MESSAGE_DYNAMIC_DPB;
       index_dynamic_dpb->offset = offset_dynamic_dpb;
-      index_dynamic_dpb->size = sizeof(rvcn_dec_message_dynamic_dpb_t);
       index_dynamic_dpb->filled = 0;
       ++header->num_buffers;
+      if (dec->dpb_type == DPB_DYNAMIC_TIER_1)
+         index_dynamic_dpb->size = sizeof(rvcn_dec_message_dynamic_dpb_t);
+      else if (dec->dpb_type == DPB_DYNAMIC_TIER_2)
+         index_dynamic_dpb->size = sizeof(rvcn_dec_message_dynamic_dpb_t2_t);
    }
 
    decode->stream_type = dec->stream_type;
@@ -1408,9 +1528,10 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 
    db_alignment = (((struct si_screen *)dec->screen)->info.family >= CHIP_RENOIR &&
                    dec->base.width > 32 && (dec->stream_type == RDECODE_CODEC_VP9 ||
+                   dec->stream_type == RDECODE_CODEC_AV1 ||
                    dec->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)) ? 64 : 32;
 
-   if (!dec->dpb.res) {
+   if (!dec->dpb.res && dec->dpb_type != DPB_DYNAMIC_TIER_2) {
       unsigned dpb_size = calc_dpb_size(dec, db_alignment);
       bool r;
       if (dpb_size) {
@@ -1510,7 +1631,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       dec->ws->cs_flush(&dec->cs, RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
    }
 
-   decode->dpb_size = dec->dpb.res->buf->size;
+   decode->dpb_size = (dec->dpb_type != DPB_DYNAMIC_TIER_2) ? dec->dpb.res->buf->size : 0;
    decode->dt_size = si_resource(((struct vl_video_buffer *)target)->resources[0])->buf->size +
                      si_resource(((struct vl_video_buffer *)target)->resources[1])->buf->size;
 
@@ -1679,6 +1800,10 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 
    if (dec->ctx.res)
       decode->hw_ctxt_size = dec->ctx.res->buf->size;
+
+   if (dec->dpb_type == DPB_DYNAMIC_TIER_2)
+      if (rvcn_dec_dynamic_dpb_t2_message(dec, decode, dynamic_dpb_t2, db_alignment))
+         return NULL;
 
    return luma->buffer.buf;
 }
@@ -2018,7 +2143,15 @@ static void radeon_dec_destroy(struct pipe_video_codec *decoder)
       si_vid_destroy_buffer(&dec->bs_buffers[i]);
    }
 
-   si_vid_destroy_buffer(&dec->dpb);
+   if (dec->dpb_type != DPB_DYNAMIC_TIER_2) {
+      si_vid_destroy_buffer(&dec->dpb);
+   } else {
+      list_for_each_entry_safe(struct rvcn_dec_dynamic_dpb_t2, d, &dec->dpb_ref_list, list) {
+         list_del(&d->list);
+         si_vid_destroy_buffer(&d->dpb);
+         FREE(d);
+      }
+   }
    si_vid_destroy_buffer(&dec->ctx);
    si_vid_destroy_buffer(&dec->sessionctx);
 
@@ -2123,7 +2256,8 @@ void send_cmd_dec(struct radeon_decoder *dec, struct pipe_video_buffer *target,
    rvcn_dec_message_feedback(dec);
    send_msg_buf(dec);
 
-   send_cmd(dec, RDECODE_CMD_DPB_BUFFER, dec->dpb.res->buf, 0, RADEON_USAGE_READWRITE,
+   if (dec->dpb_type != DPB_DYNAMIC_TIER_2)
+      send_cmd(dec, RDECODE_CMD_DPB_BUFFER, dec->dpb.res->buf, 0, RADEON_USAGE_READWRITE,
             RADEON_DOMAIN_VRAM);
    if (dec->ctx.res)
       send_cmd(dec, RDECODE_CMD_CONTEXT_BUFFER, dec->ctx.res->buf, 0, RADEON_USAGE_READWRITE,
@@ -2346,6 +2480,11 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    else
       dec->dpb_type = DPB_MAX_RES;
 
+   if (dec->dpb_type == DPB_DYNAMIC_TIER_2) {
+      list_inithead(&dec->dpb_ref_list);
+      list_inithead(&dec->dpb_unref_list);
+   }
+
    return &dec->base;
 
 error:
@@ -2356,7 +2495,8 @@ error:
       si_vid_destroy_buffer(&dec->bs_buffers[i]);
    }
 
-   si_vid_destroy_buffer(&dec->dpb);
+   if (dec->dpb_type != DPB_DYNAMIC_TIER_2)
+      si_vid_destroy_buffer(&dec->dpb);
    si_vid_destroy_buffer(&dec->ctx);
    si_vid_destroy_buffer(&dec->sessionctx);
 

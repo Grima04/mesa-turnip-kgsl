@@ -29,6 +29,7 @@
 #define _RADEON_VCN_DEC_H
 
 #include "radeon_video.h"
+#include "util/list.h"
 
 #define RDECODE_PKT_TYPE_S(x)        (((unsigned)(x)&0x3) << 30)
 #define RDECODE_PKT_TYPE_G(x)        (((x) >> 30) & 0x3)
@@ -1066,6 +1067,12 @@ struct jpeg_params {
    bool direct_reg;
 };
 
+struct rvcn_dec_dynamic_dpb_t2 {
+   struct list_head list;
+   uint8_t index;
+   struct rvid_buffer dpb;
+};
+
 struct radeon_decoder {
    struct pipe_video_codec base;
 
@@ -1104,7 +1111,21 @@ struct radeon_decoder {
    enum {
       DPB_MAX_RES = 0,
       DPB_DYNAMIC_TIER_1,
+      DPB_DYNAMIC_TIER_2
    } dpb_type;
+
+   struct {
+      enum {
+         CODEC_8_BITS = 0,
+         CODEC_10_BITS
+      } bts;
+      uint8_t index;
+      unsigned ref_size;
+      uint8_t ref_list[16];
+   } ref_codec;
+
+   struct list_head dpb_ref_list;
+   struct list_head dpb_unref_list;
 
    void (*send_cmd)(struct radeon_decoder *dec, struct pipe_video_buffer *target,
                     struct pipe_picture_desc *picture);
