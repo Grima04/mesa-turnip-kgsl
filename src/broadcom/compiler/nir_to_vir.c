@@ -1137,6 +1137,11 @@ ntq_get_alu_parent(nir_src src)
 static enum v3d_qpu_cond
 ntq_emit_bool_to_cond(struct v3d_compile *c, nir_src src)
 {
+        struct qreg qsrc = ntq_get_src(c, src, 0);
+        /* skip if we already have src in the flags */
+        if (qsrc.file == QFILE_TEMP && c->flags_temp == qsrc.index)
+                return c->flags_cond;
+
         nir_alu_instr *compare = ntq_get_alu_parent(src);
         if (!compare)
                 goto out;
@@ -1146,6 +1151,7 @@ ntq_emit_bool_to_cond(struct v3d_compile *c, nir_src src)
                 return cond;
 
 out:
+
         vir_set_pf(c, vir_MOV_dest(c, vir_nop_reg(), ntq_get_src(c, src, 0)),
                    V3D_QPU_PF_PUSHZ);
         return V3D_QPU_COND_IFNA;
@@ -1294,6 +1300,8 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 result = vir_MOV(c, vir_SEL(c, cond,
                                             vir_uniform_f(c, 1.0),
                                             vir_uniform_f(c, 0.0)));
+                c->flags_temp = result.index;
+                c->flags_cond = cond;
                 break;
         }
 
@@ -1315,6 +1323,8 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 result = vir_MOV(c, vir_SEL(c, cond,
                                             vir_uniform_ui(c, ~0),
                                             vir_uniform_ui(c, 0)));
+                c->flags_temp = result.index;
+                c->flags_cond = cond;
                 break;
         }
 
@@ -1397,6 +1407,8 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
                                             vir_uniform_ui(c, ~0),
                                             vir_uniform_ui(c, 0)));
+                c->flags_temp = result.index;
+                c->flags_cond = V3D_QPU_COND_IFA;
                 break;
 
         case nir_op_pack_half_2x16_split:
@@ -2672,10 +2684,12 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_helper_invocation:
                 vir_set_pf(c, vir_MSF_dest(c, vir_nop_reg()), V3D_QPU_PF_PUSHZ);
-                ntq_store_dest(c, &instr->dest, 0,
-                               vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
-                                                  vir_uniform_ui(c, ~0),
-                                                  vir_uniform_ui(c, 0))));
+                struct qreg qdest = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
+                                                       vir_uniform_ui(c, ~0),
+                                                       vir_uniform_ui(c, 0)));
+                c->flags_temp = qdest.index;
+                c->flags_cond = V3D_QPU_COND_IFA;
+                ntq_store_dest(c, &instr->dest, 0, qdest);
                 break;
 
         case nir_intrinsic_load_front_face:

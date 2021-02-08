@@ -735,6 +735,13 @@ struct v3d_compile {
         struct qblock *cur_block;
         struct qblock *loop_cont_block;
         struct qblock *loop_break_block;
+        /**
+         * Which temp, if any, do we currently have in the flags?
+         * This is set when processing a comparison instruction, and
+         * reset to -1 by anything else that touches the flags.
+         */
+        int32_t flags_temp;
+        enum v3d_qpu_cond flags_cond;
 
         uint64_t *qpu_insts;
         uint32_t qpu_inst_count;

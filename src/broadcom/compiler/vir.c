@@ -234,6 +234,7 @@ vir_set_cond(struct qinst *inst, enum v3d_qpu_cond cond)
 void
 vir_set_pf(struct v3d_compile *c, struct qinst *inst, enum v3d_qpu_pf pf)
 {
+        c->flags_temp = -1;
         if (vir_is_add(inst)) {
                 inst->qpu.flags.apf = pf;
         } else {
@@ -245,6 +246,7 @@ vir_set_pf(struct v3d_compile *c, struct qinst *inst, enum v3d_qpu_pf pf)
 void
 vir_set_uf(struct v3d_compile *c, struct qinst *inst, enum v3d_qpu_uf uf)
 {
+        c->flags_temp = -1;
         if (vir_is_add(inst)) {
                 inst->qpu.flags.auf = uf;
         } else {
@@ -542,6 +544,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                                             _mesa_key_pointer_equal);
 
         c->tmu.outstanding_regs = _mesa_pointer_set_create(c);
+        c->flags_temp = -1;
 
         return c;
 }
