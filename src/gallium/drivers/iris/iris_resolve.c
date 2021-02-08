@@ -254,8 +254,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                       surf->view.array_len,
                                       aux_usage);
 
-         iris_cache_flush_for_render(batch, res->bo, surf->view.format,
-                                     aux_usage);
+         iris_cache_flush_for_render(batch, res->bo, aux_usage);
       }
    }
 }
@@ -330,24 +329,16 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
    }
 }
 
-static void *
-format_aux_tuple(enum isl_format format, enum isl_aux_usage aux_usage)
-{
-   return (void *)(uintptr_t)((uint32_t)format << 8 | aux_usage);
-}
-
 void
 iris_cache_flush_for_render(struct iris_batch *batch,
                             struct iris_bo *bo,
-                            enum isl_format format,
                             enum isl_aux_usage aux_usage)
 {
    iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_RENDER_WRITE);
 
    /* Check to see if this bo has been used by a previous rendering operation
-    * but with a different format or aux usage.  If it has, flush the render
-    * cache so we ensure that it's only in there with one format or aux usage
-    * at a time.
+    * but with a different aux usage.  If it has, flush the render cache so we
+    * ensure that it's only in there with one aux usage at a time.
     *
     * Even though it's not obvious, this can easily happen in practice.
     * Suppose a client is blending on a surface with sRGB encode enabled on
@@ -360,24 +351,23 @@ iris_cache_flush_for_render(struct iris_batch *batch,
     * same time and the pixel scoreboard and color blender are trying to sort
     * it all out.  This ends badly (i.e. GPU hangs).
     *
-    * To date, we have never observed GPU hangs or even corruption to be
-    * associated with switching the format, only the aux usage.  However,
-    * there are comments in various docs which indicate that the render cache
-    * isn't 100% resilient to format changes.  We may as well be conservative
-    * and flush on format changes too.  We can always relax this later if we
-    * find it to be a performance problem.
+    * There are comments in various docs which indicate that the render cache
+    * isn't 100% resilient to format changes.  However, to date, we have never
+    * observed GPU hangs or even corruption to be associated with switching the
+    * format, only the aux usage.  So we let that slide for now.
     */
+   void *v_aux_usage = (void *) (uintptr_t) aux_usage;
    struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo);
    if (!entry) {
       _mesa_hash_table_insert_pre_hashed(batch->cache.render, bo->hash, bo,
-                                         format_aux_tuple(format, aux_usage));
-   } else if (entry->data != format_aux_tuple(format, aux_usage)) {
+                                         v_aux_usage);
+   } else if (entry->data != v_aux_usage) {
       iris_emit_pipe_control_flush(batch,
-                                   "cache tracker: render format mismatch",
+                                   "cache tracker: aux usage mismatch",
                                    PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                    PIPE_CONTROL_CS_STALL);
-      entry->data = format_aux_tuple(format, aux_usage);
+      entry->data = v_aux_usage;
    }
 }
 
