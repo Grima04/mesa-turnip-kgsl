@@ -1341,8 +1341,10 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
          sctx->vb_descriptors_gpu_list = ptr;
          radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->vb_descriptors_buffer,
                                    RADEON_USAGE_READ, RADEON_PRIO_DESCRIPTORS);
-         si_cp_dma_prefetch(sctx, &sctx->vb_descriptors_buffer->b.b, sctx->vb_descriptors_offset,
-                            alloc_size);
+         /* GFX6 doesn't support the L2 prefetch. */
+         if (GFX_VERSION >= GFX7)
+            si_cp_dma_prefetch(sctx, &sctx->vb_descriptors_buffer->b.b, sctx->vb_descriptors_offset,
+                               alloc_size);
       } else {
          si_resource_reference(&sctx->vb_descriptors_buffer, NULL);
       }
