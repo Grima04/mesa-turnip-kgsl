@@ -234,6 +234,29 @@ util_format_is_unorm(enum pipe_format format)
    return desc->is_unorm;
 }
 
+/**
+ * Returns true if the format contains scaled integer format channels.
+ */
+boolean
+util_format_is_scaled(enum pipe_format format)
+{
+   const struct util_format_description *desc = util_format_description(format);
+   int i;
+
+   /* format none is described as scaled but not for this check */
+   if (format == PIPE_FORMAT_NONE)
+      return FALSE;
+
+   /* Find the first non-void channel. */
+   i = util_format_get_first_non_void_channel(format);
+   if (i == -1)
+      return FALSE;
+
+   return !desc->channel[i].pure_integer && !desc->channel[i].normalized &&
+      (desc->channel[i].type == UTIL_FORMAT_TYPE_SIGNED ||
+       desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED);
+}
+
 boolean
 util_format_is_snorm8(enum pipe_format format)
 {

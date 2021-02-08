@@ -729,6 +729,8 @@ util_format_is_unorm(enum pipe_format format) ATTRIBUTE_CONST;
 boolean
 util_format_is_snorm8(enum pipe_format format) ATTRIBUTE_CONST;
 
+boolean
+util_format_is_scaled(enum pipe_format format) ATTRIBUTE_CONST;
 /**
  * Check if the src format can be blitted to the destination format with
  * a simple memcpy.  For example, blitting from RGBA to RGBx is OK, but not
