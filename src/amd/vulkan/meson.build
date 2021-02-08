@@ -207,13 +207,21 @@ if with_symbols_check
   )
 endif
 
+icd_lib_path = join_paths(get_option('prefix'), get_option('libdir'))
+icd_file_name = 'libvulkan_radeon.so'
+if with_platform_windows
+  icd_lib_path = '.'
+  icd_file_name = 'vulkan_radeon.dll'
+endif
+
 radeon_icd = custom_target(
   'radeon_icd',
   input : 'radv_icd.py',
   output : 'radeon_icd.@0@.json'.format(host_machine.cpu()),
   command : [
     prog_python, '@INPUT@',
-    '--lib-path', join_paths(get_option('prefix'), get_option('libdir')),
+    '--lib-path', icd_lib_path,
+    '--file-name', icd_file_name,
     '--out', '@OUTPUT@',
   ],
   depend_files : files('radv_extensions.py'),

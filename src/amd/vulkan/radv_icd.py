@@ -28,10 +28,11 @@ from radv_extensions import *
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', help='Output json file.', required=True)
-    parser.add_argument('--lib-path', help='Path to libvulkan_radeon.so')
+    parser.add_argument('--lib-path', help='Path to file')
+    parser.add_argument('--file-name', help='Name of file')
     args = parser.parse_args()
 
-    path = 'libvulkan_radeon.so'
+    path = args.file_name
     if args.lib_path:
         path = os.path.join(args.lib_path, path)
 
