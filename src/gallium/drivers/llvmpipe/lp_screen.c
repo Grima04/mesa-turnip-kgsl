@@ -678,6 +678,10 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
       }
    }
 
+   if (!(bind & PIPE_BIND_VERTEX_BUFFER) &&
+       util_format_is_scaled(format))
+      return false;
+
    if (bind & PIPE_BIND_DISPLAY_TARGET) {
       if(!winsys->is_displaytarget_format_supported(winsys, bind, format))
          return false;
