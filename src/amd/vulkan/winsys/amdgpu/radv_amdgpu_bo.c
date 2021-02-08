@@ -341,6 +341,7 @@ static int radv_amdgpu_global_bo_list_add(struct radv_amdgpu_winsys *ws,
 
 	ws->global_bo_list.bos[ws->global_bo_list.count++] = bo;
 	u_rwlock_wrunlock(&ws->global_bo_list.lock);
+	bo->base.use_global_list = true;
 	return VK_SUCCESS;
 }
 
@@ -352,6 +353,7 @@ static void radv_amdgpu_global_bo_list_del(struct radv_amdgpu_winsys *ws,
 		if (ws->global_bo_list.bos[i] == bo) {
 			ws->global_bo_list.bos[i] = ws->global_bo_list.bos[ws->global_bo_list.count - 1];
 			--ws->global_bo_list.count;
+			bo->base.use_global_list = false;
 			break;
 		}
 	}
