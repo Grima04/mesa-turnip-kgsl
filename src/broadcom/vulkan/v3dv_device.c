@@ -1410,6 +1410,9 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    if (pCreateInfo->pEnabledFeatures) {
       memcpy(&device->features, pCreateInfo->pEnabledFeatures,
              sizeof(device->features));
+
+      if (device->features.robustBufferAccess)
+         perf_debug("Device created with Robust Buffer Access enabled.\n");
    }
 
    int ret = drmSyncobjCreate(physical_device->render_fd,
