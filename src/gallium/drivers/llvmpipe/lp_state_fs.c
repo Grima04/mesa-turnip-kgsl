@@ -4235,7 +4235,8 @@ llvmpipe_update_fs(struct llvmpipe_context *lp)
             assert(item);
             assert(item->base);
             llvmpipe_remove_shader_variant(lp, item->base);
-            lp_fs_variant_reference(lp, &item->base, NULL);
+            struct lp_fragment_shader_variant *variant = item->base;
+            lp_fs_variant_reference(lp, &variant, NULL);
          }
       }
 
