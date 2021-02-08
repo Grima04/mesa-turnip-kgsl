@@ -2793,6 +2793,10 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
       state.pctx->bind_sampler_states(state.pctx, s, 0, PIPE_MAX_SAMPLERS, state.ss_cso[s]);
 
       state.pctx->set_shader_images(state.pctx, s, 0, 0, device->physical_device->max_images, NULL);
+
+      state.pctx->set_constant_buffer(state.pctx, s, 0, false, NULL);
+      for (unsigned idx = 0; idx < state.num_const_bufs[s]; idx++)
+         state.pctx->set_constant_buffer(state.pctx, s, idx + 1, false, NULL);
    }
 
    free(state.pending_clear_aspects);
