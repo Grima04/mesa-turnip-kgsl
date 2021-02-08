@@ -2993,7 +2993,11 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
                              const VkAllocationCallbacks *pAllocator,
                              VkPipeline *pPipelines)
 {
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
    VkResult result = VK_SUCCESS;
+
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
+      mtx_lock(&device->pdevice->mutex);
 
    for (uint32_t i = 0; i < count; i++) {
       VkResult local_result;
@@ -3009,6 +3013,9 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
          pPipelines[i] = VK_NULL_HANDLE;
       }
    }
+
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
+      mtx_unlock(&device->pdevice->mutex);
 
    return result;
 }
@@ -3146,7 +3153,11 @@ v3dv_CreateComputePipelines(VkDevice _device,
                             const VkAllocationCallbacks *pAllocator,
                             VkPipeline *pPipelines)
 {
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
    VkResult result = VK_SUCCESS;
+
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
+      mtx_lock(&device->pdevice->mutex);
 
    for (uint32_t i = 0; i < createInfoCount; i++) {
       VkResult local_result;
@@ -3161,6 +3172,9 @@ v3dv_CreateComputePipelines(VkDevice _device,
          pPipelines[i] = VK_NULL_HANDLE;
       }
    }
+
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
+      mtx_unlock(&device->pdevice->mutex);
 
    return result;
 }

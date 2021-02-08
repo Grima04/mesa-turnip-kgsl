@@ -60,6 +60,12 @@ extern uint32_t V3D_DEBUG;
 #define V3D_DEBUG_RA                (1 << 16)
 #define V3D_DEBUG_DUMP_SPIRV        (1 << 17)
 
+#define V3D_DEBUG_SHADERS           (V3D_DEBUG_TGSI | V3D_DEBUG_NIR | \
+                                     V3D_DEBUG_VIR | V3D_DEBUG_QPU | \
+                                     V3D_DEBUG_FS | V3D_DEBUG_GS | \
+                                     V3D_DEBUG_VS | V3D_DEBUG_CS | \
+                                     V3D_DEBUG_RA)
+
 #ifdef HAVE_ANDROID_PLATFORM
 #define LOG_TAG "BROADCOM-MESA"
 #if ANDROID_API_LEVEL >= 26
