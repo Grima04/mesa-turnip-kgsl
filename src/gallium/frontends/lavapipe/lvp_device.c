@@ -1698,3 +1698,42 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceExternalSemaphoreProperties(
    pExternalSemaphoreProperties->compatibleHandleTypes = 0;
    pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
 }
+
+static const VkTimeDomainEXT lvp_time_domains[] = {
+        VK_TIME_DOMAIN_DEVICE_EXT,
+        VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT,
+};
+
+VKAPI_ATTR VkResult VKAPI_CALL lvp_GetPhysicalDeviceCalibrateableTimeDomainsEXT(
+   VkPhysicalDevice physicalDevice,
+   uint32_t *pTimeDomainCount,
+   VkTimeDomainEXT *pTimeDomains)
+{
+   int d;
+   VK_OUTARRAY_MAKE_TYPED(VkTimeDomainEXT, out, pTimeDomains,
+                          pTimeDomainCount);
+
+   for (d = 0; d < ARRAY_SIZE(lvp_time_domains); d++) {
+      vk_outarray_append_typed(VkTimeDomainEXT, &out, i) {
+         *i = lvp_time_domains[d];
+      }
+    }
+
+    return vk_outarray_status(&out);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL lvp_GetCalibratedTimestampsEXT(
+   VkDevice device,
+   uint32_t timestampCount,
+   const VkCalibratedTimestampInfoEXT *pTimestampInfos,
+   uint64_t *pTimestamps,
+   uint64_t *pMaxDeviation)
+{
+   *pMaxDeviation = 1;
+
+   uint64_t now = os_time_get_nano();
+   for (unsigned i = 0; i < timestampCount; i++) {
+      pTimestamps[i] = now;
+   }
+   return VK_SUCCESS;
+}
