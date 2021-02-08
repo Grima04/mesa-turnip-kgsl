@@ -464,6 +464,22 @@ typedef struct rvcn_dec_message_dynamic_dpb_s {
    unsigned int dpbAddrOffset[16];
 } rvcn_dec_message_dynamic_dpb_t;
 
+typedef struct rvcn_dec_message_dynamic_dpb_t2_s {
+    unsigned int dpbConfigFlags;
+    unsigned int dpbLumaPitch;
+    unsigned int dpbLumaAlignedHeight;
+    unsigned int dpbLumaAlignedSize;
+    unsigned int dpbChromaPitch;
+    unsigned int dpbChromaAlignedHeight;
+    unsigned int dpbChromaAlignedSize;
+    unsigned int dpbArraySize;
+
+    unsigned int dpbCurrLo;
+    unsigned int dpbCurrHi;
+    unsigned int dpbAddrLo[16];
+    unsigned int dpbAddrHi[16];
+} rvcn_dec_message_dynamic_dpb_t2_t;
+
 typedef struct {
    unsigned short viewOrderIndex;
    unsigned short viewId;
