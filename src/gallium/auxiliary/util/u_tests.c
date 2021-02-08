@@ -473,7 +473,7 @@ util_test_constant_buffer(struct pipe_context *ctx,
 }
 
 static void
-null_fragment_shader(struct pipe_context *ctx)
+disabled_fragment_shader(struct pipe_context *ctx)
 {
    struct cso_context *cso;
    struct pipe_resource *cb;
@@ -493,6 +493,9 @@ null_fragment_shader(struct pipe_context *ctx)
 
    vs = util_set_passthrough_vertex_shader(cso, ctx, false);
 
+   void *fs = util_make_empty_fragment_shader(ctx);
+   cso_set_fragment_shader_handle(cso, fs);
+
    query = ctx->create_query(ctx, PIPE_QUERY_PRIMITIVES_GENERATED, 0);
    ctx->begin_query(ctx, query);
    util_draw_fullscreen_quad(cso);
@@ -502,6 +505,7 @@ null_fragment_shader(struct pipe_context *ctx)
    /* Cleanup. */
    cso_destroy_context(cso);
    ctx->delete_vs_state(ctx, vs);
+   ctx->delete_fs_state(ctx, fs);
    ctx->destroy_query(ctx, query);
    pipe_resource_reference(&cb, NULL);
 
@@ -1024,7 +1028,7 @@ util_run_tests(struct pipe_screen *screen)
 {
    struct pipe_context *ctx = screen->context_create(screen, NULL, 0);
 
-   null_fragment_shader(ctx);
+   disabled_fragment_shader(ctx);
    tgsi_vs_window_space_position(ctx);
    null_sampler_view(ctx, TGSI_TEXTURE_2D);
    null_sampler_view(ctx, TGSI_TEXTURE_BUFFER);
