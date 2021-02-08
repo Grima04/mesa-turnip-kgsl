@@ -315,6 +315,26 @@ get_device_extensions(const struct anv_physical_device *device,
    };
 }
 
+static void
+anv_init_meminfo(struct anv_physical_device *device, int fd)
+{
+   uint64_t heap_size = anv_compute_heap_size(fd, device->gtt_size);
+
+   if (heap_size > (2ull << 30) && !device->supports_48bit_addresses) {
+      /* When running with an overridden PCI ID, we may get a GTT size from
+       * the kernel that is greater than 2 GiB but the execbuf check for 48bit
+       * address support can still fail.  Just clamp the address space size to
+       * 2 GiB if we don't have 48-bit support.
+       */
+      mesa_logw("%s:%d: The kernel reported a GTT size larger than 2 GiB but "
+                "not support for 48-bit addresses",
+                __FILE__, __LINE__);
+      heap_size = 2ull << 30;
+   }
+
+   device->sys.size = heap_size;
+}
+
 static VkResult
 anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
 {
@@ -340,60 +360,55 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
                                       device->has_softpin &&
                                       device->gtt_size > (4ULL << 30 /* GiB */);
 
-   uint64_t heap_size = anv_compute_heap_size(fd, device->gtt_size);
+   anv_init_meminfo(device, fd);
+   assert(device->sys.size != 0);
 
-   if (heap_size > (2ull << 30) && !device->supports_48bit_addresses) {
-      /* When running with an overridden PCI ID, we may get a GTT size from
-       * the kernel that is greater than 2 GiB but the execbuf check for 48bit
-       * address support can still fail.  Just clamp the address space size to
-       * 2 GiB if we don't have 48-bit support.
+   if (device->info.has_llc) {
+      device->memory.heap_count = 1;
+      device->memory.heaps[0] = (struct anv_memory_heap) {
+         .size = device->sys.size,
+         .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
+         .is_local_mem = false,
+      };
+
+      /* Big core GPUs share LLC with the CPU and thus one memory type can be
+       * both cached and coherent at the same time.
        */
-      mesa_logw("%s:%d: The kernel reported a GTT size larger than 2 GiB but "
-                        "not support for 48-bit addresses",
-                        __FILE__, __LINE__);
-      heap_size = 2ull << 30;
-   }
+      device->memory.type_count = 1;
+      device->memory.types[0] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+         .heapIndex = 0,
+      };
+   } else {
+      device->memory.heap_count = 1;
+      device->memory.heaps[0] = (struct anv_memory_heap) {
+         .size = device->sys.size,
+         .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
+         .is_local_mem = false,
+      };
 
-   device->memory.heap_count = 1;
-   device->memory.heaps[0] = (struct anv_memory_heap) {
-      .size = heap_size,
-      .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
-   };
-
-   uint32_t type_count = 0;
-   for (uint32_t heap = 0; heap < device->memory.heap_count; heap++) {
-      if (device->info.has_llc) {
-         /* Big core GPUs share LLC with the CPU and thus one memory type can be
-          * both cached and coherent at the same time.
-          */
-         device->memory.types[type_count++] = (struct anv_memory_type) {
-            .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                             VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
-            .heapIndex = heap,
-         };
-      } else {
-         /* The spec requires that we expose a host-visible, coherent memory
-          * type, but Atom GPUs don't share LLC. Thus we offer two memory types
-          * to give the application a choice between cached, but not coherent and
-          * coherent but uncached (WC though).
-          */
-         device->memory.types[type_count++] = (struct anv_memory_type) {
-            .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            .heapIndex = heap,
-         };
-         device->memory.types[type_count++] = (struct anv_memory_type) {
-            .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                             VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
-            .heapIndex = heap,
-         };
-      }
+      /* The spec requires that we expose a host-visible, coherent memory
+       * type, but Atom GPUs don't share LLC. Thus we offer two memory types
+       * to give the application a choice between cached, but not coherent and
+       * coherent but uncached (WC though).
+       */
+      device->memory.type_count = 2;
+      device->memory.types[0] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+         .heapIndex = 0,
+      };
+      device->memory.types[1] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+         .heapIndex = 0,
+      };
    }
-   device->memory.type_count = type_count;
 
    return VK_SUCCESS;
 }
