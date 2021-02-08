@@ -643,6 +643,10 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          op = nir_intrinsic_load_tess_level_outer_default;
          load = nir_load_tess_level_outer_default(b);
          break;
+      case TGSI_SEMANTIC_SAMPLEID:
+         op = nir_intrinsic_load_sample_id;
+         load = nir_load_sample_id(b);
+         break;
       default:
          unreachable("bad system value");
       }
