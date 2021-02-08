@@ -363,7 +363,40 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
    anv_init_meminfo(device, fd);
    assert(device->sys.size != 0);
 
-   if (device->info.has_llc) {
+   if (device->vram.size > 0) {
+      /* We can create 2 different heaps when we have local memory support,
+       * first heap with local memory size and second with system memory size.
+       */
+      device->memory.heap_count = 2;
+      device->memory.heaps[0] = (struct anv_memory_heap) {
+         .size = device->vram.size,
+         .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
+         .is_local_mem = true,
+      };
+      device->memory.heaps[1] = (struct anv_memory_heap) {
+         .size = device->sys.size,
+         .flags = 0,
+         .is_local_mem = false,
+      };
+
+      device->memory.type_count = 3;
+      device->memory.types[0] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+         .heapIndex = 0,
+      };
+      device->memory.types[1] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+         .heapIndex = 1,
+      };
+      device->memory.types[2] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+         .heapIndex = 0,
+      };
+   } else if (device->info.has_llc) {
       device->memory.heap_count = 1;
       device->memory.heaps[0] = (struct anv_memory_heap) {
          .size = device->sys.size,
