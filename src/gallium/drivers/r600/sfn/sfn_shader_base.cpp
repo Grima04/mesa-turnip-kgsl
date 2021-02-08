@@ -281,8 +281,8 @@ bool ShaderFromNirProcessor::process_uniforms(nir_variable *uniform)
    auto type = uniform->type->is_array() ? uniform->type->without_array(): uniform->type;
    if (type->is_image() || uniform->data.mode == nir_var_mem_ssbo) {
       sh_info().uses_images = 1;
-      if (uniform->type->is_array())
-         sh_info().indirect_files |= TGSI_FILE_IMAGE;
+      if (uniform->type->is_array() && ! (uniform->data.mode == nir_var_mem_ssbo))
+         sh_info().indirect_files |= 1 << TGSI_FILE_IMAGE;
    }
 
    if (uniform->type->is_image()) {
