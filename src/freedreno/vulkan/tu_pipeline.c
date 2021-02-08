@@ -262,6 +262,7 @@ struct tu_pipeline_builder
    VkSampleCountFlagBits samples;
    bool use_color_attachments;
    bool use_dual_src_blend;
+   bool alpha_to_coverage;
    uint32_t color_attachment_count;
    VkFormat color_attachment_formats[MAX_RTS];
    VkFormat depth_attachment_format;
@@ -1331,7 +1332,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
                     const struct ir3_shader_variant *fs,
                     uint32_t mrt_count, bool dual_src_blend,
                     uint32_t render_components,
-                    bool is_s8_uint)
+                    bool no_earlyz)
 {
    uint32_t smask_regid, posz_regid, stencilref_regid;
 
@@ -1379,7 +1380,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    enum a6xx_ztest_mode zmode;
 
-   if (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || is_s8_uint) {
+   if (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || no_earlyz) {
       zmode = A6XX_LATE_Z;
    } else {
       zmode = A6XX_EARLY_Z;
@@ -1530,20 +1531,36 @@ tu6_emit_program(struct tu_cs *cs,
                 builder->device->physical_device->gpu_id == 650);
    tu6_emit_vpc_varying_modes(cs, fs);
 
+   bool no_earlyz = builder->depth_attachment_format == VK_FORMAT_S8_UINT;
+   uint32_t mrt_count = builder->color_attachment_count;
+   uint32_t render_components = builder->render_components;
+
+   if (builder->alpha_to_coverage) {
+      /* alpha to coverage can behave like a discard */
+      no_earlyz = true;
+      /* alpha value comes from first mrt */
+      render_components |= 0xf;
+      if (!mrt_count) {
+         mrt_count = 1;
+         /* Disable memory write for dummy mrt because it doesn't get set otherwise */
+         tu_cs_emit_regs(cs, A6XX_RB_MRT_CONTROL(0, .component_enable = 0));
+      }
+   }
+
    if (fs) {
       tu6_emit_fs_inputs(cs, fs);
-      tu6_emit_fs_outputs(cs, fs, builder->color_attachment_count,
+      tu6_emit_fs_outputs(cs, fs, mrt_count,
                           builder->use_dual_src_blend,
-                          builder->render_components,
-                          builder->depth_attachment_format == VK_FORMAT_S8_UINT);
+                          render_components,
+                          no_earlyz);
    } else {
       /* TODO: check if these can be skipped if fs is disabled */
       struct ir3_shader_variant dummy_variant = {};
       tu6_emit_fs_inputs(cs, &dummy_variant);
-      tu6_emit_fs_outputs(cs, &dummy_variant, builder->color_attachment_count,
+      tu6_emit_fs_outputs(cs, &dummy_variant, mrt_count,
                           builder->use_dual_src_blend,
-                          builder->render_components,
-                          builder->depth_attachment_format == VK_FORMAT_S8_UINT);
+                          render_components,
+                          no_earlyz);
    }
 
    if (gs || hs) {
@@ -2860,6 +2877,7 @@ tu_pipeline_builder_init_graphics(
       builder->samples = VK_SAMPLE_COUNT_1_BIT;
    } else {
       builder->samples = create_info->pMultisampleState->rasterizationSamples;
+      builder->alpha_to_coverage = create_info->pMultisampleState->alphaToCoverageEnable;
 
       const uint32_t a = subpass->depth_stencil_attachment.attachment;
       builder->depth_attachment_format = (a != VK_ATTACHMENT_UNUSED) ?
