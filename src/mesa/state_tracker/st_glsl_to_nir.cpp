@@ -597,6 +597,13 @@ st_nir_vectorize_io(nir_shader *producer, nir_shader *consumer)
       NIR_PASS_V(producer, nir_split_var_copies);
       NIR_PASS_V(producer, nir_lower_var_copies);
    }
+
+   /* Undef scalar store_deref intrinsics are not ignored by nir_lower_io,
+    * so they must be removed before that. These passes remove them.
+    */
+   NIR_PASS_V(producer, nir_lower_vars_to_ssa);
+   NIR_PASS_V(producer, nir_opt_undef);
+   NIR_PASS_V(producer, nir_opt_dce);
 }
 
 static void
