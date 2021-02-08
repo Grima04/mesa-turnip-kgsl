@@ -153,7 +153,8 @@ radv_get_visible_vram_size(struct radv_physical_device *device)
 static uint64_t
 radv_get_vram_size(struct radv_physical_device *device)
 {
-	return radv_get_adjusted_vram_size(device) - device->rad_info.vram_vis_size;
+	uint64_t total_size = radv_get_adjusted_vram_size(device);
+	return total_size - MIN2(total_size, device->rad_info.vram_vis_size);
 }
 
 enum radv_heap {
