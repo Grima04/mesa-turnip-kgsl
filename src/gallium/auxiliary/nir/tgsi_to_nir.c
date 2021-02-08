@@ -685,6 +685,16 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
       }
       break;
 
+   case TGSI_FILE_OUTPUT:
+      if (c->scan->processor == PIPE_SHADER_FRAGMENT) {
+         c->outputs[index]->data.fb_fetch_output = 1;
+         nir_deref_instr *deref = nir_build_deref_var(&c->build,
+                                                      c->outputs[index]);
+         return nir_src_for_ssa(nir_load_deref(&c->build, deref));
+      }
+      unreachable("unsupported output read");
+      break;
+
    case TGSI_FILE_CONSTANT: {
       nir_intrinsic_instr *load;
       nir_intrinsic_op op;
@@ -1785,6 +1795,7 @@ ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_ARL] = 0,
    [TGSI_OPCODE_MOV] = nir_op_mov,
+   [TGSI_OPCODE_FBFETCH] = nir_op_mov,
    [TGSI_OPCODE_LIT] = 0,
    [TGSI_OPCODE_RCP] = nir_op_frcp,
    [TGSI_OPCODE_RSQ] = nir_op_frsq,
