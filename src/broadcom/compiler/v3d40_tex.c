@@ -490,8 +490,8 @@ vir_image_emit_register_writes(struct v3d_compile *c,
         struct qreg src_1_0 = ntq_get_src(c, instr->src[1], 0);
         if (!tmu_writes && vir_in_nonuniform_control_flow(c) &&
             instr->intrinsic != nir_intrinsic_image_load) {
-               vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
-                          V3D_QPU_PF_PUSHZ);
+                vir_set_pf(c, vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                           V3D_QPU_PF_PUSHZ);
         }
 
         vir_TMU_WRITE_or_count(c, V3D_QPU_WADDR_TMUSF, src_1_0, tmu_writes);

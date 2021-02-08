@@ -232,7 +232,7 @@ vir_set_cond(struct qinst *inst, enum v3d_qpu_cond cond)
 }
 
 void
-vir_set_pf(struct qinst *inst, enum v3d_qpu_pf pf)
+vir_set_pf(struct v3d_compile *c, struct qinst *inst, enum v3d_qpu_pf pf)
 {
         if (vir_is_add(inst)) {
                 inst->qpu.flags.apf = pf;
@@ -243,7 +243,7 @@ vir_set_pf(struct qinst *inst, enum v3d_qpu_pf pf)
 }
 
 void
-vir_set_uf(struct qinst *inst, enum v3d_qpu_uf uf)
+vir_set_uf(struct v3d_compile *c, struct qinst *inst, enum v3d_qpu_uf uf)
 {
         if (vir_is_add(inst)) {
                 inst->qpu.flags.auf = uf;
