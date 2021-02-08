@@ -4991,7 +4991,23 @@ bool nir_lower_doubles(nir_shader *shader, const nir_shader *softfp64,
                        nir_lower_doubles_options options);
 bool nir_lower_pack(nir_shader *shader);
 
-void nir_lower_mediump_outputs(nir_shader *nir);
+bool nir_recompute_io_bases(nir_function_impl *impl, nir_variable_mode modes);
+bool nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
+                          uint64_t varying_mask, bool use_16bit_slots);
+bool nir_force_mediump_io(nir_shader *nir, nir_variable_mode modes,
+                          nir_alu_type types);
+bool nir_unpack_16bit_varying_slots(nir_shader *nir, nir_variable_mode modes);
+bool nir_fold_16bit_sampler_conversions(nir_shader *nir,
+                                        unsigned tex_src_types);
+
+typedef struct {
+   bool legalize_type;         /* whether this src should be legalized */
+   uint8_t bit_size;           /* bit_size to enforce */
+   nir_tex_src_type match_src; /* if bit_size is 0, match bit size of this */
+} nir_tex_src_type_constraint, nir_tex_src_type_constraints[nir_num_tex_src_types];
+
+bool nir_legalize_16bit_sampler_srcs(nir_shader *nir,
+                                     nir_tex_src_type_constraints constraints);
 
 bool nir_lower_point_size(nir_shader *shader, float min, float max);
 

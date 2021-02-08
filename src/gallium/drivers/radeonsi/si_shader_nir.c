@@ -799,7 +799,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
    if (nir->info.stage == MESA_SHADER_FRAGMENT &&
        sscreen->info.has_packed_math_16bit &&
        sscreen->b.get_shader_param(&sscreen->b, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16))
-      NIR_PASS_V(nir, nir_lower_mediump_outputs);
+      NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out, 0, false);
 
    si_nir_opts(sscreen, nir, true);
 

@@ -367,7 +367,7 @@ ir3_nir_post_finalize(struct ir3_compiler *compiler, nir_shader *s)
 	if (compiler->gpu_id >= 600 &&
 			s->info.stage == MESA_SHADER_FRAGMENT &&
 			!(ir3_shader_debug & IR3_DBG_NOFP16)) {
-		NIR_PASS_V(s, nir_lower_mediump_outputs);
+		NIR_PASS_V(s, nir_lower_mediump_io, nir_var_shader_out, 0, false);
 	}
 
 	/* we cannot ensure that ir3_finalize_nir() is only called once, so

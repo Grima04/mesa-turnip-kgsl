@@ -279,7 +279,7 @@ NIR_FILES = \
 	nir/nir_lower_io_to_scalar.c \
 	nir/nir_lower_io_to_vector.c \
 	nir/nir_lower_multiview.c \
-	nir/nir_lower_mediump_outputs.c \
+	nir/nir_lower_mediump.c \
 	nir/nir_lower_memcpy.c \
 	nir/nir_lower_memory_model.c \
 	nir/nir_lower_non_uniform_access.c \
