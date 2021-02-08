@@ -958,7 +958,8 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
 }
 
 static const void *
-panfrost_map_constant_buffer_cpu(struct panfrost_constant_buffer *buf,
+panfrost_map_constant_buffer_cpu(struct panfrost_context *ctx,
+                                 struct panfrost_constant_buffer *buf,
                                  unsigned index)
 {
         struct pipe_constant_buffer *cb = &buf->cb[index];
@@ -966,9 +967,13 @@ panfrost_map_constant_buffer_cpu(struct panfrost_constant_buffer *buf,
 
         if (rsrc)
                 return rsrc->bo->ptr.cpu;
-        else if (cb->user_buffer)
+        else if (cb->user_buffer) {
+                panfrost_bo_mmap(rsrc->bo);
+                panfrost_flush_batches_accessing_bo(ctx, rsrc->bo, false);
+                panfrost_bo_wait(rsrc->bo, INT64_MAX, false);
+
                 return cb->user_buffer;
-        else
+        } else
                 unreachable("No constant buffer");
 }
 
@@ -1002,7 +1007,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
 
         /* Upload uniforms */
         if (has_uniforms && uniform_size) {
-                const void *cpu = panfrost_map_constant_buffer_cpu(buf, 0);
+                const void *cpu = panfrost_map_constant_buffer_cpu(ctx, buf, 0);
                 memcpy(transfer.cpu + sys_size, cpu, uniform_size);
         }
 
