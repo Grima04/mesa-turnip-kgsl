@@ -416,6 +416,10 @@ struct lvp_descriptor_set_binding_layout {
 
 struct lvp_descriptor_set_layout {
    struct vk_object_base base;
+
+   /* Descriptor set layouts can be destroyed at almost any time */
+   uint32_t ref_cnt;
+
    /* Number of bindings in this descriptor set */
    uint16_t binding_count;
 
@@ -440,6 +444,25 @@ struct lvp_descriptor_set_layout {
    struct lvp_descriptor_set_binding_layout binding[0];
 };
 
+void lvp_descriptor_set_layout_destroy(struct lvp_device *device,
+                                       struct lvp_descriptor_set_layout *layout);
+
+static inline void
+lvp_descriptor_set_layout_ref(struct lvp_descriptor_set_layout *layout)
+{
+   assert(layout && layout->ref_cnt >= 1);
+   p_atomic_inc(&layout->ref_cnt);
+}
+
+static inline void
+lvp_descriptor_set_layout_unref(struct lvp_device *device,
+                                struct lvp_descriptor_set_layout *layout)
+{
+   assert(layout && layout->ref_cnt >= 1);
+   if (p_atomic_dec_zero(&layout->ref_cnt))
+      lvp_descriptor_set_layout_destroy(device, layout);
+}
+
 union lvp_descriptor_info {
    struct {
       struct lvp_sampler *sampler;
@@ -462,7 +485,7 @@ struct lvp_descriptor {
 
 struct lvp_descriptor_set {
    struct vk_object_base base;
-   const struct lvp_descriptor_set_layout *layout;
+   struct lvp_descriptor_set_layout *layout;
    struct list_head link;
    struct lvp_descriptor descriptors[0];
 };
@@ -488,7 +511,7 @@ struct lvp_descriptor_update_template {
 
 VkResult
 lvp_descriptor_set_create(struct lvp_device *device,
-                          const struct lvp_descriptor_set_layout *layout,
+                          struct lvp_descriptor_set_layout *layout,
                           struct lvp_descriptor_set **out_set);
 
 void
