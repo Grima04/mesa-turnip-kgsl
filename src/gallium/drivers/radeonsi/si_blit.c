@@ -1306,11 +1306,17 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
                                true);
       }
 
-      /* Now clear DCC metadata to uncompressed. */
+      /* Now clear DCC metadata to uncompressed.
+       *
+       * This uses SI_COMPUTE_CLEAR_METHOD to avoid a failure when running this
+       * deqp caselist on gfx10:
+       *  dEQP-GLES31.functional.image_load_store.2d.format_reinterpret.rgba32f_rgba32ui
+       *  dEQP-GLES31.functional.image_load_store.2d.format_reinterpret.rgba32f_rgba32i
+       */
       uint32_t clear_value = DCC_UNCOMPRESSED;
       si_clear_buffer(sctx, ptex, tex->surface.dcc_offset,
                       tex->surface.dcc_size, &clear_value, 4,
-                      SI_COHERENCY_CB_META, SI_AUTO_SELECT_CLEAR_METHOD);
+                      SI_COHERENCY_CB_META, SI_COMPUTE_CLEAR_METHOD);
    }
 }
 
