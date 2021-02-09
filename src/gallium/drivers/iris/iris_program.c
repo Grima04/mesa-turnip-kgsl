@@ -1249,8 +1249,10 @@ iris_update_compiled_vs(struct iris_context *ice)
    struct iris_compiled_shader *shader =
       find_variant(screen, ish, &key, sizeof(key));
 
-   if (!shader)
-      shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
+   if (!shader) {
+      shader = iris_disk_cache_retrieve(screen, uploader, ish,
+                                        &key, sizeof(key));
+   }
 
    if (!shader)
       shader = iris_compile_vs(screen, uploader, &ice->dbg, ish, &key);
@@ -1453,8 +1455,10 @@ iris_update_compiled_tcs(struct iris_context *ice)
       tcs ? find_variant(screen, tcs, &key, sizeof(key)) :
       iris_find_cached_shader(ice, IRIS_CACHE_TCS, sizeof(key), &key);
 
-   if (tcs && !shader)
-      shader = iris_disk_cache_retrieve(ice, tcs, &key, sizeof(key));
+   if (tcs && !shader) {
+      shader = iris_disk_cache_retrieve(screen, uploader, tcs,
+                                        &key, sizeof(key));
+   }
 
    if (!shader) {
       shader = iris_compile_tcs(screen, ice->shaders.cache,
@@ -1573,8 +1577,10 @@ iris_update_compiled_tes(struct iris_context *ice)
    struct iris_compiled_shader *shader =
       find_variant(screen, ish, &key, sizeof(key));
 
-   if (!shader)
-      shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
+   if (!shader) {
+      shader = iris_disk_cache_retrieve(screen, uploader, ish,
+                                        &key, sizeof(key));
+   }
 
    if (!shader)
       shader = iris_compile_tes(screen, uploader, &ice->dbg, ish, &key);
@@ -1697,8 +1703,10 @@ iris_update_compiled_gs(struct iris_context *ice)
 
       shader = find_variant(screen, ish, &key, sizeof(key));
 
-      if (!shader)
-         shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
+      if (!shader) {
+         shader = iris_disk_cache_retrieve(screen, uploader, ish,
+                                           &key, sizeof(key));
+      }
 
       if (!shader)
          shader = iris_compile_gs(screen, uploader, &ice->dbg, ish, &key);
@@ -1816,8 +1824,10 @@ iris_update_compiled_fs(struct iris_context *ice)
    struct iris_compiled_shader *shader =
       find_variant(screen, ish, &key, sizeof(key));
 
-   if (!shader)
-      shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
+   if (!shader) {
+      shader = iris_disk_cache_retrieve(screen, uploader, ish,
+                                        &key, sizeof(key));
+   }
 
    if (!shader) {
       shader = iris_compile_fs(screen, uploader, &ice->dbg,
@@ -2066,8 +2076,10 @@ iris_update_compiled_cs(struct iris_context *ice)
    struct iris_compiled_shader *shader =
       find_variant(screen, ish, &key, sizeof(key));
 
-   if (!shader)
-      shader = iris_disk_cache_retrieve(ice, ish, &key, sizeof(key));
+   if (!shader) {
+      shader = iris_disk_cache_retrieve(screen, uploader, ish,
+                                        &key, sizeof(key));
+   }
 
    if (!shader)
       shader = iris_compile_cs(screen, uploader, &ice->dbg, ish, &key);
@@ -2275,7 +2287,7 @@ iris_create_vs_state(struct pipe_context *ctx,
    if (screen->precompile) {
       struct iris_vs_prog_key key = { KEY_ID(vue.base) };
 
-      if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
+      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
          iris_compile_vs(screen, uploader, &ice->dbg, ish, &key);
    }
 
@@ -2313,7 +2325,7 @@ iris_create_tcs_state(struct pipe_context *ctx,
       if (compiler->use_tcs_8_patch)
          key.input_vertices = info->tess.tcs_vertices_out;
 
-      if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
+      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
          iris_compile_tcs(screen, NULL, uploader, &ice->dbg, ish, &key);
    }
 
@@ -2342,7 +2354,7 @@ iris_create_tes_state(struct pipe_context *ctx,
          .patch_inputs_read = info->patch_inputs_read,
       };
 
-      if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
+      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
          iris_compile_tes(screen, uploader, &ice->dbg, ish, &key);
    }
 
@@ -2365,7 +2377,7 @@ iris_create_gs_state(struct pipe_context *ctx,
    if (screen->precompile) {
       struct iris_gs_prog_key key = { KEY_ID(vue.base) };
 
-      if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
+      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
          iris_compile_gs(screen, uploader, &ice->dbg, ish, &key);
    }
 
@@ -2411,7 +2423,7 @@ iris_create_fs_state(struct pipe_context *ctx,
             can_rearrange_varyings ? 0 : info->inputs_read | VARYING_BIT_POS,
       };
 
-      if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
+      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
          iris_compile_fs(screen, uploader, &ice->dbg, ish, &key, NULL);
    }
 
@@ -2464,7 +2476,7 @@ iris_create_compute_state(struct pipe_context *ctx,
    if (screen->precompile) {
       struct iris_cs_prog_key key = { KEY_ID(base) };
 
-      if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
+      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
          iris_compile_cs(screen, uploader, &ice->dbg, ish, &key);
    }
 

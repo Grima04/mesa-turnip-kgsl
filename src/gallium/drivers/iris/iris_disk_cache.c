@@ -142,14 +142,13 @@ static const enum iris_program_cache_id cache_id_for_stage[] = {
  * to the in-memory program cache so we can use it.
  */
 struct iris_compiled_shader *
-iris_disk_cache_retrieve(struct iris_context *ice,
+iris_disk_cache_retrieve(struct iris_screen *screen,
+                         struct u_upload_mgr *uploader,
                          struct iris_uncompiled_shader *ish,
                          const void *prog_key,
                          uint32_t key_size)
 {
 #ifdef ENABLE_SHADER_CACHE
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
    struct disk_cache *cache = screen->disk_cache;
    gl_shader_stage stage = ish->nir->info.stage;
 

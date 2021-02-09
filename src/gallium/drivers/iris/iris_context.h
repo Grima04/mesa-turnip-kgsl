@@ -906,7 +906,8 @@ void iris_disk_cache_store(struct disk_cache *cache,
                            const void *prog_key,
                            uint32_t prog_key_size);
 struct iris_compiled_shader *
-iris_disk_cache_retrieve(struct iris_context *ice,
+iris_disk_cache_retrieve(struct iris_screen *screen,
+                         struct u_upload_mgr *uploader,
                          struct iris_uncompiled_shader *ish,
                          const void *prog_key,
                          uint32_t prog_key_size);
