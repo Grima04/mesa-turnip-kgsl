@@ -29,7 +29,7 @@
 #include "pan_util.h"
 #include "panfrost-quirks.h"
 #include "compiler/nir/nir_builder.h"
-#include "nir/nir_lower_blend.h"
+#include "panfrost/util/nir_lower_blend.h"
 #include "panfrost/util/pan_lower_framebuffer.h"
 #include "gallium/auxiliary/util/u_blend.h"
 #include "util/u_memory.h"

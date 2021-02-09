@@ -1,7 +1,4 @@
 C_SOURCES := \
-	nir/nir_lower_blend.c \
-	nir/nir_lower_blend.h \
-    \
 	pan_assemble.c \
 	pan_blend_cso.c \
 	pan_blend_cso.h \
