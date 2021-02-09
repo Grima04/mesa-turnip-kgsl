@@ -1216,7 +1216,8 @@ iris_compile_vs(struct iris_context *ice,
                                     &vue_prog_data->vue_map);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, ish, IRIS_CACHE_VS, sizeof(*key), key, program,
+      iris_upload_shader(screen, ish, NULL, ice->shaders.uploader,
+                         IRIS_CACHE_VS, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1400,7 +1401,8 @@ iris_compile_tcs(struct iris_context *ice,
    iris_debug_recompile(screen, &ice->dbg, ish, &brw_key.base);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, ish, IRIS_CACHE_TCS, sizeof(*key), key, program,
+      iris_upload_shader(screen, ish, ice->shaders.cache, ice->shaders.uploader,
+                         IRIS_CACHE_TCS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1530,7 +1532,8 @@ iris_compile_tes(struct iris_context *ice,
 
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, ish, IRIS_CACHE_TES, sizeof(*key), key, program,
+      iris_upload_shader(screen, ish, NULL, ice->shaders.uploader,
+                         IRIS_CACHE_TES, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1651,7 +1654,8 @@ iris_compile_gs(struct iris_context *ice,
                                     &vue_prog_data->vue_map);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, ish, IRIS_CACHE_GS, sizeof(*key), key, program,
+      iris_upload_shader(screen, ish, NULL, ice->shaders.uploader,
+                         IRIS_CACHE_GS, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -1766,7 +1770,8 @@ iris_compile_fs(struct iris_context *ice,
    iris_debug_recompile(screen, &ice->dbg, ish, &brw_key.base);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, ish, IRIS_CACHE_FS, sizeof(*key), key, program,
+      iris_upload_shader(screen, ish, NULL, ice->shaders.uploader,
+                         IRIS_CACHE_FS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values,
                          0, num_cbufs, &bt);
 
@@ -2018,7 +2023,8 @@ iris_compile_cs(struct iris_context *ice,
    iris_debug_recompile(screen, &ice->dbg, ish, &brw_key.base);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, ish, IRIS_CACHE_CS, sizeof(*key), key, program,
+      iris_upload_shader(screen, ish, NULL, ice->shaders.uploader,
+                         IRIS_CACHE_CS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values,
                          ish->kernel_input_size, num_cbufs, &bt);
 

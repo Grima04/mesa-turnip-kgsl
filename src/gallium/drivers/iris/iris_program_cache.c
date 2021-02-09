@@ -107,8 +107,10 @@ iris_delete_shader_variant(struct iris_compiled_shader *shader)
 }
 
 struct iris_compiled_shader *
-iris_upload_shader(struct iris_context *ice,
+iris_upload_shader(struct iris_screen *screen,
                    struct iris_uncompiled_shader *ish,
+                   struct hash_table *driver_shaders,
+                   struct u_upload_mgr *uploader,
                    enum iris_program_cache_id cache_id,
                    uint32_t key_size,
                    const void *key,
@@ -121,10 +123,9 @@ iris_upload_shader(struct iris_context *ice,
                    unsigned num_cbufs,
                    const struct iris_binding_table *bt)
 {
-   struct hash_table *cache = ice->shaders.cache;
-   void *mem_ctx = ish ? NULL : (void *) cache;
-   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
+
+   void *mem_ctx = ish ? NULL : (void *) driver_shaders;
    struct iris_compiled_shader *shader =
       rzalloc_size(mem_ctx, sizeof(struct iris_compiled_shader) +
                    screen->vtbl.derived_program_state_size(cache_id));
@@ -132,7 +133,7 @@ iris_upload_shader(struct iris_context *ice,
    pipe_reference_init(&shader->ref, 1);
 
    shader->assembly.res = NULL;
-   u_upload_alloc(ice->shaders.uploader, 0, prog_data->program_size, 64,
+   u_upload_alloc(uploader, 0, prog_data->program_size, 64,
                   &shader->assembly.offset, &shader->assembly.res,
                   &shader->map);
    memcpy(shader->map, assembly, prog_data->program_size);
@@ -198,7 +199,7 @@ iris_upload_shader(struct iris_context *ice,
       simple_mtx_unlock(&ish->lock);
    } else {
       struct keybox *keybox = make_keybox(shader, cache_id, key, key_size);
-      _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);
+      _mesa_hash_table_insert(driver_shaders, keybox, shader);
    }
 
    return shader;
@@ -239,6 +240,7 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch, uint32_t stage,
    struct blorp_context *blorp = blorp_batch->blorp;
    struct iris_context *ice = blorp->driver_ctx;
    struct iris_batch *batch = blorp_batch->driver_batch;
+   struct iris_screen *screen = batch->screen;
 
    void *prog_data = ralloc_size(NULL, prog_data_size);
    memcpy(prog_data, prog_data_templ, prog_data_size);
@@ -247,7 +249,9 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch, uint32_t stage,
    memset(&bt, 0, sizeof(bt));
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, NULL, IRIS_CACHE_BLORP, key_size, key, kernel,
+      iris_upload_shader(screen, NULL, ice->shaders.cache,
+                         ice->shaders.uploader,
+                         IRIS_CACHE_BLORP, key_size, key, kernel,
                          prog_data, NULL, NULL, 0, 0, 0, &bt);
 
    struct iris_bo *bo = iris_resource_bo(shader->assembly.res);

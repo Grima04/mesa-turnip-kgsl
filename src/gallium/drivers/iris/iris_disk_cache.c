@@ -149,6 +149,7 @@ iris_disk_cache_retrieve(struct iris_context *ice,
 {
 #ifdef ENABLE_SHADER_CACHE
    struct iris_screen *screen = (void *) ice->ctx.screen;
+   struct u_upload_mgr *uploader = ice->shaders.uploader;
    struct disk_cache *cache = screen->disk_cache;
    gl_shader_stage stage = ish->nir->info.stage;
 
@@ -245,7 +246,8 @@ iris_disk_cache_retrieve(struct iris_context *ice,
     * return it to the caller.
     */
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, ish, cache_id, key_size, prog_key, assembly,
+      iris_upload_shader(screen, ish, NULL, uploader,
+                         cache_id, key_size, prog_key, assembly,
                          prog_data, so_decls, system_values,
                          num_system_values, kernel_input_size, num_cbufs, &bt);
 
