@@ -1310,7 +1310,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
       uint32_t clear_value = DCC_UNCOMPRESSED;
       si_clear_buffer(sctx, ptex, tex->surface.dcc_offset,
                       tex->surface.dcc_size, &clear_value, 4,
-                      SI_COHERENCY_CB_META, false);
+                      SI_COHERENCY_CB_META, SI_AUTO_SELECT_CLEAR_METHOD);
    }
 }
 
