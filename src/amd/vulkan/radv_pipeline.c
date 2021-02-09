@@ -2229,8 +2229,6 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 		ngg->vgt_esgs_ring_itemsize = 1;
 	}
 
-	pipeline->graphics.esgs_ring_size = ngg->esgs_ring_size;
-
 	assert(ngg->hw_max_esverts >= min_esverts); /* HW limitation */
 }
 
