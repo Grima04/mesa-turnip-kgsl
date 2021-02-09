@@ -865,7 +865,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    vkDestroyInstance(screen->instance, NULL);
 
    slab_destroy_parent(&screen->transfer_pool);
-   FREE(screen);
+   ralloc_free(screen);
 }
 
 static void
@@ -1275,7 +1275,7 @@ pre_hash_descriptor_states(struct zink_screen *screen)
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
-   struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
+   struct zink_screen *screen = rzalloc(NULL, struct zink_screen);
    if (!screen)
       return NULL;
 
@@ -1371,7 +1371,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    return screen;
 
 fail:
-   FREE(screen);
+   ralloc_free(screen);
    return NULL;
 }
 
