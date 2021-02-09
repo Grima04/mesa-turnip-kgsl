@@ -2698,6 +2698,10 @@ static VkResult radv_device_init_border_color(struct radv_device *device)
 	if (device->border_color_data.bo == NULL)
 		return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
+	result = device->ws->buffer_make_resident(device->ws, device->border_color_data.bo, true);
+	if (result != VK_SUCCESS)
+		return vk_error(device->physical_device->instance, result);
+
 	device->border_color_data.colors_gpu_ptr =
 		device->ws->buffer_map(device->border_color_data.bo);
 	if (!device->border_color_data.colors_gpu_ptr)
@@ -2710,6 +2714,7 @@ static VkResult radv_device_init_border_color(struct radv_device *device)
 static void radv_device_finish_border_color(struct radv_device *device)
 {
 	if (device->border_color_data.bo) {
+		device->ws->buffer_make_resident(device->ws, device->border_color_data.bo, false);
 		device->ws->buffer_destroy(device->ws, device->border_color_data.bo);
 
 		mtx_destroy(&device->border_color_data.mutex);
@@ -3984,10 +3989,6 @@ radv_get_preamble_cs(struct radv_queue *queue,
 
 		if (queue->device->trace_bo)
 			radv_cs_add_buffer(queue->device->ws, cs, queue->device->trace_bo);
-
-		if (queue->device->border_color_data.bo)
-			radv_cs_add_buffer(queue->device->ws, cs,
-					   queue->device->border_color_data.bo);
 
 		if (i == 0) {
 			si_cs_emit_cache_flush(cs,
