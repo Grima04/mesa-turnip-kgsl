@@ -2750,6 +2750,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state.blend_dirty = true;
    state.dsa_dirty = true;
    state.rs_dirty = true;
+   state.vp_dirty = true;
    /* create a gallium context */
    lvp_execute_cmd_buffer(cmd_buffer, &state);
 
