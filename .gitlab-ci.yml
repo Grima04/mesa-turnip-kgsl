@@ -188,6 +188,7 @@ success:
       # Watch out!  Artifacts are relative to the build dir.
       # https://gitlab.com/gitlab-org/gitlab-ce/commit/8788fb925706cad594adf6917a6c5f6587dd1521
       - artifacts
+      - _build/meson-logs/*.txt
 
 
 # Docker image tag helper templates
