@@ -278,7 +278,9 @@ fs_visitor::emit_interpolation_setup_gfx6()
 
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(prog_data);
 
-   fs_reg int_pixel_offset_xy, half_int_pixel_offset_x, half_int_pixel_offset_y;
+   fs_reg int_pixel_offset_x, int_pixel_offset_y; /* Used on Gen12HP+ */
+   fs_reg int_pixel_offset_xy; /* Used on Gen8+ */
+   fs_reg half_int_pixel_offset_x, half_int_pixel_offset_y;
    if (!wm_prog_data->per_coarse_pixel_dispatch) {
       /* The thread payload only delivers subspan locations (ss0, ss1,
        * ss2, ...). Since subspans covers 2x2 pixels blocks, we need to
@@ -312,6 +314,17 @@ fs_visitor::emit_interpolation_setup_gfx6()
       int_pixel_offset_xy = fs_reg(brw_imm_v(0x11001010));
       half_int_pixel_offset_x = fs_reg(brw_imm_uw(0));
       half_int_pixel_offset_y = fs_reg(brw_imm_uw(0));
+      /* On Gfx12.5, because of regioning restrictions, the interpolation code
+       * is slightly different and works off X & Y only inputs. The ordering
+       * of the half bytes here is a bit odd, with each subspan replicated
+       * twice and every other element is discarded :
+       *
+       *             ss0.tl ss0.tl ss0.tr ss0.tr ss0.bl ss0.bl ss0.br ss0.br
+       *  X offset:    0      0      1      0      0      0      1      0
+       *  Y offset:    0      0      0      0      1      0      1      0
+       */
+      int_pixel_offset_x = fs_reg(brw_imm_v(0x01000100));
+      int_pixel_offset_y = fs_reg(brw_imm_v(0x01010000));
    } else {
       /* In coarse pixel dispatch we have to do the same ADD instruction that
        * we do in normal per pixel dispatch, except this time we're not adding
@@ -324,19 +337,31 @@ fs_visitor::emit_interpolation_setup_gfx6()
       const fs_builder dbld =
          abld.exec_all().group(MIN2(16, dispatch_width) * 2, 0);
 
-      /* To build the array of half bytes we do and AND operation with the
-       * right mask in X.
-       */
-      fs_reg int_pixel_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
-      dbld.AND(int_pixel_offset_x, byte_offset(r1_0, 0), brw_imm_v(0x0000f0f0));
+      if (devinfo->verx10 >= 125) {
+         /* To build the array of half bytes we do and AND operation with the
+          * right mask in X.
+          */
+         int_pixel_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.AND(int_pixel_offset_x, byte_offset(r1_0, 0), brw_imm_v(0x0f000f00));
 
-      /* And the right mask in Y. */
-      fs_reg int_pixel_offset_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
-      dbld.AND(int_pixel_offset_y, byte_offset(r1_0, 1), brw_imm_v(0xff000000));
+         /* And the right mask in Y. */
+         int_pixel_offset_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.AND(int_pixel_offset_y, byte_offset(r1_0, 1), brw_imm_v(0x0f0f0000));
+      } else {
+         /* To build the array of half bytes we do and AND operation with the
+          * right mask in X.
+          */
+         int_pixel_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.AND(int_pixel_offset_x, byte_offset(r1_0, 0), brw_imm_v(0x0000f0f0));
 
-      /* Finally OR the 2 registers. */
-      int_pixel_offset_xy = dbld.vgrf(BRW_REGISTER_TYPE_UW);
-      dbld.OR(int_pixel_offset_xy, int_pixel_offset_x, int_pixel_offset_y);
+         /* And the right mask in Y. */
+         int_pixel_offset_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.AND(int_pixel_offset_y, byte_offset(r1_0, 1), brw_imm_v(0xff000000));
+
+         /* Finally OR the 2 registers. */
+         int_pixel_offset_xy = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.OR(int_pixel_offset_xy, int_pixel_offset_x, int_pixel_offset_y);
+      }
 
       /* Also compute the half pixel size used to center pixels. */
       half_int_pixel_offset_x = bld.vgrf(BRW_REGISTER_TYPE_UW);
@@ -358,10 +383,17 @@ fs_visitor::emit_interpolation_setup_gfx6()
 
          dbld.ADD(int_pixel_x,
                   fs_reg(stride(suboffset(gi_uw, 4), 2, 8, 0)),
-                  fs_reg(brw_imm_v(0x01000100)));
+                  int_pixel_offset_x);
          dbld.ADD(int_pixel_y,
                   fs_reg(stride(suboffset(gi_uw, 5), 2, 8, 0)),
-                  fs_reg(brw_imm_v(0x01010000)));
+                  int_pixel_offset_y);
+
+         if (wm_prog_data->per_coarse_pixel_dispatch) {
+            dbld.ADD(int_pixel_x, int_pixel_x,
+                     horiz_stride(half_int_pixel_offset_x, 0));
+            dbld.ADD(int_pixel_y, int_pixel_y,
+                     horiz_stride(half_int_pixel_offset_y, 0));
+         }
 
          hbld.MOV(offset(pixel_x, hbld, i), horiz_stride(int_pixel_x, 2));
          hbld.MOV(offset(pixel_y, hbld, i), horiz_stride(int_pixel_y, 2));
