@@ -5719,7 +5719,6 @@ VkResult radv_CreateFence(
 
 		fence->permanent.fence = device->ws->create_fence();
 		if (!fence->permanent.fence) {
-			vk_free2(&device->vk.alloc, pAllocator, fence);
 			radv_destroy_fence(device, pAllocator, fence);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
