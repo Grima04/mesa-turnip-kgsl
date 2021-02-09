@@ -264,9 +264,10 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
       lds_per_patch = MAX2(input_patch_size, output_patch_size);
    }
 
-   /* Ensure that we only need one wave per SIMD so we don't need to check
-    * resource usage. Also ensures that the number of tcs in and out
-    * vertices per threadgroup are at most 256.
+   /* Ensure that we only need 4 waves per CU, so that we don't need to check
+    * resource usage (such as whether we have enough VGPRs to fit the whole
+    * threadgroup into the CU). It also ensures that the number of tcs in and out
+    * vertices per threadgroup are at most 256, which is the hw limit.
     */
    unsigned max_verts_per_patch = MAX2(num_tcs_input_cp, num_tcs_output_cp);
    *num_patches = 256 / max_verts_per_patch;
@@ -290,11 +291,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
    /* Make sure that the data fits in LDS. This assumes the shaders only
     * use LDS for the inputs and outputs.
     *
-    * While GFX7 can use 64K per threadgroup, there is a hang on Stoney
-    * with 2 CUs if we use more than 32K. The closed Vulkan driver also
-    * uses 32K at most on all GCN chips.
-    *
-    * Use 16K so that we can fit 2 workgroups on the same CU.
+    * The maximum allowed LDS size is 32K. Higher numbers can hang.
+    * Use 16K as the maximum, so that we can fit 2 workgroups on the same CU.
     */
    ASSERTED unsigned max_lds_size = 32 * 1024; /* hw limit */
    unsigned target_lds_size = 16 * 1024; /* target at least 2 workgroups per CU, 16K each */
@@ -302,9 +300,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
    *num_patches = MAX2(*num_patches, 1);
    assert(*num_patches * lds_per_patch <= max_lds_size);
 
-   /* Make sure that vector lanes are reasonably occupied. It probably
-    * doesn't matter much because this is LS-HS, and TES is likely to
-    * occupy significantly more CUs.
+   /* Make sure that vector lanes are fully occupied by cutting off the last wave
+    * if it's only partially filled.
     */
    unsigned temp_verts_per_tg = *num_patches * max_verts_per_patch;
    unsigned wave_size = sctx->screen->ge_wave_size;
