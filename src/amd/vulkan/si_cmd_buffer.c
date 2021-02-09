@@ -140,6 +140,22 @@ si_emit_compute(struct radv_device *device,
 			radeon_set_config_reg(cs, R_00950C_TA_CS_BC_BASE_ADDR, bc_va >> 8);
 		}
 	}
+
+	if (device->tma_bo) {
+		uint64_t tba_va, tma_va;
+
+		assert(device->physical_device->rad_info.chip_class == GFX8);
+
+		tba_va = radv_buffer_get_va(device->trap_handler_shader->bo) +
+			 device->trap_handler_shader->bo_offset;
+		tma_va = radv_buffer_get_va(device->tma_bo);
+
+		radeon_set_sh_reg_seq(cs, R_00B838_COMPUTE_TBA_LO, 4);
+		radeon_emit(cs, tba_va >> 8);
+		radeon_emit(cs, tba_va >> 40);
+		radeon_emit(cs, tma_va >> 8);
+		radeon_emit(cs, tma_va >> 40);
+	}
 }
 
 /* 12.4 fixed-point */
@@ -604,6 +620,31 @@ si_emit_graphics(struct radv_device *device,
 			       S_028818_VPORT_X_SCALE_ENA(1) | S_028818_VPORT_X_OFFSET_ENA(1) |
 			       S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
 			       S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1));
+
+	if (device->tma_bo) {
+		uint64_t tba_va, tma_va;
+
+		assert(device->physical_device->rad_info.chip_class == GFX8);
+
+		tba_va = radv_buffer_get_va(device->trap_handler_shader->bo) +
+			 device->trap_handler_shader->bo_offset;
+		tma_va = radv_buffer_get_va(device->tma_bo);
+
+		uint32_t regs[] = {R_00B000_SPI_SHADER_TBA_LO_PS,
+				   R_00B100_SPI_SHADER_TBA_LO_VS,
+				   R_00B200_SPI_SHADER_TBA_LO_GS,
+				   R_00B300_SPI_SHADER_TBA_LO_ES,
+				   R_00B400_SPI_SHADER_TBA_LO_HS,
+				   R_00B500_SPI_SHADER_TBA_LO_LS};
+
+		for (i = 0; i < ARRAY_SIZE(regs); ++i) {
+			radeon_set_sh_reg_seq(cs, regs[i], 4);
+			radeon_emit(cs, tba_va >> 8);
+			radeon_emit(cs, tba_va >> 40);
+			radeon_emit(cs, tma_va >> 8);
+			radeon_emit(cs, tma_va >> 40);
+		}
+	}
 
 	si_emit_compute(device, cs);
 }
