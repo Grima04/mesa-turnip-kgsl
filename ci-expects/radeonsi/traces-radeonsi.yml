@@ -225,7 +225,7 @@ traces:
   - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 499e93c37e33cc6430c7a9f94266f2f7
+        checksum: f1774fc459aa0734838888dd44db052e
   - path: supertuxkart/supertuxkart-menu.rdc
     expectations:
       - device: gl-radeonsi-stoney
@@ -233,4 +233,4 @@ traces:
   - path: supertuxkart/supertuxkart-ravenbridge-mansion.rdc
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 38a9f26c60a0bc4245b97d32da84ef75
+        checksum: 66b6dee290642bd25dfd817d190f6906
