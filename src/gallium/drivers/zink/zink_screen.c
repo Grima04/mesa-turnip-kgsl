@@ -28,6 +28,7 @@
 #include "zink_device_info.h"
 #include "zink_fence.h"
 #include "zink_format.h"
+#include "zink_framebuffer.h"
 #include "zink_instance.h"
 #include "zink_public.h"
 #include "zink_resource.h"
@@ -93,6 +94,20 @@ static bool
 equals_bvci(const void *a, const void *b)
 {
    return memcmp(a, b, sizeof(VkBufferViewCreateInfo)) == 0;
+}
+
+static uint32_t
+hash_framebuffer_state(const void *key)
+{
+   struct zink_framebuffer_state* s = (struct zink_framebuffer_state*)key;
+   return _mesa_hash_data(key, offsetof(struct zink_framebuffer_state, attachments) + sizeof(s->attachments[0]) * s->num_attachments);
+}
+
+static bool
+equals_framebuffer_state(const void *a, const void *b)
+{
+   struct zink_framebuffer_state *s = (struct zink_framebuffer_state*)a;
+   return memcmp(a, b, offsetof(struct zink_framebuffer_state, attachments) + sizeof(s->attachments[0]) * s->num_attachments) == 0;
 }
 
 static VkDeviceSize
@@ -864,8 +879,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    hash_table_foreach(&screen->surface_cache, entry) {
       struct pipe_surface *psurf = (struct pipe_surface*)entry->data;
-      pipe_resource_reference(&psurf->texture, NULL);
-      pipe_surface_reference(&psurf, NULL);
+      /* context is already destroyed, so this has to be destroyed directly */
+      zink_destroy_surface(screen, psurf);
    }
 
    hash_table_foreach(&screen->bufferview_cache, entry) {
@@ -873,8 +888,14 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       zink_buffer_view_reference(screen, &bv, NULL);
    }
 
+   hash_table_foreach(&screen->framebuffer_cache, entry) {
+      struct zink_framebuffer* fb = (struct zink_framebuffer*)entry->data;
+      zink_destroy_framebuffer(screen, fb);
+   }
+
    simple_mtx_destroy(&screen->surface_mtx);
    simple_mtx_destroy(&screen->bufferview_mtx);
+   simple_mtx_destroy(&screen->framebuffer_mtx);
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
    zink_screen_update_pipeline_cache(screen);
@@ -1404,7 +1425,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    simple_mtx_init(&screen->surface_mtx, mtx_plain);
    simple_mtx_init(&screen->bufferview_mtx, mtx_plain);
+   simple_mtx_init(&screen->framebuffer_mtx, mtx_plain);
 
+   _mesa_hash_table_init(&screen->framebuffer_cache, screen, hash_framebuffer_state, equals_framebuffer_state);
    _mesa_hash_table_init(&screen->surface_cache, screen, NULL, equals_ivci);
    _mesa_hash_table_init(&screen->bufferview_cache, screen, NULL, equals_bvci);
 

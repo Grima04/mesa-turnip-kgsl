@@ -294,7 +294,6 @@ zink_context_destroy(struct pipe_context *pctx)
 
    util_blitter_destroy(ctx->blitter);
    util_copy_framebuffer_state(&ctx->fb_state, NULL);
-   zink_framebuffer_reference(screen, &ctx->framebuffer, NULL);
 
    pipe_resource_reference(&ctx->dummy_vertex_buffer, NULL);
    pipe_resource_reference(&ctx->dummy_xfb_buffer, NULL);
@@ -315,6 +314,14 @@ zink_context_destroy(struct pipe_context *pctx)
          zink_reset_batch_state(ctx, *bs);
          zink_fence_reference(zink_screen(pctx->screen), &fence, NULL);
       }
+   }
+
+   if (ctx->framebuffer) {
+      simple_mtx_lock(&screen->framebuffer_mtx);
+      struct hash_entry *entry = _mesa_hash_table_search(&screen->framebuffer_cache, &ctx->framebuffer->state);
+      if (zink_framebuffer_reference(screen, &ctx->framebuffer, NULL))
+         _mesa_hash_table_remove(&screen->framebuffer_cache, entry);
+      simple_mtx_unlock(&screen->framebuffer_mtx);
    }
 
    hash_table_foreach(ctx->render_pass_cache, he)
@@ -1133,7 +1140,7 @@ get_render_pass(struct zink_context *ctx)
 }
 
 static struct zink_framebuffer *
-create_framebuffer(struct zink_context *ctx)
+get_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct pipe_surface *attachments[PIPE_MAX_COLOR_BUFS + 1] = {};
@@ -1157,8 +1164,24 @@ create_framebuffer(struct zink_context *ctx)
    state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1);
    state.samples = ctx->fb_state.samples;
 
-   struct zink_framebuffer *fb = zink_create_framebuffer(ctx, &state, attachments);
-   zink_init_framebuffer(screen, fb, get_render_pass(ctx));
+   struct zink_framebuffer *fb;
+   simple_mtx_lock(&screen->framebuffer_mtx);
+   struct hash_entry *entry = _mesa_hash_table_search(&screen->framebuffer_cache, &state);
+   if (entry) {
+      fb = (void*)entry->data;
+      struct zink_framebuffer *fb_ref = NULL;
+      /* this gains 1 ref every time we reuse it */
+      zink_framebuffer_reference(screen, &fb_ref, fb);
+   } else {
+      /* this adds 1 extra ref on creation because all newly-created framebuffers are
+       * going to be bound; necessary to handle framebuffers which have no "real" attachments
+       * and are only using null surfaces since the only ref they get is the extra one here
+       */
+      fb = zink_create_framebuffer(ctx, &state, attachments);
+      _mesa_hash_table_insert(&screen->framebuffer_cache, &fb->state, fb);
+   }
+   simple_mtx_unlock(&screen->framebuffer_mtx);
+
    return fb;
 }
 
@@ -1184,12 +1207,11 @@ static void
 setup_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   struct zink_framebuffer *fb = create_framebuffer(ctx);
+   zink_init_framebuffer(screen, ctx->framebuffer, get_render_pass(ctx));
 
-   zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
-   if (fb->rp != ctx->gfx_pipeline_state.render_pass)
+   if (ctx->framebuffer->rp != ctx->gfx_pipeline_state.render_pass)
       ctx->gfx_pipeline_state.dirty = true;
-   ctx->gfx_pipeline_state.render_pass = fb->rp;
+   ctx->gfx_pipeline_state.render_pass = ctx->framebuffer->rp;
 }
 
 void
@@ -1354,6 +1376,29 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    }
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
+   /* get_framebuffer adds a ref if the fb is reused or created;
+    * always do get_framebuffer first to avoid deleting the same fb
+    * we're about to use
+    */
+   struct zink_framebuffer *fb = get_framebuffer(ctx);
+   if (ctx->framebuffer) {
+      struct zink_screen *screen = zink_screen(pctx->screen);
+      simple_mtx_lock(&screen->framebuffer_mtx);
+      struct hash_entry *he = _mesa_hash_table_search(&screen->framebuffer_cache, &ctx->framebuffer->state);
+      if (ctx->framebuffer && !ctx->framebuffer->state.num_attachments) {
+         /* if this has no attachments then its lifetime has ended */
+         _mesa_hash_table_remove(&screen->framebuffer_cache, he);
+         he = NULL;
+      }
+      /* a framebuffer loses 1 ref every time we unset it;
+       * we do NOT add refs here, as the ref has already been added in
+       * get_framebuffer()
+       */
+      if (zink_framebuffer_reference(screen, &ctx->framebuffer, NULL) && he)
+         _mesa_hash_table_remove(&screen->framebuffer_cache, he);
+      simple_mtx_unlock(&screen->framebuffer_mtx);
+   }
+   ctx->framebuffer = fb;
 
    uint8_t rast_samples = util_framebuffer_get_num_samples(state);
    /* in vulkan, gl_SampleMask needs to be explicitly ignored for sampleCount == 1 */

@@ -54,6 +54,8 @@ struct zink_screen {
 
    struct sw_winsys *winsys;
 
+   struct hash_table framebuffer_cache;
+   simple_mtx_t framebuffer_mtx;
    struct hash_table surface_cache;
    simple_mtx_t surface_mtx;
    struct hash_table bufferview_cache;

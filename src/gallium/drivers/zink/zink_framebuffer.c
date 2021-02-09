@@ -71,8 +71,6 @@ zink_destroy_framebuffer(struct zink_screen *screen,
       vkDestroyFramebuffer(screen->dev, *ptr, NULL);
 #endif
    }
-   for (int i = 0; i < ARRAY_SIZE(fb->surfaces); ++i)
-      pipe_surface_reference(fb->surfaces + i, NULL);
 
    zink_surface_reference(screen, (struct zink_surface**)&fb->null_surface, NULL);
 
@@ -137,17 +135,23 @@ zink_create_framebuffer(struct zink_context *ctx,
    if (!fb)
       return NULL;
 
-   pipe_reference_init(&fb->reference, 1);
-
+   unsigned num_attachments = 0;
    for (int i = 0; i < state->num_attachments; i++) {
-      if (state->attachments[i])
-         pipe_surface_reference(&fb->surfaces[i], attachments[i]);
-      else {
+      struct zink_surface *surf;
+      if (state->attachments[i]) {
+         surf = zink_surface(attachments[i]);
+         /* no ref! */
+         fb->surfaces[i] = attachments[i];
+         num_attachments++;
+      } else {
          if (!fb->null_surface)
             fb->null_surface = framebuffer_null_surface_init(ctx, state);
+         surf = zink_surface(fb->null_surface);
          state->attachments[i] = zink_surface(fb->null_surface)->image_view;
       }
+      util_dynarray_append(&surf->framebuffer_refs, struct zink_framebuffer*, fb);
    }
+   pipe_reference_init(&fb->reference, 1 + num_attachments);
 
    if (!_mesa_hash_table_init(&fb->objects, fb, _mesa_hash_pointer, _mesa_key_pointer_equal))
       goto fail;
