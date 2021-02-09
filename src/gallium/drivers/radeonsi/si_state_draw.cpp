@@ -271,6 +271,22 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
    unsigned max_verts_per_patch = MAX2(num_tcs_input_cp, num_tcs_output_cp);
    *num_patches = 256 / max_verts_per_patch;
 
+   /* Not necessary for correctness, but higher numbers are slower.
+    * The hardware can do more, but the radeonsi shader constant is
+    * limited to 6 bits.
+    */
+   *num_patches = MIN2(*num_patches, 64); /* e.g. 64 triangles in exactly 3 waves */
+
+   /* When distributed tessellation is unsupported, switch between SEs
+    * at a higher frequency to manually balance the workload between SEs.
+    */
+   if (!sctx->screen->info.has_distributed_tess && sctx->screen->info.max_se > 1)
+      *num_patches = MIN2(*num_patches, 16); /* recommended */
+
+   /* Make sure the output data fits in the offchip buffer */
+   *num_patches =
+      MIN2(*num_patches, (sctx->screen->tess_offchip_block_dw_size * 4) / output_patch_size);
+
    /* Make sure that the data fits in LDS. This assumes the shaders only
     * use LDS for the inputs and outputs.
     *
@@ -285,22 +301,6 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
    *num_patches = MIN2(*num_patches, target_lds_size / lds_per_patch);
    *num_patches = MAX2(*num_patches, 1);
    assert(*num_patches * lds_per_patch <= max_lds_size);
-
-   /* Make sure the output data fits in the offchip buffer */
-   *num_patches =
-      MIN2(*num_patches, (sctx->screen->tess_offchip_block_dw_size * 4) / output_patch_size);
-
-   /* Not necessary for correctness, but improves performance.
-    * The hardware can do more, but the radeonsi shader constant is
-    * limited to 6 bits.
-    */
-   *num_patches = MIN2(*num_patches, 64); /* triangles: 3 full waves */
-
-   /* When distributed tessellation is unsupported, switch between SEs
-    * at a higher frequency to compensate for it.
-    */
-   if (!sctx->screen->info.has_distributed_tess && sctx->screen->info.max_se > 1)
-      *num_patches = MIN2(*num_patches, 16); /* recommended */
 
    /* Make sure that vector lanes are reasonably occupied. It probably
     * doesn't matter much because this is LS-HS, and TES is likely to
