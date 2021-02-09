@@ -17,10 +17,6 @@ elif [ $DEBIAN_ARCH = amd64 ]; then
                   "
 fi
 
-if [ -n "$INCLUDE_VK_CTS" ]; then
-    VK_CTS_PACKAGES="libvulkan1"
-fi
-
 if [ -n "$INCLUDE_PIGLIT" ]; then
     PIGLIT_PACKAGES="libwaffle-1-0
                      libxkbcommon0
@@ -50,6 +46,7 @@ apt-get -y install --no-install-recommends \
     libpng16-16 \
     libpython3.7 \
     libsensors5 \
+    libvulkan1 \
     libwaffle-1-0 \
     libx11-6 \
     libx11-xcb1 \

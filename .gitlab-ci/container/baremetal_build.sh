@@ -54,7 +54,7 @@ mkdir /var/cache/apt/archives/$arch
 ############### Create rootfs
 KERNEL_URL=https://github.com/anholt/linux/archive/mesa-ci-2021-01-27-5.11rc5.tar.gz
 
-DEBIAN_ARCH=$arch INCLUDE_VK_CTS=1 . .gitlab-ci/container/lava_build.sh
+DEBIAN_ARCH=$arch . .gitlab-ci/container/lava_build.sh
 
 ############### Uninstall the build software
 

@@ -1,5 +1,5 @@
 variables:
-  MESA_LAVA_TAG: "2021-02-08-subdir-move"
+  MESA_LAVA_TAG: "2021-02-10-zink"
 
 .kernel+rootfs:
   stage: container-2
