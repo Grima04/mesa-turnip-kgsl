@@ -2123,6 +2123,8 @@ pipeline_init_dynamic_state(
           !(dynamic_states & V3DV_DYNAMIC_DEPTH_BIAS)) {
          dynamic->depth_bias.constant_factor =
             pRasterizationState->depthBiasConstantFactor;
+         dynamic->depth_bias.depth_bias_clamp =
+            pRasterizationState->depthBiasClamp;
          dynamic->depth_bias.slope_factor =
             pRasterizationState->depthBiasSlopeFactor;
       }

@@ -724,6 +724,7 @@ struct v3dv_dynamic_state {
 
    struct {
       float constant_factor;
+      float depth_bias_clamp;
       float slope_factor;
    } depth_bias;
 

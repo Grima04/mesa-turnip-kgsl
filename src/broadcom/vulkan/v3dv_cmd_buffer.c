@@ -53,6 +53,7 @@ const struct v3dv_dynamic_state default_dynamic_state = {
    .blend_constants = { 0.0f, 0.0f, 0.0f, 0.0f },
    .depth_bias = {
       .constant_factor = 0.0f,
+      .depth_bias_clamp = 0.0f,
       .slope_factor = 0.0f,
    },
    .line_width = 1.0f,
@@ -3481,6 +3482,7 @@ emit_depth_bias(struct v3dv_cmd_buffer *cmd_buffer)
       bias.depth_offset_units = dynamic->depth_bias.constant_factor;
       if (pipeline->depth_bias.is_z16)
          bias.depth_offset_units *= 256.0f;
+      bias.limit = dynamic->depth_bias.depth_bias_clamp;
    }
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_DEPTH_BIAS;
@@ -4693,6 +4695,7 @@ v3dv_CmdSetDepthBias(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
    cmd_buffer->state.dynamic.depth_bias.constant_factor = depthBiasConstantFactor;
+   cmd_buffer->state.dynamic.depth_bias.depth_bias_clamp = depthBiasClamp;
    cmd_buffer->state.dynamic.depth_bias.slope_factor = depthBiasSlopeFactor;
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DEPTH_BIAS;
 }
