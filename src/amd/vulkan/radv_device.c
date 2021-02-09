@@ -4081,7 +4081,6 @@ radv_alloc_sem_info(struct radv_device *device,
 		    VkFence fence)
 {
 	VkResult ret;
-	memset(sem_info, 0, sizeof(*sem_info));
 
 	ret = radv_alloc_sem_counts(device, &sem_info->wait, num_wait_sems, wait_sems, wait_values, VK_NULL_HANDLE, false);
 	if (ret)
@@ -4564,7 +4563,7 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 	bool do_flush = submission->flush_caches || submission->wait_dst_stage_mask;
 	bool can_patch = true;
 	uint32_t advance;
-	struct radv_winsys_sem_info sem_info;
+	struct radv_winsys_sem_info sem_info = {0};
 	VkResult result;
 	struct radeon_cmdbuf *initial_preamble_cs = NULL;
 	struct radeon_cmdbuf *initial_flush_preamble_cs = NULL;
@@ -4666,8 +4665,10 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 							      advance, initial_preamble, continue_preamble_cs,
 							      &sem_info,
 							      can_patch, base_fence);
-			if (result != VK_SUCCESS)
+			if (result != VK_SUCCESS) {
+				free(cs_array);
 				goto fail;
+			}
 
 			if (queue->device->trace_bo) {
 				radv_check_gpu_hangs(queue, cs_array[j]);
@@ -4681,9 +4682,6 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 		free(cs_array);
 	}
 
-	radv_free_temp_syncobjs(queue->device,
-				submission->temporary_semaphore_part_count,
-				submission->temporary_semaphore_parts);
 	radv_finalize_timelines(queue->device,
 	                        submission->wait_semaphore_count,
 	                        submission->wait_semaphores,
@@ -4696,9 +4694,6 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 	 * condition variable is only triggered when timelines and queue have
 	 * been updated. */
 	radv_queue_submission_update_queue(submission, processing_list);
-	radv_free_sem_info(&sem_info);
-	free(submission);
-	return VK_SUCCESS;
 
 fail:
 	if (result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST) {
@@ -4715,6 +4710,7 @@ fail:
 	radv_free_temp_syncobjs(queue->device,
 				submission->temporary_semaphore_part_count,
 				submission->temporary_semaphore_parts);
+	radv_free_sem_info(&sem_info);
 	free(submission);
 	return result;
 }
@@ -4884,7 +4880,7 @@ bool
 radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 {
 	struct radeon_winsys_ctx *ctx = queue->hw_ctx;
-	struct radv_winsys_sem_info sem_info;
+	struct radv_winsys_sem_info sem_info = {0};
 	VkResult result;
 
 	result = radv_alloc_sem_info(queue->device, &sem_info, 0, NULL, 0, 0,
