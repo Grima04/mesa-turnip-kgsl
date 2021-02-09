@@ -2193,11 +2193,10 @@ iris_get_scratch_space(struct iris_context *ice,
  * Actual shader compilation to assembly happens later, at first use.
  */
 static void *
-iris_create_uncompiled_shader(struct pipe_context *ctx,
+iris_create_uncompiled_shader(struct iris_screen *screen,
                               nir_shader *nir,
                               const struct pipe_stream_output_info *so_info)
 {
-   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    struct iris_uncompiled_shader *ish =
@@ -2249,6 +2248,7 @@ static struct iris_uncompiled_shader *
 iris_create_shader_state(struct pipe_context *ctx,
                          const struct pipe_shader_state *state)
 {
+   struct iris_screen *screen = (void *) ctx->screen;
    struct nir_shader *nir;
 
    if (state->type == PIPE_SHADER_IR_TGSI)
@@ -2256,7 +2256,7 @@ iris_create_shader_state(struct pipe_context *ctx,
    else
       nir = state->ir.nir;
 
-   return iris_create_uncompiled_shader(ctx, nir, &state->stream_output);
+   return iris_create_uncompiled_shader(screen, nir, &state->stream_output);
 }
 
 static void *
@@ -2455,7 +2455,7 @@ iris_create_compute_state(struct pipe_context *ctx,
    nir->info.stage = MESA_SHADER_COMPUTE;
 
    struct iris_uncompiled_shader *ish =
-      iris_create_uncompiled_shader(ctx, nir, NULL);
+      iris_create_uncompiled_shader(screen, nir, NULL);
    ish->kernel_input_size = state->req_input_mem;
    ish->kernel_shared_size = state->req_local_mem;
 
