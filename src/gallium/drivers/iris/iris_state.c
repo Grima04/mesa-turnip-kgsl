@@ -2451,7 +2451,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
       iris_get_depth_stencil_resources(tex, &zres, &sres);
 
-      tex = util_format_has_depth(desc) ? &zres->base : &sres->base;
+      tex = util_format_has_depth(desc) ? &zres->base.b : &sres->base.b;
    }
 
    isv->res = (struct iris_resource *) tex;
@@ -2814,7 +2814,7 @@ iris_set_shader_images(struct pipe_context *ctx,
 
          void *map = iv->surface_state.cpu;
 
-         if (res->base.target != PIPE_BUFFER) {
+         if (res->base.b.target != PIPE_BUFFER) {
             struct isl_view view = {
                .format = isl_fmt,
                .base_level = img->u.tex.level,
@@ -2847,7 +2847,7 @@ iris_set_shader_images(struct pipe_context *ctx,
                                       &image_params[start_slot + i],
                                       &res->surf, &view);
          } else {
-            util_range_add(&res->base, &res->valid_buffer_range, img->u.buf.offset,
+            util_range_add(&res->base.b, &res->valid_buffer_range, img->u.buf.offset,
                            img->u.buf.offset + img->u.buf.size);
 
             fill_buffer_surface_state(&screen->isl_dev, res, map,
@@ -3431,7 +3431,7 @@ iris_set_shader_buffers(struct pipe_context *ctx,
          struct pipe_shader_buffer *ssbo = &shs->ssbo[start_slot + i];
          struct iris_state_ref *surf_state =
             &shs->ssbo_surf_state[start_slot + i];
-         pipe_resource_reference(&ssbo->buffer, &res->base);
+         pipe_resource_reference(&ssbo->buffer, &res->base.b);
          ssbo->buffer_offset = buffers[i].buffer_offset;
          ssbo->buffer_size =
             MIN2(buffers[i].buffer_size, res->bo->size - ssbo->buffer_offset);
@@ -3445,7 +3445,7 @@ iris_set_shader_buffers(struct pipe_context *ctx,
          res->bind_history |= PIPE_BIND_SHADER_BUFFER;
          res->bind_stages |= 1 << stage;
 
-         util_range_add(&res->base, &res->valid_buffer_range, ssbo->buffer_offset,
+         util_range_add(&res->base.b, &res->valid_buffer_range, ssbo->buffer_offset,
                         ssbo->buffer_offset + ssbo->buffer_size);
       } else {
          pipe_resource_reference(&shs->ssbo[start_slot + i].buffer, NULL);
@@ -3515,7 +3515,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
          vb.AddressModifyEnable = true;
          vb.BufferPitch = buffer->stride;
          if (res) {
-            vb.BufferSize = res->base.width0 - (int) buffer->buffer_offset;
+            vb.BufferSize = res->base.b.width0 - (int) buffer->buffer_offset;
             vb.BufferStartingAddress =
                ro_bo(NULL, res->bo->gtt_offset + (int) buffer->buffer_offset);
             vb.MOCS = iris_mocs(res->bo, &screen->isl_dev,
@@ -3706,7 +3706,7 @@ iris_create_stream_output_target(struct pipe_context *ctx,
    cso->base.buffer_size = buffer_size;
    cso->base.context = ctx;
 
-   util_range_add(&res->base, &res->valid_buffer_range, buffer_offset,
+   util_range_add(&res->base.b, &res->valid_buffer_range, buffer_offset,
                   buffer_offset + buffer_size);
 
    return &cso->base;
@@ -7163,7 +7163,7 @@ iris_rebind_buffer(struct iris_context *ice,
    struct pipe_context *ctx = &ice->ctx;
    struct iris_genx_state *genx = ice->state.genx;
 
-   assert(res->base.target == PIPE_BUFFER);
+   assert(res->base.b.target == PIPE_BUFFER);
 
    /* Buffers can't be framebuffer attachments, nor display related,
     * and we don't have upstream Clover support.
@@ -7254,7 +7254,7 @@ iris_rebind_buffer(struct iris_context *ice,
 
             if (res->bo == iris_resource_bo(ssbo->buffer)) {
                struct pipe_shader_buffer buf = {
-                  .buffer = &res->base,
+                  .buffer = &res->base.b,
                   .buffer_offset = ssbo->buffer_offset,
                   .buffer_size = ssbo->buffer_size,
                };

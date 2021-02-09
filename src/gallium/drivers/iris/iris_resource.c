@@ -394,17 +394,18 @@ iris_resource_disable_aux(struct iris_resource *res)
 
 static void
 iris_resource_destroy(struct pipe_screen *screen,
-                      struct pipe_resource *resource)
+                      struct pipe_resource *p_res)
 {
-   struct iris_resource *res = (struct iris_resource *)resource;
+   struct iris_resource *res = (struct iris_resource *) p_res;
 
-   if (resource->target == PIPE_BUFFER)
+   if (p_res->target == PIPE_BUFFER)
       util_range_destroy(&res->valid_buffer_range);
 
    iris_resource_disable_aux(res);
 
+   threaded_resource_deinit(p_res);
    iris_bo_unreference(res->bo);
-   iris_pscreen_unref(res->base.screen);
+   iris_pscreen_unref(res->base.b.screen);
 
    free(res);
 }
@@ -417,9 +418,10 @@ iris_alloc_resource(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
-   res->base = *templ;
-   res->base.screen = iris_pscreen_ref(pscreen);
-   pipe_reference_init(&res->base.reference, 1);
+   res->base.b = *templ;
+   res->base.b.screen = iris_pscreen_ref(pscreen);
+   pipe_reference_init(&res->base.b.reference, 1);
+   threaded_resource_init(&res->base.b);
 
    res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
    res->aux.sampler_usages = 1 << ISL_AUX_USAGE_NONE;
@@ -820,7 +822,7 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
    struct iris_resource *r[4] = { NULL, };
    unsigned num_planes = 0;
    unsigned num_main_planes = 0;
-   for (struct pipe_resource *p_res = &res->base; p_res; p_res = p_res->next) {
+   for (struct pipe_resource *p_res = &res->base.b; p_res; p_res = p_res->next) {
       r[num_planes] = (struct iris_resource *)p_res;
       num_main_planes += r[num_planes++]->bo != NULL;
    }
@@ -899,14 +901,16 @@ iris_resource_create_for_buffer(struct pipe_screen *pscreen,
 
    res->bo = iris_bo_alloc(screen->bufmgr, name, templ->width0, memzone);
    if (!res->bo) {
-      iris_resource_destroy(pscreen, &res->base);
+      iris_resource_destroy(pscreen, &res->base.b);
       return NULL;
    }
 
-   if (templ->bind & PIPE_BIND_SHARED)
+   if (templ->bind & PIPE_BIND_SHARED) {
       iris_bo_make_external(res->bo);
+      res->base.is_shared = true;
+   }
 
-   return &res->base;
+   return &res->base.b;
 }
 
 static struct pipe_resource *
@@ -998,16 +1002,17 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       map_aux_addresses(screen, res, res->surf.format, 0);
    }
 
-   if (templ->bind & PIPE_BIND_SHARED)
+   if (templ->bind & PIPE_BIND_SHARED) {
       iris_bo_make_external(res->bo);
+      res->base.is_shared = true;
+   }
 
-   return &res->base;
+   return &res->base.b;
 
 fail:
    fprintf(stderr, "XXX: resource creation failed\n");
-   iris_resource_destroy(pscreen, &res->base);
+   iris_resource_destroy(pscreen, &res->base.b);
    return NULL;
-
 }
 
 static struct pipe_resource *
@@ -1048,17 +1053,18 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
    assert(templ->target == PIPE_BUFFER);
 
    res->internal_format = templ->format;
+   res->base.is_user_ptr = true;
    res->bo = iris_bo_create_userptr(bufmgr, "user",
                                     user_memory, templ->width0,
                                     IRIS_MEMZONE_OTHER);
    if (!res->bo) {
-      iris_resource_destroy(pscreen, &res->base);
+      iris_resource_destroy(pscreen, &res->base.b);
       return NULL;
    }
 
-   util_range_add(&res->base, &res->valid_buffer_range, 0, templ->width0);
+   util_range_add(&res->base.b, &res->valid_buffer_range, 0, templ->width0);
 
-   return &res->base;
+   return &res->base.b;
 }
 
 static struct pipe_resource *
@@ -1124,10 +1130,10 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
       res->bo = NULL;
    }
 
-   return &res->base;
+   return &res->base.b;
 
 fail:
-   iris_resource_destroy(pscreen, &res->base);
+   iris_resource_destroy(pscreen, &res->base.b);
    return NULL;
 }
 
@@ -1255,7 +1261,7 @@ iris_resource_get_param(struct pipe_screen *pscreen,
 
 static bool
 iris_resource_get_handle(struct pipe_screen *pscreen,
-                         struct pipe_context *ctx,
+                         struct pipe_context *unused_ctx,
                          struct pipe_resource *resource,
                          struct winsys_handle *whandle,
                          unsigned usage)
@@ -1420,7 +1426,7 @@ static void
 iris_map_copy_region(struct iris_transfer *map)
 {
    struct pipe_screen *pscreen = &map->batch->screen->base;
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (void *) xfer->resource;
 
@@ -1593,7 +1599,7 @@ s8_offset(uint32_t stride, uint32_t x, uint32_t y)
 static void
 iris_unmap_s8(struct iris_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    const struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
@@ -1625,7 +1631,7 @@ iris_unmap_s8(struct iris_transfer *map)
 static void
 iris_map_s8(struct iris_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    const struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
@@ -1697,7 +1703,7 @@ tile_extents(const struct isl_surf *surf,
 static void
 iris_unmap_tiled_memcpy(struct iris_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    const struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
@@ -1726,7 +1732,7 @@ iris_unmap_tiled_memcpy(struct iris_transfer *map)
 static void
 iris_map_tiled_memcpy(struct iris_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    const struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
@@ -1771,13 +1777,13 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
 static void
 iris_map_direct(struct iris_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
 
    void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage & MAP_FLAGS);
 
-   if (res->base.target == PIPE_BUFFER) {
+   if (res->base.b.target == PIPE_BUFFER) {
       xfer->stride = 0;
       xfer->layer_stride = 0;
 
@@ -1807,7 +1813,7 @@ can_promote_to_async(const struct iris_resource *res,
     * initialized with useful data, then we can safely promote this write
     * to be unsynchronized.  This helps the common pattern of appending data.
     */
-   return res->base.target == PIPE_BUFFER && (usage & PIPE_MAP_WRITE) &&
+   return res->base.b.target == PIPE_BUFFER && (usage & PIPE_MAP_WRITE) &&
           !(usage & TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED) &&
           !util_ranges_intersect(&res->valid_buffer_range, box->x,
                                  box->x + box->width);
@@ -1860,10 +1866,11 @@ iris_transfer_map(struct pipe_context *ctx,
       return NULL;
 
    struct iris_transfer *map = slab_alloc(&ice->transfer_pool);
-   struct pipe_transfer *xfer = &map->base;
 
    if (!map)
       return NULL;
+
+   struct pipe_transfer *xfer = &map->base.b;
 
    memset(map, 0, sizeof(*map));
    map->dbg = &ice->dbg;
@@ -1879,7 +1886,7 @@ iris_transfer_map(struct pipe_context *ctx,
                             box->x + box->width);
 
    if (usage & PIPE_MAP_WRITE)
-      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
+      util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
 
    /* Avoid using GPU copies for persistent/coherent buffers, as the idea
     * there is to access them simultaneously on the CPU & GPU.  This also
@@ -1964,14 +1971,14 @@ iris_transfer_flush_region(struct pipe_context *ctx,
 
    uint32_t history_flush = 0;
 
-   if (res->base.target == PIPE_BUFFER) {
+   if (res->base.b.target == PIPE_BUFFER) {
       if (map->staging)
          history_flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
 
       if (map->dest_had_defined_contents)
          history_flush |= iris_flush_bits_for_history(ice, res);
 
-      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
+      util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
    }
 
    if (history_flush & ~PIPE_CONTROL_CS_STALL) {
@@ -2150,7 +2157,7 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
                                  uint32_t extra_flags,
                                  const char *reason)
 {
-   if (res->base.target != PIPE_BUFFER)
+   if (res->base.b.target != PIPE_BUFFER)
       return;
 
    uint32_t flush = iris_flush_bits_for_history(ice, res) | extra_flags;

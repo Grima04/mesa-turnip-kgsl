@@ -95,7 +95,7 @@ resolve_sampler_views(struct iris_context *ice,
       const int i = u_bit_scan(&views);
       struct iris_sampler_view *isv = shs->textures[i];
 
-      if (isv->res->base.target != PIPE_BUFFER) {
+      if (isv->res->base.b.target != PIPE_BUFFER) {
          if (consider_framebuffer) {
             disable_rb_aux_buffer(ice, draw_aux_buffer_disabled, isv->res,
                                   isv->view.base_level, isv->view.levels,
@@ -128,7 +128,7 @@ resolve_image_views(struct iris_context *ice,
       struct pipe_image_view *pview = &shs->image[i].base;
       struct iris_resource *res = (void *) pview->resource;
 
-      if (res->base.target != PIPE_BUFFER) {
+      if (res->base.b.target != PIPE_BUFFER) {
          if (consider_framebuffer) {
             disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
                                   res, pview->u.tex.level, 1,
@@ -392,7 +392,7 @@ iris_resolve_color(struct iris_context *ice,
 
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
-                                &res->base, res->aux.usage, level, true);
+                                &res->base.b, res->aux.usage, level, true);
 
    iris_batch_maybe_flush(batch, 1500);
 
@@ -440,7 +440,7 @@ iris_mcs_partial_resolve(struct iris_context *ice,
 
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
-                                &res->base, res->aux.usage, 0, true);
+                                &res->base.b, res->aux.usage, 0, true);
    iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_RENDER_WRITE);
 
    struct blorp_batch blorp_batch;
@@ -550,7 +550,7 @@ iris_hiz_exec(struct iris_context *ice,
 
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
-                                &res->base, res->aux.usage, level, true);
+                                &res->base.b, res->aux.usage, level, true);
 
    struct blorp_batch blorp_batch;
    enum blorp_batch_flags flags = 0;
@@ -598,10 +598,10 @@ iris_resource_level_has_hiz(const struct iris_resource *res, uint32_t level)
     * For LOD == 0, we can grow the dimensions to make it work.
     */
    if (level > 0) {
-      if (u_minify(res->base.width0, level) & 7)
+      if (u_minify(res->base.b.width0, level) & 7)
          return false;
 
-      if (u_minify(res->base.height0, level) & 3)
+      if (u_minify(res->base.b.height0, level) & 3)
          return false;
    }
 
@@ -614,7 +614,7 @@ iris_resource_check_level_layer(UNUSED const struct iris_resource *res,
                                 UNUSED uint32_t level, UNUSED uint32_t layer)
 {
    assert(level < res->surf.levels);
-   assert(layer < util_num_layers(&res->base, level));
+   assert(layer < util_num_layers(&res->base.b, level));
 }
 
 static inline uint32_t
@@ -637,7 +637,7 @@ static inline uint32_t
 miptree_layer_range_length(const struct iris_resource *res, uint32_t level,
                            uint32_t start_layer, uint32_t num_layers)
 {
-   assert(level <= res->base.last_level);
+   assert(level <= res->base.b.last_level);
 
    const uint32_t total_num_layers = iris_get_num_logical_layers(res, level);
    assert(start_layer < total_num_layers);
@@ -812,7 +812,7 @@ iris_resource_set_aux_state(struct iris_context *ice,
       if (aux_state == ISL_AUX_STATE_CLEAR ||
           aux_state == ISL_AUX_STATE_COMPRESSED_CLEAR ||
           aux_state == ISL_AUX_STATE_PARTIAL_CLEAR) {
-         iris_mark_dirty_dmabuf(ice, &res->base);
+         iris_mark_dirty_dmabuf(ice, &res->base.b);
       }
    }
 }

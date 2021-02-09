@@ -52,6 +52,8 @@
 #define SO_NUM_PRIMS_WRITTEN(n)   (GENX(SO_NUM_PRIMS_WRITTEN0_num) + (n) * 8)
 
 struct iris_query {
+   struct threaded_query b;
+
    enum pipe_query_type type;
    int index;
 
