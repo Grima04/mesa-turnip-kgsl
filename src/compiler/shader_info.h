@@ -152,6 +152,15 @@ typedef struct shader_info {
    /* Which system values are actually read */
    BITSET_DECLARE(system_values_read, SYSTEM_VALUE_MAX);
 
+   /* Which 16-bit inputs and outputs are used corresponding to
+    * VARYING_SLOT_VARn_16BIT.
+    */
+   uint16_t inputs_read_16bit;
+   uint16_t outputs_written_16bit;
+   uint16_t outputs_read_16bit;
+   uint16_t inputs_read_indirectly_16bit;
+   uint16_t outputs_accessed_indirectly_16bit;
+
    /* Which patch inputs are actually read */
    uint32_t patch_inputs_read;
    /* Which patch outputs are actually written */

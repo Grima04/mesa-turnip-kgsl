@@ -288,11 +288,13 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
                       void *dead_ctx)
 {
    uint64_t slot_mask = 0;
+   uint16_t slot_mask_16bit = 0;
 
    if (nir_intrinsic_infos[instr->intrinsic].index_map[NIR_INTRINSIC_IO_SEMANTICS] > 0) {
       nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
 
-      if (semantics.location >= VARYING_SLOT_PATCH0) {
+      if (semantics.location >= VARYING_SLOT_PATCH0 &&
+          semantics.location <= VARYING_SLOT_PATCH31) {
          /* Generic per-patch I/O. */
          assert((shader->info.stage == MESA_SHADER_TESS_EVAL &&
                  instr->intrinsic == nir_intrinsic_load_input) ||
@@ -303,8 +305,16 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
          semantics.location -= VARYING_SLOT_PATCH0;
       }
 
-      slot_mask = BITFIELD64_RANGE(semantics.location, semantics.num_slots);
-      assert(util_bitcount64(slot_mask) == semantics.num_slots);
+      if (semantics.location >= VARYING_SLOT_VAR0_16BIT &&
+          semantics.location <= VARYING_SLOT_VAR15_16BIT) {
+         /* Convert num_slots from the units of half vectors to full vectors. */
+         unsigned num_slots = (semantics.num_slots + semantics.high_16bits + 1) / 2;
+         slot_mask_16bit =
+            BITFIELD_RANGE(semantics.location - VARYING_SLOT_VAR0_16BIT, num_slots);
+      } else {
+         slot_mask = BITFIELD64_RANGE(semantics.location, semantics.num_slots);
+         assert(util_bitcount64(slot_mask) == semantics.num_slots);
+      }
    }
 
    switch (instr->intrinsic) {
@@ -373,8 +383,11 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
             shader->info.patch_inputs_read_indirectly |= slot_mask;
       } else {
          shader->info.inputs_read |= slot_mask;
-         if (!nir_src_is_const(*nir_get_io_offset_src(instr)))
+         shader->info.inputs_read_16bit |= slot_mask_16bit;
+         if (!nir_src_is_const(*nir_get_io_offset_src(instr))) {
             shader->info.inputs_read_indirectly |= slot_mask;
+            shader->info.inputs_read_indirectly_16bit |= slot_mask_16bit;
+         }
       }
 
       if (shader->info.stage == MESA_SHADER_TESS_CTRL &&
@@ -392,8 +405,11 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
             shader->info.patch_outputs_accessed_indirectly |= slot_mask;
       } else {
          shader->info.outputs_read |= slot_mask;
-         if (!nir_src_is_const(*nir_get_io_offset_src(instr)))
+         shader->info.outputs_read_16bit |= slot_mask_16bit;
+         if (!nir_src_is_const(*nir_get_io_offset_src(instr))) {
             shader->info.outputs_accessed_indirectly |= slot_mask;
+            shader->info.outputs_accessed_indirectly_16bit |= slot_mask_16bit;
+         }
       }
 
       if (shader->info.stage == MESA_SHADER_TESS_CTRL &&
@@ -415,8 +431,11 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
             shader->info.patch_outputs_accessed_indirectly |= slot_mask;
       } else {
          shader->info.outputs_written |= slot_mask;
-         if (!nir_src_is_const(*nir_get_io_offset_src(instr)))
+         shader->info.outputs_written_16bit |= slot_mask_16bit;
+         if (!nir_src_is_const(*nir_get_io_offset_src(instr))) {
             shader->info.outputs_accessed_indirectly |= slot_mask;
+            shader->info.outputs_accessed_indirectly_16bit |= slot_mask_16bit;
+         }
       }
 
       if (shader->info.stage == MESA_SHADER_FRAGMENT &&
@@ -839,6 +858,11 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    shader->info.inputs_read = 0;
    shader->info.outputs_written = 0;
    shader->info.outputs_read = 0;
+   shader->info.inputs_read_16bit = 0;
+   shader->info.outputs_written_16bit = 0;
+   shader->info.outputs_read_16bit = 0;
+   shader->info.inputs_read_indirectly_16bit = 0;
+   shader->info.outputs_accessed_indirectly_16bit = 0;
    shader->info.patch_outputs_read = 0;
    shader->info.patch_inputs_read = 0;
    shader->info.patch_outputs_written = 0;

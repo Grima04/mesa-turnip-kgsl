@@ -1803,7 +1803,8 @@ typedef struct nir_io_semantics {
    unsigned gs_streams:8; /* xxyyzzww: 2-bit stream index for each component */
    unsigned medium_precision:1; /* GLSL mediump qualifier */
    unsigned per_view:1;
-   unsigned _pad:7;
+   unsigned high_16bits:1; /* whether accessing low or high half of the slot */
+   unsigned _pad:6;
 } nir_io_semantics;
 
 #define NIR_INTRINSIC_MAX_INPUTS 11
