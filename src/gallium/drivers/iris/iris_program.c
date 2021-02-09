@@ -1238,7 +1238,7 @@ iris_update_compiled_vs(struct iris_context *ice)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_VERTEX];
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_driver;
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_VERTEX];
 
@@ -1431,7 +1431,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
    struct iris_uncompiled_shader *tcs =
       ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL];
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_driver;
    const struct brw_compiler *compiler = screen->compiler;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
@@ -1564,7 +1564,7 @@ static void
 iris_update_compiled_tes(struct iris_context *ice)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_driver;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_EVAL];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
@@ -1690,7 +1690,7 @@ static void
 iris_update_compiled_gs(struct iris_context *ice)
 {
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_GEOMETRY];
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_driver;
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_GEOMETRY];
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_GS];
@@ -1810,7 +1810,7 @@ static void
 iris_update_compiled_fs(struct iris_context *ice)
 {
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_FRAGMENT];
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_driver;
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
    struct iris_fs_prog_key key = { KEY_ID(base) };
@@ -2068,7 +2068,7 @@ static void
 iris_update_compiled_cs(struct iris_context *ice)
 {
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_COMPUTE];
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_driver;
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_COMPUTE];
 
@@ -2281,7 +2281,7 @@ iris_create_vs_state(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
 
    /* User clip planes */
@@ -2305,7 +2305,7 @@ iris_create_tcs_state(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
    const struct brw_compiler *compiler = screen->compiler;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
@@ -2342,7 +2342,7 @@ iris_create_tes_state(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
@@ -2371,7 +2371,7 @@ iris_create_gs_state(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
 
    /* User clip planes */
@@ -2394,7 +2394,7 @@ iris_create_fs_state(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
@@ -2440,7 +2440,7 @@ iris_create_compute_state(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
    const nir_shader_compiler_options *options =
       screen->compiler->glsl_compiler_options[MESA_SHADER_COMPUTE].NirOptions;
 

@@ -638,7 +638,10 @@ struct iris_context {
          bool constrained;
       } urb;
 
-      struct u_upload_mgr *uploader;
+      /** Uploader for shader assembly from the driver thread */
+      struct u_upload_mgr *uploader_driver;
+      /** Uploader for shader assembly from the threaded context */
+      struct u_upload_mgr *uploader_unsync;
       struct hash_table *cache;
 
       /** Is a GS or TES outputting points or lines? */

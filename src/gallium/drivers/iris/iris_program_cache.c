@@ -250,7 +250,7 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch, uint32_t stage,
 
    struct iris_compiled_shader *shader =
       iris_upload_shader(screen, NULL, ice->shaders.cache,
-                         ice->shaders.uploader,
+                         ice->shaders.uploader_driver,
                          IRIS_CACHE_BLORP, key_size, key, kernel,
                          prog_data, NULL, NULL, 0, 0, 0, &bt);
 
@@ -270,7 +270,10 @@ iris_init_program_cache(struct iris_context *ice)
    ice->shaders.cache =
       _mesa_hash_table_create(ice, keybox_hash, keybox_equals);
 
-   ice->shaders.uploader =
+   ice->shaders.uploader_driver =
+      u_upload_create(&ice->ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
+                      IRIS_RESOURCE_FLAG_SHADER_MEMZONE);
+   ice->shaders.uploader_unsync =
       u_upload_create(&ice->ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
                       IRIS_RESOURCE_FLAG_SHADER_MEMZONE);
 }
@@ -288,7 +291,8 @@ iris_destroy_program_cache(struct iris_context *ice)
       iris_delete_shader_variant(shader);
    }
 
-   u_upload_destroy(ice->shaders.uploader);
+   u_upload_destroy(ice->shaders.uploader_driver);
+   u_upload_destroy(ice->shaders.uploader_unsync);
 
    ralloc_free(ice->shaders.cache);
 }
