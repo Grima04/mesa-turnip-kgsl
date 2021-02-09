@@ -1737,6 +1737,7 @@ struct radv_pipeline {
 			struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
 			uint8_t vtx_emit_num;
 			bool uses_drawid;
+			bool uses_baseinstance;
  			bool can_use_guardband;
 			uint32_t needed_dynamic_state;
 			bool disable_out_of_order_rast_for_occlusion;
