@@ -4854,7 +4854,7 @@ Temp adjust_vertex_fetch_alpha(isel_context *ctx, unsigned adjustment, Temp alph
     * and happen to contain 0, 1, 2, 3 as the two LSBs of the
     * exponent.
     */
-   unsigned offset = adjustment == AC_FETCH_FORMAT_SNORM ? 7u : 30u;
+   unsigned offset = adjustment == AC_FETCH_FORMAT_SNORM ? 23u : 0u;
    alpha = bld.vop3(aco_opcode::v_bfe_i32, bld.def(v1), alpha, Operand(offset), Operand(2u));
 
    /* Convert back to the right type. */
