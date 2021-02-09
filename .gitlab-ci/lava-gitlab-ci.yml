@@ -308,7 +308,7 @@ panfrost-g52-gles3:arm64:
   tags:
     - mesa-ci-aarch64-lava-baylibre
 
-radeonsi-stoney-gles2:amd64:
+.radeonsi-stoney-gles2:amd64:
   extends:
     - .lava-test:amd64
     - .radeonsi-rules
@@ -322,9 +322,9 @@ radeonsi-stoney-gles2:amd64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-radeonsi-stoney-gles3:amd64:
+.radeonsi-stoney-gles3:amd64:
   extends:
-    - radeonsi-stoney-gles2:amd64
+    - .radeonsi-stoney-gles2:amd64
   variables:
     DEQP_VERSION: gles3
     CI_NODE_INDEX: 1
@@ -334,7 +334,7 @@ radeonsi-stoney-gles3:amd64:
 
 radeonsi-stoney-gles31:amd64:
   extends:
-    - radeonsi-stoney-gles2:amd64
+    - .radeonsi-stoney-gles2:amd64
   variables:
     DEQP_VERSION: gles31
     CI_NODE_INDEX: 1
