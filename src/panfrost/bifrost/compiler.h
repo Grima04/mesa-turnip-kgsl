@@ -498,6 +498,7 @@ typedef struct {
        gl_shader_stage stage;
        struct list_head blocks; /* list of bi_block */
        struct panfrost_sysvals sysvals;
+       struct panfrost_ubo_push *push;
        uint32_t quirks;
        unsigned arch;
        unsigned tls_size;
@@ -748,6 +749,7 @@ void bi_print_shader(bi_context *ctx, FILE *fp);
 
 bool bi_opt_copy_prop(bi_context *ctx);
 bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block, bool soft);
+void bi_opt_push_ubo(bi_context *ctx);
 void bi_schedule(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
 

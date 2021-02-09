@@ -2446,6 +2446,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         ctx->arch = inputs->gpu_id >> 12;
         ctx->is_blend = inputs->is_blend;
         ctx->blend_desc = inputs->blend.bifrost_blend_desc;
+        ctx->push = &program->push;
         memcpy(ctx->blend_constants, inputs->blend.constants, sizeof(ctx->blend_constants));
         list_inithead(&ctx->blocks);
 
@@ -2511,6 +2512,9 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
                 bi_cull_dead_branch(block);
         }
+
+        /* Runs before copy prop */
+        bi_opt_push_ubo(ctx);
 
         bool progress = false;
 
