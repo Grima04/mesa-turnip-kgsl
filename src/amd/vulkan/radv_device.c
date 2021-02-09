@@ -3646,9 +3646,6 @@ radv_emit_trap_handler(struct radv_queue *queue,
 	tba_va = radv_buffer_get_va(tba_bo) + device->trap_handler_shader->bo_offset;
 	tma_va = radv_buffer_get_va(tma_bo);
 
-	radv_cs_add_buffer(queue->device->ws, cs, tba_bo);
-	radv_cs_add_buffer(queue->device->ws, cs, tma_bo);
-
 	if (queue->queue_family_index == RADV_QUEUE_GENERAL) {
 		uint32_t regs[] = {R_00B000_SPI_SHADER_TBA_LO_PS,
 				   R_00B100_SPI_SHADER_TBA_LO_VS,

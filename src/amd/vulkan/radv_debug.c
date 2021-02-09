@@ -840,6 +840,7 @@ bool
 radv_trap_handler_init(struct radv_device *device)
 {
 	struct radeon_winsys *ws = device->ws;
+	VkResult result;
 
 	/* Create the trap handler shader and upload it like other shaders. */
 	device->trap_handler_shader = radv_create_trap_handler_shader(device);
@@ -847,6 +848,10 @@ radv_trap_handler_init(struct radv_device *device)
 		fprintf(stderr, "radv: failed to create the trap handler shader.\n");
 		return false;
 	}
+
+	result = ws->buffer_make_resident(ws, device->trap_handler_shader->bo, true);
+	if (result != VK_SUCCESS)
+		return false;
 
 	device->tma_bo = ws->buffer_create(ws, TMA_BO_SIZE, 256,
 					   RADEON_DOMAIN_VRAM,
@@ -856,6 +861,10 @@ radv_trap_handler_init(struct radv_device *device)
 					   RADEON_FLAG_32BIT,
 					   RADV_BO_PRIORITY_SCRATCH);
 	if (!device->tma_bo)
+		return false;
+
+	result = ws->buffer_make_resident(ws, device->tma_bo, true);
+	if (result != VK_SUCCESS)
 		return false;
 
 	device->tma_ptr = ws->buffer_map(device->tma_bo);
@@ -885,11 +894,15 @@ radv_trap_handler_finish(struct radv_device *device)
 {
 	struct radeon_winsys *ws = device->ws;
 
-	if (unlikely(device->trap_handler_shader))
+	if (unlikely(device->trap_handler_shader)) {
+		ws->buffer_make_resident(ws, device->trap_handler_shader->bo, false);
 		radv_shader_variant_destroy(device, device->trap_handler_shader);
+	}
 
-	if (unlikely(device->tma_bo))
+	if (unlikely(device->tma_bo)) {
+		ws->buffer_make_resident(ws, device->tma_bo, false);
 		ws->buffer_destroy(ws, device->tma_bo);
+	}
 }
 
 static struct radv_shader_variant *
