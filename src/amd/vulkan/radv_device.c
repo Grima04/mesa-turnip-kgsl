@@ -2685,6 +2685,8 @@ check_physical_device_features(VkPhysicalDevice physicalDevice,
 
 static VkResult radv_device_init_border_color(struct radv_device *device)
 {
+	VkResult result;
+
 	device->border_color_data.bo =
 	device->ws->buffer_create(device->ws,
 					RADV_BORDER_COLOR_BUFFER_SIZE,
@@ -3088,9 +3090,7 @@ fail:
 	free(device->thread_trace.trigger_file);
 
 	radv_trap_handler_finish(device);
-
-	if (device->trace_bo)
-		device->ws->buffer_destroy(device->ws, device->trace_bo);
+	radv_finish_trace(device);
 
 	if (device->gfx_init)
 		device->ws->buffer_destroy(device->ws, device->gfx_init);
@@ -3123,9 +3123,6 @@ void radv_DestroyDevice(
 	if (!device)
 		return;
 
-	if (device->trace_bo)
-		device->ws->buffer_destroy(device->ws, device->trace_bo);
-
 	if (device->gfx_init)
 		device->ws->buffer_destroy(device->ws, device->gfx_init);
 
@@ -3151,6 +3148,7 @@ void radv_DestroyDevice(
 	radv_DestroyPipelineCache(radv_device_to_handle(device), pc, NULL);
 
 	radv_trap_handler_finish(device);
+	radv_finish_trace(device);
 
 	radv_destroy_shader_slabs(device);
 
@@ -3986,9 +3984,6 @@ radv_get_preamble_cs(struct radv_queue *queue,
 			radv_cs_add_buffer(queue->device->ws, cs, gds_bo);
 		if (gds_oa_bo)
 			radv_cs_add_buffer(queue->device->ws, cs, gds_oa_bo);
-
-		if (queue->device->trace_bo)
-			radv_cs_add_buffer(queue->device->ws, cs, queue->device->trace_bo);
 
 		if (i == 0) {
 			si_cs_emit_cache_flush(cs,

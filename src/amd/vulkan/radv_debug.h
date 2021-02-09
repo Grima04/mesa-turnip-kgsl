@@ -76,6 +76,7 @@ enum {
 
 bool
 radv_init_trace(struct radv_device *device);
+void radv_finish_trace(struct radv_device *device);
 
 void
 radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs);

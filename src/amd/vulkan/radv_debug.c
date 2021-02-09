@@ -65,6 +65,7 @@ bool
 radv_init_trace(struct radv_device *device)
 {
 	struct radeon_winsys *ws = device->ws;
+	VkResult result;
 
 	device->trace_bo = ws->buffer_create(ws, TRACE_BO_SIZE, 8,
 					     RADEON_DOMAIN_VRAM,
@@ -75,6 +76,10 @@ radv_init_trace(struct radv_device *device)
 	if (!device->trace_bo)
 		return false;
 
+	result = ws->buffer_make_resident(ws, device->trace_bo, true);
+	if (result != VK_SUCCESS)
+		return false;
+
 	device->trace_id_ptr = ws->buffer_map(device->trace_bo);
 	if (!device->trace_id_ptr)
 		return false;
@@ -83,6 +88,17 @@ radv_init_trace(struct radv_device *device)
 			    &device->dmesg_timestamp, NULL);
 
 	return true;
+}
+
+void
+radv_finish_trace(struct radv_device *device)
+{
+	struct radeon_winsys *ws = device->ws;
+
+	if (unlikely(device->trace_bo)) {
+		ws->buffer_make_resident(ws, device->trace_bo, false);
+		ws->buffer_destroy(ws, device->trace_bo);
+	}
 }
 
 static void
