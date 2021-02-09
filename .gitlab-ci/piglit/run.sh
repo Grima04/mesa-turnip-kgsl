@@ -173,7 +173,12 @@ replay_minio_upload_images() {
             __PIGLIT_TESTCASE_CLASSNAME="piglit\.trace\.$PIGLIT_REPLAY_DEVICE_NAME\.$(dirname $__TRACE | sed 's%/%\\.%g;s@%@\\%@')"
             __PIGLIT_TESTCASE_NAME="$(basename $__TRACE | sed 's%\.%_%g;s@%@\\%@')"
             __DASHBOARD_URL="https://tracie.freedesktop.org/dashboard/imagediff/${CI_PROJECT_PATH}/${CI_JOB_ID}/${__TRACE}"
-            sed '\%<testcase classname="'"${__PIGLIT_TESTCASE_CLASSNAME}"'" name="'"${__PIGLIT_TESTCASE_NAME}"'" status="fail"%,\%</system-out><failure type="fail"/></testcase>%{s%</system-out><failure type="fail"/></testcase>%</system-out><failure type="fail">To view the image differences visit: '"${__DASHBOARD_URL}"'</failure></testcase>%}' \
+            __START_TEST_PATTERN='<testcase classname="'"${__PIGLIT_TESTCASE_CLASSNAME}"'" name="'"${__PIGLIT_TESTCASE_NAME}"'" status="fail"'
+            __REPLACE_TEST_PATTERN='</system-out><failure type="fail"/></testcase>'
+            # Replace in the range between __START_TEST_PATTERN and
+            # __REPLACE_TEST_PATTERN leaving __START_TEST_PATTERN out
+            # from the substitution
+            sed '\%'"${__START_TEST_PATTERN}"'%,\%'"${__REPLACE_TEST_PATTERN}"'%{\%'"${__START_TEST_PATTERN}"'%b;s%'"${__REPLACE_TEST_PATTERN}"'%</system-out><failure type="fail">To view the image differences visit: '"${__DASHBOARD_URL}"'</failure></testcase>%}' \
                 -i "$RESULTS"/junit.xml
         fi
 
