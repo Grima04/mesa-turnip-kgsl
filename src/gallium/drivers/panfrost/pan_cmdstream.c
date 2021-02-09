@@ -965,14 +965,14 @@ panfrost_map_constant_buffer_cpu(struct panfrost_context *ctx,
         struct pipe_constant_buffer *cb = &buf->cb[index];
         struct panfrost_resource *rsrc = pan_resource(cb->buffer);
 
-        if (rsrc)
-                return rsrc->bo->ptr.cpu;
-        else if (cb->user_buffer) {
+        if (rsrc) {
                 panfrost_bo_mmap(rsrc->bo);
                 panfrost_flush_batches_accessing_bo(ctx, rsrc->bo, false);
                 panfrost_bo_wait(rsrc->bo, INT64_MAX, false);
 
-                return cb->user_buffer;
+                return rsrc->bo->ptr.cpu + cb->buffer_offset;
+        } else if (cb->user_buffer) {
+                return cb->user_buffer + cb->buffer_offset;
         } else
                 unreachable("No constant buffer");
 }
