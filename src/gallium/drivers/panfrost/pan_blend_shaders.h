@@ -29,7 +29,7 @@
 #include "pipe/p_defines.h"
 #include <midgard_pack.h>
 #include "pan_context.h"
-#include "pan_blend.h"
+#include "pan_blend_cso.h"
 
 struct panfrost_blend_shader *
 panfrost_create_blend_shader(struct panfrost_context *ctx,

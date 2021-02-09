@@ -31,7 +31,7 @@
 #include <assert.h>
 #include "pan_resource.h"
 #include "pan_job.h"
-#include "pan_blend.h"
+#include "pan_blend_cso.h"
 #include "pan_encoder.h"
 #include "pan_texture.h"
 #include "midgard_pack.h"

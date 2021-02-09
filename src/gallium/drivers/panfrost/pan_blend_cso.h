@@ -25,8 +25,8 @@
  *
  */
 
-#ifndef __PAN_BLEND_H
-#define __PAN_BLEND_H
+#ifndef __PAN_BLEND_CSO_H
+#define __PAN_BLEND_CSO_H
 
 #include "util/hash_table.h"
 #include "nir.h"

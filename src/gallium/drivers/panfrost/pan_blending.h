@@ -28,7 +28,7 @@
 #include "pipe/p_state.h"
 #include "pipe/p_defines.h"
 #include <midgard_pack.h>
-#include "pan_blend.h"
+#include "pan_blend_cso.h"
 
 struct panfrost_blend_state;
 

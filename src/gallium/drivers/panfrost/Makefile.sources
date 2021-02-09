@@ -4,7 +4,7 @@ C_SOURCES := \
     \
 	pan_assemble.c \
 	pan_blend_cso.c \
-	pan_blend.h \
+	pan_blend_cso.h \
 	pan_blending.c \
 	pan_blending.h \
 	pan_blend_shaders.c \
