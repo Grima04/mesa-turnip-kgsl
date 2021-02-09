@@ -32,7 +32,9 @@ struct pipe_context;
 
 struct zink_surface {
    struct pipe_surface base;
+   VkImageViewCreateInfo ivci;
    VkImageView image_view;
+   uint32_t hash;
 };
 
 static inline struct zink_surface *
@@ -43,5 +45,17 @@ zink_surface(struct pipe_surface *pipe)
 
 void
 zink_context_surface_init(struct pipe_context *context);
+
+VkImageViewCreateInfo
+create_ivci(struct zink_screen *screen,
+            struct zink_resource *res,
+            const struct pipe_surface *templ);
+
+struct pipe_surface *
+zink_get_surface(struct zink_context *ctx,
+            struct pipe_resource *pres,
+            const struct pipe_surface *templ,
+            VkImageViewCreateInfo *ivci);
+
 
 #endif

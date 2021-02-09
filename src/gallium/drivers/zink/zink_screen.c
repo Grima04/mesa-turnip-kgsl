@@ -83,6 +83,12 @@ zink_get_name(struct pipe_screen *pscreen)
    return buf;
 }
 
+static bool
+equals_ivci(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(VkImageViewCreateInfo)) == 0;
+}
+
 static VkDeviceSize
 get_video_mem(struct zink_screen *screen)
 {
@@ -846,6 +852,14 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       screen->vk_DestroyDebugUtilsMessengerEXT(screen->instance, screen->debugUtilsCallbackHandle, NULL);
    }
 
+   hash_table_foreach(&screen->surface_cache, entry) {
+      struct pipe_surface *psurf = (struct pipe_surface*)entry->data;
+      pipe_resource_reference(&psurf->texture, NULL);
+      pipe_surface_reference(&psurf, NULL);
+   }
+
+   simple_mtx_destroy(&screen->surface_mtx);
+
    u_transfer_helper_destroy(pscreen->transfer_helper);
    zink_screen_update_pipeline_cache(screen);
 #ifdef ENABLE_SHADER_CACHE
@@ -1367,6 +1381,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 #endif
 
    screen->total_mem = get_video_mem(screen);
+
+   simple_mtx_init(&screen->surface_mtx, mtx_plain);
+
+   _mesa_hash_table_init(&screen->surface_cache, screen, NULL, equals_ivci);
 
    return screen;
 

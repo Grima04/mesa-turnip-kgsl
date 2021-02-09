@@ -54,6 +54,9 @@ struct zink_screen {
 
    struct sw_winsys *winsys;
 
+   struct hash_table surface_cache;
+   simple_mtx_t surface_mtx;
+
    struct slab_parent_pool transfer_pool;
    VkPipelineCache pipeline_cache;
    size_t pipeline_cache_size;
