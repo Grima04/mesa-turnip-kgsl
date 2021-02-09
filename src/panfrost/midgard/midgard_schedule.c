@@ -674,6 +674,12 @@ mir_choose_instruction(
         unsigned max_active = 0;
         unsigned max_distance = 36;
 
+#ifndef NDEBUG
+        /* Force in-order scheduling */
+        if (midgard_debug & MIDGARD_DBG_INORDER)
+                max_distance = 1;
+#endif
+
         BITSET_FOREACH_SET(i, worklist, count) {
                 max_active = MAX2(max_active, i);
         }

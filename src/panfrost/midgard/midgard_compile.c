@@ -58,6 +58,7 @@ static const struct debug_named_value midgard_debug_options[] = {
         {"msgs",      MIDGARD_DBG_MSGS,		"Print debug messages"},
         {"shaders",   MIDGARD_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
         {"shaderdb",  MIDGARD_DBG_SHADERDB,     "Prints shader-db statistics"},
+        {"inorder",   MIDGARD_DBG_INORDER,      "Disables out-of-order scheduling"},
         DEBUG_NAMED_VALUE_END
 };
 
