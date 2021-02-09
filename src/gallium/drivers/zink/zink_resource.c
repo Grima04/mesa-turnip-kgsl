@@ -435,7 +435,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
         flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
    }
 
-   if (templ->flags & PIPE_RESOURCE_FLAG_MAP_COHERENT)
+   if (templ->flags & PIPE_RESOURCE_FLAG_MAP_COHERENT || templ->usage == PIPE_USAGE_DYNAMIC)
       flags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    else if (!(flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
             templ->usage != PIPE_USAGE_STAGING)
