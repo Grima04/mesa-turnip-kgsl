@@ -493,6 +493,7 @@ radv_thread_trace_init_cs(struct radv_device *device)
 static bool
 radv_thread_trace_init_bo(struct radv_device *device)
 {
+	unsigned max_se = device->physical_device->rad_info.max_se;
 	struct radeon_winsys *ws = device->ws;
 	uint64_t size;
 
@@ -502,10 +503,10 @@ radv_thread_trace_init_bo(struct radv_device *device)
 	device->thread_trace.buffer_size = align64(device->thread_trace.buffer_size,
 	                                           1u << SQTT_BUFFER_ALIGN_SHIFT);
 
-	/* Compute total size of the thread trace BO for 4 SEs. */
-	size = align64(sizeof(struct ac_thread_trace_info) * 4,
+	/* Compute total size of the thread trace BO for all SEs. */
+	size = align64(sizeof(struct ac_thread_trace_info) * max_se,
 		       1 << SQTT_BUFFER_ALIGN_SHIFT);
-	size += device->thread_trace.buffer_size * 4ll;
+	size += device->thread_trace.buffer_size * max_se;
 
 	device->thread_trace.bo = ws->buffer_create(ws, size, 4096,
 						    RADEON_DOMAIN_VRAM,
