@@ -306,6 +306,18 @@ bi_must_last(bi_instr *ins)
         return bi_opcode_props[ins->op].last;
 }
 
+/* Architecturally, no single instruction has a "not last" constraint. However,
+ * pseudoinstructions writing multiple destinations (expanding to multiple
+ * paired instructions) can run afoul of the "no two writes on the last clause"
+ * constraint, so we check for that here.
+ */
+
+static bool
+bi_must_not_last(bi_instr *ins)
+{
+        return !bi_is_null(ins->dest[0]) && !bi_is_null(ins->dest[1]);
+}
+
 ASSERTED static bool
 bi_must_message(bi_instr *ins)
 {
@@ -635,6 +647,9 @@ bi_instr_schedulable(bi_instr *instr,
 
         /* Some instructions have placement requirements */
         if (bi_must_last(instr) && !tuple->last)
+                return false;
+
+        if (bi_must_not_last(instr) && tuple->last)
                 return false;
 
         /* Message-passing instructions are not guaranteed write within the
@@ -1226,10 +1241,18 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st)
                                         BIFROST_SRC_STAGE, false);
                 }
 
-                if (tuple->add || tuple->fma)
-                        clause->tuple_count++;
-                else
+                /* Don't add an empty tuple, unless the worklist has nothing
+                 * but a (pseudo)instruction failing to schedule due to a "not
+                 * last instruction" constraint */
+
+                int some_instruction = __bitset_ffs(st.worklist, BITSET_WORDS(st.count));
+                bool not_last = (some_instruction > 0) &&
+                        bi_must_not_last(st.instructions[some_instruction - 1]);
+
+                if (!(tuple->fma || tuple->add || (tuple_state.last && not_last)))
                         break;
+
+                clause->tuple_count++;
 
                 /* Adding enough tuple might overflow constants */
                 if (!bi_space_for_more_constants(&clause_state))
