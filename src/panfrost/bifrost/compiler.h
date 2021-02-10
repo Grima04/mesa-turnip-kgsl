@@ -231,6 +231,12 @@ bi_is_null(bi_index idx)
         return idx.type == BI_INDEX_NULL;
 }
 
+static inline bool
+bi_is_ssa(bi_index idx)
+{
+        return idx.type == BI_INDEX_NORMAL && !idx.reg;
+}
+
 /* Compares equivalence as references. Does not compare offsets, swizzles, or
  * modifiers. In other words, this forms bi_index equivalence classes by
  * partitioning memory. E.g. -abs(foo[1].yx) == foo.xy but foo != bar */
