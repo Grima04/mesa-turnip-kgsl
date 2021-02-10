@@ -115,6 +115,12 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
 
          if (mask) {
             info->input_usage_mask[loc] |= mask;
+            if (bit_size == 16) {
+               if (nir_intrinsic_io_semantics(intr).high_16bits)
+                  info->input_fp16_lo_hi_valid[loc] |= 0x2;
+               else
+                  info->input_fp16_lo_hi_valid[loc] |= 0x1;
+            }
             info->num_inputs = MAX2(info->num_inputs, loc + 1);
          }
       }
@@ -796,10 +802,15 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
       NIR_PASS_V(nir, nir_lower_compute_system_values, &options);
    }
 
-   if (nir->info.stage == MESA_SHADER_FRAGMENT &&
-       sscreen->info.has_packed_math_16bit &&
-       sscreen->b.get_shader_param(&sscreen->b, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16))
-      NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out, 0, false);
+   if (sscreen->b.get_shader_param(&sscreen->b, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16)) {
+      NIR_PASS_V(nir, nir_lower_mediump_io,
+                 /* TODO: LLVM fails to compile this test if VS inputs are 16-bit:
+                  * dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec3_lowp_geometry
+                  */
+                 (nir->info.stage != MESA_SHADER_VERTEX ? nir_var_shader_in : 0) | nir_var_shader_out,
+                 BITFIELD64_BIT(VARYING_SLOT_PNTC) | BITFIELD64_RANGE(VARYING_SLOT_VAR0, 32),
+                 true);
+   }
 
    si_nir_opts(sscreen, nir, true);
 

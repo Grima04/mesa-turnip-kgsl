@@ -502,7 +502,9 @@ static bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *
    for (unsigned i = 0; i < info->num_outputs; i++) {
       LLVMTypeRef type = ctx->ac.f32;
 
-      if (nir_alu_type_get_type_size(ctx->shader->selector->info.output_type[i]) == 16)
+      /* Only FS uses unpacked f16. Other stages pack 16-bit outputs into low and high bits of f32. */
+      if (nir->info.stage == MESA_SHADER_FRAGMENT &&
+          nir_alu_type_get_type_size(ctx->shader->selector->info.output_type[i]) == 16)
          type = ctx->ac.f16;
 
       for (unsigned j = 0; j < 4; j++)

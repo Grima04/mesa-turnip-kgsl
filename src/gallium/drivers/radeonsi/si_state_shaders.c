@@ -3336,7 +3336,8 @@ static void si_delete_shader_selector(struct pipe_context *ctx, void *state)
 }
 
 static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *vs,
-                                     unsigned semantic, enum glsl_interp_mode interpolate)
+                                     unsigned semantic, enum glsl_interp_mode interpolate,
+                                     ubyte fp16_lo_hi_mask)
 {
    struct si_shader_info *vsinfo = &vs->selector->info;
    unsigned offset, ps_input_cntl = 0;
@@ -3350,6 +3351,10 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
        (semantic >= VARYING_SLOT_TEX0 && semantic <= VARYING_SLOT_TEX7 &&
         sctx->sprite_coord_enable & (1 << (semantic - VARYING_SLOT_TEX0)))) {
       ps_input_cntl |= S_028644_PT_SPRITE_TEX(1);
+      if (fp16_lo_hi_mask & 0x1) {
+         ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                          S_028644_ATTR0_VALID(1);
+      }
    }
 
    int vs_slot = vsinfo->output_semantic_to_slot[semantic];
@@ -3371,6 +3376,16 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
          }
 
          ps_input_cntl = S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(offset);
+      }
+
+      if (fp16_lo_hi_mask && !G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
+         assert(offset <= AC_EXP_PARAM_OFFSET_31 || offset == AC_EXP_PARAM_DEFAULT_VAL_0000);
+
+         ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                          S_028644_USE_DEFAULT_ATTR1(offset == AC_EXP_PARAM_DEFAULT_VAL_0000) |
+                          S_028644_DEFAULT_VAL_ATTR1(0) |
+                          S_028644_ATTR0_VALID(1) | /* this must be set if FP16_INTERP_MODE is set */
+                          S_028644_ATTR1_VALID(!!(fp16_lo_hi_mask & 0x2));
       }
    } else {
       /* VS output not found. */
@@ -3414,8 +3429,10 @@ static void si_emit_spi_map(struct si_context *sctx)
    for (i = 0; i < psinfo->num_inputs; i++) {
       unsigned semantic = psinfo->input_semantic[i];
       unsigned interpolate = psinfo->input_interpolate[i];
+      ubyte fp16_lo_hi_mask = psinfo->input_fp16_lo_hi_valid[i];
 
-      spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, semantic, interpolate);
+      spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, semantic, interpolate,
+                                                              fp16_lo_hi_mask);
    }
 
    if (ps->key.part.ps.prolog.color_two_side) {
@@ -3425,7 +3442,8 @@ static void si_emit_spi_map(struct si_context *sctx)
 
          unsigned semantic = VARYING_SLOT_BFC0 + i;
          spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, semantic,
-                                                                 psinfo->color_interpolate[i]);
+                                                                 psinfo->color_interpolate[i],
+                                                                 false);
       }
    }
    assert(num_interp == num_written);
