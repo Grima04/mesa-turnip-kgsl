@@ -594,7 +594,7 @@ radv_get_thread_trace(struct radv_queue *queue,
 
 			fprintf(stderr, "Failed to get the thread trace "
 					"because the buffer is too small. The "
-					"hardware needs %d KB but the "
+					"hardware needs %d KB per SE but the "
 					"buffer size is %d KB.\n",
 					expected_size, available_size);
 			fprintf(stderr, "Please update the buffer size with "
