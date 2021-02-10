@@ -857,6 +857,10 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .samplerAnisotropy = true,
       .textureCompressionETC2 = true,
       .textureCompressionASTC_LDR = false,
+      /* Note that textureCompressionBC requires that the driver support all
+       * the BC formats. V3D 4.2 only support the BC1-3, so we can't claim
+       * that we support it.
+       */
       .textureCompressionBC = false,
       .occlusionQueryPrecise = true,
       .pipelineStatisticsQuery = false,
