@@ -133,11 +133,11 @@ kernel+rootfs_armhf:
     TEST_SUITE: "deqp"
   extends:
     - .use-x86_build-base # for same $MESA_BASE_TAG as in kernel+rootfs_amd64
-    - .use-arm_build
+    - .use-arm_build # ARM because it must match the architecture of the runner
     - .lava-test
   needs:
     - kernel+rootfs_amd64
-    - arm_build
+    - arm_build # ARM because it must match the architecture of the runner
     - meson-testing
 
 .lava-traces-base:
