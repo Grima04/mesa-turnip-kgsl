@@ -215,7 +215,6 @@ struct panfrost_shader_state {
         struct MALI_PRELOAD preload;
 
         /* Non-descript information */
-        unsigned uniform_count;
         unsigned work_reg_count;
         bool can_discard;
         bool writes_point_size;

@@ -41,11 +41,12 @@
 
 static void
 pan_prepare_midgard_props(struct panfrost_shader_state *state,
+                          panfrost_program *program,
                           gl_shader_stage stage)
 {
         pan_prepare(&state->properties, RENDERER_PROPERTIES);
         state->properties.uniform_buffer_count = state->ubo_count;
-        state->properties.midgard.uniform_count = state->uniform_count;
+        state->properties.midgard.uniform_count = program->uniform_cutoff;
         state->properties.midgard.shader_has_side_effects = state->writes_global;
 
         /* TODO: Select the appropriate mode. Suppresing inf/nan works around
@@ -373,7 +374,6 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         if (outputs_written)
                 *outputs_written = s->info.outputs_written;
 
-        state->uniform_count = program->uniform_cutoff;
         state->work_reg_count = program->work_register_count;
 
         if (pan_is_bifrost(dev))
@@ -413,7 +413,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         if (pan_is_bifrost(dev))
                 pan_prepare_bifrost_props(state, program, stage);
         else
-                pan_prepare_midgard_props(state, stage);
+                pan_prepare_midgard_props(state, program, stage);
 
         state->properties.stencil_from_shader = state->writes_stencil;
         state->properties.shader_contains_barrier = state->helper_invocations;
