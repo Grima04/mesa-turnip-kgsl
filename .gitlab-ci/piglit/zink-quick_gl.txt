@@ -411,6 +411,16 @@ spec/!opengl 1.1/linestipple/factor 3x: fail
 spec/!opengl 1.1/linestipple/line loop: fail
 spec/!opengl 1.1/linestipple/line strip: fail
 spec/!opengl 1.1/linestipple/restarting lines within a single begin-end block: fail
+spec/!opengl 1.1/max-texture-size/gl_texture_2d-gl_rgba16: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_2d-gl_rgba32f: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_3d-gl_rgba16: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_3d-gl_rgba32f: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_3d-gl_rgba8: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_cube_map-gl_rgba16: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_cube_map-gl_rgba32f: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_cube_map-gl_rgba8: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_rectangle-gl_rgba16: skip
+spec/!opengl 1.1/max-texture-size/gl_texture_rectangle-gl_rgba32f: skip
 spec/!opengl 1.1/polygon-mode: fail
 spec/!opengl 1.1/polygon-mode-facing: fail
 spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on bottom edge: fail
@@ -3377,10 +3387,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    18163
+       pass:    18186
        fail:     1173
       crash:      330
-       skip:     1845
+       skip:     1855
     timeout:        0
        warn:        4
  incomplete:        0
@@ -3389,4 +3399,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21539
+      total:    21572

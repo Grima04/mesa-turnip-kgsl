@@ -1194,8 +1194,6 @@ zink-piglit-quick_gl:
     PIGLIT_OPTIONS: >
       -x arb_map_buffer_alignment@arb_map_buffer_alignment-map-invalidate-range
       -x glx-make-current
-      -x max-texture-size
-      -x maxsize
     PIGLIT_PROFILES: quick_gl
     PIGLIT_RESULTS: "zink-quick_gl"
     GALLIVM_PERF: "no_filter_hacks"
