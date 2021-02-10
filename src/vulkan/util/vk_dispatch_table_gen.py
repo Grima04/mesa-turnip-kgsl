@@ -195,6 +195,16 @@ TEMPLATE_C = Template(COPYRIGHT + """\
 #include "util/macros.h"
 #include "string.h"
 
+/* Windows api conflict */
+#ifdef _WIN32
+#ifdef CreateSemaphore
+#undef CreateSemaphore
+#endif
+#ifdef CreateEvent
+#undef CreateEvent
+#endif
+#endif
+
 <%def name="load_dispatch_table(type, VkType, ProcAddr, entrypoints)">
 void
 vk_${type}_dispatch_table_load(struct vk_${type}_dispatch_table *table,
