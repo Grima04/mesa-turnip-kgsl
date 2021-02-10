@@ -856,8 +856,10 @@ bi_rewrite_fau_to_pass(bi_tuple *tuple)
         bi_foreach_instr_and_src_in_tuple(tuple, ins, s) {
                 if (ins->src[s].type != BI_INDEX_FAU) continue;
 
-                ins->src[s] = bi_passthrough(ins->src[s].offset ?
+                bi_index pass = bi_passthrough(ins->src[s].offset ?
                                 BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
+
+                ins->src[s] = bi_replace_index(ins->src[s], pass);
         }
 }
 
