@@ -3353,7 +3353,7 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17913
+       pass:    17914
        fail:     1173
       crash:      322
        skip:     1829
@@ -3365,4 +3365,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21265
+      total:    21266

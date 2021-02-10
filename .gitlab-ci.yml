@@ -1192,7 +1192,6 @@ zink-piglit-quick_gl:
     LP_NUM_THREADS: 0
     PIGLIT_OPTIONS: >
       -x arb_map_buffer_alignment@arb_map_buffer_alignment-map-invalidate-range
-      -x ext_timer_query@time-elapsed
       -x glx-make-current
       -x max-texture-size
       -x maxsize
