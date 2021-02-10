@@ -436,7 +436,6 @@ ir3_setup_used_key(struct ir3_shader *shader)
 
 		if (info->inputs_read & VARYING_BITS_COLOR) {
 			key->rasterflat = true;
-			key->color_two_side = true;
 		}
 
 		if (info->inputs_read & VARYING_BIT_LAYER) {

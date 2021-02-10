@@ -297,7 +297,6 @@ struct ir3_shader_key {
 			 */
 			unsigned sample_shading : 1;
 			unsigned msaa           : 1;
-			unsigned color_two_side : 1;
 			/* used when shader needs to handle flat varyings (a4xx)
 			 * for front/back color inputs to frag shader:
 			 */
@@ -387,9 +386,6 @@ ir3_shader_key_changes_fs(struct ir3_shader_key *key, struct ir3_shader_key *las
 	}
 
 	if (last_key->fclamp_color != key->fclamp_color)
-		return true;
-
-	if (last_key->color_two_side != key->color_two_side)
 		return true;
 
 	if (last_key->rasterflat != key->rasterflat)

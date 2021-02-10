@@ -482,10 +482,6 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 		if (layer_zero || view_zero)
 			progress |= OPT(s, ir3_nir_lower_view_layer_id, layer_zero, view_zero);
 	}
-	if (so->key.color_two_side) {
-		OPT_V(s, nir_lower_two_sided_color, true);
-		progress = true;
-	}
 
 	struct nir_lower_tex_options tex_options = { };
 

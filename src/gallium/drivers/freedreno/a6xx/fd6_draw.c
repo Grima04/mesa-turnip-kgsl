@@ -186,7 +186,6 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 			.gs = ctx->prog.gs,
 			.fs = ctx->prog.fs,
 			.key = {
-				.color_two_side = ctx->rasterizer->light_twoside,
 				.vclamp_color = ctx->rasterizer->clamp_vertex_color,
 				.fclamp_color = ctx->rasterizer->clamp_fragment_color,
 				.rasterflat = ctx->rasterizer->flatshade,

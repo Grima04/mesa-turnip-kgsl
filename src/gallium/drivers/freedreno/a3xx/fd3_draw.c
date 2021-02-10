@@ -130,7 +130,6 @@ fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.indirect = indirect,
 		.draw = draw,
 		.key = {
-			.color_two_side = ctx->rasterizer->light_twoside,
 			.vclamp_color = ctx->rasterizer->clamp_vertex_color,
 			.fclamp_color = ctx->rasterizer->clamp_fragment_color,
 			.has_per_samp = (fd3_ctx->fsaturate || fd3_ctx->vsaturate),

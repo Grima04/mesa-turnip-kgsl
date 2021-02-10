@@ -475,6 +475,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return is_a6xx(screen);
 	case PIPE_CAP_SHADER_STENCIL_EXPORT:
 		return is_a6xx(screen);
+	case PIPE_CAP_TWO_SIDED_COLOR:
+		return 0;
 	default:
 		return u_pipe_screen_get_param_defaults(pscreen, param);
 	}
