@@ -186,8 +186,6 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 			.gs = ctx->prog.gs,
 			.fs = ctx->prog.fs,
 			.key = {
-				.vclamp_color = ctx->rasterizer->clamp_vertex_color,
-				.fclamp_color = ctx->rasterizer->clamp_fragment_color,
 				.rasterflat = ctx->rasterizer->flatshade,
 				.ucp_enables = ctx->rasterizer->clip_plane_enable,
 				.has_per_samp = (fd6_ctx->fsaturate || fd6_ctx->vsaturate),

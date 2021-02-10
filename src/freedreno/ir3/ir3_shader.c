@@ -446,12 +446,6 @@ ir3_setup_used_key(struct ir3_shader *shader)
 			key->view_zero = true;
 		}
 
-		if ((info->outputs_written & ~(FRAG_RESULT_DEPTH |
-								FRAG_RESULT_STENCIL |
-								FRAG_RESULT_SAMPLE_MASK)) != 0) {
-			key->fclamp_color = true;
-		}
-
 		/* Only used for deciding on behavior of
 		 * nir_intrinsic_load_barycentric_sample
 		 */
@@ -459,9 +453,6 @@ ir3_setup_used_key(struct ir3_shader *shader)
 	} else {
 		key->tessellation = ~0;
 		key->has_gs = true;
-
-		if (info->outputs_written & VARYING_BITS_COLOR)
-			key->vclamp_color = true;
 
 		if (info->stage == MESA_SHADER_VERTEX) {
 			key->vsaturate_s = ~0;

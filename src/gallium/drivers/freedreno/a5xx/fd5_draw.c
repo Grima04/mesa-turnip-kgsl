@@ -109,8 +109,6 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.indirect = indirect,
 		.draw = draw,
 		.key = {
-			.vclamp_color = ctx->rasterizer->clamp_vertex_color,
-			.fclamp_color = ctx->rasterizer->clamp_fragment_color,
 			.rasterflat = ctx->rasterizer->flatshade,
 			.ucp_enables = ctx->rasterizer->clip_plane_enable,
 			.has_per_samp = (fd5_ctx->fsaturate || fd5_ctx->vsaturate ||

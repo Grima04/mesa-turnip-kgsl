@@ -288,11 +288,6 @@ struct ir3_shader_key {
 			unsigned has_per_samp : 1;
 
 			/*
-			 * Vertex shader variant parameters:
-			 */
-			unsigned vclamp_color : 1;
-
-			/*
 			 * Fragment shader variant parameters:
 			 */
 			unsigned sample_shading : 1;
@@ -301,7 +296,6 @@ struct ir3_shader_key {
 			 * for front/back color inputs to frag shader:
 			 */
 			unsigned rasterflat : 1;
-			unsigned fclamp_color : 1;
 
 			/* Indicates that this is a tessellation pipeline which requires a
 			 * whole different kind of vertex shader.  In case of
@@ -385,9 +379,6 @@ ir3_shader_key_changes_fs(struct ir3_shader_key *key, struct ir3_shader_key *las
 			return true;
 	}
 
-	if (last_key->fclamp_color != key->fclamp_color)
-		return true;
-
 	if (last_key->rasterflat != key->rasterflat)
 		return true;
 
@@ -415,9 +406,6 @@ ir3_shader_key_changes_vs(struct ir3_shader_key *key, struct ir3_shader_key *las
 				(last_key->vastc_srgb != key->vastc_srgb))
 			return true;
 	}
-
-	if (last_key->vclamp_color != key->vclamp_color)
-		return true;
 
 	if (last_key->ucp_enables != key->ucp_enables)
 		return true;
