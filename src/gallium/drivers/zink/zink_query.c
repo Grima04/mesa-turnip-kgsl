@@ -49,7 +49,9 @@ timestamp_to_nanoseconds(struct zink_screen *screen, uint64_t *timestamp)
     * the VkQueueFamilyProperties::timestampValidBits property of the queue on which the timestamp is written.
     * - 17.5. Timestamp Queries
     */
-   *timestamp &= ((1ull << screen->timestamp_valid_bits) - 1);
+   if (screen->timestamp_valid_bits < 64)
+      *timestamp &= (1ull << screen->timestamp_valid_bits) - 1;
+
    /* The number of nanoseconds it takes for a timestamp value to be incremented by 1
     * can be obtained from VkPhysicalDeviceLimits::timestampPeriod
     * - 17.5. Timestamp Queries
