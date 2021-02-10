@@ -184,6 +184,8 @@ process_waddr_deps(struct schedule_state *state, struct schedule_node *n,
                 case V3D_QPU_WADDR_TMUSCM:
                 case V3D_QPU_WADDR_TMUSF:
                 case V3D_QPU_WADDR_TMUSLOD:
+                case V3D_QPU_WADDR_TMUA:
+                case V3D_QPU_WADDR_TMUAU:
                         add_write_dep(state, &state->last_tmu_config, n);
                         break;
                 default:
