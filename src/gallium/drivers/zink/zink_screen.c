@@ -906,6 +906,11 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
 {
    VkFormat ret = zink_pipe_format_to_vk_format(emulate_x8(format));
 
+   if (format == PIPE_FORMAT_X24S8_UINT)
+      /* valid when using aspects to extract stencil,
+       * fails format test because it's emulated */
+      ret = VK_FORMAT_D24_UNORM_S8_UINT;
+
    if (ret == VK_FORMAT_X8_D24_UNORM_PACK32 &&
        !screen->have_X8_D24_UNORM_PACK32) {
       assert(zink_is_depth_format_supported(screen, VK_FORMAT_D32_SFLOAT));
@@ -924,11 +929,6 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
        (ret == VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT &&
         !screen->info.format_4444_feats.formatA4R4G4B4))
       return VK_FORMAT_UNDEFINED;
-
-   if (format == PIPE_FORMAT_X24S8_UINT)
-      /* valid when using aspects to extract stencil,
-       * fails format test because it's emulated */
-      return VK_FORMAT_X8_D24_UNORM_PACK32;
 
    return ret;
 }
