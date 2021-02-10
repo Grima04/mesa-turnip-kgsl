@@ -423,8 +423,9 @@ bi_space_for_more_constants(struct bi_clause_state *clause)
 }
 
 /* Updates the FAU assignment for a tuple. A valid FAU assignment must be
- * possible (as a precondition); this is gauranteed per-instruction by
- * bi_lower_fau and per-tuple by bi_instr_schedulable */
+ * possible (as a precondition), though not necessarily on the selected unit;
+ * this is gauranteed per-instruction by bi_lower_fau and per-tuple by
+ * bi_instr_schedulable */
 
 static bool
 bi_update_fau(struct bi_clause_state *clause,
@@ -435,6 +436,7 @@ bi_update_fau(struct bi_clause_state *clause,
         uint32_t copied_constants[2], copied_count;
         unsigned *constant_count = &tuple->constant_count;
         uint32_t *constants = tuple->constants;
+        enum bir_fau fau = tuple->fau;
 
         if (!destructive) {
                 memcpy(copied_constants, tuple->constants,
@@ -450,7 +452,7 @@ bi_update_fau(struct bi_clause_state *clause,
 
                 if (src.type == BI_INDEX_FAU) {
                         bool no_constants = *constant_count == 0;
-                        bool no_other_fau = (tuple->fau == src.value) || !tuple->fau;
+                        bool no_other_fau = (fau == src.value) || !fau;
                         bool mergable = no_constants && no_other_fau;
 
                         if (destructive) {
@@ -459,6 +461,8 @@ bi_update_fau(struct bi_clause_state *clause,
                         } else if (!mergable) {
                                 return false;
                         }
+
+                        fau = src.value;
                 } else if (src.type == BI_INDEX_CONSTANT) {
                         /* No need to reserve space if we have a fast 0 */
                         if (src.value == 0 && fma && bi_reads_zero(instr))
@@ -478,7 +482,7 @@ bi_update_fau(struct bi_clause_state *clause,
                         if (found && !pcrel)
                                 continue;
 
-                        bool no_fau = (*constant_count > 0) || !tuple->fau;
+                        bool no_fau = (*constant_count > 0) || !fau;
                         bool mergable = no_fau && ((*constant_count) < 2);
 
                         if (destructive) {
