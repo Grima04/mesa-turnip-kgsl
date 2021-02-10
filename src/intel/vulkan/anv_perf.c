@@ -51,9 +51,15 @@ anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
    gen_perf_init_metrics(perf, &device->info, fd, false /* pipeline statistics */);
 
    if (!perf->n_queries) {
-      if (perf->platform_supported)
-         mesa_logw("Performance support disabled, "
-                   "consider sysctl dev.i915.perf_stream_paranoid=0\n");
+      if (perf->platform_supported) {
+         static bool warned_once = false;
+
+         if (!warned_once) {
+            mesa_logw("Performance support disabled, "
+                      "consider sysctl dev.i915.perf_stream_paranoid=0\n");
+            warned_once = true;
+         }
+      }
       goto err;
    }
 
