@@ -64,6 +64,8 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                           panfrost_program *program,
                           gl_shader_stage stage)
 {
+        unsigned fau_count = DIV_ROUND_UP(program->push.count, 2);
+
         switch (stage) {
         case MESA_SHADER_VERTEX:
                 pan_prepare(&state->properties, RENDERER_PROPERTIES);
@@ -71,7 +73,7 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                 state->properties.uniform_buffer_count = state->ubo_count;
 
                 pan_prepare(&state->preload, PRELOAD);
-                state->preload.uniform_count = state->uniform_count;
+                state->preload.uniform_count = fau_count;
                 state->preload.vertex.vertex_id = true;
                 state->preload.vertex.instance_id = true;
                 break;
@@ -94,7 +96,7 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                 state->properties.bifrost.shader_wait_dependency_7 = program->wait_7;
 
                 pan_prepare(&state->preload, PRELOAD);
-                state->preload.uniform_count = state->uniform_count;
+                state->preload.uniform_count = fau_count;
                 state->preload.fragment.fragment_position = state->reads_frag_coord;
                 state->preload.fragment.coverage = true;
                 state->preload.fragment.primitive_flags = state->reads_face;
@@ -104,7 +106,7 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                 state->properties.uniform_buffer_count = state->ubo_count;
 
                 pan_prepare(&state->preload, PRELOAD);
-                state->preload.uniform_count = state->uniform_count;
+                state->preload.uniform_count = fau_count;
 
                 state->preload.compute.local_invocation_xy = true;
                 state->preload.compute.local_invocation_z = true;
