@@ -840,18 +840,33 @@ bi_after_instr(bi_instr *instr)
     };
 }
 
-static inline bi_instr *
+/* Invariant: a tuple must be nonempty UNLESS it is the last tuple of a clause,
+ * in which case there must exist a nonempty penultimate tuple */
+
+ATTRIBUTE_RETURNS_NONNULL static inline bi_instr *
 bi_first_instr_in_clause(bi_clause *clause)
 {
         bi_tuple tuple = clause->tuples[0];
-        return tuple.fma ?: tuple.add;
+        bi_instr *instr = tuple.fma ?: tuple.add;
+
+        assert(instr != NULL);
+        return instr;
 }
 
-static inline bi_instr *
+ATTRIBUTE_RETURNS_NONNULL static inline bi_instr *
 bi_last_instr_in_clause(bi_clause *clause)
 {
         bi_tuple tuple = clause->tuples[clause->tuple_count - 1];
-        return tuple.add ?: tuple.fma;
+        bi_instr *instr = tuple.add ?: tuple.fma;
+
+        if (!instr) {
+                assert(clause->tuple_count >= 2);
+                tuple = clause->tuples[clause->tuple_count - 2];
+                instr = tuple.add ?: tuple.fma;
+        }
+
+        assert(instr != NULL);
+        return instr;
 }
 
 /* Implemented by expanding bi_foreach_instr_in_block_from(_rev) with the start
