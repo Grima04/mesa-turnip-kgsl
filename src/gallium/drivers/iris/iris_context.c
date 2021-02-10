@@ -252,6 +252,7 @@ iris_destroy_context(struct pipe_context *ctx)
    iris_destroy_binder(&ice->state.binder);
 
    slab_destroy_child(&ice->transfer_pool);
+   slab_destroy_child(&ice->transfer_pool_unsync);
 
    ralloc_free(ice);
 }
@@ -328,6 +329,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    iris_init_binder(ice);
 
    slab_create_child(&ice->transfer_pool, &screen->transfer_pool);
+   slab_create_child(&ice->transfer_pool_unsync, &screen->transfer_pool);
 
    ice->state.surface_uploader =
       u_upload_create(ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
