@@ -51,7 +51,6 @@
 
 #include "midgard_pack.h"
 #include "pan_screen.h"
-#include "pan_blending.h"
 #include "pan_blend_shaders.h"
 #include "pan_cmdstream.h"
 #include "pan_util.h"

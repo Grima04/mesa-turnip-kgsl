@@ -28,6 +28,7 @@
 #ifndef __PAN_BLEND_CSO_H
 #define __PAN_BLEND_CSO_H
 
+#include "pan_blend.h"
 #include "util/hash_table.h"
 #include "nir.h"
 
@@ -95,24 +96,9 @@ struct panfrost_blend_equation_final {
         float constant;
 };
 
-struct panfrost_blend_rt {
-        /* If has_fixed_function is set, equation is the
-         * fixed-function configuration for this blend state */
-
-        bool has_fixed_function;
-        struct MALI_BLEND_EQUATION equation;
-
-        /* Mask of blend color components read */
-        unsigned constant_mask;
-
-        /* Properties of the blend mode */
-        bool opaque, load_dest, no_colour;
-};
-
 struct panfrost_blend_state {
         struct pipe_blend_state base;
-
-        struct panfrost_blend_rt rt[PIPE_MAX_COLOR_BUFS];
+        struct pan_blend_state pan;
 };
 
 /* Container for a final blend state, specialized to constants and a
