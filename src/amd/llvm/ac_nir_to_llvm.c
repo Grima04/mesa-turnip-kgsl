@@ -2240,7 +2240,22 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
          continue;
 
       LLVMValueRef value = ac_llvm_extract_elem(&ctx->ac, src, chan - component);
-      LLVMBuildStore(ctx->ac.builder, value, ctx->abi->outputs[base * 4 + chan]);
+      LLVMValueRef output_addr = ctx->abi->outputs[base * 4 + chan];
+
+      if (LLVMGetElementType(LLVMTypeOf(output_addr)) == ctx->ac.f32 &&
+          LLVMTypeOf(value) == ctx->ac.f16) {
+         LLVMValueRef output, index;
+
+         /* Insert the 16-bit value into the low or high bits of the 32-bit output
+          * using read-modify-write.
+          */
+         index = LLVMConstInt(ctx->ac.i32, nir_intrinsic_io_semantics(instr).high_16bits, 0);
+         output = LLVMBuildLoad(ctx->ac.builder, output_addr, "");
+         output = LLVMBuildBitCast(ctx->ac.builder, output, ctx->ac.v2f16, "");
+         output = LLVMBuildInsertElement(ctx->ac.builder, output, value, index, "");
+         value = LLVMBuildBitCast(ctx->ac.builder, output, ctx->ac.f32, "");
+      }
+      LLVMBuildStore(ctx->ac.builder, value, output_addr);
    }
 
    if (ctx->ac.postponed_kill)
@@ -3202,7 +3217,8 @@ static LLVMValueRef barycentric_model(struct ac_nir_context *ctx)
 
 static LLVMValueRef load_interpolated_input(struct ac_nir_context *ctx, LLVMValueRef interp_param,
                                             unsigned index, unsigned comp_start,
-                                            unsigned num_components, unsigned bitsize)
+                                            unsigned num_components, unsigned bitsize,
+                                            bool high_16bits)
 {
    LLVMValueRef attr_number = LLVMConstInt(ctx->ac.i32, index, false);
    LLVMValueRef interp_param_f;
@@ -3228,7 +3244,8 @@ static LLVMValueRef load_interpolated_input(struct ac_nir_context *ctx, LLVMValu
       LLVMValueRef llvm_chan = LLVMConstInt(ctx->ac.i32, comp_start + comp, false);
       if (bitsize == 16) {
          values[comp] = ac_build_fs_interp_f16(&ctx->ac, llvm_chan, attr_number,
-                                               ac_get_arg(&ctx->ac, ctx->args->prim_mask), i, j);
+                                               ac_get_arg(&ctx->ac, ctx->args->prim_mask), i, j,
+                                               high_16bits);
       } else {
          values[comp] = ac_build_fs_interp(&ctx->ac, llvm_chan, attr_number,
                                            ac_get_arg(&ctx->ac, ctx->args->prim_mask), i, j);
@@ -3352,6 +3369,9 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
          ac_build_fs_interp_mov(&ctx->ac, LLVMConstInt(ctx->ac.i32, vertex_id, false), llvm_chan,
                                 attr_number, ac_get_arg(&ctx->ac, ctx->args->prim_mask));
       values[chan] = LLVMBuildBitCast(ctx->ac.builder, values[chan], ctx->ac.i32, "");
+      if (instr->dest.ssa.bit_size == 16 &&
+          nir_intrinsic_io_semantics(instr).high_16bits)
+         values[chan] = LLVMBuildLShr(ctx->ac.builder, values[chan], LLVMConstInt(ctx->ac.i32, 16, 0), "");
       values[chan] =
          LLVMBuildTruncOrBitCast(ctx->ac.builder, values[chan],
                                  instr->dest.ssa.bit_size == 16 ? ctx->ac.i16 : ctx->ac.i32, "");
@@ -3799,7 +3819,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       unsigned index = nir_intrinsic_base(instr);
       unsigned component = nir_intrinsic_component(instr);
       result = load_interpolated_input(ctx, interp_param, index, component,
-                                       instr->dest.ssa.num_components, instr->dest.ssa.bit_size);
+                                       instr->dest.ssa.num_components, instr->dest.ssa.bit_size,
+                                       nir_intrinsic_io_semantics(instr).high_16bits);
       break;
    }
    case nir_intrinsic_emit_vertex:
