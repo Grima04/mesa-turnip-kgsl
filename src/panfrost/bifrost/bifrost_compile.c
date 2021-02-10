@@ -1284,11 +1284,10 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
         case nir_op_fddx:
         case nir_op_fddy: {
-                bi_index cur_lane = bi_mov_i32(b, bi_fau(BIR_FAU_LANE_ID, false));
-
-                bi_index lane1 = bi_lshift_and_i32(b, cur_lane,
+                bi_index lane1 = bi_lshift_and_i32(b,
+                                bi_fau(BIR_FAU_LANE_ID, false),
                                 bi_imm_u32(instr->op == nir_op_fddx ? 2 : 1),
-                                bi_byte(bi_zero(), 0));
+                                bi_imm_u8(0));
 
                 bi_index lane2 = bi_iadd_u32(b, lane1,
                                 bi_imm_u32(instr->op == nir_op_fddx ? 1 : 2),
