@@ -2272,57 +2272,6 @@ glsl_type_size(const struct glsl_type *type, bool bindless)
         return glsl_count_attribute_slots(type, false);
 }
 
-static unsigned
-bi_lower_constant(bi_builder *b, bi_instr *ins, unsigned s, uint32_t *accum, unsigned cwords, bool allow_constant)
-{
-        uint32_t value = ins->src[s].value;
-
-        /* Staging registers can't have constants */
-        allow_constant &= !(s == 0 && bi_opcode_props[ins->op].sr_read);
-
-        /* If we're allowed any inline constants, see if this one works */
-        if (allow_constant) {
-                for (unsigned i = 0; i < cwords; ++i) {
-                        if (value == accum[i])
-                                return cwords;
-                }
-
-                if (value == 0 && !bi_opcode_props[ins->op].add)
-                        return cwords;
-
-                if (cwords < 2) {
-                        accum[cwords] = value;
-                        return cwords + 1;
-                }
-        }
-
-        /* should be const folded */
-        assert(!ins->src[s].abs && !ins->src[s].neg);
-        enum bi_swizzle old_swizzle = ins->src[s].swizzle;
-
-        b->cursor = bi_before_instr(ins);
-        ins->src[s] = bi_mov_i32(b, bi_imm_u32(value));
-        ins->src[s].swizzle = old_swizzle;
-        return cwords;
-}
-
-static void
-bi_lower_fau(bi_context *ctx, bi_block *block)
-{
-        bi_builder b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
-
-        bi_foreach_instr_in_block_safe(block, _ins) {
-                bi_instr *ins = (bi_instr *) _ins;
-                uint32_t constants[2];
-                unsigned cwords = 0;
-
-                bi_foreach_src(ins, s) {
-                        if (ins->src[s].type == BI_INDEX_CONSTANT)
-                                cwords = bi_lower_constant(&b, ins, s, constants, cwords, true);
-                }
-        }
-}
-
 static void
 bi_optimize_nir(nir_shader *nir)
 {
@@ -2574,11 +2523,6 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                         progress |= bi_opt_dead_code_eliminate(ctx, block, false);
                 }
         } while(progress);
-
-        bi_foreach_block(ctx, _block) {
-                bi_block *block = (bi_block *) _block;
-                bi_lower_fau(ctx, block);
-        }
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);

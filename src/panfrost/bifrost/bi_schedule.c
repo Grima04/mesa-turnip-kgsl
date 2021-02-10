@@ -1403,11 +1403,84 @@ bi_schedule_block(bi_context *ctx, bi_block *block)
         bi_free_worklist(st);
 }
 
+static bool
+bi_check_fau_src(bi_instr *ins, unsigned s, uint32_t *constants, unsigned *cwords, bi_index *fau)
+{
+        bi_index src = ins->src[s];
+
+        /* Staging registers can't have FAU accesses */
+        if (s == 0 && bi_opcode_props[ins->op].sr_read)
+                return (src.type != BI_INDEX_CONSTANT) && (src.type != BI_INDEX_FAU);
+
+        if (src.type == BI_INDEX_CONSTANT) {
+                /* Allow fast zero */
+                if (src.value == 0 && bi_opcode_props[ins->op].fma && bi_reads_zero(ins))
+                        return true;
+
+                if (!bi_is_null(*fau))
+                        return false;
+
+                /* Else, try to inline a constant */
+                for (unsigned i = 0; i < *cwords; ++i) {
+                        if (src.value == constants[i])
+                                return true;
+                }
+
+                if (*cwords >= 2)
+                        return false;
+
+                constants[(*cwords)++] = src.value;
+        } else if (src.type == BI_INDEX_FAU) {
+                if (*cwords != 0)
+                        return false;
+
+                /* Can only read from one pair of FAU words */
+                if (!bi_is_null(*fau) && (src.value != fau->value))
+                        return false;
+
+                /* If there is a target, we'll need a PC-relative constant */
+                if (ins->branch_target)
+                        return false;
+
+                *fau = src;
+        }
+
+        return true;
+}
+
+static void
+bi_lower_fau(bi_context *ctx, bi_block *block)
+{
+        bi_builder b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
+
+        bi_foreach_instr_in_block_safe(block, _ins) {
+                bi_instr *ins = (bi_instr *) _ins;
+
+                uint32_t constants[2];
+                unsigned cwords = 0;
+                bi_index fau = bi_null();
+
+                /* ATEST must have the ATEST datum encoded, not any other
+                 * uniform. See to it this is the case. */
+                if (ins->op == BI_OPCODE_ATEST)
+                        fau = ins->src[2];
+
+                bi_foreach_src(ins, s) {
+                        if (bi_check_fau_src(ins, s, constants, &cwords, &fau)) continue;
+
+                        b.cursor = bi_before_instr(ins);
+                        bi_index copy = bi_mov_i32(&b, ins->src[s]);
+                        ins->src[s] = bi_replace_index(ins->src[s], copy);
+                }
+        }
+}
+
 void
 bi_schedule(bi_context *ctx)
 {
         bi_foreach_block(ctx, block) {
                 bi_block *bblock = (bi_block *) block;
+                bi_lower_fau(ctx, bblock);
                 bi_schedule_block(ctx, bblock);
                 bi_opt_dead_code_eliminate(ctx, bblock, true);
         }
