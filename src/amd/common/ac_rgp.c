@@ -650,9 +650,9 @@ int ac_dump_thread_trace(struct radeon_info *info, const struct ac_thread_trace 
    t = time(NULL);
    now = *localtime(&t);
 
-   snprintf(filename, sizeof(filename), "/tmp/%s_%04d.%02d.%02d_%02d.%02d.rgp",
+   snprintf(filename, sizeof(filename), "/tmp/%s_%04d.%02d.%02d_%02d.%02d.%02d.rgp",
             util_get_process_name(), 1900 + now.tm_year, now.tm_mon + 1, now.tm_mday, now.tm_hour,
-            now.tm_min);
+            now.tm_min, now.tm_sec);
 
    f = fopen(filename, "w+");
    if (!f)
