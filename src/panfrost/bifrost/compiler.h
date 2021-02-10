@@ -199,6 +199,17 @@ bi_neg(bi_index idx)
         return idx;
 }
 
+/* Replaces an index, preserving any modifiers */
+
+static inline bi_index
+bi_replace_index(bi_index old, bi_index replacement)
+{
+        replacement.abs = old.abs;
+        replacement.neg = old.neg;
+        replacement.swizzle = old.swizzle;
+        return replacement;
+}
+
 /* For bitwise instructions */
 #define bi_not(x) bi_neg(x)
 
