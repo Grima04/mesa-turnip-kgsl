@@ -340,5 +340,6 @@ main(UNUSED int argc, UNUSED char **argv)
       fail |= run_tests(devinfo);
    }
 
+   free(devinfo);
    return fail;
 }
