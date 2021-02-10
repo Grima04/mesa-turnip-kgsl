@@ -280,18 +280,26 @@ lima_fs_compile_shader(struct lima_context *ctx,
 
    struct nir_lower_tex_options tex_options = {
       .lower_txp = ~0u,
-      .swizzle_result = 0,
+      .swizzle_result = ~0u,
    };
 
-   uint8_t identity[4] = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
-                           PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W };
-
+   /* Lower the format swizzle and ARB_texture_swizzle-style swizzle. */
    for (int i = 0; i < PIPE_MAX_SAMPLERS; i++) {
-      for (int j = 0; j < 4; j++)
-         tex_options.swizzles[i][j] = key->swizzles[i][j];
+      enum pipe_format format = key->tex[i].format;
+      if (!format)
+         continue;
 
-      if (memcmp(tex_options.swizzles[i], identity, 4) != 0)
-         tex_options.swizzle_result |= (1 << i);
+      const uint8_t *format_swizzle = lima_format_get_texel_swizzle(format);
+
+      for (int j = 0; j < 4; j++) {
+         uint8_t arb_swiz = key->tex[i].swizzle[j];
+
+         if (arb_swiz <= 3) {
+            tex_options.swizzles[i][j] = format_swizzle[arb_swiz];
+         } else {
+            tex_options.swizzles[i][j] = arb_swiz;
+         }
+      }
    }
 
    lima_program_optimize_fs_nir(nir, &tex_options);
@@ -514,10 +522,12 @@ lima_update_fs_state(struct lima_context *ctx)
        lima_tex->num_samplers &&
        lima_tex->num_textures)) {
       for (int i = 0; i < lima_tex->num_samplers; i++) {
-         struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
-         struct pipe_resource *prsc = texture->base.texture;
-         const uint8_t *swizzle = lima_format_get_texel_swizzle(prsc->format);
-         memcpy(key->swizzles[i], swizzle, 4);
+         struct pipe_sampler_view *sampler = lima_tex->textures[i];
+         key->tex[i].format = sampler->format;
+         key->tex[i].swizzle[0] = sampler->swizzle_r;
+         key->tex[i].swizzle[1] = sampler->swizzle_g;
+         key->tex[i].swizzle[2] = sampler->swizzle_b;
+         key->tex[i].swizzle[3] = sampler->swizzle_a;
       }
    }
 
@@ -525,7 +535,7 @@ lima_update_fs_state(struct lima_context *ctx)
    uint8_t identity[4] = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
                            PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W };
    for (int i = lima_tex->num_samplers; i < PIPE_MAX_SAMPLERS; i++)
-      memcpy(key->swizzles[i], identity, 4);
+      memcpy(key->tex[i].swizzle, identity, 4);
 
    struct lima_fs_shader_state *old_fs = ctx->fs;
 

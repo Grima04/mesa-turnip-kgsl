@@ -57,7 +57,10 @@ struct lima_fs_bind_state {
 
 struct lima_fs_key {
    struct lima_fs_bind_state *shader_state;
-   uint8_t swizzles[PIPE_MAX_SAMPLERS][4];
+   struct {
+      enum pipe_format format;
+      uint8_t swizzle[4];
+   } tex[PIPE_MAX_SAMPLERS];
 };
 
 #define LIMA_MAX_VARYING_NUM 13
