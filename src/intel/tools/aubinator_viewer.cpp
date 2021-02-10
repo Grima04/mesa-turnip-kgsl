@@ -135,7 +135,7 @@ handle_info(void *user_data, int pci_id, const char *app_name)
 static void
 handle_error(void *user_data, const void *aub_data, const char *msg)
 {
-   fprintf(stderr, "ERROR: %s\n", msg);
+   fprintf(stderr, "ERROR: %s", msg);
 }
 
 static struct aub_file *
