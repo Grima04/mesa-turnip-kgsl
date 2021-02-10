@@ -316,7 +316,13 @@ aub_read_command(struct aub_read *read, const void *data, uint32_t data_len)
       next += p[4] / 4;
    }
 
-   assert(next <= end);
+   if (next > end) {
+      parse_error(read, data,
+            "input ends unexpectedly (command length: %d, remaining bytes: %d)\n",
+            (uintptr_t)next - (uintptr_t)data,
+            (uintptr_t)end  - (uintptr_t)data);
+      return -1;
+   }
 
    switch (h & 0xffff0000) {
    case MAKE_HEADER(TYPE_AUB, OPCODE_AUB, SUBOPCODE_HEADER):
