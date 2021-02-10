@@ -467,7 +467,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties(VkPhysicalDevice phys
       .maxViewportDimensions                    = { (1 << 14), (1 << 14) },
       .viewportBoundsRange                      = { -32768.0, 32768.0 },
       .viewportSubPixelBits                     = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_VIEWPORT_SUBPIXEL_BITS),
-      .minMemoryMapAlignment                    = 4096, /* A page */
+      .minMemoryMapAlignment                    = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT),
       .minTexelBufferOffsetAlignment            = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT),
       .minUniformBufferOffsetAlignment          = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT),
       .minStorageBufferOffsetAlignment          = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT),

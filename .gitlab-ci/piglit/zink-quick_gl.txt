@@ -1005,7 +1005,6 @@ spec/arb_indirect_parameters/tf-count-arrays: skip
 spec/arb_indirect_parameters/tf-count-elements: skip
 spec/arb_internalformat_query/minmax: skip
 spec/arb_internalformat_query/misc. api error checks: skip
-spec/arb_map_buffer_alignment/arb_map_buffer_alignment-sanity_test: fail
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-clip: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-comp: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-extra_prims: skip
@@ -3354,8 +3353,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17906
-       fail:     1174
+       pass:    17913
+       fail:     1173
       crash:      322
        skip:     1829
     timeout:        0
@@ -3366,4 +3365,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21259
+      total:    21265
