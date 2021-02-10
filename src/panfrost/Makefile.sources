@@ -9,6 +9,7 @@ bifrost_FILES := \
         bifrost/bi_print.c \
         bifrost/bi_print.h \
         bifrost/bi_ra.c \
+        bifrost/bi_opt_copy_prop.c \
         bifrost/bi_opt_dce.c \
         bifrost/bi_quirks.h \
         bifrost/bi_test_pack.c \

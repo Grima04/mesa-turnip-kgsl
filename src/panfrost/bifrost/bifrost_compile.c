@@ -2517,6 +2517,8 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         do {
                 progress = false;
 
+                progress |= bi_opt_copy_prop(ctx);
+
                 bi_foreach_block(ctx, _block) {
                         bi_block *block = (bi_block *) _block;
                         progress |= bi_opt_dead_code_eliminate(ctx, block, false);
