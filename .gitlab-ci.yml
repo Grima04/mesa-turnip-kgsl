@@ -118,7 +118,7 @@ test-docs-mr:
   artifacts:
     expose_as: 'Documentation preview'
     paths:
-    - public
+    - public/
   rules:
     - if: *is-pre-merge
       changes: *docs-or-ci
