@@ -80,6 +80,10 @@ ir3_delayslots(struct ir3_instruction *assigner,
 	if (assigner->opc == OPC_MOVMSK)
 		return 4;
 
+	/* As far as we know, shader outputs don't need any delay. */
+	if (consumer->opc == OPC_END || consumer->opc == OPC_CHMASK)
+		return 0;
+
 	/* assigner must be alu: */
 	if (is_flow(consumer) || is_sfu(consumer) || is_tex(consumer) ||
 			is_mem(consumer)) {

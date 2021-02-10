@@ -971,16 +971,15 @@ mark_kill_path(struct ir3_instruction *instr)
 static bool
 is_output_collect(struct ir3_instruction *instr)
 {
-	struct ir3 *ir = instr->block->shader;
+	if (instr->opc != OPC_META_COLLECT)
+		return false;
 
-	for (unsigned i = 0; i < ir->outputs_count; i++) {
-		struct ir3_instruction *collect = ir->outputs[i];
-		assert(collect->opc == OPC_META_COLLECT);
-		if (instr == collect)
-			return true;
+	foreach_ssa_use (use, instr) {
+		if (use->opc != OPC_END && use->opc != OPC_CHMASK)
+			return false;
 	}
 
-	return false;
+	return true;
 }
 
 /* Is it's only use as output? */

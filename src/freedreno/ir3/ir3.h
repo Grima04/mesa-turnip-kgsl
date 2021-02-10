@@ -304,11 +304,11 @@ struct ir3_instruction {
 			int off;              /* component/offset */
 		} split;
 		struct {
-			/* for output collects, this maps back to the entry in the
+			/* Per-source index back to the entry in the
 			 * ir3_shader_variant::outputs table.
 			 */
-			int outidx;
-		} collect;
+			unsigned *outidxs;
+		} end;
 		struct {
 			unsigned samp, tex;
 			unsigned input_offset;
@@ -462,7 +462,6 @@ struct ir3 {
 	gl_shader_stage type;
 
 	DECLARE_ARRAY(struct ir3_instruction *, inputs);
-	DECLARE_ARRAY(struct ir3_instruction *, outputs);
 
 	/* Track bary.f (and ldlv) instructions.. this is needed in
 	 * scheduling to ensure that all varying fetches happen before
@@ -1227,14 +1226,6 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 			if ((__ininstr = (__ir)->inputs[__cnt]))
 #define foreach_input(__ininstr, __ir) \
 	foreach_input_n(__ininstr, __i, __ir)
-
-/* iterators for shader outputs: */
-#define foreach_output_n(__outinstr, __cnt, __ir) \
-	for (struct ir3_instruction *__outinstr = (void *)~0; __outinstr; __outinstr = NULL) \
-		for (unsigned __cnt = 0; __cnt < (__ir)->outputs_count; __cnt++) \
-			if ((__outinstr = (__ir)->outputs[__cnt]))
-#define foreach_output(__outinstr, __ir) \
-	foreach_output_n(__outinstr, __i, __ir)
 
 /* iterators for instructions: */
 #define foreach_instr(__instr, __list) \

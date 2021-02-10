@@ -350,8 +350,10 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			return true;
 		}
 	} else if ((is_same_type_mov(src) || is_const_mov(src)) &&
-			/* cannot collapse const/immed/etc into meta instrs: */
-			!is_meta(instr)) {
+			/* cannot collapse const/immed/etc into meta instrs and control
+			 * flow:
+			 */
+			!is_meta(instr) && opc_cat(instr->opc) != 0) {
 		/* immed/const/etc cases, which require some special handling: */
 		struct ir3_register *src_reg = src->regs[1];
 		unsigned new_flags = reg->flags;
@@ -642,11 +644,6 @@ ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so)
 	}
 
 	ir3_clear_mark(ir);
-
-	foreach_output_n (out, n, ir) {
-		instr_cp(&ctx, out);
-		ir->outputs[n] = eliminate_output_mov(&ctx, out);
-	}
 
 	foreach_block (block, &ir->block_list) {
 		if (block->condition) {
