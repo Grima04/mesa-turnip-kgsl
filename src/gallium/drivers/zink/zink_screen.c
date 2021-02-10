@@ -1247,7 +1247,11 @@ zink_create_screen(struct sw_winsys *winsys)
       * luck!
       */
       gallium_driver = getenv("GALLIUM_DRIVER");
+#ifdef _WIN32
+      _putenv("GALLIUM_DRIVER=llvmpipe");
+#else
       setenv("GALLIUM_DRIVER", "llvmpipe", 1);
+#endif
    }
 #endif
 
@@ -1256,8 +1260,15 @@ zink_create_screen(struct sw_winsys *winsys)
       ret->winsys = winsys;
 
 #ifdef ZINK_WITH_SWRAST_VK
-   if (gallium_driver)
+   if (gallium_driver) {
+#ifdef _WIN32
+      char envstr[64] = "";
+      snprintf(envstr, 64, "GALLIUM_DRIVER=%s", gallium_driver);
+      _putenv(envstr);
+#else
       setenv("GALLIUM_DRIVER", gallium_driver, 1);
+#endif
+   }
 #endif
 
    return &ret->base;
