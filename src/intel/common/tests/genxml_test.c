@@ -137,5 +137,7 @@ int main(int argc, char **argv)
    test_struct(spec);
    test_two_levels(spec);
 
+   gen_spec_destroy(spec);
+
    return 0;
 }
