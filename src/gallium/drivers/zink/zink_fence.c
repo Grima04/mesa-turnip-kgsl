@@ -140,18 +140,31 @@ tc_fence_finish(struct zink_context *ctx, struct zink_tc_fence *mfence, uint64_t
 bool
 zink_vkfence_wait(struct zink_screen *screen, struct zink_fence *fence, uint64_t timeout_ns)
 {
+   if (screen->device_lost)
+      return true;
    if (p_atomic_read(&fence->completed))
       return true;
 
    assert(fence->batch_id);
    assert(fence->submitted);
 
-   bool success;
+   bool success = false;
 
+   VkResult ret;
    if (timeout_ns)
-      success = vkWaitForFences(screen->dev, 1, &fence->fence, VK_TRUE, timeout_ns) == VK_SUCCESS;
+      ret = vkWaitForFences(screen->dev, 1, &fence->fence, VK_TRUE, timeout_ns);
    else
-      success = vkGetFenceStatus(screen->dev, fence->fence) == VK_SUCCESS;
+      ret = vkGetFenceStatus(screen->dev, fence->fence);
+   switch (ret) {
+   case VK_SUCCESS:
+      success = true;
+      break;
+   case VK_ERROR_DEVICE_LOST:
+      screen->device_lost = true;
+      break;
+   default:
+      break;
+   }
 
    if (success) {
       p_atomic_set(&fence->completed, true);
@@ -167,6 +180,9 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
 {
    pctx = threaded_context_unwrap_sync(pctx);
    struct zink_context *ctx = zink_context(pctx);
+
+   if (screen->device_lost)
+      return true;
 
    if (pctx && mfence->deferred_ctx == pctx) {
       if (mfence->deferred_id == ctx->curr_batch) {

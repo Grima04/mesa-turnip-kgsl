@@ -55,6 +55,7 @@ struct zink_screen {
    uint32_t curr_batch; //the current batch id
    uint32_t last_finished; //this is racy but ultimately doesn't matter
 
+   bool device_lost;
    struct sw_winsys *winsys;
 
    struct hash_table framebuffer_cache;

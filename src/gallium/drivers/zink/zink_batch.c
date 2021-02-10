@@ -327,8 +327,11 @@ post_submit(void *data, int thread_index)
 {
    struct zink_batch_state *bs = data;
 
-   if (bs->is_device_lost && bs->ctx->reset.reset)
-      bs->ctx->reset.reset(bs->ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+   if (bs->is_device_lost) {
+      if (bs->ctx->reset.reset)
+         bs->ctx->reset.reset(bs->ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+      zink_screen(bs->ctx->base.screen)->device_lost = true;
+   }
 }
 
 static void
@@ -385,8 +388,8 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    }
    vkResetFences(zink_screen(ctx->base.screen)->dev, 1, &batch->state->fence.fence);
 
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    util_dynarray_foreach(&batch->state->persistent_resources, struct zink_resource*, res) {
-       struct zink_screen *screen = zink_screen(ctx->base.screen);
        assert(!(*res)->obj->offset);
        VkMappedMemoryRange range = {
           VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
@@ -403,6 +406,9 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    _mesa_hash_table_insert_pre_hashed(&ctx->batch_states, batch->state->fence.batch_id, (void*)(uintptr_t)batch->state->fence.batch_id, batch->state);
    simple_mtx_unlock(&ctx->batch_mtx);
    ctx->resource_size += batch->state->resource_size;
+
+   if (screen->device_lost)
+      return;
 
    if (util_queue_is_initialized(&batch->flush_queue)) {
       batch->state->queue = batch->thread_queue;

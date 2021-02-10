@@ -291,7 +291,7 @@ zink_context_destroy(struct pipe_context *pctx)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
 
-   if (ctx->batch.queue && vkQueueWaitIdle(ctx->batch.queue) != VK_SUCCESS)
+   if (ctx->batch.queue && !screen->device_lost && vkQueueWaitIdle(ctx->batch.queue) != VK_SUCCESS)
       debug_printf("vkQueueWaitIdle failed\n");
 
    util_blitter_destroy(ctx->blitter);
@@ -2020,6 +2020,8 @@ timeline_wait(struct zink_context *ctx, uint32_t batch_id, uint64_t timeout)
    uint64_t batch_id64 = batch_id;
    wi.pValues = &batch_id64;
    bool success = false;
+   if (screen->device_lost)
+      return true;
    switch (screen->vk_WaitSemaphores(screen->dev, &wi, timeout)) {
    case VK_SUCCESS:
       success = true;
@@ -2027,6 +2029,7 @@ timeline_wait(struct zink_context *ctx, uint32_t batch_id, uint64_t timeout)
    case VK_ERROR_DEVICE_LOST:
       if (ctx->reset.reset)
          ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+      screen->device_lost = true;
       break;
    default:
       break;
