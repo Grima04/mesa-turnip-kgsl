@@ -84,6 +84,17 @@ vir_has_side_effects(struct v3d_compile *c, struct qinst *inst)
                 return true;
         }
 
+        /* ldunifa works like ldunif: it reads an element and advances the
+         * pointer, so each read has a side effect (we don't care for ldunif
+         * because we reconstruct the uniform stream buffer after compiling
+         * with the surviving uniforms), so allowing DCE to remove
+         * one would break follow-up loads. We could fix this by emiting a
+         * unifa for each ldunifa, but each unifa requires 3 delay slots
+         * before a ldunifa, so that would be quite expensive.
+         */
+        if (inst->qpu.sig.ldunifa || inst->qpu.sig.ldunifarf)
+                return true;
+
         return false;
 }
 
