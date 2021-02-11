@@ -330,6 +330,10 @@ static void si_destroy_context(struct pipe_context *context)
    util_dynarray_fini(&sctx->resident_tex_needs_color_decompress);
    util_dynarray_fini(&sctx->resident_img_needs_color_decompress);
    util_dynarray_fini(&sctx->resident_tex_needs_depth_decompress);
+
+   if (!(sctx->context_flags & SI_CONTEXT_FLAG_AUX))
+      p_atomic_dec(&context->screen->num_contexts);
+
    FREE(sctx);
 }
 
@@ -466,6 +470,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    sctx->b.destroy = si_destroy_context;
    sctx->screen = sscreen; /* Easy accessing of screen/winsys. */
    sctx->is_debug = (flags & PIPE_CONTEXT_DEBUG) != 0;
+   sctx->context_flags = flags;
 
    slab_create_child(&sctx->pool_transfers, &sscreen->pool_transfers);
    slab_create_child(&sctx->pool_transfers_unsync, &sscreen->pool_transfers);
@@ -603,9 +608,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
 
       si_init_draw_functions(sctx);
 
-      /* If aux_context == NULL, we are initializing aux_context right now. */
-      bool is_aux_context = !sscreen->aux_context;
-      si_initialize_prim_discard_tunables(sscreen, is_aux_context,
+      si_initialize_prim_discard_tunables(sscreen, flags & SI_CONTEXT_FLAG_AUX,
                                           &sctx->prim_discard_vertex_count_threshold,
                                           &sctx->index_ring_size_per_ib);
    } else {
@@ -735,6 +738,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       si_clear_buffer(sctx, sctx->null_const_buf.buffer, 0, sctx->null_const_buf.buffer->width0,
                       &clear_value, 4, SI_COHERENCY_SHADER, SI_CP_DMA_CLEAR_METHOD);
    }
+
+   if (!(flags & SI_CONTEXT_FLAG_AUX))
+      p_atomic_inc(&screen->num_contexts);
 
    sctx->initial_gfx_cs_size = sctx->gfx_cs.current.cdw;
    return &sctx->b;
@@ -1320,8 +1326,11 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    /* Create the auxiliary context. This must be done last. */
    sscreen->aux_context = si_create_context(
-      &sscreen->b, (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
-                      (sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
+      &sscreen->b,
+      SI_CONTEXT_FLAG_AUX |
+      (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
+      (sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
+
    if (sscreen->options.aux_debug) {
       struct u_log_context *log = CALLOC_STRUCT(u_log_context);
       u_log_context_init(log);
