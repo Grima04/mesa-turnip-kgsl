@@ -1217,6 +1217,23 @@ valid_thrsw_sequence(struct v3d_compile *c, struct choose_scoreboard *scoreboard
                         return false;
                 }
 
+                /* unifa and the following 3 instructions can't overlap a
+                 * thread switch/end. The docs further clarify that this means
+                 * the cycle at which the actual thread switch/end happens
+                 * and not when the thrsw instruction is processed, which would
+                 * be after the 2 delay slots following the thrsw instruction.
+                 * This means that we can move up a thrsw up to the instruction
+                 * right after unifa:
+                 *
+                 * unifa, r5
+                 * thrsw
+                 * delay slot 1
+                 * delay slot 2
+                 * Thread switch happens here, 4 instructions away from unifa
+                 */
+                if (v3d_qpu_writes_unifa(c->devinfo, &qinst->qpu))
+                        return false;
+
                 /* Note that the list is circular, so we can only do this up
                  * to instructions_in_sequence.
                  */
