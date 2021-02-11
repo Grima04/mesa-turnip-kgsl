@@ -39,20 +39,11 @@ static struct pipe_stream_output_target *si_create_so_target(struct pipe_context
                                                              unsigned buffer_offset,
                                                              unsigned buffer_size)
 {
-   struct si_context *sctx = (struct si_context *)ctx;
    struct si_streamout_target *t;
    struct si_resource *buf = si_resource(buffer);
 
    t = CALLOC_STRUCT(si_streamout_target);
    if (!t) {
-      return NULL;
-   }
-
-   unsigned buf_filled_size_size = sctx->screen->use_ngg_streamout ? 8 : 4;
-   u_suballocator_alloc(&sctx->allocator_zeroed_memory, buf_filled_size_size, 4,
-                        &t->buf_filled_size_offset, (struct pipe_resource **)&t->buf_filled_size);
-   if (!t->buf_filled_size) {
-      FREE(t);
       return NULL;
    }
 
@@ -166,6 +157,15 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
 
       if (offsets[i] == ((unsigned)-1))
          append_bitmask |= 1 << i;
+
+      /* Allocate space for the filled buffer size. */
+      struct si_streamout_target *t = sctx->streamout.targets[i];
+      if (!t->buf_filled_size) {
+         unsigned buf_filled_size_size = sctx->screen->use_ngg_streamout ? 8 : 4;
+         u_suballocator_alloc(&sctx->allocator_zeroed_memory, buf_filled_size_size, 4,
+                              &t->buf_filled_size_offset,
+                              (struct pipe_resource **)&t->buf_filled_size);
+      }
    }
 
    for (; i < sctx->streamout.num_targets; i++)
