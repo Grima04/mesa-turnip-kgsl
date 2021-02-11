@@ -737,20 +737,20 @@ spec/!opengl 3.0/array-depth-roundtrip: fail
 spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
 spec/!opengl 3.0/depth-cube-map: fail
 spec/!opengl 3.0/sampler-cube-shadow: fail
-spec/!opengl 3.1/primitive-restart-xfb flush: crash
-spec/!opengl 3.1/primitive-restart-xfb generated: crash
-spec/!opengl 3.1/primitive-restart-xfb written: crash
+spec/!opengl 3.1/primitive-restart-xfb flush: fail
+spec/!opengl 3.1/primitive-restart-xfb generated: fail
+spec/!opengl 3.1/primitive-restart-xfb written: fail
 spec/!opengl 3.2/coord-replace-doesnt-eliminate-frag-tex-coords: fail
-spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-first: crash
-spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-last: crash
-spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-first: crash
-spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-last: crash
-spec/!opengl 3.2/gl-3.2-adj-prims line cull-back pv-first: crash
-spec/!opengl 3.2/gl-3.2-adj-prims line cull-back pv-last: crash
-spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-first: crash
-spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-last: crash
-spec/!opengl 3.2/gl-3.2-adj-prims pv-first: crash
-spec/!opengl 3.2/gl-3.2-adj-prims pv-last: crash
+spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-last: fail
+spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-last: fail
+spec/!opengl 3.2/gl-3.2-adj-prims line cull-back pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims line cull-back pv-last: fail
+spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-last: fail
+spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
+spec/!opengl 3.2/gl-3.2-adj-prims pv-last: fail
 spec/!opengl 3.2/glsl-resource-not-bound buffer: crash
 spec/!opengl 3.3/minmax: skip
 spec/!opengl 3.3/required-renderbuffer-attachment-formats: skip
@@ -766,7 +766,7 @@ spec/!opengl 4.5/named-framebuffer-draw-buffers-errors: skip
 spec/!opengl 4.5/named-framebuffer-read-buffer-errors: skip
 spec/!opengl es 2.0/glsl-fs-pointcoord: fail
 spec/!opengl es 2.0/invalid-es3-queries_gles2: skip
-spec/!opengl es 3.0/gles-3.0-transform-feedback-uniform-buffer-object: crash
+spec/!opengl es 3.0/gles-3.0-transform-feedback-uniform-buffer-object: fail
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgb_fxt1_3dfx: skip
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgba_fxt1_3dfx: skip
 spec/3dfx_texture_compression_fxt1/fbo-generatemipmap-formats: skip
@@ -944,14 +944,6 @@ spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-compat: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-prim-restart: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-elements-base-instance: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-elements-compat: skip
-spec/arb_draw_indirect/arb_draw_indirect-transform-feedback: crash
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs: crash
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs_max: crash
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs: crash
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_interface: crash
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_named_interface: crash
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_struct: crash
-spec/arb_enhanced_layouts/gs-stream-location-aliasing: crash
 spec/arb_es2_compatibility/texwrap formats bordercolor-swizzled/gl_rgb565, swizzled, border color only: fail
 spec/arb_es2_compatibility/texwrap formats bordercolor/gl_rgb565, border color only: fail
 spec/arb_es3_compatibility/es3-drawarrays-primrestart-fixedindex: skip
@@ -991,14 +983,11 @@ spec/arb_get_program_binary/restore-implicit-use-program: skip
 spec/arb_get_program_binary/restore-sso-program: fail
 spec/arb_get_program_binary/xfb-varyings: skip
 spec/arb_gpu_shader5/arb_gpu_shader5-emitstreamvertex_nodraw: fail
-spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams: crash
 spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams-without-invocations: skip
 spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams-without-invocations spirv: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-dlist-uniforms: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-double_in_bool_uniform: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-ssbo: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-tf-interleaved: crash
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-tf-interleaved-aligned: crash
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-tf-separate: fail
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-alu: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-const: skip
@@ -1054,8 +1043,72 @@ spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_u
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform_block(tcs,tes): skip
 spec/arb_provoking_vertex/arb-provoking-vertex-clipped-geometry-flatshading: fail
 spec/arb_provoking_vertex/arb-provoking-vertex-render: fail
-spec/arb_provoking_vertex/arb-xfb-before-flatshading: crash
-spec/arb_query_buffer_object/coherency: crash
+spec/arb_query_buffer_object/coherency/index-buffer-gl_clipping_input_primitives: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_clipping_output_primitives: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_compute_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_fragment_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_geometry_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_geometry_shader_primitives_emitted: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_primitives_generated: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_primitives_submitted: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_samples_passed: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_tess_control_shader_patches: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_tess_evaluation_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_time_elapsed: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_timestamp: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_transform_feedback_primitives_written: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_vertex_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_vertices_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_any_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_any_samples_passed_conservative: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_clipping_input_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_clipping_output_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_compute_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_fragment_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_geometry_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_geometry_shader_primitives_emitted: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_primitives_generated: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_primitives_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_tess_control_shader_patches: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_tess_evaluation_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_transform_feedback_primitives_written: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_vertex_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_vertices_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_any_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_any_samples_passed_conservative: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_clipping_input_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_clipping_output_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_compute_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_fragment_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_geometry_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_geometry_shader_primitives_emitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_primitives_generated: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_primitives_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_tess_control_shader_patches: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_tess_evaluation_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_time_elapsed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_timestamp: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_transform_feedback_primitives_written: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_vertex_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_vertices_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_clipping_input_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_clipping_output_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_compute_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_fragment_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_geometry_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_geometry_shader_primitives_emitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_primitives_generated: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_primitives_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_tess_control_shader_patches: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_tess_evaluation_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_time_elapsed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_timestamp: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_transform_feedback_primitives_written: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_vertex_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_vertices_submitted: skip
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async-gl_int: skip
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async-gl_unsigned_int: skip
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async-gl_unsigned_int64_arb: skip
@@ -1324,7 +1377,6 @@ spec/arb_separate_shader_objects/mix-and-match-tcs-tes: skip
 spec/arb_separate_shader_objects/programuniform coverage/double matrices: skip
 spec/arb_separate_shader_objects/programuniform coverage/double scalar and vectors: skip
 spec/arb_separate_shader_objects/rendezvous by location (5 stages): skip
-spec/arb_separate_shader_objects/transform feedback with rendezvous by location: crash
 spec/arb_separate_shader_objects/validateprogrampipeline/only tes from tes/tcs program: skip
 spec/arb_separate_shader_objects/validateprogrampipeline/tcs splitting a vs/gs pipeline: skip
 spec/arb_separate_shader_objects/validateprogrampipeline/tes splitting a vs/gs program: skip
@@ -1565,9 +1617,7 @@ spec/arb_texture_multisample/fb-completeness/32: skip
 spec/arb_texture_multisample/fb-completeness/6: skip
 spec/arb_texture_multisample/fb-completeness/8: skip
 spec/arb_texture_multisample/sample-position/16: skip
-spec/arb_texture_multisample/sample-position/2: crash
 spec/arb_texture_multisample/sample-position/32: skip
-spec/arb_texture_multisample/sample-position/4: crash
 spec/arb_texture_multisample/sample-position/6: skip
 spec/arb_texture_multisample/sample-position/8: skip
 spec/arb_texture_multisample/texelfetch/16-fs-isampler2dms: skip
@@ -2019,24 +2069,6 @@ spec/arb_texture_view/sampling-2d-array-as-cubemap-array: fail
 spec/arb_timer_query/query gl_timestamp: skip
 spec/arb_timer_query/query-lifetime: skip
 spec/arb_timer_query/timestamp-get: skip
-spec/arb_transform_feedback2/change objects while paused: crash
-spec/arb_transform_feedback2/change objects while paused (gles3): crash
-spec/arb_transform_feedback3/arb_transform_feedback3-ext_interleaved_two_bufs_gs: crash
-spec/arb_transform_feedback3/arb_transform_feedback3-ext_interleaved_two_bufs_gs_max: crash
-spec/arb_transform_feedback3/arb_transform_feedback3-ext_interleaved_two_bufs_vs: crash
-spec/arb_transform_feedback3/gl_nextbuffer-1: crash
-spec/arb_transform_feedback3/gl_nextbuffer-2: crash
-spec/arb_transform_feedback3/gl_nextbuffer-gl_nextbuffer: crash
-spec/arb_transform_feedback3/gl_nextbuffer-gl_skipcomponents1-gl_nextbuffer: crash
-spec/arb_transform_feedback3/gl_skipcomponents1-1: crash
-spec/arb_transform_feedback3/gl_skipcomponents1-2: crash
-spec/arb_transform_feedback3/gl_skipcomponents1-3: crash
-spec/arb_transform_feedback3/gl_skipcomponents1-gl_nextbuffer: crash
-spec/arb_transform_feedback3/gl_skipcomponents1234: crash
-spec/arb_transform_feedback3/gl_skipcomponents2: crash
-spec/arb_transform_feedback3/gl_skipcomponents3: crash
-spec/arb_transform_feedback3/gl_skipcomponents4: crash
-spec/arb_transform_feedback_instanced/draw-auto instanced: crash
 spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic: skip
 spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-errors: skip
 spec/arb_uniform_buffer_object/maxblocks: crash
@@ -2918,276 +2950,41 @@ spec/ext_texture_srgb/texwrap formats-s3tc bordercolor/gl_compressed_srgb_alpha_
 spec/ext_texture_srgb/texwrap formats-s3tc bordercolor/gl_compressed_srgb_alpha_s3tc_dxt5_ext, border color only: fail
 spec/ext_texture_srgb/texwrap formats-s3tc bordercolor/gl_compressed_srgb_s3tc_dxt1_ext, border color only: fail
 spec/ext_texture_swizzle/depth_texture_mode_and_swizzle: fail
-spec/ext_transform_feedback2/counting with pause: crash
-spec/ext_transform_feedback2/draw-auto: crash
-spec/ext_transform_feedback/alignment 0: crash
-spec/ext_transform_feedback/alignment 12: crash
-spec/ext_transform_feedback/alignment 4: crash
-spec/ext_transform_feedback/alignment 8: crash
-spec/ext_transform_feedback/buffer-usage: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance[1]-no-subscript: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance[2]-no-subscript: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance[3]-no-subscript: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance[4]-no-subscript: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance[5]-no-subscript: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance[6]-no-subscript: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance[7]-no-subscript: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipdistance[8]-no-subscript: crash
-spec/ext_transform_feedback/builtin-varyings gl_clipvertex: crash
-spec/ext_transform_feedback/builtin-varyings gl_color: crash
-spec/ext_transform_feedback/builtin-varyings gl_fogfragcoord: crash
-spec/ext_transform_feedback/builtin-varyings gl_pointsize: crash
-spec/ext_transform_feedback/builtin-varyings gl_position: crash
-spec/ext_transform_feedback/builtin-varyings gl_secondarycolor: crash
-spec/ext_transform_feedback/builtin-varyings gl_texcoord: crash
-spec/ext_transform_feedback/change-size base-grow: crash
-spec/ext_transform_feedback/change-size base-shrink: crash
-spec/ext_transform_feedback/change-size offset-grow: crash
-spec/ext_transform_feedback/change-size offset-shrink: crash
-spec/ext_transform_feedback/change-size range-grow: crash
-spec/ext_transform_feedback/change-size range-shrink: crash
 spec/ext_transform_feedback/generatemipmap prims_generated: fail
-spec/ext_transform_feedback/geometry-shaders-basic: crash
-spec/ext_transform_feedback/immediate-reuse: crash
-spec/ext_transform_feedback/immediate-reuse-index-buffer: crash
-spec/ext_transform_feedback/immediate-reuse-uniform-buffer: crash
-spec/ext_transform_feedback/interleaved-attribs: crash
-spec/ext_transform_feedback/intervening-read output: crash
-spec/ext_transform_feedback/intervening-read output use_gs: crash
-spec/ext_transform_feedback/intervening-read prims_generated: crash
-spec/ext_transform_feedback/intervening-read prims_generated use_gs: crash
-spec/ext_transform_feedback/intervening-read prims_written: crash
-spec/ext_transform_feedback/intervening-read prims_written use_gs: crash
-spec/ext_transform_feedback/max-varyings/max-varying-arrays-of-arrays: notrun
-spec/ext_transform_feedback/max-varyings/max-varying-single-dimension-array: crash
-spec/ext_transform_feedback/negative-prims: crash
-spec/ext_transform_feedback/nonflat-integral: crash
-spec/ext_transform_feedback/order arrays lines: crash
-spec/ext_transform_feedback/order arrays points: crash
-spec/ext_transform_feedback/order arrays triangles: crash
-spec/ext_transform_feedback/order elements lines: crash
-spec/ext_transform_feedback/order elements points: crash
-spec/ext_transform_feedback/order elements triangles: crash
-spec/ext_transform_feedback/output-type float: crash
-spec/ext_transform_feedback/output-type float[2]: crash
-spec/ext_transform_feedback/output-type float[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type int: crash
-spec/ext_transform_feedback/output-type int[2]: crash
-spec/ext_transform_feedback/output-type int[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type ivec2: crash
-spec/ext_transform_feedback/output-type ivec2[2]: crash
-spec/ext_transform_feedback/output-type ivec2[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type ivec3: crash
-spec/ext_transform_feedback/output-type ivec3[2]: crash
-spec/ext_transform_feedback/output-type ivec3[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type ivec4: crash
-spec/ext_transform_feedback/output-type ivec4[2]: crash
-spec/ext_transform_feedback/output-type ivec4[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat2: crash
-spec/ext_transform_feedback/output-type mat2[2]: crash
-spec/ext_transform_feedback/output-type mat2[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat2x3: crash
-spec/ext_transform_feedback/output-type mat2x3[2]: crash
-spec/ext_transform_feedback/output-type mat2x3[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat2x4: crash
-spec/ext_transform_feedback/output-type mat2x4[2]: crash
-spec/ext_transform_feedback/output-type mat2x4[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat3: crash
-spec/ext_transform_feedback/output-type mat3[2]: crash
-spec/ext_transform_feedback/output-type mat3[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat3x2: crash
-spec/ext_transform_feedback/output-type mat3x2[2]: crash
-spec/ext_transform_feedback/output-type mat3x2[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat3x4: crash
-spec/ext_transform_feedback/output-type mat3x4[2]: crash
-spec/ext_transform_feedback/output-type mat3x4[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat4: crash
-spec/ext_transform_feedback/output-type mat4[2]: crash
-spec/ext_transform_feedback/output-type mat4[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat4x2: crash
-spec/ext_transform_feedback/output-type mat4x2[2]: crash
-spec/ext_transform_feedback/output-type mat4x2[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type mat4x3: crash
-spec/ext_transform_feedback/output-type mat4x3[2]: crash
-spec/ext_transform_feedback/output-type mat4x3[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type uint: crash
-spec/ext_transform_feedback/output-type uint[2]: crash
-spec/ext_transform_feedback/output-type uint[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type uvec2: crash
-spec/ext_transform_feedback/output-type uvec2[2]: crash
-spec/ext_transform_feedback/output-type uvec2[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type uvec3: crash
-spec/ext_transform_feedback/output-type uvec3[2]: crash
-spec/ext_transform_feedback/output-type uvec3[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type uvec4: crash
-spec/ext_transform_feedback/output-type uvec4[2]: crash
-spec/ext_transform_feedback/output-type uvec4[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type vec2: crash
-spec/ext_transform_feedback/output-type vec2[2]: crash
-spec/ext_transform_feedback/output-type vec2[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type vec3: crash
-spec/ext_transform_feedback/output-type vec3[2]: crash
-spec/ext_transform_feedback/output-type vec3[2]-no-subscript: crash
-spec/ext_transform_feedback/output-type vec4: crash
-spec/ext_transform_feedback/output-type vec4[2]: crash
-spec/ext_transform_feedback/output-type vec4[2]-no-subscript: crash
-spec/ext_transform_feedback/overflow-edge-cases: crash
-spec/ext_transform_feedback/overflow-edge-cases use_gs: crash
-spec/ext_transform_feedback/points: crash
-spec/ext_transform_feedback/points-large: crash
-spec/ext_transform_feedback/position-readback-bufferbase: crash
-spec/ext_transform_feedback/position-readback-bufferbase-discard: crash
-spec/ext_transform_feedback/position-readback-bufferoffset: crash
-spec/ext_transform_feedback/position-readback-bufferoffset-discard: crash
-spec/ext_transform_feedback/position-readback-bufferrange: crash
-spec/ext_transform_feedback/position-readback-bufferrange-discard: crash
-spec/ext_transform_feedback/position-render-bufferbase: crash
-spec/ext_transform_feedback/position-render-bufferbase-discard: crash
-spec/ext_transform_feedback/position-render-bufferoffset: crash
-spec/ext_transform_feedback/position-render-bufferoffset-discard: crash
-spec/ext_transform_feedback/position-render-bufferrange: crash
-spec/ext_transform_feedback/position-render-bufferrange-discard: crash
-spec/ext_transform_feedback/query-primitives_generated-bufferbase: crash
-spec/ext_transform_feedback/query-primitives_generated-bufferbase-discard: crash
-spec/ext_transform_feedback/query-primitives_generated-bufferoffset: crash
-spec/ext_transform_feedback/query-primitives_generated-bufferoffset-discard: crash
-spec/ext_transform_feedback/query-primitives_generated-bufferrange: crash
-spec/ext_transform_feedback/query-primitives_generated-bufferrange-discard: crash
-spec/ext_transform_feedback/query-primitives_written-bufferbase: crash
-spec/ext_transform_feedback/query-primitives_written-bufferbase-discard: crash
-spec/ext_transform_feedback/query-primitives_written-bufferoffset: crash
-spec/ext_transform_feedback/query-primitives_written-bufferoffset-discard: crash
-spec/ext_transform_feedback/query-primitives_written-bufferrange: crash
-spec/ext_transform_feedback/query-primitives_written-bufferrange-discard: crash
-spec/ext_transform_feedback/separate-attribs: crash
-spec/ext_transform_feedback/structs array-struct run: crash
-spec/ext_transform_feedback/structs array-struct run interface: crash
-spec/ext_transform_feedback/structs array-struct run-no-fs: crash
-spec/ext_transform_feedback/structs array-struct run-no-fs interface: crash
-spec/ext_transform_feedback/structs array-struct-array-elem run: crash
-spec/ext_transform_feedback/structs array-struct-array-elem run interface: crash
-spec/ext_transform_feedback/structs array-struct-array-elem run-no-fs: crash
-spec/ext_transform_feedback/structs array-struct-array-elem run-no-fs interface: crash
-spec/ext_transform_feedback/structs array-struct-array-struct run: crash
-spec/ext_transform_feedback/structs array-struct-array-struct run interface: crash
-spec/ext_transform_feedback/structs array-struct-array-struct run-no-fs: crash
-spec/ext_transform_feedback/structs array-struct-array-struct run-no-fs interface: crash
-spec/ext_transform_feedback/structs array-struct-whole-array run: crash
-spec/ext_transform_feedback/structs array-struct-whole-array run interface: crash
-spec/ext_transform_feedback/structs array-struct-whole-array run-no-fs: crash
-spec/ext_transform_feedback/structs array-struct-whole-array run-no-fs interface: crash
-spec/ext_transform_feedback/structs basic-struct run: crash
-spec/ext_transform_feedback/structs basic-struct run interface: crash
-spec/ext_transform_feedback/structs basic-struct run-no-fs: crash
-spec/ext_transform_feedback/structs basic-struct run-no-fs interface: crash
-spec/ext_transform_feedback/structs struct-array-elem run: crash
-spec/ext_transform_feedback/structs struct-array-elem run interface: crash
-spec/ext_transform_feedback/structs struct-array-elem run-no-fs: crash
-spec/ext_transform_feedback/structs struct-array-elem run-no-fs interface: crash
-spec/ext_transform_feedback/structs struct-struct run: crash
-spec/ext_transform_feedback/structs struct-struct run interface: crash
-spec/ext_transform_feedback/structs struct-struct run-no-fs: crash
-spec/ext_transform_feedback/structs struct-struct run-no-fs interface: crash
-spec/ext_transform_feedback/structs struct-whole-array run: crash
-spec/ext_transform_feedback/structs struct-whole-array run interface: crash
-spec/ext_transform_feedback/structs struct-whole-array run-no-fs: crash
-spec/ext_transform_feedback/structs struct-whole-array run-no-fs interface: crash
-spec/ext_transform_feedback/structs_gles3 basic-struct run: crash
-spec/ext_transform_feedback/structs_gles3 basic-struct run-no-fs: crash
-spec/ext_transform_feedback/tessellation line_loop flat_first: crash
-spec/ext_transform_feedback/tessellation line_loop flat_last: crash
-spec/ext_transform_feedback/tessellation line_loop monochrome: crash
-spec/ext_transform_feedback/tessellation line_loop smooth: crash
-spec/ext_transform_feedback/tessellation line_strip flat_first: crash
-spec/ext_transform_feedback/tessellation line_strip flat_last: crash
-spec/ext_transform_feedback/tessellation line_strip monochrome: crash
-spec/ext_transform_feedback/tessellation line_strip smooth: crash
-spec/ext_transform_feedback/tessellation lines flat_first: crash
-spec/ext_transform_feedback/tessellation lines flat_last: crash
-spec/ext_transform_feedback/tessellation lines monochrome: crash
-spec/ext_transform_feedback/tessellation lines smooth: crash
-spec/ext_transform_feedback/tessellation points flat_first: crash
-spec/ext_transform_feedback/tessellation points flat_last: crash
-spec/ext_transform_feedback/tessellation points monochrome: crash
-spec/ext_transform_feedback/tessellation points smooth: crash
-spec/ext_transform_feedback/tessellation polygon flat_first: crash
-spec/ext_transform_feedback/tessellation polygon flat_last: crash
-spec/ext_transform_feedback/tessellation polygon monochrome: crash
-spec/ext_transform_feedback/tessellation polygon smooth: crash
-spec/ext_transform_feedback/tessellation polygon wireframe: crash
-spec/ext_transform_feedback/tessellation quad_strip flat_first: crash
-spec/ext_transform_feedback/tessellation quad_strip flat_last: crash
-spec/ext_transform_feedback/tessellation quad_strip monochrome: crash
-spec/ext_transform_feedback/tessellation quad_strip smooth: crash
-spec/ext_transform_feedback/tessellation quad_strip wireframe: crash
-spec/ext_transform_feedback/tessellation quads flat_first: crash
-spec/ext_transform_feedback/tessellation quads flat_last: crash
-spec/ext_transform_feedback/tessellation quads monochrome: crash
-spec/ext_transform_feedback/tessellation quads smooth: crash
-spec/ext_transform_feedback/tessellation quads wireframe: crash
-spec/ext_transform_feedback/tessellation triangle_fan flat_first: crash
-spec/ext_transform_feedback/tessellation triangle_fan flat_last: crash
-spec/ext_transform_feedback/tessellation triangle_fan monochrome: crash
-spec/ext_transform_feedback/tessellation triangle_fan smooth: crash
-spec/ext_transform_feedback/tessellation triangle_fan wireframe: crash
-spec/ext_transform_feedback/tessellation triangle_strip flat_first: crash
-spec/ext_transform_feedback/tessellation triangle_strip flat_last: crash
-spec/ext_transform_feedback/tessellation triangle_strip monochrome: crash
-spec/ext_transform_feedback/tessellation triangle_strip smooth: crash
-spec/ext_transform_feedback/tessellation triangle_strip wireframe: crash
-spec/ext_transform_feedback/tessellation triangles flat_first: crash
-spec/ext_transform_feedback/tessellation triangles flat_last: crash
-spec/ext_transform_feedback/tessellation triangles monochrome: crash
-spec/ext_transform_feedback/tessellation triangles smooth: crash
-spec/ext_transform_feedback/tessellation triangles wireframe: crash
 spec/ext_window_rectangles/dlist/call: skip
 spec/ext_window_rectangles/dlist/compile and execute: skip
 spec/ext_window_rectangles/errors: skip
 spec/ext_window_rectangles/errors_gles3: skip
 spec/ext_window_rectangles/render: skip
 spec/ext_window_rectangles/render_gles3: skip
-spec/glsl-1.30/execution/isinf-and-isnan vs_xfb: crash
 spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
-spec/glsl-1.40/execution/tf-no-position: crash
 spec/glsl-1.50/built-in constants compatibility: skip
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip_adjacency ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip_adjacency other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines_adjacency ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines_adjacency other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_points ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_points other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_fan ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_fan other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip_adjacency ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip_adjacency other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles other: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles_adjacency ffs: crash
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles_adjacency other: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_line_loop: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_line_strip: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_line_strip_adjacency: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_lines: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_lines_adjacency: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_points: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_fan: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip_adjacency: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_triangles: crash
-spec/glsl-1.50/execution/geometry/primitive-types gl_triangles_adjacency: crash
-spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip ffs: crash
-spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip other: crash
-spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency ffs: crash
-spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency other: crash
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop other: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip_adjacency ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip_adjacency other: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines other: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines_adjacency ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines_adjacency other: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_points ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_points other: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_fan ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip_adjacency ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip_adjacency other: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles other: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles_adjacency ffs: fail
+spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles_adjacency other: fail
+spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_fan: fail
+spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip: fail
+spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip_adjacency: fail
+spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip ffs: fail
+spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip other: fail
+spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency ffs: fail
+spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency other: fail
 spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler1d: skip
 spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler1darray: skip
 spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler2d: skip
@@ -3218,9 +3015,6 @@ spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler3d: skip
 spec/glsl-1.50/execution/texturesize/tes-texturesize-usamplerbuffer: skip
 spec/glsl-1.50/execution/texturesize/tes-texturesize-usamplercube: skip
 spec/glsl-1.50/gs-max-output: crash
-spec/glsl-1.50/transform-feedback-builtins: crash
-spec/glsl-1.50/transform-feedback-type-and-size: crash
-spec/glsl-1.50/transform-feedback-vertex-id: crash
 spec/glsl-3.30/built-in constants: skip
 spec/glsl-es-3.10/built-in constants: skip
 spec/intel_blackhole_render/intel_blackhole-blit: skip
@@ -3387,10 +3181,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    18186
-       fail:     1173
-      crash:      330
-       skip:     1855
+       pass:    18464
+       fail:     1213
+      crash:       19
+       skip:     1921
     timeout:        0
        warn:        4
  incomplete:        0
@@ -3399,4 +3193,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21572
+      total:    21644

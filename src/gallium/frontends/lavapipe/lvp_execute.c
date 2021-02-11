@@ -2492,6 +2492,9 @@ static void handle_begin_transform_feedback(struct lvp_cmd_buffer_entry *cmd,
    memset(offsets, 0, sizeof(uint32_t)*4);
 
    for (unsigned i = 0; i < btf->counter_buffer_count; i++) {
+      if (!btf->counter_buffers[i])
+         continue;
+
       pipe_buffer_read(state->pctx,
                        btf->counter_buffers[i]->bo,
                        btf->counter_buffer_offsets[i],
@@ -2509,6 +2512,9 @@ static void handle_end_transform_feedback(struct lvp_cmd_buffer_entry *cmd,
 
    if (etf->counter_buffer_count) {
       for (unsigned i = 0; i < etf->counter_buffer_count; i++) {
+         if (!etf->counter_buffers[i])
+            continue;
+
          uint32_t offset;
          offset = state->pctx->stream_output_target_offset(state->so_targets[i]);
 
