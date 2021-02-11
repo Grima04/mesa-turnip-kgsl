@@ -118,10 +118,12 @@ static nir_ssa_def *
 load_input(struct st_translate *t, gl_varying_slot slot)
 {
    if (!t->inputs[slot]) {
+      const char *slot_name =
+         gl_varying_slot_name_for_stage(slot, MESA_SHADER_FRAGMENT);
       nir_variable *var = nir_variable_create(t->b->shader, nir_var_shader_in,
                                               slot == VARYING_SLOT_FOGC ?
                                               glsl_float_type() : glsl_vec4_type(),
-                                              gl_varying_slot_name(slot));
+                                              slot_name);
       var->data.location = slot;
       var->data.interpolation = INTERP_MODE_NONE;
 
