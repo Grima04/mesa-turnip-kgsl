@@ -5169,7 +5169,7 @@
         <glx ignore="true"/>
     </function>
 
-    <function name="UnmapBuffer" es2="3.0" no_error="true">
+    <function name="UnmapBuffer" es2="3.0" no_error="true" marshal="async">
         <param name="target" type="GLenum"/>
         <return type="GLboolean"/>
         <glx ignore="true"/>

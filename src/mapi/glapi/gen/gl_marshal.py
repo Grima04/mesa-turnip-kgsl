@@ -84,7 +84,7 @@ class PrintCode(gl_XML.gl_print_base):
     def print_sync_call(self, func, unmarshal = 0):
         call = 'CALL_{0}(ctx->CurrentServerDispatch, ({1}))'.format(
             func.name, func.get_called_parameter_string())
-        if func.return_type == 'void':
+        if func.return_type == 'void' or unmarshal:
             out('{0};'.format(call))
             if func.marshal_call_after and not unmarshal:
                 out(func.marshal_call_after);
@@ -306,7 +306,7 @@ class PrintCode(gl_XML.gl_print_base):
         out('}')
 
     def print_async_marshal(self, func):
-        out('void GLAPIENTRY')
+        out('{0} GLAPIENTRY'.format(func.return_type))
         out('_mesa_marshal_{0}({1})'.format(
                 func.name, func.get_parameter_string()))
         out('{')
@@ -338,6 +338,8 @@ class PrintCode(gl_XML.gl_print_base):
                 self.validate_count_or_fallback(func)
 
             self.print_async_dispatch(func)
+            if func.return_type == 'GLboolean':
+                out('return GL_TRUE;') # for glUnmapBuffer
         out('}')
 
     def print_async_body(self, func):

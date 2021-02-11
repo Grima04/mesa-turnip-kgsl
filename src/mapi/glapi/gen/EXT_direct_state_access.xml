@@ -906,7 +906,7 @@
       <param name="access" type="GLenum" />
    </function>
 
-   <function name="UnmapNamedBufferEXT">
+   <function name="UnmapNamedBufferEXT" marshal="async">
       <return type="GLboolean" />
       <param name="buffer" type="GLuint" />
    </function>
