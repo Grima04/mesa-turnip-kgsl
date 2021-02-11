@@ -26,7 +26,7 @@
 from mako.template import Template
 from os import path
 from xml.etree import ElementTree
-from zink_extensions import Extension,Layer,Version
+from zink_extensions import Extension,Layer,ExtensionRegistry,Version
 import sys
 
 # constructor: Extension(name, core_since=None, functions=[])
@@ -273,33 +273,6 @@ def replace_code(code: str, replacement: dict):
     return code
 
 
-# Parses e.g. "VK_VERSION_x_y" to integer tuple (x, y)
-# For any erroneous inputs, None is returned
-def parse_promotedto(promotedto: str):
-   result = None
-
-   if promotedto and promotedto.startswith("VK_VERSION_"):
-      (major, minor) = promotedto.split('_')[-2:]
-      result = (int(major), int(minor))
-
-   return result
-
-def parse_vkxml(path: str):
-    vkxml = ElementTree.parse(path)
-    all_extensions = dict()
-
-    for ext in vkxml.findall("extensions/extension"):
-        name = ext.get("name")
-        promotedto = parse_promotedto(ext.get("promotedto"))
-        
-        if not name:
-            print("found malformed extension entry in vk.xml")
-            exit(1)
-
-        all_extensions[name] = promotedto
-
-    return all_extensions
-
 if __name__ == "__main__":
     try:
         header_path = sys.argv[1]
@@ -313,19 +286,39 @@ if __name__ == "__main__":
         print("usage: %s <path to .h> <path to .c> <path to vk.xml>" % sys.argv[0])
         exit(1)
 
-    all_extensions = parse_vkxml(vkxml_path)
+    registry = ExtensionRegistry(vkxml_path)
 
     extensions = EXTENSIONS
     layers = LAYERS
     replacement = REPLACEMENTS
 
+    # Perform extension validation and set core_since for the extension if available
+    error_count = 0
     for ext in extensions:
-        if ext.name not in all_extensions:
-            print("the extension {} is not registered in vk.xml - a typo?".format(ext.name))
-            exit(1)
+        if not registry.in_registry(ext.name) and not "MVK" in ext.name:
+            error_count += 1
+            print("The extension {} is not registered in vk.xml - a typo?".format(ext.name))
+            continue
         
-        if all_extensions[ext.name] is not None:
-            ext.core_since = Version((*all_extensions[ext.name], 0))
+        entry = registry.get_registry_entry(ext.name)
+
+        if entry.ext_type != "instance":
+            error_count += 1
+            print("The extension {} is {} extension - expected an instance extension.".format(ext.name, entry.ext_type))
+            continue
+
+        if entry.commands and ext.instance_funcs:
+            for func in map(lambda f: "vk" + f + ext.vendor(), ext.instance_funcs):
+                if func not in entry.commands:
+                    error_count += 1
+                    print("The instance function {} is not added by the extension {}.".format(func, ext.name))
+
+        if entry.promoted_in:
+            ext.core_since = Version((*entry.promoted_in, 0))
+
+    if error_count > 0:
+        print("zink_instance.py: Found {} error(s) in total. Quitting.".format(error_count))
+        exit(1)
 
     with open(header_path, "w") as header_file:
         header = Template(header_code).render(extensions=extensions, layers=layers).strip()
