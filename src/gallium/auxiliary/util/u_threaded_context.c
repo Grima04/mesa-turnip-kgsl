@@ -1344,7 +1344,6 @@ tc_create_stream_output_target(struct pipe_context *_pipe,
    struct threaded_resource *tres = threaded_resource(res);
    struct pipe_stream_output_target *view;
 
-   tc_sync(threaded_context(_pipe));
    util_range_add(&tres->b, &tres->valid_buffer_range, buffer_offset,
                   buffer_offset + buffer_size);
 

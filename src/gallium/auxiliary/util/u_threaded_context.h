@@ -77,8 +77,6 @@
  * - stream_output_target_destroy
  * - transfer_map (only unsychronized buffer mappings)
  * - get_query_result (when threaded_query::flushed == true)
- *
- * Create calls causing a sync that can't be async due to driver limitations:
  * - create_stream_output_target
  *
  *
