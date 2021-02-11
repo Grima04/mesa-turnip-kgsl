@@ -7766,6 +7766,11 @@ static uint32_t radv_compute_valid_memory_types(struct radv_physical_device *dev
 	uint32_t bits = radv_compute_valid_memory_types_attempt(dev, domains, flags, ignore_flags);
 
 	if (!bits) {
+		ignore_flags |= RADEON_FLAG_GTT_WC;
+		bits = radv_compute_valid_memory_types_attempt(dev, domains, flags, ignore_flags);
+	}
+
+	if (!bits) {
 		ignore_flags |= RADEON_FLAG_NO_CPU_ACCESS;
 		bits = radv_compute_valid_memory_types_attempt(dev, domains, flags, ignore_flags);
 	}
