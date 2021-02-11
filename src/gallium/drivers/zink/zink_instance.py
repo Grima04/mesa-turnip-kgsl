@@ -45,7 +45,8 @@ EXTENSIONS = [
     Extension("VK_KHR_get_physical_device_properties2",
         functions=["GetPhysicalDeviceFeatures2", "GetPhysicalDeviceProperties2"]),
     Extension("VK_KHR_external_memory_capabilities"),
-    Extension("VK_MVK_moltenvk"),
+    Extension("VK_MVK_moltenvk",
+        nonstandard=True),
 ]
 
 # constructor: Layer(name, conditions=[])
@@ -295,7 +296,11 @@ if __name__ == "__main__":
     # Perform extension validation and set core_since for the extension if available
     error_count = 0
     for ext in extensions:
-        if not registry.in_registry(ext.name) and not "MVK" in ext.name:
+        if not registry.in_registry(ext.name):
+            # disable validation for nonstandard extensions
+            if ext.is_nonstandard:
+                continue
+
             error_count += 1
             print("The extension {} is not registered in vk.xml - a typo?".format(ext.name))
             continue

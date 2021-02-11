@@ -115,6 +115,7 @@ EXTENSIONS = [
         alias="stencil_export"),
     Extension("VK_EXTX_portability_subset",
         alias="portability_subset_extx",
+        nonstandard=True,
         properties=True,
         features=True,
         guard=True),

@@ -61,6 +61,7 @@ class Extension:
     name           : str   = None
     alias          : str   = None
     is_required    : bool  = False
+    is_nonstandard : bool  = False
     enable_conds   : [str] = None
 
     # these are specific to zink_device_info.py:
@@ -72,12 +73,13 @@ class Extension:
     core_since     : Version = None
     instance_funcs : [str]   = None
 
-    def __init__(self, name, alias="", required=False, properties=False,
-                 features=False, conditions=None, guard=False, core_since=None,
-                 functions=None):
+    def __init__(self, name, alias="", required=False, nonstandard=False,
+                 properties=False, features=False, conditions=None, guard=False,
+                 core_since=None, functions=None):
         self.name = name
         self.alias = alias
         self.is_required = required
+        self.is_nonstandard = nonstandard
         self.has_properties = properties
         self.has_features = features
         self.enable_conds = conditions
