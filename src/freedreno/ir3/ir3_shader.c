@@ -590,7 +590,7 @@ input_name(struct ir3_shader_variant *so, int i)
 	} else if (so->type == MESA_SHADER_VERTEX) {
 		return gl_vert_attrib_name(so->inputs[i].slot);
 	} else {
-		return gl_varying_slot_name(so->inputs[i].slot);
+		return gl_varying_slot_name_for_stage(so->inputs[i].slot, so->type);
 	}
 }
 
@@ -608,7 +608,7 @@ output_name(struct ir3_shader_variant *so, int i)
 		case VARYING_SLOT_TCS_HEADER_IR3:
 			return "TCS_HEADER";
 		default:
-			return gl_varying_slot_name(so->outputs[i].slot);
+			return gl_varying_slot_name_for_stage(so->outputs[i].slot, so->type);
 		}
 	}
 }

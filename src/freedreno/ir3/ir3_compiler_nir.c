@@ -3255,7 +3255,7 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 				break;
 			ir3_context_error(ctx, "unknown %s shader output name: %s\n",
 					_mesa_shader_stage_to_string(ctx->so->type),
-					gl_varying_slot_name(slot));
+					gl_varying_slot_name_for_stage(slot, ctx->so->type));
 		}
 	} else {
 		ir3_context_error(ctx, "unknown shader type: %d\n", ctx->so->type);
