@@ -234,8 +234,11 @@ zink_screen_init_compiler(struct zink_screen *screen)
    if (!screen->info.feats.features.shaderInt64)
       screen->nir_options.lower_int64_options = ~0;
 
-   if (!screen->info.feats.features.shaderFloat64)
+   if (!screen->info.feats.features.shaderFloat64) {
       screen->nir_options.lower_doubles_options = ~0;
+      screen->nir_options.lower_flrp64 = true;
+      screen->nir_options.lower_ffma64 = true;
+   }
 }
 
 const void *
