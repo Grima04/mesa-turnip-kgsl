@@ -114,6 +114,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
         case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
         case PIPE_CAP_FRONTEND_NOOP:
+        case PIPE_CAP_SAMPLE_SHADING:
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:
@@ -123,10 +124,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
                 return 1;
-
-        case PIPE_CAP_SAMPLE_SHADING:
-                /* WIP */
-                return is_gl3 ? 1 : 0;
 
         case PIPE_CAP_OCCLUSION_QUERY:
         case PIPE_CAP_PRIMITIVE_RESTART:
