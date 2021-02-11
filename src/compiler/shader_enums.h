@@ -253,6 +253,7 @@ const char *gl_vert_attrib_name(gl_vert_attrib attrib);
  * - vertResults (in prog_print.c's arb_output_attrib_string())
  * - fragAttribs (in prog_print.c's arb_input_attrib_string())
  * - _mesa_varying_slot_in_fs()
+ * - _mesa_varying_slot_name_for_stage()
  */
 typedef enum
 {
@@ -332,7 +333,6 @@ typedef enum
 #define VARYING_SLOT_TESS_MAX	(VARYING_SLOT_PATCH0 + MAX_VARYING)
 #define MAX_VARYINGS_INCL_PATCH (VARYING_SLOT_TESS_MAX - VARYING_SLOT_VAR0)
 
-const char *gl_varying_slot_name(gl_varying_slot slot);
 const char *gl_varying_slot_name_for_stage(gl_varying_slot slot,
                                            gl_shader_stage stage);
 
