@@ -52,6 +52,16 @@ TEMPLATE_H = Template(COPYRIGHT + """\
 
 #include "vk_extensions.h"
 
+/* Windows api conflict */
+#ifdef _WIN32
+#ifdef CreateSemaphore
+#undef CreateSemaphore
+#endif
+#ifdef CreateEvent
+#undef CreateEvent
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -194,16 +204,6 @@ TEMPLATE_C = Template(COPYRIGHT + """\
 
 #include "util/macros.h"
 #include "string.h"
-
-/* Windows api conflict */
-#ifdef _WIN32
-#ifdef CreateSemaphore
-#undef CreateSemaphore
-#endif
-#ifdef CreateEvent
-#undef CreateEvent
-#endif
-#endif
 
 <%def name="load_dispatch_table(type, VkType, ProcAddr, entrypoints)">
 void
