@@ -455,6 +455,7 @@ struct choose_scoreboard {
         int last_stallable_sfu_reg;
         int last_stallable_sfu_tick;
         int last_ldvary_tick;
+        int last_unifa_write_tick;
         int last_uniforms_reset_tick;
         int last_thrsw_tick;
         bool tlb_locked;
@@ -799,6 +800,13 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                         continue;
                 }
 
+                /* We need to have 3 delay slots between a write to unifa and
+                 * a follow-up ldunifa.
+                 */
+                if ((inst->sig.ldunifa || inst->sig.ldunifarf) &&
+                    scoreboard->tick - scoreboard->last_unifa_write_tick <= 3)
+                        continue;
+
                 /* "An instruction must not read from a location in physical
                  *  regfile A or B that was written to by the previous
                  *  instruction."
@@ -905,10 +913,13 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
 
 static void
 update_scoreboard_for_magic_waddr(struct choose_scoreboard *scoreboard,
-                                  enum v3d_qpu_waddr waddr)
+                                  enum v3d_qpu_waddr waddr,
+                                  const struct v3d_device_info *devinfo)
 {
         if (v3d_qpu_magic_waddr_is_sfu(waddr))
                 scoreboard->last_magic_sfu_write_tick = scoreboard->tick;
+        else if (devinfo->ver >= 40 && waddr == V3D_QPU_WADDR_UNIFA)
+                scoreboard->last_unifa_write_tick = scoreboard->tick;
 }
 
 static void
@@ -1585,6 +1596,7 @@ v3d_qpu_schedule_instructions(struct v3d_compile *c)
         struct choose_scoreboard scoreboard;
         memset(&scoreboard, 0, sizeof(scoreboard));
         scoreboard.last_ldvary_tick = -10;
+        scoreboard.last_unifa_write_tick = -10;
         scoreboard.last_magic_sfu_write_tick = -10;
         scoreboard.last_uniforms_reset_tick = -10;
         scoreboard.last_thrsw_tick = -10;
