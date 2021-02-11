@@ -99,13 +99,10 @@ panfrost_launch_grid(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *dev = pan_device(pipe->screen);
-
-        /* TODO: Do we want a special compute-only batch? */
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         ctx->compute_grid = info;
 
-        /* TODO: Stub */
         struct panfrost_ptr t =
                 panfrost_pool_alloc_aligned(&batch->pool,
                                             MALI_COMPUTE_JOB_LENGTH,
