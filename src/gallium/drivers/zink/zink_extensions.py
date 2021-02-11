@@ -119,6 +119,15 @@ class Extension:
     def field(self, suffix: str):
         return self.alias + '_' + suffix
 
+    def physical_device_struct(self, struct: str):
+        if self.name_in_camel_case().endswith(struct):
+            struct = ""
+
+        return ("VkPhysicalDevice"
+                + self.name_in_camel_case()
+                + struct
+                + self.vendor())
+
     # the sType of the extension's struct
     # e.g. VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT
     # for VK_EXT_transform_feedback and struct="FEATURES"

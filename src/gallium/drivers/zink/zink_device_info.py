@@ -141,7 +141,6 @@ VERSIONS = [
 # This is basically generated_code.replace(key, value).
 REPLACEMENTS = {
     "ROBUSTNESS2": "ROBUSTNESS_2",
-    "PropertiesProperties": "Properties",
     "PROPERTIES_PROPERTIES": "PROPERTIES",
 }
 
@@ -210,10 +209,10 @@ struct zink_device_info {
 %for ext in extensions:
 <%helpers:guard ext="${ext}">
 %if ext.has_features:
-   VkPhysicalDevice${ext.name_in_camel_case()}Features${ext.vendor()} ${ext.field("feats")};
+   ${ext.physical_device_struct("Features")} ${ext.field("feats")};
 %endif
 %if ext.has_properties:
-   VkPhysicalDevice${ext.name_in_camel_case()}Properties${ext.vendor()} ${ext.field("props")};
+   ${ext.physical_device_struct("Properties")} ${ext.field("props")};
 %endif
 </%helpers:guard>
 %endfor
@@ -423,6 +422,17 @@ if __name__ == "__main__":
             error_count += 1
             print("The extension {} is {} extension - expected a device extension.".format(ext.name, entry.ext_type))
             continue
+
+        if ext.has_features:
+            if not (entry.features_struct and ext.physical_device_struct("Features") == entry.features_struct):
+                error_count += 1
+                print("The extension {} does not provide a features struct.".format(ext.name))
+
+        if ext.has_properties:
+            if not (entry.properties_struct and ext.physical_device_struct("Properties") == entry.properties_struct):
+                error_count += 1
+                print("The extension {} does not provide a properties struct.".format(ext.name))
+                print(entry.properties_struct, ext.physical_device_struct("Properties"))
 
         if entry.promoted_in:
             ext.core_since = Version((*entry.promoted_in, 0))
