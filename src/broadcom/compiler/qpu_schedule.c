@@ -83,6 +83,7 @@ struct schedule_state {
         struct schedule_node *last_vpm;
         struct schedule_node *last_unif;
         struct schedule_node *last_rtop;
+        struct schedule_node *last_unifa;
         enum direction dir;
         /* Estimated cycle when the current instruction would start. */
         uint32_t time;
@@ -226,6 +227,11 @@ process_waddr_deps(struct schedule_state *state, struct schedule_node *n,
                          * barriers to affect ALU operations.
                          */
                         add_write_dep(state, &state->last_tmu_write, n);
+                        break;
+
+                case V3D_QPU_WADDR_UNIFA:
+                        if (state->devinfo->ver >= 40)
+                                add_write_dep(state, &state->last_unifa, n);
                         break;
 
                 case V3D_QPU_WADDR_NOP:
@@ -399,6 +405,10 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
         /* inst->sig.ldunif or sideband uniform read */
         if (vir_has_uniform(qinst))
                 add_write_dep(state, &state->last_unif, n);
+
+        /* Both unifa and ldunifa must preserve ordering */
+        if (inst->sig.ldunifa || inst->sig.ldunifarf)
+                add_write_dep(state, &state->last_unifa, n);
 
         if (v3d_qpu_reads_flags(inst))
                 add_read_dep(state, state->last_sf, n);
