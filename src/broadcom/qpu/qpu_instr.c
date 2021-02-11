@@ -533,13 +533,20 @@ v3d_qpu_magic_waddr_is_sfu(enum v3d_qpu_waddr waddr)
 }
 
 bool
-v3d_qpu_magic_waddr_is_tmu(enum v3d_qpu_waddr waddr)
+v3d_qpu_magic_waddr_is_tmu(const struct v3d_device_info *devinfo,
+                           enum v3d_qpu_waddr waddr)
 {
-        /* XXX: WADDR_TMU changed to UNIFA on 4.x */
-        return ((waddr >= V3D_QPU_WADDR_TMU &&
-                 waddr <= V3D_QPU_WADDR_TMUAU) ||
-                (waddr >= V3D_QPU_WADDR_TMUC &&
-                 waddr <= V3D_QPU_WADDR_TMUHSLOD));
+        if (devinfo->ver >= 40) {
+                return ((waddr >= V3D_QPU_WADDR_TMUD &&
+                         waddr <= V3D_QPU_WADDR_TMUAU) ||
+                       (waddr >= V3D_QPU_WADDR_TMUC &&
+                        waddr <= V3D_QPU_WADDR_TMUHSLOD));
+        } else {
+                return ((waddr >= V3D_QPU_WADDR_TMU &&
+                         waddr <= V3D_QPU_WADDR_TMUAU) ||
+                       (waddr >= V3D_QPU_WADDR_TMUC &&
+                        waddr <= V3D_QPU_WADDR_TMUHSLOD));
+        }
 }
 
 bool
@@ -681,19 +688,21 @@ v3d_qpu_instr_is_sfu(const struct v3d_qpu_instr *inst)
 }
 
 bool
-v3d_qpu_writes_tmu(const struct v3d_qpu_instr *inst)
+v3d_qpu_writes_tmu(const struct v3d_device_info *devinfo,
+                   const struct v3d_qpu_instr *inst)
 {
         return (inst->type == V3D_QPU_INSTR_TYPE_ALU &&
                 ((inst->alu.add.magic_write &&
-                  v3d_qpu_magic_waddr_is_tmu(inst->alu.add.waddr)) ||
+                  v3d_qpu_magic_waddr_is_tmu(devinfo, inst->alu.add.waddr)) ||
                  (inst->alu.mul.magic_write &&
-                  v3d_qpu_magic_waddr_is_tmu(inst->alu.mul.waddr))));
+                  v3d_qpu_magic_waddr_is_tmu(devinfo, inst->alu.mul.waddr))));
 }
 
 bool
-v3d_qpu_writes_tmu_not_tmuc(const struct v3d_qpu_instr *inst)
+v3d_qpu_writes_tmu_not_tmuc(const struct v3d_device_info *devinfo,
+                            const struct v3d_qpu_instr *inst)
 {
-        return v3d_qpu_writes_tmu(inst) &&
+        return v3d_qpu_writes_tmu(devinfo, inst) &&
                (!inst->alu.add.magic_write ||
                 inst->alu.add.waddr != V3D_QPU_WADDR_TMUC) &&
                (!inst->alu.mul.magic_write ||

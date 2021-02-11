@@ -34,15 +34,17 @@
 #define PHYS_COUNT    64
 
 static inline bool
-qinst_writes_tmu(struct qinst *inst)
+qinst_writes_tmu(const struct v3d_device_info *devinfo,
+                 struct qinst *inst)
 {
         return (inst->dst.file == QFILE_MAGIC &&
-                v3d_qpu_magic_waddr_is_tmu(inst->dst.index)) ||
+                v3d_qpu_magic_waddr_is_tmu(devinfo, inst->dst.index)) ||
                 inst->qpu.sig.wrtmuc;
 }
 
 static bool
-is_end_of_tmu_sequence(struct qinst *inst, struct qblock *block)
+is_end_of_tmu_sequence(const struct v3d_device_info *devinfo,
+                       struct qinst *inst, struct qblock *block)
 {
         if (!inst->qpu.sig.ldtmu &&
             !(inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
@@ -58,7 +60,7 @@ is_end_of_tmu_sequence(struct qinst *inst, struct qblock *block)
                         return false;
                 }
 
-                if (qinst_writes_tmu(scan_inst))
+                if (qinst_writes_tmu(devinfo, scan_inst))
                         return true;
         }
 
@@ -149,10 +151,10 @@ v3d_choose_spill_node(struct v3d_compile *c, struct ra_graph *g,
                          * final LDTMU or TMUWT from that TMU setup.  We
                          * penalize spills during that time.
                          */
-                        if (is_end_of_tmu_sequence(inst, block))
+                        if (is_end_of_tmu_sequence(c->devinfo, inst, block))
                                 in_tmu_operation = false;
 
-                        if (qinst_writes_tmu(inst))
+                        if (qinst_writes_tmu(c->devinfo, inst))
                                 in_tmu_operation = true;
                 }
         }
@@ -268,7 +270,7 @@ v3d_spill_reg(struct v3d_compile *c, int spill_temp)
                          * move the fill up to not intrude in the middle of the TMU
                          * sequence.
                          */
-                        if (is_end_of_tmu_sequence(inst, block)) {
+                        if (is_end_of_tmu_sequence(c->devinfo, inst, block)) {
                                 if (postponed_spill) {
                                         v3d_emit_tmu_spill(c, postponed_spill,
                                                            inst, spill_offset);
@@ -278,8 +280,10 @@ v3d_spill_reg(struct v3d_compile *c, int spill_temp)
                                 postponed_spill = NULL;
                         }
 
-                        if (!start_of_tmu_sequence && qinst_writes_tmu(inst))
+                        if (!start_of_tmu_sequence &&
+                            qinst_writes_tmu(c->devinfo, inst)) {
                                 start_of_tmu_sequence = inst;
+                        }
 
                         /* fills */
                         for (int i = 0; i < vir_get_nsrc(inst); i++) {

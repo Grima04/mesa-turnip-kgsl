@@ -442,7 +442,8 @@ v3d_qpu_instr_unpack(const struct v3d_device_info *devinfo,
                      struct v3d_qpu_instr *instr);
 
 bool v3d_qpu_magic_waddr_is_sfu(enum v3d_qpu_waddr waddr) ATTRIBUTE_CONST;
-bool v3d_qpu_magic_waddr_is_tmu(enum v3d_qpu_waddr waddr) ATTRIBUTE_CONST;
+bool v3d_qpu_magic_waddr_is_tmu(const struct v3d_device_info *devinfo,
+                                enum v3d_qpu_waddr waddr) ATTRIBUTE_CONST;
 bool v3d_qpu_magic_waddr_is_tlb(enum v3d_qpu_waddr waddr) ATTRIBUTE_CONST;
 bool v3d_qpu_magic_waddr_is_vpm(enum v3d_qpu_waddr waddr) ATTRIBUTE_CONST;
 bool v3d_qpu_magic_waddr_is_tsy(enum v3d_qpu_waddr waddr) ATTRIBUTE_CONST;
@@ -450,8 +451,10 @@ bool v3d_qpu_magic_waddr_loads_unif(enum v3d_qpu_waddr waddr) ATTRIBUTE_CONST;
 bool v3d_qpu_uses_tlb(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_instr_is_sfu(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_uses_sfu(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
-bool v3d_qpu_writes_tmu(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
-bool v3d_qpu_writes_tmu_not_tmuc(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
+bool v3d_qpu_writes_tmu(const struct v3d_device_info *devinfo,
+                        const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
+bool v3d_qpu_writes_tmu_not_tmuc(const struct v3d_device_info *devinfo,
+                                 const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_writes_r3(const struct v3d_device_info *devinfo,
                        const struct v3d_qpu_instr *instr) ATTRIBUTE_CONST;
 bool v3d_qpu_writes_r4(const struct v3d_device_info *devinfo,

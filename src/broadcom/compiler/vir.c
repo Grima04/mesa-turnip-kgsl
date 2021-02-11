@@ -130,10 +130,10 @@ vir_is_mul(struct qinst *inst)
 }
 
 bool
-vir_is_tex(struct qinst *inst)
+vir_is_tex(const struct v3d_device_info *devinfo, struct qinst *inst)
 {
         if (inst->dst.file == QFILE_MAGIC)
-                return v3d_qpu_magic_waddr_is_tmu(inst->dst.index);
+                return v3d_qpu_magic_waddr_is_tmu(devinfo, inst->dst.index);
 
         if (inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
             inst->qpu.alu.add.op == V3D_QPU_A_TMUWT) {

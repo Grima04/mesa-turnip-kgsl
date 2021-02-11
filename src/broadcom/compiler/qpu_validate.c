@@ -145,8 +145,10 @@ qpu_validate_inst(struct v3d_qpu_validate_state *state, struct qinst *qinst)
 
         if (inst->alu.add.op != V3D_QPU_A_NOP) {
                 if (inst->alu.add.magic_write) {
-                        if (v3d_qpu_magic_waddr_is_tmu(inst->alu.add.waddr))
+                        if (v3d_qpu_magic_waddr_is_tmu(state->c->devinfo,
+                                                       inst->alu.add.waddr)) {
                                 tmu_writes++;
+                        }
                         if (v3d_qpu_magic_waddr_is_sfu(inst->alu.add.waddr))
                                 sfu_writes++;
                         if (v3d_qpu_magic_waddr_is_vpm(inst->alu.add.waddr))
@@ -160,8 +162,10 @@ qpu_validate_inst(struct v3d_qpu_validate_state *state, struct qinst *qinst)
 
         if (inst->alu.mul.op != V3D_QPU_M_NOP) {
                 if (inst->alu.mul.magic_write) {
-                        if (v3d_qpu_magic_waddr_is_tmu(inst->alu.mul.waddr))
+                        if (v3d_qpu_magic_waddr_is_tmu(state->c->devinfo,
+                                                       inst->alu.mul.waddr)) {
                                 tmu_writes++;
+                        }
                         if (v3d_qpu_magic_waddr_is_sfu(inst->alu.mul.waddr))
                                 sfu_writes++;
                         if (v3d_qpu_magic_waddr_is_vpm(inst->alu.mul.waddr))

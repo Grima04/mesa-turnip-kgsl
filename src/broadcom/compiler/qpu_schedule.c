@@ -174,7 +174,7 @@ process_waddr_deps(struct schedule_state *state, struct schedule_node *n,
 {
         if (!magic) {
                 add_write_dep(state, &state->last_rf[waddr], n);
-        } else if (v3d_qpu_magic_waddr_is_tmu(waddr)) {
+        } else if (v3d_qpu_magic_waddr_is_tmu(state->devinfo, waddr)) {
                 /* XXX perf: For V3D 4.x, we could reorder TMU writes other
                  * than the TMUS/TMUD/TMUA to improve scheduling flexibility.
                  */
@@ -568,7 +568,8 @@ mux_read_stalls(struct choose_scoreboard *scoreboard,
 #define MAX_SCHEDULE_PRIORITY 16
 
 static int
-get_instruction_priority(const struct v3d_qpu_instr *inst)
+get_instruction_priority(const struct v3d_device_info *devinfo,
+                         const struct v3d_qpu_instr *inst)
 {
         uint32_t baseline_score;
         uint32_t next_score = 0;
@@ -590,7 +591,7 @@ get_instruction_priority(const struct v3d_qpu_instr *inst)
         next_score++;
 
         /* Schedule texture read setup early to hide their latency better. */
-        if (v3d_qpu_writes_tmu(inst))
+        if (v3d_qpu_writes_tmu(devinfo, inst))
                 return next_score;
         next_score++;
 
@@ -601,9 +602,10 @@ get_instruction_priority(const struct v3d_qpu_instr *inst)
 }
 
 static bool
-qpu_magic_waddr_is_periph(enum v3d_qpu_waddr waddr)
+qpu_magic_waddr_is_periph(const struct v3d_device_info *devinfo,
+                          enum v3d_qpu_waddr waddr)
 {
-        return (v3d_qpu_magic_waddr_is_tmu(waddr) ||
+        return (v3d_qpu_magic_waddr_is_tmu(devinfo, waddr) ||
                 v3d_qpu_magic_waddr_is_sfu(waddr) ||
                 v3d_qpu_magic_waddr_is_tlb(waddr) ||
                 v3d_qpu_magic_waddr_is_vpm(waddr) ||
@@ -611,7 +613,8 @@ qpu_magic_waddr_is_periph(enum v3d_qpu_waddr waddr)
 }
 
 static bool
-qpu_accesses_peripheral(const struct v3d_qpu_instr *inst)
+qpu_accesses_peripheral(const struct v3d_device_info *devinfo,
+                        const struct v3d_qpu_instr *inst)
 {
         if (v3d_qpu_uses_vpm(inst))
                 return true;
@@ -621,7 +624,7 @@ qpu_accesses_peripheral(const struct v3d_qpu_instr *inst)
         if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
                 if (inst->alu.add.op != V3D_QPU_A_NOP &&
                     inst->alu.add.magic_write &&
-                    qpu_magic_waddr_is_periph(inst->alu.add.waddr)) {
+                    qpu_magic_waddr_is_periph(devinfo, inst->alu.add.waddr)) {
                         return true;
                 }
 
@@ -630,7 +633,7 @@ qpu_accesses_peripheral(const struct v3d_qpu_instr *inst)
 
                 if (inst->alu.mul.op != V3D_QPU_M_NOP &&
                     inst->alu.mul.magic_write &&
-                    qpu_magic_waddr_is_periph(inst->alu.mul.waddr)) {
+                    qpu_magic_waddr_is_periph(devinfo, inst->alu.mul.waddr)) {
                         return true;
                 }
         }
@@ -647,8 +650,8 @@ qpu_compatible_peripheral_access(const struct v3d_device_info *devinfo,
                                  const struct v3d_qpu_instr *a,
                                  const struct v3d_qpu_instr *b)
 {
-        const bool a_uses_peripheral = qpu_accesses_peripheral(a);
-        const bool b_uses_peripheral = qpu_accesses_peripheral(b);
+        const bool a_uses_peripheral = qpu_accesses_peripheral(devinfo, a);
+        const bool b_uses_peripheral = qpu_accesses_peripheral(devinfo, b);
 
         /* We can always do one peripheral access per instruction. */
         if (!a_uses_peripheral || !b_uses_peripheral)
@@ -665,8 +668,8 @@ qpu_compatible_peripheral_access(const struct v3d_device_info *devinfo,
                 return true;
         }
 
-        if ((a->sig.wrtmuc && v3d_qpu_writes_tmu_not_tmuc(b)) ||
-            (b->sig.wrtmuc && v3d_qpu_writes_tmu_not_tmuc(a))) {
+        if ((a->sig.wrtmuc && v3d_qpu_writes_tmu_not_tmuc(devinfo, b)) ||
+            (b->sig.wrtmuc && v3d_qpu_writes_tmu_not_tmuc(devinfo, a))) {
                 return true;
         }
 
@@ -849,7 +852,7 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                         }
                 }
 
-                int prio = get_instruction_priority(inst);
+                int prio = get_instruction_priority(devinfo, inst);
 
                 if (mux_read_stalls(scoreboard, inst)) {
                         /* Don't merge an instruction that stalls */
@@ -910,7 +913,8 @@ update_scoreboard_for_sfu_stall_waddr(struct choose_scoreboard *scoreboard,
 
 static void
 update_scoreboard_for_chosen(struct choose_scoreboard *scoreboard,
-                             const struct v3d_qpu_instr *inst)
+                             const struct v3d_qpu_instr *inst,
+                             const struct v3d_device_info *devinfo)
 {
         if (inst->type == V3D_QPU_INSTR_TYPE_BRANCH)
                 return;
@@ -920,7 +924,8 @@ update_scoreboard_for_chosen(struct choose_scoreboard *scoreboard,
         if (inst->alu.add.op != V3D_QPU_A_NOP)  {
                 if (inst->alu.add.magic_write) {
                         update_scoreboard_for_magic_waddr(scoreboard,
-                                                          inst->alu.add.waddr);
+                                                          inst->alu.add.waddr,
+                                                          devinfo);
                 } else {
                         update_scoreboard_for_sfu_stall_waddr(scoreboard,
                                                               inst);
@@ -930,7 +935,8 @@ update_scoreboard_for_chosen(struct choose_scoreboard *scoreboard,
         if (inst->alu.mul.op != V3D_QPU_M_NOP) {
                 if (inst->alu.mul.magic_write) {
                         update_scoreboard_for_magic_waddr(scoreboard,
-                                                          inst->alu.mul.waddr);
+                                                          inst->alu.mul.waddr,
+                                                          devinfo);
                 }
         }
 
@@ -964,7 +970,8 @@ dump_state(const struct v3d_device_info *devinfo, struct dag *dag)
         }
 }
 
-static uint32_t magic_waddr_latency(enum v3d_qpu_waddr waddr,
+static uint32_t magic_waddr_latency(const struct v3d_device_info *devinfo,
+                                    enum v3d_qpu_waddr waddr,
                                     const struct v3d_qpu_instr *after)
 {
         /* Apply some huge latency between texture fetch requests and getting
@@ -990,8 +997,10 @@ static uint32_t magic_waddr_latency(enum v3d_qpu_waddr waddr,
          *
          * because we associate the first load_tmu0 with the *second* tmu0_s.
          */
-        if (v3d_qpu_magic_waddr_is_tmu(waddr) && v3d_qpu_waits_on_tmu(after))
+        if (v3d_qpu_magic_waddr_is_tmu(devinfo, waddr) &&
+            v3d_qpu_waits_on_tmu(after)) {
                 return 100;
+        }
 
         /* Assume that anything depending on us is consuming the SFU result. */
         if (v3d_qpu_magic_waddr_is_sfu(waddr))
@@ -1001,7 +1010,8 @@ static uint32_t magic_waddr_latency(enum v3d_qpu_waddr waddr,
 }
 
 static uint32_t
-instruction_latency(struct schedule_node *before, struct schedule_node *after)
+instruction_latency(const struct v3d_device_info *devinfo,
+                    struct schedule_node *before, struct schedule_node *after)
 {
         const struct v3d_qpu_instr *before_inst = &before->inst->qpu;
         const struct v3d_qpu_instr *after_inst = &after->inst->qpu;
@@ -1013,13 +1023,15 @@ instruction_latency(struct schedule_node *before, struct schedule_node *after)
 
         if (before_inst->alu.add.magic_write) {
                 latency = MAX2(latency,
-                               magic_waddr_latency(before_inst->alu.add.waddr,
+                               magic_waddr_latency(devinfo,
+                                                   before_inst->alu.add.waddr,
                                                    after_inst));
         }
 
         if (before_inst->alu.mul.magic_write) {
                 latency = MAX2(latency,
-                               magic_waddr_latency(before_inst->alu.mul.waddr,
+                               magic_waddr_latency(devinfo,
+                                                   before_inst->alu.mul.waddr,
                                                    after_inst));
         }
 
@@ -1034,6 +1046,7 @@ static void
 compute_delay(struct dag_node *node, void *state)
 {
         struct schedule_node *n = (struct schedule_node *)node;
+        struct v3d_compile *c = (struct v3d_compile *) state;
 
         n->delay = 1;
 
@@ -1042,7 +1055,8 @@ compute_delay(struct dag_node *node, void *state)
                         (struct schedule_node *)edge->child;
 
                 n->delay = MAX2(n->delay, (child->delay +
-                                           instruction_latency(n, child)));
+                                           instruction_latency(c->devinfo, n,
+                                                               child)));
         }
 }
 
@@ -1061,7 +1075,8 @@ pre_remove_head(struct dag *dag, struct schedule_node *n)
 }
 
 static void
-mark_instruction_scheduled(struct dag *dag,
+mark_instruction_scheduled(const struct v3d_device_info *devinfo,
+                           struct dag *dag,
                            uint32_t time,
                            struct schedule_node *node)
 {
@@ -1075,7 +1090,7 @@ mark_instruction_scheduled(struct dag *dag,
                 if (!child)
                         continue;
 
-                uint32_t latency = instruction_latency(node, child);
+                uint32_t latency = instruction_latency(devinfo, node, child);
 
                 child->unblocked_time = MAX2(child->unblocked_time,
                                              time + latency);
@@ -1091,7 +1106,7 @@ insert_scheduled_instruction(struct v3d_compile *c,
 {
         list_addtail(&inst->link, &block->instructions);
 
-        update_scoreboard_for_chosen(scoreboard, &inst->qpu);
+        update_scoreboard_for_chosen(scoreboard, &inst->qpu, c->devinfo);
         c->qpu_inst_count++;
         scoreboard->tick++;
 }
@@ -1390,10 +1405,10 @@ schedule_instructions(struct v3d_compile *c,
                  * be scheduled.  Update the children's unblocked time for this
                  * DAG edge as we do so.
                  */
-                mark_instruction_scheduled(scoreboard->dag, time, chosen);
+                mark_instruction_scheduled(devinfo, scoreboard->dag, time, chosen);
                 list_for_each_entry(struct schedule_node, merge, &merged_list,
                                     link) {
-                        mark_instruction_scheduled(scoreboard->dag, time, merge);
+                        mark_instruction_scheduled(devinfo, scoreboard->dag, time, merge);
 
                         /* The merged VIR instruction doesn't get re-added to the
                          * block, so free it now.
@@ -1456,7 +1471,7 @@ qpu_schedule_instructions_block(struct v3d_compile *c,
         calculate_forward_deps(c, scoreboard->dag, &setup_list);
         calculate_reverse_deps(c, scoreboard->dag, &setup_list);
 
-        dag_traverse_bottom_up(scoreboard->dag, compute_delay, NULL);
+        dag_traverse_bottom_up(scoreboard->dag, compute_delay, c);
 
         uint32_t cycles = schedule_instructions(c, scoreboard, block,
                                                 orig_uniform_contents,
