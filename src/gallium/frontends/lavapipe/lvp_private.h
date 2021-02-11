@@ -723,7 +723,7 @@ struct lvp_cmd_set_stencil_vals {
 
 struct lvp_cmd_bind_descriptor_sets {
    VkPipelineBindPoint bind_point;
-   struct lvp_pipeline_layout *layout;
+   struct lvp_descriptor_set_layout *set_layout[MAX_SETS];
    uint32_t first;
    uint32_t count;
    struct lvp_descriptor_set **sets;

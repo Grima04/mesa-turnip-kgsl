@@ -1043,14 +1043,14 @@ static void handle_compute_descriptor_sets(struct lvp_cmd_buffer_entry *cmd,
    int i;
 
    for (i = 0; i < bds->first; i++) {
-      increment_dyn_info(dyn_info, bds->layout->set[i].layout, false);
+      increment_dyn_info(dyn_info, bds->set_layout[i], false);
    }
    for (i = 0; i < bds->count; i++) {
       const struct lvp_descriptor_set *set = bds->sets[i];
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT)
          handle_set_stage(state, dyn_info, set, MESA_SHADER_COMPUTE, PIPE_SHADER_COMPUTE);
-      increment_dyn_info(dyn_info, bds->layout->set[bds->first + i].layout, true);
+      increment_dyn_info(dyn_info, bds->set_layout[bds->first + i], true);
    }
 }
 
@@ -1072,7 +1072,7 @@ static void handle_descriptor_sets(struct lvp_cmd_buffer_entry *cmd,
    }
 
    for (i = 0; i < bds->first; i++) {
-      increment_dyn_info(&dyn_info, bds->layout->set[i].layout, false);
+      increment_dyn_info(&dyn_info, bds->set_layout[i], false);
    }
 
    for (i = 0; i < bds->count; i++) {
@@ -1092,7 +1092,7 @@ static void handle_descriptor_sets(struct lvp_cmd_buffer_entry *cmd,
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_TESS_EVAL, PIPE_SHADER_TESS_EVAL);
-      increment_dyn_info(&dyn_info, bds->layout->set[bds->first + i].layout, true);
+      increment_dyn_info(&dyn_info, bds->set_layout[bds->first + i], true);
    }
 }
 
