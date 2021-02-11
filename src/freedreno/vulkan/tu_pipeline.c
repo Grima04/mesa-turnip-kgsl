@@ -2683,16 +2683,14 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
       tu_cs_emit_pkt4(&cs, REG_A6XX_RB_DEPTH_CNTL, 1);
       tu_cs_emit(&cs, rb_depth_cntl);
-   } else {
-      pipeline->rb_depth_cntl = rb_depth_cntl;
    }
+   pipeline->rb_depth_cntl = rb_depth_cntl;
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_STENCIL_CNTL, 2)) {
       tu_cs_emit_pkt4(&cs, REG_A6XX_RB_STENCIL_CONTROL, 1);
       tu_cs_emit(&cs, rb_stencil_cntl);
-   } else {
-      pipeline->rb_stencil_cntl = rb_stencil_cntl;
    }
+   pipeline->rb_stencil_cntl = rb_stencil_cntl;
 
    /* the remaining draw states arent used if there is no d/s, leave them empty */
    if (builder->depth_attachment_format == VK_FORMAT_UNDEFINED)
