@@ -1364,9 +1364,10 @@ brw_compile_tes(const struct brw_compiler *compiler,
 
    if (INTEL_DEBUG & DEBUG_TES) {
       fprintf(stderr, "TES Input ");
-      brw_print_vue_map(stderr, input_vue_map);
+      brw_print_vue_map(stderr, input_vue_map, MESA_SHADER_TESS_EVAL);
       fprintf(stderr, "TES Output ");
-      brw_print_vue_map(stderr, &prog_data->base.vue_map);
+      brw_print_vue_map(stderr, &prog_data->base.vue_map,
+                        MESA_SHADER_TESS_EVAL);
    }
 
    if (is_scalar) {

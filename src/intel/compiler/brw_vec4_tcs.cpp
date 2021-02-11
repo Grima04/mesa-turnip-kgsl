@@ -450,9 +450,9 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
    if (INTEL_DEBUG & DEBUG_TCS) {
       fprintf(stderr, "TCS Input ");
-      brw_print_vue_map(stderr, &input_vue_map);
+      brw_print_vue_map(stderr, &input_vue_map, MESA_SHADER_TESS_CTRL);
       fprintf(stderr, "TCS Output ");
-      brw_print_vue_map(stderr, &vue_prog_data->vue_map);
+      brw_print_vue_map(stderr, &vue_prog_data->vue_map, MESA_SHADER_TESS_CTRL);
    }
 
    if (is_scalar) {

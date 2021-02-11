@@ -812,9 +812,9 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
     */
    if (INTEL_DEBUG & DEBUG_GS) {
       fprintf(stderr, "GS Input ");
-      brw_print_vue_map(stderr, &c.input_vue_map);
+      brw_print_vue_map(stderr, &c.input_vue_map, MESA_SHADER_GEOMETRY);
       fprintf(stderr, "GS Output ");
-      brw_print_vue_map(stderr, &prog_data->base.vue_map);
+      brw_print_vue_map(stderr, &prog_data->base.vue_map, MESA_SHADER_GEOMETRY);
    }
 
    if (is_scalar) {

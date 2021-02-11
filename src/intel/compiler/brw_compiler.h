@@ -1132,7 +1132,8 @@ struct brw_vue_map {
    int num_per_vertex_slots;
 };
 
-void brw_print_vue_map(FILE *fp, const struct brw_vue_map *vue_map);
+void brw_print_vue_map(FILE *fp, const struct brw_vue_map *vue_map,
+                       gl_shader_stage stage);
 
 /**
  * Convert a VUE slot number into a byte offset within the VUE.

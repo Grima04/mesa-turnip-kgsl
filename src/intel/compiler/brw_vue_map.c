@@ -278,12 +278,12 @@ brw_compute_tess_vue_map(struct brw_vue_map *vue_map,
 }
 
 static const char *
-varying_name(brw_varying_slot slot)
+varying_name(brw_varying_slot slot, gl_shader_stage stage)
 {
    assume(slot < BRW_VARYING_SLOT_COUNT);
 
    if (slot < VARYING_SLOT_MAX)
-      return gl_varying_slot_name((gl_varying_slot)slot);
+      return gl_varying_slot_name_for_stage((gl_varying_slot)slot, stage);
 
    static const char *brw_names[] = {
       [BRW_VARYING_SLOT_NDC - VARYING_SLOT_MAX] = "BRW_VARYING_SLOT_NDC",
@@ -295,7 +295,8 @@ varying_name(brw_varying_slot slot)
 }
 
 void
-brw_print_vue_map(FILE *fp, const struct brw_vue_map *vue_map)
+brw_print_vue_map(FILE *fp, const struct brw_vue_map *vue_map,
+                  gl_shader_stage stage)
 {
    if (vue_map->num_per_vertex_slots > 0 || vue_map->num_per_patch_slots > 0) {
       fprintf(fp, "PUE map (%d slots, %d/patch, %d/vertex, %s)\n",
@@ -309,7 +310,7 @@ brw_print_vue_map(FILE *fp, const struct brw_vue_map *vue_map)
                     vue_map->slot_to_varying[i] - VARYING_SLOT_PATCH0);
          } else {
             fprintf(fp, "  [%d] %s\n", i,
-                    varying_name(vue_map->slot_to_varying[i]));
+                    varying_name(vue_map->slot_to_varying[i], stage));
          }
       }
    } else {
@@ -317,7 +318,7 @@ brw_print_vue_map(FILE *fp, const struct brw_vue_map *vue_map)
               vue_map->num_slots, vue_map->separate ? "SSO" : "non-SSO");
       for (int i = 0; i < vue_map->num_slots; i++) {
          fprintf(fp, "  [%d] %s\n", i,
-                 varying_name(vue_map->slot_to_varying[i]));
+                 varying_name(vue_map->slot_to_varying[i], stage));
       }
    }
    fprintf(fp, "\n");

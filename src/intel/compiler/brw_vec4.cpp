@@ -2935,7 +2935,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
 
    if (INTEL_DEBUG & DEBUG_VS) {
       fprintf(stderr, "VS Output ");
-      brw_print_vue_map(stderr, &prog_data->base.vue_map);
+      brw_print_vue_map(stderr, &prog_data->base.vue_map, MESA_SHADER_VERTEX);
    }
 
    if (is_scalar) {
