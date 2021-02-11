@@ -214,8 +214,10 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
       return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
    if (profile == VAProfileNone) {
-      if (entrypoint != VAEntrypointVideoProc)
+      if (entrypoint != VAEntrypointVideoProc) {
+         FREE(config);
          return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
+      }
 
       config->entrypoint = PIPE_VIDEO_ENTRYPOINT_UNKNOWN;
       config->profile = PIPE_VIDEO_PROFILE_UNKNOWN;

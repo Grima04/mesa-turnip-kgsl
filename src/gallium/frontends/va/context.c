@@ -251,8 +251,10 @@ vlVaCreateContext(VADriverContextP ctx, VAConfigID config_id, int picture_width,
                         config->profile, config->entrypoint,
                         PIPE_VIDEO_CAP_MAX_HEIGHT);
 
-         if (picture_width > max_supported_width || picture_height > max_supported_height)
+         if (picture_width > max_supported_width || picture_height > max_supported_height) {
+            FREE(context);
             return VA_STATUS_ERROR_RESOLUTION_NOT_SUPPORTED;
+         }
       }
       context->templat.profile = config->profile;
       context->templat.entrypoint = config->entrypoint;
