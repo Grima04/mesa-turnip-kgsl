@@ -2565,6 +2565,42 @@ ntq_emit_load_interpolated_input(struct v3d_compile *c,
 }
 
 static void
+ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
+{
+        bool dynamic_src = !nir_src_is_const(instr->src[1]);
+        uint32_t const_offset =
+                dynamic_src ? 0 : nir_src_as_uint(instr->src[1]);
+
+        /* On OpenGL QUNIFORM_UBO_ADDR takes a UBO index
+         * shifted up by 1 (0 is gallium's constant buffer 0).
+         */
+        uint32_t index = nir_src_as_uint(instr->src[0]);
+        if (c->key->environment == V3D_ENVIRONMENT_OPENGL)
+                index++;
+
+        struct qreg base_offset =
+                vir_uniform(c, QUNIFORM_UBO_ADDR,
+                            v3d_unit_data_create(index, const_offset));
+        const_offset = 0;
+
+        struct qreg unifa = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_UNIFA);
+        if (!dynamic_src) {
+                vir_MOV_dest(c, unifa, base_offset);
+        } else {
+                vir_ADD_dest(c, unifa, base_offset,
+                             ntq_get_src(c, instr->src[1], 0));
+        }
+
+        for (uint32_t i = 0; i < nir_intrinsic_dest_components(instr); i++) {
+                struct qinst *ldunifa =
+                        vir_add_inst(V3D_QPU_A_NOP, c->undef, c->undef, c->undef);
+                ldunifa->qpu.sig.ldunifa = true;
+                struct qreg data = vir_emit_def(c, ldunifa);
+                ntq_store_dest(c, &instr->dest, i, vir_MOV(c, data));
+        }
+}
+
+static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         switch (instr->intrinsic) {
@@ -2573,7 +2609,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ubo:
-                ntq_emit_tmu_general(c, instr, false);
+                if (!nir_src_is_divergent(instr->src[1]))
+                        ntq_emit_load_ubo_unifa(c, instr);
+                else
+                        ntq_emit_tmu_general(c, instr, false);
                 break;
 
         case nir_intrinsic_ssbo_atomic_add:
