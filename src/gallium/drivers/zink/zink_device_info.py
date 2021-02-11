@@ -26,7 +26,7 @@
 from mako.template import Template
 from mako.lookup import TemplateLookup
 from os import path
-from zink_extensions import Extension,Version
+from zink_extensions import Extension,ExtensionRegistry,Version
 import sys
 
 # constructor: 
@@ -390,12 +390,16 @@ if __name__ == "__main__":
     try:
         header_path = sys.argv[1]
         impl_path = sys.argv[2]
+        vkxml_path = sys.argv[3]
 
         header_path = path.abspath(header_path)
         impl_path = path.abspath(impl_path)
+        vkxml_path = path.abspath(vkxml_path)
     except:
-        print("usage: %s <path to .h> <path to .c>" % sys.argv[0])
+        print("usage: %s <path to .h> <path to .c> <path to vk.xml>" % sys.argv[0])
         exit(1)
+
+    registry = ExtensionRegistry(vkxml_path)
 
     extensions = EXTENSIONS
     versions = VERSIONS

@@ -46,7 +46,7 @@ zink_device_info = custom_target(
   input : ['zink_device_info.py'],
   output : ['zink_device_info.h', 'zink_device_info.c'],
   command : [
-    prog_python, '@INPUT@', '@OUTPUT@'
+    prog_python, '@INPUT@', '@OUTPUT@', join_paths(meson.source_root(), 'src/vulkan/registry/vk.xml')
   ]
 )
 
