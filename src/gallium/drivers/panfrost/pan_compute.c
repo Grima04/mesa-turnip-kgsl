@@ -80,11 +80,7 @@ static void
 panfrost_bind_compute_state(struct pipe_context *pipe, void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-
-        struct panfrost_shader_variants *variants =
-                (struct panfrost_shader_variants *) cso;
-
-        ctx->shader[PIPE_SHADER_COMPUTE] = variants;
+        ctx->shader[PIPE_SHADER_COMPUTE] = cso;
 }
 
 static void
