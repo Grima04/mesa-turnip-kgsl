@@ -749,6 +749,30 @@ v3d_qpu_writes_vpm(const struct v3d_qpu_instr *inst)
         return false;
 }
 
+bool
+v3d_qpu_writes_unifa(const struct v3d_device_info *devinfo,
+                     const struct v3d_qpu_instr *inst)
+{
+        if (devinfo->ver < 40)
+                return false;
+
+        if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
+                if (inst->alu.add.op != V3D_QPU_A_NOP &&
+                    inst->alu.add.magic_write &&
+                    inst->alu.add.waddr == V3D_QPU_WADDR_UNIFA) {
+                        return true;
+                }
+
+                if (inst->alu.mul.op != V3D_QPU_M_NOP &&
+                    inst->alu.mul.magic_write &&
+                    inst->alu.mul.waddr == V3D_QPU_WADDR_UNIFA) {
+                        return true;
+                }
+        }
+
+        return false;
+}
+
 static bool
 v3d_qpu_waits_vpm(const struct v3d_qpu_instr *inst)
 {

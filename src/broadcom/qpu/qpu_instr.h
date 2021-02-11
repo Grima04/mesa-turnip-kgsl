@@ -470,6 +470,8 @@ bool v3d_qpu_writes_vpm(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_reads_or_writes_vpm(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_reads_flags(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_writes_flags(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
+bool v3d_qpu_writes_unifa(const struct v3d_device_info *devinfo,
+                          const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_sig_writes_address(const struct v3d_device_info *devinfo,
                                 const struct v3d_qpu_sig *sig) ATTRIBUTE_CONST;
 bool v3d_qpu_unpacks_f32(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
