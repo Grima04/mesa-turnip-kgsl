@@ -13,5 +13,3 @@ dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fa
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_y,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_y,Fail
-dEQP-GLES3.functional.shaders.matrix.inverse.dynamic.lowp_mat2_float_vertex,Fail
-dEQP-GLES3.functional.shaders.matrix.inverse.dynamic.mediump_mat2_float_vertex,Fail

@@ -85,15 +85,15 @@ traces:
   - path: glmark2/conditionals-fragment-steps=0:vertex-steps=0.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: 3016ecf514ac5b699a9e052dada6b053
+        checksum: a2f0af93cfa71e811322a0734c93d6a8
   - path: glmark2/conditionals-fragment-steps=0:vertex-steps=5.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: 55de9bfd25583a520cd8fae99e1bd7d2
+        checksum: 724ecf71b24b86ac6834c2f8ab708f80
   - path: glmark2/conditionals-fragment-steps=5:vertex-steps=0.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: 9a5a0778eaec1e5e11178b0c83e6dfc3
+        checksum: 308a92d7782a2180836db4b82591c34f
   - path: glmark2/desktop-effect=shadow:windows=4.rdc
     expectations:
       - device: gl-panfrost-t860
@@ -109,11 +109,11 @@ traces:
   - path: glmark2/function-fragment-complexity=low:fragment-steps=5.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: afac822bbe1a16f0d0535f5917c97599
+        checksum: 312d20f8a464447791d0cb95f1a047df
   - path: glmark2/function-fragment-complexity=medium:fragment-steps=5.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: e6b3744f9a4a4a2abc4b0d150c0d3f2e
+        checksum: 813b65cbdf62014d7e17d35e8f3dc141
   - path: glmark2/glmark2-build-use-vbo-false.rdc
     expectations:
       - device: gl-panfrost-t860
@@ -129,15 +129,15 @@ traces:
   - path: glmark2/loop-fragment-loop=false:fragment-steps=5:vertex-steps=5.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: 93153c43101b732f54ef60bef3b97ab3
+        checksum: dcf9598ddb4dfff90aacd883a2dbbbc8
   - path: glmark2/loop-fragment-steps=5:fragment-uniform=false:vertex-steps=5.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: 41e3a73f8841e84160f565c595465b96
+        checksum: c1c45f43522954ef599cdadb950997b7
   - path: glmark2/loop-fragment-steps=5:fragment-uniform=true:vertex-steps=5.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: a3ea242009b4934b4edc27e1729b1dfc
+        checksum: 32cc6275627fd068dcf1c05a4000cf1d
   - path: glmark2/pulsar-light=false:quads=5:texture=false.rdc
     expectations:
       - device: gl-panfrost-t860
@@ -169,7 +169,7 @@ traces:
   - path: glmark2/terrain.rdc
     expectations:
       - device: gl-panfrost-t860
-        checksum: 3ad257e1db7ad3e5dfd88fb1091ddeae
+        checksum: 2264a06895a84154bd2f54abffcc48d8
   - path: glmark2/texture-texture-filter=linear.rdc
     expectations:
       - device: gl-panfrost-t860

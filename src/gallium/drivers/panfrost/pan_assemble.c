@@ -48,11 +48,7 @@ pan_prepare_midgard_props(struct panfrost_shader_state *state,
         state->properties.uniform_buffer_count = state->ubo_count;
         state->properties.midgard.uniform_count = program->uniform_cutoff;
         state->properties.midgard.shader_has_side_effects = state->writes_global;
-
-        /* TODO: Select the appropriate mode. Suppresing inf/nan works around
-         * some bugs in gles2 apps (eg glmark2's terrain scene) but isn't
-         * conformant on gles3 */
-        state->properties.midgard.fp_mode = MALI_FP_MODE_GL_INF_NAN_SUPPRESSED;
+        state->properties.midgard.fp_mode = MALI_FP_MODE_GL_INF_NAN_ALLOWED;
 
         /* For fragment shaders, work register count, early-z, reads at draw-time */
 
