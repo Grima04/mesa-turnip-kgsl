@@ -2598,6 +2598,9 @@ void radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 				     const struct radv_barrier_data *barrier);
+void radv_describe_pipeline_bind(struct radv_cmd_buffer *cmd_buffer,
+				 VkPipelineBindPoint pipelineBindPoint,
+				 struct radv_pipeline *pipeline);
 
 struct radeon_winsys_sem;
 

@@ -449,4 +449,30 @@ enum rgp_sqtt_marker_user_event_type
    UserEventObjectName,
 };
 
+/**
+ * "Pipeline bind" RGP SQTT instrumentation marker (Table 12)
+ */
+struct rgp_sqtt_marker_pipeline_bind {
+   union {
+      struct {
+         uint32_t identifier : 4;
+         uint32_t ext_dwords : 3;
+         uint32_t bind_point : 1;
+         uint32_t cb_id : 20;
+         uint32_t reserved : 4;
+      };
+      uint32_t dword01;
+   };
+   union {
+      uint32_t api_pso_hash[2];
+      struct {
+         uint32_t dword02;
+         uint32_t dword03;
+      };
+   };
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_pipeline_bind) == 12,
+              "rgp_sqtt_marker_pipeline_bind doesn't match RGP spec");
+
 #endif

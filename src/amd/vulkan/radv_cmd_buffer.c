@@ -4478,6 +4478,8 @@ void radv_CmdBindPipeline(
 		assert(!"invalid bind point");
 		break;
 	}
+
+	radv_describe_pipeline_bind(cmd_buffer, pipelineBindPoint, pipeline);
 }
 
 void radv_CmdSetViewport(

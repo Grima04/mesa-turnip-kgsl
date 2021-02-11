@@ -290,6 +290,27 @@ radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 	cmd_buffer->state.num_layout_transitions++;
 }
 
+void
+radv_describe_pipeline_bind(struct radv_cmd_buffer *cmd_buffer,
+			    VkPipelineBindPoint pipelineBindPoint,
+			    struct radv_pipeline *pipeline)
+{
+	struct rgp_sqtt_marker_pipeline_bind marker = {0};
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+	uint64_t pipeline_idx = (uintptr_t)pipeline;
+
+	if (likely(!cmd_buffer->device->thread_trace.bo))
+		return;
+
+	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BIND_PIPELINE;
+	marker.cb_id = 0;
+	marker.bind_point = pipelineBindPoint;
+	marker.api_pso_hash[0] = pipeline_idx;
+	marker.api_pso_hash[1] = pipeline_idx >> 32;
+
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
+}
+
 /* TODO: Improve the way to trigger capture (overlay, etc). */
 static void
 radv_handle_thread_trace(VkQueue _queue)
