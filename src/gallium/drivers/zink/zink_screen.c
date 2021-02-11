@@ -189,7 +189,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.feats.features.multiDrawIndirect;
 
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
-      return screen->instance_info.have_KHR_draw_indirect_count;
+      return screen->info.have_KHR_draw_indirect_count;
 
    case PIPE_CAP_START_INSTANCE:
       return screen->info.feats11.shaderDrawParameters;
@@ -944,6 +944,11 @@ load_device_extensions(struct zink_screen *screen)
    if (screen->info.have_EXT_conditional_rendering) {
       GET_PROC_ADDR(CmdBeginConditionalRenderingEXT);
       GET_PROC_ADDR(CmdEndConditionalRenderingEXT);
+   }
+
+   if (screen->info.have_KHR_draw_indirect_count) {
+      GET_PROC_ADDR(CmdDrawIndexedIndirectCount);
+      GET_PROC_ADDR(CmdDrawIndirectCount);
    }
 
    if (screen->info.have_EXT_calibrated_timestamps) {
