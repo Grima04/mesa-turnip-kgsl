@@ -550,6 +550,19 @@ void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
    NIR_PASS_V(nir, nir_lower_var_copies);
 }
 
+void si_nir_late_opts(nir_shader *nir)
+{
+   bool more_late_algebraic = true;
+   while (more_late_algebraic) {
+      more_late_algebraic = false;
+      NIR_PASS(more_late_algebraic, nir, nir_opt_algebraic_late);
+      NIR_PASS_V(nir, nir_opt_constant_folding);
+      NIR_PASS_V(nir, nir_copy_prop);
+      NIR_PASS_V(nir, nir_opt_dce);
+      NIR_PASS_V(nir, nir_opt_cse);
+   }
+}
+
 static int type_size_vec4(const struct glsl_type *type, bool bindless)
 {
    return glsl_count_attribute_slots(type, false);
@@ -765,15 +778,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
       si_nir_opts(sscreen, nir, false);
 
    /* Run late optimizations to fuse ffma. */
-   bool more_late_algebraic = true;
-   while (more_late_algebraic) {
-      more_late_algebraic = false;
-      NIR_PASS(more_late_algebraic, nir, nir_opt_algebraic_late);
-      NIR_PASS_V(nir, nir_opt_constant_folding);
-      NIR_PASS_V(nir, nir_copy_prop);
-      NIR_PASS_V(nir, nir_opt_dce);
-      NIR_PASS_V(nir, nir_opt_cse);
-   }
+   si_nir_late_opts(nir);
 
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 

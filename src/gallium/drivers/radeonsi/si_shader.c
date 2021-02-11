@@ -1412,6 +1412,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
                  nir->info.inlinable_uniform_dw_offsets);
 
       si_nir_opts(sel->screen, nir, true);
+      si_nir_late_opts(nir);
 
       /* This must be done again. */
       NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
