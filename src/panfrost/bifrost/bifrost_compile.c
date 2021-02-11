@@ -53,9 +53,6 @@ DEBUG_GET_ONCE_FLAGS_OPTION(bifrost_debug, "BIFROST_MESA_DEBUG", bifrost_debug_o
  * clause of the shader, this range must be valid instructions or zero. */
 #define BIFROST_SHADER_PREFETCH 128
 
-/* TODO: This is not thread safe!! */
-static unsigned SHADER_DB_COUNT = 0;
-
 int bifrost_debug = 0;
 
 #define DBG(fmt, ...) \
@@ -2256,11 +2253,10 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
 
         /* Dump stats */
 
-        fprintf(stderr, "shader%d:%s - %s shader: "
+        fprintf(stderr, "%s - %s shader: "
                         "%u inst, %u nops, %u clauses, "
                         "%u quadwords, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
-                        SHADER_DB_COUNT++,
                         ctx->nir->info.label ?: "",
                         ctx->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
