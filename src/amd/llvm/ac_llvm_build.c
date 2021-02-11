@@ -2164,6 +2164,29 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
    assert(!a->d16 || (ctx->chip_class >= GFX8 && a->opcode != ac_image_atomic &&
                       a->opcode != ac_image_atomic_cmpswap && a->opcode != ac_image_get_lod &&
                       a->opcode != ac_image_get_resinfo));
+   assert(!a->a16 || ctx->chip_class >= GFX9);
+   assert(a->g16 == a->a16 || ctx->chip_class >= GFX10);
+
+   assert(!a->offset ||
+          ac_get_elem_bits(ctx, LLVMTypeOf(a->offset)) == 32);
+   assert(!a->bias ||
+          ac_get_elem_bits(ctx, LLVMTypeOf(a->bias)) == 32);
+   assert(!a->compare ||
+          ac_get_elem_bits(ctx, LLVMTypeOf(a->compare)) == 32);
+   assert(!a->derivs[0] ||
+          ((!a->g16 || ac_get_elem_bits(ctx, LLVMTypeOf(a->derivs[0])) == 16) &&
+           (a->g16 || ac_get_elem_bits(ctx, LLVMTypeOf(a->derivs[0])) == 32)));
+   assert(!a->coords[0] ||
+          ((!a->a16 || ac_get_elem_bits(ctx, LLVMTypeOf(a->coords[0])) == 16) &&
+           (a->a16 || ac_get_elem_bits(ctx, LLVMTypeOf(a->coords[0])) == 32)));
+   assert(!a->lod ||
+          ((a->opcode != ac_image_get_resinfo || ac_get_elem_bits(ctx, LLVMTypeOf(a->lod))) &&
+           (a->opcode == ac_image_get_resinfo ||
+            ac_get_elem_bits(ctx, LLVMTypeOf(a->lod)) ==
+            ac_get_elem_bits(ctx, LLVMTypeOf(a->coords[0])))));
+   assert(!a->min_lod ||
+          ac_get_elem_bits(ctx, LLVMTypeOf(a->min_lod)) ==
+          ac_get_elem_bits(ctx, LLVMTypeOf(a->coords[0])));
 
    if (a->opcode == ac_image_get_lod) {
       switch (dim) {
@@ -2184,7 +2207,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
    bool atomic = a->opcode == ac_image_atomic || a->opcode == ac_image_atomic_cmpswap;
    bool load = a->opcode == ac_image_sample || a->opcode == ac_image_gather4 ||
                a->opcode == ac_image_load || a->opcode == ac_image_load_mip;
-   LLVMTypeRef coord_type = sample ? ctx->f32 : ctx->i32;
+   LLVMTypeRef coord_type = sample ? (a->a16 ? ctx->f16 : ctx->f32) : (a->a16 ? ctx->i16 : ctx->i32);
    uint8_t dmask = a->dmask;
    LLVMTypeRef data_type;
    char data_type_str[32];
@@ -2225,7 +2248,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
       unsigned count = ac_num_derivs(dim);
       for (unsigned i = 0; i < count; ++i)
          args[num_args++] = ac_to_float(ctx, a->derivs[i]);
-      overload[num_overloads++] = ".f32";
+      overload[num_overloads++] = a->g16 ? ".f16" : ".f32";
    }
    unsigned num_coords = a->opcode != ac_image_get_resinfo ? ac_num_coords(dim) : 0;
    for (unsigned i = 0; i < num_coords; ++i)
@@ -2235,7 +2258,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
    if (a->min_lod)
       args[num_args++] = LLVMBuildBitCast(ctx->builder, a->min_lod, coord_type, "");
 
-   overload[num_overloads++] = sample ? ".f32" : ".i32";
+   overload[num_overloads++] = sample ? (a->a16 ? ".f16" : ".f32") : (a->a16 ? ".i16" : ".i32");
 
    args[num_args++] = a->resource;
    if (sample) {
@@ -3373,6 +3396,7 @@ void ac_apply_fmask_to_sample(struct ac_llvm_context *ac, LLVMValueRef fmask, LL
    fmask_load.coords[1] = addr[1];
    if (is_array_tex)
       fmask_load.coords[2] = addr[2];
+   fmask_load.a16 = ac_get_elem_bits(ac, LLVMTypeOf(addr[0])) == 16;
 
    LLVMValueRef fmask_value = ac_build_image_opcode(ac, &fmask_load);
    fmask_value = LLVMBuildExtractElement(ac->builder, fmask_value, ac->i32_0, "");
@@ -3380,11 +3404,15 @@ void ac_apply_fmask_to_sample(struct ac_llvm_context *ac, LLVMValueRef fmask, LL
    /* Apply the formula. */
    unsigned sample_chan = is_array_tex ? 3 : 2;
    LLVMValueRef final_sample;
-   final_sample = LLVMBuildMul(ac->builder, addr[sample_chan], LLVMConstInt(ac->i32, 4, 0), "");
-   final_sample = LLVMBuildLShr(ac->builder, fmask_value, final_sample, "");
+   final_sample = LLVMBuildMul(ac->builder, addr[sample_chan],
+                               LLVMConstInt(LLVMTypeOf(addr[0]), 4, 0), "");
+   final_sample = LLVMBuildLShr(ac->builder, fmask_value,
+                                LLVMBuildZExt(ac->builder, final_sample, ac->i32, ""), "");
    /* Mask the sample index by 0x7, because 0x8 means an unknown value
     * with EQAA, so those will map to 0. */
    final_sample = LLVMBuildAnd(ac->builder, final_sample, LLVMConstInt(ac->i32, 0x7, 0), "");
+   if (fmask_load.a16)
+      final_sample = LLVMBuildTrunc(ac->builder, final_sample, ac->i16, "");
 
    /* Don't rewrite the sample index if WORD1.DATA_FORMAT of the FMASK
     * resource descriptor is 0 (invalid).

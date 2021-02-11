@@ -403,7 +403,9 @@ struct ac_image_args {
    unsigned cache_policy : 3;
    bool unorm : 1;
    bool level_zero : 1;
-   bool d16 : 1;        /* data and return values are 16-bit, requires GFX8+ */
+   bool d16 : 1;        /* GFX8+: data and return values are 16-bit */
+   bool a16 : 1;        /* GFX9+: address components except compare, offset and bias are 16-bit */
+   bool g16 : 1;        /* GFX10+: derivatives are 16-bit; GFX<=9: must be equal to a16 */
    bool tfe : 1;
    unsigned attributes; /* additional call-site specific AC_FUNC_ATTRs */
 

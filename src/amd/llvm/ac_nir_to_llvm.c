@@ -1430,6 +1430,11 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
 
       assert(instr->dest.is_ssa);
+
+      /* Buffers don't support A16. */
+      if (args->a16)
+         args->coords[0] = LLVMBuildZExt(ctx->ac.builder, args->coords[0], ctx->ac.i32, "");
+
       return ac_build_buffer_load_format(&ctx->ac, args->resource, args->coords[0], ctx->ac.i32_0,
                                          util_last_bit(mask), 0, true,
                                          instr->dest.ssa.bit_size == 16,
@@ -4179,6 +4184,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord: {
          LLVMValueRef coord = get_src(ctx, instr->src[i].src);
+         args.a16 = instr->src[i].src.ssa->bit_size == 16;
          for (unsigned chan = 0; chan < instr->coord_components; ++chan)
             args.coords[chan] = ac_llvm_extract_elem(&ctx->ac, coord, chan);
          break;
@@ -4189,22 +4195,25 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
          if (instr->is_shadow) {
             args.compare = get_src(ctx, instr->src[i].src);
             args.compare = ac_to_float(&ctx->ac, args.compare);
+            assert(instr->src[i].src.ssa->bit_size == 32);
          }
          break;
       case nir_tex_src_offset:
          args.offset = get_src(ctx, instr->src[i].src);
          offset_src = i;
+         /* We pack it with bit shifts, so we need it to be 32-bit. */
+         assert(ac_get_elem_bits(&ctx->ac, LLVMTypeOf(args.offset)) == 32);
          break;
       case nir_tex_src_bias:
          args.bias = get_src(ctx, instr->src[i].src);
+         assert(ac_get_elem_bits(&ctx->ac, LLVMTypeOf(args.bias)) == 32);
          break;
-      case nir_tex_src_lod: {
+      case nir_tex_src_lod:
          if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0)
             args.level_zero = true;
          else
             args.lod = get_src(ctx, instr->src[i].src);
          break;
-      }
       case nir_tex_src_ms_index:
          sample_index = get_src(ctx, instr->src[i].src);
          break;
@@ -4212,9 +4221,11 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
          break;
       case nir_tex_src_ddx:
          ddx = get_src(ctx, instr->src[i].src);
+         args.g16 = instr->src[i].src.ssa->bit_size == 16;
          break;
       case nir_tex_src_ddy:
          ddy = get_src(ctx, instr->src[i].src);
+         assert(LLVMTypeOf(ddy) == LLVMTypeOf(ddx));
          break;
       case nir_tex_src_min_lod:
          args.min_lod = get_src(ctx, instr->src[i].src);
@@ -4342,8 +4353,9 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
             ac_to_float(&ctx->ac, ac_llvm_extract_elem(&ctx->ac, ddy, i));
       }
       for (unsigned i = num_src_deriv_channels; i < num_dest_deriv_channels; i++) {
-         args.derivs[i] = ctx->ac.f32_0;
-         args.derivs[num_dest_deriv_channels + i] = ctx->ac.f32_0;
+         LLVMValueRef zero = args.g16 ? ctx->ac.f16_0 : ctx->ac.f32_0;
+         args.derivs[i] = zero;
+         args.derivs[num_dest_deriv_channels + i] = zero;
       }
    }
 
@@ -4351,7 +4363,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       for (unsigned chan = 0; chan < instr->coord_components; chan++)
          args.coords[chan] = ac_to_float(&ctx->ac, args.coords[chan]);
       if (instr->coord_components == 3)
-         args.coords[3] = LLVMGetUndef(ctx->ac.f32);
+         args.coords[3] = LLVMGetUndef(args.a16 ? ctx->ac.f16 : ctx->ac.f32);
       ac_prepare_cube_coords(&ctx->ac, instr->op == nir_texop_txd, instr->is_array,
                              instr->op == nir_texop_lod, args.coords, args.derivs);
    }
@@ -4375,9 +4387,9 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
        instr->op != nir_texop_lod) {
       LLVMValueRef filler;
       if (instr->op == nir_texop_txf)
-         filler = ctx->ac.i32_0;
+         filler = args.a16 ? ctx->ac.i16_0 : ctx->ac.i32_0;
       else
-         filler = LLVMConstReal(ctx->ac.f32, 0.5);
+         filler = LLVMConstReal(args.a16 ? ctx->ac.f16 : ctx->ac.f32, 0.5);
 
       if (instr->is_array)
          args.coords[2] = args.coords[1];
@@ -4417,6 +4429,8 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       num_offsets = MIN2(num_offsets, instr->coord_components);
       for (unsigned i = 0; i < num_offsets; ++i) {
          LLVMValueRef off = ac_llvm_extract_elem(&ctx->ac, args.offset, i);
+         if (args.a16)
+            off = LLVMBuildTrunc(ctx->ac.builder, off, ctx->ac.i16, "");
          args.coords[i] = LLVMBuildAdd(ctx->ac.builder, args.coords[i], off, "");
       }
       args.offset = NULL;
