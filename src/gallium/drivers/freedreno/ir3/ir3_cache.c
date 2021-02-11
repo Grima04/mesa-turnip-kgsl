@@ -169,7 +169,9 @@ void ir3_cache_invalidate(struct ir3_cache *cache, void *stobj)
 {
 	hash_table_foreach(cache->ht, entry) {
 		const struct ir3_cache_key *key = entry->key;
-		if ((key->fs == stobj) || (key->vs == stobj)) {
+		if ((key->fs == stobj) || (key->vs == stobj) ||
+				(key->ds == stobj) || (key->hs == stobj) ||
+				(key->gs == stobj)) {
 			cache->funcs->destroy_state(cache->data, entry->data);
 			_mesa_hash_table_remove(cache->ht, entry);
 			return;
