@@ -257,6 +257,7 @@ struct assigned_comps
    uint8_t interp_type;
    uint8_t interp_loc;
    bool is_32bit;
+   bool is_mediump;
 };
 
 /* Packing arrays and dual slot varyings is difficult so to avoid complex
@@ -325,6 +326,9 @@ get_unmoveable_components_masks(nir_shader *shader,
             comps[location + i].interp_loc = get_interp_loc(var);
             comps[location + i].is_32bit =
                glsl_type_is_32bit(glsl_without_array(type));
+            comps[location + i].is_mediump =
+               var->data.precision == GLSL_PRECISION_MEDIUM ||
+               var->data.precision == GLSL_PRECISION_LOW;
          }
       }
    }
@@ -443,6 +447,7 @@ struct varying_component {
    uint8_t interp_loc;
    bool is_32bit;
    bool is_patch;
+   bool is_mediump;
    bool is_intra_stage_only;
    bool initialised;
 };
@@ -462,6 +467,10 @@ cmp_varying_component(const void *comp1_v, const void *comp2_v)
     */
    if (comp1->is_intra_stage_only != comp2->is_intra_stage_only)
       return comp1->is_intra_stage_only ? 1 : -1;
+
+   /* Group mediump varyings together. */
+   if (comp1->is_mediump != comp2->is_mediump)
+      return comp1->is_mediump ? 1 : -1;
 
    /* We can only pack varyings with matching interpolation types so group
     * them together.
@@ -573,6 +582,9 @@ gather_varying_component_info(nir_shader *producer, nir_shader *consumer,
             vc_info->interp_loc = get_interp_loc(in_var);
             vc_info->is_32bit = glsl_type_is_32bit(type);
             vc_info->is_patch = in_var->data.patch;
+            vc_info->is_mediump =
+               in_var->data.precision == GLSL_PRECISION_MEDIUM ||
+               in_var->data.precision == GLSL_PRECISION_LOW;
             vc_info->is_intra_stage_only = false;
             vc_info->initialised = true;
          }
@@ -635,6 +647,9 @@ gather_varying_component_info(nir_shader *producer, nir_shader *consumer,
                vc_info->interp_loc = get_interp_loc(out_var);
                vc_info->is_32bit = glsl_type_is_32bit(type);
                vc_info->is_patch = out_var->data.patch;
+               vc_info->is_mediump =
+                  out_var->data.precision == GLSL_PRECISION_MEDIUM ||
+                  out_var->data.precision == GLSL_PRECISION_LOW;
                vc_info->is_intra_stage_only = true;
                vc_info->initialised = true;
             }
@@ -675,9 +690,14 @@ assign_remap_locations(struct varying_loc (*remap)[4],
           * expects this to be the same for all components. We could make this
           * check driver specfific or drop it if NIR ever become the only
           * radeonsi backend.
+          * TODO2: The radeonsi comment above is not true. Only "flat" is per
+          * vec4 (128-bit granularity), all other interpolation qualifiers are
+          * per component (16-bit granularity for float16, 32-bit granularity
+          * otherwise). Each vec4 (128 bits) must be either vec4 or f16vec8.
           */
          if (assigned_comps[tmp_cursor].interp_type != info->interp_type ||
-             assigned_comps[tmp_cursor].interp_loc != info->interp_loc) {
+             assigned_comps[tmp_cursor].interp_loc != info->interp_loc ||
+             assigned_comps[tmp_cursor].is_mediump != info->is_mediump) {
             tmp_comp = 0;
             continue;
          }
@@ -708,6 +728,7 @@ assign_remap_locations(struct varying_loc (*remap)[4],
       assigned_comps[tmp_cursor].interp_type = info->interp_type;
       assigned_comps[tmp_cursor].interp_loc = info->interp_loc;
       assigned_comps[tmp_cursor].is_32bit = info->is_32bit;
+      assigned_comps[tmp_cursor].is_mediump = info->is_mediump;
 
       /* Assign remap location */
       remap[location][info->var->data.location_frac].component = tmp_comp++;
