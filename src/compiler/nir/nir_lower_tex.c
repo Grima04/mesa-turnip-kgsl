@@ -200,16 +200,13 @@ lower_rect(nir_builder *b, nir_tex_instr *tex)
 
    nir_ssa_def *txs = nir_i2f32(b, nir_get_texture_size(b, tex));
    nir_ssa_def *scale = nir_frcp(b, txs);
+   int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
 
-   /* Walk through the sources normalizing the requested arguments. */
-   for (unsigned i = 0; i < tex->num_srcs; i++) {
-      if (tex->src[i].src_type != nir_tex_src_coord)
-         continue;
-
+   if (coord_index != -1) {
       nir_ssa_def *coords =
-         nir_ssa_for_src(b, tex->src[i].src, tex->coord_components);
+         nir_ssa_for_src(b, tex->src[coord_index].src, tex->coord_components);
       nir_instr_rewrite_src(&tex->instr,
-                            &tex->src[i].src,
+                            &tex->src[coord_index].src,
                             nir_src_for_ssa(nir_fmul(b, coords, scale)));
    }
 }
@@ -221,16 +218,13 @@ lower_rect_tex_scale(nir_builder *b, nir_tex_instr *tex)
 
    nir_ssa_def *idx = nir_imm_int(b, tex->texture_index);
    nir_ssa_def *scale = nir_build_load_texture_rect_scaling(b, 32, idx);
+   int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
 
-   /* Walk through the sources normalizing the requested arguments. */
-   for (unsigned i = 0; i < tex->num_srcs; i++) {
-      if (tex->src[i].src_type != nir_tex_src_coord)
-         continue;
-
+   if (coord_index != -1) {
       nir_ssa_def *coords =
-         nir_ssa_for_src(b, tex->src[i].src, tex->coord_components);
+         nir_ssa_for_src(b, tex->src[coord_index].src, tex->coord_components);
       nir_instr_rewrite_src(&tex->instr,
-                            &tex->src[i].src,
+                            &tex->src[coord_index].src,
                             nir_src_for_ssa(nir_fmul(b, coords, scale)));
    }
 }
@@ -774,14 +768,11 @@ saturate_src(nir_builder *b, nir_tex_instr *tex, unsigned sat_mask)
       tex = lower_txb_to_txl(b, tex);
 
    b->cursor = nir_before_instr(&tex->instr);
+   int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
 
-   /* Walk through the sources saturating the requested arguments. */
-   for (unsigned i = 0; i < tex->num_srcs; i++) {
-      if (tex->src[i].src_type != nir_tex_src_coord)
-         continue;
-
+   if (coord_index != -1) {
       nir_ssa_def *src =
-         nir_ssa_for_src(b, tex->src[i].src, tex->coord_components);
+         nir_ssa_for_src(b, tex->src[coord_index].src, tex->coord_components);
 
       /* split src into components: */
       nir_ssa_def *comp[4];
@@ -815,7 +806,7 @@ saturate_src(nir_builder *b, nir_tex_instr *tex, unsigned sat_mask)
       src = nir_vec(b, comp, tex->coord_components);
 
       nir_instr_rewrite_src(&tex->instr,
-                            &tex->src[i].src,
+                            &tex->src[coord_index].src,
                             nir_src_for_ssa(src));
    }
    return tex;
