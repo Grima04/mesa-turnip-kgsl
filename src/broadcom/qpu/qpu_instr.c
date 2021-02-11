@@ -27,8 +27,13 @@
 #include "qpu_instr.h"
 
 const char *
-v3d_qpu_magic_waddr_name(enum v3d_qpu_waddr waddr)
+v3d_qpu_magic_waddr_name(const struct v3d_device_info *devinfo,
+                         enum v3d_qpu_waddr waddr)
 {
+        /* V3D 4.x UNIFA aliases TMU in V3D 3.x in the table below */
+        if (devinfo->ver < 40 && waddr == V3D_QPU_WADDR_TMU)
+                return "tmu";
+
         static const char *waddr_magic[] = {
                 [V3D_QPU_WADDR_R0] = "r0",
                 [V3D_QPU_WADDR_R1] = "r1",
@@ -39,7 +44,7 @@ v3d_qpu_magic_waddr_name(enum v3d_qpu_waddr waddr)
                 [V3D_QPU_WADDR_NOP] = "-",
                 [V3D_QPU_WADDR_TLB] = "tlb",
                 [V3D_QPU_WADDR_TLBU] = "tlbu",
-                [V3D_QPU_WADDR_TMU] = "tmu",
+                [V3D_QPU_WADDR_UNIFA] = "unifa",
                 [V3D_QPU_WADDR_TMUL] = "tmul",
                 [V3D_QPU_WADDR_TMUD] = "tmud",
                 [V3D_QPU_WADDR_TMUA] = "tmua",

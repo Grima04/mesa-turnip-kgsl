@@ -388,7 +388,8 @@ struct v3d_qpu_instr {
         };
 };
 
-const char *v3d_qpu_magic_waddr_name(enum v3d_qpu_waddr waddr);
+const char *v3d_qpu_magic_waddr_name(const struct v3d_device_info *devinfo,
+                                     enum v3d_qpu_waddr waddr);
 const char *v3d_qpu_add_op_name(enum v3d_qpu_add_op op);
 const char *v3d_qpu_mul_op_name(enum v3d_qpu_mul_op op);
 const char *v3d_qpu_cond_name(enum v3d_qpu_cond cond);
