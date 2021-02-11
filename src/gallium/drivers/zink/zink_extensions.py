@@ -20,6 +20,9 @@
 # IN THE SOFTWARE.
 # 
 
+import re
+from xml.etree import ElementTree
+
 class Version:
     device_version  : (1,0,0)
     struct_version  : (1,0)
@@ -129,3 +132,80 @@ class Extension:
 
 # Type aliases
 Layer = Extension
+
+class ExtensionRegistryEntry:
+    # type of extension - right now it's either "instance" or "device"
+    ext_type    : str     = ""
+    # the version in which the extension is promoted to core VK
+    promoted_in : Version = None
+    # functions added by the extension are referred to as "commands" in the registry
+    commands    : [str]   = None
+    constants   : [str]   = None
+    features_struct   : str = None
+    properties_struct : str = None
+
+class ExtensionRegistry:
+    # key = extension name, value = registry entry
+    registry = dict()
+
+    def __init__(self, vkxml_path: str):
+        vkxml = ElementTree.parse(vkxml_path)
+
+        for ext in vkxml.findall("extensions/extension"):
+            # Reserved extensions are marked with `supported="disabled"`
+            if ext.get("supported") == "disabled":
+                continue
+
+            name = ext.attrib["name"]
+
+            entry = ExtensionRegistryEntry()
+            entry.ext_type = ext.attrib["type"]
+            entry.promoted_in = self.parse_promotedto(ext.get("promotedto"))
+
+            entry.commands = []
+            for cmd in ext.findall("require/command"):
+                cmd_name = cmd.get("name")
+                if cmd_name:
+                    entry.commands.append(cmd_name)
+
+            entry.constants = []
+            for enum in ext.findall("require/enum"):
+                enum_name = enum.get("name")
+                enum_extends = enum.get("extends")
+                # we are only interested in VK_*_EXTENSION_NAME, which does not
+                # have an "extends" attribute
+                if not enum_extends:
+                    entry.constants.append(enum_name)
+
+            for ty in ext.findall("require/type"):
+                ty_name = ty.get("name")
+                if self.is_features_struct(ty_name):
+                    entry.features_struct = ty_name
+                elif self.is_properties_struct(ty_name):
+                    entry.properties_struct = ty_name
+
+            self.registry[name] = entry
+
+    def in_registry(self, ext_name: str):
+        return ext_name in self.registry
+
+    def get_registry_entry(self, ext_name: str):
+        if self.in_registry(ext_name):
+            return self.registry[ext_name]
+
+    # Parses e.g. "VK_VERSION_x_y" to integer tuple (x, y)
+    # For any erroneous inputs, None is returned
+    def parse_promotedto(self, promotedto: str):
+        result = None
+
+        if promotedto and promotedto.startswith("VK_VERSION_"):
+            (major, minor) = promotedto.split('_')[-2:]
+            result = (int(major), int(minor))
+
+        return result
+
+    def is_features_struct(self, struct: str):
+        return re.match(r"VkPhysicalDevice.*Features.*", struct) is not None
+
+    def is_properties_struct(self, struct: str):
+        return re.match(r"VkPhysicalDevice.*Properties.*", struct) is not None
