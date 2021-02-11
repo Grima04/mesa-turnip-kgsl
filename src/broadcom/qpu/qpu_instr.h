@@ -98,7 +98,8 @@ enum v3d_qpu_waddr {
         V3D_QPU_WADDR_NOP = 6,
         V3D_QPU_WADDR_TLB = 7,
         V3D_QPU_WADDR_TLBU = 8,
-        V3D_QPU_WADDR_TMU = 9,
+        V3D_QPU_WADDR_TMU = 9,   /* V3D 3.x */
+        V3D_QPU_WADDR_UNIFA = 9, /* V3D 4.x */
         V3D_QPU_WADDR_TMUL = 10,
         V3D_QPU_WADDR_TMUD = 11,
         V3D_QPU_WADDR_TMUA = 12,
