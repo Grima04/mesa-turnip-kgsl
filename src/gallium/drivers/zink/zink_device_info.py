@@ -405,6 +405,32 @@ if __name__ == "__main__":
     versions = VERSIONS
     replacement = REPLACEMENTS
 
+    # Perform extension validation and set core_since for the extension if available
+    error_count = 0
+    for ext in extensions:
+        if not registry.in_registry(ext.name):
+            # disable validation for nonstandard extensions
+            if ext.is_nonstandard:
+                continue
+
+            error_count += 1
+            print("The extension {} is not registered in vk.xml - a typo?".format(ext.name))
+            continue
+
+        entry = registry.get_registry_entry(ext.name)
+
+        if entry.ext_type != "device":
+            error_count += 1
+            print("The extension {} is {} extension - expected a device extension.".format(ext.name, entry.ext_type))
+            continue
+
+        if entry.promoted_in:
+            ext.core_since = Version((*entry.promoted_in, 0))
+
+    if error_count > 0:
+        print("zink_device_info.py: Found {} error(s) in total. Quitting.".format(error_count))
+        exit(1)
+
     lookup = TemplateLookup()
     lookup.put_string("helpers", include_template)
 
