@@ -2010,9 +2010,13 @@ void collect_presched_stats(Program *program);
 void collect_preasm_stats(Program *program);
 void collect_postasm_stats(Program *program, const std::vector<uint32_t>& code);
 
-void aco_print_operand(const Operand *operand, FILE *output);
-void aco_print_instr(const Instruction *instr, FILE *output);
-void aco_print_program(const Program *program, FILE *output);
+enum print_flags {
+   print_no_ssa = 0x1,
+};
+
+void aco_print_operand(const Operand *operand, FILE *output, unsigned flags=0);
+void aco_print_instr(const Instruction *instr, FILE *output, unsigned flags=0);
+void aco_print_program(const Program *program, FILE *output, unsigned flags=0);
 
 void _aco_perfwarn(Program *program, const char *file, unsigned line,
                    const char *fmt, ...);

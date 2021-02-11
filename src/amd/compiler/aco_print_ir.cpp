@@ -91,25 +91,29 @@ static void print_reg_class(const RegClass rc, FILE *output)
    }
 }
 
-void print_physReg(PhysReg reg, unsigned bytes, FILE *output)
+void print_physReg(PhysReg reg, unsigned bytes, FILE *output, unsigned flags)
 {
    if (reg == 124) {
-      fprintf(output, ":m0");
+      fprintf(output, "m0");
    } else if (reg == 106) {
-      fprintf(output, ":vcc");
+      fprintf(output, "vcc");
    } else if (reg == 253) {
-      fprintf(output, ":scc");
+      fprintf(output, "scc");
    } else if (reg == 126) {
-      fprintf(output, ":exec");
+      fprintf(output, "exec");
    } else {
       bool is_vgpr = reg / 256;
       unsigned r = reg % 256;
       unsigned size = DIV_ROUND_UP(bytes, 4);
-      fprintf(output, ":%c[%d", is_vgpr ? 'v' : 's', r);
-      if (size > 1)
-         fprintf(output, "-%d]", r + size -1);
-      else
-         fprintf(output, "]");
+      if (size == 1 && (flags & print_no_ssa)) {
+         fprintf(output, "%c%d", is_vgpr ? 'v' : 's', r);
+      } else {
+         fprintf(output, "%c[%d", is_vgpr ? 'v' : 's', r);
+         if (size > 1)
+            fprintf(output, "-%d]", r + size -1);
+         else
+            fprintf(output, "]");
+      }
       if (reg.byte() || bytes % 4)
          fprintf(output, "[%d:%d]", reg.byte()*8, (reg.byte()+bytes) * 8);
    }
@@ -156,7 +160,7 @@ static void print_constant(uint8_t reg, FILE *output)
    }
 }
 
-void aco_print_operand(const Operand *operand, FILE *output)
+void aco_print_operand(const Operand *operand, FILE *output, unsigned flags)
 {
    if (operand->isLiteral() || (operand->isConstant() && operand->bytes() == 1)) {
       if (operand->bytes() == 1)
@@ -178,26 +182,29 @@ void aco_print_operand(const Operand *operand, FILE *output)
       if (operand->is24bit())
          fprintf(output, "(is24bit)");
 
-      fprintf(output, "%%%d", operand->tempId());
+      if (!(flags & print_no_ssa))
+         fprintf(output, "%%%d%s", operand->tempId(), operand->isFixed() ? ":" : "");
 
       if (operand->isFixed())
-         print_physReg(operand->physReg(), operand->bytes(), output);
+         print_physReg(operand->physReg(), operand->bytes(), output, flags);
    }
 }
 
-static void print_definition(const Definition *definition, FILE *output)
+static void print_definition(const Definition *definition, FILE *output, unsigned flags)
 {
-   print_reg_class(definition->regClass(), output);
+   if (!(flags & print_no_ssa))
+      print_reg_class(definition->regClass(), output);
    if (definition->isPrecise())
       fprintf(output, "(precise)");
    if (definition->isNUW())
       fprintf(output, "(nuw)");
    if (definition->isNoCSE())
       fprintf(output, "(noCSE)");
-   fprintf(output, "%%%d", definition->tempId());
+   if (!(flags & print_no_ssa))
+      fprintf(output, "%%%d%s", definition->tempId(), definition->isFixed() ? ":" : "");
 
    if (definition->isFixed())
-      print_physReg(definition->physReg(), definition->bytes(), output);
+      print_physReg(definition->physReg(), definition->bytes(), output, flags);
 }
 
 static void print_storage(storage_class storage, FILE *output)
@@ -676,11 +683,11 @@ static void print_instr_format_specific(const Instruction *instr, FILE *output)
    }
 }
 
-void aco_print_instr(const Instruction *instr, FILE *output)
+void aco_print_instr(const Instruction *instr, FILE *output, unsigned flags)
 {
    if (!instr->definitions.empty()) {
       for (unsigned i = 0; i < instr->definitions.size(); ++i) {
-         print_definition(&instr->definitions[i], output);
+         print_definition(&instr->definitions[i], output, flags);
          if (i + 1 != instr->definitions.size())
             fprintf(output, ", ");
       }
@@ -738,7 +745,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
             fprintf(output, "hi(");
          else if (sel[i] & sdwa_sext)
             fprintf(output, "sext(");
-         aco_print_operand(&instr->operands[i], output);
+         aco_print_operand(&instr->operands[i], output, flags);
          if (opsel[i] || (sel[i] & sdwa_sext))
             fprintf(output, ")");
          if (!(sel[i] & sdwa_isra)) {
@@ -854,7 +861,7 @@ static void print_stage(Stage stage, FILE *output)
    fprintf(output, "\n");
 }
 
-void aco_print_block(const Block* block, FILE *output)
+void aco_print_block(const Block* block, FILE *output, unsigned flags)
 {
    fprintf(output, "BB%d\n", block->index);
    fprintf(output, "/* logical preds: ");
@@ -868,17 +875,17 @@ void aco_print_block(const Block* block, FILE *output)
    fprintf(output, "*/\n");
    for (auto const& instr : block->instructions) {
       fprintf(output, "\t");
-      aco_print_instr(instr.get(), output);
+      aco_print_instr(instr.get(), output, flags);
       fprintf(output, "\n");
    }
 }
 
-void aco_print_program(const Program *program, FILE *output)
+void aco_print_program(const Program *program, FILE *output, unsigned flags)
 {
    print_stage(program->stage, output);
 
    for (Block const& block : program->blocks)
-      aco_print_block(&block, output);
+      aco_print_block(&block, output, flags);
 
    if (program->constant_data.size()) {
       fprintf(output, "\n/* constant data */\n");
