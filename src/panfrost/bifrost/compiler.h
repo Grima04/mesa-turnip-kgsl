@@ -784,7 +784,7 @@ bi_is_terminal_block(bi_block *block)
 {
         return block->base.successors[0] == NULL &&
                block->base.successors[1] == NULL &&
-               list_is_empty(&block->clauses);
+               list_is_empty(&block->base.instructions);
 }
 
 /* Code emit */

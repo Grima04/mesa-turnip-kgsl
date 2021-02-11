@@ -2424,10 +2424,12 @@ bifrost_nir_lower_i8_fragout(nir_shader *shader)
 }
 
 /* Dead code elimination for branches at the end of a block - only one branch
- * per block is legal semantically, but unreachable jumps can be generated */
+ * per block is legal semantically, but unreachable jumps can be generated.
+ * Likewise we can generate jumps to the terminal block which need to be
+ * lowered away to a jump to #0x0, which induces successful termination. */
 
 static void
-bi_cull_dead_branch(bi_block *block)
+bi_lower_branch(bi_block *block)
 {
         bool branched = false;
         ASSERTED bool was_jump = false;
@@ -2436,12 +2438,16 @@ bi_cull_dead_branch(bi_block *block)
                 if (!ins->branch_target) continue;
 
                 if (branched) {
-                        assert(was_jump);
+                        assert(was_jump && (ins->op == BI_OPCODE_JUMP));
                         bi_remove_instruction(ins);
+                        break;
                 }
 
                 branched = true;
                 was_jump = ins->op == BI_OPCODE_JUMP;
+
+                if (bi_is_terminal_block(ins->branch_target))
+                        ins->branch_target = NULL;
         }
 }
 
@@ -2525,7 +2531,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                  * consistent */
                 block->base.name = block_source_count++;
 
-                bi_cull_dead_branch(block);
+                bi_lower_branch(block);
         }
 
         /* Runs before copy prop */
