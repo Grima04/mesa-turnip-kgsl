@@ -144,10 +144,6 @@ test-docs-mr:
       - meson*
       - build-support/**/*
       - subprojects/**/*
-      # SCons
-      - SConstruct
-      - scons/**/*
-      - common.py
       # Source code
       - include/**/*
       - src/**/*
@@ -902,7 +898,7 @@ test-d3d12-windows:
     paths:
       - summary/
 
-scons-win64:
+.scons-win64:
   extends: .scons-build
   variables:
     SCONS_TARGET: platform=windows machine=x86_64 debug=1

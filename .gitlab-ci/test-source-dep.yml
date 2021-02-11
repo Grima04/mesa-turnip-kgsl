@@ -18,7 +18,6 @@
       - .gitlab-ci/**/*
       - include/**/*
       - meson.build
-      - SConstruct
       - src/*
       - src/compiler/**/*
       - src/drm-shim/**/*
