@@ -63,9 +63,6 @@ static const struct debug_named_value midgard_debug_options[] = {
 
 DEBUG_GET_ONCE_FLAGS_OPTION(midgard_debug, "MIDGARD_MESA_DEBUG", midgard_debug_options, 0)
 
-/* TODO: This is not thread safe!! */
-static unsigned SHADER_DB_COUNT = 0;
-
 int midgard_debug = 0;
 
 #define DBG(fmt, ...) \
@@ -3204,11 +3201,11 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
                 /* Dump stats */
 
-                fprintf(stderr, "shader%d - %s shader: "
+                fprintf(stderr, "%s - %s shader: "
                         "%u inst, %u bundles, %u quadwords, "
                         "%u registers, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
-                        SHADER_DB_COUNT++,
+                        ctx->nir->info.label ?: "",
                         ctx->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_bundles, ctx->quadword_count,
