@@ -399,13 +399,13 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       device->memory.types[0] = (struct anv_memory_type) {
          .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
          .heapIndex = 0,
       };
       device->memory.types[1] = (struct anv_memory_type) {
          .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
          .heapIndex = 0,
       };
    }
