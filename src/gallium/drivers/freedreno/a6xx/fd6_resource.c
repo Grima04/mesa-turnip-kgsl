@@ -137,7 +137,7 @@ setup_lrz(struct fd_resource *rsc)
 	switch (rsc->base.nr_samples) {
 	case 4:
 		width0 *= 2;
-		/* fallthru */
+		FALLTHROUGH;
 	case 2:
 		height0 *= 2;
 	}

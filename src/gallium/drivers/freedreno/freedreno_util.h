@@ -32,6 +32,7 @@
 
 #include "pipe/p_format.h"
 #include "pipe/p_state.h"
+#include "util/compiler.h"
 #include "util/log.h"
 #include "util/u_debug.h"
 #include "util/u_math.h"
@@ -333,7 +334,7 @@ fd_msaa_samples(unsigned samples)
 	switch (samples) {
 	default:
 		debug_assert(0);
-		/* fallthrough */
+		FALLTHROUGH;
 	case 0:
 	case 1: return MSAA_ONE;
 	case 2: return MSAA_TWO;

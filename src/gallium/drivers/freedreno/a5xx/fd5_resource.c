@@ -39,7 +39,7 @@ setup_lrz(struct fd_resource *rsc)
 	switch (rsc->base.nr_samples) {
 	case 4:
 		lrz_pitch *= 2;
-		/* fallthrough */
+		FALLTHROUGH;
 	case 2:
 		lrz_height *= 2;
 	}
