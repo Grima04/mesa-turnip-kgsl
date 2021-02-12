@@ -251,7 +251,7 @@ class PrintCode(gl_XML.gl_print_base):
                     p_decl = '{0} {1} = cmd->{1};'.format(
                             p.type_string(), p.name)
 
-                if not p_decl.startswith('const '):
+                if not p_decl.startswith('const ') and p.count:
                     # Declare all local function variables as const, even if
                     # the original parameter is not const.
                     p_decl = 'const ' + p_decl
