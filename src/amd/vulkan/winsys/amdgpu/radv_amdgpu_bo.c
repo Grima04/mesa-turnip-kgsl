@@ -340,8 +340,8 @@ static int radv_amdgpu_global_bo_list_add(struct radv_amdgpu_winsys *ws,
 	}
 
 	ws->global_bo_list.bos[ws->global_bo_list.count++] = bo;
-	u_rwlock_wrunlock(&ws->global_bo_list.lock);
 	bo->base.use_global_list = true;
+	u_rwlock_wrunlock(&ws->global_bo_list.lock);
 	return VK_SUCCESS;
 }
 
