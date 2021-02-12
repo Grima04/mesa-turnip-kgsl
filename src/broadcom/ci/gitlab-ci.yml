@@ -40,6 +40,8 @@ vc4-rpi3-gles2:armhf:
     BM_POE_TIMEOUT: 180
     PIGLIT_OPTIONS: >-
       --timeout 60
+    PIGLIT_PLATFORM: gbm
+    PIGLIT_TESTS: >-
       -x .tesc
       -x .tese
       -x arb_gpu_shader_fp64
@@ -83,7 +85,6 @@ vc4-rpi3-gles2:armhf:
       -x ppgtt_memory_alignment
       -x streaming-texture-leak
       -x texturesize
-    PIGLIT_PLATFORM: gbm
 
 vc4-rpi3-piglit-quick_gl:armhf:
   extends:
@@ -154,6 +155,8 @@ v3d-rpi4-gles2:armhf:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
     PIGLIT_OPTIONS: >-
       --timeout 60
+    PIGLIT_PLATFORM: gbm
+    PIGLIT_TESTS: >-
       -x .tesc
       -x .tese
       -x arb_gpu_shader_fp64
@@ -182,7 +185,6 @@ v3d-rpi4-gles2:armhf:
       -x maxsize
       -x streaming-texture-leak
       -x tex-miplevel-selection
-    PIGLIT_PLATFORM: gbm
 
 v3d-rpi4-piglit-quick_gl:armhf:
   extends:

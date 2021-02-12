@@ -39,7 +39,7 @@ softpipe-piglit-quick:
     # rasterpos skipped until we uprev piglit (commit ff2a7650be7349)
     # triangle-rasterization skipped due to flakes thanks to it using a time-based random seed.
     # glx-multithread-texture is flaky, undiagnosed
-    PIGLIT_OPTIONS: >
+    PIGLIT_TESTS: >
       -x rasterpos
       -x triangle-rasterization
       -x glx-multithread-texture

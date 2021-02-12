@@ -112,7 +112,7 @@ a530_gles31:
     # Also excluding some particularly slow tests (gl-1.3-texture-env)
     #
     # Check fastboot.sh for more piglit tests being excluded!
-    PIGLIT_OPTIONS: >-
+    PIGLIT_TESTS: >-
       -x atomic_counters
       -x gl-1.0-blend-func
       -x glsl-1.30@execution@clipping
@@ -277,7 +277,7 @@ a630_vk_sysmem:
     #
     # vs-clip-distance/vertex-enables skipped because they seem to be flaky in
     # parallel with other tests (reliably fails on its own)
-    PIGLIT_OPTIONS: >-
+    PIGLIT_TESTS: >-
       -x vs-output-array-vec2-index-wr-before-gs
       -x fixed-clip-enables
       -x vs-clip-distance-enables

@@ -113,23 +113,21 @@ else
     fi
 fi
 
-SANITY_MESA_VERSION_CMD="$SANITY_MESA_VERSION_CMD | tee /tmp/version.txt | grep \"Mesa $MESA_VERSION\(\s\|$\)\""
-
 if [ "$ZINK_USE_LAVAPIPE" ]; then
     export VK_ICD_FILENAMES="$INSTALL/share/vulkan/icd.d/lvp_icd.x86_64.json"
 fi
 
-rm -rf results
-cd /piglit
+# If the job is parallel at the  gitlab job level, will take the corresponding
+# fraction of the caselist.
+if [ -n "$CI_NODE_INDEX" ]; then
 
-PIGLIT_OPTIONS=$(printf "%s" "$PIGLIT_OPTIONS")
+    if [ "$PIGLIT_PROFILES" != "${PIGLIT_PROFILES% *}" ]; then
+        FAILURE_MESSAGE=$(printf "%s" "Can't parallelize piglit with multiple profiles")
+        quiet print_red printf "%s\n" "$FAILURE_MESSAGE"
+        exit 1
+    fi
 
-PIGLIT_CMD="./piglit run -j${FDO_CI_CONCURRENT:-4} $PIGLIT_OPTIONS $PIGLIT_PROFILES "$(/usr/bin/printf "%q" "$RESULTS")
-
-RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $SANITY_MESA_VERSION_CMD && $PIGLIT_CMD"
-
-if [ "$RUN_CMD_WRAPPER" ]; then
-    RUN_CMD="set +e; $RUN_CMD_WRAPPER "$(/usr/bin/printf "%q" "$RUN_CMD")"; set -e"
+    USE_CASELIST=1
 fi
 
 print_red() {
@@ -183,6 +181,35 @@ replay_minio_upload_images() {
     done
 }
 
+SANITY_MESA_VERSION_CMD="$SANITY_MESA_VERSION_CMD | tee /tmp/version.txt | grep \"Mesa $MESA_VERSION\(\s\|$\)\""
+
+rm -rf results
+cd /piglit
+
+if [ -n "$USE_CASELIST" ]; then
+    PIGLIT_TESTS=$(printf "%s" "$PIGLIT_TESTS")
+    PIGLIT_GENTESTS="./piglit print-cmd $PIGLIT_TESTS $PIGLIT_PROFILES --format \"{name}\" > /tmp/case-list.txt"
+    RUN_GENTESTS="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $PIGLIT_GENTESTS"
+
+    eval $RUN_GENTESTS
+
+    sed -ni $CI_NODE_INDEX~$CI_NODE_TOTAL"p" /tmp/case-list.txt
+
+    PIGLIT_TESTS="--test-list /tmp/case-list.txt"
+fi
+
+PIGLIT_OPTIONS=$(printf "%s" "$PIGLIT_OPTIONS")
+
+PIGLIT_TESTS=$(printf "%s" "$PIGLIT_TESTS")
+
+PIGLIT_CMD="./piglit run -j${FDO_CI_CONCURRENT:-4} $PIGLIT_OPTIONS $PIGLIT_TESTS $PIGLIT_PROFILES "$(/usr/bin/printf "%q" "$RESULTS")
+
+RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $SANITY_MESA_VERSION_CMD && $PIGLIT_CMD"
+
+if [ "$RUN_CMD_WRAPPER" ]; then
+    RUN_CMD="set +e; $RUN_CMD_WRAPPER "$(/usr/bin/printf "%q" "$RUN_CMD")"; set -e"
+fi
+
 FAILURE_MESSAGE=$(printf "%s" "Unexpected change in results:")
 
 eval $RUN_CMD
@@ -223,8 +250,21 @@ if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
         "minio://${MINIO_HOST}${__MINIO_PATH}/${__MINIO_TRACES_PREFIX}/junit.xml"
 fi
 
-cp "$INSTALL/$PIGLIT_RESULTS.txt" \
-   ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline"
+if [ -n "$USE_CASELIST" ]; then
+    # Just filter the expected results based on the tests that were actually
+    # executed, and switch to the version with no summary
+    cat $RESULTSFILE | head -n -16 > ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.new"
+    RESULTSFILE=".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.new"
+    cat ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.orig" | head -n -17 | rev \
+        | cut -f2- -d: | rev | sed "s/$/:/g" > /tmp/executed.txt
+
+    grep -F -f /tmp/executed.txt "$INSTALL/$PIGLIT_RESULTS.txt" \
+       > ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" || true
+else
+    cp "$INSTALL/$PIGLIT_RESULTS.txt" \
+       ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline"
+fi
+
 if diff -q ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE; then
     exit 0
 fi

@@ -16,7 +16,7 @@ llvmpipe-piglit-cl:
     LP_NUM_THREADS: 1
     PIGLIT_PROFILES: cl
     PIGLIT_RESULTS: "llvmpipe-cl"
-    PIGLIT_OPTIONS: >
+    PIGLIT_TESTS: >
       -x bswap -x phatk -x clz-optimizations
   script:
     - install/piglit/run_cl.sh
@@ -31,6 +31,7 @@ llvmpipe-piglit-quick_gl:
     LP_NUM_THREADS: 0
     PIGLIT_OPTIONS: >
       --process-isolation false
+    PIGLIT_TESTS: >
       -x egl_ext_device_
       -x egl_ext_platform_device
       -x ext_timer_query@time-elapsed

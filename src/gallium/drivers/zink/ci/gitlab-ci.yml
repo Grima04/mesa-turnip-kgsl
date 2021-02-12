@@ -15,7 +15,7 @@ zink-piglit-quick_gl:
     - .piglit-test
     - .zink-lvp-test
   variables:
-    PIGLIT_OPTIONS: >
+    PIGLIT_TESTS: >
       -x arb_map_buffer_alignment@arb_map_buffer_alignment-map-invalidate-range
       -x glx-make-current -x arb_timer_query -x arb_sample_shading@builtin-gl-sample-mask
     PIGLIT_PROFILES: quick_gl
