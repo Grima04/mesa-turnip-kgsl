@@ -1643,8 +1643,11 @@ radv_image_create(VkDevice _device,
 		return VK_SUCCESS;
 	}
 
-	ASSERTED VkResult result = radv_image_create_layout(device, *create_info, explicit_mod, image);
-	assert(result == VK_SUCCESS);
+	VkResult result = radv_image_create_layout(device, *create_info, explicit_mod, image);
+	if (result != VK_SUCCESS) {
+		radv_destroy_image(device, alloc, image);
+		return result;
+	}
 
 	if (image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) {
 		image->alignment = MAX2(image->alignment, 4096);
