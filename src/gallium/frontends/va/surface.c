@@ -973,6 +973,30 @@ vlVaQueryVideoProcPipelineCaps(VADriverContextP ctx, VAContextID context,
    return VA_STATUS_SUCCESS;
 }
 
+static uint32_t pipe_format_to_drm_format(enum pipe_format format)
+{
+   switch (format) {
+   case PIPE_FORMAT_R8_UNORM:
+      return DRM_FORMAT_R8;
+   case PIPE_FORMAT_R8G8_UNORM:
+      return DRM_FORMAT_GR88;
+   case PIPE_FORMAT_R16_UNORM:
+      return DRM_FORMAT_R16;
+   case PIPE_FORMAT_R16G16_UNORM:
+      return DRM_FORMAT_GR1616;
+   case PIPE_FORMAT_B8G8R8A8_UNORM:
+      return DRM_FORMAT_ARGB8888;
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+      return DRM_FORMAT_ABGR8888;
+   case PIPE_FORMAT_B8G8R8X8_UNORM:
+      return DRM_FORMAT_XRGB8888;
+   case PIPE_FORMAT_R8G8B8X8_UNORM:
+      return DRM_FORMAT_XBGR8888;
+   default:
+      return DRM_FORMAT_INVALID;
+   }
+}
+
 #if VA_CHECK_VERSION(1, 1, 0)
 VAStatus
 vlVaExportSurfaceHandle(VADriverContextP ctx,
@@ -1051,32 +1075,8 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
 
       resource = surfaces[p]->texture;
 
-      switch (resource->format) {
-      case PIPE_FORMAT_R8_UNORM:
-         drm_format = DRM_FORMAT_R8;
-         break;
-      case PIPE_FORMAT_R8G8_UNORM:
-         drm_format = DRM_FORMAT_GR88;
-         break;
-      case PIPE_FORMAT_R16_UNORM:
-         drm_format = DRM_FORMAT_R16;
-         break;
-      case PIPE_FORMAT_R16G16_UNORM:
-         drm_format = DRM_FORMAT_GR1616;
-         break;
-      case PIPE_FORMAT_B8G8R8A8_UNORM:
-         drm_format = DRM_FORMAT_ARGB8888;
-         break;
-      case PIPE_FORMAT_R8G8B8A8_UNORM:
-         drm_format = DRM_FORMAT_ABGR8888;
-         break;
-      case PIPE_FORMAT_B8G8R8X8_UNORM:
-         drm_format = DRM_FORMAT_XRGB8888;
-         break;
-      case PIPE_FORMAT_R8G8B8X8_UNORM:
-         drm_format = DRM_FORMAT_XBGR8888;
-         break;
-      default:
+      drm_format = pipe_format_to_drm_format(resource->format);
+      if (drm_format == DRM_FORMAT_INVALID) {
          ret = VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE;
          goto fail;
       }
