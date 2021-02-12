@@ -279,6 +279,7 @@ bi_singleton(void *memctx, bi_instr *ins,
 
         u->next_clause_prefetch = (ins->op != BI_OPCODE_JUMP);
         u->message_type = bi_message_type_for_instr(ins);
+        u->message = u->message_type ? ins : NULL;
         u->block = block;
 
         return u;
@@ -1213,6 +1214,7 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st)
 
                         if (!clause->message_type) {
                                 clause->message_type = msg;
+                                clause->message = tuple->add;
                                 clause_state.message = true;
                         }
 

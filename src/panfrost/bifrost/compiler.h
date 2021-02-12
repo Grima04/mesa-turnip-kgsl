@@ -483,6 +483,7 @@ typedef struct {
 
         /* Unique in a clause */
         enum bifrost_message_type message_type;
+        bi_instr *message;
 } bi_clause;
 
 typedef struct bi_block {
@@ -738,6 +739,7 @@ bool bi_opt_copy_prop(bi_context *ctx);
 bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block, bool soft);
 void bi_opt_push_ubo(bi_context *ctx);
 void bi_schedule(bi_context *ctx);
+void bi_assign_scoreboard(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
 
 /* Test suite */
