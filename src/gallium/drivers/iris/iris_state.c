@@ -4314,7 +4314,8 @@ KSP(const struct iris_compiled_shader *shader)
 {                                                                         \
    uint32_t pkt2[GENX(name##_length)] = {0};                              \
    _iris_pack_command(batch, GENX(name), pkt2, p) {                       \
-      p.ScratchSpaceBasePointer = rw_bo(scratch_bo, 0, IRIS_DOMAIN_NONE); \
+      p.ScratchSpaceBasePointer =                                         \
+         rw_bo(NULL, scratch_addr, IRIS_DOMAIN_NONE);                     \
    }                                                                      \
    iris_emit_merge(batch, pkt, pkt2, GENX(name##_length));                \
 }
@@ -5042,6 +5043,25 @@ pin_depth_and_stencil_buffers(struct iris_batch *batch,
    }
 }
 
+static uint32_t
+pin_scratch_space(struct iris_context *ice,
+                  struct iris_batch *batch,
+                  const struct brw_stage_prog_data *prog_data,
+                  gl_shader_stage stage)
+{
+   uint32_t scratch_addr = 0;
+
+   if (prog_data->total_scratch > 0) {
+      struct iris_bo *scratch_bo =
+         iris_get_scratch_space(ice, prog_data->total_scratch, stage);
+      iris_use_pinned_bo(batch, scratch_bo, true, IRIS_DOMAIN_NONE);
+
+      scratch_addr = scratch_bo->gtt_offset;
+   }
+
+   return scratch_addr;
+}
+
 /* ------------------------------------------------------------------- */
 
 /**
@@ -5162,13 +5182,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
             struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
             iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_NONE);
 
-            struct brw_stage_prog_data *prog_data = shader->prog_data;
-
-            if (prog_data->total_scratch > 0) {
-               struct iris_bo *bo =
-                  iris_get_scratch_space(ice, prog_data->total_scratch, stage);
-               iris_use_pinned_bo(batch, bo, true, IRIS_DOMAIN_NONE);
-            }
+            pin_scratch_space(ice, batch, shader->prog_data, stage);
          }
       }
    }
@@ -5234,13 +5248,7 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
             iris_use_pinned_bo(batch, curbe_bo, false, IRIS_DOMAIN_NONE);
          }
 
-         struct brw_stage_prog_data *prog_data = shader->prog_data;
-
-         if (prog_data->total_scratch > 0) {
-            struct iris_bo *bo =
-               iris_get_scratch_space(ice, prog_data->total_scratch, stage);
-            iris_use_pinned_bo(batch, bo, true, IRIS_DOMAIN_NONE);
-         }
+         pin_scratch_space(ice, batch, shader->prog_data, stage);
       }
    }
 }
@@ -5844,8 +5852,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          struct iris_resource *cache = (void *) shader->assembly.res;
          iris_use_pinned_bo(batch, cache->bo, false, IRIS_DOMAIN_NONE);
 
-         struct iris_bo *scratch_bo = prog_data->total_scratch == 0 ? NULL :
-            iris_get_scratch_space(ice, prog_data->total_scratch, stage);
+         uint32_t scratch_addr =
+            pin_scratch_space(ice, batch, prog_data, stage);
 
          if (stage == MESA_SHADER_FRAGMENT) {
             UNUSED struct iris_rasterizer_state *cso = ice->state.cso_rast;
@@ -5885,10 +5893,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                ps.KernelStartPointer2 = KSP(shader) +
                   brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
 
-               if (scratch_bo) {
-                  ps.ScratchSpaceBasePointer =
-                     rw_bo(scratch_bo, 0, IRIS_DOMAIN_NONE);
-               }
+               ps.ScratchSpaceBasePointer =
+                  rw_bo(NULL, scratch_addr, IRIS_DOMAIN_NONE);
             }
 
             uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)] = {0};
@@ -5915,7 +5921,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                             GENX(3DSTATE_PS_length));
             iris_emit_merge(batch, shader_psx, psx_state,
                             GENX(3DSTATE_PS_EXTRA_length));
-         } else if (scratch_bo) {
+         } else if (scratch_addr) {
             uint32_t *pkt = (uint32_t *) shader->derived_data;
             switch (stage) {
             case MESA_SHADER_VERTEX:    MERGE_SCRATCH_ADDR(3DSTATE_VS); break;
@@ -6841,11 +6847,12 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
 
       iris_emit_cmd(batch, GENX(MEDIA_VFE_STATE), vfe) {
          if (prog_data->total_scratch) {
-            struct iris_bo *bo =
-               iris_get_scratch_space(ice, prog_data->total_scratch,
-                                      MESA_SHADER_COMPUTE);
+            uint32_t scratch_addr =
+               pin_scratch_space(ice, batch, prog_data, MESA_SHADER_COMPUTE);
+
             vfe.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
-            vfe.ScratchSpaceBasePointer = rw_bo(bo, 0, IRIS_DOMAIN_NONE);
+            vfe.ScratchSpaceBasePointer =
+               rw_bo(NULL, scratch_addr, IRIS_DOMAIN_NONE);
          }
 
          vfe.MaximumNumberofThreads =
