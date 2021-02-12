@@ -29,7 +29,7 @@
 #include "panfrost/bifrost/bifrost_compile.h"
 
 const nir_shader_compiler_options *
-panfrost_get_shader_options(const struct panfrost_device *dev)
+pan_shader_get_compiler_options(const struct panfrost_device *dev)
 {
         if (pan_is_bifrost(dev))
                 return &bifrost_nir_options;
@@ -38,9 +38,9 @@ panfrost_get_shader_options(const struct panfrost_device *dev)
 }
 
 panfrost_program *
-panfrost_compile_shader(const struct panfrost_device *dev,
-                        void *mem_ctx, nir_shader *nir,
-                        const struct panfrost_compile_inputs *inputs)
+pan_shader_compile(const struct panfrost_device *dev,
+                   void *mem_ctx, nir_shader *nir,
+                   const struct panfrost_compile_inputs *inputs)
 {
         if (pan_is_bifrost(dev))
                 return bifrost_compile_shader_nir(mem_ctx, nir, inputs);

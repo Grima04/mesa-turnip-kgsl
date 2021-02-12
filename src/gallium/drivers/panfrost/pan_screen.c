@@ -772,7 +772,7 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
                                      enum pipe_shader_ir ir,
                                      enum pipe_shader_type shader)
 {
-        return panfrost_get_shader_options(pan_device(pscreen));
+        return pan_shader_get_compiler_options(pan_device(pscreen));
 }
 
 struct pipe_screen *

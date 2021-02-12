@@ -302,7 +302,7 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
                         bifrost_get_blend_desc(dev, shader->key.format, shader->key.rt);
         }
 
-        program = panfrost_compile_shader(dev, NULL, shader->nir, &inputs);
+        program = pan_shader_compile(dev, NULL, shader->nir, &inputs);
 
         /* Allow us to patch later */
         shader->first_tag = program->first_tag;

@@ -282,7 +282,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         panfrost_program *program;
 
-        program = panfrost_compile_shader(dev, NULL, s, &inputs);
+        program = pan_shader_compile(dev, NULL, s, &inputs);
 
         /* Prepare the compiled binary for upload */
         mali_ptr shader = 0;

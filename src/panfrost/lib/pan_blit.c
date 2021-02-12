@@ -53,7 +53,7 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
 
         nir_builder _b =
            nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
-                                          panfrost_get_shader_options(dev),
+                                          pan_shader_get_compiler_options(dev),
                                           "pan_blit");
         nir_builder *b = &_b;
         nir_shader *shader = b->shader;
@@ -111,7 +111,7 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
         };
 
         panfrost_program *program =
-                panfrost_compile_shader(dev, NULL, shader, &inputs);
+                pan_shader_compile(dev, NULL, shader, &inputs);
 
         ralloc_free(shader);
         return program;

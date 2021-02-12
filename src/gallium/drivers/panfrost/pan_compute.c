@@ -64,7 +64,7 @@ panfrost_create_compute_state(
                 blob_reader_init(&reader, hdr->blob, hdr->num_bytes);
 
                 const struct nir_shader_compiler_options *options =
-                        panfrost_get_shader_options(dev);
+                        pan_shader_get_compiler_options(dev);
 
                 so->cbase.prog = nir_deserialize(NULL, options, &reader);
                 so->cbase.ir_type = PIPE_SHADER_IR_NIR;
