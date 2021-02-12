@@ -2577,11 +2577,15 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                                 bifrost_debug & BIFROST_DBG_VERBOSE);
         }
 
-        /* Pad the shader with enough zero bytes to trick the prefetcher */
+        /* Pad the shader with enough zero bytes to trick the prefetcher,
+         * unless we're compiling an empty shader (in which case we don't pad
+         * so the size remains 0) */
         unsigned prefetch_size = BIFROST_SHADER_PREFETCH - final_clause;
 
-        memset(util_dynarray_grow(&program->compiled, uint8_t, prefetch_size),
-               0, prefetch_size);
+        if (program->compiled.size) {
+                memset(util_dynarray_grow(&program->compiled, uint8_t, prefetch_size),
+                       0, prefetch_size);
+        }
 
         program->tls_size = ctx->tls_size;
 
