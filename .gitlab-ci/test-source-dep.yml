@@ -187,6 +187,38 @@
       when: on_success
     - when: never
 
+.v3d-rules:
+  stage: broadcom
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+      - src/broadcom/**/*
+      - src/gallium/drivers/v3d/**/*
+      - src/gallium/winsys/kmsro/**/*
+      - src/gallium/winsys/v3d/**/*
+      - ci-expects/v3d/*
+      when: on_success
+    - when: never
+
+.v3dv-rules:
+  stage: broadcom
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+      - src/broadcom/**/*
+      - ci-expects/v3dv/*
+      when: on_success
+    - when: never
+
 .lima-rules:
   stage: arm
   rules:

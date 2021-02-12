@@ -1,0 +1,8 @@
+# Slow tests (> 1 minute to run)
+dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_linear_repeat
+dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_nearest_clamp
+dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_repeat
+
+# These crash due bugs in VK-GL-CTS 1.2.5.1
+dEQP-VK.ycbcr.query.levels.tess_control.r8g8b8a8_unorm
+dEQP-VK.ycbcr.query.size_lod.tess_control.r8g8b8a8_unorm

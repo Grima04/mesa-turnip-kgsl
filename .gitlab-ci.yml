@@ -1632,6 +1632,12 @@ arm64_a630_piglit_shader:
     reports:
       junit: results/junit.xml
 
+.baremetal-test-armhf:
+  extends:
+    - .baremetal-test
+  variables:
+    DRIVER_URL: https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-armhf.tar.gz
+
 .freedreno-test:
   extends:
     - .baremetal-test
@@ -1801,7 +1807,7 @@ arm64_a530_piglit_shader:
 
 .vc4-rpi3-test:armhf:
   extends:
-    - .baremetal-test
+    - .baremetal-test-armhf
     - .vc4-rules
     - .use-armhf_test
   variables:
@@ -1811,7 +1817,6 @@ arm64_a530_piglit_shader:
     BM_ROOTFS_EXTRA: /modules/armhf
     GPU_VERSION: vc4-rpi3
     DEQP_EXPECTED_RENDERER: VC4
-    DRIVER_URL: https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-armhf.tar.gz
   script:
     - ./install/bare-metal/poe-powered.sh
   needs:
@@ -1902,6 +1907,131 @@ vc4-rpi3-piglit-quick_shader:armhf:
     FDO_CI_CONCURRENT: 2
     PIGLIT_PROFILES: quick_shader
     PIGLIT_RESULTS: "vc4-rpi3-quick_shader"
+
+.v3d-rpi4-test:armhf:
+  extends:
+    - .baremetal-test-armhf
+    - .v3d-rules
+    - .use-armhf_test
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
+    BM_BOOTFS: /boot/armhf
+    BM_KERNEL_MODULES: v3d,vc4
+    BM_POE_TIMEOUT: 300
+    BM_ROOTFS: /lava-files/rootfs-armhf
+    BM_ROOTFS_EXTRA: /modules/armhf
+    DEQP_EXPECTED_RENDERER: V3D
+    GPU_VERSION: v3d-rpi4
+  script:
+    - ./install/bare-metal/poe-powered.sh
+  needs:
+    - armhf_test
+    - meson-armhf
+  tags:
+    - igalia-rpi4
+
+v3d-rpi4-gles31:armhf:
+  extends:
+    - .v3d-rpi4-test:armhf
+  parallel: 2
+  variables:
+    DEQP_FRACTION: 2
+    DEQP_VER: gles31
+
+v3d-rpi4-gles3:armhf:
+  extends:
+    - .v3d-rpi4-test:armhf
+  parallel: 4
+  variables:
+    DEQP_FRACTION: 2
+    DEQP_VER: gles3
+
+v3d-rpi4-gles2:armhf:
+  extends:
+    - .v3d-rpi4-test:armhf
+  variables:
+    DEQP_VER: gles2
+
+.v3d-rpi4-piglit:armhf:
+  extends:
+    - .piglit-test
+    - .v3d-rpi4-test:armhf
+    - .test-manual
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
+    PIGLIT_OPTIONS: >-
+      --timeout 60
+      -x .tesc
+      -x .tese
+      -x arb_gpu_shader_fp64
+      -x arb_gpu_shader_gpu5
+      -x arb_gpu_shader_int64
+      -x arb_tessellation_shader
+      -x depthstencil-default_fb
+      -x egl_ext_platform_device
+      -x ext_timer_query@time-elapsed
+      -x gl-1.3-texture-env
+      -x glsl-1.30
+      -x glsl-3.30
+      -x glsl-4.00
+      -x glsl-4.10
+      -x glsl-4.20
+      -x glsl-4.30
+      -x glsl-4.40
+      -x glsl-4.50
+      -x glsl-4.60
+      -x glsl-es-3.00
+      -x glsl-es-3.20
+      -x glx-multithread-clearbuffer
+      -x glx-multithread-shader-compile
+      -x image_load_store
+      -x max-texture-size
+      -x maxsize
+      -x streaming-texture-leak
+      -x tex-miplevel-selection
+    PIGLIT_PLATFORM: gbm
+
+v3d-rpi4-piglit-quick_gl:armhf:
+  extends:
+    - .v3d-rpi4-piglit:armhf
+  variables:
+    PIGLIT_PROFILES: quick_gl
+    PIGLIT_RESULTS: "v3d-rpi4-quick_gl"
+
+v3d-rpi4-piglit-quick_shader:armhf:
+  extends:
+    - .v3d-rpi4-piglit:armhf
+  variables:
+    PIGLIT_PROFILES: quick_shader
+    PIGLIT_RESULTS: "v3d-rpi4-shader_gl"
+
+v3dv-rpi4-vk:armhf:
+  extends:
+    - .baremetal-test-armhf
+    - .use-armhf_test
+    - .v3dv-rules
+  parallel: 6
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
+    BM_BOOTFS: /boot/armhf
+    BM_KERNEL_MODULES: v3d,vc4
+    BM_POE_TIMEOUT: 300
+    BM_ROOTFS: /lava-files/rootfs-armhf
+    BM_ROOTFS_EXTRA: /modules/armhf
+    CPU: arm7hlf
+    DEQP_EXPECTED_RENDERER: "V3D 4.2"
+    DEQP_FRACTION: 7
+    DEQP_VER: vk
+    GPU_VERSION: v3dv-rpi4
+    VK_CPU: arm7hlf
+    VK_DRIVER: broadcom
+  script:
+    - ./install/bare-metal/poe-powered.sh
+  needs:
+    - armhf_test
+    - meson-armhf
+  tags:
+    - igalia-rpi4
 
 lavapipe-vk:
   stage: software-renderer

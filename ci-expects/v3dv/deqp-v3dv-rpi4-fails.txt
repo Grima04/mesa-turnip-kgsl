@@ -1,0 +1,2 @@
+dEQP-VK.draw.inverted_depth_ranges.nodepthclamp_deltazero,Fail
+dEQP-VK.synchronization.basic.binary_semaphore.chain,Fail
