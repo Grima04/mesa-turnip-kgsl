@@ -1631,7 +1631,7 @@ fs_visitor::assign_curb_setup()
       fs_reg base_addr = ubld.vgrf(BRW_REGISTER_TYPE_UD);
       ubld.group(1, 0).AND(base_addr,
                            retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD),
-                           brw_imm_ud(0xffffffc0));
+                           brw_imm_ud(INTEL_MASK(31, 6)));
 
       fs_reg header0 = ubld.vgrf(BRW_REGISTER_TYPE_UD);
       ubld.MOV(header0, brw_imm_ud(0));
