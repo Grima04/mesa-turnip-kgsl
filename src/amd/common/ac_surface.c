@@ -2458,7 +2458,7 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
    if (r)
       return r;
 
-   if (info->chip_class >= GFX9)
+   if (info->family_id >= FAMILY_AI)
       r = gfx9_compute_surface(addrlib, info, config, mode, surf);
    else
       r = gfx6_compute_surface(addrlib->handle, info, config, mode, surf);
