@@ -671,9 +671,87 @@ lower_gradient(nir_builder *b, nir_tex_instr *tex)
    replace_gradient_with_lod(b, lod, tex);
 }
 
-static void
+/* tex(s, coord) = txd(s, coord, dfdx(coord), dfdy(coord)) */
+static nir_tex_instr *
+lower_tex_to_txd(nir_builder *b, nir_tex_instr *tex)
+{
+   b->cursor = nir_after_instr(&tex->instr);
+   nir_tex_instr *txd = nir_tex_instr_create(b->shader, tex->num_srcs + 2);
+
+   txd->op = nir_texop_txd;
+   txd->sampler_dim = tex->sampler_dim;
+   txd->dest_type = tex->dest_type;
+   txd->coord_components = tex->coord_components;
+   txd->texture_index = tex->texture_index;
+   txd->sampler_index = tex->sampler_index;
+
+   /* reuse existing srcs */
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      nir_src_copy(&txd->src[i].src, &tex->src[i].src, txd);
+      txd->src[i].src_type = tex->src[i].src_type;
+   }
+   unsigned coord = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   assert(coord >= 0);
+   nir_ssa_def *dfdx = nir_fddx(b, tex->src[coord].src.ssa);
+   nir_ssa_def *dfdy = nir_fddy(b, tex->src[coord].src.ssa);
+   txd->src[tex->num_srcs].src = nir_src_for_ssa(dfdx);
+   txd->src[tex->num_srcs].src_type = nir_tex_src_ddx;
+   txd->src[tex->num_srcs + 1].src = nir_src_for_ssa(dfdy);
+   txd->src[tex->num_srcs + 1].src_type = nir_tex_src_ddy;
+
+   nir_ssa_dest_init(&txd->instr, &txd->dest, nir_dest_num_components(tex->dest),
+                     nir_dest_bit_size(tex->dest), NULL);
+   nir_builder_instr_insert(b, &txd->instr);
+   nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(&txd->dest.ssa));
+   nir_instr_remove(&tex->instr);
+   return txd;
+}
+
+/* txb(s, coord, bias) = txl(s, coord, lod(s, coord).y + bias) */
+static nir_tex_instr *
+lower_txb_to_txl(nir_builder *b, nir_tex_instr *tex)
+{
+   b->cursor = nir_after_instr(&tex->instr);
+   nir_tex_instr *txl = nir_tex_instr_create(b->shader, tex->num_srcs);
+
+   txl->op = nir_texop_txl;
+   txl->sampler_dim = tex->sampler_dim;
+   txl->dest_type = tex->dest_type;
+   txl->coord_components = tex->coord_components;
+   txl->texture_index = tex->texture_index;
+   txl->sampler_index = tex->sampler_index;
+
+   /* reuse all but bias src */
+   for (int i = 0; i < 2; i++) {
+      if (tex->src[i].src_type != nir_tex_src_bias) {
+         nir_src_copy(&txl->src[i].src, &tex->src[i].src, txl);
+         txl->src[i].src_type = tex->src[i].src_type;
+      }
+   }
+   nir_ssa_def *lod = nir_get_texture_lod(b, txl);
+
+   int bias_idx = nir_tex_instr_src_index(tex, nir_tex_src_bias);
+   assert(bias_idx >= 0);
+   lod = nir_fadd(b, nir_channel(b, lod, 1), nir_ssa_for_src(b, tex->src[bias_idx].src, 1));
+   txl->src[tex->num_srcs - 1].src = nir_src_for_ssa(lod);
+   txl->src[tex->num_srcs - 1].src_type = nir_tex_src_lod;
+
+   nir_ssa_dest_init(&txl->instr, &txl->dest, nir_dest_num_components(tex->dest),
+                     nir_dest_bit_size(tex->dest), NULL);
+   nir_builder_instr_insert(b, &txl->instr);
+   nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(&txl->dest.ssa));
+   nir_instr_remove(&tex->instr);
+   return txl;
+}
+
+static nir_tex_instr *
 saturate_src(nir_builder *b, nir_tex_instr *tex, unsigned sat_mask)
 {
+   if (tex->op == nir_texop_tex)
+      tex = lower_tex_to_txd(b, tex);
+   else if (tex->op == nir_texop_txb)
+      tex = lower_txb_to_txl(b, tex);
+
    b->cursor = nir_before_instr(&tex->instr);
 
    /* Walk through the sources saturating the requested arguments. */
@@ -719,6 +797,7 @@ saturate_src(nir_builder *b, nir_tex_instr *tex, unsigned sat_mask)
                             &tex->src[i].src,
                             nir_src_for_ssa(src));
    }
+   return tex;
 }
 
 static nir_ssa_def *
@@ -1088,7 +1167,7 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
       }
 
       if (sat_mask) {
-         saturate_src(b, tex, sat_mask);
+         tex = saturate_src(b, tex, sat_mask);
          progress = true;
       }
 
