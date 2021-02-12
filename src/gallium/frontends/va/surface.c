@@ -992,6 +992,10 @@ static uint32_t pipe_format_to_drm_format(enum pipe_format format)
       return DRM_FORMAT_XRGB8888;
    case PIPE_FORMAT_R8G8B8X8_UNORM:
       return DRM_FORMAT_XBGR8888;
+   case PIPE_FORMAT_NV12:
+      return DRM_FORMAT_NV12;
+   case PIPE_FORMAT_P010:
+      return DRM_FORMAT_P010;
    default:
       return DRM_FORMAT_INVALID;
    }
