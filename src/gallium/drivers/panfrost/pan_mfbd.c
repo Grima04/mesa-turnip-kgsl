@@ -527,6 +527,8 @@ panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                         pan_internal_cbuf_size(batch, &params.effective_tile_size);
                 params.tie_break_rule = MALI_TIE_BREAK_RULE_MINUS_180_IN_0_OUT;
                 params.render_target_count = MAX2(batch->key.nr_cbufs, 1);
+                params.sample_count = util_framebuffer_get_num_samples(&batch->key);
+                params.sample_pattern = panfrost_sample_pattern(params.sample_count);
         }
 
         panfrost_mfbd_emit_midgard_tiler(batch, fb, vertex_count);
