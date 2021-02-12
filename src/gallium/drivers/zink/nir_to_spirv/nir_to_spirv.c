@@ -413,9 +413,9 @@ handle_handle_slot(struct ntv_context *ctx, struct nir_variable *var, bool outpu
    if (var->data.patch) {
       assert(var->data.location >= VARYING_SLOT_PATCH0);
       return var->data.location - VARYING_SLOT_PATCH0;
-   } else if ((output && ctx->stage == MESA_SHADER_TESS_CTRL) ||
-              (!output && ctx->stage == MESA_SHADER_TESS_EVAL)) {
-      assert(var->data.location >= VARYING_SLOT_VAR0);
+   } else if (var->data.location >= VARYING_SLOT_VAR0 &&
+              ((output && ctx->stage == MESA_SHADER_TESS_CTRL) ||
+              (!output && ctx->stage == MESA_SHADER_TESS_EVAL))) {
       return var->data.location - VARYING_SLOT_VAR0;
    }
    return handle_slot(ctx, var->data.location);
