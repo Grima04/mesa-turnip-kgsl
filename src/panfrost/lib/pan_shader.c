@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2021 Collabora, Ltd.
+ * Copyright (C) 2018 Alyssa Rosenzweig
+ * Copyright (C) 2019-2021 Collabora, Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -19,23 +20,30 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- *
  */
 
-#ifndef __PAN_SHADER_H__
-#define __PAN_SHADER_H__
+#include "pan_device.h"
+#include "pan_shader.h"
 
-#include "compiler/nir/nir.h"
-#include "panfrost/util/pan_ir.h"
-
-struct panfrost_device;
+#include "panfrost/midgard/midgard_compile.h"
+#include "panfrost/bifrost/bifrost_compile.h"
 
 const nir_shader_compiler_options *
-panfrost_get_shader_options(const struct panfrost_device *dev);
+panfrost_get_shader_options(const struct panfrost_device *dev)
+{
+        if (pan_is_bifrost(dev))
+                return &bifrost_nir_options;
+
+        return &midgard_nir_options;
+}
 
 panfrost_program *
 panfrost_compile_shader(const struct panfrost_device *dev,
                         void *mem_ctx, nir_shader *nir,
-                        const struct panfrost_compile_inputs *inputs);
+                        const struct panfrost_compile_inputs *inputs)
+{
+        if (pan_is_bifrost(dev))
+                return bifrost_compile_shader_nir(mem_ctx, nir, inputs);
 
-#endif
+        return midgard_compile_shader_nir(mem_ctx, nir, inputs);
+}
