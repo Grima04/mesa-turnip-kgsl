@@ -89,6 +89,7 @@ vc4-rpi3-gles2:armhf:
 vc4-rpi3-piglit-quick_gl:armhf:
   extends:
     - .vc4-rpi3-piglit:armhf
+  parallel: 4
   variables:
     FDO_CI_CONCURRENT: 1
     PIGLIT_PROFILES: quick_gl
@@ -97,6 +98,7 @@ vc4-rpi3-piglit-quick_gl:armhf:
 vc4-rpi3-piglit-quick_shader:armhf:
   extends:
     - .vc4-rpi3-piglit:armhf
+  parallel: 2
   variables:
     FDO_CI_CONCURRENT: 2
     PIGLIT_PROFILES: quick_shader
@@ -189,6 +191,7 @@ v3d-rpi4-gles2:armhf:
 v3d-rpi4-piglit-quick_gl:armhf:
   extends:
     - .v3d-rpi4-piglit:armhf
+  parallel: 2
   variables:
     PIGLIT_PROFILES: quick_gl
     PIGLIT_RESULTS: "v3d-rpi4-quick_gl"
