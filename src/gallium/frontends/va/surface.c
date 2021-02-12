@@ -1017,8 +1017,6 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
 
    if (mem_type != VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2)
       return VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE;
-   if (flags & VA_EXPORT_SURFACE_COMPOSED_LAYERS)
-      return VA_STATUS_ERROR_INVALID_SURFACE;
 
    drv    = VL_VA_DRIVER(ctx);
    screen = VL_VA_PSCREEN(ctx);
@@ -1094,15 +1092,34 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
       desc->objects[p].size = 0;
       desc->objects[p].drm_format_modifier = whandle.modifier;
 
-      desc->layers[p].drm_format      = drm_format;
-      desc->layers[p].num_planes      = 1;
-      desc->layers[p].object_index[0] = p;
-      desc->layers[p].offset[0]       = whandle.offset;
-      desc->layers[p].pitch[0]        = whandle.stride;
+      if (flags & VA_EXPORT_SURFACE_COMPOSED_LAYERS) {
+         desc->layers[0].object_index[p] = p;
+         desc->layers[0].offset[p]       = whandle.offset;
+         desc->layers[0].pitch[p]        = whandle.stride;
+      } else {
+         desc->layers[p].drm_format      = drm_format;
+         desc->layers[p].num_planes      = 1;
+         desc->layers[p].object_index[0] = p;
+         desc->layers[p].offset[0]       = whandle.offset;
+         desc->layers[p].pitch[0]        = whandle.stride;
+      }
    }
 
    desc->num_objects = p;
-   desc->num_layers  = p;
+
+   if (flags & VA_EXPORT_SURFACE_COMPOSED_LAYERS) {
+      uint32_t drm_format = pipe_format_to_drm_format(surf->buffer->buffer_format);
+      if (drm_format == DRM_FORMAT_MOD_INVALID) {
+         ret = VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE;
+         goto fail;
+      }
+
+      desc->num_layers = 1;
+      desc->layers[0].drm_format = drm_format;
+      desc->layers[0].num_planes = p;
+   } else {
+      desc->num_layers = p;
+   }
 
    mtx_unlock(&drv->mutex);
 
