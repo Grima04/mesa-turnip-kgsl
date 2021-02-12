@@ -145,7 +145,7 @@ typedef struct {
 
 struct panfrost_compile_inputs {
         unsigned gpu_id;
-        bool is_blend;
+        bool is_blend, is_blit;
         struct {
                 unsigned rt;
                 unsigned nr_samples;

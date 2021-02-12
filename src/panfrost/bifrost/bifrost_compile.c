@@ -2445,6 +2445,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
         ctx->arch = inputs->gpu_id >> 12;
         ctx->is_blend = inputs->is_blend;
+        ctx->is_blit = inputs->is_blit;
         ctx->blend_desc = inputs->blend.bifrost_blend_desc;
         ctx->push = &program->push;
         memcpy(ctx->blend_constants, inputs->blend.constants, sizeof(ctx->blend_constants));

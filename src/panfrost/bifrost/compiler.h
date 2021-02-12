@@ -503,8 +503,8 @@ typedef struct {
        unsigned arch;
        unsigned tls_size;
 
-       /* Is internally a blend shader? Depends on stage == FRAGMENT */
-       bool is_blend;
+       /* Is internally a blend/blit shader? Depends on stage == FRAGMENT */
+       bool is_blend, is_blit;
 
        /* Blend constants */
        float blend_constants[4];

@@ -104,6 +104,7 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
 
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,
+                .is_blit = true,
         };
 
         panfrost_program *program =
