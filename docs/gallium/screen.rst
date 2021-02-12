@@ -685,6 +685,11 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
    If unsupported, half precision ops need to be lowered to full precision.
 * ``PIPE_SHADER_CAP_FP16_DERIVATIVES``: Whether half precision floating-point
   DDX and DDY opcodes are supported.
+* ``PIPE_SHADER_CAP_FP16_CONST_BUFFERS``: Whether half precision floating-point
+  constant buffer loads are supported. Drivers are recommended to report 0
+  if x86 F16C is not supported by the CPU (or an equivalent instruction set
+  on other CPU architectures), otherwise they could be impacted by emulated
+  FP16 conversions in glUniform.
 * ``PIPE_SHADER_CAP_INT16``: Whether 16-bit signed and unsigned integer types
   are supported.
 * ``PIPE_SHADER_CAP_GLSL_16BIT_CONSTS``: Lower mediump constants to 16-bit.

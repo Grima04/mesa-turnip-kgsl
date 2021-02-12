@@ -434,6 +434,7 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
    /* Unsupported boolean features. */
    case PIPE_SHADER_CAP_FP16:
    case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+   case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
    case PIPE_SHADER_CAP_INT16:
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
    case PIPE_SHADER_CAP_SUBROUTINES:

@@ -484,6 +484,7 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
          return 0;
       case PIPE_SHADER_CAP_FP16:
       case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+      case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
       case PIPE_SHADER_CAP_INT16:
       case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
          return 0;
@@ -554,6 +555,7 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
          return 0;
       case PIPE_SHADER_CAP_FP16:
       case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+      case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
       case PIPE_SHADER_CAP_INT16:
       case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
          return 0;
@@ -665,6 +667,7 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
       return TRUE;
    case PIPE_SHADER_CAP_FP16:
    case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+   case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
    case PIPE_SHADER_CAP_INT16:
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
       return FALSE;
