@@ -2142,32 +2142,30 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
       rsrc = ctx->abi->load_ubo(ctx->abi, binding.desc_set, binding.binding, binding.success, rsrc);
    }
 
+   /* Convert to a scalar 32-bit load. */
    if (instr->dest.ssa.bit_size == 64)
       num_components *= 2;
+   else if (instr->dest.ssa.bit_size == 16)
+      num_components = DIV_ROUND_UP(num_components, 2);
+   else if (instr->dest.ssa.bit_size == 8)
+      num_components = DIV_ROUND_UP(num_components, 4);
 
-   if (instr->dest.ssa.bit_size == 16 || instr->dest.ssa.bit_size == 8) {
-      unsigned load_bytes = instr->dest.ssa.bit_size / 8;
-      LLVMValueRef *const results = alloca(num_components * sizeof(LLVMValueRef));
-      for (unsigned i = 0; i < num_components; ++i) {
-         LLVMValueRef immoffset = LLVMConstInt(ctx->ac.i32, load_bytes * i, 0);
+   ret =
+      ac_build_buffer_load(&ctx->ac, rsrc, num_components, NULL, offset, NULL, 0, 0, true, true);
 
-         if (load_bytes == 1) {
-            results[i] =
-               ac_build_tbuffer_load_byte(&ctx->ac, rsrc, offset, ctx->ac.i32_0, immoffset, 0);
-         } else {
-            assert(load_bytes == 2);
-            results[i] =
-               ac_build_tbuffer_load_short(&ctx->ac, rsrc, offset, ctx->ac.i32_0, immoffset, 0);
-         }
-      }
-      ret = ac_build_gather_values(&ctx->ac, results, num_components);
-   } else {
-      ret =
-         ac_build_buffer_load(&ctx->ac, rsrc, num_components, NULL, offset, NULL, 0, 0, true, true);
-
-      ret = ac_trim_vector(&ctx->ac, ret, num_components);
+   /* Convert to the original type. */
+   if (instr->dest.ssa.bit_size == 64) {
+      ret = LLVMBuildBitCast(ctx->ac.builder, ret,
+                             LLVMVectorType(ctx->ac.i64, num_components / 2), "");
+   } else if (instr->dest.ssa.bit_size == 16) {
+      ret = LLVMBuildBitCast(ctx->ac.builder, ret,
+                             LLVMVectorType(ctx->ac.i16, num_components * 2), "");
+   } else if (instr->dest.ssa.bit_size == 8) {
+      ret = LLVMBuildBitCast(ctx->ac.builder, ret,
+                             LLVMVectorType(ctx->ac.i8, num_components * 4), "");
    }
 
+   ret = ac_trim_vector(&ctx->ac, ret, instr->num_components);
    ret = LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->dest.ssa), "");
 
    return exit_waterfall(ctx, &wctx, ret);
