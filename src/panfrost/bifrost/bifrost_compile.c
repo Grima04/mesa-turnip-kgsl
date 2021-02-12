@@ -542,11 +542,6 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 static void
 bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
 {
-        /* nir_lower_uniforms_to_ubo() should have been called, reserving
-         * UBO #0 for uniforms even if the shaders doesn't have uniforms.
-         */
-        assert(b->shader->nir->info.first_ubo_is_default_ubo);
-
         nir_src *offset = nir_get_io_offset_src(instr);
 
         bool offset_is_const = nir_src_is_const(*offset);
