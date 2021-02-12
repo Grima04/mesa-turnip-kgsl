@@ -498,6 +498,7 @@ __fd6_texture_state_destroy(struct fd6_texture_state *state)
 
 static void
 fd6_rebind_resource(struct fd_context *ctx, struct fd_resource *rsc)
+	assert_dt
 {
 	fd_screen_assert_locked(ctx->screen);
 
@@ -520,6 +521,7 @@ fd6_rebind_resource(struct fd_context *ctx, struct fd_resource *rsc)
 
 void
 fd6_texture_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd6_context *fd6_ctx = fd6_context(ctx);

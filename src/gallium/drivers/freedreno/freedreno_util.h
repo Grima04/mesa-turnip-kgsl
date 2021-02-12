@@ -111,6 +111,66 @@ extern bool fd_binning_enabled;
 			mesa_logw(__VA_ARGS__); \
 	} while(0)
 
+struct fd_context;
+
+/**
+ * A psuedo-variable for defining where various parts of the fd_context
+ * can be safely accessed.
+ *
+ * With threaded_context, certain pctx funcs are called from gallium
+ * front-end/state-tracker (eg. CSO creation), while others are called
+ * from the driver thread.  Things called from driver thread can safely
+ * access anything in the ctx, while things called from the fe/st thread
+ * must limit themselves to "safe" things (ie. ctx->screen is safe as it
+ * is immutable, but the blitter_context is not).
+ */
+extern lock_cap_t fd_context_access_cap;
+
+/**
+ * Make the annotation a bit less verbose.. mark fields which should only
+ * be accessed by driver-thread with 'dt'
+ */
+#define dt guarded_by(fd_context_access_cap)
+
+/**
+ * Annotation for entry-point functions only called in driver thread.
+ *
+ * For static functions, apply the annotation to the function declaration.
+ * Otherwise apply to the function prototype.
+ */
+#define in_dt assert_cap(fd_context_access_cap)
+
+/**
+ * Annotation for internal functions which are only called from entry-
+ * point functions (with 'in_dt' annotation) or other internal functions
+ * with the 'assert_dt' annotation.
+ *
+ * For static functions, apply the annotation to the function declaration.
+ * Otherwise apply to the function prototype.
+ */
+#define assert_dt requires_cap(fd_context_access_cap)
+
+/**
+ * Special helpers for context access outside of driver thread.  For ex,
+ * pctx->get_query_result() is not called on driver thread, but the
+ * query is guaranteed to be flushed, or the driver thread queue is
+ * guaranteed to be flushed.
+ *
+ * Use with caution!
+ */
+static inline void
+fd_context_access_begin(struct fd_context *ctx)
+	acquire_cap(fd_context_access_cap)
+{
+}
+
+static inline void
+fd_context_access_end(struct fd_context *ctx)
+	release_cap(fd_context_access_cap)
+{
+}
+
+
 /* for conditionally setting boolean flag(s): */
 #define COND(bool, val) ((bool) ? (val) : 0)
 

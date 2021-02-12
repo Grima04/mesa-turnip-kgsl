@@ -249,15 +249,15 @@ struct fd_batch {
 
 struct fd_batch * fd_batch_create(struct fd_context *ctx, bool nondraw);
 
-void fd_batch_reset(struct fd_batch *batch);
-void fd_batch_flush(struct fd_batch *batch);
-void fd_batch_add_dep(struct fd_batch *batch, struct fd_batch *dep);
-void fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc);
-void fd_batch_resource_read_slowpath(struct fd_batch *batch, struct fd_resource *rsc);
-void fd_batch_check_size(struct fd_batch *batch);
+void fd_batch_reset(struct fd_batch *batch) assert_dt;
+void fd_batch_flush(struct fd_batch *batch) assert_dt;
+void fd_batch_add_dep(struct fd_batch *batch, struct fd_batch *dep) assert_dt;
+void fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc) assert_dt;
+void fd_batch_resource_read_slowpath(struct fd_batch *batch, struct fd_resource *rsc) assert_dt;
+void fd_batch_check_size(struct fd_batch *batch) assert_dt;
 
 /* not called directly: */
-void __fd_batch_describe(char* buf, const struct fd_batch *batch);
+void __fd_batch_describe(char* buf, const struct fd_batch *batch) assert_dt;
 void __fd_batch_destroy(struct fd_batch *batch);
 
 /*
@@ -331,6 +331,7 @@ fd_batch_lock_submit(struct fd_batch *batch)
  * the batch before each draw.
  */
 static inline void fd_batch_update_queries(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 
@@ -339,6 +340,7 @@ static inline void fd_batch_update_queries(struct fd_batch *batch)
 }
 
 static inline void fd_batch_finish_queries(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 
@@ -352,7 +354,7 @@ fd_reset_wfi(struct fd_batch *batch)
 	batch->needs_wfi = true;
 }
 
-void fd_wfi(struct fd_batch *batch, struct fd_ringbuffer *ring);
+void fd_wfi(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt;
 
 /* emit a CP_EVENT_WRITE:
  */

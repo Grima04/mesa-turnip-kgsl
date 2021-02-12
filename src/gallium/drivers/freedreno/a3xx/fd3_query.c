@@ -135,6 +135,7 @@ static const struct fd_hw_sample_provider occlusion_predicate_conservative = {
 };
 
 void fd3_query_context_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 

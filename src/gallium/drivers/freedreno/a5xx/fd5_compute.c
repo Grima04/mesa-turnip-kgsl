@@ -116,6 +116,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v,
 
 static void
 fd5_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
+	assert_dt
 {
 	struct ir3_shader_key key = {};
 	struct ir3_shader_variant *v;
@@ -192,6 +193,7 @@ fd5_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 
 void
 fd5_compute_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->launch_grid = fd5_launch_grid;

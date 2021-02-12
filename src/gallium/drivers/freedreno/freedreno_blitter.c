@@ -78,6 +78,7 @@ default_src_texture(struct pipe_sampler_view *src_templ,
 
 static void
 fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond, bool discard)
+	assert_dt
 {
 	fd_fence_ref(&ctx->last_fence, NULL);
 
@@ -118,6 +119,7 @@ fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond, bool discard)
 
 static void
 fd_blitter_pipe_end(struct fd_context *ctx)
+	assert_dt
 {
 	ctx->in_discard_blit = false;
 }
@@ -303,6 +305,7 @@ fd_blitter_pipe_copy_region(struct fd_context *ctx,
 		struct pipe_resource *src,
 		unsigned src_level,
 		const struct pipe_box *src_box)
+	assert_dt
 {
 	/* not until we allow rendertargets to be buffers */
 	if (dst->target == PIPE_BUFFER || src->target == PIPE_BUFFER)

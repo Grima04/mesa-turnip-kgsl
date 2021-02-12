@@ -41,6 +41,7 @@ struct fd_hw_sample_period {
 static struct fd_hw_sample *
 get_sample(struct fd_batch *batch, struct fd_ringbuffer *ring,
 		unsigned query_type)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd_hw_sample *samp = NULL;
@@ -80,6 +81,7 @@ query_active_in_batch(struct fd_batch *batch, struct fd_hw_query *hq)
 static void
 resume_query(struct fd_batch *batch, struct fd_hw_query *hq,
 		struct fd_ringbuffer *ring)
+	assert_dt
 {
 	int idx = pidx(hq->provider->query_type);
 	DBG("%p", hq);
@@ -97,6 +99,7 @@ resume_query(struct fd_batch *batch, struct fd_hw_query *hq,
 static void
 pause_query(struct fd_batch *batch, struct fd_hw_query *hq,
 		struct fd_ringbuffer *ring)
+	assert_dt
 {
 	ASSERTED int idx = pidx(hq->provider->query_type);
 	DBG("%p", hq);
@@ -136,6 +139,7 @@ fd_hw_destroy_query(struct fd_context *ctx, struct fd_query *q)
 
 static void
 fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
+	assert_dt
 {
 	struct fd_batch *batch = fd_context_batch_locked(ctx);
 	struct fd_hw_query *hq = fd_hw_query(q);
@@ -158,6 +162,7 @@ fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
 
 static void
 fd_hw_end_query(struct fd_context *ctx, struct fd_query *q)
+	assert_dt
 {
 	struct fd_batch *batch = fd_context_batch_locked(ctx);
 	struct fd_hw_query *hq = fd_hw_query(q);
@@ -214,8 +219,11 @@ fd_hw_get_query_result(struct fd_context *ctx, struct fd_query *q,
 			 * wait to flush unnecessarily but we also don't want to
 			 * spin forever:
 			 */
-			if (hq->no_wait_cnt++ > 5)
+			if (hq->no_wait_cnt++ > 5) {
+				fd_context_access_begin(ctx);
 				fd_batch_flush(rsc->write_batch);
+				fd_context_access_end(ctx);
+			}
 			return false;
 		}
 
@@ -242,8 +250,11 @@ fd_hw_get_query_result(struct fd_context *ctx, struct fd_query *q,
 
 		struct fd_resource *rsc = fd_resource(start->prsc);
 
-		if (rsc->write_batch)
+		if (rsc->write_batch) {
+			fd_context_access_begin(ctx);
 			fd_batch_flush(rsc->write_batch);
+			fd_context_access_end(ctx);
+		}
 
 		/* some piglit tests at least do query with no draws, I guess: */
 		if (!rsc->bo)

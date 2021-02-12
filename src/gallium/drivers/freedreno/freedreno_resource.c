@@ -68,6 +68,7 @@
  */
 static void
 rebind_resource_in_ctx(struct fd_context *ctx, struct fd_resource *rsc)
+	assert_dt
 {
 	struct pipe_resource *prsc = &rsc->base;
 
@@ -152,6 +153,7 @@ rebind_resource_in_ctx(struct fd_context *ctx, struct fd_resource *rsc)
 
 static void
 rebind_resource(struct fd_resource *rsc)
+	assert_dt
 {
 	struct fd_screen *screen = fd_screen(rsc->base.screen);
 
@@ -213,6 +215,7 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
 
 static void
 do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit, bool fallback)
+	assert_dt
 {
 	struct pipe_context *pctx = &ctx->base;
 
@@ -238,6 +241,7 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage);
 static bool
 fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 		unsigned level, const struct pipe_box *box, uint64_t modifier)
+	assert_dt
 {
 	struct pipe_context *pctx = &ctx->base;
 	struct pipe_resource *prsc = &rsc->base;
@@ -472,6 +476,7 @@ fd_alloc_staging(struct fd_context *ctx, struct fd_resource *rsc,
 
 static void
 fd_blit_from_staging(struct fd_context *ctx, struct fd_transfer *trans)
+	assert_dt
 {
 	struct pipe_resource *dst = trans->base.resource;
 	struct pipe_blit_info blit = {};
@@ -492,6 +497,7 @@ fd_blit_from_staging(struct fd_context *ctx, struct fd_transfer *trans)
 
 static void
 fd_blit_to_staging(struct fd_context *ctx, struct fd_transfer *trans)
+	assert_dt
 {
 	struct pipe_resource *src = trans->base.resource;
 	struct pipe_blit_info blit = {};
@@ -524,6 +530,7 @@ static void fd_resource_transfer_flush_region(struct pipe_context *pctx,
 
 static void
 flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
+	assert_dt
 {
 	struct fd_batch *write_batch = NULL;
 
@@ -564,6 +571,7 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 
 static void
 fd_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
+	in_dt
 {
 	flush_resource(fd_context(pctx), fd_resource(prsc), PIPE_MAP_READ);
 }
@@ -571,6 +579,7 @@ fd_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 static void
 fd_resource_transfer_unmap(struct pipe_context *pctx,
 		struct pipe_transfer *ptrans)
+	in_dt  /* TODO for threaded-ctx we'll need to split out unsynchronized path */
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_resource *rsc = fd_resource(ptrans->resource);
@@ -600,6 +609,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		unsigned level, unsigned usage,
 		const struct pipe_box *box,
 		struct pipe_transfer **pptrans)
+	in_dt  /* TODO for threaded-ctx we'll need to split out unsynchronized path */
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_resource *rsc = fd_resource(prsc);
@@ -1180,6 +1190,7 @@ fd_render_condition_check(struct pipe_context *pctx)
 
 static void
 fd_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_resource *rsc = fd_resource(prsc);
@@ -1419,6 +1430,7 @@ fd_get_sample_position(struct pipe_context *context,
 
 static void
 fd_blit_pipe(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
+	in_dt
 {
 	/* wrap fd_blit to return void */
 	fd_blit(pctx, blit_info);

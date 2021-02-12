@@ -534,6 +534,7 @@ set_bin_size(struct fd_ringbuffer *ring, uint32_t w, uint32_t h, uint32_t flag)
 
 static void
 emit_binning_pass(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
@@ -648,6 +649,7 @@ static void prepare_tile_fini_ib(struct fd_batch *batch);
 /* before first tile */
 static void
 fd6_emit_tile_init(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -1176,6 +1178,7 @@ emit_resolve_blit(struct fd_batch *batch,
 				  uint32_t base,
 				  struct pipe_surface *psurf,
 				  unsigned buffer)
+	assert_dt
 {
 	uint32_t info = 0;
 	bool stencil = false;
@@ -1222,6 +1225,7 @@ emit_resolve_blit(struct fd_batch *batch,
 
 static void
 prepare_tile_fini_ib(struct fd_batch *batch)
+	assert_dt
 {
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -1327,6 +1331,7 @@ fd6_emit_tile_fini(struct fd_batch *batch)
 
 static void
 emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -1408,6 +1413,7 @@ setup_tess_buffers(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 static void
 fd6_emit_sysmem_prep(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_screen *screen = batch->ctx->screen;
@@ -1495,6 +1501,7 @@ fd6_emit_sysmem_fini(struct fd_batch *batch)
 
 void
 fd6_gmem_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 

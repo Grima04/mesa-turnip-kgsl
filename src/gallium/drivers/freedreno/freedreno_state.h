@@ -31,21 +31,25 @@
 #include "freedreno_context.h"
 
 static inline bool fd_depth_enabled(struct fd_context *ctx)
+	assert_dt
 {
 	return ctx->zsa && ctx->zsa->depth_enabled;
 }
 
 static inline bool fd_depth_write_enabled(struct fd_context *ctx)
+	assert_dt
 {
 	return ctx->zsa && ctx->zsa->depth_writemask;
 }
 
 static inline bool fd_stencil_enabled(struct fd_context *ctx)
+	assert_dt
 {
 	return ctx->zsa && ctx->zsa->stencil[0].enabled;
 }
 
 static inline bool fd_depth_clamp_enabled(struct fd_context *ctx)
+	assert_dt
 {
 	return !(ctx->rasterizer->depth_clip_near && ctx->rasterizer->depth_clip_far);
 }

@@ -257,6 +257,7 @@ patch_draws(struct fd_batch *batch, enum pc_di_vis_cull_mode vismode)
 
 static void
 update_vsc_pipe(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd5_context *fd5_ctx = fd5_context(ctx);
@@ -299,6 +300,7 @@ update_vsc_pipe(struct fd_batch *batch)
 
 static void
 emit_binning_pass(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd_ringbuffer *ring = batch->gmem;
@@ -363,6 +365,7 @@ emit_binning_pass(struct fd_batch *batch)
 /* before first tile */
 static void
 fd5_emit_tile_init(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -408,6 +411,7 @@ fd5_emit_tile_init(struct fd_batch *batch)
 /* before mem2gmem */
 static void
 fd5_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
@@ -678,6 +682,7 @@ fd5_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 
 static void
 fd5_emit_tile_fini(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 
@@ -692,6 +697,7 @@ fd5_emit_tile_fini(struct fd_batch *batch)
 
 static void
 fd5_emit_sysmem_prep(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 
@@ -789,6 +795,7 @@ fd5_emit_sysmem_fini(struct fd_batch *batch)
 
 void
 fd5_gmem_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 

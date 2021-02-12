@@ -43,6 +43,7 @@
 
 static void
 fd6_context_destroy(struct pipe_context *pctx)
+	in_dt
 {
 	struct fd6_context *fd6_ctx = fd6_context(fd_context(pctx));
 
@@ -127,6 +128,7 @@ fd6_vertex_state_delete(struct pipe_context *pctx, void *hwcso)
 
 struct pipe_context *
 fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
+	disable_thread_safety_analysis
 {
 	struct fd_screen *screen = fd_screen(pscreen);
 	struct fd6_context *fd6_ctx = CALLOC_STRUCT(fd6_context);

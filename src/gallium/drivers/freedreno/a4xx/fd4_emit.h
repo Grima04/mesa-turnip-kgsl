@@ -96,12 +96,12 @@ fd4_emit_get_fp(struct fd4_emit *emit)
 	return emit->fs;
 }
 
-void fd4_emit_vertex_bufs(struct fd_ringbuffer *ring, struct fd4_emit *emit);
+void fd4_emit_vertex_bufs(struct fd_ringbuffer *ring, struct fd4_emit *emit) assert_dt;
 
 void fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
-		struct fd4_emit *emit);
+		struct fd4_emit *emit) assert_dt;
 
-void fd4_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring);
+void fd4_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt;
 
 void fd4_emit_init_screen(struct pipe_screen *pscreen);
 void fd4_emit_init(struct pipe_context *pctx);

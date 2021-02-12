@@ -433,6 +433,7 @@ emit_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 
 bool
 fd5_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+	assert_dt
 {
 	struct fd_batch *batch;
 

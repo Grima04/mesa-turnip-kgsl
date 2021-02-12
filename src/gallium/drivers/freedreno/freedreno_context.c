@@ -41,6 +41,7 @@
 static void
 fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 		unsigned flags)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_fence_handle *fence = NULL;
@@ -112,6 +113,7 @@ out:
 
 static void
 fd_texture_barrier(struct pipe_context *pctx, unsigned flags)
+	in_dt
 {
 	if (flags == PIPE_TEXTURE_BARRIER_FRAMEBUFFER) {
 		struct fd_context *ctx = fd_context(pctx);
@@ -189,6 +191,7 @@ fd_emit_string5(struct fd_ringbuffer *ring,
  */
 static void
 fd_emit_string_marker(struct pipe_context *pctx, const char *string, int len)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 
@@ -375,6 +378,11 @@ fd_get_device_reset_status(struct pipe_context *pctx)
 	int global_faults  = fd_get_reset_count(ctx, false);
 	enum pipe_reset_status status;
 
+	/* Not called in driver thread, but threaded_context syncs
+	 * before calling this:
+	 */
+	fd_context_access_begin(ctx);
+
 	if (context_faults != ctx->context_reset_count) {
 		status = PIPE_GUILTY_CONTEXT_RESET;
 	} else if (global_faults != ctx->global_reset_count) {
@@ -385,6 +393,8 @@ fd_get_device_reset_status(struct pipe_context *pctx)
 
 	ctx->context_reset_count = context_faults;
 	ctx->global_reset_count = global_faults;
+
+	fd_context_access_end(ctx);
 
 	return status;
 }
@@ -509,6 +519,7 @@ fd_context_cleanup_common_vbos(struct fd_context *ctx)
 struct pipe_context *
 fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 		const uint8_t *primtypes, void *priv, unsigned flags)
+	disable_thread_safety_analysis
 {
 	struct fd_screen *screen = fd_screen(pscreen);
 	struct pipe_context *pctx;

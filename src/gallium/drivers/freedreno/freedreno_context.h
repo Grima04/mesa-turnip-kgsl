@@ -195,43 +195,43 @@ struct fd_context {
 	struct fd_screen *screen;
 	struct fd_pipe *pipe;
 
-	struct blitter_context *blitter;
-	void *clear_rs_state[2];
-	struct primconvert_context *primconvert;
+	struct blitter_context *blitter dt;
+	void *clear_rs_state[2] dt;
+	struct primconvert_context *primconvert dt;
 
 	/* slab for pipe_transfer allocations: */
-	struct slab_child_pool transfer_pool;
+	struct slab_child_pool transfer_pool dt;
 
 	/**
 	 * query related state:
 	 */
 	/*@{*/
 	/* slabs for fd_hw_sample and fd_hw_sample_period allocations: */
-	struct slab_mempool sample_pool;
-	struct slab_mempool sample_period_pool;
+	struct slab_mempool sample_pool dt;
+	struct slab_mempool sample_period_pool dt;
 
 	/* sample-providers for hw queries: */
 	const struct fd_hw_sample_provider *hw_sample_providers[MAX_HW_SAMPLE_PROVIDERS];
 
 	/* list of active queries: */
-	struct list_head hw_active_queries;
+	struct list_head hw_active_queries dt;
 
 	/* sample-providers for accumulating hw queries: */
 	const struct fd_acc_sample_provider *acc_sample_providers[MAX_HW_SAMPLE_PROVIDERS];
 
 	/* list of active accumulating queries: */
-	struct list_head acc_active_queries;
+	struct list_head acc_active_queries dt;
 	/*@}*/
 
 	/* Whether we need to recheck the active_queries list next
 	 * fd_batch_update_queries().
 	 */
-	bool update_active_queries;
+	bool update_active_queries dt;
 
 	/* Current state of pctx->set_active_query_state() (i.e. "should drawing
 	 * be counted against non-perfcounter queries")
 	 */
-	bool active_queries;
+	bool active_queries dt;
 
 	/* table with PIPE_PRIM_MAX entries mapping PIPE_PRIM_x to
 	 * DI_PT_x value to use for draw initiator.  There are some
@@ -257,7 +257,7 @@ struct fd_context {
 		uint64_t batch_total, batch_sysmem, batch_gmem, batch_nondraw, batch_restore;
 		uint64_t staging_uploads, shadow_uploads;
 		uint64_t vs_regs, hs_regs, ds_regs, gs_regs, fs_regs;
-	} stats;
+	} stats dt;
 
 	/* Current batch.. the rule here is that you can deref ctx->batch
 	 * in codepaths from pipe_context entrypoints.  But not in code-
@@ -265,13 +265,13 @@ struct fd_context {
 	 * called from GMEM code), since in those code-paths the batch
 	 * you care about is not necessarily the same as ctx->batch.
 	 */
-	struct fd_batch *batch;
+	struct fd_batch *batch dt;
 
 	/* NULL if there has been rendering since last flush.  Otherwise
 	 * keeps a reference to the last fence so we can re-use it rather
 	 * than having to flush no-op batch.
 	 */
-	struct pipe_fence_handle *last_fence;
+	struct pipe_fence_handle *last_fence dt;
 
 	/* Fence fd we are told to wait on via ->fence_server_sync() (or -1
 	 * if none).  The in-fence is transferred over to the batch on the
@@ -286,7 +286,7 @@ struct fd_context {
 	 * maturely, causing us to stall early in the frame where we could
 	 * be building up cmdstream.
 	 */
-	int in_fence_fd;
+	int in_fence_fd dt;
 
 	/* track last known reset status globally and per-context to
 	 * determine if more resets occurred since then.  If global reset
@@ -294,7 +294,8 @@ struct fd_context {
 	 * per-context reset count increases, it means we crashed the
 	 * gpu.
 	 */
-	uint32_t context_reset_count, global_reset_count;
+	uint32_t context_reset_count dt;
+	uint32_t global_reset_count dt;
 
 	/* Context sequence #, used for batch-cache key: */
 	uint16_t seqno;
@@ -302,64 +303,64 @@ struct fd_context {
 	/* Are we in process of shadowing a resource? Used to detect recursion
 	 * in transfer_map, and skip unneeded synchronization.
 	 */
-	bool in_shadow : 1;
+	bool in_shadow : 1 dt;
 
 	/* Ie. in blit situation where we no longer care about previous framebuffer
 	 * contents.  Main point is to eliminate blits from fd_try_shadow_resource().
 	 * For example, in case of texture upload + gen-mipmaps.
 	 */
-	bool in_discard_blit : 1;
+	bool in_discard_blit : 1 dt;
 
 	/* points to either scissor or disabled_scissor depending on rast state: */
-	struct pipe_scissor_state *current_scissor;
+	struct pipe_scissor_state *current_scissor dt;
 
-	struct pipe_scissor_state scissor;
+	struct pipe_scissor_state scissor dt;
 
 	/* we don't have a disable/enable bit for scissor, so instead we keep
 	 * a disabled-scissor state which matches the entire bound framebuffer
 	 * and use that when scissor is not enabled.
 	 */
-	struct pipe_scissor_state disabled_scissor;
+	struct pipe_scissor_state disabled_scissor dt;
 
 	/* Per vsc pipe bo's (a2xx-a5xx): */
-	struct fd_bo *vsc_pipe_bo[32];
+	struct fd_bo *vsc_pipe_bo[32] dt;
 
 	/* which state objects need to be re-emit'd: */
-	enum fd_dirty_3d_state dirty;
+	enum fd_dirty_3d_state dirty dt;
 
 	/* per shader-stage dirty status: */
-	enum fd_dirty_shader_state dirty_shader[PIPE_SHADER_TYPES];
+	enum fd_dirty_shader_state dirty_shader[PIPE_SHADER_TYPES] dt;
 
-	void *compute;
-	struct pipe_blend_state *blend;
-	struct pipe_rasterizer_state *rasterizer;
-	struct pipe_depth_stencil_alpha_state *zsa;
+	void *compute dt;
+	struct pipe_blend_state *blend dt;
+	struct pipe_rasterizer_state *rasterizer dt;
+	struct pipe_depth_stencil_alpha_state *zsa dt;
 
-	struct fd_texture_stateobj tex[PIPE_SHADER_TYPES];
+	struct fd_texture_stateobj tex[PIPE_SHADER_TYPES] dt;
 
-	struct fd_program_stateobj prog;
+	struct fd_program_stateobj prog dt;
 
-	struct fd_vertex_state vtx;
+	struct fd_vertex_state vtx dt;
 
-	struct pipe_blend_color blend_color;
-	struct pipe_stencil_ref stencil_ref;
-	unsigned sample_mask;
-	unsigned min_samples;
+	struct pipe_blend_color blend_color dt;
+	struct pipe_stencil_ref stencil_ref dt;
+	unsigned sample_mask dt;
+	unsigned min_samples dt;
 	/* local context fb state, for when ctx->batch is null: */
-	struct pipe_framebuffer_state framebuffer;
-	struct pipe_poly_stipple stipple;
-	struct pipe_viewport_state viewport;
-	struct pipe_scissor_state viewport_scissor;
-	struct fd_constbuf_stateobj constbuf[PIPE_SHADER_TYPES];
-	struct fd_shaderbuf_stateobj shaderbuf[PIPE_SHADER_TYPES];
-	struct fd_shaderimg_stateobj shaderimg[PIPE_SHADER_TYPES];
-	struct fd_streamout_stateobj streamout;
-	struct fd_global_bindings_stateobj global_bindings;
-	struct pipe_clip_state ucp;
+	struct pipe_framebuffer_state framebuffer dt;
+	struct pipe_poly_stipple stipple dt;
+	struct pipe_viewport_state viewport dt;
+	struct pipe_scissor_state viewport_scissor dt;
+	struct fd_constbuf_stateobj constbuf[PIPE_SHADER_TYPES] dt;
+	struct fd_shaderbuf_stateobj shaderbuf[PIPE_SHADER_TYPES] dt;
+	struct fd_shaderimg_stateobj shaderimg[PIPE_SHADER_TYPES] dt;
+	struct fd_streamout_stateobj streamout dt;
+	struct fd_global_bindings_stateobj global_bindings dt;
+	struct pipe_clip_state ucp dt;
 
-	struct pipe_query *cond_query;
-	bool cond_cond; /* inverted rendering condition */
-	uint cond_mode;
+	struct pipe_query *cond_query dt;
+	bool cond_cond dt; /* inverted rendering condition */
+	uint cond_mode dt;
 
 	/* Private memory is a memory space where each fiber gets its own piece of
 	 * memory, in addition to registers. It is backed by a buffer which needs
@@ -380,52 +381,52 @@ struct fd_context {
 	struct {
 		struct fd_bo *bo;
 		uint32_t per_fiber_size;
-	} pvtmem[2];
+	} pvtmem[2] dt;
 
 	struct pipe_debug_callback debug;
 
-	struct u_trace_context trace_context;
+	struct u_trace_context trace_context dt;
 
 	/* Called on rebind_resource() for any per-gen cleanup required: */
-	void (*rebind_resource)(struct fd_context *ctx, struct fd_resource *rsc);
+	void (*rebind_resource)(struct fd_context *ctx, struct fd_resource *rsc) dt;
 
 	/* GMEM/tile handling fxns: */
-	void (*emit_tile_init)(struct fd_batch *batch);
-	void (*emit_tile_prep)(struct fd_batch *batch, const struct fd_tile *tile);
-	void (*emit_tile_mem2gmem)(struct fd_batch *batch, const struct fd_tile *tile);
-	void (*emit_tile_renderprep)(struct fd_batch *batch, const struct fd_tile *tile);
-	void (*emit_tile)(struct fd_batch *batch, const struct fd_tile *tile);
-	void (*emit_tile_gmem2mem)(struct fd_batch *batch, const struct fd_tile *tile);
-	void (*emit_tile_fini)(struct fd_batch *batch);   /* optional */
+	void (*emit_tile_init)(struct fd_batch *batch) dt;
+	void (*emit_tile_prep)(struct fd_batch *batch, const struct fd_tile *tile) dt;
+	void (*emit_tile_mem2gmem)(struct fd_batch *batch, const struct fd_tile *tile) dt;
+	void (*emit_tile_renderprep)(struct fd_batch *batch, const struct fd_tile *tile) dt;
+	void (*emit_tile)(struct fd_batch *batch, const struct fd_tile *tile) dt;
+	void (*emit_tile_gmem2mem)(struct fd_batch *batch, const struct fd_tile *tile) dt;
+	void (*emit_tile_fini)(struct fd_batch *batch) dt;   /* optional */
 
 	/* optional, for GMEM bypass: */
-	void (*emit_sysmem_prep)(struct fd_batch *batch);
-	void (*emit_sysmem_fini)(struct fd_batch *batch);
+	void (*emit_sysmem_prep)(struct fd_batch *batch) dt;
+	void (*emit_sysmem_fini)(struct fd_batch *batch) dt;
 
 	/* draw: */
 	bool (*draw_vbo)(struct fd_context *ctx, const struct pipe_draw_info *info,
-                         const struct pipe_draw_indirect_info *indirect,
-                         const struct pipe_draw_start_count *draw,
-			unsigned index_offset);
+			const struct pipe_draw_indirect_info *indirect,
+			const struct pipe_draw_start_count *draw,
+			unsigned index_offset) dt;
 	bool (*clear)(struct fd_context *ctx, unsigned buffers,
-			const union pipe_color_union *color, double depth, unsigned stencil);
+			const union pipe_color_union *color, double depth, unsigned stencil) dt;
 
 	/* compute: */
-	void (*launch_grid)(struct fd_context *ctx, const struct pipe_grid_info *info);
+	void (*launch_grid)(struct fd_context *ctx, const struct pipe_grid_info *info) dt;
 
 	/* query: */
 	struct fd_query * (*create_query)(struct fd_context *ctx, unsigned query_type, unsigned index);
-	void (*query_prepare)(struct fd_batch *batch, uint32_t num_tiles);
+	void (*query_prepare)(struct fd_batch *batch, uint32_t num_tiles) dt;
 	void (*query_prepare_tile)(struct fd_batch *batch, uint32_t n,
-			struct fd_ringbuffer *ring);
-	void (*query_update_batch)(struct fd_batch *batch, bool disable_all);
+			struct fd_ringbuffer *ring) dt;
+	void (*query_update_batch)(struct fd_batch *batch, bool disable_all) dt;
 
 	/* blitter: */
-	bool (*blit)(struct fd_context *ctx, const struct pipe_blit_info *info);
-	void (*clear_ubwc)(struct fd_batch *batch, struct fd_resource *rsc);
+	bool (*blit)(struct fd_context *ctx, const struct pipe_blit_info *info) dt;
+	void (*clear_ubwc)(struct fd_batch *batch, struct fd_resource *rsc) dt;
 
 	/* handling for barriers: */
-	void (*framebuffer_barrier)(struct fd_context *ctx);
+	void (*framebuffer_barrier)(struct fd_context *ctx) dt;
 
 	/* logger: */
 	void (*record_timestamp)(struct fd_ringbuffer *ring, struct fd_bo *bo, unsigned offset);
@@ -465,7 +466,7 @@ struct fd_context {
 		uint32_t instance_start;
 		uint32_t restart_index;
 		uint32_t streamout_mask;
-	} last;
+	} last dt;
 };
 
 static inline struct fd_context *
@@ -483,6 +484,7 @@ fd_stream_output_target(struct pipe_stream_output_target *target)
 /* mark all state dirty: */
 static inline void
 fd_context_all_dirty(struct fd_context *ctx)
+	assert_dt
 {
 	ctx->last.dirty = true;
 	ctx->dirty = ~0;
@@ -492,6 +494,7 @@ fd_context_all_dirty(struct fd_context *ctx)
 
 static inline void
 fd_context_all_clean(struct fd_context *ctx)
+	assert_dt
 {
 	ctx->last.dirty = false;
 	ctx->dirty = 0;
@@ -509,6 +512,7 @@ fd_context_all_clean(struct fd_context *ctx)
 
 static inline struct pipe_scissor_state *
 fd_context_get_scissor(struct fd_context *ctx)
+	assert_dt
 {
 	return ctx->current_scissor;
 }
@@ -519,10 +523,10 @@ fd_supported_prim(struct fd_context *ctx, unsigned prim)
 	return (1 << prim) & ctx->primtype_mask;
 }
 
-void fd_context_switch_from(struct fd_context *ctx);
-void fd_context_switch_to(struct fd_context *ctx, struct fd_batch *batch);
-struct fd_batch * fd_context_batch(struct fd_context *ctx);
-struct fd_batch * fd_context_batch_locked(struct fd_context *ctx);
+void fd_context_switch_from(struct fd_context *ctx) assert_dt;
+void fd_context_switch_to(struct fd_context *ctx, struct fd_batch *batch) assert_dt;
+struct fd_batch * fd_context_batch(struct fd_context *ctx) assert_dt;
+struct fd_batch * fd_context_batch_locked(struct fd_context *ctx) assert_dt;
 
 void fd_context_setup_common_vbos(struct fd_context *ctx);
 void fd_context_cleanup_common_vbos(struct fd_context *ctx);
@@ -533,6 +537,6 @@ struct pipe_context * fd_context_init(struct fd_context *ctx,
 		struct pipe_screen *pscreen, const uint8_t *primtypes,
 		void *priv, unsigned flags);
 
-void fd_context_destroy(struct pipe_context *pctx);
+void fd_context_destroy(struct pipe_context *pctx) assert_dt;
 
 #endif /* FREEDRENO_CONTEXT_H_ */

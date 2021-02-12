@@ -134,6 +134,7 @@ draw_emit(struct fd_ringbuffer *ring,
  */
 static void
 fixup_shader_state(struct fd_context *ctx, struct ir3_shader_key *key)
+	assert_dt
 {
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
 	struct ir3_shader_key *last_key = &fd6_ctx->last_key;
@@ -155,6 +156,7 @@ fixup_shader_state(struct fd_context *ctx, struct ir3_shader_key *key)
 
 static void
 fixup_draw_state(struct fd_context *ctx, struct fd6_emit *emit)
+	assert_dt
 {
 	if (ctx->last.dirty ||
 			(ctx->last.primitive_restart != emit->primitive_restart)) {
@@ -169,6 +171,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count *draw,
              unsigned index_offset)
+	assert_dt
 {
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
 	struct shader_info *gs_info = ir3_get_shader_info(ctx->prog.gs);
@@ -511,6 +514,7 @@ static bool is_z32(enum pipe_format format)
 static bool
 fd6_clear(struct fd_context *ctx, unsigned buffers,
 		const union pipe_color_union *color, double depth, unsigned stencil)
+	assert_dt
 {
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
 	const bool has_depth = pfb->zsbuf;
@@ -550,6 +554,7 @@ fd6_clear(struct fd_context *ctx, unsigned buffers,
 
 void
 fd6_draw_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->draw_vbo = fd6_draw_vbo;

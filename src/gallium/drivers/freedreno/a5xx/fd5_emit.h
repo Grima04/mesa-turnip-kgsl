@@ -106,6 +106,7 @@ fd5_emit_get_fp(struct fd5_emit *emit)
 
 static inline void
 fd5_cache_flush(struct fd_batch *batch, struct fd_ringbuffer *ring)
+	assert_dt
 {
 	fd_reset_wfi(batch);
 	OUT_PKT4(ring, REG_A5XX_UCHE_CACHE_INVALIDATE_MIN_LO, 5);
@@ -150,6 +151,7 @@ fd5_emit_blit(struct fd_context *ctx, struct fd_ringbuffer *ring)
 
 static inline void
 fd5_emit_render_cntl(struct fd_context *ctx, bool blit, bool binning)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = binning ? ctx->batch->binning : ctx->batch->draw;
 
@@ -191,17 +193,17 @@ fd5_emit_lrz_flush(struct fd_ringbuffer *ring)
 	OUT_RING(ring, 0x0);
 }
 
-void fd5_emit_vertex_bufs(struct fd_ringbuffer *ring, struct fd5_emit *emit);
+void fd5_emit_vertex_bufs(struct fd_ringbuffer *ring, struct fd5_emit *emit) assert_dt;
 
 void fd5_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
-		struct fd5_emit *emit);
+		struct fd5_emit *emit) assert_dt;
 
 void fd5_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
-		struct ir3_shader_variant *cp);
+		struct ir3_shader_variant *cp) assert_dt;
 void fd5_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
-		struct fd_context *ctx, const struct pipe_grid_info *info);
+		struct fd_context *ctx, const struct pipe_grid_info *info) assert_dt;
 
-void fd5_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring);
+void fd5_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt;
 
 void fd5_emit_init_screen(struct pipe_screen *pscreen);
 void fd5_emit_init(struct pipe_context *pctx);

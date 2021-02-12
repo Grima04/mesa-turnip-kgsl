@@ -131,6 +131,7 @@ emit_const_ptrs(struct fd_ringbuffer *ring,
 
 static void
 emit_tess_bos(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3_shader_variant *s)
+	assert_dt
 {
 	struct fd_context *ctx = emit->ctx;
 	const struct ir3_const_state *const_state = ir3_const_state(s);
@@ -159,6 +160,7 @@ emit_stage_tess_consts(struct fd_ringbuffer *ring, struct ir3_shader_variant *v,
 
 static void
 emit_tess_consts(struct fd6_emit *emit)
+	assert_dt
 {
 	struct fd_context *ctx = emit->ctx;
 
@@ -312,6 +314,7 @@ user_consts_cmdstream_size(struct ir3_shader_variant *v)
 
 static void
 emit_user_consts(struct fd6_emit *emit)
+	assert_dt
 {
 	static const enum pipe_shader_type types[] = {
 			PIPE_SHADER_VERTEX, PIPE_SHADER_TESS_CTRL, PIPE_SHADER_TESS_EVAL,

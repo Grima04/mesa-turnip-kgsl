@@ -93,6 +93,7 @@ fd6_tex_type(unsigned target)
 static inline unsigned
 fd6_border_color_offset(struct fd_context *ctx, enum pipe_shader_type type,
 		struct fd_texture_stateobj *tex)
+	assert_dt
 {
 	/* Currently we put the FS border-color state after VS.  Possibly
 	 * we could swap the order.
@@ -154,7 +155,7 @@ struct fd6_texture_state {
 };
 
 struct fd6_texture_state * fd6_texture_state(struct fd_context *ctx,
-		enum pipe_shader_type type, struct fd_texture_stateobj *tex);
+		enum pipe_shader_type type, struct fd_texture_stateobj *tex) assert_dt;
 
 /* not called directly: */
 void __fd6_texture_state_describe(char* buf, const struct fd6_texture_state *tex);

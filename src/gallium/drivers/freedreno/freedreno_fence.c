@@ -49,6 +49,8 @@ struct pipe_fence_handle {
 };
 
 static void fence_flush(struct pipe_fence_handle *fence)
+	/* TODO this will change w/ threaded-ctx where we need to use threaded_context_flush().. */
+	in_dt
 {
 	if (fence->batch)
 		fd_batch_flush(fence->batch);

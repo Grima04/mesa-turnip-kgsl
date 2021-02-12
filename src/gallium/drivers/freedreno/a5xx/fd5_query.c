@@ -162,6 +162,7 @@ static const struct fd_acc_sample_provider occlusion_predicate_conservative = {
 
 static void
 timestamp_resume(struct fd_acc_query *aq, struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->draw;
 
@@ -176,6 +177,7 @@ timestamp_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 
 static void
 timestamp_pause(struct fd_acc_query *aq, struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->draw;
 
@@ -271,6 +273,7 @@ struct fd_batch_query_data {
 
 static void
 perfcntr_resume(struct fd_acc_query *aq, struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_batch_query_data *data = aq->query_data;
 	struct fd_screen *screen = data->screen;
@@ -311,6 +314,7 @@ perfcntr_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 
 static void
 perfcntr_pause(struct fd_acc_query *aq, struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_batch_query_data *data = aq->query_data;
 	struct fd_screen *screen = data->screen;
@@ -446,6 +450,7 @@ error:
 
 void
 fd5_query_context_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 

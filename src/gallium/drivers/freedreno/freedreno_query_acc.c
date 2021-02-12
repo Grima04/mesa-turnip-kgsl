@@ -34,6 +34,7 @@
 
 static void
 fd_acc_destroy_query(struct fd_context *ctx, struct fd_query *q)
+	assert_dt
 {
 	struct fd_acc_query *aq = fd_acc_query(q);
 
@@ -69,6 +70,7 @@ realloc_query_bo(struct fd_context *ctx, struct fd_acc_query *aq)
 
 static void
 fd_acc_query_pause(struct fd_acc_query *aq)
+	assert_dt
 {
 	const struct fd_acc_sample_provider *p = aq->provider;
 
@@ -81,6 +83,7 @@ fd_acc_query_pause(struct fd_acc_query *aq)
 
 static void
 fd_acc_query_resume(struct fd_acc_query *aq, struct fd_batch *batch)
+	assert_dt
 {
 	const struct fd_acc_sample_provider *p = aq->provider;
 
@@ -94,6 +97,7 @@ fd_acc_query_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 
 static void
 fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q)
+	assert_dt
 {
 	struct fd_acc_query *aq = fd_acc_query(q);
 
@@ -122,6 +126,7 @@ fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q)
 
 static void
 fd_acc_end_query(struct fd_context *ctx, struct fd_query *q)
+	assert_dt
 {
 	struct fd_acc_query *aq = fd_acc_query(q);
 
@@ -158,8 +163,11 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 			 * wait to flush unnecessarily but we also don't want to
 			 * spin forever:
 			 */
-			if (aq->no_wait_cnt++ > 5)
+			if (aq->no_wait_cnt++ > 5) {
+				fd_context_access_begin(ctx);
 				fd_batch_flush(rsc->write_batch);
+				fd_context_access_end(ctx);
+			}
 			return false;
 		}
 
@@ -171,8 +179,11 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 		fd_bo_cpu_fini(rsc->bo);
 	}
 
-	if (rsc->write_batch)
+	if (rsc->write_batch) {
+		fd_context_access_begin(ctx);
 		fd_batch_flush(rsc->write_batch);
+		fd_context_access_end(ctx);
+	}
 
 	/* get the result: */
 	fd_bo_cpu_prep(rsc->bo, ctx->pipe, DRM_FREEDRENO_PREP_READ);

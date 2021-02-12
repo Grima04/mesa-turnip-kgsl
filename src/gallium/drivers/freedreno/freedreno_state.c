@@ -46,6 +46,7 @@
 static void
 fd_set_blend_color(struct pipe_context *pctx,
 		const struct pipe_blend_color *blend_color)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->blend_color = *blend_color;
@@ -55,6 +56,7 @@ fd_set_blend_color(struct pipe_context *pctx,
 static void
 fd_set_stencil_ref(struct pipe_context *pctx,
 		const struct pipe_stencil_ref stencil_ref)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->stencil_ref = stencil_ref;
@@ -64,6 +66,7 @@ fd_set_stencil_ref(struct pipe_context *pctx,
 static void
 fd_set_clip_state(struct pipe_context *pctx,
 		const struct pipe_clip_state *clip)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->ucp = *clip;
@@ -72,6 +75,7 @@ fd_set_clip_state(struct pipe_context *pctx,
 
 static void
 fd_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->sample_mask = (uint16_t)sample_mask;
@@ -80,6 +84,7 @@ fd_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 
 static void
 fd_set_min_samples(struct pipe_context *pctx, unsigned min_samples)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->min_samples = min_samples;
@@ -99,6 +104,7 @@ fd_set_constant_buffer(struct pipe_context *pctx,
 		enum pipe_shader_type shader, uint index,
 		bool take_ownership,
 		const struct pipe_constant_buffer *cb)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_constbuf_stateobj *so = &ctx->constbuf[shader];
@@ -126,6 +132,7 @@ fd_set_shader_buffers(struct pipe_context *pctx,
 		unsigned start, unsigned count,
 		const struct pipe_shader_buffer *buffers,
 		unsigned writable_bitmask)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_shaderbuf_stateobj *so = &ctx->shaderbuf[shader];
@@ -167,6 +174,7 @@ fd_set_shader_images(struct pipe_context *pctx,
 		unsigned start, unsigned count,
 		unsigned unbind_num_trailing_slots,
 		const struct pipe_image_view *images)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_shaderimg_stateobj *so = &ctx->shaderimg[shader];
@@ -219,6 +227,7 @@ fd_set_shader_images(struct pipe_context *pctx,
 static void
 fd_set_framebuffer_state(struct pipe_context *pctx,
 		const struct pipe_framebuffer_state *framebuffer)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_framebuffer_state *cso;
@@ -286,6 +295,7 @@ fd_set_framebuffer_state(struct pipe_context *pctx,
 static void
 fd_set_polygon_stipple(struct pipe_context *pctx,
 		const struct pipe_poly_stipple *stipple)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->stipple = *stipple;
@@ -297,6 +307,7 @@ fd_set_scissor_states(struct pipe_context *pctx,
 		unsigned start_slot,
 		unsigned num_scissors,
 		const struct pipe_scissor_state *scissor)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 
@@ -309,6 +320,7 @@ fd_set_viewport_states(struct pipe_context *pctx,
 		unsigned start_slot,
 		unsigned num_viewports,
 		const struct pipe_viewport_state *viewport)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_scissor_state *scissor = &ctx->viewport_scissor;
@@ -349,6 +361,7 @@ fd_set_vertex_buffers(struct pipe_context *pctx,
 		unsigned unbind_num_trailing_slots,
 		bool take_ownership,
 		const struct pipe_vertex_buffer *vb)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_vertexbuf_stateobj *so = &ctx->vtx.vertexbuf;
@@ -389,6 +402,7 @@ fd_set_vertex_buffers(struct pipe_context *pctx,
 
 static void
 fd_blend_state_bind(struct pipe_context *pctx, void *hwcso)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_blend_state *cso = hwcso;
@@ -406,12 +420,14 @@ fd_blend_state_bind(struct pipe_context *pctx, void *hwcso)
 
 static void
 fd_blend_state_delete(struct pipe_context *pctx, void *hwcso)
+	in_dt
 {
 	FREE(hwcso);
 }
 
 static void
 fd_rasterizer_state_bind(struct pipe_context *pctx, void *hwcso)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_scissor_state *old_scissor = fd_context_get_scissor(ctx);
@@ -440,12 +456,14 @@ fd_rasterizer_state_bind(struct pipe_context *pctx, void *hwcso)
 
 static void
 fd_rasterizer_state_delete(struct pipe_context *pctx, void *hwcso)
+	in_dt
 {
 	FREE(hwcso);
 }
 
 static void
 fd_zsa_state_bind(struct pipe_context *pctx, void *hwcso)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->zsa = hwcso;
@@ -454,6 +472,7 @@ fd_zsa_state_bind(struct pipe_context *pctx, void *hwcso)
 
 static void
 fd_zsa_state_delete(struct pipe_context *pctx, void *hwcso)
+	in_dt
 {
 	FREE(hwcso);
 }
@@ -475,12 +494,14 @@ fd_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
 
 static void
 fd_vertex_state_delete(struct pipe_context *pctx, void *hwcso)
+	in_dt
 {
 	FREE(hwcso);
 }
 
 static void
 fd_vertex_state_bind(struct pipe_context *pctx, void *hwcso)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->vtx.vtx = hwcso;
@@ -532,6 +553,7 @@ static void
 fd_set_stream_output_targets(struct pipe_context *pctx,
 		unsigned num_targets, struct pipe_stream_output_target **targets,
 		const unsigned *offsets)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_streamout_stateobj *so = &ctx->streamout;
@@ -565,6 +587,7 @@ fd_set_stream_output_targets(struct pipe_context *pctx,
 
 static void
 fd_bind_compute_state(struct pipe_context *pctx, void *state)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->compute = state;
@@ -574,6 +597,7 @@ fd_bind_compute_state(struct pipe_context *pctx, void *state)
 static void
 fd_set_compute_resources(struct pipe_context *pctx,
 		unsigned start, unsigned count, struct pipe_surface **prscs)
+	in_dt
 {
 	// TODO
 }
@@ -585,6 +609,7 @@ static void
 fd_set_global_binding(struct pipe_context *pctx,
 		unsigned first, unsigned count, struct pipe_resource **prscs,
 		uint32_t **handles)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_global_bindings_stateobj *so = &ctx->global_bindings;

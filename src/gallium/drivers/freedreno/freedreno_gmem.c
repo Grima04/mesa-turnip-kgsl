@@ -574,6 +574,7 @@ found:
 
 static void
 render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	int i;
@@ -624,6 +625,7 @@ render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 
 static void
 render_sysmem(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 

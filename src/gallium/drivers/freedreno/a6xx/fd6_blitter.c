@@ -432,6 +432,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 static void
 fd6_clear_ubwc(struct fd_batch *batch, struct fd_resource *rsc)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = fd_batch_get_prologue(batch);
 	union pipe_color_union color = {};
@@ -859,6 +860,7 @@ fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
 
 static bool
 handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+	assert_dt
 {
 	struct fd_batch *batch;
 
@@ -934,6 +936,7 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
  */
 static bool
 do_rewritten_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+	assert_dt
 {
 	bool success = handle_rgba_blit(ctx, info);
 	if (!success)
@@ -948,6 +951,7 @@ do_rewritten_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
  */
 static bool
 handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+	assert_dt
 {
 	struct pipe_blit_info blit = *info;
 
@@ -1027,6 +1031,7 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 static bool
 handle_compressed_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+	assert_dt
 {
 	struct pipe_blit_info blit = *info;
 
@@ -1074,6 +1079,7 @@ handle_compressed_blit(struct fd_context *ctx, const struct pipe_blit_info *info
 
 static bool
 fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+	assert_dt
 {
 	if (info->mask & PIPE_MASK_ZS)
 		return handle_zs_blit(ctx, info);
@@ -1086,6 +1092,7 @@ fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 void
 fd6_blitter_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	fd_context(pctx)->clear_ubwc = fd6_clear_ubwc;
 

@@ -110,6 +110,7 @@ occlusion_predicate_accumulate_result(struct fd_context *ctx,
 
 static void
 time_elapsed_enable(struct fd_context *ctx, struct fd_ringbuffer *ring)
+	assert_dt
 {
 	/* Right now, the assignment of countable to counter register is
 	 * just hard coded.  If we start exposing more countables than we
@@ -125,6 +126,7 @@ time_elapsed_enable(struct fd_context *ctx, struct fd_ringbuffer *ring)
 
 static struct fd_hw_sample *
 time_elapsed_get_sample(struct fd_batch *batch, struct fd_ringbuffer *ring)
+	assert_dt
 {
 	struct fd_hw_sample *samp = fd_hw_sample_init(batch, sizeof(uint64_t));
 
@@ -279,6 +281,7 @@ static const struct fd_hw_sample_provider timestamp = {
 };
 
 void fd4_query_context_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 

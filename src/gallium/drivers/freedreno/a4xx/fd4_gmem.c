@@ -185,6 +185,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, bool stencil,
 
 static void
 fd4_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
@@ -320,6 +321,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, const uint32_t *bases,
 
 static void
 fd4_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
@@ -512,6 +514,7 @@ patch_draws(struct fd_batch *batch, enum pc_di_vis_cull_mode vismode)
 /* for rendering directly to system memory: */
 static void
 fd4_emit_sysmem_prep(struct fd_batch *batch)
+	assert_dt
 {
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_ringbuffer *ring = batch->gmem;
@@ -548,6 +551,7 @@ fd4_emit_sysmem_prep(struct fd_batch *batch)
 
 static void
 update_vsc_pipe(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
@@ -584,6 +588,7 @@ update_vsc_pipe(struct fd_batch *batch)
 
 static void
 emit_binning_pass(struct fd_batch *batch)
+	assert_dt
 {
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -649,6 +654,7 @@ emit_binning_pass(struct fd_batch *batch)
 /* before first tile */
 static void
 fd4_emit_tile_init(struct fd_batch *batch)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -741,6 +747,7 @@ fd4_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 /* before IB to rendering cmds: */
 static void
 fd4_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd4_context *fd4_ctx = fd4_context(ctx);
@@ -799,6 +806,7 @@ fd4_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 
 void
 fd4_gmem_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 

@@ -53,6 +53,7 @@ emit_cacheflush(struct fd_ringbuffer *ring)
 
 static void
 emit_vertexbufs(struct fd_context *ctx)
+	assert_dt
 {
 	struct fd_vertex_stateobj *vtx = ctx->vtx.vtx;
 	struct fd_vertexbuf_stateobj *vertexbuf = &ctx->vtx.vertexbuf;
@@ -80,8 +81,9 @@ emit_vertexbufs(struct fd_context *ctx)
 
 static void
 draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
-          const struct pipe_draw_start_count *draw,
-		   struct fd_ringbuffer *ring, unsigned index_offset, bool binning)
+		  const struct pipe_draw_start_count *draw,
+		  struct fd_ringbuffer *ring, unsigned index_offset, bool binning)
+	assert_dt
 {
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_INDX_OFFSET));
@@ -156,6 +158,7 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 			 const struct pipe_draw_indirect_info *indirect,
 			 const struct pipe_draw_start_count *pdraw,
 			 unsigned index_offset)
+	assert_dt
 {
 	if (!ctx->prog.fs || !ctx->prog.vs)
 		return false;
@@ -213,7 +216,8 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 
 static void
 clear_state(struct fd_batch *batch, struct fd_ringbuffer *ring,
-	unsigned buffers, bool fast_clear)
+		unsigned buffers, bool fast_clear)
+	assert_dt
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd2_context *fd2_ctx = fd2_context(ctx);
@@ -400,6 +404,7 @@ clear_fast(struct fd_batch *batch, struct fd_ringbuffer *ring,
 static bool
 fd2_clear_fast(struct fd_context *ctx, unsigned buffers,
 		const union pipe_color_union *color, double depth, unsigned stencil)
+	assert_dt
 {
 	/* using 4x MSAA allows clearing ~2x faster
 	 * then we can use higher bpp clearing to clear lower bpp
@@ -512,6 +517,7 @@ fd2_clear_fast(struct fd_context *ctx, unsigned buffers,
 static bool
 fd2_clear(struct fd_context *ctx, unsigned buffers,
 		const union pipe_color_union *color, double depth, unsigned stencil)
+	assert_dt
 {
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 	struct pipe_framebuffer_state *fb = &ctx->batch->framebuffer;
@@ -626,6 +632,7 @@ dirty:
 
 void
 fd2_draw_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->draw_vbo = fd2_draw_vbo;

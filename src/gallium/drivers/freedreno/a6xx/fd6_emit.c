@@ -216,6 +216,7 @@ setup_border_colors(struct fd_texture_stateobj *tex, struct bcolor_entry *entrie
 
 static void
 emit_border_color(struct fd_context *ctx, struct fd_ringbuffer *ring)
+	assert_dt
 {
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
 	struct bcolor_entry *entries;
@@ -244,6 +245,7 @@ emit_border_color(struct fd_context *ctx, struct fd_ringbuffer *ring)
 
 static void
 fd6_emit_fb_tex(struct fd_ringbuffer *state, struct fd_context *ctx)
+	assert_dt
 {
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
 	struct pipe_surface *psurf = pfb->cbufs[0];
@@ -478,6 +480,7 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 static bool
 fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 		enum pipe_shader_type type, const struct ir3_shader_variant *v)
+	assert_dt
 {
 	struct fd_context *ctx = emit->ctx;
 	bool needs_border = false;
@@ -550,6 +553,7 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 
 static struct fd_ringbuffer *
 build_vbo_state(struct fd6_emit *emit)
+	assert_dt
 {
 	const struct fd_vertex_state *vtx = emit->vtx;
 
@@ -580,6 +584,7 @@ build_vbo_state(struct fd6_emit *emit)
 
 static enum a6xx_ztest_mode
 compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid)
+	assert_dt
 {
 	struct fd_context *ctx =  emit->ctx;
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
@@ -613,6 +618,7 @@ compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid)
  */
 static struct fd6_lrz_state
 compute_lrz_state(struct fd6_emit *emit, bool binning_pass)
+	assert_dt
 {
 	struct fd_context *ctx = emit->ctx;
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
@@ -685,6 +691,7 @@ compute_lrz_state(struct fd6_emit *emit, bool binning_pass)
 
 static struct fd_ringbuffer *
 build_lrz(struct fd6_emit *emit, bool binning_pass)
+	assert_dt
 {
 	struct fd_context *ctx = emit->ctx;
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
@@ -723,7 +730,9 @@ build_lrz(struct fd6_emit *emit, bool binning_pass)
 }
 
 static void
-fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3_stream_output_info *info)
+fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit,
+		struct ir3_stream_output_info *info)
+	assert_dt
 {
 	struct fd_context *ctx = emit->ctx;
 	const struct fd6_program_state *prog = fd6_emit_get_prog(emit);
@@ -1336,6 +1345,7 @@ fd6_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
  */
 static void
 fd6_framebuffer_barrier(struct fd_context *ctx)
+	assert_dt
 {
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
 	struct fd_batch *batch = ctx->batch;
@@ -1375,6 +1385,7 @@ fd6_emit_init_screen(struct pipe_screen *pscreen)
 
 void
 fd6_emit_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->framebuffer_barrier = fd6_framebuffer_barrier;

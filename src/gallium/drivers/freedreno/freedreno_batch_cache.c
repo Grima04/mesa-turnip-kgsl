@@ -132,6 +132,7 @@ fd_bc_fini(struct fd_batch_cache *cache)
 
 static void
 bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx, bool deferred)
+	assert_dt
 {
 	/* fd_batch_flush() (and fd_batch_add_dep() which calls it indirectly)
 	 * can cause batches to be unref'd and freed under our feet, so grab
@@ -318,6 +319,7 @@ fd_bc_invalidate_resource(struct fd_resource *rsc, bool destroy)
 
 static struct fd_batch *
 alloc_batch_locked(struct fd_batch_cache *cache, struct fd_context *ctx, bool nondraw)
+	assert_dt
 {
 	struct fd_batch *batch;
 	uint32_t idx;
@@ -415,6 +417,7 @@ fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx, bool non
 static struct fd_batch *
 batch_from_key(struct fd_batch_cache *cache, struct fd_batch_key *key,
 		struct fd_context *ctx)
+	assert_dt
 {
 	struct fd_batch *batch = NULL;
 	uint32_t hash = key_hash(key);

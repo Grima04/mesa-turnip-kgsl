@@ -309,6 +309,7 @@ setup_border_colors(struct fd_texture_stateobj *tex, struct bcolor_entry *entrie
 
 static void
 emit_border_color(struct fd_context *ctx, struct fd_ringbuffer *ring)
+	assert_dt
 {
 	struct fd5_context *fd5_ctx = fd5_context(ctx);
 	struct bcolor_entry *entries;
@@ -338,6 +339,7 @@ emit_border_color(struct fd_context *ctx, struct fd_ringbuffer *ring)
 static bool
 emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		enum a4xx_state_block sb, struct fd_texture_stateobj *tex)
+	assert_dt
 {
 	bool needs_border = false;
 	unsigned bcolor_offset = (sb == SB4_FS_TEX) ? ctx->tex[PIPE_SHADER_VERTEX].num_samplers : 0;

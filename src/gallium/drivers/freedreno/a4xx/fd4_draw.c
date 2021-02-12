@@ -43,6 +43,7 @@
 static void
 draw_impl(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		struct fd4_emit *emit, unsigned index_offset)
+	assert_dt
 {
 	const struct pipe_draw_info *info = emit->info;
 	enum pc_di_primtype primtype = ctx->primtypes[info->mode];
@@ -77,6 +78,7 @@ draw_impl(struct fd_context *ctx, struct fd_ringbuffer *ring,
  */
 static void
 fixup_shader_state(struct fd_context *ctx, struct ir3_shader_key *key)
+	assert_dt
 {
 	struct fd4_context *fd4_ctx = fd4_context(ctx);
 	struct ir3_shader_key *last_key = &fd4_ctx->last_key;
@@ -101,6 +103,7 @@ fd4_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count *draw,
              unsigned index_offset)
+	in_dt
 {
 	struct fd4_context *fd4_ctx = fd4_context(ctx);
 	struct fd4_emit emit = {
@@ -183,6 +186,7 @@ fd4_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 void
 fd4_draw_init(struct pipe_context *pctx)
+	disable_thread_safety_analysis
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->draw_vbo = fd4_draw_vbo;

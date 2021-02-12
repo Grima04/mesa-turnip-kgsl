@@ -300,6 +300,7 @@ static void
 setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 		struct fd6_program_state *state, const struct ir3_shader_key *key,
 		bool binning_pass)
+	assert_dt
 {
 	uint32_t pos_regid, psize_regid, color_regid[8], posz_regid;
 	uint32_t clip0_regid, clip1_regid;
@@ -1065,8 +1066,9 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 		struct ir3_shader_variant *gs,
 		struct ir3_shader_variant *fs,
 		const struct ir3_shader_key *key)
+	in_dt
 {
-	struct fd_context *ctx = data;
+	struct fd_context *ctx = fd_context(data);
 	struct fd6_program_state *state = CALLOC_STRUCT(fd6_program_state);
 
 	/* if we have streamout, use full VS in binning pass, as the

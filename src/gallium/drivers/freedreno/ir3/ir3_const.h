@@ -73,6 +73,7 @@ emit_const_asserts(struct fd_ringbuffer *ring,
 
 static void
 ring_wfi(struct fd_batch *batch, struct fd_ringbuffer *ring)
+	assert_dt
 {
 	/* when we emit const state via ring (IB2) we need a WFI, but when
 	 * it is emit'd via stateobj, we don't
@@ -458,6 +459,7 @@ max_tf_vtx(struct fd_context *ctx, const struct ir3_shader_variant *v)
 static inline void
 emit_common_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
 		struct fd_context *ctx, enum pipe_shader_type t)
+	assert_dt
 {
 	enum fd_dirty_shader_state dirty = ctx->dirty_shader[t];
 
@@ -600,6 +602,7 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
                    struct fd_context *ctx, const struct pipe_draw_info *info,
                    const struct pipe_draw_indirect_info *indirect,
                    const struct pipe_draw_start_count *draw)
+	assert_dt
 {
 	debug_assert(v->type == MESA_SHADER_VERTEX);
 
@@ -615,6 +618,7 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 static inline void
 ir3_emit_fs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
 		struct fd_context *ctx)
+	assert_dt
 {
 	debug_assert(v->type == MESA_SHADER_FRAGMENT);
 
@@ -625,6 +629,7 @@ ir3_emit_fs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 static inline void
 ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
                    struct fd_context *ctx, const struct pipe_grid_info *info)
+	assert_dt
 {
 	debug_assert(gl_shader_stage_is_compute(v->type));
 

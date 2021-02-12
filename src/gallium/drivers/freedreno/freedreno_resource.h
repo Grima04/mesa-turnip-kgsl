@@ -289,10 +289,10 @@ void fd_resource_context_init(struct pipe_context *pctx);
 
 uint32_t fd_setup_slices(struct fd_resource *rsc);
 void fd_resource_resize(struct pipe_resource *prsc, uint32_t sz);
-void fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc);
+void fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc) assert_dt;
 void fd_resource_dump(struct fd_resource *rsc, const char *name);
 
-bool fd_render_condition_check(struct pipe_context *pctx);
+bool fd_render_condition_check(struct pipe_context *pctx) assert_dt;
 
 static inline bool
 fd_batch_references_resource(struct fd_batch *batch, struct fd_resource *rsc)
@@ -302,6 +302,7 @@ fd_batch_references_resource(struct fd_batch *batch, struct fd_resource *rsc)
 
 static inline void
 fd_batch_write_prep(struct fd_batch *batch, struct fd_resource *rsc)
+	assert_dt
 {
 	if (unlikely(rsc->needs_ubwc_clear)) {
 		batch->ctx->clear_ubwc(batch, rsc);
@@ -312,6 +313,7 @@ fd_batch_write_prep(struct fd_batch *batch, struct fd_resource *rsc)
 static inline void
 fd_batch_resource_read(struct fd_batch *batch,
 		struct fd_resource *rsc)
+	assert_dt
 {
 	/* Fast path: if we hit this then we know we don't have anyone else
 	 * writing to it (since both _write and _read flush other writers), and

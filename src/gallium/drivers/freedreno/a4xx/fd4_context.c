@@ -39,6 +39,7 @@
 
 static void
 fd4_context_destroy(struct pipe_context *pctx)
+	in_dt
 {
 	struct fd4_context *fd4_ctx = fd4_context(fd_context(pctx));
 
