@@ -852,6 +852,17 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
                                        ac_to_float_type(&ctx->ac, def_type), result);
          break;
       }
+      if (LLVM_VERSION_MAJOR >= 12) {
+         result = emit_intrin_1f_param(&ctx->ac, "llvm.log2",
+                                       ac_to_float_type(&ctx->ac, def_type), src[0]);
+         result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.fmul.legacy", ctx->ac.f32,
+                                     (LLVMValueRef[]){result, ac_to_float(&ctx->ac, src[1])},
+                                     2, AC_FUNC_ATTR_READNONE);
+         result = emit_intrin_1f_param(&ctx->ac, "llvm.exp2",
+                                       ac_to_float_type(&ctx->ac, def_type), result);
+         break;
+      }
+      /* Older LLVM doesn't have fmul.legacy. */
       result = emit_intrin_2f_param(&ctx->ac, "llvm.pow", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1]);
       break;
