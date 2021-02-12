@@ -69,6 +69,7 @@ EXTENSIONS = [
         alias="driver",
         properties=True),
     Extension("VK_KHR_draw_indirect_count"),
+    Extension("VK_KHR_shader_draw_parameters"),
     Extension("VK_EXT_conditional_rendering",
         alias="cond_render", 
         features=True, 

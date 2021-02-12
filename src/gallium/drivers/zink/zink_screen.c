@@ -192,7 +192,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.have_KHR_draw_indirect_count;
 
    case PIPE_CAP_START_INSTANCE:
-      return screen->info.feats11.shaderDrawParameters;
+      return (screen->info.have_vulkan12 && screen->info.feats11.shaderDrawParameters) ||
+              screen->info.have_KHR_shader_draw_parameters;
 
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
       return screen->info.have_EXT_vertex_attribute_divisor;
