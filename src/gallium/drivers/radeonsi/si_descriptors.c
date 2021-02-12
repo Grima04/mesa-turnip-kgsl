@@ -869,7 +869,7 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx)
       return;
 
    /* See whether FBFETCH is used and color buffer 0 is set. */
-   if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.base.fs.uses_fbfetch_output &&
+   if (sctx->shader.ps.cso && sctx->shader.ps.cso->info.base.fs.uses_fbfetch_output &&
        sctx->framebuffer.state.nr_cbufs && sctx->framebuffer.state.cbufs[0])
       surf = sctx->framebuffer.state.cbufs[0];
 
@@ -1934,15 +1934,15 @@ void si_shader_change_notify(struct si_context *sctx)
 {
    si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
                          si_get_user_data_base(sctx->chip_class,
-                                               sctx->tes_shader.cso ? TESS_ON : TESS_OFF,
-                                               sctx->gs_shader.cso ? GS_ON : GS_OFF,
+                                               sctx->shader.tes.cso ? TESS_ON : TESS_OFF,
+                                               sctx->shader.gs.cso ? GS_ON : GS_OFF,
                                                sctx->ngg ? NGG_ON : NGG_OFF,
                                                PIPE_SHADER_VERTEX));
 
    si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL,
                          si_get_user_data_base(sctx->chip_class,
-                                               sctx->tes_shader.cso ? TESS_ON : TESS_OFF,
-                                               sctx->gs_shader.cso ? GS_ON : GS_OFF,
+                                               sctx->shader.tes.cso ? TESS_ON : TESS_OFF,
+                                               sctx->shader.gs.cso ? GS_ON : GS_OFF,
                                                sctx->ngg ? NGG_ON : NGG_OFF,
                                                PIPE_SHADER_TESS_EVAL));
 }
@@ -2651,25 +2651,19 @@ void si_release_all_descriptors(struct si_context *sctx)
 bool si_gfx_resources_check_encrypted(struct si_context *sctx)
 {
    bool use_encrypted_bo = false;
-   struct si_shader_ctx_state *current_shader[SI_NUM_SHADERS] = {
-      [PIPE_SHADER_VERTEX] = &sctx->vs_shader,
-      [PIPE_SHADER_TESS_CTRL] = &sctx->tcs_shader,
-      [PIPE_SHADER_TESS_EVAL] = &sctx->tes_shader,
-      [PIPE_SHADER_GEOMETRY] = &sctx->gs_shader,
-      [PIPE_SHADER_FRAGMENT] = &sctx->ps_shader,
-   };
 
    for (unsigned i = 0; i < SI_NUM_GRAPHICS_SHADERS && !use_encrypted_bo; i++) {
-      if (!current_shader[i]->cso)
+      struct si_shader_ctx_state *current_shader = &sctx->shaders[i];
+      if (!current_shader->cso)
          continue;
 
       use_encrypted_bo |=
          si_buffer_resources_check_encrypted(sctx, &sctx->const_and_shader_buffers[i]);
       use_encrypted_bo |=
          si_sampler_views_check_encrypted(sctx, &sctx->samplers[i],
-                                          current_shader[i]->cso->info.base.textures_used);
+                                          current_shader->cso->info.base.textures_used);
       use_encrypted_bo |= si_image_views_check_encrypted(sctx, &sctx->images[i],
-                                          u_bit_consecutive(0, current_shader[i]->cso->info.base.num_images));
+                                          u_bit_consecutive(0, current_shader->cso->info.base.num_images));
    }
    use_encrypted_bo |= si_buffer_resources_check_encrypted(sctx, &sctx->internal_bindings);
 

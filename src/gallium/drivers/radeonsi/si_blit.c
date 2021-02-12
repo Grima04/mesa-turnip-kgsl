@@ -43,10 +43,10 @@ enum
 
 void si_blitter_begin(struct si_context *sctx, enum si_blitter_op op)
 {
-   util_blitter_save_vertex_shader(sctx->blitter, sctx->vs_shader.cso);
-   util_blitter_save_tessctrl_shader(sctx->blitter, sctx->tcs_shader.cso);
-   util_blitter_save_tesseval_shader(sctx->blitter, sctx->tes_shader.cso);
-   util_blitter_save_geometry_shader(sctx->blitter, sctx->gs_shader.cso);
+   util_blitter_save_vertex_shader(sctx->blitter, sctx->shader.vs.cso);
+   util_blitter_save_tessctrl_shader(sctx->blitter, sctx->shader.tcs.cso);
+   util_blitter_save_tesseval_shader(sctx->blitter, sctx->shader.tes.cso);
+   util_blitter_save_geometry_shader(sctx->blitter, sctx->shader.gs.cso);
    util_blitter_save_so_targets(sctx->blitter, sctx->streamout.num_targets,
                                 (struct pipe_stream_output_target **)sctx->streamout.targets);
    util_blitter_save_rasterizer(sctx->blitter, sctx->queued.named.rasterizer);
@@ -55,7 +55,7 @@ void si_blitter_begin(struct si_context *sctx, enum si_blitter_op op)
       util_blitter_save_blend(sctx->blitter, sctx->queued.named.blend);
       util_blitter_save_depth_stencil_alpha(sctx->blitter, sctx->queued.named.dsa);
       util_blitter_save_stencil_ref(sctx->blitter, &sctx->stencil_ref.state);
-      util_blitter_save_fragment_shader(sctx->blitter, sctx->ps_shader.cso);
+      util_blitter_save_fragment_shader(sctx->blitter, sctx->shader.ps.cso);
       util_blitter_save_sample_mask(sctx->blitter, sctx->sample_mask);
       util_blitter_save_scissor(sctx->blitter, &sctx->scissors[0]);
       util_blitter_save_window_rectangles(sctx->blitter, sctx->window_rectangles_include,

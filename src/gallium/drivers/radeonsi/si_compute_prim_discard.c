@@ -846,7 +846,7 @@ static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
    assert(!primitive_restart || info->instance_count == 1);
 
    memset(&key, 0, sizeof(key));
-   si_shader_selector_key_vs(sctx, sctx->vs_shader.cso, &key, &key.part.vs.prolog);
+   si_shader_selector_key_vs(sctx, sctx->shader.vs.cso, &key, &key.part.vs.prolog);
    assert(!key.part.vs.prolog.instance_divisor_is_fetched);
 
    key.part.vs.prolog.unpack_instance_id_from_vertex_id = 0;
@@ -861,7 +861,7 @@ static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
     * orientation for cases where front and back primitive orientation matters.
     */
    if (primitive_restart) {
-      struct si_shader_selector *ps = sctx->ps_shader.cso;
+      struct si_shader_selector *ps = sctx->shader.ps.cso;
 
       key.opt.cs_need_correct_orientation = rs->cull_front != rs->cull_back ||
                                             ps->info.uses_frontface ||
@@ -883,7 +883,7 @@ static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
       key.opt.cs_halfz_clip_space = rs->clip_halfz;
    }
 
-   sctx->cs_prim_discard_state.cso = sctx->vs_shader.cso;
+   sctx->cs_prim_discard_state.cso = sctx->shader.vs.cso;
    sctx->cs_prim_discard_state.current = NULL;
 
    if (!sctx->compiler.passes)

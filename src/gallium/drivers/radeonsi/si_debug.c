@@ -1012,11 +1012,11 @@ static void si_dump_annotated_shaders(struct si_context *sctx, FILE *f)
 
    fprintf(f, COLOR_CYAN "The number of active waves = %u" COLOR_RESET "\n\n", num_waves);
 
-   si_print_annotated_shader(sctx->vs_shader.current, waves, num_waves, f);
-   si_print_annotated_shader(sctx->tcs_shader.current, waves, num_waves, f);
-   si_print_annotated_shader(sctx->tes_shader.current, waves, num_waves, f);
-   si_print_annotated_shader(sctx->gs_shader.current, waves, num_waves, f);
-   si_print_annotated_shader(sctx->ps_shader.current, waves, num_waves, f);
+   si_print_annotated_shader(sctx->shader.vs.current, waves, num_waves, f);
+   si_print_annotated_shader(sctx->shader.tcs.current, waves, num_waves, f);
+   si_print_annotated_shader(sctx->shader.tes.current, waves, num_waves, f);
+   si_print_annotated_shader(sctx->shader.gs.current, waves, num_waves, f);
+   si_print_annotated_shader(sctx->shader.ps.current, waves, num_waves, f);
 
    /* Print waves executing shaders that are not currently bound. */
    unsigned i;
@@ -1077,26 +1077,26 @@ void si_log_draw_state(struct si_context *sctx, struct u_log_context *log)
    if (!log)
       return;
 
-   tcs_shader = &sctx->tcs_shader;
-   if (sctx->tes_shader.cso && !sctx->tcs_shader.cso)
+   tcs_shader = &sctx->shader.tcs;
+   if (sctx->shader.tes.cso && !sctx->shader.tcs.cso)
       tcs_shader = &sctx->fixed_func_tcs_shader;
 
    si_dump_framebuffer(sctx, log);
 
-   si_dump_gfx_shader(sctx, &sctx->vs_shader, log);
+   si_dump_gfx_shader(sctx, &sctx->shader.vs, log);
    si_dump_gfx_shader(sctx, tcs_shader, log);
-   si_dump_gfx_shader(sctx, &sctx->tes_shader, log);
-   si_dump_gfx_shader(sctx, &sctx->gs_shader, log);
-   si_dump_gfx_shader(sctx, &sctx->ps_shader, log);
+   si_dump_gfx_shader(sctx, &sctx->shader.tes, log);
+   si_dump_gfx_shader(sctx, &sctx->shader.gs, log);
+   si_dump_gfx_shader(sctx, &sctx->shader.ps, log);
 
    si_dump_descriptor_list(sctx->screen, &sctx->descriptors[SI_DESCS_INTERNAL], "", "RW buffers",
                            4, sctx->descriptors[SI_DESCS_INTERNAL].num_active_slots, si_identity,
                            log);
-   si_dump_gfx_descriptors(sctx, &sctx->vs_shader, log);
+   si_dump_gfx_descriptors(sctx, &sctx->shader.vs, log);
    si_dump_gfx_descriptors(sctx, tcs_shader, log);
-   si_dump_gfx_descriptors(sctx, &sctx->tes_shader, log);
-   si_dump_gfx_descriptors(sctx, &sctx->gs_shader, log);
-   si_dump_gfx_descriptors(sctx, &sctx->ps_shader, log);
+   si_dump_gfx_descriptors(sctx, &sctx->shader.tes, log);
+   si_dump_gfx_descriptors(sctx, &sctx->shader.gs, log);
+   si_dump_gfx_descriptors(sctx, &sctx->shader.ps, log);
 }
 
 void si_log_compute_state(struct si_context *sctx, struct u_log_context *log)
