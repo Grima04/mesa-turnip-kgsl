@@ -227,7 +227,7 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
 }
 
 static void
-pandecode_compute_fbd(uint64_t gpu_va, int job_no)
+pandecode_local_storage(uint64_t gpu_va, int job_no)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const struct mali_local_storage_packed *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
@@ -768,13 +768,11 @@ pandecode_vertex_tiler_postfix_pre(
                 .rt_count = 1
         };
 
-        if (is_bifrost)
-                pandecode_compute_fbd(p->fbd & ~1, job_no);
+        if (job_type != MALI_JOB_TYPE_TILER)
+                pandecode_local_storage(p->fbd & ~1, job_no);
         else if (p->fbd & MALI_FBD_TAG_IS_MFBD)
                 fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->fbd) & ~MALI_FBD_TAG_MASK,
                                               job_no, false, job_type == MALI_JOB_TYPE_COMPUTE, is_bifrost, gpu_id);
-        else if (job_type == MALI_JOB_TYPE_COMPUTE)
-                pandecode_compute_fbd((u64) (uintptr_t) p->fbd, job_no);
         else
                 fbd_info = pandecode_sfbd((u64) (uintptr_t) p->fbd, job_no, false, gpu_id);
 
