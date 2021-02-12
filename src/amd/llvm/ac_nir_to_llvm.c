@@ -843,6 +843,15 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = ac_build_frexp_mant(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
       break;
    case nir_op_fpow:
+      if (instr->dest.dest.ssa.bit_size != 32) {
+         /* 16 and 64 bits */
+         result = emit_intrin_1f_param(&ctx->ac, "llvm.log2",
+                                       ac_to_float_type(&ctx->ac, def_type), src[0]);
+         result = LLVMBuildFMul(ctx->ac.builder, result, ac_to_float(&ctx->ac, src[1]), "");
+         result = emit_intrin_1f_param(&ctx->ac, "llvm.exp2",
+                                       ac_to_float_type(&ctx->ac, def_type), result);
+         break;
+      }
       result = emit_intrin_2f_param(&ctx->ac, "llvm.pow", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1]);
       break;
