@@ -494,6 +494,7 @@ typedef struct bi_block {
 } bi_block;
 
 typedef struct {
+       const struct panfrost_compile_inputs *inputs;
        nir_shader *nir;
        gl_shader_stage stage;
        struct list_head blocks; /* list of bi_block */
@@ -504,17 +505,8 @@ typedef struct {
        unsigned arch;
        unsigned tls_size;
 
-       /* Is internally a blend/blit shader? Depends on stage == FRAGMENT */
-       bool is_blend, is_blit;
-
-       /* Blend constants */
-       float blend_constants[4];
-
        /* Blend return offsets */
        uint32_t blend_ret_offsets[8];
-
-       /* Blend tile buffer conversion desc */
-       uint64_t blend_desc;
 
        /* During NIR->BIR */
        bi_block *current_block;

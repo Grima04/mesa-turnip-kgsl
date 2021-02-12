@@ -321,7 +321,7 @@ mir_compute_interference(
 
         /* We need to force r1.w live throughout a blend shader */
 
-        if (ctx->is_blend) {
+        if (ctx->inputs->is_blend) {
                 unsigned r1w = ~0;
 
                 mir_foreach_block(ctx, _block) {
@@ -394,7 +394,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         /* The number of vec4 work registers available depends on when the
          * uniforms start and the shader stage. By ABI we limit blend shaders
          * to 8 registers, should be lower XXX */
-        int work_count = ctx->is_blend ? 8 :
+        int work_count = ctx->inputs->is_blend ? 8 :
                 16 - MAX2((ctx->uniform_cutoff - 8), 0);
 
        /* No register allocation to do with no SSA */
@@ -827,7 +827,7 @@ mir_spill_register(
                 unsigned spill_class,
                 unsigned *spill_count)
 {
-        if (spill_class == REG_CLASS_WORK && ctx->is_blend)
+        if (spill_class == REG_CLASS_WORK && ctx->inputs->is_blend)
                 unreachable("Blend shader spilling is currently unimplemented");
 
         unsigned spill_index = ctx->temp_count;

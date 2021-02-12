@@ -236,14 +236,9 @@ enum midgard_rt_id {
 #define MIDGARD_MAX_SAMPLE_ITER 16
 
 typedef struct compiler_context {
+        const struct panfrost_compile_inputs *inputs;
         nir_shader *nir;
         gl_shader_stage stage;
-
-        /* Is internally a blend shader? Depends on stage == FRAGMENT */
-        bool is_blend;
-
-        /* Render target number for a keyed blend shader. Depends on is_blend */
-        unsigned blend_rt;
 
         /* Number of samples for a keyed blend shader. Depends on is_blend */
         unsigned blend_sample_iterations;
@@ -253,9 +248,6 @@ typedef struct compiler_context {
 
         /* Index to precolour to r2 for a dual-source blend colour */
         unsigned blend_src1;
-
-        /* Blend constants */
-        float blend_constants[4];
 
         /* Number of bytes used for Thread Local Storage */
         unsigned tls_size;

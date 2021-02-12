@@ -104,7 +104,8 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
 
                 bi_foreach_clause_in_block_rev(blk, clause) {
                         bi_mark_sr_live(blk, clause, node_count, live);
-                        bi_mark_interference(blk, clause, l, live, node_count, ctx->is_blend);
+                        bi_mark_interference(blk, clause, l, live, node_count,
+                                             ctx->inputs->is_blend);
                 }
 
                 free(live);
@@ -130,7 +131,7 @@ bi_allocate_registers(bi_context *ctx, bool *success)
         for (unsigned i = 0; i < 4; i++)
                 l->solutions[node_count + i] = i * 16;
 
-        if (ctx->is_blend) {
+        if (ctx->inputs->is_blend) {
                 /* R0-R3 are reserved for the blend input */
                 l->class_start[BI_REG_CLASS_WORK] = 0;
                 l->class_size[BI_REG_CLASS_WORK] = 16 * 4;
@@ -145,7 +146,8 @@ bi_allocate_registers(bi_context *ctx, bool *success)
                         unsigned dest = bi_get_node(ins->dest[d]);
 
                         /* Blend shaders expect the src colour to be in r0-r3 */
-                        if (ins->op == BI_OPCODE_BLEND && !ctx->is_blend) {
+                        if (ins->op == BI_OPCODE_BLEND &&
+                            !ctx->inputs->is_blend) {
                                 unsigned node = bi_get_node(ins->src[0]);
                                 assert(node < node_count);
                                 l->solutions[node] = 0;

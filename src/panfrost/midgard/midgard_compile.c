@@ -1606,8 +1606,8 @@ mir_get_branch_cond(nir_src *src, bool *invert)
 static uint8_t
 output_load_rt_addr(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-        if (ctx->is_blend)
-                return ctx->blend_rt;
+        if (ctx->inputs->is_blend)
+                return MIDGARD_COLOR_RT0 + ctx->inputs->blend.rt;
 
         const nir_variable *var;
         var = nir_find_variable_with_driver_location(ctx->nir, nir_var_shader_out, nir_intrinsic_base(instr));
@@ -1722,9 +1722,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 } else if (is_global || is_shared || is_scratch) {
                         unsigned seg = is_global ? LDST_GLOBAL : (is_shared ? LDST_SHARED : LDST_SCRATCH);
                         emit_global(ctx, &instr->instr, true, reg, src_offset, seg);
-                } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
+                } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->inputs->is_blend) {
                         emit_varying_read(ctx, reg, offset, nr_comp, component, indirect_offset, t | nir_dest_bit_size(instr->dest), is_flat);
-                } else if (ctx->is_blend) {
+                } else if (ctx->inputs->is_blend) {
                         /* ctx->blend_input will be precoloured to r0/r2, where
                          * the input is preloaded */
 
@@ -1810,12 +1810,13 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         }
 
         case nir_intrinsic_load_blend_const_color_rgba: {
-                assert(ctx->is_blend);
+                assert(ctx->inputs->is_blend);
                 reg = nir_dest_index(&instr->dest);
 
                 midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), reg);
                 ins.has_constants = true;
-                memcpy(ins.constants.f32, ctx->blend_constants, sizeof(ctx->blend_constants));
+                memcpy(ins.constants.f32, ctx->inputs->blend.constants,
+                       sizeof(ctx->inputs->blend.constants));
                 emit_mir_instruction(ctx, ins);
                 break;
         }
@@ -1941,7 +1942,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 assert (ctx->stage == MESA_SHADER_FRAGMENT);
                 reg = nir_src_index(ctx, &instr->src[0]);
                 for (unsigned s = 0; s < ctx->blend_sample_iterations; s++)
-                        emit_fragment_store(ctx, reg, ~0, ~0, ctx->blend_rt, s);
+                        emit_fragment_store(ctx, reg, ~0, ~0,
+                                            ctx->inputs->blend.rt + MIDGARD_COLOR_RT0,
+                                            s);
                 break;
 
         case nir_intrinsic_store_global:
@@ -2989,10 +2992,9 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         compiler_context *ctx = rzalloc(NULL, compiler_context);
         ctx->sysval_to_id = panfrost_init_sysvals(&ctx->sysvals, ctx);
 
+        ctx->inputs = inputs;
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
-        ctx->is_blend = inputs->is_blend;
-        ctx->blend_rt = MIDGARD_COLOR_RT0 + inputs->blend.rt;
         ctx->push = &program->push;
 
         if (inputs->is_blend) {
@@ -3004,7 +3006,6 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 ctx->blend_sample_iterations =
                         DIV_ROUND_UP(desc->block.bits * nr_samples, 128);
         }
-        memcpy(ctx->blend_constants, inputs->blend.constants, sizeof(ctx->blend_constants));
         ctx->blend_input = ~0;
         ctx->blend_src1 = ~0;
         ctx->quirks = midgard_get_quirks(inputs->gpu_id);
@@ -3222,7 +3223,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                         "%u registers, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
                         ctx->nir->info.label ?: "",
-                        ctx->is_blend ? "PAN_SHADER_BLEND" :
+                        ctx->inputs->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_bundles, ctx->quadword_count,
                         nr_registers, nr_threads,

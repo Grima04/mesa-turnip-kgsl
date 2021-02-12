@@ -85,7 +85,7 @@ bi_emit_jump(bi_builder *b, nir_jump_instr *instr)
 static void
 bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
 {
-        assert(b->shader->is_blend);
+        assert(b->shader->inputs->is_blend);
 
         /* We want to load the current pixel.
          * FIXME: The sample to load is currently hardcoded to 0. This should
@@ -95,13 +95,14 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
                 .y = BIFROST_CURRENT_PIXEL,
         };
 
+        uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
         uint32_t indices = 0;
         memcpy(&indices, &pix, sizeof(indices));
 
         bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_imm_u32(indices),
                 bi_register(60), /* coverage bitmap, TODO ra */
                 /* Only keep the conversion part of the blend descriptor. */
-                bi_imm_u32(b->shader->blend_desc >> 32),
+                bi_imm_u32(blend_desc >> 32),
                 (instr->num_components - 1));
 
 }
@@ -347,13 +348,15 @@ bi_emit_load_blend_input(bi_builder *b, nir_intrinsic_instr *instr)
 static void
 bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
 {
-        if (b->shader->is_blend) {
+        if (b->shader->inputs->is_blend) {
+                uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
+
                 /* Blend descriptor comes from the compile inputs */
                 /* Put the result in r0 */
                 bi_blend_to(b, bi_register(0), rgba,
                                 bi_register(60) /* TODO RA */,
-                                bi_imm_u32(b->shader->blend_desc & 0xffffffff),
-                                bi_imm_u32(b->shader->blend_desc >> 32));
+                                bi_imm_u32(blend_desc & 0xffffffff),
+                                bi_imm_u32(blend_desc >> 32));
         } else {
                 /* Blend descriptor comes from the FAU RAM. By convention, the
                  * return address is stored in r48 and will be used by the
@@ -379,7 +382,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
 static bool
 bi_skip_atest(bi_context *ctx, bool emit_zs)
 {
-        return (ctx->is_blit && !emit_zs) || ctx->is_blend;
+        return (ctx->inputs->is_blit && !emit_zs) || ctx->inputs->is_blend;
 }
 
 static void
@@ -483,7 +486,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_emit_blend_op(b, color, nir_intrinsic_src_type(instr), rt);
         }
 
-        if (b->shader->is_blend) {
+        if (b->shader->inputs->is_blend) {
                 /* Jump back to the fragment shader, return address is stored
                  * in r48 (see above).
                  */
@@ -699,7 +702,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
         case nir_intrinsic_load_interpolated_input:
         case nir_intrinsic_load_input:
-                if (b->shader->is_blend)
+                if (b->shader->inputs->is_blend)
                         bi_emit_load_blend_input(b, instr);
                 else if (stage == MESA_SHADER_FRAGMENT)
                         bi_emit_load_vary(b, instr);
@@ -816,22 +819,22 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
         case nir_intrinsic_load_blend_const_color_r_float:
                 bi_mov_i32_to(b, dst,
-                                bi_imm_f32(b->shader->blend_constants[0]));
+                                bi_imm_f32(b->shader->inputs->blend.constants[0]));
                 break;
 
         case nir_intrinsic_load_blend_const_color_g_float:
                 bi_mov_i32_to(b, dst,
-                                bi_imm_f32(b->shader->blend_constants[1]));
+                                bi_imm_f32(b->shader->inputs->blend.constants[1]));
                 break;
 
         case nir_intrinsic_load_blend_const_color_b_float:
                 bi_mov_i32_to(b, dst,
-                                bi_imm_f32(b->shader->blend_constants[2]));
+                                bi_imm_f32(b->shader->inputs->blend.constants[2]));
                 break;
 
         case nir_intrinsic_load_blend_const_color_a_float:
                 bi_mov_i32_to(b, dst,
-                                bi_imm_f32(b->shader->blend_constants[3]));
+                                bi_imm_f32(b->shader->inputs->blend.constants[3]));
                 break;
 
 	case nir_intrinsic_load_sample_positions_pan:
@@ -2326,7 +2329,7 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
                         "%u quadwords, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
                         ctx->nir->info.label ?: "",
-                        ctx->is_blend ? "PAN_SHADER_BLEND" :
+                        ctx->inputs->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_nops, nr_clauses,
                         size / 16, nr_threads,
@@ -2519,15 +2522,12 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         bi_context *ctx = rzalloc(NULL, bi_context);
         ctx->sysval_to_id = panfrost_init_sysvals(&ctx->sysvals, ctx);
 
+        ctx->inputs = inputs;
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
         ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
         ctx->arch = inputs->gpu_id >> 12;
-        ctx->is_blend = inputs->is_blend;
-        ctx->is_blit = inputs->is_blit;
-        ctx->blend_desc = inputs->blend.bifrost_blend_desc;
         ctx->push = &program->push;
-        memcpy(ctx->blend_constants, inputs->blend.constants, sizeof(ctx->blend_constants));
         list_inithead(&ctx->blocks);
 
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa

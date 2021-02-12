@@ -702,7 +702,7 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
                           const bi_clause *clause)
 {
         /* No need to collect return addresses when we're in a blend shader. */
-        if (ctx->is_blend)
+        if (ctx->inputs->is_blend)
                 return;
 
         const bi_tuple *tuple = &clause->tuples[clause->tuple_count - 1];
