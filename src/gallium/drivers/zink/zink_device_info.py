@@ -123,6 +123,7 @@ EXTENSIONS = [
         properties=True,
         features=True,
         guard=True),
+    Extension("VK_KHR_timeline_semaphore"),
     Extension("VK_EXT_4444_formats",
         alias="format_4444",
         features=True),

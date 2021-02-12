@@ -154,6 +154,9 @@ create_batch_state(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs = rzalloc(NULL, struct zink_batch_state);
+   bs->have_timelines = ctx->have_timelines;
+   if (ctx->have_timelines)
+      bs->sem = ctx->batch.sem;
    VkCommandPoolCreateInfo cpci = {};
    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
    cpci.queueFamilyIndex = screen->gfx_queue;
@@ -244,11 +247,40 @@ get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
    return bs;
 }
 
+static void
+init_semaphore(struct zink_context *ctx, struct zink_batch *batch)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   VkSemaphoreCreateInfo sci = {};
+   VkSemaphoreTypeCreateInfo tci = {};
+   sci.pNext = &tci;
+   sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+   tci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+   tci.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+   if (vkCreateSemaphore(screen->dev, &sci, NULL, &batch->sem) != VK_SUCCESS)
+      ctx->have_timelines = false;
+}
+
 void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    bool fresh = !batch->state;
+
+   if (ctx->have_timelines) {
+      bool do_reset = false;
+      if (screen->last_finished > ctx->curr_batch && ctx->curr_batch == 1) {
+         do_reset = true;
+         /* semaphore signal values can never decrease,
+          * so we need a new semaphore anytime we overflow
+          */
+         if (ctx->batch.prev_sem)
+            vkDestroySemaphore(screen->dev, ctx->batch.prev_sem, NULL);
+         ctx->batch.prev_sem = ctx->batch.sem;
+      }
+      if (fresh || do_reset)
+         init_semaphore(ctx, batch);
+   }
 
    batch->state = get_batch_state(ctx, batch);
    assert(batch->state);
@@ -298,6 +330,7 @@ submit_queue(void *data, int thread_index)
 {
    struct zink_batch_state *bs = data;
    VkSubmitInfo si = {};
+   uint64_t batch_id = bs->fence.batch_id;
    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
    si.waitSemaphoreCount = 0;
    si.pWaitSemaphores = NULL;
@@ -306,6 +339,16 @@ submit_queue(void *data, int thread_index)
    si.pWaitDstStageMask = NULL;
    si.commandBufferCount = 1;
    si.pCommandBuffers = &bs->cmdbuf;
+
+   VkTimelineSemaphoreSubmitInfo tsi = {};
+   if (bs->have_timelines) {
+      tsi.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+      si.pNext = &tsi;
+      tsi.signalSemaphoreValueCount = 1;
+      tsi.pSignalSemaphoreValues = &batch_id;
+      si.signalSemaphoreCount = 1;
+      si.pSignalSemaphores = &bs->sem;
+   }
 
    struct wsi_memory_signal_submit_info mem_signal = {
       .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA,

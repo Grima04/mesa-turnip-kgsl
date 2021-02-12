@@ -107,6 +107,8 @@ struct zink_screen {
    PFN_vkCmdDrawIndirectCount vk_CmdDrawIndirectCount;
    PFN_vkCmdDrawIndexedIndirectCount vk_CmdDrawIndexedIndirectCount;
 
+   PFN_vkWaitSemaphores vk_WaitSemaphores;
+
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
    PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;
    PFN_vkCmdEndConditionalRenderingEXT vk_CmdEndConditionalRenderingEXT;

@@ -1174,6 +1174,9 @@ load_device_extensions(struct zink_screen *screen)
       GET_PROC_ADDR(CmdBindVertexBuffers2EXT);
    }
 
+   if (screen->info.have_KHR_timeline_semaphore)
+      GET_PROC_ADDR_KHR(WaitSemaphores);
+
    screen->have_triangle_fans = true;
 #if defined(VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME)
    if (screen->info.have_EXTX_portability_subset) {

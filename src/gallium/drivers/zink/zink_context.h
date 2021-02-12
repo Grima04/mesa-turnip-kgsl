@@ -222,6 +222,7 @@ struct zink_context {
    bool dirty_so_targets;
    bool xfb_barrier;
    bool first_frame_done;
+   bool have_timelines;
 };
 
 static inline struct zink_context *

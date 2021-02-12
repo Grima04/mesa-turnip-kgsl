@@ -55,7 +55,9 @@ struct zink_batch_state {
    struct zink_context *ctx;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
+
    VkQueue queue; //duplicated from batch for threading
+   VkSemaphore sem;
 
    struct util_queue_fence flush_completed;
 
@@ -78,6 +80,7 @@ struct zink_batch_state {
    VkDeviceSize resource_size;
 
    bool is_device_lost;
+   bool have_timelines;
 };
 
 struct zink_batch {
@@ -86,6 +89,8 @@ struct zink_batch {
    uint32_t last_batch_id;
    VkQueue queue; //gfx+compute
    VkQueue thread_queue; //gfx+compute
+   VkSemaphore sem;
+   VkSemaphore prev_sem;
    struct util_queue flush_queue; //TODO: move to wsi
 
    bool has_work;

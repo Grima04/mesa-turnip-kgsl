@@ -301,6 +301,11 @@ zink_context_destroy(struct pipe_context *pctx)
 
    pipe_resource_reference(&ctx->dummy_vertex_buffer, NULL);
    pipe_resource_reference(&ctx->dummy_xfb_buffer, NULL);
+   if (ctx->batch.sem)
+      vkDestroySemaphore(screen->dev, ctx->batch.sem, NULL);
+   if (ctx->batch.prev_sem)
+      vkDestroySemaphore(screen->dev, ctx->batch.prev_sem, NULL);
+
    if (ctx->tc)
       util_queue_destroy(&ctx->batch.flush_queue);
 
@@ -2692,11 +2697,12 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    else
       ctx->batch.thread_queue = ctx->batch.queue;
 
+   ctx->have_timelines = screen->info.have_KHR_timeline_semaphore;
+   simple_mtx_init(&ctx->batch_mtx, mtx_plain);
    incr_curr_batch(ctx);
    zink_start_batch(ctx, &ctx->batch);
    if (!ctx->batch.state)
       goto fail;
-   simple_mtx_init(&ctx->batch_mtx, mtx_plain);
 
    ctx->program_cache = _mesa_hash_table_create(NULL,
                                                 hash_gfx_program,
