@@ -205,6 +205,8 @@ struct glthread_state
    /** Currently-bound buffer object IDs. */
    GLuint CurrentArrayBufferName;
    GLuint CurrentDrawIndirectBufferName;
+   GLuint CurrentPixelPackBufferName;
+   GLuint CurrentPixelUnpackBufferName;
 
    /**
     * The batch index of the last occurence of glLinkProgram or

@@ -71,6 +71,18 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
    return cmd_base;
 }
 
+static inline bool
+_mesa_glthread_has_no_pack_buffer(const struct gl_context *ctx)
+{
+   return ctx->GLThread.CurrentPixelPackBufferName == 0;
+}
+
+static inline bool
+_mesa_glthread_has_no_unpack_buffer(const struct gl_context *ctx)
+{
+   return ctx->GLThread.CurrentPixelUnpackBufferName == 0;
+}
+
 /**
  * Instead of conditionally handling marshaling immediate index data in draw
  * calls (deprecated and removed in GL core), we just disable threading.
