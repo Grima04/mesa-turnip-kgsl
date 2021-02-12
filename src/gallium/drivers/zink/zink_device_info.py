@@ -262,9 +262,21 @@ zink_get_physical_device_info(struct zink_screen *screen)
          for (uint32_t i = 0; i < num_extensions; ++i) {
          %for ext in extensions:
          <%helpers:guard ext="${ext}">
+         %if ext.core_since:
+         %for version in versions:
+         %if ext.core_since.struct_version == version.struct_version:
+            if (${version.version()} > info->device_version) {
+               if (!strcmp(extensions[i].extensionName, "${ext.name}")) {
+                  support_${ext.name_with_vendor()} = true;
+               }
+            }
+         %endif
+         %endfor
+         %else:
             if (!strcmp(extensions[i].extensionName, "${ext.name}")) {
                support_${ext.name_with_vendor()} = true;
             }
+         %endif
          </%helpers:guard>
          %endfor
          }
