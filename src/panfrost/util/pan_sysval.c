@@ -127,28 +127,30 @@ panfrost_sysval_for_instr(nir_instr *instr, nir_dest *dest)
 }
 
 unsigned
-pan_lookup_sysval(struct panfrost_sysvals *ctx, int sysval)
+pan_lookup_sysval(struct hash_table_u64 *sysval_to_id,
+                  struct panfrost_sysvals *sysvals,
+                  int sysval)
 {
         /* Try to lookup */
 
-        void *cached = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);
+        void *cached = _mesa_hash_table_u64_search(sysval_to_id, sysval);
 
         if (cached)
                 return ((uintptr_t) cached) - 1;
 
         /* Else assign */
 
-        unsigned id = ctx->sysval_count++;
+        unsigned id = sysvals->sysval_count++;
         assert(id < MAX_SYSVAL_COUNT);
-        _mesa_hash_table_u64_insert(ctx->sysval_to_id, sysval, (void *) ((uintptr_t) id + 1));
-        ctx->sysvals[id] = sysval;
+        _mesa_hash_table_u64_insert(sysval_to_id, sysval, (void *) ((uintptr_t) id + 1));
+        sysvals->sysvals[id] = sysval;
 
         return id;
 }
 
-void
-panfrost_init_sysvals(struct panfrost_sysvals *ctx, void *memctx)
+struct hash_table_u64 *
+panfrost_init_sysvals(struct panfrost_sysvals *sysvals, void *memctx)
 {
-        ctx->sysval_count = 0;
-        ctx->sysval_to_id = _mesa_hash_table_u64_create(memctx);
+        sysvals->sysval_count = 0;
+        return _mesa_hash_table_u64_create(memctx);
 }

@@ -1447,7 +1447,8 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
         /* Figure out which uniform this is */
         int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
         unsigned dest = nir_dest_index(&nir_dest);
-        unsigned uniform = pan_lookup_sysval(&ctx->sysvals, sysval);
+        unsigned uniform =
+                pan_lookup_sysval(ctx->sysval_to_id, &ctx->sysvals, sysval);
 
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
@@ -2986,7 +2987,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
 
         /* TODO: Bound against what? */
         compiler_context *ctx = rzalloc(NULL, compiler_context);
-        panfrost_init_sysvals(&ctx->sysvals, ctx);
+        ctx->sysval_to_id = panfrost_init_sysvals(&ctx->sysvals, ctx);
 
         ctx->nir = nir;
         ctx->stage = nir->info.stage;

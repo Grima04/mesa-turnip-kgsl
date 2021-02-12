@@ -498,6 +498,7 @@ typedef struct {
        gl_shader_stage stage;
        struct list_head blocks; /* list of bi_block */
        struct panfrost_sysvals sysvals;
+       struct hash_table_u64 *sysval_to_id;
        struct panfrost_ubo_push *push;
        uint32_t quirks;
        unsigned arch;

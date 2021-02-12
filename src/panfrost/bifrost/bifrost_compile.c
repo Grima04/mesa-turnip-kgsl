@@ -295,7 +295,9 @@ static bi_instr *
 bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
                 unsigned nr_components, unsigned offset)
 {
-        unsigned uniform = pan_lookup_sysval(&b->shader->sysvals, sysval);
+        unsigned uniform =
+                pan_lookup_sysval(b->shader->sysval_to_id, &b->shader->sysvals,
+                                  sysval);
         unsigned idx = (uniform * 16) + offset;
 
         return bi_load_to(b, nr_components * 32, dest,
@@ -2515,7 +2517,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         bifrost_debug = debug_get_option_bifrost_debug();
 
         bi_context *ctx = rzalloc(NULL, bi_context);
-        panfrost_init_sysvals(&ctx->sysvals, ctx);
+        ctx->sysval_to_id = panfrost_init_sysvals(&ctx->sysvals, ctx);
 
         ctx->nir = nir;
         ctx->stage = nir->info.stage;

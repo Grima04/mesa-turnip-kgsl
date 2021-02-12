@@ -77,7 +77,6 @@ struct panfrost_sysvals {
         /* The mapping of sysvals to uniforms, the count, and the off-by-one inverse */
         unsigned sysvals[MAX_SYSVAL_COUNT];
         unsigned sysval_count;
-        struct hash_table_u64 *sysval_to_id;
 };
 
 /* Technically Midgard could go up to 92 in a pathological case but we don't
@@ -105,11 +104,13 @@ struct panfrost_ubo_push {
 unsigned
 pan_lookup_pushed_ubo(struct panfrost_ubo_push *push, unsigned ubo, unsigned offs);
 
-void
-panfrost_init_sysvals(struct panfrost_sysvals *ctx, void *memctx);
+struct hash_table_u64 *
+panfrost_init_sysvals(struct panfrost_sysvals *sysvals, void *memctx);
 
 unsigned
-pan_lookup_sysval(struct panfrost_sysvals *ctx, int sysval);
+pan_lookup_sysval(struct hash_table_u64 *sysval_to_id,
+                  struct panfrost_sysvals *sysvals,
+                  int sysval);
 
 int
 panfrost_sysval_for_instr(nir_instr *instr, nir_dest *dest);

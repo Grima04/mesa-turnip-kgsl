@@ -321,6 +321,7 @@ typedef struct compiler_context {
         midgard_instruction *writeout_branch[MIDGARD_NUM_RTS][MIDGARD_MAX_SAMPLE_ITER];
 
         struct panfrost_sysvals sysvals;
+        struct hash_table_u64 *sysval_to_id;
         struct panfrost_ubo_push *push;
 } compiler_context;
 
