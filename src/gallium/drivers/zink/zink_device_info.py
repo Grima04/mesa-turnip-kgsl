@@ -270,6 +270,10 @@ zink_get_physical_device_info(struct zink_screen *screen)
                if (!strcmp(extensions[i].extensionName, "${ext.name}")) {
                   support_${ext.name_with_vendor()} = true;
                }
+        %if not (ext.has_features or ext.has_properties):
+            } else {
+               info->have_${ext.name_with_vendor()} = true;
+        %endif
             }
          %endif
          %endfor
@@ -359,7 +363,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
             conditions += "&& (" + cond + ")\\n"
     conditions = conditions.strip()
 %>\
-      info->have_${ext.name_with_vendor()} = support_${ext.name_with_vendor()}
+      info->have_${ext.name_with_vendor()} |= support_${ext.name_with_vendor()}
          ${conditions};
 </%helpers:guard>
         %endfor
