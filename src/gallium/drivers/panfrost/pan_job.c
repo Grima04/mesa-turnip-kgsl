@@ -1238,7 +1238,7 @@ panfrost_batch_adjust_stack_size(struct panfrost_batch *batch)
                 if (!ss)
                         continue;
 
-                batch->stack_size = MAX2(batch->stack_size, ss->stack_size);
+                batch->stack_size = MAX2(batch->stack_size, ss->info.tls_size);
         }
 }
 

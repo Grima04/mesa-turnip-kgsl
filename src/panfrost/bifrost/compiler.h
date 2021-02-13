@@ -496,17 +496,12 @@ typedef struct bi_block {
 typedef struct {
        const struct panfrost_compile_inputs *inputs;
        nir_shader *nir;
+       struct pan_shader_info *info;
        gl_shader_stage stage;
        struct list_head blocks; /* list of bi_block */
-       struct panfrost_sysvals sysvals;
        struct hash_table_u64 *sysval_to_id;
-       struct panfrost_ubo_push *push;
        uint32_t quirks;
        unsigned arch;
-       unsigned tls_size;
-
-       /* Blend return offsets */
-       uint32_t blend_ret_offsets[8];
 
        /* During NIR->BIR */
        bi_block *current_block;
@@ -514,7 +509,6 @@ typedef struct {
        bi_block *break_block;
        bi_block *continue_block;
        bool emitted_atest;
-       nir_alu_type *blend_types;
 
        /* For creating temporaries */
        unsigned ssa_alloc;

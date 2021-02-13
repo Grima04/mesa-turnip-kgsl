@@ -297,7 +297,8 @@ bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
                 unsigned nr_components, unsigned offset)
 {
         unsigned uniform =
-                pan_lookup_sysval(b->shader->sysval_to_id, &b->shader->sysvals,
+                pan_lookup_sysval(b->shader->sysval_to_id,
+                                  &b->shader->info->sysvals,
                                   sysval);
         unsigned idx = (uniform * 16) + offset;
 
@@ -368,8 +369,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
         }
 
         assert(rt < 8);
-        assert(b->shader->blend_types);
-        b->shader->blend_types[rt] = T;
+        b->shader->info->bifrost.blend[rt].type = T;
 }
 
 /* Blend shaders do not need to run ATEST since they are dependent on a
@@ -2511,23 +2511,23 @@ bi_lower_branch(bi_block *block)
         }
 }
 
-panfrost_program *
-bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
-                           const struct panfrost_compile_inputs *inputs)
+void
+bifrost_compile_shader_nir(nir_shader *nir,
+                           const struct panfrost_compile_inputs *inputs,
+                           struct util_dynarray *binary,
+                           struct pan_shader_info *info)
 {
-        panfrost_program *program = rzalloc(mem_ctx, panfrost_program);
-
         bifrost_debug = debug_get_option_bifrost_debug();
 
         bi_context *ctx = rzalloc(NULL, bi_context);
-        ctx->sysval_to_id = panfrost_init_sysvals(&ctx->sysvals, ctx);
+        ctx->sysval_to_id = panfrost_init_sysvals(&info->sysvals, ctx);
 
         ctx->inputs = inputs;
         ctx->nir = nir;
+        ctx->info = info;
         ctx->stage = nir->info.stage;
         ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
         ctx->arch = inputs->gpu_id >> 12;
-        ctx->push = &program->push;
         list_inithead(&ctx->blocks);
 
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
@@ -2565,8 +2565,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 nir_print_shader(nir, stdout);
         }
 
-        ctx->blend_types = program->blend_types;
-        ctx->tls_size = nir->scratch_size;
+        info->tls_size = nir->scratch_size;
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)
@@ -2614,8 +2613,7 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
 
-        util_dynarray_init(&program->compiled, NULL);
-        unsigned final_clause = bi_pack(ctx, &program->compiled);
+        unsigned final_clause = bi_pack(ctx, binary);
 
         /* If we need to wait for ATEST or BLEND in the first clause, pass the
          * corresponding bits through to the renderer state descriptor */
@@ -2623,17 +2621,12 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         bi_clause *first_clause = bi_next_clause(ctx, first_block, NULL);
 
         unsigned first_deps = first_clause ? first_clause->dependencies : 0;
-        program->wait_6 = (first_deps & (1 << 6));
-        program->wait_7 = (first_deps & (1 << 7));
-
-        memcpy(program->blend_ret_offsets, ctx->blend_ret_offsets, sizeof(program->blend_ret_offsets));
-        program->sysval_count = ctx->sysvals.sysval_count;
-        memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
+        info->bifrost.wait_6 = (first_deps & (1 << 6));
+        info->bifrost.wait_7 = (first_deps & (1 << 7));
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
-                disassemble_bifrost(stdout, program->compiled.data,
-                                program->compiled.size,
-                                bifrost_debug & BIFROST_DBG_VERBOSE);
+                disassemble_bifrost(stdout, binary->data, binary->size,
+                                    bifrost_debug & BIFROST_DBG_VERBOSE);
         }
 
         /* Pad the shader with enough zero bytes to trick the prefetcher,
@@ -2641,19 +2634,15 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
          * so the size remains 0) */
         unsigned prefetch_size = BIFROST_SHADER_PREFETCH - final_clause;
 
-        if (program->compiled.size) {
-                memset(util_dynarray_grow(&program->compiled, uint8_t, prefetch_size),
+        if (binary->size) {
+                memset(util_dynarray_grow(binary, uint8_t, prefetch_size),
                        0, prefetch_size);
         }
 
-        program->tls_size = ctx->tls_size;
-
         if ((bifrost_debug & BIFROST_DBG_SHADERDB || inputs->shaderdb) &&
             !skip_internal) {
-                bi_print_stats(ctx, program->compiled.size, stderr);
+                bi_print_stats(ctx, binary->size, stderr);
         }
 
         ralloc_free(ctx);
-
-        return program;
 }

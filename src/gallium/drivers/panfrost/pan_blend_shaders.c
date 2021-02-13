@@ -295,21 +295,23 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
         if (constants)
                 memcpy(inputs.blend.constants, constants, sizeof(inputs.blend.constants));
 
-        panfrost_program *program;
-
         if (pan_is_bifrost(dev)) {
                 inputs.blend.bifrost_blend_desc =
                         bifrost_get_blend_desc(dev, shader->key.format, shader->key.rt);
         }
 
-        program = pan_shader_compile(dev, NULL, shader->nir, &inputs);
+        struct pan_shader_info info;
+        struct util_dynarray binary;
+
+        util_dynarray_init(&binary, NULL);
+        pan_shader_compile(dev, shader->nir, &inputs, &binary, &info);
 
         /* Allow us to patch later */
-        shader->first_tag = program->first_tag;
-        shader->size = program->compiled.size;
+        shader->first_tag = pan_is_bifrost(dev) ? 0 : info.midgard.first_tag;
+        shader->size = binary.size;
         shader->buffer = reralloc_size(shader, shader->buffer, shader->size);
-        memcpy(shader->buffer, program->compiled.data, shader->size);
-        shader->work_count = program->work_register_count;
+        memcpy(shader->buffer, binary.data, shader->size);
+        shader->work_count = info.work_reg_count;
 
-        ralloc_free(program);
+        util_dynarray_fini(&binary);
 }

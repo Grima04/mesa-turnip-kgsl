@@ -71,7 +71,7 @@ panfrost_create_compute_state(
         }
 
         panfrost_shader_compile(ctx, so->cbase.ir_type, so->cbase.prog,
-                                MESA_SHADER_COMPUTE, v, NULL);
+                                MESA_SHADER_COMPUTE, v);
 
         return so;
 }

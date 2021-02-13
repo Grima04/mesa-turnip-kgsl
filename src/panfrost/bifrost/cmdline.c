@@ -32,7 +32,7 @@
 #include "util/u_dynarray.h"
 #include "bifrost_compile.h"
 
-static panfrost_program *
+static void
 compile_shader(char **argv, bool vertex_only)
 {
         struct gl_shader_program *prog;
@@ -53,7 +53,10 @@ compile_shader(char **argv, bool vertex_only)
         prog = standalone_compile_shader(&options, 2, argv, &local_ctx);
         prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program->info.stage = MESA_SHADER_FRAGMENT;
 
-        panfrost_program *compiled;
+        struct util_dynarray binary;
+
+        util_dynarray_init(&binary, NULL);
+
         for (unsigned i = 0; i < 2; ++i) {
                 nir[i] = glsl_to_nir(&local_ctx, prog, shader_types[i], &bifrost_nir_options);
                 NIR_PASS_V(nir[i], nir_lower_global_vars_to_local);
@@ -70,14 +73,16 @@ compile_shader(char **argv, bool vertex_only)
                 struct panfrost_compile_inputs inputs = {
                         .gpu_id = 0x7212, /* Mali G52 */
                 };
+                struct pan_shader_info info;
 
-                compiled = bifrost_compile_shader_nir(NULL, nir[i], &inputs);
+                util_dynarray_clear(&binary);
+                bifrost_compile_shader_nir(nir[i], &inputs, &binary, &info);
 
                 if (vertex_only)
-                        return compiled;
+                        break;
         }
 
-        return compiled;
+        util_dynarray_fini(&binary);
 }
 
 #define BI_FOURCC(ch0, ch1, ch2, ch3) ( \

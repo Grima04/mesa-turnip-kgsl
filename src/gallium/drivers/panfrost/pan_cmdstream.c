@@ -241,7 +241,7 @@ panfrost_fs_required(
                 unsigned rt_count)
 {
         /* If we generally have side effects */
-        if (fs->fs_sidefx)
+        if (fs->info.fs.sidefx)
                 return true;
 
         /* If colour is written we need to execute */
@@ -252,7 +252,31 @@ panfrost_fs_required(
 
         /* If depth is written and not implied we need to execute.
          * TODO: Predicate on Z/S writes being enabled */
-        return (fs->writes_depth || fs->writes_stencil);
+        return (fs->info.fs.writes_depth || fs->info.fs.writes_stencil);
+}
+
+static enum mali_bifrost_register_file_format
+bifrost_blend_type_from_nir(nir_alu_type nir_type)
+{
+        switch(nir_type) {
+        case 0: /* Render target not in use */
+                return 0;
+        case nir_type_float16:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_F16;
+        case nir_type_float32:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
+        case nir_type_int32:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
+        case nir_type_uint32:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+        case nir_type_int16:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_I16;
+        case nir_type_uint16:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_U16;
+        default:
+                unreachable("Unsupported blend shader type for NIR alu type");
+                return 0;
+        }
 }
 
 static void
@@ -292,8 +316,12 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 assert((blend[i].shader.gpu & (0xffffffffull << 32)) ==
                                        (fs->bo->ptr.gpu & (0xffffffffull << 32)));
                                 cfg.bifrost.internal.shader.pc = (u32)blend[i].shader.gpu;
-                                assert(!(fs->blend_ret_addrs[i] & 0x7));
-                                cfg.bifrost.internal.shader.return_value = fs->blend_ret_addrs[i];
+                                unsigned ret_offset = fs->info.bifrost.blend[i].return_offset;
+                                if (ret_offset) {
+                                        assert(!(ret_offset & 0x7));
+                                        cfg.bifrost.internal.shader.return_value =
+                                                fs->bo->ptr.gpu + ret_offset;
+                                }
                                 cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_SHADER;
                         } else {
                                 enum pipe_format format = batch->key.cbufs[i]->format;
@@ -324,7 +352,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.bifrost.internal.fixed_function.conversion.memory_format =
                                         panfrost_format_to_bifrost_blend(dev, format_desc, true);
                                 cfg.bifrost.internal.fixed_function.conversion.register_format =
-                                        fs->blend_types[i];
+                                        bifrost_blend_type_from_nir(fs->info.bifrost.blend[i].type);
                                 cfg.bifrost.internal.fixed_function.rt = i;
                         }
                 }
@@ -412,7 +440,9 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
 
                 state->properties = fs->properties;
                 state->properties.bifrost.allow_forward_pixel_to_kill =
-                        !fs->can_discard && !fs->writes_depth && no_blend;
+                        !fs->info.fs.can_discard &&
+                        !fs->info.fs.writes_depth &&
+                        no_blend;
                 state->shader = fs->shader;
                 state->preload = fs->preload;
         }
@@ -436,8 +466,8 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 state->properties.midgard.force_early_z = true;
         } else {
                 /* Reasons to disable early-Z from a shader perspective */
-                bool late_z = fs->can_discard || fs->writes_global ||
-                              fs->writes_depth || fs->writes_stencil;
+                bool late_z = fs->info.fs.can_discard || fs->info.writes_global ||
+                              fs->info.fs.writes_depth || fs->info.fs.writes_stencil;
 
                 /* If either depth or stencil is enabled, discard matters */
                 bool zs_enabled =
@@ -452,9 +482,9 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 /* TODO: Reduce this limit? */
                 state->properties = fs->properties;
                 if (has_blend_shader)
-                        state->properties.midgard.work_register_count = MAX2(fs->work_reg_count, 8);
+                        state->properties.midgard.work_register_count = MAX2(fs->info.work_reg_count, 8);
                 else
-                        state->properties.midgard.work_register_count = fs->work_reg_count;
+                        state->properties.midgard.work_register_count = fs->info.work_reg_count;
 
                 state->properties.midgard.force_early_z = !(late_z || alpha_to_coverage);
 
@@ -463,8 +493,10 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                  * lying to the hardware about the discard and setting the
                  * reads tilebuffer? flag to compensate */
                 state->properties.midgard.shader_reads_tilebuffer =
-                        fs->outputs_read || (!zs_enabled && fs->can_discard);
-                state->properties.midgard.shader_contains_discard = zs_enabled && fs->can_discard;
+                        fs->info.fs.outputs_read ||
+                        (!zs_enabled && fs->info.fs.can_discard);
+                state->properties.midgard.shader_contains_discard =
+                        zs_enabled && fs->info.fs.can_discard;
                 state->shader = fs->shader;
         }
 
@@ -528,7 +560,7 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         state->multisample_misc.sample_mask = (msaa ? ctx->sample_mask : ~0) & 0xFFFF;
 
         state->multisample_misc.evaluate_per_sample =
-                msaa && (ctx->min_samples > 1 || fs->sample_shading);
+                msaa && (ctx->min_samples > 1 || fs->info.fs.sample_shading);
 
         state->multisample_misc.depth_function = zsa->base.depth_enabled ?
                 panfrost_translate_compare_func(zsa->base.depth_func) :
@@ -930,8 +962,8 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
 {
         struct sysval_uniform *uniforms = (void *)buf;
 
-        for (unsigned i = 0; i < ss->sysval_count; ++i) {
-                int sysval = ss->sysval[i];
+        for (unsigned i = 0; i < ss->info.sysvals.sysval_count; ++i) {
+                int sysval = ss->info.sysvals.sysvals[i];
 
                 switch (PAN_SYSVAL_TYPE(sysval)) {
                 case PAN_SYSVAL_VIEWPORT_SCALE:
@@ -1023,7 +1055,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         struct panfrost_shader_state *ss = &all->variants[all->active_variant];
 
         /* Allocate room for the sysval and the uniforms */
-        size_t sys_size = sizeof(float) * 4 * ss->sysval_count;
+        size_t sys_size = sizeof(float) * 4 * ss->info.sysvals.sysval_count;
         struct panfrost_ptr transfer =
                 panfrost_pool_alloc_aligned(&batch->pool, sys_size, 16);
 
@@ -1032,7 +1064,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
 
         /* Next up, attach UBOs. UBO count includes gaps but no sysval UBO */
         struct panfrost_shader_state *shader = panfrost_get_shader_state(ctx, stage);
-        unsigned ubo_count = shader->ubo_count - (sys_size ? 1 : 0);
+        unsigned ubo_count = shader->info.ubo_count - (sys_size ? 1 : 0);
         unsigned sysval_ubo = sys_size ? ubo_count : ~0;
 
         size_t sz = MALI_UNIFORM_BUFFER_LENGTH * (ubo_count + 1);
@@ -1076,13 +1108,14 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
 
         /* Copy push constants required by the shader */
         struct panfrost_ptr push_transfer =
-                panfrost_pool_alloc_aligned(&batch->pool, ss->push.count * 4, 16);
+                panfrost_pool_alloc_aligned(&batch->pool,
+                                            ss->info.push.count * 4, 16);
 
         uint32_t *push_cpu = (uint32_t *) push_transfer.cpu;
         *push_constants = push_transfer.gpu;
 
-        for (unsigned i = 0; i < ss->push.count; ++i) {
-                struct panfrost_ubo_word src = ss->push.words[i];
+        for (unsigned i = 0; i < ss->info.push.count; ++i) {
+                struct panfrost_ubo_word src = ss->info.push.words[i];
 
                 /* Map the UBO, this should be cheap. However this is reading
                  * from write-combine memory which is _very_ slow. It might pay
@@ -1108,7 +1141,7 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_variants *all = ctx->shader[PIPE_SHADER_COMPUTE];
         struct panfrost_shader_state *ss = &all->variants[all->active_variant];
-        unsigned single_size = util_next_power_of_two(MAX2(ss->shared_size,
+        unsigned single_size = util_next_power_of_two(MAX2(ss->info.wls_size,
                                                            128));
 
         unsigned instances =
@@ -1130,12 +1163,12 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
                 ls.wls_instances = instances;
                 ls.wls_size_scale = util_logbase2(single_size) + 1;
 
-                if (ss->stack_size) {
+                if (ss->info.tls_size) {
                         unsigned shift =
-                                panfrost_get_stack_shift(ss->stack_size);
+                                panfrost_get_stack_shift(ss->info.tls_size);
                         struct panfrost_bo *bo =
                                 panfrost_batch_get_scratchpad(batch,
-                                                              ss->stack_size,
+                                                              ss->info.tls_size,
                                                               dev->thread_tls_alloc,
                                                               dev->core_count);
 
@@ -1366,7 +1399,7 @@ panfrost_emit_image_attribs(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_shader_state *shader = panfrost_get_shader_state(ctx, type);
 
-        if (!shader->attribute_count) {
+        if (!shader->info.attribute_count) {
                 *buffers = 0;
                 return 0;
         }
@@ -1375,11 +1408,11 @@ panfrost_emit_image_attribs(struct panfrost_batch *batch,
         unsigned attrib_buf_size = MALI_ATTRIBUTE_BUFFER_LENGTH +
                                    MALI_ATTRIBUTE_BUFFER_CONTINUATION_3D_LENGTH;
         unsigned bytes_per_image_desc = MALI_ATTRIBUTE_LENGTH + attrib_buf_size;
-        unsigned attribs_offset = attrib_buf_size * shader->attribute_count;
+        unsigned attribs_offset = attrib_buf_size * shader->info.attribute_count;
 
         struct panfrost_ptr ptr =
                 panfrost_pool_alloc_aligned(&batch->pool,
-                                            bytes_per_image_desc * shader->attribute_count,
+                                            bytes_per_image_desc * shader->info.attribute_count,
                                             util_next_power_of_two(bytes_per_image_desc));
 
         emit_image_attribs(batch, type, ptr.cpu + attribs_offset, ptr.cpu, 0);
@@ -1404,7 +1437,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
          * Also, we allocate more memory than what's needed here if either instancing
          * is enabled or images are present, this can be improved. */
         unsigned bufs_per_attrib = (ctx->instance_count > 1 || nr_images > 0) ? 2 : 1;
-        unsigned nr_bufs = (vs->attribute_count * bufs_per_attrib) +
+        unsigned nr_bufs = (vs->info.attribute_count * bufs_per_attrib) +
                            (pan_is_bifrost(dev) ? 1 : 0);
 
         if (!nr_bufs) {
@@ -1417,7 +1450,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         MALI_ATTRIBUTE_BUFFER_LENGTH * 2);
 
         struct panfrost_ptr T = panfrost_pool_alloc_aligned(&batch->pool,
-                        MALI_ATTRIBUTE_LENGTH * vs->attribute_count,
+                        MALI_ATTRIBUTE_LENGTH * vs->info.attribute_count,
                         MALI_ATTRIBUTE_LENGTH);
 
         struct mali_attribute_buffer_packed *bufs =
@@ -1525,7 +1558,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
         /* Add special gl_VertexID/gl_InstanceID buffers */
 
-        if (unlikely(vs->attribute_count >= PAN_VERTEX_ID)) {
+        if (unlikely(vs->info.attribute_count >= PAN_VERTEX_ID)) {
                 panfrost_vertex_id(ctx->padded_count, &bufs[k], ctx->instance_count > 1);
 
                 pan_pack(out + PAN_VERTEX_ID, ATTRIBUTE, cfg) {
@@ -1742,22 +1775,22 @@ pan_varying_present(const struct panfrost_device *dev,
 
         /* Enable special buffers by the shader info */
 
-        if (vs->writes_point_size)
+        if (vs->info.vs.writes_point_size)
                 present |= (1 << PAN_VARY_PSIZ);
 
-        if (fs->reads_point_coord)
+        if (fs->info.fs.reads_point_coord)
                 present |= (1 << PAN_VARY_PNTCOORD);
 
-        if (fs->reads_face)
+        if (fs->info.fs.reads_face)
                 present |= (1 << PAN_VARY_FACE);
 
-        if (fs->reads_frag_coord && !pan_is_bifrost(dev))
+        if (fs->info.fs.reads_frag_coord && !pan_is_bifrost(dev))
                 present |= (1 << PAN_VARY_FRAGCOORD);
 
         /* Also, if we have a point sprite, we need a point coord buffer */
 
-        for (unsigned i = 0; i < fs->varying_count; i++)  {
-                gl_varying_slot loc = fs->varyings_loc[i];
+        for (unsigned i = 0; i < fs->info.varyings.input_count; i++)  {
+                gl_varying_slot loc = fs->info.varyings.input[i].location;
 
                 if (util_varying_is_point_coord(loc, point_coord_mask))
                         present |= (1 << PAN_VARY_PNTCOORD);
@@ -1886,10 +1919,18 @@ pan_emit_general_varying(const struct panfrost_device *dev,
                          bool should_alloc)
 {
         /* Check if we're linked */
+        unsigned other_varying_count =
+                other->info.stage == MESA_SHADER_FRAGMENT ?
+                other->info.varyings.input_count :
+                other->info.varyings.output_count;
+        const struct pan_shader_varying *other_varyings =
+                other->info.stage == MESA_SHADER_FRAGMENT ?
+                other->info.varyings.input :
+                other->info.varyings.output;
         signed other_idx = -1;
 
-        for (unsigned j = 0; j < other->varying_count; ++j) {
-                if (other->varyings_loc[j] == loc) {
+        for (unsigned j = 0; j < other_varying_count; ++j) {
+                if (other_varyings[j].location == loc) {
                         other_idx = j;
                         break;
                 }
@@ -1904,7 +1945,8 @@ pan_emit_general_varying(const struct panfrost_device *dev,
 
         if (should_alloc) {
                 /* We're linked, so allocate a space via a watermark allocation */
-                enum mali_format alt = other->varyings[other_idx];
+                enum mali_format alt =
+                        dev->formats[other_varyings[other_idx].format].hw >> 12;
 
                 /* Do interpolation at minimum precision */
                 unsigned size_main = pan_varying_size(format);
@@ -1953,8 +1995,14 @@ panfrost_emit_varying(const struct panfrost_device *dev,
                       bool should_alloc,
                       bool is_fragment)
 {
-        gl_varying_slot loc = stage->varyings_loc[idx];
-        enum mali_format format = stage->varyings[idx];
+        gl_varying_slot loc =
+                stage->info.stage == MESA_SHADER_FRAGMENT ?
+                stage->info.varyings.input[idx].location :
+                stage->info.varyings.output[idx].location;
+        enum mali_format format =
+                stage->info.stage == MESA_SHADER_FRAGMENT ?
+                dev->formats[stage->info.varyings.input[idx].format].hw >> 12 :
+                dev->formats[stage->info.varyings.output[idx].format].hw >> 12;
 
         /* Override format to match linkage */
         if (!should_alloc && gen_formats[idx])
@@ -2018,8 +2066,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
         vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
-        vs_size = MALI_ATTRIBUTE_LENGTH * vs->varying_count;
-        fs_size = MALI_ATTRIBUTE_LENGTH * fs->varying_count;
+        vs_size = MALI_ATTRIBUTE_LENGTH * vs->info.varyings.output_count;
+        fs_size = MALI_ATTRIBUTE_LENGTH * fs->info.varyings.input_count;
 
         struct panfrost_ptr trans = panfrost_pool_alloc_aligned(
                         &batch->pool, vs_size + fs_size, MALI_ATTRIBUTE_LENGTH);
@@ -2044,8 +2092,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         memset(gen_formats, 0, sizeof(gen_formats));
 
         unsigned gen_stride = 0;
-        assert(vs->varying_count < ARRAY_SIZE(gen_offsets));
-        assert(fs->varying_count < ARRAY_SIZE(gen_offsets));
+        assert(vs->info.varyings.output_count < ARRAY_SIZE(gen_offsets));
+        assert(fs->info.varyings.input_count < ARRAY_SIZE(gen_offsets));
 
         unsigned streamout_offsets[32];
 
@@ -2056,16 +2104,16 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         }
 
         struct mali_attribute_packed *ovs = (struct mali_attribute_packed *)trans.cpu;
-        struct mali_attribute_packed *ofs = ovs + vs->varying_count;
+        struct mali_attribute_packed *ofs = ovs + vs->info.varyings.output_count;
 
-        for (unsigned i = 0; i < vs->varying_count; i++) {
+        for (unsigned i = 0; i < vs->info.varyings.output_count; i++) {
                 panfrost_emit_varying(dev, ovs + i, vs, fs, vs, present, 0,
                                       ctx->streamout.num_targets, streamout_offsets,
                                       gen_offsets, gen_formats, &gen_stride, i,
                                       true, false);
         }
 
-        for (unsigned i = 0; i < fs->varying_count; i++) {
+        for (unsigned i = 0; i < fs->info.varyings.input_count; i++) {
                 panfrost_emit_varying(dev, ofs + i, fs, vs, vs, present, point_coord_mask,
                                       ctx->streamout.num_targets, streamout_offsets,
                                       gen_offsets, gen_formats, &gen_stride, i,
@@ -2114,8 +2162,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD, MALI_ATTRIBUTE_SPECIAL_FRAG_COORD);
 
         *buffers = T.gpu;
-        *vs_attribs = vs->varying_count ? trans.gpu : 0;
-        *fs_attribs = fs->varying_count ? trans.gpu + vs_size : 0;
+        *vs_attribs = vs->info.varyings.output_count ? trans.gpu : 0;
+        *fs_attribs = fs->info.varyings.input_count ? trans.gpu + vs_size : 0;
 }
 
 void

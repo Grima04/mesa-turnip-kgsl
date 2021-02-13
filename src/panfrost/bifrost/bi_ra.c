@@ -388,7 +388,7 @@ bi_register_allocate(bi_context *ctx)
         unsigned iter_count = 1000; /* max iterations */
 
         /* Number of bytes of memory we've spilled into */
-        unsigned spill_count = ctx->tls_size;
+        unsigned spill_count = ctx->info->tls_size;
 
         do {
                 if (l) {
@@ -410,7 +410,7 @@ bi_register_allocate(bi_context *ctx)
 
         assert(success);
 
-        ctx->tls_size = spill_count;
+        ctx->info->tls_size = spill_count;
         bi_install_registers(ctx, l);
 
         lcra_free(l);

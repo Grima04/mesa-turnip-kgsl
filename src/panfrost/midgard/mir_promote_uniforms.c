@@ -263,7 +263,7 @@ midgard_promote_uniforms(compiler_context *ctx)
         unsigned work_count = mir_work_heuristic(ctx, &analysis);
         unsigned promoted_count = 24 - work_count;
 
-        mir_pick_ubo(ctx->push, &analysis, promoted_count);
+        mir_pick_ubo(&ctx->info->push, &analysis, promoted_count);
 
         /* First, figure out special indices a priori so we don't recompute a lot */
         BITSET_WORD *special = mir_special_indices(ctx);
@@ -279,7 +279,7 @@ midgard_promote_uniforms(compiler_context *ctx)
                 if (!BITSET_TEST(analysis.blocks[ubo].pushed, qword)) continue;
 
                 /* Find where we pushed to, TODO: unaligned pushes to pack */
-                unsigned base = pan_lookup_pushed_ubo(ctx->push, ubo, qword * 16);
+                unsigned base = pan_lookup_pushed_ubo(&ctx->info->push, ubo, qword * 16);
                 assert((base & 0x3) == 0);
 
                 unsigned address = base / 4;
@@ -288,7 +288,8 @@ midgard_promote_uniforms(compiler_context *ctx)
                 /* Should've taken into account when pushing */
                 assert(address < promoted_count);
 
-                ctx->uniform_cutoff = MAX2(ctx->uniform_cutoff, address + 1);
+                ctx->info->midgard.uniform_cutoff =
+                        MAX2(ctx->info->midgard.uniform_cutoff, address + 1);
                 unsigned promoted = SSA_FIXED_REGISTER(uniform_reg);
 
                 /* We do need the move for safety for a non-SSA dest, or if

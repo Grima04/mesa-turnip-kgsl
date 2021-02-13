@@ -1448,7 +1448,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
         int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
         unsigned dest = nir_dest_index(&nir_dest);
         unsigned uniform =
-                pan_lookup_sysval(ctx->sysval_to_id, &ctx->sysvals, sysval);
+                pan_lookup_sysval(ctx->sysval_to_id, &ctx->info->sysvals, sysval);
 
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
@@ -2978,24 +2978,22 @@ mir_add_writeout_loops(compiler_context *ctx)
         }
 }
 
-panfrost_program *
-midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
-                           const struct panfrost_compile_inputs *inputs)
+void
+midgard_compile_shader_nir(nir_shader *nir,
+                           const struct panfrost_compile_inputs *inputs,
+                           struct util_dynarray *binary,
+                           struct pan_shader_info *info)
 {
-        panfrost_program *program = rzalloc(mem_ctx, panfrost_program);
-
-        struct util_dynarray *compiled = &program->compiled;
-
         midgard_debug = debug_get_option_midgard_debug();
 
         /* TODO: Bound against what? */
         compiler_context *ctx = rzalloc(NULL, compiler_context);
-        ctx->sysval_to_id = panfrost_init_sysvals(&ctx->sysvals, ctx);
+        ctx->sysval_to_id = panfrost_init_sysvals(&info->sysvals, ctx);
 
         ctx->inputs = inputs;
         ctx->nir = nir;
+        ctx->info = info;
         ctx->stage = nir->info.stage;
-        ctx->push = &program->push;
 
         if (inputs->is_blend) {
                 unsigned nr_samples = MAX2(inputs->blend.nr_samples, 1);
@@ -3013,7 +3011,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         /* Start off with a safe cutoff, allowing usage of all 16 work
          * registers. Later, we'll promote uniform reads to uniform registers
          * if we determine it is beneficial to do so */
-        ctx->uniform_cutoff = 8;
+        info->midgard.uniform_cutoff = 8;
 
         /* Initialize at a global (not block) level hash tables */
 
@@ -3059,7 +3057,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 nir_print_shader(nir, stdout);
         }
 
-        ctx->tls_size = nir->scratch_size;
+        info->tls_size = nir->scratch_size;
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)
@@ -3085,8 +3083,6 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 free(ctx->already_emitted);
                 break; /* TODO: Multi-function shaders */
         }
-
-        util_dynarray_init(compiled, program);
 
         /* Per-block lowering before opts */
 
@@ -3164,7 +3160,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                         if (!bundle->last_writeout && (current_bundle + 1 < bundle_count))
                                 lookahead = source_order_bundles[current_bundle + 1]->tag;
 
-                        emit_binary_bundle(ctx, block, bundle, compiled, lookahead);
+                        emit_binary_bundle(ctx, block, bundle, binary, lookahead);
                         ++current_bundle;
                 }
 
@@ -3175,20 +3171,11 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         free(source_order_bundles);
 
         /* Report the very first tag executed */
-        program->first_tag = midgard_get_first_tag_from_block(ctx, 0);
-
-        /* Deal with off-by-one related to the fencepost problem */
-        program->work_register_count = ctx->work_registers + 1;
-        program->uniform_cutoff = ctx->uniform_cutoff;
-
-        program->tls_size = ctx->tls_size;
-
-        program->sysval_count = ctx->sysvals.sysval_count;
-        memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
+        info->midgard.first_tag = midgard_get_first_tag_from_block(ctx, 0);
 
         if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
-                disassemble_midgard(stdout, program->compiled.data,
-                                    program->compiled.size, inputs->gpu_id);
+                disassemble_midgard(stdout, binary->data,
+                                    binary->size, inputs->gpu_id);
         }
 
         if ((midgard_debug & MIDGARD_DBG_SHADERDB || inputs->shaderdb) &&
@@ -3209,7 +3196,7 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                 /* Calculate thread count. There are certain cutoffs by
                  * register count for thread count */
 
-                unsigned nr_registers = program->work_register_count;
+                unsigned nr_registers = info->work_reg_count;
 
                 unsigned nr_threads =
                         (nr_registers <= 4) ? 4 :
@@ -3232,6 +3219,4 @@ midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         }
 
         ralloc_free(ctx);
-
-        return program;
 }

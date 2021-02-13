@@ -99,7 +99,7 @@ index_to_reg(compiler_context *ctx, struct lcra_state *l, unsigned reg, unsigned
         /* Report that we actually use this register, and return it */
 
         if (r.reg < 16)
-                ctx->work_registers = MAX2(ctx->work_registers, r.reg);
+                ctx->info->work_reg_count = MAX2(ctx->info->work_reg_count, r.reg + 1);
 
         return r;
 }
@@ -395,7 +395,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
          * uniforms start and the shader stage. By ABI we limit blend shaders
          * to 8 registers, should be lower XXX */
         int work_count = ctx->inputs->is_blend ? 8 :
-                16 - MAX2((ctx->uniform_cutoff - 8), 0);
+                16 - MAX2((ctx->info->midgard.uniform_cutoff - 8), 0);
 
        /* No register allocation to do with no SSA */
 
@@ -646,7 +646,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         if (ctx->blend_src1 != ~0) {
                 assert(ctx->blend_src1 < ctx->temp_count);
                 l->solutions[ctx->blend_src1] = (16 * 2);
-                ctx->work_registers = MAX2(ctx->work_registers, 2);
+                ctx->info->work_reg_count = MAX2(ctx->info->work_reg_count, 3);
         }
 
         mir_compute_interference(ctx, l);
@@ -959,13 +959,14 @@ mir_spill_register(
 static void
 mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
 {
-        unsigned old_work_count = 16 - MAX2((ctx->uniform_cutoff - 8), 0);
+        unsigned old_work_count =
+                16 - MAX2((ctx->info->midgard.uniform_cutoff - 8), 0);
         unsigned work_count = 16 - MAX2((new_cutoff - 8), 0);
 
         unsigned min_demote = SSA_FIXED_REGISTER(old_work_count);
         unsigned max_demote = SSA_FIXED_REGISTER(work_count);
 
-        ctx->uniform_cutoff = new_cutoff;
+        ctx->info->midgard.uniform_cutoff = new_cutoff;
 
         mir_foreach_block(ctx, _block) {
                 midgard_block *block = (midgard_block *) _block;
@@ -978,7 +979,7 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
 
                                 unsigned temp = make_compiler_temp(ctx);
                                 unsigned idx = (23 - SSA_REG_FROM_FIXED(ins->src[i])) * 4;
-                                assert(idx < ctx->push->count);
+                                assert(idx < ctx->info->push.count);
 
                                 midgard_instruction ld = {
                                         .type = TAG_LOAD_STORE_4,
@@ -989,10 +990,10 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
                                         .swizzle = SWIZZLE_IDENTITY_4,
                                         .op = midgard_op_ld_ubo_int4,
                                         .load_store = {
-                                                .arg_1 = ctx->push->words[idx].ubo,
+                                                .arg_1 = ctx->info->push.words[idx].ubo,
                                                 .arg_2 = 0x1E,
                                         },
-                                        .constants.u32[0] = ctx->push->words[idx].offset
+                                        .constants.u32[0] = ctx->info->push.words[idx].offset
                                 };
 
                                 mir_insert_instruction_before_scheduled(ctx, block, before, ld);
@@ -1013,7 +1014,7 @@ mir_ra(compiler_context *ctx)
         int iter_count = 1000; /* max iterations */
 
         /* Number of 128-bit slots in memory we've spilled into */
-        unsigned spill_count = DIV_ROUND_UP(ctx->tls_size, 16);
+        unsigned spill_count = DIV_ROUND_UP(ctx->info->tls_size, 16);
 
 
         mir_create_pipeline_registers(ctx);
@@ -1025,9 +1026,9 @@ mir_ra(compiler_context *ctx)
                         /* It's a lot cheaper to demote uniforms to get more
                          * work registers than to spill to TLS. */
                         if (l->spill_class == REG_CLASS_WORK &&
-                            ctx->uniform_cutoff > 8) {
+                            ctx->info->midgard.uniform_cutoff > 8) {
 
-                                mir_demote_uniforms(ctx, MAX2(ctx->uniform_cutoff - 4, 8));
+                                mir_demote_uniforms(ctx, MAX2(ctx->info->midgard.uniform_cutoff - 4, 8));
                         } else if (spill_node == -1) {
                                 fprintf(stderr, "ERROR: Failed to choose spill node\n");
                                 lcra_free(l);
@@ -1056,7 +1057,7 @@ mir_ra(compiler_context *ctx)
         /* Report spilling information. spill_count is in 128-bit slots (vec4 x
          * fp32), but tls_size is in bytes, so multiply by 16 */
 
-        ctx->tls_size = spill_count * 16;
+        ctx->info->tls_size = spill_count * 16;
 
         install_registers(ctx, l);
 

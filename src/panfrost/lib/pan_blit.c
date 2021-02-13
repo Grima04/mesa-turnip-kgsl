@@ -43,11 +43,13 @@
  * This is primarily designed as a fallback for preloads but could be extended
  * for other clears/blits if needed in the future. */
 
-static panfrost_program *
+static void
 panfrost_build_blit_shader(struct panfrost_device *dev,
                            gl_frag_result loc,
                            nir_alu_type T,
-                           bool ms)
+                           bool ms,
+                           struct util_dynarray *binary,
+                           struct pan_shader_info *info)
 {
         bool is_colour = loc >= FRAG_RESULT_DATA0;
 
@@ -110,11 +112,9 @@ panfrost_build_blit_shader(struct panfrost_device *dev,
                 .is_blit = true,
         };
 
-        panfrost_program *program =
-                pan_shader_compile(dev, NULL, shader, &inputs);
+        pan_shader_compile(dev, shader, &inputs, binary, info);
 
         ralloc_free(shader);
-        return program;
 }
 
 /* Compile and upload all possible blit shaders ahead-of-time to reduce draw
@@ -162,6 +162,9 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
         /* Don't bother generating multisampling variants if we don't actually
          * support multisampling */
         bool has_ms = !(dev->quirks & MIDGARD_SFBD);
+        struct util_dynarray binary;
+
+        util_dynarray_init(&binary, NULL);
 
         for (unsigned ms = 0; ms <= has_ms; ++ms) {
                 for (unsigned i = 0; i < ARRAY_SIZE(shader_descs); ++i) {
@@ -172,27 +175,38 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
                                         continue;
 
                                 struct pan_blit_shader *shader = &dev->blit_shaders.loads[loc][T][ms];
-                                panfrost_program *program =
-                                        panfrost_build_blit_shader(dev, loc,
-                                                                   nir_types[T], ms);
+                                struct pan_shader_info info;
 
-                                assert(offset + program->compiled.size < total_size);
+                                util_dynarray_clear(&binary);
+                                panfrost_build_blit_shader(dev, loc,
+                                                           nir_types[T], ms,
+                                                           &binary, &info);
+
+                                assert(offset + binary.size < total_size);
                                 memcpy(dev->blit_shaders.bo->ptr.cpu + offset,
-                                       program->compiled.data, program->compiled.size);
+                                       binary.data, binary.size);
 
-                                shader->shader = (dev->blit_shaders.bo->ptr.gpu + offset) |
-                                                 program->first_tag;
+                                shader->shader = (dev->blit_shaders.bo->ptr.gpu + offset);
+                                if (pan_is_bifrost(dev)) {
+                                        int rt = loc - FRAG_RESULT_DATA0;
+                                        if (rt >= 0 && rt < 8 &&
+                                            info.bifrost.blend[rt].return_offset) {
+                                                shader->blend_ret_addr =
+                                                        shader->shader +
+                                                        info.bifrost.blend[rt].return_offset;
+                                        }
+                                } else {
+                                        shader->shader |= info.midgard.first_tag;
+                                }
 
-                                int rt = loc - FRAG_RESULT_DATA0;
-                                if (rt >= 0 && rt < 8 && program->blend_ret_offsets[rt])
-                                        shader->blend_ret_addr = program->blend_ret_offsets[rt] + shader->shader;
 
-                                offset += ALIGN_POT(program->compiled.size,
+                                offset += ALIGN_POT(binary.size,
                                                     pan_is_bifrost(dev) ? 128 : 64);
-                                ralloc_free(program);
                         }
                 }
         }
+
+        util_dynarray_fini(&binary);
 }
 
 static void

@@ -238,6 +238,7 @@ enum midgard_rt_id {
 typedef struct compiler_context {
         const struct panfrost_compile_inputs *inputs;
         nir_shader *nir;
+        struct pan_shader_info *info;
         gl_shader_stage stage;
 
         /* Number of samples for a keyed blend shader. Depends on is_blend */
@@ -248,9 +249,6 @@ typedef struct compiler_context {
 
         /* Index to precolour to r2 for a dual-source blend colour */
         unsigned blend_src1;
-
-        /* Number of bytes used for Thread Local Storage */
-        unsigned tls_size;
 
         /* Count of spills and fills for shaderdb */
         unsigned spills;
@@ -291,10 +289,6 @@ typedef struct compiler_context {
         /* Set of NIR indices that were already emitted as outmods */
         BITSET_WORD *already_emitted;
 
-        /* Just the count of the max register used. Higher count => higher
-         * register pressure */
-        int work_registers;
-
         /* The number of uniforms allowable for the fast path */
         int uniform_cutoff;
 
@@ -312,9 +306,7 @@ typedef struct compiler_context {
         /* Writeout instructions for each render target */
         midgard_instruction *writeout_branch[MIDGARD_NUM_RTS][MIDGARD_MAX_SAMPLE_ITER];
 
-        struct panfrost_sysvals sysvals;
         struct hash_table_u64 *sysval_to_id;
-        struct panfrost_ubo_push *push;
 } compiler_context;
 
 /* Per-block live_in/live_out */
