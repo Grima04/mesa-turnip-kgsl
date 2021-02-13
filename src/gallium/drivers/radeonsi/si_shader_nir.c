@@ -31,17 +31,12 @@
 #include "si_shader_internal.h"
 #include "tgsi/tgsi_from_mesa.h"
 
-static const nir_deref_instr *tex_get_texture_deref(nir_tex_instr *instr)
+static const nir_src *get_texture_src(nir_tex_instr *instr, nir_tex_src_type type)
 {
    for (unsigned i = 0; i < instr->num_srcs; i++) {
-      switch (instr->src[i].src_type) {
-      case nir_tex_src_texture_deref:
-         return nir_src_as_deref(instr->src[i].src);
-      default:
-         break;
-      }
+      if (instr->src[i].src_type == type)
+         return &instr->src[i].src;
    }
-
    return NULL;
 }
 
@@ -183,13 +178,10 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
 {
    if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
-      const nir_deref_instr *deref = tex_get_texture_deref(tex);
-      nir_variable *var = deref ? nir_deref_instr_get_variable(deref) : NULL;
+      const nir_src *handle = get_texture_src(tex, nir_tex_src_texture_handle);
 
-      if (var) {
-         if (var->data.mode != nir_var_uniform || var->data.bindless)
-            info->uses_bindless_samplers = true;
-      }
+      if (handle)
+         info->uses_bindless_samplers = true;
    } else if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
