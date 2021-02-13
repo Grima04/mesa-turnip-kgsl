@@ -34,6 +34,7 @@
 #include "pan_cmdstream.h"
 #include "pan_context.h"
 #include "pan_job.h"
+#include "pan_shader.h"
 #include "pan_texture.h"
 
 /* If a BO is accessed for a particular shader stage, will it be in the primary
@@ -423,6 +424,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                                   struct panfrost_blend_final *blend,
                                   struct MALI_RENDERER_STATE *state)
 {
+        const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
         unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
 
@@ -433,18 +435,19 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                 state->properties.bifrost.allow_forward_pixel_to_be_killed = true;
                 state->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
         } else {
+                pan_shader_prepare_rsd(dev, &fs->info,
+                                       fs->bo ? fs->bo->ptr.gpu : 0,
+                                       state);
+
                 bool no_blend = true;
 
                 for (unsigned i = 0; i < rt_count; ++i)
                         no_blend &= (!blend[i].load_dest | blend[i].no_colour);
 
-                state->properties = fs->properties;
                 state->properties.bifrost.allow_forward_pixel_to_kill =
                         !fs->info.fs.can_discard &&
                         !fs->info.fs.writes_depth &&
                         no_blend;
-                state->shader = fs->shader;
-                state->preload = fs->preload;
         }
 }
 
@@ -465,6 +468,10 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 state->properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
                 state->properties.midgard.force_early_z = true;
         } else {
+                pan_shader_prepare_rsd(dev, &fs->info,
+                                       fs->bo ? fs->bo->ptr.gpu : 0,
+                                       state);
+
                 /* Reasons to disable early-Z from a shader perspective */
                 bool late_z = fs->info.fs.can_discard || fs->info.writes_global ||
                               fs->info.fs.writes_depth || fs->info.fs.writes_stencil;
@@ -480,7 +487,6 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                         has_blend_shader |= blend[c].is_shader;
 
                 /* TODO: Reduce this limit? */
-                state->properties = fs->properties;
                 if (has_blend_shader)
                         state->properties.midgard.work_register_count = MAX2(fs->info.work_reg_count, 8);
                 else
@@ -497,7 +503,6 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                         (!zs_enabled && fs->info.fs.can_discard);
                 state->properties.midgard.shader_contains_discard =
                         zs_enabled && fs->info.fs.can_discard;
-                state->shader = fs->shader;
         }
 
         if (dev->quirks & MIDGARD_SFBD && ctx->pipe_framebuffer.nr_cbufs > 0) {

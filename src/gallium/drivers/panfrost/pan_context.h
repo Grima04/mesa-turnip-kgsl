@@ -210,10 +210,6 @@ struct panfrost_shader_state {
                 uint32_t offset;
         } upload;
 
-        struct MALI_SHADER shader;
-        struct MALI_RENDERER_PROPERTIES properties;
-        struct MALI_PRELOAD preload;
-
         struct pan_shader_info info;
 
         struct pipe_stream_output_info stream_output;
