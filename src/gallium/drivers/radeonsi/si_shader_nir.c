@@ -194,6 +194,21 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       nir_tex_instr *tex = nir_instr_as_tex(instr);
       const nir_src *handle = get_texture_src(tex, nir_tex_src_texture_handle);
 
+      /* Gather the types of used VMEM instructions that return something. */
+      switch (tex->op) {
+      case nir_texop_tex:
+      case nir_texop_txb:
+      case nir_texop_txl:
+      case nir_texop_txd:
+      case nir_texop_lod:
+      case nir_texop_tg4:
+         info->uses_vmem_return_type_sampler_or_bvh = true;
+         break;
+      default:
+         info->uses_vmem_return_type_other = true;
+         break;
+      }
+
       if (handle) {
          info->uses_bindless_samplers = true;
 
@@ -211,6 +226,39 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       bool is_ssbo = strstr(intr_name, "ssbo");
       bool is_image = strstr(intr_name, "image_deref");
       bool is_bindless_image = strstr(intr_name, "bindless_image");
+
+      /* Gather the types of used VMEM instructions that return something. */
+      if (nir_intrinsic_infos[intr->intrinsic].has_dest) {
+         switch (intr->intrinsic) {
+         case nir_intrinsic_load_ubo:
+            if (!nir_src_is_const(intr->src[1]))
+               info->uses_vmem_return_type_other = true;
+            break;
+
+         case nir_intrinsic_load_barycentric_at_sample: /* This loads sample positions. */
+         case nir_intrinsic_load_tess_level_outer: /* TES input read from memory */
+         case nir_intrinsic_load_tess_level_inner: /* TES input read from memory */
+            info->uses_vmem_return_type_other = true;
+            break;
+
+         case nir_intrinsic_load_input:
+         case nir_intrinsic_load_input_vertex:
+         case nir_intrinsic_load_per_vertex_input:
+            if (nir->info.stage == MESA_SHADER_VERTEX ||
+                nir->info.stage == MESA_SHADER_TESS_EVAL)
+               info->uses_vmem_return_type_other = true;
+            break;
+
+         default:
+            if (is_image ||
+                is_bindless_image ||
+                is_ssbo ||
+                strstr(intr_name, "global") ||
+                strstr(intr_name, "scratch"))
+               info->uses_vmem_return_type_other = true;
+            break;
+         }
+      }
 
       if (is_bindless_image)
          info->uses_bindless_images = true;
