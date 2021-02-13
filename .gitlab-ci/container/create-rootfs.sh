@@ -67,7 +67,6 @@ apt-get -y install --no-install-recommends \
     netcat-openbsd \
     python3 \
     python3-pil \
-    python3-pytest \
     python3-requests \
     python3-yaml \
     sntp \

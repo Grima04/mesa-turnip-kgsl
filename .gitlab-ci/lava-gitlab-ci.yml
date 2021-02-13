@@ -1,5 +1,5 @@
 variables:
-  MESA_LAVA_TAG: "2020-02-16-iris"
+  MESA_LAVA_TAG: "2020-02-17-remove-pytest"
 
 .kernel+rootfs:
   stage: container-2

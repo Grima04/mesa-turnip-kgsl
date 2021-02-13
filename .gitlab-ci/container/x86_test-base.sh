@@ -54,7 +54,6 @@ apt-get install -y --no-remove \
       python3-mako \
       python3-numpy \
       python3-pil \
-      python3-pytest \
       python3-requests \
       python3-six \
       python3-yaml \
