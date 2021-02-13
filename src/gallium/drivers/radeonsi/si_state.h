@@ -565,6 +565,7 @@ bool si_shader_cache_load_shader(struct si_screen *sscreen, unsigned char ir_sha
                                  struct si_shader *shader);
 void si_shader_cache_insert_shader(struct si_screen *sscreen, unsigned char ir_sha1_cache_key[20],
                                    struct si_shader *shader, bool insert_into_disk_cache);
+bool si_shader_mem_ordered(struct si_shader *shader);
 bool si_update_shaders(struct si_context *sctx);
 void si_init_screen_live_shader_cache(struct si_screen *sscreen);
 void si_init_shader_functions(struct si_context *sctx);

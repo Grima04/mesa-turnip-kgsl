@@ -327,6 +327,33 @@ void si_destroy_shader_cache(struct si_screen *sscreen)
 
 /* SHADER STATES */
 
+bool si_shader_mem_ordered(struct si_shader *shader)
+{
+   if (shader->selector->screen->info.chip_class < GFX10)
+      return false;
+
+   const struct si_shader_info *info = &shader->selector->info;
+   const struct si_shader_info *prev_info =
+      shader->previous_stage_sel ? &shader->previous_stage_sel->info : NULL;
+
+   bool sampler_or_bvh = info->uses_vmem_return_type_sampler_or_bvh;
+   bool other = info->uses_vmem_return_type_other ||
+                info->uses_indirect_descriptor ||
+                shader->config.scratch_bytes_per_wave ||
+                (info->stage == MESA_SHADER_FRAGMENT &&
+                 (info->base.fs.uses_fbfetch_output ||
+                  shader->key.part.ps.prolog.poly_stipple));
+
+   if (prev_info) {
+      sampler_or_bvh |= prev_info->uses_vmem_return_type_sampler_or_bvh;
+      other |= prev_info->uses_vmem_return_type_other ||
+               prev_info->uses_indirect_descriptor;
+   }
+
+   /* Return true if both types of VMEM that return something are used. */
+   return sampler_or_bvh && other;
+}
+
 static void si_set_tesseval_regs(struct si_screen *sscreen, const struct si_shader_selector *tes,
                                  struct si_pm4_state *pm4)
 {
@@ -551,7 +578,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
       S_00B428_VGPRS((shader->config.num_vgprs - 1) / (sscreen->ge_wave_size == 32 ? 8 : 4)) |
          (sscreen->info.chip_class <= GFX9 ? S_00B428_SGPRS((shader->config.num_sgprs - 1) / 8)
                                            : 0) |
-         S_00B428_DX10_CLAMP(1) | S_00B428_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+         S_00B428_DX10_CLAMP(1) | S_00B428_MEM_ORDERED(si_shader_mem_ordered(shader)) |
          S_00B428_WGP_MODE(sscreen->info.chip_class >= GFX10) |
          S_00B428_FLOAT_MODE(shader->config.float_mode) |
          S_00B428_LS_VGPR_COMP_CNT(sscreen->info.chip_class >= GFX9
@@ -867,7 +894,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
       }
 
       uint32_t rsrc1 = S_00B228_VGPRS((shader->config.num_vgprs - 1) / 4) | S_00B228_DX10_CLAMP(1) |
-                       S_00B228_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+                       S_00B228_MEM_ORDERED(si_shader_mem_ordered(shader)) |
                        S_00B228_WGP_MODE(sscreen->info.chip_class >= GFX10) |
                        S_00B228_FLOAT_MODE(shader->config.float_mode) |
                        S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
@@ -1150,7 +1177,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
       S_00B228_VGPRS((shader->config.num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
          S_00B228_FLOAT_MODE(shader->config.float_mode) | S_00B228_DX10_CLAMP(1) |
-         S_00B228_MEM_ORDERED(1) |
+         S_00B228_MEM_ORDERED(si_shader_mem_ordered(shader)) |
          /* Disable the WGP mode on gfx10.3 because it can hang. (it happened on VanGogh)
           * Let's disable it on all chips that disable exactly 1 CU per SA for GS. */
          S_00B228_WGP_MODE(sscreen->info.chip_class == GFX10) |
@@ -1457,7 +1484,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    uint32_t rsrc1 =
       S_00B128_VGPRS((shader->config.num_vgprs - 1) / (sscreen->ge_wave_size == 32 ? 8 : 4)) |
       S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt) | S_00B128_DX10_CLAMP(1) |
-      S_00B128_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+      S_00B128_MEM_ORDERED(si_shader_mem_ordered(shader)) |
       S_00B128_FLOAT_MODE(shader->config.float_mode);
    uint32_t rsrc2 = S_00B12C_USER_SGPR(num_user_sgprs) | S_00B12C_OC_LDS_EN(oc_lds_en) |
                     S_00B12C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
@@ -1672,7 +1699,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 
    uint32_t rsrc1 =
       S_00B028_VGPRS((shader->config.num_vgprs - 1) / (sscreen->ps_wave_size == 32 ? 8 : 4)) |
-      S_00B028_DX10_CLAMP(1) | S_00B028_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+      S_00B028_DX10_CLAMP(1) | S_00B028_MEM_ORDERED(si_shader_mem_ordered(shader)) |
       S_00B028_FLOAT_MODE(shader->config.float_mode);
 
    if (sscreen->info.chip_class < GFX10) {
