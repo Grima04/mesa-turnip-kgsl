@@ -184,6 +184,19 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          info->uses_bindless_samplers = true;
    } else if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+      const char *intr_name = nir_intrinsic_infos[intr->intrinsic].name;
+      bool is_bindless_image = strstr(intr_name, "bindless_image");
+
+      if (is_bindless_image)
+         info->uses_bindless_images = true;
+
+      if (strstr(intr_name, "image_atomic") ||
+          strstr(intr_name, "image_store") ||
+          strstr(intr_name, "image_deref_atomic") ||
+          strstr(intr_name, "image_deref_store") ||
+          strstr(intr_name, "ssbo_atomic") ||
+          intr->intrinsic == nir_intrinsic_store_ssbo)
+         info->num_memory_stores++;
 
       switch (intr->intrinsic) {
       case nir_intrinsic_load_local_invocation_id:
@@ -199,60 +212,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          }
          break;
       }
-      case nir_intrinsic_bindless_image_load:
-      case nir_intrinsic_bindless_image_size:
-      case nir_intrinsic_bindless_image_samples:
-         info->uses_bindless_images = true;
-         break;
-      case nir_intrinsic_bindless_image_store:
-         info->uses_bindless_images = true;
-         info->num_memory_stores++;
-         break;
-      case nir_intrinsic_image_deref_store:
-         info->num_memory_stores++;
-         break;
-      case nir_intrinsic_bindless_image_atomic_add:
-      case nir_intrinsic_bindless_image_atomic_imin:
-      case nir_intrinsic_bindless_image_atomic_umin:
-      case nir_intrinsic_bindless_image_atomic_imax:
-      case nir_intrinsic_bindless_image_atomic_umax:
-      case nir_intrinsic_bindless_image_atomic_and:
-      case nir_intrinsic_bindless_image_atomic_or:
-      case nir_intrinsic_bindless_image_atomic_xor:
-      case nir_intrinsic_bindless_image_atomic_exchange:
-      case nir_intrinsic_bindless_image_atomic_comp_swap:
-      case nir_intrinsic_bindless_image_atomic_inc_wrap:
-      case nir_intrinsic_bindless_image_atomic_dec_wrap:
-         info->uses_bindless_images = true;
-         info->num_memory_stores++;
-         break;
-      case nir_intrinsic_image_deref_atomic_add:
-      case nir_intrinsic_image_deref_atomic_imin:
-      case nir_intrinsic_image_deref_atomic_umin:
-      case nir_intrinsic_image_deref_atomic_imax:
-      case nir_intrinsic_image_deref_atomic_umax:
-      case nir_intrinsic_image_deref_atomic_and:
-      case nir_intrinsic_image_deref_atomic_or:
-      case nir_intrinsic_image_deref_atomic_xor:
-      case nir_intrinsic_image_deref_atomic_exchange:
-      case nir_intrinsic_image_deref_atomic_comp_swap:
-      case nir_intrinsic_image_deref_atomic_inc_wrap:
-      case nir_intrinsic_image_deref_atomic_dec_wrap:
-         info->num_memory_stores++;
-         break;
-      case nir_intrinsic_store_ssbo:
-      case nir_intrinsic_ssbo_atomic_add:
-      case nir_intrinsic_ssbo_atomic_imin:
-      case nir_intrinsic_ssbo_atomic_umin:
-      case nir_intrinsic_ssbo_atomic_imax:
-      case nir_intrinsic_ssbo_atomic_umax:
-      case nir_intrinsic_ssbo_atomic_and:
-      case nir_intrinsic_ssbo_atomic_or:
-      case nir_intrinsic_ssbo_atomic_xor:
-      case nir_intrinsic_ssbo_atomic_exchange:
-      case nir_intrinsic_ssbo_atomic_comp_swap:
-         info->num_memory_stores++;
-         break;
       case nir_intrinsic_load_color0:
       case nir_intrinsic_load_color1: {
          unsigned index = intr->intrinsic == nir_intrinsic_load_color1;
