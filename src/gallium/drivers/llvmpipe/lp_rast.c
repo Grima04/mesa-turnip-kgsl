@@ -267,9 +267,7 @@ lp_rast_clear_zstencil(struct lp_rasterizer_task *task,
                clear_value64 &= clear_mask64;
                if (clear_mask64 == 0xffffffffffULL) {
                   for (i = 0; i < height; i++) {
-                     uint64_t *row = (uint64_t *)dst;
-                     for (j = 0; j < width; j++)
-                        *row++ = clear_value64;
+                     util_memset64(dst, clear_value64, width);
                      dst += dst_stride;
                   }
                }
