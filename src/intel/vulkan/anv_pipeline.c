@@ -743,6 +743,13 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    nir_shader *nir = stage->nir;
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      /* Check if sample shading is enabled in the shader and toggle
+       * it on for the pipeline independent if sampleShadingEnable is set.
+       */
+      nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+      if (nir->info.fs.uses_sample_shading)
+         anv_pipeline_to_graphics(pipeline)->sample_shading_enable = true;
+
       NIR_PASS_V(nir, nir_lower_wpos_center,
                  anv_pipeline_to_graphics(pipeline)->sample_shading_enable);
       NIR_PASS_V(nir, nir_lower_input_attachments,
