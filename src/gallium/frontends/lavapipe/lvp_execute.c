@@ -1159,9 +1159,6 @@ static void render_subpass_clear(struct rendering_state *state)
 {
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
 
-   if (!subpass_needs_clear(state))
-      return;
-
    for (unsigned i = 0; i < subpass->color_count; i++) {
       uint32_t a = subpass->color_attachments[i].attachment;
 
@@ -1206,13 +1203,17 @@ static void render_subpass_clear(struct rendering_state *state)
          uint32_t sclear_val = 0;
          uint32_t ds_clear_flags = 0;
 
-         if (util_format_has_stencil(desc) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+         if ((util_format_has_stencil(desc) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ||
+             (util_format_is_depth_and_stencil(imgv->surface->format) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)) {
             ds_clear_flags |= PIPE_CLEAR_STENCIL;
-            sclear_val = state->attachments[ds].clear_value.depthStencil.stencil;
+            if (att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+               sclear_val = state->attachments[ds].clear_value.depthStencil.stencil;
          }
-         if (util_format_has_depth(desc) && att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+         if ((util_format_has_depth(desc) && att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ||
+             (util_format_is_depth_and_stencil(imgv->surface->format) && att->load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)) {
             ds_clear_flags |= PIPE_CLEAR_DEPTH;
-            dclear_val = state->attachments[ds].clear_value.depthStencil.depth;
+            if (att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+               dclear_val = state->attachments[ds].clear_value.depthStencil.depth;
          }
 
          if (ds_clear_flags)
@@ -1227,6 +1228,86 @@ static void render_subpass_clear(struct rendering_state *state)
       }
    }
 
+}
+
+static void render_subpass_clear_fast(struct rendering_state *state)
+{
+   /* attempt to use the clear interface first, then fallback to per-attchment clears */
+   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   bool has_color_value = false;
+   uint32_t buffers = 0;
+   VkClearValue color_value = {};
+   double dclear_val = 0;
+   uint32_t sclear_val = 0;
+
+   /*
+    * the state tracker clear interface only works if all the attachments have the same
+    * clear color.
+    */
+   /* llvmpipe doesn't support scissored clears yet */
+   if (state->render_area.offset.x || state->render_area.offset.y)
+      goto slow_clear;
+
+   if (state->render_area.extent.width != state->framebuffer.width ||
+       state->render_area.extent.height != state->framebuffer.height)
+      goto slow_clear;
+
+   for (unsigned i = 0; i < subpass->color_count; i++) {
+      uint32_t a = subpass->color_attachments[i].attachment;
+
+      if (!attachment_needs_clear(state, a))
+         continue;
+
+      if (has_color_value) {
+         if (memcmp(&color_value, &state->attachments[a].clear_value, sizeof(VkClearValue)))
+            goto slow_clear;
+      } else {
+         memcpy(&color_value, &state->attachments[a].clear_value, sizeof(VkClearValue));
+         has_color_value = true;
+      }
+   }
+
+   for (unsigned i = 0; i < subpass->color_count; i++) {
+      uint32_t a = subpass->color_attachments[i].attachment;
+
+      if (!attachment_needs_clear(state, a))
+         continue;
+      buffers |= (PIPE_CLEAR_COLOR0 << i);
+      state->pending_clear_aspects[a] = 0;
+   }
+
+   if (subpass->depth_stencil_attachment) {
+      uint32_t ds = subpass->depth_stencil_attachment->attachment;
+
+      if (!attachment_needs_clear(state, ds))
+         return;
+
+      struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
+      struct lvp_image_view *imgv = state->vk_framebuffer->attachments[ds];
+      const struct util_format_description *desc = util_format_description(imgv->surface->format);
+
+      /* also clear stencil for don't care to avoid RMW */
+      if ((util_format_has_stencil(desc) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ||
+          (util_format_is_depth_and_stencil(imgv->surface->format) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE))
+         buffers |= PIPE_CLEAR_STENCIL;
+      if (util_format_has_depth(desc) && att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+         buffers |= PIPE_CLEAR_DEPTH;
+
+      dclear_val = state->attachments[ds].clear_value.depthStencil.depth;
+      sclear_val = state->attachments[ds].clear_value.depthStencil.stencil;
+      state->pending_clear_aspects[ds] = 0;
+   }
+
+   union pipe_color_union col_val;
+   for (unsigned i = 0; i < 4; i++)
+      col_val.ui[i] = color_value.color.uint32[i];
+
+   state->pctx->clear(state->pctx, buffers,
+                      NULL, &col_val,
+                      dclear_val, sclear_val);
+   return;
+slow_clear:
+   render_subpass_clear(state);
 }
 
 static void render_pass_resolve(struct rendering_state *state)
@@ -1270,8 +1351,6 @@ static void begin_render_subpass(struct rendering_state *state,
 {
    state->subpass = subpass_idx;
 
-   render_subpass_clear(state);
-
    state->framebuffer.nr_cbufs = 0;
 
    const struct lvp_subpass *subpass = &state->pass->subpasses[subpass_idx];
@@ -1299,6 +1378,9 @@ static void begin_render_subpass(struct rendering_state *state,
 
    state->pctx->set_framebuffer_state(state->pctx,
                                       &state->framebuffer);
+
+   if (subpass_needs_clear(state))
+      render_subpass_clear_fast(state);
 }
 
 static void handle_begin_render_pass(struct lvp_cmd_buffer_entry *cmd,
