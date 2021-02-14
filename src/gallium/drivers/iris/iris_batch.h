@@ -162,6 +162,9 @@ struct iris_batch {
    /** Have we emitted any draw calls with next_seqno? */
    bool contains_draw_with_next_seqno;
 
+   /** Batch contains fence signal operation. */
+   bool contains_fence_signal;
+
    /**
     * Number of times iris_batch_sync_region_start() has been called without a
     * matching iris_batch_sync_region_end() on this batch.

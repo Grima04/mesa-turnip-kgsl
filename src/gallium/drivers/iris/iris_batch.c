@@ -181,6 +181,7 @@ iris_init_batch(struct iris_context *ice,
    batch->state_sizes = ice->state.sizes;
    batch->name = name;
    batch->ice = ice;
+   batch->contains_fence_signal = false;
 
    batch->fine_fences.uploader =
       u_upload_create(&ice->ctx, 4096, PIPE_BIND_CUSTOM,
@@ -394,6 +395,7 @@ iris_batch_reset(struct iris_batch *batch)
    batch->primary_batch_size = 0;
    batch->total_chained_batch_size = 0;
    batch->contains_draw = false;
+   batch->contains_fence_signal = false;
    batch->decoder.surface_base = batch->last_surface_base_address;
 
    create_batch(batch);
@@ -686,7 +688,8 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 {
    struct iris_screen *screen = batch->screen;
 
-   if (iris_batch_bytes_used(batch) == 0)
+   /* If a fence signals we need to flush it. */
+   if (iris_batch_bytes_used(batch) == 0 && !batch->contains_fence_signal)
       return;
 
    iris_measure_batch_end(batch->ice, batch);
