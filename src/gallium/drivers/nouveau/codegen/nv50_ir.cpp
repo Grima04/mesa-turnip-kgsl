@@ -563,6 +563,7 @@ Symbol::equals(const Value *that, bool strict) const
 void Instruction::init()
 {
    next = prev = 0;
+   serial = 0;
 
    cc = CC_ALWAYS;
    rnd = ROUND_N;
@@ -589,6 +590,9 @@ void Instruction::init()
    predSrc = -1;
    flagsDef = -1;
    flagsSrc = -1;
+
+   sched = 0;
+   bb = NULL;
 }
 
 Instruction::Instruction()
@@ -599,7 +603,6 @@ Instruction::Instruction()
    dType = sType = TYPE_F32;
 
    id = -1;
-   bb = 0;
 }
 
 Instruction::Instruction(Function *fn, operation opr, DataType ty)
