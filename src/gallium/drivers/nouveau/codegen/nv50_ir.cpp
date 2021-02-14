@@ -111,12 +111,12 @@ bool ValueRef::getImmediate(ImmediateValue &imm) const
    return false;
 }
 
-ValueDef::ValueDef(Value *v) : value(NULL), insn(NULL)
+ValueDef::ValueDef(Value *v) : value(NULL), origin(NULL), insn(NULL)
 {
    set(v);
 }
 
-ValueDef::ValueDef(const ValueDef& def) : value(NULL), insn(NULL)
+ValueDef::ValueDef(const ValueDef& def) : value(NULL), origin(NULL), insn(NULL)
 {
    set(def.get());
 }
