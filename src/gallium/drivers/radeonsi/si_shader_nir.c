@@ -72,8 +72,10 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    }
    assert(bit_size != 64 && !(mask & ~0xf) && "64-bit IO should have been lowered");
 
-   /* Convert the 16-bit component mask to a 32-bit component mask. */
-   if (bit_size == 16) {
+   /* Convert the 16-bit component mask to a 32-bit component mask except for VS inputs
+    * where the mask is untyped.
+    */
+   if (bit_size == 16 && !is_input) {
       unsigned new_mask = 0;
       for (unsigned i = 0; i < 4; i++) {
          if (mask & (1 << i))
