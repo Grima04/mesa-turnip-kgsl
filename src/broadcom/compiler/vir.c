@@ -1210,7 +1210,7 @@ v3d_prog_data_size(gl_shader_stage stage)
 int v3d_shaderdb_dump(struct v3d_compile *c,
 		      char **shaderdb_str)
 {
-        if (c == NULL)
+        if (c == NULL || c->compilation_result != V3D_COMPILATION_SUCCEEDED)
                 return -1;
 
         return asprintf(shaderdb_str,
