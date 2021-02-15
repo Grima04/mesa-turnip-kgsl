@@ -62,8 +62,15 @@ nir_lower_demote_to_discard_instr(nir_builder *b, nir_instr *instr, void *data)
       intrin->intrinsic = nir_intrinsic_discard_if;
       return true;
    case nir_intrinsic_is_helper_invocation:
-      intrin->intrinsic = nir_intrinsic_load_helper_invocation;
+   case nir_intrinsic_load_helper_invocation: {
+      /* If the shader doesn't need helper invocations,
+       * we can assume there are none */
+      b->cursor = nir_before_instr(instr);
+      nir_ssa_def *zero = nir_imm_false(b);
+      nir_ssa_def_rewrite_uses_ssa(&intrin->dest.ssa, zero);
+      nir_instr_remove_v(instr);
       return true;
+   }
    default:
       return false;
    }
