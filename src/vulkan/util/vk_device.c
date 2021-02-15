@@ -131,6 +131,13 @@ vk_common_GetDeviceQueue(VkDevice _device,
    const VkDeviceQueueInfo2 info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
       .pNext = NULL,
+      /* flags = 0 because (Vulkan spec 1.2.170 - vkGetDeviceQueue):
+       *
+       *    "vkGetDeviceQueue must only be used to get queues that were
+       *     created with the flags parameter of VkDeviceQueueCreateInfo set
+       *     to zero. To get queues that were created with a non-zero flags
+       *     parameter use vkGetDeviceQueue2."
+       */
       .flags = 0,
       .queueFamilyIndex = queueFamilyIndex,
       .queueIndex = queueIndex,
