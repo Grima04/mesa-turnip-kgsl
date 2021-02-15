@@ -1984,7 +1984,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_
          bool can_speculate = access & ACCESS_CAN_REORDER;
 
          ret = ac_build_buffer_load(&ctx->ac, rsrc, num_channels, vindex, offset, immoffset, 0,
-                                    cache_policy, can_speculate, false);
+                                    ctx->ac.f32, cache_policy, can_speculate, false);
       }
 
       LLVMTypeRef byte_vec = LLVMVectorType(ctx->ac.i8, ac_get_type_size(LLVMTypeOf(ret)));
@@ -2151,7 +2151,8 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
       num_components = DIV_ROUND_UP(num_components, 4);
 
    ret =
-      ac_build_buffer_load(&ctx->ac, rsrc, num_components, NULL, offset, NULL, 0, 0, true, true);
+      ac_build_buffer_load(&ctx->ac, rsrc, num_components, NULL, offset, NULL, 0,
+                           ctx->ac.f32, 0, true, true);
 
    /* Convert to the original type. */
    if (instr->dest.ssa.bit_size == 64) {
@@ -3958,7 +3959,7 @@ static LLVMValueRef get_bindless_index_from_uniform(struct ac_nir_context *ctx, 
    LLVMValueRef ubo_index = ctx->abi->load_ubo(ctx->abi, 0, 0, false, ctx->ac.i32_0);
 
    LLVMValueRef ret =
-      ac_build_buffer_load(&ctx->ac, ubo_index, 1, NULL, offset, NULL, 0, 0, true, true);
+      ac_build_buffer_load(&ctx->ac, ubo_index, 1, NULL, offset, NULL, 0, ctx->ac.f32, 0, true, true);
 
    return LLVMBuildBitCast(ctx->ac.builder, ret, ctx->ac.i32, "");
 }

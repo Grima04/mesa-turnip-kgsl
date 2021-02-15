@@ -275,13 +275,13 @@ static LLVMValueRef buffer_load(struct si_shader_context *ctx, LLVMTypeRef type,
    LLVMTypeRef vec_type = LLVMVectorType(type, 4);
 
    if (swizzle == ~0) {
-      value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset, 0, ac_glc,
+      value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset, 0, type, ac_glc,
                                    can_speculate, false);
 
       return LLVMBuildBitCast(ctx->ac.builder, value, vec_type, "");
    }
 
-   value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset, 0, ac_glc,
+   value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset, 0, type, ac_glc,
                                 can_speculate, false);
 
    value = LLVMBuildBitCast(ctx->ac.builder, value, vec_type, "");

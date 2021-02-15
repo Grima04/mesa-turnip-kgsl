@@ -1222,8 +1222,8 @@ static LLVMValueRef ac_build_buffer_load_common(struct ac_llvm_context *ctx, LLV
 
 LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc, int num_channels,
                                   LLVMValueRef vindex, LLVMValueRef voffset, LLVMValueRef soffset,
-                                  unsigned inst_offset, unsigned cache_policy, bool can_speculate,
-                                  bool allow_smem)
+                                  unsigned inst_offset, LLVMTypeRef channel_type,
+                                  unsigned cache_policy, bool can_speculate, bool allow_smem)
 {
    LLVMValueRef offset = LLVMConstInt(ctx->i32, inst_offset, 0);
    if (voffset)
@@ -1257,8 +1257,8 @@ LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc
       return ac_build_gather_values(ctx, result, num_channels);
    }
 
-   return ac_build_buffer_load_common(ctx, rsrc, vindex, offset, ctx->i32_0, num_channels, ctx->f32,
-                                      cache_policy, can_speculate, false, false);
+   return ac_build_buffer_load_common(ctx, rsrc, vindex, offset, ctx->i32_0, num_channels,
+                                      channel_type, cache_policy, can_speculate, false, false);
 }
 
 LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx, LLVMValueRef rsrc,

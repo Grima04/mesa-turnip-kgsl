@@ -633,7 +633,7 @@ load_tes_input(struct ac_shader_abi *abi,
 	buf_addr = LLVMBuildAdd(ctx->ac.builder, buf_addr, comp_offset, "");
 
 	result = ac_build_buffer_load(&ctx->ac, ctx->hs_ring_tess_offchip, num_components, NULL,
-				      buf_addr, oc_lds, 0, ac_glc, true, false);
+				      buf_addr, oc_lds, 0, ctx->ac.f32, ac_glc, true, false);
 	result = ac_trim_vector(&ctx->ac, result, num_components);
 	return result;
 }
@@ -673,7 +673,7 @@ load_gs_input(struct ac_shader_abi *abi,
 							ctx->esgs_ring, 1,
 							ctx->ac.i32_0,
 							vtx_offset, soffset,
-							0, ac_glc, true, false);
+							0, ctx->ac.f32, ac_glc, true, false);
 		}
 
 		if (ac_get_type_size(type) == 2) {
@@ -4318,7 +4318,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 							     ctx->gsvs_ring[0],
 							     1, ctx->ac.i32_0,
 							     vtx_offset, soffset,
-							     0, ac_glc | ac_slc, true, false);
+							     0, ctx->ac.f32, ac_glc | ac_slc, true, false);
 
 				LLVMTypeRef type = LLVMGetAllocatedType(ctx->abi.outputs[ac_llvm_reg_index_soa(i, j)]);
 				if (ac_get_type_size(type) == 2) {
