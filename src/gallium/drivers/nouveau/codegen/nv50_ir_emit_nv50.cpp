@@ -1824,19 +1824,28 @@ CodeEmitterNV50::emitATOM(const Instruction *i)
       return;
    }
    code[0] = 0xd0000001;
-   code[1] = 0xe0c00000 | (subOp << 2);
+   code[1] = 0xc0c00000 | (subOp << 2);
    if (isSignedType(i->dType))
       code[1] |= 1 << 21;
 
    // args
    emitFlagsRd(i);
-   setDst(i, 0);
-   setSrc(i, 1, 1);
+   if (i->subOp == NV50_IR_SUBOP_ATOM_EXCH ||
+       i->subOp == NV50_IR_SUBOP_ATOM_CAS ||
+       i->defExists(0)) {
+      code[1] |= 0x20000000;
+      setDst(i, 0);
+      setSrc(i, 1, 1);
+      // g[] pointer
+      code[0] |= i->getSrc(0)->reg.fileIndex << 23;
+   } else {
+      srcId(i->src(1), 2);
+      // g[] pointer
+      code[0] |= i->getSrc(0)->reg.fileIndex << 16;
+   }
    if (i->subOp == NV50_IR_SUBOP_ATOM_CAS)
       setSrc(i, 2, 2);
 
-   // g[] pointer
-   code[0] |= i->getSrc(0)->reg.fileIndex << 23;
    srcId(i->getIndirect(0, 0), 9);
 }
 
