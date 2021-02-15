@@ -49,9 +49,6 @@ dEQP-VK.image.subresource_layout.3d.all_levels.a8b8g8r8_snorm_pack32,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r16g16b16a16_snorm,Fail
 dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_local.image.guard_nonlocal.workgroup.comp,Fail
 dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_local.image.comp,Fail
-dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_local.buffer.guard_nonlocal.workgroup.comp,Fail
-dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_local.buffer.comp,Fail
-dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_local.image.guard_nonlocal.workgroup.comp,Fail
 dEQP-VK.memory.requirements.dedicated_allocation.buffer.regular,Fail
 dEQP-VK.memory.requirements.dedicated_allocation.image.transient_tiling_optimal,Fail
 dEQP-VK.pipeline.extended_dynamic_state.after_pipelines.depth_compare_greater_equal_greater,Fail
@@ -66,7 +63,6 @@ dEQP-VK.pipeline.push_descriptor.compute.binding3_numcalls2_combined_image_sampl
 dEQP-VK.pipeline.push_descriptor.compute.binding3_numcalls2_sampled_image,Crash
 dEQP-VK.pipeline.push_descriptor.compute.binding3_numcalls2_sampler,Crash
 dEQP-VK.pipeline.push_descriptor.compute.binding3_numcalls2_storage_image,Crash
-dEQP-VK.rasterization.line_continuity.line-strip,Fail
 dEQP-VK.renderpass2.suballocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.spirv_assembly.instruction.compute.opquantize.infinities,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_bit_geom,Fail

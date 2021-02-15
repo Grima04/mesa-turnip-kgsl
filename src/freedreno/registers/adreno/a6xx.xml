@@ -3059,17 +3059,22 @@ to upconvert to 32b float internally?
 
 
 	<reg32 offset="0xa9b0" name="SP_CS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0"/>
-	<!-- set for compute shaders, always 0x41 -->
+
+	<!-- set for compute shaders -->
 	<reg32 offset="0xa9b1" name="SP_CS_UNKNOWN_A9B1">
-		<doc>
-			bit 0 seems to toggle between 2k and 32k of shared storage
-			the ldl/stl offset seems to be rewritten to 0 when it is beyond
-			this limit. This is different from ldlw/stlw, which wraps at
-			64k (and has 36k of storage on A640 - reads between 36k-64k
-			always return 0)
-		</doc>
-		<bitfield name="SHARED_SIZE_2K" pos="0" type="boolean"/>
-		<bitfield name="UNK1" low="1" high="6" type="uint"/>
+		<bitfield name="SHARED_SIZE" low="0" high="4" type="uint">
+			<doc>
+				If 0 - all 32k of shared storage is enabled, otherwise
+				(SHARED_SIZE + 1) * 1k is enabled.
+				The ldl/stl offset seems to be rewritten to 0 when it is beyond
+				this limit. This is different from ldlw/stlw, which wraps at
+				64k (and has 36k of storage on A640 - reads between 36k-64k
+				always return 0)
+			</doc>
+		</bitfield>
+		<bitfield name="UNK5" pos="5" type="boolean"/>
+		<!-- always 1 ? -->
+		<bitfield name="UNK6" pos="6" type="boolean"/>
 	</reg32>
 	<reg32 offset="0xa9b2" name="SP_CS_BRANCH_COND" type="hex"/>
 	<reg32 offset="0xa9b3" name="SP_CS_OBJ_FIRST_EXEC_OFFSET" type="uint"/>

@@ -3413,6 +3413,7 @@ emit_instructions(struct ir3_context *ctx)
 		ctx->s->info.clip_distance_array_size;
 
 	ctx->so->pvtmem_size = ctx->s->scratch_size;
+	ctx->so->shared_size = ctx->s->shared_size;
 
 	/* NOTE: need to do something more clever when we support >1 fxn */
 	nir_foreach_register (reg, &fxn->registers) {

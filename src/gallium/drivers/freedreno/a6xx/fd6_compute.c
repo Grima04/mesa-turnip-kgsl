@@ -77,8 +77,10 @@ cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			A6XX_SP_CS_CTRL_REG0_BRANCHSTACK(v->branchstack) |
 			COND(v->need_pixlod, A6XX_SP_CS_CTRL_REG0_PIXLODENABLE));
 
+	uint32_t shared_size = MAX2(((int)v->shared_size - 1) / 1024, 1);
 	OUT_PKT4(ring, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
-	OUT_RING(ring, 0x41);
+	OUT_RING(ring, A6XX_SP_CS_UNKNOWN_A9B1_SHARED_SIZE(shared_size) |
+			A6XX_SP_CS_UNKNOWN_A9B1_UNK6);
 
 	uint32_t local_invocation_id, work_group_id;
 	local_invocation_id = ir3_find_sysval_regid(v, SYSTEM_VALUE_LOCAL_INVOCATION_ID);
