@@ -454,9 +454,9 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->bufferDeviceAddress                 = false;
          features->bufferDeviceAddressCaptureReplay    = false;
          features->bufferDeviceAddressMultiDevice      = false;
-         features->vulkanMemoryModel                   = false;
-         features->vulkanMemoryModelDeviceScope        = false;
-         features->vulkanMemoryModelAvailabilityVisibilityChains = false;
+         features->vulkanMemoryModel                   = true;
+         features->vulkanMemoryModelDeviceScope        = true;
+         features->vulkanMemoryModelAvailabilityVisibilityChains = true;
          features->shaderOutputViewportIndex           = true;
          features->shaderOutputLayer                   = true;
          features->subgroupBroadcastDynamicId          = false;
@@ -632,6 +632,14 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR *features =
             (VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR *)ext;
          features->shaderTerminateInvocation = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
+         VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *feature =
+            (VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *)ext;
+         feature->vulkanMemoryModel = true;
+         feature->vulkanMemoryModelDeviceScope = true;
+         feature->vulkanMemoryModelAvailabilityVisibilityChains = true;
          break;
       }
 

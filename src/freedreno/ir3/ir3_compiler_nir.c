@@ -1305,6 +1305,27 @@ emit_intrinsic_image_size_tex(struct ir3_context *ctx, nir_intrinsic_instr *intr
 }
 
 static void
+emit_control_barrier(struct ir3_context *ctx)
+{
+	/* Hull shaders dispatch 32 wide so an entire patch will always
+	 * fit in a single warp and execute in lock-step. Consequently,
+	 * we don't need to do anything for TCS barriers. Emitting
+	 * barrier instruction will deadlock.
+	 */
+	if (ctx->so->type == MESA_SHADER_TESS_CTRL)
+		return;
+
+	struct ir3_block *b = ctx->block;
+	struct ir3_instruction *barrier = ir3_BAR(b);
+	barrier->cat7.g = true;
+	if (ctx->compiler->gpu_id < 600)
+		barrier->cat7.l = true;
+	barrier->flags = IR3_INSTR_SS | IR3_INSTR_SY;
+	barrier->barrier_class = IR3_BARRIER_EVERYTHING;
+	array_insert(b, b->keeps, barrier);
+}
+
+static void
 emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
 	struct ir3_block *b = ctx->block;
@@ -1316,13 +1337,79 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	switch (intr->intrinsic) {
 	case nir_intrinsic_control_barrier:
-		barrier = ir3_BAR(b);
-		barrier->cat7.g = true;
-		if (ctx->compiler->gpu_id < 600)
-			barrier->cat7.l = true;
-		barrier->flags = IR3_INSTR_SS | IR3_INSTR_SY;
-		barrier->barrier_class = IR3_BARRIER_EVERYTHING;
-		break;
+		emit_control_barrier(ctx);
+		return;
+	case nir_intrinsic_scoped_barrier: {
+		nir_scope exec_scope = nir_intrinsic_execution_scope(intr);
+		nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
+
+		if (ctx->so->type == MESA_SHADER_TESS_CTRL) {
+			/* Remove mode corresponding to nir_intrinsic_memory_barrier_tcs_patch,
+			 * because hull shaders dispatch 32 wide so an entire patch will
+			 * always fit in a single warp and execute in lock-step.
+			 *
+			 * TODO: memory barrier also tells us not to reorder stores, this
+			 * information is lost here (backend doesn't reorder stores so we
+			 * are safe for now).
+			 */
+			modes &= ~nir_var_shader_out;
+		}
+
+		assert(!(modes & nir_var_shader_out));
+
+		if ((modes & (nir_var_mem_shared | nir_var_mem_ssbo |
+				nir_var_mem_global))) {
+			barrier = ir3_FENCE(b);
+			barrier->cat7.r = true;
+			barrier->cat7.w = true;
+
+			if (modes & (nir_var_mem_ssbo | nir_var_mem_global)) {
+				barrier->cat7.g = true;
+			}
+
+			if (ctx->compiler->gpu_id > 600) {
+				if (modes & nir_var_mem_ssbo) {
+					barrier->cat7.l = true;
+				}
+			} else {
+				if (modes & (nir_var_mem_shared | nir_var_mem_ssbo)) {
+					barrier->cat7.l = true;
+				}
+			}
+
+			barrier->barrier_class = 0;
+			barrier->barrier_conflict = 0;
+
+			if (modes & nir_var_mem_shared) {
+				barrier->barrier_class |= IR3_BARRIER_SHARED_W;
+				barrier->barrier_conflict |= IR3_BARRIER_SHARED_R |
+						IR3_BARRIER_SHARED_W;
+			}
+
+			if (modes & (nir_var_mem_ssbo | nir_var_mem_global)) {
+				barrier->barrier_class |= IR3_BARRIER_BUFFER_W;
+				barrier->barrier_conflict |=
+						IR3_BARRIER_BUFFER_R | IR3_BARRIER_BUFFER_W;
+			}
+
+			/* TODO: check for image mode when it has a separate one */
+			if (modes & nir_var_mem_ssbo) {
+				barrier->barrier_class |= IR3_BARRIER_IMAGE_W;
+				barrier->barrier_conflict |=
+						IR3_BARRIER_IMAGE_W | IR3_BARRIER_IMAGE_R;
+			}
+			array_insert(b, b->keeps, barrier);
+		}
+
+		if (exec_scope >= NIR_SCOPE_WORKGROUP) {
+			emit_control_barrier(ctx);
+		}
+
+		return;
+	}
+	case nir_intrinsic_memory_barrier_tcs_patch:
+		/* Not applicable, see explanation for scoped_barrier + shader_out */
+		return;
 	case nir_intrinsic_memory_barrier_buffer:
 		barrier = ir3_FENCE(b);
 		barrier->cat7.g = true;
@@ -1830,12 +1917,14 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			ctx->so->no_earlyz = true;
 		dst[0] = ctx->funcs->emit_intrinsic_atomic_image(ctx, intr);
 		break;
+	case nir_intrinsic_scoped_barrier:
 	case nir_intrinsic_control_barrier:
 	case nir_intrinsic_memory_barrier:
 	case nir_intrinsic_group_memory_barrier:
 	case nir_intrinsic_memory_barrier_buffer:
 	case nir_intrinsic_memory_barrier_image:
 	case nir_intrinsic_memory_barrier_shared:
+	case nir_intrinsic_memory_barrier_tcs_patch:
 		emit_intrinsic_barrier(ctx, intr);
 		/* note that blk ptr no longer valid, make that obvious: */
 		b = NULL;

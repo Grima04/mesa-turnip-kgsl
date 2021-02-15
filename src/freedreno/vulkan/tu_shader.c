@@ -78,6 +78,8 @@ tu_spirv_to_nir(struct tu_device *dev,
          .int16 = true,
          .storage_16bit = dev->physical_device->gpu_id >= 650,
          .demote_to_helper_invocation = true,
+         .vk_memory_model = true,
+         .vk_memory_model_device_scope = true,
       },
    };
 

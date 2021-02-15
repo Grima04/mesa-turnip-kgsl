@@ -120,6 +120,7 @@ EXTENSIONS = [
     Extension('VK_EXT_robustness2',                       1, True),
     Extension('VK_EXT_shader_demote_to_helper_invocation', 1, True),
     Extension('VK_KHR_shader_terminate_invocation',       1, True),
+    Extension('VK_KHR_vulkan_memory_model',               3, True),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)
