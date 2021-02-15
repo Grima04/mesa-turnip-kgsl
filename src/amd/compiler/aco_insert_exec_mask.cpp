@@ -579,8 +579,11 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
       for (unsigned i = 0; i < num_exec_masks; i++) {
          /* skip trivial phis */
          if (ctx.info[preds[0]].exec[i].first == ctx.info[preds[1]].exec[i].first) {
-            assert(ctx.info[preds[0]].exec[i].second == ctx.info[preds[1]].exec[i].second);
-            ctx.info[idx].exec.emplace_back(ctx.info[preds[0]].exec[i]);
+            Temp t = ctx.info[preds[0]].exec[i].first;
+            /* discard/demote can change the state of the current exec mask */
+            assert(!t.id() || ctx.info[preds[0]].exec[i].second == ctx.info[preds[1]].exec[i].second);
+            uint8_t mask = ctx.info[preds[0]].exec[i].second & ctx.info[preds[1]].exec[i].second;
+            ctx.info[idx].exec.emplace_back(t, mask);
             continue;
          }
 
