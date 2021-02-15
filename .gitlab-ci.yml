@@ -642,8 +642,7 @@ meson-testing:
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
       -D werror=true
-    UPLOAD_FOR_LAVA: 1
-    DEBIAN_ARCH: amd64
+    MINIO_ARTIFACT_NAME: mesa-amd64
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -654,7 +653,7 @@ meson-testing-asan:
   variables:
     EXTRA_OPTION: >
       -D b_sanitize=address
-    UPLOAD_FOR_LAVA: ""
+    MINIO_ARTIFACT_NAME: ""
     ARTIFACTS_DEBUG_SYMBOLS: 1
 
 meson-clover-testing:
@@ -820,8 +819,7 @@ meson-armhf:
     LLVM_VERSION: "7"
     EXTRA_OPTION: >
       -D llvm=disabled
-    UPLOAD_FOR_LAVA: 1
-    DEBIAN_ARCH: armhf
+    MINIO_ARTIFACT_NAME: mesa-armhf
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -834,8 +832,7 @@ meson-arm64:
     VULKAN_DRIVERS: "freedreno,broadcom"
     EXTRA_OPTION: >
       -D llvm=disabled
-    UPLOAD_FOR_LAVA: 1
-    DEBIAN_ARCH: arm64
+    MINIO_ARTIFACT_NAME: mesa-arm64
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -1612,14 +1609,12 @@ arm64_a630_piglit_shader:
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   stage: test
-  variables:
-    DRIVER_URL: https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-arm64.tar.gz
   before_script:
     # Use this instead of gitlab's artifacts download because it hits packet.net
     # instead of fd.o.  Set FDO_HTTP_CACHE_URI to an http cache for your test lab to
     # improve it even more (see https://docs.mesa3d.org/ci/bare-metal.html for
     # setup).
-    - wget ${FDO_HTTP_CACHE_URI:-}${DRIVER_URL} -S --progress=dot:giga -O- | tar -xz
+    - wget ${FDO_HTTP_CACHE_URI:-}https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/${MINIO_ARTIFACT_NAME}.tar.gz -S --progress=dot:giga -O- | tar -xz
   artifacts:
     when: always
     name: "mesa_${CI_JOB_NAME}"
@@ -1635,7 +1630,7 @@ arm64_a630_piglit_shader:
   extends:
     - .baremetal-test
   variables:
-    DRIVER_URL: https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-armhf.tar.gz
+    MINIO_ARTIFACT_NAME: mesa-armhf
 
 .freedreno-test:
   extends:
@@ -1643,6 +1638,7 @@ arm64_a630_piglit_shader:
     - .use-arm64_test
     - .freedreno-rules
   variables:
+    MINIO_ARTIFACT_NAME: mesa-arm64
     BM_ROOTFS: /lava-files/rootfs-arm64
     FLAKES_CHANNEL: "#freedreno-ci"
     PIGLIT_PLATFORM: mixed_glx_egl
