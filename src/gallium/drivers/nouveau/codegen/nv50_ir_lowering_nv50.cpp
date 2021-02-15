@@ -1299,7 +1299,8 @@ NV50LoweringPreSSA::handleLOAD(Instruction *i)
 
    if (prog->getType() == Program::TYPE_COMPUTE) {
       if (sym->inFile(FILE_MEMORY_SHARED) ||
-               sym->inFile(FILE_MEMORY_GLOBAL)) {
+          sym->inFile(FILE_MEMORY_BUFFER) ||
+          sym->inFile(FILE_MEMORY_GLOBAL)) {
          return handleLDST(i);
       }
    }
@@ -1347,6 +1348,11 @@ NV50LoweringPreSSA::handleLDST(Instruction *i)
 
    if (prog->getType() != Program::TYPE_COMPUTE) {
       return true;
+   }
+
+   // Buffers just map directly to the different global memory spaces
+   if (sym->inFile(FILE_MEMORY_BUFFER)) {
+      sym->reg.file = FILE_MEMORY_GLOBAL;
    }
 
    if (sym->inFile(FILE_MEMORY_SHARED)) {
