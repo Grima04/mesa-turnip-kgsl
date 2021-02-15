@@ -85,7 +85,7 @@ try_opt_bcsel_of_shuffle(nir_builder *b, nir_alu_instr *alu,
       return NULL;
 
    nir_ssa_def *index = nir_bcsel(b, alu->src[0].src.ssa, index1, index2);
-   nir_ssa_def *shuffle = nir_shuffle(b, index, data1);
+   nir_ssa_def *shuffle = nir_shuffle(b, data1, index);
 
    return shuffle;
 }
