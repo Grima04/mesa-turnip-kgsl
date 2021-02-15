@@ -136,6 +136,11 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_line_width:
    case nir_intrinsic_load_aa_line_width:
    case nir_intrinsic_load_fb_layers_v3d:
+   case nir_intrinsic_load_tcs_num_patches_amd:
+   case nir_intrinsic_load_ring_tess_factors_amd:
+   case nir_intrinsic_load_ring_tess_offchip_amd:
+   case nir_intrinsic_load_ring_tess_factors_offset_amd:
+   case nir_intrinsic_load_ring_tess_offchip_offset_amd:
       is_divergent = false;
       break;
 
@@ -473,6 +478,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_mbcnt_amd:
    case nir_intrinsic_elect:
    case nir_intrinsic_load_tlb_color_v3d:
+   case nir_intrinsic_load_tess_rel_patch_id_amd:
       is_divergent = true;
       break;
 
