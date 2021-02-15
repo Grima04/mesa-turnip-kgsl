@@ -225,14 +225,26 @@ batch_fini(struct fd_batch *batch)
 }
 
 static void
-batch_flush_reset_dependencies(struct fd_batch *batch, bool flush)
+batch_flush_dependencies(struct fd_batch *batch)
 {
 	struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
 	struct fd_batch *dep;
 
-	foreach_batch(dep, cache, batch->dependents_mask) {
-		if (flush)
-			fd_batch_flush(dep);
+	foreach_batch (dep, cache, batch->dependents_mask) {
+		fd_batch_flush(dep);
+		fd_batch_reference(&dep, NULL);
+	}
+
+	batch->dependents_mask = 0;
+}
+
+static void
+batch_reset_dependencies(struct fd_batch *batch)
+{
+	struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
+	struct fd_batch *dep;
+
+	foreach_batch (dep, cache, batch->dependents_mask) {
 		fd_batch_reference(&dep, NULL);
 	}
 
@@ -267,7 +279,7 @@ batch_reset(struct fd_batch *batch)
 {
 	DBG("%p", batch);
 
-	batch_flush_reset_dependencies(batch, false);
+	batch_reset_dependencies(batch);
 	batch_reset_resources(batch);
 
 	batch_fini(batch);
@@ -301,7 +313,7 @@ __fd_batch_destroy(struct fd_batch *batch)
 	_mesa_set_destroy(batch->resources, NULL);
 
 	fd_screen_unlock(ctx->screen);
-	batch_flush_reset_dependencies(batch, false);
+	batch_reset_dependencies(batch);
 	debug_assert(batch->dependents_mask == 0);
 
 	util_copy_framebuffer_state(&batch->framebuffer, NULL);
@@ -344,7 +356,7 @@ batch_flush(struct fd_batch *batch)
 	 */
 	fd_batch_finish_queries(batch);
 
-	batch_flush_reset_dependencies(batch, true);
+	batch_flush_dependencies(batch);
 
 	batch->flushed = true;
 	if (batch == batch->ctx->batch)
