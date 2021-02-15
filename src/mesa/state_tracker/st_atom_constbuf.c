@@ -48,16 +48,34 @@
 #include "st_program.h"
 #include "st_cb_bufferobjects.h"
 
+/* Unbinds the CB0 if it's not used by the current program to avoid leaving
+ * dangling pointers to old (potentially deleted) shaders in the driver.
+ */
+static void
+st_unbind_unused_cb0(struct st_context *st, enum pipe_shader_type shader_type)
+{
+   if (st->state.constbuf0_enabled_shader_mask & (1 << shader_type)) {
+      struct pipe_context *pipe = st->pipe;
+
+      pipe->set_constant_buffer(pipe, shader_type, 0, false, NULL);
+      st->state.constbuf0_enabled_shader_mask &= ~(1 << shader_type);
+   }
+}
+
 /**
  * Pass the given program parameters to the graphics pipe as a
  * constant buffer.
  */
 void
-st_upload_constants(struct st_context *st, struct gl_program *prog)
+st_upload_constants(struct st_context *st, struct gl_program *prog, gl_shader_stage stage)
 {
-   gl_shader_stage stage = prog->info.stage;
-   struct gl_program_parameter_list *params = prog->Parameters;
    enum pipe_shader_type shader_type = pipe_shader_type_from_mesa(stage);
+   if (!prog) {
+      st_unbind_unused_cb0(st, shader_type);
+      return;
+   }
+
+   struct gl_program_parameter_list *params = prog->Parameters;
 
    assert(shader_type == PIPE_SHADER_VERTEX ||
           shader_type == PIPE_SHADER_FRAGMENT ||
@@ -179,12 +197,8 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
       }
 
       st->state.constbuf0_enabled_shader_mask |= 1 << shader_type;
-   } else if (st->state.constbuf0_enabled_shader_mask & (1 << shader_type)) {
-      /* Unbind. */
-      struct pipe_context *pipe = st->pipe;
-
-      pipe->set_constant_buffer(pipe, shader_type, 0, false, NULL);
-      st->state.constbuf0_enabled_shader_mask &= ~(1 << shader_type);
+   } else {
+      st_unbind_unused_cb0(st, shader_type);
    }
 }
 
@@ -195,7 +209,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
 void
 st_update_vs_constants(struct st_context *st)
 {
-   st_upload_constants(st, &st->vp->Base);
+   st_upload_constants(st, &st->vp->Base, MESA_SHADER_VERTEX);
 }
 
 /**
@@ -204,7 +218,7 @@ st_update_vs_constants(struct st_context *st)
 void
 st_update_fs_constants(struct st_context *st)
 {
-   st_upload_constants(st, &st->fp->Base);
+   st_upload_constants(st, &st->fp->Base, MESA_SHADER_FRAGMENT);
 }
 
 
@@ -213,10 +227,7 @@ st_update_fs_constants(struct st_context *st)
 void
 st_update_gs_constants(struct st_context *st)
 {
-   struct st_program *gp = st->gp;
-
-   if (gp)
-      st_upload_constants(st, &gp->Base);
+   st_upload_constants(st, st->gp ? &st->gp->Base : NULL, MESA_SHADER_GEOMETRY);
 }
 
 /* Tessellation control shader:
@@ -224,10 +235,7 @@ st_update_gs_constants(struct st_context *st)
 void
 st_update_tcs_constants(struct st_context *st)
 {
-   struct st_program *tcp = st->tcp;
-
-   if (tcp)
-      st_upload_constants(st, &tcp->Base);
+   st_upload_constants(st, st->tcp ? &st->tcp->Base : NULL, MESA_SHADER_TESS_CTRL);
 }
 
 /* Tessellation evaluation shader:
@@ -235,10 +243,7 @@ st_update_tcs_constants(struct st_context *st)
 void
 st_update_tes_constants(struct st_context *st)
 {
-   struct st_program *tep = st->tep;
-
-   if (tep)
-      st_upload_constants(st, &tep->Base);
+   st_upload_constants(st, st->tep ? &st->tep->Base : NULL, MESA_SHADER_TESS_EVAL);
 }
 
 /* Compute shader:
@@ -246,10 +251,7 @@ st_update_tes_constants(struct st_context *st)
 void
 st_update_cs_constants(struct st_context *st)
 {
-   struct st_program *cp = st->cp;
-
-   if (cp)
-      st_upload_constants(st, &cp->Base);
+   st_upload_constants(st, st->cp ? &st->cp->Base : NULL, MESA_SHADER_COMPUTE);
 }
 
 static void

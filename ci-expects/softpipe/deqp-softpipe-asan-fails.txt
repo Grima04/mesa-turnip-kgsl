@@ -81,7 +81,6 @@ dEQP-GLES31.functional.shaders.linkage.es32.tessellation.varying.types.uvec2,Mis
 dEQP-GLES31.functional.shaders.opaque_type_indexing.atomic_counter.uniform_geometry,Missing
 dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_expression.tessellation_control.isampler2d,Missing
 dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.compute.isampler2darray,Missing
-dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_geometry,Crash
 dEQP-GLES31.functional.ssbo.layout.2_level_array.packed.row_major_mat4x2,Missing
 dEQP-GLES31.functional.ssbo.layout.basic_unsized_array.packed.uvec3,Missing
 dEQP-GLES31.functional.ssbo.layout.random.nested_structs.22,Missing
