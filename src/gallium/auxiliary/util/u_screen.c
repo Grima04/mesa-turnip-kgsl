@@ -226,7 +226,15 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_DEPTH_BOUNDS_TEST:
    case PIPE_CAP_TGSI_TXQS:
    case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
+      return 0;
+
+   /* All drivers should expose this cap, as it is required for applications to
+    * be able to efficiently compile GL shaders from multiple threads during
+    * load.
+    */
    case PIPE_CAP_SHAREABLE_SHADERS:
+      return 1;
+
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
    case PIPE_CAP_CLEAR_TEXTURE:
    case PIPE_CAP_CLEAR_SCISSORED:

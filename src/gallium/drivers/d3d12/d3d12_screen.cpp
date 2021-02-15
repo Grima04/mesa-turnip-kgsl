@@ -259,9 +259,6 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
       return 1;
 
-   case PIPE_CAP_SHAREABLE_SHADERS:
-      return 1;
-
 #if 0 /* TODO: Enable me. Enables GL_ARB_shader_storage_buffer_object */
    case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
       return screen->max_feature_level >= D3D_FEATURE_LEVEL_10_0;

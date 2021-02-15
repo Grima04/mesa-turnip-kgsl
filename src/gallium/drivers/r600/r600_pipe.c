@@ -322,6 +322,9 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
         case PIPE_CAP_NIR_ATOMICS_AS_DEREF:
 		return 1;
 
+	case PIPE_CAP_SHAREABLE_SHADERS:
+		return 0;
+
 	case PIPE_CAP_MAX_TEXTURE_UPLOAD_MEMORY_BUDGET:
 		/* Optimal number for good TexSubImage performance on Polaris10. */
 		return 64 * 1024 * 1024;

@@ -328,6 +328,8 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
             (vscreen->caps.caps.v2.host_feature_check_version < 1);
    case PIPE_CAP_TGSI_SKIP_SHRINK_IO_ARRAYS:
       return vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_INDIRECT_INPUT_ADDR;
+   case PIPE_CAP_SHAREABLE_SHADERS:
+      return 0;
    default:
       return u_pipe_screen_get_param_defaults(screen, param);
    }

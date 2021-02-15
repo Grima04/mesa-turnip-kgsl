@@ -245,6 +245,12 @@ softpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;
 
+   case PIPE_CAP_SHAREABLE_SHADERS:
+      /* Can't expose shareable shaders because the draw shaders reference the
+       * draw module's state, which is per-context.
+       */
+      return 0;
+
    case PIPE_CAP_VENDOR_ID:
       return 0xFFFFFFFF;
    case PIPE_CAP_DEVICE_ID:
