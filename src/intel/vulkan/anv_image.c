@@ -1897,7 +1897,7 @@ anv_image_fill_surface_state(struct anv_device *device,
       clear_color = &default_clear_color;
 
    const struct anv_address address =
-      anv_address_add(image->planes[plane].address, surface->offset);
+      anv_image_address(image, plane, surface->offset);
 
    if (view_usage == ISL_SURF_USAGE_STORAGE_BIT &&
        !(flags & ANV_IMAGE_VIEW_STATE_STORAGE_WRITE_ONLY) &&
@@ -1984,8 +1984,7 @@ anv_image_fill_surface_state(struct anv_device *device,
 
       struct anv_address aux_address = ANV_NULL_ADDRESS;
       if (aux_usage != ISL_AUX_USAGE_NONE) {
-         aux_address = anv_address_add(image->planes[plane].address,
-                                       aux_surface->offset);
+         aux_address = anv_image_address(image, plane, aux_surface->offset);
       }
       state_inout->aux_address = aux_address;
 

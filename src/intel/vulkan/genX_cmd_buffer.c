@@ -466,8 +466,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 
    const struct anv_surface *surface = &image->planes[plane].primary_surface;
    uint64_t base_address =
-      anv_address_physical(anv_address_add(image->planes[plane].address,
-                                           surface->offset));
+      anv_address_physical(anv_image_address(image, plane, surface->offset));
 
    const struct isl_surf *isl_surf = &image->planes[plane].primary_surface.isl;
    uint64_t format_bits = gen_aux_map_format_bits_for_isl_surf(isl_surf);
@@ -5204,33 +5203,37 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    if (image && (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
       uint32_t depth_plane =
          anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_DEPTH_BIT);
-      const struct anv_surface *surface = &image->planes[depth_plane].primary_surface;
+      const struct anv_surface *depth_surface =
+         &image->planes[depth_plane].primary_surface;
+      const struct anv_address depth_address =
+         anv_image_address(image, depth_plane, depth_surface->offset);
 
-      info.depth_surf = &surface->isl;
+      info.depth_surf = &depth_surface->isl;
 
       info.depth_address =
          anv_batch_emit_reloc(&cmd_buffer->batch,
                               dw + device->isl_dev.ds.depth_offset / 4,
-                              image->planes[depth_plane].address.bo,
-                              image->planes[depth_plane].address.offset +
-                              surface->offset);
+                              depth_address.bo, depth_address.offset);
       info.mocs =
-         anv_mocs(device, image->planes[depth_plane].address.bo,
-                  ISL_SURF_USAGE_DEPTH_BIT);
+         anv_mocs(device, depth_address.bo, ISL_SURF_USAGE_DEPTH_BIT);
 
       const uint32_t ds =
          cmd_buffer->state.subpass->depth_stencil_attachment->attachment;
       info.hiz_usage = cmd_buffer->state.attachments[ds].aux_usage;
       if (info.hiz_usage != ISL_AUX_USAGE_NONE) {
          assert(isl_aux_usage_has_hiz(info.hiz_usage));
-         info.hiz_surf = &image->planes[depth_plane].aux_surface.isl;
+
+         const struct anv_surface *hiz_surface =
+            &image->planes[depth_plane].aux_surface;
+         const struct anv_address hiz_address =
+            anv_image_address(image, depth_plane, hiz_surface->offset);
+
+         info.hiz_surf = &hiz_surface->isl;
 
          info.hiz_address =
             anv_batch_emit_reloc(&cmd_buffer->batch,
                                  dw + device->isl_dev.ds.hiz_offset / 4,
-                                 image->planes[depth_plane].address.bo,
-                                 image->planes[depth_plane].address.offset +
-                                 image->planes[depth_plane].aux_surface.offset);
+                                 hiz_address.bo, hiz_address.offset);
 
          info.depth_clear_value = ANV_HZ_FC_VAL;
       }
@@ -5239,20 +5242,20 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    if (image && (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT)) {
       uint32_t stencil_plane =
          anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_STENCIL_BIT);
-      const struct anv_surface *surface = &image->planes[stencil_plane].primary_surface;
+      const struct anv_surface *stencil_surface =
+         &image->planes[stencil_plane].primary_surface;
+      const struct anv_address stencil_address =
+         anv_image_address(image, stencil_plane, stencil_surface->offset);
 
-      info.stencil_surf = &surface->isl;
+      info.stencil_surf = &stencil_surface->isl;
 
       info.stencil_aux_usage = image->planes[stencil_plane].aux_usage;
       info.stencil_address =
          anv_batch_emit_reloc(&cmd_buffer->batch,
                               dw + device->isl_dev.ds.stencil_offset / 4,
-                              image->planes[stencil_plane].address.bo,
-                              image->planes[stencil_plane].address.offset +
-                              surface->offset);
+                              stencil_address.bo, stencil_address.offset);
       info.mocs =
-         anv_mocs(device, image->planes[stencil_plane].address.bo,
-                  ISL_SURF_USAGE_STENCIL_BIT);
+         anv_mocs(device, stencil_address.bo, ISL_SURF_USAGE_STENCIL_BIT);
    }
 
    isl_emit_depth_stencil_hiz_s(&device->isl_dev, dw, &info);

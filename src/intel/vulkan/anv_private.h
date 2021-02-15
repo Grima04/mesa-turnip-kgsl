@@ -3899,6 +3899,14 @@ anv_image_aux_layers(const struct anv_image * const image,
    return MAX2(image->array_size, image->extent.depth >> miplevel);
 }
 
+static inline struct anv_address MUST_CHECK
+anv_image_address(const struct anv_image *image,
+                  uint32_t plane, uint64_t offset)
+{
+   assert(image->planes[plane].address.offset == 0);
+   return anv_address_add(image->planes[plane].address, offset);
+}
+
 static inline struct anv_address
 anv_image_get_clear_color_addr(UNUSED const struct anv_device *device,
                                const struct anv_image *image,
@@ -3907,8 +3915,8 @@ anv_image_get_clear_color_addr(UNUSED const struct anv_device *device,
    assert(image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
 
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-   return anv_address_add(image->planes[plane].address,
-                          image->planes[plane].fast_clear_state_offset);
+   return anv_image_address(image, plane,
+                            image->planes[plane].fast_clear_state_offset);
 }
 
 static inline struct anv_address

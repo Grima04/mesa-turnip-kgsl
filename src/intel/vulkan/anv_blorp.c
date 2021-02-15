@@ -218,22 +218,28 @@ get_blorp_surf_for_anv_image(const struct anv_device *device,
       ISL_SURF_USAGE_RENDER_TARGET_BIT : ISL_SURF_USAGE_TEXTURE_BIT;
 
    const struct anv_surface *surface = &image->planes[plane].primary_surface;
+   const struct anv_address address =
+      anv_image_address(image, plane, surface->offset);
+
    *blorp_surf = (struct blorp_surf) {
       .surf = &surface->isl,
       .addr = {
-         .buffer = image->planes[plane].address.bo,
-         .offset = image->planes[plane].address.offset + surface->offset,
-         .mocs = anv_mocs(device, image->planes[plane].address.bo, mocs_usage),
+         .buffer = address.bo,
+         .offset = address.offset,
+         .mocs = anv_mocs(device, address.bo, mocs_usage),
       },
    };
 
    if (aux_usage != ISL_AUX_USAGE_NONE) {
       const struct anv_surface *aux_surface = &image->planes[plane].aux_surface;
+      const struct anv_address aux_address =
+         anv_image_address(image, plane, aux_surface->offset);
+
       blorp_surf->aux_surf = &aux_surface->isl,
       blorp_surf->aux_addr = (struct blorp_address) {
-         .buffer = image->planes[plane].address.bo,
-         .offset = image->planes[plane].address.offset + aux_surface->offset,
-         .mocs = anv_mocs(device, image->planes[plane].address.bo, 0),
+         .buffer = aux_address.bo,
+         .offset = aux_address.offset,
+         .mocs = anv_mocs(device, aux_address.bo, 0),
       };
       blorp_surf->aux_usage = aux_usage;
 
@@ -279,14 +285,16 @@ get_blorp_surf_for_anv_shadow_image(const struct anv_device *device,
    if (!anv_surface_is_valid(&image->planes[plane].shadow_surface))
       return false;
 
+   const struct anv_surface *surface = &image->planes[plane].shadow_surface;
+   const struct anv_address address =
+      anv_image_address(image, plane, surface->offset);
+
    *blorp_surf = (struct blorp_surf) {
-      .surf = &image->planes[plane].shadow_surface.isl,
+      .surf = &surface->isl,
       .addr = {
-         .buffer = image->planes[plane].address.bo,
-         .offset = image->planes[plane].address.offset +
-                   image->planes[plane].shadow_surface.offset,
-         .mocs = anv_mocs(device, image->planes[plane].address.bo,
-                          ISL_SURF_USAGE_RENDER_TARGET_BIT),
+         .buffer = address.bo,
+         .offset = address.offset,
+         .mocs = anv_mocs(device, address.bo, ISL_SURF_USAGE_RENDER_TARGET_BIT),
       },
    };
 
