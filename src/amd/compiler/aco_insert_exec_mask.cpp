@@ -306,14 +306,26 @@ void calculate_wqm_needs(exec_ctx& exec_ctx)
    exec_ctx.handle_wqm = true;
 }
 
+Operand get_exec_op(Temp t)
+{
+   if (t == Temp())
+      return Operand(exec, t.regClass());
+   else
+      return Operand(t);
+}
+
 void transition_to_WQM(exec_ctx& ctx, Builder bld, unsigned idx)
 {
    if (ctx.info[idx].exec.back().second & mask_type_wqm)
       return;
    if (ctx.info[idx].exec.back().second & mask_type_global) {
-      Temp exec_mask = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm), Operand(exec, bld.lm));
-      ctx.info[idx].exec.back().first = exec_mask;
-      exec_mask = bld.sop1(Builder::s_wqm, Definition(exec, bld.lm), bld.def(s1, scc), Operand(exec, bld.lm));
+      Temp exec_mask = ctx.info[idx].exec.back().first;
+      if (exec_mask == Temp()) {
+         exec_mask = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm), Operand(exec, bld.lm));
+         ctx.info[idx].exec.back().first = exec_mask;
+      }
+
+      exec_mask = bld.sop1(Builder::s_wqm, Definition(exec, bld.lm), bld.def(s1, scc), get_exec_op(exec_mask));
       ctx.info[idx].exec.emplace_back(exec_mask, mask_type_global | mask_type_wqm);
       return;
    }
@@ -344,18 +356,15 @@ void transition_to_Exact(exec_ctx& ctx, Builder bld, unsigned idx)
       return;
    }
    /* otherwise, we create an exact mask and push to the stack */
-   Temp wqm = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
-                       Definition(exec, bld.lm), ctx.info[idx].exec[0].first, Operand(exec, bld.lm));
+   Temp wqm = ctx.info[idx].exec.back().first;
+   if (wqm == Temp()) {
+      wqm = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
+                     Definition(exec, bld.lm), ctx.info[idx].exec[0].first, Operand(exec, bld.lm));
+   } else {
+      bld.sop2(Builder::s_and, Definition(exec, bld.lm), bld.def(s1, scc), ctx.info[idx].exec[0].first, wqm);
+   }
    ctx.info[idx].exec.back().first = wqm;
    ctx.info[idx].exec.emplace_back(Temp(0, bld.lm), mask_type_exact);
-}
-
-Operand get_exec_op(Temp t)
-{
-   if (t == Temp())
-      return Operand(exec, t.regClass());
-   else
-      return Operand(t);
 }
 
 unsigned add_coupling_code(exec_ctx& ctx, Block* block,
