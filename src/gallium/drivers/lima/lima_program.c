@@ -300,6 +300,16 @@ lima_fs_compile_shader(struct lima_context *ctx,
    fs->uses_discard = nir->info.fs.uses_discard;
    ralloc_free(nir);
 
+   fs->bo = lima_bo_create(screen, fs->shader_size, 0);
+   if (!fs->bo) {
+      fprintf(stderr, "lima: create fs shader bo fail\n");
+      return false;
+   }
+
+   memcpy(lima_bo_map(fs->bo), fs->shader, fs->shader_size);
+   ralloc_free(fs->shader);
+   fs->shader = NULL;
+
    return true;
 }
 
@@ -387,6 +397,18 @@ lima_vs_compile_shader(struct lima_context *ctx,
    }
 
    ralloc_free(nir);
+
+   struct lima_screen *screen = lima_screen(ctx->base.screen);
+   vs->bo = lima_bo_create(screen, vs->shader_size, 0);
+   if (!vs->bo) {
+      fprintf(stderr, "lima: create vs shader bo fail\n");
+      return false;
+   }
+
+   memcpy(lima_bo_map(vs->bo), vs->shader, vs->shader_size);
+   ralloc_free(vs->shader);
+   vs->shader = NULL;
+
    return true;
 }
 
@@ -439,19 +461,6 @@ lima_update_vs_state(struct lima_context *ctx)
       return false;
 
    ctx->vs = vs;
-
-   if (!vs->bo) {
-      struct lima_screen *screen = lima_screen(ctx->base.screen);
-      vs->bo = lima_bo_create(screen, vs->shader_size, 0);
-      if (!vs->bo) {
-         fprintf(stderr, "lima: create vs shader bo fail\n");
-         return false;
-      }
-
-      memcpy(lima_bo_map(vs->bo), vs->shader, vs->shader_size);
-      ralloc_free(vs->shader);
-      vs->shader = NULL;
-   }
 
    if (ctx->vs != old_vs)
       ctx->dirty |= LIMA_CONTEXT_DIRTY_COMPILED_VS;
@@ -522,19 +531,6 @@ lima_update_fs_state(struct lima_context *ctx)
       return false;
 
    ctx->fs = fs;
-
-   if (!fs->bo) {
-      struct lima_screen *screen = lima_screen(ctx->base.screen);
-      fs->bo = lima_bo_create(screen, fs->shader_size, 0);
-      if (!fs->bo) {
-         fprintf(stderr, "lima: create fs shader bo fail\n");
-         return false;
-      }
-
-      memcpy(lima_bo_map(fs->bo), fs->shader, fs->shader_size);
-      ralloc_free(fs->shader);
-      fs->shader = NULL;
-   }
 
    if (ctx->fs != old_fs)
       ctx->dirty |= LIMA_CONTEXT_DIRTY_COMPILED_FS;
