@@ -55,6 +55,7 @@ enum {
         PAN_SYSVAL_IMAGE_SIZE = 10,
         PAN_SYSVAL_SAMPLE_POSITIONS = 11,
         PAN_SYSVAL_MULTISAMPLED = 12,
+        PAN_SYSVAL_RT_CONVERSION = 13,
 };
 
 #define PAN_TXS_SYSVAL_ID(texidx, dim, is_array)          \

@@ -36,6 +36,7 @@
 #include "pan_job.h"
 #include "pan_shader.h"
 #include "pan_texture.h"
+#include "pan_blend_shaders.h"
 
 /* If a BO is accessed for a particular shader stage, will it be in the primary
  * batch (vertex/tiler) or the secondary batch (fragment)? Anything but
@@ -966,6 +967,22 @@ panfrost_upload_multisampled_sysval(struct panfrost_batch *batch,
 }
 
 static void
+panfrost_upload_rt_conversion_sysval(struct panfrost_batch *batch, unsigned rt,
+                struct sysval_uniform *uniform)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+
+        if (rt < batch->key.nr_cbufs) {
+                enum pipe_format format = batch->key.cbufs[rt]->format;
+                uniform->u[0] = bifrost_get_blend_desc(dev, format, rt, 32) >> 32;
+        } else {
+                pan_pack(&uniform->u[0], BIFROST_INTERNAL_CONVERSION, cfg)
+                        cfg.memory_format = dev->formats[PIPE_FORMAT_NONE].hw;
+        }
+}
+
+static void
 panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                         struct panfrost_shader_state *ss,
                         enum pipe_shader_type st)
@@ -1023,6 +1040,10 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                 case PAN_SYSVAL_MULTISAMPLED:
                         panfrost_upload_multisampled_sysval(batch,
                                                                &uniforms[i]);
+                        break;
+                case PAN_SYSVAL_RT_CONVERSION:
+                        panfrost_upload_rt_conversion_sysval(batch,
+                                        PAN_SYSVAL_ID(sysval), &uniforms[i]);
                         break;
                 default:
                         assert(0);
