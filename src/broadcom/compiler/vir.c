@@ -1403,14 +1403,67 @@ vir_get_uniform_index(struct v3d_compile *c,
         return uniform;
 }
 
+/* Looks back into the current block to find the ldunif that wrote the uniform
+ * at the requested index. If it finds it, it returns true and writes the
+ * destination register of the ldunif instruction to 'unif'.
+ *
+ * This can impact register pressure and end up leading to worse code, so we
+ * limit the number of instructions we are willing to look back through to
+ * strike a good balance.
+ */
+static bool
+try_opt_ldunif(struct v3d_compile *c, uint32_t index, struct qreg *unif)
+{
+        uint32_t count = 20;
+        struct qinst *prev_inst = NULL;
+        vir_for_each_inst_rev(inst, c->cur_block) {
+                if ((inst->qpu.sig.ldunif || inst->qpu.sig.ldunifrf) &&
+                    inst->uniform == index) {
+                        prev_inst = inst;
+                        break;
+                }
+
+                if (--count == 0)
+                        break;
+        }
+
+        if (!prev_inst)
+                return false;
+
+
+        list_for_each_entry_from(struct qinst, inst, prev_inst->link.next,
+                                 &c->cur_block->instructions, link) {
+                if (inst->dst.file == prev_inst->dst.file &&
+                    inst->dst.index == prev_inst->dst.index) {
+                        return false;
+                }
+        }
+
+        *unif = prev_inst->dst;
+        return true;
+}
+
 struct qreg
 vir_uniform(struct v3d_compile *c,
             enum quniform_contents contents,
             uint32_t data)
 {
+        const int num_uniforms = c->num_uniforms;
+        const int index = vir_get_uniform_index(c, contents, data);
+
+        /* If this is not the first time we see this uniform try to reuse the
+         * result of the last ldunif that loaded it.
+         */
+        const bool is_new_uniform = num_uniforms != c->num_uniforms;
+        if (!is_new_uniform && !c->disable_ldunif_opt) {
+                struct qreg ldunif_dst;
+                if (try_opt_ldunif(c, index, &ldunif_dst))
+                        return ldunif_dst;
+        }
+
         struct qinst *inst = vir_NOP(c);
         inst->qpu.sig.ldunif = true;
-        inst->uniform = vir_get_uniform_index(c, contents, data);
+        inst->uniform = index;
         inst->dst = vir_get_temp(c);
         c->defs[inst->dst.index] = inst;
         return inst->dst;

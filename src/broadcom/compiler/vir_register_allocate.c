@@ -259,6 +259,10 @@ v3d_spill_reg(struct v3d_compile *c, int spill_temp)
                 uniform_index = orig_unif->uniform;
         }
 
+        /* We must disable the ldunif optimization if we are spilling uniforms */
+        bool had_disable_ldunif_opt = c->disable_ldunif_opt;
+        c->disable_ldunif_opt = true;
+
         struct qinst *start_of_tmu_sequence = NULL;
         struct qinst *postponed_spill = NULL;
         vir_for_each_block(block, c) {
@@ -360,6 +364,8 @@ v3d_spill_reg(struct v3d_compile *c, int spill_temp)
          */
         for (int i = start_num_temps; i < c->num_temps; i++)
                 BITSET_CLEAR(c->spillable, i);
+
+        c->disable_ldunif_opt = had_disable_ldunif_opt;
 }
 
 struct v3d_ra_select_callback_data {
