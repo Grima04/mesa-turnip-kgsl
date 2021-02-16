@@ -427,6 +427,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
         unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
+        bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
 
         if (!panfrost_fs_required(fs, blend, rt_count)) {
                 state->properties.uniform_buffer_count = 32;
@@ -445,8 +446,12 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                         no_blend &= (!blend[i].load_dest | blend[i].no_colour);
 
                 state->properties.bifrost.allow_forward_pixel_to_kill =
-                        !fs->info.fs.can_discard &&
                         !fs->info.fs.writes_depth &&
+                        !fs->info.fs.writes_stencil &&
+                        !fs->info.fs.writes_coverage &&
+                        !fs->info.fs.can_discard &&
+                        !fs->info.fs.outputs_read &&
+                        !alpha_to_coverage &&
                         no_blend;
         }
 }
