@@ -432,6 +432,8 @@ radv_thread_trace_init_bo(struct radv_device *device)
 bool
 radv_thread_trace_init(struct radv_device *device)
 {
+	struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
+
 	/* Default buffer size set to 1MB per SE. */
 	device->thread_trace.buffer_size =
 		radv_get_int_debug_option("RADV_THREAD_TRACE_BUFFER_SIZE", 1024 * 1024);
@@ -444,12 +446,22 @@ radv_thread_trace_init(struct radv_device *device)
 	if (!radv_thread_trace_init_bo(device))
 		return false;
 
+	list_inithead(&thread_trace_data->rgp_pso_correlation.record);
+	simple_mtx_init(&thread_trace_data->rgp_pso_correlation.lock, mtx_plain);
+
+	list_inithead(&thread_trace_data->rgp_loader_events.record);
+	simple_mtx_init(&thread_trace_data->rgp_loader_events.lock, mtx_plain);
+
+	list_inithead(&thread_trace_data->rgp_code_object.record);
+	simple_mtx_init(&thread_trace_data->rgp_code_object.lock, mtx_plain);
+
 	return true;
 }
 
 void
 radv_thread_trace_finish(struct radv_device *device)
 {
+	struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
 	struct radeon_winsys *ws = device->ws;
 
 	if (unlikely(device->thread_trace.bo))
@@ -461,6 +473,15 @@ radv_thread_trace_finish(struct radv_device *device)
 		if (device->thread_trace.stop_cs[i])
 			ws->cs_destroy(device->thread_trace.stop_cs[i]);
 	}
+
+	assert(thread_trace_data->rgp_pso_correlation.record_count == 0);
+	simple_mtx_destroy(&thread_trace_data->rgp_pso_correlation.lock);
+
+	assert(thread_trace_data->rgp_loader_events.record_count == 0);
+	simple_mtx_destroy(&thread_trace_data->rgp_loader_events.lock);
+
+	assert(thread_trace_data->rgp_code_object.record_count == 0);
+	simple_mtx_destroy(&thread_trace_data->rgp_code_object.lock);
 }
 
 static bool
