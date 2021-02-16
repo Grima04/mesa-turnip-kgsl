@@ -2319,7 +2319,7 @@
     </mod>
   </ins>
 
-  <ins name="*SEG_ADD" mask="0x7fff40" exact="0x701500" unused="true">
+  <ins name="*SEG_ADD" mask="0x7fff40" exact="0x701500">
     <src start="0" mask="0xfb"/>
     <mod name="seg" start="3" size="3">
       <reserved/>
@@ -7463,7 +7463,7 @@
     </mod>
   </ins>
 
-  <ins name="+SEG_ADD" mask="0xfff40" exact="0x3d500" unused="true">
+  <ins name="+SEG_ADD" mask="0xfff40" exact="0x3d500">
     <src start="0"/>
     <mod name="seg" start="3" size="3">
       <reserved/>
@@ -8156,6 +8156,23 @@
         <eq left="z" right="#z"/>
       </and>
     </derived>
+  </ins>
+
+  <!--- Lowered to *SEG_ADD/+SEG_ADD -->
+  <ins name="+SEG_ADD.i64" pseudo="true">
+    <src start="0"/>
+    <src start="3"/>
+    <mod name="seg" size="3">
+      <reserved/>
+      <reserved/>
+      <opt>wls</opt>
+      <reserved/>
+      <reserved/>
+      <reserved/>
+      <reserved/>
+      <opt>tl</opt>
+    </mod>
+    <mod name="preserve_null" size="1" opt="preserve_null"/>
   </ins>
 
   <!-- *CUBEFACE1/+CUBEFACE2 pair, two destinations, scheduler lowered -->
