@@ -1071,7 +1071,7 @@ meson-mingw32-x86_64:
     when: on_failure
     name: "mesa_${CI_JOB_NAME}"
     paths:
-      - summary/
+      - results/summary/
       - results/*.txt
   variables:
     PIGLIT_NO_WINDOW: 1
