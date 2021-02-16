@@ -1223,10 +1223,10 @@ virgl-traces:
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"
 
-arm64-a630-traces:
+a630-traces:
   extends:
     - .piglit-traces-test
-    - .arm64-a630-test
+    - .a630-test
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
     BM_START_XORG: 1
@@ -1464,7 +1464,7 @@ virgl-gles31-on-gles:
     - virgl-gles31-on-gl
     - .test-manual
 
-.arm64-a630-test:
+.a630-test:
   extends:
     - .freedreno-test
   variables:
@@ -1478,55 +1478,55 @@ virgl-gles31-on-gles:
   script:
     - ./install/bare-metal/cros-servo.sh
 
-arm64_a630_gles2:
+a630_gles2:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a630-test
+    - .a630-test
   variables:
     DEQP_VER: gles2
 
-arm64_a630_gles31:
+a630_gles31:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a630-test
+    - .a630-test
   variables:
     DEQP_VER: gles31
 
-arm64_a630_gles3:
+a630_gles3:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a630-test
+    - .a630-test
   variables:
     DEQP_VER: gles3
 
-arm64_a630_gl:
+a630_gl:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a630-test
+    - .a630-test
   variables:
     DEQP_VER: gl33
 
-arm64_a630_gles_others:
+a630_gles_others:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a630-test
+    - .a630-test
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/bare-metal/arm64_a630_gles_others.sh"
 
-arm64_a630_gles_asan:
+a630_gles_asan:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a630-test
+    - .a630-test
     - .baremetal-arm64-asan-test
   variables:
     DEQP_VER: gles31
     DEQP_FRACTION: 10
     GPU_VERSION: freedreno-a630-asan
 
-arm64_a630_vk:
+a630_vk:
   extends:
     - .baremetal-deqp-test-freedreno-vk
-    - .arm64-a630-test
+    - .a630-test
   parallel: 2
   variables:
     DEQP_FRACTION: 4
@@ -1539,10 +1539,10 @@ arm64_a630_vk:
 # Disabled by default until we can sort out what looks like timeouts before
 # getting to the first test (or is it at cleanup after tests completed?).
 # Clicking play can show you some useful areas for fixing turnip, though.
-arm64_a630_vk_asan:
+a630_vk_asan:
   extends:
     - .baremetal-deqp-test-freedreno-vk
-    - .arm64-a630-test
+    - .a630-test
     - .baremetal-arm64-asan-test
     - .test-manual
   variables:
@@ -1556,20 +1556,20 @@ arm64_a630_vk_asan:
 # Do a separate sysmem pass over the testcases that really affect sysmem
 # rendering.  This is currently very flaky, leave it as an option for devs
 # to click play on in their branches.
-arm64_a630_vk_sysmem:
+a630_vk_sysmem:
   extends:
     - .baremetal-deqp-test-freedreno-vk
-    - .arm64-a630-test
+    - .a630-test
   variables:
     DEQP_FRACTION: 15
     DEQP_CASELIST_FILTER: "dEQP-VK.renderpass.*"
     GPU_VERSION: freedreno-a630-bypass
     TU_DEBUG: sysmem
 
-.arm64_a630_piglit:
+.a630_piglit:
   extends:
     - .piglit-test
-    - .arm64-a630-test
+    - .a630-test
     - .test-manual
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
@@ -1625,17 +1625,17 @@ arm64_a630_vk_sysmem:
       -x gl-1.3-texture-env
 
 # Takes ~20 minutes, so manual-only until we can sort out runtime.
-arm64_a630_piglit_gl:
+a630_piglit_gl:
   extends:
-    - .arm64_a630_piglit
+    - .a630_piglit
     - .test-manual
   variables:
     PIGLIT_PROFILES: quick_gl
     PIGLIT_RESULTS: freedreno-a630-gl
 
-arm64_a630_piglit_shader:
+a630_piglit_shader:
   extends:
-    - .arm64_a630_piglit
+    - .a630_piglit
   variables:
     PIGLIT_PROFILES: quick_shader
     PIGLIT_RESULTS: freedreno-a630-shader
@@ -1721,14 +1721,14 @@ arm64_a630_piglit_shader:
     GPU_VERSION: freedreno-a307
     DEQP_EXPECTED_RENDERER: FD307
 
-arm64_a306_gles2:
+a306_gles2:
   extends:
     - .baremetal-deqp-test
     - .arm64-a306-test
   variables:
     DEQP_VER: gles2
 
-arm64_a306_gles3:
+a306_gles3:
   extends:
     - .baremetal-deqp-test
     - .arm64-a306-test
@@ -1739,7 +1739,7 @@ arm64_a306_gles3:
 
 # Fractional runs with debug options.  Note that since we're not
 # hitting the iommu faults, we can run in parallel (derive from gles2, not gles3).
-arm64_a306_gles3_options:
+a306_gles3_options:
   extends:
     - .baremetal-deqp-test
     - .arm64-a306-test
@@ -1764,7 +1764,7 @@ arm64_a306_gles3_options:
   tags:
     - google-freedreno-db820c
 
-arm64_a530_gles2:
+a530_gles2:
   extends:
     - .baremetal-deqp-test
     - .arm64-a530-test
@@ -1772,7 +1772,7 @@ arm64_a530_gles2:
     DEQP_VER: gles2
   parallel: 2
 
-arm64_a530_gles3:
+a530_gles3:
   extends:
     - .baremetal-deqp-test
     - .arm64-a530-test
@@ -1780,14 +1780,14 @@ arm64_a530_gles3:
     DEQP_VER: gles3
     DEQP_FRACTION: 40
 
-arm64_a530_gles31:
+a530_gles31:
   extends:
-    - arm64_a530_gles3
+    - a530_gles3
   variables:
     DEQP_VER: gles31
     DEQP_FRACTION: 10
 
-.arm64_a530_piglit:
+.a530_piglit:
   extends:
     - .piglit-test
     - .arm64-a530-test
@@ -1833,16 +1833,16 @@ arm64_a530_gles31:
       -x gl-1.3-texture-env
 
 # Takes ~25 minutes, so manual-only until we can sort out runtime.
-arm64_a530_piglit_gl:
+a530_piglit_gl:
   extends:
-    - .arm64_a530_piglit
+    - .a530_piglit
   variables:
     PIGLIT_PROFILES: quick_gl
     PIGLIT_RESULTS: freedreno-a530-gl
 
-arm64_a530_piglit_shader:
+a530_piglit_shader:
   extends:
-    - .arm64_a530_piglit
+    - .a530_piglit
   variables:
     PIGLIT_PROFILES: quick_shader
     PIGLIT_RESULTS: freedreno-a530-shader
