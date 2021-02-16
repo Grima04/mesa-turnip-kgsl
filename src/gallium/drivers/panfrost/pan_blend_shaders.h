@@ -40,4 +40,8 @@ void
 panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
                               const float *constants);
 
+uint64_t
+bifrost_get_blend_desc(const struct panfrost_device *dev,
+                       enum pipe_format fmt, unsigned rt, unsigned force_size);
+
 #endif

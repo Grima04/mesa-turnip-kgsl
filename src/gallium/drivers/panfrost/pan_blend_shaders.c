@@ -95,9 +95,9 @@ panfrost_create_blend_shader(struct panfrost_context *ctx,
         return res;
 }
 
-static uint64_t
+uint64_t
 bifrost_get_blend_desc(const struct panfrost_device *dev,
-                       enum pipe_format fmt, unsigned rt)
+                       enum pipe_format fmt, unsigned rt, unsigned force_size)
 {
         const struct util_format_description *desc = util_format_description(fmt);
         uint64_t res;
@@ -108,6 +108,10 @@ bifrost_get_blend_desc(const struct panfrost_device *dev,
                 cfg.fixed_function.rt = rt;
 
                 nir_alu_type T = pan_unpacked_type_for_format(desc);
+
+                if (force_size)
+                        T = nir_alu_type_get_base_type(T) | force_size;
+
                 switch (T) {
                 case nir_type_float16:
                         cfg.fixed_function.conversion.register_format =
@@ -175,7 +179,7 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
 
         if (pan_is_bifrost(dev)) {
                 inputs.blend.bifrost_blend_desc =
-                        bifrost_get_blend_desc(dev, shader->key.format, shader->key.rt);
+                        bifrost_get_blend_desc(dev, shader->key.format, shader->key.rt, 0);
         }
 
         struct pan_shader_info info;
