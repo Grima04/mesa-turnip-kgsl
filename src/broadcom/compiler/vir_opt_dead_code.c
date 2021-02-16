@@ -90,6 +90,32 @@ vir_dce_flags(struct v3d_compile *c, struct qinst *inst)
         inst->qpu.flags.muf = V3D_QPU_UF_NONE;
 }
 
+static bool
+is_last_ldunifa(struct v3d_compile *c, struct qinst *inst, struct qblock *block)
+{
+        if (!inst->qpu.sig.ldunifa && !inst->qpu.sig.ldunifarf)
+                return false;
+
+        list_for_each_entry_from(struct qinst, scan_inst, inst->link.next,
+                                 &block->instructions, link) {
+                /* If we find a new write to unifa, then this was the last
+                 * ldunifa in its sequence and is safe to remove.
+                 */
+                if (scan_inst->dst.file == QFILE_MAGIC &&
+                    scan_inst->dst.index == V3D_QPU_WADDR_UNIFA) {
+                        return true;
+                }
+
+                /* If we find another ldunifa in the same sequence then we
+                 * can't remove it.
+                 */
+                if (scan_inst->qpu.sig.ldunifa || scan_inst->qpu.sig.ldunifarf)
+                        return false;
+        }
+
+        return true;
+}
+
 bool
 vir_opt_dead_code(struct v3d_compile *c)
 {
@@ -125,8 +151,10 @@ vir_opt_dead_code(struct v3d_compile *c)
                                 continue;
                         }
 
-                        if (vir_has_side_effects(c, inst))
+                        if (vir_has_side_effects(c, inst) &&
+                            !is_last_ldunifa(c, inst, block)) {
                                 continue;
+                        }
 
                         if (v3d_qpu_writes_flags(&inst->qpu)) {
                                 /* If we obscure a previous flags write,
