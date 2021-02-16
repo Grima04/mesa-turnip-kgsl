@@ -139,7 +139,8 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                         info->fs.reads_sample_id |
                         info->fs.reads_sample_pos |
                         info->fs.reads_sample_mask_in |
-                        info->fs.reads_helper_invocation;
+                        info->fs.reads_helper_invocation |
+                        info->fs.sample_shading;
                 break;
 
         case MESA_SHADER_COMPUTE:
