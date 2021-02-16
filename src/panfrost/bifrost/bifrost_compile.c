@@ -82,32 +82,6 @@ bi_emit_jump(bi_builder *b, nir_jump_instr *instr)
         b->shader->current_block->base.unconditional_jumps = true;
 }
 
-static void
-bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
-{
-        assert(b->shader->inputs->is_blend);
-
-        /* We want to load the current pixel.
-         * FIXME: The sample to load is currently hardcoded to 0. This should
-         * be addressed for multi-sample FBs.
-         */
-        struct bifrost_pixel_indices pix = {
-                .y = BIFROST_CURRENT_PIXEL,
-                .rt = b->shader->inputs->blend.rt
-        };
-
-        uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
-        uint32_t indices = 0;
-        memcpy(&indices, &pix, sizeof(indices));
-
-        bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_imm_u32(indices),
-                bi_register(60), /* coverage bitmap, TODO ra */
-                /* Only keep the conversion part of the blend descriptor. */
-                bi_imm_u32(blend_desc >> 32),
-                (instr->num_components - 1));
-
-}
-
 static enum bi_sample
 bi_interp_for_intrinsic(nir_intrinsic_op op)
 {
@@ -861,6 +835,42 @@ bi_emit_load_frag_coord(bi_builder *b, nir_intrinsic_instr *instr)
         }
 
         bi_make_vec_to(b, bi_dest_index(&instr->dest), src, NULL, 4, 32);
+}
+
+static void
+bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        unsigned rt = b->shader->inputs->blend.rt;
+
+        /* Get the render target */
+        if (!b->shader->inputs->is_blend) {
+                const nir_variable *var =
+                        nir_find_variable_with_driver_location(b->shader->nir,
+                                        nir_var_shader_out, nir_intrinsic_base(instr));
+                unsigned loc = var->data.location;
+                assert(loc == FRAG_RESULT_COLOR || loc >= FRAG_RESULT_DATA0);
+                rt = loc == FRAG_RESULT_COLOR ? 0 :
+                        (loc - FRAG_RESULT_DATA0);
+        }
+
+        /* We want to load the current pixel.
+         * FIXME: The sample to load is currently hardcoded to 0. This should
+         * be addressed for multi-sample FBs.
+         */
+        struct bifrost_pixel_indices pix = {
+                .y = BIFROST_CURRENT_PIXEL,
+                .rt = rt
+        };
+
+        bi_index desc = b->shader->inputs->is_blend ?
+                bi_imm_u32(b->shader->inputs->blend.bifrost_blend_desc >> 32) :
+                bi_load_sysval(b, PAN_SYSVAL(RT_CONVERSION, rt), 1, 0);
+
+        uint32_t indices = 0;
+        memcpy(&indices, &pix, sizeof(indices));
+
+        bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_imm_u32(indices),
+                        bi_register(60), desc, (instr->num_components - 1));
 }
 
 static void
