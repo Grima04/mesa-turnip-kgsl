@@ -272,7 +272,7 @@ pandecode_sample_locations(const void *fb, int job_no)
 }
 
 static struct pandecode_fbd
-pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_compute, bool is_bifrost, unsigned gpu_id)
+pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_bifrost, unsigned gpu_id)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const void *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
@@ -297,20 +297,13 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
         info.rt_count = params.render_target_count;
         DUMP_UNPACKED(MULTI_TARGET_FRAMEBUFFER_PARAMETERS, params, "Parameters:\n");
 
-        if (!is_compute) {
-                if (is_bifrost) {
-                        DUMP_SECTION(MULTI_TARGET_FRAMEBUFFER, BIFROST_TILER_POINTER, fb, "Tiler Pointer");
-                } else {
-                        const void *t = pan_section_ptr(fb, MULTI_TARGET_FRAMEBUFFER, TILER);
-                        const void *w = pan_section_ptr(fb, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS);
-                        pandecode_midgard_tiler_descriptor(t, w);
-                }
-	} else {
-                pandecode_msg("XXX: skipping compute MFBD, fixme\n");
-        }
-
         if (is_bifrost) {
+                DUMP_SECTION(MULTI_TARGET_FRAMEBUFFER, BIFROST_TILER_POINTER, fb, "Tiler Pointer");
                 pan_section_unpack(fb, MULTI_TARGET_FRAMEBUFFER, BIFROST_PADDING, padding);
+        } else {
+                const void *t = pan_section_ptr(fb, MULTI_TARGET_FRAMEBUFFER, TILER);
+                const void *w = pan_section_ptr(fb, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS);
+                pandecode_midgard_tiler_descriptor(t, w);
         }
 
         pandecode_indent--;
@@ -768,11 +761,11 @@ pandecode_vertex_tiler_postfix_pre(
                 .rt_count = 1
         };
 
-        if (job_type != MALI_JOB_TYPE_TILER)
+        if ((job_type != MALI_JOB_TYPE_TILER) || is_bifrost)
                 pandecode_local_storage(p->fbd & ~1, job_no);
         else if (p->fbd & MALI_FBD_TAG_IS_MFBD)
                 fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->fbd) & ~MALI_FBD_TAG_MASK,
-                                              job_no, false, job_type == MALI_JOB_TYPE_COMPUTE, is_bifrost, gpu_id);
+                                              job_no, false, false, gpu_id);
         else
                 fbd_info = pandecode_sfbd((u64) (uintptr_t) p->fbd, job_no, false, gpu_id);
 
@@ -1009,7 +1002,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 
         if (is_mfbd)
                 info = pandecode_mfbd_bfr(s.framebuffer & ~MALI_FBD_TAG_MASK, job_no,
-                                          true, false, is_bifrost, gpu_id);
+                                          true, is_bifrost, gpu_id);
         else
                 info = pandecode_sfbd(s.framebuffer & ~MALI_FBD_TAG_MASK, job_no,
                                       true, gpu_id);
