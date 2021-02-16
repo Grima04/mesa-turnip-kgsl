@@ -976,7 +976,7 @@ scale_fdiv(nir_shader *nir)
             if (instr->type != nir_instr_type_alu)
                continue;
             nir_alu_instr *alu = nir_instr_as_alu(instr);
-            if (alu->op != nir_op_fdiv)
+            if (alu->op != nir_op_fdiv || alu->src[0].src.ssa->bit_size != 32)
                continue;
 
             b.cursor = nir_before_instr(instr);
