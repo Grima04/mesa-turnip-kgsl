@@ -82,6 +82,25 @@ bi_emit_jump(bi_builder *b, nir_jump_instr *instr)
         b->shader->current_block->base.unconditional_jumps = true;
 }
 
+static bi_index
+bi_varying_src0_for_barycentric(bi_builder *b, nir_intrinsic_instr *intr)
+{
+        switch (intr->intrinsic) {
+        case nir_intrinsic_load_barycentric_centroid:
+        case nir_intrinsic_load_barycentric_sample:
+                return bi_register(61);
+
+        /* Need to put the sample ID in the top 16-bits */
+        case nir_intrinsic_load_barycentric_at_sample:
+                return bi_mkvec_v2i16(b, bi_half(bi_dontcare(), false),
+                                bi_half(bi_src_index(&intr->src[0]), false));
+
+        case nir_intrinsic_load_barycentric_pixel:
+        default:
+                return bi_dontcare();
+        }
+}
+
 static enum bi_sample
 bi_interp_for_intrinsic(nir_intrinsic_op op)
 {
@@ -89,6 +108,7 @@ bi_interp_for_intrinsic(nir_intrinsic_op op)
         case nir_intrinsic_load_barycentric_centroid:
                 return BI_SAMPLE_CENTROID;
         case nir_intrinsic_load_barycentric_sample:
+        case nir_intrinsic_load_barycentric_at_sample:
                 return BI_SAMPLE_SAMPLE;
         case nir_intrinsic_load_barycentric_pixel:
         default:
@@ -165,21 +185,17 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
         enum bi_register_format regfmt = BI_REGISTER_FORMAT_AUTO;
         enum bi_vecsize vecsize = instr->num_components - 1;
         bool smooth = instr->intrinsic == nir_intrinsic_load_interpolated_input;
+        bi_index src0 = bi_null();
 
         if (smooth) {
                 nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
                 assert(parent);
 
                 sample = bi_interp_for_intrinsic(parent->intrinsic);
+                src0 = bi_varying_src0_for_barycentric(b, parent);
         } else {
                 regfmt = bi_reg_fmt_for_nir(nir_intrinsic_dest_type(instr));
         }
-
-        /* Ignored for non-conditional center and retrieve modes (use an
-         * efficient encoding), otherwise R61 for sample mask XXX RA */
-
-        bi_index src0 = (sample == BI_SAMPLE_CENTER) ? bi_dontcare() :
-                bi_register(61);
 
         nir_src *offset = nir_get_io_offset_src(instr);
         unsigned imm_index = 0;
@@ -884,6 +900,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_barycentric_pixel:
         case nir_intrinsic_load_barycentric_centroid:
         case nir_intrinsic_load_barycentric_sample:
+        case nir_intrinsic_load_barycentric_at_sample:
                 /* handled later via load_vary */
                 break;
         case nir_intrinsic_load_interpolated_input:
