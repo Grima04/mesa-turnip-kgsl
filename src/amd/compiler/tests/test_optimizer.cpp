@@ -868,3 +868,141 @@ BEGIN_TEST(optimize.add_lshlrev)
       finish_opt_test();
    }
 END_TEST
+
+enum denorm_op {
+   denorm_mul1 = 0,
+   denorm_fneg = 1,
+   denorm_fabs = 2,
+   denorm_fnegabs = 3,
+};
+
+static const char *denorm_op_names[] = {
+   "mul1",
+   "fneg",
+   "fabs",
+   "fnegabs",
+};
+
+struct denorm_config {
+   bool flush;
+   unsigned op;
+   aco_opcode src;
+   aco_opcode dest;
+};
+
+static const char *srcdest_op_name(aco_opcode op)
+{
+   switch (op) {
+   case aco_opcode::v_cndmask_b32:
+      return "cndmask";
+   case aco_opcode::v_min_f32:
+      return "min";
+   case aco_opcode::v_rcp_f32:
+      return "rcp";
+   default:
+      return "none";
+   }
+}
+
+static Temp emit_denorm_srcdest(aco_opcode op, Temp val)
+{
+   switch (op) {
+   case aco_opcode::v_cndmask_b32:
+      return bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), val, inputs[1]);
+   case aco_opcode::v_min_f32:
+      return bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0u), val);
+   case aco_opcode::v_rcp_f32:
+      return bld.vop1(aco_opcode::v_rcp_f32, bld.def(v1), val);
+   default:
+      return val;
+   }
+}
+
+BEGIN_TEST(optimize.denorm_propagation)
+   for (unsigned i = GFX8; i <= GFX9; i++) {
+      std::vector<denorm_config> configs;
+      for (bool flush : {false, true}) {
+         for (denorm_op op : {denorm_mul1, denorm_fneg, denorm_fabs, denorm_fnegabs})
+            configs.push_back({flush, op, aco_opcode::num_opcodes, aco_opcode::num_opcodes});
+
+         for (aco_opcode dest : {aco_opcode::v_min_f32, aco_opcode::v_rcp_f32}) {
+            for (denorm_op op : {denorm_mul1, denorm_fneg, denorm_fabs, denorm_fnegabs})
+               configs.push_back({flush, op, aco_opcode::num_opcodes, dest});
+         }
+
+         for (aco_opcode src : {aco_opcode::v_cndmask_b32, aco_opcode::v_min_f32, aco_opcode::v_rcp_f32}) {
+            for (denorm_op op : {denorm_mul1, denorm_fneg, denorm_fabs, denorm_fnegabs})
+               configs.push_back({flush, op, src, aco_opcode::num_opcodes});
+         }
+      }
+
+      for (denorm_config cfg : configs) {
+         char subvariant[128];
+         sprintf(subvariant, "_%s_%s_%s_%s",
+                 cfg.flush ? "flush" : "keep", srcdest_op_name(cfg.src),
+                 denorm_op_names[(int)cfg.op], srcdest_op_name(cfg.dest));
+         if (!setup_cs("v1 s2", (chip_class)i, CHIP_UNKNOWN, subvariant))
+            continue;
+
+         bool can_propagate = cfg.src == aco_opcode::v_rcp_f32 || (i >= GFX9 && cfg.src == aco_opcode::v_min_f32) ||
+                              cfg.dest == aco_opcode::v_rcp_f32 || (i >= GFX9 && cfg.dest == aco_opcode::v_min_f32) ||
+                              !cfg.flush;
+
+         fprintf(output, "src, dest, op: %s %s %s\n",
+                 srcdest_op_name(cfg.src), srcdest_op_name(cfg.dest), denorm_op_names[(int)cfg.op]);
+         fprintf(output, "can_propagate: %u\n", can_propagate);
+         //! src, dest, op: $src $dest $op
+         //! can_propagate: #can_propagate
+         //>> v1: %a, s2: %b = p_startpgm
+
+         //; patterns = {'cndmask': 'v1: %{} = v_cndmask_b32 0, {}, %b',
+         //;             'min': 'v1: %{} = v_min_f32 0, {}',
+         //;             'rcp': 'v1: %{} = v_rcp_f32 {}'}
+         //; ops = {'mul1': 'v1: %{} = v_mul_f32 1.0, %{}',
+         //;        'fneg': 'v1: %{} = v_mul_f32 -1.0, %{}',
+         //;        'fabs': 'v1: %{} = v_mul_f32 1.0, |%{}|',
+         //;        'fnegabs': 'v1: %{} = v_mul_f32 -1.0, |%{}|'}
+         //; inline_ops = {'mul1': '%{}', 'fneg': '-%{}', 'fabs': '|%{}|', 'fnegabs': '-|%{}|'}
+
+         //; name = 'a'
+         //; if src != 'none':
+         //;    insert_pattern(patterns[src].format('src_res', '%'+name))
+         //;    name = 'src_res'
+
+         //; if can_propagate:
+         //;    name = inline_ops[op].format(name)
+         //; else:
+         //;    insert_pattern(ops[op].format('op_res', name))
+         //;    name = '%op_res'
+
+         //; if dest != 'none':
+         //;    insert_pattern(patterns[dest].format('dest_res', name))
+         //;    name = '%dest_res'
+
+         //; insert_pattern('v1: %res = v_cndmask_b32 0, {}, %b'.format(name))
+         //! p_unit_test 0, %res
+
+         program->blocks[0].fp_mode.denorm32 = cfg.flush ? fp_denorm_flush : fp_denorm_keep;
+
+         Temp val = emit_denorm_srcdest(cfg.src, inputs[0]);
+         switch (cfg.op) {
+         case denorm_mul1:
+            val = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x3f800000u), val);
+            break;
+         case denorm_fneg:
+            val = fneg(val);
+            break;
+         case denorm_fabs:
+            val = fabs(val);
+            break;
+         case denorm_fnegabs:
+            val = fneg(fabs(val));
+            break;
+         }
+         val = emit_denorm_srcdest(cfg.dest, val);
+         writeout(0, bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), val, inputs[1]));
+
+         finish_opt_test();
+      }
+   }
+END_TEST
