@@ -263,25 +263,33 @@ zink_get_physical_device_info(struct zink_screen *screen)
          for (uint32_t i = 0; i < num_extensions; ++i) {
          %for ext in extensions:
          <%helpers:guard ext="${ext}">
+            if (!strcmp(extensions[i].extensionName, "${ext.name}")) {
          %if ext.core_since:
          %for version in versions:
          %if ext.core_since.struct_version == version.struct_version:
-            if (${version.version()} > info->device_version) {
-               if (!strcmp(extensions[i].extensionName, "${ext.name}")) {
+               if (${version.version()} >= info->device_version) {
+         %if not (ext.has_features or ext.has_properties):
+                  info->have_${ext.name_with_vendor()} = true;
+         %else:
                   support_${ext.name_with_vendor()} = true;
+         %endif
+               } else {
+         %if not (ext.has_features or ext.has_properties):
+                  info->have_${ext.name_with_vendor()} = true;
+         %else:
+                  support_${ext.name_with_vendor()} = true;
+         %endif
                }
-        %if not (ext.has_features or ext.has_properties):
-            } else {
-               info->have_${ext.name_with_vendor()} = true;
-        %endif
-            }
          %endif
          %endfor
          %else:
-            if (!strcmp(extensions[i].extensionName, "${ext.name}")) {
+         %if not (ext.has_features or ext.has_properties):
+               info->have_${ext.name_with_vendor()} = true;
+         %else:
                support_${ext.name_with_vendor()} = true;
-            }
          %endif
+         %endif
+            }
          </%helpers:guard>
          %endfor
          }
