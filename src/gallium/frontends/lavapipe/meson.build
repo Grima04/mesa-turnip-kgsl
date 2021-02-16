@@ -9,17 +9,6 @@ lvp_entrypoints = custom_target(
   ],
 )
 
-lvp_extensions_c = custom_target(
-  'lvp_extensions.c',
-  input : ['lvp_extensions.py', vk_api_xml],
-  output : ['lvp_extensions.c', 'lvp_extensions.h'],
-  command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--out-c', '@OUTPUT0@',
-    '--out-h', '@OUTPUT1@'
-  ],
-  depend_files : vk_extensions_gen,
-)
-
 liblvp_files = files(
     'lvp_device.c',
     'lvp_cmd_buffer.c',
@@ -62,7 +51,7 @@ endif
 
 liblavapipe_st = static_library(
   'lavapipe_st',
-  [liblvp_files, lvp_entrypoints, lvp_extensions_c, sha1_h],
+  [liblvp_files, lvp_entrypoints, sha1_h],
   link_with : [ libvulkan_wsi ],
   c_args : [ lvp_flags ],
   gnu_symbol_visibility : 'hidden',

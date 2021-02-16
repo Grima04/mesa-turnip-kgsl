@@ -48,7 +48,6 @@ typedef uint32_t xcb_window_t;
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_icd.h>
 
-#include "lvp_extensions.h"
 #include "lvp_entrypoints.h"
 #include "vk_device.h"
 #include "vk_instance.h"
@@ -229,8 +228,6 @@ struct lvp_instance {
 VkResult lvp_init_wsi(struct lvp_physical_device *physical_device);
 void lvp_finish_wsi(struct lvp_physical_device *physical_device);
 
-extern const struct vk_instance_extension_table lvp_instance_extensions_supported;
-uint32_t lvp_physical_device_api_version(struct lvp_physical_device *dev);
 bool lvp_physical_device_extension_supported(struct lvp_physical_device *dev,
                                               const char *name);
 

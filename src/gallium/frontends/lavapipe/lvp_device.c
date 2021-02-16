@@ -38,6 +38,93 @@
 #include "util/timespec.h"
 #include "os_time.h"
 
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
+    defined(VK_USE_PLATFORM_WIN32_KHR) || \
+    defined(VK_USE_PLATFORM_XCB_KHR) || \
+    defined(VK_USE_PLATFORM_XLIB_KHR) || \
+    defined(VK_USE_PLATFORM_DISPLAY_KHR)
+#define LVP_USE_WSI_PLATFORM
+#endif
+#define LVP_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
+
+VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumerateInstanceVersion(uint32_t* pApiVersion)
+{
+   *pApiVersion = LVP_API_VERSION;
+   return VK_SUCCESS;
+}
+
+static const struct vk_instance_extension_table lvp_instance_extensions_supported = {
+   .KHR_device_group_creation                = true,
+   .KHR_external_fence_capabilities          = true,
+   .KHR_external_memory_capabilities         = true,
+   .KHR_external_semaphore_capabilities      = true,
+   .KHR_get_physical_device_properties2      = true,
+   .EXT_debug_report                         = true,
+#ifdef LVP_USE_WSI_PLATFORM
+   .KHR_get_surface_capabilities2            = true,
+   .KHR_surface                              = true,
+   .KHR_surface_protected_capabilities       = true,
+#endif
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+   .KHR_wayland_surface                      = true,
+#endif
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+   .KHR_win32_surface                        = true,
+#endif
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   .KHR_xcb_surface                          = true,
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+   .KHR_xlib_surface                         = true,
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_XRANDR_EXT
+   .EXT_acquire_xlib_display                 = true,
+#endif
+#ifdef VK_USE_PLATFORM_DISPLAY_KHR
+   .KHR_display                              = true,
+   .KHR_get_display_properties2              = true,
+   .EXT_direct_mode_display                  = true,
+   .EXT_display_surface_counter              = true,
+#endif
+};
+
+static const struct vk_device_extension_table lvp_device_extensions_supported = {
+   .KHR_bind_memory2                      = true,
+   .KHR_dedicated_allocation              = true,
+   .KHR_descriptor_update_template        = true,
+   .KHR_device_group                      = true,
+   .KHR_draw_indirect_count               = true,
+   .KHR_driver_properties                 = true,
+   .KHR_external_fence                    = true,
+   .KHR_external_memory                   = true,
+   .KHR_external_semaphore                = true,
+   .KHR_get_memory_requirements2          = true,
+#ifdef LVP_USE_WSI_PLATFORM
+   .KHR_incremental_present               = true,
+#endif
+   .KHR_maintenance1                      = true,
+   .KHR_maintenance2                      = true,
+   .KHR_maintenance3                      = true,
+   .KHR_push_descriptor                   = true,
+   .KHR_relaxed_block_layout              = true,
+   .KHR_sampler_mirror_clamp_to_edge      = true,
+   .KHR_shader_draw_parameters            = true,
+   .KHR_storage_buffer_storage_class      = true,
+#ifdef LVP_USE_WSI_PLATFORM
+   .KHR_swapchain                         = true,
+#endif
+   .EXT_calibrated_timestamps             = true,
+   .EXT_conditional_rendering             = true,
+   .EXT_index_type_uint8                  = true,
+   .EXT_post_depth_coverage               = true,
+   .EXT_private_data                      = true,
+   .EXT_shader_stencil_export             = true,
+   .EXT_transform_feedback                = true,
+   .EXT_vertex_attribute_divisor          = true,
+   .GOOGLE_decorate_string                = true,
+   .GOOGLE_hlsl_functionality1            = true,
+};
+
 static VkResult VKAPI_CALL
 lvp_physical_device_init(struct lvp_physical_device *device,
                          struct lvp_instance *instance,
@@ -61,7 +148,7 @@ lvp_physical_device_init(struct lvp_physical_device *device,
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    device->max_images = device->pscreen->get_shader_param(device->pscreen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_MAX_SHADER_IMAGES);
-   lvp_physical_device_get_supported_extensions(device, &device->vk.supported_extensions);
+   device->vk.supported_extensions = lvp_device_extensions_supported;
    result = lvp_init_wsi(device);
    if (result != VK_SUCCESS) {
       vk_physical_device_finish(&device->vk);
@@ -541,7 +628,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties(VkPhysicalDevice phys
    };
 
    *pProperties = (VkPhysicalDeviceProperties) {
-      .apiVersion = VK_MAKE_VERSION(1, 0, 2),
+      .apiVersion = LVP_API_VERSION,
       .driverVersion = 1,
       .vendorID = VK_VENDOR_ID_MESA,
       .deviceID = 0,
