@@ -1319,11 +1319,21 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st)
                                 clause_state.message = true;
                         }
 
-                        if (tuple->add->op == BI_OPCODE_ATEST)
-                                clause->dependencies |= (1 << 6);
-
-                        if (tuple->add->op == BI_OPCODE_BLEND)
-                                clause->dependencies |= (1 << 6) | (1 << 7);
+                        switch (tuple->add->op) {
+                        case BI_OPCODE_ATEST:
+                                clause->dependencies |= (1 << BIFROST_SLOT_ELDEST_DEPTH);
+                                break;
+                        case BI_OPCODE_LD_TILE:
+                                if (!ctx->inputs->is_blend)
+                                        clause->dependencies |= (1 << BIFROST_SLOT_ELDEST_COLOUR);
+                                break;
+                        case BI_OPCODE_BLEND:
+                                clause->dependencies |= (1 << BIFROST_SLOT_ELDEST_DEPTH);
+                                clause->dependencies |= (1 << BIFROST_SLOT_ELDEST_COLOUR);
+                                break;
+                        default:
+                                break;
+                        }
                 }
 
                 clause_state.consts[idx] = bi_get_const_state(&tuple_state);

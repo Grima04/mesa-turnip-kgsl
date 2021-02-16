@@ -114,6 +114,12 @@ enum bifrost_flow {
         BIFROST_FLOW_WE = 7,
 };
 
+enum bifrost_slot {
+        /* 0-5 are general purpose */
+        BIFROST_SLOT_ELDEST_DEPTH = 6,
+        BIFROST_SLOT_ELDEST_COLOUR = 7,
+};
+
 struct bifrost_header {
         /* Reserved */
         unsigned zero1 : 5;
