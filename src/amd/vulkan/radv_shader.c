@@ -1298,6 +1298,7 @@ radv_shader_variant_create(struct radv_device *device,
 		for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
 			ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
+		variant->code_ptr = dest_ptr;
 		variant->ir_string = bin->ir_size ? strdup((const char*)(bin->data + bin->stats_size + bin->code_size)) : NULL;
 		variant->disasm_string = bin->disasm_size ? strdup((const char*)(bin->data + bin->stats_size + bin->code_size + bin->ir_size)) : NULL;
 

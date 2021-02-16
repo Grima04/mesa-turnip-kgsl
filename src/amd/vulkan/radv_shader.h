@@ -399,6 +399,7 @@ struct radv_shader_variant {
 	struct radeon_winsys_bo *bo;
 	uint64_t bo_offset;
 	struct ac_shader_config config;
+	uint8_t *code_ptr;
 	uint32_t code_size;
 	uint32_t exec_size;
 	struct radv_shader_info info;
