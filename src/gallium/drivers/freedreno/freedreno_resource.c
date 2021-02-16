@@ -649,44 +649,46 @@ invalidate_resource(struct fd_resource *rsc, unsigned usage)
 }
 
 static void *
-fd_resource_transfer_map(struct pipe_context *pctx,
+resource_transfer_map_unsync(struct pipe_context *pctx,
 		struct pipe_resource *prsc,
 		unsigned level, unsigned usage,
 		const struct pipe_box *box,
-		struct pipe_transfer **pptrans)
-	in_dt  /* TODO for threaded-ctx we'll need to split out unsynchronized path */
+		struct fd_transfer *trans)
 {
-	struct fd_context *ctx = fd_context(pctx);
 	struct fd_resource *rsc = fd_resource(prsc);
-	struct fd_transfer *trans;
-	struct pipe_transfer *ptrans;
 	enum pipe_format format = prsc->format;
 	uint32_t offset;
 	char *buf;
+
+	buf = fd_bo_map(rsc->bo);
+	offset =
+		box->y / util_format_get_blockheight(format) * trans->base.stride +
+		box->x / util_format_get_blockwidth(format) * rsc->layout.cpp +
+		fd_resource_offset(rsc, level, box->z);
+
+	if (usage & PIPE_MAP_WRITE)
+		rsc->valid = true;
+
+	return buf + offset;
+}
+
+/**
+ * Note, with threaded_context, resource_transfer_map() is only called
+ * in driver thread, but resource_transfer_map_unsync() can be called in
+ * either driver or frontend thread.
+ */
+static void *
+resource_transfer_map(struct pipe_context *pctx,
+		struct pipe_resource *prsc,
+		unsigned level, unsigned usage,
+		const struct pipe_box *box,
+		struct fd_transfer *trans)
+	in_dt
+{
+	struct fd_context *ctx = fd_context(pctx);
+	struct fd_resource *rsc = fd_resource(prsc);
+	char *buf;
 	int ret = 0;
-
-	DBG("prsc=%p, level=%u, usage=%x, box=%dx%d+%d,%d", prsc, level, usage,
-		box->width, box->height, box->x, box->y);
-
-	if ((usage & PIPE_MAP_DIRECTLY) && rsc->layout.tile_mode) {
-		DBG("CANNOT MAP DIRECTLY!\n");
-		return NULL;
-	}
-
-	ptrans = slab_alloc(&ctx->transfer_pool);
-	if (!ptrans)
-		return NULL;
-
-	/* slab_alloc_st() doesn't zero: */
-	trans = fd_transfer(ptrans);
-	memset(trans, 0, sizeof(*trans));
-
-	pipe_resource_reference(&ptrans->resource, prsc);
-	ptrans->level = level;
-	ptrans->usage = usage;
-	ptrans->box = *box;
-	ptrans->stride = fd_resource_pitch(rsc, level);
-	ptrans->layer_stride = fd_resource_layer_stride(rsc, level);
 
 	/* we always need a staging texture for tiled buffers:
 	 *
@@ -697,9 +699,10 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	if (rsc->layout.tile_mode) {
 		struct fd_resource *staging_rsc;
 
+		assert(prsc->target != PIPE_BUFFER);
+
 		staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
 		if (staging_rsc) {
-			// TODO for PIPE_MAP_READ, need to do untiling blit..
 			trans->staging_prsc = &staging_rsc->base;
 			trans->base.stride = fd_resource_pitch(staging_rsc, 0);
 			trans->base.layer_stride = fd_resource_layer_stride(staging_rsc, 0);
@@ -716,9 +719,6 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 			}
 
 			buf = fd_bo_map(staging_rsc->bo);
-			offset = 0;
-
-			*pptrans = ptrans;
 
 			ctx->stats.staging_uploads++;
 
@@ -800,9 +800,6 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 					trans->staging_box.y = 0;
 					trans->staging_box.z = 0;
 					buf = fd_bo_map(staging_rsc->bo);
-					offset = 0;
-
-					*pptrans = ptrans;
 
 					fd_batch_reference(&write_batch, NULL);
 
@@ -827,26 +824,62 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		if (busy) {
 			ret = fd_resource_wait(ctx, rsc, op);
 			if (ret)
-				goto fail;
+				return NULL;
 		}
 	}
 
-	buf = fd_bo_map(rsc->bo);
-	offset =
-		box->y / util_format_get_blockheight(format) * ptrans->stride +
-		box->x / util_format_get_blockwidth(format) * rsc->layout.cpp +
-		fd_resource_offset(rsc, level, box->z);
+	return resource_transfer_map_unsync(pctx, prsc, level, usage, box, trans);
+}
 
-	if (usage & PIPE_MAP_WRITE)
-		rsc->valid = true;
+static void *
+fd_resource_transfer_map(struct pipe_context *pctx,
+		struct pipe_resource *prsc,
+		unsigned level, unsigned usage,
+		const struct pipe_box *box,
+		struct pipe_transfer **pptrans)
+{
+	struct fd_context *ctx = fd_context(pctx);
+	struct fd_resource *rsc = fd_resource(prsc);
+	struct fd_transfer *trans;
+	struct pipe_transfer *ptrans;
 
-	*pptrans = ptrans;
+	DBG("prsc=%p, level=%u, usage=%x, box=%dx%d+%d,%d", prsc, level, usage,
+		box->width, box->height, box->x, box->y);
 
-	return buf + offset;
+	if ((usage & PIPE_MAP_DIRECTLY) && rsc->layout.tile_mode) {
+		DBG("CANNOT MAP DIRECTLY!\n");
+		return NULL;
+	}
 
-fail:
-	fd_resource_transfer_unmap(pctx, ptrans);
-	return NULL;
+	ptrans = slab_alloc(&ctx->transfer_pool);
+	if (!ptrans)
+		return NULL;
+
+	/* slab_alloc_st() doesn't zero: */
+	trans = fd_transfer(ptrans);
+	memset(trans, 0, sizeof(*trans));
+
+	pipe_resource_reference(&ptrans->resource, prsc);
+	ptrans->level = level;
+	ptrans->usage = usage;
+	ptrans->box = *box;
+	ptrans->stride = fd_resource_pitch(rsc, level);
+	ptrans->layer_stride = fd_resource_layer_stride(rsc, level);
+
+	void *ret;
+	if (usage & (PIPE_MAP_UNSYNCHRONIZED | TC_TRANSFER_MAP_THREADED_UNSYNC)) {
+		ret = resource_transfer_map_unsync(pctx, prsc, level, usage, box, trans);
+	} else {
+		ret = resource_transfer_map(pctx, prsc, level, usage, box, trans);
+	}
+
+	if (ret) {
+		*pptrans = ptrans;
+	} else {
+		fd_resource_transfer_unmap(pctx, ptrans);
+	}
+
+	return ret;
 }
 
 static void

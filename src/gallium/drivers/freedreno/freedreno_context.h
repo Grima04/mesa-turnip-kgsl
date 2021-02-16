@@ -34,6 +34,7 @@
 #include "util/list.h"
 #include "util/slab.h"
 #include "util/u_string.h"
+#include "util/u_threaded_context.h"
 #include "util/u_trace.h"
 
 #include "freedreno_screen.h"
