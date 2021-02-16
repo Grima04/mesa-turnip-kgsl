@@ -1163,6 +1163,10 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                         bi_mov_i32_to(b, bi_word(dst, i), bi_register(60 + i));
                 break;
 
+        case nir_intrinsic_shader_clock:
+                bi_ld_gclk_u64_to(b, dst, BI_SOURCE_CYCLE_COUNTER);
+                break;
+
         default:
                 fprintf(stderr, "Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
                 assert(0);
