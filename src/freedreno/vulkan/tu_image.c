@@ -553,6 +553,10 @@ tu_CreateImage(VkDevice _device,
    if (!image)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   const VkExternalMemoryImageCreateInfo *external_info =
+      vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
+   image->shareable = external_info != NULL;
+
    image->vk_format = pCreateInfo->format;
    image->level_count = pCreateInfo->mipLevels;
    image->layer_count = pCreateInfo->arrayLayers;

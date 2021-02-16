@@ -1281,6 +1281,8 @@ struct tu_image
    uint32_t lrz_height;
    uint32_t lrz_pitch;
    uint32_t lrz_offset;
+
+   bool shareable;
 };
 
 static inline uint32_t

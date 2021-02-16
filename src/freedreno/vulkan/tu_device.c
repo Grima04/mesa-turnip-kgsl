@@ -1605,6 +1605,20 @@ tu_GetBufferMemoryRequirements2(
       .alignment = 64,
       .size = MAX2(align64(buffer->size, 64), buffer->size),
    };
+
+   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+         VkMemoryDedicatedRequirements *req =
+            (VkMemoryDedicatedRequirements *) ext;
+         req->requiresDedicatedAllocation = false;
+         req->prefersDedicatedAllocation = req->requiresDedicatedAllocation;
+         break;
+      }
+      default:
+         break;
+      }
+   }
 }
 
 void
@@ -1619,6 +1633,20 @@ tu_GetImageMemoryRequirements2(VkDevice device,
       .alignment = image->layout[0].base_align,
       .size = image->total_size
    };
+
+   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+         VkMemoryDedicatedRequirements *req =
+            (VkMemoryDedicatedRequirements *) ext;
+         req->requiresDedicatedAllocation = image->shareable;
+         req->prefersDedicatedAllocation = req->requiresDedicatedAllocation;
+         break;
+      }
+      default:
+         break;
+      }
+   }
 }
 
 void
