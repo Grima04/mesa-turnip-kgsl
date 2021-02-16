@@ -605,62 +605,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       r.is_a_number = left.is_a_number && right.is_a_number;
       r.is_finite = left.is_finite && right.is_finite;
 
-      /* le_zero: bcsel(<any>, le_zero, lt_zero)
-       *        | bcsel(<any>, eq_zero, lt_zero)
-       *        | bcsel(<any>, le_zero, eq_zero)
-       *        | bcsel(<any>, lt_zero, le_zero)
-       *        | bcsel(<any>, lt_zero, eq_zero)
-       *        | bcsel(<any>, eq_zero, le_zero)
-       *        | bcsel(<any>, le_zero, le_zero)
-       *        ;
-       *
-       * lt_zero: bcsel(<any>, lt_zero, lt_zero)
-       *        ;
-       *
-       * ge_zero: bcsel(<any>, ge_zero, ge_zero)
-       *        | bcsel(<any>, ge_zero, gt_zero)
-       *        | bcsel(<any>, ge_zero, eq_zero)
-       *        | bcsel(<any>, gt_zero, ge_zero)
-       *        | bcsel(<any>, eq_zero, ge_zero)
-       *        ;
-       *
-       * gt_zero: bcsel(<any>, gt_zero, gt_zero)
-       *        ;
-       *
-       * ne_zero: bcsel(<any>, ne_zero, gt_zero)
-       *        | bcsel(<any>, ne_zero, lt_zero)
-       *        | bcsel(<any>, gt_zero, lt_zero)
-       *        | bcsel(<any>, gt_zero, ne_zero)
-       *        | bcsel(<any>, lt_zero, ne_zero)
-       *        | bcsel(<any>, lt_zero, gt_zero)
-       *        | bcsel(<any>, ne_zero, ne_zero)
-       *        ;
-       *
-       * eq_zero: bcsel(<any>, eq_zero, eq_zero)
-       *        ;
-       *
-       * All other cases are 'unknown'.
-       *
-       * The ranges could be tightened if the range of the first source is
-       * known.  However, opt_algebraic will (eventually) elminiate the bcsel
-       * if the condition is known.
-       */
-      static const enum ssa_ranges table[last_range + 1][last_range + 1] = {
-         /* left\right   unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
-         /* unknown */ { _______, _______, _______, _______, _______, _______, _______ },
-         /* lt_zero */ { _______, lt_zero, le_zero, ne_zero, _______, ne_zero, le_zero },
-         /* le_zero */ { _______, le_zero, le_zero, _______, _______, _______, le_zero },
-         /* gt_zero */ { _______, ne_zero, _______, gt_zero, ge_zero, ne_zero, ge_zero },
-         /* ge_zero */ { _______, _______, _______, ge_zero, ge_zero, _______, ge_zero },
-         /* ne_zero */ { _______, ne_zero, _______, ne_zero, _______, ne_zero, _______ },
-         /* eq_zero */ { _______, le_zero, le_zero, ge_zero, ge_zero, _______, eq_zero },
-      };
-
-      ASSERT_TABLE_IS_COMMUTATIVE(table);
-      ASSERT_TABLE_IS_DIAGONAL(table);
-      ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(table);
-
-      r.range = table[left.range][right.range];
+      r.range = union_ranges(left.range, right.range);
       break;
    }
 
