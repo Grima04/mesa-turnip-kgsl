@@ -756,6 +756,20 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_emit_store(b, instr, BI_SEG_WLS);
                 break;
 
+        /* Blob doesn't seem to do anything for memory barriers, note +BARRIER
+         * is illegal in fragment shaders */
+        case nir_intrinsic_memory_barrier:
+        case nir_intrinsic_memory_barrier_buffer:
+        case nir_intrinsic_memory_barrier_image:
+        case nir_intrinsic_memory_barrier_shared:
+        case nir_intrinsic_group_memory_barrier:
+                break;
+
+        case nir_intrinsic_control_barrier:
+                assert(b->shader->stage != MESA_SHADER_FRAGMENT);
+                bi_barrier_to(b, bi_null());
+                break;
+
         case nir_intrinsic_global_atomic_exchange:
                 bi_emit_axchg(b, instr, BI_SEG_NONE);
                 break;
