@@ -190,7 +190,7 @@ fd6_sampler_view_update(struct fd_context *ctx, struct fd6_pipe_sampler_view *so
 
 	if (format == PIPE_FORMAT_X32_S8X24_UINT) {
 		rsc = rsc->stencil;
-		format = rsc->base.format;
+		format = rsc->b.b.format;
 	}
 
 	so->seqno = ++fd6_context(ctx)->tex_seqno;
@@ -225,8 +225,8 @@ fd6_sampler_view_update(struct fd_context *ctx, struct fd6_pipe_sampler_view *so
 
 		ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
 
-		if (rsc->base.format == PIPE_FORMAT_R8_G8B8_420_UNORM) {
-			struct fd_resource *next = fd_resource(rsc->base.next);
+		if (rsc->b.b.format == PIPE_FORMAT_R8_G8B8_420_UNORM) {
+			struct fd_resource *next = fd_resource(rsc->b.b.next);
 
 			/* In case of biplanar R8_G8B8, the UBWC metadata address in
 			 * dwords 7 and 8, is instead the pointer to the second plane.

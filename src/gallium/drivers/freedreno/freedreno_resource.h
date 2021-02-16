@@ -116,7 +116,7 @@ fd_resource_tracking_reference(struct fd_resource_tracking **ptr,
  * A resource (any buffer/texture/image/etc)
  */
 struct fd_resource {
-	struct pipe_resource base;
+	struct threaded_resource b;
 	struct fd_bo *bo;  /* use fd_resource_set_bo() to write */
 	enum pipe_format internal_format;
 	struct fdl_layout layout;
@@ -262,7 +262,7 @@ fd_transfer(struct pipe_transfer *ptrans)
 static inline struct fdl_slice *
 fd_resource_slice(struct fd_resource *rsc, unsigned level)
 {
-	assert(level <= rsc->base.last_level);
+	assert(level <= rsc->b.b.last_level);
 	return &rsc->layout.slices[level];
 }
 
@@ -276,7 +276,7 @@ fd_resource_layer_stride(struct fd_resource *rsc, unsigned level)
 static inline uint32_t
 fd_resource_pitch(struct fd_resource *rsc, unsigned level)
 {
-	if (is_a2xx(fd_screen(rsc->base.screen)))
+	if (is_a2xx(fd_screen(rsc->b.b.screen)))
 		return fdl2_pitch(&rsc->layout, level);
 
 	return fdl_pitch(&rsc->layout, level);

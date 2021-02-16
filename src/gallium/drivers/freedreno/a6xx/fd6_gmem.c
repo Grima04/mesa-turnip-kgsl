@@ -849,7 +849,7 @@ emit_blit(struct fd_batch *batch,
 	/* separate stencil case: */
 	if (stencil) {
 		rsc = rsc->stencil;
-		pfmt = rsc->base.format;
+		pfmt = rsc->b.b.format;
 	}
 
 	offset = fd_resource_offset(rsc, psurf->u.tex.level,
@@ -863,8 +863,8 @@ emit_blit(struct fd_batch *batch,
 	uint32_t size = fd_resource_slice(rsc, psurf->u.tex.level)->size0;
 	enum a3xx_color_swap swap = fd6_resource_swap(rsc, pfmt);
 	enum a3xx_msaa_samples samples =
-			fd_msaa_samples(rsc->base.nr_samples);
-	uint32_t tile_mode = fd_resource_tile_mode(&rsc->base, psurf->u.tex.level);
+			fd_msaa_samples(rsc->b.b.nr_samples);
+	uint32_t tile_mode = fd_resource_tile_mode(&rsc->b.b, psurf->u.tex.level);
 
 	OUT_REG(ring,
 		A6XX_RB_BLIT_DST_INFO(.tile_mode = tile_mode, .samples = samples,
@@ -1362,7 +1362,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 		const bool has_depth = pfb->zsbuf;
 		struct pipe_resource *separate_stencil =
 			has_depth && fd_resource(pfb->zsbuf->texture)->stencil ?
-			&fd_resource(pfb->zsbuf->texture)->stencil->base : NULL;
+			&fd_resource(pfb->zsbuf->texture)->stencil->b.b : NULL;
 
 		if ((has_depth && (buffers & PIPE_CLEAR_DEPTH)) ||
 				(!separate_stencil && (buffers & PIPE_CLEAR_STENCIL))) {

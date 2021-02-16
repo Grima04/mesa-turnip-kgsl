@@ -75,7 +75,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 			 */
 			if (rsc->stencil) {
 				rsc = rsc->stencil;
-				pformat = rsc->base.format;
+				pformat = rsc->b.b.format;
 				if (bases)
 					bases++;
 			}
@@ -323,7 +323,7 @@ emit_gmem2mem_surf(struct fd_batch *batch,
 
 	if (stencil) {
 		rsc = rsc->stencil;
-		format = rsc->base.format;
+		format = rsc->b.b.format;
 	}
 
 	uint32_t offset = fd_resource_offset(rsc, psurf->u.tex.level,

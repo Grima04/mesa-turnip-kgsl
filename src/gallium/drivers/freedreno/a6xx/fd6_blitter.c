@@ -580,14 +580,14 @@ emit_blit_src(struct fd_ringbuffer *ring, const struct pipe_blit_info *info, uns
 	uint32_t pitch = fd_resource_pitch(src, info->src.level);
 	bool subwc_enabled = fd_resource_ubwc_enabled(src, info->src.level);
 	unsigned soff = fd_resource_offset(src, info->src.level, layer);
-	uint32_t width = u_minify(src->base.width0, info->src.level) * nr_samples;
-	uint32_t height = u_minify(src->base.height0, info->src.level);
+	uint32_t width = u_minify(src->b.b.width0, info->src.level) * nr_samples;
+	uint32_t height = u_minify(src->b.b.height0, info->src.level);
 	uint32_t filter = 0;
 
 	if (info->filter == PIPE_TEX_FILTER_LINEAR)
 		filter = A6XX_SP_PS_2D_SRC_INFO_FILTER;
 
-	enum a3xx_msaa_samples samples = fd_msaa_samples(src->base.nr_samples);
+	enum a3xx_msaa_samples samples = fd_msaa_samples(src->b.b.nr_samples);
 
 	if (sfmt == FMT6_10_10_10_2_UNORM_DEST)
 		sfmt = FMT6_10_10_10_2_UNORM;
@@ -639,7 +639,7 @@ emit_blit_texture(struct fd_context *ctx,
 
 	dst = fd_resource(info->dst.resource);
 
-	uint32_t nr_samples = fd_resource_nr_samples(&dst->base);
+	uint32_t nr_samples = fd_resource_nr_samples(&dst->b.b);
 
 	sx1 = sbox->x * nr_samples;
 	sy1 = sbox->y;
@@ -983,8 +983,8 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 			blit.mask = PIPE_MASK_R;
 			blit.src.format = PIPE_FORMAT_R8_UINT;
 			blit.dst.format = PIPE_FORMAT_R8_UINT;
-			blit.src.resource = &src->stencil->base;
-			blit.dst.resource = &dst->stencil->base;
+			blit.src.resource = &src->stencil->b.b;
+			blit.dst.resource = &dst->stencil->b.b;
 			do_rewritten_blit(ctx, &blit);
 		}
 

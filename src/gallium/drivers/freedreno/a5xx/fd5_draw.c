@@ -170,7 +170,7 @@ fd5_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 
 	OUT_PKT4(ring, REG_A5XX_GRAS_SU_CNTL, 1);
 	OUT_RING(ring, A5XX_GRAS_SU_CNTL_LINEHALFWIDTH(0.0) |
-			COND(zsbuf->base.nr_samples > 1, A5XX_GRAS_SU_CNTL_MSAA_ENABLE));
+			COND(zsbuf->b.b.nr_samples > 1, A5XX_GRAS_SU_CNTL_MSAA_ENABLE));
 
 	OUT_PKT4(ring, REG_A5XX_GRAS_CNTL, 1);
 	OUT_RING(ring, 0x00000000);

@@ -29,6 +29,8 @@
 
 #include "pipe/p_context.h"
 
+#include "util/u_threaded_context.h"
+
 #include "freedreno_util.h"
 
 struct fd_context;
@@ -45,6 +47,8 @@ struct fd_query_funcs {
 };
 
 struct fd_query {
+	struct threaded_query base;
+
 	const struct fd_query_funcs *funcs;
 	int type;
 	unsigned index;

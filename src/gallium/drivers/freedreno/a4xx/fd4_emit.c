@@ -313,7 +313,7 @@ fd4_emit_gmem_restore_tex(struct fd_ringbuffer *ring, unsigned nr_bufs,
 			 */
 			if (rsc->stencil && (i == 0)) {
 				rsc = rsc->stencil;
-				format = fd_gmem_restore_format(rsc->base.format);
+				format = fd_gmem_restore_format(rsc->b.b.format);
 			}
 
 			/* note: PIPE_BUFFER disallowed for surfaces */

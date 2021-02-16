@@ -294,7 +294,7 @@ fd_bc_invalidate_batch(struct fd_batch *batch, bool remove)
 void
 fd_bc_invalidate_resource(struct fd_resource *rsc, bool destroy)
 {
-	struct fd_screen *screen = fd_screen(rsc->base.screen);
+	struct fd_screen *screen = fd_screen(rsc->b.b.screen);
 	struct fd_batch *batch;
 
 	fd_screen_lock(screen);

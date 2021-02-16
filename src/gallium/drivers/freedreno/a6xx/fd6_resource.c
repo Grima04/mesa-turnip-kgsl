@@ -116,11 +116,11 @@ fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
 	if (!rsc->layout.ubwc)
 		return;
 
-	if (ok_ubwc_format(rsc->base.screen, format))
+	if (ok_ubwc_format(rsc->b.b.screen, format))
 		return;
 
 	perf_debug_ctx(ctx, "%"PRSC_FMT": demoted to uncompressed due to use as %s",
-		PRSC_ARGS(&rsc->base), util_format_short_name(format));
+		PRSC_ARGS(&rsc->b.b), util_format_short_name(format));
 
 	fd_resource_uncompress(ctx, rsc);
 }
@@ -128,14 +128,14 @@ fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
 static void
 setup_lrz(struct fd_resource *rsc)
 {
-	struct fd_screen *screen = fd_screen(rsc->base.screen);
+	struct fd_screen *screen = fd_screen(rsc->b.b.screen);
 	const uint32_t flags = DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
 			DRM_FREEDRENO_GEM_TYPE_KMEM; /* TODO */
-	unsigned width0 = rsc->base.width0;
-	unsigned height0 = rsc->base.height0;
+	unsigned width0 = rsc->b.b.width0;
+	unsigned height0 = rsc->b.b.height0;
 
 	/* LRZ buffer is super-sampled: */
-	switch (rsc->base.nr_samples) {
+	switch (rsc->b.b.nr_samples) {
 	case 4:
 		width0 *= 2;
 		FALLTHROUGH;
@@ -157,12 +157,12 @@ setup_lrz(struct fd_resource *rsc)
 static uint32_t
 fd6_setup_slices(struct fd_resource *rsc)
 {
-	struct pipe_resource *prsc = &rsc->base;
+	struct pipe_resource *prsc = &rsc->b.b;
 
-	if (!FD_DBG(NOLRZ) && has_depth(rsc->base.format))
+	if (!FD_DBG(NOLRZ) && has_depth(rsc->b.b.format))
 		setup_lrz(rsc);
 
-	if (rsc->layout.ubwc && !ok_ubwc_format(rsc->base.screen, rsc->base.format))
+	if (rsc->layout.ubwc && !ok_ubwc_format(rsc->b.b.screen, rsc->b.b.format))
 		rsc->layout.ubwc = false;
 
 	fdl6_layout(&rsc->layout, prsc->format, fd_resource_nr_samples(prsc),
@@ -177,7 +177,7 @@ fd6_setup_slices(struct fd_resource *rsc)
 static int
 fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 {
-	struct pipe_resource *prsc = &rsc->base;
+	struct pipe_resource *prsc = &rsc->b.b;
 	struct fdl_explicit_layout explicit = {
 		.offset = rsc->layout.slices[0].offset,
 		.pitch = rsc->layout.pitch0,
@@ -207,15 +207,15 @@ fd6_layout_resource_for_modifier(struct fd_resource *rsc, uint64_t modifier)
 	case DRM_FORMAT_MOD_QCOM_COMPRESSED:
 		return fill_ubwc_buffer_sizes(rsc);
 	case DRM_FORMAT_MOD_LINEAR:
-		if (can_do_ubwc(&rsc->base)) {
+		if (can_do_ubwc(&rsc->b.b)) {
 			perf_debug("%"PRSC_FMT": not UBWC: imported with DRM_FORMAT_MOD_LINEAR!",
-					PRSC_ARGS(&rsc->base));
+					PRSC_ARGS(&rsc->b.b));
 		}
 		return 0;
 	case DRM_FORMAT_MOD_INVALID:
-		if (can_do_ubwc(&rsc->base)) {
+		if (can_do_ubwc(&rsc->b.b)) {
 			perf_debug("%"PRSC_FMT": not UBWC: imported with DRM_FORMAT_MOD_INVALID!",
-					PRSC_ARGS(&rsc->base));
+					PRSC_ARGS(&rsc->b.b));
 		}
 		return 0;
 	default:
