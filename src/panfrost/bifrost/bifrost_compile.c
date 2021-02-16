@@ -663,6 +663,57 @@ bi_emit_acmpxchg(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
         bi_make_vec_to(b, bi_dest_index(&instr->dest), inout_words, NULL, sz / 32, 32);
 }
 
+/* Extracts an atomic opcode */
+
+static enum bi_atom_opc
+bi_atom_opc_for_nir(nir_op op)
+{
+        switch (op) {
+        case nir_intrinsic_global_atomic_add:
+        case nir_intrinsic_shared_atomic_add:
+        case nir_intrinsic_image_atomic_add:
+                return BI_ATOM_OPC_AADD;
+
+        case nir_intrinsic_global_atomic_imin:
+        case nir_intrinsic_shared_atomic_imin:
+        case nir_intrinsic_image_atomic_imin:
+                return BI_ATOM_OPC_ASMIN;
+
+        case nir_intrinsic_global_atomic_umin:
+        case nir_intrinsic_shared_atomic_umin:
+        case nir_intrinsic_image_atomic_umin:
+                return BI_ATOM_OPC_AUMIN;
+
+        case nir_intrinsic_global_atomic_imax:
+        case nir_intrinsic_shared_atomic_imax:
+        case nir_intrinsic_image_atomic_imax:
+                return BI_ATOM_OPC_ASMAX;
+
+        case nir_intrinsic_global_atomic_umax:
+        case nir_intrinsic_shared_atomic_umax:
+        case nir_intrinsic_image_atomic_umax:
+                return BI_ATOM_OPC_AUMAX;
+
+        case nir_intrinsic_global_atomic_and:
+        case nir_intrinsic_shared_atomic_and:
+        case nir_intrinsic_image_atomic_and:
+                return BI_ATOM_OPC_AAND;
+
+        case nir_intrinsic_global_atomic_or:
+        case nir_intrinsic_shared_atomic_or:
+        case nir_intrinsic_image_atomic_or:
+                return BI_ATOM_OPC_AOR;
+
+        case nir_intrinsic_global_atomic_xor:
+        case nir_intrinsic_shared_atomic_xor:
+        case nir_intrinsic_image_atomic_xor:
+                return BI_ATOM_OPC_AXOR;
+
+        default:
+                unreachable("Unexpected computational atomic");
+        }
+}
+
 /* gl_FragCoord.xy = u16_to_f32(R59.xy) + 0.5
  * gl_FragCoord.z = ld_vary(fragz)
  * gl_FragCoord.w = ld_vary(fragw)
