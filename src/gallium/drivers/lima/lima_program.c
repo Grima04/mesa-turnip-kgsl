@@ -313,6 +313,36 @@ lima_fs_compile_shader(struct lima_context *ctx,
    return true;
 }
 
+static struct lima_fs_shader_state *
+lima_get_compiled_fs(struct lima_context *ctx,
+                     struct lima_fs_key *key)
+{
+   struct hash_table *ht;
+   uint32_t key_size;
+
+   ht = ctx->fs_cache;
+   key_size = sizeof(struct lima_fs_key);
+
+   struct hash_entry *entry = _mesa_hash_table_search(ht, key);
+   if (entry)
+      return entry->data;
+
+   /* not on cache, compile and insert into the cache */
+   struct lima_fs_shader_state *fs = rzalloc(NULL, struct lima_fs_shader_state);
+   if (!fs)
+      return NULL;
+
+   if (!lima_fs_compile_shader(ctx, key, fs))
+      return NULL;
+
+   struct lima_key *dup_key;
+   dup_key = rzalloc_size(fs, key_size);
+   memcpy(dup_key, key, key_size);
+   _mesa_hash_table_insert(ht, dup_key, fs);
+
+   return fs;
+}
+
 static void *
 lima_create_fs_state(struct pipe_context *pctx,
                      const struct pipe_shader_state *cso)
@@ -338,9 +368,14 @@ lima_create_fs_state(struct pipe_context *pctx,
    so->base.ir.nir = nir;
 
    /* Trigger initial compilation with default settings */
-   ctx->bind_fs = so;
-   ctx->dirty |= LIMA_CONTEXT_DIRTY_UNCOMPILED_FS;
-   lima_update_fs_state(ctx);
+   struct lima_fs_key key = {
+      .shader_state = so,
+   };
+   for (int i = 0; i < ARRAY_SIZE(key.tex); i++) {
+      for (int j = 0; j < 4; j++)
+         key.tex[i].swizzle[j] = j;
+   }
+   lima_get_compiled_fs(ctx, &key);
 
    return so;
 }
@@ -468,36 +503,6 @@ lima_update_vs_state(struct lima_context *ctx)
    return true;
 }
 
-static struct lima_fs_shader_state *
-lima_get_compiled_fs(struct lima_context *ctx,
-                     struct lima_fs_key *key)
-{
-   struct hash_table *ht;
-   uint32_t key_size;
-
-   ht = ctx->fs_cache;
-   key_size = sizeof(struct lima_fs_key);
-
-   struct hash_entry *entry = _mesa_hash_table_search(ht, key);
-   if (entry)
-      return entry->data;
-
-   /* not on cache, compile and insert into the cache */
-   struct lima_fs_shader_state *fs = rzalloc(NULL, struct lima_fs_shader_state);
-   if (!fs)
-      return NULL;
-
-   if (!lima_fs_compile_shader(ctx, key, fs))
-      return NULL;
-
-   struct lima_key *dup_key;
-   dup_key = rzalloc_size(fs, key_size);
-   memcpy(dup_key, key, key_size);
-   _mesa_hash_table_insert(ht, dup_key, fs);
-
-   return fs;
-}
-
 bool
 lima_update_fs_state(struct lima_context *ctx)
 {
@@ -563,9 +568,10 @@ lima_create_vs_state(struct pipe_context *pctx,
    so->base.ir.nir = nir;
 
    /* Trigger initial compilation with default settings */
-   ctx->bind_vs = so;
-   ctx->dirty |= LIMA_CONTEXT_DIRTY_UNCOMPILED_VS;
-   lima_update_vs_state(ctx);
+   struct lima_vs_key key = {
+      .shader_state = so,
+   };
+   lima_get_compiled_vs(ctx, &key);
 
    return so;
 }
