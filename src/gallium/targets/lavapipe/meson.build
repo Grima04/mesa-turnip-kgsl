@@ -18,15 +18,15 @@ endif
 
 lvp_icd = custom_target(
   'lvp_icd',
-  input : 'lvp_icd.py',
+  input : [vk_icd_gen, vk_api_xml],
   output : 'lvp_icd.@0@.json'.format(host_machine.cpu()),
   command : [
-    prog_python, '@INPUT@',
-    '--lib-path', module_dir,
+    prog_python, '@INPUT0@',
+    '--api-version', '1.1', '--xml', '@INPUT1@',
+    '--lib-path', join_paths(get_option('prefix'), get_option('libdir'),
+                             'libvulkan_lvp.so'),
     '--out', '@OUTPUT@',
-    '--suffix', libvulkan_lvp.full_path().split('.')[-1],
   ],
-  depend_files : files('../../frontends/lavapipe/lvp_extensions.py'),
   build_by_default : true,
   install_dir : with_vulkan_icd_dir,
   install : true,
