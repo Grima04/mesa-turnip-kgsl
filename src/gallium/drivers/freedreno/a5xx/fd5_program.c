@@ -247,6 +247,8 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	setup_stages(emit, s);
 
+	bool do_streamout = (s[VS].v->shader->stream_output.num_outputs > 0);
+
 	fssz = (s[FS].i->max_reg >= 24) ? TWO_QUADS : FOUR_QUADS;
 
 	pos_regid = ir3_find_output_regid(s[VS].v, VARYING_SLOT_POS);
@@ -364,8 +366,17 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			A5XX_SP_VS_CTRL_REG0_BRANCHSTACK(s[VS].v->branchstack) |
 			COND(s[VS].v->need_pixlod, A5XX_SP_VS_CTRL_REG0_PIXLODENABLE));
 
+	/* If we have streamout, link against the real FS in the binning program,
+	 * rather than the dummy FS used for binning pass state, to ensure the
+	 * OUTLOC's match.  Depending on whether we end up doing sysmem or gmem, the
+	 * actual streamout could happen with either the binning pass or draw pass
+	 * program, but the same streamout stateobj is used in either case:
+	 */
+	const struct ir3_shader_variant *link_fs = s[FS].v;
+	if (do_streamout && emit->binning_pass)
+		link_fs = ir3_shader_variant(ir3_get_shader(emit->prog->fs), emit->key, false, emit->debug);
 	struct ir3_shader_linkage l = {0};
-	ir3_link_shaders(&l, s[VS].v, s[FS].v, true);
+	ir3_link_shaders(&l, s[VS].v, link_fs, true);
 
 	OUT_PKT4(ring, REG_A5XX_VPC_VAR_DISABLE(0), 4);
 	OUT_RING(ring, ~l.varmask[0]);  /* VPC_VAR[0].DISABLE */
@@ -373,8 +384,8 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_RING(ring, ~l.varmask[2]);  /* VPC_VAR[2].DISABLE */
 	OUT_RING(ring, ~l.varmask[3]);  /* VPC_VAR[3].DISABLE */
 
-	if (!emit->binning_pass)
-		ir3_link_stream_out(&l, s[VS].v);
+	/* Add stream out outputs after computing the VPC_VAR_DISABLE bitmask. */
+	ir3_link_stream_out(&l, s[VS].v);
 
 	/* a5xx appends pos/psize to end of the linkage map: */
 	if (pos_regid != regid(63,0))
@@ -385,16 +396,14 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		ir3_link_add(&l, psize_regid, 0x1, l.max_loc);
 	}
 
-	if ((s[VS].v->shader->stream_output.num_outputs > 0) &&
-			!emit->binning_pass) {
+	/* If we have stream-out, we use the full shader for binning
+	 * pass, rather than the optimized binning pass one, so that we
+	 * have all the varying outputs available for xfb.  So streamout
+	 * state should always be derived from the non-binning pass
+	 * program:
+	 */
+	if (do_streamout && !emit->binning_pass)
 		emit_stream_out(ring, s[VS].v, &l);
-
-		OUT_PKT4(ring, REG_A5XX_VPC_SO_OVERRIDE, 1);
-		OUT_RING(ring, 0x00000000);
-	} else {
-		OUT_PKT4(ring, REG_A5XX_VPC_SO_OVERRIDE, 1);
-		OUT_RING(ring, A5XX_VPC_SO_OVERRIDE_SO_DISABLE);
-	}
 
 	for (i = 0, j = 0; (i < 16) && (j < l.cnt); i++) {
 		uint32_t reg = 0;

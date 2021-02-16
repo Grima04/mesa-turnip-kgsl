@@ -391,8 +391,19 @@ fd5_emit_tile_init(struct fd_batch *batch)
 	emit_zs(ring, pfb->zsbuf, batch->gmem_state);
 	emit_mrt(ring, pfb->nr_cbufs, pfb->cbufs, batch->gmem_state);
 
+	/* Enable stream output for the first pass (likely the binning). */
+	OUT_PKT4(ring, REG_A5XX_VPC_SO_OVERRIDE, 1);
+	OUT_RING(ring, 0);
+
 	if (use_hw_binning(batch)) {
 		emit_binning_pass(batch);
+
+		/* Disable stream output after binning, since each VS output should get
+		 * streamed out once.
+		 */
+		OUT_PKT4(ring, REG_A5XX_VPC_SO_OVERRIDE, 1);
+		OUT_RING(ring, A5XX_VPC_SO_OVERRIDE_SO_DISABLE);
+
 		fd5_emit_lrz_flush(batch, ring);
 		patch_draws(batch, USE_VISIBILITY);
 	} else {
@@ -400,6 +411,10 @@ fd5_emit_tile_init(struct fd_batch *batch)
 	}
 
 	fd5_set_render_mode(batch->ctx, ring, GMEM);
+
+	/* XXX If we're in gmem mode but not doing HW binning, then after the first
+	 * tile we should disable stream output (fd6_gmem.c doesn't do that either).
+	 */
 }
 
 /* before mem2gmem */
@@ -744,6 +759,10 @@ fd5_emit_sysmem_prep(struct fd_batch *batch)
 	OUT_PKT4(ring, REG_A5XX_RB_WINDOW_OFFSET, 1);
 	OUT_RING(ring, A5XX_RB_WINDOW_OFFSET_X(0) |
 			A5XX_RB_WINDOW_OFFSET_Y(0));
+
+	/* Enable stream output, since there's no binning pass to put it in. */
+	OUT_PKT4(ring, REG_A5XX_VPC_SO_OVERRIDE, 1);
+	OUT_RING(ring, 0);
 
 	OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
 	OUT_RING(ring, 0x1);

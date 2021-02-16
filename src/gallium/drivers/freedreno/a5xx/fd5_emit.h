@@ -79,9 +79,12 @@ static inline const struct ir3_shader_variant *
 fd5_emit_get_vp(struct fd5_emit *emit)
 {
 	if (!emit->vs) {
+		/* We use nonbinning VS during binning when TFB is enabled because that
+		 * is what has all the outputs that might be involved in TFB.
+		 */
 		struct ir3_shader *shader = ir3_get_shader(emit->prog->vs);
 		emit->vs = ir3_shader_variant(shader, emit->key,
-				emit->binning_pass, emit->debug);
+				emit->binning_pass && !shader->stream_output.num_outputs, emit->debug);
 	}
 	return emit->vs;
 }
