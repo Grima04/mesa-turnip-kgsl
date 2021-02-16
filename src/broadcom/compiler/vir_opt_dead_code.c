@@ -91,7 +91,9 @@ vir_dce_flags(struct v3d_compile *c, struct qinst *inst)
 }
 
 static bool
-is_last_ldunifa(struct v3d_compile *c, struct qinst *inst, struct qblock *block)
+check_last_ldunifa(struct v3d_compile *c,
+                   struct qinst *inst,
+                   struct qblock *block)
 {
         if (!inst->qpu.sig.ldunifa && !inst->qpu.sig.ldunifarf)
                 return false;
@@ -114,6 +116,66 @@ is_last_ldunifa(struct v3d_compile *c, struct qinst *inst, struct qblock *block)
         }
 
         return true;
+}
+
+static bool
+check_first_ldunifa(struct v3d_compile *c,
+                    struct qinst *inst,
+                    struct qblock *block,
+                    struct qinst **unifa)
+{
+        if (!inst->qpu.sig.ldunifa && !inst->qpu.sig.ldunifarf)
+                return false;
+
+        list_for_each_entry_from_rev(struct qinst, scan_inst, inst->link.prev,
+                                     &block->instructions, link) {
+                /* If we find a write to unifa, then this was the first
+                 * ldunifa in its sequence and is safe to remove.
+                 */
+                if (scan_inst->dst.file == QFILE_MAGIC &&
+                    scan_inst->dst.index == V3D_QPU_WADDR_UNIFA) {
+                        *unifa = scan_inst;
+                        return true;
+                }
+
+                /* If we find another ldunifa in the same sequence then we
+                 * can't remove it.
+                 */
+                if (scan_inst->qpu.sig.ldunifa || scan_inst->qpu.sig.ldunifarf)
+                        return false;
+        }
+
+        unreachable("could not find starting unifa for ldunifa sequence");
+}
+
+static bool
+increment_unifa_address(struct v3d_compile *c, struct qinst *unifa)
+{
+        if (unifa->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
+            unifa->qpu.alu.mul.op == V3D_QPU_M_MOV) {
+                c->cursor = vir_after_inst(unifa);
+                struct qreg unifa_reg = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_UNIFA);
+                vir_ADD_dest(c, unifa_reg, unifa->src[0], vir_uniform_ui(c, 4u));
+                vir_remove_instruction(c, unifa);
+                return true;
+        }
+
+        /* FIXME: we can optimize this further by implementing a constant
+         * ALU pass in the backend, for the case where we are skipping
+         * multiple leading ldunifa.
+         */
+        if (unifa->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
+            unifa->qpu.alu.add.op == V3D_QPU_A_ADD) {
+                c->cursor = vir_after_inst(unifa);
+                struct qreg unifa_reg = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_UNIFA);
+                struct qreg tmp =
+                        vir_ADD(c, unifa->src[1], vir_uniform_ui(c, 4u));
+                vir_ADD_dest(c, unifa_reg, unifa->src[0], tmp);
+                vir_remove_instruction(c, unifa);
+                return true;
+        }
+
+        return false;
 }
 
 bool
@@ -151,8 +213,15 @@ vir_opt_dead_code(struct v3d_compile *c)
                                 continue;
                         }
 
+                        const bool is_last_ldunifa =
+                                check_last_ldunifa(c, inst, block);
+
+                        struct qinst *unifa = NULL;
+                        const bool is_first_ldunifa =
+                                check_first_ldunifa(c, inst, block, &unifa);
+
                         if (vir_has_side_effects(c, inst) &&
-                            !is_last_ldunifa(c, inst, block)) {
+                            !is_last_ldunifa && !is_first_ldunifa) {
                                 continue;
                         }
 
@@ -193,6 +262,15 @@ vir_opt_dead_code(struct v3d_compile *c)
                                         progress = true;
                                 }
                                 continue;
+                        }
+
+                        /* If we are removing the first ldunifa in a sequence
+                         * we need to update the unifa address.
+                         */
+                        if (is_first_ldunifa) {
+                                assert(unifa);
+                                if (!increment_unifa_address(c, unifa))
+                                        continue;
                         }
 
                         assert(inst != last_flags_write);
