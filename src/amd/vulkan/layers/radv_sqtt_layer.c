@@ -327,7 +327,6 @@ radv_describe_pipeline_bind(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct rgp_sqtt_marker_pipeline_bind marker = {0};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
-	uint64_t pipeline_idx = (uintptr_t)pipeline;
 
 	// TODO: Enable when PSO records & friends are dumped.
 	return;
@@ -338,8 +337,8 @@ radv_describe_pipeline_bind(struct radv_cmd_buffer *cmd_buffer,
 	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BIND_PIPELINE;
 	marker.cb_id = 0;
 	marker.bind_point = pipelineBindPoint;
-	marker.api_pso_hash[0] = pipeline_idx;
-	marker.api_pso_hash[1] = pipeline_idx >> 32;
+	marker.api_pso_hash[0] = pipeline->pipeline_hash;
+	marker.api_pso_hash[1] = pipeline->pipeline_hash >> 32;
 
 	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }

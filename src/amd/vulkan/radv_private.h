@@ -1752,6 +1752,9 @@ struct radv_pipeline {
 
 	/* Not NULL if graphics pipeline uses streamout. */
 	struct radv_shader_variant *streamout_shader;
+
+	/* Unique pipeline hash identifier. */
+	uint64_t pipeline_hash;
 };
 
 static inline bool radv_pipeline_has_gs(const struct radv_pipeline *pipeline)

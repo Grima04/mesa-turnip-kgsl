@@ -3233,6 +3233,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 	memcpy(gs_copy_hash, hash, 20);
 	gs_copy_hash[0] ^= 1;
 
+	pipeline->pipeline_hash = *(uint64_t *)hash;
+
 	bool found_in_application_cache = true;
 	if (modules[MESA_SHADER_GEOMETRY] && !keep_executable_info && !keep_statistic_info) {
 		struct radv_shader_variant *variants[MESA_SHADER_STAGES] = {0};
