@@ -815,6 +815,22 @@ nir_iadd_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
    }
 }
 
+static inline nir_ssa_def *
+nir_iadd_imm_nuw(nir_builder *b, nir_ssa_def *x, uint64_t y)
+{
+   nir_ssa_def *d = nir_iadd_imm(b, x, y);
+   if (d != x && d->parent_instr->type == nir_instr_type_alu)
+      nir_instr_as_alu(d->parent_instr)->no_unsigned_wrap = true;
+   return d;
+}
+
+static inline nir_ssa_def *
+nir_iadd_nuw(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
+{
+   nir_ssa_def *d = nir_iadd(b, x, y);
+   nir_instr_as_alu(d->parent_instr)->no_unsigned_wrap = true;
+   return d;
+}
 
 static inline nir_ssa_def *
 nir_ieq_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
