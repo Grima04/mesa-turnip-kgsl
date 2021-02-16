@@ -23,6 +23,7 @@
  *
  */
 
+#include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 #include "util/u_helpers.h"
@@ -33,6 +34,7 @@
 
 #include "lima_screen.h"
 #include "lima_context.h"
+#include "lima_format.h"
 #include "lima_resource.h"
 
 static void
@@ -354,6 +356,11 @@ lima_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
    so->base.texture = prsc;
    so->base.reference.count = 1;
    so->base.context = pctx;
+
+   uint8_t sampler_swizzle[4] = { cso->swizzle_r, cso->swizzle_g,
+                                  cso->swizzle_b, cso->swizzle_a };
+   const uint8_t *format_swizzle = lima_format_get_texel_swizzle(cso->format);
+   util_format_compose_swizzles(format_swizzle, sampler_swizzle, so->swizzle);
 
    return &so->base;
 }

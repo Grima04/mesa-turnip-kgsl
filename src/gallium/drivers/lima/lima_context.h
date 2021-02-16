@@ -58,7 +58,6 @@ struct lima_fs_bind_state {
 struct lima_fs_key {
    struct lima_fs_bind_state *shader_state;
    struct {
-      enum pipe_format format;
       uint8_t swizzle[4];
    } tex[PIPE_MAX_SAMPLERS];
 };
@@ -292,6 +291,7 @@ lima_sampler_state(struct pipe_sampler_state *psstate)
 
 struct lima_sampler_view {
    struct pipe_sampler_view base;
+   uint8_t swizzle[4];
 };
 
 static inline struct lima_sampler_view *

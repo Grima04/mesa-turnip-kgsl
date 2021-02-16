@@ -37,7 +37,6 @@
 #include "lima_job.h"
 #include "lima_program.h"
 #include "lima_bo.h"
-#include "lima_format.h"
 
 #include "ir/lima_ir.h"
 
@@ -283,23 +282,9 @@ lima_fs_compile_shader(struct lima_context *ctx,
       .swizzle_result = ~0u,
    };
 
-   /* Lower the format swizzle and ARB_texture_swizzle-style swizzle. */
-   for (int i = 0; i < PIPE_MAX_SAMPLERS; i++) {
-      enum pipe_format format = key->tex[i].format;
-      if (!format)
-         continue;
-
-      const uint8_t *format_swizzle = lima_format_get_texel_swizzle(format);
-
-      for (int j = 0; j < 4; j++) {
-         uint8_t arb_swiz = key->tex[i].swizzle[j];
-
-         if (arb_swiz <= 3) {
-            tex_options.swizzles[i][j] = format_swizzle[arb_swiz];
-         } else {
-            tex_options.swizzles[i][j] = arb_swiz;
-         }
-      }
+   for (int i = 0; i < ARRAY_SIZE(key->tex); i++) {
+      for (int j = 0; j < 4; j++)
+         tex_options.swizzles[i][j] = key->tex[i].swizzle[j];
    }
 
    lima_program_optimize_fs_nir(nir, &tex_options);
@@ -522,12 +507,9 @@ lima_update_fs_state(struct lima_context *ctx)
        lima_tex->num_samplers &&
        lima_tex->num_textures)) {
       for (int i = 0; i < lima_tex->num_samplers; i++) {
-         struct pipe_sampler_view *sampler = lima_tex->textures[i];
-         key->tex[i].format = sampler->format;
-         key->tex[i].swizzle[0] = sampler->swizzle_r;
-         key->tex[i].swizzle[1] = sampler->swizzle_g;
-         key->tex[i].swizzle[2] = sampler->swizzle_b;
-         key->tex[i].swizzle[3] = sampler->swizzle_a;
+         struct lima_sampler_view *sampler = lima_sampler_view(lima_tex->textures[i]);
+         for (int j = 0; j < 4; j++)
+            key->tex[i].swizzle[j] = sampler->swizzle[j];
       }
    }
 
