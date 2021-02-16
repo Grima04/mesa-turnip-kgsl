@@ -163,12 +163,14 @@ struct pan_shader_info {
                         bool can_discard;
                         bool writes_depth;
                         bool writes_stencil;
+                        bool writes_coverage;
                         bool sidefx;
                         bool reads_sample_id;
                         bool reads_sample_pos;
                         bool reads_sample_mask_in;
                         bool reads_helper_invocation;
                         bool sample_shading;
+                        bool early_fragment_tests;
                         BITSET_WORD outputs_read;
                 } fs;
 

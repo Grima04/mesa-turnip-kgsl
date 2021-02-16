@@ -174,6 +174,8 @@ pan_shader_compile(const struct panfrost_device *dev,
                         info->fs.writes_depth = true;
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
                         info->fs.writes_stencil = true;
+                if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK))
+                        info->fs.writes_coverage = true;
 
                 uint64_t outputs_read = s->info.outputs_read;
                 if (outputs_read & BITFIELD64_BIT(FRAG_RESULT_COLOR))
@@ -187,6 +189,7 @@ pan_shader_compile(const struct panfrost_device *dev,
 
                 info->fs.can_discard = s->info.fs.uses_discard;
                 info->fs.helper_invocations = s->info.fs.needs_quad_helper_invocations;
+                info->fs.early_fragment_tests = s->info.fs.early_fragment_tests;
 
                 /* List of reasons we need to execute frag shaders when things
                  * are masked off */
