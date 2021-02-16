@@ -1935,6 +1935,44 @@ instruction_restrictions(const struct gen_device_info *devinfo,
                "modifier is not supported.");
    }
 
+   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_CMP ||
+       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_CMPN) {
+      if (devinfo->gen <= 7) {
+         /* Page 166 of the Ivy Bridge PRM Volume 4 part 3 (Execution Unit
+          * ISA) says:
+          *
+          *    Accumulator cannot be destination, implicit or explicit. The
+          *    destination must be a general register or the null register.
+          *
+          * Page 77 of the Haswell PRM Volume 2b contains the same text.  The
+          * 965G PRMs contain similar text.
+          *
+          * Page 864 (page 880 of the PDF) of the Broadwell PRM Volume 7 says:
+          *
+          *    For the cmp and cmpn instructions, remove the accumulator
+          *    restrictions.
+          */
+         ERROR_IF(brw_inst_dst_reg_file(devinfo, inst) == BRW_ARCHITECTURE_REGISTER_FILE &&
+                  brw_inst_dst_da_reg_nr(devinfo, inst) != BRW_ARF_NULL,
+                  "Accumulator cannot be destination, implicit or explicit.");
+      }
+
+      /* Page 166 of the Ivy Bridge PRM Volume 4 part 3 (Execution Unit ISA)
+       * says:
+       *
+       *    If the destination is the null register, the {Switch} instruction
+       *    option must be used.
+       *
+       * Page 77 of the Haswell PRM Volume 2b contains the same text.
+       */
+      if (devinfo->gen == 7) {
+         ERROR_IF(dst_is_null(devinfo, inst) &&
+                  brw_inst_thread_control(devinfo, inst) != BRW_THREAD_SWITCH,
+                  "If the destination is the null register, the {Switch} "
+                  "instruction option must be used.");
+      }
+   }
+
    return error_msg;
 }
 

@@ -2124,7 +2124,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
              * type when the destination is the null register is necessary but
              * not sufficient by itself.
              */
-            assert(dst.nr == BRW_ARF_NULL);
             dst.type = BRW_REGISTER_TYPE_D;
          }
          brw_CMP(p, dst, inst->conditional_mod, src[0], src[1]);
