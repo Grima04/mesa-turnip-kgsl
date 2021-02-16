@@ -745,6 +745,36 @@ bi_promote_atom_c1(enum bi_atom_opc op, bi_index arg, enum bi_atom_opc *out)
         }
 }
 
+static void
+bi_emit_atomic_i32_to(bi_builder *b, bi_index dst,
+                bi_index addr, bi_index arg, nir_op intrinsic)
+{
+        /* ATOM_C.i32 takes a vector with {arg, coalesced}, ATOM_C1.i32 doesn't
+         * take any vector but can still output in RETURN mode */
+        bi_index sr = bi_temp_reg(b->shader);
+
+        enum bi_atom_opc opc = bi_atom_opc_for_nir(intrinsic);
+        enum bi_atom_opc post_opc = opc;
+
+        bi_instr *I;
+
+        /* Generate either ATOM_C or ATOM_C1 as required */
+        if (bi_promote_atom_c1(opc, arg, &opc)) {
+                I = bi_patom_c1_i32_to(b, sr, bi_word(addr, 0),
+                                bi_word(addr, 1), opc);
+        } else {
+                bi_mov_i32_to(b, sr, arg);
+                I = bi_patom_c_i32_to(b, sr, sr, bi_word(addr, 0),
+                                bi_word(addr, 1), opc);
+
+        }
+
+        I->sr_count = 2;
+
+        /* Post-process it */
+        bi_atom_post_i32_to(b, dst, bi_word(sr, 0), bi_word(sr, 1), post_opc);
+}
+
 /* gl_FragCoord.xy = u16_to_f32(R59.xy) + 0.5
  * gl_FragCoord.z = ld_vary(fragz)
  * gl_FragCoord.w = ld_vary(fragw)
@@ -854,6 +884,56 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_control_barrier:
                 assert(b->shader->stage != MESA_SHADER_FRAGMENT);
                 bi_barrier_to(b, bi_null());
+                break;
+
+        case nir_intrinsic_shared_atomic_add:
+        case nir_intrinsic_shared_atomic_imin:
+        case nir_intrinsic_shared_atomic_umin:
+        case nir_intrinsic_shared_atomic_imax:
+        case nir_intrinsic_shared_atomic_umax:
+        case nir_intrinsic_shared_atomic_and:
+        case nir_intrinsic_shared_atomic_or:
+        case nir_intrinsic_shared_atomic_xor: {
+                assert(nir_src_bit_size(instr->src[1]) == 32);
+
+                bi_index addr = bi_seg_add_i64(b, bi_src_index(&instr->src[0]),
+                                bi_zero(), false, BI_SEG_WLS);
+
+                bi_emit_atomic_i32_to(b, dst, addr, bi_src_index(&instr->src[1]),
+                                instr->intrinsic);
+                break;
+        }
+
+        case nir_intrinsic_image_atomic_add:
+        case nir_intrinsic_image_atomic_imin:
+        case nir_intrinsic_image_atomic_umin:
+        case nir_intrinsic_image_atomic_imax:
+        case nir_intrinsic_image_atomic_umax:
+        case nir_intrinsic_image_atomic_and:
+        case nir_intrinsic_image_atomic_or:
+        case nir_intrinsic_image_atomic_xor:
+                assert(nir_src_bit_size(instr->src[3]) == 32);
+
+                bi_emit_atomic_i32_to(b, dst,
+                                bi_emit_lea_image(b, instr),
+                                bi_src_index(&instr->src[3]),
+                                instr->intrinsic);
+                break;
+
+        case nir_intrinsic_global_atomic_add:
+        case nir_intrinsic_global_atomic_imin:
+        case nir_intrinsic_global_atomic_umin:
+        case nir_intrinsic_global_atomic_imax:
+        case nir_intrinsic_global_atomic_umax:
+        case nir_intrinsic_global_atomic_and:
+        case nir_intrinsic_global_atomic_or:
+        case nir_intrinsic_global_atomic_xor:
+                assert(nir_src_bit_size(instr->src[1]) == 32);
+
+                bi_emit_atomic_i32_to(b, dst,
+                                bi_src_index(&instr->src[0]),
+                                bi_src_index(&instr->src[1]),
+                                instr->intrinsic);
                 break;
 
         case nir_intrinsic_global_atomic_exchange:
