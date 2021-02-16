@@ -1205,8 +1205,8 @@ zink-piglit-quick_gl:
 
 virgl-traces:
   extends:
-    - .piglit-traces-test
     - .virgl-test
+    - .piglit-traces-test
   variables:
     EGL_PLATFORM: "surfaceless"
     PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-virgl.yml"
@@ -1235,9 +1235,8 @@ arm64-a630-traces:
 
 radv-polaris10-traces:
   extends:
-    - .piglit-traces-test
-    - .test-vk
     - .test-radv
+    - .piglit-traces-test
     - .test-manual
   variables:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-radv.yml"
@@ -1248,9 +1247,8 @@ radv-polaris10-traces:
 
 radv-raven-traces:
   extends:
-    - .piglit-traces-test
-    - .test-vk
     - .test-radv
+    - .piglit-traces-test
     - .test-manual
   variables:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-radv.yml"
@@ -1328,8 +1326,8 @@ softpipe-asan-gles31:
 
 softpipe-piglit-quick:
   extends:
-    - .piglit-test
     - .test-gl
+    - .piglit-test
     - .softpipe-rules
   variables:
     GALLIUM_DRIVER: softpipe
