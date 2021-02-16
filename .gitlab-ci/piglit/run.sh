@@ -2,9 +2,9 @@
 
 set -ex
 
-INSTALL="$(pwd)/install"
+INSTALL=$(realpath -s "$PWD"/install)
 
-RESULTS="$(pwd)/results"
+RESULTS=$(realpath -s "$PWD"/results)
 mkdir -p "$RESULTS"
 
 # Set up the driver environment.
@@ -228,12 +228,12 @@ fi
 
 if [ ${PIGLIT_HTML_SUMMARY:-1} -eq 1 ]; then
     ./piglit summary html --exclude-details=pass \
-        "$OLDPWD"/summary "$RESULTS"/results.json.bz2
+        "$RESULTS"/summary "$RESULTS"/results.json.bz2
 
     if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
-        find "$OLDPWD"/summary -type f -name "*.html" -print0 \
+        find "$RESULTS"/summary -type f -name "*.html" -print0 \
             | xargs -0 sed -i 's%<img src="file://'"${RESULTS}"'.*-\([0-9a-f]*\)\.png%<img src="https://'"${MINIO_HOST}${PIGLIT_REPLAY_ARTIFACTS_BASE_URL}"'/traces/\1.png%g'
-        find "$OLDPWD"/summary -type f -name "*.html" -print0 \
+        find "$RESULTS"/summary -type f -name "*.html" -print0 \
             | xargs -0 sed -i 's%<img src="file://%<img src="https://'"${MINIO_HOST}${PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL}"'/%g'
     fi
 
