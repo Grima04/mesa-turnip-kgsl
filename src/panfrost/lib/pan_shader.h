@@ -60,6 +60,50 @@ pan_shader_prepare_midgard_rsd(const struct pan_shader_info *info,
                 rsd->properties.midgard.work_register_count = info->work_reg_count;
 }
 
+/* Classify a shader into the following pixel kill categories:
+ *
+ * (force early, strong early): no side effects/depth/stencil/coverage writes (force)
+ * (weak early, weak early): no side effects/depth/stencil/coverage writes
+ * (weak early, force late): no side effects/depth/stencil writes
+ * (force late, weak early): side effects but no depth/stencil/coverage writes
+ * (force late, force early): only run for side effects
+ * (force late, force late): depth/stencil writes
+ *
+ * Note that discard is considered a coverage write. TODO: what about
+ * alpha-to-coverage?
+ * */
+
+#define SET_PIXEL_KILL(kill, update) do { \
+        rsd->properties.bifrost.pixel_kill_operation = MALI_PIXEL_KILL_## kill; \
+        rsd->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_## update; \
+} while(0)
+
+static inline void
+pan_shader_classify_pixel_kill_coverage(const struct pan_shader_info *info,
+                struct MALI_RENDERER_STATE *rsd)
+{
+        bool force_early = info->fs.early_fragment_tests;
+        bool sidefx = info->writes_global;
+        bool coverage = info->fs.writes_coverage || info->fs.can_discard;
+        bool depth = info->fs.writes_depth;
+        bool stencil = info->fs.writes_stencil;
+
+        rsd->properties.bifrost.shader_modifies_coverage = coverage;
+
+        if (force_early)
+                SET_PIXEL_KILL(FORCE_EARLY, STRONG_EARLY);
+        else if (depth || stencil || (sidefx && coverage))
+                SET_PIXEL_KILL(FORCE_LATE, FORCE_LATE);
+        else if (sidefx)
+                SET_PIXEL_KILL(FORCE_LATE, WEAK_EARLY);
+        else if (coverage)
+                SET_PIXEL_KILL(WEAK_EARLY, FORCE_LATE);
+        else
+                SET_PIXEL_KILL(WEAK_EARLY, WEAK_EARLY);
+}
+
+#undef SET_PIXEL_KILL
+
 static inline void
 pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                                struct MALI_RENDERER_STATE *rsd)
@@ -77,19 +121,9 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 break;
 
         case MESA_SHADER_FRAGMENT:
-                /* Early-Z set at draw-time */
-                if (info->fs.writes_depth || info->fs.writes_stencil) {
-                        rsd->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_FORCE_LATE;
-                        rsd->properties.bifrost.pixel_kill_operation = MALI_PIXEL_KILL_FORCE_LATE;
-                } else if (info->fs.can_discard) {
-                        rsd->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_FORCE_LATE;
-                        rsd->properties.bifrost.pixel_kill_operation = MALI_PIXEL_KILL_WEAK_EARLY;
-                } else {
-                        rsd->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
-                        rsd->properties.bifrost.pixel_kill_operation = MALI_PIXEL_KILL_FORCE_EARLY;
-                }
+                pan_shader_classify_pixel_kill_coverage(info, rsd);
+
                 rsd->properties.uniform_buffer_count = info->ubo_count;
-                rsd->properties.bifrost.shader_modifies_coverage = info->fs.can_discard;
                 rsd->properties.bifrost.shader_wait_dependency_6 = info->bifrost.wait_6;
                 rsd->properties.bifrost.shader_wait_dependency_7 = info->bifrost.wait_7;
 
