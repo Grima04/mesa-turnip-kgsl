@@ -134,6 +134,13 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_ANISOTROPIC_FILTER:
                 return !!(dev->quirks & HAS_ANISOTROPIC);
 
+        /* Compile side is done for Bifrost, Midgard TODO. Needs some kernel
+         * work to turn on, since CYCLE_COUNT_START needs to be issued. In
+         * kbase, userspace requests this via BASE_JD_REQ_PERMON. There is not
+         * yet way to request this with mainline TODO */
+        case PIPE_CAP_TGSI_CLOCK:
+                return 0;
+
         case PIPE_CAP_TGSI_INSTANCEID:
         case PIPE_CAP_TEXTURE_MULTISAMPLE:
         case PIPE_CAP_SURFACE_SAMPLE_COUNT:
