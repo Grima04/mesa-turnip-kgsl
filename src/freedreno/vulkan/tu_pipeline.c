@@ -2167,6 +2167,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
    /* TODO do intra-stage linking here */
 
+   uint32_t desc_sets = 0;
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
         stage < ARRAY_SIZE(nir); stage++) {
       if (!nir[stage])
@@ -2187,8 +2188,13 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
          key.tessellation = tu6_get_tessmode(shader);
       }
 
+      /* Keep track of the status of each shader's active descriptor sets,
+       * which is set in tu_lower_io. */
+      desc_sets |= shader->active_desc_sets;
+
       builder->shaders[stage] = shader;
    }
+   pipeline->active_desc_sets = desc_sets;
 
    struct tu_shader *last_shader = builder->shaders[MESA_SHADER_GEOMETRY];
    if (!last_shader)
@@ -2368,7 +2374,6 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    }
    pipeline->active_stages = stages;
 
-   uint32_t desc_sets = 0;
    for (unsigned i = 0; i < ARRAY_SIZE(builder->shaders); i++) {
       if (!builder->shaders[i])
          continue;
@@ -2376,9 +2381,7 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       tu_pipeline_set_linkage(&pipeline->program.link[i],
                               builder->shaders[i],
                               builder->variants[i]);
-      desc_sets |= builder->shaders[i]->active_desc_sets;
    }
-   pipeline->active_desc_sets = desc_sets;
 }
 
 static void
