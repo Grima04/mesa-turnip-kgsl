@@ -370,11 +370,12 @@ class Field(object):
         return self != field and max(self.start, field.start) <= min(self.end, field.end)
 
 class Group(object):
-    def __init__(self, parser, parent, start, count):
+    def __init__(self, parser, parent, start, count, label):
         self.parser = parser
         self.parent = parent
         self.start = start
         self.count = count
+        self.label = label
         self.size = 0
         self.length = 0
         self.fields = []
@@ -565,8 +566,8 @@ class Group(object):
             ALL_ONES = 0xffffffff
 
             if mask != ALL_ONES:
-                TMPL = '   if (((const uint32_t *) cl)[{}] & {}) fprintf(stderr, "XXX: Invalid field unpacked at word {}\\n");'
-                print(TMPL.format(index, hex(mask ^ ALL_ONES), index))
+                TMPL = '   if (((const uint32_t *) cl)[{}] & {}) fprintf(stderr, "XXX: Invalid field of {} unpacked at word {}\\n");'
+                print(TMPL.format(index, hex(mask ^ ALL_ONES), self.label, index))
 
         fieldrefs = []
         self.collect_fields(self.fields, 0, '', fieldrefs)
@@ -669,7 +670,7 @@ class Parser(object):
             object_name = self.gen_prefix(safe_name(name.upper()))
             self.struct = object_name
 
-            self.group = Group(self, None, 0, 1)
+            self.group = Group(self, None, 0, 1, name)
             if "size" in attrs:
                 self.group.length = int(attrs["size"]) * 4
             self.structs[attrs["name"]] = self.group
