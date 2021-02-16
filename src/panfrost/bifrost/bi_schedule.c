@@ -136,6 +136,68 @@ bi_lower_cubeface(bi_context *ctx,
         return cubeface1;
 }
 
+/* Psuedo arguments are (rbase, address lo, address hi). We need *ATOM_C.i32 to
+ * have the arguments (address lo, address hi, rbase), and +ATOM_CX to have the
+ * arguments (rbase, address lo, address hi, rbase) */
+
+static bi_instr *
+bi_lower_atom_c(bi_context *ctx, struct bi_clause_state *clause, struct
+                bi_tuple_state *tuple)
+{
+        bi_instr *pinstr = tuple->add;
+        bi_builder b = bi_init_builder(ctx, bi_before_instr(pinstr));
+        bi_instr *atom_c = bi_atom_c_return_i32_to(&b, bi_null(),
+                        pinstr->src[1], pinstr->src[2], pinstr->src[0],
+                        pinstr->atom_opc);
+
+        if (bi_is_null(pinstr->dest[0]))
+                atom_c->op = BI_OPCODE_ATOM_C_I32;
+
+        pinstr->op = BI_OPCODE_ATOM_CX;
+        pinstr->src[3] = atom_c->src[2];
+
+        return atom_c;
+}
+
+static bi_instr *
+bi_lower_atom_c1(bi_context *ctx, struct bi_clause_state *clause, struct
+                bi_tuple_state *tuple)
+{
+        bi_instr *pinstr = tuple->add;
+        bi_builder b = bi_init_builder(ctx, bi_before_instr(pinstr));
+        bi_instr *atom_c = bi_atom_c1_return_i32_to(&b, bi_null(),
+                        pinstr->src[0], pinstr->src[1], pinstr->atom_opc);
+
+        if (bi_is_null(pinstr->dest[0]))
+                atom_c->op = BI_OPCODE_ATOM_C1_I32;
+
+        pinstr->op = BI_OPCODE_ATOM_CX;
+        pinstr->src[2] = pinstr->src[1];
+        pinstr->src[1] = pinstr->src[0];
+        pinstr->src[3] = bi_dontcare();
+        pinstr->src[0] = pinstr->dest[0];
+
+        return atom_c;
+}
+
+static bi_instr *
+bi_lower_seg_add(bi_context *ctx,
+                struct bi_clause_state *clause, struct bi_tuple_state *tuple)
+{
+        bi_instr *pinstr = tuple->add;
+        bi_builder b = bi_init_builder(ctx, bi_before_instr(pinstr));
+
+        bi_instr *fma = bi_seg_add_to(&b, bi_word(pinstr->dest[0], 0),
+                        pinstr->src[0], pinstr->preserve_null, pinstr->seg);
+
+        pinstr->op = BI_OPCODE_SEG_ADD;
+        pinstr->dest[0] = bi_word(pinstr->dest[0], 1);
+        pinstr->src[0] = pinstr->src[1];
+        pinstr->src[1] = bi_null();
+
+        return fma;
+}
+
 /* Flatten linked list to array for O(1) indexing */
 
 static bi_instr **
@@ -789,6 +851,12 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
 
         if (tuple->add && tuple->add->op == BI_OPCODE_CUBEFACE)
                 return bi_lower_cubeface(ctx, clause, tuple);
+        else if (tuple->add && tuple->add->op == BI_OPCODE_PATOM_C_I32)
+                return bi_lower_atom_c(ctx, clause, tuple);
+        else if (tuple->add && tuple->add->op == BI_OPCODE_PATOM_C1_I32)
+                return bi_lower_atom_c1(ctx, clause, tuple);
+        else if (tuple->add && tuple->add->op == BI_OPCODE_SEG_ADD_I64)
+                return bi_lower_seg_add(ctx, clause, tuple);
 
         unsigned idx = bi_choose_index(st, clause, tuple, fma);
 
