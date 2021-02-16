@@ -93,6 +93,7 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
          */
         struct bifrost_pixel_indices pix = {
                 .y = BIFROST_CURRENT_PIXEL,
+                .rt = b->shader->inputs->blend.rt
         };
 
         uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
