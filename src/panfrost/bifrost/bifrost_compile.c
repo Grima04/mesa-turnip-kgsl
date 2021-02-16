@@ -585,15 +585,14 @@ bi_emit_store(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
 /* Exchanges the staging register with memory */
 
 static void
-bi_emit_axchg(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
+bi_emit_axchg_to(bi_builder *b, bi_index dst, bi_index addr, nir_src *arg, enum bi_seg seg)
 {
         assert(seg == BI_SEG_NONE || seg == BI_SEG_WLS);
 
-        bi_index addr = bi_src_index(&instr->src[0]);
-        bi_index data = bi_src_index(&instr->src[1]);
-
-        unsigned sz = nir_src_bit_size(instr->src[1]);
+        unsigned sz = nir_src_bit_size(*arg);
         assert(sz == 32 || sz == 64);
+
+        bi_index data = bi_src_index(arg);
 
         bi_index data_words[] = {
                 bi_word(data, 0),
@@ -613,7 +612,7 @@ bi_emit_axchg(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
                 bi_word(inout, 1),
         };
 
-        bi_make_vec_to(b, bi_dest_index(&instr->dest), inout_words, NULL, sz / 32, 32);
+        bi_make_vec_to(b, dst, inout_words, NULL, sz / 32, 32);
 }
 
 /* Exchanges the second staging register with memory if comparison with first
@@ -1007,11 +1006,18 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_global_atomic_exchange:
-                bi_emit_axchg(b, instr, BI_SEG_NONE);
+                bi_emit_axchg_to(b, dst, bi_src_index(&instr->src[0]),
+                                &instr->src[1], BI_SEG_NONE);
+                break;
+
+        case nir_intrinsic_image_atomic_exchange:
+                bi_emit_axchg_to(b, dst, bi_emit_lea_image(b, instr),
+                                &instr->src[3], BI_SEG_NONE);
                 break;
 
         case nir_intrinsic_shared_atomic_exchange:
-                bi_emit_axchg(b, instr, BI_SEG_WLS);
+                bi_emit_axchg_to(b, dst, bi_src_index(&instr->src[0]),
+                                &instr->src[1], BI_SEG_WLS);
                 break;
 
         case nir_intrinsic_global_atomic_comp_swap:
