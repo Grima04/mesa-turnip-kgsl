@@ -6332,7 +6332,7 @@
     </mod>
   </ins>
 
-  <ins name="+LD_GCLK.u64" staging="w=1" mask="0xffff8" exact="0xd7800" message="attribute">
+  <ins name="+LD_GCLK.u64" staging="w=2" mask="0xffff8" exact="0xd7800" message="attribute">
     <mod name="source" start="0" size="3">
       <reserved/>
       <reserved/>
