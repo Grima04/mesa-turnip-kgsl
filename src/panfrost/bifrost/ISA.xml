@@ -8175,6 +8175,41 @@
     <mod name="preserve_null" size="1" opt="preserve_null"/>
   </ins>
 
+  <!-- Scheduler lowered to *ATOM_C.i32/+ATOM_CX -->
+  <ins name="+PATOM_C.i32" pseudo="true" staging="rw=sr_count" message="atomic">
+    <src start="0"/>
+    <src start="3"/>
+    <mod name="atom_opc" start="9" size="4">
+      <reserved/>
+      <reserved/>
+      <opt>aadd</opt>
+      <reserved/>
+      <reserved/>
+      <reserved/>
+      <reserved/>
+      <reserved/>
+      <opt>asmin</opt>
+      <opt>asmax</opt>
+      <opt>aumin</opt>
+      <opt>aumax</opt>
+      <opt>aand</opt>
+      <opt>aor</opt>
+      <opt>axor</opt>
+    </mod>
+  </ins>
+
+  <ins name="+PATOM_C1.i32" pseudo="true" staging="w=sr_count" message="atomic">
+    <src start="0"/>
+    <src start="3"/>
+    <mod name="atom_opc" start="6" size="3">
+      <opt>ainc</opt>
+      <opt>adec</opt>
+      <opt>aumax1</opt>
+      <opt>asmax1</opt>
+      <opt>aor1</opt>
+    </mod>
+  </ins>
+
   <!-- *CUBEFACE1/+CUBEFACE2 pair, two destinations, scheduler lowered -->
   <ins name="+CUBEFACE" pseudo="true">
     <src start="0"/>
