@@ -1134,31 +1134,21 @@ void process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
             unsigned distance = 0;
             Temp to_spill;
             bool do_rematerialize = false;
-            if (new_demand.vgpr - spilled_registers.vgpr > ctx.target_pressure.vgpr) {
-               for (std::pair<Temp, uint32_t> pair : local_next_use_distance[idx]) {
-                  bool can_rematerialize = ctx.remat.count(pair.first);
-                  if (pair.first.type() == RegType::vgpr &&
-                      ((pair.second > distance && can_rematerialize == do_rematerialize) ||
-                       (can_rematerialize && !do_rematerialize && pair.second > idx)) &&
-                      current_spills.find(pair.first) == current_spills.end() &&
-                      ctx.spills_exit[block_idx].find(pair.first) == ctx.spills_exit[block_idx].end()) {
-                     to_spill = pair.first;
-                     distance = pair.second;
-                     do_rematerialize = can_rematerialize;
-                  }
-               }
-            } else {
-               for (std::pair<Temp, uint32_t> pair : local_next_use_distance[idx]) {
-                  bool can_rematerialize = ctx.remat.count(pair.first);
-                  if (pair.first.type() == RegType::sgpr &&
-                      ((pair.second > distance && can_rematerialize == do_rematerialize) ||
-                       (can_rematerialize && !do_rematerialize && pair.second > idx)) &&
-                      current_spills.find(pair.first) == current_spills.end() &&
-                      ctx.spills_exit[block_idx].find(pair.first) == ctx.spills_exit[block_idx].end()) {
-                     to_spill = pair.first;
-                     distance = pair.second;
-                     do_rematerialize = can_rematerialize;
-                  }
+            RegType type = RegType::sgpr;
+            if (new_demand.vgpr - spilled_registers.vgpr > ctx.target_pressure.vgpr)
+               type = RegType::vgpr;
+
+            for (std::pair<Temp, uint32_t> pair : local_next_use_distance[idx]) {
+               if (pair.first.type() != type)
+                  continue;
+               bool can_rematerialize = ctx.remat.count(pair.first);
+               if (((pair.second > distance && can_rematerialize == do_rematerialize) ||
+                    (can_rematerialize && !do_rematerialize && pair.second > idx)) &&
+                   current_spills.find(pair.first) == current_spills.end() &&
+                   ctx.spills_exit[block_idx].find(pair.first) == ctx.spills_exit[block_idx].end()) {
+                  to_spill = pair.first;
+                  distance = pair.second;
+                  do_rematerialize = can_rematerialize;
                }
             }
 
