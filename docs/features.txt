@@ -248,7 +248,7 @@ GLES3.1, GLSL ES 3.1 -- all DONE: i965/hsw+, nvc0, r600, radeonsi, virgl, v3d, s
   GL_ARB_compute_shader                                 DONE (freedreno/a5xx+, i965/gen7+, panfrost)
   GL_ARB_draw_indirect                                  DONE (freedreno, i965/gen7+, swr)
   GL_ARB_explicit_uniform_location                      DONE (all drivers that support GLSL)
-  GL_ARB_framebuffer_no_attachments                     DONE (freedreno, i965/gen7+, softpipe)
+  GL_ARB_framebuffer_no_attachments                     DONE (freedreno, i965/gen7+, softpipe, panfrost)
   GL_ARB_program_interface_query                        DONE (all drivers)
   GL_ARB_shader_atomic_counters                         DONE (freedreno/a5xx+, i965/gen7+, swr, panfrost/midgard)
   GL_ARB_shader_image_load_store                        DONE (freedreno/a5xx+, i965/gen7+, swr, panfrost/midgard)
