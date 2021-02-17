@@ -327,6 +327,8 @@ radv_emit_thread_trace_userdata(const struct radv_device *device,
 	while (num_dwords > 0) {
 		uint32_t count = MIN2(num_dwords, 2);
 
+		radeon_check_space(device->ws, cs, 2 + count);
+
 		/* Without the perfctr bit the CP might not always pass the
 		 * write on correctly. */
 		if (device->physical_device->rad_info.chip_class >= GFX10)
