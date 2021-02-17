@@ -582,7 +582,7 @@ bi_temp_reg(bi_context *ctx)
 static inline bi_index
 bi_src_index(nir_src *src)
 {
-        if (nir_src_is_const(*src))
+        if (nir_src_is_const(*src) && nir_src_bit_size(*src) <= 32)
                 return bi_imm_u32(nir_src_as_uint(*src));
         else if (src->is_ssa)
                 return bi_get_index(src->ssa->index, false, 0);
