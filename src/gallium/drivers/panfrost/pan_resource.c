@@ -716,21 +716,6 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
 {
         struct panfrost_device *dev = pan_device(screen);
 
-        /* Make sure we're familiar */
-        switch (template->target) {
-        case PIPE_BUFFER:
-        case PIPE_TEXTURE_1D:
-        case PIPE_TEXTURE_2D:
-        case PIPE_TEXTURE_3D:
-        case PIPE_TEXTURE_CUBE:
-        case PIPE_TEXTURE_RECT:
-        case PIPE_TEXTURE_1D_ARRAY:
-        case PIPE_TEXTURE_2D_ARRAY:
-                break;
-        default:
-                unreachable("Unknown texture target\n");
-        }
-
         if (dev->ro && (template->bind &
             (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)))
                 return panfrost_create_scanout_res(screen, template, modifier);
