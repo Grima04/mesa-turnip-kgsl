@@ -413,7 +413,7 @@ x86_test-gl:
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-02-17-gfxreconstruct-master"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-02-18-add-libdrm"
 
 # Debian 10 based ARM build image
 arm_build:

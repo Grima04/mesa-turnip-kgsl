@@ -13,6 +13,7 @@ STABLE_EPHEMERAL=" \
       libgbm-dev \
       libgles2-mesa-dev \
       liblz4-dev \
+      libpciaccess-dev \
       libpng-dev \
       libvulkan-dev \
       libwaffle-dev \
@@ -28,6 +29,7 @@ STABLE_EPHEMERAL=" \
       pkg-config \
       python3-distutils \
       wget \
+      xz-utils \
       "
 
 apt-get install -y --no-remove \
@@ -126,6 +128,10 @@ rm -rf /root/.rustup /root/.cargo
 ############### Build gfxreconstruct
 
 . .gitlab-ci/container/build-gfxreconstruct.sh
+
+############### Build libdrm
+
+. .gitlab-ci/container/build-libdrm.sh
 
 ############### Uninstall the build software
 
