@@ -200,7 +200,6 @@ radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer)
 
 	marker.num_layout_transitions = cmd_buffer->state.num_layout_transitions;
 
-	/* TODO: fill pipeline stalls, cache flushes, etc */
 	if (cmd_buffer->state.sqtt_flush_bits & RGP_FLUSH_WAIT_ON_EOP_TS)
 		marker.wait_on_eop_ts = true;
 	if (cmd_buffer->state.sqtt_flush_bits & RGP_FLUSH_VS_PARTIAL_FLUSH)
