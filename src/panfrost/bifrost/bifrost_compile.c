@@ -95,6 +95,42 @@ bi_varying_src0_for_barycentric(bi_builder *b, nir_intrinsic_instr *intr)
                 return bi_mkvec_v2i16(b, bi_half(bi_dontcare(), false),
                                 bi_half(bi_src_index(&intr->src[0]), false));
 
+        /* Interpret as 8:8 signed fixed point positions in pixels along X and
+         * Y axes respectively, relative to top-left of pixel. In NIR, (0, 0)
+         * is the center of the pixel so we first fixup and then convert. For
+         * fp16 input:
+         *
+         * f2i16(((x, y) + (0.5, 0.5)) * 2**8) =
+         * f2i16((256 * (x, y)) + (128, 128)) =
+         * V2F16_TO_V2S16(FMA.v2f16((x, y), #256, #128))
+         *
+         * For fp32 input, that lacks enough precision for MSAA 16x, but the
+         * idea is the same. FIXME: still doesn't pass
+         */
+        case nir_intrinsic_load_barycentric_at_offset: {
+                bi_index offset = bi_src_index(&intr->src[0]);
+                bi_index f16 = bi_null();
+                unsigned sz = nir_src_bit_size(intr->src[0]);
+
+                if (sz == 16) {
+                        f16 = bi_fma_v2f16(b, offset, bi_imm_f16(256.0),
+                                        bi_imm_f16(128.0), BI_ROUND_NONE);
+                } else {
+                        assert(sz == 32);
+                        bi_index f[2];
+                        for (unsigned i = 0; i < 2; ++i) {
+                                f[i] = bi_fadd_rscale_f32(b,
+                                                bi_word(offset, i),
+                                                bi_imm_f32(0.5), bi_imm_u32(8),
+                                                BI_ROUND_NONE, BI_SPECIAL_NONE);
+                        }
+
+                        f16 = bi_v2f32_to_v2f16(b, f[0], f[1], BI_ROUND_NONE);
+                }
+
+                return bi_v2f16_to_v2s16(b, f16, BI_ROUND_RTZ);
+        }
+
         case nir_intrinsic_load_barycentric_pixel:
         default:
                 return bi_dontcare();
@@ -110,6 +146,8 @@ bi_interp_for_intrinsic(nir_intrinsic_op op)
         case nir_intrinsic_load_barycentric_sample:
         case nir_intrinsic_load_barycentric_at_sample:
                 return BI_SAMPLE_SAMPLE;
+        case nir_intrinsic_load_barycentric_at_offset:
+                return BI_SAMPLE_EXPLICIT;
         case nir_intrinsic_load_barycentric_pixel:
         default:
                 return BI_SAMPLE_CENTER;
@@ -901,6 +939,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_barycentric_centroid:
         case nir_intrinsic_load_barycentric_sample:
         case nir_intrinsic_load_barycentric_at_sample:
+        case nir_intrinsic_load_barycentric_at_offset:
                 /* handled later via load_vary */
                 break;
         case nir_intrinsic_load_interpolated_input:
