@@ -462,7 +462,7 @@
   <struct name="Attribute">
     <field name="Buffer index" size="9" start="0" type="uint"/>
     <field name="Offset enable" size="1" start="9" type="bool" default="true"/>
-    <field name="Format" size="22" start="10" type="uint"/>
+    <field name="Format" size="22" start="10" type="Pixel Format"/>
     <field name="Offset" size="32" start="32" type="int"/>
   </struct>
 
@@ -563,7 +563,7 @@
   </struct>
 
   <struct name="Bifrost Internal Conversion" size="1">
-    <field name="Memory Format" size="22" start="0" type="uint"/>
+    <field name="Memory Format" size="22" start="0" type="Pixel Format"/>
     <field name="Raw" size="1" start="22" type="bool"/>
     <field name="Register Format" size="3" start="24" type="Bifrost Register File Format"/>
   </struct>
@@ -708,7 +708,7 @@
     <field name="Depth" size="16" start="1:0" type="uint" modifier="minus(1)" default="1"/>
     <field name="Sample count" size="16" start="1:0" type="uint" modifier="minus(1)" default="1"/>
     <field name="Array size" size="16" start="1:16" type="uint" modifier="minus(1)"/>
-    <field name="Format" size="22" start="2:0" type="uint"/>
+    <field name="Format" size="22" start="2:0" type="Pixel Format"/>
     <field name="Dimension" size="2" start="2:22" type="Texture Dimension"/>
     <field name="Texel ordering" size="4" start="2:24" type="Texture Layout"/>
     <field name="Surface pointer is 64b" size="1" start="2:28" type="bool" default="true"/>
@@ -751,7 +751,7 @@
     <field name="Dimension" size="2" start="0:4" type="Texture Dimension"/>
     <field name="Sample corner position" size="1" start="0:8" type="bool" default="false"/>
     <field name="Normalize coordinatess" size="1" start="0:9" type="bool" default="false"/>
-    <field name="Format" size="22" start="0:10" type="uint"/>
+    <field name="Format" size="22" start="0:10" type="Pixel Format"/>
     <field name="Width" size="16" start="1:0" type="uint" modifier="minus(1)"/>
     <field name="Height" size="16" start="1:16" type="uint" modifier="minus(1)"/>
     <field name="Swizzle" size="12" start="2:0" type="uint"/>
