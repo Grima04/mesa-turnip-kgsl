@@ -3351,6 +3351,40 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			}
 			NIR_PASS_V(nir[i], nir_lower_memory_model);
 
+			if (i == MESA_SHADER_TESS_CTRL) {
+				/* Copy correct primitive mode from TES info. */
+				nir[i]->info.tess.primitive_mode = nir[MESA_SHADER_TESS_EVAL]->info.tess.primitive_mode;
+
+				/* Number of tessellation patches processed per workgroup in the current pipeline. */
+				unsigned tcs_num_patches =
+					get_tcs_num_patches(
+						pipeline_key->tess_input_vertices,
+						nir[i]->info.tess.tcs_vertices_out,
+						infos[i].tcs.num_linked_inputs,
+						infos[i].tcs.num_linked_outputs,
+						infos[i].tcs.num_linked_patch_outputs,
+						device->tess_offchip_block_dw_size,
+						device->physical_device->rad_info.chip_class,
+						device->physical_device->rad_info.family);
+
+				/* LDS size used by VS+TCS for storing TCS inputs and outputs. */
+				unsigned tcs_lds_size =
+					calculate_tess_lds_size(
+						device->physical_device->rad_info.chip_class,
+						pipeline_key->tess_input_vertices,
+						nir[i]->info.tess.tcs_vertices_out,
+						infos[i].tcs.num_linked_inputs,
+						tcs_num_patches,
+						infos[i].tcs.num_linked_outputs,
+						infos[i].tcs.num_linked_patch_outputs);
+
+				infos[i].tcs.num_patches = tcs_num_patches;
+				infos[i].tcs.num_lds_blocks = tcs_lds_size;
+			} else if (i == MESA_SHADER_TESS_EVAL) {
+				/* Copy num_patches from TCS info. */
+				keys[i].tes.num_patches = infos[MESA_SHADER_TESS_CTRL].tcs.num_patches;
+			}
+
 			bool lower_to_scalar = false;
 
 			nir_load_store_vectorize_options vectorize_opts = {

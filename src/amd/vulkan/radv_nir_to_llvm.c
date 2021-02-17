@@ -3986,18 +3986,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			ctx.abi.load_patch_vertices_in = load_patch_vertices_in;
 			ctx.abi.store_tcs_outputs = store_tcs_output;
 			ctx.tcs_num_inputs = ctx.args->shader_info->tcs.num_linked_inputs;
-			unsigned tcs_num_outputs = ctx.args->shader_info->tcs.num_linked_outputs;
-			unsigned tcs_num_patch_outputs = ctx.args->shader_info->tcs.num_linked_patch_outputs;
-			ctx.tcs_num_patches =
-				get_tcs_num_patches(
-					ctx.args->options->key.tcs.input_vertices,
-					ctx.shader->info.tess.tcs_vertices_out,
-					ctx.tcs_num_inputs,
-					tcs_num_outputs,
-					tcs_num_patch_outputs,
-					ctx.args->options->tess_offchip_block_dw_size,
-					ctx.args->options->chip_class,
-					ctx.args->options->family);
+			ctx.tcs_num_patches = args->shader_info->tcs.num_patches;
 		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_EVAL) {
 			ctx.abi.load_tess_varyings = load_tes_input;
 			ctx.abi.load_tess_coord = load_tess_coord;
@@ -4095,21 +4084,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY &&
 			   args->options->key.vs_common_out.as_ngg) {
 			gfx10_ngg_gs_emit_epilogue_2(&ctx);
-		}
-
-		if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_CTRL) {
-			unsigned tcs_num_outputs = ctx.args->shader_info->tcs.num_linked_outputs;
-			unsigned tcs_num_patch_outputs = ctx.args->shader_info->tcs.num_linked_patch_outputs;
-			args->shader_info->tcs.num_patches = ctx.tcs_num_patches;
-			args->shader_info->tcs.num_lds_blocks =
-				calculate_tess_lds_size(
-					ctx.args->options->chip_class,
-					ctx.args->options->key.tcs.input_vertices,
-					ctx.shader->info.tess.tcs_vertices_out,
-					ctx.tcs_num_inputs,
-					ctx.tcs_num_patches,
-					tcs_num_outputs,
-					tcs_num_patch_outputs);
 		}
 	}
 

@@ -468,28 +468,8 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
    ctx->tcs_num_inputs = ctx->program->info->tcs.num_linked_inputs;
    ctx->tcs_num_outputs = ctx->program->info->tcs.num_linked_outputs;
    ctx->tcs_num_patch_outputs = ctx->program->info->tcs.num_linked_patch_outputs;
-
-   ctx->tcs_num_patches = get_tcs_num_patches(
-                             ctx->args->options->key.tcs.input_vertices,
-                             nir->info.tess.tcs_vertices_out,
-                             ctx->tcs_num_inputs,
-                             ctx->tcs_num_outputs,
-                             ctx->tcs_num_patch_outputs,
-                             ctx->args->options->tess_offchip_block_dw_size,
-                             ctx->args->options->chip_class,
-                             ctx->args->options->family);
-   unsigned lds_size = calculate_tess_lds_size(
-                             ctx->args->options->chip_class,
-                             ctx->args->options->key.tcs.input_vertices,
-                             nir->info.tess.tcs_vertices_out,
-                             ctx->tcs_num_inputs,
-                             ctx->tcs_num_patches,
-                             ctx->tcs_num_outputs,
-                             ctx->tcs_num_patch_outputs);
-
-   ctx->args->shader_info->tcs.num_patches = ctx->tcs_num_patches;
-   ctx->args->shader_info->tcs.num_lds_blocks = lds_size;
-   ctx->program->config->lds_size = lds_size; /* Already in blocks of the encoding granule */
+   ctx->tcs_num_patches = ctx->args->shader_info->tcs.num_patches;
+   ctx->program->config->lds_size = ctx->args->shader_info->tcs.num_lds_blocks;
 }
 
 void
