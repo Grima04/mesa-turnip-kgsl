@@ -330,9 +330,10 @@ bi_pack_tuple(bi_clause *clause, bi_tuple *tuple, bi_tuple *prev, bool first_tup
         if (tuple->add) {
                 bi_instr *add = tuple->add;
 
-                bool sr_write = bi_opcode_props[add->op].sr_write;
+                bool sr_write = bi_opcode_props[add->op].sr_write &&
+                        !bi_is_null(add->dest[0]);
 
-                if (sr_read) {
+                if (sr_read && !bi_is_null(add->src[0])) {
                         assert(add->src[0].type == BI_INDEX_REGISTER);
                         clause->staging_register = add->src[0].value;
 
