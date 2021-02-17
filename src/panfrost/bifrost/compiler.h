@@ -32,6 +32,7 @@
 #include "compiler/nir/nir.h"
 #include "panfrost/util/pan_ir.h"
 #include "util/u_math.h"
+#include "util/half_float.h"
 
 /* Swizzles across bytes in a 32-bit word. Expresses swz in the XML directly.
  * To express widen, use the correpsonding replicated form, i.e. H01 = identity
@@ -223,6 +224,12 @@ static inline bi_index
 bi_imm_u16(uint16_t imm)
 {
         return bi_half(bi_imm_u32(imm), false);
+}
+
+static inline bi_index
+bi_imm_f16(float imm)
+{
+        return bi_imm_u16(_mesa_float_to_half(imm));
 }
 
 static inline bool
