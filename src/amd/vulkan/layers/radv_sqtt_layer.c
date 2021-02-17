@@ -105,6 +105,37 @@ radv_write_event_with_dims_marker(struct radv_cmd_buffer *cmd_buffer,
 	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }
 
+static void
+radv_write_user_event_marker(struct radv_cmd_buffer *cmd_buffer,
+			     enum rgp_sqtt_marker_user_event_type type,
+			     const char *str)
+{
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+	if (type == UserEventPop) {
+		assert (str == NULL);
+		struct rgp_sqtt_marker_user_event marker = { 0 };
+		marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_USER_EVENT;
+		marker.data_type = type;
+
+		radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
+	} else {
+		assert (str != NULL);
+		unsigned len = strlen(str);
+		struct rgp_sqtt_marker_user_event_with_length marker = { 0 };
+		marker.user_event.identifier = RGP_SQTT_MARKER_IDENTIFIER_USER_EVENT;
+		marker.user_event.data_type = type;
+		marker.length = align(len, 4);
+
+		uint8_t *buffer = alloca(sizeof(marker) + marker.length);
+		memset(buffer, 0, sizeof(marker) + marker.length);
+		memcpy(buffer, &marker, sizeof(marker));
+		memcpy(buffer + sizeof(marker), str, len);
+
+		radv_emit_thread_trace_userdata(cmd_buffer->device, cs, buffer, sizeof(marker) / 4 + marker.length / 4);
+	}
+}
+
 void
 radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 {
@@ -862,6 +893,48 @@ void sqtt_CmdSetStencilReference(
 	uint32_t                                    reference)
 {
 	API_MARKER(SetStencilReference, commandBuffer, faceMask, reference);
+}
+
+/* VK_EXT_debug_marker */
+void sqtt_CmdDebugMarkerBeginEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkDebugMarkerMarkerInfoEXT*           pMarkerInfo)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	radv_write_user_event_marker(cmd_buffer, UserEventPush,
+				     pMarkerInfo->pMarkerName);
+}
+
+void sqtt_CmdDebugMarkerEndEXT(
+	VkCommandBuffer                             commandBuffer)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	radv_write_user_event_marker(cmd_buffer, UserEventPop, NULL);
+}
+
+void sqtt_CmdDebugMarkerInsertEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkDebugMarkerMarkerInfoEXT*           pMarkerInfo)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	radv_write_user_event_marker(cmd_buffer, UserEventTrigger,
+				     pMarkerInfo->pMarkerName);
+}
+
+VkResult sqtt_DebugMarkerSetObjectNameEXT(
+	VkDevice                                    device,
+	const VkDebugMarkerObjectNameInfoEXT*       pNameInfo)
+{
+	/* no-op */
+	return VK_SUCCESS;
+}
+
+VkResult sqtt_DebugMarkerSetObjectTagEXT(
+	VkDevice                                    device,
+	const VkDebugMarkerObjectTagInfoEXT*        pTagInfo)
+{
+	/* no-op */
+	return VK_SUCCESS;
 }
 
 #undef API_MARKER

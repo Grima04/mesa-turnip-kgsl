@@ -288,6 +288,34 @@ radv_get_compiler_string(struct radv_physical_device *pdevice)
 	return "LLVM " MESA_LLVM_VERSION_STRING;
 }
 
+int
+radv_get_int_debug_option(const char *name, int default_value)
+{
+	const char *str;
+	int result;
+
+	str = getenv(name);
+	if (!str) {
+		result = default_value;
+	} else {
+		char *endptr;
+
+		result = strtol(str, &endptr, 0);
+		if (str == endptr) {
+			/* No digits founs. */
+			result = default_value;
+		}
+	}
+
+	return result;
+}
+
+static bool radv_thread_trace_enabled()
+{
+	return radv_get_int_debug_option("RADV_THREAD_TRACE", -1) >= 0 ||
+	       getenv("RADV_THREAD_TRACE_TRIGGER");
+}
+
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
     defined(VK_USE_PLATFORM_XCB_KHR) || \
     defined(VK_USE_PLATFORM_XLIB_KHR) || \
@@ -407,6 +435,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
 	.EXT_conditional_rendering             = true,
 	.EXT_conservative_rasterization        = device->rad_info.chip_class >= GFX9,
 	.EXT_custom_border_color               = true,
+	.EXT_debug_marker                      = radv_thread_trace_enabled(),
 	.EXT_depth_clip_enable                 = true,
 	.EXT_depth_range_unrestricted          = true,
 	.EXT_descriptor_indexing               = true,
@@ -2634,34 +2663,6 @@ radv_device_init_gs_info(struct radv_device *device)
 {
 	device->gs_table_depth = ac_get_gs_table_depth(device->physical_device->rad_info.chip_class,
 						       device->physical_device->rad_info.family);
-}
-
-int
-radv_get_int_debug_option(const char *name, int default_value)
-{
-	const char *str;
-	int result;
-
-	str = getenv(name);
-	if (!str) {
-		result = default_value;
-	} else {
-		char *endptr;
-
-		result = strtol(str, &endptr, 0);
-		if (str == endptr) {
-			/* No digits founs. */
-			result = default_value;
-		}
-	}
-
-	return result;
-}
-
-static bool radv_thread_trace_enabled()
-{
-	return radv_get_int_debug_option("RADV_THREAD_TRACE", -1) >= 0 ||
-	       getenv("RADV_THREAD_TRACE_TRIGGER");
 }
 
 static VkResult
