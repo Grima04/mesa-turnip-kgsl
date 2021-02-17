@@ -441,6 +441,10 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                         (T == nir_type_float32) ? bi_word(rgba, 3) :
                         bi_dontcare();
 
+                /* Don't read out-of-bounds */
+                if (nir_src_num_components(instr->src[0]) < 4)
+                        alpha = bi_imm_f32(1.0);
+
                 bi_instr *atest = bi_atest_to(b, bi_register(60),
                                 bi_register(60), alpha);
                 b->shader->emitted_atest = true;
