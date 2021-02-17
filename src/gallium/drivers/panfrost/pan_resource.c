@@ -514,7 +514,7 @@ panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource
                 return false;
 
         /* Only a small selection of formats are AFBC'able */
-        if (!panfrost_format_supports_afbc(pres->internal_format))
+        if (!panfrost_format_supports_afbc(dev, pres->internal_format))
                 return false;
 
         /* AFBC does not support layered (GLES3 style) multisampling. Use
