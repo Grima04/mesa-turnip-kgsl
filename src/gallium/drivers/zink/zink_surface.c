@@ -107,10 +107,16 @@ zink_create_surface(struct pipe_context *pctx,
    ivci.subresourceRange.levelCount = 1;
    ivci.subresourceRange.baseArrayLayer = templ->u.tex.first_layer;
    ivci.subresourceRange.layerCount = 1 + templ->u.tex.last_layer - templ->u.tex.first_layer;
-
-   if (pres->target == PIPE_TEXTURE_CUBE ||
-       pres->target == PIPE_TEXTURE_CUBE_ARRAY)
-      ivci.subresourceRange.layerCount *= 6;
+   if (ivci.viewType == VK_IMAGE_VIEW_TYPE_CUBE || ivci.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+      if (templ->u.tex.first_layer == templ->u.tex.last_layer)
+         ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      else if (ivci.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY &&
+               templ->u.tex.first_layer % 6 == 0 &&
+               ivci.subresourceRange.layerCount % 6 == 0)
+         ivci.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+      else if (templ->u.tex.first_layer || ivci.subresourceRange.layerCount != res->base.array_size)
+         ivci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+   }
 
    if (vkCreateImageView(screen->dev, &ivci, NULL,
                          &surface->image_view) != VK_SUCCESS) {
