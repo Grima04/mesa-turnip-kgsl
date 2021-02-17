@@ -350,7 +350,7 @@ class Field(object):
             type = 'uint64_t'
         elif self.type == 'int':
             type = 'int32_t'
-        elif self.type in ['uint', 'padded', 'Pixel Format']:
+        elif self.type in ['uint', 'uint/float', 'padded', 'Pixel Format']:
             type = 'uint32_t'
         elif self.type in self.parser.structs:
             type = 'struct ' + self.parser.gen_prefix(safe_name(self.type.upper()))
@@ -505,7 +505,7 @@ class Group(object):
                     elif field.modifier[0] == "log2":
                         value = "util_logbase2({})".format(value)
 
-                if field.type in ["uint", "address", "Pixel Format"]:
+                if field.type in ["uint", "uint/float", "address", "Pixel Format"]:
                     s = "__gen_uint(%s, %d, %d)" % \
                         (value, start, end)
                 elif field.type == "padded":
@@ -579,7 +579,7 @@ class Group(object):
             args.append(str(fieldref.start))
             args.append(str(fieldref.end))
 
-            if field.type in set(["uint", "address", "Pixel Format"]) | self.parser.enums:
+            if field.type in set(["uint", "uint/float", "address", "Pixel Format"]) | self.parser.enums:
                 convert = "__gen_unpack_uint"
             elif field.type == "int":
                 convert = "__gen_unpack_sint"
@@ -631,6 +631,8 @@ class Group(object):
                 print('   fprintf(fp, "%*s{}: %f\\n", indent, "", {});'.format(name, val))
             elif field.type == "uint" and (field.end - field.start) >= 32:
                 print('   fprintf(fp, "%*s{}: 0x%" PRIx64 "\\n", indent, "", {});'.format(name, val))
+            elif field.type == "uint/float":
+                print('   fprintf(fp, "%*s{}: 0x%X (%f)\\n", indent, "", {}, uif({}));'.format(name, val, val))
             elif field.type == "Pixel Format":
                 print('   mali_pixel_format_print_v6(fp, {});'.format(val))
                 print('   mali_pixel_format_print_v7(fp, {});'.format(val))

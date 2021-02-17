@@ -199,10 +199,10 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
                 cfg.compare_function = panfrost_sampler_compare_func(cso);
                 cfg.seamless_cube_map = cso->seamless_cube_map;
 
-                cfg.border_color_r = cso->border_color.f[0];
-                cfg.border_color_g = cso->border_color.f[1];
-                cfg.border_color_b = cso->border_color.f[2];
-                cfg.border_color_a = cso->border_color.f[3];
+                cfg.border_color_r = cso->border_color.ui[0];
+                cfg.border_color_g = cso->border_color.ui[1];
+                cfg.border_color_b = cso->border_color.ui[2];
+                cfg.border_color_a = cso->border_color.ui[3];
         }
 }
 

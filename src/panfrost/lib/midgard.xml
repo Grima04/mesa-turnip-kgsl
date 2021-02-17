@@ -696,10 +696,10 @@
     <field name="Wrap Mode R" size="4" start="2:8" type="Wrap Mode" default="Clamp to Edge"/>
     <field name="Compare Function" size="3" start="2:12" type="Func" default="Never"/>
     <field name="Seamless Cube Map" size="1" start="2:15" type="bool" default="true"/>
-    <field name="Border Color R" size="32" start="4:0" type="float" default="0.0"/>
-    <field name="Border Color G" size="32" start="5:0" type="float" default="0.0"/>
-    <field name="Border Color B" size="32" start="6:0" type="float" default="0.0"/>
-    <field name="Border Color A" size="32" start="7:0" type="float" default="0.0"/>
+    <field name="Border Color R" size="32" start="4:0" type="uint/float" default="0.0"/>
+    <field name="Border Color G" size="32" start="5:0" type="uint/float" default="0.0"/>
+    <field name="Border Color B" size="32" start="6:0" type="uint/float" default="0.0"/>
+    <field name="Border Color A" size="32" start="7:0" type="uint/float" default="0.0"/>
   </struct>
 
   <struct name="Midgard Texture" size="8">
@@ -740,10 +740,10 @@
     <field name="LOD bias" size="16" start="2:0" type="int" default="0"/>
     <field name="Maximum anisotropy" size="5" start="2:16" type="uint" default="1" modifier="minus(1)"/>
     <field name="LOD algorithm" size="2" start="2:24" type="LOD Algorithm" default="Isotropic"/>
-    <field name="Border Color R" size="32" start="4:0" type="float" default="0.0"/>
-    <field name="Border Color G" size="32" start="5:0" type="float" default="0.0"/>
-    <field name="Border Color B" size="32" start="6:0" type="float" default="0.0"/>
-    <field name="Border Color A" size="32" start="7:0" type="float" default="0.0"/>
+    <field name="Border Color R" size="32" start="4:0" type="uint/float" default="0.0"/>
+    <field name="Border Color G" size="32" start="5:0" type="uint/float" default="0.0"/>
+    <field name="Border Color B" size="32" start="6:0" type="uint/float" default="0.0"/>
+    <field name="Border Color A" size="32" start="7:0" type="uint/float" default="0.0"/>
   </struct>
 
   <struct name="Bifrost Texture" size="8">
