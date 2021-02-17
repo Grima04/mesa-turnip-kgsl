@@ -248,5 +248,5 @@ if [ ${PIGLIT_HTML_SUMMARY:-1} -eq 1 ]; then
 fi
 
 quiet print_red printf "%s\n" "$FAILURE_MESSAGE"
-quiet print_red diff -u ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE
+quiet diff --color=always -u ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE
 exit 1
