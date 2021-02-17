@@ -289,9 +289,6 @@ typedef struct compiler_context {
         /* Set of NIR indices that were already emitted as outmods */
         BITSET_WORD *already_emitted;
 
-        /* The number of uniforms allowable for the fast path */
-        int uniform_cutoff;
-
         /* Count of instructions emitted from NIR overall, across all blocks */
         int instruction_count;
 

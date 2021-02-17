@@ -3008,11 +3008,6 @@ midgard_compile_shader_nir(nir_shader *nir,
         ctx->blend_src1 = ~0;
         ctx->quirks = midgard_get_quirks(inputs->gpu_id);
 
-        /* Start off with a safe cutoff, allowing usage of all 16 work
-         * registers. Later, we'll promote uniform reads to uniform registers
-         * if we determine it is beneficial to do so */
-        info->midgard.uniform_cutoff = 8;
-
         /* Initialize at a global (not block) level hash tables */
 
         ctx->ssa_constants = _mesa_hash_table_u64_create(NULL);

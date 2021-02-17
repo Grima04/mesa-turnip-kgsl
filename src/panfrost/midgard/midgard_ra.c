@@ -391,11 +391,11 @@ mir_is_64(midgard_instruction *ins)
 static struct lcra_state *
 allocate_registers(compiler_context *ctx, bool *spilled)
 {
-        /* The number of vec4 work registers available depends on when the
-         * uniforms start and the shader stage. By ABI we limit blend shaders
-         * to 8 registers, should be lower XXX */
-        int work_count = ctx->inputs->is_blend ? 8 :
-                16 - MAX2((ctx->info->midgard.uniform_cutoff - 8), 0);
+        /* The number of vec4 work registers available depends on the number of
+         * register-mapped uniforms and the shader stage. By ABI we limit blend
+         * shaders to 8 registers, should be lower XXX */
+        unsigned rmu = ctx->info->push.count / 4;
+        int work_count = ctx->inputs->is_blend ? 8 : 16 - MAX2(rmu - 8, 0);
 
        /* No register allocation to do with no SSA */
 
@@ -959,14 +959,12 @@ mir_spill_register(
 static void
 mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
 {
-        unsigned old_work_count =
-                16 - MAX2((ctx->info->midgard.uniform_cutoff - 8), 0);
+        unsigned uniforms = ctx->info->push.count / 4;
+        unsigned old_work_count = 16 - MAX2(uniforms - 8, 0);
         unsigned work_count = 16 - MAX2((new_cutoff - 8), 0);
 
         unsigned min_demote = SSA_FIXED_REGISTER(old_work_count);
         unsigned max_demote = SSA_FIXED_REGISTER(work_count);
-
-        ctx->info->midgard.uniform_cutoff = new_cutoff;
 
         mir_foreach_block(ctx, _block) {
                 midgard_block *block = (midgard_block *) _block;
@@ -1002,6 +1000,8 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
                         }
                 }
         }
+
+        ctx->info->push.count = MIN2(ctx->info->push.count, new_cutoff * 4);
 }
 
 /* Run register allocation in a loop, spilling until we succeed */
@@ -1022,13 +1022,12 @@ mir_ra(compiler_context *ctx)
         do {
                 if (spilled) {
                         signed spill_node = mir_choose_spill_node(ctx, l);
+                        unsigned uniforms = ctx->info->push.count / 4;
 
                         /* It's a lot cheaper to demote uniforms to get more
                          * work registers than to spill to TLS. */
-                        if (l->spill_class == REG_CLASS_WORK &&
-                            ctx->info->midgard.uniform_cutoff > 8) {
-
-                                mir_demote_uniforms(ctx, MAX2(ctx->info->midgard.uniform_cutoff - 4, 8));
+                        if (l->spill_class == REG_CLASS_WORK && uniforms > 8) {
+                                mir_demote_uniforms(ctx, MAX2(uniforms - 4, 8));
                         } else if (spill_node == -1) {
                                 fprintf(stderr, "ERROR: Failed to choose spill node\n");
                                 lcra_free(l);

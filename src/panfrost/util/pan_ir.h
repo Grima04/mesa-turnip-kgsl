@@ -145,7 +145,6 @@ struct bifrost_shader_info {
 };
 
 struct midgard_shader_info {
-        unsigned uniform_cutoff;
         unsigned first_tag;
 };
 
