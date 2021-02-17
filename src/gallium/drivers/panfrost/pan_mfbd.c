@@ -367,7 +367,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 break;
         case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
                 /* Midgard/Bifrost support interleaved depth/stencil
-                 * buffers, but we always treat them as multu-planar.
+                 * buffers, but we always treat them as multi-planar.
                  */
                 ext->zs_write_format = MALI_ZS_FORMAT_D32;
                 ext->s_write_format = MALI_S_FORMAT_S8;
