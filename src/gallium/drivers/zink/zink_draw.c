@@ -664,6 +664,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (drawid_broken != ctx->drawid_broken)
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
    ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
+   ctx->gfx_prim_mode = dinfo->mode;
    struct zink_gfx_program *gfx_program = get_gfx_program(ctx);
    if (!gfx_program)
       return;
