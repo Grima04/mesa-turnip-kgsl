@@ -160,10 +160,6 @@ increment_unifa_address(struct v3d_compile *c, struct qinst *unifa)
                 return true;
         }
 
-        /* FIXME: we can optimize this further by implementing a constant
-         * ALU pass in the backend, for the case where we are skipping
-         * multiple leading ldunifa.
-         */
         if (unifa->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
             unifa->qpu.alu.add.op == V3D_QPU_A_ADD) {
                 c->cursor = vir_after_inst(unifa);
