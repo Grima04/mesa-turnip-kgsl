@@ -1191,6 +1191,9 @@ radv_get_debug_option_name(int id);
 const char *
 radv_get_perftest_option_name(int id);
 
+int
+radv_get_int_debug_option(const char *name, int default_value);
+
 struct radv_color_buffer_info {
 	uint64_t cb_color_base;
 	uint64_t cb_color_cmask;

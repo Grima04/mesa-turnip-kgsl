@@ -2636,7 +2636,7 @@ radv_device_init_gs_info(struct radv_device *device)
 						       device->physical_device->rad_info.family);
 }
 
-static int
+int
 radv_get_int_debug_option(const char *name, int default_value)
 {
 	const char *str;
@@ -2983,15 +2983,6 @@ VkResult radv_CreateDevice(
 					"supported GPUs!\n");
 			abort();
 		}
-
-		/* Default buffer size set to 1MB per SE. */
-		device->thread_trace.buffer_size =
-			radv_get_int_debug_option("RADV_THREAD_TRACE_BUFFER_SIZE", 1024 * 1024);
-		device->thread_trace.start_frame = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
-
-		const char *trigger_file = getenv("RADV_THREAD_TRACE_TRIGGER");
-		if (trigger_file)
-			device->thread_trace.trigger_file = strdup(trigger_file);
 
 		if (!radv_thread_trace_init(device))
 			goto fail;
