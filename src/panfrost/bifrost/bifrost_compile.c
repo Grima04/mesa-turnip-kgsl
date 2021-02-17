@@ -714,6 +714,37 @@ bi_atom_opc_for_nir(nir_op op)
         }
 }
 
+/* Optimized unary atomics are available with an implied #1 argument */
+
+static bool
+bi_promote_atom_c1(enum bi_atom_opc op, bi_index arg, enum bi_atom_opc *out)
+{
+        /* Check we have a compatible constant */
+        if (arg.type != BI_INDEX_CONSTANT)
+                return false;
+
+        if (!(arg.value == 1 || (arg.value == -1 && op == BI_ATOM_OPC_AADD)))
+                return false;
+
+        /* Check for a compatible operation */
+        switch (op) {
+        case BI_ATOM_OPC_AADD:
+                *out = (arg.value == 1) ? BI_ATOM_OPC_AINC : BI_ATOM_OPC_ADEC;
+                return true;
+        case BI_ATOM_OPC_ASMAX:
+                *out = BI_ATOM_OPC_ASMAX1;
+                return true;
+        case BI_ATOM_OPC_AUMAX:
+                *out = BI_ATOM_OPC_AUMAX1;
+                return true;
+        case BI_ATOM_OPC_AOR:
+                *out = BI_ATOM_OPC_AOR1;
+                return true;
+        default:
+                return false;
+        }
+}
+
 /* gl_FragCoord.xy = u16_to_f32(R59.xy) + 0.5
  * gl_FragCoord.z = ld_vary(fragz)
  * gl_FragCoord.w = ld_vary(fragw)
