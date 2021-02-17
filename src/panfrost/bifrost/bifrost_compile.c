@@ -2192,9 +2192,6 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
         assert(instr->sampler_index < 16);
 
         struct bifrost_texture_operation desc = {
-                .sampler_index_or_mode = instr->sampler_index,
-                .index = instr->texture_index,
-                .immediate_indices = 1, /* TODO */
                 .op = bi_tex_op(instr->op),
                 .offset_or_bias_disable = false, /* TODO */
                 .shadow_or_clamp_disable = instr->is_shadow,
@@ -2303,6 +2300,16 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                         dregs[BIFROST_TEX_DREG_SHADOW] = index;
                         break;
 
+                case nir_tex_src_texture_offset:
+                        assert(instr->texture_index == 0);
+                        dregs[BIFROST_TEX_DREG_TEXTURE] = index;
+                        break;
+
+                case nir_tex_src_sampler_offset:
+                        assert(instr->sampler_index == 0);
+                        dregs[BIFROST_TEX_DREG_SAMPLER] = index;
+                        break;
+
                 default:
                         unreachable("Unhandled src type in texc emit");
                 }
@@ -2311,6 +2318,43 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
         if (desc.op == BIFROST_TEX_OP_FETCH && bi_is_null(dregs[BIFROST_TEX_DREG_LOD])) {
                 dregs[BIFROST_TEX_DREG_LOD] =
                         bi_emit_texc_lod_cube(b, bi_zero());
+        }
+
+        /* Choose an index mode */
+
+        bool direct_tex = bi_is_null(dregs[BIFROST_TEX_DREG_TEXTURE]);
+        bool direct_samp = bi_is_null(dregs[BIFROST_TEX_DREG_SAMPLER]);
+        bool direct = direct_tex && direct_samp;
+
+        desc.immediate_indices = direct && (instr->sampler_index < 16);
+
+        if (desc.immediate_indices) {
+                desc.sampler_index_or_mode = instr->sampler_index;
+                desc.index = instr->texture_index;
+        } else {
+                enum bifrost_index mode = 0;
+
+                if (direct && instr->sampler_index == instr->texture_index) {
+                        mode = BIFROST_INDEX_IMMEDIATE_SHARED;
+                        desc.index = instr->texture_index;
+                } else if (direct) {
+                        mode = BIFROST_INDEX_IMMEDIATE_SAMPLER;
+                        desc.index = instr->sampler_index;
+                        dregs[BIFROST_TEX_DREG_TEXTURE] = bi_mov_i32(b,
+                                        bi_imm_u32(instr->texture_index));
+                } else if (direct_tex) {
+                        assert(!direct_samp);
+                        mode = BIFROST_INDEX_IMMEDIATE_TEXTURE;
+                        desc.index = instr->texture_index;
+                } else if (direct_samp) {
+                        assert(!direct_tex);
+                        mode = BIFROST_INDEX_IMMEDIATE_SAMPLER;
+                        desc.index = instr->sampler_index;
+                } else {
+                        mode = BIFROST_INDEX_REGISTER;
+                }
+
+                desc.sampler_index_or_mode = mode | (0x3 << 2);
         }
 
         /* Allocate staging registers contiguously by compacting the array.
