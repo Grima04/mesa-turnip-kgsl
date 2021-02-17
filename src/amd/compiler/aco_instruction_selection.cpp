@@ -8172,6 +8172,11 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_load_local_invocation_index: {
+      if (ctx->stage.hw == HWStage::LS || ctx->stage.hw == HWStage::HS) {
+         bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), get_arg(ctx, ctx->args->ac.vs_rel_patch_id));
+         break;
+      }
+
       Temp id = emit_mbcnt(ctx, bld.tmp(v1));
 
       /* The tg_size bits [6:11] contain the subgroup id,
@@ -8758,6 +8763,28 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       if (ctx->stage.hw == HWStage::NGG)
          ngg_visit_set_vertex_and_primitive_count(ctx, instr);
       /* unused in the legacy pipeline, the HW keeps track of this for us */
+      break;
+   }
+   case nir_intrinsic_load_tess_rel_patch_id_amd: {
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), get_tess_rel_patch_id(ctx));
+      break;
+   }
+   case nir_intrinsic_load_ring_tess_factors_amd: {
+      bld.smem(aco_opcode::s_load_dwordx4, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               ctx->program->private_segment_buffer, Operand(RING_HS_TESS_FACTOR * 16u));
+      break;
+   }
+   case nir_intrinsic_load_ring_tess_factors_offset_amd: {
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), get_arg(ctx, ctx->args->ac.tcs_factor_offset));
+      break;
+   }
+   case nir_intrinsic_load_ring_tess_offchip_amd: {
+      bld.smem(aco_opcode::s_load_dwordx4, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               ctx->program->private_segment_buffer, Operand(RING_HS_TESS_OFFCHIP * 16u));
+      break;
+   }
+   case nir_intrinsic_load_ring_tess_offchip_offset_amd: {
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), get_arg(ctx, ctx->args->ac.tess_offchip_offset));
       break;
    }
    default:
