@@ -315,7 +315,8 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                  * the same top 32 bit as the fragment shader.
                                  * TODO: Ensure that's always the case.
                                  */
-                                assert((blend[i].shader.gpu & (0xffffffffull << 32)) ==
+                                assert(!fs->bo ||
+                                        (blend[i].shader.gpu & (0xffffffffull << 32)) ==
                                        (fs->bo->ptr.gpu & (0xffffffffull << 32)));
                                 cfg.bifrost.internal.shader.pc = (u32)blend[i].shader.gpu;
                                 unsigned ret_offset = fs->info.bifrost.blend[i].return_offset;
