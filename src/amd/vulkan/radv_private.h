@@ -2598,6 +2598,8 @@ void radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, int x, int y, in
 void radv_describe_begin_render_pass_clear(struct radv_cmd_buffer *cmd_buffer,
 					   VkImageAspectFlagBits aspects);
 void radv_describe_end_render_pass_clear(struct radv_cmd_buffer *cmd_buffer);
+void radv_describe_begin_render_pass_resolve(struct radv_cmd_buffer *cmd_buffer);
+void radv_describe_end_render_pass_resolve(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer,
 				 enum rgp_barrier_reason reason);
 void radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer);

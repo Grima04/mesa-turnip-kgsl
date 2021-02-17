@@ -826,6 +826,11 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
 	enum radv_resolve_method resolve_method = RESOLVE_HW;
 
+	if (!subpass->has_color_resolve && !subpass->ds_resolve_attachment)
+		return;
+
+	radv_describe_begin_render_pass_resolve(cmd_buffer);
+
 	if (subpass->ds_resolve_attachment) {
 		struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
 		struct radv_subpass_attachment dst_att = *subpass->ds_resolve_attachment;
@@ -935,6 +940,8 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 			unreachable("Invalid resolve method");
 		}
 	}
+
+	radv_describe_end_render_pass_resolve(cmd_buffer);
 }
 
 /**

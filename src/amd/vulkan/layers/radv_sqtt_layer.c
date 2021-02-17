@@ -215,6 +215,18 @@ radv_describe_end_render_pass_clear(struct radv_cmd_buffer *cmd_buffer)
 }
 
 void
+radv_describe_begin_render_pass_resolve(struct radv_cmd_buffer *cmd_buffer)
+{
+	cmd_buffer->state.current_event_type = EventRenderPassResolve;
+}
+
+void
+radv_describe_end_render_pass_resolve(struct radv_cmd_buffer *cmd_buffer)
+{
+	cmd_buffer->state.current_event_type = EventInternalUnknown;
+}
+
+void
 radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer)
 {
 	struct rgp_sqtt_marker_barrier_end marker = {0};
