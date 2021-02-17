@@ -60,7 +60,8 @@ get_io_index(nir_builder *b, nir_deref_instr *deref)
 static void
 nir_lower_texcoord_replace_impl(nir_function_impl *impl,
                                 unsigned coord_replace,
-                                bool point_coord_is_sysval)
+                                bool point_coord_is_sysval,
+                                bool yinvert)
 {
    nir_builder b;
 
@@ -90,8 +91,11 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
     */
    nir_ssa_def *zero = nir_imm_zero(&b, 1, new_coord->bit_size);
    nir_ssa_def *one = nir_imm_floatN_t(&b, 1.0, new_coord->bit_size);
+   nir_ssa_def *y = nir_channel(&b, new_coord, 1);
+   if (yinvert)
+      y = nir_fsub(&b, nir_imm_float(&b, 1.0), y);
    new_coord = nir_vec4(&b, nir_channel(&b, new_coord, 0),
-                            nir_channel(&b, new_coord, 1),
+                            y,
                             zero, one);
 
    nir_foreach_block(block, impl) {
@@ -134,7 +138,7 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
 
 void
 nir_lower_texcoord_replace(nir_shader *s, unsigned coord_replace,
-                           bool point_coord_is_sysval)
+                           bool point_coord_is_sysval, bool yinvert)
 {
    assert(s->info.stage == MESA_SHADER_FRAGMENT);
    assert(coord_replace != 0);
@@ -142,6 +146,6 @@ nir_lower_texcoord_replace(nir_shader *s, unsigned coord_replace,
    nir_foreach_function(function, s) {
       if (function->impl)
          nir_lower_texcoord_replace_impl(function->impl, coord_replace,
-                                         point_coord_is_sysval);
+                                         point_coord_is_sysval, yinvert);
    }
 }

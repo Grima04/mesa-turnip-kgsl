@@ -1315,7 +1315,7 @@ st_create_fp_variant(struct st_context *st,
       if (key->lower_texcoord_replace) {
          bool point_coord_is_sysval = st->ctx->Const.GLSLPointCoordIsSysVal;
          NIR_PASS_V(state.ir.nir, nir_lower_texcoord_replace,
-                    key->lower_texcoord_replace, point_coord_is_sysval);
+                    key->lower_texcoord_replace, point_coord_is_sysval, false);
          finalize = true;
       }
 
