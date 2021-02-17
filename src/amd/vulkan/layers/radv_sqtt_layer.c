@@ -346,6 +346,15 @@ radv_handle_thread_trace(VkQueue _queue)
 #endif
 
 		if (frame_trigger || file_trigger) {
+			/* FIXME: SQTT on compute hangs. */
+			if (queue->queue_family_index == RADV_QUEUE_COMPUTE) {
+				fprintf(stderr, "RADV: Capturing a SQTT trace on the compute "
+						"queue is currently broken and might hang! "
+						"Please, disable presenting on compute if "
+						"you can.\n");
+				return;
+			}
+
 			radv_begin_thread_trace(queue);
 			assert(!thread_trace_enabled);
 			thread_trace_enabled = true;
