@@ -264,6 +264,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
       return 1;
 
+   case PIPE_CAP_POINT_SPRITE:
+      return 1;
+
    case PIPE_CAP_SAMPLE_SHADING:
       return screen->info.feats.features.sampleRateShading;
 

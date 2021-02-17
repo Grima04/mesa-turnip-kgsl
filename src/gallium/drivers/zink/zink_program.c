@@ -246,6 +246,11 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
    fs_key->force_dual_color_blend = screen->driconf.dual_color_blend_by_location &&
                                     ctx->gfx_pipeline_state.blend_state->dual_src_blend &&
                                     ctx->gfx_pipeline_state.blend_state->attachments[1].blendEnable;
+   if (((shaders[PIPE_SHADER_GEOMETRY] && shaders[PIPE_SHADER_GEOMETRY]->nir->info.gs.output_primitive == GL_POINTS) ||
+       ctx->gfx_prim_mode == PIPE_PRIM_POINTS) && ctx->rast_state->base.point_quad_rasterization && ctx->rast_state->base.sprite_coord_enable) {
+      fs_key->coord_replace_bits = ctx->rast_state->base.sprite_coord_enable;
+      fs_key->coord_replace_yinvert = !!ctx->rast_state->base.sprite_coord_mode;
+   }
 }
 
 static void
