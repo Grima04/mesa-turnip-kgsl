@@ -437,13 +437,11 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
       *align = comp_size;
 }
 
-#define OPT(pass, ...) ({                                       \
-         bool this_progress = false;                            \
-         NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);     \
-         if (this_progress)                                     \
-            progress = true;                                    \
-         this_progress;                                         \
-      })
+#define OPT(pass, ...) do {                                       \
+         bool this_progress = false;                              \
+         NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);       \
+         progress |= this_progress;                               \
+      } while(0)
 
 static void
 lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
@@ -587,11 +585,11 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    do {
       progress = false;
 
-      progress |= OPT(nir_lower_flrp, 32|64, true);
-      progress |= OPT(nir_split_array_vars, nir_var_function_temp);
-      progress |= OPT(nir_shrink_vec_array_vars, nir_var_function_temp);
-      progress |= OPT(nir_opt_deref);
-      progress |= OPT(nir_lower_vars_to_ssa);
+      OPT(nir_lower_flrp, 32|64, true);
+      OPT(nir_split_array_vars, nir_var_function_temp);
+      OPT(nir_shrink_vec_array_vars, nir_var_function_temp);
+      OPT(nir_opt_deref);
+      OPT(nir_lower_vars_to_ssa);
 
       progress |= nir_copy_prop(nir);
       progress |= nir_opt_dce(nir);
