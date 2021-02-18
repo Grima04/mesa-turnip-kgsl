@@ -1092,62 +1092,6 @@ clc_to_dxil(struct clc_context *ctx,
       goto err_free_dxil;
    }
 
-   // Calculate input offsets/metadata.
-   unsigned uav_id = 0, sampler_id = 0, offset = 0;
-   dxil_wrap_sampler_state int_sampler_states[PIPE_MAX_SHADER_SAMPLER_VIEWS] = {{{0}}};
-   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
-      int i = var->data.location;
-      if (i < 0)
-         continue;
-
-      unsigned size = glsl_get_cl_size(var->type);
-      offset = align(offset, glsl_get_cl_alignment(var->type));
-
-      metadata->args[i].offset = offset;
-      metadata->args[i].size = size;
-      metadata->kernel_inputs_buf_size = MAX2(metadata->kernel_inputs_buf_size,
-                                              offset + size);
-      if ((dxil->kernel->args[i].address_qualifier == CLC_KERNEL_ARG_ADDRESS_GLOBAL ||
-           dxil->kernel->args[i].address_qualifier == CLC_KERNEL_ARG_ADDRESS_CONSTANT) &&
-          // Ignore images during this pass - global memory buffers need to have contiguous bindings
-          !glsl_type_is_image(var->type)) {
-         metadata->args[i].globconstptr.buf_id = uav_id++;
-      } else if (glsl_type_is_sampler(var->type)) {
-         unsigned address_mode = conf ? conf->args[i].sampler.addressing_mode : 0u;
-         int_sampler_states[sampler_id].wrap[0] =
-            int_sampler_states[sampler_id].wrap[1] =
-            int_sampler_states[sampler_id].wrap[2] = wrap_from_cl_addressing(address_mode);
-         int_sampler_states[sampler_id].is_nonnormalized_coords =
-            conf ? !conf->args[i].sampler.normalized_coords : 0;
-         int_sampler_states[sampler_id].is_linear_filtering =
-            conf ? conf->args[i].sampler.linear_filtering : 0;
-         metadata->args[i].sampler.sampler_id = var->data.binding = sampler_id++;
-      }
-      offset += size;
-   }
-
-   unsigned num_global_inputs = uav_id;
-
-   // Second pass over inputs to calculate image bindings
-   unsigned srv_id = 0;
-   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
-      int i = var->data.location;
-      if (i < 0)
-         continue;
-
-      if (glsl_type_is_image(var->type)) {
-         if (var->data.access == ACCESS_NON_WRITEABLE) {
-            metadata->args[i].image.buf_ids[0] = srv_id++;
-         } else {
-            // Write or read-write are UAVs
-            metadata->args[i].image.buf_ids[0] = uav_id++;
-         }
-
-         metadata->args[i].image.num_buf_ids = 1;
-         var->data.binding = metadata->args[i].image.buf_ids[0];
-      }
-   }
-
    {
       bool progress;
       do
@@ -1208,6 +1152,9 @@ clc_to_dxil(struct clc_context *ctx,
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform | nir_var_mem_ubo | nir_var_mem_constant | nir_var_function_temp, NULL);
 
    NIR_PASS_V(nir, scale_fdiv);
+
+   dxil_wrap_sampler_state int_sampler_states[PIPE_MAX_SHADER_SAMPLER_VIEWS] = { {{0}} };
+   unsigned sampler_id = 0;
 
    struct exec_list tmp_list;
    exec_list_make_empty(&tmp_list);
@@ -1275,6 +1222,59 @@ clc_to_dxil(struct clc_context *ctx,
 
    // For uniforms (kernel inputs), run this before adjusting variable list via image/sampler lowering
    NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_uniform, glsl_get_cl_type_size_align);
+
+   // Calculate input offsets/metadata.
+   unsigned uav_id = 0;
+   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
+      int i = var->data.location;
+      if (i < 0)
+         continue;
+
+      unsigned size = glsl_get_cl_size(var->type);
+
+      metadata->args[i].offset = var->data.driver_location;
+      metadata->args[i].size = size;
+      metadata->kernel_inputs_buf_size = MAX2(metadata->kernel_inputs_buf_size,
+         var->data.driver_location + size);
+      if ((dxil->kernel->args[i].address_qualifier == CLC_KERNEL_ARG_ADDRESS_GLOBAL ||
+         dxil->kernel->args[i].address_qualifier == CLC_KERNEL_ARG_ADDRESS_CONSTANT) &&
+         // Ignore images during this pass - global memory buffers need to have contiguous bindings
+         !glsl_type_is_image(var->type)) {
+         metadata->args[i].globconstptr.buf_id = uav_id++;
+      } else if (glsl_type_is_sampler(var->type)) {
+         unsigned address_mode = conf ? conf->args[i].sampler.addressing_mode : 0u;
+         int_sampler_states[sampler_id].wrap[0] =
+            int_sampler_states[sampler_id].wrap[1] =
+            int_sampler_states[sampler_id].wrap[2] = wrap_from_cl_addressing(address_mode);
+         int_sampler_states[sampler_id].is_nonnormalized_coords =
+            conf ? !conf->args[i].sampler.normalized_coords : 0;
+         int_sampler_states[sampler_id].is_linear_filtering =
+            conf ? conf->args[i].sampler.linear_filtering : 0;
+         metadata->args[i].sampler.sampler_id = var->data.binding = sampler_id++;
+      }
+   }
+
+   unsigned num_global_inputs = uav_id;
+
+   // Second pass over inputs to calculate image bindings
+   unsigned srv_id = 0;
+   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
+      int i = var->data.location;
+      if (i < 0)
+         continue;
+
+      if (glsl_type_is_image(var->type)) {
+         if (var->data.access == ACCESS_NON_WRITEABLE) {
+            metadata->args[i].image.buf_ids[0] = srv_id++;
+         } else {
+            // Write or read-write are UAVs
+            metadata->args[i].image.buf_ids[0] = uav_id++;
+         }
+
+         metadata->args[i].image.num_buf_ids = 1;
+         var->data.binding = metadata->args[i].image.buf_ids[0];
+      }
+   }
 
    // Needs to come before lower_explicit_io
    NIR_PASS_V(nir, nir_lower_cl_images_to_tex);
