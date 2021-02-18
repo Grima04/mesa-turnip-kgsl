@@ -3351,7 +3351,35 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			}
 			NIR_PASS_V(nir[i], nir_lower_memory_model);
 
-			if (i == MESA_SHADER_TESS_CTRL) {
+			if (i == MESA_SHADER_VERTEX) {
+				if (nir[MESA_SHADER_TESS_CTRL] && !radv_use_llvm_for_stage(device, i)) {
+					/* When the number of TCS input and output vertices are the same (typically 3):
+					 * - There is an equal amount of LS and HS invocations
+					 * - In case of merged LSHS shaders, the LS and HS halves of the shader
+					 *   always process the exact same vertex. We can use this knowledge to optimize them.
+					 *
+					 * We don't set tcs_in_out_eq if the float controls differ because that might
+					 * involve different float modes for the same block and our optimizer
+					 * doesn't handle a instruction dominating another with a different mode.
+					 */
+					infos[i].vs.tcs_in_out_eq =
+					 	device->physical_device->rad_info.chip_class >= GFX9 &&
+						pipeline_key->tess_input_vertices == nir[MESA_SHADER_TESS_CTRL]->info.tess.tcs_vertices_out &&
+						nir[MESA_SHADER_VERTEX]->info.float_controls_execution_mode == nir[MESA_SHADER_TESS_CTRL]->info.float_controls_execution_mode;
+
+					if (infos[i].vs.tcs_in_out_eq)
+						infos[i].vs.tcs_temp_only_input_mask =
+							nir[MESA_SHADER_TESS_CTRL]->info.inputs_read &
+							nir[MESA_SHADER_VERTEX]->info.outputs_written &
+							~nir[MESA_SHADER_TESS_CTRL]->info.tess.tcs_cross_invocation_inputs_read &
+							~nir[MESA_SHADER_TESS_CTRL]->info.inputs_read_indirectly &
+							~nir[MESA_SHADER_VERTEX]->info.outputs_accessed_indirectly;
+
+					/* Copy data to TCS so it can be accessed by the backend if they are merged. */
+					infos[MESA_SHADER_TESS_CTRL].vs.tcs_in_out_eq = infos[i].vs.tcs_in_out_eq;
+					infos[MESA_SHADER_TESS_CTRL].vs.tcs_temp_only_input_mask = infos[i].vs.tcs_temp_only_input_mask;
+				}
+			} else if (i == MESA_SHADER_TESS_CTRL) {
 				/* Copy correct primitive mode from TES info. */
 				nir[i]->info.tess.primitive_mode = nir[MESA_SHADER_TESS_EVAL]->info.tess.primitive_mode;
 

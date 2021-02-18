@@ -270,6 +270,8 @@ struct radv_shader_info {
 		bool as_es;
 		bool as_ls;
 		bool export_prim_id;
+		bool tcs_in_out_eq;
+		uint64_t tcs_temp_only_input_mask;
 		uint8_t num_linked_outputs;
 	} vs;
 	struct {

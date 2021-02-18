@@ -443,28 +443,8 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 void
 setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
 {
-   /* When the number of TCS input and output vertices are the same (typically 3):
-    * - There is an equal amount of LS and HS invocations
-    * - In case of merged LSHS shaders, the LS and HS halves of the shader
-    *   always process the exact same vertex. We can use this knowledge to optimize them.
-    *
-    * We don't set tcs_in_out_eq if the float controls differ because that might
-    * involve different float modes for the same block and our optimizer
-    * doesn't handle a instruction dominating another with a different mode.
-    */
-   ctx->tcs_in_out_eq =
-      ctx->stage == vertex_tess_control_hs &&
-      ctx->args->options->key.tcs.input_vertices == nir->info.tess.tcs_vertices_out &&
-      vs->info.float_controls_execution_mode == nir->info.float_controls_execution_mode;
-
-   if (ctx->tcs_in_out_eq) {
-      ctx->tcs_temp_only_inputs = ~nir->info.tess.tcs_cross_invocation_inputs_read &
-                                  ~nir->info.inputs_read_indirectly &
-                                  ~vs->info.outputs_accessed_indirectly &
-                                  nir->info.inputs_read &
-                                  vs->info.outputs_written;
-   }
-
+   ctx->tcs_in_out_eq = ctx->args->shader_info->vs.tcs_in_out_eq;
+   ctx->tcs_temp_only_inputs = ctx->args->shader_info->vs.tcs_temp_only_input_mask;
    ctx->tcs_num_inputs = ctx->program->info->tcs.num_linked_inputs;
    ctx->tcs_num_outputs = ctx->program->info->tcs.num_linked_outputs;
    ctx->tcs_num_patch_outputs = ctx->program->info->tcs.num_linked_patch_outputs;
