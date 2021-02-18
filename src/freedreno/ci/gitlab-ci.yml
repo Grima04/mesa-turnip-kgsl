@@ -88,7 +88,7 @@ a530_gles3:
     - .arm64-a530-test
   variables:
     DEQP_VER: gles3
-    DEQP_FRACTION: 40
+    DEQP_FRACTION: 10
 
 a530_gles31:
   extends:
