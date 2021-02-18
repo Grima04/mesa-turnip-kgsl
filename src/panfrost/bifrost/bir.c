@@ -92,22 +92,6 @@ bi_count_read_registers(bi_instr *ins, unsigned s)
                 return 1;
 }
 
-uint16_t
-bi_bytemask_of_read_components(bi_instr *ins, bi_index node)
-{
-        uint16_t mask = 0x0;
-
-        bi_foreach_src(ins, s) {
-                if (!bi_is_equiv(ins->src[s], node)) continue;
-
-                unsigned count = bi_count_read_registers(ins, s);
-                unsigned rmask = (1 << (4 * count)) - 1;
-                mask |= (rmask << (4 * node.offset));
-        }
-
-        return mask;
-}
-
 unsigned
 bi_writemask(bi_instr *ins)
 {
