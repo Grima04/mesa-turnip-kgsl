@@ -476,6 +476,8 @@ TEST_F(gen_mi_builder_test, memcpy)
 /* Start of MI_MATH section */
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
 
+#define EXPECT_EQ_IMM(x, imm) EXPECT_EQ(x, gen_mi_value_to_u64(imm))
+
 /* Test adding of immediates of all kinds including
  *
  *  - All zeroes
@@ -551,9 +553,9 @@ TEST_F(gen_mi_builder_test, ilt_uge)
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
-         gen_mi_store(&b, out_mem32(i * 64 + j * 8 + 0),
+         gen_mi_store(&b, out_mem64(i * 128 + j * 16 + 0),
                       gen_mi_ult(&b, in_mem64(i * 8), in_mem64(j * 8)));
-         gen_mi_store(&b, out_mem32(i * 64 + j * 8 + 4),
+         gen_mi_store(&b, out_mem64(i * 128 + j * 16 + 8),
                       gen_mi_uge(&b, in_mem64(i * 8), in_mem64(j * 8)));
       }
    }
@@ -562,9 +564,11 @@ TEST_F(gen_mi_builder_test, ilt_uge)
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
-         uint32_t *out_u32 = (uint32_t *)(output + i * 64 + j * 8);
-         EXPECT_EQ(out_u32[0], values[i] < values[j] ? ~0u : 0u);
-         EXPECT_EQ(out_u32[1], values[i] >= values[j] ? ~0u : 0u);
+         uint64_t *out_u64 = (uint64_t *)(output + i * 128 + j * 16);
+         EXPECT_EQ_IMM(out_u64[0], gen_mi_ult(&b, gen_mi_imm(values[i]),
+                                                  gen_mi_imm(values[j])));
+         EXPECT_EQ_IMM(out_u64[1], gen_mi_uge(&b, gen_mi_imm(values[i]),
+                                                  gen_mi_imm(values[j])));
       }
    }
 }
@@ -581,7 +585,8 @@ TEST_F(gen_mi_builder_test, iand)
 
    submit_batch();
 
-   EXPECT_EQ(*(uint64_t *)output, values[0] & values[1]);
+   EXPECT_EQ_IMM(*(uint64_t *)output, gen_mi_iand(&b, gen_mi_imm(values[0]),
+                                                      gen_mi_imm(values[1])));
 }
 
 TEST_F(gen_mi_builder_test, imul_imm)
@@ -615,7 +620,8 @@ TEST_F(gen_mi_builder_test, imul_imm)
 
    for (unsigned i = 0; i < ARRAY_SIZE(lhs); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(rhs); j++) {
-         EXPECT_EQ(*(uint64_t *)(output + i * 160 + j * 8), lhs[i] * rhs[j]);
+         EXPECT_EQ_IMM(*(uint64_t *)(output + i * 160 + j * 8),
+                       gen_mi_imul_imm(&b, gen_mi_imm(lhs[i]), rhs[j]));
       }
    }
 }
@@ -633,11 +639,8 @@ TEST_F(gen_mi_builder_test, ishl_imm)
    submit_batch();
 
    for (unsigned i = 0; i <= max_shift; i++) {
-      if (i >= 64) {
-         EXPECT_EQ(*(uint64_t *)(output + i * 8), 0);
-      } else {
-         EXPECT_EQ(*(uint64_t *)(output + i * 8), value << i);
-      }
+      EXPECT_EQ_IMM(*(uint64_t *)(output + i * 8),
+                    gen_mi_ishl_imm(&b, gen_mi_imm(value), i));
    }
 }
 
@@ -654,11 +657,8 @@ TEST_F(gen_mi_builder_test, ushr32_imm)
    submit_batch();
 
    for (unsigned i = 0; i <= max_shift; i++) {
-      if (i >= 64) {
-         EXPECT_EQ(*(uint64_t *)(output + i * 8), 0);
-      } else {
-         EXPECT_EQ(*(uint64_t *)(output + i * 8), (value >> i) & UINT32_MAX);
-      }
+      EXPECT_EQ_IMM(*(uint64_t *)(output + i * 8),
+                    gen_mi_ushr32_imm(&b, gen_mi_imm(value), i));
    }
 }
 
@@ -688,8 +688,8 @@ TEST_F(gen_mi_builder_test, udiv32_imm)
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
-         EXPECT_EQ(*(uint32_t *)(output + i * 80 + j * 4),
-                   values[i] / values[j]);
+         EXPECT_EQ_IMM(*(uint32_t *)(output + i * 80 + j * 4),
+                       gen_mi_udiv32_imm(&b, gen_mi_imm(values[i]), values[j]));
       }
    }
 }
