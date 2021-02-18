@@ -573,6 +573,31 @@ TEST_F(gen_mi_builder_test, ilt_uge)
    }
 }
 
+TEST_F(gen_mi_builder_test, z_nz)
+{
+   uint64_t values[8] = {
+      0,
+      1,
+      UINT32_MAX,
+      UINT32_MAX + 1,
+      UINT64_MAX,
+   };
+   memcpy(input, values, sizeof(values));
+
+   for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
+      gen_mi_store(&b, out_mem64(i * 16 + 0), gen_mi_nz(&b, in_mem64(i * 8)));
+      gen_mi_store(&b, out_mem64(i * 16 + 8), gen_mi_z(&b, in_mem64(i * 8)));
+   }
+
+   submit_batch();
+
+   for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
+      uint64_t *out_u64 = (uint64_t *)(output + i * 16);
+      EXPECT_EQ_IMM(out_u64[0], gen_mi_nz(&b, gen_mi_imm(values[i])));
+      EXPECT_EQ_IMM(out_u64[1], gen_mi_z(&b, gen_mi_imm(values[i])));
+   }
+}
+
 TEST_F(gen_mi_builder_test, iand)
 {
    const uint64_t values[2] = {
