@@ -745,7 +745,7 @@ void bi_print_shader(bi_context *ctx, FILE *fp);
 /* BIR passes */
 
 bool bi_opt_copy_prop(bi_context *ctx);
-bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block, bool soft);
+bool bi_opt_dead_code_eliminate(bi_context *ctx, bool soft);
 void bi_opt_push_ubo(bi_context *ctx);
 void bi_schedule(bi_context *ctx);
 void bi_assign_scoreboard(bi_context *ctx);

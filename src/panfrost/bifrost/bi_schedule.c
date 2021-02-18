@@ -1595,8 +1595,9 @@ bi_schedule(bi_context *ctx)
                 bi_block *bblock = (bi_block *) block;
                 bi_lower_fau(ctx, bblock);
                 bi_schedule_block(ctx, bblock);
-                bi_opt_dead_code_eliminate(ctx, bblock, true);
         }
+
+        bi_opt_dead_code_eliminate(ctx, true);
 }
 
 #ifndef NDEBUG
