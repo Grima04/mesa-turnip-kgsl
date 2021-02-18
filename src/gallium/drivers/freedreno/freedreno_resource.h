@@ -248,7 +248,7 @@ has_depth(enum pipe_format format)
 }
 
 struct fd_transfer {
-	struct pipe_transfer base;
+	struct threaded_transfer b;
 	struct pipe_resource *staging_prsc;
 	struct pipe_box staging_box;
 };

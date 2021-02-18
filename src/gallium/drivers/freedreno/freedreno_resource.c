@@ -494,13 +494,13 @@ static void
 fd_blit_from_staging(struct fd_context *ctx, struct fd_transfer *trans)
 	assert_dt
 {
-	struct pipe_resource *dst = trans->base.resource;
+	struct pipe_resource *dst = trans->b.b.resource;
 	struct pipe_blit_info blit = {};
 
 	blit.dst.resource = dst;
 	blit.dst.format   = dst->format;
-	blit.dst.level    = trans->base.level;
-	blit.dst.box      = trans->base.box;
+	blit.dst.level    = trans->b.b.level;
+	blit.dst.box      = trans->b.b.box;
 	blit.src.resource = trans->staging_prsc;
 	blit.src.format   = trans->staging_prsc->format;
 	blit.src.level    = 0;
@@ -515,13 +515,13 @@ static void
 fd_blit_to_staging(struct fd_context *ctx, struct fd_transfer *trans)
 	assert_dt
 {
-	struct pipe_resource *src = trans->base.resource;
+	struct pipe_resource *src = trans->b.b.resource;
 	struct pipe_blit_info blit = {};
 
 	blit.src.resource = src;
 	blit.src.format   = src->format;
-	blit.src.level    = trans->base.level;
-	blit.src.box      = trans->base.box;
+	blit.src.level    = trans->b.b.level;
+	blit.src.box      = trans->b.b.box;
 	blit.dst.resource = trans->staging_prsc;
 	blit.dst.format   = trans->staging_prsc->format;
 	blit.dst.level    = 0;
@@ -616,6 +616,9 @@ fd_resource_transfer_unmap(struct pipe_context *pctx,
 				   ptrans->box.x + ptrans->box.width);
 
 	pipe_resource_reference(&ptrans->resource, NULL);
+
+	assert(trans->b.staging == NULL); /* for threaded context only */
+
 	slab_free(&ctx->transfer_pool, ptrans);
 }
 
@@ -662,7 +665,7 @@ resource_transfer_map_unsync(struct pipe_context *pctx,
 
 	buf = fd_bo_map(rsc->bo);
 	offset =
-		box->y / util_format_get_blockheight(format) * trans->base.stride +
+		box->y / util_format_get_blockheight(format) * trans->b.b.stride +
 		box->x / util_format_get_blockwidth(format) * rsc->layout.cpp +
 		fd_resource_offset(rsc, level, box->z);
 
@@ -704,8 +707,8 @@ resource_transfer_map(struct pipe_context *pctx,
 		staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
 		if (staging_rsc) {
 			trans->staging_prsc = &staging_rsc->b.b;
-			trans->base.stride = fd_resource_pitch(staging_rsc, 0);
-			trans->base.layer_stride = fd_resource_layer_stride(staging_rsc, 0);
+			trans->b.b.stride = fd_resource_pitch(staging_rsc, 0);
+			trans->b.b.layer_stride = fd_resource_layer_stride(staging_rsc, 0);
 			trans->staging_box = *box;
 			trans->staging_box.x = 0;
 			trans->staging_box.y = 0;
@@ -792,8 +795,8 @@ resource_transfer_map(struct pipe_context *pctx,
 				staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
 				if (staging_rsc) {
 					trans->staging_prsc = &staging_rsc->b.b;
-					trans->base.stride = fd_resource_pitch(staging_rsc, 0);
-					trans->base.layer_stride =
+					trans->b.b.stride = fd_resource_pitch(staging_rsc, 0);
+					trans->b.b.layer_stride =
 						fd_resource_layer_stride(staging_rsc, 0);
 					trans->staging_box = *box;
 					trans->staging_box.x = 0;
