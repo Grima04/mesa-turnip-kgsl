@@ -2817,6 +2817,12 @@ bi_optimize_nir(nir_shader *nir)
         NIR_PASS(progress, nir, nir_lower_bool_to_int32);
         NIR_PASS(progress, nir, bifrost_nir_lower_algebraic_late);
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
+
+        /* Backend scheduler is purely local, so do some global optimizations
+         * to reduce register pressure */
+        NIR_PASS_V(nir, nir_opt_sink, nir_move_const_undef);
+        NIR_PASS_V(nir, nir_opt_move, nir_move_const_undef);
+
         NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
 
         /* Take us out of SSA */
