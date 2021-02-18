@@ -125,6 +125,7 @@ public:
    }
 
    int fd;
+   int ctx_id;
    gen_device_info devinfo;
 
    uint32_t batch_bo_handle;
@@ -195,6 +196,11 @@ gen_mi_builder_test::SetUp()
       }
    }
    ASSERT_TRUE(i < max_devices) << "Failed to find a DRM device";
+
+   drm_i915_gem_context_create ctx_create = drm_i915_gem_context_create();
+   ASSERT_EQ(drmIoctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE,
+                      (void *)&ctx_create), 0) << strerror(errno);
+   ctx_id = ctx_create.ctx_id;
 
    // Create the batch buffer
    drm_i915_gem_create gem_create = drm_i915_gem_create();
@@ -295,6 +301,7 @@ gen_mi_builder_test::submit_batch()
    execbuf.batch_start_offset = 0;
    execbuf.batch_len = batch_offset;
    execbuf.flags = I915_EXEC_HANDLE_LUT | I915_EXEC_RENDER;
+   execbuf.rsvd1 = ctx_id;
 
    ASSERT_EQ(drmIoctl(fd, DRM_IOCTL_I915_GEM_EXECBUFFER2,
                       (void *)&execbuf), 0) << strerror(errno);
