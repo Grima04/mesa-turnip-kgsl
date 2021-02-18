@@ -1,0 +1,20 @@
+.zink-test:
+  extends:
+    - .zink-rules
+  variables:
+    MESA_LOADER_DRIVER_OVERRIDE: "zink"
+    ZINK_USE_LAVAPIPE: "true"
+
+zink-piglit-quick_gl:
+  extends:
+    - .test-gl
+    - .piglit-test
+    - .zink-test
+  variables:
+    LP_NUM_THREADS: 0
+    PIGLIT_OPTIONS: >
+      -x arb_map_buffer_alignment@arb_map_buffer_alignment-map-invalidate-range
+      -x glx-make-current
+    PIGLIT_PROFILES: quick_gl
+    PIGLIT_RESULTS: "zink-quick_gl"
+    GALLIVM_PERF: "no_filter_hacks"
