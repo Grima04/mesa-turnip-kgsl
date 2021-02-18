@@ -26,8 +26,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
-#include <strings.h>
-#include <pthread.h>
 #include <assert.h>
 #include <stdint.h>
 
@@ -67,7 +65,11 @@ extern "C" {
 #define MAX_PUSH_CONSTANTS_SIZE 128
 #define MAX_PUSH_DESCRIPTORS 32
 
+#ifdef _WIN32
+#define lvp_printflike(a, b)
+#else
 #define lvp_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
+#endif
 
 int lvp_get_instance_entrypoint_index(const char *name);
 int lvp_get_device_entrypoint_index(const char *name);
@@ -198,7 +200,7 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
 #define lvp_foreach_stage(stage, stage_bits)                         \
    for (gl_shader_stage stage,                                       \
         __tmp = (gl_shader_stage)((stage_bits) & LVP_STAGE_MASK);    \
-        stage = __builtin_ffs(__tmp) - 1, __tmp;                     \
+        stage = ffs(__tmp) - 1, __tmp;                     \
         __tmp &= ~(1 << (stage)))
 
 struct lvp_physical_device {
