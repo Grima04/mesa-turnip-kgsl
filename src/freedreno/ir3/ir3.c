@@ -217,9 +217,9 @@ static void insert_instr(struct ir3_block *block,
 		struct ir3_instruction *instr)
 {
 	struct ir3 *shader = block->shader;
-#ifdef DEBUG
+
 	instr->serialno = ++shader->instr_count;
-#endif
+
 	list_addtail(&instr->node, &block->instr_list);
 
 	if (is_input(instr))

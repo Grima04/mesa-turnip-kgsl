@@ -414,9 +414,7 @@ struct ir3_instruction {
 	/* Entry in ir3_block's instruction list: */
 	struct list_head node;
 
-#ifdef DEBUG
 	uint32_t serialno;
-#endif
 
 	// TODO only computerator/assembler:
 	int line;
@@ -499,8 +497,9 @@ struct ir3 {
 	struct list_head array_list;
 
 #ifdef DEBUG
-	unsigned block_count, instr_count;
+	unsigned block_count;
 #endif
+	unsigned instr_count;
 };
 
 struct ir3_array {

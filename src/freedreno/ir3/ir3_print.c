@@ -160,7 +160,7 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 	}
 }
 
-static void print_reg_name(struct ir3_register *reg)
+static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *reg)
 {
 	if ((reg->flags & (IR3_REG_FABS | IR3_REG_SABS)) &&
 			(reg->flags & (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT)))
@@ -185,18 +185,18 @@ static void print_reg_name(struct ir3_register *reg)
 				reg->array.offset, reg->size);
 		/* for ARRAY we could have null src, for example first write
 		 * instruction..
+		 *
+		 * Note for array writes from another block, we aren't really
+		 * sure who wrote it so skip trying to show this
 		 */
-		if (reg->instr) {
+		if (reg->instr && (reg->instr->block == instr->block)) {
 			printf(SYN_ARRAY(", "));
-			printf(SYN_SSA("_["));
-			print_instr_name(reg->instr, false);
-			printf(SYN_SSA("]"));
+			printf(SYN_SSA("ssa_%u"), reg->instr->serialno);
 		}
 		printf(SYN_ARRAY("]"));
 	} else if (reg->flags & IR3_REG_SSA) {
-		printf(SYN_SSA("_["));
-		print_instr_name(reg->instr, false);
-		printf(SYN_SSA("]"));
+		/* For dst regs, reg->instr will be NULL: */
+		printf(SYN_SSA("ssa_%u"), reg->instr ? reg->instr->serialno : instr->serialno);
 	} else if (reg->flags & IR3_REG_RELATIV) {
 		if (reg->flags & IR3_REG_CONST)
 			printf(SYN_CONST("c<a0.x + %d>"), reg->array.offset);
@@ -243,7 +243,7 @@ print_instr(struct ir3_instruction *instr, int lvl)
 		struct ir3_register *reg = instr->regs[i];
 
 		printf(i ? ", " : "");
-		print_reg_name(reg);
+		print_reg_name(instr, reg);
 	}
 
 	if (is_tex(instr) && !(instr->flags & IR3_INSTR_S2EN)) {
@@ -324,12 +324,13 @@ print_instr(struct ir3_instruction *instr, int lvl)
 
 	if (instr->deps_count) {
 		printf(", false-deps:");
+		unsigned n = 0;
 		for (unsigned i = 0; i < instr->deps_count; i++) {
-			if (i > 0)
+			if (!instr->deps[i])
+				continue;
+			if (n++ > 0)
 				printf(", ");
-			printf("_[");
-			print_instr_name(instr->deps[i], false);
-			printf("]");
+			printf(SYN_SSA("ssa_%u"), instr->deps[i]->serialno);
 		}
 	}
 
@@ -375,9 +376,8 @@ print_block(struct ir3_block *block, int lvl)
 	if (block->successors[1]) {
 		/* leading into if/else: */
 		tab(lvl+1);
-		printf("/* succs: if _[");
-		print_instr_name(block->condition, false);
-		printf("] block%u; else block%u; */\n",
+		printf("/* succs: if "SYN_SSA("ssa_%u")" block%u; else block%u */\n",
+				block->condition->serialno,
 				block_id(block->successors[0]),
 				block_id(block->successors[1]));
 	} else if (block->successors[0]) {
