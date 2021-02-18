@@ -3,7 +3,7 @@ libvulkan_lvp = shared_library(
   [ 'target.c' ],
   include_directories : [ inc_src, inc_util, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_winsys, inc_gallium_drivers ],
   link_whole : [ liblavapipe_st ],
-  link_with : [libpipe_loader_static, libmegadriver_stub, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
+  link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
   gnu_symbol_visibility : 'hidden',
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
   dependencies : driver_swrast,
