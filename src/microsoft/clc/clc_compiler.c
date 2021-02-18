@@ -1102,7 +1102,6 @@ clc_to_dxil(struct clc_context *ctx,
 
       unsigned size = glsl_get_cl_size(var->type);
       offset = align(offset, glsl_get_cl_alignment(var->type));
-      var->data.driver_location = offset;
 
       metadata->args[i].offset = offset;
       metadata->args[i].size = size;
@@ -1267,6 +1266,9 @@ clc_to_dxil(struct clc_context *ctx,
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, nir_opt_deref);
 
+   // For uniforms (kernel inputs), run this before adjusting variable list via image/sampler lowering
+   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_uniform, glsl_get_cl_type_size_align);
+
    // Needs to come before lower_explicit_io
    NIR_PASS_V(nir, nir_lower_cl_images_to_tex);
    struct clc_image_lower_context image_lower_context = { metadata, &srv_id, &uav_id };
@@ -1280,7 +1282,7 @@ clc_to_dxil(struct clc_context *ctx,
 
    nir->scratch_size = 0;
    NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
-              nir_var_mem_shared | nir_var_function_temp | nir_var_uniform | nir_var_mem_global | nir_var_mem_constant,
+              nir_var_mem_shared | nir_var_function_temp | nir_var_mem_global | nir_var_mem_constant,
               glsl_get_cl_type_size_align);
 
    NIR_PASS_V(nir, dxil_nir_lower_ubo_to_temp);
