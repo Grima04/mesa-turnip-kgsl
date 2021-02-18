@@ -650,6 +650,15 @@ struct v3d_compile {
          */
         bool disable_ldunif_opt;
 
+        /* Last UBO index and offset used with a unifa/ldunifa sequence and the
+         * block where it was emitted. This is used to skip unifa writes (and
+         * their 3 delay slot) when the next UBO load reads right after the
+         * previous one in the same block.
+         */
+        struct qblock *last_unifa_block;
+        int32_t last_unifa_index;
+        uint32_t last_unifa_offset;
+
         /* State for whether we're executing on each channel currently.  0 if
          * yes, otherwise a block number + 1 that the channel jumped to.
          */

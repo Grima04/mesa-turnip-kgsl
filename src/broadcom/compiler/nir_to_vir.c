@@ -2589,17 +2589,34 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
         if (c->key->environment == V3D_ENVIRONMENT_OPENGL)
                 index++;
 
-        struct qreg base_offset =
-                vir_uniform(c, QUNIFORM_UBO_ADDR,
-                            v3d_unit_data_create(index, const_offset));
-        const_offset = 0;
-
-        struct qreg unifa = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_UNIFA);
-        if (!dynamic_src) {
-                vir_MOV_dest(c, unifa, base_offset);
+        /* We can only keep track of the last unifa address we used with
+         * constant offset loads.
+         */
+        bool skip_unifa = false;
+        if (dynamic_src) {
+                c->last_unifa_block = NULL;
+        } else if (c->cur_block == c->last_unifa_block &&
+                   c->last_unifa_index == index &&
+                   c->last_unifa_offset == const_offset) {
+                skip_unifa = true;
         } else {
-                vir_ADD_dest(c, unifa, base_offset,
-                             ntq_get_src(c, instr->src[1], 0));
+                c->last_unifa_block = c->cur_block;
+                c->last_unifa_index = index;
+                c->last_unifa_offset = const_offset;
+        }
+
+        if (!skip_unifa) {
+                struct qreg base_offset =
+                        vir_uniform(c, QUNIFORM_UBO_ADDR,
+                                    v3d_unit_data_create(index, const_offset));
+
+                struct qreg unifa = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_UNIFA);
+                if (!dynamic_src) {
+                        vir_MOV_dest(c, unifa, base_offset);
+                } else {
+                        vir_ADD_dest(c, unifa, base_offset,
+                                     ntq_get_src(c, instr->src[1], 0));
+                }
         }
 
         for (uint32_t i = 0; i < nir_intrinsic_dest_components(instr); i++) {
@@ -2608,6 +2625,7 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ldunifa->qpu.sig.ldunifa = true;
                 struct qreg data = vir_emit_def(c, ldunifa);
                 ntq_store_dest(c, &instr->dest, i, vir_MOV(c, data));
+                c->last_unifa_offset += 4;
         }
 }
 
