@@ -244,7 +244,7 @@ struct lvp_queue {
    mtx_t m;
    cnd_t new_work;
    struct list_head workqueue;
-   uint32_t count;
+   volatile int count;
 };
 
 struct lvp_queue_work {

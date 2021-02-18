@@ -997,13 +997,8 @@ static VkResult queue_wait_idle(struct lvp_queue *queue, uint64_t timeout)
       while (p_atomic_read(&queue->count))
          os_time_sleep(100);
    else {
-      struct timespec t, current;
-      clock_gettime(CLOCK_MONOTONIC, &current);
-      timespec_add_nsec(&t, &current, timeout);
-      bool timedout = false;
-      while (p_atomic_read(&queue->count) && !(timedout = timespec_passed(CLOCK_MONOTONIC, &t)))
-         os_time_sleep(10);
-      if (timedout)
+      int64_t atime = os_time_get_absolute_timeout(timeout);
+      if (!os_wait_until_zero_abs_timeout(&queue->count, atime))
          return VK_TIMEOUT;
    }
    return VK_SUCCESS;
