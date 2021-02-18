@@ -855,6 +855,12 @@ static inline struct gen_mi_value
 gen_mi_ishl_imm(struct gen_mi_builder *b,
                 struct gen_mi_value src, uint32_t shift)
 {
+   if (shift == 0)
+      return src;
+
+   if (shift >= 64)
+      return gen_mi_imm(0);
+
    struct gen_mi_value res = gen_mi_value_to_gpr(b, src);
 
    for (unsigned i = 0; i < shift; i++)
@@ -867,10 +873,13 @@ static inline struct gen_mi_value
 gen_mi_ushr32_imm(struct gen_mi_builder *b,
                   struct gen_mi_value src, uint32_t shift)
 {
+   if (shift == 0)
+      return src;
+
    /* We right-shift by left-shifting by 32 - shift and taking the top 32 bits
     * of the result.
     */
-   if (shift > 64)
+   if (shift >= 64)
       return gen_mi_imm(0);
 
    if (shift > 32) {
