@@ -921,7 +921,7 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list )
    if (0) {
       mesaCtx->VertexProgram._MaintainTnlProgram = GL_TRUE;
       mesaCtx->FragmentProgram._MaintainTexEnvProgram = GL_TRUE;
-      _mesa_reset_vertex_processing_mode(ctx);
+      _mesa_reset_vertex_processing_mode(mesaCtx);
    }
 
    _mesa_enable_sw_extensions(mesaCtx);
