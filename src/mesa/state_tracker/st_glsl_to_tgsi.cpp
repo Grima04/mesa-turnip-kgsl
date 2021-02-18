@@ -7238,7 +7238,6 @@ get_mesa_program_tgsi(struct gl_context *ctx,
     * This should be enough for Bitmap and DrawPixels constants.
     */
    _mesa_reserve_parameter_storage(prog->Parameters, 8, 8);
-   _mesa_disallow_parameter_storage_realloc(prog->Parameters);
 
    /* This has to be done last.  Any operation the can cause
     * prog->ParameterValues to get reallocated (e.g., anything that adds a

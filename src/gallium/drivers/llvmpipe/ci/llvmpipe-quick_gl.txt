@@ -88,6 +88,7 @@ shaders/sso-uniforms-01: skip
 shaders/sso-uniforms-02: skip
 shaders/sso-user-varying-01: skip
 shaders/sso-user-varying-02: skip
+shaders/useprogram-refcount-1: crash
 shaders/useshaderprogram-bad-program: skip
 shaders/useshaderprogram-bad-type: skip
 shaders/useshaderprogram-flushverts-1: skip
@@ -470,6 +471,7 @@ spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-stor
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-params/dsa: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms2: skip
 spec/arb_framebuffer_object/fbo-blit-scaled-linear: fail
+spec/arb_framebuffer_object/fbo-drawbuffers-none gldrawpixels: crash
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_line_strip_adjacency: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_lines_adjacency: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_triangle_strip_adjacency: skip

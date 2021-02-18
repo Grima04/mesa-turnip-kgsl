@@ -2474,6 +2474,8 @@ _mesa_associate_uniform_storage(struct gl_context *ctx,
    struct gl_program_parameter_list *params = prog->Parameters;
    gl_shader_stage shader_type = prog->info.stage;
 
+   _mesa_disallow_parameter_storage_realloc(params);
+
    /* After adding each uniform to the parameter list, connect the storage for
     * the parameter with the tracking structure used by the API for the
     * uniform.
