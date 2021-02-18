@@ -163,6 +163,9 @@ bi_print_instr(bi_instr *I, FILE *fp)
 
     fprintf(fp, " = %s", bi_opcode_props[I->op].name);
 
+    if (I->table)
+        fprintf(fp, ".%s", bi_table_as_str(I->table));
+
     switch (I->op) {
 % for opcode in ops:
 <%

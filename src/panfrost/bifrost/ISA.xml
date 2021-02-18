@@ -606,9 +606,14 @@
     </derived>
   </ins>
 
-  <ins name="*DTSEL_IMM" mask="0x7ffe00" exact="0x70f200">
+  <ins name="*DTSEL_IMM" mask="0x7fffe0" exact="0x70f3e0">
     <src start="0" mask="0xfb"/>
-    <immediate name="table" start="3" size="6"/>
+    <mod name="table" start="3" size="2">
+      <opt>attribute_1</opt>
+      <opt>attribute_2</opt>
+      <opt>none</opt> <!-- actually reserved, used as sentinel -->
+      <opt>flat</opt>
+    </mod>
   </ins>
 
   <ins name="*F16_TO_F32" mask="0x7ffff0" exact="0x700d10">

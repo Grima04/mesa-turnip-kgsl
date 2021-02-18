@@ -309,6 +309,11 @@ def order_modifiers(ir_instructions):
         # Ensure none is false for booleans so the builder makes sense
         if len(lst) == 2 and lst[1] == "none":
             lst.reverse()
+        elif mod == "table":
+            # We really need a zero sentinel to materialize DTSEL
+            assert(lst[2] == "none")
+            lst[2] = lst[0]
+            lst[0] = "none"
 
         out[mod] = lst
 

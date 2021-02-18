@@ -113,6 +113,42 @@ struct bi_clause_state {
         struct bi_const_state consts[8];
 };
 
+/* Determines messsage type by checking the table and a few special cases. Only
+ * case missing is tilebuffer instructions that access depth/stencil, which
+ * require a Z_STENCIL message (to implement
+ * ARM_shader_framebuffer_fetch_depth_stencil) */
+
+static enum bifrost_message_type
+bi_message_type_for_instr(bi_instr *ins)
+{
+        enum bifrost_message_type msg = bi_opcode_props[ins->op].message;
+        bool ld_var_special = (ins->op == BI_OPCODE_LD_VAR_SPECIAL);
+
+        if (ld_var_special && ins->varying_name == BI_VARYING_NAME_FRAG_Z)
+                return BIFROST_MESSAGE_Z_STENCIL;
+
+        if (msg == BIFROST_MESSAGE_LOAD && ins->seg == BI_SEG_UBO)
+                return BIFROST_MESSAGE_ATTRIBUTE;
+
+        return msg;
+}
+
+/* Attribute, texture, and UBO load (attribute message) instructions support
+ * bindless, so just check the message type */
+
+ASSERTED static bool
+bi_supports_dtsel(bi_instr *ins)
+{
+        switch (bi_message_type_for_instr(ins)) {
+        case BIFROST_MESSAGE_ATTRIBUTE:
+                return ins->op != BI_OPCODE_LD_GCLK_U64;
+        case BIFROST_MESSAGE_TEX:
+                return true;
+        default:
+                return false;
+        }
+}
+
 /* Scheduler pseudoinstruction lowerings to enable instruction pairings.
  * Currently only support CUBEFACE -> *CUBEFACE1/+CUBEFACE2
  */
@@ -198,6 +234,21 @@ bi_lower_seg_add(bi_context *ctx,
         return fma;
 }
 
+static bi_instr *
+bi_lower_dtsel(bi_context *ctx,
+                struct bi_clause_state *clause, struct bi_tuple_state *tuple)
+{
+        bi_instr *add = tuple->add;
+        bi_builder b = bi_init_builder(ctx, bi_before_instr(add));
+
+        bi_instr *dtsel = bi_dtsel_imm_to(&b, bi_temp(b.shader),
+                        add->src[0], add->table);
+        add->src[0] = dtsel->dest[0];
+
+        assert(bi_supports_dtsel(add));
+        return dtsel;
+}
+
 /* Flatten linked list to array for O(1) indexing */
 
 static bi_instr **
@@ -247,26 +298,6 @@ bi_update_worklist(struct bi_worklist st, unsigned idx)
 {
         if (idx >= 1)
                 BITSET_SET(st.worklist, idx - 1);
-}
-
-/* Determines messsage type by checking the table and a few special cases. Only
- * case missing is tilebuffer instructions that access depth/stencil, which
- * require a Z_STENCIL message (to implement
- * ARM_shader_framebuffer_fetch_depth_stencil) */
-
-static enum bifrost_message_type
-bi_message_type_for_instr(bi_instr *ins)
-{
-        enum bifrost_message_type msg = bi_opcode_props[ins->op].message;
-        bool ld_var_special = (ins->op == BI_OPCODE_LD_VAR_SPECIAL);
-
-        if (ld_var_special && ins->varying_name == BI_VARYING_NAME_FRAG_Z)
-                return BIFROST_MESSAGE_Z_STENCIL;
-
-        if (msg == BIFROST_MESSAGE_LOAD && ins->seg == BI_SEG_UBO)
-                return BIFROST_MESSAGE_ATTRIBUTE;
-
-        return msg;
 }
 
 /* To work out the back-to-back flag, we need to detect branches and
@@ -857,6 +888,8 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
                 return bi_lower_atom_c1(ctx, clause, tuple);
         else if (tuple->add && tuple->add->op == BI_OPCODE_SEG_ADD_I64)
                 return bi_lower_seg_add(ctx, clause, tuple);
+        else if (tuple->add && tuple->add->table)
+                return bi_lower_dtsel(ctx, clause, tuple);
 
         unsigned idx = bi_choose_index(st, clause, tuple, fma);
 

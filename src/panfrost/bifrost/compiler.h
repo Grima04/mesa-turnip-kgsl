@@ -286,6 +286,9 @@ typedef struct {
          * useless double fills */
         bool no_spill;
 
+        /* Override table, inducing a DTSEL_IMM pair if nonzero */
+        enum bi_table table;
+
         /* Everything after this MUST NOT be accessed directly, since
          * interpretation depends on opcodes */
 
@@ -302,7 +305,6 @@ typedef struct {
                 uint32_t shift;
                 uint32_t fill;
                 uint32_t index;
-                uint32_t table;
                 uint32_t attribute_index;
 
                 struct {
