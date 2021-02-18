@@ -1213,8 +1213,8 @@ clc_to_dxil(struct clc_context *ctx,
    nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
       if (glsl_type_is_sampler(var->type) && var->data.sampler.is_inline_sampler) {
          int_sampler_states[sampler_id].wrap[0] =
-            int_sampler_states[sampler_id].wrap[0] =
-            int_sampler_states[sampler_id].wrap[0] =
+            int_sampler_states[sampler_id].wrap[1] =
+            int_sampler_states[sampler_id].wrap[2] =
             wrap_from_cl_addressing(var->data.sampler.addressing_mode);
          int_sampler_states[sampler_id].is_nonnormalized_coords =
             !var->data.sampler.normalized_coordinates;
