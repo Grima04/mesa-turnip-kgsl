@@ -467,9 +467,9 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
       for (uint32_t i = 0; i < num_spec_entries; i++) {
          VkSpecializationMapEntry entry = spec_info->pMapEntries[i];
          const void *data =
-            spec_info->pData + entry.offset;
-         assert((const void *)(data + entry.size) <=
-                spec_info->pData + spec_info->dataSize);
+            (char *)spec_info->pData + entry.offset;
+         assert((const char *)((char *)data + entry.size) <=
+                (char *)spec_info->pData + spec_info->dataSize);
 
          spec_entries[i].id = entry.constantID;
          switch (entry.size) {

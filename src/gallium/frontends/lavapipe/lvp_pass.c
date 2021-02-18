@@ -174,7 +174,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass(
                        VK_OBJECT_TYPE_RENDER_PASS);
    pass->attachment_count = pCreateInfo->attachmentCount;
    pass->subpass_count = pCreateInfo->subpassCount;
-   pass->attachments = (void *) pass + attachments_offset;
+   pass->attachments = (struct lvp_render_pass_attachment *)((char *)pass + attachments_offset);
 
    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
       struct lvp_render_pass_attachment *att = &pass->attachments[i];
