@@ -698,13 +698,13 @@ lvp_pipeline_compile(struct lvp_pipeline *pipeline,
    struct lvp_device *device = pipeline->device;
    device->physical_device->pscreen->finalize_nir(device->physical_device->pscreen, pipeline->pipeline_nir[stage], true);
    if (stage == MESA_SHADER_COMPUTE) {
-      struct pipe_compute_state shstate = {};
+      struct pipe_compute_state shstate = {0};
       shstate.prog = (void *)pipeline->pipeline_nir[MESA_SHADER_COMPUTE];
       shstate.ir_type = PIPE_SHADER_IR_NIR;
       shstate.req_local_mem = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.shared_size;
       pipeline->shader_cso[PIPE_SHADER_COMPUTE] = device->queue.ctx->create_compute_state(device->queue.ctx, &shstate);
    } else {
-      struct pipe_shader_state shstate = {};
+      struct pipe_shader_state shstate = {0};
       fill_shader_prog(&shstate, stage, pipeline);
 
       nir_xfb_info *xfb_info = NULL;
@@ -818,7 +818,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                                                      "dummy_frag");
 
       pipeline->pipeline_nir[MESA_SHADER_FRAGMENT] = b.shader;
-      struct pipe_shader_state shstate = {};
+      struct pipe_shader_state shstate = {0};
       shstate.type = PIPE_SHADER_IR_NIR;
       shstate.ir.nir = pipeline->pipeline_nir[MESA_SHADER_FRAGMENT];
       pipeline->shader_cso[PIPE_SHADER_FRAGMENT] = device->queue.ctx->create_fs_state(device->queue.ctx, &shstate);

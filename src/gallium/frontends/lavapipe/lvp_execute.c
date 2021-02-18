@@ -2130,7 +2130,7 @@ static void handle_copy_query_pool_results(struct lvp_cmd_buffer_entry *cmd,
             struct pipe_transfer *src_t;
             uint32_t *map;
 
-            struct pipe_box box = {};
+            struct pipe_box box = {0};
             box.width = copycmd->stride * copycmd->query_count;
             box.height = 1;
             box.depth = 1;
