@@ -1209,8 +1209,11 @@ clc_to_dxil(struct clc_context *ctx,
 
    NIR_PASS_V(nir, scale_fdiv);
 
-   // Assign bindings for constant samplers
-   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
+   struct exec_list tmp_list;
+   exec_list_make_empty(&tmp_list);
+
+   // Assign bindings for constant samplers, and move them to the end of the variable list
+   nir_foreach_variable_with_modes_safe(var, nir, nir_var_uniform) {
       if (glsl_type_is_sampler(var->type) && var->data.sampler.is_inline_sampler) {
          int_sampler_states[sampler_id].wrap[0] =
             int_sampler_states[sampler_id].wrap[1] =
@@ -1228,8 +1231,12 @@ clc_to_dxil(struct clc_context *ctx,
          metadata->const_samplers[metadata->num_const_samplers].normalized_coords = var->data.sampler.normalized_coordinates;
          metadata->const_samplers[metadata->num_const_samplers].filter_mode = var->data.sampler.filter_mode;
          metadata->num_const_samplers++;
+
+         exec_node_remove(&var->node);
+         exec_list_push_tail(&tmp_list, &var->node);
       }
    }
+   exec_node_insert_list_after(exec_list_get_tail(&nir->variables), &tmp_list);
 
    NIR_PASS_V(nir, nir_lower_variable_initializers, ~(nir_var_function_temp | nir_var_shader_temp));
 
