@@ -808,8 +808,10 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
    zink_screen_update_pipeline_cache(screen);
+#ifdef ENABLE_SHADER_CACHE
    if (screen->disk_cache)
       disk_cache_wait_for_idle(screen->disk_cache);
+#endif
    disk_cache_destroy(screen->disk_cache);
    vkDestroyPipelineCache(screen->dev, screen->pipeline_cache, NULL);
 
@@ -1287,8 +1289,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct zink_transfer), 16);
 
+#if WITH_XMLCONFIG
    if (config)
       screen->driconf.dual_color_blend_by_location = driQueryOptionb(config->options, "dual_color_blend_by_location");
+#endif
 
    return screen;
 
