@@ -2895,6 +2895,13 @@ bi_lower_branch(bi_block *block)
 
                 if (bi_is_terminal_block(ins->branch_target))
                         ins->branch_target = NULL;
+
+                /* If there is nowhere to go, there is no point in branching */
+                if (bi_is_terminal_block((bi_block *) block->base.successors[0]) &&
+                        bi_is_terminal_block((bi_block *) block->base.successors[1]) &&
+                        ins->branch_target == NULL) {
+                        bi_remove_instruction(ins);
+                }
         }
 }
 
