@@ -332,6 +332,11 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 		debug_printf("----------------------\n");
 	}
 
+	nir_foreach_uniform_variable_safe(var, s) {
+		exec_node_remove(&var->node);
+	}
+	nir_validate_shader(s, "after uniform var removal");
+
 	nir_sweep(s);
 }
 
