@@ -29,7 +29,10 @@ bi_liveness_ins_update(uint16_t *live, bi_instr *ins, unsigned max)
 {
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
-        pan_liveness_kill(live, bi_get_node(ins->dest[0]), max, bi_writemask(ins));
+        bi_foreach_dest(ins, d) {
+                pan_liveness_kill(live, bi_get_node(ins->dest[d]), max,
+                                bi_writemask(ins, d));
+        }
 
         bi_foreach_src(ins, src) {
                 unsigned count = bi_count_read_registers(ins, src);

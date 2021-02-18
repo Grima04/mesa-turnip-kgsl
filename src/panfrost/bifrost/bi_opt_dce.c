@@ -47,15 +47,22 @@ bi_opt_dead_code_eliminate(bi_context *ctx, bool soft)
                 uint16_t *live = mem_dup(block->base.live_out, temp_count * sizeof(uint16_t));
 
                 bi_foreach_instr_in_block_safe_rev(block, ins) {
-                        unsigned index = bi_get_node(ins->dest[0]);
+                        bool all_null = true;
 
-                        if (index < temp_count && !(live[index] & bi_writemask(ins))) {
-                                if (soft || bi_side_effects(ins->op))
-                                        ins->dest[0] = bi_null();
-                                else
-                                        bi_remove_instruction(ins);
+                        bi_foreach_dest(ins, d) {
+                                unsigned index = bi_get_node(ins->dest[d]);
 
-                                progress |= true;
+                                if (index < temp_count && !(live[index] & bi_writemask(ins, d))) {
+                                        ins->dest[d] = bi_null();
+                                        progress = true;
+                                }
+
+                                all_null &= bi_is_null(ins->dest[d]);
+                        }
+
+                        if (all_null && !soft && !bi_side_effects(ins->op)) {
+                                bi_remove_instruction(ins);
+                                progress = true;
                         }
 
                         bi_liveness_ins_update(live, ins, temp_count);

@@ -730,7 +730,7 @@ pan_next_block(pan_block *block)
 
 bool bi_has_arg(bi_instr *ins, bi_index arg);
 unsigned bi_count_read_registers(bi_instr *ins, unsigned src);
-unsigned bi_writemask(bi_instr *ins);
+unsigned bi_writemask(bi_instr *ins, unsigned dest);
 bi_clause * bi_next_clause(bi_context *ctx, pan_block *block, bi_clause *clause);
 bool bi_side_effects(enum bi_opcode op);
 

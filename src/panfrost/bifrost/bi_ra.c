@@ -42,11 +42,10 @@ bi_mark_sr_live(bi_block *block, bi_clause *clause, unsigned node_count, uint16_
         bi_foreach_instr_in_clause(block, clause, ins) {
                 if (!bi_opcode_props[ins->op].sr_write) continue;
 
-                bi_foreach_dest(ins, d) {
-                        unsigned node = bi_get_node(ins->dest[d]);
-                        if (node < node_count)
-                                live[node] = bi_writemask(ins);
-                }
+                /* Set liveness for dest 0 which is the staging register */
+                unsigned node = bi_get_node(ins->dest[0]);
+                if (node < node_count)
+                        live[node] = bi_writemask(ins, 0);
 
                 break;
         }
@@ -66,7 +65,7 @@ bi_mark_interference(bi_block *block, bi_clause *clause, struct lcra_state *l, u
                         for (unsigned i = 0; i < node_count; ++i) {
                                 if (live[i]) {
                                         lcra_add_node_interference(l, bi_get_node(ins->dest[d]),
-                                                        bi_writemask(ins), i, live[i]);
+                                                        bi_writemask(ins, d), i, live[i]);
                                 }
                         }
                 }
@@ -229,18 +228,6 @@ bi_rewrite_index_src_single(bi_instr *ins, bi_index old, bi_index new)
         }
 }
 
-static void
-bi_rewrite_index_dst_single(bi_instr *ins, bi_index old, bi_index new)
-{
-        bi_foreach_dest(ins, i) {
-                if (bi_is_equiv(ins->dest[i], old)) {
-                        ins->dest[i].type = new.type;
-                        ins->dest[i].reg = new.reg;
-                        ins->dest[i].value = new.value;
-                }
-        }
-}
-
 /* If register allocation fails, find the best spill node */
 
 static signed
@@ -306,12 +293,18 @@ bi_clause_mark_spill(bi_context *ctx, bi_block *block,
         unsigned channels = 0;
 
         bi_foreach_instr_in_clause(block, clause, ins) {
-                if (!bi_is_equiv(ins->dest[0], index)) continue;
-                if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
-                ins->no_spill = true;
-                bi_rewrite_index_dst_single(ins, index, *temp);
-                unsigned newc = util_last_bit(bi_writemask(ins)) >> 2;
-                channels = MAX2(channels, newc);
+                bi_foreach_dest(ins, d) {
+                        if (!bi_is_equiv(ins->dest[d], index)) continue;
+                        if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
+                        ins->no_spill = true;
+
+                        unsigned offset = ins->dest[d].offset;
+                        ins->dest[d] = bi_replace_index(ins->dest[d], *temp);
+                        ins->dest[d].offset = offset;
+
+                        unsigned newc = util_last_bit(bi_writemask(ins, d)) >> 2;
+                        channels = MAX2(channels, newc);
+                }
         }
 
         return channels;
