@@ -182,7 +182,7 @@ bi_lower_atom_c(bi_context *ctx, struct bi_clause_state *clause, struct
 {
         bi_instr *pinstr = tuple->add;
         bi_builder b = bi_init_builder(ctx, bi_before_instr(pinstr));
-        bi_instr *atom_c = bi_atom_c_return_i32_to(&b, bi_null(),
+        bi_instr *atom_c = bi_atom_c_return_i32(&b, 
                         pinstr->src[1], pinstr->src[2], pinstr->src[0],
                         pinstr->atom_opc);
 
@@ -201,7 +201,7 @@ bi_lower_atom_c1(bi_context *ctx, struct bi_clause_state *clause, struct
 {
         bi_instr *pinstr = tuple->add;
         bi_builder b = bi_init_builder(ctx, bi_before_instr(pinstr));
-        bi_instr *atom_c = bi_atom_c1_return_i32_to(&b, bi_null(),
+        bi_instr *atom_c = bi_atom_c1_return_i32(&b,
                         pinstr->src[0], pinstr->src[1], pinstr->atom_opc);
 
         if (bi_is_null(pinstr->dest[0]))

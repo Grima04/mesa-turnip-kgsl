@@ -256,7 +256,7 @@ bi_spill_dest(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
         b->cursor = bi_after_clause(clause);
 
         /* setup FAU as [offset][0] */
-        bi_instr *st = bi_store_to(b, channels * 32, bi_null(), temp,
+        bi_instr *st = bi_store(b, channels * 32, temp,
                         bi_passthrough(BIFROST_SRC_FAU_LO),
                         bi_passthrough(BIFROST_SRC_FAU_HI),
                         BI_SEG_TL);

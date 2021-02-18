@@ -131,6 +131,7 @@ def parse_instruction(ins, include_pseudo):
             'derived': [],
             'staging': ins.attrib.get('staging', '').split('=')[0],
             'staging_count': ins.attrib.get('staging', '=0').split('=')[1],
+            'dests': int(ins.attrib.get('dests', '1')),
             'unused': ins.attrib.get('unused', False),
             'pseudo': ins.attrib.get('pseudo', False),
             'message': ins.attrib.get('message', 'none'),
@@ -238,6 +239,7 @@ def simplify_to_ir(ins):
     return {
             'staging': ins['staging'],
             'srcs': len(ins['srcs']),
+            'dests': ins['dests'],
             'modifiers': [[m[0][0], m[2]] for m in ins['modifiers']],
             'immediates': [m[0] for m in ins['immediates']]
         }
@@ -252,6 +254,7 @@ def combine_ir_variants(instructions, v):
     for s in variants:
         # Check consistency
         assert(s['srcs'] == variants[0]['srcs'])
+        assert(s['dests'] == variants[0]['dests'])
         assert(s['immediates'] == variants[0]['immediates'])
         assert(s['staging'] == variants[0]['staging'])
 
@@ -265,6 +268,7 @@ def combine_ir_variants(instructions, v):
     # modifiers
     return {
             'srcs': variants[0]['srcs'],
+            'dests': variants[0]['dests'],
             'staging': variants[0]['staging'],
             'immediates': sorted(variants[0]['immediates']),
             'modifiers': { k: modifiers[k] for k in modifiers }

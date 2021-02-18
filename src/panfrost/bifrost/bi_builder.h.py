@@ -40,15 +40,21 @@ def typesize(opcode):
             return int(opcode[-2:])
         except:
             return None
+
+def to_suffix(op):
+    return "_to" if op["dests"] > 0 else ""
+
 %>
 
 % for opcode in ops:
 static inline
-bi_instr * bi_${opcode.replace('.', '_').lower()}_to(${signature(ops[opcode], 1, modifiers)})
+bi_instr * bi_${opcode.replace('.', '_').lower()}${to_suffix(ops[opcode])}(${signature(ops[opcode], modifiers)})
 {
     bi_instr *I = rzalloc(b->shader, bi_instr);
     I->op = BI_OPCODE_${opcode.replace('.', '_').upper()};
-    I->dest[0] = dest0;
+% for dest in range(ops[opcode]["dests"]):
+    I->dest[${dest}] = dest${dest};
+% endfor
 % for src in range(src_count(ops[opcode])):
     I->src[${src}] = src${src};
 % endfor
@@ -64,31 +70,31 @@ bi_instr * bi_${opcode.replace('.', '_').lower()}_to(${signature(ops[opcode], 1,
     return I;
 }
 
-% if opcode.split(".")[0] not in ["JUMP", "BRANCHZ", "BRANCH"]:
+% if ops[opcode]["dests"] == 1:
 static inline
-bi_index bi_${opcode.replace('.', '_').lower()}(${signature(ops[opcode], 0, modifiers)})
+bi_index bi_${opcode.replace('.', '_').lower()}(${signature(ops[opcode], modifiers, no_dests=True)})
 {
-    return (bi_${opcode.replace('.', '_').lower()}_to(${arguments(ops[opcode], 1)}))->dest[0];
+    return (bi_${opcode.replace('.', '_').lower()}_to(${arguments(ops[opcode])}))->dest[0];
 }
 
 %endif
 <%
     common_op = opcode.split('.')[0]
     variants = [a for a in ops.keys() if a.split('.')[0] == common_op]
-    signatures = [signature(ops[op], 0, modifiers, sized=True) for op in variants]
+    signatures = [signature(ops[op], modifiers, sized=True, no_dests=True) for op in variants]
     homogenous = all([sig == signatures[0] for sig in signatures])
     sizes = [typesize(x) for x in variants]
     last = opcode == variants[-1]
 %>
 % if homogenous and len(variants) > 1 and last:
 % for (suffix, temp, dests, ret) in (('_to', False, 1, 'instr *'), ('', True, 0, 'index')):
-% if not temp or common_op not in ["JUMP", "BRANCHZ", "BRANCH"]:
+% if not temp or ops[opcode]["dests"] > 0:
 static inline
-bi_${ret} bi_${common_op.replace('.', '_').lower()}${suffix}(${signature(ops[opcode], dests, modifiers, sized=True)})
+bi_${ret} bi_${common_op.replace('.', '_').lower()}${suffix if ops[opcode]['dests'] > 0 else ''}(${signature(ops[opcode], modifiers, sized=True, no_dests=not dests)})
 {
 % for i, (variant, size) in enumerate(zip(variants, sizes)):
     ${"else " if i > 0 else ""} if (bitsize == ${size})
-        return (bi_${variant.replace('.', '_').lower()}_to(${arguments(ops[opcode], 1, temp_dest = temp)}))${"->dest[0]" if temp else ""};
+        return (bi_${variant.replace('.', '_').lower()}${to_suffix(ops[opcode])}(${arguments(ops[opcode], temp_dest = temp)}))${"->dest[0]" if temp else ""};
 % endfor
     else
         unreachable("Invalid bitsize for ${common_op}");
@@ -116,11 +122,11 @@ def should_skip(mod):
 def modifier_signature(op):
     return sorted([m for m in op["modifiers"].keys() if not should_skip(m)])
 
-def signature(op, dest_count, modifiers, sized = False):
+def signature(op, modifiers, sized = False, no_dests = False):
     return ", ".join(
         ["bi_builder *b"] +
         (["unsigned bitsize"] if sized else []) +
-        ["bi_index dest{}".format(i) for i in range(dest_count)] +
+        ["bi_index dest{}".format(i) for i in range(0 if no_dests else op["dests"])] +
         ["bi_index src{}".format(i) for i in range(src_count(op))] +
         ["{} {}".format(
         "bool" if len(modifiers[T[0:-1]] if T[-1] in "0123" else modifiers[T]) == 2 else
@@ -129,10 +135,10 @@ def signature(op, dest_count, modifiers, sized = False):
         T) for T in modifier_signature(op)] +
         ["uint32_t {}".format(imm) for imm in op["immediates"]])
 
-def arguments(op, dest_count, temp_dest = True):
+def arguments(op, temp_dest = True):
     return ", ".join(
         ["b"] +
-        ["bi_temp(b->shader)" if temp_dest else 'dest{}'.format(i) for i in range(dest_count)] +
+        ["bi_temp(b->shader)" if temp_dest else 'dest{}'.format(i) for i in range(op["dests"])] +
         ["src{}".format(i) for i in range(src_count(op))] +
         modifier_signature(op) +
         op["immediates"])

@@ -65,7 +65,7 @@ static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
 static void
 bi_emit_jump(bi_builder *b, nir_jump_instr *instr)
 {
-        bi_instr *branch = bi_jump_to(b, bi_null(), bi_zero());
+        bi_instr *branch = bi_jump(b, bi_zero());
 
         switch (instr->type) {
         case nir_jump_break:
@@ -528,7 +528,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 /* Jump back to the fragment shader, return address is stored
                  * in r48 (see above).
                  */
-                bi_jump_to(b, bi_null(), bi_register(48));
+                bi_jump(b, bi_register(48));
         }
 }
 
@@ -568,8 +568,8 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
         unsigned nr = util_last_bit(nir_intrinsic_write_mask(instr));
         assert(nr > 0 && nr <= nir_intrinsic_src_components(instr, 0));
 
-        bi_st_cvt_to(b, bi_null(), bi_src_index(&instr->src[0]),
-                        address, bi_word(address, 1), bi_word(address, 2),
+        bi_st_cvt(b, bi_src_index(&instr->src[0]), address,
+                        bi_word(address, 1), bi_word(address, 2),
                         regfmt, nr - 1);
 }
 
@@ -609,8 +609,7 @@ bi_emit_load(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
 static void
 bi_emit_store(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
 {
-        bi_store_to(b, instr->num_components * nir_src_bit_size(instr->src[0]),
-                    bi_null(),
+        bi_store(b, instr->num_components * nir_src_bit_size(instr->src[0]),
                     bi_src_index(&instr->src[0]),
                     bi_src_index(&instr->src[1]), bi_addr_high(&instr->src[1]),
                     seg);
@@ -831,8 +830,7 @@ bi_emit_image_store(bi_builder *b, nir_intrinsic_instr *instr)
 {
         bi_index addr = bi_emit_lea_image(b, instr);
 
-        bi_st_cvt_to(b, bi_null(),
-                     bi_src_index(&instr->src[3]),
+        bi_st_cvt(b, bi_src_index(&instr->src[3]),
                      addr, bi_word(addr, 1), bi_word(addr, 2),
                      bi_reg_fmt_for_nir(nir_intrinsic_src_type(instr)),
                      instr->num_components - 1);
@@ -1014,7 +1012,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_control_barrier:
                 assert(b->shader->stage != MESA_SHADER_FRAGMENT);
-                bi_barrier_to(b, bi_null());
+                bi_barrier(b);
                 break;
 
         case nir_intrinsic_shared_atomic_add:
@@ -1122,13 +1120,12 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 if (sz == 16)
                         src = bi_half(src, false);
 
-                bi_discard_f32_to(b, bi_null(), src, bi_zero(), BI_CMPF_NE);
+                bi_discard_f32(b, src, bi_zero(), BI_CMPF_NE);
                 break;
         }
 
         case nir_intrinsic_discard:
-                bi_discard_f32_to(b, bi_null(), bi_zero(), bi_zero(),
-                                BI_CMPF_EQ);
+                bi_discard_f32(b, bi_zero(), bi_zero(), BI_CMPF_EQ);
                 break;
 
         case nir_intrinsic_load_ssbo_address:
@@ -2071,9 +2068,9 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
                     bi_index *face, bi_index *s, bi_index *t)
 {
         /* Compute max { |x|, |y|, |z| } */
-        bi_instr *cubeface = bi_cubeface_to(b, bi_temp(b->shader), coord,
+        bi_instr *cubeface = bi_cubeface_to(b, bi_temp(b->shader),
+                        bi_temp(b->shader), coord,
                         bi_word(coord, 1), bi_word(coord, 2));
-        cubeface->dest[1] = bi_temp(b->shader);
 
         /* Select coordinates */
 
@@ -2553,24 +2550,6 @@ emit_block(bi_context *ctx, nir_block *block)
         return ctx->current_block;
 }
 
-/* Emits a direct branch based on a given condition. TODO: try to unwrap the
- * condition to optimize */
-
-static bi_instr *
-bi_branch(bi_builder *b, nir_src *condition, bool invert)
-{
-        return bi_branchz_i32_to(b, bi_null(), bi_src_index(condition),
-                        bi_zero(), invert ? BI_CMPF_EQ : BI_CMPF_NE);
-}
-
-static bi_instr *
-bi_jump(bi_builder *b, bi_block *target)
-{
-        bi_instr *I = bi_jump_to(b, bi_null(), bi_zero());
-        I->branch_target = target;
-        return I;
-}
-
 static void
 emit_if(bi_context *ctx, nir_if *nif)
 {
@@ -2578,7 +2557,8 @@ emit_if(bi_context *ctx, nir_if *nif)
 
         /* Speculatively emit the branch, but we can't fill it in until later */
         bi_builder _b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
-        bi_instr *then_branch = bi_branch(&_b, &nif->condition, true);
+        bi_instr *then_branch = bi_branchz_i32(&_b,
+                        bi_src_index(&nif->condition), bi_zero(), BI_CMPF_EQ);
 
         /* Emit the two subblocks. */
         bi_block *then_block = emit_cf_list(ctx, &nif->then_list);
@@ -2604,7 +2584,8 @@ emit_if(bi_context *ctx, nir_if *nif)
 
                 /* Emit a jump from the end of the then block to the end of the else */
                 _b.cursor = bi_after_block(end_then_block);
-                bi_instr *then_exit = bi_jump(&_b, ctx->after_block);
+                bi_instr *then_exit = bi_jump(&_b, bi_zero());
+                then_exit->branch_target = ctx->after_block;
 
                 pan_block_add_successor(&end_then_block->base, &then_exit->branch_target->base);
                 pan_block_add_successor(&end_else_block->base, &ctx->after_block->base); /* fallthrough */
@@ -2632,7 +2613,8 @@ emit_loop(bi_context *ctx, nir_loop *nloop)
 
         /* Branch back to loop back */
         bi_builder _b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
-        bi_jump(&_b, ctx->continue_block);
+        bi_instr *I = bi_jump(&_b, bi_zero());
+        I->branch_target = ctx->continue_block;
         pan_block_add_successor(&start_block->base, &ctx->continue_block->base);
         pan_block_add_successor(&ctx->current_block->base, &ctx->continue_block->base);
 
