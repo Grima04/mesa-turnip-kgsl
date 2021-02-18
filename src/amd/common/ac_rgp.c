@@ -172,7 +172,10 @@ static_assert(sizeof(struct sqtt_file_chunk_cpu_info) == 112,
 
 static void ac_sqtt_fill_cpu_info(struct sqtt_file_chunk_cpu_info *chunk)
 {
+   uint32_t cpu_clock_speed_total = 0;
    uint64_t system_ram_size = 0;
+   char line[1024];
+   FILE *f;
 
    chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_CPU_INFO;
    chunk->header.chunk_id.index = 0;
@@ -182,17 +185,72 @@ static void ac_sqtt_fill_cpu_info(struct sqtt_file_chunk_cpu_info *chunk)
 
    chunk->cpu_timestamp_freq = 1000000000; /* tick set to 1ns */
 
-   /* TODO: fill with real info. */
-
    strncpy((char *)chunk->vendor_id, "Unknown", sizeof(chunk->vendor_id));
    strncpy((char *)chunk->processor_brand, "Unknown", sizeof(chunk->processor_brand));
    chunk->clock_speed = 0;
    chunk->num_logical_cores = 0;
    chunk->num_physical_cores = 0;
-
    chunk->system_ram_size = 0;
    if (os_get_total_physical_memory(&system_ram_size))
       chunk->system_ram_size = system_ram_size / (1024 * 1024);
+
+   /* Parse cpuinfo to get more detailled information. */
+   f = fopen("/proc/cpuinfo", "r");
+   if (!f)
+      return;
+
+   while (fgets(line, sizeof(line), f)) {
+      char *str;
+
+      /* Parse vendor name. */
+      str = strstr(line, "vendor_id");
+      if (str) {
+         char *ptr = (char *)chunk->vendor_id;
+         char *v = strtok(str, ":");
+         v = strtok(NULL, ":");
+         strncpy(ptr, v + 1, sizeof(chunk->vendor_id) - 1);
+         ptr[sizeof(chunk->vendor_id) - 1] = '\0';
+      }
+
+      /* Parse processor name. */
+      str = strstr(line, "model name");
+      if (str) {
+         char *ptr = (char *)chunk->processor_brand;
+         char *v = strtok(str, ":");
+         v = strtok(NULL, ":");
+         strncpy(ptr, v + 1, sizeof(chunk->processor_brand) - 1);
+         ptr[sizeof(chunk->processor_brand) - 1] = '\0';
+      }
+
+      /* Parse the current CPU clock speed for each cores. */
+      str = strstr(line, "cpu MHz");
+      if (str) {
+         uint32_t v = 0;
+         if (sscanf(str, "cpu MHz : %d", &v) == 1)
+            cpu_clock_speed_total += v;
+      }
+
+      /* Parse the number of logical cores. */
+      str = strstr(line, "siblings");
+      if (str) {
+         uint32_t v = 0;
+         if (sscanf(str, "siblings : %d", &v) == 1)
+            chunk->num_logical_cores = v;
+      }
+
+      /* Parse the number of physical cores. */
+      str = strstr(line, "cpu cores");
+      if (str) {
+         uint32_t v = 0;
+         if (sscanf(str, "cpu cores : %d", &v) == 1)
+            chunk->num_physical_cores = v;
+      }
+   }
+
+   if (chunk->num_logical_cores)
+      chunk->clock_speed = cpu_clock_speed_total / chunk->num_logical_cores;
+
+   fclose(f);
 }
 
 /**
