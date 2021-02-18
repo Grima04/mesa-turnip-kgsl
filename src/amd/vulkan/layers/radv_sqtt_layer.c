@@ -341,9 +341,6 @@ radv_describe_pipeline_bind(struct radv_cmd_buffer *cmd_buffer,
 	struct rgp_sqtt_marker_pipeline_bind marker = {0};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-	// TODO: Enable when PSO records & friends are dumped.
-	return;
-
 	if (likely(!cmd_buffer->device->thread_trace.bo))
 		return;
 
@@ -739,7 +736,8 @@ void sqtt_CmdBindPipeline(
 
 	API_MARKER(BindPipeline, commandBuffer, pipelineBindPoint, _pipeline);
 
-	radv_describe_pipeline_bind(cmd_buffer, pipelineBindPoint, pipeline);
+	if (radv_sqtt_dump_pipeline())
+		radv_describe_pipeline_bind(cmd_buffer, pipelineBindPoint, pipeline);
 }
 
 void sqtt_CmdBindDescriptorSets(
@@ -1013,7 +1011,7 @@ radv_add_pso_correlation(struct radv_device *device,
 	if (!record)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-	record->api_pso_hash = 0;
+	record->api_pso_hash = pipeline->pipeline_hash;
 	record->pipeline_hash[0] = pipeline->pipeline_hash;
 	record->pipeline_hash[1] = pipeline->pipeline_hash;
 	memset(record->api_level_obj_name, 0, sizeof(record->api_level_obj_name));
