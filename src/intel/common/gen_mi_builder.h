@@ -706,6 +706,13 @@ gen_mi_value_to_gpr(struct gen_mi_builder *b, struct gen_mi_value val)
    return tmp;
 }
 
+static inline uint64_t
+gen_mi_value_to_u64(struct gen_mi_value val)
+{
+   assert(val.type == GEN_MI_VALUE_TYPE_IMM);
+   return val.invert ? ~val.imm : val.imm;
+}
+
 static inline uint32_t
 _gen_mi_math_load_src(struct gen_mi_builder *b,
                       unsigned src, struct gen_mi_value *val)
@@ -744,6 +751,9 @@ gen_mi_math_binop(struct gen_mi_builder *b, uint32_t opcode,
 static inline struct gen_mi_value
 gen_mi_inot(struct gen_mi_builder *b, struct gen_mi_value val)
 {
+   if (val.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(~gen_mi_value_to_u64(val));
+
    /* TODO These currently can't be passed into gen_mi_copy */
    val.invert = !val.invert;
    return val;
@@ -753,6 +763,9 @@ static inline struct gen_mi_value
 gen_mi_iadd(struct gen_mi_builder *b,
             struct gen_mi_value src0, struct gen_mi_value src1)
 {
+   if (src0.type == GEN_MI_VALUE_TYPE_IMM && src1.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src0) + gen_mi_value_to_u64(src1));
+
    return gen_mi_math_binop(b, MI_ALU_ADD, src0, src1,
                             MI_ALU_STORE, MI_ALU_ACCU);
 }
@@ -771,6 +784,9 @@ static inline struct gen_mi_value
 gen_mi_isub(struct gen_mi_builder *b,
             struct gen_mi_value src0, struct gen_mi_value src1)
 {
+   if (src0.type == GEN_MI_VALUE_TYPE_IMM && src1.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src0) - gen_mi_value_to_u64(src1));
+
    return gen_mi_math_binop(b, MI_ALU_SUB, src0, src1,
                             MI_ALU_STORE, MI_ALU_ACCU);
 }
@@ -779,6 +795,9 @@ static inline struct gen_mi_value
 gen_mi_ult(struct gen_mi_builder *b,
            struct gen_mi_value src0, struct gen_mi_value src1)
 {
+   if (src0.type == GEN_MI_VALUE_TYPE_IMM && src1.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src0) < gen_mi_value_to_u64(src1) ? ~0ull : 0);
+
    /* Compute "less than" by subtracting and storing the carry bit */
    return gen_mi_math_binop(b, MI_ALU_SUB, src0, src1,
                             MI_ALU_STORE, MI_ALU_CF);
@@ -788,6 +807,9 @@ static inline struct gen_mi_value
 gen_mi_uge(struct gen_mi_builder *b,
            struct gen_mi_value src0, struct gen_mi_value src1)
 {
+   if (src0.type == GEN_MI_VALUE_TYPE_IMM && src1.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src0) >= gen_mi_value_to_u64(src1) ? ~0ull : 0);
+
    /* Compute "less than" by subtracting and storing the carry bit */
    return gen_mi_math_binop(b, MI_ALU_SUB, src0, src1,
                             MI_ALU_STOREINV, MI_ALU_CF);
@@ -797,6 +819,9 @@ static inline struct gen_mi_value
 gen_mi_iand(struct gen_mi_builder *b,
             struct gen_mi_value src0, struct gen_mi_value src1)
 {
+   if (src0.type == GEN_MI_VALUE_TYPE_IMM && src1.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src0) & gen_mi_value_to_u64(src1));
+
    return gen_mi_math_binop(b, MI_ALU_AND, src0, src1,
                             MI_ALU_STORE, MI_ALU_ACCU);
 }
@@ -804,6 +829,9 @@ gen_mi_iand(struct gen_mi_builder *b,
 static inline struct gen_mi_value
 gen_mi_nz(struct gen_mi_builder *b, struct gen_mi_value src)
 {
+   if (src.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src) != 0 ? ~0ull : 0);
+
    return gen_mi_math_binop(b, MI_ALU_ADD, src, gen_mi_imm(0),
                             MI_ALU_STOREINV, MI_ALU_ZF);
 }
@@ -811,6 +839,9 @@ gen_mi_nz(struct gen_mi_builder *b, struct gen_mi_value src)
 static inline struct gen_mi_value
 gen_mi_z(struct gen_mi_builder *b, struct gen_mi_value src)
 {
+   if (src.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src) == 0 ? ~0ull : 0);
+
    return gen_mi_math_binop(b, MI_ALU_ADD, src, gen_mi_imm(0),
                             MI_ALU_STORE, MI_ALU_ZF);
 }
@@ -819,6 +850,9 @@ static inline struct gen_mi_value
 gen_mi_ior(struct gen_mi_builder *b,
            struct gen_mi_value src0, struct gen_mi_value src1)
 {
+   if (src0.type == GEN_MI_VALUE_TYPE_IMM && src1.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src0) | gen_mi_value_to_u64(src1));
+
    return gen_mi_math_binop(b, MI_ALU_OR, src0, src1,
                             MI_ALU_STORE, MI_ALU_ACCU);
 }
@@ -827,6 +861,9 @@ static inline struct gen_mi_value
 gen_mi_imul_imm(struct gen_mi_builder *b,
                 struct gen_mi_value src, uint32_t N)
 {
+   if (src.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src) * N);
+
    if (N == 0) {
       gen_mi_value_unref(b, src);
       return gen_mi_imm(0);
@@ -861,6 +898,9 @@ gen_mi_ishl_imm(struct gen_mi_builder *b,
    if (shift >= 64)
       return gen_mi_imm(0);
 
+   if (src.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm(gen_mi_value_to_u64(src) << shift);
+
    struct gen_mi_value res = gen_mi_value_to_gpr(b, src);
 
    for (unsigned i = 0; i < shift; i++)
@@ -876,11 +916,14 @@ gen_mi_ushr32_imm(struct gen_mi_builder *b,
    if (shift == 0)
       return src;
 
+   if (shift >= 64)
+      return gen_mi_imm(0);
+
    /* We right-shift by left-shifting by 32 - shift and taking the top 32 bits
     * of the result.
     */
-   if (shift >= 64)
-      return gen_mi_imm(0);
+   if (src.type == GEN_MI_VALUE_TYPE_IMM)
+      return gen_mi_imm((gen_mi_value_to_u64(src) >> shift) & UINT32_MAX);
 
    if (shift > 32) {
       struct gen_mi_value tmp = gen_mi_new_gpr(b);
@@ -905,6 +948,11 @@ static inline struct gen_mi_value
 gen_mi_udiv32_imm(struct gen_mi_builder *b,
                   struct gen_mi_value N, uint32_t D)
 {
+   if (N.type == GEN_MI_VALUE_TYPE_IMM) {
+      assert(gen_mi_value_to_u64(N) <= UINT32_MAX);
+      return gen_mi_imm(gen_mi_value_to_u64(N) / D);
+   }
+
    /* We implicitly assume that N is only a 32-bit value */
    if (D == 0) {
       /* This is invalid but we should do something */
