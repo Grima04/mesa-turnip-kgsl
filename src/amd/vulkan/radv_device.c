@@ -3417,7 +3417,7 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 	 * Follow AMDVLK here.
 	 */
 	if (device->physical_device->rad_info.chip_class >= GFX10) {
-		max_offchip_buffers_per_se = 256;
+		max_offchip_buffers_per_se = 128;
 	} else if (device->physical_device->rad_info.family == CHIP_VEGA10 ||
 		   device->physical_device->rad_info.chip_class == GFX7 ||
 		   device->physical_device->rad_info.chip_class == GFX6)
