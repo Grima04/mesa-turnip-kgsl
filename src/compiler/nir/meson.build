@@ -485,4 +485,17 @@ if with_tests
     ),
     suite : ['compiler', 'nir'],
   )
+
+  test(
+    'ssa_def_bits_used',
+    executable(
+      'ssa_def_bits_used',
+      files('tests/ssa_def_bits_used_tests.cpp'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
+    ),
+    suite : ['compiler', 'nir'],
+  )
 endif

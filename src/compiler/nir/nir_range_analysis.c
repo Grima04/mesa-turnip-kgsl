@@ -1502,6 +1502,18 @@ ssa_def_bits_used(nir_ssa_def *def, int recur)
    uint64_t bits_used = 0;
    uint64_t all_bits = BITFIELD64_MASK(def->bit_size);
 
+   /* Querying the bits used from a vector is too hard of a question to
+    * answer.  Return the conservative answer that all bits are used.  To
+    * handle this, the function would need to be extended to be a query of a
+    * single component of the vector.  That would also necessary to fully
+    * handle the 'num_components > 1' inside the loop below.
+    *
+    * FINISHME: This restriction will eventually need to be restricted to be
+    * useful for hardware that uses u16vec2 as the native 16-bit integer type.
+    */
+   if (def->num_components > 1)
+      return all_bits;
+
    /* Limit recursion */
    if (recur-- <= 0)
       return all_bits;
@@ -1511,6 +1523,22 @@ ssa_def_bits_used(nir_ssa_def *def, int recur)
       case nir_instr_type_alu: {
          nir_alu_instr *use_alu = nir_instr_as_alu(src->parent_instr);
          unsigned src_idx = container_of(src, nir_alu_src, src) - use_alu->src;
+
+         /* If a user of the value produces a vector result, return the
+          * conservative answer that all bits are used.  It is possible to
+          * answer this query by looping over the components used.  For example,
+          *
+          * vec4 32 ssa_5 = load_const(0x0000f000, 0x00000f00, 0x000000f0, 0x0000000f)
+          * ...
+          * vec4 32 ssa_8 = iand ssa_7.xxxx, ssa_5
+          *
+          * could conceivably return 0x0000ffff when queyring the bits used of
+          * ssa_7.  This is unlikely to be worth the effort because the
+          * question can eventually answered after the shader has been
+          * scalarized.
+          */
+         if (use_alu->dest.dest.ssa.num_components > 1)
+            return all_bits;
 
          switch (use_alu->op) {
          case nir_op_u2u8:
@@ -1531,7 +1559,8 @@ ssa_def_bits_used(nir_ssa_def *def, int recur)
          case nir_op_extract_u8:
          case nir_op_extract_i8:
             if (src_idx == 0 && nir_src_is_const(use_alu->src[1].src)) {
-               unsigned chunk = nir_src_as_uint(use_alu->src[1].src);
+               unsigned chunk = nir_src_comp_as_uint(use_alu->src[1].src,
+                                                     use_alu->src[1].swizzle[0]);
                bits_used |= 0xffull << (chunk * 8);
                break;
             } else {
@@ -1541,7 +1570,8 @@ ssa_def_bits_used(nir_ssa_def *def, int recur)
          case nir_op_extract_u16:
          case nir_op_extract_i16:
             if (src_idx == 0 && nir_src_is_const(use_alu->src[1].src)) {
-               unsigned chunk = nir_src_as_uint(use_alu->src[1].src);
+               unsigned chunk = nir_src_comp_as_uint(use_alu->src[1].src,
+                                                     use_alu->src[1].swizzle[0]);
                bits_used |= 0xffffull << (chunk * 16);
                break;
             } else {
@@ -1561,7 +1591,8 @@ ssa_def_bits_used(nir_ssa_def *def, int recur)
          case nir_op_iand:
             assert(src_idx < 2);
             if (nir_src_is_const(use_alu->src[1 - src_idx].src)) {
-               uint64_t u64 = nir_src_as_uint(use_alu->src[1 - src_idx].src);
+               uint64_t u64 = nir_src_comp_as_uint(use_alu->src[1 - src_idx].src,
+                                                   use_alu->src[1 - src_idx].swizzle[0]);
                bits_used |= u64;
                break;
             } else {
@@ -1571,7 +1602,8 @@ ssa_def_bits_used(nir_ssa_def *def, int recur)
          case nir_op_ior:
             assert(src_idx < 2);
             if (nir_src_is_const(use_alu->src[1 - src_idx].src)) {
-               uint64_t u64 = nir_src_as_uint(use_alu->src[1 - src_idx].src);
+               uint64_t u64 = nir_src_comp_as_uint(use_alu->src[1 - src_idx].src,
+                                                   use_alu->src[1 - src_idx].swizzle[0]);
                bits_used |= all_bits & ~u64;
                break;
             } else {
