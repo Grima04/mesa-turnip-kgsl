@@ -23,8 +23,6 @@
 #else
 #include <cmath>
 #endif
-//#include <windows.h> // Just used for some commented out debug stat printing.
-//#include <strsafe.h> // Ditto.
 #define min(x,y) (x < y ? x : y)
 #define max(x,y) (x > y ? x : y)
 
