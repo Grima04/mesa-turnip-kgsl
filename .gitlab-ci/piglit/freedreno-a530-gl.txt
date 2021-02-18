@@ -2,122 +2,49 @@ fast_color_clear/fcc-clear-tex: skip
 fast_color_clear/fcc-read-after-clear copy rb: fail
 fast_color_clear/fcc-read-after-clear copy tex: fail
 fast_color_clear/fcc-write-after-clear: skip
-glx/extension string sanity: skip
-glx/glx-buffer-age: skip
-glx/glx-buffer-age vblank_mode=0: skip
-glx/glx-close-display: skip
 glx/glx-context-flush-control: skip
-glx/glx-copy-sub-buffer: skip
 glx/glx-copy-sub-buffer samples=16: skip
-glx/glx-copy-sub-buffer samples=2: skip
 glx/glx-copy-sub-buffer samples=32: skip
-glx/glx-copy-sub-buffer samples=4: skip
 glx/glx-copy-sub-buffer samples=6: skip
 glx/glx-copy-sub-buffer samples=8: skip
-glx/glx-destroycontext-1: skip
-glx/glx-destroycontext-2: skip
-glx/glx-destroycontext-3: skip
-glx/glx-dont-care-mask: skip
-glx/glx-egl-switch-context: skip
-glx/glx-fbconfig-bad: skip
-glx/glx-fbconfig-compliance: skip
-glx/glx-fbconfig-sanity: skip
-glx/glx-fbo-binding: skip
-glx/glx-make-current: skip
-glx/glx-make-glxdrawable-current: skip
-glx/glx-multi-context-front: skip
-glx/glx-multi-context-ib-1: skip
-glx/glx-multi-context-single-window: skip
-glx/glx-multi-window-single-context: skip
-glx/glx-multithread: skip
-glx/glx-multithread-buffer: skip
+glx/glx-make-current: fail
+glx/glx-multi-window-single-context: fail
 glx/glx-multithread-makecurrent-1: skip
 glx/glx-multithread-makecurrent-2: skip
 glx/glx-multithread-makecurrent-3: skip
 glx/glx-multithread-makecurrent-4: skip
-glx/glx-multithread-texture: skip
-glx/glx-pixmap-crosscheck: skip
-glx/glx-pixmap-life: skip
-glx/glx-pixmap-multi: skip
-glx/glx-pixmap13-life: skip
-glx/glx-query-drawable-glx_fbconfig_id-glxpbuffer: skip
-glx/glx-query-drawable-glx_fbconfig_id-glxpixmap: skip
-glx/glx-query-drawable-glx_fbconfig_id-glxwindow: skip
-glx/glx-query-drawable-glx_fbconfig_id-window: skip
-glx/glx-query-drawable-glx_height: skip
-glx/glx-query-drawable-glx_preserved_contents: skip
-glx/glx-query-drawable-glx_width: skip
-glx/glx-query-drawable-glxbaddrawable: skip
-glx/glx-query-drawable-glxpbuffer-glx_height: skip
-glx/glx-query-drawable-glxpbuffer-glx_width: skip
-glx/glx-query-drawable-glxpixmap-glx_height: skip
-glx/glx-query-drawable-glxpixmap-glx_width: skip
-glx/glx-query-drawable-glxwindow-glx_height: skip
-glx/glx-query-drawable-glxwindow-glx_width: skip
-glx/glx-shader-sharing: skip
-glx/glx-swap-copy: skip
-glx/glx-swap-event_async: skip
-glx/glx-swap-event_event: skip
-glx/glx-swap-event_interval: skip
+glx/glx-query-drawable-glx_fbconfig_id-window: fail
 glx/glx-swap-exchange: skip
-glx/glx-swap-pixmap: skip
-glx/glx-swap-pixmap-bad: skip
-glx/glx-swap-singlebuffer: skip
+glx/glx-swap-pixmap-bad: fail
 glx/glx-tfp: skip
-glx/glx-visuals-depth: skip
-glx/glx-visuals-depth -pixmap: skip
-glx/glx-visuals-stencil: skip
-glx/glx-visuals-stencil -pixmap: skip
-glx/glx-window-life: skip
-glx/glx_arb_create_context/color-index render type with 3.0: skip
-glx/glx_arb_create_context/current with no framebuffer: skip
-glx/glx_arb_create_context/default major version: skip
-glx/glx_arb_create_context/default minor version: skip
-glx/glx_arb_create_context/empty attribute list: skip
-glx/glx_arb_create_context/forward-compatible flag with 3.0: skip
-glx/glx_arb_create_context/forward-compatible flag with pre-3.0: skip
-glx/glx_arb_create_context/invalid attribute: skip
-glx/glx_arb_create_context/invalid flag: skip
-glx/glx_arb_create_context/invalid opengl version: skip
-glx/glx_arb_create_context/invalid render type: skip
-glx/glx_arb_create_context/null attribute list: skip
-glx/glx_arb_create_context_es2_profile/indirect rendering es2 profile: skip
-glx/glx_arb_create_context_es2_profile/invalid opengl es version: skip
-glx/glx_arb_create_context_no_error/no error: skip
-glx/glx_arb_create_context_profile/3.2 core profile required: skip
-glx/glx_arb_create_context_profile/invalid profile: skip
-glx/glx_arb_create_context_profile/pre-gl3.2 profile: skip
-glx/glx_arb_create_context_robustness/invalid reset notification strategy: skip
-glx/glx_arb_create_context_robustness/require gl_arb_robustness: skip
-glx/glx_arb_sync_control/glxgetmscrateoml: skip
-glx/glx_arb_sync_control/swapbuffersmsc-divisor-zero: skip
-glx/glx_arb_sync_control/swapbuffersmsc-return: skip
-glx/glx_arb_sync_control/swapbuffersmsc-return swap_interval 0: skip
-glx/glx_arb_sync_control/swapbuffersmsc-return swap_interval 1: skip
-glx/glx_arb_sync_control/timing -divisor 1: skip
-glx/glx_arb_sync_control/timing -divisor 2: skip
-glx/glx_arb_sync_control/timing -fullscreen -divisor 1: skip
-glx/glx_arb_sync_control/timing -fullscreen -divisor 2: skip
-glx/glx_arb_sync_control/timing -fullscreen -msc-delta 1: skip
-glx/glx_arb_sync_control/timing -fullscreen -msc-delta 2: skip
-glx/glx_arb_sync_control/timing -msc-delta 1: skip
-glx/glx_arb_sync_control/timing -msc-delta 2: skip
-glx/glx_arb_sync_control/timing -waitformsc -divisor 1: skip
-glx/glx_arb_sync_control/timing -waitformsc -divisor 2: skip
-glx/glx_arb_sync_control/timing -waitformsc -msc-delta 1: skip
-glx/glx_arb_sync_control/timing -waitformsc -msc-delta 2: skip
-glx/glx_arb_sync_control/waitformsc: skip
-glx/glx_ext_import_context/free context: skip
-glx/glx_ext_import_context/get context id: skip
-glx/glx_ext_import_context/get current display: skip
-glx/glx_ext_import_context/import context, multi process: skip
-glx/glx_ext_import_context/import context, single process: skip
-glx/glx_ext_import_context/imported context has same context id: skip
-glx/glx_ext_import_context/make current, multi process: skip
-glx/glx_ext_import_context/make current, single process: skip
-glx/glx_ext_import_context/query context info: skip
+glx/glx-visuals-depth -pixmap: fail
+glx/glx-visuals-stencil -pixmap: fail
+glx/glx_arb_create_context_es2_profile/invalid opengl es version: fail
+glx/glx_arb_create_context_robustness/invalid reset notification strategy: fail
+glx/glx_arb_sync_control/swapbuffersmsc-divisor-zero: fail
+glx/glx_arb_sync_control/timing -divisor 1: fail
+glx/glx_arb_sync_control/timing -divisor 2: fail
+glx/glx_arb_sync_control/timing -fullscreen -divisor 1: fail
+glx/glx_arb_sync_control/timing -fullscreen -divisor 2: fail
+glx/glx_arb_sync_control/timing -fullscreen -msc-delta 1: fail
+glx/glx_arb_sync_control/timing -fullscreen -msc-delta 2: fail
+glx/glx_arb_sync_control/timing -msc-delta 1: fail
+glx/glx_arb_sync_control/timing -msc-delta 2: fail
+glx/glx_arb_sync_control/timing -waitformsc -divisor 1: fail
+glx/glx_arb_sync_control/timing -waitformsc -divisor 2: fail
+glx/glx_arb_sync_control/timing -waitformsc -msc-delta 1: fail
+glx/glx_arb_sync_control/timing -waitformsc -msc-delta 2: fail
+glx/glx_arb_sync_control/waitformsc: fail
+glx/glx_ext_import_context/free context: fail
+glx/glx_ext_import_context/get context id: fail
+glx/glx_ext_import_context/get current display: fail
+glx/glx_ext_import_context/import context, multi process: fail
+glx/glx_ext_import_context/import context, single process: fail
+glx/glx_ext_import_context/imported context has same context id: fail
+glx/glx_ext_import_context/make current, multi process: fail
+glx/glx_ext_import_context/make current, single process: fail
+glx/glx_ext_import_context/query context info: fail
 glx/glx_ext_no_config_context/no fbconfig: skip
-glx/glx_mesa_query_renderer/coverage: skip
 hiz/hiz-depth-read-fbo-d24-s8: skip
 hiz/hiz-depth-stencil-test-fbo-d24-s8: skip
 hiz/hiz-depth-test-fbo-d24-s8: skip
@@ -182,8 +109,6 @@ spec/!opengl 1.0/gl-1.0-ortho-pos: fail
 spec/!opengl 1.0/gl-1.0-scissor-copypixels: fail
 spec/!opengl 1.0/gl-1.0-scissor-offscreen: fail
 spec/!opengl 1.0/gl-1.0-spot-light: fail
-spec/!opengl 1.0/gl-1.0-swapbuffers-behavior: fail
-spec/!opengl 1.1/clear-accum: skip
 spec/!opengl 1.1/copypixels-sync: fail
 spec/!opengl 1.1/copyteximage 1d: fail
 spec/!opengl 1.1/copyteximage 2d: fail
@@ -274,18 +199,12 @@ spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on right edg
 spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on top edge: fail
 spec/!opengl 1.1/polygon-mode-offset/config 5: expected blue pixel in center: fail
 spec/!opengl 1.1/polygon-mode-offset/config 6: expected blue pixel in center: fail
-spec/!opengl 1.1/read-front: fail
-spec/!opengl 1.1/read-front clear-front-first: fail
 spec/!opengl 1.1/read-front clear-front-first samples=16: skip
-spec/!opengl 1.1/read-front clear-front-first samples=2: fail
 spec/!opengl 1.1/read-front clear-front-first samples=32: skip
-spec/!opengl 1.1/read-front clear-front-first samples=4: fail
 spec/!opengl 1.1/read-front clear-front-first samples=6: skip
 spec/!opengl 1.1/read-front clear-front-first samples=8: skip
 spec/!opengl 1.1/read-front samples=16: skip
-spec/!opengl 1.1/read-front samples=2: fail
 spec/!opengl 1.1/read-front samples=32: skip
-spec/!opengl 1.1/read-front samples=4: fail
 spec/!opengl 1.1/read-front samples=6: skip
 spec/!opengl 1.1/read-front samples=8: skip
 spec/!opengl 1.1/teximage-colors gl_alpha12/exact upload-download of gl_alpha12: skip
@@ -804,10 +723,8 @@ spec/arb_direct_state_access/getcompressedtextureimage: skip
 spec/arb_direct_state_access/gettextureimage-formats: crash
 spec/arb_direct_state_access/gettextureimage-formats init-by-rendering: fail
 spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-base-instance: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-compat: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-prim-restart: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-elements-base-instance: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-elements-compat: skip
 spec/arb_draw_indirect/gl_vertexid used with gldrawarraysindirect: crash
 spec/arb_draw_indirect/gl_vertexid used with gldrawelementsindirect: crash
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs: skip
@@ -823,7 +740,6 @@ spec/arb_es3_compatibility/es3-drawarrays-primrestart-fixedindex: skip
 spec/arb_es3_compatibility/es3-primrestart-fixedindex: skip
 spec/arb_fragment_program/fp-fragment-position: crash
 spec/arb_fragment_program/fp-indirections: skip
-spec/arb_fragment_program/fp-indirections2: crash
 spec/arb_fragment_program/sparse-samplers: crash
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-atomic/ms4: fail
@@ -1459,83 +1375,20 @@ spec/arb_viewport_array/scissor-check: skip
 spec/arb_viewport_array/scissor-indices: skip
 spec/arb_viewport_array/viewport-indices: skip
 spec/ati_envmap_bumpmap/ati_envmap_bumpmap-bump: skip
-spec/egl 1.4/egl-context-priority: fail
-spec/egl 1.4/egl-copy-buffers: skip
+spec/egl 1.4/egl-copy-buffers: crash
 spec/egl 1.4/egl-flush-external: skip
-spec/egl 1.4/eglcreatepbuffersurface and then glclear: skip
+spec/egl 1.4/egl-invalid-attr: skip
 spec/egl 1.4/eglcreatepbuffersurface with egl_samples set: skip
-spec/egl 1.4/eglcreatesurface: skip
-spec/egl 1.4/eglquerysurface egl_bad_attribute: skip
-spec/egl 1.4/eglquerysurface egl_bad_surface: skip
-spec/egl 1.4/eglquerysurface egl_height: skip
-spec/egl 1.4/eglquerysurface egl_width: skip
-spec/egl 1.4/eglterminate then unbind context: fail
-spec/egl 1.4/largest possible eglcreatepbuffersurface and then glclear: skip
 spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglclientwaitsynckhr_native_zero_timeout: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglclientwaitsynckhr_nonzero_timeout: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_default_attributes: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_invalid_attrib_list: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_invalid_display: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_native_dup_fence: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_native_dup_invalid: skip
 spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_native_from_fd: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_no_current_context: skip
 spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_wrong_display_same_thread: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglgetsyncattribkhr_invalid_attrib: skip
-spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_msc_and_sbc_test: skip
-spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_null_pointers: skip
-spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_ust_test: skip
-spec/egl_ext_client_extensions/conformance test 3: skip
-spec/egl_ext_image_dma_buf_import_modifiers/conformance: fail
-spec/egl_khr_create_context/3.2 core profile required: skip
-spec/egl_khr_create_context/default major version gl: skip
-spec/egl_khr_create_context/default major version gles: skip
-spec/egl_khr_create_context/default minor version gl: skip
-spec/egl_khr_create_context/default minor version gles: skip
-spec/egl_khr_create_context/invalid attribute gl: skip
-spec/egl_khr_create_context/invalid attribute gles: skip
-spec/egl_khr_create_context/invalid flag gl: skip
-spec/egl_khr_create_context/invalid flag gles: skip
-spec/egl_khr_create_context/invalid opengl version: skip
-spec/egl_khr_create_context/invalid profile: skip
-spec/egl_khr_create_context/no-error context gl: skip
-spec/egl_khr_create_context/null valid attribute gl: skip
-spec/egl_khr_create_context/null valid attribute gles: skip
-spec/egl_khr_create_context/pre-gl3.2 profile: skip
-spec/egl_khr_create_context/valid attribute empty gl: skip
-spec/egl_khr_create_context/valid attribute empty gles: skip
-spec/egl_khr_create_context/valid debug flag gl: skip
-spec/egl_khr_create_context/valid debug flag gles1: skip
-spec/egl_khr_create_context/valid debug flag gles2: skip
-spec/egl_khr_create_context/valid debug flag gles3: skip
-spec/egl_khr_create_context/valid forward-compatible flag gl: skip
-spec/egl_khr_create_context/verify gl flavor: skip
-spec/egl_khr_fence_sync/conformance/eglclientwaitsynckhr_flag_sync_flush: skip
-spec/egl_khr_fence_sync/conformance/eglclientwaitsynckhr_invalid_sync: skip
-spec/egl_khr_fence_sync/conformance/eglclientwaitsynckhr_nonzero_timeout: skip
-spec/egl_khr_fence_sync/conformance/eglclientwaitsynckhr_zero_timeout: skip
-spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_default_attributes: skip
-spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_invalid_attrib_list: skip
-spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_invalid_display: skip
-spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_invalid_sync_type: skip
-spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_no_current_context: skip
+spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_msc_and_sbc_test: fail
+spec/egl_ext_protected_content/conformance: skip
 spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_with_display_bound_in_other_thread: skip
 spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_wrong_display_same_thread: skip
-spec/egl_khr_fence_sync/conformance/egldestroysynckhr_invalid_sync: skip
-spec/egl_khr_fence_sync/conformance/eglgetsyncattribkhr_invalid_attrib: skip
-spec/egl_khr_fence_sync/conformance/eglgetsyncattribkhr_invalid_sync: skip
-spec/egl_khr_fence_sync/conformance/eglgetsyncattribkhr_sync_status: skip
-spec/egl_khr_get_all_proc_addresses/conformance: fail
-spec/egl_khr_gl_colorspace/linear: skip
-spec/egl_khr_gl_colorspace/srgb: skip
 spec/egl_khr_gl_image/egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24: fail
 spec/egl_khr_gl_image/egl_khr_gl_renderbuffer_image-clear-shared-image gl_rgba: fail
-spec/egl_khr_surfaceless_context/viewport: fail
-spec/egl_khr_wait_sync/conformance/eglwaitsynckhr_invalid_sync: skip
-spec/egl_mesa_configless_context/basic: skip
-spec/egl_mesa_query_driver/conformance: fail
 spec/egl_nok_swap_region/basic: skip
-spec/egl_nok_texture_from_pixmap/basic: skip
 spec/ext_base_instance/arb_base_instance-baseinstance-doesnt-affect-gl-instance-id_gles3: skip
 spec/ext_base_instance/arb_base_instance-drawarrays_gles3: skip
 spec/ext_depth_bounds_test/depth_bounds: skip
@@ -1548,7 +1401,6 @@ spec/ext_direct_state_access/named-buffers 15/mapnamedbufferext: skip
 spec/ext_direct_state_access/named-buffers 15/mapnamedbufferrangeext: skip
 spec/ext_direct_state_access/named-buffers 15/namedcopybuffersubdataext: skip
 spec/ext_direct_state_access/textures/copytextureimage1dext: fail
-spec/ext_external_objects/semaphore-api-errors: skip
 spec/ext_external_objects/vk-buf-exchange: skip
 spec/ext_external_objects/vk-depth-display: skip
 spec/ext_external_objects/vk-image-display: skip
@@ -1557,7 +1409,6 @@ spec/ext_external_objects/vk-image-overwrite: skip
 spec/ext_external_objects/vk-pix-buf-update-errors: skip
 spec/ext_external_objects/vk-vert-buf-reuse: skip
 spec/ext_external_objects/vk-vert-buf-update-errors: skip
-spec/ext_external_objects_fd/semaphore-api-errors: skip
 spec/ext_framebuffer_blit/fbo-blit-check-limits: fail
 spec/ext_framebuffer_object/ext_framebuffer_object-mipmap: fail
 spec/ext_framebuffer_object/fbo-alphatest-formats/gl_intensity: skip
@@ -1627,6 +1478,7 @@ spec/ext_framebuffer_object/fbo-stencil-gl_stencil_index8-copypixels: fail
 spec/ext_framebuffer_object/getteximage-formats init-by-clear-and-render: fail
 spec/ext_framebuffer_object/getteximage-formats init-by-rendering: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: fail
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export-tex: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-intel_external_sampler_only: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_ayuv: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_p010: fail
@@ -2167,10 +2019,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    16395
-       fail:      491
-      crash:       28
-       skip:     1606
+       pass:    16550
+       fail:      510
+      crash:       26
+       skip:     1439
     timeout:        0
        warn:        0
  incomplete:        0
@@ -2179,4 +2031,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    18563
+      total:    18568

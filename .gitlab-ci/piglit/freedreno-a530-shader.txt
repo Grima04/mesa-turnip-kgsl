@@ -187,6 +187,7 @@ spec/arb_compute_shader/execution/basic-texelfetch: skip
 spec/arb_compute_shader/execution/basic-uniform-access: skip
 spec/arb_compute_shader/execution/basic-uniform-access-atomic: skip
 spec/arb_compute_shader/execution/border-color: skip
+spec/arb_compute_shader/execution/min-dvec4-double-large-group-size: skip
 spec/arb_compute_shader/execution/multiple-texture-reading: skip
 spec/arb_compute_shader/execution/multiple-workgroups: skip
 spec/arb_compute_shader/execution/separate-global-id: skip
@@ -230,6 +231,7 @@ spec/arb_cull_distance/fs-cull-distance-sizeable-to-max: skip
 spec/arb_cull_distance/vs-cull-distance-vertex-inside-cull-volume: skip
 spec/arb_cull_distance/vs-cull-distance-vertex-on-plane: skip
 spec/arb_cull_distance/vs-cull-distance-vertex-outside-cull-volume: skip
+spec/arb_derivative_control/execution/derivatives-vs-flat-input: skip
 spec/arb_derivative_control/execution/dfdx-coarse: skip
 spec/arb_derivative_control/execution/dfdx-dfdy: skip
 spec/arb_derivative_control/execution/dfdx-fine: skip
@@ -1012,7 +1014,6 @@ spec/glsl-1.30/execution/interpolation/interpolation-smooth-other-flat-distance:
 spec/glsl-1.30/execution/interpolation/interpolation-smooth-other-flat-vertex: fail
 spec/glsl-1.30/execution/interpolation/interpolation-smooth-other-smooth-distance: fail
 spec/glsl-1.30/execution/interpolation/interpolation-smooth-other-smooth-vertex: fail
-spec/glsl-1.40-compat/execution/built-in-constants: skip
 spec/glsl-1.40/execution/built-in-functions/fs-inverse-mat2: skip
 spec/glsl-1.40/execution/built-in-functions/fs-inverse-mat3: skip
 spec/glsl-1.40/execution/built-in-functions/fs-inverse-mat4: skip
@@ -1204,10 +1205,10 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     5337
+       pass:     5338
        fail:       71
       crash:       35
-       skip:     1095
+       skip:     1096
     timeout:        0
        warn:        2
  incomplete:        0
@@ -1216,4 +1217,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     6540
+      total:     6542
