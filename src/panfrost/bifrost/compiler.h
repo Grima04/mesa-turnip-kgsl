@@ -777,12 +777,16 @@ unsigned bi_clause_quadwords(bi_clause *clause);
 signed bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target);
 bool bi_ec0_packed(unsigned tuple_count);
 
+/* Check if there are no more instructions starting with a given block, this
+ * needs to recurse in case a shader ends with multiple empty blocks */
+
 static inline bool
 bi_is_terminal_block(bi_block *block)
 {
-        return block->base.successors[0] == NULL &&
-               block->base.successors[1] == NULL &&
-               list_is_empty(&block->base.instructions);
+        return (block == NULL) ||
+                (list_is_empty(&block->base.instructions) &&
+                 bi_is_terminal_block((bi_block *) block->base.successors[0]) &&
+                 bi_is_terminal_block((bi_block *) block->base.successors[1]));
 }
 
 /* Code emit */

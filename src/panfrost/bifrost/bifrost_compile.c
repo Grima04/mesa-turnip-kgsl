@@ -2973,8 +2973,6 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 /* Name blocks now that we're done emitting so the order is
                  * consistent */
                 block->base.name = block_source_count++;
-
-                bi_lower_branch(block);
         }
 
         /* Runs before copy prop */
@@ -2992,6 +2990,11 @@ bifrost_compile_shader_nir(nir_shader *nir,
                         progress |= bi_opt_dead_code_eliminate(ctx, block, false);
                 }
         } while(progress);
+
+        bi_foreach_block(ctx, _block) {
+                bi_block *block = (bi_block *) _block;
+                bi_lower_branch(block);
+        }
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
