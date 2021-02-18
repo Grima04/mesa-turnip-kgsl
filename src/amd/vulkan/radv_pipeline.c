@@ -2456,8 +2456,12 @@ radv_set_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
 
 	bool has_tess = shaders[MESA_SHADER_TESS_CTRL];
 	bool has_gs = shaders[MESA_SHADER_GEOMETRY];
+
+	/* Merged stage for VS and TES */
 	unsigned vs_info_idx = MESA_SHADER_VERTEX;
 	unsigned tes_info_idx = MESA_SHADER_TESS_EVAL;
+
+	/* Which stage is the last in the vertex, tess, geometry pipeline */
 	unsigned last_vtg_stage = MESA_SHADER_VERTEX;
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9) {
@@ -2476,10 +2480,15 @@ radv_set_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
 		nir_linked_io_var_info tcs2tes =
 			nir_assign_linked_io_var_locations(shaders[MESA_SHADER_TESS_CTRL], shaders[MESA_SHADER_TESS_EVAL]);
 
-		infos[vs_info_idx].vs.num_linked_outputs = vs2tcs.num_linked_io_vars;
+		infos[MESA_SHADER_VERTEX].vs.num_linked_outputs = vs2tcs.num_linked_io_vars;
 		infos[MESA_SHADER_TESS_CTRL].tcs.num_linked_inputs = vs2tcs.num_linked_io_vars;
 		infos[MESA_SHADER_TESS_CTRL].tcs.num_linked_outputs = tcs2tes.num_linked_io_vars;
 		infos[MESA_SHADER_TESS_CTRL].tcs.num_linked_patch_outputs = tcs2tes.num_linked_patch_io_vars;
+		infos[MESA_SHADER_TESS_EVAL].tes.num_linked_inputs = tcs2tes.num_linked_io_vars;
+		infos[MESA_SHADER_TESS_EVAL].tes.num_linked_patch_inputs = tcs2tes.num_linked_patch_io_vars;
+
+		/* Copy data to merged stage */
+		infos[vs_info_idx].vs.num_linked_outputs = vs2tcs.num_linked_io_vars;
 		infos[tes_info_idx].tes.num_linked_inputs = tcs2tes.num_linked_io_vars;
 		infos[tes_info_idx].tes.num_linked_patch_inputs = tcs2tes.num_linked_patch_io_vars;
 
@@ -2487,9 +2496,14 @@ radv_set_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
 			nir_linked_io_var_info tes2gs =
 				nir_assign_linked_io_var_locations(shaders[MESA_SHADER_TESS_EVAL], shaders[MESA_SHADER_GEOMETRY]);
 
-			infos[tes_info_idx].tes.num_linked_outputs = tes2gs.num_linked_io_vars;
+			infos[MESA_SHADER_TESS_EVAL].tes.num_linked_outputs = tes2gs.num_linked_io_vars;
 			infos[MESA_SHADER_GEOMETRY].gs.num_linked_inputs = tes2gs.num_linked_io_vars;
+
+			/* Copy data to merged stage */
+			infos[tes_info_idx].tes.num_linked_outputs = tes2gs.num_linked_io_vars;
+
 			last_vtg_stage = MESA_SHADER_GEOMETRY;
+
 		} else {
 			last_vtg_stage = MESA_SHADER_TESS_EVAL;
 		}
@@ -2497,9 +2511,12 @@ radv_set_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
 		nir_linked_io_var_info vs2gs =
 			nir_assign_linked_io_var_locations(shaders[MESA_SHADER_VERTEX], shaders[MESA_SHADER_GEOMETRY]);
 
-		infos[vs_info_idx].vs.num_linked_outputs = vs2gs.num_linked_io_vars;
+		infos[MESA_SHADER_VERTEX].vs.num_linked_outputs = vs2gs.num_linked_io_vars;
 		infos[MESA_SHADER_GEOMETRY].gs.num_linked_inputs = vs2gs.num_linked_io_vars;
 		last_vtg_stage = MESA_SHADER_GEOMETRY;
+
+		/* Copy data to merged stage */
+		infos[vs_info_idx].vs.num_linked_outputs = vs2gs.num_linked_io_vars;
 	}
 
 	nir_foreach_shader_out_variable(var, shaders[last_vtg_stage]) {
