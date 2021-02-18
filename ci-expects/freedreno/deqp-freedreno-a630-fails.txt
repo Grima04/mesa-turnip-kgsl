@@ -54,13 +54,6 @@ dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite
 dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_local.image.guard_nonlocal.workgroup.comp,Fail
 dEQP-VK.memory.requirements.dedicated_allocation.buffer.regular,Fail
 dEQP-VK.memory.requirements.dedicated_allocation.image.transient_tiling_optimal,Fail
-dEQP-VK.multiview.draw_indexed.max_multi_view_view_count,Fail
-dEQP-VK.multiview.input_attachments.max_multi_view_view_count,Fail
-dEQP-VK.multiview.masks.max_multi_view_view_count,Fail
-dEQP-VK.multiview.multisample.max_multi_view_view_count,Fail
-dEQP-VK.multiview.queries.max_multi_view_view_count,Fail
-dEQP-VK.multiview.renderpass2.index.fragment_shader.max_multi_view_view_count,Fail
-dEQP-VK.multiview.secondary_cmd_buffer.max_multi_view_view_count,Fail
 dEQP-VK.pipeline.extended_dynamic_state.after_pipelines.depth_compare_greater_equal_greater,Fail
 dEQP-VK.pipeline.extended_dynamic_state.before_draw.depth_compare_always_greater,Fail
 dEQP-VK.pipeline.extended_dynamic_state.before_draw.depth_compare_greater_equal_greater_then_equal,Fail
