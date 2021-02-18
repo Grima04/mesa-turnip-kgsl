@@ -630,7 +630,7 @@ struct iris_context {
    struct {
       struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
       struct iris_compiled_shader *prog[MESA_SHADER_STAGES];
-      struct brw_vue_map *last_vue_map;
+      struct iris_compiled_shader *last_vue_shader;
       struct {
          unsigned size[4];
          unsigned entries[4];

@@ -1817,8 +1817,11 @@ iris_update_compiled_fs(struct iris_context *ice)
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    screen->vtbl.populate_fs_key(ice, &ish->nir->info, &key);
 
+   struct brw_vue_map *last_vue_map =
+      &brw_vue_prog_data(ice->shaders.last_vue_shader->prog_data)->vue_map;
+
    if (ish->nos & (1ull << IRIS_NOS_LAST_VUE_MAP))
-      key.input_slots_valid = ice->shaders.last_vue_map->slots_valid;
+      key.input_slots_valid = last_vue_map->slots_valid;
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_FS];
    struct iris_compiled_shader *shader =
@@ -1831,7 +1834,7 @@ iris_update_compiled_fs(struct iris_context *ice)
 
    if (!shader) {
       shader = iris_compile_fs(screen, uploader, &ice->dbg,
-                               ish, &key, ice->shaders.last_vue_map);
+                               ish, &key, last_vue_map);
    }
 
    if (old != shader) {
@@ -1857,11 +1860,12 @@ iris_update_compiled_fs(struct iris_context *ice)
  */
 static void
 update_last_vue_map(struct iris_context *ice,
-                    struct brw_stage_prog_data *prog_data)
+                    struct iris_compiled_shader *shader)
 {
-   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) shader->prog_data;
    struct brw_vue_map *vue_map = &vue_prog_data->vue_map;
-   struct brw_vue_map *old_map = ice->shaders.last_vue_map;
+   struct brw_vue_map *old_map = !ice->shaders.last_vue_shader ? NULL :
+      &brw_vue_prog_data(ice->shaders.last_vue_shader->prog_data)->vue_map;
    const uint64_t changed_slots =
       (old_map ? old_map->slots_valid : 0ull) ^ vue_map->slots_valid;
 
@@ -1880,7 +1884,7 @@ update_last_vue_map(struct iris_context *ice,
       ice->state.dirty |= IRIS_DIRTY_SBE;
    }
 
-   ice->shaders.last_vue_map = &vue_prog_data->vue_map;
+   iris_shader_variant_reference(&ice->shaders.last_vue_shader, shader);
 }
 
 static void
@@ -1981,7 +1985,7 @@ iris_update_compiled_shaders(struct iris_context *ice)
    gl_shader_stage last_stage = last_vue_stage(ice);
    struct iris_compiled_shader *shader = ice->shaders.prog[last_stage];
    struct iris_uncompiled_shader *ish = ice->shaders.uncompiled[last_stage];
-   update_last_vue_map(ice, shader->prog_data);
+   update_last_vue_map(ice, shader);
    if (ice->state.streamout != shader->streamout) {
       ice->state.streamout = shader->streamout;
       ice->state.dirty |= IRIS_DIRTY_SO_DECL_LIST | IRIS_DIRTY_STREAMOUT;
