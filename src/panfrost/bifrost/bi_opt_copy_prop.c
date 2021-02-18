@@ -24,27 +24,20 @@
 
 #include "compiler.h"
 
-/* A simple scalar-only SSA-based copy-propagation pass. O(N^2) due to the lack
- * of use tracking. TODO: better data structures for O(N), TODO: vectors */
+/* A simple scalar-only SSA-based copy-propagation pass. TODO: vectors */
 
 static bool
-bi_rewrite_scalar_uses(bi_context *ctx, bi_index old, bi_index new)
+bi_is_copy(bi_instr *ins)
 {
-        bool progress = false;
+        return (ins->op == BI_OPCODE_MOV_I32) && bi_is_ssa(ins->dest[0])
+                && (bi_is_ssa(ins->src[0]) || ins->src[0].type == BI_INDEX_FAU);
+}
 
-        bi_foreach_instr_global(ctx, use) {
-                bi_foreach_src(use, s) {
-                        bi_index src = use->src[s];
-                        bool scalar = (bi_count_read_registers(use, s) == 1);
-
-                        if (bi_is_word_equiv(src, old) && scalar) {
-                                use->src[s] = bi_replace_index(src, new);
-                                progress = true;
-                        }
-                }
-        }
-
-        return progress;
+static inline unsigned
+bi_word_node(bi_index idx)
+{
+        assert(idx.type == BI_INDEX_NORMAL && !idx.reg);
+        return (idx.value << 2) | idx.offset;
 }
 
 bool
@@ -52,13 +45,25 @@ bi_opt_copy_prop(bi_context *ctx)
 {
         bool progress = false;
 
-        bi_foreach_instr_global_safe(ctx, ins) {
-                if (ins->op != BI_OPCODE_MOV_I32) continue;
-                if (!bi_is_ssa(ins->dest[0])) continue;
-                if (!(bi_is_ssa(ins->src[0]) || ins->src[0].type == BI_INDEX_FAU)) continue;
+        bi_index *replacement = calloc(sizeof(bi_index), ((ctx->ssa_alloc + 1) << 2));
 
-                progress |= bi_rewrite_scalar_uses(ctx, ins->dest[0], ins->src[0]);
+        bi_foreach_instr_global_safe(ctx, ins) {
+                if (bi_is_copy(ins))
+                        replacement[bi_word_node(ins->dest[0])] = ins->src[0];
+
+                bi_foreach_src(ins, s) {
+                        bi_index use = ins->src[s];
+
+                        if (use.type != BI_INDEX_NORMAL || use.reg) continue;
+                        if (bi_count_read_registers(ins, s) != 1) continue;
+
+                        bi_index repl = replacement[bi_word_node(use)];
+
+                        if (!bi_is_null(repl))
+                                ins->src[s] = bi_replace_index(ins->src[s], repl);
+                }
         }
 
+        free(replacement);
         return progress;
 }
