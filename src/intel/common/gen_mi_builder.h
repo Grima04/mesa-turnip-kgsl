@@ -868,7 +868,7 @@ gen_mi_ushr32_imm(struct gen_mi_builder *b,
                   struct gen_mi_value src, uint32_t shift)
 {
    /* We right-shift by left-shifting by 32 - shift and taking the top 32 bits
-    * of the result.  This assumes the top 32 bits are zero.
+    * of the result.
     */
    if (shift > 64)
       return gen_mi_imm(0);
