@@ -440,9 +440,6 @@ CHWTessellator::CHWTessellator()
     m_NumIndices = 0;
     m_bUsingPatchedIndices = false;
     m_bUsingPatchedIndices2 = false;
-#ifdef ALLOW_XBOX_360_COMPARISON
-	m_bXBox360Mode = false;
-#endif
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 // CHWTessellator::~CHWTessellator
@@ -1770,21 +1767,11 @@ void CHWTessellator::ComputeTessFactorContext( FXP fxpTessFactor, TESS_FACTOR_CO
         }
         else
         {
-#ifdef ALLOW_XBOX_360_COMPARISON
-            if( m_bXBox360Mode )
-                TessFactorCtx.splitPointOnFloorHalfTessFactor = TessFactorCtx.numHalfTessFactorPoints-2;
-            else
-#endif
 				TessFactorCtx.splitPointOnFloorHalfTessFactor = (RemoveMSB((fxpFloorHalfTessFactor>>FXP_FRACTION_BITS)-1)<<1) + 1;
         }
     }
     else
     {
-#ifdef ALLOW_XBOX_360_COMPARISON
-        if( m_bXBox360Mode )
-            TessFactorCtx.splitPointOnFloorHalfTessFactor = TessFactorCtx.numHalfTessFactorPoints-1;
-        else
-#endif
 			TessFactorCtx.splitPointOnFloorHalfTessFactor = (RemoveMSB(fxpFloorHalfTessFactor>>FXP_FRACTION_BITS)<<1) + 1;
     }
     int numFloorSegments = (fxpFloorHalfTessFactor * 2)>>FXP_FRACTION_BITS;
@@ -1952,58 +1939,6 @@ void CHWTessellator::StitchTransition(int baseIndexOffset,
                                     TESSELLATOR_PARITY outsideTessFactorParity
 )
 {
-
-#ifdef ALLOW_XBOX_360_COMPARISON
-    // Tables to assist in the stitching of 2 rows of points having arbitrary TessFactors.
-    // The stitching order is governed by Ruler Function vertex split ordering (see external documentation).
-    //
-    // The contents of the finalPointPositionTable are where vertex i [0..32] ends up on the half-edge
-    // at the max tessellation amount given ruler-function split order.
-    // Recall the other half of an edge is mirrored, so we only need to deal with one half.
-    // This table is used to decide when to advance a point on the interior or exterior.
-    // It supports odd TessFactor up to 65 and even TessFactor up to 64.
-    static const int _finalPointPositionTable[33] =
-            { 0, 32, 16, 8, 17, 4, 18, 9, 19, 2, 20, 10, 21, 5, 22, 11, 23,
-              1, 24, 12, 25, 6, 26, 13, 27, 3, 28, 14, 29, 7, 30, 15, 31 };
-    // The loopStart and loopEnd tables below just provide optimal loop bounds for the
-    // stitching algorithm further below, for any given halfTssFactor.
-    // There is probably a better way to encode this...
-
-    // loopStart[halfTessFactor] encodes the FIRST entry other that [0] in finalPointPositionTable[] above which is
-    // less than halfTessFactor.  Exceptions are entry 0 and 1, which are set up to skip the loop.
-    static const int _loopStart[33] =
-            {1,1,17,9,9,5,5,5,5,3,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2};
-    // loopStart[halfTessFactor] encodes the LAST entry in finalPointPositionTable[] above which is
-    // less than halfTessFactor.  Exceptions are entry 0 and 1, which are set up to skip the loop.
-    static const int _loopEnd[33] =
-            {0,0,17,17,25,25,25,25,29,29,29,29,29,29,29,29,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,32};
-    const int* finalPointPositionTable;
-    const int* loopStart;
-    const int* loopEnd;
-    if( m_bXBox360Mode )
-    {
-        // The XBox360 vertex introduction order is always from the center of the edge.
-        // So the final positions of points on the half-edge are this trivial table.
-        static const int XBOXfinalPointPositionTable[33] =
-                { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-                  18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
-        // loopStart and loopEnd (meaning described above) also become trivial for XBox360 splitting.
-        static const int XBOXloopStart[33] =
-                {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-        static const int XBOXloopEnd[33] =
-                {0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31};
-
-        finalPointPositionTable = XBOXfinalPointPositionTable;
-        loopStart = XBOXloopStart;
-        loopEnd = XBOXloopEnd;
-    }
-    else
-    {
-        finalPointPositionTable = _finalPointPositionTable;
-        loopStart = _loopStart;
-        loopEnd =_loopEnd;
-    }
-#else
     // Tables to assist in the stitching of 2 rows of points having arbitrary TessFactors.
     // The stitching order is governed by Ruler Function vertex split ordering (see external documentation).
     //
@@ -2028,7 +1963,7 @@ void CHWTessellator::StitchTransition(int baseIndexOffset,
     // less than halfTessFactor.  Exceptions are entry 0 and 1, which are set up to skip the loop.
     static const int loopEnd[33] =
             {0,0,17,17,25,25,25,25,29,29,29,29,29,29,29,29,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,32};
-#endif
+
     if( TESSELLATOR_PARITY_ODD == insideEdgeTessFactorParity )
     {
         insideNumHalfTessFactorPoints -= 1;

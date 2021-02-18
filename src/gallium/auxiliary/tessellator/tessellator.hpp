@@ -145,17 +145,6 @@ public:
     int* GetIndices();         // Get CHWTessellator owned pointer to vertex indices.
                                // Pointer is fixed for lifetime of CHWTessellator object.
 
-#define ALLOW_XBOX_360_COMPARISON // Different vertex splitting order. This is NOT D3D11 behavior, just available here for comparison.
-	                              // Setting this define true just allows the XBox split style to be enabled via
-	                              // SetXBox360Mode() below, but by default this XBox360 mode still always starts off DISABLED.
-								  // The XBox360 always splits from the center of an edge (D3D11 uses ruler function).  Splitting
-	                              // from the center causes sliver triangles in transition areas, which cause numerous problems.
-                                  // Note the XBox360 only supports adaptive tessellation via fractional_even partitioning,
-                                  // though this #define lets you try the XBox vertex splitting order with any of the
-                                  // partitioning modes: even, odd, integer or pow2.
-#ifdef ALLOW_XBOX_360_COMPARISON
-    void SetXBox360Mode(bool bXboxMode) {m_bXBox360Mode = bXboxMode;}
-#endif
     CHWTessellator();
     ~CHWTessellator();
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -193,9 +182,6 @@ private:
     int*                                 m_Index; // array where we will store index topology
     int                                  m_NumPoints;
     int                                  m_NumIndices;
-#ifdef ALLOW_XBOX_360_COMPARISON
-    bool                                 m_bXBox360Mode;
-#endif
     // PlacePointIn1D below is the workhorse for all position placement.
     // It is code that could run as preamble in a Domain Shader, so the tessellator itself
     // doesn't necessarily need to have floating point.
