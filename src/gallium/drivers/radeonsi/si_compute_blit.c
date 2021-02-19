@@ -648,7 +648,7 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 
    img[0].format = use_uint16 ? PIPE_FORMAT_R16G16B16A16_UINT : PIPE_FORMAT_R32G32B32A32_UINT;
    img[0].u.buf.offset = 0;
-   img[0].u.buf.size = num_elements * (use_uint16 ? 2 : 4);
+   img[0].u.buf.size = ac_surface_get_retile_map_size(&tex->surface);
 
    img[1].format = PIPE_FORMAT_R8_UINT;
    img[1].u.buf.offset = tex->surface.dcc_offset;

@@ -2990,6 +2990,12 @@ uint64_t ac_surface_get_plane_size(const struct radeon_surf *surf,
    }
 }
 
+uint32_t ac_surface_get_retile_map_size(const struct radeon_surf *surf)
+{
+   return surf->u.gfx9.dcc_retile_num_elements *
+          (surf->u.gfx9.dcc_retile_use_uint16 ? 2 : 4);
+}
+
 void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                            const struct radeon_surf *surf)
 {

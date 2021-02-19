@@ -1077,9 +1077,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
        * Use a staging buffer for the upload, because
        * the buffer backing the texture is unmappable.
        */
-      bool use_uint16 = tex->surface.u.gfx9.dcc_retile_use_uint16;
-      unsigned num_elements = tex->surface.u.gfx9.dcc_retile_num_elements;
-      unsigned dcc_retile_map_size = num_elements * (use_uint16 ? 2 : 4);
+      uint32_t dcc_retile_map_size = ac_surface_get_retile_map_size(&tex->surface);
 
       tex->dcc_retile_buffer = si_aligned_buffer_create(screen,
                                                         SI_RESOURCE_FLAG_DRIVER_INTERNAL, PIPE_USAGE_DEFAULT,
