@@ -1074,9 +1074,6 @@ create_debug(struct zink_screen *screen)
    GET_PROC_ADDR_INSTANCE(CreateDebugUtilsMessengerEXT);
    GET_PROC_ADDR_INSTANCE(DestroyDebugUtilsMessengerEXT);
 
-   if (!screen->vk_CreateDebugUtilsMessengerEXT || !screen->vk_DestroyDebugUtilsMessengerEXT)
-      return false;
-
    VkDebugUtilsMessengerCreateInfoEXT vkDebugUtilsMessengerCreateInfoEXT = {
        VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
        NULL,
