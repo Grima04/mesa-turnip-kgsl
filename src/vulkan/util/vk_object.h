@@ -52,6 +52,7 @@ void vk_object_base_init(UNUSED struct vk_device *device,
                          struct vk_object_base *base,
                          UNUSED VkObjectType obj_type);
 void vk_object_base_finish(UNUSED struct vk_object_base *base);
+void vk_object_base_reset(struct vk_object_base *base);
 
 static inline void
 vk_object_base_assert_valid(ASSERTED struct vk_object_base *base,
