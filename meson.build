@@ -449,7 +449,9 @@ endif
 
 # Android uses emutls for versions <= P/28. For USE_ELF_TLS we need ELF TLS.
 use_elf_tls = false
-if not ['windows', 'freebsd', 'openbsd', 'haiku'].contains(host_machine.system()) and (not with_platform_android or get_option('platform-sdk-version') >= 29)
+if (not ['freebsd', 'openbsd', 'haiku'].contains(host_machine.system()) and
+    (not with_platform_android or get_option('platform-sdk-version') >= 29) and
+    (not with_platform_windows or not with_shared_glapi))
   pre_args += '-DUSE_ELF_TLS'
   use_elf_tls = true
 endif
