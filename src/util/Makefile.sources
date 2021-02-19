@@ -32,6 +32,8 @@ MESA_UTIL_FILES := \
 	format/u_format_bptc.h \
 	format/u_format_etc.c \
 	format/u_format_etc.h \
+	format/u_format_fxt1.c \
+	format/u_format_fxt1.h \
 	format/u_format_latc.c \
 	format/u_format_latc.h \
 	format/u_format_other.c \

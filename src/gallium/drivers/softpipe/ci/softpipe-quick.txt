@@ -210,7 +210,6 @@ spec/!opengl 1.1/teximage-colors gl_rgb9_e5/exact upload-download of gl_rgb9_e5:
 spec/!opengl 1.1/teximage-colors gl_rgb/exact upload-download of gl_rgb: skip
 spec/!opengl 1.1/teximage-colors gl_rgba12/exact upload-download of gl_rgba12: skip
 spec/!opengl 1.1/teximage-colors gl_rgba/exact upload-download of gl_rgba: skip
-spec/!opengl 1.1/texsubimage: crash
 spec/!opengl 1.1/texwrap 2d offset/gl_rgba8, npot: fail
 spec/!opengl 1.1/texwrap 2d proj/gl_rgba8, npot, projected: fail
 spec/!opengl 1.1/texwrap 2d proj/gl_rgba8, projected: fail
@@ -398,10 +397,6 @@ spec/!opengl 4.5/named-framebuffer-read-buffer-errors: skip
 spec/!opengl es 2.0/invalid-es3-queries_gles2: skip
 spec/!opengl es 3.0/gles-3.0-transform-feedback-uniform-buffer-object: fail
 spec/!opengl es 3.0/minmax: fail
-spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgb_fxt1_3dfx: crash
-spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgba_fxt1_3dfx: crash
-spec/3dfx_texture_compression_fxt1/fbo-generatemipmap-formats: crash
-spec/3dfx_texture_compression_fxt1/fxt1-teximage: crash
 spec/amd_compressed_atc_texture/miptree: skip
 spec/amd_depth_clamp_separate/amd_depth_clamp_separate_range: skip
 spec/amd_depth_clamp_separate/amd_depth_clamp_separate_status: skip
@@ -597,7 +592,6 @@ spec/arb_depth_texture/texwrap formats/gl_depth_component24, npot: fail
 spec/arb_depth_texture/texwrap formats/gl_depth_component32, npot: fail
 spec/arb_direct_state_access/create-programpipelines/default tcs == 0: skip
 spec/arb_direct_state_access/create-programpipelines/default tes == 0: skip
-spec/arb_direct_state_access/getcompressedtextureimage: crash
 spec/arb_direct_state_access/gettextureimage-formats: crash
 spec/arb_direct_state_access/texture-buffer: fail
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs: crash
@@ -760,7 +754,6 @@ spec/arb_internalformat_query/minmax: skip
 spec/arb_internalformat_query/misc. api error checks: skip
 spec/arb_occlusion_query/occlusion_query_meta_no_fragments: fail
 spec/arb_occlusion_query/occlusion_query_meta_save: fail
-spec/arb_pixel_buffer_object/texsubimage pbo: crash
 spec/arb_post_depth_coverage/arb_post_depth_coverage-basic: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-sample-shading: skip
@@ -3065,9 +3058,9 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    26855
+       pass:    26873
        fail:      404
-      crash:       38
+      crash:       31
        skip:     2593
     timeout:        0
        warn:        4
@@ -3077,4 +3070,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    29919
+      total:    29930
