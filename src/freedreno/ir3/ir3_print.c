@@ -223,27 +223,33 @@ tab(int lvl)
 static void
 print_instr(struct ir3_instruction *instr, int lvl)
 {
-	unsigned i;
-
 	tab(lvl);
 
 	print_instr_name(instr, true);
 
 	if (is_tex(instr)) {
 		printf(" (%s)(", type_name(instr->cat5.type));
-		for (i = 0; i < 4; i++)
+		for (unsigned i = 0; i < 4; i++)
 			if (instr->regs[0]->wrmask & (1 << i))
 				printf("%c", "xyzw"[i]);
 		printf(")");
-	} else if (instr->regs_count > 0) {
+	} else if ((instr->regs_count > 0) && (instr->opc != OPC_B)) {
+		/* NOTE the b(ranch) instruction has a suffix, which is
+		 * handled below
+		 */
 		printf(" ");
 	}
 
-	for (i = 0; i < instr->regs_count; i++) {
-		struct ir3_register *reg = instr->regs[i];
+	if (!is_flow(instr)) {
+		for (unsigned i = 0, n = 0; i < instr->regs_count; i++) {
+			struct ir3_register *reg = instr->regs[i];
 
-		printf(i ? ", " : "");
-		print_reg_name(instr, reg);
+			if ((i == 0) && (dest_regs(instr) == 0))
+				continue;
+
+			printf(n++ ? ", " : "");
+			print_reg_name(instr, reg);
+		}
 	}
 
 	if (is_tex(instr) && !(instr->flags & IR3_INSTR_S2EN)) {
@@ -309,17 +315,19 @@ print_instr(struct ir3_instruction *instr, int lvl)
 				printf(".%u", instr->cat0.idx);
 			}
 			if (brinfo[instr->cat0.brtype].nsrc >= 1) {
-				printf(" %sp0.%c,", instr->cat0.inv1 ? "!" : "",
-						"xyzw"[instr->cat0.comp1 & 0x3]);
+				printf(" %sp0.%c ("SYN_SSA("ssa_%u")"),",
+						instr->cat0.inv1 ? "!" : "",
+						"xyzw"[instr->cat0.comp1 & 0x3],
+						instr->regs[1]->instr->serialno);
 			}
 			if (brinfo[instr->cat0.brtype].nsrc >= 2) {
-				printf(" %sp0.%c,", instr->cat0.inv2 ? "!" : "",
-						"xyzw"[instr->cat0.comp2 & 0x3]);
+				printf(" %sp0.%c ("SYN_SSA("ssa_%u")"),",
+						instr->cat0.inv2 ? "!" : "",
+						"xyzw"[instr->cat0.comp2 & 0x3],
+						instr->regs[2]->instr->serialno);
 			}
-
-			printf("r %sp0.%c", instr->cat0.inv1 ? "!" : "", "xyzw"[instr->cat0.comp1 & 0x3]);
 		}
-		printf(", target=block%u", block_id(instr->cat0.target));
+		printf(" target=block%u", block_id(instr->cat0.target));
 	}
 
 	if (instr->deps_count) {
