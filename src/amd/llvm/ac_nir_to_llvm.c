@@ -139,17 +139,8 @@ static LLVMValueRef get_alu_src(struct ac_nir_context *ctx, nir_alu_src src,
 static LLVMValueRef emit_int_cmp(struct ac_llvm_context *ctx, LLVMIntPredicate pred,
                                  LLVMValueRef src0, LLVMValueRef src1)
 {
-   LLVMTypeRef src0_type = LLVMTypeOf(src0);
-   LLVMTypeRef src1_type = LLVMTypeOf(src1);
-
-   if (LLVMGetTypeKind(src0_type) == LLVMPointerTypeKind &&
-       LLVMGetTypeKind(src1_type) != LLVMPointerTypeKind) {
-      src1 = LLVMBuildIntToPtr(ctx->builder, src1, src0_type, "");
-   } else if (LLVMGetTypeKind(src1_type) == LLVMPointerTypeKind &&
-              LLVMGetTypeKind(src0_type) != LLVMPointerTypeKind) {
-      src0 = LLVMBuildIntToPtr(ctx->builder, src0, src1_type, "");
-   }
-
+   src0 = ac_to_integer(ctx, src0);
+   src1 = ac_to_integer(ctx, src1);
    return LLVMBuildICmp(ctx->builder, pred, src0, src1, "");
 }
 
