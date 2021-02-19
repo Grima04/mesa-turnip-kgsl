@@ -223,7 +223,7 @@ if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
         "minio://${MINIO_HOST}${__MINIO_PATH}/${__MINIO_TRACES_PREFIX}/junit.xml"
 fi
 
-cp "$INSTALL/piglit/$PIGLIT_RESULTS.txt" \
+cp "$INSTALL/$PIGLIT_RESULTS.txt" \
    ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline"
 if diff -q ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE; then
     exit 0

@@ -24,7 +24,7 @@ set -e
 
 PIGLIT_RESULTS=${PIGLIT_RESULTS:-$PIGLIT_PROFILES}
 mkdir -p .gitlab-ci/piglit
-cp $OLDPWD/install/piglit/$PIGLIT_RESULTS.txt .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline
+cp $OLDPWD/install/$PIGLIT_RESULTS.txt .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline
 ./piglit summary console $OLDPWD/results | head -n -1 | grep -v ": pass" >.gitlab-ci/piglit/$PIGLIT_RESULTS.txt
 
 if diff -q .gitlab-ci/piglit/$PIGLIT_RESULTS.txt{.baseline,}; then
