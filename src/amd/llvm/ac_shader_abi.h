@@ -97,6 +97,10 @@ struct ac_shader_abi {
 
    LLVMValueRef (*load_patch_vertices_in)(struct ac_shader_abi *abi);
 
+   LLVMValueRef (*load_ring_tess_offchip)(struct ac_shader_abi *abi);
+
+   LLVMValueRef (*load_ring_tess_factors)(struct ac_shader_abi *abi);
+
    LLVMValueRef (*load_tess_level)(struct ac_shader_abi *abi, unsigned varying_id,
                                    bool load_default_state);
 

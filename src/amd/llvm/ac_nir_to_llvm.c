@@ -2906,6 +2906,10 @@ static void emit_demote(struct ac_nir_context *ctx, const nir_intrinsic_instr *i
 
 static LLVMValueRef visit_load_local_invocation_index(struct ac_nir_context *ctx)
 {
+   if (ctx->args->vs_rel_patch_id.used) {
+      return ac_get_arg(&ctx->ac, ctx->args->vs_rel_patch_id);
+   }
+
    LLVMValueRef result;
    LLVMValueRef thread_id = ac_get_thread_id(&ctx->ac);
    result = LLVMBuildAnd(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->tg_size),
@@ -3826,6 +3830,26 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_load_patch_vertices_in:
       result = ctx->abi->load_patch_vertices_in(ctx->abi);
+      break;
+   case nir_intrinsic_load_tess_rel_patch_id_amd:
+      if (ctx->stage == MESA_SHADER_TESS_CTRL)
+         result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tcs_rel_ids), 0, 8);
+      else if (ctx->stage == MESA_SHADER_TESS_EVAL)
+         result = ac_get_arg(&ctx->ac, ctx->args->tes_rel_patch_id);
+      else
+         unreachable("tess_rel_patch_id_amd is only supported by tessellation shaders");
+      break;
+   case nir_intrinsic_load_ring_tess_factors_amd:
+      result = ctx->abi->load_ring_tess_factors(ctx->abi);
+      break;
+   case nir_intrinsic_load_ring_tess_factors_offset_amd:
+      result = ac_get_arg(&ctx->ac, ctx->args->tcs_factor_offset);
+      break;
+   case nir_intrinsic_load_ring_tess_offchip_amd:
+      result = ctx->abi->load_ring_tess_offchip(ctx->abi);
+      break;
+   case nir_intrinsic_load_ring_tess_offchip_offset_amd:
+      result = ac_get_arg(&ctx->ac, ctx->args->tess_offchip_offset);
       break;
    case nir_intrinsic_vote_all: {
       result = ac_build_vote_all(&ctx->ac, get_src(ctx, instr->src[0]));
