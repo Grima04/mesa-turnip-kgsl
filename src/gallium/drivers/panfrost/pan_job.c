@@ -793,7 +793,8 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                                                     rsrc->damage.extent.maxy);
         }
 
-        enum pipe_format format = rsrc->base.format;
+        /* Note: this may not equal surf->texture->format, we reinterpret */
+        enum pipe_format format = surf->format;
 
         if (loc == FRAG_RESULT_DEPTH) {
                 if (!util_format_has_depth(util_format_description(format)))
@@ -834,10 +835,10 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
         mali_ptr blend_shader = 0;
 
         if (loc >= FRAG_RESULT_DATA0 &&
-            !panfrost_blend_format(rsrc->base.format).internal) {
+            !panfrost_blend_format(format).internal) {
                 struct panfrost_blend_shader *b =
                         panfrost_get_blend_shader(batch->ctx, batch->ctx->blit_blend,
-                                                  rsrc->base.format,
+                                                  format,
                                                   rsrc->base.nr_samples,
                                                   loc - FRAG_RESULT_DATA0,
                                                   NULL);
