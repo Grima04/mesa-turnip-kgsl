@@ -64,6 +64,72 @@ namespace {
     */
 
    /**
+    * Return the RegDist pipeline the hardware will synchronize with if no
+    * pipeline information is provided in the SWSB annotation of an
+    * instruction (e.g. when TGL_PIPE_NONE is specified in tgl_swsb).
+    */
+   tgl_pipe
+   inferred_sync_pipe(const struct gen_device_info *devinfo, const fs_inst *inst)
+   {
+      if (devinfo->verx10 >= 125) {
+         bool has_int_src = false, has_long_src = false;
+
+         if (is_send(inst))
+            return TGL_PIPE_NONE;
+
+         for (unsigned i = 0; i < inst->sources; i++) {
+            if (inst->src[i].file != BAD_FILE &&
+                !inst->is_control_source(i)) {
+               const brw_reg_type t = inst->src[i].type;
+               has_int_src |= !brw_reg_type_is_floating_point(t);
+               has_long_src |= type_sz(t) >= 8;
+            }
+         }
+
+         return has_long_src ? TGL_PIPE_LONG :
+                has_int_src ? TGL_PIPE_INT :
+                TGL_PIPE_FLOAT;
+
+      } else {
+         return TGL_PIPE_FLOAT;
+      }
+   }
+
+   /**
+    * Return the RegDist pipeline that will execute an instruction, or
+    * TGL_PIPE_NONE if the instruction is out-of-order and doesn't use the
+    * RegDist synchronization mechanism.
+    */
+   tgl_pipe
+   inferred_exec_pipe(const struct gen_device_info *devinfo, const fs_inst *inst)
+   {
+      const brw_reg_type t = get_exec_type(inst);
+      const bool is_dword_multiply = !brw_reg_type_is_floating_point(t) &&
+         ((inst->opcode == BRW_OPCODE_MUL &&
+           MIN2(type_sz(inst->src[0].type), type_sz(inst->src[1].type)) >= 4) ||
+          (inst->opcode == BRW_OPCODE_MAD &&
+           MIN2(type_sz(inst->src[1].type), type_sz(inst->src[2].type)) >= 4));
+
+      if (is_unordered(inst))
+         return TGL_PIPE_NONE;
+      else if (devinfo->verx10 < 125)
+         return TGL_PIPE_FLOAT;
+      else if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT &&
+               type_sz(t) >= 8)
+         return TGL_PIPE_INT;
+      else if (inst->opcode == SHADER_OPCODE_BROADCAST &&
+               !devinfo->has_64bit_float && type_sz(t) >= 8)
+         return TGL_PIPE_INT;
+      else if (type_sz(inst->dst.type) >= 8 || type_sz(t) >= 8 ||
+               is_dword_multiply)
+         return TGL_PIPE_LONG;
+      else if (brw_reg_type_is_floating_point(inst->dst.type))
+         return TGL_PIPE_FLOAT;
+      else
+         return TGL_PIPE_INT;
+   }
+
+   /**
     * Number of in-order hardware instructions contained in this IR
     * instruction.  This determines the increment applied to the RegDist
     * counter calculated for any ordered dependency that crosses this
