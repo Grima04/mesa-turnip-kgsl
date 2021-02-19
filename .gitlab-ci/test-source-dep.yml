@@ -93,7 +93,6 @@
       - src/gallium/drivers/llvmpipe/**/*
       - src/gallium/frontends/lavapipe/**/*
       - src/gallium/winsys/sw/**/*
-      - ci-expects/llvmpipe/*
       when: on_success
     - when: never
 
@@ -146,7 +145,6 @@
       - src/freedreno/vulkan/**/*
       - src/gallium/drivers/freedreno/**/*
       - src/gallium/winsys/freedreno/**/*
-      - ci-expects/freedreno/*
       when: on_success
     - when: never
 
@@ -183,7 +181,6 @@
       - src/gallium/drivers/vc4/**/*
       - src/gallium/winsys/kmsro/**/*
       - src/gallium/winsys/vc4/**/*
-      - ci-expects/vc4/*
       when: on_success
     - when: never
 
@@ -202,7 +199,6 @@
       - src/gallium/drivers/v3d/**/*
       - src/gallium/winsys/kmsro/**/*
       - src/gallium/winsys/v3d/**/*
-      - ci-expects/v3d/*
       when: on_success
     - when: never
 
@@ -215,7 +211,6 @@
       when: on_success
     - changes:
       - src/broadcom/**/*
-      - ci-expects/v3dv/*
       when: on_success
     - when: never
 
@@ -246,7 +241,6 @@
     - changes:
       - src/amd/**/*
       - src/vulkan/**/*
-      - ci-expects/radv/*
       when: on_success
     - when: never
 
@@ -266,7 +260,6 @@
     - changes:
       - src/gallium/drivers/virgl/**/*
       - src/gallium/winsys/virgl/**/*
-      - ci-expects/virgl/*
       when: on_success
     - when: never
 
