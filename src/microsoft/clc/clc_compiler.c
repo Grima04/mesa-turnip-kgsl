@@ -1147,43 +1147,22 @@ clc_to_dxil(struct clc_context *ctx,
       } while (progress);
    }
 
-   // Before removing dead uniforms, dedupe constant samplers to make more dead uniforms
-   NIR_PASS_V(nir, clc_nir_dedupe_const_samplers);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform | nir_var_mem_ubo | nir_var_mem_constant | nir_var_function_temp, NULL);
-
    NIR_PASS_V(nir, scale_fdiv);
 
    dxil_wrap_sampler_state int_sampler_states[PIPE_MAX_SHADER_SAMPLER_VIEWS] = { {{0}} };
    unsigned sampler_id = 0;
 
-   struct exec_list tmp_list;
-   exec_list_make_empty(&tmp_list);
+   struct exec_list inline_samplers_list;
+   exec_list_make_empty(&inline_samplers_list);
 
-   // Assign bindings for constant samplers, and move them to the end of the variable list
+   // Move inline samplers to the end of the uniforms list
    nir_foreach_variable_with_modes_safe(var, nir, nir_var_uniform) {
       if (glsl_type_is_sampler(var->type) && var->data.sampler.is_inline_sampler) {
-         int_sampler_states[sampler_id].wrap[0] =
-            int_sampler_states[sampler_id].wrap[1] =
-            int_sampler_states[sampler_id].wrap[2] =
-            wrap_from_cl_addressing(var->data.sampler.addressing_mode);
-         int_sampler_states[sampler_id].is_nonnormalized_coords =
-            !var->data.sampler.normalized_coordinates;
-         int_sampler_states[sampler_id].is_linear_filtering =
-            var->data.sampler.filter_mode == SAMPLER_FILTER_MODE_LINEAR;
-         var->data.binding = sampler_id++;
-
-         assert(metadata->num_const_samplers < CLC_MAX_SAMPLERS);
-         metadata->const_samplers[metadata->num_const_samplers].sampler_id = var->data.binding;
-         metadata->const_samplers[metadata->num_const_samplers].addressing_mode = var->data.sampler.addressing_mode;
-         metadata->const_samplers[metadata->num_const_samplers].normalized_coords = var->data.sampler.normalized_coordinates;
-         metadata->const_samplers[metadata->num_const_samplers].filter_mode = var->data.sampler.filter_mode;
-         metadata->num_const_samplers++;
-
          exec_node_remove(&var->node);
-         exec_list_push_tail(&tmp_list, &var->node);
+         exec_list_push_tail(&inline_samplers_list, &var->node);
       }
    }
-   exec_node_insert_list_after(exec_list_get_tail(&nir->variables), &tmp_list);
+   exec_node_insert_list_after(exec_list_get_tail(&nir->variables), &inline_samplers_list);
 
    NIR_PASS_V(nir, nir_lower_variable_initializers, ~(nir_var_function_temp | nir_var_shader_temp));
 
@@ -1273,6 +1252,32 @@ clc_to_dxil(struct clc_context *ctx,
 
          metadata->args[i].image.num_buf_ids = 1;
          var->data.binding = metadata->args[i].image.buf_ids[0];
+      }
+   }
+
+   // Before removing dead uniforms, dedupe constant samplers to make more dead uniforms
+   NIR_PASS_V(nir, clc_nir_dedupe_const_samplers);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform | nir_var_mem_ubo | nir_var_mem_constant | nir_var_function_temp, NULL);
+
+   // Fill out inline sampler metadata, now that they've been deduped and dead ones removed
+   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
+      if (glsl_type_is_sampler(var->type) && var->data.sampler.is_inline_sampler) {
+         int_sampler_states[sampler_id].wrap[0] =
+            int_sampler_states[sampler_id].wrap[1] =
+            int_sampler_states[sampler_id].wrap[2] =
+            wrap_from_cl_addressing(var->data.sampler.addressing_mode);
+         int_sampler_states[sampler_id].is_nonnormalized_coords =
+            !var->data.sampler.normalized_coordinates;
+         int_sampler_states[sampler_id].is_linear_filtering =
+            var->data.sampler.filter_mode == SAMPLER_FILTER_MODE_LINEAR;
+         var->data.binding = sampler_id++;
+
+         assert(metadata->num_const_samplers < CLC_MAX_SAMPLERS);
+         metadata->const_samplers[metadata->num_const_samplers].sampler_id = var->data.binding;
+         metadata->const_samplers[metadata->num_const_samplers].addressing_mode = var->data.sampler.addressing_mode;
+         metadata->const_samplers[metadata->num_const_samplers].normalized_coords = var->data.sampler.normalized_coordinates;
+         metadata->const_samplers[metadata->num_const_samplers].filter_mode = var->data.sampler.filter_mode;
+         metadata->num_const_samplers++;
       }
    }
 
