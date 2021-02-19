@@ -197,8 +197,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
                 return 65536;
 
+        /* Must be at least 64 for correct behaviour */
         case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
-                return 16;
+                return 64;
 
         case PIPE_CAP_QUERY_TIMESTAMP:
                 return is_gl3;
