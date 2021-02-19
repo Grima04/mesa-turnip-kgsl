@@ -816,6 +816,7 @@ namespace {
                            const ordered_address &jp,
                            bool exec_all)
    {
+      tgl_pipe p = TGL_PIPE_NONE;
       unsigned min_dist = ~0u;
 
       for (unsigned i = 0; i < deps.size(); i++) {
@@ -824,13 +825,16 @@ namespace {
                const unsigned dist = jp.jp[q] - int64_t(deps[i].jp.jp[q]);
                const unsigned max_dist = (q == IDX(TGL_PIPE_LONG) ? 14 : 10);
                assert(jp.jp[q] > deps[i].jp.jp[q]);
-               if (dist <= max_dist)
+               if (dist <= max_dist) {
+                  p = (p && IDX(p) != q ? TGL_PIPE_ALL :
+                       tgl_pipe(TGL_PIPE_FLOAT + q));
                   min_dist = MIN3(min_dist, dist, 7);
+               }
             }
          }
       }
 
-      return { min_dist == ~0u ? 0 : min_dist };
+      return { p ? min_dist : 0, p };
    }
 
    /**
@@ -877,24 +881,55 @@ namespace {
     * dependency is present.
     */
    tgl_sbid_mode
-   baked_unordered_dependency_mode(const fs_inst *inst,
+   baked_unordered_dependency_mode(const struct gen_device_info *devinfo,
+                                   const fs_inst *inst,
                                    const dependency_list &deps,
                                    const ordered_address &jp)
    {
       const bool exec_all = inst->force_writemask_all;
       const bool has_ordered = find_ordered_dependency(deps, jp, exec_all);
+      const tgl_pipe ordered_pipe = ordered_dependency_swsb(deps, jp,
+                                                            exec_all).pipe;
 
       if (find_unordered_dependency(deps, TGL_SBID_SET, exec_all))
          return find_unordered_dependency(deps, TGL_SBID_SET, exec_all);
       else if (has_ordered && is_unordered(inst))
          return TGL_SBID_NULL;
       else if (find_unordered_dependency(deps, TGL_SBID_DST, exec_all) &&
-               (!has_ordered || !is_unordered(inst)))
+               (!has_ordered || ordered_pipe == inferred_sync_pipe(devinfo, inst)))
          return find_unordered_dependency(deps, TGL_SBID_DST, exec_all);
       else if (!has_ordered)
          return find_unordered_dependency(deps, TGL_SBID_SRC, exec_all);
       else
          return TGL_SBID_NULL;
+   }
+
+   /**
+    * Return whether an ordered dependency from the list \p deps can be
+    * represented directly in the SWSB annotation of the instruction without
+    * additional SYNC instructions.
+    */
+   bool
+   baked_ordered_dependency_mode(const struct gen_device_info *devinfo,
+                                 const fs_inst *inst,
+                                 const dependency_list &deps,
+                                 const ordered_address &jp)
+   {
+      const bool exec_all = inst->force_writemask_all;
+      const bool has_ordered = find_ordered_dependency(deps, jp, exec_all);
+      const tgl_pipe ordered_pipe = ordered_dependency_swsb(deps, jp,
+                                                            exec_all).pipe;
+      const tgl_sbid_mode unordered_mode =
+         baked_unordered_dependency_mode(devinfo, inst, deps, jp);
+
+      if (!has_ordered)
+         return false;
+      else if (!unordered_mode)
+         return true;
+      else
+         return ordered_pipe == inferred_sync_pipe(devinfo, inst) &&
+                unordered_mode == (is_unordered(inst) ? TGL_SBID_SET :
+                                   TGL_SBID_DST);
    }
 
    /** @} */
@@ -1134,13 +1169,17 @@ namespace {
                           const ordered_address *jps,
                           const dependency_list *deps)
    {
+      const struct gen_device_info *devinfo = shader->devinfo;
       unsigned ip = 0;
 
       foreach_block_and_inst_safe(block, fs_inst, inst, shader->cfg) {
          const bool exec_all = inst->force_writemask_all;
-         tgl_swsb swsb = ordered_dependency_swsb(deps[ip], jps[ip], exec_all);
+         const bool ordered_mode =
+            baked_ordered_dependency_mode(devinfo, inst, deps[ip], jps[ip]);
          const tgl_sbid_mode unordered_mode =
-            baked_unordered_dependency_mode(inst, deps[ip], jps[ip]);
+            baked_unordered_dependency_mode(devinfo, inst, deps[ip], jps[ip]);
+         tgl_swsb swsb = !ordered_mode ? tgl_swsb() :
+            ordered_dependency_swsb(deps[ip], jps[ip], exec_all);
 
          for (unsigned i = 0; i < deps[ip].size(); i++) {
             const dependency &dep = deps[ip][i];
@@ -1174,8 +1213,9 @@ namespace {
          for (unsigned i = 0; i < deps[ip].size(); i++) {
             const dependency &dep = deps[ip][i];
 
-            if (dep.ordered && dep.exec_all > exec_all &&
-                find_ordered_dependency(deps[ip], jps[ip], true)) {
+            if (dep.ordered &&
+                find_ordered_dependency(deps[ip], jps[ip], true) &&
+                (!ordered_mode || dep.exec_all > exec_all)) {
                /* If the current instruction is not marked NoMask but an
                 * ordered dependency is, perform the synchronization as a
                 * separate NoMask SYNC instruction in order to avoid data
