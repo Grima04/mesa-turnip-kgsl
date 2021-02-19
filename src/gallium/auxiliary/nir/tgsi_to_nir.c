@@ -2491,6 +2491,11 @@ ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
+   if (!screen->get_param(screen, PIPE_CAP_TEXRECT)) {
+      const struct nir_lower_tex_options opts = { .lower_rect = true, };
+      NIR_PASS_V(nir, nir_lower_tex, &opts);
+   }
+
    if (nir->options->lower_uniforms_to_ubo)
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
 
