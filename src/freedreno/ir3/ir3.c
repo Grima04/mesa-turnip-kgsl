@@ -761,6 +761,7 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 			 */
 			switch (instr->opc) {
 			case OPC_LDIB:
+			case OPC_STIB:
 			case OPC_LDC:
 			case OPC_RESINFO:
 				if (n != 0)
