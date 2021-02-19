@@ -138,15 +138,15 @@ bi_next_clause(bi_context *ctx, pan_block *block, bi_clause *clause)
 }
 
 /* Does an instruction have a side effect not captured by its register
- * destination? Applies to certain message-passing instructions and branching
- * only, used in dead code elimation. Branches are characterized by `last`
- * which applies to them and some atomics, +BARRIER, +BLEND which implies no
- * loss of generality */
+ * destination? Applies to certain message-passing instructions, +DISCARD, and
+ * branching only, used in dead code elimation. Branches are characterized by
+ * `last` which applies to them and some atomics, +BARRIER, +BLEND which
+ * implies no loss of generality */
 
 bool
 bi_side_effects(enum bi_opcode op)
 {
-        if (bi_opcode_props[op].last)
+        if (bi_opcode_props[op].last || op == BI_OPCODE_DISCARD_F32)
                 return true;
 
         switch (bi_opcode_props[op].message) {
