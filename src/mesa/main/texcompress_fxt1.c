@@ -42,13 +42,13 @@
 
 
 static void
-fxt1_encode (GLuint width, GLuint height, GLint comps,
-             const void *source, GLint srcRowStride,
-             void *dest, GLint destRowStride);
+fxt1_encode (uint32_t width, uint32_t height, int32_t comps,
+             const void *source, int32_t srcRowStride,
+             void *dest, int32_t destRowStride);
 
 static void
-fxt1_decode_1 (const void *texture, GLint stride,
-               GLint i, GLint j, GLubyte *rgba);
+fxt1_decode_1 (const void *texture, int32_t stride,
+               int32_t i, int32_t j, uint8_t *rgba);
 
 
 /**
@@ -57,10 +57,10 @@ fxt1_decode_1 (const void *texture, GLint stride,
 GLboolean
 _mesa_texstore_rgb_fxt1(TEXSTORE_PARAMS)
 {
-   const GLubyte *pixels;
-   GLint srcRowStride;
-   GLubyte *dst;
-   const GLubyte *tempImage = NULL;
+   const uint8_t *pixels;
+   int32_t srcRowStride;
+   uint8_t *dst;
+   const uint8_t *tempImage = NULL;
 
    assert(dstFormat == MESA_FORMAT_RGB_FXT1);
 
@@ -69,13 +69,13 @@ _mesa_texstore_rgb_fxt1(TEXSTORE_PARAMS)
        ctx->_ImageTransferState ||
        ALIGN(srcPacking->RowLength, srcPacking->Alignment) != srcWidth ||
        srcPacking->SwapBytes) {
-      /* convert image to RGB/GLubyte */
-      GLubyte *tempImageSlices[1];
-      int rgbRowStride = 3 * srcWidth * sizeof(GLubyte);
-      tempImage = malloc(srcWidth * srcHeight * 3 * sizeof(GLubyte));
+      /* convert image to RGB/uint8_t */
+      uint8_t *tempImageSlices[1];
+      int rgbRowStride = 3 * srcWidth * sizeof(uint8_t);
+      tempImage = malloc(srcWidth * srcHeight * 3 * sizeof(uint8_t));
       if (!tempImage)
          return GL_FALSE; /* out of memory */
-      tempImageSlices[0] = (GLubyte *) tempImage;
+      tempImageSlices[0] = (uint8_t *) tempImage;
       _mesa_texstore(ctx, dims,
                      baseInternalFormat,
                      MESA_FORMAT_RGB_UNORM8,
@@ -92,7 +92,7 @@ _mesa_texstore_rgb_fxt1(TEXSTORE_PARAMS)
                                      srcFormat, srcType, 0, 0);
 
       srcRowStride = _mesa_image_row_stride(srcPacking, srcWidth, srcFormat,
-                                            srcType) / sizeof(GLubyte);
+                                            srcType) / sizeof(uint8_t);
    }
 
    dst = dstSlices[0];
@@ -112,10 +112,10 @@ _mesa_texstore_rgb_fxt1(TEXSTORE_PARAMS)
 GLboolean
 _mesa_texstore_rgba_fxt1(TEXSTORE_PARAMS)
 {
-   const GLubyte *pixels;
-   GLint srcRowStride;
-   GLubyte *dst;
-   const GLubyte *tempImage = NULL;
+   const uint8_t *pixels;
+   int32_t srcRowStride;
+   uint8_t *dst;
+   const uint8_t *tempImage = NULL;
 
    assert(dstFormat == MESA_FORMAT_RGBA_FXT1);
 
@@ -123,13 +123,13 @@ _mesa_texstore_rgba_fxt1(TEXSTORE_PARAMS)
        srcType != GL_UNSIGNED_BYTE ||
        ctx->_ImageTransferState ||
        srcPacking->SwapBytes) {
-      /* convert image to RGBA/GLubyte */
-      GLubyte *tempImageSlices[1];
-      int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
-      tempImage = malloc(srcWidth * srcHeight * 4 * sizeof(GLubyte));
+      /* convert image to RGBA/uint8_t */
+      uint8_t *tempImageSlices[1];
+      int rgbaRowStride = 4 * srcWidth * sizeof(uint8_t);
+      tempImage = malloc(srcWidth * srcHeight * 4 * sizeof(uint8_t));
       if (!tempImage)
          return GL_FALSE; /* out of memory */
-      tempImageSlices[0] = (GLubyte *) tempImage;
+      tempImageSlices[0] = (uint8_t *) tempImage;
       _mesa_texstore(ctx, dims,
                      baseInternalFormat,
 #if UTIL_ARCH_LITTLE_ENDIAN
@@ -150,7 +150,7 @@ _mesa_texstore_rgba_fxt1(TEXSTORE_PARAMS)
                                      srcFormat, srcType, 0, 0);
 
       srcRowStride = _mesa_image_row_stride(srcPacking, srcWidth, srcFormat,
-                                            srcType) / sizeof(GLubyte);
+                                            srcType) / sizeof(uint8_t);
    }
 
    dst = dstSlices[0];
@@ -182,7 +182,7 @@ _mesa_texstore_rgba_fxt1(TEXSTORE_PARAMS)
 #define LL_RMS_D 10 /* fault tolerance (maximum delta) */
 #define LL_RMS_E 255 /* fault tolerance (maximum error) */
 #define ALPHA_TS 2 /* alpha threshold: (255 - ALPHA_TS) deemed opaque */
-static const GLuint zero = 0;
+static const uint32_t zero = 0;
 #define ISTBLACK(v) (memcmp(&(v), &zero, sizeof(zero)) == 0)
 
 /*
@@ -203,7 +203,7 @@ typedef uint64_t Fx64;
 #define FX64_NATIVE 0
 
 typedef struct {
-   GLuint lo, hi;
+   uint32_t lo, hi;
 } Fx64;
 
 #define FX64_MOV32(a, b) a.lo = b
@@ -223,20 +223,20 @@ typedef struct {
 #endif
 
 
-#define F(i) (GLfloat)1 /* can be used to obtain an oblong metric: 0.30 / 0.59 / 0.11 */
+#define F(i) (float)1 /* can be used to obtain an oblong metric: 0.30 / 0.59 / 0.11 */
 #define SAFECDOT 1 /* for paranoids */
 
 #define MAKEIVEC(NV, NC, IV, B, V0, V1)  \
    do {                                  \
       /* compute interpolation vector */ \
-      GLfloat d2 = 0.0F;                 \
-      GLfloat rd2;                       \
+      float d2 = 0.0F;                   \
+      float rd2;                         \
                                          \
       for (i = 0; i < NC; i++) {         \
          IV[i] = (V1[i] - V0[i]) * F(i); \
          d2 += IV[i] * IV[i];            \
       }                                  \
-      rd2 = (GLfloat)NV / d2;            \
+      rd2 = (float)NV / d2;              \
       B = 0;                             \
       for (i = 0; i < NC; i++) {         \
          IV[i] *= F(i);                  \
@@ -248,11 +248,11 @@ typedef struct {
 
 #define CALCCDOT(TEXEL, NV, NC, IV, B, V)\
    do {                                  \
-      GLfloat dot = 0.0F;                \
+      float dot = 0.0F;                  \
       for (i = 0; i < NC; i++) {         \
          dot += V[i] * IV[i];            \
       }                                  \
-      TEXEL = (GLint)(dot + B);          \
+      TEXEL = (int32_t)(dot + B);        \
       if (SAFECDOT) {                    \
          if (TEXEL < 0) {                \
             TEXEL = 0;                   \
@@ -263,15 +263,15 @@ typedef struct {
    } while (0)
 
 
-static GLint
-fxt1_bestcol (GLfloat vec[][MAX_COMP], GLint nv,
-              GLubyte input[MAX_COMP], GLint nc)
+static int32_t
+fxt1_bestcol (float vec[][MAX_COMP], int32_t nv,
+              uint8_t input[MAX_COMP], int32_t nc)
 {
-   GLint i, j, best = -1;
-   GLfloat err = 1e9; /* big enough */
+   int32_t i, j, best = -1;
+   float err = 1e9; /* big enough */
 
    for (j = 0; j < nv; j++) {
-      GLfloat e = 0.0F;
+      float e = 0.0F;
       for (i = 0; i < nc; i++) {
          e += (vec[j][i] - input[i]) * (vec[j][i] - input[i]);
       }
@@ -285,15 +285,15 @@ fxt1_bestcol (GLfloat vec[][MAX_COMP], GLint nv,
 }
 
 
-static GLint
-fxt1_worst (GLfloat vec[MAX_COMP],
-            GLubyte input[N_TEXELS][MAX_COMP], GLint nc, GLint n)
+static int32_t
+fxt1_worst (float vec[MAX_COMP],
+            uint8_t input[N_TEXELS][MAX_COMP], int32_t nc, int32_t n)
 {
-   GLint i, k, worst = -1;
-   GLfloat err = -1.0F; /* small enough */
+   int32_t i, k, worst = -1;
+   float err = -1.0F; /* small enough */
 
    for (k = 0; k < n; k++) {
-      GLfloat e = 0.0F;
+      float e = 0.0F;
       for (i = 0; i < nc; i++) {
          e += (vec[i] - input[k][i]) * (vec[i] - input[k][i]);
       }
@@ -307,19 +307,19 @@ fxt1_worst (GLfloat vec[MAX_COMP],
 }
 
 
-static GLint
-fxt1_variance (GLdouble variance[MAX_COMP],
-               GLubyte input[N_TEXELS][MAX_COMP], GLint nc, GLint n)
+static int32_t
+fxt1_variance (double variance[MAX_COMP],
+               uint8_t input[N_TEXELS][MAX_COMP], int32_t nc, int32_t n)
 {
-   GLint i, k, best = 0;
-   GLint sx, sx2;
-   GLdouble var, maxvar = -1; /* small enough */
-   GLdouble teenth = 1.0 / n;
+   int32_t i, k, best = 0;
+   int32_t sx, sx2;
+   double var, maxvar = -1; /* small enough */
+   double teenth = 1.0 / n;
 
    for (i = 0; i < nc; i++) {
       sx = sx2 = 0;
       for (k = 0; k < n; k++) {
-         GLint t = input[k][i];
+         int32_t t = input[k][i];
          sx += t;
          sx2 += t * t;
       }
@@ -337,17 +337,17 @@ fxt1_variance (GLdouble variance[MAX_COMP],
 }
 
 
-static GLint
-fxt1_choose (GLfloat vec[][MAX_COMP], GLint nv,
-             GLubyte input[N_TEXELS][MAX_COMP], GLint nc, GLint n)
+static int32_t
+fxt1_choose (float vec[][MAX_COMP], int32_t nv,
+             uint8_t input[N_TEXELS][MAX_COMP], int32_t nc, int32_t n)
 {
 #if 0
    /* Choose colors from a grid.
     */
-   GLint i, j;
+   int32_t i, j;
 
    for (j = 0; j < nv; j++) {
-      GLint m = j * (n - 1) / (nv - 1);
+      int32_t m = j * (n - 1) / (nv - 1);
       for (i = 0; i < nc; i++) {
          vec[j][i] = input[m][i];
       }
@@ -357,26 +357,26 @@ fxt1_choose (GLfloat vec[][MAX_COMP], GLint nv,
     * the 8x4 tile and use those as the two representative colors.
     * There are probably better algorithms to use (histogram-based).
     */
-   GLint i, j, k;
-   GLint minSum = 2000; /* big enough */
-   GLint maxSum = -1; /* small enough */
-   GLint minCol = 0; /* phoudoin: silent compiler! */
-   GLint maxCol = 0; /* phoudoin: silent compiler! */
+   int32_t i, j, k;
+   int32_t minSum = 2000; /* big enough */
+   int32_t maxSum = -1; /* small enough */
+   int32_t minCol = 0; /* phoudoin: silent compiler! */
+   int32_t maxCol = 0; /* phoudoin: silent compiler! */
 
    struct {
-      GLint flag;
-      GLint key;
-      GLint freq;
-      GLint idx;
+      int32_t flag;
+      int32_t key;
+      int32_t freq;
+      int32_t idx;
    } hist[N_TEXELS];
-   GLint lenh = 0;
+   int32_t lenh = 0;
 
    memset(hist, 0, sizeof(hist));
 
    for (k = 0; k < n; k++) {
-      GLint l;
-      GLint key = 0;
-      GLint sum = 0;
+      int32_t l;
+      int32_t key = 0;
+      int32_t sum = 0;
       for (i = 0; i < nc; i++) {
          key <<= 8;
          key |= input[k][i];
@@ -409,7 +409,7 @@ fxt1_choose (GLfloat vec[][MAX_COMP], GLint nv,
    if (lenh <= nv) {
       for (j = 0; j < lenh; j++) {
          for (i = 0; i < nc; i++) {
-            vec[j][i] = (GLfloat)input[hist[j].idx][i];
+            vec[j][i] = (float)input[hist[j].idx][i];
          }
       }
       for (; j < nv; j++) {
@@ -422,7 +422,7 @@ fxt1_choose (GLfloat vec[][MAX_COMP], GLint nv,
 
    for (j = 0; j < nv; j++) {
       for (i = 0; i < nc; i++) {
-         vec[j][i] = ((nv - 1 - j) * input[minCol][i] + j * input[maxCol][i] + (nv - 1) / 2) / (GLfloat)(nv - 1);
+         vec[j][i] = ((nv - 1 - j) * input[minCol][i] + j * input[maxCol][i] + (nv - 1) / 2) / (float)(nv - 1);
       }
    }
 #endif
@@ -431,9 +431,9 @@ fxt1_choose (GLfloat vec[][MAX_COMP], GLint nv,
 }
 
 
-static GLint
-fxt1_lloyd (GLfloat vec[][MAX_COMP], GLint nv,
-            GLubyte input[N_TEXELS][MAX_COMP], GLint nc, GLint n)
+static int32_t
+fxt1_lloyd (float vec[][MAX_COMP], int32_t nv,
+            uint8_t input[N_TEXELS][MAX_COMP], int32_t nc, int32_t n)
 {
    /* Use the generalized lloyd's algorithm for VQ:
     *     find 4 color vectors.
@@ -455,11 +455,11 @@ fxt1_lloyd (GLfloat vec[][MAX_COMP], GLint nv,
     * n                         number of input samples
     */
 
-   GLint sum[MAX_VECT][MAX_COMP]; /* used to accumulate closest texels */
-   GLint cnt[MAX_VECT]; /* how many times a certain vector was chosen */
-   GLfloat error, lasterror = 1e9;
+   int32_t sum[MAX_VECT][MAX_COMP]; /* used to accumulate closest texels */
+   int32_t cnt[MAX_VECT]; /* how many times a certain vector was chosen */
+   float error, lasterror = 1e9;
 
-   GLint i, j, k, rep;
+   int32_t i, j, k, rep;
 
    /* the quantizer */
    for (rep = 0; rep < LL_N_REP; rep++) {
@@ -475,11 +475,11 @@ fxt1_lloyd (GLfloat vec[][MAX_COMP], GLint nv,
       /* scan whole block */
       for (k = 0; k < n; k++) {
 #if 1
-         GLint best = -1;
-         GLfloat err = 1e9; /* big enough */
+         int32_t best = -1;
+         float err = 1e9; /* big enough */
          /* determine best vector */
          for (j = 0; j < nv; j++) {
-            GLfloat e = (vec[j][0] - input[k][0]) * (vec[j][0] - input[k][0]) +
+            float e = (vec[j][0] - input[k][0]) * (vec[j][0] - input[k][0]) +
                       (vec[j][1] - input[k][1]) * (vec[j][1] - input[k][1]) +
                       (vec[j][2] - input[k][2]) * (vec[j][2] - input[k][2]);
             if (nc == 4) {
@@ -491,7 +491,7 @@ fxt1_lloyd (GLfloat vec[][MAX_COMP], GLint nv,
             }
          }
 #else
-         GLint best = fxt1_bestcol(vec, nv, input[k], nc, &err);
+         int32_t best = fxt1_bestcol(vec, nv, input[k], nc, &err);
 #endif
          assert(best >= 0);
          /* add in closest color */
@@ -514,13 +514,13 @@ fxt1_lloyd (GLfloat vec[][MAX_COMP], GLint nv,
       /* move each vector to the barycenter of its closest colors */
       for (j = 0; j < nv; j++) {
          if (cnt[j]) {
-            GLfloat div = 1.0F / cnt[j];
+            float div = 1.0F / cnt[j];
             for (i = 0; i < nc; i++) {
                vec[j][i] = div * sum[j][i];
             }
          } else {
             /* this vec has no samples or is identical with a previous vec */
-            GLint worst = fxt1_worst(vec[j], input, nc, n);
+            int32_t worst = fxt1_worst(vec[j], input, nc, n);
             for (i = 0; i < nc; i++) {
                vec[j][i] = input[worst][i];
             }
@@ -533,15 +533,15 @@ fxt1_lloyd (GLfloat vec[][MAX_COMP], GLint nv,
 
 
 static void
-fxt1_quantize_CHROMA (GLuint *cc,
-                      GLubyte input[N_TEXELS][MAX_COMP])
+fxt1_quantize_CHROMA (uint32_t *cc,
+                      uint8_t input[N_TEXELS][MAX_COMP])
 {
-   const GLint n_vect = 4; /* 4 base vectors to find */
-   const GLint n_comp = 3; /* 3 components: R, G, B */
-   GLfloat vec[MAX_VECT][MAX_COMP];
-   GLint i, j, k;
+   const int32_t n_vect = 4; /* 4 base vectors to find */
+   const int32_t n_comp = 3; /* 3 components: R, G, B */
+   float vec[MAX_VECT][MAX_COMP];
+   int32_t i, j, k;
    Fx64 hi; /* high quadword */
-   GLuint lohi, lolo; /* low quadword: hi dword, lo dword */
+   uint32_t lohi, lolo; /* low quadword: hi dword, lo dword */
 
    if (fxt1_choose(vec, n_vect, input, n_comp, N_TEXELS) != 0) {
       fxt1_lloyd(vec, n_vect, input, n_comp, N_TEXELS);
@@ -552,7 +552,7 @@ fxt1_quantize_CHROMA (GLuint *cc,
       for (i = 0; i < n_comp; i++) {
          /* add in colors */
          FX64_SHL(hi, 5);
-         FX64_OR32(hi, (GLuint)(vec[j][i] / 8.0F));
+         FX64_OR32(hi, (uint32_t)(vec[j][i] / 8.0F));
       }
    }
    ((Fx64 *)cc)[1] = hi;
@@ -574,16 +574,16 @@ fxt1_quantize_CHROMA (GLuint *cc,
 
 
 static void
-fxt1_quantize_ALPHA0 (GLuint *cc,
-                      GLubyte input[N_TEXELS][MAX_COMP],
-                      GLubyte reord[N_TEXELS][MAX_COMP], GLint n)
+fxt1_quantize_ALPHA0 (uint32_t *cc,
+                      uint8_t input[N_TEXELS][MAX_COMP],
+                      uint8_t reord[N_TEXELS][MAX_COMP], int32_t n)
 {
-   const GLint n_vect = 3; /* 3 base vectors to find */
-   const GLint n_comp = 4; /* 4 components: R, G, B, A */
-   GLfloat vec[MAX_VECT][MAX_COMP];
-   GLint i, j, k;
+   const int32_t n_vect = 3; /* 3 base vectors to find */
+   const int32_t n_comp = 4; /* 4 components: R, G, B, A */
+   float vec[MAX_VECT][MAX_COMP];
+   int32_t i, j, k;
    Fx64 hi; /* high quadword */
-   GLuint lohi, lolo; /* low quadword: hi dword, lo dword */
+   uint32_t lohi, lolo; /* low quadword: hi dword, lo dword */
 
    /* the last vector indicates zero */
    for (i = 0; i < n_comp; i++) {
@@ -599,13 +599,13 @@ fxt1_quantize_ALPHA0 (GLuint *cc,
    for (j = n_vect - 1; j >= 0; j--) {
       /* add in alphas */
       FX64_SHL(hi, 5);
-      FX64_OR32(hi, (GLuint)(vec[j][ACOMP] / 8.0F));
+      FX64_OR32(hi, (uint32_t)(vec[j][ACOMP] / 8.0F));
    }
    for (j = n_vect - 1; j >= 0; j--) {
       for (i = 0; i < n_comp - 1; i++) {
          /* add in colors */
          FX64_SHL(hi, 5);
-         FX64_OR32(hi, (GLuint)(vec[j][i] / 8.0F));
+         FX64_OR32(hi, (uint32_t)(vec[j][i] / 8.0F));
       }
    }
    ((Fx64 *)cc)[1] = hi;
@@ -627,23 +627,23 @@ fxt1_quantize_ALPHA0 (GLuint *cc,
 
 
 static void
-fxt1_quantize_ALPHA1 (GLuint *cc,
-                      GLubyte input[N_TEXELS][MAX_COMP])
+fxt1_quantize_ALPHA1 (uint32_t *cc,
+                      uint8_t input[N_TEXELS][MAX_COMP])
 {
-   const GLint n_vect = 3; /* highest vector number in each microtile */
-   const GLint n_comp = 4; /* 4 components: R, G, B, A */
-   GLfloat vec[1 + 1 + 1][MAX_COMP]; /* 1.5 extrema for each sub-block */
-   GLfloat b, iv[MAX_COMP]; /* interpolation vector */
-   GLint i, j, k;
+   const int32_t n_vect = 3; /* highest vector number in each microtile */
+   const int32_t n_comp = 4; /* 4 components: R, G, B, A */
+   float vec[1 + 1 + 1][MAX_COMP]; /* 1.5 extrema for each sub-block */
+   float b, iv[MAX_COMP]; /* interpolation vector */
+   int32_t i, j, k;
    Fx64 hi; /* high quadword */
-   GLuint lohi, lolo; /* low quadword: hi dword, lo dword */
+   uint32_t lohi, lolo; /* low quadword: hi dword, lo dword */
 
-   GLint minSum;
-   GLint maxSum;
-   GLint minColL = 0, maxColL = 0;
-   GLint minColR = 0, maxColR = 0;
-   GLint sumL = 0, sumR = 0;
-   GLint nn_comp;
+   int32_t minSum;
+   int32_t maxSum;
+   int32_t minColL = 0, maxColL = 0;
+   int32_t minColR = 0, maxColR = 0;
+   int32_t sumL = 0, sumR = 0;
+   int32_t nn_comp;
    /* Our solution here is to find the darkest and brightest colors in
     * the 4x4 tile and use those as the two representative colors.
     * There are probably better algorithms to use (histogram-based).
@@ -653,7 +653,7 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
        minSum = 2000; /* big enough */
        maxSum = -1; /* small enough */
        for (k = 0; k < N_TEXELS / 2; k++) {
-           GLint sum = 0;
+           int32_t sum = 0;
            for (i = 0; i < nn_comp; i++) {
                sum += input[k][i];
            }
@@ -676,7 +676,7 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
        minSum = 2000; /* big enough */
        maxSum = -1; /* small enough */
        for (k = N_TEXELS / 2; k < N_TEXELS; k++) {
-           GLint sum = 0;
+           int32_t sum = 0;
            for (i = 0; i < nn_comp; i++) {
                sum += input[k][i];
            }
@@ -696,10 +696,10 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
 
    /* choose the common vector (yuck!) */
    {
-      GLint j1, j2;
-      GLint v1 = 0, v2 = 0;
-      GLfloat err = 1e9; /* big enough */
-      GLfloat tv[2 * 2][MAX_COMP]; /* 2 extrema for each sub-block */
+      int32_t j1, j2;
+      int32_t v1 = 0, v2 = 0;
+      float err = 1e9; /* big enough */
+      float tv[2 * 2][MAX_COMP]; /* 2 extrema for each sub-block */
       for (i = 0; i < n_comp; i++) {
          tv[0][i] = input[minColL][i];
          tv[1][i] = input[maxColL][i];
@@ -708,7 +708,7 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
       }
       for (j1 = 0; j1 < 2; j1++) {
          for (j2 = 2; j2 < 4; j2++) {
-            GLfloat e = 0.0F;
+            float e = 0.0F;
             for (i = 0; i < n_comp; i++) {
                e += (tv[j1][i] - tv[j2][i]) * (tv[j1][i] - tv[j2][i]);
             }
@@ -735,7 +735,7 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
       /* add in texels */
       lolo = 0;
       for (k = N_TEXELS / 2 - 1; k >= 0; k--) {
-         GLint texel;
+         int32_t texel;
          /* interpolate color */
          CALCCDOT(texel, n_vect, n_comp, iv, b, input[k]);
          /* add in texel */
@@ -755,7 +755,7 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
       /* add in texels */
       lohi = 0;
       for (k = N_TEXELS - 1; k >= N_TEXELS / 2; k--) {
-         GLint texel;
+         int32_t texel;
          /* interpolate color */
          CALCCDOT(texel, n_vect, n_comp, iv, b, input[k]);
          /* add in texel */
@@ -770,13 +770,13 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
    for (j = n_vect - 1; j >= 0; j--) {
       /* add in alphas */
       FX64_SHL(hi, 5);
-      FX64_OR32(hi, (GLuint)(vec[j][ACOMP] / 8.0F));
+      FX64_OR32(hi, (uint32_t)(vec[j][ACOMP] / 8.0F));
    }
    for (j = n_vect - 1; j >= 0; j--) {
       for (i = 0; i < n_comp - 1; i++) {
          /* add in colors */
          FX64_SHL(hi, 5);
-         FX64_OR32(hi, (GLuint)(vec[j][i] / 8.0F));
+         FX64_OR32(hi, (uint32_t)(vec[j][i] / 8.0F));
       }
    }
    ((Fx64 *)cc)[1] = hi;
@@ -784,28 +784,28 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
 
 
 static void
-fxt1_quantize_HI (GLuint *cc,
-                  GLubyte input[N_TEXELS][MAX_COMP],
-                  GLubyte reord[N_TEXELS][MAX_COMP], GLint n)
+fxt1_quantize_HI (uint32_t *cc,
+                  uint8_t input[N_TEXELS][MAX_COMP],
+                  uint8_t reord[N_TEXELS][MAX_COMP], int32_t n)
 {
-   const GLint n_vect = 6; /* highest vector number */
-   const GLint n_comp = 3; /* 3 components: R, G, B */
-   GLfloat b = 0.0F;       /* phoudoin: silent compiler! */
-   GLfloat iv[MAX_COMP];   /* interpolation vector */
-   GLint i, k;
-   GLuint hihi; /* high quadword: hi dword */
+   const int32_t n_vect = 6; /* highest vector number */
+   const int32_t n_comp = 3; /* 3 components: R, G, B */
+   float b = 0.0F;       /* phoudoin: silent compiler! */
+   float iv[MAX_COMP];   /* interpolation vector */
+   int32_t i, k;
+   uint32_t hihi; /* high quadword: hi dword */
 
-   GLint minSum = 2000; /* big enough */
-   GLint maxSum = -1; /* small enough */
-   GLint minCol = 0; /* phoudoin: silent compiler! */
-   GLint maxCol = 0; /* phoudoin: silent compiler! */
+   int32_t minSum = 2000; /* big enough */
+   int32_t maxSum = -1; /* small enough */
+   int32_t minCol = 0; /* phoudoin: silent compiler! */
+   int32_t maxCol = 0; /* phoudoin: silent compiler! */
 
    /* Our solution here is to find the darkest and brightest colors in
     * the 8x4 tile and use those as the two representative colors.
     * There are probably better algorithms to use (histogram-based).
     */
    for (k = 0; k < n; k++) {
-      GLint sum = 0;
+      int32_t sum = 0;
       for (i = 0; i < n_comp; i++) {
          sum += reord[k][i];
       }
@@ -840,9 +840,9 @@ fxt1_quantize_HI (GLuint *cc,
 
    /* add in texels */
    for (k = N_TEXELS - 1; k >= 0; k--) {
-      GLint t = k * 3;
-      GLuint *kk = (GLuint *)((char *)cc + t / 8);
-      GLint texel = n_vect + 1; /* transparent black */
+      int32_t t = k * 3;
+      uint32_t *kk = (uint32_t *)((char *)cc + t / 8);
+      int32_t texel = n_vect + 1; /* transparent black */
 
       if (!ISTBLACK(input[k])) {
          if (minCol != maxCol) {
@@ -860,21 +860,21 @@ fxt1_quantize_HI (GLuint *cc,
 
 
 static void
-fxt1_quantize_MIXED1 (GLuint *cc,
-                      GLubyte input[N_TEXELS][MAX_COMP])
+fxt1_quantize_MIXED1 (uint32_t *cc,
+                      uint8_t input[N_TEXELS][MAX_COMP])
 {
-   const GLint n_vect = 2; /* highest vector number in each microtile */
-   const GLint n_comp = 3; /* 3 components: R, G, B */
-   GLubyte vec[2 * 2][MAX_COMP]; /* 2 extrema for each sub-block */
-   GLfloat b, iv[MAX_COMP]; /* interpolation vector */
-   GLint i, j, k;
+   const int32_t n_vect = 2; /* highest vector number in each microtile */
+   const int32_t n_comp = 3; /* 3 components: R, G, B */
+   uint8_t vec[2 * 2][MAX_COMP]; /* 2 extrema for each sub-block */
+   float b, iv[MAX_COMP]; /* interpolation vector */
+   int32_t i, j, k;
    Fx64 hi; /* high quadword */
-   GLuint lohi, lolo; /* low quadword: hi dword, lo dword */
+   uint32_t lohi, lolo; /* low quadword: hi dword, lo dword */
 
-   GLint minSum;
-   GLint maxSum;
-   GLint minColL = 0, maxColL = -1;
-   GLint minColR = 0, maxColR = -1;
+   int32_t minSum;
+   int32_t maxSum;
+   int32_t minColL = 0, maxColL = -1;
+   int32_t minColR = 0, maxColR = -1;
 
    /* Our solution here is to find the darkest and brightest colors in
     * the 4x4 tile and use those as the two representative colors.
@@ -884,7 +884,7 @@ fxt1_quantize_MIXED1 (GLuint *cc,
    maxSum = -1; /* small enough */
    for (k = 0; k < N_TEXELS / 2; k++) {
       if (!ISTBLACK(input[k])) {
-         GLint sum = 0;
+         int32_t sum = 0;
          for (i = 0; i < n_comp; i++) {
             sum += input[k][i];
          }
@@ -902,7 +902,7 @@ fxt1_quantize_MIXED1 (GLuint *cc,
    maxSum = -1; /* small enough */
    for (; k < N_TEXELS; k++) {
       if (!ISTBLACK(input[k])) {
-         GLint sum = 0;
+         int32_t sum = 0;
          for (i = 0; i < n_comp; i++) {
             sum += input[k][i];
          }
@@ -938,7 +938,7 @@ fxt1_quantize_MIXED1 (GLuint *cc,
          /* add in texels */
          lolo = 0;
          for (k = N_TEXELS / 2 - 1; k >= 0; k--) {
-            GLint texel = n_vect + 1; /* transparent black */
+            int32_t texel = n_vect + 1; /* transparent black */
             if (!ISTBLACK(input[k])) {
                /* interpolate color */
                CALCCDOT(texel, n_vect, n_comp, iv, b, input[k]);
@@ -972,7 +972,7 @@ fxt1_quantize_MIXED1 (GLuint *cc,
          /* add in texels */
          lohi = 0;
          for (k = N_TEXELS - 1; k >= N_TEXELS / 2; k--) {
-            GLint texel = n_vect + 1; /* transparent black */
+            int32_t texel = n_vect + 1; /* transparent black */
             if (!ISTBLACK(input[k])) {
                /* interpolate color */
                CALCCDOT(texel, n_vect, n_comp, iv, b, input[k]);
@@ -998,22 +998,22 @@ fxt1_quantize_MIXED1 (GLuint *cc,
 
 
 static void
-fxt1_quantize_MIXED0 (GLuint *cc,
-                      GLubyte input[N_TEXELS][MAX_COMP])
+fxt1_quantize_MIXED0 (uint32_t *cc,
+                      uint8_t input[N_TEXELS][MAX_COMP])
 {
-   const GLint n_vect = 3; /* highest vector number in each microtile */
-   const GLint n_comp = 3; /* 3 components: R, G, B */
-   GLubyte vec[2 * 2][MAX_COMP]; /* 2 extrema for each sub-block */
-   GLfloat b, iv[MAX_COMP]; /* interpolation vector */
-   GLint i, j, k;
+   const int32_t n_vect = 3; /* highest vector number in each microtile */
+   const int32_t n_comp = 3; /* 3 components: R, G, B */
+   uint8_t vec[2 * 2][MAX_COMP]; /* 2 extrema for each sub-block */
+   float b, iv[MAX_COMP]; /* interpolation vector */
+   int32_t i, j, k;
    Fx64 hi; /* high quadword */
-   GLuint lohi, lolo; /* low quadword: hi dword, lo dword */
+   uint32_t lohi, lolo; /* low quadword: hi dword, lo dword */
 
-   GLint minColL = 0, maxColL = 0;
-   GLint minColR = 0, maxColR = 0;
+   int32_t minColL = 0, maxColL = 0;
+   int32_t minColR = 0, maxColR = 0;
 #if 0
-   GLint minSum;
-   GLint maxSum;
+   int32_t minSum;
+   int32_t maxSum;
 
    /* Our solution here is to find the darkest and brightest colors in
     * the 4x4 tile and use those as the two representative colors.
@@ -1022,7 +1022,7 @@ fxt1_quantize_MIXED0 (GLuint *cc,
    minSum = 2000; /* big enough */
    maxSum = -1; /* small enough */
    for (k = 0; k < N_TEXELS / 2; k++) {
-      GLint sum = 0;
+      int32_t sum = 0;
       for (i = 0; i < n_comp; i++) {
          sum += input[k][i];
       }
@@ -1038,7 +1038,7 @@ fxt1_quantize_MIXED0 (GLuint *cc,
    minSum = 2000; /* big enough */
    maxSum = -1; /* small enough */
    for (; k < N_TEXELS; k++) {
-      GLint sum = 0;
+      int32_t sum = 0;
       for (i = 0; i < n_comp; i++) {
          sum += input[k][i];
       }
@@ -1052,10 +1052,10 @@ fxt1_quantize_MIXED0 (GLuint *cc,
       }
    }
 #else
-   GLint minVal;
-   GLint maxVal;
-   GLint maxVarL = fxt1_variance(NULL, input, n_comp, N_TEXELS / 2);
-   GLint maxVarR = fxt1_variance(NULL, &input[N_TEXELS / 2], n_comp, N_TEXELS / 2);
+   int32_t minVal;
+   int32_t maxVal;
+   int32_t maxVarL = fxt1_variance(NULL, input, n_comp, N_TEXELS / 2);
+   int32_t maxVarR = fxt1_variance(NULL, &input[N_TEXELS / 2], n_comp, N_TEXELS / 2);
 
    /* Scan the channel with max variance for lo & hi
     * and use those as the two representative colors.
@@ -1063,7 +1063,7 @@ fxt1_quantize_MIXED0 (GLuint *cc,
    minVal = 2000; /* big enough */
    maxVal = -1; /* small enough */
    for (k = 0; k < N_TEXELS / 2; k++) {
-      GLint t = input[k][maxVarL];
+      int32_t t = input[k][maxVarL];
       if (minVal > t) {
          minVal = t;
          minColL = k;
@@ -1076,7 +1076,7 @@ fxt1_quantize_MIXED0 (GLuint *cc,
    minVal = 2000; /* big enough */
    maxVal = -1; /* small enough */
    for (; k < N_TEXELS; k++) {
-      GLint t = input[k][maxVarR];
+      int32_t t = input[k][maxVarR];
       if (minVal > t) {
          minVal = t;
          minColR = k;
@@ -1101,7 +1101,7 @@ fxt1_quantize_MIXED0 (GLuint *cc,
       /* add in texels */
       lolo = 0;
       for (k = N_TEXELS / 2 - 1; k >= 0; k--) {
-         GLint texel;
+         int32_t texel;
          /* interpolate color */
          CALCCDOT(texel, n_vect, n_comp, iv, b, input[k]);
          /* add in texel */
@@ -1110,7 +1110,7 @@ fxt1_quantize_MIXED0 (GLuint *cc,
       }
 
       /* funky encoding for LSB of green */
-      if ((GLint)((lolo >> 1) & 1) != (((vec[1][GCOMP] ^ vec[0][GCOMP]) >> 2) & 1)) {
+      if ((int32_t)((lolo >> 1) & 1) != (((vec[1][GCOMP] ^ vec[0][GCOMP]) >> 2) & 1)) {
          for (i = 0; i < n_comp; i++) {
             vec[1][i] = input[minColL][i];
             vec[0][i] = input[maxColL][i];
@@ -1134,7 +1134,7 @@ fxt1_quantize_MIXED0 (GLuint *cc,
       /* add in texels */
       lohi = 0;
       for (k = N_TEXELS - 1; k >= N_TEXELS / 2; k--) {
-         GLint texel;
+         int32_t texel;
          /* interpolate color */
          CALCCDOT(texel, n_vect, n_comp, iv, b, input[k]);
          /* add in texel */
@@ -1143,7 +1143,7 @@ fxt1_quantize_MIXED0 (GLuint *cc,
       }
 
       /* funky encoding for LSB of green */
-      if ((GLint)((lohi >> 1) & 1) != (((vec[3][GCOMP] ^ vec[2][GCOMP]) >> 2) & 1)) {
+      if ((int32_t)((lohi >> 1) & 1) != (((vec[3][GCOMP] ^ vec[2][GCOMP]) >> 2) & 1)) {
          for (i = 0; i < n_comp; i++) {
             vec[3][i] = input[minColR][i];
             vec[2][i] = input[maxColR][i];
@@ -1167,13 +1167,13 @@ fxt1_quantize_MIXED0 (GLuint *cc,
 
 
 static void
-fxt1_quantize (GLuint *cc, const GLubyte *lines[], GLint comps)
+fxt1_quantize (uint32_t *cc, const uint8_t *lines[], int32_t comps)
 {
-   GLint trualpha;
-   GLubyte reord[N_TEXELS][MAX_COMP];
+   int32_t trualpha;
+   uint8_t reord[N_TEXELS][MAX_COMP];
 
-   GLubyte input[N_TEXELS][MAX_COMP];
-   GLint i, k, l;
+   uint8_t input[N_TEXELS][MAX_COMP];
+   int32_t i, k, l;
 
    if (comps == 3) {
       /* make the whole block opaque */
@@ -1262,12 +1262,12 @@ fxt1_quantize (GLuint *cc, const GLubyte *lines[], GLint comps)
  * certain size (4, 8) and we need to upscale an image.
  */
 static void
-upscale_teximage2d(GLsizei inWidth, GLsizei inHeight,
-                   GLsizei outWidth, GLsizei outHeight,
-                   GLint comps, const GLubyte *src, GLint srcRowStride,
-                   GLubyte *dest )
+upscale_teximage2d(int32_t inWidth, int32_t inHeight,
+                   int32_t outWidth, int32_t outHeight,
+                   int32_t comps, const uint8_t *src, int32_t srcRowStride,
+                   uint8_t *dest )
 {
-   GLint i, j, k;
+   int32_t i, j, k;
 
    assert(outWidth >= inWidth);
    assert(outHeight >= inHeight);
@@ -1278,9 +1278,9 @@ upscale_teximage2d(GLsizei inWidth, GLsizei inHeight,
 #endif
 
    for (i = 0; i < outHeight; i++) {
-      const GLint ii = i % inHeight;
+      const int32_t ii = i % inHeight;
       for (j = 0; j < outWidth; j++) {
-         const GLint jj = j % inWidth;
+         const int32_t jj = j % inWidth;
          for (k = 0; k < comps; k++) {
             dest[(i * outWidth + j) * comps + k]
                = src[ii * srcRowStride + jj * comps + k];
@@ -1291,42 +1291,42 @@ upscale_teximage2d(GLsizei inWidth, GLsizei inHeight,
 
 
 static void
-fxt1_encode (GLuint width, GLuint height, GLint comps,
-             const void *source, GLint srcRowStride,
-             void *dest, GLint destRowStride)
+fxt1_encode (uint32_t width, uint32_t height, int32_t comps,
+             const void *source, int32_t srcRowStride,
+             void *dest, int32_t destRowStride)
 {
-   GLuint x, y;
-   const GLubyte *data;
-   GLuint *encoded = (GLuint *)dest;
+   uint32_t x, y;
+   const uint8_t *data;
+   uint32_t *encoded = (uint32_t *)dest;
    void *newSource = NULL;
 
    assert(comps == 3 || comps == 4);
 
    /* Replicate image if width is not M8 or height is not M4 */
    if ((width & 7) | (height & 3)) {
-      GLint newWidth = (width + 7) & ~7;
-      GLint newHeight = (height + 3) & ~3;
-      newSource = malloc(comps * newWidth * newHeight * sizeof(GLubyte));
+      int32_t newWidth = (width + 7) & ~7;
+      int32_t newHeight = (height + 3) & ~3;
+      newSource = malloc(comps * newWidth * newHeight * sizeof(uint8_t));
       if (!newSource) {
          GET_CURRENT_CONTEXT(ctx);
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "texture compression");
          goto cleanUp;
       }
       upscale_teximage2d(width, height, newWidth, newHeight,
-                         comps, (const GLubyte *) source,
-                         srcRowStride, (GLubyte *) newSource);
+                         comps, (const uint8_t *) source,
+                         srcRowStride, (uint8_t *) newSource);
       source = newSource;
       width = newWidth;
       height = newHeight;
       srcRowStride = comps * newWidth;
    }
 
-   data = (const GLubyte *) source;
+   data = (const uint8_t *) source;
    destRowStride = (destRowStride - width * 2) / 4;
    for (y = 0; y < height; y += 4) {
-      GLuint offs = 0 + (y + 0) * srcRowStride;
+      uint32_t offs = 0 + (y + 0) * srcRowStride;
       for (x = 0; x < width; x += 8) {
-         const GLubyte *lines[4];
+         const uint8_t *lines[4];
          lines[0] = &data[offs];
          lines[1] = lines[0] + srcRowStride;
          lines[2] = lines[1] + srcRowStride;
@@ -1353,7 +1353,7 @@ fxt1_encode (GLuint width, GLuint height, GLint comps,
 
 
 /* lookup table for scaling 5 bit colors up to 8 bits */
-static const GLubyte _rgb_scale_5[] = {
+static const uint8_t _rgb_scale_5[] = {
    0,   8,   16,  25,  33,  41,  49,  58,
    66,  74,  82,  90,  99,  107, 115, 123,
    132, 140, 148, 156, 165, 173, 181, 189,
@@ -1361,7 +1361,7 @@ static const GLubyte _rgb_scale_5[] = {
 };
 
 /* lookup table for scaling 6 bit colors up to 8 bits */
-static const GLubyte _rgb_scale_6[] = {
+static const uint8_t _rgb_scale_6[] = {
    0,   4,   8,   12,  16,  20,  24,  28,
    32,  36,  40,  45,  49,  53,  57,  61,
    65,  69,  73,  77,  81,  85,  89,  93,
@@ -1373,26 +1373,26 @@ static const GLubyte _rgb_scale_6[] = {
 };
 
 
-#define CC_SEL(cc, which) (((GLuint *)(cc))[(which) / 32] >> ((which) & 31))
+#define CC_SEL(cc, which) (((uint32_t *)(cc))[(which) / 32] >> ((which) & 31))
 #define UP5(c) _rgb_scale_5[(c) & 31]
 #define UP6(c, b) _rgb_scale_6[(((c) & 31) << 1) | ((b) & 1)]
 #define LERP(n, t, c0, c1) (((n) - (t)) * (c0) + (t) * (c1) + (n) / 2) / (n)
 
 
 static void
-fxt1_decode_1HI (const GLubyte *code, GLint t, GLubyte *rgba)
+fxt1_decode_1HI (const uint8_t *code, int32_t t, uint8_t *rgba)
 {
-   const GLuint *cc;
+   const uint32_t *cc;
 
    t *= 3;
-   cc = (const GLuint *)(code + t / 8);
+   cc = (const uint32_t *)(code + t / 8);
    t = (cc[0] >> (t & 7)) & 7;
 
    if (t == 7) {
       rgba[RCOMP] = rgba[GCOMP] = rgba[BCOMP] = rgba[ACOMP] = 0;
    } else {
-      GLubyte r, g, b;
-      cc = (const GLuint *)(code + 12);
+      uint8_t r, g, b;
+      cc = (const uint32_t *)(code + 12);
       if (t == 0) {
          b = UP5(CC_SEL(cc, 0));
          g = UP5(CC_SEL(cc, 5));
@@ -1415,12 +1415,12 @@ fxt1_decode_1HI (const GLubyte *code, GLint t, GLubyte *rgba)
 
 
 static void
-fxt1_decode_1CHROMA (const GLubyte *code, GLint t, GLubyte *rgba)
+fxt1_decode_1CHROMA (const uint8_t *code, int32_t t, uint8_t *rgba)
 {
-   const GLuint *cc;
-   GLuint kk;
+   const uint32_t *cc;
+   uint32_t kk;
 
-   cc = (const GLuint *)code;
+   cc = (const uint32_t *)code;
    if (t & 16) {
       cc++;
       t &= 15;
@@ -1428,7 +1428,7 @@ fxt1_decode_1CHROMA (const GLubyte *code, GLint t, GLubyte *rgba)
    t = (cc[0] >> (t * 2)) & 3;
 
    t *= 15;
-   cc = (const GLuint *)(code + 8 + t / 8);
+   cc = (const uint32_t *)(code + 8 + t / 8);
    kk = cc[0] >> (t & 7);
    rgba[BCOMP] = UP5(kk);
    rgba[GCOMP] = UP5(kk >> 5);
@@ -1438,18 +1438,18 @@ fxt1_decode_1CHROMA (const GLubyte *code, GLint t, GLubyte *rgba)
 
 
 static void
-fxt1_decode_1MIXED (const GLubyte *code, GLint t, GLubyte *rgba)
+fxt1_decode_1MIXED (const uint8_t *code, int32_t t, uint8_t *rgba)
 {
-   const GLuint *cc;
-   GLuint col[2][3];
-   GLint glsb, selb;
+   const uint32_t *cc;
+   uint32_t col[2][3];
+   int32_t glsb, selb;
 
-   cc = (const GLuint *)code;
+   cc = (const uint32_t *)code;
    if (t & 16) {
       t &= 15;
       t = (cc[1] >> (t * 2)) & 3;
       /* col 2 */
-      col[0][BCOMP] = (*(const GLuint *)(code + 11)) >> 6;
+      col[0][BCOMP] = (*(const uint32_t *)(code + 11)) >> 6;
       col[0][GCOMP] = CC_SEL(cc, 99);
       col[0][RCOMP] = CC_SEL(cc, 104);
       /* col 3 */
@@ -1479,7 +1479,7 @@ fxt1_decode_1MIXED (const GLubyte *code, GLint t, GLubyte *rgba)
          /* zero */
          rgba[RCOMP] = rgba[BCOMP] = rgba[GCOMP] = rgba[ACOMP] = 0;
       } else {
-         GLubyte r, g, b;
+         uint8_t r, g, b;
          if (t == 0) {
             b = UP5(col[0][BCOMP]);
             g = UP5(col[0][GCOMP]);
@@ -1500,7 +1500,7 @@ fxt1_decode_1MIXED (const GLubyte *code, GLint t, GLubyte *rgba)
       }
    } else {
       /* alpha[0] == 0 */
-      GLubyte r, g, b;
+      uint8_t r, g, b;
       if (t == 0) {
          b = UP5(col[0][BCOMP]);
          g = UP6(col[0][GCOMP], glsb ^ selb);
@@ -1524,21 +1524,21 @@ fxt1_decode_1MIXED (const GLubyte *code, GLint t, GLubyte *rgba)
 
 
 static void
-fxt1_decode_1ALPHA (const GLubyte *code, GLint t, GLubyte *rgba)
+fxt1_decode_1ALPHA (const uint8_t *code, int32_t t, uint8_t *rgba)
 {
-   const GLuint *cc;
-   GLubyte r, g, b, a;
+   const uint32_t *cc;
+   uint8_t r, g, b, a;
 
-   cc = (const GLuint *)code;
+   cc = (const uint32_t *)code;
    if (CC_SEL(cc, 124) & 1) {
       /* lerp == 1 */
-      GLuint col0[4];
+      uint32_t col0[4];
 
       if (t & 16) {
          t &= 15;
          t = (cc[1] >> (t * 2)) & 3;
          /* col 2 */
-         col0[BCOMP] = (*(const GLuint *)(code + 11)) >> 6;
+         col0[BCOMP] = (*(const uint32_t *)(code + 11)) >> 6;
          col0[GCOMP] = CC_SEL(cc, 99);
          col0[RCOMP] = CC_SEL(cc, 104);
          col0[ACOMP] = CC_SEL(cc, 119);
@@ -1580,11 +1580,11 @@ fxt1_decode_1ALPHA (const GLubyte *code, GLint t, GLubyte *rgba)
          /* zero */
          r = g = b = a = 0;
       } else {
-         GLuint kk;
-         cc = (const GLuint *)code;
+         uint32_t kk;
+         cc = (const uint32_t *)code;
          a = UP5(cc[3] >> (t * 5 + 13));
          t *= 15;
-         cc = (const GLuint *)(code + 8 + t / 8);
+         cc = (const uint32_t *)(code + 8 + t / 8);
          kk = cc[0] >> (t & 7);
          b = UP5(kk);
          g = UP5(kk >> 5);
@@ -1599,10 +1599,10 @@ fxt1_decode_1ALPHA (const GLubyte *code, GLint t, GLubyte *rgba)
 
 
 static void
-fxt1_decode_1 (const void *texture, GLint stride, /* in pixels */
-               GLint i, GLint j, GLubyte *rgba)
+fxt1_decode_1 (const void *texture, int32_t stride, /* in pixels */
+               int32_t i, int32_t j, uint8_t *rgba)
 {
-   static void (*decode_1[]) (const GLubyte *, GLint, GLubyte *) = {
+   static void (*decode_1[]) (const uint8_t *, int32_t, uint8_t *) = {
       fxt1_decode_1HI,     /* cc-high   = "00?" */
       fxt1_decode_1HI,     /* cc-high   = "00?" */
       fxt1_decode_1CHROMA, /* cc-chroma = "010" */
@@ -1613,10 +1613,10 @@ fxt1_decode_1 (const void *texture, GLint stride, /* in pixels */
       fxt1_decode_1MIXED   /* mixed     = "1??" */
    };
 
-   const GLubyte *code = (const GLubyte *)texture +
+   const uint8_t *code = (const uint8_t *)texture +
                          ((j / 4) * (stride / 8) + (i / 8)) * 16;
-   GLint mode = CC_SEL(code, 125);
-   GLint t = i & 7;
+   int32_t mode = CC_SEL(code, 125);
+   int32_t t = i & 7;
 
    if (t & 4) {
       t += 12;
@@ -1630,10 +1630,10 @@ fxt1_decode_1 (const void *texture, GLint stride, /* in pixels */
 
 
 static void
-fetch_rgb_fxt1(const GLubyte *map,
-               GLint rowStride, GLint i, GLint j, GLfloat *texel)
+fetch_rgb_fxt1(const uint8_t *map,
+               int32_t rowStride, int32_t i, int32_t j, float *texel)
 {
-   GLubyte rgba[4];
+   uint8_t rgba[4];
    fxt1_decode_1(map, rowStride, i, j, rgba);
    texel[RCOMP] = UBYTE_TO_FLOAT(rgba[RCOMP]);
    texel[GCOMP] = UBYTE_TO_FLOAT(rgba[GCOMP]);
@@ -1643,10 +1643,10 @@ fetch_rgb_fxt1(const GLubyte *map,
 
 
 static void
-fetch_rgba_fxt1(const GLubyte *map,
-                GLint rowStride, GLint i, GLint j, GLfloat *texel)
+fetch_rgba_fxt1(const uint8_t *map,
+                int32_t rowStride, int32_t i, int32_t j, float *texel)
 {
-   GLubyte rgba[4];
+   uint8_t rgba[4];
    fxt1_decode_1(map, rowStride, i, j, rgba);
    texel[RCOMP] = UBYTE_TO_FLOAT(rgba[RCOMP]);
    texel[GCOMP] = UBYTE_TO_FLOAT(rgba[GCOMP]);
