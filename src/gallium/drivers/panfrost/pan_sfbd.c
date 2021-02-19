@@ -221,7 +221,7 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 
                 /* SFBD does not support MRT natively; sanity check */
                 assert(batch->key.nr_cbufs <= 1);
-                if (batch->key.nr_cbufs) {
+                if (batch->key.nr_cbufs && batch->key.cbufs[0]) {
                         struct pipe_surface *surf = batch->key.cbufs[0];
                         struct panfrost_resource *rsrc = pan_resource(surf->texture);
                         struct panfrost_bo *bo = rsrc->bo;
