@@ -66,6 +66,7 @@ static const struct debug_named_value panfrost_debug_options[] = {
         {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},
         {"noafbc",    PAN_DBG_NO_AFBC,  "Disable AFBC support"},
         {"nocrc",     PAN_DBG_NO_CRC,   "Disable transaction elimination"},
+        {"msaa16",    PAN_DBG_MSAA16,   "Enable MSAA 8x and 16x support"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -478,7 +479,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return false;
 
         /* MSAA 2x gets rounded up to 4x. MSAA 8x/16x only supported on v5+.
-         * TODO: Advertise on v5 */
+         * TODO: debug MSAA 8x/16x */
 
         switch (sample_count) {
         case 0:
@@ -487,10 +488,10 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 break;
         case 8:
         case 16:
-                if (dev->arch < 6)
-                        return false;
-                else
+                if (dev->debug & PAN_DBG_MSAA16)
                         break;
+                else
+                        return false;
         default:
                 return false;
         }
