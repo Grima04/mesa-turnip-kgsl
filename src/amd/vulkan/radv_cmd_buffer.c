@@ -3872,6 +3872,7 @@ VkResult radv_AllocateCommandBuffers(
 
 			result = radv_reset_cmd_buffer(cmd_buffer);
 			cmd_buffer->level = pAllocateInfo->level;
+			vk_object_base_reset(&cmd_buffer->base);
 
 			pCommandBuffers[i] = radv_cmd_buffer_to_handle(cmd_buffer);
 		} else {
