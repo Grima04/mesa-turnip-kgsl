@@ -83,7 +83,11 @@ static LLVMValueRef get_src(struct ac_nir_context *nir, nir_src src)
 static LLVMValueRef get_memory_ptr(struct ac_nir_context *ctx, nir_src src, unsigned bit_size)
 {
    LLVMValueRef ptr = get_src(ctx, src);
-   ptr = LLVMBuildGEP(ctx->ac.builder, ctx->ac.lds, &ptr, 1, "");
+   LLVMValueRef lds_i8 = ctx->ac.lds;
+   if (ctx->stage != MESA_SHADER_COMPUTE)
+      lds_i8 = LLVMBuildBitCast(ctx->ac.builder, ctx->ac.lds, LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS), "");
+
+   ptr = LLVMBuildGEP(ctx->ac.builder, lds_i8, &ptr, 1, "");
    int addr_space = LLVMGetPointerAddressSpace(LLVMTypeOf(ptr));
 
    LLVMTypeRef type = LLVMIntTypeInContext(ctx->ac.context, bit_size);
