@@ -62,12 +62,10 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
 
         struct pipe_framebuffer_state *fb = &batch->key;
 
-        for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
+        for (unsigned i = 0; i < fb->nr_cbufs; ++i)
                 panfrost_initialize_surface(batch, fb->cbufs[i]);
-        }
 
-        if (fb->zsbuf)
-                panfrost_initialize_surface(batch, fb->zsbuf);
+        panfrost_initialize_surface(batch, fb->zsbuf);
 
         /* The passed tile coords can be out of range in some cases, so we need
          * to clamp them to the framebuffer size to avoid a TILE_RANGE_FAULT.
