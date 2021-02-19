@@ -95,6 +95,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateCommandBuffers(
 
          result = lvp_reset_cmd_buffer(cmd_buffer);
          cmd_buffer->level = pAllocateInfo->level;
+         vk_object_base_reset(&cmd_buffer->base);
 
          pCommandBuffers[i] = lvp_cmd_buffer_to_handle(cmd_buffer);
       } else {
