@@ -396,10 +396,6 @@ spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/layered-rendering/clear-color-mismatched-layer-count: fail
 spec/!opengl es 2.0/invalid-es3-queries_gles2: skip
-spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgb_fxt1_3dfx: skip
-spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgba_fxt1_3dfx: skip
-spec/3dfx_texture_compression_fxt1/fbo-generatemipmap-formats: skip
-spec/3dfx_texture_compression_fxt1/fxt1-teximage: skip
 spec/amd_compressed_atc_texture/miptree: skip
 spec/amd_depth_clamp_separate/amd_depth_clamp_separate_range: skip
 spec/amd_depth_clamp_separate/amd_depth_clamp_separate_status: skip
@@ -468,7 +464,6 @@ spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s8_s=z24_s8
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s=z24_s8: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f_s8: skip
-spec/arb_direct_state_access/getcompressedtextureimage: skip
 spec/arb_direct_state_access/gettextureimage-formats: crash
 spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
@@ -1654,10 +1649,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23142
+       pass:    23158
        fail:      189
       crash:        1
-       skip:     1439
+       skip:     1434
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1666,4 +1661,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    24795
+      total:    24806
