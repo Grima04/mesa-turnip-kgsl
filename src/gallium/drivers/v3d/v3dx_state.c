@@ -509,7 +509,7 @@ v3d_set_framebuffer_state(struct pipe_context *pctx,
 }
 
 static enum V3DX(Wrap_Mode)
-translate_wrap(uint32_t pipe_wrap, bool using_nearest)
+translate_wrap(uint32_t pipe_wrap)
 {
         switch (pipe_wrap) {
         case PIPE_TEX_WRAP_REPEAT:
@@ -520,10 +520,6 @@ translate_wrap(uint32_t pipe_wrap, bool using_nearest)
                 return V3D_WRAP_MODE_MIRROR;
         case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
                 return V3D_WRAP_MODE_BORDER;
-        case PIPE_TEX_WRAP_CLAMP:
-                return (using_nearest ?
-                        V3D_WRAP_MODE_CLAMP :
-                        V3D_WRAP_MODE_BORDER);
         default:
                 unreachable("Unknown wrap mode");
         }
@@ -533,15 +529,14 @@ translate_wrap(uint32_t pipe_wrap, bool using_nearest)
 static void
 v3d_upload_sampler_state_variant(void *map,
                                  const struct pipe_sampler_state *cso,
-                                 enum v3d_sampler_state_variant variant,
-                                 bool either_nearest)
+                                 enum v3d_sampler_state_variant variant)
 {
         v3dx_pack(map, SAMPLER_STATE, sampler) {
                 sampler.wrap_i_border = false;
 
-                sampler.wrap_s = translate_wrap(cso->wrap_s, either_nearest);
-                sampler.wrap_t = translate_wrap(cso->wrap_t, either_nearest);
-                sampler.wrap_r = translate_wrap(cso->wrap_r, either_nearest);
+                sampler.wrap_s = translate_wrap(cso->wrap_s);
+                sampler.wrap_t = translate_wrap(cso->wrap_t);
+                sampler.wrap_r = translate_wrap(cso->wrap_r);
 
                 sampler.fixed_bias = cso->lod_bias;
                 sampler.depth_compare_function = cso->compare_func;
@@ -721,16 +716,9 @@ v3d_create_sampler_state(struct pipe_context *pctx,
 
         memcpy(so, cso, sizeof(*cso));
 
-        bool either_nearest =
-                (cso->mag_img_filter == PIPE_TEX_MIPFILTER_NEAREST ||
-                 cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST);
-
-        enum V3DX(Wrap_Mode) wrap_s = translate_wrap(cso->wrap_s,
-                                                     either_nearest);
-        enum V3DX(Wrap_Mode) wrap_t = translate_wrap(cso->wrap_t,
-                                                     either_nearest);
-        enum V3DX(Wrap_Mode) wrap_r = translate_wrap(cso->wrap_r,
-                                                     either_nearest);
+        enum V3DX(Wrap_Mode) wrap_s = translate_wrap(cso->wrap_s);
+        enum V3DX(Wrap_Mode) wrap_t = translate_wrap(cso->wrap_t);
+        enum V3DX(Wrap_Mode) wrap_r = translate_wrap(cso->wrap_r);
 
         bool uses_border_color = (wrap_s == V3D_WRAP_MODE_BORDER ||
                                   wrap_t == V3D_WRAP_MODE_BORDER ||
@@ -757,7 +745,7 @@ v3d_create_sampler_state(struct pipe_context *pctx,
                 so->sampler_state_offset[i] =
                         so->sampler_state_offset[0] + i * sampler_size;
                 v3d_upload_sampler_state_variant(map + i * sampler_size,
-                                                 cso, i, either_nearest);
+                                                 cso, i);
         }
 
 #else /* V3D_VERSION < 40 */

@@ -489,15 +489,6 @@ v3d_setup_shared_key(struct v3d_context *v3d, struct v3d_key *key,
                         key->tex[i].swizzle[2] = PIPE_SWIZZLE_Z;
                         key->tex[i].swizzle[3] = PIPE_SWIZZLE_W;
                 }
-
-                if (sampler) {
-                        key->tex[i].clamp_s =
-                                sampler_state->wrap_s == PIPE_TEX_WRAP_CLAMP;
-                        key->tex[i].clamp_t =
-                                sampler_state->wrap_t == PIPE_TEX_WRAP_CLAMP;
-                        key->tex[i].clamp_r =
-                                sampler_state->wrap_r == PIPE_TEX_WRAP_CLAMP;
-                }
         }
 }
 

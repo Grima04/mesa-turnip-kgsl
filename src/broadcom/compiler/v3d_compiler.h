@@ -361,9 +361,6 @@ struct v3d_key {
         void *shader_state;
         struct {
                 uint8_t swizzle[4];
-                bool clamp_s:1;
-                bool clamp_t:1;
-                bool clamp_r:1;
         } tex[V3D_MAX_TEXTURE_SAMPLERS];
         struct {
                 uint8_t return_size;
