@@ -35,9 +35,8 @@ panfrost_mfbd_has_zs_crc_ext(struct panfrost_batch *batch)
 {
         if (batch->key.nr_cbufs == 1) {
                 struct pipe_surface *surf = batch->key.cbufs[0];
-                struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
-                if (rsrc->checksummed)
+                if (surf->texture && pan_resource(surf->texture)->checksummed)
                         return true;
         }
 
@@ -260,7 +259,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
         /* Checksumming only works with a single render target */
-        if (batch->key.nr_cbufs == 1) {
+        if (batch->key.nr_cbufs == 1 && batch->key.cbufs[0]) {
                 struct pipe_surface *c_surf = batch->key.cbufs[0];
                 struct panfrost_resource *rsrc = pan_resource(c_surf->texture);
 
@@ -434,7 +433,9 @@ pan_internal_cbuf_size(struct panfrost_batch *batch, unsigned *tile_size)
         *tile_size = 16 * 16;
         for (int cb = 0; cb < batch->key.nr_cbufs; ++cb) {
                 struct pipe_surface *surf = batch->key.cbufs[cb];
-                assert(surf);
+
+                if (!surf)
+                        continue;
 
                 unsigned nr_samples = MAX3(surf->nr_samples, surf->texture->nr_samples, 1);
                 total_size += pan_bytes_per_pixel_tib(surf->format) *
