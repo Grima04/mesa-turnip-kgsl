@@ -655,6 +655,12 @@ is_ld_signal(const struct v3d_qpu_sig *sig)
                 sig->ldtlbu);
 }
 
+static inline bool
+is_ldunif_signal(const struct v3d_qpu_sig *sig)
+{
+        return sig->ldunif || sig->ldunifrf;
+}
+
 /**
  * This function is responsible for getting VIR results into the associated
  * storage for a NIR instruction.
@@ -678,8 +684,12 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
         if (!list_is_empty(&c->cur_block->instructions))
                 last_inst = (struct qinst *)c->cur_block->instructions.prev;
 
-        assert((result.file == QFILE_TEMP &&
-                last_inst && last_inst == c->defs[result.index]));
+        bool is_reused_uniform =
+                is_ldunif_signal(&c->defs[result.index]->qpu.sig) &&
+                last_inst != c->defs[result.index];
+
+        assert(result.file == QFILE_TEMP && last_inst &&
+               (last_inst == c->defs[result.index] || is_reused_uniform));
 
         if (dest->is_ssa) {
                 assert(chan < dest->ssa.num_components);
@@ -706,8 +716,9 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                  * the store into the nir_register, then emit a MOV
                  * that can be.
                  */
-                if (vir_in_nonuniform_control_flow(c) &&
-                    is_ld_signal(&c->defs[last_inst->dst.index]->qpu.sig)) {
+                if (is_reused_uniform ||
+                    (vir_in_nonuniform_control_flow(c) &&
+                     is_ld_signal(&c->defs[last_inst->dst.index]->qpu.sig))) {
                         result = vir_MOV(c, result);
                         last_inst = c->defs[result.index];
                 }

@@ -1416,7 +1416,8 @@ try_opt_ldunif(struct v3d_compile *c, uint32_t index, struct qreg *unif)
 {
         uint32_t count = 20;
         struct qinst *prev_inst = NULL;
-        vir_for_each_inst_rev(inst, c->cur_block) {
+        list_for_each_entry_from_rev(struct qinst, inst, c->cursor.link->prev,
+                                     &c->cur_block->instructions, link) {
                 if ((inst->qpu.sig.ldunif || inst->qpu.sig.ldunifrf) &&
                     inst->uniform == index) {
                         prev_inst = inst;
