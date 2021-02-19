@@ -750,7 +750,7 @@
     <field name="Type" size="4" start="0:0" type="uint" default="2"/>
     <field name="Dimension" size="2" start="0:4" type="Texture Dimension"/>
     <field name="Sample corner position" size="1" start="0:8" type="bool" default="false"/>
-    <field name="Normalize coordinatess" size="1" start="0:9" type="bool" default="false"/>
+    <field name="Normalize coordinates" size="1" start="0:9" type="bool" default="false"/>
     <field name="Format" size="22" start="0:10" type="Pixel Format"/>
     <field name="Width" size="16" start="1:0" type="uint" modifier="minus(1)"/>
     <field name="Height" size="16" start="1:16" type="uint" modifier="minus(1)"/>
