@@ -31,6 +31,7 @@
 #include "util/slab.h"
 #include "compiler/nir/nir.h"
 #include "util/disk_cache.h"
+#include "util/log.h"
 
 #include <vulkan/vulkan.h>
 
@@ -136,7 +137,7 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
 #define GET_PROC_ADDR(x) do {                                               \
       screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x); \
       if (!screen->vk_##x) {                                                \
-         debug_printf("vkGetDeviceProcAddr failed: vk"#x"\n");              \
+         mesa_loge("ZINK: vkGetDeviceProcAddr failed: vk"#x"\n");           \
          return false;                                                      \
       } \
    } while (0)
@@ -144,7 +145,7 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
 #define GET_PROC_ADDR_INSTANCE(x) do {                                          \
       screen->vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(screen->instance, "vk"#x); \
       if (!screen->vk_##x) {                                                \
-         debug_printf("GetInstanceProcAddr failed: vk"#x"\n");        \
+         mesa_loge("ZINK: GetInstanceProcAddr failed: vk"#x"\n");           \
          return false;                                                      \
       } \
    } while (0)
