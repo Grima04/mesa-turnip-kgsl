@@ -236,9 +236,9 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
         /* Pick a node satisfying bi_spill_register's preconditions */
 
         bi_foreach_instr_global(ctx, ins) {
-                if (ins->no_spill || ins->dest[0].offset || !bi_is_null(ins->dest[1])) {
-                        for (unsigned d = 0; d < ARRAY_SIZE(ins->dest); ++d)
-                                lcra_set_node_spill_cost(l, bi_get_node(ins->dest[0]), -1);
+                bi_foreach_dest(ins, d) {
+                        if (ins->no_spill || ins->dest[d].offset)
+                                lcra_set_node_spill_cost(l, bi_get_node(ins->dest[d]), -1);
                 }
         }
 
