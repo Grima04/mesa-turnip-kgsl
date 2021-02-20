@@ -623,18 +623,16 @@ ir3_set_dst_type(struct ir3_instruction *instr, bool half)
 void
 ir3_fixup_src_type(struct ir3_instruction *instr)
 {
-	bool half = !!(instr->regs[1]->flags & IR3_REG_HALF);
-
 	switch (opc_cat(instr->opc)) {
 	case 1: /* move instructions */
-		if (half) {
+		if (instr->regs[1]->flags & IR3_REG_HALF) {
 			instr->cat1.src_type = half_type(instr->cat1.src_type);
 		} else {
 			instr->cat1.src_type = full_type(instr->cat1.src_type);
 		}
 		break;
 	case 3:
-		if (half) {
+		if (instr->regs[1]->flags & IR3_REG_HALF) {
 			instr->opc = cat3_half_opc(instr->opc);
 		} else {
 			instr->opc = cat3_full_opc(instr->opc);
