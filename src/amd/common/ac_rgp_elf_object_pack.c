@@ -39,6 +39,10 @@
 #include "ac_rgp.h"
 #include "main/macros.h"
 
+#ifndef EM_AMDGPU
+// Old distributions may not have this enum constant
+#define EM_AMDGPU 224
+#endif
 
 char shader_stage_api_string[6][10] = {
    ".vertex",      /* vertex */
