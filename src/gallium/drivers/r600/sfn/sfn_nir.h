@@ -43,15 +43,15 @@ public:
 	bool run(nir_shader *shader);
 
 private:
-	bool run(nir_instr *instr);
+	static bool filter_instr(const nir_instr *instr, const void *data);
+        static nir_ssa_def *lower_instr(nir_builder *b, nir_instr *instr,  void *data);
+
+        void set_builder(nir_builder *_b) { b = _b;}
 
 	virtual bool filter(const nir_instr *instr) const = 0;
 	virtual nir_ssa_def *lower(nir_instr *instr) = 0;
 protected:
 	nir_builder *b;
-
-        static nir_ssa_def *progress_keep;
-        static nir_ssa_def *progress_replace;
 };
 
 bool r600_nir_lower_pack_unpack_2x16(nir_shader *shader);

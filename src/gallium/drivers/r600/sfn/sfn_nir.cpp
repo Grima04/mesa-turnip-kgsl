@@ -54,92 +54,25 @@ NirLowerInstruction::NirLowerInstruction():
 
 }
 
-bool NirLowerInstruction::run(nir_shader *shader)
+bool NirLowerInstruction::filter_instr(const nir_instr *instr, const void *data)
 {
-   bool progress = false;
-
-   nir_metadata preserved = nir_metadata_block_index |
-                            nir_metadata_dominance;
-
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_builder builder;
-         b = &builder;
-         nir_builder_init(b, function->impl);
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (!filter(instr))
-                  continue;
-
-               nir_ssa_def *old_def = nir_instr_ssa_def(instr);
-               struct list_head old_uses, old_if_uses;
-               if (old_def != nullptr) {
-                  list_replace(&old_def->uses, &old_uses);
-                  list_inithead(&old_def->uses);
-                  list_replace(&old_def->if_uses, &old_if_uses);
-                  list_inithead(&old_def->if_uses);
-               }
-
-               b->cursor = nir_after_instr(instr);
-               nir_ssa_def *new_def = lower(instr);
-               if (new_def && new_def != progress_keep &&
-                   new_def != progress_replace) {
-                  assert(old_def != NULL);
-                  if (new_def->parent_instr->block != instr->block)
-                     preserved = nir_metadata_none;
-
-                  nir_src new_src = nir_src_for_ssa(new_def);
-                  list_for_each_entry_safe(nir_src, use_src, &old_uses, use_link)
-                        nir_instr_rewrite_src(use_src->parent_instr, use_src, new_src);
-
-                  list_for_each_entry_safe(nir_src, use_src, &old_if_uses, use_link)
-                        nir_if_rewrite_condition(use_src->parent_if, new_src);
-
-                  if (list_is_empty(&old_def->uses) &&
-                      list_is_empty(&old_def->if_uses)) {
-                     nir_instr_remove(instr);
-                  }
-                  progress = true;
-               } else {
-                  /* We didn't end up lowering after all.  Put the uses back */
-                  if (old_def) {
-                     list_replace(&old_uses, &old_def->uses);
-                     list_replace(&old_if_uses, &old_def->if_uses);
-                  }
-                  if (new_def == progress_replace) {
-                     /* Only instructions without a return value can be removed like this */
-                     assert(!old_def);
-                     nir_instr_remove(instr);
-                     progress = true;
-                  }
-
-                  if (new_def == progress_keep)
-                     progress = true;
-               }
-            }
-
-            if (progress) {
-               nir_metadata_preserve(function->impl, preserved);
-            } else {
-               nir_metadata_preserve(function->impl, nir_metadata_all);
-            }
-         }
-      }
-   }
-   return progress;
+   auto me = reinterpret_cast<const NirLowerInstruction*>(data);
+   return me->filter(instr);
 }
 
-nir_ssa_def *NirLowerInstruction::progress_keep = (nir_ssa_def *)1;
-nir_ssa_def *NirLowerInstruction::progress_replace = (nir_ssa_def *)2;
-
-
-bool NirLowerInstruction::run(nir_instr *instr)
+nir_ssa_def *NirLowerInstruction::lower_instr(nir_builder *b, nir_instr *instr, void *data)
 {
-	bool progress = false;
-	if (filter(instr)) {
-		progress = lower(instr);
-	}
-	return progress;
+   auto me = reinterpret_cast<NirLowerInstruction*>(data);
+   me->set_builder(b);
+   return me->lower(instr);
+}
+
+bool NirLowerInstruction::run(nir_shader *shader)
+{
+   return nir_shader_lower_instructions(shader,
+                                        filter_instr,
+                                        lower_instr,
+                                        (void *)this);
 }
 
 
