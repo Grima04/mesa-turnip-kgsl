@@ -121,7 +121,6 @@ fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              unsigned index_offset)
 	in_dt
 {
-	struct fd3_context *fd3_ctx = fd3_context(ctx);
 	struct fd3_emit emit = {
 		.debug = &ctx->debug,
 		.vtx  = &ctx->vtx,
@@ -129,15 +128,7 @@ fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.info = info,
 		.indirect = indirect,
 		.draw = draw,
-		.key = {
-			.has_per_samp = (fd3_ctx->fsaturate || fd3_ctx->vsaturate),
-			.vsaturate_s = fd3_ctx->vsaturate_s,
-			.vsaturate_t = fd3_ctx->vsaturate_t,
-			.vsaturate_r = fd3_ctx->vsaturate_r,
-			.fsaturate_s = fd3_ctx->fsaturate_s,
-			.fsaturate_t = fd3_ctx->fsaturate_t,
-			.fsaturate_r = fd3_ctx->fsaturate_r,
-		},
+		.key = { { { 0 } } },
 		.rasterflat = ctx->rasterizer->flatshade,
 		.sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
 		.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,

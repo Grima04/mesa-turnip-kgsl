@@ -48,19 +48,6 @@ struct fd4_context {
 	struct u_upload_mgr *border_color_uploader;
 	struct pipe_resource *border_color_buf;
 
-	/* if *any* of bits are set in {v,f}saturate_{s,t,r} */
-	bool vsaturate, fsaturate;
-
-	/* bitmask of sampler which needs coords clamped for vertex
-	 * shader:
-	 */
-	uint16_t vsaturate_s, vsaturate_t, vsaturate_r;
-
-	/* bitmask of sampler which needs coords clamped for frag
-	 * shader:
-	 */
-	uint16_t fsaturate_s, fsaturate_t, fsaturate_r;
-
 	/* bitmask of samplers which need astc srgb workaround: */
 	uint16_t vastc_srgb, fastc_srgb;
 

@@ -428,9 +428,6 @@ ir3_setup_used_key(struct ir3_shader *shader)
 		key->ucp_enables = 0xff;
 
 	if (info->stage == MESA_SHADER_FRAGMENT) {
-		key->fsaturate_s = ~0;
-		key->fsaturate_t = ~0;
-		key->fsaturate_r = ~0;
 		key->fastc_srgb = ~0;
 		key->fsamples = ~0;
 
@@ -455,9 +452,6 @@ ir3_setup_used_key(struct ir3_shader *shader)
 		key->has_gs = true;
 
 		if (info->stage == MESA_SHADER_VERTEX) {
-			key->vsaturate_s = ~0;
-			key->vsaturate_t = ~0;
-			key->vsaturate_r = ~0;
 			key->vastc_srgb = ~0;
 			key->vsamples = ~0;
 		}

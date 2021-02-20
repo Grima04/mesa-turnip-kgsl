@@ -479,29 +479,6 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 			progress |= OPT(s, ir3_nir_lower_view_layer_id, layer_zero, view_zero);
 	}
 
-	struct nir_lower_tex_options tex_options = { };
-
-	switch (so->shader->type) {
-	case MESA_SHADER_FRAGMENT:
-		tex_options.saturate_s = so->key.fsaturate_s;
-		tex_options.saturate_t = so->key.fsaturate_t;
-		tex_options.saturate_r = so->key.fsaturate_r;
-		break;
-	case MESA_SHADER_VERTEX:
-		tex_options.saturate_s = so->key.vsaturate_s;
-		tex_options.saturate_t = so->key.vsaturate_t;
-		tex_options.saturate_r = so->key.vsaturate_r;
-		break;
-	default:
-		/* TODO */
-		break;
-	}
-
-	if (tex_options.saturate_s || tex_options.saturate_t ||
-		tex_options.saturate_r) {
-		progress |= OPT(s, nir_lower_tex, &tex_options);
-	}
-
 	/* Move large constant variables to the constants attached to the NIR
 	 * shader, which we will upload in the immediates range.  This generates
 	 * amuls, so we need to clean those up after.

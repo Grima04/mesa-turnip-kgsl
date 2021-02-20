@@ -398,6 +398,12 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_MAX_GS_INVOCATIONS:
 		return 32;
 
+	/* Only a2xx has the half-border clamp mode in HW, just have mesa/st lower
+	 * it for later HW.
+	 */
+	case PIPE_CAP_GL_CLAMP:
+		return is_a2xx(screen);
+
 	/* Stream output. */
 	case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
 		if (is_ir3(screen))
