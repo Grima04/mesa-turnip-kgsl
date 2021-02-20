@@ -28,7 +28,7 @@
 
 #include <stdint.h>
 #include "compiler/shader_enums.h"
-#include "list.h"
+#include "util/list.h"
 #include "util/simple_mtx.h"
 
 struct radeon_info;
