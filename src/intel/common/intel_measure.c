@@ -40,6 +40,7 @@
 #include "dev/gen_device_info.h"
 #include "util/debug.h"
 #include "util/macros.h"
+#include "util/u_debug.h"
 
 
 static const struct debug_control debug_control[] = {
@@ -100,7 +101,7 @@ intel_measure_init(struct intel_measure_device *device)
          *sep = '\0';
       }
 
-      if (filename) {
+      if (filename && !__check_suid()) {
          filename += 5;
          config.file = fopen(filename, "w");
          if (!config.file) {
