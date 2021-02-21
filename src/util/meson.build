@@ -156,6 +156,15 @@ files_xmlconfig = files(
   'xmlconfig.h',
 )
 
+files_xmlconfig += custom_target(
+  'driconf_static.h',
+  input: ['driconf_static.py', '00-mesa-defaults.conf'],
+  output: 'driconf_static.h',
+  command: [
+    prog_python, '@INPUT0@', '@INPUT1@', '@OUTPUT@'
+  ],
+)
+
 format_srgb = custom_target(
   'format_srgb',
   input : ['format_srgb.py'],
