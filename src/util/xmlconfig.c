@@ -1016,6 +1016,80 @@ parseConfigDir(struct OptConfData *data, const char *dirname)
 
    free(entries);
 }
+#else
+#  include "driconf_static.h"
+
+static void
+parseStaticOptions(struct OptConfData *data, const struct driconf_option *options,
+                   unsigned num_options)
+{
+   if (data->ignoringDevice || data->ignoringApp)
+      return;
+   for (unsigned i = 0; i < num_options; i++) {
+      const char *optattr[] = {
+         "name", options[i].name,
+         "value", options[i].value,
+         NULL
+      };
+      parseOptConfAttr(data, optattr);
+   }
+}
+
+static void
+parseStaticConfig(struct OptConfData *data)
+{
+   data->ignoringDevice = 0;
+   data->ignoringApp = 0;
+   data->inDriConf = 0;
+   data->inDevice = 0;
+   data->inApp = 0;
+   data->inOption = 0;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(driconf); i++) {
+      const struct driconf_device *d = driconf[i];
+      const char *devattr[] = {
+         "driver", d->driver,
+         NULL
+      };
+
+      data->ignoringDevice = 0;
+      data->inDevice++;
+      parseDeviceAttr(data, devattr);
+      data->inDevice--;
+
+      data->inApp++;
+
+      for (unsigned j = 0; j < d->num_engines; j++) {
+         const struct driconf_engine *e = &d->engines[j];
+         const char *engattr[] = {
+            "engine_name_match", e->engine_name_match,
+            "engine_versions", e->engine_versions,
+            NULL
+         };
+
+         data->ignoringApp = 0;
+         parseEngineAttr(data, engattr);
+         parseStaticOptions(data, e->options, e->num_options);
+      }
+
+      for (unsigned j = 0; j < d->num_applications; j++) {
+         const struct driconf_application *a = &d->applications[j];
+         const char *appattr[] = {
+            "name", a->name,
+            "executable", a->executable,
+            "application_name_match", a->application_name_match,
+            "application_versions", a->application_versions,
+            NULL
+         };
+
+         data->ignoringApp = 0;
+         parseAppAttr(data, appattr);
+         parseStaticOptions(data, a->options, a->num_options);
+      }
+
+      data->inApp--;
+   }
+}
 #endif /* WITH_XMLCONFIG */
 
 /** \brief Initialize an option cache based on info */
@@ -1093,6 +1167,8 @@ driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
       snprintf(filename, PATH_MAX, "%s/.drirc", home);
       parseOneConfigFile(&userData, filename);
    }
+#else
+   parseStaticConfig(&userData);
 #endif /* WITH_XMLCONFIG */
 }
 
