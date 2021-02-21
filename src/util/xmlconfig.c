@@ -42,8 +42,8 @@
 #include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <regex.h>
 #endif
+#include <regex.h>
 #include <fcntl.h>
 #include <math.h>
 #include "strndup.h"
@@ -520,8 +520,6 @@ driGetOptionsXml(const driOptionDescription *configOptions, unsigned numOptions)
    return output;
 }
 
-#if WITH_XMLCONFIG
-
 /**
  * Print message to \c stderr if the \c LIBGL_DEBUG environment variable
  * is set.
@@ -545,6 +543,12 @@ __driUtilMessage(const char *f, ...)
       fprintf(stderr, "\n");
    }
 }
+
+/* We don't have real line/column # info in static-config case: */
+#if !WITH_XML_CONFIG
+#  define XML_GetCurrentLineNumber(p) -1
+#  define XML_GetCurrentColumnNumber(p) -1
+#endif
 
 /** \brief Output a warning message. */
 #define XML_WARNING1(msg) do {                                          \
@@ -574,7 +578,9 @@ __driUtilMessage(const char *f, ...)
 /** \brief Parser context for configuration files. */
 struct OptConfData {
    const char *name;
+#if WITH_XMLCONFIG
    XML_Parser parser;
+#endif
    driOptionCache *cache;
    int screenNum;
    const char *driverName, *execName;
@@ -590,33 +596,6 @@ struct OptConfData {
    uint32_t inApp;
    uint32_t inOption;
 };
-
-/** \brief Elements in configuration files. */
-enum OptConfElem {
-   OC_APPLICATION = 0, OC_DEVICE, OC_DRICONF, OC_ENGINE, OC_OPTION, OC_COUNT
-};
-static const char *OptConfElems[] = {
-   [OC_APPLICATION]  = "application",
-   [OC_DEVICE] = "device",
-   [OC_DRICONF] = "driconf",
-   [OC_ENGINE]  = "engine",
-   [OC_OPTION] = "option",
-};
-
-static int compare(const void *a, const void *b) {
-   return strcmp(*(char *const*)a, *(char *const*)b);
-}
-/** \brief Binary search in a string array. */
-static uint32_t
-bsearchStr(const char *name, const char *elems[], uint32_t count)
-{
-   const char **found;
-   found = bsearch(&name, elems, count, sizeof(char *), compare);
-   if (found)
-      return found - elems;
-   else
-      return count;
-}
 
 /** \brief Parse a list of ranges of type info->type. */
 static unsigned char
@@ -818,6 +797,35 @@ parseOptConfAttr(struct OptConfData *data, const char **attr)
       } else if (!parseValue(&cache->values[opt], cache->info[opt].type, value))
          XML_WARNING("illegal option value: %s.", value);
    }
+}
+
+#if WITH_XMLCONFIG
+
+/** \brief Elements in configuration files. */
+enum OptConfElem {
+   OC_APPLICATION = 0, OC_DEVICE, OC_DRICONF, OC_ENGINE, OC_OPTION, OC_COUNT
+};
+static const char *OptConfElems[] = {
+   [OC_APPLICATION]  = "application",
+   [OC_DEVICE] = "device",
+   [OC_DRICONF] = "driconf",
+   [OC_ENGINE]  = "engine",
+   [OC_OPTION] = "option",
+};
+
+static int compare(const void *a, const void *b) {
+   return strcmp(*(char *const*)a, *(char *const*)b);
+}
+/** \brief Binary search in a string array. */
+static uint32_t
+bsearchStr(const char *name, const char *elems[], uint32_t count)
+{
+   const char **found;
+   found = bsearch(&name, elems, count, sizeof(char *), compare);
+   if (found)
+      return found - elems;
+   else
+      return count;
 }
 
 /** \brief Handler for start element events. */
@@ -1061,9 +1069,6 @@ driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
                     const char *engineName, uint32_t engineVersion)
 {
    initOptionCache(cache, info);
-
-#if WITH_XMLCONFIG
-   char *home;
    struct OptConfData userData;
 
    userData.cache = cache;
@@ -1075,6 +1080,9 @@ driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
    userData.engineName = engineName ? engineName : "";
    userData.engineVersion = engineVersion;
    userData.execName = execname ?: util_get_process_name();
+
+#if WITH_XMLCONFIG
+   char *home;
 
    parseConfigDir(&userData, datadir);
    parseOneConfigFile(&userData, SYSCONFDIR "/drirc");
