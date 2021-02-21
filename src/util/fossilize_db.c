@@ -175,7 +175,7 @@ load_foz_dbs(struct foz_db *foz_db, FILE *db_idx, uint8_t file_idx,
              header->payload_size != sizeof(uint64_t))
             break;
 
-         char hash_str[FOSSILIZE_BLOB_HASH_LENGTH + 1] = {};
+         char hash_str[FOSSILIZE_BLOB_HASH_LENGTH + 1] = {0};
          memcpy(hash_str, bytes_to_read, FOSSILIZE_BLOB_HASH_LENGTH);
 
          struct foz_db_entry *entry = ralloc(foz_db->mem_ctx,
