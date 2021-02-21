@@ -5419,7 +5419,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		domain = device->physical_device->memory_domains[pAllocateInfo->memoryTypeIndex];
 		flags |= device->physical_device->memory_flags[pAllocateInfo->memoryTypeIndex];
 
-		if (!dedicate_info && !import_info && (!export_info || !export_info->handleTypes)) {
+		if (!import_info && (!export_info || !export_info->handleTypes)) {
 			flags |= RADEON_FLAG_NO_INTERPROCESS_SHARING;
 			if (device->use_global_bo_list) {
 				flags |= RADEON_FLAG_PREFER_LOCAL_BO;
