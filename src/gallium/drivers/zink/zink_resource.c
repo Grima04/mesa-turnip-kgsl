@@ -119,7 +119,8 @@ resource_create(struct pipe_screen *pscreen,
       bci.size = templ->width0;
 
       bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
-                  VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+                  VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
       /* apparently gallium thinks these are the jack-of-all-trades bind types */
       if (templ->bind & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_QUERY_BUFFER)) {
@@ -131,9 +132,7 @@ resource_create(struct pipe_screen *pscreen,
                       VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
          VkFormatProperties props;
          vkGetPhysicalDeviceFormatProperties(screen->pdev, zink_get_format(screen, templ->format), &props);
-         if (props.bufferFeatures & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
-            bci.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-         if (props.bufferFeatures & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)
+         if (props.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
             bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
       }
 
