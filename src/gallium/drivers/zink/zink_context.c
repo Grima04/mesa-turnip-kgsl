@@ -89,6 +89,9 @@ zink_context_destroy(struct pipe_context *pctx)
       vkDestroyCommandPool(screen->dev, ctx->compute_batch.cmdpool, NULL);
    }
 
+   hash_table_foreach(ctx->render_pass_cache, he)
+      zink_destroy_render_pass(screen, he->data);
+
    util_primconvert_destroy(ctx->primconvert);
    u_upload_destroy(pctx->stream_uploader);
    slab_destroy_child(&ctx->transfer_pool);
