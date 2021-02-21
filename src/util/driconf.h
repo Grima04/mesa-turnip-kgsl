@@ -233,6 +233,10 @@
    DRI_CONF_OPT_B(disable_protected_content_check, def, \
                   "Don't reject image import if protected_content attribute doesn't match")
 
+#define DRI_CONF_IGNORE_MAP_UNSYNCHRONIZED(def) \
+   DRI_CONF_OPT_B(ignore_map_unsynchronized, def, \
+                  "Ignore GL_MAP_UNSYNCHRONIZED_BIT, workaround for games that use it incorrectly")
+
 /**
  * \brief Image quality-related options
  */

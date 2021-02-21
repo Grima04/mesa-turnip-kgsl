@@ -539,9 +539,19 @@ st_bufferobj_map_range(struct gl_context *ctx,
    assert(offset < obj->Size);
    assert(offset + length <= obj->Size);
 
-   const enum pipe_map_flags transfer_flags =
+   enum pipe_map_flags transfer_flags =
       st_access_flags_to_transfer_flags(access,
                                         offset == 0 && length == obj->Size);
+
+   /* Sometimes games do silly things like MapBufferRange(UNSYNC|DISCARD_RANGE)
+    * In this case, the the UNSYNC is a bit redundant, but the games rely
+    * on the driver rebinding/replacing the backing storage rather than
+    * going down the UNSYNC path (ie. honoring DISCARD_x first before UNSYNC).
+    */
+   if (unlikely(st_context(ctx)->options.ignore_map_unsynchronized)) {
+      if (transfer_flags & (PIPE_MAP_DISCARD_RANGE | PIPE_MAP_DISCARD_WHOLE_RESOURCE))
+         transfer_flags &= ~PIPE_MAP_UNSYNCHRONIZED;
+   }
 
    obj->Mappings[index].Pointer = pipe_buffer_map_range(pipe,
                                                         st_obj->buffer,

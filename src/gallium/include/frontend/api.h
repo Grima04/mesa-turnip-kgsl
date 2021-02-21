@@ -242,6 +242,7 @@ struct st_config_options
    bool allow_glsl_cross_stage_interpolation_mismatch;
    bool allow_draw_out_of_order;
    bool allow_incorrect_primitive_id;
+   bool ignore_map_unsynchronized;
    bool force_integer_tex_nearest;
    bool force_gl_names_reuse;
    char *force_gl_vendor;
