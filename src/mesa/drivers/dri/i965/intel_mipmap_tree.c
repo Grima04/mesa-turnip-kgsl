@@ -3030,9 +3030,9 @@ can_blit_slice(struct intel_mipmap_tree *mt,
 }
 
 static bool
-use_intel_mipree_map_blit(struct brw_context *brw,
-                          struct intel_mipmap_tree *mt,
-                          const struct intel_miptree_map *map)
+use_blitter_to_map(struct brw_context *brw,
+                   struct intel_mipmap_tree *mt,
+                   const struct intel_miptree_map *map)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
@@ -3099,7 +3099,7 @@ intel_miptree_map(struct brw_context *brw,
       intel_miptree_map_s8(brw, mt, map, level, slice);
    } else if (mt->stencil_mt && !(mode & BRW_MAP_DIRECT_BIT)) {
       intel_miptree_map_depthstencil(brw, mt, map, level, slice);
-   } else if (use_intel_mipree_map_blit(brw, mt, map)) {
+   } else if (use_blitter_to_map(brw, mt, map)) {
       intel_miptree_map_blit(brw, mt, map, level, slice);
    } else if (mt->surf.tiling != ISL_TILING_LINEAR && devinfo->gen > 4) {
       intel_miptree_map_tiled_memcpy(brw, mt, map, level, slice);
