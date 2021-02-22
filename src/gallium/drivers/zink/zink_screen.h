@@ -149,6 +149,7 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
       } \
    } while (0)
 
+#define GET_PROC_ADDR_DEVICE_LOCAL(x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x)
 #define GET_PROC_ADDR_INSTANCE_LOCAL(instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
 
 void
