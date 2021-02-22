@@ -474,7 +474,7 @@ brw_dri_server_wait_sync(__DRIcontext *ctx, void *_fence, unsigned flags)
 static unsigned
 brw_dri_get_capabilities(__DRIscreen *dri_screen)
 {
-   struct intel_screen *screen = dri_screen->driverPrivate;
+   struct brw_screen *screen = dri_screen->driverPrivate;
    unsigned caps = 0;
 
    if (screen->has_exec_fence)

@@ -88,7 +88,7 @@
 const char *const brw_vendor_string = "Intel Open Source Technology Center";
 
 static const char *
-get_bsw_model(const struct intel_screen *screen)
+get_bsw_model(const struct brw_screen *screen)
 {
    switch (screen->eu_total) {
    case 16:
@@ -101,7 +101,7 @@ get_bsw_model(const struct intel_screen *screen)
 }
 
 const char *
-brw_get_renderer_string(const struct intel_screen *screen)
+brw_get_renderer_string(const struct brw_screen *screen)
 {
    static char buf[128];
    const char *name = gen_get_device_name(screen->deviceID);
@@ -805,7 +805,7 @@ static void
 brw_initialize_cs_context_constants(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
-   const struct intel_screen *screen = brw->screen;
+   const struct brw_screen *screen = brw->screen;
    struct gen_device_info *devinfo = &brw->screen->devinfo;
 
    /* FINISHME: Do this for all platforms that the kernel supports */
@@ -939,7 +939,7 @@ brwCreateContext(gl_api api,
                  void *sharedContextPrivate)
 {
    struct gl_context *shareCtx = (struct gl_context *) sharedContextPrivate;
-   struct intel_screen *screen = driContextPriv->driScreenPriv->driverPrivate;
+   struct brw_screen *screen = driContextPriv->driScreenPriv->driverPrivate;
    const struct gen_device_info *devinfo = &screen->devinfo;
    struct dd_function_table functions;
 
@@ -1310,7 +1310,7 @@ intelUnbindContext(__DRIcontext * driContextPriv)
  * result in broken rendering of GLES apps that aren't expecting sRGB encode.
  *
  * Unfortunately, renderbuffer setup happens before a context is created.  So
- * in intel_screen.c we always set up sRGB, and here, if you're a GLES2/3
+ * in brw_screen.c we always set up sRGB, and here, if you're a GLES2/3
  * context (without an sRGB visual), we go turn that back off before anyone
  * finds out.
  */

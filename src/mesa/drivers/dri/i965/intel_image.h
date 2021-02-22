@@ -33,7 +33,7 @@
  *
  * The __DRIimage is passed around the loader code (src/glx and src/egl), but
  * it's opaque to that code and may only be accessed by loader extensions
- * (mostly located in intel_screen.c).
+ * (mostly located in brw_screen.c).
  */
 
 #include <stdbool.h>
@@ -66,7 +66,7 @@ struct intel_image_format {
 };
 
 struct __DRIimageRec {
-   struct intel_screen *screen;
+   struct brw_screen *screen;
    struct brw_bo *bo;
    uint32_t pitch; /**< in bytes */
    GLenum internal_format;

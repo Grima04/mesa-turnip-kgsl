@@ -185,11 +185,11 @@ intel_rb_format(const struct intel_renderbuffer *rb)
 }
 
 extern struct intel_renderbuffer *
-intel_create_winsys_renderbuffer(struct intel_screen *screen,
+intel_create_winsys_renderbuffer(struct brw_screen *screen,
                                  mesa_format format, unsigned num_samples);
 
 struct intel_renderbuffer *
-intel_create_private_renderbuffer(struct intel_screen *screen,
+intel_create_private_renderbuffer(struct brw_screen *screen,
                                   mesa_format format, unsigned num_samples);
 
 struct gl_renderbuffer*
@@ -246,7 +246,7 @@ void brw_render_cache_add_bo(struct brw_context *brw, struct brw_bo *bo,
 void brw_depth_cache_add_bo(struct brw_context *brw, struct brw_bo *bo);
 
 unsigned
-intel_quantize_num_samples(struct intel_screen *intel, unsigned num_samples);
+intel_quantize_num_samples(struct brw_screen *intel, unsigned num_samples);
 
 #ifdef __cplusplus
 }

@@ -126,7 +126,7 @@ init_reloc_list(struct brw_reloc_list *rlist, int count)
 void
 brw_batch_init(struct brw_context *brw)
 {
-   struct intel_screen *screen = brw->screen;
+   struct brw_screen *screen = brw->screen;
    struct brw_batch *batch = &brw->batch;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
@@ -225,7 +225,7 @@ recreate_growing_buffer(struct brw_context *brw,
                         const char *name, unsigned size,
                         enum brw_memory_zone memzone)
 {
-   struct intel_screen *screen = brw->screen;
+   struct brw_screen *screen = brw->screen;
    struct brw_batch *batch = &brw->batch;
    struct brw_bufmgr *bufmgr = screen->bufmgr;
 

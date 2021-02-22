@@ -231,7 +231,7 @@ intel_unmap_renderbuffer(struct gl_context *ctx,
  * Round up the requested multisample count to the next supported sample size.
  */
 unsigned
-intel_quantize_num_samples(struct intel_screen *intel, unsigned num_samples)
+intel_quantize_num_samples(struct brw_screen *intel, unsigned num_samples)
 {
    const int *msaa_modes = intel_supported_msaa_modes(intel);
    int quantized_samples = 0;
@@ -284,7 +284,7 @@ intel_alloc_private_renderbuffer_storage(struct gl_context * ctx, struct gl_rend
                                          GLuint width, GLuint height)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_screen *screen = brw->screen;
+   struct brw_screen *screen = brw->screen;
    struct intel_renderbuffer *irb = intel_renderbuffer(rb);
 
    assert(rb->Format != MESA_FORMAT_NONE);
@@ -329,7 +329,7 @@ intel_alloc_renderbuffer_storage(struct gl_context * ctx, struct gl_renderbuffer
 }
 
 static mesa_format
-fallback_rgbx_to_rgba(struct intel_screen *screen, struct gl_renderbuffer *rb,
+fallback_rgbx_to_rgba(struct brw_screen *screen, struct gl_renderbuffer *rb,
                       mesa_format original_format)
 {
    mesa_format format = original_format;
@@ -452,7 +452,7 @@ intel_nop_alloc_storage(struct gl_context * ctx, struct gl_renderbuffer *rb,
  * \param num_samples must be quantized.
  */
 struct intel_renderbuffer *
-intel_create_winsys_renderbuffer(struct intel_screen *screen,
+intel_create_winsys_renderbuffer(struct brw_screen *screen,
                                  mesa_format format, unsigned num_samples)
 {
    struct intel_renderbuffer *irb = CALLOC_STRUCT(intel_renderbuffer);
@@ -485,7 +485,7 @@ intel_create_winsys_renderbuffer(struct intel_screen *screen,
  * \param num_samples must be quantized.
  */
 struct intel_renderbuffer *
-intel_create_private_renderbuffer(struct intel_screen *screen,
+intel_create_private_renderbuffer(struct brw_screen *screen,
                                   mesa_format format, unsigned num_samples)
 {
    struct intel_renderbuffer *irb;

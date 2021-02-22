@@ -456,7 +456,7 @@ intel_image_get_fourcc(__DRIimage *image, int *fourcc)
 }
 
 static __DRIimage *
-intel_allocate_image(struct intel_screen *screen, int dri_format,
+intel_allocate_image(struct brw_screen *screen, int dri_format,
                      void *loaderPrivate)
 {
     __DRIimage *image;
@@ -515,7 +515,7 @@ intel_create_image_from_name(__DRIscreen *dri_screen,
 			     int width, int height, int format,
 			     int name, int pitch, void *loaderPrivate)
 {
-    struct intel_screen *screen = dri_screen->driverPrivate;
+    struct brw_screen *screen = dri_screen->driverPrivate;
     __DRIimage *image;
     int cpp;
 
@@ -726,7 +726,7 @@ intel_create_image_common(__DRIscreen *dri_screen,
                           void *loaderPrivate)
 {
    __DRIimage *image;
-   struct intel_screen *screen = dri_screen->driverPrivate;
+   struct brw_screen *screen = dri_screen->driverPrivate;
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
    bool ok;
 
@@ -982,7 +982,7 @@ intel_query_format_modifier_attribs(__DRIscreen *dri_screen,
                                     uint32_t fourcc, uint64_t modifier,
                                     int attrib, uint64_t *value)
 {
-   struct intel_screen *screen = dri_screen->driverPrivate;
+   struct brw_screen *screen = dri_screen->driverPrivate;
    const struct intel_image_format *f = intel_image_format_lookup(fourcc);
 
    if (!modifier_is_supported(&screen->devinfo, f, 0, modifier))
@@ -1087,7 +1087,7 @@ intel_create_image_from_fds_common(__DRIscreen *dri_screen,
                                    int *strides, int *offsets,
                                    void *loaderPrivate)
 {
-   struct intel_screen *screen = dri_screen->driverPrivate;
+   struct brw_screen *screen = dri_screen->driverPrivate;
    const struct intel_image_format *f;
    __DRIimage *image;
    int i, index;
@@ -1364,7 +1364,7 @@ static GLboolean
 intel_query_dma_buf_formats(__DRIscreen *_screen, int max,
                             int *formats, int *count)
 {
-   struct intel_screen *screen = _screen->driverPrivate;
+   struct brw_screen *screen = _screen->driverPrivate;
    int num_formats = 0, i;
 
    for (i = 0; i < ARRAY_SIZE(intel_image_formats); i++) {
@@ -1400,7 +1400,7 @@ intel_query_dma_buf_modifiers(__DRIscreen *_screen, int fourcc, int max,
                               unsigned int *external_only,
                               int *count)
 {
-   struct intel_screen *screen = _screen->driverPrivate;
+   struct brw_screen *screen = _screen->driverPrivate;
    const struct intel_image_format *f;
    int num_mods = 0, i;
 
@@ -1539,8 +1539,8 @@ static int
 brw_query_renderer_integer(__DRIscreen *dri_screen,
                            int param, unsigned int *value)
 {
-   const struct intel_screen *const screen =
-      (struct intel_screen *) dri_screen->driverPrivate;
+   const struct brw_screen *const screen =
+      (struct brw_screen *) dri_screen->driverPrivate;
 
    switch (param) {
    case __DRI2_RENDERER_VENDOR_ID:
@@ -1608,8 +1608,8 @@ static int
 brw_query_renderer_string(__DRIscreen *dri_screen,
                           int param, const char **value)
 {
-   const struct intel_screen *screen =
-      (struct intel_screen *) dri_screen->driverPrivate;
+   const struct brw_screen *screen =
+      (struct brw_screen *) dri_screen->driverPrivate;
 
    switch (param) {
    case __DRI2_RENDERER_VENDOR_ID:
@@ -1629,8 +1629,8 @@ static void
 brw_set_cache_funcs(__DRIscreen *dri_screen,
                     __DRIblobCacheSet set, __DRIblobCacheGet get)
 {
-   const struct intel_screen *const screen =
-      (struct intel_screen *) dri_screen->driverPrivate;
+   const struct brw_screen *const screen =
+      (struct brw_screen *) dri_screen->driverPrivate;
 
    if (!screen->disk_cache)
       return;
@@ -1686,7 +1686,7 @@ static const __DRIextension *intelRobustScreenExtensions[] = {
 };
 
 static int
-intel_get_param(struct intel_screen *screen, int param, int *value)
+intel_get_param(struct brw_screen *screen, int param, int *value)
 {
    int ret = 0;
    struct drm_i915_getparam gp;
@@ -1705,14 +1705,14 @@ intel_get_param(struct intel_screen *screen, int param, int *value)
 }
 
 static bool
-intel_get_boolean(struct intel_screen *screen, int param)
+intel_get_boolean(struct brw_screen *screen, int param)
 {
    int value = 0;
    return (intel_get_param(screen, param, &value) == 0) && value;
 }
 
 static int
-intel_get_integer(struct intel_screen *screen, int param)
+intel_get_integer(struct brw_screen *screen, int param)
 {
    int value = -1;
 
@@ -1725,7 +1725,7 @@ intel_get_integer(struct intel_screen *screen, int param)
 static void
 intelDestroyScreen(__DRIscreen * sPriv)
 {
-   struct intel_screen *screen = sPriv->driverPrivate;
+   struct brw_screen *screen = sPriv->driverPrivate;
 
    brw_bufmgr_unref(screen->bufmgr);
    driDestroyOptionInfo(&screen->optionCache);
@@ -1750,7 +1750,7 @@ intelCreateBuffer(__DRIscreen *dri_screen,
                   const struct gl_config * mesaVis, GLboolean isPixmap)
 {
    struct intel_renderbuffer *rb;
-   struct intel_screen *screen = (struct intel_screen *)
+   struct brw_screen *screen = (struct brw_screen *)
       dri_screen->driverPrivate;
    mesa_format rgbFormat;
    unsigned num_samples =
@@ -1872,7 +1872,7 @@ intelDestroyBuffer(__DRIdrawable * driDrawPriv)
 }
 
 static void
-intel_cs_timestamp_frequency(struct intel_screen *screen)
+intel_cs_timestamp_frequency(struct brw_screen *screen)
 {
    /* We shouldn't need to update gen_device_info.timestamp_frequency prior to
     * gen10, PCI-id is enough to figure it out.
@@ -1893,7 +1893,7 @@ intel_cs_timestamp_frequency(struct intel_screen *screen)
 }
 
 static void
-intel_detect_sseu(struct intel_screen *screen)
+intel_detect_sseu(struct brw_screen *screen)
 {
    assert(screen->devinfo.gen >= 8);
    int ret;
@@ -1928,7 +1928,7 @@ err_out:
 }
 
 static bool
-intel_init_bufmgr(struct intel_screen *screen)
+intel_init_bufmgr(struct brw_screen *screen)
 {
    __DRIscreen *dri_screen = screen->driScrnPriv;
 
@@ -1962,7 +1962,7 @@ intel_init_bufmgr(struct intel_screen *screen)
 }
 
 static bool
-intel_detect_swizzling(struct intel_screen *screen)
+intel_detect_swizzling(struct brw_screen *screen)
 {
    /* Broadwell PRM says:
     *
@@ -1993,7 +1993,7 @@ intel_detect_swizzling(struct intel_screen *screen)
 }
 
 static int
-intel_detect_timestamp(struct intel_screen *screen)
+intel_detect_timestamp(struct brw_screen *screen)
 {
    uint64_t dummy = 0, last = 0;
    int upper, lower, loops;
@@ -2044,7 +2044,7 @@ intel_detect_timestamp(struct intel_screen *screen)
  * try and write a register and see if works.
  */
 static bool
-intel_detect_pipelined_register(struct intel_screen *screen,
+intel_detect_pipelined_register(struct brw_screen *screen,
                                 int reg, uint32_t expected_value, bool reset)
 {
    if (screen->no_hw)
@@ -2136,7 +2136,7 @@ err:
 }
 
 static bool
-intel_detect_pipelined_so(struct intel_screen *screen)
+intel_detect_pipelined_so(struct brw_screen *screen)
 {
    const struct gen_device_info *devinfo = &screen->devinfo;
 
@@ -2165,7 +2165,7 @@ intel_detect_pipelined_so(struct intel_screen *screen)
  * zero-terminated and sorted in decreasing order.
  */
 const int*
-intel_supported_msaa_modes(const struct intel_screen  *screen)
+intel_supported_msaa_modes(const struct brw_screen  *screen)
 {
    static const int gen9_modes[] = {16, 8, 4, 2, 0, -1};
    static const int gen8_modes[] = {8, 4, 2, 0, -1};
@@ -2203,7 +2203,7 @@ intel_loader_get_cap(const __DRIscreen *dri_screen, enum dri_loader_cap cap)
 static bool
 intel_allowed_format(__DRIscreen *dri_screen, mesa_format format)
 {
-   struct intel_screen *screen = dri_screen->driverPrivate;
+   struct brw_screen *screen = dri_screen->driverPrivate;
 
    /* Expose only BGRA ordering if the loader doesn't support RGBA ordering. */
    bool allow_rgba_ordering = intel_loader_get_cap(dri_screen, DRI_LOADER_CAP_RGBA_ORDERING);
@@ -2240,7 +2240,7 @@ intel_allowed_format(__DRIscreen *dri_screen, mesa_format format)
 }
 
 static __DRIconfig**
-intel_screen_make_configs(__DRIscreen *dri_screen)
+brw_screen_make_configs(__DRIscreen *dri_screen)
 {
    static const mesa_format formats[] = {
       MESA_FORMAT_B5G6R5_UNORM,
@@ -2288,7 +2288,7 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
 
    static const uint8_t singlesample_samples[1] = {0};
 
-   struct intel_screen *screen = dri_screen->driverPrivate;
+   struct brw_screen *screen = dri_screen->driverPrivate;
    const struct gen_device_info *devinfo = &screen->devinfo;
    uint8_t depth_bits[4], stencil_bits[4];
    __DRIconfig **configs = NULL;
@@ -2448,7 +2448,7 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
 }
 
 static void
-set_max_gl_versions(struct intel_screen *screen)
+set_max_gl_versions(struct brw_screen *screen)
 {
    __DRIscreen *dri_screen = screen->driScrnPriv;
    const bool has_astc = screen->devinfo.gen >= 9;
@@ -2490,7 +2490,7 @@ set_max_gl_versions(struct intel_screen *screen)
       dri_screen->max_gl_es2_version = 20;
       break;
    default:
-      unreachable("unrecognized intel_screen::gen");
+      unreachable("unrecognized brw_screen::gen");
    }
 
    /* OpenGL 3.3+ requires GL_ARB_blend_func_extended.  Don't advertise those
@@ -2564,7 +2564,7 @@ shader_perf_log_mesa(void *data, const char *fmt, ...)
 static const
 __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
 {
-   struct intel_screen *screen;
+   struct brw_screen *screen;
 
    if (dri_screen->image.loader) {
    } else if (dri_screen->dri2.loader->base.version <= 2 ||
@@ -2576,7 +2576,7 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
    }
 
    /* Allocate the private area */
-   screen = rzalloc(NULL, struct intel_screen);
+   screen = rzalloc(NULL, struct brw_screen);
    if (!screen) {
       fprintf(stderr, "\nERROR!  Allocating private area failed\n");
       return NULL;
@@ -2868,7 +2868,7 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
    screen->has_exec_fence =
      intel_get_boolean(screen, I915_PARAM_HAS_EXEC_FENCE);
 
-   intel_screen_init_surface_formats(screen);
+   brw_screen_init_surface_formats(screen);
 
    if (INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT)) {
       unsigned int caps = intel_get_integer(screen, I915_PARAM_HAS_SCHEDULER);
@@ -2883,7 +2883,7 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
 
    brw_disk_cache_init(screen);
 
-   return (const __DRIconfig**) intel_screen_make_configs(dri_screen);
+   return (const __DRIconfig**) brw_screen_make_configs(dri_screen);
 }
 
 struct intel_buffer {
@@ -2897,7 +2897,7 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
 		    int width, int height)
 {
    struct intel_buffer *intelBuffer;
-   struct intel_screen *screen = dri_screen->driverPrivate;
+   struct brw_screen *screen = dri_screen->driverPrivate;
 
    assert(attachment == __DRI_BUFFER_FRONT_LEFT ||
           attachment == __DRI_BUFFER_BACK_LEFT);

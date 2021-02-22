@@ -204,7 +204,7 @@ brw_isl_format_for_mesa_format(mesa_format mesa_format)
 }
 
 void
-intel_screen_init_surface_formats(struct intel_screen *screen)
+brw_screen_init_surface_formats(struct brw_screen *screen)
 {
    const struct gen_device_info *devinfo = &screen->devinfo;
    mesa_format format;
@@ -397,7 +397,7 @@ intel_screen_init_surface_formats(struct intel_screen *screen)
 void
 brw_init_surface_formats(struct brw_context *brw)
 {
-   struct intel_screen *screen = brw->screen;
+   struct brw_screen *screen = brw->screen;
    struct gl_context *ctx = &brw->ctx;
 
    brw->mesa_format_supports_render = screen->mesa_format_supports_render;

@@ -1249,7 +1249,7 @@ struct brw_context
    unsigned current_hash_scale;
 
    __DRIcontext *driContext;
-   struct intel_screen *screen;
+   struct brw_screen *screen;
    void *mem_ctx;
 };
 
@@ -1262,7 +1262,7 @@ extern void intelInitClearFuncs(struct dd_function_table *functions);
 extern const char *const brw_vendor_string;
 
 extern const char *
-brw_get_renderer_string(const struct intel_screen *screen);
+brw_get_renderer_string(const struct brw_screen *screen);
 
 enum {
    DRI_CONF_BO_REUSE_DISABLED,
@@ -1424,7 +1424,7 @@ void brw_upload_image_surfaces(struct brw_context *brw,
                                struct brw_stage_prog_data *prog_data);
 
 /* brw_surface_formats.c */
-void intel_screen_init_surface_formats(struct intel_screen *screen);
+void brw_screen_init_surface_formats(struct brw_screen *screen);
 void brw_init_surface_formats(struct brw_context *brw);
 bool brw_render_target_supported(struct brw_context *brw,
                                  struct gl_renderbuffer *rb);

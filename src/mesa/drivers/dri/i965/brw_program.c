@@ -215,7 +215,7 @@ brw_shader_gather_info(nir_shader *nir, struct gl_program *prog)
 }
 
 static unsigned
-get_new_program_id(struct intel_screen *screen)
+get_new_program_id(struct brw_screen *screen)
 {
    return p_atomic_inc_return(&screen->program_id);
 }
