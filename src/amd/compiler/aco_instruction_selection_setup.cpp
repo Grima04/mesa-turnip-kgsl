@@ -391,8 +391,6 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
 
       /* TODO: check if the shader writes edge flags (not in Vulkan) */
       ctx->ngg_nogs_early_prim_export = true;
-   } else if (ctx->stage == vertex_ls) {
-      ctx->tcs_num_inputs = ctx->program->info->vs.num_linked_outputs;
    }
 
    if (ctx->stage == vertex_ngg && ctx->args->options->key.vs_common_out.export_prim_id) {
@@ -445,9 +443,6 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
 {
    ctx->tcs_in_out_eq = ctx->args->shader_info->vs.tcs_in_out_eq;
    ctx->tcs_temp_only_inputs = ctx->args->shader_info->vs.tcs_temp_only_input_mask;
-   ctx->tcs_num_inputs = ctx->program->info->tcs.num_linked_inputs;
-   ctx->tcs_num_outputs = ctx->program->info->tcs.num_linked_outputs;
-   ctx->tcs_num_patch_outputs = ctx->program->info->tcs.num_linked_patch_outputs;
    ctx->tcs_num_patches = ctx->args->shader_info->num_tess_patches;
    ctx->program->config->lds_size = ctx->args->shader_info->tcs.num_lds_blocks;
 }
@@ -456,7 +451,6 @@ void
 setup_tes_variables(isel_context *ctx, nir_shader *nir)
 {
    ctx->tcs_num_patches = ctx->args->shader_info->num_tess_patches;
-   ctx->tcs_num_outputs = ctx->program->info->tes.num_linked_inputs;
 
    if (ctx->stage == tess_eval_vs || ctx->stage == tess_eval_ngg) {
       radv_vs_output_info *outinfo = &ctx->program->info->tes.outinfo;
