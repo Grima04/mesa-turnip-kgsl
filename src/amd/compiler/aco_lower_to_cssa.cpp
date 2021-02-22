@@ -78,10 +78,17 @@ void collect_parallelcopies(cssa_ctx& ctx)
              phi->opcode != aco_opcode::p_linear_phi)
             break;
 
+         const Definition& def = phi->definitions[0];
+
+         /* if the definition is not temp, it is the exec mask.
+          * We can reload the exec mask directly from the spill slot.
+          */
+         if (!def.isTemp())
+            continue;
+
          std::vector<unsigned>& preds = phi->opcode == aco_opcode::p_phi ?
                                         block.logical_preds :
                                         block.linear_preds;
-         const Definition& def = phi->definitions[0];
          uint32_t index = ctx.merge_sets.size();
          merge_set set;
 
@@ -90,6 +97,20 @@ void collect_parallelcopies(cssa_ctx& ctx)
             Operand op = phi->operands[i];
             if (op.isUndefined())
                continue;
+
+            if (def.regClass().type() == RegType::sgpr && !op.isTemp()) {
+               /* SGPR inline constants and literals on GFX10+ can be spilled
+                * and reloaded directly (without intermediate register) */
+               if (op.isConstant()) {
+                  if (ctx.program->chip_class >= GFX10)
+                     continue;
+                  if (op.size() == 1 && !op.isLiteral())
+                     continue;
+               } else {
+                  assert(op.isFixed() && op.physReg() == exec);
+                  continue;
+               }
+            }
 
             /* create new temporary and rename operands */
             Temp tmp = bld.tmp(def.regClass());
@@ -107,6 +128,10 @@ void collect_parallelcopies(cssa_ctx& ctx)
 
             has_preheader_copy |= i == 0 && block.kind & block_kind_loop_header;
          }
+
+         if (set.empty())
+            continue;
+
          /* place the definition in dominance-order */
          if (def.isTemp()) {
             if (has_preheader_copy)
