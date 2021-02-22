@@ -574,6 +574,12 @@ zink_get_shader_param(struct pipe_screen *pscreen,
          max = screen->info.props.limits.maxGeometryInputComponents;
          break;
       case PIPE_SHADER_FRAGMENT:
+         /* intel drivers report fewer components, but it's a value that's compatible
+          * with what we need for GL, so we can still force a conformant value here
+          */
+         if (screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR ||
+             screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS_KHR)
+            return 32;
          max = screen->info.props.limits.maxFragmentInputComponents / 4;
          break;
       default:
