@@ -479,6 +479,8 @@ get_register_queries_function(const struct gen_device_info *devinfo)
       return gen_oa_register_queries_rkl;
    if (devinfo->is_dg1)
       return gen_oa_register_queries_dg1;
+   if (devinfo->is_alderlake)
+      return gen_oa_register_queries_adl;
 
    return NULL;
 }
