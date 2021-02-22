@@ -939,7 +939,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
             continue;
          unsigned pred_idx = preds[i];
 
-         /* rename operand */
+         /* if the operand was reloaded, rename */
          if (ctx.spills_exit[pred_idx].find(phi->operands[i].getTemp()) == ctx.spills_exit[pred_idx].end()) {
             std::map<Temp, Temp>::iterator it = ctx.renames[pred_idx].find(phi->operands[i].getTemp());
             if (it != ctx.renames[pred_idx].end())
@@ -961,13 +961,20 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
             idx--;
          } while (phi->opcode == aco_opcode::p_phi && pred.instructions[idx]->opcode != aco_opcode::p_logical_end);
          std::vector<aco_ptr<Instruction>>::iterator it = std::next(pred.instructions.begin(), idx);
-
          aco_ptr<Instruction> reload = do_reload(ctx, tmp, new_name, ctx.spills_exit[pred_idx][tmp]);
-         pred.instructions.insert(it, std::move(reload));
 
-         ctx.spills_exit[pred_idx].erase(tmp);
-         ctx.renames[pred_idx][tmp] = new_name;
-         phi->operands[i].setTemp(new_name);
+         /* reload spilled exec mask directly to exec */
+         if (!phi->definitions[0].isTemp()) {
+            assert(phi->definitions[0].isFixed() && phi->definitions[0].physReg() == exec);
+            reload->definitions[0] = phi->definitions[0];
+            phi->operands[i] = Operand(exec, ctx.program->lane_mask);
+         } else {
+            ctx.spills_exit[pred_idx].erase(tmp);
+            ctx.renames[pred_idx][tmp] = new_name;
+            phi->operands[i].setTemp(new_name);
+         }
+
+         pred.instructions.insert(it, std::move(reload));
       }
    }
 
