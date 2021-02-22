@@ -51,7 +51,7 @@ extern "C" {
  * Used with images created with image_from_names
  * to help support planar images.
  */
-struct intel_image_format {
+struct brw_image_format {
    int fourcc;
    int components;
    int nplanes;
@@ -81,7 +81,7 @@ struct __DRIimageRec {
     */
    uint32_t strides[3];
    uint32_t offsets[3];
-   const struct intel_image_format *planar_format;
+   const struct brw_image_format *planar_format;
 
    /* particular miptree level */
    GLuint width;

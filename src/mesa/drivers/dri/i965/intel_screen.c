@@ -196,7 +196,7 @@ static const struct __DRI2flushExtensionRec intelFlushExtension = {
     .flush_with_flags   = intel_dri2_flush_with_flags,
 };
 
-static const struct intel_image_format intel_image_formats[] = {
+static const struct brw_image_format brw_image_formats[] = {
    { DRM_FORMAT_ABGR16161616F, __DRI_IMAGE_COMPONENTS_RGBA, 1,
      { { 0, 0, 0, __DRI_IMAGE_FORMAT_ABGR16161616F, 8 } } },
 
@@ -355,7 +355,7 @@ static const struct {
 
 static bool
 modifier_is_supported(const struct gen_device_info *devinfo,
-                      const struct intel_image_format *fmt, int dri_format,
+                      const struct brw_image_format *fmt, int dri_format,
                       uint64_t modifier)
 {
    const struct isl_drm_modifier_info *modinfo =
@@ -427,12 +427,12 @@ intel_image_warn_if_unaligned(__DRIimage *image, const char *func)
    }
 }
 
-static const struct intel_image_format *
-intel_image_format_lookup(int fourcc)
+static const struct brw_image_format *
+brw_image_format_lookup(int fourcc)
 {
-   for (unsigned i = 0; i < ARRAY_SIZE(intel_image_formats); i++) {
-      if (intel_image_formats[i].fourcc == fourcc)
-         return &intel_image_formats[i];
+   for (unsigned i = 0; i < ARRAY_SIZE(brw_image_formats); i++) {
+      if (brw_image_formats[i].fourcc == fourcc)
+         return &brw_image_formats[i];
    }
 
    return NULL;
@@ -446,9 +446,9 @@ intel_image_get_fourcc(__DRIimage *image, int *fourcc)
       return true;
    }
 
-   for (unsigned i = 0; i < ARRAY_SIZE(intel_image_formats); i++) {
-      if (intel_image_formats[i].planes[0].dri_format == image->dri_format) {
-         *fourcc = intel_image_formats[i].fourcc;
+   for (unsigned i = 0; i < ARRAY_SIZE(brw_image_formats); i++) {
+      if (brw_image_formats[i].planes[0].dri_format == image->dri_format) {
+         *fourcc = brw_image_formats[i].fourcc;
          return true;
       }
    }
@@ -983,7 +983,7 @@ intel_query_format_modifier_attribs(__DRIscreen *dri_screen,
                                     int attrib, uint64_t *value)
 {
    struct brw_screen *screen = dri_screen->driverPrivate;
-   const struct intel_image_format *f = intel_image_format_lookup(fourcc);
+   const struct brw_image_format *f = brw_image_format_lookup(fourcc);
 
    if (!modifier_is_supported(&screen->devinfo, f, 0, modifier))
       return false;
@@ -1051,14 +1051,14 @@ intel_create_image_from_names(__DRIscreen *dri_screen,
                               int *strides, int *offsets,
                               void *loaderPrivate)
 {
-    const struct intel_image_format *f = NULL;
+    const struct brw_image_format *f = NULL;
     __DRIimage *image;
     int i, index;
 
     if (dri_screen == NULL || names == NULL || num_names != 1)
         return NULL;
 
-    f = intel_image_format_lookup(fourcc);
+    f = brw_image_format_lookup(fourcc);
     if (f == NULL)
         return NULL;
 
@@ -1088,7 +1088,7 @@ intel_create_image_from_fds_common(__DRIscreen *dri_screen,
                                    void *loaderPrivate)
 {
    struct brw_screen *screen = dri_screen->driverPrivate;
-   const struct intel_image_format *f;
+   const struct brw_image_format *f;
    __DRIimage *image;
    int i, index;
    bool ok;
@@ -1096,7 +1096,7 @@ intel_create_image_from_fds_common(__DRIscreen *dri_screen,
    if (fds == NULL || num_fds < 1)
       return NULL;
 
-   f = intel_image_format_lookup(fourcc);
+   f = brw_image_format_lookup(fourcc);
    if (f == NULL)
       return NULL;
 
@@ -1281,7 +1281,7 @@ intel_create_image_from_dma_bufs2(__DRIscreen *dri_screen,
                                   void *loaderPrivate)
 {
    __DRIimage *image;
-   const struct intel_image_format *f = intel_image_format_lookup(fourcc);
+   const struct brw_image_format *f = brw_image_format_lookup(fourcc);
 
    if (!f) {
       *error = __DRI_IMAGE_ERROR_BAD_MATCH;
@@ -1337,10 +1337,10 @@ intel_create_image_from_dma_bufs(__DRIscreen *dri_screen,
 }
 
 static bool
-intel_image_format_is_supported(const struct gen_device_info *devinfo,
-                                const struct intel_image_format *fmt)
+brw_image_format_is_supported(const struct gen_device_info *devinfo,
+                                const struct brw_image_format *fmt)
 {
-   /* Currently, all formats with an intel_image_format are available on all
+   /* Currently, all formats with an brw_image_format are available on all
     * platforms so there's really nothing to check there.
     */
 
@@ -1367,25 +1367,25 @@ intel_query_dma_buf_formats(__DRIscreen *_screen, int max,
    struct brw_screen *screen = _screen->driverPrivate;
    int num_formats = 0, i;
 
-   for (i = 0; i < ARRAY_SIZE(intel_image_formats); i++) {
+   for (i = 0; i < ARRAY_SIZE(brw_image_formats); i++) {
       /* These formats are valid DRI formats but do not exist in drm_fourcc.h
        * in the Linux kernel. We don't want to accidentally advertise them
        * them through the EGL layer.
        */
-      if (intel_image_formats[i].fourcc == __DRI_IMAGE_FOURCC_SARGB8888 ||
-          intel_image_formats[i].fourcc == __DRI_IMAGE_FOURCC_SABGR8888 ||
-          intel_image_formats[i].fourcc == __DRI_IMAGE_FOURCC_SXRGB8888)
+      if (brw_image_formats[i].fourcc == __DRI_IMAGE_FOURCC_SARGB8888 ||
+          brw_image_formats[i].fourcc == __DRI_IMAGE_FOURCC_SABGR8888 ||
+          brw_image_formats[i].fourcc == __DRI_IMAGE_FOURCC_SXRGB8888)
          continue;
 
-      if (!intel_image_format_is_supported(&screen->devinfo,
-                                           &intel_image_formats[i]))
+      if (!brw_image_format_is_supported(&screen->devinfo,
+                                           &brw_image_formats[i]))
          continue;
 
       num_formats++;
       if (max == 0)
          continue;
 
-      formats[num_formats - 1] = intel_image_formats[i].fourcc;
+      formats[num_formats - 1] = brw_image_formats[i].fourcc;
       if (num_formats >= max)
          break;
    }
@@ -1401,14 +1401,14 @@ intel_query_dma_buf_modifiers(__DRIscreen *_screen, int fourcc, int max,
                               int *count)
 {
    struct brw_screen *screen = _screen->driverPrivate;
-   const struct intel_image_format *f;
+   const struct brw_image_format *f;
    int num_mods = 0, i;
 
-   f = intel_image_format_lookup(fourcc);
+   f = brw_image_format_lookup(fourcc);
    if (f == NULL)
       return false;
 
-   if (!intel_image_format_is_supported(&screen->devinfo, f))
+   if (!brw_image_format_is_supported(&screen->devinfo, f))
       return false;
 
    for (i = 0; i < ARRAY_SIZE(supported_modifiers); i++) {
@@ -1457,7 +1457,7 @@ intel_from_planar(__DRIimage *parent, int plane, void *loaderPrivate)
     width = parent->width;
     height = parent->height;
 
-    const struct intel_image_format *f = parent->planar_format;
+    const struct brw_image_format *f = parent->planar_format;
 
     if (f && plane < f->nplanes) {
        /* Use the planar format definition. */
@@ -2886,7 +2886,7 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
    return (const __DRIconfig**) brw_screen_make_configs(dri_screen);
 }
 
-struct intel_buffer {
+struct brw_buffer {
    __DRIbuffer base;
    struct brw_bo *bo;
 };
@@ -2896,7 +2896,7 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
 		    unsigned attachment, unsigned format,
 		    int width, int height)
 {
-   struct intel_buffer *intelBuffer;
+   struct brw_buffer *intelBuffer;
    struct brw_screen *screen = dri_screen->driverPrivate;
 
    assert(attachment == __DRI_BUFFER_FRONT_LEFT ||
@@ -2937,7 +2937,7 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
 static void
 intelReleaseBuffer(UNUSED __DRIscreen *dri_screen, __DRIbuffer *buffer)
 {
-   struct intel_buffer *intelBuffer = (struct intel_buffer *) buffer;
+   struct brw_buffer *intelBuffer = (struct brw_buffer *) buffer;
 
    brw_bo_unreference(intelBuffer->bo);
    free(intelBuffer);
