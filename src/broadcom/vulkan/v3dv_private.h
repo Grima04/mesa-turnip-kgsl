@@ -112,10 +112,6 @@ pack_emit_reloc(void *cl, const void *reloc) {}
       fprintf(stderr, __VA_ARGS__);                \
 } while (0)
 
-#define for_each_bit(b, dword)                                               \
-   for (uint32_t __dword = (dword);                                          \
-        (b) = __builtin_ffs(__dword) - 1, __dword; __dword &= ~(1 << (b)))
-
 struct v3dv_instance;
 
 #ifdef USE_V3D_SIMULATOR
