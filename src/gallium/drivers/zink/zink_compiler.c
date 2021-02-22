@@ -248,8 +248,6 @@ lower_basevertex_instr(nir_builder *b, nir_instr *in, void *data)
 static bool
 lower_basevertex(nir_shader *shader)
 {
-   bool progress = false;
-
    if (shader->info.stage != MESA_SHADER_VERTEX)
       return false;
 
@@ -257,8 +255,6 @@ lower_basevertex(nir_shader *shader)
       return false;
 
    return nir_shader_instructions_pass(shader, lower_basevertex_instr, nir_metadata_dominance, NULL);
-
-   return progress;
 }
 
 
