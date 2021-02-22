@@ -2960,18 +2960,16 @@ static LLVMValueRef visit_first_invocation(struct ac_nir_context *ctx)
 
 static LLVMValueRef visit_load_shared(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
 {
-   LLVMValueRef values[4], derived_ptr, index, ret;
-
+   unsigned alignment = nir_intrinsic_align(instr);
    unsigned const_off = nir_intrinsic_base(instr);
+
    LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], instr->dest.ssa.bit_size, const_off);
+   LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
+   int addr_space = LLVMGetPointerAddressSpace(LLVMTypeOf(ptr));
+   LLVMValueRef derived_ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, LLVMPointerType(result_type, addr_space), "");
+   LLVMSetAlignment(derived_ptr, alignment);
 
-   for (int chan = 0; chan < instr->num_components; chan++) {
-      index = LLVMConstInt(ctx->ac.i32, chan, 0);
-      derived_ptr = LLVMBuildGEP(ctx->ac.builder, ptr, &index, 1, "");
-      values[chan] = LLVMBuildLoad(ctx->ac.builder, derived_ptr, "");
-   }
-
-   ret = ac_build_gather_values(&ctx->ac, values, instr->num_components);
+   LLVMValueRef ret = LLVMBuildLoad(ctx->ac.builder, derived_ptr, "");
    return LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->dest.ssa), "");
 }
 
