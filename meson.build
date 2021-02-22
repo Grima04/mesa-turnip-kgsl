@@ -1515,7 +1515,7 @@ endif
 if with_microsoft_clc
   llvm_modules += ['target', 'linker', 'irreader', 'option', 'libdriver']
 endif
-if with_tests
+if with_tests or with_gallium_softpipe
   llvm_modules += 'native'
 endif
 
