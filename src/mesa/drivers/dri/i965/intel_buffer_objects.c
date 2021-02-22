@@ -662,7 +662,7 @@ brw_copy_buffer_subdata(struct gl_context *ctx,
 }
 
 void
-intelInitBufferObjectFuncs(struct dd_function_table *functions)
+brw_init_buffer_object_functions(struct dd_function_table *functions)
 {
    functions->NewBufferObject = brw_new_buffer_object;
    functions->DeleteBuffer = brw_delete_buffer;

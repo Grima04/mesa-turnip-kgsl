@@ -119,7 +119,7 @@ void brw_upload_init(struct brw_uploader *upload,
 
 /* Hook the bufferobject implementation into mesa:
  */
-void intelInitBufferObjectFuncs(struct dd_function_table *functions);
+void brw_init_buffer_object_functions(struct dd_function_table *functions);
 
 static inline struct brw_buffer_object *
 brw_buffer_object(struct gl_buffer_object *obj)

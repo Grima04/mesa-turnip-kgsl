@@ -30,6 +30,6 @@
 #include "drm-uapi/drm.h"
 #include "brw_context.h"
 
-extern void intelInitBufferFuncs(struct dd_function_table *functions);
+extern void brw_init_buffer_functions(struct dd_function_table *functions);
 
 #endif /* INTEL_BUFFERS_H */

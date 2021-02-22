@@ -979,7 +979,7 @@ intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
 }
 
 void
-intelInitTextureImageFuncs(struct dd_function_table *functions)
+brw_init_texture_image_functions(struct dd_function_table *functions)
 {
    functions->TexImage = intelTexImage;
    functions->TexSubImage = intelTexSubImage;

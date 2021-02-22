@@ -297,7 +297,7 @@ brw_clear(struct gl_context *ctx, GLbitfield mask)
 
 
 void
-intelInitClearFuncs(struct dd_function_table *functions)
+brw_init_clear_functions(struct dd_function_table *functions)
 {
    functions->Clear = brw_clear;
 }

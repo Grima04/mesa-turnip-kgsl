@@ -66,7 +66,7 @@ intelCopyTexSubImage(struct gl_context *ctx, GLuint dims,
 
 
 void
-intelInitTextureCopyImageFuncs(struct dd_function_table *functions)
+brw_init_texture_copy_image_functions(struct dd_function_table *functions)
 {
    functions->CopyTexSubImage = intelCopyTexSubImage;
 }

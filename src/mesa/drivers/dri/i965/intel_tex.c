@@ -323,7 +323,7 @@ brw_texture_barrier(struct gl_context *ctx)
 }
 
 void
-intelInitTextureFuncs(struct dd_function_table *functions)
+brw_init_texture_functions(struct dd_function_table *functions)
 {
    functions->NewTextureObject = intelNewTextureObject;
    functions->NewTextureImage = intelNewTextureImage;

@@ -28,7 +28,7 @@
 
 #include "main/mtypes.h"
 
-void intelInitPixelFuncs(struct dd_function_table *functions);
+void brw_init_pixel_functions(struct dd_function_table *functions);
 bool brw_check_blit_fragment_ops(struct gl_context *ctx,
                                  bool src_alpha_is_one);
 

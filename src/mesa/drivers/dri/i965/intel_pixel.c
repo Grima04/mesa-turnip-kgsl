@@ -124,7 +124,7 @@ brw_check_blit_fragment_ops(struct gl_context * ctx, bool src_alpha_is_one)
 }
 
 void
-intelInitPixelFuncs(struct dd_function_table *functions)
+brw_init_pixel_functions(struct dd_function_table *functions)
 {
    functions->Bitmap = intelBitmap;
    functions->CopyPixels = intelCopyPixels;

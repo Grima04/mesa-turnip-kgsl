@@ -529,7 +529,8 @@ brw_alloc_stage_scratch(struct brw_context *brw,
                    per_thread_size * thread_count, BRW_MEMZONE_SCRATCH);
 }
 
-void brwInitFragProgFuncs( struct dd_function_table *functions )
+void
+brw_init_frag_prog_functions(struct dd_function_table *functions)
 {
    assert(functions->ProgramStringNotify == _tnl_program_string);
 

@@ -34,7 +34,7 @@
  * extensions for a context.
  */
 void
-intelInitExtensions(struct gl_context *ctx)
+brw_init_extensions(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;

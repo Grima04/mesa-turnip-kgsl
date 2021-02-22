@@ -133,7 +133,7 @@ brw_copy_image_sub_data(struct gl_context *ctx,
 }
 
 void
-intelInitCopyImageFuncs(struct dd_function_table *functions)
+brw_init_copy_image_functions(struct dd_function_table *functions)
 {
    functions->CopyImageSubData = brw_copy_image_sub_data;
 }

@@ -65,7 +65,7 @@ intelReadBuffer(struct gl_context * ctx, GLenum mode)
 
 
 void
-intelInitBufferFuncs(struct dd_function_table *functions)
+brw_init_buffer_functions(struct dd_function_table *functions)
 {
    functions->DrawBuffer = intelDrawBuffer;
    functions->ReadBuffer = intelReadBuffer;

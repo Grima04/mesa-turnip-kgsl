@@ -1254,7 +1254,7 @@ struct brw_context
 };
 
 /* brw_clear.c */
-extern void intelInitClearFuncs(struct dd_function_table *functions);
+extern void brw_init_clear_functions(struct dd_function_table *functions);
 
 /*======================================================================
  * brw_context.c
@@ -1363,7 +1363,7 @@ void brw_validate_textures( struct brw_context *brw );
 /*======================================================================
  * brw_program.c
  */
-void brwInitFragProgFuncs( struct dd_function_table *functions );
+void brw_init_frag_prog_functions(struct dd_function_table *functions);
 
 void brw_get_scratch_bo(struct brw_context *brw,
 			struct brw_bo **scratch_bo, int size);
@@ -1434,7 +1434,7 @@ uint32_t brw_depth_format(struct brw_context *brw, mesa_format format);
 void brw_init_performance_queries(struct brw_context *brw);
 
 /* intel_extensions.c */
-extern void intelInitExtensions(struct gl_context *ctx);
+extern void brw_init_extensions(struct gl_context *ctx);
 
 /* intel_state.c */
 extern int brw_translate_shadow_compare_func(GLenum func);

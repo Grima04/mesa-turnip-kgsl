@@ -348,18 +348,18 @@ brw_init_driver_functions(struct brw_context *brw,
    functions->UpdateState = brw_update_state;
 
    brw_init_draw_functions(functions);
-   intelInitTextureFuncs(functions);
-   intelInitTextureImageFuncs(functions);
-   intelInitTextureCopyImageFuncs(functions);
-   intelInitCopyImageFuncs(functions);
-   intelInitClearFuncs(functions);
-   intelInitBufferFuncs(functions);
-   intelInitPixelFuncs(functions);
-   intelInitBufferObjectFuncs(functions);
+   brw_init_texture_functions(functions);
+   brw_init_texture_image_functions(functions);
+   brw_init_texture_copy_image_functions(functions);
+   brw_init_copy_image_functions(functions);
+   brw_init_clear_functions(functions);
+   brw_init_buffer_functions(functions);
+   brw_init_pixel_functions(functions);
+   brw_init_buffer_object_functions(functions);
    brw_init_syncobj_functions(functions);
    brw_init_object_purgeable_functions(functions);
 
-   brwInitFragProgFuncs( functions );
+   brw_init_frag_prog_functions(functions);
    brw_init_common_queryobj_functions(functions);
    if (devinfo->gen >= 8 || devinfo->is_haswell)
       hsw_init_queryobj_functions(functions);
@@ -847,7 +847,7 @@ brw_initialize_cs_context_constants(struct brw_context *brw)
 /**
  * Process driconf (drirc) options, setting appropriate context flags.
  *
- * intelInitExtensions still pokes at optionCache directly, in order to
+ * brw_init_extensions still pokes at optionCache directly, in order to
  * avoid advertising various extensions.  No flags are set, so it makes
  * sense to continue doing that there.
  */
@@ -1103,7 +1103,7 @@ brwCreateContext(gl_api api,
 
    brw_init_state(brw);
 
-   intelInitExtensions(ctx);
+   brw_init_extensions(ctx);
 
    brw_init_surface_formats(brw);
 

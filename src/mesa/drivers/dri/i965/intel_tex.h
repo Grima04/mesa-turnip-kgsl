@@ -31,13 +31,13 @@
 #include "brw_context.h"
 #include "intel_mipmap_tree.h"
 
-void intelInitTextureFuncs(struct dd_function_table *functions);
+void brw_init_texture_functions(struct dd_function_table *functions);
 
-void intelInitTextureImageFuncs(struct dd_function_table *functions);
+void brw_init_texture_image_functions(struct dd_function_table *functions);
 
-void intelInitTextureCopyImageFuncs(struct dd_function_table *functions);
+void brw_init_texture_copy_image_functions(struct dd_function_table *functs);
 
-void intelInitCopyImageFuncs(struct dd_function_table *functions);
+void brw_init_copy_image_functions(struct dd_function_table *functions);
 
 void intelSetTexBuffer(__DRIcontext *pDRICtx,
 		       GLint target, __DRIdrawable *pDraw);
