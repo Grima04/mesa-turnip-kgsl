@@ -438,7 +438,7 @@ intelSetTexBuffer2(__DRIcontext *pDRICtx, GLint target,
    struct gl_framebuffer *fb = dPriv->driverPrivate;
    struct brw_context *brw = pDRICtx->driverPrivate;
    struct gl_context *ctx = &brw->ctx;
-   struct intel_renderbuffer *rb;
+   struct brw_renderbuffer *rb;
    struct gl_texture_object *texObj;
    struct gl_texture_image *texImage;
    mesa_format texFormat = MESA_FORMAT_NONE;
@@ -563,7 +563,7 @@ intel_bind_renderbuffer_tex_image(struct gl_context *ctx,
                                   struct gl_renderbuffer *rb,
                                   struct gl_texture_image *image)
 {
-   struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+   struct brw_renderbuffer *irb = brw_renderbuffer(rb);
    struct brw_texture_image *intel_image = brw_texture_image(image);
    struct gl_texture_object *texobj = image->TexObject;
    struct brw_texture_object *intel_texobj = brw_texture_object(texobj);

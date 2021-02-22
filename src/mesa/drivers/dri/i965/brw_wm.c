@@ -397,7 +397,7 @@ brw_wm_populate_key(struct brw_context *brw, struct brw_wm_prog_key *key)
    /* Build the index for table lookup
     */
    if (devinfo->gen < 6) {
-      struct intel_renderbuffer *depth_irb =
+      struct brw_renderbuffer *depth_irb =
          intel_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
 
       /* _NEW_COLOR */

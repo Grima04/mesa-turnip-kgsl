@@ -176,7 +176,7 @@ do_blit_bitmap( struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    struct gl_framebuffer *fb = ctx->DrawBuffer;
-   struct intel_renderbuffer *irb;
+   struct brw_renderbuffer *irb;
    GLfloat tmpColor[4];
    GLubyte ubcolor[4];
    GLuint color;
@@ -206,7 +206,7 @@ do_blit_bitmap( struct gl_context *ctx,
       return false;
    }
 
-   irb = intel_renderbuffer(fb->_ColorDrawBuffers[0]);
+   irb = brw_renderbuffer(fb->_ColorDrawBuffers[0]);
 
    if (unpack->BufferObj) {
       bitmap = map_pbo(ctx, width, height, unpack, bitmap);

@@ -102,7 +102,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
    struct gl_framebuffer *fb = ctx->DrawBuffer;
-   struct intel_renderbuffer *depth_irb =
+   struct brw_renderbuffer *depth_irb =
       intel_get_renderbuffer(fb, BUFFER_DEPTH);
    struct intel_mipmap_tree *mt = depth_irb->mt;
    struct gl_renderbuffer_attachment *depth_att = &fb->Attachment[BUFFER_DEPTH];
@@ -114,7 +114,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
    if (devinfo->gen < 6)
       return false;
 
-   if (!intel_renderbuffer_has_hiz(depth_irb))
+   if (!brw_renderbuffer_has_hiz(depth_irb))
       return false;
 
    /* We only handle full buffer clears -- otherwise you'd have to track whether

@@ -233,7 +233,7 @@ gen6_update_renderbuffer_surface(struct brw_context *brw,
                                  uint32_t surf_index)
 {
    struct gl_context *ctx = &brw->ctx;
-   struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+   struct brw_renderbuffer *irb = brw_renderbuffer(rb);
    struct intel_mipmap_tree *mt = irb->mt;
 
    assert(brw_render_target_supported(brw, rb));
@@ -908,7 +908,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
-   struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+   struct brw_renderbuffer *irb = brw_renderbuffer(rb);
    struct intel_mipmap_tree *mt = irb->mt;
    uint32_t *surf;
    uint32_t tile_x, tile_y;
@@ -919,7 +919,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
    /* BRW_NEW_FS_PROG_DATA */
 
    if (rb->TexImage && !devinfo->has_surface_tile_offset) {
-      intel_renderbuffer_get_tile_offsets(irb, &tile_x, &tile_y);
+      brw_renderbuffer_get_tile_offsets(irb, &tile_x, &tile_y);
 
       if (tile_x != 0 || tile_y != 0) {
 	 /* Original gen4 hardware couldn't draw to a non-tile-aligned
@@ -928,7 +928,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
 	  * select the image.  So, instead, we just make a new single-level
 	  * miptree and render into that.
 	  */
-	 intel_renderbuffer_move_to_temp(brw, irb, false);
+	 brw_renderbuffer_move_to_temp(brw, irb, false);
 	 assert(irb->align_wa_mt);
 	 mt = irb->align_wa_mt;
       }
@@ -949,7 +949,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
    assert(mt->offset % mt->cpp == 0);
    surf[1] = brw_state_reloc(&brw->batch, offset + 4, mt->bo,
                              mt->offset +
-                             intel_renderbuffer_get_tile_offsets(irb,
+                             brw_renderbuffer_get_tile_offsets(irb,
                                                                  &tile_x,
                                                                  &tile_y),
                              RELOC_WRITE);
@@ -1018,7 +1018,7 @@ update_renderbuffer_surfaces(struct brw_context *brw)
       for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
          struct gl_renderbuffer *rb = fb->_ColorDrawBuffers[i];
 
-	 if (intel_renderbuffer(rb)) {
+	 if (brw_renderbuffer(rb)) {
             surf_offsets[rt_start + i] = devinfo->gen >= 6 ?
                gen6_update_renderbuffer_surface(brw, rb, i, rt_start + i) :
                gen4_update_renderbuffer_surface(brw, rb, i, rt_start + i);
@@ -1081,7 +1081,7 @@ update_renderbuffer_read_surfaces(struct brw_context *brw)
 
       for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
          struct gl_renderbuffer *rb = fb->_ColorDrawBuffers[i];
-         const struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+         const struct brw_renderbuffer *irb = brw_renderbuffer(rb);
          const unsigned surf_index =
             wm_prog_data->binding_table.render_target_read_start + i;
          uint32_t *surf_offset = &brw->wm.base.surf_offset[surf_index];

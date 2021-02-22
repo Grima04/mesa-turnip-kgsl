@@ -1176,7 +1176,7 @@ set_depth_stencil_bits(struct brw_context *brw, DEPTH_STENCIL_GENXML *ds)
    struct gl_context *ctx = &brw->ctx;
 
    /* _NEW_BUFFERS */
-   struct intel_renderbuffer *depth_irb =
+   struct brw_renderbuffer *depth_irb =
       intel_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
 
    /* _NEW_DEPTH */

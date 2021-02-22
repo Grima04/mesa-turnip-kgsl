@@ -72,7 +72,7 @@ do_blit_drawpixels(struct gl_context * ctx,
    intel_prepare_render(brw);
 
    struct gl_renderbuffer *rb = ctx->DrawBuffer->_ColorDrawBuffers[0];
-   struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+   struct brw_renderbuffer *irb = brw_renderbuffer(rb);
 
    mesa_format src_format = _mesa_format_from_format_and_type(format, type);
    if (_mesa_format_is_mesa_array_format(src_format))

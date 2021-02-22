@@ -57,8 +57,8 @@ do_blit_copypixels(struct gl_context * ctx,
    GLint orig_dsty;
    GLint orig_srcx;
    GLint orig_srcy;
-   struct intel_renderbuffer *draw_irb = NULL;
-   struct intel_renderbuffer *read_irb = NULL;
+   struct brw_renderbuffer *draw_irb = NULL;
+   struct brw_renderbuffer *read_irb = NULL;
 
    /* Update draw buffer bounds */
    _mesa_update_state(ctx);
@@ -72,13 +72,13 @@ do_blit_copypixels(struct gl_context * ctx,
 	 return false;
       }
 
-      draw_irb = intel_renderbuffer(fb->_ColorDrawBuffers[0]);
-      read_irb = intel_renderbuffer(read_fb->_ColorReadBuffer);
+      draw_irb = brw_renderbuffer(fb->_ColorDrawBuffers[0]);
+      read_irb = brw_renderbuffer(read_fb->_ColorReadBuffer);
       break;
    case GL_DEPTH_STENCIL_EXT:
-      draw_irb = intel_renderbuffer(fb->Attachment[BUFFER_DEPTH].Renderbuffer);
+      draw_irb = brw_renderbuffer(fb->Attachment[BUFFER_DEPTH].Renderbuffer);
       read_irb =
-	 intel_renderbuffer(read_fb->Attachment[BUFFER_DEPTH].Renderbuffer);
+	 brw_renderbuffer(read_fb->Attachment[BUFFER_DEPTH].Renderbuffer);
       break;
    case GL_DEPTH:
       perf_debug("glCopyPixels() fallback: GL_DEPTH\n");

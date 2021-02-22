@@ -391,8 +391,8 @@ intel_disable_rb_aux_buffer(struct brw_context *brw,
       return false;
 
    for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
-      const struct intel_renderbuffer *irb =
-         intel_renderbuffer(fb->_ColorDrawBuffers[i]);
+      const struct brw_renderbuffer *irb =
+         brw_renderbuffer(fb->_ColorDrawBuffers[i]);
 
       if (irb && irb->mt->bo == tex_mt->bo &&
           irb->mt_level >= min_level &&
@@ -628,7 +628,7 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
                                 bool *draw_aux_buffer_disabled)
 {
    struct gl_context *ctx = &brw->ctx;
-   struct intel_renderbuffer *depth_irb;
+   struct brw_renderbuffer *depth_irb;
 
    /* Resolve the depth buffer's HiZ buffer. */
    depth_irb = intel_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
@@ -651,8 +651,8 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
       assert(brw->screen->devinfo.gen < 9);
 
       for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
-         const struct intel_renderbuffer *irb =
-            intel_renderbuffer(fb->_ColorDrawBuffers[i]);
+         const struct brw_renderbuffer *irb =
+            brw_renderbuffer(fb->_ColorDrawBuffers[i]);
 
          if (irb) {
             intel_miptree_prepare_texture(brw, irb->mt, irb->mt->surf.format,
@@ -665,8 +665,8 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
 
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    for (int i = 0; i < fb->_NumColorDrawBuffers; i++) {
-      struct intel_renderbuffer *irb =
-         intel_renderbuffer(fb->_ColorDrawBuffers[i]);
+      struct brw_renderbuffer *irb =
+         brw_renderbuffer(fb->_ColorDrawBuffers[i]);
 
       if (irb == NULL || irb->mt == NULL)
          continue;
@@ -714,10 +714,10 @@ brw_postdraw_set_buffers_need_resolve(struct brw_context *brw)
    struct gl_context *ctx = &brw->ctx;
    struct gl_framebuffer *fb = ctx->DrawBuffer;
 
-   struct intel_renderbuffer *front_irb = NULL;
-   struct intel_renderbuffer *back_irb = intel_get_renderbuffer(fb, BUFFER_BACK_LEFT);
-   struct intel_renderbuffer *depth_irb = intel_get_renderbuffer(fb, BUFFER_DEPTH);
-   struct intel_renderbuffer *stencil_irb = intel_get_renderbuffer(fb, BUFFER_STENCIL);
+   struct brw_renderbuffer *front_irb = NULL;
+   struct brw_renderbuffer *back_irb = intel_get_renderbuffer(fb, BUFFER_BACK_LEFT);
+   struct brw_renderbuffer *depth_irb = intel_get_renderbuffer(fb, BUFFER_DEPTH);
+   struct brw_renderbuffer *stencil_irb = intel_get_renderbuffer(fb, BUFFER_STENCIL);
    struct gl_renderbuffer_attachment *depth_att = &fb->Attachment[BUFFER_DEPTH];
 
    if (_mesa_is_front_buffer_drawing(fb))
@@ -756,8 +756,8 @@ brw_postdraw_set_buffers_need_resolve(struct brw_context *brw)
    }
 
    for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
-      struct intel_renderbuffer *irb =
-         intel_renderbuffer(fb->_ColorDrawBuffers[i]);
+      struct brw_renderbuffer *irb =
+         brw_renderbuffer(fb->_ColorDrawBuffers[i]);
 
       if (!irb)
          continue;
@@ -776,8 +776,8 @@ brw_postdraw_set_buffers_need_resolve(struct brw_context *brw)
 }
 
 static void
-intel_renderbuffer_move_temp_back(struct brw_context *brw,
-                                  struct intel_renderbuffer *irb)
+brw_renderbuffer_move_temp_back(struct brw_context *brw,
+                                struct brw_renderbuffer *irb)
 {
    if (irb->align_wa_mt == NULL)
       return;
@@ -791,7 +791,7 @@ intel_renderbuffer_move_temp_back(struct brw_context *brw,
    intel_miptree_reference(&irb->align_wa_mt, NULL);
 
    /* Finally restore the x,y to correspond to full miptree. */
-   intel_renderbuffer_set_draw_offset(irb);
+   brw_renderbuffer_set_draw_offset(irb);
 
    /* Make sure render surface state gets re-emitted with updated miptree. */
    brw->NewGLState |= _NEW_BUFFERS;
@@ -803,25 +803,25 @@ brw_postdraw_reconcile_align_wa_slices(struct brw_context *brw)
    struct gl_context *ctx = &brw->ctx;
    struct gl_framebuffer *fb = ctx->DrawBuffer;
 
-   struct intel_renderbuffer *depth_irb =
+   struct brw_renderbuffer *depth_irb =
       intel_get_renderbuffer(fb, BUFFER_DEPTH);
-   struct intel_renderbuffer *stencil_irb =
+   struct brw_renderbuffer *stencil_irb =
       intel_get_renderbuffer(fb, BUFFER_STENCIL);
 
    if (depth_irb && depth_irb->align_wa_mt)
-      intel_renderbuffer_move_temp_back(brw, depth_irb);
+      brw_renderbuffer_move_temp_back(brw, depth_irb);
 
    if (stencil_irb && stencil_irb->align_wa_mt)
-      intel_renderbuffer_move_temp_back(brw, stencil_irb);
+      brw_renderbuffer_move_temp_back(brw, stencil_irb);
 
    for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
-      struct intel_renderbuffer *irb =
-         intel_renderbuffer(fb->_ColorDrawBuffers[i]);
+      struct brw_renderbuffer *irb =
+         brw_renderbuffer(fb->_ColorDrawBuffers[i]);
 
       if (!irb || irb->align_wa_mt == NULL)
          continue;
 
-      intel_renderbuffer_move_temp_back(brw, irb);
+      brw_renderbuffer_move_temp_back(brw, irb);
    }
 }
 

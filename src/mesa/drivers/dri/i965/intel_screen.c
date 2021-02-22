@@ -550,7 +550,7 @@ intel_create_image_from_renderbuffer(__DRIcontext *context,
    struct brw_context *brw = context->driverPrivate;
    struct gl_context *ctx = &brw->ctx;
    struct gl_renderbuffer *rb;
-   struct intel_renderbuffer *irb;
+   struct brw_renderbuffer *irb;
 
    rb = _mesa_lookup_renderbuffer(ctx, renderbuffer);
    if (!rb) {
@@ -558,7 +558,7 @@ intel_create_image_from_renderbuffer(__DRIcontext *context,
       return NULL;
    }
 
-   irb = intel_renderbuffer(rb);
+   irb = brw_renderbuffer(rb);
    intel_miptree_make_shareable(brw, irb->mt);
    image = calloc(1, sizeof *image);
    if (image == NULL)
@@ -1749,7 +1749,7 @@ intelCreateBuffer(__DRIscreen *dri_screen,
                   __DRIdrawable * driDrawPriv,
                   const struct gl_config * mesaVis, GLboolean isPixmap)
 {
-   struct intel_renderbuffer *rb;
+   struct brw_renderbuffer *rb;
    struct brw_screen *screen = (struct brw_screen *)
       dri_screen->driverPrivate;
    mesa_format rgbFormat;

@@ -58,7 +58,7 @@ extern "C" {
 #endif
 
 struct brw_context;
-struct intel_renderbuffer;
+struct brw_renderbuffer;
 
 struct brw_texture_image;
 
@@ -403,7 +403,7 @@ intel_miptree_create_for_dri_image(struct brw_context *brw,
 
 bool
 intel_update_winsys_renderbuffer_miptree(struct brw_context *intel,
-                                         struct intel_renderbuffer *irb,
+                                         struct brw_renderbuffer *irb,
                                          struct intel_mipmap_tree *singlesample_mt,
                                          uint32_t width, uint32_t height,
                                          uint32_t pitch);

@@ -548,7 +548,7 @@ brw_blorp_copy_buffers(struct brw_context *brw,
 
 
 static struct intel_mipmap_tree *
-find_miptree(GLbitfield buffer_bit, struct intel_renderbuffer *irb)
+find_miptree(GLbitfield buffer_bit, struct brw_renderbuffer *irb)
 {
    struct intel_mipmap_tree *mt = irb->mt;
    if (buffer_bit == GL_STENCIL_BUFFER_BIT && mt->stencil_mt)
@@ -557,7 +557,7 @@ find_miptree(GLbitfield buffer_bit, struct intel_renderbuffer *irb)
 }
 
 static int
-blorp_get_texture_swizzle(const struct intel_renderbuffer *irb)
+blorp_get_texture_swizzle(const struct brw_renderbuffer *irb)
 {
    return irb->Base.Base._BaseFormat == GL_RGB ?
       MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_ONE) :
@@ -566,8 +566,8 @@ blorp_get_texture_swizzle(const struct intel_renderbuffer *irb)
 
 static void
 do_blorp_blit(struct brw_context *brw, GLbitfield buffer_bit,
-              struct intel_renderbuffer *src_irb, mesa_format src_format,
-              struct intel_renderbuffer *dst_irb, mesa_format dst_format,
+              struct brw_renderbuffer *src_irb, mesa_format src_format,
+              struct brw_renderbuffer *dst_irb, mesa_format dst_format,
               GLfloat srcX0, GLfloat srcY0, GLfloat srcX1, GLfloat srcY1,
               GLfloat dstX0, GLfloat dstY0, GLfloat dstX1, GLfloat dstY1,
               GLenum filter, bool mirror_x, bool mirror_y)
@@ -618,15 +618,15 @@ try_blorp_blit(struct brw_context *brw,
       return true;
 
    /* Find buffers */
-   struct intel_renderbuffer *src_irb;
-   struct intel_renderbuffer *dst_irb;
+   struct brw_renderbuffer *src_irb;
+   struct brw_renderbuffer *dst_irb;
    struct intel_mipmap_tree *src_mt;
    struct intel_mipmap_tree *dst_mt;
    switch (buffer_bit) {
    case GL_COLOR_BUFFER_BIT:
-      src_irb = intel_renderbuffer(read_fb->_ColorReadBuffer);
+      src_irb = brw_renderbuffer(read_fb->_ColorReadBuffer);
       for (unsigned i = 0; i < draw_fb->_NumColorDrawBuffers; ++i) {
-         dst_irb = intel_renderbuffer(draw_fb->_ColorDrawBuffers[i]);
+         dst_irb = brw_renderbuffer(draw_fb->_ColorDrawBuffers[i]);
 	 if (dst_irb)
             do_blorp_blit(brw, buffer_bit,
                           src_irb, src_irb->Base.Base.Format,
@@ -638,9 +638,9 @@ try_blorp_blit(struct brw_context *brw,
       break;
    case GL_DEPTH_BUFFER_BIT:
       src_irb =
-         intel_renderbuffer(read_fb->Attachment[BUFFER_DEPTH].Renderbuffer);
+         brw_renderbuffer(read_fb->Attachment[BUFFER_DEPTH].Renderbuffer);
       dst_irb =
-         intel_renderbuffer(draw_fb->Attachment[BUFFER_DEPTH].Renderbuffer);
+         brw_renderbuffer(draw_fb->Attachment[BUFFER_DEPTH].Renderbuffer);
       src_mt = find_miptree(buffer_bit, src_irb);
       dst_mt = find_miptree(buffer_bit, dst_irb);
 
@@ -664,9 +664,9 @@ try_blorp_blit(struct brw_context *brw,
          return false;
 
       src_irb =
-         intel_renderbuffer(read_fb->Attachment[BUFFER_STENCIL].Renderbuffer);
+         brw_renderbuffer(read_fb->Attachment[BUFFER_STENCIL].Renderbuffer);
       dst_irb =
-         intel_renderbuffer(draw_fb->Attachment[BUFFER_STENCIL].Renderbuffer);
+         brw_renderbuffer(draw_fb->Attachment[BUFFER_STENCIL].Renderbuffer);
       do_blorp_blit(brw, buffer_bit, src_irb, MESA_FORMAT_NONE,
                     dst_irb, MESA_FORMAT_NONE, srcX0, srcY0,
                     srcX1, srcY1, dstX0, dstY0, dstX1, dstY1,
@@ -697,7 +697,7 @@ brw_blorp_copytexsubimage(struct brw_context *brw,
                           int width, int height)
 {
    struct gl_context *ctx = &brw->ctx;
-   struct intel_renderbuffer *src_irb = intel_renderbuffer(src_rb);
+   struct brw_renderbuffer *src_irb = brw_renderbuffer(src_rb);
    struct brw_texture_image *intel_image = brw_texture_image(dst_image);
 
    /* No pixel transfer operations (zoom, bias, mapping), just a blit */
@@ -765,7 +765,7 @@ brw_blorp_copytexsubimage(struct brw_context *brw,
    src_rb = ctx->ReadBuffer->Attachment[BUFFER_STENCIL].Renderbuffer;
    if (_mesa_get_format_bits(dst_image->TexFormat, GL_STENCIL_BITS) > 0 &&
        src_rb != NULL) {
-      src_irb = intel_renderbuffer(src_rb);
+      src_irb = brw_renderbuffer(src_rb);
       src_mt = src_irb->mt;
 
       if (src_mt->stencil_mt)
@@ -1165,7 +1165,7 @@ err:
 }
 
 static bool
-set_write_disables(const struct intel_renderbuffer *irb,
+set_write_disables(const struct brw_renderbuffer *irb,
                    const unsigned color_mask, bool *color_write_disable)
 {
    /* Format information in the renderbuffer represents the requirements
@@ -1193,7 +1193,7 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
                       bool partial_clear, bool encode_srgb)
 {
    struct gl_context *ctx = &brw->ctx;
-   struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+   struct brw_renderbuffer *irb = brw_renderbuffer(rb);
    uint32_t x0, x1, y0, y1;
 
    mesa_format format = irb->Base.Base.Format;
@@ -1349,7 +1349,7 @@ brw_blorp_clear_color(struct brw_context *brw, struct gl_framebuffer *fb,
 {
    for (unsigned buf = 0; buf < fb->_NumColorDrawBuffers; buf++) {
       struct gl_renderbuffer *rb = fb->_ColorDrawBuffers[buf];
-      struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+      struct brw_renderbuffer *irb = brw_renderbuffer(rb);
 
       /* Only clear the buffers present in the provided mask */
       if (((1 << fb->_ColorDrawBufferIndexes[buf]) & mask) == 0)
@@ -1420,7 +1420,7 @@ brw_blorp_clear_depth_stencil(struct brw_context *brw,
 
    struct intel_mipmap_tree *depth_mt = NULL;
    if (mask & BUFFER_BIT_DEPTH) {
-      struct intel_renderbuffer *irb = intel_renderbuffer(depth_rb);
+      struct brw_renderbuffer *irb = brw_renderbuffer(depth_rb);
       depth_mt = find_miptree(GL_DEPTH_BUFFER_BIT, irb);
 
       level = irb->mt_level;
@@ -1439,7 +1439,7 @@ brw_blorp_clear_depth_stencil(struct brw_context *brw,
    uint8_t stencil_mask = 0;
    struct intel_mipmap_tree *stencil_mt = NULL;
    if (mask & BUFFER_BIT_STENCIL) {
-      struct intel_renderbuffer *irb = intel_renderbuffer(stencil_rb);
+      struct brw_renderbuffer *irb = brw_renderbuffer(stencil_rb);
       stencil_mt = find_miptree(GL_STENCIL_BUFFER_BIT, irb);
 
       if (mask & BUFFER_BIT_DEPTH) {

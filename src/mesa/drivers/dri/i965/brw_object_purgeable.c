@@ -87,12 +87,12 @@ intel_render_object_purgeable(struct gl_context * ctx,
                               struct gl_renderbuffer *obj,
                               GLenum option)
 {
-   struct intel_renderbuffer *intel;
+   struct brw_renderbuffer *intel;
 
    (void) ctx;
    (void) option;
 
-   intel = intel_renderbuffer(obj);
+   intel = brw_renderbuffer(obj);
    if (intel->mt == NULL)
       return GL_RELEASED_APPLE;
 
@@ -158,11 +158,11 @@ intel_render_object_unpurgeable(struct gl_context * ctx,
                                 struct gl_renderbuffer *obj,
                                 GLenum option)
 {
-   struct intel_renderbuffer *intel;
+   struct brw_renderbuffer *intel;
 
    (void) ctx;
 
-   intel = intel_renderbuffer(obj);
+   intel = brw_renderbuffer(obj);
    if (intel->mt == NULL)
       return GL_UNDEFINED_APPLE;
 

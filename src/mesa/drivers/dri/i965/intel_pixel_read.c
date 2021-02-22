@@ -79,7 +79,7 @@ intel_readpixels_tiled_memcpy(struct gl_context * ctx,
    if (rb == NULL)
       return false;
 
-   struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+   struct brw_renderbuffer *irb = brw_renderbuffer(rb);
    int dst_pitch;
 
    /* The miptree's buffer. */
@@ -225,7 +225,7 @@ intel_readpixels_blorp(struct gl_context *ctx,
    if (!rb)
       return false;
 
-   struct intel_renderbuffer *irb = intel_renderbuffer(rb);
+   struct brw_renderbuffer *irb = brw_renderbuffer(rb);
 
    /* _mesa_get_readpixels_transfer_ops() includes the cases of read
     * color clamping along with the ctx->_ImageTransferState.

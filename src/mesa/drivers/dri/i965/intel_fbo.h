@@ -43,7 +43,7 @@ struct intel_mipmap_tree;
 /**
  * Intel renderbuffer, derived from gl_renderbuffer.
  */
-struct intel_renderbuffer
+struct brw_renderbuffer
 {
    struct swrast_renderbuffer Base;
    /**
@@ -73,7 +73,7 @@ struct intel_renderbuffer
     * the only option is to use temporary single slice surface which driver
     * copies after rendering to the full miptree.
     *
-    * See intel_renderbuffer_move_to_temp().
+    * See brw_renderbuffer_move_to_temp().
     */
    struct intel_mipmap_tree *align_wa_mt;
 
@@ -106,7 +106,7 @@ struct intel_renderbuffer
    bool need_downsample;
 
    /**
-    * Set to true when doing an intel_renderbuffer_map()/unmap() that requires
+    * Set to true when doing an brw_renderbuffer_map()/unmap() that requires
     * an upsample at the end.
     */
    bool need_map_upsample;
@@ -132,14 +132,14 @@ struct intel_renderbuffer
 
 
 /**
- * Return a gl_renderbuffer ptr casted to intel_renderbuffer.
- * NULL will be returned if the rb isn't really an intel_renderbuffer.
+ * Return a gl_renderbuffer ptr casted to brw_renderbuffer.
+ * NULL will be returned if the rb isn't really an brw_renderbuffer.
  * This is determined by checking the ClassID.
  */
-static inline struct intel_renderbuffer *
-intel_renderbuffer(struct gl_renderbuffer *rb)
+static inline struct brw_renderbuffer *
+brw_renderbuffer(struct gl_renderbuffer *rb)
 {
-   struct intel_renderbuffer *irb = (struct intel_renderbuffer *) rb;
+   struct brw_renderbuffer *irb = (struct brw_renderbuffer *) rb;
    if (irb && irb->Base.Base.ClassID == INTEL_RB_CLASS)
       return irb;
    else
@@ -147,7 +147,7 @@ intel_renderbuffer(struct gl_renderbuffer *rb)
 }
 
 static inline struct intel_mipmap_tree *
-intel_renderbuffer_get_mt(struct intel_renderbuffer *irb)
+brw_renderbuffer_get_mt(struct brw_renderbuffer *irb)
 {
    if (!irb)
       return NULL;
@@ -163,7 +163,7 @@ intel_renderbuffer_get_mt(struct intel_renderbuffer *irb)
  * If the attached renderbuffer is a wrapper, then return wrapped
  * renderbuffer.
  */
-static inline struct intel_renderbuffer *
+static inline struct brw_renderbuffer *
 intel_get_renderbuffer(struct gl_framebuffer *fb, gl_buffer_index attIndex)
 {
    struct gl_renderbuffer *rb;
@@ -174,21 +174,21 @@ intel_get_renderbuffer(struct gl_framebuffer *fb, gl_buffer_index attIndex)
    if (!rb)
       return NULL;
 
-   return intel_renderbuffer(rb);
+   return brw_renderbuffer(rb);
 }
 
 
 static inline mesa_format
-intel_rb_format(const struct intel_renderbuffer *rb)
+intel_rb_format(const struct brw_renderbuffer *rb)
 {
    return rb->Base.Base.Format;
 }
 
-extern struct intel_renderbuffer *
+extern struct brw_renderbuffer *
 intel_create_winsys_renderbuffer(struct brw_screen *screen,
                                  mesa_format format, unsigned num_samples);
 
-struct intel_renderbuffer *
+struct brw_renderbuffer *
 intel_create_private_renderbuffer(struct brw_screen *screen,
                                   mesa_format format, unsigned num_samples);
 
@@ -201,12 +201,12 @@ extern void
 intel_fbo_init(struct brw_context *brw);
 
 void
-intel_renderbuffer_set_draw_offset(struct intel_renderbuffer *irb);
+brw_renderbuffer_set_draw_offset(struct brw_renderbuffer *irb);
 
 static inline uint32_t
-intel_renderbuffer_get_tile_offsets(struct intel_renderbuffer *irb,
-                                    uint32_t *tile_x,
-                                    uint32_t *tile_y)
+brw_renderbuffer_get_tile_offsets(struct brw_renderbuffer *irb,
+                                  uint32_t *tile_x,
+                                  uint32_t *tile_y)
 {
    if (irb->align_wa_mt) {
       *tile_x = 0;
@@ -219,20 +219,20 @@ intel_renderbuffer_get_tile_offsets(struct intel_renderbuffer *irb,
 }
 
 bool
-intel_renderbuffer_has_hiz(struct intel_renderbuffer *irb);
+brw_renderbuffer_has_hiz(struct brw_renderbuffer *irb);
 
 
-void intel_renderbuffer_move_to_temp(struct brw_context *brw,
-                                     struct intel_renderbuffer *irb,
+void brw_renderbuffer_move_to_temp(struct brw_context *brw,
+                                     struct brw_renderbuffer *irb,
                                      bool invalidate);
 
 void
-intel_renderbuffer_downsample(struct brw_context *brw,
-                              struct intel_renderbuffer *irb);
+brw_renderbuffer_downsample(struct brw_context *brw,
+                            struct brw_renderbuffer *irb);
 
 void
-intel_renderbuffer_upsample(struct brw_context *brw,
-                            struct intel_renderbuffer *irb);
+brw_renderbuffer_upsample(struct brw_context *brw,
+                          struct brw_renderbuffer *irb);
 
 void brw_cache_sets_clear(struct brw_context *brw);
 void brw_cache_flush_for_read(struct brw_context *brw, struct brw_bo *bo);

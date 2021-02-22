@@ -90,7 +90,7 @@ intel_copy_image_sub_data(struct gl_context *ctx,
       src_z += src_image->TexObject->Attrib.MinLayer;
    } else {
       assert(src_renderbuffer);
-      src_mt = intel_renderbuffer(src_renderbuffer)->mt;
+      src_mt = brw_renderbuffer(src_renderbuffer)->mt;
       src_image = src_renderbuffer->TexImage;
       src_level = 0;
    }
@@ -107,7 +107,7 @@ intel_copy_image_sub_data(struct gl_context *ctx,
       dst_z += dst_image->TexObject->Attrib.MinLayer;
    } else {
       assert(dst_renderbuffer);
-      dst_mt = intel_renderbuffer(dst_renderbuffer)->mt;
+      dst_mt = brw_renderbuffer(dst_renderbuffer)->mt;
       dst_image = dst_renderbuffer->TexImage;
       dst_level = 0;
    }
