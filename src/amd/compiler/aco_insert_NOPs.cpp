@@ -25,6 +25,7 @@
 #include <algorithm>
 
 #include "aco_ir.h"
+#include "aco_builder.h"
 #include <stack>
 #include <functional>
 
@@ -149,6 +150,7 @@ struct NOP_ctx_gfx10 {
    bool has_branch_after_VMEM = false;
    bool has_DS = false;
    bool has_branch_after_DS = false;
+   bool has_NSA_MIMG = false;
    std::bitset<128> sgprs_read_by_VMEM;
    std::bitset<128> sgprs_read_by_SMEM;
 
@@ -159,6 +161,7 @@ struct NOP_ctx_gfx10 {
       has_branch_after_VMEM |= other.has_branch_after_VMEM;
       has_DS |= other.has_DS;
       has_branch_after_DS |= other.has_branch_after_DS;
+      has_NSA_MIMG |= other.has_NSA_MIMG;
       sgprs_read_by_VMEM |= other.sgprs_read_by_VMEM;
       sgprs_read_by_SMEM |= other.sgprs_read_by_SMEM;
    }
@@ -172,6 +175,7 @@ struct NOP_ctx_gfx10 {
          has_branch_after_VMEM == other.has_branch_after_VMEM &&
          has_DS == other.has_DS &&
          has_branch_after_DS == other.has_branch_after_DS &&
+         has_NSA_MIMG == other.has_NSA_MIMG &&
          sgprs_read_by_VMEM == other.sgprs_read_by_VMEM &&
          sgprs_read_by_SMEM == other.sgprs_read_by_SMEM;
    }
@@ -736,6 +740,21 @@ void handle_instruction_gfx10(Program *program, Block *cur_block, NOP_ctx_gfx10 
       wait->definitions[0] = Definition(sgpr_null, s1);
       wait->imm = 0;
       new_instructions.emplace_back(std::move(wait));
+   }
+
+   /* NSAToVMEMBug
+    * Handles NSA MIMG (4 or more dwords) immediately followed by MUBUF/MTBUF (with offset[2:1] != 0).
+    */
+   if (instr->isMIMG() && get_mimg_nsa_dwords(instr.get()) > 1) {
+      ctx.has_NSA_MIMG = true;
+   } else if (ctx.has_NSA_MIMG) {
+      ctx.has_NSA_MIMG = false;
+
+      if (instr->isMUBUF() || instr->isMTBUF()) {
+         uint32_t offset = instr->isMUBUF() ? instr->mubuf().offset : instr->mtbuf().offset;
+         if (offset & 6)
+            Builder(program, &new_instructions).sopp(aco_opcode::s_nop, -1, 0);
+      }
    }
 }
 

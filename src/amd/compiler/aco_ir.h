@@ -1615,6 +1615,8 @@ bool needs_exec_mask(const Instruction* instr);
 
 uint32_t get_reduction_identity(ReduceOp op, unsigned idx);
 
+unsigned get_mimg_nsa_dwords(const Instruction *instr);
+
 enum block_kind {
    /* uniform indicates that leaving this block,
     * all actives lanes stay active */

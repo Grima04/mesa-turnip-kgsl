@@ -48,6 +48,15 @@ static uint32_t get_sdwa_sel(unsigned sel, PhysReg reg)
    return sel & sdwa_asuint;
 }
 
+unsigned get_mimg_nsa_dwords(const Instruction *instr) {
+   unsigned addr_dwords = instr->operands.size() - 3;
+   for (unsigned i = 1; i < addr_dwords; i++) {
+      if (instr->operands[3 + i].physReg() != instr->operands[3].physReg().advance(i * 4))
+         return DIV_ROUND_UP(addr_dwords - 1, 4);
+   }
+   return 0;
+}
+
 void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* instr)
 {
    /* lower remaining pseudo-instructions */
@@ -412,14 +421,8 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::MIMG: {
-      unsigned use_nsa = false;
-      unsigned addr_dwords = instr->operands.size() - 3;
-      for (unsigned i = 1; i < addr_dwords; i++) {
-         if (instr->operands[3 + i].physReg() != instr->operands[3].physReg().advance(i * 4))
-            use_nsa = true;
-      }
-      assert(!use_nsa || ctx.chip_class >= GFX10);
-      unsigned nsa_dwords = use_nsa ? DIV_ROUND_UP(addr_dwords - 1, 4) : 0;
+      unsigned nsa_dwords = get_mimg_nsa_dwords(instr);
+      assert(!nsa_dwords || ctx.chip_class >= GFX10);
 
       MIMG_instruction& mimg = instr->mimg();
       uint32_t encoding = (0b111100 << 26);
@@ -463,7 +466,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       if (nsa_dwords) {
          out.resize(out.size() + nsa_dwords);
          std::vector<uint32_t>::iterator nsa = std::prev(out.end(), nsa_dwords);
-         for (unsigned i = 0; i < addr_dwords - 1; i++)
+         for (unsigned i = 0; i < instr->operands.size() - 4u; i++)
             nsa[i / 4] |= (0xFF & instr->operands[4 + i].physReg().reg()) << (i % 4 * 8);
       }
       break;
