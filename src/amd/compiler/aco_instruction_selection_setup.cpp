@@ -782,6 +782,8 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_ring_tess_factors_offset_amd:
                   case nir_intrinsic_load_ring_tess_offchip_amd:
                   case nir_intrinsic_load_ring_tess_offchip_offset_amd:
+                  case nir_intrinsic_load_ring_esgs_amd:
+                  case nir_intrinsic_load_ring_es2gs_offset_amd:
                      type = RegType::sgpr;
                      break;
                   case nir_intrinsic_load_sample_id:
@@ -858,6 +860,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_primitive_id:
                   case nir_intrinsic_load_buffer_amd:
                   case nir_intrinsic_load_tess_rel_patch_id_amd:
+                  case nir_intrinsic_load_gs_vertex_offset_amd:
                      type = RegType::vgpr;
                      break;
                   case nir_intrinsic_shuffle:
