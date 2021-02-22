@@ -55,7 +55,7 @@ do_blit_drawpixels(struct gl_context * ctx,
 		   const GLvoid * pixels)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_buffer_object *src = intel_buffer_object(unpack->BufferObj);
+   struct brw_buffer_object *src = brw_buffer_object(unpack->BufferObj);
    GLuint src_offset;
    struct brw_bo *src_buffer;
 
@@ -108,8 +108,8 @@ do_blit_drawpixels(struct gl_context * ctx,
    src_offset += _mesa_image_offset(2, unpack, width, height,
 				    format, type, 0, 0, 0);
 
-   src_buffer = intel_bufferobj_buffer(brw, src, src_offset,
-                                       height * src_stride, false);
+   src_buffer = brw_bufferobj_buffer(brw, src, src_offset,
+                                     height * src_stride, false);
 
    struct brw_mipmap_tree *pbo_mt =
       brw_miptree_create_for_bo(brw,

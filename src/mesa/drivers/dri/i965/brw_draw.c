@@ -228,8 +228,8 @@ brw_emit_prim(struct brw_context *brw,
       ADVANCE_BATCH();
    } else if (is_indirect) {
       struct gl_buffer_object *indirect_buffer = brw->ctx.DrawIndirectBuffer;
-      struct brw_bo *bo = intel_bufferobj_buffer(brw,
-            intel_buffer_object(indirect_buffer),
+      struct brw_bo *bo = brw_bufferobj_buffer(brw,
+            brw_buffer_object(indirect_buffer),
             indirect_offset, 5 * sizeof(GLuint), false);
 
       indirect_flag = GEN7_3DPRIM_INDIRECT_PARAMETER_ENABLE;
@@ -1052,7 +1052,7 @@ brw_draw_single_prim(struct gl_context *ctx,
    if (is_indirect) {
       /* Point draw_params_bo at the indirect buffer. */
       brw->draw.draw_params_bo =
-         intel_buffer_object(ctx->DrawIndirectBuffer)->buffer;
+         brw_buffer_object(ctx->DrawIndirectBuffer)->buffer;
       brw_bo_reference(brw->draw.draw_params_bo);
       brw->draw.draw_params_offset =
          indirect_offset + (is_indexed ? 12 : 8);
@@ -1309,7 +1309,7 @@ brw_draw_indirect_prims(struct gl_context *ctx,
 
    if (indirect_params) {
       brw->draw.draw_params_count_bo =
-         intel_buffer_object(indirect_params)->buffer;
+         brw_buffer_object(indirect_params)->buffer;
       brw_bo_reference(brw->draw.draw_params_count_bo);
       brw->draw.draw_params_count_offset = indirect_params_offset;
    }

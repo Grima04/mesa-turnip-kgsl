@@ -24,7 +24,7 @@
  */
 
 /**
- * @file intel_buffer_objects.c
+ * @file brw_buffer_objects.c
  *
  * This provides core GL buffer object functionality.
  */
@@ -42,7 +42,7 @@
 #include "intel_batchbuffer.h"
 
 static void
-mark_buffer_gpu_usage(struct intel_buffer_object *intel_obj,
+mark_buffer_gpu_usage(struct brw_buffer_object *intel_obj,
                                uint32_t offset, uint32_t size)
 {
    intel_obj->gpu_active_start = MIN2(intel_obj->gpu_active_start, offset);
@@ -50,14 +50,14 @@ mark_buffer_gpu_usage(struct intel_buffer_object *intel_obj,
 }
 
 static void
-mark_buffer_inactive(struct intel_buffer_object *intel_obj)
+mark_buffer_inactive(struct brw_buffer_object *intel_obj)
 {
    intel_obj->gpu_active_start = ~0;
    intel_obj->gpu_active_end = 0;
 }
 
 static void
-mark_buffer_valid_data(struct intel_buffer_object *intel_obj,
+mark_buffer_valid_data(struct brw_buffer_object *intel_obj,
                        uint32_t offset, uint32_t size)
 {
    intel_obj->valid_data_start = MIN2(intel_obj->valid_data_start, offset);
@@ -65,7 +65,7 @@ mark_buffer_valid_data(struct intel_buffer_object *intel_obj,
 }
 
 static void
-mark_buffer_invalid(struct intel_buffer_object *intel_obj)
+mark_buffer_invalid(struct brw_buffer_object *intel_obj)
 {
    intel_obj->valid_data_start = ~0;
    intel_obj->valid_data_end = 0;
@@ -74,7 +74,7 @@ mark_buffer_invalid(struct intel_buffer_object *intel_obj)
 /** Allocates a new brw_bo to store the data for the buffer object. */
 static void
 alloc_buffer_object(struct brw_context *brw,
-                    struct intel_buffer_object *intel_obj)
+                    struct brw_buffer_object *intel_obj)
 {
    const struct gl_context *ctx = &brw->ctx;
 
@@ -114,7 +114,7 @@ alloc_buffer_object(struct brw_context *brw,
 }
 
 static void
-release_buffer(struct intel_buffer_object *intel_obj)
+release_buffer(struct brw_buffer_object *intel_obj)
 {
    brw_bo_unreference(intel_obj->buffer);
    intel_obj->buffer = NULL;
@@ -123,7 +123,7 @@ release_buffer(struct intel_buffer_object *intel_obj)
 /**
  * The NewBufferObject() driver hook.
  *
- * Allocates a new intel_buffer_object structure and initializes it.
+ * Allocates a new brw_buffer_object structure and initializes it.
  *
  * There is some duplication between mesa's bufferobjects and our
  * bufmgr buffers.  Both have an integer handle and a hashtable to
@@ -133,7 +133,7 @@ release_buffer(struct intel_buffer_object *intel_obj)
 static struct gl_buffer_object *
 brw_new_buffer_object(struct gl_context * ctx, GLuint name)
 {
-   struct intel_buffer_object *obj = CALLOC_STRUCT(intel_buffer_object);
+   struct brw_buffer_object *obj = CALLOC_STRUCT(brw_buffer_object);
    if (!obj) {
       _mesa_error_no_memory(__func__);
       return NULL;
@@ -154,7 +154,7 @@ brw_new_buffer_object(struct gl_context * ctx, GLuint name)
 static void
 brw_delete_buffer(struct gl_context * ctx, struct gl_buffer_object *obj)
 {
-   struct intel_buffer_object *intel_obj = intel_buffer_object(obj);
+   struct brw_buffer_object *intel_obj = brw_buffer_object(obj);
 
    assert(intel_obj);
 
@@ -189,7 +189,7 @@ brw_buffer_data(struct gl_context *ctx,
                 struct gl_buffer_object *obj)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_buffer_object *intel_obj = intel_buffer_object(obj);
+   struct brw_buffer_object *intel_obj = brw_buffer_object(obj);
 
    /* Part of the ABI, but this function doesn't use it.
     */
@@ -237,7 +237,7 @@ brw_buffer_subdata(struct gl_context *ctx,
                    struct gl_buffer_object *obj)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_buffer_object *intel_obj = intel_buffer_object(obj);
+   struct brw_buffer_object *intel_obj = brw_buffer_object(obj);
    bool busy;
 
    if (size == 0)
@@ -335,7 +335,7 @@ brw_get_buffer_subdata(struct gl_context *ctx,
                        GLvoid *data,
                        struct gl_buffer_object *obj)
 {
-   struct intel_buffer_object *intel_obj = intel_buffer_object(obj);
+   struct brw_buffer_object *intel_obj = brw_buffer_object(obj);
    struct brw_context *brw = brw_context(ctx);
 
    assert(intel_obj);
@@ -393,7 +393,7 @@ brw_map_buffer_range(struct gl_context *ctx,
                      gl_map_buffer_index index)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_buffer_object *intel_obj = intel_buffer_object(obj);
+   struct brw_buffer_object *intel_obj = brw_buffer_object(obj);
 
    assert(intel_obj);
 
@@ -500,7 +500,7 @@ brw_flush_mapped_buffer_range(struct gl_context *ctx,
                               gl_map_buffer_index index)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_buffer_object *intel_obj = intel_buffer_object(obj);
+   struct brw_buffer_object *intel_obj = brw_buffer_object(obj);
 
    assert(obj->Mappings[index].AccessFlags & GL_MAP_FLUSH_EXPLICIT_BIT);
 
@@ -560,7 +560,7 @@ brw_unmap_buffer(struct gl_context *ctx,
                  gl_map_buffer_index index)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_buffer_object *intel_obj = intel_buffer_object(obj);
+   struct brw_buffer_object *intel_obj = brw_buffer_object(obj);
 
    assert(intel_obj);
    assert(obj->Mappings[index].Pointer);
@@ -604,9 +604,9 @@ brw_unmap_buffer(struct gl_context *ctx,
  * mark the range of the buffer that is being accessed by the pipeline.
  */
 struct brw_bo *
-intel_bufferobj_buffer(struct brw_context *brw,
-                       struct intel_buffer_object *intel_obj,
-                       uint32_t offset, uint32_t size, bool write)
+brw_bufferobj_buffer(struct brw_context *brw,
+                     struct brw_buffer_object *intel_obj,
+                     uint32_t offset, uint32_t size, bool write)
 {
    /* This is needed so that things like transform feedback and texture buffer
     * objects that need a BO but don't want to check that they exist for
@@ -639,15 +639,15 @@ brw_copy_buffer_subdata(struct gl_context *ctx,
                         GLsizeiptr size)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_buffer_object *intel_src = intel_buffer_object(src);
-   struct intel_buffer_object *intel_dst = intel_buffer_object(dst);
+   struct brw_buffer_object *intel_src = brw_buffer_object(src);
+   struct brw_buffer_object *intel_dst = brw_buffer_object(dst);
    struct brw_bo *src_bo, *dst_bo;
 
    if (size == 0)
       return;
 
-   dst_bo = intel_bufferobj_buffer(brw, intel_dst, write_offset, size, true);
-   src_bo = intel_bufferobj_buffer(brw, intel_src, read_offset, size, false);
+   dst_bo = brw_bufferobj_buffer(brw, intel_dst, write_offset, size, true);
+   src_bo = brw_bufferobj_buffer(brw, intel_src, read_offset, size, false);
 
    brw_blorp_copy_buffers(brw,
                           src_bo, read_offset,

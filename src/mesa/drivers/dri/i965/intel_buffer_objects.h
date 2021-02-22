@@ -35,7 +35,7 @@ struct gl_buffer_object;
 /**
  * Intel vertex/pixel buffer object, derived from Mesa's gl_buffer_object.
  */
-struct intel_buffer_object
+struct brw_buffer_object
 {
    struct gl_buffer_object Base;
    struct brw_bo *buffer;     /* the low-level buffer manager's buffer handle */
@@ -93,11 +93,11 @@ struct intel_buffer_object
 
 /* Get the bm buffer associated with a GL bufferobject:
  */
-struct brw_bo *intel_bufferobj_buffer(struct brw_context *brw,
-                                      struct intel_buffer_object *obj,
-                                      uint32_t offset,
-                                      uint32_t size,
-                                      bool write);
+struct brw_bo *brw_bufferobj_buffer(struct brw_context *brw,
+                                    struct brw_buffer_object *obj,
+                                    uint32_t offset,
+                                    uint32_t size,
+                                    bool write);
 
 void brw_upload_data(struct brw_uploader *upload,
                      const void *data,
@@ -121,10 +121,10 @@ void brw_upload_init(struct brw_uploader *upload,
  */
 void intelInitBufferObjectFuncs(struct dd_function_table *functions);
 
-static inline struct intel_buffer_object *
-intel_buffer_object(struct gl_buffer_object *obj)
+static inline struct brw_buffer_object *
+brw_buffer_object(struct gl_buffer_object *obj)
 {
-   return (struct intel_buffer_object *) obj;
+   return (struct brw_buffer_object *) obj;
 }
 
 #endif

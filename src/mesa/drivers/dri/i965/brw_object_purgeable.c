@@ -48,11 +48,11 @@ intel_buffer_purgeable(struct brw_bo *buffer)
 }
 
 static GLenum
-intel_buffer_object_purgeable(struct gl_context * ctx,
-                              struct gl_buffer_object *obj,
-                              GLenum option)
+brw_buffer_object_purgeable(struct gl_context * ctx,
+                            struct gl_buffer_object *obj,
+                            GLenum option)
 {
-   struct intel_buffer_object *intel_obj = intel_buffer_object(obj);
+   struct brw_buffer_object *intel_obj = brw_buffer_object(obj);
 
    if (intel_obj->buffer != NULL)
       return intel_buffer_purgeable(intel_obj->buffer);
@@ -67,8 +67,8 @@ intel_buffer_object_purgeable(struct gl_context * ctx,
 
 static GLenum
 brw_texture_object_purgeable(struct gl_context * ctx,
-                               struct gl_texture_object *obj,
-                               GLenum option)
+                             struct gl_texture_object *obj,
+                             GLenum option)
 {
    struct brw_texture_object *intel;
 
@@ -112,11 +112,11 @@ intel_bo_unpurgeable(struct brw_bo *buffer)
 }
 
 static GLenum
-intel_buffer_object_unpurgeable(struct gl_context * ctx,
-                                struct gl_buffer_object *obj,
-                                GLenum option)
+brw_buffer_object_unpurgeable(struct gl_context * ctx,
+                              struct gl_buffer_object *obj,
+                              GLenum option)
 {
-   struct intel_buffer_object *intel = intel_buffer_object(obj);
+   struct brw_buffer_object *intel = brw_buffer_object(obj);
 
    (void) ctx;
 
@@ -177,11 +177,11 @@ intel_render_object_unpurgeable(struct gl_context * ctx,
 void
 brw_init_object_purgeable_functions(struct dd_function_table *functions)
 {
-   functions->BufferObjectPurgeable = intel_buffer_object_purgeable;
+   functions->BufferObjectPurgeable = brw_buffer_object_purgeable;
    functions->TextureObjectPurgeable = brw_texture_object_purgeable;
    functions->RenderObjectPurgeable = intel_render_object_purgeable;
 
-   functions->BufferObjectUnpurgeable = intel_buffer_object_unpurgeable;
+   functions->BufferObjectUnpurgeable = brw_buffer_object_unpurgeable;
    functions->TextureObjectUnpurgeable = brw_texture_object_unpurgeable;
    functions->RenderObjectUnpurgeable = intel_render_object_unpurgeable;
 }

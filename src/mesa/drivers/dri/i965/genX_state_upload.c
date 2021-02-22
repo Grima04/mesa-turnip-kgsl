@@ -3146,8 +3146,8 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
 
                assert(binding->Offset % 32 == 0);
 
-               struct brw_bo *bo = intel_bufferobj_buffer(brw,
-                  intel_buffer_object(binding->BufferObject),
+               struct brw_bo *bo = brw_bufferobj_buffer(brw,
+                  brw_buffer_object(binding->BufferObject),
                   binding->Offset, range->length * 32, false);
 
                pkt.ConstantBody.ReadLength[n] = range->length;
@@ -3684,8 +3684,8 @@ genX(upload_3dstate_so_buffers)(struct brw_context *brw)
     * gl_transform_feedback_object.
     */
    for (int i = 0; i < 4; i++) {
-      struct intel_buffer_object *bufferobj =
-         intel_buffer_object(xfb_obj->Buffers[i]);
+      struct brw_buffer_object *bufferobj =
+         brw_buffer_object(xfb_obj->Buffers[i]);
       uint32_t start = xfb_obj->Offset[i];
       uint32_t end = ALIGN(start + xfb_obj->Size[i], 4);
       uint32_t const size = end - start;
@@ -3699,7 +3699,7 @@ genX(upload_3dstate_so_buffers)(struct brw_context *brw)
 
       assert(start % 4 == 0);
       struct brw_bo *bo =
-         intel_bufferobj_buffer(brw, bufferobj, start, size, true);
+         brw_bufferobj_buffer(brw, bufferobj, start, size, true);
       assert(end <= bo->size);
 
       brw_batch_emit(brw, GENX(3DSTATE_SO_BUFFER), sob) {

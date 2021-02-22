@@ -436,7 +436,7 @@ hsw_store_query_result(struct gl_context *ctx, struct gl_query_object *q,
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_query_object *query = (struct brw_query_object *)q;
-   struct intel_buffer_object *bo = intel_buffer_object(buf);
+   struct brw_buffer_object *bo = brw_buffer_object(buf);
    const bool pipelined = brw_is_query_pipelined(query);
 
    if (pname == GL_QUERY_TARGET) {

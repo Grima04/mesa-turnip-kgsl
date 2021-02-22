@@ -855,10 +855,10 @@ blorp_get_client_bo(struct brw_context *brw,
       }
 
       /* This is a user-provided PBO. We just need to get the BO out */
-      struct intel_buffer_object *intel_pbo =
-         intel_buffer_object(packing->BufferObj);
+      struct brw_buffer_object *intel_pbo =
+         brw_buffer_object(packing->BufferObj);
       struct brw_bo *bo =
-         intel_bufferobj_buffer(brw, intel_pbo, offset, size, !read_only);
+         brw_bufferobj_buffer(brw, intel_pbo, offset, size, !read_only);
 
       /* We take a reference to the BO so that the caller can just always
        * unref without having to worry about whether it's a user PBO or one

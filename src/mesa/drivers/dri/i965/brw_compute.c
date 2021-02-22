@@ -114,9 +114,9 @@ brw_dispatch_compute_indirect(struct gl_context *ctx, GLintptr indirect)
    static const GLuint indirect_group_counts[3] = { 0, 0, 0 };
    struct gl_buffer_object *indirect_buffer = ctx->DispatchIndirectBuffer;
    struct brw_bo *bo =
-      intel_bufferobj_buffer(brw,
-                             intel_buffer_object(indirect_buffer),
-                             indirect, 3 * sizeof(GLuint), false);
+      brw_bufferobj_buffer(brw,
+                           brw_buffer_object(indirect_buffer),
+                           indirect, 3 * sizeof(GLuint), false);
 
    brw->compute.num_work_groups_bo = bo;
    brw->compute.num_work_groups_offset = indirect;

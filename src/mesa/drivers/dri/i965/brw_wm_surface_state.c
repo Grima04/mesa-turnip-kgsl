@@ -687,8 +687,8 @@ brw_update_buffer_texture_surface(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    struct gl_texture_object *tObj = ctx->Texture.Unit[unit]._Current;
-   struct intel_buffer_object *intel_obj =
-      intel_buffer_object(tObj->BufferObject);
+   struct brw_buffer_object *intel_obj =
+      brw_buffer_object(tObj->BufferObject);
    const unsigned size = buffer_texture_range_size(brw, tObj);
    struct brw_bo *bo = NULL;
    mesa_format format = tObj->_BufferObjectFormat;
@@ -696,8 +696,8 @@ brw_update_buffer_texture_surface(struct gl_context *ctx,
    int texel_size = _mesa_get_format_bytes(format);
 
    if (intel_obj)
-      bo = intel_bufferobj_buffer(brw, intel_obj, tObj->BufferOffset, size,
-                                  false);
+      bo = brw_bufferobj_buffer(brw, intel_obj, tObj->BufferOffset, size,
+                                false);
 
    if (isl_format == ISL_FORMAT_UNSUPPORTED) {
       _mesa_problem(NULL, "bad format %s for texture buffer\n",
@@ -724,12 +724,12 @@ brw_update_sol_surface(struct brw_context *brw,
                        uint32_t *out_offset, unsigned num_vector_components,
                        unsigned stride_dwords, unsigned offset_dwords)
 {
-   struct intel_buffer_object *intel_bo = intel_buffer_object(buffer_obj);
+   struct brw_buffer_object *intel_bo = brw_buffer_object(buffer_obj);
    uint32_t offset_bytes = 4 * offset_dwords;
-   struct brw_bo *bo = intel_bufferobj_buffer(brw, intel_bo,
-                                             offset_bytes,
-                                             buffer_obj->Size - offset_bytes,
-                                             true);
+   struct brw_bo *bo = brw_bufferobj_buffer(brw, intel_bo,
+                                            offset_bytes,
+                                            buffer_obj->Size - offset_bytes,
+                                            true);
    uint32_t *surf = brw_state_batch(brw, 6 * 4, 32, out_offset);
    uint32_t pitch_minus_1 = 4*stride_dwords - 1;
    size_t size_dwords = buffer_obj->Size / 4;
@@ -1337,11 +1337,11 @@ upload_buffer_surface(struct brw_context *brw,
          return;
       }
 
-      struct intel_buffer_object *iobj =
-         intel_buffer_object(binding->BufferObject);
+      struct brw_buffer_object *iobj =
+         brw_buffer_object(binding->BufferObject);
       struct brw_bo *bo =
-         intel_bufferobj_buffer(brw, iobj, binding->Offset, size,
-                                (reloc_flags & RELOC_WRITE) != 0);
+         brw_bufferobj_buffer(brw, iobj, binding->Offset, size,
+                              (reloc_flags & RELOC_WRITE) != 0);
 
       brw_emit_buffer_surface_state(brw, out_offset, bo, binding->Offset,
                                     format, size, 1, reloc_flags);
@@ -1530,8 +1530,8 @@ update_image_surface(struct brw_context *brw,
                                       _mesa_get_format_bytes(u->_ActualFormat));
          const unsigned buffer_size = buffer_texture_range_size(brw, obj);
          struct brw_bo *const bo = !obj->BufferObject ? NULL :
-            intel_bufferobj_buffer(brw, intel_buffer_object(obj->BufferObject),
-                                   obj->BufferOffset, buffer_size, written);
+            brw_bufferobj_buffer(brw, brw_buffer_object(obj->BufferObject),
+                                 obj->BufferOffset, buffer_size, written);
 
          brw_emit_buffer_surface_state(
             brw, surf_offset, bo, obj->BufferOffset,

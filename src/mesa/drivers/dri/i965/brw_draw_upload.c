@@ -525,8 +525,8 @@ brw_prepare_vertices(struct brw_context *brw)
       }
       assert(vertex_range_start <= vertex_range_end);
 
-      struct intel_buffer_object *intel_buffer =
-         intel_buffer_object(glbinding->BufferObj);
+      struct brw_buffer_object *intel_buffer =
+         brw_buffer_object(glbinding->BufferObj);
       struct brw_vertex_buffer *buffer = &brw->vb.buffers[j];
 
       const uint32_t offset = _mesa_draw_binding_offset(glbinding);
@@ -577,8 +577,8 @@ brw_prepare_vertices(struct brw_context *brw)
       buffer->stride = stride;
       buffer->step_rate = glbinding->InstanceDivisor;
 
-      buffer->bo = intel_bufferobj_buffer(brw, intel_buffer, offset + start,
-                                          range, false);
+      buffer->bo = brw_bufferobj_buffer(brw, intel_buffer, offset + start,
+                                        range, false);
       brw_bo_reference(buffer->bo);
 
       j++;
@@ -757,8 +757,8 @@ brw_upload_indices(struct brw_context *brw)
       offset = (GLuint) (unsigned long) index_buffer->ptr;
 
       struct brw_bo *bo =
-         intel_bufferobj_buffer(brw, intel_buffer_object(bufferobj),
-                                offset, ib_size, false);
+         brw_bufferobj_buffer(brw, brw_buffer_object(bufferobj),
+                              offset, ib_size, false);
       if (bo != brw->ib.bo) {
          brw_bo_unreference(brw->ib.bo);
          brw->ib.bo = bo;
