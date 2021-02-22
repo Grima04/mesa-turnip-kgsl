@@ -798,14 +798,17 @@ bo_free(struct iris_bo *bo)
    if (bo->map_cpu && !bo->userptr) {
       VG_NOACCESS(bo->map_cpu, bo->size);
       os_munmap(bo->map_cpu, bo->size);
+      bo->map_cpu = NULL;
    }
    if (bo->map_wc) {
       VG_NOACCESS(bo->map_wc, bo->size);
       os_munmap(bo->map_wc, bo->size);
+      bo->map_wc = NULL;
    }
    if (bo->map_gtt) {
       VG_NOACCESS(bo->map_gtt, bo->size);
       os_munmap(bo->map_gtt, bo->size);
+      bo->map_gtt = NULL;
    }
 
    if (bo->idle) {
