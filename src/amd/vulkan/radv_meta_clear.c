@@ -479,8 +479,7 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer,
 	radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, &clear_rect->rect);
 
 	if (view_mask) {
-		unsigned i;
-		for_each_bit(i, view_mask)
+		u_foreach_bit(i, view_mask)
 			radv_CmdDraw(cmd_buffer_h, 3, 1, 0, i);
 	} else {
 		radv_CmdDraw(cmd_buffer_h, 3, clear_rect->layerCount, 0, clear_rect->baseArrayLayer);
@@ -866,8 +865,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 	radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, &clear_rect->rect);
 
 	if (view_mask) {
-		unsigned i;
-		for_each_bit(i, view_mask)
+		u_foreach_bit(i, view_mask)
 			radv_CmdDraw(cmd_buffer_h, 3, 1, 0, i);
 	} else {
 		radv_CmdDraw(cmd_buffer_h, 3, clear_rect->layerCount, 0, clear_rect->baseArrayLayer);

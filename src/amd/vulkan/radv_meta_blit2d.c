@@ -253,8 +253,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_device *device = cmd_buffer->device;
 
 	for (unsigned r = 0; r < num_rects; ++r) {
-		unsigned i;
-		for_each_bit(i, dst->aspect_mask) {
+		u_foreach_bit(i, dst->aspect_mask) {
 			unsigned aspect_mask = 1u << i;
 			unsigned src_aspect_mask = aspect_mask;
 			VkFormat depth_format = 0;

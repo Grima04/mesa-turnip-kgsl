@@ -48,6 +48,7 @@
 #include <xf86drm.h>
 #endif
 #include "compiler/shader_enums.h"
+#include "util/bitscan.h"
 #include "util/cnd_monotonic.h"
 #include "util/macros.h"
 #include "util/list.h"
@@ -191,11 +192,6 @@ radv_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
 		return false;
 	}
 }
-
-#define for_each_bit(b, dword)                          \
-	for (uint32_t __dword = (dword);		\
-	     (b) = ffs(__dword) - 1, __dword;	\
-	     __dword &= ~(1 << (b)))
 
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
