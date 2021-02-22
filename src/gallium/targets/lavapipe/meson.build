@@ -11,10 +11,11 @@ libvulkan_lvp = shared_library(
   install : true,
 )
 
+icd_file_name = 'libvulkan_lvp.so'
+module_dir = join_paths(get_option('prefix'), get_option('libdir'))
 if with_platform_windows
   module_dir = join_paths(get_option('prefix'), get_option('bindir'))
-else
-  module_dir = join_paths(get_option('prefix'), get_option('libdir'))
+  icd_file_name = 'libvulkan_lvp.dll'
 endif
 
 lvp_icd = custom_target(
@@ -24,8 +25,7 @@ lvp_icd = custom_target(
   command : [
     prog_python, '@INPUT0@',
     '--api-version', '1.1', '--xml', '@INPUT1@',
-    '--lib-path', join_paths(get_option('prefix'), get_option('libdir'),
-                             'libvulkan_lvp.so'),
+    '--lib-path', join_paths(module_dir, icd_file_name),
     '--out', '@OUTPUT@',
   ],
   build_by_default : true,
