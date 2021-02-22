@@ -263,7 +263,7 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
 
    if (brw_batch_references(&brw->batch, bo)) {
       perf_debug("Flushing before mapping a referenced bo.\n");
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
    }
 
    void *map = brw_bo_map(brw, bo, MAP_WRITE | MAP_RAW);
@@ -816,7 +816,7 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
 
    if (brw_batch_references(&brw->batch, bo)) {
       perf_debug("Flushing before mapping a referenced bo.\n");
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
    }
 
    void *map = brw_bo_map(brw, bo, MAP_READ | MAP_RAW);

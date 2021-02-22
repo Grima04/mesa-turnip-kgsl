@@ -310,7 +310,7 @@ do_blit_bitmap( struct gl_context *ctx,
 out:
 
    if (INTEL_DEBUG & DEBUG_SYNC)
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
 
    if (unpack->BufferObj) {
       /* done with PBO so unmap it now */

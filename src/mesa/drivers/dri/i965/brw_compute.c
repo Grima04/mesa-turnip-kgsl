@@ -53,10 +53,10 @@ brw_dispatch_compute_common(struct gl_context *ctx)
    /* Flush the batch if the batch/state buffers are nearly full.  We can
     * grow them if needed, but this is not free, so we'd like to avoid it.
     */
-   intel_batchbuffer_require_space(brw, 600);
+   brw_batch_require_space(brw, 600);
    brw_require_statebuffer_space(brw, 2500);
-   intel_batchbuffer_save_state(brw);
-   fail_next = intel_batchbuffer_saved_state_is_empty(brw);
+   brw_batch_save_state(brw);
+   fail_next = brw_batch_saved_state_is_empty(brw);
 
  retry:
    brw->batch.no_wrap = true;
@@ -68,12 +68,12 @@ brw_dispatch_compute_common(struct gl_context *ctx)
 
    if (!brw_batch_has_aperture_space(brw, 0)) {
       if (!fail_next) {
-         intel_batchbuffer_reset_to_saved(brw);
-         intel_batchbuffer_flush(brw);
+         brw_batch_reset_to_saved(brw);
+         brw_batch_flush(brw);
          fail_next = true;
          goto retry;
       } else {
-         int ret = intel_batchbuffer_flush(brw);
+         int ret = brw_batch_flush(brw);
          WARN_ONCE(ret == -ENOSPC,
                    "i965: Single compute shader dispatch "
                    "exceeded available aperture space\n");
@@ -86,7 +86,7 @@ brw_dispatch_compute_common(struct gl_context *ctx)
    brw_compute_state_finished(brw);
 
    if (brw->always_flush_batch)
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
 
    brw_program_cache_check_size(brw);
 

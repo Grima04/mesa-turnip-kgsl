@@ -54,12 +54,12 @@
 #define STATE_SZ (16 * 1024)
 
 static void
-intel_batchbuffer_reset(struct brw_context *brw);
+brw_batch_reset(struct brw_context *brw);
 static void
 brw_new_batch(struct brw_context *brw);
 
 static void
-dump_validation_list(struct intel_batchbuffer *batch)
+dump_validation_list(struct brw_batch *batch)
 {
    fprintf(stderr, "Validation list (length %d):\n", batch->exec_count);
 
@@ -84,7 +84,7 @@ static struct gen_batch_decode_bo
 decode_get_bo(void *v_brw, bool ppgtt, uint64_t address)
 {
    struct brw_context *brw = v_brw;
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
 
    for (int i = 0; i < batch->exec_count; i++) {
       struct brw_bo *bo = batch->exec_bos[i];
@@ -107,7 +107,7 @@ static unsigned
 decode_get_state_size(void *v_brw, uint64_t address, uint64_t base_address)
 {
    struct brw_context *brw = v_brw;
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
    unsigned size = (uintptr_t)
       _mesa_hash_table_u64_search(batch->state_batch_sizes,
                                   address - base_address);
@@ -124,10 +124,10 @@ init_reloc_list(struct brw_reloc_list *rlist, int count)
 }
 
 void
-intel_batchbuffer_init(struct brw_context *brw)
+brw_batch_init(struct brw_context *brw)
 {
    struct intel_screen *screen = brw->screen;
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
@@ -172,13 +172,13 @@ intel_batchbuffer_init(struct brw_context *brw)
    if (devinfo->gen == 6)
       batch->valid_reloc_flags |= EXEC_OBJECT_NEEDS_GTT;
 
-   intel_batchbuffer_reset(brw);
+   brw_batch_reset(brw);
 }
 
 #define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
 
 static unsigned
-add_exec_bo(struct intel_batchbuffer *batch, struct brw_bo *bo)
+add_exec_bo(struct brw_batch *batch, struct brw_bo *bo)
 {
    assert(bo->bufmgr == batch->batch.bo->bufmgr);
 
@@ -226,7 +226,7 @@ recreate_growing_buffer(struct brw_context *brw,
                         enum brw_memory_zone memzone)
 {
    struct intel_screen *screen = brw->screen;
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
    struct brw_bufmgr *bufmgr = screen->bufmgr;
 
    /* We can't grow buffers when using softpin, so just overallocate them. */
@@ -247,9 +247,9 @@ recreate_growing_buffer(struct brw_context *brw,
 }
 
 static void
-intel_batchbuffer_reset(struct brw_context *brw)
+brw_batch_reset(struct brw_context *brw)
 {
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
 
    if (batch->last_bo != NULL) {
       brw_bo_unreference(batch->last_bo);
@@ -287,14 +287,14 @@ intel_batchbuffer_reset(struct brw_context *brw)
 }
 
 static void
-intel_batchbuffer_reset_and_clear_render_cache(struct brw_context *brw)
+brw_batch_reset_and_clear_render_cache(struct brw_context *brw)
 {
-   intel_batchbuffer_reset(brw);
+   brw_batch_reset(brw);
    brw_cache_sets_clear(brw);
 }
 
 void
-intel_batchbuffer_save_state(struct brw_context *brw)
+brw_batch_save_state(struct brw_context *brw)
 {
    brw->batch.saved.map_next = brw->batch.map_next;
    brw->batch.saved.batch_reloc_count = brw->batch.batch_relocs.reloc_count;
@@ -303,14 +303,14 @@ intel_batchbuffer_save_state(struct brw_context *brw)
 }
 
 bool
-intel_batchbuffer_saved_state_is_empty(struct brw_context *brw)
+brw_batch_saved_state_is_empty(struct brw_context *brw)
 {
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
    return (batch->saved.map_next == batch->batch.map);
 }
 
 void
-intel_batchbuffer_reset_to_saved(struct brw_context *brw)
+brw_batch_reset_to_saved(struct brw_context *brw)
 {
    for (int i = brw->batch.saved.exec_count;
         i < brw->batch.exec_count; i++) {
@@ -326,7 +326,7 @@ intel_batchbuffer_reset_to_saved(struct brw_context *brw)
 }
 
 void
-intel_batchbuffer_free(struct intel_batchbuffer *batch)
+brw_batch_free(struct brw_batch *batch)
 {
    if (batch->use_shadow_copy) {
       free(batch->batch.map);
@@ -395,7 +395,7 @@ grow_buffer(struct brw_context *brw,
             unsigned existing_bytes,
             unsigned new_size)
 {
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
    struct brw_bufmgr *bufmgr = brw->bufmgr;
    struct brw_bo *bo = grow->bo;
 
@@ -530,13 +530,13 @@ grow_buffer(struct brw_context *brw,
 }
 
 void
-intel_batchbuffer_require_space(struct brw_context *brw, GLuint sz)
+brw_batch_require_space(struct brw_context *brw, GLuint sz)
 {
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
 
    const unsigned batch_used = USED_BATCH(*batch) * 4;
    if (batch_used + sz >= BATCH_SZ && !batch->no_wrap) {
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
    } else if (batch_used + sz >= batch->batch.bo->size) {
       const unsigned new_size =
          MIN2(batch->batch.bo->size + batch->batch.bo->size / 2,
@@ -566,7 +566,7 @@ brw_new_batch(struct brw_context *brw)
    brw_bo_unreference(brw->batch.state.bo);
 
    /* Create a new batchbuffer and reset the associated state: */
-   intel_batchbuffer_reset_and_clear_render_cache(brw);
+   brw_batch_reset_and_clear_render_cache(brw);
 
    /* If the kernel supports hardware contexts, then most hardware state is
     * preserved between batches; we only need to re-emit state that is required
@@ -591,11 +591,11 @@ brw_new_batch(struct brw_context *brw)
    if (INTEL_DEBUG & DEBUG_SHADER_TIME)
       brw_collect_and_report_shader_time(brw);
 
-   intel_batchbuffer_maybe_noop(brw);
+   brw_batch_maybe_noop(brw);
 }
 
 /**
- * Called from intel_batchbuffer_flush before emitting MI_BATCHBUFFER_END and
+ * Called from brw_batch_flush before emitting MI_BATCHBUFFER_END and
  * sending it off.
  *
  * This function can emit state (say, to preserve registers that aren't saved
@@ -650,7 +650,7 @@ brw_finish_batch(struct brw_context *brw)
     * requires our batch size to be QWord aligned, so we pad it out if
     * necessary by emitting an extra MI_NOOP after the end.
     */
-   intel_batchbuffer_require_space(brw, 8);
+   brw_batch_require_space(brw, 8);
    *brw->batch.map_next++ = MI_BATCH_BUFFER_END;
    if (USED_BATCH(brw->batch) & 1) {
       *brw->batch.map_next++ = MI_NOOP;
@@ -699,7 +699,7 @@ throttle(struct brw_context *brw)
 
 static int
 execbuffer(int fd,
-           struct intel_batchbuffer *batch,
+           struct brw_batch *batch,
            uint32_t ctx_id,
            int used,
            int in_fence,
@@ -757,7 +757,7 @@ execbuffer(int fd,
 static int
 submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
 {
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
    int ret = 0;
 
    if (batch->use_shadow_copy) {
@@ -856,7 +856,7 @@ submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
  * of the returned fd.
  */
 int
-_intel_batchbuffer_flush_fence(struct brw_context *brw,
+_brw_batch_flush_fence(struct brw_context *brw,
                                int in_fence_fd, int *out_fence_fd,
                                const char *file, int line)
 {
@@ -909,7 +909,7 @@ _intel_batchbuffer_flush_fence(struct brw_context *brw,
 }
 
 void
-intel_batchbuffer_maybe_noop(struct brw_context *brw)
+brw_batch_maybe_noop(struct brw_context *brw)
 {
    if (!brw->frontend_noop || USED_BATCH(brw->batch) != 0)
       return;
@@ -920,7 +920,7 @@ intel_batchbuffer_maybe_noop(struct brw_context *brw)
 }
 
 bool
-brw_batch_references(struct intel_batchbuffer *batch, struct brw_bo *bo)
+brw_batch_references(struct brw_batch *batch, struct brw_bo *bo)
 {
    unsigned index = READ_ONCE(bo->index);
    if (index < batch->exec_count && batch->exec_bos[index] == bo)
@@ -936,7 +936,7 @@ brw_batch_references(struct intel_batchbuffer *batch, struct brw_bo *bo)
 /*  This is the only way buffers get added to the validate list.
  */
 static uint64_t
-emit_reloc(struct intel_batchbuffer *batch,
+emit_reloc(struct brw_batch *batch,
            struct brw_reloc_list *rlist, uint32_t offset,
            struct brw_bo *target, int32_t target_offset,
            unsigned int reloc_flags)
@@ -992,7 +992,7 @@ emit_reloc(struct intel_batchbuffer *batch,
 }
 
 void
-brw_use_pinned_bo(struct intel_batchbuffer *batch, struct brw_bo *bo,
+brw_use_pinned_bo(struct brw_batch *batch, struct brw_bo *bo,
                   unsigned writable_flag)
 {
    assert(bo->kflags & EXEC_OBJECT_PINNED);
@@ -1007,7 +1007,7 @@ brw_use_pinned_bo(struct intel_batchbuffer *batch, struct brw_bo *bo,
 }
 
 uint64_t
-brw_batch_reloc(struct intel_batchbuffer *batch, uint32_t batch_offset,
+brw_batch_reloc(struct brw_batch *batch, uint32_t batch_offset,
                 struct brw_bo *target, uint32_t target_offset,
                 unsigned int reloc_flags)
 {
@@ -1018,7 +1018,7 @@ brw_batch_reloc(struct intel_batchbuffer *batch, uint32_t batch_offset,
 }
 
 uint64_t
-brw_state_reloc(struct intel_batchbuffer *batch, uint32_t state_offset,
+brw_state_reloc(struct brw_batch *batch, uint32_t state_offset,
                 struct brw_bo *target, uint32_t target_offset,
                 unsigned int reloc_flags)
 {
@@ -1038,7 +1038,7 @@ void
 brw_require_statebuffer_space(struct brw_context *brw, int size)
 {
    if (brw->batch.state_used + size >= STATE_SZ)
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
 }
 
 /**
@@ -1050,14 +1050,14 @@ brw_state_batch(struct brw_context *brw,
                 int alignment,
                 uint32_t *out_offset)
 {
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
 
    assert(size < batch->state.bo->size);
 
    uint32_t offset = ALIGN(batch->state_used, alignment);
 
    if (offset + size >= STATE_SZ && !batch->no_wrap) {
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
       offset = ALIGN(batch->state_used, alignment);
    } else if (offset + size >= batch->state.bo->size) {
       const unsigned new_size =
@@ -1079,11 +1079,11 @@ brw_state_batch(struct brw_context *brw,
 }
 
 void
-intel_batchbuffer_data(struct brw_context *brw,
+brw_batch_data(struct brw_context *brw,
                        const void *data, GLuint bytes)
 {
    assert((bytes & 3) == 0);
-   intel_batchbuffer_require_space(brw, bytes);
+   brw_batch_require_space(brw, bytes);
    memcpy(brw->batch.map_next, data, bytes);
    brw->batch.map_next += bytes >> 2;
 }

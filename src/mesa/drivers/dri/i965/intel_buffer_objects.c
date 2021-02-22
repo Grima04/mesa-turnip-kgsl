@@ -310,7 +310,7 @@ brw_buffer_subdata(struct gl_context *ctx,
                     (long)offset, (long)offset + size, (long)(size/1024),
                     intel_obj->gpu_active_start,
                     intel_obj->gpu_active_end);
-         intel_batchbuffer_flush(brw);
+         brw_batch_flush(brw);
       }
    }
 
@@ -340,7 +340,7 @@ brw_get_buffer_subdata(struct gl_context *ctx,
 
    assert(intel_obj);
    if (brw_batch_references(&brw->batch, intel_obj->buffer)) {
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
    }
 
    unsigned int map_flags = MAP_READ;
@@ -432,7 +432,7 @@ brw_map_buffer_range(struct gl_context *ctx,
          } else {
             perf_debug("Stalling on the GPU for mapping a busy buffer "
                        "object\n");
-            intel_batchbuffer_flush(brw);
+            brw_batch_flush(brw);
          }
       } else if (brw_bo_busy(intel_obj->buffer) &&
                  (access & GL_MAP_INVALIDATE_BUFFER_BIT)) {

@@ -237,7 +237,7 @@ intel_flush_front(struct gl_context *ctx)
           * performance.
           */
          intel_resolve_for_dri2_flush(brw, driDrawable);
-         intel_batchbuffer_flush(brw);
+         brw_batch_flush(brw);
 
          flushFront(dri_screen)(driDrawable, driDrawable->loaderPrivate);
 
@@ -268,7 +268,7 @@ brw_display_shared_buffer(struct brw_context *brw)
        * no need to flush again here. But we want to provide a fence_fd to the
        * loader, and a redundant flush is the easiest way to acquire one.
        */
-      if (intel_batchbuffer_flush_fence(brw, -1, &fence_fd))
+      if (brw_batch_flush_fence(brw, -1, &fence_fd))
          return;
    }
 
@@ -283,7 +283,7 @@ intel_glFlush(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
 
-   intel_batchbuffer_flush(brw);
+   brw_batch_flush(brw);
    intel_flush_front(ctx);
    brw_display_shared_buffer(brw);
    brw->need_flush_throttle = true;
@@ -297,8 +297,8 @@ intel_glEnable(struct gl_context *ctx, GLenum cap, GLboolean state)
    switch (cap) {
    case GL_BLACKHOLE_RENDER_INTEL:
       brw->frontend_noop = state;
-      intel_batchbuffer_flush(brw);
-      intel_batchbuffer_maybe_noop(brw);
+      brw_batch_flush(brw);
+      brw_batch_maybe_noop(brw);
       /* Because we started previous batches with a potential
        * MI_BATCH_BUFFER_END if NOOP was enabled, that means that anything
        * that was ever emitted after that never made it to the HW. So when the
@@ -1057,7 +1057,7 @@ brwCreateContext(gl_api api,
 
    intel_fbo_init(brw);
 
-   intel_batchbuffer_init(brw);
+   brw_batch_init(brw);
 
    /* Create a new hardware context.  Using a hardware context means that
     * our GPU state will be saved/restored on context switch, allowing us
@@ -1259,7 +1259,7 @@ intelDestroyContext(__DRIcontext * driContextPriv)
       _swrast_DestroyContext(&brw->ctx);
 
    brw_fini_pipe_control(brw);
-   intel_batchbuffer_free(&brw->batch);
+   brw_batch_free(&brw->batch);
 
    brw_bo_unreference(brw->throttle_batch[1]);
    brw_bo_unreference(brw->throttle_batch[0]);
@@ -1628,7 +1628,7 @@ intel_query_dri2_buffers(struct brw_context *brw,
        * query, we need to make sure all the pending drawing has landed in the
        * real front buffer.
        */
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
       intel_flush_front(&brw->ctx);
 
       attachments[i++] = __DRI_BUFFER_FRONT_LEFT;
@@ -1640,7 +1640,7 @@ intel_query_dri2_buffers(struct brw_context *brw,
        * So before doing the query, make sure all the pending drawing has
        * landed in the real front buffer.
        */
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
       intel_flush_front(&brw->ctx);
    }
 

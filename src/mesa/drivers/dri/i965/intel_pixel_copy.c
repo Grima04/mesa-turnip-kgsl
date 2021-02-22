@@ -144,7 +144,7 @@ do_blit_copypixels(struct gl_context * ctx,
       return false;
    }
 
-   intel_batchbuffer_flush(brw);
+   brw_batch_flush(brw);
 
    /* Clip to destination buffer. */
    orig_dstx = dstx;

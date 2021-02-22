@@ -33,10 +33,10 @@
 UNUSED static void *
 emit_dwords(struct brw_context *brw, unsigned n)
 {
-   intel_batchbuffer_begin(brw, n);
+   brw_batch_begin(brw, n);
    uint32_t *map = brw->batch.map_next;
    brw->batch.map_next += n;
-   intel_batchbuffer_advance(brw);
+   brw_batch_advance(brw);
    return map;
 }
 
@@ -53,7 +53,7 @@ static uint64_t
 __gen_combine_address(struct brw_context *brw, void *location,
                       struct brw_address address, uint32_t delta)
 {
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
    uint32_t offset;
 
    if (address.bo == NULL) {

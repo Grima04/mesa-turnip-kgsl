@@ -272,14 +272,14 @@ emit_copy_blit(struct brw_context *brw,
 
    /* do space check before going any further */
    if (!brw_batch_has_aperture_space(brw, bo_sizes))
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
 
    if (!brw_batch_has_aperture_space(brw, bo_sizes))
       return false;
 
    unsigned length = devinfo->gen >= 8 ? 10 : 8;
 
-   intel_batchbuffer_require_space(brw, length * 4);
+   brw_batch_require_space(brw, length * 4);
    DBG("%s src:buf(%p)/%d+%d %d,%d dst:buf(%p)/%d+%d %d,%d sz:%dx%d\n",
        __func__,
        src_buffer, src_pitch, src_offset, src_x, src_y,
@@ -652,7 +652,7 @@ intelEmitImmediateColorExpandBlit(struct brw_context *brw,
        dst_buffer, dst_pitch, dst_offset, x, y, w, h, src_size, dwords);
 
    unsigned xy_setup_blt_length = devinfo->gen >= 8 ? 10 : 8;
-   intel_batchbuffer_require_space(brw, (xy_setup_blt_length * 4) +
+   brw_batch_require_space(brw, (xy_setup_blt_length * 4) +
                                         (3 * 4) + dwords * 4);
 
    opcode = XY_SETUP_BLT_CMD;
@@ -691,7 +691,7 @@ intelEmitImmediateColorExpandBlit(struct brw_context *brw,
    OUT_BATCH(SET_FIELD(y + h, BLT_Y) | SET_FIELD(x + w, BLT_X));
    ADVANCE_BATCH();
 
-   intel_batchbuffer_data(brw, src_bits, dwords * 4);
+   brw_batch_data(brw, src_bits, dwords * 4);
 
    brw_emit_mi_flush(brw);
 
@@ -737,7 +737,7 @@ intel_miptree_set_alpha_to_one(struct brw_context *brw,
 
    /* do space check before going any further */
    if (!brw_batch_has_aperture_space(brw, mt->bo->size))
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
 
    unsigned length = devinfo->gen >= 8 ? 7 : 6;
    const bool dst_y_tiled = mt->surf.tiling == ISL_TILING_Y0;

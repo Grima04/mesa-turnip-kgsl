@@ -149,7 +149,7 @@ brw_fence_insert_locked(struct brw_context *brw, struct brw_fence *fence)
       fence->batch_bo = brw->batch.batch.bo;
       brw_bo_reference(fence->batch_bo);
 
-      if (intel_batchbuffer_flush(brw) < 0) {
+      if (brw_batch_flush(brw) < 0) {
          brw_bo_unreference(fence->batch_bo);
          fence->batch_bo = NULL;
          return false;
@@ -162,19 +162,19 @@ brw_fence_insert_locked(struct brw_context *brw, struct brw_fence *fence)
          /* Create an out-fence that signals after all pending commands
           * complete.
           */
-         if (intel_batchbuffer_flush_fence(brw, -1, &fence->sync_fd) < 0)
+         if (brw_batch_flush_fence(brw, -1, &fence->sync_fd) < 0)
             return false;
          assert(fence->sync_fd != -1);
       } else {
          /* Wait on the in-fence before executing any subsequently submitted
           * commands.
           */
-         if (intel_batchbuffer_flush(brw) < 0)
+         if (brw_batch_flush(brw) < 0)
             return false;
 
          /* Emit a dummy batch just for the fence. */
          brw_emit_mi_flush(brw);
-         if (intel_batchbuffer_flush_fence(brw, fence->sync_fd, NULL) < 0)
+         if (brw_batch_flush_fence(brw, fence->sync_fd, NULL) < 0)
             return false;
       }
       break;
@@ -204,7 +204,7 @@ brw_fence_has_completed_locked(struct brw_fence *fence)
    switch (fence->type) {
    case BRW_FENCE_TYPE_BO_WAIT:
       if (!fence->batch_bo) {
-         /* There may be no batch if intel_batchbuffer_flush() failed. */
+         /* There may be no batch if brw_batch_flush() failed. */
          return false;
       }
 
@@ -255,7 +255,7 @@ brw_fence_client_wait_locked(struct brw_context *brw, struct brw_fence *fence,
    switch (fence->type) {
    case BRW_FENCE_TYPE_BO_WAIT:
       if (!fence->batch_bo) {
-         /* There may be no batch if intel_batchbuffer_flush() failed. */
+         /* There may be no batch if brw_batch_flush() failed. */
          return false;
       }
 

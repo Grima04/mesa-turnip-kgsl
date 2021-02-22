@@ -442,7 +442,7 @@ static void
 brw_oa_batchbuffer_flush(void *c, const char *file, int line)
 {
    struct brw_context *ctx = c;
-   _intel_batchbuffer_flush_fence(ctx, -1, NULL, file,  line);
+   _brw_batch_flush_fence(ctx, -1, NULL, file,  line);
 }
 
 static void

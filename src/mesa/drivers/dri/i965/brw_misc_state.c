@@ -350,7 +350,7 @@ brw_emit_depthbuffer(struct brw_context *brw)
    brw_emit_depth_stall_flushes(brw);
 
    const unsigned ds_dwords = brw->isl_dev.ds.size / 4;
-   intel_batchbuffer_begin(brw, ds_dwords);
+   brw_batch_begin(brw, ds_dwords);
    uint32_t *ds_map = brw->batch.map_next;
    const uint32_t ds_offset = (char *)ds_map - (char *)brw->batch.batch.map;
 
@@ -450,7 +450,7 @@ brw_emit_depthbuffer(struct brw_context *brw)
    isl_emit_depth_stencil_hiz_s(&brw->isl_dev, ds_map, &info);
 
    brw->batch.map_next += ds_dwords;
-   intel_batchbuffer_advance(brw);
+   brw_batch_advance(brw);
 
    brw->no_depth_or_stencil = !depth_mt && !stencil_mt;
 }

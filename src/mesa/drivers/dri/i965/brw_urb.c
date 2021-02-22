@@ -264,5 +264,5 @@ void brw_upload_urb_fence(struct brw_context *brw)
       while (--pad);
    }
 
-   intel_batchbuffer_data(brw, &uf, sizeof(uf));
+   brw_batch_data(brw, &uf, sizeof(uf));
 }

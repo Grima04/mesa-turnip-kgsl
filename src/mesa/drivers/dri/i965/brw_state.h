@@ -209,7 +209,7 @@ void brw_print_program_cache(struct brw_context *brw);
 
 enum brw_cache_id brw_stage_cache_id(gl_shader_stage stage);
 
-/* intel_batchbuffer.c */
+/* brw_batch.c */
 void brw_require_statebuffer_space(struct brw_context *brw, int size);
 void *brw_state_batch(struct brw_context *brw,
                       int size, int alignment, uint32_t *out_offset);

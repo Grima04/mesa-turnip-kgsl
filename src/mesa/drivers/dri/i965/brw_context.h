@@ -484,7 +484,7 @@ struct brw_growing_bo {
    enum brw_memory_zone memzone;
 };
 
-struct intel_batchbuffer {
+struct brw_batch {
    /** Current batchbuffer being queued up. */
    struct brw_growing_bo batch;
    /** Current statebuffer being queued up. */
@@ -761,7 +761,7 @@ struct brw_context
     */
    uint32_t reset_count;
 
-   struct intel_batchbuffer batch;
+   struct brw_batch batch;
 
    struct brw_uploader upload;
 
@@ -1328,7 +1328,7 @@ void hsw_init_queryobj_functions(struct dd_function_table *functions);
 void brw_init_conditional_render_functions(struct dd_function_table *functions);
 bool brw_check_conditional_render(struct brw_context *brw);
 
-/** intel_batchbuffer.c */
+/** brw_batch.c */
 void brw_load_register_mem(struct brw_context *brw,
                            uint32_t reg,
                            struct brw_bo *bo,

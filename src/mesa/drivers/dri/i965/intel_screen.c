@@ -171,7 +171,7 @@ intel_dri2_flush_with_flags(__DRIcontext *cPriv,
    if (reason == __DRI2_THROTTLE_FLUSHFRONT)
       brw->need_flush_throttle = true;
 
-   intel_batchbuffer_flush(brw);
+   brw_batch_flush(brw);
 }
 
 /**

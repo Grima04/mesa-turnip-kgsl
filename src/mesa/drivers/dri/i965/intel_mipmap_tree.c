@@ -2357,7 +2357,7 @@ intel_miptree_map_raw(struct brw_context *brw,
    struct brw_bo *bo = mt->bo;
 
    if (brw_batch_references(&brw->batch, bo))
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
 
    return brw_bo_map(brw, bo, mode);
 }

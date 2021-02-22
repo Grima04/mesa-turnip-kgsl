@@ -19,31 +19,31 @@ extern "C" {
  */
 #define MAX_STATE_SIZE (64 * 1024)
 
-struct intel_batchbuffer;
+struct brw_batch;
 
-void intel_batchbuffer_init(struct brw_context *brw);
-void intel_batchbuffer_free(struct intel_batchbuffer *batch);
-void intel_batchbuffer_save_state(struct brw_context *brw);
-bool intel_batchbuffer_saved_state_is_empty(struct brw_context *brw);
-void intel_batchbuffer_reset_to_saved(struct brw_context *brw);
-void intel_batchbuffer_require_space(struct brw_context *brw, GLuint sz);
-int _intel_batchbuffer_flush_fence(struct brw_context *brw,
+void brw_batch_init(struct brw_context *brw);
+void brw_batch_free(struct brw_batch *batch);
+void brw_batch_save_state(struct brw_context *brw);
+bool brw_batch_saved_state_is_empty(struct brw_context *brw);
+void brw_batch_reset_to_saved(struct brw_context *brw);
+void brw_batch_require_space(struct brw_context *brw, GLuint sz);
+int _brw_batch_flush_fence(struct brw_context *brw,
                                    int in_fence_fd, int *out_fence_fd,
                                    const char *file, int line);
-void intel_batchbuffer_maybe_noop(struct brw_context *brw);
+void brw_batch_maybe_noop(struct brw_context *brw);
 
-#define intel_batchbuffer_flush(brw) \
-   _intel_batchbuffer_flush_fence((brw), -1, NULL, __FILE__, __LINE__)
+#define brw_batch_flush(brw) \
+   _brw_batch_flush_fence((brw), -1, NULL, __FILE__, __LINE__)
 
-#define intel_batchbuffer_flush_fence(brw, in_fence_fd, out_fence_fd) \
-   _intel_batchbuffer_flush_fence((brw), (in_fence_fd), (out_fence_fd), \
+#define brw_batch_flush_fence(brw, in_fence_fd, out_fence_fd) \
+   _brw_batch_flush_fence((brw), (in_fence_fd), (out_fence_fd), \
                                   __FILE__, __LINE__)
 
 /* Unlike bmBufferData, this currently requires the buffer be mapped.
  * Consider it a convenience function wrapping multple
  * intel_buffer_dword() calls.
  */
-void intel_batchbuffer_data(struct brw_context *brw,
+void brw_batch_data(struct brw_context *brw,
                             const void *data, GLuint bytes);
 
 static inline bool
@@ -53,22 +53,22 @@ brw_batch_has_aperture_space(struct brw_context *brw, uint64_t extra_space)
           brw->screen->aperture_threshold;
 }
 
-bool brw_batch_references(struct intel_batchbuffer *batch, struct brw_bo *bo);
+bool brw_batch_references(struct brw_batch *batch, struct brw_bo *bo);
 
 #define RELOC_WRITE EXEC_OBJECT_WRITE
 #define RELOC_NEEDS_GGTT EXEC_OBJECT_NEEDS_GTT
 /* Inverted meaning, but using the same bit...emit_reloc will flip it. */
 #define RELOC_32BIT EXEC_OBJECT_SUPPORTS_48B_ADDRESS
 
-void brw_use_pinned_bo(struct intel_batchbuffer *batch, struct brw_bo *bo,
+void brw_use_pinned_bo(struct brw_batch *batch, struct brw_bo *bo,
                        unsigned writeable_flag);
 
-uint64_t brw_batch_reloc(struct intel_batchbuffer *batch,
+uint64_t brw_batch_reloc(struct brw_batch *batch,
                          uint32_t batch_offset,
                          struct brw_bo *target,
                          uint32_t target_offset,
                          unsigned flags);
-uint64_t brw_state_reloc(struct intel_batchbuffer *batch,
+uint64_t brw_state_reloc(struct brw_batch *batch,
                          uint32_t batch_offset,
                          struct brw_bo *target,
                          uint32_t target_offset,
@@ -89,9 +89,9 @@ static inline uint32_t float_as_int(float f)
 }
 
 static inline void
-intel_batchbuffer_begin(struct brw_context *brw, int n)
+brw_batch_begin(struct brw_context *brw, int n)
 {
-   intel_batchbuffer_require_space(brw, n * 4);
+   brw_batch_require_space(brw, n * 4);
 
 #ifdef DEBUG
    brw->batch.emit = USED_BATCH(brw->batch);
@@ -100,10 +100,10 @@ intel_batchbuffer_begin(struct brw_context *brw, int n)
 }
 
 static inline void
-intel_batchbuffer_advance(struct brw_context *brw)
+brw_batch_advance(struct brw_context *brw)
 {
 #ifdef DEBUG
-   struct intel_batchbuffer *batch = &brw->batch;
+   struct brw_batch *batch = &brw->batch;
    unsigned int _n = USED_BATCH(*batch) - batch->emit;
    assert(batch->total != 0);
    if (_n != batch->total) {
@@ -118,20 +118,20 @@ intel_batchbuffer_advance(struct brw_context *brw)
 }
 
 static inline bool
-brw_ptr_in_state_buffer(struct intel_batchbuffer *batch, void *p)
+brw_ptr_in_state_buffer(struct brw_batch *batch, void *p)
 {
    return (char *) p >= (char *) batch->state.map &&
           (char *) p < (char *) batch->state.map + batch->state.bo->size;
 }
 
 #define BEGIN_BATCH(n) do {                            \
-   intel_batchbuffer_begin(brw, (n));                  \
+   brw_batch_begin(brw, (n));                  \
    uint32_t *__map = brw->batch.map_next;              \
    brw->batch.map_next += (n)
 
 #define BEGIN_BATCH_BLT(n) do {                        \
    assert(brw->screen->devinfo.gen < 6);               \
-   intel_batchbuffer_begin(brw, (n));                  \
+   brw_batch_begin(brw, (n));                  \
    uint32_t *__map = brw->batch.map_next;              \
    brw->batch.map_next += (n)
 
@@ -156,7 +156,7 @@ brw_ptr_in_state_buffer(struct intel_batchbuffer *batch, void *p)
 
 #define ADVANCE_BATCH()                  \
    assert(__map == brw->batch.map_next); \
-   intel_batchbuffer_advance(brw);       \
+   brw_batch_advance(brw);       \
 } while (0)
 
 #ifdef __cplusplus

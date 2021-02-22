@@ -436,7 +436,7 @@ brw_clear_cache(struct brw_context *brw, struct brw_cache *cache)
    brw->wm.base.prog_data = NULL;
    brw->cs.base.prog_data = NULL;
 
-   intel_batchbuffer_flush(brw);
+   brw_batch_flush(brw);
 }
 
 void

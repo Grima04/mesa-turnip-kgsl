@@ -897,7 +897,7 @@ brw_finish_drawing(struct gl_context *ctx)
    struct brw_context *brw = brw_context(ctx);
 
    if (brw->always_flush_batch)
-      intel_batchbuffer_flush(brw);
+      brw_batch_flush(brw);
 
    brw_program_cache_check_size(brw);
    brw_postdraw_reconcile_align_wa_slices(brw);
@@ -1005,10 +1005,10 @@ brw_draw_single_prim(struct gl_context *ctx,
    /* Flush the batch if the batch/state buffers are nearly full.  We can
     * grow them if needed, but this is not free, so we'd like to avoid it.
     */
-   intel_batchbuffer_require_space(brw, 1500);
+   brw_batch_require_space(brw, 1500);
    brw_require_statebuffer_space(brw, 2400);
-   intel_batchbuffer_save_state(brw);
-   fail_next = intel_batchbuffer_saved_state_is_empty(brw);
+   brw_batch_save_state(brw);
+   fail_next = brw_batch_saved_state_is_empty(brw);
 
    if (brw->num_instances != num_instances ||
        brw->basevertex != prim->basevertex ||
@@ -1089,7 +1089,7 @@ retry:
 
    /* Note that before the loop, brw->ctx.NewDriverState was set to != 0, and
     * that the state updated in the loop outside of this block is that in
-    * *_set_prim or intel_batchbuffer_flush(), which only impacts
+    * *_set_prim or brw_batch_flush(), which only impacts
     * brw->ctx.NewDriverState.
     */
    if (brw->ctx.NewDriverState) {
@@ -1108,12 +1108,12 @@ retry:
 
    if (!brw_batch_has_aperture_space(brw, 0)) {
       if (!fail_next) {
-         intel_batchbuffer_reset_to_saved(brw);
-         intel_batchbuffer_flush(brw);
+         brw_batch_reset_to_saved(brw);
+         brw_batch_flush(brw);
          fail_next = true;
          goto retry;
       } else {
-         int ret = intel_batchbuffer_flush(brw);
+         int ret = brw_batch_flush(brw);
          WARN_ONCE(ret == -ENOSPC,
                    "i965: Single primitive emit exceeded "
                    "available aperture space\n");
