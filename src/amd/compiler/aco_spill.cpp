@@ -603,10 +603,14 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       bool spill = true;
 
       for (unsigned i = 0; i < phi->operands.size(); i++) {
-         assert(!phi->operands[i].isConstant());
-         // TODO: in theory, we can spill phis with exec operands and temp definitions
-         if (!phi->definitions[0].isTemp() || !phi->operands[i].isTemp())
+         if (!phi->definitions[0].isTemp())
             continue;
+         /* non-temp operands can increase the register pressure */
+         if (!phi->operands[i].isTemp()) {
+            partial_spills.insert(phi->definitions[0].getTemp());
+            continue;
+         }
+
          if (ctx.spills_exit[preds[i]].find(phi->operands[i].getTemp()) == ctx.spills_exit[preds[i]].end())
             spill = false;
          else
@@ -830,39 +834,41 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
             continue;
 
          unsigned pred_idx = preds[i];
-         assert(phi->operands[i].isTemp() && phi->operands[i].isKill());
-         Temp var = phi->operands[i].getTemp();
+         Operand spill_op = phi->operands[i];
 
-         std::map<Temp, Temp>::iterator rename_it = ctx.renames[pred_idx].find(var);
-         /* prevent the definining instruction from being DCE'd if it could be rematerialized */
-         if (rename_it == ctx.renames[preds[i]].end() && ctx.remat.count(var))
-            ctx.remat_used[ctx.remat[var].instr] = true;
+         if (spill_op.isTemp()) {
+            assert(phi->operands[i].isKill());
+            Temp var = phi->operands[i].getTemp();
 
-         /* build interferences between the phi def and all spilled variables at the predecessor blocks */
-         for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
-            if (var == pair.first)
+            std::map<Temp, Temp>::iterator rename_it = ctx.renames[pred_idx].find(var);
+            /* prevent the definining instruction from being DCE'd if it could be rematerialized */
+            if (rename_it == ctx.renames[preds[i]].end() && ctx.remat.count(var))
+               ctx.remat_used[ctx.remat[var].instr] = true;
+
+            /* check if variable is already spilled at predecessor */
+            std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(var);
+            if (spilled != ctx.spills_exit[pred_idx].end()) {
+               if (spilled->second != def_spill_id)
+                  ctx.add_affinity(def_spill_id, spilled->second);
                continue;
-            ctx.add_interference(def_spill_id, pair.second);
-         }
+            }
 
-         /* check if variable is already spilled at predecessor */
-         std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(var);
-         if (spilled != ctx.spills_exit[pred_idx].end()) {
-            if (spilled->second != def_spill_id)
-               ctx.add_affinity(def_spill_id, spilled->second);
-            continue;
-         }
-
-         /* rename if necessary */
-         if (rename_it != ctx.renames[pred_idx].end()) {
-            var = rename_it->second;
-            ctx.renames[pred_idx].erase(rename_it);
+            /* rename if necessary */
+            if (rename_it != ctx.renames[pred_idx].end()) {
+               spill_op.setTemp(rename_it->second);
+               ctx.renames[pred_idx].erase(rename_it);
+            }
          }
 
          uint32_t spill_id = ctx.allocate_spill_id(phi->definitions[0].regClass());
+
+         /* add interferences and affinity */
+         for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx])
+            ctx.add_interference(spill_id, pair.second);
          ctx.add_affinity(def_spill_id, spill_id);
+
          aco_ptr<Pseudo_instruction> spill{create_instruction<Pseudo_instruction>(aco_opcode::p_spill, Format::PSEUDO, 2, 0)};
-         spill->operands[0] = Operand(var);
+         spill->operands[0] = spill_op;
          spill->operands[1] = Operand(spill_id);
          Block& pred = ctx.program->blocks[pred_idx];
          unsigned idx = pred.instructions.size();
@@ -872,7 +878,8 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          } while (phi->opcode == aco_opcode::p_phi && pred.instructions[idx]->opcode != aco_opcode::p_logical_end);
          std::vector<aco_ptr<Instruction>>::iterator it = std::next(pred.instructions.begin(), idx);
          pred.instructions.insert(it, std::move(spill));
-         ctx.spills_exit[pred_idx][phi->operands[i].getTemp()] = spill_id;
+         if (spill_op.isTemp())
+            ctx.spills_exit[pred_idx][spill_op.getTemp()] = spill_id;
       }
 
       /* remove phi from instructions */
