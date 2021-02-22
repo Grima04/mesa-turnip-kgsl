@@ -1658,7 +1658,7 @@ bi_test_units(bi_builder *b)
                 assert(bi_reads_t(load, i));
         }
 
-        bi_instr *blend = bi_blend_to(b, TMP(), TMP(), TMP(), TMP(), TMP());
+        bi_instr *blend = bi_blend_to(b, TMP(), TMP(), TMP(), TMP(), TMP(), 4);
         assert(!bi_can_fma(load));
         assert(bi_can_add(load));
         assert(bi_must_last(blend));

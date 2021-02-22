@@ -2516,10 +2516,12 @@
 
   <ins name="+BARRIER" mask="0xfffff" exact="0xd7874" message="barrier" last="true" dests="0"/>
 
-  <ins name="+BLEND" staging="r=4" mask="0xffe00" exact="0xca800" message="blend" last="true">
+  <ins name="+BLEND" staging="r=sr_count" mask="0xffe00" exact="0xca800" message="blend" last="true">
     <src start="0"/>
     <src start="3" mask="0xf7"/>
     <src start="6" mask="0xf7"/>
+    <!-- not actually encoded, but used for IR -->
+    <immediate name="sr_count" size="4" pseudo="true"/>
   </ins>
 
   <ins name="+BRANCH.f16" mask="0xf8000" exact="0x68000" last="true" dests="0">

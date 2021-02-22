@@ -380,6 +380,9 @@ bi_emit_load_blend_input(bi_builder *b, nir_intrinsic_instr *instr)
 static void
 bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
 {
+        /* Reads 2 or 4 staging registers to cover the input */
+        unsigned sr_count = (nir_alu_type_get_type_size(T) <= 16) ? 2 : 4;
+
         if (b->shader->inputs->is_blend) {
                 uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
 
@@ -388,7 +391,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
                 bi_blend_to(b, bi_register(0), rgba,
                                 bi_register(60) /* TODO RA */,
                                 bi_imm_u32(blend_desc & 0xffffffff),
-                                bi_imm_u32(blend_desc >> 32));
+                                bi_imm_u32(blend_desc >> 32), sr_count);
         } else {
                 /* Blend descriptor comes from the FAU RAM. By convention, the
                  * return address is stored in r48 and will be used by the
@@ -396,7 +399,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
                 bi_blend_to(b, bi_register(48), rgba,
                                 bi_register(60) /* TODO RA */,
                                 bi_fau(BIR_FAU_BLEND_0 + rt, false),
-                                bi_fau(BIR_FAU_BLEND_0 + rt, true));
+                                bi_fau(BIR_FAU_BLEND_0 + rt, true), sr_count);
         }
 
         assert(rt < 8);
