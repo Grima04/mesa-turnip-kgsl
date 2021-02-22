@@ -184,15 +184,22 @@ void next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>&
       aco_ptr<Instruction>& instr = block->instructions[idx];
       assert(instr->opcode == aco_opcode::p_linear_phi || instr->opcode == aco_opcode::p_phi);
 
+      if (!instr->definitions[0].isTemp()) {
+         idx--;
+         continue;
+      }
+
+      auto it = next_uses.find(instr->definitions[0].getTemp());
+      std::pair<uint32_t, uint32_t> distance = it == next_uses.end() ? std::make_pair(block_idx, 0u) : it->second;
       for (unsigned i = 0; i < instr->operands.size(); i++) {
          unsigned pred_idx = instr->opcode == aco_opcode::p_phi ?
                              block->logical_preds[i] :
                              block->linear_preds[i];
          if (instr->operands[i].isTemp()) {
             if (ctx.next_use_distances_end[pred_idx].find(instr->operands[i].getTemp()) == ctx.next_use_distances_end[pred_idx].end() ||
-                ctx.next_use_distances_end[pred_idx][instr->operands[i].getTemp()] != std::pair<uint32_t, uint32_t>{block_idx, 0})
+                ctx.next_use_distances_end[pred_idx][instr->operands[i].getTemp()] != distance)
                worklist.insert(pred_idx);
-            ctx.next_use_distances_end[pred_idx][instr->operands[i].getTemp()] = {block_idx, 0};
+            ctx.next_use_distances_end[pred_idx][instr->operands[i].getTemp()] = distance;
          }
       }
       next_uses.erase(instr->definitions[0].getTemp());
