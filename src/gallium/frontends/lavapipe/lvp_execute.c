@@ -1236,7 +1236,7 @@ static void render_subpass_clear_fast(struct rendering_state *state)
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
    bool has_color_value = false;
    uint32_t buffers = 0;
-   VkClearValue color_value = {};
+   VkClearValue color_value = {0};
    double dclear_val = 0;
    uint32_t sclear_val = 0;
 
