@@ -705,7 +705,7 @@ lower_tex_to_txd(nir_builder *b, nir_tex_instr *tex)
       nir_src_copy(&txd->src[i].src, &tex->src[i].src, txd);
       txd->src[i].src_type = tex->src[i].src_type;
    }
-   unsigned coord = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   int coord = nir_tex_instr_src_index(tex, nir_tex_src_coord);
    assert(coord >= 0);
    nir_ssa_def *dfdx = nir_fddx(b, tex->src[coord].src.ssa);
    nir_ssa_def *dfdy = nir_fddy(b, tex->src[coord].src.ssa);
