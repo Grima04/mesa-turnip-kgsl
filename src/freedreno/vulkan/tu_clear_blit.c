@@ -1192,8 +1192,7 @@ tu_CmdBlitImage(VkCommandBuffer commandBuffer,
       if (src_image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
           dst_image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
          VkImageBlit region = pRegions[i];
-         uint32_t b;
-         for_each_bit(b, pRegions[i].dstSubresource.aspectMask) {
+         u_foreach_bit(b, pRegions[i].dstSubresource.aspectMask) {
             region.srcSubresource.aspectMask = BIT(b);
             region.dstSubresource.aspectMask = BIT(b);
             tu6_blit_image(cmd, src_image, dst_image, &region, filter);
@@ -1887,8 +1886,7 @@ tu_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
 
       if (image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
          /* can't clear both depth and stencil at once, split up the aspect mask */
-         uint32_t b;
-         for_each_bit(b, range->aspectMask)
+         u_foreach_bit(b, range->aspectMask)
             clear_image(cmd, image, (const VkClearValue*) pDepthStencil, range, BIT(b));
          continue;
       }
@@ -1912,7 +1910,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    uint32_t clear_value[MAX_RTS][4];
    float z_clear_val = 0.0f;
    uint8_t s_clear_val = 0;
-   uint32_t clear_rts = 0, clear_components = 0, num_rts = 0, b;
+   uint32_t clear_rts = 0, clear_components = 0, num_rts = 0;
    bool z_clear = false;
    bool s_clear = false;
    bool layered_clear = false;
@@ -2036,7 +2034,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
                   CP_LOAD_STATE6_0_NUM_UNIT(num_rts));
    tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
    tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-   for_each_bit(b, clear_rts)
+   u_foreach_bit(b, clear_rts)
       tu_cs_emit_array(cs, clear_value[b], 4);
 
    for (uint32_t i = 0; i < rect_count; i++) {
