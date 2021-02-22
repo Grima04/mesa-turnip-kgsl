@@ -1,6 +1,7 @@
 libvulkan_lvp = shared_library(
   'vulkan_lvp',
   [ 'target.c' ],
+  vs_module_defs : 'vulkan_lvp.def',
   include_directories : [ inc_src, inc_util, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_winsys, inc_gallium_drivers ],
   link_whole : [ liblavapipe_st ],
   link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],

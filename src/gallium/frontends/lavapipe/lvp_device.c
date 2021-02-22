@@ -711,6 +711,12 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_GetInstanceProcAddr(
                                     pName);
 }
 
+/* Windows will use a dll definition file to avoid build errors. */
+#ifdef _WIN32
+#undef PUBLIC
+#define PUBLIC
+#endif
+
 /* The loader wants us to expose a second GetInstanceProcAddr function
  * to work around certain LD_PRELOAD issues seen in apps.
  */
