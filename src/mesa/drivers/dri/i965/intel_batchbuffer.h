@@ -41,7 +41,7 @@ void brw_batch_maybe_noop(struct brw_context *brw);
 
 /* Unlike bmBufferData, this currently requires the buffer be mapped.
  * Consider it a convenience function wrapping multple
- * intel_buffer_dword() calls.
+ * brw_buffer_dword() calls.
  */
 void brw_batch_data(struct brw_context *brw,
                             const void *data, GLuint bytes);

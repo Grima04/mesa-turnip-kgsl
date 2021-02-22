@@ -64,12 +64,12 @@
  * single copy operation.
  */
 static bool
-intel_readpixels_tiled_memcpy(struct gl_context * ctx,
-                              GLint xoffset, GLint yoffset,
-                              GLsizei width, GLsizei height,
-                              GLenum format, GLenum type,
-                              GLvoid * pixels,
-                              const struct gl_pixelstore_attrib *pack)
+brw_readpixels_tiled_memcpy(struct gl_context *ctx,
+                            GLint xoffset, GLint yoffset,
+                            GLsizei width, GLsizei height,
+                            GLenum format, GLenum type,
+                            GLvoid * pixels,
+                            const struct gl_pixelstore_attrib *pack)
 {
    struct brw_context *brw = brw_context(ctx);
    struct gl_renderbuffer *rb = ctx->ReadBuffer->_ColorReadBuffer;
@@ -214,11 +214,11 @@ intel_readpixels_tiled_memcpy(struct gl_context * ctx,
 }
 
 static bool
-intel_readpixels_blorp(struct gl_context *ctx,
-                       unsigned x, unsigned y,
-                       unsigned w, unsigned h,
-                       GLenum format, GLenum type, const void *pixels,
-                       const struct gl_pixelstore_attrib *packing)
+brw_readpixels_blorp(struct gl_context *ctx,
+                     unsigned x, unsigned y,
+                     unsigned w, unsigned h,
+                     GLenum format, GLenum type, const void *pixels,
+                     const struct gl_pixelstore_attrib *packing)
 {
    struct brw_context *brw = brw_context(ctx);
    struct gl_renderbuffer *rb = ctx->ReadBuffer->_ColorReadBuffer;
@@ -266,22 +266,22 @@ intelReadPixels(struct gl_context * ctx,
    DBG("%s\n", __func__);
 
    /* Reading pixels wont dirty the front buffer, so reset the dirty
-    * flag after calling intel_prepare_render().
+    * flag after calling brw_prepare_render().
     */
    dirty = brw->front_buffer_dirty;
-   intel_prepare_render(brw);
+   brw_prepare_render(brw);
    brw->front_buffer_dirty = dirty;
 
    if (pack->BufferObj) {
-      if (intel_readpixels_blorp(ctx, x, y, width, height,
-                                 format, type, pixels, pack))
+      if (brw_readpixels_blorp(ctx, x, y, width, height,
+                               format, type, pixels, pack))
          return;
 
       perf_debug("%s: fallback to CPU mapping in PBO case\n", __func__);
    }
 
-   ok = intel_readpixels_tiled_memcpy(ctx, x, y, width, height,
-                                      format, type, pixels, pack);
+   ok = brw_readpixels_tiled_memcpy(ctx, x, y, width, height,
+                                    format, type, pixels, pack);
    if(ok)
       return;
 
@@ -295,6 +295,6 @@ intelReadPixels(struct gl_context * ctx,
 
    _mesa_readpixels(ctx, x, y, width, height, format, type, pack, pixels);
 
-   /* There's an intel_prepare_render() call in intelSpanRenderStart(). */
+   /* There's an brw_prepare_render() call in intelSpanRenderStart(). */
    brw->front_buffer_dirty = dirty;
 }

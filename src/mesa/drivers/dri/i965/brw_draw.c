@@ -376,11 +376,11 @@ brw_merge_inputs(struct brw_context *brw)
  * incorrect pixels.
  */
 static bool
-intel_disable_rb_aux_buffer(struct brw_context *brw,
-                            bool *draw_aux_buffer_disabled,
-                            struct brw_mipmap_tree *tex_mt,
-                            unsigned min_level, unsigned num_levels,
-                            const char *usage)
+brw_disable_rb_aux_buffer(struct brw_context *brw,
+                          bool *draw_aux_buffer_disabled,
+                          struct brw_mipmap_tree *tex_mt,
+                          unsigned min_level, unsigned num_levels,
+                          const char *usage)
 {
    const struct gl_framebuffer *fb = brw->ctx.DrawBuffer;
    bool found = false;
@@ -560,9 +560,9 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
       }
 
       if (rendering) {
-         intel_disable_rb_aux_buffer(brw, draw_aux_buffer_disabled,
-                                     tex_obj->mt, min_level, num_levels,
-                                     "for sampling");
+         brw_disable_rb_aux_buffer(brw, draw_aux_buffer_disabled,
+                                   tex_obj->mt, min_level, num_levels,
+                                   "for sampling");
       }
 
       brw_miptree_prepare_texture(brw, tex_obj->mt, view_format,
@@ -588,7 +588,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
 
       if (tex_obj->base.StencilSampling ||
           tex_obj->mt->format == MESA_FORMAT_S_UINT8) {
-         intel_update_r8stencil(brw, tex_obj->mt);
+         brw_update_r8stencil(brw, tex_obj->mt);
       }
 
       if (brw_miptree_has_etc_shadow(brw, tex_obj->mt) &&
@@ -609,9 +609,9 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
 
             if (tex_obj && tex_obj->mt) {
                if (rendering) {
-                  intel_disable_rb_aux_buffer(brw, draw_aux_buffer_disabled,
-                                              tex_obj->mt, 0, ~0,
-                                              "as a shader image");
+                  brw_disable_rb_aux_buffer(brw, draw_aux_buffer_disabled,
+                                            tex_obj->mt, 0, ~0,
+                                            "as a shader image");
                }
 
                brw_miptree_prepare_image(brw, tex_obj->mt);
@@ -631,7 +631,7 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
    struct brw_renderbuffer *depth_irb;
 
    /* Resolve the depth buffer's HiZ buffer. */
-   depth_irb = intel_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
+   depth_irb = brw_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
    if (depth_irb && depth_irb->mt) {
       brw_miptree_prepare_depth(brw, depth_irb->mt,
                                 depth_irb->mt_level,
@@ -672,7 +672,7 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
          continue;
 
       mesa_format mesa_format =
-         _mesa_get_render_format(ctx, intel_rb_format(irb));
+         _mesa_get_render_format(ctx, brw_rb_format(irb));
       enum isl_format isl_format = brw_isl_format_for_mesa_format(mesa_format);
       bool blend_enabled = ctx->Color.BlendEnabled & (1 << i);
       enum isl_aux_usage aux_usage =
@@ -715,13 +715,13 @@ brw_postdraw_set_buffers_need_resolve(struct brw_context *brw)
    struct gl_framebuffer *fb = ctx->DrawBuffer;
 
    struct brw_renderbuffer *front_irb = NULL;
-   struct brw_renderbuffer *back_irb = intel_get_renderbuffer(fb, BUFFER_BACK_LEFT);
-   struct brw_renderbuffer *depth_irb = intel_get_renderbuffer(fb, BUFFER_DEPTH);
-   struct brw_renderbuffer *stencil_irb = intel_get_renderbuffer(fb, BUFFER_STENCIL);
+   struct brw_renderbuffer *back_irb = brw_get_renderbuffer(fb, BUFFER_BACK_LEFT);
+   struct brw_renderbuffer *depth_irb = brw_get_renderbuffer(fb, BUFFER_DEPTH);
+   struct brw_renderbuffer *stencil_irb = brw_get_renderbuffer(fb, BUFFER_STENCIL);
    struct gl_renderbuffer_attachment *depth_att = &fb->Attachment[BUFFER_DEPTH];
 
    if (_mesa_is_front_buffer_drawing(fb))
-      front_irb = intel_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
+      front_irb = brw_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
 
    if (front_irb)
       front_irb->need_downsample = true;
@@ -763,7 +763,7 @@ brw_postdraw_set_buffers_need_resolve(struct brw_context *brw)
          continue;
 
       mesa_format mesa_format =
-         _mesa_get_render_format(ctx, intel_rb_format(irb));
+         _mesa_get_render_format(ctx, brw_rb_format(irb));
       enum isl_format isl_format = brw_isl_format_for_mesa_format(mesa_format);
       enum isl_aux_usage aux_usage = brw->draw_aux_usage[i];
 
@@ -804,9 +804,9 @@ brw_postdraw_reconcile_align_wa_slices(struct brw_context *brw)
    struct gl_framebuffer *fb = ctx->DrawBuffer;
 
    struct brw_renderbuffer *depth_irb =
-      intel_get_renderbuffer(fb, BUFFER_DEPTH);
+      brw_get_renderbuffer(fb, BUFFER_DEPTH);
    struct brw_renderbuffer *stencil_irb =
-      intel_get_renderbuffer(fb, BUFFER_STENCIL);
+      brw_get_renderbuffer(fb, BUFFER_STENCIL);
 
    if (depth_irb && depth_irb->align_wa_mt)
       brw_renderbuffer_move_temp_back(brw, depth_irb);
@@ -861,7 +861,7 @@ brw_prepare_drawing(struct gl_context *ctx,
    brw->vs.base.sampler_count =
       util_last_bit(ctx->VertexProgram._Current->info.textures_used);
 
-   intel_prepare_render(brw);
+   brw_prepare_render(brw);
 
    /* This workaround has to happen outside of brw_upload_render_state()
     * because it may flush the batchbuffer for a blit, affecting the state

@@ -60,8 +60,8 @@ intelDeleteTextureObject(struct gl_context *ctx,
 }
 
 static GLboolean
-intel_alloc_texture_image_buffer(struct gl_context *ctx,
-				 struct gl_texture_image *image)
+brw_alloc_texture_image_buffer(struct gl_context *ctx,
+                               struct gl_texture_image *image)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_texture_image *intel_image = brw_texture_image(image);
@@ -72,7 +72,7 @@ intel_alloc_texture_image_buffer(struct gl_context *ctx,
 
    /* Quantize sample count */
    if (image->NumSamples) {
-      image->NumSamples = intel_quantize_num_samples(brw->screen, image->NumSamples);
+      image->NumSamples = brw_quantize_num_samples(brw->screen, image->NumSamples);
       if (!image->NumSamples)
          return false;
    }
@@ -120,18 +120,18 @@ intel_alloc_texture_image_buffer(struct gl_context *ctx,
  * ctx->Driver.AllocTextureStorage() handler.
  *
  * Compare this to _mesa_AllocTextureStorage_sw, which would call into
- * intel_alloc_texture_image_buffer() above.
+ * brw_alloc_texture_image_buffer() above.
  */
 static GLboolean
-intel_alloc_texture_storage(struct gl_context *ctx,
-                            struct gl_texture_object *texobj,
-                            GLsizei levels, GLsizei width,
-                            GLsizei height, GLsizei depth)
+brw_alloc_texture_storage(struct gl_context *ctx,
+                          struct gl_texture_object *texobj,
+                          GLsizei levels, GLsizei width,
+                          GLsizei height, GLsizei depth)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_texture_object *intel_texobj = brw_texture_object(texobj);
    struct gl_texture_image *first_image = texobj->Image[0][0];
-   int num_samples = intel_quantize_num_samples(brw->screen,
+   int num_samples = brw_quantize_num_samples(brw->screen,
                                                 first_image->NumSamples);
    const int numFaces = _mesa_num_tex_faces(texobj->Target);
    int face;
@@ -145,7 +145,7 @@ intel_alloc_texture_storage(struct gl_context *ctx,
        intel_texobj->mt->last_level != levels - 1) {
       brw_miptree_release(&intel_texobj->mt);
 
-      intel_get_image_dims(first_image, &width, &height, &depth);
+      brw_get_image_dims(first_image, &width, &height, &depth);
       intel_texobj->mt = brw_miptree_create(brw, texobj->Target,
                                               first_image->TexFormat,
                                               0, levels - 1,
@@ -184,8 +184,8 @@ intel_alloc_texture_storage(struct gl_context *ctx,
 
 
 static void
-intel_free_texture_image_buffer(struct gl_context * ctx,
-				struct gl_texture_image *texImage)
+brw_free_texture_image_buffer(struct gl_context * ctx,
+                              struct gl_texture_image *texImage)
 {
    struct brw_texture_image *intelImage = brw_texture_image(texImage);
 
@@ -204,13 +204,13 @@ intel_free_texture_image_buffer(struct gl_context * ctx,
  * \param rowStrideOut  returns row stride in bytes
  */
 static void
-intel_map_texture_image(struct gl_context *ctx,
-			struct gl_texture_image *tex_image,
-			GLuint slice,
-			GLuint x, GLuint y, GLuint w, GLuint h,
-			GLbitfield mode,
-			GLubyte **map,
-			GLint *out_stride)
+brw_map_texture_image(struct gl_context *ctx,
+                      struct gl_texture_image *tex_image,
+                      GLuint slice,
+                      GLuint x, GLuint y, GLuint w, GLuint h,
+                      GLbitfield mode,
+                      GLubyte **map,
+                      GLint *out_stride)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_texture_image *intel_image = brw_texture_image(tex_image);
@@ -240,8 +240,8 @@ intel_map_texture_image(struct gl_context *ctx,
 }
 
 static void
-intel_unmap_texture_image(struct gl_context *ctx,
-			  struct gl_texture_image *tex_image, GLuint slice)
+brw_unmap_texture_image(struct gl_context *ctx,
+                        struct gl_texture_image *tex_image, GLuint slice)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_texture_image *intel_image = brw_texture_image(tex_image);
@@ -257,8 +257,8 @@ intel_unmap_texture_image(struct gl_context *ctx,
 
 static GLboolean
 brw_texture_view(struct gl_context *ctx,
-                   struct gl_texture_object *texObj,
-                   struct gl_texture_object *origTexObj)
+                 struct gl_texture_object *texObj,
+                 struct gl_texture_object *origTexObj)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_texture_object *intel_tex = brw_texture_object(texObj);
@@ -297,8 +297,8 @@ brw_texture_view(struct gl_context *ctx,
     * would have been applied to determine the underlying texture's
     * mt->format.
     */
-   intel_tex->_Format = intel_depth_format_for_depthstencil_format(
-         intel_lower_compressed_format(brw, texObj->Image[0][0]->TexFormat));
+   intel_tex->_Format = brw_depth_format_for_depthstencil_format(
+         brw_lower_compressed_format(brw, texObj->Image[0][0]->TexFormat));
 
    return GL_TRUE;
 }
@@ -329,11 +329,11 @@ intelInitTextureFuncs(struct dd_function_table *functions)
    functions->NewTextureImage = intelNewTextureImage;
    functions->DeleteTextureImage = intelDeleteTextureImage;
    functions->DeleteTexture = intelDeleteTextureObject;
-   functions->AllocTextureImageBuffer = intel_alloc_texture_image_buffer;
-   functions->FreeTextureImageBuffer = intel_free_texture_image_buffer;
-   functions->AllocTextureStorage = intel_alloc_texture_storage;
-   functions->MapTextureImage = intel_map_texture_image;
-   functions->UnmapTextureImage = intel_unmap_texture_image;
+   functions->AllocTextureImageBuffer = brw_alloc_texture_image_buffer;
+   functions->FreeTextureImageBuffer = brw_free_texture_image_buffer;
+   functions->AllocTextureStorage = brw_alloc_texture_storage;
+   functions->MapTextureImage = brw_map_texture_image;
+   functions->UnmapTextureImage = brw_unmap_texture_image;
    functions->TextureView = brw_texture_view;
    functions->TextureBarrier = brw_texture_barrier;
 }

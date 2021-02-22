@@ -108,7 +108,7 @@ format_supports_ccs_e(const struct brw_context *brw, mesa_format format)
  * for separate stencil.
  */
 mesa_format
-intel_depth_format_for_depthstencil_format(mesa_format format) {
+brw_depth_format_for_depthstencil_format(mesa_format format) {
    switch (format) {
    case MESA_FORMAT_Z24_UNORM_S8_UINT:
       return MESA_FORMAT_Z24_UNORM_X8_UINT;
@@ -193,7 +193,7 @@ brw_miptree_choose_aux_usage(struct brw_context *brw,
  * compressed format, if unsupported.
  */
 mesa_format
-intel_lower_compressed_format(struct brw_context *brw, mesa_format format)
+brw_lower_compressed_format(struct brw_context *brw, mesa_format format)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
@@ -492,7 +492,7 @@ miptree_create(struct brw_context *brw,
       /* Fix up the Z miptree format for how we're splitting out separate
        * stencil. Gen7 expects there to be no stencil bits in its depth buffer.
        */
-      mt_fmt = intel_depth_format_for_depthstencil_format(format);
+      mt_fmt = brw_depth_format_for_depthstencil_format(format);
    }
 
    struct brw_mipmap_tree *mt =
@@ -505,7 +505,7 @@ miptree_create(struct brw_context *brw,
       return NULL;
 
    if (brw_miptree_needs_fake_etc(brw, mt)) {
-      mesa_format decomp_format = intel_lower_compressed_format(brw, format);
+      mesa_format decomp_format = brw_lower_compressed_format(brw, format);
       mt->shadow_mt = make_surface(brw, target, decomp_format, first_level,
                                    last_level, width0, height0, depth0,
                                    num_samples, tiling_flags,
@@ -593,7 +593,7 @@ brw_miptree_create_for_bo(struct brw_context *brw,
    if ((base_format == GL_DEPTH_COMPONENT ||
         base_format == GL_DEPTH_STENCIL)) {
       const mesa_format mt_fmt = (devinfo->gen < 6) ? format :
-         intel_depth_format_for_depthstencil_format(format);
+         brw_depth_format_for_depthstencil_format(format);
       mt = make_surface(brw, target, mt_fmt,
                         0, 0, width, height, depth, 1, ISL_TILING_Y0_BIT,
                         mt_surf_usage(mt_fmt),
@@ -904,7 +904,7 @@ brw_miptree_create_for_dri_image(struct brw_context *brw,
  * irb->singlesample_mt).
  */
 bool
-intel_update_winsys_renderbuffer_miptree(struct brw_context *intel,
+brw_update_winsys_renderbuffer_miptree(struct brw_context *intel,
                                          struct brw_renderbuffer *irb,
                                          struct brw_mipmap_tree *singlesample_mt,
                                          uint32_t width, uint32_t height,
@@ -1040,7 +1040,7 @@ brw_miptree_release(struct brw_mipmap_tree **mt)
 
 
 void
-intel_get_image_dims(struct gl_texture_image *image,
+brw_get_image_dims(struct gl_texture_image *image,
                      int *width, int *height, int *depth)
 {
    switch (image->TexObject->Target) {
@@ -1102,7 +1102,7 @@ brw_miptree_match_image(struct brw_mipmap_tree *mt,
        _mesa_get_srgb_format_linear(mt_format))
       return false;
 
-   intel_get_image_dims(image, &width, &height, &depth);
+   brw_get_image_dims(image, &width, &height, &depth);
 
    if (mt->target == GL_TEXTURE_CUBE_MAP)
       depth = 6;
@@ -1395,7 +1395,7 @@ brw_miptree_copy_teximage(struct brw_context *brw,
 }
 
 static struct brw_miptree_aux_buffer *
-intel_alloc_aux_buffer(struct brw_context *brw,
+brw_alloc_aux_buffer(struct brw_context *brw,
                        const struct isl_surf *aux_surf,
                        bool wants_memset,
                        uint8_t memset_value)
@@ -1595,7 +1595,7 @@ brw_miptree_alloc_aux(struct brw_context *brw, struct brw_mipmap_tree *mt)
 
    /* Allocate the auxiliary buffer. */
    const bool needs_memset = initial_state != ISL_AUX_STATE_AUX_INVALID;
-   mt->aux_buf = intel_alloc_aux_buffer(brw, &aux_surf, needs_memset,
+   mt->aux_buf = brw_alloc_aux_buffer(brw, &aux_surf, needs_memset,
                                         memset_value);
    if (mt->aux_buf == NULL) {
       free_aux_state_map(mt->aux_state);
@@ -1785,7 +1785,7 @@ brw_miptree_prepare_access(struct brw_context *brw,
             assert(aux_op == ISL_AUX_OP_PARTIAL_RESOLVE);
             brw_blorp_mcs_partial_resolve(brw, mt, layer, 1);
          } else if (isl_aux_usage_has_hiz(mt->aux_usage)) {
-            intel_hiz_exec(brw, mt, level, layer, 1, aux_op);
+            brw_hiz_exec(brw, mt, level, layer, 1, aux_op);
          } else {
             assert(isl_aux_usage_has_ccs(mt->aux_usage));
             brw_miptree_check_color_resolve(brw, mt, level, layer);
@@ -2207,7 +2207,7 @@ brw_miptree_make_shareable(struct brw_context *brw,
  *    mesa: Fix return type of  _mesa_get_format_bytes() (#37351)
  */
 static intptr_t
-intel_offset_S8(uint32_t stride, uint32_t x, uint32_t y, bool swizzled)
+brw_offset_S8(uint32_t stride, uint32_t x, uint32_t y, bool swizzled)
 {
    uint32_t tile_size = 4096;
    uint32_t tile_width = 64;
@@ -2284,7 +2284,7 @@ brw_miptree_updownsample(struct brw_context *brw,
 }
 
 void
-intel_update_r8stencil(struct brw_context *brw,
+brw_update_r8stencil(struct brw_context *brw,
                        struct brw_mipmap_tree *mt)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -2754,10 +2754,10 @@ brw_miptree_unmap_s8(struct brw_context *brw,
 
       for (uint32_t y = 0; y < map->h; y++) {
 	 for (uint32_t x = 0; x < map->w; x++) {
-	    ptrdiff_t offset = intel_offset_S8(mt->surf.row_pitch_B,
-	                                       image_x + x + map->x,
-	                                       image_y + y + map->y,
-					       brw->has_swizzling);
+            ptrdiff_t offset = brw_offset_S8(mt->surf.row_pitch_B,
+                                             image_x + x + map->x,
+                                             image_y + y + map->y,
+                                             brw->has_swizzling);
 	    tiled_s8_map[offset] = untiled_s8_map[y * map->w + x];
 	 }
       }
@@ -2796,10 +2796,10 @@ brw_miptree_map_s8(struct brw_context *brw,
 
       for (uint32_t y = 0; y < map->h; y++) {
 	 for (uint32_t x = 0; x < map->w; x++) {
-	    ptrdiff_t offset = intel_offset_S8(mt->surf.row_pitch_B,
-	                                       x + image_x + map->x,
-	                                       y + image_y + map->y,
-					       brw->has_swizzling);
+            ptrdiff_t offset = brw_offset_S8(mt->surf.row_pitch_B,
+                                             x + image_x + map->x,
+                                             y + image_y + map->y,
+                                             brw->has_swizzling);
 	    untiled_s8_map[y * map->w + x] = tiled_s8_map[offset];
 	 }
       }
@@ -2854,10 +2854,10 @@ brw_miptree_unmap_depthstencil(struct brw_context *brw,
 
       for (uint32_t y = 0; y < map->h; y++) {
 	 for (uint32_t x = 0; x < map->w; x++) {
-	    ptrdiff_t s_offset = intel_offset_S8(s_mt->surf.row_pitch_B,
-						 x + s_image_x + map->x,
-						 y + s_image_y + map->y,
-						 brw->has_swizzling);
+            ptrdiff_t s_offset = brw_offset_S8(s_mt->surf.row_pitch_B,
+                                               x + s_image_x + map->x,
+                                               y + s_image_y + map->y,
+                                               brw->has_swizzling);
 	    ptrdiff_t z_offset = ((y + z_image_y + map->y) *
                                   (z_mt->surf.row_pitch_B / 4) +
 				  (x + z_image_x + map->x));
@@ -2929,7 +2929,7 @@ brw_miptree_map_depthstencil(struct brw_context *brw,
       for (uint32_t y = 0; y < map->h; y++) {
 	 for (uint32_t x = 0; x < map->w; x++) {
 	    int map_x = map->x + x, map_y = map->y + y;
-	    ptrdiff_t s_offset = intel_offset_S8(s_mt->surf.row_pitch_B,
+	    ptrdiff_t s_offset = brw_offset_S8(s_mt->surf.row_pitch_B,
 						 map_x + s_image_x,
 						 map_y + s_image_y,
 						 brw->has_swizzling);

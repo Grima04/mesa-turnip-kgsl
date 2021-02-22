@@ -164,7 +164,7 @@ brw_renderbuffer_get_mt(struct brw_renderbuffer *irb)
  * renderbuffer.
  */
 static inline struct brw_renderbuffer *
-intel_get_renderbuffer(struct gl_framebuffer *fb, gl_buffer_index attIndex)
+brw_get_renderbuffer(struct gl_framebuffer *fb, gl_buffer_index attIndex)
 {
    struct gl_renderbuffer *rb;
 
@@ -179,26 +179,26 @@ intel_get_renderbuffer(struct gl_framebuffer *fb, gl_buffer_index attIndex)
 
 
 static inline mesa_format
-intel_rb_format(const struct brw_renderbuffer *rb)
+brw_rb_format(const struct brw_renderbuffer *rb)
 {
    return rb->Base.Base.Format;
 }
 
 extern struct brw_renderbuffer *
-intel_create_winsys_renderbuffer(struct brw_screen *screen,
-                                 mesa_format format, unsigned num_samples);
+brw_create_winsys_renderbuffer(struct brw_screen *screen,
+                               mesa_format format, unsigned num_samples);
 
 struct brw_renderbuffer *
-intel_create_private_renderbuffer(struct brw_screen *screen,
-                                  mesa_format format, unsigned num_samples);
+brw_create_private_renderbuffer(struct brw_screen *screen,
+                                mesa_format format, unsigned num_samples);
 
 struct gl_renderbuffer*
-intel_create_wrapped_renderbuffer(struct gl_context * ctx,
-				  int width, int height,
-				  mesa_format format);
+brw_create_wrapped_renderbuffer(struct gl_context *ctx,
+                                int width, int height,
+                                mesa_format format);
 
 extern void
-intel_fbo_init(struct brw_context *brw);
+brw_fbo_init(struct brw_context *brw);
 
 void
 brw_renderbuffer_set_draw_offset(struct brw_renderbuffer *irb);
@@ -246,7 +246,7 @@ void brw_render_cache_add_bo(struct brw_context *brw, struct brw_bo *bo,
 void brw_depth_cache_add_bo(struct brw_context *brw, struct brw_bo *bo);
 
 unsigned
-intel_quantize_num_samples(struct brw_screen *intel, unsigned num_samples);
+brw_quantize_num_samples(struct brw_screen *intel, unsigned num_samples);
 
 #ifdef __cplusplus
 }

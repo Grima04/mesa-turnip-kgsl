@@ -198,7 +198,7 @@ do_blit_bitmap( struct gl_context *ctx,
       return false;
    }
 
-   intel_prepare_render(brw);
+   brw_prepare_render(brw);
 
    if (fb->_NumColorDrawBuffers != 1) {
       perf_debug("accelerated glBitmap() only supports rendering to a "
@@ -225,7 +225,7 @@ do_blit_bitmap( struct gl_context *ctx,
    UNCLAMPED_FLOAT_TO_UBYTE(ubcolor[2], tmpColor[2]);
    UNCLAMPED_FLOAT_TO_UBYTE(ubcolor[3], tmpColor[3]);
 
-   switch (_mesa_get_render_format(ctx, intel_rb_format(irb))) {
+   switch (_mesa_get_render_format(ctx, brw_rb_format(irb))) {
    case MESA_FORMAT_B8G8R8A8_UNORM:
    case MESA_FORMAT_B8G8R8X8_UNORM:
       color = PACK_COLOR_8888(ubcolor[3], ubcolor[0], ubcolor[1], ubcolor[2]);
@@ -239,7 +239,7 @@ do_blit_bitmap( struct gl_context *ctx,
       return false;
    }
 
-   if (!intel_check_blit_fragment_ops(ctx, tmpColor[3] == 1.0F))
+   if (!brw_check_blit_fragment_ops(ctx, tmpColor[3] == 1.0F))
       return false;
 
    /* Clip to buffer bounds and scissor. */

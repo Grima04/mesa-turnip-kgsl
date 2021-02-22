@@ -138,7 +138,7 @@ brw_fence_insert_locked(struct brw_context *brw, struct brw_fence *fence)
     * compositor may read the incomplete framebuffer instead.
     */
    if (driDrawable)
-      intel_resolve_for_dri2_flush(brw, driDrawable);
+      brw_resolve_for_dri2_flush(brw, driDrawable);
    brw_emit_mi_flush(brw);
 
    switch (fence->type) {

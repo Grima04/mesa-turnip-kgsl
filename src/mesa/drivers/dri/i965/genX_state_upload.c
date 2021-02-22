@@ -1177,7 +1177,7 @@ set_depth_stencil_bits(struct brw_context *brw, DEPTH_STENCIL_GENXML *ds)
 
    /* _NEW_BUFFERS */
    struct brw_renderbuffer *depth_irb =
-      intel_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
+      brw_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
 
    /* _NEW_DEPTH */
    struct gl_depthbuffer_attrib *depth = &ctx->Depth;
@@ -1189,7 +1189,7 @@ set_depth_stencil_bits(struct brw_context *brw, DEPTH_STENCIL_GENXML *ds)
    if (depth->Test && depth_irb) {
       ds->DepthTestEnable = true;
       ds->DepthBufferWriteEnable = brw_depth_writes_enabled(brw);
-      ds->DepthTestFunction = intel_translate_compare_func(depth->Func);
+      ds->DepthTestFunction = brw_translate_compare_func(depth->Func);
    }
 
    if (brw->stencil_enabled) {
@@ -1198,13 +1198,13 @@ set_depth_stencil_bits(struct brw_context *brw, DEPTH_STENCIL_GENXML *ds)
       ds->StencilTestMask = stencil->ValueMask[0] & 0xff;
 
       ds->StencilTestFunction =
-         intel_translate_compare_func(stencil->Function[0]);
+         brw_translate_compare_func(stencil->Function[0]);
       ds->StencilFailOp =
-         intel_translate_stencil_op(stencil->FailFunc[0]);
+         brw_translate_stencil_op(stencil->FailFunc[0]);
       ds->StencilPassDepthPassOp =
-         intel_translate_stencil_op(stencil->ZPassFunc[0]);
+         brw_translate_stencil_op(stencil->ZPassFunc[0]);
       ds->StencilPassDepthFailOp =
-         intel_translate_stencil_op(stencil->ZFailFunc[0]);
+         brw_translate_stencil_op(stencil->ZFailFunc[0]);
 
       ds->StencilBufferWriteEnable = brw->stencil_write_enabled;
 
@@ -1214,13 +1214,13 @@ set_depth_stencil_bits(struct brw_context *brw, DEPTH_STENCIL_GENXML *ds)
          ds->BackfaceStencilTestMask = stencil->ValueMask[b] & 0xff;
 
          ds->BackfaceStencilTestFunction =
-            intel_translate_compare_func(stencil->Function[b]);
+            brw_translate_compare_func(stencil->Function[b]);
          ds->BackfaceStencilFailOp =
-            intel_translate_stencil_op(stencil->FailFunc[b]);
+            brw_translate_stencil_op(stencil->FailFunc[b]);
          ds->BackfaceStencilPassDepthPassOp =
-            intel_translate_stencil_op(stencil->ZPassFunc[b]);
+            brw_translate_stencil_op(stencil->ZPassFunc[b]);
          ds->BackfaceStencilPassDepthFailOp =
-            intel_translate_stencil_op(stencil->ZFailFunc[b]);
+            brw_translate_stencil_op(stencil->ZFailFunc[b]);
       }
 
 #if GEN_GEN <= 5 || GEN_GEN >= 9
@@ -2979,7 +2979,7 @@ genX(upload_blend_state)(struct brw_context *brw)
          if (ctx->Color.AlphaEnabled) {
             blend.AlphaTestEnable = true;
             blend.AlphaTestFunction =
-               intel_translate_compare_func(ctx->Color.AlphaFunc);
+               brw_translate_compare_func(ctx->Color.AlphaFunc);
          }
 
          if (ctx->Color.DitherFlag) {
@@ -3369,7 +3369,7 @@ genX(upload_color_calc_state)(struct brw_context *brw)
           ctx->DrawBuffer->_NumColorDrawBuffers <= 1) {
          cc.AlphaTestEnable = true;
          cc.AlphaTestFunction =
-            intel_translate_compare_func(ctx->Color.AlphaFunc);
+            brw_translate_compare_func(ctx->Color.AlphaFunc);
       }
 
       cc.ColorDitherEnable = ctx->Color.DitherFlag;
@@ -5300,7 +5300,7 @@ genX(update_sampler_state)(struct brw_context *brw,
 
    samp_st.ShadowFunction =
       sampler->Attrib.CompareMode == GL_COMPARE_R_TO_TEXTURE_ARB ?
-      intel_translate_shadow_compare_func(sampler->Attrib.CompareFunc) : 0;
+      brw_translate_shadow_compare_func(sampler->Attrib.CompareFunc) : 0;
 
 #if GEN_GEN >= 7
    /* Set shadow function. */

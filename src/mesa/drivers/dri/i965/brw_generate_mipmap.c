@@ -74,7 +74,7 @@ brw_generate_mipmap(struct gl_context *ctx, GLenum target,
        *
        * After this, we'll have all mipmap levels in one resource.
        */
-      intel_finalize_mipmap_tree(brw, tex_obj);
+      brw_finalize_mipmap_tree(brw, tex_obj);
    }
 
    struct brw_mipmap_tree *mt = intel_obj->mt;

@@ -238,7 +238,7 @@ gen6_update_renderbuffer_surface(struct brw_context *brw,
 
    assert(brw_render_target_supported(brw, rb));
 
-   mesa_format rb_format = _mesa_get_render_format(ctx, intel_rb_format(irb));
+   mesa_format rb_format = _mesa_get_render_format(ctx, brw_rb_format(irb));
    if (unlikely(!brw->mesa_format_supports_render[rb_format])) {
       _mesa_problem(ctx, "%s: renderbuffer format %s unsupported\n",
                     __func__, _mesa_get_format_name(rb_format));
@@ -915,7 +915,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
    enum isl_format format;
    uint32_t offset;
    /* _NEW_BUFFERS */
-   mesa_format rb_format = _mesa_get_render_format(ctx, intel_rb_format(irb));
+   mesa_format rb_format = _mesa_get_render_format(ctx, brw_rb_format(irb));
    /* BRW_NEW_FS_PROG_DATA */
 
    if (rb->TexImage && !devinfo->has_surface_tile_offset) {
@@ -1088,7 +1088,7 @@ update_renderbuffer_read_surfaces(struct brw_context *brw)
 
          if (irb) {
             const enum isl_format format = brw->mesa_to_isl_render_format[
-               _mesa_get_render_format(ctx, intel_rb_format(irb))];
+               _mesa_get_render_format(ctx, brw_rb_format(irb))];
             assert(isl_format_supports_sampling(&brw->screen->devinfo,
                                                 format));
 

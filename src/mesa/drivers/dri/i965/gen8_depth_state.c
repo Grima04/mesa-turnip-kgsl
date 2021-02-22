@@ -49,7 +49,7 @@ pma_fix_enable(const struct brw_context *brw)
       brw_wm_prog_data(brw->wm.base.prog_data);
    /* _NEW_BUFFERS */
    struct brw_renderbuffer *depth_irb =
-      intel_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
+      brw_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
 
    /* 3DSTATE_WM::ForceThreadDispatch is never used. */
    const bool wm_force_thread_dispatch = false;

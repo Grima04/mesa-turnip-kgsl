@@ -63,7 +63,7 @@ do_blit_copypixels(struct gl_context * ctx,
    /* Update draw buffer bounds */
    _mesa_update_state(ctx);
 
-   intel_prepare_render(brw);
+   brw_prepare_render(brw);
 
    switch (type) {
    case GL_COLOR:

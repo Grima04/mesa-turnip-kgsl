@@ -29,8 +29,8 @@
 #include "main/mtypes.h"
 
 void intelInitPixelFuncs(struct dd_function_table *functions);
-bool intel_check_blit_fragment_ops(struct gl_context * ctx,
-					bool src_alpha_is_one);
+bool brw_check_blit_fragment_ops(struct gl_context *ctx,
+                                 bool src_alpha_is_one);
 
 void intelReadPixels(struct gl_context * ctx,
                      GLint x, GLint y,

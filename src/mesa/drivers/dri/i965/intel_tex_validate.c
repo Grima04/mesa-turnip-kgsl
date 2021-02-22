@@ -42,8 +42,8 @@
  * allow sampling beyond level 0.
  */
 static void
-intel_update_max_level(struct gl_texture_object *tObj,
-		       struct gl_sampler_object *sampler)
+brw_update_max_level(struct gl_texture_object *tObj,
+                     struct gl_sampler_object *sampler)
 {
    struct brw_texture_object *intelObj = brw_texture_object(tObj);
 
@@ -64,7 +64,7 @@ intel_update_max_level(struct gl_texture_object *tObj,
  * stored in other miptrees.
  */
 void
-intel_finalize_mipmap_tree(struct brw_context *brw,
+brw_finalize_mipmap_tree(struct brw_context *brw,
                            struct gl_texture_object *tObj)
 {
    struct brw_texture_object *intelObj = brw_texture_object(tObj);
@@ -120,7 +120,7 @@ intel_finalize_mipmap_tree(struct brw_context *brw,
     */
    if (!intelObj->mt) {
       const unsigned level = firstImage->base.Base.Level;
-      intel_get_image_dims(&firstImage->base.Base, &width, &height, &depth);
+      brw_get_image_dims(&firstImage->base.Base, &width, &height, &depth);
       /* Figure out image dimensions at start level. */
       switch(intelObj->base.Target) {
       case GL_TEXTURE_2D_MULTISAMPLE:
@@ -215,7 +215,7 @@ brw_validate_textures(struct brw_context *brw)
        */
       assert(tex_obj->_BaseComplete);
 
-      intel_update_max_level(tex_obj, sampler);
-      intel_finalize_mipmap_tree(brw, tex_obj);
+      brw_update_max_level(tex_obj, sampler);
+      brw_finalize_mipmap_tree(brw, tex_obj);
    }
 }

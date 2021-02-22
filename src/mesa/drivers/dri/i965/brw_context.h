@@ -1269,9 +1269,9 @@ enum {
    DRI_CONF_BO_REUSE_ALL
 };
 
-void intel_update_renderbuffers(__DRIcontext *context,
+void brw_update_renderbuffers(__DRIcontext *context,
                                 __DRIdrawable *drawable);
-void intel_prepare_render(struct brw_context *brw);
+void brw_prepare_render(struct brw_context *brw);
 
 void gen9_apply_single_tex_astc5x5_wa(struct brw_context *brw,
                                       mesa_format format,
@@ -1280,7 +1280,7 @@ void gen9_apply_single_tex_astc5x5_wa(struct brw_context *brw,
 void brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
                                 bool *draw_aux_buffer_disabled);
 
-void intel_resolve_for_dri2_flush(struct brw_context *brw,
+void brw_resolve_for_dri2_flush(struct brw_context *brw,
                                   __DRIdrawable *drawable);
 
 GLboolean brwCreateContext(gl_api api,
@@ -1437,9 +1437,9 @@ void brw_init_performance_queries(struct brw_context *brw);
 extern void intelInitExtensions(struct gl_context *ctx);
 
 /* intel_state.c */
-extern int intel_translate_shadow_compare_func(GLenum func);
-extern int intel_translate_compare_func(GLenum func);
-extern int intel_translate_stencil_op(GLenum op);
+extern int brw_translate_shadow_compare_func(GLenum func);
+extern int brw_translate_compare_func(GLenum func);
+extern int brw_translate_stencil_op(GLenum op);
 
 /* brw_sync.c */
 void brw_init_syncobj_functions(struct dd_function_table *functions);

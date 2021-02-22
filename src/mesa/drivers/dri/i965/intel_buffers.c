@@ -43,7 +43,7 @@ intelDrawBuffer(struct gl_context *ctx)
        * (including the fake front) before we start rendering again.
        */
       dri2InvalidateDrawable(brw->driContext->driDrawablePriv);
-      intel_prepare_render(brw);
+      brw_prepare_render(brw);
    }
 }
 
@@ -59,7 +59,7 @@ intelReadBuffer(struct gl_context * ctx, GLenum mode)
        * (including the fake front) before we start reading again.
        */
       dri2InvalidateDrawable(brw->driContext->driReadablePriv);
-      intel_prepare_render(brw);
+      brw_prepare_render(brw);
    }
 }
 

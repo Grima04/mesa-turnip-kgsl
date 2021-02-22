@@ -607,7 +607,7 @@ try_blorp_blit(struct brw_context *brw,
    /* Sync up the state of window system buffers.  We need to do this before
     * we go looking for the buffers.
     */
-   intel_prepare_render(brw);
+   brw_prepare_render(brw);
 
    bool mirror_x, mirror_y;
    if (brw_meta_mirror_clip_and_scissor(ctx, read_fb, draw_fb,
@@ -706,7 +706,7 @@ brw_blorp_copytexsubimage(struct brw_context *brw,
    /* Sync up the state of window system buffers.  We need to do this before
     * we go looking at the src renderbuffer's miptree.
     */
-   intel_prepare_render(brw);
+   brw_prepare_render(brw);
 
    struct brw_mipmap_tree *src_mt = src_irb->mt;
    struct brw_mipmap_tree *dst_mt = intel_image->mt;
@@ -1558,9 +1558,9 @@ brw_blorp_mcs_partial_resolve(struct brw_context *brw,
  *   - 7.5.3.3 Hierarchical Depth Buffer Resolve
  */
 void
-intel_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
-               unsigned int level, unsigned int start_layer,
-               unsigned int num_layers, enum isl_aux_op op)
+brw_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
+             unsigned int level, unsigned int start_layer,
+             unsigned int num_layers, enum isl_aux_op op)
 {
    assert(brw_miptree_level_has_hiz(mt, level));
    assert(op != ISL_AUX_OP_NONE);

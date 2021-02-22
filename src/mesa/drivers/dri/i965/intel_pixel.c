@@ -54,7 +54,7 @@ effective_func(GLenum func, bool src_alpha_is_one)
  * glDraw/CopyPixels.
  */
 bool
-intel_check_blit_fragment_ops(struct gl_context * ctx, bool src_alpha_is_one)
+brw_check_blit_fragment_ops(struct gl_context * ctx, bool src_alpha_is_one)
 {
    if (ctx->NewState)
       _mesa_update_state(ctx);

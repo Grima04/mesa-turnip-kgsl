@@ -107,9 +107,9 @@ brw_blorp_mcs_partial_resolve(struct brw_context *brw,
                               uint32_t start_layer, uint32_t num_layers);
 
 void
-intel_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
-               unsigned int level, unsigned int start_layer,
-               unsigned int num_layers, enum isl_aux_op op);
+brw_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
+             unsigned int level, unsigned int start_layer,
+             unsigned int num_layers, enum isl_aux_op op);
 
 void gen4_blorp_exec(struct blorp_batch *batch,
                      const struct blorp_params *params);

@@ -66,14 +66,14 @@ copy_miptrees(struct brw_context *brw,
 }
 
 static void
-intel_copy_image_sub_data(struct gl_context *ctx,
-                          struct gl_texture_image *src_image,
-                          struct gl_renderbuffer *src_renderbuffer,
-                          int src_x, int src_y, int src_z,
-                          struct gl_texture_image *dst_image,
-                          struct gl_renderbuffer *dst_renderbuffer,
-                          int dst_x, int dst_y, int dst_z,
-                          int src_width, int src_height)
+brw_copy_image_sub_data(struct gl_context *ctx,
+                        struct gl_texture_image *src_image,
+                        struct gl_renderbuffer *src_renderbuffer,
+                        int src_x, int src_y, int src_z,
+                        struct gl_texture_image *dst_image,
+                        struct gl_renderbuffer *dst_renderbuffer,
+                        int dst_x, int dst_y, int dst_z,
+                        int src_width, int src_height)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_mipmap_tree *src_mt, *dst_mt;
@@ -135,5 +135,5 @@ intel_copy_image_sub_data(struct gl_context *ctx,
 void
 intelInitCopyImageFuncs(struct dd_function_table *functions)
 {
-   functions->CopyImageSubData = intel_copy_image_sub_data;
+   functions->CopyImageSubData = brw_copy_image_sub_data;
 }

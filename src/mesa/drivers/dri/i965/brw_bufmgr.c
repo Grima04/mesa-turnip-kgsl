@@ -1318,7 +1318,7 @@ void
 brw_bo_wait_rendering(struct brw_bo *bo)
 {
    /* We require a kernel recent enough for WAIT_IOCTL support.
-    * See intel_init_bufmgr()
+    * See brw_init_bufmgr()
     */
    brw_bo_wait(bo, -1);
 }

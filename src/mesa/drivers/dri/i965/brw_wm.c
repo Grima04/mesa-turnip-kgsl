@@ -398,7 +398,7 @@ brw_wm_populate_key(struct brw_context *brw, struct brw_wm_prog_key *key)
     */
    if (devinfo->gen < 6) {
       struct brw_renderbuffer *depth_irb =
-         intel_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
+         brw_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
 
       /* _NEW_COLOR */
       if (prog->info.fs.uses_discard || ctx->Color.AlphaEnabled) {

@@ -140,7 +140,7 @@ intelMakeCurrent(__DRIcontext * driContextPriv,
 double get_time(void);
 
 const int*
-intel_supported_msaa_modes(const struct brw_screen *screen);
+brw_supported_msaa_modes(const struct brw_screen *screen);
 
 static inline bool
 can_do_pipelined_register_writes(const struct brw_screen *screen)

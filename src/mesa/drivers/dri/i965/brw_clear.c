@@ -103,7 +103,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
    struct brw_context *brw = brw_context(ctx);
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    struct brw_renderbuffer *depth_irb =
-      intel_get_renderbuffer(fb, BUFFER_DEPTH);
+      brw_get_renderbuffer(fb, BUFFER_DEPTH);
    struct brw_mipmap_tree *mt = depth_irb->mt;
    struct gl_renderbuffer_attachment *depth_att = &fb->Attachment[BUFFER_DEPTH];
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -207,8 +207,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
              * Fortunately, few applications ever change their depth clear
              * value so this shouldn't happen often.
              */
-            intel_hiz_exec(brw, mt, level, layer, 1,
-                           ISL_AUX_OP_FULL_RESOLVE);
+            brw_hiz_exec(brw, mt, level, layer, 1, ISL_AUX_OP_FULL_RESOLVE);
             brw_miptree_set_aux_state(brw, mt, level, layer, 1,
                                         ISL_AUX_STATE_RESOLVED);
          }
@@ -224,9 +223,9 @@ brw_fast_clear_depth(struct gl_context *ctx)
                                      depth_irb->mt_layer + a);
 
       if (aux_state != ISL_AUX_STATE_CLEAR) {
-         intel_hiz_exec(brw, mt, depth_irb->mt_level,
-                        depth_irb->mt_layer + a, 1,
-                        ISL_AUX_OP_FAST_CLEAR);
+         brw_hiz_exec(brw, mt, depth_irb->mt_level,
+                      depth_irb->mt_layer + a, 1,
+                      ISL_AUX_OP_FAST_CLEAR);
       }
    }
 
@@ -254,7 +253,7 @@ brw_clear(struct gl_context *ctx, GLbitfield mask)
       brw->front_buffer_dirty = true;
    }
 
-   intel_prepare_render(brw);
+   brw_prepare_render(brw);
    brw_workaround_depthstencil_alignment(brw, partial_clear ? 0 : mask);
 
    if (mask & BUFFER_BIT_DEPTH) {

@@ -105,14 +105,14 @@ brw_depthbuffer_format(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
    struct gl_framebuffer *fb = ctx->DrawBuffer;
-   struct brw_renderbuffer *drb = intel_get_renderbuffer(fb, BUFFER_DEPTH);
+   struct brw_renderbuffer *drb = brw_get_renderbuffer(fb, BUFFER_DEPTH);
    struct brw_renderbuffer *srb;
 
    if (!drb &&
-       (srb = intel_get_renderbuffer(fb, BUFFER_STENCIL)) &&
+       (srb = brw_get_renderbuffer(fb, BUFFER_STENCIL)) &&
        !srb->mt->stencil_mt &&
-       (intel_rb_format(srb) == MESA_FORMAT_Z24_UNORM_S8_UINT ||
-	intel_rb_format(srb) == MESA_FORMAT_Z32_FLOAT_S8X24_UINT)) {
+       (brw_rb_format(srb) == MESA_FORMAT_Z24_UNORM_S8_UINT ||
+	brw_rb_format(srb) == MESA_FORMAT_Z32_FLOAT_S8X24_UINT)) {
       drb = srb;
    }
 
@@ -201,8 +201,8 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
    struct gl_framebuffer *fb = ctx->DrawBuffer;
-   struct brw_renderbuffer *depth_irb = intel_get_renderbuffer(fb, BUFFER_DEPTH);
-   struct brw_renderbuffer *stencil_irb = intel_get_renderbuffer(fb, BUFFER_STENCIL);
+   struct brw_renderbuffer *depth_irb = brw_get_renderbuffer(fb, BUFFER_DEPTH);
+   struct brw_renderbuffer *stencil_irb = brw_get_renderbuffer(fb, BUFFER_STENCIL);
    struct brw_mipmap_tree *depth_mt = NULL;
    bool invalidate_depth = clear_mask & BUFFER_BIT_DEPTH;
    bool invalidate_stencil = clear_mask & BUFFER_BIT_STENCIL;
@@ -325,8 +325,8 @@ brw_emit_depthbuffer(struct brw_context *brw)
    struct gl_context *ctx = &brw->ctx;
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    /* _NEW_BUFFERS */
-   struct brw_renderbuffer *depth_irb = intel_get_renderbuffer(fb, BUFFER_DEPTH);
-   struct brw_renderbuffer *stencil_irb = intel_get_renderbuffer(fb, BUFFER_STENCIL);
+   struct brw_renderbuffer *depth_irb = brw_get_renderbuffer(fb, BUFFER_DEPTH);
+   struct brw_renderbuffer *stencil_irb = brw_get_renderbuffer(fb, BUFFER_STENCIL);
    struct brw_mipmap_tree *depth_mt = brw_renderbuffer_get_mt(depth_irb);
    struct brw_mipmap_tree *stencil_mt = get_stencil_miptree(stencil_irb);
 

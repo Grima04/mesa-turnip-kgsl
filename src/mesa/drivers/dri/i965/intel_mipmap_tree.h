@@ -37,7 +37,7 @@
  * order, and a texture may change size over time.  Thus, each
  * brw_texture_image has a reference to a miptree that contains the pixel
  * data sized appropriately for it, which will later be referenced by/copied
- * to the brw_texture_object at draw time (intel_finalize_mipmap_tree()) so
+ * to the brw_texture_object at draw time (brw_finalize_mipmap_tree()) so
  * that there's a single miptree for the complete texture.
  */
 
@@ -402,7 +402,7 @@ brw_miptree_create_for_dri_image(struct brw_context *brw,
                                  bool allow_internal_aux);
 
 bool
-intel_update_winsys_renderbuffer_miptree(struct brw_context *intel,
+brw_update_winsys_renderbuffer_miptree(struct brw_context *intel,
                                          struct brw_renderbuffer *irb,
                                          struct brw_mipmap_tree *singlesample_mt,
                                          uint32_t width, uint32_t height,
@@ -423,10 +423,10 @@ brw_miptree_create_for_renderbuffer(struct brw_context *brw,
                                     uint32_t num_samples);
 
 mesa_format
-intel_depth_format_for_depthstencil_format(mesa_format format);
+brw_depth_format_for_depthstencil_format(mesa_format format);
 
 mesa_format
-intel_lower_compressed_format(struct brw_context *brw, mesa_format format);
+brw_lower_compressed_format(struct brw_context *brw, mesa_format format);
 
 unsigned
 brw_get_num_logical_layers(const struct brw_mipmap_tree *mt, unsigned level);
@@ -460,7 +460,7 @@ get_isl_dim_layout(const struct gen_device_info *devinfo,
                    enum isl_tiling tiling, GLenum target);
 
 void
-intel_get_image_dims(struct gl_texture_image *image,
+brw_get_image_dims(struct gl_texture_image *image,
                      int *width, int *height, int *depth);
 
 uint32_t
@@ -661,7 +661,7 @@ brw_miptree_updownsample(struct brw_context *brw,
                            struct brw_mipmap_tree *dst);
 
 void
-intel_update_r8stencil(struct brw_context *brw,
+brw_update_r8stencil(struct brw_context *brw,
                        struct brw_mipmap_tree *mt);
 
 void

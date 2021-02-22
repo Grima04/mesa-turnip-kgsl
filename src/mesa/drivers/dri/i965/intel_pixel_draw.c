@@ -61,7 +61,7 @@ do_blit_drawpixels(struct gl_context * ctx,
 
    DBG("%s\n", __func__);
 
-   if (!intel_check_blit_fragment_ops(ctx, false))
+   if (!brw_check_blit_fragment_ops(ctx, false))
       return false;
 
    if (ctx->DrawBuffer->_NumColorDrawBuffers != 1) {
@@ -69,7 +69,7 @@ do_blit_drawpixels(struct gl_context * ctx,
       return false;
    }
 
-   intel_prepare_render(brw);
+   brw_prepare_render(brw);
 
    struct gl_renderbuffer *rb = ctx->DrawBuffer->_ColorDrawBuffers[0];
    struct brw_renderbuffer *irb = brw_renderbuffer(rb);

@@ -122,7 +122,7 @@ brw_get_renderer_string(const struct brw_screen *screen)
 }
 
 static const GLubyte *
-intel_get_string(struct gl_context * ctx, GLenum name)
+brw_get_string(struct gl_context * ctx, GLenum name)
 {
    const struct brw_context *const brw = brw_context(ctx);
 
@@ -158,7 +158,7 @@ brw_set_background_context(struct gl_context *ctx,
 }
 
 static void
-intel_viewport(struct gl_context *ctx)
+brw_viewport(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
    __DRIcontext *driContext = brw->driContext;
@@ -172,20 +172,18 @@ intel_viewport(struct gl_context *ctx)
 }
 
 static void
-intel_update_framebuffer(struct gl_context *ctx,
-                         struct gl_framebuffer *fb)
+brw_update_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
 {
    struct brw_context *brw = brw_context(ctx);
 
    /* Quantize the derived default number of samples
     */
    fb->DefaultGeometry._NumSamples =
-      intel_quantize_num_samples(brw->screen,
-                                 fb->DefaultGeometry.NumSamples);
+      brw_quantize_num_samples(brw->screen, fb->DefaultGeometry.NumSamples);
 }
 
 static void
-intel_update_state(struct gl_context * ctx)
+brw_update_state(struct gl_context * ctx)
 {
    GLuint new_state = ctx->NewState;
    struct brw_context *brw = brw_context(ctx);
@@ -209,16 +207,16 @@ intel_update_state(struct gl_context * ctx)
       brw->polygon_front_bit = _mesa_polygon_get_front_bit(ctx);
 
    if (new_state & _NEW_BUFFERS) {
-      intel_update_framebuffer(ctx, ctx->DrawBuffer);
+      brw_update_framebuffer(ctx, ctx->DrawBuffer);
       if (ctx->DrawBuffer != ctx->ReadBuffer)
-         intel_update_framebuffer(ctx, ctx->ReadBuffer);
+         brw_update_framebuffer(ctx, ctx->ReadBuffer);
    }
 }
 
 #define flushFront(screen)      ((screen)->image.loader ? (screen)->image.loader->flushFrontBuffer : (screen)->dri2.loader->flushFrontBuffer)
 
 static void
-intel_flush_front(struct gl_context *ctx)
+brw_flush_front(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
    __DRIcontext *driContext = brw->driContext;
@@ -236,12 +234,12 @@ intel_flush_front(struct gl_context *ctx)
           * performance. And no one cares about front-buffer render
           * performance.
           */
-         intel_resolve_for_dri2_flush(brw, driDrawable);
+         brw_resolve_for_dri2_flush(brw, driDrawable);
          brw_batch_flush(brw);
 
          flushFront(dri_screen)(driDrawable, driDrawable->loaderPrivate);
 
-         /* We set the dirty bit in intel_prepare_render() if we're
+         /* We set the dirty bit in brw_prepare_render() if we're
           * front buffer rendering once we get there.
           */
          brw->front_buffer_dirty = false;
@@ -279,18 +277,18 @@ brw_display_shared_buffer(struct brw_context *brw)
 }
 
 static void
-intel_glFlush(struct gl_context *ctx)
+brw_glFlush(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
 
    brw_batch_flush(brw);
-   intel_flush_front(ctx);
+   brw_flush_front(ctx);
    brw_display_shared_buffer(brw);
    brw->need_flush_throttle = true;
 }
 
 static void
-intel_glEnable(struct gl_context *ctx, GLenum cap, GLboolean state)
+brw_glEnable(struct gl_context *ctx, GLenum cap, GLboolean state)
 {
    struct brw_context *brw = brw_context(ctx);
 
@@ -315,11 +313,11 @@ intel_glEnable(struct gl_context *ctx, GLenum cap, GLboolean state)
 }
 
 static void
-intel_finish(struct gl_context * ctx)
+brw_finish(struct gl_context * ctx)
 {
    struct brw_context *brw = brw_context(ctx);
 
-   intel_glFlush(ctx);
+   brw_glFlush(ctx);
 
    if (brw->batch.last_bo)
       brw_bo_wait_rendering(brw->batch.last_bo);
@@ -341,13 +339,13 @@ brw_init_driver_functions(struct brw_context *brw,
     * This should go away with DRI3000.
     */
    if (!brw->driContext->driScreenPriv->dri2.useInvalidate)
-      functions->Viewport = intel_viewport;
+      functions->Viewport = brw_viewport;
 
-   functions->Enable = intel_glEnable;
-   functions->Flush = intel_glFlush;
-   functions->Finish = intel_finish;
-   functions->GetString = intel_get_string;
-   functions->UpdateState = intel_update_state;
+   functions->Enable = brw_glEnable;
+   functions->Flush = brw_glFlush;
+   functions->Finish = brw_finish;
+   functions->GetString = brw_get_string;
+   functions->UpdateState = brw_update_state;
 
    brw_init_draw_functions(functions);
    intelInitTextureFuncs(functions);
@@ -577,7 +575,7 @@ brw_initialize_context_constants(struct brw_context *brw)
       !can_do_mi_math_and_lrr(brw->screen);
 
    int max_samples;
-   const int *msaa_modes = intel_supported_msaa_modes(brw->screen);
+   const int *msaa_modes = brw_supported_msaa_modes(brw->screen);
    const int clamp_max_samples =
       driQueryOptioni(&brw->screen->optionCache, "clamp_max_samples");
 
@@ -1055,7 +1053,7 @@ brwCreateContext(gl_api api,
    /* Reinitialize the context point state.  It depends on ctx->Const values. */
    _mesa_init_point(ctx);
 
-   intel_fbo_init(brw);
+   brw_fbo_init(brw);
 
    brw_batch_init(brw);
 
@@ -1315,8 +1313,7 @@ intelUnbindContext(__DRIcontext * driContextPriv)
  * finds out.
  */
 static void
-intel_gles3_srgb_workaround(struct brw_context *brw,
-                            struct gl_framebuffer *fb)
+brw_gles3_srgb_workaround(struct brw_context *brw, struct gl_framebuffer *fb)
 {
    struct gl_context *ctx = &brw->ctx;
 
@@ -1327,7 +1324,7 @@ intel_gles3_srgb_workaround(struct brw_context *brw,
       struct gl_renderbuffer *rb = fb->Attachment[i].Renderbuffer;
 
       /* Check if sRGB was specifically asked for. */
-      struct brw_renderbuffer *irb = intel_get_renderbuffer(fb, i);
+      struct brw_renderbuffer *irb = brw_get_renderbuffer(fb, i);
       if (irb && irb->need_srgb)
          return;
 
@@ -1372,14 +1369,14 @@ intelMakeCurrent(__DRIcontext * driContextPriv,
        * the format before the renderbuffer's miptree get's allocated, otherwise
        * the formats of the renderbuffer and its miptree will differ.
        */
-      intel_gles3_srgb_workaround(brw, fb);
-      intel_gles3_srgb_workaround(brw, readFb);
+      brw_gles3_srgb_workaround(brw, fb);
+      brw_gles3_srgb_workaround(brw, readFb);
 
       /* If the context viewport hasn't been initialized, force a call out to
        * the loader to get buffers so we have a drawable size for the initial
        * viewport. */
       if (!brw->ctx.ViewportInitialized)
-         intel_prepare_render(brw);
+         brw_prepare_render(brw);
 
       _mesa_make_current(ctx, fb, readFb);
    } else {
@@ -1392,8 +1389,8 @@ intelMakeCurrent(__DRIcontext * driContextPriv,
 }
 
 void
-intel_resolve_for_dri2_flush(struct brw_context *brw,
-                             __DRIdrawable *drawable)
+brw_resolve_for_dri2_flush(struct brw_context *brw,
+                           __DRIdrawable *drawable)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
@@ -1416,7 +1413,7 @@ intel_resolve_for_dri2_flush(struct brw_context *brw,
    };
 
    for (int i = 0; i < 2; ++i) {
-      rb = intel_get_renderbuffer(fb, buffers[i]);
+      rb = brw_get_renderbuffer(fb, buffers[i]);
       if (rb == NULL || rb->mt == NULL)
          continue;
       if (rb->mt->surf.samples == 1) {
@@ -1445,29 +1442,29 @@ intel_resolve_for_dri2_flush(struct brw_context *brw,
 }
 
 static unsigned
-intel_bits_per_pixel(const struct brw_renderbuffer *rb)
+brw_bits_per_pixel(const struct brw_renderbuffer *rb)
 {
-   return _mesa_get_format_bytes(intel_rb_format(rb)) * 8;
+   return _mesa_get_format_bytes(brw_rb_format(rb)) * 8;
 }
 
 static void
-intel_query_dri2_buffers(struct brw_context *brw,
-                         __DRIdrawable *drawable,
-                         __DRIbuffer **buffers,
-                         int *count);
+brw_query_dri2_buffers(struct brw_context *brw,
+                       __DRIdrawable *drawable,
+                       __DRIbuffer **buffers,
+                       int *count);
 
 static void
-intel_process_dri2_buffer(struct brw_context *brw,
-                          __DRIdrawable *drawable,
-                          __DRIbuffer *buffer,
-                          struct brw_renderbuffer *rb,
-                          const char *buffer_name);
+brw_process_dri2_buffer(struct brw_context *brw,
+                        __DRIdrawable *drawable,
+                        __DRIbuffer *buffer,
+                        struct brw_renderbuffer *rb,
+                        const char *buffer_name);
 
 static void
-intel_update_image_buffers(struct brw_context *brw, __DRIdrawable *drawable);
+brw_update_image_buffers(struct brw_context *brw, __DRIdrawable *drawable);
 
 static void
-intel_update_dri2_buffers(struct brw_context *brw, __DRIdrawable *drawable)
+brw_update_dri2_buffers(struct brw_context *brw, __DRIdrawable *drawable)
 {
    struct gl_framebuffer *fb = drawable->driverPrivate;
    struct brw_renderbuffer *rb;
@@ -1483,7 +1480,7 @@ intel_update_dri2_buffers(struct brw_context *brw, __DRIdrawable *drawable)
    if (INTEL_DEBUG & DEBUG_DRI)
       fprintf(stderr, "enter %s, drawable %p\n", __func__, drawable);
 
-   intel_query_dri2_buffers(brw, drawable, &buffers, &count);
+   brw_query_dri2_buffers(brw, drawable, &buffers, &count);
 
    if (buffers == NULL)
       return;
@@ -1491,17 +1488,17 @@ intel_update_dri2_buffers(struct brw_context *brw, __DRIdrawable *drawable)
    for (int i = 0; i < count; i++) {
        switch (buffers[i].attachment) {
        case __DRI_BUFFER_FRONT_LEFT:
-           rb = intel_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
+           rb = brw_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
            region_name = "dri2 front buffer";
            break;
 
        case __DRI_BUFFER_FAKE_FRONT_LEFT:
-           rb = intel_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
+           rb = brw_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
            region_name = "dri2 fake front buffer";
            break;
 
        case __DRI_BUFFER_BACK_LEFT:
-           rb = intel_get_renderbuffer(fb, BUFFER_BACK_LEFT);
+           rb = brw_get_renderbuffer(fb, BUFFER_BACK_LEFT);
            region_name = "dri2 back buffer";
            break;
 
@@ -1517,13 +1514,13 @@ intel_update_dri2_buffers(struct brw_context *brw, __DRIdrawable *drawable)
            return;
        }
 
-       intel_process_dri2_buffer(brw, drawable, &buffers[i], rb, region_name);
+       brw_process_dri2_buffer(brw, drawable, &buffers[i], rb, region_name);
    }
 
 }
 
 void
-intel_update_renderbuffers(__DRIcontext *context, __DRIdrawable *drawable)
+brw_update_renderbuffers(__DRIcontext *context, __DRIdrawable *drawable)
 {
    struct brw_context *brw = context->driverPrivate;
    __DRIscreen *dri_screen = brw->screen->driScrnPriv;
@@ -1537,9 +1534,9 @@ intel_update_renderbuffers(__DRIcontext *context, __DRIdrawable *drawable)
       fprintf(stderr, "enter %s, drawable %p\n", __func__, drawable);
 
    if (dri_screen->image.loader)
-      intel_update_image_buffers(brw, drawable);
+      brw_update_image_buffers(brw, drawable);
    else
-      intel_update_dri2_buffers(brw, drawable);
+      brw_update_dri2_buffers(brw, drawable);
 
    driUpdateFramebufferSize(&brw->ctx, drawable);
 }
@@ -1549,7 +1546,7 @@ intel_update_renderbuffers(__DRIcontext *context, __DRIdrawable *drawable)
  * state is required.
  */
 void
-intel_prepare_render(struct brw_context *brw)
+brw_prepare_render(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
    __DRIcontext *driContext = brw->driContext;
@@ -1558,14 +1555,14 @@ intel_prepare_render(struct brw_context *brw)
    drawable = driContext->driDrawablePriv;
    if (drawable && drawable->dri2.stamp != driContext->dri2.draw_stamp) {
       if (drawable->lastStamp != drawable->dri2.stamp)
-         intel_update_renderbuffers(driContext, drawable);
+         brw_update_renderbuffers(driContext, drawable);
       driContext->dri2.draw_stamp = drawable->dri2.stamp;
    }
 
    drawable = driContext->driReadablePriv;
    if (drawable && drawable->dri2.stamp != driContext->dri2.read_stamp) {
       if (drawable->lastStamp != drawable->dri2.stamp)
-         intel_update_renderbuffers(driContext, drawable);
+         brw_update_renderbuffers(driContext, drawable);
       driContext->dri2.read_stamp = drawable->dri2.stamp;
    }
 
@@ -1591,21 +1588,21 @@ intel_prepare_render(struct brw_context *brw)
  * attached to the drawable's framebuffer. Then request the buffers with
  * DRI2GetBuffers() or DRI2GetBuffersWithFormat().
  *
- * This is called from intel_update_renderbuffers().
+ * This is called from brw_update_renderbuffers().
  *
  * \param drawable      Drawable whose buffers are queried.
  * \param buffers       [out] List of buffers returned by DRI2 query.
  * \param buffer_count  [out] Number of buffers returned.
  *
- * \see intel_update_renderbuffers()
+ * \see brw_update_renderbuffers()
  * \see DRI2GetBuffers()
  * \see DRI2GetBuffersWithFormat()
  */
 static void
-intel_query_dri2_buffers(struct brw_context *brw,
-                         __DRIdrawable *drawable,
-                         __DRIbuffer **buffers,
-                         int *buffer_count)
+brw_query_dri2_buffers(struct brw_context *brw,
+                       __DRIdrawable *drawable,
+                       __DRIbuffer **buffers,
+                       int *buffer_count)
 {
    __DRIscreen *dri_screen = brw->screen->driScrnPriv;
    struct gl_framebuffer *fb = drawable->driverPrivate;
@@ -1615,8 +1612,8 @@ intel_query_dri2_buffers(struct brw_context *brw,
    struct brw_renderbuffer *front_rb;
    struct brw_renderbuffer *back_rb;
 
-   front_rb = intel_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
-   back_rb = intel_get_renderbuffer(fb, BUFFER_BACK_LEFT);
+   front_rb = brw_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
+   back_rb = brw_get_renderbuffer(fb, BUFFER_BACK_LEFT);
 
    memset(attachments, 0, sizeof(attachments));
    if ((_mesa_is_front_buffer_drawing(fb) ||
@@ -1629,10 +1626,10 @@ intel_query_dri2_buffers(struct brw_context *brw,
        * real front buffer.
        */
       brw_batch_flush(brw);
-      intel_flush_front(&brw->ctx);
+      brw_flush_front(&brw->ctx);
 
       attachments[i++] = __DRI_BUFFER_FRONT_LEFT;
-      attachments[i++] = intel_bits_per_pixel(front_rb);
+      attachments[i++] = brw_bits_per_pixel(front_rb);
    } else if (front_rb && brw->front_buffer_dirty) {
       /* We have pending front buffer rendering, but we aren't querying for a
        * front buffer.  If the front buffer we have is a fake front buffer,
@@ -1641,12 +1638,12 @@ intel_query_dri2_buffers(struct brw_context *brw,
        * landed in the real front buffer.
        */
       brw_batch_flush(brw);
-      intel_flush_front(&brw->ctx);
+      brw_flush_front(&brw->ctx);
    }
 
    if (back_rb) {
       attachments[i++] = __DRI_BUFFER_BACK_LEFT;
-      attachments[i++] = intel_bits_per_pixel(back_rb);
+      attachments[i++] = brw_bits_per_pixel(back_rb);
    }
 
    assert(i <= ARRAY_SIZE(attachments));
@@ -1663,7 +1660,7 @@ intel_query_dri2_buffers(struct brw_context *brw,
 /**
  * \brief Assign a DRI buffer's DRM region to a renderbuffer.
  *
- * This is called from intel_update_renderbuffers().
+ * This is called from brw_update_renderbuffers().
  *
  * \par Note:
  *    DRI buffers whose attachment point is DRI2BufferStencil or
@@ -1672,14 +1669,14 @@ intel_query_dri2_buffers(struct brw_context *brw,
  * \param buffer_name is a human readable name, such as "dri2 front buffer",
  *        that is passed to brw_bo_gem_create_from_name().
  *
- * \see intel_update_renderbuffers()
+ * \see brw_update_renderbuffers()
  */
 static void
-intel_process_dri2_buffer(struct brw_context *brw,
-                          __DRIdrawable *drawable,
-                          __DRIbuffer *buffer,
-                          struct brw_renderbuffer *rb,
-                          const char *buffer_name)
+brw_process_dri2_buffer(struct brw_context *brw,
+                        __DRIdrawable *drawable,
+                        __DRIbuffer *buffer,
+                        struct brw_renderbuffer *rb,
+                        const char *buffer_name)
 {
    struct gl_framebuffer *fb = drawable->driverPrivate;
    struct brw_bo *bo;
@@ -1702,7 +1699,7 @@ intel_process_dri2_buffer(struct brw_context *brw,
    uint32_t old_name = 0;
    if (last_mt) {
        /* The bo already has a name because the miptree was created by a
-	* previous call to intel_process_dri2_buffer(). If a bo already has a
+	* previous call to brw_process_dri2_buffer(). If a bo already has a
 	* name, then brw_bo_flink() is a low-cost getter.  It does not
 	* create a new name.
 	*/
@@ -1737,7 +1734,7 @@ intel_process_dri2_buffer(struct brw_context *brw,
    struct brw_mipmap_tree *mt =
       brw_miptree_create_for_bo(brw,
                                 bo,
-                                intel_rb_format(rb),
+                                brw_rb_format(rb),
                                 0,
                                 drawable->w,
                                 drawable->h,
@@ -1756,7 +1753,7 @@ intel_process_dri2_buffer(struct brw_context *brw,
     */
    bo->cache_coherent = false;
 
-   if (!intel_update_winsys_renderbuffer_miptree(brw, rb, mt,
+   if (!brw_update_winsys_renderbuffer_miptree(brw, rb, mt,
                                                  drawable->w, drawable->h,
                                                  buffer->pitch)) {
       brw_bo_unreference(bo);
@@ -1783,21 +1780,21 @@ intel_process_dri2_buffer(struct brw_context *brw,
  * attached to the drawable's framebuffer. Then request the buffers from
  * the image loader
  *
- * This is called from intel_update_renderbuffers().
+ * This is called from brw_update_renderbuffers().
  *
  * \param drawable      Drawable whose buffers are queried.
  * \param buffers       [out] List of buffers returned by DRI2 query.
  * \param buffer_count  [out] Number of buffers returned.
  *
- * \see intel_update_renderbuffers()
+ * \see brw_update_renderbuffers()
  */
 
 static void
-intel_update_image_buffer(struct brw_context *intel,
-                          __DRIdrawable *drawable,
-                          struct brw_renderbuffer *rb,
-                          __DRIimage *buffer,
-                          enum __DRIimageBufferMask buffer_type)
+brw_update_image_buffer(struct brw_context *intel,
+                        __DRIdrawable *drawable,
+                        struct brw_renderbuffer *rb,
+                        __DRIimage *buffer,
+                        enum __DRIimageBufferMask buffer_type)
 {
    struct gl_framebuffer *fb = drawable->driverPrivate;
 
@@ -1832,12 +1829,12 @@ intel_update_image_buffer(struct brw_context *intel,
 
    struct brw_mipmap_tree *mt =
       brw_miptree_create_for_dri_image(intel, buffer, GL_TEXTURE_2D,
-                                       intel_rb_format(rb),
+                                       brw_rb_format(rb),
                                        allow_internal_aux);
    if (!mt)
       return;
 
-   if (!intel_update_winsys_renderbuffer_miptree(intel, rb, mt,
+   if (!brw_update_winsys_renderbuffer_miptree(intel, rb, mt,
                                                  buffer->width, buffer->height,
                                                  buffer->pitch)) {
       brw_miptree_release(&mt);
@@ -1881,7 +1878,7 @@ intel_update_image_buffer(struct brw_context *intel,
 }
 
 static void
-intel_update_image_buffers(struct brw_context *brw, __DRIdrawable *drawable)
+brw_update_image_buffers(struct brw_context *brw, __DRIdrawable *drawable)
 {
    struct gl_framebuffer *fb = drawable->driverPrivate;
    __DRIscreen *dri_screen = brw->screen->driScrnPriv;
@@ -1892,13 +1889,13 @@ intel_update_image_buffers(struct brw_context *brw, __DRIdrawable *drawable)
    uint32_t buffer_mask = 0;
    int ret;
 
-   front_rb = intel_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
-   back_rb = intel_get_renderbuffer(fb, BUFFER_BACK_LEFT);
+   front_rb = brw_get_renderbuffer(fb, BUFFER_FRONT_LEFT);
+   back_rb = brw_get_renderbuffer(fb, BUFFER_BACK_LEFT);
 
    if (back_rb)
-      format = intel_rb_format(back_rb);
+      format = brw_rb_format(back_rb);
    else if (front_rb)
-      format = intel_rb_format(front_rb);
+      format = brw_rb_format(front_rb);
    else
       return;
 
@@ -1922,32 +1919,23 @@ intel_update_image_buffers(struct brw_context *brw, __DRIdrawable *drawable)
    if (images.image_mask & __DRI_IMAGE_BUFFER_FRONT) {
       drawable->w = images.front->width;
       drawable->h = images.front->height;
-      intel_update_image_buffer(brw,
-                                drawable,
-                                front_rb,
-                                images.front,
-                                __DRI_IMAGE_BUFFER_FRONT);
+      brw_update_image_buffer(brw, drawable, front_rb, images.front,
+                              __DRI_IMAGE_BUFFER_FRONT);
    }
 
    if (images.image_mask & __DRI_IMAGE_BUFFER_BACK) {
       drawable->w = images.back->width;
       drawable->h = images.back->height;
-      intel_update_image_buffer(brw,
-                                drawable,
-                                back_rb,
-                                images.back,
-                                __DRI_IMAGE_BUFFER_BACK);
+      brw_update_image_buffer(brw, drawable, back_rb, images.back,
+                              __DRI_IMAGE_BUFFER_BACK);
    }
 
    if (images.image_mask & __DRI_IMAGE_BUFFER_SHARED) {
       assert(images.image_mask == __DRI_IMAGE_BUFFER_SHARED);
       drawable->w = images.back->width;
       drawable->h = images.back->height;
-      intel_update_image_buffer(brw,
-                                drawable,
-                                back_rb,
-                                images.back,
-                                __DRI_IMAGE_BUFFER_SHARED);
+      brw_update_image_buffer(brw, drawable, back_rb, images.back,
+                              __DRI_IMAGE_BUFFER_SHARED);
       brw->is_shared_buffer_bound = true;
    } else {
       brw->is_shared_buffer_bound = false;

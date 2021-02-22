@@ -52,7 +52,7 @@ brw_miptree_create_for_teximage(struct brw_context *brw,
                                 struct brw_texture_image *intelImage,
                                 enum brw_miptree_create_flags flags);
 
-void intel_finalize_mipmap_tree(struct brw_context *brw,
+void brw_finalize_mipmap_tree(struct brw_context *brw,
                                 struct gl_texture_object *tex_obj);
 
 #endif

@@ -33,7 +33,7 @@
 #include "brw_defines.h"
 
 int
-intel_translate_shadow_compare_func(GLenum func)
+brw_translate_shadow_compare_func(GLenum func)
 {
    /* GL specifies the result of shadow comparisons as:
     *     1     if   ref <op> texel,
@@ -69,7 +69,7 @@ intel_translate_shadow_compare_func(GLenum func)
 }
 
 int
-intel_translate_compare_func(GLenum func)
+brw_translate_compare_func(GLenum func)
 {
    switch (func) {
    case GL_NEVER:
@@ -94,7 +94,7 @@ intel_translate_compare_func(GLenum func)
 }
 
 int
-intel_translate_stencil_op(GLenum op)
+brw_translate_stencil_op(GLenum op)
 {
    switch (op) {
    case GL_KEEP:
