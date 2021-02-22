@@ -78,7 +78,7 @@ brw_get_bo_mocs(const struct gen_device_info *devinfo, struct brw_bo *bo)
 }
 
 static void
-get_isl_surf(struct brw_context *brw, struct intel_mipmap_tree *mt,
+get_isl_surf(struct brw_context *brw, struct brw_mipmap_tree *mt,
              GLenum target, struct isl_view *view,
              uint32_t *tile_x, uint32_t *tile_y,
              uint32_t *offset, struct isl_surf *surf)
@@ -107,9 +107,9 @@ get_isl_surf(struct brw_context *brw, struct intel_mipmap_tree *mt,
    assert(view->levels == 1 && view->array_len == 1);
    assert(*tile_x == 0 && *tile_y == 0);
 
-   *offset += intel_miptree_get_tile_offsets(mt, view->base_level,
-                                             view->base_array_layer,
-                                             tile_x, tile_y);
+   *offset += brw_miptree_get_tile_offsets(mt, view->base_level,
+                                           view->base_array_layer,
+                                           tile_x, tile_y);
 
    /* Minify the logical dimensions of the texture. */
    const unsigned l = view->base_level - mt->first_level;
@@ -135,7 +135,7 @@ get_isl_surf(struct brw_context *brw, struct intel_mipmap_tree *mt,
 
 static void
 brw_emit_surface_state(struct brw_context *brw,
-                       struct intel_mipmap_tree *mt,
+                       struct brw_mipmap_tree *mt,
                        GLenum target, struct isl_view view,
                        enum isl_aux_usage aux_usage,
                        uint32_t *surf_offset, int surf_index,
@@ -166,7 +166,7 @@ brw_emit_surface_state(struct brw_context *brw,
       /* We only really need a clear color if we also have an auxiliary
        * surface.  Without one, it does nothing.
        */
-      clear_color = intel_miptree_get_clear_color(mt, &clear_bo, &clear_offset);
+      clear_color = brw_miptree_get_clear_color(mt, &clear_bo, &clear_offset);
    }
 
    void *state = brw_state_batch(brw,
@@ -234,7 +234,7 @@ gen6_update_renderbuffer_surface(struct brw_context *brw,
 {
    struct gl_context *ctx = &brw->ctx;
    struct brw_renderbuffer *irb = brw_renderbuffer(rb);
-   struct intel_mipmap_tree *mt = irb->mt;
+   struct brw_mipmap_tree *mt = irb->mt;
 
    assert(brw_render_target_supported(brw, rb));
 
@@ -477,7 +477,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
 
    } else {
       struct brw_texture_object *intel_obj = brw_texture_object(obj);
-      struct intel_mipmap_tree *mt = intel_obj->mt;
+      struct brw_mipmap_tree *mt = intel_obj->mt;
 
       if (plane > 0) {
          if (mt->plane[plane - 1] == NULL)
@@ -517,7 +517,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
           * is safe because texture views aren't allowed on depth/stencil.
           */
          mesa_fmt = mt->format;
-      } else if (intel_miptree_has_etc_shadow(brw, mt)) {
+      } else if (brw_miptree_has_etc_shadow(brw, mt)) {
          mesa_fmt = mt->shadow_mt->format;
       } else if (plane > 0) {
          mesa_fmt = mt->format;
@@ -578,7 +578,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
          assert(mt->shadow_mt && !mt->shadow_needs_update);
          mt = mt->shadow_mt;
          format = ISL_FORMAT_R8_UINT;
-      } else if (intel_miptree_needs_fake_etc(brw, mt)) {
+      } else if (brw_miptree_needs_fake_etc(brw, mt)) {
          assert(mt->shadow_mt && !mt->shadow_needs_update);
          mt = mt->shadow_mt;
       }
@@ -611,8 +611,8 @@ static void brw_update_texture_surface(struct gl_context *ctx,
          view.usage |= ISL_SURF_USAGE_CUBE_BIT;
 
       enum isl_aux_usage aux_usage =
-         intel_miptree_texture_aux_usage(brw, mt, format,
-                                         brw->gen9_astc5x5_wa_tex_mask);
+         brw_miptree_texture_aux_usage(brw, mt, format,
+                                       brw->gen9_astc5x5_wa_tex_mask);
 
       brw_emit_surface_state(brw, mt, mt->target, view, aux_usage,
                              surf_offset, surf_index,
@@ -909,7 +909,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
    struct brw_renderbuffer *irb = brw_renderbuffer(rb);
-   struct intel_mipmap_tree *mt = irb->mt;
+   struct brw_mipmap_tree *mt = irb->mt;
    uint32_t *surf;
    uint32_t tile_x, tile_y;
    enum isl_format format;
@@ -1118,8 +1118,8 @@ update_renderbuffer_read_surfaces(struct brw_context *brw)
             };
 
             enum isl_aux_usage aux_usage =
-               intel_miptree_texture_aux_usage(brw, irb->mt, format,
-                                               brw->gen9_astc5x5_wa_tex_mask);
+               brw_miptree_texture_aux_usage(brw, irb->mt, format,
+                                             brw->gen9_astc5x5_wa_tex_mask);
             if (brw->draw_aux_usage[i] == ISL_AUX_USAGE_NONE)
                aux_usage = ISL_AUX_USAGE_NONE;
 
@@ -1542,7 +1542,7 @@ update_image_surface(struct brw_context *brw,
 
       } else {
          struct brw_texture_object *intel_obj = brw_texture_object(obj);
-         struct intel_mipmap_tree *mt = intel_obj->mt;
+         struct brw_mipmap_tree *mt = intel_obj->mt;
 
          unsigned base_layer, num_layers;
          if (u->Layered) {
@@ -1579,10 +1579,10 @@ update_image_surface(struct brw_context *brw,
 
          } else {
             const int surf_index = surf_offset - &brw->wm.base.surf_offset[0];
-            assert(!intel_miptree_has_color_unresolved(mt,
-                                                       view.base_level, 1,
-                                                       view.base_array_layer,
-                                                       view.array_len));
+            assert(!brw_miptree_has_color_unresolved(mt,
+                                                     view.base_level, 1,
+                                                     view.base_array_layer,
+                                                     view.array_len));
             brw_emit_surface_state(brw, mt, mt->target, view,
                                    ISL_AUX_USAGE_NONE,
                                    surf_offset, surf_index,

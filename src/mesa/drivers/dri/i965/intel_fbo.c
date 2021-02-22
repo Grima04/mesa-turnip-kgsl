@@ -61,8 +61,8 @@ intel_delete_renderbuffer(struct gl_context *ctx, struct gl_renderbuffer *rb)
 
    assert(irb);
 
-   intel_miptree_release(&irb->mt);
-   intel_miptree_release(&irb->singlesample_mt);
+   brw_miptree_release(&irb->mt);
+   brw_miptree_release(&irb->singlesample_mt);
 
    _mesa_delete_renderbuffer(ctx, rb);
 }
@@ -78,7 +78,7 @@ brw_renderbuffer_downsample(struct brw_context *brw,
 {
    if (!irb->need_downsample)
       return;
-   intel_miptree_updownsample(brw, irb->mt, irb->singlesample_mt);
+   brw_miptree_updownsample(brw, irb->mt, irb->singlesample_mt);
    irb->need_downsample = false;
 }
 
@@ -93,7 +93,7 @@ brw_renderbuffer_upsample(struct brw_context *brw,
 {
    assert(!irb->need_downsample);
 
-   intel_miptree_updownsample(brw, irb->singlesample_mt, irb->mt);
+   brw_miptree_updownsample(brw, irb->singlesample_mt, irb->mt);
 }
 
 /**
@@ -111,7 +111,7 @@ intel_map_renderbuffer(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct swrast_renderbuffer *srb = (struct swrast_renderbuffer *)rb;
    struct brw_renderbuffer *irb = brw_renderbuffer(rb);
-   struct intel_mipmap_tree *mt;
+   struct brw_mipmap_tree *mt;
    void *map;
    ptrdiff_t stride;
 
@@ -142,9 +142,9 @@ intel_map_renderbuffer(struct gl_context *ctx,
    if (rb->NumSamples > 1) {
       if (!irb->singlesample_mt) {
          irb->singlesample_mt =
-            intel_miptree_create_for_renderbuffer(brw, irb->mt->format,
-                                                  rb->Width, rb->Height,
-                                                  1 /*num_samples*/);
+            brw_miptree_create_for_renderbuffer(brw, irb->mt->format,
+                                                rb->Width, rb->Height,
+                                                1 /*num_samples*/);
          if (!irb->singlesample_mt)
             goto fail;
          irb->singlesample_mt_is_tmp = true;
@@ -167,8 +167,8 @@ intel_map_renderbuffer(struct gl_context *ctx,
       y = rb->Height - y - h;
    }
 
-   intel_miptree_map(brw, mt, irb->mt_level, irb->mt_layer,
-		     x, y, w, h, mode, &map, &stride);
+   brw_miptree_map(brw, mt, irb->mt_level, irb->mt_layer,
+                   x, y, w, h, mode, &map, &stride);
 
    if (flip_y) {
       map += (h - 1) * stride;
@@ -198,7 +198,7 @@ intel_unmap_renderbuffer(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct swrast_renderbuffer *srb = (struct swrast_renderbuffer *)rb;
    struct brw_renderbuffer *irb = brw_renderbuffer(rb);
-   struct intel_mipmap_tree *mt;
+   struct brw_mipmap_tree *mt;
 
    DBG("%s: rb %d (%s)\n", __func__,
        rb->Name, _mesa_get_format_name(rb->Format));
@@ -215,7 +215,7 @@ intel_unmap_renderbuffer(struct gl_context *ctx,
       mt = irb->mt;
    }
 
-   intel_miptree_unmap(brw, mt, irb->mt_level, irb->mt_layer);
+   brw_miptree_unmap(brw, mt, irb->mt_level, irb->mt_layer);
 
    if (irb->need_map_upsample) {
       brw_renderbuffer_upsample(brw, irb);
@@ -223,7 +223,7 @@ intel_unmap_renderbuffer(struct gl_context *ctx,
    }
 
    if (irb->singlesample_mt_is_tmp)
-      intel_miptree_release(&irb->singlesample_mt);
+      brw_miptree_release(&irb->singlesample_mt);
 }
 
 
@@ -295,7 +295,7 @@ intel_alloc_private_renderbuffer_storage(struct gl_context * ctx, struct gl_rend
    rb->Height = height;
    rb->_BaseFormat = _mesa_get_format_base_format(rb->Format);
 
-   intel_miptree_release(&irb->mt);
+   brw_miptree_release(&irb->mt);
 
    DBG("%s: %s: %s (%dx%d)\n", __func__,
        _mesa_enum_to_string(internalFormat),
@@ -304,9 +304,9 @@ intel_alloc_private_renderbuffer_storage(struct gl_context * ctx, struct gl_rend
    if (width == 0 || height == 0)
       return true;
 
-   irb->mt = intel_miptree_create_for_renderbuffer(brw, rb->Format,
-						   width, height,
-                                                   MAX2(rb->NumSamples, 1));
+   irb->mt = brw_miptree_create_for_renderbuffer(brw, rb->Format,
+                                                 width, height,
+                                                 MAX2(rb->NumSamples, 1));
    if (!irb->mt)
       return false;
 
@@ -392,15 +392,15 @@ intel_image_target_renderbuffer_storage(struct gl_context *ctx,
    }
 
    irb = brw_renderbuffer(rb);
-   intel_miptree_release(&irb->mt);
+   brw_miptree_release(&irb->mt);
 
    /* Disable creation of the miptree's aux buffers because the driver exposes
     * no EGL API to manage them. That is, there is no API for resolving the aux
     * buffer's content to the main buffer nor for invalidating the aux buffer's
     * content.
     */
-   irb->mt = intel_miptree_create_for_dri_image(brw, image, GL_TEXTURE_2D,
-                                                rb->Format, false);
+   irb->mt = brw_miptree_create_for_dri_image(brw, image, GL_TEXTURE_2D,
+                                              rb->Format, false);
    if (!irb->mt)
       return;
 
@@ -534,7 +534,7 @@ brw_renderbuffer_update_wrapper(struct brw_context *brw,
 {
    struct gl_renderbuffer *rb = &irb->Base.Base;
    struct brw_texture_image *intel_image = brw_texture_image(image);
-   struct intel_mipmap_tree *mt = intel_image->mt;
+   struct brw_mipmap_tree *mt = intel_image->mt;
    int level = image->Level;
 
    rb->AllocStorage = intel_nop_alloc_storage;
@@ -543,7 +543,7 @@ brw_renderbuffer_update_wrapper(struct brw_context *brw,
    layer += image->TexObject->Attrib.MinLayer;
    level += image->TexObject->Attrib.MinLevel;
 
-   intel_miptree_check_level_layer(mt, level, layer);
+   brw_miptree_check_level_layer(mt, level, layer);
    irb->mt_level = level;
    irb->mt_layer = layer;
 
@@ -557,7 +557,7 @@ brw_renderbuffer_update_wrapper(struct brw_context *brw,
                             mt->surf.logical_level0_px.array_len;
    }
 
-   intel_miptree_reference(&irb->mt, mt);
+   brw_miptree_reference(&irb->mt, mt);
 
    brw_renderbuffer_set_draw_offset(irb);
 
@@ -570,10 +570,8 @@ brw_renderbuffer_set_draw_offset(struct brw_renderbuffer *irb)
    unsigned int dst_x, dst_y;
 
    /* compute offset of the particular 2D image within the texture region */
-   intel_miptree_get_image_offset(irb->mt,
-				  irb->mt_level,
-				  irb->mt_layer,
-				  &dst_x, &dst_y);
+   brw_miptree_get_image_offset(irb->mt, irb->mt_level, irb->mt_layer,
+				&dst_x, &dst_y);
 
    irb->draw_x = dst_x;
    irb->draw_y = dst_y;
@@ -595,7 +593,7 @@ intel_render_texture(struct gl_context * ctx,
    struct brw_renderbuffer *irb = brw_renderbuffer(rb);
    struct gl_texture_image *image = rb->TexImage;
    struct brw_texture_image *intel_image = brw_texture_image(image);
-   struct intel_mipmap_tree *mt = intel_image->mt;
+   struct brw_mipmap_tree *mt = intel_image->mt;
    int layer;
 
    (void) fb;
@@ -615,7 +613,7 @@ intel_render_texture(struct gl_context * ctx,
       return;
    }
 
-   intel_miptree_check_level_layer(mt, att->TextureLevel, layer);
+   brw_miptree_check_level_layer(mt, att->TextureLevel, layer);
 
    if (!brw_renderbuffer_update_wrapper(brw, irb, image, layer, att->Layered)) {
        _swrast_render_texture(ctx, fb, att);
@@ -654,7 +652,7 @@ intel_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
       intel_get_renderbuffer(fb, BUFFER_DEPTH);
    struct brw_renderbuffer *stencilRb =
       intel_get_renderbuffer(fb, BUFFER_STENCIL);
-   struct intel_mipmap_tree *depth_mt = NULL, *stencil_mt = NULL;
+   struct brw_mipmap_tree *depth_mt = NULL, *stencil_mt = NULL;
    unsigned i;
 
    DBG("%s() on fb %p (%s)\n", __func__,
@@ -867,15 +865,15 @@ intel_blit_framebuffer_with_blitter(struct gl_context *ctx,
             return mask;
          }
 
-         if (!intel_miptree_blit(brw,
-                                 src_irb->mt,
-                                 src_irb->mt_level, src_irb->mt_layer,
-                                 srcX0, srcY0, readFb->FlipY,
-                                 dst_irb->mt,
-                                 dst_irb->mt_level, dst_irb->mt_layer,
-                                 dstX0, dstY0, drawFb->FlipY,
-                                 dstX1 - dstX0, dstY1 - dstY0,
-                                 COLOR_LOGICOP_COPY)) {
+         if (!brw_miptree_blit(brw,
+                               src_irb->mt,
+                               src_irb->mt_level, src_irb->mt_layer,
+                               srcX0, srcY0, readFb->FlipY,
+                               dst_irb->mt,
+                               dst_irb->mt_level, dst_irb->mt_layer,
+                               dstX0, dstY0, drawFb->FlipY,
+                               dstX1 - dstX0, dstY1 - dstY0,
+                               COLOR_LOGICOP_COPY)) {
             perf_debug("glBlitFramebuffer(): unknown blit failure.  "
                        "Falling back to software rendering.\n");
             return mask;
@@ -955,7 +953,7 @@ intel_blit_framebuffer(struct gl_context *ctx,
 bool
 brw_renderbuffer_has_hiz(struct brw_renderbuffer *irb)
 {
-   return intel_miptree_level_has_hiz(irb->mt, irb->mt_level);
+   return brw_miptree_level_has_hiz(irb->mt, irb->mt_level);
 }
 
 void
@@ -965,26 +963,27 @@ brw_renderbuffer_move_to_temp(struct brw_context *brw,
 {
    struct gl_renderbuffer *rb =&irb->Base.Base;
    struct brw_texture_image *intel_image = brw_texture_image(rb->TexImage);
-   struct intel_mipmap_tree *new_mt;
+   struct brw_mipmap_tree *new_mt;
    int width, height, depth;
 
    intel_get_image_dims(rb->TexImage, &width, &height, &depth);
 
    assert(irb->align_wa_mt == NULL);
-   new_mt = intel_miptree_create(brw, GL_TEXTURE_2D,
-                                 intel_image->base.Base.TexFormat,
-                                 0, 0,
-                                 width, height, 1,
-                                 irb->mt->surf.samples,
-                                 MIPTREE_CREATE_BUSY);
+   new_mt = brw_miptree_create(brw, GL_TEXTURE_2D,
+                               intel_image->base.Base.TexFormat,
+                               0, 0,
+                               width, height, 1,
+                               irb->mt->surf.samples,
+                               MIPTREE_CREATE_BUSY);
 
-   if (!invalidate)
-      intel_miptree_copy_slice(brw, intel_image->mt,
-                               intel_image->base.Base.Level, irb->mt_layer,
-                               new_mt, 0, 0);
+   if (!invalidate) {
+      brw_miptree_copy_slice(brw, intel_image->mt,
+                             intel_image->base.Base.Level, irb->mt_layer,
+                             new_mt, 0, 0);
+   }
 
-   intel_miptree_reference(&irb->align_wa_mt, new_mt);
-   intel_miptree_release(&new_mt);
+   brw_miptree_reference(&irb->align_wa_mt, new_mt);
+   brw_miptree_release(&new_mt);
 
    irb->draw_x = 0;
    irb->draw_y = 0;

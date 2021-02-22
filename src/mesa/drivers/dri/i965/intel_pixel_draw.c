@@ -83,7 +83,7 @@ do_blit_drawpixels(struct gl_context * ctx,
    src_format = _mesa_get_srgb_format_linear(src_format);
    dst_format = _mesa_get_srgb_format_linear(dst_format);
 
-   if (!intel_miptree_blit_compatible_formats(src_format, dst_format)) {
+   if (!brw_miptree_blit_compatible_formats(src_format, dst_format)) {
       DBG("%s: bad format for blit\n", __func__);
       return false;
    }
@@ -111,8 +111,8 @@ do_blit_drawpixels(struct gl_context * ctx,
    src_buffer = intel_bufferobj_buffer(brw, src, src_offset,
                                        height * src_stride, false);
 
-   struct intel_mipmap_tree *pbo_mt =
-      intel_miptree_create_for_bo(brw,
+   struct brw_mipmap_tree *pbo_mt =
+      brw_miptree_create_for_bo(brw,
                                   src_buffer,
                                   irb->mt->format,
                                   src_offset,
@@ -123,18 +123,18 @@ do_blit_drawpixels(struct gl_context * ctx,
    if (!pbo_mt)
       return false;
 
-   if (!intel_miptree_blit(brw,
+   if (!brw_miptree_blit(brw,
                            pbo_mt, 0, 0,
                            0, 0, src_flip,
                            irb->mt, irb->mt_level, irb->mt_layer,
                            x, y, ctx->DrawBuffer->FlipY,
                            width, height, COLOR_LOGICOP_COPY)) {
       DBG("%s: blit failed\n", __func__);
-      intel_miptree_release(&pbo_mt);
+      brw_miptree_release(&pbo_mt);
       return false;
    }
 
-   intel_miptree_release(&pbo_mt);
+   brw_miptree_release(&pbo_mt);
 
    if (ctx->Query.CurrentOcclusionObject)
       ctx->Query.CurrentOcclusionObject->Result += width * height;

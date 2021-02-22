@@ -55,7 +55,7 @@ intelDeleteTextureObject(struct gl_context *ctx,
 {
    struct brw_texture_object *intelObj = brw_texture_object(texObj);
 
-   intel_miptree_release(&intelObj->mt);
+   brw_miptree_release(&intelObj->mt);
    _mesa_delete_texture_object(ctx, texObj);
 }
 
@@ -87,13 +87,13 @@ intel_alloc_texture_image_buffer(struct gl_context *ctx,
       return false;
 
    if (intel_texobj->mt &&
-       intel_miptree_match_image(intel_texobj->mt, image)) {
-      intel_miptree_reference(&intel_image->mt, intel_texobj->mt);
+       brw_miptree_match_image(intel_texobj->mt, image)) {
+      brw_miptree_reference(&intel_image->mt, intel_texobj->mt);
       DBG("%s: alloc obj %p level %d %dx%dx%d using object's miptree %p\n",
           __func__, texobj, image->Level,
           image->Width, image->Height, image->Depth, intel_texobj->mt);
    } else {
-      intel_image->mt = intel_miptree_create_for_teximage(brw, intel_texobj,
+      intel_image->mt = brw_miptree_create_for_teximage(brw, intel_texobj,
                                                           intel_image,
                                                           MIPTREE_CREATE_DEFAULT);
       if (!intel_image->mt)
@@ -104,7 +104,7 @@ intel_alloc_texture_image_buffer(struct gl_context *ctx,
        * whole object since our level didn't fit what was there
        * before, and any lower levels would fit into our miptree.
        */
-      intel_miptree_reference(&intel_texobj->mt, intel_image->mt);
+      brw_miptree_reference(&intel_texobj->mt, intel_image->mt);
 
       DBG("%s: alloc obj %p level %d %dx%dx%d using new miptree %p\n",
           __func__, texobj, image->Level,
@@ -141,12 +141,12 @@ intel_alloc_texture_storage(struct gl_context *ctx,
     * one.
     */
    if (!intel_texobj->mt ||
-       !intel_miptree_match_image(intel_texobj->mt, first_image) ||
+       !brw_miptree_match_image(intel_texobj->mt, first_image) ||
        intel_texobj->mt->last_level != levels - 1) {
-      intel_miptree_release(&intel_texobj->mt);
+      brw_miptree_release(&intel_texobj->mt);
 
       intel_get_image_dims(first_image, &width, &height, &depth);
-      intel_texobj->mt = intel_miptree_create(brw, texobj->Target,
+      intel_texobj->mt = brw_miptree_create(brw, texobj->Target,
                                               first_image->TexFormat,
                                               0, levels - 1,
                                               width, height, depth,
@@ -169,7 +169,7 @@ intel_alloc_texture_storage(struct gl_context *ctx,
          if (!_swrast_init_texture_image(image))
             return false;
 
-         intel_miptree_reference(&intel_image->mt, intel_texobj->mt);
+         brw_miptree_reference(&intel_image->mt, intel_texobj->mt);
       }
    }
 
@@ -191,7 +191,7 @@ intel_free_texture_image_buffer(struct gl_context * ctx,
 
    DBG("%s\n", __func__);
 
-   intel_miptree_release(&intelImage->mt);
+   brw_miptree_release(&intelImage->mt);
 
    _swrast_free_texture_image_buffer(ctx, texImage);
 }
@@ -214,7 +214,7 @@ intel_map_texture_image(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_texture_image *intel_image = brw_texture_image(tex_image);
-   struct intel_mipmap_tree *mt = intel_image->mt;
+   struct brw_mipmap_tree *mt = intel_image->mt;
    ptrdiff_t stride;
 
    /* Our texture data is always stored in a miptree. */
@@ -224,13 +224,13 @@ intel_map_texture_image(struct gl_context *ctx,
    assert(tex_image->TexObject->Target != GL_TEXTURE_1D_ARRAY ||
 	  h == 1);
 
-   /* intel_miptree_map operates on a unified "slice" number that references the
+   /* brw_miptree_map operates on a unified "slice" number that references the
     * cube face, since it's all just slices to the miptree code.
     */
    if (tex_image->TexObject->Target == GL_TEXTURE_CUBE_MAP)
       slice = tex_image->Face;
 
-   intel_miptree_map(brw, mt,
+   brw_miptree_map(brw, mt,
                      tex_image->Level + tex_image->TexObject->Attrib.MinLevel,
                      slice + tex_image->TexObject->Attrib.MinLayer,
                      x, y, w, h, mode,
@@ -245,12 +245,12 @@ intel_unmap_texture_image(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_texture_image *intel_image = brw_texture_image(tex_image);
-   struct intel_mipmap_tree *mt = intel_image->mt;
+   struct brw_mipmap_tree *mt = intel_image->mt;
 
    if (tex_image->TexObject->Target == GL_TEXTURE_CUBE_MAP)
       slice = tex_image->Face;
 
-   intel_miptree_unmap(brw, mt,
+   brw_miptree_unmap(brw, mt,
          tex_image->Level + tex_image->TexObject->Attrib.MinLevel,
          slice + tex_image->TexObject->Attrib.MinLayer);
 }
@@ -265,7 +265,7 @@ brw_texture_view(struct gl_context *ctx,
    struct brw_texture_object *intel_orig_tex = brw_texture_object(origTexObj);
 
    assert(intel_orig_tex->mt);
-   intel_miptree_reference(&intel_tex->mt, intel_orig_tex->mt);
+   brw_miptree_reference(&intel_tex->mt, intel_orig_tex->mt);
 
    /* Since we can only make views of immutable-format textures,
     * we can assume that everything is in origTexObj's miptree.
@@ -284,7 +284,7 @@ brw_texture_view(struct gl_context *ctx,
          struct gl_texture_image *image = texObj->Image[face][level];
          struct brw_texture_image *intel_image = brw_texture_image(image);
 
-         intel_miptree_reference(&intel_image->mt, intel_orig_tex->mt);
+         brw_miptree_reference(&intel_image->mt, intel_orig_tex->mt);
       }
    }
 

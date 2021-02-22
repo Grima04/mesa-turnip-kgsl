@@ -168,7 +168,7 @@ do_blit_copypixels(struct gl_context * ctx,
    dstx += srcx - orig_srcx;
    dsty += srcy - orig_srcy;
 
-   if (!intel_miptree_blit(brw,
+   if (!brw_miptree_blit(brw,
                            read_irb->mt, read_irb->mt_level, read_irb->mt_layer,
                            srcx, srcy, read_fb->FlipY,
                            draw_irb->mt, draw_irb->mt_level, draw_irb->mt_layer,

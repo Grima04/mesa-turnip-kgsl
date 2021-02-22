@@ -48,7 +48,7 @@ struct brw_texture_object
    /* The miptree of pixel data for the texture (if !needs_validate).  After
     * validation, the images will also have references to the same mt.
     */
-   struct intel_mipmap_tree *mt;
+   struct brw_mipmap_tree *mt;
 
    /**
     * Set when mipmap trees in the texture images of this texture object
@@ -79,7 +79,7 @@ struct brw_texture_image
     * Else if intelImage->base.Buffer != NULL, image is stored there.
     * Else there is no image data.
     */
-   struct intel_mipmap_tree *mt;
+   struct brw_mipmap_tree *mt;
 };
 
 static inline struct brw_texture_object *

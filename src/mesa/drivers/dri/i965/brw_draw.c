@@ -378,7 +378,7 @@ brw_merge_inputs(struct brw_context *brw)
 static bool
 intel_disable_rb_aux_buffer(struct brw_context *brw,
                             bool *draw_aux_buffer_disabled,
-                            struct intel_mipmap_tree *tex_mt,
+                            struct brw_mipmap_tree *tex_mt,
                             unsigned min_level, unsigned num_levels,
                             const char *usage)
 {
@@ -565,10 +565,10 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
                                      "for sampling");
       }
 
-      intel_miptree_prepare_texture(brw, tex_obj->mt, view_format,
-                                    min_level, num_levels,
-                                    min_layer, num_layers,
-                                    astc5x5_wa_bits);
+      brw_miptree_prepare_texture(brw, tex_obj->mt, view_format,
+                                  min_level, num_levels,
+                                  min_layer, num_layers,
+                                  astc5x5_wa_bits);
 
       /* If any programs are using it with texelFetch, we may need to also do
        * a prepare with an sRGB format to ensure texelFetch works "properly".
@@ -577,10 +577,10 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
          enum isl_format txf_format =
             translate_tex_format(brw, tex_obj->_Format, GL_DECODE_EXT);
          if (txf_format != view_format) {
-            intel_miptree_prepare_texture(brw, tex_obj->mt, txf_format,
-                                          min_level, num_levels,
-                                          min_layer, num_layers,
-                                          astc5x5_wa_bits);
+            brw_miptree_prepare_texture(brw, tex_obj->mt, txf_format,
+                                        min_level, num_levels,
+                                        min_layer, num_layers,
+                                        astc5x5_wa_bits);
          }
       }
 
@@ -591,9 +591,9 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
          intel_update_r8stencil(brw, tex_obj->mt);
       }
 
-      if (intel_miptree_has_etc_shadow(brw, tex_obj->mt) &&
+      if (brw_miptree_has_etc_shadow(brw, tex_obj->mt) &&
           tex_obj->mt->shadow_needs_update) {
-         intel_miptree_update_etc_shadow_levels(brw, tex_obj->mt);
+         brw_miptree_update_etc_shadow_levels(brw, tex_obj->mt);
       }
    }
 
@@ -614,7 +614,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
                                               "as a shader image");
                }
 
-               intel_miptree_prepare_image(brw, tex_obj->mt);
+               brw_miptree_prepare_image(brw, tex_obj->mt);
 
                brw_cache_flush_for_read(brw, tex_obj->mt->bo);
             }
@@ -633,10 +633,10 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
    /* Resolve the depth buffer's HiZ buffer. */
    depth_irb = intel_get_renderbuffer(ctx->DrawBuffer, BUFFER_DEPTH);
    if (depth_irb && depth_irb->mt) {
-      intel_miptree_prepare_depth(brw, depth_irb->mt,
-                                  depth_irb->mt_level,
-                                  depth_irb->mt_layer,
-                                  depth_irb->layer_count);
+      brw_miptree_prepare_depth(brw, depth_irb->mt,
+                                depth_irb->mt_level,
+                                depth_irb->mt_layer,
+                                depth_irb->layer_count);
    }
 
    /* Resolve color buffers for non-coherent framebuffer fetch. */
@@ -655,10 +655,10 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
             brw_renderbuffer(fb->_ColorDrawBuffers[i]);
 
          if (irb) {
-            intel_miptree_prepare_texture(brw, irb->mt, irb->mt->surf.format,
-                                          irb->mt_level, 1,
-                                          irb->mt_layer, irb->layer_count,
-                                          brw->gen9_astc5x5_wa_tex_mask);
+            brw_miptree_prepare_texture(brw, irb->mt, irb->mt->surf.format,
+                                        irb->mt_level, 1,
+                                        irb->mt_layer, irb->layer_count,
+                                        brw->gen9_astc5x5_wa_tex_mask);
          }
       }
    }
@@ -676,17 +676,17 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
       enum isl_format isl_format = brw_isl_format_for_mesa_format(mesa_format);
       bool blend_enabled = ctx->Color.BlendEnabled & (1 << i);
       enum isl_aux_usage aux_usage =
-         intel_miptree_render_aux_usage(brw, irb->mt, isl_format,
-                                        blend_enabled,
-                                        draw_aux_buffer_disabled[i]);
+         brw_miptree_render_aux_usage(brw, irb->mt, isl_format,
+                                      blend_enabled,
+                                      draw_aux_buffer_disabled[i]);
       if (brw->draw_aux_usage[i] != aux_usage) {
          brw->ctx.NewDriverState |= BRW_NEW_AUX_STATE;
          brw->draw_aux_usage[i] = aux_usage;
       }
 
-      intel_miptree_prepare_render(brw, irb->mt, irb->mt_level,
-                                   irb->mt_layer, irb->layer_count,
-                                   aux_usage);
+      brw_miptree_prepare_render(brw, irb->mt, irb->mt_level,
+                                 irb->mt_layer, irb->layer_count,
+                                 aux_usage);
 
       brw_cache_flush_for_render(brw, irb->mt->bo,
                                  isl_format, aux_usage);
@@ -730,29 +730,29 @@ brw_postdraw_set_buffers_need_resolve(struct brw_context *brw)
    if (depth_irb) {
       bool depth_written = brw_depth_writes_enabled(brw);
       if (depth_att->Layered) {
-         intel_miptree_finish_depth(brw, depth_irb->mt,
-                                    depth_irb->mt_level,
-                                    depth_irb->mt_layer,
-                                    depth_irb->layer_count,
-                                    depth_written);
+         brw_miptree_finish_depth(brw, depth_irb->mt,
+                                  depth_irb->mt_level,
+                                  depth_irb->mt_layer,
+                                  depth_irb->layer_count,
+                                  depth_written);
       } else {
-         intel_miptree_finish_depth(brw, depth_irb->mt,
-                                    depth_irb->mt_level,
-                                    depth_irb->mt_layer, 1,
-                                    depth_written);
+         brw_miptree_finish_depth(brw, depth_irb->mt,
+                                  depth_irb->mt_level,
+                                  depth_irb->mt_layer, 1,
+                                  depth_written);
       }
       if (depth_written)
          brw_depth_cache_add_bo(brw, depth_irb->mt->bo);
    }
 
    if (stencil_irb && brw->stencil_write_enabled) {
-      struct intel_mipmap_tree *stencil_mt =
+      struct brw_mipmap_tree *stencil_mt =
          stencil_irb->mt->stencil_mt != NULL ?
          stencil_irb->mt->stencil_mt : stencil_irb->mt;
       brw_depth_cache_add_bo(brw, stencil_mt->bo);
-      intel_miptree_finish_write(brw, stencil_mt, stencil_irb->mt_level,
-                                 stencil_irb->mt_layer,
-                                 stencil_irb->layer_count, ISL_AUX_USAGE_NONE);
+      brw_miptree_finish_write(brw, stencil_mt, stencil_irb->mt_level,
+                               stencil_irb->mt_layer,
+                               stencil_irb->layer_count, ISL_AUX_USAGE_NONE);
    }
 
    for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
@@ -769,9 +769,9 @@ brw_postdraw_set_buffers_need_resolve(struct brw_context *brw)
 
       brw_render_cache_add_bo(brw, irb->mt->bo, isl_format, aux_usage);
 
-      intel_miptree_finish_render(brw, irb->mt, irb->mt_level,
-                                  irb->mt_layer, irb->layer_count,
-                                  aux_usage);
+      brw_miptree_finish_render(brw, irb->mt, irb->mt_level,
+                                irb->mt_layer, irb->layer_count,
+                                aux_usage);
    }
 }
 
@@ -784,11 +784,11 @@ brw_renderbuffer_move_temp_back(struct brw_context *brw,
 
    brw_cache_flush_for_read(brw, irb->align_wa_mt->bo);
 
-   intel_miptree_copy_slice(brw, irb->align_wa_mt, 0, 0,
+   brw_miptree_copy_slice(brw, irb->align_wa_mt, 0, 0,
                             irb->mt,
                             irb->Base.Base.TexImage->Level, irb->mt_layer);
 
-   intel_miptree_reference(&irb->align_wa_mt, NULL);
+   brw_miptree_reference(&irb->align_wa_mt, NULL);
 
    /* Finally restore the x,y to correspond to full miptree. */
    brw_renderbuffer_set_draw_offset(irb);

@@ -1422,7 +1422,7 @@ intel_resolve_for_dri2_flush(struct brw_context *brw,
       if (rb->mt->surf.samples == 1) {
          assert(rb->mt_layer == 0 && rb->mt_level == 0 &&
                 rb->layer_count == 1);
-         intel_miptree_prepare_external(brw, rb->mt);
+         brw_miptree_prepare_external(brw, rb->mt);
       } else {
          brw_renderbuffer_downsample(brw, rb);
 
@@ -1439,7 +1439,7 @@ intel_resolve_for_dri2_flush(struct brw_context *brw,
           * miptree without aux.  However, that would be a lot of plumbing and
           * this is a rather exotic case so it's not really worth it.
           */
-         intel_miptree_prepare_external(brw, rb->singlesample_mt);
+         brw_miptree_prepare_external(brw, rb->singlesample_mt);
       }
    }
 }
@@ -1693,7 +1693,7 @@ intel_process_dri2_buffer(struct brw_context *brw,
     * use of a mapping of the buffer involves a bunch of page faulting which is
     * moderately expensive.
     */
-   struct intel_mipmap_tree *last_mt;
+   struct brw_mipmap_tree *last_mt;
    if (num_samples == 0)
       last_mt = rb->mt;
    else
@@ -1734,17 +1734,17 @@ intel_process_dri2_buffer(struct brw_context *brw,
    uint32_t tiling, swizzle;
    brw_bo_get_tiling(bo, &tiling, &swizzle);
 
-   struct intel_mipmap_tree *mt =
-      intel_miptree_create_for_bo(brw,
-                                  bo,
-                                  intel_rb_format(rb),
-                                  0,
-                                  drawable->w,
-                                  drawable->h,
-                                  1,
-                                  buffer->pitch,
-                                  isl_tiling_from_i915_tiling(tiling),
-                                  MIPTREE_CREATE_DEFAULT);
+   struct brw_mipmap_tree *mt =
+      brw_miptree_create_for_bo(brw,
+                                bo,
+                                intel_rb_format(rb),
+                                0,
+                                drawable->w,
+                                drawable->h,
+                                1,
+                                buffer->pitch,
+                                isl_tiling_from_i915_tiling(tiling),
+                                MIPTREE_CREATE_DEFAULT);
    if (!mt) {
       brw_bo_unreference(bo);
       return;
@@ -1760,7 +1760,7 @@ intel_process_dri2_buffer(struct brw_context *brw,
                                                  drawable->w, drawable->h,
                                                  buffer->pitch)) {
       brw_bo_unreference(bo);
-      intel_miptree_release(&mt);
+      brw_miptree_release(&mt);
       return;
    }
 
@@ -1809,7 +1809,7 @@ intel_update_image_buffer(struct brw_context *intel,
    /* Check and see if we're already bound to the right
     * buffer object
     */
-   struct intel_mipmap_tree *last_mt;
+   struct brw_mipmap_tree *last_mt;
    if (num_samples == 0)
       last_mt = rb->mt;
    else
@@ -1817,7 +1817,7 @@ intel_update_image_buffer(struct brw_context *intel,
 
    if (last_mt && last_mt->bo == buffer->bo) {
       if (buffer_type == __DRI_IMAGE_BUFFER_SHARED) {
-         intel_miptree_make_shareable(intel, last_mt);
+         brw_miptree_make_shareable(intel, last_mt);
       }
       return;
    }
@@ -1830,17 +1830,17 @@ intel_update_image_buffer(struct brw_context *intel,
     */
    const bool allow_internal_aux = (num_samples == 0);
 
-   struct intel_mipmap_tree *mt =
-      intel_miptree_create_for_dri_image(intel, buffer, GL_TEXTURE_2D,
-                                         intel_rb_format(rb),
-                                         allow_internal_aux);
+   struct brw_mipmap_tree *mt =
+      brw_miptree_create_for_dri_image(intel, buffer, GL_TEXTURE_2D,
+                                       intel_rb_format(rb),
+                                       allow_internal_aux);
    if (!mt)
       return;
 
    if (!intel_update_winsys_renderbuffer_miptree(intel, rb, mt,
                                                  buffer->width, buffer->height,
                                                  buffer->pitch)) {
-      intel_miptree_release(&mt);
+      brw_miptree_release(&mt);
       return;
    }
 
@@ -1876,7 +1876,7 @@ intel_update_image_buffer(struct brw_context *intel,
        * experience than any savings due to aux compression. But I've
        * collected no data to prove my theory.
        */
-      intel_miptree_make_shareable(intel, mt);
+      brw_miptree_make_shareable(intel, mt);
    }
 }
 

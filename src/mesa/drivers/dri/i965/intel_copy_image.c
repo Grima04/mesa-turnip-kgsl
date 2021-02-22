@@ -36,9 +36,9 @@
 
 static void
 copy_miptrees(struct brw_context *brw,
-              struct intel_mipmap_tree *src_mt,
+              struct brw_mipmap_tree *src_mt,
               int src_x, int src_y, int src_z, unsigned src_level,
-              struct intel_mipmap_tree *dst_mt,
+              struct brw_mipmap_tree *dst_mt,
               int dst_x, int dst_y, int dst_z, unsigned dst_level,
               int src_width, int src_height)
 {
@@ -52,7 +52,7 @@ copy_miptrees(struct brw_context *brw,
        * faster than using the 3D pipeline.  Original Gen4 also has to rebase
        * and copy miptree slices in order to render to unaligned locations.
        */
-      if (intel_miptree_copy(brw, src_mt, src_level, src_z, src_x, src_y,
+      if (brw_miptree_copy(brw, src_mt, src_level, src_z, src_x, src_y,
                              dst_mt, dst_level, dst_z, dst_x, dst_y,
                              src_width, src_height))
          return;
@@ -76,7 +76,7 @@ intel_copy_image_sub_data(struct gl_context *ctx,
                           int src_width, int src_height)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_mipmap_tree *src_mt, *dst_mt;
+   struct brw_mipmap_tree *src_mt, *dst_mt;
    unsigned src_level, dst_level;
 
    if (src_image) {

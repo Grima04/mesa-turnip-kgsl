@@ -38,7 +38,7 @@
 extern "C" {
 #endif
 
-struct intel_mipmap_tree;
+struct brw_mipmap_tree;
 
 /**
  * Intel renderbuffer, derived from gl_renderbuffer.
@@ -51,7 +51,7 @@ struct brw_renderbuffer
     *
     * This is multisampled if NumSamples is > 1.
     */
-   struct intel_mipmap_tree *mt;
+   struct brw_mipmap_tree *mt;
 
    /**
     * Downsampled contents for window-system MSAA renderbuffers.
@@ -65,7 +65,7 @@ struct brw_renderbuffer
     * or glCopyTexImage()), we just temporarily allocate singlesample_mt when
     * asked to map the renderbuffer.
     */
-   struct intel_mipmap_tree *singlesample_mt;
+   struct brw_mipmap_tree *singlesample_mt;
 
    /* Gen < 6 doesn't have layer specifier for render targets or depth. Driver
     * needs to manually offset surfaces to correct level/layer. There are,
@@ -75,7 +75,7 @@ struct brw_renderbuffer
     *
     * See brw_renderbuffer_move_to_temp().
     */
-   struct intel_mipmap_tree *align_wa_mt;
+   struct brw_mipmap_tree *align_wa_mt;
 
    /**
     * \name Miptree view
@@ -146,7 +146,7 @@ brw_renderbuffer(struct gl_renderbuffer *rb)
       return NULL;
 }
 
-static inline struct intel_mipmap_tree *
+static inline struct brw_mipmap_tree *
 brw_renderbuffer_get_mt(struct brw_renderbuffer *irb)
 {
    if (!irb)
@@ -214,8 +214,8 @@ brw_renderbuffer_get_tile_offsets(struct brw_renderbuffer *irb,
       return 0;
    }
 
-   return intel_miptree_get_tile_offsets(irb->mt, irb->mt_level, irb->mt_layer,
-                                         tile_x, tile_y);
+   return brw_miptree_get_tile_offsets(irb->mt, irb->mt_level, irb->mt_layer,
+                                       tile_x, tile_y);
 }
 
 bool

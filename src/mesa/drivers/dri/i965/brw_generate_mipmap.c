@@ -77,7 +77,7 @@ brw_generate_mipmap(struct gl_context *ctx, GLenum target,
       intel_finalize_mipmap_tree(brw, tex_obj);
    }
 
-   struct intel_mipmap_tree *mt = intel_obj->mt;
+   struct brw_mipmap_tree *mt = intel_obj->mt;
    if (!mt) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "mipmap generation");
       return;

@@ -282,7 +282,7 @@ brw_meta_mirror_clip_and_scissor(const struct gl_context *ctx,
  */
 bool
 brw_is_color_fast_clear_compatible(struct brw_context *brw,
-                                   const struct intel_mipmap_tree *mt,
+                                   const struct brw_mipmap_tree *mt,
                                    const union gl_color_union *color)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -329,7 +329,7 @@ brw_is_color_fast_clear_compatible(struct brw_context *brw,
  */
 union isl_color_value
 brw_meta_convert_fast_clear_color(const struct brw_context *brw,
-                                  const struct intel_mipmap_tree *mt,
+                                  const struct brw_mipmap_tree *mt,
                                   const union gl_color_union *color)
 {
    union isl_color_value override_color = {

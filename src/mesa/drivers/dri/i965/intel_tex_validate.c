@@ -109,10 +109,10 @@ intel_finalize_mipmap_tree(struct brw_context *brw,
     * target, imageFormat, etc.
     */
    if (intelObj->mt &&
-       (!intel_miptree_match_image(intelObj->mt, &firstImage->base.Base) ||
+       (!brw_miptree_match_image(intelObj->mt, &firstImage->base.Base) ||
 	validate_first_level < intelObj->mt->first_level ||
 	validate_last_level > intelObj->mt->last_level)) {
-      intel_miptree_release(&intelObj->mt);
+      brw_miptree_release(&intelObj->mt);
    }
 
 
@@ -150,16 +150,16 @@ intel_finalize_mipmap_tree(struct brw_context *brw,
                  _mesa_get_format_name(firstImage->base.Base.TexFormat),
                  width, height, depth, validate_last_level + 1);
 
-      intelObj->mt = intel_miptree_create(brw,
-                                          intelObj->base.Target,
-					  firstImage->base.Base.TexFormat,
-                                          0, /* first_level */
-                                          validate_last_level,
-                                          width,
-                                          height,
-                                          depth,
-                                          1 /* num_samples */,
-                                          MIPTREE_CREATE_BUSY);
+      intelObj->mt = brw_miptree_create(brw,
+                                        intelObj->base.Target,
+                                        firstImage->base.Base.TexFormat,
+                                        0, /* first_level */
+                                        validate_last_level,
+                                        width,
+                                        height,
+                                        depth,
+                                        1 /* num_samples */,
+                                        MIPTREE_CREATE_BUSY);
       if (!intelObj->mt)
          return;
    }
@@ -176,13 +176,13 @@ intel_finalize_mipmap_tree(struct brw_context *brw,
 		 break;
 
          if (intelObj->mt != intelImage->mt)
-            intel_miptree_copy_teximage(brw, intelImage, intelObj->mt);
+            brw_miptree_copy_teximage(brw, intelImage, intelObj->mt);
 
          /* After we're done, we'd better agree that our layout is
           * appropriate, or we'll end up hitting this function again on the
           * next draw
           */
-         assert(intel_miptree_match_image(intelObj->mt, &intelImage->base.Base));
+         assert(brw_miptree_match_image(intelObj->mt, &intelImage->base.Base));
       }
    }
 

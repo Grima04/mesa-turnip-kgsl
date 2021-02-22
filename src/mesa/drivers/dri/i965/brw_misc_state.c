@@ -122,7 +122,7 @@ brw_depthbuffer_format(struct brw_context *brw)
    return brw_depth_format(brw, drb->mt->format);
 }
 
-static struct intel_mipmap_tree *
+static struct brw_mipmap_tree *
 get_stencil_miptree(struct brw_renderbuffer *irb)
 {
    if (!irb)
@@ -142,7 +142,7 @@ rebase_depth_stencil(struct brw_context *brw, struct brw_renderbuffer *irb,
 
    isl_get_tile_masks(irb->mt->surf.tiling, irb->mt->cpp,
                       &tile_mask_x, &tile_mask_y);
-   assert(!intel_miptree_level_has_hiz(irb->mt, irb->mt_level));
+   assert(!brw_miptree_level_has_hiz(irb->mt, irb->mt_level));
 
    uint32_t tile_x = irb->draw_x & tile_mask_x;
    uint32_t tile_y = irb->draw_y & tile_mask_y;
@@ -186,7 +186,7 @@ rebase_depth_stencil(struct brw_context *brw, struct brw_renderbuffer *irb,
 
    brw->depthstencil.tile_x = tile_x;
    brw->depthstencil.tile_y = tile_y;
-   brw->depthstencil.depth_offset = intel_miptree_get_aligned_offset(
+   brw->depthstencil.depth_offset = brw_miptree_get_aligned_offset(
                                        irb->mt,
                                        irb->draw_x & ~tile_mask_x,
                                        irb->draw_y & ~tile_mask_y);
@@ -203,7 +203,7 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    struct brw_renderbuffer *depth_irb = intel_get_renderbuffer(fb, BUFFER_DEPTH);
    struct brw_renderbuffer *stencil_irb = intel_get_renderbuffer(fb, BUFFER_STENCIL);
-   struct intel_mipmap_tree *depth_mt = NULL;
+   struct brw_mipmap_tree *depth_mt = NULL;
    bool invalidate_depth = clear_mask & BUFFER_BIT_DEPTH;
    bool invalidate_stencil = clear_mask & BUFFER_BIT_STENCIL;
 
@@ -237,7 +237,7 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
          if (stencil_irb &&
              stencil_irb != depth_irb &&
              stencil_irb->mt == depth_mt) {
-            intel_miptree_reference(&stencil_irb->mt, depth_irb->mt);
+            brw_miptree_reference(&stencil_irb->mt, depth_irb->mt);
             brw_renderbuffer_set_draw_offset(stencil_irb);
          }
       }
@@ -257,9 +257,9 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
 static void
 brw_emit_depth_stencil_hiz(struct brw_context *brw,
                            struct brw_renderbuffer *depth_irb,
-                           struct intel_mipmap_tree *depth_mt,
+                           struct brw_mipmap_tree *depth_mt,
                            struct brw_renderbuffer *stencil_irb,
-                           struct intel_mipmap_tree *stencil_mt)
+                           struct brw_mipmap_tree *stencil_mt)
 {
    uint32_t tile_x = brw->depthstencil.tile_x;
    uint32_t tile_y = brw->depthstencil.tile_y;
@@ -327,8 +327,8 @@ brw_emit_depthbuffer(struct brw_context *brw)
    /* _NEW_BUFFERS */
    struct brw_renderbuffer *depth_irb = intel_get_renderbuffer(fb, BUFFER_DEPTH);
    struct brw_renderbuffer *stencil_irb = intel_get_renderbuffer(fb, BUFFER_STENCIL);
-   struct intel_mipmap_tree *depth_mt = brw_renderbuffer_get_mt(depth_irb);
-   struct intel_mipmap_tree *stencil_mt = get_stencil_miptree(stencil_irb);
+   struct brw_mipmap_tree *depth_mt = brw_renderbuffer_get_mt(depth_irb);
+   struct brw_mipmap_tree *stencil_mt = get_stencil_miptree(stencil_irb);
 
    if (depth_mt)
       brw_cache_flush_for_depth(brw, depth_mt->bo);
@@ -386,7 +386,7 @@ brw_emit_depthbuffer(struct brw_context *brw)
       if (!brw_renderbuffer_has_hiz(depth_irb)) {
          /* Just because a miptree has ISL_AUX_USAGE_HIZ does not mean that
           * all miplevels of that miptree are guaranteed to support HiZ.  See
-          * intel_miptree_level_enable_hiz for details.
+          * brw_miptree_level_enable_hiz for details.
           */
          info.hiz_usage = ISL_AUX_USAGE_NONE;
       }

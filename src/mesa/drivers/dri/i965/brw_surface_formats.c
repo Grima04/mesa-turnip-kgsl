@@ -231,7 +231,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
        * that they are renderable from an API perspective since core mesa will
        * fall back to RGBA or RGBX (we can't render to non-power-of-two
        * formats).  For 8-bit, formats, this also keeps us from hitting some
-       * nasty corners in intel_miptree_map_blit if you ever try to map one.
+       * nasty corners in brw_miptree_map_blit if you ever try to map one.
        */
       int format_size = _mesa_get_format_bytes(format);
       if (format_size == 3 || format_size == 6)
@@ -374,13 +374,13 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
    }
 
    /* On hardware that lacks support for ETC1, we map ETC1 to RGBX
-    * during glCompressedTexImage2D(). See intel_mipmap_tree::wraps_etc1.
+    * during glCompressedTexImage2D(). See brw_mipmap_tree::wraps_etc1.
     */
    screen->mesa_format_supports_texture[MESA_FORMAT_ETC1_RGB8] = true;
 
    /* On hardware that lacks support for ETC2, we map ETC2 to a suitable
     * MESA_FORMAT during glCompressedTexImage2D().
-    * See intel_mipmap_tree::wraps_etc2.
+    * See brw_mipmap_tree::wraps_etc2.
     */
    screen->mesa_format_supports_texture[MESA_FORMAT_ETC2_RGB8] = true;
    screen->mesa_format_supports_texture[MESA_FORMAT_ETC2_SRGB8] = true;

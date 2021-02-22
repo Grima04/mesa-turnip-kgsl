@@ -146,7 +146,7 @@ brw_texture_object_unpurgeable(struct gl_context * ctx,
       return GL_UNDEFINED_APPLE;
 
    if (option == GL_UNDEFINED_APPLE || !intel_bo_unpurgeable(intel->mt->bo)) {
-      intel_miptree_release(&intel->mt);
+      brw_miptree_release(&intel->mt);
       return GL_UNDEFINED_APPLE;
    }
 
@@ -167,7 +167,7 @@ intel_render_object_unpurgeable(struct gl_context * ctx,
       return GL_UNDEFINED_APPLE;
 
    if (option == GL_UNDEFINED_APPLE || !intel_bo_unpurgeable(intel->mt->bo)) {
-      intel_miptree_release(&intel->mt);
+      brw_miptree_release(&intel->mt);
       return GL_UNDEFINED_APPLE;
    }
 

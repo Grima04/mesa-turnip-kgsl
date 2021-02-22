@@ -124,7 +124,7 @@ intel_readpixels_tiled_memcpy(struct gl_context * ctx,
    if (rb->_BaseFormat == GL_RGB)
       return false;
 
-   copy_type = intel_miptree_get_memcpy_type(rb->Format, format, type, &cpp);
+   copy_type = brw_miptree_get_memcpy_type(rb->Format, format, type, &cpp);
    if (copy_type == ISL_MEMCPY_INVALID)
       return false;
 
@@ -149,7 +149,7 @@ intel_readpixels_tiled_memcpy(struct gl_context * ctx,
    /* Since we are going to read raw data to the miptree, we need to resolve
     * any pending fast color clears before we start.
     */
-   intel_miptree_access_raw(brw, irb->mt, irb->mt_level, irb->mt_layer, false);
+   brw_miptree_access_raw(brw, irb->mt, irb->mt_level, irb->mt_layer, false);
 
    bo = irb->mt->bo;
 
@@ -165,7 +165,7 @@ intel_readpixels_tiled_memcpy(struct gl_context * ctx,
    }
 
    unsigned slice_offset_x, slice_offset_y;
-   intel_miptree_get_image_offset(irb->mt, irb->mt_level, irb->mt_layer,
+   brw_miptree_get_image_offset(irb->mt, irb->mt_level, irb->mt_layer,
                                   &slice_offset_x, &slice_offset_y);
    xoffset += slice_offset_x;
    yoffset += slice_offset_y;

@@ -104,7 +104,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    struct brw_renderbuffer *depth_irb =
       intel_get_renderbuffer(fb, BUFFER_DEPTH);
-   struct intel_mipmap_tree *mt = depth_irb->mt;
+   struct brw_mipmap_tree *mt = depth_irb->mt;
    struct gl_renderbuffer_attachment *depth_att = &fb->Attachment[BUFFER_DEPTH];
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
@@ -179,7 +179,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
     */
    if (mt->fast_clear_color.f32[0] != clear_value) {
       for (uint32_t level = mt->first_level; level <= mt->last_level; level++) {
-         if (!intel_miptree_level_has_hiz(mt, level))
+         if (!brw_miptree_level_has_hiz(mt, level))
             continue;
 
          const unsigned level_layers = brw_get_num_logical_layers(mt, level);
@@ -193,7 +193,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
             }
 
             enum isl_aux_state aux_state =
-               intel_miptree_get_aux_state(mt, level, layer);
+               brw_miptree_get_aux_state(mt, level, layer);
 
             if (aux_state != ISL_AUX_STATE_CLEAR &&
                 aux_state != ISL_AUX_STATE_COMPRESSED_CLEAR) {
@@ -209,18 +209,18 @@ brw_fast_clear_depth(struct gl_context *ctx)
              */
             intel_hiz_exec(brw, mt, level, layer, 1,
                            ISL_AUX_OP_FULL_RESOLVE);
-            intel_miptree_set_aux_state(brw, mt, level, layer, 1,
+            brw_miptree_set_aux_state(brw, mt, level, layer, 1,
                                         ISL_AUX_STATE_RESOLVED);
          }
       }
 
       const union isl_color_value clear_color = { .f32 = {clear_value, } };
-      intel_miptree_set_clear_color(brw, mt, clear_color);
+      brw_miptree_set_clear_color(brw, mt, clear_color);
    }
 
    for (unsigned a = 0; a < num_layers; a++) {
       enum isl_aux_state aux_state =
-         intel_miptree_get_aux_state(mt, depth_irb->mt_level,
+         brw_miptree_get_aux_state(mt, depth_irb->mt_level,
                                      depth_irb->mt_layer + a);
 
       if (aux_state != ISL_AUX_STATE_CLEAR) {
@@ -230,7 +230,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
       }
    }
 
-   intel_miptree_set_aux_state(brw, mt, depth_irb->mt_level,
+   brw_miptree_set_aux_state(brw, mt, depth_irb->mt_level,
                                depth_irb->mt_layer, num_layers,
                                ISL_AUX_STATE_CLEAR);
    return true;

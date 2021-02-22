@@ -488,12 +488,12 @@ intel_allocate_image(struct brw_screen *screen, int dri_format,
  */
 static void
 intel_setup_image_from_mipmap_tree(struct brw_context *brw, __DRIimage *image,
-                                   struct intel_mipmap_tree *mt, GLuint level,
+                                   struct brw_mipmap_tree *mt, GLuint level,
                                    GLuint zoffset)
 {
-   intel_miptree_make_shareable(brw, mt);
+   brw_miptree_make_shareable(brw, mt);
 
-   intel_miptree_check_level_layer(mt, level, zoffset);
+   brw_miptree_check_level_layer(mt, level, zoffset);
 
    image->width = minify(mt->surf.phys_level0_sa.width,
                          level - mt->first_level);
@@ -501,7 +501,7 @@ intel_setup_image_from_mipmap_tree(struct brw_context *brw, __DRIimage *image,
                           level - mt->first_level);
    image->pitch = mt->surf.row_pitch_B;
 
-   image->offset = intel_miptree_get_tile_offsets(mt, level, zoffset,
+   image->offset = brw_miptree_get_tile_offsets(mt, level, zoffset,
                                                   &image->tile_x,
                                                   &image->tile_y);
 
@@ -559,7 +559,7 @@ intel_create_image_from_renderbuffer(__DRIcontext *context,
    }
 
    irb = brw_renderbuffer(rb);
-   intel_miptree_make_shareable(brw, irb->mt);
+   brw_miptree_make_shareable(brw, irb->mt);
    image = calloc(1, sizeof *image);
    if (image == NULL)
       return NULL;

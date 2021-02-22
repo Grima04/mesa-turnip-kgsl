@@ -48,16 +48,16 @@ get_base_dim(unsigned old_base_dim, unsigned new_level_dim, unsigned level)
 /* Work back from the specified level of the image to the baselevel and create a
  * miptree of that size.
  */
-struct intel_mipmap_tree *
-intel_miptree_create_for_teximage(struct brw_context *brw,
-				  struct brw_texture_object *intelObj,
-				  struct brw_texture_image *intelImage,
-                                  enum intel_miptree_create_flags flags)
+struct brw_mipmap_tree *
+brw_miptree_create_for_teximage(struct brw_context *brw,
+                                struct brw_texture_object *intelObj,
+                                struct brw_texture_image *intelImage,
+                                enum brw_miptree_create_flags flags)
 {
    GLuint lastLevel;
    int width, height, depth;
    unsigned old_width = 0, old_height = 0, old_depth = 0;
-   const struct intel_mipmap_tree *old_mt = intelObj->mt;
+   const struct brw_mipmap_tree *old_mt = intelObj->mt;
    const unsigned level = intelImage->base.Base.Level;
 
    intel_get_image_dims(&intelImage->base.Base, &width, &height, &depth);
@@ -115,16 +115,16 @@ intel_miptree_create_for_teximage(struct brw_context *brw,
                                                width, height, depth) - 1;
    }
 
-   return intel_miptree_create(brw,
-			       intelObj->base.Target,
-			       intelImage->base.Base.TexFormat,
-			       0,
-			       lastLevel,
-			       width,
-			       height,
-			       depth,
-                               MAX2(intelImage->base.Base.NumSamples, 1),
-                               flags);
+   return brw_miptree_create(brw,
+                             intelObj->base.Target,
+                             intelImage->base.Base.TexFormat,
+                             0,
+                             lastLevel,
+                             width,
+                             height,
+                             depth,
+                             MAX2(intelImage->base.Base.NumSamples, 1),
+                             flags);
 }
 
 static bool
@@ -222,7 +222,7 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
    if (ctx->_ImageTransferState)
       return false;
 
-   copy_type = intel_miptree_get_memcpy_type(texImage->TexFormat, format, type,
+   copy_type = brw_miptree_get_memcpy_type(texImage->TexFormat, format, type,
                                              &cpp);
    if (copy_type == ISL_MEMCPY_INVALID)
       return false;
@@ -257,7 +257,7 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
    assert(image->mt->surf.logical_level0_px.depth == 1);
    assert(image->mt->surf.logical_level0_px.array_len == 1);
 
-   intel_miptree_access_raw(brw, image->mt, level, 0, true);
+   brw_miptree_access_raw(brw, image->mt, level, 0, true);
 
    bo = image->mt->bo;
 
@@ -287,7 +287,7 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
 
    /* Adjust x and y offset based on miplevel */
    unsigned level_x, level_y;
-   intel_miptree_get_image_offset(image->mt, level, 0, &level_x, &level_y);
+   brw_miptree_get_image_offset(image->mt, level, 0, &level_x, &level_y);
    xoffset += level_x;
    yoffset += level_y;
 
@@ -318,7 +318,7 @@ intel_upload_tex(struct gl_context * ctx,
                  const struct gl_pixelstore_attrib *packing)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_mipmap_tree *mt = brw_texture_image(texImage)->mt;
+   struct brw_mipmap_tree *mt = brw_texture_image(texImage)->mt;
    bool ok;
 
    /* Check that there is actually data to store. */
@@ -405,7 +405,7 @@ intel_set_texture_image_mt(struct brw_context *brw,
                            struct gl_texture_image *image,
                            GLenum internal_format,
                            mesa_format format,
-                           struct intel_mipmap_tree *mt)
+                           struct brw_mipmap_tree *mt)
 
 {
    struct gl_texture_object *texobj = image->TexObject;
@@ -423,10 +423,10 @@ intel_set_texture_image_mt(struct brw_context *brw,
    intel_image->base.RowStride = mt->surf.row_pitch_B / mt->cpp;
    assert(mt->surf.row_pitch_B % mt->cpp == 0);
 
-   intel_miptree_reference(&intel_image->mt, mt);
+   brw_miptree_reference(&intel_image->mt, mt);
 
    /* Immediately validate the image to the object. */
-   intel_miptree_reference(&intel_texobj->mt, mt);
+   brw_miptree_reference(&intel_texobj->mt, mt);
 }
 
 
@@ -488,7 +488,7 @@ intelSetTexBuffer2(__DRIcontext *pDRICtx, GLint target,
       internal_format = GL_RGB;
    }
 
-   intel_miptree_finish_external(brw, rb->mt);
+   brw_miptree_finish_external(brw, rb->mt);
 
    _mesa_lock_texture(&brw->ctx, texObj);
    texImage = _mesa_get_tex_image(ctx, texObj, target, 0);
@@ -518,7 +518,7 @@ intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
       return;
    }
 
-   /* The intel_miptree_prepare_external below as well as the finish_external
+   /* The brw_miptree_prepare_external below as well as the finish_external
     * above in intelSetTexBuffer2 *should* do nothing.  The BindTexImage call
     * from both GLX and EGL has TexImage2D and not TexSubImage2D semantics so
     * the texture is not immutable.  This means that the user cannot create a
@@ -545,7 +545,7 @@ intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
     * ever triggers this, we should at least warn them.
     */
    if (intel_tex->mt->aux_buf &&
-       intel_miptree_get_aux_state(intel_tex->mt, 0, 0) !=
+       brw_miptree_get_aux_state(intel_tex->mt, 0, 0) !=
        isl_drm_modifier_get_default_aux_state(intel_tex->mt->drm_modifier)) {
       _mesa_warning(ctx, "Aux state changed between BindTexImage and "
                          "ReleaseTexImage.  Most likely someone tried to draw "
@@ -553,7 +553,7 @@ intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
                          "image_load_store.");
    }
 
-   intel_miptree_prepare_external(brw, intel_tex->mt);
+   brw_miptree_prepare_external(brw, intel_tex->mt);
 
    _mesa_unlock_texture(&brw->ctx, tex_obj);
 }
@@ -582,10 +582,10 @@ intel_bind_renderbuffer_tex_image(struct gl_context *ctx,
 			      0, rb->InternalFormat, rb->Format);
    image->NumSamples = rb->NumSamples;
 
-   intel_miptree_reference(&intel_image->mt, irb->mt);
+   brw_miptree_reference(&intel_image->mt, irb->mt);
 
    /* Immediately validate the image to the object. */
-   intel_miptree_reference(&intel_texobj->mt, intel_image->mt);
+   brw_miptree_reference(&intel_texobj->mt, intel_image->mt);
 
    intel_texobj->needs_validate = true;
    _mesa_unlock_texture(ctx, texobj);
@@ -610,7 +610,7 @@ intel_image_target_texture(struct gl_context *ctx, GLenum target,
                            bool storage)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_mipmap_tree *mt;
+   struct brw_mipmap_tree *mt;
    __DRIscreen *dri_screen = brw->screen->driScrnPriv;
    __DRIimage *image;
 
@@ -627,7 +627,7 @@ intel_image_target_texture(struct gl_context *ctx, GLenum target,
       return;
    }
 
-   mt = intel_miptree_create_for_dri_image(brw, image, target, image->format,
+   mt = brw_miptree_create_for_dri_image(brw, image, target, image->format,
                                            false);
    if (mt == NULL)
       return;
@@ -663,7 +663,7 @@ intel_image_target_texture(struct gl_context *ctx, GLenum target,
    }
 
    intel_set_texture_image_mt(brw, texImage, internal_format, mt->format, mt);
-   intel_miptree_release(&mt);
+   brw_miptree_release(&mt);
 }
 
 static void
@@ -775,7 +775,7 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
    if (texImage->_BaseFormat == GL_RGB)
       return false;
 
-   copy_type = intel_miptree_get_memcpy_type(texImage->TexFormat, format, type,
+   copy_type = brw_miptree_get_memcpy_type(texImage->TexFormat, format, type,
                                              &cpp);
    if (copy_type == ISL_MEMCPY_INVALID)
       return false;
@@ -810,7 +810,7 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
    assert(image->mt->surf.logical_level0_px.depth == 1);
    assert(image->mt->surf.logical_level0_px.array_len == 1);
 
-   intel_miptree_access_raw(brw, image->mt, level, 0, true);
+   brw_miptree_access_raw(brw, image->mt, level, 0, true);
 
    bo = image->mt->bo;
 
@@ -837,7 +837,7 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
 
    /* Adjust x and y offset based on miplevel */
    unsigned level_x, level_y;
-   intel_miptree_get_image_offset(image->mt, level, 0, &level_x, &level_y);
+   brw_miptree_get_image_offset(image->mt, level, 0, &level_x, &level_y);
    xoffset += level_x;
    yoffset += level_y;
 

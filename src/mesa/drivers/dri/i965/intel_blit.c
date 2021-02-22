@@ -40,9 +40,9 @@
 #define FILE_DEBUG_FLAG DEBUG_BLIT
 
 static void
-intel_miptree_set_alpha_to_one(struct brw_context *brw,
-                               struct intel_mipmap_tree *mt,
-                               int x, int y, int width, int height);
+brw_miptree_set_alpha_to_one(struct brw_context *brw,
+                             struct brw_mipmap_tree *mt,
+                             int x, int y, int width, int height);
 
 static GLuint translate_raster_op(enum gl_logicop_mode logicop)
 {
@@ -122,7 +122,7 @@ set_blitter_tiling(struct brw_context *brw,
       ADVANCE_BATCH()
 
 bool
-intel_miptree_blit_compatible_formats(mesa_format src, mesa_format dst)
+brw_miptree_blit_compatible_formats(mesa_format src, mesa_format dst)
 {
    /* The BLT doesn't handle sRGB conversion */
    assert(src == _mesa_get_srgb_format_linear(src));
@@ -145,7 +145,7 @@ intel_miptree_blit_compatible_formats(mesa_format src, mesa_format dst)
 
    /* We can also discard alpha when going from A2->X2 for 2 bit alpha,
     * however we can't fill the alpha channel with two 1 bits when going
-    * from X2->A2, because intel_miptree_set_alpha_to_one() is not yet
+    * from X2->A2, because brw_miptree_set_alpha_to_one() is not yet
     * ready for this / can only handle 8 bit alpha.
     */
    if (src == MESA_FORMAT_B10G10R10A2_UNORM)
@@ -161,7 +161,7 @@ intel_miptree_blit_compatible_formats(mesa_format src, mesa_format dst)
 
 static void
 get_blit_intratile_offset_el(const struct brw_context *brw,
-                             struct intel_mipmap_tree *mt,
+                             struct brw_mipmap_tree *mt,
                              uint32_t total_x_offset_el,
                              uint32_t total_y_offset_el,
                              uint32_t *base_address_offset,
@@ -372,9 +372,9 @@ emit_copy_blit(struct brw_context *brw,
 
 static bool
 emit_miptree_blit(struct brw_context *brw,
-                  struct intel_mipmap_tree *src_mt,
+                  struct brw_mipmap_tree *src_mt,
                   uint32_t src_x, uint32_t src_y,
-                  struct intel_mipmap_tree *dst_mt,
+                  struct brw_mipmap_tree *dst_mt,
                   uint32_t dst_x, uint32_t dst_y,
                   uint32_t width, uint32_t height,
                   bool reverse, enum gl_logicop_mode logicop)
@@ -394,8 +394,8 @@ emit_miptree_blit(struct brw_context *brw,
     * for linear surfaces and DWords for tiled surfaces.  So the maximum
     * pitch is 32k linear and 128k tiled.
     */
-   if (intel_miptree_blt_pitch(src_mt) >= 32768 ||
-       intel_miptree_blt_pitch(dst_mt) >= 32768) {
+   if (brw_miptree_blt_pitch(src_mt) >= 32768 ||
+       brw_miptree_blt_pitch(dst_mt) >= 32768) {
       perf_debug("Falling back due to >= 32k/128k pitch\n");
       return false;
    }
@@ -462,15 +462,15 @@ emit_miptree_blit(struct brw_context *brw,
  * renderbuffers/textures.
  */
 bool
-intel_miptree_blit(struct brw_context *brw,
-                   struct intel_mipmap_tree *src_mt,
-                   int src_level, int src_slice,
-                   uint32_t src_x, uint32_t src_y, bool src_flip,
-                   struct intel_mipmap_tree *dst_mt,
-                   int dst_level, int dst_slice,
-                   uint32_t dst_x, uint32_t dst_y, bool dst_flip,
-                   uint32_t width, uint32_t height,
-                   enum gl_logicop_mode logicop)
+brw_miptree_blit(struct brw_context *brw,
+                 struct brw_mipmap_tree *src_mt,
+                 int src_level, int src_slice,
+                 uint32_t src_x, uint32_t src_y, bool src_flip,
+                 struct brw_mipmap_tree *dst_mt,
+                 int dst_level, int dst_slice,
+                 uint32_t dst_x, uint32_t dst_y, bool dst_flip,
+                 uint32_t width, uint32_t height,
+                 enum gl_logicop_mode logicop)
 {
    /* The blitter doesn't understand multisampling at all. */
    if (src_mt->surf.samples > 1 || dst_mt->surf.samples > 1)
@@ -489,7 +489,7 @@ intel_miptree_blit(struct brw_context *brw,
     * channel to 1.0 at the end. Also trivially ARGB2101010 to XRGB2101010,
     * but not XRGB2101010 to ARGB2101010 yet.
     */
-   if (!intel_miptree_blit_compatible_formats(src_format, dst_format)) {
+   if (!brw_miptree_blit_compatible_formats(src_format, dst_format)) {
       perf_debug("%s: Can't use hardware blitter from %s to %s, "
                  "falling back.\n", __func__,
                  _mesa_get_format_name(src_format),
@@ -500,8 +500,8 @@ intel_miptree_blit(struct brw_context *brw,
    /* The blitter has no idea about HiZ or fast color clears, so we need to
     * resolve the miptrees before we do anything.
     */
-   intel_miptree_access_raw(brw, src_mt, src_level, src_slice, false);
-   intel_miptree_access_raw(brw, dst_mt, dst_level, dst_slice, true);
+   brw_miptree_access_raw(brw, src_mt, src_level, src_slice, false);
+   brw_miptree_access_raw(brw, dst_mt, dst_level, dst_slice, true);
 
    if (src_flip) {
       const unsigned h0 = src_mt->surf.phys_level0_sa.height;
@@ -514,9 +514,9 @@ intel_miptree_blit(struct brw_context *brw,
    }
 
    uint32_t src_image_x, src_image_y, dst_image_x, dst_image_y;
-   intel_miptree_get_image_offset(src_mt, src_level, src_slice,
+   brw_miptree_get_image_offset(src_mt, src_level, src_slice,
                                   &src_image_x, &src_image_y);
-   intel_miptree_get_image_offset(dst_mt, dst_level, dst_slice,
+   brw_miptree_get_image_offset(dst_mt, dst_level, dst_slice,
                                   &dst_image_x, &dst_image_y);
    src_x += src_image_x;
    src_y += src_image_y;
@@ -532,23 +532,21 @@ intel_miptree_blit(struct brw_context *brw,
    /* XXX This could be done in a single pass using XY_FULL_MONO_PATTERN_BLT */
    if (_mesa_get_format_bits(src_format, GL_ALPHA_BITS) == 0 &&
        _mesa_get_format_bits(dst_format, GL_ALPHA_BITS) > 0) {
-      intel_miptree_set_alpha_to_one(brw, dst_mt,
-                                     dst_x, dst_y,
-                                     width, height);
+      brw_miptree_set_alpha_to_one(brw, dst_mt, dst_x, dst_y, width, height);
    }
 
    return true;
 }
 
 bool
-intel_miptree_copy(struct brw_context *brw,
-                   struct intel_mipmap_tree *src_mt,
-                   int src_level, int src_slice,
-                   uint32_t src_x, uint32_t src_y,
-                   struct intel_mipmap_tree *dst_mt,
-                   int dst_level, int dst_slice,
-                   uint32_t dst_x, uint32_t dst_y,
-                   uint32_t src_width, uint32_t src_height)
+brw_miptree_copy(struct brw_context *brw,
+                 struct brw_mipmap_tree *src_mt,
+                 int src_level, int src_slice,
+                 uint32_t src_x, uint32_t src_y,
+                 struct brw_mipmap_tree *dst_mt,
+                 int dst_level, int dst_slice,
+                 uint32_t dst_x, uint32_t dst_y,
+                 uint32_t src_width, uint32_t src_height)
 {
    /* The blitter doesn't understand multisampling at all. */
    if (src_mt->surf.samples > 1 || dst_mt->surf.samples > 1)
@@ -560,12 +558,12 @@ intel_miptree_copy(struct brw_context *brw,
    /* The blitter has no idea about HiZ or fast color clears, so we need to
     * resolve the miptrees before we do anything.
     */
-   intel_miptree_access_raw(brw, src_mt, src_level, src_slice, false);
-   intel_miptree_access_raw(brw, dst_mt, dst_level, dst_slice, true);
+   brw_miptree_access_raw(brw, src_mt, src_level, src_slice, false);
+   brw_miptree_access_raw(brw, dst_mt, dst_level, dst_slice, true);
 
    uint32_t src_image_x, src_image_y;
-   intel_miptree_get_image_offset(src_mt, src_level, src_slice,
-                                  &src_image_x, &src_image_y);
+   brw_miptree_get_image_offset(src_mt, src_level, src_slice,
+                                &src_image_x, &src_image_y);
 
    if (_mesa_is_format_compressed(src_mt->format)) {
       GLuint bw, bh;
@@ -596,8 +594,8 @@ intel_miptree_copy(struct brw_context *brw,
    src_y += src_image_y;
 
    uint32_t dst_image_x, dst_image_y;
-   intel_miptree_get_image_offset(dst_mt, dst_level, dst_slice,
-                                  &dst_image_x, &dst_image_y);
+   brw_miptree_get_image_offset(dst_mt, dst_level, dst_slice,
+                                &dst_image_x, &dst_image_y);
 
    if (_mesa_is_format_compressed(dst_mt->format)) {
       GLuint bw, bh;
@@ -707,9 +705,9 @@ intelEmitImmediateColorExpandBlit(struct brw_context *brw,
  * miptree.
  */
 static void
-intel_miptree_set_alpha_to_one(struct brw_context *brw,
-                              struct intel_mipmap_tree *mt,
-                              int x, int y, int width, int height)
+brw_miptree_set_alpha_to_one(struct brw_context *brw,
+                             struct brw_mipmap_tree *mt,
+                             int x, int y, int width, int height)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    uint32_t BR13, CMD;
