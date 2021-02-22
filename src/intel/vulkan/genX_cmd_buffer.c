@@ -2430,7 +2430,6 @@ void genX(CmdPipelineBarrier)(
       if (range->aspectMask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
          VkImageAspectFlags color_aspects =
             anv_image_expand_aspects(image, range->aspectMask);
-         uint32_t aspect_bit;
          anv_foreach_image_aspect_bit(aspect_bit, image, color_aspects) {
             transition_color_buffer(cmd_buffer, image, 1UL << aspect_bit,
                                     range->baseMipLevel,
@@ -3471,8 +3470,8 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
       p = anv_batch_emitn(&cmd_buffer->batch, num_dwords,
                           GENX(3DSTATE_VERTEX_BUFFERS));
-      uint32_t vb, i = 0;
-      for_each_bit(vb, vb_emit) {
+      uint32_t i = 0;
+      u_foreach_bit(vb, vb_emit) {
          struct anv_buffer *buffer = cmd_buffer->state.vertex_bindings[vb].buffer;
          uint32_t offset = cmd_buffer->state.vertex_bindings[vb].offset;
 
@@ -5511,8 +5510,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
             uint32_t pending_clear_mask =
                get_multiview_subpass_clear_mask(cmd_state, att_state);
 
-            uint32_t layer_idx;
-            for_each_bit(layer_idx, pending_clear_mask) {
+            u_foreach_bit(layer_idx, pending_clear_mask) {
                uint32_t layer =
                   iview->planes[0].isl.base_array_layer + layer_idx;
 
@@ -5551,8 +5549,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
             uint32_t pending_clear_mask =
               get_multiview_subpass_clear_mask(cmd_state, att_state);
 
-            uint32_t layer_idx;
-            for_each_bit(layer_idx, pending_clear_mask) {
+            u_foreach_bit(layer_idx, pending_clear_mask) {
                uint32_t layer =
                   iview->planes[0].isl.base_array_layer + layer_idx;
 

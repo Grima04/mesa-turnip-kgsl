@@ -338,7 +338,6 @@ copy_image(struct anv_cmd_buffer *cmd_buffer,
    assert(anv_image_aspects_compatible(src_mask, dst_mask));
 
    if (util_bitcount(src_mask) > 1) {
-      uint32_t aspect_bit;
       anv_foreach_image_aspect_bit(aspect_bit, src_image, src_mask) {
          struct blorp_surf src_surf, dst_surf;
          get_blorp_surf_for_anv_image(cmd_buffer->device,
@@ -680,7 +679,6 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
    assert(anv_image_aspects_compatible(src_res->aspectMask,
                                        dst_res->aspectMask));
 
-   uint32_t aspect_bit;
    anv_foreach_image_aspect_bit(aspect_bit, src_image, src_res->aspectMask) {
       get_blorp_surf_for_anv_image(cmd_buffer->device,
                                    src_image, 1U << aspect_bit,
@@ -1223,8 +1221,7 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
 
    /* If multiview is enabled we ignore baseArrayLayer and layerCount */
    if (subpass->view_mask) {
-      uint32_t view_idx;
-      for_each_bit(view_idx, subpass->view_mask) {
+      u_foreach_bit(view_idx, subpass->view_mask) {
          for (uint32_t r = 0; r < rectCount; ++r) {
             const VkOffset2D offset = pRects[r].rect.offset;
             const VkExtent2D extent = pRects[r].rect.extent;
@@ -1291,8 +1288,7 @@ clear_depth_stencil_attachment(struct anv_cmd_buffer *cmd_buffer,
 
    /* If multiview is enabled we ignore baseArrayLayer and layerCount */
    if (subpass->view_mask) {
-      uint32_t view_idx;
-      for_each_bit(view_idx, subpass->view_mask) {
+      u_foreach_bit(view_idx, subpass->view_mask) {
          for (uint32_t r = 0; r < rectCount; ++r) {
             const VkOffset2D offset = pRects[r].rect.offset;
             const VkExtent2D extent = pRects[r].rect.extent;
@@ -1456,7 +1452,6 @@ resolve_image(struct anv_cmd_buffer *cmd_buffer,
    const uint32_t layer_count =
       anv_get_layerCount(dst_image, &region->dstSubresource);
 
-   uint32_t aspect_bit;
    anv_foreach_image_aspect_bit(aspect_bit, src_image,
                                 region->srcSubresource.aspectMask) {
       enum isl_aux_usage src_aux_usage =

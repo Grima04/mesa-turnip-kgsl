@@ -663,8 +663,7 @@ add_all_surfaces(struct anv_device *device,
    const struct gen_device_info *devinfo = &device->info;
    VkResult result;
 
-   uint32_t b;
-   for_each_bit(b, image->aspects) {
+   u_foreach_bit(b, image->aspects) {
       VkImageAspectFlagBits aspect = 1 << b;
       uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
       const  struct anv_format_plane plane_format =
@@ -1125,7 +1124,6 @@ VkResult anv_BindImageMemory2(
             assert(image->aspects == swapchain_image->aspects);
             assert(mem == NULL);
 
-            uint32_t aspect_bit;
             anv_foreach_image_aspect_bit(aspect_bit, image, aspects) {
                uint32_t plane =
                   anv_image_aspect_to_plane(image->aspects, 1UL << aspect_bit);
@@ -1150,7 +1148,6 @@ VkResult anv_BindImageMemory2(
       if (!mem)
          continue;
 
-      uint32_t aspect_bit;
       anv_foreach_image_aspect_bit(aspect_bit, image, aspects) {
          uint32_t plane =
             anv_image_aspect_to_plane(image->aspects, 1UL << aspect_bit);
@@ -2108,7 +2105,7 @@ anv_CreateImageView(VkDevice _device,
    /* Now go through the underlying image selected planes (computed in
     * expanded_aspects) and map them to planes in the image view.
     */
-   uint32_t iaspect_bit, vplane = 0;
+   uint32_t vplane = 0;
    anv_foreach_image_aspect_bit(iaspect_bit, image, expanded_aspects) {
       uint32_t iplane =
          anv_image_aspect_to_plane(image->aspects, 1UL << iaspect_bit);

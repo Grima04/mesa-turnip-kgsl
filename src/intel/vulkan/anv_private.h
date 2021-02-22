@@ -52,6 +52,7 @@
 #include "blorp/blorp.h"
 #include "compiler/brw_compiler.h"
 #include "util/bitset.h"
+#include "util/bitscan.h"
 #include "util/macros.h"
 #include "util/hash_table.h"
 #include "util/list.h"
@@ -356,11 +357,6 @@ static inline uintptr_t anv_pack_ptr(void *ptr, int bits, int flags)
    uintptr_t mask = (1ull << bits) - 1;
    return value | (mask & flags);
 }
-
-#define for_each_bit(b, dword)                          \
-   for (uint32_t __dword = (dword);                     \
-        (b) = __builtin_ffs(__dword) - 1, __dword;      \
-        __dword &= ~(1 << (b)))
 
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
@@ -2442,8 +2438,7 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
 {
    enum anv_pipe_bits pipe_bits = 0;
 
-   unsigned b;
-   for_each_bit(b, flags) {
+   u_foreach_bit(b, flags) {
       switch ((VkAccessFlagBits)(1 << b)) {
       case VK_ACCESS_SHADER_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as write
@@ -2503,8 +2498,7 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
 {
    enum anv_pipe_bits pipe_bits = 0;
 
-   unsigned b;
-   for_each_bit(b, flags) {
+   u_foreach_bit(b, flags) {
       switch ((VkAccessFlagBits)(1 << b)) {
       case VK_ACCESS_INDIRECT_COMMAND_READ_BIT:
          /* Indirect draw commands take a buffer as input that we're going to
@@ -3618,7 +3612,7 @@ anv_plane_to_aspect(VkImageAspectFlags image_aspects,
 }
 
 #define anv_foreach_image_aspect_bit(b, image, aspects) \
-   for_each_bit(b, anv_image_expand_aspects(image, aspects))
+   u_foreach_bit(b, anv_image_expand_aspects(image, aspects))
 
 const struct anv_format *
 anv_get_format(VkFormat format);

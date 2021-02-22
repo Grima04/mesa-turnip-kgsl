@@ -2205,8 +2205,8 @@ emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline)
       pr.ReplicaMask = (1 << view_count) - 1;
       pr.ReplicationCount = view_count - 1;
 
-      int i = 0, view_index;
-      for_each_bit(view_index, view_mask) {
+      int i = 0;
+      u_foreach_bit(view_index, view_mask) {
          pr.RTAIOffset[i] = view_index;
          i++;
       }
