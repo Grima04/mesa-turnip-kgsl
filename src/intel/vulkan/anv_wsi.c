@@ -330,6 +330,7 @@ VkResult anv_QueuePresentKHR(
          assert(impl->type == ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ);
          syncobjs[wait_count] = impl->syncobj;
          values[wait_count] = 0;
+         wait_count++;
       }
 
       int ret = 0;
