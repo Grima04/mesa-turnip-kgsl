@@ -750,10 +750,6 @@ spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-last: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-last: fail
 spec/!opengl 3.2/glsl-resource-not-bound buffer: crash
-spec/!opengl 3.3/minmax: skip
-spec/!opengl 3.3/required-renderbuffer-attachment-formats: skip
-spec/!opengl 3.3/required-sized-texture-formats: skip
-spec/!opengl 3.3/required-texture-attachment-formats: skip
 spec/!opengl 4.2/gl-max-vertex-attrib-stride: skip
 spec/!opengl 4.2/required-renderbuffer-attachment-formats: skip
 spec/!opengl 4.2/required-sized-texture-formats: skip
@@ -917,18 +913,14 @@ spec/arb_direct_state_access/compressedtextureimage gl_compressed_rgba_s3tc_dxt5
 spec/arb_direct_state_access/create-programpipelines/default compute shader program == 0: skip
 spec/arb_direct_state_access/create-programpipelines/default tcs == 0: skip
 spec/arb_direct_state_access/create-programpipelines/default tes == 0: skip
-spec/arb_direct_state_access/create-queries: skip
 spec/arb_direct_state_access/getcompressedtextureimage: skip
 spec/arb_direct_state_access/gettextureimage-formats: skip
 spec/arb_direct_state_access/gettextureimage-formats init-by-rendering: skip
 spec/arb_direct_state_access/gettextureimage-luminance: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-compat: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-prim-restart: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-elements-compat: skip
 spec/arb_es2_compatibility/texwrap formats bordercolor-swizzled/gl_rgb565, swizzled, border color only: fail
 spec/arb_es2_compatibility/texwrap formats bordercolor/gl_rgb565, border color only: fail
-spec/arb_es3_compatibility/es3-drawarrays-primrestart-fixedindex: skip
-spec/arb_es3_compatibility/es3-primrestart-fixedindex: skip
 spec/arb_fragment_program/fp-abs-01: crash
 spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
@@ -965,18 +957,12 @@ spec/arb_get_program_binary/reset-uniform: skip
 spec/arb_get_program_binary/restore-implicit-use-program: skip
 spec/arb_get_program_binary/restore-sso-program: fail
 spec/arb_get_program_binary/xfb-varyings: skip
-spec/arb_gpu_shader5/arb_gpu_shader5-emitstreamvertex_nodraw: fail
 spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams-without-invocations: skip
 spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams-without-invocations spirv: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-dlist-uniforms: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-double_in_bool_uniform: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-ssbo: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-tf-separate: fail
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-alu: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-const: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-packing: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-ssbo: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-ubo: skip
 spec/arb_internalformat_query/minmax: skip
 spec/arb_internalformat_query/misc. api error checks: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-comp: skip
@@ -1171,36 +1157,6 @@ spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-syn
 spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
 spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
 spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_after-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_after-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_after-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_after-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_after-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_after-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_before-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_before-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_before-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync_cpu_read_after_cache_test-gl_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
-spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
 spec/arb_sample_locations/test: skip
 spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha-to-coverage-combinations: skip
 spec/arb_sample_shading/builtin-gl-num-samples 16: skip
@@ -1304,9 +1260,8 @@ spec/arb_shader_image_load_store/shader-mem-barrier: skip
 spec/arb_shader_image_load_store/state: skip
 spec/arb_shader_image_load_store/unused: skip
 spec/arb_shader_image_size/builtin: skip
-spec/arb_shader_storage_buffer_object/array-ssbo-binding: fail
+spec/arb_shader_storage_buffer_object/array-ssbo-binding: crash
 spec/arb_shader_storage_buffer_object/minmax: skip
-spec/arb_shader_storage_buffer_object/program-interface-query: fail
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-32: skip
@@ -1950,12 +1905,9 @@ spec/arb_texture_view/rendering-formats/sample gl_rgb8i as gl_rgb8: fail
 spec/arb_texture_view/rendering-formats/sample gl_rgb8ui as gl_rgb8: fail
 spec/arb_texture_view/rendering-layers-image: skip
 spec/arb_texture_view/sampling-2d-array-as-cubemap-array: fail
-spec/arb_timer_query/query gl_timestamp: skip
-spec/arb_timer_query/query-lifetime: skip
-spec/arb_timer_query/timestamp-get: skip
+spec/arb_timer_query/timestamp-get: fail
 spec/arb_transform_feedback_instanced/draw-auto instanced: fail
 spec/arb_uniform_buffer_object/maxblocks: crash
-spec/arb_vertex_attrib_64bit/check-explicit-location: skip
 spec/arb_vertex_attrib_64bit/get_double_attribs-display-lists: skip
 spec/arb_vertex_program/vp-address-02: skip
 spec/arb_vertex_program/vp-address-04: skip
@@ -2011,7 +1963,6 @@ spec/ext_direct_state_access/named-buffers 15/flushmappednamedbufferrangeext: sk
 spec/ext_direct_state_access/named-buffers 15/mapnamedbufferext: skip
 spec/ext_direct_state_access/named-buffers 15/mapnamedbufferrangeext: skip
 spec/ext_direct_state_access/named-buffers 15/namedcopybuffersubdataext: skip
-spec/ext_disjoint_timer_query/simple: skip
 spec/ext_external_objects/memory-object-api-errors: skip
 spec/ext_external_objects/semaphore-api-errors: skip
 spec/ext_external_objects/vk-buf-exchange: skip
@@ -2701,14 +2652,10 @@ spec/ext_texture_array/copyteximage 2d_array samples=32: skip
 spec/ext_texture_array/copyteximage 2d_array samples=4: skip
 spec/ext_texture_array/copyteximage 2d_array samples=6: skip
 spec/ext_texture_array/copyteximage 2d_array samples=8: skip
-spec/ext_texture_array/fbo-depth-array depth-clear: skip
-spec/ext_texture_array/fbo-depth-array depth-draw: skip
-spec/ext_texture_array/fbo-depth-array depth-layered-clear: skip
-spec/ext_texture_array/fbo-depth-array fs-writes-depth: skip
 spec/ext_texture_array/fbo-depth-array fs-writes-stencil: skip
-spec/ext_texture_array/fbo-depth-array stencil-clear: skip
-spec/ext_texture_array/fbo-depth-array stencil-draw: skip
-spec/ext_texture_array/fbo-depth-array stencil-layered-clear: skip
+spec/ext_texture_array/fbo-depth-array stencil-clear: fail
+spec/ext_texture_array/fbo-depth-array stencil-draw: fail
+spec/ext_texture_array/fbo-depth-array stencil-layered-clear: fail
 spec/ext_texture_array/fbo-generatemipmap-array: crash
 spec/ext_texture_compression_latc/fbo-generatemipmap-formats: skip
 spec/ext_texture_compression_latc/fbo-generatemipmap-formats-signed: skip
@@ -2953,7 +2900,6 @@ spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler3d: skip
 spec/glsl-1.50/execution/texturesize/tes-texturesize-usamplerbuffer: skip
 spec/glsl-1.50/execution/texturesize/tes-texturesize-usamplercube: skip
 spec/glsl-1.50/gs-max-output: crash
-spec/glsl-3.30/built-in constants: skip
 spec/glsl-es-3.10/built-in constants: skip
 spec/intel_blackhole_render/intel_blackhole-blit: skip
 spec/intel_blackhole_render/intel_blackhole-blit_gles2: skip
@@ -3107,10 +3053,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17437
-       fail:     1241
-      crash:      110
-       skip:     1728
+       pass:    17516
+       fail:     1242
+      crash:      111
+       skip:     1672
     timeout:        0
        warn:        4
  incomplete:        0
@@ -3119,4 +3065,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20543
+      total:    20568
