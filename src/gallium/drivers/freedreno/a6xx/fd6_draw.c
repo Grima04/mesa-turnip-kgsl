@@ -531,7 +531,7 @@ fd6_clear(struct fd_context *ctx, unsigned buffers,
 	if (ctx->batch->num_draws > 0)
 		return false;
 
-	foreach_bit(i, color_buffers)
+	u_foreach_bit(i, color_buffers)
 		ctx->batch->clear_color[i] = *color;
 	if (buffers & PIPE_CLEAR_DEPTH)
 		ctx->batch->clear_depth = depth;

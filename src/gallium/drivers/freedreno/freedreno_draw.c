@@ -131,15 +131,15 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch)
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_SSBO) {
 		const struct fd_shaderbuf_stateobj *so = &ctx->shaderbuf[PIPE_SHADER_FRAGMENT];
 
-		foreach_bit (i, so->enabled_mask & so->writable_mask)
+		u_foreach_bit (i, so->enabled_mask & so->writable_mask)
 			resource_written(batch, so->sb[i].buffer);
 
-		foreach_bit (i, so->enabled_mask & ~so->writable_mask)
+		u_foreach_bit (i, so->enabled_mask & ~so->writable_mask)
 			resource_read(batch, so->sb[i].buffer);
 	}
 
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_IMAGE) {
-		foreach_bit (i, ctx->shaderimg[PIPE_SHADER_FRAGMENT].enabled_mask) {
+		u_foreach_bit (i, ctx->shaderimg[PIPE_SHADER_FRAGMENT].enabled_mask) {
 			struct pipe_image_view *img =
 					&ctx->shaderimg[PIPE_SHADER_FRAGMENT].si[i];
 			if (img->access & PIPE_IMAGE_ACCESS_WRITE)
@@ -150,18 +150,18 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch)
 	}
 
 	if (ctx->dirty_shader[PIPE_SHADER_VERTEX] & FD_DIRTY_SHADER_CONST) {
-		foreach_bit (i, ctx->constbuf[PIPE_SHADER_VERTEX].enabled_mask)
+		u_foreach_bit (i, ctx->constbuf[PIPE_SHADER_VERTEX].enabled_mask)
 			resource_read(batch, ctx->constbuf[PIPE_SHADER_VERTEX].cb[i].buffer);
 	}
 
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_CONST) {
-		foreach_bit (i, ctx->constbuf[PIPE_SHADER_FRAGMENT].enabled_mask)
+		u_foreach_bit (i, ctx->constbuf[PIPE_SHADER_FRAGMENT].enabled_mask)
 			resource_read(batch, ctx->constbuf[PIPE_SHADER_FRAGMENT].cb[i].buffer);
 	}
 
 	/* Mark VBOs as being read */
 	if (ctx->dirty & FD_DIRTY_VTXBUF) {
-		foreach_bit (i, ctx->vtx.vertexbuf.enabled_mask) {
+		u_foreach_bit (i, ctx->vtx.vertexbuf.enabled_mask) {
 			assert(!ctx->vtx.vertexbuf.vb[i].is_user_buffer);
 			resource_read(batch, ctx->vtx.vertexbuf.vb[i].buffer.resource);
 		}
@@ -169,12 +169,12 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch)
 
 	/* Mark textures as being read */
 	if (ctx->dirty_shader[PIPE_SHADER_VERTEX] & FD_DIRTY_SHADER_TEX) {
-		foreach_bit (i, ctx->tex[PIPE_SHADER_VERTEX].valid_textures)
+		u_foreach_bit (i, ctx->tex[PIPE_SHADER_VERTEX].valid_textures)
 			resource_read(batch, ctx->tex[PIPE_SHADER_VERTEX].textures[i]->texture);
 	}
 
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_TEX) {
-		foreach_bit (i, ctx->tex[PIPE_SHADER_FRAGMENT].valid_textures)
+		u_foreach_bit (i, ctx->tex[PIPE_SHADER_FRAGMENT].valid_textures)
 			resource_read(batch, ctx->tex[PIPE_SHADER_FRAGMENT].textures[i]->texture);
 	}
 
@@ -535,13 +535,13 @@ fd_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 	fd_screen_lock(ctx->screen);
 
 	/* Mark SSBOs */
-	foreach_bit (i, so->enabled_mask & so->writable_mask)
+	u_foreach_bit (i, so->enabled_mask & so->writable_mask)
 		resource_written(batch, so->sb[i].buffer);
 
-	foreach_bit (i, so->enabled_mask & ~so->writable_mask)
+	u_foreach_bit (i, so->enabled_mask & ~so->writable_mask)
 		resource_read(batch, so->sb[i].buffer);
 
-	foreach_bit(i, ctx->shaderimg[PIPE_SHADER_COMPUTE].enabled_mask) {
+	u_foreach_bit(i, ctx->shaderimg[PIPE_SHADER_COMPUTE].enabled_mask) {
 		struct pipe_image_view *img =
 			&ctx->shaderimg[PIPE_SHADER_COMPUTE].si[i];
 		if (img->access & PIPE_IMAGE_ACCESS_WRITE)
@@ -551,17 +551,17 @@ fd_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 	}
 
 	/* UBO's are read */
-	foreach_bit(i, ctx->constbuf[PIPE_SHADER_COMPUTE].enabled_mask)
+	u_foreach_bit(i, ctx->constbuf[PIPE_SHADER_COMPUTE].enabled_mask)
 		resource_read(batch, ctx->constbuf[PIPE_SHADER_COMPUTE].cb[i].buffer);
 
 	/* Mark textures as being read */
-	foreach_bit(i, ctx->tex[PIPE_SHADER_COMPUTE].valid_textures)
+	u_foreach_bit(i, ctx->tex[PIPE_SHADER_COMPUTE].valid_textures)
 		resource_read(batch, ctx->tex[PIPE_SHADER_COMPUTE].textures[i]->texture);
 
 	/* For global buffers, we don't really know if read or written, so assume
 	 * the worst:
 	 */
-	foreach_bit(i, ctx->global_bindings.enabled_mask)
+	u_foreach_bit(i, ctx->global_bindings.enabled_mask)
 		resource_written(batch, ctx->global_bindings.buf[i]);
 
 	if (info->indirect)

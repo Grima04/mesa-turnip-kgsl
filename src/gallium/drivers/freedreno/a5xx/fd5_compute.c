@@ -133,7 +133,7 @@ fd5_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 	fd5_emit_cs_state(ctx, ring, v);
 	fd5_emit_cs_consts(v, ring, ctx, info);
 
-	foreach_bit(i, ctx->global_bindings.enabled_mask)
+	u_foreach_bit(i, ctx->global_bindings.enabled_mask)
 		nglobal++;
 
 	if (nglobal > 0) {
@@ -144,7 +144,7 @@ fd5_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 		 * payload:
 		 */
 		OUT_PKT7(ring, CP_NOP, 2 * nglobal);
-		foreach_bit(i, ctx->global_bindings.enabled_mask) {
+		u_foreach_bit(i, ctx->global_bindings.enabled_mask) {
 			struct pipe_resource *prsc = ctx->global_bindings.buf[i];
 			OUT_RELOC(ring, fd_resource(prsc)->bo, 0, 0, 0);
 		}
