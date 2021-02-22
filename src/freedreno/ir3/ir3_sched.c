@@ -935,7 +935,17 @@ sched_node_add_dep(struct ir3_instruction *instr, struct ir3_instruction *src, i
 
 	dag_add_edge(&sn->dag, &n->dag, NULL);
 
-	unsigned d = ir3_delayslots(src, instr, i, true);
+
+	/* There's a mismatch between the indices foreach_ssa_src_n uses and the
+	 * indices that ir3_delayslots expects, and additionally we don't want to
+	 * call it and get bogus answers on false dependencies.
+	 */
+	unsigned d = 0;
+	if (i < instr->regs_count)
+		d = ir3_delayslots(src, instr, i + 1, true);
+	else if (src == instr->address)
+		d = ir3_delayslots(src, instr, 0, true);
+
 	n->delay = MAX2(n->delay, d);
 }
 
