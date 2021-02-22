@@ -724,6 +724,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          const struct glsl_type *type = glsl_without_array(var->type);
          if (var->data.mode == nir_var_mem_ubo) {
             ztype = ZINK_DESCRIPTOR_TYPE_UBO;
+            var->data.descriptor_set = ztype;
             var->data.binding = zink_binding(nir->info.stage,
                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                  var->data.driver_location);
@@ -738,6 +739,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             ret->num_bindings[ztype]++;
          } else if (var->data.mode == nir_var_mem_ssbo) {
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
+            var->data.descriptor_set = ztype;
             var->data.binding = zink_binding(nir->info.stage,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              var->data.driver_location);
@@ -752,6 +754,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {
                VkDescriptorType vktype = glsl_type_is_image(type) ? zink_image_type(type) : zink_sampler_type(type);
                ztype = zink_desc_type_from_vktype(vktype);
+               var->data.descriptor_set = ztype;
                var->data.driver_location = var->data.binding;
                var->data.binding = zink_binding(nir->info.stage,
                                                 vktype,
