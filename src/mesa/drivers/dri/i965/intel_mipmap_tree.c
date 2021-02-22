@@ -1082,7 +1082,7 @@ bool
 intel_miptree_match_image(struct intel_mipmap_tree *mt,
                           struct gl_texture_image *image)
 {
-   struct intel_texture_image *intelImage = intel_texture_image(image);
+   struct brw_texture_image *intelImage = brw_texture_image(image);
    GLuint level = intelImage->base.Base.Level;
    int width, height, depth;
 
@@ -1365,12 +1365,12 @@ intel_miptree_copy_slice(struct brw_context *brw,
  */
 void
 intel_miptree_copy_teximage(struct brw_context *brw,
-			    struct intel_texture_image *intelImage,
+			    struct brw_texture_image *intelImage,
 			    struct intel_mipmap_tree *dst_mt)
 {
    struct intel_mipmap_tree *src_mt = intelImage->mt;
-   struct intel_texture_object *intel_obj =
-      intel_texture_object(intelImage->base.Base.TexObject);
+   struct brw_texture_object *intel_obj =
+      brw_texture_object(intelImage->base.Base.TexObject);
    int level = intelImage->base.Base.Level;
    const unsigned face = intelImage->base.Base.Face;
    unsigned start_layer, end_layer;

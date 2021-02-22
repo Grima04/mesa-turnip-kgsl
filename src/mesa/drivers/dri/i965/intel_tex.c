@@ -19,13 +19,13 @@ intelNewTextureImage(struct gl_context * ctx)
 {
    DBG("%s\n", __func__);
    (void) ctx;
-   return (struct gl_texture_image *) CALLOC_STRUCT(intel_texture_image);
+   return (struct gl_texture_image *) CALLOC_STRUCT(brw_texture_image);
 }
 
 static void
 intelDeleteTextureImage(struct gl_context * ctx, struct gl_texture_image *img)
 {
-   /* nothing special (yet) for intel_texture_image */
+   /* nothing special (yet) for brw_texture_image */
    _mesa_delete_texture_image(ctx, img);
 }
 
@@ -33,7 +33,7 @@ intelDeleteTextureImage(struct gl_context * ctx, struct gl_texture_image *img)
 static struct gl_texture_object *
 intelNewTextureObject(struct gl_context * ctx, GLuint name, GLenum target)
 {
-   struct intel_texture_object *obj = CALLOC_STRUCT(intel_texture_object);
+   struct brw_texture_object *obj = CALLOC_STRUCT(brw_texture_object);
 
    (void) ctx;
 
@@ -53,7 +53,7 @@ static void
 intelDeleteTextureObject(struct gl_context *ctx,
 			 struct gl_texture_object *texObj)
 {
-   struct intel_texture_object *intelObj = intel_texture_object(texObj);
+   struct brw_texture_object *intelObj = brw_texture_object(texObj);
 
    intel_miptree_release(&intelObj->mt);
    _mesa_delete_texture_object(ctx, texObj);
@@ -64,9 +64,9 @@ intel_alloc_texture_image_buffer(struct gl_context *ctx,
 				 struct gl_texture_image *image)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_texture_image *intel_image = intel_texture_image(image);
+   struct brw_texture_image *intel_image = brw_texture_image(image);
    struct gl_texture_object *texobj = image->TexObject;
-   struct intel_texture_object *intel_texobj = intel_texture_object(texobj);
+   struct brw_texture_object *intel_texobj = brw_texture_object(texobj);
 
    assert(image->Border == 0);
 
@@ -129,7 +129,7 @@ intel_alloc_texture_storage(struct gl_context *ctx,
                             GLsizei height, GLsizei depth)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_texture_object *intel_texobj = intel_texture_object(texobj);
+   struct brw_texture_object *intel_texobj = brw_texture_object(texobj);
    struct gl_texture_image *first_image = texobj->Image[0][0];
    int num_samples = intel_quantize_num_samples(brw->screen,
                                                 first_image->NumSamples);
@@ -161,7 +161,7 @@ intel_alloc_texture_storage(struct gl_context *ctx,
    for (face = 0; face < numFaces; face++) {
       for (level = 0; level < levels; level++) {
          struct gl_texture_image *image = texobj->Image[face][level];
-         struct intel_texture_image *intel_image = intel_texture_image(image);
+         struct brw_texture_image *intel_image = brw_texture_image(image);
 
          image->NumSamples = num_samples;
 
@@ -187,7 +187,7 @@ static void
 intel_free_texture_image_buffer(struct gl_context * ctx,
 				struct gl_texture_image *texImage)
 {
-   struct intel_texture_image *intelImage = intel_texture_image(texImage);
+   struct brw_texture_image *intelImage = brw_texture_image(texImage);
 
    DBG("%s\n", __func__);
 
@@ -213,7 +213,7 @@ intel_map_texture_image(struct gl_context *ctx,
 			GLint *out_stride)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_texture_image *intel_image = intel_texture_image(tex_image);
+   struct brw_texture_image *intel_image = brw_texture_image(tex_image);
    struct intel_mipmap_tree *mt = intel_image->mt;
    ptrdiff_t stride;
 
@@ -244,7 +244,7 @@ intel_unmap_texture_image(struct gl_context *ctx,
 			  struct gl_texture_image *tex_image, GLuint slice)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_texture_image *intel_image = intel_texture_image(tex_image);
+   struct brw_texture_image *intel_image = brw_texture_image(tex_image);
    struct intel_mipmap_tree *mt = intel_image->mt;
 
    if (tex_image->TexObject->Target == GL_TEXTURE_CUBE_MAP)
@@ -256,13 +256,13 @@ intel_unmap_texture_image(struct gl_context *ctx,
 }
 
 static GLboolean
-intel_texture_view(struct gl_context *ctx,
+brw_texture_view(struct gl_context *ctx,
                    struct gl_texture_object *texObj,
                    struct gl_texture_object *origTexObj)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_texture_object *intel_tex = intel_texture_object(texObj);
-   struct intel_texture_object *intel_orig_tex = intel_texture_object(origTexObj);
+   struct brw_texture_object *intel_tex = brw_texture_object(texObj);
+   struct brw_texture_object *intel_orig_tex = brw_texture_object(origTexObj);
 
    assert(intel_orig_tex->mt);
    intel_miptree_reference(&intel_tex->mt, intel_orig_tex->mt);
@@ -282,7 +282,7 @@ intel_texture_view(struct gl_context *ctx,
    for (face = 0; face < numFaces; face++) {
       for (level = 0; level < numLevels; level++) {
          struct gl_texture_image *image = texObj->Image[face][level];
-         struct intel_texture_image *intel_image = intel_texture_image(image);
+         struct brw_texture_image *intel_image = brw_texture_image(image);
 
          intel_miptree_reference(&intel_image->mt, intel_orig_tex->mt);
       }
@@ -304,7 +304,7 @@ intel_texture_view(struct gl_context *ctx,
 }
 
 static void
-intel_texture_barrier(struct gl_context *ctx)
+brw_texture_barrier(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -334,6 +334,6 @@ intelInitTextureFuncs(struct dd_function_table *functions)
    functions->AllocTextureStorage = intel_alloc_texture_storage;
    functions->MapTextureImage = intel_map_texture_image;
    functions->UnmapTextureImage = intel_unmap_texture_image;
-   functions->TextureView = intel_texture_view;
-   functions->TextureBarrier = intel_texture_barrier;
+   functions->TextureView = brw_texture_view;
+   functions->TextureBarrier = brw_texture_barrier;
 }

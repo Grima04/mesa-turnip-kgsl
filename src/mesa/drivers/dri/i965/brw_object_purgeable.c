@@ -66,16 +66,16 @@ intel_buffer_object_purgeable(struct gl_context * ctx,
 }
 
 static GLenum
-intel_texture_object_purgeable(struct gl_context * ctx,
+brw_texture_object_purgeable(struct gl_context * ctx,
                                struct gl_texture_object *obj,
                                GLenum option)
 {
-   struct intel_texture_object *intel;
+   struct brw_texture_object *intel;
 
    (void) ctx;
    (void) option;
 
-   intel = intel_texture_object(obj);
+   intel = brw_texture_object(obj);
    if (intel->mt == NULL || intel->mt->bo == NULL)
       return GL_RELEASED_APPLE;
 
@@ -133,15 +133,15 @@ intel_buffer_object_unpurgeable(struct gl_context * ctx,
 }
 
 static GLenum
-intel_texture_object_unpurgeable(struct gl_context * ctx,
+brw_texture_object_unpurgeable(struct gl_context * ctx,
                                  struct gl_texture_object *obj,
                                  GLenum option)
 {
-   struct intel_texture_object *intel;
+   struct brw_texture_object *intel;
 
    (void) ctx;
 
-   intel = intel_texture_object(obj);
+   intel = brw_texture_object(obj);
    if (intel->mt == NULL || intel->mt->bo == NULL)
       return GL_UNDEFINED_APPLE;
 
@@ -178,10 +178,10 @@ void
 brw_init_object_purgeable_functions(struct dd_function_table *functions)
 {
    functions->BufferObjectPurgeable = intel_buffer_object_purgeable;
-   functions->TextureObjectPurgeable = intel_texture_object_purgeable;
+   functions->TextureObjectPurgeable = brw_texture_object_purgeable;
    functions->RenderObjectPurgeable = intel_render_object_purgeable;
 
    functions->BufferObjectUnpurgeable = intel_buffer_object_unpurgeable;
-   functions->TextureObjectUnpurgeable = intel_texture_object_unpurgeable;
+   functions->TextureObjectUnpurgeable = brw_texture_object_unpurgeable;
    functions->RenderObjectUnpurgeable = intel_render_object_unpurgeable;
 }

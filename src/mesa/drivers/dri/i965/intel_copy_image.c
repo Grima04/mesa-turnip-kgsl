@@ -80,7 +80,7 @@ intel_copy_image_sub_data(struct gl_context *ctx,
    unsigned src_level, dst_level;
 
    if (src_image) {
-      src_mt = intel_texture_image(src_image)->mt;
+      src_mt = brw_texture_image(src_image)->mt;
       src_level = src_image->Level + src_image->TexObject->Attrib.MinLevel;
 
       /* Cube maps actually have different images per face */
@@ -96,7 +96,7 @@ intel_copy_image_sub_data(struct gl_context *ctx,
    }
 
    if (dst_image) {
-      dst_mt = intel_texture_image(dst_image)->mt;
+      dst_mt = brw_texture_image(dst_image)->mt;
 
       dst_level = dst_image->Level + dst_image->TexObject->Attrib.MinLevel;
 

@@ -277,8 +277,8 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
           * then we need to emit slightly different code to first sample the
           * MCS surface.
           */
-         struct intel_texture_object *intel_tex =
-            intel_texture_object((struct gl_texture_object *)t);
+         struct brw_texture_object *intel_tex =
+            brw_texture_object((struct gl_texture_object *)t);
 
          /* From gen9 onwards some single sampled buffers can also be
           * compressed. These don't need ld2dms sampling along with mcs fetch.

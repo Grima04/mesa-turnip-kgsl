@@ -533,7 +533,7 @@ intel_renderbuffer_update_wrapper(struct brw_context *brw,
                                   bool layered)
 {
    struct gl_renderbuffer *rb = &irb->Base.Base;
-   struct intel_texture_image *intel_image = intel_texture_image(image);
+   struct brw_texture_image *intel_image = brw_texture_image(image);
    struct intel_mipmap_tree *mt = intel_image->mt;
    int level = image->Level;
 
@@ -594,7 +594,7 @@ intel_render_texture(struct gl_context * ctx,
    struct gl_renderbuffer *rb = att->Renderbuffer;
    struct intel_renderbuffer *irb = intel_renderbuffer(rb);
    struct gl_texture_image *image = rb->TexImage;
-   struct intel_texture_image *intel_image = intel_texture_image(image);
+   struct brw_texture_image *intel_image = brw_texture_image(image);
    struct intel_mipmap_tree *mt = intel_image->mt;
    int layer;
 
@@ -964,7 +964,7 @@ intel_renderbuffer_move_to_temp(struct brw_context *brw,
                                 bool invalidate)
 {
    struct gl_renderbuffer *rb =&irb->Base.Base;
-   struct intel_texture_image *intel_image = intel_texture_image(rb->TexImage);
+   struct brw_texture_image *intel_image = brw_texture_image(rb->TexImage);
    struct intel_mipmap_tree *new_mt;
    int width, height, depth;
 

@@ -50,8 +50,8 @@ get_base_dim(unsigned old_base_dim, unsigned new_level_dim, unsigned level)
  */
 struct intel_mipmap_tree *
 intel_miptree_create_for_teximage(struct brw_context *brw,
-				  struct intel_texture_object *intelObj,
-				  struct intel_texture_image *intelImage,
+				  struct brw_texture_object *intelObj,
+				  struct brw_texture_image *intelImage,
                                   enum intel_miptree_create_flags flags)
 {
    GLuint lastLevel;
@@ -135,7 +135,7 @@ intel_texsubimage_blorp(struct brw_context *brw, GLuint dims,
                         GLenum format, GLenum type, const void *pixels,
                         const struct gl_pixelstore_attrib *packing)
 {
-   struct intel_texture_image *intel_image = intel_texture_image(tex_image);
+   struct brw_texture_image *intel_image = brw_texture_image(tex_image);
    const unsigned mt_level = tex_image->Level + tex_image->TexObject->Attrib.MinLevel;
    const unsigned mt_z = tex_image->TexObject->Attrib.MinLayer + tex_image->Face + z;
 
@@ -185,7 +185,7 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   struct intel_texture_image *image = intel_texture_image(texImage);
+   struct brw_texture_image *image = brw_texture_image(texImage);
    int src_pitch;
 
    /* The miptree's buffer. */
@@ -318,7 +318,7 @@ intel_upload_tex(struct gl_context * ctx,
                  const struct gl_pixelstore_attrib *packing)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct intel_mipmap_tree *mt = intel_texture_image(texImage)->mt;
+   struct intel_mipmap_tree *mt = brw_texture_image(texImage)->mt;
    bool ok;
 
    /* Check that there is actually data to store. */
@@ -371,7 +371,7 @@ intelTexImage(struct gl_context * ctx,
       return;
    }
 
-   assert(intel_texture_image(texImage)->mt);
+   assert(brw_texture_image(texImage)->mt);
 
    intel_upload_tex(ctx, dims, texImage, 0, 0, 0,
                     texImage->Width, texImage->Height, texImage->Depth,
@@ -409,8 +409,8 @@ intel_set_texture_image_mt(struct brw_context *brw,
 
 {
    struct gl_texture_object *texobj = image->TexObject;
-   struct intel_texture_object *intel_texobj = intel_texture_object(texobj);
-   struct intel_texture_image *intel_image = intel_texture_image(image);
+   struct brw_texture_object *intel_texobj = brw_texture_object(texobj);
+   struct brw_texture_image *intel_image = brw_texture_image(image);
 
    _mesa_init_teximage_fields(&brw->ctx, image,
                               mt->surf.logical_level0_px.width,
@@ -504,7 +504,7 @@ intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
    struct brw_context *brw = pDRICtx->driverPrivate;
    struct gl_context *ctx = &brw->ctx;
    struct gl_texture_object *tex_obj;
-   struct intel_texture_object *intel_tex;
+   struct brw_texture_object *intel_tex;
 
    tex_obj = _mesa_get_current_tex_object(ctx, target);
    if (!tex_obj)
@@ -512,7 +512,7 @@ intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
 
    _mesa_lock_texture(&brw->ctx, tex_obj);
 
-   intel_tex = intel_texture_object(tex_obj);
+   intel_tex = brw_texture_object(tex_obj);
    if (!intel_tex->mt) {
       _mesa_unlock_texture(&brw->ctx, tex_obj);
       return;
@@ -564,9 +564,9 @@ intel_bind_renderbuffer_tex_image(struct gl_context *ctx,
                                   struct gl_texture_image *image)
 {
    struct intel_renderbuffer *irb = intel_renderbuffer(rb);
-   struct intel_texture_image *intel_image = intel_texture_image(image);
+   struct brw_texture_image *intel_image = brw_texture_image(image);
    struct gl_texture_object *texobj = image->TexObject;
-   struct intel_texture_object *intel_texobj = intel_texture_object(texobj);
+   struct brw_texture_object *intel_texobj = brw_texture_object(texobj);
 
    /* We can only handle RB allocated with AllocRenderbufferStorage, or
     * window-system renderbuffers.
@@ -632,7 +632,7 @@ intel_image_target_texture(struct gl_context *ctx, GLenum target,
    if (mt == NULL)
       return;
 
-   struct intel_texture_object *intel_texobj = intel_texture_object(texObj);
+   struct brw_texture_object *intel_texobj = brw_texture_object(texObj);
    intel_texobj->planar_format = image->planar_format;
    intel_texobj->yuv_color_space = image->yuv_color_space;
 
@@ -682,7 +682,7 @@ intel_image_target_tex_storage(struct gl_context *ctx, GLenum target,
                               struct gl_texture_image *texImage,
                               GLeglImageOES image_handle)
 {
-   struct intel_texture_object *intel_texobj = intel_texture_object(texObj);
+   struct brw_texture_object *intel_texobj = brw_texture_object(texObj);
    intel_image_target_texture(ctx, target, texObj, texImage, image_handle,
                               true);
 
@@ -701,7 +701,7 @@ intel_gettexsubimage_blorp(struct brw_context *brw,
                            GLenum format, GLenum type, const void *pixels,
                            const struct gl_pixelstore_attrib *packing)
 {
-   struct intel_texture_image *intel_image = intel_texture_image(tex_image);
+   struct brw_texture_image *intel_image = brw_texture_image(tex_image);
    const unsigned mt_level = tex_image->Level + tex_image->TexObject->Attrib.MinLevel;
    const unsigned mt_z = tex_image->TexObject->Attrib.MinLayer + tex_image->Face + z;
 
@@ -734,7 +734,7 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   struct intel_texture_image *image = intel_texture_image(texImage);
+   struct brw_texture_image *image = brw_texture_image(texImage);
    int dst_pitch;
 
    /* The miptree's buffer. */

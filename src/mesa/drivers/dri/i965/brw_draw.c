@@ -496,7 +496,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
                            bool *draw_aux_buffer_disabled)
 {
    struct gl_context *ctx = &brw->ctx;
-   struct intel_texture_object *tex_obj;
+   struct brw_texture_object *tex_obj;
 
    BITSET_DECLARE(used_for_txf, MAX_COMBINED_TEXTURE_IMAGE_UNITS);
    memset(used_for_txf, 0, sizeof(used_for_txf));
@@ -523,7 +523,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
       for (int i = 0; i <= maxEnabledUnit; i++) {
          if (!ctx->Texture.Unit[i]._Current)
             continue;
-         tex_obj = intel_texture_object(ctx->Texture.Unit[i]._Current);
+         tex_obj = brw_texture_object(ctx->Texture.Unit[i]._Current);
          if (!tex_obj || !tex_obj->mt)
             continue;
 
@@ -537,7 +537,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
    for (int i = 0; i <= maxEnabledUnit; i++) {
       if (!ctx->Texture.Unit[i]._Current)
 	 continue;
-      tex_obj = intel_texture_object(ctx->Texture.Unit[i]._Current);
+      tex_obj = brw_texture_object(ctx->Texture.Unit[i]._Current);
       if (!tex_obj || !tex_obj->mt)
 	 continue;
 
@@ -605,7 +605,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
          for (unsigned j = 0; j < prog->info.num_images; j++) {
             struct gl_image_unit *u =
                &ctx->ImageUnits[prog->sh.ImageUnits[j]];
-            tex_obj = intel_texture_object(u->TexObj);
+            tex_obj = brw_texture_object(u->TexObj);
 
             if (tex_obj && tex_obj->mt) {
                if (rendering) {

@@ -45,7 +45,7 @@ static void
 intel_update_max_level(struct gl_texture_object *tObj,
 		       struct gl_sampler_object *sampler)
 {
-   struct intel_texture_object *intelObj = intel_texture_object(tObj);
+   struct brw_texture_object *intelObj = brw_texture_object(tObj);
 
    if (!tObj->_MipmapComplete ||
        (tObj->_RenderToTexture &&
@@ -67,10 +67,10 @@ void
 intel_finalize_mipmap_tree(struct brw_context *brw,
                            struct gl_texture_object *tObj)
 {
-   struct intel_texture_object *intelObj = intel_texture_object(tObj);
+   struct brw_texture_object *intelObj = brw_texture_object(tObj);
    GLuint face, i;
    GLuint nr_faces = 0;
-   struct intel_texture_image *firstImage;
+   struct brw_texture_image *firstImage;
    int width, height, depth;
 
    /* TBOs require no validation -- they always just point to their BO. */
@@ -103,7 +103,7 @@ intel_finalize_mipmap_tree(struct brw_context *brw,
     */
    assert(!tObj->Immutable || brw->screen->devinfo.gen < 6);
 
-   firstImage = intel_texture_image(tObj->Image[0][tObj->Attrib.BaseLevel]);
+   firstImage = brw_texture_image(tObj->Image[0][tObj->Attrib.BaseLevel]);
 
    /* Check tree can hold all active levels.  Check tree matches
     * target, imageFormat, etc.
@@ -169,8 +169,8 @@ intel_finalize_mipmap_tree(struct brw_context *brw,
    nr_faces = _mesa_num_tex_faces(intelObj->base.Target);
    for (face = 0; face < nr_faces; face++) {
       for (i = validate_first_level; i <= validate_last_level; i++) {
-         struct intel_texture_image *intelImage =
-            intel_texture_image(intelObj->base.Image[face][i]);
+         struct brw_texture_image *intelImage =
+            brw_texture_image(intelObj->base.Image[face][i]);
 	 /* skip too small size mipmap */
  	 if (intelImage == NULL)
 		 break;

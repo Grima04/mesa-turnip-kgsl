@@ -698,7 +698,7 @@ brw_blorp_copytexsubimage(struct brw_context *brw,
 {
    struct gl_context *ctx = &brw->ctx;
    struct intel_renderbuffer *src_irb = intel_renderbuffer(src_rb);
-   struct intel_texture_image *intel_image = intel_texture_image(dst_image);
+   struct brw_texture_image *intel_image = brw_texture_image(dst_image);
 
    /* No pixel transfer operations (zoom, bias, mapping), just a blit */
    if (brw->ctx._ImageTransferState)

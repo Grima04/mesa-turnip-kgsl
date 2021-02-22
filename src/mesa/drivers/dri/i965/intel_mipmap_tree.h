@@ -35,9 +35,9 @@
  *
  * Original OpenGL allowed texture miplevels to be specified in arbitrary
  * order, and a texture may change size over time.  Thus, each
- * intel_texture_image has a reference to a miptree that contains the pixel
+ * brw_texture_image has a reference to a miptree that contains the pixel
  * data sized appropriately for it, which will later be referenced by/copied
- * to the intel_texture_object at draw time (intel_finalize_mipmap_tree()) so
+ * to the brw_texture_object at draw time (intel_finalize_mipmap_tree()) so
  * that there's a single miptree for the complete texture.
  */
 
@@ -60,7 +60,7 @@ extern "C" {
 struct brw_context;
 struct intel_renderbuffer;
 
-struct intel_texture_image;
+struct brw_texture_image;
 
 /**
  * This bit extends the set of GL_MAP_*_BIT enums.
@@ -481,7 +481,7 @@ intel_miptree_copy_slice(struct brw_context *brw,
 
 void
 intel_miptree_copy_teximage(struct brw_context *brw,
-                            struct intel_texture_image *intelImage,
+                            struct brw_texture_image *intelImage,
                             struct intel_mipmap_tree *dst_mt);
 
 /**

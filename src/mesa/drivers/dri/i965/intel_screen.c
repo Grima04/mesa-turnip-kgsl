@@ -594,7 +594,7 @@ intel_create_image_from_texture(__DRIcontext *context, int target,
    __DRIimage *image;
    struct brw_context *brw = context->driverPrivate;
    struct gl_texture_object *obj;
-   struct intel_texture_object *iobj;
+   struct brw_texture_object *iobj;
    GLuint face = 0;
 
    obj = _mesa_lookup_texture(&brw->ctx, texture);
@@ -607,7 +607,7 @@ intel_create_image_from_texture(__DRIcontext *context, int target,
       face = zoffset;
 
    _mesa_test_texobj_completeness(&brw->ctx, obj);
-   iobj = intel_texture_object(obj);
+   iobj = brw_texture_object(obj);
    if (!obj->_BaseComplete || (level > 0 && !obj->_MipmapComplete)) {
       *error = __DRI_IMAGE_ERROR_BAD_PARAMETER;
       return NULL;

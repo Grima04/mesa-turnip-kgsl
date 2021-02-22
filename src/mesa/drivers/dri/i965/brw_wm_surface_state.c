@@ -476,7 +476,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
       brw_update_buffer_texture_surface(ctx, unit, surf_offset);
 
    } else {
-      struct intel_texture_object *intel_obj = intel_texture_object(obj);
+      struct brw_texture_object *intel_obj = brw_texture_object(obj);
       struct intel_mipmap_tree *mt = intel_obj->mt;
 
       if (plane > 0) {
@@ -1147,7 +1147,7 @@ const struct brw_tracked_state brw_renderbuffer_read_surfaces = {
 };
 
 static bool
-is_depth_texture(struct intel_texture_object *iobj)
+is_depth_texture(struct brw_texture_object *iobj)
 {
    GLenum base_format = _mesa_get_format_base_format(iobj->_Format);
    return base_format == GL_DEPTH_COMPONENT ||
@@ -1181,7 +1181,7 @@ update_stage_texture_surfaces(struct brw_context *brw,
          const unsigned unit = prog->SamplerUnits[s];
          const bool used_by_txf = prog->info.textures_used_by_txf & (1 << s);
          struct gl_texture_object *obj = ctx->Texture.Unit[unit]._Current;
-         struct intel_texture_object *iobj = intel_texture_object(obj);
+         struct brw_texture_object *iobj = brw_texture_object(obj);
 
          /* _NEW_TEXTURE */
          if (!obj)
@@ -1541,7 +1541,7 @@ update_image_surface(struct brw_context *brw,
          update_buffer_image_param(brw, u, param);
 
       } else {
-         struct intel_texture_object *intel_obj = intel_texture_object(obj);
+         struct brw_texture_object *intel_obj = brw_texture_object(obj);
          struct intel_mipmap_tree *mt = intel_obj->mt;
 
          unsigned base_layer, num_layers;
