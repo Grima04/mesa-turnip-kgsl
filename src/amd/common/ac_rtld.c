@@ -36,8 +36,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef EM_AMDGPU
 // Old distributions may not have this enum constant
-#define MY_EM_AMDGPU 224
+#define EM_AMDGPU 224
+#endif
 
 #ifndef STT_AMDGPU_LDS
 #define STT_AMDGPU_LDS 13 // this is deprecated -- remove
@@ -326,7 +328,7 @@ bool ac_rtld_open(struct ac_rtld_binary *binary, struct ac_rtld_open_info i)
 
       const Elf64_Ehdr *ehdr = elf64_getehdr(part->elf);
       report_elf_if(!ehdr);
-      report_if(ehdr->e_machine != MY_EM_AMDGPU);
+      report_if(ehdr->e_machine != EM_AMDGPU);
 
       size_t section_str_index;
       size_t num_shdrs;
