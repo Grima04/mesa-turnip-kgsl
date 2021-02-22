@@ -141,6 +141,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_ring_tess_offchip_amd:
    case nir_intrinsic_load_ring_tess_factors_offset_amd:
    case nir_intrinsic_load_ring_tess_offchip_offset_amd:
+   case nir_intrinsic_load_ring_esgs_amd:
+   case nir_intrinsic_load_ring_es2gs_offset_amd:
       is_divergent = false;
       break;
 
@@ -479,6 +481,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_elect:
    case nir_intrinsic_load_tlb_color_v3d:
    case nir_intrinsic_load_tess_rel_patch_id_amd:
+   case nir_intrinsic_load_gs_vertex_offset_amd:
       is_divergent = true;
       break;
 
