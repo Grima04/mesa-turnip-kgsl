@@ -1276,11 +1276,9 @@ static void render_subpass_clear_fast(struct rendering_state *state)
       state->pending_clear_aspects[a] = 0;
    }
 
-   if (subpass->depth_stencil_attachment) {
+   if (subpass->depth_stencil_attachment &&
+       attachment_needs_clear(state, subpass->depth_stencil_attachment->attachment)) {
       uint32_t ds = subpass->depth_stencil_attachment->attachment;
-
-      if (!attachment_needs_clear(state, ds))
-         return;
 
       struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
       struct lvp_image_view *imgv = state->vk_framebuffer->attachments[ds];
