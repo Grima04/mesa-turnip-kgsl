@@ -1948,7 +1948,7 @@ radv_image_has_fmask(const struct radv_image *image)
 static inline bool
 radv_image_has_dcc(const struct radv_image *image)
 {
-	return image->planes[0].surface.dcc_size;
+	return image->planes[0].surface.dcc_offset;
 }
 
 /**
