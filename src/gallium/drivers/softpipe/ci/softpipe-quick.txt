@@ -1,7 +1,6 @@
 fast_color_clear/fcc-clear-tex: skip
 fast_color_clear/fcc-front-buffer-distraction: crash
 fast_color_clear/fcc-write-after-clear: skip
-glx/extension string sanity: fail
 glx/glx-buffer-age: skip
 glx/glx-buffer-age vblank_mode=0: skip
 glx/glx-copy-sub-buffer samples=16: skip
@@ -30,7 +29,6 @@ glx/glx-visuals-depth -pixmap: fail
 glx/glx-visuals-stencil: fail
 glx/glx-visuals-stencil -pixmap: fail
 glx/glx_arb_create_context_es2_profile/invalid opengl es version: fail
-glx/glx_arb_create_context_no_error/no error: skip
 glx/glx_arb_create_context_robustness/invalid reset notification strategy: skip
 glx/glx_arb_create_context_robustness/require gl_arb_robustness: skip
 glx/glx_arb_sync_control/glxgetmscrateoml: skip

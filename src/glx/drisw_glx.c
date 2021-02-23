@@ -783,6 +783,10 @@ driswBindExtensions(struct drisw_screen *psc, const __DRIextension **extensions)
 	  __glXEnableDirectExtension(&psc->base,
 				     "GLX_ARB_context_flush_control");
       }
+
+      if (strcmp(extensions[i]->name, __DRI2_NO_ERROR) == 0)
+         __glXEnableDirectExtension(&psc->base,
+                                    "GLX_ARB_create_context_no_error");
    }
 }
 

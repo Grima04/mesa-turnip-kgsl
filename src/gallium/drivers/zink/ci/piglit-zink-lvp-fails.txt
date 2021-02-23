@@ -1,4 +1,3 @@
-glx@extension string sanity,Fail
 glx@glx-copy-sub-buffer,Fail
 glx@glx-copy-sub-buffer samples=2,Fail
 glx@glx-copy-sub-buffer samples=4,Fail
