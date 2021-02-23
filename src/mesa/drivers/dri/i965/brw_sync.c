@@ -536,7 +536,7 @@ brw_dri_get_fence_fd(__DRIscreen *dri_screen, void *_fence)
    return fd;
 }
 
-const __DRI2fenceExtension intelFenceExtension = {
+const __DRI2fenceExtension brwFenceExtension = {
    .base = { __DRI2_FENCE, 2 },
 
    .create_fence = brw_dri_create_fence,

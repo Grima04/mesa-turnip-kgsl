@@ -130,7 +130,7 @@ extern void brw_destroy_context(__DRIcontext *driContextPriv);
 extern GLboolean brw_unbind_context(__DRIcontext *driContextPriv);
 
 PUBLIC const __DRIextension **__driDriverGetExtensions_i965(void);
-extern const __DRI2fenceExtension intelFenceExtension;
+extern const __DRI2fenceExtension brwFenceExtension;
 
 extern GLboolean
 brw_make_current(__DRIcontext *driContextPriv,

@@ -138,7 +138,7 @@ get_time(void)
    return tp.tv_sec + tp.tv_nsec / 1000000000.0;
 }
 
-static const __DRItexBufferExtension intelTexBufferExtension = {
+static const __DRItexBufferExtension brwTexBufferExtension = {
    .base = { __DRI_TEX_BUFFER, 3 },
 
    .setTexBuffer        = brw_set_texbuffer,
@@ -188,7 +188,7 @@ brw_dri2_flush(__DRIdrawable *drawable)
                                __DRI2_THROTTLE_SWAPBUFFER);
 }
 
-static const struct __DRI2flushExtensionRec intelFlushExtension = {
+static const struct __DRI2flushExtensionRec brwFlushExtension = {
     .base = { __DRI2_FLUSH, 4 },
 
     .flush              = brw_dri2_flush,
@@ -1509,7 +1509,7 @@ brw_from_planar(__DRIimage *parent, int plane, void *loaderPrivate)
     return image;
 }
 
-static const __DRIimageExtension intelImageExtension = {
+static const __DRIimageExtension brwImageExtension = {
     .base = { __DRI_IMAGE, 16 },
 
     .createImageFromName                = brw_create_image_from_name,
@@ -1638,7 +1638,7 @@ brw_set_cache_funcs(__DRIscreen *dri_screen,
    disk_cache_set_callbacks(screen->disk_cache, set, get);
 }
 
-static const __DRI2rendererQueryExtension intelRendererQueryExtension = {
+static const __DRI2rendererQueryExtension brwRendererQueryExtension = {
    .base = { __DRI2_RENDERER_QUERY, 1 },
 
    .queryInteger = brw_query_renderer_integer,
@@ -1649,39 +1649,39 @@ static const __DRIrobustnessExtension dri2Robustness = {
    .base = { __DRI2_ROBUSTNESS, 1 }
 };
 
-static const __DRI2blobExtension intelBlobExtension = {
+static const __DRI2blobExtension brwBlobExtension = {
    .base = { __DRI2_BLOB, 1 },
    .set_cache_funcs = brw_set_cache_funcs
 };
 
-static const __DRImutableRenderBufferDriverExtension intelMutableRenderBufferExtension = {
+static const __DRImutableRenderBufferDriverExtension brwMutableRenderBufferExtension = {
    .base = { __DRI_MUTABLE_RENDER_BUFFER_DRIVER, 1 },
 };
 
 static const __DRIextension *screenExtensions[] = {
-    &intelTexBufferExtension.base,
-    &intelFenceExtension.base,
-    &intelFlushExtension.base,
-    &intelImageExtension.base,
-    &intelRendererQueryExtension.base,
-    &intelMutableRenderBufferExtension.base,
+    &brwTexBufferExtension.base,
+    &brwFenceExtension.base,
+    &brwFlushExtension.base,
+    &brwImageExtension.base,
+    &brwRendererQueryExtension.base,
+    &brwMutableRenderBufferExtension.base,
     &dri2ConfigQueryExtension.base,
     &dri2NoErrorExtension.base,
-    &intelBlobExtension.base,
+    &brwBlobExtension.base,
     NULL
 };
 
-static const __DRIextension *intelRobustScreenExtensions[] = {
-    &intelTexBufferExtension.base,
-    &intelFenceExtension.base,
-    &intelFlushExtension.base,
-    &intelImageExtension.base,
-    &intelRendererQueryExtension.base,
-    &intelMutableRenderBufferExtension.base,
+static const __DRIextension *brwRobustScreenExtensions[] = {
+    &brwTexBufferExtension.base,
+    &brwFenceExtension.base,
+    &brwFlushExtension.base,
+    &brwImageExtension.base,
+    &brwRendererQueryExtension.base,
+    &brwMutableRenderBufferExtension.base,
     &dri2ConfigQueryExtension.base,
     &dri2Robustness.base,
     &dri2NoErrorExtension.base,
-    &intelBlobExtension.base,
+    &brwBlobExtension.base,
     NULL
 };
 
@@ -2846,7 +2846,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
    }
 
    dri_screen->extensions = !screen->has_context_reset_notification
-      ? screenExtensions : intelRobustScreenExtensions;
+      ? screenExtensions : brwRobustScreenExtensions;
 
    screen->compiler = brw_compiler_create(screen, devinfo);
    screen->compiler->shader_debug_log = shader_debug_log_mesa;
