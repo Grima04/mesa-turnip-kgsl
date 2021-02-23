@@ -727,23 +727,24 @@ static bool apply_relocs(const struct ac_rtld_upload_info *u, unsigned part_idx,
  * Upload the binary or binaries to the provided GPU buffers, including
  * relocations.
  */
-bool ac_rtld_upload(struct ac_rtld_upload_info *u)
+int ac_rtld_upload(struct ac_rtld_upload_info *u)
 {
 #define report_if(cond)                                                                            \
    do {                                                                                            \
       if ((cond)) {                                                                                \
          report_errorf(#cond);                                                                     \
-         return false;                                                                             \
+         return -1;                                                                             \
       }                                                                                            \
    } while (false)
 #define report_elf_if(cond)                                                                        \
    do {                                                                                            \
       if ((cond)) {                                                                                \
          report_errorf(#cond);                                                                     \
-         return false;                                                                             \
+         return -1;                                                                             \
       }                                                                                            \
    } while (false)
 
+   int size = 0;
    if (u->binary->options.halt_at_entry) {
       /* s_sethalt 1 */
       *(uint32_t *)u->rx_ptr = util_cpu_to_le32(0xbf8d0001);
@@ -766,6 +767,8 @@ bool ac_rtld_upload(struct ac_rtld_upload_info *u)
          Elf_Data *data = elf_getdata(section, NULL);
          report_elf_if(!data || data->d_size != shdr->sh_size);
          memcpy(u->rx_ptr + s->offset, data->d_buf, shdr->sh_size);
+
+         size = MAX2(size, s->offset + shdr->sh_size);
       }
    }
 
@@ -773,6 +776,7 @@ bool ac_rtld_upload(struct ac_rtld_upload_info *u)
       uint32_t *dst = (uint32_t *)(u->rx_ptr + u->binary->rx_end_markers);
       for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; ++i)
          *dst++ = util_cpu_to_le32(DEBUGGER_END_OF_CODE_MARKER);
+      size += 4 * DEBUGGER_NUM_MARKERS;
    }
 
    /* Second pass: handle relocations, overwriting uploaded data where
@@ -786,15 +790,15 @@ bool ac_rtld_upload(struct ac_rtld_upload_info *u)
             Elf_Data *relocs = elf_getdata(section, NULL);
             report_elf_if(!relocs || relocs->d_size != shdr->sh_size);
             if (!apply_relocs(u, i, shdr, relocs))
-               return false;
+               return -1;
          } else if (shdr->sh_type == SHT_RELA) {
             report_errorf("SHT_RELA not supported");
-            return false;
+            return -1;
          }
       }
    }
 
-   return true;
+   return size;
 
 #undef report_if
 #undef report_elf_if
