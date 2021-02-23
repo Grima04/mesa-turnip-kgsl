@@ -250,7 +250,7 @@ bool should_rematerialize(aco_ptr<Instruction>& instr)
 
    for (const Operand& op : instr->operands) {
       /* TODO: rematerialization using temporaries isn't yet supported */
-      if (op.isTemp())
+      if (!op.isConstant())
          return false;
    }
 
