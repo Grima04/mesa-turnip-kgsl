@@ -1,7 +1,14 @@
+
+if cc.get_id() == 'gcc' and host_machine.cpu_family() != 'x86_64'
+  vulkan_lvp_def = 'vulkan_lvp.mingw.def'
+else
+  vulkan_lvp_def = 'vulkan_lvp.def'
+endif
+
 libvulkan_lvp = shared_library(
   'vulkan_lvp',
   [ 'target.c' ],
-  vs_module_defs : 'vulkan_lvp.def',
+  vs_module_defs : vulkan_lvp_def,
   include_directories : [ inc_src, inc_util, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_winsys, inc_gallium_drivers ],
   link_whole : [ liblavapipe_st ],
   link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
