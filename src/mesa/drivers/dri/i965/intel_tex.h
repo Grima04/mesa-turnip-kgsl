@@ -39,11 +39,11 @@ void brw_init_texture_copy_image_functions(struct dd_function_table *functs);
 
 void brw_init_copy_image_functions(struct dd_function_table *functions);
 
-void intelSetTexBuffer(__DRIcontext *pDRICtx,
-		       GLint target, __DRIdrawable *pDraw);
-void intelSetTexBuffer2(__DRIcontext *pDRICtx,
-			GLint target, GLint format, __DRIdrawable *pDraw);
-void intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
+void brw_set_texbuffer(__DRIcontext *pDRICtx,
+                       GLint target, __DRIdrawable *pDraw);
+void brw_set_texbuffer2(__DRIcontext *pDRICtx,
+                        GLint target, GLint format, __DRIdrawable *pDraw);
+void brw_release_texbuffer(__DRIcontext *pDRICtx, GLint target,
                            __DRIdrawable *dPriv);
 
 struct brw_mipmap_tree *

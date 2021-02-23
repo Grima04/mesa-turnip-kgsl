@@ -72,9 +72,9 @@ brw_nir_lower_uniforms(nir_shader *nir, bool is_scalar)
    }
 }
 
-static struct gl_program *brwNewProgram(struct gl_context *ctx,
-                                        gl_shader_stage stage,
-                                        GLuint id, bool is_arb_asm);
+static struct gl_program *brw_new_program(struct gl_context *ctx,
+                                          gl_shader_stage stage,
+                                          GLuint id, bool is_arb_asm);
 
 nir_shader *
 brw_create_nir(struct brw_context *brw,
@@ -220,9 +220,10 @@ get_new_program_id(struct brw_screen *screen)
    return p_atomic_inc_return(&screen->program_id);
 }
 
-static struct gl_program *brwNewProgram(struct gl_context *ctx,
-                                        gl_shader_stage stage,
-                                        GLuint id, bool is_arb_asm)
+static struct gl_program *
+brw_new_program(struct gl_context *ctx,
+                gl_shader_stage stage,
+                GLuint id, bool is_arb_asm)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_program *prog = rzalloc(NULL, struct brw_program);
@@ -236,8 +237,8 @@ static struct gl_program *brwNewProgram(struct gl_context *ctx,
    return NULL;
 }
 
-static void brwDeleteProgram( struct gl_context *ctx,
-			      struct gl_program *prog )
+static void
+brw_delete_program(struct gl_context *ctx, struct gl_program *prog)
 {
    struct brw_context *brw = brw_context(ctx);
 
@@ -274,9 +275,9 @@ static void brwDeleteProgram( struct gl_context *ctx,
 
 
 static GLboolean
-brwProgramStringNotify(struct gl_context *ctx,
-		       GLenum target,
-		       struct gl_program *prog)
+brw_program_string_notify(struct gl_context *ctx,
+                          GLenum target,
+                          struct gl_program *prog)
 {
    assert(target == GL_VERTEX_PROGRAM_ARB || !prog->arb.IsPositionInvariant);
 
@@ -534,9 +535,9 @@ brw_init_frag_prog_functions(struct dd_function_table *functions)
 {
    assert(functions->ProgramStringNotify == _tnl_program_string);
 
-   functions->NewProgram = brwNewProgram;
-   functions->DeleteProgram = brwDeleteProgram;
-   functions->ProgramStringNotify = brwProgramStringNotify;
+   functions->NewProgram = brw_new_program;
+   functions->DeleteProgram = brw_delete_program;
+   functions->ProgramStringNotify = brw_program_string_notify;
 
    functions->LinkShader = brw_link_shader;
 

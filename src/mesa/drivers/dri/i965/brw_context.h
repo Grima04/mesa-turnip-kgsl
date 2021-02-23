@@ -1283,12 +1283,12 @@ void brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
 void brw_resolve_for_dri2_flush(struct brw_context *brw,
                                   __DRIdrawable *drawable);
 
-GLboolean brwCreateContext(gl_api api,
-                           const struct gl_config *mesaVis,
-                           __DRIcontext *driContextPriv,
-                           const struct __DriverContextConfig *ctx_config,
-                           unsigned *error,
-                           void *sharedContextPrivate);
+GLboolean brw_create_context(gl_api api,
+                             const struct gl_config *mesaVis,
+                             __DRIcontext *driContextPriv,
+                             const struct __DriverContextConfig *ctx_config,
+                             unsigned *error,
+                             void *sharedContextPrivate);
 
 /*======================================================================
  * brw_misc_state.c

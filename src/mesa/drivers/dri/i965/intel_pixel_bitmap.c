@@ -287,19 +287,19 @@ do_blit_bitmap( struct gl_context *ctx,
          if (count == 0)
 	    continue;
 
-	 if (!intelEmitImmediateColorExpandBlit(brw,
-						irb->mt->cpp,
-						(GLubyte *)stipple,
-						sz,
-						color,
-						irb->mt->surf.row_pitch_B,
-						irb->mt->bo,
-						irb->mt->offset,
-						irb->mt->surf.tiling,
-						dstx + px,
-						dsty + py,
-						w, h,
-						logic_op)) {
+	 if (!brw_emit_immediate_color_expand_blit(brw,
+						   irb->mt->cpp,
+						   (GLubyte *)stipple,
+						   sz,
+						   color,
+						   irb->mt->surf.row_pitch_B,
+						   irb->mt->bo,
+						   irb->mt->offset,
+						   irb->mt->surf.tiling,
+						   dstx + px,
+						   dsty + py,
+						   w, h,
+						   logic_op)) {
 	    return false;
 	 }
 
@@ -342,11 +342,11 @@ out:
  *    - Chop bitmap up into 32x32 squares and render w/polygon stipple.
  */
 void
-intelBitmap(struct gl_context * ctx,
-	    GLint x, GLint y,
-	    GLsizei width, GLsizei height,
-	    const struct gl_pixelstore_attrib *unpack,
-	    const GLubyte * pixels)
+brw_bitmap(struct gl_context * ctx,
+           GLint x, GLint y,
+           GLsizei width, GLsizei height,
+           const struct gl_pixelstore_attrib *unpack,
+           const GLubyte * pixels)
 {
    struct brw_context *brw = brw_context(ctx);
 

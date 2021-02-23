@@ -141,9 +141,9 @@ get_time(void)
 static const __DRItexBufferExtension intelTexBufferExtension = {
    .base = { __DRI_TEX_BUFFER, 3 },
 
-   .setTexBuffer        = intelSetTexBuffer,
-   .setTexBuffer2       = intelSetTexBuffer2,
-   .releaseTexBuffer    = intelReleaseTexBuffer,
+   .setTexBuffer        = brw_set_texbuffer,
+   .setTexBuffer2       = brw_set_texbuffer2,
+   .releaseTexBuffer    = brw_release_texbuffer,
 };
 
 static void
@@ -834,9 +834,9 @@ brw_create_image_common(__DRIscreen *dri_screen,
 
 static __DRIimage *
 brw_create_image(__DRIscreen *dri_screen,
-		   int width, int height, int format,
-		   unsigned int use,
-		   void *loaderPrivate)
+                 int width, int height, int format,
+                 unsigned int use,
+                 void *loaderPrivate)
 {
    return brw_create_image_common(dri_screen, width, height, format, use,
                                   NULL, 0, loaderPrivate);
@@ -1723,7 +1723,7 @@ brw_get_integer(struct brw_screen *screen, int param)
 }
 
 static void
-intelDestroyScreen(__DRIscreen * sPriv)
+brw_destroy_screen(__DRIscreen *sPriv)
 {
    struct brw_screen *screen = sPriv->driverPrivate;
 
@@ -1745,9 +1745,9 @@ intelDestroyScreen(__DRIscreen * sPriv)
  * this does not allocate GPU memory.
  */
 static GLboolean
-intelCreateBuffer(__DRIscreen *dri_screen,
-                  __DRIdrawable * driDrawPriv,
-                  const struct gl_config * mesaVis, GLboolean isPixmap)
+brw_create_buffer(__DRIscreen *dri_screen,
+                  __DRIdrawable *driDrawPriv,
+                  const struct gl_config *mesaVis, GLboolean isPixmap)
 {
    struct brw_renderbuffer *rb;
    struct brw_screen *screen = (struct brw_screen *)
@@ -1813,7 +1813,7 @@ intelCreateBuffer(__DRIscreen *dri_screen,
 
    /*
     * Assert here that the gl_config has an expected depth/stencil bit
-    * combination: one of d24/s8, d16/s0, d0/s0. (See intelInitScreen2(),
+    * combination: one of d24/s8, d16/s0, d0/s0. (See brw_init_screen(),
     * which constructs the advertised configs.)
     */
    if (mesaVis->depthBits == 24) {
@@ -1864,7 +1864,7 @@ intelCreateBuffer(__DRIscreen *dri_screen,
 }
 
 static void
-intelDestroyBuffer(__DRIdrawable * driDrawPriv)
+brw_destroy_buffer(__DRIdrawable *driDrawPriv)
 {
     struct gl_framebuffer *fb = driDrawPriv->driverPrivate;
 
@@ -2562,7 +2562,7 @@ shader_perf_log_mesa(void *data, const char *fmt, ...)
  * \return the struct gl_config supported by this driver
  */
 static const
-__DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
+__DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
 {
    struct brw_screen *screen;
 
@@ -2892,9 +2892,9 @@ struct brw_buffer {
 };
 
 static __DRIbuffer *
-intelAllocateBuffer(__DRIscreen *dri_screen,
-		    unsigned attachment, unsigned format,
-		    int width, int height)
+brw_allocate_buffer(__DRIscreen *dri_screen,
+                    unsigned attachment, unsigned format,
+                    int width, int height)
 {
    struct brw_screen *screen = dri_screen->driverPrivate;
 
@@ -2911,7 +2911,7 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
    uint32_t pitch;
    int cpp = format / 8;
    buffer->bo = brw_bo_alloc_tiled_2d(screen->bufmgr,
-                                      "intelAllocateBuffer",
+                                      __func__,
                                       width,
                                       height,
                                       cpp,
@@ -2934,7 +2934,7 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
 }
 
 static void
-intelReleaseBuffer(UNUSED __DRIscreen *dri_screen, __DRIbuffer *_buffer)
+brw_release_buffer(UNUSED __DRIscreen *dri_screen, __DRIbuffer *_buffer)
 {
    struct brw_buffer *buffer = (struct brw_buffer *) _buffer;
 
@@ -2943,16 +2943,16 @@ intelReleaseBuffer(UNUSED __DRIscreen *dri_screen, __DRIbuffer *_buffer)
 }
 
 static const struct __DriverAPIRec brw_driver_api = {
-   .InitScreen		 = intelInitScreen2,
-   .DestroyScreen	 = intelDestroyScreen,
-   .CreateContext	 = brwCreateContext,
-   .DestroyContext	 = intelDestroyContext,
-   .CreateBuffer	 = intelCreateBuffer,
-   .DestroyBuffer	 = intelDestroyBuffer,
-   .MakeCurrent		 = intelMakeCurrent,
-   .UnbindContext	 = intelUnbindContext,
-   .AllocateBuffer       = intelAllocateBuffer,
-   .ReleaseBuffer        = intelReleaseBuffer
+   .InitScreen           = brw_init_screen,
+   .DestroyScreen        = brw_destroy_screen,
+   .CreateContext        = brw_create_context,
+   .DestroyContext       = brw_destroy_context,
+   .CreateBuffer         = brw_create_buffer,
+   .DestroyBuffer        = brw_destroy_buffer,
+   .MakeCurrent          = brw_make_current,
+   .UnbindContext        = brw_unbind_context,
+   .AllocateBuffer       = brw_allocate_buffer,
+   .ReleaseBuffer        = brw_release_buffer
 };
 
 static const struct __DRIDriverVtableExtensionRec brw_vtable = {

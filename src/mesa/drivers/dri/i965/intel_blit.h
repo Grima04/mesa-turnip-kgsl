@@ -50,16 +50,16 @@ bool brw_miptree_copy(struct brw_context *brw,
                       uint32_t src_width, uint32_t src_height);
 
 bool
-intelEmitImmediateColorExpandBlit(struct brw_context *brw,
-				  GLuint cpp,
-				  GLubyte *src_bits, GLuint src_size,
-				  GLuint fg_color,
-				  GLshort dst_pitch,
-				  struct brw_bo *dst_buffer,
-				  GLuint dst_offset,
-                                  enum isl_tiling dst_tiling,
-				  GLshort x, GLshort y,
-				  GLshort w, GLshort h,
-				  enum gl_logicop_mode logic_op);
+brw_emit_immediate_color_expand_blit(struct brw_context *brw,
+                                     GLuint cpp,
+                                     GLubyte *src_bits, GLuint src_size,
+                                     GLuint fg_color,
+                                     GLshort dst_pitch,
+                                     struct brw_bo *dst_buffer,
+                                     GLuint dst_offset,
+                                     enum isl_tiling dst_tiling,
+                                     GLshort x, GLshort y,
+                                     GLshort w, GLshort h,
+                                     enum gl_logicop_mode logic_op);
 
 #endif

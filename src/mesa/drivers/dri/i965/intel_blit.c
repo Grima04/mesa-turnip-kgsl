@@ -616,17 +616,17 @@ brw_miptree_copy(struct brw_context *brw,
 }
 
 bool
-intelEmitImmediateColorExpandBlit(struct brw_context *brw,
-				  GLuint cpp,
-				  GLubyte *src_bits, GLuint src_size,
-				  GLuint fg_color,
-				  GLshort dst_pitch,
-				  struct brw_bo *dst_buffer,
-				  GLuint dst_offset,
-				  enum isl_tiling dst_tiling,
-				  GLshort x, GLshort y,
-				  GLshort w, GLshort h,
-				  enum gl_logicop_mode logic_op)
+brw_emit_immediate_color_expand_blit(struct brw_context *brw,
+                                     GLuint cpp,
+                                     GLubyte *src_bits, GLuint src_size,
+                                     GLuint fg_color,
+                                     GLshort dst_pitch,
+                                     struct brw_bo *dst_buffer,
+                                     GLuint dst_offset,
+                                     enum isl_tiling dst_tiling,
+                                     GLshort x, GLshort y,
+                                     GLshort w, GLshort h,
+                                     enum gl_logicop_mode logic_op)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    int dwords = ALIGN(src_size, 8) / 4;

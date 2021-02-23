@@ -929,12 +929,12 @@ brw_process_driconf_options(struct brw_context *brw)
 }
 
 GLboolean
-brwCreateContext(gl_api api,
-                 const struct gl_config *mesaVis,
-                 __DRIcontext *driContextPriv,
-                 const struct __DriverContextConfig *ctx_config,
-                 unsigned *dri_ctx_error,
-                 void *sharedContextPrivate)
+brw_create_context(gl_api api,
+                   const struct gl_config *mesaVis,
+                   __DRIcontext *driContextPriv,
+                   const struct __DriverContextConfig *ctx_config,
+                   unsigned *dri_ctx_error,
+                   void *sharedContextPrivate)
 {
    struct gl_context *shareCtx = (struct gl_context *) sharedContextPrivate;
    struct brw_screen *screen = driContextPriv->driScreenPriv->driverPrivate;
@@ -1012,7 +1012,7 @@ brwCreateContext(gl_api api,
    if (!_mesa_initialize_context(ctx, api, mesaVis, shareCtx, &functions)) {
       *dri_ctx_error = __DRI_CTX_ERROR_NO_MEMORY;
       fprintf(stderr, "%s: failed to init mesa context\n", __func__);
-      intelDestroyContext(driContextPriv);
+      brw_destroy_context(driContextPriv);
       return false;
    }
 
@@ -1067,7 +1067,7 @@ brwCreateContext(gl_api api,
    brw->hw_ctx = brw_create_hw_context(brw->bufmgr);
    if (!brw->hw_ctx && devinfo->gen >= 6) {
       fprintf(stderr, "Failed to create hardware context.\n");
-      intelDestroyContext(driContextPriv);
+      brw_destroy_context(driContextPriv);
       return false;
    }
 
@@ -1088,14 +1088,14 @@ brwCreateContext(gl_api api,
          fprintf(stderr,
 		 "Failed to set priority [%d:%d] for hardware context.\n",
                  ctx_config->priority, hw_priority);
-         intelDestroyContext(driContextPriv);
+         brw_destroy_context(driContextPriv);
          return false;
       }
    }
 
    if (brw_init_pipe_control(brw, devinfo)) {
       *dri_ctx_error = __DRI_CTX_ERROR_NO_MEMORY;
-      intelDestroyContext(driContextPriv);
+      brw_destroy_context(driContextPriv);
       return false;
    }
 
@@ -1198,7 +1198,7 @@ brwCreateContext(gl_api api,
 }
 
 void
-intelDestroyContext(__DRIcontext * driContextPriv)
+brw_destroy_context(__DRIcontext *driContextPriv)
 {
    struct brw_context *brw =
       (struct brw_context *) driContextPriv->driverPrivate;
@@ -1273,7 +1273,7 @@ intelDestroyContext(__DRIcontext * driContextPriv)
 }
 
 GLboolean
-intelUnbindContext(__DRIcontext * driContextPriv)
+brw_unbind_context(__DRIcontext *driContextPriv)
 {
    struct gl_context *ctx = driContextPriv->driverPrivate;
    _mesa_glthread_finish(ctx);
@@ -1336,9 +1336,9 @@ brw_gles3_srgb_workaround(struct brw_context *brw, struct gl_framebuffer *fb)
 }
 
 GLboolean
-intelMakeCurrent(__DRIcontext * driContextPriv,
-                 __DRIdrawable * driDrawPriv,
-                 __DRIdrawable * driReadPriv)
+brw_make_current(__DRIcontext *driContextPriv,
+                 __DRIdrawable *driDrawPriv,
+                 __DRIdrawable *driReadPriv)
 {
    struct brw_context *brw;
 

@@ -15,7 +15,7 @@
 #define FILE_DEBUG_FLAG DEBUG_TEXTURE
 
 static struct gl_texture_image *
-intelNewTextureImage(struct gl_context * ctx)
+brw_new_texture_image(struct gl_context *ctx)
 {
    DBG("%s\n", __func__);
    (void) ctx;
@@ -23,7 +23,7 @@ intelNewTextureImage(struct gl_context * ctx)
 }
 
 static void
-intelDeleteTextureImage(struct gl_context * ctx, struct gl_texture_image *img)
+brw_delete_texture_image(struct gl_context *ctx, struct gl_texture_image *img)
 {
    /* nothing special (yet) for brw_texture_image */
    _mesa_delete_texture_image(ctx, img);
@@ -31,7 +31,7 @@ intelDeleteTextureImage(struct gl_context * ctx, struct gl_texture_image *img)
 
 
 static struct gl_texture_object *
-intelNewTextureObject(struct gl_context * ctx, GLuint name, GLenum target)
+brw_new_texture_object(struct gl_context *ctx, GLuint name, GLenum target)
 {
    struct brw_texture_object *obj = CALLOC_STRUCT(brw_texture_object);
 
@@ -50,8 +50,8 @@ intelNewTextureObject(struct gl_context * ctx, GLuint name, GLenum target)
 }
 
 static void
-intelDeleteTextureObject(struct gl_context *ctx,
-			 struct gl_texture_object *texObj)
+brw_delete_texture_object(struct gl_context *ctx,
+                          struct gl_texture_object *texObj)
 {
    struct brw_texture_object *brw_obj = brw_texture_object(texObj);
 
@@ -325,10 +325,10 @@ brw_texture_barrier(struct gl_context *ctx)
 void
 brw_init_texture_functions(struct dd_function_table *functions)
 {
-   functions->NewTextureObject = intelNewTextureObject;
-   functions->NewTextureImage = intelNewTextureImage;
-   functions->DeleteTextureImage = intelDeleteTextureImage;
-   functions->DeleteTexture = intelDeleteTextureObject;
+   functions->NewTextureObject = brw_new_texture_object;
+   functions->NewTextureImage = brw_new_texture_image;
+   functions->DeleteTextureImage = brw_delete_texture_image;
+   functions->DeleteTexture = brw_delete_texture_object;
    functions->AllocTextureImageBuffer = brw_alloc_texture_image_buffer;
    functions->FreeTextureImageBuffer = brw_free_texture_image_buffer;
    functions->AllocTextureStorage = brw_alloc_texture_storage;

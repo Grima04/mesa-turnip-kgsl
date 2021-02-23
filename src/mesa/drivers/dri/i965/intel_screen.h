@@ -125,17 +125,17 @@ struct brw_screen
    struct disk_cache *disk_cache;
 };
 
-extern void intelDestroyContext(__DRIcontext * driContextPriv);
+extern void brw_destroy_context(__DRIcontext *driContextPriv);
 
-extern GLboolean intelUnbindContext(__DRIcontext * driContextPriv);
+extern GLboolean brw_unbind_context(__DRIcontext *driContextPriv);
 
 PUBLIC const __DRIextension **__driDriverGetExtensions_i965(void);
 extern const __DRI2fenceExtension intelFenceExtension;
 
 extern GLboolean
-intelMakeCurrent(__DRIcontext * driContextPriv,
-                 __DRIdrawable * driDrawPriv,
-                 __DRIdrawable * driReadPriv);
+brw_make_current(__DRIcontext *driContextPriv,
+                 __DRIdrawable *driDrawPriv,
+                 __DRIdrawable *driReadPriv);
 
 double get_time(void);
 

@@ -32,30 +32,30 @@ void brw_init_pixel_functions(struct dd_function_table *functions);
 bool brw_check_blit_fragment_ops(struct gl_context *ctx,
                                  bool src_alpha_is_one);
 
-void intelReadPixels(struct gl_context * ctx,
-                     GLint x, GLint y,
-                     GLsizei width, GLsizei height,
-                     GLenum format, GLenum type,
-                     const struct gl_pixelstore_attrib *pack,
-                     GLvoid * pixels);
+void brw_readpixels(struct gl_context *ctx,
+                    GLint x, GLint y,
+                    GLsizei width, GLsizei height,
+                    GLenum format, GLenum type,
+                    const struct gl_pixelstore_attrib *pack,
+                    GLvoid *pixels);
 
-void intelDrawPixels(struct gl_context * ctx,
-                     GLint x, GLint y,
-                     GLsizei width, GLsizei height,
-                     GLenum format,
-                     GLenum type,
-                     const struct gl_pixelstore_attrib *unpack,
-                     const GLvoid * pixels);
+void brw_drawpixels(struct gl_context *ctx,
+                    GLint x, GLint y,
+                    GLsizei width, GLsizei height,
+                    GLenum format,
+                    GLenum type,
+                    const struct gl_pixelstore_attrib *unpack,
+                    const GLvoid *pixels);
 
-void intelCopyPixels(struct gl_context * ctx,
-                     GLint srcx, GLint srcy,
-                     GLsizei width, GLsizei height,
-                     GLint destx, GLint desty, GLenum type);
+void brw_copypixels(struct gl_context *ctx,
+                    GLint srcx, GLint srcy,
+                    GLsizei width, GLsizei height,
+                    GLint destx, GLint desty, GLenum type);
 
-void intelBitmap(struct gl_context * ctx,
-		 GLint x, GLint y,
-		 GLsizei width, GLsizei height,
-		 const struct gl_pixelstore_attrib *unpack,
-		 const GLubyte * pixels);
+void brw_bitmap(struct gl_context *ctx,
+                GLint x, GLint y,
+                GLsizei width, GLsizei height,
+                const struct gl_pixelstore_attrib *unpack,
+                const GLubyte *pixels);
 
 #endif

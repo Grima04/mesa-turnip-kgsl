@@ -353,11 +353,11 @@ brw_upload_tex(struct gl_context * ctx,
 
 
 static void
-intelTexImage(struct gl_context * ctx,
-              GLuint dims,
-              struct gl_texture_image *texImage,
-              GLenum format, GLenum type, const void *pixels,
-              const struct gl_pixelstore_attrib *unpack)
+brw_teximage(struct gl_context * ctx,
+             GLuint dims,
+             struct gl_texture_image *texImage,
+             GLenum format, GLenum type, const void *pixels,
+             const struct gl_pixelstore_attrib *unpack)
 {
    DBG("%s mesa_format %s target %s format %s type %s level %d %dx%dx%d\n",
        __func__, _mesa_get_format_name(texImage->TexFormat),
@@ -380,14 +380,14 @@ intelTexImage(struct gl_context * ctx,
 
 
 static void
-intelTexSubImage(struct gl_context * ctx,
-                 GLuint dims,
-                 struct gl_texture_image *texImage,
-                 GLint xoffset, GLint yoffset, GLint zoffset,
-                 GLsizei width, GLsizei height, GLsizei depth,
-                 GLenum format, GLenum type,
-                 const GLvoid * pixels,
-                 const struct gl_pixelstore_attrib *packing)
+brw_texsubimage(struct gl_context * ctx,
+                GLuint dims,
+                struct gl_texture_image *texImage,
+                GLint xoffset, GLint yoffset, GLint zoffset,
+                GLsizei width, GLsizei height, GLsizei depth,
+                GLenum format, GLenum type,
+                const GLvoid * pixels,
+                const struct gl_pixelstore_attrib *packing)
 {
    DBG("%s mesa_format %s target %s format %s type %s level %d %dx%dx%d\n",
        __func__, _mesa_get_format_name(texImage->TexFormat),
@@ -431,7 +431,7 @@ brw_set_texture_image_mt(struct brw_context *brw,
 
 
 void
-intelSetTexBuffer2(__DRIcontext *pDRICtx, GLint target,
+brw_set_texbuffer2(__DRIcontext *pDRICtx, GLint target,
 		   GLint texture_format,
 		   __DRIdrawable *dPriv)
 {
@@ -498,7 +498,7 @@ intelSetTexBuffer2(__DRIcontext *pDRICtx, GLint target,
 }
 
 void
-intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
+brw_release_texbuffer(__DRIcontext *pDRICtx, GLint target,
                       __DRIdrawable *dPriv)
 {
    struct brw_context *brw = pDRICtx->driverPrivate;
@@ -519,7 +519,7 @@ intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
    }
 
    /* The brw_miptree_prepare_external below as well as the finish_external
-    * above in intelSetTexBuffer2 *should* do nothing.  The BindTexImage call
+    * above in brw_set_texbuffer2 *should* do nothing.  The BindTexImage call
     * from both GLX and EGL has TexImage2D and not TexSubImage2D semantics so
     * the texture is not immutable.  This means that the user cannot create a
     * texture view of the image with a different format.  Since the only three
@@ -594,12 +594,12 @@ brw_bind_renderbuffer_tex_image(struct gl_context *ctx,
 }
 
 void
-intelSetTexBuffer(__DRIcontext *pDRICtx, GLint target, __DRIdrawable *dPriv)
+brw_set_texbuffer(__DRIcontext *pDRICtx, GLint target, __DRIdrawable *dPriv)
 {
    /* The old interface didn't have the format argument, so copy our
     * implementation's behavior at the time.
     */
-   intelSetTexBuffer2(pDRICtx, target, __DRI_TEXTURE_FORMAT_RGBA, dPriv);
+   brw_set_texbuffer2(pDRICtx, target, __DRI_TEXTURE_FORMAT_RGBA, dPriv);
 }
 
 static void
@@ -952,12 +952,12 @@ flush_astc_denorms(struct gl_context *ctx, GLuint dims,
 
 
 static void
-intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
-                        struct gl_texture_image *texImage,
-                        GLint xoffset, GLint yoffset, GLint zoffset,
-                        GLsizei width, GLsizei height, GLsizei depth,
-                        GLenum format,
-                        GLsizei imageSize, const GLvoid *data)
+brw_compressedtexsubimage(struct gl_context *ctx, GLuint dims,
+                          struct gl_texture_image *texImage,
+                          GLint xoffset, GLint yoffset, GLint zoffset,
+                          GLsizei width, GLsizei height, GLsizei depth,
+                          GLenum format,
+                          GLsizei imageSize, const GLvoid *data)
 {
    /* Upload the compressed data blocks */
    _mesa_store_compressed_texsubimage(ctx, dims, texImage,
@@ -981,9 +981,9 @@ intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
 void
 brw_init_texture_image_functions(struct dd_function_table *functions)
 {
-   functions->TexImage = intelTexImage;
-   functions->TexSubImage = intelTexSubImage;
-   functions->CompressedTexSubImage = intelCompressedTexSubImage;
+   functions->TexImage = brw_teximage;
+   functions->TexSubImage = brw_texsubimage;
+   functions->CompressedTexSubImage = brw_compressedtexsubimage;
    functions->EGLImageTargetTexture2D = brw_image_target_texture_2d;
    functions->EGLImageTargetTexStorage = brw_image_target_tex_storage;
    functions->BindRenderbufferTexImage = brw_bind_renderbuffer_tex_image;

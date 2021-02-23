@@ -191,10 +191,10 @@ out:
 
 
 void
-intelCopyPixels(struct gl_context * ctx,
-                GLint srcx, GLint srcy,
-                GLsizei width, GLsizei height,
-                GLint destx, GLint desty, GLenum type)
+brw_copypixels(struct gl_context *ctx,
+               GLint srcx, GLint srcy,
+               GLsizei width, GLsizei height,
+               GLint destx, GLint desty, GLenum type)
 {
    struct brw_context *brw = brw_context(ctx);
 

@@ -144,13 +144,13 @@ do_blit_drawpixels(struct gl_context * ctx,
 }
 
 void
-intelDrawPixels(struct gl_context * ctx,
-                GLint x, GLint y,
-                GLsizei width, GLsizei height,
-                GLenum format,
-                GLenum type,
-                const struct gl_pixelstore_attrib *unpack,
-                const GLvoid * pixels)
+brw_drawpixels(struct gl_context *ctx,
+               GLint x, GLint y,
+               GLsizei width, GLsizei height,
+               GLenum format,
+               GLenum type,
+               const struct gl_pixelstore_attrib *unpack,
+               const GLvoid *pixels)
 {
    struct brw_context *brw = brw_context(ctx);
 

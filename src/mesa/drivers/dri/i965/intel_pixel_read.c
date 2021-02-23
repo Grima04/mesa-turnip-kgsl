@@ -253,10 +253,10 @@ brw_readpixels_blorp(struct gl_context *ctx,
 }
 
 void
-intelReadPixels(struct gl_context * ctx,
-                GLint x, GLint y, GLsizei width, GLsizei height,
-                GLenum format, GLenum type,
-                const struct gl_pixelstore_attrib *pack, GLvoid * pixels)
+brw_readpixels(struct gl_context *ctx,
+               GLint x, GLint y, GLsizei width, GLsizei height,
+               GLenum format, GLenum type,
+               const struct gl_pixelstore_attrib *pack, GLvoid *pixels)
 {
    bool ok;
 
