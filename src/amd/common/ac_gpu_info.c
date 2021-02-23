@@ -155,6 +155,11 @@ int amdgpu_query_gds_info(amdgpu_device_handle dev,
 {
    return -EINVAL;
 }
+int amdgpu_query_video_caps_info(amdgpu_device_handle dev, unsigned cap_type,
+                                 unsigned size, void *value)
+{
+   return -EINVAL;
+}
 const char *amdgpu_get_marketing_name(amdgpu_device_handle dev)
 {
    return NULL;
@@ -473,6 +478,22 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->gart_size_kb = DIV_ROUND_UP(info->gart_size, 1024);
    info->vram_size_kb = DIV_ROUND_UP(info->vram_size, 1024);
+
+   if (info->drm_minor >= 41) {
+      r = amdgpu_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_DECODE,
+            sizeof(info->dec_caps), &(info->dec_caps));
+      if (r) {
+         fprintf(stderr, "amdgpu: amdgpu_query_video_caps_info for decode failed.\n");
+         return r;
+      }
+
+      r = amdgpu_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_ENCODE,
+            sizeof(info->enc_caps), &(info->enc_caps));
+      if (r) {
+         fprintf(stderr, "amdgpu: amdgpu_query_video_caps_info for encode failed.\n");
+         return r;
+      }
+   }
 
    /* Add some margin of error, though this shouldn't be needed in theory. */
    info->all_vram_visible = info->vram_size * 0.9 < info->vram_vis_size;

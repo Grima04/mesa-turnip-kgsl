@@ -136,6 +136,16 @@ struct radeon_info {
    uint32_t uvd_fw_version;
    uint32_t vce_fw_version;
    uint32_t vce_harvest_config;
+   struct video_caps_info {
+      struct {
+         uint32_t valid;
+         uint32_t max_width;
+         uint32_t max_height;
+         uint32_t max_pixels_per_frame;
+         uint32_t max_level;
+         uint32_t pad;
+      } codec_info[8]; /* the number of available codecs */
+   } dec_caps, enc_caps;
 
    /* Kernel & winsys capabilities. */
    uint32_t drm_major; /* version */
