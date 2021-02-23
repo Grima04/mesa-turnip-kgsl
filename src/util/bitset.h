@@ -165,6 +165,10 @@ __bitset_next_range(unsigned *start, unsigned *end, const BITSET_WORD *set,
     * 0-bit after the range.
     */
    unsigned word = BITSET_BITWORD(*end);
+   if (word >= BITSET_WORDS(size)) {
+      *start = *end = size;
+      return;
+   }
    BITSET_WORD tmp = set[word] & ~(BITSET_BIT(*end) - 1);
    while (!tmp) {
       word++;
@@ -182,6 +186,10 @@ __bitset_next_range(unsigned *start, unsigned *end, const BITSET_WORD *set,
     * 0-bit.
     */
    word = BITSET_BITWORD(*start + 1);
+   if (word >= BITSET_WORDS(size)) {
+      *end = size;
+      return;
+   }
    tmp = set[word] | (BITSET_BIT(*start + 1) - 1);
    while (~tmp == 0) {
       word++;
