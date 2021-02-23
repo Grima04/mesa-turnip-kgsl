@@ -1905,7 +1905,6 @@ spec/arb_texture_view/rendering-formats/sample gl_rgb8i as gl_rgb8: fail
 spec/arb_texture_view/rendering-formats/sample gl_rgb8ui as gl_rgb8: fail
 spec/arb_texture_view/rendering-layers-image: skip
 spec/arb_texture_view/sampling-2d-array-as-cubemap-array: fail
-spec/arb_timer_query/timestamp-get: fail
 spec/arb_transform_feedback_instanced/draw-auto instanced: fail
 spec/arb_uniform_buffer_object/maxblocks: crash
 spec/arb_vertex_attrib_64bit/get_double_attribs-display-lists: skip
@@ -3053,8 +3052,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17516
-       fail:     1242
+       pass:    17514
+       fail:     1241
       crash:      111
        skip:     1672
     timeout:        0
@@ -3065,4 +3064,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20568
+      total:    20565
