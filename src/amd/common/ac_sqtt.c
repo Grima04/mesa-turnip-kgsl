@@ -27,6 +27,7 @@
 
 #include "ac_gpu_info.h"
 #include "util/u_math.h"
+#include "util/os_time.h"
 
 uint64_t
 ac_thread_trace_get_info_offset(unsigned se)
@@ -95,4 +96,55 @@ ac_get_expected_buffer_size(struct radeon_info *rad_info,
    }
 
    return (info->gfx9_write_counter * 32) / 1024;
+}
+
+bool
+ac_sqtt_add_pso_correlation(struct ac_thread_trace_data *thread_trace_data,
+                            uint64_t pipeline_hash)
+{
+   struct rgp_pso_correlation *pso_correlation = &thread_trace_data->rgp_pso_correlation;
+   struct rgp_pso_correlation_record *record;
+
+   record = malloc(sizeof(struct rgp_pso_correlation_record));
+   if (!record)
+      return false;
+
+   record->api_pso_hash = pipeline_hash;
+   record->pipeline_hash[0] = pipeline_hash;
+   record->pipeline_hash[1] = pipeline_hash;
+   memset(record->api_level_obj_name, 0, sizeof(record->api_level_obj_name));
+
+   simple_mtx_lock(&pso_correlation->lock);
+   list_addtail(&record->list, &pso_correlation->record);
+   pso_correlation->record_count++;
+   simple_mtx_unlock(&pso_correlation->lock);
+
+   return true;
+}
+
+bool
+ac_sqtt_add_code_object_loader_event(struct ac_thread_trace_data *thread_trace_data,
+                                     uint64_t pipeline_hash,
+                                     uint64_t base_address)
+{
+   struct rgp_loader_events *loader_events = &thread_trace_data->rgp_loader_events;
+   struct rgp_loader_events_record *record;
+
+   record = malloc(sizeof(struct rgp_loader_events_record));
+   if (!record)
+      return false;
+
+   record->loader_event_type = RGP_LOAD_TO_GPU_MEMORY;
+   record->reserved = 0;
+   record->base_address = base_address & 0xffffffffffff;
+   record->code_object_hash[0] = pipeline_hash;
+   record->code_object_hash[1] = pipeline_hash;
+   record->time_stamp = os_time_get_nano();
+
+   simple_mtx_lock(&loader_events->lock);
+   list_addtail(&record->list, &loader_events->record);
+   loader_events->record_count++;
+   simple_mtx_unlock(&loader_events->lock);
+
+   return true;
 }

@@ -489,4 +489,12 @@ struct rgp_sqtt_marker_pipeline_bind {
 static_assert(sizeof(struct rgp_sqtt_marker_pipeline_bind) == 12,
               "rgp_sqtt_marker_pipeline_bind doesn't match RGP spec");
 
+
+bool ac_sqtt_add_pso_correlation(struct ac_thread_trace_data *thread_trace_data,
+                                 uint64_t pipeline_hash);
+
+bool ac_sqtt_add_code_object_loader_event(struct ac_thread_trace_data *thread_trace_data,
+                                          uint64_t pipeline_hash,
+                                          uint64_t base_address);
+
 #endif

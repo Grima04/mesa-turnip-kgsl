@@ -1009,71 +1009,6 @@ radv_mesa_to_rgp_shader_stage(struct radv_pipeline *pipeline,
 }
 
 static VkResult
-radv_add_pso_correlation(struct radv_device *device,
-			 struct radv_pipeline *pipeline)
-{
-	struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
-	struct rgp_pso_correlation *pso_correlation = &thread_trace_data->rgp_pso_correlation;
-	struct rgp_pso_correlation_record *record;
-
-	record = malloc(sizeof(struct rgp_pso_correlation_record));
-	if (!record)
-		return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-	record->api_pso_hash = pipeline->pipeline_hash;
-	record->pipeline_hash[0] = pipeline->pipeline_hash;
-	record->pipeline_hash[1] = pipeline->pipeline_hash;
-	memset(record->api_level_obj_name, 0, sizeof(record->api_level_obj_name));
-
-	simple_mtx_lock(&thread_trace_data->rgp_pso_correlation.lock);
-	list_addtail(&record->list, &pso_correlation->record);
-	pso_correlation->record_count++;
-	simple_mtx_unlock(&thread_trace_data->rgp_pso_correlation.lock);
-
-	return VK_SUCCESS;
-}
-
-static VkResult
-radv_add_code_object_loader_event(struct radv_device *device,
-				  struct radv_pipeline *pipeline)
-{
-	struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
-	struct rgp_loader_events *loader_events = &thread_trace_data->rgp_loader_events;
-	struct rgp_loader_events_record *record;
-	uint64_t base_va = ~0;
-
-	record = malloc(sizeof(struct rgp_loader_events_record));
-	if (!record)
-		return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-	/* Find the lowest shader BO VA. */
-	for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-		struct radv_shader_variant *shader = pipeline->shaders[i];
-		uint64_t va;
-
-		if (!shader)
-			continue;
-
-		va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
-		base_va = MIN2(base_va, va);
-	}
-
-	record->loader_event_type = RGP_LOAD_TO_GPU_MEMORY;
-	record->reserved = 0;
-	record->base_address = base_va & 0xffffffffffff;
-	record->code_object_hash[0] = pipeline->pipeline_hash;
-	record->code_object_hash[1] = pipeline->pipeline_hash;
-	record->time_stamp = os_time_get_nano();
-
-	simple_mtx_lock(&loader_events->lock);
-	list_addtail(&record->list, &loader_events->record);
-	loader_events->record_count++;
-	simple_mtx_unlock(&loader_events->lock);
-
-	return VK_SUCCESS;
-}
-
-static VkResult
 radv_add_code_object(struct radv_device *device,
 		     struct radv_pipeline *pipeline)
 {
@@ -1134,15 +1069,30 @@ static VkResult
 radv_register_pipeline(struct radv_device *device,
 		       struct radv_pipeline *pipeline)
 {
-	VkResult result;
+	bool result;
+	uint64_t base_va = ~0;
 
-	result = radv_add_pso_correlation(device, pipeline);
-	if (result != VK_SUCCESS)
-		return result;
+	result = ac_sqtt_add_pso_correlation(&device->thread_trace, pipeline->pipeline_hash);
+	if (!result)
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-	result = radv_add_code_object_loader_event(device, pipeline);
-	if (result != VK_SUCCESS)
-		return result;
+	/* Find the lowest shader BO VA. */
+	for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+		struct radv_shader_variant *shader = pipeline->shaders[i];
+		uint64_t va;
+
+		if (!shader)
+			continue;
+
+		va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+		base_va = MIN2(base_va, va);
+	}
+
+	result = ac_sqtt_add_code_object_loader_event(&device->thread_trace,
+						      pipeline->pipeline_hash,
+						      base_va);
+	if (!result)
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
 	result = radv_add_code_object(device, pipeline);
 	if (result != VK_SUCCESS)
