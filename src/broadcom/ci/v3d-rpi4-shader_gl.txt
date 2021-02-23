@@ -241,6 +241,7 @@ spec/arb_compute_shader/execution/basic-texelfetch: skip
 spec/arb_compute_shader/execution/basic-uniform-access: skip
 spec/arb_compute_shader/execution/basic-uniform-access-atomic: skip
 spec/arb_compute_shader/execution/border-color: skip
+spec/arb_compute_shader/execution/min-dvec4-double-large-group-size: skip
 spec/arb_compute_shader/execution/multiple-texture-reading: skip
 spec/arb_compute_shader/execution/multiple-workgroups: skip
 spec/arb_compute_shader/execution/separate-global-id: skip
@@ -284,6 +285,7 @@ spec/arb_cull_distance/fs-cull-distance-sizeable-to-max: skip
 spec/arb_cull_distance/vs-cull-distance-vertex-inside-cull-volume: skip
 spec/arb_cull_distance/vs-cull-distance-vertex-on-plane: skip
 spec/arb_cull_distance/vs-cull-distance-vertex-outside-cull-volume: skip
+spec/arb_derivative_control/execution/derivatives-vs-flat-input: skip
 spec/arb_derivative_control/execution/dfdx-coarse: skip
 spec/arb_derivative_control/execution/dfdx-dfdy: skip
 spec/arb_derivative_control/execution/dfdx-fine: skip
@@ -2853,6 +2855,7 @@ spec/glsl-1.50/execution/interface-blocks-with-gs: skip
 spec/glsl-1.50/execution/interface-vs-named-to-gs-array: skip
 spec/glsl-1.50/execution/interface-vs-unnamed-to-fs-unnamed: skip
 spec/glsl-1.50/execution/invariant-qualifier-everywhere: skip
+spec/glsl-1.50/execution/out-of-ssa-dfs-pre-order: skip
 spec/glsl-1.50/execution/primitive-id-no-gs: skip
 spec/glsl-1.50/execution/primitive-id-no-gs-first-vertex: skip
 spec/glsl-1.50/execution/primitive-id-no-gs-instanced: skip
@@ -3159,7 +3162,7 @@ summary:
        pass:     3354
        fail:        2
       crash:        1
-       skip:     3152
+       skip:     3155
     timeout:        0
        warn:        0
  incomplete:        0
@@ -3168,4 +3171,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     6509
+      total:     6512

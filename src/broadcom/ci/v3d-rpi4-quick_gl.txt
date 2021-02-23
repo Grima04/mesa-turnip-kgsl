@@ -4076,6 +4076,7 @@ spec/egl_ext_device_base/conformance/pbuffer_tests: skip
 spec/egl_ext_device_base/conformance/surfaceless_tests: skip
 spec/egl_ext_device_query/conformance: fail
 spec/egl_ext_image_dma_buf_import_modifiers/conformance: fail
+spec/egl_ext_protected_content/conformance: skip
 spec/egl_khr_create_context/3.2 core profile required: skip
 spec/egl_khr_create_context/default major version gl: skip
 spec/egl_khr_create_context/default major version gles: skip
@@ -5581,10 +5582,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    10967
+       pass:    10968
        fail:      216
       crash:        6
-       skip:     5335
+       skip:     5336
     timeout:        0
        warn:        0
  incomplete:        0
@@ -5593,4 +5594,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    16547
+      total:    16549
