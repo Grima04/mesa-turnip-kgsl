@@ -230,7 +230,9 @@ RESULTSFILE="$RESULTS/$PIGLIT_RESULTS.txt"
 mkdir -p .gitlab-ci/piglit
 ./piglit summary console "$RESULTS"/results.json.bz2 \
     | tee ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.orig" \
-    | head -n -1 | grep -v ": pass" > $RESULTSFILE
+    | head -n -1 | grep -v ": pass" \
+    | sed '/^summary:/Q' \
+    > $RESULTSFILE
 
 if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
        && [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then

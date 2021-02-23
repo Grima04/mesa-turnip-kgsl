@@ -3156,19 +3156,3 @@ spec/nv_viewport_swizzle/viewport_swizzle: skip
 spec/oes_viewport_array/viewport-gs-write-simple: skip
 spec/oes_viewport_array/viewport-gs-writes-in-range: skip
 spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
-summary:
-       name:  results
-       ----  --------
-       pass:     3354
-       fail:        2
-      crash:        1
-       skip:     3155
-    timeout:        0
-       warn:        0
- incomplete:        0
- dmesg-warn:        0
- dmesg-fail:        0
-    changes:        0
-      fixes:        0
-regressions:        0
-      total:     6512

@@ -43,7 +43,11 @@ set -e
 
 PIGLIT_RESULTS=${PIGLIT_RESULTS:-$PIGLIT_PROFILES}
 mkdir -p .gitlab-ci/piglit
-./piglit summary console $OLDPWD/results | head -n -1 | grep -v ": pass" > .gitlab-ci/piglit/$PIGLIT_RESULTS.txt
+./piglit summary console $OLDPWD/results \
+  | head -n -1 \
+  | grep -v ": pass" \
+  | sed '/^summary:/Q' \
+  > .gitlab-ci/piglit/$PIGLIT_RESULTS.txt
 
 if [ -n "$USE_CASELIST" ]; then
     # Just filter the expected results based on the tests that were actually

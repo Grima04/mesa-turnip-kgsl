@@ -5571,19 +5571,3 @@ spec/oes_viewport_array/viewport-indices: skip
 wgl/wgl-multi-context-single-window: skip
 wgl/wgl-multi-window-single-context: skip
 wgl/wgl-sanity: skip
-summary:
-       name:  results
-       ----  --------
-       pass:     2198
-       fail:      294
-      crash:       50
-       skip:     5182
-    timeout:        0
-       warn:        1
- incomplete:        2
- dmesg-warn:        0
- dmesg-fail:        0
-    changes:        0
-      fixes:        0
-regressions:        0
-      total:     7771
