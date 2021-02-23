@@ -108,7 +108,6 @@ si_emit_thread_trace_start(struct si_context* sctx,
                                            V_008D18_REG_INCLUDE_GFXUDEC |
                                            V_008D18_REG_INCLUDE_CONTEXT |
                                            V_008D18_REG_INCLUDE_COMP |
-                                           V_008D18_REG_INCLUDE_CONTEXT |
                                            V_008D18_REG_INCLUDE_CONFIG) |
                       S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF));
 
