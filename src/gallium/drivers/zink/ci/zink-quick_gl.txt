@@ -1,10 +1,9 @@
 fast_color_clear/fcc-clear-tex: skip
-fast_color_clear/fcc-read-after-clear copy rb: crash
-fast_color_clear/fcc-read-after-clear copy tex: crash
 fast_color_clear/fcc-write-after-clear: skip
 glx/extension string sanity: fail
 glx/glx-buffer-age: skip
 glx/glx-buffer-age vblank_mode=0: skip
+glx/glx-context-flush-control: skip
 glx/glx-copy-sub-buffer: fail
 glx/glx-copy-sub-buffer samples=16: skip
 glx/glx-copy-sub-buffer samples=2: skip
@@ -13,6 +12,7 @@ glx/glx-copy-sub-buffer samples=4: skip
 glx/glx-copy-sub-buffer samples=6: skip
 glx/glx-copy-sub-buffer samples=8: skip
 glx/glx-multi-window-single-context: fail
+glx/glx-multithread: fail
 glx/glx-multithread-buffer: fail
 glx/glx-multithread-makecurrent-1: skip
 glx/glx-multithread-makecurrent-2: skip
@@ -402,7 +402,6 @@ spec/!opengl 1.1/draw-pixels samples=32: skip
 spec/!opengl 1.1/draw-pixels samples=4: skip
 spec/!opengl 1.1/draw-pixels samples=6: skip
 spec/!opengl 1.1/draw-pixels samples=8: skip
-spec/!opengl 1.1/getteximage-formats: crash
 spec/!opengl 1.1/line-flat-clip-color: fail
 spec/!opengl 1.1/linestipple/factor 2x: fail
 spec/!opengl 1.1/linestipple/factor 3x: fail
@@ -732,7 +731,9 @@ spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
 spec/!opengl 2.1/pbo/test_polygon_stip: fail
 spec/!opengl 2.1/polygon-stipple-fs: fail
 spec/!opengl 3.0/array-depth-roundtrip: fail
+spec/!opengl 3.0/clearbuffer-depth: fail
 spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
+spec/!opengl 3.0/clearbuffer-stencil: fail
 spec/!opengl 3.0/depth-cube-map: fail
 spec/!opengl 3.0/sampler-cube-shadow: fail
 spec/!opengl 3.1/primitive-restart-xfb flush: fail
@@ -823,8 +824,20 @@ spec/arb_compute_shader/zero-dispatch-size: skip
 spec/arb_compute_variable_group_size/errors: skip
 spec/arb_compute_variable_group_size/local-size: skip
 spec/arb_compute_variable_group_size/minmax: skip
-spec/arb_copy_image/arb_copy_image-formats --samples=2: crash
-spec/arb_copy_image/arb_copy_image-formats --samples=4: crash
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_component/destination: gl_depth_component: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_component16/destination: gl_depth_component16: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_component24/destination: gl_depth_component24: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_component32/destination: gl_depth_component32: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_stencil/destination: gl_depth_stencil: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_stencil_index8/destination: gl_stencil_index8: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_component/destination: gl_depth_component: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_component16/destination: gl_depth_component16: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_component24/destination: gl_depth_component24: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_component32/destination: gl_depth_component32: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_stencil/destination: gl_depth_stencil: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_stencil_index8/destination: gl_stencil_index8: skip
 spec/arb_copy_image/arb_copy_image-formats --samples=8: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 1024 d=z32f_s8_s=z24_s8: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 1024 d=z32f_s=z24_s8: skip
@@ -932,8 +945,6 @@ spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit depth gl_d
 spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl_depth24_stencil8: fail
 spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl_depth32f_stencil8: fail
 spec/arb_framebuffer_object/fbo-blit-scaled-linear: fail
-spec/arb_framebuffer_object/fbo-generatemipmap-1d: crash
-spec/arb_framebuffer_object/fbo-generatemipmap-cubemap: crash
 spec/arb_framebuffer_object/fbo-gl_pointcoord: fail
 spec/arb_framebuffer_object/framebuffer-blit-levels draw stencil: fail
 spec/arb_framebuffer_object/framebuffer-blit-levels read stencil: fail
@@ -1391,7 +1402,6 @@ spec/arb_texture_cube_map/copyteximage cube samples=4: skip
 spec/arb_texture_cube_map/copyteximage cube samples=6: skip
 spec/arb_texture_cube_map/copyteximage cube samples=8: skip
 spec/arb_texture_cube_map_array/arb_texture_cube_map_array-sampler-cube-array-shadow: fail
-spec/arb_texture_cube_map_array/fbo-generatemipmap-cubemap array: crash
 spec/arb_texture_cube_map_array/texturesize/tes-texturesize-isamplercubearray: skip
 spec/arb_texture_cube_map_array/texturesize/tes-texturesize-samplercubearray: skip
 spec/arb_texture_cube_map_array/texturesize/tes-texturesize-samplercubearrayshadow: skip
@@ -1535,11 +1545,9 @@ spec/arb_texture_rg/multisample-fast-clear gl_arb_texture_rg-int: fail
 spec/arb_texture_rg/multisample-formats 16 gl_arb_texture_rg: skip
 spec/arb_texture_rg/multisample-formats 16 gl_arb_texture_rg-float: skip
 spec/arb_texture_rg/multisample-formats 16 gl_arb_texture_rg-int: skip
-spec/arb_texture_rg/multisample-formats 2 gl_arb_texture_rg-int: crash
 spec/arb_texture_rg/multisample-formats 32 gl_arb_texture_rg: skip
 spec/arb_texture_rg/multisample-formats 32 gl_arb_texture_rg-float: skip
 spec/arb_texture_rg/multisample-formats 32 gl_arb_texture_rg-int: skip
-spec/arb_texture_rg/multisample-formats 4 gl_arb_texture_rg-int: crash
 spec/arb_texture_rg/multisample-formats 6 gl_arb_texture_rg: skip
 spec/arb_texture_rg/multisample-formats 6 gl_arb_texture_rg-float: skip
 spec/arb_texture_rg/multisample-formats 6 gl_arb_texture_rg-int: skip
@@ -1995,37 +2003,25 @@ spec/ext_framebuffer_multisample/accuracy 16 stencil_resolve depthstencil: skip
 spec/ext_framebuffer_multisample/accuracy 16 stencil_resolve small: skip
 spec/ext_framebuffer_multisample/accuracy 16 stencil_resolve small depthstencil: skip
 spec/ext_framebuffer_multisample/accuracy 2 color: skip
-spec/ext_framebuffer_multisample/accuracy 2 color depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy 2 color depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy 2 color linear: skip
 spec/ext_framebuffer_multisample/accuracy 2 color small: skip
-spec/ext_framebuffer_multisample/accuracy 2 color small depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy 2 color small depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy 2 color small linear: skip
 spec/ext_framebuffer_multisample/accuracy 2 depth_draw: skip
-spec/ext_framebuffer_multisample/accuracy 2 depth_draw depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy 2 depth_draw small: skip
-spec/ext_framebuffer_multisample/accuracy 2 depth_draw small depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy 2 depth_resolve: skip
-spec/ext_framebuffer_multisample/accuracy 2 depth_resolve depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy 2 depth_resolve depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy 2 depth_resolve small: skip
-spec/ext_framebuffer_multisample/accuracy 2 depth_resolve small depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy 2 depth_resolve small depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy 2 srgb: skip
-spec/ext_framebuffer_multisample/accuracy 2 srgb depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy 2 srgb depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy 2 srgb linear: skip
 spec/ext_framebuffer_multisample/accuracy 2 srgb small: skip
-spec/ext_framebuffer_multisample/accuracy 2 srgb small depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy 2 srgb small depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy 2 srgb small linear: skip
 spec/ext_framebuffer_multisample/accuracy 2 stencil_draw: skip
-spec/ext_framebuffer_multisample/accuracy 2 stencil_draw depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy 2 stencil_draw small: skip
-spec/ext_framebuffer_multisample/accuracy 2 stencil_draw small depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy 2 stencil_resolve: skip
-spec/ext_framebuffer_multisample/accuracy 2 stencil_resolve depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy 2 stencil_resolve depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy 2 stencil_resolve small: skip
-spec/ext_framebuffer_multisample/accuracy 2 stencil_resolve small depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy 2 stencil_resolve small depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy 32 color: skip
 spec/ext_framebuffer_multisample/accuracy 32 color depthstencil: skip
 spec/ext_framebuffer_multisample/accuracy 32 color depthstencil linear: skip
@@ -2059,37 +2055,25 @@ spec/ext_framebuffer_multisample/accuracy 32 stencil_resolve depthstencil: skip
 spec/ext_framebuffer_multisample/accuracy 32 stencil_resolve small: skip
 spec/ext_framebuffer_multisample/accuracy 32 stencil_resolve small depthstencil: skip
 spec/ext_framebuffer_multisample/accuracy 4 color: skip
-spec/ext_framebuffer_multisample/accuracy 4 color depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy 4 color depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy 4 color linear: skip
 spec/ext_framebuffer_multisample/accuracy 4 color small: skip
-spec/ext_framebuffer_multisample/accuracy 4 color small depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy 4 color small depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy 4 color small linear: skip
 spec/ext_framebuffer_multisample/accuracy 4 depth_draw: skip
-spec/ext_framebuffer_multisample/accuracy 4 depth_draw depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy 4 depth_draw small: skip
-spec/ext_framebuffer_multisample/accuracy 4 depth_draw small depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy 4 depth_resolve: skip
-spec/ext_framebuffer_multisample/accuracy 4 depth_resolve depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy 4 depth_resolve depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy 4 depth_resolve small: skip
-spec/ext_framebuffer_multisample/accuracy 4 depth_resolve small depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy 4 depth_resolve small depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy 4 srgb: skip
-spec/ext_framebuffer_multisample/accuracy 4 srgb depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy 4 srgb depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy 4 srgb linear: skip
 spec/ext_framebuffer_multisample/accuracy 4 srgb small: skip
-spec/ext_framebuffer_multisample/accuracy 4 srgb small depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy 4 srgb small depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy 4 srgb small linear: skip
 spec/ext_framebuffer_multisample/accuracy 4 stencil_draw: skip
-spec/ext_framebuffer_multisample/accuracy 4 stencil_draw depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy 4 stencil_draw small: skip
-spec/ext_framebuffer_multisample/accuracy 4 stencil_draw small depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy 4 stencil_resolve: skip
-spec/ext_framebuffer_multisample/accuracy 4 stencil_resolve depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy 4 stencil_resolve depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy 4 stencil_resolve small: skip
-spec/ext_framebuffer_multisample/accuracy 4 stencil_resolve small depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy 4 stencil_resolve small depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy 6 color: skip
 spec/ext_framebuffer_multisample/accuracy 6 color depthstencil: skip
 spec/ext_framebuffer_multisample/accuracy 6 color depthstencil linear: skip
@@ -2155,37 +2139,25 @@ spec/ext_framebuffer_multisample/accuracy 8 stencil_resolve depthstencil: skip
 spec/ext_framebuffer_multisample/accuracy 8 stencil_resolve small: skip
 spec/ext_framebuffer_multisample/accuracy 8 stencil_resolve small depthstencil: skip
 spec/ext_framebuffer_multisample/accuracy all_samples color: skip
-spec/ext_framebuffer_multisample/accuracy all_samples color depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy all_samples color depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy all_samples color linear: skip
 spec/ext_framebuffer_multisample/accuracy all_samples color small: skip
-spec/ext_framebuffer_multisample/accuracy all_samples color small depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy all_samples color small depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy all_samples color small linear: skip
 spec/ext_framebuffer_multisample/accuracy all_samples depth_draw: skip
-spec/ext_framebuffer_multisample/accuracy all_samples depth_draw depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy all_samples depth_draw small: skip
-spec/ext_framebuffer_multisample/accuracy all_samples depth_draw small depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy all_samples depth_resolve: skip
-spec/ext_framebuffer_multisample/accuracy all_samples depth_resolve depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy all_samples depth_resolve depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy all_samples depth_resolve small: skip
-spec/ext_framebuffer_multisample/accuracy all_samples depth_resolve small depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy all_samples depth_resolve small depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy all_samples srgb: skip
-spec/ext_framebuffer_multisample/accuracy all_samples srgb depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy all_samples srgb depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy all_samples srgb linear: skip
 spec/ext_framebuffer_multisample/accuracy all_samples srgb small: skip
-spec/ext_framebuffer_multisample/accuracy all_samples srgb small depthstencil: crash
-spec/ext_framebuffer_multisample/accuracy all_samples srgb small depthstencil linear: crash
 spec/ext_framebuffer_multisample/accuracy all_samples srgb small linear: skip
 spec/ext_framebuffer_multisample/accuracy all_samples stencil_draw: skip
-spec/ext_framebuffer_multisample/accuracy all_samples stencil_draw depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy all_samples stencil_draw small: skip
-spec/ext_framebuffer_multisample/accuracy all_samples stencil_draw small depthstencil: crash
 spec/ext_framebuffer_multisample/accuracy all_samples stencil_resolve: skip
-spec/ext_framebuffer_multisample/accuracy all_samples stencil_resolve depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy all_samples stencil_resolve depthstencil: fail
 spec/ext_framebuffer_multisample/accuracy all_samples stencil_resolve small: skip
-spec/ext_framebuffer_multisample/accuracy all_samples stencil_resolve small depthstencil: crash
+spec/ext_framebuffer_multisample/accuracy all_samples stencil_resolve small depthstencil: fail
 spec/ext_framebuffer_multisample/alpha-blending-after-rendering 16: skip
 spec/ext_framebuffer_multisample/alpha-blending-after-rendering 32: skip
 spec/ext_framebuffer_multisample/alpha-blending-after-rendering 6: skip
@@ -2211,9 +2183,7 @@ spec/ext_framebuffer_multisample/alpha-to-one-msaa-disabled 32: skip
 spec/ext_framebuffer_multisample/alpha-to-one-msaa-disabled 6: skip
 spec/ext_framebuffer_multisample/alpha-to-one-msaa-disabled 8: skip
 spec/ext_framebuffer_multisample/bitmap 16: skip
-spec/ext_framebuffer_multisample/bitmap 2: crash
 spec/ext_framebuffer_multisample/bitmap 32: skip
-spec/ext_framebuffer_multisample/bitmap 4: crash
 spec/ext_framebuffer_multisample/bitmap 6: skip
 spec/ext_framebuffer_multisample/bitmap 8: skip
 spec/ext_framebuffer_multisample/blit-flipped 16 x: skip
@@ -2233,11 +2203,9 @@ spec/ext_framebuffer_multisample/blit-multiple-render-targets 8: skip
 spec/ext_framebuffer_multisample/clear 16 color: skip
 spec/ext_framebuffer_multisample/clear 16 depth: skip
 spec/ext_framebuffer_multisample/clear 16 stencil: skip
-spec/ext_framebuffer_multisample/clear 2 depth: fail
 spec/ext_framebuffer_multisample/clear 32 color: skip
 spec/ext_framebuffer_multisample/clear 32 depth: skip
 spec/ext_framebuffer_multisample/clear 32 stencil: skip
-spec/ext_framebuffer_multisample/clear 4 depth: fail
 spec/ext_framebuffer_multisample/clear 6 color: skip
 spec/ext_framebuffer_multisample/clear 6 depth: skip
 spec/ext_framebuffer_multisample/clear 6 stencil: skip
@@ -2272,7 +2240,7 @@ spec/ext_framebuffer_multisample/draw-buffers-alpha-to-one 16: skip
 spec/ext_framebuffer_multisample/draw-buffers-alpha-to-one 32: skip
 spec/ext_framebuffer_multisample/draw-buffers-alpha-to-one 6: skip
 spec/ext_framebuffer_multisample/draw-buffers-alpha-to-one 8: skip
-spec/ext_framebuffer_multisample/enable-flag: crash
+spec/ext_framebuffer_multisample/enable-flag: fail
 spec/ext_framebuffer_multisample/formats 16: skip
 spec/ext_framebuffer_multisample/formats 32: skip
 spec/ext_framebuffer_multisample/formats 6: skip
@@ -2285,10 +2253,6 @@ spec/ext_framebuffer_multisample/int-draw-buffers-alpha-to-one 16: skip
 spec/ext_framebuffer_multisample/int-draw-buffers-alpha-to-one 32: skip
 spec/ext_framebuffer_multisample/int-draw-buffers-alpha-to-one 6: skip
 spec/ext_framebuffer_multisample/int-draw-buffers-alpha-to-one 8: skip
-spec/ext_framebuffer_multisample/interpolation 0 centroid-deriv-disabled: crash
-spec/ext_framebuffer_multisample/interpolation 0 centroid-disabled: crash
-spec/ext_framebuffer_multisample/interpolation 0 non-centroid-deriv-disabled: crash
-spec/ext_framebuffer_multisample/interpolation 0 non-centroid-disabled: crash
 spec/ext_framebuffer_multisample/interpolation 16 centroid-deriv: skip
 spec/ext_framebuffer_multisample/interpolation 16 centroid-deriv-disabled: skip
 spec/ext_framebuffer_multisample/interpolation 16 centroid-disabled: skip
@@ -2296,11 +2260,11 @@ spec/ext_framebuffer_multisample/interpolation 16 centroid-edges: skip
 spec/ext_framebuffer_multisample/interpolation 16 non-centroid-deriv: skip
 spec/ext_framebuffer_multisample/interpolation 16 non-centroid-deriv-disabled: skip
 spec/ext_framebuffer_multisample/interpolation 16 non-centroid-disabled: skip
-spec/ext_framebuffer_multisample/interpolation 2 centroid-deriv-disabled: crash
-spec/ext_framebuffer_multisample/interpolation 2 centroid-disabled: crash
+spec/ext_framebuffer_multisample/interpolation 2 centroid-deriv-disabled: fail
+spec/ext_framebuffer_multisample/interpolation 2 centroid-disabled: fail
 spec/ext_framebuffer_multisample/interpolation 2 centroid-edges: fail
-spec/ext_framebuffer_multisample/interpolation 2 non-centroid-deriv-disabled: crash
-spec/ext_framebuffer_multisample/interpolation 2 non-centroid-disabled: crash
+spec/ext_framebuffer_multisample/interpolation 2 non-centroid-deriv-disabled: fail
+spec/ext_framebuffer_multisample/interpolation 2 non-centroid-disabled: fail
 spec/ext_framebuffer_multisample/interpolation 32 centroid-deriv: skip
 spec/ext_framebuffer_multisample/interpolation 32 centroid-deriv-disabled: skip
 spec/ext_framebuffer_multisample/interpolation 32 centroid-disabled: skip
@@ -2308,11 +2272,11 @@ spec/ext_framebuffer_multisample/interpolation 32 centroid-edges: skip
 spec/ext_framebuffer_multisample/interpolation 32 non-centroid-deriv: skip
 spec/ext_framebuffer_multisample/interpolation 32 non-centroid-deriv-disabled: skip
 spec/ext_framebuffer_multisample/interpolation 32 non-centroid-disabled: skip
-spec/ext_framebuffer_multisample/interpolation 4 centroid-deriv-disabled: crash
-spec/ext_framebuffer_multisample/interpolation 4 centroid-disabled: crash
+spec/ext_framebuffer_multisample/interpolation 4 centroid-deriv-disabled: fail
+spec/ext_framebuffer_multisample/interpolation 4 centroid-disabled: fail
 spec/ext_framebuffer_multisample/interpolation 4 centroid-edges: fail
-spec/ext_framebuffer_multisample/interpolation 4 non-centroid-deriv-disabled: crash
-spec/ext_framebuffer_multisample/interpolation 4 non-centroid-disabled: crash
+spec/ext_framebuffer_multisample/interpolation 4 non-centroid-deriv-disabled: fail
+spec/ext_framebuffer_multisample/interpolation 4 non-centroid-disabled: fail
 spec/ext_framebuffer_multisample/interpolation 6 centroid-deriv: skip
 spec/ext_framebuffer_multisample/interpolation 6 centroid-deriv-disabled: skip
 spec/ext_framebuffer_multisample/interpolation 6 centroid-disabled: skip
@@ -2335,14 +2299,14 @@ spec/ext_framebuffer_multisample/multisample-blit 16 color: skip
 spec/ext_framebuffer_multisample/multisample-blit 16 color linear: skip
 spec/ext_framebuffer_multisample/multisample-blit 16 depth: skip
 spec/ext_framebuffer_multisample/multisample-blit 16 stencil: skip
-spec/ext_framebuffer_multisample/multisample-blit 2 depth: crash
-spec/ext_framebuffer_multisample/multisample-blit 2 stencil: crash
+spec/ext_framebuffer_multisample/multisample-blit 2 depth: fail
+spec/ext_framebuffer_multisample/multisample-blit 2 stencil: fail
 spec/ext_framebuffer_multisample/multisample-blit 32 color: skip
 spec/ext_framebuffer_multisample/multisample-blit 32 color linear: skip
 spec/ext_framebuffer_multisample/multisample-blit 32 depth: skip
 spec/ext_framebuffer_multisample/multisample-blit 32 stencil: skip
-spec/ext_framebuffer_multisample/multisample-blit 4 depth: crash
-spec/ext_framebuffer_multisample/multisample-blit 4 stencil: crash
+spec/ext_framebuffer_multisample/multisample-blit 4 depth: fail
+spec/ext_framebuffer_multisample/multisample-blit 4 stencil: fail
 spec/ext_framebuffer_multisample/multisample-blit 6 color: skip
 spec/ext_framebuffer_multisample/multisample-blit 6 color linear: skip
 spec/ext_framebuffer_multisample/multisample-blit 6 depth: skip
@@ -2415,9 +2379,7 @@ spec/ext_framebuffer_multisample/polygon-smooth 32: skip
 spec/ext_framebuffer_multisample/polygon-smooth 6: skip
 spec/ext_framebuffer_multisample/polygon-smooth 8: skip
 spec/ext_framebuffer_multisample/polygon-stipple 16: skip
-spec/ext_framebuffer_multisample/polygon-stipple 2: crash
 spec/ext_framebuffer_multisample/polygon-stipple 32: skip
-spec/ext_framebuffer_multisample/polygon-stipple 4: crash
 spec/ext_framebuffer_multisample/polygon-stipple 6: skip
 spec/ext_framebuffer_multisample/polygon-stipple 8: skip
 spec/ext_framebuffer_multisample/sample-alpha-to-coverage 16 color: skip
@@ -2445,9 +2407,7 @@ spec/ext_framebuffer_multisample/sample-coverage 6 non-inverted: skip
 spec/ext_framebuffer_multisample/sample-coverage 8 inverted: skip
 spec/ext_framebuffer_multisample/sample-coverage 8 non-inverted: skip
 spec/ext_framebuffer_multisample/turn-on-off 16: skip
-spec/ext_framebuffer_multisample/turn-on-off 2: crash
 spec/ext_framebuffer_multisample/turn-on-off 32: skip
-spec/ext_framebuffer_multisample/turn-on-off 4: crash
 spec/ext_framebuffer_multisample/turn-on-off 6: skip
 spec/ext_framebuffer_multisample/turn-on-off 8: skip
 spec/ext_framebuffer_multisample/unaligned-blit 16 color downsample: skip
@@ -2490,11 +2450,13 @@ spec/ext_framebuffer_multisample/upsample 16 color: skip
 spec/ext_framebuffer_multisample/upsample 16 color linear: skip
 spec/ext_framebuffer_multisample/upsample 16 depth: skip
 spec/ext_framebuffer_multisample/upsample 16 stencil: skip
+spec/ext_framebuffer_multisample/upsample 2 depth: fail
 spec/ext_framebuffer_multisample/upsample 2 stencil: fail
 spec/ext_framebuffer_multisample/upsample 32 color: skip
 spec/ext_framebuffer_multisample/upsample 32 color linear: skip
 spec/ext_framebuffer_multisample/upsample 32 depth: skip
 spec/ext_framebuffer_multisample/upsample 32 stencil: skip
+spec/ext_framebuffer_multisample/upsample 4 depth: fail
 spec/ext_framebuffer_multisample/upsample 4 stencil: fail
 spec/ext_framebuffer_multisample/upsample 6 color: skip
 spec/ext_framebuffer_multisample/upsample 6 color linear: skip
@@ -2536,18 +2498,7 @@ spec/ext_framebuffer_object/fbo-blending-formats/gl_rgb12: fail
 spec/ext_framebuffer_object/fbo-blending-formats/gl_rgb16: fail
 spec/ext_framebuffer_object/fbo-blending-formats/gl_rgb4: fail
 spec/ext_framebuffer_object/fbo-blending-formats/gl_rgb8: fail
-spec/ext_framebuffer_object/fbo-copyteximage: crash
-spec/ext_framebuffer_object/fbo-copyteximage-simple: crash
-spec/ext_framebuffer_object/fbo-cubemap: crash
 spec/ext_framebuffer_object/fbo-depthtex: fail
-spec/ext_framebuffer_object/fbo-generatemipmap: crash
-spec/ext_framebuffer_object/fbo-generatemipmap-nonsquare: crash
-spec/ext_framebuffer_object/fbo-generatemipmap-npot: crash
-spec/ext_framebuffer_object/fbo-generatemipmap-scissor: crash
-spec/ext_framebuffer_object/fbo-generatemipmap-swizzle: crash
-spec/ext_framebuffer_object/fbo-generatemipmap-viewport: crash
-spec/ext_framebuffer_object/getteximage-formats init-by-clear-and-render: crash
-spec/ext_framebuffer_object/getteximage-formats init-by-rendering: crash
 spec/ext_gpu_shader4/bindfragdatalocation mixed-int-float-fbo: skip
 spec/ext_gpu_shader4/bindfragdatalocation mixed-int-float-fbo int_second: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: skip
@@ -2592,7 +2543,7 @@ spec/ext_packed_depth_stencil/depthstencil-render-miplevels 585 d=z24_s8_s=z24_s
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 585 d=z24_s=z24_s8: skip
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 585 s=z24_s8_d=z24: skip
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 585 s=z24_s8_d=z24_s8: skip
-spec/ext_packed_depth_stencil/fbo-blit-d24s8: crash
+spec/ext_packed_depth_stencil/fbo-blit-d24s8: fail
 spec/ext_packed_depth_stencil/fbo-clear-formats/gl_depth24_stencil8: fail
 spec/ext_packed_depth_stencil/fbo-clear-formats/gl_depth_stencil: fail
 spec/ext_packed_depth_stencil/fbo-depth-gl_depth24_stencil8-blit: fail
@@ -2642,7 +2593,6 @@ spec/ext_texture_array/fbo-depth-array fs-writes-stencil: skip
 spec/ext_texture_array/fbo-depth-array stencil-clear: fail
 spec/ext_texture_array/fbo-depth-array stencil-draw: fail
 spec/ext_texture_array/fbo-depth-array stencil-layered-clear: fail
-spec/ext_texture_array/fbo-generatemipmap-array: crash
 spec/ext_texture_compression_latc/fbo-generatemipmap-formats: skip
 spec/ext_texture_compression_latc/fbo-generatemipmap-formats-signed: skip
 spec/ext_texture_compression_latc/texwrap formats: skip
@@ -2665,9 +2615,7 @@ spec/ext_texture_compression_s3tc/texwrap formats bordercolor/gl_compressed_rgba
 spec/ext_texture_integer/fbo-integer: skip
 spec/ext_texture_integer/multisample-fast-clear gl_ext_texture_integer: fail
 spec/ext_texture_integer/multisample-formats 16 gl_ext_texture_integer: skip
-spec/ext_texture_integer/multisample-formats 2 gl_ext_texture_integer: crash
 spec/ext_texture_integer/multisample-formats 32 gl_ext_texture_integer: skip
-spec/ext_texture_integer/multisample-formats 4 gl_ext_texture_integer: crash
 spec/ext_texture_integer/multisample-formats 6 gl_ext_texture_integer: skip
 spec/ext_texture_integer/multisample-formats 8 gl_ext_texture_integer: skip
 spec/ext_texture_integer/texwrap formats bordercolor-swizzled/gl_alpha16i_ext, swizzled, border color only: fail
@@ -2828,7 +2776,19 @@ spec/ext_window_rectangles/errors: skip
 spec/ext_window_rectangles/errors_gles3: skip
 spec/ext_window_rectangles/render: skip
 spec/ext_window_rectangles/render_gles3: skip
+spec/glsl-1.30/execution/tex-miplevel-selection texturegradoffset 1darrayshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texturegradoffset 1dshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texturelodoffset 1darrayshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texturelodoffset 1dshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 1darrayshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 1dshadow: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
+spec/glsl-1.30/execution/tex-miplevel-selection textureoffset(bias) 1darrayshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection textureoffset(bias) 1dshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 1dshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection textureprojlodoffset 1dshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection textureprojoffset 1dshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection textureprojoffset(bias) 1dshadow: fail
 spec/glsl-1.50/built-in constants compatibility: skip
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop ffs: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop other: fail
@@ -2961,8 +2921,20 @@ spec/nv_copy_depth_to_color/nv_copy_depth_to_color 0 0x223344ff: fail
 spec/nv_copy_depth_to_color/nv_copy_depth_to_color 0 0x76356278: fail
 spec/nv_copy_depth_to_color/nv_copy_depth_to_color 1 0x223344ff: fail
 spec/nv_copy_depth_to_color/nv_copy_depth_to_color 1 0x76356278: fail
-spec/nv_copy_image/nv_copy_image-formats --samples=2: crash
-spec/nv_copy_image/nv_copy_image-formats --samples=4: crash
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component/destination: gl_depth_component: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component16/destination: gl_depth_component16: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component24/destination: gl_depth_component24: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component32/destination: gl_depth_component32: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_stencil/destination: gl_depth_stencil: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_stencil_index8/destination: gl_stencil_index8: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_component/destination: gl_depth_component: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_component16/destination: gl_depth_component16: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_component24/destination: gl_depth_component24: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_component32/destination: gl_depth_component32: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_stencil/destination: gl_depth_stencil: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_stencil_index8/destination: gl_stencil_index8: skip
 spec/nv_copy_image/nv_copy_image-formats --samples=8: skip
 spec/nv_fill_rectangle/invalid-draw-mode: skip
 spec/nv_fragment_program_option/fp-abs-02: skip
@@ -3039,10 +3011,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17513
-       fail:     1236
-      crash:      111
-       skip:     1664
+       pass:    18685
+       fail:     1277
+      crash:       13
+       skip:     1693
     timeout:        0
        warn:        4
  incomplete:        0
@@ -3051,4 +3023,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20551
+      total:    21695
