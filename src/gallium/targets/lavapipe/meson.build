@@ -15,6 +15,7 @@ libvulkan_lvp = shared_library(
   gnu_symbol_visibility : 'hidden',
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
   dependencies : driver_swrast,
+  name_prefix : host_machine.system() == 'windows' ? '' : 'lib',
   install : true,
 )
 
@@ -22,7 +23,7 @@ icd_file_name = 'libvulkan_lvp.so'
 module_dir = join_paths(get_option('prefix'), get_option('libdir'))
 if with_platform_windows
   module_dir = join_paths(get_option('prefix'), get_option('bindir'))
-  icd_file_name = 'libvulkan_lvp.dll'
+  icd_file_name = 'vulkan_lvp.dll'
 endif
 
 lvp_icd = custom_target(
