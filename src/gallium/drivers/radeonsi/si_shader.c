@@ -874,12 +874,19 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
    if (!u.rx_ptr)
       return false;
 
-   bool ok = ac_rtld_upload(&u);
+   int size = ac_rtld_upload(&u);
+
+   if (sscreen->debug_flags & DBG(SQTT)) {
+      /* Remember the uploaded code */
+      shader->binary.uploaded_code_size = size;
+      shader->binary.uploaded_code = malloc(size);
+      memcpy(shader->binary.uploaded_code, u.rx_ptr, size);
+   }
 
    sscreen->ws->buffer_unmap(shader->bo->buf);
    ac_rtld_close(&binary);
 
-   return ok;
+   return size >= 0;
 }
 
 static void si_shader_dump_disassembly(struct si_screen *screen,
@@ -2143,6 +2150,10 @@ void si_shader_binary_clean(struct si_shader_binary *binary)
 
    free(binary->llvm_ir_string);
    binary->llvm_ir_string = NULL;
+
+   free(binary->uploaded_code);
+   binary->uploaded_code = NULL;
+   binary->uploaded_code_size = 0;
 }
 
 void si_shader_destroy(struct si_shader *shader)

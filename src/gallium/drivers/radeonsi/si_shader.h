@@ -723,6 +723,9 @@ struct si_shader_binary {
    const char *elf_buffer;
    size_t elf_size;
 
+   char *uploaded_code;
+   size_t uploaded_code_size;
+
    char *llvm_ir_string;
 };
 
