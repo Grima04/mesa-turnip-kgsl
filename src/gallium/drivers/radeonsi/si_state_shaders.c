@@ -4161,6 +4161,31 @@ bool si_update_shaders(struct si_context *sctx)
       }
    }
 
+   if (sctx->screen->debug_flags & DBG(SQTT)) {
+      /* Pretend the bound shaders form a vk pipeline */
+      uint32_t pipeline_code_hash = 0;
+      uint64_t base_address = ~0;
+
+      for (int i = 0; i < SI_NUM_GRAPHICS_SHADERS; i++) {
+         struct si_shader *shader = sctx->shaders[i].current;
+         if (sctx->shaders[i].cso && shader) {
+            pipeline_code_hash = _mesa_hash_data_with_seed(
+               shader->binary.elf_buffer,
+               shader->binary.elf_size,
+               pipeline_code_hash);
+            base_address = MIN2(base_address,
+                                shader->bo->gpu_address);
+         }
+      }
+
+      struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
+      if (!si_sqtt_pipeline_is_registered(thread_trace_data, pipeline_code_hash)) {
+         si_sqtt_register_pipeline(sctx, pipeline_code_hash, base_address);
+      }
+
+      si_sqtt_describe_pipeline_bind(sctx, pipeline_code_hash);
+   }
+
    if (si_pm4_state_enabled_and_changed(sctx, ls) || si_pm4_state_enabled_and_changed(sctx, hs) ||
        si_pm4_state_enabled_and_changed(sctx, es) || si_pm4_state_enabled_and_changed(sctx, gs) ||
        si_pm4_state_enabled_and_changed(sctx, vs) || si_pm4_state_enabled_and_changed(sctx, ps)) {

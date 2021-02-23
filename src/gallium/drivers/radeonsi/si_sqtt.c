@@ -582,6 +582,15 @@ si_init_thread_trace(struct si_context *sctx)
    if (!si_thread_trace_init_bo(sctx))
       return false;
 
+   list_inithead(&sctx->thread_trace->rgp_pso_correlation.record);
+   simple_mtx_init(&sctx->thread_trace->rgp_pso_correlation.lock, mtx_plain);
+
+   list_inithead(&sctx->thread_trace->rgp_loader_events.record);
+   simple_mtx_init(&sctx->thread_trace->rgp_loader_events.lock, mtx_plain);
+
+   list_inithead(&sctx->thread_trace->rgp_code_object.record);
+   simple_mtx_init(&sctx->thread_trace->rgp_code_object.lock, mtx_plain);
+
    si_thread_trace_init_cs(sctx);
 
    sctx->sqtt_next_event = EventInvalid;
@@ -592,14 +601,48 @@ si_init_thread_trace(struct si_context *sctx)
 void
 si_destroy_thread_trace(struct si_context *sctx)
 {
-  struct si_screen *sscreen = sctx->screen;
+   struct si_screen *sscreen = sctx->screen;
    struct pb_buffer *bo = sctx->thread_trace->bo;
    pb_reference(&bo, NULL);
 
    if (sctx->thread_trace->trigger_file)
       free(sctx->thread_trace->trigger_file);
+
    sscreen->ws->cs_destroy(sctx->thread_trace->start_cs[RING_GFX]);
    sscreen->ws->cs_destroy(sctx->thread_trace->stop_cs[RING_GFX]);
+
+   struct rgp_pso_correlation *pso_correlation = &sctx->thread_trace->rgp_pso_correlation;
+   struct rgp_loader_events *loader_events = &sctx->thread_trace->rgp_loader_events;
+   struct rgp_code_object *code_object = &sctx->thread_trace->rgp_code_object;
+   list_for_each_entry_safe(struct rgp_pso_correlation_record, record,
+                            &pso_correlation->record, list) {
+      list_del(&record->list);
+      free(record);
+   }
+   simple_mtx_destroy(&sctx->thread_trace->rgp_pso_correlation.lock);
+
+   list_for_each_entry_safe(struct rgp_loader_events_record, record,
+                            &loader_events->record, list) {
+      list_del(&record->list);
+      free(record);
+   }
+   simple_mtx_destroy(&sctx->thread_trace->rgp_loader_events.lock);
+
+   list_for_each_entry_safe(struct rgp_code_object_record, record,
+             &code_object->record, list) {
+      uint32_t mask = record->shader_stages_mask;
+      int i;
+
+      /* Free the disassembly. */
+      while (mask) {
+         i = u_bit_scan(&mask);
+         free(record->shader_data[i].code);
+      }
+      list_del(&record->list);
+      free(record);
+   }
+   simple_mtx_destroy(&sctx->thread_trace->rgp_code_object.lock);
+
    free(sctx->thread_trace);
    sctx->thread_trace = NULL;
 }
@@ -634,6 +677,11 @@ si_handle_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs)
 
          sctx->thread_trace_enabled = true;
          sctx->thread_trace->start_frame = -1;
+
+         /* Force shader update to make sure si_sqtt_describe_pipeline_bind is called
+          * for the current "pipeline".
+          */
+         sctx->do_update_shaders = true;
       }
    } else {
       struct ac_thread_trace thread_trace = {0};
@@ -786,4 +834,157 @@ si_write_user_event(struct si_context* sctx, struct radeon_cmdbuf *rcs,
 
       si_emit_thread_trace_userdata(sctx, rcs, buffer, sizeof(marker) / 4 + marker.length / 4);
    }
+}
+
+
+bool
+si_sqtt_pipeline_is_registered(struct ac_thread_trace_data *thread_trace_data,
+                               uint64_t pipeline_hash)
+{
+   simple_mtx_lock(&thread_trace_data->rgp_pso_correlation.lock);
+   list_for_each_entry_safe(struct rgp_pso_correlation_record, record,
+             &thread_trace_data->rgp_pso_correlation.record, list) {
+      if (record->pipeline_hash[0] == pipeline_hash) {
+         simple_mtx_unlock(&thread_trace_data->rgp_pso_correlation.lock);
+         return true;
+      }
+
+   }
+   simple_mtx_unlock(&thread_trace_data->rgp_pso_correlation.lock);
+
+   return false;
+}
+
+
+
+static enum rgp_hardware_stages
+si_sqtt_pipe_to_rgp_shader_stage(struct si_shader_key* key, enum pipe_shader_type stage)
+{
+   switch (stage) {
+   case PIPE_SHADER_VERTEX:
+      if (key->as_ls)
+         return RGP_HW_STAGE_LS;
+      else if (key->as_es)
+         return RGP_HW_STAGE_ES;
+      else if (key->as_ngg)
+         return RGP_HW_STAGE_GS;
+      else
+         return RGP_HW_STAGE_VS;
+   case PIPE_SHADER_TESS_CTRL:
+      return RGP_HW_STAGE_HS;
+   case PIPE_SHADER_TESS_EVAL:
+      if (key->as_es)
+         return RGP_HW_STAGE_ES;
+      else if (key->as_ngg)
+         return RGP_HW_STAGE_GS;
+      else
+         return RGP_HW_STAGE_VS;
+   case PIPE_SHADER_GEOMETRY:
+      return RGP_HW_STAGE_GS;
+   case PIPE_SHADER_FRAGMENT:
+      return RGP_HW_STAGE_PS;
+   case PIPE_SHADER_COMPUTE:
+      return RGP_HW_STAGE_CS;
+   default:
+      unreachable("invalid mesa shader stage");
+   }
+}
+
+
+static bool
+si_sqtt_add_code_object(struct si_context* sctx,
+                        uint64_t pipeline_hash)
+{
+   struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
+   struct rgp_code_object *code_object = &thread_trace_data->rgp_code_object;
+   struct rgp_code_object_record *record;
+
+   record = malloc(sizeof(struct rgp_code_object_record));
+   if (!record)
+      return false;
+
+   record->shader_stages_mask = 0;
+   record->num_shaders_combined = 0;
+   record->pipeline_hash[0] = pipeline_hash;
+   record->pipeline_hash[1] = pipeline_hash;
+
+   for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
+      if (i != PIPE_SHADER_COMPUTE) {
+         if (!sctx->shaders[i].cso || !sctx->shaders[i].current)
+            continue;
+      } else {
+         /* TODO */
+         continue;
+      }
+
+      struct si_shader *shader = sctx->shaders[i].current;
+      enum rgp_hardware_stages hw_stage = si_sqtt_pipe_to_rgp_shader_stage(&shader->key, i);
+
+      uint8_t *code = malloc(shader->binary.uploaded_code_size);
+      if (!code) {
+         free(record);
+         return false;
+      }
+      memcpy(code, shader->binary.uploaded_code, shader->binary.uploaded_code_size);
+
+      uint64_t va = shader->bo->gpu_address;
+      record->shader_data[i].hash[0] = _mesa_hash_data(code, shader->binary.uploaded_code_size);
+      record->shader_data[i].hash[1] = record->shader_data[i].hash[0];
+      record->shader_data[i].code_size = shader->binary.uploaded_code_size;
+      record->shader_data[i].code = code;
+      record->shader_data[i].vgpr_count = shader->config.num_vgprs;
+      record->shader_data[i].sgpr_count = shader->config.num_sgprs;
+      record->shader_data[i].base_address = va & 0xffffffffffff;
+      record->shader_data[i].elf_symbol_offset = 0;
+      record->shader_data[i].hw_stage = hw_stage;
+      record->shader_data[i].is_combined = false;
+
+      record->shader_stages_mask |= (1 << i);
+      record->num_shaders_combined++;
+   }
+
+   simple_mtx_lock(&code_object->lock);
+   list_addtail(&record->list, &code_object->record);
+   code_object->record_count++;
+   simple_mtx_unlock(&code_object->lock);
+
+   return true;
+}
+
+bool
+si_sqtt_register_pipeline(struct si_context* sctx, uint64_t pipeline_hash, uint64_t base_address)
+{
+   struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
+
+   assert (!si_sqtt_pipeline_is_registered(thread_trace_data, pipeline_hash));
+
+   bool result = ac_sqtt_add_pso_correlation(thread_trace_data, pipeline_hash);
+   if (!result)
+      return false;
+
+   result = ac_sqtt_add_code_object_loader_event(thread_trace_data, pipeline_hash, base_address);
+   if (!result)
+      return false;
+
+   return si_sqtt_add_code_object(sctx, pipeline_hash);
+}
+
+void
+si_sqtt_describe_pipeline_bind(struct si_context* sctx,
+                               uint64_t pipeline_hash)
+{
+   struct rgp_sqtt_marker_pipeline_bind marker = {0};
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+
+   if (likely(!sctx->thread_trace_enabled)) {
+      return;
+   }
+
+   marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BIND_PIPELINE;
+   marker.cb_id = 0;
+   marker.bind_point = 0 /* VK_PIPELINE_BIND_POINT_GRAPHICS */;
+   marker.api_pso_hash[0] = pipeline_hash;
+   marker.api_pso_hash[1] = pipeline_hash >> 32;
+
+   si_emit_thread_trace_userdata(sctx, cs, &marker, sizeof(marker) / 4);
 }
