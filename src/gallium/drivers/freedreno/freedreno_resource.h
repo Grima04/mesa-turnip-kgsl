@@ -165,6 +165,9 @@ fd_resource_busy(struct fd_resource *rsc, unsigned op)
 	return fd_bo_cpu_prep(rsc->bo, NULL, op | DRM_FREEDRENO_PREP_NOSYNC) != 0;
 }
 
+int __fd_resource_wait(struct fd_context *ctx, struct fd_resource *rsc, unsigned op, const char *func);
+#define fd_resource_wait(ctx, rsc, op) __fd_resource_wait(ctx, rsc, op, __func__)
+
 static inline void
 fd_resource_lock(struct fd_resource *rsc)
 {

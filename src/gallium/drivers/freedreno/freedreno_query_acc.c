@@ -171,7 +171,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 			return false;
 		}
 
-		ret = fd_bo_cpu_prep(rsc->bo, ctx->pipe,
+		ret = fd_resource_wait(ctx, rsc,
 				DRM_FREEDRENO_PREP_READ | DRM_FREEDRENO_PREP_NOSYNC);
 		if (ret)
 			return false;
@@ -186,7 +186,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 	}
 
 	/* get the result: */
-	fd_bo_cpu_prep(rsc->bo, ctx->pipe, DRM_FREEDRENO_PREP_READ);
+	fd_resource_wait(ctx, rsc, DRM_FREEDRENO_PREP_READ);
 
 	void *ptr = fd_bo_map(rsc->bo);
 	p->result(aq, ptr, result);
