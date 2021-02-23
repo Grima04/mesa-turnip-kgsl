@@ -190,6 +190,13 @@ void finish_to_hw_instr_test()
    aco_print_program(program.get(), output);
 }
 
+void finish_insert_nops_test()
+{
+   finish_program(program.get());
+   aco::insert_NOPs(program.get());
+   aco_print_program(program.get(), output);
+}
+
 void finish_assembler_test()
 {
    finish_program(program.get());
