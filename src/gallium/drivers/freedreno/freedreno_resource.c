@@ -603,6 +603,35 @@ fd_resource_transfer_unmap(struct pipe_context *pctx,
 	slab_free(&ctx->transfer_pool, ptrans);
 }
 
+static unsigned
+translate_usage(unsigned usage)
+{
+	uint32_t op = 0;
+
+	if (usage & PIPE_MAP_READ)
+		op |= DRM_FREEDRENO_PREP_READ;
+
+	if (usage & PIPE_MAP_WRITE)
+		op |= DRM_FREEDRENO_PREP_WRITE;
+
+	return op;
+}
+
+static void
+invalidate_resource(struct fd_resource *rsc, unsigned usage)
+	assert_dt
+{
+	bool needs_flush = pending(rsc, !!(usage & PIPE_MAP_WRITE));
+	unsigned op = translate_usage(usage);
+
+	if (needs_flush || fd_resource_busy(rsc, op)) {
+		rebind_resource(rsc);
+		realloc_bo(rsc, fd_bo_size(rsc->bo));
+	} else {
+		util_range_set_empty(&rsc->valid_buffer_range);
+	}
+}
+
 static void *
 fd_resource_transfer_map(struct pipe_context *pctx,
 		struct pipe_resource *prsc,
@@ -616,7 +645,6 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	struct fd_transfer *trans;
 	struct pipe_transfer *ptrans;
 	enum pipe_format format = prsc->format;
-	uint32_t op = 0;
 	uint32_t offset;
 	char *buf;
 	int ret = 0;
@@ -685,19 +713,8 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	if (ctx->in_shadow && !(usage & PIPE_MAP_READ))
 		usage |= PIPE_MAP_UNSYNCHRONIZED;
 
-	if (usage & PIPE_MAP_READ)
-		op |= DRM_FREEDRENO_PREP_READ;
-
-	if (usage & PIPE_MAP_WRITE)
-		op |= DRM_FREEDRENO_PREP_WRITE;
-
-	bool needs_flush = pending(rsc, !!(usage & PIPE_MAP_WRITE));
-
 	if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
-		if (needs_flush || fd_resource_busy(rsc, op)) {
-			rebind_resource(rsc);
-			realloc_bo(rsc, fd_bo_size(rsc->bo));
-		}
+		invalidate_resource(rsc, usage);
 	} else if ((usage & PIPE_MAP_WRITE) &&
 			   prsc->target == PIPE_BUFFER &&
 			   !util_ranges_intersect(&rsc->valid_buffer_range,
@@ -718,6 +735,9 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 			/* if only thing pending is a back-blit, we can discard it: */
 			fd_batch_reset(write_batch);
 		}
+
+		unsigned op = translate_usage(usage);
+		bool needs_flush = pending(rsc, !!(usage & PIPE_MAP_WRITE));
 
 		/* If the GPU is writing to the resource, or if it is reading from the
 		 * resource and we're trying to write to it, flush the renders.
@@ -1195,15 +1215,15 @@ fd_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_resource *rsc = fd_resource(prsc);
 
-	/*
-	 * TODO I guess we could track that the resource is invalidated and
-	 * use that as a hint to realloc rather than stall in _transfer_map(),
-	 * even in the non-DISCARD_WHOLE_RESOURCE case?
-	 *
-	 * Note: we set dirty bits to trigger invalidate logic fd_draw_vbo
-	 */
+	if (prsc->target == PIPE_BUFFER) {
+		/* Handle the glInvalidateBufferData() case:
+		 */
+		invalidate_resource(rsc, PIPE_MAP_READ | PIPE_MAP_WRITE);
+	} else if (rsc->write_batch) {
+		/* Handle the glInvalidateFramebuffer() case, telling us that
+		 * we can skip resolve.
+		 */
 
-	if (rsc->write_batch) {
 		struct fd_batch *batch = rsc->write_batch;
 		struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
