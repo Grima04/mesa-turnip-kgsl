@@ -50,17 +50,17 @@ get_base_dim(unsigned old_base_dim, unsigned new_level_dim, unsigned level)
  */
 struct brw_mipmap_tree *
 brw_miptree_create_for_teximage(struct brw_context *brw,
-                                struct brw_texture_object *intelObj,
-                                struct brw_texture_image *intelImage,
+                                struct brw_texture_object *brw_obj,
+                                struct brw_texture_image *brw_image,
                                 enum brw_miptree_create_flags flags)
 {
    GLuint lastLevel;
    int width, height, depth;
    unsigned old_width = 0, old_height = 0, old_depth = 0;
-   const struct brw_mipmap_tree *old_mt = intelObj->mt;
-   const unsigned level = intelImage->base.Base.Level;
+   const struct brw_mipmap_tree *old_mt = brw_obj->mt;
+   const unsigned level = brw_image->base.Base.Level;
 
-   brw_get_image_dims(&intelImage->base.Base, &width, &height, &depth);
+   brw_get_image_dims(&brw_image->base.Base, &width, &height, &depth);
 
    if (old_mt) {
       old_width = old_mt->surf.logical_level0_px.width;
@@ -73,7 +73,7 @@ brw_miptree_create_for_teximage(struct brw_context *brw,
    DBG("%s\n", __func__);
 
    /* Figure out image dimensions at start level. */
-   switch(intelObj->base.Target) {
+   switch(brw_obj->base.Target) {
    case GL_TEXTURE_2D_MULTISAMPLE:
    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
    case GL_TEXTURE_RECTANGLE:
@@ -105,25 +105,25 @@ brw_miptree_create_for_teximage(struct brw_context *brw,
     * resizable buffers, or require that buffers implement lazy
     * pagetable arrangements.
     */
-   if ((intelObj->base.Sampler.Attrib.MinFilter == GL_NEAREST ||
-        intelObj->base.Sampler.Attrib.MinFilter == GL_LINEAR) &&
-       intelImage->base.Base.Level == 0 &&
-       !intelObj->base.Attrib.GenerateMipmap) {
+   if ((brw_obj->base.Sampler.Attrib.MinFilter == GL_NEAREST ||
+        brw_obj->base.Sampler.Attrib.MinFilter == GL_LINEAR) &&
+       brw_image->base.Base.Level == 0 &&
+       !brw_obj->base.Attrib.GenerateMipmap) {
       lastLevel = 0;
    } else {
-      lastLevel = _mesa_get_tex_max_num_levels(intelObj->base.Target,
+      lastLevel = _mesa_get_tex_max_num_levels(brw_obj->base.Target,
                                                width, height, depth) - 1;
    }
 
    return brw_miptree_create(brw,
-                             intelObj->base.Target,
-                             intelImage->base.Base.TexFormat,
+                             brw_obj->base.Target,
+                             brw_image->base.Base.TexFormat,
                              0,
                              lastLevel,
                              width,
                              height,
                              depth,
-                             MAX2(intelImage->base.Base.NumSamples, 1),
+                             MAX2(brw_image->base.Base.NumSamples, 1),
                              flags);
 }
 

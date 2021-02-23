@@ -53,9 +53,9 @@ static void
 intelDeleteTextureObject(struct gl_context *ctx,
 			 struct gl_texture_object *texObj)
 {
-   struct brw_texture_object *intelObj = brw_texture_object(texObj);
+   struct brw_texture_object *brw_obj = brw_texture_object(texObj);
 
-   brw_miptree_release(&intelObj->mt);
+   brw_miptree_release(&brw_obj->mt);
    _mesa_delete_texture_object(ctx, texObj);
 }
 
@@ -187,11 +187,11 @@ static void
 brw_free_texture_image_buffer(struct gl_context * ctx,
                               struct gl_texture_image *texImage)
 {
-   struct brw_texture_image *intelImage = brw_texture_image(texImage);
+   struct brw_texture_image *brw_image = brw_texture_image(texImage);
 
    DBG("%s\n", __func__);
 
-   brw_miptree_release(&intelImage->mt);
+   brw_miptree_release(&brw_image->mt);
 
    _swrast_free_texture_image_buffer(ctx, texImage);
 }

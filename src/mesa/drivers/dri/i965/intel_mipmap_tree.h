@@ -481,7 +481,7 @@ brw_miptree_copy_slice(struct brw_context *brw,
 
 void
 brw_miptree_copy_teximage(struct brw_context *brw,
-                            struct brw_texture_image *intelImage,
+                            struct brw_texture_image *brw_image,
                             struct brw_mipmap_tree *dst_mt);
 
 /**

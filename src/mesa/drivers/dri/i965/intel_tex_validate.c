@@ -45,15 +45,15 @@ static void
 brw_update_max_level(struct gl_texture_object *tObj,
                      struct gl_sampler_object *sampler)
 {
-   struct brw_texture_object *intelObj = brw_texture_object(tObj);
+   struct brw_texture_object *brw_obj = brw_texture_object(tObj);
 
    if (!tObj->_MipmapComplete ||
        (tObj->_RenderToTexture &&
         (sampler->Attrib.MinFilter == GL_NEAREST ||
          sampler->Attrib.MinFilter == GL_LINEAR))) {
-      intelObj->_MaxLevel = tObj->Attrib.BaseLevel;
+      brw_obj->_MaxLevel = tObj->Attrib.BaseLevel;
    } else {
-      intelObj->_MaxLevel = tObj->_MaxLevel;
+      brw_obj->_MaxLevel = tObj->_MaxLevel;
    }
 }
 
@@ -67,7 +67,7 @@ void
 brw_finalize_mipmap_tree(struct brw_context *brw,
                            struct gl_texture_object *tObj)
 {
-   struct brw_texture_object *intelObj = brw_texture_object(tObj);
+   struct brw_texture_object *brw_obj = brw_texture_object(tObj);
    GLuint face, i;
    GLuint nr_faces = 0;
    struct brw_texture_image *firstImage;
@@ -79,15 +79,15 @@ brw_finalize_mipmap_tree(struct brw_context *brw,
 
    /* What levels does this validated texture image require? */
    int validate_first_level = tObj->Attrib.BaseLevel;
-   int validate_last_level = intelObj->_MaxLevel;
+   int validate_last_level = brw_obj->_MaxLevel;
 
    /* Skip the loop over images in the common case of no images having
     * changed.  But if the GL_BASE_LEVEL or GL_MAX_LEVEL change to something we
     * haven't looked at, then we do need to look at those new images.
     */
-   if (!intelObj->needs_validate &&
-       validate_first_level >= intelObj->validated_first_level &&
-       validate_last_level <= intelObj->validated_last_level) {
+   if (!brw_obj->needs_validate &&
+       validate_first_level >= brw_obj->validated_first_level &&
+       validate_last_level <= brw_obj->validated_last_level) {
       return;
    }
 
@@ -108,21 +108,21 @@ brw_finalize_mipmap_tree(struct brw_context *brw,
    /* Check tree can hold all active levels.  Check tree matches
     * target, imageFormat, etc.
     */
-   if (intelObj->mt &&
-       (!brw_miptree_match_image(intelObj->mt, &firstImage->base.Base) ||
-	validate_first_level < intelObj->mt->first_level ||
-	validate_last_level > intelObj->mt->last_level)) {
-      brw_miptree_release(&intelObj->mt);
+   if (brw_obj->mt &&
+       (!brw_miptree_match_image(brw_obj->mt, &firstImage->base.Base) ||
+	validate_first_level < brw_obj->mt->first_level ||
+	validate_last_level > brw_obj->mt->last_level)) {
+      brw_miptree_release(&brw_obj->mt);
    }
 
 
    /* May need to create a new tree:
     */
-   if (!intelObj->mt) {
+   if (!brw_obj->mt) {
       const unsigned level = firstImage->base.Base.Level;
       brw_get_image_dims(&firstImage->base.Base, &width, &height, &depth);
       /* Figure out image dimensions at start level. */
-      switch(intelObj->base.Target) {
+      switch(brw_obj->base.Target) {
       case GL_TEXTURE_2D_MULTISAMPLE:
       case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
       case GL_TEXTURE_RECTANGLE:
@@ -150,46 +150,46 @@ brw_finalize_mipmap_tree(struct brw_context *brw,
                  _mesa_get_format_name(firstImage->base.Base.TexFormat),
                  width, height, depth, validate_last_level + 1);
 
-      intelObj->mt = brw_miptree_create(brw,
-                                        intelObj->base.Target,
-                                        firstImage->base.Base.TexFormat,
-                                        0, /* first_level */
-                                        validate_last_level,
-                                        width,
-                                        height,
-                                        depth,
-                                        1 /* num_samples */,
-                                        MIPTREE_CREATE_BUSY);
-      if (!intelObj->mt)
+      brw_obj->mt = brw_miptree_create(brw,
+                                       brw_obj->base.Target,
+                                       firstImage->base.Base.TexFormat,
+                                       0, /* first_level */
+                                       validate_last_level,
+                                       width,
+                                       height,
+                                       depth,
+                                       1 /* num_samples */,
+                                       MIPTREE_CREATE_BUSY);
+      if (!brw_obj->mt)
          return;
    }
 
    /* Pull in any images not in the object's tree:
     */
-   nr_faces = _mesa_num_tex_faces(intelObj->base.Target);
+   nr_faces = _mesa_num_tex_faces(brw_obj->base.Target);
    for (face = 0; face < nr_faces; face++) {
       for (i = validate_first_level; i <= validate_last_level; i++) {
-         struct brw_texture_image *intelImage =
-            brw_texture_image(intelObj->base.Image[face][i]);
+         struct brw_texture_image *brw_image =
+            brw_texture_image(brw_obj->base.Image[face][i]);
 	 /* skip too small size mipmap */
- 	 if (intelImage == NULL)
+	 if (brw_image == NULL)
 		 break;
 
-         if (intelObj->mt != intelImage->mt)
-            brw_miptree_copy_teximage(brw, intelImage, intelObj->mt);
+         if (brw_obj->mt != brw_image->mt)
+            brw_miptree_copy_teximage(brw, brw_image, brw_obj->mt);
 
          /* After we're done, we'd better agree that our layout is
           * appropriate, or we'll end up hitting this function again on the
           * next draw
           */
-         assert(brw_miptree_match_image(intelObj->mt, &intelImage->base.Base));
+         assert(brw_miptree_match_image(brw_obj->mt, &brw_image->base.Base));
       }
    }
 
-   intelObj->validated_first_level = validate_first_level;
-   intelObj->validated_last_level = validate_last_level;
-   intelObj->_Format = firstImage->base.Base.TexFormat,
-   intelObj->needs_validate = false;
+   brw_obj->validated_first_level = validate_first_level;
+   brw_obj->validated_last_level = validate_last_level;
+   brw_obj->_Format = firstImage->base.Base.TexFormat,
+   brw_obj->needs_validate = false;
 }
 
 /**

@@ -2896,14 +2896,13 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
 		    unsigned attachment, unsigned format,
 		    int width, int height)
 {
-   struct brw_buffer *intelBuffer;
    struct brw_screen *screen = dri_screen->driverPrivate;
 
    assert(attachment == __DRI_BUFFER_FRONT_LEFT ||
           attachment == __DRI_BUFFER_BACK_LEFT);
 
-   intelBuffer = calloc(1, sizeof *intelBuffer);
-   if (intelBuffer == NULL)
+   struct brw_buffer *buffer = calloc(1, sizeof *buffer);
+   if (buffer == NULL)
       return NULL;
 
    /* The front and back buffers are color buffers, which are X tiled. GEN9+
@@ -2911,36 +2910,36 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
     * through to here. */
    uint32_t pitch;
    int cpp = format / 8;
-   intelBuffer->bo = brw_bo_alloc_tiled_2d(screen->bufmgr,
-                                           "intelAllocateBuffer",
-                                           width,
-                                           height,
-                                           cpp,
-                                           BRW_MEMZONE_OTHER,
-                                           I915_TILING_X, &pitch,
-                                           BO_ALLOC_BUSY);
+   buffer->bo = brw_bo_alloc_tiled_2d(screen->bufmgr,
+                                      "intelAllocateBuffer",
+                                      width,
+                                      height,
+                                      cpp,
+                                      BRW_MEMZONE_OTHER,
+                                      I915_TILING_X, &pitch,
+                                      BO_ALLOC_BUSY);
 
-   if (intelBuffer->bo == NULL) {
-	   free(intelBuffer);
+   if (buffer->bo == NULL) {
+	   free(buffer);
 	   return NULL;
    }
 
-   brw_bo_flink(intelBuffer->bo, &intelBuffer->base.name);
+   brw_bo_flink(buffer->bo, &buffer->base.name);
 
-   intelBuffer->base.attachment = attachment;
-   intelBuffer->base.cpp = cpp;
-   intelBuffer->base.pitch = pitch;
+   buffer->base.attachment = attachment;
+   buffer->base.cpp = cpp;
+   buffer->base.pitch = pitch;
 
-   return &intelBuffer->base;
+   return &buffer->base;
 }
 
 static void
-intelReleaseBuffer(UNUSED __DRIscreen *dri_screen, __DRIbuffer *buffer)
+intelReleaseBuffer(UNUSED __DRIscreen *dri_screen, __DRIbuffer *_buffer)
 {
-   struct brw_buffer *intelBuffer = (struct brw_buffer *) buffer;
+   struct brw_buffer *buffer = (struct brw_buffer *) _buffer;
 
-   brw_bo_unreference(intelBuffer->bo);
-   free(intelBuffer);
+   brw_bo_unreference(buffer->bo);
+   free(buffer);
 }
 
 static const struct __DriverAPIRec brw_driver_api = {

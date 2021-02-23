@@ -1082,8 +1082,8 @@ bool
 brw_miptree_match_image(struct brw_mipmap_tree *mt,
                         struct gl_texture_image *image)
 {
-   struct brw_texture_image *intelImage = brw_texture_image(image);
-   GLuint level = intelImage->base.Base.Level;
+   struct brw_texture_image *brw_image = brw_texture_image(image);
+   GLuint level = brw_image->base.Base.Level;
    int width, height, depth;
 
    /* glTexImage* choose the texture object based on the target passed in, and
@@ -1362,35 +1362,35 @@ brw_miptree_copy_slice(struct brw_context *brw,
  */
 void
 brw_miptree_copy_teximage(struct brw_context *brw,
-                          struct brw_texture_image *intelImage,
+                          struct brw_texture_image *brw_image,
                           struct brw_mipmap_tree *dst_mt)
 {
-   struct brw_mipmap_tree *src_mt = intelImage->mt;
+   struct brw_mipmap_tree *src_mt = brw_image->mt;
    struct brw_texture_object *intel_obj =
-      brw_texture_object(intelImage->base.Base.TexObject);
-   int level = intelImage->base.Base.Level;
-   const unsigned face = intelImage->base.Base.Face;
+      brw_texture_object(brw_image->base.Base.TexObject);
+   int level = brw_image->base.Base.Level;
+   const unsigned face = brw_image->base.Base.Face;
    unsigned start_layer, end_layer;
 
    if (intel_obj->base.Target == GL_TEXTURE_1D_ARRAY) {
       assert(face == 0);
-      assert(intelImage->base.Base.Height);
+      assert(brw_image->base.Base.Height);
       start_layer = 0;
-      end_layer = intelImage->base.Base.Height - 1;
+      end_layer = brw_image->base.Base.Height - 1;
    } else if (face > 0) {
       start_layer = face;
       end_layer = face;
    } else {
-      assert(intelImage->base.Base.Depth);
+      assert(brw_image->base.Base.Depth);
       start_layer = 0;
-      end_layer = intelImage->base.Base.Depth - 1;
+      end_layer = brw_image->base.Base.Depth - 1;
    }
 
    for (unsigned i = start_layer; i <= end_layer; i++) {
       brw_miptree_copy_slice(brw, src_mt, level, i, dst_mt, level, i);
    }
 
-   brw_miptree_reference(&intelImage->mt, dst_mt);
+   brw_miptree_reference(&brw_image->mt, dst_mt);
    intel_obj->needs_validate = true;
 }
 

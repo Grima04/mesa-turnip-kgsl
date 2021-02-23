@@ -75,8 +75,8 @@ struct brw_texture_image
 {
    struct swrast_texture_image base;
 
-   /* If intelImage->mt != NULL, image data is stored here.
-    * Else if intelImage->base.Buffer != NULL, image is stored there.
+   /* If brw_image->mt != NULL, image data is stored here.
+    * Else if brw_image->base.Buffer != NULL, image is stored there.
     * Else there is no image data.
     */
    struct brw_mipmap_tree *mt;

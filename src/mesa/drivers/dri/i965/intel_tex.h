@@ -48,8 +48,8 @@ void intelReleaseTexBuffer(__DRIcontext *pDRICtx, GLint target,
 
 struct brw_mipmap_tree *
 brw_miptree_create_for_teximage(struct brw_context *brw,
-                                struct brw_texture_object *intelObj,
-                                struct brw_texture_image *intelImage,
+                                struct brw_texture_object *brw_obj,
+                                struct brw_texture_image *brw_image,
                                 enum brw_miptree_create_flags flags);
 
 void brw_finalize_mipmap_tree(struct brw_context *brw,
