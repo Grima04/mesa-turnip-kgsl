@@ -3084,6 +3084,8 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_lower_branch(block);
         }
 
+        bi_lower_swizzle(ctx);
+
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
         bi_schedule(ctx);
