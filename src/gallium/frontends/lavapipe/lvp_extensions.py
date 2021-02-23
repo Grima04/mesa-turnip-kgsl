@@ -85,7 +85,7 @@ EXTENSIONS = [
     Extension('VK_KHR_imageless_framebuffer',             1, False),
     Extension('VK_KHR_incremental_present',               1, 'LVP_HAS_SURFACE'),
     Extension('VK_KHR_maintenance1',                      1, True),
-    Extension('VK_KHR_maintenance2',                      1, False),
+    Extension('VK_KHR_maintenance2',                      1, True),
     Extension('VK_KHR_maintenance3',                      1, False),
     Extension('VK_KHR_multiview',                         1, False),
     Extension('VK_KHR_pipeline_executable_properties',    1, False),
