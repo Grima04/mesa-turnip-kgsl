@@ -1689,7 +1689,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 if (sz == 8)
                         bi_mux_v4i8_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
                 else
-                        bi_csel_to(b, nir_type_float, sz, dst, s0, bi_zero(), s1, s2, BI_CMPF_NE);
+                        bi_csel_to(b, nir_type_int, sz, dst, s0, bi_zero(), s1, s2, BI_CMPF_NE);
                 break;
 
         case nir_op_ishl:
