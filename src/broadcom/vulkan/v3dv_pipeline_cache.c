@@ -26,8 +26,9 @@
 #include "util/blob.h"
 #include "nir/nir_serialize.h"
 
+static const bool debug_cache = false;
 static const bool dump_stats = false;
-static const bool dump_stats_verbose = false;
+static const bool dump_stats_on_destroy = false;
 
 /* Shared for nir/variants */
 #define V3DV_MAX_PIPELINE_CACHE_ENTRIES 4096
@@ -53,9 +54,6 @@ struct serialized_nir {
 static void
 cache_dump_stats(struct v3dv_pipeline_cache *cache)
 {
-   if (!dump_stats_verbose)
-      return;
-
    fprintf(stderr, "  NIR cache entries:      %d\n", cache->nir_stats.count);
    fprintf(stderr, "  NIR cache miss count:   %d\n", cache->nir_stats.miss);
    fprintf(stderr, "  NIR cache hit  count:   %d\n", cache->nir_stats.hit);
@@ -114,11 +112,12 @@ v3dv_pipeline_cache_upload_nir(struct v3dv_pipeline *pipeline,
    blob_finish(&blob);
 
    cache->nir_stats.count++;
-   if (unlikely(dump_stats)) {
+   if (debug_cache) {
       char sha1buf[41];
       _mesa_sha1_format(sha1buf, snir->sha1_key);
       fprintf(stderr, "pipeline cache %p, new nir entry %s\n", cache, sha1buf);
-      cache_dump_stats(cache);
+      if (dump_stats)
+         cache_dump_stats(cache);
    }
 
    _mesa_hash_table_insert(cache->nir_cache, snir->sha1_key, snir);
@@ -135,7 +134,7 @@ v3dv_pipeline_cache_search_for_nir(struct v3dv_pipeline *pipeline,
    if (!cache || !cache->nir_cache)
       return NULL;
 
-   if (unlikely(dump_stats)) {
+   if (debug_cache) {
       char sha1buf[41];
       _mesa_sha1_format(sha1buf, sha1_key);
 
@@ -164,13 +163,21 @@ v3dv_pipeline_cache_search_for_nir(struct v3dv_pipeline *pipeline,
          ralloc_free(nir);
       } else {
          cache->nir_stats.hit++;
-         cache_dump_stats(cache);
+         if (debug_cache) {
+            fprintf(stderr, "\tnir cache hit: %p\n", nir);
+            if (dump_stats)
+               cache_dump_stats(cache);
+         }
          return nir;
       }
    }
 
    cache->nir_stats.miss++;
-   cache_dump_stats(cache);
+   if (debug_cache) {
+      fprintf(stderr, "\tnir cache miss\n");
+      if (dump_stats)
+         cache_dump_stats(cache);
+   }
 
    return NULL;
 }
@@ -210,7 +217,7 @@ v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
    if (!cache || !cache->variant_cache)
       return NULL;
 
-   if (unlikely(dump_stats)) {
+   if (debug_cache) {
       char sha1buf[41];
       _mesa_sha1_format(sha1buf, sha1_key);
 
@@ -227,9 +234,10 @@ v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
          (struct v3dv_shader_variant *) entry->data;
 
       cache->variant_stats.hit++;
-      if (unlikely(dump_stats)) {
-         fprintf(stderr, "\tcache hit: %p\n", variant);
-         cache_dump_stats(cache);
+      if (debug_cache) {
+         fprintf(stderr, "\tvariant cache hit: %p\n", variant);
+         if (dump_stats)
+            cache_dump_stats(cache);
       }
 
       if (variant)
@@ -240,9 +248,10 @@ v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
    }
 
    cache->variant_stats.miss++;
-   if (unlikely(dump_stats)) {
-      fprintf(stderr, "\tcache miss\n");
-      cache_dump_stats(cache);
+   if (debug_cache) {
+      fprintf(stderr, "\tvariant cache miss\n");
+      if (dump_stats)
+         cache_dump_stats(cache);
    }
 
    pthread_mutex_unlock(&cache->mutex);
@@ -272,13 +281,14 @@ v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
    v3dv_shader_variant_ref(variant);
    _mesa_hash_table_insert(cache->variant_cache, variant->variant_sha1, variant);
    cache->variant_stats.count++;
-   if (unlikely(dump_stats)) {
+   if (debug_cache) {
       char sha1buf[41];
       _mesa_sha1_format(sha1buf, variant->variant_sha1);
 
       fprintf(stderr, "pipeline cache %p, new variant entry with key %s\n\t%p\n",
               cache, sha1buf, variant);
-      cache_dump_stats(cache);
+      if (dump_stats)
+         cache_dump_stats(cache);
    }
 
    pthread_mutex_unlock(&cache->mutex);
@@ -421,10 +431,11 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
       cache->variant_stats.count++;
    }
 
-   if (unlikely(dump_stats)) {
+   if (debug_cache) {
       fprintf(stderr, "pipeline cache %p, loaded %i nir shaders and "
               "%i variant entries\n", cache, nir_count, count);
-      cache_dump_stats(cache);
+      if (dump_stats)
+         cache_dump_stats(cache);
    }
 }
 
@@ -465,6 +476,9 @@ void
 v3dv_pipeline_cache_finish(struct v3dv_pipeline_cache *cache)
 {
    pthread_mutex_destroy(&cache->mutex);
+
+   if (dump_stats_on_destroy)
+      cache_dump_stats(cache);
 
    if (cache->nir_cache) {
       hash_table_foreach(cache->nir_cache, entry)
@@ -538,14 +552,15 @@ v3dv_MergePipelineCaches(VkDevice device,
 
          _mesa_hash_table_insert(dst->nir_cache, snir_dst->sha1_key, snir_dst);
          dst->nir_stats.count++;
-         if (unlikely(dump_stats)) {
+         if (debug_cache) {
             char sha1buf[41];
             _mesa_sha1_format(sha1buf, snir_dst->sha1_key);
 
             fprintf(stderr, "pipeline cache %p, added nir entry %s "
                     "from pipeline cache %p\n",
                     dst, sha1buf, src);
-            cache_dump_stats(dst);
+            if (dump_stats)
+               cache_dump_stats(dst);
          }
       }
 
@@ -560,14 +575,15 @@ v3dv_MergePipelineCaches(VkDevice device,
          _mesa_hash_table_insert(dst->variant_cache, variant->variant_sha1, variant);
 
          dst->variant_stats.count++;
-         if (unlikely(dump_stats)) {
+         if (debug_cache) {
             char sha1buf[41];
             _mesa_sha1_format(sha1buf, variant->variant_sha1);
 
             fprintf(stderr, "pipeline cache %p, added variant entry %s "
                     "from pipeline cache %p\n",
                     dst, sha1buf, src);
-            cache_dump_stats(dst);
+            if (dump_stats)
+               cache_dump_stats(dst);
          }
       }
    }
@@ -695,7 +711,7 @@ v3dv_GetPipelineCacheData(VkDevice _device,
 
    blob_finish(&blob);
 
-   if (unlikely(dump_stats)) {
+   if (debug_cache) {
       assert(count <= cache->variant_stats.count);
       fprintf(stderr, "GetPipelineCacheData: serializing cache %p, "
               "%i nir shader entries "
