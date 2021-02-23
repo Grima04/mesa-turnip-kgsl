@@ -1062,14 +1062,12 @@ spec/arb_query_buffer_object/coherency/indirect-draw-gl_timestamp: skip
 spec/arb_query_buffer_object/coherency/indirect-draw-gl_transform_feedback_primitives_written: skip
 spec/arb_query_buffer_object/coherency/indirect-draw-gl_vertex_shader_invocations: skip
 spec/arb_query_buffer_object/coherency/indirect-draw-gl_vertices_submitted: skip
-spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_after-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_before-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_before-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_before-gl_unsigned_int64_arb: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync_cpu_read_after_cache_test-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync_cpu_read_after_cache_test-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: fail
-spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_after-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_before-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_before-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_before-gl_unsigned_int64_arb: fail
@@ -1100,7 +1098,6 @@ spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async_cpu_
 spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync_cpu_read_after_cache_test-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: fail
-spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_after-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_before-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_before-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_before-gl_unsigned_int64_arb: fail
@@ -1110,7 +1107,6 @@ spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync-gl_un
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync_cpu_read_after_cache_test-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: fail
-spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_after-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_before-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_before-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_before-gl_unsigned_int64_arb: fail
@@ -1120,7 +1116,6 @@ spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-syn
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync_cpu_read_after_cache_test-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync_cpu_read_after_cache_test-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_after-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_before-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_before-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_before-gl_unsigned_int64_arb: fail
@@ -3052,8 +3047,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17514
-       fail:     1241
+       pass:    17519
+       fail:     1236
       crash:      111
        skip:     1672
     timeout:        0
