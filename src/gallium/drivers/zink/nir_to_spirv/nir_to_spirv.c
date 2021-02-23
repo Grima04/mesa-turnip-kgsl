@@ -3648,8 +3648,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
    spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageUnknown, 0);
 
-   if (s->info.stage == MESA_SHADER_TESS_CTRL || s->info.num_images) {
-      /* this is required for correct barrier and io semantics */
+   if (s->info.num_images) {
+      /* this is required for correct io semantics */
       spirv_builder_emit_extension(&ctx.builder, "SPV_KHR_vulkan_memory_model");
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModel);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModelDeviceScope);
