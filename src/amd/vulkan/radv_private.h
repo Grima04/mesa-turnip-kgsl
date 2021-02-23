@@ -329,6 +329,7 @@ struct radv_instance {
 	 */
 	bool enable_mrt_output_nan_fixup;
 	bool disable_tc_compat_htile_in_general;
+	bool disable_shrink_image_store;
 };
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);

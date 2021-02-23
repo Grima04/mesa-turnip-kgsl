@@ -2359,7 +2359,8 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 			if (nir_lower_io_to_scalar_early(ordered_shaders[i], mask)) {
 				/* Optimize the new vector code and then remove dead vars */
 				nir_copy_prop(ordered_shaders[i]);
-				nir_opt_shrink_vectors(ordered_shaders[i], true);
+				nir_opt_shrink_vectors(ordered_shaders[i],
+						       !pipeline->device->instance->disable_shrink_image_store);
 
 		                if (ordered_shaders[i]->info.stage != last) {
 					/* Optimize swizzled movs of load_const for
@@ -3305,7 +3306,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (nir[i]) {
 			radv_start_feedback(stage_feedbacks[i]);
-			radv_optimize_nir(nir[i], optimize_conservatively, false);
+			radv_optimize_nir(device, nir[i], optimize_conservatively, false);
 			radv_stop_feedback(stage_feedbacks[i], false);
 		}
 	}
@@ -3351,7 +3352,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 			radv_lower_io(device, nir[i]);
 
-			lower_to_scalar |= nir_opt_shrink_vectors(nir[i], true);
+			lower_to_scalar |= nir_opt_shrink_vectors(nir[i],
+								  !device->instance->disable_shrink_image_store);
 
 			if (lower_to_scalar)
 				nir_lower_alu_to_scalar(nir[i], NULL, NULL);
