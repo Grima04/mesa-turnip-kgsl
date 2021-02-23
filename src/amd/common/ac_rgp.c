@@ -847,7 +847,7 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
       struct sqtt_file_chunk_code_object_database code_object;
       struct sqtt_code_object_database_record code_object_record;
       uint32_t elf_size_calc = 0;
-      uint flags = ac_chip_class_to_elf_gfxip_level(rad_info->chip_class);
+      uint32_t flags = ac_chip_class_to_elf_gfxip_level(rad_info->chip_class);
 
       fseek(output, sizeof(struct sqtt_file_chunk_code_object_database), SEEK_CUR);
       file_offset += sizeof(struct sqtt_file_chunk_code_object_database);
