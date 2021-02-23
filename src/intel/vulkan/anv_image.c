@@ -498,6 +498,8 @@ add_aux_state_tracking_buffer(struct anv_device *device,
  * surface is not required (for example, by neither hardware nor DRM format
  * modifier), then this may return VK_SUCCESS when creation of the aux surface
  * fails.
+ *
+ * @param offset See add_surface()
  */
 static VkResult
 add_aux_surface_if_supported(struct anv_device *device,
@@ -505,6 +507,8 @@ add_aux_surface_if_supported(struct anv_device *device,
                              uint32_t plane,
                              struct anv_format_plane plane_format,
                              const VkImageFormatListCreateInfoKHR *fmt_list,
+                             uint64_t offset,
+                             uint32_t stride,
                              isl_surf_usage_flags_t isl_extra_usage_flags)
 {
    VkImageAspectFlags aspect = plane_format.aspect;
@@ -640,7 +644,7 @@ add_aux_surface_if_supported(struct anv_device *device,
       ok = isl_surf_get_ccs_surf(&device->isl_dev,
                                  &image->planes[plane].primary_surface.isl,
                                  &image->planes[plane].aux_surface.isl,
-                                 NULL, 0);
+                                 NULL, stride);
       if (!ok)
          return VK_SUCCESS;
 
@@ -679,7 +683,7 @@ add_aux_surface_if_supported(struct anv_device *device,
             binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
 
          result = add_surface(device, image, &image->planes[plane].aux_surface,
-                              binding, ANV_OFFSET_IMPLICIT);
+                              binding, offset);
          if (result != VK_SUCCESS)
             return result;
       }
@@ -746,12 +750,15 @@ add_shadow_surface(struct anv_device *device,
 /**
  * Initialize the anv_image::*_surface selected by \a aspect. Then update the
  * image's memory requirements (that is, the image's size and alignment).
+ *
+ * @param offset See add_surface()
  */
 static VkResult
 add_primary_surface(struct anv_device *device,
                     struct anv_image *image,
                     uint32_t plane,
                     struct anv_format_plane plane_format,
+                    uint64_t offset,
                     uint32_t stride,
                     isl_tiling_flags_t isl_tiling_flags,
                     isl_surf_usage_flags_t isl_usage)
@@ -773,14 +780,17 @@ add_primary_surface(struct anv_device *device,
       .usage = isl_usage,
       .tiling_flags = isl_tiling_flags);
 
-   if (!ok)
+   if (!ok) {
+      /* TODO: Should return
+       * VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT in come cases.
+       */
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   }
 
    image->planes[plane].aux_usage = ISL_AUX_USAGE_NONE;
 
    return add_surface(device, image, anv_surf,
-                      ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane,
-                      ANV_OFFSET_IMPLICIT);
+                      ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane, offset);
 }
 
 #ifdef DEBUG
@@ -998,13 +1008,18 @@ check_drm_format_mod(const struct anv_device *device,
    return VK_SUCCESS;
 }
 
-static VkResult
-add_all_surfaces(struct anv_device *device,
-                 struct anv_image *image,
-                 const VkImageFormatListCreateInfo *format_list_info,
-                 uint32_t stride,
-                 isl_tiling_flags_t isl_tiling_flags,
-                 isl_surf_usage_flags_t isl_extra_usage_flags)
+/**
+ * Use when the app does not provide
+ * VkImageDrmFormatModifierExplicitCreateInfoEXT.
+ */
+static VkResult MUST_CHECK
+add_all_surfaces_implicit_layout(
+   struct anv_device *device,
+   struct anv_image *image,
+   const VkImageFormatListCreateInfo *format_list_info,
+   uint32_t stride,
+   isl_tiling_flags_t isl_tiling_flags,
+   isl_surf_usage_flags_t isl_extra_usage_flags)
 {
    const struct gen_device_info *devinfo = &device->info;
    VkResult result;
@@ -1032,26 +1047,126 @@ add_all_surfaces(struct anv_device *device,
                                               image->create_flags,
                                               &isl_tiling_flags);
 
-      result = add_primary_surface(device, image, plane, plane_format, stride,
+      result = add_primary_surface(device, image, plane, plane_format,
+                                   ANV_OFFSET_IMPLICIT, stride,
                                    isl_tiling_flags, isl_usage);
       if (result != VK_SUCCESS)
          return result;
 
       if (needs_shadow) {
-         result = add_shadow_surface(device, image, plane, plane_format, stride,
-                                     vk_usage);
+         result = add_shadow_surface(device, image, plane, plane_format,
+                                     stride, vk_usage);
          if (result != VK_SUCCESS)
             return result;
       }
 
       result = add_aux_surface_if_supported(device, image, plane, plane_format,
                                             format_list_info,
+                                            ANV_OFFSET_IMPLICIT, stride,
                                             isl_extra_usage_flags);
       if (result != VK_SUCCESS)
          return result;
    }
 
-   check_memory_bindings(device, image);
+   return VK_SUCCESS;
+}
+
+/**
+ * Use when the app provides VkImageDrmFormatModifierExplicitCreateInfoEXT.
+ */
+static VkResult
+add_all_surfaces_explicit_layout(
+   struct anv_device *device,
+   struct anv_image *image,
+   const VkImageFormatListCreateInfo *format_list_info,
+   const VkImageDrmFormatModifierExplicitCreateInfoEXT *drm_info,
+   isl_tiling_flags_t isl_tiling_flags,
+   isl_surf_usage_flags_t isl_extra_usage_flags)
+{
+   const struct gen_device_info *devinfo = &device->info;
+   const uint32_t mod_plane_count = drm_info->drmFormatModifierPlaneCount;
+   const struct isl_drm_modifier_info *isl_mod_info =
+      isl_drm_modifier_get_info(drm_info->drmFormatModifier);
+   VkResult result;
+
+   /* About valid usage in the Vulkan spec:
+    *
+    * Unlike vanilla vkCreateImage, which produces undefined behavior on user
+    * error, here the spec requires the implementation to return
+    * VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT if the app provides
+    * a bad plane layout. However, the spec does require
+    * drmFormatModifierPlaneCount to be valid.
+    *
+    * Most validation of plane layout occurs in add_surface().
+    */
+
+   /* We support a restricted set of images with modifiers. */
+   assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
+   assert(image->n_planes == 1);
+
+   if (isl_mod_info->aux_usage == ISL_AUX_USAGE_NONE)
+      assert(mod_plane_count == 1);
+   else
+      assert(mod_plane_count == 2);
+
+   const uint32_t plane = anv_image_aspect_to_plane(image->aspects,
+                                                    VK_IMAGE_ASPECT_COLOR_BIT);
+   const  struct anv_format_plane format_plane =
+      anv_get_format_plane(devinfo, image->vk_format, VK_IMAGE_ASPECT_COLOR_BIT,
+                           image->tiling);
+
+   /* Reject special values in the app-provided plane layouts. */
+   for (uint32_t i = 0; i < mod_plane_count; ++i) {
+      if (drm_info->pPlaneLayouts[i].rowPitch == 0) {
+         return vk_errorf(device, &device->vk.base,
+                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
+                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
+                           "pPlaneLayouts[%u]::rowPitch is 0", i);
+      }
+
+      if (drm_info->pPlaneLayouts[i].offset == ANV_OFFSET_IMPLICIT) {
+         return vk_errorf(device, &device->vk.base,
+                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
+                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
+                           "pPlaneLayouts[%u]::offset is %"PRIu64,
+                           i, ANV_OFFSET_IMPLICIT);
+      }
+   }
+
+   const VkSubresourceLayout *primary_layout = &drm_info->pPlaneLayouts[0];
+   result = add_primary_surface(device, image, plane,
+                                format_plane,
+                                primary_layout->offset,
+                                primary_layout->rowPitch,
+                                isl_tiling_flags,
+                                isl_extra_usage_flags);
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (isl_mod_info->aux_usage == ISL_AUX_USAGE_NONE) {
+      /* Even though the modifier does not support aux, try to create
+       * a driver-private aux to improve performance.
+       */
+      result = add_aux_surface_if_supported(device, image, plane,
+                                            format_plane,
+                                            format_list_info,
+                                            ANV_OFFSET_IMPLICIT, 0,
+                                            isl_extra_usage_flags);
+      if (result != VK_SUCCESS)
+         return result;
+   } else {
+      assert(mod_plane_count == 2);
+
+      const VkSubresourceLayout *aux_layout = &drm_info->pPlaneLayouts[1];
+      result = add_aux_surface_if_supported(device, image, plane,
+                                            format_plane,
+                                            format_list_info,
+                                            aux_layout->offset,
+                                            aux_layout->rowPitch,
+                                            isl_extra_usage_flags);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
    return VK_SUCCESS;
 }
@@ -1128,6 +1243,7 @@ anv_image_create(VkDevice _device,
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
+   const struct VkImageDrmFormatModifierExplicitCreateInfoEXT *mod_explicit_info = NULL;
    const struct isl_drm_modifier_info *isl_mod_info = NULL;
    struct anv_image *image = NULL;
    VkResult r;
@@ -1138,12 +1254,20 @@ anv_image_create(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
 
    if (pCreateInfo->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
-      const VkImageDrmFormatModifierListCreateInfoEXT *mod_info =
+      mod_explicit_info =
          vk_find_struct_const(pCreateInfo->pNext,
-                              IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
-      isl_mod_info = choose_drm_format_mod(device->physical,
-                                           mod_info->drmFormatModifierCount,
-                                           mod_info->pDrmFormatModifiers);
+                              IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT);
+      if (mod_explicit_info) {
+         isl_mod_info = isl_drm_modifier_get_info(mod_explicit_info->drmFormatModifier);
+      } else {
+         const struct VkImageDrmFormatModifierListCreateInfoEXT *mod_list_info =
+            vk_find_struct_const(pCreateInfo->pNext,
+                                 IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
+         isl_mod_info = choose_drm_format_mod(device->physical,
+                                              mod_list_info->drmFormatModifierCount,
+                                              mod_list_info->pDrmFormatModifiers);
+      }
+
       assert(isl_mod_info);
    }
 
@@ -1221,14 +1345,26 @@ anv_image_create(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
 
-   r = add_all_surfaces(device, image, fmt_list, create_info->stride,
-                        isl_tiling_flags, create_info->isl_extra_usage_flags);
+   if (mod_explicit_info) {
+      assert(create_info->stride == 0);
+      r = add_all_surfaces_explicit_layout(device, image, fmt_list,
+                                           mod_explicit_info, isl_tiling_flags,
+                                           create_info->isl_extra_usage_flags);
+   } else {
+      r = add_all_surfaces_implicit_layout(device, image, fmt_list,
+                                           create_info->stride,
+                                           isl_tiling_flags,
+                                           create_info->isl_extra_usage_flags);
+   }
+
    if (r != VK_SUCCESS)
       goto fail;
 
    r = alloc_private_binding(device, image, pCreateInfo);
    if (r != VK_SUCCESS)
       goto fail;
+
+   check_memory_bindings(device, image);
 
    r = check_drm_format_mod(device, image);
    if (r != VK_SUCCESS)
@@ -1455,8 +1591,9 @@ resolve_ahw_image(struct anv_device *device,
    uint32_t stride = desc.stride *
                      (isl_format_get_layout(isl_fmt)->bpb / 8);
 
-   result = add_all_surfaces(device, image, NULL, stride, isl_tiling_flags,
-                             ISL_SURF_USAGE_DISABLE_AUX_BIT);
+   result = add_all_surfaces_implicit_layout(device, image, NULL, stride,
+                                             isl_tiling_flags,
+                                             ISL_SURF_USAGE_DISABLE_AUX_BIT);
    assert(result == VK_SUCCESS);
 #endif
 }
