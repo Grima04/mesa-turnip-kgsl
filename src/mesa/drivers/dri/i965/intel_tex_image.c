@@ -432,8 +432,8 @@ brw_set_texture_image_mt(struct brw_context *brw,
 
 void
 brw_set_texbuffer2(__DRIcontext *pDRICtx, GLint target,
-		   GLint texture_format,
-		   __DRIdrawable *dPriv)
+                   GLint texture_format,
+                   __DRIdrawable *dPriv)
 {
    struct gl_framebuffer *fb = dPriv->driverPrivate;
    struct brw_context *brw = pDRICtx->driverPrivate;
@@ -577,9 +577,8 @@ brw_bind_renderbuffer_tex_image(struct gl_context *ctx,
       return false;
 
    _mesa_lock_texture(ctx, texobj);
-   _mesa_init_teximage_fields(ctx, image,
-			      rb->Width, rb->Height, 1,
-			      0, rb->InternalFormat, rb->Format);
+   _mesa_init_teximage_fields(ctx, image, rb->Width, rb->Height, 1, 0,
+                              rb->InternalFormat, rb->Format);
    image->NumSamples = rb->NumSamples;
 
    brw_miptree_reference(&intel_image->mt, irb->mt);

@@ -63,7 +63,7 @@ gen7_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
 
 void
 gen7_end_transform_feedback(struct gl_context *ctx,
-			    struct gl_transform_feedback_object *obj)
+                            struct gl_transform_feedback_object *obj)
 {
    /* After EndTransformFeedback, it's likely that the client program will try
     * to draw using the contents of the transform feedback buffer as vertex

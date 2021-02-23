@@ -291,7 +291,7 @@ brw_program_string_notify(struct gl_context *ctx,
          brw_program_const(brw->programs[MESA_SHADER_FRAGMENT]);
 
       if (newFP == curFP)
-	 brw->ctx.NewDriverState |= BRW_NEW_FRAGMENT_PROGRAM;
+         brw->ctx.NewDriverState |= BRW_NEW_FRAGMENT_PROGRAM;
       _mesa_program_fragment_position_to_sysval(&newFP->program);
       newFP->id = get_new_program_id(brw->screen);
 
@@ -310,9 +310,9 @@ brw_program_string_notify(struct gl_context *ctx,
          brw_program_const(brw->programs[MESA_SHADER_VERTEX]);
 
       if (newVP == curVP)
-	 brw->ctx.NewDriverState |= BRW_NEW_VERTEX_PROGRAM;
+         brw->ctx.NewDriverState |= BRW_NEW_VERTEX_PROGRAM;
       if (newVP->program.arb.IsPositionInvariant) {
-	 _mesa_insert_mvp_code(ctx, &newVP->program);
+         _mesa_insert_mvp_code(ctx, &newVP->program);
       }
       newVP->id = get_new_program_id(brw->screen);
 
@@ -404,7 +404,7 @@ brw_framebuffer_fetch_barrier(struct gl_context *ctx)
 
 void
 brw_get_scratch_bo(struct brw_context *brw,
-		   struct brw_bo **scratch_bo, int size)
+                   struct brw_bo **scratch_bo, int size)
 {
    struct brw_bo *old_bo = *scratch_bo;
 

@@ -123,7 +123,7 @@ brw_write_depth_count(struct brw_context *brw, struct brw_bo *query_bo, int idx)
  */
 static void
 brw_queryobj_get_results(struct gl_context *ctx,
-			 struct brw_query_object *query)
+                         struct brw_query_object *query)
 {
    struct brw_context *brw = brw_context(ctx);
    UNUSED const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -181,7 +181,7 @@ brw_queryobj_get_results(struct gl_context *ctx,
        * this function was already called to accumulate the results so far.
        */
       for (i = 0; i < query->last_index; i++) {
-	 query->Base.Result += results[i * 2 + 1] - results[i * 2];
+         query->Base.Result += results[i * 2 + 1] - results[i * 2];
       }
       break;
 
@@ -191,7 +191,7 @@ brw_queryobj_get_results(struct gl_context *ctx,
        * differ, then some fragments passed the depth test.
        */
       for (i = 0; i < query->last_index; i++) {
-	 if (results[i * 2 + 1] != results[i * 2]) {
+         if (results[i * 2 + 1] != results[i * 2]) {
             query->Base.Result = GL_TRUE;
             break;
          }
@@ -345,12 +345,11 @@ brw_end_query(struct gl_context *ctx, struct gl_query_object *q)
        * case, we emit the query_begin and query_end state to the
        * hardware. This is to guarantee that waiting on the result of this
        * empty state will cause all previous queries to complete at all, as
-       * required by the specification:
+       * required by the OpenGL 4.3 (Core Profile) spec, section 4.2.1:
        *
-       * 	It must always be true that if any query object
-       *	returns a result available of TRUE, all queries of the
-       *	same type issued prior to that query must also return
-       *	TRUE. [Open GL 4.3 (Core Profile) Section 4.2.1]
+       *    "It must always be true that if any query object returns
+       *     a result available of TRUE, all queries of the same type
+       *     issued prior to that query must also return TRUE."
        */
       if (!query->bo) {
          brw_emit_query_begin(brw);

@@ -66,8 +66,8 @@ debug_mask(const char *name, GLbitfield mask)
    if (INTEL_DEBUG & DEBUG_BLIT) {
       DBG("%s clear:", name);
       for (i = 0; i < BUFFER_COUNT; i++) {
-	 if (mask & (1 << i))
-	    DBG(" %s", buffer_names[i]);
+         if (mask & (1 << i))
+            DBG(" %s", buffer_names[i]);
       }
       DBG("\n");
    }
@@ -155,7 +155,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
       if (devinfo->gen == 6 &&
           (minify(mt->surf.phys_level0_sa.width,
                   depth_irb->mt_level - mt->first_level) % 16) != 0)
-	 return false;
+         return false;
       break;
 
    default:
@@ -258,8 +258,8 @@ brw_clear(struct gl_context *ctx, GLbitfield mask)
 
    if (mask & BUFFER_BIT_DEPTH) {
       if (brw_fast_clear_depth(ctx)) {
-	 DBG("fast clear: depth\n");
-	 mask &= ~BUFFER_BIT_DEPTH;
+         DBG("fast clear: depth\n");
+         mask &= ~BUFFER_BIT_DEPTH;
       }
    }
 

@@ -335,7 +335,7 @@ void brw_ff_gs_lines(struct brw_ff_gs_compile *c)
  */
 void
 gen6_sol_program(struct brw_ff_gs_compile *c, struct brw_ff_gs_prog_key *key,
-	         unsigned num_verts, bool check_edge_flags)
+                 unsigned num_verts, bool check_edge_flags)
 {
    struct brw_codegen *p = &c->func;
    brw_inst *inst;
@@ -358,10 +358,10 @@ gen6_sol_program(struct brw_ff_gs_compile *c, struct brw_ff_gs_prog_key *key,
        * Make sure that the buffers have enough room for all the vertices.
        */
       brw_ADD(p, get_element_ud(c->reg.temp, 0),
-	         get_element_ud(c->reg.SVBI, 0), brw_imm_ud(num_verts));
+                 get_element_ud(c->reg.SVBI, 0), brw_imm_ud(num_verts));
       brw_CMP(p, vec1(brw_null_reg()), BRW_CONDITIONAL_LE,
-	         get_element_ud(c->reg.temp, 0),
-	         get_element_ud(c->reg.SVBI, 4));
+                 get_element_ud(c->reg.temp, 0),
+                 get_element_ud(c->reg.SVBI, 4));
       brw_IF(p, BRW_EXECUTE_1);
 
       /* Compute the destination indices to write to.  Usually we use SVBI[0]

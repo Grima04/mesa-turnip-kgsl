@@ -463,7 +463,7 @@ brw_allocate_image(struct brw_screen *screen, int dri_format,
 
     image = calloc(1, sizeof *image);
     if (image == NULL)
-	return NULL;
+       return NULL;
 
     image->screen = screen;
     image->dri_format = dri_format;
@@ -737,7 +737,7 @@ brw_create_image_common(__DRIscreen *dri_screen,
 
    if (use & __DRI_IMAGE_USE_CURSOR) {
       if (width != 64 || height != 64)
-	 return NULL;
+         return NULL;
       modifier = DRM_FORMAT_MOD_LINEAR;
    }
 
@@ -1038,7 +1038,7 @@ brw_validate_usage(__DRIimage *image, unsigned int use)
 {
    if (use & __DRI_IMAGE_USE_CURSOR) {
       if (image->width != 64 || image->height != 64)
-	 return GL_FALSE;
+         return GL_FALSE;
    }
 
    return GL_TRUE;
@@ -1584,14 +1584,14 @@ brw_query_renderer_integer(__DRIscreen *dri_screen,
    case __DRI2_RENDERER_HAS_CONTEXT_PRIORITY:
       value[0] = 0;
       if (brw_hw_context_set_priority(screen->bufmgr,
-				      0, GEN_CONTEXT_HIGH_PRIORITY) == 0)
+                                      0, GEN_CONTEXT_HIGH_PRIORITY) == 0)
          value[0] |= __DRI2_RENDERER_HAS_CONTEXT_PRIORITY_HIGH;
       if (brw_hw_context_set_priority(screen->bufmgr,
-				      0, GEN_CONTEXT_LOW_PRIORITY) == 0)
+                                      0, GEN_CONTEXT_LOW_PRIORITY) == 0)
          value[0] |= __DRI2_RENDERER_HAS_CONTEXT_PRIORITY_LOW;
       /* reset to default last, just in case */
       if (brw_hw_context_set_priority(screen->bufmgr,
-				      0, GEN_CONTEXT_MEDIUM_PRIORITY) == 0)
+                                      0, GEN_CONTEXT_MEDIUM_PRIORITY) == 0)
          value[0] |= __DRI2_RENDERER_HAS_CONTEXT_PRIORITY_MEDIUM;
       return 0;
    case __DRI2_RENDERER_HAS_FRAMEBUFFER_SRGB:
@@ -1948,7 +1948,7 @@ brw_init_bufmgr(struct brw_screen *screen)
    screen->bufmgr = brw_bufmgr_get_for_fd(&screen->devinfo, dri_screen->fd, bo_reuse);
    if (screen->bufmgr == NULL) {
       fprintf(stderr, "[%s:%u] Error initializing buffer manager.\n",
-	      __func__, __LINE__);
+              __func__, __LINE__);
       return false;
    }
    screen->fd = brw_bufmgr_get_fd(screen->bufmgr);
@@ -2570,8 +2570,8 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
    } else if (dri_screen->dri2.loader->base.version <= 2 ||
        dri_screen->dri2.loader->getBuffersWithFormat == NULL) {
       fprintf(stderr,
-	      "\nERROR!  DRI2 loader with getBuffersWithFormat() "
-	      "support required\n");
+              "\nERROR!  DRI2 loader with getBuffersWithFormat() "
+              "support required\n");
       return NULL;
    }
 
@@ -2920,8 +2920,8 @@ brw_allocate_buffer(__DRIscreen *dri_screen,
                                       BO_ALLOC_BUSY);
 
    if (buffer->bo == NULL) {
-	   free(buffer);
-	   return NULL;
+      free(buffer);
+      return NULL;
    }
 
    brw_bo_flink(buffer->bo, &buffer->base.name);

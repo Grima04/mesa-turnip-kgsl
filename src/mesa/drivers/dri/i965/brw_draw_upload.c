@@ -401,9 +401,9 @@ brw_get_vertex_surface_type(struct brw_context *brw,
 static void
 copy_array_to_vbo_array(struct brw_context *brw,
                         const uint8_t *const ptr, const int src_stride,
-			int min, int max,
-			struct brw_vertex_buffer *buffer,
-			GLuint dst_stride)
+                        int min, int max,
+                        struct brw_vertex_buffer *buffer,
+                        GLuint dst_stride)
 {
    const unsigned char *src = ptr + min * src_stride;
    int count = max - min + 1;

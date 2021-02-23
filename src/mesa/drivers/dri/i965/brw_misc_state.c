@@ -112,7 +112,7 @@ brw_depthbuffer_format(struct brw_context *brw)
        (srb = brw_get_renderbuffer(fb, BUFFER_STENCIL)) &&
        !srb->mt->stencil_mt &&
        (brw_rb_format(srb) == MESA_FORMAT_Z24_UNORM_S8_UINT ||
-	brw_rb_format(srb) == MESA_FORMAT_Z32_FLOAT_S8X24_UINT)) {
+        brw_rb_format(srb) == MESA_FORMAT_Z32_FLOAT_S8X24_UINT)) {
       drb = srb;
    }
 
@@ -838,20 +838,20 @@ brw_upload_state_base_address(struct brw_context *brw)
                  mocs << 4 | /* Stateless Data Port Access Memory Object Control State */
                  1); /* General State Base Address Modify Enable */
        /* Surface state base address:
-	* BINDING_TABLE_STATE
-	* SURFACE_STATE
-	*/
+        * BINDING_TABLE_STATE
+        * SURFACE_STATE
+        */
        OUT_RELOC(brw->batch.state.bo, 0, 1);
         /* Dynamic state base address:
-	 * SAMPLER_STATE
-	 * SAMPLER_BORDER_COLOR_STATE
-	 * CLIP, SF, WM/CC viewport state
-	 * COLOR_CALC_STATE
-	 * DEPTH_STENCIL_STATE
-	 * BLEND_STATE
-	 * Push constants (when INSTPM: CONSTANT_BUFFER Address Offset
-	 * Disable is clear, which we rely on)
-	 */
+         * SAMPLER_STATE
+         * SAMPLER_BORDER_COLOR_STATE
+         * CLIP, SF, WM/CC viewport state
+         * COLOR_CALC_STATE
+         * DEPTH_STENCIL_STATE
+         * BLEND_STATE
+         * Push constants (when INSTPM: CONSTANT_BUFFER Address Offset
+         * Disable is clear, which we rely on)
+         */
        OUT_RELOC(brw->batch.state.bo, 0, 1);
 
        OUT_BATCH(1); /* Indirect object base address: MEDIA_OBJECT data */
@@ -861,10 +861,10 @@ brw_upload_state_base_address(struct brw_context *brw)
 
        OUT_BATCH(1); /* General state upper bound */
        /* Dynamic state upper bound.  Although the documentation says that
-	* programming it to zero will cause it to be ignored, that is a lie.
-	* If this isn't programmed to a real bound, the sampler border color
-	* pointer is rejected, causing border color to mysteriously fail.
-	*/
+        * programming it to zero will cause it to be ignored, that is a lie.
+        * If this isn't programmed to a real bound, the sampler border color
+        * pointer is rejected, causing border color to mysteriously fail.
+        */
        OUT_BATCH(0xfffff001);
        OUT_BATCH(1); /* Indirect object upper bound */
        OUT_BATCH(1); /* Instruction access upper bound */

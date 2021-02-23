@@ -110,8 +110,8 @@ brw_finalize_mipmap_tree(struct brw_context *brw,
     */
    if (brw_obj->mt &&
        (!brw_miptree_match_image(brw_obj->mt, &firstImage->base.Base) ||
-	validate_first_level < brw_obj->mt->first_level ||
-	validate_last_level > brw_obj->mt->last_level)) {
+        validate_first_level < brw_obj->mt->first_level ||
+        validate_last_level > brw_obj->mt->last_level)) {
       brw_miptree_release(&brw_obj->mt);
    }
 
@@ -171,9 +171,9 @@ brw_finalize_mipmap_tree(struct brw_context *brw,
       for (i = validate_first_level; i <= validate_last_level; i++) {
          struct brw_texture_image *brw_image =
             brw_texture_image(brw_obj->base.Image[face][i]);
-	 /* skip too small size mipmap */
-	 if (brw_image == NULL)
-		 break;
+         /* skip too small size mipmap */
+         if (brw_image == NULL)
+            break;
 
          if (brw_obj->mt != brw_image->mt)
             brw_miptree_copy_teximage(brw, brw_image, brw_obj->mt);

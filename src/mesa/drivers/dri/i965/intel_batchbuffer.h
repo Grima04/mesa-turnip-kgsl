@@ -108,7 +108,7 @@ brw_batch_advance(struct brw_context *brw)
    assert(batch->total != 0);
    if (_n != batch->total) {
       fprintf(stderr, "ADVANCE_BATCH: %d of %d dwords emitted\n",
-	      _n, batch->total);
+              _n, batch->total);
       abort();
    }
    batch->total = 0;

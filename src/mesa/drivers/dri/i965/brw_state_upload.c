@@ -372,17 +372,18 @@ check_state(const struct brw_state_flags *a, const struct brw_state_flags *b)
    return ((a->mesa & b->mesa) | (a->brw & b->brw)) != 0;
 }
 
-static void accumulate_state( struct brw_state_flags *a,
-			      const struct brw_state_flags *b )
+static void
+accumulate_state(struct brw_state_flags *a, const struct brw_state_flags *b)
 {
    a->mesa |= b->mesa;
    a->brw |= b->brw;
 }
 
 
-static void xor_states( struct brw_state_flags *result,
-			     const struct brw_state_flags *a,
-			      const struct brw_state_flags *b )
+static void
+xor_states(struct brw_state_flags *result,
+           const struct brw_state_flags *a,
+           const struct brw_state_flags *b)
 {
    result->mesa = a->mesa ^ b->mesa;
    result->brw = a->brw ^ b->brw;
@@ -496,7 +497,7 @@ brw_update_dirty_count(struct dirty_bit_map *bit_map, uint64_t bits)
 {
    for (int i = 0; bit_map[i].bit != 0; i++) {
       if (bit_map[i].bit & bits)
-	 bit_map[i].count++;
+         bit_map[i].count++;
    }
 }
 
@@ -700,25 +701,25 @@ brw_upload_pipeline_state(struct brw_context *brw,
       prev = state;
 
       for (i = 0; i < num_atoms; i++) {
-	 const struct brw_tracked_state *atom = &atoms[i];
-	 struct brw_state_flags generated;
+         const struct brw_tracked_state *atom = &atoms[i];
+         struct brw_state_flags generated;
 
          check_and_emit_atom(brw, &state, atom);
 
-	 accumulate_state(&examined, &atom->dirty);
+         accumulate_state(&examined, &atom->dirty);
 
-	 /* generated = (prev ^ state)
-	  * if (examined & generated)
-	  *     fail;
-	  */
-	 xor_states(&generated, &prev, &state);
-	 assert(!check_state(&examined, &generated));
-	 prev = state;
+         /* generated = (prev ^ state)
+          * if (examined & generated)
+          *     fail;
+          */
+         xor_states(&generated, &prev, &state);
+         assert(!check_state(&examined, &generated));
+         prev = state;
       }
    }
    else {
       for (i = 0; i < num_atoms; i++) {
-	 const struct brw_tracked_state *atom = &atoms[i];
+         const struct brw_tracked_state *atom = &atoms[i];
 
          check_and_emit_atom(brw, &state, atom);
       }
@@ -730,9 +731,9 @@ brw_upload_pipeline_state(struct brw_context *brw,
       brw_update_dirty_count(mesa_bits, state.mesa);
       brw_update_dirty_count(brw_bits, state.brw);
       if (dirty_count++ % 1000 == 0) {
-	 brw_print_dirty_count(mesa_bits);
-	 brw_print_dirty_count(brw_bits);
-	 fprintf(stderr, "\n");
+         brw_print_dirty_count(mesa_bits);
+         brw_print_dirty_count(brw_bits);
+         fprintf(stderr, "\n");
       }
    }
 }

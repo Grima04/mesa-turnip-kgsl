@@ -1030,7 +1030,7 @@ brw_miptree_release(struct brw_mipmap_tree **mt)
       brw_miptree_release(&(*mt)->plane[1]);
 
       for (i = 0; i < MAX_TEXTURE_LEVELS; i++) {
-	 free((*mt)->level[i].slice);
+         free((*mt)->level[i].slice);
       }
 
       free(*mt);
@@ -2235,11 +2235,11 @@ brw_offset_S8(uint32_t stride, uint32_t x, uint32_t y, bool swizzled)
    if (swizzled) {
       /* adjust for bit6 swizzling */
       if (((byte_x / 8) % 2) == 1) {
-	 if (((byte_y / 8) % 2) == 0) {
-	    u += 64;
-	 } else {
-	    u -= 64;
-	 }
+         if (((byte_y / 8) % 2) == 0) {
+            u += 64;
+         } else {
+            u -= 64;
+         }
       }
    }
 
@@ -2753,13 +2753,13 @@ brw_miptree_unmap_s8(struct brw_context *brw,
       brw_miptree_get_image_offset(mt, level, slice, &image_x, &image_y);
 
       for (uint32_t y = 0; y < map->h; y++) {
-	 for (uint32_t x = 0; x < map->w; x++) {
+         for (uint32_t x = 0; x < map->w; x++) {
             ptrdiff_t offset = brw_offset_S8(mt->surf.row_pitch_B,
                                              image_x + x + map->x,
                                              image_y + y + map->y,
                                              brw->has_swizzling);
-	    tiled_s8_map[offset] = untiled_s8_map[y * map->w + x];
-	 }
+            tiled_s8_map[offset] = untiled_s8_map[y * map->w + x];
+         }
       }
 
       brw_miptree_unmap_raw(mt);
@@ -2795,24 +2795,24 @@ brw_miptree_map_s8(struct brw_context *brw,
       brw_miptree_get_image_offset(mt, level, slice, &image_x, &image_y);
 
       for (uint32_t y = 0; y < map->h; y++) {
-	 for (uint32_t x = 0; x < map->w; x++) {
+         for (uint32_t x = 0; x < map->w; x++) {
             ptrdiff_t offset = brw_offset_S8(mt->surf.row_pitch_B,
                                              x + image_x + map->x,
                                              y + image_y + map->y,
                                              brw->has_swizzling);
-	    untiled_s8_map[y * map->w + x] = tiled_s8_map[offset];
-	 }
+            untiled_s8_map[y * map->w + x] = tiled_s8_map[offset];
+         }
       }
 
       brw_miptree_unmap_raw(mt);
 
       DBG("%s: %d,%d %dx%d from mt %p %d,%d = %p/%d\n", __func__,
-	  map->x, map->y, map->w, map->h,
-	  mt, map->x + image_x, map->y + image_y, map->ptr, map->stride);
+          map->x, map->y, map->w, map->h,
+          mt, map->x + image_x, map->y + image_y, map->ptr, map->stride);
    } else {
       DBG("%s: %d,%d %dx%d from mt %p = %p/%d\n", __func__,
-	  map->x, map->y, map->w, map->h,
-	  mt, map->ptr, map->stride);
+          map->x, map->y, map->w, map->h,
+          mt, map->ptr, map->stride);
    }
 
    map->unmap = brw_miptree_unmap_s8;
@@ -2853,36 +2853,36 @@ brw_miptree_unmap_depthstencil(struct brw_context *brw,
                                    &z_image_x, &z_image_y);
 
       for (uint32_t y = 0; y < map->h; y++) {
-	 for (uint32_t x = 0; x < map->w; x++) {
+         for (uint32_t x = 0; x < map->w; x++) {
             ptrdiff_t s_offset = brw_offset_S8(s_mt->surf.row_pitch_B,
                                                x + s_image_x + map->x,
                                                y + s_image_y + map->y,
                                                brw->has_swizzling);
-	    ptrdiff_t z_offset = ((y + z_image_y + map->y) *
+            ptrdiff_t z_offset = ((y + z_image_y + map->y) *
                                   (z_mt->surf.row_pitch_B / 4) +
-				  (x + z_image_x + map->x));
+                                  (x + z_image_x + map->x));
 
-	    if (map_z32f_x24s8) {
-	       z_map[z_offset] = packed_map[(y * map->w + x) * 2 + 0];
-	       s_map[s_offset] = packed_map[(y * map->w + x) * 2 + 1];
-	    } else {
-	       uint32_t packed = packed_map[y * map->w + x];
-	       s_map[s_offset] = packed >> 24;
-	       z_map[z_offset] = packed;
-	    }
-	 }
+            if (map_z32f_x24s8) {
+               z_map[z_offset] = packed_map[(y * map->w + x) * 2 + 0];
+               s_map[s_offset] = packed_map[(y * map->w + x) * 2 + 1];
+            } else {
+               uint32_t packed = packed_map[y * map->w + x];
+               s_map[s_offset] = packed >> 24;
+               z_map[z_offset] = packed;
+            }
+         }
       }
 
       brw_miptree_unmap_raw(s_mt);
       brw_miptree_unmap_raw(z_mt);
 
       DBG("%s: %d,%d %dx%d from z mt %p (%s) %d,%d, s mt %p %d,%d = %p/%d\n",
-	  __func__,
-	  map->x, map->y, map->w, map->h,
-	  z_mt, _mesa_get_format_name(z_mt->format),
-	  map->x + z_image_x, map->y + z_image_y,
-	  s_mt, map->x + s_image_x, map->y + s_image_y,
-	  map->ptr, map->stride);
+          __func__,
+          map->x, map->y, map->w, map->h,
+          z_mt, _mesa_get_format_name(z_mt->format),
+          map->x + z_image_x, map->y + z_image_y,
+          s_mt, map->x + s_image_x, map->y + s_image_y,
+          map->ptr, map->stride);
    }
 
    free(map->buffer);
@@ -2927,40 +2927,40 @@ brw_miptree_map_depthstencil(struct brw_context *brw,
                                    &z_image_x, &z_image_y);
 
       for (uint32_t y = 0; y < map->h; y++) {
-	 for (uint32_t x = 0; x < map->w; x++) {
-	    int map_x = map->x + x, map_y = map->y + y;
-	    ptrdiff_t s_offset = brw_offset_S8(s_mt->surf.row_pitch_B,
-						 map_x + s_image_x,
-						 map_y + s_image_y,
-						 brw->has_swizzling);
-	    ptrdiff_t z_offset = ((map_y + z_image_y) *
+         for (uint32_t x = 0; x < map->w; x++) {
+            int map_x = map->x + x, map_y = map->y + y;
+            ptrdiff_t s_offset = brw_offset_S8(s_mt->surf.row_pitch_B,
+                                                 map_x + s_image_x,
+                                                 map_y + s_image_y,
+                                                 brw->has_swizzling);
+            ptrdiff_t z_offset = ((map_y + z_image_y) *
                                   (z_mt->surf.row_pitch_B / 4) +
-				  (map_x + z_image_x));
-	    uint8_t s = s_map[s_offset];
-	    uint32_t z = z_map[z_offset];
+                                  (map_x + z_image_x));
+            uint8_t s = s_map[s_offset];
+            uint32_t z = z_map[z_offset];
 
-	    if (map_z32f_x24s8) {
-	       packed_map[(y * map->w + x) * 2 + 0] = z;
-	       packed_map[(y * map->w + x) * 2 + 1] = s;
-	    } else {
-	       packed_map[y * map->w + x] = (s << 24) | (z & 0x00ffffff);
-	    }
-	 }
+            if (map_z32f_x24s8) {
+               packed_map[(y * map->w + x) * 2 + 0] = z;
+               packed_map[(y * map->w + x) * 2 + 1] = s;
+            } else {
+               packed_map[y * map->w + x] = (s << 24) | (z & 0x00ffffff);
+            }
+         }
       }
 
       brw_miptree_unmap_raw(s_mt);
       brw_miptree_unmap_raw(z_mt);
 
       DBG("%s: %d,%d %dx%d from z mt %p %d,%d, s mt %p %d,%d = %p/%d\n",
-	  __func__,
-	  map->x, map->y, map->w, map->h,
-	  z_mt, map->x + z_image_x, map->y + z_image_y,
-	  s_mt, map->x + s_image_x, map->y + s_image_y,
-	  map->ptr, map->stride);
+          __func__,
+          map->x, map->y, map->w, map->h,
+          z_mt, map->x + z_image_x, map->y + z_image_y,
+          s_mt, map->x + s_image_x, map->y + s_image_y,
+          map->ptr, map->stride);
    } else {
       DBG("%s: %d,%d %dx%d from mt %p = %p/%d\n", __func__,
-	  map->x, map->y, map->w, map->h,
-	  mt, map->ptr, map->stride);
+          map->x, map->y, map->w, map->h,
+          mt, map->ptr, map->stride);
    }
 
    map->unmap = brw_miptree_unmap_depthstencil;
@@ -3132,7 +3132,7 @@ brw_miptree_unmap(struct brw_context *brw,
        mt, _mesa_get_format_name(mt->format), level, slice);
 
    if (map->unmap)
-	   map->unmap(brw, mt, map, level, slice);
+      map->unmap(brw, mt, map, level, slice);
 
    brw_miptree_release_map(mt, level, slice);
 }

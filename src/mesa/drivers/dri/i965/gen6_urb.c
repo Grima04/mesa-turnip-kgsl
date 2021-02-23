@@ -84,9 +84,9 @@ gen6_upload_urb(struct brw_context *brw, unsigned vs_size,
    BEGIN_BATCH(3);
    OUT_BATCH(_3DSTATE_URB << 16 | (3 - 2));
    OUT_BATCH(((vs_size - 1) << GEN6_URB_VS_SIZE_SHIFT) |
-	     ((brw->urb.nr_vs_entries) << GEN6_URB_VS_ENTRIES_SHIFT));
+             ((brw->urb.nr_vs_entries) << GEN6_URB_VS_ENTRIES_SHIFT));
    OUT_BATCH(((gs_size - 1) << GEN6_URB_GS_SIZE_SHIFT) |
-	     ((brw->urb.nr_gs_entries) << GEN6_URB_GS_ENTRIES_SHIFT));
+             ((brw->urb.nr_gs_entries) << GEN6_URB_GS_ENTRIES_SHIFT));
    ADVANCE_BATCH();
 
    /* From the PRM Volume 2 part 1, section 1.4.7:

@@ -112,7 +112,7 @@ static void calculate_curbe_offsets( struct brw_context *brw )
        nr_vp_regs > brw->curbe.vs_size ||
        nr_clip_regs != brw->curbe.clip_size ||
        (total_regs < brw->curbe.total_size / 4 &&
-	brw->curbe.total_size > 16)) {
+        brw->curbe.total_size > 16)) {
 
       GLuint reg = 0;
 
@@ -128,7 +128,7 @@ static void calculate_curbe_offsets( struct brw_context *brw )
       brw->curbe.total_size = reg;
 
       if (0)
-	 fprintf(stderr, "curbe wm %d+%d clip %d+%d vs %d+%d\n",
+         fprintf(stderr, "curbe wm %d+%d clip %d+%d vs %d+%d\n",
                  brw->curbe.wm_start,
                  brw->curbe.wm_size,
                  brw->curbe.clip_start,
@@ -241,10 +241,10 @@ brw_upload_constant_buffer(struct brw_context *brw)
       /* If any planes are going this way, send them all this way:
        */
       for (i = 0; i < 6; i++) {
-	 buf[offset + i * 4 + 0].f = fixed_plane[i][0];
-	 buf[offset + i * 4 + 1].f = fixed_plane[i][1];
-	 buf[offset + i * 4 + 2].f = fixed_plane[i][2];
-	 buf[offset + i * 4 + 3].f = fixed_plane[i][3];
+         buf[offset + i * 4 + 0].f = fixed_plane[i][0];
+         buf[offset + i * 4 + 1].f = fixed_plane[i][1];
+         buf[offset + i * 4 + 2].f = fixed_plane[i][2];
+         buf[offset + i * 4 + 3].f = fixed_plane[i][3];
       }
 
       /* Clip planes: _NEW_TRANSFORM plus _NEW_PROJECTION to get to
@@ -276,7 +276,7 @@ brw_upload_constant_buffer(struct brw_context *brw)
 
    if (0) {
       for (i = 0; i < sz*16; i+=4)
-	 fprintf(stderr, "curbe %d.%d: %f %f %f %f\n", i/8, i&4,
+         fprintf(stderr, "curbe %d.%d: %f %f %f %f\n", i/8, i&4,
                  buf[i+0].f, buf[i+1].f, buf[i+2].f, buf[i+3].f);
    }
 
@@ -310,7 +310,7 @@ emit:
    } else {
       OUT_BATCH((CMD_CONST_BUFFER << 16) | (1 << 8) | (2 - 2));
       OUT_RELOC(brw->curbe.curbe_bo, 0,
-		(brw->curbe.total_size - 1) + brw->curbe.curbe_offset);
+                (brw->curbe.total_size - 1) + brw->curbe.curbe_offset);
    }
    ADVANCE_BATCH();
 

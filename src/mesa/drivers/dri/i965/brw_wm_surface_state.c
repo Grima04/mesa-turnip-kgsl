@@ -701,7 +701,7 @@ brw_update_buffer_texture_surface(struct gl_context *ctx,
 
    if (isl_format == ISL_FORMAT_UNSUPPORTED) {
       _mesa_problem(NULL, "bad format %s for texture buffer\n",
-		    _mesa_get_format_name(format));
+                    _mesa_get_format_name(format));
    }
 
    brw_emit_buffer_surface_state(brw, surf_offset, bo,
@@ -785,7 +785,7 @@ brw_update_sol_surface(struct brw_context *brw,
    surf[1] = brw_state_reloc(&brw->batch,
                              *out_offset + 4, bo, offset_bytes, RELOC_WRITE);
    surf[2] = (width << BRW_SURFACE_WIDTH_SHIFT |
-	      height << BRW_SURFACE_HEIGHT_SHIFT);
+              height << BRW_SURFACE_HEIGHT_SHIFT);
    surf[3] = (depth << BRW_SURFACE_DEPTH_SHIFT |
               pitch_minus_1 << BRW_SURFACE_PITCH_SHIFT);
    surf[4] = 0;
@@ -876,7 +876,7 @@ emit_null_surface_state(struct brw_context *brw,
                       size_needed);
 
    surf[0] = (BRW_SURFACE_2D << BRW_SURFACE_TYPE_SHIFT |
-	      ISL_FORMAT_B8G8R8A8_UNORM << BRW_SURFACE_FORMAT_SHIFT);
+              ISL_FORMAT_B8G8R8A8_UNORM << BRW_SURFACE_FORMAT_SHIFT);
    surf[1] = brw_state_reloc(&brw->batch, *out_offset + 4,
                              brw->wm.multisampled_null_render_target_bo,
                              0, RELOC_WRITE);
@@ -922,15 +922,15 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
       brw_renderbuffer_get_tile_offsets(irb, &tile_x, &tile_y);
 
       if (tile_x != 0 || tile_y != 0) {
-	 /* Original gen4 hardware couldn't draw to a non-tile-aligned
-	  * destination in a miptree unless you actually setup your renderbuffer
-	  * as a miptree and used the fragile lod/array_index/etc. controls to
-	  * select the image.  So, instead, we just make a new single-level
-	  * miptree and render into that.
-	  */
-	 brw_renderbuffer_move_to_temp(brw, irb, false);
-	 assert(irb->align_wa_mt);
-	 mt = irb->align_wa_mt;
+         /* Original gen4 hardware couldn't draw to a non-tile-aligned
+          * destination in a miptree unless you actually setup your renderbuffer
+          * as a miptree and used the fragile lod/array_index/etc. controls to
+          * select the image.  So, instead, we just make a new single-level
+          * miptree and render into that.
+          */
+         brw_renderbuffer_move_to_temp(brw, irb, false);
+         assert(irb->align_wa_mt);
+         mt = irb->align_wa_mt;
       }
    }
 
@@ -943,7 +943,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
    }
 
    surf[0] = (BRW_SURFACE_2D << BRW_SURFACE_TYPE_SHIFT |
-	      format << BRW_SURFACE_FORMAT_SHIFT);
+              format << BRW_SURFACE_FORMAT_SHIFT);
 
    /* reloc */
    assert(mt->offset % mt->cpp == 0);
@@ -955,10 +955,10 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
                              RELOC_WRITE);
 
    surf[2] = ((rb->Width - 1) << BRW_SURFACE_WIDTH_SHIFT |
-	      (rb->Height - 1) << BRW_SURFACE_HEIGHT_SHIFT);
+              (rb->Height - 1) << BRW_SURFACE_HEIGHT_SHIFT);
 
    surf[3] = (brw_get_surface_tiling_bits(mt->surf.tiling) |
-	      (mt->surf.row_pitch_B - 1) << BRW_SURFACE_PITCH_SHIFT);
+              (mt->surf.row_pitch_B - 1) << BRW_SURFACE_PITCH_SHIFT);
 
    surf[4] = brw_get_surface_num_multisamples(mt->surf.samples);
 
@@ -969,8 +969,8 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
    assert(tile_x % 4 == 0);
    assert(tile_y % 2 == 0);
    surf[5] = ((tile_x / 4) << BRW_SURFACE_X_OFFSET_SHIFT |
-	      (tile_y / 2) << BRW_SURFACE_Y_OFFSET_SHIFT |
-	      (mt->surf.image_alignment_el.height == 4 ?
+              (tile_y / 2) << BRW_SURFACE_Y_OFFSET_SHIFT |
+              (mt->surf.image_alignment_el.height == 4 ?
                   BRW_SURFACE_VERTICAL_ALIGN_ENABLE : 0));
 
    if (devinfo->gen < 6) {
@@ -978,21 +978,21 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
       if (!ctx->Color.ColorLogicOpEnabled &&
           ctx->Color._AdvancedBlendMode == BLEND_NONE &&
           (ctx->Color.BlendEnabled & (1 << unit)))
-	 surf[0] |= BRW_SURFACE_BLEND_ENABLED;
+         surf[0] |= BRW_SURFACE_BLEND_ENABLED;
 
       if (!GET_COLORMASK_BIT(ctx->Color.ColorMask, unit, 0))
-	 surf[0] |= 1 << BRW_SURFACE_WRITEDISABLE_R_SHIFT;
+         surf[0] |= 1 << BRW_SURFACE_WRITEDISABLE_R_SHIFT;
       if (!GET_COLORMASK_BIT(ctx->Color.ColorMask, unit, 1))
-	 surf[0] |= 1 << BRW_SURFACE_WRITEDISABLE_G_SHIFT;
+         surf[0] |= 1 << BRW_SURFACE_WRITEDISABLE_G_SHIFT;
       if (!GET_COLORMASK_BIT(ctx->Color.ColorMask, unit, 2))
-	 surf[0] |= 1 << BRW_SURFACE_WRITEDISABLE_B_SHIFT;
+         surf[0] |= 1 << BRW_SURFACE_WRITEDISABLE_B_SHIFT;
 
       /* As mentioned above, disable writes to the alpha component when the
        * renderbuffer is XRGB.
        */
       if (ctx->DrawBuffer->Visual.alphaBits == 0 ||
-	  !GET_COLORMASK_BIT(ctx->Color.ColorMask, unit, 3)) {
-	 surf[0] |= 1 << BRW_SURFACE_WRITEDISABLE_A_SHIFT;
+          !GET_COLORMASK_BIT(ctx->Color.ColorMask, unit, 3)) {
+         surf[0] |= 1 << BRW_SURFACE_WRITEDISABLE_A_SHIFT;
       }
    }
 
@@ -1018,13 +1018,13 @@ update_renderbuffer_surfaces(struct brw_context *brw)
       for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
          struct gl_renderbuffer *rb = fb->_ColorDrawBuffers[i];
 
-	 if (brw_renderbuffer(rb)) {
+         if (brw_renderbuffer(rb)) {
             surf_offsets[rt_start + i] = devinfo->gen >= 6 ?
                gen6_update_renderbuffer_surface(brw, rb, i, rt_start + i) :
                gen4_update_renderbuffer_surface(brw, rb, i, rt_start + i);
-	 } else {
+         } else {
             emit_null_surface_state(brw, fb, &surf_offsets[rt_start + i]);
-	 }
+         }
       }
    } else {
       emit_null_surface_state(brw, fb, &surf_offsets[rt_start]);

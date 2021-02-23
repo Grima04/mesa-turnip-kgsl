@@ -59,23 +59,24 @@
  * PBO bitmaps.  I think they are probably pretty rare though - I
  * wonder if Xgl uses them?
  */
-static const GLubyte *map_pbo( struct gl_context *ctx,
-			       GLsizei width, GLsizei height,
-			       const struct gl_pixelstore_attrib *unpack,
-			       const GLubyte *bitmap )
+static const GLubyte *
+map_pbo(struct gl_context *ctx,
+        GLsizei width, GLsizei height,
+        const struct gl_pixelstore_attrib *unpack,
+        const GLubyte *bitmap)
 {
    GLubyte *buf;
 
    if (!_mesa_validate_pbo_access(2, unpack, width, height, 1,
-				  GL_COLOR_INDEX, GL_BITMAP,
-				  INT_MAX, (const GLvoid *) bitmap)) {
+                                  GL_COLOR_INDEX, GL_BITMAP,
+                                  INT_MAX, (const GLvoid *) bitmap)) {
       _mesa_error(ctx, GL_INVALID_OPERATION,"glBitmap(invalid PBO access)");
       return NULL;
    }
 
    buf = (GLubyte *) ctx->Driver.MapBufferRange(ctx, 0, unpack->BufferObj->Size,
-						GL_MAP_READ_BIT,
-						unpack->BufferObj,
+                                                GL_MAP_READ_BIT,
+                                                unpack->BufferObj,
                                                 MAP_INTERNAL);
    if (!buf) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "glBitmap(PBO is mapped)");
@@ -98,14 +99,15 @@ static void set_bit( GLubyte *dest, GLuint bit )
 /* Extract a rectangle's worth of data from the bitmap.  Called
  * per chunk of HW-sized bitmap.
  */
-static GLuint get_bitmap_rect(GLsizei width, GLsizei height,
-			      const struct gl_pixelstore_attrib *unpack,
-			      const GLubyte *bitmap,
-			      GLuint x, GLuint y,
-			      GLuint w, GLuint h,
-			      GLubyte *dest,
-			      GLuint row_align,
-			      bool invert)
+static GLuint
+get_bitmap_rect(GLsizei width, GLsizei height,
+                const struct gl_pixelstore_attrib *unpack,
+                const GLubyte *bitmap,
+                GLuint x, GLuint y,
+                GLuint w, GLuint h,
+                GLubyte *dest,
+                GLuint row_align,
+                bool invert)
 {
    GLuint src_offset = (x + unpack->SkipPixels) & 0x7;
    GLuint mask = unpack->LsbFirst ? 0 : 7;
@@ -133,19 +135,19 @@ static GLuint get_bitmap_rect(GLsizei width, GLsizei height,
     */
    for (row = first; row != (last+incr); row += incr) {
       const GLubyte *rowsrc = _mesa_image_address2d(unpack, bitmap,
-						    width, height,
-						    GL_COLOR_INDEX, GL_BITMAP,
-						    y + row, x);
+                                                    width, height,
+                                                    GL_COLOR_INDEX, GL_BITMAP,
+                                                    y + row, x);
 
       for (col = 0; col < w; col++, bit++) {
-	 if (test_bit(rowsrc, (col + src_offset) ^ mask)) {
-	    set_bit(dest, bit ^ 7);
-	    count++;
-	 }
+         if (test_bit(rowsrc, (col + src_offset) ^ mask)) {
+            set_bit(dest, bit ^ 7);
+            count++;
+         }
       }
 
       if (row_align)
-	 bit = ALIGN(bit, row_align);
+         bit = ALIGN(bit, row_align);
    }
 
    return count;
@@ -168,11 +170,11 @@ y_flip(struct gl_framebuffer *fb, int y, int height)
  * Render a bitmap.
  */
 static bool
-do_blit_bitmap( struct gl_context *ctx,
-		GLint dstx, GLint dsty,
-		GLsizei width, GLsizei height,
-		const struct gl_pixelstore_attrib *unpack,
-		const GLubyte *bitmap )
+do_blit_bitmap(struct gl_context *ctx,
+               GLint dstx, GLint dsty,
+               GLsizei width, GLsizei height,
+               const struct gl_pixelstore_attrib *unpack,
+               const GLubyte *bitmap)
 {
    struct brw_context *brw = brw_context(ctx);
    struct gl_framebuffer *fb = ctx->DrawBuffer;
@@ -211,7 +213,7 @@ do_blit_bitmap( struct gl_context *ctx,
    if (unpack->BufferObj) {
       bitmap = map_pbo(ctx, width, height, unpack, bitmap);
       if (bitmap == NULL)
-	 return true;	/* even though this is an error, we're done */
+         return true; /* even though this is an error, we're done */
    }
 
    COPY_4V(tmpColor, ctx->Current.RasterColor);
@@ -244,8 +246,8 @@ do_blit_bitmap( struct gl_context *ctx,
 
    /* Clip to buffer bounds and scissor. */
    if (!_mesa_clip_to_region(fb->_Xmin, fb->_Ymin,
-			     fb->_Xmax, fb->_Ymax,
-			     &dstx, &dsty, &width, &height))
+                             fb->_Xmax, fb->_Ymax,
+                             &dstx, &dsty, &width, &height))
       goto out;
 
    dsty = y_flip(fb, dsty, height);
@@ -261,21 +263,21 @@ do_blit_bitmap( struct gl_context *ctx,
    /* Chop it all into chunks that can be digested by hardware: */
    for (py = 0; py < height; py += DY) {
       for (px = 0; px < width; px += DX) {
-	 int h = MIN2(DY, height - py);
-	 int w = MIN2(DX, width - px);
-	 GLuint sz = ALIGN(ALIGN(w,8) * h, 64)/8;
-	 const enum gl_logicop_mode logic_op = ctx->Color.ColorLogicOpEnabled ?
-	    ctx->Color._LogicOp : COLOR_LOGICOP_COPY;
+         int h = MIN2(DY, height - py);
+         int w = MIN2(DX, width - px);
+         GLuint sz = ALIGN(ALIGN(w,8) * h, 64)/8;
+         const enum gl_logicop_mode logic_op = ctx->Color.ColorLogicOpEnabled ?
+            ctx->Color._LogicOp : COLOR_LOGICOP_COPY;
 
-	 assert(sz <= sizeof(stipple));
-	 memset(stipple, 0, sz);
+         assert(sz <= sizeof(stipple));
+         memset(stipple, 0, sz);
 
-	 /* May need to adjust this when padding has been introduced in
-	  * sz above:
-	  *
-	  * Have to translate destination coordinates back into source
-	  * coordinates.
-	  */
+         /* May need to adjust this when padding has been introduced in
+          * sz above:
+          *
+          * Have to translate destination coordinates back into source
+          * coordinates.
+          */
          int count = get_bitmap_rect(bitmap_width, bitmap_height, unpack,
                                      bitmap,
                                      -orig_dstx + (dstx + px),
@@ -285,23 +287,23 @@ do_blit_bitmap( struct gl_context *ctx,
                                      8,
                                      fb->FlipY);
          if (count == 0)
-	    continue;
+            continue;
 
-	 if (!brw_emit_immediate_color_expand_blit(brw,
-						   irb->mt->cpp,
-						   (GLubyte *)stipple,
-						   sz,
-						   color,
-						   irb->mt->surf.row_pitch_B,
-						   irb->mt->bo,
-						   irb->mt->offset,
-						   irb->mt->surf.tiling,
-						   dstx + px,
-						   dsty + py,
-						   w, h,
-						   logic_op)) {
-	    return false;
-	 }
+         if (!brw_emit_immediate_color_expand_blit(brw,
+                                                   irb->mt->cpp,
+                                                   (GLubyte *)stipple,
+                                                   sz,
+                                                   color,
+                                                   irb->mt->surf.row_pitch_B,
+                                                   irb->mt->bo,
+                                                   irb->mt->offset,
+                                                   irb->mt->surf.tiling,
+                                                   dstx + px,
+                                                   dsty + py,
+                                                   w, h,
+                                                   logic_op)) {
+            return false;
+         }
 
          if (ctx->Query.CurrentOcclusionObject)
             ctx->Query.CurrentOcclusionObject->Result += count;

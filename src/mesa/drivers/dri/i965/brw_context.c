@@ -646,7 +646,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.Program[MESA_SHADER_VERTEX].MaxNativeParameters = 1024;
    ctx->Const.Program[MESA_SHADER_VERTEX].MaxEnvParams =
       MIN2(ctx->Const.Program[MESA_SHADER_VERTEX].MaxNativeParameters,
-	   ctx->Const.Program[MESA_SHADER_VERTEX].MaxEnvParams);
+           ctx->Const.Program[MESA_SHADER_VERTEX].MaxEnvParams);
 
    ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxNativeInstructions = 1024;
    ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxNativeAluInstructions = 1024;
@@ -658,7 +658,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxNativeParameters = 1024;
    ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxEnvParams =
       MIN2(ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxNativeParameters,
-	   ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxEnvParams);
+           ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxEnvParams);
 
    /* Fragment shaders use real, 32-bit twos-complement integers for all
     * integer types.
@@ -1086,7 +1086,7 @@ brw_create_context(gl_api api,
       if (hw_priority != I915_CONTEXT_DEFAULT_PRIORITY &&
           brw_hw_context_set_priority(brw->bufmgr, brw->hw_ctx, hw_priority)) {
          fprintf(stderr,
-		 "Failed to set priority [%d:%d] for hardware context.\n",
+                 "Failed to set priority [%d:%d] for hardware context.\n",
                  ctx_config->priority, hw_priority);
          brw_destroy_context(driContextPriv);
          return false;
@@ -1699,10 +1699,10 @@ brw_process_dri2_buffer(struct brw_context *brw,
    uint32_t old_name = 0;
    if (last_mt) {
        /* The bo already has a name because the miptree was created by a
-	* previous call to brw_process_dri2_buffer(). If a bo already has a
-	* name, then brw_bo_flink() is a low-cost getter.  It does not
-	* create a new name.
-	*/
+        * previous call to brw_process_dri2_buffer(). If a bo already has a
+        * name, then brw_bo_flink() is a low-cost getter.  It does not
+        * create a new name.
+        */
       brw_bo_flink(last_mt->bo, &old_name);
    }
 

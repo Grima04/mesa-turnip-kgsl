@@ -49,10 +49,10 @@
 
 static bool
 do_blit_drawpixels(struct gl_context * ctx,
-		   GLint x, GLint y, GLsizei width, GLsizei height,
-		   GLenum format, GLenum type,
-		   const struct gl_pixelstore_attrib *unpack,
-		   const GLvoid * pixels)
+                   GLint x, GLint y, GLsizei width, GLsizei height,
+                   GLenum format, GLenum type,
+                   const struct gl_pixelstore_attrib *unpack,
+                   const GLvoid * pixels)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_buffer_object *src = brw_buffer_object(unpack->BufferObj);
@@ -106,7 +106,7 @@ do_blit_drawpixels(struct gl_context * ctx,
 
    src_offset = (GLintptr)pixels;
    src_offset += _mesa_image_offset(2, unpack, width, height,
-				    format, type, 0, 0, 0);
+                                    format, type, 0, 0, 0);
 
    src_buffer = brw_bufferobj_buffer(brw, src, src_offset,
                                      height * src_stride, false);
@@ -166,8 +166,8 @@ brw_drawpixels(struct gl_context *ctx,
    if (brw->screen->devinfo.gen < 6 &&
        unpack->BufferObj) {
       if (do_blit_drawpixels(ctx, x, y, width, height, format, type, unpack,
-			     pixels)) {
-	 return;
+                             pixels)) {
+         return;
       }
 
       perf_debug("%s: fallback to generic code in PBO case\n", __func__);

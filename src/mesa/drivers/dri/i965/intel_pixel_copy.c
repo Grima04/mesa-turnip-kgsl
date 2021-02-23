@@ -68,8 +68,8 @@ do_blit_copypixels(struct gl_context * ctx,
    switch (type) {
    case GL_COLOR:
       if (fb->_NumColorDrawBuffers != 1) {
-	 perf_debug("glCopyPixels() fallback: MRT\n");
-	 return false;
+         perf_debug("glCopyPixels() fallback: MRT\n");
+         return false;
       }
 
       draw_irb = brw_renderbuffer(fb->_ColorDrawBuffers[0]);
@@ -78,7 +78,7 @@ do_blit_copypixels(struct gl_context * ctx,
    case GL_DEPTH_STENCIL_EXT:
       draw_irb = brw_renderbuffer(fb->Attachment[BUFFER_DEPTH].Renderbuffer);
       read_irb =
-	 brw_renderbuffer(read_fb->Attachment[BUFFER_DEPTH].Renderbuffer);
+         brw_renderbuffer(read_fb->Attachment[BUFFER_DEPTH].Renderbuffer);
       break;
    case GL_DEPTH:
       perf_debug("glCopyPixels() fallback: GL_DEPTH\n");
@@ -150,8 +150,8 @@ do_blit_copypixels(struct gl_context * ctx,
    orig_dstx = dstx;
    orig_dsty = dsty;
    if (!_mesa_clip_to_region(fb->_Xmin, fb->_Ymin,
-			     fb->_Xmax, fb->_Ymax,
-			     &dstx, &dsty, &width, &height))
+                             fb->_Xmax, fb->_Ymax,
+                             &dstx, &dsty, &width, &height))
       goto out;
    /* Adjust src coords for our post-clipped destination origin */
    srcx += dstx - orig_dstx;
@@ -161,8 +161,8 @@ do_blit_copypixels(struct gl_context * ctx,
    orig_srcx = srcx;
    orig_srcy = srcy;
    if (!_mesa_clip_to_region(0, 0,
-			     read_fb->Width, read_fb->Height,
-			     &srcx, &srcy, &width, &height))
+                             read_fb->Width, read_fb->Height,
+                             &srcx, &srcy, &width, &height))
       goto out;
    /* Adjust dst coords for our post-clipped source origin */
    dstx += srcx - orig_srcx;

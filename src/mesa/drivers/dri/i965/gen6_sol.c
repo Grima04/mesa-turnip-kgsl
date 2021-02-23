@@ -386,7 +386,7 @@ brw_get_transform_feedback_vertex_count(struct gl_context *ctx,
 
 void
 brw_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
-			     struct gl_transform_feedback_object *obj)
+                             struct gl_transform_feedback_object *obj)
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gl_program *prog;

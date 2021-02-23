@@ -73,7 +73,7 @@ struct brw_texture_image;
  * However, occasionally you want to actually map the miptree's current data
  * without transcoding back.  This flag to brw_miptree_map() gets you that.
  */
-#define BRW_MAP_DIRECT_BIT	0x80000000
+#define BRW_MAP_DIRECT_BIT 0x80000000
 
 struct brw_miptree_map {
    /** Bitfield of GL_MAP_*_BIT and BRW_MAP_*_BIT. */

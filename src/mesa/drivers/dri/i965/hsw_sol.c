@@ -249,7 +249,7 @@ hsw_resume_transform_feedback(struct gl_context *ctx,
  */
 void
 hsw_end_transform_feedback(struct gl_context *ctx,
-			    struct gl_transform_feedback_object *obj)
+                           struct gl_transform_feedback_object *obj)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_transform_feedback_object *brw_obj =

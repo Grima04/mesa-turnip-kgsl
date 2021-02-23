@@ -89,11 +89,11 @@ static const struct {
    GLuint min_entry_size;
    GLuint max_entry_size;
 } limits[CS+1] = {
-   { 16, 32, 1, 5 },			/* vs */
-   { 4, 8,  1, 5 },			/* gs */
-   { 5, 10,  1, 5 },			/* clp */
-   { 1, 8,  1, 12 },		        /* sf */
-   { 1, 4,  1, 32 }			/* cs */
+   { 16, 32,  1,  5 }, /* vs */
+   {  4,  8,  1,  5 }, /* gs */
+   {  5, 10,  1,  5 }, /* clp */
+   {  1,  8,  1, 12 }, /* sf */
+   {  1,  4,  1, 32 }  /* cs */
 };
 
 
@@ -131,8 +131,8 @@ brw_calculate_urb_fence(struct brw_context *brw, unsigned csize,
        brw->urb.sfsize < sfsize ||
        brw->urb.csize < csize ||
        (brw->urb.constrained && (brw->urb.vsize > vsize ||
-				 brw->urb.sfsize > sfsize ||
-				 brw->urb.csize > csize))) {
+                                 brw->urb.sfsize > sfsize ||
+                                 brw->urb.csize > csize))) {
 
 
       brw->urb.csize = csize;
@@ -158,44 +158,44 @@ brw_calculate_urb_fence(struct brw_context *brw, unsigned csize,
             brw->urb.nr_sf_entries = limits[SF].preferred_nr_entries;
          }
       } else if (devinfo->is_g4x) {
-	 brw->urb.nr_vs_entries = 64;
-	 if (check_urb_layout(brw)) {
-	    goto done;
-	 } else {
-	    brw->urb.constrained = 1;
-	    brw->urb.nr_vs_entries = limits[VS].preferred_nr_entries;
-	 }
+         brw->urb.nr_vs_entries = 64;
+         if (check_urb_layout(brw)) {
+            goto done;
+         } else {
+            brw->urb.constrained = 1;
+            brw->urb.nr_vs_entries = limits[VS].preferred_nr_entries;
+         }
       }
 
       if (!check_urb_layout(brw)) {
-	 brw->urb.nr_vs_entries = limits[VS].min_nr_entries;
-	 brw->urb.nr_gs_entries = limits[GS].min_nr_entries;
-	 brw->urb.nr_clip_entries = limits[CLP].min_nr_entries;
-	 brw->urb.nr_sf_entries = limits[SF].min_nr_entries;
-	 brw->urb.nr_cs_entries = limits[CS].min_nr_entries;
+         brw->urb.nr_vs_entries = limits[VS].min_nr_entries;
+         brw->urb.nr_gs_entries = limits[GS].min_nr_entries;
+         brw->urb.nr_clip_entries = limits[CLP].min_nr_entries;
+         brw->urb.nr_sf_entries = limits[SF].min_nr_entries;
+         brw->urb.nr_cs_entries = limits[CS].min_nr_entries;
 
-	 /* Mark us as operating with constrained nr_entries, so that next
-	  * time we recalculate we'll resize the fences in the hope of
-	  * escaping constrained mode and getting back to normal performance.
-	  */
-	 brw->urb.constrained = 1;
+         /* Mark us as operating with constrained nr_entries, so that next
+          * time we recalculate we'll resize the fences in the hope of
+          * escaping constrained mode and getting back to normal performance.
+          */
+         brw->urb.constrained = 1;
 
-	 if (!check_urb_layout(brw)) {
-	    /* This is impossible, given the maximal sizes of urb
-	     * entries and the values for minimum nr of entries
-	     * provided above.
-	     */
-	    fprintf(stderr, "couldn't calculate URB layout!\n");
-	    exit(1);
-	 }
+         if (!check_urb_layout(brw)) {
+            /* This is impossible, given the maximal sizes of urb
+             * entries and the values for minimum nr of entries
+             * provided above.
+             */
+            fprintf(stderr, "couldn't calculate URB layout!\n");
+            exit(1);
+         }
 
-	 if (INTEL_DEBUG & (DEBUG_URB|DEBUG_PERF))
-	    fprintf(stderr, "URB CONSTRAINED\n");
+         if (INTEL_DEBUG & (DEBUG_URB|DEBUG_PERF))
+            fprintf(stderr, "URB CONSTRAINED\n");
       }
 
 done:
       if (INTEL_DEBUG & DEBUG_URB)
-	 fprintf(stderr,
+         fprintf(stderr,
                  "URB fence: %d ..VS.. %d ..GS.. %d ..CLP.. %d ..SF.. %d ..CS.. %d\n",
                  brw->urb.vs_start,
                  brw->urb.gs_start,

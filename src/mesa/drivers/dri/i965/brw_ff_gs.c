@@ -82,18 +82,18 @@ brw_codegen_ff_gs_prog(struct brw_context *brw,
       case _3DPRIM_POINTLIST:
          num_verts = 1;
          check_edge_flag = false;
-	 break;
+         break;
       case _3DPRIM_LINELIST:
       case _3DPRIM_LINESTRIP:
       case _3DPRIM_LINELOOP:
          num_verts = 2;
          check_edge_flag = false;
-	 break;
+         break;
       case _3DPRIM_TRILIST:
       case _3DPRIM_TRIFAN:
       case _3DPRIM_TRISTRIP:
       case _3DPRIM_RECTLIST:
-	 num_verts = 3;
+         num_verts = 3;
          check_edge_flag = false;
          break;
       case _3DPRIM_QUADLIST:
@@ -103,7 +103,7 @@ brw_codegen_ff_gs_prog(struct brw_context *brw,
          check_edge_flag = true;
          break;
       default:
-	 unreachable("Unexpected primitive type in Gen6 SOL program.");
+         unreachable("Unexpected primitive type in Gen6 SOL program.");
       }
       gen6_sol_program(&c, key, num_verts, check_edge_flag);
    } else {
@@ -113,17 +113,17 @@ brw_codegen_ff_gs_prog(struct brw_context *brw,
        */
       switch (key->primitive) {
       case _3DPRIM_QUADLIST:
-	 brw_ff_gs_quads( &c, key );
-	 break;
+         brw_ff_gs_quads( &c, key );
+         break;
       case _3DPRIM_QUADSTRIP:
-	 brw_ff_gs_quad_strip( &c, key );
-	 break;
+         brw_ff_gs_quad_strip( &c, key );
+         break;
       case _3DPRIM_LINELOOP:
-	 brw_ff_gs_lines( &c );
-	 break;
+         brw_ff_gs_lines( &c );
+         break;
       default:
-	 ralloc_free(mem_ctx);
-	 return;
+         ralloc_free(mem_ctx);
+         return;
       }
    }
 
@@ -141,10 +141,10 @@ brw_codegen_ff_gs_prog(struct brw_context *brw,
     }
 
    brw_upload_cache(&brw->cache, BRW_CACHE_FF_GS_PROG,
-		    &c.key, sizeof(c.key),
-		    program, program_size,
-		    &c.prog_data, sizeof(c.prog_data),
-		    &brw->ff_gs.prog_offset, &brw->ff_gs.prog_data);
+                    &c.key, sizeof(c.key),
+                    program, program_size,
+                    &c.prog_data, sizeof(c.prog_data),
+                    &brw->ff_gs.prog_offset, &brw->ff_gs.prog_data);
    ralloc_free(mem_ctx);
 }
 

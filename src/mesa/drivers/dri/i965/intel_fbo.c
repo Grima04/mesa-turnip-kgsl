@@ -269,10 +269,10 @@ brw_renderbuffer_format(struct gl_context * ctx, GLenum internalFormat)
    case GL_STENCIL_INDEX16_EXT:
       /* These aren't actual texture formats, so force them here. */
       if (brw->has_separate_stencil) {
-	 return MESA_FORMAT_S_UINT8;
+         return MESA_FORMAT_S_UINT8;
       } else {
-	 assert(!devinfo->must_use_separate_stencil);
-	 return MESA_FORMAT_Z24_UNORM_S8_UINT;
+         assert(!devinfo->must_use_separate_stencil);
+         return MESA_FORMAT_Z24_UNORM_S8_UINT;
       }
    }
 }
@@ -571,7 +571,7 @@ brw_renderbuffer_set_draw_offset(struct brw_renderbuffer *irb)
 
    /* compute offset of the particular 2D image within the texture region */
    brw_miptree_get_image_offset(irb->mt, irb->mt_level, irb->mt_layer,
-				&dst_x, &dst_y);
+                                &dst_x, &dst_y);
 
    irb->draw_x = dst_x;
    irb->draw_y = dst_y;
@@ -657,14 +657,14 @@ brw_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
 
    DBG("%s() on fb %p (%s)\n", __func__,
        fb, (fb == ctx->DrawBuffer ? "drawbuffer" :
-	    (fb == ctx->ReadBuffer ? "readbuffer" : "other buffer")));
+            (fb == ctx->ReadBuffer ? "readbuffer" : "other buffer")));
 
    if (depthRb)
       depth_mt = depthRb->mt;
    if (stencilRb) {
       stencil_mt = stencilRb->mt;
       if (stencil_mt->stencil_mt)
-	 stencil_mt = stencil_mt->stencil_mt;
+         stencil_mt = stencil_mt->stencil_mt;
    }
 
    if (depth_mt && stencil_mt) {
@@ -686,52 +686,52 @@ brw_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
           * the depth & stencil attachments to match in various more retrictive
           * ways. (width, height, depth, LOD and layer)
           */
-	 if (d_width != s_width ||
+         if (d_width != s_width ||
              d_height != s_height ||
              d_depth != s_depth ||
              depthRb->mt_level != stencilRb->mt_level ||
-	     depthRb->mt_layer != stencilRb->mt_layer) {
-	    fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+             depthRb->mt_layer != stencilRb->mt_layer) {
+            fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                            "FBO incomplete: depth and stencil must match in"
                            "width, height, depth, LOD and layer\n");
-	 }
+         }
       }
       if (depth_mt == stencil_mt) {
-	 /* For true packed depth/stencil (not faked on prefers-separate-stencil
-	  * hardware) we need to be sure they're the same level/layer, since
-	  * we'll be emitting a single packet describing the packed setup.
-	  */
-	 if (depthRb->mt_level != stencilRb->mt_level ||
-	     depthRb->mt_layer != stencilRb->mt_layer) {
-	    fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+         /* For true packed depth/stencil (not faked on prefers-separate-stencil
+          * hardware) we need to be sure they're the same level/layer, since
+          * we'll be emitting a single packet describing the packed setup.
+          */
+         if (depthRb->mt_level != stencilRb->mt_level ||
+             depthRb->mt_layer != stencilRb->mt_layer) {
+            fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                            "FBO incomplete: depth image level/layer %d/%d != "
                            "stencil image %d/%d\n",
                            depthRb->mt_level,
                            depthRb->mt_layer,
                            stencilRb->mt_level,
                            stencilRb->mt_layer);
-	 }
+         }
       } else {
-	 if (!brw->has_separate_stencil) {
-	    fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+         if (!brw->has_separate_stencil) {
+            fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                       "FBO incomplete: separate stencil unsupported\n");
-	 }
-	 if (stencil_mt->format != MESA_FORMAT_S_UINT8) {
-	    fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+         }
+         if (stencil_mt->format != MESA_FORMAT_S_UINT8) {
+            fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                       "FBO incomplete: separate stencil is %s "
                       "instead of S8\n",
                       _mesa_get_format_name(stencil_mt->format));
-	 }
-	 if (devinfo->gen < 7 && !brw_renderbuffer_has_hiz(depthRb)) {
-	    /* Before Gen7, separate depth and stencil buffers can be used
-	     * only if HiZ is enabled. From the Sandybridge PRM, Volume 2,
-	     * Part 1, Bit 3DSTATE_DEPTH_BUFFER.SeparateStencilBufferEnable:
-	     *     [DevSNB]: This field must be set to the same value (enabled
-	     *     or disabled) as Hierarchical Depth Buffer Enable.
-	     */
-	    fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+         }
+         if (devinfo->gen < 7 && !brw_renderbuffer_has_hiz(depthRb)) {
+            /* Before Gen7, separate depth and stencil buffers can be used
+             * only if HiZ is enabled. From the Sandybridge PRM, Volume 2,
+             * Part 1, Bit 3DSTATE_DEPTH_BUFFER.SeparateStencilBufferEnable:
+             *     [DevSNB]: This field must be set to the same value (enabled
+             *     or disabled) as Hierarchical Depth Buffer Enable.
+             */
+            fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                           "FBO incomplete: separate stencil without HiZ\n");
-	 }
+         }
       }
    }
 
@@ -740,7 +740,7 @@ brw_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
       struct brw_renderbuffer *irb;
 
       if (fb->Attachment[i].Type == GL_NONE)
-	 continue;
+         continue;
 
       /* A supported attachment will have a Renderbuffer set either
        * from being a Renderbuffer or being a texture that got the
@@ -748,25 +748,25 @@ brw_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
        */
       rb = fb->Attachment[i].Renderbuffer;
       if (rb == NULL) {
-	 fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+         fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                        "FBO incomplete: attachment without "
                        "renderbuffer\n");
-	 continue;
+         continue;
       }
 
       if (fb->Attachment[i].Type == GL_TEXTURE) {
-	 if (rb->TexImage->Border) {
-	    fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+         if (rb->TexImage->Border) {
+            fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                       "FBO incomplete: texture with border\n");
-	    continue;
-	 }
+            continue;
+         }
       }
 
       irb = brw_renderbuffer(rb);
       if (irb == NULL) {
-	 fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+         fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                    "FBO incomplete: software rendering renderbuffer\n");
-	 continue;
+         continue;
       }
 
      if (rb->Format == MESA_FORMAT_R_SRGB8) {
@@ -777,7 +777,7 @@ brw_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
      }
 
       if (!brw_render_target_supported(brw, rb)) {
-	 fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
+         fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                    "FBO incomplete: Unsupported HW "
                    "texture/renderbuffer format attached: %s\n",
                    _mesa_get_format_name(brw_rb_format(irb)));

@@ -634,9 +634,9 @@ brw_emit_immediate_color_expand_blit(struct brw_context *brw,
 
    if (dst_tiling != ISL_TILING_LINEAR) {
       if (dst_offset & 4095)
-	 return false;
+         return false;
       if (dst_tiling == ISL_TILING_Y0)
-	 return false;
+         return false;
    }
 
    assert((unsigned) logic_op <= 0x0f);

@@ -240,8 +240,8 @@ brw_upload_pull_constants(struct brw_context *brw,
 
    if (!prog_data->nr_pull_params) {
       if (stage_state->surf_offset[surf_index]) {
-	 stage_state->surf_offset[surf_index] = 0;
-	 brw->ctx.NewDriverState |= brw_new_constbuf;
+         stage_state->surf_offset[surf_index] = 0;
+         brw->ctx.NewDriverState |= brw_new_constbuf;
       }
       return;
    }
@@ -266,8 +266,8 @@ brw_upload_pull_constants(struct brw_context *brw,
 
    if (0) {
       for (i = 0; i < ALIGN(prog_data->nr_pull_params, 4) / 4; i++) {
-	 const gl_constant_value *row = &constants[i * 4];
-	 fprintf(stderr, "const surface %3d: %4.3f %4.3f %4.3f %4.3f\n",
+         const gl_constant_value *row = &constants[i * 4];
+         fprintf(stderr, "const surface %3d: %4.3f %4.3f %4.3f %4.3f\n",
                  i, row[0].f, row[1].f, row[2].f, row[3].f);
       }
    }

@@ -5652,9 +5652,9 @@ genX(init_atoms)(struct brw_context *brw)
       &genX(cc_vp),
 
       &gen6_urb,
-      &genX(blend_state),		/* must do before cc unit */
-      &genX(color_calc_state),	/* must do before cc unit */
-      &genX(depth_stencil_state),	/* must do before cc unit */
+      &genX(blend_state),         /* must do before cc unit */
+      &genX(color_calc_state),    /* must do before cc unit */
+      &genX(depth_stencil_state), /* must do before cc unit */
 
       &genX(vs_push_constants), /* Before vs_state */
       &genX(gs_push_constants), /* Before gs_state */
@@ -5722,10 +5722,10 @@ genX(init_atoms)(struct brw_context *brw)
 #if GEN_IS_HASWELL
       &genX(cc_and_blend_state),
 #else
-      &genX(blend_state),		/* must do before cc unit */
-      &genX(color_calc_state),	/* must do before cc unit */
+      &genX(blend_state),         /* must do before cc unit */
+      &genX(color_calc_state),    /* must do before cc unit */
 #endif
-      &genX(depth_stencil_state),	/* must do before cc unit */
+      &genX(depth_stencil_state), /* must do before cc unit */
 
       &brw_vs_image_surfaces, /* Before vs push/pull constants and binding table */
       &brw_tcs_image_surfaces, /* Before tcs push/pull constants and binding table */

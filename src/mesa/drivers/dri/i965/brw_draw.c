@@ -536,10 +536,10 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
    /* Resolve depth buffer and render cache of each enabled texture. */
    for (int i = 0; i <= maxEnabledUnit; i++) {
       if (!ctx->Texture.Unit[i]._Current)
-	 continue;
+         continue;
       tex_obj = brw_texture_object(ctx->Texture.Unit[i]._Current);
       if (!tex_obj || !tex_obj->mt)
-	 continue;
+         continue;
 
       struct gl_sampler_object *sampler = _mesa_get_samplerobj(ctx, i);
       enum isl_format view_format =

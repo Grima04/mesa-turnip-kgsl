@@ -1012,12 +1012,12 @@ struct brw_context
    /* BRW_NEW_URB_ALLOCATIONS:
     */
    struct {
-      GLuint vsize;		/* vertex size plus header in urb registers */
-      GLuint gsize;	        /* GS output size in urb registers */
-      GLuint hsize;             /* Tessellation control output size in urb registers */
-      GLuint dsize;             /* Tessellation evaluation output size in urb registers */
-      GLuint csize;		/* constant buffer size in urb registers */
-      GLuint sfsize;		/* setup data size in urb registers */
+      GLuint vsize;  /* vertex size plus header in urb registers */
+      GLuint gsize;  /* GS output size in urb registers */
+      GLuint hsize;  /* Tessellation control output size in urb registers */
+      GLuint dsize;  /* Tessellation evaluation output size in urb registers */
+      GLuint csize;  /* constant buffer size in urb registers */
+      GLuint sfsize; /* setup data size in urb registers */
 
       bool constrained;
 
@@ -1366,7 +1366,7 @@ void brw_validate_textures( struct brw_context *brw );
 void brw_init_frag_prog_functions(struct dd_function_table *functions);
 
 void brw_get_scratch_bo(struct brw_context *brw,
-			struct brw_bo **scratch_bo, int size);
+                        struct brw_bo **scratch_bo, int size);
 void brw_alloc_stage_scratch(struct brw_context *brw,
                              struct brw_stage_state *stage_state,
                              unsigned per_thread_size);
@@ -1452,7 +1452,7 @@ brw_delete_transform_feedback(struct gl_context *ctx,
                               struct gl_transform_feedback_object *obj);
 void
 brw_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
-			     struct gl_transform_feedback_object *obj);
+                             struct gl_transform_feedback_object *obj);
 void
 brw_end_transform_feedback(struct gl_context *ctx,
                            struct gl_transform_feedback_object *obj);
@@ -1476,7 +1476,7 @@ gen7_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
                               struct gl_transform_feedback_object *obj);
 void
 gen7_end_transform_feedback(struct gl_context *ctx,
-			    struct gl_transform_feedback_object *obj);
+                            struct gl_transform_feedback_object *obj);
 void
 gen7_pause_transform_feedback(struct gl_context *ctx,
                               struct gl_transform_feedback_object *obj);
