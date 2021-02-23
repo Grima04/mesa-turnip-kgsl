@@ -222,22 +222,23 @@ ac_rgp_file_write_elf_text(FILE *output, uint32_t *elf_size_calc,
    struct rgp_shader_data *rgp_shader_data = NULL;
    struct rgp_shader_data *prev_rgp_shader_data = NULL;
    uint32_t symbol_offset = 0;
-   uint32_t code_offset;
-   uint32_t gap_between_code;
    uint32_t mask = record->shader_stages_mask;
-   uint32_t align;
+   static bool warn_once = true;
 
    while(get_lowest_shader(&mask, record, &rgp_shader_data)) {
       if (prev_rgp_shader_data) {
-         code_offset = rgp_shader_data->base_address -
-                       prev_rgp_shader_data->base_address;
-         gap_between_code = code_offset - prev_rgp_shader_data->code_size;
+         uint32_t code_offset = rgp_shader_data->base_address -
+                                prev_rgp_shader_data->base_address;
+         uint32_t gap_between_code = code_offset -
+                                     prev_rgp_shader_data->code_size;
          symbol_offset += code_offset;
-         if (gap_between_code > 0x1000) {
-            fprintf(stderr, "Error: shader code too far from previous %x\n",
-                    gap_between_code);
-            return;
+         if (gap_between_code > 0x10000 && warn_once) {
+            fprintf(stderr, "Warning: shader code far from previous "
+                            "(%d bytes apart). The rgp capture file "
+                            "might be very large.\n", gap_between_code);
+            warn_once = false;
          }
+
          fseek(output, gap_between_code, SEEK_CUR);
          *elf_size_calc += gap_between_code;
       }
@@ -249,7 +250,7 @@ ac_rgp_file_write_elf_text(FILE *output, uint32_t *elf_size_calc,
    }
 
    symbol_offset += rgp_shader_data->code_size;
-   align = ALIGN(symbol_offset, 256) - symbol_offset;
+   uint32_t align = ALIGN(symbol_offset, 256) - symbol_offset;
    fseek(output, align, SEEK_CUR);
    *elf_size_calc += align;
    *text_size = symbol_offset + align;
