@@ -882,13 +882,13 @@ blorp_get_client_bo(struct brw_context *brw,
          brw_bo_alloc(brw->bufmgr, "tmp_tex_subimage_src", size,
                       BRW_MEMZONE_OTHER);
       if (bo == NULL) {
-         perf_debug("intel_texsubimage: temp bo creation failed: size = %u\n",
+         perf_debug("%s: temp bo creation failed: size = %u\n", __func__,
                     size);
          return NULL;
       }
 
       if (brw_bo_subdata(bo, 0, size, pixels + first_pixel)) {
-         perf_debug("intel_texsubimage: temp bo upload failed\n");
+         perf_debug("%s: temp bo upload failed\n", __func__);
          brw_bo_unreference(bo);
          return NULL;
       }
@@ -908,7 +908,7 @@ blorp_get_client_format(struct brw_context *brw,
       return MESA_FORMAT_NONE;
 
    if (packing->SwapBytes || packing->LsbFirst || packing->Invert) {
-      perf_debug("intel_texsubimage_blorp: unsupported gl_pixelstore_attrib\n");
+      perf_debug("%s: unsupported gl_pixelstore_attrib\n", __func__);
       return MESA_FORMAT_NONE;
    }
 
@@ -925,7 +925,7 @@ blorp_get_client_format(struct brw_context *brw,
        format != GL_BGR_INTEGER &&
        format != GL_RGBA_INTEGER &&
        format != GL_BGRA_INTEGER) {
-      perf_debug("intel_texsubimage_blorp: %s not supported",
+      perf_debug("%s: %s not supported", __func__,
                  _mesa_enum_to_string(format));
       return MESA_FORMAT_NONE;
    }
@@ -949,7 +949,7 @@ brw_blorp_upload_miptree(struct brw_context *brw,
       return false;
 
    if (!brw->mesa_format_supports_render[dst_format]) {
-      perf_debug("intel_texsubimage: can't use %s as render target\n",
+      perf_debug("%s: can't use %s as render target\n", __func__,
                  _mesa_get_format_name(dst_format));
       return false;
    }
@@ -994,7 +994,7 @@ brw_blorp_upload_miptree(struct brw_context *brw,
                                    ISL_TILING_LINEAR, 0);
 
       if (!src_mt) {
-         perf_debug("intel_texsubimage: miptree creation for src failed\n");
+         perf_debug("%s: miptree creation for src failed\n", __func__);
          goto err;
       }
 
@@ -1042,7 +1042,7 @@ brw_blorp_download_miptree(struct brw_context *brw,
       return false;
 
    if (!brw->mesa_format_supports_render[dst_format]) {
-      perf_debug("intel_texsubimage: can't use %s as render target\n",
+      perf_debug("%s: can't use %s as render target\n", __func__,
                  _mesa_get_format_name(dst_format));
       return false;
    }
@@ -1109,7 +1109,7 @@ brw_blorp_download_miptree(struct brw_context *brw,
                                    ISL_TILING_LINEAR, 0);
 
       if (!dst_mt) {
-         perf_debug("intel_texsubimage: miptree creation for src failed\n");
+         perf_debug("%s: miptree creation for src failed\n", __func__);
          goto err;
       }
 
