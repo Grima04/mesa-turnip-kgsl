@@ -510,21 +510,24 @@ void st_init_limits(struct pipe_screen *screen,
       c->NumProgramBinaryFormats = 1;
 
    c->MaxAtomicBufferBindings =
-      c->Program[MESA_SHADER_FRAGMENT].MaxAtomicBuffers;
-   c->MaxAtomicBufferSize =
-      c->Program[MESA_SHADER_FRAGMENT].MaxAtomicCounters * ATOMIC_COUNTER_SIZE;
+      MAX2(c->Program[MESA_SHADER_FRAGMENT].MaxAtomicBuffers,
+           c->Program[MESA_SHADER_COMPUTE].MaxAtomicBuffers);
+   c->MaxAtomicBufferSize = ATOMIC_COUNTER_SIZE *
+      MAX2(c->Program[MESA_SHADER_FRAGMENT].MaxAtomicCounters,
+           c->Program[MESA_SHADER_COMPUTE].MaxAtomicCounters);
 
    c->MaxCombinedAtomicBuffers =
       MIN2(screen->get_param(screen,
                              PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTER_BUFFERS),
            MAX_COMBINED_ATOMIC_BUFFERS);
    if (!c->MaxCombinedAtomicBuffers) {
-      c->MaxCombinedAtomicBuffers =
+      c->MaxCombinedAtomicBuffers = MAX2(
          c->Program[MESA_SHADER_VERTEX].MaxAtomicBuffers +
          c->Program[MESA_SHADER_TESS_CTRL].MaxAtomicBuffers +
          c->Program[MESA_SHADER_TESS_EVAL].MaxAtomicBuffers +
          c->Program[MESA_SHADER_GEOMETRY].MaxAtomicBuffers +
-         c->Program[MESA_SHADER_FRAGMENT].MaxAtomicBuffers;
+         c->Program[MESA_SHADER_FRAGMENT].MaxAtomicBuffers,
+         c->Program[MESA_SHADER_COMPUTE].MaxAtomicBuffers);
       assert(c->MaxCombinedAtomicBuffers <= MAX_COMBINED_ATOMIC_BUFFERS);
    }
 
@@ -546,12 +549,13 @@ void st_init_limits(struct pipe_screen *screen,
          MIN2(screen->get_param(screen, PIPE_CAP_MAX_COMBINED_SHADER_BUFFERS),
               MAX_COMBINED_SHADER_STORAGE_BUFFERS);
       if (!c->MaxCombinedShaderStorageBlocks) {
-         c->MaxCombinedShaderStorageBlocks =
+         c->MaxCombinedShaderStorageBlocks = MAX2(
             c->Program[MESA_SHADER_VERTEX].MaxShaderStorageBlocks +
             c->Program[MESA_SHADER_TESS_CTRL].MaxShaderStorageBlocks +
             c->Program[MESA_SHADER_TESS_EVAL].MaxShaderStorageBlocks +
             c->Program[MESA_SHADER_GEOMETRY].MaxShaderStorageBlocks +
-            c->Program[MESA_SHADER_FRAGMENT].MaxShaderStorageBlocks;
+            c->Program[MESA_SHADER_FRAGMENT].MaxShaderStorageBlocks,
+            c->Program[MESA_SHADER_COMPUTE].MaxShaderStorageBlocks);
          assert(c->MaxCombinedShaderStorageBlocks < MAX_COMBINED_SHADER_STORAGE_BUFFERS);
       }
       c->MaxShaderStorageBufferBindings = c->MaxCombinedShaderStorageBlocks;
