@@ -402,13 +402,13 @@ check_psiz(struct nir_shader *s)
    return false;
 }
 
-/* semi-copied from iris */
 static void
 update_so_info(struct zink_shader *sh,
                uint64_t outputs_written, bool have_psiz)
 {
    uint8_t reverse_map[64] = {};
    unsigned slot = 0;
+   /* semi-copied from iris */
    while (outputs_written) {
       int bit = u_bit_scan64(&outputs_written);
       /* PSIZ from nir_lower_point_size_mov breaks stream output, so always skip it */
@@ -417,8 +417,36 @@ update_so_info(struct zink_shader *sh,
       reverse_map[slot++] = bit;
    }
 
+   nir_foreach_shader_out_variable(var, sh->nir)
+      var->data.explicit_xfb_buffer = 0;
+
+   bool inlined[64] = {0};
    for (unsigned i = 0; i < sh->streamout.so_info.num_outputs; i++) {
       struct pipe_stream_output *output = &sh->streamout.so_info.output[i];
+      unsigned slot = reverse_map[output->register_index];
+      if ((sh->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(sh->nir->info.gs.active_stream_mask) == 1) &&
+          !output->start_component) {
+         nir_variable *var = NULL;
+         while (!var)
+            var = nir_find_variable_with_location(sh->nir, nir_var_shader_out, slot--);
+         slot++;
+         if (inlined[slot]) {
+            sh->streamout.skip[i] = true;
+            continue;
+         }
+         assert(var && var->data.location == slot);
+         /* if this is the entire variable, try to blast it out during the initial declaration */
+         if (glsl_get_components(var->type) == output->num_components) {
+            var->data.explicit_xfb_buffer = 1;
+            var->data.xfb.buffer = output->output_buffer;
+            var->data.xfb.stride = sh->streamout.so_info.stride[output->output_buffer] * 4;
+            var->data.offset = output->dst_offset * 4;
+            var->data.stream = output->stream;
+            sh->streamout.skip[i] = true;
+            inlined[slot] = true;
+            continue;
+         }
+      }
       /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
       sh->streamout.so_info_slots[i] = reverse_map[output->register_index];
    }

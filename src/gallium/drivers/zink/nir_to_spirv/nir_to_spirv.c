@@ -621,6 +621,14 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
    if (var->data.patch)
       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationPatch);
 
+   if (var->data.explicit_xfb_buffer) {
+      spirv_builder_emit_offset(&ctx->builder, var_id, var->data.offset);
+      spirv_builder_emit_xfb_buffer(&ctx->builder, var_id, var->data.xfb.buffer);
+      spirv_builder_emit_xfb_stride(&ctx->builder, var_id, var->data.xfb.stride);
+      if (var->data.stream)
+         spirv_builder_emit_stream(&ctx->builder, var_id, var->data.stream);
+   }
+
    _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
 
    assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
@@ -1252,6 +1260,8 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
 {
    unsigned output = 0;
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
+      if (so_info->skip[i])
+         continue;
       struct pipe_stream_output so_output = so_info->so_info.output[i];
       unsigned slot = so_info->so_info_slots[i] << 2 | so_output.start_component;
       SpvId out_type = get_output_type(ctx, slot, so_output.num_components);
@@ -1299,6 +1309,8 @@ emit_so_outputs(struct ntv_context *ctx,
                 const struct zink_so_info *so_info)
 {
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
+      if (so_info->skip[i])
+         continue;
       uint32_t components[NIR_MAX_VEC_COMPONENTS];
       unsigned slot = so_info->so_info_slots[i];
       struct pipe_stream_output so_output = so_info->so_info.output[i];

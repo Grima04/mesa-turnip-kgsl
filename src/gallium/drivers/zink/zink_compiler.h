@@ -51,6 +51,7 @@ struct tgsi_token;
 struct zink_so_info {
    struct pipe_stream_output_info so_info;
    unsigned so_info_slots[PIPE_MAX_SO_OUTPUTS];
+   bool skip[PIPE_MAX_SO_OUTPUTS];
    bool have_xfb;
 };
 
