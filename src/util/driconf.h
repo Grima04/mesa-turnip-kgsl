@@ -221,6 +221,9 @@
 #define DRI_CONF_FORCE_GL_NAMES_REUSE(def) \
    DRI_CONF_OPT_B(force_gl_names_reuse, def, "Force GL names reuse")
 
+#define DRI_CONF_TRANSCODE_ETC(def) \
+   DRI_CONF_OPT_B(transcode_etc, def, "Transcode ETC formats to DXTC if unsupported")
+
 #define DRI_CONF_GLX_EXTENSION_OVERRIDE(def) \
    DRI_CONF_OPT_S(glx_extension_override, def, \
                   "Allow enabling/disabling a list of GLX extensions")

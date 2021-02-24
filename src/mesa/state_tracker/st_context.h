@@ -142,6 +142,7 @@ struct st_context
    boolean has_time_elapsed;
    boolean has_etc1;
    boolean has_etc2;
+   boolean transcode_etc;
    boolean has_astc_2d_ldr;
    boolean has_astc_5x5_ldr;
    boolean prefer_blit_based_texture_transfer;

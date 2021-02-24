@@ -103,6 +103,8 @@ dri_fill_st_options(struct dri_screen *screen)
       driQueryOptionb(optionCache, "ignore_map_unsynchronized");
    options->force_gl_names_reuse =
       driQueryOptionb(optionCache, "force_gl_names_reuse");
+   options->transcode_etc =
+      driQueryOptionb(optionCache, "transcode_etc");
 
    char *vendor_str = driQueryOptionstr(optionCache, "force_gl_vendor");
    /* not an empty string */

@@ -382,28 +382,72 @@ st_UnmapTextureImage(struct gl_context *ctx,
       assert(z == transfer->box.z);
 
       if (transfer->usage & PIPE_MAP_WRITE) {
-         if (texImage->TexFormat == MESA_FORMAT_ETC1_RGB8) {
-            _mesa_etc1_unpack_rgba8888(itransfer->map, transfer->stride,
-                                       itransfer->temp_data,
-                                       itransfer->temp_stride,
+         if (util_format_is_compressed(stImage->pt->format)) {
+            /* Transcode into a different compressed format. */
+            unsigned size =
+               _mesa_format_image_size(PIPE_FORMAT_R8G8B8A8_UNORM,
                                        transfer->box.width,
-                                       transfer->box.height);
-         } else if (_mesa_is_format_etc2(texImage->TexFormat)) {
-            bool bgra = stImage->pt->format == PIPE_FORMAT_B8G8R8A8_SRGB;
-            _mesa_unpack_etc2_format(itransfer->map, transfer->stride,
-                                     itransfer->temp_data,
-                                     itransfer->temp_stride,
-                                     transfer->box.width, transfer->box.height,
-                                     texImage->TexFormat,
-                                     bgra);
-         } else if (_mesa_is_format_astc_2d(texImage->TexFormat)) {
-            _mesa_unpack_astc_2d_ldr(itransfer->map, transfer->stride,
-                                     itransfer->temp_data,
-                                     itransfer->temp_stride,
-                                     transfer->box.width, transfer->box.height,
-                                     texImage->TexFormat);
+                                       transfer->box.height, 1);
+            void *tmp = malloc(size);
+
+            /* Decompress to tmp. */
+            if (texImage->TexFormat == MESA_FORMAT_ETC1_RGB8) {
+               _mesa_etc1_unpack_rgba8888(tmp, transfer->box.width * 4,
+                                          itransfer->temp_data,
+                                          itransfer->temp_stride,
+                                          transfer->box.width,
+                                          transfer->box.height);
+            } else if (_mesa_is_format_etc2(texImage->TexFormat)) {
+               bool bgra = stImage->pt->format == PIPE_FORMAT_B8G8R8A8_SRGB;
+
+               _mesa_unpack_etc2_format(tmp, transfer->box.width * 4,
+                                        itransfer->temp_data,
+                                        itransfer->temp_stride,
+                                        transfer->box.width,
+                                        transfer->box.height,
+                                        texImage->TexFormat,
+                                        bgra);
+            } else {
+               /* TODO: We could transcode ASTC too. */
+               unreachable("unexpected format for a compressed format fallback");
+            }
+
+            /* Compress it to the target format. */
+            struct gl_pixelstore_attrib pack = {0};
+            pack.Alignment = 4;
+
+            _mesa_texstore(ctx, 2, GL_RGBA, stImage->pt->format,
+                           transfer->stride, &itransfer->map,
+                           transfer->box.width,
+                           transfer->box.height, 1, GL_RGBA,
+                           GL_UNSIGNED_BYTE, tmp, &pack);
+            free(tmp);
          } else {
-            unreachable("unexpected format for a compressed format fallback");
+            /* Decompress into an uncompressed format. */
+            if (texImage->TexFormat == MESA_FORMAT_ETC1_RGB8) {
+               _mesa_etc1_unpack_rgba8888(itransfer->map, transfer->stride,
+                                          itransfer->temp_data,
+                                          itransfer->temp_stride,
+                                          transfer->box.width,
+                                          transfer->box.height);
+            } else if (_mesa_is_format_etc2(texImage->TexFormat)) {
+               bool bgra = stImage->pt->format == PIPE_FORMAT_B8G8R8A8_SRGB;
+
+               _mesa_unpack_etc2_format(itransfer->map, transfer->stride,
+                                        itransfer->temp_data,
+                                        itransfer->temp_stride,
+                                        transfer->box.width, transfer->box.height,
+                                        texImage->TexFormat,
+                                        bgra);
+            } else if (_mesa_is_format_astc_2d(texImage->TexFormat)) {
+               _mesa_unpack_astc_2d_ldr(itransfer->map, transfer->stride,
+                                        itransfer->temp_data,
+                                        itransfer->temp_stride,
+                                        transfer->box.width, transfer->box.height,
+                                        texImage->TexFormat);
+            } else {
+               unreachable("unexpected format for a compressed format fallback");
+            }
          }
       }
 
