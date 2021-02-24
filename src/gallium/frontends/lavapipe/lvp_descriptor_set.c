@@ -59,6 +59,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    struct lvp_sampler **samplers =
       (struct lvp_sampler **)&set_layout->binding[max_binding + 1];
 
+   set_layout->alloc = pAllocator;
    set_layout->binding_count = max_binding + 1;
    set_layout->shader_stages = 0;
    set_layout->size = 0;
@@ -163,7 +164,7 @@ lvp_descriptor_set_layout_destroy(struct lvp_device *device,
 {
    assert(layout->ref_cnt == 0);
    vk_object_base_finish(&layout->base);
-   vk_free(&device->vk.alloc, layout);
+   vk_free2(&device->vk.alloc, layout->alloc, layout);
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_DestroyDescriptorSetLayout(
