@@ -1574,6 +1574,7 @@ endif
 
 dep_llvm = null_dep
 with_llvm = false
+draw_with_llvm = get_option('draw-use-llvm')
 if _llvm != 'disabled'
   dep_llvm = dependency(
     'llvm',
@@ -1595,6 +1596,12 @@ if with_llvm
   pre_args += '-DLLVM_AVAILABLE'
   pre_args += '-DMESA_LLVM_VERSION_STRING="@0@"'.format(dep_llvm.version())
   pre_args += '-DLLVM_IS_SHARED=@0@'.format(_shared_llvm.to_int())
+
+  if draw_with_llvm
+    pre_args += '-DDRAW_LLVM_AVAILABLE'
+  elif with_gallium_swr
+    error('SWR requires LLVM draw support.')
+  endif
 
   # LLVM can be built without rtti, turning off rtti changes the ABI of C++
   # programs, so we need to build all C++ code in mesa without rtti as well to
@@ -1627,6 +1634,8 @@ elif with_gallium_opencl
   error('The OpenCL "Clover" state tracker requires LLVM, but LLVM is disabled.')
 elif with_microsoft_clc
   error('The Microsoft CLC compiler requires LLVM, but LLVM is disabled.')
+else
+  draw_with_llvm = false
 endif
 
 with_opencl_spirv = (_opencl != 'disabled' and get_option('opencl-spirv')) or with_microsoft_clc

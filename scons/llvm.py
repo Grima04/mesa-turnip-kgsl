@@ -341,6 +341,7 @@ def generate(env):
 
     # Define LLVM_AVAILABLE macro to guard code blocks, and MESA_LLVM_VERSION_STRING
     env.Prepend(CPPDEFINES = [('LLVM_AVAILABLE', 1)])
+    env.Prepend(CPPDEFINES = [('DRAW_LLVM_AVAILABLE', 1)])
     env.Prepend(CPPDEFINES = [('MESA_LLVM_VERSION_STRING=\\"%s\\"' % llvm_version)])
 
 def exists(env):

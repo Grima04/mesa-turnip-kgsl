@@ -322,6 +322,12 @@ option(
   description : 'Whether to link LLVM shared or statically.'
 )
 option(
+  'draw-use-llvm',
+  type : 'boolean',
+  value : 'true',
+  description : 'Whether to use LLVM for the Gallium draw module, if LLVM is included.'
+)
+option(
   'valgrind',
   type : 'combo',
   value : 'auto',

@@ -200,7 +200,7 @@ boolean draw_pt_init( struct draw_context *draw )
    if (!draw->pt.middle.general)
       return FALSE;
 
-#ifdef LLVM_AVAILABLE
+#ifdef DRAW_LLVM_AVAILABLE
    if (draw->llvm)
       draw->pt.middle.llvm = draw_pt_fetch_pipeline_or_emit_llvm( draw );
 #endif
@@ -546,7 +546,7 @@ draw_vbo(struct draw_context *draw,
                                      draw->pt.vertex_element,
                                      draw->pt.nr_vertex_elements,
                                      info);
-#ifdef LLVM_AVAILABLE
+#ifdef DRAW_LLVM_AVAILABLE
    if (!draw->llvm)
 #endif
    {

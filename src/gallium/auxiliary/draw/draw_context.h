@@ -69,7 +69,7 @@ bool draw_has_llvm(void);
 
 struct draw_context *draw_create( struct pipe_context *pipe );
 
-#ifdef LLVM_AVAILABLE
+#ifdef DRAW_LLVM_AVAILABLE
 struct draw_context *draw_create_with_llvm_context(struct pipe_context *pipe,
                                                    void *context);
 #endif
