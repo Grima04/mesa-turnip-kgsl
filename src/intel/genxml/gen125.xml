@@ -6236,12 +6236,12 @@
   </instruction>
 
   <instruction name="MI_SET_PREDICATE" bias="1" length="1">
-    <field name="PREDICATE ENABLE" start="0" end="3" type="uint">
+    <field name="Predicate Enable" start="0" end="3" type="uint">
       <value name="NOOP Never" value="0"/>
-      <value name="NOOP on Result2 clear" value="1"/>
-      <value name="NOOP on Result2 set" value="2"/>
-      <value name="NOOP on Result clear" value="3"/>
-      <value name="NOOP on Result set" value="4"/>
+      <value name="NOOP On Result2 Clear" value="1"/>
+      <value name="NOOP On Result2 Set" value="2"/>
+      <value name="NOOP On Result Clear" value="3"/>
+      <value name="NOOP On Result Set" value="4"/>
       <value name="NOOP Always" value="15"/>
     </field>
     <field name="MI Command Opcode" start="23" end="28" type="uint" default="1"/>
