@@ -403,7 +403,7 @@ check_psiz(struct nir_shader *s)
 }
 
 static void
-update_so_info(struct zink_shader *zs,
+update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_info,
                uint64_t outputs_written, bool have_psiz)
 {
    uint8_t reverse_map[64] = {};
@@ -421,8 +421,8 @@ update_so_info(struct zink_shader *zs,
       var->data.explicit_xfb_buffer = 0;
 
    bool inlined[64] = {0};
-   for (unsigned i = 0; i < zs->streamout.so_info.num_outputs; i++) {
-      struct pipe_stream_output *output = &zs->streamout.so_info.output[i];
+   for (unsigned i = 0; i < so_info->num_outputs; i++) {
+      const struct pipe_stream_output *output = &so_info->output[i];
       unsigned slot = reverse_map[output->register_index];
       if ((zs->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->nir->info.gs.active_stream_mask) == 1) &&
           !output->start_component) {
@@ -439,7 +439,7 @@ update_so_info(struct zink_shader *zs,
          if (glsl_get_components(var->type) == output->num_components) {
             var->data.explicit_xfb_buffer = 1;
             var->data.xfb.buffer = output->output_buffer;
-            var->data.xfb.stride = zs->streamout.so_info.stride[output->output_buffer] * 4;
+            var->data.xfb.stride = so_info->stride[output->output_buffer] * 4;
             var->data.offset = output->dst_offset * 4;
             var->data.stream = output->stream;
             zs->streamout.skip[i] = true;
@@ -693,8 +693,9 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    ret->nir = nir;
    if (so_info) {
       memcpy(&ret->streamout.so_info, so_info, sizeof(struct pipe_stream_output_info));
-      update_so_info(ret, nir->info.outputs_written, have_psiz);
+      update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
    }
+
 
    return ret;
 }
