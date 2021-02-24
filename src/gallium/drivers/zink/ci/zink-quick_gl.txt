@@ -474,7 +474,6 @@ spec/!opengl 1.1/teximage-colors gl_rgb9_e5/exact upload-download of gl_rgb9_e5:
 spec/!opengl 1.1/teximage-colors gl_rgb/exact upload-download of gl_rgb: skip
 spec/!opengl 1.1/teximage-colors gl_rgba12/exact upload-download of gl_rgba12: skip
 spec/!opengl 1.1/teximage-colors gl_rgba/exact upload-download of gl_rgba: skip
-spec/!opengl 1.1/texsubimage-depth-formats: fail
 spec/!opengl 1.1/texwrap 1d bordercolor/gl_rgba8, border color only: fail
 spec/!opengl 1.1/texwrap 1d proj bordercolor/gl_rgba8, projected, border color only: fail
 spec/!opengl 1.1/texwrap 2d bordercolor/gl_rgba8, border color only: fail
@@ -731,11 +730,9 @@ spec/!opengl 2.0/vertex-program-two-side/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
 spec/!opengl 2.1/pbo/test_polygon_stip: fail
 spec/!opengl 2.1/polygon-stipple-fs: fail
-spec/!opengl 3.0/array-depth-roundtrip: fail
 spec/!opengl 3.0/clearbuffer-depth: fail
 spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
 spec/!opengl 3.0/clearbuffer-stencil: fail
-spec/!opengl 3.0/depth-cube-map: fail
 spec/!opengl 3.0/sampler-cube-shadow: fail
 spec/!opengl 3.1/primitive-restart-xfb flush: fail
 spec/!opengl 3.1/primitive-restart-xfb generated: fail
@@ -860,72 +857,24 @@ spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s=z24_s8: s
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f_s8: skip
 spec/arb_depth_buffer_float/fbo-clear-formats stencil/gl_depth32f_stencil8: fail
-spec/arb_depth_buffer_float/fbo-clear-formats/gl_depth32f_stencil8: fail
-spec/arb_depth_buffer_float/fbo-clear-formats/gl_depth_component32f: fail
 spec/arb_depth_buffer_float/fbo-depth-gl_depth32f_stencil8-blit: fail
 spec/arb_depth_buffer_float/fbo-depth-gl_depth32f_stencil8-copypixels: fail
 spec/arb_depth_buffer_float/fbo-depthstencil-gl_depth32f_stencil8-copypixels: fail
 spec/arb_depth_buffer_float/fbo-depthstencil-gl_depth32f_stencil8-drawpixels-24_8: fail
 spec/arb_depth_buffer_float/fbo-depthstencil-gl_depth32f_stencil8-drawpixels-32f_24_8_rev: fail
-spec/arb_depth_buffer_float/fbo-generatemipmap-formats/gl_depth_component32f: fail
-spec/arb_depth_buffer_float/fbo-generatemipmap-formats/gl_depth_component32f npot: fail
 spec/arb_depth_buffer_float/fbo-stencil-gl_depth32f_stencil8-blit: fail
 spec/arb_depth_buffer_float/fbo-stencil-gl_depth32f_stencil8-copypixels: fail
 spec/arb_depth_buffer_float/texwrap formats bordercolor-swizzled/gl_depth32f_stencil8, swizzled, border color only: fail
 spec/arb_depth_buffer_float/texwrap formats bordercolor-swizzled/gl_depth_component32f, swizzled, border color only: fail
 spec/arb_depth_buffer_float/texwrap formats bordercolor/gl_depth32f_stencil8, border color only: fail
 spec/arb_depth_buffer_float/texwrap formats bordercolor/gl_depth_component32f, border color only: fail
-spec/arb_depth_buffer_float/texwrap formats offset/gl_depth32f_stencil8: fail
-spec/arb_depth_buffer_float/texwrap formats offset/gl_depth32f_stencil8, npot: fail
-spec/arb_depth_buffer_float/texwrap formats offset/gl_depth32f_stencil8, swizzled: fail
-spec/arb_depth_buffer_float/texwrap formats offset/gl_depth_component32f: fail
-spec/arb_depth_buffer_float/texwrap formats offset/gl_depth_component32f, npot: fail
-spec/arb_depth_buffer_float/texwrap formats offset/gl_depth_component32f, swizzled: fail
-spec/arb_depth_buffer_float/texwrap formats/gl_depth32f_stencil8: fail
-spec/arb_depth_buffer_float/texwrap formats/gl_depth32f_stencil8, npot: fail
-spec/arb_depth_buffer_float/texwrap formats/gl_depth32f_stencil8, swizzled: fail
-spec/arb_depth_buffer_float/texwrap formats/gl_depth_component32f: fail
-spec/arb_depth_buffer_float/texwrap formats/gl_depth_component32f, npot: fail
-spec/arb_depth_buffer_float/texwrap formats/gl_depth_component32f, swizzled: fail
-spec/arb_depth_texture/depth-level-clamp: fail
 spec/arb_depth_texture/depth-tex-modes: fail
-spec/arb_depth_texture/fbo-clear-formats/gl_depth_component: fail
-spec/arb_depth_texture/fbo-clear-formats/gl_depth_component16: fail
-spec/arb_depth_texture/fbo-clear-formats/gl_depth_component24: fail
-spec/arb_depth_texture/fbo-clear-formats/gl_depth_component32: fail
-spec/arb_depth_texture/fbo-generatemipmap-formats/gl_depth_component: fail
-spec/arb_depth_texture/fbo-generatemipmap-formats/gl_depth_component npot: fail
-spec/arb_depth_texture/fbo-generatemipmap-formats/gl_depth_component16: fail
-spec/arb_depth_texture/fbo-generatemipmap-formats/gl_depth_component16 npot: fail
-spec/arb_depth_texture/fbo-generatemipmap-formats/gl_depth_component24: fail
-spec/arb_depth_texture/fbo-generatemipmap-formats/gl_depth_component24 npot: fail
-spec/arb_depth_texture/fbo-generatemipmap-formats/gl_depth_component32: fail
-spec/arb_depth_texture/fbo-generatemipmap-formats/gl_depth_component32 npot: fail
-spec/arb_depth_texture/texdepth: fail
 spec/arb_depth_texture/texwrap formats bordercolor-swizzled/gl_depth_component16, swizzled, border color only: fail
 spec/arb_depth_texture/texwrap formats bordercolor-swizzled/gl_depth_component24, swizzled, border color only: fail
 spec/arb_depth_texture/texwrap formats bordercolor-swizzled/gl_depth_component32, swizzled, border color only: fail
 spec/arb_depth_texture/texwrap formats bordercolor/gl_depth_component16, border color only: fail
 spec/arb_depth_texture/texwrap formats bordercolor/gl_depth_component24, border color only: fail
 spec/arb_depth_texture/texwrap formats bordercolor/gl_depth_component32, border color only: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component16: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component16, npot: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component16, swizzled: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component24: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component24, npot: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component24, swizzled: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component32: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component32, npot: fail
-spec/arb_depth_texture/texwrap formats offset/gl_depth_component32, swizzled: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component16: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component16, npot: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component16, swizzled: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component24: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component24, npot: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component24, swizzled: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component32: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component32, npot: fail
-spec/arb_depth_texture/texwrap formats/gl_depth_component32, swizzled: fail
 spec/arb_direct_state_access/compressedtextureimage gl_compressed_rgba_s3tc_dxt5_ext: skip
 spec/arb_direct_state_access/create-programpipelines/default compute shader program == 0: skip
 spec/arb_direct_state_access/create-programpipelines/default tcs == 0: skip
@@ -982,7 +931,6 @@ spec/arb_internalformat_query/minmax: skip
 spec/arb_internalformat_query/misc. api error checks: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-comp: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-frag: fail
-spec/arb_pixel_buffer_object/texsubimage-depth-formats pbo: fail
 spec/arb_point_parameters/arb_point_parameters-point-attenuation/aliased combinations: fail
 spec/arb_point_parameters/arb_point_parameters-point-attenuation/antialiased combinations: fail
 spec/arb_point_sprite/arb_point_sprite-checkerboard: fail
@@ -1602,8 +1550,6 @@ spec/arb_texture_rgb10_a2ui/texwrap formats bordercolor/gl_rgb10_a2ui, border co
 spec/arb_texture_stencil8/fbo-clear-formats/gl_stencil_index8 (fbo incomplete): skip
 spec/arb_texture_stencil8/texwrap formats bordercolor-swizzled/gl_stencil_index8, swizzled, border color only: fail
 spec/arb_texture_stencil8/texwrap formats bordercolor/gl_stencil_index8, border color only: fail
-spec/arb_texture_stencil8/texwrap formats offset/gl_stencil_index8, swizzled: fail
-spec/arb_texture_stencil8/texwrap formats/gl_stencil_index8, swizzled: fail
 spec/arb_texture_view/bug-layers-image: skip
 spec/arb_texture_view/rendering-formats/clear gl_r16 as gl_r16_snorm: fail
 spec/arb_texture_view/rendering-formats/clear gl_r16 as gl_r16f: fail
@@ -2336,7 +2282,6 @@ spec/ext_framebuffer_multisample/no-color 2 depth-computed separate: skip
 spec/ext_framebuffer_multisample/no-color 2 depth-computed single: fail
 spec/ext_framebuffer_multisample/no-color 2 stencil combined: fail
 spec/ext_framebuffer_multisample/no-color 2 stencil separate: skip
-spec/ext_framebuffer_multisample/no-color 2 stencil single: fail
 spec/ext_framebuffer_multisample/no-color 32 depth combined: skip
 spec/ext_framebuffer_multisample/no-color 32 depth separate: skip
 spec/ext_framebuffer_multisample/no-color 32 depth single: skip
@@ -2354,7 +2299,6 @@ spec/ext_framebuffer_multisample/no-color 4 depth-computed separate: skip
 spec/ext_framebuffer_multisample/no-color 4 depth-computed single: fail
 spec/ext_framebuffer_multisample/no-color 4 stencil combined: fail
 spec/ext_framebuffer_multisample/no-color 4 stencil separate: skip
-spec/ext_framebuffer_multisample/no-color 4 stencil single: fail
 spec/ext_framebuffer_multisample/no-color 6 depth combined: skip
 spec/ext_framebuffer_multisample/no-color 6 depth separate: skip
 spec/ext_framebuffer_multisample/no-color 6 depth single: skip
@@ -2422,6 +2366,9 @@ spec/ext_framebuffer_multisample/unaligned-blit 16 depth upsample: skip
 spec/ext_framebuffer_multisample/unaligned-blit 16 stencil downsample: skip
 spec/ext_framebuffer_multisample/unaligned-blit 16 stencil msaa: skip
 spec/ext_framebuffer_multisample/unaligned-blit 16 stencil upsample: skip
+spec/ext_framebuffer_multisample/unaligned-blit 2 stencil downsample: fail
+spec/ext_framebuffer_multisample/unaligned-blit 2 stencil msaa: fail
+spec/ext_framebuffer_multisample/unaligned-blit 2 stencil upsample: fail
 spec/ext_framebuffer_multisample/unaligned-blit 32 color downsample: skip
 spec/ext_framebuffer_multisample/unaligned-blit 32 color msaa: skip
 spec/ext_framebuffer_multisample/unaligned-blit 32 color upsample: skip
@@ -2431,6 +2378,9 @@ spec/ext_framebuffer_multisample/unaligned-blit 32 depth upsample: skip
 spec/ext_framebuffer_multisample/unaligned-blit 32 stencil downsample: skip
 spec/ext_framebuffer_multisample/unaligned-blit 32 stencil msaa: skip
 spec/ext_framebuffer_multisample/unaligned-blit 32 stencil upsample: skip
+spec/ext_framebuffer_multisample/unaligned-blit 4 stencil downsample: fail
+spec/ext_framebuffer_multisample/unaligned-blit 4 stencil msaa: fail
+spec/ext_framebuffer_multisample/unaligned-blit 4 stencil upsample: fail
 spec/ext_framebuffer_multisample/unaligned-blit 6 color downsample: skip
 spec/ext_framebuffer_multisample/unaligned-blit 6 color msaa: skip
 spec/ext_framebuffer_multisample/unaligned-blit 6 color upsample: skip
@@ -2481,8 +2431,6 @@ spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=6: skip
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=6 with gl_texture_2d_multisample_array: skip
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8: skip
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8 with gl_texture_2d_multisample_array: skip
-spec/ext_framebuffer_object/fbo-alphatest-nocolor: fail
-spec/ext_framebuffer_object/fbo-alphatest-nocolor-ff: fail
 spec/ext_framebuffer_object/fbo-blending-format-quirks: fail
 spec/ext_framebuffer_object/fbo-blending-formats/3: fail
 spec/ext_framebuffer_object/fbo-blending-formats/gl_intensity: fail
@@ -2501,7 +2449,6 @@ spec/ext_framebuffer_object/fbo-blending-formats/gl_rgb12: fail
 spec/ext_framebuffer_object/fbo-blending-formats/gl_rgb16: fail
 spec/ext_framebuffer_object/fbo-blending-formats/gl_rgb4: fail
 spec/ext_framebuffer_object/fbo-blending-formats/gl_rgb8: fail
-spec/ext_framebuffer_object/fbo-depthtex: fail
 spec/ext_gpu_shader4/bindfragdatalocation mixed-int-float-fbo: skip
 spec/ext_gpu_shader4/bindfragdatalocation mixed-int-float-fbo int_second: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: skip
@@ -2549,8 +2496,6 @@ spec/ext_packed_depth_stencil/depthstencil-render-miplevels 585 s=z24_s8_d=z24_s
 spec/ext_packed_depth_stencil/fbo-blit-d24s8: fail
 spec/ext_packed_depth_stencil/fbo-clear-formats stencil/gl_depth24_stencil8: fail
 spec/ext_packed_depth_stencil/fbo-clear-formats stencil/gl_depth_stencil: fail
-spec/ext_packed_depth_stencil/fbo-clear-formats/gl_depth24_stencil8: fail
-spec/ext_packed_depth_stencil/fbo-clear-formats/gl_depth_stencil: fail
 spec/ext_packed_depth_stencil/fbo-depth-gl_depth24_stencil8-blit: fail
 spec/ext_packed_depth_stencil/fbo-depth-gl_depth24_stencil8-copypixels: fail
 spec/ext_packed_depth_stencil/fbo-depthstencil-gl_depth24_stencil8-copypixels: fail
@@ -2561,12 +2506,6 @@ spec/ext_packed_depth_stencil/fbo-stencil-gl_depth24_stencil8-copypixels: fail
 spec/ext_packed_depth_stencil/readdrawpixels: fail
 spec/ext_packed_depth_stencil/texwrap formats bordercolor-swizzled/gl_depth24_stencil8, swizzled, border color only: fail
 spec/ext_packed_depth_stencil/texwrap formats bordercolor/gl_depth24_stencil8, border color only: fail
-spec/ext_packed_depth_stencil/texwrap formats offset/gl_depth24_stencil8: fail
-spec/ext_packed_depth_stencil/texwrap formats offset/gl_depth24_stencil8, npot: fail
-spec/ext_packed_depth_stencil/texwrap formats offset/gl_depth24_stencil8, swizzled: fail
-spec/ext_packed_depth_stencil/texwrap formats/gl_depth24_stencil8: fail
-spec/ext_packed_depth_stencil/texwrap formats/gl_depth24_stencil8, npot: fail
-spec/ext_packed_depth_stencil/texwrap formats/gl_depth24_stencil8, swizzled: fail
 spec/ext_packed_float/multisample-formats 16 gl_ext_packed_float: skip
 spec/ext_packed_float/multisample-formats 32 gl_ext_packed_float: skip
 spec/ext_packed_float/multisample-formats 6 gl_ext_packed_float: skip

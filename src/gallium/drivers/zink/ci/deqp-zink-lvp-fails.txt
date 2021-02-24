@@ -108,7 +108,6 @@ dEQP-GLES3.functional.fbo.invalidate.whole.unbind_blit_msaa_stencil,Fail
 dEQP-GLES3.functional.fbo.invalidate.whole.unbind_blit_stencil,Fail
 dEQP-GLES3.functional.fbo.msaa.2_samples.depth32f_stencil8,Fail
 dEQP-GLES3.functional.fbo.msaa.4_samples.depth_component24,Fail
-dEQP-GLES3.functional.fbo.msaa.4_samples.stencil_index8,Fail
 dEQP-GLES3.functional.fragment_out.array.int.r16i_highp_ivec3,Fail
 dEQP-GLES3.functional.fragment_out.array.int.r16i_lowp_ivec3,Fail
 dEQP-GLES3.functional.fragment_out.array.int.r16i_mediump_ivec3,Fail

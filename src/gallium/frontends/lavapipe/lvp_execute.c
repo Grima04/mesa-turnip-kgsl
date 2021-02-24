@@ -762,6 +762,15 @@ static void fill_sampler_stage(struct rendering_state *state,
    state->ss_dirty[p_stage] = true;
 }
 
+#define fix_depth_swizzle(x) do { \
+  if (x > PIPE_SWIZZLE_X && x < PIPE_SWIZZLE_0) \
+    x = PIPE_SWIZZLE_0;				\
+  } while (0)
+#define fix_depth_swizzle_a(x) do { \
+  if (x > PIPE_SWIZZLE_X && x < PIPE_SWIZZLE_0) \
+    x = PIPE_SWIZZLE_1;				\
+  } while (0)
+
 static void fill_sampler_view_stage(struct rendering_state *state,
                                     struct dyn_info *dyn_info,
                                     gl_shader_stage stage,
@@ -807,10 +816,20 @@ static void fill_sampler_view_stage(struct rendering_state *state,
    if (iv->components.a != VK_COMPONENT_SWIZZLE_IDENTITY)
       templ.swizzle_a = vk_conv_swizzle(iv->components.a);
 
-   if (util_format_is_depth_or_stencil(templ.format)) {
-      templ.swizzle_r = PIPE_SWIZZLE_X;
-      templ.swizzle_g = PIPE_SWIZZLE_0;
-      templ.swizzle_b = PIPE_SWIZZLE_0;
+   /* depth stencil swizzles need special handling to pass VK CTS
+    * but also for zink GL tests.
+    * piping A swizzle into R fixes GL_ALPHA depth texture mode
+    * only swizzling from R/0/1 (for alpha) fixes VK CTS tests
+    * and a bunch of zink tests.
+   */
+   if (iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT ||
+       iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      if (templ.swizzle_a == PIPE_SWIZZLE_X)
+         templ.swizzle_r = PIPE_SWIZZLE_X;
+      fix_depth_swizzle(templ.swizzle_r);
+      fix_depth_swizzle(templ.swizzle_g);
+      fix_depth_swizzle(templ.swizzle_b);
+      fix_depth_swizzle_a(templ.swizzle_a);
    }
 
    if (state->sv[p_stage][sv_idx])
