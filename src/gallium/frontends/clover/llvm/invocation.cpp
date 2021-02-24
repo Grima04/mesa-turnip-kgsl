@@ -247,9 +247,8 @@ namespace {
       // http://www.llvm.org/bugs/show_bug.cgi?id=19735
       c->getDiagnosticOpts().ShowCarets = false;
 
-      c->getInvocation().setLangDefaults(c->getLangOpts(),
-                                compat::ik_opencl, ::llvm::Triple(target.triple),
-                                c->getPreprocessorOpts(),
+      compat::compiler_set_lang_defaults(c, compat::ik_opencl,
+                                ::llvm::Triple(target.triple),
                                 get_language_version(opts, device_clc_version));
 
       c->createDiagnostics(new clang::TextDiagnosticPrinter(
