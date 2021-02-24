@@ -246,7 +246,6 @@ dEQP-GLES3.functional.fragment_out.random.94,Fail
 dEQP-GLES3.functional.fragment_out.random.98,Fail
 dEQP-GLES3.functional.polygon_offset.fixed16_render_with_units,Fail
 dEQP-GLES3.functional.polygon_offset.fixed24_displacement_with_units,Fail
-dEQP-GLES3.functional.primitive_restart.basic.line_strip.unsigned_byte.draw_elements_instanced,Fail
 dEQP-GLES3.functional.primitive_restart.basic.triangle_fan.unsigned_byte.draw_elements_instanced,Fail
 dEQP-GLES3.functional.primitive_restart.basic.triangle_strip.unsigned_byte.draw_range_elements,Fail
 dEQP-GLES3.functional.primitive_restart.begin_restart_duplicate_restarts.line_strip.unsigned_byte.draw_range_elements,Fail
