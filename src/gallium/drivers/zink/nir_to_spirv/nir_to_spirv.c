@@ -26,6 +26,7 @@
 
 #include "nir.h"
 #include "pipe/p_state.h"
+#include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/hash_table.h"
 
@@ -1249,6 +1250,7 @@ get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_c
 static void
 emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
 {
+   unsigned output = 0;
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
       struct pipe_stream_output so_output = so_info->so_info.output[i];
       unsigned slot = so_info->so_info_slots[i] << 2 | so_output.start_component;
@@ -1260,7 +1262,7 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
                                             SpvStorageClassOutput);
       char name[10];
 
-      snprintf(name, 10, "xfb%d", i);
+      snprintf(name, 10, "xfb%d", output);
       spirv_builder_emit_name(&ctx->builder, var_id, name);
       spirv_builder_emit_offset(&ctx->builder, var_id, (so_output.dst_offset * 4));
       spirv_builder_emit_xfb_buffer(&ctx->builder, var_id, so_output.output_buffer);
@@ -1272,8 +1274,8 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
        * so we need to ensure that the new xfb location slot doesn't conflict with any previously-emitted
        * outputs.
        */
-      uint32_t location = ctx->shader_slots_reserved + i;
-      assert(location < VARYING_SLOT_VAR0);
+      uint32_t location = ctx->shader_slots_reserved + output;
+      assert(location < VARYING_SLOT_VAR0 && ctx->shader_slot_map[location] == SLOT_UNSET);
       spirv_builder_emit_location(&ctx->builder, var_id, location);
 
       /* note: gl_ClipDistance[4] can the 0-indexed member of VARYING_SLOT_CLIP_DIST1 here,
@@ -1288,6 +1290,7 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
 
       assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
       ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
+      output += align(so_output.num_components, 4) / 4;
    }
 }
 
