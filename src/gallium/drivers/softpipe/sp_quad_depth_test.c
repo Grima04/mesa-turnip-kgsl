@@ -542,6 +542,21 @@ depth_test_quad(struct quad_stage *qs,
    unsigned zmask = 0;
    unsigned j;
 
+#define DEPTHTEST(l, op, r) do { \
+      if (data->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT || \
+          data->format == PIPE_FORMAT_Z32_FLOAT) { \
+         for (j = 0; j < TGSI_QUAD_SIZE; j++) { \
+            if (((float *)l)[j] op ((float *)r)[j]) \
+               zmask |= (1 << j); \
+         } \
+      } else { \
+         for (j = 0; j < TGSI_QUAD_SIZE; j++) { \
+            if (l[j] op r[j]) \
+               zmask |= (1 << j); \
+         } \
+      } \
+   } while (0)
+
    switch (softpipe->depth_stencil->depth_func) {
    case PIPE_FUNC_NEVER:
       /* zmask = 0 */
@@ -550,40 +565,22 @@ depth_test_quad(struct quad_stage *qs,
       /* Note this is pretty much a single sse or cell instruction.  
        * Like this:  quad->mask &= (quad->outputs.depth < zzzz);
        */
-      for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-	 if (data->qzzzz[j] < data->bzzzz[j]) 
-	    zmask |= 1 << j;
-      }
+      DEPTHTEST(data->qzzzz,  <, data->bzzzz);
       break;
    case PIPE_FUNC_EQUAL:
-      for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-	 if (data->qzzzz[j] == data->bzzzz[j]) 
-	    zmask |= 1 << j;
-      }
+      DEPTHTEST(data->qzzzz, ==, data->bzzzz);
       break;
    case PIPE_FUNC_LEQUAL:
-      for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-	 if (data->qzzzz[j] <= data->bzzzz[j]) 
-	    zmask |= (1 << j);
-      }
+      DEPTHTEST(data->qzzzz, <=, data->bzzzz);
       break;
    case PIPE_FUNC_GREATER:
-      for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-	 if (data->qzzzz[j] > data->bzzzz[j]) 
-	    zmask |= (1 << j);
-      }
+      DEPTHTEST(data->qzzzz,  >, data->bzzzz);
       break;
    case PIPE_FUNC_NOTEQUAL:
-      for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-	 if (data->qzzzz[j] != data->bzzzz[j]) 
-	    zmask |= (1 << j);
-      }
+      DEPTHTEST(data->qzzzz, !=, data->bzzzz);
       break;
    case PIPE_FUNC_GEQUAL:
-      for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-	 if (data->qzzzz[j] >= data->bzzzz[j]) 
-	    zmask |= (1 << j);
-      }
+      DEPTHTEST(data->qzzzz, >=, data->bzzzz);
       break;
    case PIPE_FUNC_ALWAYS:
       zmask = MASK_ALL;
