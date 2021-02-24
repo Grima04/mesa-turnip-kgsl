@@ -90,13 +90,13 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 				    VK_IMAGE_USAGE_TRANSFER_SRC_BIT)))
 		return false;
 
-	/* FIXME: for some reason TC compat with 2/4/8 samples breaks
-	 * some cts tests - disable for now.
-	 */
-	if (pCreateInfo->samples >= 2 && format == VK_FORMAT_D32_SFLOAT_S8_UINT)
-		return false;
-
 	if (device->physical_device->rad_info.chip_class < GFX9) {
+		/* TC-compat HTILE for MSAA depth/stencil images is broken
+		 * on GFX8 because the tiling doesn't match.
+		 */
+		if (pCreateInfo->samples >= 2 && format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+			return false;
+
 		/* GFX9+ supports compression for both 32-bit and 16-bit depth
 		 * surfaces, while GFX8 only supports 32-bit natively. Though,
 		 * the driver allows TC-compat HTILE for 16-bit depth surfaces
