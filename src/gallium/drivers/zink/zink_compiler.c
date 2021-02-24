@@ -403,7 +403,7 @@ check_psiz(struct nir_shader *s)
 }
 
 static void
-update_so_info(struct zink_shader *sh,
+update_so_info(struct zink_shader *zs,
                uint64_t outputs_written, bool have_psiz)
 {
    uint8_t reverse_map[64] = {};
@@ -417,21 +417,21 @@ update_so_info(struct zink_shader *sh,
       reverse_map[slot++] = bit;
    }
 
-   nir_foreach_shader_out_variable(var, sh->nir)
+   nir_foreach_shader_out_variable(var, zs->nir)
       var->data.explicit_xfb_buffer = 0;
 
    bool inlined[64] = {0};
-   for (unsigned i = 0; i < sh->streamout.so_info.num_outputs; i++) {
-      struct pipe_stream_output *output = &sh->streamout.so_info.output[i];
+   for (unsigned i = 0; i < zs->streamout.so_info.num_outputs; i++) {
+      struct pipe_stream_output *output = &zs->streamout.so_info.output[i];
       unsigned slot = reverse_map[output->register_index];
-      if ((sh->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(sh->nir->info.gs.active_stream_mask) == 1) &&
+      if ((zs->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->nir->info.gs.active_stream_mask) == 1) &&
           !output->start_component) {
          nir_variable *var = NULL;
          while (!var)
-            var = nir_find_variable_with_location(sh->nir, nir_var_shader_out, slot--);
+            var = nir_find_variable_with_location(zs->nir, nir_var_shader_out, slot--);
          slot++;
          if (inlined[slot]) {
-            sh->streamout.skip[i] = true;
+            zs->streamout.skip[i] = true;
             continue;
          }
          assert(var && var->data.location == slot);
@@ -439,18 +439,18 @@ update_so_info(struct zink_shader *sh,
          if (glsl_get_components(var->type) == output->num_components) {
             var->data.explicit_xfb_buffer = 1;
             var->data.xfb.buffer = output->output_buffer;
-            var->data.xfb.stride = sh->streamout.so_info.stride[output->output_buffer] * 4;
+            var->data.xfb.stride = zs->streamout.so_info.stride[output->output_buffer] * 4;
             var->data.offset = output->dst_offset * 4;
             var->data.stream = output->stream;
-            sh->streamout.skip[i] = true;
+            zs->streamout.skip[i] = true;
             inlined[slot] = true;
             continue;
          }
       }
       /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
-      sh->streamout.so_info_slots[i] = reverse_map[output->register_index];
+      zs->streamout.so_info_slots[i] = reverse_map[output->register_index];
    }
-   sh->streamout.have_xfb = true;
+   zs->streamout.have_xfb = true;
 }
 
 VkShaderModule
