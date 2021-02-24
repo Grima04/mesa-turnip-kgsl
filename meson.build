@@ -1424,6 +1424,15 @@ endif
 # it's not linux and wont
 dep_m = cc.find_library('m', required : false)
 
+if host_machine.system() == 'windows'
+  dep_regex = meson.get_compiler('c').find_library('regex', required : false)
+  if not dep_regex.found()
+    dep_regex = declare_dependency(compile_args : ['-DNO_REGEX'])
+  endif
+else
+  dep_regex = null_dep
+endif
+
 if with_platform_haiku
   dep_network = cc.find_library('network')
 endif

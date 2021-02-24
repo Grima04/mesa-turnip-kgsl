@@ -43,7 +43,17 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #endif
+#ifdef NO_REGEX
+typedef int regex_t;
+#define REG_EXTENDED 0
+#define REG_NOSUB 0
+#define REG_NOMATCH 1
+inline int regcomp(regex_t *r, const char *s, int f) { return 0; }
+inline int regexec(regex_t *r, const char *s, int n, void *p, int f) { return REG_NOMATCH; }
+inline void regfree(regex_t* r) {}
+#else
 #include <regex.h>
+#endif
 #include <fcntl.h>
 #include <math.h>
 #include "strndup.h"
@@ -1153,7 +1163,7 @@ driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
    userData.applicationVersion = applicationVersion;
    userData.engineName = engineName ? engineName : "";
    userData.engineVersion = engineVersion;
-   userData.execName = execname ?: util_get_process_name();
+   userData.execName = execname ? execname : util_get_process_name();
 
 #if WITH_XMLCONFIG
    char *home;

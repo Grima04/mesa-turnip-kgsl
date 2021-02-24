@@ -221,6 +221,7 @@ xmlconfig_deps = []
 if not (with_platform_android or with_platform_windows)
   xmlconfig_deps += dep_expat
 endif
+xmlconfig_deps += dep_regex
 
 _libxmlconfig = static_library(
   'xmlconfig',
