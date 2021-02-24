@@ -11,7 +11,6 @@ env.Append(CPPPATH = [
 
 env.Append(CPPDEFINES = [
     ('HAVE_PIPE_LOADER_DRI', '1'),
-    ('DROP_PIPE_LOADER_MISC', '1'),
     ('GALLIUM_STATIC_TARGETS', '1'),
 ])
 
