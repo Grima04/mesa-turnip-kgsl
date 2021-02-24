@@ -450,7 +450,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
       /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
       zs->streamout.so_info_slots[zs->streamout.so_info.num_outputs++] = reverse_map[output->register_index];
    }
-   zs->streamout.have_xfb = true;
+   zs->streamout.have_xfb = !!zs->streamout.so_info.num_outputs;
 }
 
 VkShaderModule
