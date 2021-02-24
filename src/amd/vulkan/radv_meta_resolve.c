@@ -978,22 +978,6 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 		radv_decompress_resolve_src(cmd_buffer, src_image,
 					    src_att.layout, &region);
 	}
-
-	if (subpass->ds_resolve_attachment) {
-		struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
-		struct radv_image_view *src_iview = fb->attachments[src_att.attachment];
-		struct radv_image *src_image = src_iview->image;
-
-		VkImageResolve2KHR region = {0};
-		region.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR;
-		region.srcSubresource.aspectMask = src_iview->aspect_mask;
-		region.srcSubresource.mipLevel = 0;
-		region.srcSubresource.baseArrayLayer = src_iview->base_layer;
-		region.srcSubresource.layerCount = layer_count;
-
-		radv_decompress_resolve_src(cmd_buffer, src_image,
-					    src_att.layout, &region);
-	}
 }
 
 static struct radv_sample_locations_state *
