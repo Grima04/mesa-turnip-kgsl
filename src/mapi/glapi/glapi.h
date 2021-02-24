@@ -78,7 +78,7 @@ struct _glapi_table;
 
 #if defined (USE_ELF_TLS)
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 extern __declspec(thread) struct _glapi_table * _glapi_tls_Dispatch;
 extern __declspec(thread) void * _glapi_tls_Context;
 #else
