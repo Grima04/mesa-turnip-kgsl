@@ -1151,6 +1151,7 @@ gen_print_batch(struct gen_batch_decode_ctx *ctx,
          uint64_t next_batch_addr = 0;
          bool ppgtt = false;
          bool second_level = false;
+         bool predicate = false;
          struct gen_field_iterator iter;
          gen_field_iterator_init(&iter, inst, p, 0, false);
          while (gen_field_iterator_next(&iter)) {
@@ -1160,32 +1161,36 @@ gen_print_batch(struct gen_batch_decode_ctx *ctx,
                second_level = iter.raw_value;
             } else if (strcmp(iter.name, "Address Space Indicator") == 0) {
                ppgtt = iter.raw_value;
+            } else if (strcmp(iter.name, "Predication Enable") == 0) {
+               predicate = iter.raw_value;
             }
          }
 
-         struct gen_batch_decode_bo next_batch = ctx_get_bo(ctx, ppgtt, next_batch_addr);
+         if (!predicate) {
+            struct gen_batch_decode_bo next_batch = ctx_get_bo(ctx, ppgtt, next_batch_addr);
 
-         if (next_batch.map == NULL) {
-            fprintf(ctx->fp, "Secondary batch at 0x%08"PRIx64" unavailable\n",
-                    next_batch_addr);
-         } else {
-            gen_print_batch(ctx, next_batch.map, next_batch.size,
-                            next_batch.addr, false);
-         }
-         if (second_level) {
-            /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" set acts
-             * like a subroutine call.  Commands that come afterwards get
-             * processed once the 2nd level batch buffer returns with
-             * MI_BATCH_BUFFER_END.
-             */
-            continue;
-         } else if (!from_ring) {
-            /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" unset acts
-             * like a goto.  Nothing after it will ever get processed.  In
-             * order to prevent the recursion from growing, we just reset the
-             * loop and continue;
-             */
-            break;
+            if (next_batch.map == NULL) {
+               fprintf(ctx->fp, "Secondary batch at 0x%08"PRIx64" unavailable\n",
+                       next_batch_addr);
+            } else {
+               gen_print_batch(ctx, next_batch.map, next_batch.size,
+                               next_batch.addr, false);
+            }
+            if (second_level) {
+               /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" set acts
+                * like a subroutine call.  Commands that come afterwards get
+                * processed once the 2nd level batch buffer returns with
+                * MI_BATCH_BUFFER_END.
+                */
+               continue;
+            } else if (!from_ring) {
+               /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" unset acts
+                * like a goto.  Nothing after it will ever get processed.  In
+                * order to prevent the recursion from growing, we just reset the
+                * loop and continue;
+                */
+               break;
+            }
          }
       } else if (strcmp(inst_name, "MI_BATCH_BUFFER_END") == 0) {
          break;
