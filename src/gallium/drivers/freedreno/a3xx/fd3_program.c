@@ -66,7 +66,7 @@ emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 		sb = SB_FRAG_SHADER;
 	}
 
-	if (fd_mesa_debug & FD_DBG_DIRECT) {
+	if (FD_DBG(DIRECT)) {
 		sz = si->sizedwords;
 		src = SS_DIRECT;
 		bin = fd_bo_map(so->bo);

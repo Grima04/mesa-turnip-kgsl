@@ -339,8 +339,8 @@ fd_context_destroy(struct pipe_context *pctx)
 
 	u_trace_context_fini(&ctx->trace_context);
 
-	if (fd_mesa_debug & (FD_DBG_BSTAT | FD_DBG_MSGS)) {
-		printf("batch_total=%u, batch_sysmem=%u, batch_gmem=%u, batch_nondraw=%u, batch_restore=%u\n",
+	if (FD_DBG(BSTAT) || FD_DBG(MSGS)) {
+		mesa_logi("batch_total=%u, batch_sysmem=%u, batch_gmem=%u, batch_nondraw=%u, batch_restore=%u\n",
 			(uint32_t)ctx->stats.batch_total, (uint32_t)ctx->stats.batch_sysmem,
 			(uint32_t)ctx->stats.batch_gmem, (uint32_t)ctx->stats.batch_nondraw,
 			(uint32_t)ctx->stats.batch_restore);
@@ -527,7 +527,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	int i;
 
 	/* lower numerical value == higher priority: */
-	if (fd_mesa_debug & FD_DBG_HIPRIO)
+	if (FD_DBG(HIPRIO))
 		prio = 0;
 	else if (flags & PIPE_CONTEXT_HIGH_PRIORITY)
 		prio = 0;

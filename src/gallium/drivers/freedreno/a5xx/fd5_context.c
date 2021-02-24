@@ -98,7 +98,7 @@ fd5_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 	fd5_prog_init(pctx);
 	fd5_emit_init(pctx);
 
-	if (!(fd_mesa_debug & FD_DBG_NOBLIT))
+	if (!FD_DBG(NOBLIT))
 		fd5_ctx->base.blit = fd5_blitter_blit;
 
 	pctx = fd_context_init(&fd5_ctx->base, pscreen, primtypes, priv, flags);

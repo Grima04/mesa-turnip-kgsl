@@ -259,7 +259,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	 * to be able to emulate it, to determine if game is feeding us
 	 * bogus data:
 	 */
-	if (indirect && indirect->buffer && (fd_mesa_debug & FD_DBG_NOINDR)) {
+	if (indirect && indirect->buffer && FD_DBG(NOINDR)) {
 		util_draw_indirect(pctx, info, indirect);
 		return;
 	}
@@ -368,7 +368,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	for (unsigned i = 0; i < ctx->streamout.num_targets; i++)
 		ctx->streamout.offsets[i] += draws[0].count;
 
-	if (fd_mesa_debug & FD_DBG_DDRAW)
+	if (FD_DBG(DDRAW))
 		fd_context_all_dirty(ctx);
 
 	fd_batch_unlock_submit(batch);
@@ -483,7 +483,7 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 		fd_batch_update_queries(batch);
 
 		if (ctx->clear(ctx, buffers, color, depth, stencil)) {
-			if (fd_mesa_debug & FD_DBG_DCLEAR)
+			if (FD_DBG(DCLEAR))
 				fd_context_all_dirty(ctx);
 
 			fallback = false;

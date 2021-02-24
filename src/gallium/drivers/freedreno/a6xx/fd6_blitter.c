@@ -1096,7 +1096,7 @@ fd6_blitter_init(struct pipe_context *pctx)
 {
 	fd_context(pctx)->clear_ubwc = fd6_clear_ubwc;
 
-	if (fd_mesa_debug & FD_DBG_NOBLIT)
+	if (FD_DBG(NOBLIT))
 		return;
 
 	fd_context(pctx)->blit = fd6_blit;

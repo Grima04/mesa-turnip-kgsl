@@ -111,6 +111,6 @@ fd3_screen_init(struct pipe_screen *pscreen)
 	ir3_screen_init(pscreen);
 
 	screen->setup_slices = fd3_setup_slices;
-	if (fd_mesa_debug & FD_DBG_TTILE)
+	if (FD_DBG(TTILE))
 		screen->tile_mode = fd3_tile_mode;
 }

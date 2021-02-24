@@ -48,7 +48,7 @@ fd5_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 	enum a4xx_state_src src;
 	uint32_t i, sz, *bin;
 
-	if (fd_mesa_debug & FD_DBG_DIRECT) {
+	if (FD_DBG(DIRECT)) {
 		sz = si->sizedwords;
 		src = SS4_DIRECT;
 		bin = fd_bo_map(so->bo);
