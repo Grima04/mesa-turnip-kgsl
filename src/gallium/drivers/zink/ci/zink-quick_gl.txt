@@ -740,7 +740,6 @@ spec/!opengl 3.0/sampler-cube-shadow: fail
 spec/!opengl 3.1/primitive-restart-xfb flush: fail
 spec/!opengl 3.1/primitive-restart-xfb generated: fail
 spec/!opengl 3.1/primitive-restart-xfb written: fail
-spec/!opengl 3.2/coord-replace-doesnt-eliminate-frag-tex-coords: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-last: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-first: fail
@@ -987,7 +986,6 @@ spec/arb_pixel_buffer_object/texsubimage-depth-formats pbo: fail
 spec/arb_point_parameters/arb_point_parameters-point-attenuation/aliased combinations: fail
 spec/arb_point_parameters/arb_point_parameters-point-attenuation/antialiased combinations: fail
 spec/arb_point_sprite/arb_point_sprite-checkerboard: fail
-spec/arb_point_sprite/arb_point_sprite-interactions 1.0: fail
 spec/arb_point_sprite/arb_point_sprite-mipmap: fail
 spec/arb_post_depth_coverage/arb_post_depth_coverage-basic: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: skip
