@@ -53,7 +53,7 @@
  * required. The following function must also be defined, it returns an
  * address in canonical form:
  *
- * uint64_t
+ * __gen_address_type
  * __gen_get_batch_address(__gen_user_data *user_data, void *location);
  *
  * Also, __gen_combine_address must accept a location value of NULL and return
@@ -1172,8 +1172,9 @@ _mi_resolve_address_token(struct mi_builder *b,
                           struct mi_address_token token,
                           void *batch_location)
 {
-   uint64_t addr_addr_u64 = __gen_get_batch_address(b->user_data,
+   __gen_address_type addr = __gen_get_batch_address(b->user_data,
                                                     batch_location);
+   uint64_t addr_addr_u64 = __gen_combine_address(b->user_data, NULL, addr, 0);
    *(token.ptrs[0]) = addr_addr_u64;
    *(token.ptrs[1]) = addr_addr_u64 + 4;
 }
