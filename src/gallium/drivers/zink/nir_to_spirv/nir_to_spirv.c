@@ -3832,7 +3832,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    default:
       break;
    }
-   if (so_info && so_info->so_info.num_outputs) {
+   if (s->info.has_transform_feedback_varyings) {
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityTransformFeedback);
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                    SpvExecutionModeXfb);
