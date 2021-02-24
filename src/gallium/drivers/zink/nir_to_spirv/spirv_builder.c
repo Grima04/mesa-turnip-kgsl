@@ -1417,7 +1417,7 @@ SpvId
 spirv_builder_spec_const_uint(struct spirv_builder *b, int width)
 {
    assert(width <= 32);
-   return spirv_builder_emit_unop(b, SpvOpSpecConstant, spirv_builder_type_uint(b, width), UINT_MAX);
+   return spirv_builder_emit_unop(b, SpvOpSpecConstant, spirv_builder_type_uint(b, width), 0);
 }
 
 SpvId
