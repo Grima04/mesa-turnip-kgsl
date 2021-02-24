@@ -54,7 +54,6 @@ struct fd5_emit {
 	uint32_t sprite_coord_enable;  /* bitmask */
 	bool sprite_coord_mode;
 	bool rasterflat;
-	bool no_decode_srgb;
 
 	/* in binning pass, we don't have real frag shader, so we
 	 * don't know if real draw disqualifies lrz write.  So just

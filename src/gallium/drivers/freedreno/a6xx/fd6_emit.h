@@ -94,7 +94,6 @@ struct fd6_emit {
 	uint32_t sprite_coord_enable;  /* bitmask */
 	bool sprite_coord_mode;
 	bool rasterflat;
-	bool no_decode_srgb;
 	bool primitive_restart;
 
 	/* cached to avoid repeated lookups: */
