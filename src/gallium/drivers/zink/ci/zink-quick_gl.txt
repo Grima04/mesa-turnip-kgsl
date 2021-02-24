@@ -89,7 +89,6 @@ shaders/glsl-fs-flat-color: fail
 shaders/glsl-fs-fogscale/gs-out and fs: skip
 shaders/glsl-fs-fogscale/vs, gs and fs: skip
 shaders/glsl-fs-pointcoord: fail
-shaders/glsl-fs-shader-stencil-export: skip
 shaders/glsl-uniform-interstage-limits/subdivide 5: crash
 shaders/glsl-uniform-interstage-limits/subdivide 5, statechanges: crash
 shaders/gpu_shader4_attribs: skip
@@ -360,12 +359,14 @@ spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=32: skip
 spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8: fail
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=16: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=32: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev: fail
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=16: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=32: skip
@@ -859,14 +860,18 @@ spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s8_s=z24_s8
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s=z24_s8: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f_s8: skip
+spec/arb_depth_buffer_float/fbo-clear-formats stencil/gl_depth32f_stencil8: fail
 spec/arb_depth_buffer_float/fbo-clear-formats/gl_depth32f_stencil8: fail
 spec/arb_depth_buffer_float/fbo-clear-formats/gl_depth_component32f: fail
 spec/arb_depth_buffer_float/fbo-depth-gl_depth32f_stencil8-blit: fail
 spec/arb_depth_buffer_float/fbo-depth-gl_depth32f_stencil8-copypixels: fail
 spec/arb_depth_buffer_float/fbo-depthstencil-gl_depth32f_stencil8-copypixels: fail
+spec/arb_depth_buffer_float/fbo-depthstencil-gl_depth32f_stencil8-drawpixels-24_8: fail
+spec/arb_depth_buffer_float/fbo-depthstencil-gl_depth32f_stencil8-drawpixels-32f_24_8_rev: fail
 spec/arb_depth_buffer_float/fbo-generatemipmap-formats/gl_depth_component32f: fail
 spec/arb_depth_buffer_float/fbo-generatemipmap-formats/gl_depth_component32f npot: fail
 spec/arb_depth_buffer_float/fbo-stencil-gl_depth32f_stencil8-blit: fail
+spec/arb_depth_buffer_float/fbo-stencil-gl_depth32f_stencil8-copypixels: fail
 spec/arb_depth_buffer_float/texwrap formats bordercolor-swizzled/gl_depth32f_stencil8, swizzled, border color only: fail
 spec/arb_depth_buffer_float/texwrap formats bordercolor-swizzled/gl_depth_component32f, swizzled, border color only: fail
 spec/arb_depth_buffer_float/texwrap formats bordercolor/gl_depth32f_stencil8, border color only: fail
@@ -2544,12 +2549,18 @@ spec/ext_packed_depth_stencil/depthstencil-render-miplevels 585 d=z24_s=z24_s8: 
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 585 s=z24_s8_d=z24: skip
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 585 s=z24_s8_d=z24_s8: skip
 spec/ext_packed_depth_stencil/fbo-blit-d24s8: fail
+spec/ext_packed_depth_stencil/fbo-clear-formats stencil/gl_depth24_stencil8: fail
+spec/ext_packed_depth_stencil/fbo-clear-formats stencil/gl_depth_stencil: fail
 spec/ext_packed_depth_stencil/fbo-clear-formats/gl_depth24_stencil8: fail
 spec/ext_packed_depth_stencil/fbo-clear-formats/gl_depth_stencil: fail
 spec/ext_packed_depth_stencil/fbo-depth-gl_depth24_stencil8-blit: fail
 spec/ext_packed_depth_stencil/fbo-depth-gl_depth24_stencil8-copypixels: fail
 spec/ext_packed_depth_stencil/fbo-depthstencil-gl_depth24_stencil8-copypixels: fail
+spec/ext_packed_depth_stencil/fbo-depthstencil-gl_depth24_stencil8-drawpixels-24_8: fail
+spec/ext_packed_depth_stencil/fbo-depthstencil-gl_depth24_stencil8-drawpixels-32f_24_8_rev: fail
 spec/ext_packed_depth_stencil/fbo-stencil-gl_depth24_stencil8-blit: fail
+spec/ext_packed_depth_stencil/fbo-stencil-gl_depth24_stencil8-copypixels: fail
+spec/ext_packed_depth_stencil/readdrawpixels: fail
 spec/ext_packed_depth_stencil/texwrap formats bordercolor-swizzled/gl_depth24_stencil8, swizzled, border color only: fail
 spec/ext_packed_depth_stencil/texwrap formats bordercolor/gl_depth24_stencil8, border color only: fail
 spec/ext_packed_depth_stencil/texwrap formats offset/gl_depth24_stencil8: fail
@@ -2589,7 +2600,7 @@ spec/ext_texture_array/copyteximage 2d_array samples=32: skip
 spec/ext_texture_array/copyteximage 2d_array samples=4: skip
 spec/ext_texture_array/copyteximage 2d_array samples=6: skip
 spec/ext_texture_array/copyteximage 2d_array samples=8: skip
-spec/ext_texture_array/fbo-depth-array fs-writes-stencil: skip
+spec/ext_texture_array/fbo-depth-array fs-writes-stencil: fail
 spec/ext_texture_array/fbo-depth-array stencil-clear: fail
 spec/ext_texture_array/fbo-depth-array stencil-draw: fail
 spec/ext_texture_array/fbo-depth-array stencil-layered-clear: fail
@@ -3011,10 +3022,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    18685
-       fail:     1277
+       pass:    18674
+       fail:     1290
       crash:       13
-       skip:     1693
+       skip:     1691
     timeout:        0
        warn:        4
  incomplete:        0
