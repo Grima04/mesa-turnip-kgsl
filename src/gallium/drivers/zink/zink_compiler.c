@@ -691,7 +691,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    }
 
    ret->nir = nir;
-   if (so_info) {
+   if (so_info && nir->info.outputs_written && nir->info.has_transform_feedback_varyings) {
       memcpy(&ret->streamout.so_info, so_info, sizeof(struct pipe_stream_output_info));
       update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
    }
