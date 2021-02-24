@@ -190,7 +190,7 @@ __fd_resource_wait(struct fd_context *ctx, struct fd_resource *rsc,
 	elapsed += os_time_get_nano();
 	if (elapsed > 10000) /* 0.01ms */ {
 		perf_debug_ctx(ctx, "%s: a busy \"%"PRSC_FMT"\" BO stalled and took %.03f ms.\n",
-				func, PRSC_ARGS(&rsc->base), 1000000 * (double)elapsed);
+				func, PRSC_ARGS(&rsc->base), (double)elapsed / 1000000.0);
 	}
 
 	return ret;
