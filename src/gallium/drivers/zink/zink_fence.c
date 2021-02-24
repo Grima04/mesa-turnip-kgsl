@@ -58,20 +58,8 @@ zink_create_fence(struct pipe_screen *pscreen, struct zink_batch *batch)
       debug_printf("vkCreateFence failed\n");
       goto fail;
    }
-   ret->active_queries = batch->active_queries;
-   batch->active_queries = NULL;
-
    ret->batch_id = batch->batch_id;
    util_dynarray_init(&ret->resources, NULL);
-   set_foreach(batch->resources, entry) {
-      /* the fence needs its own reference to ensure it can safely access lifetime-dependent
-       * resource members
-       */
-      struct pipe_resource *r = NULL, *pres = (struct pipe_resource *)entry->key;
-      pipe_resource_reference(&r, pres);
-      util_dynarray_append(&ret->resources, struct pipe_resource*, pres);
-   }
-   ret->submitted = true;
 
    pipe_reference_init(&ret->reference, 1);
    return ret;
@@ -79,6 +67,24 @@ zink_create_fence(struct pipe_screen *pscreen, struct zink_batch *batch)
 fail:
    destroy_fence(screen, ret);
    return NULL;
+}
+
+void
+zink_fence_init(struct zink_fence *fence, struct zink_batch *batch)
+{
+   assert(!fence->active_queries);
+   fence->active_queries = batch->active_queries;
+   batch->active_queries = NULL;
+
+   set_foreach(batch->resources, entry) {
+      /* the fence needs its own reference to ensure it can safely access lifetime-dependent
+       * resource members
+       */
+      struct pipe_resource *r = NULL, *pres = (struct pipe_resource *)entry->key;
+      pipe_resource_reference(&r, pres);
+      util_dynarray_append(&fence->resources, struct pipe_resource*, pres);
+   }
+   fence->submitted = true;
 }
 
 void

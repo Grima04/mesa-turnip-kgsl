@@ -20,11 +20,9 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    batch->descs_used = 0;
 
-   // cmdbuf hasn't been submitted before without a fence
-   if (batch->fence) {
+   // cmdbuf hasn't been submitted before
+   if (batch->submitted)
       zink_fence_finish(screen, batch->fence, PIPE_TIMEOUT_INFINITE);
-      zink_fence_reference(screen, &batch->fence, NULL);
-   }
 
    zink_framebuffer_reference(screen, &batch->fb, NULL);
    set_foreach(batch->programs, entry) {
@@ -69,7 +67,7 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    if (vkResetCommandPool(screen->dev, batch->cmdpool, 0) != VK_SUCCESS)
       fprintf(stderr, "vkResetCommandPool failed\n");
-   batch->has_work = false;
+   batch->submitted = batch->has_work = false;
 }
 
 void
@@ -98,10 +96,8 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       return;
    }
 
-   assert(batch->fence == NULL);
-   batch->fence = zink_create_fence(ctx->base.screen, batch);
-   if (!batch->fence)
-      return;
+   vkResetFences(zink_screen(ctx->base.screen)->dev, 1, &batch->fence->fence);
+   zink_fence_init(batch->fence, batch);
 
    util_dynarray_foreach(&batch->persistent_resources, struct zink_resource*, res) {
        struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -134,6 +130,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
          ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
       }
    }
+   batch->submitted = true;
 }
 
 /* returns either the compute batch id or 0 (gfx batch id) based on whether a resource

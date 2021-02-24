@@ -62,6 +62,7 @@ struct zink_batch {
 
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
    bool has_work;
+   bool submitted;
    bool in_rp; //renderpass is currently active
 };
 
