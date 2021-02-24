@@ -184,13 +184,11 @@ __fd_resource_wait(struct fd_context *ctx, struct fd_resource *rsc,
 	if (op & DRM_FREEDRENO_PREP_NOSYNC)
 		return fd_bo_cpu_prep(rsc->bo, ctx->pipe, op);
 
-	int64_t elapsed = -os_time_get_nano();
-	int ret = fd_bo_cpu_prep(rsc->bo, ctx->pipe, op);
+	int ret;
 
-	elapsed += os_time_get_nano();
-	if (elapsed > 10000) /* 0.01ms */ {
-		perf_debug_ctx(ctx, "%s: a busy \"%"PRSC_FMT"\" BO stalled and took %.03f ms.\n",
-				func, PRSC_ARGS(&rsc->base), (double)elapsed / 1000000.0);
+	perf_time_ctx(ctx, 10000, "%s: a busy \"%"PRSC_FMT"\" BO stalled",
+				func, PRSC_ARGS(&rsc->base)) {
+		ret = fd_bo_cpu_prep(rsc->bo, ctx->pipe, op);
 	}
 
 	return ret;

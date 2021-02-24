@@ -113,6 +113,35 @@ extern bool fd_binning_enabled;
 
 #define perf_debug(...) perf_debug_ctx(NULL, __VA_ARGS__)
 
+#define perf_time_ctx(ctx, limit_ns, fmt, ...) for( \
+		struct __perf_time_state __s = { \
+				.t = -__perf_get_time(ctx), \
+		}; \
+		!__s.done; \
+		({ \
+			__s.t += __perf_get_time(ctx); \
+			__s.done = true; \
+			if (__s.t > (limit_ns)) { \
+				perf_debug_ctx(ctx, fmt " (%.03f ms)", ##__VA_ARGS__, (double)__s.t / 1000000.0); \
+			} \
+		}))
+
+#define perf_time(limit_ns, fmt, ...) perf_time_ctx(NULL, limit_ns, fmt, ##__VA_ARGS__)
+
+struct __perf_time_state {
+	int64_t t;
+	bool done;
+};
+
+/* static inline would be nice here, except 'struct fd_context' is not
+ * defined yet:
+ */
+#define __perf_get_time(ctx) \
+	((FD_DBG(PERF) || \
+		({ struct fd_context *__c = (ctx); \
+			unlikely(__c && __c->debug.debug_message); })) ? \
+		os_time_get_nano() : 0)
+
 struct fd_context;
 
 /**
