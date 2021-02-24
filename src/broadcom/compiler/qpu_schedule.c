@@ -1512,7 +1512,7 @@ schedule_instructions(struct v3d_compile *c,
                                                                scoreboard,
                                                                chosen))) {
                                 time = MAX2(merge->unblocked_time, time);
-                                pre_remove_head(scoreboard->dag, chosen);
+                                pre_remove_head(scoreboard->dag, merge);
                                 list_addtail(&merge->link, &merged_list);
                                 (void)qpu_merge_inst(devinfo, inst,
                                                      inst, &merge->inst->qpu);
