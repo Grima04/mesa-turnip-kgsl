@@ -45,6 +45,8 @@ struct address {
 uint64_t __gen_combine_address(mi_builder_test *test, void *location,
                                struct address addr, uint32_t delta);
 void * __gen_get_batch_dwords(mi_builder_test *test, unsigned num_dwords);
+struct address __gen_get_batch_address(mi_builder_test *test,
+                                       void *location);
 
 struct address
 __gen_address_offset(address addr, uint64_t offset)
@@ -373,6 +375,20 @@ void *
 __gen_get_batch_dwords(mi_builder_test *test, unsigned num_dwords)
 {
    return test->emit_dwords(num_dwords);
+}
+
+struct address
+__gen_get_batch_address(mi_builder_test *test, void *location)
+{
+   assert(location >= test->batch_map);
+   size_t offset = (char *)location - (char *)test->batch_map;
+   assert(offset < BATCH_BO_SIZE);
+   assert(offset <= UINT32_MAX);
+
+   return (struct address) {
+      .gem_handle = test->batch_bo_handle,
+      .offset = (uint32_t)offset,
+   };
 }
 
 #include "genxml/genX_pack.h"
@@ -999,5 +1015,169 @@ TEST_F(mi_builder_test, store_mem64_offset)
 
    for (unsigned i = 0; i < ARRAY_SIZE(offsets); i++)
       EXPECT_EQ(*(uint64_t *)(output + offsets[i]), values[i]);
+}
+
+/*
+ * Control-flow tests.  Only available on GFX 12.5+
+ */
+
+TEST_F(mi_builder_test, goto)
+{
+   const uint64_t value = 0xb453b411deadc0deull;
+
+   mi_store(&b, out_mem64(0), mi_imm(value));
+
+   struct mi_goto_target t = MI_GOTO_TARGET_INIT;
+   mi_goto(&b, &t);
+
+   /* This one should be skipped */
+   mi_store(&b, out_mem64(0), mi_imm(0));
+
+   mi_goto_target(&b, &t);
+
+   submit_batch();
+
+   EXPECT_EQ(*(uint64_t *)(output + 0), value);
+}
+
+#define MI_PREDICATE_RESULT  0x2418
+
+TEST_F(mi_builder_test, goto_if)
+{
+   const uint64_t values[] = {
+      0xb453b411deadc0deull,
+      0x0123456789abcdefull,
+      0,
+   };
+
+   mi_store(&b, out_mem64(0), mi_imm(values[0]));
+
+   emit_cmd(GENX(MI_PREDICATE), mip) {
+      mip.LoadOperation    = LOAD_LOAD;
+      mip.CombineOperation = COMBINE_SET;
+      mip.CompareOperation = COMPARE_FALSE;
+   }
+
+   struct mi_goto_target t = MI_GOTO_TARGET_INIT;
+   mi_goto_if(&b, mi_reg32(MI_PREDICATE_RESULT), &t);
+
+   mi_store(&b, out_mem64(0), mi_imm(values[1]));
+
+   emit_cmd(GENX(MI_PREDICATE), mip) {
+      mip.LoadOperation    = LOAD_LOAD;
+      mip.CombineOperation = COMBINE_SET;
+      mip.CompareOperation = COMPARE_TRUE;
+   }
+
+   mi_goto_if(&b, mi_reg32(MI_PREDICATE_RESULT), &t);
+
+   /* This one should be skipped */
+   mi_store(&b, out_mem64(0), mi_imm(values[2]));
+
+   mi_goto_target(&b, &t);
+
+   submit_batch();
+
+   EXPECT_EQ(*(uint64_t *)(output + 0), values[1]);
+}
+
+TEST_F(mi_builder_test, loop_simple)
+{
+   const uint64_t loop_count = 8;
+
+   mi_store(&b, out_mem64(0), mi_imm(0));
+
+   mi_loop(&b) {
+      mi_break_if(&b, mi_uge(&b, out_mem64(0), mi_imm(loop_count)));
+
+      mi_store(&b, out_mem64(0), mi_iadd_imm(&b, out_mem64(0), 1));
+   }
+
+   submit_batch();
+
+   EXPECT_EQ(*(uint64_t *)(output + 0), loop_count);
+}
+
+TEST_F(mi_builder_test, loop_break)
+{
+   mi_loop(&b) {
+      mi_store(&b, out_mem64(0), mi_imm(1));
+
+      mi_break_if(&b, mi_imm(0));
+
+      mi_store(&b, out_mem64(0), mi_imm(2));
+
+      mi_break(&b);
+
+      mi_store(&b, out_mem64(0), mi_imm(3));
+   }
+
+   submit_batch();
+
+   EXPECT_EQ(*(uint64_t *)(output + 0), 2);
+}
+
+TEST_F(mi_builder_test, loop_continue)
+{
+   const uint64_t loop_count = 8;
+
+   mi_store(&b, out_mem64(0), mi_imm(0));
+   mi_store(&b, out_mem64(8), mi_imm(0));
+
+   mi_loop(&b) {
+      mi_break_if(&b, mi_uge(&b, out_mem64(0), mi_imm(loop_count)));
+
+      mi_store(&b, out_mem64(0), mi_iadd_imm(&b, out_mem64(0), 1));
+      mi_store(&b, out_mem64(8), mi_imm(5));
+
+      mi_continue(&b);
+
+      mi_store(&b, out_mem64(8), mi_imm(10));
+   }
+
+   submit_batch();
+
+   EXPECT_EQ(*(uint64_t *)(output + 0), loop_count);
+   EXPECT_EQ(*(uint64_t *)(output + 8), 5);
+}
+
+TEST_F(mi_builder_test, loop_continue_if)
+{
+   const uint64_t loop_count = 8;
+
+   mi_store(&b, out_mem64(0), mi_imm(0));
+   mi_store(&b, out_mem64(8), mi_imm(0));
+
+   mi_loop(&b) {
+      mi_break_if(&b, mi_uge(&b, out_mem64(0), mi_imm(loop_count)));
+
+      mi_store(&b, out_mem64(0), mi_iadd_imm(&b, out_mem64(0), 1));
+      mi_store(&b, out_mem64(8), mi_imm(5));
+
+      emit_cmd(GENX(MI_PREDICATE), mip) {
+         mip.LoadOperation    = LOAD_LOAD;
+         mip.CombineOperation = COMBINE_SET;
+         mip.CompareOperation = COMPARE_FALSE;
+      }
+
+      mi_continue_if(&b, mi_reg32(MI_PREDICATE_RESULT));
+
+      mi_store(&b, out_mem64(8), mi_imm(10));
+
+      emit_cmd(GENX(MI_PREDICATE), mip) {
+         mip.LoadOperation    = LOAD_LOAD;
+         mip.CombineOperation = COMBINE_SET;
+         mip.CompareOperation = COMPARE_TRUE;
+      }
+
+      mi_continue_if(&b, mi_reg32(MI_PREDICATE_RESULT));
+
+      mi_store(&b, out_mem64(8), mi_imm(15));
+   }
+
+   submit_batch();
+
+   EXPECT_EQ(*(uint64_t *)(output + 0), loop_count);
+   EXPECT_EQ(*(uint64_t *)(output + 8), 10);
 }
 #endif /* GEN_VERSIONx10 >= 125 */

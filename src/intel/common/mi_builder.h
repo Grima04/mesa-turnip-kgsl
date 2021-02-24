@@ -175,10 +175,16 @@ mi_builder_flush_math(struct mi_builder *b)
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
 
 static inline bool
+mi_value_is_reg(struct mi_value val)
+{
+   return val.type == MI_VALUE_TYPE_REG32 ||
+          val.type == MI_VALUE_TYPE_REG64;
+}
+
+static inline bool
 mi_value_is_gpr(struct mi_value val)
 {
-   return (val.type == MI_VALUE_TYPE_REG32 ||
-           val.type == MI_VALUE_TYPE_REG64) &&
+   return mi_value_is_reg(val) &&
           val.reg >= _MI_BUILDER_GPR_BASE &&
           val.reg < _MI_BUILDER_GPR_BASE +
                     _MI_BUILDER_NUM_HW_GPRS * 8;
@@ -187,8 +193,7 @@ mi_value_is_gpr(struct mi_value val)
 static inline bool
 _mi_value_is_allocated_gpr(struct mi_value val)
 {
-   return (val.type == MI_VALUE_TYPE_REG32 ||
-           val.type == MI_VALUE_TYPE_REG64) &&
+   return mi_value_is_reg(val) &&
           val.reg >= _MI_BUILDER_GPR_BASE &&
           val.reg < _MI_BUILDER_GPR_BASE +
                     MI_BUILDER_NUM_ALLOC_GPRS * 8;
@@ -1237,6 +1242,124 @@ mi_store_mem64_offset(struct mi_builder *b,
     */
    mi_builder_flush_math(b);
 }
+
+/*
+ * Control-flow Section.  Only available on GFX 12.5+
+ */
+
+struct _mi_goto {
+   bool predicated;
+   void *mi_bbs;
+};
+
+struct mi_goto_target {
+   bool placed;
+   unsigned num_gotos;
+   struct _mi_goto gotos[8];
+   __gen_address_type addr;
+};
+
+#define MI_GOTO_TARGET_INIT ((struct mi_goto_target) {})
+
+#define MI_BUILDER_MI_PREDICATE_RESULT_num  0x2418
+
+static inline void
+mi_goto_if(struct mi_builder *b, struct mi_value cond,
+           struct mi_goto_target *t)
+{
+   /* First, set up the predicate, if any */
+   bool predicated;
+   if (cond.type == MI_VALUE_TYPE_IMM) {
+      /* If it's an immediate, the goto either doesn't happen or happens
+       * unconditionally.
+       */
+      if (mi_value_to_u64(cond) == 0)
+         return;
+
+      assert(mi_value_to_u64(cond) == ~0ull);
+      predicated = false;
+   } else if (mi_value_is_reg(cond) &&
+              cond.reg == MI_BUILDER_MI_PREDICATE_RESULT_num) {
+      /* If it's MI_PREDICATE_RESULT, we use whatever predicate the client
+       * provided us with
+       */
+      assert(cond.type == MI_VALUE_TYPE_REG32);
+      predicated = true;
+   } else {
+      mi_store(b, mi_reg32(MI_BUILDER_MI_PREDICATE_RESULT_num), cond);
+      predicated = true;
+   }
+
+   if (predicated) {
+      mi_builder_emit(b, GENX(MI_SET_PREDICATE), sp) {
+         sp.PredicateEnable = NOOPOnResultClear;
+      }
+   }
+   if (t->placed) {
+      mi_builder_emit(b, GENX(MI_BATCH_BUFFER_START), bbs) {
+         bbs.PredicationEnable         = predicated;
+         bbs.AddressSpaceIndicator     = ASI_PPGTT;
+         bbs.BatchBufferStartAddress   = t->addr;
+      }
+   } else {
+      assert(t->num_gotos < ARRAY_SIZE(t->gotos));
+      struct _mi_goto g = {
+         .predicated = predicated,
+         .mi_bbs = __gen_get_batch_dwords(b->user_data,
+                                          GENX(MI_BATCH_BUFFER_START_length)),
+      };
+      memset(g.mi_bbs, 0, 4 * GENX(MI_BATCH_BUFFER_START_length));
+      t->gotos[t->num_gotos++] = g;
+   }
+   if (predicated) {
+      mi_builder_emit(b, GENX(MI_SET_PREDICATE), sp) {
+         sp.PredicateEnable = NOOPNever;
+      }
+   }
+}
+
+static inline void
+mi_goto(struct mi_builder *b, struct mi_goto_target *t)
+{
+   mi_goto_if(b, mi_imm(-1), t);
+}
+
+static inline void
+mi_goto_target(struct mi_builder *b, struct mi_goto_target *t)
+{
+   mi_builder_emit(b, GENX(MI_SET_PREDICATE), sp) {
+      sp.PredicateEnable = NOOPNever;
+      t->addr = __gen_get_batch_address(b->user_data, _dst);
+   }
+   t->placed = true;
+
+   struct GENX(MI_BATCH_BUFFER_START) bbs = { GENX(MI_BATCH_BUFFER_START_header) };
+   bbs.AddressSpaceIndicator     = ASI_PPGTT;
+   bbs.BatchBufferStartAddress   = t->addr;
+
+   for (unsigned i = 0; i < t->num_gotos; i++) {
+      bbs.PredicationEnable = t->gotos[i].predicated;
+      GENX(MI_BATCH_BUFFER_START_pack)(b->user_data, t->gotos[i].mi_bbs, &bbs);
+   }
+}
+
+static inline struct mi_goto_target
+mi_goto_target_init_and_place(struct mi_builder *b)
+{
+   struct mi_goto_target t = MI_GOTO_TARGET_INIT;
+   mi_goto_target(b, &t);
+   return t;
+}
+
+#define mi_loop(b) \
+   for (struct mi_goto_target __break = MI_GOTO_TARGET_INIT, \
+        __continue = mi_goto_target_init_and_place(b); !__break.placed; \
+        mi_goto(b, &__continue), mi_goto_target(b, &__break))
+
+#define mi_break(b) mi_goto(b, &__break)
+#define mi_break_if(b, cond) mi_goto_if(b, cond, &__break)
+#define mi_continue(b) mi_goto(b, &__continue)
+#define mi_continue_if(b, cond) mi_goto_if(b, cond, &__continue)
 
 #endif /* GEN_VERSIONx10 >= 125 */
 
