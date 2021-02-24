@@ -415,15 +415,66 @@ static void
 init_slot_map(struct zink_context *ctx, struct zink_gfx_program *prog)
 {
    unsigned existing_shaders = 0;
+   bool needs_new_map = false;
 
-   /* if there's a case where we'll be reusing any shaders, we need to reuse the slot map too */
+   /* if there's a case where we'll be reusing any shaders, we need to (maybe) reuse the slot map too */
    if (ctx->curr_program) {
       for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
           if (ctx->curr_program->shaders[i])
              existing_shaders |= 1 << i;
       }
+      /* if there's reserved slots, check whether we have enough remaining slots */
+      if (ctx->curr_program->shader_slots_reserved) {
+         uint64_t max_outputs = 0;
+         uint32_t num_xfb_outputs = 0;
+         for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+            if (i != PIPE_SHADER_TESS_CTRL &&
+                i != PIPE_SHADER_FRAGMENT &&
+                ctx->gfx_stages[i]) {
+               uint32_t user_outputs = ctx->gfx_stages[i]->nir->info.outputs_written >> 32;
+               uint32_t builtin_outputs = ctx->gfx_stages[i]->nir->info.outputs_written;
+               num_xfb_outputs = MAX2(num_xfb_outputs, ctx->gfx_stages[i]->streamout.so_info.num_outputs);
+               unsigned user_outputs_count = 0;
+               /* check builtins first */
+               u_foreach_bit(slot, builtin_outputs) {
+                  switch (slot) {
+                  /* none of these require slot map entries */
+                  case VARYING_SLOT_POS:
+                  case VARYING_SLOT_PSIZ:
+                  case VARYING_SLOT_LAYER:
+                  case VARYING_SLOT_PRIMITIVE_ID:
+                  case VARYING_SLOT_CULL_DIST0:
+                  case VARYING_SLOT_CLIP_DIST0:
+                  case VARYING_SLOT_VIEWPORT:
+                  case VARYING_SLOT_TESS_LEVEL_INNER:
+                  case VARYING_SLOT_TESS_LEVEL_OUTER:
+                     break;
+                  default:
+                     /* remaining legacy builtins only require 1 slot each */
+                     if (ctx->curr_program->shader_slot_map[slot] == -1)
+                        user_outputs_count++;
+                     break;
+                  }
+               }
+               u_foreach_bit(slot, user_outputs) {
+                  if (ctx->curr_program->shader_slot_map[slot] == -1) {
+                     /* user variables can span multiple slots */
+                     nir_variable *var = nir_find_variable_with_location(ctx->gfx_stages[i]->nir,
+                                                                         nir_var_shader_out, slot);
+                     assert(var);
+                     user_outputs_count += glsl_count_vec4_slots(var->type, false, false);
+                  }
+               }
+               max_outputs = MAX2(max_outputs, user_outputs_count);
+            }
+         }
+         /* slot map can only hold 32 entries, so dump this one if we'll exceed that */
+         if (ctx->curr_program->shader_slots_reserved + max_outputs + num_xfb_outputs > 32)
+            needs_new_map = true;
+      }
    }
-   if (ctx->dirty_shader_stages == existing_shaders || !existing_shaders) {
+
+   if (needs_new_map || ctx->dirty_shader_stages == existing_shaders || !existing_shaders) {
       /* all shaders are being recompiled: new slot map */
       memset(prog->shader_slot_map, -1, sizeof(prog->shader_slot_map));
       /* we need the slot map to match up, so we can't reuse the previous cache if we can't guarantee
