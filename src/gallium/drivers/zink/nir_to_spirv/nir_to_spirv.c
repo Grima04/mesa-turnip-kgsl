@@ -383,21 +383,24 @@ create_shared_block(struct ntv_context *ctx, unsigned shared_size)
 }
 
 static inline unsigned char
-reserve_slot(struct ntv_context *ctx)
+reserve_slot(struct ntv_context *ctx, unsigned num_slots)
 {
    /* TODO: this should actually be clamped to the limits value as in the table
     * in 14.1.4 of the vulkan spec, though there's not really any recourse
     * other than aborting if we do hit it...
     */
-   assert(ctx->shader_slots_reserved < MAX_VARYING);
-   return ctx->shader_slots_reserved++;
+   assert(ctx->shader_slots_reserved + num_slots <= MAX_VARYING);
+   unsigned ret = ctx->shader_slots_reserved;
+   ctx->shader_slots_reserved += num_slots;
+   return ret;
 }
 
 static inline unsigned
-handle_slot(struct ntv_context *ctx, unsigned slot)
+handle_slot(struct ntv_context *ctx, unsigned slot, unsigned num_slots)
 {
+   assert(num_slots);
    if (ctx->shader_slot_map[slot] == SLOT_UNSET)
-      ctx->shader_slot_map[slot] = reserve_slot(ctx);
+      ctx->shader_slot_map[slot] = reserve_slot(ctx, num_slots);
    slot = ctx->shader_slot_map[slot];
    assert(slot < MAX_VARYING);
    return slot;
@@ -420,7 +423,7 @@ handle_handle_slot(struct ntv_context *ctx, struct nir_variable *var, bool outpu
               (!output && ctx->stage == MESA_SHADER_TESS_EVAL))) {
       return var->data.location - VARYING_SLOT_VAR0;
    }
-   return handle_slot(ctx, var->data.location);
+   return handle_slot(ctx, var->data.location, glsl_count_vec4_slots(var->type, false, false));
 }
 
 static SpvId
@@ -465,7 +468,7 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
       HANDLE_EMIT_BUILTIN(FACE, FrontFacing);
 
       default:
-         slot = handle_slot(ctx, slot);
+         slot = handle_slot(ctx, slot, glsl_count_vec4_slots(var->type, false, false));
          spirv_builder_emit_location(&ctx->builder, var_id, slot);
       }
       if (var->data.centroid)
