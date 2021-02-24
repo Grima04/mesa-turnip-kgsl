@@ -183,7 +183,7 @@ _util_queue_fence_wait_timeout(struct util_queue_fence *fence,
    if (rel > 0) {
       struct timespec ts;
 
-#ifdef HAVE_TIMESPEC_GET
+#if defined(HAVE_TIMESPEC_GET) || defined(_WIN32)
       timespec_get(&ts, TIME_UTC);
 #else
       clock_gettime(CLOCK_REALTIME, &ts);
