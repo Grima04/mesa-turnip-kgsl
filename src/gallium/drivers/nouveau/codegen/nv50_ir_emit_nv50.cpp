@@ -779,12 +779,15 @@ CodeEmitterNV50::emitMOV(const Instruction *i)
       emitFlagsWr(i);
    } else
    if (sf == FILE_IMMEDIATE) {
-      code[0] = 0x10008001;
+      code[0] = 0x10000001;
       code[1] = 0x00000003;
       emitForm_IMM(i);
+
+      code[0] |= (typeSizeof(i->dType) == 2) ? 0 : 0x00008000;
    } else {
       if (i->encSize == 4) {
-         code[0] = 0x10008000;
+         code[0] = 0x10000000;
+         code[0] |= (typeSizeof(i->dType) == 2) ? 0 : 0x00008000;
          defId(i->def(0), 2);
       } else {
          code[0] = 0x10000001;
