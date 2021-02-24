@@ -1260,8 +1260,6 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
 {
    unsigned output = 0;
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
-      if (so_info->skip[i])
-         continue;
       struct pipe_stream_output so_output = so_info->so_info.output[i];
       unsigned slot = so_info->so_info_slots[i] << 2 | so_output.start_component;
       SpvId out_type = get_output_type(ctx, slot, so_output.num_components);
@@ -1309,8 +1307,6 @@ emit_so_outputs(struct ntv_context *ctx,
                 const struct zink_so_info *so_info)
 {
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
-      if (so_info->skip[i])
-         continue;
       uint32_t components[NIR_MAX_VEC_COMPONENTS];
       unsigned slot = so_info->so_info_slots[i];
       struct pipe_stream_output so_output = so_info->so_info.output[i];

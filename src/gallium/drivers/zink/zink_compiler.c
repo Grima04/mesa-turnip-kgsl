@@ -424,16 +424,16 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
    for (unsigned i = 0; i < so_info->num_outputs; i++) {
       const struct pipe_stream_output *output = &so_info->output[i];
       unsigned slot = reverse_map[output->register_index];
+      /* always set stride to be used during draw */
+      zs->streamout.so_info.stride[output->output_buffer] = so_info->stride[output->output_buffer];
       if ((zs->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->nir->info.gs.active_stream_mask) == 1) &&
           !output->start_component) {
          nir_variable *var = NULL;
          while (!var)
             var = nir_find_variable_with_location(zs->nir, nir_var_shader_out, slot--);
          slot++;
-         if (inlined[slot]) {
-            zs->streamout.skip[i] = true;
+         if (inlined[slot])
             continue;
-         }
          assert(var && var->data.location == slot);
          /* if this is the entire variable, try to blast it out during the initial declaration */
          if (glsl_get_components(var->type) == output->num_components) {
@@ -442,13 +442,13 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
             var->data.xfb.stride = so_info->stride[output->output_buffer] * 4;
             var->data.offset = output->dst_offset * 4;
             var->data.stream = output->stream;
-            zs->streamout.skip[i] = true;
             inlined[slot] = true;
             continue;
          }
       }
+      zs->streamout.so_info.output[zs->streamout.so_info.num_outputs] = *output;
       /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
-      zs->streamout.so_info_slots[i] = reverse_map[output->register_index];
+      zs->streamout.so_info_slots[zs->streamout.so_info.num_outputs++] = reverse_map[output->register_index];
    }
    zs->streamout.have_xfb = true;
 }
@@ -691,11 +691,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    }
 
    ret->nir = nir;
-   if (so_info && nir->info.outputs_written && nir->info.has_transform_feedback_varyings) {
-      memcpy(&ret->streamout.so_info, so_info, sizeof(struct pipe_stream_output_info));
+   if (so_info && nir->info.outputs_written && nir->info.has_transform_feedback_varyings)
       update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
-   }
-
 
    return ret;
 }
