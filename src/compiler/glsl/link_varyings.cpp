@@ -1219,8 +1219,8 @@ tfeedback_decl::store(struct gl_context *ctx, struct gl_shader_program *prog,
                       unsigned buffer, unsigned buffer_index,
                       const unsigned max_outputs,
                       BITSET_WORD *used_components[MAX_FEEDBACK_BUFFERS],
-                      bool *explicit_stride, bool has_xfb_qualifiers,
-                      const void* mem_ctx) const
+                      bool *explicit_stride, unsigned *max_member_alignment,
+                      bool has_xfb_qualifiers, const void* mem_ctx) const
 {
    unsigned xfb_offset = 0;
    unsigned size = this->size;
@@ -1402,7 +1402,14 @@ tfeedback_decl::store(struct gl_context *ctx, struct gl_shader_program *prog,
          return false;
       }
    } else {
-      info->Buffers[buffer].Stride = xfb_offset;
+      if (max_member_alignment && has_xfb_qualifiers) {
+         max_member_alignment[buffer] = MAX2(max_member_alignment[buffer],
+                                             this->is_64bit() ? 2 : 1);
+         info->Buffers[buffer].Stride = ALIGN(xfb_offset,
+                                              max_member_alignment[buffer]);
+      } else {
+         info->Buffers[buffer].Stride = xfb_offset;
+      }
    }
 
  store_varying:
@@ -1591,7 +1598,7 @@ store_tfeedback_info(struct gl_context *ctx, struct gl_shader_program *prog,
          if (!tfeedback_decls[i].store(ctx, prog,
                                        xfb_prog->sh.LinkedTransformFeedback,
                                        num_buffers, num_buffers, num_outputs,
-                                       used_components, NULL,
+                                       used_components, NULL, NULL,
                                        has_xfb_qualifiers, mem_ctx))
             return false;
 
@@ -1605,7 +1612,7 @@ store_tfeedback_info(struct gl_context *ctx, struct gl_shader_program *prog,
       unsigned buffer =
          num_tfeedback_decls ? tfeedback_decls[0].get_buffer() : 0;
       bool explicit_stride[MAX_FEEDBACK_BUFFERS] = { false };
-
+      unsigned max_member_alignment[MAX_FEEDBACK_BUFFERS] = { 1, 1, 1, 1 };
       /* Apply any xfb_stride global qualifiers */
       if (has_xfb_qualifiers) {
          for (unsigned j = 0; j < MAX_FEEDBACK_BUFFERS; j++) {
@@ -1630,7 +1637,9 @@ store_tfeedback_info(struct gl_context *ctx, struct gl_shader_program *prog,
                                           xfb_prog->sh.LinkedTransformFeedback,
                                           buffer, num_buffers, num_outputs,
                                           used_components, explicit_stride,
-                                          has_xfb_qualifiers, mem_ctx))
+                                          max_member_alignment,
+                                          has_xfb_qualifiers,
+                                          mem_ctx))
                return false;
             num_buffers++;
             buffer_stream_id = -1;
@@ -1672,7 +1681,9 @@ store_tfeedback_info(struct gl_context *ctx, struct gl_shader_program *prog,
                                        xfb_prog->sh.LinkedTransformFeedback,
                                        buffer, num_buffers, num_outputs,
                                        used_components, explicit_stride,
-                                       has_xfb_qualifiers, mem_ctx))
+                                       max_member_alignment,
+                                       has_xfb_qualifiers,
+                                       mem_ctx))
             return false;
       }
    }
