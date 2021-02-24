@@ -422,6 +422,7 @@ update_so_info(struct zink_shader *sh,
       /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
       sh->streamout.so_info_slots[i] = reverse_map[output->register_index];
    }
+   sh->streamout.have_xfb = true;
 }
 
 VkShaderModule
@@ -434,7 +435,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
    /* TODO: use a separate mem ctx here for ralloc */
    if (zs->nir->info.stage < MESA_SHADER_FRAGMENT) {
       if (zink_vs_key(key)->last_vertex_stage) {
-         if (zs->streamout.so_info_slots)
+         if (zs->streamout.have_xfb)
             streamout = &zs->streamout;
 
          if (!zink_vs_key(key)->clip_halfz) {
@@ -664,8 +665,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    ret->nir = nir;
    if (so_info) {
       memcpy(&ret->streamout.so_info, so_info, sizeof(struct pipe_stream_output_info));
-      ret->streamout.so_info_slots = malloc(so_info->num_outputs * sizeof(unsigned int));
-      assert(ret->streamout.so_info_slots);
       update_so_info(ret, nir->info.outputs_written, have_psiz);
    }
 
@@ -693,7 +692,6 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
       }
    }
    _mesa_set_destroy(shader->programs, NULL);
-   free(shader->streamout.so_info_slots);
    ralloc_free(shader->nir);
    FREE(shader);
 }
