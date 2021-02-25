@@ -479,7 +479,7 @@ nv50_compute_upload_input(struct nv50_context *nv50, const uint32_t *input)
    unsigned size = align(nv50->compprog->parm_size, 0x4);
 
    BEGIN_NV04(push, NV50_CP(USER_PARAM_COUNT), 1);
-   PUSH_DATA (push, (size / 4) << 8);
+   PUSH_DATA (push, (1 + (size / 4)) << 8);
 
    if (size) {
       struct nouveau_mm_allocation *mm;
@@ -498,7 +498,7 @@ nv50_compute_upload_input(struct nv50_context *nv50, const uint32_t *input)
 
       nouveau_pushbuf_space(push, 0, 0, 1);
 
-      BEGIN_NV04(push, NV50_CP(USER_PARAM(0)), size / 4);
+      BEGIN_NV04(push, NV50_CP(USER_PARAM(1)), size / 4);
       nouveau_pushbuf_data(push, bo, offset, size);
 
       nouveau_fence_work(screen->base.fence.current, nouveau_mm_free_work, mm);
@@ -545,9 +545,15 @@ nv50_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    BEGIN_NV04(push, NV50_CP(GRIDID), 1);
    PUSH_DATA (push, 1);
 
-   /* kernel launching */
-   BEGIN_NV04(push, NV50_CP(LAUNCH), 1);
-   PUSH_DATA (push, 0);
+   for (int i = 0; i < info->grid[2]; i++) {
+      BEGIN_NV04(push, NV50_CP(USER_PARAM(0)), 1);
+      PUSH_DATA (push, info->grid[2] | i << 16);
+
+      /* kernel launching */
+      BEGIN_NV04(push, NV50_CP(LAUNCH), 1);
+      PUSH_DATA (push, 0);
+   }
+
    BEGIN_NV04(push, SUBC_CP(NV50_GRAPH_SERIALIZE), 1);
    PUSH_DATA (push, 0);
 
