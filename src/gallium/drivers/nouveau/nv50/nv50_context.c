@@ -142,7 +142,7 @@ nv50_context_unreference_resources(struct nv50_context *nv50)
    for (i = 0; i < nv50->num_vtxbufs; ++i)
       pipe_vertex_buffer_unreference(&nv50->vtxbuf[i]);
 
-   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
+   for (s = 0; s < NV50_MAX_SHADER_STAGES; ++s) {
       assert(nv50->num_textures[s] <= PIPE_MAX_SAMPLERS);
       for (i = 0; i < nv50->num_textures[s]; ++i)
          pipe_sampler_view_reference(&nv50->textures[s][i], NULL);
@@ -232,28 +232,38 @@ nv50_invalidate_resource_storage(struct nouveau_context *ctx,
          }
       }
 
-      for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
+      for (s = 0; s < NV50_MAX_SHADER_STAGES; ++s) {
       assert(nv50->num_textures[s] <= PIPE_MAX_SAMPLERS);
       for (i = 0; i < nv50->num_textures[s]; ++i) {
          if (nv50->textures[s][i] &&
              nv50->textures[s][i]->texture == res) {
-            nv50->dirty_3d |= NV50_NEW_3D_TEXTURES;
-            nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_TEXTURES);
+            if (unlikely(s == NV50_SHADER_STAGE_COMPUTE)) {
+               nv50->dirty_cp |= NV50_NEW_CP_TEXTURES;
+               nouveau_bufctx_reset(nv50->bufctx_cp, NV50_BIND_CP_TEXTURES);
+            } else {
+               nv50->dirty_3d |= NV50_NEW_3D_TEXTURES;
+               nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_TEXTURES);
+            }
             if (!--ref)
                return ref;
          }
       }
       }
 
-      for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
+      for (s = 0; s < NV50_MAX_SHADER_STAGES; ++s) {
       for (i = 0; i < NV50_MAX_PIPE_CONSTBUFS; ++i) {
          if (!(nv50->constbuf_valid[s] & (1 << i)))
             continue;
          if (!nv50->constbuf[s][i].user &&
              nv50->constbuf[s][i].u.buf == res) {
-            nv50->dirty_3d |= NV50_NEW_3D_CONSTBUF;
             nv50->constbuf_dirty[s] |= 1 << i;
-            nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_CB(s, i));
+            if (unlikely(s == NV50_SHADER_STAGE_COMPUTE)) {
+               nv50->dirty_cp |= NV50_NEW_CP_CONSTBUF;
+               nouveau_bufctx_reset(nv50->bufctx_cp, NV50_BIND_CP_CB(i));
+            } else {
+               nv50->dirty_3d |= NV50_NEW_3D_CONSTBUF;
+               nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_CB(s, i));
+            }
             if (!--ref)
                return ref;
          }

@@ -769,8 +769,8 @@ nv50_screen_init_hwctx(struct nv50_screen *screen)
    PUSH_DATA (push, (NV50_CB_PFP << 16) | 0x0000);
 
    BEGIN_NV04(push, NV50_3D(CB_DEF_ADDRESS_HIGH), 3);
-   PUSH_DATAh(push, screen->uniforms->offset + (3 << 16));
-   PUSH_DATA (push, screen->uniforms->offset + (3 << 16));
+   PUSH_DATAh(push, screen->uniforms->offset + (4 << 16));
+   PUSH_DATA (push, screen->uniforms->offset + (4 << 16));
    PUSH_DATA (push, (NV50_CB_AUX << 16) | (NV50_CB_AUX_SIZE & 0xffff));
 
    BEGIN_NI04(push, NV50_3D(SET_PROGRAM_CB), 3);
@@ -787,8 +787,8 @@ nv50_screen_init_hwctx(struct nv50_screen *screen)
    PUSH_DATAf(push, 0.0f);
    PUSH_DATAf(push, 0.0f);
    BEGIN_NV04(push, NV50_3D(VERTEX_RUNOUT_ADDRESS_HIGH), 2);
-   PUSH_DATAh(push, screen->uniforms->offset + (3 << 16) + NV50_CB_AUX_RUNOUT_OFFSET);
-   PUSH_DATA (push, screen->uniforms->offset + (3 << 16) + NV50_CB_AUX_RUNOUT_OFFSET);
+   PUSH_DATAh(push, screen->uniforms->offset + (4 << 16) + NV50_CB_AUX_RUNOUT_OFFSET);
+   PUSH_DATA (push, screen->uniforms->offset + (4 << 16) + NV50_CB_AUX_RUNOUT_OFFSET);
 
    nv50_upload_ms_info(push);
 
@@ -1157,7 +1157,7 @@ nv50_screen_create(struct nouveau_device *dev)
       debug_printf("TPs = %u, MPsInTP = %u, VRAM = %"PRIu64" MiB, tls_size = %"PRIu64" KiB\n",
             screen->TPs, screen->MPsInTP, dev->vram_size >> 20, tls_size >> 10);
 
-   ret = nouveau_bo_new(dev, NOUVEAU_BO_VRAM, 1 << 16, 4 << 16, NULL,
+   ret = nouveau_bo_new(dev, NOUVEAU_BO_VRAM, 1 << 16, 5 << 16, NULL,
                         &screen->uniforms);
    if (ret) {
       NOUVEAU_ERR("Failed to allocate uniforms bo: %d\n", ret);

@@ -25,6 +25,7 @@
 #include "nv50/nv50_3ddefs.xml.h"
 #include "nv50/nv50_3d.xml.h"
 #include "nv50/nv50_2d.xml.h"
+#include "nv50/nv50_compute.xml.h"
 
 // NOTE: the VS/GS/FS order is based on how command methods are laid out for
 // TSC/TIC setting.
@@ -58,10 +59,15 @@
 #define NV50_NEW_3D_STRMOUT      (1 << 21)
 #define NV50_NEW_3D_MIN_SAMPLES  (1 << 22)
 #define NV50_NEW_3D_WINDOW_RECTS (1 << 23)
-#define NV50_NEW_3D_CONTEXT      (1 << 31)
 
 #define NV50_NEW_CP_PROGRAM   (1 << 0)
-#define NV50_NEW_CP_GLOBALS   (1 << 1)
+#define NV50_NEW_CP_SURFACES  (1 << 1)
+#define NV50_NEW_CP_TEXTURES  (1 << 2)
+#define NV50_NEW_CP_SAMPLERS  (1 << 3)
+#define NV50_NEW_CP_CONSTBUF  (1 << 4)
+#define NV50_NEW_CP_GLOBALS   (1 << 5)
+#define NV50_NEW_CP_DRIVERCONST (1 << 6)
+#define NV50_NEW_CP_BUFFERS   (1 << 7)
 
 /* 3d bufctx (during draw_vbo, blit_3d) */
 #define NV50_BIND_3D_FB          0
@@ -76,21 +82,25 @@
 #define NV50_BIND_3D_COUNT      56
 
 /* compute bufctx (during launch_grid) */
-#define NV50_BIND_CP_GLOBAL   0
-#define NV50_BIND_CP_SCREEN   1
-#define NV50_BIND_CP_QUERY    2
-#define NV50_BIND_CP_COUNT    3
+#define NV50_BIND_CP_CB(i)    ( 0 + (i))
+#define NV50_BIND_CP_TEXTURES  16
+#define NV50_BIND_CP_SUF       17
+#define NV50_BIND_CP_BUF       18
+#define NV50_BIND_CP_GLOBAL    19
+#define NV50_BIND_CP_SCREEN    20
+#define NV50_BIND_CP_QUERY     21
+#define NV50_BIND_CP_COUNT     22
 
 /* bufctx for other operations */
 #define NV50_BIND_2D          0
 #define NV50_BIND_M2MF        0
 #define NV50_BIND_FENCE       1
 
-#define NV50_CB_TMP 123
 /* fixed constant buffer binding points - low indices for user's constbufs */
-#define NV50_CB_PVP 124
-#define NV50_CB_PGP 126
+#define NV50_CB_PVP 123
+#define NV50_CB_PGP 124
 #define NV50_CB_PFP 125
+#define NV50_CB_PCP 126
 /* constant buffer permanently mapped in as c15[] */
 #define NV50_CB_AUX 127
 /* size of the buffer: 64k. not all taken up, can be reduced if needed. */
@@ -98,17 +108,17 @@
 /* 8 user clip planes, at 4 32-bit floats each */
 #define NV50_CB_AUX_UCP_OFFSET    0x0000
 #define NV50_CB_AUX_UCP_SIZE      (8 * 4 * 4)
-/* 16 textures * NV50_MAX_3D_SHADER_STAGES shaders, each with ms_x, ms_y u32 pairs */
+/* 16 textures * NV50_MAX_SHADER_STAGES shaders, each with ms_x, ms_y u32 pairs */
 #define NV50_CB_AUX_TEX_MS_OFFSET 0x0080
-#define NV50_CB_AUX_TEX_MS_SIZE   (16 * NV50_MAX_3D_SHADER_STAGES * 2 * 4)
+#define NV50_CB_AUX_TEX_MS_SIZE   (16 * NV50_MAX_SHADER_STAGES * 2 * 4)
 /* For each MS level (4), 8 sets of 32-bit integer pairs sample offsets */
-#define NV50_CB_AUX_MS_OFFSET     0x200
+#define NV50_CB_AUX_MS_OFFSET     0x280
 #define NV50_CB_AUX_MS_SIZE       (4 * 8 * 4 * 2)
 /* Sample position pairs for the current output MS level */
-#define NV50_CB_AUX_SAMPLE_OFFSET 0x300
+#define NV50_CB_AUX_SAMPLE_OFFSET 0x380
 #define NV50_CB_AUX_SAMPLE_OFFSET_SIZE (4 * 8 * 2)
 /* Alpha test ref value */
-#define NV50_CB_AUX_ALPHATEST_OFFSET 0x340
+#define NV50_CB_AUX_ALPHATEST_OFFSET 0x3c0
 #define NV50_CB_AUX_ALPHATEST_SIZE (4)
 /* next spot: 0x344 */
 /* 4 32-bit floats for the vertex runout, put at the end */
@@ -145,10 +155,10 @@ struct nv50_context {
    struct nv50_program *fragprog;
    struct nv50_program *compprog;
 
-   struct nv50_constbuf constbuf[NV50_MAX_3D_SHADER_STAGES][NV50_MAX_PIPE_CONSTBUFS];
-   uint16_t constbuf_dirty[NV50_MAX_3D_SHADER_STAGES];
-   uint16_t constbuf_valid[NV50_MAX_3D_SHADER_STAGES];
-   uint16_t constbuf_coherent[NV50_MAX_3D_SHADER_STAGES];
+   struct nv50_constbuf constbuf[NV50_MAX_SHADER_STAGES][NV50_MAX_PIPE_CONSTBUFS];
+   uint16_t constbuf_dirty[NV50_MAX_SHADER_STAGES];
+   uint16_t constbuf_valid[NV50_MAX_SHADER_STAGES];
+   uint16_t constbuf_coherent[NV50_MAX_SHADER_STAGES];
 
    struct pipe_vertex_buffer vtxbuf[PIPE_MAX_ATTRIBS];
    unsigned num_vtxbufs;
@@ -161,11 +171,11 @@ struct nv50_context {
    uint32_t instance_off; /* base vertex for instanced arrays */
    uint32_t instance_max; /* max instance for current draw call */
 
-   struct pipe_sampler_view *textures[NV50_MAX_3D_SHADER_STAGES][PIPE_MAX_SAMPLERS];
-   unsigned num_textures[NV50_MAX_3D_SHADER_STAGES];
-   uint32_t textures_coherent[NV50_MAX_3D_SHADER_STAGES];
-   struct nv50_tsc_entry *samplers[NV50_MAX_3D_SHADER_STAGES][PIPE_MAX_SAMPLERS];
-   unsigned num_samplers[NV50_MAX_3D_SHADER_STAGES];
+   struct pipe_sampler_view *textures[NV50_MAX_SHADER_STAGES][PIPE_MAX_SAMPLERS];
+   unsigned num_textures[NV50_MAX_SHADER_STAGES];
+   uint32_t textures_coherent[NV50_MAX_SHADER_STAGES];
+   struct nv50_tsc_entry *samplers[NV50_MAX_SHADER_STAGES][PIPE_MAX_SAMPLERS];
+   unsigned num_samplers[NV50_MAX_SHADER_STAGES];
    bool seamless_cube_map;
 
    uint8_t num_so_targets;
@@ -269,7 +279,9 @@ extern void nv50_clear(struct pipe_context *, unsigned buffers,
 extern void nv50_init_surface_functions(struct nv50_context *);
 
 /* nv50_tex.c */
+bool nv50_validate_tic(struct nv50_context *nv50, int s);
 void nv50_validate_textures(struct nv50_context *);
+bool nv50_validate_tsc(struct nv50_context *nv50, int s);
 void nv50_validate_samplers(struct nv50_context *);
 void nv50_upload_ms_info(struct nouveau_pushbuf *);
 void nv50_upload_tsc0(struct nv50_context *);

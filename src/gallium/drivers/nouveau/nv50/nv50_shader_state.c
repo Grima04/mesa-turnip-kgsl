@@ -109,6 +109,11 @@ nv50_constbufs_validate(struct nv50_context *nv50)
          }
       }
    }
+
+   /* Invalidate all COMPUTE constbufs because they are aliased with 3D. */
+   nv50->dirty_cp |= NV50_NEW_CP_CONSTBUF;
+   nv50->constbuf_dirty[NV50_SHADER_STAGE_COMPUTE] |= nv50->constbuf_valid[NV50_SHADER_STAGE_COMPUTE];
+   nv50->state.uniform_buffer_bound[NV50_SHADER_STAGE_COMPUTE] = false;
 }
 
 static bool

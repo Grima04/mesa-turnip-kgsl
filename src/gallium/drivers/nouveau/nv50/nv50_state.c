@@ -592,7 +592,7 @@ nv50_sampler_state_delete(struct pipe_context *pipe, void *hwcso)
 {
    unsigned s, i;
 
-   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
+   for (s = 0; s < NV50_MAX_SHADER_STAGES; ++s) {
       assert(nv50_context(pipe)->num_samplers[s] <= PIPE_MAX_SAMPLERS);
       for (i = 0; i < nv50_context(pipe)->num_samplers[s]; ++i)
          if (nv50_context(pipe)->samplers[s][i] == hwcso)
@@ -626,8 +626,6 @@ nv50_stage_sampler_states_bind(struct nv50_context *nv50, int s,
    assert(nv50->num_samplers[s] <= PIPE_MAX_SAMPLERS);
    if (nr >= nv50->num_samplers[s])
       nv50->num_samplers[s] = highest_found + 1;
-
-   nv50->dirty_3d |= NV50_NEW_3D_SAMPLERS;
 }
 
 static void
@@ -638,9 +636,13 @@ nv50_bind_sampler_states(struct pipe_context *pipe,
    unsigned s = nv50_context_shader_stage(shader);
 
    assert(start == 0);
-   assert(s != NV50_SHADER_STAGE_COMPUTE);
    nv50_stage_sampler_states_bind(nv50_context(pipe), s, num_samplers,
                                   samplers);
+
+   if (unlikely(s == NV50_SHADER_STAGE_COMPUTE))
+      nv50_context(pipe)->dirty_cp |= NV50_NEW_CP_SAMPLERS;
+   else
+      nv50_context(pipe)->dirty_3d |= NV50_NEW_3D_SAMPLERS;
 }
 
 
@@ -696,10 +698,6 @@ nv50_stage_set_sampler_views(struct nv50_context *nv50, int s,
    }
 
    nv50->num_textures[s] = nr;
-
-   nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_TEXTURES);
-
-   nv50->dirty_3d |= NV50_NEW_3D_TEXTURES;
 }
 
 static void
@@ -708,11 +706,21 @@ nv50_set_sampler_views(struct pipe_context *pipe, enum pipe_shader_type shader,
                        unsigned unbind_num_trailing_slots,
                        struct pipe_sampler_view **views)
 {
+   struct nv50_context *nv50 = nv50_context(pipe);
    unsigned s = nv50_context_shader_stage(shader);
 
    assert(start == 0);
-   assert(s != NV50_SHADER_STAGE_COMPUTE);
-   nv50_stage_set_sampler_views(nv50_context(pipe), s, nr, views);
+   nv50_stage_set_sampler_views(nv50, s, nr, views);
+
+   if (unlikely(s == NV50_SHADER_STAGE_COMPUTE)) {
+      nouveau_bufctx_reset(nv50->bufctx_cp, NV50_BIND_CP_TEXTURES);
+
+      nv50->dirty_cp |= NV50_NEW_CP_TEXTURES;
+   } else {
+      nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_TEXTURES);
+
+      nv50->dirty_3d |= NV50_NEW_3D_TEXTURES;
+   }
 }
 
 
@@ -871,17 +879,27 @@ nv50_set_constant_buffer(struct pipe_context *pipe,
    const unsigned s = nv50_context_shader_stage(shader);
    const unsigned i = index;
 
-   if (shader == PIPE_SHADER_COMPUTE)
-      return;
+   if (unlikely(shader == PIPE_SHADER_COMPUTE)) {
+      if (nv50->constbuf[s][i].user)
+         nv50->constbuf[s][i].u.buf = NULL;
+      else
+      if (nv50->constbuf[s][i].u.buf)
+         nouveau_bufctx_reset(nv50->bufctx_cp, NV50_BIND_CP_CB(i));
 
-   assert(i < NV50_MAX_PIPE_CONSTBUFS);
-   if (nv50->constbuf[s][i].user)
-      nv50->constbuf[s][i].u.buf = NULL;
-   else
-   if (nv50->constbuf[s][i].u.buf) {
-      nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_CB(s, i));
-      nv04_resource(nv50->constbuf[s][i].u.buf)->cb_bindings[s] &= ~(1 << i);
+      nv50->dirty_cp |= NV50_NEW_CP_CONSTBUF;
+   } else {
+      if (nv50->constbuf[s][i].user)
+         nv50->constbuf[s][i].u.buf = NULL;
+      else
+      if (nv50->constbuf[s][i].u.buf)
+         nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_3D_CB(s, i));
+
+      nv50->dirty_3d |= NV50_NEW_3D_CONSTBUF;
    }
+   nv50->constbuf_dirty[s] |= 1 << i;
+
+   if (nv50->constbuf[s][i].u.buf)
+      nv04_resource(nv50->constbuf[s][i].u.buf)->cb_bindings[s] &= ~(1 << i);
 
    if (take_ownership) {
       pipe_resource_reference(&nv50->constbuf[s][i].u.buf, NULL);
@@ -897,21 +915,19 @@ nv50_set_constant_buffer(struct pipe_context *pipe,
       nv50->constbuf_valid[s] |= 1 << i;
       nv50->constbuf_coherent[s] &= ~(1 << i);
    } else
-   if (res) {
+   if (cb) {
       nv50->constbuf[s][i].offset = cb->buffer_offset;
       nv50->constbuf[s][i].size = MIN2(align(cb->buffer_size, 0x100), 0x10000);
       nv50->constbuf_valid[s] |= 1 << i;
-      if (res->flags & PIPE_RESOURCE_FLAG_MAP_COHERENT)
+      if (res && res->flags & PIPE_RESOURCE_FLAG_MAP_COHERENT)
          nv50->constbuf_coherent[s] |= 1 << i;
       else
          nv50->constbuf_coherent[s] &= ~(1 << i);
-   } else {
+   }
+   else {
       nv50->constbuf_valid[s] &= ~(1 << i);
       nv50->constbuf_coherent[s] &= ~(1 << i);
    }
-   nv50->constbuf_dirty[s] |= 1 << i;
-
-   nv50->dirty_3d |= NV50_NEW_3D_CONSTBUF;
 }
 
 /* =============================================================================

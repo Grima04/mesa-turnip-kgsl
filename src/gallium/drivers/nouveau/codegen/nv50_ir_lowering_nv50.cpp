@@ -692,6 +692,8 @@ void NV50LoweringPreSSA::loadTexMsInfo(uint32_t off, Value **ms,
       off += 16 * 2 * 4;
    if (prog->getType() > Program::TYPE_GEOMETRY)
       off += 16 * 2 * 4;
+   if (prog->getType() > Program::TYPE_FRAGMENT)
+      off += 16 * 2 * 4;
    *ms_x = bld.mkLoadv(TYPE_U32, bld.mkSymbol(
                              FILE_MEMORY_CONST, b, TYPE_U32, off + 0), NULL);
    *ms_y = bld.mkLoadv(TYPE_U32, bld.mkSymbol(
