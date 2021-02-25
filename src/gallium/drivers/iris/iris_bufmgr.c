@@ -1048,7 +1048,7 @@ iris_bo_map_cpu(struct pipe_debug_callback *dbg,
        * contents, and so long as we only read from the CPU mmap we do not
        * need to write those cachelines back afterwards.
        *
-       * On LLC, the emprical evidence suggests that writes from the GPU
+       * On LLC, the empirical evidence suggests that writes from the GPU
        * that bypass the LLC (i.e. for scanout) do *invalidate* the CPU
        * cachelines. (Other reads, such as the display engine, bypass the
        * LLC entirely requiring us to keep dirty pixels for the scanout
@@ -1272,7 +1272,7 @@ iris_bo_wait_rendering(struct iris_bo *bo)
  * handle. Userspace must make sure this race does not occur if such precision
  * is important.
  *
- * Note that some kernels have broken the inifite wait for negative values
+ * Note that some kernels have broken the infinite wait for negative values
  * promise, upgrade to latest stable kernels if this is the case.
  */
 int

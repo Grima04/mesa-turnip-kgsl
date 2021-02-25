@@ -387,7 +387,7 @@ flush_before_state_base_change(struct iris_batch *batch)
    /* Flush before emitting STATE_BASE_ADDRESS.
     *
     * This isn't documented anywhere in the PRM.  However, it seems to be
-    * necessary prior to changing the surface state base adress.  We've
+    * necessary prior to changing the surface state base address.  We've
     * seen issues in Vulkan where we get GPU hangs when using multi-level
     * command buffers which clear depth, reset state base address, and then
     * go render stuff.

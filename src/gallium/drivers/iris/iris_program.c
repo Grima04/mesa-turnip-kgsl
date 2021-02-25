@@ -810,7 +810,7 @@ iris_setup_binding_table(const struct gen_device_info *devinfo,
       bt->used_mask[IRIS_SURFACE_GROUP_RENDER_TARGET] =
          BITFIELD64_MASK(num_render_targets);
 
-      /* Setup render target read surface group inorder to support non-coherent
+      /* Setup render target read surface group in order to support non-coherent
        * framebuffer fetch on Gen8
        */
       if (devinfo->gen == 8 && info->outputs_read) {

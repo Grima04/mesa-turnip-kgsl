@@ -275,7 +275,7 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
 #endif
 
    /* Flush the render cache in cases where the same surface is reinterpreted
-    * with a differernt format, which blorp does for stencil and depth data
+    * with a different format, which blorp does for stencil and depth data
     * among other things.  Invalidation of sampler caches and flushing of any
     * caches which had previously written the source surfaces should already
     * have been handled by the caller.

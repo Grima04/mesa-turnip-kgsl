@@ -754,7 +754,7 @@ iris_init_identifier_bo(struct iris_screen *screen)
 struct pipe_screen *
 iris_screen_create(int fd, const struct pipe_screen_config *config)
 {
-   /* Here are the i915 features we need for Iris (in chronoligical order) :
+   /* Here are the i915 features we need for Iris (in chronological order) :
     *    - I915_PARAM_HAS_EXEC_NO_RELOC     (3.10)
     *    - I915_PARAM_HAS_EXEC_HANDLE_LUT   (3.10)
     *    - I915_PARAM_HAS_EXEC_BATCH_FIRST  (4.13)
