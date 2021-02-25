@@ -391,6 +391,7 @@ nv50_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    BCTX_REFN_bo(nv50->bufctx_3d, 3D_SCREEN, flags, screen->stack_bo);
    if (screen->compute) {
       BCTX_REFN_bo(nv50->bufctx_cp, CP_SCREEN, flags, screen->code);
+      BCTX_REFN_bo(nv50->bufctx_cp, CP_SCREEN, flags, screen->uniforms);
       BCTX_REFN_bo(nv50->bufctx_cp, CP_SCREEN, flags, screen->txc);
       BCTX_REFN_bo(nv50->bufctx_cp, CP_SCREEN, flags, screen->stack_bo);
    }
