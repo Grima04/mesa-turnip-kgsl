@@ -407,6 +407,23 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_GL_CLAMP:
 		return is_a2xx(screen);
 
+	case PIPE_CAP_CLIP_PLANES:
+		/* On a3xx, there is HW support for GL user clip planes that
+		 * occasionally has to fall back to shader key-based lowering to clip
+		 * distances in the VS, and we don't support clip distances so that is
+		 * always shader-based lowering in the FS.
+		 *
+		 * On a4xx-a5xx, there is no HW support for clip planes, so they are
+		 * always lowered to clip distances.  We also lack SW support for the
+		 * HW's clip distances in HW, so we do shader-based lowering in the FS
+		 * in the driver backend.
+		 *
+		 * On a6xx, we have the HW clip distances hooked up, so we just let
+		 * mesa/st lower desktop GL's clip planes to clip distances in the last
+		 * vertex shader stage.
+		 */
+		return !is_a6xx(screen);
+
 	/* Stream output. */
 	case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
 		if (is_ir3(screen))

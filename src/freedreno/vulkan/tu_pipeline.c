@@ -2249,7 +2249,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
    key.layer_zero = !(outputs_written & VARYING_BIT_LAYER);
    key.view_zero = !(outputs_written & VARYING_BIT_VIEWPORT);
-   key.ucp_enables = MASK(last_shader->ir3_shader->nir->info.clip_distance_array_size);
 
    pipeline->tess.patch_type = key.tessellation;
 

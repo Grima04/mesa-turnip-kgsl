@@ -34,7 +34,6 @@ spec@!opengl 1.0@gl-1.0-edgeflag-quads,Crash
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 spec@!opengl 1.0@gl-1.0-scissor-offscreen,Fail
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
-spec@!opengl 1.0@gl-1.0-user-clip-all-planes,Crash
 spec@!opengl 1.0@rasterpos,Crash
 spec@!opengl 1.1@copyteximage 1d,Crash
 spec@!opengl 1.1@copyteximage 2d,Crash
@@ -546,22 +545,17 @@ spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-quads,F
 spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-tris,Fail
 spec@arb_tessellation_shader@execution@vs-tes-vertex,Fail
 spec@glsl-1.10@execution@vsfs-unused-array-member,Crash
-spec@glsl-1.20@execution@clipping@fixed-clip-enables,Fail
-spec@glsl-1.20@execution@clipping@vs-clip-vertex-enables,Fail
-spec@glsl-1.30@execution@clipping@vs-clip-distance-deadcode,Crash
-spec@glsl-1.30@execution@clipping@vs-clip-distance-enables,Fail
 spec@glsl-1.30@execution@fs-large-local-array-vec2,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec3,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec4,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-const-accept,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-const-reject,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-different-from-position,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-enables,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-equal-to-position,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-homogeneity,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-lines,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-points,Crash
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-triangle-strip,Crash
+spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-const-accept,Fail
+spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-different-from-position,Fail
+spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-enables,Fail
+spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-equal-to-position,Fail
+spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-homogeneity,Fail
+spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-lines,Fail
+spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-points,Fail
+spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-triangle-strip,Fail
 spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-const-accept,Crash
 spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-const-reject,Crash
 spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-different-from-position,Crash
@@ -577,7 +571,6 @@ spec@glsl-1.50@execution@compatibility@vs-gs-ff-frag,Crash
 spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array,Crash
 spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array-2,Crash
 spec@glsl-1.50@execution@geometry@max-input-components,Fail
-spec@glsl-1.50@execution@gs-redeclares-pervertex-in-only,Crash
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-float-index-rd,Fail

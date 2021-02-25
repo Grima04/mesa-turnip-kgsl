@@ -3416,11 +3416,8 @@ emit_instructions(struct ir3_context *ctx)
 	 */
 	ctx->so->num_samp = BITSET_LAST_BIT(ctx->s->info.textures_used) + ctx->s->info.num_images;
 
-	/* Save off clip+cull information. Note that in OpenGL clip planes may
-	 * be individually enabled/disabled, so we can't use the
-	 * clip_distance_array_size for them.
-	 */
-	ctx->so->clip_mask = ctx->so->key.ucp_enables;
+	/* Save off clip+cull information. */
+	ctx->so->clip_mask = MASK(ctx->s->info.clip_distance_array_size);
 	ctx->so->cull_mask = MASK(ctx->s->info.cull_distance_array_size) <<
 		ctx->s->info.clip_distance_array_size;
 
