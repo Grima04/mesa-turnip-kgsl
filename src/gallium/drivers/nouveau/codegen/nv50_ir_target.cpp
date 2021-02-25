@@ -53,7 +53,7 @@ const uint8_t Target::operationSrcNr[] =
    1, 2, 1, 2, 0, 0,       // RDSV, WRSV, PIXLD, QUADOP, QUADON, QUADPOP
    2, 3, 2, 1, 1, 2, 3,    // POPCNT, INSBF, EXTBF, BFIND, BREV, BMSK, PERMT
    2,                      // SGXT
-   2, 2,                   // ATOM, BAR
+   3, 2,                   // ATOM, BAR
    2, 2, 2, 2, 3, 2,       // VADD, VAVG, VMIN, VMAX, VSAD, VSET,
    2, 2, 2, 1,             // VSHR, VSHL, VSEL, CCTL
    3,                      // SHFL
