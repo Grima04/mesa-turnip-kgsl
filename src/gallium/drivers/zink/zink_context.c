@@ -61,6 +61,7 @@ destroy_batch(struct zink_context* ctx, struct zink_batch* batch)
    vkFreeCommandBuffers(screen->dev, batch->cmdpool, 1, &batch->cmdbuf);
    vkDestroyCommandPool(screen->dev, batch->cmdpool, NULL);
    zink_fence_reference(screen, &batch->fence, NULL);
+   _mesa_set_destroy(batch->fbs, NULL);
    _mesa_set_destroy(batch->resources, NULL);
    _mesa_set_destroy(batch->sampler_views, NULL);
    util_dynarray_fini(&batch->zombie_samplers);
@@ -846,7 +847,6 @@ setup_framebuffer(struct zink_context *ctx)
 void
 zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(batch == zink_curr_batch(ctx));
 
    setup_framebuffer(ctx);
@@ -914,8 +914,8 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 
    framebuffer_state_buffer_barriers_setup(ctx, fb_state, batch);
 
-   zink_framebuffer_reference(screen, &batch->fb, ctx->framebuffer);
-   for (struct zink_surface **surf = (struct zink_surface **)batch->fb->surfaces; *surf; surf++)
+   zink_batch_reference_framebuffer(batch, ctx->framebuffer);
+   for (struct zink_surface **surf = (struct zink_surface **)ctx->framebuffer->surfaces; *surf; surf++)
       zink_batch_reference_resource_rw(batch, zink_resource((*surf)->base.texture), true);
 
    vkCmdBeginRenderPass(batch->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
@@ -952,7 +952,7 @@ zink_batch_rp(struct zink_context *ctx)
    struct zink_batch *batch = zink_curr_batch(ctx);
    if (!batch->in_rp) {
       zink_begin_render_pass(ctx, batch);
-      assert(batch->fb && batch->fb->rp);
+      assert(ctx->framebuffer && ctx->framebuffer->rp);
    }
    return batch;
 }
@@ -1780,6 +1780,7 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
    if (vkAllocateCommandBuffers(screen->dev, &cbai, &batch->cmdbuf) != VK_SUCCESS)
       return false;
 
+   batch->fbs = _mesa_pointer_set_create(NULL);
    batch->resources = _mesa_pointer_set_create(NULL);
    batch->sampler_views = _mesa_pointer_set_create(NULL);
    batch->programs = _mesa_pointer_set_create(NULL);

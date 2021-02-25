@@ -24,8 +24,6 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (batch->submitted)
       zink_fence_finish(screen, &ctx->base, batch->fence, PIPE_TIMEOUT_INFINITE);
 
-   zink_framebuffer_reference(screen, &batch->fb, NULL);
-
    /* unref all used resources */
    set_foreach(batch->resources, entry) {
       struct pipe_resource *pres = (struct pipe_resource *)entry->key;
@@ -62,6 +60,12 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
       }
    }
    _mesa_set_clear(batch->programs, NULL);
+
+   set_foreach(batch->fbs, entry) {
+      struct zink_framebuffer *fb = (void*)entry->key;
+      zink_framebuffer_reference(screen, &fb, NULL);
+      _mesa_set_remove(batch->fbs, entry);
+   }
 
    if (vkResetDescriptorPool(screen->dev, batch->descpool, 0) != VK_SUCCESS)
       fprintf(stderr, "vkResetDescriptorPool failed\n");
@@ -194,6 +198,16 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
       pipe_reference(NULL, &sv->base.reference);
    }
    batch->has_work = true;
+}
+
+void
+zink_batch_reference_framebuffer(struct zink_batch *batch,
+                                 struct zink_framebuffer *fb)
+{
+   bool found;
+   _mesa_set_search_or_add(batch->fbs, fb, &found);
+   if (!found)
+      pipe_reference(NULL, &fb->reference);
 }
 
 void

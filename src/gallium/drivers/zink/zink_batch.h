@@ -51,7 +51,7 @@ struct zink_batch {
    unsigned short descs_used; //number of descriptors currently allocated
    struct zink_fence *fence;
 
-   struct zink_framebuffer *fb;
+   struct set *fbs;
    struct set *programs;
 
    struct set *resources;
@@ -69,6 +69,9 @@ struct zink_batch {
 
 void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch);
+void
+zink_batch_reference_framebuffer(struct zink_batch *batch,
+                                 struct zink_framebuffer *fb);
 void
 zink_start_batch(struct zink_context *ctx, struct zink_batch *batch);
 
