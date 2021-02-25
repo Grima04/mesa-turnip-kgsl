@@ -835,7 +835,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
          !st->lower_ucp;
    st->shader_has_one_variant[MESA_SHADER_COMPUTE] = st->has_shareable_shaders;
 
-   if (util_cpu_caps.cores_per_L3 == util_cpu_caps.nr_cpus ||
+   if (util_get_cpu_caps()->cores_per_L3 == util_get_cpu_caps()->nr_cpus ||
        !st->pipe->set_context_param)
       st->pin_thread_counter = ST_L3_PINNING_DISABLED;
 

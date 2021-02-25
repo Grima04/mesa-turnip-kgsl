@@ -398,6 +398,8 @@ standalone_compile_shader(const struct standalone_options *_options,
    int status = EXIT_SUCCESS;
    bool glsl_es = false;
 
+   util_cpu_detect();
+
    options = _options;
 
    switch (options->glsl_version) {

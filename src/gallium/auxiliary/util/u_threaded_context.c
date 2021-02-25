@@ -2200,8 +2200,8 @@ tc_set_context_param(struct pipe_context *_pipe,
    if (param == PIPE_CONTEXT_PARAM_PIN_THREADS_TO_L3_CACHE) {
       /* Pin the gallium thread as requested. */
       util_set_thread_affinity(tc->queue.threads[0],
-                               util_cpu_caps.L3_affinity_mask[value],
-                               NULL, util_cpu_caps.num_cpu_mask_bits);
+                               util_get_cpu_caps()->L3_affinity_mask[value],
+                               NULL, util_get_cpu_caps()->num_cpu_mask_bits);
 
       /* Execute this immediately (without enqueuing).
        * It's required to be thread-safe.
@@ -2982,7 +2982,7 @@ threaded_context_create(struct pipe_context *pipe,
 
    util_cpu_detect();
 
-   if (!debug_get_bool_option("GALLIUM_THREAD", util_cpu_caps.nr_cpus > 1))
+   if (!debug_get_bool_option("GALLIUM_THREAD", util_get_cpu_caps()->nr_cpus > 1))
       return pipe;
 
    tc = os_malloc_aligned(sizeof(struct threaded_context), 16);

@@ -117,7 +117,7 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
       int cpu = util_get_current_cpu();
       if (cpu >= 0) {
          struct pipe_context *pipe = st->pipe;
-         unsigned L3_cache = util_cpu_caps.cpu_to_L3[cpu];
+         unsigned L3_cache = util_get_cpu_caps()->cpu_to_L3[cpu];
 
          pipe->set_context_param(pipe,
                                  PIPE_CONTEXT_PARAM_PIN_THREADS_TO_L3_CACHE,

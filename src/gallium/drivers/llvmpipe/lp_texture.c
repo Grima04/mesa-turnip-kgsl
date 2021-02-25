@@ -86,7 +86,7 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
     * of a block for all formats) though this should not be strictly necessary
     * neither. In any case it can only affect compressed or 1d textures.
     */
-   unsigned mip_align = MAX2(64, util_cpu_caps.cacheline);
+   unsigned mip_align = MAX2(64, util_get_cpu_caps()->cacheline);
 
    assert(LP_MAX_TEXTURE_2D_LEVELS <= LP_MAX_TEXTURE_LEVELS);
    assert(LP_MAX_TEXTURE_3D_LEVELS <= LP_MAX_TEXTURE_LEVELS);
@@ -124,7 +124,7 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
       if (util_format_is_compressed(pt->format))
          lpr->row_stride[level] = nblocksx * block_size;
       else
-         lpr->row_stride[level] = align(nblocksx * block_size, util_cpu_caps.cacheline);
+         lpr->row_stride[level] = align(nblocksx * block_size, util_get_cpu_caps()->cacheline);
 
       /* if row_stride * height > LP_MAX_TEXTURE_SIZE */
       if ((uint64_t)lpr->row_stride[level] * nblocksy > LP_MAX_TEXTURE_SIZE) {

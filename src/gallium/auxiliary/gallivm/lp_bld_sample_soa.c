@@ -3235,7 +3235,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
        * as it appears to be a loss with just AVX)
        */
       if (num_quads == 1 || !use_aos ||
-          (util_cpu_caps.has_avx2 &&
+          (util_get_cpu_caps()->has_avx2 &&
            (bld.num_lods == 1 ||
             derived_sampler_state.min_img_filter == derived_sampler_state.mag_img_filter))) {
          if (use_aos) {

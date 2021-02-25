@@ -267,7 +267,7 @@ util_queue_thread_func(void *input)
       util_cpu_detect();
 
       util_set_current_thread_affinity(mask, NULL,
-                                       util_cpu_caps.num_cpu_mask_bits);
+                                       util_get_cpu_caps()->num_cpu_mask_bits);
    }
 
 #if defined(__linux__)

@@ -1152,7 +1152,7 @@ lp_build_minify(struct lp_build_context *bld,
       LLVMValueRef size;
       assert(bld->type.sign);
       if (lod_scalar ||
-         (util_cpu_caps.has_avx2 || !util_cpu_caps.has_sse)) {
+         (util_get_cpu_caps()->has_avx2 || !util_get_cpu_caps()->has_sse)) {
          size = LLVMBuildLShr(builder, base_size, level, "minify");
          size = lp_build_max(bld, size, bld->one);
       }
