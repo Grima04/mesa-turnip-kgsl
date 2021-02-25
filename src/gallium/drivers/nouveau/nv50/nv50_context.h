@@ -212,6 +212,15 @@ struct nv50_context {
 
    struct nv50_blitctx *blit;
 
+   /* compute stage only */
+   struct pipe_shader_buffer buffers[NV50_MAX_GLOBALS];
+   uint16_t buffers_dirty;
+   uint16_t buffers_valid;
+
+   struct pipe_image_view images[NV50_MAX_GLOBALS];
+   uint16_t images_dirty;
+   uint16_t images_valid;
+
    struct util_dynarray global_residents;
 };
 
