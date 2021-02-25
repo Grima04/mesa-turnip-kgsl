@@ -251,9 +251,9 @@ TargetNV50::getSVAddress(DataFile shaderFile, const Symbol *sym) const
       return shaderFile == FILE_SHADER_INPUT ? 0x18 :
          sysvalLocation[sym->reg.data.sv.sv];
    case SV_NCTAID:
-      return 0x8 + 2 * sym->reg.data.sv.index;
+      return sym->reg.data.sv.index >= 2 ? 0x10 : 0x8 + 2 * sym->reg.data.sv.index;
    case SV_CTAID:
-      return 0xc + 2 * sym->reg.data.sv.index;
+      return sym->reg.data.sv.index >= 2 ? 0x12 : 0xc + 2 * sym->reg.data.sv.index;
    case SV_NTID:
       return 0x2 + 2 * sym->reg.data.sv.index;
    case SV_TID:

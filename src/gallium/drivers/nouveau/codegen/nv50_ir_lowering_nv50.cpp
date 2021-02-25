@@ -1181,19 +1181,13 @@ NV50LoweringPreSSA::handleRDSV(Instruction *i)
       break;
    case SV_NCTAID:
    case SV_CTAID:
-   case SV_NTID:
-      if ((sv == SV_NCTAID && idx >= 2) ||
-          (sv == SV_NTID && idx >= 3)) {
-         bld.mkMov(def, bld.mkImm(1));
-      } else if (sv == SV_CTAID && idx >= 2) {
-         bld.mkMov(def, bld.mkImm(0));
-      } else {
-         Value *x = bld.getSSA(2);
-         bld.mkOp1(OP_LOAD, TYPE_U16, x,
-                   bld.mkSymbol(FILE_MEMORY_SHARED, 0, TYPE_U16, addr));
-         bld.mkCvt(OP_CVT, TYPE_U32, def, TYPE_U16, x);
-      }
+   case SV_NTID: {
+      Value *x = bld.getSSA(2);
+      bld.mkOp1(OP_LOAD, TYPE_U16, x,
+                bld.mkSymbol(FILE_MEMORY_SHARED, 0, TYPE_U16, addr));
+      bld.mkCvt(OP_CVT, TYPE_U32, def, TYPE_U16, x);
       break;
+   }
    case SV_TID:
       if (idx == 0) {
          bld.mkOp2(OP_AND, TYPE_U32, def, tid, bld.mkImm(0x0000ffff));

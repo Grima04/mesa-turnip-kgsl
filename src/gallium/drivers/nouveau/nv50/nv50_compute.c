@@ -528,7 +528,7 @@ nv50_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    PUSH_DATA (push, cp->code_base);
 
    BEGIN_NV04(push, NV50_CP(SHARED_SIZE), 1);
-   PUSH_DATA (push, align(cp->cp.smem_size + cp->parm_size + 0x10, 0x40));
+   PUSH_DATA (push, align(cp->cp.smem_size + cp->parm_size + 0x14, 0x40));
    BEGIN_NV04(push, NV50_CP(CP_REG_ALLOC_TEMP), 1);
    PUSH_DATA (push, cp->max_gpr);
 
