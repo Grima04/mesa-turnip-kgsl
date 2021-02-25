@@ -1653,7 +1653,9 @@ CodeEmitterNV50::emitShift(const Instruction *i)
       emitARL(i, i->getSrc(1)->reg.data.u32 & 0x3f);
    } else {
       code[0] = 0x30000001;
-      code[1] = (i->op == OP_SHR) ? 0xe4000000 : 0xc4000000;
+      code[1] = (i->op == OP_SHR) ? 0xe0000000 : 0xc0000000;
+      if (typeSizeof(i->dType) == 4)
+         code[1] |= 0x04000000;
       if (i->op == OP_SHR && isSignedType(i->sType))
           code[1] |= 1 << 27;
 
