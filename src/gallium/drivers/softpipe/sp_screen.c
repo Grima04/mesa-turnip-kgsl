@@ -146,6 +146,7 @@ softpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER:
       return 1;
    case PIPE_CAP_DEPTH_CLIP_DISABLE:
+   case PIPE_CAP_DEPTH_BOUNDS_TEST:
       return 1;
    case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
       return PIPE_MAX_SO_BUFFERS;

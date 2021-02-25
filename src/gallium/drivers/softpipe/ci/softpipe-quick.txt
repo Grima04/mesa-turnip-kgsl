@@ -1860,7 +1860,6 @@ spec/egl_nok_swap_region/basic: skip
 spec/egl_nok_texture_from_pixmap/basic: skip
 spec/ext_demote_to_helper_invocation/execution/demote: skip
 spec/ext_demote_to_helper_invocation/execution/demote_with_derivatives: skip
-spec/ext_depth_bounds_test/depth_bounds: skip
 spec/ext_direct_state_access/indexed-state-queries 12/getdoublei_vext: skip
 spec/ext_direct_state_access/indexed-state-queries 12/getfloati_vext: skip
 spec/ext_direct_state_access/indexed-state-queries 12/getpointeri_vext: skip
