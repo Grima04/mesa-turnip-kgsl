@@ -91,6 +91,7 @@ struct zink_screen {
    uint32_t cur_custom_border_color_samplers;
 
    bool needs_mesa_wsi;
+   bool needs_mesa_flush_wsi;
 
    PFN_vkGetPhysicalDeviceFeatures2 vk_GetPhysicalDeviceFeatures2;
    PFN_vkGetPhysicalDeviceProperties2 vk_GetPhysicalDeviceProperties2;
