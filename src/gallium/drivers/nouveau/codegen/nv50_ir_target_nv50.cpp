@@ -278,10 +278,14 @@ TargetNV50::insnCanLoad(const Instruction *i, int s,
    DataFile sf = ld->src(0).getFile();
 
    // immediate 0 can be represented by GPR $r63/$r127
+   // this does not work with global memory ld/st/atom
    if (sf == FILE_IMMEDIATE && ld->getSrc(0)->reg.data.u64 == 0)
       return (!i->isPseudo() &&
               !i->asTex() &&
-              i->op != OP_EXPORT && i->op != OP_STORE);
+              i->op != OP_EXPORT &&
+              i->op != OP_STORE &&
+              ((i->op != OP_ATOM && i->op != OP_LOAD) ||
+               i->src(0).getFile() != FILE_MEMORY_GLOBAL));
 
    if (sf == FILE_IMMEDIATE && (i->predSrc >= 0 || i->flagsDef >= 0))
       return false;
