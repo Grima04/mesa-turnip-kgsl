@@ -87,6 +87,9 @@ si_emit_thread_trace_start(struct si_context* sctx,
                              S_030800_SH_INDEX(0) |
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
 
+      /* Select the first active CUs */
+      int first_active_cu = ffs(sctx->screen->info.cu_mask[se][0]);
+
       if (sctx->chip_class == GFX10) {
          /* Order seems important for the following 2 registers. */
          radeon_set_privileged_config_reg(cs, R_008D04_SQ_THREAD_TRACE_BUF0_SIZE,
@@ -96,10 +99,11 @@ si_emit_thread_trace_start(struct si_context* sctx,
          radeon_set_privileged_config_reg(cs, R_008D00_SQ_THREAD_TRACE_BUF0_BASE,
                                           S_008D00_BASE_LO(shifted_va));
 
+         int wgp = first_active_cu / 2;
          radeon_set_privileged_config_reg(cs, R_008D14_SQ_THREAD_TRACE_MASK,
                                           S_008D14_WTYPE_INCLUDE(0x7f) | /* all shader stages */
                                           S_008D14_SA_SEL(0) |
-                                          S_008D14_WGP_SEL(0) |
+                                          S_008D14_WGP_SEL(wgp) |
                                           S_008D14_SIMD_SEL(0));
 
          radeon_set_privileged_config_reg(cs, R_008D18_SQ_THREAD_TRACE_TOKEN_MASK,
@@ -136,7 +140,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
          radeon_set_uconfig_reg(cs, R_030CD4_SQ_THREAD_TRACE_CTRL,
                                 S_030CD4_RESET_BUFFER(1));
 
-         uint32_t thread_trace_mask = S_030CC8_CU_SEL(2) |
+         uint32_t thread_trace_mask = S_030CC8_CU_SEL(first_active_cu) |
                                       S_030CC8_SH_SEL(0) |
                                       S_030CC8_SIMD_EN(0xf) |
                                       S_030CC8_VM_ID_MASK(0) |
@@ -521,7 +525,12 @@ si_get_thread_trace(struct si_context *sctx,
       thread_trace_se.data_ptr = data_ptr;
       thread_trace_se.info = *info;
       thread_trace_se.shader_engine = se;
-      thread_trace_se.compute_unit = 0;
+
+      int first_active_cu = ffs(sctx->screen->info.cu_mask[se][0]);
+
+      /* For GFX10+ compute_unit really means WGP */
+      thread_trace_se.compute_unit =
+         sctx->screen->info.chip_class >= GFX10 ? (first_active_cu / 2) : first_active_cu;
 
       thread_trace->traces[se] = thread_trace_se;
    }
