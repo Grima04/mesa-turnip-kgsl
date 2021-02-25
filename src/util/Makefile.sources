@@ -145,6 +145,7 @@ MESA_UTIL_FILES := \
 
 
 MESA_UTIL_GENERATED_FILES = \
+	driconf_static.h \
 	format_srgb.c \
 	format/u_format_table.c \
 	format/u_format_pack.h

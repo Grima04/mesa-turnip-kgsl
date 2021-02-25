@@ -69,6 +69,13 @@ LOCAL_EXPORT_C_INCLUDE_DIRS := $(intermediates)
 UTIL_GENERATED_SOURCES := $(addprefix $(intermediates)/,$(subst format/u_format_pack.h,util/format/u_format_pack.h,$(MESA_UTIL_GENERATED_FILES)))
 LOCAL_GENERATED_SOURCES := $(UTIL_GENERATED_SOURCES)
 
+driconf_static_gen := $(LOCAL_PATH)/driconf_static.py
+driconf_static_deps := $(LOCAL_PATH)/00-mesa-defaults.conf
+
+$(intermediates)/driconf_static.h: $(driconf_static_deps)
+	@mkdir -p $(dir $@)
+	$(hide) $(MESA_PYTHON2) $(driconf_static_gen) $^ $@
+
 format_srgb_gen := $(LOCAL_PATH)/format_srgb.py
 
 $(intermediates)/format_srgb.c: $(format_srgb_gen)
