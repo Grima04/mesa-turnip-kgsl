@@ -44,6 +44,7 @@ set -e
 PIGLIT_RESULTS=${PIGLIT_RESULTS:-$PIGLIT_PROFILES}
 mkdir -p .gitlab-ci/piglit
 ./piglit summary console $OLDPWD/results \
+  | tee ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.orig" \
   | head -n -1 \
   | grep -v ": pass" \
   | sed '/^summary:/Q' \
@@ -52,21 +53,20 @@ mkdir -p .gitlab-ci/piglit
 if [ -n "$USE_CASELIST" ]; then
     # Just filter the expected results based on the tests that were actually
     # executed, and switch to the version with no summary
-    cat .gitlab-ci/piglit/$PIGLIT_RESULTS.txt | head -n -16 | tee .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.new \
-         | rev | cut -f2- -d: | rev | sed "s/$/:/g" > /tmp/executed.txt
+    cat .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.orig | sed '/^summary:/Q' | rev \
+         | cut -f2- -d: | rev | sed "s/$/:/g" > /tmp/executed.txt
     grep -F -f /tmp/executed.txt $OLDPWD/install/$PIGLIT_RESULTS.txt \
          > .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline || true
 else
     cp $OLDPWD/install/$PIGLIT_RESULTS.txt .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline
-    cp .gitlab-ci/piglit/$PIGLIT_RESULTS.txt .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.new
 fi
 
-if diff -q .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.{baseline,new}; then
+if diff -q .gitlab-ci/piglit/$PIGLIT_RESULTS.txt{.baseline,}; then
     exit 0
 fi
 
 ./piglit summary html --exclude-details=pass $OLDPWD/summary $OLDPWD/results
 
 echo Unexpected change in results:
-diff -u .gitlab-ci/piglit/$PIGLIT_RESULTS.txt.{baseline,new}
+diff -u .gitlab-ci/piglit/$PIGLIT_RESULTS.txt{.baseline,}
 exit 1

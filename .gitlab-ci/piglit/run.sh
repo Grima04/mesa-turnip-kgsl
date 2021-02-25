@@ -255,9 +255,7 @@ fi
 if [ -n "$USE_CASELIST" ]; then
     # Just filter the expected results based on the tests that were actually
     # executed, and switch to the version with no summary
-    cat $RESULTSFILE | head -n -16 > ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.new"
-    RESULTSFILE=".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.new"
-    cat ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.orig" | head -n -17 | rev \
+    cat ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.orig" | sed '/^summary:/Q' | rev \
         | cut -f2- -d: | rev | sed "s/$/:/g" > /tmp/executed.txt
 
     grep -F -f /tmp/executed.txt "$INSTALL/$PIGLIT_RESULTS.txt" \
