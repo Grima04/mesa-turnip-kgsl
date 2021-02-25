@@ -1408,6 +1408,9 @@ CodeEmitterNV50::emitCVT(const Instruction *i)
       case TYPE_U32: code[1] = 0x44004000; break;
       case TYPE_F16: code[1] = 0xc4000000; break;
       case TYPE_U16: code[1] = 0x44000000; break;
+      case TYPE_S16: code[1] = 0x44010000; break;
+      case TYPE_S8:  code[1] = 0x44018000; break;
+      case TYPE_U8:  code[1] = 0x44008000; break;
       default:
          assert(0);
          break;
@@ -1445,10 +1448,73 @@ CodeEmitterNV50::emitCVT(const Instruction *i)
          break;
       }
       break;
+   case TYPE_F16:
+      switch (i->sType) {
+      case TYPE_F16: code[1] = 0xc0000000; break;
+      case TYPE_F32: code[1] = 0xc0004000; break;
+      default:
+         assert(0);
+         break;
+      }
+      break;
    case TYPE_S16:
+      switch (i->sType) {
+      case TYPE_F32: code[1] = 0x88004000; break;
+      case TYPE_S32: code[1] = 0x08014000; break;
+      case TYPE_U32: code[1] = 0x08004000; break;
+      case TYPE_F16: code[1] = 0x88000000; break;
+      case TYPE_S16: code[1] = 0x08010000; break;
+      case TYPE_U16: code[1] = 0x08000000; break;
+      case TYPE_S8:  code[1] = 0x08018000; break;
+      case TYPE_U8:  code[1] = 0x08008000; break;
+      default:
+         assert(0);
+         break;
+      }
+      break;
    case TYPE_U16:
+      switch (i->sType) {
+      case TYPE_F32: code[1] = 0x80004000; break;
+      case TYPE_S32: code[1] = 0x00014000; break;
+      case TYPE_U32: code[1] = 0x00004000; break;
+      case TYPE_F16: code[1] = 0x80000000; break;
+      case TYPE_S16: code[1] = 0x00010000; break;
+      case TYPE_U16: code[1] = 0x00000000; break;
+      case TYPE_S8:  code[1] = 0x00018000; break;
+      case TYPE_U8:  code[1] = 0x00008000; break;
+      default:
+         assert(0);
+         break;
+      }
+      break;
    case TYPE_S8:
+      switch (i->sType) {
+      case TYPE_S32: code[1] = 0x08094000; break;
+      case TYPE_U32: code[1] = 0x08084000; break;
+      case TYPE_F16: code[1] = 0x88080000; break;
+      case TYPE_S16: code[1] = 0x08090000; break;
+      case TYPE_U16: code[1] = 0x08080000; break;
+      case TYPE_S8:  code[1] = 0x08098000; break;
+      case TYPE_U8:  code[1] = 0x08088000; break;
+      default:
+         assert(0);
+         break;
+      }
+      break;
    case TYPE_U8:
+      switch (i->sType) {
+      case TYPE_S32: code[1] = 0x00094000; break;
+      case TYPE_U32: code[1] = 0x00084000; break;
+      case TYPE_F16: code[1] = 0x80080000; break;
+      case TYPE_S16: code[1] = 0x00090000; break;
+      case TYPE_U16: code[1] = 0x00080000; break;
+      case TYPE_S8:  code[1] = 0x00098000; break;
+      case TYPE_U8:  code[1] = 0x00088000; break;
+      default:
+         assert(0);
+         break;
+      }
+      break;
    default:
       assert(0);
       break;
