@@ -97,13 +97,13 @@ check_files_opened_successfully(FILE *file, FILE *db_idx)
 }
 
 static bool
-create_foz_db_filenames(char *base_filename, char **filename,
+create_foz_db_filenames(char *cache_path, char *name, char **filename,
                         char **idx_filename)
 {
-   if (asprintf(filename, "%s.foz", base_filename) == -1)
+   if (asprintf(filename, "%s/%s.foz", cache_path, name) == -1)
       return false;
 
-   if (asprintf(idx_filename, "%s_idx.foz", base_filename) == -1) {
+   if (asprintf(idx_filename, "%s/%s_idx.foz", cache_path, name) == -1) {
       free(*filename);
       return false;
    }
@@ -232,11 +232,11 @@ fail:
  * read cache entries from the foz db containing the actual cache entries.
  */
 bool
-foz_prepare(struct foz_db *foz_db, char *base_filename)
+foz_prepare(struct foz_db *foz_db, char *cache_path)
 {
    char *filename = NULL;
    char *idx_filename = NULL;
-   if (!create_foz_db_filenames(base_filename, &filename, &idx_filename))
+   if (!create_foz_db_filenames(cache_path, "foz_cache", &filename, &idx_filename))
       return false;
 
    /* Open the default foz dbs for read/write. If the files didn't already exist
@@ -269,7 +269,8 @@ foz_prepare(struct foz_db *foz_db, char *base_filename)
 
       filename = NULL;
       idx_filename = NULL;
-      if (!create_foz_db_filenames(foz_db_filename, &filename, &idx_filename)) {
+      if (!create_foz_db_filenames(cache_path, foz_db_filename, &filename,
+                                   &idx_filename)) {
          free(foz_db_filename);
          continue; /* Ignore invalid user provided filename and continue */
       }

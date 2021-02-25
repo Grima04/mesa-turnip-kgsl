@@ -953,15 +953,10 @@ disk_cache_write_item_to_disk_foz(struct disk_cache_put_job *dc_job)
 }
 
 bool
-disk_cache_load_cache_index(void *mem_ctx, struct disk_cache *cache,
-                            char *path)
+disk_cache_load_cache_index(void *mem_ctx, struct disk_cache *cache)
 {
-   path = ralloc_asprintf(mem_ctx, "%s/foz_cache", cache->path);
-   if (path == NULL)
-      return false;
-
    /* Load cache index into a hash map (from fossilise files) */
-   return foz_prepare(&cache->foz_db, path);
+   return foz_prepare(&cache->foz_db, cache->path);
 }
 
 bool

@@ -84,7 +84,7 @@ struct foz_db {
 };
 
 bool
-foz_prepare(struct foz_db *foz_db, char *filename);
+foz_prepare(struct foz_db *foz_db, char *cache_path);
 
 void
 foz_destroy(struct foz_db *foz_db);
