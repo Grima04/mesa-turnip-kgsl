@@ -91,6 +91,7 @@ public:
 
    ImmediateValue *mkImm(float);
    ImmediateValue *mkImm(double);
+   ImmediateValue *mkImm(uint16_t);
    ImmediateValue *mkImm(uint32_t);
    ImmediateValue *mkImm(uint64_t);
 
@@ -98,6 +99,7 @@ public:
 
    Value *loadImm(Value *dst, float);
    Value *loadImm(Value *dst, double);
+   Value *loadImm(Value *dst, uint16_t);
    Value *loadImm(Value *dst, uint32_t);
    Value *loadImm(Value *dst, uint64_t);
 
