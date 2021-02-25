@@ -72,7 +72,7 @@ enum fd_debug_flag {
 	FD_DBG_PERF         = BITFIELD_BIT(7),
 	FD_DBG_NOBIN        = BITFIELD_BIT(8),
 	FD_DBG_NOGMEM       = BITFIELD_BIT(9),
-	/* BIT(10) */
+	FD_DBG_SERIALC      = BITFIELD_BIT(10),
 	FD_DBG_SHADERDB     = BITFIELD_BIT(11),
 	FD_DBG_FLUSH        = BITFIELD_BIT(12),
 	FD_DBG_DEQP         = BITFIELD_BIT(13),

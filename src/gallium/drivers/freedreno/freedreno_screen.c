@@ -74,8 +74,8 @@ static const struct debug_named_value fd_debug_options[] = {
 		{"nobypass",  FD_DBG_NOBYPASS, "Disable GMEM bypass"},
 		{"perf",      FD_DBG_PERF,   "Enable performance warnings"},
 		{"nobin",     FD_DBG_NOBIN,  "Disable hw binning"},
-		{"nogmem",    FD_DBG_NOGMEM,  "Disable GMEM rendering (bypass only)"},
-		/* BIT(10) */
+		{"nogmem",    FD_DBG_NOGMEM, "Disable GMEM rendering (bypass only)"},
+		{"serialc",   FD_DBG_SERIALC,"Disable asynchronous shader compile"},
 		{"shaderdb",  FD_DBG_SHADERDB, "Enable shaderdb output"},
 		{"flush",     FD_DBG_FLUSH,  "Force flush after every draw"},
 		{"deqp",      FD_DBG_DEQP,   "Enable dEQP hacks"},

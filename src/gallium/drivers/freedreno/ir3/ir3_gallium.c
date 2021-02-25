@@ -67,7 +67,9 @@ struct ir3_shader_state {
 static bool
 initial_variants_synchronous(struct fd_context *ctx)
 {
-	return unlikely(ctx->debug.debug_message && (fd_mesa_debug & FD_DBG_SHADERDB));
+	return unlikely(ctx->debug.debug_message ||
+			(fd_mesa_debug & FD_DBG_SHADERDB)) ||
+			(fd_mesa_debug & FD_DBG_SERIALC);
 }
 
 static void
