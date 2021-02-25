@@ -504,13 +504,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
     * storage is only associated with the original parameter list.
     * This should be enough for Bitmap and DrawPixels constants.
     */
-   _mesa_reserve_parameter_storage(prog->Parameters, 16, 16);
-
-   /* This has to be done last.  Any operation the can cause
-    * prog->ParameterValues to get reallocated (e.g., anything that adds a
-    * program constant) has to happen before creating this linkage.
-    */
-   _mesa_associate_uniform_storage(st->ctx, shader_program, prog);
+   _mesa_ensure_and_associate_uniform_storage(st->ctx, shader_program, prog, 16);
 
    st_set_prog_affected_state_flags(prog);
 

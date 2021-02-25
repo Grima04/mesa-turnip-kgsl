@@ -2616,6 +2616,24 @@ _mesa_associate_uniform_storage(struct gl_context *ctx,
    }
 }
 
+void
+_mesa_ensure_and_associate_uniform_storage(struct gl_context *ctx,
+                              struct gl_shader_program *shader_program,
+                              struct gl_program *prog, unsigned required_space)
+{
+   /* Avoid reallocation of the program parameter list, because the uniform
+    * storage is only associated with the original parameter list.
+    */
+   _mesa_reserve_parameter_storage(prog->Parameters, required_space,
+                                   required_space);
+
+   /* This has to be done last.  Any operation the can cause
+    * prog->ParameterValues to get reallocated (e.g., anything that adds a
+    * program constant) has to happen before creating this linkage.
+    */
+   _mesa_associate_uniform_storage(ctx, shader_program, prog);
+}
+
 /*
  * On a basic block basis, tracks available PROGRAM_TEMPORARY register
  * channels for copy propagation and updates following instructions to
