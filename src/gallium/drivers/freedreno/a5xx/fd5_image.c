@@ -75,6 +75,10 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 	img->cpp       = rsc->layout.cpp;
 	img->bo        = rsc->bo;
 
+	/* Treat cube textures as 2d-array: */
+	if (img->type == A5XX_TEX_CUBE)
+		img->type = A5XX_TEX_2D;
+
 	if (prsc->target == PIPE_BUFFER) {
 		lvl = 0;
 		img->offset = pimg->u.buf.offset;
