@@ -1505,3 +1505,9 @@ void virgl_encode_end_transfers(struct virgl_cmd_buf *buf)
       virgl_encoder_write_dword(buf, command);
    }
 }
+
+void virgl_encode_get_memory_info(struct virgl_context *ctx, struct virgl_resource *res)
+{
+   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_GET_MEMORY_INFO, 0, 1));
+   virgl_encoder_write_res(ctx, res);
+}

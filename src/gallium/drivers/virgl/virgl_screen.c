@@ -26,6 +26,7 @@
 #include "util/u_screen.h"
 #include "util/u_video.h"
 #include "util/u_math.h"
+#include "util/u_inlines.h"
 #include "util/os_time.h"
 #include "util/xmlconfig.h"
 #include "pipe/p_defines.h"
@@ -38,6 +39,7 @@
 #include "virgl_public.h"
 #include "virgl_context.h"
 #include "virtio-gpu/virgl_protocol.h"
+#include "virgl_encode.h"
 
 int virgl_debug = 0;
 static const struct debug_named_value virgl_debug_options[] = {
@@ -333,6 +335,8 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
        * in virgl_encode_shader_state().
        */
       return 0;
+   case PIPE_CAP_QUERY_MEMORY_INFO:
+      return vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_MEMINFO;
    default:
       return u_pipe_screen_get_param_defaults(screen, param);
    }
@@ -836,6 +840,44 @@ fixup_formats(union virgl_caps *caps, struct virgl_supported_format_mask *mask)
       mask->bitmask[i] = caps->v1.sampler.bitmask[i];
 }
 
+static void virgl_query_memory_info(struct pipe_screen *screen, struct pipe_memory_info *info)
+{
+   struct virgl_screen *vscreen = virgl_screen(screen);
+   struct pipe_context *ctx = screen->context_create(screen, NULL, 0);
+   struct virgl_context *vctx = virgl_context(ctx);
+   struct virgl_resource *res;
+   struct virgl_memory_info virgl_info = {0};
+   const static struct pipe_resource templ = {
+      .target = PIPE_BUFFER,
+      .format = PIPE_FORMAT_R8_UNORM,
+      .bind = PIPE_BIND_CUSTOM,
+      .width0 = sizeof(struct virgl_memory_info),
+      .height0 = 1,
+      .depth0 = 1,
+      .array_size = 1,
+      .last_level = 0,
+      .nr_samples = 0,
+      .flags = 0
+   };
+
+   res = (struct virgl_resource*) screen->resource_create(screen, &templ);
+
+   virgl_encode_get_memory_info(vctx, res);
+   ctx->flush(ctx, NULL, 0);
+   vscreen->vws->resource_wait(vscreen->vws, res->hw_res);
+   pipe_buffer_read(ctx, &res->u.b, 0, sizeof(struct virgl_memory_info), &virgl_info);
+
+   info->avail_device_memory = virgl_info.avail_device_memory;
+   info->avail_staging_memory = virgl_info.avail_staging_memory;
+   info->device_memory_evicted = virgl_info.device_memory_evicted;
+   info->nr_device_memory_evictions = virgl_info.nr_device_memory_evictions;
+   info->total_device_memory = virgl_info.total_device_memory;
+   info->total_staging_memory = virgl_info.total_staging_memory;
+
+   screen->resource_destroy(screen, &res->u.b);
+   ctx->destroy(ctx);
+}
+
 struct pipe_screen *
 virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *config)
 {
@@ -877,6 +919,7 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    //screen->base.fence_signalled = virgl_fence_signalled;
    screen->base.fence_finish = virgl_fence_finish;
    screen->base.fence_get_fd = virgl_fence_get_fd;
+   screen->base.query_memory_info = virgl_query_memory_info;
 
    virgl_init_screen_resource_functions(&screen->base);
 

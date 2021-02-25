@@ -35,6 +35,16 @@ struct virgl_host_query_state {
    uint64_t result;
 };
 
+struct virgl_memory_info
+{
+   uint32_t total_device_memory; /**< size of device memory, e.g. VRAM */
+   uint32_t avail_device_memory; /**< free device memory at the moment */
+   uint32_t total_staging_memory; /**< size of staging memory, e.g. GART */
+   uint32_t avail_staging_memory; /**< free staging memory at the moment */
+   uint32_t device_memory_evicted; /**< size of memory evicted (monotonic counter) */
+   uint32_t nr_device_memory_evictions; /**< # of evictions (monotonic counter) */
+};
+
 enum virgl_object_type {
    VIRGL_OBJECT_NULL,
    VIRGL_OBJECT_BLEND,
@@ -103,6 +113,7 @@ enum virgl_context_cmd {
    VIRGL_CCMD_CLEAR_TEXTURE,
    VIRGL_CCMD_PIPE_RESOURCE_CREATE,
    VIRGL_CCMD_PIPE_RESOURCE_SET_TYPE,
+   VIRGL_CCMD_GET_MEMORY_INFO,
    VIRGL_MAX_COMMANDS
 };
 
