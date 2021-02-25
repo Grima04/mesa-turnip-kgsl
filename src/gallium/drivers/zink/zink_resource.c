@@ -411,6 +411,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
    } else
       obj->host_visible = true;
+   obj->coherent = flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
    VkExportMemoryAllocateInfo emai = {};
    if (templ->bind & PIPE_BIND_SHARED) {

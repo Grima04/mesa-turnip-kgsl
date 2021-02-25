@@ -77,6 +77,7 @@ struct zink_resource_object {
    void *map;
    bool is_buffer;
    bool host_visible;
+   bool coherent;
 };
 
 struct zink_resource {
