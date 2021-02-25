@@ -491,6 +491,10 @@ struct v3d_context {
          */
         struct u_upload_mgr *state_uploader;
 
+        struct pipe_shader_state *sand8_blit_vs;
+        struct pipe_shader_state *sand8_blit_fs_luma;
+        struct pipe_shader_state *sand8_blit_fs_chroma;
+
         /** @{ Current pipeline state objects */
         struct pipe_scissor_state scissor;
         struct v3d_blend_state *blend;
