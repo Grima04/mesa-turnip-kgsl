@@ -514,7 +514,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       dsl = ctx->curr_compute->base.dsl;
       batch = &ctx->compute_batch;
    } else {
-      batch = zink_batch_rp(ctx);
+      batch = zink_curr_batch(ctx);
       num_descriptors = ctx->curr_program->base.num_descriptors;
       dsl = ctx->curr_program->base.dsl;
    }
@@ -525,7 +525,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
          zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
       else {
          ctx->base.flush(&ctx->base, NULL, 0);
-         batch = zink_batch_rp(ctx);
+         batch = zink_curr_batch(ctx);
       }
    }
    if (is_compute)
