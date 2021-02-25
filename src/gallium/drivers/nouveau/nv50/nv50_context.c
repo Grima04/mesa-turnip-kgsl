@@ -58,6 +58,7 @@ static void
 nv50_memory_barrier(struct pipe_context *pipe, unsigned flags)
 {
    struct nv50_context *nv50 = nv50_context(pipe);
+   struct nouveau_pushbuf *push = nv50->base.pushbuf;
    int i, s;
 
    if (flags & PIPE_BARRIER_MAPPED_BUFFER) {
@@ -87,7 +88,23 @@ nv50_memory_barrier(struct pipe_context *pipe, unsigned flags)
                nv50->cb_dirty = true;
          }
       }
+   } else {
+      BEGIN_NV04(push, SUBC_3D(NV50_GRAPH_SERIALIZE), 1);
+      PUSH_DATA (push, 0);
    }
+
+   /* If we're going to texture from a buffer/image written by a shader, we
+    * must flush the texture cache.
+    */
+   if (flags & PIPE_BARRIER_TEXTURE) {
+      BEGIN_NV04(push, NV50_3D(TEX_CACHE_CTL), 1);
+      PUSH_DATA (push, 0x20);
+   }
+
+   if (flags & PIPE_BARRIER_CONSTANT_BUFFER)
+      nv50->cb_dirty = true;
+   if (flags & (PIPE_BARRIER_VERTEX_BUFFER | PIPE_BARRIER_INDEX_BUFFER))
+      nv50->base.vbo_dirty = true;
 }
 
 static void
