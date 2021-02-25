@@ -1614,13 +1614,15 @@ CodeEmitterNV50::emitLogicOp(const Instruction *i)
       emitForm_IMM(i);
    } else {
       switch (i->op) {
-      case OP_AND: code[1] = 0x04000000; break;
-      case OP_OR:  code[1] = 0x04004000; break;
-      case OP_XOR: code[1] = 0x04008000; break;
+      case OP_AND: code[1] = 0x00000000; break;
+      case OP_OR:  code[1] = 0x00004000; break;
+      case OP_XOR: code[1] = 0x00008000; break;
       default:
          assert(0);
          break;
       }
+      if (typeSizeof(i->dType) == 4)
+         code[1] |= 0x04000000;
       if (i->src(0).mod & Modifier(NV50_IR_MOD_NOT))
          code[1] |= 1 << 16;
       if (i->src(1).mod & Modifier(NV50_IR_MOD_NOT))
