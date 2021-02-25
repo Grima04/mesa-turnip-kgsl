@@ -146,6 +146,7 @@ opt_shrink_vectors_intrinsic(nir_builder *b, nir_intrinsic_instr *instr, bool sh
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_push_constant:
    case nir_intrinsic_load_constant:
+   case nir_intrinsic_load_shared:
    case nir_intrinsic_load_global:
    case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_kernel_input:
