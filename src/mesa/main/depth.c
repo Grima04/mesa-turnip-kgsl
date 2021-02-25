@@ -166,8 +166,8 @@ _mesa_DepthBoundsEXT( GLclampd zmin, GLclampd zmax )
    FLUSH_VERTICES(ctx, ctx->DriverFlags.NewDepth ? 0 : _NEW_DEPTH,
                   GL_DEPTH_BUFFER_BIT);
    ctx->NewDriverState |= ctx->DriverFlags.NewDepth;
-   ctx->Depth.BoundsMin = (GLfloat) zmin;
-   ctx->Depth.BoundsMax = (GLfloat) zmax;
+   ctx->Depth.BoundsMin = zmin;
+   ctx->Depth.BoundsMax = zmax;
 }
 
 

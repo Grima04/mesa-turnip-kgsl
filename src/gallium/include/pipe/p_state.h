@@ -328,8 +328,8 @@ struct pipe_depth_stencil_alpha_state
    unsigned depth_bounds_test:1;     /**< depth bounds test enabled? */
 
    float alpha_ref_value;            /**< reference value */
-   float depth_bounds_min;           /**< minimum depth bound */
-   float depth_bounds_max;           /**< maximum depth bound */
+   double depth_bounds_min;          /**< minimum depth bound */
+   double depth_bounds_max;          /**< maximum depth bound */
 };
 
 

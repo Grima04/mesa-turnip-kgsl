@@ -493,7 +493,7 @@ struct gl_depthbuffer_attrib
    GLboolean Test;		/**< Depth buffering enabled flag */
    GLboolean Mask;		/**< Depth buffer writable? */
    GLboolean BoundsTest;        /**< GL_EXT_depth_bounds_test */
-   GLfloat BoundsMin, BoundsMax;/**< GL_EXT_depth_bounds_test */
+   GLclampd BoundsMin, BoundsMax;/**< GL_EXT_depth_bounds_test */
 };
 
 
