@@ -1165,15 +1165,18 @@ mir_schedule_alu(
                 sadd->inline_constant = branch->constants.u32[0];
                 branch->src[1] = sadd->dest;
                 branch->src_types[1] = sadd->dest_type;
-
-                /* Mask off any conditionals. Could be optimized to just scalar
-                 * conditionals TODO */
-                predicate.no_cond = true;
         }
 
         if (writeout) {
                 /* Propagate up */
                 bundle.last_writeout = branch->last_writeout;
+
+                /* Mask off any conditionals.
+                 * This prevents csel and csel_v being scheduled into smul
+                 * since we might not have room for a conditional in vmul/sadd.
+                 * This is important because both writeout and csel have same-bundle
+                 * requirements on their dependencies. */
+                predicate.no_cond = true;
         }
 
         /* When MRT is in use, writeout loops require r1.w to be filled (with a
