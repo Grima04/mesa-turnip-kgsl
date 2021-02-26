@@ -3483,7 +3483,7 @@ Temp lds_load_callback(Builder& bld, const LoadEmitInfo &info,
    } else if (bytes_needed >= 8 && align % 8 == 0) {
       size = 8;
       op = aco_opcode::ds_read_b64;
-   } else if (bytes_needed >= 8 && align % 4 == 0 && const_offset % 4 == 0) {
+   } else if (bytes_needed >= 8 && align % 4 == 0 && const_offset % 4 == 0 && usable_read2) {
       size = 8;
       read2 = true;
       op = aco_opcode::ds_read2_b32;
