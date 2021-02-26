@@ -902,6 +902,24 @@ int r600_shader_from_nir(struct r600_context *rctx,
    if (sel->nir->info.stage != MESA_SHADER_FRAGMENT)
       io_modes |= nir_var_shader_out;
 
+   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT) {
+
+      /* Lower IO to temporaries late, because otherwise we get into trouble
+       * with the glsl 4.40 interpolateAt swizzle tests. There seems to be a bug
+       * somewhere that results in the input alweas reading from the same temp
+       * regardless of interpolation when the lowering is done early */
+      NIR_PASS_V(sel->nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(sel->nir),
+              true, true);
+
+      /* Since we're doing nir_lower_io_to_temporaries late, we need
+       * to lower all the copy_deref's introduced by
+       * lower_io_to_temporaries before calling nir_lower_io.
+       */
+      NIR_PASS_V(sel->nir, nir_split_var_copies);
+      NIR_PASS_V(sel->nir, nir_lower_var_copies);
+      NIR_PASS_V(sel->nir, nir_lower_global_vars_to_local);
+   }
+
    NIR_PASS_V(sel->nir, nir_lower_io, io_modes, r600_glsl_type_size,
                  nir_lower_io_lower_64bit_to_32);
 
