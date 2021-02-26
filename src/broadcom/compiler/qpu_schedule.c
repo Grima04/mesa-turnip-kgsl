@@ -459,6 +459,8 @@ struct choose_scoreboard {
         int last_uniforms_reset_tick;
         int last_thrsw_tick;
         bool tlb_locked;
+        bool ldvary_pipelining;
+        bool fixup_ldvary;
 };
 
 static bool
@@ -890,6 +892,20 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
 
         list_for_each_entry(struct schedule_node, n, &scoreboard->dag->heads,
                             dag.link) {
+                /* If we are scheduling a pipelined smooth varying sequence then
+                 * we want to pick up the next instruction in the sequence.
+                 */
+                if (scoreboard->ldvary_pipelining &&
+                    !n->inst->ldvary_pipelining) {
+                        continue;
+                }
+
+                /* Sanity check: if we are scheduling a smooth ldvary sequence
+                 * we cannot be starting another sequence in the middle of it.
+                 */
+                assert(!scoreboard->ldvary_pipelining ||
+                       !n->inst->ldvary_pipelining_start);
+
                 const struct v3d_qpu_instr *inst = &n->inst->qpu;
 
                 /* Simulator complains if we have two uniforms loaded in the
@@ -946,12 +962,6 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                  * sooner.  If the ldvary's r5 wasn't used, then ldunif might
                  * otherwise get scheduled so ldunif and ldvary try to update
                  * r5 in the same tick.
-                 *
-                 * XXX perf: To get good pipelining of a sequence of varying
-                 * loads, we need to figure out how to pair the ldvary signal
-                 * up to the instruction before the last r5 user in the
-                 * previous ldvary sequence.  Currently, it usually pairs with
-                 * the last r5 user.
                  */
                 if ((inst->sig.ldunif || inst->sig.ldunifa) &&
                     scoreboard->tick == scoreboard->last_ldvary_tick + 1) {
@@ -984,6 +994,16 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                         if (!qpu_merge_inst(devinfo, &merged_inst,
                                             &prev_inst->inst->qpu, inst)) {
                                 continue;
+                        }
+
+                        /* If we find an ldvary inside an ongoing pipelineable
+                         * ldvary sequence we want to pick that and start
+                         * pipelining the new sequence into the previous one.
+                         */
+                        if (scoreboard->ldvary_pipelining && inst->sig.ldvary) {
+                                assert(n->inst->ldvary_pipelining);
+                                scoreboard->fixup_ldvary = true;
+                                return n;
                         }
                 }
 
@@ -1022,6 +1042,26 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                         chosen_prio = prio;
                 } else if (n->delay < chosen->delay) {
                         continue;
+                }
+        }
+
+        /* If we are in the middle of an ldvary sequence we only pick up
+         * instructions that can continue the sequence so we can pipeline
+         * them, however, if we failed to find anything to schedule then we
+         * can't possibly continue the sequence and we need to stop the
+         * pipelining process and try again.
+         */
+        if (scoreboard->ldvary_pipelining && !prev_inst && !chosen) {
+                scoreboard->ldvary_pipelining = false;
+                chosen = choose_instruction_to_schedule(devinfo, scoreboard, prev_inst);
+        } else if (chosen) {
+                if (scoreboard->ldvary_pipelining) {
+                        assert(chosen->inst->ldvary_pipelining);
+                        if (chosen->inst->ldvary_pipelining_end)
+                                scoreboard->ldvary_pipelining = false;
+                } else if (chosen->inst->ldvary_pipelining_start) {
+                        assert(chosen->inst->qpu.sig.ldvary);
+                        scoreboard->ldvary_pipelining = true;
                 }
         }
 
@@ -1460,6 +1500,144 @@ emit_thrsw(struct v3d_compile *c,
         return time;
 }
 
+static bool
+alu_reads_register(struct v3d_qpu_instr *inst,
+                   bool add, bool magic, uint32_t index)
+{
+        uint32_t num_src;
+        enum v3d_qpu_mux mux_a, mux_b;
+
+        if (add) {
+                num_src = v3d_qpu_add_op_num_src(inst->alu.add.op);
+                mux_a = inst->alu.add.a;
+                mux_b = inst->alu.add.b;
+        } else {
+                num_src = v3d_qpu_mul_op_num_src(inst->alu.mul.op);
+                mux_a = inst->alu.mul.a;
+                mux_b = inst->alu.mul.b;
+        }
+
+        for (int i = 0; i < num_src; i++) {
+                if (magic) {
+                        if (i == 0 && mux_a == index)
+                                return true;
+                        if (i == 1 && mux_b == index)
+                                return true;
+                } else {
+                        if (i == 0 && mux_a == V3D_QPU_MUX_A &&
+                            inst->raddr_a == index) {
+                                return true;
+                        }
+                        if (i == 0 && mux_a == V3D_QPU_MUX_B &&
+                            inst->raddr_b == index) {
+                                return true;
+                        }
+                        if (i == 1 && mux_b == V3D_QPU_MUX_A &&
+                            inst->raddr_a == index) {
+                                return true;
+                        }
+                        if (i == 1 && mux_b == V3D_QPU_MUX_B &&
+                            inst->raddr_b == index) {
+                                return true;
+                        }
+                }
+        }
+
+        return false;
+}
+
+/**
+ * This takes and ldvary signal merged into 'inst' and tries to move it up to
+ * the previous instruction to get good pipelining of ldvary sequences,
+ * transforming this:
+ *
+ * nop                  ; nop               ; ldvary.r4
+ * nop                  ; fmul  r0, r4, rf0 ;
+ * fadd  rf13, r0, r5   ; nop;              ; ldvary.r1  <-- inst
+ *
+ * into:
+ *
+ * nop                  ; nop               ; ldvary.r4
+ * nop                  ; fmul  r0, r4, rf0 ; ldvary.r1
+ * fadd  rf13, r0, r5   ; nop;              ;            <-- inst
+ *
+ * If we manage to do this successfully (we return true here), then flagging
+ * the ldvary as "scheduled" may promote the follow-up fmul to a DAG head that
+ * we will be able to pick up to merge into 'inst', leading to code like this:
+ *
+ * nop                  ; nop               ; ldvary.r4
+ * nop                  ; fmul  r0, r4, rf0 ; ldvary.r1
+ * fadd  rf13, r0, r5   ; fmul  r2, r1, rf0 ;            <-- inst
+ */
+static bool
+fixup_pipelined_ldvary(struct v3d_compile *c,
+                       struct choose_scoreboard *scoreboard,
+                       struct qblock *block,
+                       struct v3d_qpu_instr *inst)
+{
+        /* We only call this if we have successfuly merged an ldvary into a
+         * previous instruction.
+         */
+        assert(inst->type == V3D_QPU_INSTR_TYPE_ALU);
+        assert(inst->sig.ldvary);
+        uint32_t ldvary_magic = inst->sig_magic;
+        uint32_t ldvary_index = inst->sig_addr;
+
+        /* The instruction in which we merged the ldvary cannot read
+         * the ldvary destination, if it does, then moving the ldvary before
+         * it would overwrite it.
+         */
+        if (alu_reads_register(inst, true, ldvary_magic, ldvary_index))
+                return false;
+        if (alu_reads_register(inst, false, ldvary_magic, ldvary_index))
+                return false;
+
+        /* The previous instruction can't write to the same destination as the
+         * ldvary.
+         */
+        struct qinst *prev = (struct qinst *) block->instructions.prev;
+        if (!prev || prev->qpu.type != V3D_QPU_INSTR_TYPE_ALU)
+                return false;
+
+        if (prev->qpu.alu.add.op != V3D_QPU_A_NOP) {
+                if (prev->qpu.alu.add.magic_write == ldvary_magic &&
+                    prev->qpu.alu.add.waddr == ldvary_index) {
+                        return false;
+                }
+        }
+
+        if (prev->qpu.alu.mul.op != V3D_QPU_M_NOP) {
+                if (prev->qpu.alu.mul.magic_write == ldvary_magic &&
+                    prev->qpu.alu.mul.waddr == ldvary_index) {
+                        return false;
+                }
+        }
+
+        /* The previous instruction cannot have a conflicting signal */
+        if (v3d_qpu_sig_writes_address(c->devinfo, &prev->qpu.sig))
+                return false;
+
+        /* The previous instruction cannot use flags since ldvary uses the
+         * 'cond' instruction field to store the destination.
+         */
+        if (v3d_qpu_writes_flags(&prev->qpu))
+                return false;
+
+        /* Move the ldvary to the previous instruction and remove it from the
+         * current one.
+         */
+        prev->qpu.sig.ldvary = true;
+        prev->qpu.sig_magic = ldvary_magic;
+        prev->qpu.sig_addr = ldvary_index;
+        scoreboard->last_ldvary_tick = scoreboard->tick - 1;
+
+        inst->sig.ldvary = false;
+        inst->sig_magic = false;
+        inst->sig_addr = 0;
+
+        return true;
+}
+
 static uint32_t
 schedule_instructions(struct v3d_compile *c,
                       struct choose_scoreboard *scoreboard,
@@ -1529,6 +1707,21 @@ schedule_instructions(struct v3d_compile *c,
                                         fprintf(stderr, "         result: ");
                                         v3d_qpu_dump(devinfo, inst);
                                         fprintf(stderr, "\n");
+                                }
+
+                                if (scoreboard->fixup_ldvary) {
+                                        assert(scoreboard->ldvary_pipelining);
+                                        scoreboard->fixup_ldvary = false;
+                                        if (fixup_pipelined_ldvary(c, scoreboard, block, inst)) {
+                                                /* Flag the ldvary as scheduled
+                                                 * now so we can try to merge the
+                                                 * follow-up fmul into the current
+                                                 * instruction.
+                                                 */
+                                                mark_instruction_scheduled(
+                                                        devinfo, scoreboard->dag,
+                                                        time, merge);
+                                        }
                                 }
                         }
                         if (mux_read_stalls(scoreboard, inst))
