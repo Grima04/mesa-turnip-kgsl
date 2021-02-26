@@ -296,6 +296,8 @@ enum sqtt_memory_type
    SQTT_MEMORY_TYPE_HBM = 0x20,
    SQTT_MEMORY_TYPE_HBM2 = 0x21,
    SQTT_MEMORY_TYPE_HBM3 = 0x22,
+   SQTT_MEMORY_TYPE_LPDDR4 = 0x30,
+   SQTT_MEMORY_TYPE_LPDDR5 = 0x31,
 };
 
 struct sqtt_file_chunk_asic_info {
@@ -386,6 +388,8 @@ static enum sqtt_memory_type ac_vram_type_to_sqtt_memory_type(uint32_t vram_type
       return SQTT_MEMORY_TYPE_HBM;
    case AMDGPU_VRAM_TYPE_GDDR6:
       return SQTT_MEMORY_TYPE_GDDR6;
+   case AMDGPU_VRAM_TYPE_DDR5:
+      return SQTT_MEMORY_TYPE_LPDDR5;
    case AMDGPU_VRAM_TYPE_GDDR1:
    case AMDGPU_VRAM_TYPE_GDDR3:
    case AMDGPU_VRAM_TYPE_GDDR4:
