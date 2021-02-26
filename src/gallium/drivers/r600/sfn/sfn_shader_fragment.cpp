@@ -270,6 +270,7 @@ bool FragmentShaderFromNir::scan_sysvalue_access(nir_instr *instr)
          break;
       case nir_intrinsic_load_helper_invocation:
          m_sv_values.set(es_helper_invocation);
+         sh_info().uses_helper_invocation = true;
          break;
       case nir_intrinsic_load_input:
          return process_load_input(ii, false);
