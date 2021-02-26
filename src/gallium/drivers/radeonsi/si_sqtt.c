@@ -38,6 +38,7 @@ si_emit_spi_config_cntl(struct si_context* sctx,
 static bool
 si_thread_trace_init_bo(struct si_context *sctx)
 {
+   unsigned max_se = sctx->screen->info.max_se;
    struct radeon_winsys *ws = sctx->ws;
    uint64_t size;
 
@@ -47,10 +48,10 @@ si_thread_trace_init_bo(struct si_context *sctx)
    sctx->thread_trace->buffer_size = align64(sctx->thread_trace->buffer_size,
                                              1u << SQTT_BUFFER_ALIGN_SHIFT);
 
-   /* Compute total size of the thread trace BO for 4 SEs. */
-   size = align64(sizeof(struct ac_thread_trace_info) * 4,
+   /* Compute total size of the thread trace BO for all SEs. */
+   size = align64(sizeof(struct ac_thread_trace_info) * max_se,
                   1 << SQTT_BUFFER_ALIGN_SHIFT);
-   size += sctx->thread_trace->buffer_size * 4ll;
+   size += sctx->thread_trace->buffer_size * (uint64_t)max_se;
 
    sctx->thread_trace->bo =
       ws->buffer_create(ws, size, 4096,
@@ -77,7 +78,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
 
    for (unsigned se = 0; se < max_se; se++) {
       uint64_t va = sctx->ws->buffer_get_virtual_address(sctx->thread_trace->bo);
-      uint64_t data_va = ac_thread_trace_get_data_va(sctx->thread_trace, va, se);
+      uint64_t data_va = ac_thread_trace_get_data_va(&sctx->screen->info, sctx->thread_trace, va, se);
       uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
 
       /* Target SEx and SH0. */
@@ -495,7 +496,7 @@ si_get_thread_trace(struct si_context *sctx,
 
    for (unsigned se = 0; se < max_se; se++) {
       uint64_t info_offset = ac_thread_trace_get_info_offset(se);
-      uint64_t data_offset = ac_thread_trace_get_data_offset(sctx->thread_trace, se);
+      uint64_t data_offset = ac_thread_trace_get_data_offset(&sctx->screen->info, sctx->thread_trace, se);
       void *info_ptr = thread_trace_ptr + info_offset;
       void *data_ptr = thread_trace_ptr + data_offset;
       struct ac_thread_trace_info *info =

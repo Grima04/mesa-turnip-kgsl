@@ -36,13 +36,14 @@ radv_emit_thread_trace_start(struct radv_device *device,
 			     uint32_t queue_family_index)
 {
 	uint32_t shifted_size = device->thread_trace.buffer_size >> SQTT_BUFFER_ALIGN_SHIFT;
-	unsigned max_se = device->physical_device->rad_info.max_se;
+	struct radeon_info *rad_info = &device->physical_device->rad_info;
+	unsigned max_se = rad_info->max_se;
 
 	assert(device->physical_device->rad_info.chip_class >= GFX8);
 
 	for (unsigned se = 0; se < max_se; se++) {
 		uint64_t va = radv_buffer_get_va(device->thread_trace.bo);
-		uint64_t data_va = ac_thread_trace_get_data_va(&device->thread_trace, va, se);
+		uint64_t data_va = ac_thread_trace_get_data_va(rad_info, &device->thread_trace, va, se);
 		uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
 		int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
 
@@ -400,6 +401,7 @@ radv_emit_wait_for_idle(struct radv_device *device,
 static bool
 radv_thread_trace_init_bo(struct radv_device *device)
 {
+	unsigned max_se = device->physical_device->rad_info.max_se;
 	struct radeon_winsys *ws = device->ws;
 	uint64_t size;
 
@@ -409,10 +411,10 @@ radv_thread_trace_init_bo(struct radv_device *device)
 	device->thread_trace.buffer_size = align64(device->thread_trace.buffer_size,
 	                                           1u << SQTT_BUFFER_ALIGN_SHIFT);
 
-	/* Compute total size of the thread trace BO for 4 SEs. */
-	size = align64(sizeof(struct ac_thread_trace_info) * 4,
+	/* Compute total size of the thread trace BO for all SEs. */
+	size = align64(sizeof(struct ac_thread_trace_info) * max_se,
 		       1 << SQTT_BUFFER_ALIGN_SHIFT);
-	size += device->thread_trace.buffer_size * 4ll;
+	size += device->thread_trace.buffer_size * (uint64_t)max_se;
 
 	device->thread_trace.bo = ws->buffer_create(ws, size, 4096,
 						    RADEON_DOMAIN_VRAM,
@@ -625,7 +627,8 @@ radv_get_thread_trace(struct radv_queue *queue,
 		      struct ac_thread_trace *thread_trace)
 {
 	struct radv_device *device = queue->device;
-	unsigned max_se = device->physical_device->rad_info.max_se;
+	struct radeon_info *rad_info = &device->physical_device->rad_info;
+	unsigned max_se = rad_info->max_se;
 	void *thread_trace_ptr = device->thread_trace.ptr;
 
 	memset(thread_trace, 0, sizeof(*thread_trace));
@@ -633,7 +636,7 @@ radv_get_thread_trace(struct radv_queue *queue,
 
 	for (unsigned se = 0; se < max_se; se++) {
 		uint64_t info_offset = ac_thread_trace_get_info_offset(se);
-		uint64_t data_offset = ac_thread_trace_get_data_offset(&device->thread_trace, se);
+		uint64_t data_offset = ac_thread_trace_get_data_offset(rad_info, &device->thread_trace, se);
 		void *info_ptr = (uint8_t *)thread_trace_ptr + info_offset;
 		void *data_ptr = (uint8_t *)thread_trace_ptr + data_offset;
 		struct ac_thread_trace_info *info =
