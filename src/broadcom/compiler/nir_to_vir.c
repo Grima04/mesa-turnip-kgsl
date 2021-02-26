@@ -943,10 +943,10 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
          * GLSL's interpolateAt functions if the shader uses them.
          */
         if (input_idx >= 0) {
-           assert(var);
-           c->interp[input_idx].vp = vary;
-           c->interp[input_idx].C = vir_MOV(c, r5);
-           c->interp[input_idx].mode = var->data.interpolation;
+                assert(var);
+                c->interp[input_idx].vp = vary;
+                c->interp[input_idx].C = vir_MOV(c, r5);
+                c->interp[input_idx].mode = var->data.interpolation;
         }
 
         /* For gl_PointCoord input or distance along a line, we'll be called
