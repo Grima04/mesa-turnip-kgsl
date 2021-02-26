@@ -79,7 +79,6 @@ a530_gles2:
     - .arm64-a530-test
   variables:
     DEQP_VER: gles2
-  parallel: 2
 
 a530_gles3:
   extends:
