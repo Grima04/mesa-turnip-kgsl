@@ -44,6 +44,7 @@ radv_emit_thread_trace_start(struct radv_device *device,
 		uint64_t va = radv_buffer_get_va(device->thread_trace.bo);
 		uint64_t data_va = ac_thread_trace_get_data_va(&device->thread_trace, va, se);
 		uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
+		int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
 
 		/* Target SEx and SH0. */
 		radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
@@ -63,7 +64,7 @@ radv_emit_thread_trace_start(struct radv_device *device,
 			radeon_set_privileged_config_reg(cs, R_008D14_SQ_THREAD_TRACE_MASK,
 							 S_008D14_WTYPE_INCLUDE(0x7f) | /* all shader stages */
 							 S_008D14_SA_SEL(0) |
-							 S_008D14_WGP_SEL(0) |
+							 S_008D14_WGP_SEL(first_active_cu / 2) |
 							 S_008D14_SIMD_SEL(0));
 
 			uint32_t thread_trace_token_mask =
@@ -110,7 +111,7 @@ radv_emit_thread_trace_start(struct radv_device *device,
 			radeon_set_uconfig_reg(cs, R_030CD4_SQ_THREAD_TRACE_CTRL,
 					       S_030CD4_RESET_BUFFER(1));
 
-			uint32_t thread_trace_mask = S_030CC8_CU_SEL(2) |
+			uint32_t thread_trace_mask = S_030CC8_CU_SEL(first_active_cu) |
 						     S_030CC8_SH_SEL(0) |
 						     S_030CC8_SIMD_EN(0xf) |
 						     S_030CC8_VM_ID_MASK(0) |
@@ -637,6 +638,7 @@ radv_get_thread_trace(struct radv_queue *queue,
 		struct ac_thread_trace_info *info =
 			(struct ac_thread_trace_info *)info_ptr;
 		struct ac_thread_trace_se thread_trace_se = {0};
+		int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
 
 		if (!ac_is_thread_trace_complete(&device->physical_device->rad_info, info)) {
 			uint32_t expected_size =
@@ -660,6 +662,11 @@ radv_get_thread_trace(struct radv_queue *queue,
 		thread_trace_se.data_ptr = data_ptr;
 		thread_trace_se.info = *info;
 		thread_trace_se.shader_engine = se;
+
+		/* RGP seems to expect units of WGP on GFX10+. */
+		thread_trace_se.compute_unit =
+			device->physical_device->rad_info.chip_class >= GFX10 ? (first_active_cu / 2) : first_active_cu;
+
 		thread_trace_se.compute_unit = 0;
 
 		thread_trace->traces[se] = thread_trace_se;
