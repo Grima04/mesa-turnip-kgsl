@@ -398,6 +398,29 @@ static enum sqtt_memory_type ac_vram_type_to_sqtt_memory_type(uint32_t vram_type
    }
 }
 
+static uint32_t ac_memory_ops_per_clock(uint32_t vram_type)
+{
+   switch (vram_type) {
+   case AMDGPU_VRAM_TYPE_UNKNOWN:
+      return 0;
+   case AMDGPU_VRAM_TYPE_DDR2:
+   case AMDGPU_VRAM_TYPE_DDR3:
+   case AMDGPU_VRAM_TYPE_DDR4:
+   case AMDGPU_VRAM_TYPE_HBM:
+      return 2;
+   case AMDGPU_VRAM_TYPE_DDR5:
+   case AMDGPU_VRAM_TYPE_GDDR5:
+      return 4;
+   case AMDGPU_VRAM_TYPE_GDDR6:
+      return 16;
+   case AMDGPU_VRAM_TYPE_GDDR1:
+   case AMDGPU_VRAM_TYPE_GDDR3:
+   case AMDGPU_VRAM_TYPE_GDDR4:
+   default:
+      unreachable("Invalid vram type");
+   }
+}
+
 static void ac_fill_sqtt_asic_info(struct radeon_info *rad_info,
                                    struct sqtt_file_chunk_asic_info *chunk)
 {
@@ -469,7 +492,7 @@ static void ac_fill_sqtt_asic_info(struct radeon_info *rad_info,
    chunk->gpu_timestamp_frequency = rad_info->clock_crystal_freq * 1000;
    chunk->max_shader_core_clock = rad_info->max_shader_clock * 1000000;
    chunk->max_memory_clock = rad_info->max_memory_clock * 1000000;
-   chunk->memory_ops_per_clock = 0;
+   chunk->memory_ops_per_clock = ac_memory_ops_per_clock(rad_info->vram_type);
    chunk->memory_chip_type = ac_vram_type_to_sqtt_memory_type(rad_info->vram_type);
    chunk->lds_granularity = rad_info->lds_encode_granularity;
 
