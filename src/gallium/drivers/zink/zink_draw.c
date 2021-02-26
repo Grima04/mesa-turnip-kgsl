@@ -485,12 +485,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    _mesa_set_destroy(ht, NULL);
 
    struct zink_batch *batch = NULL;
-   if (num_transitions > 0) {
-      for (int i = 0; i < num_transitions; ++i) {
-         zink_resource_barrier(ctx, NULL, transitions[i].res,
-                               transitions[i].layout, transitions[i].access, transitions[i].stage);
-      }
-   }
 
    bool cache_hit = false;
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
@@ -547,6 +541,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                zink_batch_reference_sampler_view(batch, sampler_view);
          }
       }
+   }
+   for (int i = 0; i < num_transitions; ++i) {
+      zink_resource_barrier(ctx, NULL, transitions[i].res,
+                            transitions[i].layout, transitions[i].access, transitions[i].stage);
    }
    if (!need_flush)
       return;
