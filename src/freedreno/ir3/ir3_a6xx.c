@@ -416,7 +416,7 @@ ir3_a6xx_fixup_atomic_dests(struct ir3 *ir, struct ir3_shader_variant *so)
 {
 	bool progress = false;
 
-	if (ir3_shader_nibo(so) == 0)
+	if (ir3_shader_nibo(so) == 0 && !so->bindless_ibo)
 		return false;
 
 	foreach_block (block, &ir->block_list) {
