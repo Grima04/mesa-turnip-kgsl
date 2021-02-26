@@ -340,8 +340,14 @@ optimizations.extend([
    # instruction or a constant offset field for in load / store instructions.
    (('ishl', ('iadd', a, '#b'), '#c'), ('iadd', ('ishl', a, c), ('ishl', b, c))),
 
-   # (a + #b) * #c
+   # (a + #b) * #c => (a * #c) + (#b * #c)
    (('imul', ('iadd(is_used_once)', a, '#b'), '#c'), ('iadd', ('imul', a, c), ('imul', b, c))),
+
+   # ((a + #b) + c) * #d => ((a + c) * #d) + (#b * #d)
+   (('imul', ('iadd(is_used_once)', ('iadd(is_used_once)', a, '#b'), c), '#d'),
+    ('iadd', ('imul', ('iadd', a, c), d), ('imul', b, d))),
+   (('ishl', ('iadd(is_used_once)', ('iadd(is_used_once)', a, '#b'), c), '#d'),
+    ('iadd', ('ishl', ('iadd', a, c), d), ('ishl', b, d))),
 
    # Comparison simplifications
    (('~inot', ('flt', a, b)), ('fge', a, b)),
