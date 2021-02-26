@@ -818,7 +818,6 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
 
    case nir_intrinsic_load_push_constant:
       lower_load_push_constant(b, instr, pipeline);
-      pipeline->use_push_constants = true;
       return true;
 
    case nir_intrinsic_vulkan_resource_index:

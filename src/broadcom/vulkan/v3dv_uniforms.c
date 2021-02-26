@@ -343,7 +343,6 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
          break;
 
       case QUNIFORM_UNIFORM:
-         assert(pipeline->use_push_constants);
          cl_aligned_u32(&uniforms, cmd_buffer->push_constants_data[data]);
          break;
 

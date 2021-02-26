@@ -1671,9 +1671,6 @@ struct v3dv_pipeline {
    /* If the pipeline should emit any of the stencil configuration packets */
    bool emit_stencil_cfg[2];
 
-   /* If the pipeline is using push constants */
-   bool use_push_constants;
-
    /* Blend state */
    struct {
       /* Per-RT bit mask with blend enables */
