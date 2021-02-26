@@ -8,6 +8,7 @@
     BM_ROOTFS: /lava-files/rootfs-arm64
     FLAKES_CHANNEL: "#freedreno-ci"
     PIGLIT_PLATFORM: mixed_glx_egl
+    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
   script:
     - ./install/bare-metal/fastboot.sh
   needs:
@@ -30,7 +31,6 @@
   variables:
     BM_KERNEL: /lava-files/Image.gz
     BM_DTB: /lava-files/apq8016-sbc.dtb
-    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
     GPU_VERSION: freedreno-a307
     DEQP_EXPECTED_RENDERER: FD307
 
@@ -68,7 +68,6 @@ a306_gles3_options:
   variables:
     BM_KERNEL: /lava-files/Image.gz
     BM_DTB: /lava-files/apq8096-db820c.dtb
-    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
     GPU_VERSION: freedreno-a530
     DEQP_EXPECTED_RENDERER: FD530
   tags:
