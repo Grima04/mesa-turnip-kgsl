@@ -75,8 +75,10 @@ radv_emit_thread_trace_start(struct radv_device *device,
 						     V_008D18_REG_INCLUDE_CONTEXT |
 						     V_008D18_REG_INCLUDE_CONFIG);
 
-			if (device->physical_device->rad_info.chip_class < GFX10_3)
-				thread_trace_token_mask |= S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF);
+			/* Performance counters with SQTT are considered
+			 * deprecated.
+			 */
+			thread_trace_token_mask |= S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF);
 
 			radeon_set_privileged_config_reg(cs, R_008D18_SQ_THREAD_TRACE_TOKEN_MASK,
 							 thread_trace_token_mask);
