@@ -43,6 +43,7 @@ protected:
    nir_lower_ubo_test();
    ~nir_lower_ubo_test();
 
+   nir_intrinsic_instr *intrinsic(nir_intrinsic_op op);
    unsigned count_intrinsic(nir_intrinsic_op op);
 
    nir_builder b;
@@ -66,6 +67,22 @@ nir_lower_ubo_test::~nir_lower_ubo_test()
    ralloc_free(b.shader);
 
    glsl_type_singleton_decref();
+}
+
+nir_intrinsic_instr *
+nir_lower_ubo_test::intrinsic(nir_intrinsic_op op)
+{
+   nir_foreach_block(block, b.impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic == op)
+            return intr;
+      }
+   }
+   return NULL;
 }
 
 unsigned
@@ -103,18 +120,19 @@ TEST_F(nir_lower_ubo_test, nothing_to_lower)
 
 TEST_F(nir_lower_ubo_test, basic)
 {
-   nir_ssa_def *index = nir_imm_int(&b, 0);
    nir_ssa_def *offset = nir_imm_int(&b, 4);
+   nir_load_uniform(&b, 1, 32, offset);
 
-   nir_load_ubo(&b, 1, 32, index, offset, .align_mul = 16, .align_offset = 0, .range_base = 0, .range = 8);
-
-   nir_validate_shader(b.shader, NULL);
+   nir_lower_uniforms_to_ubo(b.shader, 16);
+   nir_opt_constant_folding(b.shader);
 
    ASSERT_TRUE(etna_nir_lower_ubo_to_uniform(b.shader));
    nir_validate_shader(b.shader, NULL);
+   nir_opt_constant_folding(b.shader);
 
-   ASSERT_EQ(count_intrinsic(nir_intrinsic_load_ubo), 0);
-   ASSERT_EQ(count_intrinsic(nir_intrinsic_load_uniform), 1);
+   nir_intrinsic_instr *load_uniform = intrinsic(nir_intrinsic_load_uniform);
+   ASSERT_EQ(nir_src_as_uint(load_uniform->src[0]), 4);
+   ASSERT_EQ(intrinsic(nir_intrinsic_load_ubo), nullptr);
 }
 
 TEST_F(nir_lower_ubo_test, index_not_null)
