@@ -48,7 +48,6 @@ a306_gles3:
   parallel: 3
   variables:
     DEQP_VER: gles3
-    DEQP_FRACTION: 2
 
 # Fractional runs with debug options.  Note that since we're not
 # hitting the iommu faults, we can run in parallel (derive from gles2, not gles3).
