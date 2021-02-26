@@ -1275,7 +1275,8 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(scalar.def->parent_instr);
       switch (intrin->intrinsic) {
       case nir_intrinsic_load_local_invocation_index:
-         if (shader->info.cs.local_size_variable) {
+         if (shader->info.stage != MESA_SHADER_COMPUTE ||
+             shader->info.cs.local_size_variable) {
             res = config->max_work_group_invocations - 1;
          } else {
             res = (shader->info.cs.local_size[0] *
