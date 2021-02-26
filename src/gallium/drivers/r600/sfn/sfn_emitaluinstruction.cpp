@@ -1149,10 +1149,8 @@ bool EmitAluInstruction::emit_tex_fdd(const nir_alu_instr& instr, TexInstruction
    auto tex = new TexInstruction(op, dst, src, 0, R600_MAX_CONST_BUFFERS, PValue());
    tex->set_dest_swizzle(writemask);
 
-   if (fine) {
-      std::cerr << "Sewt fine flag\n";
+   if (fine)
       tex->set_flag(TexInstruction::grad_fine);
-   }
 
    emit_instruction(tex);
 
