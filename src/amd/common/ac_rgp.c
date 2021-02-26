@@ -487,7 +487,7 @@ static void ac_fill_sqtt_asic_info(struct radeon_info *rad_info,
    chunk->alu_per_clock = 0.0;
    chunk->texture_per_clock = 0.0;
    chunk->prims_per_clock = rad_info->max_se;
-   if (rad_info->chip_class >= GFX10)
+   if (rad_info->chip_class == GFX10)
       chunk->prims_per_clock *= 2;
    chunk->pixels_per_clock = 0.0;
 
