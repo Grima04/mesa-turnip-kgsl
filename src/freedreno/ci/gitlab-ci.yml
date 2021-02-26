@@ -83,16 +83,17 @@ a530_gles3:
   extends:
     - .baremetal-deqp-test
     - .arm64-a530-test
+  parallel: 2
   variables:
     DEQP_VER: gles3
-    DEQP_FRACTION: 10
+    DEQP_FRACTION: 2
 
 a530_gles31:
   extends:
     - a530_gles3
+  parallel: 2
   variables:
     DEQP_VER: gles31
-    DEQP_FRACTION: 10
 
 .a530_piglit:
   extends:
