@@ -670,6 +670,7 @@ virgl_is_format_supported( struct pipe_screen *screen,
 
    if ((format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC ||
         format_desc->layout == UTIL_FORMAT_LAYOUT_ETC ||
+        format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||
         format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) &&
        target == PIPE_TEXTURE_3D)
       return false;
@@ -729,6 +730,10 @@ virgl_is_format_supported( struct pipe_screen *screen,
       goto out_lookup;
    } else if (format == PIPE_FORMAT_R9G9B9E5_FLOAT) {
       goto out_lookup;
+   }
+
+   if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
+     goto out_lookup;
    }
 
    /* Find the first non-VOID channel. */
