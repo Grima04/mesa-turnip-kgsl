@@ -118,12 +118,10 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_umin: return emit_alu_op2_int(instr, op2_min_uint);
    case nir_op_ior: return emit_alu_op2_int(instr, op2_or_int);
    case nir_op_inot: return emit_alu_op1(instr, op1_not_int);
-   case nir_op_iabs: return emit_alu_iabs(instr);
    case nir_op_ineg: return emit_alu_ineg(instr);
    case nir_op_idiv: return emit_alu_div_int(instr, true, false);
    case nir_op_udiv: return emit_alu_div_int(instr, false, false);
    case nir_op_umod: return emit_alu_div_int(instr, false, true);
-   case nir_op_isign: return emit_alu_isign(instr);
 
    case nir_op_ushr: return emit_alu_op2_int(instr, op2_lshr_int);
 
@@ -1019,48 +1017,6 @@ bool EmitAluInstruction::emit_alu_op2_split_src_mods(const nir_alu_instr& instr,
    return true;
 }
 
-
-bool EmitAluInstruction::emit_alu_isign(const nir_alu_instr& instr)
-{
-   int sel_tmp = allocate_temp_register();
-   GPRVector tmp(sel_tmp, {0,1,2,3});
-
-   AluInstruction *ir = nullptr;
-   PValue help[4];
-
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
-         help[i] = from_nir(instr.dest, i);
-         auto s = m_src[0][i];
-         ir = new AluInstruction(op3_cndgt_int, help[i], s, Value::one_i, s, write);
-         emit_instruction(ir);
-      }
-   }
-   if (ir)
-      ir->set_flag(alu_last_instr);
-
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
-         ir = new AluInstruction(op2_sub_int, tmp.reg_i(i), Value::zero, help[i], write);
-         emit_instruction(ir);
-      }
-   }
-   if (ir)
-      ir->set_flag(alu_last_instr);
-
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
-
-         ir = new AluInstruction(op3_cndgt_int, help[i], tmp.reg_i(i),
-                                 PValue(new LiteralValue(-1,0)), help[i], write);
-         emit_instruction(ir);
-      }
-   }
-   if (ir)
-      ir->set_flag(alu_last_instr);
-   return true;
-}
-
 bool EmitAluInstruction::emit_fsign(const nir_alu_instr& instr)
 {
    PValue help[4];
@@ -1173,34 +1129,6 @@ bool EmitAluInstruction::emit_alu_ineg(const nir_alu_instr& instr)
 }
 
 static const char swz[] = "xyzw01?_";
-
-
-
-bool EmitAluInstruction::emit_alu_iabs(const nir_alu_instr& instr)
-{
-   int sel_tmp = allocate_temp_register();
-   GPRVector tmp(sel_tmp, {0,1,2,3});
-
-   std::array<PValue,4> src;
-   AluInstruction *ir = nullptr;
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
-         ir = new AluInstruction(op2_sub_int, tmp.reg_i(i), Value::zero, m_src[0][i], write);
-         emit_instruction(ir);
-      }
-   }
-   make_last(ir);
-
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
-         ir = new AluInstruction(op3_cndge_int, from_nir(instr.dest, i), m_src[0][i],
-                                 m_src[0][i], tmp.reg_i(i), write);
-         emit_instruction(ir);
-      }
-   }
-   make_last(ir);
-   return true;
-}
 
 bool EmitAluInstruction::emit_alu_div_int(const nir_alu_instr& instr, bool use_signed, bool mod)
 {

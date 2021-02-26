@@ -61,9 +61,7 @@ private:
    bool emit_alu_trans_op2(const nir_alu_instr& instr, EAluOp opcode);
 
    bool emit_alu_inot(const nir_alu_instr& instr);
-   bool emit_alu_iabs(const nir_alu_instr& instr);
    bool emit_alu_ineg(const nir_alu_instr& instr);
-   bool emit_alu_isign(const nir_alu_instr& instr);
    bool emit_alu_div_int(const nir_alu_instr& instr, bool use_signed, bool mod);
    bool emit_alu_op2_int(const nir_alu_instr& instr, EAluOp opcode, AluOp2Opts ops = op2_opt_none);
 

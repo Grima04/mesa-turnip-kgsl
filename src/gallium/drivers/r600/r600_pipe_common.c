@@ -1195,6 +1195,7 @@ const struct nir_shader_compiler_options r600_nir_fs_options = {
 	.use_interpolated_input_intrinsics = true,
 	.has_fsub = true,
 	.has_isub = true,
+	.lower_iabs = true,
 };
 
 const struct nir_shader_compiler_options r600_nir_options = {
@@ -1218,6 +1219,8 @@ const struct nir_shader_compiler_options r600_nir_options = {
 	.has_umul24 = true,
 	.has_fsub = true,
 	.has_isub = true,
+	.lower_iabs = true,
+	.lower_isign = true,
 };
 
 
