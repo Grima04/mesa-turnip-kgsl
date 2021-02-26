@@ -1288,6 +1288,7 @@ radv_shader_variant_create(struct radv_device *device,
 			variant->disasm_string[disasm_size] = 0;
 		}
 
+		variant->code_ptr = dest_ptr;
 		ac_rtld_close(&rtld_binary);
 	} else {
 		struct radv_shader_binary_legacy* bin = (struct radv_shader_binary_legacy *)binary;
