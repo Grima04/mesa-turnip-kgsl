@@ -135,6 +135,7 @@
       # is supported, we can change the src/freedreno/ rule to explicitly
       # exclude tools, rather than having to explicitly list everything
       # else
+      - src/freedreno/ci/**/*
       - src/freedreno/common/**/*
       - src/freedreno/drm/**/*
       - src/freedreno/fdl/**/*
