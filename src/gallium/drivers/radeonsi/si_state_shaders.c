@@ -3279,12 +3279,13 @@ static void si_destroy_shader_selector(struct pipe_context *ctx, void *cso)
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *sel = (struct si_shader_selector *)cso;
    struct si_shader *p = sel->first_variant, *c;
+   enum pipe_shader_type type = pipe_shader_type_from_mesa(sel->info.stage);
 
    util_queue_drop_job(&sctx->screen->shader_compiler_queue, &sel->ready);
 
-   if (sctx->shaders[sel->info.stage].cso == sel) {
-      sctx->shaders[sel->info.stage].cso = NULL;
-      sctx->shaders[sel->info.stage].current = NULL;
+   if (sctx->shaders[type].cso == sel) {
+      sctx->shaders[type].cso = NULL;
+      sctx->shaders[type].current = NULL;
    }
 
    while (p) {

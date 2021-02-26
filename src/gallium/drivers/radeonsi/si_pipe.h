@@ -1051,6 +1051,7 @@ struct si_context {
          struct si_shader_ctx_state tcs;
          struct si_shader_ctx_state tes;
       } shader;
+      /* indexed access using pipe_shader_type (not by MESA_SHADER_*) */
       struct si_shader_ctx_state shaders[SI_NUM_GRAPHICS_SHADERS];
    };
    struct si_shader_ctx_state cs_prim_discard_state;
