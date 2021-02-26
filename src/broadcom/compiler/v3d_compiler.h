@@ -162,6 +162,19 @@ struct qinst {
          * otherwise.
          */
         int uniform;
+
+        /* Set if this instruction participates in a pipelinable sequence of
+         * smooth varyings.
+         */
+        bool ldvary_pipelining;
+        /* Set if this is the ldvary instruction starting a pipelinable
+         * sequence of smooth varyings.
+         */
+        bool ldvary_pipelining_start;
+        /* Set if this is the fadd instruction ending a pipelinable
+         * sequence of smooth varyings.
+         */
+        bool ldvary_pipelining_end;
 };
 
 enum quniform_contents {
@@ -768,6 +781,11 @@ struct v3d_compile {
 
         uint32_t program_id;
         uint32_t variant_id;
+
+        /* Used to track pipelinable sequences of smooth varyings */
+        struct qinst *ldvary_sequence_start_inst;
+        struct qinst *ldvary_sequence_end_inst;
+        uint32_t ldvary_sequence_length;
 
         /* Set to compile program in in 1x, 2x, or 4x threaded mode, where
          * SIG_THREAD_SWITCH is used to hide texturing latency at the cost of

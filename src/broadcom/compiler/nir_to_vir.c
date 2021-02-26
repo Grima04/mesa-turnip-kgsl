@@ -922,16 +922,70 @@ emit_fragcoord_input(struct v3d_compile *c, int attr)
 }
 
 static struct qreg
+ldvary_sequence_inst(struct v3d_compile *c, struct qreg result)
+{
+        struct qinst *producer =
+                   (struct qinst *) c->cur_block->instructions.prev;
+        assert(producer);
+        producer->ldvary_pipelining = true;
+        c->ldvary_sequence_end_inst = producer;
+        return result;
+}
+
+static struct qreg
+emit_smooth_varying(struct v3d_compile *c,
+                    struct qinst *ldvary,
+                    struct qreg vary, struct qreg w, struct qreg r5)
+{
+        if (ldvary) {
+                c->ldvary_sequence_length++;
+                ldvary->ldvary_pipelining = true;
+                if (c->ldvary_sequence_length == 1) {
+                        ldvary->ldvary_pipelining_start = true;
+                        c->ldvary_sequence_start_inst = ldvary;
+                }
+        }
+        return ldvary_sequence_inst(c, vir_FADD(c,
+               ldvary_sequence_inst(c, vir_FMUL(c, vary, w)), r5));
+}
+
+static void
+break_smooth_varying_sequence(struct v3d_compile *c)
+{
+        if (!c->ldvary_sequence_start_inst) {
+                assert(!c->ldvary_sequence_end_inst);
+                assert(c->ldvary_sequence_length == 0);
+                return;
+        }
+
+        assert(c->ldvary_sequence_start_inst);
+        assert(c->ldvary_sequence_end_inst);
+        assert(c->ldvary_sequence_start_inst != c->ldvary_sequence_end_inst);
+
+        /* We need at least two smooth ldvary sequences to do some pipelining */
+        if (c->ldvary_sequence_length == 1)
+                c->ldvary_sequence_start_inst->ldvary_pipelining_start = false;
+
+        if (c->ldvary_sequence_length > 1)
+                c->ldvary_sequence_end_inst->ldvary_pipelining_end = true;
+
+        c->ldvary_sequence_length = 0;
+        c->ldvary_sequence_start_inst = NULL;
+        c->ldvary_sequence_end_inst = NULL;
+}
+
+static struct qreg
 emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                       int8_t input_idx, uint8_t swizzle, int array_index)
 {
         struct qreg r3 = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R3);
         struct qreg r5 = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R5);
 
+        struct qinst *ldvary = NULL;
         struct qreg vary;
         if (c->devinfo->ver >= 41) {
-                struct qinst *ldvary = vir_add_inst(V3D_QPU_A_NOP, c->undef,
-                                                    c->undef, c->undef);
+                ldvary = vir_add_inst(V3D_QPU_A_NOP, c->undef,
+                                      c->undef, c->undef);
                 ldvary->qpu.sig.ldvary = true;
                 vary = vir_emit_def(c, ldvary);
         } else {
@@ -955,7 +1009,7 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
          */
         if (!var) {
                 assert(input_idx < 0);
-                return vir_FADD(c, vir_FMUL(c, vary, c->payload_w), r5);
+                return emit_smooth_varying(c, ldvary, vary, c->payload_w, r5);
         }
 
         int i = c->num_inputs++;
@@ -969,19 +1023,22 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
         case INTERP_MODE_SMOOTH:
                 if (var->data.centroid) {
                         BITSET_SET(c->centroid_flags, i);
-                        result = vir_FADD(c, vir_FMUL(c, vary,
-                                                      c->payload_w_centroid), r5);
+                        result = emit_smooth_varying(c, ldvary, vary,
+                                                     c->payload_w_centroid, r5);
                 } else {
-                        result = vir_FADD(c, vir_FMUL(c, vary, c->payload_w), r5);
+                        result = emit_smooth_varying(c, ldvary, vary,
+                                                     c->payload_w, r5);
                 }
                 break;
 
         case INTERP_MODE_NOPERSPECTIVE:
+                break_smooth_varying_sequence(c);
                 BITSET_SET(c->noperspective_flags, i);
                 result = vir_FADD(c, vir_MOV(c, vary), r5);
                 break;
 
         case INTERP_MODE_FLAT:
+                break_smooth_varying_sequence(c);
                 BITSET_SET(c->flat_shade_flags, i);
                 vir_MOV_dest(c, c->undef, vary);
                 result = vir_MOV(c, r5);
@@ -2019,6 +2076,8 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                         }
                 }
         }
+
+        break_smooth_varying_sequence(c);
 }
 
 static void
