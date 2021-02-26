@@ -1,5 +1,8 @@
-static inline bool
-nir_foreach_dest(nir_instr *instr, nir_foreach_dest_cb cb, void *state)
+/* _nir_foreach_dest() needs to be ALWAYS_INLINE so that it can inline the
+ * callback if it was declared with ALWAYS_INLINE.
+ */
+static ALWAYS_INLINE bool
+_nir_foreach_dest(nir_instr *instr, nir_foreach_dest_cb cb, void *state)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
@@ -62,6 +65,12 @@ _nir_visit_dest_indirect(nir_dest *dest, void *_state)
       return state->cb(dest->reg.indirect, state->state);
 
    return true;
+}
+
+static inline bool
+nir_foreach_dest(nir_instr *instr, nir_foreach_dest_cb cb, void *state)
+{
+   return _nir_foreach_dest(instr, cb, state);
 }
 
 static inline bool
@@ -151,5 +160,5 @@ nir_foreach_src(nir_instr *instr, nir_foreach_src_cb cb, void *state)
    _nir_visit_dest_indirect_state dest_state;
    dest_state.state = state;
    dest_state.cb = cb;
-   return nir_foreach_dest(instr, _nir_visit_dest_indirect, &dest_state);
+   return _nir_foreach_dest(instr, _nir_visit_dest_indirect, &dest_state);
 }
