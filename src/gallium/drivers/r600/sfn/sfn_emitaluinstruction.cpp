@@ -81,8 +81,6 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_fceil: return emit_alu_op1(instr, op1_ceil);
    case nir_op_ffract: return emit_alu_op1(instr, op1_fract);
    case nir_op_ffloor: return emit_alu_op1(instr, op1_floor);
-
-   case nir_op_fsign: return emit_fsign(instr);
    case nir_op_fdph:  return emit_fdph(instr);
 
    case nir_op_ibitfield_extract: return emit_bitfield_extract(instr, op3_bfe_int);
@@ -1009,71 +1007,6 @@ bool EmitAluInstruction::emit_alu_op2_split_src_mods(const nir_alu_instr& instr,
    for (int i = 0; i < 4 ; ++i) {
       if (instr.dest.write_mask & (1 << i)){
          ir = new AluInstruction(opcode, from_nir(instr.dest, i), {v0[i], v1[i]}, {alu_write});
-         emit_instruction(ir);
-      }
-   }
-   if (ir)
-      ir->set_flag(alu_last_instr);
-   return true;
-}
-
-bool EmitAluInstruction::emit_fsign(const nir_alu_instr& instr)
-{
-   PValue help[4];
-   PValue src[4];
-   AluInstruction *ir = nullptr;
-
-   for (int i = 0; i < 4 ; ++i) {
-      help[i] = from_nir(instr.dest, i);
-      src[i] = m_src[0][i];
-   }
-
-   if (instr.src[0].abs) {
-
-      for (int i = 0; i < 4 ; ++i) {
-         if (instr.dest.write_mask & (1 << i)){
-            ir = new AluInstruction(op2_setgt, help[i], src[i], Value::zero, write);
-            ir->set_flag(alu_src0_abs);
-            emit_instruction(ir);
-         }
-      }
-      if (ir)
-         ir->set_flag(alu_last_instr);
-
-      if (instr.src[0].negate) {
-         for (int i = 0; i < 4 ; ++i) {
-            if (instr.dest.write_mask & (1 << i)){
-               ir = new AluInstruction(op1_mov, help[i], help[i], write);
-               ir->set_flag(alu_src0_neg);
-               emit_instruction(ir);
-            }
-         }
-         if (ir)
-            ir->set_flag(alu_last_instr);
-      }
-
-      return true;
-   }
-
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
-         ir = new AluInstruction(op3_cndgt, help[i], src[i], Value::one_f, src[i], write);
-         if (instr.src[0].negate) {
-            ir->set_flag(alu_src0_neg);
-            ir->set_flag(alu_src2_neg);
-         }
-         emit_instruction(ir);
-      }
-   }
-
-   if (ir)
-      ir->set_flag(alu_last_instr);
-
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
-         ir = new AluInstruction(op3_cndgt, help[i], help[i], Value::one_f, help[i], write);
-         ir->set_flag(alu_src0_neg);
-         ir->set_flag(alu_src1_neg);
          emit_instruction(ir);
       }
    }

@@ -72,7 +72,6 @@ private:
    bool emit_alu_b2f(const nir_alu_instr& instr);
    bool emit_alu_i2orf2_b1(const nir_alu_instr& instr, EAluOp op);
    bool emit_dot(const nir_alu_instr& instr, int n);
-   bool emit_fsign(const nir_alu_instr& instr);
    bool emit_create_vec(const nir_alu_instr& instr, unsigned nc);
    bool emit_any_all_icomp(const nir_alu_instr& instr, EAluOp op,  unsigned nc, bool all);
    bool emit_any_iequal(const nir_alu_instr& instr, unsigned nc);
