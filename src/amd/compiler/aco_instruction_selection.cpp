@@ -736,10 +736,8 @@ Temp convert_pointer_to_64_bit(isel_context *ctx, Temp ptr, bool non_uniform=fal
    if (ptr.size() == 2)
       return ptr;
    Builder bld(ctx->program, ctx->block);
-   if (ptr.type() == RegType::vgpr && !non_uniform) {
-      ptr = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), ptr);
-      ptr = emit_wqm(bld, ptr);
-   }
+   if (ptr.type() == RegType::vgpr && !non_uniform)
+      ptr = bld.as_uniform(ptr);
    return bld.pseudo(aco_opcode::p_create_vector, bld.def(RegClass(ptr.type(), 2)),
                      ptr, Operand((unsigned)ctx->options->address32_hi));
 }
@@ -5698,10 +5696,8 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
             constant_index += array_size * const_value->u32;
          } else {
             Temp indirect = get_ssa_temp(ctx, deref_instr->arr.index.ssa);
-            if (indirect.type() == RegType::vgpr) {
-               indirect = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), indirect);
-               indirect = emit_wqm(bld, indirect);
-            }
+            if (indirect.type() == RegType::vgpr)
+               indirect = bld.as_uniform(indirect);
 
             if (array_size != 1)
                indirect = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(array_size), indirect);
