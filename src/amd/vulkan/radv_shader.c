@@ -764,8 +764,6 @@ bool
 radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
                      struct radv_shader_info *info, const struct radv_pipeline_key *pl_key)
 {
-	bool llvm = radv_use_llvm_for_stage(device, nir->info.stage);
-
 	if (nir->info.stage == MESA_SHADER_VERTEX) {
 		if (info->vs.as_ls) {
 			ac_nir_lower_ls_outputs_to_mem(
@@ -789,8 +787,8 @@ radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
 		ac_nir_lower_hs_outputs_to_mem(
 			nir, device->physical_device->rad_info.chip_class,
 			info->tcs.tes_reads_tess_factors,
-			llvm ? UINT64_MAX : info->tcs.tes_inputs_read,
-			llvm ? UINT64_MAX : info->tcs.tes_patch_inputs_read,
+			info->tcs.tes_inputs_read,
+			info->tcs.tes_patch_inputs_read,
 			info->tcs.num_linked_inputs,
 			info->tcs.num_linked_outputs,
 			info->tcs.num_linked_patch_outputs,
