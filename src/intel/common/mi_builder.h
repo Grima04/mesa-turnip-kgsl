@@ -790,6 +790,28 @@ mi_isub(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
 }
 
 static inline struct mi_value
+mi_ieq(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
+{
+   if (src0.type == MI_VALUE_TYPE_IMM && src1.type == MI_VALUE_TYPE_IMM)
+      return mi_imm(mi_value_to_u64(src0) == mi_value_to_u64(src1) ? ~0ull : 0);
+
+   /* Compute "equal" by subtracting and storing the zero bit */
+   return mi_math_binop(b, MI_ALU_SUB, src0, src1,
+                            MI_ALU_STORE, MI_ALU_ZF);
+}
+
+static inline struct mi_value
+mi_ine(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
+{
+   if (src0.type == MI_VALUE_TYPE_IMM && src1.type == MI_VALUE_TYPE_IMM)
+      return mi_imm(mi_value_to_u64(src0) != mi_value_to_u64(src1) ? ~0ull : 0);
+
+   /* Compute "not equal" by subtracting and storing the inverse zero bit */
+   return mi_math_binop(b, MI_ALU_SUB, src0, src1,
+                            MI_ALU_STOREINV, MI_ALU_ZF);
+}
+
+static inline struct mi_value
 mi_ult(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
 {
    if (src0.type == MI_VALUE_TYPE_IMM && src1.type == MI_VALUE_TYPE_IMM)

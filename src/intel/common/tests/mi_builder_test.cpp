@@ -537,7 +537,7 @@ TEST_F(mi_builder_test, add_imm)
    EXPECT_EQ(*(uint64_t *)(output + 104), value + add);
 }
 
-TEST_F(mi_builder_test, ilt_uge)
+TEST_F(mi_builder_test, ult_uge_ieq_ine)
 {
    uint64_t values[8] = {
       0x0123456789abcdef,
@@ -553,10 +553,14 @@ TEST_F(mi_builder_test, ilt_uge)
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
-         mi_store(&b, out_mem64(i * 128 + j * 16 + 0),
+         mi_store(&b, out_mem64(i * 256 + j * 32 + 0),
                       mi_ult(&b, in_mem64(i * 8), in_mem64(j * 8)));
-         mi_store(&b, out_mem64(i * 128 + j * 16 + 8),
+         mi_store(&b, out_mem64(i * 256 + j * 32 + 8),
                       mi_uge(&b, in_mem64(i * 8), in_mem64(j * 8)));
+         mi_store(&b, out_mem64(i * 256 + j * 32 + 16),
+                      mi_ieq(&b, in_mem64(i * 8), in_mem64(j * 8)));
+         mi_store(&b, out_mem64(i * 256 + j * 32 + 24),
+                      mi_ine(&b, in_mem64(i * 8), in_mem64(j * 8)));
       }
    }
 
@@ -564,10 +568,14 @@ TEST_F(mi_builder_test, ilt_uge)
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
-         uint64_t *out_u64 = (uint64_t *)(output + i * 128 + j * 16);
+         uint64_t *out_u64 = (uint64_t *)(output + i * 256 + j * 32);
          EXPECT_EQ_IMM(out_u64[0], mi_ult(&b, mi_imm(values[i]),
                                               mi_imm(values[j])));
          EXPECT_EQ_IMM(out_u64[1], mi_uge(&b, mi_imm(values[i]),
+                                              mi_imm(values[j])));
+         EXPECT_EQ_IMM(out_u64[2], mi_ieq(&b, mi_imm(values[i]),
+                                              mi_imm(values[j])));
+         EXPECT_EQ_IMM(out_u64[3], mi_ine(&b, mi_imm(values[i]),
                                               mi_imm(values[j])));
       }
    }
