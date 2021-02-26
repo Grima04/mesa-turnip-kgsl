@@ -70,7 +70,6 @@ radv_emit_thread_trace_start(struct radv_device *device,
 				S_008D18_REG_INCLUDE(V_008D18_REG_INCLUDE_SQDEC |
 						     V_008D18_REG_INCLUDE_SHDEC |
 						     V_008D18_REG_INCLUDE_GFXUDEC |
-						     V_008D18_REG_INCLUDE_CONTEXT |
 						     V_008D18_REG_INCLUDE_COMP |
 						     V_008D18_REG_INCLUDE_CONTEXT |
 						     V_008D18_REG_INCLUDE_CONFIG);
