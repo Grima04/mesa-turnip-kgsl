@@ -626,6 +626,7 @@ private:
    bool handlePFETCH(Instruction *);
    bool handleEXPORT(Instruction *);
    bool handleLOAD(Instruction *);
+   bool handleLDST(Instruction *);
 
    bool handleDIV(Instruction *);
    bool handleSQRT(Instruction *);
@@ -1294,6 +1295,13 @@ bool
 NV50LoweringPreSSA::handleLOAD(Instruction *i)
 {
    ValueRef src = i->src(0);
+   Symbol *sym = i->getSrc(0)->asSym();
+
+   if (prog->getType() == Program::TYPE_COMPUTE) {
+      if (sym->inFile(FILE_MEMORY_SHARED)) {
+         return handleLDST(i);
+      }
+   }
 
    if (src.isIndirect(1)) {
       assert(prog->getType() == Program::TYPE_GEOMETRY);
@@ -1325,6 +1333,32 @@ NV50LoweringPreSSA::handleLOAD(Instruction *i)
 
       i->setIndirect(0, 1, NULL);
       i->setIndirect(0, 0, addr);
+   }
+
+   return true;
+}
+
+bool
+NV50LoweringPreSSA::handleLDST(Instruction *i)
+{
+   ValueRef src = i->src(0);
+   Symbol *sym = i->getSrc(0)->asSym();
+
+   if (prog->getType() != Program::TYPE_COMPUTE ||
+         !sym->inFile(FILE_MEMORY_SHARED)) {
+      return true;
+   }
+
+   if (src.isIndirect(0)) {
+      Value *addr = i->getIndirect(0, 0);
+
+      if (!addr->inFile(FILE_ADDRESS)) {
+         // Move address from GPR into an address register
+         Value *new_addr = bld.getSSA(2, FILE_ADDRESS);
+         bld.mkMov(new_addr, addr);
+
+         i->setIndirect(0, 0, new_addr);
+      }
    }
 
    return true;
@@ -1427,6 +1461,8 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleEXPORT(i);
    case OP_LOAD:
       return handleLOAD(i);
+   case OP_STORE:
+      return handleLDST(i);
    case OP_RDSV:
       return handleRDSV(i);
    case OP_WRSV:
