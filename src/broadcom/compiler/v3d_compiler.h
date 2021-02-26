@@ -895,6 +895,7 @@ struct v3d_compute_prog_data {
         struct v3d_prog_data base;
         /* Size in bytes of the workgroup's shared space. */
         uint32_t shared_size;
+        uint16_t local_size[3];
 };
 
 static inline bool

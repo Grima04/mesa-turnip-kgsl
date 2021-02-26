@@ -5198,7 +5198,7 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
                           uint32_t *wg_size_out)
 {
    struct v3dv_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
-   assert(pipeline && pipeline->cs && pipeline->cs->nir);
+   assert(pipeline && pipeline->cs && pipeline->cs->current_variant);
 
    struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->vk.alloc,
                                     sizeof(struct v3dv_job), 8,
@@ -5221,12 +5221,13 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
    submit->cfg[1] |= group_count_y << V3D_CSD_CFG012_WG_COUNT_SHIFT;
    submit->cfg[2] |= group_count_z << V3D_CSD_CFG012_WG_COUNT_SHIFT;
 
-   const struct nir_shader *cs =  pipeline->cs->nir;
+   const struct v3d_compute_prog_data *cpd =
+      pipeline->cs->current_variant->prog_data.cs;
 
    const uint32_t wgs_per_sg = 1; /* FIXME */
-   const uint32_t wg_size = cs->info.cs.local_size[0] *
-                            cs->info.cs.local_size[1] *
-                            cs->info.cs.local_size[2];
+   const uint32_t wg_size = cpd->local_size[0] *
+                            cpd->local_size[1] *
+                            cpd->local_size[2];
    submit->cfg[3] |= wgs_per_sg << V3D_CSD_CFG3_WGS_PER_SG_SHIFT;
    submit->cfg[3] |= ((DIV_ROUND_UP(wgs_per_sg * wg_size, 16) - 1) <<
                      V3D_CSD_CFG3_BATCHES_PER_SG_M1_SHIFT);
