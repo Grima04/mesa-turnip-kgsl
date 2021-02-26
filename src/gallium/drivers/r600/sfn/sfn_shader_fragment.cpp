@@ -419,13 +419,16 @@ void FragmentShaderFromNir::emit_shader_start()
       m_helper_invocation = get_temp_register();
       auto dummy = PValue(new GPRValue(m_helper_invocation->sel(), 7));
       emit_instruction(new AluInstruction(op1_mov, m_helper_invocation, literal(-1), {alu_write, alu_last_instr}));
-      GPRVector dst({m_helper_invocation, dummy, dummy, dummy});
+      GPRVector dst({dummy, dummy, dummy, dummy});
+      std::array<int,4> swz = {7,7,7,7};
+      dst.set_reg_i(m_helper_invocation->chan(), m_helper_invocation);
+      swz[m_helper_invocation->chan()] = 4;
 
       auto vtx = new FetchInstruction(dst, m_helper_invocation,
                                       R600_BUFFER_INFO_CONST_BUFFER, bim_none);
       vtx->set_flag(vtx_vpm);
       vtx->set_flag(vtx_use_tc);
-      vtx->set_dest_swizzle({4,7,7,7});
+      vtx->set_dest_swizzle(swz);
       emit_instruction(vtx);
    }
 }
