@@ -21,7 +21,6 @@ glx/glx-visuals-depth -pixmap: fail
 glx/glx-visuals-stencil -pixmap: fail
 glx/glx_arb_create_context_es2_profile/invalid opengl es version: fail
 glx/glx_arb_create_context_robustness/invalid reset notification strategy: fail
-glx/glx_arb_sync_control/swapbuffersmsc-divisor-zero: fail
 glx/glx_arb_sync_control/timing -divisor 1: fail
 glx/glx_arb_sync_control/timing -divisor 2: fail
 glx/glx_arb_sync_control/timing -fullscreen -divisor 1: fail
@@ -34,7 +33,6 @@ glx/glx_arb_sync_control/timing -waitformsc -divisor 1: fail
 glx/glx_arb_sync_control/timing -waitformsc -divisor 2: fail
 glx/glx_arb_sync_control/timing -waitformsc -msc-delta 1: fail
 glx/glx_arb_sync_control/timing -waitformsc -msc-delta 2: fail
-glx/glx_arb_sync_control/waitformsc: fail
 glx/glx_ext_import_context/free context: fail
 glx/glx_ext_import_context/get context id: fail
 glx/glx_ext_import_context/get current display: fail
@@ -97,6 +95,7 @@ shaders/sso-uniforms-01: skip
 shaders/sso-uniforms-02: skip
 shaders/sso-user-varying-01: skip
 shaders/sso-user-varying-02: skip
+shaders/useprogram-refcount-1: crash
 shaders/useshaderprogram-bad-program: skip
 shaders/useshaderprogram-bad-type: skip
 shaders/useshaderprogram-flushverts-1: skip
@@ -105,10 +104,10 @@ shaders/zero-tex-coord texturegather: skip
 spec/!opengl 1.0/gl-1.0-edgeflag: crash
 spec/!opengl 1.0/gl-1.0-edgeflag-quads: crash
 spec/!opengl 1.0/gl-1.0-no-op-paths: fail
-spec/!opengl 1.0/gl-1.0-ortho-pos: fail
 spec/!opengl 1.0/gl-1.0-scissor-copypixels: fail
 spec/!opengl 1.0/gl-1.0-scissor-offscreen: fail
 spec/!opengl 1.0/gl-1.0-spot-light: fail
+spec/!opengl 1.1/clipflat/glbegin/end(gl_triangle_strip), glfrontface(gl_cw), glpolygonmode(gl_line), quadrant: center middle: fail
 spec/!opengl 1.1/copypixels-sync: fail
 spec/!opengl 1.1/copyteximage 1d: fail
 spec/!opengl 1.1/copyteximage 2d: fail
@@ -175,6 +174,7 @@ spec/!opengl 1.1/draw-pixels samples=32: skip
 spec/!opengl 1.1/draw-pixels samples=4: skip
 spec/!opengl 1.1/draw-pixels samples=6: skip
 spec/!opengl 1.1/draw-pixels samples=8: skip
+spec/!opengl 1.1/draw-sync: fail
 spec/!opengl 1.1/gl-1.1-xor-copypixels: fail
 spec/!opengl 1.1/linestipple/factor 2x: fail
 spec/!opengl 1.1/linestipple/factor 3x: fail
@@ -199,6 +199,7 @@ spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on right edg
 spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on top edge: fail
 spec/!opengl 1.1/polygon-mode-offset/config 5: expected blue pixel in center: fail
 spec/!opengl 1.1/polygon-mode-offset/config 6: expected blue pixel in center: fail
+spec/!opengl 1.1/polygon-offset: fail
 spec/!opengl 1.1/read-front clear-front-first samples=16: skip
 spec/!opengl 1.1/read-front clear-front-first samples=32: skip
 spec/!opengl 1.1/read-front clear-front-first samples=6: skip
@@ -232,7 +233,6 @@ spec/!opengl 1.1/teximage-colors gl_rgb9_e5/exact upload-download of gl_rgb9_e5:
 spec/!opengl 1.1/teximage-colors gl_rgb/exact upload-download of gl_rgb: skip
 spec/!opengl 1.1/teximage-colors gl_rgba12/exact upload-download of gl_rgba12: skip
 spec/!opengl 1.1/teximage-colors gl_rgba/exact upload-download of gl_rgba: skip
-spec/!opengl 1.1/two-sided-lighting: fail
 spec/!opengl 1.1/windowoverlap: skip
 spec/!opengl 1.2/copyteximage 3d: fail
 spec/!opengl 1.2/copyteximage 3d samples=16: skip
@@ -241,7 +241,6 @@ spec/!opengl 1.2/copyteximage 3d samples=32: skip
 spec/!opengl 1.2/copyteximage 3d samples=4: skip
 spec/!opengl 1.2/copyteximage 3d samples=6: skip
 spec/!opengl 1.2/copyteximage 3d samples=8: skip
-spec/!opengl 1.2/two-sided-lighting-separate-specular: fail
 spec/!opengl 1.4/copy-pixels: fail
 spec/!opengl 1.4/copy-pixels samples=16: skip
 spec/!opengl 1.4/copy-pixels samples=2: skip
@@ -251,7 +250,6 @@ spec/!opengl 1.4/copy-pixels samples=6: skip
 spec/!opengl 1.4/copy-pixels samples=8: skip
 spec/!opengl 1.4/gl-1.4-polygon-offset: fail
 spec/!opengl 1.4/gl-1.4-rgba-mipmap-texture-with-rgb-visual: skip
-spec/!opengl 1.4/tex-miplevel-selection-lod-bias: fail
 spec/!opengl 2.0/gl-2.0-edgeflag: crash
 spec/!opengl 2.0/gl-2.0-edgeflag-immediate: crash
 spec/!opengl 2.0/max-samplers border: fail
@@ -288,7 +286,6 @@ spec/!opengl 2.0/vertex-program-two-side enabled back back2/vs, tcs, tes and fs:
 spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/vs and fs: fail
 spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/vs, tcs, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2/gs-out and fs: skip
@@ -309,19 +306,16 @@ spec/!opengl 2.0/vertex-program-two-side enabled back/vs, tcs, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back back2/vs and fs: fail
 spec/!opengl 2.0/vertex-program-two-side enabled front back back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back back2/vs, tcs, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/vs and fs: fail
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/vs, tcs, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back front2/vs and fs: fail
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2/vs, tcs, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back2/gs-out and fs: skip
@@ -332,13 +326,11 @@ spec/!opengl 2.0/vertex-program-two-side enabled front back2/vs, tcs, tes and fs
 spec/!opengl 2.0/vertex-program-two-side enabled front back/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back/vs and fs: fail
 spec/!opengl 2.0/vertex-program-two-side enabled front back/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back/vs, tcs, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/vs and fs: fail
 spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/vs, tcs, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2/gs-out and fs: skip
@@ -349,7 +341,6 @@ spec/!opengl 2.0/vertex-program-two-side enabled front front2/vs, tcs, tes and f
 spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/vs and fs: fail
 spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/vs, tcs, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2/gs-out and fs: skip
@@ -756,6 +747,7 @@ spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl
 spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index16: fail
 spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index4: fail
 spec/arb_framebuffer_object/arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index8: fail
+spec/arb_framebuffer_object/fbo-drawbuffers-none gldrawpixels: crash
 spec/arb_framebuffer_object/framebuffer-blit-levels draw stencil: fail
 spec/arb_framebuffer_object/framebuffer-blit-levels read stencil: fail
 spec/arb_framebuffer_srgb/blit renderbuffer linear msaa disabled clear: fail
@@ -1081,32 +1073,6 @@ spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-32: sk
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-8: skip
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *gradarb 1d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *gradarb 1dshadow: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *gradarb 2d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *gradarb 2dshadow: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *gradarb 3d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *gradarb cube: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *lod 1d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *lod 1dshadow: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *lod 2d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *lod 2dshadow: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *lod 3d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *lod cube: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projgradarb 1d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projgradarb 1d_projvec4: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projgradarb 1dshadow: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projgradarb 2d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projgradarb 2d_projvec4: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projgradarb 2dshadow: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projgradarb 3d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projlod 1d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projlod 1d_projvec4: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projlod 1dshadow: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projlod 2d: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projlod 2d_projvec4: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projlod 2dshadow: fail
-spec/arb_shader_texture_lod/execution/tex-miplevel-selection *projlod 3d: fail
 spec/arb_sparse_buffer/basic: skip
 spec/arb_sparse_buffer/buffer-data: skip
 spec/arb_sparse_buffer/commit: skip
@@ -1481,12 +1447,15 @@ spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export-tex: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-intel_external_sampler_only: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_ayuv: fail
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_nv12: crash
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_p010: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_p012: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_p016: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_uyvy: fail
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_xyuv: fail
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yuv420: crash
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yuyv: fail
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yvu420: crash
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 1024 d=z24_s8_s=z24_s8: skip
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 1024 d=z24_s=z24_s8: skip
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 1024 s=z24_s8_d=z24: skip
@@ -1722,107 +1691,7 @@ spec/ext_window_rectangles/render_gles3: skip
 spec/glsl-1.10/execution/clipping/clip-plane-transformation clipvert_pos: fail
 spec/glsl-1.10/execution/clipping/clip-plane-transformation fixed: fail
 spec/glsl-1.10/execution/clipping/clip-plane-transformation pos_clipvert: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture() 1d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture() 1dshadow: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture() 2d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture() 2dshadow: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture() 3d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture() cube: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture(bias) 1d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture(bias) 1dshadow: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture(bias) 2d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture(bias) 2dshadow: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture(bias) 3d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture(bias) cube: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj 1d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj 1d_projvec4: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj 1dshadow: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj 2d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj 2d_projvec4: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj 2dshadow: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj 3d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 1d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 1d_projvec4: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 1dshadow: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 2d: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 2d_projvec4: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 2dshadow: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:textureproj(bias) 3d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 1d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 1darray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 1darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 2darray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 2darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 2dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() 3d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cube: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cubearray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cubearrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cubeshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) 1d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) 1darray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) 1darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) 2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) 2darray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) 2dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) 3d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cube: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubearray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubeshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1darray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 2darray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 2darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 2dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 3d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad cube: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad cubearray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad cubeshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod 1d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod 1darray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod 1darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod 2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod 2darray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod 2dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod 3d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod cube: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod cubearray: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj 1d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj 1d_projvec4: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj 2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj 2d_projvec4: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj 2dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj 3d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj(bias) 1d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj(bias) 1d_projvec4: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj(bias) 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj(bias) 2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj(bias) 2d_projvec4: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj(bias) 2dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureproj(bias) 3d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojgrad 1d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojgrad 1d_projvec4: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojgrad 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojgrad 2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojgrad 2d_projvec4: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojgrad 2dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojgrad 3d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojlod 1d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojlod 1d_projvec4: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojlod 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojlod 2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojlod 2d_projvec4: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojlod 2dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojlod 3d: fail
 spec/glsl-1.30/execution/texelfetch fs sampler3d 1x129x9-98x129x9: fail
 spec/glsl-1.30/execution/texelfetch fs sampler3d 98x129x1-98x129x9: fail
 spec/glsl-1.30/execution/texelfetch fs sampler3d 98x1x9-98x129x9: fail
