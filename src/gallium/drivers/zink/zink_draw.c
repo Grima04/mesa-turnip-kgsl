@@ -512,10 +512,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       }
       if (!cache_hit)
          vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
-      for (int i = 0; i < num_surface_refs; i++) {
-         if (surface_refs[i])
-            zink_batch_reference_surface(batch, surface_refs[i]);
-      }
    }
 
    if (is_compute)
@@ -545,6 +541,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    for (int i = 0; i < num_transitions; ++i) {
       zink_resource_barrier(ctx, NULL, transitions[i].res,
                             transitions[i].layout, transitions[i].access, transitions[i].stage);
+   }
+   for (int i = 0; i < num_surface_refs; i++) {
+      if (surface_refs[i])
+         zink_batch_reference_surface(batch, surface_refs[i]);
    }
    if (!need_flush)
       return;
