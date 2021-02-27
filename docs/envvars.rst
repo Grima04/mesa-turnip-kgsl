@@ -636,6 +636,8 @@ RADV driver environment variables
       disable optimizations that get enabled when all VRAM is CPU visible.
    ``pswave32``
       enable wave32 for pixel shaders (GFX10+)
+   ``sam``
+      enable optimizations to move more driver internal objects to VRAM.
    ``tccompatcmask``
       enable TC-compat cmask for MSAA images
 

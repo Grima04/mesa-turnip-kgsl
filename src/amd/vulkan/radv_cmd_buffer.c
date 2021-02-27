@@ -486,10 +486,10 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 enum radeon_bo_domain
 radv_cmdbuffer_domain(const struct radeon_info *info, uint32_t perftest)
 {
-	return (info->all_vram_visible &&
-	        info->has_dedicated_vram &&
-	        !(perftest & RADV_PERFTEST_NO_SAM)) ?
-		RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
+	bool use_sam = (info->all_vram_visible && info->has_dedicated_vram &&
+	                !(perftest & RADV_PERFTEST_NO_SAM)) ||
+	                (perftest & RADV_PERFTEST_SAM);
+	return use_sam ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
 }
 
 static bool
