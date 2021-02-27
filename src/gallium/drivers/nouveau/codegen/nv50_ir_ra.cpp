@@ -2574,6 +2574,13 @@ RegAlloc::InsertConstraintsPass::visit(BasicBlock *bb)
           i->op == OP_MERGE ||
           i->op == OP_SPLIT) {
          constrList.push_back(i);
+      } else
+      if (i->op == OP_ATOM && i->subOp == NV50_IR_SUBOP_ATOM_CAS &&
+          targ->getChipset() < 0xc0) {
+         // Like a hazard, but for a def.
+         Instruction *nop = new_Instruction(func, OP_NOP, i->dType);
+         nop->setSrc(0, i->getDef(0));
+         i->bb->insertAfter(i, nop);
       }
    }
    return true;

@@ -3928,7 +3928,10 @@ DeadCodeElim::visit(BasicBlock *bb)
          if (i->op == OP_ATOM ||
              i->op == OP_SUREDP ||
              i->op == OP_SUREDB) {
-            i->setDef(0, NULL);
+            const Target *targ = prog->getTarget();
+            if (targ->getChipset() >= NVISA_GF100_CHIPSET ||
+                i->subOp != NV50_IR_SUBOP_ATOM_CAS)
+               i->setDef(0, NULL);
             if (i->op == OP_ATOM && i->subOp == NV50_IR_SUBOP_ATOM_EXCH) {
                i->cache = CACHE_CV;
                i->op = OP_STORE;
