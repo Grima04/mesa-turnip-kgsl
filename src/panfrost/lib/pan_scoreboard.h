@@ -60,7 +60,7 @@ panfrost_add_job(
                 struct pan_scoreboard *scoreboard,
                 enum mali_job_type type,
                 bool barrier, bool suppress_prefetch,
-                unsigned local_dep,
+                unsigned local_dep, unsigned global_dep,
                 const struct panfrost_ptr *job,
                 bool inject);
 
