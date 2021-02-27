@@ -352,6 +352,12 @@ init_render_queue_state(struct anv_queue *queue)
    return anv_queue_submit_simple_batch(queue, &batch);
 }
 
+void
+genX(init_physical_device_state)(ASSERTED struct anv_physical_device *device)
+{
+   assert(device->info.genx10 == GEN_VERSIONx10);
+}
+
 VkResult
 genX(init_device_state)(struct anv_device *device)
 {

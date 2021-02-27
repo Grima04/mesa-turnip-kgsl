@@ -5923,4 +5923,6 @@ genX(init_atoms)(struct brw_context *brw)
    brw->vtbl.emit_mi_report_perf_count = genX(emit_mi_report_perf_count);
    brw->vtbl.emit_compute_walker = genX(emit_gpgpu_walker);
 #endif
+
+   assert(brw->screen->devinfo.genx10 == GEN_VERSIONx10);
 }

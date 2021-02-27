@@ -47,6 +47,8 @@ struct drm_i915_query_topology_info;
 struct gen_device_info
 {
    int gen; /**< Generation number: 4, 5, 6, 7, ... */
+   /* Driver internal number used to differentiate platforms. */
+   int genx10;
    int revision;
    int gt;
 
