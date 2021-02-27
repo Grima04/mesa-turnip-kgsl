@@ -613,6 +613,7 @@ physical_device_init(struct v3dv_physical_device *device,
    const char *path = drm_render_device->nodes[DRM_NODE_RENDER];
    render_fd = open(path, O_RDWR | O_CLOEXEC);
    if (render_fd < 0) {
+      fprintf(stderr, "Opening %s failed: %s\n", path, strerror(errno));
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
       goto fail;
    }
